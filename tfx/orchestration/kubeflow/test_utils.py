@@ -412,25 +412,31 @@ class BaseKubeflowTest(tf.test.TestCase):
   # It is retrieved from inside the container subject to testing.
   _MODULE_ROOT = '/tfx-src/tfx/components/testdata/module_file'
 
-  _CONTAINER_IMAGE = '{}:{}'.format(_BASE_CONTAINER_IMAGE,
-                                    test_utils.random_id())
-
   @classmethod
   def setUpClass(cls):
     super(BaseKubeflowTest, cls).setUpClass()
 
-    # Create a container image for use by test pipelines.
-    test_utils.build_and_push_docker_image(cls._CONTAINER_IMAGE, cls._REPO_BASE)
+    if ':' not in cls._BASE_CONTAINER_IMAGE:
+      # Generate base container image for the test if tag is not specified.
+      cls.container_image = '{}:{}'.format(cls._BASE_CONTAINER_IMAGE,
+                                           test_utils.random_id())
+
+      # Create a container image for use by test pipelines.
+      test_utils.build_and_push_docker_image(cls.container_image,
+                                             cls._REPO_BASE)
+    else:  # Use the given image as a base image.
+      cls.container_image = cls._BASE_CONTAINER_IMAGE
 
   @classmethod
   def tearDownClass(cls):
     super(BaseKubeflowTest, cls).tearDownClass()
 
-    # Delete container image used in tests.
-    logging.info('Deleting image %s', cls._CONTAINER_IMAGE)
-    subprocess.run(
-        ['gcloud', 'container', 'images', 'delete', cls._CONTAINER_IMAGE],
-        check=True)
+    if cls.container_image != cls._BASE_CONTAINER_IMAGE:
+      # Delete container image used in tests.
+      logging.info('Deleting image %s', cls.container_image)
+      subprocess.run(
+          ['gcloud', 'container', 'images', 'delete', cls.container_image],
+          check=True)
 
   @classmethod
   def _get_mysql_pod_name(cls):
@@ -655,7 +661,7 @@ class BaseKubeflowTest(tf.test.TestCase):
     pipeline_name = pipeline.pipeline_info.pipeline_name
     config = kubeflow_dag_runner.KubeflowDagRunnerConfig(
         kubeflow_metadata_config=self._get_kubeflow_metadata_config(),
-        tfx_image=self._CONTAINER_IMAGE)
+        tfx_image=self.container_image)
     kubeflow_dag_runner.KubeflowDagRunner(config=config).run(pipeline)
 
     file_path = os.path.join(self._test_dir, '{}.tar.gz'.format(pipeline_name))

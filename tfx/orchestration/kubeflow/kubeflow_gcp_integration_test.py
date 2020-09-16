@@ -171,7 +171,7 @@ class KubeflowGCPIntegrationTest(kubeflow_test_utils.BaseKubeflowTest):
         'region': self._GCP_REGION,
         'jobDir': os.path.join(self._pipeline_root(pipeline_name), 'tmp'),
         'masterConfig': {
-            'imageUri': self._CONTAINER_IMAGE,
+            'imageUri': self.container_image,
         },
     }
 

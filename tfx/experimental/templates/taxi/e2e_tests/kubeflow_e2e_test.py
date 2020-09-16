@@ -68,12 +68,15 @@ class TaxiTemplateKubeflowE2ETest(test_utils.BaseEndToEndTest):
     self._kfp_client = kfp.Client(host=self._endpoint)
     logging.info('ENDPOINT: %s', self._endpoint)
 
-    self._base_container_image = '{}:{}'.format(self._BASE_CONTAINER_IMAGE,
-                                                random_id)
+    if ':' not in self._BASE_CONTAINER_IMAGE:
+      self._base_container_image = '{}:{}'.format(self._BASE_CONTAINER_IMAGE,
+                                                  random_id)
+      self._prepare_base_container_image()
+    else:
+      self._base_container_image = self._BASE_CONTAINER_IMAGE
     self._target_container_image = 'gcr.io/{}/{}:{}'.format(
         self._GCP_PROJECT_ID, 'taxi-template-kubeflow-e2e-test', random_id)
 
-    self._prepare_base_container_image()
     self._prepare_skaffold()
 
   def tearDown(self):
@@ -128,6 +131,8 @@ class TaxiTemplateKubeflowE2ETest(test_utils.BaseEndToEndTest):
                                               self._BUCKET_NAME, path)
 
   def _delete_base_container_image(self):
+    if self._base_container_image == self._BASE_CONTAINER_IMAGE:
+      return  # Didn't generate a base image for the test.
     subprocess.check_output([
         'gcloud', 'container', 'images', 'delete', self._base_container_image
     ])

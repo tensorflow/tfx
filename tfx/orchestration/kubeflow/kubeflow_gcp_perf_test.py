@@ -207,7 +207,7 @@ class KubeflowGcpPerfTest(kubeflow_test_utils.BaseKubeflowTest):
     pipeline_name = pipeline.pipeline_info.pipeline_name
     config = kubeflow_dag_runner.KubeflowDagRunnerConfig(
         kubeflow_metadata_config=self._get_kubeflow_metadata_config(),
-        tfx_image=self._CONTAINER_IMAGE)
+        tfx_image=self.container_image)
     kubeflow_dag_runner.KubeflowDagRunner(config=config).run(pipeline)
 
     file_path = os.path.join(self._test_dir, '{}.tar.gz'.format(pipeline_name))
@@ -234,7 +234,7 @@ class KubeflowGcpPerfTest(kubeflow_test_utils.BaseKubeflowTest):
         'scaleTier': 'CUSTOM',
         'masterType': 'large_model',
         'masterConfig': {
-            'imageUri': self._CONTAINER_IMAGE
+            'imageUri': self.container_image
         },
         'workerType': self._WORKER_TYPE,
         'parameterServerType': 'standard',
