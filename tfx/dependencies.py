@@ -72,9 +72,9 @@ def make_required_install_packages():
       'kubernetes>=10.0.1,<12',
       'ml-metadata' + select_constraint(
           # LINT.IfChange
-          default='>=0.23,<0.24',
+          default='>=0.24,<0.25',
           # LINT.ThenChange(opensource_only/build/tfx.workspace.bzl)
-          nightly='>=0.24.0.dev',
+          nightly='>=0.25.0.dev',
           git_master='@git+https://github.com/google/ml-metadata@master'),
       'protobuf>=3.7,<4',
       'pyarrow>=0.17,<0.18',
@@ -82,8 +82,8 @@ def make_required_install_packages():
       'six>=1.10,<2',
       'tensorflow>=1.15.2,!=2.0.*,!=2.1.*,!=2.2.*,<3',
       'tensorflow-data-validation' + select_constraint(
-          default='>=0.23,<0.24',
-          nightly='>=0.24.0.dev',
+          default='>=0.24,<0.25',
+          nightly='>=0.25.0.dev',
           git_master='@git+https://github.com/tensorflow/data-validation@master'),  # pylint: disable=line-too-long
       'tensorflow-model-analysis' + select_constraint(
           default='>=0.24,<0.25',
@@ -91,8 +91,8 @@ def make_required_install_packages():
           git_master='@git+https://github.com/tensorflow/model-analysis@master'),  # pylint: disable=line-too-long
       'tensorflow-serving-api>=1.15,!=2.0.*,!=2.1.*,!=2.2.*,<3',
       'tensorflow-transform' + select_constraint(
-          default='>=0.23,<0.24',
-          nightly='>=0.24.0.dev',
+          default='>=0.24,<0.25',
+          nightly='>=0.25.0.dev',
           git_master='@git+https://github.com/tensorflow/transform@master'),
       'tfx-bsl' + select_constraint(
           default='>=0.24,<0.25',
