@@ -28,6 +28,7 @@ from absl import logging
 from tfx.components.base import base_node
 from tfx.orchestration import data_types
 from tfx.proto.orchestration import pipeline_pb2
+from tfx.utils import topsort
 
 from ml_metadata.proto import metadata_store_pb2
 
@@ -167,24 +168,12 @@ class Pipeline(object):
           component.add_upstream_node(producer_map[i])
           producer_map[i].add_downstream_node(component)
 
+    layers = topsort.topsorted_layers(
+        list(deduped_components),
+        get_node_id_fn=lambda c: c.id,
+        get_parent_nodes=lambda c: c.upstream_nodes,
+        get_child_nodes=lambda c: c.downstream_nodes)
     self._components = []
-    visited = set()
-
-    # Finds the nodes with indegree 0.
-    current_layer = [c for c in deduped_components if not c.upstream_nodes]
-    # Sorts component in topological order.
-    while current_layer:
-      next_layer = []
-      # Within each layer, components are sorted according to component ids.
-      for component in sorted(current_layer, key=lambda c: c.id):
+    for layer in layers:
+      for component in layer:
         self._components.append(component)
-        visited.add(component)
-        for downstream_node in component.downstream_nodes:
-          if downstream_node.upstream_nodes.issubset(visited):
-            next_layer.append(downstream_node)
-      current_layer = next_layer
-    # If there is a cycle in the graph, upon visiting the cycle, no node will be
-    # ready to be processed because it is impossible to find a single node that
-    # has all its dependencies visited.
-    if len(self._components) < len(deduped_components):
-      raise RuntimeError('There is a cycle in the pipeline')
