@@ -25,9 +25,9 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import cgi
 import datetime
 import functools
+import html
 import os
 import tempfile
 from typing import List, Optional, Text
@@ -246,7 +246,7 @@ class InteractiveContext(object):
       channel = item
       artifacts = channel.get()
       for artifact in artifacts:
-        artifact_heading = 'Artifact at %s' % cgi.escape(artifact.uri)  # pylint: disable=deprecated-method
+        artifact_heading = 'Artifact at %s' % html.escape(artifact.uri)
         display(HTML('<b>%s</b><br/><br/>' % artifact_heading))
         visualization = visualizations.get_registry().get_visualization(
             artifact.type_name)

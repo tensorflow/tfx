@@ -23,7 +23,7 @@ from __future__ import division
 from __future__ import print_function
 
 import abc
-import cgi
+import html
 from typing import Callable, List, Optional, Text, Tuple, Type, Union
 
 # Standard Imports
@@ -185,7 +185,7 @@ class NotebookFormatter(object):
     """Render the value section of an object."""
     if isinstance(value, _PropertyDictWrapper):
       value = value.get_all()
-    formatted_value = cgi.escape(Text(value))  # pylint: disable=deprecated-method
+    formatted_value = html.escape(Text(value))
     if isinstance(value, dict):
       formatted_value = self.render_dict(value, seen_elements)
     if isinstance(value, list):
@@ -228,7 +228,7 @@ class NotebookFormatter(object):
       value = self.render_value(value, seen_elements)
       attr_trs.append(
           ('<tr><td class="attr-name">[%r]</td>'
-           '<td class = "attrvalue">%s</td></tr>') % (cgi.escape(Text(key)),  # pylint: disable=deprecated-method
+           '<td class = "attrvalue">%s</td></tr>') % (html.escape(Text(key)),
                                                       value))
     return '<table class="attr-table">%s</table>' % ''.join(attr_trs)
 
