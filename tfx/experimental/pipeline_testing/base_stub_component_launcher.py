@@ -21,7 +21,7 @@ import os
 from typing import Any, Dict, List, Text
 
 from tfx import types
-from tfx.components.base import base_executor
+from tfx.dsl.components.base import base_executor
 from tfx.experimental.pipeline_testing import base_stub_executor
 from tfx.orchestration.launcher import in_process_component_launcher
 

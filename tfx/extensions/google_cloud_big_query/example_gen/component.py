@@ -21,9 +21,9 @@ from __future__ import print_function
 from typing import Optional, Text
 
 from tfx import types
-from tfx.components.base import executor_spec
 from tfx.components.example_gen import component
 from tfx.components.example_gen import utils
+from tfx.dsl.components.base import executor_spec
 from tfx.extensions.google_cloud_big_query.example_gen import executor
 from tfx.proto import example_gen_pb2
 

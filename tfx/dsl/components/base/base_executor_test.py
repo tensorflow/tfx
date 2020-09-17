@@ -12,7 +12,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Tests for tfx.components.base.base_executor."""
+"""Tests for tfx.dsl.components.base.base_executor."""
 
 from __future__ import absolute_import
 from __future__ import division
@@ -25,7 +25,7 @@ from apache_beam.options.pipeline_options import StandardOptions
 import tensorflow as tf
 
 from tfx import types
-from tfx.components.base import base_executor
+from tfx.dsl.components.base import base_executor
 
 
 class _TestExecutor(base_executor.BaseExecutor):

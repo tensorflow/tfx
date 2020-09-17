@@ -20,8 +20,8 @@ from __future__ import print_function
 import os
 import tensorflow as tf
 
-from tfx.components.base import base_component
-from tfx.components.base import executor_spec
+from tfx.dsl.components.base import base_component
+from tfx.dsl.components.base import executor_spec
 from tfx.orchestration import metadata
 from tfx.orchestration import pipeline
 from tfx.orchestration.beam import beam_dag_runner

@@ -22,7 +22,6 @@ import os
 from typing import Dict, Optional, Text
 
 import absl
-
 from tfx.components import CsvExampleGen
 from tfx.components import ExampleValidator
 from tfx.components import Pusher
@@ -30,8 +29,8 @@ from tfx.components import SchemaGen
 from tfx.components import StatisticsGen
 from tfx.components import Trainer
 from tfx.components import Transform
-from tfx.components.base import executor_spec
 from tfx.components.trainer.executor import GenericExecutor
+from tfx.dsl.components.base import executor_spec
 from tfx.extensions.google_cloud_ai_platform.pusher import executor as ai_platform_pusher_executor
 from tfx.orchestration import metadata
 from tfx.orchestration import pipeline

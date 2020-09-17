@@ -27,13 +27,13 @@ from typing import Any, Dict, List, Optional, Text
 
 from absl import logging
 from tfx import types
-from tfx.components.base import base_executor
 from tfx.components.infra_validator import error_types
 from tfx.components.infra_validator import request_builder
 from tfx.components.infra_validator import serving_bins
 from tfx.components.infra_validator import types as iv_types
 from tfx.components.infra_validator.model_server_runners import kubernetes_runner
 from tfx.components.infra_validator.model_server_runners import local_docker_runner
+from tfx.dsl.components.base import base_executor
 from tfx.proto import infra_validator_pb2
 from tfx.types import artifact_utils
 from tfx.utils import io_utils

@@ -18,7 +18,7 @@ from typing import Any, Dict, List, Optional, cast
 from absl import logging
 import tensorflow as tf
 from tfx import types
-from tfx.components.base import base_executor
+from tfx.dsl.components.base import base_executor
 from tfx.orchestration.portable import base_executor_operator
 from tfx.proto.orchestration import executable_spec_pb2
 from tfx.proto.orchestration import execution_result_pb2

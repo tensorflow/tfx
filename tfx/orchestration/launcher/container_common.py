@@ -21,11 +21,10 @@ from __future__ import print_function
 from typing import Any, Dict, List, Optional, Text, Union
 
 import jinja2
-
 from tfx import types
-from tfx.components.base import executor_spec
 from tfx.dsl.component.experimental import executor_specs
 from tfx.dsl.component.experimental import placeholders
+from tfx.dsl.components.base import executor_spec
 
 
 def resolve_container_template(

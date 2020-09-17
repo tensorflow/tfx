@@ -25,10 +25,9 @@ import absl
 import apache_beam as beam
 import tensorflow as tf
 import tensorflow_model_analysis as tfma
-
 from tfx import types
-from tfx.components.base import base_executor
 from tfx.components.model_validator import constants
+from tfx.dsl.components.base import base_executor
 from tfx.types import artifact_utils
 from tfx.utils import io_utils
 from tfx.utils import path_utils

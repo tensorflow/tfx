@@ -19,10 +19,11 @@ from __future__ import division
 from __future__ import print_function
 
 from typing import Text
+
 import tensorflow as tf
-from tfx.components.base import executor_spec
 from tfx.components.trainer import component
 from tfx.components.trainer import executor
+from tfx.dsl.components.base import executor_spec
 from tfx.orchestration import data_types
 from tfx.proto import trainer_pb2
 from tfx.types import channel_utils

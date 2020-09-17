@@ -21,10 +21,10 @@ from __future__ import print_function
 from typing import Optional, Text
 
 from tfx import types
-from tfx.components.base import base_component
-from tfx.components.base import executor_spec
 from tfx.components.model_validator import driver
 from tfx.components.model_validator import executor
+from tfx.dsl.components.base import base_component
+from tfx.dsl.components.base import executor_spec
 from tfx.types import standard_artifacts
 from tfx.types.standard_component_specs import ModelValidatorSpec
 

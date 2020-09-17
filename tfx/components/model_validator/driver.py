@@ -22,7 +22,7 @@ from typing import Any, Dict, Optional, Text, Tuple
 
 import absl
 
-from tfx.components.base import base_driver
+from tfx.dsl.components.base import base_driver
 from tfx.orchestration import data_types
 
 

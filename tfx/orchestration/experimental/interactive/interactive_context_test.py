@@ -31,9 +31,9 @@ from six.moves import builtins
 import tensorflow as tf
 
 from tfx import types
-from tfx.components.base import base_component
-from tfx.components.base import base_executor
-from tfx.components.base import executor_spec
+from tfx.dsl.components.base import base_component
+from tfx.dsl.components.base import base_executor
+from tfx.dsl.components.base import executor_spec
 from tfx.orchestration.experimental.interactive import interactive_context
 from tfx.orchestration.experimental.interactive import standard_visualizations
 from tfx.orchestration.launcher.in_process_component_launcher import InProcessComponentLauncher

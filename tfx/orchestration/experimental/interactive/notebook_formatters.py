@@ -30,7 +30,7 @@ from typing import Callable, List, Optional, Text, Tuple, Type, Union
 
 from six.moves import builtins
 
-from tfx.components.base.base_component import BaseComponent
+from tfx.dsl.components.base.base_component import BaseComponent
 from tfx.orchestration.experimental.interactive.execution_result import ExecutionResult
 from tfx.types.artifact import Artifact
 from tfx.types.channel import Channel

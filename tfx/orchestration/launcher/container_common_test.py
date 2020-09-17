@@ -21,7 +21,7 @@ from __future__ import print_function
 from kubernetes import client
 import tensorflow as tf
 
-from tfx.components.base import executor_spec
+from tfx.dsl.components.base import executor_spec
 from tfx.orchestration.launcher import container_common
 from tfx.proto import trainer_pb2
 from tfx.types import standard_artifacts

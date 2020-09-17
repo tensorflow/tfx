@@ -20,8 +20,8 @@ from __future__ import print_function
 from typing import Any, Dict, Text, Type
 
 from tfx import types
-from tfx.components.base import base_driver
-from tfx.components.base import base_node
+from tfx.dsl.components.base import base_driver
+from tfx.dsl.components.base import base_node
 from tfx.dsl.resolvers import base_resolver
 from tfx.orchestration import data_types
 from tfx.orchestration import metadata

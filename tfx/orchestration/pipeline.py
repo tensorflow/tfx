@@ -25,7 +25,7 @@ import os
 from typing import List, Optional, Text
 
 from absl import logging
-from tfx.components.base import base_node
+from tfx.dsl.components.base import base_node
 from tfx.orchestration import data_types
 from tfx.proto.orchestration import pipeline_pb2
 from tfx.utils import topsort

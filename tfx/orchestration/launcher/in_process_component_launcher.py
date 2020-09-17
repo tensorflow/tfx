@@ -23,8 +23,8 @@ import os
 from typing import Any, Dict, List, Text, cast
 
 from tfx import types
-from tfx.components.base import base_executor
-from tfx.components.base import executor_spec
+from tfx.dsl.components.base import base_executor
+from tfx.dsl.components.base import executor_spec
 from tfx.orchestration.config import base_component_config
 from tfx.orchestration.launcher import base_component_launcher
 

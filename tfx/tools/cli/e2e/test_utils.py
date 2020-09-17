@@ -26,7 +26,7 @@ from typing import List, Text
 from tfx.components import CsvExampleGen
 from tfx.components import SchemaGen
 from tfx.components import StatisticsGen
-from tfx.components.base.base_component import BaseComponent
+from tfx.dsl.components.base.base_component import BaseComponent
 from tfx.utils import dsl_utils
 
 from tensorflow.python.lib.io import file_io  # pylint: disable=g-direct-tensorflow-import

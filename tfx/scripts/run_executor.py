@@ -23,7 +23,7 @@ import base64
 import json
 
 import absl
-from tfx.components.base import base_executor
+from tfx.dsl.components.base import base_executor
 from tfx.types import artifact_utils
 from tfx.utils import import_utils
 
@@ -35,7 +35,7 @@ def _run_executor(args, pipeline_args) -> None:
 
   # pylint: disable=line-too-long
   _run_executor() is used to invoke a class subclassing
-  tfx.components.base.base_executor.BaseExecutor.  This function can be used for
+  tfx.dsl.components.base.base_executor.BaseExecutor.  This function can be used for
   both invoking the executor on remote environments as well as for unit testing
   of executors.
 

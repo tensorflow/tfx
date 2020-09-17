@@ -30,7 +30,7 @@ from typing import Any, Dict, List, Text
 
 import tensorflow as tf
 from tfx import types
-from tfx.components.base import base_executor
+from tfx.dsl.components.base import base_executor
 from tfx.types import artifact_utils
 from tfx.utils import io_utils
 

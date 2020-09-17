@@ -22,8 +22,8 @@ from typing import Any, Dict, Optional, Text, Type, Union
 import absl
 
 from tfx import types
-from tfx.components.base import base_driver
-from tfx.components.base import base_node
+from tfx.dsl.components.base import base_driver
+from tfx.dsl.components.base import base_node
 from tfx.orchestration import data_types
 from tfx.orchestration import metadata
 from tfx.types import channel_utils

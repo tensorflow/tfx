@@ -29,10 +29,10 @@ from tensorflow_model_analysis import constants as tfma_constants
 # metric is registered.
 import tensorflow_model_analysis.addons.fairness.post_export_metrics.fairness_indicators  # pylint: disable=unused-import
 from tfx import types
-from tfx.components.base import base_executor
 from tfx.components.evaluator import constants
 from tfx.components.util import tfxio_utils
 from tfx.components.util import udf_utils
+from tfx.dsl.components.base import base_executor
 from tfx.proto import evaluator_pb2
 from tfx.types import artifact_utils
 from tfx.utils import io_utils
@@ -41,7 +41,6 @@ from tfx.utils import path_utils
 from tfx_bsl.tfxio import tensor_adapter
 
 from google.protobuf import json_format
-
 
 _TELEMETRY_DESCRIPTORS = ['Evaluator']
 

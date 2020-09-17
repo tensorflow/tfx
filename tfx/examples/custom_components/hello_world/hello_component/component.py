@@ -28,8 +28,8 @@ from __future__ import print_function
 from typing import Optional, Text
 from hello_component import executor
 from tfx import types
-from tfx.components.base import base_component
-from tfx.components.base import executor_spec
+from tfx.dsl.components.base import base_component
+from tfx.dsl.components.base import executor_spec
 from tfx.types import channel_utils
 from tfx.types import standard_artifacts
 from tfx.types.component_spec import ChannelParameter

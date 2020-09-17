@@ -27,7 +27,7 @@ import unittest
 import mock
 import tensorflow as tf
 
-from tfx.components.base import base_driver
+from tfx.dsl.components.base import base_driver
 from tfx.tools.cli import labels
 from tfx.tools.cli.handler import kubeflow_handler
 

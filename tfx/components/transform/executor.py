@@ -40,11 +40,11 @@ from tensorflow_transform.tf_metadata import dataset_schema
 from tensorflow_transform.tf_metadata import metadata_io
 from tensorflow_transform.tf_metadata import schema_utils
 from tfx import types
-from tfx.components.base import base_executor
 from tfx.components.transform import labels
 from tfx.components.transform import stats_options as transform_stats_options
 from tfx.components.util import tfxio_utils
 from tfx.components.util import value_utils
+from tfx.dsl.components.base import base_executor
 from tfx.proto import example_gen_pb2
 from tfx.proto import transform_pb2
 from tfx.types import artifact_utils
@@ -52,8 +52,8 @@ from tfx.utils import import_utils
 from tfx.utils import io_utils
 import tfx_bsl
 from tfx_bsl.tfxio import tfxio as tfxio_module
-from google.protobuf import json_format
 
+from google.protobuf import json_format
 from tensorflow_metadata.proto.v0 import schema_pb2
 from tensorflow_metadata.proto.v0 import statistics_pb2
 

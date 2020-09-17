@@ -16,10 +16,10 @@
 
 from typing import Any, Callable, Dict, List, Text
 
-from tfx.components.base import base_component
 from tfx.dsl.component.experimental import component_utils
 from tfx.dsl.component.experimental import executor_specs
 from tfx.dsl.component.experimental import placeholders
+from tfx.dsl.components.base import base_component
 from tfx.types import channel_utils
 from tfx.types import component_spec
 

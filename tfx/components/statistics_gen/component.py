@@ -12,15 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """TFX StatisticsGen component definition."""
-from typing import Optional, List, Text
+from typing import List, Optional, Text
 
 from absl import logging
 import tensorflow_data_validation as tfdv
-
 from tfx import types
-from tfx.components.base import base_component
-from tfx.components.base import executor_spec
 from tfx.components.statistics_gen import executor
+from tfx.dsl.components.base import base_component
+from tfx.dsl.components.base import executor_spec
 from tfx.types import standard_artifacts
 from tfx.types.standard_component_specs import StatisticsGenSpec
 from tfx.utils import json_utils

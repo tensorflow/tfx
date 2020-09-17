@@ -15,8 +15,8 @@
 from typing import Any, Dict, List, Text
 
 from tfx import types
-from tfx.components.base import base_executor
 from tfx.components.experimental.data_view import constants
+from tfx.dsl.components.base import base_executor
 from tfx.types import artifact_utils
 
 

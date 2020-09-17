@@ -15,11 +15,11 @@
 import json
 import re
 
-from tfx.components.base import base_driver
-from tfx.components.base import base_node
 from tfx.components.common_nodes import resolver_node
 from tfx.dsl.compiler import compiler_utils
 from tfx.dsl.compiler import constants
+from tfx.dsl.components.base import base_driver
+from tfx.dsl.components.base import base_node
 from tfx.dsl.experimental import latest_artifacts_resolver
 from tfx.dsl.experimental import latest_blessed_model_resolver
 from tfx.orchestration import data_types

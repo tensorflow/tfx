@@ -21,9 +21,9 @@ from __future__ import print_function
 import mock
 import tensorflow as tf
 from tfx import types
-from tfx.components.base import base_component
-from tfx.components.base import base_executor
-from tfx.components.base import executor_spec
+from tfx.dsl.components.base import base_component
+from tfx.dsl.components.base import base_executor
+from tfx.dsl.components.base import executor_spec
 from tfx.orchestration import pipeline
 from tfx.orchestration.beam import beam_dag_runner
 from tfx.types.component_spec import ChannelParameter

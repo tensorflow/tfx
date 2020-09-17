@@ -25,12 +25,11 @@ from typing import Any, Dict, List, Text
 import absl
 import tensorflow as tf
 import tensorflow_model_analysis as tfma
-
 from tfx import types
-from tfx.components.base import base_executor
 from tfx.components.trainer import constants
 from tfx.components.trainer import fn_args_utils
 from tfx.components.util import udf_utils
+from tfx.dsl.components.base import base_executor
 from tfx.types import artifact_utils
 from tfx.utils import io_utils
 from tfx.utils import json_utils

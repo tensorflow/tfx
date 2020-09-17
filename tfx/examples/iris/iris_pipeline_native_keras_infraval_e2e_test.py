@@ -23,7 +23,7 @@ from typing import Text
 
 import tensorflow as tf
 
-from tfx.components.base import base_driver
+from tfx.dsl.components.base import base_driver
 from tfx.examples.iris import iris_pipeline_native_keras_infraval
 from tfx.orchestration import metadata
 from tfx.orchestration.beam.beam_dag_runner import BeamDagRunner

@@ -26,9 +26,9 @@ import tensorflow as tf
 from tfx.orchestration.airflow import airflow_dag_runner  # pylint: disable=g-bad-import-order
 
 from tfx import types
-from tfx.components.base import base_component
-from tfx.components.base import base_executor
-from tfx.components.base import executor_spec
+from tfx.dsl.components.base import base_component
+from tfx.dsl.components.base import base_executor
+from tfx.dsl.components.base import executor_spec
 from tfx.orchestration import pipeline
 from tfx.types import component_spec
 

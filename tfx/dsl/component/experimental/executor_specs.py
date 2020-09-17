@@ -20,8 +20,8 @@ from __future__ import print_function
 
 from typing import List, Text
 
-from tfx.components.base import executor_spec
 from tfx.dsl.component.experimental import placeholders
+from tfx.dsl.components.base import executor_spec
 
 
 class TemplatedExecutorContainerSpec(executor_spec.ExecutorSpec):

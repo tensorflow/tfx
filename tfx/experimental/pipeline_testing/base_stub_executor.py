@@ -25,7 +25,7 @@ from absl import logging
 import tensorflow as tf
 
 from tfx import types
-from tfx.components.base import base_executor
+from tfx.dsl.components.base import base_executor
 from tfx.utils import io_utils
 
 

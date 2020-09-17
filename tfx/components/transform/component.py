@@ -21,11 +21,10 @@ import json
 from typing import Any, Dict, Optional, Text, Union
 
 import absl
-
 from tfx import types
-from tfx.components.base import base_component
-from tfx.components.base import executor_spec
 from tfx.components.transform import executor
+from tfx.dsl.components.base import base_component
+from tfx.dsl.components.base import executor_spec
 from tfx.orchestration import data_types
 from tfx.proto import transform_pb2
 from tfx.types import standard_artifacts

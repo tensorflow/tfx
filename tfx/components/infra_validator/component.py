@@ -20,10 +20,10 @@ from __future__ import print_function
 from typing import Optional, Text
 
 from tfx import types
-from tfx.components.base import base_component
-from tfx.components.base import base_driver
-from tfx.components.base import executor_spec
 from tfx.components.infra_validator import executor
+from tfx.dsl.components.base import base_component
+from tfx.dsl.components.base import base_driver
+from tfx.dsl.components.base import executor_spec
 from tfx.proto import infra_validator_pb2
 from tfx.types import standard_artifacts
 from tfx.types import standard_component_specs

@@ -26,8 +26,8 @@ from absl import logging
 import apache_beam as beam
 import tensorflow as tf
 from tfx import types
-from tfx.components.base import base_executor
 from tfx.components.util import model_utils
+from tfx.dsl.components.base import base_executor
 from tfx.proto import bulk_inferrer_pb2
 from tfx.types import artifact_utils
 from tfx.utils import io_utils

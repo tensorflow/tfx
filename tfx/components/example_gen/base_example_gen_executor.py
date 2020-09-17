@@ -28,11 +28,10 @@ from absl import logging
 import apache_beam as beam
 from six import with_metaclass
 import tensorflow as tf
-
 from tfx import types
-from tfx.components.base import base_executor
 from tfx.components.example_gen import utils
 from tfx.components.util import examples_utils
+from tfx.dsl.components.base import base_executor
 from tfx.proto import example_gen_pb2
 from tfx.types import artifact_utils
 

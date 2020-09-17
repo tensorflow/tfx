@@ -2,17 +2,21 @@
 
 ## Major Features and Improvements
 
-## Bug fixes and other changes
-
 ## Breaking changes
+
+## Deprecations
+
+*   Modules under `tfx.components.base` have been deprecated and moved to
+    `tfx.dsl.components.base` in preparation for releasing a pipeline authoring
+    package without explicit Tensorflow dependency.
+
+## Bug fixes and other changes
 
 ### For pipeline authors
 
 ### For component authors
 
 ## Documentation updates
-
-## Deprecations
 
 # Version 0.24.0
 

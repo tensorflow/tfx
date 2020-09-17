@@ -15,9 +15,9 @@
 from typing import Any, Dict, List, Text
 
 from tfx import types
-from tfx.components.base import base_executor
 from tfx.components.util import udf_utils
 from tfx.components.util import value_utils
+from tfx.dsl.components.base import base_executor
 from tfx_bsl.coders import tf_graph_record_decoder
 
 # Keys for exec_properties dict.

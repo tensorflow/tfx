@@ -18,7 +18,7 @@ from typing import Any, Dict, List, Text
 
 import tensorflow as tf
 from tfx import types
-from tfx.components.base import base_executor
+from tfx.dsl.components.base import base_executor
 from tfx.orchestration.portable import base_executor_operator
 from tfx.orchestration.portable import python_executor_operator
 from tfx.orchestration.portable import test_utils

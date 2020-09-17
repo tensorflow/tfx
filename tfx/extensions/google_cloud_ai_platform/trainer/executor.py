@@ -20,10 +20,9 @@ from __future__ import print_function
 from typing import Any, Dict, List, Text
 
 import absl
-
 from tfx import types
-from tfx.components.base import base_executor
 from tfx.components.trainer import executor as tfx_trainer_executor
+from tfx.dsl.components.base import base_executor
 from tfx.extensions.google_cloud_ai_platform import runner
 from tfx.utils import json_utils
 
