@@ -123,7 +123,6 @@ class MetadataTest(tf.test.TestCase):
             string_value: "published"
           }
         }
-        state: LIVE
         """, artifact)
 
       # Test get artifact.
@@ -134,7 +133,6 @@ class MetadataTest(tf.test.TestCase):
                                standard_artifacts.Examples.TYPE_NAME))
 
       # Test artifact state.
-      self.assertEqual(artifact.state, metadata_store_pb2.Artifact.LIVE)
       self._check_artifact_state(m, artifact, ArtifactState.PUBLISHED)
       m.update_artifact_state(artifact, ArtifactState.DELETED)
       self._check_artifact_state(m, artifact, ArtifactState.DELETED)
@@ -162,7 +160,6 @@ class MetadataTest(tf.test.TestCase):
           """
         id: 1
         type_id: 3
-        last_known_state: RUNNING
         properties {
           key: "state"
           value {
@@ -267,7 +264,6 @@ class MetadataTest(tf.test.TestCase):
           """
         id: 1
         type_id: 3
-        last_known_state: RUNNING
         properties {
           key: "state"
           value {
@@ -311,7 +307,6 @@ class MetadataTest(tf.test.TestCase):
           """
         id: 2
         type_id: 3
-        last_known_state: RUNNING
         properties {
           key: "state"
           value {
@@ -402,7 +397,6 @@ class MetadataTest(tf.test.TestCase):
           """
         id: 1
         type_id: 3
-        last_known_state: RUNNING
         properties {
           key: "state"
           value {
@@ -452,7 +446,6 @@ class MetadataTest(tf.test.TestCase):
           """
         id: 2
         type_id: 3
-        last_known_state: RUNNING
         properties {
           key: "state"
           value {
@@ -682,8 +675,6 @@ class MetadataTest(tf.test.TestCase):
       self.assertEqual(execution.properties['k'].string_value, 'v1')
       self.assertEqual(execution.properties['state'].string_value,
                        metadata.EXECUTION_STATE_NEW)
-      self.assertEqual(execution.last_known_state,
-                       metadata_store_pb2.Execution.RUNNING)
 
       m.update_execution(
           execution,
@@ -697,8 +688,6 @@ class MetadataTest(tf.test.TestCase):
       self.assertEqual(execution.properties['k'].string_value, 'v2')
       self.assertEqual(execution.properties['state'].string_value,
                        metadata.EXECUTION_STATE_NEW)
-      self.assertEqual(execution.last_known_state,
-                       metadata_store_pb2.Execution.RUNNING)
       [event] = m.store.get_events_by_execution_ids([execution.id])
       self.assertEqual(event.artifact_id, 1)
       [artifact] = m.store.get_artifacts_by_context(
@@ -722,8 +711,6 @@ class MetadataTest(tf.test.TestCase):
       self.assertEqual(execution.properties['k'].string_value, 'v3')
       self.assertEqual(execution.properties['state'].string_value,
                        metadata.EXECUTION_STATE_COMPLETE)
-      self.assertEqual(execution.last_known_state,
-                       metadata_store_pb2.Execution.COMPLETE)
       [_, event_b] = m.store.get_events_by_execution_ids([execution.id])
       self.assertEqual(event_b.artifact_id, 2)
       self.assertEqual(event_b.type, metadata_store_pb2.Event.OUTPUT)

@@ -332,14 +332,6 @@ class BaseDriver(object):
           'Execution properties for the upcoming execution are: %s',
           exec_properties)
 
-    # For interactive execution, update the output channel contents.
-    # TODO(b/161490287): figure out the long-term behavior of Channel artifacts
-    # with respect to interactive and non-interactive execution.
-    if driver_args.interactive_resolution:
-      for key, artifact_list in output_artifacts.items():
-        channel = output_dict[key]
-        channel._artifacts = artifact_list  # pylint: disable=protected-access
-
     return data_types.ExecutionDecision(input_artifacts, output_artifacts,
                                         exec_properties, execution.id,
                                         use_cached_results)

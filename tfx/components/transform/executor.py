@@ -329,21 +329,10 @@ class Executor(base_executor.BaseExecutor):
         raise ValueError('analyze cannot be empty when splits_config is set.')
     else:
       splits_config.analyze.append('train')
-
-      # All input artifacts should have the same set of split names.
-      split_names = artifact_utils.decode_split_names(
-          input_dict[EXAMPLES_KEY][0].split_names)
-      split_names_set = set(split_names)
-
-      for artifact in input_dict[EXAMPLES_KEY]:
-        artifact_split_names = artifact_utils.decode_split_names(
-            artifact.split_names)
-        if split_names_set != set(artifact_split_names):
-          raise ValueError(
-              'Not all input artifacts have the same split names: (%s, %s)' %
-              (split_names, artifact_split_names))
-
-      splits_config.transform.extend(split_names)
+      splits_config.transform.extend(
+          artifact_utils.decode_split_names(
+              artifact_utils.get_single_instance(
+                  input_dict[EXAMPLES_KEY]).split_names))
       absl.logging.info(
           "Analyze the 'train' split and transform all splits when "
           'splits_config is not set.')
@@ -361,28 +350,25 @@ class Executor(base_executor.BaseExecutor):
 
     analyze_data_paths = []
     for split in splits_config.analyze:
-      data_uris = artifact_utils.get_split_uris(input_dict[EXAMPLES_KEY], split)
-      for data_uri in data_uris:
-        analyze_data_paths.append(io_utils.all_files_pattern(data_uri))
+      data_uri = artifact_utils.get_split_uri(input_dict[EXAMPLES_KEY], split)
+      analyze_data_paths.append(io_utils.all_files_pattern(data_uri))
 
     transform_data_paths = []
     materialize_output_paths = []
     if output_dict.get(TRANSFORMED_EXAMPLES_KEY) is not None:
-      for transformed_example_artifact in output_dict[TRANSFORMED_EXAMPLES_KEY]:
-        transformed_example_artifact.split_names = (
-            artifact_utils.encode_split_names(list(splits_config.transform)))
+      transformed_example_artifact = artifact_utils.get_single_instance(
+          output_dict[TRANSFORMED_EXAMPLES_KEY])
+      transformed_example_artifact.split_names = (
+          artifact_utils.encode_split_names(list(splits_config.transform)))
 
       for split in splits_config.transform:
-        data_uris = artifact_utils.get_split_uris(input_dict[EXAMPLES_KEY],
-                                                  split)
-        for data_uri in data_uris:
-          transform_data_paths.append(io_utils.all_files_pattern(data_uri))
-
-        transformed_example_uris = artifact_utils.get_split_uris(
-            output_dict[TRANSFORMED_EXAMPLES_KEY], split)
-        for output_uri in transformed_example_uris:
-          materialize_output_paths.append(
-              os.path.join(output_uri, _DEFAULT_TRANSFORMED_EXAMPLES_PREFIX))
+        data_uri = artifact_utils.get_split_uri(input_dict[EXAMPLES_KEY], split)
+        transform_data_paths.append(io_utils.all_files_pattern(data_uri))
+        transformed_example = os.path.join(
+            artifact_utils.get_split_uri(output_dict[TRANSFORMED_EXAMPLES_KEY],
+                                         split),
+            _DEFAULT_TRANSFORMED_EXAMPLES_PREFIX)
+        materialize_output_paths.append(transformed_example)
 
     def _GetCachePath(label, params_dict):
       if params_dict.get(label) is None:

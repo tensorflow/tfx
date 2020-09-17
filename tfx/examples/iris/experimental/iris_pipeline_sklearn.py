@@ -19,7 +19,7 @@ from __future__ import division
 from __future__ import print_function
 
 import os
-from typing import Dict, List, Optional, Text
+from typing import Dict, Optional, Text
 
 import absl
 from tfx.components import CsvExampleGen
@@ -97,20 +97,12 @@ _pipeline_root = os.path.join(_tfx_root, 'pipelines', _pipeline_name)
 _metadata_path = os.path.join(os.environ['HOME'], 'tfx', 'metadata',
                               _pipeline_name, 'metadata.db')
 
-# Pipeline arguments for Beam powered Components.
-_beam_pipeline_args = [
-    '--direct_running_mode=multi_processing',
-    # 0 means auto-detect based on on the number of CPUs available
-    # during execution time.
-    '--direct_num_workers=0',
-]
-
 
 def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
                      module_file: Text, serving_model_dir: Text,
                      metadata_path: Text,
                      ai_platform_serving_args: Optional[Dict[Text, Text]],
-                     beam_pipeline_args: List[Text]) -> pipeline.Pipeline:
+                     direct_num_workers: int) -> pipeline.Pipeline:
   """Implements the Iris flowers pipeline with TFX."""
   examples = external_input(data_root)
 
@@ -186,7 +178,8 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
       enable_cache=True,
       metadata_connection_config=metadata.sqlite_metadata_connection_config(
           metadata_path),
-      beam_pipeline_args=beam_pipeline_args,
+      # TODO(b/142684737): The multi-processing API might change.
+      beam_pipeline_args=['--direct_num_workers=%d' % direct_num_workers],
   )
 
 
@@ -203,4 +196,6 @@ if __name__ == '__main__':
           serving_model_dir=_serving_model_dir,
           metadata_path=_metadata_path,
           ai_platform_serving_args=_ai_platform_serving_args,
-          beam_pipeline_args=_beam_pipeline_args))
+          # 0 means auto-detect based on the number of CPUs available during
+          # execution time.
+          direct_num_workers=0))

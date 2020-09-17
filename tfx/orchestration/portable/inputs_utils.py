@@ -13,7 +13,7 @@
 # limitations under the License.
 """Portable library for input artifacts resolution."""
 import collections
-from typing import Dict, Iterable, List, Optional
+from typing import Dict, List, Optional, Sequence
 
 from absl import logging
 from tfx import types
@@ -30,7 +30,7 @@ from ml_metadata.proto import metadata_store_pb2
 
 def get_qualified_artifacts(
     metadata_handler: metadata.Metadata,
-    contexts: Iterable[metadata_store_pb2.Context],
+    contexts: Sequence[metadata_store_pb2.Context],
     artifact_type: metadata_store_pb2.ArtifactType,
     output_key: Optional[str] = None,
 ) -> List[types.Artifact]:
@@ -103,12 +103,12 @@ def _resolve_single_channel(
   """Resolves input artifacts from a single channel."""
 
   artifact_type = channel.artifact_query.type
-  output_key = channel.output_key or None
-  contexts = filter(None, [
+  output_key = channel.output_key
+  contexts = [
       metadata_handler.store.get_context_by_type_and_name(
           context_query.type.name, common_utils.get_value(context_query.name))
       for context_query in channel.context_queries
-  ])
+  ]
   return get_qualified_artifacts(
       metadata_handler=metadata_handler,
       contexts=contexts,
@@ -142,11 +142,11 @@ def resolve_input_artifacts(
     if input_spec.min_count > len(result[key]):
       logging.warning(
           "Input %s doesn't have enough data to resolve, required number %d, "
-          'got %d', key, input_spec.min_count, len(result[key]))
+          "got %d", key, input_spec.min_count, len(result[key]))
       all_input_satisfied = False
 
-  return ({k: list(v) for k, v in result.items()}
-          if all_input_satisfied else None)
+  return (
+      {k: list(v) for k, v in result.items()} if all_input_satisfied else None)
 
 
 def resolve_parameters(
