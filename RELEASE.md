@@ -2,6 +2,9 @@
 
 ## Major Features and Improvements
 
+*   Supported multiple artifacts for Transform's input example and output
+    transformed example channels.
+
 ## Breaking changes
 
 ## Deprecations
