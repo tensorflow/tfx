@@ -18,22 +18,17 @@ This package only serves as a demonstration of how to compose a custom component
 * [TFX](https://pypi.org/project/tfx/)
 
 # Try It Out
-While it is not mandantory, this example is recommended to be tried in a virtual environment.
+
+## Step 0: Clone the project and install from source.
 
 ```bash
-cd
-python -m virtualenv -p python3.6 tfx_env
+# Supported python version can be found in http://pypi.org/project/tfx.
+python -m venv tfx_env
 source tfx_env/bin/activate
-```
 
-## Step 0: Setup Environment
-First install the required packages.
-
-```bash
-pip install tfx
-
-cd tfx/tfx/examples/custom_components/presto_example_gen
-pip install -e .
+git clone https://github.com/tensorflow/tfx
+git checkout v0.24.0  # Checkout to the latest release.
+pip install -e ./tfx  # Install the project in editable mode.
 ```
 
 ExampleGen's custom configuration protobuf requires a protobuf compiler that is
@@ -122,7 +117,7 @@ gcloud dataproc jobs submit hive \
         INSERT OVERWRITE TABLE chicago_taxi_trips_parquet
         SELECT * FROM chicago_taxi_trips_csv;"
 ```
- 
+
 Verify that the data loaded correctly. This command should read 15000.
 
 ```

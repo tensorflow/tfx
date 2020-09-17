@@ -1,4 +1,4 @@
-# Lint as: python2, python3
+# Lint as: python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,14 +23,8 @@ example and will not be supported by TFX team.
 This example runs in Kubeflow with Google Cloud services..
 """
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import datetime
 import os
-
-from slack_component.component import SlackComponent
 
 from tfx.components import CsvExampleGen
 from tfx.components import Evaluator
@@ -41,6 +35,7 @@ from tfx.components import SchemaGen
 from tfx.components import StatisticsGen
 from tfx.components import Trainer
 from tfx.components import Transform
+from tfx.examples.custom_components.slack.slack_component.component import SlackComponent
 from tfx.orchestration import pipeline
 from tfx.orchestration.kubeflow import kubeflow_dag_runner
 from tfx.proto import evaluator_pb2
@@ -65,9 +60,9 @@ _taxi_transformer_func = 'example.taxi_utils_slack.preprocessing_fn'
 # trained model here.
 _serving_model_dir = os.path.join(_taxi_root, 'serving_model/taxi_slack')
 # Slack channel to push the model notifications to.
-_slack_channel_id = 'my-channel-id'
+_slack_channel_id = os.environ['TFX_SLACK_CHANNEL_ID']
 # Slack token to set up connection.
-_slack_token = os.environ['SLACK_BOT_TOKEN']
+_slack_token = os.environ['TFX_SLACK_BOT_TOKEN']
 
 # Directory and data locations.  This example assumes all of the chicago taxi
 # example code and metadata library is relative to $HOME, but you can store

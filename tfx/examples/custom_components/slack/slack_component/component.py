@@ -1,4 +1,4 @@
-# Lint as: python2, python3
+# Lint as: python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -17,17 +17,13 @@
 This component along with other custom component related code will only serve as
 an example and will not be supported by TFX team.
 """
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
 
 from typing import Optional, Text
-
-from slack_component import executor
 
 from tfx import types
 from tfx.dsl.components.base import base_component
 from tfx.dsl.components.base import executor_spec
+from tfx.examples.custom_components.slack.slack_component import executor
 from tfx.types import standard_artifacts
 from tfx.types.component_spec import ChannelParameter
 from tfx.types.component_spec import ExecutionParameter

@@ -1,4 +1,4 @@
-# Lint as: python2, python3
+# Lint as: python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,18 +14,14 @@
 # limitations under the License.
 """TFX PrestoExampleGen component definition."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 from typing import Optional, Text
 
-from presto_component import executor
-from proto import presto_config_pb2
 from tfx import types
 from tfx.components.example_gen import component
 from tfx.components.example_gen import utils
 from tfx.dsl.components.base import executor_spec
+from tfx.examples.custom_components.presto_example_gen.presto_component import executor
+from tfx.examples.custom_components.presto_example_gen.proto import presto_config_pb2
 from tfx.proto import example_gen_pb2
 
 
