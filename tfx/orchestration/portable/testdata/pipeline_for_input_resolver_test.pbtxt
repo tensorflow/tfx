@@ -130,6 +130,16 @@ nodes {
           }
         }
       }
+      contexts {
+        type {
+          name: "non_exists"
+        }
+        name {
+          field_value {
+            string_value: "non_exists"
+          }
+        }
+      }
     }
     inputs {
       inputs {
