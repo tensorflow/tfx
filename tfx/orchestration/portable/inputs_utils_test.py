@@ -134,6 +134,43 @@ class InputsUtilsTest(test_utils.TfxTest):
       self.assertIsNone(
           inputs_utils.resolve_input_artifacts(m, my_trainer.inputs))
 
+  def testResolveInputArtifactsOutputKeyUnset(self):
+    pipeline = pipeline_pb2.Pipeline()
+    self.load_proto_from_text(
+        os.path.join(self._testdata_dir,
+                     'pipeline_for_input_resolver_test_output_key_unset.pbtxt'),
+        pipeline)
+    my_trainer = pipeline.nodes[0].pipeline_node
+    my_pusher = pipeline.nodes[1].pipeline_node
+
+    connection_config = metadata_store_pb2.ConnectionConfig()
+    connection_config.sqlite.SetInParent()
+    with metadata.Metadata(connection_config=connection_config) as m:
+      # Publishes Trainer with one output channels. `output_model`
+      # will be consumed by the Pusher in the different run.
+      output_model = types.Artifact(
+          my_trainer.outputs.outputs['model'].artifact_spec.type)
+      output_model.uri = 'my_output_model_uri'
+      contexts = context_lib.register_contexts_if_not_exists(
+          m, my_trainer.contexts)
+      execution = execution_publish_utils.register_execution(
+          m, my_trainer.node_info.type, contexts)
+      execution_publish_utils.publish_succeeded_execution(
+          m, execution.id, contexts, {
+              'model': [output_model],
+          })
+      # Gets inputs for pusher. Should get back what the first Model
+      # published in the `output_model` channel.
+      pusher_inputs = inputs_utils.resolve_input_artifacts(
+          m, my_pusher.inputs)
+      self.assertEqual(len(pusher_inputs), 1)
+      self.assertEqual(len(pusher_inputs['model']), 1)
+      self.assertProtoPartiallyEquals(
+          output_model.mlmd_artifact,
+          pusher_inputs['model'][0].mlmd_artifact,
+          ignored_fields=[
+              'create_time_since_epoch', 'last_update_time_since_epoch'
+          ])
 
 if __name__ == '__main__':
   tf.test.main()

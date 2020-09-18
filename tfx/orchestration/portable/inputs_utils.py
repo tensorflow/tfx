@@ -103,7 +103,7 @@ def _resolve_single_channel(
   """Resolves input artifacts from a single channel."""
 
   artifact_type = channel.artifact_query.type
-  output_key = channel.output_key
+  output_key = channel.output_key or None
   contexts = filter(None, [
       metadata_handler.store.get_context_by_type_and_name(
           context_query.type.name, common_utils.get_value(context_query.name))
