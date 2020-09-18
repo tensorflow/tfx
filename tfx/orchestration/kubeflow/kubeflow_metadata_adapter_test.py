@@ -69,6 +69,7 @@ class KubeflowMetadataAdapterTest(tf.test.TestCase):
           """
         id: 1
         type_id: 3
+        last_known_state: RUNNING
         properties {
           key: "state"
           value {
