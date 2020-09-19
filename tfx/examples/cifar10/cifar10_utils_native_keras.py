@@ -34,8 +34,8 @@ from tfx.components.trainer.rewriting import rewriter
 from tfx.components.trainer.rewriting import rewriter_factory
 
 import flatbuffers
-from tflite_support import metadata as _metadata
 from tflite_support import metadata_schema_py_generated as _metadata_fb
+from tflite_support import metadata as _metadata
 
 # When training on the whole dataset use following constants instead.
 # This setting should give ~91% accuracy on the whole test set
