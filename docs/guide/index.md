@@ -407,12 +407,10 @@ using the exact same code during both training and inference.  Using the
 modeling code, including the SavedModel from the Transform component, you can
 consume your training and evaluation data and train your model.
 
-When working with Estimator based models, the last section of your modeling
-code should save your model as both a SavedModel and an EvalSavedModel.  Saving
-as an EvalSavedModel ensures the metrics used at training time are also
-available during evaluation (note that this is not required for keras based
-models).  Saving an EvalSavedModel requires that you import the
-[TensorFlow Model Analysis (TFMA)](tfma.md) library in your Trainer component.
+During the last section of your modeling code you should save your model as both
+a SavedModel and an EvalSavedModel.  Saving as an EvalSavedModel will require
+you to import and apply [TensorFlow Model Analysis (TFMA)](tfma.md) library in
+your Trainer component.
 
 ```python
 import tensorflow_model_analysis as tfma
@@ -438,12 +436,11 @@ really understand your model's performance.  A typical TFX pipeline will include
 an [Evaluator](evaluator.md) component, which leverages the capabilities of the
 [TensorFlow Model Analysis (TFMA)](tfma.md) library, which provides a power
 toolset for this phase of development.  An Evaluator component consumes the
-model that you exported above, and allows you to specify a list of
-[`tfma.SlicingSpec`](https://www.tensorflow.org/tfx/model_analysis/api_docs/python/tfma/SlicingSpec)
-that you can use when visualizing and analyzing your model's performance. Each
-`SlicingSpec` defines a slice of your training data that you want to examine,
-such as particular categories for categorical features, or particular ranges for
-numerical features.
+EvalSavedModel that you exported above, and allows you to specify a list of
+`SliceSpecs` that you can use when visualizing and analyzing your model's
+performance. Each SliceSpec defines a slice of your training data that you want
+to examine, such as particular categories for categorical features, or
+particular ranges for numerical features.
 
 For example, this would be important for trying to understand your model's
 performance for different segments of your customers, which could be segmented
@@ -464,24 +461,13 @@ application.
 
 You will first query
 [**ML Metadata (MLMD)**](mlmd.md) to locate the results of these
-executions of these components, and then use the visualization support API in
-TFMA to create the visualizations in your notebook.  This includes
-[tfma.load_eval_results](
+executions
+of these components, and then use the visualization support API in TFMA to create
+the visualizations in your notebook.  This includes [tfma.load_eval_results()](
 https://www.tensorflow.org/tfx/model_analysis/api_docs/python/tfma/load_eval_results)
-and [tfma.view.render_slicing_metrics](
-https://www.tensorflow.org/tfx/model_analysis/api_docs/python/tfma/view/render_slicing_metrics)
+and [tfma.view.render_slicing_metrics()](`tfma/view/render_slicing_metrics`)
 Using this visualization you can better understand the characteristics of your
 model, and if necessary modify as required.
-
-### Validating Model Performance
-
-As part of analyzing a model's performance you might want to validate the
-performance against a baseline (such as the currently serving model). Model
-validation is performed by passing both a candidate and baseline model to the
-[Evaluator](evaluator.md) component. The Evaluator computes metrics
-(e.g. AUC, loss) for both the candidate and baseline along with a corresponding
-set of diff metrics. Thresholds may then be applied and used to gate pushing
-your models to production.
 
 ### Validating That A Model Can Be Served
 

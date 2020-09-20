@@ -28,7 +28,6 @@ from tfx.dsl.components.base import base_component
 from tfx.dsl.components.base import base_executor
 from tfx.dsl.components.base import executor_spec
 from tfx.proto import example_gen_pb2
-from tfx.proto import range_config_pb2
 from tfx.types import artifact_utils
 from tfx.types import standard_artifacts
 from tfx.types.standard_component_specs import FileBasedExampleGenSpec
@@ -138,8 +137,6 @@ class FileBasedExampleGen(base_component.BaseComponent):
                                                                  Any]]] = None,
       custom_config: Optional[Union[example_gen_pb2.CustomConfig,
                                     Dict[Text, Any]]] = None,
-      range_config: Optional[Union[range_config_pb2.RangeConfig,
-                                   Dict[Text, Any]]] = None,
       output_data_format: Optional[int] = example_gen_pb2.FORMAT_TF_EXAMPLE,
       example_artifacts: Optional[types.Channel] = None,
       custom_executor_spec: Optional[executor_spec.ExecutorSpec] = None,
@@ -160,9 +157,6 @@ class FileBasedExampleGen(base_component.BaseComponent):
         'eval' with size 2:1.
       custom_config: An optional example_gen_pb2.CustomConfig instance,
         providing custom configuration for executor.
-      range_config: An optional range_config_pb2.RangeConfig instance,
-        specifying the range of span values to consider. If unset, driver will
-        default to searching for latest span with no restrictions.
       output_data_format: Payload format of generated data in output artifact,
         one of example_gen_pb2.PayloadFormat enum.
       example_artifacts: Channel of 'ExamplesPath' for output train and eval
@@ -182,7 +176,6 @@ class FileBasedExampleGen(base_component.BaseComponent):
     input_config = input_config or utils.make_default_input_config()
     output_config = output_config or utils.make_default_output_config(
         input_config)
-
     if not example_artifacts:
       example_artifacts = types.Channel(type=standard_artifacts.Examples)
     spec = FileBasedExampleGenSpec(
@@ -190,7 +183,6 @@ class FileBasedExampleGen(base_component.BaseComponent):
         input_config=input_config,
         output_config=output_config,
         custom_config=custom_config,
-        range_config=range_config,
         output_data_format=output_data_format,
         examples=example_artifacts)
     super(FileBasedExampleGen, self).__init__(

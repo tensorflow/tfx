@@ -40,10 +40,10 @@ following a typical ML development process.  Here are the steps:
 
 ## Prerequisites
 
-* Linux / MacOS
-* Virtualenv
-* Python 3.5+
-* Git
+*   Linux / MacOS
+*   Virtualenv
+*   Python 3.5, 3.6 or 3.7
+*   Git
 
 ### Required packages
 

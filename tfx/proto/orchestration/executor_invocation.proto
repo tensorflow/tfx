@@ -17,7 +17,6 @@ syntax = "proto3";
 package tfx.orchestration;
 
 import "ml_metadata/proto/metadata_store.proto";
-import "ml_metadata/proto/metadata_store_service.proto";
 
 // Message that represents a list of artifacts.
 message ArtifactList {
@@ -26,27 +25,8 @@ message ArtifactList {
 
 // All the information needed for a TFX component execution.
 message ExecutorInvocation {
-  // TODO(jxzheng): clean up inputs and outputs field.
-  // These fields are deprecated, new code should be using |input_dict| and
-  // |output_dict|.
-  map<string, ArtifactList> inputs = 1 [deprecated = true];
-  map<string, ArtifactList> outputs = 2 [deprecated = true];
-
-  // The exec_properties to feed to executor.
+  map<string, ArtifactList> inputs = 1;
+  map<string, ArtifactList> outputs = 2;
   map<string, ml_metadata.Value> execution_properties = 3;
-
-  // The uri to executor result. This is used to "return" the executor's output
-  // to calling process if they are not running in the same process.
   string output_metadata_uri = 4;
-
-  // Input artifact map.
-  map<string, ml_metadata.ArtifactStructList> input_dict = 5;
-
-  // Output artifact map.
-  map<string, ml_metadata.ArtifactStructList> output_dict = 6;
-
-  // Stateful working dir will be deterministic given pipeline, node and run_id.
-  // The typical usecase is to restore long running executor's state after
-  // eviction.
-  string stateful_working_dir = 7;
 }

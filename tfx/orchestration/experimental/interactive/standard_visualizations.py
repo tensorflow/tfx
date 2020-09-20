@@ -37,13 +37,9 @@ class ExampleAnomaliesVisualization(visualizations.ArtifactVisualization):
   ARTIFACT_TYPE = standard_artifacts.ExampleAnomalies
 
   def display(self, artifact: types.Artifact):
-    from IPython.core.display import display  # pylint: disable=g-import-not-at-top
-    from IPython.core.display import HTML  # pylint: disable=g-import-not-at-top
-    for split in artifact_utils.decode_split_names(artifact.split_names):
-      display(HTML('<div><b>%r split:</b></div><br/>' % split))
-      anomalies_path = os.path.join(artifact.uri, split, 'anomalies.pbtxt')
-      anomalies = tfdv.load_anomalies_text(anomalies_path)
-      tfdv.display_anomalies(anomalies)
+    anomalies_path = os.path.join(artifact.uri, 'anomalies.pbtxt')
+    anomalies = tfdv.load_anomalies_text(anomalies_path)
+    tfdv.display_anomalies(anomalies)
 
 
 class ExampleStatisticsVisualization(visualizations.ArtifactVisualization):
@@ -55,7 +51,7 @@ class ExampleStatisticsVisualization(visualizations.ArtifactVisualization):
     from IPython.core.display import display  # pylint: disable=g-import-not-at-top
     from IPython.core.display import HTML  # pylint: disable=g-import-not-at-top
     for split in artifact_utils.decode_split_names(artifact.split_names):
-      display(HTML('<div><b>%r split:</b></div><br/>' % split))
+      display(HTML('<div><b>%r split:</b></div><br/><br/>' % split))
       stats_path = os.path.join(artifact.uri, split, 'stats_tfrecord')
       stats = tfdv.load_statistics(stats_path)
       tfdv.visualize_statistics(stats)

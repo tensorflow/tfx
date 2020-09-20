@@ -84,7 +84,7 @@ class IrisPipelineSklearnEndToEndTest(tf.test.TestCase):
             pipeline_root=self._pipeline_root,
             metadata_path=self._metadata_path,
             ai_platform_serving_args=self._ai_platform_serving_args,
-            beam_pipeline_args=[]))
+            direct_num_workers=1))
 
     self.assertTrue(tf.io.gfile.exists(self._serving_model_dir))
     self.assertTrue(tf.io.gfile.exists(self._metadata_path))
@@ -110,7 +110,7 @@ class IrisPipelineSklearnEndToEndTest(tf.test.TestCase):
             pipeline_root=self._pipeline_root,
             metadata_path=self._metadata_path,
             ai_platform_serving_args=self._ai_platform_serving_args,
-            beam_pipeline_args=[]))
+            direct_num_workers=1))
 
     # All executions but Evaluator and Pusher are cached.
     with metadata.Metadata(metadata_config) as m:
@@ -129,7 +129,7 @@ class IrisPipelineSklearnEndToEndTest(tf.test.TestCase):
             pipeline_root=self._pipeline_root,
             metadata_path=self._metadata_path,
             ai_platform_serving_args=self._ai_platform_serving_args,
-            beam_pipeline_args=[]))
+            direct_num_workers=1))
 
     # Asserts cache execution.
     with metadata.Metadata(metadata_config) as m:

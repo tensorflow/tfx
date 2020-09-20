@@ -36,9 +36,39 @@ from tfx.utils import json_utils
 class Evaluator(base_component.BaseComponent):
   """A TFX component to evaluate models trained by a TFX Trainer component.
 
-  See [Evaluator](https://www.tensorflow.org/tfx/guide/evaluator) for more
-  information on what this component's required inputs are, how to configure it,
-  and what outputs it produces.
+  The Evaluator component performs model evaluations in the TFX pipeline and
+  the resultant metrics can be viewed in a Jupyter notebook.  It uses the
+  input examples generated from the
+  [ExampleGen](https://www.tensorflow.org/tfx/guide/examplegen)
+  component to evaluate the models.
+
+  Specifically, it can provide:
+    - metrics computed on entire training and eval dataset
+    - tracking metrics over time
+    - model quality performance on different feature slices
+
+  ## Exporting the EvalSavedModel in Trainer
+
+  In order to setup Evaluator in a TFX pipeline, an EvalSavedModel needs to be
+  exported during training, which is a special SavedModel containing
+  annotations for the metrics, features, labels, and so on in your model.
+  Evaluator uses this EvalSavedModel to compute metrics.
+
+  As part of this, the Trainer component creates eval_input_receiver_fn,
+  analogous to the serving_input_receiver_fn, which will extract the features
+  and labels from the input data. As with serving_input_receiver_fn, there are
+  utility functions to help with this.
+
+  Please see https://www.tensorflow.org/tfx/model_analysis for more details.
+
+  ## Example
+  ```
+    # Uses TFMA to compute a evaluation statistics over features of a model.
+    model_analyzer = Evaluator(
+        examples=example_gen.outputs['examples'],
+        model=trainer.outputs['model'],
+        eval_config=tfma.EvalConfig(...))
+  ```
   """
 
   SPEC_CLASS = EvaluatorSpec

@@ -26,7 +26,6 @@ from tfx.components.example_gen import component
 from tfx.components.example_gen.csv_example_gen import executor
 from tfx.dsl.components.base import executor_spec
 from tfx.proto import example_gen_pb2
-from tfx.proto import range_config_pb2
 from tfx.types import artifact_utils
 
 
@@ -73,8 +72,6 @@ class CsvExampleGen(component.FileBasedExampleGen):  # pylint: disable=protected
                                                                Any]]] = None,
       output_config: Optional[Union[example_gen_pb2.Output, Dict[Text,
                                                                  Any]]] = None,
-      range_config: Optional[Union[range_config_pb2.RangeConfig,
-                                   Dict[Text, Any]]] = None,
       example_artifacts: Optional[types.Channel] = None,
       instance_name: Optional[Text] = None):
     """Construct a CsvExampleGen component.
@@ -94,9 +91,6 @@ class CsvExampleGen(component.FileBasedExampleGen):  # pylint: disable=protected
         size 2:1. If any field is provided as a RuntimeParameter,
         output_config should be constructed as a dict with the same field names
         as Output proto message.
-      range_config: An optional range_config_pb2.RangeConfig instance,
-        specifying the range of span values to consider. If unset, driver will
-        default to searching for latest span with no restrictions.
       example_artifacts: Optional channel of 'ExamplesPath' for output train and
         eval examples.
       instance_name: Optional unique instance name. Necessary if multiple
@@ -112,6 +106,5 @@ class CsvExampleGen(component.FileBasedExampleGen):  # pylint: disable=protected
         input_base=input_base,
         input_config=input_config,
         output_config=output_config,
-        range_config=range_config,
         example_artifacts=example_artifacts,
         instance_name=instance_name)

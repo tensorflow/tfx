@@ -7,8 +7,7 @@
     "custom_config": null,
     "input_config": "{\n  \"splits\": [\n    {\n      \"name\": \"single_split\",\n      \"pattern\": \"*\"\n    }\n  ]\n}",
     "output_config": "{\"split_config\": {\"splits\": [{\"hash_buckets\": {{pipelineparam:op=;name=example-gen-buckets}}, \"name\": \"examples\"}]}}",
-    "output_data_format": 6,
-    "range_config": null
+    "output_data_format": 6
   },
   "_id": "CsvExampleGen",
   "_inputs": {

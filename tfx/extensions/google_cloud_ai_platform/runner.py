@@ -37,14 +37,9 @@ _POLLING_INTERVAL_IN_SECONDS = 30
 
 _CONNECTION_ERROR_RETRY_LIMIT = 5
 
-# Default contaier image being used for CAIP training jobs.
 # TODO(b/139934802) Ensure mirroring of released TFX containers in Docker Hub
 # and gcr.io/tfx-oss-public/ registries.
 _TFX_IMAGE = 'gcr.io/tfx-oss-public/tfx:{}'.format(version.__version__)
-
-# Entrypoint of cloud AI platform training. The module comes from `tfx`
-# package installation into a default location of 'python'.
-_CONTAINER_COMMAND = ['python', '-m', 'tfx.scripts.run_executor']
 
 _TF_COMPATIBILITY_OVERRIDE = {
     # Generally, runtimeVersion should be same as <major>.<minor> of currently
@@ -226,15 +221,9 @@ def start_aip_training(input_dict: Dict[Text, List[types.Artifact]],
   # entrypoint for TFX containers is to call scripts/run_executor.py. The
   # arguments below are passed to this run_executor entry to run the executor
   # specified in `executor_class_path`.
-  container_command = _CONTAINER_COMMAND + [
-      '--executor_class_path',
-      executor_class_path,
-      '--inputs',
-      json_inputs,
-      '--outputs',
-      json_outputs,
-      '--exec-properties',
-      json_exec_properties,
+  job_args = [
+      '--executor_class_path', executor_class_path, '--inputs', json_inputs,
+      '--outputs', json_outputs, '--exec-properties', json_exec_properties
   ]
 
   if not training_inputs.get('masterConfig'):
@@ -242,10 +231,7 @@ def start_aip_training(input_dict: Dict[Text, List[types.Artifact]],
         'imageUri': _TFX_IMAGE,
     }
 
-  # Always use our own entrypoint instead of relying on container default.
-  if 'containerCommand' in training_inputs['masterConfig']:
-    logging.warn('Overriding custom value of containerCommand')
-  training_inputs['masterConfig']['containerCommand'] = container_command
+  training_inputs['args'] = job_args
 
   # Pop project_id so AIP doesn't complain about an unexpected parameter.
   # It's been a stowaway in aip_args and has finally reached its destination.

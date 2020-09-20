@@ -27,7 +27,6 @@ sh_binary(
         "//tfx/proto:example_gen_pb2.py",
         "//tfx/proto:infra_validator_pb2.py",
         "//tfx/proto:pusher_pb2.py",
-        "//tfx/proto:range_config_pb2.py",
         "//tfx/proto:trainer_pb2.py",
         "//tfx/proto:transform_pb2.py",
         "//tfx/proto:tuner_pb2.py",

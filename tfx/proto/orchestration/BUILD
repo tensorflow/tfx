@@ -32,7 +32,6 @@ tfx_py_proto_library(
     srcs = ["executor_invocation.proto"],
     deps = [
         "@com_github_google_ml_metadata//ml_metadata/proto:metadata_store_py_pb2",
-        "@com_github_google_ml_metadata//ml_metadata/proto:metadata_store_service_py_pb2",
     ],
 )
 

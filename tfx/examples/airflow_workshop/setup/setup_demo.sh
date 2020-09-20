@@ -61,7 +61,7 @@ pip install docker
 printf "${GREEN}Preparing environment for Airflow${NORMAL}\n"
 export SLUGIFY_USES_TEXT_UNIDECODE=yes
 printf "${GREEN}Installing Airflow${NORMAL}\n"
-pip install -q apache-airflow==1.10.9 Flask==1.1.1 Werkzeug==0.15
+pip install -q apache-airflow==1.10.10 Flask==1.1.1 Werkzeug==0.15
 printf "${GREEN}Initializing Airflow database${NORMAL}\n"
 airflow initdb
 
