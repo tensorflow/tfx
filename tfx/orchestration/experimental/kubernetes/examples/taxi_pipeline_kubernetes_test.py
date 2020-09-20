@@ -33,7 +33,7 @@ class TaxiPipelineKubernetesTest(tf.test.TestCase):
         data_root=self._test_dir,
         module_file=self._test_dir,
         serving_model_dir=self._test_dir,
-        direct_num_workers=0)
+        beam_pipeline_args=[])
     self.assertEqual(9, len(logical_pipeline.components))
 
 
