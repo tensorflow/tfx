@@ -25,6 +25,7 @@ from tfx.proto.orchestration import local_deployment_config_pb2
 from tfx.proto.orchestration import pipeline_pb2
 from tfx.utils import telemetry_utils
 
+from google.protobuf import any_pb2
 from google.protobuf import message
 
 
@@ -90,6 +91,39 @@ class BeamDagRunner(tfx_runner.TfxRunner):
     """Initializes BeamDagRunner as a TFX orchestrator.
     """
 
+  def _build_executable_spec(
+      self, component_id: str,
+      spec: any_pb2.Any) -> local_deployment_config_pb2.ExecutableSpec:
+    """Builds ExecutableSpec given the any proto from IntermediateDeploymentConfig."""
+    result = local_deployment_config_pb2.ExecutableSpec()
+    if spec.Is(result.python_class_executable_spec.DESCRIPTOR):
+      spec.Unpack(result.python_class_executable_spec)
+    else:
+      raise ValueError(
+          'executor spec of {} is expected to be of one of the '
+          'types of tfx.orchestration.deployment_config.ExecutableSpec.spec '
+          'but got type {}'.format(component_id, spec.type_url))
+    return result
+
+  def _to_local_deployment(
+      self,
+      input_config: pipeline_pb2.IntermediateDeploymentConfig
+  ) -> local_deployment_config_pb2.LocalDeploymentConfig:
+    """Turns IntermediateDeploymentConfig to LocalDeploymentConfig."""
+    result = local_deployment_config_pb2.LocalDeploymentConfig()
+    for k, v in input_config.executor_specs.items():
+      result.executor_specs[k].CopyFrom(self._build_executable_spec(k, v))
+
+    for k, v in input_config.custom_driver_specs.items():
+      result.custom_driver_specs[k].CopyFrom(self._build_executable_spec(k, v))
+
+    if not input_config.metadata_connection_config.Unpack(
+        result.metadata_connection_config):
+      raise ValueError('metadata_connection_config is expected to be in type '
+                       'ml_metadata.ConnectionConfig, but got type {}'.format(
+                           input_config.metadata_connection_config.type_url))
+    return result
+
   def _extract_deployment_config(
       self,
       pipeline: pipeline_pb2.Pipeline
@@ -102,6 +136,10 @@ class BeamDagRunner(tfx_runner.TfxRunner):
     result = local_deployment_config_pb2.LocalDeploymentConfig()
     if pipeline.deployment_config.Unpack(result):
       return result
+
+    result = pipeline_pb2.IntermediateDeploymentConfig()
+    if pipeline.deployment_config.Unpack(result):
+      return self._to_local_deployment(result)
 
     raise ValueError("deployment_config's type {} is not supported".format(
         type(pipeline.deployment_config)))

@@ -66,6 +66,46 @@ _LOCAL_DEPLOYMENT_CONFIG = text_format.Parse("""
     }
 """, local_deployment_config_pb2.LocalDeploymentConfig())
 
+_INTERMEDIATE_DEPLOYMENT_CONFIG = text_format.Parse("""
+    executor_specs {
+      key: "my_example_gen"
+      value {
+        [type.googleapis.com/tfx.orchestration.executable_spec.PythonClassExecutableSpec] {
+          class_path: "tfx.components.example_gen_executor"
+        }
+      }
+    }
+    executor_specs {
+      key: "my_transform"
+      value {
+        [type.googleapis.com/tfx.orchestration.executable_spec.PythonClassExecutableSpec] {
+          class_path: "tfx.components.transform_executor"
+        }
+      }
+    }
+    executor_specs {
+      key: "my_trainer"
+      value {
+        [type.googleapis.com/tfx.orchestration.executable_spec.PythonClassExecutableSpec] {
+          class_path: "tfx.components.trainer_executor"
+        }
+      }
+    }
+    custom_driver_specs {
+      key: "my_example_gen"
+      value {
+        [type.googleapis.com/tfx.orchestration.executable_spec.PythonClassExecutableSpec] {
+          class_path: "tfx.components.example_gen_driver"
+        }
+      }
+    }
+    metadata_connection_config {
+      [type.googleapis.com/ml_metadata.ConnectionConfig] {
+        fake_database {}
+      }
+    }
+""", pipeline_pb2.IntermediateDeploymentConfig())
+
 _executed_components = []
 _component_executors = {}
 _component_drivers = {}
@@ -110,6 +150,40 @@ class BeamDagRunnerTest(test_utils.TfxTest):
       _PipelineNodeAsDoFn=_FakeComponentAsDoFn,
   )
   def testRunWithLocalDeploymentConfig(self):
+    self._pipeline.deployment_config.Pack(_INTERMEDIATE_DEPLOYMENT_CONFIG)
+    beam_dag_runner.BeamDagRunner().run(self._pipeline)
+    self.assertEqual(
+        _component_executors, {
+            'my_example_gen':
+                text_format.Parse(
+                    'class_path: "tfx.components.example_gen_executor"',
+                    _PythonClassExecutableSpec()),
+            'my_transform':
+                text_format.Parse(
+                    'class_path: "tfx.components.transform_executor"',
+                    _PythonClassExecutableSpec()),
+            'my_trainer':
+                text_format.Parse(
+                    'class_path: "tfx.components.trainer_executor"',
+                    _PythonClassExecutableSpec())
+        })
+    self.assertEqual(
+        _component_drivers, {
+            'my_example_gen':
+                text_format.Parse(
+                    'class_path: "tfx.components.example_gen_driver"',
+                    _PythonClassExecutableSpec()),
+            'my_transform': None,
+            'my_trainer': None
+        })
+    self.assertEqual(_executed_components,
+                     ['my_example_gen', 'my_transform', 'my_trainer'])
+
+  @mock.patch.multiple(
+      beam_dag_runner,
+      _PipelineNodeAsDoFn=_FakeComponentAsDoFn,
+  )
+  def testRunWithIntermediateDeploymentConfig(self):
     self._pipeline.deployment_config.Pack(_LOCAL_DEPLOYMENT_CONFIG)
     beam_dag_runner.BeamDagRunner().run(self._pipeline)
     self.assertEqual(
