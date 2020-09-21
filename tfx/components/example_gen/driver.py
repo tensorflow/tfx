@@ -31,6 +31,7 @@ from tfx.orchestration import metadata
 from tfx.orchestration.portable import base_driver as ir_base_driver
 from tfx.orchestration.portable.mlmd import common_utils
 from tfx.proto import example_gen_pb2
+from tfx.proto import range_config_pb2
 from tfx.proto.orchestration import driver_output_pb2
 from tfx.proto.orchestration import pipeline_pb2
 
@@ -85,9 +86,25 @@ class Driver(base_driver.BaseDriver, ir_base_driver.BaseDriver):
     input_base = exec_properties[utils.INPUT_BASE_KEY]
     logging.debug('Processing input %s.', input_base)
 
+    range_config = None
+    range_config_entry = exec_properties.get(utils.RANGE_CONFIG_KEY)
+    if range_config_entry:
+      range_config = range_config_pb2.RangeConfig()
+      json_format.Parse(range_config_entry, range_config)
+
+      if range_config.HasField('static_range'):
+        # For ExampleGen, StaticRange must specify an exact span to look for,
+        # since only one span is processed at a time.
+        start_span_number = range_config.static_range.start_span_number
+        end_span_number = range_config.static_range.end_span_number
+        if start_span_number != end_span_number:
+          raise ValueError(
+              'Start and end span numbers for RangeConfig.static_range must '
+              'be equal: (%s, %s)' % (start_span_number, end_span_number))
+
     # Note that this function updates the input_config.splits.pattern.
     fingerprint, span, version = utils.calculate_splits_fingerprint_span_and_version(
-        input_base, input_config.splits)
+        input_base, input_config.splits, range_config)
 
     exec_properties[utils.INPUT_CONFIG_KEY] = json_format.MessageToJson(
         input_config, sort_keys=True, preserving_proto_field_name=True)

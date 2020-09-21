@@ -26,6 +26,7 @@ from tfx.components.example_gen import component
 from tfx.components.example_gen.import_example_gen import executor
 from tfx.dsl.components.base import executor_spec
 from tfx.proto import example_gen_pb2
+from tfx.proto import range_config_pb2
 from tfx.types import artifact_utils
 
 
@@ -49,6 +50,8 @@ class ImportExampleGen(component.FileBasedExampleGen):  # pylint: disable=protec
                                                                Any]]] = None,
       output_config: Optional[Union[example_gen_pb2.Output, Dict[Text,
                                                                  Any]]] = None,
+      range_config: Optional[Union[range_config_pb2.RangeConfig,
+                                   Dict[Text, Any]]] = None,
       payload_format: Optional[int] = example_gen_pb2.FORMAT_TF_EXAMPLE,
       example_artifacts: Optional[types.Channel] = None,
       instance_name: Optional[Text] = None):
@@ -69,6 +72,9 @@ class ImportExampleGen(component.FileBasedExampleGen):  # pylint: disable=protec
         size 2:1. If any field is provided as a RuntimeParameter,
         output_config should be constructed as a dict with the same field names
         as Output proto message.
+      range_config: An optional range_config_pb2.RangeConfig instance,
+        specifying the range of span values to consider. If unset, driver will
+        default to searching for latest span with no restrictions.
       payload_format: Payload format of input data. Should be one of
         example_gen_pb2.PayloadFormat enum. Note that payload format of output
         data is the same as input.
@@ -87,6 +93,7 @@ class ImportExampleGen(component.FileBasedExampleGen):  # pylint: disable=protec
         input_base=input_base,
         input_config=input_config,
         output_config=output_config,
+        range_config=range_config,
         example_artifacts=example_artifacts,
         output_data_format=payload_format,
         instance_name=instance_name)

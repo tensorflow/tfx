@@ -28,6 +28,7 @@ import tensorflow as tf
 from tfx.components.example_gen import utils
 from tfx.orchestration import data_types
 from tfx.proto import example_gen_pb2
+from tfx.proto import range_config_pb2
 from tfx.utils import io_utils
 from tfx.utils import json_utils
 
@@ -211,7 +212,7 @@ class UtilsTest(tf.test.TestCase):
   def testGlobToRegex(self):
     glob_pattern = 'a(b)c'
     self.assertEqual(1, re.compile(glob_pattern).groups)
-    regex_pattern = utils._glob_to_regex(glob_pattern)
+    regex_pattern = utils._glob_to_regex(glob_pattern)  # pylint: disable=protected-access
     self.assertEqual(0, re.compile(regex_pattern).groups)
     self.assertEqual(glob_pattern,
                      re.match(regex_pattern, glob_pattern).group())
@@ -586,6 +587,7 @@ class UtilsTest(tf.test.TestCase):
         ValueError, 'Latest version should be the same for each split'):
       utils.calculate_splits_fingerprint_span_and_version(
           self._input_base_path, splits)
+
     span2_v2_split2 = os.path.join(self._input_base_path, 'span02', 'ver02',
                                    'split2', 'data')
     io_utils.write_string_file(span2_v2_split2, 'testing22')
@@ -663,6 +665,97 @@ class UtilsTest(tf.test.TestCase):
     self.assertEqual(version, 2)
     self.assertEqual(splits[0].pattern, '19700103/ver02/split1/*')
     self.assertEqual(splits[1].pattern, '19700103/ver02/split2/*')
+
+  def testRangeConfigWithNonexistentSpan(self):
+    # Test behavior when specified span in RangeConfig does not exist.
+    span1_split1 = os.path.join(self._input_base_path, 'span01', 'split1',
+                                'data')
+    io_utils.write_string_file(span1_split1, 'testing11')
+
+    range_config = range_config_pb2.RangeConfig(
+        static_range=range_config_pb2.StaticRange(
+            start_span_number=2, end_span_number=2))
+    splits = [
+        example_gen_pb2.Input.Split(name='s1', pattern='span{SPAN:2}/split1/*')
+    ]
+
+    with self.assertRaisesRegexp(ValueError, 'Cannot find matching for split'):
+      utils.calculate_splits_fingerprint_span_and_version(
+          self._input_base_path, splits, range_config=range_config)
+
+  def testSpanAlignWithRangeConfig(self):
+    span1_split1 = os.path.join(self._input_base_path, 'span01', 'split1',
+                                'data')
+    io_utils.write_string_file(span1_split1, 'testing11')
+    span2_split1 = os.path.join(self._input_base_path, 'span02', 'split1',
+                                'data')
+    io_utils.write_string_file(span2_split1, 'testing21')
+
+    # Test static range in RangeConfig.
+    range_config = range_config_pb2.RangeConfig(
+        static_range=range_config_pb2.StaticRange(
+            start_span_number=1, end_span_number=1))
+    splits = [
+        example_gen_pb2.Input.Split(name='s1', pattern='span{SPAN:2}/split1/*')
+    ]
+
+    _, span, version = utils.calculate_splits_fingerprint_span_and_version(
+        self._input_base_path, splits, range_config)
+    self.assertEqual(span, 1)
+    self.assertIsNone(version)
+    self.assertEqual(splits[0].pattern, 'span01/split1/*')
+
+  def testRangeConfigSpanWidthPresence(self):
+    # Test RangeConfig.static_range behavior when span width is not given.
+    span1_split1 = os.path.join(self._input_base_path, 'span01', 'split1',
+                                'data')
+    io_utils.write_string_file(span1_split1, 'testing11')
+
+    range_config = range_config_pb2.RangeConfig(
+        static_range=range_config_pb2.StaticRange(
+            start_span_number=1, end_span_number=1))
+    splits1 = [
+        example_gen_pb2.Input.Split(name='s1', pattern='span{SPAN}/split1/*')
+    ]
+
+    # RangeConfig cannot find zero padding span without width modifier.
+    with self.assertRaisesRegexp(ValueError, 'Cannot find matching for split'):
+      utils.calculate_splits_fingerprint_span_and_version(
+          self._input_base_path, splits1, range_config=range_config)
+
+    splits2 = [
+        example_gen_pb2.Input.Split(name='s1', pattern='span{SPAN:2}/split1/*')
+    ]
+
+    # With width modifier in span spec, RangeConfig.static_range makes
+    # correct zero-padded substitution.
+    _, span, version = utils.calculate_splits_fingerprint_span_and_version(
+        self._input_base_path, splits2, range_config=range_config)
+    self.assertEqual(span, 1)
+    self.assertIsNone(version)
+    self.assertEqual(splits2[0].pattern, 'span01/split1/*')
+
+  def testRangeConfigWithDateSpec(self):
+    span1_split1 = os.path.join(self._input_base_path, '19700102', 'split1',
+                                'data')
+    io_utils.write_string_file(span1_split1, 'testing11')
+
+    start_span = utils.date_to_span_number(1970, 1, 2)
+    end_span = utils.date_to_span_number(1970, 1, 2)
+    range_config = range_config_pb2.RangeConfig(
+        static_range=range_config_pb2.StaticRange(
+            start_span_number=start_span, end_span_number=end_span))
+
+    splits = [
+        example_gen_pb2.Input.Split(
+            name='s1', pattern='{YYYY}{MM}{DD}/split1/*')
+    ]
+    _, span, version = utils.calculate_splits_fingerprint_span_and_version(
+        self._input_base_path, splits, range_config=range_config)
+
+    self.assertEqual(span, 1)
+    self.assertIsNone(version)
+    self.assertEqual(splits[0].pattern, '19700102/split1/*')
 
 
 if __name__ == '__main__':

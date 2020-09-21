@@ -26,6 +26,7 @@ from tfx.proto import evaluator_pb2
 from tfx.proto import example_gen_pb2
 from tfx.proto import infra_validator_pb2
 from tfx.proto import pusher_pb2
+from tfx.proto import range_config_pb2
 from tfx.proto import trainer_pb2
 from tfx.proto import transform_pb2
 from tfx.proto import tuner_pb2
@@ -140,6 +141,8 @@ class FileBasedExampleGenSpec(ComponentSpec):
           ExecutionParameter(type=int),  # example_gen_pb2.PayloadType enum.
       'custom_config':
           ExecutionParameter(type=example_gen_pb2.CustomConfig, optional=True),
+      'range_config':
+          ExecutionParameter(type=range_config_pb2.RangeConfig, optional=True),
   }
   INPUTS = {}
   OUTPUTS = {

@@ -28,6 +28,7 @@ import six
 import tensorflow as tf
 
 from tfx.proto import example_gen_pb2
+from tfx.proto import range_config_pb2
 from tfx.utils import io_utils
 from google.protobuf import json_format
 
@@ -37,6 +38,8 @@ INPUT_BASE_KEY = 'input_base'
 INPUT_CONFIG_KEY = 'input_config'
 # Key for `output_config` in executor exec_properties.
 OUTPUT_CONFIG_KEY = 'output_config'
+# Key for `range_config` in executor exec_properties.
+RANGE_CONFIG_KEY = 'range_config'
 # Key for the `output_data_format` in executor exec_properties.
 OUTPUT_DATA_FORMAT_KEY = 'output_data_format'
 
@@ -233,6 +236,17 @@ def _glob_to_regex(glob_pattern: Text) -> Text:
   return regex_pattern
 
 
+def date_to_span_number(year: int, month: int, day: int) -> int:
+  """Calculated span from date as number of days since unix epoch."""
+  return (datetime.datetime(year, month, day) - UNIX_EPOCH_DATE).days
+
+
+def span_number_to_date(span: int) -> Tuple[int, int, int]:
+  """Given a span number, convert it to the corresponding calendar date."""
+  date = UNIX_EPOCH_DATE + datetime.timedelta(span)
+  return date.year, date.month, date.day
+
+
 def _verify_split_pattern_specs(
     split: example_gen_pb2.Input.Split) -> Tuple[bool, bool, bool]:
   """Verify and identify specs to be matched in split pattern."""
@@ -307,8 +321,7 @@ def _find_matched_span_version_from_path(
       raise ValueError('Cannot find %s number using date from %s based on %s' %
                        (SPAN_PROPERTY_NAME, file_path, split_regex_pattern))
     try:
-      matched_span_int = (datetime.datetime(*matched_span_ints) -
-                          UNIX_EPOCH_DATE).days
+      matched_span_int = date_to_span_number(*matched_span_ints)
     except ValueError:
       raise ValueError('Retrieved date is invalid for file: %s' % file_path)
 
@@ -324,10 +337,95 @@ def _find_matched_span_version_from_path(
           matched_version_int)
 
 
+def _get_spec_width(spec_full_regex: Text, spec_name: Text,
+                    split: example_gen_pb2.Input.Split) -> Optional[Text]:
+  """Returns width modifier of a spec, if it exists."""
+  result = re.search(spec_full_regex, split.pattern)
+  assert result, 'No %s found in split %s' % (spec_name, split.pattern)
+  width_str = result.group('width')
+  if width_str:
+    try:
+      width_int = int(width_str)
+      if width_int <= 0:
+        raise ValueError('Not a positive integer.')
+    except ValueError:
+      raise ValueError(
+          'Width modifier in %s spec is not a positive integer: %s' %
+          (spec_name, split.pattern))
+  return width_str
+
+
+def _get_span_replace_glob_and_regex(
+    range_config: range_config_pb2.RangeConfig, is_match_span: bool,
+    is_match_date: bool,
+    span_width_str: Optional[Text]) -> Union[Text, List[Text]]:
+  """Replace span or date spec if static range RangeConfig is provided."""
+  if range_config.HasField('static_range'):
+    if is_match_span:
+      # If using RangeConfig.static_range, replace span spec in patterns
+      # with given span from static range.
+      span_str = str(range_config.static_range.start_span_number)
+      if span_width_str:
+        span_width_int = int(span_width_str)
+        if span_width_int < len(span_str):
+          raise ValueError(
+              'Span spec width is less than number of digits in span: (%s, %s)'
+              % (span_width_int, span_str))
+        span_str = span_str.zfill(span_width_int)
+      return span_str
+
+    elif is_match_date:
+      # If using RangeConfig.static_range, replace date specs in patterns
+      # with calendar date derived from given span from static range.
+      span_int = range_config.static_range.start_span_number
+      year, month, day = span_number_to_date(span_int)
+      date_tokens = [str(year).zfill(4), str(month).zfill(2), str(day).zfill(2)]
+      return date_tokens
+
+    else:
+      raise ValueError('One of Span or Date should be specified.')
+
+  else:
+    raise ValueError('Only static_range in RangeConfig is supported.')
+
+
 def _create_matching_glob_and_regex(
     uri: Text, split: example_gen_pb2.Input.Split, is_match_span: bool,
-    is_match_date: bool, is_match_version: bool) -> Tuple[Text, Text]:
-  """Constructs glob and regex patterns for matching span and version."""
+    is_match_date: bool, is_match_version: bool,
+    range_config: Optional[range_config_pb2.RangeConfig]) -> Tuple[Text, Text]:
+  """Constructs glob and regex patterns for matching span and version.
+
+  Construct a glob and regex pattern for matching files and capturing span and
+  version information. By default, this method replaces the span, date, and
+  or version specs in the split pattern with wildcard characters to get a
+  glob pattern and with greedy named capture groups to get a regex pattern.
+
+  If a static range `range_config` is specified, this method replaces the span
+  spec (if `is_match_span`) in both the glob and regex pattern with the span
+  number corresponding to the provided static range. If a span width modifier
+  is specified, this substitution is also made with zero padding. Similarly, if
+  `is_match_date`, the provided span number from the static range is converted
+  is mapped back into a calendar date, which is then used to replace the date
+  specs in the glob and regex patterns.
+
+  Args:
+    uri: The base path from which files will be searched.
+    split: An example_gen_pb2.Input.Split object which contains a split pattern,
+      to be searched on.
+    is_match_span: Flag set to True if span spec is present, False otherwise.
+    is_match_date: Flag set to True if date specs are present, False otherwise.
+    is_match_version: Flag set to True if version spec is presen, False
+      otherwise.
+    range_config: An instance of range_config_pb2.RangeConfig, which specifies
+      which spans to consider when finding the most recent span and version. If
+      unset, search for latest span number with no restrictions.
+
+  Returns:
+    Tuple of two strings, first of which is a glob pattern to identify relevant
+    files for process, the second of which is a regex pattern containing capture
+    groups, for span, date, and/or version (if their respective matching flags
+    are set).
+  """
   split_pattern = os.path.join(uri, split.pattern)
   split_glob_pattern = split_pattern
   split_regex_pattern = _glob_to_regex(split_pattern)
@@ -335,54 +433,57 @@ def _create_matching_glob_and_regex(
   if is_match_span:
     # Check if span spec has any width args. Defaults to greedy matching if
     # no width modifiers are present.
-    span_width_regex = '.*'
-    result = re.search(SPAN_FULL_REGEX, split.pattern)
-    assert result, 'No Span found in Split %s' % split.pattern
-    span_width_str = result.group('width')
-    if span_width_str:
-      try:
-        if int(span_width_str) <= 0:
-          raise ValueError('Not a positive integer.')
-        span_width_regex = '.{%s}' % span_width_str
-      except ValueError:
-        raise ValueError(
-            'Width modifier in span spec is not a positive integer: %s' %
-            split.pattern)
+    span_glob_replace = '*'
+    span_regex_replace = '.*'
 
-    split_glob_pattern = re.sub(SPAN_FULL_REGEX, '*', split_glob_pattern)
+    span_width_str = _get_spec_width(SPAN_FULL_REGEX, SPAN_PROPERTY_NAME, split)
+    if span_width_str:
+      span_regex_replace = '.{%s}' % span_width_str
+
+    if range_config:
+      span_str = _get_span_replace_glob_and_regex(range_config, is_match_span,
+                                                  is_match_date, span_width_str)
+      span_regex_replace = span_str
+      span_glob_replace = span_str
+
+    split_glob_pattern = re.sub(SPAN_FULL_REGEX, span_glob_replace,
+                                split_glob_pattern)
     span_capture_regex = '(?P<{}>{})'.format(SPAN_PROPERTY_NAME,
-                                             span_width_regex)
+                                             span_regex_replace)
     split_regex_pattern = re.sub(SPAN_FULL_REGEX, span_capture_regex,
                                  split_regex_pattern)
 
   elif is_match_date:
-    for spec in DATE_SPECS:
-      split_glob_pattern = split_glob_pattern.replace(spec, '*')
-    # Defines a clear number of digits for certain element of date. This covers
-    # cases where date stamps may not have seperators between them.
-    split_regex_pattern = split_regex_pattern.replace(
-        YEAR_SPEC, '(?P<{}>.{{4}})'.format('year'))
-    split_regex_pattern = split_regex_pattern.replace(
-        MONTH_SPEC, '(?P<{}>.{{2}})'.format('month'))
-    split_regex_pattern = split_regex_pattern.replace(
-        DAY_SPEC, '(?P<{}>.{{2}})'.format('day'))
+    date_glob_replace = ['*', '*', '*']
+    # Defines a clear number of digits for certain element of date, in order of
+    # year, month, and day. This covers cases where date stamps may not have
+    # seperators between them.
+    date_regex_replace = ['.{4}', '.{2}', '.{2}']
+
+    if range_config:
+      date_tokens = _get_span_replace_glob_and_regex(range_config,
+                                                     is_match_span,
+                                                     is_match_date, None)
+      date_glob_replace = date_tokens
+      date_regex_replace = date_tokens
+
+    for spec, replace in zip(DATE_SPECS, date_glob_replace):
+      split_glob_pattern = split_glob_pattern.replace(spec, replace)
+
+    for spec, replace, spec_name in zip(DATE_SPECS, date_regex_replace,
+                                        ['year', 'month', 'day']):
+      split_regex_pattern = split_regex_pattern.replace(
+          spec, '(?P<{}>{})'.format(spec_name, replace))
 
   if is_match_version:
     # Check if version spec has any width modifier. Defaults to greedy matching
     # if no width modifiers are present.
     version_width_regex = '.*'
-    result = re.search(VERSION_FULL_REGEX, split.pattern)
-    assert result, 'No Version found in Split %s' % split.pattern
-    version_width_str = result.group('width')
+
+    version_width_str = _get_spec_width(VERSION_FULL_REGEX,
+                                        VERSION_PROPERTY_NAME, split)
     if version_width_str:
-      try:
-        if int(version_width_str) <= 0:
-          raise ValueError('Not a positive integer.')
-        version_width_regex = '.{%s}' % version_width_str
-      except ValueError:
-        raise ValueError(
-            'Width modifier in version spec is not a positive integer: %s' %
-            split.pattern)
+      version_width_regex = '.{%s}' % version_width_str
 
     split_glob_pattern = re.sub(VERSION_FULL_REGEX, '*', split_glob_pattern)
     version_capture_regex = '(?P<{}>{})'.format(VERSION_PROPERTY_NAME,
@@ -393,14 +494,16 @@ def _create_matching_glob_and_regex(
   return split_glob_pattern, split_regex_pattern
 
 
-def _retrieve_latest_span_version(
+def _get_target_span_version(
     uri: Text,
-    split: example_gen_pb2.Input.Split) -> Tuple[Optional[int], Optional[int]]:
-  """Retrieves the most recent span and version for a given split pattern.
+    split: example_gen_pb2.Input.Split,
+    range_config: Optional[range_config_pb2.RangeConfig] = None
+) -> Tuple[Optional[int], Optional[int]]:
+  """Retrieves a  target span and version for a given split pattern.
 
   If both Span and Version spec occur in the split pattern, searches for and
-  returns both the latest Span and Version. If only Span exists in the split
-  pattern, searches for the latest Span, and Version is returned as None.
+  returns both the target Span and Version. If only Span exists in the split
+  pattern, searches for the target Span, and Version is returned as None.
   If Version is present, but not Span, an error is raised. If neither Span
   nor Version is present, returns both as None.
 
@@ -412,6 +515,9 @@ def _retrieve_latest_span_version(
     uri: The base path from which files will be searched.
     split: An example_gen_pb2.Input.Split object which contains a split pattern,
       to be searched on.
+    range_config: An instance of range_config_pb2.RangeConfig, which specifies
+      which spans to consider when finding the most recent span and version. If
+      unset, search for latest span number with no restrictions.
 
   Returns:
     Tuple of two ints, Span (optional) and Version (optional). Note
@@ -426,7 +532,6 @@ def _retrieve_latest_span_version(
       - If Span or Version found is not an integer.
       - If a matching cannot be found for split pattern provided.
   """
-
   is_match_span, is_match_date, is_match_version = _verify_split_pattern_specs(
       split)
 
@@ -434,7 +539,12 @@ def _retrieve_latest_span_version(
     return (None, None)
 
   split_glob_pattern, split_regex_pattern = _create_matching_glob_and_regex(
-      uri, split, is_match_span, is_match_date, is_match_version)
+      uri=uri,
+      split=split,
+      is_match_span=is_match_span,
+      is_match_date=is_match_date,
+      is_match_version=is_match_version,
+      range_config=range_config)
 
   logging.info('Glob pattern for split %s: %s', split.name, split_glob_pattern)
   logging.info('Regex pattern for split %s: %s', split.name,
@@ -445,7 +555,11 @@ def _retrieve_latest_span_version(
   latest_version = None
   latest_version_int = None
 
-  files = tf.io.gfile.glob(split_glob_pattern)
+  try:
+    files = tf.io.gfile.glob(split_glob_pattern)
+  except tf.errors.NotFoundError:
+    # TODO(b/168831931): tf.io.gfile.glob shouldn't throw NotFoundError.
+    files = []
 
   for file_path in files:
     match_span_tokens, match_span_int, match_version, match_version_int = (
@@ -483,18 +597,23 @@ def _retrieve_latest_span_version(
 
 
 def calculate_splits_fingerprint_span_and_version(
-    input_base_uri: Text, splits: Iterable[example_gen_pb2.Input.Split]
+    input_base_uri: Text,
+    splits: Iterable[example_gen_pb2.Input.Split],
+    range_config: Optional[range_config_pb2.RangeConfig] = None
 ) -> Tuple[Text, int, Optional[int]]:
   """Calculates the fingerprint of files in a URI matching split patterns.
 
   If a pattern has the {SPAN} placeholder or the Date spec placeholders, {YYYY},
   {MM}, and {DD}, and optionally, the {VERSION} placeholder, attempts to find
-  aligned values that results in all splits having the most recent span and most
+  aligned values that results in all splits having the target span and most
   recent version for that span.
 
   Args:
     input_base_uri: The base path from which files will be searched.
     splits: An iterable collection of example_gen_pb2.Input.Split objects.
+    range_config: An instance of range_config_pb2.RangeConfig, which specifies
+      which spans to consider when finding the most recent span and version. If
+      unset, search for latest span number with no restrictions.
 
   Returns:
     A Tuple of [fingerprint, select_span, select_version], where select_span
@@ -515,23 +634,23 @@ def calculate_splits_fingerprint_span_and_version(
     logging.info('select span and version = (%s, %s)', select_span,
                  select_version)
     # Find most recent span and version for this split.
-    latest_span, latest_version = _retrieve_latest_span_version(
-        input_base_uri, split)
+    target_span, target_version = _get_target_span_version(
+        input_base_uri, split, range_config=range_config)
 
     # TODO(b/162622803): add default behavior for when version spec not present.
-    latest_span = latest_span or 0
+    target_span = target_span or 0
 
-    logging.info('latest span and version = (%s, %s)', latest_span,
-                 latest_version)
+    logging.info('latest span and version = (%s, %s)', target_span,
+                 target_version)
 
     if select_span == 0 and select_version is None:
-      select_span = latest_span
-      select_version = latest_version
+      select_span = target_span
+      select_version = target_version
 
     # Check if latest span and version are the same over all splits.
-    if select_span != latest_span:
+    if select_span != target_span:
       raise ValueError('Latest span should be the same for each split')
-    if select_version != latest_version:
+    if select_version != target_version:
       raise ValueError('Latest version should be the same for each split')
 
     # Calculate fingerprint.

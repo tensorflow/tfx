@@ -4,6 +4,8 @@
 
 *   Supported multiple artifacts for Transform's input example and output
     transformed example channels.
+*   Added support for processing specific spans in file-based ExampleGen with
+    range configuration.
 
 ## Breaking changes
 

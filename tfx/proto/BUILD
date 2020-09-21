@@ -45,6 +45,11 @@ tfx_py_proto_library(
 )
 
 tfx_py_proto_library(
+    name = "range_config_py_pb2",
+    srcs = ["range_config.proto"],
+)
+
+tfx_py_proto_library(
     name = "trainer_proto_py_pb2",
     srcs = ["trainer.proto"],
 )
