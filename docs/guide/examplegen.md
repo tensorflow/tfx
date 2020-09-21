@@ -171,16 +171,20 @@ Span can be retrieved by using '{SPAN}' spec in the
 *   This spec matches digits and maps the data into the relevant SPAN numbers.
     For example, 'data_{SPAN}-*.tfrecord' will collect files like
     'data_12-a.tfrecord', 'date_12-b.tfrecord'.
+*   Optionally, this spec can be specified with the width of the integers when
+    mapped. For example, 'data_{SPAN:2}.file' maps to files like 'data_02.file'
+    and 'data_27.file' (as inputs for Span-2 and Span-27 respectively), but does
+    not map to 'data_1.file' nor 'data_123.file'.
 *   When SPAN spec is missing, it's assumed to be always Span '0'.
 *   If SPAN is specified, pipeline will process the latest span, and store the
-    span number in metadata
+    span number in metadata.
 
 For example, let's assume there are input data:
 
-*   '/tmp/span-01/train/data'
-*   '/tmp/span-01/eval/data'
-*   '/tmp/span-02/train/data'
-*   '/tmp/span-02/eval/data'
+*   '/tmp/span-1/train/data'
+*   '/tmp/span-1/eval/data'
+*   '/tmp/span-2/train/data'
+*   '/tmp/span-2/eval/data'
 
 and the input config is shown as below:
 
@@ -197,11 +201,11 @@ splits {
 
 when triggering the pipeline, it will process:
 
-*   '/tmp/span-02/train/data' as train split
-*   '/tmp/span-02/eval/data' as eval split
+*   '/tmp/span-2/train/data' as train split
+*   '/tmp/span-2/eval/data' as eval split
 
-with span number as '02'. If later on '/tmp/span-03/...' are ready, simply
-trigger the pipeline again and it will pick up span '03' for processing. Below
+with span number as '2'. If later on '/tmp/span-3/...' are ready, simply
+trigger the pipeline again and it will pick up span '3' for processing. Below
 shows the code example for using span spec:
 
 ```python
@@ -217,13 +221,218 @@ examples = csv_input('/tmp')
 example_gen = CsvExampleGen(input=examples, input_config=input)
 ```
 
-Note: Retrieving a certain span is not supported yet. You can only fix the
-pattern for now (for example, 'span-2/eval/*' instead of 'span-{SPAN}/eval/*'),
-but by doing this, span number stored in metadata will be zero.
+Retrieving a certain span can be done with RangeConfig, which is detailed below.
+
+### Date
+
+Note: this feature is only availible after TFX 0.24.0.
+
+If your data source is organized on filesystem by date, TFX supports mapping
+dates directly to span numbers. There are three specs to represent mapping from
+dates to spans: {YYYY}, {MM} and {DD}:
+
+*   The three specs should be altogether present in the
+    [input glob pattern](https://github.com/tensorflow/tfx/blob/master/tfx/proto/example_gen.proto)
+    if any is specified:
+*   Either {SPAN} spec or this set of date specs can be specified exclusively.
+*   A calendar date with the year from YYYY, the month from MM, and the day of
+    the month from DD is calculated, then the span number is calculated as as
+    the number of days since unix epoch (i.e. 1970-01-01). For example,
+    'log-{YYYY}{MM}{DD}.data' matches to a file 'log-19700101.data' and consumes
+    it as input for Span-0, and 'log-20170101.data' as input for Span-17167.
+*   If this set of date specs is specified, pipeline will process the latest
+    latest date, and store the corresponding span number in metadata.
+
+For example, let's assume there are input data organized by calendar date:
+
+*   '/tmp/1970-01-02/train/data'
+*   '/tmp/1970-01-02/eval/data'
+*   '/tmp/1970-01-03/train/data'
+*   '/tmp/1970-01-03/eval/data'
+
+and the input config is shown as below:
+
+```python
+splits {
+  name: 'train'
+  pattern: '{YYYY}-{MM}-{DD}/train/*'
+}
+splits {
+  name: 'eval'
+  pattern: '{YYYY}-{MM}-{DD}/eval/*'
+}
+```
+
+when triggering the pipeline, it will process:
+
+*   '/tmp/1970-01-03/train/data' as train split
+*   '/tmp/1970-01-03/eval/data' as eval split
+
+with span number as '2'. If later on '/tmp/1970-01-04/...' are ready, simply
+trigger the pipeline again and it will pick up span '3' for processing. Below
+shows the code example for using date spec:
+
+```python
+from  tfx.proto import example_gen_pb2
+
+input = example_gen_pb2.Input(splits=[
+                example_gen_pb2.Input.Split(name='train',
+                                            pattern='{YYYY}-{MM}-{DD}/train/*'),
+                example_gen_pb2.Input.Split(name='eval',
+                                            pattern='{YYYY}-{MM}-{DD}/eval/*')
+            ])
+examples = csv_input('/tmp')
+example_gen = CsvExampleGen(input=examples, input_config=input)
+```
 
 ### Version
 
-Note: Version is not supported yet
+Note: this feature is only availible after TFX 0.24.0.
+
+Version can be retrieved by using '{VERSION}' spec in the
+[input glob pattern](https://github.com/tensorflow/tfx/blob/master/tfx/proto/example_gen.proto):
+
+*   This spec matches digits and maps the data to the relevant VERSION numbers
+    under the SPAN. Note that the Version spec can be used combination with
+    either Span or Date spec.
+*   This spec can also be optionally specified with the width in the same way as
+    SPAN spec. e.g. 'span-{SPAN}/version-{VERSION:4}/data-*'.
+*   When VERSION spec is missing, version is set to be None.
+*   If SPAN and VERSION are both specified, pipeline will process the latest
+    version for the latest span, and store the version number in metadata.
+*   If VERSION is specified, but not SPAN (or date spec), an error will be
+    thrown.
+
+For example, let's assume there are input data:
+
+*   '/tmp/span-1/ver-1/train/data'
+*   '/tmp/span-1/ver-1/eval/data'
+*   '/tmp/span-2/ver-1/train/data'
+*   '/tmp/span-2/ver-1/eval/data'
+*   '/tmp/span-2/ver-2/train/data'
+*   '/tmp/span-2/ver-2/eval/data'
+
+and the input config is shown as below:
+
+```python
+splits {
+  name: 'train'
+  pattern: 'span-{SPAN}/ver-{VERSION}/train/*'
+}
+splits {
+  name: 'eval'
+  pattern: 'span-{SPAN}/ver-{VERSION}/eval/*'
+}
+```
+
+when triggering the pipeline, it will process:
+
+*   '/tmp/span-2/ver-2/train/data' as train split
+*   '/tmp/span-2/ver-2/eval/data' as eval split
+
+with span number as '2' and version number as '2'. If later on
+'/tmp/span-2/ver-3/...' are ready, simply trigger the pipeline again and it
+will pick up span '2' and version '3' for processing. Below shows the code
+example for using version spec:
+
+```python
+from  tfx.proto import example_gen_pb2
+
+input = example_gen_pb2.Input(splits=[
+                example_gen_pb2.Input.Split(name='train',
+                                            pattern='span-{SPAN}/ver-{VERSION}/train/*'),
+                example_gen_pb2.Input.Split(name='eval',
+                                            pattern='span-{SPAN}/ver-{VERSION}/eval/*')
+            ])
+examples = csv_input('/tmp')
+example_gen = CsvExampleGen(input=examples, input_config=input)
+```
+
+### Range Config
+
+Note: this feature is only available after TFX 0.24.0.
+
+TFX supports retrieval and processing of a specific span in file-based
+ExampleGen using range config, an abstract config used to describe ranges for
+different TFX entities. To retrieve a specific span, set the `range_config` for
+a file-based ExampleGen component. For example, let's assume there are input
+data:
+
+*   '/tmp/span-01/train/data'
+*   '/tmp/span-01/eval/data'
+*   '/tmp/span-02/train/data'
+*   '/tmp/span-02/eval/data'
+
+To specifically retrieve and process data with span '1', we specify a range
+config in addition to the input config. Note that ExampleGen only supports
+single-span static ranges (to specify processing of specific individual spans).
+Thus, for StaticRange, start_span_number must equal end_span_number. Using the
+provided span, and the span width information (if provided) for zero-padding,
+ExampleGen will replace the SPAN spec in the provided split patterns with the
+desired span number. An example of usage is shown below:
+
+```python
+from  tfx.proto import example_gen_pb2
+from  tfx.proto import range_config_pb2
+
+# In cases where files have zero-padding, the width modifier in SPAN spec is
+# required so TFX can correctly substitute spec with zero-padded span number.
+input = example_gen_pb2.Input(splits=[
+                example_gen_pb2.Input.Split(name='train',
+                                            pattern='span-{SPAN:2}/train/*'),
+                example_gen_pb2.Input.Split(name='eval',
+                                            pattern='span-{SPAN:2}/eval/*')
+            ])
+# Specify the span number to be processed here using StaticRange.
+range = range_config_pb2.RangeConfig(
+                static_range=range_config_pb2.StaticRange(
+                        start_span_number=1, end_span_number=1)
+            )
+
+# After substitution, the train and eval split patterns will be
+# 'input_dir/span-01/train/*' and 'input_dir/span-01/eval/*', respectively.
+examples = csv_input(input_dir)
+example_gen = CsvExampleGen(input=examples, input_config=input,
+                            range_config=range)
+```
+
+Range config can also be used to process specific dates, if the date spec is
+used instead of SPAN spec. For example, let's assume there are input data
+organized by calendar date:
+
+*   '/tmp/1970-01-02/train/data'
+*   '/tmp/1970-01-02/eval/data'
+*   '/tmp/1970-01-03/train/data'
+*   '/tmp/1970-01-03/eval/data'
+
+To specifically retrieve and process data on January 2nd, 1970, we do the
+following:
+
+```python
+from  tfx.components.example_gen import utils
+from  tfx.proto import example_gen_pb2
+from  tfx.proto import range_config_pb2
+
+input = example_gen_pb2.Input(splits=[
+                example_gen_pb2.Input.Split(name='train',
+                                            pattern='{YYYY}-{MM}-{DD}/train/*'),
+                example_gen_pb2.Input.Split(name='eval',
+                                            pattern='{YYYY}-{MM}-{DD}/eval/*')
+            ])
+# Specify date to be converted to span number to be processed using StaticRange.
+span = utils.date_to_span_number(1970, 1, 2)
+range = range_config_pb2.RangeConfig(
+                static_range=range_config_pb2.StaticRange(
+                        start_span_number=span, end_span_number=span)
+            )
+
+# After substitution, the train and eval split patterns will be
+# 'input_dir/1970-01-02/train/*' and 'input_dir/1970-01-02/eval/*',
+# respectively.
+examples = csv_input(input_dir)
+example_gen = CsvExampleGen(input=examples, input_config=input,
+                            range_config=range)
+```
 
 ## Custom ExampleGen
 
