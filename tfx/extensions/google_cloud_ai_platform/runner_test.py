@@ -100,14 +100,17 @@ class RunnerTest(tf.test.TestCase):
     self.assertDictContainsSubset(
         {
             'masterConfig': {
-                'imageUri': default_image,
+                'imageUri':
+                    default_image,
+                'containerCommand':
+                    runner._CONTAINER_COMMAND + [
+                        '--executor_class_path', class_path, '--inputs', '{}',
+                        '--outputs', '{}', '--exec-properties',
+                        '{"custom_config": '
+                        '"{\\"ai_platform_training_args\\": {\\"project\\": \\"12345\\"'
+                        '}}"}'
+                    ],
             },
-            'args': [
-                '--executor_class_path', class_path, '--inputs', '{}',
-                '--outputs', '{}', '--exec-properties', '{"custom_config": '
-                '"{\\"ai_platform_training_args\\": {\\"project\\": \\"12345\\"'
-                '}}"}'
-            ],
         }, body['trainingInput'])
     self.assertStartsWith(body['jobId'], 'tfx_')
     self._mock_get.execute.assert_called_with()
@@ -133,16 +136,19 @@ class RunnerTest(tf.test.TestCase):
     self.assertDictContainsSubset(
         {
             'masterConfig': {
-                'imageUri': 'my-custom-image',
-            },
-            'args': [
-                '--executor_class_path', class_path, '--inputs', '{}',
-                '--outputs', '{}', '--exec-properties', '{"custom_config": '
-                '"{\\"ai_platform_training_args\\": '
-                '{\\"masterConfig\\": {\\"imageUri\\": \\"my-custom-image\\"}, '
-                '\\"project\\": \\"12345\\"}, '
-                '\\"ai_platform_training_job_id\\": \\"my_jobid\\"}"}'
-            ],
+                'imageUri':
+                    'my-custom-image',
+                'containerCommand':
+                    runner._CONTAINER_COMMAND + [
+                        '--executor_class_path', class_path, '--inputs', '{}',
+                        '--outputs', '{}', '--exec-properties',
+                        '{"custom_config": '
+                        '"{\\"ai_platform_training_args\\": '
+                        '{\\"masterConfig\\": {\\"imageUri\\": \\"my-custom-image\\"}, '
+                        '\\"project\\": \\"12345\\"}, '
+                        '\\"ai_platform_training_job_id\\": \\"my_jobid\\"}"}'
+                    ],
+            }
         }, body['trainingInput'])
     self.assertEqual(body['jobId'], 'my_jobid')
     self._mock_get.execute.assert_called_with()

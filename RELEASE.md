@@ -34,6 +34,7 @@
 ## Bug fixes and other changes
 
 *   Supported CAIP Runtime 2.2 for online prediction pusher.
+*   Used 'python -m ' style for container entrypoints.
 *   Stopped depending on `Werkzeug`.
 *   Depends on `absl-py>=0.9,<0.11`.
 *   Depends on `apache-beam[gcp]>=2.24,<3`.
