@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Constant values for Evaluator."""
+"""Constants for [Evaluator](https://www.tensorflow.org/tfx/guide/evaluator)."""
 
 # Key for examples in executor input_dict.
 EXAMPLES_KEY = 'examples'

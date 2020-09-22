@@ -46,7 +46,7 @@ _TELEMETRY_DESCRIPTORS = ['Evaluator']
 
 
 class Executor(base_executor.BaseExecutor):
-  """Generic TFX model evaluator executor."""
+  """Executor for [Evaluator](https://www.tensorflow.org/tfx/guide/evaluator)."""
 
   def _get_slice_spec_from_feature_slicing_spec(
       self, spec: evaluator_pb2.FeatureSlicingSpec
