@@ -86,7 +86,7 @@ def make_required_install_packages():
           nightly='>=0.25.0.dev',
           git_master='@git+https://github.com/tensorflow/data-validation@master'),  # pylint: disable=line-too-long
       'tensorflow-model-analysis' + select_constraint(
-          default='>=0.24,<0.25',
+          default='>=0.24.2,<0.25',
           nightly='>=0.25.0.dev',
           git_master='@git+https://github.com/tensorflow/model-analysis@master'),  # pylint: disable=line-too-long
       'tensorflow-serving-api>=1.15,!=2.0.*,!=2.1.*,!=2.2.*,<3',
