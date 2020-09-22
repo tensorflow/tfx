@@ -45,4 +45,4 @@ RUN patch `python -c 'import googleapiclient; print(googleapiclient.__path__[0])
   /tfx-src/tfx/tools/docker/patches/base_api.patch
 
 # TODO(b/166202742): Consolidate container entrypoint with Kubeflow runner.
-ENTRYPOINT ["python", "/tfx-src/tfx/scripts/run_executor.py"]
+ENTRYPOINT ["python", "-m", "tfx.scripts.run_executor"]
