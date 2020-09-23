@@ -133,9 +133,7 @@ class Executor(base_executor.BaseExecutor):
       eval_config = tfma.EvalConfig()
       json_format.Parse(exec_properties['eval_config'], eval_config)
       eval_config = tfma.update_eval_config_with_defaults(
-          eval_config,
-          maybe_add_baseline=has_baseline,
-          maybe_remove_baseline=not has_baseline)
+          eval_config, has_baseline=has_baseline)
       tfma.verify_eval_config(eval_config)
       # Do not validate model when there is no thresholds configured. This is to
       # avoid accidentally blessing models when users forget to set thresholds.
