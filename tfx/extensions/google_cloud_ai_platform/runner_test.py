@@ -63,6 +63,9 @@ class RunnerTest(tf.test.TestCase):
         'project_id': self._project_id,
     }
     self._executor_class_path = 'my.executor.Executor'
+    with telemetry_utils.scoped_labels(
+        {telemetry_utils.LABEL_TFX_EXECUTOR: self._executor_class_path}):
+      self._job_labels = telemetry_utils.get_labels_dict()
 
   def _setUpTrainingMocks(self):
     self._mock_create = mock.Mock()
@@ -191,17 +194,12 @@ class RunnerTest(tf.test.TestCase):
                                   expect_set_default=True):
     if not expected_models_create_body:
       expected_models_create_body = {
-          'name':
-              self._model_name,
-          'regions':
-              [],
+          'name': self._model_name,
+          'regions': [],
+          'labels': self._job_labels
       }
 
     if not expected_versions_create_body:
-      with telemetry_utils.scoped_labels(
-          {telemetry_utils.LABEL_TFX_EXECUTOR: self._executor_class_path}):
-        labels = telemetry_utils.get_labels_dict()
-
       expected_versions_create_body = {
           'name':
               self._model_version,
@@ -212,7 +210,8 @@ class RunnerTest(tf.test.TestCase):
           'python_version':
               runner._get_caip_python_version(
                   runner._get_tf_runtime_version(tf.__version__)),
-          'labels': labels
+          'labels':
+              self._job_labels
       }
 
     self._mock_models_create.assert_called_with(
@@ -240,26 +239,24 @@ class RunnerTest(tf.test.TestCase):
             self._project_id, self._model_name, self._model_version))
     self._mock_set_default_execute.assert_called_with()
 
-  @mock.patch('tfx.extensions.google_cloud_ai_platform.runner.discovery')
-  def testDeployModelForAIPPrediction(self, mock_discovery):
-    mock_discovery.build.return_value = self._mock_api_client
+  def testDeployModelForAIPPrediction(self):
     self._setUpPredictionMocks()
 
-    runner.deploy_model_for_aip_prediction(self._serving_path,
+    runner.deploy_model_for_aip_prediction(self._mock_api_client,
+                                           self._serving_path,
                                            self._model_version,
                                            self._ai_platform_serving_args,
-                                           self._executor_class_path)
+                                           self._job_labels)
 
     expected_models_create_body = {
         'name': self._model_name,
-        'regions': []
+        'regions': [],
+        'labels': self._job_labels
     }
     self._assertDeployModelMockCalls(
         expected_models_create_body=expected_models_create_body)
 
-  @mock.patch('tfx.extensions.google_cloud_ai_platform.runner.discovery')
-  def testDeployModelForAIPPredictionError(self, mock_discovery):
-    mock_discovery.build.return_value = self._mock_api_client
+  def testDeployModelForAIPPredictionError(self):
     self._setUpPredictionMocks()
 
     self._mock_get.return_value.execute.return_value = {
@@ -271,58 +268,55 @@ class RunnerTest(tf.test.TestCase):
     }
 
     with self.assertRaises(RuntimeError):
-      runner.deploy_model_for_aip_prediction(self._serving_path,
+      runner.deploy_model_for_aip_prediction(self._mock_api_client,
+                                             self._serving_path,
                                              self._model_version,
                                              self._ai_platform_serving_args,
-                                             self._executor_class_path)
+                                             self._job_labels)
 
     expected_models_create_body = {
         'name': self._model_name,
-        'regions': []
+        'regions': [],
+        'labels': self._job_labels
     }
     self._assertDeployModelMockCalls(
         expected_models_create_body=expected_models_create_body,
         expect_set_default=False)
 
-  @mock.patch('tfx.extensions.google_cloud_ai_platform.runner.discovery')
-  def testDeployModelForAIPPredictionWithCustomRegion(self, mock_discovery):
-    mock_discovery.build.return_value = self._mock_api_client
+  def testDeployModelForAIPPredictionWithCustomRegion(self):
     self._setUpPredictionMocks()
 
     self._ai_platform_serving_args['regions'] = ['custom-region']
-    runner.deploy_model_for_aip_prediction(self._serving_path,
+    runner.deploy_model_for_aip_prediction(self._mock_api_client,
+                                           self._serving_path,
                                            self._model_version,
                                            self._ai_platform_serving_args,
-                                           self._executor_class_path)
+                                           self._job_labels)
 
     expected_models_create_body = {
         'name': self._model_name,
         'regions': ['custom-region'],
+        'labels': self._job_labels
     }
     self._assertDeployModelMockCalls(
         expected_models_create_body=expected_models_create_body)
 
-  @mock.patch('tfx.extensions.google_cloud_ai_platform.runner.discovery')
-  def testDeployModelForAIPPredictionWithCustomRuntime(self, mock_discovery):
-    mock_discovery.build.return_value = self._mock_api_client
+  def testDeployModelForAIPPredictionWithCustomRuntime(self):
     self._setUpPredictionMocks()
 
     self._ai_platform_serving_args['runtime_version'] = '1.23.45'
-    runner.deploy_model_for_aip_prediction(self._serving_path,
+    runner.deploy_model_for_aip_prediction(self._mock_api_client,
+                                           self._serving_path,
                                            self._model_version,
                                            self._ai_platform_serving_args,
-                                           self._executor_class_path)
-
-    with telemetry_utils.scoped_labels(
-        {telemetry_utils.LABEL_TFX_EXECUTOR: self._executor_class_path}):
-      labels = telemetry_utils.get_labels_dict()
+                                           self._job_labels)
 
     expected_versions_create_body = {
         'name': self._model_version,
         'deployment_uri': self._serving_path,
         'runtime_version': '1.23.45',
         'python_version': runner._get_caip_python_version('1.23.45'),
-        'labels': labels,
+        'labels': self._job_labels,
     }
     self._assertDeployModelMockCalls(
         expected_versions_create_body=expected_versions_create_body)
@@ -345,6 +339,70 @@ class RunnerTest(tf.test.TestCase):
       self.assertEqual('3.5', runner._get_caip_python_version('1.14'))
       self.assertEqual('3.7', runner._get_caip_python_version('1.15'))
       self.assertEqual('3.7', runner._get_caip_python_version('2.1'))
+
+  def _setUpDeleteModelVersionMocks(self):
+    self._model_version = 'model_version'
+
+    self._mock_models_version_delete = mock.Mock()
+    self._mock_api_client.projects().models().versions().delete = (
+        self._mock_models_version_delete)
+    self._mock_models_version_delete.return_value.execute.return_value = {
+        'name': 'version_delete_op_name'
+    }
+    self._mock_get = mock.Mock()
+    self._mock_api_client.projects().operations().get = self._mock_get
+
+    self._mock_get.return_value.execute.return_value = {
+        'done': True,
+    }
+
+  def _assertDeleteModelVersionMockCalls(self):
+    self._mock_models_version_delete.assert_called_with(
+        name='projects/{}/models/{}/versions/{}'.format(self._project_id,
+                                                        self._model_name,
+                                                        self._model_version),)
+    (_, model_version_delete_kwargs) = (
+        self._mock_models_version_delete.call_args)
+    self.assertNotIn('body', model_version_delete_kwargs)
+
+  @mock.patch('tfx.extensions.google_cloud_ai_platform.runner.discovery')
+  def testDeleteModelVersionForAIPPrediction(self, mock_discovery):
+    self._setUpDeleteModelVersionMocks()
+
+    runner.delete_model_version_from_aip_if_exists(
+        self._mock_api_client, self._model_version,
+        self._ai_platform_serving_args)
+
+    self._assertDeleteModelVersionMockCalls()
+
+  def _setUpDeleteModelMocks(self):
+    self._mock_models_delete = mock.Mock()
+    self._mock_api_client.projects().models().delete = (
+        self._mock_models_delete)
+    self._mock_models_delete.return_value.execute.return_value = {
+        'name': 'model_delete_op_name'
+    }
+    self._mock_get = mock.Mock()
+    self._mock_api_client.projects().operations().get = self._mock_get
+    self._mock_get.return_value.execute.return_value = {
+        'done': True,
+    }
+
+  def _assertDeleteModelMockCalls(self):
+    self._mock_models_delete.assert_called_with(
+        name='projects/{}/models/{}'.format(self._project_id,
+                                            self._model_name),)
+    (_, model_delete_kwargs) = self._mock_models_delete.call_args
+    self.assertNotIn('body', model_delete_kwargs)
+
+  @mock.patch('tfx.extensions.google_cloud_ai_platform.runner.discovery')
+  def testDeleteModelForAIPPrediction(self, mock_discovery):
+    self._setUpDeleteModelMocks()
+
+    runner.delete_model_from_aip_if_exists(self._mock_api_client,
+                                           self._ai_platform_serving_args)
+
+    self._assertDeleteModelMockCalls()
 
 
 if __name__ == '__main__':

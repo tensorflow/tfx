@@ -25,7 +25,7 @@ performance, and serve it. This example uses the following
   bad model from being pushed.
 * [Pusher](https://github.com/tensorflow/tfx/blob/master/docs/guide/pusher.md)
   deploys the model to a serving infrastructure.
-* [BulkInferrer](https://github.com/tensorflow/tfx/blob/master/docs/guide/bulk_inferrer.md)
+* [BulkInferrer](https://github.com/tensorflow/tfx/blob/master/docs/guide/bulkinferrer.md)
   batch inference on the model with unlabelled examples.
 
 Inference in the example is powered by:

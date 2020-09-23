@@ -7,13 +7,11 @@ contains the original features and the prediction results.
 
 BulkInferrer consumes:
 
-*   A Trained model in
+*   A trained model in
     [SavedModel](https://www.tensorflow.org/guide/saved_model.md) format.
-*   Validation result from
+*   Unlabelled tf.Examples that contain features.
+*   (Optional) Validation result from
     [Evaluator](https://www.tensorflow.org/tfx/guide/evaluator.md) component.
-*   Unlabelled
-    [tf.Examples](https://www.tensorflow.org/tutorials/load_data/tfrecord.md)
-    that contain features.
 
 BulkInferrer emits:
 

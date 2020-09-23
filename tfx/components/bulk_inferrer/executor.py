@@ -18,13 +18,13 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import importlib
 import os
-from typing import Any, Dict, List, Mapping, Text
+from typing import Any, Dict, List, Text
 
 from absl import logging
 import apache_beam as beam
 import tensorflow as tf
+
 from tfx import types
 from tfx.components.util import model_utils
 from tfx.dsl.components.base import base_executor
@@ -33,6 +33,8 @@ from tfx.types import artifact_utils
 from tfx.utils import io_utils
 from tfx.utils import path_utils
 
+from tfx_bsl.public.beam import run_inference
+from tfx_bsl.public.proto import model_spec_pb2
 from google.protobuf import json_format
 from tensorflow_serving.apis import prediction_log_pb2
 
@@ -52,7 +54,7 @@ class Executor(base_executor.BaseExecutor):
       input_dict: Input dict from input key to a list of Artifacts.
         - examples: examples for inference.
         - model: exported model.
-        - model_blessing: model blessing result
+        - model_blessing: model blessing result, optional.
       output_dict: Output dict from output key to a list of Artifacts.
         - output: bulk inference results.
       exec_properties: A dict of execution properties.
@@ -90,57 +92,55 @@ class Executor(base_executor.BaseExecutor):
 
     data_spec = bulk_inferrer_pb2.DataSpec()
     json_format.Parse(exec_properties['data_spec'], data_spec)
-    example_uris = {}
-    if data_spec.example_splits:
-      for example in input_dict['examples']:
-        for split in artifact_utils.decode_split_names(example.split_names):
-          if split in data_spec.example_splits:
-            example_uris[split] = os.path.join(example.uri, split)
+    if self._run_model_inference(
+        data_spec, input_dict['examples'], output.uri,
+        self._get_inference_spec(model_path, exec_properties)):
+      output.set_int_custom_property('inferred', 1)
     else:
-      for example in input_dict['examples']:
-        for split in artifact_utils.decode_split_names(example.split_names):
-          example_uris[split] = os.path.join(example.uri, split)
+      output.set_int_custom_property('inferred', 0)
+
+  def _get_inference_spec(
+      self, model_path: Text,
+      exec_properties: Dict[Text, Any]) -> model_spec_pb2.InferenceSpecType:
     model_spec = bulk_inferrer_pb2.ModelSpec()
     json_format.Parse(exec_properties['model_spec'], model_spec)
-    output_path = os.path.join(output.uri, _PREDICTION_LOGS_DIR_NAME)
-    self._run_model_inference(model_path, example_uris, output_path,
-                              model_spec)
-    logging.info('BulkInferrer generates prediction log to %s', output_path)
-    output.set_int_custom_property('inferred', 1)
-
-  def _run_model_inference(self, model_path: Text,
-                           example_uris: Mapping[Text, Text],
-                           output_path: Text,
-                           model_spec: bulk_inferrer_pb2.ModelSpec) -> None:
-    """Runs model inference on given example data.
-
-    Args:
-      model_path: Path to model.
-      example_uris: Mapping of example split name to example uri.
-      output_path: Path to output generated prediction logs.
-      model_spec: bulk_inferrer_pb2.ModelSpec instance.
-
-    Returns:
-      None
-    """
-
-    try:
-      from tfx_bsl.public.beam import run_inference
-      from tfx_bsl.public.proto import model_spec_pb2
-    except ImportError:
-      # TODO(b/151468119): Remove this branch after next release.
-      run_inference = importlib.import_module('tfx_bsl.beam.run_inference')
-      model_spec_pb2 = importlib.import_module('tfx_bsl.proto.model_spec_pb2')
     saved_model_spec = model_spec_pb2.SavedModelSpec(
         model_path=model_path,
         tag=model_spec.tag,
         signature_name=model_spec.model_signature_name)
-    # TODO(b/151468119): Remove this branch after next release.
-    if getattr(model_spec_pb2, 'InferenceEndpoint', False):
-      inference_endpoint = getattr(model_spec_pb2, 'InferenceEndpoint')()
+    result = model_spec_pb2.InferenceSpecType()
+    result.saved_model_spec.CopyFrom(saved_model_spec)
+    return result
+
+  def _run_model_inference(
+      self, data_spec: bulk_inferrer_pb2.DataSpec,
+      examples: List[types.Artifact], output_uri: Text,
+      inference_endpoint: model_spec_pb2.InferenceSpecType) -> bool:
+    """Runs model inference on given example data.
+
+    Args:
+      data_spec: bulk_inferrer_pb2.DataSpec instance.
+      examples: List of example artifacts.
+      output_uri: Output artifact uri.
+      inference_endpoint: Model inference endpoint.
+
+    Returns:
+      Whether the inference job succeed.
+    """
+
+    example_uris = {}
+    if data_spec.example_splits:
+      for example in examples:
+        for split in artifact_utils.decode_split_names(example.split_names):
+          if split in data_spec.example_splits:
+            example_uris[split] = os.path.join(example.uri, split)
     else:
-      inference_endpoint = model_spec_pb2.InferenceSpecType()
-    inference_endpoint.saved_model_spec.CopyFrom(saved_model_spec)
+      for example in examples:
+        for split in artifact_utils.decode_split_names(example.split_names):
+          example_uris[split] = os.path.join(example.uri, split)
+    output_path = os.path.join(output_uri, _PREDICTION_LOGS_DIR_NAME)
+    logging.info('BulkInferrer generates prediction log to %s', output_path)
+
     with self._make_beam_pipeline() as pipeline:
       data_list = []
       for split, example_uri in example_uris.items():
@@ -149,8 +149,10 @@ class Executor(base_executor.BaseExecutor):
                 file_pattern=io_utils.all_files_pattern(example_uri)))
         data_list.append(data)
       _ = (
-          [data for data in data_list]
+          data_list
           | 'FlattenExamples' >> beam.Flatten(pipeline=pipeline)
+          # TODO(b/131873699): Use the correct Example type here, which
+          # is either Example or SequenceExample.
           | 'ParseExamples' >> beam.Map(tf.train.Example.FromString)
           | 'RunInference' >> run_inference.RunInference(inference_endpoint)
           | 'WritePredictionLogs' >> beam.io.WriteToTFRecord(

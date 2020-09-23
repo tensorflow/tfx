@@ -13,6 +13,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Helper class to start TFX training jobs on AI Platform."""
+# TODO(b/168926785): Consider to move some methods to a utility file.
+
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
@@ -59,6 +61,16 @@ _TF_COMPATIBILITY_OVERRIDE = {
     '2.5': '2.2',
 }
 
+# Suffix of endpoint.
+_ENDPOINT_SUFFIX = '.googleapis.com'
+# Default endpoint.
+_DEFAULT_ENDPOINT = 'ml.googleapis.com'
+# Default API version.
+_DEFAULT_API_VERSION = 'v1'
+# Key to the item in ai_platform_serving_args.
+_ENDPOINT_ARGS_KEY = 'ai_platform_serving_endpoint'
+_API_VERSION_ARGS_KEY = 'ai_platform_serving_api_version'
+
 
 def _get_tf_runtime_version(tf_version: Text) -> Text:
   """Returns the tensorflow runtime version used in Cloud AI Platform.
@@ -103,12 +115,12 @@ def _launch_aip_training(
   """Launches and monitors a AIP custom training job.
 
   Args:
-    job_id: the job ID of the AI Platform training job.
-    project: the GCP project under which the training job will be executed.
+    job_id: The job ID of the AI Platform training job.
+    project: The GCP project under which the training job will be executed.
     training_input: Training input argument for AI Platform training job. See
       https://cloud.google.com/ml-engine/reference/rest/v1/projects.jobs#TrainingInput
       for the detailed schema.
-    job_labels: the dict of labels that will be attached to this job.
+    job_labels: The dict of labels that will be attached to this job.
 
   Raises:
     RuntimeError: if the Google Cloud AI Platform training job failed/cancelled.
@@ -185,6 +197,34 @@ def _launch_aip_training(
   logging.info('Job \'%s\' successful.', job_name)
 
 
+def _wait_for_operation(api: discovery.Resource, operation: Dict[Text, Any],
+                        method_name: Text) -> Dict[Text, Any]:
+  """Wait for a long running operation.
+
+  Args:
+    api: Google API client resource.
+    operation: The operation to wait for.
+    method_name: Operation method name for logging.
+
+  Returns:
+    Operation completion status.
+
+  Raises:
+    RuntimeError: If the operation completed with an error.
+  """
+  status_resc = api.projects().operations().get(name=operation['name'])
+  while not status_resc.execute().get('done'):
+    time.sleep(_POLLING_INTERVAL_IN_SECONDS)
+    logging.info('Method %s still being executed...', method_name)
+  result = status_resc.execute()
+  if result.get('error'):
+    # The operation completed with an error.
+    raise RuntimeError('Failed to execute {}: {}'.format(
+        method_name, result['error']))
+  return result
+
+
+# TODO(b/168926785): Consider to change executor_class_path to job_labels.
 def start_aip_training(input_dict: Dict[Text, List[types.Artifact]],
                        output_dict: Dict[Text, List[types.Artifact]],
                        exec_properties: Dict[Text,
@@ -265,22 +305,88 @@ def start_aip_training(input_dict: Dict[Text, List[types.Artifact]],
       job_labels=job_labels)
 
 
-def deploy_model_for_aip_prediction(
-    serving_path: Text,
-    model_version: Text,
+def get_service_name_and_api_version(
+    ai_platform_serving_args: Dict[Text, Any]):  # -> Tuple[Text, Text]
+  """Gets service name and api version from ai_platform_serving_args.
+
+  Args:
+    ai_platform_serving_args: Dictionary containing arguments for pushing to AI
+      Platform.
+
+  Returns:
+    Service name and API version.
+  """
+  service_endpoint = (
+      ai_platform_serving_args.get(_ENDPOINT_ARGS_KEY)
+      if _ENDPOINT_ARGS_KEY in ai_platform_serving_args else _DEFAULT_ENDPOINT)
+  service_name = service_endpoint[:-len(_ENDPOINT_SUFFIX)]
+  api_version = (
+      ai_platform_serving_args.get(_API_VERSION_ARGS_KEY)
+      if _API_VERSION_ARGS_KEY in ai_platform_serving_args else
+      _DEFAULT_API_VERSION)
+  return (service_name, api_version)
+
+
+def create_model_for_aip_prediction_if_not_exist(
+    api: discovery.Resource,
+    job_labels: Dict[Text, Text],
     ai_platform_serving_args: Dict[Text, Any],
-    executor_class_path: Text,
-):
+) -> bool:
+  """Creates a new model for serving with AI Platform if not exists.
+
+  Args:
+    api: Google API client resource.
+    job_labels: The dict of labels that will be attached to this job.
+    ai_platform_serving_args: Dictionary containing arguments for pushing to AI
+      Platform.
+
+  Returns:
+    Whether a new model is created.
+
+  Raises:
+    RuntimeError if model creation failed.
+  """
+
+  model_name = ai_platform_serving_args['model_name']
+  project_id = ai_platform_serving_args['project_id']
+  regions = ai_platform_serving_args.get('regions', [])
+  body = {'name': model_name, 'regions': regions, 'labels': job_labels}
+  parent = 'projects/{}'.format(project_id)
+  result = True
+  try:
+    api.projects().models().create(body=body, parent=parent).execute()
+  except errors.HttpError as e:
+    # If the error is to create an already existing model, it's ok to ignore.
+    if e.resp.status == 409:
+      logging.warn('Model %s already exists', model_name)
+      result = False
+    else:
+      raise RuntimeError('Creating model to AI Platform failed: {}'.format(e))
+  return result
+
+
+def deploy_model_for_aip_prediction(api: discovery.Resource,
+                                    serving_path: Text,
+                                    model_version: Text,
+                                    ai_platform_serving_args: Dict[Text, Any],
+                                    job_labels: Dict[Text, Text],
+                                    skip_model_creation: bool = False,
+                                    set_default_version: bool = True) -> None:
   """Deploys a model for serving with AI Platform.
 
   Args:
+    api: Google API client resource.
     serving_path: The path to the model. Must be a GCS URI.
     model_version: Version of the model being deployed. Must be different from
       what is currently being served.
     ai_platform_serving_args: Dictionary containing arguments for pushing to AI
       Platform. For the full set of parameters supported, refer to
       https://cloud.google.com/ml-engine/reference/rest/v1/projects.models.versions#Version
-    executor_class_path: class path for TFX core default trainer.
+    job_labels: The dict of labels that will be attached to this job.
+    skip_model_creation: If true, the method assuem model already exist in
+      AI platform, therefore skipping model creation.
+    set_default_version: Whether set the newly deployed model version as the
+      default version.
 
   Raises:
     RuntimeError: if an error is encountered when trying to push.
@@ -291,27 +397,14 @@ def deploy_model_for_aip_prediction(
 
   model_name = ai_platform_serving_args['model_name']
   project_id = ai_platform_serving_args['project_id']
-  regions = ai_platform_serving_args.get('regions', [])
   default_runtime_version = _get_tf_runtime_version(tf.__version__)
   runtime_version = ai_platform_serving_args.get('runtime_version',
                                                  default_runtime_version)
   python_version = _get_caip_python_version(runtime_version)
 
-  api = discovery.build('ml', 'v1')
-  body = {'name': model_name, 'regions': regions}
-  parent = 'projects/{}'.format(project_id)
-  try:
-    api.projects().models().create(body=body, parent=parent).execute()
-  except errors.HttpError as e:
-    # If the error is to create an already existing model, it's ok to ignore.
-    # TODO(b/135211463): Remove the disable once the pytype bug is fixed.
-    if e.resp.status == 409:  # pytype: disable=attribute-error
-      logging.warn('Model %s already exists', model_name)
-    else:
-      raise RuntimeError('AI Platform Push failed: {}'.format(e))
-  with telemetry_utils.scoped_labels(
-      {telemetry_utils.LABEL_TFX_EXECUTOR: executor_class_path}):
-    job_labels = telemetry_utils.get_labels_dict()
+  if not skip_model_creation:
+    create_model_for_aip_prediction_if_not_exist(api, job_labels,
+                                                 ai_platform_serving_args)
   body = {
       'name': model_version,
       'deployment_uri': serving_path,
@@ -322,29 +415,98 @@ def deploy_model_for_aip_prediction(
 
   # Push to AIP, and record the operation name so we can poll for its state.
   model_name = 'projects/{}/models/{}'.format(project_id, model_name)
-  response = api.projects().models().versions().create(
-      body=body, parent=model_name).execute()
-  op_name = response['name']
+  try:
+    operation = api.projects().models().versions().create(
+        body=body, parent=model_name).execute()
+    _wait_for_operation(api, operation, 'projects.models.versions.create')
+  except errors.HttpError as e:
+    # If the error is to create an already existing model version, it's ok to
+    # ignore.
+    if e.resp.status == 409:
+      logging.warn('Model version %s already exists', model_version)
+    else:
+      raise RuntimeError('Creating model verseion to AI Platform failed: {}'
+                         .format(e))
 
-  deploy_status_resc = api.projects().operations().get(name=op_name)
-  while not deploy_status_resc.execute().get('done'):
-    time.sleep(_POLLING_INTERVAL_IN_SECONDS)
-    logging.info('Model still being deployed...')
-
-  deploy_status = deploy_status_resc.execute()
-
-  if deploy_status.get('error'):
-    # The operation completed with an error.
-    raise RuntimeError(
-        'Failed to deploy model to AI Platform for serving: {}'.format(
-            deploy_status['error']))
-
-  # Set the new version as default.
-  # By API specification, if Long-Running-Operation is done and there is
-  # no error, 'response' is guaranteed to exist.
-  api.projects().models().versions().setDefault(name='{}/versions/{}'.format(
-      model_name, deploy_status['response']['name'])).execute()
+  if set_default_version:
+    # Set the new version as default.
+    # By API specification, if Long-Running-Operation is done and there is
+    # no error, 'response' is guaranteed to exist.
+    api.projects().models().versions().setDefault(name='{}/versions/{}'.format(
+        model_name, model_version)).execute()
 
   logging.info(
       'Successfully deployed model %s with version %s, serving from %s',
       model_name, model_version, serving_path)
+
+
+def delete_model_version_from_aip_if_exists(
+    api: discovery.Resource,
+    model_version: Text,
+    ai_platform_serving_args: Dict[Text, Any],
+) -> None:
+  """Deletes a model version from Google Cloud AI Platform if version exists.
+
+  Args:
+    api: Google API client resource.
+    model_version: Version of the model being deleted.
+    ai_platform_serving_args: Dictionary containing arguments for pushing to AI
+      Platform. For the full set of parameters supported, refer to
+      https://cloud.google.com/ml-engine/reference/rest/v1/projects.models
+
+  Raises:
+    RuntimeError: if an error is encountered when trying to delete.
+  """
+  logging.info('Deleting model version %s from AI Platform: %s', model_version,
+               ai_platform_serving_args)
+  model_name = ai_platform_serving_args['model_name']
+  project_id = ai_platform_serving_args['project_id']
+  version_name = 'projects/{}/models/{}/versions/{}'.format(
+      project_id, model_name, model_version)
+  try:
+    operation = api.projects().models().versions().delete(
+        name=version_name).execute()
+    _wait_for_operation(api, operation, 'projects.models.versions.delete')
+  except errors.HttpError as e:
+    # If the error is to delete an non-exist model version, it's ok to ignore.
+    if e.resp.status == 404:
+      logging.warn('Model version %s does not exist', version_name)
+    if e.resp.status == 400:
+      logging.warn('Model version %s won\'t be deleted because it is the '
+                   'default version and not the only version in the model',
+                   version_name)
+    else:
+      raise RuntimeError(
+          'Deleting model version {} from AI Platform failed: {}'.format(
+              version_name, e))
+
+
+def delete_model_from_aip_if_exists(
+    api: discovery.Resource,
+    ai_platform_serving_args: Dict[Text, Any],
+) -> None:
+  """Deletes a model from Google Cloud AI Platform if exists.
+
+  Args:
+    api: Google API client resource.
+    ai_platform_serving_args: Dictionary containing arguments for pushing to AI
+      Platform. For the full set of parameters supported, refer to
+      https://cloud.google.com/ml-engine/reference/rest/v1/projects.models
+
+  Raises:
+    RuntimeError: if an error is encountered when trying to delete.
+  """
+  logging.info('Deleting model with from AI Platform: %s',
+               ai_platform_serving_args)
+  model_name = ai_platform_serving_args['model_name']
+  project_id = ai_platform_serving_args['project_id']
+  name = 'projects/{}/models/{}'.format(project_id, model_name)
+  try:
+    operation = api.projects().models().delete(name=name).execute()
+    _wait_for_operation(api, operation, 'projects.models.delete')
+  except errors.HttpError as e:
+    # If the error is to delete an non-exist model, it's ok to ignore.
+    if e.resp.status == 404:
+      logging.warn('Model %s does not exist', model_name)
+    else:
+      raise RuntimeError('Deleting model from AI Platform failed: {}'.format(e))
