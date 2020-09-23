@@ -1,7 +1,7 @@
 # Version 0.23.1
 
 ## Major Features and Improvements
-* N/A
+*   Added Python 3.8 support.
 
 ## Bug fixes and other changes
 *   Depends on `apache-beam[gcp]>=2.24,<3`.
