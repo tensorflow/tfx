@@ -22,14 +22,12 @@ def make_required_install_packages():
   return [
       'absl-py>=0.7,<0.9',
       # LINT.IfChange
-      'apache-beam[gcp]>=2.23,<3',
+      'apache-beam[gcp]>=2.24,<3',
       # LINT.ThenChange(examples/chicago_taxi_pipeline/setup/setup_beam.sh)
       'attrs>=19.3.0,<20',
       'click>=7,<8',
       'docker>=4.1,<5',
       'google-api-python-client>=1.7.8,<2',
-      # TODO(b/162371496): remove pinned google-resumable-media
-      'google-resumable-media>=0.6.0,<0.7.0',
       'grpcio>=1.28.1,<2',
       'jinja2>=2.7.3,<3',
       'keras-tuner>=1,<2',
@@ -42,7 +40,7 @@ def make_required_install_packages():
       'pyyaml>=3.12,<6',
       'six>=1.10,<2',
       'tensorflow>=1.15.2,!=2.0.*,!=2.1.*,!=2.2.*,<3',
-      'tensorflow-data-validation>=0.23,<0.24',
+      'tensorflow-data-validation>=0.23.1,<0.24',
       'tensorflow-model-analysis>=0.23,<0.24',
       'tensorflow-serving-api>=1.15,!=2.0.*,!=2.1.*,!=2.2.*,<3',
       'tensorflow-transform>=0.23,<0.24',
