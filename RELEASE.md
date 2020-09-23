@@ -4,6 +4,7 @@
 *   Added Python 3.8 support.
 
 ## Bug fixes and other changes
+*   Stopped depending on `google-resumable-media`.
 *   Depends on `apache-beam[gcp]>=2.24,<3`.
 *   Depends on `tensorflow-data-validation>=0.23.1,<0.24`.
 
