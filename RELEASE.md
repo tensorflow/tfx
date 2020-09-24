@@ -1,7 +1,7 @@
 # Version 0.23.1
-
+*   This is a bug fix version (to resolve impossible dependency conflicts).
 ## Major Features and Improvements
-*   Added Python 3.8 support.
+*   N/A
 
 ## Bug fixes and other changes
 *   Stopped depending on `google-resumable-media`.
@@ -9,16 +9,16 @@
 *   Depends on `tensorflow-data-validation>=0.23.1,<0.24`.
 
 ## Breaking changes
-* N/A
+*   N/A
 
 ### For pipeline authors
-* N/A
+*   N/A
 
 ### For component authors
-* N/A
+*   N/A
 
 ## Documentation updates
-* N/A
+*   N/A
 
 ## Deprecations
 *   Deprecated Python 3.5 support.
