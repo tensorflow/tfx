@@ -38,14 +38,15 @@
 
 *   Supported CAIP Runtime 2.2 for online prediction pusher.
 *   Used 'python -m ' style for container entrypoints.
+*   Stopped depending on `google-resumable-media`.
 *   Stopped depending on `Werkzeug`.
 *   Depends on `absl-py>=0.9,<0.11`.
 *   Depends on `apache-beam[gcp]>=2.24,<3`.
 *   Depends on `ml-metadata>=0.24,<0.25`.
-*   Depends on `tensorflow-data-validation>=0.24,<0.25`.
-*   Depends on `tensorflow-model-analysis>=0.24.2,<0.25`.
-*   Depends on `tensorflow-transform>=0.24,<0.25`.
-*   Depends on `tfx-bsl>=0.24,<0.25`.
+*   Depends on `tensorflow-data-validation>=0.24.1,<0.25`.
+*   Depends on `tensorflow-model-analysis>=0.24.3,<0.25`.
+*   Depends on `tensorflow-transform>=0.24.1,<0.25`.
+*   Depends on `tfx-bsl>=0.24.1,<0.25`.
 
 ## Breaking changes
 
