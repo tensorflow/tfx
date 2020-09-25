@@ -6,6 +6,8 @@
     transformed example channels.
 *   Added support for processing specific spans in file-based ExampleGen with
     range configuration.
+*   Added Placeholder utility library. Placeholder can be used to represent
+    not-yet-available value at component authoring time.
 
 ## Breaking changes
 
