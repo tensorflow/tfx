@@ -180,6 +180,43 @@ class ExecutionLibTest(test_utils.TfxTest):
           [c.id for c in m.store.get_contexts_by_execution(execution.id)],
           context_ids)
 
+  def testGetExecutionsAssociatedWithAllContexts(self):
+    with metadata.Metadata(connection_config=self._connection_config) as m:
+      contexts = self._generate_contexts(m)
+      self.assertLen(contexts, 2)
+
+      # Create 2 executions and associate with one context each.
+      execution1 = execution_lib.prepare_execution(
+          m, metadata_store_pb2.ExecutionType(name='my_execution_type'),
+          metadata_store_pb2.Execution.RUNNING)
+      execution1 = execution_lib.put_execution(m, execution1, [contexts[0]])
+      execution2 = execution_lib.prepare_execution(
+          m, metadata_store_pb2.ExecutionType(name='my_execution_type'),
+          metadata_store_pb2.Execution.COMPLETE)
+      execution2 = execution_lib.put_execution(m, execution2, [contexts[1]])
+
+      # Create another execution and associate with both contexts.
+      execution3 = execution_lib.prepare_execution(
+          m, metadata_store_pb2.ExecutionType(name='my_execution_type'),
+          metadata_store_pb2.Execution.NEW)
+      execution3 = execution_lib.put_execution(m, execution3, contexts)
+
+      # Verify that the right executions are returned.
+      with self.subTest(for_contexts=(0,)):
+        executions = execution_lib.get_executions_associated_with_all_contexts(
+            m, [contexts[0]])
+        self.assertCountEqual([execution1.id, execution3.id],
+                              [e.id for e in executions])
+      with self.subTest(for_contexts=(1,)):
+        executions = execution_lib.get_executions_associated_with_all_contexts(
+            m, [contexts[1]])
+        self.assertCountEqual([execution2.id, execution3.id],
+                              [e.id for e in executions])
+      with self.subTest(for_contexts=(0, 1)):
+        executions = execution_lib.get_executions_associated_with_all_contexts(
+            m, contexts)
+        self.assertCountEqual([execution3.id], [e.id for e in executions])
+
 
 if __name__ == '__main__':
   tf.test.main()

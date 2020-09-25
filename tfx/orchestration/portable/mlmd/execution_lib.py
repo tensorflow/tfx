@@ -18,7 +18,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from typing import List, Mapping, MutableMapping, Optional, Sequence, Text, Tuple
+from typing import Iterable, List, Mapping, MutableMapping, Optional, Sequence, Text, Tuple
 
 from absl import logging
 from tfx import types
@@ -169,3 +169,26 @@ def put_execution(
     context.id = c_id
 
   return execution
+
+
+def get_executions_associated_with_all_contexts(
+    metadata_handler: metadata.Metadata,
+    contexts: Iterable[metadata_store_pb2.Context]
+) -> List[metadata_store_pb2.Execution]:
+  """Returns executions that are associated with all given contexts.
+
+  Args:
+    metadata_handler: A handler to access MLMD.
+    contexts: MLMD contexts for which to fetch associated executions.
+
+  Returns:
+    A list of executions associated with all given contexts.
+  """
+  executions_dict = None
+  for context in contexts:
+    executions = metadata_handler.store.get_executions_by_context(context.id)
+    if executions_dict is None:
+      executions_dict = {e.id: e for e in executions}
+    else:
+      executions_dict = {e.id: e for e in executions if e.id in executions_dict}
+  return list(executions_dict.values()) if executions_dict else []

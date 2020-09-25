@@ -59,16 +59,9 @@ def get_qualified_artifacts(
   if not artifact_type:
     return []
 
-  # Gets the executions that are associated with all contexts.
-  executions_dict = None
-  for context in contexts:
-    executions = metadata_handler.store.get_executions_by_context(context.id)
-    if executions_dict is None:
-      executions_dict = {e.id: e for e in executions}
-    else:
-      executions_dict = {e.id: e for e in executions if e.id in executions_dict}
-
-  executions_within_context = executions_dict.values()  # pytype: disable=attribute-error
+  executions_within_context = (
+      execution_lib.get_executions_associated_with_all_contexts(
+          metadata_handler, contexts))
 
   # Filters out non-success executions.
   qualified_producer_executions = [
