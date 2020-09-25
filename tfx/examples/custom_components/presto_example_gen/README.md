@@ -30,8 +30,6 @@ source tfx_env/bin/activate
 First install the required packages.
 
 ```bash
-pip install apache-beam
-pip install tensorflow
 pip install tfx
 
 cd tfx/tfx/examples/custom_components/presto_example_gen

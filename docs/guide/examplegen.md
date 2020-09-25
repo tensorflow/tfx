@@ -6,9 +6,9 @@ other TFX components. It also provides consistent and configurable partition,
 and shuffles the dataset for ML best practice.
 
 *   Consumes: Data from external data sources such as CSV, `TFRecord`, Avro,
-    Parquet and BigQuery
+    Parquet and BigQuery.
 *   Emits: `tf.Example` records, `tf.SequenceExample` records, or proto format,
-    depends on the payload format.
+    depending on the payload format.
 
 ## ExampleGen and Other Components
 
@@ -18,6 +18,43 @@ ExampleGen provides data to components that make use of the
 [Example Validator](exampleval.md). It also provides data to
 [Transform](transform.md), which makes use of the [TensorFlow Transform](tft.md)
 library, and ultimately to deployment targets during inference.
+
+## Data Sources and Formats
+Currently a standard installation of TFX includes full ExampleGen components for
+these data sources and formats:
+
+* [CSV](https://github.com/tensorflow/tfx/tree/master/tfx/components/example_gen/csv_example_gen)
+* [tf.Record](https://github.com/tensorflow/tfx/tree/master/tfx/components/example_gen/import_example_gen)
+* [BigQuery](https://github.com/tensorflow/tfx/tree/master/tfx/extensions/google_cloud_big_query/example_gen)
+
+Custom executors are also available which enable the development of ExampleGen
+components for these data sources and formats:
+
+* [Avro](https://github.com/tensorflow/tfx/blob/master/tfx/components/example_gen/custom_executors/avro_executor.py)
+* [Parquet](https://github.com/tensorflow/tfx/blob/master/tfx/components/example_gen/custom_executors/parquet_executor.py)
+
+See the usage examples in the source code and
+[this discussion](/tfx/guide/examplegen#custom_examplegen) for more information on
+how to use and develop custom executors.
+
+Note: In most case it's better to inherit from `base_example_gen_executor`
+instead of `base_executor`. So following the Avro or Parquet example in the
+Executor source code may be advisable.
+
+In addition, these data sources and formats are available as
+[custom component](/tfx/guide/understanding_custom_components) examples:
+
+* [Presto](https://github.com/tensorflow/tfx/tree/master/tfx/examples/custom_components/presto_example_gen)
+
+### Ingesting data formats which are supported by Apache Beam
+
+Apache Beam supports ingesting data from a
+[broad range of data sources and formats](https://beam.apache.org/documentation/io/built-in/),
+including files, Avro, text, tf.Record, Parquet, S3, GCS, Hadoop, Kafka,
+PubSub, BigQuery, BigTable, Datastore, Mongo, and Flink.  These capabilities
+can be used to create ExampleGen components for TFX, which is demonstrated by
+some existing ExampleGen components such as
+[Avro](https://github.com/tensorflow/tfx/blob/675a5e1d1c2c3e095b9e12ea95700da21c5ebd69/tfx/components/example_gen/custom_executors/avro_executor.py#L57)
 
 ## How to use an ExampleGen Component
 
