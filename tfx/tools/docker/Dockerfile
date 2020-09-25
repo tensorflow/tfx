@@ -34,7 +34,7 @@ ENV TFX_SRC_DIR=/tfx-src
 ADD . ${TFX_SRC_DIR}
 WORKDIR ${TFX_SRC_DIR}
 
-RUN CFLAGS=$(/usr/bin/python-config --cflags) python -m pip install -e .
+RUN CFLAGS=$(/usr/bin/python-config --cflags) python -m pip install -e .[docker-image]
 
 # Patch http.py in googleapiclient and base_api.py in apitools
 # to use our own UserAgent.
