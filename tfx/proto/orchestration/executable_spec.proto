@@ -15,9 +15,21 @@ syntax = "proto3";
 
 package tfx.orchestration.executable_spec;
 
+import "tfx/proto/orchestration/placeholder.proto";
+
 // Specification for Python-class based executables.
 message PythonClassExecutableSpec {
   // The full class path of the executable.
   string class_path = 1;
 }
 
+// Specification for Container based executables.
+// This executable resembles the spec defined by TemplatedExecutorContainerSpec.
+message ContainerExecutableSpec {
+  // The uri of the container image.
+  string image = 1;
+  // The commands of the container.
+  repeated PlaceholderExpression commands = 2;
+  // The args of the container entrypoint.
+  repeated PlaceholderExpression args = 3;
+}

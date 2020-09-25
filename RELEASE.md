@@ -6,6 +6,8 @@
     transformed example channels.
 *   Added support for processing specific spans in file-based ExampleGen with
     range configuration.
+*   Added ContainerExecutableSpec in portable IR to support container components
+    portable orchestrator.
 
 ## Breaking changes
 

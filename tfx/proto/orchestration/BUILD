@@ -47,6 +47,7 @@ tfx_py_proto_library(
 tfx_py_proto_library(
     name = "executable_spec_py_pb2",
     srcs = ["executable_spec.proto"],
+    deps = [":placeholder_py_pb2"],
 )
 
 tfx_py_proto_library(
