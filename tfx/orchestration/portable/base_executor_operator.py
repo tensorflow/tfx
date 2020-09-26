@@ -31,6 +31,7 @@ from ml_metadata.proto import metadata_store_pb2
 # retires of the same component run and pass it to executor operators for
 # human-readability purpose.
 # TODO(b/165359991): Restore 'auto_attribs=True' once we drop Python3.5 support.
+# LINT.IfChange
 @attr.s
 class ExecutionInfo:
   """A struct to store information for an execution."""
@@ -57,6 +58,9 @@ class ExecutionInfo:
   pipeline_info = attr.ib(type=pipeline_pb2.PipelineInfo, default=None)
 
 
+# LINT.ThenChange(../../proto/orchestration/executor_invocation.proto)
+
+
 class BaseExecutorOperator(six.with_metaclass(abc.ABCMeta, object)):
   """The base class of all executor operators."""
 
@@ -72,6 +76,7 @@ class BaseExecutorOperator(six.with_metaclass(abc.ABCMeta, object)):
       executor_spec: The specification of how to initialize the executor.
       platform_spec: The specification of how to allocate resource for the
         executor.
+
     Raises:
       RuntimeError: if the executor_spec or platform_spec is not supported.
     """
