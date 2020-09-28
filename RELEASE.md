@@ -14,6 +14,7 @@
 *   Depends on `absl-py>=0.9,<0.11`.
 *   Depends on `apache-beam[gcp]>=2.24,<3`.
 *   Depends on `ml-metadata>=0.24,<0.25`.
+*   Depends on `protobuf>=3.12.2,<4`.
 *   Depends on `tensorflow-data-validation>=0.24,<0.25`.
 *   Depends on `tensorflow-model-analysis>=0.24.2,<0.25`.
 *   Depends on `tensorflow-transform>=0.24,<0.25`.
