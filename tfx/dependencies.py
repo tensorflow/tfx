@@ -63,9 +63,6 @@ def make_required_install_packages():
       'click>=7,<8',
       'docker>=4.1,<5',
       'google-api-python-client>=1.7.8,<2',
-      # TODO(b/162371496): remove pinned google-resumable-media presumably after
-      # apache-beam 2.24 release
-      'google-resumable-media>=1,<2',
       'grpcio>=1.28.1,<2',
       'jinja2>=2.7.3,<3',
       'keras-tuner>=1,<2',
@@ -82,20 +79,20 @@ def make_required_install_packages():
       'six>=1.10,<2',
       'tensorflow>=1.15.2,!=2.0.*,!=2.1.*,!=2.2.*,<3',
       'tensorflow-data-validation' + select_constraint(
-          default='>=0.24,<0.25',
+          default='>=0.24.1,<0.25',
           nightly='>=0.25.0.dev',
           git_master='@git+https://github.com/tensorflow/data-validation@master'),  # pylint: disable=line-too-long
       'tensorflow-model-analysis' + select_constraint(
-          default='>=0.24.2,<0.25',
+          default='>=0.24.3,<0.25',
           nightly='>=0.25.0.dev',
           git_master='@git+https://github.com/tensorflow/model-analysis@master'),  # pylint: disable=line-too-long
       'tensorflow-serving-api>=1.15,!=2.0.*,!=2.1.*,!=2.2.*,<3',
       'tensorflow-transform' + select_constraint(
-          default='>=0.24,<0.25',
+          default='>=0.24.1,<0.25',
           nightly='>=0.25.0.dev',
           git_master='@git+https://github.com/tensorflow/transform@master'),
       'tfx-bsl' + select_constraint(
-          default='>=0.24,<0.25',
+          default='>=0.24.1,<0.25',
           nightly='>=0.25.0.dev',
           git_master='@git+https://github.com/tensorflow/tfx-bsl@master'),
   ]
