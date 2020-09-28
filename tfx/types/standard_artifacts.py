@@ -42,6 +42,13 @@ SPLIT_NAMES_PROPERTY = Property(type=PropertyType.STRING)
 # Value for a string-typed artifact.
 STRING_VALUE_PROPERTY = Property(type=PropertyType.STRING)
 
+# Names of first party TFX artifact types.
+TFX_TYPE_NAMES = frozenset(
+    ('Examples', 'ExampleAnomalies', 'ExampleStatistics', 'ExternalArtifact',
+     'InferenceResult', 'InfraBlessing', 'Model', 'ModelRun', 'ModelBlessing',
+     'ModelEvaluation', 'PushedModel', 'Schema', 'TransformCache',
+     'TransformGraph', 'DataView'))
+
 
 class Examples(Artifact):
   TYPE_NAME = 'Examples'
@@ -192,8 +199,9 @@ class Float(ValueArtifact):
     # Note that float() can handle bytes, but Decimal() cannot.
     serialized_string = serialized_value.decode('utf-8')
     reserialized_string = str(result)
-    is_exact = (decimal.Decimal(serialized_string) ==
-                decimal.Decimal(reserialized_string))
+    is_exact = (
+        decimal.Decimal(serialized_string) == decimal.Decimal(
+            reserialized_string))
     if not is_exact:
       absl.logging.warning(
           'The number "%s" has lost precision when converted to float "%s"' %

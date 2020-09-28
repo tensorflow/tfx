@@ -18,7 +18,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from typing import Dict, List, Optional, Text
+from typing import Dict, Optional, Text
 
 from tfx import types
 from tfx.dsl.resolvers import base_resolver
@@ -37,63 +37,38 @@ class LatestArtifactsResolver(base_resolver.BaseResolver):
   def __init__(self, desired_num_of_artifacts: Optional[int] = 1):
     self._desired_num_of_artifact = desired_num_of_artifacts
 
-  def _resolve(self, input_dict: Dict[Text, List[types.Artifact]]):
-    result = {}
-    for k, artifact_list in input_dict.items():
-      sorted_artifact_list = sorted(
-          artifact_list, key=lambda a: a.id, reverse=True)
-      result[k] = sorted_artifact_list[:min(
-          len(sorted_artifact_list), self._desired_num_of_artifact)]
-    return result
-
   def resolve(
       self,
       pipeline_info: data_types.PipelineInfo,
       metadata_handler: metadata.Metadata,
       source_channels: Dict[Text, types.Channel],
   ) -> base_resolver.ResolveResult:
+    artifacts_dict = {}
+    resolve_state_dict = {}
     pipeline_context = metadata_handler.get_pipeline_context(pipeline_info)
     if pipeline_context is None:
       raise RuntimeError('Pipeline context absent for %s' % pipeline_context)
-
-    candidate_dict = {}
     for k, c in source_channels.items():
-      cancidate_artifacts = metadata_handler.get_qualified_artifacts(
+      candidate_artifacts = metadata_handler.get_qualified_artifacts(
           contexts=[pipeline_context],
           type_name=c.type_name,
           producer_component_id=c.producer_component_id,
           output_key=c.output_key)
-      candidate_dict[k] = [
-          artifact_utils.deserialize_artifact(a.type, a.artifact)
-          for a in cancidate_artifacts
-      ]
-
-    resolved_dict = self._resolve(candidate_dict)
-    resolve_state_dict = {
-        k: len(artifact_list) >= self._desired_num_of_artifact
-        for k, artifact_list in resolved_dict.items()
-    }
+      previous_artifacts = sorted(
+          candidate_artifacts, key=lambda a: a.artifact.id, reverse=True)
+      if len(previous_artifacts) >= self._desired_num_of_artifact:
+        artifacts_dict[k] = [
+            artifact_utils.deserialize_artifact(a.type, a.artifact)
+            for a in previous_artifacts[:self._desired_num_of_artifact]
+        ]
+        resolve_state_dict[k] = True
+      else:
+        artifacts_dict[k] = [
+            artifact_utils.deserialize_artifact(a.type, a.artifact)
+            for a in previous_artifacts
+        ]
+        resolve_state_dict[k] = False
 
     return base_resolver.ResolveResult(
-        per_key_resolve_result=resolved_dict,
+        per_key_resolve_result=artifacts_dict,
         per_key_resolve_state=resolve_state_dict)
-
-  def resolve_artifacts(
-      self, metadata_handler: metadata.Metadata,
-      input_dict: Dict[Text, List[types.Artifact]]
-  ) -> Optional[Dict[Text, List[types.Artifact]]]:
-    """Resolves artifacts from channels by querying MLMD.
-
-    Args:
-      metadata_handler: A metadata handler to access MLMD store.
-      input_dict: The input_dict to resolve from.
-
-    Returns:
-      If `min_count` for every input is met, returns a
-      Dict[Text, List[Artifact]]. Otherwise, return None.
-    """
-    resolved_dict = self._resolve(input_dict)
-    all_min_count_met = all(
-        len(artifact_list) >= self._desired_num_of_artifact
-        for artifact_list in resolved_dict.values())
-    return resolved_dict if all_min_count_met else None

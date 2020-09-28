@@ -26,68 +26,9 @@ from tfx.components.model_validator import constants as model_validator
 from tfx.dsl.experimental import latest_blessed_model_resolver
 from tfx.orchestration import data_types
 from tfx.orchestration import metadata
-from tfx.proto.orchestration import pipeline_pb2
 from tfx.types import standard_artifacts
 
-from google.protobuf import text_format
 from ml_metadata.proto import metadata_store_pb2
-
-_PIPELING_INFO = text_format.Parse("""
-  id: "my_pipeline"
-""", pipeline_pb2.PipelineInfo())
-
-_PIPELINE_RUNTIME_SPEC = text_format.Parse(
-    """
-  pipeline_root {
-    field_value {
-      string_value: "/tmp"
-    }
-  }
-  pipeline_run_id {
-    field_value {
-      string_value: "my_run_id"
-    }
-  }
-""", pipeline_pb2.PipelineRuntimeSpec())
-
-_PIPLINE_NODE = text_format.Parse(
-    """
-  node_info {
-    id: "test_node"
-  }
-  inputs {
-    inputs {
-      key: "model"
-      value {
-        channels {
-          artifact_query {
-            type {
-              name: "Model"
-            }
-          }
-          producer_node_query {
-            id: "my_component"
-          }
-        }
-      }
-    }
-    inputs {
-      key: "model_blessing"
-      value {
-        channels {
-          artifact_query {
-            type {
-              name: "ModelBlessing"
-            }
-          }
-          producer_node_query {
-            id: "my_component"
-          }
-        }
-      }
-    }
-  }
-""", pipeline_pb2.PipelineNode())
 
 
 class LatestBlessedModelResolverTest(tf.test.TestCase):
@@ -167,35 +108,6 @@ class LatestBlessedModelResolverTest(tf.test.TestCase):
           for a in resolve_result.per_key_resolve_result['model']
       ], ['model_two'])
       self.assertTrue(resolve_result.per_key_resolve_state['model'])
-
-  def testGetLatestBlessedModelArtifact_IrMode(self):
-    with metadata.Metadata(connection_config=self._connection_config) as m:
-      # Model with id 1, will be blessed.
-      model_one = standard_artifacts.Model()
-      model_one.uri = 'model_one'
-      model_one.id = 1
-      # Model with id 2, will be blessed.
-      model_two = standard_artifacts.Model()
-      model_two.uri = 'model_two'
-      model_two.id = 2
-      # Model with id 3, will not be blessed.
-      model_three = standard_artifacts.Model()
-      model_three.uri = 'model_three'
-      model_three.id = 3
-
-      model_blessing_one = standard_artifacts.ModelBlessing()
-      self._set_model_blessing_bit(model_blessing_one, model_one.id, 1)
-      model_blessing_two = standard_artifacts.ModelBlessing()
-      self._set_model_blessing_bit(model_blessing_two, model_two.id, 1)
-
-      resolver = latest_blessed_model_resolver.LatestBlessedModelResolver()
-      result = resolver.resolve_artifacts(
-          m, {
-              'model': [model_one, model_two, model_three],
-              'model_blessing': [model_blessing_one, model_blessing_two]
-          })
-      self.assertIsNotNone(result)
-      self.assertEqual([a.uri for a in result['model']], ['model_two'])
 
 
 if __name__ == '__main__':

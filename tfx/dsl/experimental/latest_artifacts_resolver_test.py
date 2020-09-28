@@ -80,24 +80,6 @@ class LatestArtifactsResolverTest(tf.test.TestCase):
       ], [expected_artifact.uri])
       self.assertTrue(resolve_result.per_key_resolve_state['input'])
 
-  def testGetLatestArtifact_IrMode(self):
-    with metadata.Metadata(connection_config=self._connection_config) as m:
-      artifact_one = standard_artifacts.Examples()
-      artifact_one.uri = 'uri_one'
-      artifact_one.id = 1
-      artifact_two = standard_artifacts.Examples()
-      artifact_two.uri = 'uri_two'
-      artifact_one.id = 2
-
-      expected_artifact = max(artifact_one, artifact_two, key=lambda a: a.id)
-
-      resolver = latest_artifacts_resolver.LatestArtifactsResolver()
-      result = resolver.resolve_artifacts(
-          m, {'input': [artifact_two, artifact_one]})
-      self.assertIsNotNone(result)
-      self.assertEqual([a.uri for a in result['input']],
-                       [expected_artifact.uri])
-
 
 if __name__ == '__main__':
   tf.test.main()

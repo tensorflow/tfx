@@ -28,22 +28,22 @@ PORTABLE_LAUNCHER_BINARY = 'python_executor_binary.par'
 
 def _build_artifact_dict(proto_dict):
   """Build ExecutionInfo input/output artifact dicts."""
-  result = {}
+  artifact_dict = {}
   for k, v in proto_dict.items():
-    result[k] = []
+    artifact_dict[k] = []
     for artifact_struct in v.elements:
       if not artifact_struct.HasField('artifact'):
         raise RuntimeError('Only support artifact oneof field')
       artifact_and_type = artifact_struct.artifact
-      result[k].append(
+      artifact_dict[k].append(
           artifact_utils.deserialize_artifact(artifact_and_type.type,
                                               artifact_and_type.artifact))
-  return result
+  return artifact_dict
 
 
 def _build_proto_artifact_dict(artifact_dict):
   """Build PythonExecutorExecutionInfo input/output artifact dicts."""
-  result = {}
+  proto_dict = {}
   for k, v in artifact_dict.items():
     artifact_list = metadata_store_service_pb2.ArtifactStructList()
     for artifact in v:
@@ -51,21 +51,21 @@ def _build_proto_artifact_dict(artifact_dict):
           artifact=metadata_store_service_pb2.ArtifactAndType(
               artifact=artifact.mlmd_artifact, type=artifact.artifact_type))
       artifact_list.elements.append(artifact_struct)
-    result[k] = artifact_list
-  return result
+    proto_dict[k] = artifact_list
+  return proto_dict
 
 
 def _build_exec_property_dict(proto_dict):
   """Build ExecutionInfo.exec_properties."""
-  result = {}
+  exec_property_dict = {}
   for k, v in proto_dict.items():
-    result[k] = getattr(v, v.WhichOneof('value'))
-  return result
+    exec_property_dict[k] = getattr(v, v.WhichOneof('value'))
+  return exec_property_dict
 
 
 def _build_proto_exec_property_dict(exec_properties):
   """Build PythonExecutorExecutionInfo.execution_properties."""
-  result = {}
+  proto_dict = {}
   for k, v in exec_properties.items():
     value = metadata_store_pb2.Value()
     if isinstance(v, str):
@@ -76,8 +76,8 @@ def _build_proto_exec_property_dict(exec_properties):
       value.double_value = v
     else:
       raise RuntimeError('Unsupported type {} for key {}'.format(type(v), k))
-    result[k] = value
-  return result
+    proto_dict[k] = value
+  return proto_dict
 
 
 def deserialize_execution_info(
@@ -85,16 +85,18 @@ def deserialize_execution_info(
   """De-serialize the ExecutionInfo class from a binary string."""
   execution_info_proto = executor_invocation_pb2.ExecutorInvocation.FromString(
       base64.b64decode(execution_info_b64))
-  result = base_executor_operator.ExecutionInfo(
+  execution_info = base_executor_operator.ExecutionInfo(
       executor_output_uri=execution_info_proto.output_metadata_uri,
       stateful_working_dir=execution_info_proto.stateful_working_dir)
 
-  result.exec_properties = _build_exec_property_dict(
+  execution_info.exec_properties = _build_exec_property_dict(
       execution_info_proto.execution_properties)
 
-  result.input_dict = _build_artifact_dict(execution_info_proto.input_dict)
-  result.output_dict = _build_artifact_dict(execution_info_proto.output_dict)
-  return result
+  execution_info.input_dict = _build_artifact_dict(
+      execution_info_proto.input_dict)
+  execution_info.output_dict = _build_artifact_dict(
+      execution_info_proto.output_dict)
+  return execution_info
 
 
 def serialize_execution_info(

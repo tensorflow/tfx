@@ -134,52 +134,6 @@ class InputsUtilsTest(test_utils.TfxTest):
       self.assertIsNone(
           inputs_utils.resolve_input_artifacts(m, my_trainer.inputs))
 
-  def testResolverWithResolverPolicy(self):
-    pipeline = pipeline_pb2.Pipeline()
-    self.load_proto_from_text(
-        os.path.join(self._testdata_dir,
-                     'pipeline_for_input_resolver_test.pbtxt'), pipeline)
-    my_example_gen = pipeline.nodes[0].pipeline_node
-    my_transform = pipeline.nodes[2].pipeline_node
-
-    connection_config = metadata_store_pb2.ConnectionConfig()
-    connection_config.sqlite.SetInParent()
-    with metadata.Metadata(connection_config=connection_config) as m:
-      # Publishes first ExampleGen with two output channels. `output_examples`
-      # will be consumed by downstream Transform.
-      output_example_1 = types.Artifact(
-          my_example_gen.outputs.outputs['output_examples'].artifact_spec.type)
-      output_example_1.uri = 'my_examples_uri_1'
-
-      output_example_2 = types.Artifact(
-          my_example_gen.outputs.outputs['output_examples'].artifact_spec.type)
-      output_example_2.uri = 'my_examples_uri_2'
-
-      contexts = context_lib.register_contexts_if_not_exists(
-          m, my_example_gen.contexts)
-      execution = execution_publish_utils.register_execution(
-          m, my_example_gen.node_info.type, contexts)
-      execution_publish_utils.publish_succeeded_execution(
-          m, execution.id, contexts, {
-              'output_examples': [output_example_1, output_example_2],
-          })
-
-      my_transform.inputs.resolver_config.resolver_policy = (
-          pipeline_pb2.ResolverConfig.LATEST_ARTIFACT)
-
-      # Gets inputs for transform. Should get back what the first ExampleGen
-      # published in the `output_examples` channel.
-      transform_inputs = inputs_utils.resolve_input_artifacts(
-          m, my_transform.inputs)
-      self.assertEqual(len(transform_inputs), 1)
-      self.assertEqual(len(transform_inputs['examples']), 1)
-      self.assertProtoPartiallyEquals(
-          transform_inputs['examples'][0].mlmd_artifact,
-          output_example_2.mlmd_artifact,
-          ignored_fields=[
-              'create_time_since_epoch', 'last_update_time_since_epoch'
-          ])
-
   def testResolveInputArtifactsOutputKeyUnset(self):
     pipeline = pipeline_pb2.Pipeline()
     self.load_proto_from_text(

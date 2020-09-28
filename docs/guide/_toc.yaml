@@ -6,14 +6,14 @@ toc:
   style: divider
 - title: "Automatic Hyperparameter Tuning"
   path: /tfx/guide/tuner
-- title: "Custom Splits Support for ExampleGen and its Downstream Components"
-  path: /tfx/guide/examplegen#custom-inputoutput-split
 - title: "Using Keras with TFX"
   path: /tfx/guide/keras
 - title: "Using TFX in Cloud AI Platform Pipelines"
   path: /tfx/tutorials/tfx/cloud-ai-platform-pipelines
 - title: "Mobile & IoT: TFX for TensorFlow Lite"
   path: /tfx/tutorials/tfx/tfx_for_mobile
+- title: "Using InfraValidator to safely deploy models in production"
+  path: /tfx/guide/infra_validator
 
 - heading: "TFX Pipelines"
   style: divider

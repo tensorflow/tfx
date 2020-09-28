@@ -18,7 +18,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from typing import Dict, List, Text, Optional
+from typing import Dict, Text
 
 from tfx import types
 from tfx.components.evaluator import constants as evaluator
@@ -35,33 +35,6 @@ class LatestBlessedModelResolver(base_resolver.BaseResolver):
   Note that this Resolver is experimental and is subject to change in terms of
   both interface and implementation.
   """
-
-  def _resolve(self, input_dict: Dict[Text, List[types.Artifact]],
-               model_channel_key: Text, model_blessing_channel_key: Text):
-    all_models = input_dict[model_channel_key]
-    all_models.sort(key=lambda a: a.id, reverse=True)
-    all_model_blessings = input_dict[model_blessing_channel_key]
-
-    # Makes a dict of {model_id : ModelBlessing artifact} for blessed models.
-    all_blessed_model_ids = dict(
-        (  # pylint: disable=g-complex-comprehension
-            a.get_int_custom_property(
-                evaluator.ARTIFACT_PROPERTY_CURRENT_MODEL_ID_KEY), a)
-        for a in all_model_blessings
-        if a.get_int_custom_property(
-            evaluator.ARTIFACT_PROPERTY_BLESSED_KEY) == 1)
-
-    result = {model_channel_key: [], model_blessing_channel_key: []}
-    # Iterates all models, if blessed, set as result. As the model list was
-    # sorted, it is guaranteed to get the latest blessed model.
-    for model in all_models:
-      if model.id in all_blessed_model_ids:
-        result[model_channel_key] = [model]
-        model_blessing = all_blessed_model_ids[model.id]
-        result[model_blessing_channel_key] = [model_blessing]
-        break
-
-    return result
 
   def resolve(
       self,
@@ -92,77 +65,49 @@ class LatestBlessedModelResolver(base_resolver.BaseResolver):
     if pipeline_context is None:
       raise RuntimeError('Pipeline context absent for %s' % pipeline_context)
 
-    candidate_dict = {}
     # Gets all models in the search space and sort in reverse order by id.
     all_models = metadata_handler.get_qualified_artifacts(
         contexts=[pipeline_context],
         type_name=model_channel.type_name,
         producer_component_id=model_channel.producer_component_id,
         output_key=model_channel.output_key)
-    candidate_dict[model_channel_key] = [
-        artifact_utils.deserialize_artifact(a.type, a.artifact)
-        for a in all_models
-    ]
+    all_models.sort(key=lambda a: a.artifact.id, reverse=True)
     # Gets all ModelBlessing artifacts in the search space.
     all_model_blessings = metadata_handler.get_qualified_artifacts(
         contexts=[pipeline_context],
         type_name=model_blessing_channel.type_name,
         producer_component_id=model_blessing_channel.producer_component_id,
         output_key=model_blessing_channel.output_key)
-    candidate_dict[model_blessing_channel_key] = [
-        artifact_utils.deserialize_artifact(a.type, a.artifact)
+    # Makes a dict of {model_id : ModelBlessing artifact} for blessed models.
+    all_blessed_model_ids = dict(
+        (  # pylint: disable=g-complex-comprehension
+            a.artifact.custom_properties[
+                evaluator.ARTIFACT_PROPERTY_CURRENT_MODEL_ID_KEY].int_value, a)
         for a in all_model_blessings
-    ]
+        if a.artifact.custom_properties[
+            evaluator.ARTIFACT_PROPERTY_BLESSED_KEY].int_value == 1)
 
-    resolved_dict = self._resolve(candidate_dict, model_channel_key,
-                                  model_blessing_channel_key)
+    artifacts_dict = {model_channel_key: [], model_blessing_channel_key: []}
     resolve_state_dict = {
-        k: bool(artifact_list) for k, artifact_list in resolved_dict.items()
+        model_channel_key: False,
+        model_blessing_channel_key: False
     }
+    # Iterates all models, if blessed, set as result. As the model list was
+    # sorted, it is guaranteed to get the latest blessed model.
+    for model in all_models:
+      if model.artifact.id in all_blessed_model_ids:
+        artifacts_dict[model_channel_key] = [
+            artifact_utils.deserialize_artifact(model.type, model.artifact)
+        ]
+        model_blessing = all_blessed_model_ids[model.artifact.id]
+        artifacts_dict[model_blessing_channel_key] = [
+            artifact_utils.deserialize_artifact(model_blessing.type,
+                                                model_blessing.artifact)
+        ]
+        resolve_state_dict[model_channel_key] = True
+        resolve_state_dict[model_blessing_channel_key] = True
+        break
 
     return base_resolver.ResolveResult(
-        per_key_resolve_result=resolved_dict,
+        per_key_resolve_result=artifacts_dict,
         per_key_resolve_state=resolve_state_dict)
-
-  def resolve_artifacts(
-      self, metadata_handler: metadata.Metadata,
-      input_dict: Dict[Text, List[types.Artifact]]
-  ) -> Optional[Dict[Text, List[types.Artifact]]]:
-    """Resolves artifacts from channels by querying MLMD.
-
-    Args:
-      metadata_handler: A metadata handler to access MLMD store.
-      input_dict: The input_dict to resolve from.
-
-    Returns:
-      If `min_count` for every input is met, returns a
-      Dict[Text, List[Artifact]]. Otherwise, return None.
-
-    Raises:
-      RuntimeError: if input_dict contains unsupported artifact types.
-    """
-    model_channel_key = None
-    model_blessing_channel_key = None
-    assert len(input_dict) == 2, 'Expecting 2 input Channels'
-    for k, artifact_list in input_dict.items():
-      if not artifact_list:
-        # If model or model blessing channel has no artifacts, the min_count
-        # can not be met, short cut to return None here.
-        return None
-      artifact = artifact_list[0]
-      if issubclass(type(artifact), standard_artifacts.Model):
-        model_channel_key = k
-      elif issubclass(type(artifact), standard_artifacts.ModelBlessing):
-        model_blessing_channel_key = k
-      else:
-        raise RuntimeError('Only expecting Model or ModelBlessing, got %s' %
-                           artifact.TYPE_NAME)
-    assert model_channel_key is not None, 'Expecting Model as input'
-    assert model_blessing_channel_key is not None, ('Expecting ModelBlessing as'
-                                                    ' input')
-
-    resolved_dict = self._resolve(input_dict, model_channel_key,
-                                  model_blessing_channel_key)
-    all_min_count_met = all(
-        bool(artifact_list) for artifact_list in resolved_dict.values())
-    return resolved_dict if all_min_count_met else None

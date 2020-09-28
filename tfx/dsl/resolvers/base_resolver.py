@@ -19,14 +19,13 @@ from __future__ import division
 from __future__ import print_function
 
 import abc
-from typing import Dict, List, Optional, Text
+from typing import Dict, List, Text
 
 from six import with_metaclass
+
 from tfx import types
 from tfx.orchestration import data_types
 from tfx.orchestration import metadata
-
-from tensorflow.python.util import deprecation  # pylint: disable=g-direct-tensorflow-import
 
 
 class ResolveResult(object):
@@ -52,14 +51,12 @@ class BaseResolver(with_metaclass(abc.ABCMeta, object)):
   """Base class for resolver.
 
   Resolver is the logical unit that will be used optionally for input selection.
-  A resolver subclass must override the resolve_artifacts() function which takes
-  a dict of <Text, List<types.Artifact>> as parameters and return the resolved
-  dict.
+  A resolver subclass must override the resolve() function which takes a
+  read-only MLMD handler and a dict of <key, Channel> as parameters and produces
+  a ResolveResult instance.
   """
 
-  @deprecation.deprecated(
-      date='2020-09-24',
-      instructions='Please switch to the `resolve_artifacts`.')
+  @abc.abstractmethod
   def resolve(
       self,
       pipeline_info: data_types.PipelineInfo,
@@ -78,24 +75,5 @@ class BaseResolver(with_metaclass(abc.ABCMeta, object)):
     Returns:
       a ResolveResult instance.
 
-    Raises:
-      DeprecationWarning: when it is called.
-    """
-    raise DeprecationWarning
-
-  @abc.abstractmethod
-  def resolve_artifacts(
-      self, metadata_handler: metadata.Metadata,
-      input_dict: Dict[Text, List[types.Artifact]]
-  ) -> Optional[Dict[Text, List[types.Artifact]]]:
-    """Resolves artifacts from channels by querying MLMD.
-
-    Args:
-      metadata_handler: A metadata handler to access MLMD store.
-      input_dict: The input_dict to resolve from.
-
-    Returns:
-      If all entries has enough data after the resolving, returns the resolved
-      input_dict. Otherise, return None.
     """
     raise NotImplementedError

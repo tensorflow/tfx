@@ -18,14 +18,13 @@ from typing import Dict, Iterable, List, Optional
 from absl import logging
 from tfx import types
 from tfx.orchestration import metadata
-from tfx.orchestration.portable import resolver_processor
 from tfx.orchestration.portable.mlmd import common_utils
 from tfx.orchestration.portable.mlmd import event_lib
 from tfx.orchestration.portable.mlmd import execution_lib
 from tfx.proto.orchestration import pipeline_pb2
 from tfx.types import artifact_utils
-
 import ml_metadata as mlmd
+
 from ml_metadata.proto import metadata_store_pb2
 
 
@@ -139,10 +138,7 @@ def resolve_input_artifacts(
           'got %d', key, input_spec.min_count, len(result[key]))
       all_input_satisfied = False
 
-  result = {k: list(v) for k, v in result.items()}
-
-  resolver = resolver_processor.ResolverProcessor(node_inputs)
-  return (resolver.ResolveInputs(metadata_handler, result)
+  return ({k: list(v) for k, v in result.items()}
           if all_input_satisfied else None)
 
 
