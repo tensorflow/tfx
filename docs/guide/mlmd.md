@@ -4,67 +4,59 @@
 recording and retrieving metadata associated with ML developer and data
 scientist workflows. MLMD is an integral part of
 [TensorFlow Extended (TFX)](https://www.tensorflow.org/tfx), but is designed so
-that it can be used independently. As part of the broader TFX platform, most
-users only interact with MLMD when examining the results of pipeline components,
-for example in notebooks or in TensorBoard.
+that it can be used independently.
 
-The graph below shows the components that are part of MLMD. The storage backend
-is pluggable and can be extended. MLMD provides reference implementations for
-SQLite (which supports in-memory and disk) and MySQL out of the box. The
-MetadataStore provides APIs to record and retrieve metadata to and from the
-storage backend. MLMD can register:
+Every run of a production ML pipeline generates metadata containing information
+about the various pipeline components, their executions (e.g. training runs),
+and resulting artifacts(e.g. trained models). In the event of unexpected
+pipeline behavior or errors, this metadata can be leveraged to analyze the
+lineage of pipeline components and debug issues.Think of this metadata as the
+equivalent of logging in software development.
 
--   metadata about the artifacts generated through the components/steps of the
-    pipelines
--   metadata about the executions of these components/steps
--   metadata about the pipeline and associated lineage information
+MLMD helps you understand and analyze all the interconnected parts of your ML
+pipeline instead of analyzing them in isolation and can help you answer
+questions about your ML pipeline such as:
 
-The concepts are explained in more detail below.
+*   Which dataset did the model train on?
+*   What were the hyperparameters used to train the model?
+*   Which pipeline run created the model?
+*   Which training run led to this model?
+*   Which version of TensorFlow created this model?
+*   When was the failed model pushed?
+
+## Metadata store
+
+MLMD registers the following types of metadata in a database called the
+**Metadata Store**.
+
+1.  Metadata about the artifacts generated through the components/steps of your
+    ML pipelines
+1.  Metadata about the executions of these components/steps
+1.  Metadata about pipelines and associated lineage information
+
+The Metadata Store provides APIs to record and retrieve metadata to and from the
+storage backend. The storage backend is pluggable and can be extended. MLMD
+provides reference implementations for SQLite (which supports in-memory and
+disk) and MySQL out of the box.
+
+This graphic shows a high-level overview of the various components that are part
+of MLMD.
 
 ![ML Metadata Overview](images/mlmd_overview.png)
 
-## Functionality Enabled by MLMD
+### Metadata storage backends and store connection configuration
 
-Tracking the inputs and outputs of all components/steps in an ML workflow and
-their lineage allows ML platforms to enable several important features. The
-following list provides a non-exhaustive overview of some of the major benefits.
-
-*   **List all Artifacts of a specific type.** Example: all Models that have
-    been trained.
-*   **Load two Artifacts of the same type for comparison.** Example: compare
-    results from two experiments.
-*   **Show a DAG of all related executions and their input and output artifacts
-    of a context.** Example: visualize the workflow of an experiment for
-    debugging and discovery.
-*   **Recurse back through all events to see how an artifact was created.**
-    Examples: see what data went into a model; enforce data retention plans.
-*   **Identify all artifacts that were created using a given artifact.**
-    Examples: see all Models trained from a specific dataset; mark models based
-    upon bad data.
-*   **Determine if an execution has been run on the same inputs before.**
-    Example: determine whether a component/step has already completed the same
-    work and the previous output can just be reused.
-*   **Record and query context of workflow runs.** Examples: track the owner and
-    changelist used for a workflow run; group the lineage by experiments; manage
-    artifacts by projects.
-
-## Metadata Storage Backends and Store Connection Configuration
-
-Before setting up the datastore, you will need to set up imports.
-
-```python
-from ml_metadata import metadata_store
-from ml_metadata.proto import metadata_store_pb2
-```
-
-The MetadataStore object receives a connection configuration that corresponds to
-the storage backend used.
+The `MetadataStore` object receives a connection configuration that corresponds
+to the storage backend used.
 
 *   **Fake Database** provides an in-memory DB (using SQLite) for fast
-    experimentation and local runs. Database is deleted when store object is
-    destroyed.
+    experimentation and local runs. The database is deleted when the store
+    object is destroyed.
 
 ```python
+import ml_metadata as mlmd
+from ml_metadata.proto import metadata_store_pb2
+
 connection_config = metadata_store_pb2.ConnectionConfig()
 connection_config.fake_database.SetInParent() # Sets an empty fake database proto.
 store = metadata_store.MetadataStore(connection_config)
@@ -91,58 +83,81 @@ connection_config.mysql.password = '...'
 store = metadata_store.MetadataStore(connection_config)
 ```
 
-## Metadata Store
-
-### Concepts
+## Data model
 
 The Metadata Store uses the following data model to record and retrieve metadata
 from the storage backend.
 
 *   `ArtifactType` describes an artifact's type and its properties that are
-    stored in the Metadata Store. These types can be registered on-the-fly with
-    the Metadata Store in code, or they can be loaded in the store from a
-    serialized format. Once a type is registered, its definition is available
+    stored in the metadata store. You can register these types on-the-fly with
+    the metadata store in code, or you can load them in the store from a
+    serialized format. Once you register a type, its definition is available
     throughout the lifetime of the store.
-*   `Artifact` describes a specific instances of an `ArtifactType`, and its
-    properties that are written to the Metadata Store.
-*   `ExecutionType` describes a type of component or step in a workflow, and its
-    runtime parameters.
-*   `Execution` is a record of a component run or a step in an ML workflow and
-    the runtime parameters. An Execution can be thought of as an instance of an
-    `ExecutionType`. Every time a developer runs an ML pipeline or step,
-    executions are recorded for each step.
-*   `Event` is a record of the relationship between an `Artifact` and
-    `Executions`. When an `Execution` happens, `Event`s record every Artifact
-    that was used by the `Execution`, and every `Artifact` that was produced.
-    These records allow for provenance tracking throughout a workflow. By
-    looking at all Events MLMD knows what Executions happened, what Artifacts
-    were created as a result, and can recurse back from any `Artifact` to all of
-    its upstream inputs.
-*   `ContextType` describes a type of conceptual group of `Artifacts` and
-    `Executions` in a workflow, and its structural properties. For example:
-    projects, pipeline runs, experiments, owners.
-*   `Context` is an instances of a `ContextType`. It captures the shared
+*   An `Artifact` describes a specific instance of an `ArtifactType`, and its
+    properties that are written to the metadata store.
+*   An `ExecutionType` describes a type of component or step in a workflow, and
+    its runtime parameters.
+*   An `Execution` is a record of a component run or a step in an ML workflow
+    and the runtime parameters. An execution can be thought of as an instance of
+    an `ExecutionType`. Executions are recorded when you run an ML pipeline or
+    step.
+*   An `Event` is a record of the relationship between artifacts and executions.
+    When an execution happens, events record every artifact that was used by the
+    execution, and every artifact that was produced. These records allow for
+    lineage tracking throughout a workflow. By looking at all events, MLMD knows
+    what executions happened and what artifacts were created as a result. MLMD
+    can then recurse back from any artifact to all of its upstream inputs.
+*   A `ContextType` describes a type of conceptual group of artifacts and
+    executions in a workflow, and its structural properties. For example:
+    projects, pipeline runs, experiments, owners etc.
+*   A `Context` is an instance of a `ContextType`. It captures the shared
     information within the group. For example: project name, changelist commit
-    id, experiment annotations. It has a user-defined unique name within its
+    id, experiment annotations etc. It has a user-defined unique name within its
     `ContextType`.
-*   `Attribution` is a record of the relationship between Artifacts and
-    Contexts.
-*   `Association` is a record of the relationship between Executions and
-    Contexts.
+*   An `Attribution` is a record of the relationship between artifacts and
+    contexts.
+*   An `Association` is a record of the relationship between executions and
+    contexts.
 
-### Tracking ML Workflows with ML Metadata
+## MLMD Functionality
 
-Below is a graph depicting how the low-level ML Metadata APIs can be used to
-track the execution of a training task, followed by code examples. Note that the
-code in this section shows the ML Metadata APIs to be used by ML platform
-developers to integrate their platform with ML Metadata, and not directly by
-developers. In addition, we will provide higher-level Python APIs that can be
-used by data scientists in notebook environments to record their experiment
-metadata.
+Tracking the inputs and outputs of all components/steps in an ML workflow and
+their lineage allows ML platforms to enable several important features. The
+following list provides a non-exhaustive overview of some of the major benefits.
+
+*   **List all Artifacts of a specific type.** Example: all Models that have
+    been trained.
+*   **Load two Artifacts of the same type for comparison.** Example: compare
+    results from two experiments.
+*   **Show a DAG of all related executions and their input and output artifacts
+    of a context.** Example: visualize the workflow of an experiment for
+    debugging and discovery.
+*   **Recurse back through all events to see how an artifact was created.**
+    Examples: see what data went into a model; enforce data retention plans.
+*   **Identify all artifacts that were created using a given artifact.**
+    Examples: see all Models trained from a specific dataset; mark models based
+    upon bad data.
+*   **Determine if an execution has been run on the same inputs before.**
+    Example: determine whether a component/step has already completed the same
+    work and the previous output can just be reused.
+*   **Record and query context of workflow runs.** Examples: track the owner and
+    changelist used for a workflow run; group the lineage by experiments; manage
+    artifacts by projects.
+
+See the [MLMD tutorial](../tutorials/mlmd/mlmd_tutorial) for an example that
+shows you how to use the MLMD API and the metadata store to retrieve lineage
+information.
+
+### Integrate ML Metadata into your ML Workflows
+
+If you are a platform developer interested in integrating MLMD into your system,
+use the example workflow below to use the low-level MLMD APIs to track the
+execution of a training task. You can also use higher-level Python APIs in
+notebook environments to record experiment metadata.
 
 ![ML Metadata Example Flow](images/mlmd_flow.png)
 
-1) Before executions can be recorded, ArtifactTypes have to be registered.
+1) Register artifact types
 
 ```python
 # Create ArtifactTypes, e.g., Data and Model
@@ -159,21 +174,20 @@ model_type.properties["name"] = metadata_store_pb2.STRING
 model_type_id = store.put_artifact_type(model_type)
 ```
 
-2) Before executions can be recorded, ExecutionTypes have to be registered for
-all steps in our ML workflow.
+2) Register execution types for all steps in the ML workflow
 
 ```python
-# Create ExecutionType, e.g., Trainer
+# Create an ExecutionType, e.g., Trainer
 trainer_type = metadata_store_pb2.ExecutionType()
 trainer_type.name = "Trainer"
 trainer_type.properties["state"] = metadata_store_pb2.STRING
 trainer_type_id = store.put_execution_type(trainer_type)
 ```
 
-3) Once types are registered, we create a DataSet Artifact.
+3) Create an artifact of DataSet ArtifactType
 
 ```python
-# Declare input artifact of type DataSet
+# Create an input artifact of type DataSet
 data_artifact = metadata_store_pb2.Artifact()
 data_artifact.uri = 'path/to/data'
 data_artifact.properties["day"].int_value = 1
@@ -182,34 +196,33 @@ data_artifact.type_id = data_type_id
 data_artifact_id = store.put_artifacts([data_artifact])[0]
 ```
 
-4) With the DataSet Artifact created, we can create the Execution for a Trainer
-run
+4) Create the execution for the Trainer run (typically a
+`tfx.components.Trainer` ExecutionType)
 
 ```python
-# Register the Execution of a Trainer run
 trainer_run = metadata_store_pb2.Execution()
 trainer_run.type_id = trainer_type_id
 trainer_run.properties["state"].string_value = "RUNNING"
 run_id = store.put_executions([trainer_run])[0]
 ```
 
-5) Declare input event and read data.
+5) Define the input event and read data
 
 ```python
-# Declare the input event
+# Define the input event
 input_event = metadata_store_pb2.Event()
 input_event.artifact_id = data_artifact_id
 input_event.execution_id = run_id
 input_event.type = metadata_store_pb2.Event.DECLARED_INPUT
 
-# Submit input event to the Metadata Store
+# Record the input event in the metadata store
 store.put_events([input_event])
 ```
 
-6) Now that the input is read, we declare the output artifact.
+6) Declare the output artifact
 
 ```python
-# Declare output artifact of type SavedModel
+# Declare the output artifact of type SavedModel
 model_artifact = metadata_store_pb2.Artifact()
 model_artifact.uri = 'path/to/model/file'
 model_artifact.properties["version"].int_value = 1
@@ -218,7 +231,7 @@ model_artifact.type_id = model_type_id
 model_artifact_id = store.put_artifacts([model_artifact])[0]
 ```
 
-7) With the Model Artifact created, we can record the output event.
+7) Record the output event
 
 ```python
 # Declare the output event
@@ -231,7 +244,7 @@ output_event.type = metadata_store_pb2.Event.DECLARED_OUTPUT
 store.put_events([output_event])
 ```
 
-8) Now that everything is recorded, the Execution can be marked as completed.
+8) Mark the execution as completed
 
 ```python
 trainer_run.id = run_id
@@ -239,11 +252,11 @@ trainer_run.properties["state"].string_value = "COMPLETED"
 store.put_executions([trainer_run])
 ```
 
-9) Then the artifacts and executions can be grouped to a Context (e.g.,
-experiment).
+9) Group artifacts and executions under a context using attributions and
+assertions artifacts
 
 ```python
-# Similarly, create a ContextType, e.g., Experiment with a `note` property
+# Create a ContextType, e.g., Experiment with a note property
 experiment_type = metadata_store_pb2.ContextType()
 experiment_type.name = "Experiment"
 experiment_type.properties["note"] = metadata_store_pb2.STRING
@@ -268,26 +281,29 @@ association.context_id = experiment_id
 store.put_attributions_and_associations([attribution], [association])
 ```
 
-### With remote grpc server
+## Use MLMD with a remote gRPC server
 
-1) Start a server with
+You can use MLMD with remote gRPC servers as shown below:
+
+*   Start a server
 
 ```bash
 bazel run -c opt --define grpc_no_ares=true  //ml_metadata/metadata_store:metadata_store_server
 ```
 
-2) Create the client stub and use it in python
+*   Create the client stub and use it in Python
 
 ```python
 from grpc import insecure_channel
 from ml_metadata.proto import metadata_store_pb2
 from ml_metadata.proto import metadata_store_service_pb2
 from ml_metadata.proto import metadata_store_service_pb2_grpc
+
 channel = insecure_channel('localhost:8080')
 stub = metadata_store_service_pb2_grpc.MetadataStoreServiceStub(channel)
 ```
 
-3) Use MLMD with RPC calls
+*   Use MLMD with RPC calls
 
 ```python
 # Create ArtifactTypes, e.g., Data and Model
@@ -295,15 +311,27 @@ data_type = metadata_store_pb2.ArtifactType()
 data_type.name = "DataSet"
 data_type.properties["day"] = metadata_store_pb2.INT
 data_type.properties["split"] = metadata_store_pb2.STRING
+
 request = metadata_store_service_pb2.PutArtifactTypeRequest()
 request.all_fields_match = True
 request.artifact_type.CopyFrom(data_type)
 stub.PutArtifactType(request)
+
 model_type = metadata_store_pb2.ArtifactType()
 model_type.name = "SavedModel"
 model_type.properties["version"] = metadata_store_pb2.INT
 model_type.properties["name"] = metadata_store_pb2.STRING
+
 request.artifact_type.CopyFrom(model_type)
 stub.PutArtifactType(request)
 ```
 
+## Resources
+
+The MLMD library has a high-level API that you can readily use with your ML
+pipelines. See the
+[MLMD API documentation](https://www.tensorflow.org/tfx/ml_metadata/api_docs/python/mlmd)
+for more details.
+
+Also check out the [MLMD tutorial](../tutorials/mlmd/mlmd_tutorial) to learn how
+to use MLMD to trace the lineage of your pipeline components.
