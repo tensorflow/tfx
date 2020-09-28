@@ -73,7 +73,7 @@ def make_required_install_packages():
           # LINT.ThenChange(opensource_only/build/tfx.workspace.bzl)
           nightly='>=0.25.0.dev',
           git_master='@git+https://github.com/google/ml-metadata@master'),
-      'protobuf>=3.7,<4',
+      'protobuf>=3.12.2,<4',
       'pyarrow>=0.17,<0.18',
       'pyyaml>=3.12,<6',
       'six>=1.10,<2',
