@@ -1,7 +1,0 @@
-{
-  "python.linting.pylintEnabled": true,
-  "python.formatting.provider": "yapf",
-  "python.formatting.yapfArgs": [
-    "--style={based_on_style: google, CONTINUATION_INDENT_WIDTH:2, indent_width: 2, COALESCE_BRACKETS: True, ALLOW_SPLIT_BEFORE_DICT_VALUE: False, COLUMN_LIMIT: 80}"
-],
-}
