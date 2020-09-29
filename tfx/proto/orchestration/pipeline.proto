@@ -214,6 +214,8 @@ message OutputSpec {
     ml_metadata.ArtifactType type = 1;
     // Additional properties to set when outputting artifacts.
     map<string, Value> additional_properties = 2;
+    // Additional custom properties to set when outputting artifacts.
+    map<string, Value> additional_custom_properties = 3;
   }
   ArtifactSpec artifact_spec = 1;
 }
