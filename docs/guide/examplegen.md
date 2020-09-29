@@ -148,9 +148,11 @@ the train and eval output split is generated with a 2:1 ratio.
 
 Please refer to
 [proto/example_gen.proto](https://github.com/tensorflow/tfx/blob/master/tfx/proto/example_gen.proto)
-for details.
+for ExampleGen's input and output split configuration. And refer to
+[downstream components guide](#examplegen_downstream_components) for utilizing
+the custom splits downstream.
 
-### Splitting Method
+#### Splitting Method
 
 When using `hash_buckets` splitting method, instead of the entire record, one
 can use a feature for partitioning the examples. If a feature is present,
