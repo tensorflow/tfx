@@ -78,6 +78,8 @@ def make_required_install_packages():
       'pyyaml>=3.12,<6',
       'six>=1.10,<2',
       'tensorflow>=1.15.2,!=2.0.*,!=2.1.*,!=2.2.*,<3',
+      # TODO(b/159488890): remove user module-only dependency.
+      'tensorflow-cloud>=0.1,<0.2',
       'tensorflow-data-validation' + select_constraint(
           default='>=0.24.1,<0.25',
           nightly='>=0.25.0.dev',

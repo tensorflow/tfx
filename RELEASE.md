@@ -19,6 +19,10 @@
 
 ## Bug fixes and other changes
 
+*  Introduced dependency to `tensorflow-cloud` Python package, with intention
+   to separate out Google Cloud Platform specific extensions.
+*  Depends on `tensorflow-cloud>=0.1,<0.2`.
+
 ### For pipeline authors
 
 ### For component authors

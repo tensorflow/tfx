@@ -116,22 +116,22 @@ trainer = Trainer(
 When running on the Google Cloud Platform (GCP), the Tuner component can take
 advantage of two services:
 
-*   [AI Platform Optimizer](https://cloud.google.com/ai-platform/optimizer/docs/overview)
+*   [AI Platform Vizier](https://cloud.google.com/ai-platform/optimizer/docs/overview)
     (via CloudTuner implementation)
 *   [AI Platform Training](https://cloud.google.com/ai-platform/training/docs)
-    (as a flock manager for distibuted tuning)
+    (as a flock manager for distributed tuning)
 
-### AI Platform Optimizer as the backend of hyperparameter tuning
+### AI Platform Vizier as the backend of hyperparameter tuning
 
-[AI Platform Optimizer](https://cloud.google.com/ai-platform/optimizer/docs/overview)
+[AI Platform Vizier](https://cloud.google.com/ai-platform/optimizer/docs/overview)
 is a managed service that performs black box optimization, based on the
 [Google Vizier](https://storage.googleapis.com/pub-tools-public-publication-data/pdf/bcb15507f4b52991a0783013df4222240e942381.pdf)
 technology.
 
-[CloudTuner](https://github.com/GoogleCloudPlatform/tensorflow-gcp-tools/blob/master/python/tensorflow_enterprise_addons/cloudtuner/cloud_tuner.py)
+[CloudTuner](https://github.com/tensorflow/cloud/blob/master/src/python/tensorflow_cloud/tuner/tuner.py)
 is an implementation of
 [KerasTuner](https://www.tensorflow.org/tutorials/keras/keras_tuner) which talks
-to the AI Platform Optimizer service as the study backend. Since CloudTuner is a
+to the AI Platform Vizier service as the study backend. Since CloudTuner is a
 subclass of `kerastuner.Tuner`, it can be used as a drop-in replacement in the
 `tuner_fn` module, and execute as a part of the TFX Tuner component.
 
@@ -141,19 +141,19 @@ the `project_id` and `region`.
 
 ```python
 ...
-from tensorflow_enterprise_addons import cloudtuner
+from tensorflow_cloud import CloudTuner
 
 ...
 def tuner_fn(fn_args: FnArgs) -> TunerFnResult:
   """An implementation of tuner_fn that instantiates CloudTuner."""
 
   ...
-  tuner = cloudtuner.CloudTuner(
+  tuner = CloudTuner(
       _build_model,
       hyperparameters=...,
       ...
       project_id=...,       # GCP Project ID
-      region=...,           # GCP Region where Optimizer service is run.
+      region=...,           # GCP Region where Vizier service is run.
       study_id=...,         # Unique ID of the tuning study
   )
 
@@ -205,11 +205,11 @@ tuner = Tuner(
 
 The behavior and the output of the extension Tuner component is the same as the
 stock Tuner component, except that multiple hyperparameter searches are executed
-in parallel on differnt worker machines, and as a result, the `num_trials` will
+in parallel on different worker machines, and as a result, the `num_trials` will
 be completed faster. This is particularly effective when the search algorithm is
-embarassingly parallelizable, such as `RandomSearch`. However, if the search
+embarrassingly parallelizable, such as `RandomSearch`. However, if the search
 algorithm uses information from results of prior trials, such as Google Vizier
-algorithm implemented in the AI Platform Optimizer does, an excessively parallel
+algorithm implemented in the AI Platform Vizier does, an excessively parallel
 search would negatively affect the efficacy of the search.
 
 Note: Each trial in each parallel search is conducted on a single machine in the
@@ -220,9 +220,9 @@ CloudTuner.
 
 Note: Both `CloudTuner` and the Google Cloud AI Platform extensions Tuner
 component can be used together, in which case it allows distributed parallel
-tuning backed by AI Platform Optimizer's hyperparameter search algorithm.
-However, in order to do so, the Cloud AI Platform Job must be given access to
-the AI Platform Optimizer service.
+tuning backed by AI Platform Vizier's hyperparameter search algorithm. However,
+in order to do so, the Cloud AI Platform Job must be given access to the AI
+Platform Vizier service.
 
 ## Links
 
