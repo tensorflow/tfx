@@ -78,7 +78,7 @@ class Compiler(object):
       pipeline_run_context_pb.type.name = constants.PIPELINE_RUN_CONTEXT_TYPE_NAME
       compiler_utils.set_runtime_parameter_pb(
           pipeline_run_context_pb.name.runtime_parameter,
-          constants.PIPELINE_RUN_CONTEXT_TYPE_NAME, str)
+          constants.PIPELINE_RUN_ID_PARAMETER_NAME, str)
 
     # Context for the node, across pipeline runs.
     node_context_pb = node.contexts.contexts.add()
