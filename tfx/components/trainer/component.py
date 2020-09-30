@@ -91,7 +91,7 @@ class Trainer(base_component.BaseComponent):
   # Train using Google Cloud AI Platform.
   trainer = Trainer(
       custom_executor_spec=executor_spec.ExecutorClassSpec(
-         ai_platform_trainer_executor.Executor)
+          ai_platform_trainer_executor.Executor),
       module_file=module_file,
       transformed_examples=transform.outputs['transformed_examples'],
       schema=infer_schema.outputs['schema'],

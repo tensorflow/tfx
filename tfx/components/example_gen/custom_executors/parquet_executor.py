@@ -79,6 +79,7 @@ class Executor(BaseExampleGenExecutor):
 
   Example usage:
 
+    from tfx.components.base import executor_spec
     from tfx.components.example_gen.component import
     FileBasedExampleGen
     from tfx.components.example_gen.custom_executors import
@@ -87,7 +88,8 @@ class Executor(BaseExampleGenExecutor):
 
     example_gen = FileBasedExampleGen(
         input=external_input(parquet_dir_path),
-        executor_class=parquet_executor.Executor)
+        custom_executor_spec=executor_spec.ExecutorClassSpec(
+            parquet_executor.Executor))
   """
 
   def GetInputSourceToExamplePTransform(self) -> beam.PTransform:
