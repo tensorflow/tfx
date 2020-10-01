@@ -8,7 +8,8 @@
     range configuration.
 *   Added ContainerExecutableSpec in portable IR to support container components
     portable orchestrator.
-
+*   Added Placeholder utility library. Placeholder can be used to represent
+    not-yet-available value at component authoring time.
 ## Breaking changes
 
 ## Deprecations
