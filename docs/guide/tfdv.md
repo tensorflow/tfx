@@ -141,133 +141,39 @@ needed._
 
 #### Overview
 
-The training-serving skew detector runs as a sub-component of TensorFlow Data
-Validation and detects skew between training and serving data.
-
-**Types of Skew**
-
-Based on various production post-portems, we have reduced the various types of
-skew to four key categories. Next we discuss each of these categories as well as
-provide example scenarios under which they occur.
-
-1.  **Schema Skew** occurs when the training and serving data do not conform to
-    the same schema. As the schema describes the logical properties of the data,
-    the training as well as serving data are expected to adhere to the same
-    schema. Any expected deviations between the two (such as the label feature
-    being only present in the training data but not in serving) should be
-    specified through environments field in the schema.
-
-    Since training data generation is a bulk data processing step, whereas
-    (online) serving data generation is usually a latency sensitive step, it is
-    common to have different code paths that generate training and serving data.
-    This is a mistake.  Any discrepancy between these two codepaths (either due
-    to developer error or inconsistent binary releases) can lead to schema skew.
-
-    Example Scenario
-
-    Bob wants to add a new feature to the model and adds it to the training
-    data. The offline training metrics look great but online metrics are much
-    worse. After hours of debugging Bob realises that he forgot to add the same
-    feature in the serving code path. The model gave a high importance to this
-    new feature and since it was unavailable at serving time, generated poor
-    predictions leading to worse online metrics.
-
-1.  **Feature Skew** occurs when the feature values that a model trains on are
-    different from the feature values that it sees at serving time. This can
-    happen due to multiple reasons, including:
-
-    *   If an external data source that provides some feature values is modified
-        between training and serving time.
-    *   Inconsistent logic for generating features between training and serving.
-        For example, if you apply some transformation only in one of the two
-        code paths.
-
-    Example Scenario
-
-    Alice has a continuous machine learning pipeline where the serving data for
-    today is logged and used to generate the next day's training data. In order
-    to save space, she decides to only log the video id at serving time and
-    fetch the video properties from a data store during training data
-    generation.
-
-    In doing so, she inadvertently introduces a skew that is specifically
-    dangerous for newly uploaded and viral videos whose view time can change
-    substantially between serving and training time (as shown below).
-
-    <pre><code class="lang-proto">
-     Serving Example           Training Example
-     -------------------------  -------------------------
-     features {                 features {
-       feature {                  feature {
-         key "vid"                  key "vid"
-         value { int64_list {       value { int64_list {
-           value 92392               value 92392
-         }}                         }}
-       }                          }
-       feature {                  feature {
-         key "views"               key "views"
-         value { int_list {       value { bytes_list {
-           value "<b>10</b>"                value "<b>10000</b>"  # skew
-         }}                         }}
-       }                          }
-     }                          }
-    </code></pre>
-
-    This is an instance of feature skew since the training data sees an inflated
-    number of views.
-
-1.  **Distribution Skew** occurs when the distribution of feature values for
-    training data is significantly different from serving data. One of the key
-    causes for distribution skew is using either a completely different corpus
-    for training data generation to overcome lack of initial data in the desired
-    corpus. Another reason is a faulty sampling mechanism that only chooses a
-    subsample of the serving data to train on.
+TensorFlow Data Validation can detect distribution skew between training and
+serving data. Distribution skew occurs when the distribution of feature values
+for training data is significantly different from serving data. One of the key
+causes for distribution skew is using either a completely different corpus for
+training data generation to overcome lack of initial data in the desired corpus.
+Another reason is a faulty sampling mechanism that only chooses a subsample of
+the serving data to train on.
 
     Example Scenario
 
     For instance, in order to compensate for an underrepresented slice of data,
     if a biased sampling is used without upweighting the downsampled examples
     appropriately, the distribution of feature values between training and
-    serving data gets aritifically skewed.
+    serving data gets artificially skewed.
 
-1.  **Scoring/Serving Skew** is harder to detect and occurs when only a subset
-    of the scored examples are actually served. Since labels are only available
-    for the served examples and not the scored examples, only these examples are
-    used for training. This implicitly causes the model to mispredict on the
-    scored examples since they are gradually underrepresented in the training
-    data.
-
-    Example Scenario
-
-    Consider an ad system which serves the top 10 ads. Of these 10 ads, only one
-    of them may be clicked by the user. All 10 of these *served* examples are
-    used for next days training -- 1 positive and 9 negative. However, at
-    serving time the trained model was used to score 100s of ads. The other 90
-    ads which were never served are implicitly removed from the training data.
-    This results in an implicit feedback loop that mispredicts the lower ranked
-    things further since they are not seen in the training data.
-
-**Why should you care?**
-
-Skew is hard to detect and is prevalent in many ML pipelines. There have been
-several incidents where this has caused performance degradations and revenue
-loss.
-
-**What is supported currently?**
-
-Currently, TensorFlow Data Validation supports schema skew, feature skew and
-distribution skew detection.
+See the [TensorFlow Data Validation Get Started Guide](https://www.tensorflow.org/tfx/data_validation/get_started#checking_data_skew_and_drift)
+for information about configuring training-serving skew detection.
 
 ### Drift Detection
 
-Drift detection is supported for categorical features and between consecutive
+Drift detection is supported between consecutive
 spans of data (i.e., between span N and span N+1), such as between different
 days of training data. We express drift in terms of
-[L-infinity distance](https://en.wikipedia.org/wiki/Chebyshev_distance),
-and you can set the
-threshold distance so that you receive warnings when the drift is higher than is
-acceptable. Setting the correct distance is typically an iterative process
-requiring domain knowledge and experimentation.
+[L-infinity distance](https://en.wikipedia.org/wiki/Chebyshev_distance) for
+categorical features and approximate
+[Jensen-Shannon divergence](https://en.wikipedia.org/wiki/Jensen%E2%80%93Shannon_divergence)
+for numeric features. You can set the threshold distance so that you receive
+warnings when the drift is higher than is acceptable. Setting the correct
+distance is typically an iterative process requiring domain knowledge and
+experimentation.
+
+See the See the [TensorFlow Data Validation Get Started Guide](https://www.tensorflow.org/tfx/data_validation/get_started#checking_data_skew_and_drift)
+for information about configuring drift detection.
 
 ## Using Visualizations to Check Your Data
 
