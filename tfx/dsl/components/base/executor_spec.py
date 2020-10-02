@@ -44,7 +44,8 @@ class ExecutorSpec(with_metaclass(abc.ABCMeta, json_utils.Jsonable)):
     """
     # TODO(b/158712976, b/161286496): Serialize executor specs for different
     # platforms.
-    raise NotImplementedError
+    raise NotImplementedError('{}.{} does not support encoding into IR.'.format(
+        self.__module__, self.__class__.__name__))
 
 
 class ExecutorClassSpec(ExecutorSpec):
