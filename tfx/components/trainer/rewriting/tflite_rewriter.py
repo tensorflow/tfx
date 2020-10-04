@@ -33,10 +33,9 @@ EXTRA_ASSETS_DIRECTORY = 'assets.extra'
 
 
 def _create_tflite_converter(
-    saved_model_path: Text, enable_experimental_new_converter: bool,
+    saved_model_path: Text,
     enable_quantization: bool) -> tf.lite.TFLiteConverter:
   converter = tf.lite.TFLiteConverter.from_saved_model(saved_model_path)
-  converter.experimental_new_converter = enable_experimental_new_converter
   if enable_quantization:
     converter.optimizations = [tf.lite.Optimize.DEFAULT]
   return converter
@@ -58,7 +57,6 @@ class TFLiteRewriter(rewriter.BaseRewriter):
   def __init__(self,
                name: Text,
                filename: Text = 'tflite',
-               enable_experimental_new_converter: bool = False,
                copy_assets: bool = True,
                copy_assets_extra: bool = True,
                enable_quantization: bool = False):
@@ -67,7 +65,6 @@ class TFLiteRewriter(rewriter.BaseRewriter):
     Args:
       name: The name to use when identifying the rewriter.
       filename: The name of the file to use for the tflite model.
-      enable_experimental_new_converter: Whether to use the MLIR converter.
       copy_assets: Boolean whether to copy the assets directory to the rewritten
         model directory.
       copy_assets_extra: Boolean whether to copy the assets.extra directory to
@@ -78,7 +75,6 @@ class TFLiteRewriter(rewriter.BaseRewriter):
     # TODO(b/152636072): Add support for representative_dataset.
     self._name = name
     self._filename = six.ensure_text(filename)
-    self._enable_experimental_new_converter = enable_experimental_new_converter
     self._copy_assets = copy_assets
     self._copy_assets_extra = copy_assets_extra
     self._enable_quantization = enable_quantization
@@ -135,8 +131,6 @@ class TFLiteRewriter(rewriter.BaseRewriter):
 
     converter = _create_tflite_converter(
         saved_model_path=tmp_model_dir,
-        enable_experimental_new_converter=self
-        ._enable_experimental_new_converter,
         enable_quantization=self._enable_quantization)
     tflite_model = converter.convert()
 

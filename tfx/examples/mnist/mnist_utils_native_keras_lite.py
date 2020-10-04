@@ -107,8 +107,7 @@ def run_fn(fn_args: TrainerFnArgs):
   model.save(temp_saving_model_dir, save_format='tf', signatures=signatures)
 
   tfrw = rewriter_factory.create_rewriter(
-      rewriter_factory.TFLITE_REWRITER, name='tflite_rewriter',
-      enable_experimental_new_converter=True)
+      rewriter_factory.TFLITE_REWRITER, name='tflite_rewriter')
   converters.rewrite_saved_model(temp_saving_model_dir,
                                  fn_args.serving_model_dir,
                                  tfrw,

@@ -60,13 +60,11 @@ class TFLiteRewriterTest(tf.test.TestCase):
 
     tfrw = tflite_rewriter.TFLiteRewriter(
         name='myrw',
-        filename='fname',
-        enable_experimental_new_converter=True)
+        filename='fname')
     tfrw.perform_rewrite(src_model, dst_model)
 
     converter.assert_called_once_with(
         saved_model_path=mock.ANY,
-        enable_experimental_new_converter=True,
         enable_quantization=False)
     expected_model = os.path.join(dst_model_path, 'fname')
     self.assertTrue(tf.io.gfile.exists(expected_model))
@@ -107,13 +105,11 @@ class TFLiteRewriterTest(tf.test.TestCase):
     tfrw = tflite_rewriter.TFLiteRewriter(
         name='myrw',
         filename='fname',
-        enable_experimental_new_converter=True,
         enable_quantization=True)
     tfrw.perform_rewrite(src_model, dst_model)
 
     converter.assert_called_once_with(
         saved_model_path=mock.ANY,
-        enable_experimental_new_converter=True,
         enable_quantization=True)
     expected_model = os.path.join(dst_model_path, 'fname')
     self.assertTrue(tf.io.gfile.exists(expected_model))
