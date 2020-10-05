@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2020 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,28 +11,22 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""E2E Tests for tfx.examples.experimental.iris_pipeline_sklearn."""
-
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
+"""E2E Tests for tfx.examples.experimental.iris_pipeline_sklearn_local."""
 
 import os
 from typing import Text
 
-import mock
 import tensorflow as tf
 
-from tfx.examples.iris.experimental import iris_pipeline_sklearn
-from tfx.extensions.google_cloud_ai_platform.pusher import executor
+from tfx.examples.iris.experimental import iris_pipeline_sklearn_local
 from tfx.orchestration import metadata
 from tfx.orchestration.beam.beam_dag_runner import BeamDagRunner
 
 
-class IrisPipelineSklearnEndToEndTest(tf.test.TestCase):
+class IrisPipelineSklearnLocalEndToEndTest(tf.test.TestCase):
 
   def setUp(self):
-    super(IrisPipelineSklearnEndToEndTest, self).setUp()
+    super(IrisPipelineSklearnLocalEndToEndTest, self).setUp()
     self._test_dir = os.path.join(
         os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR', self.get_temp_dir()),
         self._testMethodName)
@@ -49,12 +42,6 @@ class IrisPipelineSklearnEndToEndTest(tf.test.TestCase):
                                        self._pipeline_name)
     self._metadata_path = os.path.join(self._test_dir, 'tfx', 'metadata',
                                        self._pipeline_name, 'metadata.db')
-    self._ai_platform_serving_args = {
-        'model_name': 'model_name',
-        'project_id': 'project_id',
-        'regions': ['us-central1'],
-    }
-    self._executor = executor.Executor()
 
   def assertExecutedOnce(self, component: Text) -> None:
     """Check the component is executed exactly once."""
@@ -71,29 +58,21 @@ class IrisPipelineSklearnEndToEndTest(tf.test.TestCase):
     self.assertExecutedOnce('SchemaGen')
     self.assertExecutedOnce('StatisticsGen')
     self.assertExecutedOnce('Trainer')
-    self.assertExecutedOnce('Transform')
 
-  @mock.patch(
-      'tfx.extensions.google_cloud_ai_platform.pusher.executor.discovery'
-  )
-  @mock.patch.object(executor, 'runner', autospec=True)
-  def testIrisPipelineSklearn(self, mock_runner, _):
-    mock_runner.get_service_name_and_api_version.return_value = ('ml', 'v1')
+  def testIrisPipelineSklearnLocal(self):
     BeamDagRunner().run(
-        iris_pipeline_sklearn._create_pipeline(
+        iris_pipeline_sklearn_local._create_pipeline(
             pipeline_name=self._pipeline_name,
             data_root=self._data_root,
             module_file=self._module_file,
             serving_model_dir=self._serving_model_dir,
             pipeline_root=self._pipeline_root,
             metadata_path=self._metadata_path,
-            ai_platform_serving_args=self._ai_platform_serving_args,
             beam_pipeline_args=[]))
 
     self.assertTrue(tf.io.gfile.exists(self._serving_model_dir))
     self.assertTrue(tf.io.gfile.exists(self._metadata_path))
-    mock_runner.deploy_model_for_aip_prediction.assert_called_once()
-    expected_execution_count = 8  # 8 components
+    expected_execution_count = 6  # 6 components
     metadata_config = metadata.sqlite_metadata_connection_config(
         self._metadata_path)
     with metadata.Metadata(metadata_config) as m:
@@ -106,14 +85,13 @@ class IrisPipelineSklearnEndToEndTest(tf.test.TestCase):
 
     # Runs pipeline the second time.
     BeamDagRunner().run(
-        iris_pipeline_sklearn._create_pipeline(
+        iris_pipeline_sklearn_local._create_pipeline(
             pipeline_name=self._pipeline_name,
             data_root=self._data_root,
             module_file=self._module_file,
             serving_model_dir=self._serving_model_dir,
             pipeline_root=self._pipeline_root,
             metadata_path=self._metadata_path,
-            ai_platform_serving_args=self._ai_platform_serving_args,
             beam_pipeline_args=[]))
 
     # All executions but Evaluator and Pusher are cached.
@@ -125,14 +103,13 @@ class IrisPipelineSklearnEndToEndTest(tf.test.TestCase):
 
     # Runs pipeline the third time.
     BeamDagRunner().run(
-        iris_pipeline_sklearn._create_pipeline(
+        iris_pipeline_sklearn_local._create_pipeline(
             pipeline_name=self._pipeline_name,
             data_root=self._data_root,
             module_file=self._module_file,
             serving_model_dir=self._serving_model_dir,
             pipeline_root=self._pipeline_root,
             metadata_path=self._metadata_path,
-            ai_platform_serving_args=self._ai_platform_serving_args,
             beam_pipeline_args=[]))
 
     # Asserts cache execution.
