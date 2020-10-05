@@ -17,10 +17,9 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from typing import Any, Dict, Optional, Text, Type, Union
+from typing import Any, Dict, List, Optional, Text, Type, Union
 
 import absl
-
 from tfx import types
 from tfx.dsl.components.base import base_driver
 from tfx.dsl.components.base import base_node
@@ -28,6 +27,8 @@ from tfx.orchestration import data_types
 from tfx.orchestration import metadata
 from tfx.types import channel_utils
 from tfx.types import node_common
+
+from ml_metadata.proto import metadata_store_pb2
 
 # Constant to access importer importing result from importer output dict.
 IMPORT_RESULT_KEY = 'result'
@@ -41,85 +42,138 @@ CUSTOM_PROPERTIES_KEY = 'custom_properties'
 REIMPORT_OPTION_KEY = 'reimport'
 
 
-class ImporterDriver(base_driver.BaseDriver):
-  """Driver for Importer."""
+def _prepare_artifact(
+    metadata_handler: metadata.Metadata,
+    uri: Text,
+    properties: Dict[Text, Any],
+    custom_properties: Dict[Text, Any],
+    reimport: bool, output_artifact_class: Type[types.Artifact],
+    mlmd_artifact_type: Optional[metadata_store_pb2.ArtifactType]
+) -> types.Artifact:
+  """Prepares the Importer's output artifact.
 
-  def _prepare_artifact(self, uri: Text, properties: Dict[Text, Any],
-                        custom_properties: Dict[Text, Any], reimport: bool,
-                        destination_channel: types.Channel) -> types.Artifact:
-    """Prepares the Importer's output artifact.
+  If there is already an artifact in MLMD with the same URI and properties /
+  custom properties, that artifact will be reused unless the `reimport`
+  argument is set to True.
 
-    If there is already an artifact in MLMD with the same URI and properties /
-    custom properties, that artifact will be reused unless the `reimport`
-    argument is set to True.
+  Args:
+    metadata_handler: The handler of MLMD.
+    uri: The uri of the artifact.
+    properties: The properties of the artifact, given as a dictionary from
+      string keys to integer / string values. Must conform to the declared
+      properties of the destination channel's output type.
+    custom_properties: The custom properties of the artifact, given as a
+      dictionary from string keys to integer / string values.
+    reimport: If set to True, will register a new artifact even if it already
+      exists in the database.
+    output_artifact_class: The class of the output artifact.
+    mlmd_artifact_type: The MLMD artifact type of the Artifact to be created.
 
-    Args:
-      uri: The uri of the artifact.
-      properties: The properties of the artifact, given as a dictionary from
-        string keys to integer / string values. Must conform to the declared
-        properties of the destination channel's output type.
-      custom_properties: The custom properties of the artifact, given as a
-        dictionary from string keys to integer / string values.
-      reimport: If set to True, will register a new artifact even if it already
-        exists in the database.
-      destination_channel: Destination channel for the imported artifact.
+  Returns:
+    An Artifact object representing the imported artifact.
+  """
+  absl.logging.info(
+      'Processing source uri: %s, properties: %s, custom_properties: %s' %
+      (uri, properties, custom_properties))
 
-    Returns:
-      An Artifact object representing the imported artifact.
-    """
-    absl.logging.info(
-        'Processing source uri: %s, properties: %s, custom_properties: %s' %
-        (uri, properties, custom_properties))
+  # Check types of custom properties.
+  for key, value in custom_properties.items():
+    if not isinstance(value, (int, Text, bytes)):
+      raise ValueError(
+          ('Custom property value for key %r must be a string or integer '
+           '(got %r instead)') % (key, value))
 
-    # Check types of custom properties.
-    for key, value in custom_properties.items():
-      if not isinstance(value, (int, Text, bytes)):
-        raise ValueError(
-            ('Custom property value for key %r must be a string or integer '
-             '(got %r instead)') % (key, value))
-
-    unfiltered_previous_artifacts = self._metadata_handler.get_artifacts_by_uri(
-        uri)
-    # Only consider previous artifacts as candidates to reuse, if the properties
-    # of the imported artifact match those of the existing artifact.
-    previous_artifacts = []
-    for candidate_mlmd_artifact in unfiltered_previous_artifacts:
-      is_candidate = True
-      candidate_artifact = destination_channel.type()
-      candidate_artifact.set_mlmd_artifact(candidate_mlmd_artifact)
-      for key, value in properties.items():
-        if getattr(candidate_artifact, key) != value:
-          is_candidate = False
-          break
-      for key, value in custom_properties.items():
-        if isinstance(value, int):
-          if candidate_artifact.get_int_custom_property(key) != value:
-            is_candidate = False
-            break
-        elif isinstance(value, (Text, bytes)):
-          if candidate_artifact.get_string_custom_property(key) != value:
-            is_candidate = False
-            break
-      if is_candidate:
-        previous_artifacts.append(candidate_mlmd_artifact)
-
-    result = destination_channel.type()
-    result.uri = uri
+  unfiltered_previous_artifacts = metadata_handler.get_artifacts_by_uri(
+      uri)
+  # Only consider previous artifacts as candidates to reuse, if the properties
+  # of the imported artifact match those of the existing artifact.
+  previous_artifacts = []
+  for candidate_mlmd_artifact in unfiltered_previous_artifacts:
+    is_candidate = True
+    candidate_artifact = output_artifact_class(mlmd_artifact_type)
+    candidate_artifact.set_mlmd_artifact(candidate_mlmd_artifact)
     for key, value in properties.items():
-      setattr(result, key, value)
+      if getattr(candidate_artifact, key) != value:
+        is_candidate = False
+        break
     for key, value in custom_properties.items():
       if isinstance(value, int):
-        result.set_int_custom_property(key, value)
+        if candidate_artifact.get_int_custom_property(key) != value:
+          is_candidate = False
+          break
       elif isinstance(value, (Text, bytes)):
-        result.set_string_custom_property(key, value)
+        if candidate_artifact.get_string_custom_property(key) != value:
+          is_candidate = False
+          break
+    if is_candidate:
+      previous_artifacts.append(candidate_mlmd_artifact)
 
-    # If a registered artifact has the same uri and properties and the user does
-    # not explicitly ask for reimport, reuse that artifact.
-    if bool(previous_artifacts) and not reimport:
-      absl.logging.info('Reusing existing artifact')
-      result.set_mlmd_artifact(max(previous_artifacts, key=lambda m: m.id))
+  result = output_artifact_class(mlmd_artifact_type)
+  result.uri = uri
+  for key, value in properties.items():
+    setattr(result, key, value)
+  for key, value in custom_properties.items():
+    if isinstance(value, int):
+      result.set_int_custom_property(key, value)
+    elif isinstance(value, (Text, bytes)):
+      result.set_string_custom_property(key, value)
 
-    return result
+  # If a registered artifact has the same uri and properties and the user does
+  # not explicitly ask for reimport, reuse that artifact.
+  if bool(previous_artifacts) and not reimport:
+    absl.logging.info('Reusing existing artifact')
+    result.set_mlmd_artifact(max(previous_artifacts, key=lambda m: m.id))
+
+  return result
+
+
+def generate_output_dict(
+    metadata_handler: metadata.Metadata,
+    uri: Text,
+    properties: Dict[Text, Any],
+    custom_properties: Dict[Text, Any],
+    reimport: bool,
+    output_artifact_class: Type[types.Artifact],
+    mlmd_artifact_type: Optional[metadata_store_pb2.ArtifactType] = None
+) -> Dict[Text, List[types.Artifact]]:
+  """Generates importer's output dict.
+
+  If there is already an artifact in MLMD with the same URI and properties /
+  custom properties, that artifact will be reused unless the `reimport`
+  argument is set to True.
+
+  Args:
+    metadata_handler: The handler of MLMD.
+    uri: The uri of the artifact.
+    properties: The properties of the artifact, given as a dictionary from
+      string keys to integer / string values. Must conform to the declared
+      properties of the destination channel's output type.
+    custom_properties: The custom properties of the artifact, given as a
+      dictionary from string keys to integer / string values.
+    reimport: If set to True, will register a new artifact even if it already
+      exists in the database.
+    output_artifact_class: The class of the output artifact.
+    mlmd_artifact_type: The MLMD artifact type of the Artifact to be created.
+
+  Returns:
+    a dictionary with the only key `result` whose value is the Artifact.
+  """
+  return {
+      IMPORT_RESULT_KEY: [
+          _prepare_artifact(
+              metadata_handler,
+              uri=uri,
+              properties=properties,
+              custom_properties=custom_properties,
+              output_artifact_class=output_artifact_class,
+              mlmd_artifact_type=mlmd_artifact_type,
+              reimport=reimport)
+      ]
+  }
+
+
+class ImporterDriver(base_driver.BaseDriver):
+  """Driver for Importer."""
 
   def pre_execution(
       self,
@@ -139,16 +193,14 @@ class ImporterDriver(base_driver.BaseDriver):
         component_info=component_info,
         contexts=contexts)
     # Create imported artifacts.
-    output_artifacts = {
-        IMPORT_RESULT_KEY: [
-            self._prepare_artifact(
-                uri=exec_properties[SOURCE_URI_KEY],
-                properties=exec_properties[PROPERTIES_KEY],
-                custom_properties=exec_properties[CUSTOM_PROPERTIES_KEY],
-                destination_channel=output_dict[IMPORT_RESULT_KEY],
-                reimport=exec_properties[REIMPORT_OPTION_KEY])
-        ]
-    }
+    output_artifacts = generate_output_dict(
+        self._metadata_handler,
+        uri=exec_properties[SOURCE_URI_KEY],
+        properties=exec_properties.get(PROPERTIES_KEY),
+        custom_properties=exec_properties.get(CUSTOM_PROPERTIES_KEY),
+        reimport=exec_properties[REIMPORT_OPTION_KEY],
+        output_artifact_class=output_dict[IMPORT_RESULT_KEY].type)
+
     # Update execution with imported artifacts.
     self._metadata_handler.update_execution(
         execution=execution,

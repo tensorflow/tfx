@@ -16,6 +16,7 @@ import copy
 import os
 from typing import Any, Dict, List, Text
 
+import mock
 import tensorflow as tf
 from tfx import types
 from tfx.orchestration import metadata
@@ -24,6 +25,7 @@ from tfx.orchestration.portable import base_executor_operator
 from tfx.orchestration.portable import execution_publish_utils
 from tfx.orchestration.portable import inputs_utils
 from tfx.orchestration.portable import launcher
+from tfx.orchestration.portable import system_node_handler
 from tfx.orchestration.portable import test_utils
 from tfx.orchestration.portable.mlmd import context_lib
 from tfx.proto.orchestration import driver_output_pb2
@@ -32,6 +34,7 @@ from tfx.proto.orchestration import execution_result_pb2
 from tfx.proto.orchestration import pipeline_pb2
 
 from google.protobuf import text_format
+from ml_metadata.proto import metadata_store_pb2
 
 _PYTHON_CLASS_EXECUTABLE_SPEC = executable_spec_pb2.PythonClassExecutableSpec
 
@@ -174,6 +177,7 @@ class LauncherTest(test_utils.TfxTest):
     self._example_gen = pipeline.nodes[0].pipeline_node
     self._transform = pipeline.nodes[1].pipeline_node
     self._trainer = pipeline.nodes[2].pipeline_node
+    self._importer = pipeline.nodes[3].pipeline_node
 
     # Fakes an ExecutorSpec for Trainer
     self._trainer_executor_spec = _PYTHON_CLASS_EXECUTABLE_SPEC()
@@ -582,6 +586,31 @@ class LauncherTest(test_utils.TfxTest):
           ignored_fields=[
               'uri', 'create_time_since_epoch', 'last_update_time_since_epoch'
           ])
+
+  def testLauncher_importer_moded(self):
+    mock_import_node_handler_class = mock.create_autospec(
+        system_node_handler.SystemNodeHandler)
+    mock_import_node_handler = mock.create_autospec(
+        system_node_handler.SystemNodeHandler, instance=True)
+    mock_import_node_handler_class.return_value = mock_import_node_handler
+    expected_execution = metadata_store_pb2.Execution()
+    expected_execution.id = 123
+    mock_import_node_handler.run.return_value = expected_execution
+    launcher._SYSTEM_NODE_HANDLERS[
+        'tfx.components.common_nodes.importer_node.ImporterNode'] = (
+            mock_import_node_handler_class)
+    test_launcher = launcher.Launcher(
+        pipeline_node=self._importer,
+        mlmd_connection=self._mlmd_connection,
+        pipeline_info=self._pipeline_info,
+        pipeline_runtime_spec=self._pipeline_runtime_spec,
+        executor_spec=self._trainer_executor_spec,
+        custom_executor_operators=self._test_executor_operators)
+    execution_metadata = test_launcher.launch()
+    mock_import_node_handler.run.assert_called_once_with(
+        self._mlmd_connection, self._importer, self._pipeline_info,
+        self._pipeline_runtime_spec)
+    self.assertEqual(execution_metadata, expected_execution)
 
 
 if __name__ == '__main__':

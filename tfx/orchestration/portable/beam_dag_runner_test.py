@@ -165,7 +165,8 @@ class BeamDagRunnerTest(test_utils.TfxTest):
             'my_trainer':
                 text_format.Parse(
                     'class_path: "tfx.components.trainer_executor"',
-                    _PythonClassExecutableSpec())
+                    _PythonClassExecutableSpec()),
+            'my_importer': None,
         })
     self.assertEqual(
         _component_drivers, {
@@ -174,10 +175,12 @@ class BeamDagRunnerTest(test_utils.TfxTest):
                     'class_path: "tfx.components.example_gen_driver"',
                     _PythonClassExecutableSpec()),
             'my_transform': None,
-            'my_trainer': None
+            'my_trainer': None,
+            'my_importer': None,
         })
-    self.assertEqual(_executed_components,
-                     ['my_example_gen', 'my_transform', 'my_trainer'])
+    self.assertEqual(
+        _executed_components,
+        ['my_example_gen', 'my_importer', 'my_transform', 'my_trainer'])
 
   @mock.patch.multiple(
       beam_dag_runner,
@@ -199,7 +202,8 @@ class BeamDagRunnerTest(test_utils.TfxTest):
             'my_trainer':
                 text_format.Parse(
                     'class_path: "tfx.components.trainer_executor"',
-                    _PythonClassExecutableSpec())
+                    _PythonClassExecutableSpec()),
+            'my_importer': None,
         })
     self.assertEqual(
         _component_drivers, {
@@ -208,10 +212,12 @@ class BeamDagRunnerTest(test_utils.TfxTest):
                     'class_path: "tfx.components.example_gen_driver"',
                     _PythonClassExecutableSpec()),
             'my_transform': None,
-            'my_trainer': None
+            'my_trainer': None,
+            'my_importer': None,
         })
-    self.assertEqual(_executed_components,
-                     ['my_example_gen', 'my_transform', 'my_trainer'])
+    self.assertEqual(
+        _executed_components,
+        ['my_example_gen', 'my_importer', 'my_transform', 'my_trainer'])
 
 
 if __name__ == '__main__':

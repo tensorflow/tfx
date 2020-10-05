@@ -259,3 +259,81 @@ nodes {
     upstream_nodes: "my_transform"
   }
 }
+nodes {
+  pipeline_node {
+    node_info {
+      type {
+        name: "tfx.components.common_nodes.importer_node.ImporterNode"
+      }
+      id: "my_importer"
+    }
+    contexts {
+      contexts {
+        type {
+          name: "pipeline"
+        }
+        name {
+          field_value {
+            string_value: "my_pipeline"
+          }
+        }
+      }
+      contexts {
+        type {
+          name: "component"
+        }
+        name {
+          field_value {
+            string_value: "my_importer"
+          }
+        }
+      }
+    }
+    outputs {
+      outputs {
+        key: "result"
+        value {
+          artifact_spec {
+            type {
+              name: "Schema"
+            }
+            additional_custom_properties {
+              key: 'str_custom_property'
+              value {
+                field_value {
+                  string_value: 'abc'
+                }
+              }
+            },
+            additional_custom_properties {
+              key: 'int_custom_property'
+              value {
+                field_value {
+                  int_value: 123
+                }
+              }
+            },
+          }
+        }
+      }
+    }
+    parameters {
+      parameters {
+        key: "artifact_uri"
+        value {
+          field_value {
+            string_value: "my_url"
+          }
+        }
+      }
+      parameters {
+        key: "reimport"
+        value {
+          field_value {
+            int_value: 1
+          }
+        }
+      }
+    }
+  }
+}

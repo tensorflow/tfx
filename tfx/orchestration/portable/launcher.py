@@ -25,6 +25,7 @@ from tfx.orchestration.portable import base_driver_operator
 from tfx.orchestration.portable import base_executor_operator
 from tfx.orchestration.portable import cache_utils
 from tfx.orchestration.portable import execution_publish_utils
+from tfx.orchestration.portable import importer_node_handler
 from tfx.orchestration.portable import inputs_utils
 from tfx.orchestration.portable import outputs_utils
 from tfx.orchestration.portable import python_driver_operator
@@ -54,6 +55,11 @@ DEFAULT_EXECUTOR_OPERATORS = {
 DEFAULT_DRIVER_OPERATORS = {
     executable_spec_pb2.PythonClassExecutableSpec:
         python_driver_operator.PythonDriverOperator
+}
+
+_SYSTEM_NODE_HANDLERS = {
+    'tfx.components.common_nodes.importer_node.ImporterNode':
+        importer_node_handler.ImporterNodeHandler,
 }
 
 
@@ -145,6 +151,12 @@ class Launcher(object):
       self._driver_operator = self._driver_operators[type(custom_driver_spec)](
           custom_driver_spec, self._mlmd_connection, self._pipeline_info,
           self._pipeline_node)
+
+    system_node_handler_class = _SYSTEM_NODE_HANDLERS.get(
+        self._pipeline_node.node_info.type.name)
+    self._system_node_handler = None
+    if system_node_handler_class:
+      self._system_node_handler = system_node_handler_class()
 
   def _prepare_execution(self) -> _PrepareExecutionResult:
     """Prepares inputs, outputs and execution properties for actual execution."""
@@ -303,7 +315,14 @@ class Launcher(object):
       The metadata of this execution that is registered in MLMD. It can be None
       if the driver decides not to run the execution.
     """
-    logging.debug('Running driver for %s', self._pipeline_node)
+    logging.debug('Running launcher for %s', self._pipeline_node)
+    if self._system_node_handler:
+      # If this is a system node, runs it and directly return.
+      return self._system_node_handler.run(
+          self._mlmd_connection, self._pipeline_node, self._pipeline_info,
+          self._pipeline_runtime_spec)
+
+    # Runs as a normal node.
     prepare_exeucion_result = self._prepare_execution()
     (execution_info, contexts,
      is_execution_needed) = (prepare_exeucion_result.execution_info,
