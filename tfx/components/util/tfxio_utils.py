@@ -19,8 +19,9 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from typing import Callable, List, Optional, Text, Tuple, Union
+from typing import Callable, List, Iterator, Optional, Text, Tuple, Union
 
+import pyarrow as pa
 import tensorflow as tf
 from tfx.components.experimental.data_view import constants
 from tfx.components.util import examples_utils
@@ -176,6 +177,41 @@ def get_tf_dataset_factory_from_artifact(
             options)
 
   return dataset_factory
+
+
+def get_record_batch_factory_from_artifact(
+    examples: List[artifact.Artifact],
+    telemetry_descriptors: List[Text],
+) -> Callable[[
+    List[Text],
+    dataset_options.RecordBatchesOptions,
+    Optional[schema_pb2.Schema],
+], Iterator[pa.RecordBatch]]:
+  """Returns a factory function that creates Iterator[pa.RecordBatch].
+
+  Args:
+    examples: The Examples artifacts that the TFXIO from which the Dataset is
+      created from is intended to access.
+    telemetry_descriptors: A set of descriptors that identify the component that
+      is instantiating the TFXIO. These will be used to construct the namespace
+      to contain metrics for profiling and are therefore expected to be
+      identifiers of the component itself and not individual instances of source
+      use.
+  """
+  payload_format, data_view_uri = resolve_payload_format_and_data_view_uri(
+      examples)
+
+  def record_batch_factory(
+      file_pattern: List[Text], options: dataset_options.RecordBatchesOptions,
+      schema: Optional[schema_pb2.Schema]) -> Iterator[pa.RecordBatch]:
+    return make_tfxio(
+        file_pattern=file_pattern,
+        telemetry_descriptors=telemetry_descriptors,
+        payload_format=payload_format,
+        data_view_uri=data_view_uri,
+        schema=schema).RecordBatches(options)
+
+  return record_batch_factory
 
 
 def make_tfxio(file_pattern: OneOrMorePatterns,

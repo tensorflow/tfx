@@ -19,15 +19,17 @@ This module file will be used in Transform and generic Trainer.
 
 import os
 import pickle
-from typing import List, Text, Tuple, Union
+from typing import Text, Tuple
 
 import absl
 import numpy as np
 from sklearn.neural_network import MLPClassifier
 import tensorflow as tf
-from tensorflow_transform.tf_metadata import schema_utils
 from tfx.components.trainer.executor import TrainerFnArgs
+from tfx.components.trainer.fn_args_utils import DataAccessor
 from tfx.utils import io_utils
+from tfx_bsl.tfxio import dataset_options
+
 from tensorflow_metadata.proto.v0 import schema_pb2
 
 _FEATURE_KEYS = ['sepal_length', 'sepal_width', 'petal_length', 'petal_width']
@@ -37,68 +39,44 @@ _LABEL_KEY = 'variety'
 # ratio.
 _TRAIN_DATA_SIZE = 100
 _TRAIN_BATCH_SIZE = 20
-_SHUFFLE_BUFFER = 10000
 
 
-def _get_raw_feature_spec(schema):
-  return schema_utils.schema_as_feature_spec(schema).feature_spec
-
-
-# TODO(b/153996019): This function will no longer be needed once feature is
-# added to return entire dataset in pyarrow format.
-def _tf_dataset_to_numpy(dataset: tf.data.Dataset,
-                         ) -> Tuple[np.ndarray, np.ndarray]:
-  """Converts a tf.data.dataset into features and labels.
-
-  Args:
-    dataset: A tf.data.dataset that contains (features, indices) tuple where
-      features is a dictionary of Tensors, and indices is a single Tensor of
-      label indices.
-
-  Returns:
-    A (features, indices) tuple where features is a matrix of features, and
-      indices is a single vector of label indices.
-  """
-  feature_list = []
-  label_list = []
-  for feature_dict, labels in dataset:
-    features = [feature_dict[key].numpy()
-                for key in _FEATURE_KEYS]
-    features = np.concatenate(features).T
-    feature_list.append(features)
-    label_list.append(labels)
-  return np.vstack(feature_list), np.concatenate(label_list)
-
-
-def _input_fn(file_pattern: Union[Text, List[Text]],
-              schema: schema_pb2.Schema) -> Tuple[np.ndarray, np.ndarray]:
+def _input_fn(
+    file_pattern: Text,
+    data_accessor: DataAccessor,
+    schema: schema_pb2.Schema,
+    batch_size: int = 20,
+) -> Tuple[np.ndarray, np.ndarray]:
   """Generates features and label for tuning/training.
 
   Args:
     file_pattern: input tfrecord file pattern.
+    data_accessor: DataAccessor for converting input to RecordBatch.
     schema: schema of the input data.
+    batch_size: An int representing the number of records to combine in a single
+      batch.
 
   Returns:
     A (features, indices) tuple where features is a matrix of features, and
       indices is a single vector of label indices.
   """
-  def _parse_example(example, feature_spec):
-    """Parses a tfrecord into a (features, indices) tuple of Tensors."""
-    parsed_example = tf.io.parse_single_example(
-        serialized=example,
-        features=feature_spec)
-    label = parsed_example.pop(_LABEL_KEY)
-    return parsed_example, label
+  record_batch_iterator = data_accessor.record_batch_factory(
+      file_pattern,
+      dataset_options.RecordBatchesOptions(batch_size=batch_size, num_epochs=1),
+      schema)
 
-  filenames = tf.data.Dataset.list_files(file_pattern)
-  dataset = tf.data.TFRecordDataset(filenames, compression_type='GZIP')
-  feature_spec = _get_raw_feature_spec(schema)
-  # TODO(b/157598676): Make AUTOTUNE the default.
-  dataset = dataset.map(
-      lambda x: _parse_example(x, feature_spec),
-      num_parallel_calls=tf.data.experimental.AUTOTUNE)
-  dataset = dataset.shuffle(_SHUFFLE_BUFFER)
-  return _tf_dataset_to_numpy(dataset)
+  feature_list = []
+  label_list = []
+  for record_batch in record_batch_iterator:
+    record_dict = {}
+    for column, field in zip(record_batch, record_batch.schema):
+      record_dict[field.name] = column.flatten()
+
+    label_list.append(record_dict[_LABEL_KEY])
+    features = [record_dict[key] for key in _FEATURE_KEYS]
+    feature_list.append(np.stack(features, axis=-1))
+
+  return np.concatenate(feature_list), np.concatenate(label_list)
 
 
 # TFX Trainer will call this function.
@@ -110,8 +88,9 @@ def run_fn(fn_args: TrainerFnArgs):
   """
   schema = io_utils.parse_pbtxt_file(fn_args.schema_file, schema_pb2.Schema())
 
-  x_train, y_train = _input_fn(fn_args.train_files, schema)
-  x_eval, y_eval = _input_fn(fn_args.eval_files, schema)
+  x_train, y_train = _input_fn(fn_args.train_files, fn_args.data_accessor,
+                               schema)
+  x_eval, y_eval = _input_fn(fn_args.eval_files, fn_args.data_accessor, schema)
 
   steps_per_epoch = _TRAIN_DATA_SIZE / _TRAIN_BATCH_SIZE
 

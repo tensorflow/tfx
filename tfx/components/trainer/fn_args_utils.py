@@ -18,9 +18,10 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from typing import Any, Callable, Dict, List, Optional, Text, NamedTuple
+from typing import Any, Callable, Dict, List, Iterator, Optional, Text, NamedTuple
 
 import absl
+import pyarrow as pa
 import tensorflow as tf
 from tfx import types
 from tfx.components.trainer import constants
@@ -29,24 +30,24 @@ from tfx.proto import trainer_pb2
 from tfx.types import artifact_utils
 from tfx.utils import io_utils
 from tfx.utils import json_utils
+from tfx_bsl.tfxio import dataset_options
 from google.protobuf import json_format
 from tensorflow_metadata.proto.v0 import schema_pb2
 
 
 _TELEMETRY_DESCRIPTORS = ['Trainer']
 
-# TODO(b/162532757): the type should be
-# tfx_bsl.tfxio.dataset_options.TensorFlowDatasetOptions. Switch to it once
-# tfx-bsl post-0.22 is released.
-_TensorFlowDatasetOptions = Any
-
-DataAccessor = NamedTuple('DataAccessor', [
-    ('tf_dataset_factory', Callable[[
-        List[Text],
-        _TensorFlowDatasetOptions,
-        Optional[schema_pb2.Schema],
-    ], tf.data.Dataset])
-])
+DataAccessor = NamedTuple('DataAccessor',
+                          [('tf_dataset_factory', Callable[[
+                              List[Text],
+                              dataset_options.TensorFlowDatasetOptions,
+                              Optional[schema_pb2.Schema],
+                          ], tf.data.Dataset]),
+                           ('record_batch_factory', Callable[[
+                               List[Text],
+                               dataset_options.RecordBatchesOptions,
+                               Optional[schema_pb2.Schema],
+                           ], Iterator[pa.RecordBatch]])])
 
 # TODO(b/156929910): Change TrainerFnArgs to this FnArgs.
 #
@@ -127,6 +128,8 @@ def get_common_fn_args(input_dict: Dict[Text, List[types.Artifact]],
 
   data_accessor = DataAccessor(
       tf_dataset_factory=tfxio_utils.get_tf_dataset_factory_from_artifact(
+          input_dict[constants.EXAMPLES_KEY], _TELEMETRY_DESCRIPTORS),
+      record_batch_factory=tfxio_utils.get_record_batch_factory_from_artifact(
           input_dict[constants.EXAMPLES_KEY], _TELEMETRY_DESCRIPTORS))
 
   # https://github.com/tensorflow/tfx/issues/45: Replace num_steps=0 with
