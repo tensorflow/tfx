@@ -29,6 +29,9 @@ from tfx.orchestration import metadata
 from tfx.types import artifact_utils
 from tfx.types import standard_artifacts
 from tfx.types.artifact import ArtifactState
+from tfx.types.artifact import Artifact
+from tfx.types.artifact import Property
+from tfx.types.artifact import PropertyType
 
 from ml_metadata.proto import metadata_store_pb2
 
@@ -138,6 +141,72 @@ class MetadataTest(tf.test.TestCase):
       self._check_artifact_state(m, artifact, ArtifactState.PUBLISHED)
       m.update_artifact_state(artifact, ArtifactState.DELETED)
       self._check_artifact_state(m, artifact, ArtifactState.DELETED)
+  
+  def testArtifactDowngrade(self):
+    with metadata.Metadata(connection_config=self._connection_config) as m:
+      self.assertListEqual([], m.store.get_artifacts())
+      class TestArtifact(Artifact):
+        TYPE_NAME = 'TestArtifact'
+        PROPERTIES = {
+            'prop1': Property(type=PropertyType.INT),
+            'prop2': Property(type=PropertyType.INT),
+        }
+      
+
+      # Test publish artifact.
+      artifact = TestArtifact()
+      artifact.uri = 'uri'
+      artifact.prop1 = 1
+      artifact.prop2 = 2
+      m.publish_artifacts([artifact])
+      [artifact] = m.store.get_artifacts()
+
+      class TestArtifact(Artifact):
+        TYPE_NAME = 'TestArtifact'
+        PROPERTIES = {
+            'prop1': Property(type=PropertyType.INT),
+            # 'prop2': Property(type=PropertyType.INT),
+        }
+       # Test publish artifact.
+      artifact = TestArtifact()
+      artifact.uri = 'uri'
+      artifact.prop1 = 1
+      m.publish_artifacts([artifact])
+      [artifact] = m.store.get_artifacts()
+      # # Skip verifying time sensitive fields.
+      # artifact.ClearField('create_time_since_epoch')
+      # artifact.ClearField('last_update_time_since_epoch')
+      # self.assertProtoEquals(
+      #     """id: 1
+      #   type_id: 1
+      #   uri: "uri"
+      #   properties {
+      #     key: "split_names"
+      #     value {
+      #       string_value: "[\\"train\\", \\"eval\\"]"
+      #     }
+      #   }
+      #   custom_properties {
+      #     key: "state"
+      #     value {
+      #       string_value: "published"
+      #     }
+      #   }
+      #   state: LIVE
+      #   """, artifact)
+
+      # # Test get artifact.
+      # [artifact] = m.store.get_artifacts()
+      # self.assertListEqual([artifact], m.get_artifacts_by_uri('uri'))
+      # self.assertListEqual([artifact],
+      #                      m.get_artifacts_by_type(
+      #                          standard_artifacts.Examples.TYPE_NAME))
+
+      # # Test artifact state.
+      # self.assertEqual(artifact.state, metadata_store_pb2.Artifact.LIVE)
+      # self._check_artifact_state(m, artifact, ArtifactState.PUBLISHED)
+      # m.update_artifact_state(artifact, ArtifactState.DELETED)
+      # self._check_artifact_state(m, artifact, ArtifactState.DELETED)
 
   def testExecution(self):
     with metadata.Metadata(connection_config=self._connection_config) as m:
