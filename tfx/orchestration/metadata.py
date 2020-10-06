@@ -182,7 +182,7 @@ class Metadata(object):
     if artifact_type.id:
       return artifact_type
     type_id = self.store.put_artifact_type(
-        artifact_type=artifact_type, can_add_fields=True)
+        artifact_type=artifact_type, can_add_fields=True, all_fields_match=False)
     artifact_type.id = type_id
     return artifact_type
 
