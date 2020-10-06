@@ -32,7 +32,7 @@ nodes {
       }
       contexts {
         type {
-          name: "pipeline_run_id"
+          name: "pipeline_run"
         }
         name {
           runtime_parameter {
@@ -89,7 +89,7 @@ nodes {
       }
       contexts {
         type {
-          name: "pipeline_run_id"
+          name: "pipeline_run"
         }
         name {
           runtime_parameter {
@@ -185,7 +185,7 @@ nodes {
       }
       contexts {
         type {
-          name: "pipeline_run_id"
+          name: "pipeline_run"
         }
         name {
           runtime_parameter {
@@ -323,7 +323,7 @@ nodes {
       }
       contexts {
         type {
-          name: "pipeline_run_id"
+          name: "pipeline_run"
         }
         name {
           runtime_parameter {
