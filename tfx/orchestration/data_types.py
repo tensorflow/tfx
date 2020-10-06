@@ -18,7 +18,7 @@ from __future__ import division
 from __future__ import print_function
 
 from typing import Any, Dict, List, Optional, Text, Type, Union
-import warnings
+from absl import logging
 
 from tfx import types
 from tfx.utils import json_utils
@@ -188,8 +188,8 @@ class RuntimeParameter(json_utils.Jsonable):
       ptype: Type = None,  # pylint: disable=g-bare-generic
       default: Optional[Union[int, float, bool, Text]] = None,
       description: Optional[Text] = None):
-    warnings.warn('RuntimeParameter is only supported on KubeflowDagRunner '
-                  'currently.')
+    logging.warn('RuntimeParameter is only supported on Cloud-based DAG '
+                 'runner currently.')
 
     if ptype and ptype not in [int, float, bool, Text]:
       raise RuntimeError('Only str and scalar runtime parameters are supported')
