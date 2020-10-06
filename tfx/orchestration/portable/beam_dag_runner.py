@@ -13,13 +13,16 @@
 # limitations under the License.
 """Definition of Beam TFX runner."""
 
+import datetime
 import os
 from typing import Any, Iterable, Optional
 
 from absl import logging
 import apache_beam as beam
+from tfx.dsl.compiler import constants
 from tfx.orchestration import metadata
 from tfx.orchestration.portable import launcher
+from tfx.orchestration.portable import runtime_parameter_utils
 from tfx.orchestration.portable import tfx_runner
 from tfx.proto.orchestration import local_deployment_config_pb2
 from tfx.proto.orchestration import pipeline_pb2
@@ -178,6 +181,13 @@ class BeamDagRunner(tfx_runner.TfxRunner):
     # and hence we avoid deploying the pipeline.
     if 'TFX_JSON_EXPORT_PIPELINE_ARGS_PATH' in os.environ:
       return
+
+    run_id = datetime.datetime.now().isoformat()
+    # Substitute the runtime parameter to be a concrete run_id
+    runtime_parameter_utils.substitute_runtime_parameter(
+        pipeline, {
+            constants.PIPELINE_RUN_ID_PARAMETER_NAME: run_id,
+        })
 
     # TODO(b/163003901): Support beam DAG runner args through IR.
     deployment_config = self._extract_deployment_config(pipeline)

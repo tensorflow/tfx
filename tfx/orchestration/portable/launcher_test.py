@@ -19,12 +19,14 @@ from typing import Any, Dict, List, Text
 import mock
 import tensorflow as tf
 from tfx import types
+from tfx.dsl.compiler import constants
 from tfx.orchestration import metadata
 from tfx.orchestration.portable import base_driver
 from tfx.orchestration.portable import base_executor_operator
 from tfx.orchestration.portable import execution_publish_utils
 from tfx.orchestration.portable import inputs_utils
 from tfx.orchestration.portable import launcher
+from tfx.orchestration.portable import runtime_parameter_utils
 from tfx.orchestration.portable import system_node_handler
 from tfx.orchestration.portable import test_utils
 from tfx.orchestration.portable.mlmd import context_lib
@@ -166,6 +168,11 @@ class LauncherTest(test_utils.TfxTest):
         os.path.join(
             os.path.dirname(__file__), 'testdata',
             'pipeline_for_launcher_test.pbtxt'), pipeline)
+    # Substitute the runtime parameter to be a concrete run_id
+    runtime_parameter_utils.substitute_runtime_parameter(
+        pipeline, {
+            constants.PIPELINE_RUN_ID_PARAMETER_NAME: 'test_run',
+        })
     self._pipeline_info = pipeline.pipeline_info
     self._pipeline_runtime_spec = pipeline.runtime_spec
     self._pipeline_runtime_spec.pipeline_root.field_value.string_value = (
@@ -299,7 +306,7 @@ class LauncherTest(test_utils.TfxTest):
       self.assertProtoPartiallyEquals(
           """
           id: 1
-          type_id: 5
+          type_id: 6
           custom_properties {
             key: "name"
             value {
@@ -315,7 +322,7 @@ class LauncherTest(test_utils.TfxTest):
       self.assertProtoPartiallyEquals(
           """
           id: 1
-          type_id: 3
+          type_id: 4
           last_known_state: COMPLETE
           """,
           execution,
@@ -345,7 +352,7 @@ class LauncherTest(test_utils.TfxTest):
       self.assertProtoPartiallyEquals(
           """
           id: 3
-          type_id: 9
+          type_id: 10
           custom_properties {
             key: "name"
             value {
@@ -361,7 +368,7 @@ class LauncherTest(test_utils.TfxTest):
       self.assertProtoPartiallyEquals(
           """
           id: 3
-          type_id: 7
+          type_id: 8
           last_known_state: COMPLETE
           """,
           execution,
@@ -375,7 +382,7 @@ class LauncherTest(test_utils.TfxTest):
       self.assertProtoPartiallyEquals(
           """
           id: 4
-          type_id: 7
+          type_id: 8
           last_known_state: CACHED
           """,
           execution,
@@ -407,7 +414,7 @@ class LauncherTest(test_utils.TfxTest):
       self.assertProtoPartiallyEquals(
           """
           id: 3
-          type_id: 9
+          type_id: 10
           custom_properties {
             key: "name"
             value {
@@ -423,7 +430,7 @@ class LauncherTest(test_utils.TfxTest):
       self.assertProtoPartiallyEquals(
           """
           id: 3
-          type_id: 7
+          type_id: 8
           last_known_state: COMPLETE
           """,
           execution,
@@ -438,7 +445,7 @@ class LauncherTest(test_utils.TfxTest):
       self.assertProtoPartiallyEquals(
           """
           id: 4
-          type_id: 9
+          type_id: 10
           custom_properties {
             key: "name"
             value {
@@ -454,7 +461,7 @@ class LauncherTest(test_utils.TfxTest):
       self.assertProtoPartiallyEquals(
           """
           id: 4
-          type_id: 7
+          type_id: 8
           last_known_state: COMPLETE
           """,
           execution,
@@ -490,7 +497,7 @@ class LauncherTest(test_utils.TfxTest):
       self.assertProtoPartiallyEquals(
           """
           id: 3
-          type_id: 7
+          type_id: 8
           last_known_state: FAILED
           """,
           executions[-1],
@@ -514,7 +521,7 @@ class LauncherTest(test_utils.TfxTest):
       self.assertProtoPartiallyEquals(
           """
           id: 1
-          type_id: 5
+          type_id: 6
           custom_properties {
             key: "name"
             value {
@@ -562,7 +569,7 @@ class LauncherTest(test_utils.TfxTest):
       self.assertProtoPartiallyEquals(
           """
           id: 2
-          type_id: 4
+          type_id: 5
           custom_properties {
             key: "name"
             value {

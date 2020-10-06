@@ -30,6 +30,17 @@ nodes {
           }
         }
       }
+      contexts {
+        type {
+          name: "pipeline_run_id"
+        }
+        name {
+          runtime_parameter {
+            name: "pipeline_run_id"
+            type: STRING
+          }
+        }
+      }
     }
     outputs {
       outputs {
@@ -73,6 +84,17 @@ nodes {
         name {
           field_value {
             string_value: "my_transform"
+          }
+        }
+      }
+      contexts {
+        type {
+          name: "pipeline_run_id"
+        }
+        name {
+          runtime_parameter {
+            name: "pipeline_run_id"
+            type: STRING
           }
         }
       }
@@ -158,6 +180,17 @@ nodes {
         name {
           field_value {
             string_value: "my_trainer"
+          }
+        }
+      }
+      contexts {
+        type {
+          name: "pipeline_run_id"
+        }
+        name {
+          runtime_parameter {
+            name: "pipeline_run_id"
+            type: STRING
           }
         }
       }
@@ -285,6 +318,17 @@ nodes {
         name {
           field_value {
             string_value: "my_importer"
+          }
+        }
+      }
+      contexts {
+        type {
+          name: "pipeline_run_id"
+        }
+        name {
+          runtime_parameter {
+            name: "pipeline_run_id"
+            type: STRING
           }
         }
       }

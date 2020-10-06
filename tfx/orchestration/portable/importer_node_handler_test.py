@@ -15,8 +15,10 @@
 import os
 
 import tensorflow as tf
+from tfx.dsl.compiler import constants
 from tfx.orchestration import metadata
 from tfx.orchestration.portable import importer_node_handler
+from tfx.orchestration.portable import runtime_parameter_utils
 from tfx.orchestration.portable import test_utils
 from tfx.proto.orchestration import pipeline_pb2
 
@@ -47,6 +49,10 @@ class ImporterNodeHandlerTest(test_utils.TfxTest):
             'pipeline_for_launcher_test.pbtxt'), pipeline)
     self._pipeline_info = pipeline.pipeline_info
     self._pipeline_runtime_spec = pipeline.runtime_spec
+    runtime_parameter_utils.substitute_runtime_parameter(
+        pipeline, {
+            constants.PIPELINE_RUN_ID_PARAMETER_NAME: 'my_pipeline_run',
+        })
 
     # Extracts components
     self._importer = pipeline.nodes[3].pipeline_node
@@ -64,7 +70,7 @@ class ImporterNodeHandlerTest(test_utils.TfxTest):
       self.assertProtoPartiallyEquals(
           """
           id: 1
-          type_id: 4
+          type_id: 5
           uri: "my_url"
           custom_properties {
             key: "int_custom_property"
@@ -87,7 +93,7 @@ class ImporterNodeHandlerTest(test_utils.TfxTest):
       self.assertProtoPartiallyEquals(
           """
           id: 1
-          type_id: 3
+          type_id: 4
           last_known_state: COMPLETE
           custom_properties {
             key: "artifact_uri"
@@ -117,7 +123,7 @@ class ImporterNodeHandlerTest(test_utils.TfxTest):
       self.assertProtoPartiallyEquals(
           """
           id: 2
-          type_id: 4
+          type_id: 5
           uri: "my_url"
           custom_properties {
             key: "int_custom_property"
@@ -140,7 +146,7 @@ class ImporterNodeHandlerTest(test_utils.TfxTest):
       self.assertProtoPartiallyEquals(
           """
           id: 2
-          type_id: 3
+          type_id: 4
           last_known_state: COMPLETE
           custom_properties {
             key: "artifact_uri"
@@ -174,7 +180,7 @@ class ImporterNodeHandlerTest(test_utils.TfxTest):
       self.assertProtoPartiallyEquals(
           """
           id: 1
-          type_id: 4
+          type_id: 5
           uri: "my_url"
           custom_properties {
             key: "int_custom_property"
@@ -197,7 +203,7 @@ class ImporterNodeHandlerTest(test_utils.TfxTest):
       self.assertProtoPartiallyEquals(
           """
           id: 1
-          type_id: 3
+          type_id: 4
           last_known_state: COMPLETE
           custom_properties {
             key: "artifact_uri"
@@ -229,7 +235,7 @@ class ImporterNodeHandlerTest(test_utils.TfxTest):
       self.assertProtoPartiallyEquals(
           """
           id: 2
-          type_id: 3
+          type_id: 4
           last_known_state: COMPLETE
           custom_properties {
             key: "artifact_uri"
