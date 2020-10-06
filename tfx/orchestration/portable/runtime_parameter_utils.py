@@ -125,6 +125,9 @@ def substitute_runtime_parameter(
   Returns:
     None
   """
+  # if the message is primitive type, skip.
+  if isinstance(msg, (int, float, str, bool)):
+    return
   # If the message is a pipeline_pb2.Value instance, try to find an substitute
   # with runtime parameter bindings.
   if isinstance(msg, pipeline_pb2.Value):
