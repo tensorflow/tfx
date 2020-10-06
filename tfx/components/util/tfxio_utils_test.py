@@ -19,10 +19,13 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import inspect
 import tempfile
-
+from typing import Callable, Iterator
 from absl.testing import parameterized
+import pyarrow as pa
 import tensorflow as tf
+
 from tfx.components.experimental.data_view import constants
 from tfx.components.util import examples_utils
 from tfx.components.util import tfxio_utils
@@ -250,6 +253,28 @@ class TfxioUtilsTest(tf.test.TestCase, parameterized.TestCase):
       with self.assertRaisesRegex(
           expected_error_type, expected_error_msg_regex):
         _ = tfxio_utils.resolve_payload_format_and_data_view_uri(examples)
+
+  def test_get_tf_dataset_factory_from_artifact(self):
+    examples = standard_artifacts.Examples()
+    examples_utils.set_payload_format(
+        examples, example_gen_pb2.PayloadFormat.FORMAT_TF_EXAMPLE)
+
+    dataset_factory = tfxio_utils.get_tf_dataset_factory_from_artifact(
+        [examples], _TELEMETRY_DESCRIPTORS)
+    self.assertIsInstance(dataset_factory, Callable)
+    self.assertEqual(tf.data.Dataset,
+                     inspect.signature(dataset_factory).return_annotation)
+
+  def test_get_record_batch_factory_from_artifact(self):
+    examples = standard_artifacts.Examples()
+    examples_utils.set_payload_format(
+        examples, example_gen_pb2.PayloadFormat.FORMAT_TF_EXAMPLE)
+
+    record_batch_factory = tfxio_utils.get_record_batch_factory_from_artifact(
+        [examples], _TELEMETRY_DESCRIPTORS)
+    self.assertIsInstance(record_batch_factory, Callable)
+    self.assertEqual(Iterator[pa.RecordBatch],
+                     inspect.signature(record_batch_factory).return_annotation)
 
   def test_raise_if_data_view_uri_not_available(self):
     examples = standard_artifacts.Examples()
