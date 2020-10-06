@@ -178,9 +178,11 @@ class BeamDagRunnerTest(test_utils.TfxTest):
             'my_trainer': None,
             'my_importer': None,
         })
-    self.assertEqual(
-        _executed_components,
-        ['my_example_gen', 'my_importer', 'my_transform', 'my_trainer'])
+    # 'my_importer' has no upstream and can be executed in any order.
+    self.assertIn('my_importer', _executed_components)
+    _executed_components.remove('my_importer')
+    self.assertEqual(_executed_components,
+                     ['my_example_gen', 'my_transform', 'my_trainer'])
 
   @mock.patch.multiple(
       beam_dag_runner,
@@ -215,9 +217,11 @@ class BeamDagRunnerTest(test_utils.TfxTest):
             'my_trainer': None,
             'my_importer': None,
         })
-    self.assertEqual(
-        _executed_components,
-        ['my_example_gen', 'my_importer', 'my_transform', 'my_trainer'])
+    # 'my_importer' has no upstream and can be executed in any order.
+    self.assertIn('my_importer', _executed_components)
+    _executed_components.remove('my_importer')
+    self.assertEqual(_executed_components,
+                     ['my_example_gen', 'my_transform', 'my_trainer'])
 
 
 if __name__ == '__main__':
