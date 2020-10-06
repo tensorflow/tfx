@@ -1,4 +1,4 @@
-# Lint as: python2, python3
+# Lint as: python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,17 +14,10 @@
 # limitations under the License.
 """Chicago taxi example using TFX."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import os
 from typing import Text
 
 import absl
-from presto_component.component import PrestoExampleGen
-from proto import presto_config_pb2
-
 from tfx.components import Evaluator
 from tfx.components import ExampleValidator
 from tfx.components import ModelValidator
@@ -33,6 +26,8 @@ from tfx.components import SchemaGen
 from tfx.components import StatisticsGen
 from tfx.components import Trainer
 from tfx.components import Transform
+from tfx.examples.custom_components.presto_example_gen.presto_component.component import PrestoExampleGen
+from tfx.examples.custom_components.presto_example_gen.proto import presto_config_pb2
 from tfx.orchestration import metadata
 from tfx.orchestration import pipeline
 from tfx.orchestration.beam.beam_dag_runner import BeamDagRunner

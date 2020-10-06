@@ -1,4 +1,4 @@
-# Lint as: python2, python3
+# Lint as: python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,18 +14,14 @@
 # limitations under the License.
 """Generic TFX PrestoExampleGen executor."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import datetime
 from typing import Any, Dict, Iterable, Text, Tuple
 
 import apache_beam as beam
 import prestodb
-from proto import presto_config_pb2
 import tensorflow as tf
 from tfx.components.example_gen import base_example_gen_executor
+from tfx.examples.custom_components.presto_example_gen.proto import presto_config_pb2
 from tfx.proto import example_gen_pb2
 
 from google.protobuf import json_format

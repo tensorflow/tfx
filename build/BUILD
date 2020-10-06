@@ -20,6 +20,7 @@ sh_binary(
     name = "gen_proto",
     srcs = ["gen_proto.sh"],
     data = [
+        "//tfx/examples/custom_components/presto_example_gen/proto:presto_config_pb2.py",
         "//tfx/extensions/experimental/kfp_compatibility/proto:kfp_component_spec_pb2.py",
         "//tfx/orchestration/experimental/core/proto:task_pb2.py",
         "//tfx/orchestration/kubeflow/proto:kubeflow_pb2.py",

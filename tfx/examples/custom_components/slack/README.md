@@ -28,56 +28,51 @@ and should not be relied on for productionization use.
 * You need to have a Slack account and a channel set up.
 
 # Try It Out
-While it is not mandantory, we highly recommend trying out the example in a virtual environment. You can achieve that by the following:
+
+## Common steps
+
+First clone the project and install the source in virtual environment.
 
 ```bash
-cd
-python -m virtualenv -p python3.6 tfx_env
+# Supported python version can be found in http://pypi.org/project/tfx.
+python -m venv tfx_env
 source tfx_env/bin/activate
+
+git clone https://github.com/tensorflow/tfx
+git checkout v0.24.0  # Checkout to the latest release.
+pip install -e ./tfx
 ```
 
-## Step 0: Setup Environment
-First install required packages:
+This project requires some environment variables that will be used to store
+pipeline data and results. Feel free to change the directory below.
 
 ```bash
-pip install tensorflow==1.13.1
-pip install apache-airflow
-pip install docker
-```
-
-Configure common paths:
-
-```bash
-export AIRFLOW_HOME=~/airflow
 export TAXI_DIR=~/taxi
 export TFX_DIR=~/tfx
 ```
 
-Initialize Airflow:
+You also need a
+[classic slack bot](https://api.slack.com/authentication/migration#classic) with
+[bot scope]. After specifying the permission in app configuration page, specify
+bot user OAuth access token and channel ID to which the bot will ask for user
+approval.
 
 ```bash
+export TFX_SLACK_BOT_TOKEN="xoxb-..."
+export TFX_SLACK_CHANNEL_ID="C..."
+```
+
+## Running Pipeline Locally
+
+In order to run pipeline locally, you need to additionally install airflow in
+the virtual environment and configure some variables.
+
+```bash
+# Inside virtual environment
+pip install apache-airflow
+export AIRFLOW_HOME=~/airflow  # Feel free to choose other directory.
 airflow initdb
 ```
-
-## Step 1: Setup a Slack app
-Follow this Slack [tutorial](https://github.com/slackapi/python-slackclient/blob/master/tutorial/01-creating-the-slack-app.md) or similar one to set up a slack app. After setup, set the `Bot User OAuth Access Token` in your environment.
-
-```bash
-export SLACK_BOT_TOKEN={your_token}
-```
-
-## Step 2: Install Custom SlackComponent
-
-```bash
-cd
-git clone https://github.com/tensorflow/tfx.git
-
-cd tfx/tfx/examples/custom_components/slack
-pip install -e .
-```
-
-## Step 3: Try Out Example
-### Copy the pipeline definition to Airflow's DAG directory (Local)
 
 The benefit of the local example is that you can edit any part of the pipeline
 and experiment very quickly with various components. The example comes with a
@@ -99,13 +94,6 @@ mkdir $AIRFLOW_HOME/dags/
 cp example/taxi_pipeline_slack.py $AIRFLOW_HOME/dags/
 ```
 
-You will also need to change the `slack_channel_id` field to your own Slack channel id
-in the pipeline definition:
-
-```bash
-sed -i 's/my-channel-id/{your-channel-id}/g' $AIRFLOW_HOME/dags/taxi_pipeline_slack.py
-```
-
 The module file `taxi_utils_slack.py` used by the Trainer and Transform
 components will reside in `$TAXI_DIR`, let's copy it there:
 
@@ -113,13 +101,17 @@ components will reside in `$TAXI_DIR`, let's copy it there:
 cp example/taxi_utils_slack.py $TAXI_DIR
 ```
 
-### Run the pipeline (Local)
-Follow similar steps in [Run the local example](https://github.com/tensorflow/tfx/tree/master/tfx/examples/chicago_taxi_pipeline#run-the-local-example)
+Follow similar steps in
+[*Run the local example*](https://github.com/tensorflow/tfx/tree/master/tfx/examples/chicago_taxi_pipeline#run-the-local-example)
 in our regular chicago_taxi_pipeline example to run the pipeline. Just note that
 the pipeline name is `chicago_taxi_slack`.
 
-### Compile the pipeline (GCP)
-Prepare a gcs bucket for the pipeline run root:
+## Running Pipeline in Google Cloud Platform
+
+Once you've done playing with your pipeline locally, you can easily deploy the
+pipeline in Google Cloud Platform for production.
+
+First prepare a gcs bucket for the pipeline run root:
 
 ```bash
 gsutil mb -p ${PROJECT_ID} gs://${BUCKET_NAME}
@@ -131,6 +123,7 @@ from:
 ```bash
 cp data/simple/data.csv gs://${BUCKET_NAME}/data/simple/
 ```
+
 Let's copy the TFX pipeline definition to the root of the slack example
 and update the _input_bucket/_update_bucket to gs://${BUCKET_NAME}:
 
@@ -138,26 +131,20 @@ and update the _input_bucket/_update_bucket to gs://${BUCKET_NAME}:
 cp example/taxi_pipeline_slack_kubeflow.py ./
 ```
 
-You will also need to change the `slack_channel_id` field to your own Slack
-channel id in the pipeline definition:
-
-```bash
-sed -i 's/my-channel-id/{your-channel-id}/g' ./taxi_pipeline_slack_kubeflow.py
-```
-
 Compile the slack example. Under the hood, tfx CLI creates a container with the
 slack component installed using Skaffold and calls kubeflow dag runner:
+
 ```bash
 tfx pipeline create --engine kubeflow --build_target_image ${target_image_name} \
   --pipeline_path taxi_pipeline_slack_kubeflow.py
 ```
 
-### Run the pipeline (GCP)
-Upload the generated chicago_taxi_slack.tar.gz and experiment in the Kubeflow
-Pipeline UI. Remember to input the pipeline-root to gs://${BUCKET_NAME}.
+Finally upload the generated `chicago_taxi_slack.tar.gz` to the Kubeflow
+Pipeline UI. Remember to input the pipeline-root to `gs://${BUCKET_NAME}`.
 
 
-### Interact with Slack
+## Interact with Slack
+
 After the `Model Validator` phase succeeds, you will get a Slack message sent to
 your Slack channel asking you to review a model with a URI. If you reply 'LGTM'
 or 'approve' (**in thread**), the pipeline will continue to push the model. If

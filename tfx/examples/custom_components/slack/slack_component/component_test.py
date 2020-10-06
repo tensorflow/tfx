@@ -1,4 +1,4 @@
-# Lint as: python2, python3
+# Lint as: python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,12 +14,8 @@
 # limitations under the License.
 """Tests for slack component."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
-from slack_component import component
 import tensorflow as tf
+from tfx.examples.custom_components.slack.slack_component import component
 from tfx.types import channel_utils
 from tfx.types import standard_artifacts
 

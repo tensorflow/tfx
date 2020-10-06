@@ -1,4 +1,4 @@
-# Lint as: python2, python3
+# Lint as: python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -20,9 +20,6 @@ a kind of starting point example for creating custom components.
 This component along with other custom component related code will only serve as
 an example and will not be supported by TFX team.
 """
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
 
 import json
 import os
