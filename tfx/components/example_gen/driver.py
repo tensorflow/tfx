@@ -50,7 +50,7 @@ def _update_output_artifact(
       utils.SPAN_PROPERTY_NAME].string_value = str(
           exec_properties[utils.SPAN_PROPERTY_NAME])
   # TODO(b/162622803): add default behavior for when version spec not present.
-  if exec_properties[utils.VERSION_PROPERTY_NAME]:
+  if exec_properties[utils.VERSION_PROPERTY_NAME] is not None:
     output_artifact.custom_properties[
         utils.VERSION_PROPERTY_NAME].string_value = str(
             exec_properties[utils.VERSION_PROPERTY_NAME])
@@ -152,7 +152,8 @@ class Driver(base_driver.BaseDriver, ir_base_driver.BaseDriver):
     exec_properties = self.resolve_exec_properties(
         exec_properties, pipeline_info, component_info)
     for k, v in exec_properties.items():
-      common_utils.set_metadata_value(result.exec_properties[k], v)
+      if v is not None:
+        common_utils.set_metadata_value(result.exec_properties[k], v)
 
     # Populate output_dict
     output_example = copy.deepcopy(

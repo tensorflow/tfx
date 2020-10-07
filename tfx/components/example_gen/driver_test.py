@@ -214,7 +214,7 @@ class DriverTest(tf.test.TestCase):
     self.assertEqual(
         examples.get_string_custom_property(utils.VERSION_PROPERTY_NAME), '1')
 
-  def testRun(self):
+  def testDriverRunFn(self):
     # Create input dir.
     self._input_base_path = os.path.join(self._test_dir, 'input_base')
     tf.io.gfile.makedirs(self._input_base_path)
@@ -224,11 +224,11 @@ class DriverTest(tf.test.TestCase):
     pipeline_node = pipeline_pb2.PipelineNode()
 
     # Fake previous outputs
-    span1_v1_split1 = os.path.join(self._input_base_path, 'span01', 'version01',
-                                   'split1', 'data')
+    span1_v1_split1 = os.path.join(self._input_base_path, 'span01', 'split1',
+                                   'data')
     io_utils.write_string_file(span1_v1_split1, 'testing11')
-    span1_v1_split2 = os.path.join(self._input_base_path, 'span01', 'version01',
-                                   'split2', 'data')
+    span1_v1_split2 = os.path.join(self._input_base_path, 'span01', 'split2',
+                                   'data')
     io_utils.write_string_file(span1_v1_split2, 'testing12')
 
     ir_driver = driver.Driver(self._mock_metadata, pipeline_info, pipeline_node)
@@ -246,20 +246,16 @@ class DriverTest(tf.test.TestCase):
             json_format.MessageToJson(
                 example_gen_pb2.Input(splits=[
                     example_gen_pb2.Input.Split(
-                        name='s1',
-                        pattern='span{SPAN}/version{VERSION}/split1/*'),
+                        name='s1', pattern='span{SPAN}/split1/*'),
                     example_gen_pb2.Input.Split(
-                        name='s2',
-                        pattern='span{SPAN}/version{VERSION}/split2/*')
+                        name='s2', pattern='span{SPAN}/split2/*')
                 ]),
                 preserving_proto_field_name=True),
     }
     result = ir_driver.run(None, output_dic, exec_properties)
-    print(result)
     # Assert exec_properties' values
     exec_properties = result.exec_properties
     self.assertEqual(exec_properties[utils.SPAN_PROPERTY_NAME].int_value, 1)
-    self.assertEqual(exec_properties[utils.VERSION_PROPERTY_NAME].int_value, 1)
     updated_input_config = example_gen_pb2.Input()
     json_format.Parse(exec_properties[utils.INPUT_CONFIG_KEY].string_value,
                       updated_input_config)
@@ -267,11 +263,11 @@ class DriverTest(tf.test.TestCase):
         """
         splits {
           name: "s1"
-          pattern: "span01/version01/split1/*"
+          pattern: "span01/split1/*"
         }
         splits {
           name: "s2"
-          pattern: "span01/version01/split2/*"
+          pattern: "span01/split2/*"
         }""", updated_input_config)
     self.assertRegex(
         exec_properties[utils.FINGERPRINT_PROPERTY_NAME].string_value,
@@ -284,9 +280,6 @@ class DriverTest(tf.test.TestCase):
     self.assertEqual(
         output_example.custom_properties[utils.SPAN_PROPERTY_NAME].string_value,
         '1')
-    self.assertEqual(
-        output_example.custom_properties[
-            utils.VERSION_PROPERTY_NAME].string_value, '1')
     self.assertRegex(
         output_example.custom_properties[
             utils.FINGERPRINT_PROPERTY_NAME].string_value,
