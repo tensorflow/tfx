@@ -125,7 +125,7 @@ def substitute_runtime_parameter(
   Returns:
     None
   """
-  if not hasattr(msg, 'ListFields'):
+  if not isinstance(msg, message.Message):
     return
 
   # If the message is a pipeline_pb2.Value instance, try to find an substitute
