@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""This module defines a generic Launcher for all TFleX nodes."""
+"""This module defines the handler for importer node."""
 
 from typing import Any, Dict
 
@@ -78,10 +78,7 @@ class ImporterNodeHandler(system_node_handler.SystemNodeHandler):
           contexts=contexts,
           exec_properties=exec_properties)
 
-      # Add importer node specific properties, custom_properties to
-      # exec_properties which be persisted to Artifact table in MLMD.
-      # Please note that exec_properties update shall be done after we register
-      # the execution because we don't record these updates in Execution.
+      # 4. Generate output artifacts to represent the imported artifacts.
       output_spec = pipeline_node.outputs.outputs[
           importer_node.IMPORT_RESULT_KEY]
       properties = self._extract_proto_map(
@@ -99,6 +96,7 @@ class ImporterNodeHandler(system_node_handler.SystemNodeHandler):
           output_artifact_class=output_artifact_class,
           mlmd_artifact_type=output_spec.artifact_spec.type)
 
+      # 5. Publish the output artifacts.
       execution_publish_utils.publish_succeeded_execution(
           metadata_handler=m,
           execution_id=execution.id,
