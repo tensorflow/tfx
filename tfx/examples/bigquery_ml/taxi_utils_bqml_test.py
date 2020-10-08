@@ -66,8 +66,6 @@ class TaxiUtilsTest(tf.test.TestCase):
     tfxio = tf_example_record.TFExampleRecord(
         file_pattern=os.path.join(self._testdata_path,
                                   'csv_example_gen/train/*'),
-        # TODO(b/114938612): Eventually remove this override.
-        validate=False,
         telemetry_descriptors=['Tests'],
         schema=legacy_metadata.schema)
     with beam.Pipeline() as p:
