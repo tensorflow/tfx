@@ -43,7 +43,7 @@ def get_payload_format(examples: types.Artifact) -> int:
   Returns:
     payload_format: One of the enums in example_gen_pb2.PayloadFormat.
   """
-  assert examples.type is standard_artifacts.Examples, (
+  assert examples.type_name == standard_artifacts.Examples.TYPE_NAME, (
       'examples must be of type standard_artifacts.Examples')
   if examples.has_custom_property(
       example_gen_utils.PAYLOAD_FORMAT_PROPERTY_NAME):
@@ -70,7 +70,7 @@ def set_payload_format(examples: types.Artifact, payload_format: int):
     examples: A standard_artifacts.Examples artifact.
     payload_format: One of the enums in example_gen_pb2.PayloadFormat.
   """
-  assert examples.type is standard_artifacts.Examples, (
+  assert examples.type_name == standard_artifacts.Examples.TYPE_NAME, (
       'examples must be of type standard_artifacts.Examples')
   examples.set_string_custom_property(
       example_gen_utils.PAYLOAD_FORMAT_PROPERTY_NAME,
