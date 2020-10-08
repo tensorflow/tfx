@@ -32,6 +32,7 @@ from tfx.components.trainer import executor as trainer_executor
 from tfx.examples.chicago_taxi_pipeline import taxi_utils
 from tfx.utils import io_utils
 from tfx.utils import path_utils
+from tfx_bsl.tfxio import tf_example_record
 
 from tensorflow_metadata.proto.v0 import schema_pb2
 
@@ -64,19 +65,18 @@ class TaxiUtilsTest(tf.test.TestCase):
     # will accept the `Schema` proto directly.
     legacy_metadata = dataset_metadata.DatasetMetadata(
         dataset_schema.from_feature_spec(feature_spec))
-    decoder = tft.coders.ExampleProtoCoder(legacy_metadata.schema)
+    tfxio = tf_example_record.TFExampleRecord(
+        file_pattern=os.path.join(self._testdata_path,
+                                  'csv_example_gen/train/*'),
+        # TODO(b/114938612): Eventually remove this override.
+        validate=False,
+        telemetry_descriptors=['Tests'],
+        schema=legacy_metadata.schema)
     with beam.Pipeline() as p:
       with tft_beam.Context(temp_dir=os.path.join(working_dir, 'tmp')):
-        examples = (
-            p
-            | 'ReadTrainData' >> beam.io.ReadFromTFRecord(
-                os.path.join(self._testdata_path, 'csv_example_gen/train/*'),
-                coder=beam.coders.BytesCoder(),
-                # TODO(b/114938612): Eventually remove this override.
-                validate=False)
-            | 'DecodeTrainData' >> beam.Map(decoder.decode))
+        examples = p | 'ReadTrainData' >> tfxio.BeamSource()
         (transformed_examples, transformed_metadata), transform_fn = (
-            (examples, legacy_metadata)
+            (examples, tfxio.TensorAdapterConfig())
             | 'AnalyzeAndTransform' >> tft_beam.AnalyzeAndTransformDataset(
                 taxi_utils.preprocessing_fn))
 
