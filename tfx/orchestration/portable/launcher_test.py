@@ -41,6 +41,10 @@ from ml_metadata.proto import metadata_store_pb2
 _PYTHON_CLASS_EXECUTABLE_SPEC = executable_spec_pb2.PythonClassExecutableSpec
 
 
+class FakeError(Exception):
+  pass
+
+
 class _FakeExecutorOperator(base_executor_operator.BaseExecutorOperator):
 
   SUPPORTED_EXECUTOR_SPEC_TYPE = [_PYTHON_CLASS_EXECUTABLE_SPEC]
@@ -62,7 +66,7 @@ class _FakeCrashingExecutorOperator(base_executor_operator.BaseExecutorOperator
   def run_executor(
       self, execution_info: base_executor_operator.ExecutionInfo
   ) -> execution_result_pb2.ExecutorOutput:
-    raise RuntimeError()
+    raise FakeError()
 
 
 class _FakeExampleGenLikeDriver(base_driver.BaseDriver):
@@ -485,10 +489,8 @@ class LauncherTest(test_utils.TfxTest):
         executor_spec=self._trainer_executor_spec,
         custom_executor_operators=executor_operators)
 
-    try:
+    with self.assertRaises(FakeError):
       _ = test_launcher.launch()
-    except:  # pylint: disable=bare-except
-      pass
 
     with self._mlmd_connection as m:
       artifacts = m.store.get_artifacts_by_type('Model')

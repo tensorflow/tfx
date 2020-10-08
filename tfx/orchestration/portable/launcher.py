@@ -13,7 +13,6 @@
 # limitations under the License.
 """This module defines a generic Launcher for all TFleX nodes."""
 
-import traceback
 from typing import Any, Dict, List, Optional, Text, Type, TypeVar
 
 from absl import logging
@@ -258,11 +257,8 @@ class Launcher(object):
     outputs_utils.make_output_dirs(execution_info.output_dict)
     try:
       return self._executor_operator.run_executor(execution_info)
-    except Exception as e:  # pylint: disable=broad-except
+    except Exception:  # pylint: disable=broad-except
       outputs_utils.remove_output_dirs(execution_info.output_dict)
-      logging.error(
-          'Execution failed with error %s '
-          'and this is the stack trace \n %s', e, traceback.format_exc())
       raise
 
   def _publish_successful_execution(
@@ -314,6 +310,9 @@ class Launcher(object):
     Returns:
       The metadata of this execution that is registered in MLMD. It can be None
       if the driver decides not to run the execution.
+
+    Raises:
+      Exception: If the executor fails.
     """
     logging.debug('Running launcher for %s', self._pipeline_node)
     if self._system_node_handler:
@@ -334,7 +333,9 @@ class Launcher(object):
       except Exception:  # pylint: disable=broad-except
         self._publish_failed_execution(execution_info.execution_metadata.id,
                                        contexts)
-        return execution_info.execution_metadata
+        logging.error('Execution %d failed.',
+                      execution_info.execution_metadata.id)
+        raise
 
       self._clean_up(execution_info)
       logging.info('Publishing output artifacts %s for exeuction %s',
