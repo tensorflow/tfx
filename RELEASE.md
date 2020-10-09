@@ -7,6 +7,7 @@
 ## Bug fixes and other changes
 
 *   Reuse Examples artifact type introduced in TFX 0.23 to allow older release jobs running together with TFX 0.23+ release.
+*   Removed `python-snappy` from `[all]` extra dependency list.
 
 ### Deprecations
 
