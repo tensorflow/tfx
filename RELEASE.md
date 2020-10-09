@@ -25,6 +25,8 @@
 *   Depends on `tensorflow-hub>=0.9.0,<0.10`.
 *   New extra dependencies `[examples]` is required to use codes inside
     tfx/examples.
+*   Reuse Examples artifact type introduced in TFX 0.23 to allow older release
+    jobs running together with TFX 0.23+ release.
 
 ### For pipeline authors
 
