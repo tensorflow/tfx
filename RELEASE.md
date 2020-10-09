@@ -1,18 +1,29 @@
-# Version 0.21.4
+# Version 0.21.5
 
 ## Major Features and Improvements
 
+*   N/A
+
 ## Bug fixes and other changes
-*   Fixed InfraValidator signal handling bug on BeamDagRunner.
-*   Dropped "Type" suffix from primitive type artifact names (Integer, Float,
-    String, Bytes).
+
+*   Reuse Examples artifact type introduced in TFX 0.23 to allow older release jobs running together with TFX 0.23+ release.
 
 ### Deprecations
 
+*   N/A
+
 ## Breaking changes
+
+*   N/A
 
 ### For pipeline authors
 
+*   N/A
+
 ### For component authors
 
+*   N/A
+
 ## Documentation updates
+
+*   N/A
