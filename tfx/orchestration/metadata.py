@@ -26,21 +26,20 @@ import os
 import random
 import time
 import types
-
 from typing import Any, Dict, List, Optional, Set, Text, Tuple, Type, Union
 
 import absl
 import six
 import tensorflow as tf
-
-from ml_metadata.metadata_store import metadata_store
-from ml_metadata.proto import metadata_store_pb2
-from ml_metadata.proto import metadata_store_service_pb2
-from tensorflow.python.lib.io import file_io  # pylint: disable=g-direct-tensorflow-import
 from tfx.orchestration import data_types
 from tfx.types import artifact_utils
 from tfx.types.artifact import Artifact
 from tfx.types.artifact import ArtifactState
+
+import ml_metadata as mlmd
+from ml_metadata.proto import metadata_store_pb2
+from ml_metadata.proto import metadata_store_service_pb2
+from tensorflow.python.lib.io import file_io  # pylint: disable=g-direct-tensorflow-import
 
 # Number of times to retry initialization of connection.
 _MAX_INIT_RETRY = 10
@@ -81,14 +80,18 @@ _EXECUTION_TYPE_RESERVED_KEYS = frozenset(
 # Keys for artifact properties.
 _ARTIFACT_TYPE_KEY_STATE = 'state'
 
+# pyformat: disable
+_ConnectionConfigType = Union[
+    metadata_store_pb2.ConnectionConfig,
+    metadata_store_pb2.MetadataStoreClientConfig]
+# pyformat: enable
+
 
 def sqlite_metadata_connection_config(
     metadata_db_uri: Text) -> metadata_store_pb2.ConnectionConfig:
   """Convenience function to create file based metadata connection config.
-
   Args:
     metadata_db_uri: uri to metadata db.
-
   Returns:
     A metadata_store_pb2.ConnectionConfig based on given metadata db uri.
   """
@@ -104,14 +107,12 @@ def mysql_metadata_connection_config(
     host: Text, port: int, database: Text, username: Text,
     password: Text) -> metadata_store_pb2.ConnectionConfig:
   """Convenience function to create mysql-based metadata connection config.
-
   Args:
     host: The name or network address of the instance of MySQL to connect to.
     port: The port MySQL is using to listen for connections.
     database: The name of the database to use.
     username: The MySQL login account being used.
     password: The password for the MySQL account being used.
-
   Returns:
     A metadata_store_pb2.ConnectionConfig based on given metadata db uri.
   """
@@ -129,11 +130,7 @@ def mysql_metadata_connection_config(
 class Metadata(object):
   """Helper class to handle metadata I/O."""
 
-  def __init__(
-      self,
-      connection_config: Union[metadata_store_pb2.ConnectionConfig,
-                               metadata_store_pb2.MetadataStoreClientConfig]
-  ) -> None:
+  def __init__(self, connection_config: _ConnectionConfigType) -> None:
     self._connection_config = connection_config
     self._store = None
 
@@ -144,7 +141,7 @@ class Metadata(object):
     connection_error = None
     for _ in range(_MAX_INIT_RETRY):
       try:
-        self._store = metadata_store.MetadataStore(self._connection_config)
+        self._store = mlmd.MetadataStore(self._connection_config)
       except RuntimeError as err:
         # MetadataStore could raise Aborted error if multiple concurrent
         # connections try to execute initialization DDL in database.
@@ -165,9 +162,8 @@ class Metadata(object):
     self._store = None
 
   @property
-  def store(self) -> metadata_store.MetadataStore:
+  def store(self) -> mlmd.MetadataStore:
     """Returns underlying MetadataStore.
-
     Raises:
       RuntimeError: if this instance is not in enter state.
     """
@@ -178,11 +174,27 @@ class Metadata(object):
   def _prepare_artifact_type(
       self, artifact_type: metadata_store_pb2.ArtifactType
   ) -> metadata_store_pb2.ArtifactType:
+    """Prepares artifact type."""
     if artifact_type.id:
       return artifact_type
-    type_id = self.store.put_artifact_type(
-        artifact_type=artifact_type, can_add_fields=True)
-    artifact_type.id = type_id
+    try:
+      type_id = self.store.put_artifact_type(
+          artifact_type=artifact_type, can_add_fields=True)
+      artifact_type.id = type_id
+    # The patch fix to cherry pick into 0.21 and 0.22 release for working
+    # together with 0.23+ releases with the same MLMD instance. In 0.23, there
+    # is an Examples type change which adds additional properties, while the
+    # older release Examples type failed to be registered, as it contains less
+    # fields.
+    # Note in 0.23+ release, mlmd.errors.AlreadyExistsError is used.
+    except tf.errors.AlreadyExistsError:
+      if artifact_type.name == 'Examples':
+        stored_type = self.store.get_artifact_type(artifact_type.name)
+        artifact_type.id = stored_type.id
+        absl.logging.warning('Reusing a type registered by newer release.')
+      else:
+        raise
+
     return artifact_type
 
   def update_artifact_state(self, artifact: metadata_store_pb2.Artifact,
@@ -202,10 +214,8 @@ class Metadata(object):
   def _upsert_artifacts(self, tfx_artifact_list: List[Artifact],
                         state: Text) -> None:
     """Updates or inserts a list of artifacts.
-
     This call will also update original tfx artifact list to contain the
     artifact type info and artifact id.
-
     Args:
       tfx_artifact_list: A list of tfx.types.Artifact. This will be updated with
         MLMD artifact type info and MLMD artifact id.
@@ -216,6 +226,8 @@ class Metadata(object):
         artifact_type = self._prepare_artifact_type(raw_artifact.artifact_type)
         raw_artifact.set_mlmd_artifact_type(artifact_type)
       raw_artifact.state = state
+      if state == ArtifactState.PUBLISHED:
+        raw_artifact.mlmd_artifact.state = metadata_store_pb2.Artifact.LIVE
     artifact_ids = self.store.put_artifacts(
         [x.mlmd_artifact for x in tfx_artifact_list])
     for a, aid in zip(tfx_artifact_list, artifact_ids):
@@ -223,10 +235,8 @@ class Metadata(object):
 
   def publish_artifacts(self, tfx_artifact_list: List[Artifact]) -> None:
     """Publishes artifacts to MLMD.
-
     This call will also update original tfx artifact list to contain the
     artifact type info and artifact id.
-
     Args:
       tfx_artifact_list: A list of tfx.types.Artifact which will be updated
     """
@@ -263,8 +273,8 @@ class Metadata(object):
       try:
         artifact_type = self.store.get_artifact_type(type_name)
         if artifact_type is None:
-          raise tf.errors.NotFoundError(None, None, 'No type found.')
-      except tf.errors.NotFoundError:
+          raise mlmd.errors.NotFoundError('No type found.')
+      except mlmd.errors.NotFoundError:
         absl.logging.warning('Artifact type %s not registered' % type_name)
         continue
 
@@ -283,13 +293,11 @@ class Metadata(object):
       output_key: Optional[Text] = None,
   ) -> List[metadata_store_service_pb2.ArtifactAndType]:
     """Gets qualified artifacts that have the right producer info.
-
     Args:
       contexts: context constraints to filter artifacts
       type_name: type constraint to filter artifacts
       producer_component_id: producer constraint to filter artifacts
       output_key: output key constraint to filter artifacts
-
     Returns:
       A list of ArtifactAndType, containing qualified artifacts.
     """
@@ -312,9 +320,9 @@ class Metadata(object):
     try:
       artifact_type = self.store.get_artifact_type(type_name)
       if not artifact_type:
-        raise tf.errors.NotFoundError(
+        raise mlmd.errors.NotFoundError(
             None, None, 'No artifact type found for %s.' % type_name)
-    except tf.errors.NotFoundError:
+    except mlmd.errors.NotFoundError:
       return []
 
     # Gets the executions that are associated with all contexts.
@@ -376,14 +384,11 @@ class Metadata(object):
   def _prepare_execution_type(self, type_name: Text,
                               exec_properties: Dict[Text, Any]) -> int:
     """Gets execution type given execution type name and properties.
-
     Uses existing type if schema is superset of what is needed. Otherwise tries
     to register new execution type.
-
     Args:
       type_name: the name of the execution type
       exec_properties: the execution properties included by the execution
-
     Returns:
       execution type id
     Raises:
@@ -397,9 +402,8 @@ class Metadata(object):
              for k in exec_properties.keys()):
         return existing_execution_type.id
       else:
-        raise tf.errors.NotFoundError(None, None,
-                                      'No qualified execution type found.')
-    except tf.errors.NotFoundError:
+        raise mlmd.errors.NotFoundError('No qualified execution type found.')
+    except mlmd.errors.NotFoundError:
       execution_type = metadata_store_pb2.ExecutionType(name=type_name)
       execution_type.properties[
           _EXECUTION_TYPE_KEY_STATE] = metadata_store_pb2.STRING
@@ -428,7 +432,7 @@ class Metadata(object):
         absl.logging.debug('Registering a new execution type with id %s.' %
                            execution_type_id)
         return execution_type_id
-      except tf.errors.AlreadyExistsError:
+      except mlmd.errors.AlreadyExistsError:
         warning_str = (
             'missing or modified key in exec_properties comparing with '
             'existing execution type with the same type name. Existing type: '
@@ -448,6 +452,14 @@ class Metadata(object):
     if state is not None:
       execution.properties[
           _EXECUTION_TYPE_KEY_STATE].string_value = tf.compat.as_text(state)
+    # Forward-compatible change to leverage built-in schema to track states.
+    if state == EXECUTION_STATE_CACHED:
+      execution.last_known_state = metadata_store_pb2.Execution.CACHED
+    elif state == EXECUTION_STATE_COMPLETE:
+      execution.last_known_state = metadata_store_pb2.Execution.COMPLETE
+    elif state == EXECUTION_STATE_NEW:
+      execution.last_known_state = metadata_store_pb2.Execution.RUNNING
+
     exec_properties = exec_properties or {}
     # TODO(ruoyu): Enforce a formal rule for execution schema change.
     for k, v in exec_properties.items():
@@ -505,16 +517,13 @@ class Metadata(object):
   ) -> List[Tuple[metadata_store_pb2.Artifact,
                   Optional[metadata_store_pb2.Event]]]:
     """Creates a list of [Artifact, [Optional]Event] tuples.
-
     The result of this function will be used in a MLMD put_execution() call. The
     artifacts will be linked to certain contexts. If an artifact is attached
     with an event, it will be linked with the execution through the event
     created.
-
     When the id of an artifact is in the registered_artifacts_ids, no event is
     attached to it. Otherwise, an event with given type will be attached to the
     artifact.
-
     Args:
       artifact_dict: the source of artifacts to work on. For each artifact in
         the dict, creates a tuple for that
@@ -522,7 +531,6 @@ class Metadata(object):
       new_state: new state of the artifacts
       registered_artifacts_ids: artifact ids to bypass event creation since they
         are regarded already registered
-
     Returns:
       A list of [Artifact, [Optional]Event] tuples
     """
@@ -532,6 +540,10 @@ class Metadata(object):
       for index, a in enumerate(a_list):
         if new_state:
           a.state = new_state
+          # Forward-compatible change to leverage native artifact schema to
+          # log state info.
+          if new_state == ArtifactState.PUBLISHED:
+            a.mlmd_artifact.state = metadata_store_pb2.Artifact.LIVE
         if a.id and a.id in registered_artifacts_ids:
           result.append(tuple([a.mlmd_artifact]))
         else:
@@ -553,10 +565,8 @@ class Metadata(object):
       artifact_state: Optional[Text] = None,
       contexts: Optional[List[metadata_store_pb2.Context]] = None) -> None:
     """Updates the given execution in MLMD based on given information.
-
     All artifacts provided will be registered if not already. Registered id will
     be reflected inline.
-
     Args:
       execution: the execution to be updated. It is required that the execution
         passed in has an id.
@@ -567,7 +577,6 @@ class Metadata(object):
       execution_state: state the execution to be updated to
       artifact_state: state the artifacts to be updated to
       contexts: a list of contexts the execution and artifacts to be linked to
-
     Raises:
       RuntimeError: if the execution to be updated has no id.
     """
@@ -577,13 +586,11 @@ class Metadata(object):
     registered_input_artifact_ids = set(
         e.artifact_id
         for e in events
-        if e.type == metadata_store_pb2.Event.INPUT
-    )
+        if e.type == metadata_store_pb2.Event.INPUT)
     registered_output_artifact_ids = set(
         e.artifact_id
         for e in events
-        if e.type == metadata_store_pb2.Event.OUTPUT
-    )
+        if e.type == metadata_store_pb2.Event.OUTPUT)
     artifacts_and_events = []
     if input_artifacts:
       artifacts_and_events.extend(
@@ -625,7 +632,6 @@ class Metadata(object):
       input_artifacts: Optional[Dict[Text, List[Artifact]]] = None
   ) -> metadata_store_pb2.Execution:
     """Registers a new execution in metadata.
-
     Args:
       pipeline_info: optional pipeline info of the execution.
       component_info: optional component info of the execution.
@@ -634,7 +640,6 @@ class Metadata(object):
         contexts list.
       exec_properties: the execution properties of the execution.
       input_artifacts: input artifacts of the execution.
-
     Returns:
       execution id of the new execution.
     """
@@ -663,7 +668,7 @@ class Metadata(object):
           contexts=contexts + [component_run_context])
       execution.id = execution_id
       component_run_context.id = context_ids[-1]
-    except tf.errors.AlreadyExistsError:
+    except mlmd.errors.AlreadyExistsError:
       component_run_context = self.get_component_run_context(component_info)
       absl.logging.debug(
           'Component run context already exists. Reusing the context %s.',
@@ -686,10 +691,8 @@ class Metadata(object):
       output_artifacts: Optional[Dict[Text, List[Artifact]]] = None,
       exec_properties: Optional[Dict[Text, Any]] = None) -> None:
     """Publishes an execution with input and output artifacts info.
-
     This method will publish any execution with non-final states. It will
     register unseen artifacts and publish events for them.
-
     Args:
       component_info: component information.
       output_artifacts: output artifacts produced by the execution.
@@ -719,9 +722,29 @@ class Metadata(object):
   def _is_eligible_previous_execution(
       self, current_execution: metadata_store_pb2.Execution,
       target_execution: metadata_store_pb2.Execution) -> bool:
+    """Compare if the previous execution is same as current execution.
+    This method will ignore ID and time related fields.
+    Args:
+      current_execution: the current execution.
+      target_execution: the previous execution to be compared with.
+    Returns:
+      whether the previous and current executions are the same.
+    """
     current_execution.properties['run_id'].string_value = ''
     target_execution.properties['run_id'].string_value = ''
     current_execution.id = target_execution.id
+    # Skip comparing time sensitive fields.
+    # The execution might not have the create_time_since_epoch or
+    # create_time_since_epoch field if the execution is created by an old
+    # version before this field is introduced.
+    if hasattr(current_execution, 'create_time_since_epoch'):
+      current_execution.ClearField('create_time_since_epoch')
+    if hasattr(target_execution, 'create_time_since_epoch'):
+      target_execution.ClearField('create_time_since_epoch')
+    if hasattr(current_execution, 'last_update_time_since_epoch'):
+      current_execution.ClearField('last_update_time_since_epoch')
+    if hasattr(target_execution, 'last_update_time_since_epoch'):
+      target_execution.ClearField('last_update_time_since_epoch')
     return current_execution == target_execution
 
   def get_cached_outputs(
@@ -730,17 +753,14 @@ class Metadata(object):
       component_info: data_types.ComponentInfo
   ) -> Optional[Dict[Text, List[Artifact]]]:
     """Fetches cached output artifacts if any.
-
     Returns the output artifacts of a cached execution if any. An eligible
     cached execution should take the same input artifacts, execution properties
     and is associated with the same pipeline context.
-
     Args:
       input_artifacts: inputs used by the run.
       exec_properties: execution properties used by the run.
       pipeline_info: info of the current pipeline run.
       component_info: info of the current component.
-
     Returns:
       Dict of cached output artifacts if eligible cached execution is found.
       Otherwise, return None.
@@ -829,11 +849,9 @@ class Metadata(object):
       self, execution_id: int, events: List[metadata_store_pb2.Event]
   ) -> Optional[Dict[Text, List[Artifact]]]:
     """Fetches outputs produced by a historical execution.
-
     Args:
       execution_id: the id of the execution that produced the outputs.
       events: events related to the execution id.
-
     Returns:
       A dict of key -> List[Artifact] as the result
     """
@@ -865,17 +883,14 @@ class Metadata(object):
                        pipeline_info: data_types.PipelineInfo,
                        producer_component_id: Text) -> List[Artifact]:
     """Search artifacts that matches given info.
-
     Args:
       artifact_name: the name of the artifact that set by producer component.
         The name is logged both in artifacts and the events when the execution
         being published.
       pipeline_info: the information of the current pipeline
       producer_component_id: the id of the component that produces the artifact
-
     Returns:
       A list of Artifacts that matches the given info
-
     Raises:
       RuntimeError: when no matching execution is found given producer info.
     """
@@ -923,11 +938,9 @@ class Metadata(object):
       self, context_type_name: Text,
       properties: Dict[Text, 'metadata_store_pb2.PropertyType']) -> int:
     """Registers a context type if not exist, otherwise returns existing one.
-
     Args:
       context_type_name: the name of the context.
       properties: properties of the context.
-
     Returns:
       id of the desired context type.
     """
@@ -958,7 +971,7 @@ class Metadata(object):
     context_type_id = self._register_context_type_if_not_exist(
         context_type_name,
         dict(
-            (k, property_type_mapping[type(k)]) for k, v in properties.items()))
+            (k, property_type_mapping[type(v)]) for k, v in properties.items()))
 
     context = metadata_store_pb2.Context(
         type_id=context_type_id, name=context_name)
@@ -978,15 +991,12 @@ class Metadata(object):
       properties: Dict[Text, Union[int, float, Text]]
   ) -> metadata_store_pb2.Context:
     """Registers a context if not exist, otherwise returns the existing one.
-
     Args:
       context_type_name: the name of the context type desired.
       context_name: the name of the context.
       properties: properties to set in the context.
-
     Returns:
       id of the desired context
-
     Raises:
       RuntimeError: when meeting unexpected property type.
     """
@@ -997,7 +1007,7 @@ class Metadata(object):
     try:
       [context_id] = self.store.put_contexts([context])
       context.id = context_id
-    except tf.errors.AlreadyExistsError:
+    except mlmd.errors.AlreadyExistsError:
       absl.logging.debug('Run context %s already exists.', context_name)
       context = self.store.get_context_by_type_and_name(context_type_name,
                                                         context_name)
@@ -1011,10 +1021,8 @@ class Metadata(object):
       self, component_info: data_types.ComponentInfo
   ) -> Optional[metadata_store_pb2.Context]:
     """Gets the context for the component run.
-
     Args:
       component_info: component information for the current component run.
-
     Returns:
       a matched context or None
     """
@@ -1025,10 +1033,8 @@ class Metadata(object):
       self, pipeline_info: data_types.PipelineInfo
   ) -> Optional[metadata_store_pb2.Context]:
     """Gets the context for the pipeline run.
-
     Args:
       pipeline_info: pipeline information for the current pipeline run.
-
     Returns:
       a matched context or None
     """
@@ -1039,10 +1045,8 @@ class Metadata(object):
       self, pipeline_info: data_types.PipelineInfo
   ) -> Optional[metadata_store_pb2.Context]:
     """Gets the context for the pipeline run.
-
     Args:
       pipeline_info: pipeline information for the current pipeline run.
-
     Returns:
       a matched context or None
     """
@@ -1057,15 +1061,12 @@ class Metadata(object):
       pipeline_info: data_types.PipelineInfo,
   ) -> List[metadata_store_pb2.Context]:
     """Creates or fetches the pipeline contexts needed for the run.
-
     There are two potential contexts:
       - Context for the pipeline.
       - Context for the current pipeline run. This is optional, only available
         when run_id is specified.
-
     Args:
       pipeline_info: pipeline information for current run.
-
     Returns:
       a list (of size one or two) of context.
     """
