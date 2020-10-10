@@ -126,9 +126,6 @@ def make_extra_packages_tfjs():
   # Packages needed for tfjs.
   return [
       'tensorflowjs>=2.0.1.post1,<3',
-      # TODO(b/158034704): Remove prompt-toolkit pin resulted from
-      # tfjs -> PyInquirer dependency chain.
-      'prompt-toolkit>=2.0.10,<3',
   ]
 
 
