@@ -22,7 +22,7 @@ def make_required_install_packages():
   return [
       'absl-py>=0.1.6,<0.9',
       # LINT.IfChange
-      'apache-beam[gcp]>=2.17,<2.18',
+      'apache-beam[gcp]>=2.23,<2.24',
       # LINT.ThenChange(examples/chicago_taxi_pipeline/setup/setup_beam.sh)
       # TODO(b/149399451): remove once avro has a healthy release.
       ('avro-python3>=1.8.1,!=1.9.2.*,<2.0.0; '
