@@ -18,7 +18,9 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from typing import Iterable, List, Mapping, MutableMapping, Optional, Sequence, Text, Tuple
+import collections
+
+from typing import Dict, Iterable, List, Mapping, MutableMapping, Optional, Sequence, Set, Text, Tuple
 
 from absl import logging
 from tfx import types
@@ -192,3 +194,22 @@ def get_executions_associated_with_all_contexts(
     else:
       executions_dict = {e.id: e for e in executions if e.id in executions_dict}
   return list(executions_dict.values()) if executions_dict else []
+
+
+def get_artifact_ids_by_event_type_for_execution_id(
+    metadata_handler: metadata.Metadata,
+    execution_id: int) -> Dict['metadata_store_pb2.Event.Type', Set[int]]:
+  """Returns artifact ids corresponding to the execution id grouped by event type.
+
+  Args:
+    metadata_handler: A handler to access MLMD.
+    execution_id: Id of the execution for which to get artifact ids.
+
+  Returns:
+    A `dict` mapping event type to `set` of artifact ids.
+  """
+  events = metadata_handler.store.get_events_by_execution_ids([execution_id])
+  result = collections.defaultdict(set)
+  for event in events:
+    result[event.type].add(event.artifact_id)
+  return result

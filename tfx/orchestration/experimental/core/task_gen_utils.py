@@ -39,14 +39,14 @@ def create_task(pipeline: pipeline_pb2.Pipeline,
                 node: pipeline_pb2.PipelineNode,
                 execution: metadata_store_pb2.Execution) -> task_pb2.Task:
   """Helper function to create a `Task` proto."""
-  task = task_pb2.Task()
-  task.exec_task.pipeline_id = pipeline.pipeline_info.id
-  task.exec_task.node_id = node.node_info.id
+  result = task_pb2.Task()
+  result.exec_task.pipeline_id = pipeline.pipeline_info.id
+  result.exec_task.node_id = node.node_info.id
   if pipeline.runtime_spec.HasField('pipeline_run_id'):
-    task.exec_task.pipeline_run_id = (
+    result.exec_task.pipeline_run_id = (
         pipeline.runtime_spec.pipeline_run_id.field_value.string_value)
-  task.exec_task.execution_id = execution.id
-  return task
+  result.exec_task.execution_id = execution.id
+  return result
 
 
 def generate_task_from_active_execution(
@@ -159,6 +159,21 @@ def is_latest_execution_successful(
       executions, key=lambda e: e.create_time_since_epoch, reverse=True)
   return (execution_lib.is_execution_successful(sorted_executions[0])
           if sorted_executions else False)
+
+
+def get_latest_successful_execution(
+    executions: Iterable[metadata_store_pb2.Execution]
+) -> Optional[metadata_store_pb2.Execution]:
+  """Returns the latest successful execution or `None` if no successful executions exist."""
+  successful_executions = [
+      e for e in executions if execution_lib.is_execution_successful(e)
+  ]
+  if successful_executions:
+    return sorted(
+        successful_executions,
+        key=lambda e: e.create_time_since_epoch,
+        reverse=True)[0]
+  return None
 
 
 def is_feasible_node(node: pipeline_pb2.PipelineNode) -> bool:

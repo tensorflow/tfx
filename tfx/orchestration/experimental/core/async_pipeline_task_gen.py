@@ -11,8 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""TaskGenerator implementation for sync pipelines."""
+"""TaskGenerator implementation for async pipelines."""
 
+import itertools
 from typing import List, Optional
 
 from absl import logging
@@ -21,12 +22,14 @@ from tfx.orchestration.experimental.core import task_gen
 from tfx.orchestration.experimental.core import task_gen_utils
 from tfx.orchestration.experimental.core.proto import task_pb2
 from tfx.orchestration.portable import execution_publish_utils
+from tfx.orchestration.portable.mlmd import execution_lib
 from tfx.proto.orchestration import pipeline_pb2
-from tfx.utils import topsort
+
+from ml_metadata.proto import metadata_store_pb2
 
 
-class SyncPipelineTaskGenerator(task_gen.TaskGenerator):
-  """Task generator for executing a sync pipeline.
+class AsyncPipelineTaskGenerator(task_gen.TaskGenerator):
+  """Task generator for executing an async pipeline.
 
   Calling `generate` is not thread-safe. Concurrent calls to `generate` should
   be explicitly serialized. Since MLMD may be updated upon call to `generate`,
@@ -36,70 +39,43 @@ class SyncPipelineTaskGenerator(task_gen.TaskGenerator):
 
   def __init__(self, mlmd_connection: metadata.Metadata,
                pipeline: pipeline_pb2.Pipeline):
-    """Constructs `SyncPipelineTaskGenerator`.
+    """Constructs `AsyncPipelineTaskGenerator`.
 
     Args:
       mlmd_connection: ML metadata db connection.
       pipeline: A pipeline IR proto.
     """
     self._mlmd_connection = mlmd_connection
-    if pipeline.execution_mode != pipeline_pb2.Pipeline.ExecutionMode.SYNC:
+    if pipeline.execution_mode != pipeline_pb2.Pipeline.ExecutionMode.ASYNC:
       raise ValueError(
-          'SyncPipelineTaskGenerator should be instantiated with a pipeline '
-          'proto having execution_mode `SYNC`, not `{}`'.format(
+          'AsyncPipelineTaskGenerator should be instantiated with a pipeline '
+          'proto having execution mode `ASYNC`, not `{}`'.format(
               pipeline.execution_mode))
     for node in pipeline.nodes:
       which_node = node.WhichOneof('node')
       if which_node != 'pipeline_node':
         raise ValueError(
-            'All sync pipeline nodes should be of type `PipelineNode`; found: '
-            '`{}`'.format(which_node))
+            'Sub-pipelines are not yet supported. Async pipeline should have '
+            'nodes of type `PipelineNode`; found: `{}`'.format(which_node))
     self._pipeline = pipeline
-    self._node_map = {
-        node.pipeline_node.node_info.id: node.pipeline_node
-        for node in pipeline.nodes
-    }
 
   def generate(self) -> List[task_pb2.Task]:
-    """Generates tasks for executing the next executable nodes in the pipeline.
+    """Generates tasks for all executable nodes in the async pipeline.
 
-    The returned tasks must have `exec_task` populated. List may be empty if
-    no nodes are ready for execution.
+    The returned tasks must have `exec_task` populated. List may be empty if no
+    nodes are ready for execution.
 
     Returns:
       A `list` of tasks to execute.
     """
-    layers = topsort.topsorted_layers(
-        [node.pipeline_node for node in self._pipeline.nodes],
-        get_node_id_fn=lambda node: node.node_info.id,
-        get_parent_nodes=(
-            lambda node: [self._node_map[n] for n in node.upstream_nodes]),
-        get_child_nodes=(
-            lambda node: [self._node_map[n] for n in node.downstream_nodes]))
     result = []
+    # TODO(b/170231077): Reuse connection instead of reconnecting as the latter
+    # is expensive.
     with self._mlmd_connection as m:
-      # TODO(goutham): Cache executions and/or use TaskQueue so that we don't
-      # have to make MLMD queries for upstream nodes in each iteration.
-      for nodes in layers:
-        # Boolean that's set if there's at least one successfully executed node
-        # in the current layer.
-        executed_nodes = False
-        for node in nodes:
-          executions = task_gen_utils.get_executions(m, node)
-          if (executions and
-              task_gen_utils.is_latest_execution_successful(executions)):
-            executed_nodes = True
-            continue
-          # If all upstream nodes are executed but current node is not executed,
-          # the node is deemed ready for execution.
-          if self._upstream_nodes_executed(m, node):
-            task = self._generate_task(m, node)
-            if task:
-              result.append(task)
-        # If there are no executed nodes in the current layer, downstream nodes
-        # need not be checked.
-        if not executed_nodes:
-          break
+      for node in [node.pipeline_node for node in self._pipeline.nodes]:
+        task = self._generate_task(m, node)
+        if task:
+          result.append(task)
     return result
 
   def _generate_task(
@@ -107,7 +83,7 @@ class SyncPipelineTaskGenerator(task_gen.TaskGenerator):
       node: pipeline_pb2.PipelineNode) -> Optional[task_pb2.Task]:
     """Generates a node execution task.
 
-    If node execution is not feasible, `None` is returned.
+    If a node execution is not feasible, `None` is returned.
 
     Args:
       metadata_handler: A handler to access MLMD db.
@@ -128,12 +104,29 @@ class SyncPipelineTaskGenerator(task_gen.TaskGenerator):
     resolved_info = task_gen_utils.generate_resolved_info(
         metadata_handler, node)
     if resolved_info.input_artifacts is None:
-      # TODO(goutham): If the pipeline can't make progress, there should be a
-      # standard mechanism to surface it to the user.
-      logging.warning(
+      logging.info(
           'Task cannot be generated for node %s since no input artifacts '
           'are resolved.', node.node_info.id)
       return None
+
+    # If the latest successful execution had the same resolved input artifacts,
+    # the component should not be triggered, so task is not generated.
+    # TODO(b/170231077): This logic should be handled by the resolver when it's
+    # implemented. Also, currently only the artifact ids of previous execution
+    # are checked to decide if a new execution is warranted but it may also be
+    # necessary to factor in the difference of execution properties.
+    latest_exec = task_gen_utils.get_latest_successful_execution(executions)
+    if latest_exec:
+      artifact_ids_by_event_type = (
+          execution_lib.get_artifact_ids_by_event_type_for_execution_id(
+              metadata_handler, latest_exec.id))
+      latest_exec_input_artifact_ids = artifact_ids_by_event_type.get(
+          metadata_store_pb2.Event.INPUT, set())
+      current_exec_input_artifact_ids = set(
+          a.id
+          for a in itertools.chain(*resolved_info.input_artifacts.values()))
+      if latest_exec_input_artifact_ids == current_exec_input_artifact_ids:
+        return None
 
     execution = execution_publish_utils.register_execution(
         metadata_handler=metadata_handler,
@@ -142,20 +135,3 @@ class SyncPipelineTaskGenerator(task_gen.TaskGenerator):
         input_artifacts=resolved_info.input_artifacts,
         exec_properties=resolved_info.exec_properties)
     return task_gen_utils.create_task(self._pipeline, node, execution)
-
-  def _upstream_nodes_executed(self, metadata_handler: metadata.Metadata,
-                               node: pipeline_pb2.PipelineNode) -> bool:
-    """Returns `True` if all the upstream nodes have been successfully executed."""
-    upstream_nodes = [
-        node for node_id, node in self._node_map.items()
-        if node_id in set(node.upstream_nodes)
-    ]
-    if not upstream_nodes:
-      return True
-    for node in upstream_nodes:
-      upstream_node_executions = task_gen_utils.get_executions(
-          metadata_handler, node)
-      if not task_gen_utils.is_latest_execution_successful(
-          upstream_node_executions):
-        return False
-    return True

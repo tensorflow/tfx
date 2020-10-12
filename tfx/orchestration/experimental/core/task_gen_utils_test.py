@@ -47,7 +47,7 @@ class TaskGenUtilsTest(tu.TfxTest):
     pipeline = pipeline_pb2.Pipeline()
     self.load_proto_from_text(
         os.path.join(
-            os.path.dirname(__file__), 'testdata', 'sync_pipeline.pbtxt'),
+            os.path.dirname(__file__), 'testdata', 'async_pipeline.pbtxt'),
         pipeline)
     self._pipeline = pipeline
     self._pipeline_info = pipeline.pipeline_info
@@ -183,13 +183,13 @@ class TaskGenUtilsTest(tu.TfxTest):
     otu.fake_example_gen_run(self._mlmd_connection, self._example_gen, 2, 1)
     with self._mlmd_connection as m:
       resolved_info = task_gen_utils.generate_resolved_info(m, self._transform)
-      self.assertCountEqual(['my_pipeline', 'run_0', 'my_transform'],
+      self.assertCountEqual(['my_pipeline', 'my_transform'],
                             [c.name for c in resolved_info.contexts])
       self.assertLen(resolved_info.input_artifacts['examples'], 1)
       self.assertProtoPartiallyEquals(
           """
           id: 1
-          type_id: 5
+          type_id: 4
           uri: "my_examples_uri"
           custom_properties {
             key: "span"
@@ -208,6 +208,19 @@ class TaskGenUtilsTest(tu.TfxTest):
           ignored_fields=[
               'create_time_since_epoch', 'last_update_time_since_epoch'
           ])
+
+  def test_get_latest_successful_execution(self):
+    otu.fake_transform_output(self._mlmd_connection, self._transform)
+    otu.fake_transform_output(self._mlmd_connection, self._transform)
+    otu.fake_transform_output(self._mlmd_connection, self._transform)
+    with self._mlmd_connection as m:
+      execs = sorted(m.store.get_executions(), key=lambda e: e.id)
+      execs[2].last_known_state = metadata_store_pb2.Execution.FAILED
+      m.store.put_executions([execs[2]])
+      execs = sorted(
+          task_gen_utils.get_executions(m, self._transform), key=lambda e: e.id)
+      self.assertEqual(execs[1],
+                       task_gen_utils.get_latest_successful_execution(execs))
 
 
 if __name__ == '__main__':
