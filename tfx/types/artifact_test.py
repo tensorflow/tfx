@@ -237,6 +237,9 @@ class ArtifactTest(tf.test.TestCase):
       self.assertEqual(my_artifact.float2, 222.2)
       self.assertEqual(my_artifact.string1, '111')
       self.assertEqual(my_artifact.string2, '222')
+      self.assertEqual(my_artifact.get_string_custom_property('invalid'), '')
+      self.assertEqual(my_artifact.get_int_custom_property('invalid'), 0)
+      self.assertNotIn('invalid', my_artifact._artifact.custom_properties)
 
   def testInvalidArtifact(self):
     with self.assertRaisesRegexp(
