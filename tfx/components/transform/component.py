@@ -17,7 +17,6 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import json
 from typing import Any, Dict, Optional, Text, Union
 
 import absl
@@ -29,6 +28,7 @@ from tfx.orchestration import data_types
 from tfx.proto import transform_pb2
 from tfx.types import standard_artifacts
 from tfx.types.standard_component_specs import TransformSpec
+from tfx.utils import json_utils
 
 
 class Transform(base_component.BaseComponent):
@@ -184,5 +184,5 @@ class Transform(base_component.BaseComponent):
         transformed_examples=transformed_examples,
         analyzer_cache=analyzer_cache,
         updated_analyzer_cache=updated_analyzer_cache,
-        custom_config=json.dumps(custom_config))
+        custom_config=json_utils.dumps(custom_config))
     super(Transform, self).__init__(spec=spec, instance_name=instance_name)
