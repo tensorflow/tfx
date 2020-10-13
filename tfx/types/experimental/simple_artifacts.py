@@ -36,13 +36,5 @@ class Statistics(artifact.Artifact):
   TYPE_NAME = 'Statistics'
 
 
-class Model(artifact.Artifact):
-  TYPE_NAME = 'Model'
-
-
 class Metrics(artifact.Artifact):
   TYPE_NAME = 'Metrics'
-
-
-class Schema(artifact.Artifact):
-  TYPE_NAME = 'Schema'
