@@ -327,10 +327,6 @@ class BaseKubeflowTest(tf.test.TestCase):
           path=repo_base,
           dockerfile='tfx/tools/docker/Dockerfile',
           tag=container_image,
-          buildargs={
-              # Skip license gathering for tests.
-              'gather_third_party_licenses': 'false',
-          },
       )
 
     absl.logging.info('Pushing image {}'.format(container_image))
