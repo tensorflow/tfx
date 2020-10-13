@@ -12,37 +12,34 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-FROM gcr.io/tfx-oss-public/tfx_base:py37-20200729
-# Change to following base image if docker hub is preferred.
-# FROM tensorflow/tfx_base:latest
+ARG BASE_IMAGE
+FROM ${BASE_IMAGE}
+ARG TFX_WHEEL_PATH
 
 LABEL maintainer="tensorflow-extended-dev@googlegroups.com"
 
-# TODO(zhitaoli): Remove pinned version of tensorflow and related packages here
-# once we switch default tensorflow version in released image to TF 2.x.
-# TODO(b/151392812): Remove `google-api-python-client` and `google-apitools`
-#                    when patching is not needed any more.
-RUN CFLAGS=$(/usr/bin/python-config --cflags) python -m pip install \
-  "kubernetes>=10.0.1,<11" \
-  "tensorflow>=1.15,<3" \
-  "tensorflow-serving-api>=1.15,<3" \
-  "google-api-python-client==1.8.0" \
-  "google-apitools==0.5.30"
+RUN echo "Installed python packages before TFX Override:\n" && \
+  pip freeze | tee ./pip-freeze-before-tfx.txt
 
-# docker build command should be run under root directory of github checkout.
-ENV TFX_SRC_DIR=/tfx-src
-ADD . ${TFX_SRC_DIR}
-WORKDIR ${TFX_SRC_DIR}
+ADD ${TFX_WHEEL_PATH} .
 
 RUN CFLAGS=$(/usr/bin/python-config --cflags) python -m pip install -e .[docker-image]
+RUN python -m pip --use-feature=2020-resolver install \
+  "$(basename ${TFX_WHEEL_PATH})[docker-image]"
 
+ADD tfx/tools/docker/patches /tmp/tfx-src/tfx/tools/docker/patches
 # Patch http.py in googleapiclient and base_api.py in apitools
 # to use our own UserAgent.
 # TODO(b/151392812): Remove this when other telemetries become available.
 RUN patch `python -c 'import googleapiclient; print(googleapiclient.__path__[0])'`/http.py \
-  /tfx-src/tfx/tools/docker/patches/http.patch && \
+  /tmp/tfx-src/tfx/tools/docker/patches/http.patch && \
  patch `python -c 'import apitools; print(apitools.__path__[0])'`/base/py/base_api.py \
-  /tfx-src/tfx/tools/docker/patches/base_api.patch
+  /tmp/tfx-src/tfx/tools/docker/patches/base_api.patch
+
+RUN echo "Installed python packages after TFX Override:\n" && \
+  pip freeze | tee ./pip-freeze-after-tfx.txt && \
+  echo "\nPython packages delta:\n" && \
+  diff -u ./pip-freeze-before-tfx.txt ./pip-freeze-after-tfx.txt || true
 
 # TODO(b/166202742): Consolidate container entrypoint with Kubeflow runner.
 ENTRYPOINT ["python", "-m", "tfx.scripts.run_executor"]
