@@ -22,6 +22,9 @@ from typing import Optional, Text
 
 from ml_metadata.proto import metadata_store_pb2
 
+_VALIDA_EVENT_TYPES = frozenset(
+    [metadata_store_pb2.Event.OUTPUT, metadata_store_pb2.Event.INTERNAL_OUTPUT])
+
 
 def validate_output_event(event: metadata_store_pb2.Event,
                           key: Optional[Text] = None) -> bool:
@@ -36,10 +39,10 @@ def validate_output_event(event: metadata_store_pb2.Event,
   """
   if key:
     return (len(event.path.steps) == 2 and  # Valid event should have 2 steps.
-            event.type == metadata_store_pb2.Event.OUTPUT
+            event.type in _VALIDA_EVENT_TYPES
             and event.path.steps[0].key == key)
   else:
-    return event.type == metadata_store_pb2.Event.OUTPUT
+    return event.type in _VALIDA_EVENT_TYPES
 
 
 def generate_event(
