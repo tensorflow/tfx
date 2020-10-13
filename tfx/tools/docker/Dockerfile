@@ -52,14 +52,5 @@ RUN patch /opt/venv/lib/python3.6/site-packages/googleapiclient/http.py \
   patch /opt/venv/lib/python3.6/site-packages/apitools/base/py/base_api.py \
   /tfx-src/tfx/tools/docker/patches/base_api.patch
 
-# TODO(zhitaoli): Ensure that license dependency is an exact match instead of
-# subset check.
-ARG gather_third_party_licenses=true
-RUN if [ "${gather_third_party_licenses}" = "true" ]; then \
-  /tfx-src/tfx/tools/docker/license.sh \
-  /tfx-src/tfx/tools/docker/third_party_licenses.csv \
-  /third_party/licenses; \
-  fi
-
 # TODO(b/139532550): Consolidate container entrypoint with Kubeflow runner.
 ENTRYPOINT ["python3.6", "/tfx-src/tfx/scripts/run_executor.py"]
