@@ -100,7 +100,7 @@ class Launcher(object):
       pipeline_runtime_spec: pipeline_pb2.PipelineRuntimeSpec,
       executor_spec: Optional[message.Message] = None,
       custom_driver_spec: Optional[message.Message] = None,
-      platform_spec: Optional[message.Message] = None,
+      platform_config: Optional[message.Message] = None,
       custom_executor_operators: Optional[Dict[Any,
                                                Type[ExecutorOperator]]] = None,
       custom_driver_operators: Optional[Dict[Any,
@@ -119,9 +119,9 @@ class Launcher(object):
         into ExecutorOperator.
       custom_driver_spec: Specification for custom driver. This is expected only
         for advanced use cases.
-      platform_spec: Platform config that will be used as auxiliary info of the
-        node execution. This will be passed to ExecutorOperator along with the
-        `executor_spec`.
+      platform_config: Platform config that will be used as auxiliary info of
+        the node execution. This will be passed to ExecutorOperator along with
+        the `executor_spec`.
       custom_executor_operators: a map of ExecutableSpec to its
         ExecutorOperation implementation.
       custom_driver_operators: a map of ExecutableSpec to its DriverOperator
@@ -143,7 +143,7 @@ class Launcher(object):
     self._driver_operators.update(custom_driver_operators or {})
 
     self._executor_operator = self._executor_operators[type(executor_spec)](
-        executor_spec, platform_spec)
+        executor_spec, platform_config)
     self._output_resolver = outputs_utils.OutputsResolver(
         pipeline_node=self._pipeline_node,
         pipeline_info=self._pipeline_info,
