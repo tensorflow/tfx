@@ -29,7 +29,10 @@ from tensorflow_transform import beam as tft_beam
 from tensorflow_transform.tf_metadata import dataset_metadata
 from tensorflow_transform.tf_metadata import dataset_schema
 from tfx.components.trainer import executor as trainer_executor
+from tfx.components.trainer.fn_args_utils import DataAccessor
+from tfx.components.util import tfxio_utils
 from tfx.examples.chicago_taxi_pipeline import taxi_utils
+from tfx.types import standard_artifacts
 from tfx.utils import io_utils
 from tfx.utils import path_utils
 from tfx_bsl.tfxio import tf_example_record
@@ -118,6 +121,10 @@ class TaxiUtilsTest(tf.test.TestCase):
 
     schema_file = os.path.join(self._testdata_path, 'schema_gen/schema.pbtxt')
     output_dir = os.path.join(temp_dir, 'output_dir')
+    data_accessor = DataAccessor(
+        tf_dataset_factory=tfxio_utils.get_tf_dataset_factory_from_artifact(
+            [standard_artifacts.Examples()], []),
+        record_batch_factory=None)
     trainer_fn_args = trainer_executor.TrainerFnArgs(
         train_files=os.path.join(self._testdata_path,
                                  'transform/transformed_examples/train/*.gz'),
@@ -131,7 +138,8 @@ class TaxiUtilsTest(tf.test.TestCase):
         train_steps=1,
         eval_steps=1,
         verbosity='INFO',
-        base_model=None)
+        base_model=None,
+        data_accessor=data_accessor)
     schema = io_utils.parse_pbtxt_file(schema_file, schema_pb2.Schema())
     training_spec = taxi_utils.trainer_fn(trainer_fn_args, schema)
 

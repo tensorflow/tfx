@@ -29,6 +29,7 @@ from tensorflow_transform.tf_metadata import schema_utils
 from tfx.experimental.templates.taxi.models import features
 from tfx.experimental.templates.taxi.models.estimator import constants
 from tfx.utils import io_utils
+from tfx_bsl.tfxio import dataset_options
 
 from tensorflow_metadata.proto.v0 import schema_pb2
 
@@ -162,30 +163,26 @@ def _eval_input_receiver_fn(tf_transform_output, schema):
           features.LABEL_KEY)])
 
 
-def _input_fn(filenames, tf_transform_output, batch_size=200):
-  """Generates features and labels for training or evaluation.
+def _input_fn(file_pattern, data_accessor, tf_transform_output, batch_size=200):
+  """Generates features and label for tuning/training.
 
   Args:
-    filenames: [str] list of CSV files to read data from.
+    file_pattern: List of paths or patterns of input tfrecord files.
+    data_accessor: DataAccessor for converting input to RecordBatch.
     tf_transform_output: A TFTransformOutput.
-    batch_size: int First dimension size of the Tensors returned by input_fn
+    batch_size: representing the number of consecutive elements of returned
+      dataset to combine in a single batch
 
   Returns:
-    A (features, indices) tuple where features is a dictionary of
-      Tensors, and indices is a single Tensor of label indices.
+    A dataset that contains (features, indices) tuple where features is a
+      dictionary of Tensors, and indices is a single Tensor of label indices.
   """
-  transformed_feature_spec = (
-      tf_transform_output.transformed_feature_spec().copy())
-
-  dataset = tf.data.experimental.make_batched_features_dataset(
-      filenames, batch_size, transformed_feature_spec, reader=_gzip_reader_fn)
-
-  transformed_features = tf.compat.v1.data.make_one_shot_iterator(
-      dataset).get_next()
-  # We pop the label because we do not want to use it as a feature while we're
-  # training.
-  return transformed_features, transformed_features.pop(
-      features.transformed_name(features.LABEL_KEY))
+  return data_accessor.tf_dataset_factory(
+      file_pattern,
+      dataset_options.TensorFlowDatasetOptions(
+          batch_size=batch_size,
+          label_key=features.transformed_name(features.LABEL_KEY)),
+      tf_transform_output.transformed_metadata.schema)
 
 
 def _create_train_and_eval_spec(trainer_fn_args, schema):
@@ -207,11 +204,13 @@ def _create_train_and_eval_spec(trainer_fn_args, schema):
 
   train_input_fn = lambda: _input_fn(  # pylint: disable=g-long-lambda
       trainer_fn_args.train_files,
+      trainer_fn_args.data_accessor,
       tf_transform_output,
       batch_size=constants.TRAIN_BATCH_SIZE)
 
   eval_input_fn = lambda: _input_fn(  # pylint: disable=g-long-lambda
       trainer_fn_args.eval_files,
+      trainer_fn_args.data_accessor,
       tf_transform_output,
       batch_size=constants.EVAL_BATCH_SIZE)
 

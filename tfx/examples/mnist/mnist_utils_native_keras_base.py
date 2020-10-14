@@ -27,6 +27,8 @@ from typing import List, Text
 import absl
 import tensorflow as tf
 import tensorflow_transform as tft
+from tfx.components.trainer.fn_args_utils import DataAccessor
+from tfx_bsl.tfxio import dataset_options
 
 # MNIST dataset consists of an image of the handwritten digits,
 # and it's label which is the class indicating digits 0 through 9.
@@ -38,18 +40,15 @@ def transformed_name(key):
   return key + '_xf'
 
 
-def _gzip_reader_fn(filenames):
-  """Small utility returning a record reader that can read gzip'ed files."""
-  return tf.data.TFRecordDataset(filenames, compression_type='GZIP')
-
-
 def input_fn(file_pattern: List[Text],
+             data_accessor: DataAccessor,
              tf_transform_output: tft.TFTransformOutput,
              batch_size: int = 200) -> tf.data.Dataset:
   """Generates features and label for tuning/training.
 
   Args:
     file_pattern: List of paths or patterns of input tfrecord files.
+    data_accessor: DataAccessor for converting input to RecordBatch.
     tf_transform_output: A TFTransformOutput.
     batch_size: representing the number of consecutive elements of returned
       dataset to combine in a single batch
@@ -58,17 +57,11 @@ def input_fn(file_pattern: List[Text],
     A dataset that contains (features, indices) tuple where features is a
       dictionary of Tensors, and indices is a single Tensor of label indices.
   """
-  transformed_feature_spec = (
-      tf_transform_output.transformed_feature_spec().copy())
-
-  dataset = tf.data.experimental.make_batched_features_dataset(
-      file_pattern=file_pattern,
-      batch_size=batch_size,
-      features=transformed_feature_spec,
-      reader=_gzip_reader_fn,
-      label_key=transformed_name(LABEL_KEY))
-
-  return dataset
+  return data_accessor.tf_dataset_factory(
+      file_pattern,
+      dataset_options.TensorFlowDatasetOptions(
+          batch_size=batch_size, label_key=transformed_name(LABEL_KEY)),
+      tf_transform_output.transformed_metadata.schema)
 
 
 def build_keras_model() -> tf.keras.Model:

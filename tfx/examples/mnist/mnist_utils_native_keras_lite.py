@@ -70,8 +70,10 @@ def run_fn(fn_args: TrainerFnArgs):
   """
   tf_transform_output = tft.TFTransformOutput(fn_args.transform_output)
 
-  train_dataset = base.input_fn(fn_args.train_files, tf_transform_output, 40)
-  eval_dataset = base.input_fn(fn_args.eval_files, tf_transform_output, 40)
+  train_dataset = base.input_fn(fn_args.train_files, fn_args.data_accessor,
+                                tf_transform_output, 40)
+  eval_dataset = base.input_fn(fn_args.eval_files, fn_args.data_accessor,
+                               tf_transform_output, 40)
 
   mirrored_strategy = tf.distribute.MirroredStrategy()
   with mirrored_strategy.scope():

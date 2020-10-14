@@ -22,6 +22,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+from typing import List, Text
 import absl
 import tensorflow as tf
 from tensorflow import keras
@@ -29,8 +30,10 @@ import tensorflow_model_analysis as tfma
 from tensorflow_transform.tf_metadata import schema_utils
 
 from tfx.components.trainer import executor
+from tfx.components.trainer.fn_args_utils import DataAccessor
 from tfx.utils import io_utils
 from tfx.utils import path_utils
+from tfx_bsl.tfxio import dataset_options
 from tensorflow_metadata.proto.v0 import schema_pb2
 
 _FEATURE_KEYS = ['sepal_length', 'sepal_width', 'petal_length', 'petal_width']
@@ -40,11 +43,6 @@ _LABEL_KEY = 'variety'
 # Tf.Transform considers these features as "raw"
 def _get_raw_feature_spec(schema):
   return schema_utils.schema_as_feature_spec(schema).feature_spec
-
-
-def _gzip_reader_fn(filenames):
-  """Small utility returning a record reader that can read gzip'ed files."""
-  return tf.data.TFRecordDataset(filenames, compression_type='GZIP')
 
 
 def _serving_input_receiver_fn(schema):
@@ -91,27 +89,27 @@ def _eval_input_receiver_fn(schema):
       receiver_tensors=serving_input_receiver.receiver_tensors)
 
 
-def _input_fn(filenames, schema, batch_size=200):
-  """Input function for training and evaluation.
+def _input_fn(file_pattern: List[Text],
+              data_accessor: DataAccessor,
+              schema: schema_pb2.Schema,
+              batch_size: int = 200) -> tf.data.Dataset:
+  """Generates features and label for tuning/training.
 
   Args:
-    filenames: [str] list of CSV files to read data from.
-    schema: Schema of the input data.
-    batch_size: int First dimension size of the Tensors returned by input_fn
+    file_pattern: List of paths or patterns of input tfrecord files.
+    data_accessor: DataAccessor for converting input to RecordBatch.
+    schema: schema of the input data.
+    batch_size: representing the number of consecutive elements of returned
+      dataset to combine in a single batch
 
   Returns:
     A dataset that contains (features, indices) tuple where features is a
       dictionary of Tensors, and indices is a single Tensor of label indices.
   """
-
-  feature_spec = _get_raw_feature_spec(schema)
-
-  dataset = tf.data.experimental.make_batched_features_dataset(
-      filenames, batch_size, feature_spec, reader=_gzip_reader_fn)
-
-  # We pop the label because we do not want to use it as a feature while we're
-  # training.
-  return dataset.map(lambda features: (features, features.pop(_LABEL_KEY)))
+  return data_accessor.tf_dataset_factory(
+      file_pattern,
+      dataset_options.TensorFlowDatasetOptions(
+          batch_size=batch_size, label_key=_LABEL_KEY), schema)
 
 
 def _keras_model_builder():
@@ -158,11 +156,13 @@ def _trainer_fn(trainer_fn_args, schema):
 
   train_input_fn = lambda: _input_fn(  # pylint: disable=g-long-lambda
       trainer_fn_args.train_files,
+      trainer_fn_args.data_accessor,
       schema,
       batch_size=train_batch_size)
 
   eval_input_fn = lambda: _input_fn(  # pylint: disable=g-long-lambda
       trainer_fn_args.eval_files,
+      trainer_fn_args.data_accessor,
       schema,
       batch_size=eval_batch_size)
 
