@@ -22,6 +22,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import os
 from typing import List, Text
 import absl
 import kerastuner
@@ -30,10 +31,8 @@ from tensorflow import keras
 import tensorflow_transform as tft
 
 from tfx.components.trainer.executor import TrainerFnArgs
-from tfx.components.trainer.fn_args_utils import DataAccessor
 from tfx.components.trainer.fn_args_utils import FnArgs
 from tfx.components.tuner.component import TunerFnResult
-from tfx_bsl.tfxio import dataset_options
 
 _FEATURE_KEYS = ['sepal_length', 'sepal_width', 'petal_length', 'petal_width']
 _LABEL_KEY = 'variety'
@@ -48,6 +47,11 @@ _EVAL_BATCH_SIZE = 10
 
 def _transformed_name(key):
   return key + '_xf'
+
+
+def _gzip_reader_fn(filenames):
+  """Small utility returning a record reader that can read gzip'ed files."""
+  return tf.data.TFRecordDataset(filenames, compression_type='GZIP')
 
 
 def _get_serve_tf_examples_fn(model, tf_transform_output):
@@ -70,14 +74,12 @@ def _get_serve_tf_examples_fn(model, tf_transform_output):
 
 
 def _input_fn(file_pattern: List[Text],
-              data_accessor: DataAccessor,
               tf_transform_output: tft.TFTransformOutput,
               batch_size: int = 200) -> tf.data.Dataset:
   """Generates features and label for tuning/training.
 
   Args:
     file_pattern: List of paths or patterns of input tfrecord files.
-    data_accessor: DataAccessor for converting input to RecordBatch.
     tf_transform_output: A TFTransformOutput.
     batch_size: representing the number of consecutive elements of returned
       dataset to combine in a single batch
@@ -86,11 +88,17 @@ def _input_fn(file_pattern: List[Text],
     A dataset that contains (features, indices) tuple where features is a
       dictionary of Tensors, and indices is a single Tensor of label indices.
   """
-  return data_accessor.tf_dataset_factory(
-      file_pattern,
-      dataset_options.TensorFlowDatasetOptions(
-          batch_size=batch_size, label_key=_transformed_name(_LABEL_KEY)),
-      tf_transform_output.transformed_metadata.schema)
+  transformed_feature_spec = (
+      tf_transform_output.transformed_feature_spec().copy())
+
+  dataset = tf.data.experimental.make_batched_features_dataset(
+      file_pattern=file_pattern,
+      batch_size=batch_size,
+      features=transformed_feature_spec,
+      reader=_gzip_reader_fn,
+      label_key=_transformed_name(_LABEL_KEY))
+
+  return dataset
 
 
 def _get_hyperparameters() -> kerastuner.HyperParameters:
@@ -186,10 +194,8 @@ def tuner_fn(fn_args: FnArgs) -> TunerFnResult:
       project_name='iris_tuning')
 
   transform_graph = tft.TFTransformOutput(fn_args.transform_graph_path)
-  train_dataset = _input_fn(fn_args.train_files, fn_args.data_accessor,
-                            transform_graph)
-  eval_dataset = _input_fn(fn_args.eval_files, fn_args.data_accessor,
-                           transform_graph)
+  train_dataset = _input_fn(fn_args.train_files, transform_graph)
+  eval_dataset = _input_fn(fn_args.eval_files, transform_graph)
 
   return TunerFnResult(
       tuner=tuner,
@@ -210,16 +216,10 @@ def run_fn(fn_args: TrainerFnArgs):
   """
   tf_transform_output = tft.TFTransformOutput(fn_args.transform_output)
 
-  train_dataset = _input_fn(
-      fn_args.train_files,
-      fn_args.data_accessor,
-      tf_transform_output,
-      batch_size=_TRAIN_BATCH_SIZE)
-  eval_dataset = _input_fn(
-      fn_args.eval_files,
-      fn_args.data_accessor,
-      tf_transform_output,
-      batch_size=_EVAL_BATCH_SIZE)
+  train_dataset = _input_fn(fn_args.train_files, tf_transform_output,
+                            batch_size=_TRAIN_BATCH_SIZE)
+  eval_dataset = _input_fn(fn_args.eval_files, tf_transform_output,
+                           batch_size=_EVAL_BATCH_SIZE)
 
   if fn_args.hyperparameters:
     hparams = kerastuner.HyperParameters.from_config(fn_args.hyperparameters)
@@ -236,9 +236,15 @@ def run_fn(fn_args: TrainerFnArgs):
 
   steps_per_epoch = _TRAIN_DATA_SIZE / _TRAIN_BATCH_SIZE
 
+  try:
+    log_dir = fn_args.model_run_dir
+  except KeyError:
+    # TODO(b/158106209): use ModelRun instead of Model artifact for logging.
+    log_dir = os.path.join(os.path.dirname(fn_args.serving_model_dir), 'logs')
+
   # Write logs to path
   tensorboard_callback = tf.keras.callbacks.TensorBoard(
-      log_dir=fn_args.model_run_dir, update_freq='batch')
+      log_dir=log_dir, update_freq='batch')
 
   model.fit(
       train_dataset,

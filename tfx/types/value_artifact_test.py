@@ -18,6 +18,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import os
 from typing import Text
 
 # Standard Imports
@@ -44,7 +45,8 @@ _BYTE_VALUE = b'This is a string'
 
 # Mock paths for string artifact.
 _VALID_URI = '/tmp/uri/value'
-_VALID_FILE_URI = _VALID_URI
+_VALID_FILE_URI = os.path.join(_VALID_URI,
+                               value_artifact.ValueArtifact.VALUE_FILE_NAME)
 
 # Mock invalid paths. _BAD_URI points to a valid dir but there's no file within.
 _BAD_URI = '/tmp/to/a/bad/dir'

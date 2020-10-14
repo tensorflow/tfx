@@ -24,8 +24,6 @@ import "ml_metadata/proto/metadata_store.proto";
 // output artifacts together with (probably updated) MLMD properties.
 // It will also contain return values of the execution.
 message ExecutionResult {
-  // The status code, which should be an enum value of [google.rpc.Code][google.rpc.Code].
-  int32 code = 3;
   // This is an optional message that might be used by UI to show the
   // execution result.
   string result_message = 1;
@@ -39,8 +37,10 @@ message ExecutionResult {
 // ExecutorOutput defines the schema for an executor output.
 // An ExecutorOutput protobuf message snapshots the updated version of the
 // output artifacts together with (probably updated) MLMD properties.
+// TODO(b/155135683): Perhaps rename this to output_dict.
 message ExecutorOutput {
-  reserved 1;
+  // Will be deprecated in favor of `output_artifacts`.
+  map<string, ml_metadata.Artifact> outputs = 1 [deprecated = true];
 
   message ArtifactList {
     repeated ml_metadata.Artifact artifacts = 1;
@@ -50,6 +50,4 @@ message ExecutorOutput {
   map<string, ArtifactList> output_artifacts = 3;
   // Holds any execution properties that should be updated.
   map<string, ml_metadata.Value> execution_properties = 2;
-  // Holds execution result from executor.
-  ExecutionResult execution_result = 4;
 }

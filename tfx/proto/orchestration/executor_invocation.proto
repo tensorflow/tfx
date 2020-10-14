@@ -26,7 +26,11 @@ message ArtifactList {
 
 // All the information needed for a TFX component execution.
 message ExecutorInvocation {
-  reserved 1, 2;
+  // TODO(jxzheng): clean up inputs and outputs field.
+  // These fields are deprecated, new code should be using |input_dict| and
+  // |output_dict|.
+  map<string, ArtifactList> inputs = 1 [deprecated = true];
+  map<string, ArtifactList> outputs = 2 [deprecated = true];
 
   // The exec_properties to feed to executor.
   map<string, ml_metadata.Value> execution_properties = 3;

@@ -19,6 +19,7 @@ from __future__ import division
 from __future__ import print_function
 
 import abc
+import os
 from typing import Any
 
 import tensorflow as tf
@@ -27,6 +28,7 @@ from tfx.types.artifact import Artifact
 
 class ValueArtifact(Artifact):
   """Artifacts of small scalar-values that can be easily loaded into memory."""
+  VALUE_FILE_NAME = 'value_file'
 
   def __init__(self, *args, **kwargs):
     self._has_value = False
@@ -36,7 +38,7 @@ class ValueArtifact(Artifact):
 
   def read(self):
     if not self._has_value:
-      file_path = self.uri
+      file_path = os.path.join(self.uri, self.VALUE_FILE_NAME)
       # Assert there is a file exists.
       if not tf.io.gfile.exists(file_path):
         raise RuntimeError(
@@ -49,7 +51,8 @@ class ValueArtifact(Artifact):
 
   def write(self, value):
     serialized_value = self.encode(value)
-    tf.io.gfile.GFile(self.uri, 'wb').write(serialized_value)
+    tf.io.gfile.GFile(os.path.join(self.uri, self.VALUE_FILE_NAME),
+                      'wb').write(serialized_value)
 
   @property
   def value(self):
