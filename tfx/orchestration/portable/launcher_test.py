@@ -48,7 +48,7 @@ class FakeError(Exception):
 class _FakeExecutorOperator(base_executor_operator.BaseExecutorOperator):
 
   SUPPORTED_EXECUTOR_SPEC_TYPE = [_PYTHON_CLASS_EXECUTABLE_SPEC]
-  SUPPORTED_PLATFORM_SPEC_TYPE = None
+  SUPPORTED_PLATFORM_CONFIG_TYPE = None
 
   def run_executor(
       self, execution_info: base_executor_operator.ExecutionInfo
@@ -61,7 +61,7 @@ class _FakeCrashingExecutorOperator(base_executor_operator.BaseExecutorOperator
                                    ):
 
   SUPPORTED_EXECUTOR_SPEC_TYPE = [_PYTHON_CLASS_EXECUTABLE_SPEC]
-  SUPPORTED_PLATFORM_SPEC_TYPE = None
+  SUPPORTED_PLATFORM_CONFIG_TYPE = None
 
   def run_executor(
       self, execution_info: base_executor_operator.ExecutionInfo

@@ -65,29 +65,29 @@ class BaseExecutorOperator(six.with_metaclass(abc.ABCMeta, object)):
   """The base class of all executor operators."""
 
   SUPPORTED_EXECUTOR_SPEC_TYPE = abc_utils.abstract_property()
-  SUPPORTED_PLATFORM_SPEC_TYPE = abc_utils.abstract_property()
+  SUPPORTED_PLATFORM_CONFIG_TYPE = abc_utils.abstract_property()
 
   def __init__(self,
                executor_spec: message.Message,
-               platform_spec: Optional[message.Message] = None):
+               platform_config: Optional[message.Message] = None):
     """Constructor.
 
     Args:
       executor_spec: The specification of how to initialize the executor.
-      platform_spec: The specification of how to allocate resource for the
+      platform_config: The specification of how to allocate resource for the
         executor.
 
     Raises:
-      RuntimeError: if the executor_spec or platform_spec is not supported.
+      RuntimeError: if the executor_spec or platform_config is not supported.
     """
     if not isinstance(executor_spec,
                       tuple(t for t in self.SUPPORTED_EXECUTOR_SPEC_TYPE)):
       raise RuntimeError('Executor spec not supported: %s' % executor_spec)
-    if platform_spec and not isinstance(
-        platform_spec, tuple(t for t in self.SUPPORTED_PLATFORM_SPEC_TYPE)):
-      raise RuntimeError('Platform spec not supported: %s' % platform_spec)
+    if platform_config and not isinstance(
+        platform_config, tuple(t for t in self.SUPPORTED_PLATFORM_CONFIG_TYPE)):
+      raise RuntimeError('Platform spec not supported: %s' % platform_config)
     self._executor_spec = executor_spec
-    self._platform_spec = platform_spec
+    self._platform_config = platform_config
 
   @abc.abstractmethod
   def run_executor(
