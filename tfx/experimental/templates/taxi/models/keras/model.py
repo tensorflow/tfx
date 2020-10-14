@@ -21,7 +21,6 @@ parameters defined in constants.py.
 from __future__ import division
 from __future__ import print_function
 
-import os
 from absl import logging
 import tensorflow as tf
 import tensorflow_transform as tft
@@ -207,15 +206,9 @@ def run_fn(fn_args):
         hidden_units=constants.HIDDEN_UNITS,
         learning_rate=constants.LEARNING_RATE)
 
-  try:
-    log_dir = fn_args.model_run_dir
-  except KeyError:
-    # TODO(b/158106209): use ModelRun instead of Model artifact for logging.
-    log_dir = os.path.join(os.path.dirname(fn_args.serving_model_dir), 'logs')
-
   # Write logs to path
   tensorboard_callback = tf.keras.callbacks.TensorBoard(
-      log_dir=log_dir, update_freq='batch')
+      log_dir=fn_args.model_run_dir, update_freq='batch')
 
   model.fit(
       train_dataset,
