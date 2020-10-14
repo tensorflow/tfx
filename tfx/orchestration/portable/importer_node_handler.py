@@ -29,7 +29,11 @@ from ml_metadata.proto import metadata_store_pb2
 
 
 class ImporterNodeHandler(system_node_handler.SystemNodeHandler):
-  """The handler for the system Importer node."""
+  """Launcher is the main entrance of nodes in TFleX.
+
+     It handles TFX internal details like artifact resolving, execution
+     triggering and result publishing.
+  """
 
   def _extract_proto_map(
       self,

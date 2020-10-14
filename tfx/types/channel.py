@@ -43,7 +43,7 @@ class Channel(json_utils.Jsonable):
   # TODO(b/125348988): Add support for real Channel in addition to static ones.
   def __init__(
       self,
-      type: Type[Artifact],  # pylint: disable=redefined-builtin
+      type: Optional[Type[Artifact]] = None,  # pylint: disable=redefined-builtin
       # TODO(b/161490287): deprecate static artifact.
       artifacts: Optional[Iterable[Artifact]] = None,
       matching_channel_name: Optional[Text] = None,

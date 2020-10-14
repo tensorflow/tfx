@@ -18,12 +18,10 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from typing import Any, Dict, Optional, Text
+from typing import Any, Dict, Text
 
 import apache_beam as beam
-
 from apache_beam.io.gcp.bigquery import ReadFromBigQuery
-from apache_beam.options import value_provider
 import tensorflow as tf
 
 from tfx.components.example_gen import base_example_gen_executor
@@ -34,15 +32,8 @@ from google.cloud import bigquery
 class _BigQueryConverter(object):
   """Help class for bigquery result row to tf example conversion."""
 
-  def __init__(self, query: Text, project_id: Optional[Text] = None):
-    """Instantiate a _BigQueryConverter object.
-
-    Args:
-      query: the query statement to get the type information.
-      project_id: optional. The GCP project ID to run the query job. Default to
-        the GCP project ID set by the gcloud environment on the machine.
-    """
-    client = bigquery.Client(project=project_id)
+  def __init__(self, query: Text):
+    client = bigquery.Client()
     # Dummy query to get the type information for each field.
     query_job = client.query('SELECT * FROM ({}) LIMIT 0'.format(query))
     results = query_job.result()
@@ -129,6 +120,7 @@ def _BigQueryToExample(  # pylint: disable=invalid-name
   Returns:
     PCollection of TF examples.
   """
+  converter = _BigQueryConverter(split_pattern)
 
   # TODO(b/155441037): Clean up the usage of `runner` flag
   # once ReadFromBigQuery performance on dataflow runner is on par
@@ -136,13 +128,6 @@ def _BigQueryToExample(  # pylint: disable=invalid-name
   beam_pipeline_args = exec_properties['_beam_pipeline_args']
   pipeline_options = beam.options.pipeline_options.PipelineOptions(
       beam_pipeline_args)
-  # Try to parse the GCP project ID from the beam pipeline options.
-  project = pipeline_options.view_as(
-      beam.options.pipeline_options.GoogleCloudOptions).project
-  if isinstance(project, value_provider.ValueProvider):
-    project = project.get()
-  converter = _BigQueryConverter(split_pattern, project)
-
   use_dataflow_runner = pipeline_options.get_all_options().get('runner') in [
       'dataflow', 'DataflowRunner'
   ]

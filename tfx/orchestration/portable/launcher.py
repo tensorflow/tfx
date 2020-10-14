@@ -29,7 +29,6 @@ from tfx.orchestration.portable import inputs_utils
 from tfx.orchestration.portable import outputs_utils
 from tfx.orchestration.portable import python_driver_operator
 from tfx.orchestration.portable import python_executor_operator
-from tfx.orchestration.portable import resolver_node_handler
 from tfx.orchestration.portable.mlmd import context_lib
 from tfx.proto.orchestration import driver_output_pb2
 from tfx.proto.orchestration import executable_spec_pb2
@@ -38,7 +37,6 @@ from tfx.proto.orchestration import pipeline_pb2
 
 from google.protobuf import message
 from ml_metadata.proto import metadata_store_pb2
-
 
 # Subclasses of BaseExecutorOperator
 ExecutorOperator = TypeVar(
@@ -61,8 +59,6 @@ DEFAULT_DRIVER_OPERATORS = {
 _SYSTEM_NODE_HANDLERS = {
     'tfx.components.common_nodes.importer_node.ImporterNode':
         importer_node_handler.ImporterNodeHandler,
-    'tfx.components.common_nodes.resolver_node.ResolverNode':
-        resolver_node_handler.ResolverNodeHandler,
 }
 
 
@@ -100,7 +96,7 @@ class Launcher(object):
       pipeline_runtime_spec: pipeline_pb2.PipelineRuntimeSpec,
       executor_spec: Optional[message.Message] = None,
       custom_driver_spec: Optional[message.Message] = None,
-      platform_config: Optional[message.Message] = None,
+      platform_spec: Optional[message.Message] = None,
       custom_executor_operators: Optional[Dict[Any,
                                                Type[ExecutorOperator]]] = None,
       custom_driver_operators: Optional[Dict[Any,
@@ -119,9 +115,9 @@ class Launcher(object):
         into ExecutorOperator.
       custom_driver_spec: Specification for custom driver. This is expected only
         for advanced use cases.
-      platform_config: Platform config that will be used as auxiliary info of
-        the node execution. This will be passed to ExecutorOperator along with
-        the `executor_spec`.
+      platform_spec: Platform config that will be used as auxiliary info of the
+        node execution. This will be passed to ExecutorOperator along with the
+        `executor_spec`.
       custom_executor_operators: a map of ExecutableSpec to its
         ExecutorOperation implementation.
       custom_driver_operators: a map of ExecutableSpec to its DriverOperator
@@ -143,7 +139,7 @@ class Launcher(object):
     self._driver_operators.update(custom_driver_operators or {})
 
     self._executor_operator = self._executor_operators[type(executor_spec)](
-        executor_spec, platform_config)
+        executor_spec, platform_spec)
     self._output_resolver = outputs_utils.OutputsResolver(
         pipeline_node=self._pipeline_node,
         pipeline_info=self._pipeline_info,

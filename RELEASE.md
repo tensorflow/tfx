@@ -27,8 +27,6 @@
     tfx/examples.
 *   Reuse Examples artifact type introduced in TFX 0.23 to allow older release
     jobs running together with TFX 0.23+ release.
-*   Fixed issues where custom property access of a missing property created an
-    invalid MLMD Artifact protobuf message.
 
 ### For pipeline authors
 

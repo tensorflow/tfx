@@ -147,7 +147,7 @@ class BeamDagRunnerTest(test_utils.TfxTest):
     self.load_proto_from_text(
         os.path.join(
             os.path.dirname(__file__), 'testdata',
-            'pipeline_for_beam_dag_runner_test.pbtxt'), self._pipeline)
+            'pipeline_for_launcher_test.pbtxt'), self._pipeline)
     _executed_components.clear()
     _component_executors.clear()
     _component_drivers.clear()

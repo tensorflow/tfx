@@ -468,14 +468,10 @@ class Artifact(json_utils.Jsonable):
 
   def get_string_custom_property(self, key: Text) -> Text:
     """Get a custom property of string type."""
-    if key not in self._artifact.custom_properties:
-      return ''
     return self._artifact.custom_properties[key].string_value
 
   def get_int_custom_property(self, key: Text) -> int:
     """Get a custom property of int type."""
-    if key not in self._artifact.custom_properties:
-      return 0
     return self._artifact.custom_properties[key].int_value
 
   def copy_from(self, other: 'Artifact'):

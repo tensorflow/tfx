@@ -290,53 +290,6 @@ class ExecutionPublisherTest(test_utils.TfxTest):
           [c.id for c in contexts],
           [c.id for c in m.store.get_contexts_by_execution(execution.id)])
 
-  def testPublishInternalExecution(self):
-    with metadata.Metadata(connection_config=self._connection_config) as m:
-      contexts = self._generate_contexts(m)
-      execution_id = execution_publish_utils.register_execution(
-          m, self._execution_type, contexts).id
-      output_example = standard_artifacts.Examples()
-      execution_publish_utils.publish_internal_execution(
-          m,
-          contexts,
-          execution_id,
-          output_artifacts={'examples': [output_example]})
-      [execution] = m.store.get_executions()
-      self.assertProtoPartiallyEquals(
-          """
-          id: 1
-          type_id: 3
-          last_known_state: COMPLETE
-          """,
-          execution,
-          ignored_fields=[
-              'create_time_since_epoch', 'last_update_time_since_epoch'
-          ])
-      [event] = m.store.get_events_by_execution_ids([execution.id])
-      self.assertProtoPartiallyEquals(
-          """
-          artifact_id: 1
-          execution_id: 1
-          path {
-            steps {
-              key: 'examples'
-            }
-            steps {
-              index: 0
-            }
-          }
-          type: INTERNAL_OUTPUT
-          """,
-          event,
-          ignored_fields=['milliseconds_since_epoch'])
-      # Verifies the context-execution edges are set up.
-      self.assertCountEqual(
-          [c.id for c in contexts],
-          [c.id for c in m.store.get_contexts_by_execution(execution.id)])
-      self.assertCountEqual(
-          [c.id for c in contexts],
-          [c.id for c in m.store.get_contexts_by_artifact(output_example.id)])
-
 
 if __name__ == '__main__':
   tf.test.main()

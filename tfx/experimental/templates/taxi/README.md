@@ -24,19 +24,3 @@ about the dataset in [Google BigQuery](https://cloud.google.com/bigquery/).
 Explore the full dataset in the
 [BigQuery UI](
 https://bigquery.cloud.google.com/dataset/bigquery-public-data:chicago_taxi_trips).
-
-
-## Content of the template
-
-The template generates three different kinds of python code which are needed to
-run a TFX pipeline.
-
-- `pipeline` directory contains *a pipeline definition* which specify what
-  components to use and how the components will be interconnected.
-  And it also contains various config variables to run the pipeline.
-- `models` directory contains ML model definitions which is required by
-  `Trainer`, `Transform` and `Tuner` components.
-- The last piece is a platform specific configuration that describes physical
-  paths and orchestrators. Currently we have `beam_dag_runner.py` and
-  `kubeflow_dag_runner.py`. These files are located at the root of the project
-  directory.

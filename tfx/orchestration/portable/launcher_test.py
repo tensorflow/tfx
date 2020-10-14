@@ -48,7 +48,7 @@ class FakeError(Exception):
 class _FakeExecutorOperator(base_executor_operator.BaseExecutorOperator):
 
   SUPPORTED_EXECUTOR_SPEC_TYPE = [_PYTHON_CLASS_EXECUTABLE_SPEC]
-  SUPPORTED_PLATFORM_CONFIG_TYPE = None
+  SUPPORTED_PLATFORM_SPEC_TYPE = None
 
   def run_executor(
       self, execution_info: base_executor_operator.ExecutionInfo
@@ -61,7 +61,7 @@ class _FakeCrashingExecutorOperator(base_executor_operator.BaseExecutorOperator
                                    ):
 
   SUPPORTED_EXECUTOR_SPEC_TYPE = [_PYTHON_CLASS_EXECUTABLE_SPEC]
-  SUPPORTED_PLATFORM_CONFIG_TYPE = None
+  SUPPORTED_PLATFORM_SPEC_TYPE = None
 
   def run_executor(
       self, execution_info: base_executor_operator.ExecutionInfo
@@ -189,7 +189,6 @@ class LauncherTest(test_utils.TfxTest):
     self._transform = pipeline.nodes[1].pipeline_node
     self._trainer = pipeline.nodes[2].pipeline_node
     self._importer = pipeline.nodes[3].pipeline_node
-    self._resolver = pipeline.nodes[4].pipeline_node
 
     # Fakes an ExecutorSpec for Trainer
     self._trainer_executor_spec = _PYTHON_CLASS_EXECUTABLE_SPEC()
@@ -597,7 +596,7 @@ class LauncherTest(test_utils.TfxTest):
               'uri', 'create_time_since_epoch', 'last_update_time_since_epoch'
           ])
 
-  def testLauncher_importer_node(self):
+  def testLauncher_importer_moded(self):
     mock_import_node_handler_class = mock.create_autospec(
         system_node_handler.SystemNodeHandler)
     mock_import_node_handler = mock.create_autospec(
@@ -619,31 +618,6 @@ class LauncherTest(test_utils.TfxTest):
     execution_metadata = test_launcher.launch()
     mock_import_node_handler.run.assert_called_once_with(
         self._mlmd_connection, self._importer, self._pipeline_info,
-        self._pipeline_runtime_spec)
-    self.assertEqual(execution_metadata, expected_execution)
-
-  def testLauncher_resolver_node(self):
-    mock_resolver_node_handler_class = mock.create_autospec(
-        system_node_handler.SystemNodeHandler)
-    mock_resolver_node_handler = mock.create_autospec(
-        system_node_handler.SystemNodeHandler, instance=True)
-    mock_resolver_node_handler_class.return_value = mock_resolver_node_handler
-    expected_execution = metadata_store_pb2.Execution()
-    expected_execution.id = 123
-    mock_resolver_node_handler.run.return_value = expected_execution
-    launcher._SYSTEM_NODE_HANDLERS[
-        'tfx.components.common_nodes.resolver_node.ResolverNode'] = (
-            mock_resolver_node_handler_class)
-    test_launcher = launcher.Launcher(
-        pipeline_node=self._resolver,
-        mlmd_connection=self._mlmd_connection,
-        pipeline_info=self._pipeline_info,
-        pipeline_runtime_spec=self._pipeline_runtime_spec,
-        executor_spec=self._trainer_executor_spec,
-        custom_executor_operators=self._test_executor_operators)
-    execution_metadata = test_launcher.launch()
-    mock_resolver_node_handler.run.assert_called_once_with(
-        self._mlmd_connection, self._resolver, self._pipeline_info,
         self._pipeline_runtime_spec)
     self.assertEqual(execution_metadata, expected_execution)
 

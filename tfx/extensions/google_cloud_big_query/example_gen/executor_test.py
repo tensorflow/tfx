@@ -25,7 +25,6 @@ import apache_beam as beam
 from apache_beam.testing import util
 import mock
 import tensorflow as tf
-from tfx.dsl.components.base import base_executor
 from tfx.extensions.google_cloud_big_query.example_gen import executor
 from tfx.proto import example_gen_pb2
 from tfx.types import artifact_utils
@@ -151,12 +150,8 @@ class ExecutorTest(tf.test.TestCase):
     }
 
     # Run executor.
-    big_query_example_gen = executor.Executor(
-        base_executor.BaseExecutor.Context(
-            beam_pipeline_args=['--project=test-project']))
+    big_query_example_gen = executor.Executor()
     big_query_example_gen.Do({}, output_dict, exec_properties)
-
-    mock_client.assert_called_with(project='test-project')
 
     self.assertEqual(
         artifact_utils.encode_split_names(['train', 'eval']),

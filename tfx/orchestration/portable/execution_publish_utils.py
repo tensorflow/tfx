@@ -130,33 +130,6 @@ def publish_failed_execution(metadata_handler: metadata.Metadata,
   execution_lib.put_execution(metadata_handler, execution, contexts)
 
 
-def publish_internal_execution(
-    metadata_handler: metadata.Metadata,
-    contexts: Sequence[metadata_store_pb2.Context],
-    execution_id: int,
-    output_artifacts: Optional[MutableMapping[str,
-                                              Sequence[types.Artifact]]] = None
-) -> None:
-  """Marks an exeisting execution as as success and links its output to an INTERNAL_OUTPUT event.
-
-  Args:
-    metadata_handler: A handler to access MLMD.
-    contexts: MLMD contexts to associated with the execution.
-    execution_id: The id of the execution.
-    output_artifacts: Output artifacts of the execution. Each artifact will be
-      linked with the execution through an event with type INTERNAL_OUTPUT.
-  """
-  [execution] = metadata_handler.store.get_executions_by_id([execution_id])
-  execution.last_known_state = metadata_store_pb2.Execution.COMPLETE
-
-  execution_lib.put_execution(
-      metadata_handler,
-      execution,
-      contexts,
-      output_artifacts=output_artifacts,
-      output_event_type=metadata_store_pb2.Event.INTERNAL_OUTPUT)
-
-
 def register_execution(
     metadata_handler: metadata.Metadata,
     execution_type: metadata_store_pb2.ExecutionType,

@@ -66,20 +66,20 @@ class PythonExecutorOperator(base_executor_operator.BaseExecutorOperator):
   """PythonExecutorOperator handles python class based executor's init and execution."""
 
   SUPPORTED_EXECUTOR_SPEC_TYPE = [executable_spec_pb2.PythonClassExecutableSpec]
-  SUPPORTED_PLATFORM_CONFIG_TYPE = []
+  SUPPORTED_PLATFORM_SPEC_TYPE = []
 
   def __init__(self,
                executor_spec: message.Message,
-               platform_config: Optional[message.Message] = None):
+               platform_spec: Optional[message.Message] = None):
     """Initialize an PythonExecutorOperator.
 
     Args:
       executor_spec: The specification of how to initialize the executor.
-      platform_config: The specification of how to allocate resource for the
+      platform_spec: The specification of how to allocate resource for the
         executor.
     """
-    # Python executors run locally, so platform_config is not used.
-    del platform_config
+    # Python exectors run locally, so platform_spec is not used.
+    del platform_spec
     super(PythonExecutorOperator, self).__init__(executor_spec)
     python_class_executor_spec = cast(
         pipeline_pb2.ExecutorSpec.PythonClassExecutorSpec, self._executor_spec)
