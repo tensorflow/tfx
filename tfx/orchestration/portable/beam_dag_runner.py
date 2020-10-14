@@ -31,8 +31,6 @@ from tfx.utils import telemetry_utils
 from google.protobuf import any_pb2
 from google.protobuf import message
 
-_CUSTOM_EXECUTOR_OPERATORS = {}
-
 
 # TODO(jyzhao): confirm it's re-executable, add test case.
 @beam.typehints.with_input_types(Any)
@@ -69,7 +67,6 @@ class _PipelineNodeAsDoFn(beam.DoFn):
         pipeline_info=pipeline_info,
         pipeline_runtime_spec=pipeline_runtime_spec,
         executor_spec=executor_spec,
-        custom_executor_operators=_CUSTOM_EXECUTOR_OPERATORS,
         custom_driver_spec=custom_driver_spec)
     self._component_id = pipeline_node.node_info.id
 
