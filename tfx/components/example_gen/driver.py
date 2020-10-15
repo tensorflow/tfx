@@ -39,10 +39,18 @@ from google.protobuf import json_format
 from ml_metadata.proto import metadata_store_pb2
 
 
-def _update_output_artifact(
+def update_output_artifact(
     exec_properties: Dict[Text, Any],
     output_artifact: metadata_store_pb2.Artifact) -> None:
-  """Updates output_artifact by updating existring entries or creating new entries if not already exists."""
+  """Updates output_artifact for FileBasedExampleGen.
+
+  Updates output_artifact properties by updating existing entries or creating
+  new entries if not already exists.
+
+  Args:
+    exec_properties: execution properties passed to the example gen.
+    output_artifact: the example artifact to be output.
+  """
   output_artifact.custom_properties[
       utils.FINGERPRINT_PROPERTY_NAME].string_value = (
           exec_properties[utils.FINGERPRINT_PROPERTY_NAME])
@@ -132,7 +140,7 @@ class Driver(base_driver.BaseDriver, ir_base_driver.BaseDriver):
 
     example_artifact.uri = base_driver._generate_output_uri(  # pylint: disable=protected-access
         base_output_dir, utils.EXAMPLES_KEY, execution_id)
-    _update_output_artifact(
+    update_output_artifact(
         exec_properties,
         example_artifact.mlmd_artifact)
     base_driver._prepare_output_paths(example_artifact)  # pylint: disable=protected-access
@@ -158,6 +166,6 @@ class Driver(base_driver.BaseDriver, ir_base_driver.BaseDriver):
     # Populate output_dict
     output_example = copy.deepcopy(
         output_dict[utils.EXAMPLES_KEY][0].mlmd_artifact)
-    _update_output_artifact(exec_properties, output_example)
+    update_output_artifact(exec_properties, output_example)
     result.output_artifacts[utils.EXAMPLES_KEY].artifacts.append(output_example)
     return result

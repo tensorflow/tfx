@@ -39,10 +39,8 @@ message ExecutionResult {
 // ExecutorOutput defines the schema for an executor output.
 // An ExecutorOutput protobuf message snapshots the updated version of the
 // output artifacts together with (probably updated) MLMD properties.
-// TODO(b/155135683): Perhaps rename this to output_dict.
 message ExecutorOutput {
-  // Will be deprecated in favor of `output_artifacts`.
-  map<string, ml_metadata.Artifact> outputs = 1 [deprecated = true];
+  reserved 1;
 
   message ArtifactList {
     repeated ml_metadata.Artifact artifacts = 1;
