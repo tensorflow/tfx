@@ -52,6 +52,6 @@ message ExecutorOutput {
   map<string, ArtifactList> output_artifacts = 3;
   // Holds any execution properties that should be updated.
   map<string, ml_metadata.Value> execution_properties = 2;
-  // Holds job status result from executor.
+  // Holds execution result from executor.
   ExecutionResult execution_result = 4;
 }
