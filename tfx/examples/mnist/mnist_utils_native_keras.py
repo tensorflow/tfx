@@ -22,6 +22,8 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import os
+
 import tensorflow as tf
 import tensorflow_transform as tft
 
@@ -68,18 +70,22 @@ def run_fn(fn_args: TrainerFnArgs):
   """
   tf_transform_output = tft.TFTransformOutput(fn_args.transform_output)
 
-  train_dataset = base.input_fn(fn_args.train_files, fn_args.data_accessor,
-                                tf_transform_output, 40)
-  eval_dataset = base.input_fn(fn_args.eval_files, fn_args.data_accessor,
-                               tf_transform_output, 40)
+  train_dataset = base.input_fn(fn_args.train_files, tf_transform_output, 40)
+  eval_dataset = base.input_fn(fn_args.eval_files, tf_transform_output, 40)
 
   mirrored_strategy = tf.distribute.MirroredStrategy()
   with mirrored_strategy.scope():
     model = base.build_keras_model()
 
+  try:
+    log_dir = fn_args.model_run_dir
+  except KeyError:
+    # TODO(b/158106209): use ModelRun instead of Model artifact for logging.
+    log_dir = os.path.join(os.path.dirname(fn_args.serving_model_dir), 'logs')
+
   # Write logs to path
   tensorboard_callback = tf.keras.callbacks.TensorBoard(
-      log_dir=fn_args.model_run_dir, update_freq='batch')
+      log_dir=log_dir, update_freq='batch')
 
   model.fit(
       train_dataset,

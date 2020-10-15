@@ -334,10 +334,16 @@ def run_fn(fn_args: TrainerFnArgs):
 
   model, base_model = _build_keras_model()
 
-  absl.logging.info('Tensorboard logging to {}'.format(fn_args.model_run_dir))
+  try:
+    log_dir = fn_args.model_run_dir
+  except KeyError:
+    # TODO(b/158106209): use ModelRun instead of Model artifact for logging.
+    log_dir = os.path.join(os.path.dirname(fn_args.serving_model_dir), 'logs')
+
+  absl.logging.info('Tensorboard logging to {}'.format(log_dir))
   # Write logs to path
   tensorboard_callback = tf.keras.callbacks.TensorBoard(
-      log_dir=fn_args.model_run_dir, update_freq='batch')
+      log_dir=log_dir, update_freq='batch')
 
   # Our training regime has two phases: we first freeze the backbone and train
   # the newly added classifier only, then unfreeze part of the backbone and

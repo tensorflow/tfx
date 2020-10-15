@@ -234,6 +234,7 @@ class Trainer(base_component.BaseComponent):
         trainer_fn=trainer_fn,
         custom_config=json_utils.dumps(custom_config),
         model=output,
+        # TODO(b/158106209): change the model_run as optional output artifact
         model_run=model_run)
     super(Trainer, self).__init__(
         spec=spec,
