@@ -179,27 +179,11 @@ class Metadata(object):
   def _prepare_artifact_type(
       self, artifact_type: metadata_store_pb2.ArtifactType
   ) -> metadata_store_pb2.ArtifactType:
-    """Prepares artifact type."""
     if artifact_type.id:
       return artifact_type
-    try:
-      type_id = self.store.put_artifact_type(
-          artifact_type=artifact_type, can_add_fields=True)
-      artifact_type.id = type_id
-    # The patch fix to cherry pick into 0.21 and 0.22 release for working
-    # together with 0.23+ releases with the same MLMD instance. In 0.23, there
-    # is an Examples type change which adds additional properties, while the
-    # older release Examples type failed to be registered, as it contains less
-    # fields.
-    # Note in 0.23+ release, mlmd.errors.AlreadyExistsError is used.
-    except tf.errors.AlreadyExistsError:
-      if artifact_type.name == 'Examples':
-        stored_type = self.store.get_artifact_type(artifact_type.name)
-        artifact_type.id = stored_type.id
-        absl.logging.warning('Reusing a type registered by newer release.')
-      else:
-        raise
-
+    type_id = self.store.put_artifact_type(
+        artifact_type=artifact_type, can_add_fields=True)
+    artifact_type.id = type_id
     return artifact_type
 
   def update_artifact_state(self, artifact: metadata_store_pb2.Artifact,
