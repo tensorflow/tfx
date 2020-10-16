@@ -31,13 +31,11 @@ from tfx.utils import telemetry_utils
 from google.protobuf import any_pb2
 from google.protobuf import message
 
-_CUSTOM_EXECUTOR_OPERATORS = {}
-
 
 # TODO(jyzhao): confirm it's re-executable, add test case.
 @beam.typehints.with_input_types(Any)
 @beam.typehints.with_output_types(Any)
-class _PipelineNodeAsDoFn(beam.DoFn):
+class PipelineNodeAsDoFn(beam.DoFn):
   """Wrap component as beam DoFn."""
 
   def __init__(self,
@@ -47,7 +45,7 @@ class _PipelineNodeAsDoFn(beam.DoFn):
                pipeline_runtime_spec: pipeline_pb2.PipelineRuntimeSpec,
                executor_spec: Optional[message.Message],
                custom_driver_spec: Optional[message.Message]):
-    """Initializes the _PipelineNodeAsDoFn.
+    """Initializes the PipelineNodeAsDoFn.
 
     Args:
       pipeline_node: The specification of the node that this launcher lauches.
@@ -69,9 +67,8 @@ class _PipelineNodeAsDoFn(beam.DoFn):
         pipeline_info=pipeline_info,
         pipeline_runtime_spec=pipeline_runtime_spec,
         executor_spec=executor_spec,
-        custom_executor_operators=_CUSTOM_EXECUTOR_OPERATORS,
         custom_driver_spec=custom_driver_spec)
-    self._component_id = pipeline_node.node_info.id
+    self._node_id = pipeline_node.node_info.id
 
   def process(self, element: Any, *signals: Iterable[Any]) -> None:
     """Executes component based on signals.
@@ -85,13 +82,14 @@ class _PipelineNodeAsDoFn(beam.DoFn):
     self._run_component()
 
   def _run_component(self) -> None:
-    logging.info('Component %s is running.', self._component_id)
+    logging.info('Component %s is running.', self._node_id)
     self._launcher.launch()
-    logging.info('Component %s is finished.', self._component_id)
+    logging.info('Component %s is finished.', self._node_id)
 
 
 class BeamDagRunner(tfx_runner.TfxRunner):
   """Tfx runner on Beam."""
+  _PIPELINE_NODE_DO_FN_CLS = PipelineNodeAsDoFn
 
   def __init__(self):
     """Initializes BeamDagRunner as a TFX orchestrator.
@@ -231,7 +229,7 @@ class BeamDagRunner(tfx_runner.TfxRunner):
           signal_map[component_id] = (
               root
               | 'Run[%s]' % component_id >> beam.ParDo(
-                  _PipelineNodeAsDoFn(
+                  self._PIPELINE_NODE_DO_FN_CLS(
                       pipeline_node=pipeline_node,
                       mlmd_connection=mlmd_connection,
                       pipeline_info=pipeline.pipeline_info,
