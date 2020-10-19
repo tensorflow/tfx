@@ -49,7 +49,7 @@ class ImporterNodeTest(tf.test.TestCase):
     self.assertDictEqual(
         impt.exec_properties, {
             importer_node.SOURCE_URI_KEY: 'm/y/u/r/i',
-            importer_node.REIMPORT_OPTION_KEY: 0,
+            importer_node.REIMPORT_OPTION_KEY: False,
             importer_node.PROPERTIES_KEY: {
                 'split_names': '["train", "eval"]',
             },
@@ -123,7 +123,7 @@ class ImporterDriverTest(tf.test.TestCase):
           output_dict=self.output_dict,
           exec_properties={
               importer_node.SOURCE_URI_KEY: self.source_uri,
-              importer_node.REIMPORT_OPTION_KEY: int(reimport),
+              importer_node.REIMPORT_OPTION_KEY: reimport,
               importer_node.PROPERTIES_KEY: self.properties,
               importer_node.CUSTOM_PROPERTIES_KEY: self.custom_properties,
           })
