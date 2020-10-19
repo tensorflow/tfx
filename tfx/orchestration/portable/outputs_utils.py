@@ -21,17 +21,28 @@ from absl import logging
 import tensorflow as tf
 from tfx import types
 from tfx.proto.orchestration import pipeline_pb2
+from tfx.types import artifact_utils
+from tfx.types.value_artifact import ValueArtifact
 
 _EXECUTION_PREFIX = 'execution_'
 _STATEFUL_WORKING_DIR = 'stateful_working_dir'
 _EXECUTION_OUTPUT_FILE = 'executor_output.pb'
+_VALUE_ARTIFACT_FILE_NAME = 'value'
 
 
 def make_output_dirs(output_dict: Dict[Text, List[types.Artifact]]) -> None:
   """Make dirs for output artifacts' URI."""
   for _, artifact_list in output_dict.items():
     for artifact in artifact_list:
-      tf.io.gfile.makedirs(artifact.uri)
+      if isinstance(artifact, ValueArtifact):
+        # If it is a ValueArtifact, create a file.
+        artifact_dir = os.path.dirname(artifact.uri)
+        tf.io.gfile.makedirs(artifact_dir)
+        with open(artifact.uri, 'w') as _:
+          pass
+      else:
+        # Otherwise create a dir.
+        tf.io.gfile.makedirs(artifact.uri)
 
 
 def remove_output_dirs(output_dict: Dict[Text, List[types.Artifact]]) -> None:
@@ -63,13 +74,14 @@ class OutputsResolver:
   def generate_output_artifacts(
       self, execution_id: int) -> Dict[Text, List[types.Artifact]]:
     """Generates output artifacts given execution_id."""
-    # TODO(b/166312308): support ValueArtifact behavior.
     output_artifacts = collections.defaultdict(list)
     for key, output_spec in self._pipeline_node.outputs.outputs.items():
-      artifact = types.Artifact(
-          mlmd_artifact_type=output_spec.artifact_spec.type)
+      artifact = artifact_utils.deserialize_artifact(
+          output_spec.artifact_spec.type)
       artifact.uri = os.path.join(self._node_dir,
                                   _EXECUTION_PREFIX + str(execution_id), key)
+      if isinstance(artifact, ValueArtifact):
+        artifact.uri = os.path.join(artifact.uri, _VALUE_ARTIFACT_FILE_NAME)
       # artifact.name will contain the set of information to track its creation
       # and is guaranteed to be idempotent across retires of a node.
       artifact.name = '{0}:{1}:{2}:{3}:{4}'.format(
