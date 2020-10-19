@@ -29,6 +29,7 @@ from tensorflow_transform.beam import tft_unit
 from tfx import types
 from tfx.components.testdata.module_file import transform_module
 from tfx.components.transform import executor
+from tfx.components.transform import labels
 from tfx.proto import transform_pb2
 from tfx.types import artifact_utils
 from tfx.types import standard_artifacts
@@ -57,6 +58,17 @@ class _TempPath(types.Artifact):
   TYPE_NAME = 'TempPath'
 
 
+class _ExecutorForTesting(executor.Executor):
+
+  def __init__(self, force_tf_compat_v1):
+    super(_ExecutorForTesting, self).__init__()
+    self._force_tf_compat_v1 = force_tf_compat_v1
+
+  def Transform(self, inputs, outputs, status_file):
+    inputs[labels.FORCE_TF_COMPAT_V1_LABEL] = self._force_tf_compat_v1
+    super(_ExecutorForTesting, self).Transform(inputs, outputs, status_file)
+
+
 # TODO(b/122478841): Add more detailed tests.
 class ExecutorTest(tft_unit.TransformTestCase):
 
@@ -65,6 +77,10 @@ class ExecutorTest(tft_unit.TransformTestCase):
       os.path.dirname(os.path.dirname(__file__)), 'testdata')
   _ARTIFACT1_URI = os.path.join(_TEMP_EXAMPLE_DIR, 'csv_example_gen1')
   _ARTIFACT2_URI = os.path.join(_TEMP_EXAMPLE_DIR, 'csv_example_gen2')
+
+  # executor_v2_test.py overrides this to False.
+  def _use_force_tf_compat_v1(self):
+    return True
 
   @classmethod
   def setUpClass(cls):
@@ -155,7 +171,8 @@ class ExecutorTest(tft_unit.TransformTestCase):
     self._exec_properties['splits_config'] = None
 
     # Executor for test.
-    self._transform_executor = executor.Executor()
+    self._transform_executor = _ExecutorForTesting(
+        self._use_force_tf_compat_v1())
 
   def _verify_transform_outputs(self,
                                 materialize=True,
@@ -235,11 +252,11 @@ class ExecutorTest(tft_unit.TransformTestCase):
       return result
 
     with tft_unit.mock.patch.object(
-        executor.Executor,
+        _ExecutorForTesting,
         '_CreatePipeline',
         autospec=True,
         side_effect=_create_pipeline_wrapper):
-      transform_executor = executor.Executor()
+      transform_executor = _ExecutorForTesting(self._use_force_tf_compat_v1())
       transform_executor.Do(self._input_dict, self._output_dict,
                             self._exec_properties)
     assert len(pipelines) == 1
