@@ -152,9 +152,11 @@ def run_fn(fn_args: TrainerFnArgs):
   tf_transform_output = tft.TFTransformOutput(fn_args.transform_output)
 
   # Train and eval files contains transformed examples.
-  # _input_fn read dataset based on transformed feature_spec from tft.
-  train_dataset = _input_fn(fn_args.train_files, tf_transform_output, 40)
-  eval_dataset = _input_fn(fn_args.eval_files, tf_transform_output, 40)
+  # _input_fn read dataset based on transformed schema from tft.
+  train_dataset = _input_fn(fn_args.train_files, fn_args.data_accessor,
+                            tf_transform_output.transformed_metadata.schema)
+  eval_dataset = _input_fn(fn_args.eval_files, fn_args.data_accessor,
+                           tf_transform_output.transformed_metadata.schema)
 
   model = _build_keras_model()
 
@@ -229,9 +231,9 @@ def run_fn(fn_args: TrainerFnArgs):
   schema = io_utils.parse_pbtxt_file(fn_args.schema_file, schema_pb2.Schema())
 
   # Train and eval files contains raw examples.
-  # _input_fn reads the dataset based on raw feature_spec from schema.
-  train_dataset = _input_fn(fn_args.train_files, schema, 40)
-  eval_dataset = _input_fn(fn_args.eval_files, schema, 40)
+  # _input_fn reads the dataset based on raw data schema.
+  train_dataset = _input_fn(fn_args.train_files, fn_args.data_accessor, schema)
+  eval_dataset = _input_fn(fn_args.eval_files, fn_args.data_accessor, schema)
 
   model = _build_keras_model()
 
