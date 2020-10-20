@@ -20,7 +20,6 @@ from __future__ import print_function
 
 import functools
 import hashlib
-import json
 import os
 from typing import Any, Dict, Generator, Iterable, List, Mapping, Optional, Sequence, Set, Text, Tuple, Union
 
@@ -49,6 +48,7 @@ from tfx.proto import transform_pb2
 from tfx.types import artifact_utils
 from tfx.utils import import_utils
 from tfx.utils import io_utils
+from tfx.utils import json_utils
 import tfx_bsl
 from tfx_bsl.tfxio import tfxio as tfxio_module
 
@@ -795,8 +795,8 @@ class Executor(base_executor.BaseExecutor):
     if value_utils.FunctionHasArg(fn, labels.CUSTOM_CONFIG):
       custom_config_json = value_utils.GetSoleValue(inputs,
                                                     labels.CUSTOM_CONFIG)
-      custom_config = (json.loads(
-          custom_config_json) if custom_config_json else {}) or {}
+      custom_config = (json_utils.loads(custom_config_json)
+                       if custom_config_json else {}) or {}
       result = functools.partial(fn, custom_config=custom_config)
     else:
       result = fn
