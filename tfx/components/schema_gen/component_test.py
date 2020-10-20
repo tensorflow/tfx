@@ -46,7 +46,7 @@ class SchemaGenTest(tf.test.TestCase):
     statistics_artifact = standard_artifacts.ExampleStatistics()
     statistics_artifact.split_names = artifact_utils.encode_split_names(
         ['train'])
-    infer_shape = data_types.RuntimeParameter(name='infer-shape', ptype=bool)
+    infer_shape = data_types.RuntimeParameter(name='infer-shape', ptype=int)
     schema_gen = component.SchemaGen(
         statistics=channel_utils.as_channel([statistics_artifact]),
         infer_feature_shape=infer_shape)

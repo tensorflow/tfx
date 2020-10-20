@@ -96,6 +96,8 @@ class SchemaGen(base_component.BaseComponent):
       exclude_splits = []
       logging.info('Excluding no splits because exclude_splits is not set.')
     schema = output or types.Channel(type=standard_artifacts.Schema)
+    if isinstance(infer_feature_shape, bool):
+      infer_feature_shape = int(infer_feature_shape)
     spec = SchemaGenSpec(
         statistics=statistics,
         infer_feature_shape=infer_feature_shape,

@@ -74,7 +74,7 @@ class Executor(base_executor.BaseExecutor):
     """
     # TODO(zhitaoli): Move constants between this file and component.py to a
     # constants.py.
-    infer_feature_shape = exec_properties.get(INFER_FEATURE_SHAPE_KEY)
+    infer_feature_shape = bool(exec_properties.get(INFER_FEATURE_SHAPE_KEY))
 
     # Load and deserialize exclude splits from execution properties.
     exclude_splits = json_utils.loads(

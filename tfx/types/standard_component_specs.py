@@ -240,7 +240,7 @@ class SchemaGenSpec(ComponentSpec):
   """SchemaGen component spec."""
 
   PARAMETERS = {
-      'infer_feature_shape': ExecutionParameter(type=bool, optional=True),
+      'infer_feature_shape': ExecutionParameter(type=int, optional=True),
       'exclude_splits': ExecutionParameter(type=(str, Text), optional=True),
   }
   INPUTS = {

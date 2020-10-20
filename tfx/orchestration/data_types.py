@@ -186,12 +186,12 @@ class RuntimeParameter(json_utils.Jsonable):
       self,
       name: Text,
       ptype: Type = None,  # pylint: disable=g-bare-generic
-      default: Optional[Union[int, float, bool, Text]] = None,
+      default: Optional[Union[int, float, Text]] = None,
       description: Optional[Text] = None):
     logging.warn('RuntimeParameter is only supported on Cloud-based DAG '
                  'runner currently.')
 
-    if ptype and ptype not in [int, float, bool, Text]:
+    if ptype and ptype not in [int, float, Text]:
       raise RuntimeError('Only str and scalar runtime parameters are supported')
     if (default and ptype) and not isinstance(default, ptype):
       raise TypeError('Default value must be consistent with specified ptype')
