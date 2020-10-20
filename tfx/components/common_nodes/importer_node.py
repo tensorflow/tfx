@@ -298,7 +298,7 @@ class ImporterNode(base_node.BaseNode):
   def exec_properties(self) -> Dict[Text, Any]:
     return {
         SOURCE_URI_KEY: self._source_uri,
-        REIMPORT_OPTION_KEY: self._reimport,
+        REIMPORT_OPTION_KEY: int(self._reimport),
         PROPERTIES_KEY: self._properties,
         CUSTOM_PROPERTIES_KEY: self._custom_properties,
     }
