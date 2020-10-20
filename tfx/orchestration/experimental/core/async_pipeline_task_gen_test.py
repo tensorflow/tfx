@@ -16,9 +16,11 @@
 
 import os
 
+from absl.testing import parameterized
 import tensorflow as tf
 from tfx.orchestration import metadata
 from tfx.orchestration.experimental.core import async_pipeline_task_gen as asptg
+from tfx.orchestration.experimental.core import task_queue as tq
 from tfx.orchestration.experimental.core import test_utils as otu
 from tfx.orchestration.portable import test_utils as tu
 from tfx.proto.orchestration import pipeline_pb2
@@ -26,7 +28,7 @@ from tfx.proto.orchestration import pipeline_pb2
 from ml_metadata.proto import metadata_store_pb2
 
 
-class AsyncPipelineTaskGeneratorTest(tu.TfxTest):
+class AsyncPipelineTaskGeneratorTest(tu.TfxTest, parameterized.TestCase):
 
   def setUp(self):
     super(AsyncPipelineTaskGeneratorTest, self).setUp()
@@ -61,23 +63,33 @@ class AsyncPipelineTaskGeneratorTest(tu.TfxTest):
     self._transform = pipeline.nodes[1].pipeline_node
     self._trainer = pipeline.nodes[2].pipeline_node
 
-  def _verify_node_execution_task(self, node, execution, task):
+    self._task_queue = tq.TaskQueue()
+
+  def _verify_node_execution_task(self, node, execution_id, task):
     self.assertEqual(node.node_info.id, task.exec_task.node_id)
     self.assertEqual(self._pipeline.pipeline_info.id,
                      task.exec_task.pipeline_id)
     self.assertEmpty(task.exec_task.pipeline_run_id)
-    self.assertEqual(execution.id, task.exec_task.execution_id)
+    self.assertEqual(execution_id, task.exec_task.execution_id)
 
-  def _generate_and_test(self, num_initial_executions, num_tasks_generated,
-                         num_new_executions, num_active_executions):
+  def _dequeue_and_test(self, use_task_queue, node, execution_id):
+    if use_task_queue:
+      task = self._task_queue.dequeue()
+      self._task_queue.task_done(task)
+      self._verify_node_execution_task(node, execution_id, task)
+
+  def _generate_and_test(self, use_task_queue, num_initial_executions,
+                         num_tasks_generated, num_new_executions,
+                         num_active_executions):
     """Generates tasks and tests the effects."""
     with self._mlmd_connection as m:
       executions = m.store.get_executions()
     self.assertLen(
         executions, num_initial_executions,
         'Expected {} execution(s) in MLMD.'.format(num_initial_executions))
-    task_gen = asptg.AsyncPipelineTaskGenerator(self._mlmd_connection,
-                                                self._pipeline)
+    task_gen = asptg.AsyncPipelineTaskGenerator(
+        self._mlmd_connection, self._pipeline,
+        self._task_queue.is_task_id_tracked)
     tasks = task_gen.generate()
     self.assertLen(
         tasks, num_tasks_generated,
@@ -96,11 +108,15 @@ class AsyncPipelineTaskGeneratorTest(tu.TfxTest):
         active_executions, num_active_executions,
         'Expected {} active execution(s) in MLMD.'.format(
             num_active_executions))
+    if use_task_queue:
+      for task in tasks:
+        self._task_queue.enqueue(task)
     return tasks, active_executions
 
   def test_no_tasks_generated_when_new(self):
     task_gen = asptg.AsyncPipelineTaskGenerator(self._mlmd_connection,
-                                                self._pipeline)
+                                                self._pipeline,
+                                                lambda _: False)
     tasks = task_gen.generate()
     self.assertEmpty(tasks, 'Expected no task generation when no inputs.')
     with self._mlmd_connection as m:
@@ -109,7 +125,16 @@ class AsyncPipelineTaskGeneratorTest(tu.TfxTest):
           'There must not be any registered executions since no tasks were '
           'geerated.')
 
-  def test_task_generation(self):
+  @parameterized.parameters(False, True)
+  def test_task_generation(self, use_task_queue):
+    """Tests async pipeline task generation.
+
+    Args:
+      use_task_queue: If task queue is enabled, new tasks are only generated
+        if a task with the same task_id does not already exist in the queue.
+        `use_task_queue=False` is useful to test the case of task generation
+        when task queue is empty (for eg: due to orchestrator restart).
+    """
     # Simulate that ExampleGen has already completed successfully.
     otu.fake_example_gen_run(self._mlmd_connection, self._example_gen, 1, 1)
 
@@ -121,44 +146,55 @@ class AsyncPipelineTaskGeneratorTest(tu.TfxTest):
     # Generate once.
     with self.subTest(generate=1):
       tasks, active_executions = self._generate_and_test(
+          use_task_queue,
           num_initial_executions=1,
           num_tasks_generated=1,
           num_new_executions=1,
           num_active_executions=1)
-      self._verify_node_execution_task(self._transform, active_executions[0],
+      self._verify_node_execution_task(self._transform, active_executions[0].id,
                                        tasks[0])
 
     # No new effects if generate called again.
     with self.subTest(generate=2):
       tasks, active_executions = self._generate_and_test(
+          use_task_queue,
           num_initial_executions=2,
-          num_tasks_generated=1,
+          num_tasks_generated=0 if use_task_queue else 1,
           num_new_executions=0,
           num_active_executions=1)
-      self._verify_node_execution_task(self._transform, active_executions[0],
-                                       tasks[0])
+      execution_id = active_executions[0].id
+      if not use_task_queue:
+        self._verify_node_execution_task(self._transform, execution_id,
+                                         tasks[0])
 
     # Mark transform execution complete.
     otu.fake_transform_output(self._mlmd_connection, self._transform,
                               active_executions[0])
+    # Dequeue the corresponding task if task queue is enabled.
+    self._dequeue_and_test(use_task_queue, self._transform,
+                           active_executions[0].id)
 
     # Trainer execution task should be generated next.
     with self.subTest(generate=3):
       tasks, active_executions = self._generate_and_test(
+          use_task_queue,
           num_initial_executions=2,
           num_tasks_generated=1,
           num_new_executions=1,
           num_active_executions=1)
-      self._verify_node_execution_task(self._trainer, active_executions[0],
-                                       tasks[0])
+      execution_id = active_executions[0].id
+      self._verify_node_execution_task(self._trainer, execution_id, tasks[0])
 
     # Mark the trainer execution complete.
     otu.fake_trainer_output(self._mlmd_connection, self._trainer,
                             active_executions[0])
+    # Dequeue the corresponding task if task queue is enabled.
+    self._dequeue_and_test(use_task_queue, self._trainer, execution_id)
 
     # No more tasks should be generated as there are no new inputs.
     with self.subTest(generate=4):
       self._generate_and_test(
+          use_task_queue,
           num_initial_executions=3,
           num_tasks_generated=0,
           num_new_executions=0,
@@ -171,54 +207,69 @@ class AsyncPipelineTaskGeneratorTest(tu.TfxTest):
     # new inputs.
     with self.subTest(generate=4):
       tasks, active_executions = self._generate_and_test(
+          use_task_queue,
           num_initial_executions=4,
           num_tasks_generated=2,
           num_new_executions=2,
           num_active_executions=2)
-      self._verify_node_execution_task(self._transform, active_executions[0],
+      self._verify_node_execution_task(self._transform, active_executions[0].id,
                                        tasks[0])
-      self._verify_node_execution_task(self._trainer, active_executions[1],
+      self._verify_node_execution_task(self._trainer, active_executions[1].id,
                                        tasks[1])
 
-    # Re-generation will produce the same tasks again.
+    # Re-generation will produce the same tasks when task queue enabled.
     with self.subTest(generate=5):
       tasks, active_executions = self._generate_and_test(
+          use_task_queue,
           num_initial_executions=6,
-          num_tasks_generated=2,
+          num_tasks_generated=0 if use_task_queue else 2,
           num_new_executions=0,
           num_active_executions=2)
-      self._verify_node_execution_task(self._transform, active_executions[0],
-                                       tasks[0])
-      self._verify_node_execution_task(self._trainer, active_executions[1],
-                                       tasks[1])
+      if not use_task_queue:
+        self._verify_node_execution_task(self._transform,
+                                         active_executions[0].id, tasks[0])
+        self._verify_node_execution_task(self._trainer, active_executions[1].id,
+                                         tasks[1])
 
     # Mark transform execution complete.
     otu.fake_transform_output(self._mlmd_connection, self._transform,
                               active_executions[0])
+    # Dequeue the corresponding task.
+    self._dequeue_and_test(use_task_queue, self._transform,
+                           active_executions[0].id)
 
     # Mark the trainer execution complete.
     otu.fake_trainer_output(self._mlmd_connection, self._trainer,
                             active_executions[1])
+    self._dequeue_and_test(use_task_queue, self._trainer,
+                           active_executions[1].id)
 
     # Trainer should be triggered again due to transform producing new output.
     with self.subTest(generate=6):
       tasks, active_executions = self._generate_and_test(
+          use_task_queue,
           num_initial_executions=6,
           num_tasks_generated=1,
           num_new_executions=1,
           num_active_executions=1)
-      self._verify_node_execution_task(self._trainer, active_executions[0],
+      self._verify_node_execution_task(self._trainer, active_executions[0].id,
                                        tasks[0])
 
     # Finally, no new tasks once trainer completes.
     otu.fake_trainer_output(self._mlmd_connection, self._trainer,
                             active_executions[0])
+    # Dequeue corresponding task.
+    self._dequeue_and_test(use_task_queue, self._trainer,
+                           active_executions[0].id)
     with self.subTest(generate=7):
       self._generate_and_test(
+          use_task_queue,
           num_initial_executions=7,
           num_tasks_generated=0,
           num_new_executions=0,
           num_active_executions=0)
+    if use_task_queue:
+      self.assertTrue(self._task_queue.is_empty())
 
 
 if __name__ == '__main__':

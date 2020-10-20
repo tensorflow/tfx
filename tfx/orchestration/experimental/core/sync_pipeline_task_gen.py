@@ -13,12 +13,13 @@
 # limitations under the License.
 """TaskGenerator implementation for sync pipelines."""
 
-from typing import List, Optional
+from typing import Callable, List, Optional
 
 from absl import logging
 from tfx.orchestration import metadata
 from tfx.orchestration.experimental.core import task_gen
 from tfx.orchestration.experimental.core import task_gen_utils
+from tfx.orchestration.experimental.core import task_queue as tq
 from tfx.orchestration.experimental.core.proto import task_pb2
 from tfx.orchestration.portable import execution_publish_utils
 from tfx.proto.orchestration import pipeline_pb2
@@ -35,12 +36,15 @@ class SyncPipelineTaskGenerator(task_gen.TaskGenerator):
   """
 
   def __init__(self, mlmd_connection: metadata.Metadata,
-               pipeline: pipeline_pb2.Pipeline):
+               pipeline: pipeline_pb2.Pipeline,
+               is_task_id_tracked_fn: Callable[[tq.TaskId], bool]):
     """Constructs `SyncPipelineTaskGenerator`.
 
     Args:
       mlmd_connection: ML metadata db connection.
       pipeline: A pipeline IR proto.
+      is_task_id_tracked_fn: A callable that returns `True` if a task_id is
+        tracked by the task queue.
     """
     self._mlmd_connection = mlmd_connection
     if pipeline.execution_mode != pipeline_pb2.Pipeline.ExecutionMode.SYNC:
@@ -55,6 +59,7 @@ class SyncPipelineTaskGenerator(task_gen.TaskGenerator):
             'All sync pipeline nodes should be of type `PipelineNode`; found: '
             '`{}`'.format(which_node))
     self._pipeline = pipeline
+    self._is_task_id_tracked_fn = is_task_id_tracked_fn
     self._node_map = {
         node.pipeline_node.node_info.id: node.pipeline_node
         for node in pipeline.nodes
@@ -78,13 +83,16 @@ class SyncPipelineTaskGenerator(task_gen.TaskGenerator):
             lambda node: [self._node_map[n] for n in node.downstream_nodes]))
     result = []
     with self._mlmd_connection as m:
-      # TODO(goutham): Cache executions and/or use TaskQueue so that we don't
-      # have to make MLMD queries for upstream nodes in each iteration.
       for nodes in layers:
         # Boolean that's set if there's at least one successfully executed node
         # in the current layer.
         executed_nodes = False
         for node in nodes:
+          # If a task for the node is already tracked by the task queue, it need
+          # not be considered for generation again.
+          if self._is_task_id_tracked_fn(
+              tq.TaskId.from_pipeline_node(self._pipeline, node)):
+            continue
           executions = task_gen_utils.get_executions(m, node)
           if (executions and
               task_gen_utils.is_latest_execution_successful(executions)):
