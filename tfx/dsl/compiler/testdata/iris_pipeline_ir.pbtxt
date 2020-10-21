@@ -115,6 +115,115 @@ nodes {
   pipeline_node {
     node_info {
       type {
+        name: "tfx.components.common_nodes.importer_node.ImporterNode"
+      }
+      id: "ImporterNode.my_importer"
+    }
+    contexts {
+      contexts {
+        type {
+          name: "pipeline"
+        }
+        name {
+          field_value {
+            string_value: "iris"
+          }
+        }
+      }
+      contexts {
+        type {
+          name: "pipeline_run"
+        }
+        name {
+          runtime_parameter {
+            name: "pipeline_run_id"
+            type: STRING
+          }
+        }
+      }
+      contexts {
+        type {
+          name: "node"
+        }
+        name {
+          field_value {
+            string_value: "iris.ImporterNode.my_importer"
+          }
+        }
+      }
+    }
+    outputs {
+      outputs {
+        key: "result"
+        value {
+          artifact_spec {
+            type {
+              name: "Examples"
+              properties {
+                key: "span"
+                value: INT
+              }
+              properties {
+                key: "split_names"
+                value: STRING
+              }
+              properties {
+                key: "version"
+                value: INT
+              }
+            }
+            additional_properties {
+              key: "split_names"
+              value {
+                field_value {
+                  string_value: "[\'train\', \'eval\']"
+                }
+              }
+            }
+            additional_custom_properties {
+              key: "int_custom_property"
+              value {
+                field_value {
+                  int_value: 42
+                }
+              }
+            }
+            additional_custom_properties {
+              key: "str_custom_property"
+              value {
+                field_value {
+                  string_value: "42"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+    parameters {
+      parameters {
+        key: "artifact_uri"
+        value {
+          field_value {
+            string_value: "m/y/u/r/i"
+          }
+        }
+      }
+      parameters {
+        key: "reimport"
+        value {
+          field_value {
+            int_value: 0
+          }
+        }
+      }
+    }
+  }
+}
+nodes {
+  pipeline_node {
+    node_info {
+      type {
         name: "tfx.components.common_nodes.resolver_node.ResolverNode"
       }
       id: "ResolverNode.latest_blessed_model_resolver"
