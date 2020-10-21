@@ -22,6 +22,7 @@ from tfx.types import artifact_utils
 from tfx.types import standard_artifacts
 
 from google.protobuf import descriptor_pb2
+from google.protobuf import json_format
 from google.protobuf import text_format
 
 # Concatenate the URI of `examples` input artifact's `train` split with /1
@@ -80,8 +81,11 @@ class PlaceholderUtilsTest(tf.test.TestCase):
         },
         output_dict={"blessing": [standard_artifacts.ModelBlessing()]},
         exec_properties={
-            "proto_property": serving_spec.SerializeToString(),
-            "double_list_property": [0.7, 0.8, 0.9],
+            "proto_property":
+                json_format.MessageToJson(
+                    message=serving_spec,
+                    sort_keys=True,
+                    preserving_proto_field_name=True)
         })
 
   def testConcatArtifactUri(self):
@@ -105,7 +109,9 @@ class PlaceholderUtilsTest(tf.test.TestCase):
           proto_schema {
             message_type: "tfx.components.infra_validator.ServingSpec"
           }
-          proto_field_path: "tensorflow_serving.tags"
+          proto_field_path: ".tensorflow_serving"
+          proto_field_path: ".tags"
+          proto_field_path: "[1]"
         }
       }
     """
@@ -121,7 +127,7 @@ class PlaceholderUtilsTest(tf.test.TestCase):
     # be converted to string directly.
     self.assertEqual(
         placeholder_utils.resolve_placeholder_expression(
-            pb, self._resolution_context), "['latest', '1.15.0-gpu']")
+            pb, self._resolution_context), "1.15.0-gpu")
 
   def testProtoExecPropertyMessageField(self):
     # Access a message type proto field
@@ -137,7 +143,7 @@ class PlaceholderUtilsTest(tf.test.TestCase):
           proto_schema {
             message_type: "tfx.components.infra_validator.ServingSpec"
           }
-          proto_field_path: "tensorflow_serving"
+          proto_field_path: ".tensorflow_serving"
         }
       }
     """
@@ -155,28 +161,6 @@ class PlaceholderUtilsTest(tf.test.TestCase):
             pb, self._resolution_context),
         "tags: \"latest\"\ntags: \"1.15.0-gpu\"\n")
 
-  def testExecPropertyIndex(self):
-    # Access a specific index of an exec property list
-    placeholder_expression = """
-      operator {
-        index_op {
-          expression {
-            placeholder {
-              type: EXEC_PROPERTY
-              key: "double_list_property"
-            }
-          }
-          index: 1
-        }
-      }
-    """
-    pb = text_format.Parse(placeholder_expression,
-                           placeholder_pb2.PlaceholderExpression())
-
-    self.assertEqual(
-        placeholder_utils.resolve_placeholder_expression(
-            pb, self._resolution_context), "0.8")
-
   def testSerializeDoubleValue(self):
     # Read a primitive value
     placeholder_expression = """
@@ -188,7 +172,7 @@ class PlaceholderUtilsTest(tf.test.TestCase):
                            placeholder_pb2.PlaceholderExpression())
     self.assertEqual(
         placeholder_utils.resolve_placeholder_expression(
-            pb, self._resolution_context), "1.000000009")
+            pb, self._resolution_context), 1.000000009)
 
 
 if __name__ == "__main__":
