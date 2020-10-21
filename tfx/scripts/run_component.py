@@ -112,11 +112,14 @@ def run_component(
   exec_properties = component_instance.exec_properties
 
   # Generating paths for output artifacts
-  for output_name, artifacts in output_dict.items():
+  for output_name, channel_param in component_class.SPEC_CLASS.OUTPUTS.items():
     uri = (arguments.get('output_' + output_name + '_uri') or
            arguments.get(output_name + '_uri') or
            arguments.get(output_name + '_path'))
     if uri:
+      artifacts = output_dict[output_name]
+      if not artifacts:
+        artifacts.append(channel_param.type())
       for artifact in artifacts:
         artifact.uri = uri
 

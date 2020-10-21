@@ -27,6 +27,7 @@
 *   Depends on `tensorflow-hub>=0.9.0,<0.10`.
 *   New extra dependencies `[examples]` is required to use codes inside
     tfx/examples.
+*   Fixed the run_component script.
 
 ### For pipeline authors
 

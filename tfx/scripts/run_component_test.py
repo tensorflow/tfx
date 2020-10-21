@@ -33,7 +33,7 @@ class RunComponentTest(absltest.TestCase):
   def testRunStatisticsGen(self):
     # Prepare the paths
     test_data_dir = os.path.join(
-        os.path.dirname(os.path.dirname(__file__)), '../components/testdata')
+        os.path.dirname(os.path.dirname(__file__)), 'components', 'testdata')
     output_data_dir = os.path.join(
         os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR', tempfile.mkdtemp()),
         self._testMethodName)
@@ -45,7 +45,7 @@ class RunComponentTest(absltest.TestCase):
         examples_uri=os.path.join(test_data_dir, 'csv_example_gen'),
         examples_split_names=artifact_utils.encode_split_names(
             ['train', 'eval']),
-        stats_uri=output_data_dir,
+        statistics_path=output_data_dir,
     )
 
     # Check the statistics_gen outputs
@@ -53,3 +53,7 @@ class RunComponentTest(absltest.TestCase):
         os.path.join(output_data_dir, 'train', 'stats_tfrecord')))
     self.assertTrue(tf.io.gfile.exists(
         os.path.join(output_data_dir, 'eval', 'stats_tfrecord')))
+
+
+if __name__ == '__main__':
+  tf.test.main()
