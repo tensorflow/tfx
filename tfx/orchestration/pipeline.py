@@ -30,6 +30,7 @@ from tfx.orchestration import data_types
 from tfx.proto.orchestration import pipeline_pb2
 from tfx.utils import topsort
 
+from google.protobuf import message
 from ml_metadata.proto import metadata_store_pb2
 
 # Argo's workflow name cannot exceed 63 chars:
@@ -72,6 +73,7 @@ class Pipeline(object):
     execution_mode: Execution mode of the pipeline. Currently only support
       synchronous execution mode.
     beam_pipeline_args: Pipeline arguments for Beam powered Components.
+    platform_config: Pipeline level platform config, in proto form.
     additional_pipeline_args: Other pipeline args.
   """
 
@@ -83,6 +85,7 @@ class Pipeline(object):
                components: Optional[List[base_node.BaseNode]] = None,
                enable_cache: Optional[bool] = False,
                beam_pipeline_args: Optional[List[Text]] = None,
+               platform_config: Optional[message.Message] = None,
                **kwargs):
     """Initialize pipeline.
 
@@ -95,6 +98,7 @@ class Pipeline(object):
         PipelineDecorator).
       enable_cache: Whether or not cache is enabled for this run.
       beam_pipeline_args: Pipeline arguments for Beam powered Components.
+      platform_config: Pipeline level platform config, in proto form.
       **kwargs: Additional kwargs forwarded as pipeline args.
     """
     if len(pipeline_name) > MAX_PIPELINE_NAME_LENGTH:
@@ -111,6 +115,8 @@ class Pipeline(object):
     self.execution_mode = pipeline_pb2.Pipeline.ExecutionMode.SYNC
 
     self.beam_pipeline_args = beam_pipeline_args or []
+
+    self.platform_config = platform_config
 
     self.additional_pipeline_args = pipeline_args.get(
         'additional_pipeline_args', {})

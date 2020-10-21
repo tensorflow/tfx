@@ -11,13 +11,16 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Compiles a TFX pipeline or a component into a uDSL IR proto."""
+"""Compiles a TFX pipeline into a TFX DSL IR proto."""
 import json
 import re
+
+from typing import cast
 
 from tfx.components.common_nodes import resolver_node
 from tfx.dsl.compiler import compiler_utils
 from tfx.dsl.compiler import constants
+from tfx.dsl.components.base import base_component
 from tfx.dsl.components.base import base_driver
 from tfx.dsl.components.base import base_node
 from tfx.dsl.experimental import latest_artifacts_resolver
@@ -129,7 +132,7 @@ class Compiler(object):
             resolver.type))
 
     # Step 4: Node outputs
-    if compiler_utils.is_component(tfx_node):
+    if isinstance(tfx_node, base_component.BaseComponent):
       for key, value in tfx_node.outputs.items():
         output_spec = node.outputs.outputs[key]
         artifact_type = value.type._get_artifact_type()  # pylint: disable=protected-access
@@ -165,7 +168,7 @@ class Compiler(object):
                   tfx_node.id, key, type(value)))
 
     # Step 6: Executor spec and optional driver spec for components
-    if compiler_utils.is_component(tfx_node):
+    if isinstance(tfx_node, base_component.BaseComponent):
       executor_spec = tfx_node.executor_spec.encode()
       deployment_config.executor_specs[tfx_node.id].Pack(executor_spec)
 
@@ -194,6 +197,13 @@ class Compiler(object):
 
     # Step 8: Node execution options
     # TODO(kennethyang): Add support for node execution options.
+
+    # Step 9: Per-node platform config
+    if isinstance(tfx_node, base_component.BaseComponent):
+      tfx_component = cast(base_component.BaseComponent, tfx_node)
+      if tfx_component.platform_config:
+        deployment_config.node_level_platform_configs[tfx_node.id].Pack(
+            tfx_component.platform_config)
 
     return node
 
@@ -234,5 +244,8 @@ class Compiler(object):
       pipeline_pb.nodes.append(pipeline_or_node)
       context.node_pbs[node.id] = node_pb
 
+    if tfx_pipeline.platform_config:
+      deployment_config.pipeline_level_platform_config.Pack(
+          tfx_pipeline.platform_config)
     pipeline_pb.deployment_config.Pack(deployment_config)
     return pipeline_pb

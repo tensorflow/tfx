@@ -75,15 +75,6 @@ class CompilerUtilsTest(tf.test.TestCase):
     example_gen = CsvExampleGen(input=external_input("data_path"))
     self.assertFalse(compiler_utils.is_resolver(example_gen))
 
-  def testIsComponent(self):
-    resolver = ResolverNode(
-        instance_name="test_resolver_name",
-        resolver_class=latest_blessed_model_resolver.LatestBlessedModelResolver)
-    self.assertFalse(compiler_utils.is_component(resolver))
-
-    example_gen = CsvExampleGen(input=external_input("data_path"))
-    self.assertTrue(compiler_utils.is_component(example_gen))
-
   def testEnsureTopologicalOrder(self):
     a = EmptyComponent(name="a")
     b = EmptyComponent(name="b")

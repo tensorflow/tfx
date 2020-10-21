@@ -31,6 +31,8 @@ from tfx.dsl.components.base import executor_spec
 from tfx.types import node_common
 from tfx.utils import abc_utils
 
+from google.protobuf import message
+
 # Constants that used for serializing and de-serializing components.
 _DRIVER_CLASS_KEY = 'driver_class'
 _EXECUTOR_SPEC_KEY = 'executor_spec'
@@ -49,11 +51,15 @@ class BaseComponent(with_metaclass(abc.ABCMeta, base_node.BaseNode)):
 
   Attributes:
     SPEC_CLASS: a subclass of types.ComponentSpec used by this component
-      (required).
+      (required). This is a class level value.
     EXECUTOR_SPEC: an instance of executor_spec.ExecutorSpec which describes how
-      to execute this component (required).
+      to execute this component (required). This is a class level value.
     DRIVER_CLASS: a subclass of base_driver.BaseDriver as a custom driver for
-      this component (optional, defaults to base_driver.BaseDriver).
+      this component (optional, defaults to base_driver.BaseDriver). This is a
+      class level value.
+    spec: an instance of `SPEC_CLASS`. See types.ComponentSpec for more details.
+    platform_config: a protobuf message representing platform config for a
+      component instance.
   """
 
   # Subclasses must override this property (by specifying a types.ComponentSpec
@@ -84,6 +90,11 @@ class BaseComponent(with_metaclass(abc.ABCMeta, base_node.BaseNode)):
         component in the pipeline. Required if two instances of the same
         component is used in the pipeline.
     """
+    if custom_executor_spec:
+      if not isinstance(custom_executor_spec, executor_spec.ExecutorSpec):
+        raise TypeError(
+            ('Custom executor spec override %s for %s should be an instance of '
+             'ExecutorSpec') % (custom_executor_spec, self.__class__))
     executor_spec_obj = (custom_executor_spec or self.__class__.EXECUTOR_SPEC)
     driver_class = self.__class__.DRIVER_CLASS
     super(BaseComponent, self).__init__(
@@ -92,13 +103,9 @@ class BaseComponent(with_metaclass(abc.ABCMeta, base_node.BaseNode)):
         driver_class=driver_class,
     )
     self.spec = spec
-    if custom_executor_spec:
-      if not isinstance(custom_executor_spec, executor_spec.ExecutorSpec):
-        raise TypeError(
-            ('Custom executor spec override %s for %s should be an instance of '
-             'ExecutorSpec') % (custom_executor_spec, self.__class__))
     self._validate_component_class()
     self._validate_spec(spec)
+    self.platform_config = None
 
   @classmethod
   def _validate_component_class(cls):
@@ -131,6 +138,22 @@ class BaseComponent(with_metaclass(abc.ABCMeta, base_node.BaseNode)):
           ('%s expects the "spec" argument to be an instance of %s; '
            'got %s instead.') %
           (self.__class__, self.__class__.SPEC_CLASS, spec))
+
+  # TODO(b/170682320): This function is not widely available until we migrate
+  # the entire stack to IR-based.
+  def with_platform_config(self, config: message.Message) -> 'BaseComponent':
+    """Attaches a proto-form platform config to a component.
+
+    The config will be a per-node platform-specific config.
+
+    Args:
+      config: platform config to attach to the component.
+
+    Returns:
+      the same component itself.
+    """
+    self.platform_config = config
+    return self
 
   def __repr__(self):
     return ('%s(spec: %s, executor_spec: %s, driver_class: %s, '

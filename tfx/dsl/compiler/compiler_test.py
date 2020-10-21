@@ -90,7 +90,10 @@ class CompilerTest(tf.test.TestCase):
         examples=example_gen.outputs["examples"],
         schema=schema_gen.outputs["schema"],
         train_args=trainer_pb2.TrainArgs(num_steps=2000),
-        eval_args=trainer_pb2.EvalArgs(num_steps=5))
+        # Attaching `TrainerArgs` as platform config is not sensible practice,
+        # but is only for testing purpose.
+        eval_args=trainer_pb2.EvalArgs(num_steps=5)).with_platform_config(
+            config=trainer_pb2.TrainArgs(num_steps=2000))
 
     model_resolver = ResolverNode(
         instance_name="latest_blessed_model_resolver",
@@ -140,7 +143,10 @@ class CompilerTest(tf.test.TestCase):
             pusher,
         ],
         enable_cache=True,
-        beam_pipeline_args=[])
+        beam_pipeline_args=[],
+        # Attaching `TrainerArgs` as platform config is not sensible practice,
+        # but is only for testing purpose.
+        platform_config=trainer_pb2.TrainArgs(num_steps=2000))
 
   def _set_up_test_pipeline_pb(self):
     """Read expected pipeline pb from a text proto file."""

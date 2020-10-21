@@ -23,7 +23,6 @@ from typing import List, Optional, Text, Type
 
 from tfx import types
 from tfx.components.common_nodes import resolver_node
-from tfx.dsl.components.base import base_component
 from tfx.dsl.components.base import base_node
 from tfx.proto.orchestration import pipeline_pb2
 
@@ -66,11 +65,6 @@ def set_runtime_parameter_pb(
 def is_resolver(node: base_node.BaseNode) -> bool:
   """Helper function to check if a TFX node is a Resolver."""
   return isinstance(node, resolver_node.ResolverNode)
-
-
-def is_component(node: base_node.BaseNode) -> bool:
-  """Helper function to check if a TFX node is a normal component."""
-  return isinstance(node, base_component.BaseComponent)
 
 
 def ensure_topological_order(nodes: List[base_node.BaseNode]) -> bool:

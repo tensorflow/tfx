@@ -1293,5 +1293,18 @@ deployment_config {
         }
       }
     }
+    node_level_platform_configs {
+      key: "Trainer"
+      value {
+        [type.googleapis.com/tfx.components.trainer.TrainArgs] {
+          num_steps: 2000
+        }
+      }
+    }
+    pipeline_level_platform_config {
+      [type.googleapis.com/tfx.components.trainer.TrainArgs] {
+        num_steps: 2000
+      }
+    }
   }
 }
