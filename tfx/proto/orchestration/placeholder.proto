@@ -108,10 +108,11 @@ message ProtoOperator {
   // If this field is not provided, or the proto_field_path points to a
   // sub-message, that value will be rendered to a string using text_format.
   //
-  // For example: proto_field_path=["[0]", ".a", ".b", "['c']"] is equivalent to
-  // accessing p[0].a.b['c'], where p is the proto evaluated from the above
-  // expression.
-  repeated string proto_field_path = 3;
+  // For example: proto_field_path="a.b" is equivalent to accessing
+  // p.a.b, where p is the proto evaluated from the above expression.
+  // Note: Currently only "dot" proto notation is supported.
+  // Accessing repeated field or map field using [key] is not supported.
+  string proto_field_path = 3;
 }
 
 // Placeholder is an inseparable unit in a placeholder expression that
