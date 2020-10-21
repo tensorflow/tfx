@@ -85,7 +85,7 @@ def make_beam_labels_args() -> List[Text]:
     New Beam pipeline args with labels.
   """
   labels = get_labels_dict()
-  # See following file for reference to the '--labes ' flag.
+  # See following file for reference to the '--labels ' flag.
   # https://github.com/apache/beam/blob/master/sdks/python/apache_beam/options/pipeline_options.py
   result = []
   for k in sorted(labels):
