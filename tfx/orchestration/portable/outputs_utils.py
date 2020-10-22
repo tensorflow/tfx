@@ -38,8 +38,10 @@ def make_output_dirs(output_dict: Dict[Text, List[types.Artifact]]) -> None:
         # If it is a ValueArtifact, create a file.
         artifact_dir = os.path.dirname(artifact.uri)
         tf.io.gfile.makedirs(artifact_dir)
-        with open(artifact.uri, 'w') as _:
-          pass
+        with tf.io.gfile.GFile(artifact.uri, 'w') as f:
+          # Because tf.io.gfile.GFile won't create an empty file, we write an
+          # empty string to it to force the creation.
+          f.write('')
       else:
         # Otherwise create a dir.
         tf.io.gfile.makedirs(artifact.uri)
