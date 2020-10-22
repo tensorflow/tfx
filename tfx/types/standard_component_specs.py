@@ -78,6 +78,10 @@ class EvaluatorSpec(ComponentSpec):
           ExecutionParameter(type=(str, Text), optional=True),
       'module_file':
           ExecutionParameter(type=(str, Text), optional=True),
+      'custom_eval_shared_model':
+          ExecutionParameter(type=(str, Text), optional=True),
+      'custom_extractors':
+          ExecutionParameter(type=(str, Text), optional=True),
   }
   INPUTS = {
       'examples':

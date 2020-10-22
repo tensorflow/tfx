@@ -61,7 +61,9 @@ class Evaluator(base_component.BaseComponent):
       eval_config: Optional[tfma.EvalConfig] = None,
       blessing: Optional[types.Channel] = None,
       schema: Optional[types.Channel] = None,
-      module_file: Optional[Text] = None):
+      module_file: Optional[Text] = None,
+      custom_eval_shared_model: Optional[Text] = None,
+      custom_extractors: Optional[Text] = None):
     """Construct an Evaluator component.
 
     Args:
@@ -107,7 +109,18 @@ class Evaluator(base_component.BaseComponent):
           def custom_extractors(
             eval_shared_model, eval_config, tensor_adapter_config,
           ) -> List[tfma.extractors.Extractor]:
+      custom_eval_shared_model: A python path to custom eval model UDF.
+        See 'module_file' for the required signature of this UDF. Note this can
+        not be set together with module_file.
+      custom_extractors: A python path to custom extractors UDF.
+        See 'module_file' for the required signature of this UDF. Note this can
+        not be set together with module_file.
     """
+    if bool(module_file) and (bool(custom_eval_shared_model) or
+                              bool(custom_extractors)):
+      raise ValueError(
+          'UDF module path can not be set together with user module file path.')
+
     if eval_config is not None and feature_slicing_spec is not None:
       raise ValueError("Exactly one of 'eval_config' or 'feature_slicing_spec' "
                        "must be supplied.")
@@ -141,5 +154,7 @@ class Evaluator(base_component.BaseComponent):
         eval_config=eval_config,
         blessing=blessing,
         schema=schema,
-        module_file=module_file)
+        module_file=module_file,
+        custom_eval_shared_model=custom_eval_shared_model,
+        custom_extractors=custom_extractors)
     super(Evaluator, self).__init__(spec=spec, instance_name=instance_name)

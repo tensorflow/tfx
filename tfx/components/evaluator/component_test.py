@@ -124,6 +124,42 @@ class ComponentTest(tf.test.TestCase):
                      evaluator.outputs['evaluation'].type_name)
     self.assertEqual('path', evaluator.exec_properties['module_file'])
 
+  def testConstructWithModuleFn(self):
+    examples = standard_artifacts.Examples()
+    model_exports = standard_artifacts.Model()
+    evaluator = component.Evaluator(
+        examples=channel_utils.as_channel([examples]),
+        model=channel_utils.as_channel([model_exports]),
+        example_splits=['eval'],
+        custom_eval_shared_model='module.eval_model',
+        custom_extractors='module.extractor')
+    self.assertEqual(standard_artifacts.ModelEvaluation.TYPE_NAME,
+                     evaluator.outputs['evaluation'].type_name)
+    self.assertEqual('module.eval_model',
+                     evaluator.exec_properties['custom_eval_shared_model'])
+    self.assertEqual('module.extractor',
+                     evaluator.exec_properties['custom_extractors'])
+
+  def testConstructDuplicateUserModule(self):
+    examples = standard_artifacts.Examples()
+    model_exports = standard_artifacts.Model()
+
+    with self.assertRaises(ValueError):
+      _ = component.Evaluator(
+          examples=channel_utils.as_channel([examples]),
+          model=channel_utils.as_channel([model_exports]),
+          example_splits=['eval'],
+          module_file='module_file_path',
+          custom_eval_shared_model='module.eval_model')
+
+    with self.assertRaises(ValueError):
+      _ = component.Evaluator(
+          examples=channel_utils.as_channel([examples]),
+          model=channel_utils.as_channel([model_exports]),
+          example_splits=['eval'],
+          module_file='module_file_path',
+          custom_extractors='module.extractor')
+
 
 if __name__ == '__main__':
   tf.test.main()
