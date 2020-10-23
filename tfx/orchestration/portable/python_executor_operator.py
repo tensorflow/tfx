@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Base class to define how to operator an executor."""
+import sys
 
 from typing import Any, Dict, List, Optional, cast
 
@@ -22,7 +23,6 @@ from tfx.dsl.components.base import base_executor
 from tfx.orchestration.portable import base_executor_operator
 from tfx.proto.orchestration import executable_spec_pb2
 from tfx.proto.orchestration import execution_result_pb2
-from tfx.proto.orchestration import pipeline_pb2
 from tfx.utils import import_utils
 
 from google.protobuf import message
@@ -63,7 +63,16 @@ def _populate_exec_properties(
 
 
 class PythonExecutorOperator(base_executor_operator.BaseExecutorOperator):
-  """PythonExecutorOperator handles python class based executor's init and execution."""
+  """PythonExecutorOperator handles python class based executor's init and execution.
+
+  Attributes:
+    extra_flags: Extra flags that will pass to Python executors. It come from
+      two sources in the order:
+      1. The `extra_flags` set in the executor spec.
+      2. The flags passed in when starting the program by users or by other
+         systems.
+      The interpretation of these flags relying on the executor implementation.
+  """
 
   SUPPORTED_EXECUTOR_SPEC_TYPE = [executable_spec_pb2.PythonClassExecutableSpec]
   SUPPORTED_PLATFORM_CONFIG_TYPE = []
@@ -80,11 +89,14 @@ class PythonExecutorOperator(base_executor_operator.BaseExecutorOperator):
     """
     # Python executors run locally, so platform_config is not used.
     del platform_config
-    super(PythonExecutorOperator, self).__init__(executor_spec)
+    super().__init__(executor_spec)
     python_class_executor_spec = cast(
-        pipeline_pb2.ExecutorSpec.PythonClassExecutorSpec, self._executor_spec)
+        executable_spec_pb2.PythonClassExecutableSpec, self._executor_spec)
     self._executor_cls = import_utils.import_class_by_path(
         python_class_executor_spec.class_path)
+    self.extra_flags = []
+    self.extra_flags.extend(python_class_executor_spec.extra_flags)
+    self.extra_flags.extend(sys.argv[1:])
 
   def run_executor(
       self, execution_info: base_executor_operator.ExecutionInfo
@@ -97,8 +109,12 @@ class PythonExecutorOperator(base_executor_operator.BaseExecutorOperator):
     Returns:
       The output from executor.
     """
-    # TODO(b/162980675): Set arguments for Beam when it is available.
+    # TODO(b/156000550): We should not specialize `Context` to embed beam
+    # pipeline args. Instead, the `Context` should consists of generic purpose
+    # `extra_flags` which can be interpreted differently by different
+    # implementations of executors.
     context = base_executor.BaseExecutor.Context(
+        beam_pipeline_args=self.extra_flags,
         executor_output_uri=execution_info.executor_output_uri,
         stateful_working_dir=execution_info.stateful_working_dir)
     executor = self._executor_cls(context=context)

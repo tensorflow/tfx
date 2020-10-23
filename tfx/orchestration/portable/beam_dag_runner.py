@@ -61,13 +61,12 @@ class PipelineNodeAsDoFn(beam.DoFn):
       custom_driver_spec: Specification for custom driver. This is expected only
         for advanced use cases.
     """
-    self._launcher = launcher.Launcher(
-        pipeline_node=pipeline_node,
-        mlmd_connection=mlmd_connection,
-        pipeline_info=pipeline_info,
-        pipeline_runtime_spec=pipeline_runtime_spec,
-        executor_spec=executor_spec,
-        custom_driver_spec=custom_driver_spec)
+    self._pipeline_node = pipeline_node
+    self._mlmd_connection = mlmd_connection
+    self._pipeline_info = pipeline_info
+    self._pipeline_runtime_spec = pipeline_runtime_spec
+    self._executor_spec = executor_spec
+    self._custom_driver_spec = custom_driver_spec
     self._node_id = pipeline_node.node_info.id
 
   def process(self, element: Any, *signals: Iterable[Any]) -> None:
@@ -79,12 +78,19 @@ class PipelineNodeAsDoFn(beam.DoFn):
     """
     for signal in signals:
       assert not list(signal), 'Signal PCollection should be empty.'
+
+    logging.info('Component %s is running.', self._node_id)
     self._run_component()
+    logging.info('Component %s is finished.', self._node_id)
 
   def _run_component(self) -> None:
-    logging.info('Component %s is running.', self._node_id)
-    self._launcher.launch()
-    logging.info('Component %s is finished.', self._node_id)
+    launcher.Launcher(
+        pipeline_node=self._pipeline_node,
+        mlmd_connection=self._mlmd_connection,
+        pipeline_info=self._pipeline_info,
+        pipeline_runtime_spec=self._pipeline_runtime_spec,
+        executor_spec=self._executor_spec,
+        custom_driver_spec=self._custom_driver_spec).launch()
 
 
 class BeamDagRunner(tfx_runner.TfxRunner):

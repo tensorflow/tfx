@@ -72,6 +72,7 @@
       "__class__": "Executor",
       "__module__": "tfx.components.statistics_gen.executor",
       "__tfx_object_type__": "class"
-    }
+    },
+    "extra_flags": []
   }
 }

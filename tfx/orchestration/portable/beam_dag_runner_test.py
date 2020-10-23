@@ -117,24 +117,24 @@ _conponent_to_pipeline_run = {}
 # executors.
 class _FakeComponentAsDoFn(beam_dag_runner.PipelineNodeAsDoFn):
 
-  def __init__(self,
-               pipeline_node: pipeline_pb2.PipelineNode,
+  def __init__(self, pipeline_node: pipeline_pb2.PipelineNode,
                mlmd_connection: metadata.Metadata,
                pipeline_info: pipeline_pb2.PipelineInfo,
                pipeline_runtime_spec: pipeline_pb2.PipelineRuntimeSpec,
                executor_spec: Optional[message.Message],
                custom_driver_spec: Optional[message.Message]):
-    self._component_id = pipeline_node.node_info.id
-    _component_executors[self._component_id] = executor_spec
-    _component_drivers[self._component_id] = custom_driver_spec
+    super().__init__(pipeline_node, mlmd_connection, pipeline_info,
+                     pipeline_runtime_spec, executor_spec, custom_driver_spec)
+    _component_executors[self._node_id] = executor_spec
+    _component_drivers[self._node_id] = custom_driver_spec
     pipeline_run = None
     for context in pipeline_node.contexts.contexts:
       if context.type.name == constants.PIPELINE_RUN_ID_PARAMETER_NAME:
         pipeline_run = context.name.field_value.string_value
-    _conponent_to_pipeline_run[self._component_id] = pipeline_run
+    _conponent_to_pipeline_run[self._node_id] = pipeline_run
 
   def _run_component(self):
-    _executed_components.append(self._component_id)
+    _executed_components.append(self._node_id)
 
 
 class BeamDagRunnerTest(test_utils.TfxTest):

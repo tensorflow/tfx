@@ -22,10 +22,10 @@ from __future__ import unicode_literals
 import collections
 import json
 import os
-from typing import List, Optional, Text
+from typing import List, Optional, Text, cast
 
-from absl import logging
 from tfx.dsl.components.base import base_node
+from tfx.dsl.components.base import executor_spec
 from tfx.orchestration import data_types
 from tfx.proto.orchestration import pipeline_pb2
 from tfx.utils import topsort
@@ -121,14 +121,6 @@ class Pipeline(object):
     self.additional_pipeline_args = pipeline_args.get(
         'additional_pipeline_args', {})
 
-    # TODO(jyzhao): deprecate beam_pipeline_args of additional_pipeline_args.
-    if 'beam_pipeline_args' in self.additional_pipeline_args:
-      logging.warning(
-          'Please use the top level beam_pipeline_args instead of the one in additional_pipeline_args.'
-      )
-      self.beam_pipeline_args = self.additional_pipeline_args[
-          'beam_pipeline_args']
-
     # Store pipeline_args in a json file only when temp file exists.
     pipeline_args.update({
         'pipeline_name': pipeline_name,
@@ -141,6 +133,16 @@ class Pipeline(object):
 
     # Calls property setter.
     self.components = components or []
+
+    # TODO(b/156000550): Currently `beam_pipeline_args` is set at pipeline
+    # level in the SDK. However it is subject to change, to move to per-node
+    # configuration. We will need to change the following logic accordingly.
+    if not self.beam_pipeline_args:
+      return
+    for component in components:
+      if isinstance(component.executor_spec, executor_spec.ExecutorClassSpec):
+        cast(executor_spec.ExecutorClassSpec,
+             component.executor_spec).extra_flags.extend(beam_pipeline_args)
 
   @property
   def components(self):

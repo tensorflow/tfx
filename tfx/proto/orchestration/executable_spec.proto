@@ -21,6 +21,8 @@ import "tfx/proto/orchestration/placeholder.proto";
 message PythonClassExecutableSpec {
   // The full class path of the executable.
   string class_path = 1;
+  // Extra flags for running the Python executable.
+  repeated string extra_flags = 2;
 }
 
 // Specification for Container based executables.

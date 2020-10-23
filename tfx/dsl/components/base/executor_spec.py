@@ -19,7 +19,7 @@ from __future__ import division
 from __future__ import print_function
 
 import abc
-from typing import List, Text, Type
+from typing import Iterable, List, Text, Type
 
 from six import with_metaclass
 
@@ -54,12 +54,14 @@ class ExecutorClassSpec(ExecutorSpec):
   Attributes:
     executor_class: a subclass of base_executor.BaseExecutor used to execute
       this component (required).
+    extra_flags: extra flags to be set in the Python base executor.
   """
 
   def __init__(self, executor_class: Type[base_executor.BaseExecutor]):
     if not executor_class:
       raise ValueError('executor_class is required')
     self.executor_class = executor_class
+    self.extra_flags = []
     super(ExecutorClassSpec, self).__init__()
 
   def __reduce__(self):
@@ -93,7 +95,11 @@ class ExecutorClassSpec(ExecutorSpec):
   def encode(self) -> message.Message:
     result = executable_spec_pb2.PythonClassExecutableSpec()
     result.class_path = self.class_path
+    result.extra_flags.extend(self.extra_flags)
     return result
+
+  def add_extra_flags(self, extra_flags: Iterable[str]) -> None:
+    self.extra_flags.extend(extra_flags)
 
 
 class ExecutorContainerSpec(ExecutorSpec):

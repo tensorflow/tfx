@@ -16,6 +16,7 @@
 import os
 from typing import Any, Dict, List, Text
 
+import mock
 import tensorflow as tf
 from tfx import types
 from tfx.dsl.components.base import base_executor
@@ -37,10 +38,10 @@ class InprocessExecutor(base_executor.BaseExecutor):
       output_dict: Dict[Text, List[types.Artifact]],
       exec_properties: Dict[Text, Any]) -> execution_result_pb2.ExecutorOutput:
     executor_output = execution_result_pb2.ExecutorOutput()
-    python_executor_operator._populate_output_artifact(
-        executor_output, output_dict)
-    python_executor_operator._populate_exec_properties(
-        executor_output, exec_properties)
+    python_executor_operator._populate_output_artifact(executor_output,
+                                                       output_dict)
+    python_executor_operator._populate_exec_properties(executor_output,
+                                                       exec_properties)
     return executor_output
 
 
@@ -51,10 +52,10 @@ class NotInprocessExecutor(base_executor.BaseExecutor):
          output_dict: Dict[Text, List[types.Artifact]],
          exec_properties: Dict[Text, Any]) -> None:
     executor_output = execution_result_pb2.ExecutorOutput()
-    python_executor_operator._populate_output_artifact(
-        executor_output, output_dict)
-    python_executor_operator._populate_exec_properties(
-        executor_output, exec_properties)
+    python_executor_operator._populate_output_artifact(executor_output,
+                                                       output_dict)
+    python_executor_operator._populate_exec_properties(executor_output,
+                                                       exec_properties)
     with tf.io.gfile.GFile(self._context.executor_output_uri, 'w') as f:
       f.write(executor_output.SerializeToString())
 
@@ -67,6 +68,16 @@ class InplaceUpdateExecutor(base_executor.BaseExecutor):
          exec_properties: Dict[Text, Any]) -> None:
     model = output_dict['output_key'][0]
     model.name = 'my_model'
+
+
+class ValidateBeamPipelineArgsExecutor(base_executor.BaseExecutor):
+  """A Fake executor for validating beam pipeline args passing."""
+
+  def Do(self, input_dict: Dict[Text, List[types.Artifact]],
+         output_dict: Dict[Text, List[types.Artifact]],
+         exec_properties: Dict[Text, Any]) -> None:
+    assert '--runner=DirectRunner' in self._beam_pipeline_args
+    assert '--arg_one=1' in self._beam_pipeline_args
 
 
 class PythonExecutorOperatorTest(test_utils.TfxTest):
@@ -89,7 +100,8 @@ class PythonExecutorOperatorTest(test_utils.TfxTest):
             exec_properties=exec_properties,
             stateful_working_dir=stateful_working_dir,
             executor_output_uri=executor_output_uri))
-    self.assertProtoPartiallyEquals("""
+    self.assertProtoPartiallyEquals(
+        """
           execution_properties {
             key: "key"
             value {
@@ -122,7 +134,8 @@ class PythonExecutorOperatorTest(test_utils.TfxTest):
             exec_properties=exec_properties,
             stateful_working_dir=stateful_working_dir,
             executor_output_uri=executor_output_uri))
-    self.assertProtoPartiallyEquals("""
+    self.assertProtoPartiallyEquals(
+        """
           execution_properties {
             key: "key"
             value {
@@ -145,12 +158,14 @@ class PythonExecutorOperatorTest(test_utils.TfxTest):
     operator = python_executor_operator.PythonExecutorOperator(executor_sepc)
     input_dict = {'input_key': [standard_artifacts.Examples()]}
     output_dict = {'output_key': [standard_artifacts.Model()]}
-    exec_properties = {'string': 'value',
-                       'int': 1,
-                       'float': 0.0,
-                       # This should not happen on production and will be
-                       # dropped.
-                       'proto': execution_result_pb2.ExecutorOutput()}
+    exec_properties = {
+        'string': 'value',
+        'int': 1,
+        'float': 0.0,
+        # This should not happen on production and will be
+        # dropped.
+        'proto': execution_result_pb2.ExecutorOutput()
+    }
     stateful_working_dir = os.path.join(self.tmp_dir, 'stateful_working_dir')
     executor_output_uri = os.path.join(self.tmp_dir, 'executor_output')
     executor_output = operator.run_executor(
@@ -160,7 +175,8 @@ class PythonExecutorOperatorTest(test_utils.TfxTest):
             exec_properties=exec_properties,
             stateful_working_dir=stateful_working_dir,
             executor_output_uri=executor_output_uri))
-    self.assertProtoPartiallyEquals("""
+    self.assertProtoPartiallyEquals(
+        """
           execution_properties {
             key: "float"
             value {
@@ -192,6 +208,22 @@ class PythonExecutorOperatorTest(test_utils.TfxTest):
               }
             }
           }""", executor_output)
+
+  @mock.patch('sys.argv', new=['mybinary', '--arg_one=1'])
+  def testRunExecutorWithBeamPipelineArgs(self):
+    executor_sepc = text_format.Parse(
+        """
+      class_path: "tfx.orchestration.portable.python_executor_operator_test.ValidateBeamPipelineArgsExecutor"
+      extra_flags: "--runner=DirectRunner"
+    """, executable_spec_pb2.PythonClassExecutableSpec())
+    operator = python_executor_operator.PythonExecutorOperator(executor_sepc)
+    executor_output_uri = os.path.join(self.tmp_dir, 'executor_output')
+    operator.run_executor(
+        base_executor_operator.ExecutionInfo(
+            input_dict={},
+            output_dict={},
+            exec_properties={},
+            executor_output_uri=executor_output_uri))
 
 
 if __name__ == '__main__':

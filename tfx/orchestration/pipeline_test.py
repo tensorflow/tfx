@@ -281,6 +281,19 @@ class PipelineTest(tf.test.TestCase):
         metadata_connection_config=self._metadata_connection_config)
     self.assertNotIn('TFX_JSON_EXPORT_PIPELINE_ARGS_PATH', os.environ)
 
+  def testPipelineWithBeamPipelineArgs(self):
+    p = pipeline.Pipeline(
+        pipeline_name='a',
+        pipeline_root='b',
+        log_root='c',
+        components=[
+            _make_fake_component_instance('component_a', _OutputTypeA, {}, {})
+        ],
+        beam_pipeline_args=['--my_testing_beam_pipeline_args=foo'],
+        metadata_connection_config=self._metadata_connection_config)
+    self.assertIn('--my_testing_beam_pipeline_args=foo',
+                  p.components[0].executor_spec.extra_flags)
+
 
 if __name__ == '__main__':
   tf.test.main()
