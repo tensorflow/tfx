@@ -25,6 +25,8 @@
     to separate out Google Cloud Platform specific extensions.
 *   Depends on `tensorflow-cloud>=0.1,<0.2`.
 *   Depends on `tensorflow-hub>=0.9.0,<0.10`.
+*   Depends on `mmh>=2.2,<3` in container image for potential performance
+    improvement for Beam based hashes.
 *   New extra dependencies `[examples]` is required to use codes inside
     tfx/examples.
 *   Fixed the run_component script.
