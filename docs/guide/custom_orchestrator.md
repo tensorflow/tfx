@@ -18,48 +18,22 @@ For example, let's look at how to create a custom orchestrator with
 [ComponentLauncher](https://github.com/tensorflow/tfx/blob/master/tfx/orchestration/component_launcher.py).
 ComponentLauncher already handles driver, executor, and publisher of a single
 component. The new orchestrator just needs to schedule ComponentLaunchers based
-on the DAG. The following example shows a simple toy orchestrator, which runs
-the components one by one in DAG's topological order.
+on the DAG. A simple orchestrator is provided as the [LocalDagRunner]
+(https://github.com/tensorflow/tfx/blob/master/tfx/orchestration/local/local_dag_runner.py),
+which runs the components one by one in DAG's topological order.
+
+This orchestrator can be used in the Python DSL:
 
 ```python
-import datetime
-
-from tfx.orchestration import component_launcher
-from tfx.orchestration import data_types
-from tfx.orchestration import tfx_runner
-
-class DirectDagRunner(tfx_runner.TfxRunner):
-  """Tfx direct DAG runner."""
-
-  def run(self, pipeline):
-    """Directly run components in topological order."""
-    # Run id is needed for each run.
-    pipeline.pipeline_info.run_id = datetime.datetime.now().isoformat()
-
-    # pipeline.components are in topological order already.
-    for component in pipeline.components:
-      component_launcher.ComponentLauncher(
-          component=component,
-          pipeline_info=pipeline.pipeline_info,
-          driver_args=data_types.DriverArgs(
-              enable_cache=pipeline.enable_cache),
-          metadata_connection_config=pipeline.metadata_connection_config,
-          additional_pipeline_args=pipeline.additional_pipeline_args
-      ).launch()
-```
-
-The above orchestrator can be used in the Python DSL:
-
-```python
-import direct_runner
 from tfx.orchestration import pipeline
+from tfx.orchestration.local import local_dag_runner
 
 def _create_pipeline(...) -> pipeline.Pipeline:
   ...
   return pipeline.Pipeline(...)
 
 if __name__ == '__main__':
-  direct_runner.DirectDagRunner().run(_create_pipeline(...))
+  local_dag_runner.LocalDagRunner().run(_create_pipeline(...))
 ```
 
 To run above Python DSL file (assuming it is named dsl.py), simply do the

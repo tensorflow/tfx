@@ -122,7 +122,7 @@ class BeamDagRunner(tfx_runner.TfxRunner):
       tfx_pipeline: Logical pipeline containing pipeline args and components.
     """
     # For CLI, while creating or updating pipeline, pipeline_args are extracted
-    # and hence we avoid deploying the pipeline.
+    # and hence we avoid executing the pipeline.
     if 'TFX_JSON_EXPORT_PIPELINE_ARGS_PATH' in os.environ:
       return
 

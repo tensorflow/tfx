@@ -65,7 +65,8 @@ class Pipeline(object):
       should include:
       - pipeline_name: Required. The unique name of this pipeline.
       - pipeline_root: Required. The root of the pipeline outputs.
-    components: Logical components of this pipeline.
+    components: Logical components of this pipeline. When read, this is in
+      topologically sorted order.
     pipeline_info: An instance of data_types.PipelineInfo that contains basic
       properties of the pipeline.
     enable_cache: Whether or not cache is enabled for this run.

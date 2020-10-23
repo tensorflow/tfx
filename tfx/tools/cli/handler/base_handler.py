@@ -135,7 +135,13 @@ class BaseHandler(with_metaclass(abc.ABCMeta, object)):
     temp_file = tempfile.mkstemp(prefix='cli_tmp_', suffix='_pipeline_args')[1]
 
     # Store temp_file path in temp_env.
+    # LINT.IfChange
     temp_env[labels.TFX_JSON_EXPORT_PIPELINE_ARGS_PATH] = temp_file
+    # LINT.ThenChange(
+    #     ../../../orchestration/beam/beam_dag_runner.py,
+    #     ../../../orchestration/local/local_dag_runner.py,
+    #     ../../../orchestration/portable/beam_dag_runner.py,
+    # )
 
     # Run dsl with mock environment to store pipeline args in temp_file.
     self._subprocess_call([sys.executable, pipeline_dsl_path], env=temp_env)

@@ -10,6 +10,8 @@
     portable orchestrator.
 *   Added Placeholder utility library. Placeholder can be used to represent
     not-yet-available value at pipeline authoring time.
+*   Added the LocalDagRunner to allow local pipeline execution without using
+    Apache Beam.
 
 ## Breaking changes
 
