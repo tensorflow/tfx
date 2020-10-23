@@ -20,7 +20,7 @@ from typing import Union
 from tfx.proto.orchestration import placeholder_pb2
 
 
-def input(key: str) -> 'Placeholder':  # pylint: disable=redefined-builtin
+def input(key: str) -> 'ArtifactPlaceholder':  # pylint: disable=redefined-builtin
   """Returns a Placeholder that represents an input artifact.
 
   Args:
@@ -47,7 +47,7 @@ def input(key: str) -> 'Placeholder':  # pylint: disable=redefined-builtin
                              key)
 
 
-def output(key: str) -> 'Placeholder':
+def output(key: str) -> 'ArtifactPlaceholder':
   """Returns a Placeholder that represents an output artifact.
 
   It is the same as input(...) function, except it is for output artifacts.
@@ -76,7 +76,7 @@ def output(key: str) -> 'Placeholder':
                              key)
 
 
-def exec_property(key: str) -> 'Placeholder':
+def exec_property(key: str) -> 'ExecPropertyPlaceholder':
   """Returns a Placeholder that represents an execution property.
 
   Args:
