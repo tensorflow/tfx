@@ -21,6 +21,7 @@ from __future__ import print_function
 import os
 from typing import Text
 
+import mock
 import tensorflow as tf
 
 from tfx.examples.chicago_taxi_pipeline import taxi_pipeline_native_keras
@@ -66,7 +67,12 @@ class TaxiPipelineNativeKerasEndToEndTest(tf.test.TestCase):
     self.assertExecutedOnce('Trainer')
     self.assertExecutedOnce('Transform')
 
-  def testTaxiPipelineNativeKeras(self):
+  @mock.patch('tfx.components.util.udf_utils.package_user_module_file')
+  @mock.patch('tfx.components.util.udf_utils.install_to_temp_directory')
+  def testTaxiPipelineNativeKeras(
+      self, mock_package_user_module_file, unused_install):
+    mock_package_user_module_file.side_effect = (
+        lambda x, y: ('/fake/package.whl', 'module_name'))
     BeamDagRunner().run(
         taxi_pipeline_native_keras._create_pipeline(
             pipeline_name=self._pipeline_name,

@@ -19,6 +19,8 @@ from __future__ import division
 from __future__ import print_function
 
 import os
+
+import mock
 import tensorflow as tf
 import tensorflow_model_analysis as tfma
 
@@ -48,7 +50,10 @@ class TaxiPipelineBeamTest(tf.test.TestCase):
         os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR', self.get_temp_dir()),
         self._testMethodName)
 
-  def testTaxiPipelineCheckDagConstruction(self):
+  @mock.patch('tfx.components.util.udf_utils.package_user_module_file')
+  def testTaxiPipelineCheckDagConstruction(self, mock_package_user_module_file):
+    mock_package_user_module_file.side_effect = (
+        lambda x, y: ('/fake/package.whl', 'module_name'))
     logical_pipeline = taxi_pipeline_beam._create_pipeline(
         pipeline_name='Test',
         pipeline_root=self._test_dir,
@@ -59,7 +64,11 @@ class TaxiPipelineBeamTest(tf.test.TestCase):
         beam_pipeline_args=[])
     self.assertEqual(9, len(logical_pipeline.components))
 
-  def testTaxiPipelineNewStyleCompatibility(self):
+  @mock.patch('tfx.components.util.udf_utils.package_user_module_file')
+  def testTaxiPipelineNewStyleCompatibility(
+      self, mock_package_user_module_file):
+    mock_package_user_module_file.side_effect = (
+        lambda x, y: ('/fake/package.whl', 'module_name'))
     example_gen = CsvExampleGen(input_base='/tmp/fake/path')
     statistics_gen = StatisticsGen(examples=example_gen.outputs['examples'])
     self.assertIs(statistics_gen.inputs['examples'],

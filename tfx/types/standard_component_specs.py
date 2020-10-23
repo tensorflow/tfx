@@ -78,6 +78,7 @@ class EvaluatorSpec(ComponentSpec):
           ExecutionParameter(type=(str, Text), optional=True),
       'module_file':
           ExecutionParameter(type=(str, Text), optional=True),
+      'module_path': ExecutionParameter(type=(str, Text), optional=True),
   }
   INPUTS = {
       'examples':
@@ -292,6 +293,7 @@ class TrainerSpec(ComponentSpec):
       'train_args': ExecutionParameter(type=trainer_pb2.TrainArgs),
       'eval_args': ExecutionParameter(type=trainer_pb2.EvalArgs),
       'module_file': ExecutionParameter(type=(str, Text), optional=True),
+      'module_path': ExecutionParameter(type=(str, Text), optional=True),
       'run_fn': ExecutionParameter(type=(str, Text), optional=True),
       'trainer_fn': ExecutionParameter(type=(str, Text), optional=True),
       'custom_config': ExecutionParameter(type=(str, Text), optional=True),
@@ -330,6 +332,7 @@ class TunerSpec(ComponentSpec):
 
   PARAMETERS = {
       'module_file': ExecutionParameter(type=(str, Text), optional=True),
+      'module_path': ExecutionParameter(type=(str, Text), optional=True),
       'tuner_fn': ExecutionParameter(type=(str, Text), optional=True),
       'train_args': ExecutionParameter(type=trainer_pb2.TrainArgs),
       'eval_args': ExecutionParameter(type=trainer_pb2.EvalArgs),
@@ -357,6 +360,7 @@ class TransformSpec(ComponentSpec):
   PARAMETERS = {
       'module_file':
           ExecutionParameter(type=(str, Text), optional=True),
+      'module_path': ExecutionParameter(type=(str, Text), optional=True),
       'preprocessing_fn':
           ExecutionParameter(type=(str, Text), optional=True),
       'custom_config':

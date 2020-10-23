@@ -24,6 +24,7 @@ from absl import logging
 import tensorflow_model_analysis as tfma
 from tfx import types
 from tfx.components.evaluator import executor
+from tfx.components.util import udf_utils
 from tfx.dsl.components.base import base_component
 from tfx.dsl.components.base import executor_spec
 from tfx.orchestration import data_types
@@ -130,6 +131,13 @@ class Evaluator(base_component.BaseComponent):
     blessing = blessing or types.Channel(type=standard_artifacts.ModelBlessing)
     evaluation = output or types.Channel(
         type=standard_artifacts.ModelEvaluation)
+
+    if module_file:
+      wheel_file, module_path = udf_utils.package_user_module_file(
+          instance_name or self.__class__.__name__, module_file)
+    else:
+      module_path = None
+
     spec = EvaluatorSpec(
         examples=examples,
         model=model,
@@ -143,3 +151,7 @@ class Evaluator(base_component.BaseComponent):
         schema=schema,
         module_file=module_file)
     super(Evaluator, self).__init__(spec=spec, instance_name=instance_name)
+
+    # Register dependency on generated user code wheel package.
+    if module_path:
+      self.with_pip_dependency(wheel_file)

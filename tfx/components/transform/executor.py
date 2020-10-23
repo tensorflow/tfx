@@ -20,7 +20,9 @@ from __future__ import print_function
 
 import functools
 import hashlib
+import importlib
 import os
+import sys
 from typing import Any, Dict, Generator, Iterable, List, Mapping, Optional, Sequence, Set, Text, Tuple, Union
 
 import absl
@@ -307,6 +309,8 @@ class Executor(base_executor.BaseExecutor):
       exec_properties: A dict of execution properties, including:
         - module_file: The file path to a python module file, from which the
           'preprocessing_fn' function will be loaded.
+        - module_path: The python module path, from which the
+          'preprocessing_fn' function will be loaded.
         - preprocessing_fn: The module path to a python function that
           implements 'preprocessing_fn'. Exactly one of 'module_file' and
           'preprocessing_fn' should be set.
@@ -408,6 +412,8 @@ class Executor(base_executor.BaseExecutor):
                                                    len(transform_data_paths),
         labels.MODULE_FILE:
             exec_properties.get('module_file', None),
+        labels.MODULE_PATH:
+            exec_properties.get('module_path', None),
         labels.PREPROCESSING_FN:
             exec_properties.get('preprocessing_fn', None),
         labels.CUSTOM_CONFIG:
@@ -772,18 +778,26 @@ class Executor(base_executor.BaseExecutor):
     """
     has_module_file = bool(
         value_utils.GetSoleValue(inputs, labels.MODULE_FILE, strict=False))
+    has_module_path = bool(
+        value_utils.GetSoleValue(inputs, labels.MODULE_PATH, strict=False))
     has_preprocessing_fn = bool(
         value_utils.GetSoleValue(inputs, labels.PREPROCESSING_FN, strict=False))
 
-    if has_module_file == has_preprocessing_fn:
+    if (int(has_module_file) + int(has_module_path) +
+        int(has_preprocessing_fn)) != 1:
       raise ValueError(
-          'Neither or both of MODULE_FILE and PREPROCESSING_FN have been '
-          'supplied in inputs.')
+          'Exactly one of MODULE_FILE, MODULE_PATH or PREPROCESSING_FN should '
+          'be supplied in inputs.')
 
     if has_module_file:
       fn = import_utils.import_func_from_source(
           value_utils.GetSoleValue(inputs, labels.MODULE_FILE),
           'preprocessing_fn')
+    elif has_module_path:
+      module_path = value_utils.GetSoleValue(inputs, labels.MODULE_PATH)
+      if module_path in sys.modules:
+        importlib.reload(sys.modules[module_path])
+      fn = __import__(module_path).preprocessing_fn
     else:
       preprocessing_fn_path_split = value_utils.GetSoleValue(
           inputs, labels.PREPROCESSING_FN).split('.')
@@ -826,6 +840,8 @@ class Executor(base_executor.BaseExecutor):
         - labels.TRANSFORM_PATHS_FILE_FORMATS_LABEL: File formats of paths to
           transform data.
         - labels.MODULE_FILE: Path to a Python module that contains the
+          preprocessing_fn, optional.
+        - labels.MODULE_PATH: Python module path that contains the
           preprocessing_fn, optional.
         - labels.PREPROCESSING_FN: Path to a Python function that implements
           preprocessing_fn, optional.

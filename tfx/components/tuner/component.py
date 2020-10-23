@@ -23,6 +23,7 @@ from typing import Any, Dict, NamedTuple, Optional, Text
 from kerastuner.engine import base_tuner
 from tfx import types
 from tfx.components.tuner import executor
+from tfx.components.util import udf_utils
 from tfx.dsl.components.base import base_component
 from tfx.dsl.components.base import executor_spec
 from tfx.proto import trainer_pb2
@@ -104,11 +105,18 @@ class Tuner(base_component.BaseComponent):
 
     best_hyperparameters = best_hyperparameters or types.Channel(
         type=standard_artifacts.HyperParameters)
+
+    if module_file:
+      wheel_file, module_path = udf_utils.package_user_module_file(
+          instance_name or self.__class__.__name__, module_file)
+    else:
+      module_path = None
+
     spec = TunerSpec(
         examples=examples,
         schema=schema,
         transform_graph=transform_graph,
-        module_file=module_file,
+        module_path=module_path,
         tuner_fn=tuner_fn,
         train_args=train_args,
         eval_args=eval_args,
@@ -117,3 +125,7 @@ class Tuner(base_component.BaseComponent):
         custom_config=json_utils.dumps(custom_config),
     )
     super(Tuner, self).__init__(spec=spec, instance_name=instance_name)
+
+    # Register dependency on generated user code wheel package.
+    if module_file:
+      self.with_pip_dependency(wheel_file)

@@ -19,10 +19,12 @@ from __future__ import division
 from __future__ import print_function
 
 import os
+import sys
 
 from typing import Any, Dict, List, Text, cast
 
 from tfx import types
+from tfx.components.util import udf_utils
 from tfx.dsl.components.base import base_executor
 from tfx.dsl.components.base import executor_spec
 from tfx.orchestration.config import base_component_config
@@ -51,6 +53,17 @@ class InProcessComponentLauncher(base_component_launcher.BaseComponentLauncher):
                     output_dict: Dict[Text, List[types.Artifact]],
                     exec_properties: Dict[Text, Any]) -> None:
     """Execute underlying component implementation."""
+    # Install pip dependencies if necessary and add temporary locations to
+    # Python path. We additionally set `os.environ['PYTHONPATH']` so that
+    # subprocess workers created by Apache Beam can use these installed
+    # packages.
+    extra_paths = []
+    for pip_dependency in self._pip_dependencies:
+      temp_install_path = udf_utils.install_to_temp_directory(pip_dependency)
+      extra_paths.append(temp_install_path)
+    sys.path = extra_paths + sys.path
+    os.environ['PYTHONPATH'] = ':'.join(sys.path)
+
     executor_context = base_executor.BaseExecutor.Context(
         beam_pipeline_args=self._beam_pipeline_args,
         tmp_dir=os.path.join(self._pipeline_info.pipeline_root, '.temp', ''),
@@ -65,3 +78,8 @@ class InProcessComponentLauncher(base_component_launcher.BaseComponentLauncher):
         executor_context)  # type: ignore
 
     executor.Do(input_dict, output_dict, exec_properties)
+
+    # Remove added paths from Python paths.
+    extra_paths_set = set(extra_paths)
+    sys.path = list(p for p in sys.path if p not in extra_paths_set)
+    os.environ['PYTHONPATH'] = ':'.join(sys.path)

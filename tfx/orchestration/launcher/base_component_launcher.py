@@ -86,6 +86,11 @@ class BaseComponentLauncher(with_metaclass(abc.ABCMeta, object)):
     self._additional_pipeline_args = additional_pipeline_args
     self._component_config = component_config
 
+    if hasattr(component, 'pip_dependencies'):
+      self._pip_dependencies = component.pip_dependencies
+    else:
+      self._pip_dependencies = []
+
     if not self.can_launch(self._component_executor_spec,
                            self._component_config):
       raise ValueError(

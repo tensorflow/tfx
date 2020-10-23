@@ -106,6 +106,7 @@ class BaseComponent(with_metaclass(abc.ABCMeta, base_node.BaseNode)):
     self._validate_component_class()
     self._validate_spec(spec)
     self.platform_config = None
+    self.pip_dependencies = []
 
   @classmethod
   def _validate_component_class(cls):
@@ -153,6 +154,10 @@ class BaseComponent(with_metaclass(abc.ABCMeta, base_node.BaseNode)):
       the same component itself.
     """
     self.platform_config = config
+    return self
+
+  def with_pip_dependency(self, dependency):
+    self.pip_dependencies.append(dependency)
     return self
 
   def __repr__(self):

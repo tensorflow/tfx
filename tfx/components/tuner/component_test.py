@@ -18,6 +18,8 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import mock
+
 import tensorflow as tf
 from tfx.components.tuner import component
 from tfx.proto import trainer_pb2
@@ -42,7 +44,10 @@ class TunerTest(tf.test.TestCase):
     self.assertEqual(standard_artifacts.HyperParameters.TYPE_NAME,
                      tuner.outputs['best_hyperparameters'].type_name)
 
-  def testConstructWithModuleFile(self):
+  @mock.patch('tfx.components.util.udf_utils.package_user_module_file')
+  def testConstructWithModuleFile(self, mock_package_user_module_file):
+    mock_package_user_module_file.side_effect = (
+        lambda x, y: ('/fake/package.whl', 'module_name'))
     tuner = component.Tuner(
         examples=self.examples,
         schema=self.schema,
@@ -61,7 +66,10 @@ class TunerTest(tf.test.TestCase):
         tuner_fn='path.to.tuner_fn')
     self._verify_output(tuner)
 
-  def testConstructWithCustomConfig(self):
+  @mock.patch('tfx.components.util.udf_utils.package_user_module_file')
+  def testConstructWithCustomConfig(self, mock_package_user_module_file):
+    mock_package_user_module_file.side_effect = (
+        lambda x, y: ('/fake/package.whl', 'module_name'))
     tuner = component.Tuner(
         examples=self.examples,
         transform_graph=self.transform_graph,
