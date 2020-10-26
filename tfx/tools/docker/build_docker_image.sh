@@ -19,6 +19,10 @@ set -u -x
 DOCKER_IMAGE_REPO=${DOCKER_IMAGE_REPO:-"tensorflow/tfx"}
 DOCKER_IMAGE_TAG=${DOCKER_IMAGE_TAG:-"latest"}
 DOCKER_FILE=${DOCKER_FILE:-"Dockerfile"}
+TFX_DEPENDENCY_SELECTOR=${TFX_DEPENDENCY_SELECTOR:-""}
 
 # Run docker build command.
-docker build -t ${DOCKER_IMAGE_REPO}:${DOCKER_IMAGE_TAG} -f tfx/tools/docker/${DOCKER_FILE} . "$@"
+docker build -t ${DOCKER_IMAGE_REPO}:${DOCKER_IMAGE_TAG} \
+  -f tfx/tools/docker/${DOCKER_FILE} \
+  --build-arg TFX_DEPENDENCY_SELECTOR=${TFX_DEPENDENCY_SELECTOR} \
+  . "$@"

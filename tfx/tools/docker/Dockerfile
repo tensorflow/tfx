@@ -34,7 +34,20 @@ ENV TFX_SRC_DIR=/tfx-src
 ADD . ${TFX_SRC_DIR}
 WORKDIR ${TFX_SRC_DIR}
 
-RUN CFLAGS=$(/usr/bin/python-config --cflags) python -m pip install -e .[docker-image]
+ARG TFX_DEPENDENCY_SELECTOR
+RUN if [ "${TFX_DEPENDENCY_SELECTOR}" = "NIGHTLY" ]; then \
+  TFX_DEPENDENCY_SELECTOR=${TFX_DEPENDENCY_SELECTOR} \
+    CFLAGS=$(/usr/bin/python-config --cflags) \
+    python -m pip install \
+    --extra-index-url https://pypi-nightly.tensorflow.org/simple \
+    -e ".[docker-image]" ; \
+  else \
+    CFLAGS=$(/usr/bin/python-config --cflags) \
+    python -m pip install \
+    -e ".[docker-image]" ; \
+  fi
+
+RUN echo "Installed python packages:\n" && python -m pip list
 
 # Patch http.py in googleapiclient and base_api.py in apitools
 # to use our own UserAgent.

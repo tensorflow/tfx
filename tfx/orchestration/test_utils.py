@@ -79,6 +79,10 @@ def build_and_push_docker_image(container_image: str, repo_base: str):
         path=repo_base,
         dockerfile='tfx/tools/docker/Dockerfile',
         tag=container_image,
+        buildargs={
+            # Use nightly versions for the test.
+            'TFX_DEPENDENCY_SELECTOR': 'NIGHTLY',
+        },
     )
 
   logging.info('Pushing image %s', container_image)
