@@ -695,6 +695,10 @@ class Executor(base_executor.BaseExecutor):
         self, pipeline
     ) -> Tuple[Dict[Text, Optional[_Dataset]], Optional[Dict[Text, Dict[
         Text, beam.pvalue.PCollection]]]]:
+      # TODO(b/170304777): Remove this Create once the issue is fixed in beam.
+      # Forcing beam to treat this PTransform as non-primitive.
+      _ = pipeline | 'WorkaroundForBug170304777' >> beam.Create([None])
+
       dataset_keys_list = [
           dataset.dataset_key for dataset in self._analyze_data_list
       ]
