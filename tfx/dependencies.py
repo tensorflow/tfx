@@ -107,9 +107,6 @@ def make_required_test_packages():
   # conflicts.
   return [
       'apache-airflow[mysql]>=1.10.10,<2',
-      # TODO(b/157033885): Remove pinned version of WTForms after newer version
-      # of Apache Airflow.
-      'WTForms==2.2.1',
       'kfp>=0.4,<0.5',
       'pytest>=5,<6',
   ]

@@ -32,6 +32,7 @@
 *   New extra dependencies `[examples]` is required to use codes inside
     tfx/examples.
 *   Fixed the run_component script.
+*   Stopped depending on `WTForms`.
 
 ### For pipeline authors
 
