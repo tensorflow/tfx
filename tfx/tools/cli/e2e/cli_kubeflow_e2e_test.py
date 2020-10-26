@@ -249,6 +249,7 @@ class CliKubeflowEndToEndTest(tf.test.TestCase):
         'pipeline', 'create', '--engine', 'kubeflow', '--pipeline_path',
         pipeline_path, '--endpoint', self._endpoint
     ])
+    absl.logging.info('[CLI] %s', result.output)
     self.assertIn('Creating pipeline', result.output)
     self.assertTrue(tf.io.gfile.exists(self._pipeline_package_path))
     self.assertTrue(tf.io.gfile.exists(self._handler_pipeline_args_path))
