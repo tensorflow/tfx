@@ -20,6 +20,7 @@ from __future__ import division
 from __future__ import print_function
 
 import os
+import pathlib
 import tempfile
 
 from absl.testing import absltest
@@ -37,6 +38,9 @@ class RunComponentTest(absltest.TestCase):
     output_data_dir = os.path.join(
         os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR', tempfile.mkdtemp()),
         self._testMethodName)
+    statistics_split_names_path = os.path.join(output_data_dir,
+                                               'statistics.properties',
+                                               'split_names')
     tf.io.gfile.makedirs(output_data_dir)
 
     # Run StatisticsGen
@@ -46,6 +50,7 @@ class RunComponentTest(absltest.TestCase):
         examples_split_names=artifact_utils.encode_split_names(
             ['train', 'eval']),
         statistics_path=output_data_dir,
+        statistics_split_names_path=statistics_split_names_path,
     )
 
     # Check the statistics_gen outputs
@@ -53,6 +58,10 @@ class RunComponentTest(absltest.TestCase):
         os.path.join(output_data_dir, 'train', 'stats_tfrecord')))
     self.assertTrue(tf.io.gfile.exists(
         os.path.join(output_data_dir, 'eval', 'stats_tfrecord')))
+    self.assertTrue(os.path.exists(statistics_split_names_path))
+    self.assertEqual(
+        pathlib.Path(statistics_split_names_path).read_text(),
+        '["train", "eval"]')
 
 
 if __name__ == '__main__':

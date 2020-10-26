@@ -22,6 +22,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import os
 import sys
 from typing import List, Text
 
@@ -134,6 +135,19 @@ def run_component(
       output_dict=output_dict,
       exec_properties=exec_properties,
   )
+
+  # Writing out the output artifact properties
+  for output_name, channel_param in component_class.SPEC_CLASS.OUTPUTS.items():
+    for property_name in channel_param.type.PROPERTIES:
+      property_path_arg_name = output_name + '_' + property_name + '_path'
+      property_path = arguments.get(property_path_arg_name)
+      if property_path:
+        artifacts = output_dict[output_name]
+        for artifact in artifacts:
+          property_value = getattr(artifact, property_name)
+          os.makedirs(os.path.dirname(property_path), exist_ok=True)
+          with open(property_path, 'w') as f:
+            f.write(str(property_value))
 
 
 if __name__ == '__main__':
