@@ -23,10 +23,11 @@ import time
 from typing import Any, Dict, List, Optional, Text
 
 from absl import logging
-import tensorflow as tf
+
 from tfx import types
 from tfx.components.util import model_utils
 from tfx.dsl.components.base import base_executor
+from tfx.dsl.io import fileio
 from tfx.proto import pusher_pb2
 from tfx.types import artifact_utils
 from tfx.utils import io_utils
@@ -162,7 +163,7 @@ class Executor(base_executor.BaseExecutor):
       logging.info('Model version: %s', model_version)
       serving_path = os.path.join(fs_config.base_directory, model_version)
 
-      if tf.io.gfile.exists(serving_path):
+      if fileio.exists(serving_path):
         logging.info(
             'Destination directory %s already exists, skipping current push.',
             serving_path)

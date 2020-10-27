@@ -27,6 +27,7 @@ import tensorflow as tf
 
 from tfx.components.trainer.rewriting import converters
 from tfx.components.trainer.rewriting import rewriter
+from tfx.dsl.io import fileio
 
 BASE_EXPORT_SUBDIR = 'export_1'
 ORIGINAL_SAVED_MODEL = 'saved_model.pbtxt'
@@ -39,13 +40,13 @@ def _export_fn(estimator, export_path, checkpoint_path, eval_result,
                is_the_final_export):
   del estimator, checkpoint_path, eval_result, is_the_final_export
   path = os.path.join(export_path, BASE_EXPORT_SUBDIR)
-  tf.io.gfile.makedirs(path)
-  with tf.io.gfile.GFile(os.path.join(path, ORIGINAL_SAVED_MODEL), 'w') as f:
+  fileio.makedirs(path)
+  with fileio.open(os.path.join(path, ORIGINAL_SAVED_MODEL), 'w') as f:
     f.write(str(ORIGINAL_SAVED_MODEL))
 
   assets_path = os.path.join(path, tf.saved_model.ASSETS_DIRECTORY)
-  tf.io.gfile.makedirs(assets_path)
-  with tf.io.gfile.GFile(os.path.join(assets_path, ORIGINAL_VOCAB), 'w') as f:
+  fileio.makedirs(assets_path)
+  with fileio.open(os.path.join(assets_path, ORIGINAL_VOCAB), 'w') as f:
     f.write(str(ORIGINAL_VOCAB))
 
   return path
@@ -73,19 +74,18 @@ class RewritingExporterTest(tf.test.TestCase):
 
     def _rewrite(self, original_model, rewritten_model):
       self.rewrite_called = True
-      assert tf.io.gfile.exists(
+      assert fileio.exists(
           os.path.join(original_model.path, ORIGINAL_SAVED_MODEL))
-      assert tf.io.gfile.exists(
+      assert fileio.exists(
           os.path.join(original_model.path, tf.saved_model.ASSETS_DIRECTORY,
                        ORIGINAL_VOCAB))
-      with tf.io.gfile.GFile(
+      with fileio.open(
           os.path.join(rewritten_model.path, REWRITTEN_SAVED_MODEL), 'w') as f:
         f.write(str(REWRITTEN_SAVED_MODEL))
       assets_path = os.path.join(rewritten_model.path,
                                  tf.saved_model.ASSETS_DIRECTORY)
-      tf.io.gfile.makedirs(assets_path)
-      with tf.io.gfile.GFile(os.path.join(assets_path, REWRITTEN_VOCAB),
-                             'w') as f:
+      fileio.makedirs(assets_path)
+      with fileio.open(os.path.join(assets_path, REWRITTEN_VOCAB), 'w') as f:
         f.write(str(REWRITTEN_VOCAB))
       if self._rewrite_raises_error:
         raise ValueError('rewrite-error')
@@ -116,9 +116,9 @@ class RewritingExporterTest(tf.test.TestCase):
     self.assertEqual(final_path,
                      os.path.join(self._export_path, BASE_EXPORT_SUBDIR))
     self.assertTrue(
-        tf.io.gfile.exists(os.path.join(final_path, REWRITTEN_SAVED_MODEL)))
+        fileio.exists(os.path.join(final_path, REWRITTEN_SAVED_MODEL)))
     self.assertTrue(
-        tf.io.gfile.exists(
+        fileio.exists(
             os.path.join(final_path, tf.saved_model.ASSETS_DIRECTORY,
                          REWRITTEN_VOCAB)))
 

@@ -25,9 +25,10 @@ import json
 import os
 from typing import Any, Dict, List, Text
 
-import tensorflow as tf
+
 from tfx import types
 from tfx.dsl.components.base import base_executor
+from tfx.dsl.io import fileio
 from tfx.types import artifact_utils
 from tfx.utils import io_utils
 
@@ -81,7 +82,7 @@ class Executor(base_executor.BaseExecutor):
     for split, instance in split_to_instance.items():
       input_dir = instance
       output_dir = artifact_utils.get_split_uri([output_artifact], split)
-      for filename in tf.io.gfile.listdir(input_dir):
+      for filename in fileio.listdir(input_dir):
         input_uri = os.path.join(input_dir, filename)
         output_uri = os.path.join(output_dir, filename)
         io_utils.copy_file(src=input_uri, dst=output_uri, overwrite=True)

@@ -27,6 +27,7 @@ import six
 import tensorflow as tf
 from tfx import types
 from tfx.components.infra_validator import types as iv_types
+from tfx.dsl.io import fileio
 from tfx.proto import infra_validator_pb2
 from tfx.types import artifact_utils
 from tfx.utils import path_utils
@@ -181,7 +182,7 @@ class _BaseRequestBuilder(six.with_metaclass(abc.ABCMeta, object)):
     # ExampleGen generates artifacts under each split_name directory.
     glob_pattern = os.path.join(examples.uri, split_name, '*.gz')
     try:
-      filenames = tf.io.gfile.glob(glob_pattern)
+      filenames = fileio.glob(glob_pattern)
     except tf.errors.NotFoundError:
       filenames = []
     if not filenames:

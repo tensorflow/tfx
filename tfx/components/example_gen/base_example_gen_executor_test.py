@@ -24,6 +24,7 @@ import tensorflow as tf
 
 from tfx.components.example_gen import base_example_gen_executor
 from tfx.components.example_gen import utils
+from tfx.dsl.io import fileio
 from tfx.proto import example_gen_pb2
 from tfx.types import artifact_utils
 from tfx.types import standard_artifacts
@@ -128,13 +129,13 @@ class BaseExampleGenExecutorTest(tf.test.TestCase):
         self._examples.split_names)
 
     # Check example gen outputs.
-    self.assertTrue(tf.io.gfile.exists(self._train_output_file))
-    self.assertTrue(tf.io.gfile.exists(self._eval_output_file))
+    self.assertTrue(fileio.exists(self._train_output_file))
+    self.assertTrue(fileio.exists(self._eval_output_file))
 
     # Output split ratio: train:eval=2:1.
     self.assertGreater(
-        tf.io.gfile.GFile(self._train_output_file).size(),
-        tf.io.gfile.GFile(self._eval_output_file).size())
+        fileio.open(self._train_output_file).size(),
+        fileio.open(self._eval_output_file).size())
 
   def testDoInputSplit(self):
     # Create exec proterties for input split.

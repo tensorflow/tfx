@@ -24,6 +24,7 @@ import mock
 
 import tensorflow as tf
 
+from tfx.dsl.io import fileio
 from tfx.tools.cli import labels
 from tfx.tools.cli.handler import base_handler
 
@@ -161,8 +162,7 @@ class BaseHandlerTest(tf.test.TestCase):
   def testCheckPipelinExistenceNotRequired(self):
     flags_dict = {labels.ENGINE_FLAG: 'beam', labels.PIPELINE_NAME: 'pipeline'}
     handler = FakeHandler(flags_dict)
-    tf.io.gfile.makedirs(
-        os.path.join(os.environ['HOME'], 'beam', 'pipeline', ''))
+    fileio.makedirs(os.path.join(os.environ['HOME'], 'beam', 'pipeline', ''))
     with self.assertRaises(SystemExit) as err:
       handler._check_pipeline_existence(
           flags_dict[labels.PIPELINE_NAME], required=False)

@@ -31,6 +31,7 @@ from tfx.dsl.components.base import base_component
 from tfx.dsl.components.base import base_executor
 from tfx.dsl.components.base import base_node
 from tfx.dsl.components.base import executor_spec
+from tfx.dsl.io import fileio
 from tfx.orchestration import metadata
 from tfx.orchestration import pipeline
 from tfx.types import node_common
@@ -268,7 +269,7 @@ class PipelineTest(tf.test.TestCase):
             _make_fake_component_instance('component_a', _OutputTypeA, {}, {})
         ],
         metadata_connection_config=self._metadata_connection_config)
-    self.assertTrue(tf.io.gfile.exists(self._tmp_file))
+    self.assertTrue(fileio.exists(self._tmp_file))
 
   def testPipelineNoTmpFolder(self):
     pipeline.Pipeline(

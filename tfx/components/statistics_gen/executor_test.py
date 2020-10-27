@@ -16,10 +16,11 @@ import os
 import tempfile
 
 from absl.testing import absltest
-import tensorflow as tf
+
 import tensorflow_data_validation as tfdv
 
 from tfx.components.statistics_gen import executor
+from tfx.dsl.io import fileio
 from tfx.types import artifact_utils
 from tfx.types import standard_artifacts
 from tfx.utils import json_utils
@@ -34,7 +35,7 @@ class ExecutorTest(absltest.TestCase):
     return tempfile.mkdtemp()
 
   def _validate_stats_output(self, stats_path):
-    self.assertTrue(tf.io.gfile.exists(stats_path))
+    self.assertTrue(fileio.exists(stats_path))
     stats = tfdv.load_statistics(stats_path)
     self.assertLen(stats.datasets, 1)
     data_set = stats.datasets[0]
@@ -49,7 +50,7 @@ class ExecutorTest(absltest.TestCase):
     output_data_dir = os.path.join(
         os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR', self.get_temp_dir()),
         self._testMethodName)
-    tf.io.gfile.makedirs(output_data_dir)
+    fileio.makedirs(output_data_dir)
 
     # Create input dict.
     examples = standard_artifacts.Examples()
@@ -89,7 +90,7 @@ class ExecutorTest(absltest.TestCase):
 
     # Assert 'test' split is excluded.
     self.assertFalse(
-        tf.io.gfile.exists(os.path.join(stats.uri, 'test', 'stats_tfrecord')))
+        fileio.exists(os.path.join(stats.uri, 'test', 'stats_tfrecord')))
 
   def testDoWithSchemaAndStatsOptions(self):
     source_data_dir = os.path.join(
@@ -97,7 +98,7 @@ class ExecutorTest(absltest.TestCase):
     output_data_dir = os.path.join(
         os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR', self.get_temp_dir()),
         self._testMethodName)
-    tf.io.gfile.makedirs(output_data_dir)
+    fileio.makedirs(output_data_dir)
 
     # Create input dict.
     examples = standard_artifacts.Examples()
@@ -142,7 +143,7 @@ class ExecutorTest(absltest.TestCase):
     output_data_dir = os.path.join(
         os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR', self.get_temp_dir()),
         self._testMethodName)
-    tf.io.gfile.makedirs(output_data_dir)
+    fileio.makedirs(output_data_dir)
 
     # Create input dict.
     examples = standard_artifacts.Examples()

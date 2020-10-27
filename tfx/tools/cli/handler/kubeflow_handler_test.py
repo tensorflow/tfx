@@ -28,6 +28,7 @@ import mock
 import tensorflow as tf
 
 from tfx.dsl.components.base import base_driver
+from tfx.dsl.io import fileio
 from tfx.tools.cli import labels
 from tfx.tools.cli.handler import kubeflow_handler
 
@@ -320,9 +321,9 @@ class KubeflowHandlerTest(tf.test.TestCase):
     handler = kubeflow_handler.KubeflowHandler(flags_dict)
     handler_pipeline_path = os.path.join(
         handler._handler_home_dir, self.pipeline_args[labels.PIPELINE_NAME], '')
-    self.assertFalse(tf.io.gfile.exists(handler_pipeline_path))
+    self.assertFalse(fileio.exists(handler_pipeline_path))
     handler.create_pipeline()
-    self.assertTrue(tf.io.gfile.exists(handler_pipeline_path))
+    self.assertTrue(fileio.exists(handler_pipeline_path))
 
   @mock.patch('kfp.Client', _MockClientClass)
   @mock.patch('subprocess.call', _MockSubprocess)
@@ -362,12 +363,12 @@ class KubeflowHandlerTest(tf.test.TestCase):
     handler.create_pipeline()
     handler_pipeline_path = os.path.join(
         handler._handler_home_dir, self.pipeline_args[labels.PIPELINE_NAME])
-    self.assertTrue(tf.io.gfile.exists(handler_pipeline_path))
+    self.assertTrue(fileio.exists(handler_pipeline_path))
 
     # Update test_pipeline and run update_pipeline
     handler.update_pipeline()
     self.assertTrue(
-        tf.io.gfile.exists(
+        fileio.exists(
             os.path.join(handler_pipeline_path, 'pipeline_args.json')))
 
   @mock.patch('kfp.Client', _MockClientClass)
@@ -430,7 +431,7 @@ class KubeflowHandlerTest(tf.test.TestCase):
     handler.delete_pipeline()
     handler_pipeline_path = os.path.join(
         handler._handler_home_dir, self.pipeline_args[labels.PIPELINE_NAME], '')
-    self.assertFalse(tf.io.gfile.exists(handler_pipeline_path))
+    self.assertFalse(fileio.exists(handler_pipeline_path))
 
   @mock.patch('kfp.Client', _MockClientClass)
   @mock.patch('subprocess.call', _MockSubprocess)
@@ -478,7 +479,7 @@ class KubeflowHandlerTest(tf.test.TestCase):
     )
 
     # No SchemaGen output.
-    tf.io.gfile.makedirs(self.pipeline_root)
+    fileio.makedirs(self.pipeline_root)
     with self.assertRaises(SystemExit) as err:
       handler.get_schema()
     self.assertEqual(
@@ -491,7 +492,7 @@ class KubeflowHandlerTest(tf.test.TestCase):
     component_output_dir = os.path.join(self.pipeline_root, 'SchemaGen')
     schema_path = base_driver._generate_output_uri(  # pylint: disable=protected-access
         component_output_dir, 'schema', 3)
-    tf.io.gfile.makedirs(schema_path)
+    fileio.makedirs(schema_path)
     with open(os.path.join(schema_path, 'schema.pbtxt'), 'w') as f:
       f.write('SCHEMA')
     with self.captureWritesToStream(sys.stdout) as captured:
@@ -502,7 +503,7 @@ class KubeflowHandlerTest(tf.test.TestCase):
       self.assertIn(
           '*********SCHEMA FOR {}**********'.format(self.pipeline_name.upper()),
           captured.contents())
-      self.assertTrue(tf.io.gfile.exists(curr_dir_path))
+      self.assertTrue(fileio.exists(curr_dir_path))
 
   @mock.patch('kfp.Client', _MockClientClass)
   @mock.patch('subprocess.call', _MockSubprocess)

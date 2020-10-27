@@ -27,6 +27,7 @@ import six
 import tensorflow as tf
 
 from tfx.components.trainer.rewriting import rewriter
+from tfx.dsl.io import fileio
 from tfx.utils import io_utils
 
 EXTRA_ASSETS_DIRECTORY = 'assets.extra'
@@ -44,11 +45,11 @@ def _create_tflite_converter(
 def _create_tflite_compatible_saved_model(src: Text, dst: Text):
   io_utils.copy_dir(src, dst)
   assets_path = os.path.join(dst, tf.saved_model.ASSETS_DIRECTORY)
-  if tf.io.gfile.exists(assets_path):
-    tf.io.gfile.rmtree(assets_path)
+  if fileio.exists(assets_path):
+    fileio.rmtree(assets_path)
   assets_extra_path = os.path.join(dst, EXTRA_ASSETS_DIRECTORY)
-  if tf.io.gfile.exists(assets_extra_path):
-    tf.io.gfile.rmtree(assets_extra_path)
+  if fileio.exists(assets_extra_path):
+    fileio.rmtree(assets_extra_path)
 
 
 class TFLiteRewriter(rewriter.BaseRewriter):
@@ -121,11 +122,11 @@ class TFLiteRewriter(rewriter.BaseRewriter):
     tmp_model_dir = os.path.join(
         six.ensure_text(rewritten_model.path),
         'tmp-rewrite-' + str(int(time.time())))
-    if tf.io.gfile.exists(tmp_model_dir):
+    if fileio.exists(tmp_model_dir):
       raise ValueError('TFLiteConverter is unable to create a unique path '
                        'for the temp rewriting directory.')
 
-    tf.io.gfile.makedirs(tmp_model_dir)
+    fileio.makedirs(tmp_model_dir)
     _create_tflite_compatible_saved_model(
         six.ensure_text(original_model.path), tmp_model_dir)
 
@@ -136,9 +137,9 @@ class TFLiteRewriter(rewriter.BaseRewriter):
 
     output_path = os.path.join(
         six.ensure_text(rewritten_model.path), self._filename)
-    with tf.io.gfile.GFile(six.ensure_text(output_path), 'wb') as f:
+    with fileio.open(six.ensure_text(output_path), 'wb') as f:
       f.write(six.ensure_binary(tflite_model))
-    tf.io.gfile.rmtree(tmp_model_dir)
+    fileio.rmtree(tmp_model_dir)
 
     copy_pairs = []
     if self._copy_assets:
@@ -147,16 +148,16 @@ class TFLiteRewriter(rewriter.BaseRewriter):
       dst = os.path.join(
           six.ensure_text(rewritten_model.path),
           tf.saved_model.ASSETS_DIRECTORY)
-      if tf.io.gfile.isdir(src):
-        tf.io.gfile.mkdir(dst)
+      if fileio.isdir(src):
+        fileio.mkdir(dst)
         copy_pairs.append((src, dst))
     if self._copy_assets_extra:
       src = os.path.join(
           six.ensure_text(original_model.path), EXTRA_ASSETS_DIRECTORY)
       dst = os.path.join(
           six.ensure_text(rewritten_model.path), EXTRA_ASSETS_DIRECTORY)
-      if tf.io.gfile.isdir(src):
-        tf.io.gfile.mkdir(dst)
+      if fileio.isdir(src):
+        fileio.mkdir(dst)
         copy_pairs.append((src, dst))
     for src, dst in copy_pairs:
       io_utils.copy_dir(src, dst)

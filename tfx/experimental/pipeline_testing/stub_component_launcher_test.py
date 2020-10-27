@@ -23,6 +23,7 @@ import os
 import mock
 import tensorflow as tf
 
+from tfx.dsl.io import fileio
 from tfx.experimental.pipeline_testing import stub_component_launcher
 from tfx.orchestration import data_types
 from tfx.orchestration import metadata
@@ -54,9 +55,9 @@ class StubComponentLauncherTest(tf.test.TestCase):
     self.input_dir = os.path.join(test_dir, self.input_key)
     self.output_dir = os.path.join(test_dir, self.output_key)
     self.record_dir = os.path.join(test_dir, 'record')
-    tf.io.gfile.makedirs(self.input_dir)
-    tf.io.gfile.makedirs(self.output_dir)
-    tf.io.gfile.makedirs(self.record_dir)
+    fileio.makedirs(self.input_dir)
+    fileio.makedirs(self.output_dir)
+    fileio.makedirs(self.record_dir)
 
     input_artifact = test_utils._InputArtifact()  # pylint: disable=protected-access
     input_artifact.uri = os.path.join(self.input_dir, 'result.txt')
@@ -94,7 +95,7 @@ class StubComponentLauncherTest(tf.test.TestCase):
 
     output_path = self.component.outputs[self.output_key].get()[0].uri
     copied_file = os.path.join(output_path, 'recorded.txt')
-    self.assertTrue(tf.io.gfile.exists(copied_file))
+    self.assertTrue(fileio.exists(copied_file))
     contents = io_utils.read_string_file(copied_file)
     self.assertEqual('hello world', contents)
 
@@ -125,7 +126,7 @@ class StubComponentLauncherTest(tf.test.TestCase):
     launcher.launch()
 
     output_path = self.component.outputs[self.output_key].get()[0].uri
-    self.assertTrue(tf.io.gfile.exists(output_path))
+    self.assertTrue(fileio.exists(output_path))
     contents = io_utils.read_string_file(output_path)
     self.assertEqual('test', contents)
 

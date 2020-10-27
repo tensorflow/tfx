@@ -26,6 +26,7 @@ from typing import Text
 import tensorflow as tf
 
 from tfx.components.example_gen import utils
+from tfx.dsl.io import fileio
 from tfx.orchestration import data_types
 from tfx.proto import example_gen_pb2
 from tfx.proto import range_config_pb2
@@ -42,7 +43,7 @@ class UtilsTest(tf.test.TestCase):
         os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR', self.get_temp_dir()),
         self._testMethodName)
     self._input_base_path = os.path.join(test_dir, 'input_base')
-    tf.io.gfile.makedirs(self._input_base_path)
+    fileio.makedirs(self._input_base_path)
 
   def testDictToExample(self):
     instance_dict = {

@@ -24,9 +24,10 @@ from typing import Text, Tuple
 import absl
 import numpy as np
 from sklearn.neural_network import MLPClassifier
-import tensorflow as tf
+
 from tfx.components.trainer.executor import TrainerFnArgs
 from tfx.components.trainer.fn_args_utils import DataAccessor
+from tfx.dsl.io import fileio
 from tfx.utils import io_utils
 from tfx_bsl.tfxio import dataset_options
 
@@ -111,5 +112,5 @@ def run_fn(fn_args: TrainerFnArgs):
   os.makedirs(fn_args.serving_model_dir)
 
   model_path = os.path.join(fn_args.serving_model_dir, 'model.pkl')
-  with tf.io.gfile.GFile(model_path, 'wb+') as f:
+  with fileio.open(model_path, 'wb+') as f:
     pickle.dump(model, f)

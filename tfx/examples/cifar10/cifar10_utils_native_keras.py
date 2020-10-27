@@ -32,6 +32,7 @@ from tfx.components.trainer.executor import TrainerFnArgs
 from tfx.components.trainer.rewriting import converters
 from tfx.components.trainer.rewriting import rewriter
 from tfx.components.trainer.rewriting import rewriter_factory
+from tfx.dsl.io import fileio
 
 import flatbuffers
 from tflite_support import metadata_schema_py_generated as _metadata_fb
@@ -410,4 +411,4 @@ def run_fn(fn_args: TrainerFnArgs):
       mean=[127.5],
       std=[127.5])
 
-  tf.io.gfile.rmtree(temp_saving_model_dir)
+  fileio.rmtree(temp_saving_model_dir)

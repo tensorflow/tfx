@@ -30,6 +30,7 @@ from tfx.components.trainer import constants
 from tfx.components.trainer import fn_args_utils
 from tfx.components.util import udf_utils
 from tfx.dsl.components.base import base_executor
+from tfx.dsl.io import fileio
 from tfx.types import artifact_utils
 from tfx.utils import io_utils
 from tfx.utils import json_utils
@@ -219,7 +220,7 @@ class GenericExecutor(base_executor.BaseExecutor):
 
     # Note: If trained with multi-node distribution workers, it is the user
     # module's responsibility to export the model only once.
-    if not tf.io.gfile.exists(fn_args.serving_model_dir):
+    if not fileio.exists(fn_args.serving_model_dir):
       raise RuntimeError('run_fn failed to generate model.')
 
     absl.logging.info(

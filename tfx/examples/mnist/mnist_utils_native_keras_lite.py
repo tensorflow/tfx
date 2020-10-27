@@ -31,6 +31,7 @@ from tfx.components.trainer.executor import TrainerFnArgs
 from tfx.components.trainer.rewriting import converters
 from tfx.components.trainer.rewriting import rewriter
 from tfx.components.trainer.rewriting import rewriter_factory
+from tfx.dsl.io import fileio
 from tfx.examples.mnist import mnist_utils_native_keras_base as base
 
 
@@ -109,4 +110,4 @@ def run_fn(fn_args: TrainerFnArgs):
                                  tfrw,
                                  rewriter.ModelType.TFLITE_MODEL)
 
-  tf.io.gfile.rmtree(temp_saving_model_dir)
+  fileio.rmtree(temp_saving_model_dir)

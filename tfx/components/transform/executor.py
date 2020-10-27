@@ -43,6 +43,7 @@ from tfx.components.transform import stats_options as transform_stats_options
 from tfx.components.util import tfxio_utils
 from tfx.components.util import value_utils
 from tfx.dsl.components.base import base_executor
+from tfx.dsl.io import fileio
 from tfx.proto import example_gen_pb2
 from tfx.proto import transform_pb2
 from tfx.types import artifact_utils
@@ -631,7 +632,7 @@ class Executor(base_executor.BaseExecutor):
     """
 
     # TODO(b/68765333): Investigate if this can be avoided.
-    tf.io.gfile.makedirs(os.path.dirname(stats_output_path))
+    fileio.makedirs(os.path.dirname(stats_output_path))
     # TODO(b/117601471): Replace with utility method to write stats.
     return (pcollection_stats | 'Write' >> beam.io.WriteToText(
         stats_output_path,
@@ -1111,7 +1112,7 @@ class Executor(base_executor.BaseExecutor):
          >> tft_beam.WriteTransformFn(transform_output_path))
 
         if output_cache_dir is not None and cache_output is not None:
-          tf.io.gfile.makedirs(output_cache_dir)
+          fileio.makedirs(output_cache_dir)
           absl.logging.debug('Using existing cache in: %s', input_cache_dir)
           if input_cache_dir is not None:
             # Only copy cache that is relevant to this iteration. This is
@@ -1120,7 +1121,7 @@ class Executor(base_executor.BaseExecutor):
             for span_cache_dir in input_analysis_data:
               full_span_cache_dir = os.path.join(input_cache_dir,
                                                  span_cache_dir.key)
-              if tf.io.gfile.isdir(full_span_cache_dir):
+              if fileio.isdir(full_span_cache_dir):
                 self._CopyCache(
                     full_span_cache_dir,
                     os.path.join(output_cache_dir, span_cache_dir.key))

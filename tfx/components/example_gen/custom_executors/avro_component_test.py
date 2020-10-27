@@ -24,6 +24,7 @@ import tensorflow as tf
 from tfx.components.example_gen.component import FileBasedExampleGen
 from tfx.components.example_gen.custom_executors import avro_executor
 from tfx.dsl.components.base import executor_spec
+from tfx.dsl.io import fileio
 from tfx.orchestration import data_types
 from tfx.orchestration import metadata
 from tfx.orchestration import publisher
@@ -70,7 +71,7 @@ class ExampleGenComponentWithAvroExecutorTest(tf.test.TestCase):
         os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR', self.get_temp_dir()),
         self._testMethodName)
     pipeline_root = os.path.join(output_data_dir, 'Test')
-    tf.io.gfile.makedirs(pipeline_root)
+    fileio.makedirs(pipeline_root)
     pipeline_info = data_types.PipelineInfo(
         pipeline_name='Test', pipeline_root=pipeline_root, run_id='123')
 
@@ -96,8 +97,7 @@ class ExampleGenComponentWithAvroExecutorTest(tf.test.TestCase):
     mock_publisher.return_value.publish_execution.assert_called_once()
 
     # Check output paths.
-    self.assertTrue(
-        tf.io.gfile.exists(os.path.join(pipeline_root, example_gen.id)))
+    self.assertTrue(fileio.exists(os.path.join(pipeline_root, example_gen.id)))
 
 
 if __name__ == '__main__':

@@ -26,6 +26,7 @@ import apache_beam as beam
 from apache_beam.testing import util
 import prestodb
 import tensorflow as tf
+from tfx.dsl.io import fileio
 from tfx.examples.custom_components.presto_example_gen.presto_component import executor
 from tfx.examples.custom_components.presto_example_gen.proto import presto_config_pb2
 from tfx.proto import example_gen_pb2
@@ -156,11 +157,11 @@ class ExecutorTest(tf.test.TestCase):
                                      'data_tfrecord-00000-of-00001.gz')
     eval_output_file = os.path.join(examples.uri, 'eval',
                                     'data_tfrecord-00000-of-00001.gz')
-    self.assertTrue(tf.io.gfile.exists(train_output_file))
-    self.assertTrue(tf.io.gfile.exists(eval_output_file))
+    self.assertTrue(fileio.exists(train_output_file))
+    self.assertTrue(fileio.exists(eval_output_file))
     self.assertGreater(
-        tf.io.gfile.GFile(train_output_file).size(),
-        tf.io.gfile.GFile(eval_output_file).size())
+        fileio.open(train_output_file).size(),
+        fileio.open(eval_output_file).size())
 
 
 if __name__ == '__main__':

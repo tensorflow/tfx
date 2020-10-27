@@ -27,8 +27,7 @@ import re
 from typing import Text, Dict, Any, List, Pattern, Set
 import click
 
-import tensorflow as tf
-
+from tfx.dsl.io import fileio
 from tfx.tools.cli import labels
 from tfx.utils import io_utils
 
@@ -104,7 +103,7 @@ def _copy_and_replace_placeholder_dir(
       raise RuntimeError(
           'Cannot copy template directory {}. Already a file exists.'.format(
               src))
-    tf.io.gfile.makedirs(dst)
+    fileio.makedirs(dst)
   for f in os.listdir(src):
     src_path = os.path.join(src, f)
     dst_path = os.path.join(dst, f)

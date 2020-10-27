@@ -27,6 +27,7 @@ from absl import logging
 import six
 import tensorflow as tf
 
+from tfx.dsl.io import fileio
 from tfx.proto import example_gen_pb2
 from tfx.proto import range_config_pb2
 from tfx.utils import io_utils
@@ -556,9 +557,9 @@ def _get_target_span_version(
   latest_version_int = None
 
   try:
-    files = tf.io.gfile.glob(split_glob_pattern)
+    files = fileio.glob(split_glob_pattern)
   except tf.errors.NotFoundError:
-    # TODO(b/168831931): tf.io.gfile.glob shouldn't throw NotFoundError.
+    # TODO(b/168831931): fileio.glob shouldn't throw NotFoundError.
     files = []
 
   for file_path in files:

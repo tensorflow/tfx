@@ -31,6 +31,7 @@ from tensorflow_transform.tf_metadata import dataset_schema
 from tfx.components.trainer import executor as trainer_executor
 from tfx.components.trainer.fn_args_utils import DataAccessor
 from tfx.components.util import tfxio_utils
+from tfx.dsl.io import fileio
 from tfx.examples.chicago_taxi_pipeline import taxi_utils
 from tfx.types import standard_artifacts
 from tfx.utils import io_utils
@@ -162,14 +163,14 @@ class TaxiUtilsTest(tf.test.TestCase):
         estimator, train_spec, eval_spec)
     self.assertGreater(eval_result['loss'], 0.0)
     self.assertEqual(len(exports), 1)
-    self.assertGreaterEqual(len(tf.io.gfile.listdir(exports[0])), 1)
+    self.assertGreaterEqual(len(fileio.listdir(exports[0])), 1)
 
     # Export the eval saved model.
     eval_savedmodel_path = tfma.export.export_eval_savedmodel(
         estimator=estimator,
         export_dir_base=path_utils.eval_model_dir(output_dir),
         eval_input_receiver_fn=eval_input_receiver_fn)
-    self.assertGreaterEqual(len(tf.io.gfile.listdir(eval_savedmodel_path)), 1)
+    self.assertGreaterEqual(len(fileio.listdir(eval_savedmodel_path)), 1)
 
     # Test exported serving graph.
     with tf.compat.v1.Session() as sess:

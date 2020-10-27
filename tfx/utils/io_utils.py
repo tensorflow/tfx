@@ -23,6 +23,7 @@ from typing import List, Text
 import six
 import tensorflow as tf
 
+from tfx.dsl.io import fileio
 from google.protobuf import json_format
 from google.protobuf import text_format
 from google.protobuf.message import Message
@@ -50,11 +51,11 @@ def ensure_local(file_path: Text) -> Text:
 def copy_file(src: Text, dst: Text, overwrite: bool = False):
   """Copies a single file from source to destination."""
 
-  if overwrite and tf.io.gfile.exists(dst):
-    tf.io.gfile.remove(dst)
+  if overwrite and fileio.exists(dst):
+    fileio.remove(dst)
   dst_dir = os.path.dirname(dst)
-  tf.io.gfile.makedirs(dst_dir)
-  tf.io.gfile.copy(src, dst, overwrite=overwrite)
+  fileio.makedirs(dst_dir)
+  fileio.copy(src, dst, overwrite=overwrite)
 
 
 def copy_dir(src: Text, dst: Text) -> None:
@@ -62,24 +63,24 @@ def copy_dir(src: Text, dst: Text) -> None:
   src = src.rstrip('/')
   dst = dst.rstrip('/')
 
-  if tf.io.gfile.exists(dst):
-    tf.io.gfile.rmtree(dst)
-  tf.io.gfile.makedirs(dst)
+  if fileio.exists(dst):
+    fileio.rmtree(dst)
+  fileio.makedirs(dst)
 
-  for dir_name, sub_dirs, leaf_files in tf.io.gfile.walk(src):
+  for dir_name, sub_dirs, leaf_files in fileio.walk(src):
     for leaf_file in leaf_files:
       leaf_file_path = os.path.join(dir_name, leaf_file)
       new_file_path = os.path.join(dir_name.replace(src, dst, 1), leaf_file)
-      tf.io.gfile.copy(leaf_file_path, new_file_path)
+      fileio.copy(leaf_file_path, new_file_path)
 
     for sub_dir in sub_dirs:
-      tf.io.gfile.makedirs(os.path.join(dir_name.replace(src, dst, 1), sub_dir))
+      fileio.makedirs(os.path.join(dir_name.replace(src, dst, 1), sub_dir))
 
 
 def get_only_uri_in_dir(dir_path: Text) -> Text:
   """Gets the only uri from given directory."""
 
-  files = tf.io.gfile.listdir(dir_path)
+  files = fileio.listdir(dir_path)
   if len(files) != 1:
     raise RuntimeError(
         'Only one file per dir is supported: {}.'.format(dir_path))
@@ -90,14 +91,14 @@ def get_only_uri_in_dir(dir_path: Text) -> Text:
 def delete_dir(path: Text) -> None:
   """Deletes a directory if exists."""
 
-  if tf.io.gfile.isdir(path):
-    tf.io.gfile.rmtree(path)
+  if fileio.isdir(path):
+    fileio.rmtree(path)
 
 
 def write_string_file(file_name: Text, string_value: Text) -> None:
   """Writes a string to file."""
 
-  tf.io.gfile.makedirs(os.path.dirname(file_name))
+  fileio.makedirs(os.path.dirname(file_name))
   file_io.write_string_to_file(file_name, string_value)
 
 
@@ -110,7 +111,7 @@ def write_pbtxt_file(file_name: Text, proto: Message) -> None:
 def write_tfrecord_file(file_name: Text, proto: Message) -> None:
   """Writes a serialized tfrecord to file."""
 
-  tf.io.gfile.makedirs(os.path.dirname(file_name))
+  fileio.makedirs(os.path.dirname(file_name))
   with tf.io.TFRecordWriter(file_name) as writer:
     writer.write(proto.SerializeToString())
 
@@ -142,7 +143,7 @@ def all_files_pattern(file_pattern: Text) -> Text:
 
 def generate_fingerprint(split_name: Text, file_pattern: Text) -> Text:
   """Generates a fingerprint for all files that match the pattern."""
-  files = tf.io.gfile.glob(file_pattern)
+  files = fileio.glob(file_pattern)
   total_bytes = 0
   # Checksum used here is based on timestamp (mtime).
   # Checksums are xor'ed and sum'ed over the files so that they are order-
@@ -150,7 +151,7 @@ def generate_fingerprint(split_name: Text, file_pattern: Text) -> Text:
   xor_checksum = 0
   sum_checksum = 0
   for f in files:
-    stat = tf.io.gfile.stat(f)
+    stat = fileio.stat(f)
     total_bytes += stat.length
     # Take mtime only up to second-granularity.
     mtime = int(stat.mtime_nsec / NANO_PER_SEC)
@@ -163,7 +164,7 @@ def generate_fingerprint(split_name: Text, file_pattern: Text) -> Text:
 
 def read_string_file(file_name: Text) -> Text:
   """Reads a string from a file."""
-  if not tf.io.gfile.exists(file_name):
+  if not fileio.exists(file_name):
     msg = '{} does not exist'.format(file_name)
     if six.PY2:
       raise OSError(msg)

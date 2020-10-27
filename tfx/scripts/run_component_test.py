@@ -25,6 +25,7 @@ import tempfile
 
 from absl.testing import absltest
 import tensorflow as tf
+from tfx.dsl.io import fileio
 from tfx.scripts import run_component
 from tfx.types import artifact_utils
 
@@ -41,7 +42,7 @@ class RunComponentTest(absltest.TestCase):
     statistics_split_names_path = os.path.join(output_data_dir,
                                                'statistics.properties',
                                                'split_names')
-    tf.io.gfile.makedirs(output_data_dir)
+    fileio.makedirs(output_data_dir)
 
     # Run StatisticsGen
     run_component.run_component(
@@ -54,10 +55,10 @@ class RunComponentTest(absltest.TestCase):
     )
 
     # Check the statistics_gen outputs
-    self.assertTrue(tf.io.gfile.exists(
-        os.path.join(output_data_dir, 'train', 'stats_tfrecord')))
-    self.assertTrue(tf.io.gfile.exists(
-        os.path.join(output_data_dir, 'eval', 'stats_tfrecord')))
+    self.assertTrue(
+        fileio.exists(os.path.join(output_data_dir, 'train', 'stats_tfrecord')))
+    self.assertTrue(
+        fileio.exists(os.path.join(output_data_dir, 'eval', 'stats_tfrecord')))
     self.assertTrue(os.path.exists(statistics_split_names_path))
     self.assertEqual(
         pathlib.Path(statistics_split_names_path).read_text(),

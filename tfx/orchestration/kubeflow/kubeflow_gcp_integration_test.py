@@ -30,6 +30,7 @@ from tfx.components.statistics_gen.component import StatisticsGen
 from tfx.components.trainer.component import Trainer
 from tfx.components.transform.component import Transform
 from tfx.dsl.components.base import executor_spec
+from tfx.dsl.io import fileio
 from tfx.extensions.google_cloud_ai_platform.pusher import executor as ai_platform_pusher_executor
 from tfx.extensions.google_cloud_ai_platform.trainer import executor as ai_platform_trainer_executor
 from tfx.extensions.google_cloud_ai_platform.tuner import component as ai_platform_tuner_component
@@ -192,19 +193,16 @@ class KubeflowGCPIntegrationTest(kubeflow_test_utils.BaseKubeflowTest):
     # There must be only one execution of Trainer.
     trainer_output_base_dir = os.path.join(
         self._pipeline_root(pipeline_name), 'Trainer', 'model')
-    trainer_outputs = tf.io.gfile.listdir(trainer_output_base_dir)
+    trainer_outputs = fileio.listdir(trainer_output_base_dir)
     self.assertEqual(1, len(trainer_outputs))
 
     # There must be only one saved models each for serving and eval.
     model_uri = os.path.join(trainer_output_base_dir, trainer_outputs[0])
     eval_model_dir = path_utils.eval_model_dir(model_uri)
     serving_model_dir = path_utils.serving_model_dir(model_uri)
-    self.assertEqual(
-        1,
-        tf.io.gfile.listdir(eval_model_dir).count('saved_model.pb'))
-    self.assertEqual(
-        1,
-        tf.io.gfile.listdir(serving_model_dir).count('saved_model.pb'))
+    self.assertEqual(1, fileio.listdir(eval_model_dir).count('saved_model.pb'))
+    self.assertEqual(1,
+                     fileio.listdir(serving_model_dir).count('saved_model.pb'))
 
   def testAIPlatformTrainerPipeline(self):
     """Trainer-only test pipeline on AI Platform Training."""
@@ -265,13 +263,13 @@ class KubeflowGCPIntegrationTest(kubeflow_test_utils.BaseKubeflowTest):
     # There must be only one execution of Tuner.
     tuner_output_base_dir = os.path.join(
         self._pipeline_root(pipeline_name), 'Tuner', 'best_hyperparameters')
-    tuner_outputs = tf.io.gfile.listdir(tuner_output_base_dir)
+    tuner_outputs = fileio.listdir(tuner_output_base_dir)
     self.assertEqual(1, len(tuner_outputs))
 
     # There must be only one best hyperparameters.
     best_hyperparameters_uri = os.path.join(tuner_output_base_dir,
                                             tuner_outputs[0])
-    self.assertTrue(tf.io.gfile.exists(best_hyperparameters_uri))
+    self.assertTrue(fileio.exists(best_hyperparameters_uri))
 
   def testAIPlatformDistributedTunerPipeline(self):
     """Tuner-only pipeline for distributed Tuner flock on AIP Training."""

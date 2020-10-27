@@ -18,6 +18,7 @@ from typing import Text
 
 import tensorflow as tf
 
+from tfx.dsl.io import fileio
 from tfx.examples.iris.experimental import iris_pipeline_sklearn_local
 from tfx.orchestration import metadata
 from tfx.orchestration.beam.beam_dag_runner import BeamDagRunner
@@ -46,10 +47,10 @@ class IrisPipelineSklearnLocalEndToEndTest(tf.test.TestCase):
   def assertExecutedOnce(self, component: Text) -> None:
     """Check the component is executed exactly once."""
     component_path = os.path.join(self._pipeline_root, component)
-    self.assertTrue(tf.io.gfile.exists(component_path))
-    outputs = tf.io.gfile.listdir(component_path)
+    self.assertTrue(fileio.exists(component_path))
+    outputs = fileio.listdir(component_path)
     for output in outputs:
-      execution = tf.io.gfile.listdir(os.path.join(component_path, output))
+      execution = fileio.listdir(os.path.join(component_path, output))
       self.assertEqual(1, len(execution))
 
   def assertPipelineExecution(self) -> None:
@@ -70,8 +71,8 @@ class IrisPipelineSklearnLocalEndToEndTest(tf.test.TestCase):
             metadata_path=self._metadata_path,
             beam_pipeline_args=[]))
 
-    self.assertTrue(tf.io.gfile.exists(self._serving_model_dir))
-    self.assertTrue(tf.io.gfile.exists(self._metadata_path))
+    self.assertTrue(fileio.exists(self._serving_model_dir))
+    self.assertTrue(fileio.exists(self._metadata_path))
     expected_execution_count = 6  # 6 components
     metadata_config = metadata.sqlite_metadata_connection_config(
         self._metadata_path)

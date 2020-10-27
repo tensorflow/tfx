@@ -22,6 +22,7 @@ import logging
 import os
 
 import tensorflow as tf
+from tfx.dsl.io import fileio
 from tfx.utils import logging_utils
 
 
@@ -37,7 +38,7 @@ class LoggingUtilsTest(tf.test.TestCase):
     logger = logging_utils.get_logger(self._logger_config)
     logger.info('Test')
     log_file_path = os.path.join(self._log_root)
-    f = tf.io.gfile.GFile(os.path.join(log_file_path, 'tfx.log'), mode='r')
+    f = fileio.open(os.path.join(log_file_path, 'tfx.log'), mode='r')
     self.assertRegexpMatches(
         f.read(),
         r'^\d\d\d\d-\d\d-\d\d \d\d:\d\d:\d\d,\d\d\d - : \(logging_utils_test.py:\d\d\) - INFO: Test$'

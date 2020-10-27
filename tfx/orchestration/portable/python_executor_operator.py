@@ -20,6 +20,7 @@ from absl import logging
 import tensorflow as tf
 from tfx import types
 from tfx.dsl.components.base import base_executor
+from tfx.dsl.io import fileio
 from tfx.orchestration.portable import base_executor_operator
 from tfx.proto.orchestration import executable_spec_pb2
 from tfx.proto.orchestration import execution_result_pb2
@@ -125,7 +126,7 @@ class PythonExecutorOperator(base_executor_operator.BaseExecutorOperator):
       # If result is not returned from the Do function, then try to
       # read if from the executor_output_uri.
       try:
-        with tf.io.gfile.GFile(execution_info.executor_output_uri, 'rb') as f:
+        with fileio.open(execution_info.executor_output_uri, 'rb') as f:
           result = execution_result_pb2.ExecutorOutput.FromString(
               f.read())
       except tf.errors.NotFoundError:

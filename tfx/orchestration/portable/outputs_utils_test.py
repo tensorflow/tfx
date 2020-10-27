@@ -13,6 +13,7 @@
 # limitations under the License.
 """Tests for tfx.orchestration.portable.output_utils."""
 import tensorflow as tf
+from tfx.dsl.io import fileio
 from tfx.orchestration.portable import outputs_utils
 from tfx.orchestration.portable import test_utils
 from tfx.proto.orchestration import execution_result_pb2
@@ -127,7 +128,7 @@ class OutputUtilsTest(test_utils.TfxTest):
     self.assertRegex(executor_output_uri,
                      '.*/test_node/execution_1/executor_output.pb')
     # Verify that executor_output_uri is writable.
-    with tf.io.gfile.GFile(executor_output_uri, mode='w') as f:
+    with fileio.open(executor_output_uri, mode='w') as f:
       executor_output = execution_result_pb2.ExecutorOutput()
       f.write(executor_output.SerializeToString())
 
@@ -136,7 +137,7 @@ class OutputUtilsTest(test_utils.TfxTest):
         self._output_resolver.get_stateful_working_directory())
     self.assertRegex(stateful_working_dir,
                      '.*/test_node/test_run_0/stateful_working_dir')
-    tf.io.gfile.exists(stateful_working_dir)
+    fileio.exists(stateful_working_dir)
     # Mock the case of retry, verify that the same stateful_working_dir is
     # returned.
     stateful_working_dir = (
@@ -150,15 +151,15 @@ class OutputUtilsTest(test_utils.TfxTest):
     for _, artifact_list in output_artifacts.items():
       for artifact in artifact_list:
         if isinstance(artifact, ValueArtifact):
-          self.assertFalse(tf.io.gfile.isdir(artifact.uri))
+          self.assertFalse(fileio.isdir(artifact.uri))
         else:
-          self.assertTrue(tf.io.gfile.isdir(artifact.uri))
-        self.assertTrue(tf.io.gfile.exists(artifact.uri))
+          self.assertTrue(fileio.isdir(artifact.uri))
+        self.assertTrue(fileio.exists(artifact.uri))
 
     outputs_utils.remove_output_dirs(output_artifacts)
     for _, artifact_list in output_artifacts.items():
       for artifact in artifact_list:
-        self.assertFalse(tf.io.gfile.exists(artifact.uri))
+        self.assertFalse(fileio.exists(artifact.uri))
 
 
 if __name__ == '__main__':

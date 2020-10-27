@@ -24,6 +24,7 @@ from typing import Text
 
 import mock
 import tensorflow as tf
+from tfx.dsl.io import fileio
 from tfx.types import value_artifact
 
 
@@ -51,13 +52,20 @@ _BAD_URI = '/tmp/to/a/bad/dir'
 
 
 def fake_exist(path: Text) -> bool:
-  """Mock behavior of tf.io.gfile.exists."""
+  """Mock behavior of fileio.exists."""
   return path in [_VALID_URI, _VALID_FILE_URI]
 
 
 def fake_isdir(path: Text) -> bool:
-  """Mock behavior of tf.io.gfile.isdir."""
+  """Mock behavior of fileio.isdir."""
   return path in [_VALID_URI]
+
+
+def fake_open(unused_path: Text, unused_mode: Text = 'r') -> bool:
+  """Mock behavior of fileio.open."""
+  mock_open = mock.Mock()
+  mock_open.read.side_effect = lambda: _BYTE_VALUE
+  return mock_open
 
 
 class ValueArtifactTest(tf.test.TestCase):
@@ -67,15 +75,9 @@ class ValueArtifactTest(tf.test.TestCase):
     super(ValueArtifactTest, self).setUp()
     self.addCleanup(mock.patch.stopall)
 
-    self._mock_gfile_readfn = mock.patch.object(
-        tf.io.gfile.GFile,
-        'read',
-        autospec=True,
-        return_value=_BYTE_VALUE,
-    ).start()
-
-  @mock.patch.object(tf.io.gfile, 'exists', fake_exist)
-  @mock.patch.object(tf.io.gfile, 'isdir', fake_isdir)
+  @mock.patch.object(fileio, 'exists', fake_exist)
+  @mock.patch.object(fileio, 'isdir', fake_isdir)
+  @mock.patch.object(fileio, 'open', fake_open)
   def testValueArtifact(self):
     instance = _MyValueArtifact()
     # Test property setters.
@@ -89,8 +91,9 @@ class ValueArtifactTest(tf.test.TestCase):
     instance.read()
     self.assertEqual(_STRING_VALUE, instance.value)
 
-  @mock.patch.object(tf.io.gfile, 'exists', fake_exist)
-  @mock.patch.object(tf.io.gfile, 'isdir', fake_isdir)
+  @mock.patch.object(fileio, 'exists', fake_exist)
+  @mock.patch.object(fileio, 'isdir', fake_isdir)
+  @mock.patch.object(fileio, 'open', fake_open)
   def testValueArtifactWithBadUri(self):
     instance = _MyValueArtifact()
     instance.uri = _BAD_URI

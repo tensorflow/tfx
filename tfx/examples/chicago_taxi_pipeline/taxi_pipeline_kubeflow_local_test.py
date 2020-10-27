@@ -20,6 +20,7 @@ from __future__ import print_function
 
 import os
 import tensorflow as tf
+from tfx.dsl.io import fileio
 from tfx.examples.chicago_taxi_pipeline import taxi_pipeline_kubeflow_local
 from tfx.orchestration.kubeflow.kubeflow_dag_runner import KubeflowDagRunner
 
@@ -50,7 +51,7 @@ class TaxiPipelineKubeflowTest(tf.test.TestCase):
     KubeflowDagRunner().run(logical_pipeline)
     file_path = os.path.join(self._tmp_dir,
                              'chicago_taxi_pipeline_kubeflow_local.tar.gz')
-    self.assertTrue(tf.io.gfile.exists(file_path))
+    self.assertTrue(fileio.exists(file_path))
 
 
 if __name__ == '__main__':

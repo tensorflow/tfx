@@ -22,6 +22,7 @@ import os
 
 import tensorflow as tf
 from tfx.components.bulk_inferrer import executor
+from tfx.dsl.io import fileio
 from tfx.proto import bulk_inferrer_pb2
 from tfx.types import artifact_utils
 from tfx.types import standard_artifacts
@@ -69,7 +70,7 @@ class ExecutorTest(tf.test.TestCase):
     filepattern = os.path.join(
         prediction_log_path,
         executor._PREDICTION_LOGS_DIR_NAME) + '-?????-of-?????.gz'
-    for f in tf.io.gfile.glob(filepattern):
+    for f in fileio.glob(filepattern):
       record_iterator = tf.compat.v1.python_io.tf_record_iterator(
           path=f,
           options=tf.compat.v1.python_io.TFRecordOptions(
@@ -107,7 +108,7 @@ class ExecutorTest(tf.test.TestCase):
     bulk_inferrer.Do(input_dict, output_dict, exec_properties)
 
     # Check outputs.
-    self.assertTrue(tf.io.gfile.exists(self._prediction_log_dir))
+    self.assertTrue(fileio.exists(self._prediction_log_dir))
     results = self._get_results(self._prediction_log_dir)
     self.assertTrue(results)
     self.assertEqual(

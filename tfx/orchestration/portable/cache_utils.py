@@ -19,6 +19,7 @@ from typing import Any, Dict, List, Mapping, Optional, Sequence, Text
 
 import tensorflow as tf
 from tfx import types
+from tfx.dsl.io import fileio
 from tfx.orchestration import metadata
 from tfx.orchestration.portable.mlmd import context_lib
 from tfx.orchestration.portable.mlmd import execution_lib
@@ -130,8 +131,8 @@ def get_cache_context(
   # for processing. Currently this pattern is employeed by Trainer and
   # Transform.
   if ('module_file' in parameters and parameters['module_file'] and
-      tf.io.gfile.exists(parameters['module_file'])):
-    with tf.io.gfile.GFile(parameters['module_file'], 'r') as f:
+      fileio.exists(parameters['module_file'])):
+    with fileio.open(parameters['module_file'], 'r') as f:
       h.update(tf.compat.as_bytes(f.read()))
 
   return context_lib.register_context_if_not_exists(

@@ -35,6 +35,7 @@ from tfx.dsl.component.experimental.decorators import _SimpleComponent
 from tfx.dsl.component.experimental.decorators import component
 from tfx.dsl.components.base import base_executor
 from tfx.dsl.components.base import executor_spec
+from tfx.dsl.io import fileio
 from tfx.orchestration import metadata
 from tfx.orchestration import pipeline
 from tfx.orchestration.beam import beam_dag_runner
@@ -90,7 +91,7 @@ if not six.PY2:
       examples: OutputArtifact[standard_artifacts.Examples]
   ) -> OutputDict(
       a=int, b=float, c=Text, d=bytes, e=Text):
-    tf.io.gfile.makedirs(examples.uri)
+    fileio.makedirs(examples.uri)
     return {'a': 1, 'b': 2.0, 'c': '3', 'd': b'4', 'e': 'passed'}
 
   @component

@@ -30,6 +30,7 @@ from tfx import types
 from tfx.components.testdata.module_file import transform_module
 from tfx.components.transform import executor
 from tfx.components.transform import labels
+from tfx.dsl.io import fileio
 from tfx.proto import transform_pb2
 from tfx.types import artifact_utils
 from tfx.types import standard_artifacts
@@ -93,7 +94,7 @@ class ExecutorTest(tft_unit.TransformTestCase):
     # Duplicate the number of train and eval records such that
     # second artifact has twice as many as first.
     artifact2_pattern = os.path.join(cls._ARTIFACT2_URI, '*', '*')
-    artifact2_files = tf.io.gfile.glob(artifact2_pattern)
+    artifact2_files = fileio.glob(artifact2_pattern)
     for filepath in artifact2_files:
       directory, filename = os.path.split(filepath)
       io_utils.copy_file(filepath, os.path.join(directory, 'dup_' + filename))
@@ -183,8 +184,7 @@ class ExecutorTest(tft_unit.TransformTestCase):
     if store_cache:
       expected_outputs.append('CACHE')
       self.assertNotEqual(
-          0,
-          len(tf.io.gfile.listdir(self._updated_analyzer_cache_artifact.uri)))
+          0, len(fileio.listdir(self._updated_analyzer_cache_artifact.uri)))
 
     example_artifacts = self._example_artifacts[:1]
     transformed_example_artifacts = self._transformed_example_artifacts[:1]
@@ -198,15 +198,15 @@ class ExecutorTest(tft_unit.TransformTestCase):
       assert len(example_artifacts) == len(transformed_example_artifacts)
       for example, transformed_example in zip(example_artifacts,
                                               transformed_example_artifacts):
-        examples_train_files = tf.io.gfile.glob(
+        examples_train_files = fileio.glob(
             os.path.join(example.uri, 'train', '*'))
-        transformed_train_files = tf.io.gfile.glob(
+        transformed_train_files = fileio.glob(
             os.path.join(transformed_example.uri, 'train', '*'))
         self.assertGreater(len(transformed_train_files), 0)
 
-        examples_eval_files = tf.io.gfile.glob(
+        examples_eval_files = fileio.glob(
             os.path.join(example.uri, 'eval', '*'))
-        transformed_eval_files = tf.io.gfile.glob(
+        transformed_eval_files = fileio.glob(
             os.path.join(transformed_example.uri, 'eval', '*'))
         self.assertGreater(len(transformed_eval_files), 0)
 
@@ -236,12 +236,12 @@ class ExecutorTest(tft_unit.TransformTestCase):
     # expected outputs are exactly correct. If either flag is False, its
     # respective output should not be present.
     self.assertCountEqual(expected_outputs,
-                          tf.io.gfile.listdir(self._output_data_dir))
+                          fileio.listdir(self._output_data_dir))
 
     path_to_saved_model = os.path.join(
         self._transformed_output.uri, tft.TFTransformOutput.TRANSFORM_FN_DIR,
         tf.saved_model.SAVED_MODEL_FILENAME_PB)
-    self.assertTrue(tf.io.gfile.exists(path_to_saved_model))
+    self.assertTrue(fileio.exists(path_to_saved_model))
 
   def _run_pipeline_get_metrics(self):
     pipelines = []
@@ -360,15 +360,15 @@ class ExecutorTest(tft_unit.TransformTestCase):
     self._transform_executor.Do(self._input_dict, self._output_dict,
                                 self._exec_properties)
     self.assertFalse(
-        tf.io.gfile.exists(
+        fileio.exists(
             os.path.join(self._transformed_example_artifacts[0].uri, 'train')))
     self.assertFalse(
-        tf.io.gfile.exists(
+        fileio.exists(
             os.path.join(self._transformed_example_artifacts[0].uri, 'eval')))
     path_to_saved_model = os.path.join(self._transformed_output.uri,
                                        tft.TFTransformOutput.TRANSFORM_FN_DIR,
                                        tf.saved_model.SAVED_MODEL_FILENAME_PB)
-    self.assertTrue(tf.io.gfile.exists(path_to_saved_model))
+    self.assertTrue(fileio.exists(path_to_saved_model))
 
   def test_counters(self):
     self._exec_properties['preprocessing_fn'] = self._preprocessing_fn
@@ -440,8 +440,7 @@ class ExecutorTest(tft_unit.TransformTestCase):
     self._transform_executor.Do(self._input_dict, self._output_dict,
                                 self._exec_properties)
     self._verify_transform_outputs(store_cache=False)
-    self.assertFalse(
-        tf.io.gfile.exists(self._updated_analyzer_cache_artifact.uri))
+    self.assertFalse(fileio.exists(self._updated_analyzer_cache_artifact.uri))
 
 
 if __name__ == '__main__':

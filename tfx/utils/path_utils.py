@@ -22,8 +22,7 @@ import os
 from typing import Text
 import absl
 
-import tensorflow as tf
-
+from tfx.dsl.io import fileio
 from tfx.utils import io_utils
 
 EVAL_MODEL_DIR = 'eval_model_dir'
@@ -76,9 +75,9 @@ def eval_model_path(output_uri: Text) -> Text:
   """Returns final path to exported model for evaluation purpose."""
   model_dir = eval_model_dir(output_uri)
   model_file = os.path.join(model_dir, 'saved_model.pb')
-  if tf.io.gfile.exists(model_file):
+  if fileio.exists(model_file):
     return model_dir
-  elif tf.io.gfile.exists(model_dir):
+  elif fileio.exists(model_dir):
     # TODO(b/160795287): Deprecate estimator based executor.
     absl.logging.warning('Support for estimator-based executor and model'
                          ' export will be deprecated soon. Please use'
@@ -99,7 +98,7 @@ def serving_model_path(output_uri: Text) -> Text:
   """Returns path for exported serving model."""
   model_dir = serving_model_dir(output_uri)
   export_dir = os.path.join(model_dir, 'export')
-  if tf.io.gfile.exists(export_dir):
+  if fileio.exists(export_dir):
     # TODO(b/160795287): Deprecate estimator based executor.
     absl.logging.warning(
         'Support for estimator-based executor and model export'

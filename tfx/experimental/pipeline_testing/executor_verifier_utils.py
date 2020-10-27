@@ -20,10 +20,11 @@ from typing import Dict, Text, Optional
 
 from absl import logging
 
-import tensorflow as tf
+
 import tensorflow_model_analysis as tfma
 
 from tfx import types
+from tfx.dsl.io import fileio
 from tfx.orchestration import data_types
 from tfx.orchestration import metadata
 from tfx.types import artifact_utils
@@ -145,17 +146,17 @@ def verify_file_dir(output_uri: Text,
   Returns:
     a boolean whether file paths are matching.
   """
-  for dir_name, sub_dirs, leaf_files in tf.io.gfile.walk(expected_uri):
+  for dir_name, sub_dirs, leaf_files in fileio.walk(expected_uri):
     for sub_dir in sub_dirs:
       new_file_path = os.path.join(
           dir_name.replace(expected_uri, output_uri, 1), sub_dir)
-      if not tf.io.gfile.exists(new_file_path):
+      if not fileio.exists(new_file_path):
         return False
     if check_file:
       for leaf_file in leaf_files:
         new_file_path = os.path.join(
             dir_name.replace(expected_uri, output_uri, 1), leaf_file)
-        if not tf.io.gfile.exists(new_file_path):
+        if not fileio.exists(new_file_path):
           return False
   return True
 
@@ -212,19 +213,19 @@ def compare_file_sizes(output_uri: Text, expected_uri: Text,
   Returns:
      boolean whether file sizes differ within a threshold.
   """
-  for dir_name, sub_dirs, leaf_files in tf.io.gfile.walk(expected_uri):
+  for dir_name, sub_dirs, leaf_files in fileio.walk(expected_uri):
     for sub_dir in sub_dirs:
       new_file_path = os.path.join(
           dir_name.replace(expected_uri, output_uri, 1), sub_dir)
-      if not tf.io.gfile.exists(new_file_path):
+      if not fileio.exists(new_file_path):
         return False
     for leaf_file in leaf_files:
       expected_file_name = os.path.join(dir_name, leaf_file)
       file_name = os.path.join(
           dir_name.replace(expected_uri, output_uri, 1), leaf_file)
       if not _compare_relative_difference(
-          tf.io.gfile.GFile(file_name).size(),
-          tf.io.gfile.GFile(expected_file_name).size(), threshold):
+          fileio.open(file_name).size(),
+          fileio.open(expected_file_name).size(), threshold):
         return False
   return True
 
@@ -241,13 +242,13 @@ def compare_model_file_sizes(output_uri: Text, expected_uri: Text,
   Returns:
      boolean whether file sizes differ within a threshold.
   """
-  for dir_name, sub_dirs, leaf_files in tf.io.gfile.walk(expected_uri):
+  for dir_name, sub_dirs, leaf_files in fileio.walk(expected_uri):
     if 'eval_model_dir' in dir_name or 'export' in dir_name:
       continue
     for sub_dir in sub_dirs:
       new_file_path = os.path.join(
           dir_name.replace(expected_uri, output_uri, 1), sub_dir)
-      if not tf.io.gfile.exists(new_file_path):
+      if not fileio.exists(new_file_path):
         return False
     for leaf_file in leaf_files:
       if leaf_file.startswith('events.out.tfevents'):
@@ -256,8 +257,8 @@ def compare_model_file_sizes(output_uri: Text, expected_uri: Text,
       file_name = os.path.join(
           dir_name.replace(expected_uri, output_uri, 1), leaf_file)
       if not _compare_relative_difference(
-          tf.io.gfile.GFile(file_name).size(),
-          tf.io.gfile.GFile(expected_file_name).size(), threshold):
+          fileio.open(file_name).size(),
+          fileio.open(expected_file_name).size(), threshold):
         return False
   return True
 
@@ -272,7 +273,7 @@ def compare_anomalies(output_uri: Text, expected_uri: Text) -> bool:
   Returns:
      boolean whether anomalies are same.
   """
-  for dir_name, _, leaf_files in tf.io.gfile.walk(expected_uri):
+  for dir_name, _, leaf_files in fileio.walk(expected_uri):
     for leaf_file in leaf_files:
       expected_file_name = os.path.join(dir_name, leaf_file)
       file_name = os.path.join(

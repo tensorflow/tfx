@@ -19,6 +19,7 @@ from typing import Text
 import mock
 import tensorflow as tf
 
+from tfx.dsl.io import fileio
 from tfx.examples.iris.experimental import iris_pipeline_sklearn_gcp
 from tfx.extensions.google_cloud_ai_platform.pusher import executor as pusher_executor
 from tfx.extensions.google_cloud_ai_platform.trainer import executor as trainer_executor
@@ -57,10 +58,10 @@ class IrisPipelineSklearnGcpEndToEndTest(tf.test.TestCase):
   def assertExecutedOnce(self, component: Text) -> None:
     """Check the component is executed exactly once."""
     component_path = os.path.join(self._pipeline_root, component)
-    self.assertTrue(tf.io.gfile.exists(component_path))
-    outputs = tf.io.gfile.listdir(component_path)
+    self.assertTrue(fileio.exists(component_path))
+    outputs = fileio.listdir(component_path)
     for output in outputs:
-      execution = tf.io.gfile.listdir(os.path.join(component_path, output))
+      execution = fileio.listdir(os.path.join(component_path, output))
       self.assertEqual(1, len(execution))
 
   def assertPipelineExecution(self) -> None:
@@ -89,7 +90,7 @@ class IrisPipelineSklearnGcpEndToEndTest(tf.test.TestCase):
             ai_platform_serving_args=self._ai_platform_serving_args,
             beam_pipeline_args=[]))
 
-    self.assertTrue(tf.io.gfile.exists(self._metadata_path))
+    self.assertTrue(fileio.exists(self._metadata_path))
     mock_trainer.start_aip_training.assert_called_once()
     mock_pusher.deploy_model_for_aip_prediction.assert_called_once()
     expected_execution_count = 6  # 6 components

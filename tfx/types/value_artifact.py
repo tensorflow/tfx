@@ -21,7 +21,7 @@ from __future__ import print_function
 import abc
 from typing import Any
 
-import tensorflow as tf
+from tfx.dsl.io import fileio
 from tfx.types.artifact import Artifact
 
 
@@ -38,18 +38,18 @@ class ValueArtifact(Artifact):
     if not self._has_value:
       file_path = self.uri
       # Assert there is a file exists.
-      if not tf.io.gfile.exists(file_path):
+      if not fileio.exists(file_path):
         raise RuntimeError(
             'Given path does not exist or is not a valid file: %s' % file_path)
 
-      serialized_value = tf.io.gfile.GFile(file_path, 'rb').read()
+      serialized_value = fileio.open(file_path, 'rb').read()
       self._has_value = True
       self._value = self.decode(serialized_value)
     return self._value
 
   def write(self, value):
     serialized_value = self.encode(value)
-    tf.io.gfile.GFile(self.uri, 'wb').write(serialized_value)
+    fileio.open(self.uri, 'wb').write(serialized_value)
 
   @property
   def value(self):

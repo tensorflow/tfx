@@ -23,6 +23,7 @@ from typing import Any, Dict, Text
 
 import mock
 import tensorflow as tf
+from tfx.dsl.io import fileio
 from tfx.extensions.google_cloud_big_query.pusher.executor import Executor
 from tfx.types import standard_artifacts
 from tfx.utils import io_utils
@@ -42,7 +43,7 @@ class ExecutorTest(tf.test.TestCase):
     self._output_data_dir = os.path.join(
         os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR', self.get_temp_dir()),
         self._testMethodName)
-    tf.io.gfile.makedirs(self._output_data_dir)
+    fileio.makedirs(self._output_data_dir)
     self._model_export = standard_artifacts.Model()
     self._model_export.uri = os.path.join(self._source_data_dir,
                                           'trainer/current')

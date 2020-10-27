@@ -27,6 +27,7 @@ from typing import Text
 from kfp import onprem
 import tensorflow as tf
 from tfx.components.statistics_gen import component as statistics_gen_component
+from tfx.dsl.io import fileio
 from tfx.extensions.google_cloud_big_query.example_gen import component as big_query_example_gen_component
 from tfx.orchestration import data_types
 from tfx.orchestration import pipeline as tfx_pipeline
@@ -68,7 +69,7 @@ class KubeflowDagRunnerTest(tf.test.TestCase):
     """Sanity-checks the construction and dependencies for a 2-step pipeline."""
     kubeflow_dag_runner.KubeflowDagRunner().run(_two_step_pipeline())
     file_path = os.path.join(self.test_dir, 'two_step_pipeline.tar.gz')
-    self.assertTrue(tf.io.gfile.exists(file_path))
+    self.assertTrue(fileio.exists(file_path))
 
     with tarfile.TarFile.open(file_path).extractfile(
         'pipeline.yaml') as pipeline_file:
@@ -135,7 +136,7 @@ class KubeflowDagRunnerTest(tf.test.TestCase):
   def testDefaultPipelineOperatorFuncs(self):
     kubeflow_dag_runner.KubeflowDagRunner().run(_two_step_pipeline())
     file_path = os.path.join(self.test_dir, 'two_step_pipeline.tar.gz')
-    self.assertTrue(tf.io.gfile.exists(file_path))
+    self.assertTrue(fileio.exists(file_path))
 
     with tarfile.TarFile.open(file_path).extractfile(
         'pipeline.yaml') as pipeline_file:
@@ -154,7 +155,7 @@ class KubeflowDagRunnerTest(tf.test.TestCase):
             .get_default_pipeline_operator_funcs(use_gcp_sa=True))).run(
                 _two_step_pipeline())
     file_path = os.path.join(self.test_dir, 'two_step_pipeline.tar.gz')
-    self.assertTrue(tf.io.gfile.exists(file_path))
+    self.assertTrue(fileio.exists(file_path))
 
     with tarfile.TarFile.open(file_path).extractfile(
         'pipeline.yaml') as pipeline_file:
@@ -196,7 +197,7 @@ class KubeflowDagRunnerTest(tf.test.TestCase):
     kubeflow_dag_runner.KubeflowDagRunner(config=config).run(
         _two_step_pipeline())
     file_path = os.path.join(self.test_dir, 'two_step_pipeline.tar.gz')
-    self.assertTrue(tf.io.gfile.exists(file_path))
+    self.assertTrue(fileio.exists(file_path))
 
     with tarfile.TarFile.open(file_path).extractfile(
         'pipeline.yaml') as pipeline_file:

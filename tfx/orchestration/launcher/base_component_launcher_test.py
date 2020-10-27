@@ -22,6 +22,7 @@ import os
 
 import mock
 import tensorflow as tf
+from tfx.dsl.io import fileio
 from tfx.orchestration import data_types
 from tfx.orchestration import metadata
 from tfx.orchestration import publisher
@@ -49,7 +50,7 @@ class ComponentRunnerTest(tf.test.TestCase):
 
     pipeline_root = os.path.join(test_dir, 'Test')
     input_path = os.path.join(test_dir, 'input')
-    tf.io.gfile.makedirs(os.path.dirname(input_path))
+    fileio.makedirs(os.path.dirname(input_path))
     file_io.write_string_to_file(input_path, 'test')
 
     input_artifact = test_utils._InputArtifact()
@@ -80,7 +81,7 @@ class ComponentRunnerTest(tf.test.TestCase):
     launcher.launch()
 
     output_path = component.outputs['output'].get()[0].uri
-    self.assertTrue(tf.io.gfile.exists(output_path))
+    self.assertTrue(fileio.exists(output_path))
     contents = file_io.read_file_to_string(output_path)
     self.assertEqual('test', contents)
 

@@ -21,13 +21,12 @@ from __future__ import print_function
 import os
 from typing import Any, Dict, List, Optional, Text
 
-import tensorflow as tf
-
 from tfx import types
 from tfx.dsl.components.base import base_component
 from tfx.dsl.components.base import base_driver
 from tfx.dsl.components.base import base_executor
 from tfx.dsl.components.base import executor_spec
+from tfx.dsl.io import fileio
 from tfx.orchestration import data_types
 from tfx.types import artifact_utils
 from tfx.types import channel_utils
@@ -65,7 +64,7 @@ class _FakeDriver(base_driver.BaseDriver):
           artifact.uri = os.path.join(
               pipeline_info.pipeline_root, 'artifacts', name + suffix, 'data',
           )
-          tf.io.gfile.makedirs(os.path.dirname(artifact.uri))
+          fileio.makedirs(os.path.dirname(artifact.uri))
 
     return data_types.ExecutionDecision(input_artifacts, output_artifacts,
                                         exec_properties, 123, False)
@@ -79,7 +78,7 @@ class _FakeExecutor(base_executor.BaseExecutor):
          exec_properties: Dict[Text, Any]) -> None:
     input_path = artifact_utils.get_single_uri(input_dict['input'])
     output_path = artifact_utils.get_single_uri(output_dict['output'])
-    tf.io.gfile.copy(input_path, output_path)
+    fileio.copy(input_path, output_path)
 
 
 class _FakeComponentSpec(types.ComponentSpec):

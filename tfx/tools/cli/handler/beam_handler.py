@@ -24,8 +24,8 @@ import sys
 from typing import Any, Dict, Text
 
 import click
-import tensorflow as tf
 
+from tfx.dsl.io import fileio
 from tfx.tools.cli import labels
 from tfx.tools.cli.handler import base_handler
 from tfx.utils import io_utils
@@ -62,10 +62,10 @@ class BeamHandler(base_handler.BaseHandler):
 
   def list_pipelines(self) -> None:
     """List all the pipelines in the environment."""
-    if not tf.io.gfile.exists(self._handler_home_dir):
+    if not fileio.exists(self._handler_home_dir):
       click.echo('No pipelines to display.')
       return
-    pipelines_list = tf.io.gfile.listdir(self._handler_home_dir)
+    pipelines_list = fileio.listdir(self._handler_home_dir)
 
     # Print every pipeline name in a new line.
     click.echo('-' * 30)
@@ -146,11 +146,11 @@ class BeamHandler(base_handler.BaseHandler):
                                          '')
 
     # If updating pipeline, first delete pipeline directory.
-    if tf.io.gfile.exists(handler_pipeline_path):
+    if fileio.exists(handler_pipeline_path):
       io_utils.delete_dir(handler_pipeline_path)
 
     # Dump pipeline_args to handler pipeline folder as json.
-    tf.io.gfile.makedirs(handler_pipeline_path)
+    fileio.makedirs(handler_pipeline_path)
     with open(os.path.join(handler_pipeline_path, 'pipeline_args.json'),
               'w') as f:
       json.dump(pipeline_args, f)

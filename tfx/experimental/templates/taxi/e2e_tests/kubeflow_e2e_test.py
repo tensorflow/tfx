@@ -23,6 +23,7 @@ import urllib.request
 from absl import logging
 import kfp
 import tensorflow as tf
+from tfx.dsl.io import fileio
 from tfx.experimental.templates.taxi.e2e_tests import test_utils
 from tfx.orchestration import test_utils as orchestration_test_utils
 from tfx.orchestration.kubeflow import test_utils as kubeflow_test_utils
@@ -238,7 +239,7 @@ class TaxiTemplateKubeflowE2ETest(test_utils.BaseEndToEndTest):
   def _check_telemetry_label(self):
     file_path = os.path.join(self._project_dir,
                              '{}.tar.gz'.format(self._pipeline_name))
-    self.assertTrue(tf.io.gfile.exists(file_path))
+    self.assertTrue(fileio.exists(file_path))
 
     with tarfile.TarFile.open(file_path).extractfile(
         'pipeline.yaml') as pipeline_file:

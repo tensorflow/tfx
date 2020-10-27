@@ -28,6 +28,7 @@ import tensorflow as tf
 from tfx.components.testdata.module_file import trainer_module
 from tfx.components.trainer import constants
 from tfx.components.trainer import executor
+from tfx.dsl.io import fileio
 from tfx.proto import trainer_pb2
 from tfx.types import artifact_utils
 from tfx.types import standard_artifacts
@@ -118,18 +119,16 @@ class ExecutorTest(tf.test.TestCase):
 
   def _verify_model_exports(self):
     self.assertTrue(
-        tf.io.gfile.exists(path_utils.eval_model_dir(self._model_exports.uri)))
+        fileio.exists(path_utils.eval_model_dir(self._model_exports.uri)))
     self.assertTrue(
-        tf.io.gfile.exists(
-            path_utils.serving_model_dir(self._model_exports.uri)))
+        fileio.exists(path_utils.serving_model_dir(self._model_exports.uri)))
 
   def _verify_no_eval_model_exports(self):
     self.assertFalse(
-        tf.io.gfile.exists(path_utils.eval_model_dir(self._model_exports.uri)))
+        fileio.exists(path_utils.eval_model_dir(self._model_exports.uri)))
 
   def _verify_model_run_exports(self):
-    self.assertTrue(
-        tf.io.gfile.exists(os.path.dirname(self._model_run_exports.uri)))
+    self.assertTrue(fileio.exists(os.path.dirname(self._model_run_exports.uri)))
 
   def _do(self, test_executor):
     test_executor.Do(

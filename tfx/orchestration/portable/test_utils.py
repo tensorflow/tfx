@@ -18,6 +18,7 @@ import os
 from typing import Iterable, Optional, Text, Union
 
 import tensorflow as tf
+from tfx.dsl.io import fileio
 from tfx.utils import io_utils
 from google.protobuf import message
 from google.protobuf import text_format
@@ -32,7 +33,7 @@ class TfxTest(tf.test.TestCase):
     self.tmp_dir = os.path.join(
         os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR', self.get_temp_dir()),
         self._testMethodName)
-    tf.io.gfile.makedirs(self.tmp_dir)
+    fileio.makedirs(self.tmp_dir)
 
   def load_proto_from_text(self, path: Text,
                            proto_message: message.Message) -> message.Message:

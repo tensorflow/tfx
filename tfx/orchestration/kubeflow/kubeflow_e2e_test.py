@@ -26,6 +26,7 @@ from typing import List, Text
 from absl import logging
 from grpc import insecure_channel
 import tensorflow as tf
+from tfx.dsl.io import fileio
 from tfx.orchestration import metadata
 from tfx.orchestration import test_utils
 from tfx.orchestration.kubeflow import test_utils as kubeflow_test_utils
@@ -195,7 +196,7 @@ class KubeflowEndToEndTest(kubeflow_test_utils.BaseKubeflowTest):
     for artifact in artifacts:
       blessed = os.path.join(artifact.uri, 'INFRA_BLESSED')
       self.assertTrue(
-          tf.io.gfile.exists(blessed),
+          fileio.exists(blessed),
           'Expected InfraBlessing results cannot be found under path %s for '
           'artifact %s' % (blessed, artifact))
 
@@ -260,7 +261,7 @@ class KubeflowEndToEndTest(kubeflow_test_utils.BaseKubeflowTest):
     self.assertEqual(len(artifacts), 2)
     for artifact in artifacts:
       # TODO(b/150515270) Remove the '/data' suffix when b/150515270 is fixed.
-      artifact_value = tf.io.gfile.GFile(artifact.uri + '/data', 'r').read()
+      artifact_value = fileio.open(artifact.uri + '/data', 'r').read()
       self.assertGreater(len(artifact_value), 100)
 
 

@@ -28,6 +28,7 @@ import time
 import absl
 from click import testing as click_testing
 import tensorflow as tf
+from tfx.dsl.io import fileio
 from tfx.orchestration.airflow import test_utils as airflow_test_utils
 from tfx.tools.cli import labels
 from tfx.tools.cli.cli_main import cli_group
@@ -78,12 +79,12 @@ class CliAirflowEndToEndTest(tf.test.TestCase):
                 os.path.dirname(os.path.dirname(os.path.abspath(__file__))))),
         'examples', 'chicago_taxi_pipeline')
     data_dir = os.path.join(chicago_taxi_pipeline_dir, 'data', 'simple')
-    content = tf.io.gfile.listdir(data_dir)
+    content = fileio.listdir(data_dir)
     assert content, 'content in {} is empty'.format(data_dir)
     target_data_dir = os.path.join(self._airflow_home, 'taxi', 'data', 'simple')
     io_utils.copy_dir(data_dir, target_data_dir)
-    assert tf.io.gfile.isdir(target_data_dir)
-    content = tf.io.gfile.listdir(target_data_dir)
+    assert fileio.isdir(target_data_dir)
+    content = fileio.listdir(target_data_dir)
     assert content, 'content in {} is {}'.format(target_data_dir, content)
     io_utils.copy_file(
         os.path.join(chicago_taxi_pipeline_dir, 'taxi_utils.py'),
@@ -124,7 +125,7 @@ class CliAirflowEndToEndTest(tf.test.TestCase):
   def _does_pipeline_args_file_exist(self, pipeline_name):
     handler_pipeline_path = os.path.join(self._airflow_home, 'dags',
                                          pipeline_name)
-    return tf.io.gfile.exists(
+    return fileio.exists(
         os.path.join(handler_pipeline_path, 'pipeline_args.json'))
 
   def _valid_create_and_check(self, pipeline_path, pipeline_name):

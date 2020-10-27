@@ -95,16 +95,6 @@ _VALID_FILE_URI = _VALID_URI
 _BAD_URI = '/tmp/to/a/bad/dir'
 
 
-def fake_exist(path: Text) -> bool:
-  """Mock behavior of tf.io.gfile.exists."""
-  return path in [_VALID_URI, _VALID_FILE_URI]
-
-
-def fake_isdir(path: Text) -> bool:
-  """Mock behavior of tf.io.gfile.isdir."""
-  return path in [_VALID_URI]
-
-
 class ArtifactTest(tf.test.TestCase):
 
   def testArtifact(self):
@@ -377,46 +367,6 @@ class ArtifactTest(tf.test.TestCase):
     artifact2 = _MyArtifact2()
     with self.assertRaises(AssertionError):
       artifact2.copy_from(artifact1)
-
-
-class ValueArtifactTest(tf.test.TestCase):
-  """Tests for ValueArtifact."""
-
-  def setUp(self):
-    super(ValueArtifactTest, self).setUp()
-    self.addCleanup(mock.patch.stopall)
-
-    self._mock_gfile_readfn = mock.patch.object(
-        tf.io.gfile.GFile,
-        'read',
-        autospec=True,
-        return_value=_BYTE_VALUE,
-    ).start()
-
-  @mock.patch.object(tf.io.gfile, 'exists', fake_exist)
-  @mock.patch.object(tf.io.gfile, 'isdir', fake_isdir)
-  def testValueArtifact(self):
-    instance = _MyValueArtifact()
-    # Test property setters.
-    instance.uri = _VALID_URI
-    self.assertEqual(_VALID_URI, instance.uri)
-
-    with self.assertRaisesRegexp(
-        ValueError, 'The artifact value has not yet been read from storage.'):
-      instance.value  # pylint: disable=pointless-statement
-
-    instance.read()
-    self.assertEqual(_STRING_VALUE, instance.value)
-
-  @mock.patch.object(tf.io.gfile, 'exists', fake_exist)
-  @mock.patch.object(tf.io.gfile, 'isdir', fake_isdir)
-  def testValueArtifactWithBadUri(self):
-    instance = _MyValueArtifact()
-    instance.uri = _BAD_URI
-
-    with self.assertRaisesRegexp(
-        RuntimeError, 'Given path does not exist or is not a valid file'):
-      instance.read()
 
 
 if __name__ == '__main__':

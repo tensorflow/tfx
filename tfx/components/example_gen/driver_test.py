@@ -24,6 +24,7 @@ import tensorflow as tf
 from tfx.components.example_gen import driver
 from tfx.components.example_gen import utils
 from tfx.dsl.components.base import base_driver
+from tfx.dsl.io import fileio
 from tfx.orchestration import data_types
 from tfx.proto import example_gen_pb2
 from tfx.proto import range_config_pb2
@@ -52,7 +53,7 @@ class DriverTest(tf.test.TestCase):
   def testResolveExecProperties(self):
     # Create input dir.
     self._input_base_path = os.path.join(self._test_dir, 'input_base')
-    tf.io.gfile.makedirs(self._input_base_path)
+    fileio.makedirs(self._input_base_path)
 
     # Create exec proterties.
     self._exec_properties = {
@@ -217,7 +218,7 @@ class DriverTest(tf.test.TestCase):
   def testDriverRunFn(self):
     # Create input dir.
     self._input_base_path = os.path.join(self._test_dir, 'input_base')
-    tf.io.gfile.makedirs(self._input_base_path)
+    fileio.makedirs(self._input_base_path)
 
     # Create PipelineInfo and PipelineNode
     pipeline_info = pipeline_pb2.PipelineInfo()

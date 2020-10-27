@@ -28,6 +28,7 @@ from tfx.components.infra_validator import error_types
 from tfx.components.infra_validator import executor
 from tfx.components.infra_validator import request_builder
 from tfx.components.infra_validator import serving_bins
+from tfx.dsl.io import fileio
 from tfx.proto import infra_validator_pb2
 from tfx.types import artifact_utils
 from tfx.types import standard_artifacts
@@ -281,7 +282,7 @@ class ExecutorTest(tf.test.TestCase):
     self.assertEqual(0, self._blessing.get_int_custom_property('blessed'))
 
   def assertFileExists(self, path: Text):
-    self.assertTrue(tf.io.gfile.exists(path))
+    self.assertTrue(fileio.exists(path))
 
 
 if __name__ == '__main__':

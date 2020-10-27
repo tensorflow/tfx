@@ -35,6 +35,7 @@ from click import testing as click_testing
 import kfp
 import kfp_server_api
 import tensorflow as tf
+from tfx.dsl.io import fileio
 from tfx.tools.cli import labels
 from tfx.tools.cli.cli_main import cli_group
 from tfx.tools.cli.e2e import test_utils
@@ -75,7 +76,7 @@ class CliKubeflowEndToEndTest(tf.test.TestCase):
     self._testdata_dir_updated = os.path.join(
         os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR', self.get_temp_dir()),
         self._testMethodName)
-    tf.io.gfile.makedirs(self._testdata_dir_updated)
+    fileio.makedirs(self._testdata_dir_updated)
 
     self._pipeline_name = ('cli-kubeflow-e2e-test-' +
                            test_utils.generate_random_id())
@@ -93,12 +94,12 @@ class CliKubeflowEndToEndTest(tf.test.TestCase):
                                              self._pipeline_path,
                                              'chicago_taxi_pipeline_kubeflow',
                                              self._pipeline_name)
-    self.assertTrue(tf.io.gfile.exists(self._pipeline_path))
+    self.assertTrue(fileio.exists(self._pipeline_path))
     test_utils.copy_and_change_pipeline_name(orig_pipeline_path,
                                              self._pipeline_path_v2,
                                              'chicago_taxi_pipeline_kubeflow',
                                              self._pipeline_name_v2)
-    self.assertTrue(tf.io.gfile.exists(self._pipeline_path_v2))
+    self.assertTrue(fileio.exists(self._pipeline_path_v2))
 
     # Endpoint URL
     self._endpoint = self._get_endpoint(
@@ -113,7 +114,7 @@ class CliKubeflowEndToEndTest(tf.test.TestCase):
     os.environ['KUBEFLOW_HOME'] = os.path.join(tempfile.mkdtemp(),
                                                'CLI_Kubeflow_Pipelines')
     self._kubeflow_home = os.environ['KUBEFLOW_HOME']
-    tf.io.gfile.makedirs(self._kubeflow_home)
+    fileio.makedirs(self._kubeflow_home)
     os.chdir(self._kubeflow_home)
 
     self._handler_pipeline_path = os.path.join(self._kubeflow_home,
@@ -138,9 +139,9 @@ class CliKubeflowEndToEndTest(tf.test.TestCase):
     absl.logging.info('Deleted all runs.')
 
   def _cleanup_kfp_server(self):
-    pipelines = tf.io.gfile.listdir(self._kubeflow_home)
+    pipelines = fileio.listdir(self._kubeflow_home)
     for pipeline_name in pipelines:
-      if tf.io.gfile.isdir(pipeline_name):
+      if fileio.isdir(pipeline_name):
         self._delete_experiment(pipeline_name)
         self._delete_pipeline(pipeline_name)
         self._delete_pipeline_output(pipeline_name)
@@ -251,8 +252,8 @@ class CliKubeflowEndToEndTest(tf.test.TestCase):
     ])
     absl.logging.info('[CLI] %s', result.output)
     self.assertIn('Creating pipeline', result.output)
-    self.assertTrue(tf.io.gfile.exists(self._pipeline_package_path))
-    self.assertTrue(tf.io.gfile.exists(self._handler_pipeline_args_path))
+    self.assertTrue(fileio.exists(self._pipeline_package_path))
+    self.assertTrue(fileio.exists(self._handler_pipeline_args_path))
     self.assertIn('Pipeline "{}" created successfully.'.format(pipeline_name),
                   result.output)
 
@@ -292,7 +293,7 @@ class CliKubeflowEndToEndTest(tf.test.TestCase):
     self.assertIn('Updating pipeline', result.output)
     self.assertIn('Pipeline "{}" does not exist.'.format(self._pipeline_name),
                   result.output)
-    self.assertFalse(tf.io.gfile.exists(self._handler_pipeline_path))
+    self.assertFalse(fileio.exists(self._handler_pipeline_path))
 
     # Now update an existing pipeline.
     self._valid_create_and_check(self._pipeline_path, self._pipeline_name)
@@ -305,7 +306,7 @@ class CliKubeflowEndToEndTest(tf.test.TestCase):
     self.assertIn(
         'Pipeline "{}" updated successfully.'.format(self._pipeline_name),
         result.output)
-    self.assertTrue(tf.io.gfile.exists(self._handler_pipeline_args_path))
+    self.assertTrue(fileio.exists(self._handler_pipeline_args_path))
 
   def testPipelineCompile(self):
     # Invalid DSL path
@@ -345,7 +346,7 @@ class CliKubeflowEndToEndTest(tf.test.TestCase):
     self.assertIn('Deleting pipeline', result.output)
     self.assertIn('Pipeline "{}" does not exist.'.format(self._pipeline_name),
                   result.output)
-    self.assertFalse(tf.io.gfile.exists(self._handler_pipeline_path))
+    self.assertFalse(fileio.exists(self._handler_pipeline_path))
 
     # Create a pipeline.
     self._valid_create_and_check(self._pipeline_path, self._pipeline_name)
@@ -356,7 +357,7 @@ class CliKubeflowEndToEndTest(tf.test.TestCase):
         self._pipeline_name, '--endpoint', self._endpoint
     ])
     self.assertIn('Deleting pipeline', result.output)
-    self.assertFalse(tf.io.gfile.exists(self._handler_pipeline_path))
+    self.assertFalse(fileio.exists(self._handler_pipeline_path))
     self.assertIn(
         'Pipeline {} deleted successfully.'.format(self._pipeline_name),
         result.output)
@@ -385,8 +386,8 @@ class CliKubeflowEndToEndTest(tf.test.TestCase):
           'Multiple orchestrators found. Choose one using --engine flag.',
           result.output)
     else:
-      self.assertTrue(tf.io.gfile.exists(self._pipeline_package_path))
-      self.assertTrue(tf.io.gfile.exists(self._handler_pipeline_args_path))
+      self.assertTrue(fileio.exists(self._pipeline_package_path))
+      self.assertTrue(fileio.exists(self._handler_pipeline_args_path))
       self.assertIn(
           'Pipeline "{}" created successfully.'.format(self._pipeline_name),
           result.output)

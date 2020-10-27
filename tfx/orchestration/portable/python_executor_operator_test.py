@@ -20,6 +20,7 @@ import mock
 import tensorflow as tf
 from tfx import types
 from tfx.dsl.components.base import base_executor
+from tfx.dsl.io import fileio
 from tfx.orchestration.portable import base_executor_operator
 from tfx.orchestration.portable import python_executor_operator
 from tfx.orchestration.portable import test_utils
@@ -56,7 +57,7 @@ class NotInprocessExecutor(base_executor.BaseExecutor):
                                                        output_dict)
     python_executor_operator._populate_exec_properties(executor_output,
                                                        exec_properties)
-    with tf.io.gfile.GFile(self._context.executor_output_uri, 'w') as f:
+    with fileio.open(self._context.executor_output_uri, 'w') as f:
       f.write(executor_output.SerializeToString())
 
 

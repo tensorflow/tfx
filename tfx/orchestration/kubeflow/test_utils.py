@@ -48,6 +48,7 @@ from tfx.components import Transform
 from tfx.dsl.components.base import executor_spec
 from tfx.dsl.components.base.base_component import BaseComponent
 from tfx.dsl.experimental import latest_artifacts_resolver
+from tfx.dsl.io import fileio
 from tfx.orchestration import pipeline as tfx_pipeline
 from tfx.orchestration import test_utils
 from tfx.orchestration.kubeflow import kubeflow_dag_runner
@@ -672,7 +673,7 @@ class BaseKubeflowTest(tf.test.TestCase):
     kubeflow_dag_runner.KubeflowDagRunner(config=config).run(pipeline)
 
     file_path = os.path.join(self._test_dir, '{}.tar.gz'.format(pipeline_name))
-    self.assertTrue(tf.io.gfile.exists(file_path))
+    self.assertTrue(fileio.exists(file_path))
     tarfile.TarFile.open(file_path).extract('pipeline.yaml')
     pipeline_file = os.path.join(self._test_dir, 'pipeline.yaml')
     self.assertIsNotNone(pipeline_file)

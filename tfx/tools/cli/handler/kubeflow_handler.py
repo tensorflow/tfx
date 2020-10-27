@@ -28,8 +28,8 @@ from typing import Any, Dict, Optional, Text
 import click
 import kfp
 from tabulate import tabulate
-import tensorflow as tf
 
+from tfx.dsl.io import fileio
 from tfx.tools.cli import labels
 from tfx.tools.cli.container_builder import builder
 from tfx.tools.cli.container_builder import labels as container_builder_labels
@@ -264,7 +264,7 @@ class KubeflowHandler(base_handler.BaseHandler):
                                       'pipeline_args.json')
 
     # Copy pipeline_args to pipeline folder.
-    tf.io.gfile.makedirs(handler_pipeline_path)
+    fileio.makedirs(handler_pipeline_path)
     with open(pipeline_args_path, 'w') as f:
       json.dump(pipeline_args, f)
 
@@ -276,7 +276,7 @@ class KubeflowHandler(base_handler.BaseHandler):
           os.getcwd(), '{}.tar.gz'.format(pipeline_name))
 
     pipeline_package_path = self.flags_dict[labels.PIPELINE_PACKAGE_PATH]
-    if not tf.io.gfile.exists(pipeline_package_path):
+    if not fileio.exists(pipeline_package_path):
       sys.exit(
           'Pipeline package not found at {}. When --package_path is unset, it will try to find the workflow file, "<pipeline_name>.tar.gz" in the current directory.'
           .format(pipeline_package_path))

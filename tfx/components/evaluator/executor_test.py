@@ -25,6 +25,7 @@ import tensorflow as tf
 import tensorflow_model_analysis as tfma
 from tfx.components.evaluator import constants
 from tfx.components.evaluator import executor
+from tfx.dsl.io import fileio
 from tfx.proto import evaluator_pb2
 from tfx.types import artifact_utils
 from tfx.types import standard_artifacts
@@ -103,12 +104,11 @@ class ExecutorTest(tf.test.TestCase, parameterized.TestCase):
 
     # Check evaluator outputs.
     self.assertTrue(
-        tf.io.gfile.exists(os.path.join(eval_output.uri, 'eval_config.json')))
-    self.assertTrue(
-        tf.io.gfile.exists(os.path.join(eval_output.uri, 'metrics')))
-    self.assertTrue(tf.io.gfile.exists(os.path.join(eval_output.uri, 'plots')))
+        fileio.exists(os.path.join(eval_output.uri, 'eval_config.json')))
+    self.assertTrue(fileio.exists(os.path.join(eval_output.uri, 'metrics')))
+    self.assertTrue(fileio.exists(os.path.join(eval_output.uri, 'plots')))
     self.assertFalse(
-        tf.io.gfile.exists(os.path.join(blessing_output.uri, 'BLESSED')))
+        fileio.exists(os.path.join(blessing_output.uri, 'BLESSED')))
 
   @parameterized.named_parameters(('legacy_feature_slicing', {
       'feature_slicing_spec':
@@ -172,12 +172,11 @@ class ExecutorTest(tf.test.TestCase, parameterized.TestCase):
 
     # Check evaluator outputs.
     self.assertTrue(
-        tf.io.gfile.exists(os.path.join(eval_output.uri, 'eval_config.json')))
-    self.assertTrue(
-        tf.io.gfile.exists(os.path.join(eval_output.uri, 'metrics')))
-    self.assertTrue(tf.io.gfile.exists(os.path.join(eval_output.uri, 'plots')))
+        fileio.exists(os.path.join(eval_output.uri, 'eval_config.json')))
+    self.assertTrue(fileio.exists(os.path.join(eval_output.uri, 'metrics')))
+    self.assertTrue(fileio.exists(os.path.join(eval_output.uri, 'plots')))
     self.assertFalse(
-        tf.io.gfile.exists(os.path.join(blessing_output.uri, 'BLESSED')))
+        fileio.exists(os.path.join(blessing_output.uri, 'BLESSED')))
 
   @parameterized.named_parameters(
       (
@@ -320,18 +319,16 @@ class ExecutorTest(tf.test.TestCase, parameterized.TestCase):
 
     # Check evaluator outputs.
     self.assertTrue(
-        tf.io.gfile.exists(os.path.join(eval_output.uri, 'eval_config.json')))
-    self.assertTrue(
-        tf.io.gfile.exists(os.path.join(eval_output.uri, 'metrics')))
-    self.assertTrue(tf.io.gfile.exists(os.path.join(eval_output.uri, 'plots')))
-    self.assertTrue(
-        tf.io.gfile.exists(os.path.join(eval_output.uri, 'validations')))
+        fileio.exists(os.path.join(eval_output.uri, 'eval_config.json')))
+    self.assertTrue(fileio.exists(os.path.join(eval_output.uri, 'metrics')))
+    self.assertTrue(fileio.exists(os.path.join(eval_output.uri, 'plots')))
+    self.assertTrue(fileio.exists(os.path.join(eval_output.uri, 'validations')))
     if blessed:
       self.assertTrue(
-          tf.io.gfile.exists(os.path.join(blessing_output.uri, 'BLESSED')))
+          fileio.exists(os.path.join(blessing_output.uri, 'BLESSED')))
     else:
       self.assertTrue(
-          tf.io.gfile.exists(os.path.join(blessing_output.uri, 'NOT_BLESSED')))
+          fileio.exists(os.path.join(blessing_output.uri, 'NOT_BLESSED')))
 
 
 if __name__ == '__main__':

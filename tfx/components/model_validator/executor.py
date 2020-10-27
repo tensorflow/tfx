@@ -23,11 +23,12 @@ from typing import Any, Dict, List, Text
 
 import absl
 import apache_beam as beam
-import tensorflow as tf
+
 import tensorflow_model_analysis as tfma
 from tfx import types
 from tfx.components.model_validator import constants
 from tfx.dsl.components.base import base_executor
+from tfx.dsl.io import fileio
 from tfx.types import artifact_utils
 from tfx.utils import io_utils
 from tfx.utils import path_utils
@@ -118,7 +119,7 @@ class Executor(base_executor.BaseExecutor):
             output_path=blessed_model_eval_result_path))
 
     absl.logging.info('all files in current_model_eval_result_path: [%s]',
-                      str(tf.io.gfile.listdir(current_model_eval_result_path)))
+                      str(fileio.listdir(current_model_eval_result_path)))
     current_model_eval_result = tfma.load_eval_result(
         output_path=current_model_eval_result_path)
 
@@ -131,7 +132,7 @@ class Executor(base_executor.BaseExecutor):
       absl.logging.info('No blessed model yet.')
       return True
     absl.logging.info('all files in blessed_model_eval_result: [%s]',
-                      str(tf.io.gfile.listdir(blessed_model_eval_result_path)))
+                      str(fileio.listdir(blessed_model_eval_result_path)))
     blessed_model_eval_result = tfma.load_eval_result(
         output_path=blessed_model_eval_result_path)
 

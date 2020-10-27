@@ -17,6 +17,7 @@ import os
 import tempfile
 import tensorflow as tf
 
+from tfx.dsl.io import fileio
 from tfx.experimental.distributed_inference.graphdef_experiments.subgraph_partitioning import create_complex_graph
 from tfx.experimental.distributed_inference.graphdef_experiments.subgraph_partitioning import graph_partition
 from google.protobuf import text_format
@@ -110,7 +111,7 @@ def _get_golden_subgraph(graph_name, spec):
       os.path.dirname(__file__), 'testdata', graph_name, filename)
 
   graph_def = tf.compat.v1.GraphDef()
-  with tf.io.gfile.GFile(filepath, 'r') as f:
+  with fileio.open(filepath, 'r') as f:
     text_format.Parse(f.read(), graph_def)
   return graph_def
 

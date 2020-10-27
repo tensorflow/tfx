@@ -25,6 +25,7 @@ from typing import Text
 
 import tensorflow as tf
 from tfx.components.trainer.rewriting import rewriter
+from tfx.dsl.io import fileio
 
 
 def _invoke_rewriter(src: Text, dst: Text, rewriter_inst: rewriter.BaseRewriter,
@@ -105,16 +106,16 @@ class RewritingExporter(tf.estimator.Exporter):
 
     tmp_rewrite_folder = 'tmp-rewrite-' + str(int(time.time()))
     tmp_rewrite_path = os.path.join(export_path, tmp_rewrite_folder)
-    if tf.io.gfile.exists(tmp_rewrite_path):
+    if fileio.exists(tmp_rewrite_path):
       raise RuntimeError('Unable to create a unique temporary rewrite path.')
-    tf.io.gfile.makedirs(tmp_rewrite_path)
+    fileio.makedirs(tmp_rewrite_path)
 
     _invoke_rewriter(base_path, tmp_rewrite_path, self._rewriter_inst,
                      rewriter.ModelType.SAVED_MODEL,
                      rewriter.ModelType.ANY_MODEL)
 
-    tf.io.gfile.rmtree(base_path)
-    tf.io.gfile.rename(tmp_rewrite_path, base_path)
+    fileio.rmtree(base_path)
+    fileio.rename(tmp_rewrite_path, base_path)
     return base_path
 
 

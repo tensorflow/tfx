@@ -23,7 +23,7 @@ import logging
 import os
 from typing import Any, Dict, Optional, Text
 
-import tensorflow as tf
+from tfx.dsl.io import fileio
 
 
 class LoggerConfig(object):
@@ -81,9 +81,9 @@ def get_logger(config):
   logger = logging.getLogger(log_path)
   logger.setLevel(config.log_level)
 
-  if not tf.io.gfile.exists(config.log_root):
-    tf.io.gfile.makedirs(config.log_root)
-  if not tf.io.gfile.isdir(config.log_root):
+  if not fileio.exists(config.log_root):
+    fileio.makedirs(config.log_root)
+  if not fileio.isdir(config.log_root):
     raise RuntimeError('Log dir exists as a file: {}'.format(config.log_root))
 
   # Create logfile handler.

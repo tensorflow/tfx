@@ -25,6 +25,7 @@ from apache_beam.testing import util
 import tensorflow as tf
 from tfx.components.example_gen import utils
 from tfx.components.example_gen.custom_executors import parquet_executor
+from tfx.dsl.io import fileio
 from tfx.proto import example_gen_pb2
 from tfx.types import artifact_utils
 from tfx.types import standard_artifacts
@@ -102,11 +103,11 @@ class ExecutorTest(tf.test.TestCase):
                                      'data_tfrecord-00000-of-00001.gz')
     eval_output_file = os.path.join(examples.uri, 'eval',
                                     'data_tfrecord-00000-of-00001.gz')
-    self.assertTrue(tf.io.gfile.exists(train_output_file))
-    self.assertTrue(tf.io.gfile.exists(eval_output_file))
+    self.assertTrue(fileio.exists(train_output_file))
+    self.assertTrue(fileio.exists(eval_output_file))
     self.assertGreater(
-        tf.io.gfile.GFile(train_output_file).size(),
-        tf.io.gfile.GFile(eval_output_file).size())
+        fileio.open(train_output_file).size(),
+        fileio.open(eval_output_file).size())
 
 
 if __name__ == '__main__':

@@ -26,6 +26,7 @@ import tensorflow as tf
 
 from tfx.components.testdata.module_file import tuner_module
 from tfx.components.tuner import executor
+from tfx.dsl.io import fileio
 from tfx.proto import trainer_pb2
 from tfx.proto import tuner_pb2
 from tfx.types import artifact_utils
@@ -90,7 +91,7 @@ class ExecutorTest(tf.test.TestCase):
     # Test best hparams.
     best_hparams_path = os.path.join(self._best_hparams.uri,
                                      'best_hyperparameters.txt')
-    self.assertTrue(tf.io.gfile.exists(best_hparams_path))
+    self.assertTrue(fileio.exists(best_hparams_path))
     best_hparams_config = json.loads(
         file_io.read_file_to_string(best_hparams_path))
     best_hparams = HyperParameters.from_config(best_hparams_config)

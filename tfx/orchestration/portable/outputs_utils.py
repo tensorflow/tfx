@@ -18,8 +18,9 @@ import os
 from typing import Dict, List, Text
 
 from absl import logging
-import tensorflow as tf
+
 from tfx import types
+from tfx.dsl.io import fileio
 from tfx.proto.orchestration import pipeline_pb2
 from tfx.types import artifact_utils
 from tfx.types.value_artifact import ValueArtifact
@@ -37,24 +38,24 @@ def make_output_dirs(output_dict: Dict[Text, List[types.Artifact]]) -> None:
       if isinstance(artifact, ValueArtifact):
         # If it is a ValueArtifact, create a file.
         artifact_dir = os.path.dirname(artifact.uri)
-        tf.io.gfile.makedirs(artifact_dir)
-        with tf.io.gfile.GFile(artifact.uri, 'w') as f:
-          # Because tf.io.gfile.GFile won't create an empty file, we write an
+        fileio.makedirs(artifact_dir)
+        with fileio.open(artifact.uri, 'w') as f:
+          # Because fileio.open won't create an empty file, we write an
           # empty string to it to force the creation.
           f.write('')
       else:
         # Otherwise create a dir.
-        tf.io.gfile.makedirs(artifact.uri)
+        fileio.makedirs(artifact.uri)
 
 
 def remove_output_dirs(output_dict: Dict[Text, List[types.Artifact]]) -> None:
   """Remove dirs of output artifacts' URI."""
   for _, artifact_list in output_dict.items():
     for artifact in artifact_list:
-      if tf.io.gfile.isdir(artifact.uri):
-        tf.io.gfile.rmtree(artifact.uri)
+      if fileio.isdir(artifact.uri):
+        fileio.rmtree(artifact.uri)
       else:
-        tf.io.gfile.remove(artifact.uri)
+        fileio.remove(artifact.uri)
 
 
 class OutputsResolver:
@@ -105,7 +106,7 @@ class OutputsResolver:
     """Generates executor output uri given execution_id."""
     execution_dir = os.path.join(self._node_dir,
                                  _EXECUTION_PREFIX + str(execution_id))
-    tf.io.gfile.makedirs(execution_dir)
+    fileio.makedirs(execution_dir)
     executor_output_uri = os.path.join(execution_dir, _EXECUTION_OUTPUT_FILE)
     return executor_output_uri
 
@@ -118,5 +119,5 @@ class OutputsResolver:
     stateful_working_dir = os.path.join(self._node_dir,
                                         self._pipeline_run_id,
                                         _STATEFUL_WORKING_DIR)
-    tf.io.gfile.makedirs(stateful_working_dir)
+    fileio.makedirs(stateful_working_dir)
     return stateful_working_dir

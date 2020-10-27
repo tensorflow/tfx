@@ -25,6 +25,7 @@ import sys
 import absl
 import mock
 import tensorflow as tf
+from tfx.dsl.io import fileio
 from tfx.utils import dependency_utils
 
 
@@ -61,9 +62,9 @@ class DependencyUtilsTest(tf.test.TestCase):
       self.assertEqual(stdout, stderr)
       setup_file = cmd[1]
       dist_dir = os.path.join(os.path.dirname(setup_file), 'dist')
-      tf.io.gfile.makedirs(dist_dir)
+      fileio.makedirs(dist_dir)
       dest_file = os.path.join(dist_dir, expected_package)
-      tf.io.gfile.copy(test_file, dest_file)
+      fileio.copy(test_file, dest_file)
 
     mock_subprocess_call.side_effect = side_effect
     mock_mkdtemp.return_value = self._tmp_dir

@@ -73,6 +73,15 @@ class FilesystemRegistryTest(tf.test.TestCase):
     self.assertIs(tensorflow_gfile.TensorflowFilesystem,
                   registry.get_filesystem_for_path('hdfs://bucket/tmp/my/file'))
 
+    # Test usage of byte paths.
+    self.assertIs(tensorflow_gfile.TensorflowFilesystem,
+                  registry.get_filesystem_for_scheme(b'hdfs://'))
+    self.assertIs(
+        tensorflow_gfile.TensorflowFilesystem,
+        registry.get_filesystem_for_path(b'hdfs://bucket/tmp/my/file'))
+    with self.assertRaisesRegexp(ValueError, 'Invalid path type'):
+      registry.get_filesystem_for_path(123)
+
 
 if __name__ == '__main__':
   tf.test.main()

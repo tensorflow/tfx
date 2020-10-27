@@ -20,6 +20,7 @@ from typing import Text
 from absl import logging
 import tensorflow as tf
 
+from tfx.dsl.io import fileio
 from tfx.examples.chicago_taxi_pipeline import taxi_pipeline_beam
 from tfx.experimental.pipeline_testing import executor_verifier_utils
 from tfx.experimental.pipeline_testing import pipeline_recorder_utils
@@ -124,7 +125,7 @@ class TaxiPipelineRegressionEndToEndTest(tf.test.TestCase):
         ])
     BeamDagRunner(config=stub_pipeline_config).run(self.taxi_pipeline)
 
-    self.assertTrue(tf.io.gfile.exists(self._metadata_path))
+    self.assertTrue(fileio.exists(self._metadata_path))
 
     metadata_config = metadata.sqlite_metadata_connection_config(
         self._metadata_path)

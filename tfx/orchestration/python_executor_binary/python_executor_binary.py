@@ -31,7 +31,8 @@ import base64
 from absl import app
 from absl import flags
 from absl import logging
-import tensorflow as tf
+
+from tfx.dsl.io import fileio
 from tfx.orchestration.portable import python_executor_operator
 from tfx.orchestration.python_executor_binary import python_executor_binary_utils
 from tfx.proto.orchestration import executable_spec_pb2
@@ -67,7 +68,7 @@ def main(_):
   run_result = operator.run_executor(execution_info)
 
   if run_result:
-    with tf.io.gfile.GFile(execution_info.executor_output_uri, 'wb') as f:
+    with fileio.open(execution_info.executor_output_uri, 'wb') as f:
       f.write(run_result.SerializeToString())
 
 

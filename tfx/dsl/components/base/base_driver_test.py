@@ -23,6 +23,7 @@ import mock
 import tensorflow as tf
 from tfx import types
 from tfx.dsl.components.base import base_driver
+from tfx.dsl.io import fileio
 from tfx.orchestration import data_types
 from tfx.types import channel_utils
 from tfx.types import standard_artifacts
@@ -82,7 +83,7 @@ class BaseDriverTest(tf.test.TestCase):
         artifact.id = index + 1
         uri = os.path.join(input_dir, key, str(artifact.id))
         artifact.uri = uri
-        tf.io.gfile.makedirs(uri)
+        fileio.makedirs(uri)
     self._output_dict = {
         'output_data':
             types.Channel(type=_OutputArtifact, artifacts=[_OutputArtifact()]),

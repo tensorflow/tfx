@@ -26,6 +26,7 @@ import tempfile
 from click import testing as click_testing
 import tensorflow as tf
 
+from tfx.dsl.io import fileio
 from tfx.tools.cli.cli_main import cli_group
 from tfx.utils import io_utils
 
@@ -61,12 +62,12 @@ class CliBeamEndToEndTest(tf.test.TestCase):
                 os.path.dirname(os.path.dirname(os.path.abspath(__file__))))),
         'examples', 'chicago_taxi_pipeline', '')
     data_dir = os.path.join(chicago_taxi_pipeline_dir, 'data', 'simple')
-    content = tf.io.gfile.listdir(data_dir)
+    content = fileio.listdir(data_dir)
     assert content, 'content in {} is empty'.format(data_dir)
     target_data_dir = os.path.join(self._home, 'taxi', 'data', 'simple')
     io_utils.copy_dir(data_dir, target_data_dir)
-    assert tf.io.gfile.isdir(target_data_dir)
-    content = tf.io.gfile.listdir(target_data_dir)
+    assert fileio.isdir(target_data_dir)
+    content = fileio.listdir(target_data_dir)
     assert content, 'content in {} is {}'.format(target_data_dir, content)
     io_utils.copy_file(
         os.path.join(chicago_taxi_pipeline_dir, 'taxi_utils.py'),
@@ -93,7 +94,7 @@ class CliBeamEndToEndTest(tf.test.TestCase):
     self.assertIn('CLI', result.output)
     self.assertIn('Creating pipeline', result.output)
     self.assertTrue(
-        tf.io.gfile.exists(
+        fileio.exists(
             os.path.join(handler_pipeline_path, 'pipeline_args.json')))
     self.assertIn('Pipeline "{}" created successfully.'.format(pipeline_name),
                   result.output)
@@ -128,7 +129,7 @@ class CliBeamEndToEndTest(tf.test.TestCase):
     self.assertIn('Updating pipeline', result.output)
     self.assertIn('Pipeline "{}" does not exist.'.format(pipeline_name),
                   result.output)
-    self.assertFalse(tf.io.gfile.exists(handler_pipeline_path))
+    self.assertFalse(fileio.exists(handler_pipeline_path))
 
     # Now update an existing pipeline.
     self._valid_create_and_check(pipeline_path_1, pipeline_name)
@@ -143,7 +144,7 @@ class CliBeamEndToEndTest(tf.test.TestCase):
     self.assertIn('Pipeline "{}" updated successfully.'.format(pipeline_name),
                   result.output)
     self.assertTrue(
-        tf.io.gfile.exists(
+        fileio.exists(
             os.path.join(handler_pipeline_path, 'pipeline_args.json')))
 
   def testPipelineCompile(self):
@@ -193,7 +194,7 @@ class CliBeamEndToEndTest(tf.test.TestCase):
     self.assertIn('Deleting pipeline', result.output)
     self.assertIn('Pipeline "{}" does not exist.'.format(pipeline_name),
                   result.output)
-    self.assertFalse(tf.io.gfile.exists(handler_pipeline_path))
+    self.assertFalse(fileio.exists(handler_pipeline_path))
 
     # Create a pipeline.
     self._valid_create_and_check(pipeline_path, pipeline_name)
@@ -205,7 +206,7 @@ class CliBeamEndToEndTest(tf.test.TestCase):
     ])
     self.assertIn('CLI', result.output)
     self.assertIn('Deleting pipeline', result.output)
-    self.assertFalse(tf.io.gfile.exists(handler_pipeline_path))
+    self.assertFalse(fileio.exists(handler_pipeline_path))
     self.assertIn('Pipeline "{}" deleted successfully.'.format(pipeline_name),
                   result.output)
 
@@ -295,7 +296,7 @@ class CliBeamEndToEndTest(tf.test.TestCase):
     ])
     self.assertIn('CLI', result.output)
     self.assertIn('Getting latest schema.', result.output)
-    self.assertTrue(tf.io.gfile.exists(schema_path))
+    self.assertTrue(fileio.exists(schema_path))
     self.assertIn('Path to schema: {}'.format(schema_path), result.output)
     self.assertIn(
         '*********SCHEMA FOR {}**********'.format(pipeline_name.upper()),

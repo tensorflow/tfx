@@ -22,6 +22,7 @@ import os
 import tensorflow as tf
 
 from tfx.components.example_validator import executor
+from tfx.dsl.io import fileio
 from tfx.types import artifact_utils
 from tfx.types import standard_artifacts
 from tfx.utils import io_utils
@@ -77,8 +78,8 @@ class ExecutorTest(tf.test.TestCase):
                                         'anomalies.pbtxt')
     eval_anomalies_path = os.path.join(validation_output.uri, 'eval',
                                        'anomalies.pbtxt')
-    self.assertTrue(tf.io.gfile.exists(train_anomalies_path))
-    self.assertTrue(tf.io.gfile.exists(eval_anomalies_path))
+    self.assertTrue(fileio.exists(train_anomalies_path))
+    self.assertTrue(fileio.exists(eval_anomalies_path))
     train_anomalies = io_utils.parse_pbtxt_file(train_anomalies_path,
                                                 anomalies_pb2.Anomalies())
     eval_anomalies = io_utils.parse_pbtxt_file(eval_anomalies_path,
@@ -89,7 +90,7 @@ class ExecutorTest(tf.test.TestCase):
     # Assert 'test' split is excluded.
     train_file_path = os.path.join(validation_output.uri, 'test',
                                    'anomalies.pbtxt')
-    self.assertFalse(tf.io.gfile.exists(train_file_path))
+    self.assertFalse(fileio.exists(train_file_path))
     # TODO(zhitaoli): Add comparison to expected anomolies.
 
 

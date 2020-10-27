@@ -23,6 +23,7 @@ import os
 import tensorflow as tf
 
 from tfx.components.pusher import executor
+from tfx.dsl.io import fileio
 from tfx.types import standard_artifacts
 
 
@@ -35,7 +36,7 @@ class ExecutorTest(tf.test.TestCase):
     self._output_data_dir = os.path.join(
         os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR', self.get_temp_dir()),
         self._testMethodName)
-    tf.io.gfile.makedirs(self._output_data_dir)
+    fileio.makedirs(self._output_data_dir)
     self._model_export = standard_artifacts.Model()
     self._model_export.uri = os.path.join(self._source_data_dir,
                                           'trainer/current')
@@ -47,13 +48,13 @@ class ExecutorTest(tf.test.TestCase):
 
     self._model_push = standard_artifacts.PushedModel()
     self._model_push.uri = os.path.join(self._output_data_dir, 'model_push')
-    tf.io.gfile.makedirs(self._model_push.uri)
+    fileio.makedirs(self._model_push.uri)
     self._output_dict = {
         executor.PUSHED_MODEL_KEY: [self._model_push],
     }
     self._serving_model_dir = os.path.join(self._output_data_dir,
                                            'serving_model_dir')
-    tf.io.gfile.makedirs(self._serving_model_dir)
+    fileio.makedirs(self._serving_model_dir)
     self._exec_properties = self._MakeExecProperties()
     self._executor = executor.Executor()
 
@@ -68,10 +69,10 @@ class ExecutorTest(tf.test.TestCase):
     }
 
   def assertDirectoryEmpty(self, path):
-    self.assertEqual(len(tf.io.gfile.listdir(path)), 0)
+    self.assertEqual(len(fileio.listdir(path)), 0)
 
   def assertDirectoryNotEmpty(self, path):
-    self.assertGreater(len(tf.io.gfile.listdir(path)), 0)
+    self.assertGreater(len(fileio.listdir(path)), 0)
 
   def assertPushed(self):
     self.assertDirectoryNotEmpty(self._serving_model_dir)

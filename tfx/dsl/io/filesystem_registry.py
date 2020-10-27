@@ -23,6 +23,7 @@ import threading
 from typing import Text, Type
 
 from tfx.dsl.io import filesystem
+from tfx.dsl.io.filesystem import PathType
 
 
 class FilesystemRegistry(object):
@@ -51,9 +52,11 @@ class FilesystemRegistry(object):
             priority < self._filesystem_priority[current_preferred]):
           self._preferred_filesystem_by_scheme[scheme] = filesystem_cls
 
-  def get_filesystem_for_scheme(self,
-                                scheme: Text) -> Type[filesystem.Filesystem]:
+  def get_filesystem_for_scheme(
+      self, scheme: PathType) -> Type[filesystem.Filesystem]:
     """Get filesystem plugin for given scheme string."""
+    if isinstance(scheme, bytes):
+      scheme = scheme.decode('utf-8')
     if scheme not in self._preferred_filesystem_by_scheme:
       raise Exception(
           ('The filesystem scheme %r is not available for use. For expanded '
@@ -61,12 +64,19 @@ class FilesystemRegistry(object):
            'enable additional filesystem plugins.') % scheme)
     return self._preferred_filesystem_by_scheme[scheme]
 
-  def get_filesystem_for_path(self, path: Text) -> Type[filesystem.Filesystem]:
+  def get_filesystem_for_path(self,
+                              path: PathType) -> Type[filesystem.Filesystem]:
     """Get filesystem plugin for given path."""
     # Assume local path by default, but extract filesystem prefix if available.
-    result = re.match('^([a-z0-9]+://)', path)
+    if isinstance(path, Text):
+      path_bytes = path.encode('utf-8')
+    elif isinstance(path, bytes):
+      path_bytes = path
+    else:
+      raise ValueError('Invalid path type: %r.' % path)
+    result = re.match(b'^([a-z0-9]+://)', path_bytes)
     if result:
-      scheme = result.group(1)
+      scheme = result.group(1).decode('utf-8')
     else:
       scheme = ''
     return self.get_filesystem_for_scheme(scheme)

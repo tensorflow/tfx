@@ -47,6 +47,7 @@ The current implementation has some key limitations:
 import collections
 from typing import Dict, List, Mapping, Set, Text
 import tensorflow as tf
+from tfx.dsl.io import fileio
 from tfx.experimental.distributed_inference.graphdef_experiments.subgraph_partitioning import execution_spec
 
 
@@ -71,7 +72,7 @@ def get_graph_name_to_graph_def(
 
 def _get_graph_def(filepath: Text) -> tf.compat.v1.GraphDef:
   graph_def = tf.compat.v1.GraphDef()
-  with tf.io.gfile.GFile(filepath, 'rb') as f:
+  with fileio.open(filepath, 'rb') as f:
     graph_def.ParseFromString(f.read())
   return graph_def
 

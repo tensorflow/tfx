@@ -22,10 +22,11 @@ import os
 from typing import Any, Dict, List, Text, Optional
 
 from absl import logging
-import tensorflow as tf
+
 
 from tfx import types
 from tfx.dsl.components.base import base_executor
+from tfx.dsl.io import fileio
 from tfx.utils import io_utils
 
 
@@ -51,7 +52,7 @@ class BaseStubExecutor(base_executor.BaseExecutor):
     logging.info("Running StubExecutor, component_id %s", component_id)
     self._component_id = component_id
     self._test_data_dir = test_data_dir
-    if not tf.io.gfile.exists(self._test_data_dir):
+    if not fileio.exists(self._test_data_dir):
       raise ValueError("Must record pipeline in {}".format(self._test_data_dir))
 
   def Do(self, input_dict: Dict[Text, List[types.Artifact]],
@@ -75,7 +76,7 @@ class BaseStubExecutor(base_executor.BaseExecutor):
         dest = artifact.uri
         src = os.path.join(self._test_data_dir, self._component_id, output_key,
                            str(idx))
-        if not tf.io.gfile.exists(src):
+        if not fileio.exists(src):
           raise FileNotFoundError("{} does not exist".format(src))
         io_utils.copy_dir(src, dest)
         logging.info("Finished copying from %s to %s", src, dest)

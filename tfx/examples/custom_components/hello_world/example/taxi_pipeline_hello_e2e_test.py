@@ -18,6 +18,7 @@ import os
 from typing import Text
 
 import tensorflow as tf
+from tfx.dsl.io import fileio
 from tfx.examples.custom_components.hello_world.example import taxi_pipeline_hello
 from tfx.orchestration import metadata
 from tfx.orchestration.beam.beam_dag_runner import BeamDagRunner
@@ -41,10 +42,10 @@ class TaxiPipelineHelloEndToEndTest(tf.test.TestCase):
   def assertExecutedOnce(self, component: Text) -> None:
     """Check the component is executed exactly once."""
     component_path = os.path.join(self._pipeline_root, component)
-    self.assertTrue(tf.io.gfile.exists(component_path))
-    outputs = tf.io.gfile.listdir(component_path)
+    self.assertTrue(fileio.exists(component_path))
+    outputs = fileio.listdir(component_path)
     for output in outputs:
-      execution = tf.io.gfile.listdir(os.path.join(component_path, output))
+      execution = fileio.listdir(os.path.join(component_path, output))
       self.assertEqual(1, len(execution))
 
   def assertPipelineExecution(self) -> None:
@@ -60,7 +61,7 @@ class TaxiPipelineHelloEndToEndTest(tf.test.TestCase):
             pipeline_root=self._pipeline_root,
             metadata_path=self._metadata_path))
 
-    self.assertTrue(tf.io.gfile.exists(self._metadata_path))
+    self.assertTrue(fileio.exists(self._metadata_path))
     metadata_config = metadata.sqlite_metadata_connection_config(
         self._metadata_path)
     with metadata.Metadata(metadata_config) as m:

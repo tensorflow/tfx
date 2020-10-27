@@ -21,9 +21,10 @@ import os
 from typing import Any, Dict, List, Text
 
 import absl
-import tensorflow as tf
+
 
 from tfx import types
+from tfx.dsl.io import fileio
 from tfx.orchestration import data_types
 from tfx.orchestration import metadata
 from tfx.types import artifact_utils
@@ -44,7 +45,7 @@ def _generate_output_uri(base_output_dir: Text,
 
 def _prepare_output_paths(artifact: types.Artifact):
   """Create output directories for output artifact."""
-  if tf.io.gfile.exists(artifact.uri):
+  if fileio.exists(artifact.uri):
     msg = 'Output artifact uri %s already exists' % artifact.uri
     absl.logging.warning(msg)
     # TODO(b/158689199): We currently simply return as a short-term workaround
@@ -63,14 +64,14 @@ def _prepare_output_paths(artifact: types.Artifact):
   # which can handle permission bits.
   absl.logging.debug('Creating output artifact uri %s as directory',
                      artifact_dir)
-  tf.io.gfile.makedirs(artifact_dir)
+  fileio.makedirs(artifact_dir)
   # TODO(b/147242148): Avoid special-casing the "split_names" property.
   if artifact.type.PROPERTIES and 'split_names' in artifact.type.PROPERTIES:
     split_names = artifact_utils.decode_split_names(artifact.split_names)
     for split in split_names:
       split_dir = os.path.join(artifact.uri, split)
       absl.logging.debug('Creating output split %s as directory', split_dir)
-      tf.io.gfile.makedirs(split_dir)
+      fileio.makedirs(split_dir)
 
 
 class BaseDriver(object):
@@ -100,7 +101,7 @@ class BaseDriver(object):
       for artifact in single_artifacts_list:
         if not artifact.uri:
           raise RuntimeError('Artifact %s does not have uri' % artifact)
-        if not tf.io.gfile.exists(artifact.uri):
+        if not fileio.exists(artifact.uri):
           raise RuntimeError('Artifact uri %s is missing' % artifact.uri)
 
   def _log_properties(self, input_dict: Dict[Text, List[types.Artifact]],

@@ -15,6 +15,7 @@
 import os
 import tensorflow as tf
 
+from tfx.dsl.io import fileio
 from tfx.orchestration import metadata
 from tfx.orchestration.portable import cache_utils
 from tfx.orchestration.portable import execution_publish_utils
@@ -54,7 +55,7 @@ class CacheUtilsTest(test_utils.TfxTest):
                          custom_output_artifacts=None,
                          custom_parameters=None,
                          custom_module_content=None):
-    with tf.io.gfile.GFile(self._module_file_path, 'w+') as f:
+    with fileio.open(self._module_file_path, 'w+') as f:
       f.write(custom_module_content or self._module_file_content)
     return cache_utils.get_cache_context(
         metadata_handler,

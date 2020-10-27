@@ -28,6 +28,7 @@ from absl import logging
 import kfp
 import tensorflow as tf
 
+from tfx.dsl.io import fileio
 from tfx.examples.chicago_taxi_pipeline import taxi_pipeline_kubeflow_gcp
 from tfx.orchestration import data_types
 from tfx.orchestration import pipeline as tfx_pipeline
@@ -211,7 +212,7 @@ class KubeflowGcpPerfTest(kubeflow_test_utils.BaseKubeflowTest):
     kubeflow_dag_runner.KubeflowDagRunner(config=config).run(pipeline)
 
     file_path = os.path.join(self._test_dir, '{}.tar.gz'.format(pipeline_name))
-    self.assertTrue(tf.io.gfile.exists(file_path))
+    self.assertTrue(fileio.exists(file_path))
 
     run_result = client.create_run_from_pipeline_package(
         pipeline_file=file_path, arguments=kwargs)

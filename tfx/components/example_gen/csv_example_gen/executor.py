@@ -27,6 +27,7 @@ import tensorflow as tf
 
 from tfx.components.example_gen import utils
 from tfx.components.example_gen.base_example_gen_executor import BaseExampleGenExecutor
+from tfx.dsl.io import fileio
 from tfx.utils import io_utils
 from tfx_bsl.coders import csv_decoder
 
@@ -125,7 +126,7 @@ def _CsvToExample(  # pylint: disable=invalid-name
   csv_pattern = os.path.join(input_base_uri, split_pattern)
   logging.info('Processing input csv data %s to TFExample.', csv_pattern)
 
-  csv_files = tf.io.gfile.glob(csv_pattern)
+  csv_files = fileio.glob(csv_pattern)
   if not csv_files:
     raise RuntimeError(
         'Split pattern {} does not match any files.'.format(csv_pattern))

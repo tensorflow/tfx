@@ -28,9 +28,10 @@ from typing import Any, Dict, List, Text
 
 import click
 from six import with_metaclass
-import tensorflow as tf
+
 
 from tfx.dsl.components.base import base_driver
+from tfx.dsl.io import fileio
 from tfx.tools.cli import labels
 from tfx.utils import io_utils
 
@@ -99,7 +100,7 @@ class BaseHandler(with_metaclass(abc.ABCMeta, object)):
   def _check_pipeline_dsl_path(self) -> None:
     """Check if pipeline dsl path exists."""
     pipeline_dsl_path = self.flags_dict[labels.PIPELINE_DSL_PATH]
-    if not tf.io.gfile.exists(pipeline_dsl_path):
+    if not fileio.exists(pipeline_dsl_path):
       sys.exit('Invalid pipeline path: {}'.format(pipeline_dsl_path))
 
   def _check_dsl_runner(self) -> None:
@@ -192,7 +193,7 @@ class BaseHandler(with_metaclass(abc.ABCMeta, object)):
     handler_pipeline_path = os.path.join(self._handler_home_dir, pipeline_name,
                                          '')
     # Check if pipeline folder exists.
-    exists = tf.io.gfile.exists(handler_pipeline_path)
+    exists = fileio.exists(handler_pipeline_path)
     if required and not exists:
       sys.exit('Pipeline "{}" does not exist.'.format(pipeline_name))
     elif not required and exists:
@@ -216,13 +217,13 @@ class BaseHandler(with_metaclass(abc.ABCMeta, object)):
     # Check if pipeline root created. If not, it means that the user has not
     # created a run yet or the pipeline is still running for the first time.
     pipeline_root = pipeline_args[labels.PIPELINE_ROOT]
-    if not tf.io.gfile.exists(pipeline_root):
+    if not fileio.exists(pipeline_root):
       sys.exit(
           'Create a run before inferring schema. If pipeline is already running, then wait for it to successfully finish.'
       )
 
     # If pipeline_root exists, then check if SchemaGen output exists.
-    components = tf.io.gfile.listdir(pipeline_root)
+    components = fileio.listdir(pipeline_root)
     if 'SchemaGen' not in components:
       sys.exit(
           'Either SchemaGen component does not exist or pipeline is still running. If pipeline is running, then wait for it to successfully finish.'
@@ -231,12 +232,12 @@ class BaseHandler(with_metaclass(abc.ABCMeta, object)):
     # Get the latest SchemaGen output.
     component_output_dir = os.path.join(pipeline_root, 'SchemaGen')
     schema_dir = os.path.join(component_output_dir, 'schema')
-    schemagen_outputs = tf.io.gfile.listdir(schema_dir)
+    schemagen_outputs = fileio.listdir(schema_dir)
     latest_schema_folder = max(schemagen_outputs, key=int)
 
     # Copy schema to current dir.
     latest_schema_uri = base_driver._generate_output_uri(  # pylint: disable=protected-access
-        component_output_dir, 'schema', latest_schema_folder)
+        component_output_dir, 'schema', int(latest_schema_folder))
     latest_schema_path = os.path.join(latest_schema_uri, 'schema.pbtxt')
     curr_dir_path = os.path.join(os.getcwd(), 'schema.pbtxt')
     io_utils.copy_file(latest_schema_path, curr_dir_path, overwrite=True)

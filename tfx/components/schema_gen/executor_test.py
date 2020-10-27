@@ -21,6 +21,7 @@ from __future__ import print_function
 import os
 import tensorflow as tf
 from tfx.components.schema_gen import executor
+from tfx.dsl.io import fileio
 from tfx.types import artifact_utils
 from tfx.types import standard_artifacts
 from tfx.utils import json_utils
@@ -62,7 +63,7 @@ class ExecutorTest(tf.test.TestCase):
 
     schema_gen_executor = executor.Executor()
     schema_gen_executor.Do(input_dict, output_dict, exec_properties)
-    self.assertNotEqual(0, len(tf.io.gfile.listdir(schema_output.uri)))
+    self.assertNotEqual(0, len(fileio.listdir(schema_output.uri)))
 
 
 if __name__ == '__main__':

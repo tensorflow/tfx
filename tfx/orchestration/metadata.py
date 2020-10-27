@@ -31,6 +31,7 @@ from typing import Any, Dict, List, Optional, Set, Text, Tuple, Type, Union
 import absl
 import six
 import tensorflow as tf
+from tfx.dsl.io import fileio
 from tfx.orchestration import data_types
 from tfx.types import artifact_utils
 from tfx.types.artifact import Artifact
@@ -97,7 +98,7 @@ def sqlite_metadata_connection_config(
   Returns:
     A metadata_store_pb2.ConnectionConfig based on given metadata db uri.
   """
-  tf.io.gfile.makedirs(os.path.dirname(metadata_db_uri))
+  fileio.makedirs(os.path.dirname(metadata_db_uri))
   connection_config = metadata_store_pb2.ConnectionConfig()
   connection_config.sqlite.filename_uri = metadata_db_uri
   connection_config.sqlite.connection_mode = \
@@ -469,7 +470,7 @@ class Metadata(object):
     # TODO(ruoyu): Find a better place / solution to the checksum logic.
     # TODO(ruoyu): SHA instead of MD5.
     if 'module_file' in exec_properties and exec_properties[
-        'module_file'] and tf.io.gfile.exists(exec_properties['module_file']):
+        'module_file'] and fileio.exists(exec_properties['module_file']):
       contents = file_io.read_file_to_string(exec_properties['module_file'])
       execution.properties['checksum_md5'].string_value = tf.compat.as_text(
           tf.compat.as_str_any(

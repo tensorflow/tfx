@@ -22,6 +22,7 @@ import os
 import mock
 import tensorflow as tf
 
+from tfx.dsl.io import fileio
 from tfx.experimental.pipeline_testing import pipeline_recorder_utils
 from tfx.utils import io_utils
 
@@ -33,7 +34,7 @@ class PipelineRecorderUtilsTest(tf.test.TestCase):
     self._base_dir = os.path.join(self.get_temp_dir(), 'base_dir')
     self.src_uri = os.path.join(self._base_dir, 'input')
     self.dest_uri = os.path.join(self._base_dir, 'output')
-    tf.io.gfile.makedirs(self.src_uri)
+    fileio.makedirs(self.src_uri)
     # Writing a string to test.txt file in src_uri
     self.content = 'pipeline recorded'
     io_utils.write_string_file(
@@ -63,7 +64,7 @@ class PipelineRecorderUtilsTest(tf.test.TestCase):
       mock_get_paths.assert_called()
       mock_get_latest_executions.assert_called()
 
-      files = tf.io.gfile.listdir(self.dest_uri)
+      files = fileio.listdir(self.dest_uri)
       self.assertLen(files, 1)
       self.assertEqual(
           io_utils.read_string_file(os.path.join(self.dest_uri, files[0])),
@@ -86,7 +87,7 @@ class PipelineRecorderUtilsTest(tf.test.TestCase):
       mock_get_paths.assert_called()
 
       # Verifying that test.txt has been copied from src_uri to dest_uri
-      files = tf.io.gfile.listdir(self.dest_uri)
+      files = fileio.listdir(self.dest_uri)
       self.assertLen(files, 1)
       self.assertEqual(
           io_utils.read_string_file(os.path.join(self.dest_uri, files[0])),
@@ -112,7 +113,7 @@ class PipelineRecorderUtilsTest(tf.test.TestCase):
       mock_get_latest_executions.assert_called()
 
       # Verifying that test.txt has been copied from src_uri to dest_uri
-      files = tf.io.gfile.listdir(self.dest_uri)
+      files = fileio.listdir(self.dest_uri)
       self.assertLen(files, 1)
       self.assertEqual(
           io_utils.read_string_file(os.path.join(self.dest_uri, files[0])),
@@ -139,7 +140,7 @@ class PipelineRecorderUtilsTest(tf.test.TestCase):
       mock_get_paths.assert_called()
 
       # Verifying that test.txt has been copied from src_uri to dest_uri
-      files = tf.io.gfile.listdir(self.dest_uri)
+      files = fileio.listdir(self.dest_uri)
       self.assertLen(files, 1)
       self.assertEqual(
           io_utils.read_string_file(os.path.join(self.dest_uri, files[0])),

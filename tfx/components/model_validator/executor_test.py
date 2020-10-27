@@ -23,6 +23,7 @@ import tensorflow as tf
 
 from tfx.components.model_validator import constants
 from tfx.components.model_validator import executor
+from tfx.dsl.io import fileio
 from tfx.types import artifact_utils
 from tfx.types import standard_artifacts
 
@@ -72,9 +73,9 @@ class ExecutorTest(tf.test.TestCase):
     model_validator.Do(self._input_dict, self._output_dict, exec_properties)
 
     # Check model validator outputs.
-    self.assertTrue(tf.io.gfile.exists(os.path.join(self._tmp_dir)))
+    self.assertTrue(fileio.exists(os.path.join(self._tmp_dir)))
     self.assertTrue(
-        tf.io.gfile.exists(
+        fileio.exists(
             os.path.join(self._blessing.uri, constants.BLESSED_FILE_NAME)))
 
   def testDoWithoutBlessedModel(self):
@@ -90,9 +91,9 @@ class ExecutorTest(tf.test.TestCase):
     model_validator.Do(self._input_dict, self._output_dict, exec_properties)
 
     # Check model validator outputs.
-    self.assertTrue(tf.io.gfile.exists(os.path.join(self._tmp_dir)))
+    self.assertTrue(fileio.exists(os.path.join(self._tmp_dir)))
     self.assertTrue(
-        tf.io.gfile.exists(
+        fileio.exists(
             os.path.join(self._blessing.uri, constants.BLESSED_FILE_NAME)))
 
 

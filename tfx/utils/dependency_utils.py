@@ -26,10 +26,11 @@ from typing import List, Text
 
 import absl
 import apache_beam as beam
-import tensorflow as tf
+
 
 from tfx import dependencies
 from tfx import version
+from tfx.dsl.io import fileio
 from tfx.utils import io_utils
 
 
@@ -122,7 +123,7 @@ def build_ephemeral_package() -> Text:
 
   # Return the package dir+filename
   dist_dir = os.path.join(tmp_dir, 'dist')
-  files = tf.io.gfile.listdir(dist_dir)
+  files = fileio.listdir(dist_dir)
   if not files:
     raise RuntimeError('Found no package files in %s' % dist_dir)
   elif len(files) > 1:

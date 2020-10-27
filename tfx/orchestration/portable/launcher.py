@@ -17,8 +17,9 @@ from typing import Any, Dict, List, Optional, Text, Type, TypeVar
 
 from absl import logging
 import attr
-import tensorflow as tf
+
 from tfx import types
+from tfx.dsl.io import fileio
 from tfx.orchestration import metadata
 from tfx.orchestration.portable import base_driver_operator
 from tfx.orchestration.portable import base_executor_operator
@@ -287,7 +288,7 @@ class Launcher(object):
           metadata_handler=m, execution_id=execution_id, contexts=contexts)
 
   def _clean_up(self, execution_info: base_executor_operator.ExecutionInfo):
-    tf.io.gfile.rmtree(execution_info.stateful_working_dir)
+    fileio.rmtree(execution_info.stateful_working_dir)
 
   def _update_with_driver_output(self,
                                  driver_output: driver_output_pb2.DriverOutput,
