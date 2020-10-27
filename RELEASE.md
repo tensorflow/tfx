@@ -10,8 +10,12 @@
     portable orchestrator.
 *   Added Placeholder utility library. Placeholder can be used to represent
     not-yet-available value at pipeline authoring time.
-*   Added the LocalDagRunner to allow local pipeline execution without using
-    Apache Beam.
+*   Added `AirflowOrchestrator`, `BeamOrchestrator` and `KubeflowOrchestrator`
+    aliases for the `AirflowDagRunner`, `BeamDagRunner` and `KubeflowDagRunner`
+    classes, respectively. TFX will migrate from the "DagRunner" name to
+    "Orchestrator" instead in a future version.
+*   Added the `LocalOrchestrator` to allow local pipeline execution without
+    using Apache Beam.
 *   Added support for the `tfx.dsl.io.fileio` pluggable filesystem interface,
     with initial support for local files and the Tensorflow GFile filesystem
     implementation.

@@ -12,7 +12,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Definition of Beam TFX runner."""
+"""Local TFX pipeline orchestrator."""
 
 import datetime
 import os
@@ -31,7 +31,7 @@ from tfx.orchestration.launcher import in_process_component_launcher
 from tfx.utils import telemetry_utils
 
 
-class LocalDagRunner(tfx_runner.TfxRunner):
+class LocalOrchestrator(tfx_runner.TfxRunner):
   """Local TFX DAG runner."""
   # TODO(b/171319478): We should use IR-based execution in this DAG runner.
 
@@ -51,7 +51,7 @@ class LocalDagRunner(tfx_runner.TfxRunner):
               docker_component_launcher.DockerComponentLauncher,
           ],
       )
-    super(LocalDagRunner, self).__init__(config)
+    super(LocalOrchestrator, self).__init__(config)
 
   def run(self, tfx_pipeline: pipeline.Pipeline) -> None:
     """Runs given logical pipeline locally.

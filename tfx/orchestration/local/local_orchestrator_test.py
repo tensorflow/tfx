@@ -12,7 +12,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Tests for tfx.orchestration.beam.beam_dag_runner."""
+"""Tests for tfx.orchestration.local.local_orchestrator."""
 
 from __future__ import absolute_import
 from __future__ import division
@@ -31,7 +31,7 @@ from tfx.dsl.components.base import executor_spec
 from tfx.orchestration import pipeline
 from tfx.orchestration.config import pipeline_config
 from tfx.orchestration.launcher import docker_component_launcher
-from tfx.orchestration.local import local_dag_runner
+from tfx.orchestration.local import local_orchestrator
 from tfx.orchestration.metadata import sqlite_metadata_connection_config
 from tfx.types.component_spec import ChannelParameter
 
@@ -122,10 +122,10 @@ def _get_fake_component(spec: types.ComponentSpec):
   return _FakeComponent(spec=spec, instance_name=instance_name)
 
 
-class LocalDagRunnerTest(tf.test.TestCase):
+class LocalOrchestratorTest(tf.test.TestCase):
 
   def setUp(self):
-    super(LocalDagRunnerTest, self).setUp()
+    super(LocalOrchestratorTest, self).setUp()
     _executed_components.clear()
 
   def _getTestPipeline(self):
@@ -166,7 +166,7 @@ class LocalDagRunnerTest(tf.test.TestCase):
     return test_pipeline
 
   def testRun(self):
-    local_dag_runner.LocalDagRunner().run(self._getTestPipeline())
+    local_orchestrator.LocalOrchestrator().run(self._getTestPipeline())
     self.assertEqual(_executed_components, [
         '_FakeComponent.a', '_FakeComponent.b', '_FakeComponent.c',
         '_FakeComponent.d', '_FakeComponent.e'
@@ -176,7 +176,7 @@ class LocalDagRunnerTest(tf.test.TestCase):
     config = pipeline_config.PipelineConfig(
         supported_launcher_classes=[
             docker_component_launcher.DockerComponentLauncher])
-    runner = local_dag_runner.LocalDagRunner(config=config)
+    runner = local_orchestrator.LocalOrchestrator(config=config)
     with self.assertRaisesRegex(RuntimeError, 'No launcher info can be found'):
       runner.run(self._getTestPipeline())
 
