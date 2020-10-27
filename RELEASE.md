@@ -37,6 +37,8 @@
     tfx/examples.
 *   Fixed the run_component script.
 *   Stopped depending on `WTForms`.
+*   Fixed an issue with Transform cache and beam 2.24-2.25 in an interactive
+    notebook that caused it to fail.
 
 ### For pipeline authors
 

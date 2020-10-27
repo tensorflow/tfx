@@ -1125,12 +1125,15 @@ class Executor(base_executor.BaseExecutor):
                     full_span_cache_dir,
                     os.path.join(output_cache_dir, span_cache_dir.key))
 
-          (cache_output
-           | 'WriteCache' >> analyzer_cache.WriteAnalysisCacheToFS(
-               pipeline=pipeline,
-               cache_base_dir=output_cache_dir,
-               sink=self._GetCacheSink(),
-               dataset_keys=full_analyze_dataset_keys_list))
+          # TODO(b/157479287, b/171165988): Remove this condition when beam 2.26
+          # is used.
+          if cache_output:
+            (cache_output
+             | 'WriteCache' >> analyzer_cache.WriteAnalysisCacheToFS(
+                 pipeline=pipeline,
+                 cache_base_dir=output_cache_dir,
+                 sink=self._GetCacheSink(),
+                 dataset_keys=full_analyze_dataset_keys_list))
 
         if compute_statistics or materialization_format is not None:
           # Do not compute pre-transform stats if the input format is raw proto,
