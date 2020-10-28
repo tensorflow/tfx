@@ -17,6 +17,21 @@
     implementation.
 *   SDK and example code now uses `tfx.dsl.io.fileio` instead of `tf.io.gfile`
     when possible for filesystem I/O implementation portability.
+*   From this release TFX will also be hosting nightly packages on
+    https://pypi-nightly.tensorflow.org. To install the nightly package use the
+    following command:
+
+    ```
+    pip install -i https://pypi-nightly.tensorflow.org/simple tfx
+    ```
+    Note: These nightly packages are unstable and breakages are likely to happen.
+    The fix could often take a week or more depending on the complexity
+    involved for the wheels to be available on the PyPI cloud service. You can
+    always use the stable version of TFX available on PyPI by running the
+    command
+    ```
+    pip install tfx
+    ```
 
 ## Breaking changes
 
