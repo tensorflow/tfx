@@ -18,8 +18,6 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import copy
-import os
 from typing import Any, Dict, List, Optional, Text
 
 from absl import logging
@@ -36,32 +34,6 @@ from tfx.proto.orchestration import driver_output_pb2
 from tfx.proto.orchestration import pipeline_pb2
 
 from google.protobuf import json_format
-from ml_metadata.proto import metadata_store_pb2
-
-
-def update_output_artifact(
-    exec_properties: Dict[Text, Any],
-    output_artifact: metadata_store_pb2.Artifact) -> None:
-  """Updates output_artifact for FileBasedExampleGen.
-
-  Updates output_artifact properties by updating existing entries or creating
-  new entries if not already exists.
-
-  Args:
-    exec_properties: execution properties passed to the example gen.
-    output_artifact: the example artifact to be output.
-  """
-  output_artifact.custom_properties[
-      utils.FINGERPRINT_PROPERTY_NAME].string_value = (
-          exec_properties[utils.FINGERPRINT_PROPERTY_NAME])
-  output_artifact.custom_properties[
-      utils.SPAN_PROPERTY_NAME].string_value = str(
-          exec_properties[utils.SPAN_PROPERTY_NAME])
-  # TODO(b/162622803): add default behavior for when version spec not present.
-  if exec_properties[utils.VERSION_PROPERTY_NAME] is not None:
-    output_artifact.custom_properties[
-        utils.VERSION_PROPERTY_NAME].string_value = str(
-            exec_properties[utils.VERSION_PROPERTY_NAME])
 
 
 class Driver(base_driver.BaseDriver, ir_base_driver.BaseDriver):
@@ -122,31 +94,6 @@ class Driver(base_driver.BaseDriver, ir_base_driver.BaseDriver):
 
     return exec_properties
 
-  def _prepare_output_artifacts(
-      self,
-      input_artifacts: Dict[Text, List[types.Artifact]],
-      output_dict: Dict[Text, types.Channel],
-      exec_properties: Dict[Text, Any],
-      execution_id: int,
-      pipeline_info: data_types.PipelineInfo,
-      component_info: data_types.ComponentInfo,
-  ) -> Dict[Text, List[types.Artifact]]:
-    """Overrides BaseDriver._prepare_output_artifacts()."""
-    del input_artifacts
-
-    example_artifact = output_dict[utils.EXAMPLES_KEY].type()
-    base_output_dir = os.path.join(pipeline_info.pipeline_root,
-                                   component_info.component_id)
-
-    example_artifact.uri = base_driver._generate_output_uri(  # pylint: disable=protected-access
-        base_output_dir, utils.EXAMPLES_KEY, execution_id)
-    update_output_artifact(
-        exec_properties,
-        example_artifact.mlmd_artifact)
-    base_driver._prepare_output_paths(example_artifact)  # pylint: disable=protected-access
-
-    return {utils.EXAMPLES_KEY: [example_artifact]}
-
   def run(self, input_dict: Dict[Text, List[types.Artifact]],
           output_dict: Dict[Text, List[types.Artifact]],
           exec_properties: Dict[Text, Any]) -> driver_output_pb2.DriverOutput:
@@ -162,10 +109,4 @@ class Driver(base_driver.BaseDriver, ir_base_driver.BaseDriver):
     for k, v in exec_properties.items():
       if v is not None:
         common_utils.set_metadata_value(result.exec_properties[k], v)
-
-    # Populate output_dict
-    output_example = copy.deepcopy(
-        output_dict[utils.EXAMPLES_KEY][0].mlmd_artifact)
-    update_output_artifact(exec_properties, output_example)
-    result.output_artifacts[utils.EXAMPLES_KEY].artifacts.append(output_example)
     return result

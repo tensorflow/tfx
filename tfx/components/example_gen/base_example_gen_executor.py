@@ -35,6 +35,8 @@ from tfx.dsl.components.base import base_executor
 from tfx.proto import example_gen_pb2
 from tfx.types import artifact_utils
 
+from ml_metadata.proto import metadata_store_pb2
+
 from google.protobuf import json_format
 
 # Default file name for TFRecord output file prefix.
@@ -113,6 +115,32 @@ def _WriteSplit(example_split: beam.pvalue.PCollection,
           | 'Write' >> beam.io.WriteToTFRecord(
               os.path.join(output_split_path, DEFAULT_FILE_NAME),
               file_name_suffix='.gz'))
+
+
+def _UpdateOutputArtifact(exec_properties: Dict[Text, Any],
+                          output_artifact: metadata_store_pb2.Artifact) -> None:
+  """Updates output_artifact for FileBasedExampleGen.
+
+  Updates output_artifact properties by updating existing entries or creating
+  new entries if not already exists.
+
+  Args:
+    exec_properties: execution properties passed to the example gen.
+    output_artifact: the example artifact to be output.
+  """
+  if utils.FINGERPRINT_PROPERTY_NAME in exec_properties:
+    output_artifact.custom_properties[
+        utils.FINGERPRINT_PROPERTY_NAME].string_value = (
+            exec_properties[utils.FINGERPRINT_PROPERTY_NAME])
+  if utils.SPAN_PROPERTY_NAME in exec_properties:
+    output_artifact.custom_properties[
+        utils.SPAN_PROPERTY_NAME].string_value = str(
+            exec_properties[utils.SPAN_PROPERTY_NAME])
+  # TODO(b/162622803): add default behavior for when version spec not present.
+  if exec_properties.get(utils.VERSION_PROPERTY_NAME) is not None:
+    output_artifact.custom_properties[
+        utils.VERSION_PROPERTY_NAME].string_value = str(
+            exec_properties[utils.VERSION_PROPERTY_NAME])
 
 
 class BaseExampleGenExecutor(
@@ -307,4 +335,9 @@ class BaseExampleGenExecutor(
       for output_examples_artifact in output_dict[utils.EXAMPLES_KEY]:
         examples_utils.set_payload_format(
             output_examples_artifact, output_payload_format)
+
+    _UpdateOutputArtifact(
+        exec_properties,
+        artifact_utils.get_single_instance(
+            output_dict[utils.EXAMPLES_KEY]).mlmd_artifact)
     logging.info('Examples generated.')
