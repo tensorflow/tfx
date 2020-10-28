@@ -23,12 +23,8 @@ import os
 import absl
 import tensorflow as tf
 from tfx.components.common_nodes.importer_node import ImporterNode
-from tfx.components.evaluator.component import Evaluator
-from tfx.components.example_gen.csv_example_gen.component import CsvExampleGen
 from tfx.components.pusher.component import Pusher
-from tfx.components.statistics_gen.component import StatisticsGen
 from tfx.components.trainer.component import Trainer
-from tfx.components.transform.component import Transform
 from tfx.dsl.components.base import executor_spec
 from tfx.dsl.io import fileio
 from tfx.extensions.google_cloud_ai_platform.pusher import executor as ai_platform_pusher_executor
@@ -36,7 +32,6 @@ from tfx.extensions.google_cloud_ai_platform.trainer import executor as ai_platf
 from tfx.extensions.google_cloud_ai_platform.tuner import component as ai_platform_tuner_component
 from tfx.orchestration import test_utils
 from tfx.orchestration.kubeflow import test_utils as kubeflow_test_utils
-from tfx.proto import evaluator_pb2
 from tfx.proto import trainer_pb2
 from tfx.proto import tuner_pb2
 from tfx.types import standard_artifacts
@@ -47,14 +42,6 @@ class KubeflowGCPIntegrationTest(kubeflow_test_utils.BaseKubeflowTest):
 
   def setUp(self):
     super(KubeflowGCPIntegrationTest, self).setUp()
-
-    # Example artifacts for testing.
-    self.raw_examples_importer = ImporterNode(
-        instance_name='raw_examples',
-        source_uri=os.path.join(self._testdata_root, 'csv_example_gen'),
-        artifact_type=standard_artifacts.Examples,
-        reimport=True,
-        properties={'split_names': '["train", "eval"]'})
 
     # Transformed Example artifacts for testing.
     self.transformed_examples_importer = ImporterNode(
@@ -115,54 +102,6 @@ class KubeflowGCPIntegrationTest(kubeflow_test_utils.BaseKubeflowTest):
         source_uri=os.path.join(self._testdata_root, 'iris', 'schema'),
         artifact_type=standard_artifacts.Schema,
         reimport=True)
-
-  def testCsvExampleGenOnDataflowRunner(self):
-    """CsvExampleGen-only test pipeline on DataflowRunner invocation."""
-    pipeline_name = 'kubeflow-csv-example-gen-dataflow-test-{}'.format(
-        test_utils.random_id())
-    pipeline = self._create_dataflow_pipeline(pipeline_name, [
-        CsvExampleGen(input_base=self._data_root),
-    ])
-    self._compile_and_run_pipeline(pipeline)
-
-  def testStatisticsGenOnDataflowRunner(self):
-    """StatisticsGen-only test pipeline on DataflowRunner."""
-    pipeline_name = 'kubeflow-statistics-gen-dataflow-test-{}'.format(
-        test_utils.random_id())
-    pipeline = self._create_dataflow_pipeline(pipeline_name, [
-        self.raw_examples_importer,
-        StatisticsGen(examples=self.raw_examples_importer.outputs['result'])
-    ])
-    self._compile_and_run_pipeline(pipeline)
-
-  def testTransformOnDataflowRunner(self):
-    """Transform-only test pipeline on DataflowRunner."""
-    pipeline_name = 'kubeflow-transform-dataflow-test-{}'.format(
-        test_utils.random_id())
-    pipeline = self._create_dataflow_pipeline(pipeline_name, [
-        self.raw_examples_importer, self.schema_importer,
-        Transform(
-            examples=self.raw_examples_importer.outputs['result'],
-            schema=self.schema_importer.outputs['result'],
-            module_file=self._transform_module)
-    ])
-    self._compile_and_run_pipeline(pipeline)
-
-  def testEvaluatorOnDataflowRunner(self):
-    """Evaluator-only test pipeline on DataflowRunner."""
-    pipeline_name = 'kubeflow-evaluator-dataflow-test-{}'.format(
-        test_utils.random_id())
-    pipeline = self._create_dataflow_pipeline(pipeline_name, [
-        self.raw_examples_importer, self.model_1_importer,
-        Evaluator(
-            examples=self.raw_examples_importer.outputs['result'],
-            model=self.model_1_importer.outputs['result'],
-            feature_slicing_spec=evaluator_pb2.FeatureSlicingSpec(specs=[
-                evaluator_pb2.SingleSlicingSpec(
-                    column_for_slicing=['trip_start_hour'])
-            ]))
-    ])
-    self._compile_and_run_pipeline(pipeline)
 
   def _getCaipTrainingArgs(self, pipeline_name):
     """Training args for Google CAIP Training."""
