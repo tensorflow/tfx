@@ -613,9 +613,7 @@ class LauncherTest(test_utils.TfxTest):
         pipeline_node=self._importer,
         mlmd_connection=self._mlmd_connection,
         pipeline_info=self._pipeline_info,
-        pipeline_runtime_spec=self._pipeline_runtime_spec,
-        executor_spec=self._trainer_executor_spec,
-        custom_executor_operators=self._test_executor_operators)
+        pipeline_runtime_spec=self._pipeline_runtime_spec)
     execution_metadata = test_launcher.launch()
     mock_import_node_handler.run.assert_called_once_with(
         self._mlmd_connection, self._importer, self._pipeline_info,
@@ -638,9 +636,7 @@ class LauncherTest(test_utils.TfxTest):
         pipeline_node=self._resolver,
         mlmd_connection=self._mlmd_connection,
         pipeline_info=self._pipeline_info,
-        pipeline_runtime_spec=self._pipeline_runtime_spec,
-        executor_spec=self._trainer_executor_spec,
-        custom_executor_operators=self._test_executor_operators)
+        pipeline_runtime_spec=self._pipeline_runtime_spec)
     execution_metadata = test_launcher.launch()
     mock_resolver_node_handler.run.assert_called_once_with(
         self._mlmd_connection, self._resolver, self._pipeline_info,

@@ -81,7 +81,8 @@ class Compiler(object):
 
   def _compile_node(
       self, tfx_node: base_node.BaseNode, compile_context: _CompilerContext,
-      deployment_config: pipeline_pb2.IntermediateDeploymentConfig
+      deployment_config: pipeline_pb2.IntermediateDeploymentConfig,
+      enable_cache: bool,
   ) -> pipeline_pb2.PipelineNode:
     """Compiles an individual TFX node into a PipelineNode proto.
 
@@ -90,6 +91,7 @@ class Compiler(object):
       compile_context: Resources needed to compile the node.
       deployment_config: Intermediate deployment config to set. Will include
         related specs for executors, drivers and platform specific configs.
+      enable_cache: whether cache is enabled
 
     Returns:
       A PipelineNode proto that encodes information of the node.
@@ -139,6 +141,15 @@ class Compiler(object):
             context_query = channel.context_queries.add()
             context_query.type.CopyFrom(producer_context.type)
             context_query.name.CopyFrom(producer_context.name)
+      else:
+        # Caveat: portable core requires every channel to have at least one
+        # Contex. But For cases like system nodes and producer-consumer
+        # pipelines, a channel may not have contexts at all. In these cases,
+        # we want to use the pipeline level context as the input channel
+        # context.
+        context_query = channel.context_queries.add()
+        context_query.type.CopyFrom(pipeline_context_pb.type)
+        context_query.name.CopyFrom(pipeline_context_pb.name)
 
       artifact_type = value.type._get_artifact_type()  # pylint: disable=protected-access
       channel.artifact_query.type.CopyFrom(artifact_type)
@@ -237,7 +248,7 @@ class Compiler(object):
         ]))
 
     # Step 8: Node execution options
-    # TODO(kennethyang): Add support for node execution options.
+    node.execution_options.caching_options.enable_cache = enable_cache
 
     # Step 9: Per-node platform config
     if isinstance(tfx_node, base_component.BaseComponent):
@@ -278,7 +289,8 @@ class Compiler(object):
       deployment_config.metadata_connection_config.Pack(
           tfx_pipeline.metadata_connection_config)
     for node in tfx_pipeline.components:
-      node_pb = self._compile_node(node, context, deployment_config)
+      node_pb = self._compile_node(node, context, deployment_config,
+                                   tfx_pipeline.enable_cache)
       pipeline_or_node = pipeline_pb.PipelineOrNode()
       pipeline_or_node.pipeline_node.CopyFrom(node_pb)
       # TODO(b/158713812): Support sub-pipeline.

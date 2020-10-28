@@ -143,8 +143,10 @@ class Launcher(object):
     self._driver_operators.update(DEFAULT_DRIVER_OPERATORS)
     self._driver_operators.update(custom_driver_operators or {})
 
-    self._executor_operator = self._executor_operators[type(executor_spec)](
-        executor_spec, platform_config)
+    self._executor_operator = None
+    if executor_spec:
+      self._executor_operator = self._executor_operators[type(executor_spec)](
+          executor_spec, platform_config)
     self._output_resolver = outputs_utils.OutputsResolver(
         pipeline_node=self._pipeline_node,
         pipeline_info=self._pipeline_info,
@@ -161,6 +163,9 @@ class Launcher(object):
     self._system_node_handler = None
     if system_node_handler_class:
       self._system_node_handler = system_node_handler_class()
+
+    assert bool(self._executor_operator) or bool(self._system_node_handler), \
+        'A node must be system node or have an executor.'
 
   def _prepare_execution(self) -> _PrepareExecutionResult:
     """Prepares inputs, outputs and execution properties for actual execution."""

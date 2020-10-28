@@ -115,12 +115,13 @@ def get_cache_context(
   for key in sorted(output_artifacts or {}):
     h.update(tf.compat.as_bytes(key))
     for artifact in output_artifacts[key]:
-      artifact_no_uri = copy.deepcopy(artifact)
-      # Output uris should not be taken into consideration as cache key.
-      artifact_no_uri.uri = ''
+      stateless_artifact = copy.deepcopy(artifact)
+      # Output uri and name should not be taken into consideration as cache key.
+      stateless_artifact.uri = ''
+      stateless_artifact.name = ''
       h.update(
           tf.compat.as_bytes(
-              artifact_no_uri.mlmd_artifact.SerializeToString(
+              stateless_artifact.mlmd_artifact.SerializeToString(
                   deterministic=True)))
   parameters = parameters or {}
   for key, value in sorted(parameters.items()):

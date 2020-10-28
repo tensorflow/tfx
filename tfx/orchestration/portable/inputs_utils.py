@@ -98,11 +98,14 @@ def _resolve_single_channel(
 
   artifact_type = channel.artifact_query.type
   output_key = channel.output_key or None
-  contexts = filter(None, [
+  # 1. filter(None, list) filters "false" value out from the list
+  # 2. even if the filter() result is empty, its result is considered as "true"
+  #    so turning it into a list explicitly.
+  contexts = list(filter(None, [
       metadata_handler.store.get_context_by_type_and_name(
           context_query.type.name, common_utils.get_value(context_query.name))
       for context_query in channel.context_queries
-  ])
+  ]))
   return get_qualified_artifacts(
       metadata_handler=metadata_handler,
       contexts=contexts,

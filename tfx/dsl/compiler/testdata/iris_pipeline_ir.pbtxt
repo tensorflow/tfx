@@ -106,6 +106,11 @@ nodes {
         }
       }
     }
+    execution_options {
+      caching_options {
+        enable_cache: true
+      }
+    }
     downstream_nodes: "Evaluator"
     downstream_nodes: "StatisticsGen"
     downstream_nodes: "Trainer"
@@ -218,6 +223,11 @@ nodes {
         }
       }
     }
+    execution_options {
+      caching_options {
+        enable_cache: true
+      }
+    }
   }
 }
 nodes {
@@ -266,6 +276,16 @@ nodes {
         key: "model"
         value {
           channels {
+            context_queries {
+              type {
+                name: "pipeline"
+              }
+              name {
+                field_value {
+                  string_value: "iris"
+                }
+              }
+            }
             artifact_query {
               type {
                 name: "Model"
@@ -278,6 +298,16 @@ nodes {
         key: "model_blessing"
         value {
           channels {
+            context_queries {
+              type {
+                name: "pipeline"
+              }
+              name {
+                field_value {
+                  string_value: "iris"
+                }
+              }
+            }
             artifact_query {
               type {
                 name: "ModelBlessing"
@@ -288,6 +318,11 @@ nodes {
       }
       resolver_config {
         resolver_policy: LATEST_BLESSED_MODEL
+      }
+    }
+    execution_options {
+      caching_options {
+        enable_cache: true
       }
     }
     downstream_nodes: "Evaluator"
@@ -413,6 +448,11 @@ nodes {
         }
       }
     }
+    execution_options {
+      caching_options {
+        enable_cache: true
+      }
+    }
     upstream_nodes: "CsvExampleGen"
     downstream_nodes: "ExampleValidator"
     downstream_nodes: "SchemaGen"
@@ -536,6 +576,11 @@ nodes {
             int_value: 1
           }
         }
+      }
+    }
+    execution_options {
+      caching_options {
+        enable_cache: true
       }
     }
     upstream_nodes: "StatisticsGen"
@@ -708,6 +753,11 @@ nodes {
             string_value: "[]"
           }
         }
+      }
+    }
+    execution_options {
+      caching_options {
+        enable_cache: true
       }
     }
     upstream_nodes: "SchemaGen"
@@ -909,6 +959,11 @@ nodes {
             string_value: "{\n  \"num_steps\": 2000\n}"
           }
         }
+      }
+    }
+    execution_options {
+      caching_options {
+        enable_cache: true
       }
     }
     upstream_nodes: "CsvExampleGen"
@@ -1141,6 +1196,11 @@ nodes {
         }
       }
     }
+    execution_options {
+      caching_options {
+        enable_cache: true
+      }
+    }
     upstream_nodes: "CsvExampleGen"
     upstream_nodes: "ResolverNode.latest_blessed_model_resolver"
     upstream_nodes: "Trainer"
@@ -1312,6 +1372,11 @@ nodes {
             string_value: "{\n  \"filesystem\": {\n    \"base_directory\": \"iris_root/serving_model/iris\"\n  }\n}"
           }
         }
+      }
+    }
+    execution_options {
+      caching_options {
+        enable_cache: true
       }
     }
     upstream_nodes: "Evaluator"

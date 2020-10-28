@@ -25,7 +25,7 @@ from tfx.proto.orchestration import pipeline_pb2
 from tfx.types import artifact_utils
 from tfx.types.value_artifact import ValueArtifact
 
-_EXECUTION_PREFIX = 'execution_'
+_EXECUTION = 'execution'
 _STATEFUL_WORKING_DIR = 'stateful_working_dir'
 _EXECUTION_OUTPUT_FILE = 'executor_output.pb'
 _VALUE_ARTIFACT_FILE_NAME = 'value'
@@ -81,8 +81,7 @@ class OutputsResolver:
     for key, output_spec in self._pipeline_node.outputs.outputs.items():
       artifact = artifact_utils.deserialize_artifact(
           output_spec.artifact_spec.type)
-      artifact.uri = os.path.join(self._node_dir,
-                                  _EXECUTION_PREFIX + str(execution_id), key)
+      artifact.uri = os.path.join(self._node_dir, key, str(execution_id))
       if isinstance(artifact, ValueArtifact):
         artifact.uri = os.path.join(artifact.uri, _VALUE_ARTIFACT_FILE_NAME)
       # artifact.name will contain the set of information to track its creation
@@ -105,7 +104,7 @@ class OutputsResolver:
   def get_executor_output_uri(self, execution_id: int):
     """Generates executor output uri given execution_id."""
     execution_dir = os.path.join(self._node_dir,
-                                 _EXECUTION_PREFIX + str(execution_id))
+                                 _EXECUTION, str(execution_id))
     fileio.makedirs(execution_dir)
     executor_output_uri = os.path.join(execution_dir, _EXECUTION_OUTPUT_FILE)
     return executor_output_uri

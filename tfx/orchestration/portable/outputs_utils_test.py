@@ -93,7 +93,7 @@ class OutputUtilsTest(test_utils.TfxTest):
     self.assertLen(output_artifacts['output_3'], 1)
 
     artifact_1 = output_artifacts['output_1'][0]
-    self.assertRegex(artifact_1.uri, '.*/test_node/execution_1/output_1')
+    self.assertRegex(artifact_1.uri, '.*/test_node/output_1/1')
     self.assertRegex(artifact_1.name,
                      'test_pipeline:test_run_0:test_node:output_1:0')
     self.assertProtoEquals(
@@ -103,7 +103,7 @@ class OutputUtilsTest(test_utils.TfxTest):
         """, artifact_1.artifact_type)
 
     artifact_2 = output_artifacts['output_2'][0]
-    self.assertRegex(artifact_2.uri, '.*/test_node/execution_1/output_2')
+    self.assertRegex(artifact_2.uri, '.*/test_node/output_2/1')
     self.assertRegex(artifact_2.name,
                      'test_pipeline:test_run_0:test_node:output_2:0')
     self.assertProtoEquals(
@@ -114,7 +114,7 @@ class OutputUtilsTest(test_utils.TfxTest):
 
     artifact_3 = output_artifacts['output_3'][0]
     self.assertRegex(artifact_3.uri,
-                     '.*/test_node/execution_1/output_3/value')
+                     '.*/test_node/output_3/1/value')
     self.assertRegex(artifact_3.name,
                      'test_pipeline:test_run_0:test_node:output_3:0')
     self.assertProtoEquals(
@@ -126,7 +126,7 @@ class OutputUtilsTest(test_utils.TfxTest):
   def testGetExecutorOutputUri(self):
     executor_output_uri = self._output_resolver.get_executor_output_uri(1)
     self.assertRegex(executor_output_uri,
-                     '.*/test_node/execution_1/executor_output.pb')
+                     '.*/test_node/execution/1/executor_output.pb')
     # Verify that executor_output_uri is writable.
     with fileio.open(executor_output_uri, mode='w') as f:
       executor_output = execution_result_pb2.ExecutorOutput()
