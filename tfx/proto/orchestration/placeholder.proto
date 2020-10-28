@@ -123,7 +123,7 @@ message Placeholder {
     INPUT_ARTIFACT = 0;
     OUTPUT_ARTIFACT = 1;
     EXEC_PROPERTY = 2;
-    //TODO(b/168139972): Add CONTEXT Type.
+    RUNTIME_INFO = 3;
   }
   // Required. Type of the placeholder.
   Type type = 1;

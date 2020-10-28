@@ -16,7 +16,9 @@
 
 import tensorflow as tf
 from tfx.dsl.compiler import placeholder_utils
+from tfx.orchestration.portable import base_executor_operator
 from tfx.proto import infra_validator_pb2
+from tfx.proto.orchestration import pipeline_pb2
 from tfx.proto.orchestration import placeholder_pb2
 from tfx.types import artifact_utils
 from tfx.types import standard_artifacts
@@ -24,6 +26,7 @@ from tfx.types import standard_artifacts
 from google.protobuf import descriptor_pb2
 from google.protobuf import json_format
 from google.protobuf import text_format
+from ml_metadata.proto import metadata_store_pb2
 
 # Concatenate the URI of `examples` input artifact's `train` split with /1
 CONCAT_SPLIT_URI_EXPRESSION = """
@@ -75,18 +78,26 @@ class PlaceholderUtilsTest(tf.test.TestCase):
     serving_spec = infra_validator_pb2.ServingSpec()
     serving_spec.tensorflow_serving.tags.extend(["latest", "1.15.0-gpu"])
     self._resolution_context = placeholder_utils.ResolutionContext(
-        input_dict={
-            "model": [standard_artifacts.Model()],
-            "examples": examples,
-        },
-        output_dict={"blessing": [standard_artifacts.ModelBlessing()]},
-        exec_properties={
-            "proto_property":
-                json_format.MessageToJson(
-                    message=serving_spec,
-                    sort_keys=True,
-                    preserving_proto_field_name=True)
-        })
+        exec_info=base_executor_operator.ExecutionInfo(
+            input_dict={
+                "model": [standard_artifacts.Model()],
+                "examples": examples,
+            },
+            output_dict={"blessing": [standard_artifacts.ModelBlessing()]},
+            exec_properties={
+                "proto_property":
+                    json_format.MessageToJson(
+                        message=serving_spec,
+                        sort_keys=True,
+                        preserving_proto_field_name=True)
+            },
+            executor_output_uri="test_executor_output_uri",
+            stateful_working_dir="test_stateful_working_dir",
+            pipeline_node=pipeline_pb2.PipelineNode(
+                node_info=pipeline_pb2.NodeInfo(
+                    type=metadata_store_pb2.ExecutionType(
+                        name="infra_validator"))),
+            pipeline_info=pipeline_pb2.PipelineInfo(id="test_pipeline_id")))
 
   def testConcatArtifactUri(self):
     pb = text_format.Parse(CONCAT_SPLIT_URI_EXPRESSION,
@@ -173,6 +184,43 @@ class PlaceholderUtilsTest(tf.test.TestCase):
     self.assertEqual(
         placeholder_utils.resolve_placeholder_expression(
             pb, self._resolution_context), 1.000000009)
+
+  def testContextPlaceholderSimple(self):
+    placeholder_expression = """
+      placeholder {
+        type: RUNTIME_INFO
+        key: "executor_output_uri"
+      }
+    """
+    pb = text_format.Parse(placeholder_expression,
+                           placeholder_pb2.PlaceholderExpression())
+    self.assertEqual(
+        placeholder_utils.resolve_placeholder_expression(
+            pb, self._resolution_context), "test_executor_output_uri")
+
+  def testProtoContextPlaceholderMessageField(self):
+    placeholder_expression = """
+      operator {
+        proto_op {
+          expression {
+            placeholder {
+              type: RUNTIME_INFO
+              key: "node_info"
+            }
+          }
+          proto_schema {
+            message_type: "tfx.orchestration.NodeInfo"
+          }
+          proto_field_path: ".type"
+          proto_field_path: ".name"
+        }
+      }
+    """
+    pb = text_format.Parse(placeholder_expression,
+                           placeholder_pb2.PlaceholderExpression())
+    self.assertEqual(
+        placeholder_utils.resolve_placeholder_expression(
+            pb, self._resolution_context), "infra_validator")
 
 
 if __name__ == "__main__":

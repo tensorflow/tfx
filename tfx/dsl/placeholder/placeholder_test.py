@@ -200,6 +200,19 @@ class PlaceholderTest(tf.test.TestCase):
         }
     """)
 
+  def testRuntimeInfoSimple(self):
+    self._assert_placeholder_pb_equal(
+        ph.runtime_info('platform_config'), """
+        placeholder {
+          type: RUNTIME_INFO
+          key: "platform_config"
+        }
+    """)
+
+  def testRuntimeInfoInvalidKey(self):
+    with self.assertRaises(ValueError):
+      ph.runtime_info('invalid_key')
+
 
 if __name__ == '__main__':
   tf.test.main()

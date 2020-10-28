@@ -14,9 +14,11 @@
 """Utilities to evaluate and resolve Placeholders."""
 
 import re
-from typing import Any, Callable, Dict, Mapping, Sequence
+from typing import Any, Callable, Dict
 
 import attr
+from tfx.dsl.placeholder import placeholder as ph
+from tfx.orchestration.portable import base_executor_operator
 from tfx.proto.orchestration import placeholder_pb2
 from tfx.types import artifact
 from tfx.types import artifact_utils
@@ -31,20 +33,17 @@ from google.protobuf import text_format
 
 @attr.s(auto_attribs=True, frozen=True)
 class ResolutionContext:
-  """A struct to store information for needed for resolution.
+  """A struct to store information needed for resolution.
 
   Attributes:
-    input_dict: A mapping from input artifact key to Artifacts, to help resolve
-      input artifact related placeholders.
-    output_dict: A mapping from output artifact key to Artifacts, to help
-      resolve output artifact related placeholders.
-    exec_properties: A mapping from execution property key to other execution
-      properties, to help resolve output artifact related placeholders.
+    exec_info: An ExecutionInfo object that includes needed information to
+      render all kinds of placeholders.
+    executor_spec: An executor spec proto for rendering context placeholder.
+    platform_config: A platform config proto for rendering context placeholder.
   """
-  input_dict: Mapping[str, Sequence[artifact.Artifact]] = None
-  output_dict: Mapping[str, Sequence[artifact.Artifact]] = None
-  exec_properties: Mapping[str, Any] = None
-  # TODO(b/168139972): Add context for Context-type placeholder.
+  exec_info: base_executor_operator.ExecutionInfo = None
+  executor_spec: message.Message = None
+  platform_config: message.Message = None
 
 
 def resolve_placeholder_expression(
@@ -59,6 +58,10 @@ def resolve_placeholder_expression(
   Returns:
     Resolved expression value.
   """
+  if not context.exec_info.pipeline_node or not context.exec_info.pipeline_info:
+    raise ValueError(
+        "Pipeline node or pipeline info is missing from the placeholder ResolutionContext."
+    )
   return _ExpressionResolver(context).resolve(expression)
 
 
@@ -86,7 +89,28 @@ class _ExpressionResolver:
   """
 
   def __init__(self, context: ResolutionContext):
-    self._context = context
+    self._resolution_values = {
+        placeholder_pb2.Placeholder.Type.INPUT_ARTIFACT:
+            context.exec_info.input_dict,
+        placeholder_pb2.Placeholder.Type.OUTPUT_ARTIFACT:
+            context.exec_info.output_dict,
+        placeholder_pb2.Placeholder.Type.EXEC_PROPERTY:
+            context.exec_info.exec_properties,
+        placeholder_pb2.Placeholder.Type.RUNTIME_INFO: {
+            ph.RuntimeInfoKey.EXECUTOR_SPEC.value:
+                context.executor_spec,
+            ph.RuntimeInfoKey.PLATFORM_CONFIG.value:
+                context.platform_config,
+            ph.RuntimeInfoKey.STATEFUL_WORKING_DIR.value:
+                context.exec_info.stateful_working_dir,
+            ph.RuntimeInfoKey.EXECUTOR_OUTPUT_URI.value:
+                context.exec_info.executor_output_uri,
+            ph.RuntimeInfoKey.NODE_INFO.value:
+                context.exec_info.pipeline_node.node_info,
+            ph.RuntimeInfoKey.PIPELINE_INFO.value:
+                context.exec_info.pipeline_info,
+        }
+    }
 
   def resolve(self, expression: placeholder_pb2.PlaceholderExpression) -> Any:
     """Recursively evaluates a placeholder expression."""
@@ -103,16 +127,8 @@ class _ExpressionResolver:
   def _resolve_placeholder(self,
                            placeholder: placeholder_pb2.Placeholder) -> Any:
     """Evaluates a placeholder using the contexts."""
-    context_kinds = {
-        placeholder_pb2.Placeholder.Type.INPUT_ARTIFACT:
-            self._context.input_dict,
-        placeholder_pb2.Placeholder.Type.OUTPUT_ARTIFACT:
-            self._context.output_dict,
-        placeholder_pb2.Placeholder.Type.EXEC_PROPERTY:
-            self._context.exec_properties,
-    }
     try:
-      context = context_kinds[placeholder.type]
+      context = self._resolution_values[placeholder.type]
     except KeyError as e:
       raise KeyError(
           f"Unsupported placeholder type: {placeholder.type}.") from e
@@ -182,15 +198,23 @@ class _ExpressionResolver:
     """Evaluates the proto operator."""
     raw_message = self.resolve(op.expression)
 
-    pool = descriptor_pool.DescriptorPool()
+    pool = descriptor_pool.Default()
     for file_descriptor in op.proto_schema.file_descriptors.file:
       pool.Add(file_descriptor)
     message_descriptor = pool.FindMessageTypeByName(
         op.proto_schema.message_type)
     factory = message_factory.MessageFactory(pool)
     message_type = factory.GetPrototype(message_descriptor)
-    value = message_type()
-    json_format.Parse(raw_message, value, descriptor_pool=pool)
+
+    if isinstance(raw_message, str):
+      value = message_type()
+      json_format.Parse(raw_message, value, descriptor_pool=pool)
+    elif isinstance(raw_message, message.Message):
+      value = raw_message
+    else:
+      raise ValueError(
+          f"Got unsupported value type for proto operator: {type(raw_message)}."
+      )
 
     if op.proto_field_path:
       for field in op.proto_field_path:
@@ -202,7 +226,7 @@ class _ExpressionResolver:
           value = value[map_key[0]]
           continue
         index = re.findall(r"\[(\d+)\]", field)
-        if len(index) == 1 and str.isdecimal(index[0]):
+        if index and str.isdecimal(index[0]):
           value = value[int(index[0])]
           continue
         raise ValueError(f"Got unsupported proto field path: {field}")
