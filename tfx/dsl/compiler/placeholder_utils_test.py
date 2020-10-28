@@ -208,9 +208,6 @@ class PlaceholderUtilsTest(tf.test.TestCase):
               key: "node_info"
             }
           }
-          proto_schema {
-            message_type: "tfx.orchestration.NodeInfo"
-          }
           proto_field_path: ".type"
           proto_field_path: ".name"
         }

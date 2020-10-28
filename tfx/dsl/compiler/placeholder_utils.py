@@ -198,18 +198,19 @@ class _ExpressionResolver:
     """Evaluates the proto operator."""
     raw_message = self.resolve(op.expression)
 
-    pool = descriptor_pool.Default()
-    for file_descriptor in op.proto_schema.file_descriptors.file:
-      pool.Add(file_descriptor)
-    message_descriptor = pool.FindMessageTypeByName(
-        op.proto_schema.message_type)
-    factory = message_factory.MessageFactory(pool)
-    message_type = factory.GetPrototype(message_descriptor)
-
     if isinstance(raw_message, str):
+      # We need descriptor pool to parse encoded raw messages.
+      pool = descriptor_pool.Default()
+      for file_descriptor in op.proto_schema.file_descriptors.file:
+        pool.Add(file_descriptor)
+      message_descriptor = pool.FindMessageTypeByName(
+          op.proto_schema.message_type)
+      factory = message_factory.MessageFactory(pool)
+      message_type = factory.GetPrototype(message_descriptor)
       value = message_type()
       json_format.Parse(raw_message, value, descriptor_pool=pool)
     elif isinstance(raw_message, message.Message):
+      # Message such as platform config should not be encoded.
       value = raw_message
     else:
       raise ValueError(
