@@ -86,10 +86,9 @@ class BaseComponent(with_metaclass(abc.ABCMeta, base_node.BaseNode)):
       spec: types.ComponentSpec object for this component instance.
       custom_executor_spec: Optional custom executor spec overriding the default
         executor specified in the component attribute.
-      instance_name: Deprecated. Please set `id` directly using `with_id()`
-        function or `.id` setter in the `BaseNode` class. The pipeline
-        assembling will fail if there are two nodes in the pipeline with the
-        same id.
+      instance_name: Optional unique identifying name for this instance of the
+        component in the pipeline. Required if two instances of the same
+        component is used in the pipeline.
     """
     if custom_executor_spec:
       if not isinstance(custom_executor_spec, executor_spec.ExecutorSpec):
