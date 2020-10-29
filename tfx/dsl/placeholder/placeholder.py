@@ -15,10 +15,12 @@
 
 import abc
 import enum
-from typing import cast
-from typing import Union
-
+from typing import Optional, Union, cast
+from tfx import types
 from tfx.proto.orchestration import placeholder_pb2
+from tfx.utils import proto_utils
+
+from google.protobuf import message
 
 
 class _PlaceholderOperator(abc.ABC):
@@ -32,7 +34,9 @@ class _PlaceholderOperator(abc.ABC):
 
   @abc.abstractmethod
   def encode(
-      self, sub_expression_pb: placeholder_pb2.PlaceholderExpression
+      self,
+      sub_expression_pb: placeholder_pb2.PlaceholderExpression,
+      component_spec: types.ComponentSpec = None
   ) -> placeholder_pb2.PlaceholderExpression:
     pass
 
@@ -48,8 +52,12 @@ class _ArtifactUriOperator(_PlaceholderOperator):
     self._split = split
 
   def encode(
-      self, sub_expression_pb: placeholder_pb2.PlaceholderExpression
+      self,
+      sub_expression_pb: placeholder_pb2.PlaceholderExpression,
+      component_spec: Optional[types.ComponentSpec] = None
   ) -> placeholder_pb2.PlaceholderExpression:
+    del component_spec  # Unused by ArtifactUriOperator
+
     result = placeholder_pb2.PlaceholderExpression()
     result.operator.artifact_uri_op.expression.CopyFrom(sub_expression_pb)
     if self._split:
@@ -64,8 +72,12 @@ class _ArtifactValueOperator(_PlaceholderOperator):
   """
 
   def encode(
-      self, sub_expression_pb: placeholder_pb2.PlaceholderExpression
+      self,
+      sub_expression_pb: placeholder_pb2.PlaceholderExpression,
+      component_spec: Optional[types.ComponentSpec] = None
   ) -> placeholder_pb2.PlaceholderExpression:
+    del component_spec  # Unused by ArtifactValueOperator
+
     result = placeholder_pb2.PlaceholderExpression()
     result.operator.artifact_value_op.expression.CopyFrom(sub_expression_pb)
     return result
@@ -82,8 +94,12 @@ class _IndexOperator(_PlaceholderOperator):
     self._index = index
 
   def encode(
-      self, sub_expression_pb: placeholder_pb2.PlaceholderExpression
+      self,
+      sub_expression_pb: placeholder_pb2.PlaceholderExpression,
+      component_spec: Optional[types.ComponentSpec] = None
   ) -> placeholder_pb2.PlaceholderExpression:
+    del component_spec  # Unused by IndexOperator
+
     result = placeholder_pb2.PlaceholderExpression()
     result.operator.index_op.expression.CopyFrom(sub_expression_pb)
     result.operator.index_op.index = self._index
@@ -102,12 +118,15 @@ class _ConcatOperator(_PlaceholderOperator):
     self._right = right
 
   def encode(
-      self, sub_expression_pb: placeholder_pb2.PlaceholderExpression
+      self,
+      sub_expression_pb: placeholder_pb2.PlaceholderExpression,
+      component_spec: Optional[types.ComponentSpec] = None
   ) -> placeholder_pb2.PlaceholderExpression:
+    del component_spec  # Unused by ConcatOperator
+
     # ConcatOperator's proto version contains multiple placeholder expressions
     # as operands. For convenience, the Python version is implemented taking
     # only two operands.
-
     if self._right:
       # Resolve other expression
       if isinstance(self._right, Placeholder):
@@ -164,11 +183,34 @@ class _ProtoOperator(_PlaceholderOperator):
     self._proto_field_path.append(extra_path)
 
   def encode(
-      self, sub_expression_pb: placeholder_pb2.PlaceholderExpression
+      self,
+      sub_expression_pb: placeholder_pb2.PlaceholderExpression,
+      component_spec: Optional[types.ComponentSpec] = None
   ) -> placeholder_pb2.PlaceholderExpression:
     result = placeholder_pb2.PlaceholderExpression()
     result.operator.proto_op.expression.CopyFrom(sub_expression_pb)
     result.operator.proto_op.proto_field_path.extend(self._proto_field_path)
+
+    # Attach proto descriptor if available through component spec.
+    if (component_spec and sub_expression_pb.placeholder.type ==
+        placeholder_pb2.Placeholder.EXEC_PROPERTY):
+      exec_property_name = sub_expression_pb.placeholder.key
+      if exec_property_name not in component_spec.PARAMETERS:
+        raise ValueError(
+            f"Can't find provided placeholder key {exec_property_name} in "
+            "component spec's exec properties. "
+            f"Available exec property keys: {component_spec.PARAMETERS.keys()}."
+        )
+      execution_param = component_spec.PARAMETERS[exec_property_name]
+      if not issubclass(execution_param.type, message.Message):
+        raise ValueError(
+            "Can't apply placehodler proto operator on non-proto type "
+            f"exec property. Got {execution_param.type}.")
+      fd_set = result.operator.proto_op.proto_schema.file_descriptors
+      for fd in proto_utils.gather_file_descriptors(
+          execution_param.type.DESCRIPTOR):
+        fd.CopyToProto(fd_set.file.add())
+
     return result
 
 
@@ -189,12 +231,15 @@ class Placeholder(abc.ABC):
     self._operators.append(_ConcatOperator(left=left))
     return self
 
-  def encode(self) -> placeholder_pb2.PlaceholderExpression:
+  def encode(
+      self,
+      component_spec: Optional[types.ComponentSpec] = None
+  ) -> placeholder_pb2.PlaceholderExpression:
     result = placeholder_pb2.PlaceholderExpression()
     result.placeholder.type = self._type
     result.placeholder.key = self._key
     for op in self._operators:
-      result = op.encode(result)
+      result = op.encode(result, component_spec)
     return result
 
 

@@ -40,5 +40,7 @@ sh_binary(
         "//tfx/proto/orchestration:local_deployment_config_pb2.py",
         "//tfx/proto/orchestration:pipeline_pb2.py",
         "//tfx/proto/orchestration:placeholder_pb2.py",
+        "//tfx/utils/testdata:bar_pb2.py",
+        "//tfx/utils/testdata:foo_pb2.py",
     ],
 )

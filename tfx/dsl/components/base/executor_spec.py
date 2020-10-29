@@ -19,10 +19,10 @@ from __future__ import division
 from __future__ import print_function
 
 import abc
-from typing import Iterable, List, Text, Type
+from typing import Iterable, List, Optional, Text, Type
 
 from six import with_metaclass
-
+from tfx import types
 from tfx.dsl.components.base import base_executor
 from tfx.proto.orchestration import executable_spec_pb2
 from tfx.utils import import_utils
@@ -37,10 +37,18 @@ class ExecutorSpec(with_metaclass(abc.ABCMeta, json_utils.Jsonable)):
   An instance of ExecutorSpec describes the implementation of a component.
   """
 
-  def encode(self) -> message.Message:
+  def encode(
+      self,
+      component_spec: Optional[types.ComponentSpec] = None) -> message.Message:
     """Encodes ExecutorSpec into an IR proto for compiling.
 
     This method will be used by DSL compiler to generate the corresponding IR.
+
+    Args:
+      component_spec: Optional. The ComponentSpec to help with the encoding.
+
+    Returns:
+      An executor spec proto.
     """
     # TODO(b/158712976, b/161286496): Serialize executor specs for different
     # platforms.
@@ -92,7 +100,9 @@ class ExecutorClassSpec(ExecutorSpec):
     executor_class = import_utils.import_class_by_path(executor_class_path)
     return ExecutorClassSpec(executor_class)
 
-  def encode(self) -> message.Message:
+  def encode(
+      self,
+      component_spec: Optional[types.ComponentSpec] = None) -> message.Message:
     result = executable_spec_pb2.PythonClassExecutableSpec()
     result.class_path = self.class_path
     result.extra_flags.extend(self.extra_flags)
