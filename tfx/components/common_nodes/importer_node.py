@@ -232,7 +232,7 @@ class ImporterNode(base_node.BaseNode):
   ...
   importer = ImporterNode(
       instance_name='import_schema',
-      source_uri='uri/to/schema'
+      source_uri='uri/to/schema',
       artifact_type=standard_artifacts.Schema,
       reimport=False)
   schema_gen = SchemaGen(
