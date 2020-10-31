@@ -316,6 +316,10 @@ message PipelineRuntimeSpec {
 message PipelineInfo {
   // Required field. A pipeline must have an id.
   string id = 1;
+
+  // Optional tags associated with a pipeline that are useful for distinguishing
+  // between multiple pipeline IRs that share the same pipeline id.
+  repeated string tags = 2;
 }
 
 // Definition for a uDSL pipeline. This is also the definition of a
