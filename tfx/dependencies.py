@@ -107,6 +107,9 @@ def make_required_test_packages():
   # conflicts.
   return [
       'apache-airflow[mysql]>=1.10.10,<2',
+      # TODO(b/172014039): Delete pinned cattrs version after apache-airflow
+      # 1.0.13 releases.(github.com/apache/airflow/issues/11965).
+      'cattrs==1.0.0',
       'kfp>=0.4,<0.5',
       'pytest>=5,<6',
   ]
