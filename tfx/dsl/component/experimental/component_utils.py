@@ -15,6 +15,7 @@
 """Utils for TFX component types. Intended for internal usage only."""
 from typing import Any, Callable, Dict, Optional, Text
 
+from tfx import types
 from tfx.dsl.components.base import base_component
 from tfx.dsl.components.base import executor_spec as base_executor_spec
 from tfx.types import component_spec
@@ -46,6 +47,12 @@ def create_tfx_component_class(
     arguments = {}
     arguments.update(kwargs)
     arguments.update(default_init_args)
+
+    # Provide default values for output channels.
+    output_channel_params = output_channel_parameters or {}
+    for output_key, output_channel_param in output_channel_params.items():
+      if output_key not in arguments:
+        arguments[output_key] = types.Channel(type=output_channel_param.type)
 
     base_component.BaseComponent.__init__(
         self,
