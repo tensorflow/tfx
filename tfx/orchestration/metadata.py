@@ -377,8 +377,7 @@ class Metadata(object):
     return event
 
   # TODO(b/143081379): We might need to revisit schema evolution story.
-  def _prepare_execution_type(self, type_name: Text,
-                              exec_properties: Dict[Text, Any]) -> int:
+  def _prepare_execution_type(self, type_name: Text) -> int:
     """Gets execution type given execution type name and properties.
 
     Uses existing type if schema is superset of what is needed. Otherwise tries
@@ -386,7 +385,6 @@ class Metadata(object):
 
     Args:
       type_name: the name of the execution type
-      exec_properties: the execution properties included by the execution
 
     Returns:
       execution type id
@@ -397,25 +395,11 @@ class Metadata(object):
       existing_execution_type = self.store.get_execution_type(type_name)
       if existing_execution_type is None:
         raise RuntimeError('Execution type is None for %s.' % type_name)
-      if all(k in existing_execution_type.properties
-             for k in exec_properties.keys()):
-        return existing_execution_type.id
-      else:
-        raise mlmd.errors.NotFoundError('No qualified execution type found.')
+      return existing_execution_type.id
     except mlmd.errors.NotFoundError:
       execution_type = metadata_store_pb2.ExecutionType(name=type_name)
       execution_type.properties[
           _EXECUTION_TYPE_KEY_STATE] = metadata_store_pb2.STRING
-      # If exec_properties contains new entries, execution type schema will be
-      # updated in MLMD.
-      for k in exec_properties.keys():
-        assert k not in _EXECUTION_TYPE_RESERVED_KEYS, (
-            'execution properties with reserved key %s') % k
-        execution_type.properties[k] = metadata_store_pb2.STRING
-      # TODO(ruoyu): Find a better place / solution to the checksum logic.
-      if 'module_file' in exec_properties:
-        execution_type.properties[
-            _EXECUTION_TYPE_KEY_CHECKSUM] = metadata_store_pb2.STRING
       execution_type.properties[
           _EXECUTION_TYPE_KEY_PIPELINE_NAME] = metadata_store_pb2.STRING
       execution_type.properties[
@@ -463,7 +447,7 @@ class Metadata(object):
     # TODO(ruoyu): Enforce a formal rule for execution schema change.
     for k, v in exec_properties.items():
       # We always convert execution properties to unicode.
-      execution.properties[k].string_value = tf.compat.as_text(
+      execution.custom_properties[k].string_value = tf.compat.as_text(
           tf.compat.as_str_any(v))
     # We also need to checksum UDF file to identify different binary being
     # used. Do we have a better way to checksum a file than hashlib.md5?
@@ -472,9 +456,10 @@ class Metadata(object):
     if 'module_file' in exec_properties and exec_properties[
         'module_file'] and fileio.exists(exec_properties['module_file']):
       contents = file_io.read_file_to_string(exec_properties['module_file'])
-      execution.properties['checksum_md5'].string_value = tf.compat.as_text(
-          tf.compat.as_str_any(
-              hashlib.md5(tf.compat.as_bytes(contents)).hexdigest()))
+      execution.custom_properties[
+          _EXECUTION_TYPE_KEY_CHECKSUM].string_value = tf.compat.as_text(
+              tf.compat.as_str_any(
+                  hashlib.md5(tf.compat.as_bytes(contents)).hexdigest()))
     if pipeline_info:
       execution.properties[
           'pipeline_name'].string_value = pipeline_info.pipeline_name
@@ -497,7 +482,7 @@ class Metadata(object):
     """Creates an execution proto based on the information provided."""
     execution = metadata_store_pb2.Execution()
     execution.type_id = self._prepare_execution_type(
-        component_info.component_type, exec_properties)
+        component_info.component_type)
     self._update_execution_proto(
         execution=execution,
         pipeline_info=pipeline_info,
@@ -616,7 +601,7 @@ class Metadata(object):
     # schema.
     if exec_properties:
       execution.type_id = self._prepare_execution_type(
-          component_info.component_type, exec_properties)
+          component_info.component_type)
     if exec_properties or execution_state:
       self._update_execution_proto(
           execution=execution,

@@ -40,8 +40,10 @@ class KubeflowMetadataAdapter(metadata.Metadata):
   def _is_eligible_previous_execution(
       self, current_execution: metadata_store_pb2.Execution,
       target_execution: metadata_store_pb2.Execution) -> bool:
-    current_execution.properties[_KFP_POD_NAME_PROPERTY_KEY].string_value = ''
-    target_execution.properties[_KFP_POD_NAME_PROPERTY_KEY].string_value = ''
+    current_execution.custom_properties[
+        _KFP_POD_NAME_PROPERTY_KEY].string_value = ''
+    target_execution.custom_properties[
+        _KFP_POD_NAME_PROPERTY_KEY].string_value = ''
     return super(KubeflowMetadataAdapter,
                  self)._is_eligible_previous_execution(current_execution,
                                                        target_execution)

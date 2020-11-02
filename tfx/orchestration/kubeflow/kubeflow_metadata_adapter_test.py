@@ -100,13 +100,13 @@ class KubeflowMetadataAdapterTest(tf.test.TestCase):
             string_value: "fake_component_id"
           }
         }
-        properties {
+        custom_properties {
           key: "arg_one"
           value {
             string_value: "1"
           }
         }
-        properties {
+        custom_properties {
           key: "kfp_pod_name"
           value {
             string_value: "fake_pod_name"

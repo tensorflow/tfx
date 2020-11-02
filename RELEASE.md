@@ -35,6 +35,8 @@
 
 ## Breaking changes
 
+*   `exec_properties` are now stored as custom_properties of Execution in MLMD.
+
 ## Deprecations
 
 *   Modules under `tfx.components.base` have been deprecated and moved to
