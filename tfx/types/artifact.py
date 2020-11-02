@@ -18,14 +18,14 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import builtins
 import copy
 import enum
 import importlib
 import json
-from typing import Any, Dict, Optional, Text, Type
+from typing import Any, Dict, Optional, Text, Type, cast
 
 from absl import logging
+from tfx.types import property_utils
 from tfx.utils import json_utils
 
 from google.protobuf import json_format
@@ -55,6 +55,12 @@ DEFAULT_EXAMPLE_SPLITS = ['train', 'eval']
 # TODO(b/152444458): Revisit this part after we have a better aligned type
 # system.
 CUSTOM_PROPERTIES_PREFIX = 'custom:'
+
+_MLMD_TYPES_TO_PYTHON_TYPES = {
+    metadata_store_pb2.INT: int,
+    metadata_store_pb2.DOUBLE: float,
+    metadata_store_pb2.STRING: str,
+}
 
 
 class PropertyType(enum.Enum):
@@ -163,7 +169,11 @@ class Artifact(json_utils.Jsonable):
     # MLMD artifact type proto object.
     self._artifact_type = mlmd_artifact_type
     # Underlying MLMD artifact proto object.
-    self._artifact = metadata_store_pb2.Artifact()
+    self._property_schema = {
+        key: _MLMD_TYPES_TO_PYTHON_TYPES[mlmd_value_type]
+        for key, mlmd_value_type in mlmd_artifact_type.properties.items()
+    }
+    self.set_mlmd_artifact(metadata_store_pb2.Artifact())
     # Initialization flag to prevent recursive getattr / setattr errors.
     self._initialized = True
 
@@ -203,25 +213,7 @@ class Artifact(json_utils.Jsonable):
       raise AttributeError()
     if name not in self._artifact_type.properties:
       raise AttributeError('Artifact has no property %r.' % name)
-    property_mlmd_type = self._artifact_type.properties[name]
-    if property_mlmd_type == metadata_store_pb2.STRING:
-      if name not in self._artifact.properties:
-        # Avoid populating empty property protobuf with the [] operator.
-        return ''
-      return self._artifact.properties[name].string_value
-    elif property_mlmd_type == metadata_store_pb2.INT:
-      if name not in self._artifact.properties:
-        # Avoid populating empty property protobuf with the [] operator.
-        return 0
-      return self._artifact.properties[name].int_value
-    elif property_mlmd_type == metadata_store_pb2.DOUBLE:
-      if name not in self._artifact.properties:
-        # Avoid populating empty property protobuf with the [] operator.
-        return 0.0
-      return self._artifact.properties[name].double_value
-    else:
-      raise Exception('Unknown MLMD type %r for property %r.' %
-                      (property_mlmd_type, name))
+    return self._props_proxy[name]
 
   def __setattr__(self, name: Text, value: Any):
     """Custom __setattr__ to allow access to artifact properties."""
@@ -240,28 +232,7 @@ class Artifact(json_utils.Jsonable):
       # defined in the Artifact PROPERTIES dictionary.
       raise AttributeError('Cannot set unknown property %r on artifact %r.' %
                            (name, self))
-    property_mlmd_type = self._artifact_type.properties[name]
-    if property_mlmd_type == metadata_store_pb2.STRING:
-      if not isinstance(value, (Text, bytes)):
-        raise Exception(
-            'Expected string value for property %r; got %r instead.' %
-            (name, value))
-      self._artifact.properties[name].string_value = value
-    elif property_mlmd_type == metadata_store_pb2.INT:
-      if not isinstance(value, int):
-        raise Exception(
-            'Expected integer value for property %r; got %r instead.' %
-            (name, value))
-      self._artifact.properties[name].int_value = value
-    elif property_mlmd_type == metadata_store_pb2.DOUBLE:
-      if not isinstance(value, float):
-        raise Exception(
-            'Expected integer value for property %r; got %r instead.' %
-            (name, value))
-      self._artifact.properties[name].double_value = value
-    else:
-      raise Exception('Unknown MLMD type %r for property %r.' %
-                      (property_mlmd_type, name))
+    self._props_proxy[name] = value
 
   def set_mlmd_artifact(self, artifact: metadata_store_pb2.Artifact):
     """Replace the MLMD artifact object on this artifact."""
@@ -270,6 +241,10 @@ class Artifact(json_utils.Jsonable):
           ('Expected instance of metadata_store_pb2.Artifact, got %s '
            'instead.') % (artifact,))
     self._artifact = artifact
+    self._props_proxy = property_utils.PropertyMapProxy(
+        self._artifact.properties, self._property_schema)
+    self._custom_props_proxy = property_utils.PropertyMapProxy(
+        self._artifact.custom_properties)
 
   def set_mlmd_artifact_type(self,
                              artifact_type: metadata_store_pb2.ArtifactType):
@@ -454,29 +429,30 @@ class Artifact(json_utils.Jsonable):
     """Set producer component of the artifact."""
     self._set_system_property('producer_component', producer_component)
 
+  @property
+  def properties(self):
+    return self._props_proxy
+
+  @property
+  def custom_properties(self):
+    return self._custom_props_proxy
+
   # Custom property accessors.
   def set_string_custom_property(self, key: Text, value: Text):
     """Set a custom property of string type."""
-    self._artifact.custom_properties[key].string_value = value
+    self.custom_properties[key] = value
 
   def set_int_custom_property(self, key: Text, value: int):
     """Set a custom property of int type."""
-    self._artifact.custom_properties[key].int_value = builtins.int(value)
-
-  def has_custom_property(self, key: Text) -> bool:
-    return key in self._artifact.custom_properties
+    self.custom_properties[key] = int(value)
 
   def get_string_custom_property(self, key: Text) -> Text:
     """Get a custom property of string type."""
-    if key not in self._artifact.custom_properties:
-      return ''
-    return self._artifact.custom_properties[key].string_value
+    return cast(str, self.custom_properties.get(key, ''))
 
   def get_int_custom_property(self, key: Text) -> int:
     """Get a custom property of int type."""
-    if key not in self._artifact.custom_properties:
-      return 0
-    return self._artifact.custom_properties[key].int_value
+    return cast(int, self.custom_properties.get(key, 0))
 
   def copy_from(self, other: 'Artifact'):
     """Set uri, properties and custom properties from a given Artifact."""

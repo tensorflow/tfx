@@ -37,6 +37,53 @@ message ResolverConfig {
   // TODO(b/152230663): Make this one of special resolver policies or generic
   // ResolverConfig.
   ResolverPolicy resolver_policy = 1;
+
+  // Resolver computation graph node definition.
+  message NodeDef {
+    // ID of this node instance.
+    // ID should be unique among the graph.
+    int32 node_id = 1;
+
+    // Name of the operator.
+    string op_name = 2;
+
+    // Named input arguments to the operator node.
+    map<string, NodeInput> named_inputs = 3;
+  }
+
+  // Input to the operator node.
+  message NodeInput {
+    message InputList {
+      repeated NodeInput values = 1;
+    }
+    message InputMap {
+      map<string, NodeInput> values = 1;
+    }
+    oneof input_type {
+      int32 int_value = 1;
+      double float_value = 2;
+      string string_value = 3;
+      google.protobuf.Any proto_value = 4;
+      int32 node_output = 5;
+      InputList input_list = 6;
+      InputMap input_map = 7;
+    }
+  }
+
+  // Resolver computation graph definition.
+  // TODO(jjong): Consider adding version field later.
+  message ResolverGraphDef {
+    // List of all nodes.
+    repeated NodeDef nodes = 1;
+
+    // Map of input label to the node ID.
+    // For each input label, resolved input artifacts is the output of the
+    // corresponding opeartor node.
+    map<string, int32> sink = 2;
+  }
+
+  // Generic graph definition for the input resolution.
+  ResolverGraphDef graph_def = 2;
 }
 
 // Definition for runtime parameters.

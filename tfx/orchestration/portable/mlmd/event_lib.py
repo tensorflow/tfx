@@ -19,30 +19,64 @@ from __future__ import division
 from __future__ import print_function
 
 from typing import Optional, Text
+import warnings
 
 from ml_metadata.proto import metadata_store_pb2
 
-_VALIDA_EVENT_TYPES = frozenset(
-    [metadata_store_pb2.Event.OUTPUT, metadata_store_pb2.Event.INTERNAL_OUTPUT])
+_VALID_OUTPUT_EVENT_TYPES = frozenset([
+    metadata_store_pb2.Event.OUTPUT,
+    metadata_store_pb2.Event.INTERNAL_OUTPUT
+])
+_VALID_INPUT_EVENT_TYPES = frozenset([
+    metadata_store_pb2.Event.INPUT,
+    metadata_store_pb2.Event.INTERNAL_INPUT,
+])
 
 
 def validate_output_event(event: metadata_store_pb2.Event,
                           key: Optional[Text] = None) -> bool:
+  warnings.warn(
+      'This function is deprecated. Use is_valid_output_event instead',
+      DeprecationWarning)
+  return is_valid_output_event(event, key)
+
+
+def is_valid_output_event(event: metadata_store_pb2.Event,
+                          key: Optional[Text] = None) -> bool:
   """Evaluates whether an event is an output event with the right output key.
 
   Args:
-    event: The event to evaluate.
-    key: The expected output key.
+    event: The event proto.
+    key: (Optional) The expected output key.
 
   Returns:
-    A bool value indicating result
+    Whether this event is an output event with a given key.
   """
   if key:
-    return (len(event.path.steps) == 2 and  # Valid event should have 2 steps.
-            event.type in _VALIDA_EVENT_TYPES
-            and event.path.steps[0].key == key)
+    return (len(event.path.steps) == 2  # Valid event should have 2 steps.
+            and event.path.steps[0].key == key
+            and event.type in _VALID_OUTPUT_EVENT_TYPES)
   else:
-    return event.type in _VALIDA_EVENT_TYPES
+    return event.type in _VALID_OUTPUT_EVENT_TYPES
+
+
+def is_valid_input_event(event: metadata_store_pb2.Event,
+                         key: Optional[Text] = None) -> bool:
+  """Evaluates whether an event is an input event with the right input key.
+
+  Args:
+    event: The event proto.
+    key: (Optional) The expected input key.
+
+  Returns:
+    Whether this event is an input event with a given key.
+  """
+  if key:
+    return (len(event.path.steps) == 2  # Valid event should have 2 steps.
+            and event.path.steps[0].key == key
+            and event.type in _VALID_INPUT_EVENT_TYPES)
+  else:
+    return event.type in _VALID_INPUT_EVENT_TYPES
 
 
 def generate_event(

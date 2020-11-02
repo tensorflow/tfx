@@ -45,11 +45,10 @@ def get_payload_format(examples: types.Artifact) -> int:
   """
   assert examples.type_name == standard_artifacts.Examples.TYPE_NAME, (
       'examples must be of type standard_artifacts.Examples')
-  if examples.has_custom_property(
-      example_gen_utils.PAYLOAD_FORMAT_PROPERTY_NAME):
-    return example_gen_pb2.PayloadFormat.Value(
-        examples.get_string_custom_property(
-            example_gen_utils.PAYLOAD_FORMAT_PROPERTY_NAME))
+  maybe_payload_format = examples.custom_properties.get(
+      example_gen_utils.PAYLOAD_FORMAT_PROPERTY_NAME)
+  if maybe_payload_format:
+    return example_gen_pb2.PayloadFormat.Value(maybe_payload_format)
   else:
     logging.warning('Examples artifact does not have %s custom property. '
                     'Falling back to %s',

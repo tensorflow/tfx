@@ -74,7 +74,7 @@ def get_qualified_artifacts(
   qualified_output_events = [
       ev for ev in metadata_handler.store.get_events_by_execution_ids(
           qualified_producer_executions)
-      if event_lib.validate_output_event(ev, output_key)
+      if event_lib.is_valid_output_event(ev, output_key)
   ]
 
   # Gets the candidate artifacts from output events.

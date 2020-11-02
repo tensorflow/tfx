@@ -59,11 +59,11 @@ class EventLibTest(tf.test.TestCase):
     event_no_key = metadata_store_pb2.Event()
     text_format.Parse('type: OUTPUT', event_no_key)
     self.assertTrue(
-        event_lib.validate_output_event(legal_output_event, 'right_key'))
+        event_lib.is_valid_output_event(legal_output_event, 'right_key'))
     self.assertFalse(
-        event_lib.validate_output_event(event_wrong_type, 'right_key'))
-    self.assertFalse(event_lib.validate_output_event(event_no_key, 'right_key'))
-    self.assertTrue(event_lib.validate_output_event(event_no_key))
+        event_lib.is_valid_output_event(event_wrong_type, 'right_key'))
+    self.assertFalse(event_lib.is_valid_output_event(event_no_key, 'right_key'))
+    self.assertTrue(event_lib.is_valid_output_event(event_no_key))
 
   def testGenerateEvent(self):
     self.assertProtoEquals(
