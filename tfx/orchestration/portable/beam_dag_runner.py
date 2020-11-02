@@ -44,7 +44,8 @@ class PipelineNodeAsDoFn(beam.DoFn):
                pipeline_info: pipeline_pb2.PipelineInfo,
                pipeline_runtime_spec: pipeline_pb2.PipelineRuntimeSpec,
                executor_spec: Optional[message.Message],
-               custom_driver_spec: Optional[message.Message]):
+               custom_driver_spec: Optional[message.Message],
+               deployment_config: Optional[message.Message]):
     """Initializes the PipelineNodeAsDoFn.
 
     Args:
@@ -60,6 +61,7 @@ class PipelineNodeAsDoFn(beam.DoFn):
         into ExecutorOperator.
       custom_driver_spec: Specification for custom driver. This is expected only
         for advanced use cases.
+      deployment_config: Deployment Config for the pipeline.
     """
     self._pipeline_node = pipeline_node
     self._mlmd_connection = mlmd_connection
@@ -68,6 +70,7 @@ class PipelineNodeAsDoFn(beam.DoFn):
     self._executor_spec = executor_spec
     self._custom_driver_spec = custom_driver_spec
     self._node_id = pipeline_node.node_info.id
+    self._deployment_config = deployment_config
 
   def process(self, element: Any, *signals: Iterable[Any]) -> None:
     """Executes component based on signals.
@@ -241,7 +244,8 @@ class BeamDagRunner(tfx_runner.TfxRunner):
                       pipeline_info=pipeline.pipeline_info,
                       pipeline_runtime_spec=pipeline.runtime_spec,
                       executor_spec=executor_spec,
-                      custom_driver_spec=custom_driver_spec), *
+                      custom_driver_spec=custom_driver_spec,
+                      deployment_config=deployment_config), *
                   [beam.pvalue.AsIter(s) for s in signals_to_wait]))
           # LINT.ThenChange(../beam/beam_dag_runner.py)
           logging.info('Component %s is scheduled.', component_id)
