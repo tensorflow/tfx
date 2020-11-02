@@ -888,8 +888,9 @@ class Executor(base_executor.BaseExecutor):
     temp_path = value_utils.GetSoleValue(outputs, labels.TEMP_OUTPUT_LABEL)
     data_view_uri = value_utils.GetSoleValue(
         inputs, labels.DATA_VIEW_LABEL, strict=False)
-    force_tf_compat_v1 = value_utils.GetSoleValue(
-        inputs, labels.FORCE_TF_COMPAT_V1_LABEL)
+    force_tf_compat_v1 = False
+    # value_utils.GetSoleValue(
+    #   inputs, labels.FORCE_TF_COMPAT_V1_LABEL)
 
     absl.logging.debug('Force tf.compat.v1: %s', force_tf_compat_v1)
     absl.logging.debug('Analyze data patterns: %s',
