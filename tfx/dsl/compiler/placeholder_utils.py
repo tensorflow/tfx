@@ -51,6 +51,14 @@ def resolve_placeholder_expression(
     context: ResolutionContext) -> Any:
   """Evaluates a placeholder expression using the given context.
 
+  Normally the resolved value will be used as command line flags in strings.
+  This function does not automatically perform the string conversion, i.e.,
+  the return type is the same as the type of the value originally has. Currently
+  it can be
+    exec property supported primitive types: int, float, string.
+    if use proto operator: serilaized proto message, or a non-message field.
+  The caller needs to perform desired string conversions.
+
   Args:
     expression: A placeholder expression to be resolved.
     context: Information needed to resolve the expression.
