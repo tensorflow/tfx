@@ -154,7 +154,6 @@ def tuner_fn(fn_args: FnArgs) -> TunerFnResult:
       ...
       project_id=...,       # GCP Project ID
       region=...,           # GCP Region where Vizier service is run.
-      study_id=...,         # Unique ID of the tuning study
   )
 
   ...
@@ -222,11 +221,17 @@ Note: Both `CloudTuner` and the Google Cloud AI Platform extensions Tuner
 component can be used together, in which case it allows distributed parallel
 tuning backed by AI Platform Vizier's hyperparameter search algorithm. However,
 in order to do so, the Cloud AI Platform Job must be given access to the AI
-Platform Vizier service.
+Platform Vizier service. See this
+[guide](https://cloud.google.com/ai-platform/training/docs/custom-service-account#custom).
+to set up a custom service account. After that, you should specify the custom
+service account for your training job in the pipeline code. More details see E2E
+CloudTuner on GCP exmaple.
 
 ## Links
 
 [E2E Example](https://github.com/tensorflow/tfx/blob/master/tfx/examples/iris/iris_pipeline_native_keras.py)
+
+[E2E CloudTuner on GCP Example](https://github.com/tensorflow/tfx/blob/master/tfx/examples/iris/iris_pipeline_native_keras_kubeflow_pipeline.py)
 
 [KerasTuner tutorial](https://www.tensorflow.org/tutorials/keras/keras_tuner)
 

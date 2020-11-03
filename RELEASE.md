@@ -32,6 +32,8 @@
     ```
     pip install tfx
     ```
+*   Added CloudTuner KFP e2e example running on Google Cloud Platform with
+    distributed tuning.
 
 ## Breaking changes
 
