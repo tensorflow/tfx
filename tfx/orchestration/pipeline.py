@@ -27,11 +27,11 @@ from typing import List, Optional, Text, cast
 from tfx.dsl.components.base import base_node
 from tfx.dsl.components.base import executor_spec
 from tfx.orchestration import data_types
+from tfx.orchestration import metadata
 from tfx.proto.orchestration import pipeline_pb2
 from tfx.utils import topsort
 
 from google.protobuf import message
-from ml_metadata.proto import metadata_store_pb2
 
 # Argo's workflow name cannot exceed 63 chars:
 # see https://github.com/argoproj/argo/issues/1324.
@@ -82,7 +82,7 @@ class Pipeline(object):
                pipeline_name: Text,
                pipeline_root: Text,
                metadata_connection_config: Optional[
-                   metadata_store_pb2.ConnectionConfig] = None,
+                   metadata.ConnectionConfigType] = None,
                components: Optional[List[base_node.BaseNode]] = None,
                enable_cache: Optional[bool] = False,
                beam_pipeline_args: Optional[List[Text]] = None,
