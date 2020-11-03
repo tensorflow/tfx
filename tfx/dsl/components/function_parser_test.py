@@ -26,12 +26,12 @@ import unittest
 import six
 import tensorflow as tf
 
-from tfx.dsl.component.experimental.annotations import InputArtifact
-from tfx.dsl.component.experimental.annotations import OutputArtifact
-from tfx.dsl.component.experimental.annotations import OutputDict
-from tfx.dsl.component.experimental.annotations import Parameter
-from tfx.dsl.component.experimental.function_parser import ArgFormats
-from tfx.dsl.component.experimental.function_parser import parse_typehint_component_function
+from tfx.dsl.components.annotations import InputArtifact
+from tfx.dsl.components.annotations import OutputArtifact
+from tfx.dsl.components.annotations import OutputDict
+from tfx.dsl.components.annotations import Parameter
+from tfx.dsl.components.function_parser import ArgFormats
+from tfx.dsl.components.function_parser import parse_typehint_component_function
 from tfx.types import standard_artifacts
 
 

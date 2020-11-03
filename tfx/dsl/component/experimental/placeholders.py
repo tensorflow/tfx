@@ -12,92 +12,37 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Command-line placeholders for use in container component definitions."""
+"""Deprecated alias for `tfx.dsl.components.placeholders`."""
 
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from typing import List, Text, Union
 
-from tfx.utils import json_utils
+# Standard Imports
 
+from tfx.dsl.components import placeholders
 
-class InputValuePlaceholder(json_utils.Jsonable):
-  """Represents a placeholder for the value of the input argument.
+from tensorflow.python.util import deprecation  # pylint: disable=g-direct-tensorflow-import
 
-  Represents a placeholder that will be replaced at runtime with the string
-  value of the input argument of an execution property.
-  """
+InputValuePlaceholder = deprecation.deprecated_alias(  # pylint: disable=invalid-name
+    deprecated_name='tfx.component.experimental.placeholders.InputValuePlaceholder',
+    name='tfx.components.placeholders.InputValuePlaceholder',
+    func_or_class=placeholders.InputValuePlaceholder)
 
-  def __init__(self, input_name: Text):
-    self.input_name = input_name
+InputUriPlaceholder = deprecation.deprecated_alias(  # pylint: disable=invalid-name
+    deprecated_name='tfx.component.experimental.placeholders.InputUriPlaceholder',
+    name='tfx.components.placeholders.InputUriPlaceholder',
+    func_or_class=placeholders.InputUriPlaceholder)
 
-  def __eq__(self, other) -> bool:
-    return (isinstance(other, self.__class__) and
-            self.input_name == other.input_name)
+OutputUriPlaceholder = deprecation.deprecated_alias(  # pylint: disable=invalid-name
+    deprecated_name='tfx.component.experimental.placeholders.OutputUriPlaceholder',
+    name='tfx.components.placeholders.OutputUriPlaceholder',
+    func_or_class=placeholders.OutputUriPlaceholder)
 
-  def __ne__(self, other) -> bool:
-    return not self.__eq__(other)
+ConcatPlaceholder = deprecation.deprecated_alias(  # pylint: disable=invalid-name
+    deprecated_name='tfx.component.experimental.placeholders.ConcatPlaceholder',
+    name='tfx.components.placeholders.ConcatPlaceholder',
+    func_or_class=placeholders.ConcatPlaceholder)
 
-
-class InputUriPlaceholder(json_utils.Jsonable):
-  """Represents a placeholder for the URI of the input artifact argument.
-
-  Represents a placeholder that will be replaced at runtime with the URI
-  of the input artifact argument data.
-  """
-
-  def __init__(self, input_name: Text):
-    self.input_name = input_name
-
-  def __eq__(self, other) -> bool:
-    return (isinstance(other, self.__class__) and
-            self.input_name == other.input_name)
-
-  def __ne__(self, other) -> bool:
-    return not self.__eq__(other)
-
-
-class OutputUriPlaceholder(json_utils.Jsonable):
-  """Represents a placeholder for the URI of the output artifact argument.
-
-  Represents a placeholder that will be replaced at runtime with the URI
-  for the output artifact data.
-  """
-
-  def __init__(self, output_name: Text):
-    self.output_name = output_name
-
-  def __eq__(self, other) -> bool:
-    return (isinstance(other, self.__class__) and
-            self.output_name == other.output_name)
-
-  def __ne__(self, other) -> bool:
-    return not self.__eq__(other)
-
-
-class ConcatPlaceholder(object):
-  """Represents a placeholder for result of concatenation of multiple parts.
-
-  Represents a placeholder that will be replaced at runtime with a single string
-  containing the concatenated parts.
-  """
-
-  def __init__(self, items: List['CommandlineArgumentType']):
-    self.items = items
-
-  def __eq__(self, other) -> bool:
-    return isinstance(other, self.__class__) and self.items == other.items
-
-  def __ne__(self, other) -> bool:
-    return not self.__eq__(other)
-
-
-CommandlineArgumentType = Union[
-    Text,
-    InputValuePlaceholder,
-    InputUriPlaceholder,
-    OutputUriPlaceholder,
-    ConcatPlaceholder,
-]
+CommandlineArgumentType = placeholders.CommandlineArgumentType

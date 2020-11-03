@@ -18,7 +18,7 @@ import json
 from typing import List, Optional, Text, Type
 
 import absl
-from tfx.dsl.component.experimental import container_component
+from tfx.dsl.components import container_component
 from tfx.dsl.components.base import base_node
 from tfx.orchestration import data_types
 from tfx.orchestration import metadata

@@ -23,7 +23,7 @@ from typing import Any, Dict, List, Text, cast
 import absl
 import docker
 from tfx import types
-from tfx.dsl.component.experimental import executor_specs
+from tfx.dsl.components import executor_specs
 from tfx.dsl.components.base import executor_spec
 from tfx.orchestration.config import base_component_config
 from tfx.orchestration.config import docker_component_config

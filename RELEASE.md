@@ -40,6 +40,8 @@
 *   Modules under `tfx.components.base` have been deprecated and moved to
     `tfx.dsl.components.base` in preparation for releasing a pipeline authoring
     package without explicit Tensorflow dependency.
+*   Modules under `tfx.dsl.component.experimental` have been deprecated and
+    moved to `tfx.dsl.components`.
 
 ## Bug fixes and other changes
 

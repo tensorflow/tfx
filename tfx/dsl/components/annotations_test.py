@@ -12,7 +12,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Tests for tfx.dsl.components.base.annotations."""
+"""Tests for tfx.dsl.components.annotations."""
 
 from __future__ import absolute_import
 from __future__ import division
@@ -24,7 +24,7 @@ from typing import Text
 # Standard Imports
 
 import tensorflow as tf
-from tfx.dsl.component.experimental import annotations
+from tfx.dsl.components import annotations
 from tfx.types import artifact
 from tfx.types import standard_artifacts
 from tfx.types import value_artifact

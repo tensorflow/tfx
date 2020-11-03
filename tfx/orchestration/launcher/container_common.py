@@ -22,8 +22,8 @@ from typing import Any, Dict, List, Optional, Text, Union
 
 import jinja2
 from tfx import types
-from tfx.dsl.component.experimental import executor_specs
-from tfx.dsl.component.experimental import placeholders
+from tfx.dsl.components import executor_specs
+from tfx.dsl.components import placeholders
 from tfx.dsl.components.base import executor_spec
 
 

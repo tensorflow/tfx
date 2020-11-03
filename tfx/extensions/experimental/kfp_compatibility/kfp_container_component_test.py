@@ -15,8 +15,8 @@
 
 import os
 import tensorflow as tf  # pylint: disable=g-explicit-tensorflow-version-import
-from tfx.dsl.component.experimental import container_component
-from tfx.dsl.component.experimental import placeholders
+from tfx.dsl.components import container_component
+from tfx.dsl.components import placeholders
 from tfx.extensions.experimental.kfp_compatibility import kfp_container_component
 from tfx.extensions.experimental.kfp_compatibility.proto import kfp_component_spec_pb2
 from tfx.types import standard_artifacts

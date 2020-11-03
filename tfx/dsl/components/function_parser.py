@@ -29,7 +29,7 @@ import inspect
 import types
 from typing import Any, Dict, Optional, Set, Text, Tuple, Type, Union
 
-from tfx.dsl.component.experimental import annotations
+from tfx.dsl.components import annotations
 from tfx.types import artifact
 from tfx.types import standard_artifacts
 
@@ -47,7 +47,6 @@ _PRIMITIVE_TO_ARTIFACT = {
     Text: standard_artifacts.String,
     bytes: standard_artifacts.Bytes,
 }
-
 
 # Map from `Optional[T]` to `T` for primitive types. This map is a simple way
 # to extract the value of `T` from its optional typehint, since the internal

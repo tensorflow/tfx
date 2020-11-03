@@ -27,14 +27,14 @@ import unittest
 import six
 import tensorflow as tf
 from tfx import types
-from tfx.dsl.component.experimental.annotations import InputArtifact
-from tfx.dsl.component.experimental.annotations import OutputArtifact
-from tfx.dsl.component.experimental.annotations import OutputDict
-from tfx.dsl.component.experimental.annotations import Parameter
-from tfx.dsl.component.experimental.decorators import _SimpleComponent
-from tfx.dsl.component.experimental.decorators import component
+from tfx.dsl.components.annotations import InputArtifact
+from tfx.dsl.components.annotations import OutputArtifact
+from tfx.dsl.components.annotations import OutputDict
+from tfx.dsl.components.annotations import Parameter
 from tfx.dsl.components.base import base_executor
 from tfx.dsl.components.base import executor_spec
+from tfx.dsl.components.decorators import _SimpleComponent
+from tfx.dsl.components.decorators import component
 from tfx.dsl.io import fileio
 from tfx.orchestration import metadata
 from tfx.orchestration import pipeline
@@ -153,8 +153,8 @@ class ComponentDecoratorTest(tf.test.TestCase):
           base_executor.BaseExecutor)
 
     input_channel = types.Channel(type=_InputArtifact)
-    instance = _MySimpleComponent(input=input_channel, folds=10,
-                                  instance_name='my_instance')
+    instance = _MySimpleComponent(
+        input=input_channel, folds=10, instance_name='my_instance')
     self.assertIs(instance.inputs['input'], input_channel)
     self.assertEqual(instance.outputs['output'].type, _OutputArtifact)
     self.assertEqual(instance._instance_name, 'my_instance')
@@ -171,8 +171,7 @@ class ComponentDecoratorTest(tf.test.TestCase):
 
   def testNonKwargFails(self):
     with self.assertRaisesRegexp(
-        ValueError,
-        'expects arguments to be passed as keyword arguments'):
+        ValueError, 'expects arguments to be passed as keyword arguments'):
       _injector_1(9, 'secret')
 
   def testBeamExecutionSuccess(self):

@@ -20,8 +20,8 @@ from __future__ import print_function
 
 from typing import Text
 
-from tfx.dsl.component.experimental import container_component
-from tfx.dsl.component.experimental import placeholders
+from tfx.dsl.components import container_component
+from tfx.dsl.components import placeholders
 from tfx.types import standard_artifacts
 
 
