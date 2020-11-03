@@ -19,6 +19,7 @@ from absl.testing import parameterized
 import tensorflow as tf
 from tfx.orchestration import metadata
 from tfx.orchestration.experimental.core import sync_pipeline_task_gen as sptg
+from tfx.orchestration.experimental.core import task as task_lib
 from tfx.orchestration.experimental.core import task_queue as tq
 from tfx.orchestration.experimental.core import test_utils as otu
 from tfx.orchestration.portable import test_utils as tu
@@ -67,13 +68,8 @@ class SyncPipelineTaskGeneratorTest(tu.TfxTest, parameterized.TestCase):
     self._task_queue = tq.TaskQueue()
 
   def _verify_node_execution_task(self, node, execution_id, task):
-    self.assertEqual(node.node_info.id, task.exec_task.node_id)
-    self.assertEqual(self._pipeline.pipeline_info.id,
-                     task.exec_task.pipeline_id)
     self.assertEqual(
-        self._pipeline.runtime_spec.pipeline_run_id.field_value.string_value,
-        task.exec_task.pipeline_run_id)
-    self.assertEqual(execution_id, task.exec_task.execution_id)
+        task_lib.ExecNodeTask.create(self._pipeline, node, execution_id), task)
 
   def _dequeue_and_test(self, use_task_queue, node, execution_id):
     if use_task_queue:

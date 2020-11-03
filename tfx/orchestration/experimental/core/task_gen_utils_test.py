@@ -168,7 +168,7 @@ class TaskGenUtilsTest(tu.TfxTest):
       executions = task_gen_utils.get_executions(m, self._trainer)
       task = task_gen_utils.generate_task_from_active_execution(
           self._pipeline, self._trainer, executions)
-      self.assertEqual(execution.id, task.exec_task.execution_id)
+      self.assertEqual(execution.id, task.execution_id)
 
       # Mark execution complete. No tasks should be generated.
       execution = m.store.get_executions()[0]

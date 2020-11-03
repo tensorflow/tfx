@@ -18,7 +18,7 @@ from typing import Dict, Iterable, List, Optional, Sequence, Text
 import attr
 from tfx import types
 from tfx.orchestration import metadata
-from tfx.orchestration.experimental.core.proto import task_pb2
+from tfx.orchestration.experimental.core import task as task_lib
 from tfx.orchestration.portable import inputs_utils
 from tfx.orchestration.portable.mlmd import common_utils
 from tfx.orchestration.portable.mlmd import context_lib
@@ -35,24 +35,10 @@ class ResolvedInfo:
   input_artifacts = attr.ib(Optional[Dict[Text, List[types.Artifact]]])
 
 
-def create_task(pipeline: pipeline_pb2.Pipeline,
-                node: pipeline_pb2.PipelineNode,
-                execution: metadata_store_pb2.Execution) -> task_pb2.Task:
-  """Helper function to create a `Task` proto."""
-  result = task_pb2.Task()
-  result.exec_task.pipeline_id = pipeline.pipeline_info.id
-  result.exec_task.node_id = node.node_info.id
-  if pipeline.runtime_spec.HasField('pipeline_run_id'):
-    result.exec_task.pipeline_run_id = (
-        pipeline.runtime_spec.pipeline_run_id.field_value.string_value)
-  result.exec_task.execution_id = execution.id
-  return result
-
-
 def generate_task_from_active_execution(
     pipeline: pipeline_pb2.Pipeline, node: pipeline_pb2.PipelineNode,
     executions: Iterable[metadata_store_pb2.Execution]
-) -> Optional[task_pb2.Task]:
+) -> Optional[task_lib.Task]:
   """Generates task from active execution (if any).
 
   Returns `None` if a task cannot be generated from active execution.
@@ -80,7 +66,7 @@ def generate_task_from_active_execution(
       raise RuntimeError(
           'Unexpected multiple active executions for the node: {}\n'
           'executions: {}'.format(node.node_info.id, active_executions))
-    return create_task(pipeline, node, active_executions[0])
+    return task_lib.ExecNodeTask.create(pipeline, node, active_executions[0].id)
   return None
 
 

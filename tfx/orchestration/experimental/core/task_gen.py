@@ -16,7 +16,7 @@
 import abc
 from typing import List
 
-from tfx.orchestration.experimental.core.proto import task_pb2
+from tfx.orchestration.experimental.core import task as task_lib
 
 
 class TaskGenerator(abc.ABC):
@@ -36,10 +36,10 @@ class TaskGenerator(abc.ABC):
   """
 
   @abc.abstractmethod
-  def generate(self) -> List[task_pb2.Task]:
+  def generate(self) -> List[task_lib.Task]:
     """Generates a list of tasks to be performed.
 
     Returns:
-      A list of `Task` protos specifying nodes in a pipeline to be executed or
-      other system tasks.
+      A list of `Task`s specifying nodes in a pipeline to be executed or other
+      system tasks.
     """

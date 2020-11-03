@@ -20,6 +20,7 @@ from absl.testing import parameterized
 import tensorflow as tf
 from tfx.orchestration import metadata
 from tfx.orchestration.experimental.core import async_pipeline_task_gen as asptg
+from tfx.orchestration.experimental.core import task as task_lib
 from tfx.orchestration.experimental.core import task_queue as tq
 from tfx.orchestration.experimental.core import test_utils as otu
 from tfx.orchestration.portable import test_utils as tu
@@ -66,11 +67,8 @@ class AsyncPipelineTaskGeneratorTest(tu.TfxTest, parameterized.TestCase):
     self._task_queue = tq.TaskQueue()
 
   def _verify_node_execution_task(self, node, execution_id, task):
-    self.assertEqual(node.node_info.id, task.exec_task.node_id)
-    self.assertEqual(self._pipeline.pipeline_info.id,
-                     task.exec_task.pipeline_id)
-    self.assertEmpty(task.exec_task.pipeline_run_id)
-    self.assertEqual(execution_id, task.exec_task.execution_id)
+    self.assertEqual(
+        task_lib.ExecNodeTask.create(self._pipeline, node, execution_id), task)
 
   def _dequeue_and_test(self, use_task_queue, node, execution_id):
     if use_task_queue:

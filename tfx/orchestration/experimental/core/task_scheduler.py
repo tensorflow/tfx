@@ -14,11 +14,12 @@
 """Task scheduler interface and registry."""
 
 import abc
+import typing
 from typing import Text, Type, TypeVar
 
 import attr
 from tfx.orchestration import metadata
-from tfx.orchestration.experimental.core.proto import task_pb2
+from tfx.orchestration.experimental.core import task as task_lib
 from tfx.proto.orchestration import execution_result_pb2
 from tfx.proto.orchestration import pipeline_pb2
 
@@ -38,7 +39,7 @@ class TaskScheduler(abc.ABC):
   """Interface for task schedulers."""
 
   def __init__(self, mlmd_handle: metadata.Metadata,
-               pipeline: pipeline_pb2.Pipeline, task: task_pb2.Task):
+               pipeline: pipeline_pb2.Pipeline, task: task_lib.Task):
     """Constructor.
 
     Args:
@@ -101,7 +102,7 @@ class TaskSchedulerRegistry:
   @classmethod
   def create_task_scheduler(cls: Type[T], mlmd_handle: metadata.Metadata,
                             pipeline: pipeline_pb2.Pipeline,
-                            task: task_pb2.Task) -> TaskScheduler:
+                            task: task_lib.Task) -> TaskScheduler:
     """Creates a task scheduler for the given task.
 
     Note that this assumes deployment_config packed in the pipeline IR is of
@@ -116,25 +117,21 @@ class TaskSchedulerRegistry:
       An instance of `TaskScheduler` for the given task.
 
     Raises:
-      NotImplementedError: Raised if not an `ExecTask` or if not a node level
-        scheduler.
+      NotImplementedError: Raised if not an `ExecNodeTask`.
       ValueError: Deployment config not present in the IR proto or if executor
         spec for the node corresponding to `task` not configured in the IR.
     """
-    if task.WhichOneof('task_type') != 'exec_task':
+    if not task_lib.is_exec_node_task(task):
       raise NotImplementedError(
-          'Can create a task scheduler only for an `ExecTask`.')
-    if task.exec_task.WhichOneof('node_or_sub_pipeline_id') != 'node_id':
-      raise NotImplementedError(
-          'Can create a task scheduler only for node execution, but no node_id '
-          'found in task: {}.'.format(task))
+          'Can create a task scheduler only for an `ExecNodeTask`.')
+    task = typing.cast(task_lib.ExecNodeTask, task)
     # TODO(b/170383494): Decide which DeploymentConfig to use.
     if not pipeline.deployment_config.Is(
         pipeline_pb2.IntermediateDeploymentConfig.DESCRIPTOR):
       raise ValueError('No deployment config found in pipeline IR.')
     depl_config = pipeline_pb2.IntermediateDeploymentConfig()
     pipeline.deployment_config.Unpack(depl_config)
-    node_id = task.exec_task.node_id
+    node_id = task.node_uid.node_id
     if node_id not in depl_config.executor_specs:
       raise ValueError(
           'Executor spec for node id `{}` not found in pipeline IR.'.format(

@@ -1,0 +1,70 @@
+# Copyright 2020 Google LLC. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+"""Tests for tfx.orchestration.experimental.core.task."""
+
+import tensorflow as tf
+from tfx.orchestration.experimental.core import task as task_lib
+from tfx.orchestration.portable import test_utils as tu
+from tfx.proto.orchestration import pipeline_pb2
+
+
+class TaskTest(tu.TfxTest):
+
+  def test_node_uid_from_pipeline_node(self):
+    pipeline = pipeline_pb2.Pipeline()
+    pipeline.pipeline_info.id = 'pipeline'
+    pipeline.runtime_spec.pipeline_run_id.field_value.string_value = 'run0'
+    node = pipeline_pb2.PipelineNode()
+    node.node_info.id = 'Trainer'
+    self.assertEqual(
+        task_lib.NodeUid(
+            pipeline_id='pipeline', pipeline_run_id='run0', node_id='Trainer'),
+        task_lib.NodeUid.from_pipeline_node(pipeline, node))
+
+  def test_exec_node_task_create(self):
+    pipeline = pipeline_pb2.Pipeline()
+    pipeline.pipeline_info.id = 'pipeline'
+    pipeline.runtime_spec.pipeline_run_id.field_value.string_value = 'run0'
+    node = pipeline_pb2.PipelineNode()
+    node.node_info.id = 'Trainer'
+    self.assertEqual(
+        task_lib.ExecNodeTask(
+            node_uid=task_lib.NodeUid(
+                pipeline_id='pipeline',
+                pipeline_run_id='run0',
+                node_id='Trainer'),
+            execution_id=123),
+        task_lib.ExecNodeTask.create(pipeline, node, 123))
+
+  def test_task_type_ids(self):
+    self.assertEqual('ExecNodeTask', task_lib.ExecNodeTask.task_type_id())
+    self.assertEqual('CancelNodeTask', task_lib.CancelNodeTask.task_type_id())
+    node_uid = task_lib.NodeUid(
+        pipeline_id='pipeline', pipeline_run_id='run0', node_id='Trainer')
+    exec_node_task = task_lib.ExecNodeTask(node_uid=node_uid, execution_id=123)
+    self.assertEqual('ExecNodeTask', exec_node_task.task_type_id())
+    cancel_node_task = task_lib.CancelNodeTask(node_uid=node_uid)
+    self.assertEqual('CancelNodeTask', cancel_node_task.task_type_id())
+
+  def test_task_ids(self):
+    node_uid = task_lib.NodeUid(
+        pipeline_id='pipeline', pipeline_run_id='run0', node_id='Trainer')
+    exec_node_task = task_lib.ExecNodeTask(node_uid=node_uid, execution_id=123)
+    self.assertEqual(('ExecNodeTask', node_uid), exec_node_task.task_id)
+    cancel_node_task = task_lib.CancelNodeTask(node_uid=node_uid)
+    self.assertEqual(('CancelNodeTask', node_uid), cancel_node_task.task_id)
+
+
+if __name__ == '__main__':
+  tf.test.main()
