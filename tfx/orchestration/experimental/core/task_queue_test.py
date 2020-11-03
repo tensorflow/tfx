@@ -45,6 +45,7 @@ class TaskQueueTest(tu.TfxTest):
     self.assertEqual(t1, tq.dequeue())
     self.assertEqual(t2, tq.dequeue())
     self.assertIsNone(tq.dequeue())
+    self.assertIsNone(tq.dequeue(0.1))
 
     # Re-enqueueing the same tasks fails as `task_done` has not been called.
     self.assertFalse(tq.enqueue(t1))
@@ -73,7 +74,7 @@ class TaskQueueTest(tu.TfxTest):
     tq.task_done(t1)
 
     # Error since t2 is not in the queue.
-    with self.assertRaisesRegexp(RuntimeError, 'Task not tracked'):
+    with self.assertRaisesRegexp(RuntimeError, 'Task not present'):
       tq.task_done(t2)
 
 

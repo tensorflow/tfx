@@ -87,7 +87,7 @@ class AsyncPipelineTaskGeneratorTest(tu.TfxTest, parameterized.TestCase):
         'Expected {} execution(s) in MLMD.'.format(num_initial_executions))
     task_gen = asptg.AsyncPipelineTaskGenerator(
         self._mlmd_connection, self._pipeline,
-        self._task_queue.is_task_id_tracked)
+        self._task_queue.contains_task_id)
     tasks = task_gen.generate()
     self.assertLen(
         tasks, num_tasks_generated,

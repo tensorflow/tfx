@@ -86,9 +86,9 @@ class SyncPipelineTaskGeneratorTest(tu.TfxTest, parameterized.TestCase):
     self.assertLen(
         executions, num_initial_executions,
         'Expected {} execution(s) in MLMD.'.format(num_initial_executions))
-    task_gen = sptg.SyncPipelineTaskGenerator(
-        self._mlmd_connection, self._pipeline,
-        self._task_queue.is_task_id_tracked)
+    task_gen = sptg.SyncPipelineTaskGenerator(self._mlmd_connection,
+                                              self._pipeline,
+                                              self._task_queue.contains_task_id)
     tasks = task_gen.generate()
     self.assertLen(
         tasks, num_tasks_generated,
