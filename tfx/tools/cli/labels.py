@@ -24,6 +24,7 @@ RUN_ID = 'run_id'
 AIRFLOW_ENGINE = 'airflow'
 BEAM_ENGINE = 'beam'
 KUBEFLOW_ENGINE = 'kubeflow'
+LOCAL_ENGINE = 'local'
 # Path to root directory of the pipeline.
 PIPELINE_ROOT = 'pipeline_root'
 # List of components in the pipeline.

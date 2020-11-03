@@ -12,7 +12,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Tests for tfx.tools.cli.handler.beam_handler."""
+"""Tests for tfx.tools.cli.handler.local_handler."""
 
 from __future__ import absolute_import
 from __future__ import division
@@ -28,13 +28,13 @@ import tensorflow as tf
 from tfx.dsl.components.base import base_driver
 from tfx.dsl.io import fileio
 from tfx.tools.cli import labels
-from tfx.tools.cli.handler import beam_handler
+from tfx.tools.cli.handler import local_handler
 
 
 def _MockSubprocess(cmd, env):  # pylint: disable=invalid-name, unused-argument
   # Store pipeline_args in a json file
   pipeline_args_path = env[labels.TFX_JSON_EXPORT_PIPELINE_ARGS_PATH]
-  pipeline_name = 'chicago_taxi_beam'
+  pipeline_name = 'chicago_taxi_local'
   pipeline_root = os.path.join(os.environ['HOME'], 'tfx', 'pipelines',
                                pipeline_name)
   pipeline_args = {
@@ -60,10 +60,10 @@ def _MockSubprocess3(cmd, env):  # pylint: disable=unused-argument
   return 0
 
 
-class BeamHandlerTest(tf.test.TestCase):
+class LocalHandlerTest(tf.test.TestCase):
 
   def setUp(self):
-    super(BeamHandlerTest, self).setUp()
+    super(LocalHandlerTest, self).setUp()
     self.chicago_taxi_pipeline_dir = os.path.join(
         os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'testdata')
     self._tmp_dir = os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR',
@@ -73,31 +73,31 @@ class BeamHandlerTest(tf.test.TestCase):
     os.chdir(self._tmp_dir)
     self._original_home_value = os.environ.get('HOME', '')
     os.environ['HOME'] = self._home
-    self._original_beam_home_value = os.environ.get('BEAM_HOME', '')
-    os.environ['BEAM_HOME'] = os.path.join(os.environ['HOME'], 'beam')
-    self._beam_home = os.environ['BEAM_HOME']
+    self._original_local_home_value = os.environ.get('LOCAL_HOME', '')
+    os.environ['LOCAL_HOME'] = os.path.join(os.environ['HOME'], 'local')
+    self._local_home = os.environ['LOCAL_HOME']
 
     # Flags for handler.
-    self.engine = 'beam'
+    self.engine = 'local'
     self.pipeline_path = os.path.join(self.chicago_taxi_pipeline_dir,
-                                      'test_pipeline_beam_1.py')
-    self.pipeline_name = 'chicago_taxi_beam'
+                                      'test_pipeline_local_1.py')
+    self.pipeline_name = 'chicago_taxi_local'
     self.pipeline_root = os.path.join(self._home, 'tfx', 'pipelines',
                                       self.pipeline_name)
     self.run_id = 'dummyID'
 
     # Pipeline args for mocking subprocess
     self.pipeline_args = {
-        'pipeline_name': 'chicago_taxi_beam',
+        'pipeline_name': 'chicago_taxi_local',
         'pipeline_dsl_path': self.pipeline_path
     }
 
   def tearDown(self):
-    super(BeamHandlerTest, self).tearDown()
+    super(LocalHandlerTest, self).tearDown()
     if self._home:
       os.environ['HOME'] = self._original_home_value
-    if self._beam_home:
-      os.environ['BEAM_HOME'] = self._original_beam_home_value
+    if self._local_home:
+      os.environ['LOCAL_HOME'] = self._original_local_home_value
     os.chdir(self._olddir)
 
   @mock.patch('subprocess.call', _MockSubprocess)
@@ -106,7 +106,7 @@ class BeamHandlerTest(tf.test.TestCase):
         labels.ENGINE_FLAG: self.engine,
         labels.PIPELINE_DSL_PATH: self.pipeline_path
     }
-    handler = beam_handler.BeamHandler(flags_dict)
+    handler = local_handler.LocalHandler(flags_dict)
     pipeline_args = handler._extract_pipeline_args()
     handler._save_pipeline(pipeline_args)
     self.assertTrue(
@@ -120,7 +120,7 @@ class BeamHandlerTest(tf.test.TestCase):
         labels.ENGINE_FLAG: self.engine,
         labels.PIPELINE_DSL_PATH: self.pipeline_path
     }
-    handler = beam_handler.BeamHandler(flags_dict)
+    handler = local_handler.LocalHandler(flags_dict)
     handler.create_pipeline()
     handler_pipeline_path = os.path.join(
         handler._handler_home_dir, self.pipeline_args[labels.PIPELINE_NAME], '')
@@ -134,7 +134,7 @@ class BeamHandlerTest(tf.test.TestCase):
         labels.ENGINE_FLAG: self.engine,
         labels.PIPELINE_DSL_PATH: self.pipeline_path
     }
-    handler = beam_handler.BeamHandler(flags_dict)
+    handler = local_handler.LocalHandler(flags_dict)
     handler.create_pipeline()
     # Run create_pipeline again to test.
     with self.assertRaises(SystemExit) as err:
@@ -147,22 +147,22 @@ class BeamHandlerTest(tf.test.TestCase):
   def testUpdatePipeline(self):
     # First create pipeline with test_pipeline.py
     pipeline_path_1 = os.path.join(self.chicago_taxi_pipeline_dir,
-                                   'test_pipeline_beam_1.py')
+                                   'test_pipeline_local_1.py')
     flags_dict_1 = {
         labels.ENGINE_FLAG: self.engine,
         labels.PIPELINE_DSL_PATH: pipeline_path_1
     }
-    handler = beam_handler.BeamHandler(flags_dict_1)
+    handler = local_handler.LocalHandler(flags_dict_1)
     handler.create_pipeline()
 
     # Update test_pipeline and run update_pipeline
     pipeline_path_2 = os.path.join(self.chicago_taxi_pipeline_dir,
-                                   'test_pipeline_beam_2.py')
+                                   'test_pipeline_local_2.py')
     flags_dict_2 = {
         labels.ENGINE_FLAG: self.engine,
         labels.PIPELINE_DSL_PATH: pipeline_path_2
     }
-    handler = beam_handler.BeamHandler(flags_dict_2)
+    handler = local_handler.LocalHandler(flags_dict_2)
     handler.update_pipeline()
     handler_pipeline_path = os.path.join(
         handler._handler_home_dir, self.pipeline_args[labels.PIPELINE_NAME], '')
@@ -177,7 +177,7 @@ class BeamHandlerTest(tf.test.TestCase):
         labels.ENGINE_FLAG: self.engine,
         labels.PIPELINE_DSL_PATH: self.pipeline_path
     }
-    handler = beam_handler.BeamHandler(flags_dict)
+    handler = local_handler.LocalHandler(flags_dict)
     with self.assertRaises(SystemExit) as err:
       handler.update_pipeline()
     self.assertEqual(
@@ -190,7 +190,7 @@ class BeamHandlerTest(tf.test.TestCase):
         labels.ENGINE_FLAG: self.engine,
         labels.PIPELINE_DSL_PATH: self.pipeline_path
     }
-    handler = beam_handler.BeamHandler(flags_dict)
+    handler = local_handler.LocalHandler(flags_dict)
     with self.captureWritesToStream(sys.stdout) as captured:
       handler.compile_pipeline()
     self.assertIn('Pipeline compiled successfully', captured.contents())
@@ -201,7 +201,7 @@ class BeamHandlerTest(tf.test.TestCase):
         labels.ENGINE_FLAG: self.engine,
         labels.PIPELINE_DSL_PATH: self.pipeline_path
     }
-    handler = beam_handler.BeamHandler(flags_dict)
+    handler = local_handler.LocalHandler(flags_dict)
     with self.assertRaises(SystemExit) as err:
       handler.compile_pipeline()
     self.assertEqual(
@@ -215,7 +215,7 @@ class BeamHandlerTest(tf.test.TestCase):
         labels.ENGINE_FLAG: self.engine,
         labels.PIPELINE_DSL_PATH: self.pipeline_path
     }
-    handler = beam_handler.BeamHandler(flags_dict)
+    handler = local_handler.LocalHandler(flags_dict)
     handler.create_pipeline()
 
     # Now delete the pipeline created aand check if pipeline folder is deleted.
@@ -223,7 +223,7 @@ class BeamHandlerTest(tf.test.TestCase):
         labels.ENGINE_FLAG: self.engine,
         labels.PIPELINE_NAME: self.pipeline_name
     }
-    handler = beam_handler.BeamHandler(flags_dict)
+    handler = local_handler.LocalHandler(flags_dict)
     handler.delete_pipeline()
     handler_pipeline_path = os.path.join(
         handler._handler_home_dir, self.pipeline_args[labels.PIPELINE_NAME], '')
@@ -235,7 +235,7 @@ class BeamHandlerTest(tf.test.TestCase):
         labels.ENGINE_FLAG: self.engine,
         labels.PIPELINE_NAME: self.pipeline_name
     }
-    handler = beam_handler.BeamHandler(flags_dict)
+    handler = local_handler.LocalHandler(flags_dict)
     with self.assertRaises(SystemExit) as err:
       handler.delete_pipeline()
     self.assertEqual(
@@ -244,16 +244,16 @@ class BeamHandlerTest(tf.test.TestCase):
 
   def testListPipelinesNonEmpty(self):
     # First create two pipelines in the dags folder.
-    handler_pipeline_path_1 = os.path.join(os.environ['BEAM_HOME'],
+    handler_pipeline_path_1 = os.path.join(os.environ['LOCAL_HOME'],
                                            'pipeline_1')
-    handler_pipeline_path_2 = os.path.join(os.environ['BEAM_HOME'],
+    handler_pipeline_path_2 = os.path.join(os.environ['LOCAL_HOME'],
                                            'pipeline_2')
     fileio.makedirs(handler_pipeline_path_1)
     fileio.makedirs(handler_pipeline_path_2)
 
     # Now, list the pipelines
     flags_dict = {labels.ENGINE_FLAG: self.engine}
-    handler = beam_handler.BeamHandler(flags_dict)
+    handler = local_handler.LocalHandler(flags_dict)
 
     with self.captureWritesToStream(sys.stdout) as captured:
       handler.list_pipelines()
@@ -262,7 +262,7 @@ class BeamHandlerTest(tf.test.TestCase):
 
   def testListPipelinesEmpty(self):
     flags_dict = {labels.ENGINE_FLAG: self.engine}
-    handler = beam_handler.BeamHandler(flags_dict)
+    handler = local_handler.LocalHandler(flags_dict)
     with self.captureWritesToStream(sys.stdout) as captured:
       handler.list_pipelines()
     self.assertIn('No pipelines to display.', captured.contents())
@@ -273,14 +273,14 @@ class BeamHandlerTest(tf.test.TestCase):
         labels.ENGINE_FLAG: self.engine,
         labels.PIPELINE_DSL_PATH: self.pipeline_path
     }
-    handler = beam_handler.BeamHandler(flags_dict)
+    handler = local_handler.LocalHandler(flags_dict)
     handler.create_pipeline()
 
     flags_dict = {
         labels.ENGINE_FLAG: self.engine,
         labels.PIPELINE_NAME: self.pipeline_name,
     }
-    handler = beam_handler.BeamHandler(flags_dict)
+    handler = local_handler.LocalHandler(flags_dict)
     with self.assertRaises(SystemExit) as err:
       handler.get_schema()
     self.assertEqual(
@@ -295,14 +295,14 @@ class BeamHandlerTest(tf.test.TestCase):
         labels.ENGINE_FLAG: self.engine,
         labels.PIPELINE_DSL_PATH: self.pipeline_path
     }
-    handler = beam_handler.BeamHandler(flags_dict)
+    handler = local_handler.LocalHandler(flags_dict)
     handler.create_pipeline()
 
     flags_dict = {
         labels.ENGINE_FLAG: self.engine,
         labels.PIPELINE_NAME: self.pipeline_name,
     }
-    handler = beam_handler.BeamHandler(flags_dict)
+    handler = local_handler.LocalHandler(flags_dict)
     fileio.makedirs(self.pipeline_root)
     with self.assertRaises(SystemExit) as err:
       handler.get_schema()
@@ -318,14 +318,14 @@ class BeamHandlerTest(tf.test.TestCase):
         labels.ENGINE_FLAG: self.engine,
         labels.PIPELINE_DSL_PATH: self.pipeline_path
     }
-    handler = beam_handler.BeamHandler(flags_dict)
+    handler = local_handler.LocalHandler(flags_dict)
     handler.create_pipeline()
 
     flags_dict = {
         labels.ENGINE_FLAG: self.engine,
         labels.PIPELINE_NAME: self.pipeline_name,
     }
-    handler = beam_handler.BeamHandler(flags_dict)
+    handler = local_handler.LocalHandler(flags_dict)
     # Create fake schema in pipeline root.
     component_output_dir = os.path.join(self.pipeline_root, 'SchemaGen')
     schema_path = base_driver._generate_output_uri(  # pylint: disable=protected-access
@@ -348,7 +348,7 @@ class BeamHandlerTest(tf.test.TestCase):
   def testCreateRun(self):
     # Create a pipeline in dags folder.
     handler_pipeline_path = os.path.join(
-        os.environ['BEAM_HOME'], self.pipeline_args[labels.PIPELINE_NAME])
+        os.environ['LOCAL_HOME'], self.pipeline_args[labels.PIPELINE_NAME])
     fileio.makedirs(handler_pipeline_path)
     with open(os.path.join(handler_pipeline_path, 'pipeline_args.json'),
               'w') as f:
@@ -359,7 +359,7 @@ class BeamHandlerTest(tf.test.TestCase):
         labels.ENGINE_FLAG: self.engine,
         labels.PIPELINE_NAME: self.pipeline_name
     }
-    handler = beam_handler.BeamHandler(flags_dict)
+    handler = local_handler.LocalHandler(flags_dict)
     with self.captureWritesToStream(sys.stdout) as captured:
       handler.create_run()
     self.assertIn(self.pipeline_path, captured.contents())
@@ -370,7 +370,7 @@ class BeamHandlerTest(tf.test.TestCase):
         labels.ENGINE_FLAG: self.engine,
         labels.PIPELINE_NAME: self.pipeline_name
     }
-    handler = beam_handler.BeamHandler(flags_dict)
+    handler = local_handler.LocalHandler(flags_dict)
     with self.assertRaises(SystemExit) as err:
       handler.create_run()
     self.assertEqual(
@@ -378,56 +378,56 @@ class BeamHandlerTest(tf.test.TestCase):
             flags_dict[labels.PIPELINE_NAME]))
 
   def testDeleteRun(self):
-    # Create a pipeline in beam home.
+    # Create a pipeline in local home.
     handler_pipeline_path = os.path.join(
-        os.environ['BEAM_HOME'], self.pipeline_args[labels.PIPELINE_NAME])
+        os.environ['LOCAL_HOME'], self.pipeline_args[labels.PIPELINE_NAME])
     fileio.makedirs(handler_pipeline_path)
 
     # Now run the pipeline
     flags_dict = {labels.ENGINE_FLAG: self.engine, labels.RUN_ID: self.run_id}
-    handler = beam_handler.BeamHandler(flags_dict)
+    handler = local_handler.LocalHandler(flags_dict)
     with self.captureWritesToStream(sys.stdout) as captured:
       handler.delete_run()
-    self.assertIn('Not supported for beam orchestrator.', captured.contents())
+    self.assertIn('Not supported for local orchestrator.', captured.contents())
 
   def testTerminateRun(self):
-    # Create a pipeline in beam home.
+    # Create a pipeline in local home.
     handler_pipeline_path = os.path.join(
-        os.environ['BEAM_HOME'], self.pipeline_args[labels.PIPELINE_NAME])
+        os.environ['LOCAL_HOME'], self.pipeline_args[labels.PIPELINE_NAME])
     fileio.makedirs(handler_pipeline_path)
 
     # Now run the pipeline
     flags_dict = {labels.ENGINE_FLAG: self.engine, labels.RUN_ID: self.run_id}
-    handler = beam_handler.BeamHandler(flags_dict)
+    handler = local_handler.LocalHandler(flags_dict)
     with self.captureWritesToStream(sys.stdout) as captured:
       handler.terminate_run()
-    self.assertIn('Not supported for beam orchestrator.', captured.contents())
+    self.assertIn('Not supported for local orchestrator.', captured.contents())
 
   def testListRuns(self):
-    # Create a pipeline in beam home.
+    # Create a pipeline in local home.
     handler_pipeline_path = os.path.join(
-        os.environ['BEAM_HOME'], self.pipeline_args[labels.PIPELINE_NAME])
+        os.environ['LOCAL_HOME'], self.pipeline_args[labels.PIPELINE_NAME])
     fileio.makedirs(handler_pipeline_path)
 
     # Now run the pipeline
     flags_dict = {labels.ENGINE_FLAG: self.engine, labels.RUN_ID: self.run_id}
-    handler = beam_handler.BeamHandler(flags_dict)
+    handler = local_handler.LocalHandler(flags_dict)
     with self.captureWritesToStream(sys.stdout) as captured:
       handler.list_runs()
-    self.assertIn('Not supported for beam orchestrator.', captured.contents())
+    self.assertIn('Not supported for local orchestrator.', captured.contents())
 
   def testGetRun(self):
-    # Create a pipeline in beam home.
+    # Create a pipeline in local home.
     handler_pipeline_path = os.path.join(
-        os.environ['BEAM_HOME'], self.pipeline_args[labels.PIPELINE_NAME])
+        os.environ['LOCAL_HOME'], self.pipeline_args[labels.PIPELINE_NAME])
     fileio.makedirs(handler_pipeline_path)
 
     # Now run the pipeline
     flags_dict = {labels.ENGINE_FLAG: self.engine, labels.RUN_ID: self.run_id}
-    handler = beam_handler.BeamHandler(flags_dict)
+    handler = local_handler.LocalHandler(flags_dict)
     with self.captureWritesToStream(sys.stdout) as captured:
       handler.get_run()
-    self.assertIn('Not supported for beam orchestrator.', captured.contents())
+    self.assertIn('Not supported for local orchestrator.', captured.contents())
 
 
 if __name__ == '__main__':

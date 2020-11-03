@@ -112,6 +112,7 @@ class BaseHandler(with_metaclass(abc.ABCMeta, object)):
           labels.AIRFLOW_ENGINE: 'AirflowDagRunner',
           labels.KUBEFLOW_ENGINE: 'KubeflowDagRunner',
           labels.BEAM_ENGINE: 'BeamDagRunner',
+          labels.LOCAL_ENGINE: 'LocalDagRunner',
       }
       if runner_names[engine_flag] not in dsl_contents:
         sys.exit('{} runner not found in dsl.'.format(engine_flag))

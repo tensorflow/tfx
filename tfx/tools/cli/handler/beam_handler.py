@@ -116,23 +116,28 @@ class BeamHandler(base_handler.BaseHandler):
 
     # Run pipeline dsl.
     self._subprocess_call(
-        [sys.executable, str(pipeline_args[labels.PIPELINE_DSL_PATH])])
+        [sys.executable,
+         str(pipeline_args[labels.PIPELINE_DSL_PATH])])
 
   def delete_run(self) -> None:
     """Deletes a run."""
-    click.echo('Not supported for Beam.')
+    click.echo('Not supported for {} orchestrator.'.format(
+        self.flags_dict[labels.ENGINE_FLAG]))
 
   def terminate_run(self) -> None:
     """Stops a run."""
-    click.echo('Not supported for Beam.')
+    click.echo('Not supported for {} orchestrator.'.format(
+        self.flags_dict[labels.ENGINE_FLAG]))
 
   def list_runs(self) -> None:
     """Lists all runs of a pipeline."""
-    click.echo('Not supported for Beam.')
+    click.echo('Not supported for {} orchestrator.'.format(
+        self.flags_dict[labels.ENGINE_FLAG]))
 
   def get_run(self) -> None:
     """Checks run status."""
-    click.echo('Not supported for Beam.')
+    click.echo('Not supported for {} orchestrator.'.format(
+        self.flags_dict[labels.ENGINE_FLAG]))
 
   def _save_pipeline(self, pipeline_args: Dict[Text, Any]) -> None:
     """Creates/updates pipeline folder in the handler directory."""
