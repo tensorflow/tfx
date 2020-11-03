@@ -68,7 +68,7 @@ def main(_):
   run_result = operator.run_executor(execution_info)
 
   if run_result:
-    with fileio.open(execution_info.executor_output_uri, 'wb') as f:
+    with fileio.open(execution_info.execution_output_uri, 'wb') as f:
       f.write(run_result.SerializeToString())
 
 

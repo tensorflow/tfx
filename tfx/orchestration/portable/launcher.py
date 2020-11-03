@@ -24,6 +24,7 @@ from tfx.orchestration import metadata
 from tfx.orchestration.portable import base_driver_operator
 from tfx.orchestration.portable import base_executor_operator
 from tfx.orchestration.portable import cache_utils
+from tfx.orchestration.portable import data_types
 from tfx.orchestration.portable import execution_publish_utils
 from tfx.orchestration.portable import importer_node_handler
 from tfx.orchestration.portable import inputs_utils
@@ -39,7 +40,6 @@ from tfx.proto.orchestration import pipeline_pb2
 
 from google.protobuf import message
 from ml_metadata.proto import metadata_store_pb2
-
 
 # Subclasses of BaseExecutorOperator
 ExecutorOperator = TypeVar(
@@ -73,8 +73,7 @@ class _PrepareExecutionResult:
   """A wrapper class using as the return value of _prepare_execution()."""
 
   # The information used by executor operators.
-  execution_info = attr.ib(
-      type=base_executor_operator.ExecutionInfo, default=None)
+  execution_info = attr.ib(type=data_types.ExecutionInfo, default=None)
   # Contexts of the execution, usually used by Publisher.
   contexts = attr.ib(type=List[metadata_store_pb2.Context], default=None)
   # TODO(b/156126088): Update the following documentation when this bug is
@@ -188,7 +187,7 @@ class Launcher(object):
       # nodes won't be triggered.
       if input_artifacts is None:
         return _PrepareExecutionResult(
-            execution_info=base_executor_operator.ExecutionInfo(),
+            execution_info=data_types.ExecutionInfo(),
             contexts=contexts,
             is_execution_needed=False)
 
@@ -206,10 +205,11 @@ class Launcher(object):
 
     # If there is a custom driver, runs it.
     if self._driver_operator:
-      driver_output = self._driver_operator.run_driver(
-          input_artifacts, output_artifacts, exec_properties)
-      self._update_with_driver_output(
-          driver_output, exec_properties, output_artifacts)
+      driver_output = self._driver_operator.run_driver(input_artifacts,
+                                                       output_artifacts,
+                                                       exec_properties)
+      self._update_with_driver_output(driver_output, exec_properties,
+                                      output_artifacts)
 
     # We reconnect to MLMD here because the custom driver closes MLMD connection
     # on returning.
@@ -236,20 +236,20 @@ class Launcher(object):
             execution_id=execution.id,
             output_artifacts=cached_outputs)
         return _PrepareExecutionResult(
-            execution_info=base_executor_operator.ExecutionInfo(
+            execution_info=data_types.ExecutionInfo(
                 execution_metadata=execution),
             contexts=contexts,
             is_execution_needed=False)
 
       # 8. Going to trigger executor.
       return _PrepareExecutionResult(
-          execution_info=base_executor_operator.ExecutionInfo(
+          execution_info=data_types.ExecutionInfo(
               execution_metadata=execution,
               input_dict=input_artifacts,
               output_dict=output_artifacts,
               exec_properties=exec_properties,
-              executor_output_uri=self._output_resolver.get_executor_output_uri(
-                  execution.id),
+              execution_output_uri=self._output_resolver
+              .get_executor_output_uri(execution.id),
               stateful_working_dir=(
                   self._output_resolver.get_stateful_working_directory()),
               pipeline_node=self._pipeline_node,
@@ -258,7 +258,7 @@ class Launcher(object):
           is_execution_needed=True)
 
   def _run_executor(
-      self, execution_info: base_executor_operator.ExecutionInfo
+      self, execution_info: data_types.ExecutionInfo
   ) -> execution_result_pb2.ExecutorOutput:
     """Executes underlying component implementation."""
 
@@ -292,7 +292,7 @@ class Launcher(object):
       execution_publish_utils.publish_failed_execution(
           metadata_handler=m, execution_id=execution_id, contexts=contexts)
 
-  def _clean_up(self, execution_info: base_executor_operator.ExecutionInfo):
+  def _clean_up(self, execution_info: data_types.ExecutionInfo):
     fileio.rmtree(execution_info.stateful_working_dir)
 
   def _update_with_driver_output(self,
@@ -327,9 +327,10 @@ class Launcher(object):
     logging.debug('Running launcher for %s', self._pipeline_node)
     if self._system_node_handler:
       # If this is a system node, runs it and directly return.
-      return self._system_node_handler.run(
-          self._mlmd_connection, self._pipeline_node, self._pipeline_info,
-          self._pipeline_runtime_spec)
+      return self._system_node_handler.run(self._mlmd_connection,
+                                           self._pipeline_node,
+                                           self._pipeline_info,
+                                           self._pipeline_runtime_spec)
 
     # Runs as a normal node.
     prepare_exeucion_result = self._prepare_execution()

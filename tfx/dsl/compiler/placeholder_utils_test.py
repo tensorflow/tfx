@@ -16,7 +16,7 @@
 
 import tensorflow as tf
 from tfx.dsl.compiler import placeholder_utils
-from tfx.orchestration.portable import base_executor_operator
+from tfx.orchestration.portable import data_types
 from tfx.proto import infra_validator_pb2
 from tfx.proto.orchestration import pipeline_pb2
 from tfx.proto.orchestration import placeholder_pb2
@@ -78,7 +78,7 @@ class PlaceholderUtilsTest(tf.test.TestCase):
     serving_spec = infra_validator_pb2.ServingSpec()
     serving_spec.tensorflow_serving.tags.extend(["latest", "1.15.0-gpu"])
     self._resolution_context = placeholder_utils.ResolutionContext(
-        exec_info=base_executor_operator.ExecutionInfo(
+        exec_info=data_types.ExecutionInfo(
             input_dict={
                 "model": [standard_artifacts.Model()],
                 "examples": examples,
@@ -91,7 +91,7 @@ class PlaceholderUtilsTest(tf.test.TestCase):
                         sort_keys=True,
                         preserving_proto_field_name=True)
             },
-            executor_output_uri="test_executor_output_uri",
+            execution_output_uri="test_executor_output_uri",
             stateful_working_dir="test_stateful_working_dir",
             pipeline_node=pipeline_pb2.PipelineNode(
                 node_info=pipeline_pb2.NodeInfo(

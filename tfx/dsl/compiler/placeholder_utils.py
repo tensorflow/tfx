@@ -18,7 +18,7 @@ from typing import Any, Callable, Dict
 
 import attr
 from tfx.dsl.placeholder import placeholder as ph
-from tfx.orchestration.portable import base_executor_operator
+from tfx.orchestration.portable import data_types
 from tfx.proto.orchestration import placeholder_pb2
 from tfx.types import artifact
 from tfx.types import artifact_utils
@@ -41,7 +41,7 @@ class ResolutionContext:
     executor_spec: An executor spec proto for rendering context placeholder.
     platform_config: A platform config proto for rendering context placeholder.
   """
-  exec_info: base_executor_operator.ExecutionInfo = None
+  exec_info: data_types.ExecutionInfo = None
   executor_spec: message.Message = None
   platform_config: message.Message = None
 
@@ -112,7 +112,7 @@ class _ExpressionResolver:
             ph.RuntimeInfoKey.STATEFUL_WORKING_DIR.value:
                 context.exec_info.stateful_working_dir,
             ph.RuntimeInfoKey.EXECUTOR_OUTPUT_URI.value:
-                context.exec_info.executor_output_uri,
+                context.exec_info.execution_output_uri,
             ph.RuntimeInfoKey.NODE_INFO.value:
                 context.exec_info.pipeline_node.node_info,
             ph.RuntimeInfoKey.PIPELINE_INFO.value:

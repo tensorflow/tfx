@@ -14,7 +14,7 @@
 """Tests for tfx.orchestration.python_executor_binary.python_executor_binary_utils."""
 
 import tensorflow as tf
-from tfx.orchestration.portable import base_executor_operator
+from tfx.orchestration.portable import data_types
 from tfx.orchestration.python_executor_binary import python_executor_binary_utils
 from tfx.types import artifact
 
@@ -40,18 +40,18 @@ class PythonExecutorBinaryUtilsTest(tf.test.TestCase):
     my_artifact = _MyArtifact()
     my_artifact.int1 = 111
 
-    executor_output_uri = 'output/uri'
+    execution_output_uri = 'output/uri'
     stateful_working_dir = 'workding/dir'
     exec_properties = {
         'property1': 'value1',
         'property2': 'value2',
     }
 
-    original = base_executor_operator.ExecutionInfo(
+    original = data_types.ExecutionInfo(
         input_dict={'input': [my_artifact]},
         output_dict={'output': [my_artifact]},
         exec_properties=exec_properties,
-        executor_output_uri=executor_output_uri,
+        execution_output_uri=execution_output_uri,
         stateful_working_dir=stateful_working_dir,
     )
 
@@ -62,7 +62,7 @@ class PythonExecutorBinaryUtilsTest(tf.test.TestCase):
     self.CheckArtifactDict(rehydrated.input_dict, {'input': [my_artifact]})
     self.CheckArtifactDict(rehydrated.output_dict, {'output': [my_artifact]})
     self.assertEqual(rehydrated.exec_properties, exec_properties)
-    self.assertEqual(rehydrated.executor_output_uri, executor_output_uri)
+    self.assertEqual(rehydrated.execution_output_uri, execution_output_uri)
     self.assertEqual(rehydrated.stateful_working_dir, stateful_working_dir)
 
 

@@ -21,7 +21,7 @@ import tensorflow as tf
 from tfx import types
 from tfx.dsl.components.base import base_executor
 from tfx.dsl.io import fileio
-from tfx.orchestration.portable import base_executor_operator
+from tfx.orchestration.portable import data_types
 from tfx.orchestration.portable import python_executor_operator
 from tfx.orchestration.portable import test_utils
 from tfx.proto.orchestration import executable_spec_pb2
@@ -95,12 +95,12 @@ class PythonExecutorOperatorTest(test_utils.TfxTest):
     stateful_working_dir = os.path.join(self.tmp_dir, 'stateful_working_dir')
     executor_output_uri = os.path.join(self.tmp_dir, 'executor_output')
     executor_output = operator.run_executor(
-        base_executor_operator.ExecutionInfo(
+        data_types.ExecutionInfo(
             input_dict=input_dict,
             output_dict=output_dict,
             exec_properties=exec_properties,
             stateful_working_dir=stateful_working_dir,
-            executor_output_uri=executor_output_uri))
+            execution_output_uri=executor_output_uri))
     self.assertProtoPartiallyEquals(
         """
           execution_properties {
@@ -129,12 +129,12 @@ class PythonExecutorOperatorTest(test_utils.TfxTest):
     stateful_working_dir = os.path.join(self.tmp_dir, 'stateful_working_dir')
     executor_output_uri = os.path.join(self.tmp_dir, 'executor_output')
     executor_output = operator.run_executor(
-        base_executor_operator.ExecutionInfo(
+        data_types.ExecutionInfo(
             input_dict=input_dict,
             output_dict=output_dict,
             exec_properties=exec_properties,
             stateful_working_dir=stateful_working_dir,
-            executor_output_uri=executor_output_uri))
+            execution_output_uri=executor_output_uri))
     self.assertProtoPartiallyEquals(
         """
           execution_properties {
@@ -170,12 +170,12 @@ class PythonExecutorOperatorTest(test_utils.TfxTest):
     stateful_working_dir = os.path.join(self.tmp_dir, 'stateful_working_dir')
     executor_output_uri = os.path.join(self.tmp_dir, 'executor_output')
     executor_output = operator.run_executor(
-        base_executor_operator.ExecutionInfo(
+        data_types.ExecutionInfo(
             input_dict=input_dict,
             output_dict=output_dict,
             exec_properties=exec_properties,
             stateful_working_dir=stateful_working_dir,
-            executor_output_uri=executor_output_uri))
+            execution_output_uri=executor_output_uri))
     self.assertProtoPartiallyEquals(
         """
           execution_properties {
@@ -220,11 +220,11 @@ class PythonExecutorOperatorTest(test_utils.TfxTest):
     operator = python_executor_operator.PythonExecutorOperator(executor_sepc)
     executor_output_uri = os.path.join(self.tmp_dir, 'executor_output')
     operator.run_executor(
-        base_executor_operator.ExecutionInfo(
+        data_types.ExecutionInfo(
             input_dict={},
             output_dict={},
             exec_properties={},
-            executor_output_uri=executor_output_uri))
+            execution_output_uri=executor_output_uri))
 
 
 if __name__ == '__main__':

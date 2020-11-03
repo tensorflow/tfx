@@ -23,6 +23,7 @@ from tfx.dsl.compiler import constants
 from tfx.orchestration import metadata
 from tfx.orchestration.portable import base_driver
 from tfx.orchestration.portable import base_executor_operator
+from tfx.orchestration.portable import data_types
 from tfx.orchestration.portable import execution_publish_utils
 from tfx.orchestration.portable import inputs_utils
 from tfx.orchestration.portable import launcher
@@ -51,7 +52,7 @@ class _FakeExecutorOperator(base_executor_operator.BaseExecutorOperator):
   SUPPORTED_PLATFORM_CONFIG_TYPE = None
 
   def run_executor(
-      self, execution_info: base_executor_operator.ExecutionInfo
+      self, execution_info: data_types.ExecutionInfo
   ) -> execution_result_pb2.ExecutorOutput:
     self._exec_properties = execution_info.exec_properties
     return execution_result_pb2.ExecutorOutput()
@@ -64,7 +65,7 @@ class _FakeCrashingExecutorOperator(base_executor_operator.BaseExecutorOperator
   SUPPORTED_PLATFORM_CONFIG_TYPE = None
 
   def run_executor(
-      self, execution_info: base_executor_operator.ExecutionInfo
+      self, execution_info: data_types.ExecutionInfo
   ) -> execution_result_pb2.ExecutorOutput:
     raise FakeError()
 

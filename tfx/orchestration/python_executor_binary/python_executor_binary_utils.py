@@ -15,7 +15,7 @@ r"""Shared IR serialization logic used by TFleX python executor binary."""
 
 import base64
 
-from tfx.orchestration.portable import base_executor_operator
+from tfx.orchestration.portable import data_types
 from tfx.proto.orchestration import executor_invocation_pb2
 from tfx.types import artifact_utils
 from ml_metadata.proto import metadata_store_pb2
@@ -77,12 +77,12 @@ def _build_proto_exec_property_dict(exec_properties):
 
 
 def deserialize_execution_info(
-    execution_info_b64: str) -> base_executor_operator.ExecutionInfo:
+    execution_info_b64: str) -> data_types.ExecutionInfo:
   """De-serialize the ExecutionInfo class from a binary string."""
   execution_info_proto = executor_invocation_pb2.ExecutorInvocation.FromString(
       base64.b64decode(execution_info_b64))
-  result = base_executor_operator.ExecutionInfo(
-      executor_output_uri=execution_info_proto.output_metadata_uri,
+  result = data_types.ExecutionInfo(
+      execution_output_uri=execution_info_proto.output_metadata_uri,
       stateful_working_dir=execution_info_proto.stateful_working_dir)
 
   result.exec_properties = _build_exec_property_dict(
@@ -93,11 +93,10 @@ def deserialize_execution_info(
   return result
 
 
-def serialize_execution_info(
-    execution_info: base_executor_operator.ExecutionInfo) -> str:
+def serialize_execution_info(execution_info: data_types.ExecutionInfo) -> str:
   """Serialize the ExecutionInfo class from a binary string."""
   execution_info_proto = executor_invocation_pb2.ExecutorInvocation(
-      output_metadata_uri=execution_info.executor_output_uri,
+      output_metadata_uri=execution_info.execution_output_uri,
       stateful_working_dir=execution_info.stateful_working_dir,
       execution_properties=_build_proto_exec_property_dict(
           execution_info.exec_properties),
