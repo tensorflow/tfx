@@ -18,6 +18,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import copy
 import os
 
 from typing import Any, Dict, List, Text, cast
@@ -64,4 +65,8 @@ class InProcessComponentLauncher(base_component_launcher.BaseComponentLauncher):
     executor = executor_class_spec.executor_class(
         executor_context)  # type: ignore
 
-    executor.Do(input_dict, output_dict, exec_properties)
+    # Make a deep copy for input_dict and exec_properties, because they should
+    # be immutable in this context.
+    # output_dict can still be changed, specifically properties.
+    executor.Do(
+        copy.deepcopy(input_dict), output_dict, copy.deepcopy(exec_properties))

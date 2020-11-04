@@ -58,6 +58,8 @@
 *   Fixed an issue with Transform cache and beam 2.24-2.25 in an interactive
     notebook that caused it to fail.
 *   Scripts - run_component - Added a way to output artifact properties.
+*   Fixed an issue resulting in incorrect cache miss to ExampleGen when no
+    `beam_pipeline_args` is provided.
 
 ### For pipeline authors
 

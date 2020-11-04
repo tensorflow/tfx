@@ -19,6 +19,7 @@ from __future__ import division
 from __future__ import print_function
 
 import abc
+import copy
 from typing import Any, Dict, List, Optional, Text
 
 import absl
@@ -199,10 +200,14 @@ class BaseComponentLauncher(with_metaclass(abc.ABCMeta, object)):
     if not execution_decision.use_cached_results:
       absl.logging.info('Running executor for %s',
                         self._component_info.component_id)
-      self._run_executor(execution_decision.execution_id,
-                         execution_decision.input_dict,
-                         execution_decision.output_dict,
-                         execution_decision.exec_properties)
+      # Make a deep copy for input_dict and exec_properties, because they should
+      # be immutable in this context.
+      # output_dict can still be changed, specifically properties.
+      self._run_executor(
+          execution_decision.execution_id,
+          copy.deepcopy(execution_decision.input_dict),
+          execution_decision.output_dict,
+          copy.deepcopy(execution_decision.exec_properties.copy()))
 
     absl.logging.info('Running publisher for %s',
                       self._component_info.component_id)
