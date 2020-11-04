@@ -37,7 +37,8 @@ from google.protobuf import json_format
 
 
 @beam.ptransform_fn
-def _MockReadFromBigQuery(pipeline, query, use_bigquery_source):  # pylint: disable=invalid-name, unused-argument
+def _MockReadFromBigQuery(pipeline, query):
+  del query  # Unused arg
   mock_query_results = []
   for i in range(10000):
     mock_query_result = {
@@ -50,7 +51,8 @@ def _MockReadFromBigQuery(pipeline, query, use_bigquery_source):  # pylint: disa
 
 
 @beam.ptransform_fn
-def _MockReadFromBigQuery2(pipeline, query, use_bigquery_source):  # pylint: disable=invalid-name, unused-argument
+def _MockReadFromBigQuery2(pipeline, query):
+  del query  # Unused arg
   mock_query_results = [{
       'i': 1,
       'i2': [2, 3],

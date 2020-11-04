@@ -22,7 +22,7 @@ from typing import Any, Dict, Optional, Text
 
 import apache_beam as beam
 
-from apache_beam.io.gcp.bigquery import ReadFromBigQuery
+from apache_beam.io.gcp import bigquery as beam_bigquery
 from apache_beam.options import value_provider
 import tensorflow as tf
 
@@ -106,7 +106,7 @@ def _ReadFromBigQueryImpl(  # pylint: disable=invalid-name
                 beam.io.BigQuerySource(query=query, use_standard_sql=True)))
 
   return (pipeline
-          | 'ReadFromBigQuery' >> ReadFromBigQuery(
+          | 'ReadFromBigQuery' >> beam_bigquery.ReadFromBigQuery(
               query=query,
               use_standard_sql=True,
               bigquery_job_labels=telemetry_utils.get_labels_dict()))
@@ -130,9 +130,6 @@ def _BigQueryToExample(  # pylint: disable=invalid-name
     PCollection of TF examples.
   """
 
-  # TODO(b/155441037): Clean up the usage of `runner` flag
-  # once ReadFromBigQuery performance on dataflow runner is on par
-  # with BigQuerySource.
   beam_pipeline_args = exec_properties['_beam_pipeline_args']
   pipeline_options = beam.options.pipeline_options.PipelineOptions(
       beam_pipeline_args)
@@ -143,14 +140,9 @@ def _BigQueryToExample(  # pylint: disable=invalid-name
     project = project.get()
   converter = _BigQueryConverter(split_pattern, project)
 
-  use_dataflow_runner = pipeline_options.get_all_options().get('runner') in [
-      'dataflow', 'DataflowRunner'
-  ]
-
   return (pipeline
           | 'QueryTable' >> _ReadFromBigQueryImpl(  # pylint: disable=no-value-for-parameter
-              query=split_pattern,
-              use_bigquery_source=use_dataflow_runner)
+              query=split_pattern)
           | 'ToTFExample' >> beam.Map(converter.RowToExample))
 
 

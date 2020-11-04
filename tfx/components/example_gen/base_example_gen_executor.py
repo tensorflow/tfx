@@ -206,8 +206,6 @@ class BaseExampleGenExecutor(
     split_names = utils.generate_output_split_names(input_config, output_config)
     # Make beam_pipeline_args available in exec_properties since certain
     # example_gen executors need this information.
-    # TODO(b/155441037): Revisit necessity of this when BigQueryExampleGen
-    # does not branch on runner anymore.
     exec_properties['_beam_pipeline_args'] = self._beam_pipeline_args or []
 
     example_splits = []

@@ -34,6 +34,7 @@
     ```
 *   Added CloudTuner KFP e2e example running on Google Cloud Platform with
     distributed tuning.
+*   Migrated BigQueryExampleGen to the new `ReadFromBigQuery` on all runners.
 
 ## Breaking changes
 
@@ -51,6 +52,7 @@
 *   Depends on `tensorflow-hub>=0.9.0,<0.10`.
 *   Depends on `mmh>=2.2,<3` in container image for potential performance
     improvement for Beam based hashes.
+*   Depends on `apache-beam[gcp]>=2.25,<3`.
 *   New extra dependencies `[examples]` is required to use codes inside
     tfx/examples.
 *   Fixed the run_component script.

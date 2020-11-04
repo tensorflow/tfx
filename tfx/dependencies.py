@@ -57,7 +57,7 @@ def make_required_install_packages():
   return [
       'absl-py>=0.9,<0.11',
       # LINT.IfChange
-      'apache-beam[gcp]>=2.24,<3',
+      'apache-beam[gcp]>=2.25,<3',
       # LINT.ThenChange(examples/chicago_taxi_pipeline/setup/setup_beam.sh)
       'attrs>=19.3.0,<20',
       'click>=7,<8',
@@ -84,11 +84,13 @@ def make_required_install_packages():
       'tensorflow-data-validation' + select_constraint(
           default='>=0.24.1,<0.25',
           nightly='>=0.25.0.dev',
-          git_master='@git+https://github.com/tensorflow/data-validation@master'),  # pylint: disable=line-too-long
+          git_master='@git+https://github.com/tensorflow/data-validation@master'
+      ),
       'tensorflow-model-analysis' + select_constraint(
           default='>=0.24.3,<0.25',
           nightly='>=0.25.0.dev',
-          git_master='@git+https://github.com/tensorflow/model-analysis@master'),  # pylint: disable=line-too-long
+          git_master='@git+https://github.com/tensorflow/model-analysis@master'
+      ),
       'tensorflow-serving-api>=1.15,!=2.0.*,!=2.1.*,!=2.2.*,<3',
       'tensorflow-transform' + select_constraint(
           default='>=0.24.1,<0.25',
