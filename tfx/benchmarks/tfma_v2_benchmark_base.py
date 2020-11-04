@@ -25,10 +25,10 @@ import apache_beam as beam
 import tensorflow as tf
 import tensorflow_model_analysis as tfma
 from tensorflow_model_analysis import constants
-from tensorflow_model_analysis.evaluators import metrics_and_plots_evaluator_v2
+from tensorflow_model_analysis.evaluators import metrics_plots_and_validations_evaluator
 from tensorflow_model_analysis.extractors import batched_input_extractor
 from tensorflow_model_analysis.extractors import batched_predict_extractor_v2
-from tensorflow_model_analysis.extractors import input_extractor
+from tensorflow_model_analysis.extractors import legacy_input_extractor
 from tensorflow_model_analysis.extractors import unbatch_extractor
 from tensorflow_model_analysis.metrics import metric_specs
 from tensorflow_model_analysis.metrics import metric_types
@@ -116,8 +116,8 @@ class TFMAV2BenchmarkBase(benchmark_base.BenchmarkBase):
             eval_shared_model=self._eval_shared_model).ptransform
         | "UnbatchExtractor" >> unbatch_extractor.UnbatchExtractor().ptransform
         | "SliceKeyExtractor" >> tfma.extractors.SliceKeyExtractor().ptransform
-        | "V2ComputeMetricsAndPlots" >>
-        metrics_and_plots_evaluator_v2.MetricsAndPlotsEvaluator(
+        | "V2ComputeMetricsAndPlots" >> metrics_plots_and_validations_evaluator
+        .MetricsPlotsAndValidationsEvaluator(
             eval_config=self._eval_config,
             eval_shared_model=self._eval_shared_model).ptransform)
 
@@ -171,7 +171,8 @@ class TFMAV2BenchmarkBase(benchmark_base.BenchmarkBase):
 
     start = time.time()
     for elem in records:
-      extracts.append(input_extractor._ParseExample(elem, self._eval_config))  # pylint: disable=protected-access
+      extracts.append(
+          legacy_input_extractor._ParseExample(elem, self._eval_config))  # pylint: disable=protected-access
     end = time.time()
     delta = end - start
     self.report_benchmark(
@@ -256,18 +257,21 @@ class TFMAV2BenchmarkBase(benchmark_base.BenchmarkBase):
     start = time.time()
 
     computations, _ = (
-        metrics_and_plots_evaluator_v2._filter_and_separate_computations(  # pylint: disable=protected-access
+        # pylint: disable=protected-access
+        metrics_plots_and_validations_evaluator
+        ._filter_and_separate_computations(
             metric_specs.to_computations(
                 metrics_specs, eval_config=self._eval_config)))
+    # pylint: enable=protected-access
 
     processed = []
     for elem in unbatched_extarcts:
       processed.append(
           next(
-              metrics_and_plots_evaluator_v2._PreprocessorDoFn(  # pylint: disable=protected-access
+              metrics_plots_and_validations_evaluator._PreprocessorDoFn(  # pylint: disable=protected-access
                   computations).process(elem)))
 
-    combiner = metrics_and_plots_evaluator_v2._ComputationsCombineFn(  # pylint: disable=protected-access
+    combiner = metrics_plots_and_validations_evaluator._ComputationsCombineFn(  # pylint: disable=protected-access
         computations=computations,
         compute_with_sampling=with_confidence_intervals)
 

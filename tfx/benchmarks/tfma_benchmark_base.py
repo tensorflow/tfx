@@ -77,7 +77,8 @@ class TFMABenchmarkBase(benchmark_base.BenchmarkBase):
         | "PredictExtractor" >> tfma.extractors.PredictExtractor(
             eval_shared_model=eval_shared_model).ptransform
         | "SliceKeyExtractor" >> tfma.extractors.SliceKeyExtractor().ptransform
-        | "ComputeMetricsAndPlots" >> tfma.evaluators.MetricsAndPlotsEvaluator(
+        |
+        "ComputeMetricsAndPlots" >> tfma.evaluators.MetricsAndPlotsEvaluatorV1(
             eval_shared_model=eval_shared_model).ptransform)
 
     start = time.time()
