@@ -1,0 +1,93 @@
+# proto-file: tfx/orchestration/kubeflow/v2/proto/pipeline.proto
+# proto-message: PipelineSpec
+
+# Note: Due to the inconsistent behavior of json_format under Py2 and Py3,
+# running test against this golden file under Py2 will fail.
+
+pipeline_info {
+  name: "two_step_pipeline"
+}
+tasks {
+  task_info {
+    name: "BigQueryExampleGen"
+  }
+  inputs {
+    parameters {
+      key: "input_config"
+      value {
+        runtime_value {
+          constant_value {
+            string_value: "{\n  \"splits\": [\n    {\n      \"name\": \"single_split\",\n      \"pattern\": \"SELECT * FROM TABLE\"\n    }\n  ]\n}"
+          }
+        }
+      }
+    }
+    parameters {
+      key: "output_config"
+      value {
+        runtime_value {
+          constant_value {
+            string_value: "{\n  \"split_config\": {\n    \"splits\": [\n      {\n        \"hash_buckets\": 2,\n        \"name\": \"train\"\n      },\n      {\n        \"hash_buckets\": 1,\n        \"name\": \"eval\"\n      }\n    ]\n  }\n}"
+          }
+        }
+      }
+    }
+  }
+  outputs {
+    artifacts {
+      key: "examples"
+      value {
+        artifact_type {
+          instance_schema: "title: tfx.Examples\ntype: object\nproperties:\n  span:\n    type: int\n    description: Span for an artifact.\n  version:\n    type: int\n    description: Version for an artifact.\n  split_names:\n    type: string\n    description: JSON-encoded list of splits for an artifact. Empty string means artifact has no split.\n"
+        }
+      }
+    }
+  }
+  executor_label: "BigQueryExampleGen_executor"
+  caching_options {
+    enable_cache: true
+  }
+}
+tasks {
+  task_info {
+    name: "StatisticsGen"
+  }
+  inputs {
+    parameters {
+      key: "exclude_splits"
+      value {
+        runtime_value {
+          constant_value {
+            string_value: "[]"
+          }
+        }
+      }
+    }
+    artifacts {
+      key: "examples"
+      value {
+        producer_task: "BigQueryExampleGen"
+        output_artifact_key: "examples"
+      }
+    }
+  }
+  outputs {
+    artifacts {
+      key: "statistics"
+      value {
+        artifact_type {
+          instance_schema: "title: tfx.ExampleStatistics\ntype: object\nproperties:\n  span:\n    type: int\n    description: Span for an artifact.\n  split_names:\n    type: string\n    description: JSON-encoded list of splits for an artifact. Empty string means artifact has no split.\n"
+        }
+      }
+    }
+  }
+  executor_label: "StatisticsGen_executor"
+  dependent_tasks: "BigQueryExampleGen"
+  caching_options {
+    enable_cache: true
+  }
+}
+deployment_config {
+  type_url: "type.googleapis.com/ml_pipelines.PipelineDeploymentConfig"
+  value: "\n\331\001\n\033BigQueryExampleGen_executor\022\271\001\n\266\001\n\024gcr.io/my-tfx:latest\032\025--executor_class_path\032Ctfx.extensions.google_cloud_big_query.example_gen.executor.Executor\032!--json_serialized_invocation_args\032\005{{$}}\032\030--project=my-gcp-project\n\300\001\n\026StatisticsGen_executor\022\245\001\n\242\001\n\024gcr.io/my-tfx:latest\032\025--executor_class_path\032/tfx.components.statistics_gen.executor.Executor\032!--json_serialized_invocation_args\032\005{{$}}\032\030--project=my-gcp-project"
+}

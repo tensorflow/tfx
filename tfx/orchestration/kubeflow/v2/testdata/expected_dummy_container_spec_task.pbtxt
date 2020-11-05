@@ -1,0 +1,31 @@
+# proto-file: tfx/orchestration/kubeflow/v2/proto/pipeline.proto
+# proto-message: PipelineTaskSpec
+
+task_info {
+  name: "DummyProducerComponent"
+}
+inputs {
+  parameters {
+    key: "param1"
+    value {
+      runtime_value {
+        constant_value {
+          string_value: "value1"
+        }
+      }
+    }
+  }
+}
+outputs {
+  artifacts {
+    key: "output1"
+    value {
+      artifact_type {
+        instance_schema: "title: tfx.Model\ntype: object\nproperties:\n"
+      }
+    }
+  }
+}
+executor_label: "DummyProducerComponent_executor"
+caching_options {
+}

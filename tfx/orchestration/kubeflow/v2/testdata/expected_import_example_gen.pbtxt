@@ -1,0 +1,61 @@
+# proto-file: tfx/orchestration/kubeflow/v2/proto/pipeline.proto
+# proto-message: PipelineTaskSpec
+
+task_info {
+  name: "ImportExampleGen"
+}
+inputs {
+  parameters {
+    key: "input_base"
+    value {
+      runtime_value {
+        constant_value {
+          string_value: "path/to/data/root"
+        }
+      }
+    }
+  }
+  parameters {
+    key: "input_config"
+    value {
+      runtime_value {
+        constant_value {
+          string_value: "{\n  \"splits\": [\n    {\n      \"name\": \"train\",\n      \"pattern\": \"*train.tfr\"\n    },\n    {\n      \"name\": \"eval\",\n      \"pattern\": \"*test.tfr\"\n    }\n  ]\n}"
+        }
+      }
+    }
+  }
+  parameters {
+    key: "output_config"
+    value {
+      runtime_value {
+        constant_value {
+          string_value: "{}"
+        }
+      }
+    }
+  }
+  parameters {
+    key: "output_data_format"
+    value {
+      runtime_value {
+        constant_value {
+          int_value: 6
+        }
+      }
+    }
+  }
+}
+outputs {
+  artifacts {
+    key: "examples"
+    value {
+      artifact_type {
+        instance_schema: "title: tfx.Examples\ntype: object\nproperties:\n  span:\n    type: int\n    description: Span for an artifact.\n  version:\n    type: int\n    description: Version for an artifact.\n  split_names:\n    type: string\n    description: JSON-encoded list of splits for an artifact. Empty string means artifact has no split.\n"
+      }
+    }
+  }
+}
+executor_label: "ImportExampleGen_executor"
+caching_options {
+}

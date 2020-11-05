@@ -1,0 +1,12 @@
+{
+  "inputs": {
+    "parameters": {
+      "input_config": {
+        "stringValue": "input config string"
+      },
+      "output_config": {
+        "stringValue": "{ \"split_config\": { \"splits\": [ { \"hash_buckets\": 2, \"name\": \"train\" }, { \"hash_buckets\": 1, \"name\": \"eval\" } ] } }"
+      }
+    }
+  }
+}

@@ -11,3 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+"""CAIP pipeline components."""
+
+from absl import logging
+
+logging.warning('Components in this package are considered experimental. '
+                'APIs may not be backward compatible.')

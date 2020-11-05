@@ -1,0 +1,79 @@
+# Pipeline spec generated for a 2-step Pipeline using AI Platform simple artifact types.
+# proto-file: tfx/orchestration/kubeflow/v2/proto/pipeline.proto
+# proto-message: PipelineSpec
+pipeline_info {
+  name: "two_step_kubeflow_artifacts_pipeline"
+}
+tasks {
+  task_info {
+    name: "ProducerComponent"
+  }
+  outputs {
+    artifacts {
+      key: "examples"
+      value {
+        artifact_type {
+          instance_schema: "title: tfx.Dataset\ntype: object\nproperties:\n"
+        }
+      }
+    }
+    artifacts {
+      key: "external_data"
+      value {
+        artifact_type {
+          instance_schema: "title: tfx.File\ntype: object\nproperties:\n"
+        }
+      }
+    }
+  }
+  executor_label: "ProducerComponent_executor"
+  caching_options {
+  }
+}
+tasks {
+  task_info {
+    name: "ConsumerComponent"
+  }
+  inputs {
+    artifacts {
+      key: "examples"
+      value {
+        producer_task: "ProducerComponent"
+        output_artifact_key: "examples"
+      }
+    }
+    artifacts {
+      key: "external_data"
+      value {
+        producer_task: "ProducerComponent"
+        output_artifact_key: "external_data"
+      }
+    }
+  }
+  outputs {
+    artifacts {
+      key: "metrics"
+      value {
+        artifact_type {
+          instance_schema: "title: tfx.Metrics\ntype: object\nproperties:\n"
+        }
+      }
+    }
+    artifacts {
+      key: "stats"
+      value {
+        artifact_type {
+          instance_schema: "title: tfx.Statistics\ntype: object\nproperties:\n"
+        }
+      }
+    }
+  }
+  executor_label: "ConsumerComponent_executor"
+  dependent_tasks: "ProducerComponent"
+  caching_options {
+  }
+}
+deployment_config {
+  type_url: "type.googleapis.com/ml_pipelines.PipelineDeploymentConfig"
+  value: "\n\310\001\n\032ConsumerComponent_executor\022\251\001\n\246\001\n\024gcr.io/my-tfx:latest\032\025--executor_class_path\0323tfx.dsl.components.base.base_executor.EmptyExecutor\032!--json_serialized_invocation_args\032\005{{$}}\032\030--project=my-gcp-project\n\310\001\n\032ProducerComponent_executor\022\251\001\n\246\001\n\024gcr.io/my-tfx:latest\032\025--executor_class_path\0323tfx.dsl.components.base.base_executor.EmptyExecutor\032!--json_serialized_invocation_args\032\005{{$}}\032\030--project=my-gcp-project"
+}

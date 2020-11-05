@@ -35,6 +35,10 @@
 *   Added CloudTuner KFP e2e example running on Google Cloud Platform with
     distributed tuning.
 *   Migrated BigQueryExampleGen to the new `ReadFromBigQuery` on all runners.
+*   Introduced Kubeflow V2 DAG runner, which is based on
+    [Kubeflow IR spec](https://github.com/kubeflow/pipelines/blob/master/api/v2alpha1/pipeline_spec.proto).
+    Same as `KubeflowDagRunner` it will compile the DSL pipeline into a payload
+    but not trigger the execution locally.
 
 ## Breaking changes
 

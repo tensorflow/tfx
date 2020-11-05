@@ -1,0 +1,22 @@
+# proto-file: tfx/orchestration/kubeflow/v2/proto/pipeline.proto
+# proto-message: PipelineDeploymentConfig
+
+executors {
+  key: "ResolverNode.my_resolver_executor"
+  value {
+    resolver {
+      output_artifact_queries {
+        key: "examples"
+        value {
+          filter: "artifact_type='tfx.Examples' and state=LIVE"
+        }
+      }
+      output_artifact_queries {
+        key: "model"
+        value {
+          filter: "artifact_type='tfx.Model' and state=LIVE"
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,108 @@
+# proto-file: tfx/orchestration/kubeflow/v2/proto/pipeline.proto
+# proto-message: PipelineSpec
+
+pipeline_info {
+  name: "pipeline_with_container"
+}
+tasks {
+  task_info {
+    name: "ImporterNode.my_importer"
+  }
+  inputs {
+    parameters {
+      key: "artifact_uri"
+      value {
+        runtime_value {
+          constant_value {
+            string_value: "some-uri"
+          }
+        }
+      }
+    }
+    parameters {
+      key: "custom_properties"
+      value {
+        runtime_value {
+          constant_value {
+            string_value: "{}"
+          }
+        }
+      }
+    }
+    parameters {
+      key: "properties"
+      value {
+        runtime_value {
+          constant_value {
+            string_value: "{}"
+          }
+        }
+      }
+    }
+    parameters {
+      key: "reimport"
+      value {
+        runtime_value {
+          constant_value {
+            int_value: 0
+          }
+        }
+      }
+    }
+  }
+  outputs {
+    artifacts {
+      key: "result"
+      value {
+        artifact_type {
+          instance_schema: "title: tfx.Model\ntype: object\nproperties:\n"
+        }
+      }
+    }
+  }
+  executor_label: "ImporterNode.my_importer_executor"
+  caching_options {
+  }
+}
+tasks {
+  task_info {
+    name: "DummyContainerSpecComponent"
+  }
+  inputs {
+    parameters {
+      key: "param1"
+      value {
+        runtime_value {
+          constant_value {
+            string_value: "value1"
+          }
+        }
+      }
+    }
+    artifacts {
+      key: "input1"
+      value {
+        producer_task: "ImporterNode.my_importer"
+        output_artifact_key: "result"
+      }
+    }
+  }
+  outputs {
+    artifacts {
+      key: "output1"
+      value {
+        artifact_type {
+          instance_schema: "title: tfx.Model\ntype: object\nproperties:\n"
+        }
+      }
+    }
+  }
+  executor_label: "DummyContainerSpecComponent_executor"
+  dependent_tasks: "ImporterNode.my_importer"
+  caching_options {
+  }
+}
+deployment_config {
+  type_url: "type.googleapis.com/ml_pipelines.PipelineDeploymentConfig"
+  value: "\n\334\001\n$DummyContainerSpecComponent_executor\022\263\001\n\260\001\n\021dummy/transformer\022\013transformer\022\010--input1\022${{$.inputs.artifacts[\'input1\'].uri}}\022\t--output1\022&{{$.outputs.artifacts[\'output1\'].uri}}\022\010--param1\022!{{$.inputs.parameters[\'param1\']}}\nc\n!ImporterNode.my_importer_executor\022>\022<\n\014\n\n\032\010some-uri\022,\032*title: tfx.Model\ntype: object\nproperties:\n"
+}

@@ -1,0 +1,15 @@
+# proto-file: tfx/orchestration/kubeflow/v2/proto/pipeline.proto
+# proto-message: PipelineDeploymentConfig
+
+executors {
+  key: "BigQueryExampleGen_executor"
+  value {
+    container {
+      image: "gcr.io/tensorflow/tfx:latest"
+      args: "--executor_class_path"
+      args: "tfx.extensions.google_cloud_big_query.example_gen.executor.Executor"
+      args: "--json_serialized_invocation_args"
+      args: "{{$}}"
+    }
+  }
+}

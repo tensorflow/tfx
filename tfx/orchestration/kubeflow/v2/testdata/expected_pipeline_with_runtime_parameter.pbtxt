@@ -1,0 +1,113 @@
+# proto-file: tfx/orchestration/kubeflow/v2/proto/pipeline.proto
+# proto-message: PipelineSpec
+
+pipeline_info {
+  name: "pipeline_with_runtime_parameter"
+}
+tasks {
+  task_info {
+    name: "ProducePrimitives"
+  }
+  outputs {
+    artifacts {
+      key: "output_float"
+      value {
+        artifact_type {
+          instance_schema: "title: tfx.Float\ntype: object\nproperties:\n"
+        }
+      }
+    }
+    artifacts {
+      key: "output_int"
+      value {
+        artifact_type {
+          instance_schema: "title: tfx.Integer\ntype: object\nproperties:\n"
+        }
+      }
+    }
+    artifacts {
+      key: "output_string"
+      value {
+        artifact_type {
+          instance_schema: "title: tfx.String\ntype: object\nproperties:\n"
+        }
+      }
+    }
+  }
+  executor_label: "ProducePrimitives_executor"
+  caching_options {
+  }
+}
+tasks {
+  task_info {
+    name: "ConsumeByValue"
+  }
+  inputs {
+    parameters {
+      key: "param_float"
+      value {
+        runtime_value {
+          constant_value {
+            double_value: 3.14
+          }
+        }
+      }
+    }
+    parameters {
+      key: "param_int"
+      value {
+        runtime_value {
+          constant_value {
+            int_value: 42
+          }
+        }
+      }
+    }
+    parameters {
+      key: "param_string"
+      value {
+        runtime_value {
+          runtime_parameter: "string_param"
+        }
+      }
+    }
+    artifacts {
+      key: "input_float"
+      value {
+        producer_task: "ProducePrimitives"
+        output_artifact_key: "output_float"
+      }
+    }
+    artifacts {
+      key: "input_int"
+      value {
+        producer_task: "ProducePrimitives"
+        output_artifact_key: "output_int"
+      }
+    }
+    artifacts {
+      key: "input_string"
+      value {
+        producer_task: "ProducePrimitives"
+        output_artifact_key: "output_string"
+      }
+    }
+  }
+  executor_label: "ConsumeByValue_executor"
+  dependent_tasks: "ProducePrimitives"
+  caching_options {
+  }
+}
+deployment_config {
+  type_url: "type.googleapis.com/ml_pipelines.PipelineDeploymentConfig"
+  value: "\n\256\002\n\027ConsumeByValue_executor\022\222\002\n\217\002\n\007busybox\022\007consume\022,{{$.inputs.artifacts[\'input_string\'].value}}\022){{$.inputs.artifacts[\'input_int\'].value}}\022+{{$.inputs.artifacts[\'input_float\'].value}}\022\'{{$.inputs.parameters[\'param_string\']}}\022${{$.inputs.parameters[\'param_int\']}}\022&{{$.inputs.parameters[\'param_float\']}}\n\272\001\n\032ProducePrimitives_executor\022\233\001\n\230\001\n\007busybox\022\007produce\022,{{$.outputs.artifacts[\'output_string\'].uri}}\022){{$.outputs.artifacts[\'output_int\'].uri}}\022+{{$.outputs.artifacts[\'output_float\'].uri}}"
+}
+runtime_parameters {
+  key: "string_param"
+  value {
+    type: STRING
+    default_value {
+      string_value: "string value"
+    }
+  }
+}

@@ -1,0 +1,77 @@
+# proto-file: tfx/orchestration/kubeflow/v2/proto/pipeline.proto
+# proto-message: PipelineSpec
+pipeline_info {
+  name: "pipeline_with_container"
+}
+tasks {
+  task_info {
+    name: "DummyProducerComponent"
+  }
+  inputs {
+    parameters {
+      key: "param1"
+      value {
+        runtime_value {
+          constant_value {
+            string_value: "value1"
+          }
+        }
+      }
+    }
+  }
+  outputs {
+    artifacts {
+      key: "output1"
+      value {
+        artifact_type {
+          instance_schema: "title: tfx.Model\ntype: object\nproperties:\n"
+        }
+      }
+    }
+  }
+  executor_label: "DummyProducerComponent_executor"
+  caching_options {
+  }
+}
+tasks {
+  task_info {
+    name: "DummyContainerSpecComponent"
+  }
+  inputs {
+    parameters {
+      key: "param1"
+      value {
+        runtime_value {
+          constant_value {
+            string_value: "value2"
+          }
+        }
+      }
+    }
+    artifacts {
+      key: "input1"
+      value {
+        producer_task: "DummyProducerComponent"
+        output_artifact_key: "output1"
+      }
+    }
+  }
+  outputs {
+    artifacts {
+      key: "output1"
+      value {
+        artifact_type {
+          instance_schema: "title: tfx.Model\ntype: object\nproperties:\n"
+        }
+      }
+    }
+  }
+  executor_label: "DummyContainerSpecComponent_executor"
+  dependent_tasks: "DummyProducerComponent"
+  caching_options {
+  }
+}
+deployment_config {
+  type_url: "type.googleapis.com/ml_pipelines.PipelineDeploymentConfig"
+  value: "\n\334\001\n$DummyContainerSpecComponent_executor\022\263\001\n\260\001\n\021dummy/transformer\022\013transformer\022\010--input1\022${{$.inputs.artifacts[\'input1\'].uri}}\022\t--output1\022&{{$.outputs.artifacts[\'output1\'].uri}}\022\010--param1\022!{{$.inputs.parameters[\'param1\']}}\n\343\001\n\037DummyProducerComponent_executor\022\277\001\n\274\001\n\016dummy/producer\022\010producer\022\t--output1\022&{{$.outputs.artifacts[\'output1\'].uri}}\022\010--param1\022!{{$.inputs.parameters[\'param1\']}}\022\017--wrapped-param\022/prefix-{{$.inputs.parameters[\'param1\']}}-suffix"
+}

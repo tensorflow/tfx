@@ -1,0 +1,27 @@
+# proto-file: tfx/orchestration/kubeflow/v2/proto/pipeline.proto
+# proto-message: PipelineSpec
+
+pipeline_info {
+  name: "two_step_task_only_dependency_pipeline"
+}
+tasks {
+  task_info {
+    name: "Step 1"
+  }
+  executor_label: "Step 1_executor"
+  caching_options {
+  }
+}
+tasks {
+  task_info {
+    name: "Step 2"
+  }
+  executor_label: "Step 2_executor"
+  dependent_tasks: "Step 1"
+  caching_options {
+  }
+}
+deployment_config {
+  type_url: "type.googleapis.com/ml_pipelines.PipelineDeploymentConfig"
+  value: "\n0\n\017Step 2_executor\022\035\n\033\n\014step-2-image\022\003run\022\006step-2\n0\n\017Step 1_executor\022\035\n\033\n\014step-1-image\022\003run\022\006step-1"
+}

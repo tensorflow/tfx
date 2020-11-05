@@ -1,0 +1,61 @@
+# proto-file: tfx/orchestration/kubeflow/v2/proto/pipeline.proto
+# proto-message: PipelineTaskSpec
+
+task_info {
+  name: "ImporterNode.my_importer"
+}
+inputs {
+  parameters {
+    key: "artifact_uri"
+    value {
+      runtime_value {
+        constant_value {
+          string_value: "m/y/u/r/i"
+        }
+      }
+    }
+  }
+  parameters {
+    key: "custom_properties"
+    value {
+      runtime_value {
+        constant_value {
+          string_value: "{\"str_custom_property\": \"abc\", \"int_custom_property\": 123}"
+        }
+      }
+    }
+  }
+  parameters {
+    key: "properties"
+    value {
+      runtime_value {
+        constant_value {
+          string_value: "{\"split_names\": \"[\\\"train\\\", \\\"eval\\\"]\"}"
+        }
+      }
+    }
+  }
+  parameters {
+    key: "reimport"
+    value {
+      runtime_value {
+        constant_value {
+          int_value: 0
+        }
+      }
+    }
+  }
+}
+outputs {
+  artifacts {
+    key: "result"
+    value {
+      artifact_type {
+        instance_schema: "title: tfx.Examples\ntype: object\nproperties:\n  span:\n    type: int\n    description: Span for an artifact.\n  version:\n    type: int\n    description: Version for an artifact.\n  split_names:\n    type: string\n    description: JSON-encoded list of splits for an artifact. Empty string means artifact has no split.\n"
+      }
+    }
+  }
+}
+executor_label: "ImporterNode.my_importer_executor"
+caching_options {
+}

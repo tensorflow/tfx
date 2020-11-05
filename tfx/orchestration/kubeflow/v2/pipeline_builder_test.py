@@ -1,0 +1,139 @@
+# Copyright 2020 Google LLC. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+"""Tests for tfx.orchestration.managed.pipeline_builder."""
+
+import tensorflow as tf
+
+from tfx.orchestration.kubeflow.v2 import pipeline_builder
+from tfx.orchestration.kubeflow.v2 import test_utils
+from tfx.orchestration.kubeflow.v2.proto import pipeline_pb2
+
+
+class PipelineBuilderTest(tf.test.TestCase):
+
+  def testBuildTwoStepPipeline(self):
+    my_builder = pipeline_builder.PipelineBuilder(
+        tfx_pipeline=test_utils.two_step_pipeline(),
+        default_image='gcr.io/my-tfx:latest')
+    actual_pipeline_spec = my_builder.build()
+    self.assertProtoEquals(
+        test_utils.get_proto_from_test_data('expected_two_step_pipeline.pbtxt',
+                                            pipeline_pb2.PipelineSpec()),
+        actual_pipeline_spec)
+
+  def testBuildRuntimeConfig(self):
+    my_builder = pipeline_builder.RuntimeConfigBuilder(
+        pipeline_info=test_utils.two_step_pipeline().pipeline_info,
+        parameter_values={
+            'string_param': 'test-string',
+            'int_param': 42,
+            'float_param': 3.14
+        })
+    actual_output_path_config = my_builder.build()
+    self.assertProtoEquals(test_utils.TEST_RUNTIME_CONFIG,
+                           actual_output_path_config)
+
+  def testBuildPipelineWithOneContainerSpecComponent(self):
+    my_builder = pipeline_builder.PipelineBuilder(
+        tfx_pipeline=test_utils.pipeline_with_one_container_spec_component(),
+        default_image='gcr.io/my-tfx:latest')
+    actual_pipeline_spec = my_builder.build()
+
+    self.assertProtoEquals(
+        test_utils.get_proto_from_test_data(
+            'expected_pipeline_with_one_container_spec_component.pbtxt',
+            pipeline_pb2.PipelineSpec()), actual_pipeline_spec)
+
+  def testBuildPipelineWithTwoContainerSpecComponents(self):
+    my_builder = pipeline_builder.PipelineBuilder(
+        tfx_pipeline=test_utils.pipeline_with_two_container_spec_components(),
+        default_image='gcr.io/my-tfx:latest')
+    actual_pipeline_spec = my_builder.build()
+
+    self.assertProtoEquals(
+        test_utils.get_proto_from_test_data(
+            'expected_pipeline_with_two_container_spec_components.pbtxt',
+            pipeline_pb2.PipelineSpec()), actual_pipeline_spec)
+
+  def testBuildPipelineWithTwoContainerSpecComponents2(self):
+    my_builder = pipeline_builder.PipelineBuilder(
+        tfx_pipeline=test_utils.pipeline_with_two_container_spec_components_2(),
+        default_image='gcr.io/my-tfx:latest')
+    actual_pipeline_spec = my_builder.build()
+
+    self.assertProtoEquals(
+        test_utils.get_proto_from_test_data(
+            # Same as in testBuildPipelineWithTwoContainerSpecComponents
+            'expected_pipeline_with_two_container_spec_components.pbtxt',
+            pipeline_pb2.PipelineSpec()),
+        actual_pipeline_spec)
+
+  def testBuildPipelineWithPrimitiveValuePassing(self):
+    my_builder = pipeline_builder.PipelineBuilder(
+        tfx_pipeline=test_utils.consume_primitive_artifacts_by_value_pipeline(),
+        default_image='gcr.io/my-tfx:latest')
+    actual_pipeline_spec = my_builder.build()
+    self.assertProtoEquals(
+        test_utils.get_proto_from_test_data(
+            'expected_consume_primitive_artifacts_by_value_pipeline.pbtxt',
+            pipeline_pb2.PipelineSpec()),
+        actual_pipeline_spec)
+
+  def testBuildPipelineWithRuntimeParameter(self):
+    my_builder = pipeline_builder.PipelineBuilder(
+        tfx_pipeline=test_utils.pipeline_with_runtime_parameter(),
+        default_image='gcr.io/my-tfx:latest')
+    actual_pipeline_spec = my_builder.build()
+    self.assertProtoEquals(
+        test_utils.get_proto_from_test_data(
+            'expected_pipeline_with_runtime_parameter.pbtxt',
+            pipeline_pb2.PipelineSpec()),
+        actual_pipeline_spec)
+
+  def testKubeflowArtifactsTwoStepPipeline(self):
+    my_builder = pipeline_builder.PipelineBuilder(
+        tfx_pipeline=test_utils.two_step_kubeflow_artifacts_pipeline(),
+        default_image='gcr.io/my-tfx:latest')
+    actual_pipeline_spec = my_builder.build()
+    self.assertProtoEquals(
+        test_utils.get_proto_from_test_data(
+            'expected_two_step_kubeflow_artifacts_pipeline.pbtxt',
+            pipeline_pb2.PipelineSpec()), actual_pipeline_spec)
+
+  def testTwoStepPipelineWithTaskOnlyDependency(self):
+    builder = pipeline_builder.PipelineBuilder(
+        tfx_pipeline=test_utils.two_step_pipeline_with_task_only_dependency(),
+        default_image='unused-image')
+
+    pipeline_spec = builder.build()
+    self.assertProtoEquals(
+        test_utils.get_proto_from_test_data(
+            'expected_two_step_pipeline_with_task_only_dependency.pbtxt',
+            pipeline_pb2.PipelineSpec()), pipeline_spec)
+
+  def testBuildTwoStepPipelineWithCacheEnabled(self):
+    pipeline = test_utils.two_step_pipeline()
+    pipeline.enable_cache = True
+
+    builder = pipeline_builder.PipelineBuilder(
+        tfx_pipeline=pipeline, default_image='gcr.io/my-tfx:latest')
+    pipeline_spec = builder.build()
+    self.assertProtoEquals(
+        test_utils.get_proto_from_test_data(
+            'expected_two_step_pipeline_with_cache_enabled.pbtxt',
+            pipeline_pb2.PipelineSpec()), pipeline_spec)
+
+
+if __name__ == '__main__':
+  tf.test.main()

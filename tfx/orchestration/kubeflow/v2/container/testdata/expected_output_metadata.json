@@ -1,0 +1,34 @@
+{
+  "artifacts":{
+    "output":{
+      "artifacts": [
+        {
+          "name":"projects/123456789/locations/us-central1/metadataStores/default/artifacts/3",
+          "uri":"gs://root/output/",
+          "customProperties":{
+            "my_property":{
+              "stringValue":"my_value"
+            }
+          }
+        }
+      ]
+    },
+    "blessing": {
+      "artifacts": [
+        {
+          "name":"projects/123456789/locations/us-central1/metadataStores/default/artifacts/4",
+          "uri": "gs://root/blessing/",
+          "customProperties": {
+            "blessed": { "intValue": "1" },
+            "current_model_id": {
+              "stringValue": "projects/123456789/locations/us-central1/metadataStores/default/artifacts/2"
+            },
+            "baseline_model_id": {
+              "stringValue": "projects/123456789/locations/us-central1/metadataStores/default/artifacts/1"
+            }
+          }
+        }
+      ]
+    }
+  }
+}

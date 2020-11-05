@@ -2,3 +2,4 @@ recursive-include tfx/examples/chicago_taxi_pipeline/data *
 include tfx/orchestration/experimental/interactive/export_templates/*.tmpl
 include tfx/experimental/templates/taxi/.gitignore
 include tfx/experimental/templates/taxi/*.ipynb
+include tfx/orchestration/kubeflow/v2/artifact_types/*.yaml
