@@ -109,7 +109,7 @@ class Trainer(base_component.BaseComponent):
       examples: types.Channel = None,
       transformed_examples: Optional[types.Channel] = None,
       transform_graph: Optional[types.Channel] = None,
-      schema: types.Channel = None,
+      schema: Optional[types.Channel] = None,
       base_model: Optional[types.Channel] = None,
       hyperparameters: Optional[types.Channel] = None,
       module_file: Optional[Union[Text, data_types.RuntimeParameter]] = None,
@@ -134,8 +134,10 @@ class Trainer(base_component.BaseComponent):
       transform_graph: An optional Channel of type
         `standard_artifacts.TransformGraph`, serving as the input transform
         graph if present.
-      schema:  A Channel of type `standard_artifacts.Schema`, serving as the
-        schema of training and eval data.
+      schema:  An optional Channel of type `standard_artifacts.Schema`, serving
+        as the schema of training and eval data. Schema is optional when
+        1) transform_graph is provided which contains schema.
+        2) user module bypasses the usage of schema, e.g., hardcoded.
       base_model: A Channel of type `Model`, containing model that will be used
         for training. This can be used for warmstart, transfer learning or
         model ensembling.

@@ -303,7 +303,7 @@ class TrainerSpec(ComponentSpec):
           ChannelParameter(
               type=standard_artifacts.TransformGraph, optional=True),
       'schema':
-          ChannelParameter(type=standard_artifacts.Schema),
+          ChannelParameter(type=standard_artifacts.Schema, optional=True),
       'base_model':
           ChannelParameter(type=standard_artifacts.Model, optional=True),
       'hyperparameters':

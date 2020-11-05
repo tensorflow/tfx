@@ -82,7 +82,6 @@ class ComponentTest(tf.test.TestCase):
         trainer_fn=trainer_fn,
         transformed_examples=self.examples,
         transform_graph=self.transform_output,
-        schema=self.schema,
         train_args=self.train_args,
         eval_args=self.eval_args)
     self._verify_outputs(trainer)
@@ -96,7 +95,6 @@ class ComponentTest(tf.test.TestCase):
             executor.GenericExecutor),
         transformed_examples=self.examples,
         transform_graph=self.transform_output,
-        schema=self.schema,
         train_args=self.train_args,
         eval_args=self.eval_args)
     self._verify_outputs(trainer)
@@ -107,7 +105,6 @@ class ComponentTest(tf.test.TestCase):
     trainer = component.Trainer(
         module_file=module_file,
         examples=self.examples,
-        schema=self.schema,
         train_args=self.train_args,
         eval_args=self.eval_args)
     self._verify_outputs(trainer)

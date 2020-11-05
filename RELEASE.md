@@ -66,6 +66,8 @@
 *   Scripts - run_component - Added a way to output artifact properties.
 *   Fixed an issue resulting in incorrect cache miss to ExampleGen when no
     `beam_pipeline_args` is provided.
+*   Changed schema as an optional input channel of Trainer as schema can be
+    accessed from TFT graph too.
 
 ### For pipeline authors
 
