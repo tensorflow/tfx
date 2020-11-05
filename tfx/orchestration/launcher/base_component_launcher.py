@@ -203,11 +203,10 @@ class BaseComponentLauncher(with_metaclass(abc.ABCMeta, object)):
       # Make a deep copy for input_dict and exec_properties, because they should
       # be immutable in this context.
       # output_dict can still be changed, specifically properties.
-      self._run_executor(
-          execution_decision.execution_id,
-          copy.deepcopy(execution_decision.input_dict),
-          execution_decision.output_dict,
-          copy.deepcopy(execution_decision.exec_properties.copy()))
+      self._run_executor(execution_decision.execution_id,
+                         copy.deepcopy(execution_decision.input_dict),
+                         execution_decision.output_dict,
+                         copy.deepcopy(execution_decision.exec_properties))
 
     absl.logging.info('Running publisher for %s',
                       self._component_info.component_id)
