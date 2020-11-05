@@ -402,24 +402,25 @@ _RUNTIME_INFO_KEYS = frozenset(key.value for key in RuntimeInfoKey)
 def runtime_info(key: str) -> RuntimeInfoPlaceholder:
   """Returns a Placeholder that contains runtime information for component.
 
+  Currently the runtime info includes following keys:
+  1. platform_config: A platform_config proto that contains platform specific
+     information.
+  2. stateful_working_dir: The directory can be used by the executor to store
+     working states.
+  3. executor_output_uri: The uri where the executor result should be written
+     to. The executors should use this uri to "return" ExecutorOutput to the
+     launcher.
+  4. executor_spec: The executor spec proto.
+  5. node_info: NodeInfo proto containing the node information.
+  6. pipeline_info: PipelineInfo proto containing the pipeline information.
+
   Args:
     key: The key of the runtime information.
 
   Returns:
-    Currently the invocation info includes following keys:
-    1. platform_config: A platform_config proto that contains platform specific
-       information.
-    2. stateful_working_dir: The directory can be used by the executor to store
-       working states.
-    3. executor_output_uri: The uri where the executor result should be written
-       to. The executors should use this uri to "return" ExecutorOutput to the
-       launcher.
-    4. executor_spec: The executor spec proto.
-    5. node_info: NodeInfo proto containing the node information.
-    6. pipeline_info: PipelineInfo proto containing the pipeline information.
-
-    Accessing a proto field can be represented as if accessing a proto field in
-    python.
+    A Placeholder that will render to the information associated with the key.
+    If the placeholder is proto-valued. Accessing a proto field can be
+    represented as if accessing a proto field in Python.
 
   Raises:
     ValueError: If received unsupported key.
