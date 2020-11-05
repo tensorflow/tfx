@@ -14,13 +14,11 @@
 """Base class to define how to operator an executor."""
 
 import abc
-from typing import Any, Dict, List, Text
 
 import six
-from tfx import types
 from tfx.orchestration import metadata
+from tfx.orchestration.portable import data_types
 from tfx.proto.orchestration import driver_output_pb2
-from tfx.proto.orchestration import pipeline_pb2
 from tfx.utils import abc_utils
 
 from google.protobuf import message
@@ -32,16 +30,12 @@ class BaseDriverOperator(six.with_metaclass(abc.ABCMeta, object)):
   SUPPORTED_EXECUTABLE_SPEC_TYPE = abc_utils.abstract_property()
 
   def __init__(self, driver_spec: message.Message,
-               mlmd_connection: metadata.Metadata,
-               pipeline_info: pipeline_pb2.PipelineInfo,
-               pipeline_node: pipeline_pb2.PipelineNode):
+               mlmd_connection: metadata.Metadata):
     """Constructor.
 
     Args:
       driver_spec: The specification of how to initialize the driver.
       mlmd_connection: ML metadata connection.
-      pipeline_info: The information of the pipeline that this driver is in.
-      pipeline_node: The specification of the node that this driver is in.
 
     Raises:
       RuntimeError: if the driver_spec is not supported.
@@ -51,20 +45,16 @@ class BaseDriverOperator(six.with_metaclass(abc.ABCMeta, object)):
       raise RuntimeError('Driver spec not supported: %s' % driver_spec)
     self._driver_spec = driver_spec
     self._mlmd_connection = mlmd_connection
-    self._pipeline_info = pipeline_info
-    self._pipeline_node = pipeline_node
 
   @abc.abstractmethod
   def run_driver(
-      self, input_dict: Dict[Text, List[types.Artifact]],
-      output_dict: Dict[Text, List[types.Artifact]],
-      exec_properties: Dict[Text, Any]) -> driver_output_pb2.DriverOutput:
+      self, execution_info: data_types.ExecutionInfo
+  ) -> driver_output_pb2.DriverOutput:
     """Invokes the driver with inputs provided by the Launcher.
 
     Args:
-      input_dict: The defult input_dict resolved by the launcher.
-      output_dict: The default output_dict resolved by the launcher.
-      exec_properties: The default exec_properties resolved by the launcher.
+      execution_info: data_types.ExecutionInfo containing information needed for
+        driver execution.
 
     Returns:
       An DriverOutput instance.

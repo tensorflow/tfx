@@ -14,7 +14,6 @@
 """Tests for tfx.orchestration.portable.launcher."""
 import copy
 import os
-from typing import Any, Dict, List, Text
 
 import mock
 import tensorflow as tf
@@ -72,11 +71,8 @@ class _FakeCrashingExecutorOperator(base_executor_operator.BaseExecutorOperator
 
 class _FakeExampleGenLikeDriver(base_driver.BaseDriver):
 
-  def __init__(self, mlmd_connection: metadata.Metadata,
-               pipeline_info: pipeline_pb2.PipelineInfo,
-               pipeline_node: pipeline_pb2.PipelineNode):
-    super(_FakeExampleGenLikeDriver,
-          self).__init__(mlmd_connection, pipeline_info, pipeline_node)
+  def __init__(self, mlmd_connection: metadata.Metadata):
+    super(_FakeExampleGenLikeDriver, self).__init__(mlmd_connection)
     self._self_output = text_format.Parse(
         """
       inputs {
@@ -117,9 +113,7 @@ class _FakeExampleGenLikeDriver(base_driver.BaseDriver):
         }
       }""", pipeline_pb2.NodeInputs())
 
-  def run(self, input_dict: Dict[Text, List[types.Artifact]],
-          output_dict: Dict[Text, List[types.Artifact]],
-          exec_properties: Dict[Text, Any]) -> driver_output_pb2.DriverOutput:
+  def run(self, execution_info) -> driver_output_pb2.DriverOutput:
     # Fake a constant span number, which, on prod, is usually calculated based
     # on date.
     span = 2
@@ -138,7 +132,7 @@ class _FakeExampleGenLikeDriver(base_driver.BaseDriver):
         ] or [-1]) + 1
 
     output_example = copy.deepcopy(
-        output_dict['output_examples'][0].mlmd_artifact)
+        execution_info.output_dict['output_examples'][0].mlmd_artifact)
     output_example.custom_properties['span'].int_value = span
     output_example.custom_properties['version'].int_value = version
     result = driver_output_pb2.DriverOutput()

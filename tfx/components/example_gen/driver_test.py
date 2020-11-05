@@ -26,9 +26,9 @@ from tfx.components.example_gen import utils
 from tfx.dsl.components.base import base_driver
 from tfx.dsl.io import fileio
 from tfx.orchestration import data_types
+from tfx.orchestration.portable import data_types as portable_data_types
 from tfx.proto import example_gen_pb2
 from tfx.proto import range_config_pb2
-from tfx.proto.orchestration import pipeline_pb2
 from tfx.types import artifact_utils
 from tfx.types import channel_utils
 from tfx.types import standard_artifacts
@@ -220,10 +220,6 @@ class DriverTest(tf.test.TestCase):
     self._input_base_path = os.path.join(self._test_dir, 'input_base')
     fileio.makedirs(self._input_base_path)
 
-    # Create PipelineInfo and PipelineNode
-    pipeline_info = pipeline_pb2.PipelineInfo()
-    pipeline_node = pipeline_pb2.PipelineNode()
-
     # Fake previous outputs
     span1_v1_split1 = os.path.join(self._input_base_path, 'span01', 'split1',
                                    'data')
@@ -232,7 +228,7 @@ class DriverTest(tf.test.TestCase):
                                    'data')
     io_utils.write_string_file(span1_v1_split2, 'testing12')
 
-    ir_driver = driver.Driver(self._mock_metadata, pipeline_info, pipeline_node)
+    ir_driver = driver.Driver(self._mock_metadata)
     example = standard_artifacts.Examples()
 
     # Prepare output_dic
@@ -253,7 +249,9 @@ class DriverTest(tf.test.TestCase):
                 ]),
                 preserving_proto_field_name=True),
     }
-    result = ir_driver.run(None, output_dic, exec_properties)
+    result = ir_driver.run(
+        portable_data_types.ExecutionInfo(
+            output_dict=output_dic, exec_properties=exec_properties))
     # Assert exec_properties' values
     exec_properties = result.exec_properties
     self.assertEqual(exec_properties[utils.SPAN_PROPERTY_NAME].int_value, 1)

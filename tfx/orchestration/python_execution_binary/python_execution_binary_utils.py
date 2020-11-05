@@ -15,15 +15,22 @@ r"""Shared IR serialization logic used by TFleX python executor binary."""
 
 import base64
 
+from typing import Dict, Iterable, List, Mapping
+
+from tfx import types
+from tfx.orchestration import metadata
 from tfx.orchestration.portable import data_types
+from tfx.proto.orchestration import executable_spec_pb2
 from tfx.proto.orchestration import executor_invocation_pb2
 from tfx.types import artifact_utils
 from ml_metadata.proto import metadata_store_pb2
 from ml_metadata.proto import metadata_store_service_pb2
 
 
-def _build_artifact_dict(proto_dict):
-  """Build ExecutionInfo input/output artifact dicts."""
+def _build_artifact_dict(
+    proto_dict: Mapping[str, metadata_store_service_pb2.ArtifactStructList]
+) -> Dict[str, List[types.Artifact]]:
+  """Builds ExecutionInfo input/output artifact dicts."""
   result = {}
   for k, v in proto_dict.items():
     result[k] = []
@@ -37,9 +44,13 @@ def _build_artifact_dict(proto_dict):
   return result
 
 
-def _build_proto_artifact_dict(artifact_dict):
-  """Build PythonExecutorExecutionInfo input/output artifact dicts."""
+def _build_proto_artifact_dict(
+    artifact_dict: Mapping[str, Iterable[types.Artifact]]
+) -> Dict[str, metadata_store_service_pb2.ArtifactStructList]:
+  """Builds PythonExecutorExecutionInfo input/output artifact dicts."""
   result = {}
+  if not artifact_dict:
+    return result
   for k, v in artifact_dict.items():
     artifact_list = metadata_store_service_pb2.ArtifactStructList()
     for artifact in v:
@@ -51,17 +62,23 @@ def _build_proto_artifact_dict(artifact_dict):
   return result
 
 
-def _build_exec_property_dict(proto_dict):
-  """Build ExecutionInfo.exec_properties."""
+def _build_exec_property_dict(
+    proto_dict: Mapping[str, metadata_store_pb2.Value]
+) -> Dict[str, types.Property]:
+  """Builds ExecutionInfo.exec_properties."""
   result = {}
   for k, v in proto_dict.items():
     result[k] = getattr(v, v.WhichOneof('value'))
   return result
 
 
-def _build_proto_exec_property_dict(exec_properties):
-  """Build PythonExecutorExecutionInfo.execution_properties."""
+def _build_proto_exec_property_dict(
+    exec_properties: Mapping[str, types.Property]
+) -> Dict[str, metadata_store_pb2.Value]:
+  """Builds PythonExecutorExecutionInfo.execution_properties."""
   result = {}
+  if not exec_properties:
+    return result
   for k, v in exec_properties.items():
     value = metadata_store_pb2.Value()
     if isinstance(v, str):
@@ -78,12 +95,15 @@ def _build_proto_exec_property_dict(exec_properties):
 
 def deserialize_execution_info(
     execution_info_b64: str) -> data_types.ExecutionInfo:
-  """De-serialize the ExecutionInfo class from a binary string."""
-  execution_info_proto = executor_invocation_pb2.ExecutorInvocation.FromString(
-      base64.b64decode(execution_info_b64))
+  """De-serializes the ExecutionInfo class from a binary string."""
+  execution_info_proto = (
+      executor_invocation_pb2.ExecutorInvocation.FromString(
+          base64.b64decode(execution_info_b64)))
   result = data_types.ExecutionInfo(
       execution_output_uri=execution_info_proto.output_metadata_uri,
-      stateful_working_dir=execution_info_proto.stateful_working_dir)
+      stateful_working_dir=execution_info_proto.stateful_working_dir,
+      pipeline_info=execution_info_proto.pipeline_info,
+      pipeline_node=execution_info_proto.pipeline_node)
 
   result.exec_properties = _build_exec_property_dict(
       execution_info_proto.execution_properties)
@@ -93,15 +113,52 @@ def deserialize_execution_info(
   return result
 
 
+def deserialize_mlmd_connection_config(
+    mlmd_connection_config_b64: str) -> metadata.ConnectionConfigType:
+  """De-serializes an MLMD connection config from base64 flag."""
+  mlmd_connection_config = (
+      executor_invocation_pb2.MLMDConnectionConfig.FromString(
+          base64.b64decode(mlmd_connection_config_b64)))
+  return getattr(mlmd_connection_config,
+                 mlmd_connection_config.WhichOneof('connection_config'))
+
+
+def deserialize_executable_spec(
+    executable_spec_b64: str) -> executable_spec_pb2.PythonClassExecutableSpec:
+  """De-serializes an executable spec from base64 flag."""
+  return executable_spec_pb2.PythonClassExecutableSpec.FromString(
+      base64.b64decode(executable_spec_b64))
+
+
+def serialize_mlmd_connection_config(
+    connection_config: metadata.ConnectionConfigType) -> str:
+  """Serializes an MLMD connection config into a base64 flag of its wrapper."""
+  mlmd_wrapper = executor_invocation_pb2.MLMDConnectionConfig()
+  for name, descriptor in (executor_invocation_pb2.MLMDConnectionConfig
+                           .DESCRIPTOR.fields_by_name.items()):
+    if descriptor.message_type.full_name == connection_config.DESCRIPTOR.full_name:
+      getattr(mlmd_wrapper, name).CopyFrom(connection_config)
+      break
+  return base64.b64encode(mlmd_wrapper.SerializeToString()).decode('ascii')
+
+
+def serialize_executable_spec(
+    executable_spec: executable_spec_pb2.PythonClassExecutableSpec) -> str:
+  """Serializes an executable spec into a base64 flag."""
+  return base64.b64encode(executable_spec.SerializeToString()).decode('ascii')
+
+
 def serialize_execution_info(execution_info: data_types.ExecutionInfo) -> str:
-  """Serialize the ExecutionInfo class from a binary string."""
+  """Serializes the ExecutionInfo class from a base64 flag."""
   execution_info_proto = executor_invocation_pb2.ExecutorInvocation(
       output_metadata_uri=execution_info.execution_output_uri,
       stateful_working_dir=execution_info.stateful_working_dir,
       execution_properties=_build_proto_exec_property_dict(
           execution_info.exec_properties),
       input_dict=_build_proto_artifact_dict(execution_info.input_dict),
-      output_dict=_build_proto_artifact_dict(execution_info.output_dict))
+      output_dict=_build_proto_artifact_dict(execution_info.output_dict),
+      pipeline_info=execution_info.pipeline_info,
+      pipeline_node=execution_info.pipeline_node)
 
   return base64.b64encode(
       execution_info_proto.SerializeToString()).decode('ascii')

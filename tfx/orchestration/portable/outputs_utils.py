@@ -14,6 +14,7 @@
 """Portable library for output artifacts resolution including caching decision."""
 
 import collections
+import datetime
 import os
 from typing import Dict, List, Text
 
@@ -25,9 +26,11 @@ from tfx.proto.orchestration import pipeline_pb2
 from tfx.types import artifact_utils
 from tfx.types.value_artifact import ValueArtifact
 
-_EXECUTION = 'execution'
+_EXECUTOR_EXECUTION = 'executor_execution'
+_DRIVER_EXECUTION = 'driver_execution'
 _STATEFUL_WORKING_DIR = 'stateful_working_dir'
-_EXECUTION_OUTPUT_FILE = 'executor_output.pb'
+_DRIVER_OUTPUT_FILE = 'driver_output.pb'
+_EXECUTOR_OUTPUT_FILE = 'executor_output.pb'
 _VALUE_ARTIFACT_FILE_NAME = 'value'
 
 
@@ -70,9 +73,8 @@ class OutputsResolver:
         pipeline_runtime_spec.pipeline_root.field_value.string_value)
     self._pipeline_run_id = (
         pipeline_runtime_spec.pipeline_run_id.field_value.string_value)
-    self._node_dir = os.path.join(
-        self._pipeline_root,
-        pipeline_node.node_info.id)
+    self._node_dir = os.path.join(self._pipeline_root,
+                                  pipeline_node.node_info.id)
 
   def generate_output_artifacts(
       self, execution_id: int) -> Dict[Text, List[types.Artifact]]:
@@ -103,11 +105,17 @@ class OutputsResolver:
 
   def get_executor_output_uri(self, execution_id: int):
     """Generates executor output uri given execution_id."""
-    execution_dir = os.path.join(self._node_dir,
-                                 _EXECUTION, str(execution_id))
+    execution_dir = os.path.join(self._node_dir, _EXECUTOR_EXECUTION,
+                                 str(execution_id))
     fileio.makedirs(execution_dir)
-    executor_output_uri = os.path.join(execution_dir, _EXECUTION_OUTPUT_FILE)
-    return executor_output_uri
+    return os.path.join(execution_dir, _EXECUTOR_OUTPUT_FILE)
+
+  def get_driver_output_uri(self):
+    driver_output_dir = os.path.join(
+        self._node_dir, _DRIVER_EXECUTION,
+        str(int(datetime.datetime.now().timestamp() * 1000000)))
+    fileio.makedirs(driver_output_dir)
+    return os.path.join(driver_output_dir, _DRIVER_OUTPUT_FILE)
 
   def get_stateful_working_directory(self):
     """Generates stateful working directory given execution id."""
@@ -115,8 +123,7 @@ class OutputsResolver:
     # retires of the same component run to provide better isolation between
     # "retry" and "new execution". When it is available, introduce it into
     # statuful working direcotry.
-    stateful_working_dir = os.path.join(self._node_dir,
-                                        self._pipeline_run_id,
+    stateful_working_dir = os.path.join(self._node_dir, self._pipeline_run_id,
                                         _STATEFUL_WORKING_DIR)
     fileio.makedirs(stateful_working_dir)
     return stateful_working_dir

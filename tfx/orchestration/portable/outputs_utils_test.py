@@ -126,7 +126,7 @@ class OutputUtilsTest(test_utils.TfxTest):
   def testGetExecutorOutputUri(self):
     executor_output_uri = self._output_resolver.get_executor_output_uri(1)
     self.assertRegex(executor_output_uri,
-                     '.*/test_node/execution/1/executor_output.pb')
+                     '.*/test_node/executor_execution/1/executor_output.pb')
     # Verify that executor_output_uri is writable.
     with fileio.open(executor_output_uri, mode='w') as f:
       executor_output = execution_result_pb2.ExecutorOutput()

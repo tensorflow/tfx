@@ -18,21 +18,18 @@ package tfx.orchestration;
 
 import "ml_metadata/proto/metadata_store.proto";
 import "ml_metadata/proto/metadata_store_service.proto";
-
-// Message that represents a list of artifacts.
-message ArtifactList {
-  repeated ml_metadata.Artifact artifacts = 1;
-}
+import "tfx/proto/orchestration/pipeline.proto";
 
 // All the information needed for a TFX component execution.
+// TODO(b/172391062): Make this `ExecutionInvocation` for broader usages.
 message ExecutorInvocation {
   reserved 1, 2;
 
-  // The exec_properties to feed to executor.
+  // The exec_properties to feed to execution.
   map<string, ml_metadata.Value> execution_properties = 3;
 
-  // The uri to executor result. This is used to "return" the executor's output
-  // to calling process if they are not running in the same process.
+  // The uri to execution result. This is used to "return" the output to the
+  // caller if they are not running in the same process.
   string output_metadata_uri = 4;
 
   // Input artifact map.
@@ -42,7 +39,21 @@ message ExecutorInvocation {
   map<string, ml_metadata.ArtifactStructList> output_dict = 6;
 
   // Stateful working dir will be deterministic given pipeline, node and run_id.
-  // The typical usecase is to restore long running executor's state after
+  // The typical usecase is to restore long running execution's state after
   // eviction.
   string stateful_working_dir = 7;
+
+  // Pipeline info proto from the IR specification.
+  tfx.orchestration.PipelineInfo pipeline_info = 8;
+
+  // Pipeline node proto from the IR specification.
+  tfx.orchestration.PipelineNode pipeline_node = 9;
+}
+
+message MLMDConnectionConfig {
+  reserved 3;
+  oneof connection_config {
+    ml_metadata.ConnectionConfig database_connection_config = 1;
+    ml_metadata.MetadataStoreClientConfig mlmd_store_client_config = 2;
+  }
 }

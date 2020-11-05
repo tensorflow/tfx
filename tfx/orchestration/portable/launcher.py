@@ -154,8 +154,7 @@ class Launcher(object):
     self._driver_operator = None
     if custom_driver_spec:
       self._driver_operator = self._driver_operators[type(custom_driver_spec)](
-          custom_driver_spec, self._mlmd_connection, self._pipeline_info,
-          self._pipeline_node)
+          custom_driver_spec, self._mlmd_connection)
 
     system_node_handler_class = _SYSTEM_NODE_HANDLERS.get(
         self._pipeline_node.node_info.type.name)
@@ -205,9 +204,13 @@ class Launcher(object):
 
     # If there is a custom driver, runs it.
     if self._driver_operator:
-      driver_output = self._driver_operator.run_driver(input_artifacts,
-                                                       output_artifacts,
-                                                       exec_properties)
+      driver_output = self._driver_operator.run_driver(
+          data_types.ExecutionInfo(
+              input_dict=input_artifacts,
+              output_dict=output_artifacts,
+              exec_properties=exec_properties,
+              execution_output_uri=self._output_resolver.get_driver_output_uri(
+              )))
       self._update_with_driver_output(driver_output, exec_properties,
                                       output_artifacts)
 
