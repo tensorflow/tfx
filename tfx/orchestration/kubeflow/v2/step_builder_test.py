@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Tests for tfx.orchestration.managed.step_builder."""
+"""Tests for Kubeflow V2 step builder."""
 
 from typing import Sequence
 

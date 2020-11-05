@@ -12,7 +12,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""E2E tests for AI platform pipelines orchestrator."""
+"""E2E tests for Kubeflow V2 runner."""
 
 import os
 
@@ -20,13 +20,13 @@ from absl.testing import parameterized
 import tensorflow as tf
 
 from tfx.orchestration import test_utils
-from tfx.orchestration.ai_platform_pipelines import test_utils as ai_platform_pipelines_test_utils
+from tfx.orchestration.kubeflow.v2 import test_utils as kubeflow_v2_test_utils
 
 
-class AiPlatformPipelinesE2ETest(
-    ai_platform_pipelines_test_utils.BaseAIPlatformPipelinesTest,
+class KubeflowV2E2ETest(
+    kubeflow_v2_test_utils.BaseKubeflowV2Test,
     parameterized.TestCase):
-  """CAIP pipelines E2E test."""
+  """Kubeflow V2 runner E2E test."""
 
   # The query to get data from BigQuery.
   _BIGQUERY_QUERY = """
@@ -68,10 +68,10 @@ class AiPlatformPipelinesE2ETest(
       })
   def testSimpleEnd2EndPipeline(self, bigquery_query, csv_input_location):
     """End-to-End test for a simple pipeline."""
-    pipeline_name = 'ai-platform-pipelines-e2e-test-{}'.format(
+    pipeline_name = '-e2e-test-{}'.format(
         test_utils.random_id())
 
-    components = ai_platform_pipelines_test_utils.create_pipeline_components(
+    components = kubeflow_v2_test_utils.create_pipeline_components(
         pipeline_root=self._pipeline_root(pipeline_name),
         transform_module=self._MODULE_FILE,
         trainer_module=self._MODULE_FILE,
@@ -93,10 +93,10 @@ class AiPlatformPipelinesE2ETest(
 
   def testArtifactValuePlaceholders(self):
     component_instances = (
-        ai_platform_pipelines_test_utils
+        kubeflow_v2_test_utils
         .tasks_for_pipeline_with_artifact_value_passing())
 
-    pipeline_name = 'ai-platform-test-artifact-value-{}'.format(
+    pipeline_name = 'kubeflow-v2-test-artifact-value-{}'.format(
         test_utils.random_id())
 
     pipeline = self._create_pipeline(

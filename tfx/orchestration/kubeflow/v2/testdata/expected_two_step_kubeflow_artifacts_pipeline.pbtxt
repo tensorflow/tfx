@@ -1,4 +1,5 @@
-# Pipeline spec generated for a 2-step Pipeline using AI Platform simple artifact types.
+# Pipeline spec generated for a 2-step Pipeline using Kubeflow V2 simple
+# artifact types.
 # proto-file: tfx/orchestration/kubeflow/v2/proto/pipeline.proto
 # proto-message: PipelineSpec
 pipeline_info {

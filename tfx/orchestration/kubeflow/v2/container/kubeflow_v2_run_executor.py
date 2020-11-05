@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Entrypoint for invoking TFX components in Kubeflow V2 orchestrator."""
+"""Entrypoint for invoking TFX components in Kubeflow V2 runner."""
 
 import argparse
 from typing import List

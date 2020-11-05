@@ -10,8 +10,8 @@ encoded as the title. The artifact types in
 will be associated with `tfx.{TypeName}.yaml`, where `{TypeName}` is the Python
 type name of the artifact type.
 
-Under the hood, CAIP pipelines service backend will capture and populate the
-artifact metadata according to the YAML schema.
+Under the hood, Kubeflow Pipelines backend will capture and populate the
+artifact metadata according to the YAML schema when IR-based execution is ready.
 
 # Structure of a type YAML schema
 At the top level, the artifact type YAML spec should contains three fields:
@@ -29,8 +29,8 @@ artifact types, the property schema mirrors what was defined in
 `tfx.types.standard_artifacts`
 
 # Tests
-Currently in TFX `ai_platform_dag_runner` and its associated compilation logic,
-the artifact type YAML schema is inlined in the CAIP pipelines job payload by
+Currently in TFX Kubeflow V2 runner and its associated compilation logic,
+the artifact type YAML schema is inlined in the job payload by
 setting `instance_schema` field. Therefore, if the YAML schema changes it's
 highly likely that the golden files under `testdata` directory will need to
 change as well.
