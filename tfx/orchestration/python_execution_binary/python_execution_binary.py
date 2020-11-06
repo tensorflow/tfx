@@ -18,7 +18,7 @@ Example:
 python_executor_binary
 --tfx_execution_info_b64=ChcKEAgBEgxnZW5lcmljX3R5cGUSA2ZvbyoPCg0KAnAxEgcKBRoDYmFy
 \
---tfx_python_class_executor_spec_b64=ChcKEAgBEgxnZW5lcmljX3R5cGUSA2ZvbyoPCg0KAnAxEgcKBRoDYmFy
+--tfx_python_class_executable_spec_b64=ChcKEAgBEgxnZW5lcmljX3R5cGUSA2ZvbyoPCg0KAnAxEgcKBRoDYmFy
 \
 --alsologtostderr
 
@@ -82,8 +82,7 @@ def main(_):
   python_class_executable_spec = (
       python_execution_binary_utils.deserialize_executable_spec(
           EXECUTABLE_SPEC_FLAG.value))
-  logging.info('execution_info = %s\n',
-               text_format.MessageToString(execution_info))
+  logging.info('execution_info = %r\n', execution_info)
   logging.info('python_class_executable_spec = %s\n',
                text_format.MessageToString(python_class_executable_spec))
 
