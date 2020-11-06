@@ -2,6 +2,22 @@
 
 ## Major Features and Improvements
 
+## Breaking changes
+
+### For pipeline authors
+
+### For component authors
+
+## Deprecations
+
+## Bug fixes and other changes
+
+## Documentation updates
+
+# Version 0.25.0
+
+## Major Features and Improvements
+
 *   Supported multiple artifacts for Transform's input example and output
     transformed example channels.
 *   Added support for processing specific spans in file-based ExampleGen with
@@ -42,6 +58,16 @@
 
 ## Breaking changes
 
+*   N/A
+
+### For pipeline authors
+
+*   N/A
+
+### For component authors
+
+*   N/A
+
 ## Deprecations
 
 *   Modules under `tfx.components.base` have been deprecated and moved to
@@ -52,11 +78,8 @@
 
 *   Introduced dependency to `tensorflow-cloud` Python package, with intention
     to separate out Google Cloud Platform specific extensions.
-*   Depends on `tensorflow-cloud>=0.1,<0.2`.
-*   Depends on `tensorflow-hub>=0.9.0,<0.10`.
 *   Depends on `mmh>=2.2,<3` in container image for potential performance
     improvement for Beam based hashes.
-*   Depends on `apache-beam[gcp]>=2.25,<3`.
 *   New extra dependencies `[examples]` is required to use codes inside
     tfx/examples.
 *   Fixed the run_component script.
@@ -68,12 +91,18 @@
     `beam_pipeline_args` is provided.
 *   Changed schema as an optional input channel of Trainer as schema can be
     accessed from TFT graph too.
-
-### For pipeline authors
-
-### For component authors
+*   Depends on `apache-beam[gcp]>=2.25,<3`.
+*   Depends on `ml-metadata>=0.24,<0.25`.
+*   Depends on `tensorflow-cloud>=0.1,<0.2`.
+*   Depends on `tensorflow-data-validation>=0.25,<0.26`.
+*   Depends on `tensorflow-hub>=0.9.0,<0.10`.
+*   Depends on `tensorflow-model-analysis>=0.25,<0.26`.
+*   Depends on `tensorflow-transform>=0.25,<0.26`.
+*   Depends on `tfx-bsl>=0.25,<0.26`.
 
 ## Documentation updates
+
+*   N/A
 
 # Version 0.24.1
 
