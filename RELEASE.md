@@ -55,6 +55,9 @@
     [Kubeflow IR spec](https://github.com/kubeflow/pipelines/blob/master/api/v2alpha1/pipeline_spec.proto).
     Same as `KubeflowDagRunner` it will compile the DSL pipeline into a payload
     but not trigger the execution locally.
+*   Added 'penguin' example. Penguin example uses Palmer Penguins dataset and
+    classify penguin species using four numeric features. This example will
+    replace existing iris flower classification example.
 
 ## Breaking changes
 
