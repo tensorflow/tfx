@@ -83,6 +83,12 @@ class BaseHandlerTest(tf.test.TestCase):
         os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'testdata')
     self.pipeline_path = os.path.join(self.chicago_taxi_pipeline_dir,
                                       'test_pipeline_airflow_1.py')
+    self._original_home = os.environ['HOME']
+    os.environ['HOME'] = self.create_tempdir().full_path
+
+  def tearDown(self):
+    super(BaseHandlerTest, self).tearDown()
+    os.environ['HOME'] = self._original_home
 
   def testCheckPipelineDslPathInvalid(self):
     flags_dict = {labels.ENGINE_FLAG: self.engine,
@@ -126,7 +132,7 @@ class BaseHandlerTest(tf.test.TestCase):
     }
     handler = FakeHandler(flags_dict)
     self.assertEqual(
-        os.path.join(os.environ['HOME'], 'engine', ''),
+        os.path.join(os.environ['HOME'], 'tfx', 'engine', ''),
         handler._get_handler_home())
 
   def testCheckDslRunnerAirflow(self):
@@ -162,7 +168,8 @@ class BaseHandlerTest(tf.test.TestCase):
   def testCheckPipelinExistenceNotRequired(self):
     flags_dict = {labels.ENGINE_FLAG: 'beam', labels.PIPELINE_NAME: 'pipeline'}
     handler = FakeHandler(flags_dict)
-    fileio.makedirs(os.path.join(os.environ['HOME'], 'beam', 'pipeline', ''))
+    fileio.makedirs(
+        os.path.join(os.environ['HOME'], 'tfx', 'beam', 'pipeline', ''))
     with self.assertRaises(SystemExit) as err:
       handler._check_pipeline_existence(
           flags_dict[labels.PIPELINE_NAME], required=False)
@@ -181,6 +188,20 @@ class BaseHandlerTest(tf.test.TestCase):
     self.assertTrue(
         str(err.exception), 'Pipeline "{}" does not exist.'.format(
             flags_dict[labels.PIPELINE_NAME]))
+
+  def testCheckPipelinExistenceRequiredMigrated(self):
+    flags_dict = {labels.ENGINE_FLAG: 'beam', labels.PIPELINE_NAME: 'pipeline'}
+    handler = FakeHandler(flags_dict)
+    old_path = os.path.join(os.environ['HOME'], 'beam', 'pipeline')
+    new_path = os.path.join(os.environ['HOME'], 'tfx', 'beam', 'pipeline')
+
+    fileio.makedirs(old_path)
+    self.assertFalse(fileio.exists(new_path))
+
+    handler._check_pipeline_existence(flags_dict[labels.PIPELINE_NAME])
+
+    self.assertTrue(fileio.exists(new_path))
+    self.assertFalse(fileio.exists(old_path))
 
 
 if __name__ == '__main__':

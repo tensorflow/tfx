@@ -58,7 +58,15 @@
 
 ## Breaking changes
 
-*   N/A
+*   Moved the directory that CLI stores pipeline information from
+    ${HOME}/${ORCHESTRATOR} to ${HOME}/tfx/${ORCHESTRATOR}. For example,
+    "~/kubeflow" was changed to "~/tfx/kubeflow". This directory is used to
+    store pipeline information including pipeline ids in the Kubeflow Pipelines
+    cluster which are needed to create runs or update pipelines.
+    These files will be moved automatically when it is first used and no
+    separate action is needed.
+    See https://github.com/tensorflow/tfx/blob/master/docs/guide/cli.md for the
+    detail.
 
 ### For pipeline authors
 
