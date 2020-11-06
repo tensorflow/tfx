@@ -13,9 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Subpackage for TFX components."""
-
-import tensorflow as tf
-
 # For component user to direct use tfx.components.[...] as an alias.
 from tfx.components.bulk_inferrer.component import BulkInferrer
 from tfx.components.common_nodes.importer_node import ImporterNode
@@ -33,10 +30,3 @@ from tfx.components.statistics_gen.component import StatisticsGen
 from tfx.components.trainer.component import Trainer
 from tfx.components.transform.component import Transform
 from tfx.components.tuner.component import Tuner
-
-# Prevents double logging: TFX and TF uses `tf.logging` but Beam uses standard
-# logging, both logging modules add its own handler. Following setting disables
-# tf.logging to propagate up to the parent logging handlers. This is a global
-# behavior (perhaps thread hostile) which affects all code that uses component
-# libaray.
-tf.get_logger().propagate = False
