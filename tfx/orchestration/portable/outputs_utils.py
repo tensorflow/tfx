@@ -127,3 +127,10 @@ class OutputsResolver:
                                         _STATEFUL_WORKING_DIR)
     fileio.makedirs(stateful_working_dir)
     return stateful_working_dir
+
+  def make_tmp_dir(self, execution_id: int):
+    """Generates a temporily directory."""
+    result = os.path.join(self._node_dir, _EXECUTOR_EXECUTION,
+                          str(execution_id), '.temp', '')
+    fileio.makedirs(result)
+    return result

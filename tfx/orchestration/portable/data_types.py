@@ -47,6 +47,9 @@ class ExecutionInfo:
   # eviction. For examples, a Trainer can use this directory to store
   # checkpoints.
   stateful_working_dir = attr.ib(type=str, default=None)
+  # A tempory dir for executions and it is expected to be cleared up at the end
+  # of executions in both success and failure cases.
+  tmp_dir = attr.ib(type=str, default=None)
   # The config of this Node.
   pipeline_node = attr.ib(type=pipeline_pb2.PipelineNode, default=None)
   # The config of the pipeline that this node is running in.

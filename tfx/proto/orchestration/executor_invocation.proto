@@ -22,6 +22,7 @@ import "tfx/proto/orchestration/pipeline.proto";
 
 // All the information needed for a TFX component execution.
 // TODO(b/172391062): Make this `ExecutionInvocation` for broader usages.
+// Next ID: 11
 message ExecutorInvocation {
   reserved 1, 2;
 
@@ -40,8 +41,12 @@ message ExecutorInvocation {
 
   // Stateful working dir will be deterministic given pipeline, node and run_id.
   // The typical usecase is to restore long running execution's state after
-  // eviction.
+  // eviction. This dir is clean up only when the execution succeeded.
   string stateful_working_dir = 7;
+
+  // A temporary dir for executions and it is expected to be cleared up at the
+  // end of executions in both success and failure cases.
+  string tmp_dir = 10;
 
   // Pipeline info proto from the IR specification.
   tfx.orchestration.PipelineInfo pipeline_info = 8;

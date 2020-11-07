@@ -13,11 +13,11 @@
 # limitations under the License.
 """This module defines a generic Launcher for all TFleX nodes."""
 
+import os
 from typing import Any, Dict, List, Optional, Text, Type, TypeVar
 
 from absl import logging
 import attr
-
 from tfx import types
 from tfx.dsl.io import fileio
 from tfx.orchestration import metadata
@@ -255,6 +255,7 @@ class Launcher(object):
               .get_executor_output_uri(execution.id),
               stateful_working_dir=(
                   self._output_resolver.get_stateful_working_directory()),
+              tmp_dir=self._output_resolver.make_tmp_dir(execution.id),
               pipeline_node=self._pipeline_node,
               pipeline_info=self._pipeline_info),
           contexts=contexts,
@@ -295,8 +296,23 @@ class Launcher(object):
       execution_publish_utils.publish_failed_execution(
           metadata_handler=m, execution_id=execution_id, contexts=contexts)
 
-  def _clean_up(self, execution_info: data_types.ExecutionInfo):
-    fileio.rmtree(execution_info.stateful_working_dir)
+  def _clean_up_stateless_execution_info(
+      self, execution_info: data_types.ExecutionInfo):
+    # Clean up tmp dir
+    fileio.rmtree(execution_info.tmp_dir)
+
+  def _clean_up_stateful_execution_info(
+      self, execution_info: data_types.ExecutionInfo):
+    """Post execution clean up."""
+    # Clean up stateful working dir
+    # Note that:
+    #  stateful_working_dir = (os.path.join(
+    #    self._node_dir,
+    #    self._pipeline_run_id,  <-- we want to clean from this level down.
+    #    _STATEFUL_WORKING_DIR)
+    stateful_working_dir = os.path.abspath(
+        os.path.join(execution_info.stateful_working_dir, os.pardir))
+    fileio.rmtree(stateful_working_dir)
 
   def _update_with_driver_output(self,
                                  driver_output: driver_output_pb2.DriverOutput,
@@ -350,8 +366,10 @@ class Launcher(object):
         logging.error('Execution %d failed.',
                       execution_info.execution_metadata.id)
         raise
+      finally:
+        self._clean_up_stateless_execution_info(execution_info)
 
-      self._clean_up(execution_info)
+      self._clean_up_stateful_execution_info(execution_info)
       logging.info('Publishing output artifacts %s for exeuction %s',
                    execution_info.output_dict,
                    execution_info.execution_metadata.id)
