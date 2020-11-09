@@ -35,8 +35,8 @@ ADD . ${TFX_SRC_DIR}
 WORKDIR ${TFX_SRC_DIR}
 
 ARG TFX_DEPENDENCY_SELECTOR
+ENV TFX_DEPENDENCY_SELECTOR=${TFX_DEPENDENCY_SELECTOR}
 RUN if [ "${TFX_DEPENDENCY_SELECTOR}" = "NIGHTLY" ]; then \
-  TFX_DEPENDENCY_SELECTOR=${TFX_DEPENDENCY_SELECTOR} \
     CFLAGS=$(/usr/bin/python-config --cflags) \
     python -m pip install \
     --extra-index-url https://pypi-nightly.tensorflow.org/simple \
