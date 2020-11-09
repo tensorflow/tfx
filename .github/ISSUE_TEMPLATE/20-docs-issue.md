@@ -1,8 +1,8 @@
 Thank you for submitting a TFX documentation issue. Per our GitHub
 policy, we only address code/doc bugs, performance issues, feature requests, and
-build/installation issues on GitHub.
+build/installation issues on GitHub and we welcome external contributions!
 
-The TFX docs are open source! To get involved, read the documentation
+The TFX docs are open source! To get involved, please read the documentation
 contributor guide: https://www.tensorflow.org/community/contribute/docs
 
 ## URL(s) with the issue:
@@ -43,4 +43,4 @@ on how to write testable usage examples.
 
 ### Request visuals, if applicable
 
-Are there currently visuals? If not, will it clarify the content?
+Are there currently visuals? If so, do they look correct? If not, will it clarify the content?
