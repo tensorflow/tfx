@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Python source file include Iris pipeline functions and necessary utils.
+"""Python source file include Penguin pipeline functions and necessary utils.
 
 The utilities in this file are used to build a model with scikit-learn.
 This module file will be used in Transform and generic Trainer.
@@ -33,12 +33,14 @@ from tfx_bsl.tfxio import dataset_options
 
 from tensorflow_metadata.proto.v0 import schema_pb2
 
-_FEATURE_KEYS = ['sepal_length', 'sepal_width', 'petal_length', 'petal_width']
-_LABEL_KEY = 'variety'
+_FEATURE_KEYS = [
+    'culmen_length_mm', 'culmen_depth_mm', 'flipper_length_mm', 'body_mass_g'
+]
+_LABEL_KEY = 'species'
 
-# Iris dataset has 150 records, and is divided to train and eval splits in 2:1
-# ratio.
-_TRAIN_DATA_SIZE = 100
+# The Penguin dataset has 342 records, and is divided into train and eval
+# splits in a 2:1 ratio.
+_TRAIN_DATA_SIZE = 228
 _TRAIN_BATCH_SIZE = 20
 
 

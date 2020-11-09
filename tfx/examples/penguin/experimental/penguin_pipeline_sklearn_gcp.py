@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Iris flowers example using TFX on GCP."""
+"""Penguin example using TFX on GCP."""
 
 import os
 from typing import Dict, List, Optional, Text
@@ -28,14 +28,14 @@ from tfx.extensions.google_cloud_ai_platform.pusher import executor as ai_platfo
 from tfx.extensions.google_cloud_ai_platform.trainer import executor as ai_platform_trainer_executor
 from tfx.orchestration import metadata
 from tfx.orchestration import pipeline
-from tfx.orchestration.beam.beam_dag_runner import BeamDagRunner
+from tfx.orchestration.local.local_dag_runner import LocalDagRunner
 from tfx.proto import trainer_pb2
 
 
 # Identifier for the pipeline. This will also be used as the model name on AI
 # Platform, so it should begin with a letter and only consist of letters,
 # numbers, and underscores.
-_pipeline_name = 'iris_sklearn_gcp'
+_pipeline_name = 'penguin_sklearn_gcp'
 
 # Google Cloud Platform project id to use when deploying this pipeline. Leave
 # blank to run locally.
@@ -84,15 +84,16 @@ _ai_platform_serving_args = {
     'runtime_version': '1.15',
 }
 
-# This example assumes that Iris flowers data is stored in ~/iris/data and the
-# utility function is in ~/iris. Feel free to customize as needed.
-_iris_root = os.path.join(_bucket, 'iris')
-_data_root = os.path.join(_iris_root, 'data')
-# Python module file to inject customized logic into the TFX components. The
-# Transform and Trainer both require user-defined functions to run successfully.
-_module_file = os.path.join(_iris_root, 'experimental', 'iris_utils_sklearn.py')
+# This example assumes that Penguin data is stored in ~/penguin/data and the
+# utility function is in ~/penguin. Feel free to customize as needed.
+_penguin_root = os.path.join(_bucket, 'penguin')
+_data_root = os.path.join(_penguin_root, 'data')
+# Python module file to inject customized logic into the TFX components.
+# Trainer requires user-defined functions to run successfully.
+_module_file = os.path.join(_penguin_root, 'experimental',
+                            'penguin_utils_sklearn.py')
 
-# Directory and data locations. This example assumes all of the flowers
+# Directory and data locations. This example assumes all of the
 # example code and metadata library is relative to $HOME, but you can store
 # these files anywhere on your local filesystem. The AI Platform Pusher requires
 # that pipeline outputs are stored in a GCS bucket.
@@ -120,7 +121,7 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
                      ai_platform_training_args: Optional[Dict[Text, Text]],
                      ai_platform_serving_args: Optional[Dict[Text, Text]],
                      beam_pipeline_args: List[Text]) -> pipeline.Pipeline:
-  """Implements the Iris flowers pipeline with TFX."""
+  """Implements the Penguin pipeline with TFX."""
   # Brings data into the pipeline or otherwise joins/converts training data.
   example_gen = CsvExampleGen(input_base=data_root)
 
@@ -186,10 +187,10 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
 
 
 # To run this pipeline from the python CLI:
-#   $python iris_pipeline_sklearn_gcp.py
+#   $python penguin_pipeline_sklearn_gcp.py
 if __name__ == '__main__':
   absl.logging.set_verbosity(absl.logging.INFO)
-  BeamDagRunner().run(
+  LocalDagRunner().run(
       _create_pipeline(
           pipeline_name=_pipeline_name,
           pipeline_root=_pipeline_root,

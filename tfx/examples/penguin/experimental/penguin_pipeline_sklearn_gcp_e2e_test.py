@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""E2E Tests for tfx.examples.experimental.iris_pipeline_sklearn_gcp."""
+"""E2E Tests for tfx.examples.experimental.penguin_pipeline_sklearn_gcp."""
 
 import os
 from typing import Text
@@ -20,27 +20,27 @@ import mock
 import tensorflow as tf
 
 from tfx.dsl.io import fileio
-from tfx.examples.iris.experimental import iris_pipeline_sklearn_gcp
+from tfx.examples.penguin.experimental import penguin_pipeline_sklearn_gcp
 from tfx.extensions.google_cloud_ai_platform.pusher import executor as pusher_executor
 from tfx.extensions.google_cloud_ai_platform.trainer import executor as trainer_executor
 from tfx.orchestration import metadata
-from tfx.orchestration.beam.beam_dag_runner import BeamDagRunner
+from tfx.orchestration.local.local_dag_runner import LocalDagRunner
 
 
-class IrisPipelineSklearnGcpEndToEndTest(tf.test.TestCase):
+class PenguinPipelineSklearnGcpEndToEndTest(tf.test.TestCase):
 
   def setUp(self):
-    super(IrisPipelineSklearnGcpEndToEndTest, self).setUp()
+    super(PenguinPipelineSklearnGcpEndToEndTest, self).setUp()
     self._test_dir = os.path.join(
         os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR', self.get_temp_dir()),
         self._testMethodName)
     self._experimental_root = os.path.dirname(__file__)
-    self._iris_root = os.path.dirname(self._experimental_root)
+    self._penguin_root = os.path.dirname(self._experimental_root)
 
     self._pipeline_name = 'sklearn_test'
-    self._data_root = os.path.join(self._iris_root, 'data')
-    self._module_file = os.path.join(
-        self._experimental_root, 'iris_utils_sklearn.py')
+    self._data_root = os.path.join(self._penguin_root, 'data')
+    self._module_file = os.path.join(self._experimental_root,
+                                     'penguin_utils_sklearn.py')
     self._pipeline_root = os.path.join(self._test_dir, 'tfx', 'pipelines',
                                        self._pipeline_name)
     self._metadata_path = os.path.join(self._test_dir, 'tfx', 'metadata',
@@ -76,11 +76,11 @@ class IrisPipelineSklearnGcpEndToEndTest(tf.test.TestCase):
   )
   @mock.patch.object(trainer_executor, 'runner', autospec=True)
   @mock.patch.object(pusher_executor, 'runner', autospec=True)
-  def testIrisPipelineSklearnGcp(self, mock_pusher, mock_trainer, _):
+  def testPenguinPipelineSklearnGcp(self, mock_pusher, mock_trainer, _):
     mock_pusher.get_service_name_and_api_version.return_value = ('ml', 'v1')
     mock_trainer.get_service_name_and_api_version.return_value = ('ml', 'v1')
-    BeamDagRunner().run(
-        iris_pipeline_sklearn_gcp._create_pipeline(
+    LocalDagRunner().run(
+        penguin_pipeline_sklearn_gcp._create_pipeline(
             pipeline_name=self._pipeline_name,
             data_root=self._data_root,
             module_file=self._module_file,
@@ -105,8 +105,8 @@ class IrisPipelineSklearnGcpEndToEndTest(tf.test.TestCase):
     self.assertPipelineExecution()
 
     # Runs pipeline the second time.
-    BeamDagRunner().run(
-        iris_pipeline_sklearn_gcp._create_pipeline(
+    LocalDagRunner().run(
+        penguin_pipeline_sklearn_gcp._create_pipeline(
             pipeline_name=self._pipeline_name,
             data_root=self._data_root,
             module_file=self._module_file,
@@ -124,8 +124,8 @@ class IrisPipelineSklearnGcpEndToEndTest(tf.test.TestCase):
                        len(m.store.get_executions()))
 
     # Runs pipeline the third time.
-    BeamDagRunner().run(
-        iris_pipeline_sklearn_gcp._create_pipeline(
+    LocalDagRunner().run(
+        penguin_pipeline_sklearn_gcp._create_pipeline(
             pipeline_name=self._pipeline_name,
             data_root=self._data_root,
             module_file=self._module_file,
