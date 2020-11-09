@@ -12,6 +12,8 @@
 
 ## Bug fixes and other changes
 
+*   Depends on `attrs>=19.3.0,<21`.
+
 ## Documentation updates
 
 # Version 0.25.0
