@@ -12,8 +12,6 @@
 
 ## Bug fixes and other changes
 
-*   Depends on `attrs>=19.3.0,<21`.
-
 ## Documentation updates
 
 # Version 0.25.0
@@ -105,6 +103,7 @@
 *   Changed schema as an optional input channel of Trainer as schema can be
     accessed from TFT graph too.
 *   Depends on `apache-beam[gcp]>=2.25,<3`.
+*   Depends on `attrs>=19.3.0,<21`.
 *   Depends on `ml-metadata>=0.24,<0.25`.
 *   Depends on `tensorflow-cloud>=0.1,<0.2`.
 *   Depends on `tensorflow-data-validation>=0.25,<0.26`.
