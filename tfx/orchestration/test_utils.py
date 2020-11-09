@@ -15,6 +15,7 @@
 """Common utilities for testing various runners."""
 
 import datetime
+import os
 import random
 import string
 import time
@@ -73,15 +74,21 @@ def build_and_push_docker_image(container_image: str, repo_base: str):
   """
   client = docker.from_env(timeout=_DOCKER_TIMEOUT_SECONDS)
 
-  logging.info('Building image %s', container_image)
+  # Default to NIGHTLY. GIT_MASTER might be better to use the latest source,
+  # But it takes too long (~1h) to build packages from scratch. If some changes
+  # in a dependent package break tests, just run a nightly build of dependent
+  # package again.
+  dependency_selector = os.getenv('TFX_DEPENDENCY_SELECTOR') or 'NIGHTLY'
+
+  logging.info('Building image %s with %s dependency', container_image,
+               dependency_selector)
   with Timer('BuildingTFXContainerImage'):
     _ = client.images.build(
         path=repo_base,
         dockerfile='tfx/tools/docker/Dockerfile',
         tag=container_image,
         buildargs={
-            # Use nightly versions for the test.
-            'TFX_DEPENDENCY_SELECTOR': 'NIGHTLY',
+            'TFX_DEPENDENCY_SELECTOR': dependency_selector,
         },
     )
 
