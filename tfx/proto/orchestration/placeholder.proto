@@ -120,10 +120,12 @@ message Placeholder {
   // A Placeholder can represent an input artifact, an output artifact,
   // or an execution property.
   enum Type {
+    // TODO(b/172065067): Clean up enum to reflect structure of the SDK objects.
     INPUT_ARTIFACT = 0;
     OUTPUT_ARTIFACT = 1;
     EXEC_PROPERTY = 2;
     RUNTIME_INFO = 3;
+    EXEC_INVOCATION = 4;
   }
   // Required. Type of the placeholder.
   Type type = 1;
