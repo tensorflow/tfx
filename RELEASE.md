@@ -77,7 +77,7 @@
     accessed from TFT graph too.
 *   Depends on `apache-beam[gcp]>=2.25,<3`.
 *   Depends on `attrs>=19.3.0,<21`.
-*   Depends on `ml-metadata>=0.24,<0.25`.
+*   Depends on `ml-metadata>=0.25,<0.26`.
 *   Depends on `tensorflow-cloud>=0.1,<0.2`.
 *   Depends on `tensorflow-data-validation>=0.25,<0.26`.
 *   Depends on `tensorflow-hub>=0.9.0,<0.10`.
