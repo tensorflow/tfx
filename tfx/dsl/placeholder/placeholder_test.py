@@ -226,6 +226,60 @@ class PlaceholderTest(tf.test.TestCase):
     with self.assertRaises(ValueError):
       ph.runtime_info('invalid_key')
 
+  def testProtoSerializationOperator(self):
+    self._assert_placeholder_pb_equal(
+        ph.exec_property('proto').serialize(ph.ProtoSerializationFormat.JSON),
+        """
+        operator {
+          proto_op {
+            expression {
+              placeholder {
+                type: EXEC_PROPERTY
+                key: "proto"
+              }
+            }
+            serialization_format: JSON
+          }
+        }
+        """)
+
+  def testProtoSerializationOperatorWithFieldAccess(self):
+    self._assert_placeholder_pb_equal(
+        ph.exec_property('proto').a.b.serialize(
+            ph.ProtoSerializationFormat.JSON), """
+        operator {
+          proto_op {
+            expression {
+              operator {
+                proto_op {
+                  expression {
+                    placeholder {
+                      type: EXEC_PROPERTY
+                      key: "proto"
+                    }
+                  }
+                  proto_field_path: ".a"
+                  proto_field_path: ".b"
+                }
+              }
+            }
+            serialization_format: JSON
+          }
+        }
+        """)
+
+  def testProtoSerializationWithDescriptor(self):
+    test_pb_filepath = os.path.join(
+        os.path.dirname(__file__), 'testdata',
+        'proto_placeholder_serialization_operator.pbtxt')
+    with open(test_pb_filepath) as text_pb_file:
+      expected_pb = text_format.ParseLines(
+          text_pb_file, placeholder_pb2.PlaceholderExpression())
+    placeholder = ph.exec_property('splits_config').serialize(
+        ph.ProtoSerializationFormat.JSON)
+    component_spec = standard_component_specs.TransformSpec
+    self.assertProtoEquals(placeholder.encode(component_spec), expected_pb)
+
 
 if __name__ == '__main__':
   tf.test.main()

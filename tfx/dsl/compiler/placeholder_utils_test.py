@@ -224,7 +224,7 @@ class PlaceholderUtilsTest(tf.test.TestCase):
         placeholder_utils.resolve_placeholder_expression(
             pb, self._resolution_context), "1.15.0-gpu")
 
-  def testProtoExecPropertyMessageField(self):
+  def testProtoExecPropertyMessageFieldTextFormat(self):
     # Access a message type proto field
     placeholder_expression = """
       operator {
@@ -239,6 +239,7 @@ class PlaceholderUtilsTest(tf.test.TestCase):
             message_type: "tfx.components.infra_validator.ServingSpec"
           }
           proto_field_path: ".tensorflow_serving"
+          serialization_format: TEXT_FORMAT
         }
       }
     """
@@ -333,6 +334,73 @@ class PlaceholderUtilsTest(tf.test.TestCase):
     self.assertEqual(
         placeholder_utils.resolve_placeholder_expression(
             pb, self._resolution_context), "infra_validator")
+
+  def testProtoSerializationJSON(self):
+    placeholder_expression = """
+      operator {
+        proto_op {
+          expression {
+            placeholder {
+              type: EXEC_PROPERTY
+              key: "proto_property"
+            }
+          }
+          proto_schema {
+            message_type: "tfx.components.infra_validator.ServingSpec"
+          }
+          serialization_format: JSON
+        }
+      }
+    """
+    pb = text_format.Parse(placeholder_expression,
+                           placeholder_pb2.PlaceholderExpression())
+
+    # Prepare FileDescriptorSet
+    fd = descriptor_pb2.FileDescriptorProto()
+    infra_validator_pb2.ServingSpec().DESCRIPTOR.file.CopyToProto(fd)
+    pb.operator.proto_op.proto_schema.file_descriptors.file.append(fd)
+
+    expected_json_serialization = """\
+{
+  "tensorflow_serving": {
+    "tags": [
+      "latest",
+      "1.15.0-gpu"
+    ]
+  }
+}"""
+
+    self.assertEqual(
+        placeholder_utils.resolve_placeholder_expression(
+            pb, self._resolution_context), expected_json_serialization)
+
+  def testProtoWithoutSerializationFormat(self):
+    placeholder_expression = """
+      operator {
+        proto_op {
+          expression {
+            placeholder {
+              type: EXEC_PROPERTY
+              key: "proto_property"
+            }
+          }
+          proto_schema {
+            message_type: "tfx.components.infra_validator.ServingSpec"
+          }
+        }
+      }
+    """
+    pb = text_format.Parse(placeholder_expression,
+                           placeholder_pb2.PlaceholderExpression())
+
+    # Prepare FileDescriptorSet
+    fd = descriptor_pb2.FileDescriptorProto()
+    infra_validator_pb2.ServingSpec().DESCRIPTOR.file.CopyToProto(fd)
+    pb.operator.proto_op.proto_schema.file_descriptors.file.append(fd)
+
+    with self.assertRaises(ValueError):
+      placeholder_utils.resolve_placeholder_expression(pb,
+                                                       self._resolution_context)
 
   def testExecutionInvocationPlaceholderSimple(self):
     # TODO(b/170469176): Update when proto encoding Operator is available.
