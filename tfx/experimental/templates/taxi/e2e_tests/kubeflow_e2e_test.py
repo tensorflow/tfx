@@ -306,23 +306,22 @@ class TaxiTemplateKubeflowE2ETest(test_utils.BaseEndToEndTest):
     self._update_pipeline()
     self._run_pipeline()
 
-    # TODO(b/170163019) Re-enable Dataflow tests after tfx-bsl 0.25.0 release.
-    #     # Enable Dataflow
-    #     self._comment('kubeflow_dag_runner.py', [
-    #         'beam_pipeline_args=configs\n',
-    #         '.BIG_QUERY_WITH_DIRECT_RUNNER_BEAM_PIPELINE_ARGS',
-    #     ])
-    #     self._uncomment('kubeflow_dag_runner.py', [
-    #         'beam_pipeline_args=configs.DATAFLOW_BEAM_PIPELINE_ARGS',
-    #     ])
-    #     logging.info('Added Dataflow to pipeline.')
-    #     self._update_pipeline()
-    #     self._run_pipeline()
+    # Enable Dataflow
+    self._comment('kubeflow_dag_runner.py', [
+        'beam_pipeline_args=configs\n',
+        '.BIG_QUERY_WITH_DIRECT_RUNNER_BEAM_PIPELINE_ARGS',
+    ])
+    self._uncomment('kubeflow_dag_runner.py', [
+        'beam_pipeline_args=configs.DATAFLOW_BEAM_PIPELINE_ARGS',
+    ])
+    logging.info('Added Dataflow to pipeline.')
+    self._update_pipeline()
+    self._run_pipeline()
 
-    #     # Enable CAIP extension.
-    #     self._comment('kubeflow_dag_runner.py', [
-    #         'beam_pipeline_args=configs.DATAFLOW_BEAM_PIPELINE_ARGS',
-    #     ])
+    # Enable CAIP extension.
+    self._comment('kubeflow_dag_runner.py', [
+        'beam_pipeline_args=configs.DATAFLOW_BEAM_PIPELINE_ARGS',
+    ])
     self._uncomment('kubeflow_dag_runner.py', [
         'ai_platform_training_args=configs.GCP_AI_PLATFORM_TRAINING_ARGS,',
         'ai_platform_serving_args=configs.GCP_AI_PLATFORM_SERVING_ARGS,',
