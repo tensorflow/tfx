@@ -16,13 +16,14 @@
 import tensorflow as tf
 from tfx.orchestration.experimental.core import task as task_lib
 from tfx.orchestration.experimental.core import task_queue
+from tfx.orchestration.experimental.core import test_utils
 from tfx.orchestration.portable import test_utils as tu
 
 
 def _test_task(node_id, pipeline_id, pipeline_run_id=None):
   node_uid = task_lib.NodeUid(
       pipeline_id=pipeline_id, pipeline_run_id=pipeline_run_id, node_id=node_id)
-  return task_lib.ExecNodeTask(node_uid=node_uid, execution_id=123)
+  return test_utils.create_exec_node_task(node_uid)
 
 
 class TaskQueueTest(tu.TfxTest):

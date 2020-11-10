@@ -17,6 +17,7 @@ from absl.testing.absltest import mock
 import tensorflow as tf
 from tfx.orchestration.experimental.core import task as task_lib
 from tfx.orchestration.experimental.core import task_scheduler as ts
+from tfx.orchestration.experimental.core import test_utils
 from tfx.orchestration.portable import test_utils as tu
 from tfx.proto.orchestration import execution_result_pb2
 from tfx.proto.orchestration import pipeline_pb2
@@ -48,10 +49,9 @@ class TaskSchedulerRegistryTest(tu.TfxTest):
     ts.TaskSchedulerRegistry.register(spec_type_url, _FakeTaskScheduler)
 
     # Create a task and verify that the correct scheduler is instantiated.
-    task = task_lib.ExecNodeTask(
+    task = test_utils.create_exec_node_task(
         node_uid=task_lib.NodeUid(
-            pipeline_id='pipeline', pipeline_run_id=None, node_id='Trainer'),
-        execution_id=123)
+            pipeline_id='pipeline', pipeline_run_id=None, node_id='Trainer'))
     task_scheduler = ts.TaskSchedulerRegistry.create_task_scheduler(
         mock.Mock(), pipeline, task)
     self.assertIsInstance(task_scheduler, _FakeTaskScheduler)

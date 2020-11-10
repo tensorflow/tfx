@@ -18,7 +18,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from typing import Optional, Text
+from typing import Optional, Text, Tuple
 
 from ml_metadata.proto import metadata_store_pb2
 
@@ -78,3 +78,28 @@ def generate_event(
     event.execution_id = execution_id
 
   return event
+
+
+def get_artifact_path(event: metadata_store_pb2.Event) -> Tuple[Text, int]:
+  """Gets the artifact path from the event.
+
+  This is useful for reconstructing the artifact dict (mapping from key to an
+  ordered list of artifacts) for an execution. The key and index of an artifact
+  are expected to be stored in the event in two steps where the first step is
+  the key and second is the index of the artifact within the list.
+
+  Args:
+    event: The event from which to extract path to the artifact.
+
+  Returns:
+    A tuple (<artifact key>, <artifact index>).
+
+  Raises:
+    ValueError: If there are not exactly 2 steps in the path corresponding to
+      the key and index of the artifact.
+  """
+  if len(event.path.steps) != 2:
+    raise ValueError(
+        'Expected exactly two steps corresponding to key and index in event: {}'
+        .format(event))
+  return (event.path.steps[0].key, event.path.steps[1].index)

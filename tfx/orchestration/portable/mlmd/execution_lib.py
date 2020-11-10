@@ -19,7 +19,7 @@ from __future__ import division
 from __future__ import print_function
 
 import collections
-
+import itertools
 from typing import Dict, Iterable, List, Mapping, MutableMapping, Optional, Sequence, Set, Text, Tuple
 
 from absl import logging
@@ -27,6 +27,7 @@ from tfx import types
 from tfx.orchestration import metadata
 from tfx.orchestration.portable.mlmd import common_utils
 from tfx.orchestration.portable.mlmd import event_lib
+from tfx.types import artifact_utils
 
 from ml_metadata.proto import metadata_store_pb2
 
@@ -220,4 +221,81 @@ def get_artifact_ids_by_event_type_for_execution_id(
   result = collections.defaultdict(set)
   for event in events:
     result[event.type].add(event.artifact_id)
+  return result
+
+
+def get_artifacts_dict(
+    metadata_handler: metadata.Metadata, execution_id: int,
+    event_type: 'metadata_store_pb2.Event.Type'
+) -> Dict[Text, List[types.Artifact]]:
+  """Returns a map from key to an ordered list of artifacts for the given execution id.
+
+  The dict is constructed purely from information stored in MLMD for the
+  execution given by `execution_id`. The "key" is the tag associated with the
+  `InputSpec` or `OutputSpec` in the pipeline IR.
+
+  Args:
+    metadata_handler: A handler to access MLMD.
+    execution_id: Id of the execution for which to get artifacts.
+    event_type: Event type to filter by.
+
+  Returns:
+    A dict mapping key to an ordered list of artifacts.
+
+  Raises:
+    ValueError: If the events are badly formed and correct ordering of
+      artifacts cannot be determined or if all the artifacts could not be
+      fetched from MLMD.
+  """
+  events = metadata_handler.store.get_events_by_execution_ids([execution_id])
+
+  # Create a map from "key" to list of (index, artifact_id)s.
+  indexed_artifact_ids_dict = collections.defaultdict(list)
+  for event in events:
+    if event.type != event_type:
+      continue
+    key, index = event_lib.get_artifact_path(event)
+    artifact_id = event.artifact_id
+    indexed_artifact_ids_dict[key].append((index, artifact_id))
+
+  # Create a map from "key" to ordered list of artifact ids.
+  artifact_ids_dict = {}
+  for key, indexed_artifact_ids in indexed_artifact_ids_dict.items():
+    ordered_artifact_ids = sorted(indexed_artifact_ids, key=lambda x: x[0])
+    # There shouldn't be any missing or duplicate indices.
+    indices = [idx for idx, _ in ordered_artifact_ids]
+    if indices != list(range(0, len(indices))):
+      raise ValueError(
+          f'Cannot construct artifact ids dict due to missing or duplicate '
+          f'indices: {indexed_artifact_ids_dict}')
+    artifact_ids_dict[key] = [aid for _, aid in ordered_artifact_ids]
+
+  # Fetch all the relevant artifacts.
+  all_artifact_ids = list(itertools.chain(*artifact_ids_dict.values()))
+  mlmd_artifacts = metadata_handler.store.get_artifacts_by_id(all_artifact_ids)
+  if len(all_artifact_ids) != len(mlmd_artifacts):
+    raise ValueError('Could not find all mlmd artifacts for ids: {}'.format(
+        ', '.join(all_artifact_ids)))
+
+  # Fetch artifact types and create a map keyed by artifact type id.
+  artifact_type_ids = set(a.type_id for a in mlmd_artifacts)
+  artifact_types = metadata_handler.store.get_artifact_types_by_id(
+      artifact_type_ids)
+  artifact_types_by_id = {a.id: a for a in artifact_types}
+
+  # Create a map from artifact id to `types.Artifact` instances.
+  artifacts_by_id = {
+      aid: artifact_utils.deserialize_artifact(artifact_types_by_id[a.type_id],
+                                               a)
+      for aid, a in zip(all_artifact_ids, mlmd_artifacts)
+  }
+
+  # Create a map from "key" to ordered list of `types.Artifact` to be returned.
+  # The ordering of artifacts is in accordance with their "index" derived from
+  # the events above.
+  result = collections.defaultdict(list)
+  for key, artifact_ids in artifact_ids_dict.items():
+    for artifact_id in artifact_ids:
+      result[key].append(artifacts_by_id[artifact_id])
+
   return result

@@ -155,7 +155,7 @@ class TaskGenUtilsTest(tu.TfxTest):
       executions = task_gen_utils.get_executions(m, self._trainer)
       self.assertIsNone(
           task_gen_utils.generate_task_from_active_execution(
-              self._pipeline, self._trainer, executions))
+              m, self._pipeline, self._trainer, executions))
 
     # Next, ensure an active execution for trainer.
     otu.fake_trainer_output(self._mlmd_connection, self._trainer)
@@ -167,8 +167,8 @@ class TaskGenUtilsTest(tu.TfxTest):
       # Check that task can be generated.
       executions = task_gen_utils.get_executions(m, self._trainer)
       task = task_gen_utils.generate_task_from_active_execution(
-          self._pipeline, self._trainer, executions)
-      self.assertEqual(execution.id, task.execution_id)
+          m, self._pipeline, self._trainer, executions)
+      self.assertEqual(execution.id, task.execution.id)
 
       # Mark execution complete. No tasks should be generated.
       execution = m.store.get_executions()[0]
@@ -177,7 +177,7 @@ class TaskGenUtilsTest(tu.TfxTest):
       executions = task_gen_utils.get_executions(m, self._trainer)
       self.assertIsNone(
           task_gen_utils.generate_task_from_active_execution(
-              self._pipeline, self._trainer, executions))
+              m, self._pipeline, self._trainer, executions))
 
   def test_generate_resolved_info(self):
     otu.fake_example_gen_run(self._mlmd_connection, self._example_gen, 2, 1)

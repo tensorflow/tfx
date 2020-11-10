@@ -129,7 +129,7 @@ class SyncPipelineTaskGenerator(task_gen.TaskGenerator):
 
     executions = task_gen_utils.get_executions(metadata_handler, node)
     result = task_gen_utils.generate_task_from_active_execution(
-        self._pipeline, node, executions)
+        metadata_handler, self._pipeline, node, executions)
     if result:
       return result
 
@@ -149,7 +149,12 @@ class SyncPipelineTaskGenerator(task_gen.TaskGenerator):
         contexts=resolved_info.contexts,
         input_artifacts=resolved_info.input_artifacts,
         exec_properties=resolved_info.exec_properties)
-    return task_lib.ExecNodeTask.create(self._pipeline, node, execution.id)
+    return task_lib.ExecNodeTask(
+        node_uid=task_lib.NodeUid.from_pipeline_node(self._pipeline, node),
+        execution=execution,
+        contexts=resolved_info.contexts,
+        input_artifacts=resolved_info.input_artifacts,
+        exec_properties=resolved_info.exec_properties)
 
   def _upstream_nodes_executed(self, metadata_handler: metadata.Metadata,
                                node: pipeline_pb2.PipelineNode) -> bool:

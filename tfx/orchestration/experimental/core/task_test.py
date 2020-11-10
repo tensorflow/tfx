@@ -15,6 +15,7 @@
 
 import tensorflow as tf
 from tfx.orchestration.experimental.core import task as task_lib
+from tfx.orchestration.experimental.core import test_utils
 from tfx.orchestration.portable import test_utils as tu
 from tfx.proto.orchestration import pipeline_pb2
 
@@ -32,27 +33,12 @@ class TaskTest(tu.TfxTest):
             pipeline_id='pipeline', pipeline_run_id='run0', node_id='Trainer'),
         task_lib.NodeUid.from_pipeline_node(pipeline, node))
 
-  def test_exec_node_task_create(self):
-    pipeline = pipeline_pb2.Pipeline()
-    pipeline.pipeline_info.id = 'pipeline'
-    pipeline.runtime_spec.pipeline_run_id.field_value.string_value = 'run0'
-    node = pipeline_pb2.PipelineNode()
-    node.node_info.id = 'Trainer'
-    self.assertEqual(
-        task_lib.ExecNodeTask(
-            node_uid=task_lib.NodeUid(
-                pipeline_id='pipeline',
-                pipeline_run_id='run0',
-                node_id='Trainer'),
-            execution_id=123),
-        task_lib.ExecNodeTask.create(pipeline, node, 123))
-
   def test_task_type_ids(self):
     self.assertEqual('ExecNodeTask', task_lib.ExecNodeTask.task_type_id())
     self.assertEqual('CancelNodeTask', task_lib.CancelNodeTask.task_type_id())
     node_uid = task_lib.NodeUid(
         pipeline_id='pipeline', pipeline_run_id='run0', node_id='Trainer')
-    exec_node_task = task_lib.ExecNodeTask(node_uid=node_uid, execution_id=123)
+    exec_node_task = test_utils.create_exec_node_task(node_uid)
     self.assertEqual('ExecNodeTask', exec_node_task.task_type_id())
     cancel_node_task = task_lib.CancelNodeTask(node_uid=node_uid)
     self.assertEqual('CancelNodeTask', cancel_node_task.task_type_id())
@@ -60,7 +46,7 @@ class TaskTest(tu.TfxTest):
   def test_task_ids(self):
     node_uid = task_lib.NodeUid(
         pipeline_id='pipeline', pipeline_run_id='run0', node_id='Trainer')
-    exec_node_task = task_lib.ExecNodeTask(node_uid=node_uid, execution_id=123)
+    exec_node_task = test_utils.create_exec_node_task(node_uid)
     self.assertEqual(('ExecNodeTask', node_uid), exec_node_task.task_id)
     cancel_node_task = task_lib.CancelNodeTask(node_uid=node_uid)
     self.assertEqual(('CancelNodeTask', node_uid), cancel_node_task.task_id)

@@ -58,7 +58,7 @@ class SyncPipelineTaskGeneratorTest(tu.TfxTest, parameterized.TestCase):
     self._pipeline_runtime_spec.pipeline_root.field_value.string_value = (
         pipeline_root)
     self._pipeline_runtime_spec.pipeline_run_id.field_value.string_value = (
-        'test_run_0')
+        'run_0')
 
     # Extracts components.
     self._example_gen = pipeline.nodes[0].pipeline_node
@@ -67,15 +67,29 @@ class SyncPipelineTaskGeneratorTest(tu.TfxTest, parameterized.TestCase):
 
     self._task_queue = tq.TaskQueue()
 
-  def _verify_node_execution_task(self, node, execution_id, task):
+  def _verify_exec_node_task(self, node, execution_id, task):
     self.assertEqual(
-        task_lib.ExecNodeTask.create(self._pipeline, node, execution_id), task)
+        task_lib.NodeUid.from_pipeline_node(self._pipeline, node),
+        task.node_uid)
+    self.assertEqual(execution_id, task.execution.id)
+    if node == self._transform:
+      expected_context_names = ['my_pipeline', 'my_transform', 'run_0']
+      expected_input_artifacts_keys = ['examples']
+    elif node == self._trainer:
+      expected_context_names = ['my_pipeline', 'my_trainer', 'run_0']
+      expected_input_artifacts_keys = ['examples', 'transform_graph']
+    else:
+      raise ValueError('Not configured to verify for node: {}'.format(node))
+    self.assertCountEqual(expected_context_names,
+                          [c.name for c in task.contexts])
+    self.assertCountEqual(expected_input_artifacts_keys,
+                          list(task.input_artifacts.keys()))
 
   def _dequeue_and_test(self, use_task_queue, node, execution_id):
     if use_task_queue:
       task = self._task_queue.dequeue()
       self._task_queue.task_done(task)
-      self._verify_node_execution_task(node, execution_id, task)
+      self._verify_exec_node_task(node, execution_id, task)
 
   def _generate_and_test(self, use_task_queue, num_initial_executions,
                          num_tasks_generated, num_new_executions,
@@ -131,8 +145,8 @@ class SyncPipelineTaskGeneratorTest(tu.TfxTest, parameterized.TestCase):
     """Tests that tasks are generated when upstream is done.
 
     Args:
-      use_task_queue: If task queue is enabled, new tasks are only generated
-        if a task with the same task_id does not already exist in the queue.
+      use_task_queue: If task queue is enabled, new tasks are only generated if
+        a task with the same task_id does not already exist in the queue.
         `use_task_queue=False` is useful to test the case of task generation
         when task queue is empty (for eg: due to orchestrator restart).
     """
@@ -152,8 +166,8 @@ class SyncPipelineTaskGeneratorTest(tu.TfxTest, parameterized.TestCase):
           num_tasks_generated=1,
           num_new_executions=1,
           num_active_executions=1)
-      self._verify_node_execution_task(self._transform, active_executions[0].id,
-                                       tasks[0])
+      self._verify_exec_node_task(self._transform, active_executions[0].id,
+                                  tasks[0])
 
     # Should be fine to regenerate multiple times. There should be no new
     # effects.
@@ -165,8 +179,8 @@ class SyncPipelineTaskGeneratorTest(tu.TfxTest, parameterized.TestCase):
           num_new_executions=0,
           num_active_executions=1)
       if not use_task_queue:
-        self._verify_node_execution_task(self._transform,
-                                         active_executions[0].id, tasks[0])
+        self._verify_exec_node_task(self._transform, active_executions[0].id,
+                                    tasks[0])
     with self.subTest(generate=3):
       tasks, active_executions = self._generate_and_test(
           use_task_queue,
@@ -176,8 +190,7 @@ class SyncPipelineTaskGeneratorTest(tu.TfxTest, parameterized.TestCase):
           num_active_executions=1)
       execution_id = active_executions[0].id
       if not use_task_queue:
-        self._verify_node_execution_task(self._transform, execution_id,
-                                         tasks[0])
+        self._verify_exec_node_task(self._transform, execution_id, tasks[0])
 
     # Mark transform execution complete.
     otu.fake_transform_output(self._mlmd_connection, self._transform,
@@ -194,7 +207,7 @@ class SyncPipelineTaskGeneratorTest(tu.TfxTest, parameterized.TestCase):
           num_new_executions=1,
           num_active_executions=1)
       execution_id = active_executions[0].id
-      self._verify_node_execution_task(self._trainer, execution_id, tasks[0])
+      self._verify_exec_node_task(self._trainer, execution_id, tasks[0])
 
     # Mark the trainer execution complete.
     otu.fake_trainer_output(self._mlmd_connection, self._trainer,

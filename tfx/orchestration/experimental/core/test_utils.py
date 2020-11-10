@@ -13,7 +13,9 @@
 # limitations under the License.
 """Test utilities."""
 
+from absl.testing.absltest import mock
 from tfx import types
+from tfx.orchestration.experimental.core import task as task_lib
 from tfx.orchestration.portable import execution_publish_utils
 from tfx.orchestration.portable.mlmd import context_lib
 
@@ -67,3 +69,17 @@ def fake_trainer_output(mlmd_connection, trainer, execution=None):
         m, execution.id, contexts, {
             'model': [output_trainer_model],
         })
+
+
+def create_exec_node_task(node_uid,
+                          execution=None,
+                          contexts=None,
+                          exec_properties=None,
+                          input_artifacts=None) -> task_lib.ExecNodeTask:
+  """Creates an `ExecNodeTask` for testing."""
+  return task_lib.ExecNodeTask(
+      node_uid=node_uid,
+      execution=execution or mock.Mock(),
+      contexts=contexts or [],
+      exec_properties=exec_properties or {},
+      input_artifacts=input_artifacts or {})

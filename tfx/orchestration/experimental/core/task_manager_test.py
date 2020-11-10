@@ -23,18 +23,19 @@ from tfx.orchestration.experimental.core import task as task_lib
 from tfx.orchestration.experimental.core import task_manager as tm
 from tfx.orchestration.experimental.core import task_queue as tq
 from tfx.orchestration.experimental.core import task_scheduler as ts
+from tfx.orchestration.experimental.core import test_utils
 from tfx.orchestration.portable import test_utils as tu
 from tfx.proto.orchestration import execution_result_pb2
 from tfx.proto.orchestration import pipeline_pb2
 
 
-def _test_exec_task(node_id, pipeline_id, pipeline_run_id=None):
+def _test_exec_node_task(node_id, pipeline_id, pipeline_run_id=None):
   node_uid = task_lib.NodeUid(
       pipeline_id=pipeline_id, pipeline_run_id=pipeline_run_id, node_id=node_id)
-  return task_lib.ExecNodeTask(node_uid=node_uid, execution_id=123)
+  return test_utils.create_exec_node_task(node_uid)
 
 
-def _test_cancel_task(node_id, pipeline_id, pipeline_run_id=None):
+def _test_cancel_node_task(node_id, pipeline_id, pipeline_run_id=None):
   node_uid = task_lib.NodeUid(
       pipeline_id=pipeline_id, pipeline_run_id=pipeline_run_id, node_id=node_id)
   return task_lib.CancelNodeTask(node_uid=node_uid)
@@ -107,9 +108,9 @@ class TaskManagerTest(tu.TfxTest):
     task_queue = tq.TaskQueue()
 
     # Enqueue some tasks.
-    trainer_exec_task = _test_exec_task('Trainer', 'test-pipeline')
+    trainer_exec_task = _test_exec_node_task('Trainer', 'test-pipeline')
     task_queue.enqueue(trainer_exec_task)
-    task_queue.enqueue(_test_cancel_task('Trainer', 'test-pipeline'))
+    task_queue.enqueue(_test_cancel_node_task('Trainer', 'test-pipeline'))
 
     with tm.TaskManager(
         mock.Mock(),
@@ -119,11 +120,11 @@ class TaskManagerTest(tu.TfxTest):
         max_dequeue_wait_secs=0.1,
         process_all_queued_tasks_before_exit=True):
       # Enqueue more tasks after task manager starts.
-      transform_exec_task = _test_exec_task('Transform', 'test-pipeline')
+      transform_exec_task = _test_exec_node_task('Transform', 'test-pipeline')
       task_queue.enqueue(transform_exec_task)
-      evaluator_exec_task = _test_exec_task('Evaluator', 'test-pipeline')
+      evaluator_exec_task = _test_exec_node_task('Evaluator', 'test-pipeline')
       task_queue.enqueue(evaluator_exec_task)
-      task_queue.enqueue(_test_cancel_task('Transform', 'test-pipeline'))
+      task_queue.enqueue(_test_cancel_node_task('Transform', 'test-pipeline'))
 
     # Ensure that all exec and cancellation tasks were processed correctly.
     self.assertCountEqual(

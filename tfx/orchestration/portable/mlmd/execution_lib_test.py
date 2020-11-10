@@ -18,6 +18,9 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import itertools
+import random
+
 import tensorflow as tf
 
 from tfx.orchestration import metadata
@@ -254,6 +257,56 @@ class ExecutionLibTest(test_utils.TfxTest):
               metadata_store_pb2.Event.INPUT: set([input_example.id]),
               metadata_store_pb2.Event.OUTPUT: set([output_model.id]),
           }, artifact_ids_by_event_type)
+
+  def testGetArtifactsDict(self):
+    with metadata.Metadata(connection_config=self._connection_config) as m:
+      # Create and shuffle a few artifacts. The shuffled order should be
+      # retained in the output of `execution_lib.get_artifacts_dict`.
+      input_examples = []
+      for i in range(10):
+        input_example = standard_artifacts.Examples()
+        input_example.uri = 'example{}'.format(i)
+        input_example.type_id = common_utils.register_type_if_not_exist(
+            m, input_example.artifact_type).id
+        input_examples.append(input_example)
+      random.shuffle(input_examples)
+      output_models = []
+      for i in range(8):
+        output_model = standard_artifacts.Model()
+        output_model.uri = 'model{}'.format(i)
+        output_model.type_id = common_utils.register_type_if_not_exist(
+            m, output_model.artifact_type).id
+        output_models.append(output_model)
+      random.shuffle(output_models)
+      m.store.put_artifacts([
+          a.mlmd_artifact
+          for a in itertools.chain(input_examples, output_models)
+      ])
+      execution = execution_lib.prepare_execution(
+          m,
+          metadata_store_pb2.ExecutionType(name='my_execution_type'),
+          state=metadata_store_pb2.Execution.RUNNING)
+      contexts = self._generate_contexts(m)
+      input_artifacts_dict = {'examples': input_examples}
+      output_artifacts_dict = {'model': output_models}
+      execution = execution_lib.put_execution(
+          m,
+          execution,
+          contexts,
+          input_artifacts=input_artifacts_dict,
+          output_artifacts=output_artifacts_dict)
+
+      # Verify that the same artifacts are returned in the correct order.
+      artifacts_dict = execution_lib.get_artifacts_dict(
+          m, execution.id, metadata_store_pb2.Event.INPUT)
+      self.assertCountEqual(['examples'], list(artifacts_dict.keys()))
+      self.assertEqual([ex.uri for ex in input_examples],
+                       [a.uri for a in artifacts_dict['examples']])
+      artifacts_dict = execution_lib.get_artifacts_dict(
+          m, execution.id, metadata_store_pb2.Event.OUTPUT)
+      self.assertCountEqual(['model'], list(artifacts_dict.keys()))
+      self.assertEqual([model.uri for model in output_models],
+                       [a.uri for a in artifacts_dict['model']])
 
 
 if __name__ == '__main__':

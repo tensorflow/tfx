@@ -19,10 +19,13 @@ core task generation loop based on the state of MLMD db.
 
 import abc
 import typing
-from typing import Optional, Text, Type, TypeVar
+from typing import Dict, List, Optional, Text, Type, TypeVar
 
 import attr
+from tfx import types
 from tfx.proto.orchestration import pipeline_pb2
+
+from ml_metadata.proto import metadata_store_pb2
 
 
 @attr.s(frozen=True)
@@ -93,17 +96,16 @@ class ExecNodeTask(Task, HasNodeUid):
   """Task to instruct execution of a node in the pipeline.
 
   Attributes:
-    execution_id: MLMD execution id associated with the node.
+    execution: MLMD execution associated with current node.
+    contexts: List of contexts associated with the execution.
+    exec_properties: Execution properties of the execution.
+    input_artifacts: Input artifacts dict.
   """
   _node_uid = attr.ib(type=NodeUid)
-  execution_id = attr.ib(type=int)
-
-  @classmethod
-  def create(cls: Type['ExecNodeTask'], pipeline: pipeline_pb2.Pipeline,
-             node: pipeline_pb2.PipelineNode, execution_id) -> 'ExecNodeTask':
-    return cls(
-        node_uid=NodeUid.from_pipeline_node(pipeline, node),
-        execution_id=execution_id)
+  execution = attr.ib(type=metadata_store_pb2.Execution)
+  contexts = attr.ib(type=List[metadata_store_pb2.Context])
+  exec_properties = attr.ib(type=Dict[Text, types.Property])
+  input_artifacts = attr.ib(type=Dict[Text, List[types.Artifact]])
 
   @property
   def node_uid(self) -> NodeUid:

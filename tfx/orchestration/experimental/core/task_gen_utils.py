@@ -13,6 +13,7 @@
 # limitations under the License.
 """Utilities for task generation."""
 
+import itertools
 from typing import Dict, Iterable, List, Optional, Sequence, Text
 
 import attr
@@ -31,12 +32,41 @@ from ml_metadata.proto import metadata_store_pb2
 @attr.s
 class ResolvedInfo:
   contexts = attr.ib(type=List[metadata_store_pb2.Context])
-  exec_properties = attr.ib(Dict[Text, types.Property])
-  input_artifacts = attr.ib(Optional[Dict[Text, List[types.Artifact]]])
+  exec_properties = attr.ib(type=Dict[Text, types.Property])
+  input_artifacts = attr.ib(type=Optional[Dict[Text, List[types.Artifact]]])
+
+
+def _active_executions(
+    executions: Iterable[metadata_store_pb2.Execution]
+) -> List[metadata_store_pb2.Execution]:
+  result = []
+  for execution in executions:
+    if execution.last_known_state not in (metadata_store_pb2.Execution.NEW,
+                                          metadata_store_pb2.Execution.RUNNING):
+      continue
+    result.append(execution)
+  return result
+
+
+def _generate_task_from_execution(
+    metadata_handler: metadata.Metadata, pipeline: pipeline_pb2.Pipeline,
+    node: pipeline_pb2.PipelineNode,
+    execution: metadata_store_pb2.Execution) -> task_lib.Task:
+  contexts = metadata_handler.store.get_contexts_by_execution(execution.id)
+  exec_properties = _extract_properties(execution)
+  input_artifacts = execution_lib.get_artifacts_dict(
+      metadata_handler, execution.id, metadata_store_pb2.Event.INPUT)
+  return task_lib.ExecNodeTask(
+      node_uid=task_lib.NodeUid.from_pipeline_node(pipeline, node),
+      execution=execution,
+      contexts=contexts,
+      exec_properties=exec_properties,
+      input_artifacts=input_artifacts)
 
 
 def generate_task_from_active_execution(
-    pipeline: pipeline_pb2.Pipeline, node: pipeline_pb2.PipelineNode,
+    metadata_handler: metadata.Metadata, pipeline: pipeline_pb2.Pipeline,
+    node: pipeline_pb2.PipelineNode,
     executions: Iterable[metadata_store_pb2.Execution]
 ) -> Optional[task_lib.Task]:
   """Generates task from active execution (if any).
@@ -44,6 +74,7 @@ def generate_task_from_active_execution(
   Returns `None` if a task cannot be generated from active execution.
 
   Args:
+    metadata_handler: A handler to access MLMD db.
     pipeline: The pipeline containing the node.
     node: The pipeline node for which to generate a task.
     executions: A sequence of all executions for the given node.
@@ -54,20 +85,24 @@ def generate_task_from_active_execution(
   Raises:
     RuntimeError: If there are multiple active executions for the node.
   """
-  active_executions = []
-  for execution in executions:
-    if execution.last_known_state not in (metadata_store_pb2.Execution.NEW,
-                                          metadata_store_pb2.Execution.RUNNING):
-      continue
-    active_executions.append(execution)
+  active_executions = _active_executions(executions)
+  if not active_executions:
+    return None
+  if len(active_executions) > 1:
+    raise RuntimeError(
+        'Unexpected multiple active executions for the node: {}\n executions: '
+        '{}'.format(node.node_info.id, active_executions))
+  return _generate_task_from_execution(metadata_handler, pipeline, node,
+                                       active_executions[0])
 
-  if active_executions:
-    if len(active_executions) > 1:
-      raise RuntimeError(
-          'Unexpected multiple active executions for the node: {}\n'
-          'executions: {}'.format(node.node_info.id, active_executions))
-    return task_lib.ExecNodeTask.create(pipeline, node, active_executions[0].id)
-  return None
+
+def _extract_properties(
+    execution: metadata_store_pb2.Execution) -> Dict[Text, types.Property]:
+  result = {}
+  for key, prop in itertools.chain(execution.properties.items(),
+                                   execution.custom_properties.items()):
+    result[key] = common_utils.get_value(prop)
+  return result
 
 
 def generate_resolved_info(metadata_handler: metadata.Metadata,
