@@ -48,6 +48,7 @@ and data formats (e.g. [Apache Avro](https://avro.apache.org/),
     Kubeflow pipelines (KFP) to TFX DSL. Also share the same pipeline
     intermediate representation for both platforms to guarantee semantics and
     data model consistency.
+*   Support loading KFP components (defined in YAML) in TFX pipelines.
 *   Support for training on continuously arriving data and more advanced
     orchestration semantics.
 *   Create examples and templates for more ML verticals.
