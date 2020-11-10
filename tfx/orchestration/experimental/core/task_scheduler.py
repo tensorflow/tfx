@@ -15,7 +15,7 @@
 
 import abc
 import typing
-from typing import Text, Type, TypeVar
+from typing import Optional, Text, Type, TypeVar
 
 import attr
 from tfx.orchestration import metadata
@@ -29,10 +29,17 @@ class TaskSchedulerResult:
   """Response from the task scheduler.
 
   Attributes:
+    schedule_status: A status code integer indicating the status of a schedule
+      call. It should be an enum value of [google.rpc.Code].
     executor_output: An instance of `ExecutorOutput` containing the results of
-      task execution.
+      task execution. This field is only set if the schedule_status is SUCCESS.
+    error_message: The message related to a failed schedule call. This is useful
+      for the orchestrator to know why the schedule has failed.
   """
-  executor_output = attr.ib(type=execution_result_pb2.ExecutorOutput)
+  schedule_status = attr.ib(type=int)
+  executor_output = attr.ib(
+      default=None, type=Optional[execution_result_pb2.ExecutorOutput])
+  error_message = attr.ib(default='', type=Optional[Text])
 
 
 class TaskScheduler(abc.ABC):

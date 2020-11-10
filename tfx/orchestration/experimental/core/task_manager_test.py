@@ -72,6 +72,7 @@ class _FakeTaskScheduler(ts.TaskScheduler):
     if self.task.node_uid.node_id in self._block_nodes:
       self._stop_event.wait()
     return ts.TaskSchedulerResult(
+        schedule_status=0,
         executor_output=execution_result_pb2.ExecutorOutput())
 
   def cancel(self):
