@@ -26,8 +26,6 @@
     portable orchestrator.
 *   Added Placeholder utility library. Placeholder can be used to represent
     not-yet-available value at pipeline authoring time.
-*   Added the LocalDagRunner to allow local pipeline execution without using
-    Apache Beam.
 *   Added support for the `tfx.dsl.io.fileio` pluggable filesystem interface,
     with initial support for local files and the Tensorflow GFile filesystem
     implementation.
@@ -87,6 +85,8 @@
 
 ## Bug fixes and other changes
 
+*   Added the LocalDagRunner to allow local pipeline execution without using
+    Apache Beam. This functionality is in development.
 *   Introduced dependency to `tensorflow-cloud` Python package, with intention
     to separate out Google Cloud Platform specific extensions.
 *   Depends on `mmh>=2.2,<3` in container image for potential performance
