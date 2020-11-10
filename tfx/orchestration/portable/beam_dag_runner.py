@@ -181,6 +181,10 @@ class BeamDagRunner(tfx_runner.TfxRunner):
     return (getattr(executable_spec, executable_spec.WhichOneof('spec'))
             if executable_spec else None)
 
+  def _connection_config_from_deployment_config(self,
+                                                deployment_config: Any) -> Any:
+    return deployment_config.metadata_connection_config
+
   def run(self, pipeline: pipeline_pb2.Pipeline) -> None:
     """Deploys given logical pipeline on Beam.
 
@@ -201,9 +205,9 @@ class BeamDagRunner(tfx_runner.TfxRunner):
 
     # TODO(b/163003901): Support beam DAG runner args through IR.
     deployment_config = self._extract_deployment_config(pipeline)
-    connection_config = deployment_config.metadata_connection_config
-    mlmd_connection = metadata.Metadata(
-        connection_config=connection_config)
+    connection_config = self._connection_config_from_deployment_config(
+        deployment_config)
+    mlmd_connection = metadata.Metadata(connection_config=connection_config)
 
     with telemetry_utils.scoped_labels(
         {telemetry_utils.LABEL_TFX_RUNNER: 'beam'}):
