@@ -75,6 +75,10 @@ class ComponentTest(tf.test.TestCase):
     input_channel = types.Channel(type=_InputArtifact)
     component = _BasicComponent(folds=10, input=input_channel)
     self.assertEqual(component.id, "_BasicComponent")
+    component.id = "MyBasicComponent"
+    self.assertEqual(component.id, "MyBasicComponent")
+    component = component.with_id("MyFavouriteId")
+    self.assertEqual(component.id, "MyFavouriteId")
     self.assertIs(input_channel, component.inputs["input"])
     self.assertIsInstance(component.outputs["output"], types.Channel)
     self.assertEqual(component.outputs["output"].type, _OutputArtifact)
@@ -214,6 +218,7 @@ class ComponentTest(tf.test.TestCase):
     component_1.add_downstream_node(component_2)
     self.assertEqual(True, component_2 in component_1.downstream_nodes)
     self.assertEqual(True, component_1 in component_2.upstream_nodes)
+
 
 if __name__ == "__main__":
   tf.test.main()

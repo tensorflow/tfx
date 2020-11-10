@@ -10,7 +10,13 @@
 
 ## Deprecations
 
+*   Deprecated setting `instance_name` at pipeline node level. Instead, users
+    are encouraged to set `id` explicitly of any pipeline node through newly
+    added APIs.
+
 ## Bug fixes and other changes
+
+*   Supported users to set `id` of pipeline nodes directly.
 
 ## Documentation updates
 

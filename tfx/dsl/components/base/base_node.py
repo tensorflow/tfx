@@ -21,6 +21,8 @@ from __future__ import print_function
 import abc
 from typing import Any, Dict, Optional, Text, Type
 
+from absl import logging
+
 from six import with_metaclass
 from tfx.dsl.components.base import base_driver
 from tfx.dsl.components.base import base_executor
@@ -40,6 +42,8 @@ class BaseNode(with_metaclass(abc.ABCMeta, json_utils.Jsonable)):
   """Base class for a node in TFX pipeline."""
 
   @classmethod
+  @deprecation.deprecated(
+      None, '`get_id` is deprecated as `instance_name is deprecated.`')
   def get_id(cls, instance_name: Optional[Text] = None):
     """Gets the id of a node.
 
@@ -71,9 +75,10 @@ class BaseNode(with_metaclass(abc.ABCMeta, json_utils.Jsonable)):
     """Initialize a node.
 
     Args:
-      instance_name: Optional unique identifying name for this instance of node
-        in the pipeline. Required if two instances of the same node are used in
-        the pipeline.
+      instance_name: Deprecated. Please set `id` directly using `with_id()`
+        function or `.id` setter in the `BaseNode` class. The pipeline
+        assembling will fail if there are two nodes in the pipeline with the
+        same id.
       executor_spec: Optional instance of executor_spec.ExecutorSpec which
         describes how to execute this node (optional, defaults to an empty
         executor indicates no-op.
@@ -81,6 +86,10 @@ class BaseNode(with_metaclass(abc.ABCMeta, json_utils.Jsonable)):
         driver for this node (optional, defaults to base_driver.BaseDriver).
         Nodes usually use the default driver class, but may override it.
     """
+    if instance_name:
+      logging.warning(
+          '`instance_name` is deprecated, please set node id directly using'
+          '`with_id()` or `.id` setter.')
     if executor_spec is None:
       executor_spec = executor_spec_module.ExecutorClassSpec(
           base_executor.EmptyExecutor)
@@ -91,6 +100,7 @@ class BaseNode(with_metaclass(abc.ABCMeta, json_utils.Jsonable)):
     self.driver_class = driver_class
     self._upstream_nodes = set()
     self._downstream_nodes = set()
+    self._id = None
 
   def to_json_dict(self) -> Dict[Text, Any]:
     """Convert from an object to a JSON serializable dictionary."""
@@ -112,14 +122,17 @@ class BaseNode(with_metaclass(abc.ABCMeta, json_utils.Jsonable)):
   def id(self) -> Text:
     """Node id, unique across all TFX nodes in a pipeline.
 
-    If instance name is available, node_id will be:
+    If `id` is set by the user, return it directly.
+    otherwise, if instance name (deprecated) is available, node id will be:
       <node_class_name>.<instance_name>
-    otherwise, node_id will be:
+    otherwise, node id will be:
       <node_class_name>
 
     Returns:
       node id.
     """
+    if self._id:
+      return self._id
     node_class_name = self.__class__.__name__
     if self._instance_name:
       return '{}.{}'.format(node_class_name, self._instance_name)
@@ -130,6 +143,14 @@ class BaseNode(with_metaclass(abc.ABCMeta, json_utils.Jsonable)):
   @deprecation.deprecated(None, 'component_id is deprecated, use id instead')
   def component_id(self) -> Text:
     return self.id
+
+  @id.setter
+  def id(self, id: Text) -> None:  # pylint: disable=redefined-builtin
+    self._id = id
+
+  def with_id(self, id: Text) -> 'BaseNode':  # pylint: disable=redefined-builtin
+    self._id = id
+    return self
 
   @property
   @abc.abstractmethod
