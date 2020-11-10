@@ -229,9 +229,9 @@ CloudTuner on GCP exmaple.
 
 ## Links
 
-[E2E Example](https://github.com/tensorflow/tfx/blob/master/tfx/examples/iris/iris_pipeline_native_keras.py)
+[E2E Example](https://github.com/tensorflow/tfx/blob/master/tfx/examples/penguin/penguin_pipeline_local.py)
 
-[E2E CloudTuner on GCP Example](https://github.com/tensorflow/tfx/blob/master/tfx/examples/iris/iris_pipeline_native_keras_kubeflow_pipeline.py)
+[E2E CloudTuner on GCP Example](https://github.com/tensorflow/tfx/blob/master/tfx/examples/penguin/penguin_pipeline_kubeflow_gcp.py)
 
 [KerasTuner tutorial](https://www.tensorflow.org/tutorials/keras/keras_tuner)
 

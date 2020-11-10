@@ -56,8 +56,8 @@
     Same as `KubeflowDagRunner` it will compile the DSL pipeline into a payload
     but not trigger the execution locally.
 *   Added 'penguin' example. Penguin example uses Palmer Penguins dataset and
-    classify penguin species using four numeric features. This example will
-    replace existing iris flower classification example.
+    classify penguin species using four numeric features.
+*   Iris e2e examples are replaced by penguin examples.
 
 ## Breaking changes
 

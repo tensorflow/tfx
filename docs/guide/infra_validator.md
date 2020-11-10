@@ -208,6 +208,6 @@ Current InfraValidator is not complete yet, and has some limitations.
     ```
 
     -   Check out an
-        [Iris example](https://github.com/tensorflow/tfx/blob/master/tfx/examples/iris/iris_utils_native_keras.py)
+        [Penguin example](https://github.com/tensorflow/tfx/blob/master/tfx/examples/penguin/penguin_pipeline_local_infraval.py)
         sample code to see how this signature interacts with other components in
         TFX.

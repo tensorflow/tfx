@@ -83,9 +83,7 @@ def trainer_fn(trainer_fn_args, schema):
 ```
 
 Other than the user module file of Trainer, the rest of the pipeline remains
-unchanged. Here is an end-to-end TFX example using Keras with
-model_to_estimator:
-[Iris example (model_to_estimator)](https://github.com/tensorflow/tfx/blob/r0.21/tfx/examples/iris/iris_utils.py)
+unchanged.
 
 ## Native Keras (i.e. Keras without `model_to_estimator`)
 
@@ -97,8 +95,8 @@ for FeatureColumns.
 
 Here are several examples with native Keras:
 
-*   [Iris](https://github.com/tensorflow/tfx/blob/master/tfx/examples/iris/iris_pipeline_native_keras.py)
-    ([module file](https://github.com/tensorflow/tfx/blob/master/tfx/examples/iris/iris_utils_native_keras.py)):
+*   [Penguin](https://github.com/tensorflow/tfx/blob/master/tfx/examples/penguin/penguin_pipeline_local.py)
+    ([module file](https://github.com/tensorflow/tfx/blob/master/tfx/examples/penguin/penguin_utils.py)):
     'Hello world' end-to-end example.
 *   [MNIST](https://github.com/tensorflow/tfx/blob/master/tfx/examples/mnist/mnist_pipeline_native_keras.py)
     ([module file](https://github.com/tensorflow/tfx/blob/master/tfx/examples/mnist/mnist_utils_native_keras.py)):
