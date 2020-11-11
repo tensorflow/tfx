@@ -47,6 +47,8 @@ class MetadataTest(tf.test.TestCase):
         pipeline_name='my_pipeline2', pipeline_root='/tmp', run_id='my_run_id')
     self._pipeline_info4 = data_types.PipelineInfo(
         pipeline_name='my_pipeline2', pipeline_root='/tmp', run_id='my_run_id2')
+    self._pipeline_info5 = data_types.PipelineInfo(
+        pipeline_name='my_pipeline3', pipeline_root='/tmp', run_id='my_run_id3')
     self._component_info = data_types.ComponentInfo(
         component_type='a.b.c',
         component_id='my_component',
@@ -59,6 +61,10 @@ class MetadataTest(tf.test.TestCase):
         component_type='a.b.c',
         component_id='my_component',
         pipeline_info=self._pipeline_info3)
+    self._component_info5 = data_types.ComponentInfo(
+        component_type='a.b.c',
+        component_id='my_component',
+        pipeline_info=self._pipeline_info5)
 
   def _check_artifact_state(self, metadata_handler: metadata.Metadata,
                             target: types.Artifact, state: Text):
@@ -381,6 +387,7 @@ class MetadataTest(tf.test.TestCase):
       # update will not affect backward compatibility.
       exec_properties_one = {'arg_one': 1, 'arg_two': 2}
       exec_properties_two = {'arg_one': 1}
+      exec_properties_three = {'arg_one': 1, 'arg_three': 3}
       execution_one = m.register_execution(
           input_artifacts={},
           exec_properties=exec_properties_one,
@@ -392,6 +399,12 @@ class MetadataTest(tf.test.TestCase):
           exec_properties=exec_properties_two,
           pipeline_info=self._pipeline_info,
           component_info=self._component_info3,
+          contexts=contexts)
+      execution_three = m.register_execution(
+          input_artifacts={},
+          exec_properties=exec_properties_three,
+          pipeline_info=self._pipeline_info5,
+          component_info=self._component_info5,
           contexts=contexts)
       [execution_one, execution_two
       ] = m.store.get_executions_by_id([execution_one.id, execution_two.id])
@@ -489,6 +502,56 @@ class MetadataTest(tf.test.TestCase):
             string_value: "1"
           }
         }""", execution_two)
+      # Skip verifying time sensitive fields.
+      execution_three.ClearField('create_time_since_epoch')
+      execution_three.ClearField('last_update_time_since_epoch')
+      self.assertProtoEquals(
+          """
+        id: 3
+        type_id: 3
+        last_known_state: RUNNING
+        properties {
+          key: "state"
+          value {
+            string_value: "new"
+          }
+        }
+        properties {
+          key: "pipeline_name"
+          value {
+            string_value: "my_pipeline3"
+          }
+        }
+        properties {
+          key: "pipeline_root"
+          value {
+            string_value: "/tmp"
+          }
+        }
+        properties {
+          key: "run_id"
+          value {
+            string_value: "my_run_id3"
+          }
+        }
+        properties {
+          key: "component_id"
+          value {
+            string_value: "my_component"
+          }
+        }
+        properties {
+          key: "arg_one"
+          value {
+            string_value: "1"
+          }
+        }
+        properties {
+          key: "arg_three"
+          value {
+            string_value: "3"
+          }
+        }""", execution_three)
 
   def testFetchPreviousResult(self):
     with metadata.Metadata(connection_config=self._connection_config) as m:

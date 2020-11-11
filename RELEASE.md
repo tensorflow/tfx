@@ -113,6 +113,10 @@
     `beam_pipeline_args` is provided.
 *   Changed schema as an optional input channel of Trainer as schema can be
     accessed from TFT graph too.
+*   Fixed an issue during recording of a component's execution where
+    "missing or modified key in exec_properties" was raised from MLMD when
+    `exec_properties` both omitted an existing property and added a new
+    property.
 *   Depends on `apache-beam[gcp]>=2.25,<3`.
 *   Depends on `attrs>=19.3.0,<21`.
 *   Depends on `ml-metadata>=0.24,<0.25`.

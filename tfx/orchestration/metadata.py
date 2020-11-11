@@ -393,6 +393,7 @@ class Metadata(object):
     Raises:
       ValueError if new execution type conflicts with existing schema in MLMD.
     """
+    existing_execution_type = None
     try:
       existing_execution_type = self.store.get_execution_type(type_name)
       if existing_execution_type is None:
@@ -408,9 +409,14 @@ class Metadata(object):
           _EXECUTION_TYPE_KEY_STATE] = metadata_store_pb2.STRING
       # If exec_properties contains new entries, execution type schema will be
       # updated in MLMD.
+      #
+      # TODO(b/172673657): Make property schema registration more explicit to
+      # the component author.
       for k in exec_properties.keys():
         assert k not in _EXECUTION_TYPE_RESERVED_KEYS, (
             'execution properties with reserved key %s') % k
+        # TODO(b/172629873): Currently, all execution properties are registered
+        # as strings.
         execution_type.properties[k] = metadata_store_pb2.STRING
       # TODO(ruoyu): Find a better place / solution to the checksum logic.
       if 'module_file' in exec_properties:
@@ -424,6 +430,23 @@ class Metadata(object):
           _EXECUTION_TYPE_KEY_RUN_ID] = metadata_store_pb2.STRING
       execution_type.properties[
           _EXECUTION_TYPE_KEY_COMPONENT_ID] = metadata_store_pb2.STRING
+
+      # Add back any existing execution properties to the new proposed type.
+      if existing_execution_type:
+        for name, old_type in existing_execution_type.properties.items():
+          if name in execution_type.properties:
+            # The property already exists, so we check for compatibility.
+            new_type = existing_execution_type.properties[name]
+            if old_type != new_type:
+              raise ValueError(
+                  ('The existing ML Metadata execution type %r has type %r for '
+                   'property %r, but an attempt is being made to update that '
+                   'property to use the incompatible type %r.') %
+                  (type_name, old_type, name, new_type))
+          else:
+            # The property is not in the caller's view of the type, so we add it
+            # back so that the execution type update will not fail.
+            execution_type.properties[name] = old_type
 
       try:
         execution_type_id = self.store.put_execution_type(
