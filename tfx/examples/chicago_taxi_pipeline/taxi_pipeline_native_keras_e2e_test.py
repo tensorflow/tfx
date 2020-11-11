@@ -21,15 +21,17 @@ from __future__ import print_function
 import os
 from typing import Text
 
+from absl.testing import parameterized
 import tensorflow as tf
-
 from tfx.dsl.io import fileio
 from tfx.examples.chicago_taxi_pipeline import taxi_pipeline_native_keras
 from tfx.orchestration import metadata
 from tfx.orchestration.beam.beam_dag_runner import BeamDagRunner
+from tfx.orchestration.portable.beam_dag_runner import BeamDagRunner as IrBeamDagRunner
 
 
-class TaxiPipelineNativeKerasEndToEndTest(tf.test.TestCase):
+class TaxiPipelineNativeKerasEndToEndTest(
+    tf.test.TestCase, parameterized.TestCase):
 
   def setUp(self):
     super(TaxiPipelineNativeKerasEndToEndTest, self).setUp()
@@ -55,7 +57,7 @@ class TaxiPipelineNativeKerasEndToEndTest(tf.test.TestCase):
     outputs = fileio.listdir(component_path)
     for output in outputs:
       execution = fileio.listdir(os.path.join(component_path, output))
-      self.assertEqual(1, len(execution))
+      self.assertLen(execution, 1)
 
   def assertPipelineExecution(self) -> None:
     self.assertExecutedOnce('CsvExampleGen')
@@ -67,8 +69,9 @@ class TaxiPipelineNativeKerasEndToEndTest(tf.test.TestCase):
     self.assertExecutedOnce('Trainer')
     self.assertExecutedOnce('Transform')
 
-  def testTaxiPipelineNativeKeras(self):
-    BeamDagRunner().run(
+  @parameterized.parameters((BeamDagRunner), (IrBeamDagRunner))
+  def testTaxiPipelineNativeKeras(self, runner_class):
+    runner_class().run(
         taxi_pipeline_native_keras._create_pipeline(
             pipeline_name=self._pipeline_name,
             data_root=self._data_root,
@@ -92,7 +95,7 @@ class TaxiPipelineNativeKerasEndToEndTest(tf.test.TestCase):
     self.assertPipelineExecution()
 
     # Runs pipeline the second time.
-    BeamDagRunner().run(
+    runner_class().run(
         taxi_pipeline_native_keras._create_pipeline(
             pipeline_name=self._pipeline_name,
             data_root=self._data_root,
@@ -106,13 +109,12 @@ class TaxiPipelineNativeKerasEndToEndTest(tf.test.TestCase):
     # Note that Resolver will always execute.
     with metadata.Metadata(metadata_config) as m:
       # Artifact count is increased by 3 caused by Evaluator and Pusher.
-      self.assertEqual(artifact_count + 3, len(m.store.get_artifacts()))
+      self.assertLen(m.store.get_artifacts(), artifact_count + 3)
       artifact_count = len(m.store.get_artifacts())
-      self.assertEqual(expected_execution_count * 2,
-                       len(m.store.get_executions()))
+      self.assertLen(m.store.get_executions(), expected_execution_count * 2)
 
     # Runs pipeline the third time.
-    BeamDagRunner().run(
+    runner_class().run(
         taxi_pipeline_native_keras._create_pipeline(
             pipeline_name=self._pipeline_name,
             data_root=self._data_root,
@@ -125,9 +127,8 @@ class TaxiPipelineNativeKerasEndToEndTest(tf.test.TestCase):
     # Asserts cache execution.
     with metadata.Metadata(metadata_config) as m:
       # Artifact count is unchanged.
-      self.assertEqual(artifact_count, len(m.store.get_artifacts()))
-      self.assertEqual(expected_execution_count * 3,
-                       len(m.store.get_executions()))
+      self.assertLen(m.store.get_artifacts(), artifact_count)
+      self.assertLen(m.store.get_executions(), expected_execution_count * 3)
 
 
 if __name__ == '__main__':

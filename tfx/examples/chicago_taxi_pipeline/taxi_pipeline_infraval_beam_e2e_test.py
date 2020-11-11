@@ -21,16 +21,18 @@ from __future__ import print_function
 import os
 from typing import Text
 
+from absl.testing import parameterized
 import tensorflow as tf
-
 from tfx.dsl.components.base import base_driver
 from tfx.dsl.io import fileio
 from tfx.examples.chicago_taxi_pipeline import taxi_pipeline_infraval_beam
 from tfx.orchestration import metadata
 from tfx.orchestration.beam.beam_dag_runner import BeamDagRunner
+from tfx.orchestration.portable.beam_dag_runner import BeamDagRunner as IrBeamDagRunner
 
 
-class TaxiPipelineInfravalBeamEndToEndTest(tf.test.TestCase):
+class TaxiPipelineInfravalBeamEndToEndTest(
+    tf.test.TestCase, parameterized.TestCase):
 
   def setUp(self):
     super(TaxiPipelineInfravalBeamEndToEndTest, self).setUp()
@@ -54,7 +56,7 @@ class TaxiPipelineInfravalBeamEndToEndTest(tf.test.TestCase):
     outputs = fileio.listdir(component_path)
     for output in outputs:
       execution = fileio.listdir(os.path.join(component_path, output))
-      self.assertEqual(1, len(execution))
+      self.assertLen(execution, 1)
 
   def assertInfraValidatorPassed(self) -> None:
     infra_validator_path = os.path.join(self._pipeline_root, 'InfraValidator')
@@ -79,10 +81,11 @@ class TaxiPipelineInfravalBeamEndToEndTest(tf.test.TestCase):
     self.assertExecutedOnce('Trainer')
     self.assertExecutedOnce('Transform')
 
-  def testTaxiPipelineBeam(self):
+  @parameterized.parameters((BeamDagRunner), (IrBeamDagRunner))
+  def testTaxiPipelineBeam(self, runner_class):
     num_components = 10
 
-    BeamDagRunner().run(
+    runner_class().run(
         taxi_pipeline_infraval_beam._create_pipeline(
             pipeline_name=self._pipeline_name,
             data_root=self._data_root,
@@ -106,7 +109,7 @@ class TaxiPipelineInfravalBeamEndToEndTest(tf.test.TestCase):
     self.assertInfraValidatorPassed()
 
     # Runs pipeline the second time.
-    BeamDagRunner().run(
+    runner_class().run(
         taxi_pipeline_infraval_beam._create_pipeline(
             pipeline_name=self._pipeline_name,
             data_root=self._data_root,
@@ -120,13 +123,13 @@ class TaxiPipelineInfravalBeamEndToEndTest(tf.test.TestCase):
     # Note that Resolver will always execute.
     with metadata.Metadata(metadata_config) as m:
       # Artifact count is increased by 3 caused by Evaluator and Pusher.
-      self.assertEqual(artifact_count + 3, len(m.store.get_artifacts()))
+      self.assertLen(m.store.get_artifacts(), artifact_count + 3)
       artifact_count = len(m.store.get_artifacts())
       # 10 more cached executions.
-      self.assertEqual(num_components * 2, len(m.store.get_executions()))
+      self.assertLen(m.store.get_executions(), num_components * 2)
 
     # Runs pipeline the third time.
-    BeamDagRunner().run(
+    runner_class().run(
         taxi_pipeline_infraval_beam._create_pipeline(
             pipeline_name=self._pipeline_name,
             data_root=self._data_root,
@@ -139,9 +142,9 @@ class TaxiPipelineInfravalBeamEndToEndTest(tf.test.TestCase):
     # Asserts cache execution.
     with metadata.Metadata(metadata_config) as m:
       # Artifact count is unchanged.
-      self.assertEqual(artifact_count, len(m.store.get_artifacts()))
+      self.assertLen(m.store.get_artifacts(), artifact_count)
       # 10 more cached executions.
-      self.assertEqual(num_components * 3, len(m.store.get_executions()))
+      self.assertLen(m.store.get_executions(), num_components * 3)
 
 
 if __name__ == '__main__':

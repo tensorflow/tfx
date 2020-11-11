@@ -21,15 +21,17 @@ from __future__ import print_function
 import os
 from typing import Text
 
+from absl.testing import parameterized
 import tensorflow as tf
-
 from tfx.dsl.io import fileio
 from tfx.examples.chicago_taxi_pipeline import taxi_pipeline_warmstart
 from tfx.orchestration import metadata
 from tfx.orchestration.beam.beam_dag_runner import BeamDagRunner
+from tfx.orchestration.portable.beam_dag_runner import BeamDagRunner as IrBeamDagRunner
 
 
-class TaxiPipelineWarmstartEndToEndTest(tf.test.TestCase):
+class TaxiPipelineWarmstartEndToEndTest(
+    tf.test.TestCase, parameterized.TestCase):
 
   def setUp(self):
     super(TaxiPipelineWarmstartEndToEndTest, self).setUp()
@@ -53,7 +55,7 @@ class TaxiPipelineWarmstartEndToEndTest(tf.test.TestCase):
     outputs = fileio.listdir(component_path)
     for output in outputs:
       execution = fileio.listdir(os.path.join(component_path, output))
-      self.assertEqual(execution_count, len(execution))
+      self.assertLen(execution, execution_count)
 
   def assertExecutedOnce(self, component: Text) -> None:
     self.assertExecuted(component, 1)
@@ -71,8 +73,9 @@ class TaxiPipelineWarmstartEndToEndTest(tf.test.TestCase):
     self.assertExecutedOnce('Trainer')
     self.assertExecutedOnce('Transform')
 
-  def testTaxiPipelineWarmstart(self):
-    BeamDagRunner().run(
+  @parameterized.parameters((BeamDagRunner), (IrBeamDagRunner))
+  def testTaxiPipelineWarmstart(self, runner_class):
+    runner_class().run(
         taxi_pipeline_warmstart._create_pipeline(
             pipeline_name=self._pipeline_name,
             data_root=self._data_root,
@@ -95,7 +98,7 @@ class TaxiPipelineWarmstartEndToEndTest(tf.test.TestCase):
     self.assertPipelineExecution()
 
     # Run pipeline again.
-    BeamDagRunner().run(
+    runner_class().run(
         taxi_pipeline_warmstart._create_pipeline(
             pipeline_name=self._pipeline_name,
             data_root=self._data_root,
@@ -107,7 +110,7 @@ class TaxiPipelineWarmstartEndToEndTest(tf.test.TestCase):
 
     with metadata.Metadata(metadata_config) as m:
       # 10 more executions.
-      self.assertEqual(20, len(m.store.get_executions()))
+      self.assertLen(m.store.get_executions(), 20)
 
     # Two trainer outputs.
     self.assertExecutedTwice('Trainer')

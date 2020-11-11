@@ -14,8 +14,9 @@
 """Definition of TFX runner base class."""
 
 import abc
-from typing import Any, Optional
+from typing import Any, Optional, Union
 
+from tfx.orchestration import pipeline as pipeline_py
 from tfx.proto.orchestration import pipeline_pb2
 
 
@@ -26,12 +27,14 @@ class TfxRunner(metaclass=abc.ABCMeta):
   """
 
   @abc.abstractmethod
-  def run(self, pipeline: pipeline_pb2.Pipeline) -> Optional[Any]:
+  def run(
+      self, pipeline: Union[pipeline_pb2.Pipeline,
+                            pipeline_py.Pipeline]) -> Optional[Any]:
     """Runs a TFX pipeline on a specific platform.
 
     Args:
-      pipeline: a pipeline_pb2.Pipeline message representing a pipeline
-        definition.
+      pipeline: a pipeline_pb2.Pipeline message or pipeline.Pipeline instance
+        representing a pipeline definition.
 
     Returns:
       Optional platform-specific object.

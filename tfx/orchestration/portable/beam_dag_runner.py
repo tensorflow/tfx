@@ -15,12 +15,14 @@
 
 import datetime
 import os
-from typing import Any, Iterable, Optional
+from typing import Any, Iterable, Optional, Union
 
 from absl import logging
 import apache_beam as beam
+from tfx.dsl.compiler import compiler
 from tfx.dsl.compiler import constants
 from tfx.orchestration import metadata
+from tfx.orchestration import pipeline as pipeline_py
 from tfx.orchestration.portable import launcher
 from tfx.orchestration.portable import runtime_parameter_utils
 from tfx.orchestration.portable import tfx_runner
@@ -36,7 +38,7 @@ from google.protobuf import message
 @beam.typehints.with_input_types(Any)
 @beam.typehints.with_output_types(Any)
 class PipelineNodeAsDoFn(beam.DoFn):
-  """Wrap component as beam DoFn."""
+  """Wrap node as beam DoFn."""
 
   def __init__(self,
                pipeline_node: pipeline_pb2.PipelineNode,
@@ -56,7 +58,7 @@ class PipelineNodeAsDoFn(beam.DoFn):
       pipeline_runtime_spec: The runtime information of the pipeline that this
         node runs in.
       executor_spec: Specification for the executor of the node. This is
-        expected for all components nodes. This will be used to determine the
+        expected for all nodes. This will be used to determine the
         specific ExecutorOperator class to be used to execute and will be passed
         into ExecutorOperator.
       custom_driver_spec: Specification for custom driver. This is expected only
@@ -73,19 +75,21 @@ class PipelineNodeAsDoFn(beam.DoFn):
     self._deployment_config = deployment_config
 
   def process(self, element: Any, *signals: Iterable[Any]) -> None:
-    """Executes component based on signals.
+    """Executes node based on signals.
 
     Args:
-      element: a signal element to trigger the component.
-      *signals: side input signals indicate completeness of upstream components.
+      element: a signal element to trigger the node.
+      *signals: side input signals indicate completeness of upstream nodes.
     """
     for signal in signals:
       assert not list(signal), 'Signal PCollection should be empty.'
 
-    logging.info('Component %s is running.', self._node_id)
+    logging.info('node %s is running.', self._node_id)
     self._run_component()
-    logging.info('Component %s is finished.', self._node_id)
+    logging.info('node %s is finished.', self._node_id)
 
+  # TODO(b/171565775): rename this method to _run_node for this class and its
+  # Childeren.
   def _run_component(self) -> None:
     launcher.Launcher(
         pipeline_node=self._pipeline_node,
@@ -105,7 +109,7 @@ class BeamDagRunner(tfx_runner.TfxRunner):
     """
 
   def _build_executable_spec(
-      self, component_id: str,
+      self, node_id: str,
       spec: any_pb2.Any) -> local_deployment_config_pb2.ExecutableSpec:
     """Builds ExecutableSpec given the any proto from IntermediateDeploymentConfig."""
     result = local_deployment_config_pb2.ExecutableSpec()
@@ -115,7 +119,7 @@ class BeamDagRunner(tfx_runner.TfxRunner):
       raise ValueError(
           'executor spec of {} is expected to be of one of the '
           'types of tfx.orchestration.deployment_config.ExecutableSpec.spec '
-          'but got type {}'.format(component_id, spec.type_url))
+          'but got type {}'.format(node_id, spec.type_url))
     return result
 
   def _to_local_deployment(
@@ -160,18 +164,18 @@ class BeamDagRunner(tfx_runner.TfxRunner):
   def _extract_executor_spec(
       self,
       deployment_config: local_deployment_config_pb2.LocalDeploymentConfig,
-      component_id: str
+      node_id: str
   ) -> Optional[message.Message]:
     return self._unwrap_executable_spec(
-        deployment_config.executor_specs.get(component_id))
+        deployment_config.executor_specs.get(node_id))
 
   def _extract_custom_driver_spec(
       self,
       deployment_config: local_deployment_config_pb2.LocalDeploymentConfig,
-      component_id: str
+      node_id: str
   ) -> Optional[message.Message]:
     return self._unwrap_executable_spec(
-        deployment_config.custom_driver_specs.get(component_id))
+        deployment_config.custom_driver_specs.get(node_id))
 
   def _unwrap_executable_spec(
       self,
@@ -185,7 +189,8 @@ class BeamDagRunner(tfx_runner.TfxRunner):
                                                 deployment_config: Any) -> Any:
     return deployment_config.metadata_connection_config
 
-  def run(self, pipeline: pipeline_pb2.Pipeline) -> None:
+  def run(self, pipeline: Union[pipeline_pb2.Pipeline,
+                                pipeline_py.Pipeline]) -> None:
     """Deploys given logical pipeline on Beam.
 
     Args:
@@ -195,6 +200,10 @@ class BeamDagRunner(tfx_runner.TfxRunner):
     # and hence we avoid deploying the pipeline.
     if 'TFX_JSON_EXPORT_PIPELINE_ARGS_PATH' in os.environ:
       return
+
+    if isinstance(pipeline, pipeline_py.Pipeline):
+      c = compiler.Compiler()
+      pipeline = c.compile(pipeline)
 
     run_id = datetime.datetime.now().isoformat()
     # Substitute the runtime parameter to be a concrete run_id
@@ -212,36 +221,35 @@ class BeamDagRunner(tfx_runner.TfxRunner):
     with telemetry_utils.scoped_labels(
         {telemetry_utils.LABEL_TFX_RUNNER: 'beam'}):
       with beam.Pipeline() as p:
-        # Uses for triggering the component DoFns.
+        # Uses for triggering the node DoFns.
         root = p | 'CreateRoot' >> beam.Create([None])
 
-        # Stores mapping of component to its signal.
+        # Stores mapping of node to its signal.
         signal_map = {}
-        # pipeline.components are in topological order.
+        # pipeline.nodes are in topological order.
         for node in pipeline.nodes:
           # TODO(b/160882349): Support subpipeline
           pipeline_node = node.pipeline_node
-          component_id = pipeline_node.node_info.id
+          node_id = pipeline_node.node_info.id
           executor_spec = self._extract_executor_spec(
-              deployment_config, component_id)
+              deployment_config, node_id)
           custom_driver_spec = self._extract_custom_driver_spec(
-              deployment_config, component_id)
+              deployment_config, node_id)
 
-          # Signals from upstream components.
+          # Signals from upstream nodes.
           signals_to_wait = []
           for upstream_node in pipeline_node.upstream_nodes:
-            assert upstream_node in signal_map, ('Components is not in '
+            assert upstream_node in signal_map, ('Nodes are not in '
                                                  'topological order')
             signals_to_wait.append(signal_map[upstream_node])
-          logging.info('Component %s depends on %s.', component_id,
+          logging.info('Node %s depends on %s.', node_id,
                        [s.producer.full_label for s in signals_to_wait])
 
-          # Each signal is an empty PCollection. AsIter ensures component will
-          # be triggered after upstream components are finished.
-          # LINT.IfChange
-          signal_map[component_id] = (
+          # Each signal is an empty PCollection. AsIter ensures a node will
+          # be triggered after upstream nodes are finished.
+          signal_map[node_id] = (
               root
-              | 'Run[%s]' % component_id >> beam.ParDo(
+              | 'Run[%s]' % node_id >> beam.ParDo(
                   self._PIPELINE_NODE_DO_FN_CLS(
                       pipeline_node=pipeline_node,
                       mlmd_connection=mlmd_connection,
@@ -251,5 +259,4 @@ class BeamDagRunner(tfx_runner.TfxRunner):
                       custom_driver_spec=custom_driver_spec,
                       deployment_config=deployment_config), *
                   [beam.pvalue.AsIter(s) for s in signals_to_wait]))
-          # LINT.ThenChange(../beam/beam_dag_runner.py)
-          logging.info('Component %s is scheduled.', component_id)
+          logging.info('Node %s is scheduled.', node_id)

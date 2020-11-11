@@ -21,15 +21,18 @@ from __future__ import print_function
 import os
 from typing import Text
 
+from absl.testing import parameterized
 import tensorflow as tf
 from tfx.dsl.io import fileio
 from tfx.examples.chicago_taxi_pipeline import taxi_pipeline_importer
 from tfx.orchestration import metadata
 from tfx.orchestration.beam.beam_dag_runner import BeamDagRunner
+from tfx.orchestration.portable.beam_dag_runner import BeamDagRunner as IrBeamDagRunner
 from tfx_bsl.version import __version__ as tfx_bsl_version
 
 
-class TaxiPipelineImporterEndToEndTest(tf.test.TestCase):
+class TaxiPipelineImporterEndToEndTest(
+    tf.test.TestCase, parameterized.TestCase):
 
   def setUp(self):
     super(TaxiPipelineImporterEndToEndTest, self).setUp()
@@ -55,7 +58,7 @@ class TaxiPipelineImporterEndToEndTest(tf.test.TestCase):
     outputs = fileio.listdir(component_path)
     for output in outputs:
       execution = fileio.listdir(os.path.join(component_path, output))
-      self.assertEqual(1, len(execution))
+      self.assertLen(execution, 1)
 
   def assertPipelineExecution(self) -> None:
     self.assertExecutedOnce('CsvExampleGen')
@@ -67,8 +70,9 @@ class TaxiPipelineImporterEndToEndTest(tf.test.TestCase):
     self.assertExecutedOnce('Trainer')
     self.assertExecutedOnce('Transform')
 
-  def testTaxiPipelineWithImporter(self):
-    BeamDagRunner().run(
+  @parameterized.parameters((BeamDagRunner), (IrBeamDagRunner))
+  def testTaxiPipelineWithImporter(self, runner_class):
+    runner_class().run(
         taxi_pipeline_importer._create_pipeline(
             pipeline_name=self._pipeline_name,
             data_root=self._data_root,
@@ -92,7 +96,7 @@ class TaxiPipelineImporterEndToEndTest(tf.test.TestCase):
     self.assertPipelineExecution()
 
     # Runs the pipeline again.
-    BeamDagRunner().run(
+    runner_class().run(
         taxi_pipeline_importer._create_pipeline(
             pipeline_name=self._pipeline_name,
             data_root=self._data_root,
@@ -107,12 +111,12 @@ class TaxiPipelineImporterEndToEndTest(tf.test.TestCase):
     # Note that Resolver will always execute.
     with metadata.Metadata(metadata_config) as m:
       # Artifact count is increased by 3 caused by Evaluator and Pusher.
-      self.assertEqual(artifact_count + 3, len(m.store.get_artifacts()))
+      self.assertLen(m.store.get_artifacts(), artifact_count + 3)
       artifact_count = len(m.store.get_artifacts())
-      self.assertEqual(20, len(m.store.get_executions()))
+      self.assertLen(m.store.get_executions(), 20)
 
     # Runs the pipeline the third time.
-    BeamDagRunner().run(
+    runner_class().run(
         taxi_pipeline_importer._create_pipeline(
             pipeline_name=self._pipeline_name,
             data_root=self._data_root,
@@ -126,8 +130,8 @@ class TaxiPipelineImporterEndToEndTest(tf.test.TestCase):
     # Asserts cache execution.
     with metadata.Metadata(metadata_config) as m:
       # Artifact count is unchanged.
-      self.assertEqual(artifact_count, len(m.store.get_artifacts()))
-      self.assertEqual(30, len(m.store.get_executions()))
+      self.assertLen(m.store.get_artifacts(), artifact_count)
+      self.assertLen(m.store.get_executions(), 30)
 
 
 if __name__ == '__main__':
