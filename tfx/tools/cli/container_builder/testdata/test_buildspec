@@ -9,3 +9,6 @@ build:
   tagPolicy:
     envTemplate:
       template: 'dev'
+  local:
+    push: true
+    useDockerCLI: true

@@ -21,6 +21,7 @@ import tarfile
 import urllib.request
 
 from absl import logging
+import docker
 import kfp
 import tensorflow as tf
 from tfx.dsl.io import fileio
@@ -131,17 +132,18 @@ class TaxiTemplateKubeflowE2ETest(test_utils.BaseEndToEndTest):
     orchestration_test_utils.delete_gcs_files(self._GCP_PROJECT_ID,
                                               self._BUCKET_NAME, path)
 
+  def _delete_docker_image(self, image):
+    subprocess.check_output(['gcloud', 'container', 'images', 'delete', image])
+    client = docker.from_env()
+    client.images.remove(image=image)
+
   def _delete_base_container_image(self):
     if self._base_container_image == self._BASE_CONTAINER_IMAGE:
       return  # Didn't generate a base image for the test.
-    subprocess.check_output([
-        'gcloud', 'container', 'images', 'delete', self._base_container_image
-    ])
+    self._delete_docker_image(self._base_container_image)
 
   def _delete_target_container_image(self):
-    subprocess.check_output([
-        'gcloud', 'container', 'images', 'delete', self._target_container_image
-    ])
+    self._delete_docker_image(self._target_container_image)
 
   def _get_endpoint(self, namespace):
     cmd = 'kubectl describe configmap inverse-proxy-config -n {}'.format(
@@ -159,8 +161,8 @@ class TaxiTemplateKubeflowE2ETest(test_utils.BaseEndToEndTest):
     blob.upload_from_filename('data/data.csv')
 
   def _prepare_base_container_image(self):
-    orchestration_test_utils.build_and_push_docker_image(
-        self._base_container_image, self._REPO_BASE)
+    orchestration_test_utils.build_docker_image(self._base_container_image,
+                                                self._REPO_BASE)
 
   def _prepare_skaffold(self):
     self._skaffold = os.path.join(self._temp_dir, 'skaffold')

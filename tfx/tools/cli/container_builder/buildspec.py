@@ -96,7 +96,11 @@ class BuildSpec(object):
                 'docker': {
                     'dockerfile': dockerfile_name
                 }
-            }]
+            }],
+            'local': {
+                'push': True,
+                'useDockerCLI': True
+            }
         }
     }
     with open(filename, 'w') as f:

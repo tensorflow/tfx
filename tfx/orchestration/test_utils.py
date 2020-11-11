@@ -65,8 +65,8 @@ def random_id() -> str:
 _DOCKER_TIMEOUT_SECONDS = 60 * 5
 
 
-def build_and_push_docker_image(container_image: str, repo_base: str):
-  """Build and push docker image using `tfx/tools/docker/Dockerfile`.
+def build_docker_image(container_image: str, repo_base: str):
+  """Build docker image using `tfx/tools/docker/Dockerfile`.
 
   Args:
     container_image: Docker container image name.
@@ -90,11 +90,27 @@ def build_and_push_docker_image(container_image: str, repo_base: str):
         buildargs={
             'TFX_DEPENDENCY_SELECTOR': dependency_selector,
         },
+        rm=True,
     )
 
+
+def build_and_push_docker_image(container_image: str, repo_base: str):
+  """Build and push docker image using `tfx/tools/docker/Dockerfile`.
+
+  Note: The local copy of the image will be deleted after push.
+
+  Args:
+    container_image: Docker container image name.
+    repo_base: The src path to use to build docker image.
+  """
+  build_docker_image(container_image, repo_base)
+
+  client = docker.from_env(timeout=_DOCKER_TIMEOUT_SECONDS)
   logging.info('Pushing image %s', container_image)
   with Timer('PushingTFXContainerImage'):
     client.images.push(repository=container_image)
+  with Timer('DeletingLocalTFXContainerImage'):
+    client.images.remove(image=container_image)
 
 
 def delete_gcs_files(gcp_project_id: str, bucket_name: str, path: str):
