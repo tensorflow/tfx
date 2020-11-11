@@ -223,7 +223,7 @@ class _ProtoOperator(_PlaceholderOperator):
       execution_param = component_spec.PARAMETERS[exec_property_name]
       if not issubclass(execution_param.type, message.Message):
         raise ValueError(
-            "Can't apply placeholder proto operator on non-proto type "
+            "Can't apply placehodler proto operator on non-proto type "
             f"exec property. Got {execution_param.type}.")
       fd_set = result.operator.proto_op.proto_schema.file_descriptors
       for fd in proto_utils.gather_file_descriptors(
@@ -237,7 +237,7 @@ class Placeholder(abc.ABC):
   """A Placeholder represents not-yet-available values at the component authoring time."""
 
   def __init__(self, placeholder_type: placeholder_pb2.Placeholder.Type,
-               key: Optional[str] = None):
+               key: str):
     self._operators = []
     self._type = placeholder_type
     self._key = key
@@ -254,19 +254,9 @@ class Placeholder(abc.ABC):
       self,
       component_spec: Optional[types.ComponentSpec] = None
   ) -> placeholder_pb2.PlaceholderExpression:
-    """Encodes a placeholder as PlaceholderExpression proto.
-
-    Args:
-      component_spec: Optional. Information about the component that may be
-        needed during encoding.
-
-    Returns:
-      Encoded proto containing all information of this placeholder.
-    """
     result = placeholder_pb2.PlaceholderExpression()
     result.placeholder.type = self._type
-    if self._key:
-      result.placeholder.key = self._key
+    result.placeholder.key = self._key
     for op in self._operators:
       result = op.encode(result, component_spec)
     return result
@@ -358,17 +348,6 @@ class RuntimeInfoPlaceholder(_ProtoAccessiblePlaceholder):
     super().__init__(placeholder_pb2.Placeholder.Type.RUNTIME_INFO, key)
 
 
-class ExecInvocationPlaceholder(_ProtoAccessiblePlaceholder):
-  """Execution Invocation Placeholder helps access ExecutionInvocation proto.
-
-  Prefer to use execution_invocation(...) to create Execution Invocation
-  placeholder.
-  """
-
-  def __init__(self):
-    super().__init__(placeholder_pb2.Placeholder.Type.EXEC_INVOCATION)
-
-
 def input(key: str) -> ArtifactPlaceholder:  # pylint: disable=redefined-builtin
   """Returns a Placeholder that represents an input artifact.
 
@@ -448,7 +427,11 @@ def exec_property(key: str) -> ExecPropertyPlaceholder:
 
 class RuntimeInfoKey(enum.Enum):
   PLATFORM_CONFIG = 'platform_config'
+  STATEFUL_WORKING_DIR = 'stateful_working_dir'
+  EXECUTOR_OUTPUT_URI = 'executor_output_uri'
   EXECUTOR_SPEC = 'executor_spec'
+  NODE_INFO = 'node_info'
+  PIPELINE_INFO = 'pipeline_info'
 
 
 _RUNTIME_INFO_KEYS = frozenset(key.value for key in RuntimeInfoKey)
@@ -460,7 +443,14 @@ def runtime_info(key: str) -> RuntimeInfoPlaceholder:
   Currently the runtime info includes following keys:
   1. platform_config: A platform_config proto that contains platform specific
      information.
-  2. executor_spec: The executor spec proto.
+  2. stateful_working_dir: The directory can be used by the executor to store
+     working states.
+  3. executor_output_uri: The uri where the executor result should be written
+     to. The executors should use this uri to "return" ExecutorOutput to the
+     launcher.
+  4. executor_spec: The executor spec proto.
+  5. node_info: NodeInfo proto containing the node information.
+  6. pipeline_info: PipelineInfo proto containing the pipeline information.
 
   Args:
     key: The key of the runtime information.
@@ -474,19 +464,5 @@ def runtime_info(key: str) -> RuntimeInfoPlaceholder:
     ValueError: If received unsupported key.
   """
   if key not in _RUNTIME_INFO_KEYS:
-    raise ValueError(f'Got unsupported key: {key}.')
+    raise ValueError(f'Got unsupported  key: {key}.')
   return RuntimeInfoPlaceholder(key)
-
-
-def execution_invocation() -> ExecInvocationPlaceholder:
-  """Returns a Placeholder representing ExecutionInvocation proto.
-
-  Returns:
-    A Placeholder that will render to the ExecutionInvocation proto.
-    Accessing a proto field is the same as if accessing a proto field in Python.
-
-    Prefer to use input(key)/output(key)/exec_property(key) functions instead of
-    input_dict/output_dict/execution_properties field from ExecutionInvocation
-    proto.
-  """
-  return ExecInvocationPlaceholder()

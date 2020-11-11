@@ -17,8 +17,6 @@ import re
 
 from typing import cast
 
-from absl import logging
-
 from tfx.components.common_nodes import importer_node
 from tfx.components.common_nodes import resolver_node
 from tfx.dsl.compiler import compiler_utils
@@ -173,10 +171,8 @@ class Compiler(object):
         node.inputs.resolver_config.resolver_policy = (
             pipeline_pb2.ResolverConfig.ResolverPolicy.LATEST_BLESSED_MODEL)
       else:
-        logging.error("Got unsupported resolver policy: %s", type(resolver))
-        node.inputs.resolver_config.resolver_policy = (
-            pipeline_pb2.ResolverConfig.ResolverPolicy
-            .RESOLVER_POLICY_UNSPECIFIED)
+        raise ValueError("Got unsupported resolver policy: {}".format(
+            resolver.type))
 
     # Step 4: Node outputs
     if isinstance(tfx_node, base_component.BaseComponent):

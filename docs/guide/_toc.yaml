@@ -107,11 +107,6 @@ toc:
     path: /tfx/guide/serving
   - include: /tfx/serving/_toc.yaml
 
-- title: "Fairness Indicators"
-  style: accordion
-  section:
-  - include: /tfx/fairness_indicators/_toc.yaml
-
 - heading: "Related projects"
   style: divider
 - title: "Apache Beam"

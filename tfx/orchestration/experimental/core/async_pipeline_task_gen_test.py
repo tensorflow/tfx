@@ -36,7 +36,6 @@ class AsyncPipelineTaskGeneratorTest(tu.TfxTest, parameterized.TestCase):
     pipeline_root = os.path.join(
         os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR', self.get_temp_dir()),
         self.id())
-    self._pipeline_root = pipeline_root
 
     # Makes sure multiple connections within a test always connect to the same
     # MLMD instance.
@@ -75,35 +74,15 @@ class AsyncPipelineTaskGeneratorTest(tu.TfxTest, parameterized.TestCase):
     if node == self._transform:
       expected_context_names = ['my_pipeline', 'my_transform']
       expected_input_artifacts_keys = ['examples']
-      expected_output_artifacts_keys = ['transform_graph']
-      output_artifact_uri = os.path.join(self._pipeline_root, node.node_info.id,
-                                         'transform_graph', str(execution_id))
     elif node == self._trainer:
       expected_context_names = ['my_pipeline', 'my_trainer']
       expected_input_artifacts_keys = ['examples', 'transform_graph']
-      expected_output_artifacts_keys = ['model']
-      output_artifact_uri = os.path.join(self._pipeline_root, node.node_info.id,
-                                         'model', str(execution_id))
     else:
       raise ValueError('Not configured to verify for node: {}'.format(node))
     self.assertCountEqual(expected_context_names,
                           [c.name for c in task.contexts])
     self.assertCountEqual(expected_input_artifacts_keys,
                           list(task.input_artifacts.keys()))
-    self.assertCountEqual(expected_output_artifacts_keys,
-                          list(task.output_artifacts.keys()))
-    self.assertEqual(
-        output_artifact_uri,
-        task.output_artifacts[expected_output_artifacts_keys[0]][0].uri)
-    self.assertEqual(
-        os.path.join(self._pipeline_root,
-                     node.node_info.id, '.system', 'executor_execution',
-                     str(execution_id), 'executor_output.pb'),
-        task.executor_output_uri)
-    self.assertEqual(
-        os.path.join(self._pipeline_root,
-                     node.node_info.id, '.system', 'stateful_working_dir',
-                     str(execution_id)), task.stateful_working_dir)
 
   def _dequeue_and_test(self, use_task_queue, node, execution_id):
     if use_task_queue:

@@ -10,7 +10,20 @@
 
 ## Deprecations
 
+*   Deprecated setting `instance_name` at pipeline node level. Instead, users
+    are encouraged to set `id` explicitly of any pipeline node through newly
+    added APIs.
+
 ## Bug fixes and other changes
+
+*   Supported users to set `id` of pipeline nodes directly.
+*   Added a new template, 'penguin' which is simple subset of
+    [penguin examples](https://github.com/tensorflow/tfx/tree/master/tfx/examples/penguin),
+    and uses the same
+    [Palmer Penguins](https://allisonhorst.github.io/palmerpenguins/articles/intro.html)
+    dataset. The new template focused on easy ingestion of user's own data.
+*   Changed default data path for the taxi template from `tfx-template/data`
+    to `tfx-template/data/taxi`.
 
 ## Documentation updates
 
@@ -89,9 +102,6 @@
 *   Modules under `tfx.components.base` have been deprecated and moved to
     `tfx.dsl.components.base` in preparation for releasing a pipeline authoring
     package without explicit Tensorflow dependency.
-*   Deprecated setting `instance_name` at pipeline node level. Instead, users
-    are encouraged to set `id` explicitly of any pipeline node through newly
-    added APIs.
 
 ## Bug fixes and other changes
 
@@ -116,14 +126,6 @@
     "missing or modified key in exec_properties" was raised from MLMD when
     `exec_properties` both omitted an existing property and added a new
     property.
-*   Supported users to set `id` of pipeline nodes directly.
-*   Added a new template, 'penguin' which is simple subset of
-    [penguin examples](https://github.com/tensorflow/tfx/tree/master/tfx/examples/penguin),
-    and uses the same
-    [Palmer Penguins](https://allisonhorst.github.io/palmerpenguins/articles/intro.html)
-    dataset. The new template focused on easy ingestion of user's own data.
-*   Changed default data path for the taxi template from `tfx-template/data`
-    to `tfx-template/data/taxi`.
 *   Depends on `apache-beam[gcp]>=2.25,<3`.
 *   Depends on `attrs>=19.3.0,<21`.
 *   Depends on `kfp-pipeline-spec>=0.1.0,<0.2`.

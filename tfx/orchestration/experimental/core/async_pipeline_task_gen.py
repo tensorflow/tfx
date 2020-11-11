@@ -22,7 +22,6 @@ from tfx.orchestration.experimental.core import task as task_lib
 from tfx.orchestration.experimental.core import task_gen
 from tfx.orchestration.experimental.core import task_gen_utils
 from tfx.orchestration.portable import execution_publish_utils
-from tfx.orchestration.portable import outputs_utils
 from tfx.orchestration.portable.mlmd import execution_lib
 from tfx.proto.orchestration import pipeline_pb2
 
@@ -145,18 +144,9 @@ class AsyncPipelineTaskGenerator(task_gen.TaskGenerator):
         contexts=resolved_info.contexts,
         input_artifacts=resolved_info.input_artifacts,
         exec_properties=resolved_info.exec_properties)
-    outputs_resolver = outputs_utils.OutputsResolver(
-        node, self._pipeline.pipeline_info, self._pipeline.runtime_spec,
-        self._pipeline.execution_mode)
     return task_lib.ExecNodeTask(
         node_uid=task_lib.NodeUid.from_pipeline_node(self._pipeline, node),
         execution=execution,
         contexts=resolved_info.contexts,
         input_artifacts=resolved_info.input_artifacts,
-        exec_properties=resolved_info.exec_properties,
-        output_artifacts=outputs_resolver.generate_output_artifacts(
-            execution.id),
-        executor_output_uri=outputs_resolver.get_executor_output_uri(
-            execution.id),
-        stateful_working_dir=outputs_resolver.get_stateful_working_directory(
-            execution.id))
+        exec_properties=resolved_info.exec_properties)

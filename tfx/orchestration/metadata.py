@@ -405,8 +405,6 @@ class Metadata(object):
       existing_execution_type = self.store.get_execution_type(type_name)
       if existing_execution_type is None:
         raise RuntimeError('Execution type is None for %s.' % type_name)
-      # If exec_properties contains new entries, execution type schema will be
-      # updated in MLMD.
       if all(k in existing_execution_type.properties
              for k in exec_properties.keys()):
         return existing_execution_type.id
@@ -416,6 +414,9 @@ class Metadata(object):
       execution_type = metadata_store_pb2.ExecutionType(name=type_name)
       execution_type.properties[
           _EXECUTION_TYPE_KEY_STATE] = metadata_store_pb2.STRING
+      # If exec_properties contains new entries, execution type schema will be
+      # updated in MLMD.
+      #
       # TODO(b/172673657): Make property schema registration more explicit to
       # the component author.
       for k in exec_properties.keys():
@@ -437,24 +438,32 @@ class Metadata(object):
       execution_type.properties[
           _EXECUTION_TYPE_KEY_COMPONENT_ID] = metadata_store_pb2.STRING
 
+      # Add back any existing execution properties to the new proposed type.
+      if existing_execution_type:
+        for name, old_type in existing_execution_type.properties.items():
+          if name in execution_type.properties:
+            # The property already exists, so we check for compatibility.
+            new_type = existing_execution_type.properties[name]
+            if old_type != new_type:
+              raise ValueError(
+                  ('The existing ML Metadata execution type %r has type %r for '
+                   'property %r, but an attempt is being made to update that '
+                   'property to use the incompatible type %r.') %
+                  (type_name, old_type, name, new_type))
+          else:
+            # The property is not in the caller's view of the type, so we add it
+            # back so that the execution type update will not fail.
+            execution_type.properties[name] = old_type
+
       try:
-        # As exec_properties infers an execution_type dynamically. The stored
-        # type may have more properties which are inferred from other instances
-        # and the current exec_properties may introduce new keys at run time.
-        # Here we enable `can_add_fields` and `can_omit_fields` so that the
-        # stored execution_type are evolved to union all keys set by different
-        # exec_properties instances.
         execution_type_id = self.store.put_execution_type(
-            execution_type=execution_type,
-            can_add_fields=True,
-            can_omit_fields=True)
-        absl.logging.debug('Registering an execution type with id %s.' %
+            execution_type=execution_type, can_add_fields=True)
+        absl.logging.debug('Registering a new execution type with id %s.' %
                            execution_type_id)
         return execution_type_id
       except mlmd.errors.AlreadyExistsError:
-        # The conflict should not happen as all property value type is STRING.
         warning_str = (
-            'Conflicting properties in exec_properties comparing with '
+            'missing or modified key in exec_properties comparing with '
             'existing execution type with the same type name. Existing type: '
             '%s, New type: %s') % (existing_execution_type, execution_type)
         absl.logging.warning(warning_str)
@@ -991,14 +1000,8 @@ class Metadata(object):
     context_type = metadata_store_pb2.ContextType(name=context_type_name)
     for k, t in properties.items():
       context_type.properties[k] = t
-    # Types can be evolved by adding new fields in newer releases.
-    # Here when upserting types:
-    # a) we enable `can_add_fields` so that type updates made in the current
-    #    release are backward compatible with older release;
-    # b) we enable `can_omit_fields` so that the current release is forward
-    #    compatible with any type updates made by future release.
     context_type_id = self.store.put_context_type(
-        context_type, can_add_fields=True, can_omit_fields=True)
+        context_type, can_add_fields=True)
 
     return context_type_id
 
