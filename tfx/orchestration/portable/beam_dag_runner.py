@@ -83,12 +83,10 @@ class PipelineNodeAsDoFn(beam.DoFn):
       assert not list(signal), 'Signal PCollection should be empty.'
 
     logging.info('node %s is running.', self._node_id)
-    self._run_component()
+    self._run_node()
     logging.info('node %s is finished.', self._node_id)
 
-  # TODO(b/171565775): rename this method to _run_node for this class and its
-  # Childeren.
-  def _run_component(self) -> None:
+  def _run_node(self) -> None:
     launcher.Launcher(
         pipeline_node=self._pipeline_node,
         mlmd_connection=metadata.Metadata(self._mlmd_connection_config),
