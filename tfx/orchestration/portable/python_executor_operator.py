@@ -118,7 +118,7 @@ class PythonExecutorOperator(base_executor_operator.BaseExecutorOperator):
     context = base_executor.BaseExecutor.Context(
         beam_pipeline_args=self.extra_flags,
         tmp_dir=execution_info.tmp_dir,
-        unique_id=str(execution_info.execution_metadata.id),
+        unique_id=str(execution_info.execution_id),
         executor_output_uri=execution_info.execution_output_uri,
         stateful_working_dir=execution_info.stateful_working_dir)
     executor = self._executor_cls(context=context)

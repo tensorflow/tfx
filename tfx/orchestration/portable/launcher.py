@@ -74,6 +74,8 @@ class _PrepareExecutionResult:
 
   # The information used by executor operators.
   execution_info = attr.ib(type=data_types.ExecutionInfo, default=None)
+  # The Execution registered in MLMD.
+  execution_metadata = attr.ib(type=metadata_store_pb2.Execution, default=None)
   # Contexts of the execution, usually used by Publisher.
   contexts = attr.ib(type=List[metadata_store_pb2.Context], default=None)
   # TODO(b/156126088): Update the following documentation when this bug is
@@ -240,14 +242,15 @@ class Launcher(object):
             output_artifacts=cached_outputs)
         return _PrepareExecutionResult(
             execution_info=data_types.ExecutionInfo(
-                execution_metadata=execution),
+                execution_id=execution.id),
+            execution_metadata=execution,
             contexts=contexts,
             is_execution_needed=False)
 
       # 8. Going to trigger executor.
       return _PrepareExecutionResult(
           execution_info=data_types.ExecutionInfo(
-              execution_metadata=execution,
+              execution_id=execution.id,
               input_dict=input_artifacts,
               output_dict=output_artifacts,
               exec_properties=exec_properties,
@@ -258,6 +261,7 @@ class Launcher(object):
               tmp_dir=self._output_resolver.make_tmp_dir(execution.id),
               pipeline_node=self._pipeline_node,
               pipeline_info=self._pipeline_info),
+          execution_metadata=execution,
           contexts=contexts,
           is_execution_needed=True)
 
@@ -352,19 +356,17 @@ class Launcher(object):
                                            self._pipeline_runtime_spec)
 
     # Runs as a normal node.
-    prepare_exeucion_result = self._prepare_execution()
+    prepare_execution_result = self._prepare_execution()
     (execution_info, contexts,
-     is_execution_needed) = (prepare_exeucion_result.execution_info,
-                             prepare_exeucion_result.contexts,
-                             prepare_exeucion_result.is_execution_needed)
+     is_execution_needed) = (prepare_execution_result.execution_info,
+                             prepare_execution_result.contexts,
+                             prepare_execution_result.is_execution_needed)
     if is_execution_needed:
       try:
         executor_output = self._run_executor(execution_info)
       except Exception:  # pylint: disable=broad-except
-        self._publish_failed_execution(execution_info.execution_metadata.id,
-                                       contexts)
-        logging.error('Execution %d failed.',
-                      execution_info.execution_metadata.id)
+        self._publish_failed_execution(execution_info.execution_id, contexts)
+        logging.error('Execution %d failed.', execution_info.execution_id)
         raise
       finally:
         self._clean_up_stateless_execution_info(execution_info)
@@ -372,8 +374,8 @@ class Launcher(object):
       self._clean_up_stateful_execution_info(execution_info)
       logging.info('Publishing output artifacts %s for exeuction %s',
                    execution_info.output_dict,
-                   execution_info.execution_metadata.id)
-      self._publish_successful_execution(execution_info.execution_metadata.id,
+                   execution_info.execution_id)
+      self._publish_successful_execution(execution_info.execution_id,
                                          contexts, execution_info.output_dict,
                                          executor_output)
-    return execution_info.execution_metadata
+    return prepare_execution_result.execution_metadata

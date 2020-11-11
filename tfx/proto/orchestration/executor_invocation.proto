@@ -22,7 +22,7 @@ import "tfx/proto/orchestration/pipeline.proto";
 
 // All the information needed for a TFX component execution.
 // TODO(b/172391062): Make this `ExecutionInvocation` for broader usages.
-// Next ID: 11
+// Next ID: 12
 message ExecutorInvocation {
   reserved 1, 2;
 
@@ -53,6 +53,9 @@ message ExecutorInvocation {
 
   // Pipeline node proto from the IR specification.
   tfx.orchestration.PipelineNode pipeline_node = 9;
+
+  // The MLMD `Execution` ID.
+  int64 execution_id = 11;
 }
 
 message MLMDConnectionConfig {

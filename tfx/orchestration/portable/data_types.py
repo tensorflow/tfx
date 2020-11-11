@@ -95,13 +95,12 @@ def _build_proto_exec_property_dict(
 # human-readability purpose.
 # TODO(b/165359991): Restore 'auto_attribs=True' once we drop Python3.5 support.
 # TODO(b/172065067): Clean up ExecutionInfo to match placeholder SDK structure.
-# TODO(ruoyu): Move it out to a common place.
 @attr.s
 class ExecutionInfo:
   """A struct to store information for an execution."""
   # LINT.IfChange
-  # The metadata of this execution that is registered in MLMD.
-  execution_metadata = attr.ib(type=metadata_store_pb2.Execution, default=None)
+  # The Execution id that is registered in MLMD.
+  execution_id = attr.ib(type=int, default=None)
   # The input map to feed to execution
   input_dict = attr.ib(type=Dict[str, List[types.Artifact]], default=None)
   # The output map to feed to execution
@@ -129,12 +128,14 @@ class ExecutionInfo:
   def to_proto(
       self) -> executor_invocation_pb2.ExecutorInvocation:
     return executor_invocation_pb2.ExecutorInvocation(
+        execution_id=self.execution_id,
         input_dict=_build_proto_artifact_dict(self.input_dict),
         output_dict=_build_proto_artifact_dict(self.output_dict),
         execution_properties=_build_proto_exec_property_dict(
             self.exec_properties),
         output_metadata_uri=self.execution_output_uri,
         stateful_working_dir=self.stateful_working_dir,
+        tmp_dir=self.tmp_dir,
         pipeline_node=self.pipeline_node,
         pipeline_info=self.pipeline_info)
 
@@ -143,11 +144,13 @@ class ExecutionInfo:
       cls, executor_invocation: executor_invocation_pb2.ExecutorInvocation
   ) -> 'ExecutionInfo':
     return cls(
+        execution_id=executor_invocation.execution_id,
         input_dict=_build_artifact_dict(executor_invocation.input_dict),
         output_dict=_build_artifact_dict(executor_invocation.output_dict),
         exec_properties=_build_exec_property_dict(
             executor_invocation.execution_properties),
         execution_output_uri=executor_invocation.output_metadata_uri,
         stateful_working_dir=executor_invocation.stateful_working_dir,
+        tmp_dir=executor_invocation.tmp_dir,
         pipeline_node=executor_invocation.pipeline_node,
         pipeline_info=executor_invocation.pipeline_info)
