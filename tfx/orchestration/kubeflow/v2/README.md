@@ -8,6 +8,11 @@ This is the runner compiling TFX pipeline to
 [TFX pipeline IR](https://github.com/tensorflow/tfx/blob/master/tfx/proto/orchestration/pipeline.proto).
 
 ## SDK
+In order to use this library, users need `kfp`, whose pipeline spec is required.
+One can get that by installing `tfx` with the `test` dependencies:
+```
+pip install tfx[test]
+```
 
 ### Current support for TFX components
 In current phase, the V2 runner supports most first party

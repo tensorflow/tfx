@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2020 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,3 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+"""Kubeflow Pipeline IR proto spec."""
+# TODO(b/172022516): Always use external proto library for consistency.
+try:
+  from kfp.pipeline_spec import pipeline_spec_pb2 as pipeline_pb2  # pylint:disable=g-import-not-at-top
+except ImportError:
+  from tfx.orchestration.kubeflow.v2.proto import pipeline_pb2  # pylint:disable=g-import-not-at-top

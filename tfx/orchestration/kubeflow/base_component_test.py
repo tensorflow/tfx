@@ -120,7 +120,7 @@ class BaseComponentTest(tf.test.TestCase):
 
   def testContainerOpName(self):
     self.assertEqual('StatisticsGen.foo', self.tfx_component.id)
-    self.assertEqual('StatisticsGen_foo', self.component.container_op.name)
+    self.assertEqual('statisticsgen-foo', self.component.container_op.name)
 
 
 class BaseComponentWithPipelineParamTest(tf.test.TestCase):
@@ -269,7 +269,7 @@ class BaseComponentWithPipelineParamTest(tf.test.TestCase):
 
   def testContainerOpName(self):
     self.assertEqual('StatisticsGen.foo', self.tfx_statistics_gen.id)
-    self.assertEqual('StatisticsGen_foo', self.statistics_gen.container_op.name)
+    self.assertEqual('statisticsgen-foo', self.statistics_gen.container_op.name)
 
 
 if __name__ == '__main__':

@@ -119,6 +119,8 @@
     property.
 *   Depends on `apache-beam[gcp]>=2.25,<3`.
 *   Depends on `attrs>=19.3.0,<21`.
+*   Depends on `kfp-pipeline-spec>=0.1.0,<0.2`.
+*   Depends on `kfp>=1.1.0,<2`.
 *   Depends on `ml-metadata>=0.24,<0.25`.
 *   Depends on `tensorflow-cloud>=0.1,<0.2`.
 *   Depends on `tensorflow-data-validation>=0.25,<0.26`.

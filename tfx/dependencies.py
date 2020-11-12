@@ -112,7 +112,8 @@ def make_extra_packages_test():
       # TODO(b/172014039): Delete pinned cattrs version after apache-airflow
       # 1.0.13 releases.(github.com/apache/airflow/issues/11965).
       'cattrs==1.0.0',
-      'kfp>=0.4,<0.5',
+      'kfp>=1.1.0,<2',
+      'kfp-pipeline-spec>=0.1.2,<0.2',
       'pytest>=5,<6',
   ]
 
