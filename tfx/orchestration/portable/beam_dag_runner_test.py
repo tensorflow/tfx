@@ -118,13 +118,13 @@ _conponent_to_pipeline_run = {}
 class _FakeComponentAsDoFn(beam_dag_runner.PipelineNodeAsDoFn):
 
   def __init__(self, pipeline_node: pipeline_pb2.PipelineNode,
-               mlmd_connection: metadata.Metadata,
+               mlmd_connection_config: metadata.ConnectionConfigType,
                pipeline_info: pipeline_pb2.PipelineInfo,
                pipeline_runtime_spec: pipeline_pb2.PipelineRuntimeSpec,
                executor_spec: Optional[message.Message],
                custom_driver_spec: Optional[message.Message],
                deployment_config: Optional[message.Message]):
-    super().__init__(pipeline_node, mlmd_connection, pipeline_info,
+    super().__init__(pipeline_node, mlmd_connection_config, pipeline_info,
                      pipeline_runtime_spec, executor_spec, custom_driver_spec,
                      deployment_config)
     _component_executors[self._node_id] = executor_spec

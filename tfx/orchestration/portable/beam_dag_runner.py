@@ -40,9 +40,8 @@ from google.protobuf import message
 class PipelineNodeAsDoFn(beam.DoFn):
   """Wrap node as beam DoFn."""
 
-  def __init__(self,
-               pipeline_node: pipeline_pb2.PipelineNode,
-               mlmd_connection: metadata.Metadata,
+  def __init__(self, pipeline_node: pipeline_pb2.PipelineNode,
+               mlmd_connection_config: metadata.ConnectionConfigType,
                pipeline_info: pipeline_pb2.PipelineInfo,
                pipeline_runtime_spec: pipeline_pb2.PipelineRuntimeSpec,
                executor_spec: Optional[message.Message],
@@ -52,8 +51,7 @@ class PipelineNodeAsDoFn(beam.DoFn):
 
     Args:
       pipeline_node: The specification of the node that this launcher lauches.
-      mlmd_connection: ML metadata connection. The connection is expected to
-        not be opened before launcher is initiated.
+      mlmd_connection_config: ML metadata connection config.
       pipeline_info: The information of the pipeline that this node runs in.
       pipeline_runtime_spec: The runtime information of the pipeline that this
         node runs in.
@@ -66,7 +64,7 @@ class PipelineNodeAsDoFn(beam.DoFn):
       deployment_config: Deployment Config for the pipeline.
     """
     self._pipeline_node = pipeline_node
-    self._mlmd_connection = mlmd_connection
+    self._mlmd_connection_config = mlmd_connection_config
     self._pipeline_info = pipeline_info
     self._pipeline_runtime_spec = pipeline_runtime_spec
     self._executor_spec = executor_spec
@@ -93,7 +91,7 @@ class PipelineNodeAsDoFn(beam.DoFn):
   def _run_component(self) -> None:
     launcher.Launcher(
         pipeline_node=self._pipeline_node,
-        mlmd_connection=self._mlmd_connection,
+        mlmd_connection=metadata.Metadata(self._mlmd_connection_config),
         pipeline_info=self._pipeline_info,
         pipeline_runtime_spec=self._pipeline_runtime_spec,
         executor_spec=self._executor_spec,
@@ -212,11 +210,9 @@ class BeamDagRunner(tfx_runner.TfxRunner):
             constants.PIPELINE_RUN_ID_PARAMETER_NAME: run_id,
         })
 
-    # TODO(b/163003901): Support beam DAG runner args through IR.
     deployment_config = self._extract_deployment_config(pipeline)
     connection_config = self._connection_config_from_deployment_config(
         deployment_config)
-    mlmd_connection = metadata.Metadata(connection_config=connection_config)
 
     with telemetry_utils.scoped_labels(
         {telemetry_utils.LABEL_TFX_RUNNER: 'beam'}):
@@ -252,11 +248,11 @@ class BeamDagRunner(tfx_runner.TfxRunner):
               | 'Run[%s]' % node_id >> beam.ParDo(
                   self._PIPELINE_NODE_DO_FN_CLS(
                       pipeline_node=pipeline_node,
-                      mlmd_connection=mlmd_connection,
+                      mlmd_connection_config=connection_config,
                       pipeline_info=pipeline.pipeline_info,
                       pipeline_runtime_spec=pipeline.runtime_spec,
                       executor_spec=executor_spec,
                       custom_driver_spec=custom_driver_spec,
-                      deployment_config=deployment_config), *
-                  [beam.pvalue.AsIter(s) for s in signals_to_wait]))
+                      deployment_config=deployment_config),
+                  *[beam.pvalue.AsIter(s) for s in signals_to_wait]))
           logging.info('Node %s is scheduled.', node_id)
