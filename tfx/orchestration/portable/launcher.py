@@ -20,6 +20,7 @@ from absl import logging
 import attr
 from tfx import types
 from tfx.dsl.io import fileio
+from tfx.dsl.resolvers import base_resolver
 from tfx.orchestration import metadata
 from tfx.orchestration.portable import base_driver_operator
 from tfx.orchestration.portable import base_executor_operator
@@ -182,7 +183,10 @@ class Launcher(object):
       exec_properties = inputs_utils.resolve_parameters(
           node_parameters=self._pipeline_node.parameters)
       input_artifacts = inputs_utils.resolve_input_artifacts(
-          metadata_handler=m, node_inputs=self._pipeline_node.inputs)
+          context=base_resolver.ResolverContext(
+              metadata_handler=m,
+              pipeline_node=self._pipeline_node),
+          node_inputs=self._pipeline_node.inputs)
       # 3. If not all required inputs are met. Return ExecutionInfo with
       # is_execution_needed being false. No publish will happen so down stream
       # nodes won't be triggered.

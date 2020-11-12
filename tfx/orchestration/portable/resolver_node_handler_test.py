@@ -18,6 +18,7 @@ import os
 import tensorflow as tf
 from tfx import types
 from tfx.dsl.compiler import constants
+from tfx.dsl.resolvers import base_resolver
 from tfx.orchestration import metadata
 from tfx.orchestration.portable import execution_publish_utils
 from tfx.orchestration.portable import inputs_utils
@@ -139,7 +140,10 @@ class ResolverNodeHandlerTest(test_utils.TfxTest):
         upstream_nodes: "my_resolver"
         """, pipeline_pb2.PipelineNode())
       downstream_input_artifacts = inputs_utils.resolve_input_artifacts(
-          metadata_handler=m, node_inputs=down_stream_node.inputs)
+          context=base_resolver.ResolverContext(
+              metadata_handler=m,
+              pipeline_node=down_stream_node),
+          node_inputs=down_stream_node.inputs)
       downstream_input_model = downstream_input_artifacts['input_models']
       self.assertLen(downstream_input_model, 1)
       self.assertProtoPartiallyEquals(

@@ -16,6 +16,7 @@ import os
 import tensorflow as tf
 
 from tfx import types
+from tfx.dsl.resolvers import base_resolver
 from tfx.orchestration import metadata
 from tfx.orchestration.portable import execution_publish_utils
 from tfx.orchestration.portable import inputs_utils
@@ -118,7 +119,10 @@ class InputsUtilsTest(test_utils.TfxTest):
       # Gets inputs for transform. Should get back what the first ExampleGen
       # published in the `output_examples` channel.
       transform_inputs = inputs_utils.resolve_input_artifacts(
-          m, my_transform.inputs)
+          context=base_resolver.ResolverContext(
+              metadata_handler=m,
+              pipeline_node=my_transform),
+          node_inputs=my_transform.inputs)
       self.assertEqual(len(transform_inputs), 1)
       self.assertEqual(len(transform_inputs['examples']), 1)
       self.assertProtoPartiallyEquals(
@@ -132,7 +136,11 @@ class InputsUtilsTest(test_utils.TfxTest):
       # for both input channels (from example_gen and from transform) but we did
       # not publish anything from transform, it should return nothing.
       self.assertIsNone(
-          inputs_utils.resolve_input_artifacts(m, my_trainer.inputs))
+          inputs_utils.resolve_input_artifacts(
+              context=base_resolver.ResolverContext(
+                  metadata_handler=m,
+                  pipeline_node=my_trainer),
+              node_inputs=my_trainer.inputs))
 
   def testResolverWithResolverPolicy(self):
     pipeline = pipeline_pb2.Pipeline()
@@ -170,7 +178,10 @@ class InputsUtilsTest(test_utils.TfxTest):
       # Gets inputs for transform. Should get back what the first ExampleGen
       # published in the `output_examples` channel.
       transform_inputs = inputs_utils.resolve_input_artifacts(
-          m, my_transform.inputs)
+          context=base_resolver.ResolverContext(
+              metadata_handler=m,
+              pipeline_node=my_transform),
+          node_inputs=my_transform.inputs)
       self.assertEqual(len(transform_inputs), 1)
       self.assertEqual(len(transform_inputs['examples']), 1)
       self.assertProtoPartiallyEquals(
@@ -208,7 +219,10 @@ class InputsUtilsTest(test_utils.TfxTest):
       # Gets inputs for pusher. Should get back what the first Model
       # published in the `output_model` channel.
       pusher_inputs = inputs_utils.resolve_input_artifacts(
-          m, my_pusher.inputs)
+          context=base_resolver.ResolverContext(
+              metadata_handler=m,
+              pipeline_node=my_pusher),
+          node_inputs=my_pusher.inputs)
       self.assertEqual(len(pusher_inputs), 1)
       self.assertEqual(len(pusher_inputs['model']), 1)
       self.assertProtoPartiallyEquals(

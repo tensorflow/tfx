@@ -27,6 +27,11 @@ from tfx.orchestration import metadata
 from tfx.types import artifact_utils
 
 
+def _time_order(artifact: types.Artifact):
+  # Use MLMD Artifact.id for tie breaking so that result is deterministic.
+  return (artifact.mlmd_artifact.last_update_time_since_epoch, artifact.id)
+
+
 class LatestArtifactsResolver(base_resolver.BaseResolver):
   """Resolver that return the latest n artifacts in a given channel.
 
@@ -34,16 +39,14 @@ class LatestArtifactsResolver(base_resolver.BaseResolver):
   both interface and implementation.
   """
 
-  def __init__(self, desired_num_of_artifacts: Optional[int] = 1):
+  def __init__(self, desired_num_of_artifacts: int = 1):
     self._desired_num_of_artifact = desired_num_of_artifacts
 
   def _resolve(self, input_dict: Dict[Text, List[types.Artifact]]):
     result = {}
     for k, artifact_list in input_dict.items():
-      sorted_artifact_list = sorted(
-          artifact_list, key=lambda a: a.id, reverse=True)
-      result[k] = sorted_artifact_list[:min(
-          len(sorted_artifact_list), self._desired_num_of_artifact)]
+      sorted_artifact_list = sorted(artifact_list, key=_time_order)
+      result[k] = sorted_artifact_list[-self._desired_num_of_artifact:]
     return result
 
   def resolve(
@@ -79,13 +82,13 @@ class LatestArtifactsResolver(base_resolver.BaseResolver):
         per_key_resolve_state=resolve_state_dict)
 
   def resolve_artifacts(
-      self, metadata_handler: metadata.Metadata,
+      self, context: base_resolver.ResolverContext,
       input_dict: Dict[Text, List[types.Artifact]]
   ) -> Optional[Dict[Text, List[types.Artifact]]]:
     """Resolves artifacts from channels by querying MLMD.
 
     Args:
-      metadata_handler: A metadata handler to access MLMD store.
+      context: A ResolverContext for resolver runtime.
       input_dict: The input_dict to resolve from.
 
     Returns:

@@ -19,6 +19,7 @@ import mock
 import tensorflow as tf
 from tfx import types
 from tfx.dsl.compiler import constants
+from tfx.dsl.resolvers import base_resolver
 from tfx.orchestration import metadata
 from tfx.orchestration.portable import base_driver
 from tfx.orchestration.portable import base_executor_operator
@@ -113,13 +114,19 @@ class _FakeExampleGenLikeDriver(base_driver.BaseDriver):
         }
       }""", pipeline_pb2.NodeInputs())
 
+  def build_resolver_context(self, metadata_handler):
+    return base_resolver.ResolverContext(
+        metadata_handler=metadata_handler,
+        pipeline_node=pipeline_pb2.PipelineNode())
+
   def run(self, execution_info) -> driver_output_pb2.DriverOutput:
     # Fake a constant span number, which, on prod, is usually calculated based
     # on date.
     span = 2
     with self._mlmd_connection as m:
       previous_output = inputs_utils.resolve_input_artifacts(
-          m, self._self_output)
+          self.build_resolver_context(m),
+          self._self_output)
 
       # Version should be the max of existing version + 1 if span exists,
       # otherwise 0.

@@ -18,47 +18,51 @@ from typing import Dict, List, Optional
 from tfx import types
 from tfx.dsl.experimental import latest_artifacts_resolver
 from tfx.dsl.experimental import latest_blessed_model_resolver
-from tfx.orchestration import metadata
+from tfx.dsl.resolvers import base_resolver
 from tfx.proto.orchestration import pipeline_pb2
 
+_ResolverConfig = pipeline_pb2.ResolverConfig
+_LatestArtifactsResolver = latest_artifacts_resolver.LatestArtifactsResolver
+_LatestBlessedModelResolver = (latest_blessed_model_resolver
+                               .LatestBlessedModelResolver)
 
-class ResolverProcessor(object):
-  """PythonResolverOperator resolves artifacts in process."""
 
-  # TODO(muyangy): This map is subject to change if the structure of
-  # ResolverConfig changes.
-  _RESOLVER_POLICY_TO_RESOLVER_CLASS = {
-      pipeline_pb2.ResolverConfig.RESOLVER_POLICY_UNSPECIFIED:
-          None,
-      pipeline_pb2.ResolverConfig.LATEST_ARTIFACT:
-          latest_artifacts_resolver.LatestArtifactsResolver,
-      pipeline_pb2.ResolverConfig.LATEST_BLESSED_MODEL:
-          latest_blessed_model_resolver.LatestBlessedModelResolver,
-  }
+class ResolverProcessor:
+  """ResolverProcessor resolves artifacts in process."""
 
-  def __init__(self, node_inputs: pipeline_pb2.NodeInputs):
-    resolver_policy = node_inputs.resolver_config.resolver_policy
-    if resolver_policy not in self._RESOLVER_POLICY_TO_RESOLVER_CLASS:
-      raise ValueError(
-          "Resolver_policy {} is not supported.".format(resolver_policy))
-    resolver_class = self._RESOLVER_POLICY_TO_RESOLVER_CLASS.get(
-        resolver_policy)
-    self._resolver = None
-    if resolver_class:
-      self._resolver = resolver_class()
+  def __init__(self, resolver: base_resolver.BaseResolver):
+    self._resolver = resolver
 
-  def ResolveInputs(
-      self, metadata_handler: metadata.Metadata,
+  def resolve_inputs(
+      self, context: base_resolver.ResolverContext,
       input_dict: Dict[str, List[types.Artifact]]
   ) -> Optional[Dict[str, List[types.Artifact]]]:
     """Resolves artifacts in input_dict by optionally querying MLMD.
 
     Args:
-      metadata_handler: A metadata handler to access MLMD store.
+      context: A ResolverContext for resolver runtime.
       input_dict: Inputs to be resolved.
 
     Returns:
       The resolved input_dict.
     """
-    return (self._resolver.resolve_artifacts(metadata_handler, input_dict)
-            if self._resolver else input_dict)
+    return self._resolver.resolve_artifacts(context, input_dict)
+
+
+class ResolverProcessorFactory:
+  """Factory class for building ResolverProcessors."""
+
+  @classmethod
+  def from_resolver_config(
+      cls, resolver_config: _ResolverConfig) -> List[ResolverProcessor]:
+    """Build a list of ResolverProcessors from ResolverConfig."""
+    resolver_policy = resolver_config.resolver_policy
+    if resolver_policy == _ResolverConfig.RESOLVER_POLICY_UNSPECIFIED:
+      resolvers = []
+    elif resolver_policy == _ResolverConfig.LATEST_ARTIFACT:
+      resolvers = [_LatestArtifactsResolver()]
+    elif resolver_policy == _ResolverConfig.LATEST_BLESSED_MODEL:
+      resolvers = [_LatestBlessedModelResolver()]
+    else:
+      raise ValueError('Unknown resolver policy {}'.format(resolver_policy))
+    return [ResolverProcessor(resolver) for resolver in resolvers]

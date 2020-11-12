@@ -18,6 +18,7 @@ from typing import Dict, Iterable, List, Optional, Sequence, Text
 
 import attr
 from tfx import types
+from tfx.dsl.resolvers import base_resolver
 from tfx.orchestration import metadata
 from tfx.orchestration.experimental.core import task as task_lib
 from tfx.orchestration.portable import inputs_utils
@@ -126,7 +127,10 @@ def generate_resolved_info(metadata_handler: metadata.Metadata,
 
   # Resolve inputs.
   input_artifacts = inputs_utils.resolve_input_artifacts(
-      metadata_handler=metadata_handler, node_inputs=node.inputs)
+      context=base_resolver.ResolverContext(
+          metadata_handler=metadata_handler,
+          pipeline_node=node),
+      node_inputs=node.inputs)
 
   return ResolvedInfo(
       contexts=contexts,

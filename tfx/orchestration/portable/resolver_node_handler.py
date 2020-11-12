@@ -16,6 +16,7 @@
 from typing import Any, Dict
 
 from absl import logging
+from tfx.dsl.resolvers import base_resolver
 from tfx.orchestration import metadata
 from tfx.orchestration.portable import execution_publish_utils
 from tfx.orchestration.portable import inputs_utils
@@ -64,7 +65,10 @@ class ResolverNodeHandler(system_node_handler.SystemNodeHandler):
       exec_properties = inputs_utils.resolve_parameters(
           node_parameters=pipeline_node.parameters)
       input_artifacts = inputs_utils.resolve_input_artifacts(
-          metadata_handler=m, node_inputs=pipeline_node.inputs)
+          context=base_resolver.ResolverContext(
+              metadata_handler=m,
+              pipeline_node=pipeline_node),
+          node_inputs=pipeline_node.inputs)
 
       # 3. Registers execution in metadata.
       execution = execution_publish_utils.register_execution(

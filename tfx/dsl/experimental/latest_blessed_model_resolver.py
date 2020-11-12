@@ -125,13 +125,13 @@ class LatestBlessedModelResolver(base_resolver.BaseResolver):
         per_key_resolve_state=resolve_state_dict)
 
   def resolve_artifacts(
-      self, metadata_handler: metadata.Metadata,
+      self, context: base_resolver.ResolverContext,
       input_dict: Dict[Text, List[types.Artifact]]
   ) -> Optional[Dict[Text, List[types.Artifact]]]:
     """Resolves artifacts from channels by querying MLMD.
 
     Args:
-      metadata_handler: A metadata handler to access MLMD store.
+      context: A ResolverContext for resolver runtime.
       input_dict: The input_dict to resolve from.
 
     Returns:

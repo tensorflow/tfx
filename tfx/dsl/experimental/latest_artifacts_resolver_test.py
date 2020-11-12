@@ -23,8 +23,10 @@ from __future__ import print_function
 import tensorflow as tf
 from tfx import types
 from tfx.dsl.experimental import latest_artifacts_resolver
+from tfx.dsl.resolvers import base_resolver
 from tfx.orchestration import data_types
 from tfx.orchestration import metadata
+from tfx.proto.orchestration import pipeline_pb2
 from tfx.types import standard_artifacts
 
 from ml_metadata.proto import metadata_store_pb2
@@ -42,6 +44,11 @@ class LatestArtifactsResolverTest(tf.test.TestCase):
         component_type='a.b.c',
         component_id='my_component',
         pipeline_info=self._pipeline_info)
+
+  def build_resolver_context(self, metadata_handler):
+    return base_resolver.ResolverContext(
+        metadata_handler=metadata_handler,
+        pipeline_node=pipeline_pb2.PipelineNode())
 
   def testGetLatestArtifact(self):
     with metadata.Metadata(connection_config=self._connection_config) as m:
@@ -93,7 +100,8 @@ class LatestArtifactsResolverTest(tf.test.TestCase):
 
       resolver = latest_artifacts_resolver.LatestArtifactsResolver()
       result = resolver.resolve_artifacts(
-          m, {'input': [artifact_two, artifact_one]})
+          self.build_resolver_context(m),
+          {'input': [artifact_two, artifact_one]})
       self.assertIsNotNone(result)
       self.assertEqual([a.uri for a in result['input']],
                        [expected_artifact.uri])

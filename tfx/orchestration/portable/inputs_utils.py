@@ -17,6 +17,7 @@ from typing import Dict, Iterable, List, Optional
 
 from absl import logging
 from tfx import types
+from tfx.dsl.resolvers import base_resolver
 from tfx.orchestration import metadata
 from tfx.orchestration.portable import resolver_processor
 from tfx.orchestration.portable.mlmd import common_utils
@@ -74,7 +75,7 @@ def get_qualified_artifacts(
   qualified_output_events = [
       ev for ev in metadata_handler.store.get_events_by_execution_ids(
           qualified_producer_executions)
-      if event_lib.validate_output_event(ev, output_key)
+      if event_lib.is_valid_output_event(ev, output_key)
   ]
 
   # Gets the candidate artifacts from output events.
@@ -114,12 +115,13 @@ def _resolve_single_channel(
 
 
 def resolve_input_artifacts(
-    metadata_handler: metadata.Metadata, node_inputs: pipeline_pb2.NodeInputs
+    context: base_resolver.ResolverContext,
+    node_inputs: pipeline_pb2.NodeInputs
 ) -> Optional[Dict[str, List[types.Artifact]]]:
   """Resolves input artifacts of a pipeline node.
 
   Args:
-    metadata_handler: A metadata handler to access MLMD store.
+    context: A ResolverContext for resolver runtime.
     node_inputs: A pipeline_pb2.NodeInputs message that instructs artifact
       resolution for a pipeline node.
 
@@ -128,11 +130,10 @@ def resolve_input_artifacts(
     Otherwise, return None.
   """
   result = collections.defaultdict(set)
-  all_input_satisfied = True
   for key, input_spec in node_inputs.inputs.items():
     for channel in input_spec.channels:
       artifacts = _resolve_single_channel(
-          metadata_handler=metadata_handler, channel=channel)
+          metadata_handler=context.metadata_handler, channel=channel)
       result[key].update(artifacts)
 
     # If `min_count` is not satisfied, return None for the whole result.
@@ -140,13 +141,15 @@ def resolve_input_artifacts(
       logging.warning(
           "Input %s doesn't have enough data to resolve, required number %d, "
           'got %d', key, input_spec.min_count, len(result[key]))
-      all_input_satisfied = False
+      return None
 
   result = {k: list(v) for k, v in result.items()}
-
-  resolver = resolver_processor.ResolverProcessor(node_inputs)
-  return (resolver.ResolveInputs(metadata_handler, result)
-          if all_input_satisfied else None)
+  for processor in (resolver_processor.ResolverProcessorFactory
+                    .from_resolver_config(node_inputs.resolver_config)):
+    result = processor.resolve_inputs(context, result)
+    if result is None:
+      return None
+  return result
 
 
 def resolve_parameters(

@@ -24,6 +24,7 @@ import tensorflow as tf
 from tfx import types
 from tfx.components.model_validator import constants as model_validator
 from tfx.dsl.experimental import latest_blessed_model_resolver
+from tfx.dsl.resolvers import base_resolver
 from tfx.orchestration import data_types
 from tfx.orchestration import metadata
 from tfx.proto.orchestration import pipeline_pb2
@@ -111,6 +112,11 @@ class LatestBlessedModelResolverTest(tf.test.TestCase):
         model_validator
         .ARTIFACT_PROPERTY_CURRENT_MODEL_ID_KEY].int_value = model_id
 
+  def build_resolver_context(self, metadata_handler):
+    return base_resolver.ResolverContext(
+        metadata_handler=metadata_handler,
+        pipeline_node=pipeline_pb2.PipelineNode())
+
   def testGetLatestBlessedModelArtifact(self):
     with metadata.Metadata(connection_config=self._connection_config) as m:
       contexts = m.register_pipeline_contexts_if_not_exists(self._pipeline_info)
@@ -190,7 +196,8 @@ class LatestBlessedModelResolverTest(tf.test.TestCase):
 
       resolver = latest_blessed_model_resolver.LatestBlessedModelResolver()
       result = resolver.resolve_artifacts(
-          m, {
+          self.build_resolver_context(m),
+          {
               'model': [model_one, model_two, model_three],
               'model_blessing': [model_blessing_one, model_blessing_two]
           })
