@@ -138,6 +138,61 @@ class MetadataTest(tf.test.TestCase):
       self._check_artifact_state(m, artifact, ArtifactState.PUBLISHED)
       m.update_artifact_state(artifact, ArtifactState.DELETED)
       self._check_artifact_state(m, artifact, ArtifactState.DELETED)
+  
+  def testArtifactTypeRegistrationForwardCompatible(self):
+    with metadata.Metadata(connection_config=self._connection_config) as m:
+      self.assertListEqual([], m.store.get_artifacts())
+
+      # Test publish some artifact, the Examples type is registered dynamically.
+      artifact = standard_artifacts.Examples()
+      m.publish_artifacts([artifact])
+      artifact_type = m.store.get_artifact_type(type_name='Examples')
+      self.assertProtoEquals(
+          """id: 1
+        name: "Examples"
+        properties {
+          key: "span"
+          value: INT
+        }
+        properties {
+          key: "version"
+          value: INT
+        }
+        properties {
+          key: "split_names"
+          value: STRING
+        }
+        """, artifact_type)
+
+      # Now mimic a future type updates registered by jobs of newer release
+      artifact_type.properties['new_property'] = metadata_store_pb2.DOUBLE
+      m.store.put_artifact_type(artifact_type, can_add_fields=True)
+
+      # The artifact from the current artifacts can still be inserted.
+      artifact2 = standard_artifacts.Examples()
+      m.publish_artifacts([artifact2])
+      stored_type = m.store.get_artifact_type(type_name='Examples')
+      self.assertProtoEquals(
+          """id: 1
+        name: "Examples"
+        properties {
+          key: "span"
+          value: INT
+        }
+        properties {
+          key: "version"
+          value: INT
+        }
+        properties {
+          key: "split_names"
+          value: STRING
+        }
+        properties {
+          key: "new_property"
+          value: DOUBLE
+        }
+        """, stored_type)
+      self.assertEqual(2, len(m.store.get_artifacts()))
 
   def testExecution(self):
     with metadata.Metadata(connection_config=self._connection_config) as m:
