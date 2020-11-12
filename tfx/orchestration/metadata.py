@@ -182,8 +182,14 @@ class Metadata(object):
   ) -> metadata_store_pb2.ArtifactType:
     if artifact_type.id:
       return artifact_type
+    # Types can be evolved by adding new fields in newer releases.
+    # Here when upserting types:
+    # a) we enable `can_add_fields` so that type updates made in the current
+    #    release are backward compatible with older release;
+    # b) we enable `can_omit_fields` so that the current release is forward
+    #    compatible with any type updates made by future release.
     type_id = self.store.put_artifact_type(
-        artifact_type=artifact_type, can_add_fields=True)
+        artifact_type=artifact_type, can_add_fields=True, can_omit_fields=True)
     artifact_type.id = type_id
     return artifact_type
 
