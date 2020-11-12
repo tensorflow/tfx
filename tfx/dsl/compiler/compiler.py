@@ -269,11 +269,12 @@ class Compiler(object):
     Returns:
       A Pipeline proto that encodes all necessary information of the pipeline.
     """
-    context = _CompilerContext(tfx_pipeline.pipeline_info,
-                               tfx_pipeline.execution_mode)
+    context = _CompilerContext(
+        tfx_pipeline.pipeline_info,
+        compiler_utils.resolve_execution_mode(tfx_pipeline))
     pipeline_pb = pipeline_pb2.Pipeline()
     pipeline_pb.pipeline_info.id = context.pipeline_info.pipeline_name
-    pipeline_pb.execution_mode = tfx_pipeline.execution_mode
+    pipeline_pb.execution_mode = context.execution_mode
     compiler_utils.set_runtime_parameter_pb(
         pipeline_pb.runtime_spec.pipeline_root.runtime_parameter,
         constants.PIPELINE_ROOT_PARAMETER_NAME, str,

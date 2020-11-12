@@ -20,6 +20,7 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 import collections
+import enum
 import json
 import os
 from typing import List, Optional, Text, cast
@@ -28,7 +29,6 @@ from tfx.dsl.components.base import base_node
 from tfx.dsl.components.base import executor_spec
 from tfx.orchestration import data_types
 from tfx.orchestration import metadata
-from tfx.proto.orchestration import pipeline_pb2
 from tfx.utils import topsort
 
 from google.protobuf import message
@@ -54,6 +54,17 @@ _PIPELINE_ROOT = 'pipeline-root'
 #             base_directory=os.path.join(
 #                 str(pipeline.ROOT_PARAMETER), 'model_serving'))))
 ROOT_PARAMETER = data_types.RuntimeParameter(name=_PIPELINE_ROOT, ptype=Text)
+
+
+class ExecutionMode(enum.Enum):
+  """Execution mode of a pipeline.
+
+  Please see `this RFC
+  <https://github.com/tensorflow/community/blob/master/rfcs/20200601-tfx-udsl-semantics.md>`
+  for more details.
+  """
+  SYNC = 1
+  ASYNC = 2
 
 
 class Pipeline(object):
@@ -87,6 +98,7 @@ class Pipeline(object):
                enable_cache: Optional[bool] = False,
                beam_pipeline_args: Optional[List[Text]] = None,
                platform_config: Optional[message.Message] = None,
+               execution_mode: Optional[ExecutionMode] = ExecutionMode.SYNC,
                **kwargs):
     """Initialize pipeline.
 
@@ -100,6 +112,7 @@ class Pipeline(object):
       enable_cache: Whether or not cache is enabled for this run.
       beam_pipeline_args: Pipeline arguments for Beam powered Components.
       platform_config: Pipeline level platform config, in proto form.
+      execution_mode: The execution mode of the pipeline, can be SYNC or ASYNC.
       **kwargs: Additional kwargs forwarded as pipeline args.
     """
     if len(pipeline_name) > MAX_PIPELINE_NAME_LENGTH:
@@ -111,9 +124,7 @@ class Pipeline(object):
         pipeline_name=pipeline_name, pipeline_root=pipeline_root)
     self.enable_cache = enable_cache
     self.metadata_connection_config = metadata_connection_config
-    # TODO(b/166125012): Remove this hardcoded once we support asynchronous
-    # execution mode.
-    self.execution_mode = pipeline_pb2.Pipeline.ExecutionMode.SYNC
+    self.execution_mode = execution_mode
 
     self.beam_pipeline_args = beam_pipeline_args or []
 

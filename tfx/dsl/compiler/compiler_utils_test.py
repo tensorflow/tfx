@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2020 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,12 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Tests for tfx.dsl.compiler.compiler_utils."""
-
-# TODO(b/149535307): Remove __future__ imports
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import itertools
 from absl.testing import parameterized
 
@@ -32,6 +25,7 @@ from tfx.dsl.components.base import base_component
 from tfx.dsl.components.base import base_executor
 from tfx.dsl.components.base import executor_spec
 from tfx.dsl.experimental import latest_blessed_model_resolver
+from tfx.orchestration import pipeline
 from tfx.proto.orchestration import pipeline_pb2
 from tfx.types import standard_artifacts
 from tfx.utils.dsl_utils import external_input
@@ -113,6 +107,16 @@ class CompilerUtilsTest(tf.test.TestCase, parameterized.TestCase):
         self.assertTrue(compiler_utils.ensure_topological_order(order))
       else:
         self.assertFalse(compiler_utils.ensure_topological_order(order))
+
+  def testIncompatibleExecutionMode(self):
+    p = pipeline.Pipeline(
+        pipeline_name="fake_name",
+        pipeline_root="fake_root",
+        enable_cache=True,
+        execution_mode=pipeline.ExecutionMode.ASYNC)
+
+    with self.assertRaisesRegex(RuntimeError, "Caching is a feature only"):
+      compiler_utils.resolve_execution_mode(p)
 
 
 if __name__ == "__main__":

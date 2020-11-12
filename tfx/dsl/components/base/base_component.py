@@ -19,6 +19,7 @@ from __future__ import division
 from __future__ import print_function
 
 import abc
+import copy
 import inspect
 from typing import Any, Dict, Optional, Text
 
@@ -96,7 +97,15 @@ class BaseComponent(with_metaclass(abc.ABCMeta, base_node.BaseNode)):
         raise TypeError(
             ('Custom executor spec override %s for %s should be an instance of '
              'ExecutorSpec') % (custom_executor_spec, self.__class__))
-    executor_spec_obj = (custom_executor_spec or self.__class__.EXECUTOR_SPEC)
+    # TODO(b/171742415): Remove this try-catch block once we migrate Beam
+    # DAG runner to IR-based stack. The deep copy will only fail for function
+    # based components due to pickle workaround we created in ExecutorClassSpec.
+    try:
+      executor_spec_obj = (
+          custom_executor_spec or copy.deepcopy(self.__class__.EXECUTOR_SPEC))
+    except AttributeError:
+      executor_spec_obj = self.__class__.EXECUTOR_SPEC
+
     driver_class = self.__class__.DRIVER_CLASS
     super(BaseComponent, self).__init__(
         instance_name=instance_name,
