@@ -18,6 +18,9 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import sys
+import unittest
+
 import mock
 import tensorflow as tf
 from tfx import types
@@ -110,13 +113,16 @@ class _FakeComponent(base_component.BaseComponent):
   EXECUTOR_SPEC = executor_spec.ExecutorClassSpec(base_executor.BaseExecutor)
 
   def __init__(self, spec: types.ComponentSpec):
-    instance_name = spec.__class__.__name__.replace(
-        '_FakeComponentSpec', '').lower()
+    instance_name = spec.__class__.__name__.replace('_FakeComponentSpec',
+                                                    '').lower()
     super(_FakeComponent, self).__init__(spec=spec, instance_name=instance_name)
 
 
 class BeamDagRunnerTest(tf.test.TestCase):
 
+  # TODO(b/166480318): Enable tests after pickling issue from Beam is resolved.
+  @unittest.skipIf(sys.version_info >= (3, 7, 0),
+                   'not working with Python 3.7 and later')
   @mock.patch.multiple(
       beam_dag_runner,
       _ComponentAsDoFn=_FakeComponentAsDoFn,
