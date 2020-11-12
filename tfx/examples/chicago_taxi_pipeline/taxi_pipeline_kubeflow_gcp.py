@@ -190,7 +190,7 @@ def create_pipeline(
         # Temporary overrides of defaults.
         '--disk_size_gb=50',
         '--experiments=shuffle_mode=auto',
-        '--machine_type=e2-standard-8',
+        '--machine_type=n1-standard-8',
     ]
 
   # Number of epochs in training.

@@ -118,7 +118,7 @@ _query_sample_rate = 0.0001  # Generate a 0.01% random sample.
 #    # Temporary overrides of defaults.
 #    '--disk_size_gb=50',
 #    '--experiments=shuffle_mode=auto',
-#    '--machine_type=e2-standard-8',
+#    '--machine_type=n1-standard-8',
 #    ]
 
 # A dict which contains the training job parameters to be passed to Google

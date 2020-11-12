@@ -100,18 +100,12 @@ class ExecNodeTask(Task, HasNodeUid):
     contexts: List of contexts associated with the execution.
     exec_properties: Execution properties of the execution.
     input_artifacts: Input artifacts dict.
-    output_artifacts: Output artifacts dict.
-    executor_output_uri: URI for the executor output.
-    stateful_working_dir: Working directory for the node execution.
   """
   _node_uid = attr.ib(type=NodeUid)
   execution = attr.ib(type=metadata_store_pb2.Execution)
   contexts = attr.ib(type=List[metadata_store_pb2.Context])
   exec_properties = attr.ib(type=Dict[Text, types.Property])
   input_artifacts = attr.ib(type=Dict[Text, List[types.Artifact]])
-  output_artifacts = attr.ib(type=Dict[Text, List[types.Artifact]])
-  executor_output_uri = attr.ib(type=Text)
-  stateful_working_dir = attr.ib(type=Text)
 
   @property
   def node_uid(self) -> NodeUid:

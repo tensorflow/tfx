@@ -159,24 +159,27 @@ def register_type_if_not_exist(
     raise ValueError('Unexpected value type: %s.' % type(metadata_type))
 
   try:
-    # Types can be evolved by adding new fields in newer releases.
-    # Here when upserting types:
-    # a) we enable `can_add_fields` so that type updates made in the current
-    #    release are backward compatible with older release;
-    # b) we enable `can_omit_fields` so that the current release is forward
-    #    compatible with any type updates made by future release.
-    type_id = put_type_handler(
-        metadata_type, can_add_fields=True, can_omit_fields=True)
-    logging.debug('Registering a metadata type with id %s.', type_id)
-    metadata_type = get_type_handler(metadata_type.name)
+    type_id = put_type_handler(metadata_type, can_add_fields=True)
+    logging.debug('Registering a new metadata type with id %s.', type_id)
+    metadata_type.id = type_id
     return metadata_type
   except mlmd.errors.AlreadyExistsError:
-    existing_type = get_type_handler(metadata_type.name)
+    type_name = metadata_type.name
+    existing_type = get_type_handler(type_name)
     assert existing_type is not None, (
-        'Not expected to get None when getting type %s.' % metadata_type.name)
-    warning_str = (
-        'Conflicting properties comparing with existing metadata type '
-        'with the same type name. Existing type: '
-        '%s, New type: %s') % (existing_type, metadata_type)
-    logging.warning(warning_str)
-    raise RuntimeError(warning_str)
+        'Not expected to get None when getting type %s.' % type_name)
+
+    # If the existing type is a super set of the proposed type, directly use it.
+    # Otherwise, there is a type conflict since the AlreadyExistsError already
+    # indicates the existing type is not a subset of the proposed type.
+    if all(
+        existing_type.properties.get(k) == metadata_type.properties.get(k)
+        for k in metadata_type.properties.keys()):
+      return existing_type
+    else:
+      warning_str = (
+          'Missing or modified key in properties comparing with '
+          'existing metadata type with the same type name. Existing type: '
+          '%s, New type: %s') % (existing_type, metadata_type)
+      logging.warning(warning_str)
+      raise RuntimeError(warning_str)

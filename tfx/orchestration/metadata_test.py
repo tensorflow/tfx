@@ -145,61 +145,6 @@ class MetadataTest(tf.test.TestCase):
       m.update_artifact_state(artifact, ArtifactState.DELETED)
       self._check_artifact_state(m, artifact, ArtifactState.DELETED)
 
-  def testArtifactTypeRegistrationForwardCompatible(self):
-    with metadata.Metadata(connection_config=self._connection_config) as m:
-      self.assertListEqual([], m.store.get_artifacts())
-
-      # Test publish some artifact, the Examples type is registered dynamically.
-      artifact = standard_artifacts.Examples()
-      m.publish_artifacts([artifact])
-      artifact_type = m.store.get_artifact_type(type_name='Examples')
-      self.assertProtoEquals(
-          """id: 1
-        name: "Examples"
-        properties {
-          key: "span"
-          value: INT
-        }
-        properties {
-          key: "version"
-          value: INT
-        }
-        properties {
-          key: "split_names"
-          value: STRING
-        }
-        """, artifact_type)
-
-      # Now mimic a future type updates registered by jobs of newer release
-      artifact_type.properties['new_property'] = metadata_store_pb2.DOUBLE
-      m.store.put_artifact_type(artifact_type, can_add_fields=True)
-
-      # The artifact from the current artifacts can still be inserted.
-      artifact2 = standard_artifacts.Examples()
-      m.publish_artifacts([artifact2])
-      stored_type = m.store.get_artifact_type(type_name='Examples')
-      self.assertProtoEquals(
-          """id: 1
-        name: "Examples"
-        properties {
-          key: "span"
-          value: INT
-        }
-        properties {
-          key: "version"
-          value: INT
-        }
-        properties {
-          key: "split_names"
-          value: STRING
-        }
-        properties {
-          key: "new_property"
-          value: DOUBLE
-        }
-        """, stored_type)
-      self.assertEqual(2, len(m.store.get_artifacts()))
-
   def testExecution(self):
     with metadata.Metadata(connection_config=self._connection_config) as m:
       contexts = m.register_pipeline_contexts_if_not_exists(self._pipeline_info)
@@ -461,9 +406,8 @@ class MetadataTest(tf.test.TestCase):
           pipeline_info=self._pipeline_info5,
           component_info=self._component_info5,
           contexts=contexts)
-      [execution_one, execution_two,
-       execution_three] = m.store.get_executions_by_id(
-           [execution_one.id, execution_two.id, execution_three.id])
+      [execution_one, execution_two
+      ] = m.store.get_executions_by_id([execution_one.id, execution_two.id])
       # Skip verifying time sensitive fields.
       execution_one.ClearField('create_time_since_epoch')
       execution_one.ClearField('last_update_time_since_epoch')

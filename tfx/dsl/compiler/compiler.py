@@ -17,8 +17,6 @@ import re
 
 from typing import cast
 
-from absl import logging
-
 from tfx.components.common_nodes import importer_node
 from tfx.components.common_nodes import resolver_node
 from tfx.dsl.compiler import compiler_utils
@@ -173,10 +171,8 @@ class Compiler(object):
         node.inputs.resolver_config.resolver_policy = (
             pipeline_pb2.ResolverConfig.ResolverPolicy.LATEST_BLESSED_MODEL)
       else:
-        logging.error("Got unsupported resolver policy: %s", type(resolver))
-        node.inputs.resolver_config.resolver_policy = (
-            pipeline_pb2.ResolverConfig.ResolverPolicy
-            .RESOLVER_POLICY_UNSPECIFIED)
+        raise ValueError("Got unsupported resolver policy: {}".format(
+            resolver.type))
 
     # Step 4: Node outputs
     if isinstance(tfx_node, base_component.BaseComponent):
@@ -273,12 +269,11 @@ class Compiler(object):
     Returns:
       A Pipeline proto that encodes all necessary information of the pipeline.
     """
-    context = _CompilerContext(
-        tfx_pipeline.pipeline_info,
-        compiler_utils.resolve_execution_mode(tfx_pipeline))
+    context = _CompilerContext(tfx_pipeline.pipeline_info,
+                               tfx_pipeline.execution_mode)
     pipeline_pb = pipeline_pb2.Pipeline()
     pipeline_pb.pipeline_info.id = context.pipeline_info.pipeline_name
-    pipeline_pb.execution_mode = context.execution_mode
+    pipeline_pb.execution_mode = tfx_pipeline.execution_mode
     compiler_utils.set_runtime_parameter_pb(
         pipeline_pb.runtime_spec.pipeline_root.runtime_parameter,
         constants.PIPELINE_ROOT_PARAMETER_NAME, str,

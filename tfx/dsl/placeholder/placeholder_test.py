@@ -280,13 +280,6 @@ class PlaceholderTest(tf.test.TestCase):
     component_spec = standard_component_specs.TransformSpec
     self.assertProtoEquals(placeholder.encode(component_spec), expected_pb)
 
-  def testExecInvocation(self):
-    self._assert_placeholder_pb_equal(
-        ph.execution_invocation(), """
-        placeholder {
-          type: EXEC_INVOCATION
-        }
-    """)
 
 if __name__ == '__main__':
   tf.test.main()
