@@ -70,7 +70,7 @@ def make_required_install_packages():
       'ml-metadata' + select_constraint(
           # LINT.IfChange
           default='>=0.24,<0.25',
-          # LINT.ThenChange(opensource_only/build/tfx.workspace.bzl)
+          # LINT.ThenChange(tfx/workspace.bzl)
           nightly='>=0.25.0.dev',
           git_master='@git+https://github.com/google/ml-metadata@master'),
       'protobuf>=3.12.2,<4',

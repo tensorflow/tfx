@@ -13,7 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# TODO(b/158994632): Move this module under opensource_only.
 """Setuptools ResolveDeps command.
 
 Resolve full transitive dependency from dependency constraints in setup.py. If
