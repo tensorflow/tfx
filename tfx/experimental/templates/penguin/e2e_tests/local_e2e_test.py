@@ -1,4 +1,4 @@
-# Lint as: python2, python3
+# Lint as: python3
 # Copyright 2020 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,11 +12,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""E2E test using Beam orchestrator for taxi template."""
-
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
+"""E2E test using local orchestrator for penguin template."""
 
 import os
 import subprocess
@@ -28,11 +24,12 @@ import tensorflow as tf
 from tfx.experimental.templates import test_utils
 
 
-class TaxiTemplateBeamEndToEndTest(test_utils.BaseEndToEndTest):
-  """This test covers step 1~6 of the accompanying document[1] for taxi template.
+class PenguinTemplateLocalEndToEndTest(test_utils.BaseEndToEndTest):
+  """This test runs all components in the template."""
 
-  [1]https://github.com/tensorflow/tfx/blob/master/docs/tutorials/tfx/template.ipynb
-  """
+  def setUp(self):
+    super().setUp()
+    self._pipeline_name = 'PENGUIN_TEMPLATE_E2E_TEST'
 
   def _getAllUnitTests(self):
     for root, _, files in os.walk(self._project_dir):
@@ -47,24 +44,24 @@ class TaxiTemplateBeamEndToEndTest(test_utils.BaseEndToEndTest):
           yield base_module + filename[:-3]
 
   def testGeneratedUnitTests(self):
-    self._copyTemplate('taxi')
+    self._copyTemplate('penguin')
     for m in self._getAllUnitTests():
       logging.info('Running unit test "%s"', m)
       # A failed googletest will raise a CalledProcessError.
       _ = subprocess.check_output([sys.executable, '-m', m])
 
-  def testBeamPipeline(self):
-    self._copyTemplate('taxi')
-    os.environ['BEAM_HOME'] = os.path.join(self._temp_dir, 'beam')
+  def testLocalPipeline(self):
+    self._copyTemplate('penguin')
+    os.environ['LOCAL_HOME'] = os.path.join(self._temp_dir, 'local')
 
     # Create a pipeline with only one component.
     result = self._runCli([
         'pipeline',
         'create',
         '--engine',
-        'beam',
+        'local',
         '--pipeline_path',
-        'beam_dag_runner.py',
+        'local_runner.py',
     ])
     self.assertEqual(0, result.exit_code)
     self.assertIn(
@@ -76,7 +73,7 @@ class TaxiTemplateBeamEndToEndTest(test_utils.BaseEndToEndTest):
         'run',
         'create',
         '--engine',
-        'beam',
+        'local',
         '--pipeline_name',
         self._pipeline_name,
     ])
@@ -90,9 +87,9 @@ class TaxiTemplateBeamEndToEndTest(test_utils.BaseEndToEndTest):
         'pipeline',
         'update',
         '--engine',
-        'beam',
+        'local',
         '--pipeline_path',
-        'beam_dag_runner.py',
+        'local_runner.py',
     ])
     self.assertEqual(0, result.exit_code)
     self.assertIn(
@@ -104,7 +101,7 @@ class TaxiTemplateBeamEndToEndTest(test_utils.BaseEndToEndTest):
         'run',
         'create',
         '--engine',
-        'beam',
+        'local',
         '--pipeline_name',
         self._pipeline_name,
     ])

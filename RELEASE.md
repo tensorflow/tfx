@@ -17,6 +17,13 @@
 ## Bug fixes and other changes
 
 *   Supported users to set `id` of pipeline nodes directly.
+*   Added a new template, 'penguin' which is simple subset of
+    [penguin examples](https://github.com/tensorflow/tfx/tree/master/tfx/examples/penguin),
+    and uses the same
+    [Palmer Penguins](https://allisonhorst.github.io/palmerpenguins/articles/intro.html)
+    dataset. The new template focused on easy ingestion of user's own data.
+*   Changed default data path for the taxi template from `tfx-template/data`
+    to `tfx-template/data/taxi`.
 
 ## Documentation updates
 

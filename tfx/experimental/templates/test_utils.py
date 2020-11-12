@@ -12,7 +12,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""E2E test utilities for taxi template."""
+"""E2E test utilities for templates."""
 
 from __future__ import absolute_import
 from __future__ import division
@@ -33,10 +33,7 @@ from tfx.utils import io_utils
 
 
 class BaseEndToEndTest(tf.test.TestCase):
-  """This test covers step 1~6 of the accompanying document[1] for taxi template.
-
-  [1]https://github.com/tensorflow/tfx/blob/master/docs/tutorials/tfx/template.ipynb
-  """
+  """Base class for end-to-end testing of TFX templates."""
 
   def setUp(self):
     super(BaseEndToEndTest, self).setUp()
@@ -49,7 +46,7 @@ class BaseEndToEndTest(tf.test.TestCase):
 
     self._temp_dir = self.create_tempdir().full_path
 
-    self._pipeline_name = 'TAXI_TEMPLATE_E2E_TEST'
+    self._pipeline_name = 'TEMPLATE_E2E_TEST'
     self._project_dir = os.path.join(self._temp_dir, 'src')
     self._old_cwd = os.getcwd()
     os.mkdir(self._project_dir)
@@ -155,7 +152,7 @@ class BaseEndToEndTest(tf.test.TestCase):
     io_utils.write_string_file(path, ''.join(result))
     return path
 
-  def _copyTemplate(self):
+  def _copyTemplate(self, model):
     result = self._runCli([
         'template',
         'copy',
@@ -164,7 +161,7 @@ class BaseEndToEndTest(tf.test.TestCase):
         '--destination_path',
         self._project_dir,
         '--model',
-        'taxi',
+        model,
     ])
     self.assertEqual(0, result.exit_code)
-    self.assertIn('Copying taxi pipeline template', result.output)
+    self.assertIn('Copying {} pipeline template'.format(model), result.output)

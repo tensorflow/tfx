@@ -1,4 +1,4 @@
-# Lint as: python2, python3
+# Lint as: python3
 # Copyright 2020 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,15 +13,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Define KubeflowDagRunner to run the pipeline using Kubeflow."""
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
 
 import os
 from absl import logging
 
-from tfx.experimental.templates.taxi.pipeline import configs
-from tfx.experimental.templates.taxi.pipeline import pipeline
+from tfx.experimental.templates.penguin.pipeline import configs
+from tfx.experimental.templates.penguin.pipeline import pipeline
 from tfx.orchestration.kubeflow import kubeflow_dag_runner
 from tfx.proto import trainer_pb2
 from tfx.utils import telemetry_utils
@@ -50,7 +47,7 @@ SERVING_MODEL_DIR = os.path.join(PIPELINE_ROOT, 'serving_model')
 # dependency currently, so this means CsvExampleGen cannot be used with Dataflow
 # (step 8 in the template notebook).
 
-DATA_PATH = 'gs://{}/tfx-template/data/taxi/'.format(configs.GCS_BUCKET_NAME)
+DATA_PATH = 'gs://{}/tfx-template/data/penguin/'.format(configs.GCS_BUCKET_NAME)
 
 
 def run():
@@ -81,7 +78,7 @@ def run():
           pipeline_name=configs.PIPELINE_NAME,
           pipeline_root=PIPELINE_ROOT,
           data_path=DATA_PATH,
-          # TODO(step 7): (Optional) Uncomment below to use BigQueryExampleGen.
+          # NOTE: Use `query` instead of `data_path` to use BigQueryExampleGen.
           # query=configs.BIG_QUERY_QUERY,
           preprocessing_fn=configs.PREPROCESSING_FN,
           run_fn=configs.RUN_FN,
@@ -89,16 +86,9 @@ def run():
           eval_args=trainer_pb2.EvalArgs(num_steps=configs.EVAL_NUM_STEPS),
           eval_accuracy_threshold=configs.EVAL_ACCURACY_THRESHOLD,
           serving_model_dir=SERVING_MODEL_DIR,
-          # TODO(step 7): (Optional) Uncomment below to use provide GCP related
-          #               config for BigQuery with Beam DirectRunner.
-          # beam_pipeline_args=configs
-          # .BIG_QUERY_WITH_DIRECT_RUNNER_BEAM_PIPELINE_ARGS,
-          # TODO(step 8): (Optional) Uncomment below to use Dataflow.
-          # beam_pipeline_args=configs.DATAFLOW_BEAM_PIPELINE_ARGS,
-          # TODO(step 9): (Optional) Uncomment below to use Cloud AI Platform.
-          # ai_platform_training_args=configs.GCP_AI_PLATFORM_TRAINING_ARGS,
-          # TODO(step 9): (Optional) Uncomment below to use Cloud AI Platform.
-          # ai_platform_serving_args=configs.GCP_AI_PLATFORM_SERVING_ARGS,
+          # NOTE: Provide GCP configs to use BigQuery with Beam DirectRunner.
+          # beam_pipeline_args=configs.
+          # BIG_QUERY_WITH_DIRECT_RUNNER_BEAM_PIPELINE_ARGS,
       ))
 
 

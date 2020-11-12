@@ -25,11 +25,12 @@ import collections
 import os
 import re
 from typing import Text, Dict, Any, List, Pattern, Set
+import urllib.request
+
 import click
 
 from tfx.dsl.io import fileio
 from tfx.tools.cli import labels
-from tfx.utils import io_utils
 
 _PLACEHOLDER_PIPELINE_NAME = re.compile('{{PIPELINE_NAME}}')
 _PIPELINE_NAME_ESCAPE_CHAR = ['\\', '\'', '"', '/']
@@ -44,9 +45,17 @@ _ADDITIONAL_FILE_PATHS = {
             'examples/chicago_taxi_pipeline/data/big_tipper_label/data.csv',
             'data/data.csv'),
     ],
+    'penguin': [
+        _TemplateFilePath(
+            'http://storage.googleapis.com/download.tensorflow.org/data/palmer_penguins/penguins_processed.csv',
+            'data/data.csv'),
+    ],
 }
 _IGNORE_FILE_PATHS = {
     'taxi': [  # template name
+        'e2e_tests',
+    ],
+    'penguin': [
         'e2e_tests',
     ],
 }
@@ -166,6 +175,11 @@ def copy_template(flags_dict: Dict[Text, Any]) -> None:
   _copy_and_replace_placeholder_dir(template_dir, destination_dir, ignore_paths,
                                     replace_dict)
   for additional_file in _ADDITIONAL_FILE_PATHS.get(model, []):
-    src_path = os.path.join(_tfx_src_dir(), additional_file.src)
     dst_path = os.path.join(destination_dir, additional_file.dst)
-    io_utils.copy_file(src_path, dst_path)
+    fileio.makedirs(os.path.dirname(dst_path))
+
+    if additional_file.src.startswith(('http://', 'https://')):
+      urllib.request.urlretrieve(additional_file.src, dst_path)
+    else:
+      src_path = os.path.join(_tfx_src_dir(), additional_file.src)
+      fileio.copy(src_path, dst_path)
