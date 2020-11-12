@@ -461,8 +461,9 @@ class MetadataTest(tf.test.TestCase):
           pipeline_info=self._pipeline_info5,
           component_info=self._component_info5,
           contexts=contexts)
-      [execution_one, execution_two
-      ] = m.store.get_executions_by_id([execution_one.id, execution_two.id])
+      [execution_one, execution_two,
+       execution_three] = m.store.get_executions_by_id(
+           [execution_one.id, execution_two.id, execution_three.id])
       # Skip verifying time sensitive fields.
       execution_one.ClearField('create_time_since_epoch')
       execution_one.ClearField('last_update_time_since_epoch')
