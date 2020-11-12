@@ -2,6 +2,15 @@
 
 ## Major Features and Improvements
 
+*   Added 'penguin' example. Penguin example uses Palmer Penguins dataset and
+    classify penguin species using four numeric features.
+*   Iris e2e examples are replaced by penguin examples.
+*   TFX BeamDagRunner is migrated to use the tech stack built on top of [IR](https://github.com/tensorflow/tfx/blob/master/tfx/proto/orchestration/pipeline.proto).
+    While this is no-op to users, it is a major step towards supporting more
+    flexible TFX DSL [semetic](https://github.com/tensorflow/community/blob/master/rfcs/20200601-tfx-udsl-semantics.md).
+    Please refer to the [RFC](https://github.com/tensorflow/community/blob/master/rfcs/20200705-tfx-ir.md)
+    of IR to learn more details.
+
 ## Breaking changes
 
 ### For pipeline authors
@@ -66,14 +75,6 @@
     [Kubeflow IR spec](https://github.com/kubeflow/pipelines/blob/master/api/v2alpha1/pipeline_spec.proto).
     Same as `KubeflowDagRunner` it will compile the DSL pipeline into a payload
     but not trigger the execution locally.
-*   Added 'penguin' example. Penguin example uses Palmer Penguins dataset and
-    classify penguin species using four numeric features.
-*   Iris e2e examples are replaced by penguin examples.
-*   TFX BeamDagRunner is migrated to use the tech stack built on top of [IR](https://github.com/tensorflow/tfx/blob/master/tfx/proto/orchestration/pipeline.proto).
-    While this is no-op to users, it is a major step towards supporting more
-    flexible TFX DSL [semetic](https://github.com/tensorflow/community/blob/master/rfcs/20200601-tfx-udsl-semantics.md).
-    Please refer to the [RFC](https://github.com/tensorflow/community/blob/master/rfcs/20200705-tfx-ir.md)
-    of IR to learn more details.
 *   Supports forward compatibility when evolving TFX artifact types, which
     allows jobs of old release and new release run with the same MLMD instance.
 
