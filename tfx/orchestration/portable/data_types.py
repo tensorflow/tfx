@@ -123,6 +123,8 @@ class ExecutionInfo:
   pipeline_node = attr.ib(type=pipeline_pb2.PipelineNode, default=None)
   # The config of the pipeline that this node is running in.
   pipeline_info = attr.ib(type=pipeline_pb2.PipelineInfo, default=None)
+  # The id of the pipeline run that this execution is in.
+  pipeline_run_id = attr.ib(type=str, default=None)
   # LINT.ThenChange(../../proto/orchestration/executor_invocation.proto)
 
   def to_proto(
@@ -137,7 +139,8 @@ class ExecutionInfo:
         stateful_working_dir=self.stateful_working_dir,
         tmp_dir=self.tmp_dir,
         pipeline_node=self.pipeline_node,
-        pipeline_info=self.pipeline_info)
+        pipeline_info=self.pipeline_info,
+        pipeline_run_id=self.pipeline_run_id)
 
   @classmethod
   def from_proto(
@@ -153,4 +156,5 @@ class ExecutionInfo:
         stateful_working_dir=executor_invocation.stateful_working_dir,
         tmp_dir=executor_invocation.tmp_dir,
         pipeline_node=executor_invocation.pipeline_node,
-        pipeline_info=executor_invocation.pipeline_info)
+        pipeline_info=executor_invocation.pipeline_info,
+        pipeline_run_id=executor_invocation.pipeline_run_id)

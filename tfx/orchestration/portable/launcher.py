@@ -247,6 +247,9 @@ class Launcher(object):
             contexts=contexts,
             is_execution_needed=False)
 
+      pipeline_run_id = (
+          self._pipeline_runtime_spec.pipeline_run_id.field_value.string_value)
+
       # 8. Going to trigger executor.
       return _PrepareExecutionResult(
           execution_info=data_types.ExecutionInfo(
@@ -260,7 +263,8 @@ class Launcher(object):
                   self._output_resolver.get_stateful_working_directory()),
               tmp_dir=self._output_resolver.make_tmp_dir(execution.id),
               pipeline_node=self._pipeline_node,
-              pipeline_info=self._pipeline_info),
+              pipeline_info=self._pipeline_info,
+              pipeline_run_id=pipeline_run_id),
           execution_metadata=execution,
           contexts=contexts,
           is_execution_needed=True)
