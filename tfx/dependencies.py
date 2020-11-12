@@ -69,9 +69,9 @@ def make_required_install_packages():
       'kubernetes>=10.0.1,<12',
       'ml-metadata' + select_constraint(
           # LINT.IfChange
-          default='>=0.24,<0.25',
+          default='>=0.25,<0.26',
           # LINT.ThenChange(tfx/workspace.bzl)
-          nightly='>=0.25.0.dev',
+          nightly='>=0.26.0.dev',
           git_master='@git+https://github.com/google/ml-metadata@master'),
       'protobuf>=3.12.2,<4',
       'pyarrow>=0.17,<0.18',
