@@ -39,6 +39,8 @@
     [Kubeflow IR spec](https://github.com/kubeflow/pipelines/blob/master/api/v2alpha1/pipeline_spec.proto).
     Same as `KubeflowDagRunner` it will compile the DSL pipeline into a payload
     but not trigger the execution locally.
+*   Supports forward compatibility when evolving TFX artifact types, which
+    allows jobs of old release and new release run with the same MLMD instance.
 
 ## Breaking changes
 
