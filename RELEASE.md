@@ -74,6 +74,8 @@
     flexible TFX DSL [semetic](https://github.com/tensorflow/community/blob/master/rfcs/20200601-tfx-udsl-semantics.md).
     Please refer to the [RFC](https://github.com/tensorflow/community/blob/master/rfcs/20200705-tfx-ir.md)
     of IR to learn more details.
+*   Supports forward compatibility when evolving TFX artifact types, which
+    allows jobs of old release and new release run with the same MLMD instance.
 
 ## Breaking changes
 
