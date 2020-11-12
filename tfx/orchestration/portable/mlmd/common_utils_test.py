@@ -182,7 +182,7 @@ class CommonUtilsTest(tf.test.TestCase, parameterized.TestCase):
             value: STRING  # This is different from the original registered type
           }
           """, type_with_different_properties)
-      with self.assertRaisesRegex(RuntimeError, 'Missing or modified key'):
+      with self.assertRaisesRegex(RuntimeError, 'Conflicting properties'):
         common_utils.register_type_if_not_exist(m,
                                                 type_with_different_properties)
 
