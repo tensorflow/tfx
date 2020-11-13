@@ -203,7 +203,7 @@ class BeamDagRunner(tfx_runner.TfxRunner):
       c = compiler.Compiler()
       pipeline = c.compile(pipeline)
 
-    run_id = datetime.datetime.now().strftime('%Y%m%d-%H%M%S.%f')
+    run_id = datetime.datetime.now().isoformat()
     # Substitute the runtime parameter to be a concrete run_id
     runtime_parameter_utils.substitute_runtime_parameter(
         pipeline, {

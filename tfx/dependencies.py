@@ -115,6 +115,7 @@ def make_extra_packages_test():
       'kfp>=1.1.0,<2',
       'kfp-pipeline-spec>=0.1.2,<0.2',
       'pytest>=5,<6',
+      'certifi==2020.6.20',
   ]
 
 
