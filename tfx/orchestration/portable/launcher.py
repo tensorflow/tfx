@@ -36,6 +36,7 @@ from tfx.orchestration.portable.mlmd import context_lib
 from tfx.proto.orchestration import driver_output_pb2
 from tfx.proto.orchestration import executable_spec_pb2
 from tfx.proto.orchestration import execution_result_pb2
+from tfx.proto.orchestration import executor_invocation_pb2  # pylint: disable=unused-import
 from tfx.proto.orchestration import pipeline_pb2
 
 from google.protobuf import message
