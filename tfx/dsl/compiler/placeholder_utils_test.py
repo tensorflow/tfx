@@ -14,12 +14,11 @@
 # limitations under the License.
 """Tests for tfx.dsl.compiler.placeholder_utils."""
 
-import base64
-
 import tensorflow as tf
 from tfx.dsl.compiler import placeholder_utils
 from tfx.orchestration.portable import data_types
 from tfx.proto import infra_validator_pb2
+from tfx.proto.orchestration import executable_spec_pb2
 from tfx.proto.orchestration import executor_invocation_pb2
 from tfx.proto.orchestration import pipeline_pb2
 from tfx.proto.orchestration import placeholder_pb2
@@ -183,7 +182,10 @@ class PlaceholderUtilsTest(tf.test.TestCase):
                 node_info=pipeline_pb2.NodeInfo(
                     type=metadata_store_pb2.ExecutionType(
                         name="infra_validator"))),
-            pipeline_info=pipeline_pb2.PipelineInfo(id="test_pipeline_id")))
+            pipeline_info=pipeline_pb2.PipelineInfo(id="test_pipeline_id")),
+        executor_spec=executable_spec_pb2.PythonClassExecutableSpec(
+            class_path="test_class_path"),
+    )
 
   def testConcatArtifactUri(self):
     pb = text_format.Parse(CONCAT_SPLIT_URI_EXPRESSION,
@@ -301,19 +303,6 @@ class PlaceholderUtilsTest(tf.test.TestCase):
         placeholder_utils.resolve_placeholder_expression(
             pb, self._resolution_context), 1.000000009)
 
-  def testRuntimeInfoPlaceholderSimple(self):
-    placeholder_expression = """
-      placeholder {
-        type: RUNTIME_INFO
-        key: "executor_output_uri"
-      }
-    """
-    pb = text_format.Parse(placeholder_expression,
-                           placeholder_pb2.PlaceholderExpression())
-    self.assertEqual(
-        placeholder_utils.resolve_placeholder_expression(
-            pb, self._resolution_context), "test_executor_output_uri")
-
   def testProtoRuntimeInfoPlaceholderMessageField(self):
     placeholder_expression = """
       operator {
@@ -321,11 +310,10 @@ class PlaceholderUtilsTest(tf.test.TestCase):
           expression {
             placeholder {
               type: RUNTIME_INFO
-              key: "node_info"
+              key: "executor_spec"
             }
           }
-          proto_field_path: ".type"
-          proto_field_path: ".name"
+          proto_field_path: ".class_path"
         }
       }
     """
@@ -333,7 +321,7 @@ class PlaceholderUtilsTest(tf.test.TestCase):
                            placeholder_pb2.PlaceholderExpression())
     self.assertEqual(
         placeholder_utils.resolve_placeholder_expression(
-            pb, self._resolution_context), "infra_validator")
+            pb, self._resolution_context), "test_class_path")
 
   def testProtoSerializationJSON(self):
     placeholder_expression = """
@@ -403,19 +391,24 @@ class PlaceholderUtilsTest(tf.test.TestCase):
                                                        self._resolution_context)
 
   def testExecutionInvocationPlaceholderSimple(self):
-    # TODO(b/170469176): Update when proto encoding Operator is available.
     placeholder_expression = """
-      placeholder {
-        type: EXEC_INVOCATION
+      operator {
+        proto_op {
+          expression {
+            placeholder {
+              type: EXEC_INVOCATION
+            }
+          }
+          serialization_format: JSON
+        }
       }
     """
     pb = text_format.Parse(placeholder_expression,
                            placeholder_pb2.PlaceholderExpression())
     resolved = placeholder_utils.resolve_placeholder_expression(
         pb, self._resolution_context)
-    got_exec_invocation = executor_invocation_pb2.ExecutorInvocation.FromString(
-        base64.b64decode(resolved))
-
+    got_exec_invocation = json_format.Parse(
+        resolved, executor_invocation_pb2.ExecutorInvocation())
     want_exec_invocation = text_format.Parse(
         _WANT_EXEC_INVOCATION, executor_invocation_pb2.ExecutorInvocation())
     self.assertProtoEquals(want_exec_invocation, got_exec_invocation)
