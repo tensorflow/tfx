@@ -18,6 +18,9 @@ from typing import Text
 
 import absl
 
+# TODO(b/169889228): Delete unnecessary import when order issue is fixed.
+import tensorflow as tf  # pylint: disable=unused-import
+
 from tfx.components.example_gen.csv_example_gen.component import CsvExampleGen
 from tfx.components.example_validator.component import ExampleValidator
 from tfx.components.schema_gen.component import SchemaGen
