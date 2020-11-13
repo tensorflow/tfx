@@ -26,6 +26,7 @@ from tfx.types import artifact_utils
 from tfx.types import standard_artifacts
 
 from google.protobuf import descriptor_pb2
+from google.protobuf import descriptor_pool
 from google.protobuf import json_format
 from google.protobuf import text_format
 from ml_metadata.proto import metadata_store_pb2
@@ -412,6 +413,14 @@ class PlaceholderUtilsTest(tf.test.TestCase):
     want_exec_invocation = text_format.Parse(
         _WANT_EXEC_INVOCATION, executor_invocation_pb2.ExecutorInvocation())
     self.assertProtoEquals(want_exec_invocation, got_exec_invocation)
+
+  def testExecutionInvocationDescriptor(self):
+    # Test if ExecutionInvocation proto is in the default descriptor pool
+    pool = descriptor_pool.Default()
+    message_descriptor = pool.FindMessageTypeByName(
+        "tfx.orchestration.ExecutorInvocation")
+    self.assertEqual("tfx.orchestration.ExecutorInvocation",
+                     message_descriptor.full_name)
 
 
 if __name__ == "__main__":
