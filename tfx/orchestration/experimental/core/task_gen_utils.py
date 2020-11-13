@@ -21,6 +21,7 @@ from tfx import types
 from tfx.orchestration import metadata
 from tfx.orchestration.experimental.core import task as task_lib
 from tfx.orchestration.portable import inputs_utils
+from tfx.orchestration.portable import outputs_utils
 from tfx.orchestration.portable.mlmd import common_utils
 from tfx.orchestration.portable.mlmd import context_lib
 from tfx.orchestration.portable.mlmd import execution_lib
@@ -52,16 +53,25 @@ def _generate_task_from_execution(
     metadata_handler: metadata.Metadata, pipeline: pipeline_pb2.Pipeline,
     node: pipeline_pb2.PipelineNode,
     execution: metadata_store_pb2.Execution) -> task_lib.Task:
+  """Generates `ExecNodeTask` given execution."""
   contexts = metadata_handler.store.get_contexts_by_execution(execution.id)
   exec_properties = _extract_properties(execution)
   input_artifacts = execution_lib.get_artifacts_dict(
       metadata_handler, execution.id, metadata_store_pb2.Event.INPUT)
+  outputs_resolver = outputs_utils.OutputsResolver(node, pipeline.pipeline_info,
+                                                   pipeline.runtime_spec,
+                                                   pipeline.execution_mode)
   return task_lib.ExecNodeTask(
       node_uid=task_lib.NodeUid.from_pipeline_node(pipeline, node),
       execution=execution,
       contexts=contexts,
       exec_properties=exec_properties,
-      input_artifacts=input_artifacts)
+      input_artifacts=input_artifacts,
+      output_artifacts=outputs_resolver.generate_output_artifacts(execution.id),
+      executor_output_uri=outputs_resolver.get_executor_output_uri(
+          execution.id),
+      stateful_working_dir=outputs_resolver.get_stateful_working_directory(
+          execution.id))
 
 
 def generate_task_from_active_execution(
