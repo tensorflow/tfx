@@ -103,7 +103,8 @@ class BaseComponent(with_metaclass(abc.ABCMeta, base_node.BaseNode)):
     try:
       executor_spec_obj = (
           custom_executor_spec or copy.deepcopy(self.__class__.EXECUTOR_SPEC))
-    except AttributeError:
+    # TODO(b/173168182): We should add more tests for different executor spec.
+    except:  # pylint:disable = bare-except
       executor_spec_obj = self.__class__.EXECUTOR_SPEC
 
     driver_class = self.__class__.DRIVER_CLASS
