@@ -97,15 +97,18 @@ class BaseComponent(with_metaclass(abc.ABCMeta, base_node.BaseNode)):
         raise TypeError(
             ('Custom executor spec override %s for %s should be an instance of '
              'ExecutorSpec') % (custom_executor_spec, self.__class__))
+
+    executor_spec_obj = custom_executor_spec or self.__class__.EXECUTOR_SPEC
     # TODO(b/171742415): Remove this try-catch block once we migrate Beam
     # DAG runner to IR-based stack. The deep copy will only fail for function
     # based components due to pickle workaround we created in ExecutorClassSpec.
-    try:
-      executor_spec_obj = (
-          custom_executor_spec or copy.deepcopy(self.__class__.EXECUTOR_SPEC))
     # TODO(b/173168182): We should add more tests for different executor spec.
-    except:  # pylint:disable = bare-except
-      executor_spec_obj = self.__class__.EXECUTOR_SPEC
+    if isinstance(executor_spec_obj, executor_spec.ExecutorClassSpec):
+      try:
+        executor_spec_obj = copy.deepcopy(executor_spec_obj)
+      except:  # pylint:disable = bare-except
+        # This will only happen for function based components, which is fine.
+        pass
 
     driver_class = self.__class__.DRIVER_CLASS
     super(BaseComponent, self).__init__(
