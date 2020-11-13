@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,26 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """E2E Tests for tfx.examples.chicago_taxi_pipeline.taxi_pipeline_infraval_beam."""
-
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import os
-from typing import Text
 
 from absl.testing import parameterized
 import tensorflow as tf
 from tfx.dsl.components.base import base_driver
 from tfx.dsl.io import fileio
 from tfx.examples.chicago_taxi_pipeline import taxi_pipeline_infraval_beam
+from tfx.examples.chicago_taxi_pipeline import test_utils
 from tfx.orchestration import metadata
 from tfx.orchestration.beam.beam_dag_runner import BeamDagRunner
 from tfx.orchestration.portable.beam_dag_runner import BeamDagRunner as IrBeamDagRunner
 
 
-class TaxiPipelineInfravalBeamEndToEndTest(
-    tf.test.TestCase, parameterized.TestCase):
+class TaxiPipelineInfravalBeamEndToEndTest(test_utils.TaxiTest,
+                                           parameterized.TestCase):
 
   def setUp(self):
     super(TaxiPipelineInfravalBeamEndToEndTest, self).setUp()
@@ -49,15 +43,6 @@ class TaxiPipelineInfravalBeamEndToEndTest(
     self._metadata_path = os.path.join(self._test_dir, 'tfx', 'metadata',
                                        self._pipeline_name, 'metadata.db')
 
-  def assertExecutedOnce(self, component: Text) -> None:
-    """Check the component is executed exactly once."""
-    component_path = os.path.join(self._pipeline_root, component)
-    self.assertTrue(fileio.exists(component_path))
-    outputs = fileio.listdir(component_path)
-    for output in outputs:
-      execution = fileio.listdir(os.path.join(component_path, output))
-      self.assertLen(execution, 1)
-
   def assertInfraValidatorPassed(self) -> None:
     infra_validator_path = os.path.join(self._pipeline_root, 'InfraValidator')
     blessing_path = os.path.join(self._pipeline_root, 'InfraValidator',
@@ -69,17 +54,6 @@ class TaxiPipelineInfravalBeamEndToEndTest(
           infra_validator_path, 'blessing', exec_id)
       blessed = os.path.join(blessing_uri, 'INFRA_BLESSED')
       self.assertTrue(fileio.exists(blessed))
-
-  def assertPipelineExecution(self) -> None:
-    self.assertExecutedOnce('CsvExampleGen')
-    self.assertExecutedOnce('Evaluator')
-    self.assertExecutedOnce('ExampleValidator')
-    self.assertExecutedOnce('InfraValidator')
-    self.assertExecutedOnce('Pusher')
-    self.assertExecutedOnce('SchemaGen')
-    self.assertExecutedOnce('StatisticsGen')
-    self.assertExecutedOnce('Trainer')
-    self.assertExecutedOnce('Transform')
 
   @parameterized.parameters((BeamDagRunner), (IrBeamDagRunner))
   def testTaxiPipelineBeam(self, runner_class):
@@ -105,7 +79,10 @@ class TaxiPipelineInfravalBeamEndToEndTest(
       self.assertGreaterEqual(artifact_count, execution_count)
       self.assertEqual(num_components, execution_count)
 
-    self.assertPipelineExecution()
+    self.assertComponentsExecuted(self._pipeline_root, [
+        'CsvExampleGen', 'Evaluator', 'ExampleValidator', 'InfraValidator',
+        'Pusher', 'SchemaGen', 'StatisticsGen', 'Trainer', 'Transform'
+    ])
     self.assertInfraValidatorPassed()
 
     # Runs pipeline the second time.

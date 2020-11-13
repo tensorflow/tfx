@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,25 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """E2E Tests for tfx.examples.chicago_taxi_pipeline.taxi_pipeline_native_keras."""
-
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import os
-from typing import Text
 
 from absl.testing import parameterized
 import tensorflow as tf
 from tfx.dsl.io import fileio
 from tfx.examples.chicago_taxi_pipeline import taxi_pipeline_native_keras
+from tfx.examples.chicago_taxi_pipeline import test_utils
 from tfx.orchestration import metadata
 from tfx.orchestration.beam.beam_dag_runner import BeamDagRunner
 from tfx.orchestration.portable.beam_dag_runner import BeamDagRunner as IrBeamDagRunner
 
 
-class TaxiPipelineNativeKerasEndToEndTest(
-    tf.test.TestCase, parameterized.TestCase):
+class TaxiPipelineNativeKerasEndToEndTest(test_utils.TaxiTest,
+                                          parameterized.TestCase):
 
   def setUp(self):
     super(TaxiPipelineNativeKerasEndToEndTest, self).setUp()
@@ -49,25 +43,6 @@ class TaxiPipelineNativeKerasEndToEndTest(
                                        self._pipeline_name)
     self._metadata_path = os.path.join(self._test_dir, 'tfx', 'metadata',
                                        self._pipeline_name, 'metadata.db')
-
-  def assertExecutedOnce(self, component: Text) -> None:
-    """Check the component is executed exactly once."""
-    component_path = os.path.join(self._pipeline_root, component)
-    self.assertTrue(fileio.exists(component_path))
-    outputs = fileio.listdir(component_path)
-    for output in outputs:
-      execution = fileio.listdir(os.path.join(component_path, output))
-      self.assertLen(execution, 1)
-
-  def assertPipelineExecution(self) -> None:
-    self.assertExecutedOnce('CsvExampleGen')
-    self.assertExecutedOnce('Evaluator')
-    self.assertExecutedOnce('ExampleValidator')
-    self.assertExecutedOnce('Pusher')
-    self.assertExecutedOnce('SchemaGen')
-    self.assertExecutedOnce('StatisticsGen')
-    self.assertExecutedOnce('Trainer')
-    self.assertExecutedOnce('Transform')
 
   @parameterized.parameters((BeamDagRunner), (IrBeamDagRunner))
   def testTaxiPipelineNativeKeras(self, runner_class):
@@ -92,7 +67,10 @@ class TaxiPipelineNativeKerasEndToEndTest(
       self.assertGreaterEqual(artifact_count, execution_count)
       self.assertEqual(expected_execution_count, execution_count)
 
-    self.assertPipelineExecution()
+    self.assertComponentsExecuted(self._pipeline_root, [
+        'CsvExampleGen', 'Evaluator', 'ExampleValidator', 'Pusher', 'SchemaGen',
+        'StatisticsGen', 'Trainer', 'Transform'
+    ])
 
     # Runs pipeline the second time.
     runner_class().run(
