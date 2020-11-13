@@ -223,7 +223,7 @@ class _ProtoOperator(_PlaceholderOperator):
       execution_param = component_spec.PARAMETERS[exec_property_name]
       if not issubclass(execution_param.type, message.Message):
         raise ValueError(
-            "Can't apply placehodler proto operator on non-proto type "
+            "Can't apply placeholder proto operator on non-proto type "
             f"exec property. Got {execution_param.type}.")
       fd_set = result.operator.proto_op.proto_schema.file_descriptors
       for fd in proto_utils.gather_file_descriptors(
