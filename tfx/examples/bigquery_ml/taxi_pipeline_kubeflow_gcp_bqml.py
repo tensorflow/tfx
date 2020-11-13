@@ -105,7 +105,7 @@ _beam_pipeline_args = [
     # Temporary overrides of defaults.
     '--disk_size_gb=50',
     '--experiments=shuffle_mode=auto',
-    '--machine_type=n1-standard-8',
+    '--machine_type=e2-standard-8',
 ]
 
 # The rate at which to sample rows from the Chicago Taxi dataset using BigQuery.
