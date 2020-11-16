@@ -14,17 +14,36 @@
 """TaskManager manages the execution and cancellation of tasks."""
 
 from concurrent import futures
+import copy
 import threading
 import typing
+from typing import Optional
 
 from absl import logging
 from tfx.orchestration import metadata
+from tfx.orchestration.experimental.core import status as status_lib
 from tfx.orchestration.experimental.core import task as task_lib
 from tfx.orchestration.experimental.core import task_queue as tq
 from tfx.orchestration.experimental.core import task_scheduler as ts
+from tfx.orchestration.portable import execution_publish_utils
 from tfx.proto.orchestration import pipeline_pb2
 
+from ml_metadata.proto import metadata_store_pb2
+
 _MAX_DEQUEUE_WAIT_SECS = 5.0
+
+
+class Error(Exception):
+  """Top-level error for current module."""
+
+
+class TasksProcessingError(Error):
+  """Error that accumulates other errors raised during processing tasks."""
+
+  def __init__(self, errors):
+    err_msg = '\n'.join(str(e) for e in errors)
+    super(TasksProcessingError, self).__init__(err_msg)
+    self.errors = errors
 
 
 class TaskManager:
@@ -62,53 +81,88 @@ class TaskManager:
         process_all_queued_tasks_before_exit)
 
     self._tm_lock = threading.Lock()
-    self._tm_thread = None  # Initialized when entering context.
     self._stop_event = threading.Event()
-    self._ts_executor = futures.ThreadPoolExecutor(
-        max_workers=max_active_task_schedulers)
     self._scheduler_by_node_uid = {}
 
+    # Async executor for the main task management thread.
+    self._main_executor = futures.ThreadPoolExecutor(max_workers=1)
+    self._main_future = None
+
+    # Async executor for task schedulers.
+    self._ts_executor = futures.ThreadPoolExecutor(
+        max_workers=max_active_task_schedulers)
+    self._ts_futures = set()
+
   def __enter__(self):
-    if self._tm_thread is not None:
+    if self._main_future is not None:
       raise RuntimeError('TaskManager already started.')
-    self._ts_executor.__enter__()
-    self._tm_thread = threading.Thread(target=self._process_tasks)
-    self._tm_thread.start()
+    self._main_future = self._main_executor.submit(self._main)
+    return self
 
   def __exit__(self, exc_type, exc_val, exc_tb):
-    if self._tm_thread is None:
+    if self._main_future is None:
       raise RuntimeError('TaskManager not started.')
     self._stop_event.set()
-    self._tm_thread.join()
-    self._ts_executor.__exit__(exc_type, exc_val, exc_tb)
+    self._main_executor.shutdown()
 
-  def _process_tasks(self) -> None:
-    """Processes tasks from the multiplexed queue."""
-    while not self._stop_event.is_set():
-      task = self._task_queue.dequeue(self._max_dequeue_wait_secs)
-      if task is None:
-        continue
-      self._dispatch_task(task)
-    if self._process_all_queued_tasks_before_exit:
-      # Process any remaining tasks from the queue before exiting. This is
-      # mainly to make tests deterministic.
-      while True:
-        task = self._task_queue.dequeue()
+  def done(self) -> bool:
+    """Returns `True` if the main task management thread has exited.
+
+    Raises:
+      RuntimeError: If `done` called without entering the task manager context.
+    """
+    if self._main_future is None:
+      raise RuntimeError('Task manager context not entered.')
+    return self._main_future.done()
+
+  def exception(self) -> Optional[BaseException]:
+    """Returns exception raised by the main task management thread (if any).
+
+    Raises:
+      RuntimeError: If `exception` called without entering the task manager
+        context or if the main thread is not done (`done` returns `False`).
+    """
+    if self._main_future is None:
+      raise RuntimeError('Task manager context not entered.')
+    if not self._main_future.done():
+      raise RuntimeError('Task manager main thread not done; call should be '
+                         'conditioned on `done` returning `True`.')
+    return self._main_future.exception()
+
+  def _main(self) -> None:
+    """Runs the main task management loop."""
+    try:
+      while not self._stop_event.is_set():
+        self._cleanup()
+        task = self._task_queue.dequeue(self._max_dequeue_wait_secs)
         if task is None:
-          break
-        self._dispatch_task(task)
+          continue
+        self._handle_task(task)
+    finally:
+      if self._process_all_queued_tasks_before_exit:
+        # Process any remaining tasks from the queue before exiting. This is
+        # mainly to make tests deterministic.
+        while True:
+          task = self._task_queue.dequeue()
+          if task is None:
+            break
+          self._handle_task(task)
 
-  def _dispatch_task(self, task: task_lib.Task) -> None:
+      # Final cleanup before exiting. Any exceptions raised here are
+      # automatically chained with any raised in the try block.
+      self._cleanup(True)
+
+  def _handle_task(self, task: task_lib.Task) -> None:
     """Dispatches task to the right handler."""
     if task_lib.is_exec_node_task(task):
-      self._handle_exec(typing.cast(task_lib.ExecNodeTask, task))
+      self._handle_exec_node_task(typing.cast(task_lib.ExecNodeTask, task))
     elif task_lib.is_cancel_node_task(task):
-      self._handle_cancel(typing.cast(task_lib.CancelNodeTask, task))
+      self._handle_cancel_node_task(typing.cast(task_lib.CancelNodeTask, task))
     else:
       raise RuntimeError('Cannot dispatch bad task: {}'.format(task))
 
-  def _handle_exec(self, task: task_lib.ExecNodeTask) -> None:
-    """Handles execution task."""
+  def _handle_exec_node_task(self, task: task_lib.ExecNodeTask) -> None:
+    """Handles `ExecNodeTask`."""
     node_uid = task.node_uid
     with self._tm_lock:
       if node_uid in self._scheduler_by_node_uid:
@@ -118,37 +172,100 @@ class TaskManager:
       scheduler = ts.TaskSchedulerRegistry.create_task_scheduler(
           self._mlmd_handle, self._pipeline, task)
       self._scheduler_by_node_uid[node_uid] = scheduler
-      self._ts_executor.submit(self._schedule, scheduler, task)
+      self._ts_futures.add(
+          self._ts_executor.submit(self._process_exec_node_task, scheduler,
+                                   task))
 
-  def _handle_cancel(self, task: task_lib.CancelNodeTask) -> None:
-    """Handles cancellation task."""
+  def _handle_cancel_node_task(self, task: task_lib.CancelNodeTask) -> None:
+    """Handles `CancelNodeTask`."""
     node_uid = task.node_uid
     with self._tm_lock:
       scheduler = self._scheduler_by_node_uid.get(node_uid)
       if scheduler is None:
         logging.info(
-            'No task scheduled for task id: %s. The task might have '
-            'already completed before it could be cancelled.', task.task_id)
-        return
-      scheduler.cancel()
+            'No task scheduled for task id: %s. The task might have already '
+            'completed before it could be cancelled.', task.task_id)
+      else:
+        scheduler.cancel()
       self._task_queue.task_done(task)
 
-  def _schedule(self, scheduler: ts.TaskScheduler,
-                task: task_lib.ExecNodeTask) -> None:
-    """Schedules task execution using the given task scheduler."""
+  def _process_exec_node_task(self, scheduler: ts.TaskScheduler,
+                              task: task_lib.ExecNodeTask) -> None:
+    """Processes an `ExecNodeTask` using the given task scheduler."""
     # This is a blocking call to the scheduler which can take a long time to
-    # complete for some types of task schedulers.
-    # TODO(goutham): Handle any exceptions raised by the scheduler.
-    result = scheduler.schedule()
-    _publish_execution_results(self._mlmd_handle, self._pipeline, task, result)
+    # complete for some types of task schedulers. The scheduler is expected to
+    # handle any internal errors gracefully and return the result with an error
+    # status. But in case the scheduler raises an exception, it is considered
+    # a failed execution and MLMD is updated accordingly.
+    try:
+      result = scheduler.schedule()
+    except Exception as e:  # pylint: disable=broad-except
+      logging.info(
+          'Exception raised by task scheduler for node uid %s; error: %s',
+          task.node_uid, e)
+      result = ts.TaskSchedulerResult(
+          status=status_lib.Status(
+              code=status_lib.Code.ABORTED, message=str(e)))
+    _publish_execution_results(
+        mlmd_handle=self._mlmd_handle, task=task, result=result)
     with self._tm_lock:
       del self._scheduler_by_node_uid[task.node_uid]
       self._task_queue.task_done(task)
 
+  def _cleanup(self, final: bool = False) -> None:
+    """Cleans up any remnant effects."""
+    if final:
+      # Waits for all pending task scheduler futures to complete.
+      self._ts_executor.shutdown()
+    done_futures = set(fut for fut in self._ts_futures if fut.done())
+    self._ts_futures -= done_futures
+    exceptions = [fut.exception() for fut in done_futures if fut.exception()]
+    if exceptions:
+      raise TasksProcessingError(exceptions)
+
+
+def _update_execution_state_in_mlmd(
+    mlmd_handle: metadata.Metadata, execution: metadata_store_pb2.Execution,
+    new_state: metadata_store_pb2.Execution.State) -> None:
+  updated_execution = copy.deepcopy(execution)
+  updated_execution.last_known_state = new_state
+  mlmd_handle.store.put_executions([updated_execution])
+
 
 def _publish_execution_results(mlmd_handle: metadata.Metadata,
-                               pipeline: pipeline_pb2.Pipeline,
                                task: task_lib.ExecNodeTask,
                                result: ts.TaskSchedulerResult) -> None:
-  # TODO(goutham): Implement this.
-  del mlmd_handle, pipeline, task, result
+  """Publishes execution results to MLMD."""
+
+  def _update_state(status: status_lib.Status) -> None:
+    assert status.code != status_lib.Code.OK
+    if status.code == status_lib.Code.CANCELLED:
+      execution_state = metadata_store_pb2.Execution.CANCELED
+      state_msg = 'cancelled'
+    else:
+      execution_state = metadata_store_pb2.Execution.FAILED
+      state_msg = 'failed'
+    logging.info(
+        'Got error (status: %s) for task id: %s; marking execution (id: %s) '
+        'as %s.', status, task.task_id, task.execution.id, state_msg)
+    # TODO(goutham): Also record error code and error message as custom property
+    # of the execution.
+    _update_execution_state_in_mlmd(mlmd_handle, task.execution,
+                                    execution_state)
+
+  if result.status.code != status_lib.Code.OK:
+    _update_state(result.status)
+    return
+
+  if (result.executor_output and
+      result.executor_output.execution_result.code != status_lib.Code.OK):
+    _update_state(status_lib.Status(
+        code=result.executor_output.execution_result.code,
+        message=result.executor_output.execution_result.result_message))
+    return
+
+  execution_publish_utils.publish_succeeded_execution(mlmd_handle,
+                                                      task.execution.id,
+                                                      task.contexts,
+                                                      task.output_artifacts,
+                                                      result.executor_output)

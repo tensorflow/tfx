@@ -19,6 +19,7 @@ from typing import Optional, Text, Type, TypeVar
 
 import attr
 from tfx.orchestration import metadata
+from tfx.orchestration.experimental.core import status as status_lib
 from tfx.orchestration.experimental.core import task as task_lib
 from tfx.proto.orchestration import execution_result_pb2
 from tfx.proto.orchestration import pipeline_pb2
@@ -29,17 +30,16 @@ class TaskSchedulerResult:
   """Response from the task scheduler.
 
   Attributes:
-    schedule_status: A status code integer indicating the status of a schedule
-      call. It should be an enum value of [google.rpc.Code].
+    status: Scheduler status that reflects scheduler level issues, such as
+      task cancellation, failure to start the executor, etc. Executor status set
+      in `executor_output` matters if the scheduler status is `OK`. Otherwise,
+      `executor_output` may be `None` and is ignored.
     executor_output: An instance of `ExecutorOutput` containing the results of
-      task execution. This field is only set if the schedule_status is SUCCESS.
-    error_message: The message related to a failed schedule call. This is useful
-      for the orchestrator to know why the schedule has failed.
+      task execution.
   """
-  schedule_status = attr.ib(type=int)
+  status = attr.ib(type=status_lib.Status)
   executor_output = attr.ib(
-      default=None, type=Optional[execution_result_pb2.ExecutorOutput])
-  error_message = attr.ib(default='', type=Optional[Text])
+      type=Optional[execution_result_pb2.ExecutorOutput], default=None)
 
 
 class TaskScheduler(abc.ABC):
@@ -66,7 +66,10 @@ class TaskScheduler(abc.ABC):
     until explicitly cancelled by a call to `cancel`. When cancelled, `schedule`
     is expected to stop any ongoing work, clean up and return as soon as
     possible. Note that `cancel` will be invoked from a different thread than
-    `schedule` and hence the concrete implementations must be thread safe.
+    `schedule` and hence the concrete implementations must be thread safe. It's
+    technically possible for `cancel` to be invoked before `schedule`; scheduler
+    implementations should handle this case by returning from `schedule`
+    immediately.
     """
 
   @abc.abstractmethod
@@ -76,7 +79,9 @@ class TaskScheduler(abc.ABC):
     This method will be invoked from a different thread than the thread that's
     blocked on call to `schedule`. `cancel` must return immediately when called.
     Upon cancellation, `schedule` method is expected to stop any ongoing work,
-    clean up and return as soon as possible.
+    clean up and return as soon as possible. It's technically possible for
+    `cancel` to be invoked before `schedule`; scheduler implementations should
+    handle this case by returning from `schedule` immediately.
     """
 
 
@@ -105,6 +110,10 @@ class TaskSchedulerRegistry:
           'A task scheduler already exists for the executor spec type url: {}'
           .format(executor_spec_type_url))
     cls._task_scheduler_registry[executor_spec_type_url] = scheduler_class
+
+  @classmethod
+  def clear(cls: Type[T]) -> None:
+    cls._task_scheduler_registry.clear()
 
   @classmethod
   def create_task_scheduler(cls: Type[T], mlmd_handle: metadata.Metadata,
