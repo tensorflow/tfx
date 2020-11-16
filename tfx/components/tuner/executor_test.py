@@ -51,7 +51,7 @@ class ExecutorTest(tf.test.TestCase):
 
     # Create input dict.
     e1 = standard_artifacts.Examples()
-    e1.uri = os.path.join(self._testdata_dir, 'iris', 'data')
+    e1.uri = os.path.join(self._testdata_dir, 'penguin', 'data')
     e1.split_names = artifact_utils.encode_split_names(['train', 'eval'])
 
     e2 = copy.deepcopy(e1)
@@ -60,7 +60,7 @@ class ExecutorTest(tf.test.TestCase):
     self._multiple_artifacts = [e1, e2]
 
     schema = standard_artifacts.Schema()
-    schema.uri = os.path.join(self._testdata_dir, 'iris', 'schema')
+    schema.uri = os.path.join(self._testdata_dir, 'penguin', 'schema')
 
     self._input_dict = {
         'examples': self._single_artifact,
@@ -138,10 +138,10 @@ class ExecutorTest(tf.test.TestCase):
   def testDoWithCustomSplits(self):
     # Update input dict.
     io_utils.copy_dir(
-        os.path.join(self._testdata_dir, 'iris/data/train'),
+        os.path.join(self._testdata_dir, 'penguin/data/train'),
         os.path.join(self._output_data_dir, 'data/training'))
     io_utils.copy_dir(
-        os.path.join(self._testdata_dir, 'iris/data/eval'),
+        os.path.join(self._testdata_dir, 'penguin/data/eval'),
         os.path.join(self._output_data_dir, 'data/evaluating'))
     examples = standard_artifacts.Examples()
     examples.uri = os.path.join(self._output_data_dir, 'data')

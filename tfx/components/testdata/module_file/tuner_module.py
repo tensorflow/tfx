@@ -31,8 +31,10 @@ from tfx.utils import io_utils
 
 from tensorflow_metadata.proto.v0 import schema_pb2
 
-_FEATURE_KEYS = ['sepal_length', 'sepal_width', 'petal_length', 'petal_width']
-_LABEL_KEY = 'variety'
+_FEATURE_KEYS = [
+    'culmen_length_mm', 'culmen_depth_mm', 'flipper_length_mm', 'body_mass_g'
+]
+_LABEL_KEY = 'species'
 
 
 def _gzip_reader_fn(filenames):
@@ -69,7 +71,7 @@ def _input_fn(file_pattern: Union[Text, List[Text]],
 
 
 def _build_keras_model(hparams: kerastuner.HyperParameters) -> tf.keras.Model:
-  """Creates a DNN Keras model for classifying iris data.
+  """Creates a DNN Keras model for classifying penguin data.
 
   Args:
     hparams: Holds HyperParameters for tuning.
