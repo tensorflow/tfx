@@ -121,6 +121,7 @@ def make_extra_packages_test():
 def make_extra_packages_docker_image():
   # Packages needed for tfx docker image.
   return [
+      'kfp-pipeline-spec>=0.1.2,<0.2',
       'mmh>=2.2,<3',
       'python-snappy>=0.5,<0.6',
   ]
