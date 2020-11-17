@@ -168,6 +168,10 @@ class BaseExampleGenExecutor(
     """
     pass
 
+  def GetWriteSplitFnToPDone(self) -> beam.ptransform_fn:
+    """Returns PTransform_fn for writing serialized records in TFRecord."""
+    return _WriteSplit
+
   def GenerateExamplesByBeam(
       self,
       pipeline: beam.Pipeline,
@@ -266,8 +270,8 @@ class BaseExampleGenExecutor(
       exec_properties: A dict of execution properties. Depends on detailed
         example gen implementation.
         - input_base: an external directory containing the data files.
-        - input_config: JSON string of example_gen_pb2.Input instance,
-          providing input configuration.
+        - input_config: JSON string of example_gen_pb2.Input instance, providing
+          input configuration.
         - output_config: JSON string of example_gen_pb2.Output instance,
           providing output configuration.
         - output_data_format: Payload format of generated data in output
@@ -280,6 +284,7 @@ class BaseExampleGenExecutor(
 
     input_config = example_gen_pb2.Input()
     output_config = example_gen_pb2.Output()
+    write_split = self.GetWriteSplitFnToPDone()
     json_format.Parse(exec_properties[utils.INPUT_CONFIG_KEY], input_config)
     json_format.Parse(exec_properties[utils.OUTPUT_CONFIG_KEY], output_config)
 
@@ -295,7 +300,7 @@ class BaseExampleGenExecutor(
       # pylint: disable=expression-not-assigned, no-value-for-parameter
       for split_name, example_split in example_splits.items():
         (example_split
-         | 'WriteSplit[{}]'.format(split_name) >> _WriteSplit(
+         | 'WriteSplit[{}]'.format(split_name) >> write_split(
              artifact_utils.get_split_uri(output_dict[utils.EXAMPLES_KEY],
                                           split_name)))
       # pylint: enable=expression-not-assigned, no-value-for-parameter
@@ -303,6 +308,6 @@ class BaseExampleGenExecutor(
     output_payload_format = exec_properties.get(utils.OUTPUT_DATA_FORMAT_KEY)
     if output_payload_format:
       for output_examples_artifact in output_dict[utils.EXAMPLES_KEY]:
-        examples_utils.set_payload_format(
-            output_examples_artifact, output_payload_format)
+        examples_utils.set_payload_format(output_examples_artifact,
+                                          output_payload_format)
     logging.info('Examples generated.')

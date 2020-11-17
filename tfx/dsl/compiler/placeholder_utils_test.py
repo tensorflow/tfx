@@ -14,7 +14,6 @@
 # limitations under the License.
 """Tests for tfx.dsl.compiler.placeholder_utils."""
 
-import base64
 import tensorflow as tf
 from tfx.dsl.compiler import placeholder_utils
 from tfx.orchestration.portable import data_types
@@ -161,8 +160,8 @@ class PlaceholderUtilsTest(tf.test.TestCase):
     examples[0].uri = "/tmp"
     examples[0].split_names = artifact_utils.encode_split_names(
         ["train", "eval"])
-    self._serving_spec = infra_validator_pb2.ServingSpec()
-    self._serving_spec.tensorflow_serving.tags.extend(["latest", "1.15.0-gpu"])
+    serving_spec = infra_validator_pb2.ServingSpec()
+    serving_spec.tensorflow_serving.tags.extend(["latest", "1.15.0-gpu"])
     self._resolution_context = placeholder_utils.ResolutionContext(
         exec_info=data_types.ExecutionInfo(
             input_dict={
@@ -173,7 +172,7 @@ class PlaceholderUtilsTest(tf.test.TestCase):
             exec_properties={
                 "proto_property":
                     json_format.MessageToJson(
-                        message=self._serving_spec,
+                        message=serving_spec,
                         sort_keys=True,
                         preserving_proto_field_name=True,
                         indent=0)
@@ -288,9 +287,9 @@ class PlaceholderUtilsTest(tf.test.TestCase):
     infra_validator_pb2.ServingSpec().DESCRIPTOR.file.CopyToProto(fd)
     pb.operator.proto_op.proto_schema.file_descriptors.file.append(fd)
 
-    with self.assertRaises(ValueError):
-      placeholder_utils.resolve_placeholder_expression(pb,
-                                                       self._resolution_context)
+    self.assertEqual(
+        placeholder_utils.resolve_placeholder_expression(
+            pb, self._resolution_context), ["latest", "1.15.0-gpu"])
 
   def testSerializeDoubleValue(self):
     # Read a primitive value
@@ -422,84 +421,6 @@ class PlaceholderUtilsTest(tf.test.TestCase):
         "tfx.orchestration.ExecutorInvocation")
     self.assertEqual("tfx.orchestration.ExecutorInvocation",
                      message_descriptor.full_name)
-
-  def testBase64EncodeOperator(self):
-    placeholder_expression = """
-      operator {
-        base64_encode_op {
-          expression {
-            operator {
-              proto_op {
-                expression {
-                  placeholder {
-                    type: EXEC_PROPERTY
-                    key: "proto_property"
-                  }
-                }
-                proto_schema {
-                  message_type: "tfx.components.infra_validator.ServingSpec"
-                }
-                proto_field_path: ".tensorflow_serving"
-                proto_field_path: ".tags"
-                proto_field_path: "[0]"
-              }
-            }
-          }
-        }
-      }
-    """
-    pb = text_format.Parse(placeholder_expression,
-                           placeholder_pb2.PlaceholderExpression())
-    self.assertEqual(
-        placeholder_utils.resolve_placeholder_expression(
-            pb, self._resolution_context),
-        base64.b64encode(b"latest").decode("ASCII"))
-
-  def _assert_serialized_proto_b64encode_eq(self, serialize_format, expected):
-    placeholder_expression = """
-        operator {
-          base64_encode_op {
-            expression {
-              operator {
-                proto_op {
-                  expression {
-                    placeholder {
-                      type: EXEC_PROPERTY
-                      key: "proto_property"
-                    }
-                  }
-                  proto_schema {
-                    message_type: "tfx.components.infra_validator.ServingSpec"
-                  }
-                  serialization_format: """ + serialize_format + """
-                }
-              }
-            }
-          }
-        }
-      """
-    pb = text_format.Parse(placeholder_expression,
-                           placeholder_pb2.PlaceholderExpression())
-    resolved_base64_str = placeholder_utils.resolve_placeholder_expression(
-        pb, self._resolution_context)
-    decoded = base64.b64decode(resolved_base64_str).decode()
-    self.assertEqual(decoded, expected)
-
-  def testJsonSerializedProtoBase64Encode(self):
-    expected_json_str = json_format.MessageToJson(
-        message=self._serving_spec,
-        sort_keys=True,
-        preserving_proto_field_name=True)
-    self._assert_serialized_proto_b64encode_eq("JSON", expected_json_str)
-
-  def testTextFormatSerializedProtoBase64Encode(self):
-    expected_text_format_str = text_format.MessageToString(self._serving_spec)
-    self._assert_serialized_proto_b64encode_eq("TEXT_FORMAT",
-                                               expected_text_format_str)
-
-  def testBinarySerializedProtoBase64Encode(self):
-    expected_binary_str = self._serving_spec.SerializeToString().decode()
-    self._assert_serialized_proto_b64encode_eq("BINARY", expected_binary_str)
 
 
 if __name__ == "__main__":

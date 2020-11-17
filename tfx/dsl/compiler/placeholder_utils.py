@@ -13,9 +13,8 @@
 # limitations under the License.
 """Utilities to evaluate and resolve Placeholders."""
 
-import base64
 import re
-from typing import Any, Callable, Dict, Union
+from typing import Any, Callable, Dict
 
 import attr
 from tfx.dsl.placeholder import placeholder as ph
@@ -47,18 +46,9 @@ class ResolutionContext:
   platform_config: message.Message = None
 
 
-# Includes three basic types from MLMD: int, float, str
-# and an additional primitive type from proto field access: bool
-# Note: Pytype's int includes long from Python3
-# We does not support bytes, which may result from proto field access. Must use
-# base64 encode operator to explicitly convert it into str.
-_PlaceholderResolvedTypes = (int, float, str, bool)
-_PlaceholderResolvedTypeHints = Union[_PlaceholderResolvedTypes]
-
-
 def resolve_placeholder_expression(
     expression: placeholder_pb2.PlaceholderExpression,
-    context: ResolutionContext) -> _PlaceholderResolvedTypeHints:
+    context: ResolutionContext) -> Any:
   """Evaluates a placeholder expression using the given context.
 
   Normally the resolved value will be used as command line flags in strings.
@@ -66,7 +56,7 @@ def resolve_placeholder_expression(
   the return type is the same as the type of the value originally has. Currently
   it can be
     exec property supported primitive types: int, float, string.
-    if use proto operator: serilaized proto message, or proto primitive fields.
+    if use proto operator: serilaized proto message, or a non-message field.
   The caller needs to perform desired string conversions.
 
   Args:
@@ -80,12 +70,7 @@ def resolve_placeholder_expression(
     raise ValueError(
         "Pipeline node or pipeline info is missing from the placeholder ResolutionContext."
     )
-  result = _ExpressionResolver(context).resolve(expression)
-  # bool value results from proto field access.
-  if not isinstance(result, _PlaceholderResolvedTypes):
-    raise ValueError(
-        f"Placeholder evaluates to an unsupported type: {type(result)}.")
-  return result
+  return _ExpressionResolver(context).resolve(expression)
 
 
 # Dictionary of registered placeholder operators,
@@ -215,23 +200,8 @@ class _ExpressionResolver:
       raise ValueError(
           f"IndexOperator failed to access the given index {op.index}.") from e
 
-  @_register(placeholder_pb2.Base64EncodeOperator)
-  def _resolve_base64_encode_operator(
-      self, op: placeholder_pb2.Base64EncodeOperator) -> str:
-    """Evaluates the Base64 encode operator."""
-    value = self.resolve(op.expression)
-    if isinstance(value, str):
-      return base64.b64encode(value.encode()).decode("ascii")
-    elif isinstance(value, bytes):
-      return base64.b64encode(value).decode("ascii")
-    else:
-      raise ValueError(
-          f"Failed to Base64 encode {value} of type {type(value)}.")
-
   @_register(placeholder_pb2.ProtoOperator)
-  def _resolve_proto_operator(
-      self,
-      op: placeholder_pb2.ProtoOperator) -> Union[int, float, str, bool, bytes]:
+  def _resolve_proto_operator(self, op: placeholder_pb2.ProtoOperator) -> str:
     """Evaluates the proto operator."""
     raw_message = self.resolve(op.expression)
 
@@ -269,13 +239,9 @@ class _ExpressionResolver:
           continue
         raise ValueError(f"Got unsupported proto field path: {field}")
 
-    # Non-message primitive values are returned directly.
-    if isinstance(value, (int, float, str, bool, bytes)):
-      return value
-
+    # Non-message values are returned directly.
     if not isinstance(value, message.Message):
-      raise ValueError(f"Got unsupported value type {type(value)} "
-                       "from accessing proto field path.")
+      return value
 
     # For message-typed values, we need to consider serialization format.
     if op.serialization_format:
@@ -289,4 +255,5 @@ class _ExpressionResolver:
 
     raise ValueError(
         "Proto operator resolves to a proto message value. A serialization "
-        "format is needed to render it.")
+        "format is needed to render it."
+    )

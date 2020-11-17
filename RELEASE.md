@@ -95,6 +95,8 @@
 
 ## Bug fixes and other changes
 
+*   Added customizable WriteSplit method functionality for subclasses of
+    base_example_gen_executor
 *   Added the LocalDagRunner to allow local pipeline execution without using
     Apache Beam. This functionality is in development.
 *   Introduced dependency to `tensorflow-cloud` Python package, with intention

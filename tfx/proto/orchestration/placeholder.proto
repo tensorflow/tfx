@@ -40,7 +40,6 @@ message PlaceholderExpressionOperator {
     ConcatOperator concat_op = 3;
     IndexOperator index_op = 4;
     ProtoOperator proto_op = 5;
-    Base64EncodeOperator base64_encode_op = 6;
   }
 }
 
@@ -126,13 +125,6 @@ message ProtoOperator {
   SerializationFormat serialization_format = 4;
 }
 
-// Base64EncodeOperator encodes the output of another placeholder using Base64.
-// The output of another placeholder must be string or bytes.
-// Base64EncodeOperator: String/Bytes -> String
-message Base64EncodeOperator {
-  // Required. It must evaluate to a String-like type value.
-  PlaceholderExpression expression = 1;
-}
 
 // Placeholder is an inseparable unit in a placeholder expression that
 // pipeline information will be injected.
