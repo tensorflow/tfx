@@ -14,7 +14,6 @@
 """TaskManager manages the execution and cancellation of tasks."""
 
 from concurrent import futures
-import copy
 import threading
 import typing
 from typing import Optional
@@ -227,9 +226,8 @@ class TaskManager:
 def _update_execution_state_in_mlmd(
     mlmd_handle: metadata.Metadata, execution: metadata_store_pb2.Execution,
     new_state: metadata_store_pb2.Execution.State) -> None:
-  updated_execution = copy.deepcopy(execution)
-  updated_execution.last_known_state = new_state
-  mlmd_handle.store.put_executions([updated_execution])
+  execution.last_known_state = new_state
+  mlmd_handle.store.put_executions([execution])
 
 
 def _publish_execution_results(mlmd_handle: metadata.Metadata,
