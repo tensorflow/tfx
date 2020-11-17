@@ -288,5 +288,21 @@ class PlaceholderTest(tf.test.TestCase):
         }
     """)
 
+  def testBase64EncodeOperator(self):
+    self._assert_placeholder_pb_equal(
+        ph.exec_property('str_value').b64encode(), """
+        operator {
+          base64_encode_op {
+            expression {
+              placeholder {
+                type: EXEC_PROPERTY
+                key: "str_value"
+              }
+            }
+          }
+        }
+    """)
+
+
 if __name__ == '__main__':
   tf.test.main()

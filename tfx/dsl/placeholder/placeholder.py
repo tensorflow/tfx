@@ -233,6 +233,24 @@ class _ProtoOperator(_PlaceholderOperator):
     return result
 
 
+class _Base64EncodeOperator(_PlaceholderOperator):
+  """Base64EncodeOperator encodes the output of another placeholder using Base64.
+
+  Prefer to use the .b64encode method of Placeholder.
+  """
+
+  def encode(
+      self,
+      sub_expression_pb: placeholder_pb2.PlaceholderExpression,
+      component_spec: Optional[types.ComponentSpec] = None
+  ) -> placeholder_pb2.PlaceholderExpression:
+    del component_spec  # Unused by B64EncodeOperator
+
+    result = placeholder_pb2.PlaceholderExpression()
+    result.operator.base64_encode_op.expression.CopyFrom(sub_expression_pb)
+    return result
+
+
 class Placeholder(abc.ABC):
   """A Placeholder represents not-yet-available values at the component authoring time."""
 
@@ -248,6 +266,10 @@ class Placeholder(abc.ABC):
 
   def __radd__(self, left: str):
     self._operators.append(_ConcatOperator(left=left))
+    return self
+
+  def b64encode(self):
+    self._operators.append(_Base64EncodeOperator())
     return self
 
   def encode(
