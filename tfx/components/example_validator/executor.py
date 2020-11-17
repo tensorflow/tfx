@@ -64,8 +64,9 @@ class Executor(base_executor.BaseExecutor):
         - schema: A list of type `standard_artifacts.Schema` which should
           contain a single schema artifact.
       output_dict: Output dict from key to a list of artifacts, including:
-        - output: A list of 'ExampleValidationPath' artifact of size one. It
-          will include a single pbtxt file which contains all anomalies found.
+        - output: A list of 'standard_artifacts.ExampleAnomalies' of size one.
+          It will include a single pbtxt file which contains all anomalies
+          found.
       exec_properties: A dict of execution properties.
         - exclude_splits: JSON-serialized list of names of splits that the
           example validator should not validate.
