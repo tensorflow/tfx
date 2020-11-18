@@ -33,7 +33,7 @@ from google.protobuf import text_format
 from ml_metadata.proto import metadata_store_pb2
 
 # Concatenate the URI of `examples` input artifact's `train` split with /1
-CONCAT_SPLIT_URI_EXPRESSION = """
+_CONCAT_SPLIT_URI_EXPRESSION = """
 operator {
   concat_op {
     expressions {
@@ -188,13 +188,58 @@ class PlaceholderUtilsTest(tf.test.TestCase):
         executor_spec=executable_spec_pb2.PythonClassExecutableSpec(
             class_path="test_class_path"),
     )
+    # Resolution context to simulate missing optional values.
+    self._none_resolution_context = placeholder_utils.ResolutionContext(
+        exec_info=data_types.ExecutionInfo(
+            input_dict={
+                "model": [],
+                "examples": [],
+            },
+            output_dict={"blessing": []},
+            exec_properties={},
+            pipeline_node=pipeline_pb2.PipelineNode(
+                node_info=pipeline_pb2.NodeInfo(
+                    type=metadata_store_pb2.ExecutionType(
+                        name="infra_validator"))),
+            pipeline_info=pipeline_pb2.PipelineInfo(id="test_pipeline_id")),
+        executor_spec=None,
+        platform_config=None)
 
   def testConcatArtifactUri(self):
-    pb = text_format.Parse(CONCAT_SPLIT_URI_EXPRESSION,
+    pb = text_format.Parse(_CONCAT_SPLIT_URI_EXPRESSION,
                            placeholder_pb2.PlaceholderExpression())
     self.assertEqual(
         placeholder_utils.resolve_placeholder_expression(
             pb, self._resolution_context), "/tmp/train/1")
+
+  def testArtifactUriNoneAccess(self):
+    # Access a missing optional channel.
+    placeholder_expression = """
+      operator {
+        artifact_uri_op {
+          expression {
+            operator {
+              index_op{
+                expression {
+                  placeholder {
+                    type: INPUT_ARTIFACT
+                    key: "examples"
+                  }
+                }
+                index: 0
+              }
+            }
+          }
+          split: "train"
+        }
+      }
+    """
+    pb = text_format.Parse(placeholder_expression,
+                           placeholder_pb2.PlaceholderExpression())
+
+    self.assertIsNone(
+        placeholder_utils.resolve_placeholder_expression(
+            pb, self._none_resolution_context))
 
   def testProtoExecPropertyPrimitiveField(self):
     # Access a non-message type proto field
@@ -292,6 +337,67 @@ class PlaceholderUtilsTest(tf.test.TestCase):
       placeholder_utils.resolve_placeholder_expression(pb,
                                                        self._resolution_context)
 
+  def testProtoExecPropertyInvalidField(self):
+    # Access a repeated field.
+    placeholder_expression = """
+      operator {
+        proto_op {
+          expression {
+            placeholder {
+              type: EXEC_PROPERTY
+              key: "proto_property"
+            }
+          }
+          proto_schema {
+            message_type: "tfx.components.infra_validator.ServingSpec"
+          }
+          proto_field_path: ".some_invalid_field"
+        }
+      }
+    """
+    pb = text_format.Parse(placeholder_expression,
+                           placeholder_pb2.PlaceholderExpression())
+
+    # Prepare FileDescriptorSet
+    fd = descriptor_pb2.FileDescriptorProto()
+    infra_validator_pb2.ServingSpec().DESCRIPTOR.file.CopyToProto(fd)
+    pb.operator.proto_op.proto_schema.file_descriptors.file.append(fd)
+
+    with self.assertRaises(AttributeError):
+      placeholder_utils.resolve_placeholder_expression(pb,
+                                                       self._resolution_context)
+
+  def testProtoExecPropertyNoneAccess(self):
+    # Access a missing optional exec property.
+    placeholder_expression = """
+      operator {
+        proto_op {
+          expression {
+            placeholder {
+              type: EXEC_PROPERTY
+              key: "proto_property"
+            }
+          }
+          proto_schema {
+            message_type: "tfx.components.infra_validator.ServingSpec"
+          }
+          proto_field_path: ".tensorflow_serving"
+          proto_field_path: ".tags"
+        }
+      }
+    """
+    pb = text_format.Parse(placeholder_expression,
+                           placeholder_pb2.PlaceholderExpression())
+
+    # Prepare FileDescriptorSet
+    fd = descriptor_pb2.FileDescriptorProto()
+    infra_validator_pb2.ServingSpec().DESCRIPTOR.file.CopyToProto(fd)
+    pb.operator.proto_op.proto_schema.file_descriptors.file.append(fd)
+
+    self.assertIsNone(
+        placeholder_utils.resolve_placeholder_expression(
+            pb, self._none_resolution_context))
+
   def testSerializeDoubleValue(self):
     # Read a primitive value
     placeholder_expression = """
@@ -324,6 +430,37 @@ class PlaceholderUtilsTest(tf.test.TestCase):
     self.assertEqual(
         placeholder_utils.resolve_placeholder_expression(
             pb, self._resolution_context), "test_class_path")
+
+  def testProtoRuntimeInfoNoneAccess(self):
+    # Access a missing platform config.
+    placeholder_expression = """
+      operator {
+        proto_op {
+          expression {
+            placeholder {
+              type: RUNTIME_INFO
+              key: "platform_config"
+            }
+          }
+          proto_schema {
+            message_type: "tfx.components.infra_validator.ServingSpec"
+          }
+          proto_field_path: ".tensorflow_serving"
+          proto_field_path: ".tags"
+        }
+      }
+    """
+    pb = text_format.Parse(placeholder_expression,
+                           placeholder_pb2.PlaceholderExpression())
+
+    # Prepare FileDescriptorSet
+    fd = descriptor_pb2.FileDescriptorProto()
+    infra_validator_pb2.ServingSpec().DESCRIPTOR.file.CopyToProto(fd)
+    pb.operator.proto_op.proto_schema.file_descriptors.file.append(fd)
+
+    self.assertIsNone(
+        placeholder_utils.resolve_placeholder_expression(
+            pb, self._none_resolution_context))
 
   def testProtoSerializationJSON(self):
     placeholder_expression = """
