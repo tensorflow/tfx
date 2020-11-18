@@ -80,8 +80,7 @@ class AirflowEndToEndTest(tf.test.TestCase):
     pass
 
   def _PrintTaskLogsOnError(self, task):
-    task_log_dir = os.path.join(self._airflow_home, 'logs',
-                                '%s.%s' % (self._dag_id, task))
+    task_log_dir = os.path.join(self._airflow_home, 'logs', self._dag_id, task)
     for dir_name, _, leaf_files in fileio.walk(task_log_dir):
       for leaf_file in leaf_files:
         leaf_file_path = os.path.join(dir_name, leaf_file)

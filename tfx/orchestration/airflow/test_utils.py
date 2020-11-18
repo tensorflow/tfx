@@ -98,6 +98,7 @@ def create_mysql_container(container_name: Text) -> int:
     logging.error('Failed to run sql for initialization:\n%s', output)
     raise RuntimeError('Failed to run initialization SQLs: {}'.format(output))
 
+  client.close()
   return port
 
 
@@ -110,3 +111,5 @@ def delete_mysql_container(container_name: Text):
   client = docker.from_env()
   container = client.containers.get(container_name)
   container.remove(force=True)
+  client.close()
+
