@@ -303,6 +303,73 @@ class PlaceholderTest(tf.test.TestCase):
         }
     """)
 
+  def testConstantPlaceholder(self):
+    self._assert_placeholder_pb_equal(
+        ph.constant('constant_str'), """
+        value {
+          string_value: "constant_str"
+        }
+        """)
+    self._assert_placeholder_pb_equal(ph.constant(42), """
+        value {
+          int_value: 42
+        }
+        """)
+    self._assert_placeholder_pb_equal(
+        ph.constant(42.0), """
+        value {
+          double_value: 42.0
+        }
+        """)
+
+  def testConstantConcat(self):
+    self._assert_placeholder_pb_equal(
+        ph.constant('constant_str') + ph.input('model').uri, """
+        operator {
+          concat_op {
+            expressions {
+              value {
+                string_value: "constant_str"
+              }
+            }
+            expressions {
+              operator {
+                artifact_uri_op {
+                  expression {
+                    placeholder {
+                      key: "model"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+        """)
+    self._assert_placeholder_pb_equal(
+        ph.input('model').uri + ph.constant('constant_str'), """
+        operator {
+          concat_op {
+            expressions {
+              operator {
+                artifact_uri_op {
+                  expression {
+                    placeholder {
+                      key: "model"
+                    }
+                  }
+                }
+              }
+            }
+            expressions {
+              value {
+                string_value: "constant_str"
+              }
+            }
+          }
+        }
+       """)
+
 
 if __name__ == '__main__':
   tf.test.main()

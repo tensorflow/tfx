@@ -16,7 +16,9 @@
 import abc
 import enum
 from typing import Optional, Union, cast
+
 from tfx import types
+from tfx.dsl.compiler import compiler_utils
 from tfx.proto.orchestration import placeholder_pb2
 from tfx.utils import proto_utils
 
@@ -254,8 +256,10 @@ class _Base64EncodeOperator(_PlaceholderOperator):
 class Placeholder(abc.ABC):
   """A Placeholder represents not-yet-available values at the component authoring time."""
 
-  def __init__(self, placeholder_type: placeholder_pb2.Placeholder.Type,
-               key: Optional[str] = None):
+  def __init__(
+      self,
+      placeholder_type: Optional['placeholder_pb2.Placeholder.Type'] = None,
+      key: Optional[str] = None):
     self._operators = []
     self._type = placeholder_type
     self._key = key
@@ -286,9 +290,40 @@ class Placeholder(abc.ABC):
       Encoded proto containing all information of this placeholder.
     """
     result = placeholder_pb2.PlaceholderExpression()
-    result.placeholder.type = self._type
+    if self._type:
+      result.placeholder.type = self._type
     if self._key:
       result.placeholder.key = self._key
+    for op in self._operators:
+      result = op.encode(result, component_spec)
+    return result
+
+
+class PrimitivePlaceholder(Placeholder):
+  """Artifact Placeholder represents an input or an output artifact.
+
+  Prefer to use input(...) or output(...) to create artifact placeholders.
+  """
+
+  def __init__(self, value: Union[int, float, str]):
+    super().__init__()
+    self._value = value
+
+  def encode(
+      self,
+      component_spec: Optional[types.ComponentSpec] = None
+  ) -> placeholder_pb2.PlaceholderExpression:
+    """Encodes the primitive value as a PlaceholderExpression proto.
+
+    Args:
+      component_spec: Optional. Information about the component that may be
+        needed during encoding.
+
+    Returns:
+      PlaceholderExpression proto containing the primitive value.
+    """
+    result = placeholder_pb2.PlaceholderExpression()
+    compiler_utils.set_field_value_pb(result.value, self._value)
     for op in self._operators:
       result = op.encode(result, component_spec)
     return result
@@ -389,6 +424,19 @@ class ExecInvocationPlaceholder(_ProtoAccessiblePlaceholder):
 
   def __init__(self):
     super().__init__(placeholder_pb2.Placeholder.Type.EXEC_INVOCATION)
+
+
+def constant(value: Union[str, int, float]) -> PrimitivePlaceholder:
+  """Returns a Placeholder that represents a constant value.
+
+  Args:
+    value: The constant value.
+
+  Returns:
+    A Placeholder
+
+  """
+  return PrimitivePlaceholder(value)
 
 
 def input(key: str) -> ArtifactPlaceholder:  # pylint: disable=redefined-builtin
