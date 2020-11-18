@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2020 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,11 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Portable libraries for context related APIs."""
-
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 from typing import List, Text
 
 from absl import logging
@@ -82,19 +76,29 @@ def _register_context_if_not_exist(
   Returns:
     An MLMD context.
   """
+  context_type_name = context_spec.type.name
+  context_name = common_utils.get_value(context_spec.name)
+  context = metadata_handler.store.get_context_by_type_and_name(
+      type_name=context_type_name, context_name=context_name)
+  if context is not None:
+    return context
+
+  logging.debug('Failed to get context of type %s and name %s',
+                context_type_name, context_name)
+  # If Context is not found, try to register it.
   context = _generate_context_proto(
       metadata_handler=metadata_handler, context_spec=context_spec)
   try:
     [context_id] = metadata_handler.store.put_contexts([context])
     context.id = context_id
+  # This might happen in cases we have parallel executions of nodes.
   except mlmd.errors.AlreadyExistsError:
-    context_name = common_utils.get_value(context_spec.name)
     logging.debug('Context %s already exists.', context_name)
     context = metadata_handler.store.get_context_by_type_and_name(
-        type_name=context_spec.type.name, context_name=context_name)
+        type_name=context_type_name, context_name=context_name)
     assert context is not None, ('Context is missing for %s while put_contexts '
                                  'reports that it existed.') % (
-                                     context_spec.name)
+                                     context_name)
 
   logging.debug('ID of context %s is %s.', context_spec, context.id)
   return context
