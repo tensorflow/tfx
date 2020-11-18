@@ -90,16 +90,17 @@ class KubeflowGCPIntegrationTest(kubeflow_test_utils.BaseKubeflowTest):
         custom_properties={'blessed': 1})
 
     ### Test data and modules for native Keras trainer and tuner.
-    self._iris_tuner_module = os.path.join(self._MODULE_ROOT, 'tuner_module.py')
-    self.iris_examples_importer = ImporterNode(
-        instance_name='iris_examples',
-        source_uri=os.path.join(self._testdata_root, 'iris', 'data'),
+    self._penguin_tuner_module = os.path.join(self._MODULE_ROOT,
+                                              'tuner_module.py')
+    self.penguin_examples_importer = ImporterNode(
+        instance_name='penguin_examples',
+        source_uri=os.path.join(self._testdata_root, 'penguin', 'data'),
         artifact_type=standard_artifacts.Examples,
         reimport=True,
         properties={'split_names': '["train", "eval"]'})
-    self.iris_schema_importer = ImporterNode(
-        instance_name='iris_schema',
-        source_uri=os.path.join(self._testdata_root, 'iris', 'schema'),
+    self.penguin_schema_importer = ImporterNode(
+        instance_name='penguin_schema',
+        source_uri=os.path.join(self._testdata_root, 'penguin', 'schema'),
         artifact_type=standard_artifacts.Schema,
         reimport=True)
 
@@ -215,11 +216,11 @@ class KubeflowGCPIntegrationTest(kubeflow_test_utils.BaseKubeflowTest):
     pipeline_name = 'kubeflow-aip-dist-tuner-test-{}'.format(
         test_utils.random_id())
     pipeline = self._create_pipeline(pipeline_name, [
-        self.iris_examples_importer, self.iris_schema_importer,
+        self.penguin_examples_importer, self.penguin_schema_importer,
         ai_platform_tuner_component.Tuner(
-            examples=self.iris_examples_importer.outputs['result'],
-            module_file=self._iris_tuner_module,
-            schema=self.iris_schema_importer.outputs['result'],
+            examples=self.penguin_examples_importer.outputs['result'],
+            module_file=self._penguin_tuner_module,
+            schema=self.penguin_schema_importer.outputs['result'],
             train_args=trainer_pb2.TrainArgs(num_steps=10),
             eval_args=trainer_pb2.EvalArgs(num_steps=5),
             # 3 worker parallel tuning.
