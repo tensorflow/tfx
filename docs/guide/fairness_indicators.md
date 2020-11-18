@@ -49,7 +49,7 @@ labelled for the features you would like to slice by. If you don't have the
 exact slice features for your fairness concerns, you may explore trying to find
 an evaluation set that does, or considering proxy features within your feature
 set that may highlight outcome disparities. For additional guidance, see
-[here](/tfx/fairness_indicators/guidance).
+[here](https://tensorflow.org/responsible_ai/fairness_indicators/guide/guidance).
 
 ### Model
 
