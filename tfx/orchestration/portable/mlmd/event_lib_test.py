@@ -30,7 +30,7 @@ from ml_metadata.proto import metadata_store_pb2
 class EventLibTest(tf.test.TestCase):
 
   def testIsDesiredOutputEvent(self):
-    legal_output_event = metadata_store_pb2.Event()
+    output_event = metadata_store_pb2.Event()
     text_format.Parse(
         """
         type: OUTPUT
@@ -42,8 +42,8 @@ class EventLibTest(tf.test.TestCase):
             index: 1
           }
         }
-        """, legal_output_event)
-    event_wrong_type = metadata_store_pb2.Event()
+        """, output_event)
+    input_event = metadata_store_pb2.Event()
     text_format.Parse(
         """
         type: INPUT
@@ -55,15 +55,57 @@ class EventLibTest(tf.test.TestCase):
             index: 1
           }
         }
-        """, event_wrong_type)
-    event_no_key = metadata_store_pb2.Event()
-    text_format.Parse('type: OUTPUT', event_no_key)
+        """, input_event)
+    empty_event = metadata_store_pb2.Event()
+    text_format.Parse('type: OUTPUT', empty_event)
+
     self.assertTrue(
-        event_lib.validate_output_event(legal_output_event, 'right_key'))
+        event_lib.is_valid_output_event(output_event, 'right_key'))
     self.assertFalse(
-        event_lib.validate_output_event(event_wrong_type, 'right_key'))
-    self.assertFalse(event_lib.validate_output_event(event_no_key, 'right_key'))
-    self.assertTrue(event_lib.validate_output_event(event_no_key))
+        event_lib.is_valid_output_event(output_event, 'wrong_key'))
+    self.assertFalse(
+        event_lib.is_valid_output_event(input_event, 'right_key'))
+    self.assertFalse(event_lib.is_valid_output_event(empty_event, 'right_key'))
+    self.assertTrue(event_lib.is_valid_output_event(empty_event))
+
+  def testIsDesiredInputEvent(self):
+    output_event = metadata_store_pb2.Event()
+    text_format.Parse(
+        """
+        type: OUTPUT
+        path {
+          steps {
+            key: 'right_key'
+          }
+          steps {
+            index: 1
+          }
+        }
+        """, output_event)
+    input_event = metadata_store_pb2.Event()
+    text_format.Parse(
+        """
+        type: INPUT
+        path {
+          steps {
+            key: 'right_key'
+          }
+          steps {
+            index: 1
+          }
+        }
+        """, input_event)
+    empty_event = metadata_store_pb2.Event()
+    text_format.Parse('type: INPUT', empty_event)
+
+    self.assertTrue(
+        event_lib.is_valid_input_event(input_event, 'right_key'))
+    self.assertFalse(
+        event_lib.is_valid_input_event(input_event, 'wrong_key'))
+    self.assertFalse(
+        event_lib.is_valid_input_event(output_event, 'right_key'))
+    self.assertFalse(event_lib.is_valid_input_event(empty_event, 'right_key'))
+    self.assertTrue(event_lib.is_valid_input_event(empty_event))
 
   def testGenerateEvent(self):
     self.assertProtoEquals(
