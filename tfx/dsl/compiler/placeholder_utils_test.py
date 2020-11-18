@@ -20,7 +20,7 @@ from tfx.dsl.compiler import placeholder_utils
 from tfx.orchestration.portable import data_types
 from tfx.proto import infra_validator_pb2
 from tfx.proto.orchestration import executable_spec_pb2
-from tfx.proto.orchestration import executor_invocation_pb2
+from tfx.proto.orchestration import execution_invocation_pb2
 from tfx.proto.orchestration import pipeline_pb2
 from tfx.proto.orchestration import placeholder_pb2
 from tfx.types import artifact_utils
@@ -410,17 +410,17 @@ class PlaceholderUtilsTest(tf.test.TestCase):
     resolved = placeholder_utils.resolve_placeholder_expression(
         pb, self._resolution_context)
     got_exec_invocation = json_format.Parse(
-        resolved, executor_invocation_pb2.ExecutorInvocation())
+        resolved, execution_invocation_pb2.ExecutionInvocation())
     want_exec_invocation = text_format.Parse(
-        _WANT_EXEC_INVOCATION, executor_invocation_pb2.ExecutorInvocation())
+        _WANT_EXEC_INVOCATION, execution_invocation_pb2.ExecutionInvocation())
     self.assertProtoEquals(want_exec_invocation, got_exec_invocation)
 
   def testExecutionInvocationDescriptor(self):
     # Test if ExecutionInvocation proto is in the default descriptor pool
     pool = descriptor_pool.Default()
     message_descriptor = pool.FindMessageTypeByName(
-        "tfx.orchestration.ExecutorInvocation")
-    self.assertEqual("tfx.orchestration.ExecutorInvocation",
+        "tfx.orchestration.ExecutionInvocation")
+    self.assertEqual("tfx.orchestration.ExecutionInvocation",
                      message_descriptor.full_name)
 
   def testBase64EncodeOperator(self):

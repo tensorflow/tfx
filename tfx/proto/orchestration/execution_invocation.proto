@@ -23,7 +23,7 @@ import "tfx/proto/orchestration/pipeline.proto";
 // All the information needed for a TFX component execution.
 // TODO(b/172391062): Make this `ExecutionInvocation` for broader usages.
 // Next ID: 13
-message ExecutorInvocation {
+message ExecutionInvocation {
   reserved 1, 2;
 
   // The exec_properties to feed to execution.

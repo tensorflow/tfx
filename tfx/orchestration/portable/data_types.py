@@ -16,7 +16,7 @@ from typing import Any, Dict, Iterable, List, Mapping
 
 import attr
 from tfx import types
-from tfx.proto.orchestration import executor_invocation_pb2
+from tfx.proto.orchestration import execution_invocation_pb2
 from tfx.proto.orchestration import pipeline_pb2
 from tfx.types import artifact_utils
 
@@ -125,11 +125,10 @@ class ExecutionInfo:
   pipeline_info = attr.ib(type=pipeline_pb2.PipelineInfo, default=None)
   # The id of the pipeline run that this execution is in.
   pipeline_run_id = attr.ib(type=str, default=None)
-  # LINT.ThenChange(../../proto/orchestration/executor_invocation.proto)
+  # LINT.ThenChange(../../proto/orchestration/execution_invocation.proto)
 
-  def to_proto(
-      self) -> executor_invocation_pb2.ExecutorInvocation:
-    return executor_invocation_pb2.ExecutorInvocation(
+  def to_proto(self) -> execution_invocation_pb2.ExecutionInvocation:
+    return execution_invocation_pb2.ExecutionInvocation(
         execution_id=self.execution_id,
         input_dict=_build_proto_artifact_dict(self.input_dict),
         output_dict=_build_proto_artifact_dict(self.output_dict),
@@ -144,17 +143,17 @@ class ExecutionInfo:
 
   @classmethod
   def from_proto(
-      cls, executor_invocation: executor_invocation_pb2.ExecutorInvocation
+      cls, execution_invocation: execution_invocation_pb2.ExecutionInvocation
   ) -> 'ExecutionInfo':
     return cls(
-        execution_id=executor_invocation.execution_id,
-        input_dict=_build_artifact_dict(executor_invocation.input_dict),
-        output_dict=_build_artifact_dict(executor_invocation.output_dict),
+        execution_id=execution_invocation.execution_id,
+        input_dict=_build_artifact_dict(execution_invocation.input_dict),
+        output_dict=_build_artifact_dict(execution_invocation.output_dict),
         exec_properties=_build_exec_property_dict(
-            executor_invocation.execution_properties),
-        execution_output_uri=executor_invocation.output_metadata_uri,
-        stateful_working_dir=executor_invocation.stateful_working_dir,
-        tmp_dir=executor_invocation.tmp_dir,
-        pipeline_node=executor_invocation.pipeline_node,
-        pipeline_info=executor_invocation.pipeline_info,
-        pipeline_run_id=executor_invocation.pipeline_run_id)
+            execution_invocation.execution_properties),
+        execution_output_uri=execution_invocation.output_metadata_uri,
+        stateful_working_dir=execution_invocation.stateful_working_dir,
+        tmp_dir=execution_invocation.tmp_dir,
+        pipeline_node=execution_invocation.pipeline_node,
+        pipeline_info=execution_invocation.pipeline_info,
+        pipeline_run_id=execution_invocation.pipeline_run_id)

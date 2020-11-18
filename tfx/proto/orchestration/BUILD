@@ -28,8 +28,8 @@ tfx_py_proto_library(
 )
 
 tfx_py_proto_library(
-    name = "executor_invocation_py_pb2",
-    srcs = ["executor_invocation.proto"],
+    name = "execution_invocation_py_pb2",
+    srcs = ["execution_invocation.proto"],
     deps = [
         ":pipeline_py_pb2",
         "@com_github_google_ml_metadata//ml_metadata/proto:metadata_store_py_pb2",
