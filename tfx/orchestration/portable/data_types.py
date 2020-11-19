@@ -12,82 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Data types shared for orchestration."""
-from typing import Any, Dict, Iterable, List, Mapping
+from typing import Any, Dict, List
 
 import attr
 from tfx import types
+from tfx.orchestration import data_types_utils
 from tfx.proto.orchestration import execution_invocation_pb2
 from tfx.proto.orchestration import pipeline_pb2
-from tfx.types import artifact_utils
-
-from ml_metadata.proto import metadata_store_pb2
-from ml_metadata.proto import metadata_store_service_pb2
-
-
-def _build_artifact_dict(
-    proto_dict: Mapping[str, metadata_store_service_pb2.ArtifactStructList]
-) -> Dict[str, List[types.Artifact]]:
-  """Builds ExecutionInfo input/output artifact dicts."""
-  result = {}
-  for k, v in proto_dict.items():
-    result[k] = []
-    for artifact_struct in v.elements:
-      if not artifact_struct.HasField('artifact'):
-        raise RuntimeError('Only support artifact oneof field')
-      artifact_and_type = artifact_struct.artifact
-      result[k].append(
-          artifact_utils.deserialize_artifact(artifact_and_type.type,
-                                              artifact_and_type.artifact))
-  return result
-
-
-def _build_proto_artifact_dict(
-    artifact_dict: Mapping[str, Iterable[types.Artifact]]
-) -> Dict[str, metadata_store_service_pb2.ArtifactStructList]:
-  """Builds PythonExecutorExecutionInfo input/output artifact dicts."""
-  result = {}
-  if not artifact_dict:
-    return result
-  for k, v in artifact_dict.items():
-    artifact_list = metadata_store_service_pb2.ArtifactStructList()
-    for artifact in v:
-      artifact_struct = metadata_store_service_pb2.ArtifactStruct(
-          artifact=metadata_store_service_pb2.ArtifactAndType(
-              artifact=artifact.mlmd_artifact, type=artifact.artifact_type))
-      artifact_list.elements.append(artifact_struct)
-    result[k] = artifact_list
-  return result
-
-
-def _build_exec_property_dict(
-    proto_dict: Mapping[str, metadata_store_pb2.Value]
-) -> Dict[str, types.Property]:
-  """Builds ExecutionInfo.exec_properties."""
-  result = {}
-  for k, v in proto_dict.items():
-    result[k] = getattr(v, v.WhichOneof('value'))
-  return result
-
-
-def _build_proto_exec_property_dict(
-    exec_properties: Mapping[str, types.Property]
-) -> Dict[str, metadata_store_pb2.Value]:
-  """Builds PythonExecutorExecutionInfo.execution_properties."""
-  result = {}
-  if not exec_properties:
-    return result
-  for k, v in exec_properties.items():
-    value = metadata_store_pb2.Value()
-    if isinstance(v, str):
-      value.string_value = v
-    elif isinstance(v, int):
-      value.int_value = v
-    elif isinstance(v, float):
-      value.double_value = v
-    else:
-      raise RuntimeError('Unsupported type {} for key {}'.format(type(v), k))
-    result[k] = value
-  return result
 
 
 # TODO(b/150979622): We should introduce an id that is not changed across
@@ -130,9 +61,10 @@ class ExecutionInfo:
   def to_proto(self) -> execution_invocation_pb2.ExecutionInvocation:
     return execution_invocation_pb2.ExecutionInvocation(
         execution_id=self.execution_id,
-        input_dict=_build_proto_artifact_dict(self.input_dict),
-        output_dict=_build_proto_artifact_dict(self.output_dict),
-        execution_properties=_build_proto_exec_property_dict(
+        input_dict=data_types_utils.build_artifact_struct_dict(self.input_dict),
+        output_dict=data_types_utils.build_artifact_struct_dict(
+            self.output_dict),
+        execution_properties=data_types_utils.build_exec_property_value_dict(
             self.exec_properties),
         output_metadata_uri=self.execution_output_uri,
         stateful_working_dir=self.stateful_working_dir,
@@ -147,9 +79,11 @@ class ExecutionInfo:
   ) -> 'ExecutionInfo':
     return cls(
         execution_id=execution_invocation.execution_id,
-        input_dict=_build_artifact_dict(execution_invocation.input_dict),
-        output_dict=_build_artifact_dict(execution_invocation.output_dict),
-        exec_properties=_build_exec_property_dict(
+        input_dict=data_types_utils.build_artifact_dict(
+            execution_invocation.input_dict),
+        output_dict=data_types_utils.build_artifact_dict(
+            execution_invocation.output_dict),
+        exec_properties=data_types_utils.build_exec_property_dict(
             execution_invocation.execution_properties),
         execution_output_uri=execution_invocation.output_metadata_uri,
         stateful_working_dir=execution_invocation.stateful_working_dir,
