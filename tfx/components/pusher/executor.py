@@ -101,7 +101,7 @@ class Executor(base_executor.BaseExecutor):
       infra_blessing = artifact_utils.get_single_instance(maybe_infra_blessing)
       if not model_utils.is_infra_validated(infra_blessing):
         logging.info('Model on %s was not blessed by infra validator',
-                     model_blessing.uri)
+                     infra_blessing.uri)
         return False
     if not maybe_model_blessing and not maybe_infra_blessing:
       logging.warning('Pusher is going to push the model without validation. '
