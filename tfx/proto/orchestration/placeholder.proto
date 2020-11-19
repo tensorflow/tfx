@@ -24,7 +24,7 @@ import "ml_metadata/proto/metadata_store.proto";
 message PlaceholderExpression {
   oneof expression_type {
     // ml_metadata.Value currently does not support boolean type.
-    // Boolean values are stored as string literals "true" or "false".
+    // Boolean values should be stored as string literals "true" or "false".
     ml_metadata.Value value = 1;
     Placeholder placeholder = 2;
     PlaceholderExpressionOperator operator = 3;
@@ -92,11 +92,13 @@ message ProtoOperator {
     // Message type for the proto. It must exist in the file_descriptors below.
     string message_type = 1;
     // Definitions of all dependencies of the above message type.
+    // Optional if the descriptor exists in the base file descriptor pool
+    // during placeholder evaluation.
     google.protobuf.FileDescriptorSet file_descriptors = 2;
   }
 
-  // Required. An expression that evaluates to a proto type.
-  // Typically, this is an EXEC_PROPERTY type placeholder.
+  // Required. An expression that evaluates to a proto type. For example,
+  // EXEC_PROPERTY, RUNTIME_INFO or EXEC_INVOCATION type placeholders.
   PlaceholderExpression expression = 1;
 
   // Required. Proto schema makes proto-valued placeholder expression
@@ -105,24 +107,26 @@ message ProtoOperator {
 
   // Optional. Access a field inside the proto, using proto notations.
   // If provided, the value at the proto_field_path is a non-message type,
-  // it will be rendered directly by converting to a string.
+  // it will be rendered directly.
   // If this field is not provided, or the proto_field_path points to a
-  // sub-message, that value will be rendered to a string using text_format.
+  // sub-message, serialization_format is required. The sub-message will be
+  // rendered using serialization_format.
   //
   // For example: proto_field_path=["[0]", ".a", ".b", "['c']"] is equivalent to
   // accessing p[0].a.b['c'], where p is the proto evaluated from the above
   // expression.
   repeated string proto_field_path = 3;
 
-  // Supported schemes to serialize a proto.
+  // Supported formats to serialize a proto.
   enum SerializationFormat {
-    DEFAULT = 0;
+    DEFAULT = 0;  // Currently unused.
     TEXT_FORMAT = 1;
     JSON = 2;
     BINARY = 3;
   }
 
-  // Optional. The scheme that the proto is serialized to.
+  // The format that the proto is serialized to.
+  // Required if proto_field_path is unprovided or points to a sub-message.
   SerializationFormat serialization_format = 4;
 }
 
@@ -140,7 +144,6 @@ message Placeholder {
   // A Placeholder can represent an input artifact, an output artifact,
   // or an execution property.
   enum Type {
-    // TODO(b/172065067): Clean up enum to reflect structure of the SDK objects.
     INPUT_ARTIFACT = 0;
     OUTPUT_ARTIFACT = 1;
     EXEC_PROPERTY = 2;
