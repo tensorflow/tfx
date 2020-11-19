@@ -108,6 +108,7 @@
     dataset. The new template focused on easy ingestion of user's own data.
 *   Changed default data path for the taxi template from `tfx-template/data`
     to `tfx-template/data/taxi`.
+*   Fixed a bug which crashes the pusher when infra validation did not pass.
 *   Depends on `apache-beam[gcp]>=2.25,<3`.
 *   Depends on `attrs>=19.3.0,<21`.
 *   Depends on `kfp-pipeline-spec>=0.1.2,<0.2`.

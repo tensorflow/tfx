@@ -120,7 +120,7 @@ class ExecutorTest(tf.test.TestCase):
     self._model_blessing.set_int_custom_property('blessed', 1)  # Blessed.
     infra_blessing = standard_artifacts.InfraBlessing()
     infra_blessing.set_int_custom_property('blessed', 1)  # Blessed.
-    input_dict = {'infra_blessing': [infra_blessing]}
+    input_dict = {executor.INFRA_BLESSING_KEY: [infra_blessing]}
     input_dict.update(self._input_dict)
 
     # Run executor
@@ -134,8 +134,38 @@ class ExecutorTest(tf.test.TestCase):
     self._model_blessing.set_int_custom_property('blessed', 1)  # Blessed.
     infra_blessing = standard_artifacts.InfraBlessing()
     infra_blessing.set_int_custom_property('blessed', 0)  # Not blessed.
-    input_dict = {'infra_blessing': [infra_blessing]}
+    input_dict = {executor.INFRA_BLESSING_KEY: [infra_blessing]}
     input_dict.update(self._input_dict)
+
+    # Run executor
+    self._executor.Do(input_dict, self._output_dict, self._exec_properties)
+
+    # Check model is not pushed.
+    self.assertNotPushed()
+
+  def testDo_NoModelBlessing_InfraBlessed_Pushed(self):
+    # Prepare successful InfraBlessing only (without ModelBlessing).
+    infra_blessing = standard_artifacts.InfraBlessing()
+    infra_blessing.set_int_custom_property('blessed', 1)  # Blessed.
+    input_dict = {
+        executor.MODEL_KEY: self._input_dict[executor.MODEL_KEY],
+        executor.INFRA_BLESSING_KEY: [infra_blessing],
+    }
+
+    # Run executor
+    self._executor.Do(input_dict, self._output_dict, self._exec_properties)
+
+    # Check model is pushed.
+    self.assertPushed()
+
+  def testDo_NoModelBlessing_InfraNotBlessed_NotPushed(self):
+    # Prepare unsuccessful InfraBlessing only (without ModelBlessing).
+    infra_blessing = standard_artifacts.InfraBlessing()
+    infra_blessing.set_int_custom_property('blessed', 0)  # Not blessed.
+    input_dict = {
+        executor.MODEL_KEY: self._input_dict[executor.MODEL_KEY],
+        executor.INFRA_BLESSING_KEY: [infra_blessing],
+    }
 
     # Run executor
     self._executor.Do(input_dict, self._output_dict, self._exec_properties)
