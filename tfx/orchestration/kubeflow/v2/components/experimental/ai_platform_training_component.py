@@ -150,7 +150,7 @@ def create_ai_platform_training(
     project_id: the GCP project under which the AIP training job will be
       running.
     region: GCE region where the AIP training job will be running.
-    job_id: the unique ID of the job. Default to 'tfx_{%Y%m%d%H%M%S}'
+    job_id: the unique ID of the job. Default to 'tfx_%Y%m%d%H%M%S'
     image_uri: the GCR location of the container image, which will be used to
       execute the training program. If the same field is specified in
       training_input, the latter overrides image_uri.
