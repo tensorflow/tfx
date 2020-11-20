@@ -31,7 +31,10 @@ from tfx.utils import json_utils
 # Constant to access resolver class from resolver exec_properties.
 RESOLVER_CLASS = 'resolver_class'
 # Constant to access resolver config from resolver exec_properties.
-RESOLVER_CONFIGS = 'source_uri'
+RESOLVER_CONFIG = 'source_uri'
+
+RESOLVER_CLASS_LIST = 'resolver_class_list'
+RESOLVER_CONFIG_LIST = 'resolver_config_list'
 
 
 class ResolverDriver(base_driver.BaseDriver):
@@ -63,8 +66,8 @@ class ResolverDriver(base_driver.BaseDriver):
         contexts=contexts)
     # Gets resolved artifacts.
     resolver_class = exec_properties[RESOLVER_CLASS]
-    if exec_properties[RESOLVER_CONFIGS]:
-      resolver = resolver_class(**exec_properties[RESOLVER_CONFIGS])
+    if exec_properties[RESOLVER_CONFIG]:
+      resolver = resolver_class(**exec_properties[RESOLVER_CONFIG])
     else:
       resolver = resolver_class()
     resolve_result = resolver.resolve(
@@ -162,5 +165,5 @@ class ResolverNode(base_node.BaseNode):
   def exec_properties(self) -> Dict[Text, Any]:
     return {
         RESOLVER_CLASS: self._resolver_class,
-        RESOLVER_CONFIGS: self._resolver_configs
+        RESOLVER_CONFIG: self._resolver_configs
     }

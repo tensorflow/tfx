@@ -42,7 +42,7 @@ class ResolverNodeTest(tf.test.TestCase):
         rnode.exec_properties, {
             resolver_node.RESOLVER_CLASS:
                 latest_artifacts_resolver.LatestArtifactsResolver,
-            resolver_node.RESOLVER_CONFIGS: {'desired_num_of_artifacts': 5}
+            resolver_node.RESOLVER_CONFIG: {'desired_num_of_artifacts': 5}
         })
     self.assertEqual(rnode.inputs.get_all()['channel_to_resolve'],
                      channel_to_resolve)
@@ -93,7 +93,7 @@ class ResolverDriverTest(tf.test.TestCase):
           exec_properties={
               resolver_node.RESOLVER_CLASS:
                   latest_artifacts_resolver.LatestArtifactsResolver,
-              resolver_node.RESOLVER_CONFIGS: {
+              resolver_node.RESOLVER_CONFIG: {
                   'desired_num_of_artifacts': 1
               }
           })
@@ -103,7 +103,7 @@ class ResolverDriverTest(tf.test.TestCase):
           execution_result.exec_properties, {
               resolver_node.RESOLVER_CLASS:
                   latest_artifacts_resolver.LatestArtifactsResolver,
-              resolver_node.RESOLVER_CONFIGS: {
+              resolver_node.RESOLVER_CONFIG: {
                   'desired_num_of_artifacts': 1
               }
           })
@@ -126,7 +126,7 @@ class ResolverDriverTest(tf.test.TestCase):
           exec_properties={
               resolver_node.RESOLVER_CLASS:
                   latest_artifacts_resolver.LatestArtifactsResolver,
-              resolver_node.RESOLVER_CONFIGS: {}
+              resolver_node.RESOLVER_CONFIG: {}
           })
 
 

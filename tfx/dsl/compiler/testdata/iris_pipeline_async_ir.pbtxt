@@ -282,7 +282,10 @@ nodes {
         }
       }
       resolver_config {
-        resolver_policy: LATEST_BLESSED_MODEL
+        resolvers {
+          name: "LatestBlessedModelResolver"
+          config_json: "{}"
+        }
       }
     }
     execution_options {

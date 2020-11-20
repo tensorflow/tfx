@@ -23,6 +23,7 @@ from __future__ import print_function
 import tensorflow as tf
 from tfx import types
 from tfx.dsl.experimental import latest_artifacts_resolver
+from tfx.dsl.resolvers import base_resolver
 from tfx.orchestration import data_types
 from tfx.orchestration import metadata
 from tfx.types import standard_artifacts
@@ -93,7 +94,8 @@ class LatestArtifactsResolverTest(tf.test.TestCase):
 
       resolver = latest_artifacts_resolver.LatestArtifactsResolver()
       result = resolver.resolve_artifacts(
-          m, {'input': [artifact_two, artifact_one]})
+          base_resolver.ResolverContext(metadata_handler=m),
+          {'input': [artifact_two, artifact_one]})
       self.assertIsNotNone(result)
       self.assertEqual([a.uri for a in result['input']],
                        [expected_artifact.uri])

@@ -18,25 +18,21 @@ package tfx.orchestration;
 import "google/protobuf/any.proto";
 import "ml_metadata/proto/metadata_store.proto";
 
-// ResolverConfig is subject to change. Currently we only use enum to represent
-// two of the currently available policies. We plan to introduce a flexible
+// ResolverConfig is subject to change. We plan to introduce a flexible
 // config to enable more sophisticated policies in the future.
 // TODO(b/152230663): Support more flexibility for resolution logic.
 message ResolverConfig {
-  enum ResolverPolicy {
-    RESOLVER_POLICY_UNSPECIFIED = 0;
-    // Given a list of artifacts, always select the artifact with largest
-    // `last_update_time_since_epoch`.
-    LATEST_ARTIFACT = 1;
-    // Given a list of Model artifacts and a list of ModelBlessing artifacts,
-    // select the the latest Model that is blessed (represented by having a
-    // corresponding ModelBlessing artifact. The result will be consumed by
-    // components that need the latest model that is blessed such as Evaluator.
-    LATEST_BLESSED_MODEL = 2;
+
+  // Each resolver instance accepts inputs (Dict[Text, List[Artifact]]) and
+  // emits an optional processed inputs (Optional[Dict[Text, List[Artifacts]]]).
+  message Resolver {
+    // Name of the resolver class.
+    string name = 1;
+    // Serialized resolver config.
+    string config_json = 2;
   }
-  // TODO(b/152230663): Make this one of special resolver policies or generic
-  // ResolverConfig.
-  ResolverPolicy resolver_policy = 1;
+
+  repeated Resolver resolvers = 1;
 }
 
 // Definition for runtime parameters.

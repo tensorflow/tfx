@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,22 +13,20 @@
 # limitations under the License.
 """Base class for TFX resolvers."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import abc
 from typing import Dict, List, Optional, Text
 
+import attr
 from six import with_metaclass
 from tfx import types
 from tfx.orchestration import data_types
 from tfx.orchestration import metadata
 
+import ml_metadata as mlmd
 from tensorflow.python.util import deprecation  # pylint: disable=g-direct-tensorflow-import
 
 
-class ResolveResult(object):
+class ResolveResult:
   """The data structure to hold results from Resolver.
 
   Attributes:
@@ -46,6 +43,16 @@ class ResolveResult(object):
     self.per_key_resolve_result = per_key_resolve_result
     self.per_key_resolve_state = per_key_resolve_state
     self.has_complete_result = all([s for s in per_key_resolve_state.values()])
+
+
+@attr.s(auto_attribs=True)
+class ResolverContext:
+  """Resolver runtime context."""
+  metadata_handler: metadata.Metadata
+
+  @property
+  def store(self) -> mlmd.MetadataStore:
+    return self.metadata_handler.store
 
 
 class BaseResolver(with_metaclass(abc.ABCMeta, object)):
@@ -85,13 +92,13 @@ class BaseResolver(with_metaclass(abc.ABCMeta, object)):
 
   @abc.abstractmethod
   def resolve_artifacts(
-      self, metadata_handler: metadata.Metadata,
+      self, context: ResolverContext,
       input_dict: Dict[Text, List[types.Artifact]]
   ) -> Optional[Dict[Text, List[types.Artifact]]]:
     """Resolves artifacts from channels by querying MLMD.
 
     Args:
-      metadata_handler: A metadata handler to access MLMD store.
+      context: A ResolverContext for resolver runtime.
       input_dict: The input_dict to resolve from.
 
     Returns:

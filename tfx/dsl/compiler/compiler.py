@@ -17,8 +17,6 @@ import re
 
 from typing import cast
 
-from absl import logging
-
 from tfx.components.common_nodes import importer_node
 from tfx.components.common_nodes import resolver_node
 from tfx.dsl.compiler import compiler_utils
@@ -26,12 +24,11 @@ from tfx.dsl.compiler import constants
 from tfx.dsl.components.base import base_component
 from tfx.dsl.components.base import base_driver
 from tfx.dsl.components.base import base_node
-from tfx.dsl.experimental import latest_artifacts_resolver
-from tfx.dsl.experimental import latest_blessed_model_resolver
 from tfx.orchestration import data_types
 from tfx.orchestration import pipeline
 from tfx.proto.orchestration import executable_spec_pb2
 from tfx.proto.orchestration import pipeline_pb2
+from tfx.utils import json_utils
 
 
 class _CompilerContext(object):
@@ -165,18 +162,11 @@ class Compiler(object):
 
     # Step 3.1: Special treatment for Resolver node
     if compiler_utils.is_resolver(tfx_node):
-      resolver = tfx_node.exec_properties[resolver_node.RESOLVER_CLASS]
-      if resolver == latest_artifacts_resolver.LatestArtifactsResolver:
-        node.inputs.resolver_config.resolver_policy = (
-            pipeline_pb2.ResolverConfig.ResolverPolicy.LATEST_ARTIFACT)
-      elif resolver == latest_blessed_model_resolver.LatestBlessedModelResolver:
-        node.inputs.resolver_config.resolver_policy = (
-            pipeline_pb2.ResolverConfig.ResolverPolicy.LATEST_BLESSED_MODEL)
-      else:
-        logging.error("Got unsupported resolver policy: %s", type(resolver))
-        node.inputs.resolver_config.resolver_policy = (
-            pipeline_pb2.ResolverConfig.ResolverPolicy
-            .RESOLVER_POLICY_UNSPECIFIED)
+      for resolver_cls, resolver_config in (
+          _iter_resolver_cls_and_config(tfx_node)):
+        resolver_pb = node.inputs.resolver_config.resolvers.add()
+        resolver_pb.name = resolver_cls.__name__
+        resolver_pb.config_json = json_utils.dumps(resolver_config)
 
     # Step 4: Node outputs
     if isinstance(tfx_node, base_component.BaseComponent):
@@ -308,3 +298,19 @@ class Compiler(object):
           tfx_pipeline.platform_config)
     pipeline_pb.deployment_config.Pack(deployment_config)
     return pipeline_pb
+
+
+def _iter_resolver_cls_and_config(tfx_node: base_node.BaseNode):
+  """Iterate through resolver class and configs that are bind to the node."""
+  exec_properties = tfx_node.exec_properties
+  if (resolver_node.RESOLVER_CLASS in exec_properties
+      and resolver_node.RESOLVER_CONFIG in exec_properties):
+    yield (exec_properties[resolver_node.RESOLVER_CLASS],
+           exec_properties[resolver_node.RESOLVER_CONFIG])
+  elif (resolver_node.RESOLVER_CLASS_LIST in exec_properties
+        and resolver_node.RESOLVER_CONFIG_LIST in exec_properties):
+    yield from zip(
+        exec_properties[resolver_node.RESOLVER_CLASS_LIST],
+        exec_properties[resolver_node.RESOLVER_CONFIG_LIST])
+  else:
+    raise ValueError(f"Invalid ResolverNode exec_properties: {exec_properties}")

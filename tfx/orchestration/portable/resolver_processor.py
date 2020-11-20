@@ -16,49 +16,38 @@
 from typing import Dict, List, Optional
 
 from tfx import types
-from tfx.dsl.experimental import latest_artifacts_resolver
-from tfx.dsl.experimental import latest_blessed_model_resolver
-from tfx.orchestration import metadata
+from tfx.dsl.resolvers import base_resolver
+from tfx.orchestration.portable.resolver import factory as resolver_factory
 from tfx.proto.orchestration import pipeline_pb2
 
 
-class ResolverProcessor(object):
-  """PythonResolverOperator resolves artifacts in process."""
+class ResolverProcessor:
+  """ResolverProcessor resolves artifacts in process."""
 
-  # TODO(muyangy): This map is subject to change if the structure of
-  # ResolverConfig changes.
-  _RESOLVER_POLICY_TO_RESOLVER_CLASS = {
-      pipeline_pb2.ResolverConfig.RESOLVER_POLICY_UNSPECIFIED:
-          None,
-      pipeline_pb2.ResolverConfig.LATEST_ARTIFACT:
-          latest_artifacts_resolver.LatestArtifactsResolver,
-      pipeline_pb2.ResolverConfig.LATEST_BLESSED_MODEL:
-          latest_blessed_model_resolver.LatestBlessedModelResolver,
-  }
+  def __init__(self, resolver: base_resolver.BaseResolver):
+    self._resolver = resolver
 
-  def __init__(self, node_inputs: pipeline_pb2.NodeInputs):
-    resolver_policy = node_inputs.resolver_config.resolver_policy
-    if resolver_policy not in self._RESOLVER_POLICY_TO_RESOLVER_CLASS:
-      raise ValueError(
-          "Resolver_policy {} is not supported.".format(resolver_policy))
-    resolver_class = self._RESOLVER_POLICY_TO_RESOLVER_CLASS.get(
-        resolver_policy)
-    self._resolver = None
-    if resolver_class:
-      self._resolver = resolver_class()
-
-  def ResolveInputs(
-      self, metadata_handler: metadata.Metadata,
+  def __call__(
+      self, context: base_resolver.ResolverContext,
       input_dict: Dict[str, List[types.Artifact]]
   ) -> Optional[Dict[str, List[types.Artifact]]]:
     """Resolves artifacts in input_dict by optionally querying MLMD.
 
     Args:
-      metadata_handler: A metadata handler to access MLMD store.
+      context: A ResolverContext for resolver runtime.
       input_dict: Inputs to be resolved.
 
     Returns:
       The resolved input_dict.
     """
-    return (self._resolver.resolve_artifacts(metadata_handler, input_dict)
-            if self._resolver else input_dict)
+    return self._resolver.resolve_artifacts(context, input_dict)
+
+
+def make_resolver_processors(
+    resolver_config: pipeline_pb2.ResolverConfig) -> List[ResolverProcessor]:
+  """Factory function for ResolverProcessors from ResolverConfig."""
+  result = []
+  for resolver_pb in resolver_config.resolvers:
+    resolver = resolver_factory.get_resolver_instance(resolver_pb)
+    result.append(ResolverProcessor(resolver))
+  return result
