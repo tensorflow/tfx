@@ -19,7 +19,6 @@ With the native TF2 code path being exercised.
 import os
 
 import tensorflow as tf
-import tensorflow_transform as tft
 
 from tfx.components.transform import executor_test
 
@@ -35,6 +34,4 @@ class ExecutorV2Test(executor_test.ExecutorTest):
 
 
 if __name__ == '__main__':
-  # TODO(b/168641322): remove once TFT post-0.25.0 released and depended on.
-  if tft.__version__ > '0.25.0' and tf.version.VERSION >= '2.4':
-    tf.test.main()
+  tf.test.main()
