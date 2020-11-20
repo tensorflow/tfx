@@ -50,12 +50,25 @@ def select_constraint(default, nightly=None, git_master=None):
     return default
 
 
+def make_pipeline_sdk_required_install_packages():
+  return [
+      'absl-py>=0.9,<0.11',
+      'ml-metadata' + select_constraint(
+          # LINT.IfChange
+          default='>=0.25,<0.26',
+          # LINT.ThenChange(tfx/workspace.bzl)
+          nightly='>=0.26.0.dev',
+          git_master='@git+https://github.com/google/ml-metadata@master'),
+      'protobuf>=3.12.2,<4',
+      'six>=1.10,<2',
+  ]
+
+
 def make_required_install_packages():
   # Make sure to sync the versions of common dependencies (absl-py, numpy,
   # six, and protobuf) with TF.
   # TODO(b/130767399): add flask once the frontend is exposed externally.
-  return [
-      'absl-py>=0.9,<0.11',
+  return make_pipeline_sdk_required_install_packages() + [
       # LINT.IfChange
       'apache-beam[gcp]>=2.25,<3',
       # LINT.ThenChange(examples/chicago_taxi_pipeline/setup/setup_beam.sh)
@@ -67,16 +80,8 @@ def make_required_install_packages():
       'jinja2>=2.7.3,<3',
       'keras-tuner>=1,<2',
       'kubernetes>=10.0.1,<12',
-      'ml-metadata' + select_constraint(
-          # LINT.IfChange
-          default='>=0.25,<0.26',
-          # LINT.ThenChange(tfx/workspace.bzl)
-          nightly='>=0.26.0.dev',
-          git_master='@git+https://github.com/google/ml-metadata@master'),
-      'protobuf>=3.12.2,<4',
       'pyarrow>=0.17,<0.18',
       'pyyaml>=3.12,<6',
-      'six>=1.10,<2',
       'tensorflow>=1.15.2,!=2.0.*,!=2.1.*,!=2.2.*,<3',
       'tensorflow-hub>=0.9.0,<0.10',
       # TODO(b/159488890): remove user module-only dependency.

@@ -16,12 +16,13 @@
 
 from __future__ import print_function
 
+import logging
 import os
 import subprocess
 import sys
 
 import setuptools
-from setuptools import find_packages
+from setuptools import find_namespace_packages
 from setuptools import setup
 from setuptools.command import develop
 # pylint: disable=g-bad-import-order
@@ -36,6 +37,15 @@ from tfx import dependencies
 from tfx import version
 from tfx.tools import resolve_deps
 from wheel import bdist_wheel
+
+# Prefer to import `package_config` from the setup.py script's directory. The
+# `package_config.py` file is used to configure which package to build (see
+# the logic below switching on `package_config.PACKAGE_NAME`) and the overall
+# package build README at `package_build/README.md`.
+sys.path.insert(0, os.path.dirname(__file__))
+# pylint: disable=g-bad-import-order,g-import-not-at-top
+import package_config
+# pylint: enable=g-bad-import-order,g-import-not-at-top
 
 
 class _BdistWheelCommand(bdist_wheel.bdist_wheel):
@@ -160,13 +170,68 @@ class _GenProtoCommand(setuptools.Command):
         env=os.environ)
 
 
-# Get the long description from the README file.
+# Get the long descriptions from README files.
 with open('README.md') as fp:
-  _LONG_DESCRIPTION = fp.read()
+  _TFX_LONG_DESCRIPTION = fp.read()
+with open('README.ml-pipelines-sdk.md') as fp:
+  _PIPELINES_SDK_LONG_DESCRIPTION = fp.read()
 
+package_name = package_config.PACKAGE_NAME
+install_requires = dependencies.make_required_install_packages()
+tfx_extra_requires = {
+    # In order to use 'docker-image' or 'all', system libraries specified
+    # under 'tfx/tools/docker/Dockerfile' are required
+    'docker-image': dependencies.make_extra_packages_docker_image(),
+    'tfjs': dependencies.make_extra_packages_tfjs(),
+    'examples': dependencies.make_extra_packages_examples(),
+    'test': dependencies.make_extra_packages_test(),
+    'all': dependencies.make_extra_packages_all(),
+}
+ml_pipelines_sdk_packages = ['tfx.dsl', 'tfx.dsl.*']
+
+# This `setup.py` file can be used to build packages in 3 configurations. See
+# the discussion in `package_build/README.md` for an overview. The `tfx` and
+# `ml-pipelines-sdk` pip packages can be built for distribution using the
+# selectable `package_config.PACKAGE_NAME` specifier. Additionally, for
+# development convenience, the `tfx-dev` package containing the union of the
+# the `tfx` and `ml-pipelines-sdk` package can be installed as an editable
+# package using `pip install -e .`, but should not be built for distribution.
+if package_config.PACKAGE_NAME == 'tfx-dev':
+  # Monolithic development package with the entirety of `tfx.*` and the full
+  # set of dependencies. Functionally equivalent to the union of the "tfx" and
+  # "tfx-pipeline-sdk" packages.
+  install_requires = dependencies.make_required_install_packages()
+  extras_require = tfx_extra_requires
+  long_description = _TFX_LONG_DESCRIPTION
+  packages = find_namespace_packages(include=['tfx', 'tfx.*'])
+  # TODO(ccy): Remove the override on the following line and prevent build of
+  # wheels from a monolithic "tfx" package.
+  package_name = 'tfx'
+elif package_config.PACKAGE_NAME == 'ml-pipelines-sdk':
+  # Core TFX pipeline authoring SDK, without dependency on component-specific
+  # packages like "tensorflow" and "apache-beam".
+  install_requires = dependencies.make_pipeline_sdk_required_install_packages()
+  extras_require = {}
+  long_description = _PIPELINES_SDK_LONG_DESCRIPTION
+  packages = find_namespace_packages(include=ml_pipelines_sdk_packages)
+elif package_config.PACKAGE_NAME == 'tfx':
+  # Recommended installation package for TFX. This package builds on top of
+  # the "ml-pipelines-sdk" pipeline authoring SDK package and adds first-party
+  # TFX components and additional functionality.
+  install_requires = (
+      ['ml-pipelines-sdk==%s' % version.__version__] +
+      dependencies.make_required_install_packages())
+  extras_require = tfx_extra_requires
+  long_description = _TFX_LONG_DESCRIPTION
+  packages = find_namespace_packages(
+      include=['tfx', 'tfx.*'], exclude=ml_pipelines_sdk_packages)
+else:
+  raise ValueError('Invalid package config: %r.' % package_config.PACKAGE_NAME)
+
+logging.info('Executing build for package %r.', package_name)
 
 setup(
-    name='tfx',
+    name=package_name,
     version=version.__version__,
     author='Google LLC',
     author_email='tensorflow-extended-dev@googlegroups.com',
@@ -192,16 +257,8 @@ setup(
         'Topic :: Software Development :: Libraries :: Python Modules',
     ],
     namespace_packages=[],
-    install_requires=dependencies.make_required_install_packages(),
-    extras_require={
-        # In order to use 'docker-image' or 'all', system libraries specified
-        # under 'tfx/tools/docker/Dockerfile' are required
-        'docker-image': dependencies.make_extra_packages_docker_image(),
-        'tfjs': dependencies.make_extra_packages_tfjs(),
-        'examples': dependencies.make_extra_packages_examples(),
-        'test': dependencies.make_extra_packages_test(),
-        'all': dependencies.make_extra_packages_all(),
-    },
+    install_requires=install_requires,
+    extras_require=extras_require,
     # TODO(b/158761800): Move to [build-system] requires in pyproject.toml.
     setup_requires=[
         'pytest-runner',
@@ -219,10 +276,10 @@ setup(
         'resolve_deps': resolve_deps.ResolveDepsCommand,
     },
     python_requires='>=3.6,<3.9',
-    packages=find_packages(),
+    packages=packages,
     include_package_data=True,
     description='TensorFlow Extended (TFX) is a TensorFlow-based general-purpose machine learning platform implemented at Google',
-    long_description=_LONG_DESCRIPTION,
+    long_description=long_description,
     long_description_content_type='text/markdown',
     keywords='tensorflow tfx',
     url='https://www.tensorflow.org/tfx',
