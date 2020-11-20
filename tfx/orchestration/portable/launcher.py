@@ -25,6 +25,7 @@ from tfx.orchestration.portable import base_driver_operator
 from tfx.orchestration.portable import base_executor_operator
 from tfx.orchestration.portable import cache_utils
 from tfx.orchestration.portable import data_types
+from tfx.orchestration.portable import docker_executor_operator
 from tfx.orchestration.portable import execution_publish_utils
 from tfx.orchestration.portable import importer_node_handler
 from tfx.orchestration.portable import inputs_utils
@@ -51,7 +52,9 @@ DriverOperator = TypeVar(
 
 DEFAULT_EXECUTOR_OPERATORS = {
     executable_spec_pb2.PythonClassExecutableSpec:
-        python_executor_operator.PythonExecutorOperator
+        python_executor_operator.PythonExecutorOperator,
+    executable_spec_pb2.ContainerExecutableSpec:
+        docker_executor_operator.DockerExecutorOperator
 }
 
 DEFAULT_DRIVER_OPERATORS = {

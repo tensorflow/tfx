@@ -113,6 +113,8 @@ class BeamDagRunner(tfx_runner.TfxRunner):
     result = local_deployment_config_pb2.ExecutableSpec()
     if spec.Is(result.python_class_executable_spec.DESCRIPTOR):
       spec.Unpack(result.python_class_executable_spec)
+    elif spec.Is(result.container_executable_spec.DESCRIPTOR):
+      spec.Unpack(result.container_executable_spec)
     else:
       raise ValueError(
           'executor spec of {} is expected to be of one of the '
@@ -213,6 +215,10 @@ class BeamDagRunner(tfx_runner.TfxRunner):
     deployment_config = self._extract_deployment_config(pipeline)
     connection_config = self._connection_config_from_deployment_config(
         deployment_config)
+
+    logging.info('Running pipeline:\n %s', pipeline)
+    logging.info('Using deployment config:\n %s', deployment_config)
+    logging.info('Using connection config:\n %s', connection_config)
 
     with telemetry_utils.scoped_labels(
         {telemetry_utils.LABEL_TFX_RUNNER: 'beam'}):

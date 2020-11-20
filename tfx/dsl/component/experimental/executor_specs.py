@@ -18,10 +18,18 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from typing import List, Text
+import functools
+import operator
+from typing import List, Optional, Text, Union
 
+from tfx import types
 from tfx.dsl.component.experimental import placeholders
 from tfx.dsl.components.base import executor_spec
+from tfx.dsl.placeholder import placeholder
+from tfx.proto.orchestration import executable_spec_pb2
+from tfx.proto.orchestration import placeholder_pb2
+
+from google.protobuf import message
 
 
 class TemplatedExecutorContainerSpec(executor_spec.ExecutorSpec):
@@ -88,3 +96,52 @@ class TemplatedExecutorContainerSpec(executor_spec.ExecutorSpec):
 
   def __ne__(self, other) -> bool:
     return not self.__eq__(other)
+
+  def _recursively_encode(
+      self, command: placeholders.CommandlineArgumentType
+  ) -> Union[str, placeholder.Placeholder]:
+    if isinstance(command, str):
+      return command
+    elif isinstance(command, placeholders.InputValuePlaceholder):
+      return placeholder.input(command.input_name)[0]
+    elif isinstance(command, placeholders.InputUriPlaceholder):
+      return placeholder.input(command.input_name)[0].uri
+    elif isinstance(command, placeholders.OutputUriPlaceholder):
+      return placeholder.output(command.output_name)[0].uri
+    elif isinstance(command, placeholders.ConcatPlaceholder):
+      # operator.add wil use the overloaded __add__ operator for Placeholder
+      # instances.
+      return functools.reduce(
+          operator.add,
+          [self._recursively_encode(item) for item in command.items])
+    else:
+      raise TypeError(
+          ('Unsupported type of command-line arguments: "{}".'
+           ' Supported types are {}.')
+          .format(type(command), str(placeholders.CommandlineArgumentType)))
+
+  def encode(
+      self,
+      component_spec: Optional[types.ComponentSpec] = None) -> message.Message:
+    """Encodes ExecutorSpec into an IR proto for compiling.
+
+    This method will be used by DSL compiler to generate the corresponding IR.
+
+    Args:
+      component_spec: Optional. The ComponentSpec to help with the encoding.
+
+    Returns:
+      An executor spec proto.
+    """
+    result = executable_spec_pb2.ContainerExecutableSpec()
+    result.image = self.image
+    for command in self.command:
+      cmd = result.commands.add()
+      str_or_placeholder = self._recursively_encode(command)
+      if isinstance(str_or_placeholder, str):
+        expression = placeholder_pb2.PlaceholderExpression()
+        expression.value.string_value = str_or_placeholder
+        cmd.CopyFrom(expression)
+      else:
+        cmd.CopyFrom(self._recursively_encode(command).encode())
+    return result

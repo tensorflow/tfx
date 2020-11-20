@@ -21,6 +21,7 @@ import "tfx/proto/orchestration/executable_spec.proto";
 message ExecutableSpec {
   oneof spec {
     tfx.orchestration.executable_spec.PythonClassExecutableSpec python_class_executable_spec = 1;
+    tfx.orchestration.executable_spec.ContainerExecutableSpec container_executable_spec = 2;
   }
 }
 // Definition for local deployment configs.
