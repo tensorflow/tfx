@@ -90,7 +90,7 @@ class KubeflowV2DagRunnerConfig(pipeline_config.PipelineConfig):
                default_image: Optional[Text] = None,
                default_commands: Optional[List[Text]] = None,
                **kwargs):
-    """Constructs a AIP Pipeline dag runner config.
+    """Constructs a Kubeflow V2 runner config.
 
     Args:
       project_id: GCP project ID to be used.

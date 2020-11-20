@@ -52,7 +52,7 @@ _TRAIN = ai_platform_training_component.create_ai_platform_training(
 
 
 class AiPlatformTrainingComponentIntegrationTest(
-    test_utils.BaseAIPlatformPipelinesTest):
+    test_utils.BaseKubeflowV2Test):
 
   def testSuccessfulExecution(self):
     aip_training_pipeline = pipeline.Pipeline(

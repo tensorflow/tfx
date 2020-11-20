@@ -331,7 +331,7 @@ class RunnerTest(tf.test.TestCase):
     self.assertEqual('2.2', runner._get_tf_runtime_version('2.2.0'))
     self.assertEqual('2.2', runner._get_tf_runtime_version('2.3.0'))
 
-  def testGetCaipPythonVersion(self):
+  def testGetAiPlatformTrainingPythonVersion(self):
     if sys.version_info.major == 2:
       self.assertEqual('2.7', runner._get_caip_python_version('1.14'))
       self.assertEqual('2.7', runner._get_caip_python_version('1.15'))
