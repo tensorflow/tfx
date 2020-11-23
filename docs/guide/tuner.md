@@ -212,20 +212,21 @@ algorithm implemented in the AI Platform Vizier does, an excessively parallel
 search would negatively affect the efficacy of the search.
 
 Note: Each trial in each parallel search is conducted on a single machine in the
-worker flock, i.e., the model training does not take advantage of multi-worker
-distributed training. Support for multi-worker distributed training in the
-context of parallel Tuner execution for each trial is planned to be added to
-CloudTuner.
+worker flock, i.e., each trial does not take advantage of multi-worker
+distributed training. If multi-worker distribution is desired for each trial,
+refer to
+[`DistributingCloudTuner`](https://github.com/tensorflow/cloud/blob/b9c8752f5c53f8722dfc0b5c7e05be52e62597a8/src/python/tensorflow_cloud/tuner/tuner.py#L384-L676),
+instead of `CloudTuner`.
 
 Note: Both `CloudTuner` and the Google Cloud AI Platform extensions Tuner
 component can be used together, in which case it allows distributed parallel
-tuning backed by AI Platform Vizier's hyperparameter search algorithm. However,
-in order to do so, the Cloud AI Platform Job must be given access to the AI
-Platform Vizier service. See this
-[guide](https://cloud.google.com/ai-platform/training/docs/custom-service-account#custom).
+tuning backed by the AI Platform Vizier's hyperparameter search algorithm.
+However, in order to do so, the Cloud AI Platform Job must be given access to
+the AI Platform Vizier service. See this
+[guide](https://cloud.google.com/ai-platform/training/docs/custom-service-account#custom)
 to set up a custom service account. After that, you should specify the custom
-service account for your training job in the pipeline code. More details see E2E
-CloudTuner on GCP exmaple.
+service account for your training job in the pipeline code. More details see
+[E2E CloudTuner on GCP exmaple](https://github.com/tensorflow/tfx/blob/master/tfx/examples/penguin/penguin_pipeline_kubeflow_gcp.py).
 
 ## Links
 
