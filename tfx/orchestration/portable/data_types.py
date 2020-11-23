@@ -25,7 +25,6 @@ from tfx.proto.orchestration import pipeline_pb2
 # retires of the same component run and pass it to executor operators for
 # human-readability purpose.
 # TODO(b/165359991): Restore 'auto_attribs=True' once we drop Python3.5 support.
-# TODO(b/172065067): Clean up ExecutionInfo to match placeholder SDK structure.
 @attr.s
 class ExecutionInfo:
   """A struct to store information for an execution."""
