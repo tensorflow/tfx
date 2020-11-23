@@ -317,7 +317,7 @@ def create_pipeline(
                   class_name='SparseCategoricalAccuracy',
                   threshold=tfma.MetricThreshold(
                       value_threshold=tfma.GenericValueThreshold(
-                          lower_bound={'value': 0.6}),
+                          lower_bound={'value': 0.4}),
                       change_threshold=tfma.GenericChangeThreshold(
                           direction=tfma.MetricDirection.HIGHER_IS_BETTER,
                           absolute={'value': -1e-10})))
