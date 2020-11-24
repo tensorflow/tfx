@@ -84,27 +84,16 @@ class _BigQueryConverter(object):
 @beam.typehints.with_input_types(beam.Pipeline)
 @beam.typehints.with_output_types(beam.typehints.Dict[Text, Any])
 def _ReadFromBigQueryImpl(  # pylint: disable=invalid-name
-    pipeline: beam.Pipeline,
-    query: Text,
-    use_bigquery_source: bool = False) -> beam.pvalue.PCollection:
+    pipeline: beam.Pipeline, query: Text) -> beam.pvalue.PCollection:
   """Read from BigQuery.
 
   Args:
     pipeline: beam pipeline.
     query: a BigQuery sql string.
-    use_bigquery_source: Whether to use BigQuerySource instead of experimental
-      `ReadFromBigQuery` PTransform.
 
   Returns:
     PCollection of dict.
   """
-  # TODO(b/155441037): Consolidate to ReadFromBigQuery once its performance
-  # on dataflow runner is on par with BigQuerySource.
-  if use_bigquery_source:
-    return (pipeline
-            | 'ReadFromBigQuerySource' >> beam.io.Read(
-                beam.io.BigQuerySource(query=query, use_standard_sql=True)))
-
   return (pipeline
           | 'ReadFromBigQuery' >> beam_bigquery.ReadFromBigQuery(
               query=query,
