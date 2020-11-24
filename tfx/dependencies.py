@@ -65,7 +65,9 @@ def make_required_install_packages():
       'google-api-python-client>=1.7.8,<2',
       'grpcio>=1.28.1,<2',
       'jinja2>=2.7.3,<3',
-      'keras-tuner>=1,<2',
+      # TODO(b/173976603): remove pinned keras-tuner upperbound when its
+      # dependency expecatation with TensorFlow is sorted out.
+      'keras-tuner>=1,<1.0.2',
       'kubernetes>=10.0.1,<12',
       'ml-metadata' + select_constraint(
           # LINT.IfChange
