@@ -14,7 +14,6 @@
 ## Deprecations
 
 ## Bug fixes and other changes
-*  Depends on 'keras-tuner>=1,<1.0.2'.
 
 ## Documentation updates
 
