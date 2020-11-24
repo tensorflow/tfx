@@ -26,9 +26,11 @@ import tensorflow as tf
 import tensorflow_model_analysis as tfma
 from tensorflow_model_analysis import constants
 from tensorflow_model_analysis.evaluators import metrics_plots_and_validations_evaluator
-from tensorflow_model_analysis.extractors import batched_input_extractor
-from tensorflow_model_analysis.extractors import batched_predict_extractor_v2
+from tensorflow_model_analysis.extractors import example_weights_extractor
+from tensorflow_model_analysis.extractors import features_extractor
+from tensorflow_model_analysis.extractors import labels_extractor
 from tensorflow_model_analysis.extractors import legacy_input_extractor
+from tensorflow_model_analysis.extractors import predictions_extractor
 from tensorflow_model_analysis.extractors import unbatch_extractor
 from tensorflow_model_analysis.metrics import metric_specs
 from tensorflow_model_analysis.metrics import metric_types
@@ -86,8 +88,8 @@ class TFMAV2BenchmarkBase(benchmark_base.BenchmarkBase):
                                               tfma.__version__)
     super(TFMAV2BenchmarkBase, self).report_benchmark(**kwargs)
 
-  def benchmarkMiniPipelineBatched(self):
-    """Benchmark a batched "mini" TFMA - predict, slice and compute metrics.
+  def benchmarkMiniPipeline(self):
+    """Benchmark a "mini" TFMA - predict, slice and compute metrics.
 
     Runs a "mini" version of TFMA in a Beam pipeline. Records the wall time
     taken for the whole pipeline.
@@ -108,15 +110,19 @@ class TFMAV2BenchmarkBase(benchmark_base.BenchmarkBase):
 
     _ = (
         raw_data
-        | "BatchedInputExtractor" >> batched_input_extractor
-        .BatchedInputExtractor(eval_config=self._eval_config).ptransform
-        | "V2BatchedPredictExtractor" >>
-        batched_predict_extractor_v2.BatchedPredictExtractor(
+        | "FeaturesExtractor" >> features_extractor.FeaturesExtractor(
+            eval_config=self._eval_config).ptransform
+        | "LabelsExtractor" >> labels_extractor.LabelsExtractor(
+            eval_config=self._eval_config).ptransform
+        | "ExampleWeightsExtractor" >> example_weights_extractor
+        .ExampleWeightsExtractor(eval_config=self._eval_config).ptransform
+        | "PredictionsExtractor" >> predictions_extractor.PredictionsExtractor(
             eval_config=self._eval_config,
             eval_shared_model=self._eval_shared_model).ptransform
         | "UnbatchExtractor" >> unbatch_extractor.UnbatchExtractor().ptransform
         | "SliceKeyExtractor" >> tfma.extractors.SliceKeyExtractor().ptransform
-        | "V2ComputeMetricsAndPlots" >> metrics_plots_and_validations_evaluator
+        | "ComputeMetricsPlotsAndValidations" >>
+        metrics_plots_and_validations_evaluator
         .MetricsPlotsAndValidationsEvaluator(
             eval_config=self._eval_config,
             eval_shared_model=self._eval_shared_model).ptransform)
@@ -164,7 +170,7 @@ class TFMAV2BenchmarkBase(benchmark_base.BenchmarkBase):
 
   # "Manual" micro-benchmarks
   def benchmarkInputExtractorManualActuation(self):
-    """Benchmark PredictExtractorV2 "manually"."""
+    """Benchmark InputExtractor "manually"."""
     self._init_model()
     records = self._readDatasetIntoExtracts()
     extracts = []
@@ -179,8 +185,8 @@ class TFMAV2BenchmarkBase(benchmark_base.BenchmarkBase):
         iters=1, wall_time=delta, extras={"num_examples": len(records)})
 
   # "Manual" micro-benchmarks
-  def benchmarkBatchedInputExtractorManualActuation(self):
-    """Benchmark PredictExtractorV2 "manually"."""
+  def benchmarkFeaturesExtractorManualActuation(self):
+    """Benchmark FeaturesExtractor "manually"."""
     self._init_model()
     extracts = self._readDatasetIntoBatchedExtracts()
     num_examples = sum(
@@ -188,23 +194,26 @@ class TFMAV2BenchmarkBase(benchmark_base.BenchmarkBase):
     result = []
     start = time.time()
     for e in extracts:
-      result.append(batched_input_extractor._ExtractInputs(  # pylint: disable=protected-access
-          e, self._eval_config))
+      result.append(
+          features_extractor._ExtractFeatures(  # pylint: disable=protected-access
+              e, self._eval_config))
     end = time.time()
     delta = end - start
     self.report_benchmark(
         iters=1, wall_time=delta, extras={"num_examples": num_examples})
 
-  def benchmarkBatchedPredictExtractorManualActuation(self):
-    """Benchmark BatchedPredictExtractorV2 "manually"."""
+  def benchmarkPredictionsExtractorManualActuation(self):
+    """Benchmark PredictionsExtractor "manually"."""
     self._init_model()
     extracts = self._readDatasetIntoBatchedExtracts()
     num_examples = sum(
         [e[constants.ARROW_RECORD_BATCH_KEY].num_rows for e in extracts])
-    extracts = [batched_input_extractor._ExtractInputs(e, self._eval_config)  # pylint: disable=protected-access
-                for e in extracts]
+    extracts = [
+        features_extractor._ExtractFeatures(e, self._eval_config)  # pylint: disable=protected-access
+        for e in extracts
+    ]
 
-    prediction_do_fn = batched_predict_extractor_v2._BatchedPredictionDoFn(  # pylint: disable=protected-access
+    prediction_do_fn = predictions_extractor._ExtractPredictions(  # pylint: disable=protected-access
         eval_config=self._eval_config,
         eval_shared_models={"": self._eval_shared_model})
     prediction_do_fn.setup()
@@ -219,10 +228,9 @@ class TFMAV2BenchmarkBase(benchmark_base.BenchmarkBase):
     self.report_benchmark(
         iters=1, wall_time=delta, extras={"num_examples": num_examples})
 
-  def _runMetricsAndPlotsEvaluatorManualActuation(self,
-                                                  with_confidence_intervals,
-                                                  metrics_specs=None):
-    """Benchmark MetricsAndPlotsEvaluatorV2 "manually"."""
+  def _runMetricsPlotsAndValidationsEvaluatorManualActuation(
+      self, with_confidence_intervals, metrics_specs=None):
+    """Benchmark MetricsPlotsAndValidationsEvaluator "manually"."""
     self._init_model()
     if not metrics_specs:
       metrics_specs = self._eval_config.metrics_specs
@@ -230,10 +238,12 @@ class TFMAV2BenchmarkBase(benchmark_base.BenchmarkBase):
     extracts = self._readDatasetIntoBatchedExtracts()
     num_examples = sum(
         [e[constants.ARROW_RECORD_BATCH_KEY].num_rows for e in extracts])
-    extracts = [batched_input_extractor._ExtractInputs(e, self._eval_config)  # pylint: disable=protected-access
-                for e in extracts]
+    extracts = [
+        features_extractor._ExtractFeatures(e, self._eval_config)  # pylint: disable=protected-access
+        for e in extracts
+    ]
 
-    prediction_do_fn = batched_predict_extractor_v2._BatchedPredictionDoFn(  # pylint: disable=protected-access
+    prediction_do_fn = predictions_extractor._ExtractPredictions(  # pylint: disable=protected-access
         eval_config=self._eval_config,
         eval_shared_models={"": self._eval_shared_model})
     prediction_do_fn.setup()
@@ -324,43 +334,36 @@ class TFMAV2BenchmarkBase(benchmark_base.BenchmarkBase):
             "num_examples": num_examples
         })
 
-  def benchmarkMetricsAndPlotsEvaluatorManualActuationNoConfidenceIntervals(
+  def benchmarkMetricsPlotsAndValidationsEvaluatorManualActuationNoConfidenceIntervals(
       self):
-    self._runMetricsAndPlotsEvaluatorManualActuation(
+    self._runMetricsPlotsAndValidationsEvaluatorManualActuation(
         with_confidence_intervals=False)
 
-  def benchmarkMetricsAndPlotsEvaluatorManualActuationWithConfidenceIntervals(
+  def benchmarkMetricsPlotsAndValidationsEvaluatorManualActuationWithConfidenceIntervals(
       self):
-    self._runMetricsAndPlotsEvaluatorManualActuation(
+    self._runMetricsPlotsAndValidationsEvaluatorManualActuation(
         with_confidence_intervals=True)
 
-  def benchmarkMetricsAndPlotsEvaluatorAUC10k(self):
-    self._runMetricsAndPlotsEvaluatorManualActuation(
+  def benchmarkMetricsPlotsAndValidationsEvaluatorAUC10k(self):
+    self._runMetricsPlotsAndValidationsEvaluatorManualActuation(
         with_confidence_intervals=False,
         metrics_specs=metric_specs.specs_from_metrics([
             tf.keras.metrics.AUC(name="auc", num_thresholds=10000),
         ]))
 
-  def benchmarkMetricsAndPlotsEvaluatorBinaryClassification(self):
-    self._runMetricsAndPlotsEvaluatorManualActuation(
+  def benchmarkMetricsPlotsAndValidationsEvaluatorBinaryClassification(self):
+    self._runMetricsPlotsAndValidationsEvaluatorManualActuation(
         with_confidence_intervals=False,
         metrics_specs=metric_specs.specs_from_metrics([
             tf.keras.metrics.BinaryAccuracy(name="accuracy"),
+            tf.keras.metrics.AUC(name="auc", num_thresholds=10000),
             tf.keras.metrics.AUC(
-                name="auc",
-                num_thresholds=10000
-            ),
-            tf.keras.metrics.AUC(
-                name="auc_precison_recall",
-                curve="PR",
-                num_thresholds=10000
-            ),
+                name="auc_precison_recall", curve="PR", num_thresholds=10000),
             tf.keras.metrics.Precision(name="precision"),
             tf.keras.metrics.Recall(name="recall"),
             tfma.metrics.MeanLabel(name="mean_label"),
             tfma.metrics.MeanPrediction(name="mean_prediction"),
             tfma.metrics.Calibration(name="calibration"),
-            tfma.metrics.ConfusionMatrixPlot(
-                name="confusion_matrix_plot"),
+            tfma.metrics.ConfusionMatrixPlot(name="confusion_matrix_plot"),
             tfma.metrics.CalibrationPlot(name="calibration_plot"),
         ]))
