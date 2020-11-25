@@ -389,10 +389,13 @@ def _process_active_pipelines(
     pipeline_details: Sequence[_PipelineDetail]) -> None:
   """Processes active pipelines."""
   for detail in pipeline_details:
-    # Flip the execution state to "RUNNING".
-    updated_execution = copy.deepcopy(detail.execution)
-    updated_execution.last_known_state = metadata_store_pb2.Execution.RUNNING
-    mlmd_handle.store.put_executions([updated_execution])
+    assert detail.execution.last_known_state in (
+        metadata_store_pb2.Execution.NEW, metadata_store_pb2.Execution.RUNNING)
+    if (detail.execution.last_known_state !=
+        metadata_store_pb2.Execution.RUNNING):
+      updated_execution = copy.deepcopy(detail.execution)
+      updated_execution.last_known_state = metadata_store_pb2.Execution.RUNNING
+      mlmd_handle.store.put_executions([updated_execution])
 
     # TODO(goutham): Consider concurrent task generation.
     tasks = detail.generator.generate()
