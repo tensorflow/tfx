@@ -75,6 +75,7 @@ class Property(object):
     if type not in Property._ALLOWED_MLMD_TYPES:
       raise ValueError('Property type must be one of %s.' %
                        list(Property._ALLOWED_MLMD_TYPES.keys()))
+
     self.type = type
 
   def mlmd_type(self):
