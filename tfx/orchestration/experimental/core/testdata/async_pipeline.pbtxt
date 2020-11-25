@@ -1,6 +1,9 @@
 # proto-file: tfx/proto/orchestration/pipeline.proto
 # proto-message: Pipeline
 
+pipeline_info: {
+  id: 'test-pipeline-async'
+}
 execution_mode: ASYNC
 nodes {
   pipeline_node {

@@ -28,33 +28,49 @@ from tfx.proto.orchestration import pipeline_pb2
 from ml_metadata.proto import metadata_store_pb2
 
 
+# TODO(goutham): Include pipeline key/tag in PipelineUid.
 @attr.s(frozen=True)
-class NodeUid:
-  """Unique identifier for a node in the pipeline.
+class PipelineUid:
+  """Unique identifier for a pipeline.
 
   Attributes:
     pipeline_id: Id of the pipeline containing the node. Corresponds to
       `Pipeline.pipeline_info.id` in the pipeline IR.
     pipeline_run_id: This is set only for sync pipelines and corresponds to
       `PipelineRuntimeSpec.pipeline_run_id` in the pipeline IR.
-    node_id: Node id. Corresponds to `PipelineNode.node_info.id` in the pipeline
-      IR.
   """
   pipeline_id = attr.ib(type=Text)
   pipeline_run_id = attr.ib(type=Optional[Text])
-  node_id = attr.ib(type=Text)
 
   @classmethod
-  def from_pipeline_node(cls: Type['NodeUid'], pipeline: pipeline_pb2.Pipeline,
-                         node: pipeline_pb2.PipelineNode) -> 'NodeUid':
+  def from_pipeline(cls: Type['PipelineUid'],
+                    pipeline: pipeline_pb2.Pipeline) -> 'PipelineUid':
     if pipeline.runtime_spec.HasField('pipeline_run_id'):
       pipeline_run_id = (
           pipeline.runtime_spec.pipeline_run_id.field_value.string_value)
     else:
       pipeline_run_id = None
     return cls(
-        pipeline_id=pipeline.pipeline_info.id,
-        pipeline_run_id=pipeline_run_id,
+        pipeline_id=pipeline.pipeline_info.id, pipeline_run_id=pipeline_run_id)
+
+
+@attr.s(frozen=True)
+class NodeUid:
+  """Unique identifier for a node in the pipeline.
+
+  Attributes:
+    pipeline_uid: The pipeline UID.
+    node_id: Node id. Corresponds to `PipelineNode.node_info.id` in the pipeline
+      IR.
+  """
+  pipeline_uid = attr.ib(type=PipelineUid)
+  node_id = attr.ib(type=Text)
+
+  @classmethod
+  def from_pipeline_node(cls: Type['NodeUid'], pipeline: pipeline_pb2.Pipeline,
+                         node: pipeline_pb2.PipelineNode) -> 'NodeUid':
+    return cls(
+        pipeline_uid=PipelineUid.from_pipeline(pipeline),
         node_id=node.node_info.id)
 
 
@@ -83,7 +99,7 @@ class Task(abc.ABC):
 
 
 class HasNodeUid(abc.ABC):
-  """Abstract class for node tasks."""
+  """Abstract mixin class for node tasks."""
 
   @property
   @abc.abstractmethod
@@ -103,6 +119,10 @@ class ExecNodeTask(Task, HasNodeUid):
     output_artifacts: Output artifacts dict.
     executor_output_uri: URI for the executor output.
     stateful_working_dir: Working directory for the node execution.
+    pipeline: The pipeline IR proto containing the node to be executed.
+    is_cancelled: Indicates whether this is a cancelled execution. The task
+      scheduler is expected to gracefully exit after doing any necessary
+      cleanup.
   """
   _node_uid = attr.ib(type=NodeUid)
   execution = attr.ib(type=metadata_store_pb2.Execution)
@@ -112,6 +132,9 @@ class ExecNodeTask(Task, HasNodeUid):
   output_artifacts = attr.ib(type=Dict[Text, List[types.Artifact]])
   executor_output_uri = attr.ib(type=Text)
   stateful_working_dir = attr.ib(type=Text)
+  pipeline = attr.ib(type=pipeline_pb2.Pipeline)
+  # TODO(goutham): Update task schedulers to support is_cancelled.
+  is_cancelled = attr.ib(type=bool, default=False)
 
   @property
   def node_uid(self) -> NodeUid:

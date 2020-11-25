@@ -57,3 +57,18 @@ class Status:
   """
   code = attr.ib(type=int)
   message = attr.ib(type=Optional[Text], default=None)
+
+
+class StatusNotOkError(Exception):
+  """Error class useful when status not OK."""
+
+  def __init__(self, code: int, message: Text):
+    self.code = code
+    self.message = message
+    Exception.__init__(self, str(self))
+
+  def status(self) -> Status:
+    return Status(code=self.code, message=self.message)
+
+  def __str__(self) -> Text:
+    return f'Error ({self.code}): {self.message}'

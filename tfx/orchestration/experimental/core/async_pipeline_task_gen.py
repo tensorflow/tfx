@@ -38,18 +38,18 @@ class AsyncPipelineTaskGenerator(task_gen.TaskGenerator):
   where the instances refer to the same MLMD db and the same pipeline IR.
   """
 
-  def __init__(self, mlmd_connection: metadata.Metadata,
+  def __init__(self, mlmd_handle: metadata.Metadata,
                pipeline: pipeline_pb2.Pipeline,
                is_task_id_tracked_fn: Callable[[task_lib.TaskId], bool]):
     """Constructs `AsyncPipelineTaskGenerator`.
 
     Args:
-      mlmd_connection: ML metadata db connection.
+      mlmd_handle: A handle to MLMD db.
       pipeline: A pipeline IR proto.
       is_task_id_tracked_fn: A callable that returns `True` if a task_id is
         tracked by the task queue.
     """
-    self._mlmd_connection = mlmd_connection
+    self._mlmd_handle = mlmd_handle
     if pipeline.execution_mode != pipeline_pb2.Pipeline.ExecutionMode.ASYNC:
       raise ValueError(
           'AsyncPipelineTaskGenerator should be instantiated with a pipeline '
@@ -74,19 +74,15 @@ class AsyncPipelineTaskGenerator(task_gen.TaskGenerator):
       A `list` of tasks to execute.
     """
     result = []
-    # TODO(b/170231077): Reuse connection instead of reconnecting as the latter
-    # is expensive.
-    with self._mlmd_connection as m:
-      for node in [node.pipeline_node for node in self._pipeline.nodes]:
-        # If a task for the node is already tracked by the task queue, it need
-        # not be considered for generation again.
-        if self._is_task_id_tracked_fn(
-            task_lib.exec_node_task_id_from_pipeline_node(self._pipeline,
-                                                          node)):
-          continue
-        task = self._generate_task(m, node)
-        if task:
-          result.append(task)
+    for node in [node.pipeline_node for node in self._pipeline.nodes]:
+      # If a task for the node is already tracked by the task queue, it need
+      # not be considered for generation again.
+      if self._is_task_id_tracked_fn(
+          task_lib.exec_node_task_id_from_pipeline_node(self._pipeline, node)):
+        continue
+      task = self._generate_task(self._mlmd_handle, node)
+      if task:
+        result.append(task)
     return result
 
   def _generate_task(
@@ -159,4 +155,5 @@ class AsyncPipelineTaskGenerator(task_gen.TaskGenerator):
         executor_output_uri=outputs_resolver.get_executor_output_uri(
             execution.id),
         stateful_working_dir=outputs_resolver.get_stateful_working_directory(
-            execution.id))
+            execution.id),
+        pipeline=self._pipeline)

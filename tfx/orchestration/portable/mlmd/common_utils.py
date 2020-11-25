@@ -17,7 +17,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from typing import Text, TypeVar, Union
+from typing import Optional, Text, TypeVar, Union
 
 from absl import logging
 
@@ -90,6 +90,21 @@ def get_value(tfx_value: pipeline_pb2.Value) -> types.Property:
 
   return getattr(tfx_value.field_value,
                  tfx_value.field_value.WhichOneof('value'))
+
+
+def get_metadata_value(
+    value: metadata_store_pb2.Value) -> Optional[types.Property]:
+  """Gets the primitive type value of a metadata_store_pb2.Value instance.
+
+  Args:
+    value: A metadata_store_pb2.Value message.
+
+  Returns:
+    The primitive type value of metadata_store_pb2.Value instance if set, `None`
+    otherwise.
+  """
+  which = value.WhichOneof('value')
+  return None if which is None else getattr(value, which)
 
 
 def set_metadata_value(

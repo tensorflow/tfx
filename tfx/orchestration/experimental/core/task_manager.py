@@ -16,6 +16,7 @@
 from concurrent import futures
 import copy
 import threading
+import time
 import typing
 from typing import Optional
 
@@ -26,7 +27,6 @@ from tfx.orchestration.experimental.core import task as task_lib
 from tfx.orchestration.experimental.core import task_queue as tq
 from tfx.orchestration.experimental.core import task_scheduler as ts
 from tfx.orchestration.portable import execution_publish_utils
-from tfx.proto.orchestration import pipeline_pb2
 
 from ml_metadata.proto import metadata_store_pb2
 
@@ -54,7 +54,6 @@ class TaskManager:
 
   def __init__(self,
                mlmd_handle: metadata.Metadata,
-               pipeline: pipeline_pb2.Pipeline,
                task_queue: tq.TaskQueue,
                max_active_task_schedulers: int,
                max_dequeue_wait_secs: float = _MAX_DEQUEUE_WAIT_SECS,
@@ -63,7 +62,6 @@ class TaskManager:
 
     Args:
       mlmd_handle: ML metadata db connection.
-      pipeline: A pipeline IR proto.
       task_queue: Task queue.
       max_active_task_schedulers: Maximum number of task schedulers that can be
         active at once.
@@ -74,7 +72,6 @@ class TaskManager:
         deterministic behavior in tests.
     """
     self._mlmd_handle = mlmd_handle
-    self._pipeline = pipeline
     self._task_queue = task_queue
     self._max_dequeue_wait_secs = max_dequeue_wait_secs
     self._process_all_queued_tasks_before_exit = (
@@ -93,6 +90,10 @@ class TaskManager:
         max_workers=max_active_task_schedulers)
     self._ts_futures = set()
 
+    # Last MLMD publish time since epoch.
+    self._last_mlmd_publish_time = None
+    self._publish_time_lock = threading.Lock()
+
   def __enter__(self):
     if self._main_future is not None:
       raise RuntimeError('TaskManager already started.')
@@ -104,6 +105,11 @@ class TaskManager:
       raise RuntimeError('TaskManager not started.')
     self._stop_event.set()
     self._main_executor.shutdown()
+
+  def last_mlmd_publish_time(self) -> Optional[float]:
+    """Returns time-since-epoch of last MLMD publish; `None` if never published."""
+    with self._publish_time_lock:
+      return self._last_mlmd_publish_time
 
   def done(self) -> bool:
     """Returns `True` if the main task management thread has exited.
@@ -153,7 +159,7 @@ class TaskManager:
       self._cleanup(True)
 
   def _handle_task(self, task: task_lib.Task) -> None:
-    """Dispatches task to the right handler."""
+    """Dispatches task to the task specific handler."""
     if task_lib.is_exec_node_task(task):
       self._handle_exec_node_task(typing.cast(task_lib.ExecNodeTask, task))
     elif task_lib.is_cancel_node_task(task):
@@ -170,7 +176,7 @@ class TaskManager:
             'Cannot create multiple task schedulers for the same task; '
             'task_id: {}'.format(task.task_id))
       scheduler = ts.TaskSchedulerRegistry.create_task_scheduler(
-          self._mlmd_handle, self._pipeline, task)
+          self._mlmd_handle, task.pipeline, task)
       self._scheduler_by_node_uid[node_uid] = scheduler
       self._ts_futures.add(
           self._ts_executor.submit(self._process_exec_node_task, scheduler,
@@ -183,8 +189,8 @@ class TaskManager:
       scheduler = self._scheduler_by_node_uid.get(node_uid)
       if scheduler is None:
         logging.info(
-            'No task scheduled for task id: %s. The task might have already '
-            'completed before it could be cancelled.', task.task_id)
+            'No task scheduled for node uid: %s. The task might have already '
+            'completed before it could be cancelled.', task.node_uid)
       else:
         scheduler.cancel()
       self._task_queue.task_done(task)
@@ -208,6 +214,8 @@ class TaskManager:
               code=status_lib.Code.ABORTED, message=str(e)))
     _publish_execution_results(
         mlmd_handle=self._mlmd_handle, task=task, result=result)
+    with self._publish_time_lock:
+      self._last_mlmd_publish_time = time.time()
     with self._tm_lock:
       del self._scheduler_by_node_uid[task.node_uid]
       self._task_queue.task_done(task)

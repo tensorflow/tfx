@@ -118,44 +118,42 @@ class SyncPipelineTaskGeneratorTest(tu.TfxTest, parameterized.TestCase):
     """Generates tasks and tests the effects."""
     with self._mlmd_connection as m:
       executions = m.store.get_executions()
-    self.assertLen(
-        executions, num_initial_executions,
-        'Expected {} execution(s) in MLMD.'.format(num_initial_executions))
-    task_gen = sptg.SyncPipelineTaskGenerator(self._mlmd_connection,
-                                              self._pipeline,
-                                              self._task_queue.contains_task_id)
-    tasks = task_gen.generate()
-    self.assertLen(
-        tasks, num_tasks_generated,
-        'Expected {} task(s) to be generated.'.format(num_tasks_generated))
-    with self._mlmd_connection as m:
+      self.assertLen(
+          executions, num_initial_executions,
+          'Expected {} execution(s) in MLMD.'.format(num_initial_executions))
+      task_gen = sptg.SyncPipelineTaskGenerator(
+          m, self._pipeline, self._task_queue.contains_task_id)
+      tasks = task_gen.generate()
+      self.assertLen(
+          tasks, num_tasks_generated,
+          'Expected {} task(s) to be generated.'.format(num_tasks_generated))
       executions = m.store.get_executions()
-    num_total_executions = num_initial_executions + num_new_executions
-    self.assertLen(
-        executions, num_total_executions,
-        'Expected {} execution(s) in MLMD.'.format(num_total_executions))
-    active_executions = [
-        e for e in executions
-        if e.last_known_state == metadata_store_pb2.Execution.RUNNING
-    ]
-    self.assertLen(
-        active_executions, num_active_executions,
-        'Expected {} active execution(s) in MLMD.'.format(
-            num_active_executions))
-    if use_task_queue:
-      for task in tasks:
-        self._task_queue.enqueue(task)
-    return tasks, active_executions
+      num_total_executions = num_initial_executions + num_new_executions
+      self.assertLen(
+          executions, num_total_executions,
+          'Expected {} execution(s) in MLMD.'.format(num_total_executions))
+      active_executions = [
+          e for e in executions
+          if e.last_known_state == metadata_store_pb2.Execution.RUNNING
+      ]
+      self.assertLen(
+          active_executions, num_active_executions,
+          'Expected {} active execution(s) in MLMD.'.format(
+              num_active_executions))
+      if use_task_queue:
+        for task in tasks:
+          self._task_queue.enqueue(task)
+      return tasks, active_executions
 
   def _test_no_tasks_generated_when_new(self):
-    task_gen = sptg.SyncPipelineTaskGenerator(self._mlmd_connection,
-                                              self._pipeline, lambda _: False)
-    tasks = task_gen.generate()
-    self.assertEmpty(
-        tasks,
-        'Expected no task generation since ExampleGen is ignored for task '
-        'generation and dependent downstream nodes are ready.')
     with self._mlmd_connection as m:
+      task_gen = sptg.SyncPipelineTaskGenerator(m, self._pipeline,
+                                                lambda _: False)
+      tasks = task_gen.generate()
+      self.assertEmpty(
+          tasks,
+          'Expected no task generation since ExampleGen is ignored for task '
+          'generation and dependent downstream nodes are ready.')
       self.assertEmpty(
           m.store.get_executions(),
           'There must not be any registered executions since no tasks were '

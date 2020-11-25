@@ -22,7 +22,9 @@ from tfx.orchestration.portable import test_utils as tu
 
 def _test_task(node_id, pipeline_id, pipeline_run_id=None):
   node_uid = task_lib.NodeUid(
-      pipeline_id=pipeline_id, pipeline_run_id=pipeline_run_id, node_id=node_id)
+      pipeline_uid=task_lib.PipelineUid(
+          pipeline_id=pipeline_id, pipeline_run_id=pipeline_run_id),
+      node_id=node_id)
   return test_utils.create_exec_node_task(node_uid)
 
 

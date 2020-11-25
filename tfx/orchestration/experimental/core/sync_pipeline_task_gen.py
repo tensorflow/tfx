@@ -35,18 +35,18 @@ class SyncPipelineTaskGenerator(task_gen.TaskGenerator):
   where the instances refer to the same MLMD db and the same pipeline IR.
   """
 
-  def __init__(self, mlmd_connection: metadata.Metadata,
+  def __init__(self, mlmd_handle: metadata.Metadata,
                pipeline: pipeline_pb2.Pipeline,
                is_task_id_tracked_fn: Callable[[task_lib.TaskId], bool]):
     """Constructs `SyncPipelineTaskGenerator`.
 
     Args:
-      mlmd_connection: ML metadata db connection.
+      mlmd_handle: A handle to the MLMD db.
       pipeline: A pipeline IR proto.
       is_task_id_tracked_fn: A callable that returns `True` if a task_id is
         tracked by the task queue.
     """
-    self._mlmd_connection = mlmd_connection
+    self._mlmd_handle = mlmd_handle
     if pipeline.execution_mode != pipeline_pb2.Pipeline.ExecutionMode.SYNC:
       raise ValueError(
           'SyncPipelineTaskGenerator should be instantiated with a pipeline '
@@ -82,44 +82,41 @@ class SyncPipelineTaskGenerator(task_gen.TaskGenerator):
         get_child_nodes=(
             lambda node: [self._node_map[n] for n in node.downstream_nodes]))
     result = []
-    with self._mlmd_connection as m:
-      for nodes in layers:
-        # Boolean that's set if there's at least one successfully executed node
-        # in the current layer.
-        executed_nodes = False
-        for node in nodes:
-          # If a task for the node is already tracked by the task queue, it need
-          # not be considered for generation again.
-          if self._is_task_id_tracked_fn(
-              task_lib.exec_node_task_id_from_pipeline_node(
-                  self._pipeline, node)):
-            continue
-          executions = task_gen_utils.get_executions(m, node)
-          if (executions and
-              task_gen_utils.is_latest_execution_successful(executions)):
-            executed_nodes = True
-            continue
-          # If all upstream nodes are executed but current node is not executed,
-          # the node is deemed ready for execution.
-          if self._upstream_nodes_executed(m, node):
-            task = self._generate_task(m, node)
-            if task:
-              result.append(task)
-        # If there are no executed nodes in the current layer, downstream nodes
-        # need not be checked.
-        if not executed_nodes:
-          break
+    for nodes in layers:
+      # Boolean that's set if there's at least one successfully executed node
+      # in the current layer.
+      executed_nodes = False
+      for node in nodes:
+        # If a task for the node is already tracked by the task queue, it need
+        # not be considered for generation again.
+        if self._is_task_id_tracked_fn(
+            task_lib.exec_node_task_id_from_pipeline_node(self._pipeline,
+                                                          node)):
+          continue
+        executions = task_gen_utils.get_executions(self._mlmd_handle, node)
+        if (executions and
+            task_gen_utils.is_latest_execution_successful(executions)):
+          executed_nodes = True
+          continue
+        # If all upstream nodes are executed but current node is not executed,
+        # the node is deemed ready for execution.
+        if self._upstream_nodes_executed(node):
+          task = self._generate_task(node)
+          if task:
+            result.append(task)
+      # If there are no executed nodes in the current layer, downstream nodes
+      # need not be checked.
+      if not executed_nodes:
+        break
     return result
 
   def _generate_task(
-      self, metadata_handler: metadata.Metadata,
-      node: pipeline_pb2.PipelineNode) -> Optional[task_lib.Task]:
+      self, node: pipeline_pb2.PipelineNode) -> Optional[task_lib.Task]:
     """Generates a node execution task.
 
     If node execution is not feasible, `None` is returned.
 
     Args:
-      metadata_handler: A handler to access MLMD db.
       node: The pipeline node for which to generate a task.
 
     Returns:
@@ -128,14 +125,14 @@ class SyncPipelineTaskGenerator(task_gen.TaskGenerator):
     if not task_gen_utils.is_feasible_node(node):
       return None
 
-    executions = task_gen_utils.get_executions(metadata_handler, node)
+    executions = task_gen_utils.get_executions(self._mlmd_handle, node)
     result = task_gen_utils.generate_task_from_active_execution(
-        metadata_handler, self._pipeline, node, executions)
+        self._mlmd_handle, self._pipeline, node, executions)
     if result:
       return result
 
     resolved_info = task_gen_utils.generate_resolved_info(
-        metadata_handler, node)
+        self._mlmd_handle, node)
     if resolved_info.input_artifacts is None:
       # TODO(goutham): If the pipeline can't make progress, there should be a
       # standard mechanism to surface it to the user.
@@ -145,7 +142,7 @@ class SyncPipelineTaskGenerator(task_gen.TaskGenerator):
       return None
 
     execution = execution_publish_utils.register_execution(
-        metadata_handler=metadata_handler,
+        metadata_handler=self._mlmd_handle,
         execution_type=node.node_info.type,
         contexts=resolved_info.contexts,
         input_artifacts=resolved_info.input_artifacts,
@@ -164,10 +161,10 @@ class SyncPipelineTaskGenerator(task_gen.TaskGenerator):
         executor_output_uri=outputs_resolver.get_executor_output_uri(
             execution.id),
         stateful_working_dir=outputs_resolver.get_stateful_working_directory(
-            execution.id))
+            execution.id),
+        pipeline=self._pipeline)
 
-  def _upstream_nodes_executed(self, metadata_handler: metadata.Metadata,
-                               node: pipeline_pb2.PipelineNode) -> bool:
+  def _upstream_nodes_executed(self, node: pipeline_pb2.PipelineNode) -> bool:
     """Returns `True` if all the upstream nodes have been successfully executed."""
     upstream_nodes = [
         node for node_id, node in self._node_map.items()
@@ -177,7 +174,7 @@ class SyncPipelineTaskGenerator(task_gen.TaskGenerator):
       return True
     for node in upstream_nodes:
       upstream_node_executions = task_gen_utils.get_executions(
-          metadata_handler, node)
+          self._mlmd_handle, node)
       if not task_gen_utils.is_latest_execution_successful(
           upstream_node_executions):
         return False

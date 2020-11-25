@@ -78,7 +78,9 @@ def create_exec_node_task(node_uid,
                           input_artifacts=None,
                           output_artifacts=None,
                           executor_output_uri=None,
-                          stateful_working_dir=None) -> task_lib.ExecNodeTask:
+                          stateful_working_dir=None,
+                          pipeline=None,
+                          is_cancelled=False) -> task_lib.ExecNodeTask:
   """Creates an `ExecNodeTask` for testing."""
   return task_lib.ExecNodeTask(
       node_uid=node_uid,
@@ -88,4 +90,6 @@ def create_exec_node_task(node_uid,
       input_artifacts=input_artifacts or {},
       output_artifacts=output_artifacts or {},
       executor_output_uri=executor_output_uri or '',
-      stateful_working_dir=stateful_working_dir or '')
+      stateful_working_dir=stateful_working_dir or '',
+      pipeline=pipeline or mock.Mock(),
+      is_cancelled=is_cancelled)

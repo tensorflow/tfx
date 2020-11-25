@@ -51,7 +51,9 @@ class TaskSchedulerRegistryTest(tu.TfxTest):
     # Create a task and verify that the correct scheduler is instantiated.
     task = test_utils.create_exec_node_task(
         node_uid=task_lib.NodeUid(
-            pipeline_id='pipeline', pipeline_run_id=None, node_id='Trainer'))
+            pipeline_uid=task_lib.PipelineUid(
+                pipeline_id='pipeline', pipeline_run_id=None),
+            node_id='Trainer'))
     task_scheduler = ts.TaskSchedulerRegistry.create_task_scheduler(
         mock.Mock(), pipeline, task)
     self.assertIsInstance(task_scheduler, _FakeTaskScheduler)

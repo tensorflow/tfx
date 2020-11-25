@@ -30,22 +30,19 @@ class TaskTest(tu.TfxTest):
     node.node_info.id = 'Trainer'
     self.assertEqual(
         task_lib.NodeUid(
-            pipeline_id='pipeline', pipeline_run_id='run0', node_id='Trainer'),
+            pipeline_uid=task_lib.PipelineUid(
+                pipeline_id='pipeline', pipeline_run_id='run0'),
+            node_id='Trainer'),
         task_lib.NodeUid.from_pipeline_node(pipeline, node))
 
   def test_task_type_ids(self):
     self.assertEqual('ExecNodeTask', task_lib.ExecNodeTask.task_type_id())
     self.assertEqual('CancelNodeTask', task_lib.CancelNodeTask.task_type_id())
-    node_uid = task_lib.NodeUid(
-        pipeline_id='pipeline', pipeline_run_id='run0', node_id='Trainer')
-    exec_node_task = test_utils.create_exec_node_task(node_uid)
-    self.assertEqual('ExecNodeTask', exec_node_task.task_type_id())
-    cancel_node_task = task_lib.CancelNodeTask(node_uid=node_uid)
-    self.assertEqual('CancelNodeTask', cancel_node_task.task_type_id())
 
   def test_task_ids(self):
-    node_uid = task_lib.NodeUid(
-        pipeline_id='pipeline', pipeline_run_id='run0', node_id='Trainer')
+    pipeline_uid = task_lib.PipelineUid(
+        pipeline_id='pipeline', pipeline_run_id='run0')
+    node_uid = task_lib.NodeUid(pipeline_uid=pipeline_uid, node_id='Trainer')
     exec_node_task = test_utils.create_exec_node_task(node_uid)
     self.assertEqual(('ExecNodeTask', node_uid), exec_node_task.task_id)
     cancel_node_task = task_lib.CancelNodeTask(node_uid=node_uid)

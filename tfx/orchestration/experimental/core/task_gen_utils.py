@@ -37,22 +37,11 @@ class ResolvedInfo:
   input_artifacts = attr.ib(type=Optional[Dict[Text, List[types.Artifact]]])
 
 
-def _active_executions(
-    executions: Iterable[metadata_store_pb2.Execution]
-) -> List[metadata_store_pb2.Execution]:
-  result = []
-  for execution in executions:
-    if execution.last_known_state not in (metadata_store_pb2.Execution.NEW,
-                                          metadata_store_pb2.Execution.RUNNING):
-      continue
-    result.append(execution)
-  return result
-
-
-def _generate_task_from_execution(
-    metadata_handler: metadata.Metadata, pipeline: pipeline_pb2.Pipeline,
-    node: pipeline_pb2.PipelineNode,
-    execution: metadata_store_pb2.Execution) -> task_lib.Task:
+def _generate_task_from_execution(metadata_handler: metadata.Metadata,
+                                  pipeline: pipeline_pb2.Pipeline,
+                                  node: pipeline_pb2.PipelineNode,
+                                  execution: metadata_store_pb2.Execution,
+                                  is_cancelled: bool = False) -> task_lib.Task:
   """Generates `ExecNodeTask` given execution."""
   contexts = metadata_handler.store.get_contexts_by_execution(execution.id)
   exec_properties = _extract_properties(execution)
@@ -71,13 +60,17 @@ def _generate_task_from_execution(
       executor_output_uri=outputs_resolver.get_executor_output_uri(
           execution.id),
       stateful_working_dir=outputs_resolver.get_stateful_working_directory(
-          execution.id))
+          execution.id),
+      pipeline=pipeline,
+      is_cancelled=is_cancelled)
 
 
 def generate_task_from_active_execution(
-    metadata_handler: metadata.Metadata, pipeline: pipeline_pb2.Pipeline,
+    metadata_handler: metadata.Metadata,
+    pipeline: pipeline_pb2.Pipeline,
     node: pipeline_pb2.PipelineNode,
-    executions: Iterable[metadata_store_pb2.Execution]
+    executions: Iterable[metadata_store_pb2.Execution],
+    is_cancelled: bool = False,
 ) -> Optional[task_lib.Task]:
   """Generates task from active execution (if any).
 
@@ -88,6 +81,7 @@ def generate_task_from_active_execution(
     pipeline: The pipeline containing the node.
     node: The pipeline node for which to generate a task.
     executions: A sequence of all executions for the given node.
+    is_cancelled: Sets `is_cancelled` in ExecNodeTask.
 
   Returns:
     A `Task` proto if active execution exists for the node. `None` otherwise.
@@ -95,15 +89,21 @@ def generate_task_from_active_execution(
   Raises:
     RuntimeError: If there are multiple active executions for the node.
   """
-  active_executions = _active_executions(executions)
+  active_executions = [
+      e for e in executions if execution_lib.is_execution_active(e)
+  ]
   if not active_executions:
     return None
   if len(active_executions) > 1:
     raise RuntimeError(
         'Unexpected multiple active executions for the node: {}\n executions: '
         '{}'.format(node.node_info.id, active_executions))
-  return _generate_task_from_execution(metadata_handler, pipeline, node,
-                                       active_executions[0])
+  return _generate_task_from_execution(
+      metadata_handler,
+      pipeline,
+      node,
+      active_executions[0],
+      is_cancelled=is_cancelled)
 
 
 def _extract_properties(
@@ -111,7 +111,10 @@ def _extract_properties(
   result = {}
   for key, prop in itertools.chain(execution.properties.items(),
                                    execution.custom_properties.items()):
-    result[key] = common_utils.get_value(prop)
+    value = common_utils.get_metadata_value(prop)
+    if value is None:
+      raise ValueError(f'Unexpected property with empty value; key: {key}')
+    result[key] = value
   return result
 
 

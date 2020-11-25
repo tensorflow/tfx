@@ -45,6 +45,19 @@ def is_execution_successful(execution: metadata_store_pb2.Execution) -> bool:
           execution.last_known_state == metadata_store_pb2.Execution.CACHED)
 
 
+def is_execution_active(execution: metadata_store_pb2.Execution) -> bool:
+  """Returns `True` if an execution is active.
+
+  Args:
+    execution: An execution message.
+
+  Returns:
+    A bool value indicating whether or not the execution is active.
+  """
+  return (execution.last_known_state == metadata_store_pb2.Execution.NEW or
+          execution.last_known_state == metadata_store_pb2.Execution.RUNNING)
+
+
 def prepare_execution(
     metadata_handler: metadata.Metadata,
     execution_type: metadata_store_pb2.ExecutionType,
