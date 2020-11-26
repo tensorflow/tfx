@@ -22,8 +22,8 @@ If the bug is related to a specific library below, please raise an issue in the 
 **Describe the expected behavior**
 
 **Standalone code to reproduce the issue**
-Provide a reproducible test case that is the bare minimum necessary to generate
-the problem. If possible, please share a link to Colab/Jupyter/any notebook.
+Providing a bare minimum test case or step(s) to reproduce the problem will greatly help us to debug the issue.
+If possible, please share a link to Colab/Jupyter/any notebook.
 
 **Name of your Organization (Optional)**
 
