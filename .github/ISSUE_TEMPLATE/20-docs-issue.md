@@ -34,13 +34,6 @@ Are the errors defined? For example,
 
 https://www.tensorflow.org/tfx/guide/examplegen
 
-### Usage example
-
-Is there a usage example?
-
-See the API guide: https://www.tensorflow.org/community/contribute/docs_ref
-on how to write testable usage examples.
-
 ### Request visuals, if applicable
 
 Are there currently visuals? If so, do they look correct? If not, will it clarify the content?
