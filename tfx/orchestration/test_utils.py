@@ -15,37 +15,13 @@
 """Common utilities for testing various runners."""
 
 import datetime
-import os
 import random
 import string
-import time
 
 from absl import logging
-import docker
+from tfx.utils import timer
 
 from google.cloud import storage
-
-
-class Timer:
-  """Helper class to time operations in pipeline e2e tests."""
-
-  def __init__(self, operation: str):
-    """Creates a context object to measure time taken.
-
-    Args:
-      operation: A description of the operation being measured.
-    """
-    self._operation = operation
-
-  def __enter__(self):
-    self._start = time.time()
-
-  def __exit__(self, *unused_args):
-    self._end = time.time()
-
-    logging.info(
-        'Timing Info >> Operation: %s Elapsed time in seconds: %d',
-        self._operation, self._end - self._start)
 
 
 def random_id() -> str:
@@ -61,58 +37,6 @@ def random_id() -> str:
                         ''.join([random.choice(choices) for _ in range(10)]))
 
 
-# Set longer timeout when pushing an image. Default timeout is 60 seconds.
-_DOCKER_TIMEOUT_SECONDS = 60 * 5
-
-
-def build_docker_image(container_image: str, repo_base: str):
-  """Build docker image using `tfx/tools/docker/Dockerfile`.
-
-  Args:
-    container_image: Docker container image name.
-    repo_base: The src path to use to build docker image.
-  """
-  client = docker.from_env(timeout=_DOCKER_TIMEOUT_SECONDS)
-
-  # Default to NIGHTLY. GIT_MASTER might be better to use the latest source,
-  # But it takes too long (~1h) to build packages from scratch. If some changes
-  # in a dependent package break tests, just run a nightly build of dependent
-  # package again.
-  dependency_selector = os.getenv('TFX_DEPENDENCY_SELECTOR') or 'NIGHTLY'
-
-  logging.info('Building image %s with %s dependency', container_image,
-               dependency_selector)
-  with Timer('BuildingTFXContainerImage'):
-    _ = client.images.build(
-        path=repo_base,
-        dockerfile='tfx/tools/docker/Dockerfile',
-        tag=container_image,
-        buildargs={
-            'TFX_DEPENDENCY_SELECTOR': dependency_selector,
-        },
-        rm=True,
-    )
-
-
-def build_and_push_docker_image(container_image: str, repo_base: str):
-  """Build and push docker image using `tfx/tools/docker/Dockerfile`.
-
-  Note: The local copy of the image will be deleted after push.
-
-  Args:
-    container_image: Docker container image name.
-    repo_base: The src path to use to build docker image.
-  """
-  build_docker_image(container_image, repo_base)
-
-  client = docker.from_env(timeout=_DOCKER_TIMEOUT_SECONDS)
-  logging.info('Pushing image %s', container_image)
-  with Timer('PushingTFXContainerImage'):
-    client.images.push(repository=container_image)
-  with Timer('DeletingLocalTFXContainerImage'):
-    client.images.remove(image=container_image)
-
-
 def delete_gcs_files(gcp_project_id: str, bucket_name: str, path: str):
   """Deletes files under specified path in the test bucket.
 
@@ -125,6 +49,6 @@ def delete_gcs_files(gcp_project_id: str, bucket_name: str, path: str):
   bucket = client.get_bucket(bucket_name)
   logging.info('Deleting files under GCS bucket path: %s', path)
 
-  with Timer('ListingAndDeletingFilesFromGCS'):
+  with timer.Timer('ListingAndDeletingFilesFromGCS'):
     blobs = list(bucket.list_blobs(prefix=path))
     bucket.delete_blobs(blobs)
