@@ -41,8 +41,6 @@ class InprocessExecutor(base_executor.BaseExecutor):
     executor_output = execution_result_pb2.ExecutorOutput()
     python_executor_operator._populate_output_artifact(executor_output,
                                                        output_dict)
-    python_executor_operator._populate_exec_properties(executor_output,
-                                                       exec_properties)
     return executor_output
 
 
@@ -55,8 +53,6 @@ class NotInprocessExecutor(base_executor.BaseExecutor):
     executor_output = execution_result_pb2.ExecutorOutput()
     python_executor_operator._populate_output_artifact(executor_output,
                                                        output_dict)
-    python_executor_operator._populate_exec_properties(executor_output,
-                                                       exec_properties)
     with fileio.open(self._context.executor_output_uri, 'w') as f:
       f.write(executor_output.SerializeToString())
 
@@ -104,12 +100,6 @@ class PythonExecutorOperatorTest(test_utils.TfxTest):
             execution_output_uri=executor_output_uri))
     self.assertProtoPartiallyEquals(
         """
-          execution_properties {
-            key: "key"
-            value {
-              string_value: "value"
-            }
-          }
           output_artifacts {
             key: "output_key"
             value {
@@ -139,12 +129,6 @@ class PythonExecutorOperatorTest(test_utils.TfxTest):
             execution_output_uri=executor_output_uri))
     self.assertProtoPartiallyEquals(
         """
-          execution_properties {
-            key: "key"
-            value {
-              string_value: "value"
-            }
-          }
           output_artifacts {
             key: "output_key"
             value {
@@ -181,24 +165,6 @@ class PythonExecutorOperatorTest(test_utils.TfxTest):
             execution_output_uri=executor_output_uri))
     self.assertProtoPartiallyEquals(
         """
-          execution_properties {
-            key: "float"
-            value {
-              double_value: 0.0
-            }
-          }
-          execution_properties {
-            key: "int"
-            value {
-              int_value: 1
-            }
-          }
-          execution_properties {
-            key: "string"
-            value {
-              string_value: "value"
-            }
-          }
           output_artifacts {
             key: "output_key"
             value {

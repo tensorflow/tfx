@@ -13,9 +13,8 @@
 # limitations under the License.
 """Base class to define how to operator an executor."""
 import sys
-from typing import Any, Dict, List, Optional, cast
+from typing import Dict, List, Optional, cast
 
-from absl import logging
 import tensorflow as tf
 from tfx import types
 from tfx.dsl.components.base import base_executor
@@ -28,7 +27,6 @@ from tfx.types.value_artifact import ValueArtifact
 from tfx.utils import import_utils
 
 from google.protobuf import message
-from ml_metadata.proto import metadata_store_pb2
 
 _STATEFUL_WORKING_DIR = 'stateful_working_dir'
 
@@ -42,26 +40,6 @@ def _populate_output_artifact(
     for artifact in artifact_list:
       artifacts.artifacts.append(artifact.mlmd_artifact)
     executor_output.output_artifacts[key].CopyFrom(artifacts)
-
-
-def _populate_exec_properties(
-    executor_output: execution_result_pb2.ExecutorOutput,
-    exec_properties: Dict[str, Any]):
-  """Populate exec_properties to executor_output."""
-  for key, value in exec_properties.items():
-    v = metadata_store_pb2.Value()
-    if isinstance(value, str):
-      v.string_value = value
-    elif isinstance(value, int):
-      v.int_value = value
-    elif isinstance(value, float):
-      v.double_value = value
-    else:
-      logging.info(
-          'Value type %s of key %s in exec_properties is not '
-          'supported, going to drop it', type(value), key)
-      continue
-    executor_output.execution_properties[key].CopyFrom(v)
 
 
 class PythonExecutorOperator(base_executor_operator.BaseExecutorOperator):
@@ -145,5 +123,4 @@ class PythonExecutorOperator(base_executor_operator.BaseExecutorOperator):
         # ExecutorOutput.
         result = execution_result_pb2.ExecutorOutput()
         _populate_output_artifact(result, execution_info.output_dict)
-        _populate_exec_properties(result, execution_info.exec_properties)
     return result

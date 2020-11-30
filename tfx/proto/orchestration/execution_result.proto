@@ -40,7 +40,7 @@ message ExecutionResult {
 // An ExecutorOutput protobuf message snapshots the updated version of the
 // output artifacts together with (probably updated) MLMD properties.
 message ExecutorOutput {
-  reserved 1;
+  reserved 1, 2;
 
   message ArtifactList {
     repeated ml_metadata.Artifact artifacts = 1;
@@ -48,8 +48,6 @@ message ExecutorOutput {
   // Holds any output artifacts that should be updated. Note that all artifacts
   // for a certain output key should be updated as a whole.
   map<string, ArtifactList> output_artifacts = 3;
-  // Holds any execution properties that should be updated.
-  map<string, ml_metadata.Value> execution_properties = 2;
   // Holds execution result from executor.
   ExecutionResult execution_result = 4;
 }
