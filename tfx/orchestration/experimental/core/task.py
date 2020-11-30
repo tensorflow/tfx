@@ -133,7 +133,6 @@ class ExecNodeTask(Task, HasNodeUid):
   executor_output_uri = attr.ib(type=Text)
   stateful_working_dir = attr.ib(type=Text)
   pipeline = attr.ib(type=pipeline_pb2.Pipeline)
-  # TODO(goutham): Update task schedulers to support is_cancelled.
   is_cancelled = attr.ib(type=bool, default=False)
 
   @property
