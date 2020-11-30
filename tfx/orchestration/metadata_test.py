@@ -843,12 +843,15 @@ class MetadataTest(tf.test.TestCase):
                        metadata.EXECUTION_STATE_COMPLETE)
       self.assertEqual(execution.last_known_state,
                        metadata_store_pb2.Execution.COMPLETE)
-      [_, event_b] = m.store.get_events_by_execution_ids([execution.id])
+      events = m.store.get_events_by_execution_ids([execution.id])
+      self.assertLen(events, 2)
+      [event_b] = (
+          e for e in events if e.type == metadata_store_pb2.Event.OUTPUT)
       self.assertEqual(event_b.artifact_id, 2)
-      self.assertEqual(event_b.type, metadata_store_pb2.Event.OUTPUT)
-      [_, artifact_b] = m.store.get_artifacts_by_context(
+      artifacts = m.store.get_artifacts_by_context(
           m.get_component_run_context(self._component_info).id)
-      self.assertEqual(artifact_b.id, 2)
+      self.assertLen(artifacts, 2)
+      [artifact_b] = (a for a in artifacts if a.id == 2)
       self._check_artifact_state(m, artifact_b, ArtifactState.PUBLISHED)
 
   def testGetQualifiedArtifacts(self):
