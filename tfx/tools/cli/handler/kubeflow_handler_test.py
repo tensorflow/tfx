@@ -49,7 +49,7 @@ def _MockSubprocess(cmd, env):  # pylint: disable=invalid-name, unused-argument
   pipeline_path = os.path.join(chicago_taxi_pipeline_dir,
                                'test_pipeline_kubeflow_1.py')
   # Store pipeline package
-  output_filename = os.path.join(chicago_taxi_pipeline_dir,
+  output_filename = os.path.join(os.getcwd(),
                                  'chicago_taxi_pipeline_kubeflow.tar.gz')
   with tarfile.open(output_filename, 'w:gz') as tar:
     tar.add(pipeline_path)
@@ -214,9 +214,14 @@ class KubeflowHandlerTest(tf.test.TestCase):
 
   def setUp(self):
     super(KubeflowHandlerTest, self).setUp()
-    self._home = os.path.join(
-        os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR', self.get_temp_dir()),
-        self._testMethodName)
+    self._tmp_dir = os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR',
+                                   self.get_temp_dir())
+    self._home = os.path.join(self._tmp_dir, self._testMethodName)
+    # Because this test creates files in local directory and affected by
+    # existing files, we will create a temp directory for a working directory.
+    self._olddir = os.getcwd()
+    os.chdir(self._tmp_dir)
+
     self._original_home_value = os.environ.get('HOME', '')
     os.environ['HOME'] = self._home
     self._original_kubeflow_home_value = os.environ.get('KUBEFLOW_HOME', '')
@@ -243,8 +248,11 @@ class KubeflowHandlerTest(tf.test.TestCase):
 
   def tearDown(self):
     super(KubeflowHandlerTest, self).tearDown()
-    os.environ['HOME'] = self._original_home_value
-    os.environ['KUBEFLOW_HOME'] = self._original_kubeflow_home_value
+    os.chdir(self._olddir)
+    if self._original_home_value:
+      os.environ['HOME'] = self._original_home_value
+    if self._original_kubeflow_home_value:
+      os.environ['KUBEFLOW_HOME'] = self._original_kubeflow_home_value
 
   @mock.patch('kfp.Client', _MockClientClass)
   def testCheckPipelinePackagePathDefaultPath(self):

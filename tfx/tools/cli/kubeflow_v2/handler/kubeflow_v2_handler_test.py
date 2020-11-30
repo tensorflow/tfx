@@ -227,9 +227,9 @@ class KubeflowV2HandlerTest(tf.test.TestCase):
 
   def tearDown(self):
     super(KubeflowV2HandlerTest, self).tearDown()
-    if self._home:
+    if self._original_home_value:
       os.environ['HOME'] = self._original_home_value
-    if self._kubeflow_v2_home:
+    if self._original_v2_home_value:
       os.environ['KUBEFLOW_V2_HOME'] = self._original_v2_home_value
     os.chdir(self._olddir)
 
