@@ -21,9 +21,11 @@ from __future__ import print_function
 import abc
 import json
 import os
+import sys
 from typing import Any, Dict, List, Optional, Text
 
 import absl
+from absl import flags
 import apache_beam as beam
 from apache_beam.options.pipeline_options import DirectOptions
 from apache_beam.options.pipeline_options import PipelineOptions
@@ -115,6 +117,9 @@ class BaseExecutor(with_metaclass(abc.ABCMeta, object)):
       with telemetry_utils.scoped_labels(
           {telemetry_utils.LABEL_TFX_EXECUTOR: executor_class_path}):
         self._beam_pipeline_args.extend(telemetry_utils.make_beam_labels_args())
+
+      # TODO(b/174174381): Don't use beam_pipeline_args to set ABSL flags.
+      flags.FLAGS(sys.argv + self._beam_pipeline_args, known_only=True)
 
   # TODO(b/126182711): Look into how to support fusion of multiple executors
   # into same pipeline.
