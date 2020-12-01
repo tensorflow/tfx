@@ -1,7 +1,7 @@
 # proto-file: tfx/orchestration/kubeflow/v2/proto/pipeline.proto
 # proto-message: PipelineSpec
 pipeline_info {
-  name: "pipeline_with_container"
+  name: "pipeline-with-container"
 }
 tasks {
   task_info {

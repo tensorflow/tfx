@@ -4,6 +4,7 @@
 *   Added a skeleton of CLI support for Kubeflow V2 runner, and implemented
     support for pipeline operations.
 *   Added an experimental template to use with Kubeflow V2 runner.
+*   Added sanitization of user-specified pipeline name in Kubeflow V2 runner.
 
 ## Breaking changes
 

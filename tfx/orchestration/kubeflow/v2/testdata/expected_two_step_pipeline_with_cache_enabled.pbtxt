@@ -5,7 +5,7 @@
 # running test against this golden file under Py2 will fail.
 
 pipeline_info {
-  name: "two_step_pipeline"
+  name: "two-step-pipeline"
 }
 tasks {
   task_info {

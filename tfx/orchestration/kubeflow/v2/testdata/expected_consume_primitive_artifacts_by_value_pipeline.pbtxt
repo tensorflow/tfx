@@ -2,7 +2,7 @@
 # proto-message: PipelineSpec
 
 pipeline_info {
-  name: "consume_primitive_artifacts_by_value_pipeline"
+  name: "consume-primitive-artifacts-by-value-pipeline"
 }
 tasks {
   task_info {

@@ -674,7 +674,7 @@
     "schemaVersion": "v2alpha1",
     "sdkVersion": "dummy-version",
     "pipelineInfo":{
-      "name":"full_taxi_pipeline"
+      "name":"full-taxi-pipeline"
     }
   },
   "labels":{

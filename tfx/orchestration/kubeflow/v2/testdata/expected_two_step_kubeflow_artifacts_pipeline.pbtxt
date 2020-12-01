@@ -3,7 +3,7 @@
 # proto-file: tfx/orchestration/kubeflow/v2/proto/pipeline.proto
 # proto-message: PipelineSpec
 pipeline_info {
-  name: "two_step_kubeflow_artifacts_pipeline"
+  name: "two-step-kubeflow-artifacts-pipeline"
 }
 tasks {
   task_info {

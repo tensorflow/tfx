@@ -13,6 +13,7 @@
 # limitations under the License.
 """Builder for Kubeflow pipelines level proto spec."""
 
+import re
 from typing import Any, Dict, List, Optional, Text
 
 from tfx.orchestration import data_types
@@ -21,6 +22,15 @@ from tfx.orchestration.kubeflow.v2 import compiler_utils
 from tfx.orchestration.kubeflow.v2 import parameter_utils
 from tfx.orchestration.kubeflow.v2 import step_builder
 from tfx.orchestration.kubeflow.v2.proto import pipeline_pb2
+
+_LEGAL_NAME_PATTERN = re.compile(r'[a-z0-9][a-z0-9-]{0,127}')
+
+
+def _check_name(name: Text) -> None:
+  """Checks the user-provided pipeline name."""
+  if not _LEGAL_NAME_PATTERN.fullmatch(name):
+    raise ValueError('User provided pipeline name % is illegal, please follow '
+                     'the pattern of [a-z0-9][a-z0-9-]{0,127}.')
 
 
 class RuntimeConfigBuilder(object):
@@ -83,6 +93,8 @@ class PipelineBuilder(object):
 
   def build(self) -> pipeline_pb2.PipelineSpec:
     """Build a pipeline PipelineSpec."""
+
+    _check_name(self._pipeline_info.pipeline_name)
 
     deployment_config = pipeline_pb2.PipelineDeploymentConfig()
     pipeline_info = pipeline_pb2.PipelineInfo(

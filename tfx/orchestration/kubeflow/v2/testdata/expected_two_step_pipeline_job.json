@@ -78,7 +78,7 @@
       }
     ],
     "pipelineInfo":{
-      "name":"two_step_pipeline"
+      "name":"two-step-pipeline"
     },
     "deploymentConfig":{
       "executors":{

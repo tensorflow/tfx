@@ -50,9 +50,9 @@ from tfx.utils import io_utils
 
 from google.protobuf import message
 
-_TEST_TWO_STEP_PIPELINE_NAME = 'two_step_pipeline'
+_TEST_TWO_STEP_PIPELINE_NAME = 'two-step-pipeline'
 
-_TEST_FULL_PIPELINE_NAME = 'full_taxi_pipeline'
+_TEST_FULL_PIPELINE_NAME = 'full-taxi-pipeline'
 
 _TEST_PIPELINE_ROOT = 'path/to/my/root'
 
@@ -357,7 +357,7 @@ def pipeline_with_one_container_spec_component() -> tfx_pipeline.Pipeline:
   )
 
   return tfx_pipeline.Pipeline(
-      pipeline_name='pipeline_with_container',
+      pipeline_name='pipeline-with-container',
       pipeline_root=_TEST_PIPELINE_ROOT,
       components=[importer_task, container_task],
   )
@@ -378,7 +378,7 @@ def pipeline_with_two_container_spec_components() -> tfx_pipeline.Pipeline:
   )
 
   return tfx_pipeline.Pipeline(
-      pipeline_name='pipeline_with_container',
+      pipeline_name='pipeline-with-container',
       pipeline_root=_TEST_PIPELINE_ROOT,
       components=[container1_task, container2_task],
   )
@@ -399,7 +399,7 @@ def pipeline_with_two_container_spec_components_2() -> tfx_pipeline.Pipeline:
   )
 
   return tfx_pipeline.Pipeline(
-      pipeline_name='pipeline_with_container',
+      pipeline_name='pipeline-with-container',
       pipeline_root=_TEST_PIPELINE_ROOT,
       components=[container1_task, container2_task],
   )
@@ -488,7 +488,7 @@ def two_step_kubeflow_artifacts_pipeline() -> tfx_pipeline.Pipeline:
       examples=step1.outputs['examples'],
       external_data=step1.outputs['external_data'])
   return tfx_pipeline.Pipeline(
-      pipeline_name='two_step_kubeflow_artifacts_pipeline',
+      pipeline_name='two-step-kubeflow-artifacts-pipeline',
       pipeline_root=_TEST_PIPELINE_ROOT,
       components=[step1, step2],
       beam_pipeline_args=[
@@ -517,7 +517,7 @@ def two_step_pipeline_with_task_only_dependency() -> tfx_pipeline.Pipeline:
   step_2.add_upstream_node(step_1)
 
   return tfx_pipeline.Pipeline(
-      pipeline_name='two_step_task_only_dependency_pipeline',
+      pipeline_name='two-step-task-only-dependency-pipeline',
       pipeline_root=_TEST_PIPELINE_ROOT,
       components=[step_1, step_2],
   )
@@ -579,7 +579,7 @@ def consume_primitive_artifacts_by_value_pipeline() -> tfx_pipeline.Pipeline:
   )
 
   return tfx_pipeline.Pipeline(
-      pipeline_name='consume_primitive_artifacts_by_value_pipeline',
+      pipeline_name='consume-primitive-artifacts-by-value-pipeline',
       pipeline_root=_TEST_PIPELINE_ROOT,
       components=[producer_task, consumer_task],
   )
@@ -601,7 +601,7 @@ def pipeline_with_runtime_parameter() -> tfx_pipeline.Pipeline:
   )
 
   return tfx_pipeline.Pipeline(
-      pipeline_name='pipeline_with_runtime_parameter',
+      pipeline_name='pipeline-with-runtime-parameter',
       pipeline_root=_TEST_PIPELINE_ROOT,
       components=[producer_task, consumer_task],
   )

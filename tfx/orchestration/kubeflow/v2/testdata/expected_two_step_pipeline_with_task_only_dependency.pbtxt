@@ -2,7 +2,7 @@
 # proto-message: PipelineSpec
 
 pipeline_info {
-  name: "two_step_task_only_dependency_pipeline"
+  name: "two-step-task-only-dependency-pipeline"
 }
 tasks {
   task_info {
