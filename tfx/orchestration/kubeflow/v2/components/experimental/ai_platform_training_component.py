@@ -54,6 +54,7 @@ def create_ai_platform_training(
 
   For example:
 
+  ```
   create_ai_platform_training(
     ...
     inputs: {
@@ -70,9 +71,11 @@ def create_ai_platform_training(
     }
     ...
   )
+  ```
 
   will generate a component instance with a component spec equivalent to:
 
+  ```
   class MyComponentSpec(ComponentSpec):
     INPUTS = {
         'examples': ChannelParameter(type=standard_artifacts.Examples)
@@ -84,65 +87,69 @@ def create_ai_platform_training(
         'n_steps': ExecutionParameter(type=int),
         'optimizer': ExecutionParameter(type=str)
     }
+  ```
 
   with its input 'examples' is connected to the example_gen output, and
   execution properties specified as 100 and 'sgd' respectively.
 
   Example usage of the component:
-    # A single node training job.
-    my_train = create_ai_platform_training(
-        name='my_training_step',
-        project_id='my-project',
-        region='us-central1',
-        image_uri='gcr.io/my-project/caip-training-test:latest',
-        'args': [
-            '--examples',
-            placeholders.InputUriPlaceholder('examples'),
-            '--n-steps',
-            placeholders.InputValuePlaceholder('n_step'),
-            '--output-location',
-            placeholders.OutputUriPlaceholder('model')
-        ]
-        scale_tier='BASIC_GPU',
-        inputs={'examples': example_gen.outputs['examples']},
-        outputs={
-            'model': standard_artifacts.Model
-        },
-        parameters={'n_step': 100}
-    )
 
-    # More complex setting can be expressed by providing training_input
-    # directly.
-    my_distributed_train = create_ai_platform_training(
-        name='my_training_step',
-        project_id='my-project',
-        training_input={
-            'scaleTier':
-                'CUSTOM',
-            'region':
-                'us-central1',
-            'masterType': 'n1-standard-8',
-            'masterConfig': {
-                'imageUri': 'gcr.io/my-project/my-dist-training:latest'
-            },
-            'workerType': 'n1-standard-8',
-            'workerCount': 8,
-            'workerConfig': {
-                'imageUri': 'gcr.io/my-project/my-dist-training:latest'
-            },
-            'args': [
-                '--examples',
-                placeholders.InputUriPlaceholder('examples'),
-                '--n-steps',
-                placeholders.InputValuePlaceholder('n_step'),
-                '--output-location',
-                placeholders.OutputUriPlaceholder('model')
-            ]
-        },
-        inputs={'examples': example_gen.outputs['examples']},
-        outputs={'model': Model},
-        parameters={'n_step': 100}
-    )
+  ```
+  # A single node training job.
+  my_train = create_ai_platform_training(
+      name='my_training_step',
+      project_id='my-project',
+      region='us-central1',
+      image_uri='gcr.io/my-project/caip-training-test:latest',
+      'args': [
+          '--examples',
+          placeholders.InputUriPlaceholder('examples'),
+          '--n-steps',
+          placeholders.InputValuePlaceholder('n_step'),
+          '--output-location',
+          placeholders.OutputUriPlaceholder('model')
+      ]
+      scale_tier='BASIC_GPU',
+      inputs={'examples': example_gen.outputs['examples']},
+      outputs={
+          'model': standard_artifacts.Model
+      },
+      parameters={'n_step': 100}
+  )
+
+  # More complex setting can be expressed by providing training_input
+  # directly.
+  my_distributed_train = create_ai_platform_training(
+      name='my_training_step',
+      project_id='my-project',
+      training_input={
+          'scaleTier':
+              'CUSTOM',
+          'region':
+              'us-central1',
+          'masterType': 'n1-standard-8',
+          'masterConfig': {
+              'imageUri': 'gcr.io/my-project/my-dist-training:latest'
+          },
+          'workerType': 'n1-standard-8',
+          'workerCount': 8,
+          'workerConfig': {
+              'imageUri': 'gcr.io/my-project/my-dist-training:latest'
+          },
+          'args': [
+              '--examples',
+              placeholders.InputUriPlaceholder('examples'),
+              '--n-steps',
+              placeholders.InputValuePlaceholder('n_step'),
+              '--output-location',
+              placeholders.OutputUriPlaceholder('model')
+          ]
+      },
+      inputs={'examples': example_gen.outputs['examples']},
+      outputs={'model': Model},
+      parameters={'n_step': 100}
+  )
+  ```
 
   Args:
     name: name of the component. This is needed to construct the component spec
