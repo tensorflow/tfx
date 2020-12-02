@@ -76,7 +76,8 @@ class ResolverNodeHandlerTest(test_utils.TfxTest):
           self._my_trainer.outputs.outputs['model'].artifact_spec.type)
       output_model_2.uri = 'my_model_uri_2'
 
-      contexts = context_lib.prepare_contexts(m, self._my_trainer.contexts)
+      contexts = context_lib.register_contexts_if_not_exists(
+          m, self._my_trainer.contexts)
       execution = execution_publish_utils.register_execution(
           m, self._my_trainer.node_info.type, contexts)
       execution_publish_utils.publish_succeeded_execution(

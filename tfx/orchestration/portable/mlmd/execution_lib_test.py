@@ -58,7 +58,8 @@ class ExecutionLibTest(test_utils.TfxTest):
             field_value {string_value: 'my_component'}
           }
         }""", context_spec)
-    return context_lib.prepare_contexts(metadata_handler, context_spec)
+    return context_lib.register_contexts_if_not_exists(metadata_handler,
+                                                       context_spec)
 
   def testPrepareExecution(self):
     with metadata.Metadata(connection_config=self._connection_config) as m:

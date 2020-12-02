@@ -26,7 +26,6 @@ from tfx.orchestration import pipeline
 from tfx.orchestration import tfx_runner
 from tfx.orchestration.config import config_utils
 from tfx.orchestration.config import pipeline_config
-from tfx.orchestration.launcher import docker_component_launcher
 from tfx.orchestration.launcher import in_process_component_launcher
 from tfx.utils import telemetry_utils
 
@@ -45,10 +44,11 @@ class LocalDagRunner(tfx_runner.TfxRunner):
         InProcessComponentLauncher and DockerComponentLauncher.
     """
     if config is None:
+      # TODO(b/171319478): After swtiching to the IR based Launcher, Docker
+      # will automatically be supported back.
       config = pipeline_config.PipelineConfig(
           supported_launcher_classes=[
               in_process_component_launcher.InProcessComponentLauncher,
-              docker_component_launcher.DockerComponentLauncher,
           ],
       )
     super(LocalDagRunner, self).__init__(config)
@@ -76,6 +76,7 @@ class LocalDagRunner(tfx_runner.TfxRunner):
       for component in tfx_pipeline.components:
         (component_launcher_class, component_config) = (
             config_utils.find_component_launch_info(self._config, component))
+        print("I'm here component_launcher_class: ", component_launcher_class)
         driver_args = data_types.DriverArgs(
             enable_cache=tfx_pipeline.enable_cache)
         metadata_connection = metadata.Metadata(

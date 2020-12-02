@@ -130,7 +130,7 @@ def generate_resolved_info(metadata_handler: metadata.Metadata,
     A `ResolvedInfo` with input resolutions.
   """
   # Register node contexts.
-  contexts = context_lib.prepare_contexts(
+  contexts = context_lib.register_contexts_if_not_exists(
       metadata_handler=metadata_handler, node_contexts=node.contexts)
 
   # Resolve execution properties.

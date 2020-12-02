@@ -18,12 +18,13 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import mock
 import tensorflow as tf
 from tfx.dsl.components.base import executor_spec
 from tfx.orchestration.config import config_utils
 from tfx.orchestration.config import docker_component_config
 from tfx.orchestration.config import pipeline_config
-from tfx.orchestration.launcher import docker_component_launcher
+from tfx.orchestration.launcher import base_component_launcher
 from tfx.orchestration.launcher import in_process_component_launcher
 from tfx.orchestration.launcher import test_utils
 from tfx.types import channel_utils
@@ -46,6 +47,9 @@ class ConfigUtilsTest(tf.test.TestCase):
     self.assertIsNone(c_config)
 
   def testFindComponentLaunchInfoReturnConfigOverride(self):
+    mock_launcher_class = mock.create_autospec(
+        base_component_launcher.BaseComponentLauncher)
+    mock_launcher_class.can_launch.return_value = True
     input_artifact = test_utils._InputArtifact()
     component = test_utils._FakeComponent(
         name='FakeComponent',
@@ -56,7 +60,7 @@ class ConfigUtilsTest(tf.test.TestCase):
     override_config = docker_component_config.DockerComponentConfig(name='test')
     p_config = pipeline_config.PipelineConfig(
         supported_launcher_classes=[
-            docker_component_launcher.DockerComponentLauncher
+            mock_launcher_class
         ],
         default_component_configs=[default_config],
         component_config_overrides={
@@ -66,17 +70,20 @@ class ConfigUtilsTest(tf.test.TestCase):
     (launcher_class,
      c_config) = config_utils.find_component_launch_info(p_config, component)
 
-    self.assertEqual(docker_component_launcher.DockerComponentLauncher,
+    self.assertEqual(mock_launcher_class,
                      launcher_class)
     self.assertEqual(override_config, c_config)
 
   def testFindComponentLaunchInfoFailWithNoLauncherClassFound(self):
+    mock_launcher_class = mock.create_autospec(
+        base_component_launcher.BaseComponentLauncher)
+    mock_launcher_class.can_launch.return_value = False
     input_artifact = test_utils._InputArtifact()
     component = test_utils._FakeComponent(
         name='FakeComponent',
         input_channel=channel_utils.as_channel([input_artifact]))
     p_config = pipeline_config.PipelineConfig(supported_launcher_classes=[
-        docker_component_launcher.DockerComponentLauncher
+        mock_launcher_class
     ])
 
     with self.assertRaises(RuntimeError):

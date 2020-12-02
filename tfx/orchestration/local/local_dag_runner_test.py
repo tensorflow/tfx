@@ -22,15 +22,15 @@ import os
 import tempfile
 from typing import Any, Dict, List, Text
 
+import mock
 import tensorflow as tf
-
 from tfx import types
 from tfx.dsl.components.base import base_component
 from tfx.dsl.components.base import base_executor
 from tfx.dsl.components.base import executor_spec
 from tfx.orchestration import pipeline
 from tfx.orchestration.config import pipeline_config
-from tfx.orchestration.launcher import docker_component_launcher
+from tfx.orchestration.launcher import base_component_launcher
 from tfx.orchestration.local import local_dag_runner
 from tfx.orchestration.metadata import sqlite_metadata_connection_config
 from tfx.types.component_spec import ChannelParameter
@@ -173,9 +173,11 @@ class LocalDagRunnerTest(tf.test.TestCase):
     ])
 
   def testNoSupportedLaunchers(self):
+    mock_launcher_class = mock.create_autospec(
+        base_component_launcher.BaseComponentLauncher)
+    mock_launcher_class.can_launch.return_value = False
     config = pipeline_config.PipelineConfig(
-        supported_launcher_classes=[
-            docker_component_launcher.DockerComponentLauncher])
+        supported_launcher_classes=[mock_launcher_class])
     runner = local_dag_runner.LocalDagRunner(config=config)
     with self.assertRaisesRegex(RuntimeError, 'No launcher info can be found'):
       runner.run(self._getTestPipeline())
