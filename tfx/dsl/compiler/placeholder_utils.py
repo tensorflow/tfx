@@ -166,19 +166,16 @@ class _ExpressionResolver:
     if placeholder.type == placeholder_pb2.Placeholder.Type.EXEC_INVOCATION:
       return context
 
-    if placeholder.type == placeholder_pb2.Placeholder.Type.EXEC_PROPERTY:
-      if placeholder.key in context:
-        return context[placeholder.key]
-      else:
-        raise NullDereferenceError(placeholder)
-
     # Handle remaining placeholder types.
     try:
       return context[placeholder.key]
     except KeyError as e:
-      raise KeyError(
-          f"Failed to find key {placeholder.key} of placeholder type "
-          f"{placeholder_pb2.Placeholder.Type.Name(placeholder.type)}.") from e
+      # Handle placeholders that access a missing optional channel or exec
+      # property. In both cases the requested key will not be present in the
+      # context. However this means we cannot distinguish between a correct
+      # placeholder with an optional value vs. an incorrect placeholder.
+      # TODO(b/172001324): Handle this at compile time.
+      raise NullDereferenceError(placeholder)
 
   def _resolve_placeholder_operator(
       self, placeholder_operator: placeholder_pb2.PlaceholderExpressionOperator

@@ -191,11 +191,8 @@ class PlaceholderUtilsTest(tf.test.TestCase):
     # Resolution context to simulate missing optional values.
     self._none_resolution_context = placeholder_utils.ResolutionContext(
         exec_info=data_types.ExecutionInfo(
-            input_dict={
-                "model": [],
-                "examples": [],
-            },
-            output_dict={"blessing": []},
+            input_dict={},
+            output_dict={},
             exec_properties={},
             pipeline_node=pipeline_pb2.PipelineNode(
                 node_info=pipeline_pb2.NodeInfo(
