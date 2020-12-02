@@ -178,7 +178,7 @@ class Launcher(object):
     # publishes.
     with self._mlmd_connection as m:
       # 1.Prepares all contexts.
-      contexts = context_lib.register_contexts_if_not_exists(
+      contexts = context_lib.prepare_contexts(
           metadata_handler=m, node_contexts=self._pipeline_node.contexts)
 
       # 2. Resolves inputs an execution properties.

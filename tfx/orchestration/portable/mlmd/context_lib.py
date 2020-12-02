@@ -46,20 +46,20 @@ def _generate_context_proto(
       metadata_handler, context_spec.type)
   context_name = common_utils.get_value(context_spec.name)
   assert isinstance(context_name, Text), 'context name should be string.'
-  context = metadata_store_pb2.Context(
+  result = metadata_store_pb2.Context(
       type_id=context_type.id, name=context_name)
   for k, v in context_spec.properties.items():
     if k in context_type.properties:
       actual_property_type = common_utils.get_metadata_value_type(v)
       if context_type.properties.get(k) == actual_property_type:
-        common_utils.set_metadata_value(context.properties[k], v)
+        common_utils.set_metadata_value(result.properties[k], v)
       else:
         raise RuntimeError(
             'Property type %s different from provided metadata type property type %s for key %s'
             % (actual_property_type, context_type.properties.get(k), k))
     else:
-      common_utils.set_metadata_value(context.custom_properties[k], v)
-  return context
+      common_utils.set_metadata_value(result.custom_properties[k], v)
+  return result
 
 
 def _register_context_if_not_exist(
@@ -130,11 +130,13 @@ def register_context_if_not_exists(
       metadata_handler=metadata_handler, context_spec=context_spec)
 
 
-def register_contexts_if_not_exists(
+def prepare_contexts(
     metadata_handler: metadata.Metadata,
     node_contexts: pipeline_pb2.NodeContexts,
 ) -> List[metadata_store_pb2.Context]:
-  """Creates or fetches the contexts given specification.
+  """Creates the contexts given specification.
+
+  Context types will be registered if not already exist.
 
   Args:
     metadata_handler: A handler to access MLMD store.
@@ -146,7 +148,7 @@ def register_contexts_if_not_exists(
   """
 
   return [
-      _register_context_if_not_exist(
+      _generate_context_proto(
           metadata_handler=metadata_handler, context_spec=context_spec)
       for context_spec in node_contexts.contexts
   ]

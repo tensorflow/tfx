@@ -59,7 +59,7 @@ class ImporterNodeHandler(system_node_handler.SystemNodeHandler):
     logging.info('Running as an importer node.')
     with mlmd_connection as m:
       # 1.Prepares all contexts.
-      contexts = context_lib.register_contexts_if_not_exists(
+      contexts = context_lib.prepare_contexts(
           metadata_handler=m, node_contexts=pipeline_node.contexts)
 
       # 2. Resolves execution properties, please note that importers has no
