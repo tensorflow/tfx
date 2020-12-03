@@ -16,7 +16,7 @@
 
 import json
 import os
-from typing import Any, Dict, List, Optional, Text, Type, Union
+from typing import Any, Dict, List, Mapping, Optional, Text, Type, Union
 
 from tfx.dsl.io import fileio
 from tfx.orchestration import data_types
@@ -76,10 +76,15 @@ TITLE_TO_CLASS_PATH = {
     'tfx.File': 'tfx.types.experimental.simple_artifacts.File'
 }
 
+# Keywords used in artifact type YAML specs.
+_YAML_INT_TYPE = 'int'
+_YAML_STRING_TYPE = 'string'
+_YAML_DOUBLE_TYPE = 'double'
+
 
 def build_runtime_parameter_spec(
     parameters: List[data_types.RuntimeParameter]
-) -> Dict[Text, pipeline_pb2.PipelineSpec.RuntimeParameter]:
+) -> Dict[str, pipeline_pb2.PipelineSpec.RuntimeParameter]:
   """Converts RuntimeParameters to mapping from names to proto messages."""
 
   def to_message(parameter: data_types.RuntimeParameter):
@@ -106,8 +111,8 @@ def build_runtime_parameter_spec(
 
 
 def build_input_parameter_spec(
-    dict_data: Dict[Text, Any]
-) -> Dict[Text, pipeline_pb2.TaskInputsSpec.InputParameterSpec]:
+    dict_data: Dict[str, Any]
+) -> Dict[str, pipeline_pb2.TaskInputsSpec.InputParameterSpec]:
   """Converts a dict into Kubeflow pipeline input parameter section."""
   # Skip None value.
   result = {}
@@ -116,6 +121,44 @@ def build_input_parameter_spec(
       result[k] = pipeline_pb2.TaskInputsSpec.InputParameterSpec(
           runtime_value=value_converter(v))
   return result
+
+
+def _validate_properties_schema(
+    instance_schema: str,
+    properties: Optional[Mapping[str, artifact.PropertyType]] = None):
+  """Validates the declared property types are consistent with the schema.
+
+  Args:
+    instance_schema: YAML string of the artifact property schema.
+    properties: The actual property schema of an Artifact Python class.
+
+  Raises:
+    KeyError: When actual property have additional properties than what's
+      specified in the YAML schema.
+    TypeError: When the same property is declared with different types in YAML
+      schema and the Artifact Python class.
+  """
+  schema = yaml.safe_load(instance_schema)['properties'] or {}
+  properties = properties or {}
+
+  for k, v in properties.items():
+    if k not in schema:
+      raise KeyError('Actual property: {} not expected in artifact type schema:'
+                     ' {}'.format(k, schema))
+    # It's okay that we only validate the constant_value case, since
+    # RuntimeParameter's ptype should be validated during component
+    # instantiation.
+    # We only validate primitive-typed property for now because other types can
+    # have nested schema in the YAML spec as well.
+    if (schema[k]['type'] == _YAML_INT_TYPE and
+        v.type != artifact.PropertyType.INT or
+        schema[k]['type'] == _YAML_STRING_TYPE and
+        v.type != artifact.PropertyType.STRING or
+        schema[k]['type'] == _YAML_DOUBLE_TYPE and
+        v.type != artifact.PropertyType.FLOAT):
+      raise TypeError('Property type mismatched at {} for schema: {}. '
+                      'Expected {} but got {}'.format(
+                          k, schema, schema[k]['type'], v.type))
 
 
 def build_output_artifact_spec(
@@ -130,6 +173,11 @@ def build_output_artifact_spec(
   for k, v in convert_from_tfx_properties(
       artifact_instance.mlmd_artifact.properties).items():
     result.properties[k].CopyFrom(v)
+
+  _validate_properties_schema(
+      instance_schema=result.artifact_type.instance_schema,
+      properties=channel_spec.type.PROPERTIES)
+
   for k, v in convert_from_tfx_properties(
       artifact_instance.mlmd_artifact.custom_properties).items():
     result.custom_properties[k].CopyFrom(v)
@@ -175,8 +223,7 @@ def value_converter(
 
 
 def get_kubeflow_value(
-    tfx_value: Union[int, float, str,
-                     Text]) -> Optional[pipeline_pb2.Value]:
+    tfx_value: Union[int, float, str, Text]) -> Optional[pipeline_pb2.Value]:
   """Converts TFX/MLMD values into Kubeflow pipeline Value proto message."""
   if tfx_value is None:
     return None

@@ -19,6 +19,7 @@ import tensorflow as tf
 from tfx.dsl.io import fileio
 from tfx.orchestration.kubeflow.v2 import compiler_utils
 from tfx.types import artifact
+from tfx.types import channel_utils
 from tfx.types import standard_artifacts
 from tfx.types.experimental import simple_artifacts
 import yaml
@@ -29,9 +30,32 @@ type: object
 properties:
 """
 
+_EXPECTED_MY_BAD_ARTIFACT_SCHEMA = """
+title: __main__._MyBadArtifact
+type: object
+properties:
+"""
+
+_MY_BAD_ARTIFACT_SCHEMA_WITH_PROPERTIES = """
+title: __main__._MyBadArtifact
+type: object
+properties:
+  int1:
+    type: string
+"""
+
 
 class _MyArtifact(artifact.Artifact):
   TYPE_NAME = 'TestType'
+
+
+# _MyBadArtifact should fail the compilation by specifying custom property
+# schema, which is not supported yet.
+class _MyBadArtifact(artifact.Artifact):
+  TYPE_NAME = 'TestBadType'
+  PROPERTIES = {
+      'int1': artifact.Property(type=artifact.PropertyType.INT),
+  }
 
 
 class CompilerUtilsTest(tf.test.TestCase):
@@ -62,6 +86,23 @@ class CompilerUtilsTest(tf.test.TestCase):
     self.assertDictEqual(
         yaml.safe_load(my_artifact_schema),
         yaml.safe_load(_EXPECTED_MY_ARTIFACT_SCHEMA))
+
+  def testCustomArtifactMappingFails(self):
+    my_bad_artifact = _MyBadArtifact()
+    my_bad_artifact_schema = compiler_utils.get_artifact_schema(my_bad_artifact)
+    self.assertDictEqual(
+        yaml.safe_load(my_bad_artifact_schema),
+        yaml.safe_load(_EXPECTED_MY_BAD_ARTIFACT_SCHEMA))
+
+    my_bad_artifact.int1 = 42
+    with self.assertRaisesRegexp(KeyError, 'Actual property:'):
+      _ = compiler_utils.build_output_artifact_spec(
+          channel_utils.as_channel([my_bad_artifact]))
+
+  def testCustomArtifactSchemaMismatchFails(self):
+    with self.assertRaisesRegexp(TypeError, 'Property type mismatched at'):
+      compiler_utils._validate_properties_schema(
+          _MY_BAD_ARTIFACT_SCHEMA_WITH_PROPERTIES, _MyBadArtifact.PROPERTIES)
 
 
 if __name__ == '__main__':

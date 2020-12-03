@@ -58,6 +58,7 @@
     [Kubeflow IR spec](https://github.com/kubeflow/pipelines/blob/master/api/v2alpha1/pipeline_spec.proto).
     Same as `KubeflowDagRunner` it will compile the DSL pipeline into a payload
     but not trigger the execution locally.
+*   Added compile time check for schema mismatch in Kubeflow V2 runner.
 *   Added 'penguin' example. Penguin example uses Palmer Penguins dataset and
     classify penguin species using four numeric features.
 *   Iris e2e examples are replaced by penguin examples.
