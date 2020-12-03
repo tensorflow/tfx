@@ -44,7 +44,7 @@ from google.protobuf import text_format
 FLAGS = flags.FLAGS
 
 EXECUTION_INVOCATION_FLAG = flags.DEFINE_string(
-    'tfx_execution_info_b64', None, 'base64 encoded binary '
+    'tfx_execution_info_b64', None, 'url safe base64 encoded binary '
     'tfx.orchestration.ExecutionInvocation proto')
 EXECUTABLE_SPEC_FLAG = flags.DEFINE_string(
     'tfx_python_class_executable_spec_b64', None,

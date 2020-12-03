@@ -130,7 +130,8 @@ message ProtoOperator {
   SerializationFormat serialization_format = 4;
 }
 
-// Base64EncodeOperator encodes the output of another placeholder using Base64.
+// Base64EncodeOperator encodes the output of another placeholder using
+// url safe base64.
 // The output of another placeholder must be string or bytes.
 // Base64EncodeOperator: String/Bytes -> String
 message Base64EncodeOperator {

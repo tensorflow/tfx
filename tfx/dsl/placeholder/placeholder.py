@@ -236,7 +236,7 @@ class _ProtoOperator(_PlaceholderOperator):
 
 
 class _Base64EncodeOperator(_PlaceholderOperator):
-  """Base64EncodeOperator encodes the output of another placeholder using Base64.
+  """Base64EncodeOperator encodes another placeholder using url safe base64.
 
   Prefer to use the .b64encode method of Placeholder.
   """
@@ -271,6 +271,11 @@ class Placeholder(abc.ABC):
     return self
 
   def b64encode(self):
+    """Encodes the output of another placeholder using url safe base64 encoding.
+
+    Returns:
+      A placeholder, when rendering, is a url safe base64 encoded string.
+    """
     self._operators.append(_Base64EncodeOperator())
     return self
 
