@@ -32,8 +32,8 @@ from tfx.proto import pusher_pb2
 from tfx.types import artifact_utils
 from tfx.utils import io_utils
 from tfx.utils import path_utils
+from tfx.utils import proto_utils
 
-from google.protobuf import json_format
 
 # Aliasing of enum for better readability.
 _Versioning = pusher_pb2.Versioning
@@ -148,7 +148,8 @@ class Executor(base_executor.BaseExecutor):
     # copy to outside path again..
     # TODO(jyzhao): support rpc push and verification.
     push_destination = pusher_pb2.PushDestination()
-    json_format.Parse(exec_properties['push_destination'], push_destination)
+    proto_utils.json_to_proto(exec_properties['push_destination'],
+                              push_destination)
 
     destination_kind = push_destination.WhichOneof('destination')
     if destination_kind == 'filesystem':

@@ -25,8 +25,8 @@ import json
 from typing import Any, Dict, List, Text, Type, Union
 
 from six import with_metaclass
+from tfx.utils import proto_utils
 
-from google.protobuf import json_format
 from google.protobuf import message
 
 # This is the special key to indicate the serialized object type.
@@ -130,15 +130,10 @@ class _DefaultEncoder(json.JSONEncoder):
 
     if isinstance(obj, message.Message):
       return {
-          _TFX_OBJECT_TYPE_KEY:
-              _ObjectType.PROTO,
-          _MODULE_KEY:
-              obj.__class__.__module__,
-          _CLASS_KEY:
-              obj.__class__.__name__,
-          _PROTO_VALUE_KEY:
-              json_format.MessageToJson(
-                  message=obj, sort_keys=True, preserving_proto_field_name=True)
+          _TFX_OBJECT_TYPE_KEY: _ObjectType.PROTO,
+          _MODULE_KEY: obj.__class__.__module__,
+          _CLASS_KEY: obj.__class__.__name__,
+          _PROTO_VALUE_KEY: proto_utils.proto_to_json(obj)
       }
 
     return super(_DefaultEncoder, self).default(obj)
@@ -180,7 +175,8 @@ class _DefaultDecoder(json.JSONDecoder):
                          proto_class_type)
       if _PROTO_VALUE_KEY not in dict_data:
         raise ValueError('Missing proto value in json dict')
-      return json_format.Parse(dict_data[_PROTO_VALUE_KEY], proto_class_type())
+      return proto_utils.json_to_proto(dict_data[_PROTO_VALUE_KEY],
+                                       proto_class_type())
 
 
 def dumps(obj: Any) -> Text:
