@@ -21,6 +21,7 @@ from __future__ import print_function
 from typing import Any, Callable, Dict, List, Iterator, Optional, Text, NamedTuple
 
 import absl
+import attr
 import pyarrow as pa
 import tensorflow as tf
 from tfx import types
@@ -49,33 +50,51 @@ DataAccessor = NamedTuple('DataAccessor',
                                Optional[schema_pb2.Schema],
                            ], Iterator[pa.RecordBatch]])])
 
-# TODO(b/156929910): Change TrainerFnArgs to this FnArgs.
-#
-# working_dir: Working dir.
-# train_files: A list of patterns for train files.
-# eval_files: A list of patterns for eval files.
-# train_steps: Number of train steps.
-# eval_steps: Number of eval steps.
-# schema_path: A single uri for schema file. Will be None if not specified.
-# transform_graph_path: An optional single uri for transform graph produced by
-#                       TFT. Will be None if not specified.
-# data_accessor: Contains factories that can create tf.data.Datasets or other
-#   means to access the train/eval data. They provide a uniform way of
-#   accessing data, regardless of how the data is stored on disk.
-# custom_config: An optional dictionary passed to the component.
-FnArgs = NamedTuple('FnArgs', [
-    ('working_dir', Text),
-    ('train_files', List[Text]),
-    ('eval_files', List[Text]),
-    ('train_steps', int),
-    ('eval_steps', int),
-    ('schema_path', Text),
-    ('transform_graph_path', Text),
-    ('data_accessor', DataAccessor),
-    ('custom_config', Dict[Text, Any]),
-])
-# Set default value to None.
-FnArgs.__new__.__defaults__ = (None,) * len(FnArgs._fields)
+
+@attr.s
+class FnArgs:
+  """Args to pass to user defined training/tuning function(s).
+
+  Attributes:
+    working_dir: Working dir.
+    train_files: A list of patterns for train files.
+    eval_files: A list of patterns for eval files.
+    train_steps: Number of train steps.
+    eval_steps: Number of eval steps.
+    schema_path: A single uri for schema file. Will be None if not specified.
+    schema_file: Deprecated, use `schema_path` instead.
+    transform_graph_path: An optional single uri for transform graph produced by
+      TFT. Will be None if not specified.
+    transform_output: Deprecated, use `transform_graph_path` instead.'
+    data_accessor: Contains factories that can create tf.data.Datasets or other
+      means to access the train/eval data. They provide a uniform way of
+      accessing data, regardless of how the data is stored on disk.
+    serving_model_dir: A single uri for the output directory of the serving
+      model.
+    eval_model_dir: A single uri for the output directory of the eval model.
+      Note that this is estimator only, Keras doesn't require it for TFMA.
+    model_run_dir: A single uri for the output directory of model training
+      related files.
+    base_model: An optional base model path that will be used for this training.
+    hyperparameters: An optional kerastuner.HyperParameters config.
+    custom_config: An optional dictionary passed to the component.
+  """
+  working_dir = attr.ib(type=Text, default=None)
+  train_files = attr.ib(type=List[Text], default=None)
+  eval_files = attr.ib(type=List[Text], default=None)
+  train_steps = attr.ib(type=int, default=None)
+  eval_steps = attr.ib(type=int, default=None)
+  schema_path = attr.ib(type=Text, default=None)
+  schema_file = attr.ib(type=Text, default=None)
+  transform_graph_path = attr.ib(type=Text, default=None)
+  transform_output = attr.ib(type=Text, default=None)
+  data_accessor = attr.ib(type=DataAccessor, default=None)
+  serving_model_dir = attr.ib(type=Text, default=None)
+  eval_model_dir = attr.ib(type=Text, default=None)
+  model_run_dir = attr.ib(type=Text, default=None)
+  base_model = attr.ib(type=Text, default=None)
+  hyperparameters = attr.ib(type=Text, default=None)
+  custom_config = attr.ib(type=Dict[Text, Any], default=None)
 
 
 def get_common_fn_args(input_dict: Dict[Text, List[types.Artifact]],
