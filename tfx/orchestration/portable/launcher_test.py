@@ -159,7 +159,6 @@ class LauncherTest(test_utils.TfxTest):
     connection_config.sqlite.SetInParent()
     self._mlmd_connection = metadata.Metadata(
         connection_config=connection_config)
-    self._testdata_dir = os.path.join(os.path.dirname(__file__), 'testdata')
 
     # Sets up pipelines
     pipeline = pipeline_pb2.Pipeline()
@@ -219,7 +218,7 @@ class LauncherTest(test_utils.TfxTest):
         # Publishes Transform output.
         output_transform_graph = types.Artifact(
             transform.outputs.outputs['transform_graph'].artifact_spec.type)
-        output_example.uri = 'my_transform_graph_uri'
+        output_transform_graph.uri = 'my_transform_graph_uri'
         contexts = context_lib.prepare_contexts(m, transform.contexts)
         execution = execution_publish_utils.register_execution(
             m, transform.node_info.type, contexts)
