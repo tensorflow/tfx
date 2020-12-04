@@ -11,22 +11,12 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-r"""This module defines the binary used to run PythonExecutorOperator in Tflex.
+r"""This module defines the entrypoint for the PythonExecutorOperator in TFX.
 
-Example:
-
-python_executor_binary
---tfx_execution_info_b64=ChcKEAgBEgxnZW5lcmljX3R5cGUSA2ZvbyoPCg0KAnAxEgcKBRoDYmFy
-\
---tfx_python_class_executable_spec_b64=ChcKEAgBEgxnZW5lcmljX3R5cGUSA2ZvbyoPCg0KAnAxEgcKBRoDYmFy
-\
---alsologtostderr
-
-This binary is intended to be called by the Tflex IR based launcher and should
-not be called directly.
-
+This library is intended to serve as the entrypoint for a binary that packages
+the python executors in a pipeline. The resulting binary is called by the TFX
+launcher and should not be called directly.
 """
-from absl import app
 from absl import flags
 from absl import logging
 
@@ -100,7 +90,3 @@ def main(_):
   if run_result:
     with fileio.open(execution_info.execution_output_uri, 'wb') as f:
       f.write(run_result.SerializeToString())
-
-
-if __name__ == '__main__':
-  app.run(main)
