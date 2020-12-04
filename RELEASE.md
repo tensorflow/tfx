@@ -69,6 +69,8 @@
     of IR to learn more details.
 *   Supports forward compatibility when evolving TFX artifact types, which
     allows jobs of old release and new release run with the same MLMD instance.
+*   Graduated the portable/beam_dag_runner.py to beam/beam_dag_runner.py
+
 
 ## Breaking changes
 
