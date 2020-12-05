@@ -332,8 +332,8 @@ class Launcher(object):
     """Updates output_dict with driver output."""
     for key, artifact_list in driver_output.output_artifacts.items():
       python_artifact_list = []
-      # We assume the origial output dict must include at least output artifact
-      # and all output artifact shared the same type.
+      # We assume the origial output dict must include at least one output
+      # artifact and all output artifact shared the same type.
       artifact_type = output_dict[key][0].artifact_type
       for proto_artifact in artifact_list.artifacts:
         python_artifact = types.Artifact(artifact_type)
