@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Test utilities for kubeflow v2 orchestrator."""
+"""Test utilities for kubeflow v2 runner."""
 
 import os
 import subprocess
@@ -657,9 +657,6 @@ def tasks_for_pipeline_with_artifact_value_passing():
 class BaseKubeflowV2Test(tf.test.TestCase):
   """Defines testing harness for pipeline on KubeflowV2DagRunner."""
 
-  # The following environment variables need to be set prior to calling the test
-  # in this file. All variables are required and do not have a default.
-
   # The src path to use to build docker image
   _REPO_BASE = os.environ.get('KFP_E2E_SRC')
 
@@ -671,12 +668,6 @@ class BaseKubeflowV2Test(tf.test.TestCase):
 
   # The GCP bucket to use to write output artifacts.
   _BUCKET_NAME = os.environ.get('KFP_E2E_BUCKET_NAME')
-
-  # The KFP service endpoint.
-  _ENDPOINT = os.environ.get('KFP_E2E_ENDPOINT')
-
-  # The API Key used to access KFP service endpoint.
-  _API_KEY = os.environ.get('KFP_E2E_API_KEY')
 
   # The location of test user module file.
   # It is retrieved from inside the container subject to testing.
@@ -736,6 +727,3 @@ class BaseKubeflowV2Test(tf.test.TestCase):
         pipeline_root=self._pipeline_root(pipeline_name),
         components=pipeline_components,
         beam_pipeline_args=beam_pipeline_args)
-
-  # TODO(b/169094706): Recover the integration test when the unified client is
-  # ready

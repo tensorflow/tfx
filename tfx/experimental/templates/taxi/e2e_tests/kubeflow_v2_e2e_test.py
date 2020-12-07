@@ -20,11 +20,11 @@ import urllib.request
 from absl import logging
 from click import testing as click_testing
 import tensorflow as tf
-from tfx.experimental.templates import test_utils
+from tfx.experimental.templates.taxi.e2e_tests import test_utils
 from tfx.orchestration import test_utils as orchestration_test_utils
 from tfx.orchestration.kubeflow.v2 import test_utils as kubeflow_test_utils
 from tfx.orchestration.kubeflow.v2.proto import pipeline_pb2
-from tfx.tools.cli import cli_main
+from tfx.tools.cli.kubeflow.v2 import cli_main
 from tfx.utils import io_utils
 
 from google.cloud import storage
