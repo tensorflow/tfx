@@ -19,6 +19,7 @@ from __future__ import division
 from __future__ import print_function
 
 import os
+import unittest
 
 import absl
 import tensorflow as tf
@@ -38,6 +39,10 @@ from tfx.types import standard_artifacts
 from tfx.utils import path_utils
 
 
+@unittest.skipIf(
+    'KFP_E2E_BASE_CONTAINER_IMAGE' not in os.environ,
+    reason='Environment variables for Kubeflow Pipelines testing are required.'
+    'See tfx/orchestration/kubeflow/test_utils.py.')
 class KubeflowGCPIntegrationTest(kubeflow_test_utils.BaseKubeflowTest):
 
   def setUp(self):

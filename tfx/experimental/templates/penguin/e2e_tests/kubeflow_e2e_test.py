@@ -18,10 +18,12 @@ import datetime
 import os
 import subprocess
 import tarfile
+import unittest
 import urllib.request
 
 from absl import logging
 import docker
+from google.cloud import storage
 import kfp
 import tensorflow as tf
 from tfx.dsl.io import fileio
@@ -30,9 +32,12 @@ from tfx.orchestration import test_utils as orchestration_test_utils
 from tfx.orchestration.kubeflow import test_utils as kubeflow_test_utils
 from tfx.utils import telemetry_utils
 import yaml
-from google.cloud import storage
 
 
+@unittest.skipIf(
+    'KFP_E2E_BASE_CONTAINER_IMAGE' not in os.environ,
+    reason='Environment variables for Kubeflow Pipelines testing are required.'
+    'See tfx/orchestration/kubeflow/test_utils.py.')
 class PenguinTemplateKubeflowE2ETest(test_utils.BaseEndToEndTest):
 
   _POLLING_INTERVAL_IN_SECONDS = 10
@@ -40,25 +45,30 @@ class PenguinTemplateKubeflowE2ETest(test_utils.BaseEndToEndTest):
 
   _DATA_DIRECTORY_NAME = 'template_data'
 
-  # The following environment variables need to be set prior to calling the test
-  # in this file. All variables are required and do not have a default.
+  @classmethod
+  def setUpClass(cls):
+    super().setUpClass()
 
-  # The base container image name to use when building the image used in tests.
-  _BASE_CONTAINER_IMAGE = os.environ['KFP_E2E_BASE_CONTAINER_IMAGE']
+    # The following environment variables need to be set prior to calling the
+    # test in this file. All variables are required and do not have a default.
 
-  # The src path to use to build docker image
-  _REPO_BASE = os.environ['KFP_E2E_SRC']
+    # The base container image name to use when building the image used in
+    # tests.
+    cls._BASE_CONTAINER_IMAGE = os.environ['KFP_E2E_BASE_CONTAINER_IMAGE']
 
-  # The project id to use to run tests.
-  _GCP_PROJECT_ID = os.environ['KFP_E2E_GCP_PROJECT_ID']
+    # The src path to use to build docker image
+    cls._REPO_BASE = os.environ['KFP_E2E_SRC']
 
-  # The GCP region in which the end-to-end test is run.
-  _GCP_REGION = os.environ['KFP_E2E_GCP_REGION']
+    # The project id to use to run tests.
+    cls._GCP_PROJECT_ID = os.environ['KFP_E2E_GCP_PROJECT_ID']
 
-  # The GCP bucket to use to write output artifacts.
-  # This default bucket name is valid for KFP marketplace deployment since KFP
-  # version 0.5.0.
-  _BUCKET_NAME = _GCP_PROJECT_ID + '-kubeflowpipelines-default'
+    # The GCP region in which the end-to-end test is run.
+    cls._GCP_REGION = os.environ['KFP_E2E_GCP_REGION']
+
+    # The GCP bucket to use to write output artifacts.
+    # This default bucket name is valid for KFP marketplace deployment since KFP
+    # version 0.5.0.
+    cls._BUCKET_NAME = cls._GCP_PROJECT_ID + '-kubeflowpipelines-default'
 
   def setUp(self):
     super().setUp()

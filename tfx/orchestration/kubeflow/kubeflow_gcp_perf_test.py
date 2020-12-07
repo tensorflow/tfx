@@ -23,6 +23,7 @@ import datetime
 import os
 import subprocess
 from typing import Text
+import unittest
 
 from absl import logging
 import kfp
@@ -37,6 +38,10 @@ from tfx.orchestration.kubeflow import kubeflow_dag_runner
 from tfx.orchestration.kubeflow import test_utils as kubeflow_test_utils
 
 
+@unittest.skipIf(
+    'KFP_E2E_BASE_CONTAINER_IMAGE' not in os.environ,
+    reason='Environment variables for Kubeflow Pipelines testing are required.'
+    'See tfx/orchestration/kubeflow/test_utils.py.')
 class KubeflowGcpPerfTest(kubeflow_test_utils.BaseKubeflowTest):
 
   # The endpoint of the KFP instance.
