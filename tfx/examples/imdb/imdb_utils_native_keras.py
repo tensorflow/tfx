@@ -29,7 +29,7 @@ import tensorflow as tf
 from tensorflow import keras
 import tensorflow_transform as tft
 
-from tfx.components.trainer.fn_args_utils import FnArgs
+from tfx.components.trainer.executor import TrainerFnArgs
 
 _FEATURE_KEY = 'text'
 _LABEL_KEY = 'label'
@@ -179,7 +179,7 @@ def _get_serve_tf_examples_fn(model, tf_transform_output):
 
 
 # TFX Trainer will call this function.
-def run_fn(fn_args: FnArgs):
+def run_fn(fn_args: TrainerFnArgs):
   """Train the model based on given args.
 
   Args:

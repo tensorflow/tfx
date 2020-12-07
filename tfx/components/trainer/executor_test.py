@@ -21,6 +21,7 @@ from __future__ import print_function
 import copy
 import json
 import os
+import unittest
 
 import mock
 import tensorflow as tf
@@ -32,8 +33,16 @@ from tfx.proto import trainer_pb2
 from tfx.types import artifact_utils
 from tfx.types import standard_artifacts
 from tfx.utils import io_utils
+from tfx.utils import json_utils
 from tfx.utils import path_utils
 from google.protobuf import json_format
+
+# TODO(b/162532757): clean up once tfx-bsl post-0.22 is released.
+_TFX_BSL_HAS_DATASET_OPTIONS = True
+try:
+  from tfx_bsl.tfxio.dataset_options import TensorFlowDatasetOptions as _  # pylint: disable=unused-import,g-import-not-at-top
+except ImportError:
+  _TFX_BSL_HAS_DATASET_OPTIONS = False
 
 
 class ExecutorTest(tf.test.TestCase):
@@ -186,6 +195,30 @@ class ExecutorTest(tf.test.TestCase):
     self._verify_model_run_exports()
 
   def testMultipleArtifacts(self):
+    self._input_dict[constants.EXAMPLES_KEY] = self._multiple_artifacts
+    self._exec_properties['module_file'] = self._module_file
+    self._do(self._generic_trainer_executor)
+    self._verify_model_exports()
+    self._verify_model_run_exports()
+
+  # TODO(b/162532757): remove the following two test cases guarded by skipIf,
+  # and switch other test cases to use the tfxio_input_fn (change the
+  # module file), once tfx-bsl post-0.22 is released.
+  @unittest.skipIf(not _TFX_BSL_HAS_DATASET_OPTIONS,
+                   'tfx-bsl is not late enough.')
+  def testDoWithModuleFileWithTFXIO(self):
+    self._exec_properties['custom_config'] = json_utils.dumps(
+        {'use_tfxio_input_fn': True})
+    self._exec_properties['module_file'] = self._module_file
+    self._do(self._trainer_executor)
+    self._verify_model_exports()
+    self._verify_model_run_exports()
+
+  @unittest.skipIf(not _TFX_BSL_HAS_DATASET_OPTIONS,
+                   'tfx-bsl is not late enough.')
+  def testMultipleArtifactsWithTFXIO(self):
+    self._exec_properties['custom_config'] = json_utils.dumps(
+        {'use_tfxio_input_fn': True})
     self._input_dict[constants.EXAMPLES_KEY] = self._multiple_artifacts
     self._exec_properties['module_file'] = self._module_file
     self._do(self._generic_trainer_executor)

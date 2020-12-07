@@ -25,8 +25,8 @@ import absl
 import numpy as np
 from sklearn.neural_network import MLPClassifier
 
+from tfx.components.trainer.executor import TrainerFnArgs
 from tfx.components.trainer.fn_args_utils import DataAccessor
-from tfx.components.trainer.fn_args_utils import FnArgs
 from tfx.dsl.io import fileio
 from tfx.utils import io_utils
 from tfx_bsl.tfxio import dataset_options
@@ -83,7 +83,7 @@ def _input_fn(
 
 
 # TFX Trainer will call this function.
-def run_fn(fn_args: FnArgs):
+def run_fn(fn_args: TrainerFnArgs):
   """Train the model based on given args.
 
   Args:

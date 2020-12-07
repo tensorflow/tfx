@@ -28,7 +28,7 @@ import tensorflow as tf
 from tfx.experimental.templates import test_utils
 
 
-class TaxiTemplateLocalEndToEndTest(test_utils.BaseEndToEndTest):
+class TaxiTemplateBeamEndToEndTest(test_utils.BaseEndToEndTest):
   """This test covers step 1~6 of the accompanying document[1] for taxi template.
 
   [1]https://github.com/tensorflow/tfx/blob/master/docs/tutorials/tfx/template.ipynb
@@ -53,18 +53,18 @@ class TaxiTemplateLocalEndToEndTest(test_utils.BaseEndToEndTest):
       # A failed googletest will raise a CalledProcessError.
       _ = subprocess.check_output([sys.executable, '-m', m])
 
-  def testLocalPipeline(self):
+  def testBeamPipeline(self):
     self._copyTemplate('taxi')
-    os.environ['LOCAL_HOME'] = os.path.join(self._temp_dir, 'local')
+    os.environ['BEAM_HOME'] = os.path.join(self._temp_dir, 'beam')
 
     # Create a pipeline with only one component.
     result = self._runCli([
         'pipeline',
         'create',
         '--engine',
-        'local',
+        'beam',
         '--pipeline_path',
-        'local_runner.py',
+        'beam_dag_runner.py',
     ])
     self.assertEqual(0, result.exit_code)
     self.assertIn(
@@ -76,7 +76,7 @@ class TaxiTemplateLocalEndToEndTest(test_utils.BaseEndToEndTest):
         'run',
         'create',
         '--engine',
-        'local',
+        'beam',
         '--pipeline_name',
         self._pipeline_name,
     ])
@@ -90,9 +90,9 @@ class TaxiTemplateLocalEndToEndTest(test_utils.BaseEndToEndTest):
         'pipeline',
         'update',
         '--engine',
-        'local',
+        'beam',
         '--pipeline_path',
-        'local_runner.py',
+        'beam_dag_runner.py',
     ])
     self.assertEqual(0, result.exit_code)
     self.assertIn(
@@ -104,7 +104,7 @@ class TaxiTemplateLocalEndToEndTest(test_utils.BaseEndToEndTest):
         'run',
         'create',
         '--engine',
-        'local',
+        'beam',
         '--pipeline_name',
         self._pipeline_name,
     ])

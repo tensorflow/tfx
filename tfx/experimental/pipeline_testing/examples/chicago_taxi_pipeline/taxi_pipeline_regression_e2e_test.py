@@ -19,18 +19,15 @@ from typing import Text
 
 from absl import logging
 import tensorflow as tf
+
 from tfx.dsl.io import fileio
 from tfx.examples.chicago_taxi_pipeline import taxi_pipeline_beam
 from tfx.experimental.pipeline_testing import executor_verifier_utils
 from tfx.experimental.pipeline_testing import pipeline_recorder_utils
 from tfx.experimental.pipeline_testing import stub_component_launcher
 from tfx.orchestration import metadata
+from tfx.orchestration.beam.beam_dag_runner import BeamDagRunner
 from tfx.orchestration.config import pipeline_config
-# TODO(b/174520987): Change the following inport to
-# from tfx.orchestration.beam.beam_dag_runner import BeamDagRunner
-# Once we figure out the best way to replace executors for components in the
-# IR stack.
-from tfx.orchestration.google.beam_dag_runner import BeamDagRunner
 
 from ml_metadata.proto import metadata_store_pb2
 

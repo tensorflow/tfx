@@ -14,11 +14,9 @@
 """Utilities for proto related manipulations."""
 
 import itertools
-from typing import Any, Dict, Iterator
+from typing import Iterator
 
 from google.protobuf import descriptor as descriptor_lib
-from google.protobuf import json_format
-from google.protobuf import message
 
 
 def gather_file_descriptors(
@@ -67,26 +65,3 @@ def gather_file_descriptors(
       if dependency not in visited_files:
         visited_files.add(dependency)
         files.append(dependency)
-
-
-def proto_to_json(proto: message.Message) -> str:
-  """Simple JSON Formatter wrapper for consistent formatting."""
-  return json_format.MessageToJson(
-      message=proto, sort_keys=True, preserving_proto_field_name=True)
-
-
-def proto_to_dict(proto: message.Message) -> Dict[str, Any]:
-  """Simple JSON Formatter wrapper for consistent formatting."""
-  return json_format.MessageToDict(
-      message=proto, preserving_proto_field_name=True)
-
-
-def json_to_proto(json_str: str, proto: message.Message) -> message.Message:
-  """Simple JSON Parser wrapper for consistent parsing."""
-  return json_format.Parse(json_str, proto, ignore_unknown_fields=True)
-
-
-def dict_to_proto(json_dict: Dict[Any, Any],
-                  proto: message.Message) -> message.Message:
-  """Simple JSON Parser wrapper for consistent parsing."""
-  return json_format.ParseDict(json_dict, proto, ignore_unknown_fields=True)

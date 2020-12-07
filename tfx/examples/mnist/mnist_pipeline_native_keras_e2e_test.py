@@ -57,16 +57,6 @@ class MNISTPipelineNativeKerasEndToEndTest(tf.test.TestCase):
     component_path = os.path.join(self._pipeline_root, component)
     self.assertTrue(fileio.exists(component_path))
     outputs = fileio.listdir(component_path)
-    self.assertIn('.system', outputs)
-    outputs.remove('.system')
-    system_paths = [
-        os.path.join('.system', path)
-        for path in fileio.listdir(os.path.join(component_path, '.system'))
-    ]
-    self.assertNotEmpty(system_paths)
-    self.assertIn('.system/executor_execution', system_paths)
-    outputs.extend(system_paths)
-    self.assertNotEmpty(outputs)
     for output in outputs:
       execution = fileio.listdir(os.path.join(component_path, output))
       self.assertLen(execution, 1)

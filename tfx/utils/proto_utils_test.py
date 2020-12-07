@@ -20,16 +20,6 @@ from tfx.utils.testdata import foo_pb2
 
 class ProtoUtilsTest(tf.test.TestCase):
 
-  def setUp(self):
-    super().setUp()
-    self.test_proto = foo_pb2.TestProto(
-        string_value='hello', int_value=2, double_value=0.5)
-    self.test_dict = {
-        'string_value': 'hello',
-        'int_value': 2,
-        'double_value': 0.5
-    }
-
   def test_gather_file_descriptors(self):
     fd_names = set()
     for fd in proto_utils.gather_file_descriptors(foo_pb2.Foo.DESCRIPTOR):
@@ -39,33 +29,6 @@ class ProtoUtilsTest(tf.test.TestCase):
             'tfx/utils/testdata/bar.proto',
             'tfx/utils/testdata/foo.proto'
         })
-
-  def test_proto_to_json(self):
-    json_str = proto_utils.proto_to_json(self.test_proto)
-    # Checks whether original field name is kept and fields are sorted.
-    self.assertEqual(
-        json_str.replace(' ', '').replace('\n', ''),
-        '{"double_value":0.5,"int_value":2,"string_value":"hello"}')
-
-  def test_proto_to_dict(self):
-    # Checks whether original field name is kept.
-    self.assertEqual(proto_utils.proto_to_dict(self.test_proto), self.test_dict)
-
-  def test_json_to_proto(self):
-    json_str = '{"obsolete_field":2,"string_value":"x"}'
-    self.assertEqual(
-        proto_utils.json_to_proto(json_str, foo_pb2.TestProto()),
-        foo_pb2.TestProto(string_value='x'))
-
-  def test_dict_to_proto(self):
-    self.assertEqual(
-        proto_utils.dict_to_proto(self.test_dict, foo_pb2.TestProto()),
-        self.test_proto)
-    dict_with_obsolete_field = {'obsolete_field': 2, 'string_value': 'x'}
-    self.assertEqual(
-        proto_utils.dict_to_proto(dict_with_obsolete_field,
-                                  foo_pb2.TestProto()),
-        foo_pb2.TestProto(string_value='x'))
 
 
 if __name__ == '__main__':

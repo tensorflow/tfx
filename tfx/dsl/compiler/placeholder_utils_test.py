@@ -587,7 +587,7 @@ class PlaceholderUtilsTest(tf.test.TestCase):
     self.assertEqual(
         placeholder_utils.resolve_placeholder_expression(
             pb, self._resolution_context),
-        base64.urlsafe_b64encode(b"latest").decode("ASCII"))
+        base64.b64encode(b"latest").decode("ASCII"))
 
   def _assert_serialized_proto_b64encode_eq(self, serialize_format, expected):
     placeholder_expression = """
@@ -616,7 +616,7 @@ class PlaceholderUtilsTest(tf.test.TestCase):
                            placeholder_pb2.PlaceholderExpression())
     resolved_base64_str = placeholder_utils.resolve_placeholder_expression(
         pb, self._resolution_context)
-    decoded = base64.urlsafe_b64decode(resolved_base64_str).decode()
+    decoded = base64.b64decode(resolved_base64_str).decode()
     self.assertEqual(decoded, expected)
 
   def testJsonSerializedProtoBase64Encode(self):

@@ -57,7 +57,7 @@ class ResolverNodeHandler(system_node_handler.SystemNodeHandler):
     logging.info('Running as an resolver node.')
     with mlmd_connection as m:
       # 1.Prepares all contexts.
-      contexts = context_lib.prepare_contexts(
+      contexts = context_lib.register_contexts_if_not_exists(
           metadata_handler=m, node_contexts=pipeline_node.contexts)
 
       # 2. Resolves inputs an execution properties.

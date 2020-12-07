@@ -14,8 +14,6 @@
 
 ## Deprecations
 
-*   TrainerFnArgs is deprecated by FnArgs.
-
 ## Bug fixes and other changes
 *  Depends on 'keras-tuner>=1,<1.0.2'.
 
@@ -60,7 +58,6 @@
     [Kubeflow IR spec](https://github.com/kubeflow/pipelines/blob/master/api/v2alpha1/pipeline_spec.proto).
     Same as `KubeflowDagRunner` it will compile the DSL pipeline into a payload
     but not trigger the execution locally.
-*   Added compile time check for schema mismatch in Kubeflow V2 runner.
 *   Added 'penguin' example. Penguin example uses Palmer Penguins dataset and
     classify penguin species using four numeric features.
 *   Iris e2e examples are replaced by penguin examples.
@@ -71,8 +68,6 @@
     of IR to learn more details.
 *   Supports forward compatibility when evolving TFX artifact types, which
     allows jobs of old release and new release run with the same MLMD instance.
-*   Graduated the portable/beam_dag_runner.py to beam/beam_dag_runner.py
-
 
 ## Breaking changes
 

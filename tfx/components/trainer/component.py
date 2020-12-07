@@ -150,7 +150,7 @@ class Trainer(base_component.BaseComponent):
         `trainer_fn` at its top level. The function must have the following
         signature.
 
-        def trainer_fn(trainer.fn_args_utils.FnArgs,
+        def trainer_fn(trainer.executor.TrainerFnArgs,
                        tensorflow_metadata.proto.v0.schema_pb2) -> Dict:
           ...
 
@@ -164,8 +164,8 @@ class Trainer(base_component.BaseComponent):
 
         For generic executor, The module_file must implement a function named
         `run_fn` at its top level with function signature:
-        `def run_fn(trainer.fn_args_utils.FnArgs)`, and the trained model must
-        be saved to FnArgs.serving_model_dir when execute this function.
+        `def run_fn(trainer.executor.TrainerFnArgs)`, and the trained model must
+        be saved to TrainerFnArgs.serving_model_dir when execute this function.
       run_fn:  A python path to UDF model definition function for generic
         trainer. See 'module_file' for details. Exactly one of 'module_file' or
         'run_fn' must be supplied if Trainer uses GenericExecutor.

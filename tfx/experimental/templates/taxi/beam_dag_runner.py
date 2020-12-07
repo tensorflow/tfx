@@ -12,7 +12,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Define LocalDagRunner to run the pipeline locally."""
+"""Define BeamDagRunner to run the pipeline using Apache Beam."""
 
 from __future__ import absolute_import
 from __future__ import division
@@ -24,8 +24,9 @@ from absl import logging
 from tfx.experimental.templates.taxi.pipeline import configs
 from tfx.experimental.templates.taxi.pipeline import pipeline
 from tfx.orchestration import metadata
-from tfx.orchestration.local.local_dag_runner import LocalDagRunner
+from tfx.orchestration.beam.beam_dag_runner import BeamDagRunner
 from tfx.proto import trainer_pb2
+
 
 # TFX pipeline produces many output files and metadata. All output data will be
 # stored under this OUTPUT_DIR.
@@ -57,9 +58,9 @@ DATA_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data')
 
 
 def run():
-  """Define a local pipeline."""
+  """Define a beam pipeline."""
 
-  LocalDagRunner().run(
+  BeamDagRunner().run(
       pipeline.create_pipeline(
           pipeline_name=configs.PIPELINE_NAME,
           pipeline_root=PIPELINE_ROOT,

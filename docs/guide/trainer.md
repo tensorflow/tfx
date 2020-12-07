@@ -185,5 +185,5 @@ trainer = Trainer(
 ```
 
 Here is an
-[example module file](https://github.com/tensorflow/tfx/blob/master/tfx/examples/penguin/penguin_utils.py)
+[example module file](https://github.com/tensorflow/tfx/blob/master/tfx/examples/penguin/penguin_pipeline_local.py)
 with `run_fn`.

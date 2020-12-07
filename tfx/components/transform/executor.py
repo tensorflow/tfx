@@ -349,8 +349,7 @@ class Executor(base_executor.BaseExecutor):
           'splits_config is not set.')
 
     payload_format, data_view_uri = (
-        tfxio_utils.resolve_payload_format_and_data_view_uri(
-            input_dict[EXAMPLES_KEY]))
+        self._ResolvePayloadFormatAndDataViewUri(input_dict[EXAMPLES_KEY]))
     schema_file = io_utils.get_only_uri_in_dir(
         artifact_utils.get_single_uri(input_dict[SCHEMA_KEY]))
     transform_output = artifact_utils.get_single_uri(
@@ -1424,6 +1423,9 @@ class Executor(base_executor.BaseExecutor):
         data_view_uri=dataset.data_view_uri,
         schema=schema,
         read_as_raw_records=read_as_raw_records)
+
+  def _ResolvePayloadFormatAndDataViewUri(self, examples: List[types.Artifact]):
+    return tfxio_utils.resolve_payload_format_and_data_view_uri(examples)
 
   def _AssertSameTFXIOSchema(self, datasets: Sequence[_Dataset]) -> None:
     if not datasets:

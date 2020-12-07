@@ -23,10 +23,20 @@ import tensorflow as tf
 from tfx.dsl.io import fileio
 from tfx.examples.chicago_taxi_pipeline import taxi_pipeline_kubeflow_gcp
 from tfx.orchestration.kubeflow.kubeflow_dag_runner import KubeflowDagRunner
-from tfx.utils import test_case_utils
 
 
-class TaxiPipelineKubeflowTest(test_case_utils.TempWorkingDirTestCase):
+class TaxiPipelineKubeflowTest(tf.test.TestCase):
+
+  def setUp(self):
+    super(TaxiPipelineKubeflowTest, self).setUp()
+    self._tmp_dir = os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR',
+                                   self.get_temp_dir())
+    self._olddir = os.getcwd()
+    os.chdir(self._tmp_dir)
+
+  def tearDown(self):
+    super(TaxiPipelineKubeflowTest, self).tearDown()
+    os.chdir(self._olddir)
 
   def testTaxiPipelineConstructionAndDefinitionFileExists(self):
     logical_pipeline = taxi_pipeline_kubeflow_gcp.create_pipeline(
@@ -40,7 +50,7 @@ class TaxiPipelineKubeflowTest(test_case_utils.TempWorkingDirTestCase):
     self.assertEqual(8, len(logical_pipeline.components))
 
     KubeflowDagRunner().run(logical_pipeline)
-    file_path = os.path.join(self.temp_working_dir,
+    file_path = os.path.join(self._tmp_dir,
                              'chicago_taxi_pipeline_kubeflow_gcp.tar.gz')
     self.assertTrue(fileio.exists(file_path))
 

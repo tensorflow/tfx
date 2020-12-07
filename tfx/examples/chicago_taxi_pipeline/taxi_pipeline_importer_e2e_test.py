@@ -27,6 +27,7 @@ from tfx.dsl.io import fileio
 from tfx.examples.chicago_taxi_pipeline import taxi_pipeline_importer
 from tfx.orchestration import metadata
 from tfx.orchestration.beam.beam_dag_runner import BeamDagRunner
+from tfx.orchestration.portable.beam_dag_runner import BeamDagRunner as IrBeamDagRunner
 from tfx_bsl.version import __version__ as tfx_bsl_version
 
 
@@ -50,37 +51,39 @@ class TaxiPipelineImporterEndToEndTest(
     self._metadata_path = os.path.join(self._test_dir, 'tfx', 'metadata',
                                        self._pipeline_name, 'metadata.db')
 
-  def assertExecutedOnce(self, component: Text) -> None:
+  def assertExecutedOnce(self, component: Text, ir_based: bool) -> None:
     """Check the component is executed exactly once."""
     component_path = os.path.join(self._pipeline_root, component)
     self.assertTrue(fileio.exists(component_path))
     outputs = fileio.listdir(component_path)
-    self.assertIn('.system', outputs)
-    outputs.remove('.system')
-    system_paths = [
-        os.path.join('.system', path)
-        for path in fileio.listdir(os.path.join(component_path, '.system'))
-    ]
-    self.assertNotEmpty(system_paths)
-    self.assertIn('.system/executor_execution', system_paths)
-    outputs.extend(system_paths)
+    if ir_based:
+      self.assertIn('.system', outputs)
+      outputs.remove('.system')
+      system_paths = [
+          os.path.join('.system', path)
+          for path in fileio.listdir(os.path.join(component_path, '.system'))
+      ]
+      self.assertNotEmpty(system_paths)
+      self.assertIn('.system/executor_execution', system_paths)
+      outputs.extend(system_paths)
     self.assertNotEmpty(outputs)
     for output in outputs:
       execution = fileio.listdir(os.path.join(component_path, output))
       self.assertLen(execution, 1)
 
-  def assertPipelineExecution(self) -> None:
-    self.assertExecutedOnce('CsvExampleGen')
-    self.assertExecutedOnce('Evaluator')
-    self.assertExecutedOnce('ExampleValidator')
-    self.assertExecutedOnce('Pusher')
-    self.assertExecutedOnce('SchemaGen')
-    self.assertExecutedOnce('StatisticsGen')
-    self.assertExecutedOnce('Trainer')
-    self.assertExecutedOnce('Transform')
+  def assertPipelineExecution(self, ir_based: bool) -> None:
+    self.assertExecutedOnce('CsvExampleGen', ir_based)
+    self.assertExecutedOnce('Evaluator', ir_based)
+    self.assertExecutedOnce('ExampleValidator', ir_based)
+    self.assertExecutedOnce('Pusher', ir_based)
+    self.assertExecutedOnce('SchemaGen', ir_based)
+    self.assertExecutedOnce('StatisticsGen', ir_based)
+    self.assertExecutedOnce('Trainer', ir_based)
+    self.assertExecutedOnce('Transform', ir_based)
 
-  def testTaxiPipelineWithImporter(self):
-    BeamDagRunner().run(
+  @parameterized.parameters((BeamDagRunner, False), (IrBeamDagRunner, True))
+  def testTaxiPipelineWithImporter(self, runner_class, ir_based):
+    runner_class().run(
         taxi_pipeline_importer._create_pipeline(
             pipeline_name=self._pipeline_name,
             data_root=self._data_root,
@@ -101,10 +104,10 @@ class TaxiPipelineImporterEndToEndTest(
       self.assertGreaterEqual(artifact_count, execution_count)
       self.assertEqual(10, execution_count)
 
-    self.assertPipelineExecution()
+    self.assertPipelineExecution(ir_based)
 
     # Runs the pipeline again.
-    BeamDagRunner().run(
+    runner_class().run(
         taxi_pipeline_importer._create_pipeline(
             pipeline_name=self._pipeline_name,
             data_root=self._data_root,
@@ -124,7 +127,7 @@ class TaxiPipelineImporterEndToEndTest(
       self.assertLen(m.store.get_executions(), 20)
 
     # Runs the pipeline the third time.
-    BeamDagRunner().run(
+    runner_class().run(
         taxi_pipeline_importer._create_pipeline(
             pipeline_name=self._pipeline_name,
             data_root=self._data_root,

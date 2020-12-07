@@ -117,17 +117,20 @@ class TaxiUtilsTest(tf.test.TestCase):
         self._testMethodName)
 
     schema_file = os.path.join(self._testdata_path, 'schema_gen/schema.pbtxt')
+    output_dir = os.path.join(temp_dir, 'output_dir')
     trainer_fn_args = trainer_executor.TrainerFnArgs(
         train_files=os.path.join(self._testdata_path,
                                  'transform/transformed_examples/train/*.gz'),
         transform_output=os.path.join(self._testdata_path,
                                       'transform/transform_output/'),
+        output_dir=output_dir,
         serving_model_dir=os.path.join(temp_dir, 'serving_model_dir'),
         eval_files=os.path.join(self._testdata_path,
                                 'transform/transformed_examples/eval/*.gz'),
         schema_file=schema_file,
         train_steps=1,
         eval_steps=1,
+        verbosity='INFO',
         base_model=os.path.join(self._testdata_path,
                                 'trainer/current/serving_model_dir'))
     schema = io_utils.parse_pbtxt_file(schema_file, schema_pb2.Schema())
@@ -153,7 +156,7 @@ class TaxiUtilsTest(tf.test.TestCase):
     # Export the eval saved model.
     eval_savedmodel_path = tfma.export.export_eval_savedmodel(
         estimator=estimator,
-        export_dir_base=path_utils.eval_model_dir(temp_dir),
+        export_dir_base=path_utils.eval_model_dir(output_dir),
         eval_input_receiver_fn=eval_input_receiver_fn)
     self.assertGreaterEqual(len(fileio.listdir(eval_savedmodel_path)), 1)
 

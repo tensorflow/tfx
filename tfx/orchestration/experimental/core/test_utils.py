@@ -28,7 +28,8 @@ def fake_example_gen_run(mlmd_connection, example_gen, span, version):
     output_example.set_int_custom_property('span', span)
     output_example.set_int_custom_property('version', version)
     output_example.uri = 'my_examples_uri'
-    contexts = context_lib.prepare_contexts(m, example_gen.contexts)
+    contexts = context_lib.register_contexts_if_not_exists(
+        m, example_gen.contexts)
     execution = execution_publish_utils.register_execution(
         m, example_gen.node_info.type, contexts)
     execution_publish_utils.publish_succeeded_execution(
@@ -43,7 +44,8 @@ def fake_transform_output(mlmd_connection, transform, execution=None):
     output_transform_graph = types.Artifact(
         transform.outputs.outputs['transform_graph'].artifact_spec.type)
     output_transform_graph.uri = 'my_transform_graph_uri'
-    contexts = context_lib.prepare_contexts(m, transform.contexts)
+    contexts = context_lib.register_contexts_if_not_exists(
+        m, transform.contexts)
     if not execution:
       execution = execution_publish_utils.register_execution(
           m, transform.node_info.type, contexts)
@@ -59,7 +61,7 @@ def fake_trainer_output(mlmd_connection, trainer, execution=None):
     output_trainer_model = types.Artifact(
         trainer.outputs.outputs['model'].artifact_spec.type)
     output_trainer_model.uri = 'my_trainer_model_uri'
-    contexts = context_lib.prepare_contexts(m, trainer.contexts)
+    contexts = context_lib.register_contexts_if_not_exists(m, trainer.contexts)
     if not execution:
       execution = execution_publish_utils.register_execution(
           m, trainer.node_info.type, contexts)

@@ -31,8 +31,8 @@ from tfx.types.channel import Channel
 from tfx.types.node_common import _PropertyDictWrapper
 from tfx.utils import abc_utils
 from tfx.utils import json_utils
-from tfx.utils import proto_utils
 
+from google.protobuf import json_format
 from google.protobuf import message
 
 
@@ -224,7 +224,8 @@ class ComponentSpec(with_metaclass(abc.ABCMeta, json_utils.Jsonable)):
         if isinstance(value, dict):
           value = json_utils.dumps(value)
         else:
-          value = proto_utils.proto_to_json(value)
+          value = json_format.MessageToJson(
+              message=value, sort_keys=True, preserving_proto_field_name=True)
 
       self.exec_properties[arg_name] = value
 
@@ -343,7 +344,7 @@ class ExecutionParameter(_ComponentParameter):
         # If a dict is passed in and is compared against a pb message,
         # do the type-check by converting it to pb message.
         dict_with_default = _make_default(value)
-        proto_utils.dict_to_proto(dict_with_default, declared())
+        json_format.ParseDict(dict_with_default, declared())
       else:
         if not isinstance(value, declared):
           raise TypeError('Expected type %s for parameter %r '

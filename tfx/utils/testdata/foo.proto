@@ -26,9 +26,3 @@ message Foo {
 message Foo2 {
   int64 value = 1;
 }
-
-message TestProto {
-  string string_value = 1;
-  int32 int_value = 2;
-  double double_value = 3;
-}

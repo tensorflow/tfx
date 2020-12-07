@@ -28,8 +28,8 @@ import absl
 import tensorflow as tf
 import tensorflow_transform as tft
 
+from tfx.components.trainer.executor import TrainerFnArgs
 from tfx.components.trainer.fn_args_utils import DataAccessor
-from tfx.components.trainer.fn_args_utils import FnArgs
 from tfx_bsl.tfxio import dataset_options
 
 # Categorical features are assumed to each have a maximum value in the dataset.
@@ -278,7 +278,7 @@ def preprocessing_fn(inputs):
 
 
 # TFX Trainer will call this function.
-def run_fn(fn_args: FnArgs):
+def run_fn(fn_args: TrainerFnArgs):
   """Train the model based on given args.
 
   Args:

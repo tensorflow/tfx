@@ -46,10 +46,8 @@ def get_qualified_artifacts(
   Returns:
     A list of qualified TFX Artifacts.
   """
-  # We expect to have at least one context for input resolution. Otherwise,
-  # return empty list.
-  if not contexts:
-    return []
+  # We expect to have at least one context for input resolution.
+  assert contexts, 'Must have at least one context.'
 
   try:
     artifact_type_name = artifact_type.name

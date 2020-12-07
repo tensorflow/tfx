@@ -34,7 +34,6 @@ from tfx.tools.cli import labels
 from tfx.tools.cli.cli_main import cli_group
 from tfx.tools.cli.e2e import test_utils
 from tfx.utils import io_utils
-from tfx.utils import retry
 
 
 class CliAirflowEndToEndTest(tf.test.TestCase):
@@ -94,7 +93,8 @@ class CliAirflowEndToEndTest(tf.test.TestCase):
     self._mysql_container_name = 'airflow_' + test_utils.generate_random_id()
     db_port = airflow_test_utils.create_mysql_container(
         self._mysql_container_name)
-    self.addCleanup(self._cleanup_mysql_container)
+    self.addCleanup(airflow_test_utils.delete_mysql_container,
+                    self._mysql_container_name)
     os.environ['AIRFLOW__CORE__SQL_ALCHEMY_CONN'] = (
         'mysql://tfx@127.0.0.1:%d/airflow' % db_port)
     # Do not load examples to make this a bit faster.
@@ -111,10 +111,6 @@ class CliAirflowEndToEndTest(tf.test.TestCase):
       os.environ['AIRFLOW_HOME'] = self._old_airflow_home
     if self._old_home:
       os.environ['HOME'] = self._old_home
-
-  @retry.retry(ignore_eventual_failure=True)
-  def _cleanup_mysql_container(self):
-    airflow_test_utils.delete_mysql_container(self._mysql_container_name)
 
   def _airflow_initdb(self):
     _ = subprocess.check_output(['airflow', 'initdb'])

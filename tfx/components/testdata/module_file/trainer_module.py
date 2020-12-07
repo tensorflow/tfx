@@ -33,9 +33,13 @@ from tensorflow_transform.tf_metadata import schema_utils
 from tfx.components.trainer import executor
 from tfx.utils import io_utils
 from tfx.utils import path_utils
-from tfx_bsl.public.tfxio import TensorFlowDatasetOptions
 from tensorflow_metadata.proto.v0 import schema_pb2
 
+# TODO(b/162532757): clean up once tfx-bsl post-0.22 is released.
+try:
+  from tfx_bsl.public.tfxio import TensorFlowDatasetOptions  # pylint:disable=g-import-not-at-top
+except ImportError:
+  TensorFlowDatasetOptions = None
 
 # Categorical features are assumed to each have a maximum value in the dataset.
 _MAX_CATEGORICAL_FEATURE_VALUES = [24, 31, 12]
@@ -209,6 +213,36 @@ def _input_fn(
 
   Args:
     filenames: [str] list of CSV files to read data from.
+    data_accessor: Unused. Only to keep the signature the same as
+      _tfxio_input_fn()
+    tf_transform_output: A TFTransformOutput.
+    batch_size: int First dimension size of the Tensors returned by input_fn
+
+  Returns:
+    A (features, indices) tuple where features is a dictionary of
+      Tensors, and indices is a single Tensor of label indices.
+  """
+  del data_accessor
+  transformed_feature_spec = (
+      tf_transform_output.transformed_feature_spec().copy())
+
+  dataset = tf.data.experimental.make_batched_features_dataset(
+      filenames, batch_size, transformed_feature_spec, reader=_gzip_reader_fn)
+
+  transformed_features = tf.compat.v1.data.make_one_shot_iterator(
+      dataset).get_next()
+  # We pop the label because we do not want to use it as a feature while we're
+  # training.
+  return transformed_features, transformed_features.pop(
+      _transformed_name(_LABEL_KEY))
+
+
+def _tfxio_input_fn(
+    filenames, data_accessor, tf_transform_output, batch_size=200):
+  """Generates features and labels for training or evaluation.
+
+  Args:
+    filenames: [str] list of CSV files to read data from.
     data_accessor: fn_args_utils.DataAccessor.
     tf_transform_output: A TFTransformOutput.
     batch_size: int First dimension size of the Tensors returned by input_fn
@@ -257,15 +291,19 @@ def trainer_fn(trainer_fn_args, schema):
   train_batch_size = 40
   eval_batch_size = 40
 
+  # TODO(b/162532757): use _tfxio_input_fn exclusively once tfx-bsl post-0.22 is
+  # released.
+  use_tfxio_input_fn = trainer_fn_args.get('use_tfxio_input_fn', False)
+  input_fn = _tfxio_input_fn if use_tfxio_input_fn else _input_fn
   tf_transform_output = tft.TFTransformOutput(trainer_fn_args.transform_output)
 
-  train_input_fn = lambda: _input_fn(  # pylint: disable=g-long-lambda
+  train_input_fn = lambda: input_fn(  # pylint: disable=g-long-lambda
       trainer_fn_args.train_files,
       trainer_fn_args.data_accessor,
       tf_transform_output,
       batch_size=train_batch_size)
 
-  eval_input_fn = lambda: _input_fn(  # pylint: disable=g-long-lambda
+  eval_input_fn = lambda: input_fn(  # pylint: disable=g-long-lambda
       trainer_fn_args.eval_files,
       trainer_fn_args.data_accessor,
       tf_transform_output,

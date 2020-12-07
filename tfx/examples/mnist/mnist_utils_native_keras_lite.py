@@ -27,7 +27,7 @@ import os
 import tensorflow as tf
 import tensorflow_transform as tft
 
-from tfx.components.trainer.fn_args_utils import FnArgs
+from tfx.components.trainer.executor import TrainerFnArgs
 from tfx.components.trainer.rewriting import converters
 from tfx.components.trainer.rewriting import rewriter
 from tfx.components.trainer.rewriting import rewriter_factory
@@ -63,7 +63,7 @@ def preprocessing_fn(inputs):
 
 
 # TFX Trainer will call this function.
-def run_fn(fn_args: FnArgs):
+def run_fn(fn_args: TrainerFnArgs):
   """Train the model based on given args.
 
   Args:

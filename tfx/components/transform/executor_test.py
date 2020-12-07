@@ -38,16 +38,21 @@ from tfx.utils import io_utils
 from google.protobuf import json_format
 
 
-def _get_dataset_size(files):
+def _get_tensor_value(tensor_or_eager_tensor):
   if tf.executing_eagerly():
-    return sum(
-        1 for _ in tf.data.TFRecordDataset(files, compression_type='GZIP'))
+    return tensor_or_eager_tensor.numpy()
   else:
-    result = 0
-    for file in files:
-      result += sum(1 for _ in tf.compat.v1.io.tf_record_iterator(
-          file, tf.io.TFRecordOptions(compression_type='GZIP')))
-    return result
+    with tf.compat.v1.Session():
+      return tensor_or_eager_tensor.eval()
+
+
+def _get_dataset_size(dataset):
+
+  def reduce_fn(accum, elem):
+    return tf.size(elem, out_type=tf.int64) + accum
+
+  return _get_tensor_value(
+      dataset.batch(tf.int32.max).reduce(tf.constant(0, tf.int64), reduce_fn))
 
 
 class _TempPath(types.Artifact):
@@ -206,10 +211,19 @@ class ExecutorTest(tft_unit.TransformTestCase):
         self.assertGreater(len(transformed_eval_files), 0)
 
         # Construct datasets and count number of records in each split.
-        examples_train_count = _get_dataset_size(examples_train_files)
-        transformed_train_count = _get_dataset_size(transformed_train_files)
-        examples_eval_count = _get_dataset_size(examples_eval_files)
-        transformed_eval_count = _get_dataset_size(transformed_eval_files)
+        examples_train_dataset = tf.data.TFRecordDataset(
+            examples_train_files, compression_type='GZIP')
+        transformed_train_dataset = tf.data.TFRecordDataset(
+            transformed_train_files, compression_type='GZIP')
+        examples_eval_dataset = tf.data.TFRecordDataset(
+            examples_eval_files, compression_type='GZIP')
+        transformed_eval_dataset = tf.data.TFRecordDataset(
+            transformed_eval_files, compression_type='GZIP')
+
+        examples_train_count = _get_dataset_size(examples_train_dataset)
+        examples_eval_count = _get_dataset_size(examples_eval_dataset)
+        transformed_train_count = _get_dataset_size(transformed_train_dataset)
+        transformed_eval_count = _get_dataset_size(transformed_eval_dataset)
 
         # Check for each split that it contains the same number of records in
         # the input artifact as in the output artifact (i.e 1-to-1 mapping is
@@ -224,9 +238,9 @@ class ExecutorTest(tft_unit.TransformTestCase):
     self.assertCountEqual(expected_outputs,
                           fileio.listdir(self._output_data_dir))
 
-    path_to_saved_model = os.path.join(self._transformed_output.uri,
-                                       tft.TFTransformOutput.TRANSFORM_FN_DIR,
-                                       tf.saved_model.SAVED_MODEL_FILENAME_PB)
+    path_to_saved_model = os.path.join(
+        self._transformed_output.uri, tft.TFTransformOutput.TRANSFORM_FN_DIR,
+        tf.saved_model.SAVED_MODEL_FILENAME_PB)
     self.assertTrue(fileio.exists(path_to_saved_model))
 
   def _run_pipeline_get_metrics(self):

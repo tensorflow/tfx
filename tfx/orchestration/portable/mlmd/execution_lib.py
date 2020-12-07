@@ -169,27 +169,24 @@ def put_execution(
   Returns:
     An MLMD execution that is written to MLMD, with id pupulated.
   """
-  artifact_and_events = []
+  artifacts_and_events = []
   if input_artifacts:
-    artifact_and_events.extend(
+    artifacts_and_events.extend(
         _create_artifact_and_event_pairs(
             metadata_handler=metadata_handler,
             artifact_dict=input_artifacts,
             event_type=input_event_type))
   if output_artifacts:
-    artifact_and_events.extend(
+    artifacts_and_events.extend(
         _create_artifact_and_event_pairs(
             metadata_handler=metadata_handler,
             artifact_dict=output_artifacts,
             event_type=output_event_type))
   execution_id, artifact_ids, contexts_ids = (
-      metadata_handler.store.put_execution(
-          execution=execution,
-          artifact_and_events=artifact_and_events,
-          contexts=contexts,
-          reuse_context_if_already_exist=True))
+      metadata_handler.store.put_execution(execution, artifacts_and_events,
+                                           contexts))
   execution.id = execution_id
-  for artifact_and_event, a_id in zip(artifact_and_events, artifact_ids):
+  for artifact_and_event, a_id in zip(artifacts_and_events, artifact_ids):
     artifact, _ = artifact_and_event
     artifact.id = a_id
   for context, c_id in zip(contexts, contexts_ids):

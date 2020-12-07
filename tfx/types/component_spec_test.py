@@ -32,8 +32,6 @@ from tfx.types.component_spec import ComponentSpec
 from tfx.types.component_spec import ExecutionParameter
 from tfx.types.standard_artifacts import Examples
 
-from google.protobuf import json_format
-
 
 class _InputArtifact(Artifact):
   TYPE_NAME = 'InputArtifact'
@@ -308,19 +306,6 @@ class ComponentSpecTest(tf.test.TestCase):
     with self.assertRaisesRegexp(TypeError, "Expecting value type "
                                  "<(class|type) 'int'>"):
       dict_parameter.type_check('dict_parameter', {'key1': '1'})
-
-    proto_parameter = ExecutionParameter(type=example_gen_pb2.Input)
-    proto_parameter.type_check('proto_parameter', example_gen_pb2.Input())
-    proto_parameter.type_check('proto_parameter',
-                               {'splits': [{
-                                   'name': 'hello'
-                               }]})
-    proto_parameter.type_check('proto_parameter', {'wrong_field': 42})
-    with self.assertRaisesRegexp(
-        TypeError, "Expected type <class 'tfx.proto.example_gen_pb2.Input'>"):
-      proto_parameter.type_check('proto_parameter', 42)
-    with self.assertRaises(json_format.ParseError):
-      proto_parameter.type_check('proto_parameter', {'splits': 42})
 
 
 if __name__ == '__main__':

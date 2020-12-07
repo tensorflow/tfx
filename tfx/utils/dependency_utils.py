@@ -71,7 +71,7 @@ if __name__ == '__main__':
   setuptools.setup(
       name='tfx_ephemeral',
       version='{version}',
-      packages=setuptools.find_namespace_packages(),
+      packages=setuptools.find_packages(),
       install_requires=[{install_requires}],
       )
 """

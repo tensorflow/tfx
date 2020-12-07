@@ -24,7 +24,7 @@ from tfx.dsl.component.experimental import executor_specs
 from tfx.dsl.components.base import base_component
 from tfx.orchestration import metadata
 from tfx.orchestration import pipeline
-from tfx.orchestration.beam import beam_dag_runner
+from tfx.orchestration.portable import beam_dag_runner
 from tfx.types import component_spec
 
 

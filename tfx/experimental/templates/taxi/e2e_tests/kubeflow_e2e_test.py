@@ -28,7 +28,6 @@ from tfx.dsl.io import fileio
 from tfx.experimental.templates import test_utils
 from tfx.orchestration import test_utils as orchestration_test_utils
 from tfx.orchestration.kubeflow import test_utils as kubeflow_test_utils
-from tfx.utils import retry
 from tfx.utils import telemetry_utils
 import yaml
 from google.cloud import storage
@@ -86,13 +85,23 @@ class TaxiTemplateKubeflowE2ETest(test_utils.BaseEndToEndTest):
     super(TaxiTemplateKubeflowE2ETest, self).tearDown()
     self._cleanup_kfp()
 
+  def _cleanup_with_retry(self, method):
+    max_num_trial = 3
+    for _ in range(max_num_trial):
+      try:
+        method()
+      except Exception as err:  # pylint:disable=broad-except
+        logging.info(err)
+      else:
+        break
+
   def _cleanup_kfp(self):
-    self._delete_base_container_image()
-    self._delete_target_container_image()
-    self._delete_caip_model()
-    self._delete_runs()
-    self._delete_pipeline()
-    self._delete_pipeline_data()
+    self._cleanup_with_retry(self._delete_base_container_image)
+    self._cleanup_with_retry(self._delete_target_container_image)
+    self._cleanup_with_retry(self._delete_caip_model)
+    self._cleanup_with_retry(self._delete_runs)
+    self._cleanup_with_retry(self._delete_pipeline)
+    self._cleanup_with_retry(self._delete_pipeline_data)
 
   def _get_kfp_runs(self):
     # CLI uses experiment_name which is the same as pipeline_name.
@@ -101,24 +110,20 @@ class TaxiTemplateKubeflowE2ETest(test_utils.BaseEndToEndTest):
     response = self._kfp_client.list_runs(experiment_id=experiment_id)
     return response.runs
 
-  @retry.retry(ignore_eventual_failure=True)
   def _delete_caip_model(self):
     model_name = self._pipeline_name.replace('-', '_')
     kubeflow_test_utils.delete_ai_platform_model(model_name)
 
-  @retry.retry(ignore_eventual_failure=True)
   def _delete_runs(self):
     for run in self._get_kfp_runs():
       self._kfp_client._run_api.delete_run(id=run.id)
 
-  @retry.retry(ignore_eventual_failure=True)
   def _delete_pipeline(self):
     self._runCli([
         'pipeline', 'delete', '--engine', 'kubeflow', '--pipeline_name',
         self._pipeline_name
     ])
 
-  @retry.retry(ignore_eventual_failure=True)
   def _delete_pipeline_data(self):
     path = 'tfx_pipeline_output/{}'.format(self._pipeline_name)
     orchestration_test_utils.delete_gcs_files(self._GCP_PROJECT_ID,
@@ -127,7 +132,6 @@ class TaxiTemplateKubeflowE2ETest(test_utils.BaseEndToEndTest):
     orchestration_test_utils.delete_gcs_files(self._GCP_PROJECT_ID,
                                               self._BUCKET_NAME, path)
 
-  @retry.retry(ignore_eventual_failure=True)
   def _delete_docker_image(self, image):
     subprocess.check_output(['gcloud', 'container', 'images', 'delete', image])
     client = docker.from_env()

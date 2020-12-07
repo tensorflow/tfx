@@ -326,18 +326,21 @@ Running pipelines create artifacts which have to be stored in
 [ML-Metadata](https://github.com/google/ml-metadata). Artifacts refer to
 payloads, which are files that must be stored in a file system or block storage.
 For this tutorial, we'll use GCS to store our metadata payloads, using the
-bucket that was created automatically during setup.
-Its name will be `<your-project-id>-kubeflowpipelines-default`.
+bucket that was created automatically during setup. The notebook gets the names
+of the current buckets:
 
+Get a list of bucket names:
+
+```
+!gsutil ls | cut -d / -f 3
+```
+
+Copy the name of the bucket you are using to the clipboard.
+
+Caution: You must open the `pipeline`/`configs.py` file and set the
+`GCS_BUCKET_NAME` constant to the name of the bucket.
 
 ### Create the pipeline
-
-The notebook will upload our sample data to GCS bucket so that we can use it in
-our pipeline later.
-
-```python
-!gsutil cp data/data.csv gs://{GOOGLE_CLOUD_PROJECT}-kubeflowpipelines-default/tfx-template/data/data.csv
-```
 
 The notebook then uses the `tfx pipeline create` command to create the pipeline.
 

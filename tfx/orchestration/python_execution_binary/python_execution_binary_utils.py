@@ -23,9 +23,9 @@ from tfx.proto.orchestration import execution_invocation_pb2
 
 def deserialize_execution_info(
     execution_info_b64: str) -> data_types.ExecutionInfo:
-  """De-serializes the ExecutionInfo class from a url safe base64 encoded binary string."""
+  """De-serializes the ExecutionInfo class from a binary string."""
   execution_info_proto = execution_invocation_pb2.ExecutionInvocation.FromString(
-      base64.urlsafe_b64decode(execution_info_b64))
+      base64.b64decode(execution_info_b64))
   return data_types.ExecutionInfo.from_proto(execution_info_proto)
 
 

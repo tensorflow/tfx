@@ -22,7 +22,7 @@ from typing import List, Text
 import tensorflow as tf
 import tensorflow_hub as hub
 import tensorflow_transform as tft
-from tfx.components.trainer.fn_args_utils import FnArgs
+from tfx.components.trainer.executor import TrainerFnArgs
 from tfx.examples.bert.utils.bert_models import build_and_compile_bert_classifier
 from tfx.examples.bert.utils.bert_tokenizer_utils import BertPreprocessor
 
@@ -115,7 +115,7 @@ def _get_serve_tf_examples_fn(model, tf_transform_output):
 
 
 # TFX Trainer will call this function.
-def run_fn(fn_args: FnArgs):
+def run_fn(fn_args: TrainerFnArgs):
   """Train the model based on given args.
 
   Args:

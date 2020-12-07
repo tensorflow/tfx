@@ -89,7 +89,8 @@ class InputsUtilsTest(test_utils.TfxTest):
       side_examples = types.Artifact(
           my_example_gen.outputs.outputs['side_examples'].artifact_spec.type)
       side_examples.uri = 'side_examples_uri'
-      contexts = context_lib.prepare_contexts(m, my_example_gen.contexts)
+      contexts = context_lib.register_contexts_if_not_exists(
+          m, my_example_gen.contexts)
       execution = execution_publish_utils.register_execution(
           m, my_example_gen.node_info.type, contexts)
       execution_publish_utils.publish_succeeded_execution(
@@ -105,7 +106,8 @@ class InputsUtilsTest(test_utils.TfxTest):
           another_example_gen.outputs.outputs['output_examples'].artifact_spec
           .type)
       another_output_example.uri = 'another_examples_uri'
-      contexts = context_lib.prepare_contexts(m, another_example_gen.contexts)
+      contexts = context_lib.register_contexts_if_not_exists(
+          m, another_example_gen.contexts)
       execution = execution_publish_utils.register_execution(
           m, another_example_gen.node_info.type, contexts)
       execution_publish_utils.publish_succeeded_execution(
@@ -153,7 +155,8 @@ class InputsUtilsTest(test_utils.TfxTest):
           my_example_gen.outputs.outputs['output_examples'].artifact_spec.type)
       output_example_2.uri = 'my_examples_uri_2'
 
-      contexts = context_lib.prepare_contexts(m, my_example_gen.contexts)
+      contexts = context_lib.register_contexts_if_not_exists(
+          m, my_example_gen.contexts)
       execution = execution_publish_utils.register_execution(
           m, my_example_gen.node_info.type, contexts)
       execution_publish_utils.publish_succeeded_execution(
@@ -194,7 +197,8 @@ class InputsUtilsTest(test_utils.TfxTest):
       output_model = types.Artifact(
           my_trainer.outputs.outputs['model'].artifact_spec.type)
       output_model.uri = 'my_output_model_uri'
-      contexts = context_lib.prepare_contexts(m, my_trainer.contexts)
+      contexts = context_lib.register_contexts_if_not_exists(
+          m, my_trainer.contexts)
       execution = execution_publish_utils.register_execution(
           m, my_trainer.node_info.type, contexts)
       execution_publish_utils.publish_succeeded_execution(

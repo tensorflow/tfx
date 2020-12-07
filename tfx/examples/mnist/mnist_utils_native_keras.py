@@ -25,7 +25,7 @@ from __future__ import print_function
 import tensorflow as tf
 import tensorflow_transform as tft
 
-from tfx.components.trainer.fn_args_utils import FnArgs
+from tfx.components.trainer.executor import TrainerFnArgs
 from tfx.examples.mnist import mnist_utils_native_keras_base as base
 
 
@@ -60,7 +60,7 @@ def preprocessing_fn(inputs):
 
 
 # TFX Trainer will call this function.
-def run_fn(fn_args: FnArgs):
+def run_fn(fn_args: TrainerFnArgs):
   """Train the model based on given args.
 
   Args:

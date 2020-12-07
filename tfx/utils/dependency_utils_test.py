@@ -51,8 +51,7 @@ class DependencyUtilsTest(tf.test.TestCase):
   @mock.patch('tempfile.mkdtemp')
   @mock.patch('subprocess.call')
   def testEphemeralPackageMocked(self, mock_subprocess_call, mock_mkdtemp):
-    source_data_dir = os.path.join(
-        os.path.dirname(os.path.abspath(__file__)), 'testdata')
+    source_data_dir = os.path.join(os.path.dirname(__file__), 'testdata')
     test_file = os.path.join(source_data_dir, 'test.csv')
     expected_package = 'mypackage.tar.gz'
 
