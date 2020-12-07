@@ -158,8 +158,11 @@ def get_common_fn_args(input_dict: Dict[Text, List[types.Artifact]],
   train_steps = train_args.num_steps or None
   eval_steps = eval_args.num_steps or None
 
-  # TODO(b/156929910): Refactor Trainer to be consistent with empty or None
-  #                    custom_config handling.
+  # Load and deserialize custom config from execution properties.
+  # Note that in the component interface the default serialization of custom
+  # config is 'null' instead of '{}'. Therefore we need to default the
+  # json_utils.loads to 'null' then populate it with an empty dict when
+  # needed.
   custom_config = json_utils.loads(
       exec_properties.get(constants.CUSTOM_CONFIG_KEY, 'null'))
 

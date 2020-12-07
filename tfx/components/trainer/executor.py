@@ -33,7 +33,6 @@ from tfx.dsl.components.base import base_executor
 from tfx.dsl.io import fileio
 from tfx.types import artifact_utils
 from tfx.utils import io_utils
-from tfx.utils import json_utils
 from tfx.utils import path_utils
 
 from tensorflow.python.lib.io import file_io  # pylint: disable=g-direct-tensorflow-import
@@ -95,17 +94,6 @@ class GenericExecutor(base_executor.BaseExecutor):
   def _GetFnArgs(self, input_dict: Dict[Text, List[types.Artifact]],
                  output_dict: Dict[Text, List[types.Artifact]],
                  exec_properties: Dict[Text, Any]) -> fn_args_utils.FnArgs:
-    # Load and deserialize custom config from execution properties.
-    # Note that in the component interface the default serialization of custom
-    # config is 'null' instead of '{}'. Therefore we need to default the
-    # json_utils.loads to 'null' then populate it with an empty dict when
-    # needed.
-    custom_config = json_utils.loads(
-        exec_properties.get(constants.CUSTOM_CONFIG_KEY, 'null')) or {}
-    if not isinstance(custom_config, dict):
-      raise ValueError('custom_config in execution properties needs to be a '
-                       'dict. Got %s instead.' % type(custom_config))
-
     # TODO(ruoyu): Make this a dict of tag -> uri instead of list.
     if input_dict.get(constants.BASE_MODEL_KEY):
       base_model = path_utils.serving_model_path(
@@ -132,6 +120,9 @@ class GenericExecutor(base_executor.BaseExecutor):
 
     # TODO(b/126242806) Use PipelineInputs when it is available in third_party.
     result = fn_args_utils.get_common_fn_args(input_dict, exec_properties)
+    if result.custom_config and not isinstance(result.custom_config, dict):
+      raise ValueError('custom_config in execution properties needs to be a '
+                       'dict. Got %s instead.' % type(result.custom_config))
     result.transform_output = result.transform_graph_path
     result.serving_model_dir = serving_model_dir
     result.eval_model_dir = eval_model_dir
@@ -139,7 +130,6 @@ class GenericExecutor(base_executor.BaseExecutor):
     result.schema_file = result.schema_path
     result.base_model = base_model
     result.hyperparameters = hyperparameters_config
-    result.custom_config = custom_config
     return result
 
   def Do(self, input_dict: Dict[Text, List[types.Artifact]],
