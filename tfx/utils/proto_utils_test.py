@@ -53,9 +53,10 @@ class ProtoUtilsTest(tf.test.TestCase):
 
   def test_json_to_proto(self):
     json_str = '{"obsolete_field":2,"string_value":"x"}'
-    self.assertEqual(
-        proto_utils.json_to_proto(json_str, foo_pb2.TestProto()),
-        foo_pb2.TestProto(string_value='x'))
+    result = proto_utils.json_to_proto(json_str, foo_pb2.TestProto())
+    self.assertEqual(result, foo_pb2.TestProto(string_value='x'))
+    # Make sure that returned type is not message.Message
+    self.assertEqual(result.string_value, 'x')
 
   def test_dict_to_proto(self):
     self.assertEqual(
