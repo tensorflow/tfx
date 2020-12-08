@@ -170,6 +170,13 @@ class _GenProtoCommand(setuptools.Command):
         env=os.environ)
 
 
+_TFX_DESCRIPTION = (
+    'TensorFlow Extended (TFX) is a TensorFlow-based general-purpose machine '
+    'learning platform implemented at Google.')
+_PIPELINES_SDK_DESCRIPTION = (
+    'A dependency-light distribution of the core pipeline authoring '
+    'functionality of TensorFlow Extended (TFX).')
+
 # Get the long descriptions from README files.
 with open('README.md') as fp:
   _TFX_LONG_DESCRIPTION = fp.read()
@@ -201,6 +208,7 @@ if package_config.PACKAGE_NAME == 'tfx-dev':
   # "tfx-pipeline-sdk" packages.
   install_requires = dependencies.make_required_install_packages()
   extras_require = tfx_extras_requires
+  description = _TFX_DESCRIPTION
   long_description = _TFX_LONG_DESCRIPTION
   packages = find_namespace_packages(include=['tfx', 'tfx.*'])
   # TODO(b/174503231): Remove the override on the following line and prevent
@@ -211,6 +219,7 @@ elif package_config.PACKAGE_NAME == 'ml-pipelines-sdk':
   # packages like "tensorflow" and "apache-beam".
   install_requires = dependencies.make_pipeline_sdk_required_install_packages()
   extras_require = {}
+  description = _PIPELINES_SDK_DESCRIPTION
   long_description = _PIPELINES_SDK_LONG_DESCRIPTION
   packages = find_namespace_packages(include=ml_pipelines_sdk_packages)
 elif package_config.PACKAGE_NAME == 'tfx':
@@ -221,6 +230,7 @@ elif package_config.PACKAGE_NAME == 'tfx':
       ['ml-pipelines-sdk==%s' % version.__version__] +
       dependencies.make_required_install_packages())
   extras_require = tfx_extras_requires
+  description = _TFX_DESCRIPTION
   long_description = _TFX_LONG_DESCRIPTION
   packages = find_namespace_packages(
       include=['tfx', 'tfx.*'], exclude=ml_pipelines_sdk_packages)
@@ -277,7 +287,7 @@ setup(
     python_requires='>=3.6,<3.9',
     packages=packages,
     include_package_data=True,
-    description='TensorFlow Extended (TFX) is a TensorFlow-based general-purpose machine learning platform implemented at Google',
+    description=description,
     long_description=long_description,
     long_description_content_type='text/markdown',
     keywords='tensorflow tfx',
