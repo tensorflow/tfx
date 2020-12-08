@@ -98,16 +98,108 @@ tasks {
   caching_options {
   }
 }
-deployment_config {
-  type_url: "type.googleapis.com/ml_pipelines.PipelineDeploymentConfig"
-  value: "\n\256\002\n\027ConsumeByValue_executor\022\222\002\n\217\002\n\007busybox\022\007consume\022,{{$.inputs.artifacts[\'input_string\'].value}}\022){{$.inputs.artifacts[\'input_int\'].value}}\022+{{$.inputs.artifacts[\'input_float\'].value}}\022\'{{$.inputs.parameters[\'param_string\']}}\022${{$.inputs.parameters[\'param_int\']}}\022&{{$.inputs.parameters[\'param_float\']}}\n\272\001\n\032ProducePrimitives_executor\022\233\001\n\230\001\n\007busybox\022\007produce\022,{{$.outputs.artifacts[\'output_string\'].uri}}\022){{$.outputs.artifacts[\'output_int\'].uri}}\022+{{$.outputs.artifacts[\'output_float\'].uri}}"
-}
 runtime_parameters {
   key: "string_param"
   value {
     type: STRING
     default_value {
       string_value: "string value"
+    }
+  }
+}
+deployment_spec {
+  fields {
+    key: "executors"
+    value {
+      struct_value {
+        fields {
+          key: "ConsumeByValue_executor"
+          value {
+            struct_value {
+              fields {
+                key: "container"
+                value {
+                  struct_value {
+                    fields {
+                      key: "command"
+                      value {
+                        list_value {
+                          values {
+                            string_value: "consume"
+                          }
+                          values {
+                            string_value: "{{$.inputs.artifacts[\'input_string\'].value}}"
+                          }
+                          values {
+                            string_value: "{{$.inputs.artifacts[\'input_int\'].value}}"
+                          }
+                          values {
+                            string_value: "{{$.inputs.artifacts[\'input_float\'].value}}"
+                          }
+                          values {
+                            string_value: "{{$.inputs.parameters[\'param_string\']}}"
+                          }
+                          values {
+                            string_value: "{{$.inputs.parameters[\'param_int\']}}"
+                          }
+                          values {
+                            string_value: "{{$.inputs.parameters[\'param_float\']}}"
+                          }
+                        }
+                      }
+                    }
+                    fields {
+                      key: "image"
+                      value {
+                        string_value: "busybox"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+        fields {
+          key: "ProducePrimitives_executor"
+          value {
+            struct_value {
+              fields {
+                key: "container"
+                value {
+                  struct_value {
+                    fields {
+                      key: "command"
+                      value {
+                        list_value {
+                          values {
+                            string_value: "produce"
+                          }
+                          values {
+                            string_value: "{{$.outputs.artifacts[\'output_string\'].uri}}"
+                          }
+                          values {
+                            string_value: "{{$.outputs.artifacts[\'output_int\'].uri}}"
+                          }
+                          values {
+                            string_value: "{{$.outputs.artifacts[\'output_float\'].uri}}"
+                          }
+                        }
+                      }
+                    }
+                    fields {
+                      key: "image"
+                      value {
+                        string_value: "busybox"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
     }
   }
 }

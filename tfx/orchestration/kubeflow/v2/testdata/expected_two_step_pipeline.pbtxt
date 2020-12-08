@@ -85,7 +85,97 @@ tasks {
   caching_options {
   }
 }
-deployment_config {
-  type_url: "type.googleapis.com/ml_pipelines.PipelineDeploymentConfig"
-  value: "\n\331\001\n\033BigQueryExampleGen_executor\022\271\001\n\266\001\n\024gcr.io/my-tfx:latest\032\025--executor_class_path\032Ctfx.extensions.google_cloud_big_query.example_gen.executor.Executor\032!--json_serialized_invocation_args\032\005{{$}}\032\030--project=my-gcp-project\n\300\001\n\026StatisticsGen_executor\022\245\001\n\242\001\n\024gcr.io/my-tfx:latest\032\025--executor_class_path\032/tfx.components.statistics_gen.executor.Executor\032!--json_serialized_invocation_args\032\005{{$}}\032\030--project=my-gcp-project"
+deployment_spec {
+  fields {
+    key: "executors"
+    value {
+      struct_value {
+        fields {
+          key: "BigQueryExampleGen_executor"
+          value {
+            struct_value {
+              fields {
+                key: "container"
+                value {
+                  struct_value {
+                    fields {
+                      key: "args"
+                      value {
+                        list_value {
+                          values {
+                            string_value: "--executor_class_path"
+                          }
+                          values {
+                            string_value: "tfx.extensions.google_cloud_big_query.example_gen.executor.Executor"
+                          }
+                          values {
+                            string_value: "--json_serialized_invocation_args"
+                          }
+                          values {
+                            string_value: "{{$}}"
+                          }
+                          values {
+                            string_value: "--project=my-gcp-project"
+                          }
+                        }
+                      }
+                    }
+                    fields {
+                      key: "image"
+                      value {
+                        string_value: "gcr.io/my-tfx:latest"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+        fields {
+          key: "StatisticsGen_executor"
+          value {
+            struct_value {
+              fields {
+                key: "container"
+                value {
+                  struct_value {
+                    fields {
+                      key: "args"
+                      value {
+                        list_value {
+                          values {
+                            string_value: "--executor_class_path"
+                          }
+                          values {
+                            string_value: "tfx.components.statistics_gen.executor.Executor"
+                          }
+                          values {
+                            string_value: "--json_serialized_invocation_args"
+                          }
+                          values {
+                            string_value: "{{$}}"
+                          }
+                          values {
+                            string_value: "--project=my-gcp-project"
+                          }
+                        }
+                      }
+                    }
+                    fields {
+                      key: "image"
+                      value {
+                        string_value: "gcr.io/my-tfx:latest"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
 }
+

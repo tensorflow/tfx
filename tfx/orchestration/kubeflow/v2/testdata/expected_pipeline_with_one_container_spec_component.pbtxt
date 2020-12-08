@@ -102,7 +102,107 @@ tasks {
   caching_options {
   }
 }
-deployment_config {
-  type_url: "type.googleapis.com/ml_pipelines.PipelineDeploymentConfig"
-  value: "\n\334\001\n$DummyContainerSpecComponent_executor\022\263\001\n\260\001\n\021dummy/transformer\022\013transformer\022\010--input1\022${{$.inputs.artifacts[\'input1\'].uri}}\022\t--output1\022&{{$.outputs.artifacts[\'output1\'].uri}}\022\010--param1\022!{{$.inputs.parameters[\'param1\']}}\nc\n!ImporterNode.my_importer_executor\022>\022<\n\014\n\n\032\010some-uri\022,\032*title: tfx.Model\ntype: object\nproperties:\n"
+deployment_spec {
+  fields {
+    key: "executors"
+    value {
+      struct_value {
+        fields {
+          key: "DummyContainerSpecComponent_executor"
+          value {
+            struct_value {
+              fields {
+                key: "container"
+                value {
+                  struct_value {
+                    fields {
+                      key: "command"
+                      value {
+                        list_value {
+                          values {
+                            string_value: "transformer"
+                          }
+                          values {
+                            string_value: "--input1"
+                          }
+                          values {
+                            string_value: "{{$.inputs.artifacts[\'input1\'].uri}}"
+                          }
+                          values {
+                            string_value: "--output1"
+                          }
+                          values {
+                            string_value: "{{$.outputs.artifacts[\'output1\'].uri}}"
+                          }
+                          values {
+                            string_value: "--param1"
+                          }
+                          values {
+                            string_value: "{{$.inputs.parameters[\'param1\']}}"
+                          }
+                        }
+                      }
+                    }
+                    fields {
+                      key: "image"
+                      value {
+                        string_value: "dummy/transformer"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+        fields {
+          key: "ImporterNode.my_importer_executor"
+          value {
+            struct_value {
+              fields {
+                key: "importer"
+                value {
+                  struct_value {
+                    fields {
+                      key: "artifactUri"
+                      value {
+                        struct_value {
+                          fields {
+                            key: "constantValue"
+                            value {
+                              struct_value {
+                                fields {
+                                  key: "stringValue"
+                                  value {
+                                    string_value: "some-uri"
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                    fields {
+                      key: "typeSchema"
+                      value {
+                        struct_value {
+                          fields {
+                            key: "instanceSchema"
+                            value {
+                              string_value: "title: tfx.Model\ntype: object\nproperties:\n"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
 }

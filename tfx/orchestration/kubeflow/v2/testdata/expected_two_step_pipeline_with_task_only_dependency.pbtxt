@@ -21,7 +21,78 @@ tasks {
   caching_options {
   }
 }
-deployment_config {
-  type_url: "type.googleapis.com/ml_pipelines.PipelineDeploymentConfig"
-  value: "\n0\n\017Step 2_executor\022\035\n\033\n\014step-2-image\022\003run\022\006step-2\n0\n\017Step 1_executor\022\035\n\033\n\014step-1-image\022\003run\022\006step-1"
+deployment_spec {
+  fields {
+    key: "executors"
+    value {
+      struct_value {
+        fields {
+          key: "Step 1_executor"
+          value {
+            struct_value {
+              fields {
+                key: "container"
+                value {
+                  struct_value {
+                    fields {
+                      key: "command"
+                      value {
+                        list_value {
+                          values {
+                            string_value: "run"
+                          }
+                          values {
+                            string_value: "step-1"
+                          }
+                        }
+                      }
+                    }
+                    fields {
+                      key: "image"
+                      value {
+                        string_value: "step-1-image"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+        fields {
+          key: "Step 2_executor"
+          value {
+            struct_value {
+              fields {
+                key: "container"
+                value {
+                  struct_value {
+                    fields {
+                      key: "command"
+                      value {
+                        list_value {
+                          values {
+                            string_value: "run"
+                          }
+                          values {
+                            string_value: "step-2"
+                          }
+                        }
+                      }
+                    }
+                    fields {
+                      key: "image"
+                      value {
+                        string_value: "step-2-image"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
 }

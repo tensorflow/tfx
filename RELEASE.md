@@ -10,6 +10,9 @@
     link with downstream training.
 
 ## Breaking changes
+*  Migrated `deployment_config` in Kubeflow V2 runner from `Any` proto message
+   to `Struct`, to ensure compatibility across different copies of the proto
+   libraries.
 
 ### For pipeline authors
 

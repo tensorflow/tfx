@@ -1,195 +1,32 @@
 {
   "displayName":"my-pipeline",
-  "pipelineSpec": {
-    "deploymentConfig":{
-      "executors":{
-        "Pusher_executor":{
-          "container":{
-            "command":[
-              "python",
-              "-m",
-              "tfx.orchestration.kubeflow.v2.container.kubeflow_v2_run_executor"
-            ],
-            "args":[
-              "--executor_class_path",
-              "tfx.components.pusher.executor.Executor",
-              "--json_serialized_invocation_args",
-              "{{$}}"
-            ],
-            "image":"tensorflow/tfx:latest"
-          }
-        },
-        "ResolverNode.latest_model_resolver_executor":{
-          "resolver":{
-            "outputArtifactQueries":{
-              "model":{
-                "filter":"artifact_type='tfx.Model' and state=LIVE"
-              }
-            }
-          }
-        },
-        "Evaluator_executor":{
-          "container":{
-            "image":"tensorflow/tfx:latest",
-            "command":[
-              "python",
-              "-m",
-              "tfx.orchestration.kubeflow.v2.container.kubeflow_v2_run_executor"
-            ],
-            "args":[
-              "--executor_class_path",
-              "tfx.components.evaluator.executor.Executor",
-              "--json_serialized_invocation_args",
-              "{{$}}"
-            ]
-          }
-        },
-        "ExampleValidator_executor":{
-          "container":{
-            "command":[
-              "python",
-              "-m",
-              "tfx.orchestration.kubeflow.v2.container.kubeflow_v2_run_executor"
-            ],
-            "args":[
-              "--executor_class_path",
-              "tfx.components.example_validator.executor.Executor",
-              "--json_serialized_invocation_args",
-              "{{$}}"
-            ],
-            "image":"tensorflow/tfx:latest"
-          }
-        },
-        "Transform_executor":{
-          "container":{
-            "command":[
-              "python",
-              "-m",
-              "tfx.orchestration.kubeflow.v2.container.kubeflow_v2_run_executor"
-            ],
-            "image":"tensorflow/tfx:latest",
-            "args":[
-              "--executor_class_path",
-              "tfx.components.transform.executor.Executor",
-              "--json_serialized_invocation_args",
-              "{{$}}"
-            ]
-          }
-        },
-        "Trainer_executor":{
-          "container":{
-            "command":[
-              "python",
-              "-m",
-              "tfx.orchestration.kubeflow.v2.container.kubeflow_v2_run_executor"
-            ],
-            "args":[
-              "--executor_class_path",
-              "tfx.components.trainer.executor.Executor",
-              "--json_serialized_invocation_args",
-              "{{$}}"
-            ],
-            "image":"tensorflow/tfx:latest"
-          }
-        },
-        "CsvExampleGen_executor":{
-          "container":{
-            "command":[
-              "python",
-              "-m",
-              "tfx.orchestration.kubeflow.v2.container.kubeflow_v2_run_executor"
-            ],
-            "image":"tensorflow/tfx:latest",
-            "args":[
-              "--executor_class_path",
-              "tfx.components.example_gen.csv_example_gen.executor.Executor",
-              "--json_serialized_invocation_args",
-              "{{$}}"
-            ],
-            "lifecycle":{
-              "preCacheCheck":{
-                "args":[
-                  "--json_serialized_invocation_args",
-                  "{{$}}"
-                ],
-                "command":[
-                  "python",
-                  "-m",
-                  "tfx.orchestration.kubeflow.v2.file_based_example_gen.driver"
-                ]
-              }
-            }
-          }
-        },
-        "SchemaGen_executor":{
-          "container":{
-            "command":[
-              "python",
-              "-m",
-              "tfx.orchestration.kubeflow.v2.container.kubeflow_v2_run_executor"
-            ],
-            "image":"tensorflow/tfx:latest",
-            "args":[
-              "--executor_class_path",
-              "tfx.components.schema_gen.executor.Executor",
-              "--json_serialized_invocation_args",
-              "{{$}}"
-            ]
-          }
-        },
-        "ResolverNode.latest_blessed_model_resolver-model-blessing-resolver_executor":{
-          "resolver":{
-            "outputArtifactQueries":{
-              "model_blessing":{
-                "filter":"artifact_type='tfx.ModelBlessing' and state=LIVE and custom_properties['blessed']='1'"
-              }
-            }
-          }
-        },
-        "ResolverNode.latest_blessed_model_resolver-model-resolver_executor":{
-          "resolver":{
-            "outputArtifactQueries":{
-              "model":{
-                "filter":"artifact_type='tfx.Model' and state=LIVE and name={$.inputs.artifacts['input'].custom_properties['current_model_id']}"
-              }
-            }
-          }
-        },
-        "StatisticsGen_executor":{
-          "container":{
-            "command":[
-              "python",
-              "-m",
-              "tfx.orchestration.kubeflow.v2.container.kubeflow_v2_run_executor"
-            ],
-            "args":[
-              "--executor_class_path",
-              "tfx.components.statistics_gen.executor.Executor",
-              "--json_serialized_invocation_args",
-              "{{$}}"
-            ],
-            "image":"tensorflow/tfx:latest"
-          }
-        }
-      },
-      "@type":"type.googleapis.com/ml_pipelines.PipelineDeploymentConfig"
+  "pipelineSpec":{
+    "pipelineInfo":{
+      "name":"full-taxi-pipeline"
     },
+    "schemaVersion":"v2alpha1",
+    "sdkVersion":"0.26.0.dev",
     "tasks":[
       {
-        "executorLabel":"CsvExampleGen_executor",
+        "taskInfo":{
+          "name":"CsvExampleGen"
+        },
+        "cachingOptions":{
+
+        },
         "inputs":{
           "parameters":{
-            "input_base":{
-              "runtimeValue":{
-                "constantValue":{
-                  "stringValue":"path/to/my/data"
-                }
-              }
-            },
             "output_config":{
               "runtimeValue":{
                 "constantValue":{
                   "stringValue":"{\n  \"split_config\": {\n    \"splits\": [\n      {\n        \"hash_buckets\": 2,\n        \"name\": \"train\"\n      },\n      {\n        \"hash_buckets\": 1,\n        \"name\": \"eval\"\n      }\n    ]\n  }\n}"
+                }
+              }
+            },
+            "input_config":{
+              "runtimeValue":{
+                "constantValue":{
+                  "stringValue":"{\n  \"splits\": [\n    {\n      \"name\": \"single_split\",\n      \"pattern\": \"*\"\n    }\n  ]\n}"
                 }
               }
             },
@@ -200,10 +37,10 @@
                 }
               }
             },
-            "input_config":{
+            "input_base":{
               "runtimeValue":{
                 "constantValue":{
-                  "stringValue":"{\n  \"splits\": [\n    {\n      \"name\": \"single_split\",\n      \"pattern\": \"*\"\n    }\n  ]\n}"
+                  "stringValue":"path/to/my/data"
                 }
               }
             }
@@ -218,12 +55,7 @@
             }
           }
         },
-        "cachingOptions":{
-
-        },
-        "taskInfo":{
-          "name":"CsvExampleGen"
-        }
+        "executorLabel":"CsvExampleGen_executor"
       },
       {
         "taskInfo":{
@@ -251,19 +83,37 @@
           }
         },
         "executorLabel":"ResolverNode.latest_blessed_model_resolver-model-resolver_executor",
+        "taskInfo":{
+          "name":"ResolverNode.latest_blessed_model_resolver-model-resolver"
+        },
         "inputs":{
           "artifacts":{
             "input":{
-              "producerTask":"ResolverNode.latest_blessed_model_resolver-model-blessing-resolver",
-              "outputArtifactKey":"model_blessing"
+              "outputArtifactKey":"model_blessing",
+              "producerTask":"ResolverNode.latest_blessed_model_resolver-model-blessing-resolver"
             }
           }
-        },
-        "taskInfo":{
-          "name":"ResolverNode.latest_blessed_model_resolver-model-resolver"
         }
       },
       {
+        "inputs":{
+          "parameters":{
+            "source_uri":{
+              "runtimeValue":{
+                "constantValue":{
+                  "stringValue":"{}"
+                }
+              }
+            },
+            "resolver_class":{
+              "runtimeValue":{
+                "constantValue":{
+                  "stringValue":"{\"__class__\": \"LatestArtifactsResolver\", \"__module__\": \"tfx.dsl.experimental.latest_artifacts_resolver\", \"__tfx_object_type__\": \"class\"}"
+                }
+              }
+            }
+          }
+        },
         "outputs":{
           "artifacts":{
             "model":{
@@ -273,30 +123,15 @@
             }
           }
         },
-        "executorLabel":"ResolverNode.latest_model_resolver_executor",
-        "inputs":{
-          "parameters":{
-            "resolver_class":{
-              "runtimeValue":{
-                "constantValue":{
-                  "stringValue":"{\"__class__\": \"LatestArtifactsResolver\", \"__module__\": \"tfx.dsl.experimental.latest_artifacts_resolver\", \"__tfx_object_type__\": \"class\"}"
-                }
-              }
-            },
-            "source_uri":{
-              "runtimeValue":{
-                "constantValue":{
-                  "stringValue":"{}"
-                }
-              }
-            }
-          }
-        },
         "taskInfo":{
           "name":"ResolverNode.latest_model_resolver"
-        }
+        },
+        "executorLabel":"ResolverNode.latest_model_resolver_executor"
       },
       {
+        "dependentTasks":[
+          "CsvExampleGen"
+        ],
         "inputs":{
           "parameters":{
             "exclude_splits":{
@@ -309,10 +144,14 @@
           },
           "artifacts":{
             "examples":{
-              "producerTask":"CsvExampleGen",
-              "outputArtifactKey":"examples"
+              "outputArtifactKey":"examples",
+              "producerTask":"CsvExampleGen"
             }
           }
+        },
+        "executorLabel":"StatisticsGen_executor",
+        "cachingOptions":{
+
         },
         "outputs":{
           "artifacts":{
@@ -325,26 +164,17 @@
         },
         "taskInfo":{
           "name":"StatisticsGen"
-        },
-        "dependentTasks":[
-          "CsvExampleGen"
-        ],
-        "executorLabel":"StatisticsGen_executor",
-        "cachingOptions":{
-
         }
       },
       {
-        "cachingOptions":{
-
+        "taskInfo":{
+          "name":"SchemaGen"
         },
+        "executorLabel":"SchemaGen_executor",
+        "dependentTasks":[
+          "StatisticsGen"
+        ],
         "inputs":{
-          "artifacts":{
-            "statistics":{
-              "outputArtifactKey":"statistics",
-              "producerTask":"StatisticsGen"
-            }
-          },
           "parameters":{
             "infer_feature_shape":{
               "runtimeValue":{
@@ -360,6 +190,12 @@
                 }
               }
             }
+          },
+          "artifacts":{
+            "statistics":{
+              "producerTask":"StatisticsGen",
+              "outputArtifactKey":"statistics"
+            }
           }
         },
         "outputs":{
@@ -371,19 +207,19 @@
             }
           }
         },
-        "executorLabel":"SchemaGen_executor",
-        "dependentTasks":[
-          "StatisticsGen"
-        ],
-        "taskInfo":{
-          "name":"SchemaGen"
+        "cachingOptions":{
+
         }
       },
       {
+        "executorLabel":"ExampleValidator_executor",
         "dependentTasks":[
           "SchemaGen",
           "StatisticsGen"
         ],
+        "taskInfo":{
+          "name":"ExampleValidator"
+        },
         "inputs":{
           "parameters":{
             "exclude_splits":{
@@ -414,12 +250,8 @@
             }
           }
         },
-        "executorLabel":"ExampleValidator_executor",
         "cachingOptions":{
 
-        },
-        "taskInfo":{
-          "name":"ExampleValidator"
         }
       },
       {
@@ -430,19 +262,36 @@
                 "instanceSchema":"title: tfx.TransformCache\ntype: object\nproperties:\n"
               }
             },
-            "transformed_examples":{
-              "artifactType":{
-                "instanceSchema":"title: tfx.Examples\ntype: object\nproperties:\n  span:\n    type: int\n    description: Span for an artifact.\n  version:\n    type: int\n    description: Version for an artifact.\n  split_names:\n    type: string\n    description: JSON-encoded list of splits for an artifact. Empty string means artifact has no split.\n"
-              }
-            },
             "transform_graph":{
               "artifactType":{
                 "instanceSchema":"title: tfx.TransformGraph\ntype: object\nproperties:\n"
               }
+            },
+            "transformed_examples":{
+              "artifactType":{
+                "instanceSchema":"title: tfx.Examples\ntype: object\nproperties:\n  span:\n    type: int\n    description: Span for an artifact.\n  version:\n    type: int\n    description: Version for an artifact.\n  split_names:\n    type: string\n    description: JSON-encoded list of splits for an artifact. Empty string means artifact has no split.\n"
+              }
             }
           }
         },
+        "executorLabel":"Transform_executor",
+        "cachingOptions":{
+
+        },
+        "taskInfo":{
+          "name":"Transform"
+        },
         "inputs":{
+          "artifacts":{
+            "examples":{
+              "outputArtifactKey":"examples",
+              "producerTask":"CsvExampleGen"
+            },
+            "schema":{
+              "producerTask":"SchemaGen",
+              "outputArtifactKey":"schema"
+            }
+          },
           "parameters":{
             "custom_config":{
               "runtimeValue":{
@@ -458,50 +307,57 @@
                 }
               }
             }
-          },
-          "artifacts":{
-            "schema":{
-              "producerTask":"SchemaGen",
-              "outputArtifactKey":"schema"
-            },
-            "examples":{
-              "outputArtifactKey":"examples",
-              "producerTask":"CsvExampleGen"
-            }
           }
         },
-        "taskInfo":{
-          "name":"Transform"
-        },
-        "cachingOptions":{
-
-        },
-        "executorLabel":"Transform_executor",
         "dependentTasks":[
           "CsvExampleGen",
           "SchemaGen"
         ]
       },
       {
+        "executorLabel":"Trainer_executor",
+        "outputs":{
+          "artifacts":{
+            "model":{
+              "artifactType":{
+                "instanceSchema":"title: tfx.Model\ntype: object\nproperties:\n"
+              }
+            },
+            "model_run":{
+              "artifactType":{
+                "instanceSchema":"title: tfx.ModelRun\ntype: object\nproperties:\n"
+              }
+            }
+          }
+        },
         "cachingOptions":{
 
         },
+        "dependentTasks":[
+          "ResolverNode.latest_model_resolver",
+          "SchemaGen",
+          "Transform"
+        ],
         "inputs":{
+          "artifacts":{
+            "base_model":{
+              "producerTask":"ResolverNode.latest_model_resolver",
+              "outputArtifactKey":"model"
+            },
+            "schema":{
+              "producerTask":"SchemaGen",
+              "outputArtifactKey":"schema"
+            },
+            "examples":{
+              "producerTask":"Transform",
+              "outputArtifactKey":"transformed_examples"
+            },
+            "transform_graph":{
+              "producerTask":"Transform",
+              "outputArtifactKey":"transform_graph"
+            }
+          },
           "parameters":{
-            "eval_args":{
-              "runtimeValue":{
-                "constantValue":{
-                  "stringValue":"{\n  \"num_steps\": 5\n}"
-                }
-              }
-            },
-            "custom_config":{
-              "runtimeValue":{
-                "constantValue":{
-                  "stringValue":"null"
-                }
-              }
-            },
             "module_file":{
               "runtimeValue":{
                 "constantValue":{
@@ -515,85 +371,59 @@
                   "stringValue":"{\n  \"num_steps\": 10\n}"
                 }
               }
-            }
-          },
-          "artifacts":{
-            "schema":{
-              "outputArtifactKey":"schema",
-              "producerTask":"SchemaGen"
             },
-            "transform_graph":{
-              "producerTask":"Transform",
-              "outputArtifactKey":"transform_graph"
-            },
-            "examples":{
-              "producerTask":"Transform",
-              "outputArtifactKey":"transformed_examples"
-            },
-            "base_model":{
-              "outputArtifactKey":"model",
-              "producerTask":"ResolverNode.latest_model_resolver"
-            }
-          }
-        },
-        "executorLabel":"Trainer_executor",
-        "outputs":{
-          "artifacts":{
-            "model_run":{
-              "artifactType":{
-                "instanceSchema":"title: tfx.ModelRun\ntype: object\nproperties:\n"
+            "eval_args":{
+              "runtimeValue":{
+                "constantValue":{
+                  "stringValue":"{\n  \"num_steps\": 5\n}"
+                }
               }
             },
-            "model":{
-              "artifactType":{
-                "instanceSchema":"title: tfx.Model\ntype: object\nproperties:\n"
+            "custom_config":{
+              "runtimeValue":{
+                "constantValue":{
+                  "stringValue":"null"
+                }
               }
             }
           }
         },
         "taskInfo":{
           "name":"Trainer"
-        },
-        "dependentTasks":[
-          "ResolverNode.latest_model_resolver",
-          "SchemaGen",
-          "Transform"
-        ]
+        }
       },
       {
-        "cachingOptions":{
-
-        },
+        "executorLabel":"Evaluator_executor",
         "taskInfo":{
           "name":"Evaluator"
         },
         "inputs":{
           "artifacts":{
-            "examples":{
-              "producerTask":"CsvExampleGen",
-              "outputArtifactKey":"examples"
-            },
-            "baseline_model":{
-              "producerTask":"ResolverNode.latest_blessed_model_resolver-model-resolver",
-              "outputArtifactKey":"model"
-            },
             "model":{
               "producerTask":"Trainer",
               "outputArtifactKey":"model"
+            },
+            "baseline_model":{
+              "outputArtifactKey":"model",
+              "producerTask":"ResolverNode.latest_blessed_model_resolver-model-resolver"
+            },
+            "examples":{
+              "producerTask":"CsvExampleGen",
+              "outputArtifactKey":"examples"
             }
           },
           "parameters":{
-            "example_splits":{
-              "runtimeValue":{
-                "constantValue":{
-                  "stringValue":"null"
-                }
-              }
-            },
             "eval_config":{
               "runtimeValue":{
                 "constantValue":{
                   "stringValue":"{\n  \"metrics_specs\": [\n    {\n      \"metrics\": [\n        {\n          \"class_name\": \"ExampleCount\"\n        }\n      ],\n      \"thresholds\": {\n        \"binary_accuracy\": {\n          \"change_threshold\": {\n            \"absolute\": -1e-10,\n            \"direction\": \"HIGHER_IS_BETTER\"\n          },\n          \"value_threshold\": {\n            \"lower_bound\": 0.5\n          }\n        }\n      }\n    }\n  ],\n  \"model_specs\": [\n    {\n      \"signature_name\": \"eval\"\n    }\n  ],\n  \"slicing_specs\": [\n    {},\n    {\n      \"feature_keys\": [\n        \"trip_start_hour\"\n      ]\n    }\n  ]\n}"
+                }
+              }
+            },
+            "example_splits":{
+              "runtimeValue":{
+                "constantValue":{
+                  "stringValue":"null"
                 }
               }
             }
@@ -604,42 +434,34 @@
           "ResolverNode.latest_blessed_model_resolver-model-resolver",
           "Trainer"
         ],
-        "executorLabel":"Evaluator_executor",
         "outputs":{
           "artifacts":{
-            "blessing":{
-              "artifactType":{
-                "instanceSchema":"title: tfx.ModelBlessing\ntype: object\nproperties:\n"
-              }
-            },
             "evaluation":{
               "artifactType":{
                 "instanceSchema":"title: tfx.ModelEvaluation\ntype: object\nproperties:\n"
               }
-            }
-          }
-        }
-      },
-      {
-        "executorLabel":"Pusher_executor",
-        "outputs":{
-          "artifacts":{
-            "pushed_model":{
+            },
+            "blessing":{
               "artifactType":{
-                "instanceSchema":"title: tfx.PushedModel\ntype: object\nproperties:\n"
+                "instanceSchema":"title: tfx.ModelBlessing\ntype: object\nproperties:\n"
               }
             }
           }
         },
+        "cachingOptions":{
+
+        }
+      },
+      {
         "inputs":{
           "artifacts":{
-            "model":{
-              "outputArtifactKey":"model",
-              "producerTask":"Trainer"
-            },
             "model_blessing":{
               "outputArtifactKey":"blessing",
               "producerTask":"Evaluator"
+            },
+            "model":{
+              "outputArtifactKey":"model",
+              "producerTask":"Trainer"
             }
           },
           "parameters":{
@@ -659,28 +481,205 @@
             }
           }
         },
+        "taskInfo":{
+          "name":"Pusher"
+        },
         "cachingOptions":{
 
+        },
+        "outputs":{
+          "artifacts":{
+            "pushed_model":{
+              "artifactType":{
+                "instanceSchema":"title: tfx.PushedModel\ntype: object\nproperties:\n"
+              }
+            }
+          }
         },
         "dependentTasks":[
           "Evaluator",
           "Trainer"
         ],
-        "taskInfo":{
-          "name":"Pusher"
-        }
+        "executorLabel":"Pusher_executor"
       }
     ],
-    "schemaVersion": "v2alpha1",
-    "sdkVersion": "dummy-version",
-    "pipelineInfo":{
-      "name":"full-taxi-pipeline"
+    "deploymentSpec":{
+      "executors":{
+        "Transform_executor":{
+          "container":{
+            "command":[
+              "python",
+              "-m",
+              "tfx.orchestration.kubeflow.v2.container.kubeflow_v2_run_executor"
+            ],
+            "image":"tensorflow/tfx:latest",
+            "args":[
+              "--executor_class_path",
+              "tfx.components.transform.executor.Executor",
+              "--json_serialized_invocation_args",
+              "{{$}}"
+            ]
+          }
+        },
+        "ResolverNode.latest_model_resolver_executor":{
+          "resolver":{
+            "outputArtifactQueries":{
+              "model":{
+                "filter":"artifact_type='tfx.Model' and state=LIVE"
+              }
+            }
+          }
+        },
+        "ResolverNode.latest_blessed_model_resolver-model-blessing-resolver_executor":{
+          "resolver":{
+            "outputArtifactQueries":{
+              "model_blessing":{
+                "filter":"artifact_type='tfx.ModelBlessing' and state=LIVE and custom_properties['blessed']='1'"
+              }
+            }
+          }
+        },
+        "StatisticsGen_executor":{
+          "container":{
+            "command":[
+              "python",
+              "-m",
+              "tfx.orchestration.kubeflow.v2.container.kubeflow_v2_run_executor"
+            ],
+            "args":[
+              "--executor_class_path",
+              "tfx.components.statistics_gen.executor.Executor",
+              "--json_serialized_invocation_args",
+              "{{$}}"
+            ],
+            "image":"tensorflow/tfx:latest"
+          }
+        },
+        "CsvExampleGen_executor":{
+          "container":{
+            "args":[
+              "--executor_class_path",
+              "tfx.components.example_gen.csv_example_gen.executor.Executor",
+              "--json_serialized_invocation_args",
+              "{{$}}"
+            ],
+            "image":"tensorflow/tfx:latest",
+            "command":[
+              "python",
+              "-m",
+              "tfx.orchestration.kubeflow.v2.container.kubeflow_v2_run_executor"
+            ],
+            "lifecycle":{
+              "preCacheCheck":{
+                "command":[
+                  "python",
+                  "-m",
+                  "tfx.orchestration.kubeflow.v2.file_based_example_gen.driver"
+                ],
+                "args":[
+                  "--json_serialized_invocation_args",
+                  "{{$}}"
+                ]
+              }
+            }
+          }
+        },
+        "SchemaGen_executor":{
+          "container":{
+            "image":"tensorflow/tfx:latest",
+            "command":[
+              "python",
+              "-m",
+              "tfx.orchestration.kubeflow.v2.container.kubeflow_v2_run_executor"
+            ],
+            "args":[
+              "--executor_class_path",
+              "tfx.components.schema_gen.executor.Executor",
+              "--json_serialized_invocation_args",
+              "{{$}}"
+            ]
+          }
+        },
+        "Evaluator_executor":{
+          "container":{
+            "args":[
+              "--executor_class_path",
+              "tfx.components.evaluator.executor.Executor",
+              "--json_serialized_invocation_args",
+              "{{$}}"
+            ],
+            "image":"tensorflow/tfx:latest",
+            "command":[
+              "python",
+              "-m",
+              "tfx.orchestration.kubeflow.v2.container.kubeflow_v2_run_executor"
+            ]
+          }
+        },
+        "Trainer_executor":{
+          "container":{
+            "image":"tensorflow/tfx:latest",
+            "args":[
+              "--executor_class_path",
+              "tfx.components.trainer.executor.Executor",
+              "--json_serialized_invocation_args",
+              "{{$}}"
+            ],
+            "command":[
+              "python",
+              "-m",
+              "tfx.orchestration.kubeflow.v2.container.kubeflow_v2_run_executor"
+            ]
+          }
+        },
+        "ResolverNode.latest_blessed_model_resolver-model-resolver_executor":{
+          "resolver":{
+            "outputArtifactQueries":{
+              "model":{
+                "filter":"artifact_type='tfx.Model' and state=LIVE and name={$.inputs.artifacts['input'].custom_properties['current_model_id']}"
+              }
+            }
+          }
+        },
+        "Pusher_executor":{
+          "container":{
+            "command":[
+              "python",
+              "-m",
+              "tfx.orchestration.kubeflow.v2.container.kubeflow_v2_run_executor"
+            ],
+            "args":[
+              "--executor_class_path",
+              "tfx.components.pusher.executor.Executor",
+              "--json_serialized_invocation_args",
+              "{{$}}"
+            ],
+            "image":"tensorflow/tfx:latest"
+          }
+        },
+        "ExampleValidator_executor":{
+          "container":{
+            "image":"tensorflow/tfx:latest",
+            "args":[
+              "--executor_class_path",
+              "tfx.components.example_validator.executor.Executor",
+              "--json_serialized_invocation_args",
+              "{{$}}"
+            ],
+            "command":[
+              "python",
+              "-m",
+              "tfx.orchestration.kubeflow.v2.container.kubeflow_v2_run_executor"
+            ]
+          }
+        }
+      }
     }
   },
   "labels":{
-    "tfx_py_version": "3-7",
-    "tfx_runner": "kubeflow_v2",
-    "tfx_version": "dummy-version"
+    "tfx_py_version":"3-7",
+    "tfx_runner":"kubeflow_v2",
+    "tfx_version":"0-26-0-dev"
   },
   "runtimeConfig":{
     "gcsOutputDirectory":"path/to/my/root"

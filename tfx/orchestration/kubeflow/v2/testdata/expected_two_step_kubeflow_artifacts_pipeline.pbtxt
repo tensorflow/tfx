@@ -74,7 +74,96 @@ tasks {
   caching_options {
   }
 }
-deployment_config {
-  type_url: "type.googleapis.com/ml_pipelines.PipelineDeploymentConfig"
-  value: "\n\310\001\n\032ConsumerComponent_executor\022\251\001\n\246\001\n\024gcr.io/my-tfx:latest\032\025--executor_class_path\0323tfx.dsl.components.base.base_executor.EmptyExecutor\032!--json_serialized_invocation_args\032\005{{$}}\032\030--project=my-gcp-project\n\310\001\n\032ProducerComponent_executor\022\251\001\n\246\001\n\024gcr.io/my-tfx:latest\032\025--executor_class_path\0323tfx.dsl.components.base.base_executor.EmptyExecutor\032!--json_serialized_invocation_args\032\005{{$}}\032\030--project=my-gcp-project"
+deployment_spec {
+  fields {
+    key: "executors"
+    value {
+      struct_value {
+        fields {
+          key: "ConsumerComponent_executor"
+          value {
+            struct_value {
+              fields {
+                key: "container"
+                value {
+                  struct_value {
+                    fields {
+                      key: "args"
+                      value {
+                        list_value {
+                          values {
+                            string_value: "--executor_class_path"
+                          }
+                          values {
+                            string_value: "tfx.dsl.components.base.base_executor.EmptyExecutor"
+                          }
+                          values {
+                            string_value: "--json_serialized_invocation_args"
+                          }
+                          values {
+                            string_value: "{{$}}"
+                          }
+                          values {
+                            string_value: "--project=my-gcp-project"
+                          }
+                        }
+                      }
+                    }
+                    fields {
+                      key: "image"
+                      value {
+                        string_value: "gcr.io/my-tfx:latest"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+        fields {
+          key: "ProducerComponent_executor"
+          value {
+            struct_value {
+              fields {
+                key: "container"
+                value {
+                  struct_value {
+                    fields {
+                      key: "args"
+                      value {
+                        list_value {
+                          values {
+                            string_value: "--executor_class_path"
+                          }
+                          values {
+                            string_value: "tfx.dsl.components.base.base_executor.EmptyExecutor"
+                          }
+                          values {
+                            string_value: "--json_serialized_invocation_args"
+                          }
+                          values {
+                            string_value: "{{$}}"
+                          }
+                          values {
+                            string_value: "--project=my-gcp-project"
+                          }
+                        }
+                      }
+                    }
+                    fields {
+                      key: "image"
+                      value {
+                        string_value: "gcr.io/my-tfx:latest"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
 }
