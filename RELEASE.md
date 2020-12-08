@@ -8,6 +8,8 @@
 *   Added sanitization of user-specified pipeline name in Kubeflow V2 runner.
 *   Supported output examples artifact for BulkInferrer which can be used to
     link with downstream training.
+*   In the published TFX container image, wheel files are now used to install
+    TFX, and the TFX source code has been moved to `/tfx/src`.
 
 ## Breaking changes
 *  Migrated `deployment_config` in Kubeflow V2 runner from `Any` proto message

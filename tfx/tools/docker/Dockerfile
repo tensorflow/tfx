@@ -30,22 +30,40 @@ RUN CFLAGS=$(/usr/bin/python-config --cflags) python -m pip install \
   "google-apitools==0.5.30"
 
 # docker build command should be run under root directory of github checkout.
-ENV TFX_SRC_DIR=/tfx-src
-ADD . ${TFX_SRC_DIR}
-WORKDIR ${TFX_SRC_DIR}
+ENV TFX_DIR=/tfx
+ADD . ${TFX_DIR}/src
+WORKDIR ${TFX_DIR}
 
 ARG TFX_DEPENDENCY_SELECTOR
 ENV TFX_DEPENDENCY_SELECTOR=${TFX_DEPENDENCY_SELECTOR}
-RUN if [ "${TFX_DEPENDENCY_SELECTOR}" = "NIGHTLY" ]; then \
-    CFLAGS=$(/usr/bin/python-config --cflags) \
-    python -m pip install \
-    --extra-index-url https://pypi-nightly.tensorflow.org/simple \
-    -e ".[docker-image]" ; \
-  else \
-    CFLAGS=$(/usr/bin/python-config --cflags) \
-    python -m pip install \
-    -e ".[docker-image]" ; \
-  fi
+
+# TODO(b/175089240): clean up conditional checks on whether ml-pipelines-sdk is
+# built after TFX versions <= 0.25 are no longer eligible for cherry-picks.
+RUN cd ${TFX_DIR}/src; \
+    if [ -e "package_build" ]; then \
+      bash -x package_build/initialize.sh; \
+      CFLAGS=$(/usr/bin/python-config --cflags) \
+        python package_build/ml-pipelines-sdk/setup.py bdist_wheel; \
+      CFLAGS=$(/usr/bin/python-config --cflags) \
+        python package_build/tfx/setup.py bdist_wheel; \
+      MLSDK_WHEEL=$(find dist -name "ml_pipelines_sdk-*.whl"); \
+      TFX_WHEEL=$(find dist -name "tfx-*.whl"); \
+    else \
+      CFLAGS=$(/usr/bin/python-config --cflags) \
+        python setup.py bdist_wheel; \
+      MLSDK_WHEEL=; \
+      TFX_WHEEL=$(find dist -name "tfx-*.whl"); \
+    fi; \
+    if [ "${TFX_DEPENDENCY_SELECTOR}" = "NIGHTLY" ]; then \
+      CFLAGS=$(/usr/bin/python-config --cflags) \
+        python -m pip install \
+          --extra-index-url https://pypi-nightly.tensorflow.org/simple \
+          ${MLSDK_WHEEL} ${TFX_WHEEL}[docker-image] ; \
+    else \
+      CFLAGS=$(/usr/bin/python-config --cflags) \
+        python -m pip install ${MLSDK_WHEEL} ${TFX_WHEEL}[docker-image] ; \
+    fi; \
+    cd ${TFX_DIR}
 
 RUN echo "Installed python packages:\n" && python -m pip list
 
@@ -53,9 +71,9 @@ RUN echo "Installed python packages:\n" && python -m pip list
 # to use our own UserAgent.
 # TODO(b/151392812): Remove this when other telemetries become available.
 RUN patch `python -c 'import googleapiclient; print(googleapiclient.__path__[0])'`/http.py \
-  /tfx-src/tfx/tools/docker/patches/http.patch && \
+  /tfx/src/tfx/tools/docker/patches/http.patch && \
  patch `python -c 'import apitools; print(apitools.__path__[0])'`/base/py/base_api.py \
-  /tfx-src/tfx/tools/docker/patches/base_api.patch
+  /tfx/src/tfx/tools/docker/patches/base_api.patch
 
 # TODO(b/166202742): Consolidate container entrypoint with Kubeflow runner.
 ENTRYPOINT ["python", "-m", "tfx.scripts.run_executor"]
