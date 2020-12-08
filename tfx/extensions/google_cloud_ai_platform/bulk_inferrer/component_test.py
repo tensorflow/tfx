@@ -21,23 +21,56 @@ from __future__ import print_function
 import tensorflow as tf
 
 from tfx.extensions.google_cloud_ai_platform.bulk_inferrer import component
+from tfx.proto import bulk_inferrer_pb2
 from tfx.types import channel_utils
 from tfx.types import standard_artifacts
 
 
 class ComponentTest(tf.test.TestCase):
 
-  def testConstruct(self):
-    examples = standard_artifacts.Examples()
-    model = standard_artifacts.Model()
-    model_blessing = standard_artifacts.ModelBlessing()
+  def setUp(self):
+    super(ComponentTest, self).setUp()
+    self._examples = channel_utils.as_channel([standard_artifacts.Examples()])
+    self._model = channel_utils.as_channel([standard_artifacts.Model()])
+    self._model_blessing = channel_utils.as_channel(
+        [standard_artifacts.ModelBlessing()])
+
+  def testConstructInferenceResult(self):
     bulk_inferrer = component.CloudAIBulkInferrerComponent(
-        examples=channel_utils.as_channel([examples]),
-        model=channel_utils.as_channel([model]),
-        model_blessing=channel_utils.as_channel([model_blessing]),
-        custom_config={})
+        examples=self._examples,
+        model=self._model,
+        model_blessing=self._model_blessing)
     self.assertEqual('InferenceResult',
                      bulk_inferrer.outputs['inference_result'].type_name)
+    self.assertNotIn('output_examples', bulk_inferrer.outputs.keys())
+
+  def testConstructOutputExample(self):
+    bulk_inferrer = component.CloudAIBulkInferrerComponent(
+        examples=self._examples,
+        model=self._model,
+        model_blessing=self._model_blessing,
+        output_example_spec=bulk_inferrer_pb2.OutputExampleSpec())
+    self.assertEqual('Examples',
+                     bulk_inferrer.outputs['output_examples'].type_name)
+    self.assertNotIn('inference_result', bulk_inferrer.outputs.keys())
+
+  def testConstructInferenceResultAndOutputExample(self):
+    with self.assertRaises(ValueError):
+      component.CloudAIBulkInferrerComponent(
+          examples=self._examples,
+          model=self._model,
+          model_blessing=self._model_blessing,
+          output_examples=channel_utils.as_channel(
+              [standard_artifacts.Examples()]))
+
+    with self.assertRaises(ValueError):
+      component.CloudAIBulkInferrerComponent(
+          examples=self._examples,
+          model=self._model,
+          model_blessing=self._model_blessing,
+          output_example_spec=bulk_inferrer_pb2.OutputExampleSpec(),
+          inference_result=channel_utils.as_channel(
+              [standard_artifacts.InferenceResult()]))
 
 
 if __name__ == '__main__':

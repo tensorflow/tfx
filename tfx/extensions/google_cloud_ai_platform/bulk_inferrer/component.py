@@ -37,6 +37,9 @@ class CloudAIBulkInferrerComponentSpec(types.ComponentSpec):
   PARAMETERS = {
       'data_spec':
           ExecutionParameter(type=bulk_inferrer_pb2.DataSpec, optional=True),
+      'output_example_spec':
+          ExecutionParameter(
+              type=bulk_inferrer_pb2.OutputExampleSpec, optional=True),
       'custom_config':
           ExecutionParameter(type=(str, Text)),
   }
@@ -51,7 +54,10 @@ class CloudAIBulkInferrerComponentSpec(types.ComponentSpec):
   }
   OUTPUTS = {
       'inference_result':
-          ChannelParameter(type=standard_artifacts.InferenceResult),
+          ChannelParameter(
+              type=standard_artifacts.InferenceResult, optional=True),
+      'output_examples':
+          ChannelParameter(type=standard_artifacts.Examples, optional=True),
   }
 
 
@@ -70,15 +76,19 @@ class CloudAIBulkInferrerComponent(base_component.BaseComponent):
   SPEC_CLASS = CloudAIBulkInferrerComponentSpec
   EXECUTOR_SPEC = executor_spec.ExecutorClassSpec(executor.Executor)
 
-  def __init__(self,
-               examples: types.Channel = None,
-               model: Optional[types.Channel] = None,
-               model_blessing: Optional[types.Channel] = None,
-               data_spec: Optional[Union[bulk_inferrer_pb2.DataSpec,
-                                         Dict[Text, Any]]] = None,
-               custom_config: Dict[Text, Any] = None,
-               inference_result: Optional[types.Channel] = None,
-               instance_name: Optional[Text] = None):
+  def __init__(
+      self,
+      examples: types.Channel = None,
+      model: Optional[types.Channel] = None,
+      model_blessing: Optional[types.Channel] = None,
+      data_spec: Optional[Union[bulk_inferrer_pb2.DataSpec, Dict[Text,
+                                                                 Any]]] = None,
+      output_example_spec: Optional[Union[bulk_inferrer_pb2.OutputExampleSpec,
+                                          Dict[Text, Any]]] = None,
+      custom_config: Dict[Text, Any] = None,
+      inference_result: Optional[types.Channel] = None,
+      output_examples: Optional[types.Channel] = None,
+      instance_name: Optional[Text] = None):
     """Construct an BulkInferrer component.
 
     Args:
@@ -92,26 +102,53 @@ class CloudAIBulkInferrerComponent(base_component.BaseComponent):
         selection. If any field is provided as a RuntimeParameter, data_spec
         should be constructed as a dict with the same field names as DataSpec
         proto message.
+      output_example_spec: bulk_inferrer_pb2.OutputExampleSpec instance, specify
+        if you want BulkInferrer to output examples instead of inference result.
+        If any field is provided as a RuntimeParameter, output_example_spec
+        should be constructed as a dict with the same field names as
+        OutputExampleSpec proto message.
       custom_config: A dict which contains the deployment job parameters to be
         passed to Google Cloud AI Platform.
         custom_config.ai_platform_serving_args need to contain the serving job
         parameters. For the full set of parameters, refer to
         https://cloud.google.com/ml-engine/reference/rest/v1/projects.models
       inference_result: Channel of type `standard_artifacts.InferenceResult`
-        to store the inference results.
+        to store the inference results, must not be specified when
+        output_example_spec is set.
+      output_examples: Channel of type `standard_artifacts.Examples`
+        to store the output examples, must not be specified when
+        output_example_spec is unset. Check output_example_spec for details.
       instance_name: Optional name assigned to this specific instance of
         BulkInferrer. Required only if multiple BulkInferrer components are
         declared in the same pipeline.
+
+    Raises:
+      ValueError: Must not specify inference_result or output_examples depends
+        on whether output_example_spec is set or not.
     """
-    inference_result = inference_result or types.Channel(
-        type=standard_artifacts.InferenceResult,
-        artifacts=[standard_artifacts.InferenceResult()])
+    if output_example_spec:
+      if inference_result:
+        raise ValueError(
+            'Must not specify inference_result when output_example_spec is set.'
+        )
+      output_examples = output_examples or types.Channel(
+          type=standard_artifacts.Examples)
+    else:
+      if output_examples:
+        raise ValueError(
+            'Must not specify output_examples when output_example_spec is unset.'
+        )
+      inference_result = inference_result or types.Channel(
+          type=standard_artifacts.InferenceResult)
+
     spec = CloudAIBulkInferrerComponentSpec(
         examples=examples,
         model=model,
         model_blessing=model_blessing,
         data_spec=data_spec or bulk_inferrer_pb2.DataSpec(),
+        output_example_spec=output_example_spec,
         custom_config=json_utils.dumps(custom_config),
-        inference_result=inference_result)
+        inference_result=inference_result,
+        output_examples=output_examples)
     super(CloudAIBulkInferrerComponent, self).__init__(
         spec=spec, instance_name=instance_name)
