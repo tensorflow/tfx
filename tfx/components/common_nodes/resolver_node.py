@@ -33,9 +33,6 @@ RESOLVER_CLASS = 'resolver_class'
 # Constant to access resolver config from resolver exec_properties.
 RESOLVER_CONFIGS = 'source_uri'
 
-RESOLVER_CLASS_LIST = 'resolver_class_list'
-RESOLVER_CONFIG_LIST = 'resolver_config_list'
-
 
 class ResolverDriver(base_driver.BaseDriver):
   """Driver for Resolver.

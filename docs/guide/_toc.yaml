@@ -21,8 +21,6 @@ toc:
   path: /tfx/guide/understanding_tfx_pipelines
 - title: "Building a TFX pipeline"
   path: /tfx/guide/build_tfx_pipeline
-- title: "Local Pipelines"
-  path: /tfx/guide/build_local_pipeline
 
 - heading: "TFX Standard Components"
   style: divider

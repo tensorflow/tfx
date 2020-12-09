@@ -13,30 +13,43 @@
 # limitations under the License.
 """In process inplementation of Resolvers."""
 
-from typing import Mapping, Sequence, Dict, List, Optional
+from typing import Dict, List, Optional
 
 from tfx import types
+from tfx.dsl.experimental import latest_artifacts_resolver
+from tfx.dsl.experimental import latest_blessed_model_resolver
 from tfx.orchestration import metadata
-from tfx.orchestration.portable.resolver import factory as resolver_factory
 from tfx.proto.orchestration import pipeline_pb2
 
 
-class ResolverStepProcessor:
-  """ResolverStepProcessor for processing single ResolverStep.
+class ResolverProcessor(object):
+  """PythonResolverOperator resolves artifacts in process."""
 
-  Note that input and the ouptut type of __call__ is identical, thus resolver
-  steps can be chained where the output of the former step would be fed into
-  the next step. If the output is None, chained processing will be halted and
-  the output of all steps would be considered None immediately.
-  """
+  # TODO(muyangy): This map is subject to change if the structure of
+  # ResolverConfig changes.
+  _RESOLVER_POLICY_TO_RESOLVER_CLASS = {
+      pipeline_pb2.ResolverConfig.RESOLVER_POLICY_UNSPECIFIED:
+          None,
+      pipeline_pb2.ResolverConfig.LATEST_ARTIFACT:
+          latest_artifacts_resolver.LatestArtifactsResolver,
+      pipeline_pb2.ResolverConfig.LATEST_BLESSED_MODEL:
+          latest_blessed_model_resolver.LatestBlessedModelResolver,
+  }
 
-  def __init__(self, resolver_step: pipeline_pb2.ResolverConfig.ResolverStep):
-    self._resolver = resolver_factory.make_resolver_instance(resolver_step)
-    self._input_keys = set(resolver_step.input_keys)
+  def __init__(self, node_inputs: pipeline_pb2.NodeInputs):
+    resolver_policy = node_inputs.resolver_config.resolver_policy
+    if resolver_policy not in self._RESOLVER_POLICY_TO_RESOLVER_CLASS:
+      raise ValueError(
+          "Resolver_policy {} is not supported.".format(resolver_policy))
+    resolver_class = self._RESOLVER_POLICY_TO_RESOLVER_CLASS.get(
+        resolver_policy)
+    self._resolver = None
+    if resolver_class:
+      self._resolver = resolver_class()
 
-  def __call__(
+  def ResolveInputs(
       self, metadata_handler: metadata.Metadata,
-      input_dict: Mapping[str, Sequence[types.Artifact]]
+      input_dict: Dict[str, List[types.Artifact]]
   ) -> Optional[Dict[str, List[types.Artifact]]]:
     """Resolves artifacts in input_dict by optionally querying MLMD.
 
@@ -47,26 +60,5 @@ class ResolverStepProcessor:
     Returns:
       The resolved input_dict.
     """
-    filtered_keys = self._input_keys or set(input_dict.keys())
-    filtered_inputs = {
-        key: list(value)
-        for key, value in input_dict.items()
-        if key in filtered_keys
-    }
-    bypassed_inputs = {
-        key: list(value)
-        for key, value in input_dict.items()
-        if key not in filtered_keys
-    }
-    result = self._resolver.resolve_artifacts(metadata_handler, filtered_inputs)
-    if result is not None:
-      result.update(bypassed_inputs)
-    return result
-
-
-def make_resolver_processors(
-    resolver_config: pipeline_pb2.ResolverConfig
-) -> List[ResolverStepProcessor]:
-  """Factory function for ResolverProcessors from ResolverConfig."""
-  return [ResolverStepProcessor(step)
-          for step in resolver_config.resolver_steps]
+    return (self._resolver.resolve_artifacts(metadata_handler, input_dict)
+            if self._resolver else input_dict)
