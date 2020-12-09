@@ -16,10 +16,8 @@
 import datetime
 import json
 import os
-import re
 from typing import Any, Dict, List, Optional, Text
 
-from absl import logging
 from tfx import version
 from tfx.dsl.io import fileio
 from tfx.orchestration import pipeline as tfx_pipeline
@@ -28,17 +26,10 @@ from tfx.orchestration.config import pipeline_config
 from tfx.orchestration.kubeflow.v2 import pipeline_builder
 from tfx.orchestration.kubeflow.v2.proto import pipeline_pb2
 from tfx.utils import telemetry_utils
+from tfx.utils import version_utils
 
 from google.protobuf import json_format
 from tensorflow.python.util import deprecation  # pylint: disable=g-direct-tensorflow-import
-
-# Version string match patterns. It captures 3 patterns of versions:
-# 1. Regular release. For example: 0.24.0;
-# 2. RC release. For example: 0.24.0-rc1, which maps to image tag: 0.24.0rc1
-# 3. Nightly release. For example, 0.24.0.dev20200910;
-#    which maps to an identical image tag: 0.24.0.dev20200910
-_REGULAR_NIGHTLY_VERSION_PATTERN = re.compile(r'\d+\.\d+\.\d+(\.dev\d{8}){0,1}')
-_RC_VERSION_PATTERN = re.compile(r'\d+\.\d+\.\d+\-rc\d+')
 
 _KUBEFLOW_TFX_CMD = (
     'python', '-m',
@@ -48,32 +39,9 @@ _KUBEFLOW_TFX_CMD = (
 _SCHEMA_VERSION = 'v2alpha1'
 
 
-def get_image_version(version_str: Text) -> Text:
-  """Gets the version for image tag based on SDK version.
-
-  Args:
-    version_str: The SDK version.
-
-  Returns:
-    Version string representing the image version should be used. For offcially
-    released version of TFX SDK, we'll align the SDK and the image versions; For
-    'dev' or customized versions we'll use the latest image version.
-  """
-  if _REGULAR_NIGHTLY_VERSION_PATTERN.fullmatch(version_str):
-    # This SDK is a released version.
-    return version_str
-  elif _RC_VERSION_PATTERN.fullmatch(version_str):
-    # For RC versions the hiphen needs to be removed.
-    return version_str.replace('-', '')
-
-  logging.info('custom/dev SDK version detected: %s, using latest image '
-               'version', version_str)
-  return 'latest'
-
-
 # Default TFX container image/commands to use in KubeflowV2DagRunner.
 _KUBEFLOW_TFX_IMAGE = 'gcr.io/tfx-oss-public/tfx:{}'.format(
-    get_image_version(version.__version__))
+    version_utils.get_image_version())
 
 
 def _get_current_time():

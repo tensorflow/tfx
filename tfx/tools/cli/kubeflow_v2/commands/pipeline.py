@@ -20,16 +20,16 @@ from __future__ import print_function
 from typing import Text
 
 import click
-from tfx import version
-from tfx.orchestration.kubeflow.v2 import kubeflow_v2_dag_runner
 from tfx.tools.cli import labels
 from tfx.tools.cli.cli_context import Context
 from tfx.tools.cli.cli_context import pass_context
 from tfx.tools.cli.kubeflow_v2 import labels as kubeflow_labels
 from tfx.tools.cli.kubeflow_v2.handler import kubeflow_v2_handler
+from tfx.utils import version_utils
+
 
 _DEFAULT_TFX_IMAGE = 'gcr.io/tfx-oss-public/tfx:{}'.format(
-    kubeflow_v2_dag_runner.get_image_version(version.__version__))
+    version_utils.get_image_version())
 
 
 @click.group('pipeline')

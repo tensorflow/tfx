@@ -37,16 +37,6 @@ _TEST_FILE_NAME = 'test_pipeline_1.json'
 _ILLEGALLY_NAMED_PIPELINE = tfx_pipeline.Pipeline(
     pipeline_name='ThisIsIllegal', pipeline_root='/some/path', components=[])
 
-# Sample versions used for testing SDK to docker version transformation.
-_SAMPLE_RELEASED_VERSION = '0.25.0'
-_SAMPLE_RC_VERSION = '0.25.0-rc1'
-_SAMPLE_NIGHTLY_VERSION = '0.25.0.dev20201101'
-_SAMPLE_DEV_VERSION = '0.26.0.dev'
-_EXPECTED_RELEASED_DOCKER_VERSION = '0.25.0'
-_EXPECTED_RC_DOCKER_VERSION = '0.25.0rc1'
-_EXPECTED_NIGHTLY_DOCKER_VERSION = '0.25.0.dev20201101'
-_EXPECTED_DEV_DOCKER_VERSION = 'latest'
-
 
 class KubeflowV2DagRunnerTest(tf.test.TestCase):
 
@@ -77,20 +67,6 @@ class KubeflowV2DagRunnerTest(tf.test.TestCase):
       actual_json = json.load(pipeline_json_file)
 
     self.assertDictEqual(actual_json, expected_json)
-
-  def testImageVersionFormatting(self):
-    self.assertEqual(
-        kubeflow_v2_dag_runner.get_image_version(_SAMPLE_RELEASED_VERSION),
-        _EXPECTED_RELEASED_DOCKER_VERSION)
-    self.assertEqual(
-        kubeflow_v2_dag_runner.get_image_version(_SAMPLE_RC_VERSION),
-        _EXPECTED_RC_DOCKER_VERSION)
-    self.assertEqual(
-        kubeflow_v2_dag_runner.get_image_version(_SAMPLE_NIGHTLY_VERSION),
-        _EXPECTED_NIGHTLY_DOCKER_VERSION)
-    self.assertEqual(
-        kubeflow_v2_dag_runner.get_image_version(_SAMPLE_DEV_VERSION),
-        _EXPECTED_DEV_DOCKER_VERSION)
 
   @mock.patch('sys.version_info')
   @mock.patch(
