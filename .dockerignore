@@ -28,6 +28,13 @@ share/python-wheels/
 *.egg
 MANIFEST
 
+# Pip package build symlinks for "tfx" / "ml-pipelines-sdk"
+package_build/*/README*.md
+package_build/*/build
+package_build/*/dist
+package_build/*/setup.py
+package_build/*/tfx
+
 # PyInstaller
 #  Usually these files are written by a python script from a template
 #  before PyInstaller builds the exe, so as to inject date/other infos into it.
