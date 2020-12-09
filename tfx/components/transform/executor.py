@@ -50,10 +50,10 @@ from tfx.types import artifact_utils
 from tfx.utils import import_utils
 from tfx.utils import io_utils
 from tfx.utils import json_utils
+from tfx.utils import proto_utils
 import tfx_bsl
 from tfx_bsl.tfxio import tfxio as tfxio_module
 
-from google.protobuf import json_format
 from tensorflow_metadata.proto.v0 import schema_pb2
 from tensorflow_metadata.proto.v0 import statistics_pb2
 
@@ -324,7 +324,7 @@ class Executor(base_executor.BaseExecutor):
 
     splits_config = transform_pb2.SplitsConfig()
     if exec_properties.get('splits_config', None):
-      json_format.Parse(exec_properties['splits_config'], splits_config)
+      proto_utils.json_to_proto(exec_properties['splits_config'], splits_config)
       if not splits_config.analyze:
         raise ValueError('analyze cannot be empty when splits_config is set.')
     else:

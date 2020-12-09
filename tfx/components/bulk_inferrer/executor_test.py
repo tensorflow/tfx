@@ -22,8 +22,8 @@ from tfx.proto import bulk_inferrer_pb2
 from tfx.types import artifact_utils
 from tfx.types import standard_artifacts
 from tfx.utils import io_utils
+from tfx.utils import proto_utils
 
-from google.protobuf import json_format
 from google.protobuf import text_format
 from tensorflow_serving.apis import prediction_log_pb2
 
@@ -84,15 +84,9 @@ class ExecutorTest(tf.test.TestCase):
 
     # Create exe properties.
     self._exec_properties = {
-        'data_spec':
-            json_format.MessageToJson(
-                bulk_inferrer_pb2.DataSpec(), preserving_proto_field_name=True),
-        'model_spec':
-            json_format.MessageToJson(
-                bulk_inferrer_pb2.ModelSpec(),
-                preserving_proto_field_name=True),
-        'component_id':
-            self.component_id,
+        'data_spec': proto_utils.proto_to_json(bulk_inferrer_pb2.DataSpec()),
+        'model_spec': proto_utils.proto_to_json(bulk_inferrer_pb2.ModelSpec()),
+        'component_id': self.component_id,
     }
 
     # Create context
@@ -143,7 +137,7 @@ class ExecutorTest(tf.test.TestCase):
         2)
 
   def testDoWithOutputExamplesAllSplits(self):
-    self._exec_properties['output_example_spec'] = json_format.MessageToJson(
+    self._exec_properties['output_example_spec'] = proto_utils.proto_to_json(
         text_format.Parse(
             """
                 output_columns_spec {
@@ -152,8 +146,7 @@ class ExecutorTest(tf.test.TestCase):
                     score_column: 'classify_score'
                   }
                 }
-            """, bulk_inferrer_pb2.OutputExampleSpec()),
-        preserving_proto_field_name=True)
+            """, bulk_inferrer_pb2.OutputExampleSpec()))
 
     # Run executor.
     bulk_inferrer = executor.Executor(self._context)
@@ -166,13 +159,12 @@ class ExecutorTest(tf.test.TestCase):
     self._verify_example_split('unlabelled2')
 
   def testDoWithOutputExamplesSpecifiedSplits(self):
-    self._exec_properties['data_spec'] = json_format.MessageToJson(
+    self._exec_properties['data_spec'] = proto_utils.proto_to_json(
         text_format.Parse(
             """
                 example_splits: 'unlabelled'
-            """, bulk_inferrer_pb2.DataSpec()),
-        preserving_proto_field_name=True)
-    self._exec_properties['output_example_spec'] = json_format.MessageToJson(
+            """, bulk_inferrer_pb2.DataSpec()))
+    self._exec_properties['output_example_spec'] = proto_utils.proto_to_json(
         text_format.Parse(
             """
                 output_columns_spec {
@@ -181,8 +173,7 @@ class ExecutorTest(tf.test.TestCase):
                     score_column: 'classify_score'
                   }
                 }
-            """, bulk_inferrer_pb2.OutputExampleSpec()),
-        preserving_proto_field_name=True)
+            """, bulk_inferrer_pb2.OutputExampleSpec()))
 
     # Run executor.
     bulk_inferrer = executor.Executor(self._context)

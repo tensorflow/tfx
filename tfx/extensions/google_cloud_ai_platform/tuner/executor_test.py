@@ -25,7 +25,7 @@ from tfx.extensions.google_cloud_ai_platform.trainer import executor as ai_platf
 from tfx.extensions.google_cloud_ai_platform.tuner import executor as ai_platform_tuner_executor
 from tfx.proto import tuner_pb2
 from tfx.utils import json_utils
-from google.protobuf import json_format
+from tfx.utils import proto_utils
 
 
 class ExecutorTest(tf.test.TestCase):
@@ -78,9 +78,8 @@ class ExecutorTest(tf.test.TestCase):
 
   def testDoWithTuneArgs(self):
     executor = ai_platform_tuner_executor.Executor()
-    self._exec_properties['tune_args'] = json_format.MessageToJson(
-        message=tuner_pb2.TuneArgs(num_parallel_trials=3),
-        preserving_proto_field_name=True)
+    self._exec_properties['tune_args'] = proto_utils.proto_to_json(
+        tuner_pb2.TuneArgs(num_parallel_trials=3))
 
     executor.Do(self._inputs, self._outputs,
                 self._serialize_custom_config_under_test())
@@ -98,9 +97,8 @@ class ExecutorTest(tf.test.TestCase):
 
   def testDoWithTuneArgsAndTrainingInputOverride(self):
     executor = ai_platform_tuner_executor.Executor()
-    self._exec_properties['tune_args'] = json_format.MessageToJson(
-        message=tuner_pb2.TuneArgs(num_parallel_trials=6),
-        preserving_proto_field_name=True)
+    self._exec_properties['tune_args'] = proto_utils.proto_to_json(
+        tuner_pb2.TuneArgs(num_parallel_trials=6))
 
     self._exec_properties['custom_config'][
         ai_platform_trainer_executor.TRAINING_ARGS_KEY].update({

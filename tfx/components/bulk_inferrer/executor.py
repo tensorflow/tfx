@@ -28,9 +28,9 @@ from tfx.proto import bulk_inferrer_pb2
 from tfx.types import artifact_utils
 from tfx.utils import io_utils
 from tfx.utils import path_utils
+from tfx.utils import proto_utils
 from tfx_bsl.public.beam import run_inference
 from tfx_bsl.public.proto import model_spec_pb2
-from google.protobuf import json_format
 from tensorflow_serving.apis import prediction_log_pb2
 
 
@@ -130,12 +130,12 @@ class Executor(base_executor.BaseExecutor):
     logging.info('Use exported model from %s.', model_path)
 
     data_spec = bulk_inferrer_pb2.DataSpec()
-    json_format.Parse(exec_properties['data_spec'], data_spec)
+    proto_utils.json_to_proto(exec_properties['data_spec'], data_spec)
 
     output_example_spec = bulk_inferrer_pb2.OutputExampleSpec()
     if exec_properties.get('output_example_spec'):
-      json_format.Parse(exec_properties['output_example_spec'],
-                        output_example_spec)
+      proto_utils.json_to_proto(exec_properties['output_example_spec'],
+                                output_example_spec)
 
     self._run_model_inference(
         data_spec, output_example_spec, input_dict['examples'], output_examples,
@@ -145,7 +145,7 @@ class Executor(base_executor.BaseExecutor):
       self, model_path: Text,
       exec_properties: Dict[Text, Any]) -> model_spec_pb2.InferenceSpecType:
     model_spec = bulk_inferrer_pb2.ModelSpec()
-    json_format.Parse(exec_properties['model_spec'], model_spec)
+    proto_utils.json_to_proto(exec_properties['model_spec'], model_spec)
     saved_model_spec = model_spec_pb2.SavedModelSpec(
         model_path=model_path,
         tag=model_spec.tag,

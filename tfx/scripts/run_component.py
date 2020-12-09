@@ -29,8 +29,8 @@ from typing import List, Text
 from tfx.dsl.components.base import base_executor
 from tfx.types import channel_utils
 from tfx.utils import import_utils
+from tfx.utils import proto_utils
 
-from google.protobuf import json_format
 from google.protobuf import message
 
 
@@ -86,7 +86,7 @@ def run_component(
     if (isinstance(param_type, type) and
         issubclass(param_type, message.Message)):
       argument_value_obj = param_type()
-      json_format.Parse(argument_value, argument_value_obj)
+      proto_utils.json_to_proto(argument_value, argument_value_obj)
     else:
       argument_value_obj = argument_value
     component_arguments[name] = argument_value_obj

@@ -27,9 +27,9 @@ from tfx.dsl.components.base import executor_spec
 from tfx.proto import example_gen_pb2
 from tfx.proto import range_config_pb2
 from tfx.types import standard_artifacts
+from tfx.utils import proto_utils
 
 from google.protobuf import any_pb2
-from google.protobuf import json_format
 
 
 class TestExampleGenExecutor(base_example_gen_executor.BaseExampleGenExecutor):
@@ -115,8 +115,8 @@ class ComponentTest(tf.test.TestCase):
                      example_gen.outputs['examples'].type_name)
 
     stored_output_config = example_gen_pb2.Output()
-    json_format.Parse(example_gen.exec_properties['output_config'],
-                      stored_output_config)
+    proto_utils.json_to_proto(example_gen.exec_properties['output_config'],
+                              stored_output_config)
     self.assertEqual(output_config, stored_output_config)
 
   def testConstructWithInputConfig(self):
@@ -131,8 +131,8 @@ class ComponentTest(tf.test.TestCase):
                      example_gen.outputs['examples'].type_name)
 
     stored_input_config = example_gen_pb2.Input()
-    json_format.Parse(example_gen.exec_properties['input_config'],
-                      stored_input_config)
+    proto_utils.json_to_proto(example_gen.exec_properties['input_config'],
+                              stored_input_config)
     self.assertEqual(input_config, stored_input_config)
 
   def testConstructWithCustomConfig(self):
@@ -144,8 +144,8 @@ class ComponentTest(tf.test.TestCase):
             TestExampleGenExecutor))
 
     stored_custom_config = example_gen_pb2.CustomConfig()
-    json_format.Parse(example_gen.exec_properties['custom_config'],
-                      stored_custom_config)
+    proto_utils.json_to_proto(example_gen.exec_properties['custom_config'],
+                              stored_custom_config)
     self.assertEqual(custom_config, stored_custom_config)
 
   def testConstructWithStaticRangeConfig(self):
@@ -158,8 +158,8 @@ class ComponentTest(tf.test.TestCase):
         custom_executor_spec=executor_spec.ExecutorClassSpec(
             TestExampleGenExecutor))
     stored_range_config = range_config_pb2.RangeConfig()
-    json_format.Parse(example_gen.exec_properties['range_config'],
-                      stored_range_config)
+    proto_utils.json_to_proto(example_gen.exec_properties['range_config'],
+                              stored_range_config)
     self.assertEqual(range_config, stored_range_config)
 
 

@@ -33,10 +33,10 @@ from tfx.proto import bulk_inferrer_pb2
 from tfx.types import artifact_utils
 from tfx.utils import json_utils
 from tfx.utils import path_utils
+from tfx.utils import proto_utils
 from tfx.utils import telemetry_utils
 from tfx_bsl.public.proto import model_spec_pb2
 
-from google.protobuf import json_format
 from tensorflow.python.saved_model import loader_impl  # pylint:disable=g-direct-tensorflow-import
 # TODO(b/140306674): Stop using the internal TF API.
 
@@ -141,12 +141,11 @@ class Executor(bulk_inferrer_executor.Executor):
     inference_spec = self._get_inference_spec(model_path, model_version,
                                               ai_platform_serving_args)
     data_spec = bulk_inferrer_pb2.DataSpec()
-    json_format.Parse(exec_properties['data_spec'], data_spec)
+    proto_utils.json_to_proto(exec_properties['data_spec'], data_spec)
     output_example_spec = bulk_inferrer_pb2.OutputExampleSpec()
     if exec_properties.get('output_example_spec'):
-      json_format.Parse(exec_properties['output_example_spec'],
-                        output_example_spec)
-
+      proto_utils.json_to_proto(exec_properties['output_example_spec'],
+                                output_example_spec)
     api = discovery.build(service_name, api_version)
     new_model_created = False
     try:

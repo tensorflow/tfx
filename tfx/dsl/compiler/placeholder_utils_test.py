@@ -25,6 +25,7 @@ from tfx.proto.orchestration import pipeline_pb2
 from tfx.proto.orchestration import placeholder_pb2
 from tfx.types import artifact_utils
 from tfx.types import standard_artifacts
+from tfx.utils import proto_utils
 
 from google.protobuf import descriptor_pb2
 from google.protobuf import descriptor_pool
@@ -74,7 +75,7 @@ _WANT_EXEC_INVOCATION = """
 execution_properties {
   key: "proto_property"
   value {
-    string_value: "{\\n\\"tensorflow_serving\\": {\\n\\"tags\\": [\\n\\"latest\\",\\n\\"1.15.0-gpu\\"\\n]\\n}\\n}"
+    string_value: "{\\n  \\"tensorflow_serving\\": {\\n    \\"tags\\": [\\n      \\"latest\\",\\n      \\"1.15.0-gpu\\"\\n    ]\\n  }\\n}"
   }
 }
 output_metadata_uri: "test_executor_output_uri"
@@ -172,11 +173,7 @@ class PlaceholderUtilsTest(tf.test.TestCase):
             output_dict={"blessing": [standard_artifacts.ModelBlessing()]},
             exec_properties={
                 "proto_property":
-                    json_format.MessageToJson(
-                        message=self._serving_spec,
-                        sort_keys=True,
-                        preserving_proto_field_name=True,
-                        indent=0)
+                    proto_utils.proto_to_json(self._serving_spec)
             },
             execution_output_uri="test_executor_output_uri",
             stateful_working_dir="test_stateful_working_dir",

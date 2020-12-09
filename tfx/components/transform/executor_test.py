@@ -35,7 +35,7 @@ from tfx.proto import transform_pb2
 from tfx.types import artifact_utils
 from tfx.types import standard_artifacts
 from tfx.utils import io_utils
-from google.protobuf import json_format
+from tfx.utils import proto_utils
 
 
 def _get_dataset_size(files):
@@ -317,28 +317,25 @@ class ExecutorTest(tft_unit.TransformTestCase):
     self._verify_transform_outputs(multiple_example_inputs=True)
 
   def test_do_with_custom_splits(self):
-    self._exec_properties['splits_config'] = json_format.MessageToJson(
+    self._exec_properties['splits_config'] = proto_utils.proto_to_json(
         transform_pb2.SplitsConfig(
-            analyze=['train'], transform=['train', 'eval']),
-        preserving_proto_field_name=True)
+            analyze=['train'], transform=['train', 'eval']))
     self._exec_properties['module_file'] = self._module_file
     self._transform_executor.Do(self._input_dict, self._output_dict,
                                 self._exec_properties)
     self._verify_transform_outputs()
 
   def test_do_with_empty_analyze_splits(self):
-    self._exec_properties['splits_config'] = json_format.MessageToJson(
-        transform_pb2.SplitsConfig(analyze=[], transform=['train', 'eval']),
-        preserving_proto_field_name=True)
+    self._exec_properties['splits_config'] = proto_utils.proto_to_json(
+        transform_pb2.SplitsConfig(analyze=[], transform=['train', 'eval']))
     self._exec_properties['module_file'] = self._module_file
     with self.assertRaises(ValueError):
       self._transform_executor.Do(self._input_dict, self._output_dict,
                                   self._exec_properties)
 
   def test_do_with_empty_transform_splits(self):
-    self._exec_properties['splits_config'] = json_format.MessageToJson(
-        transform_pb2.SplitsConfig(analyze=['train'], transform=[]),
-        preserving_proto_field_name=True)
+    self._exec_properties['splits_config'] = proto_utils.proto_to_json(
+        transform_pb2.SplitsConfig(analyze=['train'], transform=[]))
     self._exec_properties['module_file'] = self._module_file
     self._output_dict[executor.TRANSFORMED_EXAMPLES_KEY] = (
         self._transformed_example_artifacts[:1])

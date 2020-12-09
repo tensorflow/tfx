@@ -20,8 +20,7 @@ from tfx.examples.custom_components.presto_example_gen.presto_component import c
 from tfx.examples.custom_components.presto_example_gen.proto import presto_config_pb2
 from tfx.proto import example_gen_pb2
 from tfx.types import standard_artifacts
-
-from google.protobuf import json_format
+from tfx.utils import proto_utils
 
 
 class ComponentTest(tf.test.TestCase):
@@ -33,7 +32,7 @@ class ComponentTest(tf.test.TestCase):
 
   def _extract_conn_config(self, custom_config):
     unpacked_custom_config = example_gen_pb2.CustomConfig()
-    json_format.Parse(custom_config, unpacked_custom_config)
+    proto_utils.json_to_proto(custom_config, unpacked_custom_config)
 
     conn_config = presto_config_pb2.PrestoConnConfig()
     unpacked_custom_config.custom_config.Unpack(conn_config)

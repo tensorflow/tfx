@@ -31,8 +31,8 @@ from tfx.dsl.components.base import base_executor
 from tfx.proto import tuner_pb2
 from tfx.types import artifact_utils
 from tfx.utils import io_utils
+from tfx.utils import proto_utils
 
-from google.protobuf import json_format
 
 # Key for best hyperparameters in executor output_dict.
 _BEST_HYPERPARAMETERS_KEY = 'best_hyperparameters'
@@ -57,7 +57,7 @@ def get_tune_args(
     return None
 
   result = tuner_pb2.TuneArgs()
-  json_format.Parse(tune_args, result)
+  proto_utils.json_to_proto(tune_args, result)
 
   return result
 

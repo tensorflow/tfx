@@ -38,9 +38,9 @@ from tfx.types import artifact_utils
 from tfx.utils import io_utils
 from tfx.utils import json_utils
 from tfx.utils import path_utils
+from tfx.utils import proto_utils
 from tfx_bsl.tfxio import tensor_adapter
 
-from google.protobuf import json_format
 
 _TELEMETRY_DESCRIPTORS = ['Evaluator']
 
@@ -131,7 +131,7 @@ class Executor(base_executor.BaseExecutor):
       slice_spec = None
       has_baseline = bool(input_dict.get(constants.BASELINE_MODEL_KEY))
       eval_config = tfma.EvalConfig()
-      json_format.Parse(exec_properties['eval_config'], eval_config)
+      proto_utils.json_to_proto(exec_properties['eval_config'], eval_config)
       eval_config = tfma.update_eval_config_with_defaults(
           eval_config,
           maybe_add_baseline=has_baseline,
@@ -170,8 +170,8 @@ class Executor(base_executor.BaseExecutor):
               exec_properties['feature_slicing_spec']
              ), 'both eval_config and feature_slicing_spec are unset.'
       feature_slicing_spec = evaluator_pb2.FeatureSlicingSpec()
-      json_format.Parse(exec_properties['feature_slicing_spec'],
-                        feature_slicing_spec)
+      proto_utils.json_to_proto(exec_properties['feature_slicing_spec'],
+                                feature_slicing_spec)
       slice_spec = self._get_slice_spec_from_feature_slicing_spec(
           feature_slicing_spec)
       model_uri = artifact_utils.get_single_uri(input_dict[constants.MODEL_KEY])

@@ -29,8 +29,7 @@ from tfx.dsl.io import fileio
 from tfx.proto import example_gen_pb2
 from tfx.types import artifact_utils
 from tfx.types import standard_artifacts
-
-from google.protobuf import json_format
+from tfx.utils import proto_utils
 
 
 class ExecutorTest(tf.test.TestCase):
@@ -72,22 +71,20 @@ class ExecutorTest(tf.test.TestCase):
         utils.INPUT_BASE_KEY:
             self._input_data_dir,
         utils.INPUT_CONFIG_KEY:
-            json_format.MessageToJson(
+            proto_utils.proto_to_json(
                 example_gen_pb2.Input(splits=[
                     example_gen_pb2.Input.Split(
                         name='parquet', pattern='parquet/*'),
-                ]),
-                preserving_proto_field_name=True),
+                ])),
         utils.OUTPUT_CONFIG_KEY:
-            json_format.MessageToJson(
+            proto_utils.proto_to_json(
                 example_gen_pb2.Output(
                     split_config=example_gen_pb2.SplitConfig(splits=[
                         example_gen_pb2.SplitConfig.Split(
                             name='train', hash_buckets=2),
                         example_gen_pb2.SplitConfig.Split(
                             name='eval', hash_buckets=1)
-                    ])),
-                preserving_proto_field_name=True)
+                    ])))
     }
 
     # Run executor.

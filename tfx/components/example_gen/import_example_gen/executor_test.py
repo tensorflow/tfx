@@ -29,7 +29,7 @@ from tfx.dsl.io import fileio
 from tfx.proto import example_gen_pb2
 from tfx.types import artifact_utils
 from tfx.types import standard_artifacts
-from google.protobuf import json_format
+from tfx.utils import proto_utils
 
 
 class ExecutorTest(tf.test.TestCase):
@@ -41,18 +41,16 @@ class ExecutorTest(tf.test.TestCase):
         'external')
 
     # Create values in exec_properties
-    self._input_config = json_format.MessageToJson(
+    self._input_config = proto_utils.proto_to_json(
         example_gen_pb2.Input(splits=[
             example_gen_pb2.Input.Split(name='tfrecord', pattern='tfrecord/*'),
-        ]),
-        preserving_proto_field_name=True)
-    self._output_config = json_format.MessageToJson(
+        ]))
+    self._output_config = proto_utils.proto_to_json(
         example_gen_pb2.Output(
             split_config=example_gen_pb2.SplitConfig(splits=[
                 example_gen_pb2.SplitConfig.Split(name='train', hash_buckets=2),
                 example_gen_pb2.SplitConfig.Split(name='eval', hash_buckets=1)
-            ])),
-        preserving_proto_field_name=True)
+            ])))
 
   def testImportExample(self):
     with beam.Pipeline() as pipeline:
@@ -130,12 +128,11 @@ class ExecutorTest(tf.test.TestCase):
             utils.PAYLOAD_FORMAT_PROPERTY_NAME))
 
   def testDoWithSequenceExamples(self):
-    self._input_config = json_format.MessageToJson(
+    self._input_config = proto_utils.proto_to_json(
         example_gen_pb2.Input(splits=[
             example_gen_pb2.Input.Split(
                 name='tfrecord_sequence', pattern='tfrecord_sequence/*'),
-        ]),
-        preserving_proto_field_name=True)
+        ]))
 
     self._testDo(example_gen_pb2.PayloadFormat.FORMAT_TF_SEQUENCE_EXAMPLE)
     self.assertEqual(

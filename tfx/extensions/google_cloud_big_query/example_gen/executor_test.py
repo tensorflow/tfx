@@ -23,6 +23,7 @@ import random
 
 import apache_beam as beam
 from apache_beam.testing import util
+from google.cloud import bigquery
 import mock
 import tensorflow as tf
 from tfx.dsl.components.base import base_executor
@@ -31,9 +32,7 @@ from tfx.extensions.google_cloud_big_query.example_gen import executor
 from tfx.proto import example_gen_pb2
 from tfx.types import artifact_utils
 from tfx.types import standard_artifacts
-
-from google.cloud import bigquery
-from google.protobuf import json_format
+from tfx.utils import proto_utils
 
 
 @beam.ptransform_fn
@@ -135,22 +134,20 @@ class ExecutorTest(tf.test.TestCase):
     # Create exe properties.
     exec_properties = {
         'input_config':
-            json_format.MessageToJson(
+            proto_utils.proto_to_json(
                 example_gen_pb2.Input(splits=[
                     example_gen_pb2.Input.Split(
                         name='bq', pattern='SELECT i, b, f, s FROM `fake`'),
-                ]),
-                preserving_proto_field_name=True),
+                ])),
         'output_config':
-            json_format.MessageToJson(
+            proto_utils.proto_to_json(
                 example_gen_pb2.Output(
                     split_config=example_gen_pb2.SplitConfig(splits=[
                         example_gen_pb2.SplitConfig.Split(
                             name='train', hash_buckets=2),
                         example_gen_pb2.SplitConfig.Split(
                             name='eval', hash_buckets=1)
-                    ])),
-                preserving_proto_field_name=True)
+                    ])))
     }
 
     # Run executor.

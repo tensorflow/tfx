@@ -33,6 +33,7 @@ from tfx.proto import infra_validator_pb2
 from tfx.types import artifact_utils
 from tfx.types import standard_artifacts
 from tfx.utils import path_utils
+from tfx.utils import proto_utils
 
 from google.protobuf import json_format
 
@@ -116,9 +117,9 @@ class ExecutorTest(tf.test.TestCase):
         'num_examples': 1
     })
     self._exec_properties = {
-        'serving_spec': json_format.MessageToJson(self._serving_spec),
-        'validation_spec': json_format.MessageToJson(self._validation_spec),
-        'request_spec': json_format.MessageToJson(self._request_spec),
+        'serving_spec': proto_utils.proto_to_json(self._serving_spec),
+        'validation_spec': proto_utils.proto_to_json(self._validation_spec),
+        'request_spec': proto_utils.proto_to_json(self._request_spec),
     }
 
   def testDo_BlessedIfNoError(self):

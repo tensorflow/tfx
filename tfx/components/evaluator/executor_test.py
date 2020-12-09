@@ -30,29 +30,27 @@ from tfx.proto import evaluator_pb2
 from tfx.types import artifact_utils
 from tfx.types import standard_artifacts
 from tfx.utils import json_utils
-from google.protobuf import json_format
+from tfx.utils import proto_utils
 
 
 class ExecutorTest(tf.test.TestCase, parameterized.TestCase):
 
   @parameterized.named_parameters(('evaluation_w_eval_config', {
       'eval_config':
-          json_format.MessageToJson(
+          proto_utils.proto_to_json(
               tfma.EvalConfig(slicing_specs=[
                   tfma.SlicingSpec(feature_keys=['trip_start_hour']),
                   tfma.SlicingSpec(
                       feature_keys=['trip_start_day', 'trip_miles']),
-              ]),
-              preserving_proto_field_name=True)
+              ]))
   }), ('evaluation_w_module_file', {
       'eval_config':
-          json_format.MessageToJson(
+          proto_utils.proto_to_json(
               tfma.EvalConfig(slicing_specs=[
                   tfma.SlicingSpec(feature_keys=['trip_start_hour']),
                   tfma.SlicingSpec(
                       feature_keys=['trip_start_day', 'trip_miles']),
-              ]),
-              preserving_proto_field_name=True),
+              ])),
       'module_file':
           None
   }))
@@ -112,14 +110,13 @@ class ExecutorTest(tf.test.TestCase, parameterized.TestCase):
 
   @parameterized.named_parameters(('legacy_feature_slicing', {
       'feature_slicing_spec':
-          json_format.MessageToJson(
+          proto_utils.proto_to_json(
               evaluator_pb2.FeatureSlicingSpec(specs=[
                   evaluator_pb2.SingleSlicingSpec(
                       column_for_slicing=['trip_start_hour']),
                   evaluator_pb2.SingleSlicingSpec(
                       column_for_slicing=['trip_start_day', 'trip_miles']),
-              ]),
-              preserving_proto_field_name=True),
+              ])),
   }))
   def testDoLegacySingleEvalSavedModelWFairness(self, exec_properties):
     source_data_dir = os.path.join(
@@ -183,7 +180,7 @@ class ExecutorTest(tf.test.TestCase, parameterized.TestCase):
           'eval_config_w_validation',
           {
               'eval_config':
-                  json_format.MessageToJson(
+                  proto_utils.proto_to_json(
                       tfma.EvalConfig(
                           model_specs=[
                               tfma.ModelSpec(label_key='tips'),
@@ -199,8 +196,7 @@ class ExecutorTest(tf.test.TestCase, parameterized.TestCase):
                                               lower_bound={'value': 0}))),
                               ]),
                           ],
-                          slicing_specs=[tfma.SlicingSpec()]),
-                      preserving_proto_field_name=True)
+                          slicing_specs=[tfma.SlicingSpec()]))
           },
           True,
           True),
@@ -208,7 +204,7 @@ class ExecutorTest(tf.test.TestCase, parameterized.TestCase):
           'eval_config_w_validation_fail',
           {
               'eval_config':
-                  json_format.MessageToJson(
+                  proto_utils.proto_to_json(
                       tfma.EvalConfig(
                           model_specs=[
                               tfma.ModelSpec(
@@ -229,8 +225,7 @@ class ExecutorTest(tf.test.TestCase, parameterized.TestCase):
                                               upper_bound={'value': -1}))),
                               ]),
                           ],
-                          slicing_specs=[tfma.SlicingSpec()]),
-                      preserving_proto_field_name=True)
+                          slicing_specs=[tfma.SlicingSpec()]))
           },
           False,
           True),
@@ -238,7 +233,7 @@ class ExecutorTest(tf.test.TestCase, parameterized.TestCase):
           'no_baseline_model_ignore_change_threshold_validation_pass',
           {
               'eval_config':
-                  json_format.MessageToJson(
+                  proto_utils.proto_to_json(
                       tfma.EvalConfig(
                           model_specs=[
                               tfma.ModelSpec(
@@ -268,8 +263,7 @@ class ExecutorTest(tf.test.TestCase, parameterized.TestCase):
                                               .LOWER_IS_BETTER))),
                               ]),
                           ],
-                          slicing_specs=[tfma.SlicingSpec()]),
-                      preserving_proto_field_name=True)
+                          slicing_specs=[tfma.SlicingSpec()]))
           },
           True,
           False))

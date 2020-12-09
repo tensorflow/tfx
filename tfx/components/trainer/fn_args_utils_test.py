@@ -26,7 +26,7 @@ from tfx.components.trainer import fn_args_utils
 from tfx.proto import trainer_pb2
 from tfx.types import artifact_utils
 from tfx.types import standard_artifacts
-from google.protobuf import json_format
+from tfx.utils import proto_utils
 
 
 class FnArgsUtilsTest(tf.test.TestCase):
@@ -57,13 +57,9 @@ class FnArgsUtilsTest(tf.test.TestCase):
     # Create exec properties skeleton.
     exec_properties = {
         'train_args':
-            json_format.MessageToJson(
-                trainer_pb2.TrainArgs(num_steps=1000),
-                preserving_proto_field_name=True),
+            proto_utils.proto_to_json(trainer_pb2.TrainArgs(num_steps=1000)),
         'eval_args':
-            json_format.MessageToJson(
-                trainer_pb2.EvalArgs(num_steps=500),
-                preserving_proto_field_name=True),
+            proto_utils.proto_to_json(trainer_pb2.EvalArgs(num_steps=500)),
     }
 
     fn_args = fn_args_utils.get_common_fn_args(input_dict, exec_properties,

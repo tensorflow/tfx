@@ -34,8 +34,8 @@ from tfx.orchestration.portable.mlmd import common_utils
 from tfx.proto import example_gen_pb2
 from tfx.proto import range_config_pb2
 from tfx.proto.orchestration import driver_output_pb2
+from tfx.utils import proto_utils
 
-from google.protobuf import json_format
 from ml_metadata.proto import metadata_store_pb2
 
 
@@ -85,7 +85,8 @@ class Driver(base_driver.BaseDriver, ir_base_driver.BaseDriver):
     del pipeline_info, component_info
 
     input_config = example_gen_pb2.Input()
-    json_format.Parse(exec_properties[utils.INPUT_CONFIG_KEY], input_config)
+    proto_utils.json_to_proto(exec_properties[utils.INPUT_CONFIG_KEY],
+                              input_config)
 
     input_base = exec_properties[utils.INPUT_BASE_KEY]
     logging.debug('Processing input %s.', input_base)
@@ -94,7 +95,7 @@ class Driver(base_driver.BaseDriver, ir_base_driver.BaseDriver):
     range_config_entry = exec_properties.get(utils.RANGE_CONFIG_KEY)
     if range_config_entry:
       range_config = range_config_pb2.RangeConfig()
-      json_format.Parse(range_config_entry, range_config)
+      proto_utils.json_to_proto(range_config_entry, range_config)
 
       if range_config.HasField('static_range'):
         # For ExampleGen, StaticRange must specify an exact span to look for,
@@ -110,8 +111,8 @@ class Driver(base_driver.BaseDriver, ir_base_driver.BaseDriver):
     fingerprint, span, version = utils.calculate_splits_fingerprint_span_and_version(
         input_base, input_config.splits, range_config)
 
-    exec_properties[utils.INPUT_CONFIG_KEY] = json_format.MessageToJson(
-        input_config, sort_keys=True, preserving_proto_field_name=True)
+    exec_properties[utils.INPUT_CONFIG_KEY] = proto_utils.proto_to_json(
+        input_config)
     exec_properties[utils.SPAN_PROPERTY_NAME] = span
     exec_properties[utils.VERSION_PROPERTY_NAME] = version
     exec_properties[utils.FINGERPRINT_PROPERTY_NAME] = fingerprint

@@ -23,8 +23,7 @@ import tensorflow as tf
 from tfx.components.example_gen import base_example_gen_executor
 from tfx.examples.custom_components.presto_example_gen.proto import presto_config_pb2
 from tfx.proto import example_gen_pb2
-
-from google.protobuf import json_format
+from tfx.utils import proto_utils
 
 
 @beam.typehints.with_input_types(Text)
@@ -174,7 +173,7 @@ def _PrestoToExample(  # pylint: disable=invalid-name
     PCollection of TF examples.
   """
   conn_config = example_gen_pb2.CustomConfig()
-  json_format.Parse(exec_properties['custom_config'], conn_config)
+  proto_utils.json_to_proto(exec_properties['custom_config'], conn_config)
   presto_config = presto_config_pb2.PrestoConnConfig()
   conn_config.custom_config.Unpack(presto_config)
 

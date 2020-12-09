@@ -31,8 +31,9 @@ from tfx.proto import trainer_pb2
 from tfx.types import artifact_utils
 from tfx.utils import io_utils
 from tfx.utils import json_utils
+from tfx.utils import proto_utils
 from tfx_bsl.tfxio import dataset_options
-from google.protobuf import json_format
+
 from tensorflow_metadata.proto.v0 import schema_pb2
 
 
@@ -115,8 +116,9 @@ def get_common_fn_args(input_dict: Dict[Text, List[types.Artifact]],
 
   train_args = trainer_pb2.TrainArgs()
   eval_args = trainer_pb2.EvalArgs()
-  json_format.Parse(exec_properties[constants.TRAIN_ARGS_KEY], train_args)
-  json_format.Parse(exec_properties[constants.EVAL_ARGS_KEY], eval_args)
+  proto_utils.json_to_proto(exec_properties[constants.TRAIN_ARGS_KEY],
+                            train_args)
+  proto_utils.json_to_proto(exec_properties[constants.EVAL_ARGS_KEY], eval_args)
 
   # Default behavior is train on `train` split (when splits is empty in train
   # args) and evaluate on `eval` split (when splits is empty in eval args).

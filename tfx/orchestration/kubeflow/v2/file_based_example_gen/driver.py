@@ -26,6 +26,7 @@ from tfx.orchestration.kubeflow.v2.proto import pipeline_pb2
 from tfx.proto import example_gen_pb2
 from tfx.types import artifact
 from tfx.types import artifact_utils
+from tfx.utils import proto_utils
 
 from google.protobuf import json_format
 from tensorflow.python.platform import app  # pylint: disable=g-direct-tensorflow-import
@@ -75,7 +76,8 @@ def _run_driver(exec_properties: Dict[str, Any],
   input_base_uri = exec_properties[utils.INPUT_BASE_KEY]
 
   input_config = example_gen_pb2.Input()
-  json_format.Parse(exec_properties[utils.INPUT_CONFIG_KEY], input_config)
+  proto_utils.json_to_proto(exec_properties[utils.INPUT_CONFIG_KEY],
+                            input_config)
 
   # TODO(b/161734559): Support range config.
   fingerprint, select_span, version = utils.calculate_splits_fingerprint_span_and_version(

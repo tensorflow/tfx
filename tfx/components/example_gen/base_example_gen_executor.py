@@ -34,8 +34,7 @@ from tfx.components.util import examples_utils
 from tfx.dsl.components.base import base_executor
 from tfx.proto import example_gen_pb2
 from tfx.types import artifact_utils
-
-from google.protobuf import json_format
+from tfx.utils import proto_utils
 
 # Default file name for TFRecord output file prefix.
 DEFAULT_FILE_NAME = 'data_tfrecord'
@@ -198,10 +197,12 @@ class BaseExampleGenExecutor(
     """
     # Get input split information.
     input_config = example_gen_pb2.Input()
-    json_format.Parse(exec_properties[utils.INPUT_CONFIG_KEY], input_config)
+    proto_utils.json_to_proto(exec_properties[utils.INPUT_CONFIG_KEY],
+                              input_config)
     # Get output split information.
     output_config = example_gen_pb2.Output()
-    json_format.Parse(exec_properties[utils.OUTPUT_CONFIG_KEY], output_config)
+    proto_utils.json_to_proto(exec_properties[utils.OUTPUT_CONFIG_KEY],
+                              output_config)
     # Get output split names.
     split_names = utils.generate_output_split_names(input_config, output_config)
     # Make beam_pipeline_args available in exec_properties since certain
@@ -279,9 +280,11 @@ class BaseExampleGenExecutor(
     self._log_startup(input_dict, output_dict, exec_properties)
 
     input_config = example_gen_pb2.Input()
+    proto_utils.json_to_proto(exec_properties[utils.INPUT_CONFIG_KEY],
+                              input_config)
     output_config = example_gen_pb2.Output()
-    json_format.Parse(exec_properties[utils.INPUT_CONFIG_KEY], input_config)
-    json_format.Parse(exec_properties[utils.OUTPUT_CONFIG_KEY], output_config)
+    proto_utils.json_to_proto(exec_properties[utils.OUTPUT_CONFIG_KEY],
+                              output_config)
 
     examples_artifact = artifact_utils.get_single_instance(
         output_dict[utils.EXAMPLES_KEY])
