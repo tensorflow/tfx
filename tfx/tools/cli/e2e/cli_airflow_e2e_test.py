@@ -31,6 +31,7 @@ import tensorflow as tf
 from tfx.dsl.io import fileio
 from tfx.orchestration.airflow import test_utils as airflow_test_utils
 from tfx.tools.cli import labels
+from tfx.tools.cli import pip_utils
 from tfx.tools.cli.cli_main import cli_group
 from tfx.tools.cli.e2e import test_utils
 from tfx.utils import io_utils
@@ -43,7 +44,7 @@ class CliAirflowEndToEndTest(tf.test.TestCase):
     super(CliAirflowEndToEndTest, self).setUp()
 
     # List of packages installed.
-    self._pip_list = str(subprocess.check_output(['pip', 'freeze', '--local']))
+    self._pip_list = pip_utils.get_package_names()
 
     # Check if Apache Airflow is installed before running E2E tests.
     if labels.AIRFLOW_PACKAGE_NAME not in self._pip_list:

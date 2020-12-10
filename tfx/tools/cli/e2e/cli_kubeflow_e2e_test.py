@@ -32,15 +32,15 @@ from typing import Text, Tuple
 
 import absl
 from click import testing as click_testing
+from google.cloud import storage
 import kfp
 import kfp_server_api
 import tensorflow as tf
 from tfx.dsl.io import fileio
 from tfx.tools.cli import labels
+from tfx.tools.cli import pip_utils
 from tfx.tools.cli.cli_main import cli_group
 from tfx.tools.cli.e2e import test_utils
-
-from google.cloud import storage
 
 
 class CliKubeflowEndToEndTest(tf.test.TestCase):
@@ -56,7 +56,7 @@ class CliKubeflowEndToEndTest(tf.test.TestCase):
     random.seed(datetime.datetime.now())
 
     # List of packages installed.
-    self._pip_list = str(subprocess.check_output(['pip', 'freeze', '--local']))
+    self._pip_list = pip_utils.get_package_names()
 
     # Check if Kubeflow is installed before running E2E tests.
     if labels.KUBEFLOW_PACKAGE_NAME not in self._pip_list:

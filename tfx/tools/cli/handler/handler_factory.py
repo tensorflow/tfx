@@ -25,6 +25,7 @@ from typing import Any, Dict, Text
 import click
 
 from tfx.tools.cli import labels
+from tfx.tools.cli import pip_utils
 from tfx.tools.cli.handler import base_handler
 
 
@@ -44,8 +45,9 @@ def detect_handler(flags_dict: Dict[Text, Any]) -> base_handler.BaseHandler:
   Returns:
     Corrosponding Handler object.
   """
-  packages_list = str(subprocess.check_output(['pip', 'freeze', '--local']))
-  if labels.AIRFLOW_PACKAGE_NAME in packages_list and labels.KUBEFLOW_PACKAGE_NAME in packages_list:
+  packages_list = pip_utils.get_package_names()
+  if (labels.AIRFLOW_PACKAGE_NAME in packages_list) and (
+      labels.KUBEFLOW_PACKAGE_NAME in packages_list):
     sys.exit('Multiple orchestrators found. Choose one using --engine flag.')
   if labels.AIRFLOW_PACKAGE_NAME in packages_list:
     click.echo('Detected Airflow.')
