@@ -10,6 +10,8 @@
     link with downstream training.
 *   In the published TFX container image, wheel files are now used to install
     TFX, and the TFX source code has been moved to `/tfx/src`.
+*   TFX Transform switched to a (notably) faster implementation of
+    `tft.quantiles` analyzer.
 
 ## Breaking changes
 *   Migrated `deployment_config` in Kubeflow V2 runner from `Any` proto message
