@@ -68,7 +68,7 @@ FLAGS = flags.FLAGS
 def ignore_test_objects(path, parent, children):
   """Removes all "test" modules. These are not part of the public api.
 
-  Arguments:
+  Args:
     path: A tuple of name parts forming the attribute-lookup path to this
       object. For `tf.keras.layers.Dense` path is:
         ("tf","keras","layers","Dense")
