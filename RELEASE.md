@@ -12,11 +12,14 @@
     TFX, and the TFX source code has been moved to `/tfx/src`.
 
 ## Breaking changes
-*  Migrated `deployment_config` in Kubeflow V2 runner from `Any` proto message
-   to `Struct`, to ensure compatibility across different copies of the proto
-   libraries.
+*   Migrated `deployment_config` in Kubeflow V2 runner from `Any` proto message
+    to `Struct`, to ensure compatibility across different copies of the proto
+    libraries.
 
 ### For pipeline authors
+*   The `tfx.dsl.io.fileio` filesystem handler will delegate to
+    `tensorflow.io.gfile` for any unknown filesystem schemes if TensorFlow
+    is installed.
 
 ### For component authors
 
@@ -25,7 +28,7 @@
 *   TrainerFnArgs is deprecated by FnArgs.
 
 ## Bug fixes and other changes
-*  Depends on 'keras-tuner>=1,<1.0.2'.
+*   Depends on 'keras-tuner>=1,<1.0.2'.
 
 ## Documentation updates
 

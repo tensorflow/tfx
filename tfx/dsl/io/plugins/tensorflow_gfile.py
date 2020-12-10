@@ -89,4 +89,4 @@ class TensorflowFilesystem(filesystem.Filesystem):
 
 
 filesystem_registry.DEFAULT_FILESYSTEM_REGISTRY.register(
-    TensorflowFilesystem, priority=0)
+    TensorflowFilesystem, priority=0, use_as_fallback=True)

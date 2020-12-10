@@ -32,10 +32,11 @@ class FilesystemRegistry(object):
   def __init__(self):
     self._preferred_filesystem_by_scheme = {}
     self._filesystem_priority = {}
+    self._fallback_filesystem = None
     self._registration_lock = threading.Lock()
 
   def register(self, filesystem_cls: Type[filesystem.Filesystem],
-               priority: int) -> None:
+               priority: int, use_as_fallback: bool = False) -> None:
     """Register a filesystem implementation.
 
     Args:
@@ -43,6 +44,9 @@ class FilesystemRegistry(object):
       priority: Integer priority index (lower is more preferred) specifying
         plugin search order for filesystem schemes supported by the filesystem
         class.
+      use_as_fallback: If `True`, use the given filesystem class to provide
+        fallback access to filesystem not explicitly supported by a registered
+        filesystem plugin.
     """
     with self._registration_lock:
       self._filesystem_priority[filesystem_cls] = priority
@@ -51,6 +55,10 @@ class FilesystemRegistry(object):
         if (not current_preferred or
             priority < self._filesystem_priority[current_preferred]):
           self._preferred_filesystem_by_scheme[scheme] = filesystem_cls
+      if use_as_fallback:
+        if (not self._fallback_filesystem or
+            priority < self._filesystem_priority[self._fallback_filesystem]):
+          self._fallback_filesystem = filesystem_cls
 
   def get_filesystem_for_scheme(
       self, scheme: PathType) -> Type[filesystem.Filesystem]:
@@ -58,10 +66,13 @@ class FilesystemRegistry(object):
     if isinstance(scheme, bytes):
       scheme = scheme.decode('utf-8')
     if scheme not in self._preferred_filesystem_by_scheme:
-      raise Exception(
-          ('The filesystem scheme %r is not available for use. For expanded '
-           'filesystem scheme support, install the `tensorflow` package to '
-           'enable additional filesystem plugins.') % scheme)
+      if self._fallback_filesystem:
+        return self._fallback_filesystem
+      else:
+        raise Exception(
+            ('The filesystem scheme %r is not available for use. For expanded '
+             'filesystem scheme support, install the `tensorflow` package to '
+             'enable additional filesystem plugins.') % scheme)
     return self._preferred_filesystem_by_scheme[scheme]
 
   def get_filesystem_for_path(self,
