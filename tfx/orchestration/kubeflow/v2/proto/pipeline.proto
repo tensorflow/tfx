@@ -23,7 +23,7 @@ import "google/protobuf/struct.proto";
 // TODO(b/112932234) Determine a better way to keep internal content from
 // copybara.
 // This file is forked and kept in sync with
-// Kubeflow pipelines IR job spec.
+// Kubeflow pipelines job spec.
 
 message PipelineJob {
   string name = 1;  // Name of the job.
