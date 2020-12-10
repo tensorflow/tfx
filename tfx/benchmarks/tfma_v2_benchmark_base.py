@@ -17,6 +17,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import copy
 import time
 
 # Standard Imports
@@ -25,6 +26,7 @@ import apache_beam as beam
 import tensorflow as tf
 import tensorflow_model_analysis as tfma
 from tensorflow_model_analysis import constants
+from tensorflow_model_analysis import model_util
 from tensorflow_model_analysis.evaluators import metrics_plots_and_validations_evaluator
 from tensorflow_model_analysis.extractors import example_weights_extractor
 from tensorflow_model_analysis.extractors import features_extractor
@@ -41,10 +43,6 @@ from tfx_bsl.coders import example_coder
 from tfx_bsl.tfxio import record_based_tfxio
 from tfx_bsl.tfxio import test_util
 
-# Maximum number of examples to read from the dataset.
-# TFMA is much slower than TFT, so we may have to read a smaller subset of the
-# dataset.
-MAX_NUM_EXAMPLES = 100000
 
 # Maximum number of examples within a record batch.
 _BATCH_SIZE = 1000
@@ -72,10 +70,18 @@ class TFMAV2BenchmarkBase(benchmark_base.BenchmarkBase):
         metrics_specs=metric_specs.specs_from_metrics([
             tf.keras.metrics.AUC(name="auc", num_thresholds=10000),
         ]))
-    # metrics_specs=metric_specs.example_count_specs())
 
     self._eval_shared_model = tfma.default_eval_shared_model(
         self._dataset.trained_saved_model_path(), eval_config=self._eval_config)
+
+  def _max_num_examples(self):
+    # TFMA is slower than TFT, so use a smaller number of examples from the
+    # dataset.
+    limit = 100000
+    parent_max = super(TFMAV2BenchmarkBase, self)._max_num_examples()
+    if parent_max is None:
+      return limit
+    return min(parent_max, limit)
 
   def report_benchmark(self, **kwargs):
     if "extras" not in kwargs:
@@ -104,9 +110,18 @@ class TFMAV2BenchmarkBase(benchmark_base.BenchmarkBase):
         pipeline
         | "Examples" >> beam.Create(
             self._dataset.read_raw_dataset(
-                deserialize=False, limit=MAX_NUM_EXAMPLES))
+                deserialize=False, limit=self._max_num_examples()))
         | "BatchExamples" >> tfx_io.BeamSource()
         | "InputsToExtracts" >> tfma.BatchedInputsToExtracts())
+
+    def rescale_labels(extracts):
+      # Transform labels to [0, 1] so we can test metrics that require labels in
+      # that range.
+      result = copy.copy(extracts)
+      result[constants.LABELS_KEY] = [
+          1.0 / (1.0 + x) for x in extracts[constants.LABELS_KEY]
+      ]
+      return result
 
     _ = (
         raw_data
@@ -114,6 +129,7 @@ class TFMAV2BenchmarkBase(benchmark_base.BenchmarkBase):
             eval_config=self._eval_config).ptransform
         | "LabelsExtractor" >> labels_extractor.LabelsExtractor(
             eval_config=self._eval_config).ptransform
+        | "RescaleLabels" >> beam.Map(rescale_labels)
         | "ExampleWeightsExtractor" >> example_weights_extractor
         .ExampleWeightsExtractor(eval_config=self._eval_config).ptransform
         | "PredictionsExtractor" >> predictions_extractor.PredictionsExtractor(
@@ -137,36 +153,58 @@ class TFMAV2BenchmarkBase(benchmark_base.BenchmarkBase):
         iters=1,
         wall_time=delta,
         extras={
-            "num_examples": self._dataset.num_examples(limit=MAX_NUM_EXAMPLES)
+            "num_examples":
+                self._dataset.num_examples(limit=self._max_num_examples())
         })
 
   def _readDatasetIntoExtracts(self):
     """Read the raw dataset and massage examples into Extracts."""
     records = []
-    # No limit here, the microbenchmarks are relatively fast.
-    for x in self._dataset.read_raw_dataset(deserialize=False):
+    for x in self._dataset.read_raw_dataset(
+        deserialize=False, limit=self._max_num_examples()):
       records.append({tfma.INPUT_KEY: x, tfma.SLICE_KEY_TYPES_KEY: ()})
     return records
 
   def _readDatasetIntoBatchedExtracts(self):
     """Read the raw dataset and massage examples into batched Extracts."""
-    # No limit here, the microbenchmarks are relatively fast.
     serialized_examples = list(
-        self._dataset.read_raw_dataset(deserialize=False))
+        self._dataset.read_raw_dataset(
+            deserialize=False, limit=self._max_num_examples()))
 
     # TODO(b/153996019): Once the TFXIO interface that returns an iterator of
     # RecordBatch is available, clean this up.
     coder = example_coder.ExamplesToRecordBatchDecoder(
-        schema=benchmark_utils.read_schema(
-            self._dataset.tf_metadata_schema_path()))
+        serialized_schema=benchmark_utils.read_schema(
+            self._dataset.tf_metadata_schema_path()).SerializeToString())
     batches = []
     for i in range(0, len(serialized_examples), _BATCH_SIZE):
       example_batch = serialized_examples[i:i + _BATCH_SIZE]
       record_batch = record_based_tfxio.AppendRawRecordColumn(
           coder.DecodeBatch(example_batch), constants.ARROW_INPUT_COLUMN,
-          example_batch, False)
+          example_batch)
       batches.append({constants.ARROW_RECORD_BATCH_KEY: record_batch})
     return batches
+
+  def _extract_features_and_labels(self, batched_extract):
+    """Extract features from extracts containing arrow table."""
+    # This function is a combination of
+    # _ExtractFeatures.extract_features in extractors/features_extractor.py
+    # and _ExtractLabels.extract_labels in extractors/labels_extractor.py
+    result = copy.copy(batched_extract)
+    (record_batch, serialized_examples) = (
+        features_extractor._DropUnsupportedColumnsAndFetchRawDataColumn(  # pylint: disable=protected-access
+            batched_extract[constants.ARROW_RECORD_BATCH_KEY]))
+    dataframe = record_batch.to_pandas()
+    result[constants.FEATURES_KEY] = dataframe.to_dict(orient="records")
+    result[constants.INPUT_KEY] = serialized_examples
+    # Transform labels to [0, 1] so we can test metrics that require labels in
+    # that range.
+    labels = (
+        model_util.get_feature_values_for_model_spec_field(
+            list(self._eval_config.model_specs), "label_key", "label_keys",
+            result, True))
+    result[constants.LABELS_KEY] = [1.0 / (1.0 + x) for x in labels]
+    return result
 
   # "Manual" micro-benchmarks
   def benchmarkInputExtractorManualActuation(self):
@@ -194,9 +232,7 @@ class TFMAV2BenchmarkBase(benchmark_base.BenchmarkBase):
     result = []
     start = time.time()
     for e in extracts:
-      result.append(
-          features_extractor._ExtractFeatures(  # pylint: disable=protected-access
-              e, self._eval_config))
+      result.append(self._extract_features_and_labels(e))
     end = time.time()
     delta = end - start
     self.report_benchmark(
@@ -208,14 +244,15 @@ class TFMAV2BenchmarkBase(benchmark_base.BenchmarkBase):
     extracts = self._readDatasetIntoBatchedExtracts()
     num_examples = sum(
         [e[constants.ARROW_RECORD_BATCH_KEY].num_rows for e in extracts])
-    extracts = [
-        features_extractor._ExtractFeatures(e, self._eval_config)  # pylint: disable=protected-access
-        for e in extracts
-    ]
+    extracts = [self._extract_features_and_labels(e) for e in extracts]
 
-    prediction_do_fn = predictions_extractor._ExtractPredictions(  # pylint: disable=protected-access
+    prediction_do_fn = model_util.ModelSignaturesDoFn(
         eval_config=self._eval_config,
-        eval_shared_models={"": self._eval_shared_model})
+        eval_shared_models={"": self._eval_shared_model},
+        signature_names={constants.PREDICTIONS_KEY: {
+            "": [None]
+        }},
+        prefer_dict_outputs=False)
     prediction_do_fn.setup()
 
     start = time.time()
@@ -238,14 +275,15 @@ class TFMAV2BenchmarkBase(benchmark_base.BenchmarkBase):
     extracts = self._readDatasetIntoBatchedExtracts()
     num_examples = sum(
         [e[constants.ARROW_RECORD_BATCH_KEY].num_rows for e in extracts])
-    extracts = [
-        features_extractor._ExtractFeatures(e, self._eval_config)  # pylint: disable=protected-access
-        for e in extracts
-    ]
+    extracts = [self._extract_features_and_labels(e) for e in extracts]
 
-    prediction_do_fn = predictions_extractor._ExtractPredictions(  # pylint: disable=protected-access
+    prediction_do_fn = model_util.ModelSignaturesDoFn(
         eval_config=self._eval_config,
-        eval_shared_models={"": self._eval_shared_model})
+        eval_shared_models={"": self._eval_shared_model},
+        signature_names={constants.PREDICTIONS_KEY: {
+            "": [None]
+        }},
+        prefer_dict_outputs=False)
     prediction_do_fn.setup()
 
     # Have to predict first

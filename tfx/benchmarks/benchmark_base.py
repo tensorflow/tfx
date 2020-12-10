@@ -26,9 +26,14 @@ flags.DEFINE_string(
     "beam_runner", "DirectRunner",
     "Beam runner to use - any runner name accepted by "
     "apache_beam.runners.create_runner")
+flags.DEFINE_integer(
+    "max_num_examples", 0,
+    "Maximum number of examples to read from the dataset. Use zero if there "
+    "should be no limit")
 
 
 class BenchmarkBase(test.Benchmark):
+  """Base class for all benchmarks."""
 
   def _create_beam_pipeline(self):
     # FLAGS may not be parsed if the benchmark is instantiated directly by a
@@ -38,3 +43,11 @@ class BenchmarkBase(test.Benchmark):
         FLAGS.beam_runner
         if FLAGS.is_parsed() else FLAGS["beam_runner"].default)
     return beam.Pipeline(runner=beam.runners.create_runner(runner_flag))
+
+  def _max_num_examples(self):
+    result = (
+        FLAGS.max_num_examples
+        if FLAGS.is_parsed() else FLAGS["max_num_examples"].default)
+    if result == 0:
+      return None
+    return result

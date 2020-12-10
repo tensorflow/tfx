@@ -29,11 +29,6 @@ import tfx
 from tfx.benchmarks import benchmark_utils
 from tfx.benchmarks import benchmark_base
 
-# Maximum number of examples to read from the dataset.
-# TFMA is much slower than TFT, so we may have to read a smaller subset of the
-# dataset.
-MAX_NUM_EXAMPLES = 100000
-
 
 class TFMABenchmarkBase(benchmark_base.BenchmarkBase):
   """TFMA benchmark base class."""
@@ -43,6 +38,15 @@ class TFMABenchmarkBase(benchmark_base.BenchmarkBase):
     del kwargs
     super(TFMABenchmarkBase, self).__init__()
     self._dataset = dataset
+
+  def _max_num_examples(self):
+    # TFMA is slower than TFT, so use a smaller number of examples from the
+    # dataset.
+    limit = 100000
+    parent_max = super(TFMABenchmarkBase, self)._max_num_examples()
+    if parent_max is None:
+      return limit
+    return min(parent_max, limit)
 
   def report_benchmark(self, **kwargs):
     if "extras" not in kwargs:
@@ -66,7 +70,7 @@ class TFMABenchmarkBase(benchmark_base.BenchmarkBase):
         pipeline
         | "Examples" >> beam.Create(
             self._dataset.read_raw_dataset(
-                deserialize=False, limit=MAX_NUM_EXAMPLES))
+                deserialize=False, limit=self._max_num_examples()))
         | "InputsToExtracts" >> tfma.InputsToExtracts())
 
     eval_shared_model = tfma.default_eval_shared_model(
@@ -77,8 +81,7 @@ class TFMABenchmarkBase(benchmark_base.BenchmarkBase):
         | "PredictExtractor" >> tfma.extractors.PredictExtractor(
             eval_shared_model=eval_shared_model).ptransform
         | "SliceKeyExtractor" >> tfma.extractors.SliceKeyExtractor().ptransform
-        |
-        "ComputeMetricsAndPlots" >> tfma.evaluators.MetricsAndPlotsEvaluatorV1(
+        | "ComputeMetricsAndPlots" >> tfma.evaluators.MetricsAndPlotsEvaluator(
             eval_shared_model=eval_shared_model).ptransform)
 
     start = time.time()
@@ -91,7 +94,8 @@ class TFMABenchmarkBase(benchmark_base.BenchmarkBase):
         iters=1,
         wall_time=delta,
         extras={
-            "num_examples": self._dataset.num_examples(limit=MAX_NUM_EXAMPLES)
+            "num_examples":
+                self._dataset.num_examples(limit=self._max_num_examples())
         })
 
   def benchmarkPredict(self):
@@ -103,10 +107,10 @@ class TFMABenchmarkBase(benchmark_base.BenchmarkBase):
     # Run InputsToExtracts manually.
     records = []
     for x in self._dataset.read_raw_dataset(
-        deserialize=False, limit=MAX_NUM_EXAMPLES):
+        deserialize=False, limit=self._max_num_examples()):
       records.append({tfma.constants.INPUT_KEY: x})
 
-    fn = tfma.extractors.predict_extractor._TFMAPredictionDoFn(  # pylint: disable=protected-access
+    fn = tfma.extractors.legacy_predict_extractor._TFMAPredictionDoFn(  # pylint: disable=protected-access
         eval_shared_models={"": tfma.default_eval_shared_model(
             eval_saved_model_path=self._dataset.tfma_saved_model_path())},
         eval_config=None)
@@ -124,8 +128,10 @@ class TFMABenchmarkBase(benchmark_base.BenchmarkBase):
         iters=1,
         wall_time=delta,
         extras={
-            "batch_size": predict_batch_size,
-            "num_examples": self._dataset.num_examples(limit=MAX_NUM_EXAMPLES)
+            "batch_size":
+                predict_batch_size,
+            "num_examples":
+                self._dataset.num_examples(limit=self._max_num_examples())
         })
 
   def benchmarkAggregateCombineManualActuation(self):
@@ -138,10 +144,10 @@ class TFMABenchmarkBase(benchmark_base.BenchmarkBase):
     # Run InputsToExtracts manually.
     records = []
     for x in self._dataset.read_raw_dataset(
-        deserialize=False, limit=MAX_NUM_EXAMPLES):
+        deserialize=False, limit=self._max_num_examples()):
       records.append({tfma.constants.INPUT_KEY: x})
 
-    fn = tfma.extractors.predict_extractor._TFMAPredictionDoFn(  # pylint: disable=protected-access
+    fn = tfma.extractors.legacy_predict_extractor._TFMAPredictionDoFn(  # pylint: disable=protected-access
         eval_shared_models={"": tfma.default_eval_shared_model(
             eval_saved_model_path=self._dataset.tfma_saved_model_path())},
         eval_config=None)
@@ -164,7 +170,7 @@ class TFMABenchmarkBase(benchmark_base.BenchmarkBase):
     # accumulators to merge).
     inputs_per_accumulator = 1000
 
-    combiner = tfma.evaluators.aggregate._AggregateCombineFn(  # pylint: disable=protected-access
+    combiner = tfma.evaluators.legacy_aggregate._AggregateCombineFn(  # pylint: disable=protected-access
         eval_shared_model=tfma.default_eval_shared_model(
             eval_saved_model_path=self._dataset.tfma_saved_model_path()))
     accumulators = []
@@ -182,7 +188,7 @@ class TFMABenchmarkBase(benchmark_base.BenchmarkBase):
     delta = end - start
 
     # Extract output to sanity check example count. This is not timed.
-    extract_fn = tfma.evaluators.aggregate._ExtractOutputDoFn(  # pylint: disable=protected-access
+    extract_fn = tfma.evaluators.legacy_aggregate._ExtractOutputDoFn(  # pylint: disable=protected-access
         eval_shared_model=tfma.default_eval_shared_model(
             eval_saved_model_path=self._dataset.tfma_saved_model_path()))
     extract_fn.setup()
@@ -192,17 +198,21 @@ class TFMABenchmarkBase(benchmark_base.BenchmarkBase):
                        (len(interpreted_output)))
     got_example_count = interpreted_output[0][1].get(
         "post_export_metrics/example_count")
-    if got_example_count != self._dataset.num_examples(limit=MAX_NUM_EXAMPLES):
-      raise ValueError("example count mismatch: expecting %d got %d" %
-                       (self._dataset.num_examples(limit=MAX_NUM_EXAMPLES),
-                        got_example_count))
+    if got_example_count != self._dataset.num_examples(
+        limit=self._max_num_examples()):
+      raise ValueError(
+          "example count mismatch: expecting %d got %d" %
+          (self._dataset.num_examples(limit=self._max_num_examples()),
+           got_example_count))
 
     self.report_benchmark(
         iters=1,
         wall_time=delta,
         extras={
-            "inputs_per_accumulator": inputs_per_accumulator,
-            "num_examples": self._dataset.num_examples(limit=MAX_NUM_EXAMPLES)
+            "inputs_per_accumulator":
+                inputs_per_accumulator,
+            "num_examples":
+                self._dataset.num_examples(limit=self._max_num_examples())
         })
 
   def benchmarkEvalSavedModelPredict(self):
@@ -217,7 +227,7 @@ class TFMABenchmarkBase(benchmark_base.BenchmarkBase):
         include_default_metrics=True)
 
     records = self._dataset.read_raw_dataset(
-        deserialize=False, limit=MAX_NUM_EXAMPLES)
+        deserialize=False, limit=self._max_num_examples())
 
     start = time.time()
     for batch in benchmark_utils.batched_iterator(records, batch_size):
@@ -228,8 +238,10 @@ class TFMABenchmarkBase(benchmark_base.BenchmarkBase):
         iters=1,
         wall_time=delta,
         extras={
-            "batch_size": batch_size,
-            "num_examples": self._dataset.num_examples(limit=MAX_NUM_EXAMPLES)
+            "batch_size":
+                batch_size,
+            "num_examples":
+                self._dataset.num_examples(limit=self._max_num_examples())
         })
 
   def benchmarkEvalSavedModelMetricsResetUpdateGetList(self):
@@ -245,7 +257,7 @@ class TFMABenchmarkBase(benchmark_base.BenchmarkBase):
         include_default_metrics=True)
 
     records = self._dataset.read_raw_dataset(
-        deserialize=False, limit=MAX_NUM_EXAMPLES)
+        deserialize=False, limit=self._max_num_examples())
 
     start = time.time()
     accumulators = []
@@ -275,6 +287,8 @@ class TFMABenchmarkBase(benchmark_base.BenchmarkBase):
         iters=1,
         wall_time=delta,
         extras={
-            "batch_size": batch_size,
-            "num_examples": self._dataset.num_examples(limit=MAX_NUM_EXAMPLES)
+            "batch_size":
+                batch_size,
+            "num_examples":
+                self._dataset.num_examples(limit=self._max_num_examples())
         })
