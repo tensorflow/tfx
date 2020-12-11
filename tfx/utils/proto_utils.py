@@ -14,7 +14,7 @@
 """Utilities for proto related manipulations."""
 
 import itertools
-from typing import Any, Dict, Iterator
+from typing import Any, Dict, Iterator, TypeVar
 
 from google.protobuf import descriptor as descriptor_lib
 from google.protobuf import json_format
@@ -81,12 +81,16 @@ def proto_to_dict(proto: message.Message) -> Dict[str, Any]:
       message=proto, preserving_proto_field_name=True)
 
 
-def json_to_proto(json_str: str, proto: message.Message) -> message.Message:
+# Type for a subclass of message.Message which will be used as a return type.
+ProtoMessage = TypeVar('ProtoMessage', bound=message.Message)
+
+
+def json_to_proto(json_str: str, proto: ProtoMessage) -> ProtoMessage:
   """Simple JSON Parser wrapper for consistent parsing."""
   return json_format.Parse(json_str, proto, ignore_unknown_fields=True)
 
 
 def dict_to_proto(json_dict: Dict[Any, Any],
-                  proto: message.Message) -> message.Message:
+                  proto: ProtoMessage) -> ProtoMessage:
   """Simple JSON Parser wrapper for consistent parsing."""
   return json_format.ParseDict(json_dict, proto, ignore_unknown_fields=True)

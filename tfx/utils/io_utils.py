@@ -18,7 +18,7 @@ from __future__ import division
 from __future__ import print_function
 
 import os
-from typing import List, Text
+from typing import List, Text, TypeVar
 
 import six
 import tensorflow as tf
@@ -116,14 +116,18 @@ def write_tfrecord_file(file_name: Text, proto: Message) -> None:
     writer.write(proto.SerializeToString())
 
 
-def parse_pbtxt_file(file_name: Text, message: Message) -> Message:
+# Type for a subclass of message.Message which will be used as a return type.
+ProtoMessage = TypeVar('ProtoMessage', bound=Message)
+
+
+def parse_pbtxt_file(file_name: Text, message: ProtoMessage) -> ProtoMessage:
   """Parses a protobuf message from a text file and return message itself."""
   contents = file_io.read_file_to_string(file_name)
   text_format.Parse(contents, message)
   return message
 
 
-def parse_json_file(file_name: Text, message: Message) -> Message:
+def parse_json_file(file_name: Text, message: ProtoMessage) -> ProtoMessage:
   """Parses a protobuf message from a JSON file and return itself."""
   contents = file_io.read_file_to_string(file_name)
   json_format.Parse(contents, message)
