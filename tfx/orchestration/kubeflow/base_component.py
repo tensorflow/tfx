@@ -44,9 +44,7 @@ from tfx.utils import json_utils
 from google.protobuf import json_format
 
 # TODO(b/166202742): Consolidate container entrypoint with TFX image's default.
-_COMMAND = [
-    'python', '/tfx-src/tfx/orchestration/kubeflow/container_entrypoint.py'
-]
+_COMMAND = ['python', '-m', 'tfx.orchestration.kubeflow.container_entrypoint']
 
 _WORKFLOW_ID_KEY = 'WORKFLOW_ID'
 

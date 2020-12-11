@@ -87,7 +87,8 @@ class KubeflowDagRunnerTest(tf.test.TestCase):
       self.assertEqual(1, len(big_query_container))
       self.assertEqual([
           'python',
-          '/tfx-src/tfx/orchestration/kubeflow/container_entrypoint.py'
+          '-m',
+          'tfx.orchestration.kubeflow.container_entrypoint',
       ], big_query_container[0]['container']['command'])
 
       statistics_gen_container = [

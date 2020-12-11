@@ -34,6 +34,8 @@
 *   TrainerFnArgs is deprecated by FnArgs.
 
 ## Bug fixes and other changes
+*   Official TFX container image's entrypoint is changed so the image can be
+    used as a custom worker for Dataflow.
 *   Depends on 'keras-tuner>=1,<1.0.2'.
 
 ## Documentation updates

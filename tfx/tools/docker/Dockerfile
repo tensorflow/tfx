@@ -75,5 +75,11 @@ RUN patch `python -c 'import googleapiclient; print(googleapiclient.__path__[0])
  patch `python -c 'import apitools; print(apitools.__path__[0])'`/base/py/base_api.py \
   /tfx/src/tfx/tools/docker/patches/base_api.patch
 
-# TODO(b/166202742): Consolidate container entrypoint with Kubeflow runner.
-ENTRYPOINT ["python", "-m", "tfx.scripts.run_executor"]
+
+# Copy the boot loader program from latest released beam python sdk, so TFX
+# image and any child can be used in Dataflow as custom worker images.
+COPY --from=apache/beam_python3.7_sdk:latest /opt/apache/beam/boot /opt/apache/beam/boot
+# Dataflow SDK worker image looks for pip at a different location by default
+# without following pip environment variable.
+RUN export pip=$(which pip);echo $pip;
+ENTRYPOINT ["/opt/apache/beam/boot"]
