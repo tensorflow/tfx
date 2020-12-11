@@ -125,15 +125,13 @@ def initiate_pipeline_start(
   return execution
 
 
-_DEFAULT_WAIT_TICK_DURATION_SECS = 10.0
-_DEFAULT_WAIT_FOR_INACTIVATION_TIMEOUT_SECS = 120.0
+DEFAULT_WAIT_FOR_INACTIVATION_TIMEOUT_SECS = 120.0
 
 
 def stop_pipeline(
     mlmd_handle: metadata.Metadata,
     pipeline_uid: task_lib.PipelineUid,
-    timeout_secs: float = _DEFAULT_WAIT_FOR_INACTIVATION_TIMEOUT_SECS,
-    wait_tick_duration_secs: float = _DEFAULT_WAIT_TICK_DURATION_SECS) -> None:
+    timeout_secs: float = DEFAULT_WAIT_FOR_INACTIVATION_TIMEOUT_SECS) -> None:
   """Stops a pipeline.
 
   Initiates a pipeline stop operation and waits for the pipeline execution to be
@@ -143,18 +141,12 @@ def stop_pipeline(
     mlmd_handle: A handle to the MLMD db.
     pipeline_uid: Uid of the pipeline to be stopped.
     timeout_secs: Amount of time in seconds to wait for pipeline to stop.
-    wait_tick_duration_secs: Determines how often to poll MLMD while waiting for
-      pipeline to stop.
 
   Raises:
     status_lib.StatusNotOkError: Failure to initiate pipeline stop.
   """
   execution = _initiate_pipeline_stop(mlmd_handle, pipeline_uid)
-  _wait_for_inactivation(
-      mlmd_handle,
-      execution,
-      timeout_secs=timeout_secs,
-      wait_tick_duration_secs=wait_tick_duration_secs)
+  _wait_for_inactivation(mlmd_handle, execution, timeout_secs=timeout_secs)
 
 
 @_to_status_not_ok_error
@@ -213,28 +205,26 @@ def _initiate_pipeline_stop(
 def _wait_for_inactivation(
     mlmd_handle: metadata.Metadata,
     execution: metadata_store_pb2.Execution,
-    timeout_secs: float = _DEFAULT_WAIT_FOR_INACTIVATION_TIMEOUT_SECS,
-    wait_tick_duration_secs: float = _DEFAULT_WAIT_TICK_DURATION_SECS) -> None:
+    timeout_secs: float = DEFAULT_WAIT_FOR_INACTIVATION_TIMEOUT_SECS) -> None:
   """Waits for the given execution to become inactive.
 
   Args:
     mlmd_handle: A handle to the MLMD db.
     execution: Execution whose inactivation is waited.
     timeout_secs: Amount of time in seconds to wait.
-    wait_tick_duration_secs: Determines how often to poll MLMD.
 
   Raises:
     StatusNotOkError: With error code `DEADLINE_EXCEEDED` if execution is not
-      inactive after waiting `timeout_secs`.
+      inactive after waiting approx. `timeout_secs`.
   """
-  time_budget = timeout_secs
-  while time_budget > 0.0:
+  polling_interval_secs = min(10.0, timeout_secs / 4)
+  end_time = time.time() + timeout_secs
+  while end_time - time.time() > 0:
     updated_executions = mlmd_handle.store.get_executions_by_id(
         [execution.id])
     if not execution_lib.is_execution_active(updated_executions[0]):
       return
-    time.sleep(wait_tick_duration_secs)
-    time_budget -= wait_tick_duration_secs
+    time.sleep(max(0, min(polling_interval_secs, end_time - time.time())))
   raise status_lib.StatusNotOkError(
       code=status_lib.Code.DEADLINE_EXCEEDED,
       message=(f'Timed out ({timeout_secs} secs) waiting for execution '
