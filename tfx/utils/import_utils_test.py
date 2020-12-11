@@ -38,8 +38,10 @@ class ImportUtilsTest(tf.test.TestCase):
   def testImportFuncFromSource(self):
     source_data_dir = os.path.join(os.path.dirname(__file__), 'testdata')
     test_fn_file = os.path.join(source_data_dir, 'test_fn.ext')
-    fn = import_utils.import_func_from_source(test_fn_file, 'test_fn')
-    self.assertEqual(10, fn([1, 2, 3, 4]))
+    fn_1 = import_utils.import_func_from_source(test_fn_file, 'test_fn')
+    fn_2 = import_utils.import_func_from_source(test_fn_file, 'test_fn')
+    self.assertIs(fn_1, fn_2)
+    self.assertEqual(10, fn_1([1, 2, 3, 4]))
 
   def testImportFuncFromSourceMissingFile(self):
     source_data_dir = os.path.join(os.path.dirname(__file__), 'testdata')
