@@ -50,3 +50,14 @@ This `tfx-dev` package should not be packaged as a binary or source
 distribution using `python setup.py {bdist_wheel,sdist}` to avoid conflicts
 with the two official `tfx` and `ml-pipelines-sdk` packages. Instead, users
 should build the two packages for distribution with the directions above.
+
+# Temporary workaround for building `tfx-dev` wheels.
+
+To minimize dependency issues, the instructions above should be used to build
+TFX wheel files for deployment. As a temporary workaround, the environmental
+variable `UNSUPPORTED_BUILD_TFX_DEV_WHEEL` may be set to `1` to forcibly enable
+building and installation of a single `tfx-dev` pip package containing the union
+of the `tfx` and `ml-pipelines-sdk` packages. This workaround may lead to
+package namespace conflicts and is not recommended or supported, and will be
+removed in a future version.
+

@@ -14,6 +14,10 @@
     `tft.quantiles` analyzer.
 
 ## Breaking changes
+*   Wheel package building for TFX has changed, and users need to follow the
+    [new TFX package build instructions]
+    (https://github.com/tensorflow/tfx/blob/master/package_build/README.md) to
+    build wheels for TFX.
 *   Migrated `deployment_config` in Kubeflow V2 runner from `Any` proto message
     to `Struct`, to ensure compatibility across different copies of the proto
     libraries.

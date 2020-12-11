@@ -73,6 +73,21 @@ class _BdistWheelCommand(bdist_wheel.bdist_wheel):
     gen_proto.local_mlmd_repo = self.local_mlmd_repo
 
 
+class _UnsupportedDevBuildWheelCommand(_BdistWheelCommand):
+  """Disables build of 'tfx-dev' wheel files."""
+
+  def finalize_options(self):
+    if not os.environ.get('UNSUPPORTED_BUILD_TFX_DEV_WHEEL'):
+      raise Exception(
+          'Starting in version 0.26.0, pip package build for TFX has changed,'
+          'and `python setup.py bdist_wheel` can no longer be invoked '
+          'directly.\n\nFor instructions on how to build wheels for TFX, see '
+          'https://github.com/tensorflow/tfx/blob/master/package_build/'
+          'README.md.\n\nEditable pip installation for development is still '
+          'supported through `pip install -e`.')
+    super(_UnsupportedDevBuildWheelCommand, self).finalize_options()
+
+
 class _BuildCommand(build.build):
   """Build everything that is needed to install.
 
@@ -193,7 +208,13 @@ tfx_extras_requires = {
     'test': dependencies.make_extra_packages_test(),
     'all': dependencies.make_extra_packages_all(),
 }
-ml_pipelines_sdk_packages = ['tfx.dsl', 'tfx.dsl.*']
+
+# Packages included the TFX namespace.
+TFX_NAMESPACE_PACKAGES = ['tfx', 'tfx.*']
+# Packages within the TFX namespace that are to be included in the base
+# "ml-pipelines-sdk" pip package (and excluded from the "tfx" pip package,
+# which takes "ml-pipelines-sdk" as a dependency).
+ML_PIPELINES_SDK_PACKAGES = ['tfx.dsl', 'tfx.dsl.*']
 
 # This `setup.py` file can be used to build packages in 3 configurations. See
 # the discussion in `package_build/README.md` for an overview. The `tfx` and
@@ -210,10 +231,9 @@ if package_config.PACKAGE_NAME == 'tfx-dev':
   extras_require = tfx_extras_requires
   description = _TFX_DESCRIPTION
   long_description = _TFX_LONG_DESCRIPTION
-  packages = find_namespace_packages(include=['tfx', 'tfx.*'])
-  # TODO(b/174503231): Remove the override on the following line and prevent
-  # build of wheels from a monolithic "tfx" package.
-  package_name = 'tfx'
+  packages = find_namespace_packages(include=TFX_NAMESPACE_PACKAGES)
+  # Do not support wheel builds for "tfx-dev".
+  build_wheel_command = _UnsupportedDevBuildWheelCommand  # pylint: disable=invalid-name
 elif package_config.PACKAGE_NAME == 'ml-pipelines-sdk':
   # Core TFX pipeline authoring SDK, without dependency on component-specific
   # packages like "tensorflow" and "apache-beam".
@@ -221,7 +241,9 @@ elif package_config.PACKAGE_NAME == 'ml-pipelines-sdk':
   extras_require = {}
   description = _PIPELINES_SDK_DESCRIPTION
   long_description = _PIPELINES_SDK_LONG_DESCRIPTION
-  packages = find_namespace_packages(include=ml_pipelines_sdk_packages)
+  packages = find_namespace_packages(include=ML_PIPELINES_SDK_PACKAGES)
+  # Use the default pip wheel building command.
+  build_wheel_command = bdist_wheel.bdist_wheel  # pylint: disable=invalid-name
 elif package_config.PACKAGE_NAME == 'tfx':
   # Recommended installation package for TFX. This package builds on top of
   # the "ml-pipelines-sdk" pipeline authoring SDK package and adds first-party
@@ -233,7 +255,9 @@ elif package_config.PACKAGE_NAME == 'tfx':
   description = _TFX_DESCRIPTION
   long_description = _TFX_LONG_DESCRIPTION
   packages = find_namespace_packages(
-      include=['tfx', 'tfx.*'], exclude=ml_pipelines_sdk_packages)
+      include=TFX_NAMESPACE_PACKAGES, exclude=ML_PIPELINES_SDK_PACKAGES)
+  # Use the pip wheel building command that includes proto generation.
+  build_wheel_command = _BdistWheelCommand  # pylint: disable=invalid-name
 else:
   raise ValueError('Invalid package config: %r.' % package_config.PACKAGE_NAME)
 
@@ -278,7 +302,7 @@ setup(
         'clikit>=0.4.3,<0.5',  # Required for ResolveDeps command.
     ],
     cmdclass={
-        'bdist_wheel': _BdistWheelCommand,
+        'bdist_wheel': build_wheel_command,
         'build': _BuildCommand,
         'develop': _DevelopCommand,
         'gen_proto': _GenProtoCommand,
