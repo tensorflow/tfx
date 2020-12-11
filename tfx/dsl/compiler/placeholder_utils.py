@@ -92,8 +92,9 @@ def resolve_placeholder_expression(
   try:
     result = _ExpressionResolver(context).resolve(expression)
   except NullDereferenceError as err:
-    logging.warn("Dereferenced None during placeholder evaluation. Ignoring.")
-    logging.warn("Placeholder=%s", err.placeholder)
+    logging.warning(
+        "Dereferenced None during placeholder evaluation. Ignoring.")
+    logging.warning("Placeholder=%s", err.placeholder)
     return None
   if not isinstance(result, _PlaceholderResolvedTypes):
     raise ValueError(
