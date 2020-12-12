@@ -29,7 +29,6 @@ from tensorflow_transform.beam import tft_unit
 from tfx import types
 from tfx.components.testdata.module_file import transform_module
 from tfx.components.transform import executor
-from tfx.components.transform import labels
 from tfx.dsl.io import fileio
 from tfx.proto import transform_pb2
 from tfx.types import artifact_utils
@@ -52,17 +51,6 @@ def _get_dataset_size(files):
 
 class _TempPath(types.Artifact):
   TYPE_NAME = 'TempPath'
-
-
-class _ExecutorForTesting(executor.Executor):
-
-  def __init__(self, force_tf_compat_v1):
-    super(_ExecutorForTesting, self).__init__()
-    self._force_tf_compat_v1 = force_tf_compat_v1
-
-  def Transform(self, inputs, outputs, status_file):
-    inputs[labels.FORCE_TF_COMPAT_V1_LABEL] = self._force_tf_compat_v1
-    super(_ExecutorForTesting, self).Transform(inputs, outputs, status_file)
 
 
 # TODO(b/122478841): Add more detailed tests.
@@ -165,10 +153,11 @@ class ExecutorTest(tft_unit.TransformTestCase):
         transform_module.preprocessing_fn.__module__,
         transform_module.preprocessing_fn.__name__)
     self._exec_properties['splits_config'] = None
+    self._exec_properties['force_tf_compat_v1'] = int(
+        self._use_force_tf_compat_v1())
 
     # Executor for test.
-    self._transform_executor = _ExecutorForTesting(
-        self._use_force_tf_compat_v1())
+    self._transform_executor = executor.Executor()
 
   def _verify_transform_outputs(self,
                                 materialize=True,
@@ -238,11 +227,11 @@ class ExecutorTest(tft_unit.TransformTestCase):
       return result
 
     with tft_unit.mock.patch.object(
-        _ExecutorForTesting,
+        executor.Executor,
         '_CreatePipeline',
         autospec=True,
         side_effect=_create_pipeline_wrapper):
-      transform_executor = _ExecutorForTesting(self._use_force_tf_compat_v1())
+      transform_executor = executor.Executor()
       transform_executor.Do(self._input_dict, self._output_dict,
                             self._exec_properties)
     assert len(pipelines) == 1

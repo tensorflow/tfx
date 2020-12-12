@@ -173,6 +173,17 @@ class ComponentTest(tf.test.TestCase):
           analyzer_cache=channel_utils.as_channel(
               [standard_artifacts.TransformCache()]))
 
+  def test_construct_with_force_tf_compat_v1_false(self):
+    transform = component.Transform(
+        examples=self.examples,
+        schema=self.schema,
+        preprocessing_fn='my_preprocessing_fn',
+        force_tf_compat_v1=False,
+    )
+    self._verify_outputs(transform)
+    self.assertEqual(False,
+                     bool(transform.spec.exec_properties['force_tf_compat_v1']))
+
 
 if __name__ == '__main__':
   tf.test.main()

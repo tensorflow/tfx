@@ -12,6 +12,11 @@
     TFX, and the TFX source code has been moved to `/tfx/src`.
 *   TFX Transform switched to a (notably) faster implementation of
     `tft.quantiles` analyzer.
+*   Added native TF 2 implementation of Transform. The default
+    behavior will continue to use Tensorflow's compat.v1 APIs. This can be
+    overriden by passing `force_tf_compat_v1=False` and enabling TF 2 behaviors.
+    The default behavior for TF 2 will be switched to the new native
+    implementation in a future release.
 
 ## Breaking changes
 *   Wheel package building for TFX has changed, and users need to follow the

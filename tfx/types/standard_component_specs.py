@@ -365,6 +365,8 @@ class TransformSpec(ComponentSpec):
           ExecutionParameter(type=(str, Text), optional=True),
       'preprocessing_fn':
           ExecutionParameter(type=(str, Text), optional=True),
+      'force_tf_compat_v1':
+          ExecutionParameter(type=int, optional=True),
       'custom_config':
           ExecutionParameter(type=(str, Text), optional=True),
       'splits_config':

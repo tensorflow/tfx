@@ -30,6 +30,7 @@ import tensorflow as tf
 import tensorflow_data_validation as tfdv
 import tensorflow_transform as tft
 from tensorflow_transform import impl_helper
+from tensorflow_transform import tf2_utils
 import tensorflow_transform.beam as tft_beam
 from tensorflow_transform.beam import analyzer_cache
 from tensorflow_transform.beam import common as tft_beam_common
@@ -316,6 +317,8 @@ class Executor(base_executor.BaseExecutor):
           analyze and transform splits can have overlap. Default behavior (when
           splits_config is not set) is analyze the 'train' split and transform
           all splits. If splits_config is set, analyze cannot be empty.
+        - force_tf_compat_v1: Whether to use TF in compat.v1 mode
+          irrespective of installed/enabled TF behaviors.
 
     Returns:
       None
@@ -390,6 +393,16 @@ class Executor(base_executor.BaseExecutor):
       else:
         return artifact_utils.get_single_uri(params_dict[label])
 
+    force_tf_compat_v1 = bool(exec_properties.get('force_tf_compat_v1', 1))
+    if force_tf_compat_v1 and not tf2_utils.use_tf_compat_v1(False):
+      absl.logging.warning(
+          'The default value of `force_tf_compat_v1` will change in a future '
+          'release from `True` to `False`. Since this pipeline has TF 2 '
+          'behaviors enabled, Transform will use native TF 2 at that point. You'
+          ' can test this behavior now by passing `force_tf_compat_v1=False` '
+          'or disable it by explicitly setting `force_tf_compat_v1=True` in '
+          'the Transform component.')
+
     label_inputs = {
         labels.COMPUTE_STATISTICS_LABEL:
             False,
@@ -414,7 +427,7 @@ class Executor(base_executor.BaseExecutor):
         labels.CUSTOM_CONFIG:
             exec_properties.get('custom_config', None),
         labels.FORCE_TF_COMPAT_V1_LABEL:
-            True,
+            force_tf_compat_v1,
     }
     cache_input = _GetCachePath(ANALYZER_CACHE_KEY, input_dict)
     if cache_input is not None:

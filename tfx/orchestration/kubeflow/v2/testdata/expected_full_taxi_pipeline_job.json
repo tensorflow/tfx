@@ -300,6 +300,13 @@
                 }
               }
             },
+            "force_tf_compat_v1":{
+              "runtimeValue":{
+                "constantValue":{
+                  "intValue":"1"
+                }
+              }
+            },
             "module_file":{
               "runtimeValue":{
                 "constantValue":{
