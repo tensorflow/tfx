@@ -53,10 +53,10 @@ class TFMABenchmarkBase(benchmark_base.BenchmarkBase):
       kwargs["extras"] = {}
     # Note that the GIT_COMMIT_ID is not included in the packages themselves:
     # it must be injected by an external script.
-    kwargs["extras"]["commit_tfx"] = getattr(tfx, "GIT_COMMIT_ID",
-                                             tfx.__version__)
-    kwargs["extras"]["commit_tfma"] = getattr(tfma, "GIT_COMMIT_ID",
-                                              tfma.__version__)
+    kwargs["extras"]["commit_tfx"] = (getattr(tfx, "GIT_COMMIT_ID", None) or
+                                      getattr(tfx, "__version__", None))
+    kwargs["extras"]["commit_tfma"] = (getattr(tfma, "GIT_COMMIT_ID", None) or
+                                       getattr(tfma, "__version__", None))
     super(TFMABenchmarkBase, self).report_benchmark(**kwargs)
 
   def benchmarkMiniPipeline(self):
