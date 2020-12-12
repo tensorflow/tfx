@@ -21,6 +21,8 @@
 *   Migrated `deployment_config` in Kubeflow V2 runner from `Any` proto message
     to `Struct`, to ensure compatibility across different copies of the proto
     libraries.
+*   Deprecated DockerComponentConfig class: user should set a DockerPlatformConfig
+    proto in `platform_config` using `with_platform_config()` API instead.
 
 ### For pipeline authors
 *   The `tfx.dsl.io.fileio` filesystem handler will delegate to

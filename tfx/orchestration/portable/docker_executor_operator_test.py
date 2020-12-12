@@ -29,6 +29,7 @@ from tfx.orchestration.portable import data_types
 from tfx.orchestration.portable import docker_executor_operator
 from tfx.proto.orchestration import executable_spec_pb2
 from tfx.proto.orchestration import pipeline_pb2
+from tfx.proto.orchestration import platform_config_pb2
 
 from google.protobuf import text_format
 from ml_metadata.proto import metadata_store_pb2
@@ -68,6 +69,38 @@ _EXECUTOR_SEPC = text_format.Parse(
     }
   """, executable_spec_pb2.ContainerExecutableSpec())
 
+_PLATFORM_CONFIG = text_format.Parse(
+    """
+    environment: "VAR=1"
+    environment: "ANOTHER_VAR=2"
+    name: "TestContainer"
+    privileged: True
+    user {
+      username: "test_user"
+    }
+    volumes {
+      key: "/home/user1"
+      value: {
+        bind: "/mnt/vol2",
+        mode: "rw"
+      }
+    }
+    volumes {
+      key: "/var/www"
+      value: {
+        bind: "/mnt/vol1",
+        mode: "ro"
+      }
+    }
+    additional_run_args {
+      key: "arg1"
+      value: "value1"
+    }
+    additional_run_args {
+      key: "arg2"
+      value: "value2"
+    }""", platform_config_pb2.DockerPlatformConfig())
+
 
 # TODO(hongyes): add e2e testing to cover docker launcher in beam/airflow.
 class DockerComponentLauncherTest(tf.test.TestCase):
@@ -89,7 +122,7 @@ class DockerComponentLauncherTest(tf.test.TestCase):
 
   @mock.patch.object(publisher, 'Publisher', autospec=True)
   @mock.patch.object(docker, 'from_env', autospec=True)
-  def testLaunchSucceedsWithoutConfig(self, mock_docker_client, mock_publisher):
+  def testLaunchSucceeds(self, mock_docker_client, mock_publisher):
     mock_publisher.return_value.publish_execution.return_value = {}
     mock_run = mock_docker_client.return_value.containers.run
     mock_run.return_value.logs.return_value = []
@@ -105,6 +138,23 @@ class DockerComponentLauncherTest(tf.test.TestCase):
     self.assertEqual('gcr://test', mock_kwargs['image'])
     self.assertListEqual(['google/' + context['input_artifact'].uri],
                          mock_kwargs['command'])
+    self.assertEqual(['VAR=1', 'ANOTHER_VAR=2'], mock_kwargs['environment'])
+    self.assertEqual('TestContainer', mock_kwargs['name'])
+    self.assertEqual(True, mock_kwargs['privileged'])
+    self.assertEqual('test_user', mock_kwargs['user'])
+    self.assertEqual(
+        {
+            '/home/user1': {
+                'bind': '/mnt/vol2',
+                'mode': 'rw'
+            },
+            '/var/www': {
+                'bind': '/mnt/vol1',
+                'mode': 'ro'
+            }
+        }, mock_kwargs['volumes'])
+    self.assertEqual('value1', mock_kwargs['arg1'])
+    self.assertEqual('value2', mock_kwargs['arg2'])
 
   @mock.patch.object(publisher, 'Publisher', autospec=True)
   @mock.patch.object(docker, 'from_env', autospec=True)
@@ -126,7 +176,8 @@ class DockerComponentLauncherTest(tf.test.TestCase):
     input_artifact = test_utils._InputArtifact()
     input_artifact.uri = os.path.join(test_dir, 'input')
 
-    operator = docker_executor_operator.DockerExecutorOperator(_EXECUTOR_SEPC)
+    operator = docker_executor_operator.DockerExecutorOperator(
+        _EXECUTOR_SEPC, _PLATFORM_CONFIG)
 
     return {'operator': operator, 'input_artifact': input_artifact}
 

@@ -1,0 +1,63 @@
+// Copyright 2020 Google LLC. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+syntax = "proto3";
+
+package tfx.orchestration.platform_config;
+
+// Platform config which holds docker run args.
+message DockerPlatformConfig {
+  // Optional. URL to the Docker server.
+  // For example, unix:///var/run/docker.sock or tcp://127.0.0.1:1234.
+  // Uses environment viarable to initialize the docker client if this parameter
+  // is not set.
+  string docker_server_url = 1;
+
+  // Optional. Environment variables to set inside the container, as a
+  // a list of strings in the format ["VARIABLE=xxx", ...].
+  repeated string environment = 2;
+
+  // Optional. The name for this container.
+  string name = 3;
+
+  // Optional. Give extended privileges to this container. Default to False.
+  bool privileged = 4;
+
+  // Identifies a user to run commands inside the container.
+  message ContainerRunUser {
+    oneof kind {
+      string username = 1;
+      int32 uid = 2;
+    }
+  }
+
+  // Optional. Username or UID to run commands inside the container.
+  ContainerRunUser user = 5;
+
+  // Configures volumes mounted inside the container.
+  // See https://docker-py.readthedocs.io/en/stable/containers.html#docker.models.containers.ContainerCollection.run
+  message VolumeMount {
+    string bind = 1;
+    string mode = 2;
+  }
+
+  // Optional. A dictionary to configure volumes mounted inside the container.
+  // The key is either the host path or a volume name.
+  // For example:
+  // {'/home/user1': {'bind': '/mnt/vol2', 'mode': 'rw'},
+  //  '/var/www':    {'bind': '/mnt/vol1', 'mode': 'ro'}}
+  map<string, VolumeMount> volumes = 6;
+
+  // Optional. Additional run args to pass to docker.client.containers.run.
+  map<string, string> additional_run_args = 7;
+}
