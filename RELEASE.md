@@ -10,8 +10,8 @@
     link with downstream training.
 *   In the published TFX container image, wheel files are now used to install
     TFX, and the TFX source code has been moved to `/tfx/src`.
-*   TFX Transform switched to a (notably) faster implementation of
-    `tft.quantiles` analyzer.
+*   TFX Transform switched to a (notably) faster and more accurate
+    implementation of `tft.quantiles` analyzer.
 *   Added native TF 2 implementation of Transform. The default
     behavior will continue to use Tensorflow's compat.v1 APIs. This can be
     overriden by passing `force_tf_compat_v1=False` and enabling TF 2 behaviors.
