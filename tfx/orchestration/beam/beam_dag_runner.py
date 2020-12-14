@@ -56,9 +56,9 @@ class PipelineNodeAsDoFn(beam.DoFn):
       pipeline_runtime_spec: The runtime information of the pipeline that this
         node runs in.
       executor_spec: Specification for the executor of the node. This is
-        expected for all nodes. This will be used to determine the
-        specific ExecutorOperator class to be used to execute and will be passed
-        into ExecutorOperator.
+        expected for all nodes. This will be used to determine the specific
+        ExecutorOperator class to be used to execute and will be passed into
+        ExecutorOperator.
       custom_driver_spec: Specification for custom driver. This is expected only
         for advanced use cases.
       deployment_config: Deployment Config for the pipeline.
@@ -89,13 +89,24 @@ class PipelineNodeAsDoFn(beam.DoFn):
   # TODO(b/171565775): rename this method to _run_node for this class and its
   # Childeren.
   def _run_component(self) -> None:
+    platform_config = self._extract_platform_config(self._deployment_config,
+                                                    self._node_id)
     launcher.Launcher(
         pipeline_node=self._pipeline_node,
         mlmd_connection=metadata.Metadata(self._mlmd_connection_config),
         pipeline_info=self._pipeline_info,
         pipeline_runtime_spec=self._pipeline_runtime_spec,
         executor_spec=self._executor_spec,
+        platform_config=platform_config,
         custom_driver_spec=self._custom_driver_spec).launch()
+
+  def _extract_platform_config(
+      self,
+      deployment_config: local_deployment_config_pb2.LocalDeploymentConfig,
+      node_id: str) -> Optional[message.Message]:
+    platform_config = deployment_config.node_level_platform_configs.get(node_id)
+    return (getattr(platform_config, platform_config.WhichOneof('config'))
+            if platform_config else None)
 
 
 class BeamDagRunner(tfx_runner.TfxRunner):
@@ -103,8 +114,7 @@ class BeamDagRunner(tfx_runner.TfxRunner):
   _PIPELINE_NODE_DO_FN_CLS = PipelineNodeAsDoFn
 
   def __init__(self):
-    """Initializes BeamDagRunner as a TFX orchestrator.
-    """
+    """Initializes BeamDagRunner as a TFX orchestrator."""
 
   def _build_executable_spec(
       self, node_id: str,
@@ -117,14 +127,27 @@ class BeamDagRunner(tfx_runner.TfxRunner):
       spec.Unpack(result.container_executable_spec)
     else:
       raise ValueError(
-          'executor spec of {} is expected to be of one of the '
+          'Executor spec of {} is expected to be of one of the '
           'types of tfx.orchestration.deployment_config.ExecutableSpec.spec '
           'but got type {}'.format(node_id, spec.type_url))
     return result
 
+  def _build_local_platform_config(
+      self, node_id: str,
+      spec: any_pb2.Any) -> local_deployment_config_pb2.LocalPlatformConfig:
+    """Builds LocalPlatformConfig given the any proto from IntermediateDeploymentConfig."""
+    result = local_deployment_config_pb2.LocalPlatformConfig()
+    if spec.Is(result.docker_platform_config.DESCRIPTOR):
+      spec.Unpack(result.docker_platform_config)
+    else:
+      raise ValueError(
+          'Platform config of {} is expected to be of one of the '
+          'types of tfx.orchestration.deployment_config.LocalPlatformConfig.config '
+          'but got type {}'.format(node_id, spec.type_url))
+    return result
+
   def _to_local_deployment(
-      self,
-      input_config: pipeline_pb2.IntermediateDeploymentConfig
+      self, input_config: pipeline_pb2.IntermediateDeploymentConfig
   ) -> local_deployment_config_pb2.LocalDeploymentConfig:
     """Turns IntermediateDeploymentConfig to LocalDeploymentConfig."""
     result = local_deployment_config_pb2.LocalDeploymentConfig()
@@ -134,6 +157,10 @@ class BeamDagRunner(tfx_runner.TfxRunner):
     for k, v in input_config.custom_driver_specs.items():
       result.custom_driver_specs[k].CopyFrom(self._build_executable_spec(k, v))
 
+    for k, v in input_config.node_level_platform_configs.items():
+      result.node_level_platform_configs[k].CopyFrom(
+          self._build_local_platform_config(k, v))
+
     if not input_config.metadata_connection_config.Unpack(
         result.metadata_connection_config):
       raise ValueError('metadata_connection_config is expected to be in type '
@@ -142,8 +169,7 @@ class BeamDagRunner(tfx_runner.TfxRunner):
     return result
 
   def _extract_deployment_config(
-      self,
-      pipeline: pipeline_pb2.Pipeline
+      self, pipeline: pipeline_pb2.Pipeline
   ) -> local_deployment_config_pb2.LocalDeploymentConfig:
     """Extracts the proto.Any pipeline.deployment_config to LocalDeploymentConfig."""
 
@@ -164,16 +190,14 @@ class BeamDagRunner(tfx_runner.TfxRunner):
   def _extract_executor_spec(
       self,
       deployment_config: local_deployment_config_pb2.LocalDeploymentConfig,
-      node_id: str
-  ) -> Optional[message.Message]:
+      node_id: str) -> Optional[message.Message]:
     return self._unwrap_executable_spec(
         deployment_config.executor_specs.get(node_id))
 
   def _extract_custom_driver_spec(
       self,
       deployment_config: local_deployment_config_pb2.LocalDeploymentConfig,
-      node_id: str
-  ) -> Optional[message.Message]:
+      node_id: str) -> Optional[message.Message]:
     return self._unwrap_executable_spec(
         deployment_config.custom_driver_specs.get(node_id))
 
@@ -233,8 +257,8 @@ class BeamDagRunner(tfx_runner.TfxRunner):
           # TODO(b/160882349): Support subpipeline
           pipeline_node = node.pipeline_node
           node_id = pipeline_node.node_info.id
-          executor_spec = self._extract_executor_spec(
-              deployment_config, node_id)
+          executor_spec = self._extract_executor_spec(deployment_config,
+                                                      node_id)
           custom_driver_spec = self._extract_custom_driver_spec(
               deployment_config, node_id)
 
