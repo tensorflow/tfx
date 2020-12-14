@@ -149,12 +149,12 @@ training data generation to overcome lack of initial data in the desired corpus.
 Another reason is a faulty sampling mechanism that only chooses a subsample of
 the serving data to train on.
 
-    Example Scenario
+##### Example Scenario
 
-    For instance, in order to compensate for an underrepresented slice of data,
-    if a biased sampling is used without upweighting the downsampled examples
-    appropriately, the distribution of feature values between training and
-    serving data gets artificially skewed.
+Note: For instance, in order to compensate for an underrepresented slice of
+data, if a biased sampling is used without upweighting the downsampled examples
+appropriately, the distribution of feature values between training and
+serving data gets artificially skewed.
 
 See the [TensorFlow Data Validation Get Started Guide](https://www.tensorflow.org/tfx/data_validation/get_started#checking_data_skew_and_drift)
 for information about configuring training-serving skew detection.
