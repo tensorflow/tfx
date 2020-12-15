@@ -39,6 +39,7 @@ ENV TFX_DEPENDENCY_SELECTOR=${TFX_DEPENDENCY_SELECTOR}
 
 # TODO(b/175089240): clean up conditional checks on whether ml-pipelines-sdk is
 # built after TFX versions <= 0.25 are no longer eligible for cherry-picks.
+# TODO(b/175509591): Delete pip legacy resolver flags after pip is fixed.
 RUN cd ${TFX_DIR}/src; \
     if [ -e "package_build" ]; then \
       bash -x package_build/initialize.sh; \
@@ -57,11 +58,14 @@ RUN cd ${TFX_DIR}/src; \
     if [ "${TFX_DEPENDENCY_SELECTOR}" = "NIGHTLY" ]; then \
       CFLAGS=$(/usr/bin/python-config --cflags) \
         python -m pip install \
+          --use-deprecated=legacy-resolver \
           --extra-index-url https://pypi-nightly.tensorflow.org/simple \
           ${MLSDK_WHEEL} ${TFX_WHEEL}[docker-image] ; \
     else \
       CFLAGS=$(/usr/bin/python-config --cflags) \
-        python -m pip install ${MLSDK_WHEEL} ${TFX_WHEEL}[docker-image] ; \
+        python -m pip install \
+          --use-deprecated=legacy-resolver \
+          ${MLSDK_WHEEL} ${TFX_WHEEL}[docker-image] ; \
     fi; \
     cd ${TFX_DIR}
 
