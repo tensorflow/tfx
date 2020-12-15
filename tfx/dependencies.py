@@ -84,6 +84,7 @@ def make_required_install_packages():
       'kubernetes>=10.0.1,<12',
       'pyarrow>=0.17,<0.18',
       'pyyaml>=3.12,<6',
+      'promise>=2.3.0',
       'tensorflow>=1.15.2,!=2.0.*,!=2.1.*,!=2.2.*,<3',
       'tensorflow-hub>=0.9.0,<0.10',
       # TODO(b/159488890): remove user module-only dependency.
