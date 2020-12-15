@@ -18,17 +18,10 @@ module will be loaded by transform and the function named `preprocessing_fn`
 will be found and used by Transform to construct the preprocessing pipeline.
 
 ```
-transform_training = components.Transform(
-    examples=examples_gen.outputs['training_examples'],
-    schema=infer_schema.outputs['schema'],
-    module_file=taxi_pipeline_utils,
-    name='transform-training')
-
-transform_eval = components.Transform(
-    examples=examples_gen.outputs['eval_examples'],
-    schema=infer_schema.outputs['schema'],
-    transform_dir=transform_training.outputs['output'],
-    name='transform-eval')
+transform = Transform(
+    examples=example_gen.outputs['examples'],
+    schema=schema_gen.outputs['schema'],
+    module_file=os.path.abspath(_taxi_transform_module_file))
 ```
 
 ## Transform and TensorFlow Transform
