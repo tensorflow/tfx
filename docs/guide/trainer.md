@@ -15,10 +15,10 @@ Trainer takes:
 
 *   tf.Examples used for training and eval.
 *   A user provided module file that defines the trainer logic.
-*   A data schema created by a SchemaGen pipeline component and optionally
-    altered by the developer.
 *   [Protobuf](https://developers.google.com/protocol-buffers) definition of
     train args and eval args.
+*   (Optional) A data schema created by a SchemaGen pipeline component and
+    optionally altered by the developer.
 *   (Optional) transform graph produced by an upstream Transform component.
 *   (Optional) pre-trained models used for scenarios such as warmstart.
 *   (Optional) hyperparameters, which will be passed to user module function.
@@ -152,7 +152,7 @@ Typical pipeline DSL code for the generic Trainer would look like this:
 
 ```python
 from tfx.components import Trainer
-from tfx.components.base import executor_spec
+from tfx.dsl.components.base import executor_spec
 from tfx.components.trainer.executor import GenericExecutor
 
 ...
@@ -162,17 +162,34 @@ trainer = Trainer(
     custom_executor_spec=executor_spec.ExecutorClassSpec(GenericExecutor),
     examples=transform.outputs['transformed_examples'],
     transform_graph=transform.outputs['transform_graph'],
-    schema=infer_schema.outputs['schema'],
     train_args=trainer_pb2.TrainArgs(num_steps=10000),
     eval_args=trainer_pb2.EvalArgs(num_steps=5000))
 ```
 
 Trainer invokes a training module, which is specified in the `module_file`
 parameter. Instead of `trainer_fn`, a `run_fn` is required in the module file if
-the `GenericExecutor` is specified in the `custom_executor_spec`.
+the `GenericExecutor` is specified in the `custom_executor_spec`. The
+`trainer_fn` was responsible for creating the model. In addition to that,
+`run_fn` also needs to handle the training part and output the trained model to a
+the desired location given by [FnArgs](https://github.com/tensorflow/tfx/blob/master/tfx/components/trainer/fn_args_utils.py):
 
-If the Transform component is not used in the pipeline, then the Trainer would
-take the examples from ExampleGen directly:
+```python
+from tfx.components.trainer.fn_args_utils import FnArgs
+
+def run_fn(fn_args: FnArgs) -> None:
+  """Build the TF model and train it."""
+  model = _build_keras_model()
+  model.fit(...)
+  # Save model to fn_args.serving_model_dir.
+  model.save(fn_args.serving_model_dir, ...)
+```
+
+Here is an
+[example module file](https://github.com/tensorflow/tfx/blob/master/tfx/examples/penguin/penguin_utils.py)
+with `run_fn`.
+
+Note that if the Transform component is not used in the pipeline, then the
+Trainer would take the examples from ExampleGen directly:
 
 ```python
 trainer = Trainer(
@@ -183,7 +200,3 @@ trainer = Trainer(
     train_args=trainer_pb2.TrainArgs(num_steps=10000),
     eval_args=trainer_pb2.EvalArgs(num_steps=5000))
 ```
-
-Here is an
-[example module file](https://github.com/tensorflow/tfx/blob/master/tfx/examples/penguin/penguin_utils.py)
-with `run_fn`.
