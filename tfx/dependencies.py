@@ -70,7 +70,7 @@ def make_required_install_packages():
   # TODO(b/130767399): add flask once the frontend is exposed externally.
   return make_pipeline_sdk_required_install_packages() + [
       # LINT.IfChange
-      'apache-beam[gcp]>=2.25,<3',
+      'apache-beam[gcp]>=2.25,!=2.26.*,<3',
       # LINT.ThenChange(examples/chicago_taxi_pipeline/setup/setup_beam.sh)
       'attrs>=19.3.0,<21',
       'click>=7,<8',
@@ -84,7 +84,7 @@ def make_required_install_packages():
       'kubernetes>=10.0.1,<12',
       'pyarrow>=0.17,<0.18',
       'pyyaml>=3.12,<6',
-      'tensorflow>=1.15.2,!=2.0.*,!=2.1.*,!=2.2.*,<3',
+      'tensorflow>=1.15.2,!=2.0.*,!=2.1.*,!=2.2.*,!=2.4.*,<3',
       'tensorflow-hub>=0.9.0,<0.10',
       # TODO(b/159488890): remove user module-only dependency.
       'tensorflow-cloud>=0.1,<0.2',
