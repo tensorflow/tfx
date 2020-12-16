@@ -88,7 +88,18 @@ class BaseResolver(with_metaclass(abc.ABCMeta, object)):
       self, metadata_handler: metadata.Metadata,
       input_dict: Dict[Text, List[types.Artifact]]
   ) -> Optional[Dict[Text, List[types.Artifact]]]:
-    """Resolves artifacts from channels by querying MLMD.
+    """Resolves artifacts from channels, optionally querying MLMD if needed.
+
+    In asynchronous execution mode, resolver classes may composed in sequence
+    where the resolve_artifacts() result from the previous resolver instance
+    would be passed to the next resolver instance's resolve_artifacts() inputs.
+
+    If resolve_artifacts() returns None, it is considered as "no inputs
+    available", and the remaining resolvers will not be executed.
+
+    Also if resolve_artifacts() omits any key from the input_dict it will not
+    be available from the downstream resolver instances. General recommendation
+    is to preserve all keys in the input_dict unless you have specific reason.
 
     Args:
       metadata_handler: A metadata handler to access MLMD store.

@@ -219,7 +219,10 @@ nodes {
         }
       }
       resolver_config {
-        resolver_policy: LATEST_ARTIFACT
+        resolver_steps {
+          class_path: "tfx.dsl.experimental.latest_artifacts_resolver.LatestArtifactsResolver"
+          config_json: "{}"
+        }
       }
     }
     upstream_nodes: "my_trainer"

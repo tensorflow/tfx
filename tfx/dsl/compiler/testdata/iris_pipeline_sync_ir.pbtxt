@@ -317,7 +317,12 @@ nodes {
         }
       }
       resolver_config {
-        resolver_policy: LATEST_BLESSED_MODEL
+        resolver_steps {
+          class_path: "tfx.dsl.experimental.latest_blessed_model_resolver.LatestBlessedModelResolver"
+          config_json: "{}"
+          input_keys: "model"
+          input_keys: "model_blessing"
+        }
       }
     }
     execution_options {

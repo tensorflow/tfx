@@ -130,7 +130,6 @@ def resolve_input_artifacts(
     Otherwise, return None.
   """
   result = collections.defaultdict(set)
-  all_input_satisfied = True
   for key, input_spec in node_inputs.inputs.items():
     for channel in input_spec.channels:
       artifacts = _resolve_single_channel(
@@ -142,13 +141,15 @@ def resolve_input_artifacts(
       logging.warning(
           "Input %s doesn't have enough data to resolve, required number %d, "
           'got %d', key, input_spec.min_count, len(result[key]))
-      all_input_satisfied = False
+      return None
 
   result = {k: list(v) for k, v in result.items()}
-
-  resolver = resolver_processor.ResolverProcessor(node_inputs)
-  return (resolver.ResolveInputs(metadata_handler, result)
-          if all_input_satisfied else None)
+  for processor in (resolver_processor
+                    .make_resolver_processors(node_inputs.resolver_config)):
+    result = processor(metadata_handler, result)
+    if result is None:
+      return None
+  return result
 
 
 def resolve_parameters(

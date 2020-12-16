@@ -18,25 +18,40 @@ package tfx.orchestration;
 import "google/protobuf/any.proto";
 import "ml_metadata/proto/metadata_store.proto";
 
-// ResolverConfig is subject to change. Currently we only use enum to represent
-// two of the currently available policies. We plan to introduce a flexible
+// ResolverConfig is subject to change. We plan to introduce a flexible
 // config to enable more sophisticated policies in the future.
 // TODO(b/152230663): Support more flexibility for resolution logic.
 message ResolverConfig {
-  enum ResolverPolicy {
-    RESOLVER_POLICY_UNSPECIFIED = 0;
-    // Given a list of artifacts, always select the artifact with largest
-    // `last_update_time_since_epoch`.
-    LATEST_ARTIFACT = 1;
-    // Given a list of Model artifacts and a list of ModelBlessing artifacts,
-    // select the the latest Model that is blessed (represented by having a
-    // corresponding ModelBlessing artifact. The result will be consumed by
-    // components that need the latest model that is blessed such as Evaluator.
-    LATEST_BLESSED_MODEL = 2;
+
+  // Each resolver step takes input map (Dict[Text, List[Artifact]]), process
+  // the map, and optionally emits it (Optional[Dict[Text, List[Artifacts]]]).
+  // If resolver step does not emit any input map, execution will not be
+  // triggered.
+  message ResolverStep {
+    // Class path (<module_name>.<class_name>) of the resolver. For example
+    // "tfx.dsl.resolvers.latest_artifacts_resolver.LatestArtifactsResolver".
+    // Resolver class should be the subclass of the
+    // `tfx.dsl.resolvers.base_resolver.BaseResolver` class.
+    string class_path = 1;
+    // JSON serialized resolver config which will be used as keyword arguments
+    // on instantiating resolver class. Any tfx.utils.json_utils.Jsonable value
+    // can be used.
+    string config_json = 2;
+    // Optional list of input keys that Resolver instance would use. Other keys
+    // would bypass the resolver instance and passed as is to the next step. If
+    // resolver returns None, bypassed inputs are also ignored and ResolverStep
+    // would return None.
+    // If not specified, all input keys will be used.
+    repeated string input_keys = 3;
   }
-  // TODO(b/152230663): Make this one of special resolver policies or generic
-  // ResolverConfig.
-  ResolverPolicy resolver_policy = 1;
+
+  // Series of resolver steps that would be applied in order. Inputs and outputs
+  // of resolver are the same (Dict[Text, List[Artifact]]), so the list of
+  // resolvers can be composed to act as a single resolver. If any of such
+  // composed resolvers returns None, the rest of the resolvers would not be
+  // executed and early return None (which means component will not be
+  // triggered).
+  repeated ResolverStep resolver_steps = 1;
 }
 
 // Definition for runtime parameters.
