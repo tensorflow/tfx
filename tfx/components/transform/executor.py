@@ -21,7 +21,7 @@ from __future__ import print_function
 import functools
 import hashlib
 import os
-from typing import Any, Dict, Generator, Iterable, List, Mapping, Optional, Sequence, Set, Text, Tuple, Union
+from typing import Any, Callable, Dict, Generator, Iterable, List, Mapping, Optional, Sequence, Set, Text, Tuple, Union
 
 import absl
 import apache_beam as beam
@@ -40,7 +40,7 @@ from tensorflow_transform.tf_metadata import metadata_io
 from tensorflow_transform.tf_metadata import schema_utils
 from tfx import types
 from tfx.components.transform import labels
-from tfx.components.transform import stats_options as transform_stats_options
+from tfx.components.transform import stats_options_util
 from tfx.components.util import tfxio_utils
 from tfx.components.util import value_utils
 from tfx.dsl.components.base import base_executor
@@ -549,7 +549,6 @@ class Executor(base_executor.BaseExecutor):
   def _GenerateStats(
       pcoll: beam.pvalue.PCollection,
       stats_output_path: Text,
-      schema: schema_pb2.Schema,
       stats_options: tfdv.StatsOptions,
   ) -> beam.pvalue.PDone:
     """Generates statistics.
@@ -557,7 +556,6 @@ class Executor(base_executor.BaseExecutor):
     Args:
       pcoll: PCollection of examples.
       stats_output_path: path where statistics is written to.
-      schema: schema.
       stats_options: An instance of `tfdv.StatsOptions()` used when computing
         statistics.
 
@@ -574,12 +572,11 @@ class Executor(base_executor.BaseExecutor):
       return pa.RecordBatch.from_arrays(filtered_columns, filtered_column_names)
 
     pcoll |= 'FilterInternalColumn' >> beam.Map(_FilterInternalColumn)
-    stats_options.schema = schema
     # pylint: disable=no-value-for-parameter
-    return (
-        pcoll
-        | 'GenerateStatistics' >> tfdv.GenerateStatistics(stats_options)
-        | 'WriteStats' >> Executor._WriteStats(stats_output_path))
+    return (pcoll
+            | 'GenerateStatistics' >> tfdv.GenerateStatistics(stats_options)
+            | 'WriteStats' >> Executor._WriteStats(stats_output_path,
+                                                   stats_options.schema))
 
   @beam.typehints.with_input_types(List[bytes])
   @beam.typehints.with_output_types(pa.RecordBatch)
@@ -632,20 +629,27 @@ class Executor(base_executor.BaseExecutor):
   @beam.ptransform_fn
   @beam.typehints.with_input_types(statistics_pb2.DatasetFeatureStatisticsList)
   @beam.typehints.with_output_types(beam.pvalue.PDone)
-  def _WriteStats(pcollection_stats: beam.pvalue.PCollection,
-                  stats_output_path: Text) -> beam.pvalue.PDone:
+  def _WriteStats(
+      pcollection_stats: beam.pvalue.PCollection,
+      stats_output_path: Text,
+      schema: Optional[schema_pb2.Schema] = None) -> beam.pvalue.PDone:
     """Writs Statistics outputs.
 
     Args:
       pcollection_stats: pcollection of statistics.
-      stats_output_path: path to write statistics.
+      stats_output_path: path to write statistics and the schema. The schema
+        used to generate the statistics (if any) will be placed within the same
+        subdirectory.
+      schema: the schema used to generate the statistics.
 
     Returns:
       beam.pvalue.PDone.
     """
+    stats_dir = os.path.dirname(stats_output_path)
+    fileio.makedirs(stats_dir)
+    if schema is not None:
+      io_utils.write_pbtxt_file(os.path.join(stats_dir, 'schema.pbtxt'), schema)
 
-    # TODO(b/68765333): Investigate if this can be avoided.
-    fileio.makedirs(os.path.dirname(stats_output_path))
     # TODO(b/117601471): Replace with utility method to write stats.
     return (pcollection_stats | 'Write' >> beam.io.WriteToText(
         stats_output_path,
@@ -770,8 +774,20 @@ class Executor(base_executor.BaseExecutor):
 
       return (new_analyze_data_dict, input_cache)
 
-  def _GetPreprocessingFn(self, inputs: Mapping[Text, Any],
-                          unused_outputs: Mapping[Text, Any]) -> Any:
+  def _MaybeBindCustomConfig(self, inputs: Mapping[Text, Any],
+                             fn: Any) -> Callable[..., Any]:
+    # For compatibility, only bind custom config if it's in the signature.
+    if value_utils.FunctionHasArg(fn, labels.CUSTOM_CONFIG):
+      custom_config_json = value_utils.GetSoleValue(inputs,
+                                                    labels.CUSTOM_CONFIG)
+      custom_config = (json_utils.loads(custom_config_json)
+                       if custom_config_json else {}) or {}
+      fn = functools.partial(fn, custom_config=custom_config)
+    return fn
+
+  def _GetPreprocessingFn(
+      self, inputs: Mapping[Text, Any],
+      unused_outputs: Mapping[Text, Any]) -> Callable[..., Any]:
     """Returns a user defined preprocessing_fn.
 
     If a custom config is provided in inputs, and also needed in
@@ -809,16 +825,39 @@ class Executor(base_executor.BaseExecutor):
           '.'.join(preprocessing_fn_path_split[0:-1]),
           preprocessing_fn_path_split[-1])
 
-    # For compatibility, only bind custom config if it's in the signature.
-    if value_utils.FunctionHasArg(fn, labels.CUSTOM_CONFIG):
-      custom_config_json = value_utils.GetSoleValue(inputs,
-                                                    labels.CUSTOM_CONFIG)
-      custom_config = (json_utils.loads(custom_config_json)
-                       if custom_config_json else {}) or {}
-      result = functools.partial(fn, custom_config=custom_config)
-    else:
-      result = fn
-    return result
+    return self._MaybeBindCustomConfig(inputs, fn)
+
+  def _GetStatsOptionsUpdaterFn(
+      self, inputs: Mapping[Text, Any]
+  ) -> Optional[Callable[[stats_options_util.StatsType, tfdv.StatsOptions],
+                         tfdv.StatsOptions]]:
+    """Returns the user-defined stats_options_updater_fn.
+
+    If a custom config is provided in inputs, and also needed in
+    stats_options_updater_fn, bind it to stats_options_updater_fn.
+
+    Args:
+      inputs: A dictionary of labelled input values.
+
+    Returns:
+      User defined function, optionally bound with a custom config.
+    """
+    has_module_file = bool(
+        value_utils.GetSoleValue(inputs, labels.MODULE_FILE, strict=False))
+
+    fn = None
+    if has_module_file:
+      # Users do not have to define a stats_options_updater_fn. Return None if
+      # they do not.
+      try:
+        fn = import_utils.import_func_from_source(
+            value_utils.GetSoleValue(inputs, labels.MODULE_FILE),
+            'stats_options_updater_fn')
+        fn = self._MaybeBindCustomConfig(inputs, fn)
+      except AttributeError:
+        return None
+
+    return fn
 
   # TODO(b/122478841): Refine this API in following cls.
   # Note: This API is up to change.
@@ -882,6 +921,7 @@ class Executor(base_executor.BaseExecutor):
     materialize_output_paths = value_utils.GetValues(
         outputs, labels.TRANSFORM_MATERIALIZE_OUTPUT_PATHS_LABEL)
     preprocessing_fn = self._GetPreprocessingFn(inputs, outputs)
+    stats_options_updater_fn = self._GetStatsOptionsUpdaterFn(inputs)
     per_set_stats_output_paths = value_utils.GetValues(
         outputs, labels.PER_SET_STATS_OUTPUT_PATHS_LABEL)
     analyze_data_paths = value_utils.GetValues(inputs,
@@ -954,7 +994,8 @@ class Executor(base_executor.BaseExecutor):
     analyze_input_columns = tft.get_analyze_input_columns(
         preprocessing_fn, typespecs, force_tf_compat_v1=force_tf_compat_v1)
 
-    if not compute_statistics and not materialize_output_paths:
+    if (not compute_statistics and not materialize_output_paths and
+        stats_options_updater_fn is None):
       if analyze_input_columns:
         absl.logging.warning(
             'Not using the in-place Transform because the following features '
@@ -971,19 +1012,25 @@ class Executor(base_executor.BaseExecutor):
         # TODO(b/122478841): Writes status to status file.
         return
 
+    stats_options_updater_fn = (stats_options_updater_fn
+                                if stats_options_updater_fn else lambda _, x: x)
+
     materialization_format = (
         transform_paths_file_formats[-1] if materialize_output_paths else None)
     self._RunBeamImpl(analyze_data_list, transform_data_list, preprocessing_fn,
-                      force_tf_compat_v1, input_dataset_metadata,
-                      transform_output_path, raw_examples_data_format,
-                      temp_path, input_cache_dir, output_cache_dir,
-                      compute_statistics, per_set_stats_output_paths,
-                      materialization_format, len(analyze_data_paths))
+                      stats_options_updater_fn, force_tf_compat_v1,
+                      input_dataset_metadata, transform_output_path,
+                      raw_examples_data_format, temp_path, input_cache_dir,
+                      output_cache_dir, compute_statistics,
+                      per_set_stats_output_paths, materialization_format,
+                      len(analyze_data_paths))
   # TODO(b/122478841): Writes status to status file.
 
   def _RunBeamImpl(self, analyze_data_list: List[_Dataset],
                    transform_data_list: List[_Dataset], preprocessing_fn: Any,
-                   force_tf_compat_v1: bool,
+                   stats_options_updater_fn: Callable[
+                       [stats_options_util.StatsType, tfdv.StatsOptions],
+                       tfdv.StatsOptions], force_tf_compat_v1: bool,
                    input_dataset_metadata: dataset_metadata.DatasetMetadata,
                    transform_output_path: Text, raw_examples_data_format: int,
                    temp_path: Text, input_cache_dir: Optional[Text],
@@ -997,6 +1044,8 @@ class Executor(base_executor.BaseExecutor):
       analyze_data_list: List of datasets for analysis.
       transform_data_list: List of datasets for transform.
       preprocessing_fn: The tf.Transform preprocessing_fn.
+      stats_options_updater_fn: The user-specified function for updating stats
+        options.
       force_tf_compat_v1: If True, call Transform's API to use Tensorflow in
         tf.compat.v1 mode.
       input_dataset_metadata: A DatasetMetadata object for the input data.
@@ -1186,13 +1235,20 @@ class Executor(base_executor.BaseExecutor):
               stats_input = [
                   dataset.standardized for dataset in analyze_data_list]
 
+            # Perform explicit copy because stats_options_updater_fn may update.
+            schema_copy = None
+            if schema_proto is not None:
+              schema_copy = schema_pb2.Schema()
+              schema_copy.CopyFrom(schema_proto)
             pre_transform_stats_options = (
-                transform_stats_options.get_pre_transform_stats_options())
+                stats_options_updater_fn(
+                    stats_options_util.StatsType.PRE_TRANSFORM,
+                    tfdv.StatsOptions(schema=schema_copy)))
+
             (stats_input
              | 'FlattenAnalysisDatasets' >> beam.Flatten(pipeline=pipeline)
              | 'GenerateStats[FlattenedAnalysisDataset]' >> self._GenerateStats(
                  pre_transform_feature_stats_path,
-                 schema_proto,
                  stats_options=pre_transform_stats_options))
 
           # transform_data_list is a superset of analyze_data_list, we pay the
@@ -1236,15 +1292,22 @@ class Executor(base_executor.BaseExecutor):
                 transform_output_path,
                 tft.TFTransformOutput.POST_TRANSFORM_FEATURE_STATS_PATH)
 
+            # Perform explicit copy because stats_options_updater_fn may update.
+            transformed_schema_copy = None
+            if transformed_schema_proto is not None:
+              transformed_schema_copy = schema_pb2.Schema()
+              transformed_schema_copy.CopyFrom(transformed_schema_proto)
             post_transform_stats_options = (
-                transform_stats_options.get_post_transform_stats_options())
+                stats_options_updater_fn(
+                    stats_options_util.StatsType.POST_TRANSFORM,
+                    tfdv.StatsOptions(schema=transformed_schema_copy)))
+
             ([dataset.transformed_and_standardized
               for dataset in transform_data_list]
              | 'FlattenTransformedDatasets' >> beam.Flatten()
              | 'GenerateStats[FlattenedTransformedDatasets]' >>
              self._GenerateStats(
                  post_transform_feature_stats_path,
-                 transformed_schema_proto,
                  stats_options=post_transform_stats_options))
 
             if per_set_stats_output_paths:
@@ -1256,7 +1319,6 @@ class Executor(base_executor.BaseExecutor):
                 (dataset.transformed_and_standardized
                  | 'GenerateStats[{}]'.format(infix) >> self._GenerateStats(
                      dataset.stats_output_path,
-                     transformed_schema_proto,
                      stats_options=post_transform_stats_options))
 
           if materialization_format is not None:

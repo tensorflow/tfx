@@ -133,3 +133,16 @@ def preprocessing_fn(inputs, custom_config):
           tf.greater(tips, tf.multiply(taxi_fare, tf.constant(0.2))), tf.int64))
 
   return outputs
+
+
+def stats_options_updater_fn(unused_stats_type, stats_options):
+  """Callback function for setting pre and post-transform stats options.
+
+  Args:
+    unused_stats_type: a stats_options_util.StatsType object.
+    stats_options: a tfdv.StatsOptions object.
+
+  Returns:
+    An updated tfdv.StatsOptions object.
+  """
+  return stats_options

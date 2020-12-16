@@ -17,6 +17,8 @@
     overriden by passing `force_tf_compat_v1=False` and enabling TF 2 behaviors.
     The default behavior for TF 2 will be switched to the new native
     implementation in a future release.
+*   Added support for passing a callable to set pre/post transform statistic
+    generation options.
 
 ## Breaking changes
 *   Wheel package building for TFX has changed, and users need to follow the
