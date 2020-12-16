@@ -19,15 +19,15 @@ from tfx import types
 from tfx.orchestration import metadata
 from tfx.orchestration.portable import execution_publish_utils
 from tfx.orchestration.portable import inputs_utils
-from tfx.orchestration.portable import test_utils
 from tfx.orchestration.portable.mlmd import context_lib
 from tfx.proto.orchestration import pipeline_pb2
+from tfx.utils import test_case_utils
 
 from google.protobuf import text_format
 from ml_metadata.proto import metadata_store_pb2
 
 
-class InputsUtilsTest(test_utils.TfxTest):
+class InputsUtilsTest(test_case_utils.TfxTest):
 
   def setUp(self):
     super().setUp()

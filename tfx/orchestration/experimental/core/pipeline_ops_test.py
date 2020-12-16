@@ -30,9 +30,9 @@ from tfx.orchestration.experimental.core import task as task_lib
 from tfx.orchestration.experimental.core import task_gen_utils
 from tfx.orchestration.experimental.core import task_queue as tq
 from tfx.orchestration.experimental.core import test_utils
-from tfx.orchestration.portable import test_utils as tu
 from tfx.orchestration.portable.mlmd import execution_lib
 from tfx.proto.orchestration import pipeline_pb2
+from tfx.utils import test_case_utils as tu
 
 from ml_metadata.proto import metadata_store_pb2
 

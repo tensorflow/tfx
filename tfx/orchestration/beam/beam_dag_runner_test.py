@@ -20,11 +20,11 @@ import tensorflow as tf
 from tfx.dsl.compiler import constants
 from tfx.orchestration import metadata
 from tfx.orchestration.beam import beam_dag_runner
-from tfx.orchestration.portable import test_utils
 from tfx.proto.orchestration import executable_spec_pb2
 from tfx.proto.orchestration import local_deployment_config_pb2
 from tfx.proto.orchestration import pipeline_pb2
 from tfx.proto.orchestration import platform_config_pb2
+from tfx.utils import test_case_utils
 
 from google.protobuf import message
 from google.protobuf import text_format
@@ -165,7 +165,7 @@ class _FakeComponentAsDoFn(beam_dag_runner.PipelineNodeAsDoFn):
     _executed_components.append(self._node_id)
 
 
-class BeamDagRunnerTest(test_utils.TfxTest):
+class BeamDagRunnerTest(test_case_utils.TfxTest):
 
   def setUp(self):
     super(BeamDagRunnerTest, self).setUp()

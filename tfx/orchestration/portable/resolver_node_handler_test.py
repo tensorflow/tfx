@@ -23,14 +23,14 @@ from tfx.orchestration.portable import execution_publish_utils
 from tfx.orchestration.portable import inputs_utils
 from tfx.orchestration.portable import resolver_node_handler
 from tfx.orchestration.portable import runtime_parameter_utils
-from tfx.orchestration.portable import test_utils
 from tfx.orchestration.portable.mlmd import context_lib
 from tfx.proto.orchestration import pipeline_pb2
+from tfx.utils import test_case_utils
 
 from google.protobuf import text_format
 
 
-class ResolverNodeHandlerTest(test_utils.TfxTest):
+class ResolverNodeHandlerTest(test_case_utils.TfxTest):
 
   def setUp(self):
     super().setUp()

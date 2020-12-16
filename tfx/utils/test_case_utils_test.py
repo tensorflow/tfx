@@ -25,7 +25,7 @@ class TempWorkingDirTest(test_case_utils.TempWorkingDirTestCase):
   # This test method will be invoked manually in TestCaseUtilsTest.
   def successfulTest(self):
     self.assertEqual(
-        os.path.realpath(self.temp_working_dir), os.path.realpath(os.getcwd()))
+        os.path.realpath(self.tmp_dir), os.path.realpath(os.getcwd()))
 
 
 class FailingTempWorkingDirTest(test_case_utils.TempWorkingDirTestCase):

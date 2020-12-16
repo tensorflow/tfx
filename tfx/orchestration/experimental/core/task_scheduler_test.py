@@ -18,9 +18,9 @@ import tensorflow as tf
 from tfx.orchestration.experimental.core import task as task_lib
 from tfx.orchestration.experimental.core import task_scheduler as ts
 from tfx.orchestration.experimental.core import test_utils
-from tfx.orchestration.portable import test_utils as tu
 from tfx.proto.orchestration import execution_result_pb2
 from tfx.proto.orchestration import pipeline_pb2
+from tfx.utils import test_case_utils as tu
 
 
 class _FakeTaskScheduler(ts.TaskScheduler):

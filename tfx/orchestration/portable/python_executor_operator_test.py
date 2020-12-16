@@ -23,10 +23,10 @@ from tfx.dsl.components.base import base_executor
 from tfx.dsl.io import fileio
 from tfx.orchestration.portable import data_types
 from tfx.orchestration.portable import python_executor_operator
-from tfx.orchestration.portable import test_utils
 from tfx.proto.orchestration import executable_spec_pb2
 from tfx.proto.orchestration import execution_result_pb2
 from tfx.types import standard_artifacts
+from tfx.utils import test_case_utils
 
 from google.protobuf import text_format
 
@@ -77,7 +77,7 @@ class ValidateBeamPipelineArgsExecutor(base_executor.BaseExecutor):
     assert '--arg_one=1' in self._beam_pipeline_args
 
 
-class PythonExecutorOperatorTest(test_utils.TfxTest):
+class PythonExecutorOperatorTest(test_case_utils.TfxTest):
 
   def testRunExecutor_with_InprocessExecutor(self):
     executor_sepc = text_format.Parse(

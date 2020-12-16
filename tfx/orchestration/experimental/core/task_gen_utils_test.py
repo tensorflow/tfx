@@ -19,8 +19,8 @@ import tensorflow as tf
 from tfx.orchestration import metadata
 from tfx.orchestration.experimental.core import task_gen_utils
 from tfx.orchestration.experimental.core import test_utils as otu
-from tfx.orchestration.portable import test_utils as tu
 from tfx.proto.orchestration import pipeline_pb2
+from tfx.utils import test_case_utils as tu
 
 from ml_metadata.proto import metadata_store_pb2
 

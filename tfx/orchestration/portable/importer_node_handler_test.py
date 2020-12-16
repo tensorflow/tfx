@@ -19,11 +19,11 @@ from tfx.dsl.compiler import constants
 from tfx.orchestration import metadata
 from tfx.orchestration.portable import importer_node_handler
 from tfx.orchestration.portable import runtime_parameter_utils
-from tfx.orchestration.portable import test_utils
 from tfx.proto.orchestration import pipeline_pb2
+from tfx.utils import test_case_utils
 
 
-class ImporterNodeHandlerTest(test_utils.TfxTest):
+class ImporterNodeHandlerTest(test_case_utils.TfxTest):
 
   def setUp(self):
     super().setUp()

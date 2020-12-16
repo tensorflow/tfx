@@ -24,18 +24,18 @@ import random
 import tensorflow as tf
 
 from tfx.orchestration import metadata
-from tfx.orchestration.portable import test_utils
 from tfx.orchestration.portable.mlmd import common_utils
 from tfx.orchestration.portable.mlmd import context_lib
 from tfx.orchestration.portable.mlmd import execution_lib
 from tfx.proto.orchestration import pipeline_pb2
 from tfx.types import standard_artifacts
+from tfx.utils import test_case_utils
 
 from google.protobuf import text_format
 from ml_metadata.proto import metadata_store_pb2
 
 
-class ExecutionLibTest(test_utils.TfxTest):
+class ExecutionLibTest(test_case_utils.TfxTest):
 
   def setUp(self):
     super().setUp()

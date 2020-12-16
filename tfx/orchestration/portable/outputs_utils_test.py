@@ -16,10 +16,10 @@ from absl.testing import parameterized
 import tensorflow as tf
 from tfx.dsl.io import fileio
 from tfx.orchestration.portable import outputs_utils
-from tfx.orchestration.portable import test_utils
 from tfx.proto.orchestration import execution_result_pb2
 from tfx.proto.orchestration import pipeline_pb2
 from tfx.types.value_artifact import ValueArtifact
+from tfx.utils import test_case_utils
 
 from google.protobuf import text_format
 
@@ -70,7 +70,7 @@ _PIPELINE_NODE = text_format.Parse(
 """, pipeline_pb2.PipelineNode())
 
 
-class OutputUtilsTest(test_utils.TfxTest, parameterized.TestCase):
+class OutputUtilsTest(test_case_utils.TfxTest, parameterized.TestCase):
 
   def setUp(self):
     super().setUp()

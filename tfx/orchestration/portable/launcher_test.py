@@ -28,12 +28,12 @@ from tfx.orchestration.portable import inputs_utils
 from tfx.orchestration.portable import launcher
 from tfx.orchestration.portable import runtime_parameter_utils
 from tfx.orchestration.portable import system_node_handler
-from tfx.orchestration.portable import test_utils
 from tfx.orchestration.portable.mlmd import context_lib
 from tfx.proto.orchestration import driver_output_pb2
 from tfx.proto.orchestration import executable_spec_pb2
 from tfx.proto.orchestration import execution_result_pb2
 from tfx.proto.orchestration import pipeline_pb2
+from tfx.utils import test_case_utils
 
 from google.protobuf import text_format
 from ml_metadata.proto import metadata_store_pb2
@@ -143,7 +143,7 @@ class _FakeExampleGenLikeDriver(base_driver.BaseDriver):
     return result
 
 
-class LauncherTest(test_utils.TfxTest):
+class LauncherTest(test_case_utils.TfxTest):
 
   def setUp(self):
     super(LauncherTest, self).setUp()

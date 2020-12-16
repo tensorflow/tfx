@@ -40,7 +40,7 @@ class TaxiPipelineKubeflowTest(test_case_utils.TempWorkingDirTestCase):
     self.assertEqual(8, len(logical_pipeline.components))
 
     KubeflowDagRunner().run(logical_pipeline)
-    file_path = os.path.join(self.temp_working_dir,
+    file_path = os.path.join(self.tmp_dir,
                              'chicago_taxi_pipeline_kubeflow_gcp.tar.gz')
     self.assertTrue(fileio.exists(file_path))
 

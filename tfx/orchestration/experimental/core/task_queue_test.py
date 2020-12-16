@@ -17,7 +17,7 @@ import tensorflow as tf
 from tfx.orchestration.experimental.core import task as task_lib
 from tfx.orchestration.experimental.core import task_queue
 from tfx.orchestration.experimental.core import test_utils
-from tfx.orchestration.portable import test_utils as tu
+from tfx.utils import test_case_utils as tu
 
 
 def _test_task(node_id, pipeline_id, pipeline_run_id=None):
