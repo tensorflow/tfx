@@ -162,7 +162,7 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
           metadata_path),
       # LINT.IfChange
       beam_pipeline_args=[
-          # -------------------------- Beam Args --------------------------.
+          # ---------------------------- Beam Args --------------------------- #
           '--runner=PortableRunner',
 
           # Points to the job server started in
@@ -178,28 +178,19 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
 
           # TODO(BEAM-7199): Obviate the need for setting pre_optimize=all.  # pylint: disable=g-bad-todo
           '--experiments=pre_optimize=all',
+          # ------------------------ End of Beam Args ------------------------ #
 
-          # Note; We use 100 worker threads to mitigate the issue with
-          # scheduling work between the Beam runner and SDK harness. Flink
-          # and Spark can process unlimited work items concurrently while
-          # SdkHarness can only process 1 work item per worker thread.
-          # Having 100 threads will let 100 tasks execute concurrently
-          # avoiding scheduling issue in most cases. In case the threads are
-          # exhausted, beam prints the relevant message in the log.
-          # TODO(BEAM-8151) Remove worker_threads=100 after we start using a  # pylint: disable=g-bad-todo
-          # virtually unlimited thread pool by default.
-          '--experiments=worker_threads=100',
-          # ---------------------- End of Beam Args -----------------------.
+          # ------------------------------------------------------------------ #
 
-          # --------- Flink runner Args (ignored by Spark runner) ---------.
+          # ------------ Flink runner Args (ignored by Spark runner) --------- #
           '--parallelism=%d' % worker_parallelism,
 
           # TODO(FLINK-10672): Obviate setting BATCH_FORCED.  # pylint: disable=g-bad-todo
           '--execution_mode_for_batch=BATCH_FORCED',
-          # ------------------ End of Flink runner Args -------------------.
+          # -------------------- End of Flink runner Args -------------------- #
       ],
-      # LINT.ThenChange(setup/setup_beam_on_spark.sh)
-      # LINT.ThenChange(setup/setup_beam_on_flink.sh)
+      # LINT.ThenChange(setup/setup_beam_on_spark.sh,
+      #                 setup/setup_beam_on_flink.sh)
   )
 
 
