@@ -26,7 +26,11 @@ from tfx.experimental.pipeline_testing import pipeline_recorder_utils
 from tfx.experimental.pipeline_testing import stub_component_launcher
 from tfx.orchestration import metadata
 from tfx.orchestration.config import pipeline_config
-from tfx.orchestration.local import local_dag_runner
+# TODO(b/174520987): Change the following inport to
+# from tfx.orchestration.beam.beam_dag_runner import BeamDagRunner
+# Once we figure out the best way to replace executors for components in the
+# IR stack.
+from tfx.orchestration.google.beam_dag_runner import BeamDagRunner
 
 from ml_metadata.proto import metadata_store_pb2
 
@@ -66,7 +70,7 @@ class TaxiPipelineRegressionEndToEndTest(tf.test.TestCase):
         metadata_path=self._recorded_mlmd_path,
         beam_pipeline_args=[])
 
-    local_dag_runner.LocalDagRunner().run(record_taxi_pipeline)
+    BeamDagRunner().run(record_taxi_pipeline)
 
     pipeline_recorder_utils.record_pipeline(
         output_dir=self._recorded_output_dir,
@@ -122,8 +126,7 @@ class TaxiPipelineRegressionEndToEndTest(tf.test.TestCase):
         supported_launcher_classes=[
             stub_component_launcher.StubComponentLauncher,
         ])
-    local_dag_runner.LocalDagRunner(config=stub_pipeline_config).run(
-        self.taxi_pipeline)
+    BeamDagRunner(config=stub_pipeline_config).run(self.taxi_pipeline)
 
     self.assertTrue(fileio.exists(self._metadata_path))
 
@@ -165,7 +168,7 @@ class TaxiPipelineRegressionEndToEndTest(tf.test.TestCase):
                              str(idx)))
 
     # Calls verifier for pipeline output artifacts, excluding the resolver node.
-    local_dag_runner.LocalDagRunner().run(self.taxi_pipeline)
+    BeamDagRunner().run(self.taxi_pipeline)
     pipeline_outputs = executor_verifier_utils.get_pipeline_outputs(
         self.taxi_pipeline.metadata_connection_config,
         self.taxi_pipeline.pipeline_info)
