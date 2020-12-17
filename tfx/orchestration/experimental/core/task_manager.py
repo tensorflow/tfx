@@ -169,6 +169,7 @@ class TaskManager:
 
   def _handle_exec_node_task(self, task: task_lib.ExecNodeTask) -> None:
     """Handles `ExecNodeTask`."""
+    logging.info('Handling ExecNodeTask, task-id: %s', task.task_id)
     node_uid = task.node_uid
     with self._tm_lock:
       if node_uid in self._scheduler_by_node_uid:
@@ -184,6 +185,7 @@ class TaskManager:
 
   def _handle_cancel_node_task(self, task: task_lib.CancelNodeTask) -> None:
     """Handles `CancelNodeTask`."""
+    logging.info('Handling CancelNodeTask, task-id: %s', task.task_id)
     node_uid = task.node_uid
     with self._tm_lock:
       scheduler = self._scheduler_by_node_uid.get(node_uid)
@@ -212,6 +214,8 @@ class TaskManager:
       result = ts.TaskSchedulerResult(
           status=status_lib.Status(
               code=status_lib.Code.ABORTED, message=str(e)))
+    logging.info('For ExecNodeTask id: %s, task-scheduler result status: %s',
+                 task.task_id, result.status)
     _publish_execution_results(
         mlmd_handle=self._mlmd_handle, task=task, result=result)
     with self._publish_time_lock:

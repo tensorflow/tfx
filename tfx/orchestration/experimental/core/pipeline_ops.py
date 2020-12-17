@@ -276,9 +276,18 @@ def generate_tasks(mlmd_handle: metadata.Metadata,
           message=(f'Found pipeline (uid: {detail.pipeline_uid}) which is '
                    f'neither active nor stop-initiated.'))
 
-  _process_stop_initiated_pipelines(mlmd_handle, task_queue,
-                                    stop_initiated_pipeline_details)
-  _process_active_pipelines(mlmd_handle, task_queue, active_pipeline_details)
+  if stop_initiated_pipeline_details:
+    logging.info(
+        'Stop-initiated pipeline uids:\n%s', '\n'.join(
+            str(detail.pipeline_uid)
+            for detail in stop_initiated_pipeline_details))
+    _process_stop_initiated_pipelines(mlmd_handle, task_queue,
+                                      stop_initiated_pipeline_details)
+  if active_pipeline_details:
+    logging.info(
+        'Active (excluding stop-initiated) pipeline uids:\n%s', '\n'.join(
+            str(detail.pipeline_uid) for detail in active_pipeline_details))
+    _process_active_pipelines(mlmd_handle, task_queue, active_pipeline_details)
 
 
 def _get_pipeline_details(mlmd_handle: metadata.Metadata,
