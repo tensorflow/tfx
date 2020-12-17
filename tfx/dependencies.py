@@ -120,7 +120,7 @@ def make_extra_packages_test():
       # 1.0.13 releases.(github.com/apache/airflow/issues/11965).
       'cattrs==1.0.0',
       'kfp>=1.1.0,<2',
-      'kfp-pipeline-spec>=0.1.2,<0.2',
+      'kfp-pipeline-spec>=0.1.3,<0.2',
       'pytest>=5,<6',
       # TODO(b/175740170): Delete pinned werkzeug version after using the new
       # pip resolver.
@@ -131,7 +131,7 @@ def make_extra_packages_test():
 def make_extra_packages_docker_image():
   # Packages needed for tfx docker image.
   return [
-      'kfp-pipeline-spec>=0.1.2,<0.2',
+      'kfp-pipeline-spec>=0.1.3,<0.2',
       'mmh>=2.2,<3',
       'python-snappy>=0.5,<0.6',
   ]
