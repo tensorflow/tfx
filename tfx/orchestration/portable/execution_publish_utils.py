@@ -12,7 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Portable library for registering and publishing executions."""
-from typing import Mapping, MutableMapping, Optional, Sequence
+import copy
+import os
+from typing import List, Mapping, MutableMapping, Optional, Sequence, cast
 
 from tfx import types
 from tfx.orchestration import metadata
@@ -20,6 +22,18 @@ from tfx.orchestration.portable.mlmd import execution_lib
 from tfx.proto.orchestration import execution_result_pb2
 
 from ml_metadata.proto import metadata_store_pb2
+
+
+def _check_validity(new_artifact: metadata_store_pb2.Artifact,
+                    original_artifact: types.Artifact) -> None:
+  """Check the validity of new artifact against the original artifact."""
+  if new_artifact.type_id != original_artifact.type_id:
+    raise RuntimeError('Executor output should not change artifact type.')
+  if not (new_artifact.uri == original_artifact.uri or
+          os.path.dirname(new_artifact.uri) == original_artifact.uri):
+    raise RuntimeError(
+        'The URI of executor generated artifacts should either be identical to '
+        'the URI of system generated artifact or be a direct sub-dir of it.')
 
 
 def publish_cached_execution(
@@ -56,7 +70,7 @@ def publish_succeeded_execution(
     output_artifacts: Optional[MutableMapping[str,
                                               Sequence[types.Artifact]]] = None,
     executor_output: Optional[execution_result_pb2.ExecutorOutput] = None
-) -> None:
+) -> Optional[MutableMapping[str, List[types.Artifact]]]:
   """Marks an existing execution as success.
 
   Also publishes the output artifacts produced by the execution. This method
@@ -79,10 +93,16 @@ def publish_succeeded_execution(
         key should contains all the artifacts under that key. 3. An update to an
         artifact should not change the type of the artifact.
 
+  Returns:
+    The maybe updated output_artifacts, note that only outputs whose key are in
+    executor_output will be updated and others will be untouched. That said,
+    it can be partially updated.
   Raises:
     RuntimeError: if the executor output to a output channel is partial.
   """
-  output_artifacts = output_artifacts or {}
+  output_artifacts = copy.deepcopy(output_artifacts) or {}
+  output_artifacts = cast(MutableMapping[str, List[types.Artifact]],
+                          output_artifacts)
   if executor_output:
     if not set(executor_output.output_artifacts.keys()).issubset(
         output_artifacts.keys()):
@@ -93,14 +113,23 @@ def publish_succeeded_execution(
       if key not in executor_output.output_artifacts:
         continue
       updated_artifact_list = executor_output.output_artifacts[key].artifacts
-      if len(artifact_list) != len(updated_artifact_list):
-        raise RuntimeError(
-            'Partially update an output channel is not supported')
 
-      for original, updated in zip(artifact_list, updated_artifact_list):
-        if original.type_id != updated.type_id:
-          raise RuntimeError('Executor output should not change artifact type.')
-        original.mlmd_artifact.CopyFrom(updated)
+      # We assume the original output dict must include at least one output
+      # artifact and all artifacts in the list share the same type.
+      original_artifact = artifact_list[0]
+      # Update the artifact list with what's in the executor output
+      artifact_list.clear()
+      # TODO(b/175426744): revisit this:
+      # 1) Whether multiple output is needed or not after TFX componets
+      #    are upgraded.
+      # 2) If multiple output are needed and is a common practice, should we
+      #    use driver instead to create the list of output artifact instead
+      #    of letting executor to create them.
+      for proto_artifact in updated_artifact_list:
+        _check_validity(proto_artifact, original_artifact)
+        python_artifact = types.Artifact(original_artifact.artifact_type)
+        python_artifact.set_mlmd_artifact(proto_artifact)
+        artifact_list.append(python_artifact)
 
   # Marks output artifacts as LIVE.
   for artifact_list in output_artifacts.values():
@@ -111,7 +140,12 @@ def publish_succeeded_execution(
   execution.last_known_state = metadata_store_pb2.Execution.COMPLETE
 
   execution_lib.put_execution(
-      metadata_handler, execution, contexts, output_artifacts=output_artifacts)
+      metadata_handler,
+      execution,
+      contexts,
+      output_artifacts=output_artifacts)
+
+  return output_artifacts
 
 
 def publish_failed_execution(metadata_handler: metadata.Metadata,

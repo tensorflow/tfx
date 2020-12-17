@@ -181,7 +181,7 @@ class CacheUtilsTest(test_case_utils.TfxTest):
           })
       execution_two = execution_publish_utils.register_execution(
           m, metadata_store_pb2.ExecutionType(name='my_type'), [cache_context])
-      execution_publish_utils.publish_succeeded_execution(
+      output_artifacts = execution_publish_utils.publish_succeeded_execution(
           m,
           execution_two.id, [cache_context],
           output_artifacts={
@@ -196,19 +196,19 @@ class CacheUtilsTest(test_case_utils.TfxTest):
       self.assertLen(cached_output[output_examples_key], 1)
       self.assertProtoPartiallyEquals(
           cached_output[output_models_key][0].mlmd_artifact,
-          output_model_three.mlmd_artifact,
+          output_artifacts[output_models_key][0].mlmd_artifact,
           ignored_fields=[
               'create_time_since_epoch', 'last_update_time_since_epoch'
           ])
       self.assertProtoPartiallyEquals(
           cached_output[output_models_key][1].mlmd_artifact,
-          output_model_four.mlmd_artifact,
+          output_artifacts[output_models_key][1].mlmd_artifact,
           ignored_fields=[
               'create_time_since_epoch', 'last_update_time_since_epoch'
           ])
       self.assertProtoPartiallyEquals(
           cached_output[output_examples_key][0].mlmd_artifact,
-          output_example_two.mlmd_artifact,
+          output_artifacts[output_examples_key][0].mlmd_artifact,
           ignored_fields=[
               'create_time_since_epoch', 'last_update_time_since_epoch'
           ])

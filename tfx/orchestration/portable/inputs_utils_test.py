@@ -71,7 +71,7 @@ class _TestMixin:
         metadata_handler, pipeline_node.contexts)
     execution = execution_publish_utils.register_execution(
         metadata_handler, pipeline_node.node_info.type, contexts, input_map)
-    execution_publish_utils.publish_succeeded_execution(
+    return execution_publish_utils.publish_succeeded_execution(
         metadata_handler, execution.id, contexts, output_map)
 
   def assertArtifactEqual(self, expected, actual):
@@ -148,12 +148,16 @@ class InputsUtilsTest(test_case_utils.TfxTest, _TestMixin):
       # will be consumed by downstream Transform.
       output_example = self.make_examples(uri='my_examples_uri')
       side_examples = self.make_examples(uri='side_examples_uri')
-      self.fake_execute(m, my_example_gen,
-                        input_map=None,
-                        output_map={
-                            'output_examples': [output_example],
-                            'another_examples': [side_examples]
-                        })
+      output_artifacts = self.fake_execute(
+          m,
+          my_example_gen,
+          input_map=None,
+          output_map={
+              'output_examples': [output_example],
+              'another_examples': [side_examples]
+          })
+      output_example = output_artifacts['output_examples'][0]
+      side_examples = output_artifacts['another_examples'][0]
 
       # Publishes second ExampleGen with one output channel with the same output
       # key as the first ExampleGen. However this is not consumed by downstream
@@ -189,12 +193,13 @@ class InputsUtilsTest(test_case_utils.TfxTest, _TestMixin):
       # will be consumed by downstream Transform.
       output_example_1 = self.make_examples(uri='my_examples_uri_1')
       output_example_2 = self.make_examples(uri='my_examples_uri_2')
-      self.fake_execute(m, my_example_gen,
-                        input_map=None,
-                        output_map={
-                            'output_examples': [output_example_1,
-                                                output_example_2]
-                        })
+      output_artifacts = self.fake_execute(
+          m,
+          my_example_gen,
+          input_map=None,
+          output_map={'output_examples': [output_example_1, output_example_2]})
+      output_example_1 = output_artifacts['output_examples'][0]
+      output_example_2 = output_artifacts['output_examples'][1]
 
       transform_resolver = (my_transform.inputs.resolver_config
                             .resolver_steps.add())
@@ -220,11 +225,9 @@ class InputsUtilsTest(test_case_utils.TfxTest, _TestMixin):
       # Publishes Trainer with one output channels. `output_model`
       # will be consumed by the Pusher in the different run.
       output_model = self.make_model(uri='my_output_model_uri')
-      self.fake_execute(m, my_trainer,
-                        input_map=None,
-                        output_map={
-                            'model': [output_model]
-                        })
+      output_artifacts = self.fake_execute(
+          m, my_trainer, input_map=None, output_map={'model': [output_model]})
+      output_model = output_artifacts['model'][0]
 
       # Gets inputs for pusher. Should get back what the first Model
       # published in the `output_model` channel.
@@ -276,12 +279,18 @@ class InputsUtilsResolverTests(test_case_utils.TfxTest, _TestMixin):
     with self.get_metadata() as m:
       ex1 = self.make_examples(uri='a')
       ex2 = self.make_examples(uri='b')
-      self.fake_execute(m, my_example_gen,
-                        input_map=None,
-                        output_map={'output_examples': [ex1]})
-      self.fake_execute(m, my_example_gen,
-                        input_map=None,
-                        output_map={'output_examples': [ex2]})
+      output_artifacts = self.fake_execute(
+          m,
+          my_example_gen,
+          input_map=None,
+          output_map={'output_examples': [ex1]})
+      ex1 = output_artifacts['output_examples'][0]
+      output_artifacts = self.fake_execute(
+          m,
+          my_example_gen,
+          input_map=None,
+          output_map={'output_examples': [ex2]})
+      ex2 = output_artifacts['output_examples'][0]
 
       result = inputs_utils.resolve_input_artifacts(
           metadata_handler=m,
@@ -311,15 +320,20 @@ class InputsUtilsResolverTests(test_case_utils.TfxTest, _TestMixin):
     with self.get_metadata() as m:
       ex1 = self.make_examples(uri='a')
       ex2 = self.make_examples(uri='b')
-      self.fake_execute(m, my_example_gen,
-                        input_map=None,
-                        output_map={'output_examples': [ex1]})
-      self.fake_execute(m, my_example_gen,
-                        input_map=None,
-                        output_map={'output_examples': [ex2]})
-      self.fake_execute(m, my_transform,
-                        input_map={'examples': [ex2]},
-                        output_map=None)
+      output_artifacts = self.fake_execute(
+          m,
+          my_example_gen,
+          input_map=None,
+          output_map={'output_examples': [ex1]})
+      ex1 = output_artifacts['output_examples'][0]
+      output_artifacts = self.fake_execute(
+          m,
+          my_example_gen,
+          input_map=None,
+          output_map={'output_examples': [ex2]})
+      ex2 = output_artifacts['output_examples'][0]
+      self.fake_execute(
+          m, my_transform, input_map={'examples': [ex2]}, output_map=None)
 
       result = inputs_utils.resolve_input_artifacts(
           metadata_handler=m,
@@ -349,12 +363,18 @@ class InputsUtilsResolverTests(test_case_utils.TfxTest, _TestMixin):
     with self.get_metadata() as m:
       ex1 = self.make_examples(uri='a')
       ex2 = self.make_examples(uri='b')
-      self.fake_execute(m, my_example_gen,
-                        input_map=None,
-                        output_map={'output_examples': [ex1]})
-      self.fake_execute(m, my_example_gen,
-                        input_map=None,
-                        output_map={'output_examples': [ex2]})
+      output_artifacts = self.fake_execute(
+          m,
+          my_example_gen,
+          input_map=None,
+          output_map={'output_examples': [ex1]})
+      ex1 = output_artifacts['output_examples'][0]
+      output_artifacts = self.fake_execute(
+          m,
+          my_example_gen,
+          input_map=None,
+          output_map={'output_examples': [ex2]})
+      ex2 = output_artifacts['output_examples'][0]
       self.fake_execute(m, my_transform,
                         input_map={'examples': [ex1]},
                         output_map=None)
@@ -388,18 +408,30 @@ class InputsUtilsResolverTests(test_case_utils.TfxTest, _TestMixin):
       ex2 = self.make_examples(uri='examples/2')
       tf1 = self.make_transform_graph(uri='transform_graph/1')
       tf2 = self.make_transform_graph(uri='transform_graph/2')
-      self.fake_execute(m, my_example_gen,
-                        input_map=None,
-                        output_map={'output_examples': [ex1]})
-      self.fake_execute(m, my_example_gen,
-                        input_map=None,
-                        output_map={'output_examples': [ex2]})
-      self.fake_execute(m, my_transform,
-                        input_map={'examples': [ex1]},
-                        output_map={'transform_graph': [tf1]})
-      self.fake_execute(m, my_transform,
-                        input_map={'examples': [ex2]},
-                        output_map={'transform_graph': [tf2]})
+      output_artifacts = self.fake_execute(
+          m,
+          my_example_gen,
+          input_map=None,
+          output_map={'output_examples': [ex1]})
+      ex1 = output_artifacts['output_examples'][0]
+      output_artifacts = self.fake_execute(
+          m,
+          my_example_gen,
+          input_map=None,
+          output_map={'output_examples': [ex2]})
+      ex2 = output_artifacts['output_examples'][0]
+      output_artifacts = self.fake_execute(
+          m,
+          my_transform,
+          input_map={'examples': [ex1]},
+          output_map={'transform_graph': [tf1]})
+      tf1 = output_artifacts['transform_graph'][0]
+      output_artifacts = self.fake_execute(
+          m,
+          my_transform,
+          input_map={'examples': [ex2]},
+          output_map={'transform_graph': [tf2]})
+      tf2 = output_artifacts['transform_graph'][0]
       result = inputs_utils.resolve_input_artifacts(
           metadata_handler=m,
           node_inputs=my_trainer.inputs)
