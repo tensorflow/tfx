@@ -13,6 +13,7 @@
 # limitations under the License.
 """Tests for tfx.orchestration.portable.output_utils."""
 from absl.testing import parameterized
+import mock
 import tensorflow as tf
 from tfx.dsl.io import fileio
 from tfx.orchestration.portable import outputs_utils
@@ -143,7 +144,7 @@ class OutputUtilsTest(test_case_utils.TfxTest, parameterized.TestCase):
         self._output_resolver().get_stateful_working_directory())
     self.assertRegex(stateful_working_dir,
                      '.*/test_node/.system/stateful_working_dir/test_run_0')
-    fileio.exists(stateful_working_dir)
+    self.assertTrue(fileio.exists(stateful_working_dir))
 
   @parameterized.parameters(pipeline_pb2.Pipeline.SYNC,
                             pipeline_pb2.Pipeline.ASYNC)
@@ -181,6 +182,24 @@ class OutputUtilsTest(test_case_utils.TfxTest, parameterized.TestCase):
     for _, artifact_list in output_artifacts.items():
       for artifact in artifact_list:
         self.assertFalse(fileio.exists(artifact.uri))
+
+  def testRemoveStatefulWorkingDirSucceeded(self):
+    stateful_working_dir = (
+        self._output_resolver().get_stateful_working_directory())
+    self.assertTrue(fileio.exists(stateful_working_dir))
+
+    outputs_utils.remove_stateful_working_dir(stateful_working_dir)
+    self.assertFalse(fileio.exists(stateful_working_dir))
+
+  def testRemoveStatefulWorkingDirNotFoundError(self):
+    # removing a nonexisting path is an noop
+    outputs_utils.remove_stateful_working_dir('/a/not/exist/path')
+
+  @mock.patch.object(fileio, 'rmtree')
+  def testRemoveStatefulWorkingDirOtherError(self, rmtree_fn):
+    rmtree_fn.side_effect = ValueError('oops')
+    with self.assertRaisesRegex(ValueError, 'oops'):
+      outputs_utils.remove_stateful_working_dir('/a/fake/path')
 
 
 if __name__ == '__main__':

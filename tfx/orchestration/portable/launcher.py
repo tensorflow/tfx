@@ -13,7 +13,6 @@
 # limitations under the License.
 """This module defines a generic Launcher for all TFleX nodes."""
 
-import os
 from typing import Any, Dict, List, Optional, Text, Type, TypeVar
 
 from absl import logging
@@ -190,6 +189,7 @@ class Launcher(object):
       # is_execution_needed being false. No publish will happen so down stream
       # nodes won't be triggered.
       if input_artifacts is None:
+        logging.info('No all required input are ready, abandoning execution.')
         return _PrepareExecutionResult(
             execution_info=data_types.ExecutionInfo(),
             contexts=contexts,
@@ -243,6 +243,7 @@ class Launcher(object):
             contexts=contexts,
             execution_id=execution.id,
             output_artifacts=cached_outputs)
+        logging.info('An cached execusion %d is used.', execution.id)
         return _PrepareExecutionResult(
             execution_info=data_types.ExecutionInfo(
                 execution_id=execution.id),
@@ -254,6 +255,7 @@ class Launcher(object):
           self._pipeline_runtime_spec.pipeline_run_id.field_value.string_value)
 
       # 8. Going to trigger executor.
+      logging.info('Going to run a new execution %d', execution.id)
       return _PrepareExecutionResult(
           execution_info=data_types.ExecutionInfo(
               execution_id=execution.id,
@@ -309,21 +311,16 @@ class Launcher(object):
 
   def _clean_up_stateless_execution_info(
       self, execution_info: data_types.ExecutionInfo):
+    logging.info('Cleaning up stateless execution info.')
     # Clean up tmp dir
     fileio.rmtree(execution_info.tmp_dir)
 
   def _clean_up_stateful_execution_info(
       self, execution_info: data_types.ExecutionInfo):
     """Post execution clean up."""
-    # Clean up stateful working dir
-    # Note that:
-    #  stateful_working_dir = (os.path.join(
-    #    self._node_dir,
-    #    self._pipeline_run_id,  <-- we want to clean from this level down.
-    #    _STATEFUL_WORKING_DIR)
-    stateful_working_dir = os.path.abspath(
-        os.path.join(execution_info.stateful_working_dir, os.pardir))
-    fileio.rmtree(stateful_working_dir)
+    logging.info('Cleaning up stateful execution info.')
+    outputs_utils.remove_stateful_working_dir(
+        execution_info.stateful_working_dir)
 
   def _update_with_driver_output(self,
                                  driver_output: driver_output_pb2.DriverOutput,
@@ -354,7 +351,7 @@ class Launcher(object):
     Raises:
       Exception: If the executor fails.
     """
-    logging.debug('Running launcher for %s', self._pipeline_node)
+    logging.info('Running launcher for %s', self._pipeline_node)
     if self._system_node_handler:
       # If this is a system node, runs it and directly return.
       return self._system_node_handler.run(self._mlmd_connection,
@@ -378,6 +375,7 @@ class Launcher(object):
       finally:
         self._clean_up_stateless_execution_info(execution_info)
 
+      logging.info('Execution %d succeeded.', execution_info.execution_id)
       self._clean_up_stateful_execution_info(execution_info)
       logging.info('Publishing output artifacts %s for exeuction %s',
                    execution_info.output_dict,

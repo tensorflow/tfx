@@ -19,7 +19,6 @@ import os
 from typing import Dict, List, Optional, Text
 
 from absl import logging
-
 from tfx import types
 from tfx.dsl.io import fileio
 from tfx.proto.orchestration import pipeline_pb2
@@ -60,6 +59,31 @@ def remove_output_dirs(output_dict: Dict[Text, List[types.Artifact]]) -> None:
         fileio.rmtree(artifact.uri)
       else:
         fileio.remove(artifact.uri)
+
+
+def remove_stateful_working_dir(stateful_working_dir: Text) -> None:
+  """Remove stateful_working_dir."""
+  # Clean up stateful working dir
+  # Note that:
+  # stateful_working_dir = os.path.join(
+  #    self._node_dir,
+  #    _SYSTEM,
+  #    _STATEFUL_WORKING_DIR, <-- we want to clean from this level down.
+  #    dir_suffix)
+  stateful_working_dir = os.path.abspath(
+      os.path.join(stateful_working_dir, os.pardir))
+  try:
+    fileio.rmtree(stateful_working_dir)
+  except Exception as e:  # pylint: disable=broad-except
+    if 'NotFoundError' in str(type(e)):
+      # TODO(b/175244977): This is a workaround to avoid introducing
+      # tensorflow dependency. Change this except block to use a generic
+      # NotFoundError once it is Defined in fileio.
+      logging.warning(
+          'stateful_working_dir %s is not found, not going to delete it.',
+          stateful_working_dir)
+    else:
+      raise
 
 
 class OutputsResolver:
@@ -157,10 +181,17 @@ class OutputsResolver:
     # retries of the same component run to provide better isolation between
     # "retry" and "new execution". When it is available, introduce it into
     # stateful working directory.
+    # NOTE: If this directory structure is changed, please update
+    # the remove_stateful_working_dir function in this file accordingly.
     stateful_working_dir = os.path.join(self._node_dir, _SYSTEM,
                                         _STATEFUL_WORKING_DIR,
                                         dir_suffix)
-    fileio.makedirs(stateful_working_dir)
+    try:
+      fileio.makedirs(stateful_working_dir)
+    except Exception:  # pylint: disable=broad-except
+      logging.exception('Failed to make stateful working dir: %s',
+                        stateful_working_dir)
+      raise
     return stateful_working_dir
 
   def make_tmp_dir(self, execution_id: int) -> Text:
