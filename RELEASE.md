@@ -1,7 +1,8 @@
 # Current Version(Still in Development)
 
 ## Major Features and Improvements
-
+*  Added automatic population of vocab_paths when computing statistics within
+   the Transform component.
 ## Breaking changes
 
 ### For pipeline authors
