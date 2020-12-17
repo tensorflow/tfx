@@ -411,7 +411,8 @@ class BaseKubeflowTest(tf.test.TestCase):
 
   # The location of test user module
   # It is retrieved from inside the container subject to testing.
-  _MODULE_ROOT = '/tfx-src/tfx/components/testdata/module_file'
+  # This location depends on install path of TFX in the docker image.
+  _MODULE_ROOT = '/tfx/src/tfx/components/testdata/module_file'
 
   @classmethod
   def setUpClass(cls):
