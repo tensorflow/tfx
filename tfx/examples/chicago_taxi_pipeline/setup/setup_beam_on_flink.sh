@@ -51,7 +51,7 @@ function start_flink() {
   sed -i "s/taskmanager.numberOfTaskSlots: [0-9]*/taskmanager.numberOfTaskSlots: $parallelism/g" $flink_conf
   sed -i "s/#*rest.bind-address: .*/rest.bind-address: localhost/g" $flink_conf
 
-  # TODO(FLINK-10672) Remove workaround
+  # TODO(b/175810858): Obviate setting this.
   # Increase taskmanager heap size to reduce back pressure
   sed -i "s/taskmanager.heap.size: [0-9]*m/taskmanager.heap.size: 2048m/g" $flink_conf
 
@@ -59,7 +59,7 @@ function start_flink() {
   echo "Flink running from $WORK_DIR/$FLINK_NAME"
 }
 
-# TODO(b/139747527) Start the job server through the SDK automatically
+# TODO(b/139747527): Start the job server through the SDK automatically.
 function start_job_server() {
   echo "Starting Beam Flink jobserver"
   cd $BEAM_DIR

@@ -64,7 +64,7 @@ function start_spark() {
   echo "Spark running from $WORK_DIR/$SPARK_ROOT"
 }
 
-# TODO(b/139747527) Start the job server through the SDK automatically
+# TODO(b/139747527): Start the job server through the SDK automatically.
 function start_job_server() {
   echo "Starting Beam Spark jobserver"
   cd $BEAM_DIR

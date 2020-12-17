@@ -176,7 +176,7 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
           # continual reuse of Beam SDK workers, improving performance.
           '--environment_cache_millis=1000000',
 
-          # TODO(BEAM-7199): Obviate the need for setting pre_optimize=all.  # pylint: disable=g-bad-todo
+          # TODO(BEAM-7199): Obviate setting this.
           '--experiments=pre_optimize=all',
           # ------------------------ End of Beam Args ------------------------ #
 
@@ -185,7 +185,7 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
           # ------------ Flink runner Args (ignored by Spark runner) --------- #
           '--parallelism=%d' % worker_parallelism,
 
-          # TODO(FLINK-10672): Obviate setting BATCH_FORCED.  # pylint: disable=g-bad-todo
+          # TODO(b/175810858): Obviate setting this.
           '--execution_mode_for_batch=BATCH_FORCED',
           # -------------------- End of Flink runner Args -------------------- #
       ],
