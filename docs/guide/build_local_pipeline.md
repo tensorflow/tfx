@@ -21,7 +21,7 @@ describes two ways to build a pipeline locally.
 *   Build a pipeline using TFX. In this use case, you define a pipeline without
     starting from a template.
 
-As you are developing your pipeline, you can run it with the `LocalDagRunner`.
+As you are developing your pipeline, you can run it with `LocalDagRunner`.
 Then, once the pipeline components have been well defined and tested, you would
 use a production-grade orchestrator such as Kubeflow or Airflow.
 
@@ -103,7 +103,7 @@ This section provides an overview of the scaffolding created by a template.
     python run create --pipeline_name <var>pipeline_name</var>
     </pre>
 
-    The command creates a pipeline run using the `LocalDagRunner`, which adds
+    The command creates a pipeline run using `LocalDagRunner`, which adds
     the following directories to your pipeline:
 
     *   A **tfx_metadata** directory which contains the ML Metadata store used
@@ -120,7 +120,7 @@ This section provides an overview of the scaffolding created by a template.
     Pipeline. If you're using TFX with a different orchestrator, use the
     appropriate DAG runner for that orchestrator.
 
-    Note: As of this writing, `LocalDag Runner` is used in the `penguin`
+    Note: As of this writing, `LocalDagRunner` is used in the `penguin`
     template, while the `taxi` template uses Apache Beam. The config files for
     the `taxi` template are set up to use Beam, and the CLI command is the same.
 
@@ -141,7 +141,7 @@ This section provides an overview of the scaffolding created by a template.
     the run's _parameters_, such as the `data_path` and `preprocessing_fn`.
 
 1.  You have reviewed the scaffolding created by the template and created a
-    pipeline run using the local DAG runner. Next, customize the template to fit
+    pipeline run using `LocalDagRunner`. Next, customize the template to fit
     your requirements.
 
 ### Customize your pipeline
