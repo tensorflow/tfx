@@ -124,6 +124,30 @@ class ComponentTest(tf.test.TestCase):
                      evaluator.outputs['evaluation'].type_name)
     self.assertEqual('path', evaluator.exec_properties['module_file'])
 
+  def testConstructWithModuleFn(self):
+    examples = standard_artifacts.Examples()
+    model_exports = standard_artifacts.Model()
+    evaluator = component.Evaluator(
+        examples=channel_utils.as_channel([examples]),
+        model=channel_utils.as_channel([model_exports]),
+        example_splits=['eval'],
+        module_path='module')
+    self.assertEqual(standard_artifacts.ModelEvaluation.TYPE_NAME,
+                     evaluator.outputs['evaluation'].type_name)
+    self.assertEqual('module', evaluator.exec_properties['module_path'])
+
+  def testConstructDuplicateUserModule(self):
+    examples = standard_artifacts.Examples()
+    model_exports = standard_artifacts.Model()
+
+    with self.assertRaises(ValueError):
+      _ = component.Evaluator(
+          examples=channel_utils.as_channel([examples]),
+          model=channel_utils.as_channel([model_exports]),
+          example_splits=['eval'],
+          module_file='module_file_path',
+          module_path='python.path.module')
+
 
 if __name__ == '__main__':
   tf.test.main()

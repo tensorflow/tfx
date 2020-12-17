@@ -25,6 +25,7 @@ import tensorflow as tf
 import tensorflow_model_analysis as tfma
 from tfx.components.evaluator import constants
 from tfx.components.evaluator import executor
+from tfx.components.testdata.module_file import evaluator_module
 from tfx.dsl.io import fileio
 from tfx.proto import evaluator_pb2
 from tfx.types import artifact_utils
@@ -53,6 +54,16 @@ class ExecutorTest(tf.test.TestCase, parameterized.TestCase):
               ])),
       'module_file':
           None
+  }), ('evaluation_w_module_path', {
+      'eval_config':
+          proto_utils.proto_to_json(
+              tfma.EvalConfig(slicing_specs=[
+                  tfma.SlicingSpec(feature_keys=['trip_start_hour']),
+                  tfma.SlicingSpec(
+                      feature_keys=['trip_start_day', 'trip_miles']),
+              ])),
+      'module_path':
+          evaluator_module.__name__,
   }))
   def testEvalution(self, exec_properties):
     source_data_dir = os.path.join(

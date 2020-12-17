@@ -36,9 +36,15 @@ class UdfUtilsTest(tf.test.TestCase):
 
   @mock.patch.object(import_utils, 'import_func_from_module')
   def testGetFnFromModule(self, mock_import_func):
-    exec_properties = {'test_fn': 'path.to.test_fn'}
+    exec_properties = {'module_path': 'path.to.module'}
     udf_utils.get_fn(exec_properties, 'test_fn')
-    mock_import_func.assert_called_once_with('path.to', 'test_fn')
+    mock_import_func.assert_called_once_with('path.to.module', 'test_fn')
+
+  @mock.patch.object(import_utils, 'import_func_from_module')
+  def testGetFnFromModuleFn(self, mock_import_func):
+    exec_properties = {'test_fn': 'path.to.module.test_fn'}
+    udf_utils.get_fn(exec_properties, 'test_fn')
+    mock_import_func.assert_called_once_with('path.to.module', 'test_fn')
 
   def testGetFnFailure(self):
     with self.assertRaises(ValueError):

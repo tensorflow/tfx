@@ -84,6 +84,8 @@ class EvaluatorSpec(ComponentSpec):
           ExecutionParameter(type=(str, Text), optional=True),
       'module_file':
           ExecutionParameter(type=(str, Text), optional=True),
+      'module_path':
+          ExecutionParameter(type=(str, Text), optional=True),
   }
   INPUTS = {
       'examples':
