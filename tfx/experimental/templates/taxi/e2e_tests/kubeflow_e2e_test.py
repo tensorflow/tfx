@@ -174,7 +174,7 @@ class TaxiTemplateKubeflowE2ETest(test_utils.BaseEndToEndTest):
         '--engine',
         'kubeflow',
         '--pipeline_path',
-        'kubeflow_dag_runner.py',
+        'kubeflow_runner.py',
         '--endpoint',
         self._endpoint,
         '--build-target-image',
@@ -193,7 +193,7 @@ class TaxiTemplateKubeflowE2ETest(test_utils.BaseEndToEndTest):
         '--engine',
         'kubeflow',
         '--pipeline_path',
-        'kubeflow_dag_runner.py',
+        'kubeflow_runner.py',
         '--endpoint',
         self._endpoint,
         '--skaffold-cmd',
@@ -272,7 +272,7 @@ class TaxiTemplateKubeflowE2ETest(test_utils.BaseEndToEndTest):
 
     # Prepare data
     self._prepare_data()
-    self._replaceFileContent('kubeflow_dag_runner.py', [
+    self._replaceFileContent('kubeflow_runner.py', [
         ('DATA_PATH = \'gs://{}/tfx-template/data/taxi/\'.format(configs.GCS_BUCKET_NAME)',
          'DATA_PATH = \'gs://{{}}/{}/{}\'.format(configs.GCS_BUCKET_NAME)'
          .format(self._DATA_DIRECTORY_NAME, self._pipeline_name)),
@@ -295,7 +295,7 @@ class TaxiTemplateKubeflowE2ETest(test_utils.BaseEndToEndTest):
     self._uncomment(
         os.path.join('pipeline', 'pipeline.py'),
         ['query: Text,', 'example_gen = BigQueryExampleGen('])
-    self._uncomment('kubeflow_dag_runner.py', [
+    self._uncomment('kubeflow_runner.py', [
         'query=configs.BIG_QUERY_QUERY',
         'beam_pipeline_args=configs\n',
         '.BIG_QUERY_WITH_DIRECT_RUNNER_BEAM_PIPELINE_ARGS,',
@@ -306,11 +306,11 @@ class TaxiTemplateKubeflowE2ETest(test_utils.BaseEndToEndTest):
 
     # TODO(b/173065862) Re-enable Dataflow tests after timeout is resolved.
 #     # Enable Dataflow
-#     self._comment('kubeflow_dag_runner.py', [
+#     self._comment('kubeflow_runner.py', [
 #         'beam_pipeline_args=configs\n',
 #         '.BIG_QUERY_WITH_DIRECT_RUNNER_BEAM_PIPELINE_ARGS',
 #     ])
-#     self._uncomment('kubeflow_dag_runner.py', [
+#     self._uncomment('kubeflow_runner.py', [
 #         'beam_pipeline_args=configs.DATAFLOW_BEAM_PIPELINE_ARGS',
 #     ])
 #     logging.info('Added Dataflow to pipeline.')
@@ -318,10 +318,10 @@ class TaxiTemplateKubeflowE2ETest(test_utils.BaseEndToEndTest):
 #     self._run_pipeline()
 
 #     # Enable CAIP extension.
-#     self._comment('kubeflow_dag_runner.py', [
+#     self._comment('kubeflow_runner.py', [
 #         'beam_pipeline_args=configs.DATAFLOW_BEAM_PIPELINE_ARGS',
 #     ])
-    self._uncomment('kubeflow_dag_runner.py', [
+    self._uncomment('kubeflow_runner.py', [
         'ai_platform_training_args=configs.GCP_AI_PLATFORM_TRAINING_ARGS,',
         'ai_platform_serving_args=configs.GCP_AI_PLATFORM_SERVING_ARGS,',
     ])
