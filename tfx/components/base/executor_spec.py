@@ -20,20 +20,19 @@ from __future__ import division
 from __future__ import print_function
 
 from tfx.dsl.components.base import executor_spec
+from tfx.utils import deprecation_utils
 
-from tensorflow.python.util import deprecation  # pylint: disable=g-direct-tensorflow-import
-
-ExecutorSpec = deprecation.deprecated_alias(  # pylint: disable=invalid-name
+ExecutorSpec = deprecation_utils.deprecated_alias(  # pylint: disable=invalid-name
     deprecated_name='tfx.components.base.executor_spec.ExecutorSpec',
     name='tfx.dsl.components.base.executor_spec.ExecutorSpec',
     func_or_class=executor_spec.ExecutorSpec)
 
-ExecutorClassSpec = deprecation.deprecated_alias(  # pylint: disable=invalid-name
+ExecutorClassSpec = deprecation_utils.deprecated_alias(  # pylint: disable=invalid-name
     deprecated_name='tfx.components.base.executor_spec.ExecutorClassSpec',
     name='tfx.dsl.components.base.executor_spec.ExecutorClassSpec',
     func_or_class=executor_spec.ExecutorClassSpec)
 
-ExecutorContainerSpec = deprecation.deprecated_alias(  # pylint: disable=invalid-name
+ExecutorContainerSpec = deprecation_utils.deprecated_alias(  # pylint: disable=invalid-name
     deprecated_name='tfx.components.base.executor_spec.ExecutorContainerSpec',
     name='tfx.dsl.components.base.executor_spec.ExecutorContainerSpec',
     func_or_class=executor_spec.ExecutorContainerSpec)

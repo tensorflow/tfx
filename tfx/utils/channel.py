@@ -26,24 +26,24 @@ from typing import Dict, Iterable, List, Text, Union
 from tfx import types
 from tfx.types import channel_utils
 
-from tensorflow.python.util import deprecation  # pylint: disable=g-direct-tensorflow-import
+from tfx.utils import deprecation_utils
 
 
-@deprecation.deprecated(
+@deprecation_utils.deprecated(
     None, 'tfx.utils.types.Channel has been renamed to tfx.types.Channel as of '
     'TFX 0.14.0.')
 class Channel(types.Channel):
   pass
 
 
-@deprecation.deprecated(None,
-                        'tfx.utils.channel.as_channel has been renamed to '
-                        'tfx.types.channel_utils.as_channel as of TFX 0.14.0.')
+@deprecation_utils.deprecated(
+    None, 'tfx.utils.channel.as_channel has been renamed to '
+    'tfx.types.channel_utils.as_channel as of TFX 0.14.0.')
 def as_channel(source: Union[Channel, Iterable[types.Artifact]]) -> Channel:
   return channel_utils.as_channel(source)
 
 
-@deprecation.deprecated(
+@deprecation_utils.deprecated(
     None, 'tfx.utils.channel.unwrap_channel_dict has been renamed to '
     'tfx.types.channel_utils.unwrap_channel_dict as of TFX 0.14.0.')
 def unwrap_channel_dict(

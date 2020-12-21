@@ -19,14 +19,13 @@ from __future__ import division
 from __future__ import print_function
 
 from tfx.extensions.google_cloud_ai_platform import runner
+from tfx.utils import deprecation_utils
 
-from tensorflow.python.util import deprecation  # pylint: disable=g-direct-tensorflow-import
-
-start_cmle_training = deprecation.deprecated_alias(
+start_cmle_training = deprecation_utils.deprecated_alias(
     deprecated_name='cmle_runner.start_cmle_training',
     name='runner.start_aip_training',
     func_or_class=runner.start_aip_training)
-deploy_model_for_cmle_serving = deprecation.deprecated_alias(
+deploy_model_for_cmle_serving = deprecation_utils.deprecated_alias(
     deprecated_name='cmle_runner.deploy_model_for_cmle_serving',
     name='runner.deploy_model_for_aip_prediction',
     func_or_class=runner.deploy_model_for_aip_prediction)

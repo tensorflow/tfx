@@ -20,10 +20,9 @@ from __future__ import division
 from __future__ import print_function
 
 from tfx.dsl.components.base import base_component
+from tfx.utils import deprecation_utils
 
-from tensorflow.python.util import deprecation  # pylint: disable=g-direct-tensorflow-import
-
-BaseComponent = deprecation.deprecated_alias(  # pylint: disable=invalid-name
+BaseComponent = deprecation_utils.deprecated_alias(  # pylint: disable=invalid-name
     deprecated_name='tfx.components.base.base_component.BaseComponent',
     name='tfx.dsl.components.base.base_component.BaseComponent',
     func_or_class=base_component.BaseComponent)

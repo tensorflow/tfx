@@ -19,10 +19,9 @@ from __future__ import division
 from __future__ import print_function
 
 from tfx.orchestration.airflow import airflow_dag_runner
+from tfx.utils import deprecation_utils
 
-from tensorflow.python.util import deprecation  # pylint: disable=g-direct-tensorflow-import
-
-AirflowDAGRunner = deprecation.deprecated_alias(  # pylint: disable=invalid-name
+AirflowDAGRunner = deprecation_utils.deprecated_alias(  # pylint: disable=invalid-name
     deprecated_name='airflow_runner.AirflowDAGRunner',
     name='airflow_dag_runner.AirflowDagRunner',
     func_or_class=airflow_dag_runner.AirflowDagRunner)

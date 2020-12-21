@@ -20,6 +20,7 @@ from __future__ import print_function
 
 import tensorflow as tf
 from tfx.proto import trainer_pb2
+from tfx.utils import deprecation_utils
 from tfx.utils import json_utils
 
 
@@ -29,6 +30,12 @@ class _DefaultJsonableObject(json_utils.Jsonable):
     self.a = a
     self.b = b
     self.c = c
+
+
+_DeprecatedAlias = deprecation_utils.deprecated_alias(
+    deprecated_name='_DeprecatedAlias',
+    name='_DefaultJsonableObject',
+    func_or_class=_DefaultJsonableObject)
 
 
 class JsonUtilsTest(tf.test.TestCase):
@@ -69,6 +76,12 @@ class JsonUtilsTest(tf.test.TestCase):
 
   def testDumpsClass(self):
     json_text = json_utils.dumps(_DefaultJsonableObject)
+
+    actual_obj = json_utils.loads(json_text)
+    self.assertEqual(_DefaultJsonableObject, actual_obj)
+
+  def testDumpsDeprecatedClass(self):
+    json_text = json_utils.dumps(_DeprecatedAlias)
 
     actual_obj = json_utils.loads(json_text)
     self.assertEqual(_DefaultJsonableObject, actual_obj)

@@ -25,11 +25,11 @@ from tfx.orchestration import tfx_runner
 from tfx.orchestration.config import pipeline_config
 from tfx.orchestration.kubeflow.v2 import pipeline_builder
 from tfx.orchestration.kubeflow.v2.proto import pipeline_pb2
+from tfx.utils import deprecation_utils
 from tfx.utils import telemetry_utils
 from tfx.utils import version_utils
 
 from google.protobuf import json_format
-from tensorflow.python.util import deprecation  # pylint: disable=g-direct-tensorflow-import
 
 _KUBEFLOW_TFX_CMD = (
     'python', '-m',
@@ -169,5 +169,5 @@ class KubeflowV2DagRunner(tfx_runner.TfxRunner):
 
     return pipeline_json_dict
 
-  compile = deprecation.deprecated_alias(
+  compile = deprecation_utils.deprecated_alias(
       deprecated_name='compile', name='run', func_or_class=run)

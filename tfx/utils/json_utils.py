@@ -122,6 +122,13 @@ class _DefaultEncoder(json.JSONEncoder):
       return dict_data
 
     if inspect.isclass(obj):
+      # When serializing, skip over deprecated class aliases in the class
+      # hierarchy.
+      if getattr(obj, '_TFX_DEPRECATED_CLASS', False):
+        for cls in inspect.getmro(obj):
+          if not getattr(cls, '_TFX_DEPRECATED_CLASS', False):
+            obj = cls
+            break
       return {
           _TFX_OBJECT_TYPE_KEY: _ObjectType.CLASS,
           _MODULE_KEY: obj.__module__,

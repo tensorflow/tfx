@@ -28,9 +28,8 @@ from tfx.dsl.components.base import base_driver
 from tfx.dsl.components.base import base_executor
 from tfx.dsl.components.base import executor_spec as executor_spec_module
 from tfx.types import node_common
+from tfx.utils import deprecation_utils
 from tfx.utils import json_utils
-
-from tensorflow.python.util import deprecation  # pylint: disable=g-direct-tensorflow-import
 
 
 def _abstract_property() -> Any:
@@ -42,7 +41,7 @@ class BaseNode(with_metaclass(abc.ABCMeta, json_utils.Jsonable)):
   """Base class for a node in TFX pipeline."""
 
   @classmethod
-  @deprecation.deprecated(
+  @deprecation_utils.deprecated(
       None, '`get_id` is deprecated as `instance_name is deprecated.`')
   def get_id(cls, instance_name: Optional[Text] = None):
     """Gets the id of a node.
@@ -113,8 +112,9 @@ class BaseNode(with_metaclass(abc.ABCMeta, json_utils.Jsonable)):
     return '.'.join([self.__class__.__module__, self.__class__.__name__])
 
   @property
-  @deprecation.deprecated(None,
-                          'component_type is deprecated, use type instead')
+  @deprecation_utils.deprecated(None,
+                                'component_type is deprecated, use type instead'
+                               )
   def component_type(self) -> Text:
     return self.type
 
@@ -140,7 +140,8 @@ class BaseNode(with_metaclass(abc.ABCMeta, json_utils.Jsonable)):
       return node_class_name
 
   @property
-  @deprecation.deprecated(None, 'component_id is deprecated, use id instead')
+  @deprecation_utils.deprecated(None,
+                                'component_id is deprecated, use id instead')
   def component_id(self) -> Text:
     return self.id
 

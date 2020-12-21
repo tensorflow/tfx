@@ -25,8 +25,7 @@ from six import with_metaclass
 from tfx import types
 from tfx.orchestration import data_types
 from tfx.orchestration import metadata
-
-from tensorflow.python.util import deprecation  # pylint: disable=g-direct-tensorflow-import
+from tfx.utils import deprecation_utils
 
 
 class ResolveResult(object):
@@ -57,7 +56,7 @@ class BaseResolver(with_metaclass(abc.ABCMeta, object)):
   dict.
   """
 
-  @deprecation.deprecated(
+  @deprecation_utils.deprecated(
       date='2020-09-24',
       instructions='Please switch to the `resolve_artifacts`.')
   def resolve(

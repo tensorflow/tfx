@@ -32,15 +32,15 @@ from tfx.components.util import udf_utils
 from tfx.dsl.components.base import base_executor
 from tfx.dsl.io import fileio
 from tfx.types import artifact_utils
+from tfx.utils import deprecation_utils
 from tfx.utils import io_utils
 from tfx.utils import path_utils
 
 from tensorflow.python.lib.io import file_io  # pylint: disable=g-direct-tensorflow-import
-from tensorflow.python.util import deprecation  # pylint: disable=g-direct-tensorflow-import
 from tensorflow_metadata.proto.v0 import schema_pb2
 
 
-TrainerFnArgs = deprecation.deprecated_alias(  # pylint: disable=invalid-name
+TrainerFnArgs = deprecation_utils.deprecated_alias(  # pylint: disable=invalid-name
     deprecated_name='tfx.components.trainer.executor.TrainerFnArgs',
     name='tfx.components.trainer.fn_args_utils.FnArgs',
     func_or_class=fn_args_utils.FnArgs)

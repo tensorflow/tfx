@@ -23,12 +23,11 @@ from typing import Any
 from tfx import types
 from tfx.types import channel_utils
 from tfx.types import standard_artifacts
-
-from tensorflow.python.util import deprecation  # pylint: disable=g-direct-tensorflow-import
+from tfx.utils import deprecation_utils
 
 
 # TODO(b/158333888): deprecate external_input function.
-@deprecation.deprecated(
+@deprecation_utils.deprecated(
     None, 'external_input is deprecated, directly pass the uri to ExampleGen.')
 def external_input(uri: Any) -> types.Channel:
   """Helper function to declare external input.
