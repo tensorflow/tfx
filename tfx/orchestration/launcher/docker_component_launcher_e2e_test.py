@@ -25,9 +25,6 @@ from tfx.dsl.components.base import executor_spec
 from tfx.orchestration import metadata
 from tfx.orchestration import pipeline
 from tfx.orchestration.beam import beam_dag_runner
-from tfx.orchestration.config import docker_component_config
-from tfx.orchestration.config import pipeline_config
-from tfx.orchestration.launcher import docker_component_launcher
 from tfx.types import component_spec
 
 
@@ -90,19 +87,12 @@ class DockerComponentLauncherE2eTest(tf.test.TestCase):
 
   def testDockerComponentLauncherInBeam(self):
 
-    beam_dag_runner.BeamDagRunner(
-        config=pipeline_config.PipelineConfig(
-            supported_launcher_classes=[
-                docker_component_launcher.DockerComponentLauncher
-            ],
-            default_component_configs=[
-                docker_component_config.DockerComponentConfig()
-            ])).run(
-                _create_pipeline(
-                    pipeline_name=self._pipeline_name,
-                    pipeline_root=self._pipeline_root,
-                    metadata_path=self._metadata_path,
-                    name='docker_e2e_test_in_beam'))
+    beam_dag_runner.BeamDagRunner().run(
+        _create_pipeline(
+            pipeline_name=self._pipeline_name,
+            pipeline_root=self._pipeline_root,
+            metadata_path=self._metadata_path,
+            name='docker_e2e_test_in_beam'))
 
     metadata_config = metadata.sqlite_metadata_connection_config(
         self._metadata_path)
