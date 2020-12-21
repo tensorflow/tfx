@@ -20,6 +20,8 @@ import tensorflow as tf
 from tfx.dsl.compiler import constants
 from tfx.orchestration import metadata
 from tfx.orchestration.beam import beam_dag_runner
+from tfx.orchestration.beam.legacy import beam_dag_runner as legacy_beam_dag_runner
+from tfx.orchestration.config import pipeline_config
 from tfx.proto.orchestration import executable_spec_pb2
 from tfx.proto.orchestration import local_deployment_config_pb2
 from tfx.proto.orchestration import pipeline_pb2
@@ -292,6 +294,35 @@ class BeamDagRunnerTest(test_case_utils.TfxTest):
                      ['my_example_gen', 'my_transform', 'my_trainer'])
     # Verifies that every component gets a not-None pipeline_run.
     self.assertTrue(all(_conponent_to_pipeline_run.values()))
+
+  def testLegacyBeamDagRunnerConstruction(self):
+    self.assertIsInstance(beam_dag_runner.BeamDagRunner(),
+                          beam_dag_runner.BeamDagRunner)
+
+    # Test that the legacy Beam DAG runner is used when a PipelineConfig is
+    # specified.
+    config = pipeline_config.PipelineConfig()
+    runner = beam_dag_runner.BeamDagRunner(config=config)
+    self.assertIs(runner.__class__, legacy_beam_dag_runner.BeamDagRunner)
+    self.assertIs(runner._config, config)
+
+    # Test that the legacy Beam DAG runner is used when beam_orchestrator_args
+    # is specified.
+    beam_orchestrator_args = ['--my-beam-option']
+    runner = beam_dag_runner.BeamDagRunner(
+        beam_orchestrator_args=beam_orchestrator_args)
+    self.assertIs(runner.__class__, legacy_beam_dag_runner.BeamDagRunner)
+    self.assertIs(runner._beam_orchestrator_args, beam_orchestrator_args)
+
+    # Test that the legacy Beam DAG runner is used when both a PipelineConfig
+    # and beam_orchestrator_args are specified.
+    config = pipeline_config.PipelineConfig()
+    beam_orchestrator_args = ['--my-beam-option']
+    runner = beam_dag_runner.BeamDagRunner(
+        config=config, beam_orchestrator_args=beam_orchestrator_args)
+    self.assertIs(runner.__class__, legacy_beam_dag_runner.BeamDagRunner)
+    self.assertIs(runner._config, config)
+    self.assertIs(runner._beam_orchestrator_args, beam_orchestrator_args)
 
 
 if __name__ == '__main__':

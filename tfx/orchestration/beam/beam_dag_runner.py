@@ -15,7 +15,7 @@
 
 import datetime
 import os
-from typing import Any, Iterable, Optional, Union
+from typing import Any, Iterable, List, Optional, Text, Union
 
 from absl import logging
 import apache_beam as beam
@@ -23,6 +23,8 @@ from tfx.dsl.compiler import compiler
 from tfx.dsl.compiler import constants
 from tfx.orchestration import metadata
 from tfx.orchestration import pipeline as pipeline_py
+from tfx.orchestration.beam.legacy import beam_dag_runner as legacy_beam_dag_runner
+from tfx.orchestration.config import pipeline_config
 from tfx.orchestration.portable import launcher
 from tfx.orchestration.portable import runtime_parameter_utils
 from tfx.orchestration.portable import tfx_runner
@@ -110,8 +112,45 @@ class PipelineNodeAsDoFn(beam.DoFn):
 
 
 class BeamDagRunner(tfx_runner.TfxRunner):
-  """Tfx runner on Beam."""
+  """Legacy TFX BeamDagRunner.
+
+  This runner is not based on the TFX IR and is kept for compatibility. It will
+  be deprecated in a future release.
+  """
   _PIPELINE_NODE_DO_FN_CLS = PipelineNodeAsDoFn
+
+  def __new__(
+      cls,
+      beam_orchestrator_args: Optional[List[Text]] = None,
+      config: Optional[pipeline_config.PipelineConfig] = None):
+    """Initializes BeamDagRunner as a TFX orchestrator.
+
+    Create the legacy BeamDagRunner object if any of the legacy
+    `beam_orchestrator_args` or `config` arguments are passed. A migration
+    guide will be provided in a future TFX version for users of these arguments.
+
+    Args:
+      beam_orchestrator_args: Deprecated beam args for the beam orchestrator.
+        Note that this is different from the beam_pipeline_args within
+        additional_pipeline_args, which is for beam pipelines in components. If
+        this option is used, the legacy non-IR-based BeamDagRunner will be
+        constructed.
+      config: Deprecated optional pipeline config for customizing the launching
+        of each component. Defaults to pipeline config that supports
+        InProcessComponentLauncher and DockerComponentLauncher. If this option
+        is used, the legacy non-IR-based BeamDagRunner will be constructed.
+
+    Returns:
+      Legacy or IR-based BeamDagRunner object.
+    """
+    if beam_orchestrator_args or config:
+      logging.info(
+          'Using the legacy BeamDagRunner since `beam_orchestrator_args` or '
+          '`config` argument was passed.')
+      return legacy_beam_dag_runner.BeamDagRunner(
+          beam_orchestrator_args=beam_orchestrator_args, config=config)
+    else:
+      return super(BeamDagRunner, cls).__new__(cls)
 
   def __init__(self):
     """Initializes BeamDagRunner as a TFX orchestrator."""
