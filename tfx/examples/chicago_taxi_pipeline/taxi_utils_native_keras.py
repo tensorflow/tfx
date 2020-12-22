@@ -63,7 +63,8 @@ _VOCAB_FEATURE_KEYS = [
 ]
 
 # Keys
-_LABEL_KEY = 'big_tipper'
+_LABEL_KEY = 'tips'
+_FARE_KEY = 'fare'
 
 
 def _transformed_name(key):
@@ -100,17 +101,20 @@ def _fill_in_missing(x):
 def _get_serve_tf_examples_fn(model, tf_transform_output):
   """Returns a function that parses a serialized tf.Example and applies TFT."""
 
-  model.tft_layer = tf_transform_output.transform_features_layer()
+  model.tft_layer_inference = tf_transform_output.transform_features_layer()
+  model.tft_layer_eval = tf_transform_output.transform_features_layer()
 
   @tf.function
   def serve_tf_examples_fn(serialized_tf_examples):
     """Returns the output to be used in the serving signature."""
     feature_spec = tf_transform_output.raw_feature_spec()
+    parsed_features_with_label = tf.io.parse_example(
+        serialized_tf_examples, feature_spec)
+    _ = model.tft_layer_eval(parsed_features_with_label)
+
     feature_spec.pop(_LABEL_KEY)
     parsed_features = tf.io.parse_example(serialized_tf_examples, feature_spec)
-
-    transformed_features = model.tft_layer(parsed_features)
-
+    transformed_features = model.tft_layer_inference(parsed_features)
     return model(transformed_features)
 
   return serve_tf_examples_fn
@@ -270,9 +274,15 @@ def preprocessing_fn(inputs):
   for key in _CATEGORICAL_FEATURE_KEYS:
     outputs[_transformed_name(key)] = _fill_in_missing(inputs[key])
 
-  # TODO(b/157064428): Support label transformation for Keras.
-  # Do not apply label transformation as it will result in wrong evaluation.
-  outputs[_transformed_name(_LABEL_KEY)] = inputs[_LABEL_KEY]
+  # Was this passenger a big tipper?
+  taxi_fare = _fill_in_missing(inputs[_FARE_KEY])
+  tips = _fill_in_missing(inputs[_LABEL_KEY])
+  outputs[_transformed_name(_LABEL_KEY)] = tf.where(
+      tf.math.is_nan(taxi_fare),
+      tf.cast(tf.zeros_like(taxi_fare), tf.int64),
+      # Test if the tip was > 20% of the fare.
+      tf.cast(
+          tf.greater(tips, tf.multiply(taxi_fare, tf.constant(0.2))), tf.int64))
 
   return outputs
 

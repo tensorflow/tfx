@@ -41,9 +41,8 @@ _IMPORT_FROM_LOCAL_DIR = 'from '
 _TemplateFilePath = collections.namedtuple('_TemplateFilePath', ['src', 'dst'])
 _ADDITIONAL_FILE_PATHS = {
     'taxi': [  # template name
-        _TemplateFilePath(
-            'examples/chicago_taxi_pipeline/data/big_tipper_label/data.csv',
-            'data/data.csv'),
+        _TemplateFilePath('examples/chicago_taxi_pipeline/data/simple/data.csv',
+                          'data/data.csv'),
     ],
     'penguin': [
         _TemplateFilePath(
