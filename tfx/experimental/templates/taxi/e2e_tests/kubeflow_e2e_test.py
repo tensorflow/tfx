@@ -101,7 +101,7 @@ class TaxiTemplateKubeflowE2ETest(test_utils.BaseEndToEndTest):
     response = self._kfp_client.list_runs(experiment_id=experiment_id)
     return response.runs
 
-  @retry.retry(ignore_eventual_failure=True)
+  # retry is handled by kubeflow_test_utils.delete_ai_platform_model().
   def _delete_caip_model(self):
     model_name = self._pipeline_name.replace('-', '_')
     kubeflow_test_utils.delete_ai_platform_model(model_name)

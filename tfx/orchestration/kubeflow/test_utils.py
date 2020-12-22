@@ -62,6 +62,7 @@ from tfx.types import component_spec
 from tfx.types import standard_artifacts
 from tfx.types.standard_artifacts import Model
 from tfx.utils import kube_utils
+from tfx.utils import retry
 
 
 # TODO(jiyongjung): Merge with kube_utils.PodStatus
@@ -350,11 +351,12 @@ def create_e2e_components(
   ]
 
 
+@retry.retry(ignore_eventual_failure=True)
 def delete_ai_platform_model(model_name):
   """Delete pushed model with the given name in AI Platform."""
   # In order to delete model, all versions in the model must be deleted first.
   versions_command = ('gcloud', 'ai-platform', 'versions', 'list',
-                      '--model={}'.format(model_name))
+                      '--model={}'.format(model_name), '--region=global')
   # The return code of the following subprocess call will be explicitly checked
   # using the logic below, so we don't need to call check_output().
   versions = subprocess.run(versions_command, stdout=subprocess.PIPE)  # pylint: disable=subprocess-run-check
@@ -373,13 +375,14 @@ def delete_ai_platform_model(model_name):
       logging.info('Deleting version %s of model %s', version, model_name)
       version_delete_command = ('gcloud', '--quiet', 'ai-platform', 'versions',
                                 'delete', version,
-                                '--model={}'.format(model_name))
+                                '--model={}'.format(model_name),
+                                '--region=global')
       subprocess.run(version_delete_command, check=True)
 
   logging.info('Deleting model %s', model_name)
-  subprocess.run(
-      ('gcloud', '--quiet', 'ai-platform', 'models', 'delete', model_name),
-      check=True)
+  subprocess.run(('gcloud', '--quiet', 'ai-platform', 'models', 'delete',
+                  model_name, '--region=global'),
+                 check=True)
 
 
 class BaseKubeflowTest(tf.test.TestCase):
