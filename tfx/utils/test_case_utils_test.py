@@ -22,10 +22,17 @@ from tfx.utils import test_case_utils
 
 class TempWorkingDirTest(test_case_utils.TempWorkingDirTestCase):
 
+  def setUp(self):
+    super().setUp()
+    self.enter_context(test_case_utils.override_env_var('NEW_ENV', 'foo'))
+    self.enter_context(test_case_utils.override_env_var('OVERWRITE_ENV', 'baz'))
+
   # This test method will be invoked manually in TestCaseUtilsTest.
   def successfulTest(self):
     self.assertEqual(
         os.path.realpath(self.tmp_dir), os.path.realpath(os.getcwd()))
+    self.assertEqual(os.getenv('NEW_ENV'), 'foo')
+    self.assertEqual(os.getenv('OVERWRITE_ENV'), 'baz')
 
 
 class FailingTempWorkingDirTest(test_case_utils.TempWorkingDirTestCase):
@@ -35,7 +42,11 @@ class FailingTempWorkingDirTest(test_case_utils.TempWorkingDirTestCase):
     self.assertTrue(False)
 
 
-class TestCaseUtilsTest(tf.test.TestCase):
+class TestCaseUtilsTest(test_case_utils.TfxTest):
+
+  def setUp(self):
+    super().setUp()
+    self.enter_context(test_case_utils.override_env_var('OVERWRITE_ENV', 'bar'))
 
   def _run_test_case_class(self, cls, prefix, check=False):
     test_loader = unittest.TestLoader()
@@ -49,6 +60,8 @@ class TestCaseUtilsTest(tf.test.TestCase):
     old_cwd = os.getcwd()
     self._run_test_case_class(TempWorkingDirTest, 'successful', check=True)
     self.assertEqual(os.getcwd(), old_cwd)
+    self.assertNotIn('NEW_ENV', os.environ)
+    self.assertEqual(os.getenv('OVERWRITE_ENV'), 'bar')
 
     self._run_test_case_class(FailingTempWorkingDirTest, 'failing')
     self.assertEqual(os.getcwd(), old_cwd)

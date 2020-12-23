@@ -64,6 +64,12 @@ class TfxTest(tf.test.TestCase):
         os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR', self.get_temp_dir()),
         self._testMethodName)
     fileio.makedirs(self.tmp_dir)
+    # TODO(b/176196624): Delete following block when we drop support for TF<2.4.
+    # Manually set up exit_stack because absltest.TestCase.setUp() is not called
+    # in TF<2.4.
+    if self._exit_stack is None:
+      self._exit_stack = contextlib.ExitStack()
+      self.addCleanup(self._exit_stack.close)
 
   def load_proto_from_text(self, path: Text,
                            proto_message: message.Message) -> message.Message:
