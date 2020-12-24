@@ -23,7 +23,6 @@ from typing import Any, Dict, List, Optional, Text
 import click
 from tabulate import tabulate
 from tfx.dsl.io import fileio
-from tfx.orchestration.kubeflow.v2.proto import pipeline_pb2
 from tfx.tools.cli import labels
 from tfx.tools.cli.container_builder import builder
 from tfx.tools.cli.container_builder import labels as container_builder_labels
@@ -205,6 +204,9 @@ class KubeflowV2Handler(base_handler.BaseHandler):
     # compiled pipeline spec.
     self._subprocess_call(
         command=[sys.executable, pipeline_dsl_path], env=temp_env)
+
+    # Only import pipeline_pb2 when needed to guard CLI dependency.
+    from tfx.orchestration.kubeflow.v2.proto import pipeline_pb2  # pylint: disable=g-import-not-at-top
 
     # Extract the needed information from compiled pipeline spec.
     job_message = pipeline_pb2.PipelineJob()
