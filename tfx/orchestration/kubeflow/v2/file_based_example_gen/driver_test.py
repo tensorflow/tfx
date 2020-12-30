@@ -15,8 +15,6 @@
 import json
 import os
 import re
-import shutil
-import tempfile
 
 import tensorflow as tf
 from tfx.dsl.io import fileio
@@ -26,6 +24,7 @@ from tfx.orchestration.kubeflow.v2.proto import pipeline_pb2
 from tfx.proto import example_gen_pb2
 from tfx.types import standard_artifacts
 from tfx.utils import io_utils
+from tfx.utils import test_case_utils
 
 from google.protobuf import json_format
 
@@ -33,12 +32,10 @@ _TEST_OUTPUT_METADATA_JSON = 'output/outputmetadata.json'
 _TEST_INPUT_DIR = 'input_base'
 
 
-class RunDriverTest(tf.test.TestCase):
+class RunDriverTest(test_case_utils.TempWorkingDirTestCase):
 
   def setUp(self):
     super().setUp()
-    self._test_dir = tempfile.mkdtemp()
-
     self._executor_invocation = pipeline_pb2.ExecutorInput()
     self._executor_invocation.outputs.output_file = _TEST_OUTPUT_METADATA_JSON
     self._executor_invocation.inputs.parameters[
@@ -66,15 +63,8 @@ class RunDriverTest(tf.test.TestCase):
             os.path.dirname(__file__), 'testdata',
             'expected_output_metadata.json'), 'r').read()
 
-    self._olddir = os.getcwd()
-    os.chdir(self._test_dir)
     fileio.makedirs(os.path.dirname(_TEST_OUTPUT_METADATA_JSON))
     fileio.makedirs(os.path.dirname(_TEST_INPUT_DIR))
-
-  def tearDown(self):
-    super().tearDown()
-    shutil.rmtree(self._test_dir)
-    os.chdir(self._olddir)
 
   def testDriverWithoutSpan(self):
     split1 = os.path.join(_TEST_INPUT_DIR, 'split1', 'data')

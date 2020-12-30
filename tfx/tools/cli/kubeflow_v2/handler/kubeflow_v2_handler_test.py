@@ -27,6 +27,7 @@ from tfx.tools.cli import labels
 from tfx.tools.cli.kubeflow_v2 import labels as kubeflow_labels
 from tfx.tools.cli.kubeflow_v2.handler import kubeflow_v2_handler
 from tfx.utils import io_utils
+from tfx.utils import test_case_utils
 
 from google.protobuf import json_format
 
@@ -138,7 +139,7 @@ def _mock_subprocess_call(cmd: Sequence[Optional[Text]],
   job_pb = pipeline_pb2.PipelineJob(runtime_config=runtime_pb)
   job_pb.pipeline_spec.update(json_format.MessageToDict(spec_pb))
   io_utils.write_string_file(
-      file_name=os.path.join(os.getcwd(), 'pipeline.json'),
+      file_name='pipeline.json',
       string_value=json_format.MessageToJson(message=job_pb, sort_keys=True))
   return 0
 
@@ -186,23 +187,19 @@ class _MockPipelineJobsResource(object):
     return self._MockGetRequest(name=name)
 
 
-class KubeflowV2HandlerTest(tf.test.TestCase):
+class KubeflowV2HandlerTest(test_case_utils.TempWorkingDirTestCase):
 
   def setUp(self):
     super(KubeflowV2HandlerTest, self).setUp()
     self.chicago_taxi_pipeline_dir = os.path.join(
         os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'testdata')
-    self._tmp_dir = os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR',
-                                   self.get_temp_dir())
-    self._home = os.path.join(self._tmp_dir, self._testMethodName)
-    self._olddir = os.getcwd()
-    os.chdir(self._tmp_dir)
-    self._original_home_value = os.environ.get('HOME', '')
-    os.environ['HOME'] = self._home
-    self._original_v2_home_value = os.environ.get('KUBEFLOW_V2_HOME', '')
-    os.environ['KUBEFLOW_V2_HOME'] = os.path.join(os.environ['HOME'],
-                                                  'kubeflow_v2')
-    self._kubeflow_v2_home = os.environ['KUBEFLOW_V2_HOME']
+
+    self._home = self.tmp_dir
+    self.enter_context(test_case_utils.override_env_var('HOME', self._home))
+    self._kubeflow_v2_home = os.path.join(self._home, 'kubeflow_v2')
+    self.enter_context(
+        test_case_utils.override_env_var('KUBEFLOW_V2_HOME',
+                                         self._kubeflow_v2_home))
 
     # Flags for handler.
     self.engine = 'kubeflow_v2'
@@ -224,14 +221,6 @@ class KubeflowV2HandlerTest(tf.test.TestCase):
     # Setting up Mock for API client, so that this Python test is hermatic.
     # subprocess Mock will be setup per-test.
     self.addCleanup(mock.patch.stopall)
-
-  def tearDown(self):
-    super(KubeflowV2HandlerTest, self).tearDown()
-    if self._original_home_value:
-      os.environ['HOME'] = self._original_home_value
-    if self._original_v2_home_value:
-      os.environ['KUBEFLOW_V2_HOME'] = self._original_v2_home_value
-    os.chdir(self._olddir)
 
   def testGetJobName(self):
     self.assertEqual(_TEST_PIPELINE_JOB_NAME,

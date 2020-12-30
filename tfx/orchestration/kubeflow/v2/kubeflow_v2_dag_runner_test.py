@@ -16,8 +16,6 @@
 import datetime
 import json
 import os
-import shutil
-import tempfile
 from typing import Text
 
 # Standard Imports
@@ -29,6 +27,7 @@ from tfx.orchestration import pipeline as tfx_pipeline
 from tfx.orchestration.kubeflow.v2 import kubeflow_v2_dag_runner
 from tfx.orchestration.kubeflow.v2 import test_utils
 from tfx.utils import telemetry_utils
+from tfx.utils import test_case_utils
 
 _TEST_DIR = 'testdir'
 
@@ -38,16 +37,7 @@ _ILLEGALLY_NAMED_PIPELINE = tfx_pipeline.Pipeline(
     pipeline_name='ThisIsIllegal', pipeline_root='/some/path', components=[])
 
 
-class KubeflowV2DagRunnerTest(tf.test.TestCase):
-
-  def setUp(self):
-    super(KubeflowV2DagRunnerTest, self).setUp()
-    self.test_dir = tempfile.mkdtemp()
-    os.chdir(self.test_dir)
-
-  def tearDown(self):
-    super(KubeflowV2DagRunnerTest, self).tearDown()
-    shutil.rmtree(self.test_dir)
+class KubeflowV2DagRunnerTest(test_case_utils.TempWorkingDirTestCase):
 
   def _compare_against_testdata(
       self, runner: kubeflow_v2_dag_runner.KubeflowV2DagRunner,

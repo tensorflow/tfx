@@ -26,13 +26,13 @@ from typing import Text, List, Iterable, Tuple
 
 from absl import logging
 from click import testing as click_testing
-import tensorflow as tf
 
 from tfx.tools.cli.cli_main import cli_group
 from tfx.utils import io_utils
+from tfx.utils import test_case_utils
 
 
-class BaseEndToEndTest(tf.test.TestCase):
+class BaseEndToEndTest(test_case_utils.TempWorkingDirTestCase):
   """Base class for end-to-end testing of TFX templates."""
 
   def setUp(self):
@@ -44,20 +44,13 @@ class BaseEndToEndTest(tf.test.TestCase):
     if codecs.lookup(locale.getpreferredencoding()).name == 'ascii':
       os.environ['LANG'] = 'en_US.utf-8'
 
-    self._temp_dir = self.create_tempdir().full_path
-
     self._pipeline_name = 'TEMPLATE_E2E_TEST'
-    self._project_dir = os.path.join(self._temp_dir, 'src')
-    self._old_cwd = os.getcwd()
-    os.mkdir(self._project_dir)
-    os.chdir(self._project_dir)
+    self._project_dir = self.tmp_dir
+    self._temp_dir = os.path.join(self._project_dir, 'tmp')
+    os.makedirs(self._temp_dir)
 
     # Initialize CLI runner.
     self._cli_runner = click_testing.CliRunner()
-
-  def tearDown(self):
-    super(BaseEndToEndTest, self).tearDown()
-    os.chdir(self._old_cwd)
 
   def _runCli(self, args: List[Text]) -> click_testing.Result:
     logging.info('Running cli: %s', args)

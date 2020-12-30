@@ -21,13 +21,14 @@ from __future__ import print_function
 import contextlib
 import filecmp
 import os
-import tempfile
 
 import tensorflow as tf
 
 from tfx import version
 from tfx.tools.cli.container_builder import dockerfile
 from tfx.tools.cli.container_builder import labels
+from tfx.utils import test_case_utils
+
 
 _FAKE_VERSION = '0.23.0'
 
@@ -37,7 +38,7 @@ COPY ./ ./
 ENV PYTHONPATH="/pipeline:${PYTHONPATH}"''' % _FAKE_VERSION
 
 
-class DockerfileTest(tf.test.TestCase):
+class DockerfileTest(test_case_utils.TempWorkingDirTestCase):
 
   def setUp(self):
     super(DockerfileTest, self).setUp()
@@ -45,17 +46,9 @@ class DockerfileTest(tf.test.TestCase):
         os.path.abspath(os.path.dirname(__file__)), 'testdata')
     # change to a temporary working dir such that
     # there is no setup.py in the working dir.
-    self._old_working_dir = os.getcwd()
-    self._tmp_working_dir = tempfile.mkdtemp()
-    self._test_dockerfile = os.path.join(self._tmp_working_dir,
-                                         '.test_dockerfile')
+    self._test_dockerfile = os.path.abspath('.test_dockerfile')
     with open(self._test_dockerfile, 'w') as f:
       f.writelines(_test_dockerfile_content)
-    os.chdir(self._tmp_working_dir)
-
-  def tearDown(self):
-    super(DockerfileTest, self).tearDown()
-    os.chdir(self._old_working_dir)
 
   @contextlib.contextmanager
   def _patchVersion(self, ver):

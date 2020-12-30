@@ -31,6 +31,7 @@ from tfx.dsl.components.base import base_driver
 from tfx.dsl.io import fileio
 from tfx.tools.cli import labels
 from tfx.tools.cli.handler import kubeflow_handler
+from tfx.utils import test_case_utils
 
 
 def _MockSubprocess(cmd, env):  # pylint: disable=invalid-name, unused-argument
@@ -210,22 +211,16 @@ def _check_kfp_environment() -> bool:
 
 @unittest.skipUnless(_check_kfp_environment(),
                      'Required environment variables not set')
-class KubeflowHandlerTest(tf.test.TestCase):
+class KubeflowHandlerTest(test_case_utils.TempWorkingDirTestCase):
 
   def setUp(self):
     super(KubeflowHandlerTest, self).setUp()
-    self._tmp_dir = os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR',
-                                   self.get_temp_dir())
-    self._home = os.path.join(self._tmp_dir, self._testMethodName)
-    # Because this test creates files in local directory and affected by
-    # existing files, we will create a temp directory for a working directory.
-    self._olddir = os.getcwd()
-    os.chdir(self._tmp_dir)
+    self._home = self.tmp_dir
 
-    self._original_home_value = os.environ.get('HOME', '')
-    os.environ['HOME'] = self._home
-    self._original_kubeflow_home_value = os.environ.get('KUBEFLOW_HOME', '')
-    os.environ['KUBEFLOW_HOME'] = os.path.join(os.environ['HOME'], 'kubeflow')
+    self.enter_context(test_case_utils.override_env_var('HOME', self._home))
+    self.enter_context(
+        test_case_utils.override_env_var('KUBEFLOW_HOME',
+                                         os.path.join(self._home, 'kubeflow')))
 
     # Flags for handler.
     self.engine = 'kubeflow'
@@ -234,8 +229,8 @@ class KubeflowHandlerTest(tf.test.TestCase):
     self.pipeline_path = os.path.join(self.chicago_taxi_pipeline_dir,
                                       'test_pipeline_kubeflow_1.py')
     self.pipeline_name = 'chicago_taxi_pipeline_kubeflow'
-    self.pipeline_package_path = os.path.join(
-        os.getcwd(), 'chicago_taxi_pipeline_kubeflow.tar.gz')
+    self.pipeline_package_path = os.path.abspath(
+        'chicago_taxi_pipeline_kubeflow.tar.gz')
     self.pipeline_root = os.path.join(self._home, 'tfx', 'pipelines')
 
     # Kubeflow client params.
@@ -245,14 +240,6 @@ class KubeflowHandlerTest(tf.test.TestCase):
 
     # Pipeline args for mocking subprocess.
     self.pipeline_args = {'pipeline_name': 'chicago_taxi_pipeline_kubeflow'}
-
-  def tearDown(self):
-    super(KubeflowHandlerTest, self).tearDown()
-    os.chdir(self._olddir)
-    if self._original_home_value:
-      os.environ['HOME'] = self._original_home_value
-    if self._original_kubeflow_home_value:
-      os.environ['KUBEFLOW_HOME'] = self._original_kubeflow_home_value
 
   @mock.patch('kfp.Client', _MockClientClass)
   def testCheckPipelinePackagePathDefaultPath(self):

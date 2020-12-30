@@ -15,8 +15,6 @@
 
 import json
 import os
-import shutil
-import tempfile
 from typing import Any, Mapping, Sequence
 
 import tensorflow as tf
@@ -27,6 +25,8 @@ from tfx.dsl.io import fileio
 from tfx.orchestration.kubeflow.v2.container import kubeflow_v2_run_executor
 from tfx.types import artifact
 from tfx.types import artifact_utils
+from tfx.utils import test_case_utils
+
 
 _TEST_OUTPUT_METADATA_JSON = "testdir/outputmetadata.json"
 
@@ -76,7 +76,7 @@ class _FakeExecutor(evaluator_executor.Executor):
 _EXEC_PROPERTIES = {"key_1": "value_1", "key_2": 536870911}
 
 
-class KubeflowV2RunExecutorTest(tf.test.TestCase):
+class KubeflowV2RunExecutorTest(test_case_utils.TempWorkingDirTestCase):
 
   def setUp(self):
     super(KubeflowV2RunExecutorTest, self).setUp()
@@ -87,18 +87,10 @@ class KubeflowV2RunExecutorTest(tf.test.TestCase):
     # Mutate the outputFile field.
     metadata_json["outputs"]["outputFile"] = _TEST_OUTPUT_METADATA_JSON
     self._serialized_metadata = json.dumps(metadata_json)
-    self._test_dir = tempfile.mkdtemp()
 
     self._expected_output = json.loads(
         self._get_text_from_test_data("expected_output_metadata.json"))
-    self._olddir = os.getcwd()
-    os.chdir(self._test_dir)
     fileio.makedirs(os.path.dirname(_TEST_OUTPUT_METADATA_JSON))
-
-  def tearDown(self):
-    super(KubeflowV2RunExecutorTest, self).tearDown()
-    shutil.rmtree(self._test_dir)
-    os.chdir(self._olddir)
 
   def _get_text_from_test_data(self, filename: str) -> str:
     filepath = os.path.join(os.path.dirname(__file__), "testdata", filename)

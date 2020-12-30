@@ -15,11 +15,9 @@
 
 import os
 import subprocess
-import tempfile
 from typing import List, Text
 
 from absl import logging
-import tensorflow as tf
 import tensorflow_model_analysis as tfma
 from tfx import components
 from tfx import types
@@ -47,6 +45,7 @@ from tfx.types import standard_artifacts
 from tfx.types.experimental import simple_artifacts
 from tfx.utils import dsl_utils
 from tfx.utils import io_utils
+from tfx.utils import test_case_utils
 
 from google.protobuf import message
 
@@ -654,7 +653,7 @@ def tasks_for_pipeline_with_artifact_value_passing():
   return [producer_task, print_task]
 
 
-class BaseKubeflowV2Test(tf.test.TestCase):
+class BaseKubeflowV2Test(test_case_utils.TempWorkingDirTestCase):
   """Defines testing harness for pipeline on KubeflowV2DagRunner."""
 
   # The following environment variables need to be set prior to calling the test
@@ -699,14 +698,8 @@ class BaseKubeflowV2Test(tf.test.TestCase):
 
   def setUp(self):
     super(BaseKubeflowV2Test, self).setUp()
-    self._old_cwd = os.getcwd()
-    self._test_dir = tempfile.mkdtemp()
-    os.chdir(self._test_dir)
+    self._test_dir = self.tmp_dir
     self._test_output_dir = 'gs://{}/test_output'.format(self._BUCKET_NAME)
-
-  def tearDown(self):
-    super(BaseKubeflowV2Test, self).tearDown()
-    os.chdir(self._old_cwd)
 
   def _pipeline_root(self, pipeline_name: Text):
     return os.path.join(self._test_output_dir, pipeline_name)

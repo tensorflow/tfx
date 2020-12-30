@@ -24,10 +24,8 @@ import json
 import locale
 import os
 import random
-import shutil
 import subprocess
 import sys
-import tempfile
 from typing import Text, Tuple
 
 import absl
@@ -41,9 +39,10 @@ from tfx.tools.cli import labels
 from tfx.tools.cli import pip_utils
 from tfx.tools.cli.cli_main import cli_group
 from tfx.tools.cli.e2e import test_utils
+from tfx.utils import test_case_utils
 
 
-class CliKubeflowEndToEndTest(tf.test.TestCase):
+class CliKubeflowEndToEndTest(test_case_utils.TempWorkingDirTestCase):
 
   def _get_endpoint(self, config: Text) -> Text:
     lines = config.decode('utf-8').split('\n')
@@ -109,13 +108,9 @@ class CliKubeflowEndToEndTest(tf.test.TestCase):
     absl.logging.info('ENDPOINT: ' + self._endpoint)
 
     # Change home directories
-    self._olddir = os.getcwd()
-    self._old_kubeflow_home = os.environ.get('KUBEFLOW_HOME')
-    os.environ['KUBEFLOW_HOME'] = os.path.join(tempfile.mkdtemp(),
-                                               'CLI_Kubeflow_Pipelines')
-    self._kubeflow_home = os.environ['KUBEFLOW_HOME']
-    fileio.makedirs(self._kubeflow_home)
-    os.chdir(self._kubeflow_home)
+    self._kubeflow_home = self.tmp_dir
+    self.enter_context(
+        test_case_utils.override_env_var('KUBEFLOW_HOME', self._kubeflow_home))
 
     self._handler_pipeline_path = os.path.join(self._kubeflow_home,
                                                self._pipeline_name)
@@ -132,11 +127,6 @@ class CliKubeflowEndToEndTest(tf.test.TestCase):
   def tearDown(self):
     super(CliKubeflowEndToEndTest, self).tearDown()
     self._cleanup_kfp_server()
-    if self._old_kubeflow_home:
-      os.environ['KUBEFLOW_HOME'] = self._old_kubeflow_home
-    os.chdir(self._olddir)
-    shutil.rmtree(self._kubeflow_home)
-    absl.logging.info('Deleted all runs.')
 
   def _cleanup_kfp_server(self):
     pipelines = fileio.listdir(self._kubeflow_home)

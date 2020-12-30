@@ -30,6 +30,8 @@ from tfx.dsl.io import fileio
 from tfx.tools.cli import labels
 from tfx.tools.cli.handler import airflow_handler
 from tfx.utils import io_utils
+from tfx.utils import test_case_utils
+
 
 _testdata_dir = os.path.join(
     os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'testdata')
@@ -70,19 +72,15 @@ def _MockSubprocess4(cmd):  # pylint: disable=invalid-name, unused-argument
   return list_dags_output
 
 
-class AirflowHandlerTest(tf.test.TestCase):
+class AirflowHandlerTest(test_case_utils.TempWorkingDirTestCase):
 
   def setUp(self):
     super(AirflowHandlerTest, self).setUp()
-    self._tmp_dir = os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR',
-                                   self.get_temp_dir())
-    self._home = os.path.join(self._tmp_dir, self._testMethodName)
-    self._olddir = os.getcwd()
-    os.chdir(self._tmp_dir)
-    self._original_home_value = os.environ.get('HOME', '')
-    os.environ['HOME'] = self._home
-    self._original_airflow_home_value = os.environ.get('AIRFLOW_HOME', '')
-    os.environ['AIRFLOW_HOME'] = os.path.join(os.environ['HOME'], 'airflow')
+    self._home = self.tmp_dir
+    self.enter_context(test_case_utils.override_env_var('HOME', self._home))
+    self.enter_context(
+        test_case_utils.override_env_var(
+            'AIRFLOW_HOME', os.path.join(os.environ['HOME'], 'airflow')))
 
     # Flags for handler.
     self.engine = 'airflow'
@@ -94,12 +92,6 @@ class AirflowHandlerTest(tf.test.TestCase):
 
     # Pipeline args for mocking subprocess
     self.pipeline_args = {'pipeline_name': 'chicago_taxi_simple'}
-
-  def tearDown(self):
-    super(AirflowHandlerTest, self).tearDown()
-    os.environ['HOME'] = self._original_home_value
-    os.environ['AIRFLOW_HOME'] = self._original_airflow_home_value
-    os.chdir(self._olddir)
 
   @mock.patch('subprocess.call', _MockSubprocess)
   def testSavePipeline(self):
@@ -151,7 +143,7 @@ class AirflowHandlerTest(tf.test.TestCase):
     handler.create_pipeline()
 
     # Update test_pipeline and run update_pipeline
-    pipeline_path_2 = os.path.join(self._tmp_dir, 'test_pipeline_airflow_2.py')
+    pipeline_path_2 = os.path.join(self.tmp_dir, 'test_pipeline_airflow_2.py')
     io_utils.copy_file(pipeline_path_1, pipeline_path_2)
     flags_dict_2 = {labels.ENGINE_FLAG: self.engine,
                     labels.PIPELINE_DSL_PATH: pipeline_path_2}
@@ -325,7 +317,7 @@ class AirflowHandlerTest(tf.test.TestCase):
       f.write('SCHEMA')
     with self.captureWritesToStream(sys.stdout) as captured:
       handler.get_schema()
-      curr_dir_path = os.path.join(os.getcwd(), 'schema.pbtxt')
+      curr_dir_path = os.path.abspath('schema.pbtxt')
       self.assertIn('Path to schema: {}'.format(curr_dir_path),
                     captured.contents())
       self.assertIn(
