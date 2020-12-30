@@ -204,7 +204,12 @@ class Executor(base_executor.BaseExecutor):
       examples_list = []
       tensor_adapter_config = None
       # pylint: disable=expression-not-assigned
-      if tfma.is_batched_input(eval_shared_model, eval_config):
+      if (hasattr(tfma, 'use_legacy_predict_extractor') or
+          tfma.is_batched_input(eval_shared_model, eval_config)):
+        read_as_raw_records = False
+        if hasattr(tfma, 'use_legacy_predict_extractor'):
+          read_as_raw_records = tfma.use_legacy_predict_extractor(
+              eval_shared_model, eval_config)
         tfxio_factory = tfxio_utils.get_tfxio_factory_from_artifact(
             examples=[
                 artifact_utils.get_single_instance(
@@ -212,6 +217,7 @@ class Executor(base_executor.BaseExecutor):
             ],
             telemetry_descriptors=_TELEMETRY_DESCRIPTORS,
             schema=schema,
+            read_as_raw_records=read_as_raw_records,
             raw_record_column_name=tfma_constants.ARROW_INPUT_COLUMN)
         # TODO(b/161935932): refactor after TFXIO supports multiple patterns.
         for split in example_splits:
