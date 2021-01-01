@@ -79,7 +79,6 @@ _EXEC_PROPERTIES = {"key_1": "value_1", "key_2": 536870911}
 class KubeflowV2RunExecutorTest(test_case_utils.TempWorkingDirTestCase):
 
   def setUp(self):
-    super(KubeflowV2RunExecutorTest, self).setUp()
     # Prepare executor input.
     serialized_metadata = self._get_text_from_test_data(
         "executor_invocation.json")
@@ -90,6 +89,8 @@ class KubeflowV2RunExecutorTest(test_case_utils.TempWorkingDirTestCase):
 
     self._expected_output = json.loads(
         self._get_text_from_test_data("expected_output_metadata.json"))
+
+    super(KubeflowV2RunExecutorTest, self).setUp()
     fileio.makedirs(os.path.dirname(_TEST_OUTPUT_METADATA_JSON))
 
   def _get_text_from_test_data(self, filename: str) -> str:
