@@ -51,6 +51,8 @@
 *   The `tfx.dsl.io.fileio` filesystem handler will delegate to
     `tensorflow.io.gfile` for any unknown filesystem schemes if TensorFlow
     is installed.
+*   Skipped ephemeral package when the beam flag
+    'worker_harness_container_image' is set.
 *   Depends on `apache-beam[gcp]>=2.25,!=2.26,<3`.
 *   Depends on `keras-tuner>=1,<1.0.2`.
 *   Depends on `kfp-pipeline-spec>=0.1.3,<0.2`.
