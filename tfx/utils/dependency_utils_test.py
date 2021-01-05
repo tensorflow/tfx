@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -22,14 +21,15 @@ import os
 import sys
 # Standard Imports
 
-import absl
+from absl import logging
+from absl.testing import parameterized
 import mock
 import tensorflow as tf
 from tfx.dsl.io import fileio
 from tfx.utils import dependency_utils
 
 
-class DependencyUtilsTest(tf.test.TestCase):
+class DependencyUtilsTest(tf.test.TestCase, parameterized.TestCase):
 
   def setUp(self):
     super(tf.test.TestCase, self).setUp()
@@ -37,16 +37,36 @@ class DependencyUtilsTest(tf.test.TestCase):
         os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR', self.get_temp_dir()),
         self._testMethodName)
 
+  @mock.patch('tfx.utils.dependency_utils.build_ephemeral_package')
+  def testMakeBeamDependencyFlags(self, mock_build_ephemeral_package):
+    mock_build_ephemeral_package.return_value = 'mock_file'
+    beam_flags = dependency_utils.make_beam_dependency_flags(
+        beam_pipeline_args=[])
+    self.assertListEqual(['--extra_package=mock_file'], beam_flags)
+    mock_build_ephemeral_package.assert_called_with()
+
+  @parameterized.named_parameters(
+      ('ExtraPackages', '--extra_packages=foo'),
+      ('SetupFile', '--setup_file=foo'),
+      ('RequirementsFile', '--requirements_file=foo'),
+      ('WorkerHarnessContainerImage', '--worker_harness_container_image=foo'),
+  )
+  def testNoActionOnFlag(self, flag_value):
+    beam_pipeline_args = [flag_value]
+    self.assertListEqual(
+        [flag_value],
+        dependency_utils.make_beam_dependency_flags(beam_pipeline_args),
+    )
+
   @mock.patch('tempfile.mkdtemp')
   def testEphemeralPackage(self, mock_mkdtemp):
     mock_mkdtemp.return_value = self._tmp_dir
     if os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR'):
       # This test requires setuptools which is not available.
-      absl.logging.info('Skipping testEphemeralPackage')
+      logging.info('Skipping testEphemeralPackage')
       return
     package = dependency_utils.build_ephemeral_package()
-    self.assertRegexpMatches(
-        os.path.basename(package), r'tfx_ephemeral-.*\.tar.gz')
+    self.assertRegex(os.path.basename(package), r'tfx_ephemeral-.*\.tar.gz')
 
   @mock.patch('tempfile.mkdtemp')
   @mock.patch('subprocess.call')
@@ -57,7 +77,7 @@ class DependencyUtilsTest(tf.test.TestCase):
     expected_package = 'mypackage.tar.gz'
 
     def side_effect(cmd, stdout, stderr):
-      self.assertEqual(3, len(cmd))
+      self.assertLen(cmd, 3)
       self.assertEqual(sys.executable, cmd[0])
       self.assertEqual('sdist', cmd[2])
       self.assertEqual(stdout, stderr)
