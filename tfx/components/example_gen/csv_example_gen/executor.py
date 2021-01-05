@@ -112,9 +112,9 @@ def _CsvToExample(  # pylint: disable=invalid-name
   Args:
     pipeline: beam pipeline.
     exec_properties: A dict of execution properties.
-      - input_base: input dir that contains CSV data. CSV must have header line.
     split_pattern: Split.pattern in Input config, glob relative file pattern
-      that maps to input files with root directory given by input_base.
+      that maps to input files with root directory given by input_base in
+      exec_properties.
 
   Returns:
     PCollection of TF examples.
