@@ -69,6 +69,20 @@ class _FakeCrashingExecutorOperator(base_executor_operator.BaseExecutorOperator
     raise FakeError()
 
 
+class _FakeErrorExecutorOperator(base_executor_operator.BaseExecutorOperator):
+
+  SUPPORTED_EXECUTOR_SPEC_TYPE = [_PYTHON_CLASS_EXECUTABLE_SPEC]
+  SUPPORTED_PLATFORM_CONFIG_TYPE = None
+
+  def run_executor(
+      self, execution_info: data_types.ExecutionInfo
+  ) -> execution_result_pb2.ExecutorOutput:
+    result = execution_result_pb2.ExecutorOutput()
+    result.execution_result.code = 1
+    result.execution_result.result_message = 'execution cancled.'
+    return result
+
+
 class _FakeExampleGenLikeDriver(base_driver.BaseDriver):
 
   def __init__(self, mlmd_connection: metadata.Metadata):
@@ -480,8 +494,28 @@ class LauncherTest(test_case_utils.TfxTest):
         pipeline_runtime_spec=self._pipeline_runtime_spec,
         executor_spec=self._trainer_executor_spec,
         custom_executor_operators=executor_operators)
-
     with self.assertRaises(FakeError):
+      _ = test_launcher.launch()
+
+  def testLauncher_ExecutionFailedViaReturnCode(self):
+    # In the case that the executor failed and raises an execption.
+    # An Execution will be published.
+    LauncherTest.fakeUpstreamOutputs(self._mlmd_connection, self._example_gen,
+                                     self._transform)
+    executor_operators = {
+        _PYTHON_CLASS_EXECUTABLE_SPEC: _FakeErrorExecutorOperator
+    }
+    test_launcher = launcher.Launcher(
+        pipeline_node=self._trainer,
+        mlmd_connection=self._mlmd_connection,
+        pipeline_info=self._pipeline_info,
+        pipeline_runtime_spec=self._pipeline_runtime_spec,
+        executor_spec=self._trainer_executor_spec,
+        custom_executor_operators=executor_operators)
+
+    with self.assertRaisesRegex(
+        RuntimeError,
+        'Execution .* failed with error code .* and error message .*'):
       _ = test_launcher.launch()
 
     with self._mlmd_connection as m:

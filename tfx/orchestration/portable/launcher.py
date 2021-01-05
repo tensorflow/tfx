@@ -40,7 +40,6 @@ from tfx.proto.orchestration import pipeline_pb2
 
 from google.protobuf import message
 from ml_metadata.proto import metadata_store_pb2
-
 # Subclasses of BaseExecutorOperator
 ExecutorOperator = TypeVar(
     'ExecutorOperator', bound=base_executor_operator.BaseExecutorOperator)
@@ -283,7 +282,16 @@ class Launcher(object):
 
     outputs_utils.make_output_dirs(execution_info.output_dict)
     try:
-      return self._executor_operator.run_executor(execution_info)
+      executor_output = self._executor_operator.run_executor(execution_info)
+      code = executor_output.execution_result.code
+      if code != 0:
+        result_message = executor_output.execution_result.result_message
+        err = (f'Execution {execution_info.execution_id} '
+               f'failed with error code {code} and '
+               f'error message {result_message}')
+        logging.error(err)
+        raise RuntimeError(err)
+      return executor_output
     except Exception:  # pylint: disable=broad-except
       outputs_utils.remove_output_dirs(execution_info.output_dict)
       raise
