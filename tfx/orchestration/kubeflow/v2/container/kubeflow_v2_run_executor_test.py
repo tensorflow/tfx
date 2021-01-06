@@ -90,6 +90,9 @@ class KubeflowV2RunExecutorTest(test_case_utils.TempWorkingDirTestCase):
     self._expected_output = json.loads(
         self._get_text_from_test_data("expected_output_metadata.json"))
 
+    # The initialization of TempWorkingDirTestCase has to be called after all
+    # the testdata files have been read. Otherwise the original testdata files
+    # are not accessible after cwd is changed.
     super(KubeflowV2RunExecutorTest, self).setUp()
     fileio.makedirs(os.path.dirname(_TEST_OUTPUT_METADATA_JSON))
 
