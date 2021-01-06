@@ -17,12 +17,16 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import itertools
+import math
 import os
 import shutil
 import tempfile
+from typing import Optional, Text
 
 from absl import logging
 import apache_beam as beam
+import tensorflow_transform as tft
 from tfx import components
 from tfx.benchmarks import benchmark_dataset
 from tfx.components.example_gen.csv_example_gen import executor as csv_exgen
@@ -186,5 +190,74 @@ class ChicagoTaxiDataset(benchmark_dataset.BenchmarkDataset):
     shutil.copytree(eval_model_dir, self.tfma_saved_model_path())
 
 
+class WideChicagoTaxiDataset(ChicagoTaxiDataset):
+  """Chicago taxi dataset with a TFT preprocessing_fn containing specified number of analyzers.
+
+  Note that the analyzers are called within the corresponding mappers. Half of
+  the mappers will be `tft.compute_and_apply_vocabulary`. Another half is split
+  between `tft.bucketize` and `tft.scale_to_z_score`.
+  """
+  # Percentage of mappers in the preprocessing function of the given type. The
+  # remaining mappers will be `tft.scale_to_z_score`.
+  _VOCABS_SHARE = 0.5
+  _BUCKETIZE_SHARE = 0.25
+
+  def __init__(self, base_dir: Optional[Text] = None, num_analyzers: int = 10):
+    super(WideChicagoTaxiDataset, self).__init__(base_dir)
+    self._num_vocabs = math.ceil(num_analyzers * self._VOCABS_SHARE)
+    self._num_bucketize = math.ceil(num_analyzers * self._BUCKETIZE_SHARE)
+    self._num_scale = num_analyzers - self._num_vocabs - self._num_bucketize
+
+  def tft_preprocessing_fn(self):
+
+    def wide_preprocessing_fn(inputs):
+      """TFT preprocessing function.
+
+      Args:
+        inputs: Map from feature keys to raw not-yet-transformed features.
+
+      Returns:
+        Map from string feature key to transformed feature operations.
+      """
+      outputs = {}
+      # pylint: disable=protected-access
+      for idx, key in enumerate(
+          itertools.islice(
+              itertools.cycle(taxi_utils._BUCKET_FEATURE_KEYS),
+              self._num_bucketize)):
+        outputs["bucketized" + str(idx)] = tft.bucketize(
+            taxi_utils._fill_in_missing(inputs[key]),
+            taxi_utils._FEATURE_BUCKET_COUNT)
+
+      for idx, key in enumerate(
+          itertools.islice(
+              itertools.cycle(taxi_utils._DENSE_FLOAT_FEATURE_KEYS),
+              self._num_scale)):
+        # Preserve this feature as a dense float, setting nan's to the mean.
+        outputs["scaled" + str(idx)] = tft.scale_to_z_score(
+            taxi_utils._fill_in_missing(inputs[key]))
+
+      for idx, key in enumerate(
+          itertools.islice(
+              itertools.cycle(taxi_utils._VOCAB_FEATURE_KEYS),
+              self._num_vocabs)):
+        outputs["vocab" + str(idx)] = tft.compute_and_apply_vocabulary(
+            taxi_utils._fill_in_missing(inputs[key]),
+            top_k=taxi_utils._VOCAB_SIZE,
+            num_oov_buckets=taxi_utils._OOV_SIZE)
+
+      # Pass-through features.
+      for key in taxi_utils._CATEGORICAL_FEATURE_KEYS + [taxi_utils._LABEL_KEY]:
+        outputs[key] = inputs[key]
+
+      return outputs
+
+    return wide_preprocessing_fn
+
+
 def get_dataset(base_dir=None):
   return ChicagoTaxiDataset(base_dir)
+
+
+def get_wide_dataset(base_dir=None, num_analyzers=10):
+  return WideChicagoTaxiDataset(base_dir, num_analyzers)

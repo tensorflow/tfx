@@ -17,10 +17,16 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+from absl import flags
 from tfx.benchmarks import tft_benchmark_base
 from tfx.benchmarks.datasets.chicago_taxi import dataset
 
 from tensorflow.python.platform import test  # pylint: disable=g-direct-tensorflow-import
+
+FLAGS = flags.FLAGS
+flags.DEFINE_integer("num_analyzers_wide", 10,
+                     "Number of analyzers in the TFT preprocessing function. "
+                     "Only used in `TFTBenchmarkChicagoTaxiWide`.")
 
 
 class TFTBenchmarkChicagoTaxi(tft_benchmark_base.TFTBenchmarkBase):
@@ -28,6 +34,18 @@ class TFTBenchmarkChicagoTaxi(tft_benchmark_base.TFTBenchmarkBase):
   def __init__(self, **kwargs):
     super(TFTBenchmarkChicagoTaxi, self).__init__(
         dataset=dataset.get_dataset(), **kwargs)
+
+
+class TFTBenchmarkChicagoTaxiWide(tft_benchmark_base.TFTBenchmarkBase):
+
+  def __init__(self, **kwargs):
+    super(TFTBenchmarkChicagoTaxiWide, self).__init__(
+        dataset=dataset.get_wide_dataset(num_analyzers=self._num_analyzers()),
+        **kwargs)
+
+  def _num_analyzers(self):
+    return (FLAGS.num_analyzers_wide
+            if FLAGS.is_parsed() else FLAGS["num_analyzers_wide"].default)
 
 
 if __name__ == "__main__":
