@@ -43,7 +43,36 @@ SPLIT_NAMES_PROPERTY = Property(type=PropertyType.STRING)
 STRING_VALUE_PROPERTY = Property(type=PropertyType.STRING)
 
 
-class Examples(Artifact):
+class _TfxArtifact(Artifact):
+  """TFX first-party component artifact definition."""
+
+  def __init__(self, *args, **kwargs):
+    # TODO(b/176795331): Refactor directory structure to make it clearer that
+    # TFX-specific artifacts require the full "tfx" package be installed.
+    #
+    # Do not allow usage of TFX-specific artifact if only the core pipeline
+    # SDK package is installed.
+    can_import_setuptools = False
+    can_import_components = False
+    try:
+      import setuptools as _  # pytype: disable=import-error,pylint: disable=g-import-not-at-top
+      can_import_setuptools = True
+    except ModuleNotFoundError:
+      pass
+    try:
+      import tfx.components as _  # pytype: disable=module-attr,pylint: disable=g-import-not-at-top
+      can_import_components = True
+    except ModuleNotFoundError:
+      pass
+    # The following condition detects exactly whether only the DSL package is
+    # installed, and is bypassed when tests run in Bazel.
+    if can_import_setuptools and not can_import_components:
+      raise Exception('The full "tfx" package must be installed to use this '
+                      'functionality.')
+    super(_TfxArtifact, self).__init__(*args, **kwargs)
+
+
+class Examples(_TfxArtifact):
   TYPE_NAME = 'Examples'
   PROPERTIES = {
       'span': SPAN_PROPERTY,
@@ -52,7 +81,7 @@ class Examples(Artifact):
   }
 
 
-class ExampleAnomalies(Artifact):
+class ExampleAnomalies(_TfxArtifact):
   TYPE_NAME = 'ExampleAnomalies'
   PROPERTIES = {
       'span': SPAN_PROPERTY,
@@ -60,7 +89,7 @@ class ExampleAnomalies(Artifact):
   }
 
 
-class ExampleStatistics(Artifact):
+class ExampleStatistics(_TfxArtifact):
   TYPE_NAME = 'ExampleStatistics'
   PROPERTIES = {
       'span': SPAN_PROPERTY,
@@ -69,43 +98,43 @@ class ExampleStatistics(Artifact):
 
 
 # TODO(b/158334890): deprecate ExternalArtifact.
-class ExternalArtifact(Artifact):
+class ExternalArtifact(_TfxArtifact):
   TYPE_NAME = 'ExternalArtifact'
 
 
-class InferenceResult(Artifact):
+class InferenceResult(_TfxArtifact):
   TYPE_NAME = 'InferenceResult'
 
 
-class InfraBlessing(Artifact):
+class InfraBlessing(_TfxArtifact):
   TYPE_NAME = 'InfraBlessing'
 
 
-class Model(Artifact):
+class Model(_TfxArtifact):
   TYPE_NAME = 'Model'
 
 
-class ModelRun(Artifact):
+class ModelRun(_TfxArtifact):
   TYPE_NAME = 'ModelRun'
 
 
-class ModelBlessing(Artifact):
+class ModelBlessing(_TfxArtifact):
   TYPE_NAME = 'ModelBlessing'
 
 
-class ModelEvaluation(Artifact):
+class ModelEvaluation(_TfxArtifact):
   TYPE_NAME = 'ModelEvaluation'
 
 
-class PushedModel(Artifact):
+class PushedModel(_TfxArtifact):
   TYPE_NAME = 'PushedModel'
 
 
-class Schema(Artifact):
+class Schema(_TfxArtifact):
   TYPE_NAME = 'Schema'
 
 
-class TransformCache(Artifact):
+class TransformCache(_TfxArtifact):
   TYPE_NAME = 'TransformCache'
 
 
@@ -202,14 +231,14 @@ class Float(ValueArtifact):
     return result
 
 
-class TransformGraph(Artifact):
+class TransformGraph(_TfxArtifact):
   TYPE_NAME = 'TransformGraph'
 
 
-class HyperParameters(Artifact):
+class HyperParameters(_TfxArtifact):
   TYPE_NAME = 'HyperParameters'
 
 
 # WIP and subject to change.
-class DataView(Artifact):
+class DataView(_TfxArtifact):
   TYPE_NAME = 'DataView'

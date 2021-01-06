@@ -61,6 +61,9 @@ def make_pipeline_sdk_required_install_packages():
           git_master='@git+https://github.com/google/ml-metadata@master'),
       'protobuf>=3.12.2,<4',
       'six>=1.10,<2',
+      'docker>=4.1,<5',
+      # TODO(b/176812386): Deprecate usage of jinja2 for placeholders.
+      'jinja2>=2.7.3,<3',
   ]
 
 
@@ -74,10 +77,8 @@ def make_required_install_packages():
       # LINT.ThenChange(examples/chicago_taxi_pipeline/setup/setup_beam.sh)
       'attrs>=19.3.0,<21',
       'click>=7,<8',
-      'docker>=4.1,<5',
       'google-api-python-client>=1.7.8,<2',
       'grpcio>=1.28.1,<2',
-      'jinja2>=2.7.3,<3',
       # TODO(b/173976603): remove pinned keras-tuner upperbound when its
       # dependency expecatation with TensorFlow is sorted out.
       'keras-tuner>=1,<1.0.2',

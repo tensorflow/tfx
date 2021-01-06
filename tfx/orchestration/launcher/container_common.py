@@ -20,7 +20,9 @@ from __future__ import print_function
 
 from typing import Any, Dict, List, Optional, Text, Union
 
+# TODO(b/176812386): Deprecate usage of jinja2 for placeholders.
 import jinja2
+
 from tfx import types
 from tfx.dsl.component.experimental import executor_specs
 from tfx.dsl.component.experimental import placeholders

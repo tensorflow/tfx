@@ -87,8 +87,8 @@ class BaseNode(with_metaclass(abc.ABCMeta, json_utils.Jsonable)):
     """
     if instance_name:
       logging.warning(
-          '`instance_name` is deprecated, please set node id directly using'
-          '`with_id()` or `.id` setter.')
+          '`instance_name` is deprecated, please set the node id directly '
+          'using `with_id()` or the `.id` setter.')
     if executor_spec is None:
       executor_spec = executor_spec_module.ExecutorClassSpec(
           base_executor.EmptyExecutor)

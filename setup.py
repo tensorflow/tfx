@@ -210,11 +210,51 @@ tfx_extras_requires = {
 }
 
 # Packages included the TFX namespace.
-TFX_NAMESPACE_PACKAGES = ['tfx', 'tfx.*']
+TFX_NAMESPACE_PACKAGES = [
+    'tfx', 'tfx.*', 'tfx.orchestration', 'tfx.orchestration.*'
+]
 # Packages within the TFX namespace that are to be included in the base
 # "ml-pipelines-sdk" pip package (and excluded from the "tfx" pip package,
 # which takes "ml-pipelines-sdk" as a dependency).
-ML_PIPELINES_SDK_PACKAGES = ['tfx.dsl', 'tfx.dsl.*']
+ML_PIPELINES_SDK_PACKAGES = [
+    # This adds `tfx.version` which is needed in several places.
+    'tfx',
+    # Core DSL subpackage.
+    'tfx.dsl',
+    'tfx.dsl.*',
+    # The "ml-pipelines-sdk" package currently only supports local execution.
+    # These are the subpackages of `tfx.orchestration` necessary.
+    'tfx.orchestration',
+    'tfx.orchestration.config',
+    'tfx.orchestration.launcher',
+    'tfx.orchestration.local',
+    # Note that `tfx.proto` contains TFX first-party component-specific
+    # protobuf definitions, but `tfx.proto.orchestration` contains portable
+    # execution protobuf definitions which are needed in the base package.
+    'tfx.proto.orchestration',
+    # TODO(b/176814928): Consider moving relevant modules under
+    # `tfx.orchestration.*` to `tfx.dsl.*` as appropriate.
+    'tfx.proto.orchestration.*',
+    # TODO(b/176795329): Move `tfx.utils` to a location that emphasizes that
+    # these are internal utilities.
+    'tfx.utils',
+    'tfx.utils.*',
+    # TODO(b/176795331): Move `Artifact` and `ComponentSpec` classes into
+    # `tfx.dsl.*`.
+    'tfx.types',
+    'tfx.types.*',
+]
+
+# Below console_scripts, each line identifies one console script. The first
+# part before the equals sign (=) which is 'tfx', is the name of the script
+# that should be generated, the second part is the import path followed by a
+# colon (:) with the Click command group. After installation, the user can
+# invoke the CLI using "tfx <command_group> <sub_command> <flags>"
+TFX_ENTRY_POINTS = """
+    [console_scripts]
+    tfx=tfx.tools.cli.cli_main:cli_group
+"""
+ML_PIPELINES_SDK_ENTRY_POINTS = None
 
 # This `setup.py` file can be used to build packages in 3 configurations. See
 # the discussion in `package_build/README.md` for an overview. The `tfx` and
@@ -234,6 +274,8 @@ if package_config.PACKAGE_NAME == 'tfx-dev':
   packages = find_namespace_packages(include=TFX_NAMESPACE_PACKAGES)
   # Do not support wheel builds for "tfx-dev".
   build_wheel_command = _UnsupportedDevBuildWheelCommand  # pylint: disable=invalid-name
+  # Include TFX entrypoints.
+  entry_points = TFX_ENTRY_POINTS
 elif package_config.PACKAGE_NAME == 'ml-pipelines-sdk':
   # Core TFX pipeline authoring SDK, without dependency on component-specific
   # packages like "tensorflow" and "apache-beam".
@@ -244,6 +286,8 @@ elif package_config.PACKAGE_NAME == 'ml-pipelines-sdk':
   packages = find_namespace_packages(include=ML_PIPELINES_SDK_PACKAGES)
   # Use the default pip wheel building command.
   build_wheel_command = bdist_wheel.bdist_wheel  # pylint: disable=invalid-name
+  # Include ML Pipelines SDK entrypoints.
+  entry_points = ML_PIPELINES_SDK_ENTRY_POINTS
 elif package_config.PACKAGE_NAME == 'tfx':
   # Recommended installation package for TFX. This package builds on top of
   # the "ml-pipelines-sdk" pipeline authoring SDK package and adds first-party
@@ -258,6 +302,8 @@ elif package_config.PACKAGE_NAME == 'tfx':
       include=TFX_NAMESPACE_PACKAGES, exclude=ML_PIPELINES_SDK_PACKAGES)
   # Use the pip wheel building command that includes proto generation.
   build_wheel_command = _BdistWheelCommand  # pylint: disable=invalid-name
+  # Include TFX entrypoints.
+  entry_points = TFX_ENTRY_POINTS
 else:
   raise ValueError('Invalid package config: %r.' % package_config.PACKAGE_NAME)
 
@@ -318,12 +364,4 @@ setup(
     url='https://www.tensorflow.org/tfx',
     download_url='https://github.com/tensorflow/tfx/tags',
     requires=[],
-    # Below console_scripts, each line identifies one console script. The first
-    # part before the equals sign (=) which is 'tfx', is the name of the script
-    # that should be generated, the second part is the import path followed by a
-    # colon (:) with the Click command group. After installation, the user can
-    # invoke the CLI using "tfx <command_group> <sub_command> <flags>"
-    entry_points="""
-        [console_scripts]
-        tfx=tfx.tools.cli.cli_main:cli_group
-    """)
+    entry_points=entry_points)

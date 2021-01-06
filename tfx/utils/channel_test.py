@@ -44,8 +44,9 @@ class ChannelTest(tf.test.TestCase):
   def testAsChannelDeprecated(self):
     with mock.patch.object(logging, 'warning'):
       warn_mock = mock.MagicMock()
+      artifact = standard_artifacts.Model()
       logging.warning = warn_mock
-      channel.as_channel([standard_artifacts.Model()])
+      channel.as_channel([artifact])
       warn_mock.assert_called_once()
       self.assertIn('tfx.utils.channel.as_channel has been renamed to',
                     warn_mock.call_args[0][5])

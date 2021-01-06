@@ -21,15 +21,16 @@ import os
 from typing import List, Text, TypeVar
 
 import six
-import tensorflow as tf
 
 from tfx.dsl.io import fileio
 from google.protobuf import json_format
 from google.protobuf import text_format
 from google.protobuf.message import Message
-from tensorflow.python.lib.io import file_io  # pylint: disable=g-direct-tensorflow-import
-from tensorflow_metadata.proto.v0 import schema_pb2
 
+try:
+  from tensorflow_metadata.proto.v0.schema_pb2 import Schema as schema_pb2_Schema  # pylint: disable=g-import-not-at-top,g-importing-member
+except ModuleNotFoundError as e:
+  schema_pb2_Schema = None  # pylint: disable=invalid-name
 
 # Nano seconds per second.
 NANO_PER_SEC = 1000 * 1000 * 1000
@@ -99,7 +100,7 @@ def write_string_file(file_name: Text, string_value: Text) -> None:
   """Writes a string to file."""
 
   fileio.makedirs(os.path.dirname(file_name))
-  file_io.write_string_to_file(file_name, string_value)
+  fileio.open(file_name, 'w').write(string_value)
 
 
 def write_pbtxt_file(file_name: Text, proto: Message) -> None:
@@ -110,7 +111,11 @@ def write_pbtxt_file(file_name: Text, proto: Message) -> None:
 
 def write_tfrecord_file(file_name: Text, proto: Message) -> None:
   """Writes a serialized tfrecord to file."""
-
+  try:
+    import tensorflow as tf  # pylint: disable=g-import-not-at-top
+  except ModuleNotFoundError as e:
+    raise Exception(
+        'TensorFlow must be installed to use this functionality.') from e
   fileio.makedirs(os.path.dirname(file_name))
   with tf.io.TFRecordWriter(file_name) as writer:
     writer.write(proto.SerializeToString())
@@ -122,21 +127,21 @@ ProtoMessage = TypeVar('ProtoMessage', bound=Message)
 
 def parse_pbtxt_file(file_name: Text, message: ProtoMessage) -> ProtoMessage:
   """Parses a protobuf message from a text file and return message itself."""
-  contents = file_io.read_file_to_string(file_name)
+  contents = fileio.open(file_name).read()
   text_format.Parse(contents, message)
   return message
 
 
 def parse_json_file(file_name: Text, message: ProtoMessage) -> ProtoMessage:
   """Parses a protobuf message from a JSON file and return itself."""
-  contents = file_io.read_file_to_string(file_name)
+  contents = fileio.open(file_name).read()
   json_format.Parse(contents, message)
   return message
 
 
 def load_csv_column_names(csv_file: Text) -> List[Text]:
   """Parse the first line of a csv file as column names."""
-  with file_io.FileIO(csv_file, 'r') as f:
+  with fileio.open(csv_file) as f:
     return f.readline().strip().split(',')
 
 
@@ -174,13 +179,13 @@ def read_string_file(file_name: Text) -> Text:
       raise OSError(msg)
     else:
       raise FileNotFoundError(msg)  # pylint: disable=undefined-variable
-  return file_io.read_file_to_string(file_name)
+  return fileio.open(file_name).read()
 
 
 class SchemaReader(object):
   """Schema reader."""
 
-  def read(self, schema_path: Text) -> schema_pb2.Schema:
+  def read(self, schema_path: Text) -> schema_pb2_Schema:  # pytype: disable=invalid-annotation
     """Gets a tf.metadata schema.
 
     Args:
@@ -189,8 +194,13 @@ class SchemaReader(object):
     Returns:
       A tf.metadata schema.
     """
+    try:
+      from tensorflow_metadata.proto.v0 import schema_pb2  # pylint: disable=g-import-not-at-top
+    except ModuleNotFoundError as e:
+      raise Exception('The full "tfx" package must be installed to use this '
+                      'functionality.') from e
 
     result = schema_pb2.Schema()
-    contents = file_io.read_file_to_string(schema_path)
+    contents = fileio.open(schema_path).read()
     text_format.Parse(contents, result)
     return result

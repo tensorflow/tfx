@@ -25,7 +25,6 @@ import tempfile
 from typing import List, Text
 
 import absl
-import apache_beam as beam
 
 
 from tfx import dependencies
@@ -48,6 +47,13 @@ def make_beam_dependency_flags(beam_pipeline_args: List[Text]) -> List[Text]:
   Returns:
     updated Beam pipeline args with TFX dependencies added.
   """
+  # TODO(b/176857256): Change guidance message once "ml-pipelines-sdk" extra
+  # package specifiers are available.
+  try:
+    import apache_beam as beam  # pylint: disable=g-import-not-at-top
+  except ModuleNotFoundError as e:
+    raise Exception(
+        'Apache Beam must be installed to use this functionality.') from e
   pipeline_options = beam.options.pipeline_options.PipelineOptions(
       flags=beam_pipeline_args)
   all_options = pipeline_options.get_all_options()

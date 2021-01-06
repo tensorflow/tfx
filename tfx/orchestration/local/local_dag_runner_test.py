@@ -22,7 +22,7 @@ import os
 import tempfile
 from typing import Any, Dict, List, Text
 
-import tensorflow as tf
+import absl.testing.absltest
 
 from tfx import types
 from tfx.dsl.components.base import base_component
@@ -122,13 +122,13 @@ def _get_fake_component(spec: types.ComponentSpec):
   return _FakeComponent(spec=spec, instance_name=instance_name)
 
 
-class LocalDagRunnerTest(tf.test.TestCase):
+class LocalDagRunnerTest(absl.testing.absltest.TestCase):
 
   def setUp(self):
     super(LocalDagRunnerTest, self).setUp()
     _executed_components.clear()
 
-  def _getTestPipeline(self):
+  def _getTestPipeline(self):  # pylint: disable=invalid-name
     component_a = _get_fake_component(
         _FakeComponentSpecA(output=types.Channel(type=_ArtifactTypeA)))
     component_b = _get_fake_component(
@@ -182,4 +182,4 @@ class LocalDagRunnerTest(tf.test.TestCase):
 
 
 if __name__ == '__main__':
-  tf.test.main()
+  absl.testing.absltest.main()

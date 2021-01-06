@@ -19,74 +19,80 @@ from __future__ import division
 from __future__ import print_function
 
 from typing import Any, Callable, Iterable, List, Text, Tuple
-import tensorflow as tf
 
 from tfx.dsl.io import filesystem
 from tfx.dsl.io import filesystem_registry
 from tfx.dsl.io.filesystem import PathType
 
+try:
+  import tensorflow as tf  # pylint: disable=g-import-not-at-top
+except ModuleNotFoundError:
+  tf = None
 
-class TensorflowFilesystem(filesystem.Filesystem):
-  """Filesystem that delegates to `tensorflow.io.gfile`."""
+if tf:
 
-  SUPPORTED_SCHEMES = ['', 'gs://', 'hdfs://', 's3://']
+  class TensorflowFilesystem(filesystem.Filesystem):
+    """Filesystem that delegates to `tensorflow.io.gfile`."""
 
-  @staticmethod
-  def open(name: PathType, mode: Text = 'r') -> Any:
-    return tf.io.gfile.GFile(name, mode=mode)
+    SUPPORTED_SCHEMES = ['', 'gs://', 'hdfs://', 's3://']
 
-  @staticmethod
-  def copy(src: PathType, dst: PathType, overwrite: bool = False) -> None:
-    tf.io.gfile.copy(src, dst, overwrite=overwrite)
+    @staticmethod
+    def open(name: PathType, mode: Text = 'r') -> Any:
+      return tf.io.gfile.GFile(name, mode=mode)
 
-  @staticmethod
-  def exists(path: PathType) -> bool:
-    return tf.io.gfile.exists(path)
+    @staticmethod
+    def copy(src: PathType, dst: PathType, overwrite: bool = False) -> None:
+      tf.io.gfile.copy(src, dst, overwrite=overwrite)
 
-  @staticmethod
-  def glob(pattern: PathType) -> List[PathType]:
-    return tf.io.gfile.glob(pattern)
+    @staticmethod
+    def exists(path: PathType) -> bool:
+      return tf.io.gfile.exists(path)
 
-  @staticmethod
-  def isdir(path: PathType) -> bool:
-    return tf.io.gfile.isdir(path)
+    @staticmethod
+    def glob(pattern: PathType) -> List[PathType]:
+      return tf.io.gfile.glob(pattern)
 
-  @staticmethod
-  def listdir(path: PathType) -> List[PathType]:
-    return tf.io.gfile.listdir(path)
+    @staticmethod
+    def isdir(path: PathType) -> bool:
+      return tf.io.gfile.isdir(path)
 
-  @staticmethod
-  def makedirs(path: PathType) -> None:
-    tf.io.gfile.makedirs(path)
+    @staticmethod
+    def listdir(path: PathType) -> List[PathType]:
+      return tf.io.gfile.listdir(path)
 
-  @staticmethod
-  def mkdir(path: PathType) -> None:
-    tf.io.gfile.mkdir(path)
+    @staticmethod
+    def makedirs(path: PathType) -> None:
+      tf.io.gfile.makedirs(path)
 
-  @staticmethod
-  def remove(path: PathType) -> None:
-    tf.io.gfile.remove(path)
+    @staticmethod
+    def mkdir(path: PathType) -> None:
+      tf.io.gfile.mkdir(path)
 
-  @staticmethod
-  def rename(src: PathType, dst: PathType, overwrite: bool = False) -> None:
-    tf.io.gfile.rename(src, dst, overwrite=overwrite)
+    @staticmethod
+    def remove(path: PathType) -> None:
+      tf.io.gfile.remove(path)
 
-  @staticmethod
-  def rmtree(path: PathType) -> None:
-    tf.io.gfile.rmtree(path)
+    @staticmethod
+    def rename(src: PathType, dst: PathType, overwrite: bool = False) -> None:
+      tf.io.gfile.rename(src, dst, overwrite=overwrite)
 
-  @staticmethod
-  def stat(path: PathType) -> Any:
-    return tf.io.gfile.stat(path)
+    @staticmethod
+    def rmtree(path: PathType) -> None:
+      tf.io.gfile.rmtree(path)
 
-  @staticmethod
-  def walk(
-      top: PathType,
-      topdown: bool = True,
-      onerror: Callable[..., None] = None
-  ) -> Iterable[Tuple[PathType, List[PathType], List[PathType]]]:
-    yield from tf.io.gfile.walk(top, topdown=topdown, onerror=onerror)
+    @staticmethod
+    def stat(path: PathType) -> Any:
+      return tf.io.gfile.stat(path)
 
+    @staticmethod
+    def walk(
+        top: PathType,
+        topdown: bool = True,
+        onerror: Callable[..., None] = None
+    ) -> Iterable[Tuple[PathType, List[PathType], List[PathType]]]:
+      yield from tf.io.gfile.walk(top, topdown=topdown, onerror=onerror)
 
-filesystem_registry.DEFAULT_FILESYSTEM_REGISTRY.register(
-    TensorflowFilesystem, priority=0, use_as_fallback=True)
+  filesystem_registry.DEFAULT_FILESYSTEM_REGISTRY.register(
+      TensorflowFilesystem, priority=0, use_as_fallback=True)
+else:
+  TensorflowFilesystem = None  # pylint: disable=invalid-name

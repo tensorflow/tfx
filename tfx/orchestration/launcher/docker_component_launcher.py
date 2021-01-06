@@ -21,7 +21,9 @@ from __future__ import print_function
 from typing import Any, Dict, List, Text, cast
 
 import absl
+
 import docker
+
 from tfx import types
 from tfx.dsl.component.experimental import executor_specs
 from tfx.dsl.components.base import executor_spec

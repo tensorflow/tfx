@@ -26,12 +26,7 @@ from typing import Any, Dict, List, Optional, Text
 
 import absl
 from absl import flags
-import apache_beam as beam
-from apache_beam.options.pipeline_options import DirectOptions
-from apache_beam.options.pipeline_options import PipelineOptions
-from apache_beam.options.pipeline_options import StandardOptions
-from apache_beam.runners.portability import fn_api_runner
-from future.utils import with_metaclass
+from six import with_metaclass
 
 from tfx import types
 from tfx.dsl.io import fileio
@@ -39,6 +34,13 @@ from tfx.proto.orchestration import execution_result_pb2
 from tfx.types import artifact_utils
 from tfx.utils import telemetry_utils
 from tfx.utils import dependency_utils
+
+try:
+  import apache_beam as beam  # pylint: disable=g-import-not-at-top
+  beam_Pipeline = beam.Pipeline
+except ModuleNotFoundError:
+  beam = None
+  beam_Pipeline = None  # pylint: disable=invalid-name
 
 
 class BaseExecutor(with_metaclass(abc.ABCMeta, object)):
@@ -123,8 +125,18 @@ class BaseExecutor(with_metaclass(abc.ABCMeta, object)):
 
   # TODO(b/126182711): Look into how to support fusion of multiple executors
   # into same pipeline.
-  def _make_beam_pipeline(self) -> beam.Pipeline:
+  # TODO(b/158811104): Extract this logic into a Beam-specific subclass.
+  def _make_beam_pipeline(self) -> beam_Pipeline:  # pytype: disable=invalid-annotation
     """Makes beam pipeline."""
+    if not beam:
+      raise Exception(
+          'Apache Beam must be installed to use this functionality.')
+    # pylint: disable=g-import-not-at-top
+    from apache_beam.options.pipeline_options import DirectOptions
+    from apache_beam.options.pipeline_options import PipelineOptions
+    from apache_beam.options.pipeline_options import StandardOptions
+    from apache_beam.runners.portability import fn_api_runner
+    # pylint: enable=g-import-not-at-top
     pipeline_options = PipelineOptions(self._beam_pipeline_args)
     if pipeline_options.view_as(StandardOptions).runner:
       return beam.Pipeline(argv=self._beam_pipeline_args)

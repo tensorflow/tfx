@@ -29,6 +29,11 @@
     implementation in a future release.
 *   Added support for passing a callable to set pre/post transform statistic
     generation options.
+*   In addition to the "tfx" pip package, a dependency-light distribution of the
+    core pipeline authoring functionality of TFX is now available as the
+    "ml-pipelines-sdk" pip package. This package does not include first-party
+    TFX components. The "tfx" pip package is still the recommended installation
+    path for TFX.
 
 ## Breaking changes
 

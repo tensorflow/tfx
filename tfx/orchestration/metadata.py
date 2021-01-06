@@ -30,7 +30,6 @@ from typing import Any, Dict, List, Optional, Set, Text, Tuple, Type, Union
 
 import absl
 import six
-import tensorflow as tf
 from tfx.dsl.io import fileio
 from tfx.orchestration import data_types
 from tfx.types import artifact_utils
@@ -40,7 +39,6 @@ from tfx.types.artifact import ArtifactState
 import ml_metadata as mlmd
 from ml_metadata.proto import metadata_store_pb2
 from ml_metadata.proto import metadata_store_service_pb2
-from tensorflow.python.lib.io import file_io  # pylint: disable=g-direct-tensorflow-import
 
 # Number of times to retry initialization of connection.
 _MAX_INIT_RETRY = 10
@@ -471,7 +469,7 @@ class Metadata(object):
     """Updates the execution proto with given type and state."""
     if state is not None:
       execution.properties[
-          _EXECUTION_TYPE_KEY_STATE].string_value = tf.compat.as_text(state)
+          _EXECUTION_TYPE_KEY_STATE].string_value = six.ensure_text(state)
     # Forward-compatible change to leverage built-in schema to track states.
     if state == EXECUTION_STATE_CACHED:
       execution.last_known_state = metadata_store_pb2.Execution.CACHED
@@ -484,18 +482,22 @@ class Metadata(object):
     # TODO(ruoyu): Enforce a formal rule for execution schema change.
     for k, v in exec_properties.items():
       # We always convert execution properties to unicode.
-      execution.properties[k].string_value = tf.compat.as_text(
-          tf.compat.as_str_any(v))
+      if isinstance(v, bytes):
+        # Decode byte string into a Unicode string.
+        v = v.decode('utf-8')
+      else:
+        # For all other types, store its string representation.
+        v = str(v)
+      execution.properties[k].string_value = v
     # We also need to checksum UDF file to identify different binary being
     # used. Do we have a better way to checksum a file than hashlib.md5?
     # TODO(ruoyu): Find a better place / solution to the checksum logic.
     # TODO(ruoyu): SHA instead of MD5.
     if 'module_file' in exec_properties and exec_properties[
         'module_file'] and fileio.exists(exec_properties['module_file']):
-      contents = file_io.read_file_to_string(exec_properties['module_file'])
-      execution.properties['checksum_md5'].string_value = tf.compat.as_text(
-          tf.compat.as_str_any(
-              hashlib.md5(tf.compat.as_bytes(contents)).hexdigest()))
+      contents = fileio.open(exec_properties['module_file'], 'rb').read()
+      execution.properties['checksum_md5'].string_value = (
+          hashlib.md5(contents).hexdigest().encode('utf-8'))
     if pipeline_info:
       execution.properties[
           'pipeline_name'].string_value = pipeline_info.pipeline_name
