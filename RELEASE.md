@@ -11,7 +11,6 @@
 ## Deprecations
 
 ## Bug fixes and other changes
-*   The `tfx.dsl.io.makedirs` call now succeeds if the directory already exists.
 
 ## Documentation updates
 
@@ -70,6 +69,7 @@
     is installed.
 *   Skipped ephemeral package when the beam flag
     'worker_harness_container_image' is set.
+*   The `tfx.dsl.io.makedirs` call now succeeds if the directory already exists.
 *   Depends on `apache-beam[gcp]>=2.25,!=2.26,<3`.
 *   Depends on `keras-tuner>=1,<1.0.2`.
 *   Depends on `kfp-pipeline-spec>=0.1.3,<0.2`.
