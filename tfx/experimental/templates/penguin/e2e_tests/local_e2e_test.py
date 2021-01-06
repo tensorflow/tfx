@@ -54,7 +54,7 @@ class PenguinTemplateLocalEndToEndTest(test_utils.BaseEndToEndTest):
     self._copyTemplate('penguin')
     os.environ['LOCAL_HOME'] = os.path.join(self._temp_dir, 'local')
 
-    # Create a pipeline with only one component.
+    # Create a pipeline with only initial components.
     result = self._runCli([
         'pipeline',
         'create',
@@ -83,6 +83,12 @@ class PenguinTemplateLocalEndToEndTest(test_utils.BaseEndToEndTest):
     updated_pipeline_file = self._addAllComponents()
     logging.info('Updated %s to add all components to the pipeline.',
                  updated_pipeline_file)
+    # Lowers required threshold to make tests stable.
+    self._replaceFileContent(
+        os.path.join('pipeline', 'configs.py'), [
+            ('EVAL_ACCURACY_THRESHOLD = 0.6',
+             'EVAL_ACCURACY_THRESHOLD = 0.1'),
+        ])
     result = self._runCli([
         'pipeline',
         'update',
