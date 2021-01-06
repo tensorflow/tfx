@@ -94,7 +94,6 @@ class KubeflowV2RunExecutorTest(test_case_utils.TempWorkingDirTestCase):
     # the testdata files have been read. Otherwise the original testdata files
     # are not accessible after cwd is changed.
     super(KubeflowV2RunExecutorTest, self).setUp()
-    fileio.makedirs(os.path.dirname(_TEST_OUTPUT_METADATA_JSON))
 
   def _get_text_from_test_data(self, filename: str) -> str:
     filepath = os.path.join(os.path.dirname(__file__), "testdata", filename)

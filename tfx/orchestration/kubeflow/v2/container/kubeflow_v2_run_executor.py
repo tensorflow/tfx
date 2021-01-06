@@ -14,6 +14,7 @@
 """Entrypoint for invoking TFX components in Kubeflow V2 runner."""
 
 import argparse
+import os
 from typing import List
 
 from absl import logging
@@ -95,6 +96,7 @@ def _run_executor(args: argparse.Namespace, beam_args: List[str]) -> None:
       outputs, name_from_id).items():
     executor_output.artifacts[k].CopyFrom(v)
 
+  fileio.makedirs(os.path.dirname(metadata_uri))
   fileio.open(metadata_uri,
               'wb').write(json_format.MessageToJson(executor_output))
 
