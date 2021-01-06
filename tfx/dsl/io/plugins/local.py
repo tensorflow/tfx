@@ -64,7 +64,7 @@ class LocalFilesystem(filesystem.Filesystem):
 
   @staticmethod
   def makedirs(path: PathType) -> None:
-    os.makedirs(path)
+    os.makedirs(path, exist_ok=True)
 
   @staticmethod
   def mkdir(path: PathType) -> None:

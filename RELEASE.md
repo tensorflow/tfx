@@ -11,6 +11,7 @@
 ## Deprecations
 
 ## Bug fixes and other changes
+*   The `tfx.dsl.io.makedirs` call now succeeds if the directory already exists.
 
 ## Documentation updates
 
