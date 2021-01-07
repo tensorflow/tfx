@@ -55,12 +55,12 @@ class _TfxArtifact(Artifact):
     can_import_setuptools = False
     can_import_components = False
     try:
-      import setuptools as _  # pytype: disable=import-error,pylint: disable=g-import-not-at-top
+      import setuptools as _  # pytype: disable=import-error  # pylint: disable=g-import-not-at-top
       can_import_setuptools = True
     except ModuleNotFoundError:
       pass
     try:
-      import tfx.components as _  # pytype: disable=module-attr,pylint: disable=g-import-not-at-top
+      import tfx.components as _  # pytype: disable=module-attr  # pylint: disable=g-import-not-at-top
       can_import_components = True
     except ModuleNotFoundError:
       pass
