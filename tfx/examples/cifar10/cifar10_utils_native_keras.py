@@ -392,8 +392,7 @@ def run_fn(fn_args: FnArgs):
 
   tfrw = rewriter_factory.create_rewriter(
       rewriter_factory.TFLITE_REWRITER,
-      name='tflite_rewriter',
-      enable_experimental_new_converter=True)
+      name='tflite_rewriter')
   converters.rewrite_saved_model(temp_saving_model_dir,
                                  fn_args.serving_model_dir, tfrw,
                                  rewriter.ModelType.TFLITE_MODEL)
@@ -407,7 +406,7 @@ def run_fn(fn_args: FnArgs):
   #@ to the model.
   _write_metadata(
       model_path=tflite_model_path,
-      label_map_path=fn_args.labels_path,
+      label_map_path=fn_args.custom_config['labels_path'],
       mean=[127.5],
       std=[127.5])
 

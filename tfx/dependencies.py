@@ -157,6 +157,9 @@ def make_extra_packages_examples():
       'websocket-client>=0.57,<1',
       # Required for bert examples in tfx/examples/bert
       'tensorflow-text>=1.15.1,<3',
+      # Required for tfx/examples/cifar10
+      'flatbuffers>=1.12,<2',
+      'tflite-support>=0.1.0a1,<0.1.1',
   ]
 
 
