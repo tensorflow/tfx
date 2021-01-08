@@ -314,18 +314,18 @@ The
 [Fairness Indicators examples directory](https://github.com/tensorflow/fairness-indicators/tree/master/fairness_indicators/examples)
 contains several examples:
 
-*   [Fairness_Indicators_Example_Colab.ipynb](https://github.com/tensorflow/fairness-indicators/blob/master/fairness_indicators/documentation/examples/Fairness_Indicators_Example_Colab.ipynb)
+*   [Fairness_Indicators_Example_Colab.ipynb](https://github.com/tensorflow/fairness-indicators/blob/master/g3doc/tutorials/Fairness_Indicators_Example_Colab.ipynb)
     gives an overview of Fairness Indicators in
     [TensorFlow Model Analysis](https://www.tensorflow.org/tfx/guide/tfma) and
     how to use it with a real dataset. This notebook also goes over
     [TensorFlow Data Validation](https://www.tensorflow.org/tfx/data_validation/get_started)
     and [What-If Tool](https://pair-code.github.io/what-if-tool/), two tools for
     analyzing TensorFlow models that are packaged with Fairness Indicators.
-*   [Fairness_Indicators_on_TF_Hub.ipynb](https://github.com/tensorflow/fairness-indicators/blob/master/fairness_indicators/documentation/examples/Fairness_Indicators_on_TF_Hub_Text_Embeddings.ipynb)
+*   [Fairness_Indicators_on_TF_Hub.ipynb](https://github.com/tensorflow/fairness-indicators/blob/master/g3doc/tutorials/Fairness_Indicators_on_TF_Hub_Text_Embeddings.ipynb)
     demonstrates how to use Fairness Indicators to compare models trained on
     different [text embeddings](https://en.wikipedia.org/wiki/Word_embedding).
     This notebook uses text embeddings from
     [TensorFlow Hub](https://www.tensorflow.org/hub), TensorFlow's library to
     publish, discover, and reuse model components.
-*   [Fairness_Indicators_TensorBoard_Plugin_Example_Colab.ipynb](https://github.com/tensorflow/fairness-indicators/blob/master/fairness_indicators/documentation/examples/Fairness_Indicators_TensorBoard_Plugin_Example_Colab.ipynb)
+*   [Fairness_Indicators_TensorBoard_Plugin_Example_Colab.ipynb](https://github.com/tensorflow/fairness-indicators/blob/master/g3doc/tutorials/Fairness_Indicators_TensorBoard_Plugin_Example_Colab.ipynb)
     demonstrates how to visualize Fairness Indicators in TensorBoard.
