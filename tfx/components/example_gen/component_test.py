@@ -45,11 +45,13 @@ class TestQueryBasedExampleGenComponent(component.QueryBasedExampleGen):
   def __init__(self,
                input_config,
                output_config=None,
+               output_data_format=example_gen_pb2.FORMAT_TF_EXAMPLE,
                example_artifacts=None,
                instance_name=None):
     super(TestQueryBasedExampleGenComponent, self).__init__(
         input_config=input_config,
         output_config=output_config,
+        output_data_format=output_data_format,
         example_artifacts=example_artifacts,
         instance_name=instance_name)
 
@@ -83,7 +85,19 @@ class ComponentTest(tf.test.TestCase):
     self.assertEqual(base_driver.BaseDriver, example_gen.driver_class)
     self.assertEqual(standard_artifacts.Examples.TYPE_NAME,
                      example_gen.outputs['examples'].type_name)
+    self.assertEqual(example_gen.exec_properties['output_data_format'],
+                     example_gen_pb2.FORMAT_TF_EXAMPLE)
     self.assertIsNone(example_gen.exec_properties.get('custom_config'))
+
+  def testConstructSubclassQueryBasedWithInvalidOutputDataFormat(self):
+    self.assertRaises(
+        ValueError,
+        TestQueryBasedExampleGenComponent,
+        input_config=example_gen_pb2.Input(splits=[
+            example_gen_pb2.Input.Split(name='single', pattern='query'),
+        ]),
+        output_data_format=-1  # not exists
+    )
 
   def testConstructSubclassFileBased(self):
     example_gen = TestFileBasedExampleGenComponent(input_base='path')

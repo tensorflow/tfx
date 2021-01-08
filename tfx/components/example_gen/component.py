@@ -56,14 +56,16 @@ class QueryBasedExampleGen(base_component.BaseComponent):
   # EXECUTOR_SPEC should be overridden by subclasses.
   EXECUTOR_SPEC = executor_spec.ExecutorClassSpec(base_executor.BaseExecutor)
 
-  def __init__(self,
-               input_config: Union[example_gen_pb2.Input, Dict[Text, Any]],
-               output_config: Optional[Union[example_gen_pb2.Output,
-                                             Dict[Text, Any]]] = None,
-               custom_config: Optional[Union[example_gen_pb2.CustomConfig,
-                                             Dict[Text, Any]]] = None,
-               example_artifacts: Optional[types.Channel] = None,
-               instance_name: Optional[Text] = None):
+  def __init__(
+      self,
+      input_config: Union[example_gen_pb2.Input, Dict[Text, Any]],
+      output_config: Optional[Union[example_gen_pb2.Output, Dict[Text,
+                                                                 Any]]] = None,
+      custom_config: Optional[Union[example_gen_pb2.CustomConfig,
+                                    Dict[Text, Any]]] = None,
+      output_data_format: Optional[int] = example_gen_pb2.FORMAT_TF_EXAMPLE,
+      example_artifacts: Optional[types.Channel] = None,
+      instance_name: Optional[Text] = None):
     """Construct a QueryBasedExampleGen component.
 
     Args:
@@ -84,19 +86,30 @@ class QueryBasedExampleGen(base_component.BaseComponent):
           instance, providing custom configuration for ExampleGen. If any field
           is provided as a RuntimeParameter, output_config should be constructed
           as a dict.
+      output_data_format: Payload format of generated data in output artifact,
+        one of example_gen_pb2.PayloadFormat enum.
       example_artifacts: Channel of `standard_artifacts.Examples` for output
         train and eval examples.
       instance_name: Optional unique instance name. Required only if multiple
         ExampleGen components are declared in the same pipeline.
+
+    Raises:
+      ValueError: The output_data_format value must be defined in the
+        example_gen_pb2.PayloadFormat proto.
     """
     # Configure outputs.
     output_config = output_config or utils.make_default_output_config(
         input_config)
     if not example_artifacts:
       example_artifacts = types.Channel(type=standard_artifacts.Examples)
+    if output_data_format not in example_gen_pb2.PayloadFormat.values():
+      raise ValueError('The value of output_data_format must be defined in'
+                       'the example_gen_pb2.PayloadFormat proto.')
+
     spec = QueryBasedExampleGenSpec(
         input_config=input_config,
         output_config=output_config,
+        output_data_format=output_data_format,
         custom_config=custom_config,
         examples=example_artifacts)
     super(QueryBasedExampleGen, self).__init__(

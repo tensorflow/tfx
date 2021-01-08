@@ -32,6 +32,16 @@ tasks {
         }
       }
     }
+    parameters {
+      key: "output_data_format"
+      value {
+        runtime_value {
+          constant_value {
+            int_value: 6
+          }
+        }
+      }
+    }
   }
   outputs {
     artifacts {

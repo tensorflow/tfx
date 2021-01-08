@@ -94,7 +94,8 @@ class EvaluatorSpec(ComponentSpec):
           ChannelParameter(type=standard_artifacts.Model),
       'baseline_model':
           ChannelParameter(type=standard_artifacts.Model, optional=True),
-      'schema': ChannelParameter(type=standard_artifacts.Schema, optional=True),
+      'schema':
+          ChannelParameter(type=standard_artifacts.Schema, optional=True),
   }
   OUTPUTS = {
       'evaluation': ChannelParameter(type=standard_artifacts.ModelEvaluation),
@@ -166,6 +167,8 @@ class QueryBasedExampleGenSpec(ComponentSpec):
           ExecutionParameter(type=example_gen_pb2.Input),
       'output_config':
           ExecutionParameter(type=example_gen_pb2.Output),
+      'output_data_format':
+          ExecutionParameter(type=int),  # example_gen_pb2.PayloadType enum.
       'custom_config':
           ExecutionParameter(type=example_gen_pb2.CustomConfig, optional=True),
   }
@@ -182,11 +185,11 @@ class InfraValidatorSpec(ComponentSpec):
       'serving_spec':
           ExecutionParameter(type=infra_validator_pb2.ServingSpec),
       'validation_spec':
-          ExecutionParameter(type=infra_validator_pb2.ValidationSpec,
-                             optional=True),
+          ExecutionParameter(
+              type=infra_validator_pb2.ValidationSpec, optional=True),
       'request_spec':
-          ExecutionParameter(type=infra_validator_pb2.RequestSpec,
-                             optional=True)
+          ExecutionParameter(
+              type=infra_validator_pb2.RequestSpec, optional=True)
   }
 
   INPUTS = {
@@ -224,11 +227,14 @@ class PusherSpec(ComponentSpec):
           ExecutionParameter(type=(str, Text), optional=True),
   }
   INPUTS = {
-      'model': ChannelParameter(type=standard_artifacts.Model),
-      'model_blessing': ChannelParameter(type=standard_artifacts.ModelBlessing,
-                                         optional=True),
-      'infra_blessing': ChannelParameter(type=standard_artifacts.InfraBlessing,
-                                         optional=True),
+      'model':
+          ChannelParameter(type=standard_artifacts.Model),
+      'model_blessing':
+          ChannelParameter(
+              type=standard_artifacts.ModelBlessing, optional=True),
+      'infra_blessing':
+          ChannelParameter(
+              type=standard_artifacts.InfraBlessing, optional=True),
   }
   OUTPUTS = {
       'pushed_model': ChannelParameter(type=standard_artifacts.PushedModel),

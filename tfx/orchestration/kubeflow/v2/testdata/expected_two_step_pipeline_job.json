@@ -77,6 +77,13 @@
                   "stringValue":"{\n  \"splits\": [\n    {\n      \"name\": \"single_split\",\n      \"pattern\": \"SELECT * FROM TABLE\"\n    }\n  ]\n}"
                 }
               }
+            },
+            "output_data_format":{
+              "runtimeValue":{
+                "constantValue":{
+                  "intValue":"6"
+                }
+              }
             }
           }
         }

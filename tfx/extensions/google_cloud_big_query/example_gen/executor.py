@@ -22,13 +22,12 @@ from typing import Any, Dict, Optional, Text
 
 import apache_beam as beam
 
-from apache_beam.io.gcp import bigquery as beam_bigquery
 from apache_beam.options import value_provider
+from google.cloud import bigquery
 import tensorflow as tf
 
 from tfx.components.example_gen import base_example_gen_executor
-from tfx.utils import telemetry_utils
-from google.cloud import bigquery
+from tfx.extensions.google_cloud_big_query import utils
 
 
 class _BigQueryConverter(object):
@@ -52,61 +51,15 @@ class _BigQueryConverter(object):
 
   def RowToExample(self, instance: Dict[Text, Any]) -> tf.train.Example:
     """Convert bigquery result row to tf example."""
-    feature = {}
-    for key, value in instance.items():
-      data_type = self._type_map[key]
-
-      if value is None:
-        feature[key] = tf.train.Feature()
-        continue
-
-      value_list = value if isinstance(value, list) else [value]
-      if data_type in ('INTEGER', 'BOOLEAN'):
-        feature[key] = tf.train.Feature(
-            int64_list=tf.train.Int64List(value=value_list))
-      elif data_type == 'FLOAT':
-        feature[key] = tf.train.Feature(
-            float_list=tf.train.FloatList(value=value_list))
-      elif data_type == 'STRING':
-        feature[key] = tf.train.Feature(
-            bytes_list=tf.train.BytesList(
-                value=[tf.compat.as_bytes(elem) for elem in value_list]))
-      else:
-        # TODO(jyzhao): support more types.
-        raise RuntimeError(
-            'BigQuery column type {} is not supported.'.format(data_type))
-
-    return tf.train.Example(features=tf.train.Features(feature=feature))
-
-
-# Create this instead of inline in _BigQueryToExample for test mocking purpose.
-@beam.ptransform_fn
-@beam.typehints.with_input_types(beam.Pipeline)
-@beam.typehints.with_output_types(beam.typehints.Dict[Text, Any])
-def _ReadFromBigQueryImpl(  # pylint: disable=invalid-name
-    pipeline: beam.Pipeline, query: Text) -> beam.pvalue.PCollection:
-  """Read from BigQuery.
-
-  Args:
-    pipeline: beam pipeline.
-    query: a BigQuery sql string.
-
-  Returns:
-    PCollection of dict.
-  """
-  return (pipeline
-          | 'ReadFromBigQuery' >> beam_bigquery.ReadFromBigQuery(
-              query=query,
-              use_standard_sql=True,
-              bigquery_job_labels=telemetry_utils.get_labels_dict()))
+    return utils.row_to_example(self._type_map, instance)
 
 
 @beam.ptransform_fn
 @beam.typehints.with_input_types(beam.Pipeline)
 @beam.typehints.with_output_types(tf.train.Example)
-def _BigQueryToExample(  # pylint: disable=invalid-name
+def _BigQueryToExample(
     pipeline: beam.Pipeline,
-    exec_properties: Dict[Text, Any],  # pylint: disable=unused-argument
+    exec_properties: Dict[Text, Any],
     split_pattern: Text) -> beam.pvalue.PCollection:
   """Read from BigQuery and transform to TF examples.
 
@@ -130,8 +83,7 @@ def _BigQueryToExample(  # pylint: disable=invalid-name
   converter = _BigQueryConverter(split_pattern, project)
 
   return (pipeline
-          | 'QueryTable' >> _ReadFromBigQueryImpl(  # pylint: disable=no-value-for-parameter
-              query=split_pattern)
+          | 'QueryTable' >> utils.ReadFromBigQuery(query=split_pattern)
           | 'ToTFExample' >> beam.Map(converter.RowToExample))
 
 
