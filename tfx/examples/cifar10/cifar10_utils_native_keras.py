@@ -201,7 +201,6 @@ def _build_keras_model() -> tf.keras.Model:
       include_top=False,
       weights='imagenet',
       pooling='avg')
-  base_model.input_spec = None
 
   # We add a Dropout layer at the top of MobileNet backbone we just created to
   # prevent overfiting, and then a Dense layer to classifying CIFAR10 objects
