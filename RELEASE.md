@@ -19,12 +19,6 @@
 
 ## Bug fixes and other changes
 
-*   InfraValidator supports using alternative TensorFlow Serving image in case
-    deployed environment cannot reach the public internet (nor the docker hub).
-    Such alternative image should behave the same as official
-    `tensorflow/serving` image such as the same model volume path, serving port,
-    etc.
-
 ## Documentation updates
 
 # Version 0.26.0

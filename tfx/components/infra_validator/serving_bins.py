@@ -38,14 +38,11 @@ def parse_serving_binaries(  # pylint: disable=invalid-name
   serving_binary = serving_spec.WhichOneof('serving_binary')
   if serving_binary == 'tensorflow_serving':
     config = serving_spec.tensorflow_serving
-    image_name = config.image_name or None
     for tag in config.tags:
-      result.append(TensorFlowServing(image_name=image_name,
-                                      model_name=serving_spec.model_name,
+      result.append(TensorFlowServing(model_name=serving_spec.model_name,
                                       tag=tag))
     for digest in config.digests:
-      result.append(TensorFlowServing(image_name=image_name,
-                                      model_name=serving_spec.model_name,
+      result.append(TensorFlowServing(model_name=serving_spec.model_name,
                                       digest=digest))
     return result
   else:
@@ -129,7 +126,6 @@ class TensorFlowServing(ServingBinary):
   def __init__(
       self,
       model_name: Text,
-      image_name: Optional[Text] = None,
       tag: Optional[Text] = None,
       digest: Optional[Text] = None,
   ):
@@ -137,11 +133,10 @@ class TensorFlowServing(ServingBinary):
     self._model_name = model_name
     if (tag is None) == (digest is None):
       raise ValueError('Exactly one of `tag` or `digest` should be used.')
-    image_name = image_name or self._DEFAULT_IMAGE_NAME
     if tag is not None:
-      self._image = '{}:{}'.format(image_name, tag)
+      self._image = '{}:{}'.format(self._DEFAULT_IMAGE_NAME, tag)
     else:
-      self._image = '{}@{}'.format(image_name, digest)
+      self._image = '{}@{}'.format(self._DEFAULT_IMAGE_NAME, digest)
 
   @property
   def container_port(self) -> int:

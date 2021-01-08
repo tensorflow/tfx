@@ -33,13 +33,14 @@ Note:
   denylisting them via the `private_map` argument below. Or
   `api_generator.doc_controls`
 """
+import pathlib
+
 from absl import app
 from absl import flags
 
 import tensorflow_docs.api_generator as api_generator
 from tensorflow_docs.api_generator import doc_controls
 from tensorflow_docs.api_generator import generate_lib
-
 
 import tfx
 # pylint: disable=unused-import
@@ -91,6 +92,11 @@ def main(_):
   api_generator.utils.recursive_import(tfx.components)
   api_generator.utils.recursive_import(tfx.extensions)
 
+  # The default basedir (os.path.dirname(tfx.__file__) doesn't work because tfx
+  # is a namespace package. Namespacew packages don't set __file__.
+  # base_dir needs to point to the tfx source directory.
+  base_dir = str(pathlib.Path(tfx.orchestration.config.__file__).parents[2])
+
   do_not_generate_docs_for = []
   for name in ["utils", "proto", "dependencies", "version"]:
     submodule = getattr(tfx, name, None)
@@ -104,6 +110,7 @@ def main(_):
       root_title="TFX",
       py_modules=[("tfx", tfx)],
       code_url_prefix=FLAGS.code_url_prefix,
+      base_dir=base_dir,
       search_hints=FLAGS.search_hints,
       site_path=FLAGS.site_path,
       private_map={},

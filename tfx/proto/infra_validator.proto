@@ -63,14 +63,6 @@ message ServingSpec {
 
 // TensorFlow Serving docker image (tensorflow/serving) for serving binary.
 message TensorFlowServing {
-  // Optional docker image name. (e.g. "gcr.io/myProject/serving")
-  // This is provided in case public docker hub is inaccessible from the
-  // deploying environment, so that user can use alternative tensorflow serving
-  // image name. Infra validator assumes this image behaves identical to the
-  // public tensorflow serving image but only the name differs.
-  // By default "tensorflow/serving" is used.
-  string image_name = 3;
-
   // Docker image tags to use such as "latest", "1.15.0-gpu", etc..
   repeated string tags = 1;
 
