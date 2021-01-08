@@ -20,6 +20,7 @@ from tfx.orchestration import metadata
 from tfx.orchestration.portable import cache_utils
 from tfx.orchestration.portable import execution_publish_utils
 from tfx.orchestration.portable.mlmd import context_lib
+from tfx.proto.orchestration import executable_spec_pb2
 from tfx.proto.orchestration import pipeline_pb2
 from tfx.types import standard_artifacts
 from tfx.utils import test_case_utils
@@ -40,17 +41,21 @@ class CacheUtilsTest(test_case_utils.TfxTest):
     self._module_file_content = 'module content'
     self._pipeline_node = text_format.Parse(
         """
-        executor {
-          python_class_executor_spec {class_path: 'a.b.c'}
+        node_info {
+          id: "my_id"
         }
         """, pipeline_pb2.PipelineNode())
-    self._executor_class_path = 'a.b.c'
     self._pipeline_info = pipeline_pb2.PipelineInfo(id='pipeline_id')
+    self._executor_spec = text_format.Parse(
+        """
+        class_path: "my.class.path"
+        """, executable_spec_pb2.PythonClassExecutableSpec())
 
   def _get_cache_context(self,
                          metadata_handler,
                          custom_pipeline_node=None,
                          custom_pipeline_info=None,
+                         executor_spec=None,
                          custom_input_artifacts=None,
                          custom_output_artifacts=None,
                          custom_parameters=None,
@@ -61,6 +66,7 @@ class CacheUtilsTest(test_case_utils.TfxTest):
         metadata_handler,
         custom_pipeline_node or self._pipeline_node,
         custom_pipeline_info or self._pipeline_info,
+        executor_spec=(executor_spec or self._executor_spec),
         input_artifacts=(custom_input_artifacts or self._input_artifacts),
         output_artifacts=(custom_output_artifacts or self._output_artifacts),
         parameters=(custom_parameters or self._parameters))
@@ -134,17 +140,29 @@ class CacheUtilsTest(test_case_utils.TfxTest):
       # Different pipeline info will result in new cache context.
       self.assertLen(m.store.get_contexts(), 2)
 
-  def testGetCacheContextTwiceDifferentExecutorSpec(self):
+  def testGetCacheContextTwiceDifferentNodeInfo(self):
     with metadata.Metadata(connection_config=self._connection_config) as m:
       self._get_cache_context(m)
       self._get_cache_context(
           m,
           custom_pipeline_node=text_format.Parse(
               """
-              executor {
-                python_class_executor_spec {class_path: 'n.e.w'}
+              node_info {
+                id: "new_node_id"
               }
               """, pipeline_pb2.PipelineNode()))
+      # Different executor spec will result in new cache context.
+      self.assertLen(m.store.get_contexts(), 2)
+
+  def testGetCacheContextTwiceDifferentExecutorSpec(self):
+    with metadata.Metadata(connection_config=self._connection_config) as m:
+      self._get_cache_context(m)
+      self._get_cache_context(
+          m,
+          executor_spec=text_format.Parse(
+              """
+              class_path: "new.class.path"
+              """, executable_spec_pb2.PythonClassExecutableSpec()))
       # Different executor spec will result in new cache context.
       self.assertLen(m.store.get_contexts(), 2)
 

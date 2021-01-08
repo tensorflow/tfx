@@ -138,6 +138,7 @@ class Launcher(object):
     self._mlmd_connection = mlmd_connection
     self._pipeline_info = pipeline_info
     self._pipeline_runtime_spec = pipeline_runtime_spec
+    self._executor_spec = executor_spec
     self._executor_operators = {}
     self._executor_operators.update(DEFAULT_EXECUTOR_OPERATORS)
     self._executor_operators.update(custom_executor_operators or {})
@@ -226,6 +227,7 @@ class Launcher(object):
           metadata_handler=m,
           pipeline_node=self._pipeline_node,
           pipeline_info=self._pipeline_info,
+          executor_spec=self._executor_spec,
           input_artifacts=input_artifacts,
           output_artifacts=output_artifacts,
           parameters=exec_properties)
