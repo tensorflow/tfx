@@ -142,7 +142,6 @@ class BaseHandler(with_metaclass(abc.ABCMeta, object)):
     # LINT.ThenChange(
     #     ../../../orchestration/beam/beam_dag_runner.py,
     #     ../../../orchestration/local/local_dag_runner.py,
-    #     ../../../orchestration/portable/beam_dag_runner.py,
     # )
 
     # Run dsl with mock environment to store pipeline args in temp_file.
@@ -251,9 +250,13 @@ class BaseHandler(with_metaclass(abc.ABCMeta, object)):
     with open(pipeline_args_path, 'r') as f:
       pipeline_args = json.load(f)
 
+    self._read_schema_from_pipeline_root(pipeline_name,
+                                         pipeline_args[labels.PIPELINE_ROOT])
+
+  def _read_schema_from_pipeline_root(self, pipeline_name, pipeline_root):
     # Check if pipeline root created. If not, it means that the user has not
     # created a run yet or the pipeline is still running for the first time.
-    pipeline_root = pipeline_args[labels.PIPELINE_ROOT]
+
     if not fileio.exists(pipeline_root):
       sys.exit(
           'Create a run before inferring schema. If pipeline is already running, then wait for it to successfully finish.'

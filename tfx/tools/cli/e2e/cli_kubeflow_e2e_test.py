@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,19 +13,12 @@
 # limitations under the License.
 """E2E Kubeflow tests for CLI."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import codecs
-import datetime
-import json
 import locale
 import os
-import random
 import subprocess
 import sys
-from typing import Text, Tuple
+from typing import Optional, Text
 
 import absl
 from click import testing as click_testing
@@ -39,6 +31,7 @@ from tfx.tools.cli import labels
 from tfx.tools.cli import pip_utils
 from tfx.tools.cli.cli_main import cli_group
 from tfx.tools.cli.e2e import test_utils
+from tfx.utils import retry
 from tfx.utils import test_case_utils
 
 
@@ -52,7 +45,6 @@ class CliKubeflowEndToEndTest(test_case_utils.TempWorkingDirTestCase):
 
   def setUp(self):
     super(CliKubeflowEndToEndTest, self).setUp()
-    random.seed(datetime.datetime.now())
 
     # List of packages installed.
     self._pip_list = pip_utils.get_package_names()
@@ -72,9 +64,7 @@ class CliKubeflowEndToEndTest(test_case_utils.TempWorkingDirTestCase):
     # Testdata path.
     self._testdata_dir = os.path.join(
         os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'testdata')
-    self._testdata_dir_updated = os.path.join(
-        os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR', self.get_temp_dir()),
-        self._testMethodName)
+    self._testdata_dir_updated = self.tmp_dir
     fileio.makedirs(self._testdata_dir_updated)
 
     self._pipeline_name = ('cli-kubeflow-e2e-test-' +
@@ -107,15 +97,6 @@ class CliKubeflowEndToEndTest(test_case_utils.TempWorkingDirTestCase):
                 )))
     absl.logging.info('ENDPOINT: ' + self._endpoint)
 
-    # Change home directories
-    self._kubeflow_home = self.tmp_dir
-    self.enter_context(
-        test_case_utils.override_env_var('KUBEFLOW_HOME', self._kubeflow_home))
-
-    self._handler_pipeline_path = os.path.join(self._kubeflow_home,
-                                               self._pipeline_name)
-    self._handler_pipeline_args_path = os.path.join(self._handler_pipeline_path,
-                                                    'pipeline_args.json')
     self._pipeline_package_path = '{}.tar.gz'.format(self._pipeline_name)
 
     try:
@@ -126,43 +107,40 @@ class CliKubeflowEndToEndTest(test_case_utils.TempWorkingDirTestCase):
 
   def tearDown(self):
     super(CliKubeflowEndToEndTest, self).tearDown()
-    self._cleanup_kfp_server()
+    self._cleanup_kfp_server(self._pipeline_name)
 
-  def _cleanup_kfp_server(self):
-    pipelines = fileio.listdir(self._kubeflow_home)
-    for pipeline_name in pipelines:
-      if fileio.isdir(pipeline_name):
-        self._delete_experiment(pipeline_name)
-        self._delete_pipeline(pipeline_name)
-        self._delete_pipeline_output(pipeline_name)
-        self._delete_pipeline_metadata(pipeline_name)
+  def _cleanup_kfp_server(self, pipeline_name):
+    self._delete_experiment(pipeline_name)
+    self._delete_pipeline(pipeline_name)
+    self._delete_pipeline_output(pipeline_name)
+    self._delete_pipeline_metadata(pipeline_name)
 
+  @retry.retry(ignore_eventual_failure=True)
   def _delete_pipeline(self, pipeline_name: Text):
-    pipeline_id, _ = self._get_pipeline_id_and_experiment_id(pipeline_name)
-    if self._client._pipelines_api.get_pipeline(pipeline_id):
-      self._client._pipelines_api.delete_pipeline(id=pipeline_id)
+    pipeline_id = self._get_kfp_pipeline_id(pipeline_name)
+    if pipeline_id is not None:
+      self._client.delete_pipeline(pipeline_id)
       absl.logging.info('Deleted pipeline : {}'.format(pipeline_name))
 
+  @retry.retry(ignore_eventual_failure=True)
   def _delete_experiment(self, pipeline_name: Text):
-    if self._client.get_experiment(experiment_name=pipeline_name):
-      experiment_id = self._client.get_experiment(
-          experiment_name=pipeline_name).id
+    experiment_id = self._get_kfp_experiment_id(pipeline_name)
+    if experiment_id is not None:
       self._delete_all_runs(experiment_id)
       self._client._experiment_api.delete_experiment(experiment_id)
       absl.logging.info('Deleted experiment : {}'.format(pipeline_name))
 
-  def _get_pipeline_id_and_experiment_id(
-      self, pipeline_name: Text) -> Tuple[Text, Text]:
-    # Path to pipeline_args.json .
-    pipeline_args_path = os.path.join(self._kubeflow_home, pipeline_name,
-                                      'pipeline_args.json')
-    # Get pipeline_id and experiment_id from pipeline_args.json
-    with open(pipeline_args_path, 'r') as f:
-      pipeline_args = json.load(f)
-    pipeline_id = pipeline_args[labels.PIPELINE_ID]
-    experiment_id = pipeline_args[labels.EXPERIMENT_ID]
-    return pipeline_id, experiment_id
+  def _get_kfp_pipeline_id(self, pipeline_name: Text) -> Optional[Text]:
+    return self._client.get_pipeline_id(pipeline_name)
 
+  def _get_kfp_experiment_id(self, pipeline_name: Text) -> Optional[Text]:
+    try:
+      experiment = self._client.get_experiment(experiment_name=pipeline_name)
+    except ValueError:
+      return None
+    return experiment.id
+
+  @retry.retry(ignore_eventual_failure=True)
   def _delete_pipeline_output(self, pipeline_name: Text) -> None:
     """Deletes output produced by the named pipeline.
 
@@ -196,6 +174,7 @@ class CliKubeflowEndToEndTest(test_case_utils.TempWorkingDirTestCase):
     absl.logging.info('MySQL pod name is: {}'.format(pod_name))
     return pod_name
 
+  @retry.retry(ignore_eventual_failure=True)
   def _delete_pipeline_metadata(self, pipeline_name: Text) -> None:
     """Drops the database containing metadata produced by the pipeline.
 
@@ -243,23 +222,19 @@ class CliKubeflowEndToEndTest(test_case_utils.TempWorkingDirTestCase):
     absl.logging.info('[CLI] %s', result.output)
     self.assertIn('Creating pipeline', result.output)
     self.assertTrue(fileio.exists(self._pipeline_package_path))
-    self.assertTrue(fileio.exists(self._handler_pipeline_args_path))
     self.assertIn('Pipeline "{}" created successfully.'.format(pipeline_name),
                   result.output)
 
   def _run_pipeline_using_kfp_client(self, pipeline_name: Text):
-    try:
-      pipeline_id, experiment_id = self._get_pipeline_id_and_experiment_id(
-          pipeline_name)
-      run = self._client.run_pipeline(
-          experiment_id=experiment_id,
-          job_name=pipeline_name,
-          pipeline_id=pipeline_id)
-
-      return run
-
-    except kfp_server_api.rest.ApiException as err:
-      absl.logging.info(err)
+    pipeline_id = self._get_kfp_pipeline_id(pipeline_name)
+    experiment_id = self._get_kfp_experiment_id(pipeline_name)
+    absl.logging.info(
+        'Creating a run directly using kfp API for "%s"(pipeline_id=%s,'
+        ' experiment_id=%s)', pipeline_name, pipeline_id, experiment_id)
+    return self._client.run_pipeline(
+        experiment_id=experiment_id,
+        job_name=pipeline_name,
+        pipeline_id=pipeline_id)
 
   def testPipelineCreate(self):
     # Create a pipeline.
@@ -281,9 +256,8 @@ class CliKubeflowEndToEndTest(test_case_utils.TempWorkingDirTestCase):
         self._pipeline_path, '--endpoint', self._endpoint
     ])
     self.assertIn('Updating pipeline', result.output)
-    self.assertIn('Pipeline "{}" does not exist.'.format(self._pipeline_name),
+    self.assertIn('Cannot find pipeline "{}".'.format(self._pipeline_name),
                   result.output)
-    self.assertFalse(fileio.exists(self._handler_pipeline_path))
 
     # Now update an existing pipeline.
     self._valid_create_and_check(self._pipeline_path, self._pipeline_name)
@@ -296,7 +270,6 @@ class CliKubeflowEndToEndTest(test_case_utils.TempWorkingDirTestCase):
     self.assertIn(
         'Pipeline "{}" updated successfully.'.format(self._pipeline_name),
         result.output)
-    self.assertTrue(fileio.exists(self._handler_pipeline_args_path))
 
   def testPipelineCompile(self):
     # Invalid DSL path
@@ -334,9 +307,8 @@ class CliKubeflowEndToEndTest(test_case_utils.TempWorkingDirTestCase):
         self._pipeline_name, '--endpoint', self._endpoint
     ])
     self.assertIn('Deleting pipeline', result.output)
-    self.assertIn('Pipeline "{}" does not exist.'.format(self._pipeline_name),
+    self.assertIn('Cannot find pipeline "{}".'.format(self._pipeline_name),
                   result.output)
-    self.assertFalse(fileio.exists(self._handler_pipeline_path))
 
     # Create a pipeline.
     self._valid_create_and_check(self._pipeline_path, self._pipeline_name)
@@ -347,7 +319,6 @@ class CliKubeflowEndToEndTest(test_case_utils.TempWorkingDirTestCase):
         self._pipeline_name, '--endpoint', self._endpoint
     ])
     self.assertIn('Deleting pipeline', result.output)
-    self.assertFalse(fileio.exists(self._handler_pipeline_path))
     self.assertIn(
         'Pipeline {} deleted successfully.'.format(self._pipeline_name),
         result.output)
@@ -356,6 +327,7 @@ class CliKubeflowEndToEndTest(test_case_utils.TempWorkingDirTestCase):
     # Create pipelines.
     self._valid_create_and_check(self._pipeline_path, self._pipeline_name)
     self._valid_create_and_check(self._pipeline_path_v2, self._pipeline_name_v2)
+    self.addCleanup(self._cleanup_kfp_server, self._pipeline_name_v2)
 
     # List pipelines.
     result = self.runner.invoke(cli_group, [
@@ -377,7 +349,6 @@ class CliKubeflowEndToEndTest(test_case_utils.TempWorkingDirTestCase):
           result.output)
     else:
       self.assertTrue(fileio.exists(self._pipeline_package_path))
-      self.assertTrue(fileio.exists(self._handler_pipeline_args_path))
       self.assertIn(
           'Pipeline "{}" created successfully.'.format(self._pipeline_name),
           result.output)
@@ -390,7 +361,7 @@ class CliKubeflowEndToEndTest(test_case_utils.TempWorkingDirTestCase):
     ])
     self.assertIn('Creating a run for pipeline: {}'.format(self._pipeline_name),
                   result.output)
-    self.assertIn('Pipeline "{}" does not exist.'.format(self._pipeline_name),
+    self.assertIn('Cannot find pipeline "{}".'.format(self._pipeline_name),
                   result.output)
 
     # Now create a pipeline.
