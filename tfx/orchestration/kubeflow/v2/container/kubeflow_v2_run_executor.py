@@ -42,7 +42,7 @@ def _run_executor(args: argparse.Namespace, beam_args: List[str]) -> None:
     args:
       --executor_class_path: The import path of the executor class.
       --json_serialized_invocation_args: Full JSON-serialized parameters for
-        this execution. See go/mp-alpha-placeholder for details.
+        this execution.
     beam_args: Optional parameter that maps to the optional_pipeline_args
       parameter in the pipeline, which provides additional configuration options
       for apache-beam and tensorflow.logging.
