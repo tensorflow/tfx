@@ -40,12 +40,7 @@ class TFLiteRewriterTest(tf.test.TestCase):
     def convert(self):
       return 'model'
 
-  @mock.patch('tfx.components.trainer.rewriting.'
-              'tflite_rewriter._create_tflite_converter')
-  def testInvokeTFLiteRewriterNoAssetsSucceeds(self, converter):
-    m = self.ConverterMock()
-    converter.return_value = m
-
+  def create_temp_model_template(self):
     src_model_path = tempfile.mkdtemp()
     dst_model_path = tempfile.mkdtemp()
 
@@ -59,6 +54,16 @@ class TFLiteRewriterTest(tf.test.TestCase):
     dst_model = rewriter.ModelDescription(rewriter.ModelType.TFLITE_MODEL,
                                           dst_model_path)
 
+    return src_model, dst_model, src_model_path, dst_model_path
+
+  @mock.patch('tfx.components.trainer.rewriting.'
+              'tflite_rewriter._create_tflite_converter')
+  def testInvokeTFLiteRewriterNoAssetsSucceeds(self, converter):
+    m = self.ConverterMock()
+    converter.return_value = m
+
+    src_model, dst_model, _, dst_model_path = self.create_temp_model_template()
+
     tfrw = tflite_rewriter.TFLiteRewriter(
         name='myrw',
         filename='fname')
@@ -66,7 +71,9 @@ class TFLiteRewriterTest(tf.test.TestCase):
 
     converter.assert_called_once_with(
         saved_model_path=mock.ANY,
-        enable_quantization=False)
+        quantization_optimizations=[],
+        quantization_supported_types=[],
+        input_data=None)
     expected_model = os.path.join(dst_model_path, 'fname')
     self.assertTrue(fileio.exists(expected_model))
     with fileio.open(expected_model, 'rb') as f:
@@ -78,13 +85,8 @@ class TFLiteRewriterTest(tf.test.TestCase):
     m = self.ConverterMock()
     converter.return_value = m
 
-    src_model_path = tempfile.mkdtemp()
-    dst_model_path = tempfile.mkdtemp()
-
-    saved_model_path = os.path.join(src_model_path,
-                                    tf.saved_model.SAVED_MODEL_FILENAME_PBTXT)
-    with fileio.open(saved_model_path, 'wb') as f:
-      f.write(six.ensure_binary('saved_model'))
+    src_model, dst_model, src_model_path, dst_model_path = (
+        self.create_temp_model_template())
 
     assets_dir = os.path.join(src_model_path, tf.saved_model.ASSETS_DIRECTORY)
     fileio.mkdir(assets_dir)
@@ -98,20 +100,17 @@ class TFLiteRewriterTest(tf.test.TestCase):
     with fileio.open(assets_extra_file_path, 'wb') as f:
       f.write(six.ensure_binary('assets_extra_file'))
 
-    src_model = rewriter.ModelDescription(rewriter.ModelType.SAVED_MODEL,
-                                          src_model_path)
-    dst_model = rewriter.ModelDescription(rewriter.ModelType.TFLITE_MODEL,
-                                          dst_model_path)
-
     tfrw = tflite_rewriter.TFLiteRewriter(
         name='myrw',
         filename='fname',
-        enable_quantization=True)
+        quantization_optimizations=[tf.lite.Optimize.DEFAULT])
     tfrw.perform_rewrite(src_model, dst_model)
 
     converter.assert_called_once_with(
         saved_model_path=mock.ANY,
-        enable_quantization=True)
+        quantization_optimizations=[tf.lite.Optimize.DEFAULT],
+        quantization_supported_types=[],
+        input_data=None)
     expected_model = os.path.join(dst_model_path, 'fname')
     self.assertTrue(fileio.exists(expected_model))
     with fileio.open(expected_model, 'rb') as f:
@@ -128,6 +127,71 @@ class TFLiteRewriterTest(tf.test.TestCase):
                                               'assets_extra_file')
     with fileio.open(expected_assets_extra_file, 'rb') as f:
       self.assertEqual(six.ensure_text(f.readline()), 'assets_extra_file')
+
+  @mock.patch('tfx.components.trainer.rewriting.'
+              'tflite_rewriter._create_tflite_converter')
+  def testInvokeTFLiteRewriterQuantizationHybridSucceeds(self, converter):
+    m = self.ConverterMock()
+    converter.return_value = m
+
+    src_model, dst_model, _, dst_model_path = self.create_temp_model_template()
+
+    tfrw = tflite_rewriter.TFLiteRewriter(
+        name='myrw',
+        filename='fname',
+        quantization_optimizations=[tf.lite.Optimize.DEFAULT])
+    tfrw.perform_rewrite(src_model, dst_model)
+
+    converter.assert_called_once_with(
+        saved_model_path=mock.ANY,
+        quantization_optimizations=[tf.lite.Optimize.DEFAULT],
+        quantization_supported_types=[],
+        input_data=None)
+    expected_model = os.path.join(dst_model_path, 'fname')
+    self.assertTrue(fileio.exists(expected_model))
+    with fileio.open(expected_model, 'rb') as f:
+      self.assertEqual(six.ensure_text(f.readline()), 'model')
+
+  @mock.patch('tfx.components.trainer.rewriting.'
+              'tflite_rewriter._create_tflite_converter')
+  def testInvokeTFLiteRewriterQuantizationFloat16Succeeds(self, converter):
+    m = self.ConverterMock()
+    converter.return_value = m
+
+    src_model, dst_model, _, dst_model_path = self.create_temp_model_template()
+
+    tfrw = tflite_rewriter.TFLiteRewriter(
+        name='myrw',
+        filename='fname',
+        quantization_optimizations=[tf.lite.Optimize.DEFAULT],
+        quantization_supported_types=[tf.float16])
+    tfrw.perform_rewrite(src_model, dst_model)
+
+    converter.assert_called_once_with(
+        saved_model_path=mock.ANY,
+        quantization_optimizations=[tf.lite.Optimize.DEFAULT],
+        quantization_supported_types=[tf.float16],
+        input_data=None)
+    expected_model = os.path.join(dst_model_path, 'fname')
+    self.assertTrue(fileio.exists(expected_model))
+    with fileio.open(expected_model, 'rb') as f:
+      self.assertEqual(six.ensure_text(f.readline()), 'model')
+
+  @mock.patch('tfx.components.trainer.rewriting.'
+              'tflite_rewriter._create_tflite_converter')
+  def testInvokeTFLiteRewriterQuantizationFullIntegerFails(self, converter):
+    m = self.ConverterMock()
+    converter.return_value = m
+
+    src_model, dst_model, _, _ = self.create_temp_model_template()
+
+    tfrw = tflite_rewriter.TFLiteRewriter(
+        name='myrw',
+        filename='fname',
+        quantization_optimizations=[tf.lite.Optimize.DEFAULT],
+        quantization_enable_full_integer=True)
+    self.assertRaises(NotImplementedError,
+                      tfrw.perform_rewrite(src_model, dst_model))
 
 
 if __name__ == '__main__':
