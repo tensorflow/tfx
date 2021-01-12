@@ -22,6 +22,8 @@
   type of quantization, dynamic range quantization. Users of the TFLITE_REWRITER
   who do not enable quantization should be uneffected.
 
+* Deprecated input/output compatibility aliases for ExampleValidator.
+
 ### For pipeline authors
 
 ### For component authors

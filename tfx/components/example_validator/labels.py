@@ -15,8 +15,6 @@
 """Labels recoginized by the example validator executor."""
 
 # Input lables
-STATS = 'stats'
-SCHEMA = 'schema'
 ENVIRONMENT = 'environment'
 PREV_SPAN_FEATURE_STATISTICS = 'prev_span_feature_statistics'
 PREV_VERSION_FEATURE_STATISTICS = 'prev_version_feature_statistics'

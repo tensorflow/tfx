@@ -35,6 +35,13 @@ from tfx.types.component_spec import ChannelParameter
 from tfx.types.component_spec import ComponentSpec
 from tfx.types.component_spec import ExecutionParameter
 
+# Parameters keys for modules
+# Key for example_validator
+EXCLUDE_SPLITS_KEY = 'exclude_splits'
+STATISTICS_KEY = 'statistics'
+SCHEMA_KEY = 'schema'
+ANOMALIES_KEY = 'anomalies'
+
 
 class BulkInferrerSpec(ComponentSpec):
   """BulkInferrer component spec."""
@@ -116,23 +123,16 @@ class ExampleValidatorSpec(ComponentSpec):
   """ExampleValidator component spec."""
 
   PARAMETERS = {
-      'exclude_splits': ExecutionParameter(type=(str, Text), optional=True),
+      EXCLUDE_SPLITS_KEY: ExecutionParameter(type=(str, Text), optional=True),
   }
   INPUTS = {
-      'statistics': ChannelParameter(type=standard_artifacts.ExampleStatistics),
-      'schema': ChannelParameter(type=standard_artifacts.Schema),
+      STATISTICS_KEY:
+          ChannelParameter(type=standard_artifacts.ExampleStatistics),
+      SCHEMA_KEY:
+          ChannelParameter(type=standard_artifacts.Schema),
   }
   OUTPUTS = {
-      'anomalies': ChannelParameter(type=standard_artifacts.ExampleAnomalies),
-  }
-  # TODO(b/139281215): these input / output names have recently been renamed.
-  # These compatibility aliases are temporarily provided for backwards
-  # compatibility.
-  _INPUT_COMPATIBILITY_ALIASES = {
-      'stats': 'statistics',
-  }
-  _OUTPUT_COMPATIBILITY_ALIASES = {
-      'output': 'anomalies',
+      ANOMALIES_KEY: ChannelParameter(type=standard_artifacts.ExampleAnomalies),
   }
 
 

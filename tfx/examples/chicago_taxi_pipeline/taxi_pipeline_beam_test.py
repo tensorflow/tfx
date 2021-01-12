@@ -24,7 +24,6 @@ import tensorflow_model_analysis as tfma
 
 from tfx.components import CsvExampleGen
 from tfx.components import Evaluator
-from tfx.components import ExampleValidator
 from tfx.components import Pusher
 from tfx.components import ResolverNode
 from tfx.components import SchemaGen
@@ -69,13 +68,6 @@ class TaxiPipelineBeamTest(tf.test.TestCase):
                   schema_gen.inputs['stats'])
     self.assertIs(schema_gen.outputs['schema'],
                   schema_gen.outputs['output'])
-    example_validator = ExampleValidator(
-        statistics=statistics_gen.outputs['statistics'],
-        schema=schema_gen.outputs['schema'])
-    self.assertIs(example_validator.inputs['statistics'],
-                  example_validator.inputs['stats'])
-    self.assertIs(example_validator.outputs['anomalies'],
-                  example_validator.outputs['output'])
     transform = Transform(
         examples=example_gen.outputs['examples'],
         schema=schema_gen.outputs['schema'],

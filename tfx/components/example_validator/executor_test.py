@@ -25,6 +25,10 @@ from tfx.components.example_validator import executor
 from tfx.dsl.io import fileio
 from tfx.types import artifact_utils
 from tfx.types import standard_artifacts
+from tfx.types.standard_component_specs import ANOMALIES_KEY
+from tfx.types.standard_component_specs import EXCLUDE_SPLITS_KEY
+from tfx.types.standard_component_specs import SCHEMA_KEY
+from tfx.types.standard_component_specs import STATISTICS_KEY
 from tfx.utils import io_utils
 from tfx.utils import json_utils
 from tensorflow_metadata.proto.v0 import anomalies_pb2
@@ -52,18 +56,17 @@ class ExecutorTest(tf.test.TestCase):
     validation_output.uri = os.path.join(output_data_dir, 'output')
 
     input_dict = {
-        executor.STATISTICS_KEY: [eval_stats_artifact],
-        executor.SCHEMA_KEY: [schema_artifact],
+        STATISTICS_KEY: [eval_stats_artifact],
+        SCHEMA_KEY: [schema_artifact],
     }
 
     exec_properties = {
         # List needs to be serialized before being passed into Do function.
-        executor.EXCLUDE_SPLITS_KEY:
-            json_utils.dumps(['test'])
+        EXCLUDE_SPLITS_KEY: json_utils.dumps(['test'])
     }
 
     output_dict = {
-        executor.ANOMALIES_KEY: [validation_output],
+        ANOMALIES_KEY: [validation_output],
     }
 
     example_validator_executor = executor.Executor()
