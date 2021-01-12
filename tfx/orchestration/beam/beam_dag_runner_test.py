@@ -159,7 +159,7 @@ class _FakeComponentAsDoFn(beam_dag_runner.PipelineNodeAsDoFn):
         self._deployment_config, self._node_id)
     pipeline_run = None
     for context in pipeline_node.contexts.contexts:
-      if context.type.name == constants.PIPELINE_RUN_ID_PARAMETER_NAME:
+      if context.type.name == constants.PIPELINE_RUN_CONTEXT_TYPE_NAME:
         pipeline_run = context.name.field_value.string_value
     _conponent_to_pipeline_run[self._node_id] = pipeline_run
 
