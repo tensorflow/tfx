@@ -311,7 +311,7 @@ Fairness Indicators" section above.
 ## More Examples
 
 The
-[Fairness Indicators examples directory](https://github.com/tensorflow/fairness-indicators/tree/master/fairness_indicators/examples)
+[Fairness Indicators examples directory](https://github.com/tensorflow/fairness-indicators/blob/master/g3doc/tutorials/)
 contains several examples:
 
 *   [Fairness_Indicators_Example_Colab.ipynb](https://github.com/tensorflow/fairness-indicators/blob/master/g3doc/tutorials/Fairness_Indicators_Example_Colab.ipynb)
