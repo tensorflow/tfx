@@ -26,7 +26,11 @@ from tfx.orchestration.kubeflow.kubeflow_dag_runner import KubeflowDagRunner
 from tfx.utils import test_case_utils
 
 
-class TaxiPipelineKubeflowTest(test_case_utils.TempWorkingDirTestCase):
+class TaxiPipelineKubeflowTest(test_case_utils.TfxTest):
+
+  def setUp(self):
+    super().setUp()
+    self.enter_context(test_case_utils.change_working_dir(self.tmp_dir))
 
   def testTaxiPipelineConstructionAndDefinitionFileExists(self):
     logical_pipeline = taxi_pipeline_kubeflow_local._create_pipeline(

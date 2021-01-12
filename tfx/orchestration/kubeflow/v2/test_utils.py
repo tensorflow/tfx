@@ -653,7 +653,7 @@ def tasks_for_pipeline_with_artifact_value_passing():
   return [producer_task, print_task]
 
 
-class BaseKubeflowV2Test(test_case_utils.TempWorkingDirTestCase):
+class BaseKubeflowV2Test(test_case_utils.TfxTest):
   """Defines testing harness for pipeline on KubeflowV2DagRunner."""
 
   # The following environment variables need to be set prior to calling the test
@@ -698,6 +698,8 @@ class BaseKubeflowV2Test(test_case_utils.TempWorkingDirTestCase):
 
   def setUp(self):
     super(BaseKubeflowV2Test, self).setUp()
+    self.enter_context(test_case_utils.change_working_dir(self.tmp_dir))
+
     self._test_dir = self.tmp_dir
     self._test_output_dir = 'gs://{}/test_output'.format(self._BUCKET_NAME)
 

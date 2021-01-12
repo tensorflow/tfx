@@ -34,9 +34,11 @@ _TEST_OUTPUT_METADATA_JSON = 'output/outputmetadata.json'
 _TEST_INPUT_DIR = 'input_base'
 
 
-class RunDriverTest(test_case_utils.TempWorkingDirTestCase):
+class RunDriverTest(test_case_utils.TfxTest):
 
   def setUp(self):
+    super().setUp()
+
     self._executor_invocation = pipeline_pb2.ExecutorInput()
     self._executor_invocation.outputs.output_file = _TEST_OUTPUT_METADATA_JSON
     self._executor_invocation.inputs.parameters[
@@ -69,10 +71,8 @@ class RunDriverTest(test_case_utils.TempWorkingDirTestCase):
     logging.debug('Expecting output metadata JSON: %s',
                   self._expected_result_from_file)
 
-    # The initialization of TempWorkingDirTestCase has to be called after all
-    # the testdata files have been read. Otherwise the original testdata files
-    # are not accessible after cwd is changed.
-    super().setUp()
+    # Change working directory after all the testdata files have been read.
+    self.enter_context(test_case_utils.change_working_dir(self.tmp_dir))
 
     fileio.makedirs(os.path.dirname(_TEST_OUTPUT_METADATA_JSON))
     fileio.makedirs(os.path.dirname(_TEST_INPUT_DIR))

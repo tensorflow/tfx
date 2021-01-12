@@ -383,7 +383,7 @@ def delete_ai_platform_model(model_name):
                  check=True)
 
 
-class BaseKubeflowTest(test_case_utils.TempWorkingDirTestCase):
+class BaseKubeflowTest(test_case_utils.TfxTest):
   """Base class that defines testing harness for pipeline on KubeflowRunner."""
 
   _POLLING_INTERVAL_IN_SECONDS = 10
@@ -470,6 +470,7 @@ class BaseKubeflowTest(test_case_utils.TempWorkingDirTestCase):
   def setUp(self):
     super(BaseKubeflowTest, self).setUp()
     self._test_dir = self.tmp_dir
+    self.enter_context(test_case_utils.change_working_dir(self.tmp_dir))
 
     self._test_output_dir = 'gs://{}/test_output'.format(self._BUCKET_NAME)
 

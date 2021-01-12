@@ -35,7 +35,7 @@ from tfx.utils import retry
 from tfx.utils import test_case_utils
 
 
-class CliKubeflowEndToEndTest(test_case_utils.TempWorkingDirTestCase):
+class CliKubeflowEndToEndTest(test_case_utils.TfxTest):
 
   def _get_endpoint(self, config: Text) -> Text:
     lines = config.decode('utf-8').split('\n')
@@ -66,6 +66,8 @@ class CliKubeflowEndToEndTest(test_case_utils.TempWorkingDirTestCase):
         os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'testdata')
     self._testdata_dir_updated = self.tmp_dir
     fileio.makedirs(self._testdata_dir_updated)
+
+    self.enter_context(test_case_utils.change_working_dir(self.tmp_dir))
 
     self._pipeline_name = ('cli-kubeflow-e2e-test-' +
                            test_utils.generate_random_id())
@@ -388,7 +390,7 @@ class CliKubeflowEndToEndTest(test_case_utils.TempWorkingDirTestCase):
     # Run pipeline using kfp client to get run_id.
     run = self._run_pipeline_using_kfp_client(self._pipeline_name)
 
-    # Delete run.
+    absl.logging.info('Deleting run: %s', run.id)
     result = self.runner.invoke(cli_group, [
         'run', 'delete', '--engine', 'kubeflow', '--endpoint', self._endpoint,
         '--run_id', run.id
@@ -403,7 +405,7 @@ class CliKubeflowEndToEndTest(test_case_utils.TempWorkingDirTestCase):
     # Run pipeline using kfp client to get run_id.
     run = self._run_pipeline_using_kfp_client(self._pipeline_name)
 
-    # Delete run.
+    absl.logging.info('Terminating run: %s', run.id)
     result = self.runner.invoke(cli_group, [
         'run', 'terminate', '--engine', 'kubeflow', '--endpoint',
         self._endpoint, '--run_id', run.id
@@ -418,7 +420,8 @@ class CliKubeflowEndToEndTest(test_case_utils.TempWorkingDirTestCase):
     # Run pipeline using kfp client to get run_id.
     run = self._run_pipeline_using_kfp_client(self._pipeline_name)
 
-    # Delete run.
+    absl.logging.info('Retrieving run status: %s(%s)', run.id,
+                      self._pipeline_name)
     result = self.runner.invoke(cli_group, [
         'run', 'status', '--engine', 'kubeflow', '--pipeline_name',
         self._pipeline_name, '--endpoint', self._endpoint, '--run_id', run.id

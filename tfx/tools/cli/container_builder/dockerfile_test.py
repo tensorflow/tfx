@@ -38,7 +38,7 @@ COPY ./ ./
 ENV PYTHONPATH="/pipeline:${PYTHONPATH}"''' % _FAKE_VERSION
 
 
-class DockerfileTest(test_case_utils.TempWorkingDirTestCase):
+class DockerfileTest(test_case_utils.TfxTest):
 
   def setUp(self):
     super(DockerfileTest, self).setUp()
@@ -46,6 +46,8 @@ class DockerfileTest(test_case_utils.TempWorkingDirTestCase):
         os.path.abspath(os.path.dirname(__file__)), 'testdata')
     # change to a temporary working dir such that
     # there is no setup.py in the working dir.
+    self.enter_context(test_case_utils.change_working_dir(self.tmp_dir))
+
     self._test_dockerfile = os.path.abspath('.test_dockerfile')
     with open(self._test_dockerfile, 'w') as f:
       f.writelines(_test_dockerfile_content)

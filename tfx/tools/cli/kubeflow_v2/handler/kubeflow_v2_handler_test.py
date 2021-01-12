@@ -187,7 +187,7 @@ class _MockPipelineJobsResource(object):
     return self._MockGetRequest(name=name)
 
 
-class KubeflowV2HandlerTest(test_case_utils.TempWorkingDirTestCase):
+class KubeflowV2HandlerTest(test_case_utils.TfxTest):
 
   def setUp(self):
     super(KubeflowV2HandlerTest, self).setUp()
@@ -195,6 +195,7 @@ class KubeflowV2HandlerTest(test_case_utils.TempWorkingDirTestCase):
         os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'testdata')
 
     self._home = self.tmp_dir
+    self.enter_context(test_case_utils.change_working_dir(self.tmp_dir))
     self.enter_context(test_case_utils.override_env_var('HOME', self._home))
     self._kubeflow_v2_home = os.path.join(self._home, 'kubeflow_v2')
     self.enter_context(

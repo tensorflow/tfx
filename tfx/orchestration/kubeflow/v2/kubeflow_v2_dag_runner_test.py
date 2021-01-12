@@ -37,7 +37,11 @@ _ILLEGALLY_NAMED_PIPELINE = tfx_pipeline.Pipeline(
     pipeline_name='ThisIsIllegal', pipeline_root='/some/path', components=[])
 
 
-class KubeflowV2DagRunnerTest(test_case_utils.TempWorkingDirTestCase):
+class KubeflowV2DagRunnerTest(test_case_utils.TfxTest):
+
+  def setUp(self):
+    super().setUp()
+    self.enter_context(test_case_utils.change_working_dir(self.tmp_dir))
 
   def _compare_against_testdata(
       self, runner: kubeflow_v2_dag_runner.KubeflowV2DagRunner,

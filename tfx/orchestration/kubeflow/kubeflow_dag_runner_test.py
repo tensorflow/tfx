@@ -53,7 +53,11 @@ def _two_step_pipeline() -> tfx_pipeline.Pipeline:
   )
 
 
-class KubeflowDagRunnerTest(test_case_utils.TempWorkingDirTestCase):
+class KubeflowDagRunnerTest(test_case_utils.TfxTest):
+
+  def setUp(self):
+    super().setUp()
+    self.enter_context(test_case_utils.change_working_dir(self.tmp_dir))
 
   def testTwoStepPipeline(self):
     """Sanity-checks the construction and dependencies for a 2-step pipeline."""

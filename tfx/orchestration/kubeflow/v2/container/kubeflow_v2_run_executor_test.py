@@ -76,9 +76,11 @@ class _FakeExecutor(evaluator_executor.Executor):
 _EXEC_PROPERTIES = {"key_1": "value_1", "key_2": 536870911}
 
 
-class KubeflowV2RunExecutorTest(test_case_utils.TempWorkingDirTestCase):
+class KubeflowV2RunExecutorTest(test_case_utils.TfxTest):
 
   def setUp(self):
+    super().setUp()
+
     # Prepare executor input.
     serialized_metadata = self._get_text_from_test_data(
         "executor_invocation.json")
@@ -90,10 +92,8 @@ class KubeflowV2RunExecutorTest(test_case_utils.TempWorkingDirTestCase):
     self._expected_output = json.loads(
         self._get_text_from_test_data("expected_output_metadata.json"))
 
-    # The initialization of TempWorkingDirTestCase has to be called after all
-    # the testdata files have been read. Otherwise the original testdata files
-    # are not accessible after cwd is changed.
-    super(KubeflowV2RunExecutorTest, self).setUp()
+    # Change working directory after the testdata files have been read.
+    self.enter_context(test_case_utils.change_working_dir(self.tmp_dir))
 
   def _get_text_from_test_data(self, filename: str) -> str:
     filepath = os.path.join(os.path.dirname(__file__), "testdata", filename)

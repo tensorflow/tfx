@@ -20,12 +20,13 @@ import tensorflow as tf
 from tfx.utils import test_case_utils
 
 
-class TempWorkingDirTest(test_case_utils.TempWorkingDirTestCase):
+class TempWorkingDirTest(test_case_utils.TfxTest):
 
   def setUp(self):
     super().setUp()
     self.enter_context(test_case_utils.override_env_var('NEW_ENV', 'foo'))
     self.enter_context(test_case_utils.override_env_var('OVERWRITE_ENV', 'baz'))
+    self.enter_context(test_case_utils.change_working_dir(self.tmp_dir))
 
   # This test method will be invoked manually in TestCaseUtilsTest.
   def successfulTest(self):
@@ -35,7 +36,11 @@ class TempWorkingDirTest(test_case_utils.TempWorkingDirTestCase):
     self.assertEqual(os.getenv('OVERWRITE_ENV'), 'baz')
 
 
-class FailingTempWorkingDirTest(test_case_utils.TempWorkingDirTestCase):
+class FailingTempWorkingDirTest(test_case_utils.TfxTest):
+
+  def setUp(self):
+    super().setUp()
+    self.enter_context(test_case_utils.change_working_dir(self.tmp_dir))
 
   # This test method will be invoked manually in TestCaseUtilsTest.
   def failingTest(self):
@@ -56,7 +61,7 @@ class TestCaseUtilsTest(test_case_utils.TfxTest):
     if check:
       self.assertTrue(result.wasSuccessful())
 
-  def testTempWorkingDir(self):
+  def testTempWorkingDirWithTestCaseClass(self):
     old_cwd = os.getcwd()
     self._run_test_case_class(TempWorkingDirTest, 'successful', check=True)
     self.assertEqual(os.getcwd(), old_cwd)
@@ -65,6 +70,16 @@ class TestCaseUtilsTest(test_case_utils.TfxTest):
 
     self._run_test_case_class(FailingTempWorkingDirTest, 'failing')
     self.assertEqual(os.getcwd(), old_cwd)
+
+  def testChangeWorkingDir(self):
+    cwd = os.getcwd()
+    new_cwd = os.path.join(self.tmp_dir, 'new')
+    os.makedirs(new_cwd)
+    with test_case_utils.change_working_dir(new_cwd) as old_cwd:
+      self.assertEqual(os.path.realpath(old_cwd), os.path.realpath(cwd))
+      self.assertEqual(os.path.realpath(new_cwd), os.path.realpath(os.getcwd()))
+
+    self.assertEqual(os.path.realpath(cwd), os.path.realpath(os.getcwd()))
 
   def testOverrideEnvVar(self):
     old_home = os.getenv('HOME')

@@ -32,7 +32,7 @@ from tfx.utils import io_utils
 from tfx.utils import test_case_utils
 
 
-class BaseEndToEndTest(test_case_utils.TempWorkingDirTestCase):
+class BaseEndToEndTest(test_case_utils.TfxTest):
   """Base class for end-to-end testing of TFX templates."""
 
   def setUp(self):
@@ -46,6 +46,7 @@ class BaseEndToEndTest(test_case_utils.TempWorkingDirTestCase):
 
     self._pipeline_name = 'TEMPLATE_E2E_TEST'
     self._project_dir = self.tmp_dir
+    self.enter_context(test_case_utils.change_working_dir(self.tmp_dir))
     self._temp_dir = os.path.join(self._project_dir, 'tmp')
     os.makedirs(self._temp_dir)
 

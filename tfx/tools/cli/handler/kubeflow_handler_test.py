@@ -62,10 +62,11 @@ class _MockRunResponse(object):
     self.created_at = created_at
 
 
-class KubeflowHandlerTest(test_case_utils.TempWorkingDirTestCase):
+class KubeflowHandlerTest(test_case_utils.TfxTest):
 
   def setUp(self):
     super(KubeflowHandlerTest, self).setUp()
+    self.enter_context(test_case_utils.change_working_dir(self.tmp_dir))
 
     # Flags for handler.
     self.engine = 'kubeflow'

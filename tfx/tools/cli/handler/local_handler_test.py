@@ -61,13 +61,14 @@ def _MockSubprocess3(cmd, env):  # pylint: disable=unused-argument
   return 0
 
 
-class LocalHandlerTest(test_case_utils.TempWorkingDirTestCase):
+class LocalHandlerTest(test_case_utils.TfxTest):
 
   def setUp(self):
     super(LocalHandlerTest, self).setUp()
     self.chicago_taxi_pipeline_dir = os.path.join(
         os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'testdata')
     self._home = self.tmp_dir
+    self.enter_context(test_case_utils.change_working_dir(self.tmp_dir))
     self.enter_context(test_case_utils.override_env_var('HOME', self._home))
     self._local_home = os.path.join(os.environ['HOME'], 'local')
     self.enter_context(

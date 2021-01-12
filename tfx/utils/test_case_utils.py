@@ -98,16 +98,27 @@ class TfxTest(tf.test.TestCase):
     return self.assertProtoEquals(expected, actual)
 
 
-class TempWorkingDirTestCase(TfxTest):
-  """TestCase class which uses a temporary directory as working directory.
+@contextlib.contextmanager
+def change_working_dir(working_dir: str):
+  """Changes working directory to a given temporary directory.
 
-  Inherit this class to make tests to use a temporary directory as a working
-  directory.
+  Example:
+    with test_case_utils.change_working_dir(tmp_dir):
+
+    or
+
+    self.enter_context(test_case_utils.change_working_dir(self.tmp_dir))
+
+  Args:
+    working_dir: The new working directory. This directoy should already exist.
+
+  Yields:
+    Old working directory.
   """
 
-  def setUp(self):
-    super().setUp()
+  old_dir = os.getcwd()
+  os.chdir(working_dir)
 
-    old_dir = os.getcwd()
-    os.chdir(self.tmp_dir)
-    self.addCleanup(os.chdir, old_dir)
+  yield old_dir
+
+  os.chdir(old_dir)

@@ -72,7 +72,7 @@ def _MockSubprocess4(cmd):  # pylint: disable=invalid-name, unused-argument
   return list_dags_output
 
 
-class AirflowHandlerTest(test_case_utils.TempWorkingDirTestCase):
+class AirflowHandlerTest(test_case_utils.TfxTest):
 
   def setUp(self):
     super(AirflowHandlerTest, self).setUp()
@@ -89,6 +89,8 @@ class AirflowHandlerTest(test_case_utils.TempWorkingDirTestCase):
     self.pipeline_root = os.path.join(self._home, 'tfx', 'pipelines')
     self.pipeline_name = 'chicago_taxi_simple'
     self.run_id = 'manual__2019-07-19T19:56:02+00:00'
+
+    self.enter_context(test_case_utils.change_working_dir(self.tmp_dir))
 
     # Pipeline args for mocking subprocess
     self.pipeline_args = {'pipeline_name': 'chicago_taxi_simple'}
