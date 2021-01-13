@@ -1,4 +1,4 @@
-# Lint as: python2, python3
+# Lint as: python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -66,7 +66,7 @@ FLAGS = flags.FLAGS
 
 
 def ignore_test_objects(path, parent, children):
-  """Removes all "test" modules. These are not part of the public api.
+  """Removes "test" and "example" modules. These are not part of the public api.
 
   Args:
     path: A tuple of name parts forming the attribute-lookup path to this
@@ -81,8 +81,15 @@ def ignore_test_objects(path, parent, children):
   """
   del path
   del parent
-  return [(name, obj) for (name, obj) in children
-          if not (name.endswith("_test") or name == "testdata")]
+  new_children = []
+  for (name, obj) in children:
+    if name.endswith("_test"):
+      continue
+    if name.startswith("test_"):
+      continue
+
+    new_children.append((name, obj))
+  return new_children
 
 
 def main(_):
@@ -92,7 +99,7 @@ def main(_):
   api_generator.utils.recursive_import(tfx.extensions)
 
   do_not_generate_docs_for = []
-  for name in ["utils", "proto", "dependencies", "version"]:
+  for name in ["utils", "proto", "dependencies", "version", "examples"]:
     submodule = getattr(tfx, name, None)
     if submodule is not None:
       do_not_generate_docs_for.append(submodule)
