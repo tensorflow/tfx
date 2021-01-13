@@ -15,6 +15,7 @@
 """Tests for tfx.components.data_view.binder_executor."""
 import tensorflow as tf  # pylint: disable=g-explicit-tensorflow-version-import
 from tfx.components.experimental.data_view import binder_executor
+from tfx.components.experimental.data_view import constants
 from tfx.types import standard_artifacts
 
 
@@ -24,6 +25,7 @@ class BinderExecutorTest(tf.test.TestCase):
     data_view = standard_artifacts.DataView()
     data_view.uri = '/old/data_view'
     data_view.id = 1
+    data_view.mlmd_artifact.create_time_since_epoch = 123
 
     existing_custom_property = 'payload_format'
     input_examples = standard_artifacts.Examples()
@@ -51,10 +53,10 @@ class BinderExecutorTest(tf.test.TestCase):
     oe = output_examples[0]
     self.assertEqual(
         oe.get_string_custom_property(
-            binder_executor.DATA_VIEW_URI_PROPERTY_KEY), data_view.uri)
+            constants.DATA_VIEW_URI_PROPERTY_KEY), '/old/data_view')
     self.assertEqual(
         oe.get_int_custom_property(
-            binder_executor.DATA_VIEW_ID_PROPERTY_KEY), data_view.id)
+            constants.DATA_VIEW_CREATE_TIME_KEY), 123)
 
     # output should share the URI with the input.
     self.assertEqual(oe.uri, input_examples.uri)

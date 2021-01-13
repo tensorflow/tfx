@@ -23,5 +23,5 @@ from __future__ import print_function
 # Custom properties attached to the Examples artifacts output by DataViewBinder.
 # Components can use these properties to construct the right TFXIO to access
 # the data through the DataView.
-DATA_VIEW_ID_PROPERTY_KEY = 'data_view_id'
 DATA_VIEW_URI_PROPERTY_KEY = 'data_view_uri'
+DATA_VIEW_CREATE_TIME_KEY = 'data_view_create_time_since_epoch'

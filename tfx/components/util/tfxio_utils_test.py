@@ -89,7 +89,7 @@ _RESOLVE_TEST_CASES = [
         testcase_name='proto_with_data_view',
         payload_formats=[example_gen_pb2.PayloadFormat.FORMAT_PROTO] * 3,
         data_view_uris=['dataview1', 'dataview3', 'dataview2'],
-        data_view_ids=[1, 3, 2],
+        data_view_create_times=[1, 3, 2],
         expected_payload_format=example_gen_pb2.PayloadFormat.FORMAT_PROTO,
         expected_data_view_uri='dataview3',
     ),
@@ -110,7 +110,7 @@ _RESOLVE_TEST_CASES = [
         testcase_name='proto_with_missing_data_view',
         payload_formats=[example_gen_pb2.PayloadFormat.FORMAT_PROTO] * 3,
         data_view_uris=['dataview1', None, 'dataview2'],
-        data_view_ids=[1, None, 2],
+        data_view_create_times=[1, None, 2],
         expected_error_type=ValueError,
         expected_data_view_uri='did not have DataView attached',
     ),
@@ -223,7 +223,7 @@ class TfxioUtilsTest(tf.test.TestCase, parameterized.TestCase):
       self,
       payload_formats,
       data_view_uris=None,
-      data_view_ids=None,
+      data_view_create_times=None,
       expected_payload_format=None,
       expected_data_view_uri=None,
       expected_error_type=None,
@@ -231,18 +231,18 @@ class TfxioUtilsTest(tf.test.TestCase, parameterized.TestCase):
     examples = []
     if data_view_uris is None:
       data_view_uris = [None] * len(payload_formats)
-    if data_view_ids is None:
-      data_view_ids = [None] * len(payload_formats)
-    for payload_format, data_view_uri, data_view_id in zip(
-        payload_formats, data_view_uris, data_view_ids):
+    if data_view_create_times is None:
+      data_view_create_times = [None] * len(payload_formats)
+    for payload_format, data_view_uri, data_view_create_time in zip(
+        payload_formats, data_view_uris, data_view_create_times):
       artifact = standard_artifacts.Examples()
       examples_utils.set_payload_format(artifact, payload_format)
       if data_view_uri is not None:
         artifact.set_string_custom_property(
             constants.DATA_VIEW_URI_PROPERTY_KEY, data_view_uri)
-      if data_view_id is not None:
+      if data_view_create_time is not None:
         artifact.set_int_custom_property(
-            constants.DATA_VIEW_ID_PROPERTY_KEY, data_view_id)
+            constants.DATA_VIEW_CREATE_TIME_KEY, data_view_create_time)
       examples.append(artifact)
     if expected_error_type is None:
       payload_format, data_view_uri = (

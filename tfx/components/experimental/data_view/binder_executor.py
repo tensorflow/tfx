@@ -20,10 +20,6 @@ from tfx.dsl.components.base import base_executor
 from tfx.types import artifact_utils
 
 
-# Custom properties attached to the output Examples artifacts
-DATA_VIEW_ID_PROPERTY_KEY = 'data_view_id'
-DATA_VIEW_URI_PROPERTY_KEY = 'data_view_uri'
-
 # Keys for input_dict.
 _INPUT_EXAMPLES_KEY = 'input_examples'
 _DATA_VIEW_KEY = 'data_view'
@@ -51,6 +47,7 @@ class DataViewBinderExecutor(base_executor.BaseExecutor):
     # input, with the following additional custom properties added.
     output_examples_artifact.copy_from(input_examples_artifact)
     output_examples_artifact.set_int_custom_property(
-        constants.DATA_VIEW_ID_PROPERTY_KEY, data_view_artifact.id)
+        constants.DATA_VIEW_CREATE_TIME_KEY,
+        data_view_artifact.mlmd_artifact.create_time_since_epoch)
     output_examples_artifact.set_string_custom_property(
         constants.DATA_VIEW_URI_PROPERTY_KEY, data_view_artifact.uri)

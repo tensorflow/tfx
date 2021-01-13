@@ -79,9 +79,9 @@ def resolve_payload_format_and_data_view_uri(
     return payload_format, None
 
   # All the artifacts have a DataView attached -- resolve to the latest
-  # DataView (the one with the largest ID). This will guarantee that the
-  # RecordBatch read from each artifact will share the same Arrow schema (and
-  # thus Tensors fed to TF graphs, if applicable). The DataView will need
+  # DataView (the one with the largest create time). This will guarantee that
+  # the RecordBatch read from each artifact will share the same Arrow schema
+  # (and thus Tensors fed to TF graphs, if applicable). The DataView will need
   # to guarantee backward compatibilty with older spans. Usually the DataView
   # is a struct2tensor query, so such guarantee is provided by protobuf
   # (as long as the user follows the basic principles of making changes to
@@ -307,8 +307,8 @@ def _get_data_view_info(
     data_view_uri = examples.get_string_custom_property(
         constants.DATA_VIEW_URI_PROPERTY_KEY)
     if data_view_uri:
-      data_view_id = examples.get_int_custom_property(
-          constants.DATA_VIEW_ID_PROPERTY_KEY)
-      return data_view_uri, data_view_id
+      data_view_create_time = examples.get_int_custom_property(
+          constants.DATA_VIEW_CREATE_TIME_KEY)
+      return data_view_uri, data_view_create_time
 
   return None
