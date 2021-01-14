@@ -37,8 +37,6 @@
     Such alternative image should behave the same as official
     `tensorflow/serving` image such as the same model volume path, serving port,
     etc.
-*   Depends on `tensorflow>=1.15.2,!=2.0.*,!=2.1.*,!=2.2.*,!=2.3.*,<3`.
-*   Depends on `tensorflow-serving-api>=1.15,!=2.0.*,!=2.1.*,!=2.2.*,!=2.3.*,<3`.
 
 ## Documentation updates
 

@@ -85,7 +85,7 @@ def make_required_install_packages():
       'kubernetes>=10.0.1,<12',
       'pyarrow>=0.17,<0.18',
       'pyyaml>=3.12,<6',
-      'tensorflow>=1.15.2,!=2.0.*,!=2.1.*,!=2.2.*,!=2.3.*,<3',
+      'tensorflow>=1.15.2,!=2.0.*,!=2.1.*,!=2.2.*,!=2.4.*,<3',
       'tensorflow-hub>=0.9.0,<0.10',
       # TODO(b/159488890): remove user module-only dependency.
       'tensorflow-cloud>=0.1,<0.2',
@@ -99,7 +99,7 @@ def make_required_install_packages():
           nightly='>=0.27.0.dev',
           git_master='@git+https://github.com/tensorflow/model-analysis@master'
       ),
-      'tensorflow-serving-api>=1.15,!=2.0.*,!=2.1.*,!=2.2.*,!=2.3.*,<3',
+      'tensorflow-serving-api>=1.15,!=2.0.*,!=2.1.*,!=2.2.*,!=2.4.*,<3',
       'tensorflow-transform' + select_constraint(
           default='>=0.26,<0.27',
           nightly='>=0.27.0.dev',

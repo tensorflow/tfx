@@ -69,8 +69,9 @@ class CliKubeflowEndToEndTest(test_case_utils.TfxTest):
 
     self.enter_context(test_case_utils.change_working_dir(self.tmp_dir))
 
+    # Generate a unique pipeline name. Uses tmp_dir as a random seed.
     self._pipeline_name = ('cli-kubeflow-e2e-test-' +
-                           test_utils.generate_random_id())
+                           test_utils.generate_random_id(self.tmp_dir))
     absl.logging.info('Pipeline name is %s' % self._pipeline_name)
     self._pipeline_name_v2 = self._pipeline_name + '_v2'
 
