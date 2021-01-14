@@ -36,7 +36,7 @@ _KUBEFLOW_TFX_CMD = (
     'tfx.orchestration.kubeflow.v2.container.kubeflow_v2_run_executor')
 
 # Current schema version for the API proto.
-_SCHEMA_VERSION = 'v2alpha1'
+_SCHEMA_VERSION = '1.0.0'
 
 
 # Default TFX container image/commands to use in KubeflowV2DagRunner.

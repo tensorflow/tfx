@@ -40,7 +40,7 @@
         }
       }
     },
-    "schemaVersion":"v2alpha1",
+    "schemaVersion":"1.0.0",
     "pipelineInfo":{
       "name":"two-step-pipeline"
     },
