@@ -25,6 +25,14 @@
 * Deprecated input/output compatibility aliases for ExampleValidator.
 
 ### For pipeline authors
+*   The `tfx.components.common_nodes.importer_node.ImporterNode` class has been
+    moved to `tfx.dsl.components.common.importer_node.ImporterNode`, with its
+    old module path kept as a deprecated alias, which will be removed in a
+    future version.
+*   The `tfx.components.common_nodes.resolver_node.ResolverNode` class has been
+    moved to `tfx.dsl.components.common.resolver_node.ResolverNode`, with its
+    old module path kept as a deprecated alias, which will be removed in a
+    future version.
 
 ### For component authors
 

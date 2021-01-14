@@ -59,7 +59,8 @@ class BaseNode(with_metaclass(abc.ABCMeta, json_utils.Jsonable)):
     Returns:
       an id for the node.
     """
-    node_class_name = cls.__name__
+    node_class = deprecation_utils.get_first_nondeprecated_class(cls)
+    node_class_name = node_class.__name__
     if instance_name:
       return '{}.{}'.format(node_class_name, instance_name)
     else:
@@ -109,7 +110,8 @@ class BaseNode(with_metaclass(abc.ABCMeta, json_utils.Jsonable)):
 
   @property
   def type(self) -> Text:
-    return '.'.join([self.__class__.__module__, self.__class__.__name__])
+    node_class = deprecation_utils.get_first_nondeprecated_class(self.__class__)
+    return '.'.join([node_class.__module__, node_class.__name__])
 
   @property
   @deprecation_utils.deprecated(None,
@@ -133,7 +135,8 @@ class BaseNode(with_metaclass(abc.ABCMeta, json_utils.Jsonable)):
     """
     if self._id:
       return self._id
-    node_class_name = self.__class__.__name__
+    node_class = deprecation_utils.get_first_nondeprecated_class(self.__class__)
+    node_class_name = node_class.__name__
     if self._instance_name:
       return '{}.{}'.format(node_class_name, self._instance_name)
     else:

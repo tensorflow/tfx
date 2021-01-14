@@ -16,14 +16,14 @@
 from typing import Any, Dict, List, Optional, Text, Tuple
 
 from tfx import components
-from tfx.components.common_nodes import importer_node
-from tfx.components.common_nodes import resolver_node
 from tfx.components.evaluator import constants
 from tfx.dsl.component.experimental import executor_specs
 from tfx.dsl.component.experimental import placeholders
 from tfx.dsl.components.base import base_component
 from tfx.dsl.components.base import base_node
 from tfx.dsl.components.base import executor_spec
+from tfx.dsl.components.common import importer_node
+from tfx.dsl.components.common import resolver_node
 from tfx.dsl.experimental import latest_artifacts_resolver
 from tfx.dsl.experimental import latest_blessed_model_resolver
 from tfx.orchestration import data_types
@@ -201,21 +201,20 @@ class StepBuilder(object):
     Returns:
       A list of PipelineTaskSpec messages corresponding to the node. For most of
       the cases, the list contains a single element. The only exception is when
-      compiling latest blessed model resolver. One DSL node will be splitted to
-      two resolver specs to reflect the two-phased query execution.
+      compiling latest blessed model resolver. One DSL node will be
+      split to two resolver specs to reflect the two-phased query execution.
     Raises:
       NotImplementedError: When the node being built is an InfraValidator.
     """
     task_spec = pipeline_pb2.PipelineTaskSpec()
-    task_spec.task_info.CopyFrom(
-        pipeline_pb2.PipelineTaskInfo(name=self._name))
+    task_spec.task_info.CopyFrom(pipeline_pb2.PipelineTaskInfo(name=self._name))
     executor_label = _EXECUTOR_LABEL_PATTERN.format(self._name)
     task_spec.executor_label = executor_label
     executor = pipeline_pb2.PipelineDeploymentConfig.ExecutorSpec()
 
     # 1. Resolver tasks won't have input artifacts in the API proto. First we
     #    specialcase two resolver types we support.
-    if isinstance(self._node, components.ResolverNode):
+    if isinstance(self._node, resolver_node.ResolverNode):
       return self._build_resolver_spec()
 
     # 2. Build the node spec.
@@ -257,7 +256,7 @@ class StepBuilder(object):
       task_spec.inputs.parameters[k].CopyFrom(v)
 
     # 3. Build the executor body for other common tasks.
-    if isinstance(self._node, components.ImporterNode):
+    if isinstance(self._node, importer_node.ImporterNode):
       executor.importer.CopyFrom(self._build_importer_spec())
     elif isinstance(self._node, components.FileBasedExampleGen):
       executor.container.CopyFrom(self._build_file_based_example_gen_spec())
@@ -376,7 +375,7 @@ class StepBuilder(object):
 
   def _build_importer_spec(self) -> ImporterSpec:
     """Builds ImporterSpec."""
-    assert isinstance(self._node, components.ImporterNode)
+    assert isinstance(self._node, importer_node.ImporterNode)
     result = ImporterSpec(
         properties=compiler_utils.convert_from_tfx_properties(
             self._exec_properties[importer_node.PROPERTIES_KEY]),
@@ -388,7 +387,7 @@ class StepBuilder(object):
         compiler_utils.value_converter(
             self._exec_properties[importer_node.SOURCE_URI_KEY]))
     single_artifact = artifact_utils.get_single_instance(
-        self._node.outputs[importer_node.IMPORT_RESULT_KEY].get())
+        list(self._node.outputs[importer_node.IMPORT_RESULT_KEY].get()))
     result.type_schema.CopyFrom(
         pipeline_pb2.ArtifactTypeSchema(
             instance_schema=compiler_utils.get_artifact_schema(
@@ -410,8 +409,7 @@ class StepBuilder(object):
     """
 
     task_spec = pipeline_pb2.PipelineTaskSpec()
-    task_spec.task_info.CopyFrom(
-        pipeline_pb2.PipelineTaskInfo(name=self._name))
+    task_spec.task_info.CopyFrom(pipeline_pb2.PipelineTaskInfo(name=self._name))
     executor_label = _EXECUTOR_LABEL_PATTERN.format(self._name)
     task_spec.executor_label = executor_label
 
@@ -447,15 +445,14 @@ class StepBuilder(object):
       artifact_queries[name] = ResolverSpec.ArtifactQuerySpec(
           filter=query_filter)
 
-    resolver = ResolverSpec(output_artifact_queries=artifact_queries)
+    resolver_spec = ResolverSpec(output_artifact_queries=artifact_queries)
     executor = pipeline_pb2.PipelineDeploymentConfig.ExecutorSpec()
-    executor.resolver.CopyFrom(resolver)
+    executor.resolver.CopyFrom(resolver_spec)
     self._deployment_config.executors[executor_label].CopyFrom(executor)
     return [task_spec]
 
   def _build_resolver_for_latest_model_blessing(
-      self,
-      model_blessing_channel_key: str) -> pipeline_pb2.PipelineTaskSpec:
+      self, model_blessing_channel_key: str) -> pipeline_pb2.PipelineTaskSpec:
     """Builds the resolver spec for latest valid ModelBlessing artifact."""
     # 1. Build the task info.
     result = pipeline_pb2.PipelineTaskSpec()
@@ -595,7 +592,7 @@ class StepBuilder(object):
       TypeError: When get unsupported resolver policy. Currently only support
         LatestBlessedModelResolver and LatestArtifactsResolver.
     """
-    assert isinstance(self._node, components.ResolverNode)
+    assert isinstance(self._node, resolver_node.ResolverNode)
 
     if (self._exec_properties[resolver_node.RESOLVER_CLASS] !=
         latest_blessed_model_resolver.LatestBlessedModelResolver and

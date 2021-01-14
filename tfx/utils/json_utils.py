@@ -25,6 +25,7 @@ import json
 from typing import Any, Dict, List, Text, Type, Union
 
 from six import with_metaclass
+from tfx.utils import deprecation_utils
 from tfx.utils import proto_utils
 
 from google.protobuf import message
@@ -124,11 +125,7 @@ class _DefaultEncoder(json.JSONEncoder):
     if inspect.isclass(obj):
       # When serializing, skip over deprecated class aliases in the class
       # hierarchy.
-      if getattr(obj, '_TFX_DEPRECATED_CLASS', False):
-        for cls in inspect.getmro(obj):
-          if not getattr(cls, '_TFX_DEPRECATED_CLASS', False):
-            obj = cls
-            break
+      obj = deprecation_utils.get_first_nondeprecated_class(obj)
       return {
           _TFX_OBJECT_TYPE_KEY: _ObjectType.CLASS,
           _MODULE_KEY: obj.__module__,

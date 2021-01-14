@@ -296,7 +296,7 @@ nodes {
   pipeline_node {
     node_info {
       type {
-        name: "tfx.components.common_nodes.importer_node.ImporterNode"
+        name: "tfx.dsl.components.common.importer_node.ImporterNode"
       }
       id: "my_importer"
     }

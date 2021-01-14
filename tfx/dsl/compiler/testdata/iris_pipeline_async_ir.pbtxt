@@ -108,7 +108,7 @@ nodes {
   pipeline_node {
     node_info {
       type {
-        name: "tfx.components.common_nodes.importer_node.ImporterNode"
+        name: "tfx.dsl.components.common.importer_node.ImporterNode"
       }
       id: "ImporterNode.my_importer"
     }
@@ -210,7 +210,7 @@ nodes {
   pipeline_node {
     node_info {
       type {
-        name: "tfx.components.common_nodes.resolver_node.ResolverNode"
+        name: "tfx.dsl.components.common.resolver_node.ResolverNode"
       }
       id: "ResolverNode.latest_blessed_model_resolver"
     }

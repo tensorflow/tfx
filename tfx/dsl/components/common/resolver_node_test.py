@@ -20,7 +20,7 @@ from __future__ import print_function
 
 import tensorflow as tf
 from tfx import types
-from tfx.components.common_nodes import resolver_node
+from tfx.dsl.components.common import resolver_node
 from tfx.dsl.experimental import latest_artifacts_resolver
 from tfx.orchestration import data_types
 from tfx.orchestration import metadata
@@ -42,7 +42,9 @@ class ResolverNodeTest(tf.test.TestCase):
         rnode.exec_properties, {
             resolver_node.RESOLVER_CLASS:
                 latest_artifacts_resolver.LatestArtifactsResolver,
-            resolver_node.RESOLVER_CONFIGS: {'desired_num_of_artifacts': 5}
+            resolver_node.RESOLVER_CONFIGS: {
+                'desired_num_of_artifacts': 5
+            }
         })
     self.assertEqual(rnode.inputs.get_all()['channel_to_resolve'],
                      channel_to_resolve)

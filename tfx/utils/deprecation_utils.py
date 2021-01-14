@@ -153,3 +153,20 @@ def deprecated_alias(deprecated_name, name, func_or_class, warn_once=True):
       return func_or_class(*args, **kwargs)
 
     return new_func
+
+
+def get_first_nondeprecated_class(cls):
+  """Get the first non-deprecated class in class hierarchy.
+
+  For internal use only, no backwards compatibility guarantees.
+
+  Args:
+    cls: A class which may be marked as a deprecated alias.
+
+  Returns:
+    First class in the given class's class hierarchy (traversed in MRO order)
+    that is not a deprecated alias.
+  """
+  for mro_class in inspect.getmro(cls):
+    if mro_class.__name__ != '_NewDeprecatedClass':
+      return mro_class

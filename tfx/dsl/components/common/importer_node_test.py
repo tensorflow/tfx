@@ -12,7 +12,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Tests for tfx.components.common_nodes.importer_node."""
+"""Tests for tfx.dsl.components.common.importer_node."""
 
 from __future__ import absolute_import
 from __future__ import division
@@ -22,7 +22,7 @@ from typing import Text
 
 import tensorflow as tf
 from tfx import types
-from tfx.components.common_nodes import importer_node
+from tfx.dsl.components.common import importer_node
 from tfx.orchestration import data_types
 from tfx.orchestration import metadata
 from tfx.types import artifact_utils

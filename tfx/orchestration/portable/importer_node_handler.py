@@ -17,7 +17,7 @@ from typing import Any, Dict
 
 from absl import logging
 from tfx import types
-from tfx.components.common_nodes import importer_node
+from tfx.dsl.components.common import importer_node
 from tfx.orchestration import metadata
 from tfx.orchestration.portable import execution_publish_utils
 from tfx.orchestration.portable import inputs_utils
@@ -34,7 +34,8 @@ class ImporterNodeHandler(system_node_handler.SystemNodeHandler):
   def _extract_proto_map(
       self,
       # The actual type of proto message of map<str, pipeline_pb2.Value>.
-      proto_map: Any) -> Dict[str, Any]:
+      proto_map: Any
+  ) -> Dict[str, Any]:
     extract_mlmd_value = lambda v: getattr(v, v.WhichOneof('value'))
     return {k: extract_mlmd_value(v.field_value) for k, v in proto_map.items()}
 

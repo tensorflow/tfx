@@ -61,9 +61,9 @@ DEFAULT_DRIVER_OPERATORS = {
 }
 
 _SYSTEM_NODE_HANDLERS = {
-    'tfx.components.common_nodes.importer_node.ImporterNode':
+    'tfx.dsl.components.common.importer_node.ImporterNode':
         importer_node_handler.ImporterNodeHandler,
-    'tfx.components.common_nodes.resolver_node.ResolverNode':
+    'tfx.dsl.components.common.resolver_node.ResolverNode':
         resolver_node_handler.ResolverNodeHandler,
 }
 

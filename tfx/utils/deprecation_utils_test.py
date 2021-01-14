@@ -106,7 +106,7 @@ class DependencyUtilsTest(tf.test.TestCase):
     mock_absl_warning.reset_mock()
 
     # Check properties of the deprecated class.
-    self.assertEqual(DeprecatedAliasClass1._TFX_DEPRECATED_CLASS, True)
+    self.assertEqual(DeprecatedAliasClass1.__name__, '_NewDeprecatedClass')
     self.assertEqual(
         repr(DeprecatedAliasClass1.__doc__),
         repr("""DEPRECATED CLASS
