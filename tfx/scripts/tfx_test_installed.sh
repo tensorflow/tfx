@@ -34,7 +34,7 @@ set -ex
 
 PYTHON_BINARY=$(which python)
 
-TFX_VERSION=$(${PYTHON_BINARY} -c 'import tfx; print(tfx.version.__version__)')
+TFX_VERSION=$(${PYTHON_BINARY} -c 'from tfx import version; print(version.__version__)')
 
 rm -rf tfx
 if [[ "${TFX_VERSION}" != *dev* ]]; then
