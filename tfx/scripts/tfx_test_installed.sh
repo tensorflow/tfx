@@ -27,7 +27,7 @@
 # Prerequites:
 #  - Installed TFX package.
 # Example usage;
-#  $ cat run.sh | docker run --rm -i gcr.io/deeplearning-platform-release/tf2-cpu.2-4  bash -c 'source /dev/stdin'
+#  $ cat tfx_test_installed.sh | docker run --rm -i gcr.io/deeplearning-platform-release/tf2-cpu.2-4  bash -c 'source /dev/stdin'
 #
 
 set -ex
@@ -57,6 +57,12 @@ SKIP_LIST=(
   'tfx/orchestration/metadata_test.py'
   # TODO(b/175507983): Will be fixed in 0.26.0. Delete after 0.26.0 release.
   'tfx/experimental/distributed_inference/*'
+
+  # TODO(b/177609153): Will be fixed in 0.27.0. Delete after 0.27.0 release.
+  'tfx/tools/cli/container_builder/dockerfile_test.py'
+  'tfx/tools/cli/handler/beam_handler_test.py'
+  'tfx/tools/cli/handler/local_handler_test.py'
+  'tfx/tools/cli/kubeflow_v2/handler/kubeflow_v2_handler_test.py'
 
   # TODO(b/174968932): Delete after renaming this file.
   'tfx/orchestration/kubeflow/kubeflow_gcp_perf_test.py'
