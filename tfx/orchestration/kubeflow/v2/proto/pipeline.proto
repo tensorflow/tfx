@@ -285,6 +285,7 @@ message TaskInputsSpec {
       // only be set if the schema version is `2.0.0`.
       string component_input_artifact = 4;
     }
+    reserved 5;  // artifact_list_selector
   }
 
   // Represents an input parameter. The value can be taken from an upstream
@@ -309,6 +310,7 @@ message TaskInputsSpec {
       // Pass the input parameter from parent component input parameter.
       string component_input_parameter = 3;
     }
+    reserved 4;  // parameter_expression_selector
   }
 
   // A map of input parameters which are small values, stored by the system and
