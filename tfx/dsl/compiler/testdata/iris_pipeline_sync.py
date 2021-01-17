@@ -61,8 +61,7 @@ def create_test_pipeline():
       },
       artifact_type=standard_artifacts.Examples)
 
-  schema_gen = SchemaGen(
-      statistics=statistics_gen.outputs["statistics"], infer_feature_shape=True)
+  schema_gen = SchemaGen(statistics=statistics_gen.outputs["statistics"])
 
   example_validator = ExampleValidator(
       statistics=statistics_gen.outputs["statistics"],

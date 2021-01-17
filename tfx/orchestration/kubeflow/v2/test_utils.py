@@ -129,8 +129,7 @@ def create_pipeline_components(
   statistics_gen = components.StatisticsGen(
       examples=example_gen.outputs['examples'])
   schema_gen = components.SchemaGen(
-      statistics=statistics_gen.outputs['statistics'],
-      infer_feature_shape=False)
+      statistics=statistics_gen.outputs['statistics'])
   example_validator = components.ExampleValidator(
       statistics=statistics_gen.outputs['statistics'],
       schema=schema_gen.outputs['schema'])

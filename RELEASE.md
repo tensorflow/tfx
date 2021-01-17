@@ -2,11 +2,11 @@
 
 ## Major Features and Improvements
 
-* Supports different types of quantizations on TFLite conversion using
-  TFLITE_REWRITER by setting quantization_optimizations,
-  quantization_supported_types and quantization_enable_full_integer. Flag
-  definitions can be found here: [Post-traning
-  quantization](https://www.tensorflow.org/lite/performance/post_training_quantization).
+*   Supports different types of quantizations on TFLite conversion using
+    TFLITE_REWRITER by setting quantization_optimizations,
+    quantization_supported_types and quantization_enable_full_integer. Flag
+    definitions can be found here: [Post-traning
+    quantization](https://www.tensorflow.org/lite/performance/post_training_quantization).
 
 ## Breaking changes
 *   Do not store pipeline information on the local filesystem when using
@@ -17,12 +17,14 @@
     `${HOME}/tfx/kubeflow` or `${HOME}/kubeflow` but those will not be used
     any more.
 
-* enable_quantization from TFLITE_REWRITER is removed and setting
-  quantization_optimizations = [tf.lite.Optimize.DEFAULT] will perform the same
-  type of quantization, dynamic range quantization. Users of the TFLITE_REWRITER
-  who do not enable quantization should be uneffected.
+*   enable_quantization from TFLITE_REWRITER is removed and setting
+    quantization_optimizations = [tf.lite.Optimize.DEFAULT] will perform the same
+    type of quantization, dynamic range quantization. Users of the TFLITE_REWRITER
+    who do not enable quantization should be uneffected.
 
-* Deprecated input/output compatibility aliases for ExampleValidator.
+*   Deprecated input/output compatibility aliases for ExampleValidator.
+*   Default value for infer_feature_shape for SchemaGen changed from False to
+    True, as indicated in previous release log.
 
 ### For pipeline authors
 *   The `tfx.components.common_nodes.importer_node.ImporterNode` class has been

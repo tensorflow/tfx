@@ -50,8 +50,6 @@ class ExecutorTest(tf.test.TestCase):
     }
 
     exec_properties = {
-        executor.INFER_FEATURE_SHAPE_KEY:
-            0,
         # List needs to be serialized before being passed into Do function.
         executor.EXCLUDE_SPLITS_KEY:
             json_utils.dumps(['test'])

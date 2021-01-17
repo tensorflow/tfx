@@ -269,9 +269,7 @@ def create_e2e_components(
   """
   example_gen = CsvExampleGen(input_base=csv_input_location)
   statistics_gen = StatisticsGen(examples=example_gen.outputs['examples'])
-  schema_gen = SchemaGen(
-      statistics=statistics_gen.outputs['statistics'],
-      infer_feature_shape=False)
+  schema_gen = SchemaGen(statistics=statistics_gen.outputs['statistics'])
   example_validator = ExampleValidator(
       statistics=statistics_gen.outputs['statistics'],
       schema=schema_gen.outputs['schema'])

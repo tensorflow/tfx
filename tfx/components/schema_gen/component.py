@@ -61,7 +61,7 @@ class SchemaGen(base_component.BaseComponent):
       self,
       statistics: Optional[types.Channel] = None,
       infer_feature_shape: Optional[Union[bool,
-                                          data_types.RuntimeParameter]] = False,
+                                          data_types.RuntimeParameter]] = True,
       exclude_splits: Optional[List[Text]] = None,
       output: Optional[types.Channel] = None,
       stats: Optional[types.Channel] = None,
@@ -75,7 +75,7 @@ class SchemaGen(base_component.BaseComponent):
       infer_feature_shape: Boolean (or RuntimeParameter) value indicating
         whether or not to infer the shape of features. If the feature shape is
         not inferred, downstream Tensorflow Transform component using the schema
-        will parse input as tf.SparseTensor.
+        will parse input as tf.SparseTensor. Default to True if not set.
       exclude_splits: Names of splits that will not be taken into consideration
         when auto-generating a schema. Default behavior (when exclude_splits is
         set to None) is excluding no splits.
