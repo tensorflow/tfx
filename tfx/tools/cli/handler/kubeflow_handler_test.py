@@ -31,25 +31,26 @@ from tfx.tools.cli.handler import kubeflow_handler
 from tfx.utils import test_case_utils
 
 
-def _MockSubprocess(self, cmd, env):  # pylint: disable=invalid-name, unused-argument
-  # Store pipeline_args in a pickle file
-  pipeline_args_path = env[labels.TFX_JSON_EXPORT_PIPELINE_ARGS_PATH]
-  pipeline_args = {
-      'pipeline_name': 'chicago_taxi_pipeline_kubeflow',
-  }
-  with open(pipeline_args_path, 'w') as f:
-    json.dump(pipeline_args, f)
+def _create_mock_subprocess_call(test_data_dir):
+  def _MockSubprocess(self, cmd, env):  # pylint: disable=invalid-name, unused-argument
+    # Store pipeline_args in a pickle file
+    pipeline_args_path = env[labels.TFX_JSON_EXPORT_PIPELINE_ARGS_PATH]
+    pipeline_args = {
+        'pipeline_name': 'chicago_taxi_pipeline_kubeflow',
+    }
+    with open(pipeline_args_path, 'w') as f:
+      json.dump(pipeline_args, f)
 
-  chicago_taxi_pipeline_dir = os.path.join(
-      os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'testdata')
-  pipeline_path = os.path.join(chicago_taxi_pipeline_dir,
-                               'test_pipeline_kubeflow_1.py')
-  # Store pipeline package
-  output_filename = os.path.join(os.getcwd(),
-                                 'chicago_taxi_pipeline_kubeflow.tar.gz')
-  with tarfile.open(output_filename, 'w:gz') as tar:
-    tar.add(pipeline_path)
-  return 0
+    pipeline_path = os.path.join(test_data_dir, 'test_pipeline_kubeflow_1.py')
+
+    # Store pipeline package
+    output_filename = os.path.join(os.getcwd(),
+                                   'chicago_taxi_pipeline_kubeflow.tar.gz')
+    with tarfile.open(output_filename, 'w:gz') as tar:
+      tar.add(pipeline_path)
+    return 0
+
+  return _MockSubprocess
 
 
 class _MockRunResponse(object):
@@ -66,12 +67,14 @@ class KubeflowHandlerTest(test_case_utils.TfxTest):
 
   def setUp(self):
     super(KubeflowHandlerTest, self).setUp()
-    self.enter_context(test_case_utils.change_working_dir(self.tmp_dir))
 
     # Flags for handler.
     self.engine = 'kubeflow'
     self.chicago_taxi_pipeline_dir = os.path.join(
         os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'testdata')
+
+    self.enter_context(test_case_utils.change_working_dir(self.tmp_dir))
+
     self.pipeline_path = os.path.join(self.chicago_taxi_pipeline_dir,
                                       'test_pipeline_kubeflow_1.py')
     self.pipeline_name = 'chicago_taxi_pipeline_kubeflow'
@@ -127,7 +130,8 @@ class KubeflowHandlerTest(test_case_utils.TfxTest):
         mock.patch.object(
             base_handler.BaseHandler,
             '_subprocess_call',
-            side_effect=_MockSubprocess,
+            side_effect=_create_mock_subprocess_call(
+                self.chicago_taxi_pipeline_dir),
             autospec=True))
 
   def testCheckPipelinePackagePathDefaultPath(self):
