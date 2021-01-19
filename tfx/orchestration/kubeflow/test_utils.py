@@ -617,12 +617,9 @@ class BaseKubeflowTest(test_case_utils.TfxTest):
         os.path.join(self._pipeline_root(pipeline_name), 'tmp'),
         '--region=' + self._GCP_REGION,
 
-        # TODO(b/171733562): Remove this once runner v2 is the default for
+        # TODO(b/171733562): Remove `use_runner_v2` once it is the default for
         # Dataflow.
         '--experiments=use_runner_v2',
-        # TODO(b/171733562): Remove this once type check is restored with
-        # beam-2717.
-        '--no_pipeline_type_check',
     ]
     return pipeline
 
