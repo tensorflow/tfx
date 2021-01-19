@@ -86,15 +86,15 @@ def _fill_in_missing(x):
   Returns:
     A rank 1 tensor where missing values of `x` have been filled in.
   """
-  if isinstance(x, tf.sparse.SparseTensor):
-    default_value = '' if x.dtype == tf.string else 0
-    dense_tensor = tf.sparse.to_dense(
-        tf.SparseTensor(x.indices, x.values, [x.dense_shape[0], 1]),
-        default_value)
-  else:
-    dense_tensor = x
+  if not isinstance(x, tf.sparse.SparseTensor):
+    return x
 
-  return tf.squeeze(dense_tensor, axis=1)
+  default_value = '' if x.dtype == tf.string else 0
+  return tf.squeeze(
+      tf.sparse.to_dense(
+          tf.SparseTensor(x.indices, x.values, [x.dense_shape[0], 1]),
+          default_value),
+      axis=1)
 
 
 def _get_serve_tf_examples_fn(model, tf_transform_output):
