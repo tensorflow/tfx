@@ -63,11 +63,10 @@ queries) the ExampleGen pipeline component can be used directly in deploy and
 requires little customization. For example:
 
 ```python
-from tfx.utils.dsl_utils import csv_input
 from tfx.components.example_gen.csv_example_gen.component import CsvExampleGen
 
-examples = csv_input(os.path.join(base_dir, 'data/simple'))
-example_gen = CsvExampleGen(input=examples)
+examples_path = os.path.join(base_dir, 'data/simple')
+example_gen = CsvExampleGen(input_base=examples_path)
 ```
 
 or like below for importing external TFRecord with `tf.Example` directly:
@@ -105,6 +104,7 @@ To customize the train/eval split ratio which ExampleGen will output, set the
 
 ```python
 from  tfx.proto import example_gen_pb2
+from tfx.components.example_gen.csv_example_gen.component import CsvExampleGen
 
 # Input has a single split 'input_dir/*'.
 # Output 2 splits: train:eval=3:1.
@@ -113,8 +113,8 @@ output = example_gen_pb2.Output(
                  example_gen_pb2.SplitConfig.Split(name='train', hash_buckets=3),
                  example_gen_pb2.SplitConfig.Split(name='eval', hash_buckets=1)
              ]))
-examples = csv_input(input_dir)
-example_gen = CsvExampleGen(input=examples, output_config=output)
+examples_path = input_dir
+example_gen = CsvExampleGen(input_base=examples_path, output_config=output)
 ```
 
 Notice how the `hash_buckets` were set in this example.
@@ -124,6 +124,7 @@ ExampleGen component:
 
 ```python
 from  tfx.proto import example_gen_pb2
+from tfx.components.example_gen.csv_example_gen.component import CsvExampleGen
 
 # Input train split is 'input_dir/train/*', eval split is 'input_dir/eval/*'.
 # Output splits are generated one-to-one mapping from input splits.
@@ -131,8 +132,8 @@ input = example_gen_pb2.Input(splits=[
                 example_gen_pb2.Input.Split(name='train', pattern='train/*'),
                 example_gen_pb2.Input.Split(name='eval', pattern='eval/*')
             ])
-examples = csv_input(input_dir)
-example_gen = CsvExampleGen(input=examples, input_config=input)
+examples_path = input_dir
+example_gen = CsvExampleGen(input_base=examples_path, input_config=input)
 ```
 
 For file based example gen (e.g. CsvExampleGen and ImportExampleGen), `pattern`
@@ -182,17 +183,19 @@ To output the train/eval split based on a feature in the examples, set the
 
 ```python
 from  tfx.proto import example_gen_pb2
+from tfx.components.example_gen.csv_example_gen.component import CsvExampleGen
+
 
 # Input has a single split 'input_dir/*'.
 # Output 2 splits based on 'user_id' features: train:eval=3:1.
 output = example_gen_pb2.Output(
              split_config=example_gen_pb2.SplitConfig(splits=[
-                 example_gen_pb2.SplitConfig.Split(name='train', hash_buckets=3),
-                 example_gen_pb2.SplitConfig.Split(name='eval', hash_buckets=1)
+               example_gen_pb2.SplitConfig.Split(name='train', hash_buckets=3),
+               example_gen_pb2.SplitConfig.Split(name='eval', hash_buckets=1)
              ],
              partition_feature_name='user_id'))
-examples = csv_input(input_dir)
-example_gen = CsvExampleGen(input=examples, output_config=output)
+examples_path = input_dir
+example_gen = CsvExampleGen(input_base=examples_path, output_config=output)
 ```
 
 Notice how the `partition_feature_name` was set in this example.
@@ -246,6 +249,7 @@ shows the code example for using span spec:
 
 ```python
 from  tfx.proto import example_gen_pb2
+from tfx.components.example_gen.csv_example_gen.component import CsvExampleGen
 
 input = example_gen_pb2.Input(splits=[
                 example_gen_pb2.Input.Split(name='train',
@@ -253,8 +257,8 @@ input = example_gen_pb2.Input(splits=[
                 example_gen_pb2.Input.Split(name='eval',
                                             pattern='span-{SPAN}/eval/*')
             ])
-examples = csv_input('/tmp')
-example_gen = CsvExampleGen(input=examples, input_config=input)
+examples_path = '/tmp'
+example_gen = CsvExampleGen(input_base=examples_path, input_config=input)
 ```
 
 Retrieving a certain span can be done with RangeConfig, which is detailed below.
@@ -310,6 +314,8 @@ shows the code example for using date spec:
 
 ```python
 from  tfx.proto import example_gen_pb2
+from tfx.components.example_gen.csv_example_gen.component import CsvExampleGen
+
 
 input = example_gen_pb2.Input(splits=[
                 example_gen_pb2.Input.Split(name='train',
@@ -317,8 +323,8 @@ input = example_gen_pb2.Input(splits=[
                 example_gen_pb2.Input.Split(name='eval',
                                             pattern='{YYYY}-{MM}-{DD}/eval/*')
             ])
-examples = csv_input('/tmp')
-example_gen = CsvExampleGen(input=examples, input_config=input)
+examples_path = '/tmp'
+example_gen = CsvExampleGen(input_base=examples_path, input_config=input)
 ```
 
 ### Version
@@ -373,15 +379,16 @@ example for using version spec:
 
 ```python
 from  tfx.proto import example_gen_pb2
+from tfx.components.example_gen.csv_example_gen.component import CsvExampleGen
 
 input = example_gen_pb2.Input(splits=[
-                example_gen_pb2.Input.Split(name='train',
-                                            pattern='span-{SPAN}/ver-{VERSION}/train/*'),
-                example_gen_pb2.Input.Split(name='eval',
-                                            pattern='span-{SPAN}/ver-{VERSION}/eval/*')
+             example_gen_pb2.Input.Split(name='train',
+                                  pattern='span-{SPAN}/ver-{VERSION}/train/*'),
+             example_gen_pb2.Input.Split(name='eval',
+                                   pattern='span-{SPAN}/ver-{VERSION}/eval/*')
             ])
-examples = csv_input('/tmp')
-example_gen = CsvExampleGen(input=examples, input_config=input)
+examples_path = '/tmp'
+example_gen = CsvExampleGen(input_base=examples_path, input_config=input)
 ```
 
 ### Range Config
@@ -410,6 +417,7 @@ desired span number. An example of usage is shown below:
 ```python
 from  tfx.proto import example_gen_pb2
 from  tfx.proto import range_config_pb2
+from tfx.components.example_gen.csv_example_gen.component import CsvExampleGen
 
 # In cases where files have zero-padding, the width modifier in SPAN spec is
 # required so TFX can correctly substitute spec with zero-padded span number.
@@ -427,8 +435,8 @@ range = range_config_pb2.RangeConfig(
 
 # After substitution, the train and eval split patterns will be
 # 'input_dir/span-01/train/*' and 'input_dir/span-01/eval/*', respectively.
-examples = csv_input(input_dir)
-example_gen = CsvExampleGen(input=examples, input_config=input,
+examples_path = input_dir
+example_gen = CsvExampleGen(input_base=examples_path, input_config=input,
                             range_config=range)
 ```
 
@@ -448,6 +456,7 @@ following:
 from  tfx.components.example_gen import utils
 from  tfx.proto import example_gen_pb2
 from  tfx.proto import range_config_pb2
+from tfx.components.example_gen.csv_example_gen.component import CsvExampleGen
 
 input = example_gen_pb2.Input(splits=[
                 example_gen_pb2.Input.Split(name='train',
@@ -465,8 +474,8 @@ range = range_config_pb2.RangeConfig(
 # After substitution, the train and eval split patterns will be
 # 'input_dir/1970-01-02/train/*' and 'input_dir/1970-01-02/eval/*',
 # respectively.
-examples = csv_input(input_dir)
-example_gen = CsvExampleGen(input=examples, input_config=input,
+examples_path = input_dir
+example_gen = CsvExampleGen(input_base=examples_path, input_config=input,
                             range_config=range)
 ```
 
