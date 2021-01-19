@@ -19,7 +19,6 @@ from __future__ import division
 from __future__ import print_function
 
 import abc
-import copy
 import inspect
 from typing import Any, Dict, Optional, Text
 
@@ -102,13 +101,12 @@ class BaseComponent(with_metaclass(abc.ABCMeta, base_node.BaseNode)):
     # TODO(b/171742415): Remove this try-catch block once we migrate Beam
     # DAG runner to IR-based stack. The deep copy will only fail for function
     # based components due to pickle workaround we created in ExecutorClassSpec.
-    # TODO(b/173168182): We should add more tests for different executor spec.
-    if isinstance(executor_spec_obj, executor_spec.ExecutorClassSpec):
-      try:
-        executor_spec_obj = copy.deepcopy(executor_spec_obj)
-      except:  # pylint:disable = bare-except
-        # This will only happen for function based components, which is fine.
-        pass
+    try:
+      executor_spec_obj = executor_spec_obj.copy()
+    except Exception as e:  # pylint:disable = bare-except
+      # This will only happen for function based components, which is fine.
+      raise ValueError(f'The executor spec of {self.__class__} class is '
+                       f'not copyable.') from e
 
     driver_class = self.__class__.DRIVER_CLASS
     super(BaseComponent, self).__init__(

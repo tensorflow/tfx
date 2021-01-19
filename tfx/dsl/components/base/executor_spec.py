@@ -19,7 +19,8 @@ from __future__ import division
 from __future__ import print_function
 
 import abc
-from typing import Iterable, List, Optional, Text, Type
+import copy
+from typing import cast, Iterable, List, Optional, Text, Type
 
 from six import with_metaclass
 from tfx import types
@@ -54,6 +55,21 @@ class ExecutorSpec(with_metaclass(abc.ABCMeta, json_utils.Jsonable)):
     # platforms.
     raise NotImplementedError('{}.{} does not support encoding into IR.'.format(
         self.__module__, self.__class__.__name__))
+
+  def copy(self) -> 'ExecutorSpec':
+    """Makes a copy of the ExecutorSpec.
+
+    An abstract method to implement to make a copy of the ExecutorSpec instance.
+    Deepcopy is preferred in the implementation. But if for any reason a
+    deepcopy is not able to be made because of some fields are not deepcopyable,
+    it is OK to make a shallow copy as long as the subfield is consider
+    globally immutable.
+
+    Returns:
+      A copy of ExecutorSpec.
+
+    """
+    return cast('ExecutorSpec', copy.deepcopy(self))
 
 
 class ExecutorClassSpec(ExecutorSpec):
@@ -110,6 +126,20 @@ class ExecutorClassSpec(ExecutorSpec):
 
   def add_extra_flags(self, extra_flags: Iterable[str]) -> None:
     self.extra_flags.extend(extra_flags)
+
+  def copy(self) -> 'ExecutorClassSpec':
+    # The __reduce__() method is customized and the function
+    # import_class_by_path() is used in it. import_class_by_path() doesn't work
+    # with nested class which is very common in tests. copy.deepcopy(self)
+    # desn't work.
+    # So in this implementation, a new
+    # ExecutorClassSpec is created and every field in the old instance is
+    # deepcopied to the new instance.
+    cls = self.__class__
+    result = cls.__new__(cls)
+    for k, v in self.__dict__.items():
+      setattr(result, k, copy.deepcopy(v))
+    return result
 
 
 class ExecutorContainerSpec(ExecutorSpec):

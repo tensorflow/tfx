@@ -14,6 +14,7 @@
 """Placeholders represent not-yet-available values at the component authoring time."""
 
 import abc
+import copy
 import enum
 from typing import Optional, Union, cast
 from tfx import types
@@ -269,6 +270,16 @@ class Placeholder(abc.ABC):
   def __radd__(self, left: str):
     self._operators.append(_ConcatOperator(left=left))
     return self
+
+  def __deepcopy__(self, memo):
+    # This method is implemented to make sure Placeholder is deep copyable
+    # by copy.deepcopy().
+    cls = self.__class__
+    result = cls.__new__(cls)
+    memo[id(self)] = result
+    for k, v in self.__dict__.items():
+      setattr(result, k, copy.deepcopy(v, memo))
+    return result
 
   def b64encode(self):
     """Encodes the output of another placeholder using url safe base64 encoding.
