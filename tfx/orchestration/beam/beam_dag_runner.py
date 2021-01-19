@@ -279,7 +279,7 @@ class BeamDagRunner(tfx_runner.TfxRunner):
     connection_config = self._connection_config_from_deployment_config(
         deployment_config)
 
-    print('Running pipeline:\n %s', pipeline)
+    logging.info('Running pipeline:\n %s', pipeline)
     logging.info('Using deployment config:\n %s', deployment_config)
     logging.info('Using connection config:\n %s', connection_config)
 
