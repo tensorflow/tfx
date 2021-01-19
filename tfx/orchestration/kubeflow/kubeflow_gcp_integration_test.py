@@ -21,12 +21,15 @@ from __future__ import print_function
 import os
 
 import absl
+from googleapiclient import discovery
+from googleapiclient import errors as googleapiclient_errors
 import tensorflow as tf
 from tfx.components.common_nodes.importer_node import ImporterNode
 from tfx.components.pusher.component import Pusher
 from tfx.components.trainer.component import Trainer
 from tfx.dsl.components.base import executor_spec
 from tfx.dsl.io import fileio
+from tfx.extensions.google_cloud_ai_platform import runner
 from tfx.extensions.google_cloud_ai_platform.pusher import executor as ai_platform_pusher_executor
 from tfx.extensions.google_cloud_ai_platform.trainer import executor as ai_platform_trainer_executor
 from tfx.extensions.google_cloud_ai_platform.tuner import component as ai_platform_tuner_component
@@ -174,8 +177,7 @@ class KubeflowGCPIntegrationTest(kubeflow_test_utils.BaseKubeflowTest):
     pipeline_name = 'kubeflow-aip-generic-trainer-test-{}'.format(
         test_utils.random_id())
     pipeline = self._create_pipeline(pipeline_name, [
-        self.schema_importer,
-        self.transformed_examples_importer,
+        self.schema_importer, self.transformed_examples_importer,
         self.transform_graph_importer,
         Trainer(
             custom_executor_spec=executor_spec.ExecutorClassSpec(
@@ -194,6 +196,7 @@ class KubeflowGCPIntegrationTest(kubeflow_test_utils.BaseKubeflowTest):
     ])
     self._compile_and_run_pipeline(pipeline)
     self._assertNumberOfTrainerOutputIsOne(pipeline_name)
+
   # TODO(b/150661783): Add tests using distributed training with a generic
   #  trainer.
   # TODO(b/150576271): Add Trainer tests using Keras models.
@@ -215,23 +218,43 @@ class KubeflowGCPIntegrationTest(kubeflow_test_utils.BaseKubeflowTest):
     """Tuner-only pipeline for distributed Tuner flock on AIP Training."""
     pipeline_name = 'kubeflow-aip-dist-tuner-test-{}'.format(
         test_utils.random_id())
-    pipeline = self._create_pipeline(pipeline_name, [
-        self.penguin_examples_importer, self.penguin_schema_importer,
-        ai_platform_tuner_component.Tuner(
-            examples=self.penguin_examples_importer.outputs['result'],
-            module_file=self._penguin_tuner_module,
-            schema=self.penguin_schema_importer.outputs['result'],
-            train_args=trainer_pb2.TrainArgs(num_steps=10),
-            eval_args=trainer_pb2.EvalArgs(num_steps=5),
-            # 3 worker parallel tuning.
-            tune_args=tuner_pb2.TuneArgs(num_parallel_trials=3),
-            custom_config={
-                ai_platform_trainer_executor.TRAINING_ARGS_KEY:
-                    self._getCaipTrainingArgs(pipeline_name)
-            })
-    ])
+    pipeline = self._create_pipeline(
+        pipeline_name,
+        [
+            self.penguin_examples_importer,
+            self.penguin_schema_importer,
+            ai_platform_tuner_component.Tuner(
+                examples=self.penguin_examples_importer.outputs['result'],
+                module_file=self._penguin_tuner_module,
+                schema=self.penguin_schema_importer.outputs['result'],
+                train_args=trainer_pb2.TrainArgs(num_steps=10),
+                eval_args=trainer_pb2.EvalArgs(num_steps=5),
+                # 3 worker parallel tuning.
+                tune_args=tuner_pb2.TuneArgs(num_parallel_trials=3),
+                custom_config={
+                    ai_platform_trainer_executor.TRAINING_ARGS_KEY:
+                        self._getCaipTrainingArgs(pipeline_name)
+                })
+        ])
     self._compile_and_run_pipeline(pipeline)
     self._assertHyperparametersAreWritten(pipeline_name)
+
+  def _getNumberOfVersionsForModel(self, api, project, model_name):
+    resource_name = f'projects/{project}/models/{model_name}'
+    res = api.projects().models().versions().list(
+        parent=resource_name).execute()
+    return len(res['versions'])
+
+  def _sendDummyRequestToModel(self, api, project, model_name):
+    resource_name = f'projects/{project}/models/{model_name}'
+    res = api.projects().predict(
+        name=resource_name,
+        body={
+            'instances': {
+                'inputs': ''  # Just use dummy input for basic check.
+            }
+        }).execute()
+    absl.logging.info('Response from the pushed model: %s', res)
 
   def testAIPlatformPusherPipeline(self):
     """Pusher-only test pipeline to AI Platform Prediction."""
@@ -255,6 +278,15 @@ class KubeflowGCPIntegrationTest(kubeflow_test_utils.BaseKubeflowTest):
           },
       )
 
+    # Use default service_name / api_version.
+    service_name, api_version = runner.get_service_name_and_api_version({})
+    api = discovery.build(service_name, api_version)
+
+    # The model should be NotFound yet.
+    with self.assertRaisesRegex(googleapiclient_errors.HttpError,
+                                'HttpError 404'):
+      self._sendDummyRequestToModel(api, self._GCP_PROJECT_ID, model_name)
+
     # Test creation of multiple versions under the same model_name.
     pipeline_name_1 = '%s-1' % pipeline_name_base
     pipeline_1 = self._create_pipeline(pipeline_name_1, [
@@ -263,6 +295,11 @@ class KubeflowGCPIntegrationTest(kubeflow_test_utils.BaseKubeflowTest):
         _pusher(self.model_1_importer, self.model_blessing_importer),
     ])
     self._compile_and_run_pipeline(pipeline_1)
+    self.assertEqual(
+        1,
+        self._getNumberOfVersionsForModel(api, self._GCP_PROJECT_ID,
+                                          model_name))
+    self._sendDummyRequestToModel(api, self._GCP_PROJECT_ID, model_name)
 
     pipeline_name_2 = '%s-2' % pipeline_name_base
     pipeline_2 = self._create_pipeline(pipeline_name_2, [
@@ -271,6 +308,11 @@ class KubeflowGCPIntegrationTest(kubeflow_test_utils.BaseKubeflowTest):
         _pusher(self.model_2_importer, self.model_blessing_importer),
     ])
     self._compile_and_run_pipeline(pipeline_2)
+    self.assertEqual(
+        2,
+        self._getNumberOfVersionsForModel(api, self._GCP_PROJECT_ID,
+                                          model_name))
+    self._sendDummyRequestToModel(api, self._GCP_PROJECT_ID, model_name)
 
 
 if __name__ == '__main__':
