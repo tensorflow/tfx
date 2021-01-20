@@ -275,6 +275,38 @@ def _GetSchemaProto(
   return getattr(schema, '_schema_proto', schema)
 
 
+def _InvokeStatsOptionsUpdaterFn(
+    stats_options_updater_fn: Callable[
+        [stats_options_util.StatsType, tfdv.StatsOptions], tfdv.StatsOptions],
+    stats_type: stats_options_util.StatsType,
+    schema: Optional[schema_pb2.Schema] = None,
+    asset_map: Optional[Dict[Text, Text]] = None,
+    transform_output_path: Optional[Text] = None) -> tfdv.StatsOptions:
+  """Invokes the provided stats_options_updater_fn.
+
+  Args:
+    stats_options_updater_fn: The function to call.
+    stats_type: The stats_type use in the function call.
+    schema: The input schema to use in the function call.
+    asset_map: A dictionary containing key to filename mappings.
+    transform_output_path: The path to the transform output.
+
+  Returns:
+    The updated tfdv.StatsOptions.
+  """
+  options = {}
+  if schema is not None:
+    schema_copy = schema_pb2.Schema()
+    schema_copy.CopyFrom(schema)
+    options['schema'] = schema_copy
+  if asset_map is not None:
+    asset_path = os.path.join(transform_output_path, 'transform_fn',
+                              tf.saved_model.ASSETS_DIRECTORY)
+    vocab_paths = {k: os.path.join(asset_path, v) for k, v in asset_map.items()}
+    options['vocab_paths'] = vocab_paths
+  return stats_options_updater_fn(stats_type, tfdv.StatsOptions(**options))
+
+
 class Executor(base_executor.BaseExecutor):
   """Transform executor."""
 
@@ -1235,15 +1267,9 @@ class Executor(base_executor.BaseExecutor):
               stats_input = [
                   dataset.standardized for dataset in analyze_data_list]
 
-            # Perform explicit copy because stats_options_updater_fn may update.
-            schema_copy = None
-            if schema_proto is not None:
-              schema_copy = schema_pb2.Schema()
-              schema_copy.CopyFrom(schema_proto)
-            pre_transform_stats_options = (
-                stats_options_updater_fn(
-                    stats_options_util.StatsType.PRE_TRANSFORM,
-                    tfdv.StatsOptions(schema=schema_copy)))
+            pre_transform_stats_options = _InvokeStatsOptionsUpdaterFn(
+                stats_options_updater_fn,
+                stats_options_util.StatsType.PRE_TRANSFORM, schema_proto)
 
             (stats_input
              | 'FlattenAnalysisDatasets' >> beam.Flatten(pipeline=pipeline)
@@ -1292,15 +1318,11 @@ class Executor(base_executor.BaseExecutor):
                 transform_output_path,
                 tft.TFTransformOutput.POST_TRANSFORM_FEATURE_STATS_PATH)
 
-            # Perform explicit copy because stats_options_updater_fn may update.
-            transformed_schema_copy = None
-            if transformed_schema_proto is not None:
-              transformed_schema_copy = schema_pb2.Schema()
-              transformed_schema_copy.CopyFrom(transformed_schema_proto)
-            post_transform_stats_options = (
-                stats_options_updater_fn(
-                    stats_options_util.StatsType.POST_TRANSFORM,
-                    tfdv.StatsOptions(schema=transformed_schema_copy)))
+            post_transform_stats_options = _InvokeStatsOptionsUpdaterFn(
+                stats_options_updater_fn,
+                stats_options_util.StatsType.POST_TRANSFORM,
+                transformed_schema_proto, metadata.asset_map,
+                transform_output_path)
 
             ([dataset.transformed_and_standardized
               for dataset in transform_data_list]
