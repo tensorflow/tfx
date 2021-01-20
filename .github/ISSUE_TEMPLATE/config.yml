@@ -1,0 +1,5 @@
+# See following links for explanation to this file:
+# https://docs.github.com/en/github/building-a-strong-community/configuring-issue-templates-for-your-repository#configuring-the-template-chooser
+#
+# Setting `blank_issues_enabled` to False will encourage issue reporters to use templates.
+blank_issues_enabled: false
