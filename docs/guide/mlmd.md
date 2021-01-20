@@ -55,6 +55,7 @@ to the storage backend used.
 
 ```python
 import ml_metadata as mlmd
+from ml_metadata.metadata_store import metadata_store
 from ml_metadata.proto import metadata_store_pb2
 
 connection_config = metadata_store_pb2.ConnectionConfig()
