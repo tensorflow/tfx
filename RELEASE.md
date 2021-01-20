@@ -19,14 +19,16 @@
     `${HOME}/tfx/kubeflow` or `${HOME}/kubeflow` but those will not be used
     any more.
 
-*   enable_quantization from TFLITE_REWRITER is removed and setting
-    quantization_optimizations = [tf.lite.Optimize.DEFAULT] will perform the same
-    type of quantization, dynamic range quantization. Users of the TFLITE_REWRITER
-    who do not enable quantization should be uneffected.
+*   `enable_quantization` from TFLITE_REWRITER is removed and setting
+    quantization_optimizations = [tf.lite.Optimize.DEFAULT] will perform the
+    same type of quantization, dynamic range quantization. Users of the
+    TFLITE_REWRITER who do not enable quantization should be uneffected.
 
 *   Deprecated input/output compatibility aliases for ExampleValidator.
-*   Default value for infer_feature_shape for SchemaGen changed from False to
-    True, as indicated in previous release log.
+*   Default value for `infer_feature_shape` for SchemaGen changed from `False`
+    to `True`, as indicated in previous release log. The inferred schema might
+    change if you do not specify `infer_feature_shape`. It might leads to
+    changes of the type of input features in Transform and Trainer code.
 
 ### For pipeline authors
 *   The `tfx.components.common_nodes.importer_node.ImporterNode` class has been
