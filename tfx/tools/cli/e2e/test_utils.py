@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,14 +13,10 @@
 # limitations under the License.
 """Common utility for testing CLI in Kubeflow."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import datetime
 import random
 import string
-from typing import List, Text
+from typing import Any, List, Text
 
 from tfx.components import CsvExampleGen
 from tfx.components import SchemaGen
@@ -55,8 +50,10 @@ def create_e2e_components(csv_input_location: Text,) -> List[BaseComponent]:
   return [example_gen, statistics_gen, schema_gen]
 
 
-def generate_random_id():
+def generate_random_id(seed: Any = None):
   """Generate a random id string which has a timestamp prefix."""
+  if seed:
+    random.seed(seed)
   return datetime.datetime.now().strftime('%s') + ''.join([
       random.choice(string.ascii_lowercase + string.digits) for _ in range(10)
   ])
