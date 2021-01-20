@@ -95,6 +95,8 @@ def _fill_in_missing(x):
   Returns:
     A rank 1 tensor where missing values of `x` have been filled in.
   """
+  if not isinstance(x, tf.sparse.SparseTensor):
+    return x
   default_value = '' if x.dtype == tf.string else 0
   return tf.squeeze(
       tf.sparse.to_dense(
