@@ -13,7 +13,6 @@
 # limitations under the License.
 """Tests for tfx.orchestration.experimental.core.pipeline_ops."""
 
-import base64
 import copy
 import os
 import threading
@@ -68,45 +67,17 @@ class PipelineOpsTest(tu.TfxTest):
     with self._mlmd_connection as m:
       # Initiate a pipeline start.
       pipeline1 = _test_pipeline('pipeline1')
-      pipeline_ops.initiate_pipeline_start(m, pipeline1)
+      pipeline_state1 = pipeline_ops.initiate_pipeline_start(m, pipeline1)
+      self.assertEqual(pipeline1, pipeline_state1.pipeline)
+      self.assertEqual(metadata_store_pb2.Execution.NEW,
+                       pipeline_state1.execution.last_known_state)
 
       # Initiate another pipeline start.
       pipeline2 = _test_pipeline('pipeline2')
-      pipeline_ops.initiate_pipeline_start(m, pipeline2)
-
-      # No error raised => context/execution types exist.
-      m.store.get_context_type(pipeline_ops._ORCHESTRATOR_RESERVED_ID)
-      m.store.get_execution_type(pipeline_ops._ORCHESTRATOR_RESERVED_ID)
-
-      # Verify MLMD state.
-      contexts = m.store.get_contexts_by_type(
-          pipeline_ops._ORCHESTRATOR_RESERVED_ID)
-      self.assertLen(contexts, 2)
-      self.assertCountEqual([
-          pipeline_ops._orchestrator_context_name(
-              task_lib.PipelineUid.from_pipeline(pipeline1)),
-          pipeline_ops._orchestrator_context_name(
-              task_lib.PipelineUid.from_pipeline(pipeline2))
-      ], [c.name for c in contexts])
-
-      for context in contexts:
-        executions = m.store.get_executions_by_context(context.id)
-        self.assertLen(executions, 1)
-        self.assertEqual(metadata_store_pb2.Execution.NEW,
-                         executions[0].last_known_state)
-        retrieved_pipeline = pipeline_pb2.Pipeline()
-        retrieved_pipeline.ParseFromString(
-            base64.b64decode(executions[0].properties[
-                pipeline_ops._PIPELINE_IR].string_value))
-        expected_pipeline_id = (
-            pipeline_ops._pipeline_uid_from_context(context).pipeline_id)
-        self.assertEqual(
-            _test_pipeline(expected_pipeline_id), retrieved_pipeline)
-
-  def test_initiate_pipeline_start_new_execution(self):
-    with self._mlmd_connection as m:
-      pipeline1 = _test_pipeline('pipeline1')
-      pipeline_ops.initiate_pipeline_start(m, pipeline1)
+      pipeline_state2 = pipeline_ops.initiate_pipeline_start(m, pipeline2)
+      self.assertEqual(pipeline2, pipeline_state2.pipeline)
+      self.assertEqual(metadata_store_pb2.Execution.NEW,
+                       pipeline_state2.execution.last_known_state)
 
       # Error if attempted to initiate when old one is active.
       with self.assertRaises(status_lib.StatusNotOkError) as exception_context:
@@ -115,46 +86,22 @@ class PipelineOpsTest(tu.TfxTest):
                        exception_context.exception.code)
 
       # Fine to initiate after the previous one is inactive.
-      executions = m.store.get_executions_by_type(
-          pipeline_ops._ORCHESTRATOR_RESERVED_ID)
-      self.assertLen(executions, 1)
-      executions[0].last_known_state = metadata_store_pb2.Execution.COMPLETE
-      m.store.put_executions(executions)
-      execution = pipeline_ops.initiate_pipeline_start(m, pipeline1)
+      execution = pipeline_state1.execution
+      execution.last_known_state = metadata_store_pb2.Execution.COMPLETE
+      m.store.put_executions([execution])
+      pipeline_state3 = pipeline_ops.initiate_pipeline_start(m, pipeline1)
       self.assertEqual(metadata_store_pb2.Execution.NEW,
-                       execution.last_known_state)
-
-      # Verify MLMD state.
-      contexts = m.store.get_contexts_by_type(
-          pipeline_ops._ORCHESTRATOR_RESERVED_ID)
-      self.assertLen(contexts, 1)
-      self.assertEqual(
-          pipeline_ops._orchestrator_context_name(
-              task_lib.PipelineUid.from_pipeline(pipeline1)), contexts[0].name)
-      executions = m.store.get_executions_by_context(contexts[0].id)
-      self.assertLen(executions, 2)
-      self.assertCountEqual([
-          metadata_store_pb2.Execution.COMPLETE,
-          metadata_store_pb2.Execution.NEW
-      ], [e.last_known_state for e in executions])
+                       pipeline_state3.execution.last_known_state)
 
   def test_initiate_pipeline_stop(self):
     with self._mlmd_connection as m:
       pipeline1 = _test_pipeline('pipeline1')
       pipeline_ops.initiate_pipeline_start(m, pipeline1)
       pipeline_uid = task_lib.PipelineUid.from_pipeline(pipeline1)
-      pipeline_ops._initiate_pipeline_stop(m, pipeline_uid)
+      pipeline_state = pipeline_ops._initiate_pipeline_stop(m, pipeline_uid)
+      self.assertTrue(pipeline_state.is_stop_initiated())
 
-      # Verify MLMD state.
-      executions = m.store.get_executions_by_type(
-          pipeline_ops._ORCHESTRATOR_RESERVED_ID)
-      self.assertLen(executions, 1)
-      execution = executions[0]
-      self.assertEqual(
-          1,
-          execution.custom_properties[pipeline_ops._STOP_INITIATED].int_value)
-
-  def test_stop_pipeline_non_existent(self):
+  def test_stop_pipeline_non_existent_or_inactive(self):
     with self._mlmd_connection as m:
       # Stop pipeline without creating one.
       with self.assertRaises(status_lib.StatusNotOkError) as exception_context:
@@ -165,7 +112,7 @@ class PipelineOpsTest(tu.TfxTest):
 
       # Initiate pipeline start and mark it completed.
       pipeline1 = _test_pipeline('pipeline1')
-      execution = pipeline_ops.initiate_pipeline_start(m, pipeline1)
+      execution = pipeline_ops.initiate_pipeline_start(m, pipeline1).execution
       pipeline_uid = task_lib.PipelineUid.from_pipeline(pipeline1)
       pipeline_ops._initiate_pipeline_stop(m, pipeline_uid)
       execution.last_known_state = metadata_store_pb2.Execution.COMPLETE
@@ -174,13 +121,13 @@ class PipelineOpsTest(tu.TfxTest):
       # Try to initiate stop again.
       with self.assertRaises(status_lib.StatusNotOkError) as exception_context:
         pipeline_ops.stop_pipeline(m, pipeline_uid)
-      self.assertEqual(status_lib.Code.ALREADY_EXISTS,
+      self.assertEqual(status_lib.Code.NOT_FOUND,
                        exception_context.exception.code)
 
   def test_stop_pipeline_wait_for_inactivation(self):
     with self._mlmd_connection as m:
       pipeline1 = _test_pipeline('pipeline1')
-      execution = pipeline_ops.initiate_pipeline_start(m, pipeline1)
+      execution = pipeline_ops.initiate_pipeline_start(m, pipeline1).execution
 
       def _inactivate(execution):
         time.sleep(2.0)
@@ -222,14 +169,14 @@ class PipelineOpsTest(tu.TfxTest):
 
       # Another active pipeline (with previously completed execution).
       pipeline2 = _test_pipeline('pipeline2')
-      execution2 = pipeline_ops.initiate_pipeline_start(m, pipeline2)
+      execution2 = pipeline_ops.initiate_pipeline_start(m, pipeline2).execution
       execution2.last_known_state = metadata_store_pb2.Execution.COMPLETE
       m.store.put_executions([execution2])
-      execution2 = pipeline_ops.initiate_pipeline_start(m, pipeline2)
+      execution2 = pipeline_ops.initiate_pipeline_start(m, pipeline2).execution
 
       # Inactive pipelines should be ignored.
       pipeline3 = _test_pipeline('pipeline3')
-      execution3 = pipeline_ops.initiate_pipeline_start(m, pipeline3)
+      execution3 = pipeline_ops.initiate_pipeline_start(m, pipeline3).execution
       execution3.last_known_state = metadata_store_pb2.Execution.COMPLETE
       m.store.put_executions([execution3])
 
@@ -286,7 +233,7 @@ class PipelineOpsTest(tu.TfxTest):
       pipeline1.nodes.add().pipeline_node.node_info.id = 'Evaluator'
       pipeline_ops.initiate_pipeline_start(m, pipeline1)
       pipeline1_execution = pipeline_ops._initiate_pipeline_stop(
-          m, task_lib.PipelineUid.from_pipeline(pipeline1))
+          m, task_lib.PipelineUid.from_pipeline(pipeline1)).execution
 
       task_queue = tq.TaskQueue()
 
