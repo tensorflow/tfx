@@ -115,10 +115,6 @@ class TaxiPipelineBeamTest(tf.test.TestCase):
         model=trainer.outputs['model'],
         baseline_model=model_resolver.outputs['model'],
         eval_config=eval_config)
-    self.assertIs(evaluator.inputs['model'],
-                  evaluator.inputs['model_exports'])
-    self.assertIs(evaluator.outputs['evaluation'],
-                  evaluator.outputs['output'])
     pusher = Pusher(
         model=trainer.outputs['output'],
         model_blessing=evaluator.outputs['blessing'],

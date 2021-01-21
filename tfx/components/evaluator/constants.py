@@ -15,21 +15,6 @@
 
 """Constants for [Evaluator](https://www.tensorflow.org/tfx/guide/evaluator)."""
 
-# Key for examples in executor input_dict.
-EXAMPLES_KEY = 'examples'
-# Key for model in executor input_dict.
-MODEL_KEY = 'model'
-# Key for baseline model in executor input_dict.
-BASELINE_MODEL_KEY = 'baseline_model'
-# Key for schema in executor input_dict.
-SCHEMA_KEY = 'schema'
-
-# Key for example splits in executor exec_properties dict.
-EXAMPLE_SPLITS_KEY = 'example_splits'
-
-# Key for model blessing in executor output_dict.
-BLESSING_KEY = 'blessing'
-
 # Keys for artifact (custom) properties.
 ARTIFACT_PROPERTY_BLESSED_KEY = 'blessed'
 ARTIFACT_PROPERTY_CURRENT_MODEL_URI_KEY = 'current_model'

@@ -25,6 +25,7 @@ from tfx.dsl.io import fileio
 from tfx.orchestration.kubeflow.v2.container import kubeflow_v2_run_executor
 from tfx.types import artifact
 from tfx.types import artifact_utils
+from tfx.types.standard_component_specs import BLESSING_KEY
 from tfx.utils import test_case_utils
 
 
@@ -114,7 +115,7 @@ class KubeflowV2RunExecutorTest(test_case_utils.TfxTest):
           set(args_capture.input_dict.keys()), set(["input_1", "input_2"]))
       self.assertEqual(
           set(args_capture.output_dict.keys()),
-          set(["output", constants.BLESSING_KEY]))
+          set(["output", BLESSING_KEY]))
       self.assertEqual(args_capture.exec_properties, _EXEC_PROPERTIES)
 
     # Test what's been output.

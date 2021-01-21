@@ -24,7 +24,9 @@
     same type of quantization, dynamic range quantization. Users of the
     TFLITE_REWRITER who do not enable quantization should be uneffected.
 
-*   Deprecated input/output compatibility aliases for ExampleValidator.
+*   Deprecated input/output compatibility aliases for ExampleValidator, 
+    Evaluator.
+    
 *   Default value for `infer_feature_shape` for SchemaGen changed from `False`
     to `True`, as indicated in previous release log. The inferred schema might
     change if you do not specify `infer_feature_shape`. It might leads to
