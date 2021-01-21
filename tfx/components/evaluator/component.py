@@ -55,7 +55,8 @@ class Evaluator(base_component.BaseComponent):
       fairness_indicator_thresholds: Optional[List[Union[
           float, data_types.RuntimeParameter]]] = None,
       example_splits: Optional[List[Text]] = None,
-      evaluation: Optional[types.Channel] = None,
+      output: Optional[types.Channel] = None,
+      model_exports: Optional[types.Channel] = None,
       instance_name: Optional[Text] = None,
       eval_config: Optional[tfma.EvalConfig] = None,
       blessing: Optional[types.Channel] = None,
@@ -86,7 +87,8 @@ class Evaluator(base_component.BaseComponent):
       example_splits: Names of splits on which the metrics are computed.
         Default behavior (when example_splits is set to None or Empty) is using
         the 'eval' split.
-      evaluation: Channel of `ModelEvaluation` to store the evaluation results.
+      output: Channel of `ModelEvaluation` to store the evaluation results.
+      model_exports: Backwards compatibility alias for the `model` argument.
       instance_name: Optional name assigned to this specific instance of
         Evaluator. Required only if multiple Evaluator components are declared
         in the same pipeline.  Either `model_exports` or `model` must be present
@@ -122,12 +124,20 @@ class Evaluator(base_component.BaseComponent):
       logging.info('Neither eval_config nor feature_slicing_spec is passed, '
                    'the model is treated as estimator.')
 
+    if model_exports:
+      logging.warning(
+          'The "model_exports" argument to the Evaluator component has '
+          'been renamed to "model" and is deprecated. Please update your '
+          'usage as support for this argument will be removed soon.')
+      model = model_exports
+
     if feature_slicing_spec:
       logging.warning('feature_slicing_spec is deprecated, please use '
                       'eval_config instead.')
 
     blessing = blessing or types.Channel(type=standard_artifacts.ModelBlessing)
-    evaluation = types.Channel(type=standard_artifacts.ModelEvaluation)
+    evaluation = output or types.Channel(
+        type=standard_artifacts.ModelEvaluation)
     spec = EvaluatorSpec(
         examples=examples,
         model=model,

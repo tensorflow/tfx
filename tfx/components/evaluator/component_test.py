@@ -105,7 +105,7 @@ class ComponentTest(tf.test.TestCase):
     schema = standard_artifacts.Schema()
     evaluator = component.Evaluator(
         examples=channel_utils.as_channel([examples]),
-        model=channel_utils.as_channel([model_exports]),
+        model_exports=channel_utils.as_channel([model_exports]),
         eval_config=tfma.EvalConfig(
             slicing_specs=[tfma.SlicingSpec(feature_keys=['trip_start_hour'])]),
         schema=channel_utils.as_channel([schema]),)

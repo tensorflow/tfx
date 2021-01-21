@@ -36,24 +36,11 @@ from tfx.types.component_spec import ComponentSpec
 from tfx.types.component_spec import ExecutionParameter
 
 # Parameters keys for modules
-# Shared Keys across components
-SCHEMA_KEY = 'schema'
-EXAMPLES_KEY = 'examples'
-MODEL_KEY = 'model'
 # Key for example_validator
 EXCLUDE_SPLITS_KEY = 'exclude_splits'
 STATISTICS_KEY = 'statistics'
+SCHEMA_KEY = 'schema'
 ANOMALIES_KEY = 'anomalies'
-# Key for evaluator
-EVAL_CONFIG_KEY = 'eval_config'
-FEATURE_SLICING_SPEC_KEY = 'feature_slicing_spec'
-FAIRNESS_INDICATOR_THRESHOLDS_KEY = 'fairness_indicator_thresholds'
-EXAMPLE_SPLITS_KEY = 'example_splits'
-MODULE_FILE_KEY = 'module_file'
-MODULE_PATH_KEY = 'module_path'
-BASELINE_MODEL_KEY = 'baseline_model'
-EVALUATION_KEY = 'evaluation'
-BLESSING_KEY = 'blessing'
 
 
 class BulkInferrerSpec(ComponentSpec):
@@ -90,36 +77,45 @@ class EvaluatorSpec(ComponentSpec):
   """Evaluator component spec."""
 
   PARAMETERS = {
-      EVAL_CONFIG_KEY:
+      'eval_config':
           ExecutionParameter(type=tfma.EvalConfig, optional=True),
       # TODO(mdreves): Deprecated, use eval_config.slicing_specs.
-      FEATURE_SLICING_SPEC_KEY:
+      'feature_slicing_spec':
           ExecutionParameter(
               type=evaluator_pb2.FeatureSlicingSpec, optional=True),
       # This parameter is experimental: its interface and functionality may
       # change at any time.
-      FAIRNESS_INDICATOR_THRESHOLDS_KEY:
+      'fairness_indicator_thresholds':
           ExecutionParameter(type=List[float], optional=True),
-      EXAMPLE_SPLITS_KEY:
+      'example_splits':
           ExecutionParameter(type=(str, Text), optional=True),
-      MODULE_FILE_KEY:
+      'module_file':
           ExecutionParameter(type=(str, Text), optional=True),
-      MODULE_PATH_KEY:
+      'module_path':
           ExecutionParameter(type=(str, Text), optional=True),
   }
   INPUTS = {
-      EXAMPLES_KEY:
+      'examples':
           ChannelParameter(type=standard_artifacts.Examples),
-      MODEL_KEY:
+      'model':
           ChannelParameter(type=standard_artifacts.Model),
-      BASELINE_MODEL_KEY:
+      'baseline_model':
           ChannelParameter(type=standard_artifacts.Model, optional=True),
-      SCHEMA_KEY:
+      'schema':
           ChannelParameter(type=standard_artifacts.Schema, optional=True),
   }
   OUTPUTS = {
-      EVALUATION_KEY: ChannelParameter(type=standard_artifacts.ModelEvaluation),
-      BLESSING_KEY: ChannelParameter(type=standard_artifacts.ModelBlessing),
+      'evaluation': ChannelParameter(type=standard_artifacts.ModelEvaluation),
+      'blessing': ChannelParameter(type=standard_artifacts.ModelBlessing),
+  }
+  # TODO(b/139281215): these input / output names have recently been renamed.
+  # These compatibility aliases are temporarily provided for backwards
+  # compatibility.
+  _INPUT_COMPATIBILITY_ALIASES = {
+      'model_exports': 'model',
+  }
+  _OUTPUT_COMPATIBILITY_ALIASES = {
+      'output': 'evaluation',
   }
 
 

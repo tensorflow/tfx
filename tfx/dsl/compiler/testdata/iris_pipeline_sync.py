@@ -60,9 +60,6 @@ def create_test_pipeline():
           "str_custom_property": "42",
       },
       artifact_type=standard_artifacts.Examples)
-  another_statistics_gen = StatisticsGen(
-      examples=importer.outputs["result"],
-      instance_name="another_statistics_gen")
 
   schema_gen = SchemaGen(statistics=statistics_gen.outputs["statistics"])
 
@@ -126,7 +123,6 @@ def create_test_pipeline():
       components=[
           example_gen,
           statistics_gen,
-          another_statistics_gen,
           importer,
           schema_gen,
           example_validator,

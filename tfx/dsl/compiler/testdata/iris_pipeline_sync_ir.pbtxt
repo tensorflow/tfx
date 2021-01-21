@@ -228,7 +228,6 @@ nodes {
         enable_cache: true
       }
     }
-    downstream_nodes: "StatisticsGen.another_statistics_gen"
   }
 }
 nodes {
@@ -462,134 +461,6 @@ nodes {
     upstream_nodes: "CsvExampleGen"
     downstream_nodes: "ExampleValidator"
     downstream_nodes: "SchemaGen"
-  }
-}
-nodes {
-  pipeline_node {
-    node_info {
-      type {
-        name: "tfx.components.statistics_gen.component.StatisticsGen"
-      }
-      id: "StatisticsGen.another_statistics_gen"
-    }
-    contexts {
-      contexts {
-        type {
-          name: "pipeline"
-        }
-        name {
-          field_value {
-            string_value: "iris"
-          }
-        }
-      }
-      contexts {
-        type {
-          name: "pipeline_run"
-        }
-        name {
-          runtime_parameter {
-            name: "pipeline_run_id"
-            type: STRING
-          }
-        }
-      }
-      contexts {
-        type {
-          name: "node"
-        }
-        name {
-          field_value {
-            string_value: "iris.StatisticsGen.another_statistics_gen"
-          }
-        }
-      }
-    }
-    inputs {
-      inputs {
-        key: "examples"
-        value {
-          channels {
-            producer_node_query {
-              id: "ImporterNode.my_importer"
-            }
-            context_queries {
-              type {
-                name: "pipeline"
-              }
-              name {
-                field_value {
-                  string_value: "iris"
-                }
-              }
-            }
-            context_queries {
-              type {
-                name: "pipeline_run"
-              }
-              name {
-                runtime_parameter {
-                  name: "pipeline_run_id"
-                  type: STRING
-                }
-              }
-            }
-            context_queries {
-              type {
-                name: "node"
-              }
-              name {
-                field_value {
-                  string_value: "iris.ImporterNode.my_importer"
-                }
-              }
-            }
-            artifact_query {
-              type {
-                name: "Examples"
-              }
-            }
-            output_key: "result"
-          }
-        }
-      }
-    }
-    outputs {
-      outputs {
-        key: "statistics"
-        value {
-          artifact_spec {
-            type {
-              name: "ExampleStatistics"
-              properties {
-                key: "span"
-                value: INT
-              }
-              properties {
-                key: "split_names"
-                value: STRING
-              }
-            }
-          }
-        }
-      }
-    }
-    parameters {
-      parameters {
-        key: "exclude_splits"
-        value {
-          field_value {
-            string_value: "[]"
-          }
-        }
-      }
-    }
-    upstream_nodes: "ImporterNode.my_importer"
-    execution_options {
-      caching_options {
-        enable_cache: true
-      }
-    }
   }
 }
 nodes {
@@ -1584,15 +1455,6 @@ deployment_config {
     }
     executor_specs {
       key: "StatisticsGen"
-      value {
-        [type.googleapis.com/tfx.orchestration.executable_spec.PythonClassExecutableSpec] {
-          class_path: "tfx.components.statistics_gen.executor.Executor"
-          extra_flags: "--my_testing_beam_pipeline_args=foo"
-        }
-      }
-    }
-    executor_specs {
-      key: "StatisticsGen.another_statistics_gen"
       value {
         [type.googleapis.com/tfx.orchestration.executable_spec.PythonClassExecutableSpec] {
           class_path: "tfx.components.statistics_gen.executor.Executor"
