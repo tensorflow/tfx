@@ -1,3 +1,10 @@
+--------------------------------------------------------------------------------
+
+name: Feature Request about: Use this template for raising a feature request
+labels: 'type:feature'
+
+--------------------------------------------------------------------------------
+
 If the feature is related to a specific library below, please raise an issue in
 the respective repo directly:
 

@@ -1,3 +1,9 @@
+--------------------------------------------------------------------------------
+
+name: Bug Issue about: Use this template for reporting a bug labels: 'type:bug'
+
+--------------------------------------------------------------------------------
+
 If the bug is related to a specific library below, please raise an issue in the
 respective repo directly:
 

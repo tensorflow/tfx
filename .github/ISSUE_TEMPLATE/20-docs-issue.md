@@ -1,3 +1,10 @@
+--------------------------------------------------------------------------------
+
+name: Docs issue about: Use this template for raising a docs related issues
+labels: 'type:docs'
+
+--------------------------------------------------------------------------------
+
 Thank you for submitting a TFX documentation issue. Per our GitHub policy, we
 only address code/doc bugs, performance issues, feature requests, and
 build/installation issues on GitHub and we welcome external contributions!
