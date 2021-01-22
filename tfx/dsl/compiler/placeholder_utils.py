@@ -96,9 +96,14 @@ def resolve_placeholder_expression(
         "Dereferenced None during placeholder evaluation. Ignoring.")
     logging.warning("Placeholder=%s", err.placeholder)
     return None
-  if not isinstance(result, _PlaceholderResolvedTypes):
+  except Exception as e:
     raise ValueError(
-        f"Placeholder evaluates to an unsupported type: {type(result)}.")
+        f"Failed to resolve placeholder expression: {debug_str(expression)}"
+    ) from e
+
+  if not isinstance(result, _PlaceholderResolvedTypes):
+    raise ValueError(f"Placeholder {debug_str(expression)} evaluates to "
+                     f"an unsupported type: {type(result)}.")
   return result
 
 
@@ -290,15 +295,27 @@ class _ExpressionResolver:
     if op.proto_field_path:
       for field in op.proto_field_path:
         if field.startswith("."):
-          value = getattr(value, field[1:])
+          try:
+            value = getattr(value, field[1:])
+          except AttributeError:
+            raise ValueError("While evaluting placeholder proto operator, "
+                             f"got unknown proto field {field}.")
           continue
         map_key = re.findall(r"\[['\"](.+)['\"]\]", field)
         if len(map_key) == 1:
-          value = value[map_key[0]]
+          try:
+            value = value[map_key[0]]
+          except KeyError:
+            raise ValueError("While evaluting placeholder proto operator, "
+                             f"got unknown map field {field}.")
           continue
         index = re.findall(r"\[(\d+)\]", field)
         if index and str.isdecimal(index[0]):
-          value = value[int(index[0])]
+          try:
+            value = value[int(index[0])]
+          except IndexError:
+            raise ValueError("While evaluting placeholder proto operator, "
+                             f"got unknown index field {field}.")
           continue
         raise ValueError(f"Got unsupported proto field path: {field}")
 
@@ -323,3 +340,71 @@ class _ExpressionResolver:
     raise ValueError(
         "Proto operator resolves to a proto message value. A serialization "
         "format is needed to render it.")
+
+
+def debug_str(expression: placeholder_pb2.PlaceholderExpression) -> str:
+  """Gets the debug string of a placeholder expression proto.
+
+  Args:
+    expression: A placeholder expression proto.
+
+  Returns:
+    Debug string of the placeholder expression.
+  """
+  if expression.HasField("value"):
+    value_field_name = expression.value.WhichOneof("value")
+    return f"\"{getattr(expression.value, value_field_name)}\""
+
+  if expression.HasField("placeholder"):
+    placeholder_pb = expression.placeholder
+    ph_names_map = {
+        placeholder_pb2.Placeholder.INPUT_ARTIFACT: "input",
+        placeholder_pb2.Placeholder.OUTPUT_ARTIFACT: "output",
+        placeholder_pb2.Placeholder.EXEC_PROPERTY: "exec_property",
+        placeholder_pb2.Placeholder.RUNTIME_INFO: "runtime_info",
+        placeholder_pb2.Placeholder.EXEC_INVOCATION: "execution_invocation"
+    }
+    ph_name = ph_names_map[placeholder_pb.type]
+    if placeholder_pb.key:
+      return f"{ph_name}(\"{placeholder_pb.key}\")"
+    else:
+      return f"{ph_name}()"
+
+  if expression.HasField("operator"):
+    operator_name = expression.operator.WhichOneof("operator_type")
+    operator_pb = getattr(expression.operator, operator_name)
+    if operator_name == "artifact_uri_op":
+      sub_expression_str = debug_str(operator_pb.expression)
+      if operator_pb.split:
+        return f"{sub_expression_str}.split_uri(\"{operator_pb.split}\")"
+      else:
+        return f"{sub_expression_str}.uri"
+
+    if operator_name == "artifact_value_op":
+      sub_expression_str = debug_str(operator_pb.expression)
+      return f"{sub_expression_str}.value"
+
+    if operator_name == "concat_op":
+      expression_str = " + ".join(debug_str(e) for e in operator_pb.expressions)
+      return f"({expression_str})"
+
+    if operator_name == "index_op":
+      sub_expression_str = debug_str(operator_pb.expression)
+      return f"{sub_expression_str}[{operator_pb.index}]"
+
+    if operator_name == "proto_op":
+      sub_expression_str = debug_str(operator_pb.expression)
+      field_path = "".join(operator_pb.proto_field_path)
+      expression_str = f"{sub_expression_str}{field_path}"
+      if operator_pb.serialization_format:
+        format_str = placeholder_pb2.ProtoOperator.SerializationFormat.Name(
+            operator_pb.serialization_format)
+        return f"{expression_str}.serialize({format_str})"
+      return expression_str
+
+    if operator_name == "base64_encode_op":
+      sub_expression_str = debug_str(operator_pb.expression)
+      return f"{sub_expression_str}.b64encode()"
+    return "Unkown placeholder operator"
+
+  return "Unknown placeholder expression"

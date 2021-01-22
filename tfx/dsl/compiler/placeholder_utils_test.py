@@ -357,7 +357,7 @@ class PlaceholderUtilsTest(tf.test.TestCase):
     infra_validator_pb2.ServingSpec().DESCRIPTOR.file.CopyToProto(fd)
     pb.operator.proto_op.proto_schema.file_descriptors.file.append(fd)
 
-    with self.assertRaises(AttributeError):
+    with self.assertRaises(ValueError):
       placeholder_utils.resolve_placeholder_expression(pb,
                                                        self._resolution_context)
 
@@ -631,6 +631,37 @@ class PlaceholderUtilsTest(tf.test.TestCase):
   def testBinarySerializedProtoBase64Encode(self):
     expected_binary_str = self._serving_spec.SerializeToString().decode()
     self._assert_serialized_proto_b64encode_eq("BINARY", expected_binary_str)
+
+  def testDebugPlaceholder(self):
+    pb = text_format.Parse(_CONCAT_SPLIT_URI_EXPRESSION,
+                           placeholder_pb2.PlaceholderExpression())
+    self.assertEqual(
+        placeholder_utils.debug_str(pb),
+        "(input(\"examples\")[0].split_uri(\"train\") + \"/\" + \"1\")")
+
+    another_pb_str = """
+      operator {
+        proto_op {
+          expression {
+            placeholder {
+              type: EXEC_PROPERTY
+              key: "serving_spec"
+            }
+          }
+          proto_schema {
+            message_type: "tfx.components.infra_validator.ServingSpec"
+          }
+          proto_field_path: ".tensorflow_serving"
+          serialization_format: TEXT_FORMAT
+        }
+      }
+    """
+    another_pb = text_format.Parse(another_pb_str,
+                                   placeholder_pb2.PlaceholderExpression())
+    self.assertEqual(
+        placeholder_utils.debug_str(another_pb),
+        "exec_property(\"serving_spec\").tensorflow_serving.serialize(TEXT_FORMAT)"
+    )
 
 
 if __name__ == "__main__":
