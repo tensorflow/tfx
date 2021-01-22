@@ -137,6 +137,7 @@ class AirflowEndToEndTest(tf.test.TestCase):
         self._airflow_home, 'dags')
     os.environ['AIRFLOW__CORE__BASE_LOG_FOLDER'] = os.path.join(
         self._airflow_home, 'logs')
+    os.environ['AIRFLOW__CORE__DAGBAG_IMPORT_TIMEOUT'] = '300'
     # Do not load examples to make this a bit faster.
     os.environ['AIRFLOW__CORE__LOAD_EXAMPLES'] = 'False'
     # Following environment variables make scheduler process dags faster.
