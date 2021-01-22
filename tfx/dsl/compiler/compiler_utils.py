@@ -22,9 +22,11 @@ from __future__ import print_function
 from typing import List, Optional, Text, Type, Union
 
 from tfx import types
-from tfx.components.common_nodes import importer_node
-from tfx.components.common_nodes import resolver_node
+from tfx.components.common_nodes import importer_node as legacy_importer_node
+from tfx.components.common_nodes import resolver_node as legacy_resolver_node
 from tfx.dsl.components.base import base_node
+from tfx.dsl.components.common import importer_node
+from tfx.dsl.components.common import resolver_node
 from tfx.orchestration import pipeline
 from tfx.proto.orchestration import pipeline_pb2
 
@@ -117,13 +119,15 @@ def resolve_execution_mode(tfx_pipeline: pipeline.Pipeline):
 
 
 def is_resolver(node: base_node.BaseNode) -> bool:
-  """Helper function to check if a TFX node is a Resolver."""
-  return isinstance(node, resolver_node.ResolverNode)
+  """Helper function to check if a TFX node is a ResolverNode."""
+  return isinstance(
+      node, (resolver_node.ResolverNode, legacy_resolver_node.ResolverNode))
 
 
 def is_importer(node: base_node.BaseNode) -> bool:
-  """Helper function to check if a TFX node is a Importer node."""
-  return isinstance(node, importer_node.ImporterNode)
+  """Helper function to check if a TFX node is an ImporterNode."""
+  return isinstance(
+      node, (importer_node.ImporterNode, legacy_importer_node.ImporterNode))
 
 
 def ensure_topological_order(nodes: List[base_node.BaseNode]) -> bool:

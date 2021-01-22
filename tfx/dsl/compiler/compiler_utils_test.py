@@ -18,12 +18,14 @@ from absl.testing import parameterized
 import tensorflow as tf
 from tfx import types
 from tfx.components import CsvExampleGen
-from tfx.components import ImporterNode
-from tfx.components import ResolverNode
+from tfx.components.common_nodes import importer_node as legacy_importer_node
+from tfx.components.common_nodes import resolver_node as legacy_resolver_node
 from tfx.dsl.compiler import compiler_utils
 from tfx.dsl.components.base import base_component
 from tfx.dsl.components.base import base_executor
 from tfx.dsl.components.base import executor_spec
+from tfx.dsl.components.common import importer_node
+from tfx.dsl.components.common import resolver_node
 from tfx.dsl.experimental import latest_blessed_model_resolver
 from tfx.orchestration import pipeline
 from tfx.proto.orchestration import pipeline_pb2
@@ -77,7 +79,11 @@ class CompilerUtilsTest(tf.test.TestCase, parameterized.TestCase):
     self.assertEqual(expected_pb, pb)
 
   def testIsResolver(self):
-    resolver = ResolverNode(
+    resolver = resolver_node.ResolverNode(
+        instance_name="test_resolver_name",
+        resolver_class=latest_blessed_model_resolver.LatestBlessedModelResolver)
+    self.assertTrue(compiler_utils.is_resolver(resolver))
+    resolver = legacy_resolver_node.ResolverNode(
         instance_name="test_resolver_name",
         resolver_class=latest_blessed_model_resolver.LatestBlessedModelResolver)
     self.assertTrue(compiler_utils.is_resolver(resolver))
@@ -86,7 +92,12 @@ class CompilerUtilsTest(tf.test.TestCase, parameterized.TestCase):
     self.assertFalse(compiler_utils.is_resolver(example_gen))
 
   def testIsImporter(self):
-    importer = ImporterNode(
+    importer = importer_node.ImporterNode(
+        instance_name="import_schema",
+        source_uri="uri/to/schema",
+        artifact_type=standard_artifacts.Schema)
+    self.assertTrue(compiler_utils.is_importer(importer))
+    importer = legacy_importer_node.ImporterNode(
         instance_name="import_schema",
         source_uri="uri/to/schema",
         artifact_type=standard_artifacts.Schema)
