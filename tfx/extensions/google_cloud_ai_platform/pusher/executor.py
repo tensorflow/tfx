@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -20,7 +19,9 @@ from __future__ import print_function
 import time
 from typing import Any, Dict, List, Text
 
+from google.api_core import client_options  # pylint: disable=unused-import
 from googleapiclient import discovery
+
 from tfx import types
 from tfx.components.pusher import executor as tfx_pusher_executor
 from tfx.extensions.google_cloud_ai_platform import runner
@@ -37,6 +38,7 @@ _CAIP_MODEL_VERSION_PATH_FORMAT = (
 
 # Keys to the items in custom_config passed as a part of exec_properties.
 SERVING_ARGS_KEY = 'ai_platform_serving_args'
+ENDPOINT_ARGS_KEY = 'endpoint'
 # Keys for custom_config.
 _CUSTOM_CONFIG_KEY = 'custom_config'
 
@@ -57,18 +59,42 @@ class Executor(tfx_pusher_executor.Executor):
         - model_push: A list of 'ModelPushPath' artifact of size one. It will
           include the model in this push execution if the model was pushed.
       exec_properties: Mostly a passthrough input dict for
-        tfx.components.Pusher.executor.  custom_config.ai_platform_serving_args
-        is consumed by this class.  For the full set of parameters supported by
-        Google Cloud AI Platform, refer to
-        https://cloud.google.com/ml-engine/docs/tensorflow/deploying-models#creating_a_model_version.
+        tfx.components.Pusher.executor.  The following keys in `custom_config`
+        are consumed by this class:
+        - ai_platform_serving_args: For the full set of parameters supported
+          by Google Cloud AI Platform, refer to
+          https://cloud.google.com/ml-engine/reference/rest/v1/projects.models.versions#Version.
+        - endpoint: Optional endpoint override. Should be in format of
+          `https://ml-[region].googleapis.com`. Default to global endpoint if
+          not set. Using regional endpoint is recommended by Cloud AI Platform.
+          When set, 'regions' key in ai_platform_serving_args cannot be set.
+          For more details, please see
+          https://cloud.google.com/ai-platform/prediction/docs/regional-endpoints#using_regional_endpoints
 
     Raises:
       ValueError:
         If ai_platform_serving_args is not in exec_properties.custom_config.
         If Serving model path does not start with gs://.
+        If 'endpoint' and 'regions' are set simultanuously.
       RuntimeError: if the Google Cloud AI Platform training job failed.
     """
     self._log_startup(input_dict, output_dict, exec_properties)
+
+    custom_config = json_utils.loads(
+        exec_properties.get(_CUSTOM_CONFIG_KEY, 'null'))
+    if custom_config is not None and not isinstance(custom_config, Dict):
+      raise ValueError('custom_config in execution properties needs to be a '
+                       'dict.')
+    ai_platform_serving_args = custom_config.get(SERVING_ARGS_KEY)
+    if not ai_platform_serving_args:
+      raise ValueError(
+          '\'ai_platform_serving_args\' is missing in \'custom_config\'')
+    endpoint = custom_config.get(ENDPOINT_ARGS_KEY)
+    if endpoint and 'regions' in ai_platform_serving_args:
+      raise ValueError(
+          '\'endpoint\' and \'ai_platform_serving_args.regions\' cannot be set simultanuously'
+      )
+
     model_push = artifact_utils.get_single_instance(
         output_dict[tfx_pusher_executor.PUSHED_MODEL_KEY])
     if not self.CheckBlessing(input_dict):
@@ -78,16 +104,6 @@ class Executor(tfx_pusher_executor.Executor):
     model_export = artifact_utils.get_single_instance(
         input_dict[tfx_pusher_executor.MODEL_KEY])
 
-    custom_config = json_utils.loads(
-        exec_properties.get(_CUSTOM_CONFIG_KEY, 'null'))
-    if custom_config is not None and not isinstance(custom_config, Dict):
-      raise ValueError('custom_config in execution properties needs to be a '
-                       'dict.')
-
-    ai_platform_serving_args = custom_config.get(SERVING_ARGS_KEY)
-    if not ai_platform_serving_args:
-      raise ValueError(
-          '\'ai_platform_serving_args\' is missing in \'custom_config\'')
     service_name, api_version = runner.get_service_name_and_api_version(
         ai_platform_serving_args)
     # Deploy the model.
@@ -104,8 +120,14 @@ class Executor(tfx_pusher_executor.Executor):
     with telemetry_utils.scoped_labels(
         {telemetry_utils.LABEL_TFX_EXECUTOR: executor_class_path}):
       job_labels = telemetry_utils.get_labels_dict()
+    endpoint = endpoint or runner.DEFAULT_ENDPOINT
+    api = discovery.build(
+        service_name,
+        api_version,
+        client_options=client_options.ClientOptions(api_endpoint=endpoint),
+    )
     runner.deploy_model_for_aip_prediction(
-        discovery.build(service_name, api_version),
+        api,
         model_path,
         model_version,
         ai_platform_serving_args,

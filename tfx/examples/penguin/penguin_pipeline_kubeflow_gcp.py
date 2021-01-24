@@ -102,18 +102,20 @@ _ai_platform_training_args = {
     'serviceAccount': '<SA_NAME>@my-gcp-project.iam.gserviceaccount.com',
 }
 
-# A dict which contains the serving job parameters to be passed to Google
-# Cloud AI Platform. For the full set of parameters supported by Google Cloud AI
-# Platform, refer to
-# https://cloud.google.com/ml-engine/reference/rest/v1/projects.models
-_ai_platform_serving_args = {
-    'model_name': 'penguin',
-    'project_id': _project_id,
-    # The region to use when serving the model. See available regions here:
-    # https://cloud.google.com/ml-engine/docs/regions
-    # Note that serving currently only supports a single region:
-    # https://cloud.google.com/ml-engine/reference/rest/v1/projects.models#Model
-    'regions': [_gcp_region],
+_pusher_custom_config = {
+    # A dict which contains the serving job parameters to be passed to Google
+    # Cloud AI Platform. For the full set of parameters supported by Google
+    # Cloud AI Platform, refer to
+    # https://cloud.google.com/ml-engine/reference/rest/v1/projects.models
+    ai_platform_pusher_executor.SERVING_ARGS_KEY: {
+        'model_name': 'penguin',
+        'project_id': _project_id,
+        'machine_type': 'n1-standard-8',
+    },
+    # Regional endpoint for prediction service. See
+    # https://cloud.google.com/ai-platform/prediction/docs/regional-endpoints#using_regional_endpoints
+    ai_platform_pusher_executor.ENDPOINT_ARGS_KEY:
+        'https://%s-ml.googleapis.com' % _gcp_region,
 }
 
 
@@ -123,7 +125,7 @@ def create_pipeline(
     data_root: Text,
     module_file: Text,
     ai_platform_training_args: Dict[Text, Text],
-    ai_platform_serving_args: Dict[Text, Text],
+    pusher_custom_config: Dict[Text, Text],
     enable_tuning: bool,
     beam_pipeline_args: Optional[List[Text]] = None) -> pipeline.Pipeline:
   """Implements the penguin pipeline with TFX and Kubeflow Pipeline.
@@ -137,9 +139,7 @@ def create_pipeline(
     ai_platform_training_args: Args of CAIP training job. Please refer to
       https://cloud.google.com/ml-engine/reference/rest/v1/projects.jobs#Job
       for detailed description.
-    ai_platform_serving_args: Args of CAIP model deployment. Please refer to
-      https://cloud.google.com/ml-engine/reference/rest/v1/projects.models
-      for detailed description.
+    pusher_custom_config: Custom configs passed to pusher.
     enable_tuning: If True, the hyperparameter tuning through CloudTuner is
       enabled.
     beam_pipeline_args: Optional list of beam pipeline options. Please refer to
@@ -335,9 +335,8 @@ def create_pipeline(
           ai_platform_pusher_executor.Executor),
       model=trainer.outputs['model'],
       model_blessing=evaluator.outputs['blessing'],
-      custom_config={
-          ai_platform_pusher_executor.SERVING_ARGS_KEY: ai_platform_serving_args
-      })
+      custom_config=pusher_custom_config,
+  )
 
   components = [
       example_gen,
@@ -385,7 +384,7 @@ def main(unused_argv):
           module_file=_module_file,
           enable_tuning=True,
           ai_platform_training_args=_ai_platform_training_args,
-          ai_platform_serving_args=_ai_platform_serving_args,
+          pusher_custom_config=_pusher_custom_config,
       ))
 
 

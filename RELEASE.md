@@ -24,9 +24,7 @@
     same type of quantization, dynamic range quantization. Users of the
     TFLITE_REWRITER who do not enable quantization should be uneffected.
 
-*   Deprecated input/output compatibility aliases for ExampleValidator, 
-    Evaluator.
-    
+*   Deprecated input/output compatibility aliases for ExampleValidator and Evaluator.
 *   Default value for `infer_feature_shape` for SchemaGen changed from `False`
     to `True`, as indicated in previous release log. The inferred schema might
     change if you do not specify `infer_feature_shape`. It might leads to
@@ -53,7 +51,8 @@
     Such alternative image should behave the same as official
     `tensorflow/serving` image such as the same model volume path, serving port,
     etc.
-*   Depends on `tensorflow>=1.15.2,!=2.0.*,!=2.1.*,!=2.2.*,!=2.3.*,<3`.
+    *   Executor in `tfx.extensions.google_cloud_ai_platform.pusher.executor` supported regional endpoint and machine_type.
+    *   Depends on `tensorflow>=1.15.2,!=2.0.*,!=2.1.*,!=2.2.*,!=2.3.*,<3`.
 *   Depends on `tensorflow-serving-api>=1.15,!=2.0.*,!=2.1.*,!=2.2.*,!=2.3.*,<3`.
 
 ## Documentation updates

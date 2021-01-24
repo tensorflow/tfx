@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -317,6 +316,34 @@ class RunnerTest(tf.test.TestCase):
         'runtime_version': '1.23.45',
         'python_version': runner._get_caip_python_version('1.23.45'),
         'labels': self._job_labels,
+    }
+    self._assertDeployModelMockCalls(
+        expected_versions_create_body=expected_versions_create_body)
+
+  def testDeployModelForAIPPredictionWithCustomMachineType(self):
+    self._setUpPredictionMocks()
+
+    self._ai_platform_serving_args['machine_type'] = 'custom_machine_type'
+    runner.deploy_model_for_aip_prediction(self._mock_api_client,
+                                           self._serving_path,
+                                           self._model_version,
+                                           self._ai_platform_serving_args,
+                                           self._job_labels)
+
+    expected_versions_create_body = {
+        'name':
+            self._model_version,
+        'deployment_uri':
+            self._serving_path,
+        'machine_type':
+            'custom_machine_type',
+        'runtime_version':
+            runner._get_tf_runtime_version(tf.__version__),
+        'python_version':
+            runner._get_caip_python_version(
+                runner._get_tf_runtime_version(tf.__version__)),
+        'labels':
+            self._job_labels,
     }
     self._assertDeployModelMockCalls(
         expected_versions_create_body=expected_versions_create_body)
