@@ -22,10 +22,6 @@ from tfx.components.infra_validator import component
 from tfx.proto import infra_validator_pb2
 from tfx.types import channel_utils
 from tfx.types import standard_artifacts
-from tfx.types.standard_component_specs import BLESSING_KEY
-from tfx.types.standard_component_specs import MODEL_KEY
-from tfx.types.standard_component_specs import SERVING_SPEC_KEY
-from tfx.types.standard_component_specs import VALIDATION_SPEC_KEY
 
 
 class ComponentTest(tf.test.TestCase):
@@ -41,13 +37,13 @@ class ComponentTest(tf.test.TestCase):
 
     # Check channels have been created with proper type.
     self.assertEqual(standard_artifacts.Model,
-                     infra_validator.inputs[MODEL_KEY].type)
+                     infra_validator.inputs['model'].type)
     self.assertEqual(standard_artifacts.InfraBlessing,
-                     infra_validator.outputs[BLESSING_KEY].type)
+                     infra_validator.outputs['blessing'].type)
 
     # Check exec_properties have been populated.
-    self.assertIn(SERVING_SPEC_KEY, infra_validator.exec_properties)
-    self.assertIn(VALIDATION_SPEC_KEY, infra_validator.exec_properties)
+    self.assertIn('serving_spec', infra_validator.exec_properties)
+    self.assertIn('validation_spec', infra_validator.exec_properties)
 
 
 if __name__ == '__main__':

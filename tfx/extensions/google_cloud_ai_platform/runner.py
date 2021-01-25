@@ -61,10 +61,15 @@ _TF_COMPATIBILITY_OVERRIDE = {
     '2.5': '2.2',
 }
 
-# Default endpoint for v1 API.
-DEFAULT_ENDPOINT = 'https://ml.googleapis.com'
+# Suffix of endpoint.
+_ENDPOINT_SUFFIX = '.googleapis.com'
+# Default endpoint.
+_DEFAULT_ENDPOINT = 'ml.googleapis.com'
 # Default API version.
 _DEFAULT_API_VERSION = 'v1'
+# Key to the item in ai_platform_serving_args.
+_ENDPOINT_ARGS_KEY = 'ai_platform_serving_endpoint'
+_API_VERSION_ARGS_KEY = 'ai_platform_serving_api_version'
 
 
 def _get_tf_runtime_version(tf_version: Text) -> Text:
@@ -300,8 +305,6 @@ def start_aip_training(input_dict: Dict[Text, List[types.Artifact]],
       job_labels=job_labels)
 
 
-# TODO(zhitaoli): remove this function since we are not going to support
-# more API versions on existing Cloud AI Platform.
 def get_service_name_and_api_version(
     ai_platform_serving_args: Dict[Text, Any]):  # -> Tuple[Text, Text]
   """Gets service name and api version from ai_platform_serving_args.
@@ -313,8 +316,15 @@ def get_service_name_and_api_version(
   Returns:
     Service name and API version.
   """
-  del ai_platform_serving_args
-  return ('ml', _DEFAULT_API_VERSION)
+  service_endpoint = (
+      ai_platform_serving_args.get(_ENDPOINT_ARGS_KEY)
+      if _ENDPOINT_ARGS_KEY in ai_platform_serving_args else _DEFAULT_ENDPOINT)
+  service_name = service_endpoint[:-len(_ENDPOINT_SUFFIX)]
+  api_version = (
+      ai_platform_serving_args.get(_API_VERSION_ARGS_KEY)
+      if _API_VERSION_ARGS_KEY in ai_platform_serving_args else
+      _DEFAULT_API_VERSION)
+  return (service_name, api_version)
 
 
 def create_model_for_aip_prediction_if_not_exist(
@@ -370,18 +380,9 @@ def deploy_model_for_aip_prediction(api: discovery.Resource,
     model_version: Version of the model being deployed. Must be different from
       what is currently being served.
     ai_platform_serving_args: Dictionary containing arguments for pushing to AI
-      Platform. The full set of parameters supported can be found at
-      https://cloud.google.com/ml-engine/reference/rest/v1/projects.models.versions#Version.
-      Most keys are forwarded as-is, but following keys are handled specially:
-        - name: this must be empty (and will be filled by pusher).
-        - deployment_uri: this must be empty (and will be filled by pusher).
-        - python_version: when left empty, this will be filled by python version
-            of the environment being used.
-        - runtime_version: when left empty, this will be filled by TensorFlow
-            version from the environment.
-        - labels: a list of job labels will be merged with user's input.
-    job_labels: The dict of labels that will be attached to this job. They are
-      merged with optional labels from `ai_platform_serving_args`.
+      Platform. For the full set of parameters supported, refer to
+      https://cloud.google.com/ml-engine/reference/rest/v1/projects.models.versions#Version
+    job_labels: The dict of labels that will be attached to this job.
     skip_model_creation: If true, the method assuem model already exist in
       AI platform, therefore skipping model creation.
     set_default_version: Whether set the newly deployed model version as the
@@ -404,25 +405,19 @@ def deploy_model_for_aip_prediction(api: discovery.Resource,
   if not skip_model_creation:
     create_model_for_aip_prediction_if_not_exist(api, job_labels,
                                                  ai_platform_serving_args)
-  version_body = dict(ai_platform_serving_args)
-  for model_only_key in ['model_name', 'project_id', 'regions']:
-    version_body.pop(model_only_key, None)
-  version_body['name'] = model_version
-  version_body['deployment_uri'] = serving_path
-  version_body['runtime_version'] = version_body.get('runtime_version',
-                                                     runtime_version)
-  version_body['python_version'] = version_body.get('python_version',
-                                                    python_version)
-  version_body['labels'] = {**version_body.get('labels', {}), **job_labels}
-  logging.info(
-      'Creating new version of model_name %s in project %s, request body: %s',
-      model_name, project_id, version_body)
+  body = {
+      'name': model_version,
+      'deployment_uri': serving_path,
+      'runtime_version': runtime_version,
+      'python_version': python_version,
+      'labels': job_labels,
+  }
 
   # Push to AIP, and record the operation name so we can poll for its state.
   model_name = 'projects/{}/models/{}'.format(project_id, model_name)
   try:
     operation = api.projects().models().versions().create(
-        body=version_body, parent=model_name).execute()
+        body=body, parent=model_name).execute()
     _wait_for_operation(api, operation, 'projects.models.versions.create')
   except errors.HttpError as e:
     # If the error is to create an already existing model version, it's ok to

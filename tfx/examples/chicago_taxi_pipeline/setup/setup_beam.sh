@@ -19,7 +19,7 @@ BEAM_DIR="$WORK_DIR/beam"
 GIT_COMMAND=`which git`
 BEAM_REPO="https://github.com/apache/beam"
 # LINT.IfChange
-BEAM_BRANCH="release-2.27.0"
+BEAM_BRANCH="release-2.25.0"
 # LINT.ThenChange(../../../dependencies.py)
 
 

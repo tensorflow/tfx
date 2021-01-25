@@ -3,11 +3,6 @@ include tfx/orchestration/experimental/interactive/export_templates/*.tmpl
 include tfx/experimental/templates/taxi/.gitignore
 include tfx/experimental/templates/taxi/*.ipynb
 include tfx/orchestration/kubeflow/v2/artifact_types/*.yaml
-
-# Include component level proto files whose generated python classes
-# are exposed in our public API.
-include tfx/proto/*.proto
-
 # TODO(b/172611374): Consider adding all testdata in the wheel to make test
 # fixture more portable.
 recursive-include tfx/orchestration/kubeflow/v2/testdata *

@@ -52,6 +52,7 @@ class BaseComponentTest(tf.test.TestCase):
     pipeline = tfx_pipeline.Pipeline(
         pipeline_name=self._test_pipeline_name,
         pipeline_root='test_pipeline_root',
+        beam_pipeline_args=['--my_arg=some_arg'],
         metadata_connection_config=metadata_store_pb2.ConnectionConfig(),
         components=[example_gen, statistics_gen],
     )

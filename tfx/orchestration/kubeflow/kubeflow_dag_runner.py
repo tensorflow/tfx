@@ -27,6 +27,7 @@ from kfp import gcp
 from kubernetes import client as k8s_client
 
 from tfx import version
+from tfx.dsl.components.base import executor_spec
 from tfx.orchestration import data_types
 from tfx.orchestration import pipeline as tfx_pipeline
 from tfx.orchestration import tfx_runner
@@ -316,6 +317,10 @@ class KubeflowDagRunner(tfx_runner.TfxRunner):
       (component_launcher_class,
        component_config) = config_utils.find_component_launch_info(
            self._config, component)
+
+      if isinstance(component.executor_spec, executor_spec.ExecutorClassSpec):
+        # Remove this field as it is not used in Kubeflow.
+        del component.executor_spec.extra_flags
 
       kfp_component = base_component.BaseComponent(
           component=component,
