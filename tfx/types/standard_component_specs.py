@@ -40,6 +40,7 @@ from tfx.types.component_spec import ExecutionParameter
 SCHEMA_KEY = 'schema'
 EXAMPLES_KEY = 'examples'
 MODEL_KEY = 'model'
+BLESSING_KEY = 'blessing'
 # Key for example_validator
 EXCLUDE_SPLITS_KEY = 'exclude_splits'
 STATISTICS_KEY = 'statistics'
@@ -53,7 +54,10 @@ MODULE_FILE_KEY = 'module_file'
 MODULE_PATH_KEY = 'module_path'
 BASELINE_MODEL_KEY = 'baseline_model'
 EVALUATION_KEY = 'evaluation'
-BLESSING_KEY = 'blessing'
+# Key for for infra_validator
+SERVING_SPEC_KEY = 'serving_spec'
+VALIDATION_SPEC_KEY = 'validation_spec'
+REQUEST_SPEC_KEY = 'request_spec'
 
 
 class BulkInferrerSpec(ComponentSpec):
@@ -186,25 +190,25 @@ class InfraValidatorSpec(ComponentSpec):
   """InfraValidator component spec."""
 
   PARAMETERS = {
-      'serving_spec':
+      SERVING_SPEC_KEY:
           ExecutionParameter(type=infra_validator_pb2.ServingSpec),
-      'validation_spec':
+      VALIDATION_SPEC_KEY:
           ExecutionParameter(
               type=infra_validator_pb2.ValidationSpec, optional=True),
-      'request_spec':
+      REQUEST_SPEC_KEY:
           ExecutionParameter(
               type=infra_validator_pb2.RequestSpec, optional=True)
   }
 
   INPUTS = {
-      'model':
+      MODEL_KEY:
           ChannelParameter(type=standard_artifacts.Model),
-      'examples':
+      EXAMPLES_KEY:
           ChannelParameter(type=standard_artifacts.Examples, optional=True),
   }
 
   OUTPUTS = {
-      'blessing': ChannelParameter(type=standard_artifacts.InfraBlessing),
+      BLESSING_KEY: ChannelParameter(type=standard_artifacts.InfraBlessing),
   }
 
 
