@@ -54,6 +54,7 @@
     *   Executor in `tfx.extensions.google_cloud_ai_platform.pusher.executor` supported regional endpoint and machine_type.
     *   Depends on `tensorflow>=1.15.2,!=2.0.*,!=2.1.*,!=2.2.*,!=2.3.*,<3`.
 *   Depends on `tensorflow-serving-api>=1.15,!=2.0.*,!=2.1.*,!=2.2.*,!=2.3.*,<3`.
+*   The `tfx.__version__` attribute was restored.
 
 ## Documentation updates
 
