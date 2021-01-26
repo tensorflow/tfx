@@ -282,8 +282,13 @@ class KubeflowDagRunner(tfx_runner.TfxRunner):
         continue
       if parameter.name not in self._deduped_parameter_names:
         self._deduped_parameter_names.add(parameter.name)
+        # TODO(b/178436919): Create a test to cover default value rendering
+        # and move the external code reference over there.
+        # The default needs to be serialized then passed to dsl.PipelineParam.
+        # See
+        # https://github.com/kubeflow/pipelines/blob/f65391309650fdc967586529e79af178241b4c2c/sdk/python/kfp/dsl/_pipeline_param.py#L154
         dsl_parameter = dsl.PipelineParam(
-            name=parameter.name, value=parameter.default)
+            name=parameter.name, value=str(parameter.default))
         self._params.append(dsl_parameter)
 
   def _parse_parameter_from_pipeline(self,

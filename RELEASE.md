@@ -60,6 +60,8 @@
     componnent-level configs are included in the `tfx` package directly.
 *   Depends on `apache-beam[gcp]>=2.27,<3`.
 *   Depends on `pyarrow>=1,<3`.
+*   Fixes the serialization of zero-valued default when using `RuntimeParameter`
+    on Kubeflow.
 
 ## Documentation updates
 
