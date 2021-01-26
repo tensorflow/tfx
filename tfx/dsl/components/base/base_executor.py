@@ -54,7 +54,8 @@ class BaseExecutor(with_metaclass(abc.ABCMeta, object)):
                  tmp_dir: Optional[Text] = None,
                  unique_id: Optional[Text] = None,
                  executor_output_uri: Optional[Text] = None,
-                 stateful_working_dir: Optional[Text] = None):
+                 stateful_working_dir: Optional[Text] = None,
+                 component_id: Optional[Text] = None):
       self.beam_pipeline_args = beam_pipeline_args
       # Base temp directory for the pipeline
       self._tmp_dir = tmp_dir
@@ -65,6 +66,8 @@ class BaseExecutor(with_metaclass(abc.ABCMeta, object)):
       # A path to store information for stateful run, e.g. checkpoints for
       # tensorflow trainers.
       self._stateful_working_dir = stateful_working_dir
+      # A human readable id of a component of a certain pipeline run.
+      self._component_id = component_id
 
     def get_tmp_path(self) -> Text:
       if not self._tmp_dir or not self._unique_id:
@@ -78,6 +81,14 @@ class BaseExecutor(with_metaclass(abc.ABCMeta, object)):
     @property
     def stateful_working_dir(self) -> Text:
       return self._stateful_working_dir
+
+    @property
+    def unique_id(self) -> Text:
+      return self._unique_id
+
+    @property
+    def component_id(self) -> Text:
+      return self._component_id
 
   @abc.abstractmethod
   def Do(

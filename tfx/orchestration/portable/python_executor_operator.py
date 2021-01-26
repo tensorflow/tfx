@@ -13,7 +13,7 @@
 # limitations under the License.
 """Base class to define how to operator an executor."""
 import sys
-from typing import Dict, List, Optional, cast
+from typing import cast, Dict, List, Optional, Text
 
 import tensorflow as tf
 from tfx import types
@@ -40,6 +40,12 @@ def _populate_output_artifact(
     for artifact in artifact_list:
       artifacts.artifacts.append(artifact.mlmd_artifact)
     executor_output.output_artifacts[key].CopyFrom(artifacts)
+
+
+def _get_component_id(execution_info: data_types.ExecutionInfo) -> Text:
+  return (f'{execution_info.pipeline_info.id}_'
+          f'{execution_info.pipeline_run_id}_'
+          f'{execution_info.pipeline_node.node_info.id}')
 
 
 class PythonExecutorOperator(base_executor_operator.BaseExecutorOperator):
@@ -98,7 +104,8 @@ class PythonExecutorOperator(base_executor_operator.BaseExecutorOperator):
         tmp_dir=execution_info.tmp_dir,
         unique_id=str(execution_info.execution_id),
         executor_output_uri=execution_info.execution_output_uri,
-        stateful_working_dir=execution_info.stateful_working_dir)
+        stateful_working_dir=execution_info.stateful_working_dir,
+        component_id=_get_component_id(execution_info))
     executor = self._executor_cls(context=context)
 
     for _, artifact_list in execution_info.input_dict.items():

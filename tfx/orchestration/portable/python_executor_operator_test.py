@@ -25,6 +25,7 @@ from tfx.orchestration.portable import data_types
 from tfx.orchestration.portable import python_executor_operator
 from tfx.proto.orchestration import executable_spec_pb2
 from tfx.proto.orchestration import execution_result_pb2
+from tfx.proto.orchestration import pipeline_pb2
 from tfx.types import standard_artifacts
 from tfx.utils import test_case_utils
 
@@ -79,25 +80,49 @@ class ValidateBeamPipelineArgsExecutor(base_executor.BaseExecutor):
 
 class PythonExecutorOperatorTest(test_case_utils.TfxTest):
 
+  def setUp(self):
+    super(PythonExecutorOperatorTest, self).setUp()
+    pipeline_info = text_format.Parse(
+        """
+        id: "my_pipeline_name"
+        """, pipeline_pb2.PipelineInfo())
+    pipeline_run_id = 'run_5'
+    pipeline_node = text_format.Parse(
+        """
+        node_info {
+          id: "my_component"
+        }
+        """, pipeline_pb2.PipelineNode())
+    input_dict = {'input_key': [standard_artifacts.Examples()]}
+    output_dict = {'output_key': [standard_artifacts.Model()]}
+    exec_properties = {
+        'string': 'value',
+        'int': 1,
+        'float': 0.0,
+        # This should not happen on production and will be
+        # dropped.
+        'proto': execution_result_pb2.ExecutorOutput()
+    }
+    stateful_working_dir = os.path.join(self.tmp_dir, 'stateful_working_dir')
+    executor_output_uri = os.path.join(self.tmp_dir, 'executor_output')
+    self._execution_info = data_types.ExecutionInfo(
+        execution_id=1,
+        input_dict=input_dict,
+        output_dict=output_dict,
+        exec_properties=exec_properties,
+        stateful_working_dir=stateful_working_dir,
+        execution_output_uri=executor_output_uri,
+        pipeline_info=pipeline_info,
+        pipeline_run_id=pipeline_run_id,
+        pipeline_node=pipeline_node)
+
   def testRunExecutor_with_InprocessExecutor(self):
     executor_sepc = text_format.Parse(
         """
       class_path: "tfx.orchestration.portable.python_executor_operator_test.InprocessExecutor"
     """, executable_spec_pb2.PythonClassExecutableSpec())
     operator = python_executor_operator.PythonExecutorOperator(executor_sepc)
-    input_dict = {'input_key': [standard_artifacts.Examples()]}
-    output_dict = {'output_key': [standard_artifacts.Model()]}
-    exec_properties = {'key': 'value'}
-    stateful_working_dir = os.path.join(self.tmp_dir, 'stateful_working_dir')
-    executor_output_uri = os.path.join(self.tmp_dir, 'executor_output')
-    executor_output = operator.run_executor(
-        data_types.ExecutionInfo(
-            execution_id=1,
-            input_dict=input_dict,
-            output_dict=output_dict,
-            exec_properties=exec_properties,
-            stateful_working_dir=stateful_working_dir,
-            execution_output_uri=executor_output_uri))
+    executor_output = operator.run_executor(self._execution_info)
     self.assertProtoPartiallyEquals(
         """
           output_artifacts {
@@ -114,19 +139,7 @@ class PythonExecutorOperatorTest(test_case_utils.TfxTest):
       class_path: "tfx.orchestration.portable.python_executor_operator_test.NotInprocessExecutor"
     """, executable_spec_pb2.PythonClassExecutableSpec())
     operator = python_executor_operator.PythonExecutorOperator(executor_sepc)
-    input_dict = {'input_key': [standard_artifacts.Examples()]}
-    output_dict = {'output_key': [standard_artifacts.Model()]}
-    exec_properties = {'key': 'value'}
-    stateful_working_dir = os.path.join(self.tmp_dir, 'stateful_working_dir')
-    executor_output_uri = os.path.join(self.tmp_dir, 'executor_output')
-    executor_output = operator.run_executor(
-        data_types.ExecutionInfo(
-            execution_id=1,
-            input_dict=input_dict,
-            output_dict=output_dict,
-            exec_properties=exec_properties,
-            stateful_working_dir=stateful_working_dir,
-            execution_output_uri=executor_output_uri))
+    executor_output = operator.run_executor(self._execution_info)
     self.assertProtoPartiallyEquals(
         """
           output_artifacts {
@@ -143,26 +156,7 @@ class PythonExecutorOperatorTest(test_case_utils.TfxTest):
       class_path: "tfx.orchestration.portable.python_executor_operator_test.InplaceUpdateExecutor"
     """, executable_spec_pb2.PythonClassExecutableSpec())
     operator = python_executor_operator.PythonExecutorOperator(executor_sepc)
-    input_dict = {'input_key': [standard_artifacts.Examples()]}
-    output_dict = {'output_key': [standard_artifacts.Model()]}
-    exec_properties = {
-        'string': 'value',
-        'int': 1,
-        'float': 0.0,
-        # This should not happen on production and will be
-        # dropped.
-        'proto': execution_result_pb2.ExecutorOutput()
-    }
-    stateful_working_dir = os.path.join(self.tmp_dir, 'stateful_working_dir')
-    executor_output_uri = os.path.join(self.tmp_dir, 'executor_output')
-    executor_output = operator.run_executor(
-        data_types.ExecutionInfo(
-            execution_id=1,
-            input_dict=input_dict,
-            output_dict=output_dict,
-            exec_properties=exec_properties,
-            stateful_working_dir=stateful_working_dir,
-            execution_output_uri=executor_output_uri))
+    executor_output = operator.run_executor(self._execution_info)
     self.assertProtoPartiallyEquals(
         """
           output_artifacts {
@@ -187,14 +181,12 @@ class PythonExecutorOperatorTest(test_case_utils.TfxTest):
       extra_flags: "--runner=DirectRunner"
     """, executable_spec_pb2.PythonClassExecutableSpec())
     operator = python_executor_operator.PythonExecutorOperator(executor_sepc)
-    executor_output_uri = os.path.join(self.tmp_dir, 'executor_output')
-    operator.run_executor(
-        data_types.ExecutionInfo(
-            execution_id=1,
-            input_dict={},
-            output_dict={},
-            exec_properties={},
-            execution_output_uri=executor_output_uri))
+    operator.run_executor(self._execution_info)
+
+  def testComponentId(self):
+    self.assertEqual(
+        python_executor_operator._get_component_id(self._execution_info),
+        'my_pipeline_name_run_5_my_component')
 
 
 if __name__ == '__main__':
