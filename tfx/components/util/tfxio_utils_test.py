@@ -135,10 +135,7 @@ feature {
 class _SimpleTfGraphRecordDecoder(tf_graph_record_decoder.TFGraphRecordDecoder):
   """A simple DataView Decoder used for testing."""
 
-  def __init__(self):
-    super(_SimpleTfGraphRecordDecoder, self).__init__(name='SimpleDecoder')
-
-  def _decode_record_internal(self, record):
+  def decode_record(self, record):
     indices = tf.transpose(
         tf.stack([
             tf.range(tf.size(record), dtype=tf.int64),

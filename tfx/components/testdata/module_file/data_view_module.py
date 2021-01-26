@@ -21,10 +21,7 @@ from tfx_bsl.coders import tf_graph_record_decoder
 class SimpleDecoder(tf_graph_record_decoder.TFGraphRecordDecoder):
   """Simply converts the input records (1-D dense tensor) to a sparse tensor."""
 
-  def __init__(self):
-    super(SimpleDecoder, self).__init__(name="SimpleDecoder")
-
-  def _decode_record_internal(self, record: tf.Tensor) -> Dict[Text, Any]:
+  def decode_record(self, record: tf.Tensor) -> Dict[Text, Any]:
     indices = tf.transpose(
         tf.stack([
             tf.range(tf.size(record), dtype=tf.int64),

@@ -52,7 +52,7 @@ class DataViewProviderExecutorTest(tf.test.TestCase):
     executor.Do(input_dict, output_dict, exec_properties)
     loaded_decoder = tf_graph_record_decoder.load_decoder(output.uri)
     self.assertIsInstance(
-        loaded_decoder, tf_graph_record_decoder.TFGraphRecordDecoder)
+        loaded_decoder, tf_graph_record_decoder.LoadedDecoder)
 
   def testExecutorModuleFileNotProvided(self):
     input_dict = {}
@@ -69,7 +69,7 @@ class DataViewProviderExecutorTest(tf.test.TestCase):
     executor.Do(input_dict, output_dict, exec_properties)
     loaded_decoder = tf_graph_record_decoder.load_decoder(output.uri)
     self.assertIsInstance(
-        loaded_decoder, tf_graph_record_decoder.TFGraphRecordDecoder)
+        loaded_decoder, tf_graph_record_decoder.LoadedDecoder)
 
 
 if __name__ == '__main__':
