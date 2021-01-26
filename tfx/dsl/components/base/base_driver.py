@@ -22,12 +22,10 @@ from typing import Any, Dict, List, Text
 
 import absl
 
-
 from tfx import types
 from tfx.dsl.io import fileio
 from tfx.orchestration import data_types
 from tfx.orchestration import metadata
-from tfx.types import artifact_utils
 
 
 def _generate_output_uri(base_output_dir: Text,
@@ -65,13 +63,6 @@ def _prepare_output_paths(artifact: types.Artifact):
   absl.logging.debug('Creating output artifact uri %s as directory',
                      artifact_dir)
   fileio.makedirs(artifact_dir)
-  # TODO(b/147242148): Avoid special-casing the "split_names" property.
-  if artifact.type.PROPERTIES and 'split_names' in artifact.type.PROPERTIES:
-    split_names = artifact_utils.decode_split_names(artifact.split_names)
-    for split in split_names:
-      split_dir = os.path.join(artifact.uri, split)
-      absl.logging.debug('Creating output split %s as directory', split_dir)
-      fileio.makedirs(split_dir)
 
 
 class BaseDriver(object):
