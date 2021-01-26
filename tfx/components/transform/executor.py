@@ -1136,7 +1136,6 @@ class Executor(base_executor.BaseExecutor):
           desired_batch_size=desired_batch_size,
           passthrough_keys=self._GetTFXIOPassthroughKeys(),
           use_deep_copy_optimization=True,
-          use_tfxio=True,
           force_tf_compat_v1=force_tf_compat_v1):
         # pylint: disable=expression-not-assigned
         # pylint: disable=no-value-for-parameter
