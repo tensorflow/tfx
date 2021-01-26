@@ -17,10 +17,10 @@ import base64
 from typing import List
 
 from absl import logging
+from tfx.orchestration import data_types_utils
 from tfx.orchestration import metadata
 from tfx.orchestration.experimental.core import status as status_lib
 from tfx.orchestration.experimental.core import task as task_lib
-from tfx.orchestration.portable.mlmd import common_utils
 from tfx.orchestration.portable.mlmd import context_lib
 from tfx.orchestration.portable.mlmd import execution_lib
 from tfx.proto.orchestration import pipeline_pb2
@@ -168,7 +168,7 @@ class PipelineState:
   @property
   def pipeline(self) -> pipeline_pb2.Pipeline:
     if not self._pipeline:
-      pipeline_ir_b64 = common_utils.get_metadata_value(
+      pipeline_ir_b64 = data_types_utils.get_metadata_value(
           self.execution.properties[_PIPELINE_IR])
       pipeline = pipeline_pb2.Pipeline()
       pipeline.ParseFromString(base64.b64decode(pipeline_ir_b64))
@@ -177,14 +177,14 @@ class PipelineState:
 
   def initiate_stop(self):
     """Updates pipeline state to signal stopping pipeline execution."""
-    common_utils.set_metadata_value(
+    data_types_utils.set_metadata_value(
         self.execution.custom_properties[_STOP_INITIATED], 1)
     self._commit = True
 
   def is_stop_initiated(self):
     """Returns `True` if pipeline execution stopping has been initiated."""
     if _STOP_INITIATED in self.execution.custom_properties:
-      return common_utils.get_metadata_value(
+      return data_types_utils.get_metadata_value(
           self.execution.custom_properties[_STOP_INITIATED]) == 1
     return False
 

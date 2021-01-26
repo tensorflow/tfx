@@ -36,12 +36,6 @@ from tfx.components.infra_validator.model_server_runners import local_docker_run
 from tfx.dsl.components.base import base_executor
 from tfx.proto import infra_validator_pb2
 from tfx.types import artifact_utils
-from tfx.types.standard_component_specs import BLESSING_KEY
-from tfx.types.standard_component_specs import EXAMPLES_KEY
-from tfx.types.standard_component_specs import MODEL_KEY
-from tfx.types.standard_component_specs import REQUEST_SPEC_KEY
-from tfx.types.standard_component_specs import SERVING_SPEC_KEY
-from tfx.types.standard_component_specs import VALIDATION_SPEC_KEY
 from tfx.utils import io_utils
 from tfx.utils import path_utils
 from tfx.utils import proto_utils
@@ -57,6 +51,14 @@ _DEFAULT_MODEL_NAME = 'infra-validation-model'
 _TENSORFLOW_SERVING = 'tensorflow_serving'
 _LOCAL_DOCKER = 'local_docker'
 _KUBERNETES = 'kubernetes'
+
+# Artifact and exec_properties keys
+_MODEL_KEY = 'model'
+_EXAMPLES_KEY = 'examples'
+_BLESSING_KEY = 'blessing'
+_SERVING_SPEC_KEY = 'serving_spec'
+_VALIDATION_SPEC_KEY = 'validation_spec'
+_REQUEST_SPEC_KEY = 'request_spec'
 
 # Artifact property keys
 _BLESSED_KEY = 'blessed'
@@ -150,31 +152,31 @@ class Executor(base_executor.BaseExecutor):
     """
     self._log_startup(input_dict, output_dict, exec_properties)
 
-    model = artifact_utils.get_single_instance(input_dict[MODEL_KEY])
-    blessing = artifact_utils.get_single_instance(output_dict[BLESSING_KEY])
+    model = artifact_utils.get_single_instance(input_dict[_MODEL_KEY])
+    blessing = artifact_utils.get_single_instance(output_dict[_BLESSING_KEY])
 
-    if input_dict.get(EXAMPLES_KEY):
-      examples = artifact_utils.get_single_instance(input_dict[EXAMPLES_KEY])
+    if input_dict.get(_EXAMPLES_KEY):
+      examples = artifact_utils.get_single_instance(input_dict[_EXAMPLES_KEY])
     else:
       examples = None
 
     serving_spec = infra_validator_pb2.ServingSpec()
-    proto_utils.json_to_proto(exec_properties[SERVING_SPEC_KEY], serving_spec)
+    proto_utils.json_to_proto(exec_properties[_SERVING_SPEC_KEY], serving_spec)
     if not serving_spec.model_name:
       serving_spec.model_name = _DEFAULT_MODEL_NAME
 
     validation_spec = infra_validator_pb2.ValidationSpec()
-    if exec_properties.get(VALIDATION_SPEC_KEY):
-      proto_utils.json_to_proto(exec_properties[VALIDATION_SPEC_KEY],
+    if exec_properties.get(_VALIDATION_SPEC_KEY):
+      proto_utils.json_to_proto(exec_properties[_VALIDATION_SPEC_KEY],
                                 validation_spec)
     if not validation_spec.num_tries:
       validation_spec.num_tries = _DEFAULT_NUM_TRIES
     if not validation_spec.max_loading_time_seconds:
       validation_spec.max_loading_time_seconds = _DEFAULT_MAX_LOADING_TIME_SEC
 
-    if exec_properties.get(REQUEST_SPEC_KEY):
+    if exec_properties.get(_REQUEST_SPEC_KEY):
       request_spec = infra_validator_pb2.RequestSpec()
-      proto_utils.json_to_proto(exec_properties[REQUEST_SPEC_KEY],
+      proto_utils.json_to_proto(exec_properties[_REQUEST_SPEC_KEY],
                                 request_spec)
     else:
       request_spec = None

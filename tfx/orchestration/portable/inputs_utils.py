@@ -17,9 +17,9 @@ from typing import Dict, Iterable, List, Optional
 
 from absl import logging
 from tfx import types
+from tfx.orchestration import data_types_utils
 from tfx.orchestration import metadata
 from tfx.orchestration.portable import resolver_processor
-from tfx.orchestration.portable.mlmd import common_utils
 from tfx.orchestration.portable.mlmd import event_lib
 from tfx.orchestration.portable.mlmd import execution_lib
 from tfx.proto.orchestration import pipeline_pb2
@@ -100,14 +100,13 @@ def _resolve_single_channel(
 
   artifact_type = channel.artifact_query.type
   output_key = channel.output_key or None
-  # 1. filter(None, list) filters "false" value out from the list
-  # 2. even if the filter() result is empty, its result is considered as "true"
-  #    so turning it into a list explicitly.
-  contexts = list(filter(None, [
-      metadata_handler.store.get_context_by_type_and_name(
-          context_query.type.name, common_utils.get_value(context_query.name))
-      for context_query in channel.context_queries
-  ]))
+
+  contexts = []
+  for context_query in channel.context_queries:
+    context = metadata_handler.store.get_context_by_type_and_name(
+        context_query.type.name, data_types_utils.get_value(context_query.name))
+    if context:
+      contexts.append(context)
   return get_qualified_artifacts(
       metadata_handler=metadata_handler,
       contexts=contexts,

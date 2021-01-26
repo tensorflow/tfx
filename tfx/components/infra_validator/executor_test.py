@@ -32,12 +32,6 @@ from tfx.dsl.io import fileio
 from tfx.proto import infra_validator_pb2
 from tfx.types import artifact_utils
 from tfx.types import standard_artifacts
-from tfx.types.standard_component_specs import BLESSING_KEY
-from tfx.types.standard_component_specs import EXAMPLES_KEY
-from tfx.types.standard_component_specs import MODEL_KEY
-from tfx.types.standard_component_specs import REQUEST_SPEC_KEY
-from tfx.types.standard_component_specs import SERVING_SPEC_KEY
-from tfx.types.standard_component_specs import VALIDATION_SPEC_KEY
 from tfx.utils import path_utils
 from tfx.utils import proto_utils
 
@@ -95,12 +89,12 @@ class ExecutorTest(tf.test.TestCase):
     examples.split_names = artifact_utils.encode_split_names(['eval'])
 
     self._input_dict = {
-        MODEL_KEY: [self._model],
-        EXAMPLES_KEY: [examples],
+        'model': [self._model],
+        'examples': [examples],
     }
     self._blessing = standard_artifacts.InfraBlessing()
     self._blessing.uri = os.path.join(output_data_dir, 'blessing')
-    self._output_dict = {BLESSING_KEY: [self._blessing]}
+    self._output_dict = {'blessing': [self._blessing]}
     temp_dir = os.path.join(output_data_dir, '.temp')
     self._context = executor.Executor.Context(tmp_dir=temp_dir, unique_id='1')
     self._serving_spec = _make_serving_spec({
@@ -123,9 +117,9 @@ class ExecutorTest(tf.test.TestCase):
         'num_examples': 1
     })
     self._exec_properties = {
-        SERVING_SPEC_KEY: proto_utils.proto_to_json(self._serving_spec),
-        VALIDATION_SPEC_KEY: proto_utils.proto_to_json(self._validation_spec),
-        REQUEST_SPEC_KEY: proto_utils.proto_to_json(self._request_spec),
+        'serving_spec': proto_utils.proto_to_json(self._serving_spec),
+        'validation_spec': proto_utils.proto_to_json(self._validation_spec),
+        'request_spec': proto_utils.proto_to_json(self._request_spec),
     }
 
   def testDo_BlessedIfNoError(self):

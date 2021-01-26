@@ -62,7 +62,7 @@ _TF_COMPATIBILITY_OVERRIDE = {
 }
 
 # Default endpoint for v1 API.
-DEFAULT_ENDPOINT = 'https://ml.googleapis.com'
+DEFAULT_ENDPOINT = 'ml.googleapis.com'
 # Default API version.
 _DEFAULT_API_VERSION = 'v1'
 

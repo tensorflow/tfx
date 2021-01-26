@@ -40,7 +40,6 @@ import tensorflow_docs.api_generator as api_generator
 from tensorflow_docs.api_generator import doc_controls
 from tensorflow_docs.api_generator import generate_lib
 
-
 import tfx
 # pylint: disable=unused-import
 from tfx import components
@@ -50,14 +49,14 @@ from tfx import orchestration
 import tfx.version
 # pylint: enable=unused-import
 
-GITHUB_URL_PREFIX = ("https://github.com/tensorflow/tfx/blob/{}/tfx".format(
+tfx.__version__ = tfx.version.__version__
+
+GITHUB_URL_PREFIX = ("https://github.com/tensorflow/tfx/blob/v{}/tfx".format(
     tfx.__version__))
 
 flags.DEFINE_string("output_dir", "/tmp/tfx_api", "Where to output the docs")
-flags.DEFINE_string(
-    "code_url_prefix",
-    GITHUB_URL_PREFIX,
-    "The url prefix for links to code.")
+flags.DEFINE_string("code_url_prefix", GITHUB_URL_PREFIX,
+                    "The url prefix for links to code.")
 flags.DEFINE_bool("search_hints", True,
                   "Include metadata search hints in the generated files")
 flags.DEFINE_string("site_path", "tfx/api_docs/python",
@@ -66,7 +65,9 @@ FLAGS = flags.FLAGS
 
 
 def ignore_test_objects(path, parent, children):
-  """Removes "test" and "example" modules. These are not part of the public api.
+  """Removes "test" and "example" modules.
+
+  These are not part of the public api.
 
   Args:
     path: A tuple of name parts forming the attribute-lookup path to this
@@ -99,7 +100,7 @@ def main(_):
   api_generator.utils.recursive_import(tfx.extensions)
 
   do_not_generate_docs_for = []
-  for name in ["utils", "proto", "dependencies", "version", "examples"]:
+  for name in ["utils", "proto", "dependencies", "examples"]:
     submodule = getattr(tfx, name, None)
     if submodule is not None:
       do_not_generate_docs_for.append(submodule)

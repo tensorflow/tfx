@@ -27,10 +27,10 @@ from tfx import types
 from tfx.components.example_gen import utils
 from tfx.dsl.components.base import base_driver
 from tfx.orchestration import data_types
+from tfx.orchestration import data_types_utils
 from tfx.orchestration import metadata
 from tfx.orchestration.portable import base_driver as ir_base_driver
 from tfx.orchestration.portable import data_types as portable_data_types
-from tfx.orchestration.portable.mlmd import common_utils
 from tfx.proto import example_gen_pb2
 from tfx.proto import range_config_pb2
 from tfx.proto.orchestration import driver_output_pb2
@@ -156,7 +156,7 @@ class Driver(base_driver.BaseDriver, ir_base_driver.BaseDriver):
         execution_info.exec_properties, pipeline_info, component_info)
     for k, v in exec_properties.items():
       if v is not None:
-        common_utils.set_metadata_value(result.exec_properties[k], v)
+        data_types_utils.set_metadata_value(result.exec_properties[k], v)
 
     # Populate output_dict
     output_example = copy.deepcopy(

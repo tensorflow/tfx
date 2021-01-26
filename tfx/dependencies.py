@@ -73,7 +73,7 @@ def make_required_install_packages():
   # TODO(b/130767399): add flask once the frontend is exposed externally.
   return make_pipeline_sdk_required_install_packages() + [
       # LINT.IfChange
-      'apache-beam[gcp]>=2.27,<3',
+      'apache-beam[gcp]>=2.25,!=2.26.*,<3',
       # LINT.ThenChange(examples/chicago_taxi_pipeline/setup/setup_beam.sh)
       'attrs>=19.3.0,<21',
       'click>=7,<8',
@@ -83,7 +83,7 @@ def make_required_install_packages():
       # dependency expecatation with TensorFlow is sorted out.
       'keras-tuner>=1,<1.0.2',
       'kubernetes>=10.0.1,<12',
-      'pyarrow>=1,<3',
+      'pyarrow>=0.17,<0.18',
       'pyyaml>=3.12,<6',
       'tensorflow>=1.15.2,!=2.0.*,!=2.1.*,!=2.2.*,!=2.3.*,<3',
       'tensorflow-hub>=0.9.0,<0.10',
@@ -116,13 +116,9 @@ def make_extra_packages_test():
   # Note: It is okay to pin packages to exact verions in this list to minimize
   # conflicts.
   return [
-      # TODO(b/178137745): Delete version cap in macos when SegFault resolved.
-      ('apache-airflow[mysql]>=1.10.10,<2; '
-       'python_version!="3.7" or platform_system!="Darwin"'),
-      ('apache-airflow[mysql]>=1.10.10,<1.10.14; '
-       'python_version=="3.7" and platform_system=="Darwin"'),
-      # TODO(b/172014039): Delete pinned cattrs version after we upgrade to
-      # apache-airflow 1.0.14 or later.(github.com/apache/airflow/issues/11965).
+      'apache-airflow[mysql]>=1.10.10,<2',
+      # TODO(b/172014039): Delete pinned cattrs version after apache-airflow
+      # 1.0.13 releases.(github.com/apache/airflow/issues/11965).
       'cattrs==1.0.0',
       'kfp>=1.1.0,<2',
       'kfp-pipeline-spec>=0.1.3,<0.2',

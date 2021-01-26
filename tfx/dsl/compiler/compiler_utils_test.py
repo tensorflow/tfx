@@ -13,7 +13,6 @@
 # limitations under the License.
 """Tests for tfx.dsl.compiler.compiler_utils."""
 import itertools
-from absl.testing import parameterized
 
 import tensorflow as tf
 from tfx import types
@@ -51,21 +50,7 @@ class EmptyComponent(base_component.BaseComponent):
         spec=EmptyComponentSpec(), instance_name=name)
 
 
-class CompilerUtilsTest(tf.test.TestCase, parameterized.TestCase):
-
-  @parameterized.named_parameters(
-      ("IntValue", 42, metadata_store_pb2.Value(int_value=42)),
-      ("FloatValue", 42.0, metadata_store_pb2.Value(double_value=42.0)),
-      ("StrValue", "42", metadata_store_pb2.Value(string_value="42")))
-  def testSetFieldValuePb(self, value, expected_pb):
-    pb = metadata_store_pb2.Value()
-    compiler_utils.set_field_value_pb(pb, value)
-    self.assertEqual(pb, expected_pb)
-
-  def testSetFieldValuePbUnsupportedType(self):
-    pb = metadata_store_pb2.Value()
-    with self.assertRaises(ValueError):
-      compiler_utils.set_field_value_pb(pb, True)
+class CompilerUtilsTest(tf.test.TestCase):
 
   def testSetRuntimeParameterPb(self):
     pb = pipeline_pb2.RuntimeParameter()

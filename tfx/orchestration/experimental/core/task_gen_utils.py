@@ -18,11 +18,11 @@ from typing import Dict, Iterable, List, Optional, Sequence, Text
 
 import attr
 from tfx import types
+from tfx.orchestration import data_types_utils
 from tfx.orchestration import metadata
 from tfx.orchestration.experimental.core import task as task_lib
 from tfx.orchestration.portable import inputs_utils
 from tfx.orchestration.portable import outputs_utils
-from tfx.orchestration.portable.mlmd import common_utils
 from tfx.orchestration.portable.mlmd import context_lib
 from tfx.orchestration.portable.mlmd import execution_lib
 from tfx.proto.orchestration import pipeline_pb2
@@ -111,7 +111,7 @@ def _extract_properties(
   result = {}
   for key, prop in itertools.chain(execution.properties.items(),
                                    execution.custom_properties.items()):
-    value = common_utils.get_metadata_value(prop)
+    value = data_types_utils.get_metadata_value(prop)
     if value is None:
       raise ValueError(f'Unexpected property with empty value; key: {key}')
     result[key] = value
@@ -166,7 +166,7 @@ def get_executions(
   contexts = []
   for context_spec in node.contexts.contexts:
     context = metadata_handler.store.get_context_by_type_and_name(
-        context_spec.type.name, common_utils.get_value(context_spec.name))
+        context_spec.type.name, data_types_utils.get_value(context_spec.name))
     if context is None:
       # If no context is registered, it's certain that there is no
       # associated execution for the node.
