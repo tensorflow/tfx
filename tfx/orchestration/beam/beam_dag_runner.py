@@ -26,6 +26,7 @@ from tfx.orchestration import pipeline as pipeline_py
 from tfx.orchestration.beam.legacy import beam_dag_runner as legacy_beam_dag_runner
 from tfx.orchestration.config import pipeline_config
 from tfx.orchestration.portable import launcher
+from tfx.orchestration.portable import runner_utils
 from tfx.orchestration.portable import runtime_parameter_utils
 from tfx.orchestration.portable import tfx_runner
 from tfx.proto.orchestration import local_deployment_config_pb2
@@ -112,11 +113,8 @@ class PipelineNodeAsDoFn(beam.DoFn):
 
 
 class BeamDagRunner(tfx_runner.TfxRunner):
-  """Legacy TFX BeamDagRunner.
+  """Tfx runner on Beam."""
 
-  This runner is not based on the TFX IR and is kept for compatibility. It will
-  be deprecated in a future release.
-  """
   _PIPELINE_NODE_DO_FN_CLS = PipelineNodeAsDoFn
 
   def __new__(
@@ -152,24 +150,13 @@ class BeamDagRunner(tfx_runner.TfxRunner):
     else:
       return super(BeamDagRunner, cls).__new__(cls)
 
-  def __init__(self):
-    """Initializes BeamDagRunner as a TFX orchestrator."""
-
-  def _build_executable_spec(
-      self, node_id: str,
-      spec: any_pb2.Any) -> local_deployment_config_pb2.ExecutableSpec:
-    """Builds ExecutableSpec given the any proto from IntermediateDeploymentConfig."""
-    result = local_deployment_config_pb2.ExecutableSpec()
-    if spec.Is(result.python_class_executable_spec.DESCRIPTOR):
-      spec.Unpack(result.python_class_executable_spec)
-    elif spec.Is(result.container_executable_spec.DESCRIPTOR):
-      spec.Unpack(result.container_executable_spec)
-    else:
-      raise ValueError(
-          'Executor spec of {} is expected to be of one of the '
-          'types of tfx.orchestration.deployment_config.ExecutableSpec.spec '
-          'but got type {}'.format(node_id, spec.type_url))
-    return result
+  def _extract_platform_config(
+      self,
+      deployment_config: local_deployment_config_pb2.LocalDeploymentConfig,
+      node_id: str) -> Optional[message.Message]:
+    platform_config = deployment_config.node_level_platform_configs.get(node_id)
+    return (getattr(platform_config, platform_config.WhichOneof('config'))
+            if platform_config else None)
 
   def _build_local_platform_config(
       self, node_id: str,
@@ -185,72 +172,29 @@ class BeamDagRunner(tfx_runner.TfxRunner):
           'but got type {}'.format(node_id, spec.type_url))
     return result
 
-  def _to_local_deployment(
-      self, input_config: pipeline_pb2.IntermediateDeploymentConfig
-  ) -> local_deployment_config_pb2.LocalDeploymentConfig:
-    """Turns IntermediateDeploymentConfig to LocalDeploymentConfig."""
-    result = local_deployment_config_pb2.LocalDeploymentConfig()
-    for k, v in input_config.executor_specs.items():
-      result.executor_specs[k].CopyFrom(self._build_executable_spec(k, v))
-
-    for k, v in input_config.custom_driver_specs.items():
-      result.custom_driver_specs[k].CopyFrom(self._build_executable_spec(k, v))
-
-    for k, v in input_config.node_level_platform_configs.items():
-      result.node_level_platform_configs[k].CopyFrom(
-          self._build_local_platform_config(k, v))
-
-    if not input_config.metadata_connection_config.Unpack(
-        result.metadata_connection_config):
-      raise ValueError('metadata_connection_config is expected to be in type '
-                       'ml_metadata.ConnectionConfig, but got type {}'.format(
-                           input_config.metadata_connection_config.type_url))
-    return result
-
   def _extract_deployment_config(
       self, pipeline: pipeline_pb2.Pipeline
   ) -> local_deployment_config_pb2.LocalDeploymentConfig:
     """Extracts the proto.Any pipeline.deployment_config to LocalDeploymentConfig."""
-
-    if not pipeline.deployment_config:
-      raise ValueError('deployment_config is not available in the pipeline.')
-
-    result = local_deployment_config_pb2.LocalDeploymentConfig()
-    if pipeline.deployment_config.Unpack(result):
-      return result
-
-    result = pipeline_pb2.IntermediateDeploymentConfig()
-    if pipeline.deployment_config.Unpack(result):
-      return self._to_local_deployment(result)
-
-    raise ValueError("deployment_config's type {} is not supported".format(
-        type(pipeline.deployment_config)))
+    return runner_utils.extract_deployment_config(pipeline)
 
   def _extract_executor_spec(
       self,
       deployment_config: local_deployment_config_pb2.LocalDeploymentConfig,
       node_id: str) -> Optional[message.Message]:
-    return self._unwrap_executable_spec(
-        deployment_config.executor_specs.get(node_id))
+    return runner_utils.extract_executor_spec(deployment_config, node_id)
 
   def _extract_custom_driver_spec(
       self,
       deployment_config: local_deployment_config_pb2.LocalDeploymentConfig,
-      node_id: str) -> Optional[message.Message]:
-    return self._unwrap_executable_spec(
-        deployment_config.custom_driver_specs.get(node_id))
-
-  def _unwrap_executable_spec(
-      self,
-      executable_spec: Optional[local_deployment_config_pb2.ExecutableSpec]
+      node_id: str
   ) -> Optional[message.Message]:
-    """Unwraps the one of spec from ExecutableSpec."""
-    return (getattr(executable_spec, executable_spec.WhichOneof('spec'))
-            if executable_spec else None)
+    return runner_utils.extract_custom_driver_spec(deployment_config, node_id)
 
   def _connection_config_from_deployment_config(self,
                                                 deployment_config: Any) -> Any:
-    return deployment_config.metadata_connection_config
+    return runner_utils.connection_config_from_deployment_config(
+        deployment_config)
 
   def run(self, pipeline: Union[pipeline_pb2.Pipeline,
                                 pipeline_py.Pipeline]) -> None:

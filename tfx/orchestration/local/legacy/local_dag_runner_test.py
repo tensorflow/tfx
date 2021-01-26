@@ -31,7 +31,7 @@ from tfx.dsl.components.base import executor_spec
 from tfx.orchestration import pipeline
 from tfx.orchestration.config import pipeline_config
 from tfx.orchestration.launcher import docker_component_launcher
-from tfx.orchestration.local import local_dag_runner
+from tfx.orchestration.local.legacy import local_dag_runner
 from tfx.orchestration.metadata import sqlite_metadata_connection_config
 from tfx.types.component_spec import ChannelParameter
 

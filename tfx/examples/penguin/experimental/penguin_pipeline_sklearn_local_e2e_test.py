@@ -48,10 +48,10 @@ class PenguinPipelineSklearnLocalEndToEndTest(tf.test.TestCase):
     """Check the component is executed exactly once."""
     component_path = os.path.join(self._pipeline_root, component)
     self.assertTrue(fileio.exists(component_path))
-    outputs = fileio.listdir(component_path)
-    for output in outputs:
-      execution = fileio.listdir(os.path.join(component_path, output))
-      self.assertEqual(1, len(execution))
+    execution_path = os.path.join(
+        component_path, '.system', 'executor_execution')
+    execution = fileio.listdir(execution_path)
+    self.assertLen(execution, 1)
 
   def assertPipelineExecution(self) -> None:
     self.assertExecutedOnce('CsvExampleGen')

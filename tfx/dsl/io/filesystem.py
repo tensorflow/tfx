@@ -23,6 +23,10 @@ from typing import Any, Callable, Iterable, List, Text, Tuple, Union
 PathType = Union[bytes, Text]
 
 
+class NotFoundError(IOError):
+  pass
+
+
 class Filesystem(object):
   """Abstract Filesystem class."""
 

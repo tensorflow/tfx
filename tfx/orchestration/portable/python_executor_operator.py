@@ -15,7 +15,6 @@
 import sys
 from typing import Dict, List, Optional, cast
 
-import tensorflow as tf
 from tfx import types
 from tfx.dsl.components.base import base_executor
 from tfx.dsl.io import fileio
@@ -111,12 +110,11 @@ class PythonExecutorOperator(base_executor_operator.BaseExecutorOperator):
                          execution_info.exec_properties)
     if not result:
       # If result is not returned from the Do function, then try to
-      # read if from the executor_output_uri.
-      try:
-        with fileio.open(execution_info.execution_output_uri, 'rb') as f:
-          result = execution_result_pb2.ExecutorOutput.FromString(
-              f.read())
-      except tf.errors.NotFoundError:
+      # read from the executor_output_uri.
+      if fileio.exists(execution_info.execution_output_uri):
+        result = execution_result_pb2.ExecutorOutput.FromString(
+            fileio.open(execution_info.execution_output_uri, 'rb').read())
+      else:
         # Old style TFX executor doesn't return executor_output, but modify
         # output_dict and exec_properties in place. For backward compatibility,
         # we use their executor_output and exec_properties to construct
