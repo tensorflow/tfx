@@ -71,13 +71,10 @@ def _create_tflite_converter(
   converter.target_spec.supported_types = quantization_supported_types
 
   if input_data:
-
     def _representative_dataset():
       # TODO(b/175699054): Fill the logic once input_data is landed.
       pass
-
     converter.representative_dataset = _representative_dataset
-
     # TODO(b/175699054): Remove once data API is adopted.
     raise NotImplementedError('Full-integer quantization is not supported yet.')
 

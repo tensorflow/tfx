@@ -37,6 +37,11 @@ class TFLiteRewriterTest(tf.test.TestCase):
 
   class ConverterMock(object):
 
+    class TargetSpec(object):
+      pass
+
+    target_spec = TargetSpec()
+
     def convert(self):
       return 'model'
 
@@ -178,10 +183,18 @@ class TFLiteRewriterTest(tf.test.TestCase):
       self.assertEqual(six.ensure_text(f.readline()), 'model')
 
   @mock.patch('tfx.components.trainer.rewriting.'
-              'tflite_rewriter._create_tflite_converter')
-  def testInvokeTFLiteRewriterQuantizationFullIntegerFails(self, converter):
-    m = self.ConverterMock()
-    converter.return_value = m
+              'tflite_rewriter._create_tflite_compatible_saved_model')
+  @mock.patch('tensorflow.lite.TFLiteConverter.from_saved_model')
+  def testInvokeTFLiteRewriterQuantizationFullIntegerFails(
+      self, converter, model):
+
+    class ModelMock(object):
+      pass
+
+    m = ModelMock()
+    model.return_value = m
+    n = self.ConverterMock()
+    converter.return_value = n
 
     src_model, dst_model, _, _ = self.create_temp_model_template()
 
@@ -190,8 +203,9 @@ class TFLiteRewriterTest(tf.test.TestCase):
         filename='fname',
         quantization_optimizations=[tf.lite.Optimize.DEFAULT],
         quantization_enable_full_integer=True)
-    self.assertRaises(NotImplementedError,
-                      tfrw.perform_rewrite(src_model, dst_model))
+
+    with self.assertRaises(NotImplementedError):
+      tfrw.perform_rewrite(src_model, dst_model)
 
 
 if __name__ == '__main__':
