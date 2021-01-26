@@ -30,7 +30,7 @@ SPARK_DOWNLOAD_URL="http://archive.apache.org/dist/spark/$SPARK_NAME/$SPARK_BINA
 
 SPARK_HOST=`hostname`
 SPARK_PORT=7077
-SPARK_MASTER_URL=spark://$SPARK_HOST:$SPARK_PORT
+SPARK_LEADER_URL=spark://$SPARK_HOST:$SPARK_PORT
 SPARK_CONF=spark.conf
 SPARK_SECRET=`openssl rand -hex 20`
 
@@ -60,7 +60,7 @@ function start_spark() {
   echo -e "spark.authenticate true\nspark.authenticate.secret $SPARK_SECRET" > $SPARK_CONF
   # default web UI port (8080) is also used by Airflow
   ./sbin/start-master.sh -h $SPARK_HOST -p $SPARK_PORT --webui-port 8081 --properties-file $SPARK_CONF
-  ./sbin/start-slave.sh $SPARK_MASTER_URL --properties-file $SPARK_CONF
+  ./sbin/start-slave.sh $SPARK_LEADER_URL --properties-file $SPARK_CONF
   echo "Spark running from $WORK_DIR/$SPARK_ROOT"
 }
 
@@ -69,7 +69,7 @@ function start_job_server() {
   echo "Starting Beam Spark jobserver"
   cd $BEAM_DIR
   ./gradlew :runners:spark:job-server:runShadow \
-      -PsparkMasterUrl=$SPARK_MASTER_URL \
+      -PsparkMasterUrl=$SPARK_LEADER_URL \
       -Dspark.authenticate=true \
       -Dspark.authenticate.secret=$SPARK_SECRET
 }
