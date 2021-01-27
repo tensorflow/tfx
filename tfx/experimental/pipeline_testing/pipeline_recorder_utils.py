@@ -109,10 +109,10 @@ def _get_latest_executions(
     List of executions for the latest run of a pipeline with the given
     pipeline_name.
   """
+
   pipeline_run_contexts = [
-      c for c in metadata_connection.store.get_contexts_by_type(
-          metadata._CONTEXT_TYPE_PIPELINE_RUN)  # pylint: disable=protected-access
-      if c.properties['pipeline_name'].string_value == pipeline_name
+      c for c in metadata_connection.store.get_contexts()
+      if c.name == pipeline_name
   ]
   latest_context = max(
       pipeline_run_contexts, key=lambda c: c.last_update_time_since_epoch)

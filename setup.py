@@ -228,6 +228,9 @@ ML_PIPELINES_SDK_PACKAGES = [
     'tfx.orchestration.config',
     'tfx.orchestration.launcher',
     'tfx.orchestration.local',
+    'tfx.orchestration.local.legacy',
+    'tfx.orchestration.portable',
+    'tfx.orchestration.portable.*',
     # Note that `tfx.proto` contains TFX first-party component-specific
     # protobuf definitions, but `tfx.proto.orchestration` contains portable
     # execution protobuf definitions which are needed in the base package.
