@@ -38,11 +38,16 @@ if tf:
 
     @staticmethod
     def open(name: PathType, mode: Text = 'r') -> Any:
+      # Because the GFile implementation delays I/O until necessary, we cannot
+      # catch `NotFoundError` here.
       return tf.io.gfile.GFile(name, mode=mode)
 
     @staticmethod
     def copy(src: PathType, dst: PathType, overwrite: bool = False) -> None:
-      tf.io.gfile.copy(src, dst, overwrite=overwrite)
+      try:
+        tf.io.gfile.copy(src, dst, overwrite=overwrite)
+      except tf.errors.NotFoundError as e:
+        raise filesystem.NotFoundError() from e
 
     @staticmethod
     def exists(path: PathType) -> bool:
@@ -50,7 +55,10 @@ if tf:
 
     @staticmethod
     def glob(pattern: PathType) -> List[PathType]:
-      return tf.io.gfile.glob(pattern)
+      try:
+        return tf.io.gfile.glob(pattern)
+      except tf.errors.NotFoundError:
+        return []
 
     @staticmethod
     def isdir(path: PathType) -> bool:
@@ -58,7 +66,10 @@ if tf:
 
     @staticmethod
     def listdir(path: PathType) -> List[PathType]:
-      return tf.io.gfile.listdir(path)
+      try:
+        return tf.io.gfile.listdir(path)
+      except tf.errors.NotFoundError as e:
+        raise filesystem.NotFoundError() from e
 
     @staticmethod
     def makedirs(path: PathType) -> None:
@@ -66,23 +77,38 @@ if tf:
 
     @staticmethod
     def mkdir(path: PathType) -> None:
-      tf.io.gfile.mkdir(path)
+      try:
+        tf.io.gfile.mkdir(path)
+      except tf.errors.NotFoundError as e:
+        raise filesystem.NotFoundError() from e
 
     @staticmethod
     def remove(path: PathType) -> None:
-      tf.io.gfile.remove(path)
+      try:
+        tf.io.gfile.remove(path)
+      except tf.errors.NotFoundError as e:
+        raise filesystem.NotFoundError() from e
 
     @staticmethod
     def rename(src: PathType, dst: PathType, overwrite: bool = False) -> None:
-      tf.io.gfile.rename(src, dst, overwrite=overwrite)
+      try:
+        tf.io.gfile.rename(src, dst, overwrite=overwrite)
+      except tf.errors.NotFoundError as e:
+        raise filesystem.NotFoundError() from e
 
     @staticmethod
     def rmtree(path: PathType) -> None:
-      tf.io.gfile.rmtree(path)
+      try:
+        tf.io.gfile.rmtree(path)
+      except tf.errors.NotFoundError as e:
+        raise filesystem.NotFoundError() from e
 
     @staticmethod
     def stat(path: PathType) -> Any:
-      return tf.io.gfile.stat(path)
+      try:
+        return tf.io.gfile.stat(path)
+      except tf.errors.NotFoundError as e:
+        raise filesystem.NotFoundError() from e
 
     @staticmethod
     def walk(
@@ -90,7 +116,10 @@ if tf:
         topdown: bool = True,
         onerror: Callable[..., None] = None
     ) -> Iterable[Tuple[PathType, List[PathType], List[PathType]]]:
-      yield from tf.io.gfile.walk(top, topdown=topdown, onerror=onerror)
+      try:
+        yield from tf.io.gfile.walk(top, topdown=topdown, onerror=onerror)
+      except tf.errors.NotFoundError as e:
+        raise filesystem.NotFoundError() from e
 
   filesystem_registry.DEFAULT_FILESYSTEM_REGISTRY.register(
       TensorflowFilesystem, priority=0, use_as_fallback=True)

@@ -57,7 +57,9 @@
 *   Depends on `tensorflow-serving-api>=1.15,!=2.0.*,!=2.1.*,!=2.2.*,!=2.3.*,<3`.
 *   The `tfx.__version__` attribute was restored.
 *   Starting from this version, proto files which are used to generate
-    componnent-level configs are included in the `tfx` package directly.
+    component-level configs are included in the `tfx` package directly.
+*   The `tfx.dsl.io.fileio.NotFoundError` exception unifies handling of not-
+    found errors across different filesystem plugin backends.
 *   Depends on `apache-beam[gcp]>=2.27,<3`.
 *   Depends on `pyarrow>=1,<3`.
 *   Fixes the serialization of zero-valued default when using `RuntimeParameter`

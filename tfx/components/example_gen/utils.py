@@ -556,12 +556,7 @@ def _get_target_span_version(
   latest_version = None
   latest_version_int = None
 
-  try:
-    files = fileio.glob(split_glob_pattern)
-  except tf.errors.NotFoundError:
-    # TODO(b/168831931): fileio.glob shouldn't throw NotFoundError.
-    files = []
-
+  files = fileio.glob(split_glob_pattern)
   for file_path in files:
     match_span_tokens, match_span_int, match_version, match_version_int = (
         _find_matched_span_version_from_path(file_path, split_regex_pattern,

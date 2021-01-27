@@ -29,6 +29,10 @@ import tfx.dsl.io.plugins.local  # pylint: disable=unused-import, g-import-not-a
 import tfx.dsl.io.plugins.tensorflow_gfile  # pylint: disable=unused-import, g-import-not-at-top
 
 
+# Expose `NotFoundError` as `fileio.NotFoundError`.
+NotFoundError = filesystem.NotFoundError
+
+
 def _get_filesystem(path) -> Type[filesystem.Filesystem]:
   return (filesystem_registry.DEFAULT_FILESYSTEM_REGISTRY
           .get_filesystem_for_path(path))
