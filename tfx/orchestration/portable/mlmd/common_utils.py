@@ -17,125 +17,17 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from typing import Optional, Text, TypeVar, Union
+from typing import TypeVar
 
 from absl import logging
 
-from tfx import types
 from tfx.orchestration import metadata
-from tfx.proto.orchestration import pipeline_pb2
 import ml_metadata as mlmd
 from ml_metadata.proto import metadata_store_pb2
 
 MetadataType = TypeVar('MetadataType', metadata_store_pb2.ArtifactType,
                        metadata_store_pb2.ContextType,
                        metadata_store_pb2.ExecutionType)
-
-
-def get_metadata_value_type(
-    value: Union[pipeline_pb2.Value, types.Property]
-) -> metadata_store_pb2.PropertyType:
-  """Gets the metadata property type of a property value from a value.
-
-  Args:
-    value: The property value represented by pipeline_pb2.Value or a primitive
-      property value type.
-
-  Returns:
-    A metadata_store_pb2.PropertyType.
-
-  Raises:
-    RuntimeError: If property value is still in RuntimeParameter form
-    ValueError: The value type is not supported.
-  """
-  if isinstance(value, int):
-    return metadata_store_pb2.INT
-  elif isinstance(value, float):
-    return metadata_store_pb2.DOUBLE
-  elif isinstance(value, Text):
-    return metadata_store_pb2.STRING
-  elif isinstance(value, pipeline_pb2.Value):
-    which = value.WhichOneof('value')
-    if which != 'field_value':
-      raise RuntimeError('Expecting field_value but got %s.' % value)
-
-    value_type = value.field_value.WhichOneof('value')
-    if value_type == 'int_value':
-      return metadata_store_pb2.INT
-    elif value_type == 'double_value':
-      return metadata_store_pb2.DOUBLE
-    elif value_type == 'string_value':
-      return metadata_store_pb2.STRING
-    else:
-      raise ValueError('Unexpected value type %s' % value_type)
-  else:
-    raise ValueError('Unexpected value type %s' % type(value))
-
-
-def get_value(tfx_value: pipeline_pb2.Value) -> types.Property:
-  """Gets the primitive type value of a pipeline_pb2.Value instance.
-
-  Args:
-    tfx_value: A pipeline_pb2.Value message.
-
-  Returns:
-    The primitive type value of the tfx value.
-
-  Raises:
-    RuntimeError: when the value is still in RuntimeParameter form.
-  """
-  which = tfx_value.WhichOneof('value')
-  if which != 'field_value':
-    raise RuntimeError('Expecting field_value but got %s.' % tfx_value)
-
-  return getattr(tfx_value.field_value,
-                 tfx_value.field_value.WhichOneof('value'))
-
-
-def get_metadata_value(
-    value: metadata_store_pb2.Value) -> Optional[types.Property]:
-  """Gets the primitive type value of a metadata_store_pb2.Value instance.
-
-  Args:
-    value: A metadata_store_pb2.Value message.
-
-  Returns:
-    The primitive type value of metadata_store_pb2.Value instance if set, `None`
-    otherwise.
-  """
-  which = value.WhichOneof('value')
-  return None if which is None else getattr(value, which)
-
-
-def set_metadata_value(
-    metadata_value: metadata_store_pb2.Value,
-    value: Union[pipeline_pb2.Value, types.Property]) -> None:
-  """Set metadata property based on tfx value.
-
-  Args:
-    metadata_value: A metadata_store_pb2.Value message to be set.
-    value: The value of the property in pipeline_pb2.Value form.
-
-  Returns:
-    None
-
-  Raises:
-    RuntimeError: If value type is not supported or is still RuntimeParameter.
-  """
-  if isinstance(value, int):
-    metadata_value.int_value = value
-  elif isinstance(value, float):
-    metadata_value.double_value = value
-  elif isinstance(value, Text):
-    metadata_value.string_value = value
-  elif isinstance(value, pipeline_pb2.Value):
-    which = value.WhichOneof('value')
-    if which != 'field_value':
-      raise RuntimeError('Expecting field_value but got %s.' % value)
-
-    metadata_value.CopyFrom(value.field_value)
-  else:
-    raise RuntimeError('Unexpected type %s' % type(value))
 
 
 def register_type_if_not_exist(

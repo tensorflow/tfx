@@ -15,7 +15,7 @@
 from typing import Mapping, Optional, cast
 
 from tfx import types
-from tfx.orchestration.portable.mlmd import common_utils
+from tfx.orchestration import data_types_utils
 from tfx.proto.orchestration import pipeline_pb2
 
 from google.protobuf import descriptor
@@ -139,7 +139,7 @@ def substitute_runtime_parameter(
       if real_value is None:
         return
       value.Clear()
-      common_utils.set_metadata_value(
+      data_types_utils.set_metadata_value(
           metadata_value=value.field_value, value=real_value)
     if which == 'structural_runtime_parameter':
       real_value = _get_structural_runtime_parameter_value(
@@ -147,7 +147,7 @@ def substitute_runtime_parameter(
       if real_value is None:
         return
       value.Clear()
-      common_utils.set_metadata_value(
+      data_types_utils.set_metadata_value(
           metadata_value=value.field_value, value=real_value)
 
     return

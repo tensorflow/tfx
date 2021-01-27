@@ -16,6 +16,7 @@ from typing import List, Text
 
 from absl import logging
 
+from tfx.orchestration import data_types_utils
 from tfx.orchestration import metadata
 from tfx.orchestration.portable.mlmd import common_utils
 from tfx.proto.orchestration import pipeline_pb2
@@ -44,21 +45,21 @@ def _generate_context_proto(
   """
   context_type = common_utils.register_type_if_not_exist(
       metadata_handler, context_spec.type)
-  context_name = common_utils.get_value(context_spec.name)
+  context_name = data_types_utils.get_value(context_spec.name)
   assert isinstance(context_name, Text), 'context name should be string.'
   result = metadata_store_pb2.Context(
       type_id=context_type.id, name=context_name)
   for k, v in context_spec.properties.items():
     if k in context_type.properties:
-      actual_property_type = common_utils.get_metadata_value_type(v)
+      actual_property_type = data_types_utils.get_metadata_value_type(v)
       if context_type.properties.get(k) == actual_property_type:
-        common_utils.set_metadata_value(result.properties[k], v)
+        data_types_utils.set_metadata_value(result.properties[k], v)
       else:
         raise RuntimeError(
             'Property type %s different from provided metadata type property type %s for key %s'
             % (actual_property_type, context_type.properties.get(k), k))
     else:
-      common_utils.set_metadata_value(result.custom_properties[k], v)
+      data_types_utils.set_metadata_value(result.custom_properties[k], v)
   return result
 
 
@@ -77,7 +78,7 @@ def _register_context_if_not_exist(
     An MLMD context.
   """
   context_type_name = context_spec.type.name
-  context_name = common_utils.get_value(context_spec.name)
+  context_name = data_types_utils.get_value(context_spec.name)
   context = metadata_handler.store.get_context_by_type_and_name(
       type_name=context_type_name, context_name=context_name)
   if context is not None:

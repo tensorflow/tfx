@@ -22,7 +22,6 @@ from absl.testing import parameterized
 import tensorflow as tf
 from tfx.orchestration import metadata
 from tfx.orchestration.portable.mlmd import common_utils
-from tfx.proto.orchestration import pipeline_pb2
 
 from google.protobuf import text_format
 from ml_metadata.proto import metadata_store_pb2
@@ -51,78 +50,6 @@ class CommonUtilsTest(tf.test.TestCase, parameterized.TestCase):
     super().setUp()
     self._connection_config = metadata_store_pb2.ConnectionConfig()
     self._connection_config.sqlite.SetInParent()
-
-  def testGetMetadataValueType(self):
-    tfx_value = pipeline_pb2.Value()
-    text_format.Parse(
-        """
-        field_value {
-          int_value: 1
-        }""", tfx_value)
-    self.assertEqual(
-        common_utils.get_metadata_value_type(tfx_value), metadata_store_pb2.INT)
-
-  def testGetMetadataValueTypePrimitiveValue(self):
-    self.assertEqual(
-        common_utils.get_metadata_value_type(1), metadata_store_pb2.INT)
-
-  def testGetMetadataValueTypeFailed(self):
-    tfx_value = pipeline_pb2.Value()
-    text_format.Parse(
-        """
-        runtime_parameter {
-          name: 'rp'
-        }""", tfx_value)
-    with self.assertRaisesRegex(RuntimeError, 'Expecting field_value but got'):
-      common_utils.get_metadata_value_type(tfx_value)
-
-  def testGetValue(self):
-    tfx_value = pipeline_pb2.Value()
-    text_format.Parse(
-        """
-        field_value {
-          int_value: 1
-        }""", tfx_value)
-    self.assertEqual(common_utils.get_value(tfx_value), 1)
-
-  def testGetValueFailed(self):
-    tfx_value = pipeline_pb2.Value()
-    text_format.Parse(
-        """
-        runtime_parameter {
-          name: 'rp'
-        }""", tfx_value)
-    with self.assertRaisesRegex(RuntimeError, 'Expecting field_value but got'):
-      common_utils.get_value(tfx_value)
-
-  def testSetMetadataValueWithTfxValue(self):
-    tfx_value = pipeline_pb2.Value()
-    metadata_property = metadata_store_pb2.Value()
-    text_format.Parse(
-        """
-        field_value {
-            int_value: 1
-        }""", tfx_value)
-    common_utils.set_metadata_value(
-        metadata_value=metadata_property, value=tfx_value)
-    self.assertProtoEquals('int_value: 1', metadata_property)
-
-  def testSetMetadataValueWithTfxValueFailed(self):
-    tfx_value = pipeline_pb2.Value()
-    metadata_property = metadata_store_pb2.Value()
-    text_format.Parse(
-        """
-        runtime_parameter {
-          name: 'rp'
-        }""", tfx_value)
-    with self.assertRaisesRegex(RuntimeError, 'Expecting field_value but got'):
-      common_utils.set_metadata_value(
-          metadata_value=metadata_property, value=tfx_value)
-
-  def testSetMetadataValueWithPrimitiveValue(self):
-    metadata_property = metadata_store_pb2.Value()
-    common_utils.set_metadata_value(metadata_value=metadata_property, value=1)
-    self.assertProtoEquals('int_value: 1', metadata_property)
 
   @parameterized.parameters(metadata_store_pb2.ArtifactType,
                             metadata_store_pb2.ContextType,

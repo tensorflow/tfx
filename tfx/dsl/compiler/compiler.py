@@ -25,6 +25,7 @@ from tfx.dsl.components.base import base_component
 from tfx.dsl.components.base import base_driver
 from tfx.dsl.components.base import base_node
 from tfx.orchestration import data_types
+from tfx.orchestration import data_types_utils
 from tfx.orchestration import pipeline
 from tfx.proto.orchestration import executable_spec_pb2
 from tfx.proto.orchestration import pipeline_pb2
@@ -61,7 +62,7 @@ class Compiler(object):
         value_field = output_spec.artifact_spec.additional_properties[
             property_name].field_value
         try:
-          compiler_utils.set_field_value_pb(value_field, property_value)
+          data_types_utils.set_metadata_value(value_field, property_value)
         except ValueError:
           raise ValueError(
               "Component {} got unsupported parameter {} with type {}.".format(
@@ -72,7 +73,7 @@ class Compiler(object):
         value_field = output_spec.artifact_spec.additional_custom_properties[
             property_name].field_value
         try:
-          compiler_utils.set_field_value_pb(value_field, property_value)
+          data_types_utils.set_metadata_value(value_field, property_value)
         except ValueError:
           raise ValueError(
               "Component {} got unsupported parameter {} with type {}.".format(
@@ -210,8 +211,8 @@ class Compiler(object):
               runtime_param.ptype, runtime_param.default)
         else:
           try:
-            compiler_utils.set_field_value_pb(parameter_value.field_value,
-                                              value)
+            data_types_utils.set_metadata_value(parameter_value.field_value,
+                                                value)
           except ValueError:
             raise ValueError(
                 "Component {} got unsupported parameter {} with type {}."

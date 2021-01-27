@@ -24,6 +24,7 @@ from typing import Dict, Iterable, List, Mapping, MutableMapping, Optional, Sequ
 
 from absl import logging
 from tfx import types
+from tfx.orchestration import data_types_utils
 from tfx.orchestration import metadata
 from tfx.orchestration.portable.mlmd import common_utils
 from tfx.orchestration.portable.mlmd import event_lib
@@ -86,10 +87,10 @@ def prepare_execution(
   # in execution type schema. Otherwise, put it in execution.custom_properties.
   for k, v in exec_properties.items():
     if (execution_type.properties.get(k) ==
-        common_utils.get_metadata_value_type(v)):
-      common_utils.set_metadata_value(execution.properties[k], v)
+        data_types_utils.get_metadata_value_type(v)):
+      data_types_utils.set_metadata_value(execution.properties[k], v)
     else:
-      common_utils.set_metadata_value(execution.custom_properties[k], v)
+      data_types_utils.set_metadata_value(execution.custom_properties[k], v)
   logging.debug('Prepared EXECUTION:\n %s', execution)
   return execution
 

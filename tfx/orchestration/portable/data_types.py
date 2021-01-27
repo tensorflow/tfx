@@ -63,7 +63,7 @@ class ExecutionInfo:
         input_dict=data_types_utils.build_artifact_struct_dict(self.input_dict),
         output_dict=data_types_utils.build_artifact_struct_dict(
             self.output_dict),
-        execution_properties=data_types_utils.build_exec_property_value_dict(
+        execution_properties=data_types_utils.build_metadata_value_dict(
             self.exec_properties),
         output_metadata_uri=self.execution_output_uri,
         stateful_working_dir=self.stateful_working_dir,
@@ -82,7 +82,7 @@ class ExecutionInfo:
             execution_invocation.input_dict),
         output_dict=data_types_utils.build_artifact_dict(
             execution_invocation.output_dict),
-        exec_properties=data_types_utils.build_exec_property_dict(
+        exec_properties=data_types_utils.build_value_dict(
             execution_invocation.execution_properties),
         execution_output_uri=execution_invocation.output_metadata_uri,
         stateful_working_dir=execution_invocation.stateful_working_dir,
