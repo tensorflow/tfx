@@ -78,7 +78,8 @@ class TFLiteRewriterTest(tf.test.TestCase):
         saved_model_path=mock.ANY,
         quantization_optimizations=[],
         quantization_supported_types=[],
-        input_data=None)
+        input_data=None,
+        signature_key=None)
     expected_model = os.path.join(dst_model_path, 'fname')
     self.assertTrue(fileio.exists(expected_model))
     with fileio.open(expected_model, 'rb') as f:
@@ -115,7 +116,8 @@ class TFLiteRewriterTest(tf.test.TestCase):
         saved_model_path=mock.ANY,
         quantization_optimizations=[tf.lite.Optimize.DEFAULT],
         quantization_supported_types=[],
-        input_data=None)
+        input_data=None,
+        signature_key=None)
     expected_model = os.path.join(dst_model_path, 'fname')
     self.assertTrue(fileio.exists(expected_model))
     with fileio.open(expected_model, 'rb') as f:
@@ -151,7 +153,8 @@ class TFLiteRewriterTest(tf.test.TestCase):
         saved_model_path=mock.ANY,
         quantization_optimizations=[tf.lite.Optimize.DEFAULT],
         quantization_supported_types=[],
-        input_data=None)
+        input_data=None,
+        signature_key=None)
     expected_model = os.path.join(dst_model_path, 'fname')
     self.assertTrue(fileio.exists(expected_model))
     with fileio.open(expected_model, 'rb') as f:
@@ -176,7 +179,8 @@ class TFLiteRewriterTest(tf.test.TestCase):
         saved_model_path=mock.ANY,
         quantization_optimizations=[tf.lite.Optimize.DEFAULT],
         quantization_supported_types=[tf.float16],
-        input_data=None)
+        input_data=None,
+        signature_key=None)
     expected_model = os.path.join(dst_model_path, 'fname')
     self.assertTrue(fileio.exists(expected_model))
     with fileio.open(expected_model, 'rb') as f:
@@ -207,6 +211,21 @@ class TFLiteRewriterTest(tf.test.TestCase):
     with self.assertRaises(NotImplementedError):
       tfrw.perform_rewrite(src_model, dst_model)
 
+  @mock.patch('tensorflow.lite.TFLiteConverter.from_saved_model')
+  def testInvokeTFLiteRewriterWithSignatureKey(self, converter):
+    m = self.ConverterMock()
+    converter.return_value = m
+
+    src_model, dst_model, _, _ = self.create_temp_model_template()
+
+    tfrw = tflite_rewriter.TFLiteRewriter(
+        name='myrw',
+        filename='fname',
+        signature_key='tflite')
+    tfrw.perform_rewrite(src_model, dst_model)
+
+    _, kwargs = converter.call_args
+    self.assertListEqual(kwargs['signature_keys'], ['tflite'])
 
 if __name__ == '__main__':
   tf.test.main()

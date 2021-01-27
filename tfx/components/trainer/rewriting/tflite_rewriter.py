@@ -38,8 +38,8 @@ def _create_tflite_converter(
     quantization_optimizations: Sequence[tf.lite.Optimize],
     quantization_supported_types: Sequence[tf.DType],
     # TODO(b/175699054): Enable once data API is adopted.
-    input_data=None
-) -> tf.lite.TFLiteConverter:
+    input_data=None,
+    signature_key: Text = None) -> tf.lite.TFLiteConverter:
   """Creates a TFLite converter with proper quantization options.
 
   Currently,
@@ -57,6 +57,8 @@ def _create_tflite_converter(
         details.
     input_data: Data for full-integer quantization to be used as a
       representative dataset. None if quantization is not full-integer.
+    signature_key: Key identifying SignatureDef containing TFLite inputs and
+      outputs. (default tf.saved_model.DEFAULT_SERVING_SIGNATURE_DEF_KEY)
 
   Returns:
     A TFLite converter with the proper flags being set.
@@ -65,7 +67,13 @@ def _create_tflite_converter(
     NotImplementedError: Raises when full-integer quantization is called.
   """
 
-  converter = tf.lite.TFLiteConverter.from_saved_model(saved_model_path)
+  if signature_key:
+    # Need the check here because from_saved_model takes signature_keys list.
+    # [None] is not None.
+    converter = tf.lite.TFLiteConverter.from_saved_model(
+        saved_model_path, signature_keys=[signature_key])
+  else:
+    converter = tf.lite.TFLiteConverter.from_saved_model(saved_model_path)
 
   converter.optimizations = quantization_optimizations
   converter.target_spec.supported_types = quantization_supported_types
@@ -102,7 +110,8 @@ class TFLiteRewriter(rewriter.BaseRewriter):
       copy_assets_extra: bool = True,
       quantization_optimizations: Optional[Sequence[tf.lite.Optimize]] = None,
       quantization_supported_types: Optional[Sequence[tf.DType]] = None,
-      quantization_enable_full_integer: bool = False):
+      quantization_enable_full_integer: bool = False,
+      signature_key: Text = None):
     """Create an instance of the TFLiteRewriter.
 
     Args:
@@ -122,6 +131,8 @@ class TFLiteRewriter(rewriter.BaseRewriter):
         for details.
       quantization_enable_full_integer: True to quantizae with FULL_INTEGER
         option.
+      signature_key: Key identifying SignatureDef containing TFLite inputs and
+        outputs.
     """
     # TODO(b/152636072): Add support for representative_dataset.
     self._name = name
@@ -142,6 +153,7 @@ class TFLiteRewriter(rewriter.BaseRewriter):
       # for testing purpose. As a consequence the code will throw
       # NotImplementedError inside _create_tflite_converter.
       self._input_data = 1
+    self._signature_key = signature_key
 
   @property
   def name(self) -> Text:
@@ -198,7 +210,8 @@ class TFLiteRewriter(rewriter.BaseRewriter):
         quantization_optimizations=self._quantization_optimizations,
         quantization_supported_types=self._quantization_supported_types,
         # TODO(b/175699054): Enable once data API is landed.
-        input_data=self._input_data)
+        input_data=self._input_data,
+        signature_key=self._signature_key)
     tflite_model = converter.convert()
 
     output_path = os.path.join(
