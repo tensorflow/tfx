@@ -130,7 +130,7 @@ class EvaluatorSpec(ComponentSpec):
       EXAMPLES_KEY:
           ChannelParameter(type=standard_artifacts.Examples),
       MODEL_KEY:
-          ChannelParameter(type=standard_artifacts.Model),
+          ChannelParameter(type=standard_artifacts.Model, optional=True),
       BASELINE_MODEL_KEY:
           ChannelParameter(type=standard_artifacts.Model, optional=True),
       SCHEMA_KEY:
