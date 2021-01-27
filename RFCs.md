@@ -10,7 +10,7 @@ Below are the current and past TFX RFCs and their current status.
 
 Title | Date | Status |
 ----- | ---- | ------ |
-[TFX Periodic Training](https://github.com/tensorflow/community/blob/master/rfcs/20210115-tfx-periodic-training.md) | 2021-01-15 | Proposed |
+[TFX Periodic Training](https://github.com/tensorflow/community/blob/875c04645f9029cb3c5d75bfdb8bf63e5560e9d9/rfcs/20210115-tfx-periodic-training.md) | 2021-01-15 | Proposed |
 [Supporting tf.function in tf.transform](https://github.com/tensorflow/community/blob/master/rfcs/20201012-tfx-tf-function-in-tft.md) | 2021-01-20 | Accepted |
 [Data Model and Intermediate Representation of TFX DSL](https://github.com/tensorflow/community/blob/master/rfcs/20200705-tfx-ir.md) | 2021-01-20 | Implemented |
 [Advanced TFX DSL semantics](https://github.com/tensorflow/community/blob/102bc5f3beb6ff756d147e7cbf88ffb5422a9f5c/rfcs/20200601-tfx-udsl-semantics.md) | 2020-04-08 | Accepted |
