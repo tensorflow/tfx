@@ -29,13 +29,16 @@ from tfx.dsl.components.base import base_executor
 from tfx.dsl.io import fileio
 from tfx.utils import io_utils
 
+TEST_DATA_DIR_FLAG = "--test_data_dir"
+COMPONENT_ID_FLAG = "--component_id"
+
 
 class BaseStubExecutor(base_executor.BaseExecutor):
   """TFX base stub executor."""
 
   def __init__(self,
-               component_id: Text,
-               test_data_dir: Text,
+               component_id: Optional[Text] = None,
+               test_data_dir: Optional[Text] = None,
                context: Optional[base_executor.BaseExecutor.Context] = None):
     """Initializes a BaseStubExecutor.
 
@@ -44,10 +47,19 @@ class BaseStubExecutor(base_executor.BaseExecutor):
         executor.
       test_data_dir: The directory to test data (pipeline_recorder.py).
       context: context class for all executors.
+        component_id and test_data_dir can be encoded in the context as well.
 
     Raises:
       ValueError: If the recorded pipeline data doesn't exist at test_data_dir.
     """
+    # Fill parameters from beam_pipeline_args if empty.
+    if context and context.beam_pipeline_args:
+      for extra_flag in context.beam_pipeline_args:
+        if extra_flag.startswith(TEST_DATA_DIR_FLAG) and test_data_dir is None:
+          test_data_dir = extra_flag[len(TEST_DATA_DIR_FLAG)+1:]  # skip '='.
+        elif extra_flag.startswith(COMPONENT_ID_FLAG) and component_id is None:
+          component_id = extra_flag[len(COMPONENT_ID_FLAG)+1:]  # skip '='.
+
     super(BaseStubExecutor, self).__init__(context)
     logging.info("Running StubExecutor, component_id %s", component_id)
     self._component_id = component_id

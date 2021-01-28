@@ -25,7 +25,7 @@ import tensorflow_model_analysis as tfma
 
 from tfx import types
 from tfx.dsl.io import fileio
-from tfx.orchestration import data_types
+from tfx.experimental.pipeline_testing import pipeline_recorder_utils
 from tfx.orchestration import metadata
 from tfx.types import artifact_utils
 from tfx.utils import io_utils
@@ -87,26 +87,22 @@ def _compare_relative_difference(value: float, expected_value: float,
 
 def get_pipeline_outputs(
     metadata_connection_config: Optional[metadata_store_pb2.ConnectionConfig],
-    pipeline_info: data_types.PipelineInfo
-) -> Dict[Text, Dict[Text, Dict[int, types.Artifact]]]:
+    pipeline_name: str) -> Dict[Text, Dict[Text, Dict[int, types.Artifact]]]:
   """Returns a dictionary of pipeline output artifacts for every component.
 
   Args:
     metadata_connection_config: connection configuration to MLMD.
-    pipeline_info: pipeline info from orchestration.
+    pipeline_name: Name of the pipeline.
 
   Returns:
     a dictionary of holding list of artifacts for a component id.
   """
   output_map = {}
   with metadata.Metadata(metadata_connection_config) as m:
-    context = m.get_pipeline_run_context(pipeline_info)
-    if context is None:
-      raise ValueError(
-          'No context found with pipeline_info:{}'.format(pipeline_info))
-    executions = m.store.get_executions_by_context(context.id)
+    executions = pipeline_recorder_utils.get_latest_executions(m, pipeline_name)
     for execution in executions:
-      component_id = execution.properties['component_id'].string_value
+      component_id = pipeline_recorder_utils.get_component_id_from_execution(
+          m, execution)
       output_dict = {}
       for event in m.store.get_events_by_execution_ids([execution.id]):
         if event.type == metadata_store_pb2.Event.OUTPUT:
@@ -151,12 +147,14 @@ def verify_file_dir(output_uri: Text,
       new_file_path = os.path.join(
           dir_name.replace(expected_uri, output_uri, 1), sub_dir)
       if not fileio.exists(new_file_path):
+        logging.error('%s doesn\'t exists.', new_file_path)
         return False
     if check_file:
       for leaf_file in leaf_files:
         new_file_path = os.path.join(
             dir_name.replace(expected_uri, output_uri, 1), leaf_file)
         if not fileio.exists(new_file_path):
+          logging.error('%s doesn\'t exists.', new_file_path)
           return False
   return True
 

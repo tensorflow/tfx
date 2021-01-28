@@ -50,7 +50,7 @@ class PipelineRecorderUtilsTest(tf.test.TestCase):
     # Return values for mocked get_execution_dict(...)
     self.execution_dict = {self.run_id: []}
 
-  @mock.patch.object(pipeline_recorder_utils, '_get_latest_executions')
+  @mock.patch.object(pipeline_recorder_utils, 'get_latest_executions')
   def testRecordLatestKfpPipeline(self, mock_get_latest_executions):
     # Tests recording KFP pipeline outputs for the latest execution.
     with mock.patch.object(
@@ -95,7 +95,7 @@ class PipelineRecorderUtilsTest(tf.test.TestCase):
 
   @mock.patch('tfx.orchestration.metadata.sqlite_metadata_connection_config')
   @mock.patch('tfx.orchestration.metadata.Metadata')
-  @mock.patch.object(pipeline_recorder_utils, '_get_latest_executions')
+  @mock.patch.object(pipeline_recorder_utils, 'get_latest_executions')
   def testRecordLatestBeamPipeline(self, mock_get_latest_executions,
                                    mock_metadata, mock_config):
     # Tests recording Beam pipeline outputs for the latest execution.

@@ -19,18 +19,14 @@ from typing import Text
 
 from absl import logging
 import tensorflow as tf
+from tfx.dsl.compiler import compiler
 from tfx.dsl.io import fileio
 from tfx.examples.chicago_taxi_pipeline import taxi_pipeline_beam
 from tfx.experimental.pipeline_testing import executor_verifier_utils
+from tfx.experimental.pipeline_testing import pipeline_mock
 from tfx.experimental.pipeline_testing import pipeline_recorder_utils
-from tfx.experimental.pipeline_testing import stub_component_launcher
 from tfx.orchestration import metadata
-from tfx.orchestration.config import pipeline_config
-# TODO(b/174520987): Change the following inport to
-# from tfx.orchestration.beam.beam_dag_runner import BeamDagRunner
-# Once we figure out the best way to replace executors for components in the
-# IR stack.
-from tfx.orchestration.google.beam_dag_runner import BeamDagRunner
+from tfx.orchestration.beam.beam_dag_runner import BeamDagRunner
 
 from ml_metadata.proto import metadata_store_pb2
 
@@ -93,6 +89,9 @@ class TaxiPipelineRegressionEndToEndTest(tf.test.TestCase):
     self.assertTrue(
         executor_verifier_utils.verify_file_dir(output_uri, artifact_uri))
 
+  def _veryify_root_dir(self, output_uri: str, unused_artifact_uri: str):
+    self.assertTrue(fileio.exists(output_uri))
+
   def _verify_evaluation(self, output_uri: Text, expected_uri: Text):
     self.assertTrue(
         executor_verifier_utils.compare_eval_results(output_uri, expected_uri,
@@ -118,15 +117,13 @@ class TaxiPipelineRegressionEndToEndTest(tf.test.TestCase):
         executor_verifier_utils.compare_anomalies(output_uri, expected_uri))
 
   def testStubbedTaxiPipelineBeam(self):
-    # Run pipeline with stub executors.
-    stub_component_launcher.StubComponentLauncher.initialize(
-        test_data_dir=self._recorded_output_dir, test_component_ids=[])
+    pipeline_ir = compiler.Compiler().compile(self.taxi_pipeline)
 
-    stub_pipeline_config = pipeline_config.PipelineConfig(
-        supported_launcher_classes=[
-            stub_component_launcher.StubComponentLauncher,
-        ])
-    BeamDagRunner(config=stub_pipeline_config).run(self.taxi_pipeline)
+    logging.info('Replacing with test_data_dir:%s', self._recorded_output_dir)
+    pipeline_mock.replace_executor_with_stub(pipeline_ir,
+                                             self._recorded_output_dir, [])
+
+    BeamDagRunner().run(pipeline_ir)
 
     self.assertTrue(fileio.exists(self._metadata_path))
 
@@ -147,8 +144,8 @@ class TaxiPipelineRegressionEndToEndTest(tf.test.TestCase):
       self.assertLen(self.taxi_pipeline.components, execution_count)
 
       for execution in executions:
-        component_id = execution.properties[
-            metadata._EXECUTION_TYPE_KEY_COMPONENT_ID].string_value  # pylint: disable=protected-access
+        component_id = pipeline_recorder_utils.get_component_id_from_execution(
+            m, execution)
         if component_id.startswith('ResolverNode'):
           continue
         eid = [execution.id]
@@ -170,8 +167,7 @@ class TaxiPipelineRegressionEndToEndTest(tf.test.TestCase):
     # Calls verifier for pipeline output artifacts, excluding the resolver node.
     BeamDagRunner().run(self.taxi_pipeline)
     pipeline_outputs = executor_verifier_utils.get_pipeline_outputs(
-        self.taxi_pipeline.metadata_connection_config,
-        self.taxi_pipeline.pipeline_info)
+        self.taxi_pipeline.metadata_connection_config, self._pipeline_name)
 
     verifier_map = {
         'model': self._verify_model,
@@ -179,7 +175,9 @@ class TaxiPipelineRegressionEndToEndTest(tf.test.TestCase):
         'examples': self._verify_examples,
         'schema': self._verify_schema,
         'anomalies': self._verify_anomalies,
-        'evaluation': self._verify_evaluation
+        'evaluation': self._verify_evaluation,
+        # A subdirectory of updated_analyzer_cache has changing name.
+        'updated_analyzer_cache': self._veryify_root_dir,
     }
 
     # List of components to verify. ResolverNode is ignored because it

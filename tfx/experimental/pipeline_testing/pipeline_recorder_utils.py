@@ -23,10 +23,31 @@ import os
 from typing import Iterable, List, Mapping, Optional, Text, Tuple
 
 from absl import logging
+from tfx.dsl.compiler import constants as compiler_constants
 from tfx.orchestration import metadata
 from tfx.utils import io_utils
 
 from ml_metadata.proto import metadata_store_pb2
+
+
+def get_component_id_from_execution(
+    metadata_connection: metadata.Metadata,
+    execution: metadata_store_pb2.Execution) -> str:
+  """Get component_id without pipeline_name from a node context of execution."""
+  contexts = metadata_connection.store.get_contexts_by_execution(execution.id)
+
+  node_context_type = metadata_connection.store.get_context_type(
+      compiler_constants.NODE_CONTEXT_TYPE_NAME)
+  node_contexts = [c for c in contexts if c.type_id == node_context_type.id]
+  if len(node_contexts) != 1:
+    raise ValueError(
+        'Cannot find relevant context for execution:{}'.format(execution))
+  node_context = node_contexts[0]
+  if '.' not in node_context.name:
+    raise ValueError(
+        'Unexpected name of the node_context:{} for execution({})'.format(
+            node_context, execution))
+  return node_context.name.split('.', 1)[1]
 
 
 def _get_paths(metadata_connection: metadata.Metadata,
@@ -50,10 +71,8 @@ def _get_paths(metadata_connection: metadata.Metadata,
     ValueError if artifact key and index are not recorded in MLMD event.
   """
   for execution in executions:
-    component_id = execution.properties[
-        metadata._EXECUTION_TYPE_KEY_COMPONENT_ID].string_value  # pylint: disable=protected-access
-    # ResolverNode is ignored because it doesn't have a executor that can be
-    # replaced with stub.
+    component_id = get_component_id_from_execution(metadata_connection,
+                                                   execution)
     if component_id.startswith('ResolverNode'):
       continue
     eid = [execution.id]
@@ -96,7 +115,7 @@ def _get_execution_dict(
   return execution_dict
 
 
-def _get_latest_executions(
+def get_latest_executions(
     metadata_connection: metadata.Metadata,
     pipeline_name: Text) -> List[metadata_store_pb2.Execution]:
   """Fetches executions associated with the latest context.
@@ -110,9 +129,8 @@ def _get_latest_executions(
     pipeline_name.
   """
   pipeline_run_contexts = [
-      c for c in metadata_connection.store.get_contexts_by_type(
-          metadata._CONTEXT_TYPE_PIPELINE_RUN)  # pylint: disable=protected-access
-      if c.properties['pipeline_name'].string_value == pipeline_name
+      c for c in metadata_connection.store.get_contexts()
+      if c.name == pipeline_name
   ]
   latest_context = max(
       pipeline_run_contexts, key=lambda c: c.last_update_time_since_epoch)
@@ -162,7 +180,7 @@ def record_pipeline(output_dir: Text,
         raise ValueError('If the run_id is not specified,'
                          ' pipeline_name should be specified')
       # fetch executions of the most recently updated execution context.
-      executions = _get_latest_executions(metadata_connection, pipeline_name)
+      executions = get_latest_executions(metadata_connection, pipeline_name)
     else:
       execution_dict = _get_execution_dict(metadata_connection)
       if run_id in execution_dict:
