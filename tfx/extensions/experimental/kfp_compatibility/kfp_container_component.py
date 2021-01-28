@@ -48,7 +48,7 @@ def load_kfp_yaml_container_component(
     Container component that can be instantiated in a TFX pipeline.
   """
   with open(path) as component_file:
-    data = yaml.load(component_file, Loader=yaml.FullLoader)
+    data = yaml.load(component_file, Loader=yaml.SafeLoader)
   _convert_target_fields_to_kv_pair(data)
   component_spec = json_format.ParseDict(data,
                                          kfp_component_spec_pb2.ComponentSpec())
