@@ -111,9 +111,13 @@ class AsyncPipelineTaskGeneratorTest(tu.TfxTest, parameterized.TestCase):
       self._task_queue.task_done(task)
       self._verify_exec_node_task(node, execution_id, task)
 
-  def _generate_and_test(self, use_task_queue, num_initial_executions,
-                         num_tasks_generated, num_new_executions,
-                         num_active_executions):
+  def _generate_and_test(self,
+                         use_task_queue,
+                         num_initial_executions,
+                         num_tasks_generated,
+                         num_new_executions,
+                         num_active_executions,
+                         ignore_node_ids=None):
     """Generates tasks and tests the effects."""
     with self._mlmd_connection as m:
       executions = m.store.get_executions()
@@ -121,7 +125,10 @@ class AsyncPipelineTaskGeneratorTest(tu.TfxTest, parameterized.TestCase):
           executions, num_initial_executions,
           'Expected {} execution(s) in MLMD.'.format(num_initial_executions))
       task_gen = asptg.AsyncPipelineTaskGenerator(
-          m, self._pipeline, self._task_queue.contains_task_id)
+          m,
+          self._pipeline,
+          self._task_queue.contains_task_id,
+          ignore_node_ids=ignore_node_ids)
       tasks = task_gen.generate()
       self.assertLen(
           tasks, num_tasks_generated,
@@ -299,6 +306,39 @@ class AsyncPipelineTaskGeneratorTest(tu.TfxTest, parameterized.TestCase):
           num_active_executions=0)
     if use_task_queue:
       self.assertTrue(self._task_queue.is_empty())
+
+  @parameterized.parameters(False, True)
+  def test_task_generation_ignore_nodes(self, ignore_transform):
+    """Tests nodes can be ignored while generating tasks."""
+    # Simulate that ExampleGen has already completed successfully.
+    otu.fake_example_gen_run(self._mlmd_connection, self._example_gen, 1, 1)
+
+    # Generate once.
+    with self.subTest(generate=1):
+      num_initial_executions = 1
+      if ignore_transform:
+        num_tasks_generated = 0
+        num_new_executions = 0
+        num_active_executions = 0
+        ignore_node_ids = set([self._transform.node_info.id])
+      else:
+        num_tasks_generated = 1
+        num_new_executions = 1
+        num_active_executions = 1
+        ignore_node_ids = None
+      tasks, active_executions = self._generate_and_test(
+          True,
+          num_initial_executions=num_initial_executions,
+          num_tasks_generated=num_tasks_generated,
+          num_new_executions=num_new_executions,
+          num_active_executions=num_active_executions,
+          ignore_node_ids=ignore_node_ids)
+      if ignore_transform:
+        self.assertEmpty(tasks)
+        self.assertEmpty(active_executions)
+      else:
+        self._verify_exec_node_task(self._transform, active_executions[0].id,
+                                    tasks[0])
 
 
 if __name__ == '__main__':

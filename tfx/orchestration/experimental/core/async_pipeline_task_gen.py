@@ -14,7 +14,7 @@
 """TaskGenerator implementation for async pipelines."""
 
 import itertools
-from typing import Callable, List, Optional
+from typing import Callable, List, Optional, Set
 
 from absl import logging
 from tfx.orchestration import metadata
@@ -38,9 +38,11 @@ class AsyncPipelineTaskGenerator(task_gen.TaskGenerator):
   where the instances refer to the same MLMD db and the same pipeline IR.
   """
 
-  def __init__(self, mlmd_handle: metadata.Metadata,
+  def __init__(self,
+               mlmd_handle: metadata.Metadata,
                pipeline: pipeline_pb2.Pipeline,
-               is_task_id_tracked_fn: Callable[[task_lib.TaskId], bool]):
+               is_task_id_tracked_fn: Callable[[task_lib.TaskId], bool],
+               ignore_node_ids: Optional[Set[str]] = None):
     """Constructs `AsyncPipelineTaskGenerator`.
 
     Args:
@@ -48,6 +50,7 @@ class AsyncPipelineTaskGenerator(task_gen.TaskGenerator):
       pipeline: A pipeline IR proto.
       is_task_id_tracked_fn: A callable that returns `True` if a task_id is
         tracked by the task queue.
+      ignore_node_ids: Set of node ids of nodes to ignore for task generation.
     """
     self._mlmd_handle = mlmd_handle
     if pipeline.execution_mode != pipeline_pb2.Pipeline.ExecutionMode.ASYNC:
@@ -63,6 +66,7 @@ class AsyncPipelineTaskGenerator(task_gen.TaskGenerator):
             'nodes of type `PipelineNode`; found: `{}`'.format(which_node))
     self._pipeline = pipeline
     self._is_task_id_tracked_fn = is_task_id_tracked_fn
+    self._ignore_node_ids = ignore_node_ids or set()
 
   def generate(self) -> List[task_lib.Task]:
     """Generates tasks for all executable nodes in the async pipeline.
@@ -74,7 +78,12 @@ class AsyncPipelineTaskGenerator(task_gen.TaskGenerator):
       A `list` of tasks to execute.
     """
     result = []
-    for node in [node.pipeline_node for node in self._pipeline.nodes]:
+    filtered_nodes = [
+        n.pipeline_node
+        for n in self._pipeline.nodes
+        if n.pipeline_node.node_info.id not in self._ignore_node_ids
+    ]
+    for node in filtered_nodes:
       # If a task for the node is already tracked by the task queue, it need
       # not be considered for generation again.
       if self._is_task_id_tracked_fn(

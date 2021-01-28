@@ -53,7 +53,7 @@ def fake_transform_output(mlmd_connection, transform, execution=None):
         })
 
 
-def fake_trainer_output(mlmd_connection, trainer, execution=None):
+def fake_trainer_output(mlmd_connection, trainer, execution=None, active=False):
   """Writes fake trainer output and execution to MLMD."""
   with mlmd_connection as m:
     output_trainer_model = types.Artifact(
@@ -63,10 +63,11 @@ def fake_trainer_output(mlmd_connection, trainer, execution=None):
     if not execution:
       execution = execution_publish_utils.register_execution(
           m, trainer.node_info.type, contexts)
-    execution_publish_utils.publish_succeeded_execution(
-        m, execution.id, contexts, {
-            'model': [output_trainer_model],
-        })
+    if not active:
+      execution_publish_utils.publish_succeeded_execution(
+          m, execution.id, contexts, {
+              'model': [output_trainer_model],
+          })
 
 
 def create_exec_node_task(node_uid,

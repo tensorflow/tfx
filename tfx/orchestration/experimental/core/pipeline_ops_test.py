@@ -23,6 +23,7 @@ import tensorflow as tf
 from tfx.orchestration import metadata
 from tfx.orchestration.experimental.core import async_pipeline_task_gen
 from tfx.orchestration.experimental.core import pipeline_ops
+from tfx.orchestration.experimental.core import pipeline_state as pstate
 from tfx.orchestration.experimental.core import status as status_lib
 from tfx.orchestration.experimental.core import sync_pipeline_task_gen
 from tfx.orchestration.experimental.core import task as task_lib
@@ -93,14 +94,6 @@ class PipelineOpsTest(tu.TfxTest):
       self.assertEqual(metadata_store_pb2.Execution.NEW,
                        pipeline_state3.execution.last_known_state)
 
-  def test_initiate_pipeline_stop(self):
-    with self._mlmd_connection as m:
-      pipeline1 = _test_pipeline('pipeline1')
-      pipeline_ops.initiate_pipeline_start(m, pipeline1)
-      pipeline_uid = task_lib.PipelineUid.from_pipeline(pipeline1)
-      pipeline_state = pipeline_ops._initiate_pipeline_stop(m, pipeline_uid)
-      self.assertTrue(pipeline_state.is_stop_initiated())
-
   def test_stop_pipeline_non_existent_or_inactive(self):
     with self._mlmd_connection as m:
       # Stop pipeline without creating one.
@@ -114,7 +107,8 @@ class PipelineOpsTest(tu.TfxTest):
       pipeline1 = _test_pipeline('pipeline1')
       execution = pipeline_ops.initiate_pipeline_start(m, pipeline1).execution
       pipeline_uid = task_lib.PipelineUid.from_pipeline(pipeline1)
-      pipeline_ops._initiate_pipeline_stop(m, pipeline_uid)
+      with pstate.PipelineState.load(m, pipeline_uid) as pipeline_state:
+        pipeline_state.initiate_stop()
       execution.last_known_state = metadata_store_pb2.Execution.COMPLETE
       m.store.put_executions([execution])
 
@@ -157,6 +151,85 @@ class PipelineOpsTest(tu.TfxTest):
             m, task_lib.PipelineUid.from_pipeline(pipeline1), timeout_secs=1.0)
       self.assertEqual(status_lib.Code.DEADLINE_EXCEEDED,
                        exception_context.exception.code)
+
+  def test_stop_node_no_active_executions(self):
+    pipeline = pipeline_pb2.Pipeline()
+    self.load_proto_from_text(
+        os.path.join(
+            os.path.dirname(__file__), 'testdata', 'async_pipeline.pbtxt'),
+        pipeline)
+    pipeline_uid = task_lib.PipelineUid.from_pipeline(pipeline)
+    node_uid = task_lib.NodeUid(node_id='my_trainer', pipeline_uid=pipeline_uid)
+    with self._mlmd_connection as m:
+      pstate.PipelineState.new(m, pipeline).commit()
+      pipeline_ops.stop_node(m, node_uid)
+      pipeline_state = pstate.PipelineState.load(m, pipeline_uid)
+
+      # The node should be stop-initiated even when node is inactive to prevent
+      # future triggers.
+      self.assertTrue(pipeline_state.is_node_stop_initiated(node_uid))
+
+      # Restart node.
+      pipeline_state = pipeline_ops.initiate_node_start(m, node_uid)
+      self.assertFalse(pipeline_state.is_node_stop_initiated(node_uid))
+
+  def test_stop_node_wait_for_inactivation(self):
+    pipeline = pipeline_pb2.Pipeline()
+    self.load_proto_from_text(
+        os.path.join(
+            os.path.dirname(__file__), 'testdata', 'async_pipeline.pbtxt'),
+        pipeline)
+    trainer = pipeline.nodes[2].pipeline_node
+    test_utils.fake_trainer_output(self._mlmd_connection, trainer, active=True)
+    pipeline_uid = task_lib.PipelineUid.from_pipeline(pipeline)
+    node_uid = task_lib.NodeUid(node_id='my_trainer', pipeline_uid=pipeline_uid)
+    with self._mlmd_connection as m:
+      pstate.PipelineState.new(m, pipeline).commit()
+
+      def _inactivate(execution):
+        time.sleep(2.0)
+        with pipeline_ops._PIPELINE_OPS_LOCK:
+          execution.last_known_state = metadata_store_pb2.Execution.COMPLETE
+          m.store.put_executions([execution])
+
+      execution = task_gen_utils.get_executions(m, trainer)[0]
+      thread = threading.Thread(
+          target=_inactivate, args=(copy.deepcopy(execution),))
+      thread.start()
+      pipeline_ops.stop_node(m, node_uid, timeout_secs=5.0)
+      thread.join()
+
+      pipeline_state = pstate.PipelineState.load(m, pipeline_uid)
+      self.assertTrue(pipeline_state.is_node_stop_initiated(node_uid))
+
+      # Restart node.
+      pipeline_state = pipeline_ops.initiate_node_start(m, node_uid)
+      self.assertFalse(pipeline_state.is_node_stop_initiated(node_uid))
+
+  def test_stop_node_wait_for_inactivation_timeout(self):
+    pipeline = pipeline_pb2.Pipeline()
+    self.load_proto_from_text(
+        os.path.join(
+            os.path.dirname(__file__), 'testdata', 'async_pipeline.pbtxt'),
+        pipeline)
+    trainer = pipeline.nodes[2].pipeline_node
+    test_utils.fake_trainer_output(self._mlmd_connection, trainer, active=True)
+    pipeline_uid = task_lib.PipelineUid.from_pipeline(pipeline)
+    node_uid = task_lib.NodeUid(node_id='my_trainer', pipeline_uid=pipeline_uid)
+    with self._mlmd_connection as m:
+      pstate.PipelineState.new(m, pipeline).commit()
+      with self.assertRaisesRegex(
+          status_lib.StatusNotOkError,
+          'Timed out.*waiting for execution inactivation.'
+      ) as exception_context:
+        pipeline_ops.stop_node(m, node_uid, timeout_secs=1.0)
+      self.assertEqual(status_lib.Code.DEADLINE_EXCEEDED,
+                       exception_context.exception.code)
+
+      # Even if `wait_for_inactivation` times out, the node should be stop
+      # initiated to prevent future triggers.
+      pipeline_state = pstate.PipelineState.load(m, pipeline_uid)
+      self.assertTrue(pipeline_state.is_node_stop_initiated(node_uid))
 
   @mock.patch.object(sync_pipeline_task_gen, 'SyncPipelineTaskGenerator')
   @mock.patch.object(async_pipeline_task_gen, 'AsyncPipelineTaskGenerator')
@@ -232,8 +305,10 @@ class PipelineOpsTest(tu.TfxTest):
       pipeline1.nodes.add().pipeline_node.node_info.id = 'Trainer'
       pipeline1.nodes.add().pipeline_node.node_info.id = 'Evaluator'
       pipeline_ops.initiate_pipeline_start(m, pipeline1)
-      pipeline1_execution = pipeline_ops._initiate_pipeline_stop(
-          m, task_lib.PipelineUid.from_pipeline(pipeline1)).execution
+      with pstate.PipelineState.load(
+          m, task_lib.PipelineUid.from_pipeline(pipeline1)) as pipeline_state:
+        pipeline_state.initiate_stop()
+      pipeline1_execution = pipeline_state.execution
 
       task_queue = tq.TaskQueue()
 
@@ -307,6 +382,78 @@ class PipelineOpsTest(tu.TfxTest):
       [execution] = m.store.get_executions_by_id([pipeline1_execution.id])
       self.assertEqual(metadata_store_pb2.Execution.CANCELED,
                        execution.last_known_state)
+
+  @mock.patch.object(async_pipeline_task_gen, 'AsyncPipelineTaskGenerator')
+  @mock.patch.object(task_gen_utils, 'generate_task_from_active_execution')
+  def test_active_pipelines_with_stop_initiated_nodes(self,
+                                                      mock_gen_task_from_active,
+                                                      mock_async_task_gen):
+    with self._mlmd_connection as m:
+      pipeline = _test_pipeline('pipeline')
+      pipeline.nodes.add().pipeline_node.node_info.id = 'Transform'
+      pipeline.nodes.add().pipeline_node.node_info.id = 'Trainer'
+      pipeline.nodes.add().pipeline_node.node_info.id = 'Evaluator'
+
+      transform_node_uid = task_lib.NodeUid.from_pipeline_node(
+          pipeline, pipeline.nodes[0].pipeline_node)
+      transform_task = test_utils.create_exec_node_task(
+          node_uid=transform_node_uid)
+
+      trainer_node_uid = task_lib.NodeUid.from_pipeline_node(
+          pipeline, pipeline.nodes[1].pipeline_node)
+      trainer_task = test_utils.create_exec_node_task(node_uid=trainer_node_uid)
+
+      evaluator_node_uid = task_lib.NodeUid.from_pipeline_node(
+          pipeline, pipeline.nodes[2].pipeline_node)
+      evaluator_task = test_utils.create_exec_node_task(
+          node_uid=evaluator_node_uid)
+      cancelled_evaluator_task = test_utils.create_exec_node_task(
+          node_uid=evaluator_node_uid, is_cancelled=True)
+
+      pipeline_ops.initiate_pipeline_start(m, pipeline)
+      with pstate.PipelineState.load(
+          m, task_lib.PipelineUid.from_pipeline(pipeline)) as pipeline_state:
+        # Stop trainer and evaluator.
+        pipeline_state.initiate_node_stop(trainer_node_uid)
+        pipeline_state.initiate_node_stop(evaluator_node_uid)
+
+      task_queue = tq.TaskQueue()
+
+      # Simulate a new transform execution being triggered.
+      mock_async_task_gen.return_value.generate.return_value = [transform_task]
+      # Simulate ExecNodeTask for trainer already present in the task queue.
+      task_queue.enqueue(trainer_task)
+      # Simulate Evaluator having an active execution in MLMD.
+      mock_gen_task_from_active.side_effect = [evaluator_task]
+
+      pipeline_ops.generate_tasks(m, task_queue)
+      self.assertEqual(1, mock_async_task_gen.return_value.generate.call_count)
+
+      # Verify that tasks are enqueued in the expected order:
+
+      # Pre-existing trainer task.
+      task = task_queue.dequeue()
+      task_queue.task_done(task)
+      self.assertEqual(trainer_task, task)
+
+      # CancelNodeTask for trainer.
+      task = task_queue.dequeue()
+      task_queue.task_done(task)
+      self.assertTrue(task_lib.is_cancel_node_task(task))
+      self.assertEqual(trainer_node_uid, task.node_uid)
+
+      # ExecNodeTask with is_cancelled=True for evaluator.
+      task = task_queue.dequeue()
+      task_queue.task_done(task)
+      self.assertTrue(cancelled_evaluator_task, task)
+
+      # ExecNodeTask for newly triggered transform node.
+      task = task_queue.dequeue()
+      task_queue.task_done(task)
+      self.assertEqual(transform_task, task)
+
+      # No more tasks.
+      self.assertTrue(task_queue.is_empty())
 
   def test_to_status_not_ok_error_decorator(self):
 

@@ -30,6 +30,7 @@ from ml_metadata.proto import metadata_store_pb2
 _ORCHESTRATOR_RESERVED_ID = '__ORCHESTRATOR__'
 _PIPELINE_IR = 'pipeline_ir'
 _STOP_INITIATED = 'stop_initiated'
+_NODE_STOP_INITIATED_PREFIX = 'node_stop_initiated_'
 _ORCHESTRATOR_EXECUTION_TYPE = metadata_store_pb2.ExecutionType(
     name=_ORCHESTRATOR_RESERVED_ID,
     properties={_PIPELINE_IR: metadata_store_pb2.STRING})
@@ -139,8 +140,8 @@ class PipelineState:
 
     Raises:
       status_lib.StatusNotOkError: With code=NOT_FOUND if no active pipeline
-      with the given pipeline uid exists in MLMD. With code=INTERNAL if more
-      than 1 active execution exists for given pipeline uid.
+      exists for the given context in MLMD. With code=INTERNAL if more than 1
+      active execution exists for given pipeline uid.
     """
     pipeline_uid = pipeline_uid_from_orchestrator_context(context)
     active_executions = [
@@ -150,7 +151,7 @@ class PipelineState:
     if not active_executions:
       raise status_lib.StatusNotOkError(
           code=status_lib.Code.NOT_FOUND,
-          message=f'No active pipeline with uid {pipeline_uid} to load.')
+          message=f'No active pipeline with uid {pipeline_uid} to load state.')
     if len(active_executions) > 1:
       raise status_lib.StatusNotOkError(
           code=status_lib.Code.INTERNAL,
@@ -175,17 +176,62 @@ class PipelineState:
       self._pipeline = pipeline
     return self._pipeline
 
-  def initiate_stop(self):
+  def initiate_stop(self) -> None:
     """Updates pipeline state to signal stopping pipeline execution."""
     data_types_utils.set_metadata_value(
         self.execution.custom_properties[_STOP_INITIATED], 1)
     self._commit = True
 
-  def is_stop_initiated(self):
+  def is_stop_initiated(self) -> bool:
     """Returns `True` if pipeline execution stopping has been initiated."""
     if _STOP_INITIATED in self.execution.custom_properties:
       return data_types_utils.get_metadata_value(
           self.execution.custom_properties[_STOP_INITIATED]) == 1
+    return False
+
+  def initiate_node_start(self, node_uid: task_lib.NodeUid) -> None:
+    """Updates pipeline state to signal that a node should be started."""
+    if self.pipeline.execution_mode != pipeline_pb2.Pipeline.ASYNC:
+      raise status_lib.StatusNotOkError(
+          code=status_lib.Code.UNIMPLEMENTED,
+          message='Node can be started only for async pipelines.')
+    if not _is_node_uid_in_pipeline(node_uid, self.pipeline):
+      raise status_lib.StatusNotOkError(
+          code=status_lib.Code.INVALID_ARGUMENT,
+          message=(f'Node given by uid {node_uid} does not belong to pipeline '
+                   f'given by uid {self.pipeline_uid}'))
+    property_name = _node_stop_initiated_property(node_uid)
+    if property_name not in self.execution.custom_properties:
+      return
+    del self.execution.custom_properties[property_name]
+    self._commit = True
+
+  def initiate_node_stop(self, node_uid: task_lib.NodeUid) -> None:
+    """Updates pipeline state to signal that a node should be stopped."""
+    if self.pipeline.execution_mode != pipeline_pb2.Pipeline.ASYNC:
+      raise status_lib.StatusNotOkError(
+          code=status_lib.Code.UNIMPLEMENTED,
+          message='Node can be started only for async pipelines.')
+    if not _is_node_uid_in_pipeline(node_uid, self.pipeline):
+      raise status_lib.StatusNotOkError(
+          code=status_lib.Code.INVALID_ARGUMENT,
+          message=(f'Node given by uid {node_uid} does not belong to pipeline '
+                   f'given by uid {self.pipeline_uid}'))
+    data_types_utils.set_metadata_value(
+        self.execution.custom_properties[_node_stop_initiated_property(
+            node_uid)], 1)
+    self._commit = True
+
+  def is_node_stop_initiated(self, node_uid: task_lib.NodeUid) -> bool:
+    """Returns `True` if stopping has been initiated for the given node."""
+    if node_uid.pipeline_uid != self.pipeline_uid:
+      raise RuntimeError(
+          f'Node given by uid {node_uid} does not belong to pipeline given '
+          f'by uid {self.pipeline_uid}')
+    property_name = _node_stop_initiated_property(node_uid)
+    if property_name in self.execution.custom_properties:
+      return data_types_utils.get_metadata_value(
+          self.execution.custom_properties[property_name]) == 1
     return False
 
   def commit(self) -> None:
@@ -222,3 +268,31 @@ def pipeline_uid_from_orchestrator_context(
   """Returns pipeline uid from orchestrator reserved context."""
   pipeline_id = context.name.split(_ORCHESTRATOR_RESERVED_ID + '_')[1]
   return task_lib.PipelineUid(pipeline_id=pipeline_id, pipeline_run_id=None)
+
+
+def _node_stop_initiated_property(node_uid: task_lib.NodeUid) -> str:
+  return f'{_NODE_STOP_INITIATED_PREFIX}{node_uid.node_id}'
+
+
+def get_all_pipeline_nodes(
+    pipeline: pipeline_pb2.Pipeline) -> List[pipeline_pb2.PipelineNode]:
+  """Returns all pipeline nodes in the given pipeline."""
+  result = []
+  for pipeline_or_node in pipeline.nodes:
+    which = pipeline_or_node.WhichOneof('node')
+    # TODO(goutham): Handle sub-pipelines.
+    # TODO(goutham): Handle system nodes.
+    if which == 'pipeline_node':
+      result.append(pipeline_or_node.pipeline_node)
+    else:
+      raise NotImplementedError('Only pipeline nodes supported.')
+  return result
+
+
+def _is_node_uid_in_pipeline(node_uid: task_lib.NodeUid,
+                             pipeline: pipeline_pb2.Pipeline) -> bool:
+  """Returns `True` if the `node_uid` belongs to the given pipeline."""
+  for node in get_all_pipeline_nodes(pipeline):
+    if task_lib.NodeUid.from_pipeline_node(pipeline, node) == node_uid:
+      return True
+  return False

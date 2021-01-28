@@ -32,6 +32,7 @@ def _test_pipeline(pipeline_id,
   pipeline = pipeline_pb2.Pipeline()
   pipeline.pipeline_info.id = pipeline_id
   pipeline.execution_mode = execution_mode
+  pipeline.nodes.add().pipeline_node.node_info.id = 'Trainer'
   return pipeline
 
 
@@ -185,6 +186,40 @@ class PipelineStateTest(tu.TfxTest):
       with pstate.PipelineState.load(
           m, task_lib.PipelineUid.from_pipeline(pipeline)) as pipeline_state:
         self.assertTrue(pipeline_state.is_stop_initiated())
+
+  def test_initiate_node_start_stop(self):
+    with self._mlmd_connection as m:
+      pipeline = _test_pipeline('pipeline1')
+      node_uid = task_lib.NodeUid(
+          node_id='Trainer',
+          pipeline_uid=task_lib.PipelineUid.from_pipeline(pipeline))
+      with pstate.PipelineState.new(m, pipeline) as pipeline_state:
+        pipeline_state.initiate_node_start(node_uid)
+        self.assertFalse(pipeline_state.is_node_stop_initiated(node_uid))
+
+      # Reload from MLMD and verify node is started.
+      with pstate.PipelineState.load(
+          m, task_lib.PipelineUid.from_pipeline(pipeline)) as pipeline_state:
+        self.assertFalse(pipeline_state.is_node_stop_initiated(node_uid))
+
+        # Stop the node.
+        pipeline_state.initiate_node_stop(node_uid)
+        self.assertTrue(pipeline_state.is_node_stop_initiated(node_uid))
+
+      # Reload from MLMD and verify node is stopped.
+      with pstate.PipelineState.load(
+          m, task_lib.PipelineUid.from_pipeline(pipeline)) as pipeline_state:
+        self.assertTrue(pipeline_state.is_node_stop_initiated(node_uid))
+
+        # Restart node.
+        pipeline_state.initiate_node_start(node_uid)
+        self.assertFalse(pipeline_state.is_node_stop_initiated(node_uid))
+
+      # Reload from MLMD and verify node is started.
+      with pstate.PipelineState.load(
+          m, task_lib.PipelineUid.from_pipeline(pipeline)) as pipeline_state:
+        self.assertFalse(pipeline_state.is_node_stop_initiated(node_uid))
+
 
 if __name__ == '__main__':
   tf.test.main()
