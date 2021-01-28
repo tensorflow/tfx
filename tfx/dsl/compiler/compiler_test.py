@@ -18,8 +18,11 @@ from absl.testing import parameterized
 
 import tensorflow as tf
 from tfx.dsl.compiler import compiler
+from tfx.dsl.compiler import compiler_utils
+from tfx.dsl.compiler.testdata import additional_properties_test_pipeline_async
 from tfx.dsl.compiler.testdata import iris_pipeline_async
 from tfx.dsl.compiler.testdata import iris_pipeline_sync
+from tfx.dsl.components.common import importer_node
 from tfx.orchestration import pipeline
 from tfx.proto.orchestration import pipeline_pb2
 from tfx.utils import import_utils
@@ -47,6 +50,9 @@ class CompilerTest(tf.test.TestCase, parameterized.TestCase):
       return text_format.ParseLines(text_pb_file, pipeline_pb2.Pipeline())
 
   @parameterized.named_parameters(
+      ("additional_properties_test_pipeline_async",
+       additional_properties_test_pipeline_async,
+       "additional_properties_test_pipeline_async_ir.pbtxt"),
       ("sync_pipeline", iris_pipeline_sync, "iris_pipeline_sync_ir.pbtxt"),
       ("async_pipeline", iris_pipeline_async, "iris_pipeline_async_ir.pbtxt"))
   def testCompile(self, pipeline_module, expected_result_path):
@@ -57,6 +63,26 @@ class CompilerTest(tf.test.TestCase, parameterized.TestCase):
     expected_pb = self._get_test_pipeline_pb(expected_result_path)
     self.assertProtoEquals(expected_pb, compiled_pb)
 
+  def testCompileAdditionalPropertyTypeError(self):
+    dsl_compiler = compiler.Compiler()
+    test_pipeline = self._get_test_pipeline_definition(
+        additional_properties_test_pipeline_async)
+    custom_producer = next(
+        c for c in test_pipeline.components if isinstance(
+            c, additional_properties_test_pipeline_async.CustomProducer))
+    custom_producer.outputs["stats"].additional_properties[
+        "span"] = "wrong_type"
+    with self.assertRaisesRegex(TypeError, "Expected INT but given STRING"):
+      dsl_compiler.compile(test_pipeline)
+
+  def testCompileImporterAdditionalPropertyTypeError(self):
+    dsl_compiler = compiler.Compiler()
+    test_pipeline = self._get_test_pipeline_definition(iris_pipeline_async)
+    importer = next(
+        c for c in test_pipeline.components if compiler_utils.is_importer(c))
+    importer.exec_properties[importer_node.PROPERTIES_KEY]["split_names"] = 2.1
+    with self.assertRaisesRegex(TypeError, "Expected STRING but given DOUBLE"):
+      dsl_compiler.compile(test_pipeline)
 
 if __name__ == "__main__":
   tf.test.main()

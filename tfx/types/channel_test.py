@@ -19,13 +19,13 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 
-# Standard Imports
-
 import tensorflow as tf
 from tfx.types.artifact import Artifact
 from tfx.types.artifact import Property
 from tfx.types.artifact import PropertyType
 from tfx.types.channel import Channel
+
+from ml_metadata.proto import metadata_store_pb2
 
 
 class _MyType(Artifact):
@@ -59,11 +59,23 @@ class ChannelTest(tf.test.TestCase):
       Channel('StringTypeName')
 
   def testJsonRoundTrip(self):
-    channel = Channel(type=_MyType, artifacts=[_MyType()])
+    channel = Channel(
+        type=_MyType,
+        artifacts=[_MyType()],
+        additional_properties={
+            'string_value': metadata_store_pb2.Value(string_value='forty-two')
+        },
+        additional_custom_properties={
+            'int_value': metadata_store_pb2.Value(int_value=42)
+        })
     serialized = channel.to_json_dict()
     rehydrated = Channel.from_json_dict(serialized)
     self.assertIs(channel.type, rehydrated.type)
     self.assertEqual(channel.type_name, rehydrated.type_name)
+    self.assertEqual(channel.additional_properties,
+                     rehydrated.additional_properties)
+    self.assertEqual(channel.additional_custom_properties,
+                     rehydrated.additional_custom_properties)
 
   def testJsonRoundTripUnknownArtifactClass(self):
     channel = Channel(type=_MyType)

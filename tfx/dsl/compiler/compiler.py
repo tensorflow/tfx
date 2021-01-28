@@ -17,6 +17,7 @@ import re
 
 from typing import cast
 
+from tfx import types
 from tfx.components.common_nodes import importer_node
 from tfx.components.common_nodes import resolver_node
 from tfx.dsl.compiler import compiler_utils
@@ -30,6 +31,7 @@ from tfx.orchestration import pipeline
 from tfx.proto.orchestration import executable_spec_pb2
 from tfx.proto.orchestration import pipeline_pb2
 from tfx.utils import json_utils
+from ml_metadata.proto import metadata_store_pb2
 
 
 class _CompilerContext(object):
@@ -59,6 +61,7 @@ class Compiler(object):
       # Attach additional properties for artifacts produced by importer nodes.
       for property_name, property_value in tfx_node.exec_properties[
           importer_node.PROPERTIES_KEY].items():
+        _check_property_value_type(property_name, property_value, artifact_type)
         value_field = output_spec.artifact_spec.additional_properties[
             property_name].field_value
         try:
@@ -92,6 +95,9 @@ class Compiler(object):
       deployment_config: Intermediate deployment config to set. Will include
         related specs for executors, drivers and platform specific configs.
       enable_cache: whether cache is enabled
+
+    Raises:
+      TypeError: When supplied tfx_node has values of invalid type.
 
     Returns:
       A PipelineNode proto that encodes information of the node.
@@ -179,6 +185,16 @@ class Compiler(object):
         output_spec = node.outputs.outputs[key]
         artifact_type = value.type._get_artifact_type()  # pylint: disable=protected-access
         output_spec.artifact_spec.type.CopyFrom(artifact_type)
+        for prop_key, prop_value in value.additional_properties.items():
+          _check_property_value_type(prop_key, prop_value,
+                                     output_spec.artifact_spec.type)
+          data_types_utils.set_metadata_value(
+              output_spec.artifact_spec.additional_properties[prop_key]
+              .field_value, prop_value)
+        for prop_key, prop_value in value.additional_custom_properties.items():
+          data_types_utils.set_metadata_value(
+              output_spec.artifact_spec.additional_custom_properties[prop_key]
+              .field_value, prop_value)
 
     # TODO(b/170694459): Refactor special nodes as plugins.
     # Step 4.1: Special treament for Importer node
@@ -319,3 +335,18 @@ def _iterates_resolver_cls_and_config(tfx_node: base_node.BaseNode):
         exec_properties[resolver_node.RESOLVER_CONFIG_LIST])
   else:
     raise ValueError(f"Invalid ResolverNode exec_properties: {exec_properties}")
+
+
+def _check_property_value_type(property_name: str,
+                               property_value: types.Property,
+                               artifact_type: metadata_store_pb2.ArtifactType):
+  prop_value_type = data_types_utils.get_metadata_value_type(property_value)
+  if prop_value_type != artifact_type.properties[property_name]:
+    raise TypeError(
+        "Unexpected value type of property '{}' in output artifact '{}': "
+        "Expected {} but given {} (value:{!r})".format(
+            property_name, artifact_type.name,
+            metadata_store_pb2.PropertyType.Name(
+                artifact_type.properties[property_name]),
+            metadata_store_pb2.PropertyType.Name(prop_value_type),
+            property_value))
