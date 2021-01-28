@@ -38,7 +38,6 @@ from tfx.orchestration import pipeline
 from tfx.orchestration.beam.beam_dag_runner import BeamDagRunner
 from tfx.proto import pusher_pb2
 from tfx.proto import trainer_pb2
-from tfx.utils.dsl_utils import external_input
 
 _pipeline_name = 'mnist_native_keras'
 
@@ -82,10 +81,8 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
                      metadata_path: Text,
                      beam_pipeline_args: List[Text]) -> pipeline.Pipeline:
   """Implements the handwritten digit classification example using TFX."""
-  examples = external_input(data_root)
-
   # Brings data into the pipeline.
-  example_gen = ImportExampleGen(input=examples)
+  example_gen = ImportExampleGen(input_base=data_root)
 
   # Computes statistics over data for visualization and example validation.
   statistics_gen = StatisticsGen(examples=example_gen.outputs['examples'])

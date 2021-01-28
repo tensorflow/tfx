@@ -44,7 +44,6 @@ from tfx.proto import trainer_pb2
 from tfx.types import Channel
 from tfx.types.standard_artifacts import Model
 from tfx.types.standard_artifacts import ModelBlessing
-from tfx.utils.dsl_utils import external_input
 
 _pipeline_name = 'imdb_native_keras'
 
@@ -88,9 +87,8 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
           example_gen_pb2.SplitConfig.Split(name='eval', hash_buckets=1)
       ]))
 
-  examples = external_input(data_root)
   # Brings data in to the pipline
-  example_gen = CsvExampleGen(input=examples, output_config=output)
+  example_gen = CsvExampleGen(input_base=data_root, output_config=output)
 
   # Computes statistics over data for visualization and example validation.
   statistics_gen = StatisticsGen(examples=example_gen.outputs['examples'])

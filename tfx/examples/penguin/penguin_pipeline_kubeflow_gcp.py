@@ -41,7 +41,6 @@ from tfx.proto import tuner_pb2
 from tfx.types import Channel
 from tfx.types.standard_artifacts import Model
 from tfx.types.standard_artifacts import ModelBlessing
-from tfx.utils.dsl_utils import external_input
 
 
 FLAGS = flags.FLAGS
@@ -153,8 +152,6 @@ def create_pipeline(
   Returns:
     A TFX pipeline object.
   """
-  examples = external_input(data_root)
-
   # Beam args to run data processing on DataflowRunner.
   #
   # TODO(b/151114974): Remove `disk_size_gb` flag after default is increased.
@@ -189,7 +186,7 @@ def create_pipeline(
   )
 
   # Brings data into the pipeline or otherwise joins/converts training data.
-  example_gen = CsvExampleGen(input=examples)
+  example_gen = CsvExampleGen(input_base=data_root)
 
   # Computes statistics over data for visualization and example validation.
   statistics_gen = StatisticsGen(examples=example_gen.outputs['examples'])

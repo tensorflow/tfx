@@ -41,7 +41,6 @@ from tfx.proto import pusher_pb2
 from tfx.types import Channel
 from tfx.types.standard_artifacts import Model
 from tfx.types.standard_artifacts import ModelBlessing
-from tfx.utils.dsl_utils import external_input
 
 _pipeline_name = 'taxi_pipeline_with_parameters'
 
@@ -109,8 +108,7 @@ def _create_parameterized_pipeline(
   )
 
   # The input data location is parameterized by data_root
-  examples = external_input(data_root)
-  example_gen = CsvExampleGen(input=examples)
+  example_gen = CsvExampleGen(input_base=data_root)
 
   statistics_gen = StatisticsGen(input_data=example_gen.outputs['examples'])
   schema_gen = SchemaGen(
