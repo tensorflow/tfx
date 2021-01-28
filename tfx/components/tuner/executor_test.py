@@ -21,9 +21,9 @@ from __future__ import print_function
 import copy
 import json
 import os
+
 from kerastuner import HyperParameters
 import tensorflow as tf
-
 from tfx.components.testdata.module_file import tuner_module
 from tfx.components.tuner import executor
 from tfx.dsl.io import fileio
@@ -31,8 +31,10 @@ from tfx.proto import trainer_pb2
 from tfx.proto import tuner_pb2
 from tfx.types import artifact_utils
 from tfx.types import standard_artifacts
+from tfx.types import standard_component_specs
 from tfx.utils import io_utils
 from tfx.utils import proto_utils
+
 from tensorflow.python.lib.io import file_io  # pylint: disable=g-direct-tensorflow-import
 
 
@@ -63,8 +65,8 @@ class ExecutorTest(tf.test.TestCase):
     schema.uri = os.path.join(self._testdata_dir, 'penguin', 'schema')
 
     self._input_dict = {
-        'examples': self._single_artifact,
-        'schema': [schema],
+        standard_component_specs.EXAMPLES_KEY: self._single_artifact,
+        standard_component_specs.SCHEMA_KEY: [schema],
     }
 
     # Create output dict.
@@ -72,14 +74,14 @@ class ExecutorTest(tf.test.TestCase):
     self._best_hparams.uri = os.path.join(self._output_data_dir, 'best_hparams')
 
     self._output_dict = {
-        'best_hyperparameters': [self._best_hparams],
+        standard_component_specs.BEST_HYPERPARAMETERS_KEY: [self._best_hparams],
     }
 
     # Create exec properties.
     self._exec_properties = {
-        'train_args':
+        standard_component_specs.TRAIN_ARGS_KEY:
             proto_utils.proto_to_json(trainer_pb2.TrainArgs(num_steps=100)),
-        'eval_args':
+        standard_component_specs.EVAL_ARGS_KEY:
             proto_utils.proto_to_json(trainer_pb2.EvalArgs(num_steps=50)),
     }
 
@@ -95,9 +97,9 @@ class ExecutorTest(tf.test.TestCase):
     self.assertBetween(best_hparams.get('num_layers'), 1, 5)
 
   def testDoWithModuleFile(self):
-    self._exec_properties['module_file'] = os.path.join(self._testdata_dir,
-                                                        'module_file',
-                                                        'tuner_module.py')
+    self._exec_properties[
+        standard_component_specs.MODULE_FILE_KEY] = os.path.join(
+            self._testdata_dir, 'module_file', 'tuner_module.py')
 
     tuner = executor.Executor(self._context)
     tuner.Do(
@@ -108,7 +110,7 @@ class ExecutorTest(tf.test.TestCase):
     self._verify_output()
 
   def testDoWithTunerFn(self):
-    self._exec_properties['tuner_fn'] = '%s.%s' % (
+    self._exec_properties[standard_component_specs.TUNER_FN_KEY] = '%s.%s' % (
         tuner_module.tuner_fn.__module__, tuner_module.tuner_fn.__name__)
 
     tuner = executor.Executor(self._context)
@@ -121,8 +123,9 @@ class ExecutorTest(tf.test.TestCase):
 
   def testTuneArgs(self):
     with self.assertRaises(ValueError):
-      self._exec_properties['tune_args'] = proto_utils.proto_to_json(
-          tuner_pb2.TuneArgs(num_parallel_trials=3))
+      self._exec_properties[
+          standard_component_specs.TUNE_ARGS_KEY] = proto_utils.proto_to_json(
+              tuner_pb2.TuneArgs(num_parallel_trials=3))
 
       tuner = executor.Executor(self._context)
       tuner.Do(
@@ -142,16 +145,18 @@ class ExecutorTest(tf.test.TestCase):
     examples.uri = os.path.join(self._output_data_dir, 'data')
     examples.split_names = artifact_utils.encode_split_names(
         ['training', 'evaluating'])
-    self._input_dict['examples'] = [examples]
+    self._input_dict[standard_component_specs.EXAMPLES_KEY] = [examples]
 
     # Update exec properties skeleton with custom splits.
-    self._exec_properties['train_args'] = proto_utils.proto_to_json(
-        trainer_pb2.TrainArgs(splits=['training'], num_steps=1000))
-    self._exec_properties['eval_args'] = proto_utils.proto_to_json(
-        trainer_pb2.EvalArgs(splits=['evaluating'], num_steps=500))
-    self._exec_properties['module_file'] = os.path.join(self._testdata_dir,
-                                                        'module_file',
-                                                        'tuner_module.py')
+    self._exec_properties[
+        standard_component_specs.TRAIN_ARGS_KEY] = proto_utils.proto_to_json(
+            trainer_pb2.TrainArgs(splits=['training'], num_steps=1000))
+    self._exec_properties[
+        standard_component_specs.EVAL_ARGS_KEY] = proto_utils.proto_to_json(
+            trainer_pb2.EvalArgs(splits=['evaluating'], num_steps=500))
+    self._exec_properties[
+        standard_component_specs.MODULE_FILE_KEY] = os.path.join(
+            self._testdata_dir, 'module_file', 'tuner_module.py')
 
     tuner = executor.Executor(self._context)
     tuner.Do(
@@ -162,10 +167,11 @@ class ExecutorTest(tf.test.TestCase):
     self._verify_output()
 
   def testMultipleArtifacts(self):
-    self._input_dict['examples'] = self._multiple_artifacts
-    self._exec_properties['module_file'] = os.path.join(self._testdata_dir,
-                                                        'module_file',
-                                                        'tuner_module.py')
+    self._input_dict[
+        standard_component_specs.EXAMPLES_KEY] = self._multiple_artifacts
+    self._exec_properties[
+        standard_component_specs.MODULE_FILE_KEY] = os.path.join(
+            self._testdata_dir, 'module_file', 'tuner_module.py')
 
     tuner = executor.Executor(self._context)
     tuner.Do(

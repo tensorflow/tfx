@@ -30,14 +30,11 @@ from tfx.components.util import udf_utils
 from tfx.dsl.components.base import base_executor
 from tfx.proto import tuner_pb2
 from tfx.types import artifact_utils
+from tfx.types import standard_component_specs
 from tfx.utils import io_utils
 from tfx.utils import proto_utils
 
 
-# Key for best hyperparameters in executor output_dict.
-_BEST_HYPERPARAMETERS_KEY = 'best_hyperparameters'
-# Key for tune args in executor exec_properties.
-_TUNE_ARGS_KEY = 'tune_args'
 # Default file name for generated best hyperparameters file.
 _DEFAULT_FILE_NAME = 'best_hyperparameters.txt'
 
@@ -52,7 +49,7 @@ def _get_tuner_fn(exec_properties: Dict[Text, Any]) -> Callable[..., Any]:
 def get_tune_args(
     exec_properties: Dict[Text, Any]) -> Optional[tuner_pb2.TuneArgs]:
   """Returns TuneArgs protos from execution properties, if present."""
-  tune_args = exec_properties.get(_TUNE_ARGS_KEY)
+  tune_args = exec_properties.get(standard_component_specs.TUNE_ARGS_KEY)
   if not tune_args:
     return None
 
@@ -69,7 +66,8 @@ def write_best_hyperparameters(
   best_hparams_config = tuner.get_best_hyperparameters()[0].get_config()
   logging.info('Best HyperParameters: %s', best_hparams_config)
   best_hparams_path = os.path.join(
-      artifact_utils.get_single_uri(output_dict[_BEST_HYPERPARAMETERS_KEY]),
+      artifact_utils.get_single_uri(
+          output_dict[standard_component_specs.BEST_HYPERPARAMETERS_KEY]),
       _DEFAULT_FILE_NAME)
   io_utils.write_string_file(best_hparams_path, json.dumps(best_hparams_config))
   logging.info('Best Hyperparameters are written to %s.', best_hparams_path)

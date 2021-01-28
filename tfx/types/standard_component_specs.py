@@ -41,6 +41,7 @@ SCHEMA_KEY = 'schema'
 EXAMPLES_KEY = 'examples'
 MODEL_KEY = 'model'
 BLESSING_KEY = 'blessing'
+MODULE_FILE_KEY = 'module_file'
 # Key for example_validator
 EXCLUDE_SPLITS_KEY = 'exclude_splits'
 STATISTICS_KEY = 'statistics'
@@ -50,7 +51,6 @@ EVAL_CONFIG_KEY = 'eval_config'
 FEATURE_SLICING_SPEC_KEY = 'feature_slicing_spec'
 FAIRNESS_INDICATOR_THRESHOLDS_KEY = 'fairness_indicator_thresholds'
 EXAMPLE_SPLITS_KEY = 'example_splits'
-MODULE_FILE_KEY = 'module_file'
 MODULE_PATH_KEY = 'module_path'
 BASELINE_MODEL_KEY = 'baseline_model'
 EVALUATION_KEY = 'evaluation'
@@ -58,6 +58,14 @@ EVALUATION_KEY = 'evaluation'
 SERVING_SPEC_KEY = 'serving_spec'
 VALIDATION_SPEC_KEY = 'validation_spec'
 REQUEST_SPEC_KEY = 'request_spec'
+# Key for tuner
+TUNER_FN_KEY = 'tuner_fn'
+TRAIN_ARGS_KEY = 'train_args'
+EVAL_ARGS_KEY = 'eval_args'
+TUNE_ARGS_KEY = 'tune_args'
+CUSTOM_CONFIG_KEY = 'custom_config'
+TRANSFORM_GRAPH_KEY = 'transform_graph'
+BEST_HYPERPARAMETERS_KEY = 'best_hyperparameters'
 
 
 class BulkInferrerSpec(ComponentSpec):
@@ -351,24 +359,24 @@ class TunerSpec(ComponentSpec):
   """ComponentSpec for TFX Tuner Component."""
 
   PARAMETERS = {
-      'module_file': ExecutionParameter(type=(str, Text), optional=True),
-      'tuner_fn': ExecutionParameter(type=(str, Text), optional=True),
-      'train_args': ExecutionParameter(type=trainer_pb2.TrainArgs),
-      'eval_args': ExecutionParameter(type=trainer_pb2.EvalArgs),
-      'tune_args': ExecutionParameter(type=tuner_pb2.TuneArgs, optional=True),
-      'custom_config': ExecutionParameter(type=(str, Text), optional=True),
+      MODULE_FILE_KEY: ExecutionParameter(type=(str, Text), optional=True),
+      TUNER_FN_KEY: ExecutionParameter(type=(str, Text), optional=True),
+      TRAIN_ARGS_KEY: ExecutionParameter(type=trainer_pb2.TrainArgs),
+      EVAL_ARGS_KEY: ExecutionParameter(type=trainer_pb2.EvalArgs),
+      TUNE_ARGS_KEY: ExecutionParameter(type=tuner_pb2.TuneArgs, optional=True),
+      CUSTOM_CONFIG_KEY: ExecutionParameter(type=(str, Text), optional=True),
   }
   INPUTS = {
-      'examples':
+      EXAMPLES_KEY:
           ChannelParameter(type=standard_artifacts.Examples),
-      'schema':
+      SCHEMA_KEY:
           ChannelParameter(type=standard_artifacts.Schema, optional=True),
-      'transform_graph':
+      TRANSFORM_GRAPH_KEY:
           ChannelParameter(
               type=standard_artifacts.TransformGraph, optional=True),
   }
   OUTPUTS = {
-      'best_hyperparameters':
+      BEST_HYPERPARAMETERS_KEY:
           ChannelParameter(type=standard_artifacts.HyperParameters),
   }
 
