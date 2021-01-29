@@ -55,7 +55,6 @@
 *   Executor in `tfx.extensions.google_cloud_ai_platform.pusher.executor` supported regional endpoint and machine_type.
 *   Depends on `tensorflow>=1.15.2,!=2.0.*,!=2.1.*,!=2.2.*,!=2.3.*,<3`.
 *   Depends on `tensorflow-serving-api>=1.15,!=2.0.*,!=2.1.*,!=2.2.*,!=2.3.*,<3`.
-*   The `tfx.__version__` attribute was restored.
 *   Starting from this version, proto files which are used to generate
     component-level configs are included in the `tfx` package directly.
 *   The `tfx.dsl.io.fileio.NotFoundError` exception unifies handling of not-
@@ -66,6 +65,38 @@
     on Kubeflow.
 
 ## Documentation updates
+
+# Version 0.26.1
+
+*   This a bug fix only version
+
+## Major Features and Improvements
+
+*   N/A
+
+## Breaking changes
+
+*   N/A
+
+### For pipeline authors
+
+*   N/A
+
+### For component authors
+
+*   N/A
+
+## Deprecations
+
+*   N/A
+
+## Bug fixes and other changes
+
+*   The `tfx.version` attribute was restored.
+
+## Documentation updates
+
+*   N/A
 
 # Version 0.26.0
 
