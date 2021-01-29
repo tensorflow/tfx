@@ -58,6 +58,11 @@ SKIP_LIST=(
   # TODO(b/175507983): Will be fixed in 0.26.0. Delete after 0.26.0 release.
   'tfx/experimental/distributed_inference/*'
 
+  # TODO(b/177609153): Will be fixed in 0.27.0. Delete after 0.27.0 release.
+  'tfx/tools/cli/container_builder/dockerfile_test.py'
+  'tfx/tools/cli/handler/beam_handler_test.py'
+  'tfx/tools/cli/handler/local_handler_test.py'
+
   # TODO(b/174968932): Delete after renaming this file.
   'tfx/orchestration/kubeflow/kubeflow_gcp_perf_test.py'
 
@@ -71,6 +76,8 @@ SKIP_LIST=(
   'tfx/orchestration/kubeflow/*'
   'tfx/tools/cli/handler/airflow_handler_test.py'
   'tfx/tools/cli/handler/kubeflow_handler_test.py'
+  'tfx/tools/cli/kubeflow_v2/commands/pipeline_test.py'
+  'tfx/tools/cli/kubeflow_v2/handler/kubeflow_v2_handler_test.py'
   'tfx/*e2e*'
   'tfx/*integration*'
   'tfx/components/trainer/rewriting/rewriter_factory_test.py'
