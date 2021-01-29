@@ -87,7 +87,10 @@ def create_test_pipeline():
   model_resolver = ResolverNode(
       instance_name="latest_blessed_model_resolver",
       resolver_class=latest_blessed_model_resolver.LatestBlessedModelResolver,
-      model=Channel(type=standard_artifacts.Model),
+      baseline_model=Channel(
+          type=standard_artifacts.Model, producer_component_id="Trainer"),
+      # Cannot add producer_component_id="Evaluator" for model_blessing as it
+      # raises "producer component should have already been compiled" error.
       model_blessing=Channel(type=standard_artifacts.ModelBlessing))
 
   eval_config = tfma.EvalConfig(
@@ -108,7 +111,7 @@ def create_test_pipeline():
   evaluator = Evaluator(
       examples=example_gen.outputs["examples"],
       model=trainer.outputs["model"],
-      baseline_model=model_resolver.outputs["model"],
+      baseline_model=model_resolver.outputs["baseline_model"],
       eval_config=eval_config)
 
   pusher = Pusher(

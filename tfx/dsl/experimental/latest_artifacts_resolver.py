@@ -58,14 +58,14 @@ class LatestArtifactsResolver(base_resolver.BaseResolver):
 
     candidate_dict = {}
     for k, c in source_channels.items():
-      cancidate_artifacts = metadata_handler.get_qualified_artifacts(
+      candidate_artifacts = metadata_handler.get_qualified_artifacts(
           contexts=[pipeline_context],
           type_name=c.type_name,
           producer_component_id=c.producer_component_id,
           output_key=c.output_key)
       candidate_dict[k] = [
           artifact_utils.deserialize_artifact(a.type, a.artifact)
-          for a in cancidate_artifacts
+          for a in candidate_artifacts
       ]
 
     resolved_dict = self._resolve(candidate_dict)

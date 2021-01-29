@@ -99,9 +99,6 @@ nodes {
       caching_options {
       }
     }
-    downstream_nodes: "Evaluator"
-    downstream_nodes: "StatisticsGen"
-    downstream_nodes: "Trainer"
   }
 }
 nodes {
@@ -210,97 +207,6 @@ nodes {
   pipeline_node {
     node_info {
       type {
-        name: "tfx.dsl.components.common.resolver_node.ResolverNode"
-      }
-      id: "ResolverNode.latest_blessed_model_resolver"
-    }
-    contexts {
-      contexts {
-        type {
-          name: "pipeline"
-        }
-        name {
-          field_value {
-            string_value: "iris"
-          }
-        }
-      }
-      contexts {
-        type {
-          name: "node"
-        }
-        name {
-          field_value {
-            string_value: "iris.ResolverNode.latest_blessed_model_resolver"
-          }
-        }
-      }
-    }
-    inputs {
-      inputs {
-        key: "model"
-        value {
-          channels {
-            context_queries {
-              type {
-                name: "pipeline"
-              }
-              name {
-                field_value {
-                  string_value: "iris"
-                }
-              }
-            }
-            artifact_query {
-              type {
-                name: "Model"
-              }
-            }
-          }
-        }
-      }
-      inputs {
-        key: "model_blessing"
-        value {
-          channels {
-            context_queries {
-              type {
-                name: "pipeline"
-              }
-              name {
-                field_value {
-                  string_value: "iris"
-                }
-              }
-            }
-            artifact_query {
-              type {
-                name: "ModelBlessing"
-              }
-            }
-          }
-        }
-      }
-      resolver_config {
-        resolver_steps {
-          class_path: "tfx.dsl.experimental.latest_blessed_model_resolver.LatestBlessedModelResolver"
-          config_json: "{}"
-          input_keys: "model"
-          input_keys: "model_blessing"
-        }
-      }
-    }
-    execution_options {
-      caching_options {
-      }
-    }
-    downstream_nodes: "Evaluator"
-  }
-}
-nodes {
-  pipeline_node {
-    node_info {
-      type {
         name: "tfx.components.statistics_gen.component.StatisticsGen"
       }
       id: "StatisticsGen"
@@ -399,9 +305,6 @@ nodes {
       caching_options {
       }
     }
-    upstream_nodes: "CsvExampleGen"
-    downstream_nodes: "ExampleValidator"
-    downstream_nodes: "SchemaGen"
   }
 }
 nodes {
@@ -506,9 +409,6 @@ nodes {
       caching_options {
       }
     }
-    upstream_nodes: "StatisticsGen"
-    downstream_nodes: "ExampleValidator"
-    downstream_nodes: "Trainer"
   }
 }
 nodes {
@@ -649,8 +549,6 @@ nodes {
       caching_options {
       }
     }
-    upstream_nodes: "SchemaGen"
-    upstream_nodes: "StatisticsGen"
   }
 }
 nodes {
@@ -821,10 +719,6 @@ nodes {
       caching_options {
       }
     }
-    upstream_nodes: "CsvExampleGen"
-    upstream_nodes: "SchemaGen"
-    downstream_nodes: "Evaluator"
-    downstream_nodes: "Pusher"
   }
 }
 nodes {
@@ -863,7 +757,7 @@ nodes {
         value {
           channels {
             producer_node_query {
-              id: "ResolverNode.latest_blessed_model_resolver"
+              id: "Trainer"
             }
             context_queries {
               type {
@@ -881,7 +775,7 @@ nodes {
               }
               name {
                 field_value {
-                  string_value: "iris.ResolverNode.latest_blessed_model_resolver"
+                  string_value: "iris.Trainer"
                 }
               }
             }
@@ -890,7 +784,6 @@ nodes {
                 name: "Model"
               }
             }
-            output_key: "model"
           }
         }
       }
@@ -966,6 +859,36 @@ nodes {
           }
         }
       }
+      inputs {
+        key: "model_blessing"
+        value {
+          channels {
+            context_queries {
+              type {
+                name: "pipeline"
+              }
+              name {
+                field_value {
+                  string_value: "iris"
+                }
+              }
+            }
+            artifact_query {
+              type {
+                name: "ModelBlessing"
+              }
+            }
+          }
+        }
+      }
+      resolver_config {
+        resolver_steps {
+          class_path: "tfx.dsl.experimental.latest_blessed_model_resolver.LatestBlessedModelResolver"
+          config_json: "{}"
+          input_keys: "baseline_model"
+          input_keys: "model_blessing"
+        }
+      }
     }
     outputs {
       outputs {
@@ -1011,10 +934,6 @@ nodes {
       caching_options {
       }
     }
-    upstream_nodes: "CsvExampleGen"
-    upstream_nodes: "ResolverNode.latest_blessed_model_resolver"
-    upstream_nodes: "Trainer"
-    downstream_nodes: "Pusher"
   }
 }
 nodes {
@@ -1155,8 +1074,6 @@ nodes {
       caching_options {
       }
     }
-    upstream_nodes: "Evaluator"
-    upstream_nodes: "Trainer"
   }
 }
 runtime_spec {

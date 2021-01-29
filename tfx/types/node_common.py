@@ -39,6 +39,9 @@ class _PropertyDictWrapper(json_utils.Jsonable):
     self._data = data
     self._compat_aliases = compat_aliases or {}
 
+  def __iter__(self):
+    yield from self._data
+
   def __getitem__(self, key):
     if key in self._compat_aliases:
       key = self._compat_aliases[key]
