@@ -233,8 +233,8 @@ class PipelineOpsTest(tu.TfxTest):
 
   @mock.patch.object(sync_pipeline_task_gen, 'SyncPipelineTaskGenerator')
   @mock.patch.object(async_pipeline_task_gen, 'AsyncPipelineTaskGenerator')
-  def test_generate_tasks_async_active_pipelines(self, mock_async_task_gen,
-                                                 mock_sync_task_gen):
+  def test_orchestrate_async_active_pipelines(self, mock_async_task_gen,
+                                              mock_sync_task_gen):
     with self._mlmd_connection as m:
       # One active pipeline.
       pipeline1 = _test_pipeline('pipeline1')
@@ -273,7 +273,7 @@ class PipelineOpsTest(tu.TfxTest):
       mock_async_task_gen.return_value.generate.side_effect = _exec_node_tasks()
 
       task_queue = tq.TaskQueue()
-      pipeline_ops.generate_tasks(m, task_queue)
+      pipeline_ops.orchestrate(m, task_queue)
 
       self.assertEqual(2, mock_async_task_gen.return_value.generate.call_count)
       mock_sync_task_gen.assert_not_called()
@@ -331,7 +331,7 @@ class PipelineOpsTest(tu.TfxTest):
               is_cancelled=True), None, None, None, None
       ]
 
-      pipeline_ops.generate_tasks(m, task_queue)
+      pipeline_ops.orchestrate(m, task_queue)
 
       # There are no active pipelines so these shouldn't be called.
       mock_async_task_gen.assert_not_called()
@@ -371,13 +371,13 @@ class PipelineOpsTest(tu.TfxTest):
       self.assertEqual(2, mock_gen_task_from_active.call_count)
 
       # Pipeline execution should continue to be active since active node
-      # executions were found in the last call to `generate_tasks`.
+      # executions were found in the last call to `orchestrate`.
       [execution] = m.store.get_executions_by_id([pipeline1_execution.id])
       self.assertTrue(execution_lib.is_execution_active(execution))
 
-      # Call `generate_tasks` again; this time there are no more active node
+      # Call `orchestrate` again; this time there are no more active node
       # executions so the pipeline should be marked as cancelled.
-      pipeline_ops.generate_tasks(m, task_queue)
+      pipeline_ops.orchestrate(m, task_queue)
       self.assertTrue(task_queue.is_empty())
       [execution] = m.store.get_executions_by_id([pipeline1_execution.id])
       self.assertEqual(metadata_store_pb2.Execution.CANCELED,
@@ -426,7 +426,7 @@ class PipelineOpsTest(tu.TfxTest):
       # Simulate Evaluator having an active execution in MLMD.
       mock_gen_task_from_active.side_effect = [evaluator_task]
 
-      pipeline_ops.generate_tasks(m, task_queue)
+      pipeline_ops.orchestrate(m, task_queue)
       self.assertEqual(1, mock_async_task_gen.return_value.generate.call_count)
 
       # Verify that tasks are enqueued in the expected order:
