@@ -61,6 +61,11 @@ DEFAULT_DRIVER_OPERATORS = {
 }
 
 _SYSTEM_NODE_HANDLERS = {
+    'tfx.dsl.components.common.importer.Importer':
+        importer_node_handler.ImporterNodeHandler,
+    'tfx.dsl.components.common.resolver.Resolver':
+        resolver_node_handler.ResolverNodeHandler,
+    # TODO(b/177457236): Remove support for the following after release.
     'tfx.dsl.components.common.importer_node.ImporterNode':
         importer_node_handler.ImporterNodeHandler,
     'tfx.dsl.components.common.resolver_node.ResolverNode':
