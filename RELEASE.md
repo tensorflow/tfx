@@ -1,5 +1,6 @@
 # Version 0.26.1
 
+*   This a bug fix only version
 ## Major Features and Improvements
 
 *   N/A
