@@ -19,18 +19,19 @@ from typing import Any, Dict, List, Optional, Text
 from absl import logging
 import apache_beam as beam
 import tensorflow as tf
-
 from tfx import types
 from tfx.components.bulk_inferrer import prediction_to_example_utils
 from tfx.components.util import model_utils
 from tfx.dsl.components.base import base_executor
 from tfx.proto import bulk_inferrer_pb2
 from tfx.types import artifact_utils
+from tfx.types import standard_component_specs
 from tfx.utils import io_utils
 from tfx.utils import path_utils
 from tfx.utils import proto_utils
 from tfx_bsl.public.beam import run_inference
 from tfx_bsl.public.proto import model_spec_pb2
+
 from tensorflow_serving.apis import prediction_log_pb2
 
 
@@ -98,14 +99,14 @@ class Executor(base_executor.BaseExecutor):
     """
     self._log_startup(input_dict, output_dict, exec_properties)
 
-    if output_dict.get('inference_result'):
+    if output_dict.get(standard_component_specs.INFERENCE_RESULT_KEY):
       inference_result = artifact_utils.get_single_instance(
-          output_dict['inference_result'])
+          output_dict[standard_component_specs.INFERENCE_RESULT_KEY])
     else:
       inference_result = None
-    if output_dict.get('output_examples'):
+    if output_dict.get(standard_component_specs.OUTPUT_EXAMPLES_KEY):
       output_examples = artifact_utils.get_single_instance(
-          output_dict['output_examples'])
+          output_dict[standard_component_specs.OUTPUT_EXAMPLES_KEY])
     else:
       output_examples = None
 
@@ -114,9 +115,9 @@ class Executor(base_executor.BaseExecutor):
     if 'model' not in input_dict:
       raise ValueError('Input models are not valid, model '
                        'need to be specified.')
-    if 'model_blessing' in input_dict:
+    if standard_component_specs.MODEL_BLESSING_KEY in input_dict:
       model_blessing = artifact_utils.get_single_instance(
-          input_dict['model_blessing'])
+          input_dict[standard_component_specs.MODEL_BLESSING_KEY])
       if not model_utils.is_model_blessed(model_blessing):
         logging.info('Model on %s was not blessed', model_blessing.uri)
         return
@@ -125,27 +126,31 @@ class Executor(base_executor.BaseExecutor):
                    'used.')
 
     model = artifact_utils.get_single_instance(
-        input_dict['model'])
+        input_dict[standard_component_specs.MODEL_KEY])
     model_path = path_utils.serving_model_path(model.uri)
     logging.info('Use exported model from %s.', model_path)
 
     data_spec = bulk_inferrer_pb2.DataSpec()
-    proto_utils.json_to_proto(exec_properties['data_spec'], data_spec)
+    proto_utils.json_to_proto(
+        exec_properties[standard_component_specs.DATA_SPEC_KEY], data_spec)
 
     output_example_spec = bulk_inferrer_pb2.OutputExampleSpec()
-    if exec_properties.get('output_example_spec'):
-      proto_utils.json_to_proto(exec_properties['output_example_spec'],
-                                output_example_spec)
+    if exec_properties.get(standard_component_specs.OUTPUT_EXAMPLES_KEY):
+      proto_utils.json_to_proto(
+          exec_properties[standard_component_specs.OUTPUT_EXAMPLES_KEY],
+          output_example_spec)
 
     self._run_model_inference(
-        data_spec, output_example_spec, input_dict['examples'], output_examples,
+        data_spec, output_example_spec,
+        input_dict[standard_component_specs.EXAMPLES_KEY], output_examples,
         inference_result, self._get_inference_spec(model_path, exec_properties))
 
   def _get_inference_spec(
       self, model_path: Text,
       exec_properties: Dict[Text, Any]) -> model_spec_pb2.InferenceSpecType:
     model_spec = bulk_inferrer_pb2.ModelSpec()
-    proto_utils.json_to_proto(exec_properties['model_spec'], model_spec)
+    proto_utils.json_to_proto(
+        exec_properties[standard_component_specs.MODEL_SPEC_KEY], model_spec)
     saved_model_spec = model_spec_pb2.SavedModelSpec(
         model_path=model_path,
         tag=model_spec.tag,

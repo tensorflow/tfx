@@ -19,6 +19,7 @@ from tfx.components.bulk_inferrer import component
 from tfx.proto import bulk_inferrer_pb2
 from tfx.types import channel_utils
 from tfx.types import standard_artifacts
+from tfx.types import standard_component_specs
 
 
 class ComponentTest(tf.test.TestCase):
@@ -35,8 +36,9 @@ class ComponentTest(tf.test.TestCase):
         examples=self._examples,
         model=self._model,
         model_blessing=self._model_blessing)
-    self.assertEqual('InferenceResult',
-                     bulk_inferrer.outputs['inference_result'].type_name)
+    self.assertEqual(
+        'InferenceResult', bulk_inferrer.outputs[
+            standard_component_specs.INFERENCE_RESULT_KEY].type_name)
     self.assertNotIn('output_examples', bulk_inferrer.outputs.keys())
 
   def testConstructOutputExample(self):
@@ -45,8 +47,9 @@ class ComponentTest(tf.test.TestCase):
         model=self._model,
         model_blessing=self._model_blessing,
         output_example_spec=bulk_inferrer_pb2.OutputExampleSpec())
-    self.assertEqual('Examples',
-                     bulk_inferrer.outputs['output_examples'].type_name)
+    self.assertEqual(
+        'Examples', bulk_inferrer.outputs[
+            standard_component_specs.OUTPUT_EXAMPLES_KEY].type_name)
     self.assertNotIn('inference_result', bulk_inferrer.outputs.keys())
 
   def testConstructInferenceResultAndOutputExample(self):
