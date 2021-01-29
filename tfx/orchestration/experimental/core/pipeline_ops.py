@@ -17,7 +17,7 @@ import copy
 import functools
 import threading
 import time
-from typing import List, Optional, Sequence
+from typing import List, Optional, Sequence, Text
 
 from absl import logging
 from tfx.orchestration import metadata
@@ -66,6 +66,39 @@ def _to_status_not_ok_error(fn):
           message=f'`{fn.__name__}` error: {str(e)}')
 
   return _wrapper
+
+
+@_pipeline_ops_lock
+def save_pipeline_property(mlmd_handle: metadata.Metadata,
+                           pipeline_uid: task_lib.PipelineUid,
+                           property_key: Text, property_value: Text) -> None:
+  """Saves a property to the pipeline execution.
+
+  Args:
+    mlmd_handle: A handle to the MLMD db.
+    pipeline_uid: Uid of the pipeline to be updated.
+    property_key: Key of the property to be saved.
+    property_value: Value of the property to be saved.
+  """
+  with pstate.PipelineState.load(mlmd_handle,
+                                 pipeline_uid) as loaded_pipeline_state:
+    loaded_pipeline_state.save_property(property_key, property_value)
+
+
+@_pipeline_ops_lock
+def remove_pipeline_property(mlmd_handle: metadata.Metadata,
+                             pipeline_uid: task_lib.PipelineUid,
+                             property_key: Text) -> None:
+  """Removes a property from the pipeline execution.
+
+  Args:
+    mlmd_handle: A handle to the MLMD db.
+    pipeline_uid: Uid of the pipeline to be updated.
+    property_key: Key of the property to be removed.
+  """
+  with pstate.PipelineState.load(mlmd_handle,
+                                 pipeline_uid) as loaded_pipeline_state:
+    loaded_pipeline_state.remove_property(property_key)
 
 
 @_to_status_not_ok_error

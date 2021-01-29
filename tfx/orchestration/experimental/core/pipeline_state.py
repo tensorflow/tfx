@@ -14,7 +14,7 @@
 """Pipeline state management functionality."""
 
 import base64
-from typing import List
+from typing import List, Text
 
 from absl import logging
 from tfx.orchestration import data_types_utils
@@ -233,6 +233,17 @@ class PipelineState:
       return data_types_utils.get_metadata_value(
           self.execution.custom_properties[property_name]) == 1
     return False
+
+  def save_property(self, property_key: Text, property_value: Text) -> None:
+    """Saves a custom property to the pipeline execution."""
+    self.execution.custom_properties[property_key].string_value = property_value
+    self._commit = True
+
+  def remove_property(self, property_key: Text) -> None:
+    """Removes a custom property of the pipeline execution if exists."""
+    if self.execution.custom_properties.get(property_key):
+      del self.execution.custom_properties[property_key]
+    self._commit = True
 
   def commit(self) -> None:
     """Commits pipeline state to MLMD if there are any mutations."""

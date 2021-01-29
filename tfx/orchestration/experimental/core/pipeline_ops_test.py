@@ -455,6 +455,34 @@ class PipelineOpsTest(tu.TfxTest):
       # No more tasks.
       self.assertTrue(task_queue.is_empty())
 
+  def test_save_and_remove_pipeline_property(self):
+    with self._mlmd_connection as m:
+      pipeline1 = _test_pipeline('pipeline1')
+      pipeline_state1 = pipeline_ops.initiate_pipeline_start(m, pipeline1)
+      property_key = 'test_key'
+      property_value = 'bala'
+      self.assertIsNone(
+          pipeline_state1.execution.custom_properties.get(property_key))
+      pipeline_ops.save_pipeline_property(pipeline_state1.mlmd_handle,
+                                          pipeline_state1.pipeline_uid,
+                                          property_key, property_value)
+
+      with pstate.PipelineState.load(
+          m, pipeline_state1.pipeline_uid) as pipeline_state2:
+        self.assertIsNotNone(
+            pipeline_state2.execution.custom_properties.get(property_key))
+        self.assertEqual(
+            pipeline_state2.execution.custom_properties[property_key]
+            .string_value, property_value)
+
+      pipeline_ops.remove_pipeline_property(pipeline_state2.mlmd_handle,
+                                            pipeline_state2.pipeline_uid,
+                                            property_key)
+      with pstate.PipelineState.load(
+          m, pipeline_state2.pipeline_uid) as pipeline_state3:
+        self.assertIsNone(
+            pipeline_state3.execution.custom_properties.get(property_key))
+
   def test_to_status_not_ok_error_decorator(self):
 
     @pipeline_ops._to_status_not_ok_error

@@ -220,6 +220,31 @@ class PipelineStateTest(tu.TfxTest):
           m, task_lib.PipelineUid.from_pipeline(pipeline)) as pipeline_state:
         self.assertFalse(pipeline_state.is_node_stop_initiated(node_uid))
 
+  def test_save_and_remove_property(self):
+    property_key = 'key'
+    property_value = 'value'
+    with self._mlmd_connection as m:
+      pipeline = _test_pipeline('pipeline1')
+      with pstate.PipelineState.new(m, pipeline) as pipeline_state:
+        pipeline_state.save_property(property_key, property_value)
+
+      mlmd_contexts = pstate.get_orchestrator_contexts(m)
+      mlmd_executions = m.store.get_executions_by_context(mlmd_contexts[0].id)
+      self.assertLen(mlmd_executions, 1)
+      self.assertIsNotNone(
+          mlmd_executions[0].custom_properties.get(property_key))
+      self.assertEqual(
+          mlmd_executions[0].custom_properties.get(property_key).string_value,
+          property_value)
+
+      with pstate.PipelineState.load(
+          m, task_lib.PipelineUid.from_pipeline(pipeline)) as pipeline_state:
+        pipeline_state.remove_property(property_key)
+
+      mlmd_executions = m.store.get_executions_by_context(mlmd_contexts[0].id)
+      self.assertLen(mlmd_executions, 1)
+      self.assertIsNone(mlmd_executions[0].custom_properties.get(property_key))
+
 
 if __name__ == '__main__':
   tf.test.main()
