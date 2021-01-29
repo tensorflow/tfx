@@ -1,4 +1,4 @@
-# Lint as: python2, python3
+# Lint as: python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,7 +12,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Contains the version string of TFX."""
+"""Init module for TFX."""
 
-# Note that setup.py uses this version.
-__version__ = '0.26.1'
+# `tfx` is a namespace package.
+# https://packaging.python.org/guides/packaging-namespace-packages/#pkgutil-style-namespace-packages
+__path__ = __import__('pkgutil').extend_path(__path__, __name__)
+
+# Import version string.
+from tfx.version import __version__
