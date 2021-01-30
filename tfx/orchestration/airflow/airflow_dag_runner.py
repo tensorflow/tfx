@@ -20,6 +20,7 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 import os
+from tfx.orchestration.data_types import RuntimeParameter
 from typing import Any, Dict, Optional, Text, Union
 
 import absl
@@ -90,6 +91,8 @@ class AirflowDagRunner(tfx_runner.TfxRunner):
     component_impl_map = {}
     for tfx_component in tfx_pipeline.components:
 
+      tfx_component = self._replace_runtime_params(tfx_component)
+
       (component_launcher_class,
        component_config) = config_utils.find_component_launch_info(
            self._config, tfx_component)
@@ -111,3 +114,20 @@ class AirflowDagRunner(tfx_runner.TfxRunner):
             component_impl_map[upstream_node])
 
     return airflow_dag
+
+
+  def _replace_runtime_params(self, comp):
+    for k, prop in comp.spec.exec_properties.copy().items():
+      if isinstance(prop, RuntimeParameter):
+        if prop.ptype != str:
+          raise RuntimeError(
+            f'RuntimeParameter in Airflow does not support {prop.ptype} only ptype supported is string'
+          )
+        if prop.default.startswith('{{') and prop.default.endswith('}}'):
+          default = prop.default.replace('{{','').replace('}}', '')
+        else:
+          default = f'"{prop.default}"'
+        comp.spec.exec_properties[k] = f'{{{{ dag_run.conf.get("{prop.name}", {default}) }}}}'
+    return comp
+
+      
