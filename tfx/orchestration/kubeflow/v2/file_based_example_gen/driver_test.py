@@ -74,7 +74,6 @@ class RunDriverTest(test_case_utils.TfxTest):
     # Change working directory after all the testdata files have been read.
     self.enter_context(test_case_utils.change_working_dir(self.tmp_dir))
 
-    fileio.makedirs(os.path.dirname(_TEST_OUTPUT_METADATA_JSON))
     fileio.makedirs(os.path.dirname(_TEST_INPUT_DIR))
 
   def testDriverWithoutSpan(self):

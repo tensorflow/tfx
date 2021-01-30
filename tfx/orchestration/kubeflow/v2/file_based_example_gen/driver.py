@@ -14,6 +14,7 @@
 """Driver for file-based ExampleGen components in Kubeflow V2 runner."""
 
 import argparse
+import os
 from typing import Any, Dict, List, Optional
 
 from absl import logging
@@ -111,6 +112,7 @@ def _run_driver(exec_properties: Dict[str, Any],
       kubeflow_v2_entrypoint_utils.to_runtime_artifact(example_artifact,
                                                        name_from_id))
 
+  fileio.makedirs(os.path.dirname(output_metadata_uri))
   fileio.open(output_metadata_uri, 'wb').write(
       json_format.MessageToJson(output_metadata, sort_keys=True))
 
