@@ -46,6 +46,9 @@ class ServiceJobManager(abc.ABC):
     * Start any service jobs required by the pipeline node.
     * Probe job health, handle failure and return appropriate status.
 
+    Note that this method will only be called if there's at least one
+    service job defined in the particular node.
+
     Args:
       pipeline_state: A `PipelineState` object for an active pipeline.
       node_id: Id of the node to ensure services.
@@ -58,6 +61,9 @@ class ServiceJobManager(abc.ABC):
   def stop_node_services(self, pipeline_state: pstate.PipelineState,
                          node_id: str) -> None:
     """Stops service jobs (if any) associated with the node.
+
+    Note that this method will only be called if there's at least one
+    service job defined in the particular node.
 
     Args:
       pipeline_state: A `PipelineState` object for an active pipeline.
