@@ -68,7 +68,7 @@ def _input_fn(file_pattern, data_accessor, tf_transform_output, batch_size=200):
       dataset_options.TensorFlowDatasetOptions(
           batch_size=batch_size,
           label_key=features.transformed_name(features.LABEL_KEY)),
-      tf_transform_output.transformed_metadata.schema)
+      tf_transform_output.transformed_metadata.schema).repeat()
 
 
 def _build_keras_model(hidden_units, learning_rate):

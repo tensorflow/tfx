@@ -24,9 +24,5 @@ OUTPUT_LAYER_UNITS = 3
 NUM_LAYERS = 2
 LEARNING_RATE = 1e-2
 
-# Penguin dataset has 342 records, and is divided to train and eval splits in
-# 2:1 ratio.
-TRAIN_DATA_SIZE = 228
-EVAL_DATA_SIZE = 114
 TRAIN_BATCH_SIZE = 20
 EVAL_BATCH_SIZE = 10

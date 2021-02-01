@@ -129,7 +129,7 @@ def _input_fn(file_pattern: List[Text],
       reader=_gzip_reader_fn,
       label_key=_transformed_name(_LABEL_KEY))
 
-  return dataset
+  return dataset.repeat()
 
 
 def _build_keras_model() -> keras.Model:

@@ -85,8 +85,7 @@ def _input_fn(file_pattern: List[Text],
   return data_accessor.tf_dataset_factory(
       file_pattern,
       dataset_options.TensorFlowDatasetOptions(
-          batch_size=batch_size,
-          label_key=label), schema)
+          batch_size=batch_size, label_key=label), schema).repeat()
 
 
 def _build_keras_model(feature_list: List[Text]) -> tf.keras.Model:
@@ -163,12 +162,9 @@ def run_fn(fn_args: TrainerFnArgs):
   tensorboard_callback = tf.keras.callbacks.TensorBoard(
       log_dir=fn_args.model_run_dir, update_freq='batch')
 
-  steps_per_epoch = constants.TRAIN_DATA_SIZE // train_batch_size
-
   model.fit(
       train_dataset,
-      epochs=fn_args.train_steps // steps_per_epoch,
-      steps_per_epoch=steps_per_epoch,
+      steps_per_epoch=fn_args.train_steps,
       validation_data=eval_dataset,
       validation_steps=fn_args.eval_steps,
       callbacks=[tensorboard_callback])

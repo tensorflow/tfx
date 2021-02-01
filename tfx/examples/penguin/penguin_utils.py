@@ -35,10 +35,6 @@ _FEATURE_KEYS = [
 ]
 _LABEL_KEY = 'species'
 
-# The Penguin dataset has 342 records, and is divided into train and eval
-# splits in a 2:1 ratio.
-_TRAIN_DATA_SIZE = 228
-_EVAL_DATA_SIZE = 114
 _TRAIN_BATCH_SIZE = 20
 _EVAL_BATCH_SIZE = 10
 
@@ -87,7 +83,7 @@ def _input_fn(file_pattern: List[Text],
       file_pattern,
       dataset_options.TensorFlowDatasetOptions(
           batch_size=batch_size, label_key=_transformed_name(_LABEL_KEY)),
-      tf_transform_output.transformed_metadata.schema)
+      tf_transform_output.transformed_metadata.schema).repeat()
 
 
 def _get_hyperparameters() -> kerastuner.HyperParameters:
@@ -239,16 +235,13 @@ def run_fn(fn_args: FnArgs):
   with mirrored_strategy.scope():
     model = _build_keras_model(hparams)
 
-  steps_per_epoch = _TRAIN_DATA_SIZE // _TRAIN_BATCH_SIZE
-
   # Write logs to path
   tensorboard_callback = tf.keras.callbacks.TensorBoard(
       log_dir=fn_args.model_run_dir, update_freq='batch')
 
   model.fit(
       train_dataset,
-      epochs=fn_args.train_steps // steps_per_epoch,
-      steps_per_epoch=steps_per_epoch,
+      steps_per_epoch=fn_args.train_steps,
       validation_data=eval_dataset,
       validation_steps=fn_args.eval_steps,
       callbacks=[tensorboard_callback])

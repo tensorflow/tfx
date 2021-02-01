@@ -61,7 +61,7 @@ def input_fn(file_pattern: List[Text],
       file_pattern,
       dataset_options.TensorFlowDatasetOptions(
           batch_size=batch_size, label_key=transformed_name(LABEL_KEY)),
-      tf_transform_output.transformed_metadata.schema)
+      tf_transform_output.transformed_metadata.schema).repeat()
 
 
 def build_keras_model() -> tf.keras.Model:

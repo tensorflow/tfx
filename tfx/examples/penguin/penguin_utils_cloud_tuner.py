@@ -27,8 +27,10 @@ from tensorflow import keras
 from tensorflow_cloud import CloudTuner
 import tensorflow_transform as tft
 
+from tfx.components.trainer.fn_args_utils import DataAccessor
 from tfx.components.trainer.fn_args_utils import FnArgs
 from tfx.components.tuner.component import TunerFnResult
+from tfx_bsl.tfxio import dataset_options
 
 
 # The project/region configuations for Cloud Vizier service (and Trial execution
@@ -42,10 +44,6 @@ _FEATURE_KEYS = [
 ]
 _LABEL_KEY = 'species'
 
-# The Penguin dataset has 342 records, and is divided into train and eval
-# splits in a 2:1 ratio.
-_TRAIN_DATA_SIZE = 228
-_EVAL_DATA_SIZE = 114
 _TRAIN_BATCH_SIZE = 20
 _EVAL_BATCH_SIZE = 10
 
@@ -79,12 +77,14 @@ def _get_serve_tf_examples_fn(model, tf_transform_output):
 
 
 def _input_fn(file_pattern: List[Text],
+              data_accessor: DataAccessor,
               tf_transform_output: tft.TFTransformOutput,
               batch_size: int = 200) -> tf.data.Dataset:
   """Generates features and label for tuning/training.
 
   Args:
     file_pattern: List of paths or patterns of input tfrecord files.
+    data_accessor: DataAccessor for converting input to RecordBatch.
     tf_transform_output: A TFTransformOutput.
     batch_size: representing the number of consecutive elements of returned
       dataset to combine in a single batch
@@ -93,17 +93,11 @@ def _input_fn(file_pattern: List[Text],
     A dataset that contains (features, indices) tuple where features is a
       dictionary of Tensors, and indices is a single Tensor of label indices.
   """
-  transformed_feature_spec = (
-      tf_transform_output.transformed_feature_spec().copy())
-
-  dataset = tf.data.experimental.make_batched_features_dataset(
-      file_pattern=file_pattern,
-      batch_size=batch_size,
-      features=transformed_feature_spec,
-      reader=_gzip_reader_fn,
-      label_key=_transformed_name(_LABEL_KEY))
-
-  return dataset
+  return data_accessor.tf_dataset_factory(
+      file_pattern,
+      dataset_options.TensorFlowDatasetOptions(
+          batch_size=batch_size, label_key=_transformed_name(_LABEL_KEY)),
+      tf_transform_output.transformed_metadata.schema).repeat()
 
 
 def _get_hyperparameters() -> kerastuner.HyperParameters:
@@ -203,9 +197,15 @@ def tuner_fn(fn_args: FnArgs) -> TunerFnResult:
 
   transform_graph = tft.TFTransformOutput(fn_args.transform_graph_path)
   train_dataset = _input_fn(
-      fn_args.train_files, transform_graph, batch_size=_TRAIN_BATCH_SIZE)
+      fn_args.train_files,
+      fn_args.data_accessor,
+      transform_graph,
+      batch_size=_TRAIN_BATCH_SIZE)
   eval_dataset = _input_fn(
-      fn_args.eval_files, transform_graph, batch_size=_EVAL_BATCH_SIZE)
+      fn_args.eval_files,
+      fn_args.data_accessor,
+      transform_graph,
+      batch_size=_EVAL_BATCH_SIZE)
   return TunerFnResult(
       tuner=tuner,
       fit_kwargs={
@@ -226,9 +226,15 @@ def run_fn(fn_args: FnArgs):
   tf_transform_output = tft.TFTransformOutput(fn_args.transform_output)
 
   train_dataset = _input_fn(
-      fn_args.train_files, tf_transform_output, batch_size=_TRAIN_BATCH_SIZE)
+      fn_args.train_files,
+      fn_args.data_accessor,
+      tf_transform_output,
+      batch_size=_TRAIN_BATCH_SIZE)
   eval_dataset = _input_fn(
-      fn_args.eval_files, tf_transform_output, batch_size=_EVAL_BATCH_SIZE)
+      fn_args.eval_files,
+      fn_args.data_accessor,
+      tf_transform_output,
+      batch_size=_EVAL_BATCH_SIZE)
 
   if fn_args.hyperparameters:
     hparams = kerastuner.HyperParameters.from_config(fn_args.hyperparameters)
@@ -243,8 +249,6 @@ def run_fn(fn_args: FnArgs):
   with mirrored_strategy.scope():
     model = _build_keras_model(hparams)
 
-  steps_per_epoch = _TRAIN_DATA_SIZE // _TRAIN_BATCH_SIZE
-
   try:
     log_dir = fn_args.model_run_dir
   except KeyError:
@@ -257,8 +261,7 @@ def run_fn(fn_args: FnArgs):
 
   model.fit(
       train_dataset,
-      epochs=fn_args.train_steps // steps_per_epoch,
-      steps_per_epoch=steps_per_epoch,
+      steps_per_epoch=fn_args.train_steps,
       validation_data=eval_dataset,
       validation_steps=fn_args.eval_steps,
       callbacks=[tensorboard_callback])
