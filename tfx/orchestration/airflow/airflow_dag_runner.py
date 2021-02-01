@@ -119,14 +119,20 @@ class AirflowDagRunner(tfx_runner.TfxRunner):
   def _replace_runtime_params(self, comp):
     for k, prop in comp.spec.exec_properties.copy().items():
       if isinstance(prop, RuntimeParameter):
+        
+        # Airflow only supports string parameters
         if prop.ptype != str:
           raise RuntimeError(
             f'RuntimeParameter in Airflow does not support {prop.ptype} only ptype supported is string'
           )
+        
+        # If default is a template, we can just remove the template markers to make it work.
         if prop.default.startswith('{{') and prop.default.endswith('}}'):
           default = prop.default.replace('{{','').replace('}}', '')
         else:
           default = f'"{prop.default}"'
+        
+        # Once we move to support Airflow 2.0 we should instead use airflow.models.DagParam class 
         comp.spec.exec_properties[k] = f'{{{{ dag_run.conf.get("{prop.name}", {default}) }}}}'
     return comp
 

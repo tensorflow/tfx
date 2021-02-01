@@ -18,6 +18,9 @@ from __future__ import division
 from __future__ import print_function
 
 import datetime
+import os
+from airflow.models.taskinstance import TaskInstance
+import subprocess
 
 import mock
 import tensorflow as tf
@@ -30,6 +33,7 @@ from tfx.dsl.components.base import base_component
 from tfx.dsl.components.base import base_executor
 from tfx.dsl.components.base import executor_spec
 from tfx.orchestration import pipeline
+from tfx.orchestration.data_types import RuntimeParameter
 from tfx.types import component_spec
 
 
@@ -92,6 +96,20 @@ class _FakeComponentSpecE(types.ComponentSpec):
   }
   OUTPUTS = {'output': component_spec.ChannelParameter(type=_ArtifactTypeE)}
 
+
+class _FakeComponentSpecF(types.ComponentSpec):
+  PARAMETERS = {
+    'a':  component_spec.ExecutionParameter(type=str)
+  }
+  INPUTS = {}
+  OUTPUTS = {}
+
+class _FakeComponentSpecG(types.ComponentSpec):
+  PARAMETERS = {
+    'a':  component_spec.ExecutionParameter(type=int)
+  }
+  INPUTS = {}
+  OUTPUTS = {}
 
 class _FakeComponent(base_component.BaseComponent):
 
@@ -192,6 +210,70 @@ class AirflowDagRunnerTest(tf.test.TestCase):
 
     self.assertEqual(airflow_config, runner._config.airflow_dag_config)
 
+  def testRuntimParam(self):
+    param = RuntimeParameter('name', str, 'tfx')
+    component_f = _FakeComponent(_FakeComponentSpecF(a=param))
+    airflow_config = {
+        'schedule_interval': '* * * * *',
+        'start_date': datetime.datetime(2019, 1, 1)
+    }
+    test_pipeline = pipeline.Pipeline( 
+        pipeline_name='x',
+        pipeline_root='y',
+        metadata_connection_config=None,
+        components=[
+            component_f
+        ])
+
+    runner = airflow_dag_runner.AirflowDagRunner(
+        airflow_dag_runner.AirflowPipelineConfig(
+            airflow_dag_config=airflow_config))
+    dag = runner.run(test_pipeline)
+    task = dag.tasks[0]
+    self.assertDictEqual({'exec_properties':{'a':'{{ dag_run.conf.get("name", "tfx") }}'}}, task.op_kwargs)
+
+  def testRuntimParamTemplated(self):
+    param = RuntimeParameter('name', str, '{{execution_date}}')
+    component_f = _FakeComponent(_FakeComponentSpecF(a=param))
+    airflow_config = {
+        'schedule_interval': '* * * * *',
+        'start_date': datetime.datetime(2019, 1, 1)
+    }
+    test_pipeline = pipeline.Pipeline( 
+        pipeline_name='x',
+        pipeline_root='y',
+        metadata_connection_config=None,
+        components=[
+            component_f
+        ])
+
+    runner = airflow_dag_runner.AirflowDagRunner(
+        airflow_dag_runner.AirflowPipelineConfig(
+            airflow_dag_config=airflow_config))
+    dag = runner.run(test_pipeline)
+    task = dag.tasks[0]
+    self.assertDictEqual({'exec_properties':{'a':'{{ dag_run.conf.get("name", execution_date) }}'}}, task.op_kwargs)
+
+  def testRuntimParamIntError(self):
+    param = RuntimeParameter('name', int, 1)
+    component_f = _FakeComponent(_FakeComponentSpecG(a=param))
+    airflow_config = {
+        'schedule_interval': '* * * * *',
+        'start_date': datetime.datetime(2019, 1, 1)
+    }
+    test_pipeline = pipeline.Pipeline( 
+        pipeline_name='x',
+        pipeline_root='y',
+        metadata_connection_config=None,
+        components=[
+            component_f
+        ])
+    with self.assertRaises(RuntimeError):
+      airflow_dag_runner.AirflowDagRunner(
+        airflow_dag_runner.AirflowPipelineConfig(
+            airflow_dag_config=airflow_config)
+      ).run(test_pipeline)
+    
 
 if __name__ == '__main__':
   tf.test.main()
