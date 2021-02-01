@@ -12,6 +12,8 @@
 
 ## Bug fixes and other changes
 
+*   Depends on `pyarrow>=3,<6`.
+
 ## Documentation updates
 
 # Version 0.27.0

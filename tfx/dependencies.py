@@ -83,7 +83,7 @@ def make_required_install_packages():
       # dependency expecatation with TensorFlow is sorted out.
       'keras-tuner>=1,<1.0.2',
       'kubernetes>=10.0.1,<12',
-      'pyarrow>=1,<3',
+      'pyarrow>=3,<6',
       'pyyaml>=3.12,<6',
       'tensorflow>=1.15.2,!=2.0.*,!=2.1.*,!=2.2.*,!=2.3.*,<3',
       'tensorflow-hub>=0.9.0,<0.10',
