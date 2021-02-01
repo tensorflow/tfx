@@ -27,7 +27,6 @@ from tfx.utils import io_utils
 
 EVAL_MODEL_DIR = 'eval_model_dir'
 SERVING_MODEL_DIR = 'serving_model_dir'
-
 """Directory structure of exported model for estimator based trainer:
 
   |-- <ModelExportPath>
@@ -96,6 +95,18 @@ def serving_model_dir(output_uri: Text) -> Text:
 
 def serving_model_path(output_uri: Text) -> Text:
   """Returns path for exported serving model."""
+  export_dir = os.path.join(output_uri, 'export')
+  if fileio.exists(export_dir):
+    # This happens when a Trainer uses the Model.uri as the model_dir for
+    # an estimator. The SavedModel can be found at location
+    # <ModelExportPath>/export/<Timestamp>/saved_model.pb.
+    # TODO(b/160795287): Deprecate estimator based executor.
+    absl.logging.warning(
+        'Support for estimator-based executor and model export'
+        ' will be deprecated soon. Please use export structure '
+        '<ModelExportPath>/serving_model_dir/saved_model.pb"')
+    model_dir = io_utils.get_only_uri_in_dir(export_dir)
+    return io_utils.get_only_uri_in_dir(model_dir)
   model_dir = serving_model_dir(output_uri)
   export_dir = os.path.join(model_dir, 'export')
   if fileio.exists(export_dir):

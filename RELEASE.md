@@ -61,6 +61,7 @@
 
 ## Bug fixes and other changes
 
+*   Support evaluating `Estimator` serving `SavedModels` exported using `tf.estimator.Exporters`.
 *   InfraValidator supports using alternative TensorFlow Serving image in case
     deployed environment cannot reach the public internet (nor the docker hub).
     Such alternative image should behave the same as official

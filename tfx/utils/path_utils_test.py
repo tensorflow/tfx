@@ -28,9 +28,9 @@ from tfx.utils import path_utils
 
 class PathUtilsTest(tf.test.TestCase):
 
-  def testEstimatorModelPath(self):
-    # Create folders based on Estimator based Trainer output model directory,
-    # after Executor performs cleaning.
+  def testEstimatorDefaultModelPath(self):
+    # Create folders based on Estimator based Trainer EvalSavedModel output
+    # model directory, after Executor performs cleaning.
     output_uri = os.path.join(self.get_temp_dir(), 'model_dir')
     eval_model_path = path_utils.eval_model_dir(output_uri)
     eval_model = os.path.join(eval_model_path, 'saved_model.pb')
@@ -43,6 +43,31 @@ class PathUtilsTest(tf.test.TestCase):
     self.assertEqual(eval_model_path, path_utils.eval_model_path(output_uri))
     self.assertEqual(serving_model_path,
                      path_utils.serving_model_path(output_uri))
+
+  def testEstimatorServingModelDirServingModelPath(self):
+    # Create folders based on Estimator based Trainer serving SavedModel output
+    # model directory, after Executor performs cleaning.
+    output_uri = os.path.join(self.get_temp_dir(), 'model_dir')
+    example_timestamp = '1611955579'
+    serving_model_path = os.path.join(
+        path_utils.serving_model_dir(output_uri), 'export', example_timestamp)
+    serving_model = os.path.join(serving_model_path, 'saved_model.pb')
+    io_utils.write_string_file(serving_model, 'testing')
+
+    # Test retrieving model folder.
+    self.assertEqual(serving_model, path_utils.serving_model_path(output_uri))
+
+  def testEstimatorModelDirServingModelPath(self):
+    # Create folders based on Estimator based Trainer serving SavedModel output
+    # model directory, after Executor performs cleaning.
+    output_uri = os.path.join(self.get_temp_dir(), 'model_dir')
+    example_timestamp = '1611955579'
+    serving_model_path = os.path.join(output_uri, 'export', example_timestamp)
+    serving_model = os.path.join(serving_model_path, 'saved_model.pb')
+    io_utils.write_string_file(serving_model, 'testing')
+
+    # Test retrieving model folder.
+    self.assertEqual(serving_model, path_utils.serving_model_path(output_uri))
 
   def testKerasModelPath(self):
     # Create folders based on Keras based Trainer output model directory.
