@@ -135,9 +135,9 @@ class Executor(base_executor.BaseExecutor):
         exec_properties[standard_component_specs.DATA_SPEC_KEY], data_spec)
 
     output_example_spec = bulk_inferrer_pb2.OutputExampleSpec()
-    if exec_properties.get(standard_component_specs.OUTPUT_EXAMPLES_KEY):
+    if exec_properties.get(standard_component_specs.OUTPUT_EXAMPLE_SPEC_KEY):
       proto_utils.json_to_proto(
-          exec_properties[standard_component_specs.OUTPUT_EXAMPLES_KEY],
+          exec_properties[standard_component_specs.OUTPUT_EXAMPLE_SPEC_KEY],
           output_example_spec)
 
     self._run_model_inference(
