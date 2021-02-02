@@ -16,7 +16,7 @@
 import abc
 import copy
 import enum
-from typing import Optional, Union, cast
+from typing import Optional, Type, Union, cast
 from tfx import types
 from tfx.proto.orchestration import placeholder_pb2
 from tfx.utils import proto_utils
@@ -37,7 +37,7 @@ class _PlaceholderOperator(abc.ABC):
   def encode(
       self,
       sub_expression_pb: placeholder_pb2.PlaceholderExpression,
-      component_spec: types.ComponentSpec = None
+      component_spec: Type[types.ComponentSpec] = None
   ) -> placeholder_pb2.PlaceholderExpression:
     pass
 
@@ -55,7 +55,7 @@ class _ArtifactUriOperator(_PlaceholderOperator):
   def encode(
       self,
       sub_expression_pb: placeholder_pb2.PlaceholderExpression,
-      component_spec: Optional[types.ComponentSpec] = None
+      component_spec: Optional[Type[types.ComponentSpec]] = None
   ) -> placeholder_pb2.PlaceholderExpression:
     del component_spec  # Unused by ArtifactUriOperator
 
@@ -75,7 +75,7 @@ class _ArtifactValueOperator(_PlaceholderOperator):
   def encode(
       self,
       sub_expression_pb: placeholder_pb2.PlaceholderExpression,
-      component_spec: Optional[types.ComponentSpec] = None
+      component_spec: Optional[Type[types.ComponentSpec]] = None
   ) -> placeholder_pb2.PlaceholderExpression:
     del component_spec  # Unused by ArtifactValueOperator
 
@@ -97,7 +97,7 @@ class _IndexOperator(_PlaceholderOperator):
   def encode(
       self,
       sub_expression_pb: placeholder_pb2.PlaceholderExpression,
-      component_spec: Optional[types.ComponentSpec] = None
+      component_spec: Optional[Type[types.ComponentSpec]] = None
   ) -> placeholder_pb2.PlaceholderExpression:
     del component_spec  # Unused by IndexOperator
 
@@ -121,7 +121,7 @@ class _ConcatOperator(_PlaceholderOperator):
   def encode(
       self,
       sub_expression_pb: placeholder_pb2.PlaceholderExpression,
-      component_spec: Optional[types.ComponentSpec] = None
+      component_spec: Optional[Type[types.ComponentSpec]] = None
   ) -> placeholder_pb2.PlaceholderExpression:
     del component_spec  # Unused by ConcatOperator
 
@@ -200,7 +200,7 @@ class _ProtoOperator(_PlaceholderOperator):
   def encode(
       self,
       sub_expression_pb: placeholder_pb2.PlaceholderExpression,
-      component_spec: Optional[types.ComponentSpec] = None
+      component_spec: Optional[Type[types.ComponentSpec]] = None
   ) -> placeholder_pb2.PlaceholderExpression:
     result = placeholder_pb2.PlaceholderExpression()
     result.operator.proto_op.expression.CopyFrom(sub_expression_pb)
@@ -245,7 +245,7 @@ class _Base64EncodeOperator(_PlaceholderOperator):
   def encode(
       self,
       sub_expression_pb: placeholder_pb2.PlaceholderExpression,
-      component_spec: Optional[types.ComponentSpec] = None
+      component_spec: Optional[Type[types.ComponentSpec]] = None
   ) -> placeholder_pb2.PlaceholderExpression:
     del component_spec  # Unused by B64EncodeOperator
 
@@ -292,7 +292,7 @@ class Placeholder(abc.ABC):
 
   def encode(
       self,
-      component_spec: Optional[types.ComponentSpec] = None
+      component_spec: Optional[Type[types.ComponentSpec]] = None
   ) -> placeholder_pb2.PlaceholderExpression:
     """Encodes a placeholder as PlaceholderExpression proto.
 
