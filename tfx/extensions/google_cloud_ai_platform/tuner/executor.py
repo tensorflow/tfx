@@ -31,6 +31,7 @@ from tfx.utils import json_utils
 
 # Directory to store intermediate hyperparamter search progress.
 # TODO(b/160188053): Use the same temp dir as the calling Executor.
+TUNING_ARGS_KEY = 'ai_platform_tuning_args'
 _WORKING_DIRECTORY = '/tmp'
 
 
@@ -78,11 +79,9 @@ class Executor(base_executor.BaseExecutor):
       raise TypeError('custom_config in execution properties must be a dict, '
                       'but received %s' % type(custom_config))
 
-    training_inputs = custom_config.get(
-        ai_platform_trainer_executor.TRAINING_ARGS_KEY)
+    training_inputs = custom_config.get(TUNING_ARGS_KEY).copy()
     if training_inputs is None:
-      err_msg = ('\'%s\' not found in custom_config.' %
-                 ai_platform_trainer_executor.TRAINING_ARGS_KEY)
+      err_msg = ('\'%s\' not found in custom_config.' % TUNING_ARGS_KEY)
       logging.error(err_msg)
       raise ValueError(err_msg)
 
