@@ -16,26 +16,6 @@ inputs {
     }
   }
   parameters {
-    key: "custom_properties"
-    value {
-      runtime_value {
-        constant_value {
-          string_value: "{\"str_custom_property\": \"abc\", \"int_custom_property\": 123}"
-        }
-      }
-    }
-  }
-  parameters {
-    key: "properties"
-    value {
-      runtime_value {
-        constant_value {
-          string_value: "{\"split_names\": \"[\\\"train\\\", \\\"eval\\\"]\"}"
-        }
-      }
-    }
-  }
-  parameters {
     key: "reimport"
     value {
       runtime_value {

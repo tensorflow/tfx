@@ -50,17 +50,26 @@ class ImporterTest(tf.test.TestCase):
         impt.exec_properties, {
             importer.SOURCE_URI_KEY: 'm/y/u/r/i',
             importer.REIMPORT_OPTION_KEY: 0,
-            importer.PROPERTIES_KEY: {
-                'split_names': '["train", "eval"]',
-            },
-            importer.CUSTOM_PROPERTIES_KEY: {
-                'str_custom_property': 'abc',
-                'int_custom_property': 123,
-            },
         })
     self.assertEmpty(impt.inputs.get_all())
-    self.assertEqual(impt.outputs[importer.IMPORT_RESULT_KEY].type,
-                     standard_artifacts.Examples)
+    output_channel = impt.outputs[importer.IMPORT_RESULT_KEY]
+    self.assertEqual(output_channel.type, standard_artifacts.Examples)
+    # Tests properties in channel.
+    self.assertEqual(output_channel.additional_properties, {
+        'split_names': '["train", "eval"]',
+    })
+    self.assertEqual(output_channel.additional_custom_properties, {
+        'str_custom_property': 'abc',
+        'int_custom_property': 123,
+    })
+    # Tests properties in artifact.
+    output_artifact = list(output_channel.get())[0]
+    self.assertEqual(output_artifact.split_names, '["train", "eval"]')
+    self.assertEqual(
+        output_artifact.get_string_custom_property('str_custom_property'),
+        'abc')
+    self.assertEqual(
+        output_artifact.get_int_custom_property('int_custom_property'), 123)
 
   def testImporterDumpsJsonRoundtrip(self):
     instance_name = 'my_importer'
@@ -84,11 +93,6 @@ class ImporterDriverTest(tf.test.TestCase):
     super(ImporterDriverTest, self).setUp()
     self.connection_config = metadata_store_pb2.ConnectionConfig()
     self.connection_config.sqlite.SetInParent()
-    self.output_dict = {
-        importer.IMPORT_RESULT_KEY:
-            types.Channel(type=standard_artifacts.Examples)
-    }
-    self.source_uri = 'm/y/u/r/i'
     self.properties = {
         'split_names': artifact_utils.encode_split_names(['train', 'eval'])
     }
@@ -96,6 +100,14 @@ class ImporterDriverTest(tf.test.TestCase):
         'string_custom_property': 'abc',
         'int_custom_property': 123,
     }
+    self.output_dict = {
+        importer.IMPORT_RESULT_KEY:
+            types.Channel(
+                type=standard_artifacts.Examples,
+                additional_properties=self.properties,
+                additional_custom_properties=self.custom_properties)
+    }
+    self.source_uri = 'm/y/u/r/i'
 
     self.existing_artifacts = []
     existing_artifact = standard_artifacts.Examples()
@@ -124,8 +136,6 @@ class ImporterDriverTest(tf.test.TestCase):
           exec_properties={
               importer.SOURCE_URI_KEY: self.source_uri,
               importer.REIMPORT_OPTION_KEY: int(reimport),
-              importer.PROPERTIES_KEY: self.properties,
-              importer.CUSTOM_PROPERTIES_KEY: self.custom_properties,
           })
       self.assertFalse(execution_result.use_cached_results)
       self.assertEmpty(execution_result.input_dict)

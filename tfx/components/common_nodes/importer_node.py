@@ -28,10 +28,6 @@ from tfx.utils import deprecation_utils
 IMPORT_RESULT_KEY = importer.IMPORT_RESULT_KEY
 # Constant to access artifact uri from importer exec_properties dict.
 SOURCE_URI_KEY = importer.SOURCE_URI_KEY
-# Constant to access artifact properties from importer exec_properties dict.
-PROPERTIES_KEY = importer.PROPERTIES_KEY
-# Constant to access artifact properties from importer exec_properties dict.
-CUSTOM_PROPERTIES_KEY = importer.CUSTOM_PROPERTIES_KEY
 # Constant to access re-import option from importer exec_properties dict.
 REIMPORT_OPTION_KEY = importer.REIMPORT_OPTION_KEY
 

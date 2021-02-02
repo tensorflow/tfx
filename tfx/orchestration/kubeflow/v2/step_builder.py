@@ -376,17 +376,18 @@ class StepBuilder(object):
   def _build_importer_spec(self) -> ImporterSpec:
     """Builds ImporterSpec."""
     assert isinstance(self._node, importer.Importer)
+    output_channel = self._node.outputs[importer.IMPORT_RESULT_KEY]
     result = ImporterSpec(
         properties=compiler_utils.convert_from_tfx_properties(
-            self._exec_properties[importer.PROPERTIES_KEY]),
+            output_channel.additional_properties),
         custom_properties=compiler_utils.convert_from_tfx_properties(
-            self._exec_properties[importer.CUSTOM_PROPERTIES_KEY]))
+            output_channel.additional_custom_properties))
     result.reimport = bool(self._exec_properties[importer.REIMPORT_OPTION_KEY])
     result.artifact_uri.CopyFrom(
         compiler_utils.value_converter(
             self._exec_properties[importer.SOURCE_URI_KEY]))
     single_artifact = artifact_utils.get_single_instance(
-        list(self._node.outputs[importer.IMPORT_RESULT_KEY].get()))
+        list(output_channel.get()))
     result.type_schema.CopyFrom(
         pipeline_pb2.ArtifactTypeSchema(
             instance_schema=compiler_utils.get_artifact_schema(
