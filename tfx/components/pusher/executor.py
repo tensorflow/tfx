@@ -23,13 +23,13 @@ import time
 from typing import Any, Dict, List, Optional, Text
 
 from absl import logging
-
 from tfx import types
 from tfx.components.util import model_utils
 from tfx.dsl.components.base import base_executor
 from tfx.dsl.io import fileio
 from tfx.proto import pusher_pb2
 from tfx.types import artifact_utils
+from tfx.types import standard_component_specs
 from tfx.utils import io_utils
 from tfx.utils import path_utils
 from tfx.utils import proto_utils
@@ -37,15 +37,6 @@ from tfx.utils import proto_utils
 
 # Aliasing of enum for better readability.
 _Versioning = pusher_pb2.Versioning
-
-# Key for model in executor input_dict.
-MODEL_KEY = 'model'
-# Key for model blessing in executor input_dict.
-MODEL_BLESSING_KEY = 'model_blessing'
-# Key for infra blessing in executor input_dict.
-INFRA_BLESSING_KEY = 'infra_blessing'
-# Key for pushed model in executor output_dict.
-PUSHED_MODEL_KEY = 'pushed_model'
 
 # Key for PushedModel artifact properties.
 _PUSHED_KEY = 'pushed'
@@ -89,14 +80,16 @@ class Executor(base_executor.BaseExecutor):
       True if the model is blessed by validator.
     """
     # TODO(jyzhao): should this be in driver or executor.
-    maybe_model_blessing = input_dict.get(MODEL_BLESSING_KEY)
+    maybe_model_blessing = input_dict.get(
+        standard_component_specs.MODEL_BLESSING_KEY)
     if maybe_model_blessing:
       model_blessing = artifact_utils.get_single_instance(maybe_model_blessing)
       if not model_utils.is_model_blessed(model_blessing):
         logging.info('Model on %s was not blessed by model validation',
                      model_blessing.uri)
         return False
-    maybe_infra_blessing = input_dict.get(INFRA_BLESSING_KEY)
+    maybe_infra_blessing = input_dict.get(
+        standard_component_specs.INFRA_BLESSING_KEY)
     if maybe_infra_blessing:
       infra_blessing = artifact_utils.get_single_instance(maybe_infra_blessing)
       if not model_utils.is_infra_validated(infra_blessing):
@@ -116,12 +109,12 @@ class Executor(base_executor.BaseExecutor):
 
     Args:
       input_dict: Input dict from input key to a list of artifacts, including:
-        - model_export: exported model from trainer.
+        - model: exported model from trainer.
         - model_blessing: model blessing path from model_validator.  A push
           action delivers the model exports produced by Trainer to the
           destination defined in component config.
       output_dict: Output dict from key to a list of artifacts, including:
-        - model_push: A list of 'ModelPushPath' artifact of size one. It will
+        - pushed_model: A list of 'ModelPushPath' artifact of size one. It will
           include the model in this push execution if the model was pushed.
       exec_properties: A dict of execution properties, including:
         - push_destination: JSON string of pusher_pb2.PushDestination instance,
@@ -132,11 +125,12 @@ class Executor(base_executor.BaseExecutor):
     """
     self._log_startup(input_dict, output_dict, exec_properties)
     model_push = artifact_utils.get_single_instance(
-        output_dict[PUSHED_MODEL_KEY])
+        output_dict[standard_component_specs.PUSHED_MODEL_KEY])
     if not self.CheckBlessing(input_dict):
       self._MarkNotPushed(model_push)
       return
-    model_export = artifact_utils.get_single_instance(input_dict[MODEL_KEY])
+    model_export = artifact_utils.get_single_instance(
+        input_dict[standard_component_specs.MODEL_KEY])
     model_path = path_utils.serving_model_path(model_export.uri)
 
     # Push model to the destination, which can be listened by a model server.
@@ -148,8 +142,9 @@ class Executor(base_executor.BaseExecutor):
     # copy to outside path again..
     # TODO(jyzhao): support rpc push and verification.
     push_destination = pusher_pb2.PushDestination()
-    proto_utils.json_to_proto(exec_properties['push_destination'],
-                              push_destination)
+    proto_utils.json_to_proto(
+        exec_properties[standard_component_specs.PUSH_DESTINATION_KEY],
+        push_destination)
 
     destination_kind = push_destination.WhichOneof('destination')
     if destination_kind == 'filesystem':

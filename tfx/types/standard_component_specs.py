@@ -42,6 +42,8 @@ EXAMPLES_KEY = 'examples'
 MODEL_KEY = 'model'
 BLESSING_KEY = 'blessing'
 MODULE_FILE_KEY = 'module_file'
+CUSTOM_CONFIG_KEY = 'custom_config'
+MODEL_BLESSING_KEY = 'model_blessing'
 # Key for example_validator
 EXCLUDE_SPLITS_KEY = 'exclude_splits'
 STATISTICS_KEY = 'statistics'
@@ -63,16 +65,18 @@ TUNER_FN_KEY = 'tuner_fn'
 TRAIN_ARGS_KEY = 'train_args'
 EVAL_ARGS_KEY = 'eval_args'
 TUNE_ARGS_KEY = 'tune_args'
-CUSTOM_CONFIG_KEY = 'custom_config'
 TRANSFORM_GRAPH_KEY = 'transform_graph'
 BEST_HYPERPARAMETERS_KEY = 'best_hyperparameters'
 # Key for bulk_inferer
 MODEL_SPEC_KEY = 'model_spec'
 DATA_SPEC_KEY = 'data_spec'
 OUTPUT_EXAMPLE_SPEC_KEY = 'output_example_spec'
-MODEL_BLESSING_KEY = 'model_blessing'
 INFERENCE_RESULT_KEY = 'inference_result'
 OUTPUT_EXAMPLES_KEY = 'output_examples'
+# Key for pusher
+PUSH_DESTINATION_KEY = 'push_destination'
+INFRA_BLESSING_KEY = 'infra_blessing'
+PUSHED_MODEL_KEY = 'pushed_model'
 
 
 class BulkInferrerSpec(ComponentSpec):
@@ -244,32 +248,23 @@ class PusherSpec(ComponentSpec):
   """Pusher component spec."""
 
   PARAMETERS = {
-      'push_destination':
+      PUSH_DESTINATION_KEY:
           ExecutionParameter(type=pusher_pb2.PushDestination, optional=True),
-      'custom_config':
+      CUSTOM_CONFIG_KEY:
           ExecutionParameter(type=(str, Text), optional=True),
   }
   INPUTS = {
-      'model':
+      MODEL_KEY:
           ChannelParameter(type=standard_artifacts.Model),
-      'model_blessing':
+      MODEL_BLESSING_KEY:
           ChannelParameter(
               type=standard_artifacts.ModelBlessing, optional=True),
-      'infra_blessing':
+      INFRA_BLESSING_KEY:
           ChannelParameter(
               type=standard_artifacts.InfraBlessing, optional=True),
   }
   OUTPUTS = {
-      'pushed_model': ChannelParameter(type=standard_artifacts.PushedModel),
-  }
-  # TODO(b/139281215): these input / output names have recently been renamed.
-  # These compatibility aliases are temporarily provided for backwards
-  # compatibility.
-  _INPUT_COMPATIBILITY_ALIASES = {
-      'model_export': 'model',
-  }
-  _OUTPUT_COMPATIBILITY_ALIASES = {
-      'model_push': 'pushed_model',
+      PUSHED_MODEL_KEY: ChannelParameter(type=standard_artifacts.PushedModel),
   }
 
 

@@ -21,11 +21,11 @@ from typing import Any, Dict, List, Text
 
 from google.api_core import client_options  # pylint: disable=unused-import
 from googleapiclient import discovery
-
 from tfx import types
 from tfx.components.pusher import executor as tfx_pusher_executor
 from tfx.extensions.google_cloud_ai_platform import runner
 from tfx.types import artifact_utils
+from tfx.types import standard_component_specs
 from tfx.utils import io_utils
 from tfx.utils import json_utils
 from tfx.utils import path_utils
@@ -96,13 +96,13 @@ class Executor(tfx_pusher_executor.Executor):
       )
 
     model_push = artifact_utils.get_single_instance(
-        output_dict[tfx_pusher_executor.PUSHED_MODEL_KEY])
+        output_dict[standard_component_specs.PUSHED_MODEL_KEY])
     if not self.CheckBlessing(input_dict):
       self._MarkNotPushed(model_push)
       return
 
     model_export = artifact_utils.get_single_instance(
-        input_dict[tfx_pusher_executor.MODEL_KEY])
+        input_dict[standard_component_specs.MODEL_KEY])
 
     service_name, api_version = runner.get_service_name_and_api_version(
         ai_platform_serving_args)

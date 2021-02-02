@@ -19,7 +19,6 @@ from __future__ import print_function
 
 from typing import Any, Dict, Optional, Text, Union
 
-import absl
 from tfx import types
 from tfx.components.pusher import executor
 from tfx.dsl.components.base import base_component
@@ -74,8 +73,7 @@ class Pusher(base_component.BaseComponent):
                                        Dict[Text, Any]]] = None,
       custom_config: Optional[Dict[Text, Any]] = None,
       custom_executor_spec: Optional[executor_spec.ExecutorSpec] = None,
-      output: Optional[types.Channel] = None,
-      model_export: Optional[types.Channel] = None,
+      pushed_model: Optional[types.Channel] = None,
       instance_name: Optional[Text] = None):
     """Construct a Pusher component.
 
@@ -98,19 +96,13 @@ class Pusher(base_component.BaseComponent):
           https://github.com/tensorflow/tfx/blob/6ff57e36a7b65818d4598d41e584a42584d361e6/tfx/examples/chicago_taxi_pipeline/taxi_pipeline_kubeflow_gcp.py#L278-L285)
           contains an example how this can be used by custom executors.
       custom_executor_spec: Optional custom executor spec.
-      output: Optional output `standard_artifacts.PushedModel` channel with
-        result of push.
-      model_export: Backwards compatibility alias for the 'model' argument.
+      pushed_model: Optional output `standard_artifacts.PushedModel` channel
+        with result of push.
       instance_name: Optional unique instance name. Necessary if multiple Pusher
         components are declared in the same pipeline.
     """
-    if model_export:
-      absl.logging.warning(
-          'The "model_export" argument to the Pusher component has '
-          'been renamed to "model" and is deprecated. Please update your '
-          'usage as support for this argument will be removed soon.')
-      model = model_export
-    output = output or types.Channel(type=standard_artifacts.PushedModel)
+    pushed_model = pushed_model or types.Channel(
+        type=standard_artifacts.PushedModel)
     if push_destination is None and not custom_executor_spec:
       raise ValueError('push_destination is required unless a '
                        'custom_executor_spec is supplied that does not require '
@@ -121,7 +113,7 @@ class Pusher(base_component.BaseComponent):
         infra_blessing=infra_blessing,
         push_destination=push_destination,
         custom_config=json_utils.dumps(custom_config),
-        pushed_model=output)
+        pushed_model=pushed_model)
     super(Pusher, self).__init__(
         spec=spec,
         custom_executor_spec=custom_executor_spec,

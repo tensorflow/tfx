@@ -27,6 +27,7 @@
     statistics within the Transform component.
 
 ## Breaking changes
+*   Deprecated input/output compatibility aliases for Pusher.
 
 ### For pipeline authors
 

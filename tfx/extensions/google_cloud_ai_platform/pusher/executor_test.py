@@ -24,13 +24,13 @@ from typing import Any, Dict, Text
 import unittest
 
 # Standard Imports
+
 import mock
 import tensorflow as tf
-
-from tfx.components.pusher import executor as tfx_pusher_executor
 from tfx.dsl.io import fileio
 from tfx.extensions.google_cloud_ai_platform.pusher import executor
 from tfx.types import standard_artifacts
+from tfx.types import standard_component_specs
 from tfx.utils import json_utils
 from tfx.utils import telemetry_utils
 
@@ -62,15 +62,15 @@ class ExecutorTest(tf.test.TestCase):
                                           'trainer/current')
     self._model_blessing = standard_artifacts.ModelBlessing()
     self._input_dict = {
-        tfx_pusher_executor.MODEL_KEY: [self._model_export],
-        tfx_pusher_executor.MODEL_BLESSING_KEY: [self._model_blessing],
+        standard_component_specs.MODEL_KEY: [self._model_export],
+        standard_component_specs.MODEL_BLESSING_KEY: [self._model_blessing],
     }
 
     self._model_push = standard_artifacts.PushedModel()
     self._model_push.uri = os.path.join(self._output_data_dir, 'model_push')
     fileio.makedirs(self._model_push.uri)
     self._output_dict = {
-        tfx_pusher_executor.PUSHED_MODEL_KEY: [self._model_push],
+        standard_component_specs.PUSHED_MODEL_KEY: [self._model_push],
     }
     # Dict format of exec_properties. custom_config needs to be serialized
     # before being passed into Do function.

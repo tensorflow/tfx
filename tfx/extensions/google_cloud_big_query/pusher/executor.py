@@ -19,15 +19,15 @@ from __future__ import print_function
 from typing import Any, Dict, List, Text
 
 from absl import logging
+from google.cloud import bigquery
 from tfx import types
 from tfx.components.pusher import executor as tfx_pusher_executor
 from tfx.types import artifact_utils
+from tfx.types import standard_component_specs
 from tfx.utils import io_utils
 from tfx.utils import json_utils
 from tfx.utils import path_utils
 from tfx.utils import telemetry_utils
-
-from google.cloud import bigquery
 
 _POLLING_INTERVAL_IN_SECONDS = 30
 
@@ -83,13 +83,13 @@ class Executor(tfx_pusher_executor.Executor):
     """
     self._log_startup(input_dict, output_dict, exec_properties)
     model_push = artifact_utils.get_single_instance(
-        output_dict[tfx_pusher_executor.PUSHED_MODEL_KEY])
+        output_dict[standard_component_specs.PUSHED_MODEL_KEY])
     if not self.CheckBlessing(input_dict):
       self._MarkNotPushed(model_push)
       return
 
     model_export = artifact_utils.get_single_instance(
-        input_dict[tfx_pusher_executor.MODEL_KEY])
+        input_dict[standard_component_specs.MODEL_KEY])
     model_export_uri = model_export.uri
 
     custom_config = json_utils.loads(
