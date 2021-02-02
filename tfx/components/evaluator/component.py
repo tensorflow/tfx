@@ -91,7 +91,7 @@ class Evaluator(base_component.BaseComponent):
         Evaluator. Required only if multiple Evaluator components are declared
         in the same pipeline.  Either `model_exports` or `model` must be present
         in the input arguments.
-      eval_config: Instance of tfma.EvalConfig containg configuration settings
+      eval_config: Instance of tfma.EvalConfig containing configuration settings
         for running the evaluation. This config has options for both estimator
         and Keras.
       blessing: Output channel of 'ModelBlessing' that contains the

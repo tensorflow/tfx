@@ -64,7 +64,8 @@ class Trainer(base_component.BaseComponent):
   of the TFX Chicago Taxi pipeline example.
 
   *Note:* The default executor for this component trains locally.  This can be
-  overriden to enable the model to be trained on other platforms.  The [Cloud AI
+  overridden to enable the model to be trained on other platforms.  The [Cloud
+  AI
   Platform custom
   executor](https://github.com/tensorflow/tfx/tree/master/tfx/extensions/google_cloud_ai_platform/trainer)
   provides an example how to implement this.
@@ -180,7 +181,7 @@ class Trainer(base_component.BaseComponent):
         If it's provided as a dict and any field is a RuntimeParameter, it
         should have the same field names as a EvalArgs proto message. Default
         behavior (when splits is empty) is evaluate on `eval` split.
-      custom_config: A dict which contains addtional training job parameters
+      custom_config: A dict which contains additional training job parameters
         that will be passed into user module.
       custom_executor_spec: Optional custom executor spec.
       model: Optional `Model` channel for result of exported models.

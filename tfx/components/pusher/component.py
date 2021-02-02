@@ -42,7 +42,7 @@ class Pusher(base_component.BaseComponent):
   before deploying the model.  If the model has not been blessed, then the model
   will not be pushed.
 
-  *Note:* The executor for this component can be overriden to enable the model
+  *Note:* The executor for this component can be overridden to enable the model
   to be pushed to other serving platforms than tf.serving.  The [Cloud AI
   Platform custom
   executor](https://github.com/tensorflow/tfx/tree/master/tfx/extensions/google_cloud_ai_platform/pusher)

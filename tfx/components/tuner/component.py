@@ -91,7 +91,7 @@ class Tuner(base_component.BaseComponent):
         (when splits is empty) is evaluate on `eval` split.
       tune_args: A tuner_pb2.TuneArgs instance, containing args used for tuning.
         Currently only num_parallel_trials is available.
-      custom_config: A dict which contains addtional training job parameters
+      custom_config: A dict which contains additional training job parameters
         that will be passed into user module.
       best_hyperparameters: Optional Channel of type
         `standard_artifacts.HyperParameters` for result of the best hparams.
