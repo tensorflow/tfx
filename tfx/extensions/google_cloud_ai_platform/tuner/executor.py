@@ -22,11 +22,11 @@ from typing import Any, Dict, List, Text
 
 from absl import logging
 from tfx import types
-from tfx.components.trainer import constants
 from tfx.components.tuner import executor as tuner_executor
 from tfx.dsl.components.base import base_executor
 from tfx.extensions.google_cloud_ai_platform import runner
 from tfx.extensions.google_cloud_ai_platform.trainer import executor as ai_platform_trainer_executor
+from tfx.types import standard_component_specs
 from tfx.utils import json_utils
 
 # Directory to store intermediate hyperparamter search progress.
@@ -70,7 +70,7 @@ class Executor(base_executor.BaseExecutor):
     self._log_startup(input_dict, output_dict, exec_properties)
 
     custom_config = json_utils.loads(
-        exec_properties.get(constants.CUSTOM_CONFIG_KEY, 'null'))
+        exec_properties.get(standard_component_specs.CUSTOM_CONFIG_KEY, 'null'))
     if custom_config is None:
       raise ValueError('custom_config is not provided')
 

@@ -20,7 +20,6 @@ from __future__ import print_function
 
 import os
 import tensorflow as tf
-
 from tfx.examples.chicago_taxi_pipeline import taxi_pipeline_beam
 
 

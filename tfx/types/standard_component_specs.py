@@ -41,9 +41,12 @@ SCHEMA_KEY = 'schema'
 EXAMPLES_KEY = 'examples'
 MODEL_KEY = 'model'
 BLESSING_KEY = 'blessing'
+TRAIN_ARGS_KEY = 'train_args'
 MODULE_FILE_KEY = 'module_file'
 CUSTOM_CONFIG_KEY = 'custom_config'
 MODEL_BLESSING_KEY = 'model_blessing'
+TRANSFORM_GRAPH_KEY = 'transform_graph'
+EVAL_ARGS_KEY = 'eval_args'
 # Key for example_validator
 EXCLUDE_SPLITS_KEY = 'exclude_splits'
 STATISTICS_KEY = 'statistics'
@@ -62,10 +65,7 @@ VALIDATION_SPEC_KEY = 'validation_spec'
 REQUEST_SPEC_KEY = 'request_spec'
 # Key for tuner
 TUNER_FN_KEY = 'tuner_fn'
-TRAIN_ARGS_KEY = 'train_args'
-EVAL_ARGS_KEY = 'eval_args'
 TUNE_ARGS_KEY = 'tune_args'
-TRANSFORM_GRAPH_KEY = 'transform_graph'
 BEST_HYPERPARAMETERS_KEY = 'best_hyperparameters'
 # Key for bulk_inferer
 MODEL_SPEC_KEY = 'model_spec'
@@ -77,6 +77,12 @@ OUTPUT_EXAMPLES_KEY = 'output_examples'
 PUSH_DESTINATION_KEY = 'push_destination'
 INFRA_BLESSING_KEY = 'infra_blessing'
 PUSHED_MODEL_KEY = 'pushed_model'
+# Key for TrainerSpec
+RUN_FN_KEY = 'run_fn'
+TRAINER_FN_KEY = 'trainer_fn'
+BASE_MODEL_KEY = 'base_model'
+HYPERPARAMETERS_KEY = 'hyperparameters'
+MODEL_RUN_KEY = 'model_run'
 
 
 class BulkInferrerSpec(ComponentSpec):
@@ -321,39 +327,30 @@ class TrainerSpec(ComponentSpec):
   """Trainer component spec."""
 
   PARAMETERS = {
-      'train_args': ExecutionParameter(type=trainer_pb2.TrainArgs),
-      'eval_args': ExecutionParameter(type=trainer_pb2.EvalArgs),
-      'module_file': ExecutionParameter(type=(str, Text), optional=True),
-      'run_fn': ExecutionParameter(type=(str, Text), optional=True),
-      'trainer_fn': ExecutionParameter(type=(str, Text), optional=True),
-      'custom_config': ExecutionParameter(type=(str, Text), optional=True),
+      TRAIN_ARGS_KEY: ExecutionParameter(type=trainer_pb2.TrainArgs),
+      EVAL_ARGS_KEY: ExecutionParameter(type=trainer_pb2.EvalArgs),
+      MODULE_FILE_KEY: ExecutionParameter(type=(str, Text), optional=True),
+      RUN_FN_KEY: ExecutionParameter(type=(str, Text), optional=True),
+      TRAINER_FN_KEY: ExecutionParameter(type=(str, Text), optional=True),
+      CUSTOM_CONFIG_KEY: ExecutionParameter(type=(str, Text), optional=True),
   }
   INPUTS = {
-      'examples':
+      EXAMPLES_KEY:
           ChannelParameter(type=standard_artifacts.Examples),
-      'transform_graph':
+      TRANSFORM_GRAPH_KEY:
           ChannelParameter(
               type=standard_artifacts.TransformGraph, optional=True),
-      'schema':
+      SCHEMA_KEY:
           ChannelParameter(type=standard_artifacts.Schema, optional=True),
-      'base_model':
+      BASE_MODEL_KEY:
           ChannelParameter(type=standard_artifacts.Model, optional=True),
-      'hyperparameters':
+      HYPERPARAMETERS_KEY:
           ChannelParameter(
               type=standard_artifacts.HyperParameters, optional=True),
   }
   OUTPUTS = {
-      'model': ChannelParameter(type=standard_artifacts.Model),
-      'model_run': ChannelParameter(type=standard_artifacts.ModelRun)
-  }
-  # TODO(b/139281215): these input / output names have recently been renamed.
-  # These compatibility aliases are temporarily provided for backwards
-  # compatibility.
-  _INPUT_COMPATIBILITY_ALIASES = {
-      'transform_output': 'transform_graph',
-  }
-  _OUTPUT_COMPATIBILITY_ALIASES = {
-      'output': 'model',
+      MODEL_KEY: ChannelParameter(type=standard_artifacts.Model),
+      MODEL_RUN_KEY: ChannelParameter(type=standard_artifacts.ModelRun)
   }
 
 

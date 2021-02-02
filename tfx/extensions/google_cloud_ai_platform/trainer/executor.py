@@ -24,12 +24,12 @@ from tfx import types
 from tfx.components.trainer import executor as tfx_trainer_executor
 from tfx.dsl.components.base import base_executor
 from tfx.extensions.google_cloud_ai_platform import runner
+from tfx.types import standard_component_specs
 from tfx.utils import json_utils
 
 # Keys to the items in custom_config passed as a part of exec_properties.
 TRAINING_ARGS_KEY = 'ai_platform_training_args'
 JOB_ID_KEY = 'ai_platform_training_job_id'
-_CUSTOM_CONFIG_KEY = 'custom_config'
 
 
 class GenericExecutor(base_executor.BaseExecutor):
@@ -63,7 +63,7 @@ class GenericExecutor(base_executor.BaseExecutor):
     self._log_startup(input_dict, output_dict, exec_properties)
 
     custom_config = json_utils.loads(
-        exec_properties.get(_CUSTOM_CONFIG_KEY, 'null'))
+        exec_properties.get(standard_component_specs.CUSTOM_CONFIG_KEY, 'null'))
     if custom_config is not None and not isinstance(custom_config, Dict):
       raise ValueError('custom_config in execution properties needs to be a '
                        'dict.')

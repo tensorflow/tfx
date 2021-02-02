@@ -26,9 +26,9 @@ from typing import Any, Dict, Text
 
 import mock
 import tensorflow as tf
-
 from tfx.components.trainer import executor as tfx_trainer_executor
 from tfx.extensions.google_cloud_ai_platform.trainer import executor as ai_platform_trainer_executor
+from tfx.types import standard_component_specs
 from tfx.utils import json_utils
 
 
@@ -47,7 +47,7 @@ class ExecutorTest(tf.test.TestCase):
     # Dict format of exec_properties. custom_config needs to be serialized
     # before being passed into Do function.
     self._exec_properties = {
-        'custom_config': {
+        standard_component_specs.CUSTOM_CONFIG_KEY: {
             ai_platform_trainer_executor.TRAINING_ARGS_KEY: {
                 'project': self._project_id,
                 'jobDir': self._job_dir,
@@ -69,7 +69,8 @@ class ExecutorTest(tf.test.TestCase):
   def _serialize_custom_config_under_test(self) -> Dict[Text, Any]:
     """Converts self._exec_properties['custom_config'] to string."""
     result = copy.deepcopy(self._exec_properties)
-    result['custom_config'] = json_utils.dumps(result['custom_config'])
+    result[standard_component_specs.CUSTOM_CONFIG_KEY] = json_utils.dumps(
+        result[standard_component_specs.CUSTOM_CONFIG_KEY])
     return result
 
   def testDo(self):
@@ -86,7 +87,7 @@ class ExecutorTest(tf.test.TestCase):
   def testDoWithJobIdOverride(self):
     executor = ai_platform_trainer_executor.Executor()
     job_id = 'overridden_job_id'
-    self._exec_properties['custom_config'][
+    self._exec_properties[standard_component_specs.CUSTOM_CONFIG_KEY][
         ai_platform_trainer_executor.JOB_ID_KEY] = job_id
     executor.Do(self._inputs, self._outputs,
                 self._serialize_custom_config_under_test())

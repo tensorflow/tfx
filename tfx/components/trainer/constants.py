@@ -18,28 +18,5 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-# Key for examples in executor input_dict.
-EXAMPLES_KEY = 'examples'
-# Key for schema in executor input_dict.
-SCHEMA_KEY = 'schema'
-# Key for transform graph in executor input_dict.
-TRANSFORM_GRAPH_KEY = 'transform_graph'
-# Key for base model in executor input_dict.
-BASE_MODEL_KEY = 'base_model'
-# Key for hyperparameters in executor input_dict.
-HYPERPARAMETERS_KEY = 'hyperparameters'
-
-# Key for train args in executor exec_properties.
-TRAIN_ARGS_KEY = 'train_args'
-# Key for eval args in executor exec_properties.
-EVAL_ARGS_KEY = 'eval_args'
-# Key for custom config in executor exec_properties.
-CUSTOM_CONFIG_KEY = 'custom_config'
-
-# Key for output model in executor output_dict.
-MODEL_KEY = 'model'
-# Key for log output in executor output_dict
-MODEL_RUN_KEY = 'model_run'
-
 # The name of environment variable to indicate distributed training cluster.
 TF_CONFIG_ENV = 'TF_CONFIG'
