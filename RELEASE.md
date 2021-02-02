@@ -48,9 +48,8 @@
     moved to `tfx.dsl.components.common.resolver.ResolverStrategy`, with its
     old module path kept as a deprecated alias, which will be removed in a
     future version.
-*   Deprecated input/output compatibility aliases for Pusher.
 *   Deprecated input/output compatibility aliases for ExampleValidator,
-    Evaluator and Trainer.
+    Evaluator, Trainer and Pusher.
 
 ## Bug fixes and other changes
 
