@@ -22,8 +22,8 @@ from tfx.dsl.component.experimental import placeholders
 from tfx.dsl.components.base import base_component
 from tfx.dsl.components.base import base_node
 from tfx.dsl.components.base import executor_spec
-from tfx.dsl.components.common import importer_node
-from tfx.dsl.components.common import resolver_node
+from tfx.dsl.components.common import importer
+from tfx.dsl.components.common import resolver
 from tfx.dsl.experimental import latest_artifacts_resolver
 from tfx.dsl.experimental import latest_blessed_model_resolver
 from tfx.orchestration import data_types
@@ -168,7 +168,7 @@ class StepBuilder(object):
       ValueError: On the following two cases:
         1. The node being built is an instance of BaseComponent but image was
            not provided.
-        2. The node being built is a ResolverNode but the associated pipeline
+        2. The node being built is a Resolver but the associated pipeline
            info was not provided.
     """
     self._name = node.id
@@ -187,7 +187,7 @@ class StepBuilder(object):
     if isinstance(self._node, base_component.BaseComponent) and not image:
       raise ValueError('TFX image is required for component of type %s' %
                        type(self._node))
-    if isinstance(self._node, resolver_node.ResolverNode) and not pipeline_info:
+    if isinstance(self._node, resolver.Resolver) and not pipeline_info:
       raise ValueError('pipeline_info is needed for resolver node.')
 
     self._tfx_image = image
@@ -214,7 +214,7 @@ class StepBuilder(object):
 
     # 1. Resolver tasks won't have input artifacts in the API proto. First we
     #    specialcase two resolver types we support.
-    if isinstance(self._node, resolver_node.ResolverNode):
+    if isinstance(self._node, resolver.Resolver):
       return self._build_resolver_spec()
 
     # 2. Build the node spec.
@@ -256,7 +256,7 @@ class StepBuilder(object):
       task_spec.inputs.parameters[k].CopyFrom(v)
 
     # 3. Build the executor body for other common tasks.
-    if isinstance(self._node, importer_node.ImporterNode):
+    if isinstance(self._node, importer.Importer):
       executor.importer.CopyFrom(self._build_importer_spec())
     elif isinstance(self._node, components.FileBasedExampleGen):
       executor.container.CopyFrom(self._build_file_based_example_gen_spec())
@@ -375,19 +375,18 @@ class StepBuilder(object):
 
   def _build_importer_spec(self) -> ImporterSpec:
     """Builds ImporterSpec."""
-    assert isinstance(self._node, importer_node.ImporterNode)
+    assert isinstance(self._node, importer.Importer)
     result = ImporterSpec(
         properties=compiler_utils.convert_from_tfx_properties(
-            self._exec_properties[importer_node.PROPERTIES_KEY]),
+            self._exec_properties[importer.PROPERTIES_KEY]),
         custom_properties=compiler_utils.convert_from_tfx_properties(
-            self._exec_properties[importer_node.CUSTOM_PROPERTIES_KEY]))
-    result.reimport = bool(
-        self._exec_properties[importer_node.REIMPORT_OPTION_KEY])
+            self._exec_properties[importer.CUSTOM_PROPERTIES_KEY]))
+    result.reimport = bool(self._exec_properties[importer.REIMPORT_OPTION_KEY])
     result.artifact_uri.CopyFrom(
         compiler_utils.value_converter(
-            self._exec_properties[importer_node.SOURCE_URI_KEY]))
+            self._exec_properties[importer.SOURCE_URI_KEY]))
     single_artifact = artifact_utils.get_single_instance(
-        list(self._node.outputs[importer_node.IMPORT_RESULT_KEY].get()))
+        list(self._node.outputs[importer.IMPORT_RESULT_KEY].get()))
     result.type_schema.CopyFrom(
         pipeline_pb2.ArtifactTypeSchema(
             instance_schema=compiler_utils.get_artifact_schema(
@@ -414,7 +413,7 @@ class StepBuilder(object):
     task_spec.executor_label = executor_label
 
     # Fetch the init kwargs for the resolver.
-    resolver_config = self._exec_properties[resolver_node.RESOLVER_CONFIGS]
+    resolver_config = self._exec_properties[resolver.RESOLVER_CONFIG]
     if (isinstance(resolver_config, dict) and
         resolver_config.get('desired_num_of_artifacts', 0) > 1):
       raise ValueError('Only desired_num_of_artifacts=1 is supported currently.'
@@ -592,17 +591,18 @@ class StepBuilder(object):
       TypeError: When get unsupported resolver policy. Currently only support
         LatestBlessedModelResolver and LatestArtifactsResolver.
     """
-    assert isinstance(self._node, resolver_node.ResolverNode)
+    assert isinstance(self._node, resolver.Resolver)
 
-    if (self._exec_properties[resolver_node.RESOLVER_CLASS] !=
+    if (self._exec_properties[resolver.RESOLVER_STRATEGY_CLASS] !=
         latest_blessed_model_resolver.LatestBlessedModelResolver and
-        self._exec_properties[resolver_node.RESOLVER_CLASS] !=
+        self._exec_properties[resolver.RESOLVER_STRATEGY_CLASS] !=
         latest_artifacts_resolver.LatestArtifactsResolver):
-      raise TypeError('Unexpected resolver policy encountered. Currently '
-                      'only support latest artifact and latest blessed model '
-                      'resolver. Got: {}'.format(
-                          self._exec_properties[resolver_node.RESOLVER_CLASS]))
-    if (self._exec_properties[resolver_node.RESOLVER_CLASS] ==
+      raise TypeError(
+          ('Unexpected resolver policy encountered. Currently '
+           'only support latest artifact and latest blessed model '
+           'resolver. Got: {}').format(
+               self._exec_properties[resolver.RESOLVER_STRATEGY_CLASS]))
+    if (self._exec_properties[resolver.RESOLVER_STRATEGY_CLASS] ==
         latest_blessed_model_resolver.LatestBlessedModelResolver):
       return self._build_latest_blessed_model_resolver()
     # Otherwise, this will be a LatestArtifactsResolver.

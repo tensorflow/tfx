@@ -28,6 +28,8 @@ from tfx.dsl.components.base import base_component
 from tfx.dsl.components.base import base_executor
 from tfx.dsl.components.base import base_node
 from tfx.dsl.components.base import executor_spec
+from tfx.dsl.components.common import importer
+from tfx.dsl.components.common import resolver
 from tfx.dsl.experimental import latest_artifacts_resolver
 from tfx.dsl.experimental import latest_blessed_model_resolver
 from tfx.dsl.io import fileio
@@ -137,9 +139,9 @@ def create_pipeline_components(
       examples=example_gen.outputs['examples'],
       schema=schema_gen.outputs['schema'],
       module_file=transform_module)
-  latest_model_resolver = components.ResolverNode(
+  latest_model_resolver = resolver.Resolver(
       instance_name='latest_model_resolver',
-      resolver_class=latest_artifacts_resolver.LatestArtifactsResolver,
+      strategy_class=latest_artifacts_resolver.LatestArtifactsResolver,
       model=channel.Channel(type=standard_artifacts.Model))
   trainer = components.Trainer(
       transformed_examples=transform.outputs['transformed_examples'],
@@ -151,9 +153,9 @@ def create_pipeline_components(
       module_file=trainer_module,
   )
   # Get the latest blessed model for model validation.
-  model_resolver = components.ResolverNode(
+  model_resolver = resolver.Resolver(
       instance_name='latest_blessed_model_resolver',
-      resolver_class=latest_blessed_model_resolver.LatestBlessedModelResolver,
+      strategy_class=latest_blessed_model_resolver.LatestBlessedModelResolver,
       model=channel.Channel(type=standard_artifacts.Model),
       model_blessing=channel.Channel(type=standard_artifacts.ModelBlessing))
   # Set the TFMA config for Model Evaluation and Validation.
@@ -342,7 +344,7 @@ dummy_producer_component = container_component.create_container_component(
 def pipeline_with_one_container_spec_component() -> tfx_pipeline.Pipeline:
   """Pipeline with container."""
 
-  importer_task = components.ImporterNode(
+  importer_task = importer.Importer(
       instance_name='my_importer',
       source_uri='some-uri',
       artifact_type=standard_artifacts.Model,

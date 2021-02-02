@@ -12,7 +12,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Tests for tfx.components.common_nodes.resolver_node."""
+"""Tests for tfx.dsl.components.common.resolver."""
 
 from __future__ import absolute_import
 from __future__ import division
@@ -20,7 +20,7 @@ from __future__ import print_function
 
 import tensorflow as tf
 from tfx import types
-from tfx.dsl.components.common import resolver_node
+from tfx.dsl.components.common import resolver
 from tfx.dsl.experimental import latest_artifacts_resolver
 from tfx.orchestration import data_types
 from tfx.orchestration import metadata
@@ -29,20 +29,20 @@ from tfx.types import standard_artifacts
 from ml_metadata.proto import metadata_store_pb2
 
 
-class ResolverNodeTest(tf.test.TestCase):
+class ResolverTest(tf.test.TestCase):
 
   def testResolverDefinition(self):
     channel_to_resolve = types.Channel(type=standard_artifacts.Examples)
-    rnode = resolver_node.ResolverNode(
+    rnode = resolver.Resolver(
         instance_name='my_resolver',
-        resolver_class=latest_artifacts_resolver.LatestArtifactsResolver,
-        resolver_configs={'desired_num_of_artifacts': 5},
+        strategy_class=latest_artifacts_resolver.LatestArtifactsResolver,
+        config={'desired_num_of_artifacts': 5},
         channel_to_resolve=channel_to_resolve)
     self.assertDictEqual(
         rnode.exec_properties, {
-            resolver_node.RESOLVER_CLASS:
+            resolver.RESOLVER_STRATEGY_CLASS:
                 latest_artifacts_resolver.LatestArtifactsResolver,
-            resolver_node.RESOLVER_CONFIGS: {
+            resolver.RESOLVER_CONFIG: {
                 'desired_num_of_artifacts': 5
             }
         })
@@ -50,6 +50,16 @@ class ResolverNodeTest(tf.test.TestCase):
                      channel_to_resolve)
     self.assertEqual(rnode.outputs.get_all()['channel_to_resolve'].type_name,
                      channel_to_resolve.type_name)
+
+  def testResolverDefinitionBadArgs(self):
+    with self.assertRaisesRegexp(
+        ValueError,
+        'Expected extra kwarg .* to be of type .*tfx.types.Channel'):
+      _ = resolver.Resolver(
+          instance_name='my_resolver',
+          strategy_class=latest_artifacts_resolver.LatestArtifactsResolver,
+          config={'desired_num_of_artifacts': 5},
+          blah=object())
 
 
 class ResolverDriverTest(tf.test.TestCase):
@@ -84,7 +94,7 @@ class ResolverDriverTest(tf.test.TestCase):
       m.publish_execution(
           component_info=self.component_info,
           output_artifacts={'key': [existing_artifact]})
-      driver = resolver_node.ResolverDriver(metadata_handler=m)
+      driver = resolver._ResolverDriver(metadata_handler=m)
       output_dict = self.source_channels.copy()
       execution_result = driver.pre_execution(
           component_info=self.component_info,
@@ -93,9 +103,9 @@ class ResolverDriverTest(tf.test.TestCase):
           input_dict=self.source_channels,
           output_dict=output_dict,
           exec_properties={
-              resolver_node.RESOLVER_CLASS:
+              resolver.RESOLVER_STRATEGY_CLASS:
                   latest_artifacts_resolver.LatestArtifactsResolver,
-              resolver_node.RESOLVER_CONFIGS: {
+              resolver.RESOLVER_CONFIG: {
                   'desired_num_of_artifacts': 1
               }
           })
@@ -103,9 +113,9 @@ class ResolverDriverTest(tf.test.TestCase):
       self.assertEmpty(execution_result.input_dict)
       self.assertDictEqual(
           execution_result.exec_properties, {
-              resolver_node.RESOLVER_CLASS:
+              resolver.RESOLVER_STRATEGY_CLASS:
                   latest_artifacts_resolver.LatestArtifactsResolver,
-              resolver_node.RESOLVER_CONFIGS: {
+              resolver.RESOLVER_CONFIG: {
                   'desired_num_of_artifacts': 1
               }
           })
@@ -118,7 +128,7 @@ class ResolverDriverTest(tf.test.TestCase):
 
   def testResolveArtifactFailIncompleteResult(self):
     with metadata.Metadata(connection_config=self.connection_config) as m:
-      driver = resolver_node.ResolverDriver(metadata_handler=m)
+      driver = resolver._ResolverDriver(metadata_handler=m)
       driver.pre_execution(
           component_info=self.component_info,
           pipeline_info=self.pipeline_info,
@@ -126,9 +136,9 @@ class ResolverDriverTest(tf.test.TestCase):
           input_dict=self.source_channels,
           output_dict=self.source_channels.copy(),
           exec_properties={
-              resolver_node.RESOLVER_CLASS:
+              resolver.RESOLVER_STRATEGY_CLASS:
                   latest_artifacts_resolver.LatestArtifactsResolver,
-              resolver_node.RESOLVER_CONFIGS: {}
+              resolver.RESOLVER_CONFIG: {}
           })
 
 

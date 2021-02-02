@@ -16,7 +16,7 @@ import importlib
 
 from absl.testing import parameterized
 import tensorflow as tf
-from tfx.dsl.resolvers import base_resolver
+from tfx.dsl.components.common import resolver
 from tfx.orchestration.portable.resolver import factory
 from tfx.proto.orchestration import pipeline_pb2
 
@@ -45,16 +45,16 @@ class FactoryTest(tf.test.TestCase, parameterized.TestCase):
       ('tfx.dsl.experimental.latest_blessed_model_resolver'
        '.LatestBlessedModelResolver',
        '{}'))
-  def test_make_resolver_instance(self, class_path, config_json):
+  def test_make_resolver_strategy_instance(self, class_path, config_json):
     if not self.class_path_exists(class_path):
       self.skipTest(f"Class path {class_path} doesn't exist.")
     resolver_step = pipeline_pb2.ResolverConfig.ResolverStep(
         class_path=class_path,
         config_json=config_json)
 
-    result = factory.make_resolver_instance(resolver_step)
+    result = factory.make_resolver_strategy_instance(resolver_step)
 
-    self.assertIsInstance(result, base_resolver.BaseResolver)
+    self.assertIsInstance(result, resolver.ResolverStrategy)
     self.assertEndsWith(class_path, result.__class__.__name__)
 
 

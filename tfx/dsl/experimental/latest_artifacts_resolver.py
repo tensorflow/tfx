@@ -21,13 +21,13 @@ from __future__ import print_function
 from typing import Dict, List, Optional, Text
 
 from tfx import types
-from tfx.dsl.resolvers import base_resolver
+from tfx.dsl.components.common import resolver
 from tfx.orchestration import data_types
 from tfx.orchestration import metadata
 from tfx.types import artifact_utils
 
 
-class LatestArtifactsResolver(base_resolver.BaseResolver):
+class LatestArtifactsResolver(resolver.ResolverStrategy):
   """Resolver that return the latest n artifacts in a given channel.
 
   Note that this Resolver is experimental and is subject to change in terms of
@@ -51,7 +51,7 @@ class LatestArtifactsResolver(base_resolver.BaseResolver):
       pipeline_info: data_types.PipelineInfo,
       metadata_handler: metadata.Metadata,
       source_channels: Dict[Text, types.Channel],
-  ) -> base_resolver.ResolveResult:
+  ) -> resolver.ResolveResult:
     pipeline_context = metadata_handler.get_pipeline_context(pipeline_info)
     if pipeline_context is None:
       raise RuntimeError('Pipeline context absent for %s' % pipeline_context)
@@ -74,7 +74,7 @@ class LatestArtifactsResolver(base_resolver.BaseResolver):
         for k, artifact_list in resolved_dict.items()
     }
 
-    return base_resolver.ResolveResult(
+    return resolver.ResolveResult(
         per_key_resolve_result=resolved_dict,
         per_key_resolve_state=resolve_state_dict)
 

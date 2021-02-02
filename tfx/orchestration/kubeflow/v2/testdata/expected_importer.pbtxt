@@ -2,7 +2,7 @@
 # proto-message: PipelineTaskSpec
 
 task_info {
-  name: "ImporterNode.my_importer"
+  name: "Importer.my_importer"
 }
 inputs {
   parameters {
@@ -56,6 +56,6 @@ outputs {
     }
   }
 }
-executor_label: "ImporterNode.my_importer_executor"
+executor_label: "Importer.my_importer_executor"
 caching_options {
 }

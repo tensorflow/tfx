@@ -22,14 +22,14 @@ from typing import Dict, List, Text, Optional
 
 from tfx import types
 from tfx.components.evaluator import constants as evaluator
-from tfx.dsl.resolvers import base_resolver
+from tfx.dsl.components.common import resolver
 from tfx.orchestration import data_types
 from tfx.orchestration import metadata
 from tfx.types import artifact_utils
 from tfx.types import standard_artifacts
 
 
-class LatestBlessedModelResolver(base_resolver.BaseResolver):
+class LatestBlessedModelResolver(resolver.ResolverStrategy):
   """Special Resolver that return the latest blessed model.
 
   Note that this Resolver is experimental and is subject to change in terms of
@@ -68,7 +68,7 @@ class LatestBlessedModelResolver(base_resolver.BaseResolver):
       pipeline_info: data_types.PipelineInfo,
       metadata_handler: metadata.Metadata,
       source_channels: Dict[Text, types.Channel],
-  ) -> base_resolver.ResolveResult:
+  ) -> resolver.ResolveResult:
     # First, checks whether we have exactly Model and ModelBlessing Channels.
     model_channel_key = None
     model_blessing_channel_key = None
@@ -120,7 +120,7 @@ class LatestBlessedModelResolver(base_resolver.BaseResolver):
         k: bool(artifact_list) for k, artifact_list in resolved_dict.items()
     }
 
-    return base_resolver.ResolveResult(
+    return resolver.ResolveResult(
         per_key_resolve_result=resolved_dict,
         per_key_resolve_state=resolve_state_dict)
 

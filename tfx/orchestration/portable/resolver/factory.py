@@ -14,21 +14,21 @@
 """BaseResolver instance factory for portable orchestrator."""
 import importlib
 
-from tfx.dsl.resolvers import base_resolver
+from tfx.dsl.components.common import resolver
 from tfx.proto.orchestration import pipeline_pb2
 from tfx.utils import json_utils
 
 
-def make_resolver_instance(
+def make_resolver_strategy_instance(
     resolver_step: pipeline_pb2.ResolverConfig.ResolverStep
-) -> base_resolver.BaseResolver:
+) -> resolver.ResolverStrategy:
   """Creates Resolver instance from ResolverStep."""
   module_name, class_name = resolver_step.class_path.rsplit('.', maxsplit=1)
   module = importlib.import_module(module_name)
-  resolver_cls = getattr(module, class_name)
-  if not issubclass(resolver_cls, base_resolver.BaseResolver):
-    raise TypeError(
-        f'Resolver class should be the subclass of {base_resolver.__name__}.'
-        f'{base_resolver.BaseResolver.__name__}.')
-  resolver_config = json_utils.loads(resolver_step.config_json)
-  return resolver_cls(**resolver_config)
+  resolver_strategy_cls = getattr(module, class_name)
+  if not issubclass(resolver_strategy_cls, resolver.ResolverStrategy):
+    raise TypeError(f'Resolver strategy class should be a subclass of '
+                    f'{resolver.__name__}.'
+                    f'{resolver.ResolverStrategy.__name__}.')
+  config = json_utils.loads(resolver_step.config_json)
+  return resolver_strategy_cls(**config)

@@ -22,7 +22,6 @@ import "ml_metadata/proto/metadata_store.proto";
 // config to enable more sophisticated policies in the future.
 // TODO(b/152230663): Support more flexibility for resolution logic.
 message ResolverConfig {
-
   // Each resolver step takes input map (Dict[Text, List[Artifact]]), process
   // the map, and optionally emits it (Optional[Dict[Text, List[Artifacts]]]).
   // If resolver step does not emit any input map, execution will not be
@@ -31,7 +30,7 @@ message ResolverConfig {
     // Class path (<module_name>.<class_name>) of the resolver. For example
     // "tfx.dsl.resolvers.latest_artifacts_resolver.LatestArtifactsResolver".
     // Resolver class should be the subclass of the
-    // `tfx.dsl.resolvers.base_resolver.BaseResolver` class.
+    // `tfx.dsl.components.common.resolver.ResolverStrategy` class.
     string class_path = 1;
     // JSON serialized resolver config which will be used as keyword arguments
     // on instantiating resolver class. Any tfx.utils.json_utils.Jsonable value

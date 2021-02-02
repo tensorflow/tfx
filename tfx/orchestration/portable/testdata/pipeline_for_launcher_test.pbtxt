@@ -296,7 +296,7 @@ nodes {
   pipeline_node {
     node_info {
       type {
-        name: "tfx.dsl.components.common.importer_node.ImporterNode"
+        name: "tfx.dsl.components.common.importer.Importer"
       }
       id: "my_importer"
     }
@@ -342,21 +342,21 @@ nodes {
               name: "Schema"
             }
             additional_custom_properties {
-              key: 'str_custom_property'
+              key: "str_custom_property"
               value {
                 field_value {
-                  string_value: 'abc'
+                  string_value: "abc"
                 }
               }
-            },
+            }
             additional_custom_properties {
-              key: 'int_custom_property'
+              key: "int_custom_property"
               value {
                 field_value {
                   int_value: 123
                 }
               }
-            },
+            }
           }
         }
       }
@@ -385,7 +385,7 @@ nodes {
   pipeline_node {
     node_info {
       type {
-        name: "tfx.dsl.components.common.resolver_node.ResolverNode"
+        name: "tfx.dsl.components.common.resolver.Resolver"
       }
       id: "my_resolver"
     }

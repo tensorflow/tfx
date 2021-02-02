@@ -2,7 +2,7 @@
 # proto-message: PipelineTaskSpec
 
 task_info {
-  name: "ResolverNode.my_resolver"
+  name: "Resolver.my_resolver"
 }
 inputs {
   parameters {
@@ -44,4 +44,4 @@ outputs {
     }
   }
 }
-executor_label: "ResolverNode.my_resolver_executor"
+executor_label: "Resolver.my_resolver_executor"

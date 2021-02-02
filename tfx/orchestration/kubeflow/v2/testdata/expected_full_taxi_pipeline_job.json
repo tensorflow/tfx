@@ -59,7 +59,7 @@
       },
       {
         "taskInfo":{
-          "name":"ResolverNode.latest_blessed_model_resolver-model-blessing-resolver"
+          "name":"Resolver.latest_blessed_model_resolver-model-blessing-resolver"
         },
         "outputs":{
           "artifacts":{
@@ -70,7 +70,7 @@
             }
           }
         },
-        "executorLabel":"ResolverNode.latest_blessed_model_resolver-model-blessing-resolver_executor"
+        "executorLabel":"Resolver.latest_blessed_model_resolver-model-blessing-resolver_executor"
       },
       {
         "outputs":{
@@ -82,15 +82,15 @@
             }
           }
         },
-        "executorLabel":"ResolverNode.latest_blessed_model_resolver-model-resolver_executor",
+        "executorLabel":"Resolver.latest_blessed_model_resolver-model-resolver_executor",
         "taskInfo":{
-          "name":"ResolverNode.latest_blessed_model_resolver-model-resolver"
+          "name":"Resolver.latest_blessed_model_resolver-model-resolver"
         },
         "inputs":{
           "artifacts":{
             "input":{
               "outputArtifactKey":"model_blessing",
-              "producerTask":"ResolverNode.latest_blessed_model_resolver-model-blessing-resolver"
+              "producerTask":"Resolver.latest_blessed_model_resolver-model-blessing-resolver"
             }
           }
         }
@@ -124,9 +124,9 @@
           }
         },
         "taskInfo":{
-          "name":"ResolverNode.latest_model_resolver"
+          "name":"Resolver.latest_model_resolver"
         },
-        "executorLabel":"ResolverNode.latest_model_resolver_executor"
+        "executorLabel":"Resolver.latest_model_resolver_executor"
       },
       {
         "dependentTasks":[
@@ -341,14 +341,14 @@
 
         },
         "dependentTasks":[
-          "ResolverNode.latest_model_resolver",
+          "Resolver.latest_model_resolver",
           "SchemaGen",
           "Transform"
         ],
         "inputs":{
           "artifacts":{
             "base_model":{
-              "producerTask":"ResolverNode.latest_model_resolver",
+              "producerTask":"Resolver.latest_model_resolver",
               "outputArtifactKey":"model"
             },
             "schema":{
@@ -412,7 +412,7 @@
             },
             "baseline_model":{
               "outputArtifactKey":"model",
-              "producerTask":"ResolverNode.latest_blessed_model_resolver-model-resolver"
+              "producerTask":"Resolver.latest_blessed_model_resolver-model-resolver"
             },
             "examples":{
               "producerTask":"CsvExampleGen",
@@ -438,7 +438,7 @@
         },
         "dependentTasks":[
           "CsvExampleGen",
-          "ResolverNode.latest_blessed_model_resolver-model-resolver",
+          "Resolver.latest_blessed_model_resolver-model-resolver",
           "Trainer"
         ],
         "outputs":{
@@ -528,7 +528,7 @@
             ]
           }
         },
-        "ResolverNode.latest_model_resolver_executor":{
+        "Resolver.latest_model_resolver_executor":{
           "resolver":{
             "outputArtifactQueries":{
               "model":{
@@ -537,7 +537,7 @@
             }
           }
         },
-        "ResolverNode.latest_blessed_model_resolver-model-blessing-resolver_executor":{
+        "Resolver.latest_blessed_model_resolver-model-blessing-resolver_executor":{
           "resolver":{
             "outputArtifactQueries":{
               "model_blessing":{
@@ -639,7 +639,7 @@
             ]
           }
         },
-        "ResolverNode.latest_blessed_model_resolver-model-resolver_executor":{
+        "Resolver.latest_blessed_model_resolver-model-resolver_executor":{
           "resolver":{
             "outputArtifactQueries":{
               "model":{

@@ -143,7 +143,7 @@ nodes {
   pipeline_node {
     node_info {
       type {
-        name: "tfx.dsl.components.common.resolver_node.ResolverNode"
+        name: "tfx.dsl.components.common.resolver.Resolver"
       }
       id: "my_resolver"
     }

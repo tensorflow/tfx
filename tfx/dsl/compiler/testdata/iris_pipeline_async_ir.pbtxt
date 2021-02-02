@@ -105,9 +105,9 @@ nodes {
   pipeline_node {
     node_info {
       type {
-        name: "tfx.dsl.components.common.importer_node.ImporterNode"
+        name: "tfx.dsl.components.common.importer.Importer"
       }
-      id: "ImporterNode.my_importer"
+      id: "Importer.my_importer"
     }
     contexts {
       contexts {
@@ -126,7 +126,7 @@ nodes {
         }
         name {
           field_value {
-            string_value: "iris.ImporterNode.my_importer"
+            string_value: "iris.Importer.my_importer"
           }
         }
       }

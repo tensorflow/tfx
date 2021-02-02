@@ -22,7 +22,7 @@ from tfx.dsl.compiler import compiler
 from tfx.dsl.components.base import base_component
 from tfx.dsl.components.base import base_executor
 from tfx.dsl.components.base import executor_spec
-from tfx.dsl.components.common import resolver_node
+from tfx.dsl.components.common import resolver
 from tfx.dsl.resolvers import base_resolver
 from tfx.orchestration import metadata
 from tfx.orchestration import pipeline
@@ -31,7 +31,7 @@ from tfx.types.component_spec import ChannelParameter
 from tfx.types.component_spec import ComponentSpec
 
 
-class ResolverNode(resolver_node.ResolverNode):
+class ResolverNode(resolver.Resolver):
 
   def override_output_dict(self, **output_dict):
     self._output_dict.clear()
@@ -273,10 +273,10 @@ class CompilerResolverNodeTest(TestCase):
   def test_sequential_resolver_nodes(self):
     a = DummyComponents.A()
     r1 = ResolverNode('R1', DummyResolver,
-                      resolver_configs={'iam': 'r1'},
+                      config={'iam': 'r1'},
                       x=a.outputs['x'])
     r2 = ResolverNode('R2', DummyResolver,
-                      resolver_configs={'iam': 'r2'},
+                      config={'iam': 'r2'},
                       x=r1.outputs['x'])
     b = DummyComponents.B(x=r2.outputs['x'])
     pipeline_ir = self.compile_async_pipeline([a, r1, r2, b])
@@ -301,10 +301,10 @@ class CompilerResolverNodeTest(TestCase):
   def test_sequential_resolver_nodes_with_skip_connection(self):
     a = DummyComponents.A()
     r1 = ResolverNode('R1', DummyResolver,
-                      resolver_configs={'iam': 'r1'},
+                      config={'iam': 'r1'},
                       x=a.outputs['x'])
     r2 = ResolverNode('R2', DummyResolver,
-                      resolver_configs={'iam': 'r2'},
+                      config={'iam': 'r2'},
                       x=r1.outputs['x'],
                       y=a.outputs['y'])
     b = DummyComponents.B(x=r1.outputs['x'],

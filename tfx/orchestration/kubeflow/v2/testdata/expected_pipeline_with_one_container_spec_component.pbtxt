@@ -6,7 +6,7 @@ pipeline_info {
 }
 tasks {
   task_info {
-    name: "ImporterNode.my_importer"
+    name: "Importer.my_importer"
   }
   inputs {
     parameters {
@@ -60,7 +60,7 @@ tasks {
       }
     }
   }
-  executor_label: "ImporterNode.my_importer_executor"
+  executor_label: "Importer.my_importer_executor"
   caching_options {
   }
 }
@@ -82,7 +82,7 @@ tasks {
     artifacts {
       key: "input1"
       value {
-        producer_task: "ImporterNode.my_importer"
+        producer_task: "Importer.my_importer"
         output_artifact_key: "result"
       }
     }
@@ -98,7 +98,7 @@ tasks {
     }
   }
   executor_label: "DummyContainerSpecComponent_executor"
-  dependent_tasks: "ImporterNode.my_importer"
+  dependent_tasks: "Importer.my_importer"
   caching_options {
   }
 }
@@ -156,7 +156,7 @@ deployment_spec {
           }
         }
         fields {
-          key: "ImporterNode.my_importer_executor"
+          key: "Importer.my_importer_executor"
           value {
             struct_value {
               fields {

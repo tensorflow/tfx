@@ -632,7 +632,7 @@ class LauncherTest(test_case_utils.TfxTest):
     expected_execution.id = 123
     mock_import_node_handler.run.return_value = expected_execution
     launcher._SYSTEM_NODE_HANDLERS[
-        'tfx.dsl.components.common.importer_node.ImporterNode'] = (
+        'tfx.dsl.components.common.importer.Importer'] = (
             mock_import_node_handler_class)
     test_launcher = launcher.Launcher(
         pipeline_node=self._importer,
@@ -655,7 +655,7 @@ class LauncherTest(test_case_utils.TfxTest):
     expected_execution.id = 123
     mock_resolver_node_handler.run.return_value = expected_execution
     launcher._SYSTEM_NODE_HANDLERS[
-        'tfx.dsl.components.common.resolver_node.ResolverNode'] = (
+        'tfx.dsl.components.common.resolver.Resolver'] = (
             mock_resolver_node_handler_class)
     test_launcher = launcher.Launcher(
         pipeline_node=self._resolver,

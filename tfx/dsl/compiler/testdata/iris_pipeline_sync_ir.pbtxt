@@ -120,9 +120,9 @@ nodes {
   pipeline_node {
     node_info {
       type {
-        name: "tfx.dsl.components.common.importer_node.ImporterNode"
+        name: "tfx.dsl.components.common.importer.Importer"
       }
-      id: "ImporterNode.my_importer"
+      id: "Importer.my_importer"
     }
     contexts {
       contexts {
@@ -152,7 +152,7 @@ nodes {
         }
         name {
           field_value {
-            string_value: "iris.ImporterNode.my_importer"
+            string_value: "iris.Importer.my_importer"
           }
         }
       }
@@ -235,9 +235,9 @@ nodes {
   pipeline_node {
     node_info {
       type {
-        name: "tfx.dsl.components.common.resolver_node.ResolverNode"
+        name: "tfx.dsl.components.common.resolver.Resolver"
       }
-      id: "ResolverNode.latest_blessed_model_resolver"
+      id: "Resolver.latest_blessed_model_resolver"
     }
     contexts {
       contexts {
@@ -267,7 +267,7 @@ nodes {
         }
         name {
           field_value {
-            string_value: "iris.ResolverNode.latest_blessed_model_resolver"
+            string_value: "iris.Resolver.latest_blessed_model_resolver"
           }
         }
       }
@@ -511,7 +511,7 @@ nodes {
         value {
           channels {
             producer_node_query {
-              id: "ImporterNode.my_importer"
+              id: "Importer.my_importer"
             }
             context_queries {
               type {
@@ -540,7 +540,7 @@ nodes {
               }
               name {
                 field_value {
-                  string_value: "iris.ImporterNode.my_importer"
+                  string_value: "iris.Importer.my_importer"
                 }
               }
             }
@@ -584,7 +584,7 @@ nodes {
         }
       }
     }
-    upstream_nodes: "ImporterNode.my_importer"
+    upstream_nodes: "Importer.my_importer"
     execution_options {
       caching_options {
         enable_cache: true
@@ -1153,7 +1153,7 @@ nodes {
         value {
           channels {
             producer_node_query {
-              id: "ResolverNode.latest_blessed_model_resolver"
+              id: "Resolver.latest_blessed_model_resolver"
             }
             context_queries {
               type {
@@ -1182,7 +1182,7 @@ nodes {
               }
               name {
                 field_value {
-                  string_value: "iris.ResolverNode.latest_blessed_model_resolver"
+                  string_value: "iris.Resolver.latest_blessed_model_resolver"
                 }
               }
             }
@@ -1336,7 +1336,7 @@ nodes {
       }
     }
     upstream_nodes: "CsvExampleGen"
-    upstream_nodes: "ResolverNode.latest_blessed_model_resolver"
+    upstream_nodes: "Resolver.latest_blessed_model_resolver"
     upstream_nodes: "Trainer"
     downstream_nodes: "Pusher"
   }

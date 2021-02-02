@@ -12,26 +12,75 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Deprecated location for the TFX ResolverNode.
+"""Deprecated location for the TFX Resolver.
 
-The new location is `tfx.dsl.components.common.resolver_node.ResolverNode`.
+The new location is `tfx.dsl.components.common.resolver.Resolver`.
 """
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from tfx.dsl.components.common import resolver_node
+from typing import Dict, Text, Type
+
+from tfx import types
+from tfx.dsl.components.common import resolver
 from tfx.utils import deprecation_utils
+from tfx.utils import json_utils
+
+
+def _make_deprecated_resolver_node_alias():
+  """Make ResolverNode alias class.
+
+  Make the deprecation shim for ResolverNode.  Needed to conform to the
+  convention expected by `tfx.utils.deprecation_utils` and to translate renamed
+  constructor arguments.
+
+  Returns:
+      Deprecated ResolverNode alias class.
+  """
+  parent_deprecated_class = deprecation_utils.deprecated_alias(  # pylint: disable=invalid-name
+      deprecated_name='tfx.components.common_nodes.resolver_node.ResolverNode',
+      name='tfx.dsl.components.common.resolver.ResolverNode',
+      func_or_class=resolver.Resolver)
+
+  class _NewDeprecatedClass(parent_deprecated_class):
+    """Deprecated ResolverNode alias constructor.
+
+    This class location is DEPRECATED and is provided temporarily for
+    compatibility. Please use `tfx.dsl.components.common.resolver.Resolver`
+    instead.
+    """
+
+    def __init__(self,
+                 instance_name: Text,
+                 resolver_class: Type[resolver.ResolverStrategy],
+                 resolver_configs: Dict[Text, json_utils.JsonableType] = None,
+                 **kwargs: types.Channel):
+      """Forwarding shim for deprecated ResolverNode alias constructor.
+
+      Args:
+        instance_name: the name of the Resolver instance.
+        resolver_class: a ResolverStrategy subclass which contains the artifact
+          resolution logic.
+        resolver_configs: a dict of key to Jsonable type representing
+          configuration that will be used to construct the resolver strategy.
+        **kwargs: a key -> Channel dict, describing what are the Channels to be
+          resolved. This is set by user through keyword args.
+      """
+      super(ResolverNode, self).__init__(
+          instance_name=instance_name,
+          strategy_class=resolver_class,
+          config=resolver_configs,
+          **kwargs)
+
+  return _NewDeprecatedClass
 
 # Constant to access resolver class from resolver exec_properties.
-RESOLVER_CLASS = resolver_node.RESOLVER_CLASS
+RESOLVER_CLASS = resolver.RESOLVER_STRATEGY_CLASS
 # Constant to access resolver config from resolver exec_properties.
-RESOLVER_CONFIGS = resolver_node.RESOLVER_CONFIGS
+RESOLVER_CONFIGS = resolver.RESOLVER_CONFIG
 
-RESOLVER_CLASS_LIST = resolver_node.RESOLVER_CLASS_LIST
-RESOLVER_CONFIG_LIST = resolver_node.RESOLVER_CONFIG_LIST
+RESOLVER_CLASS_LIST = resolver.RESOLVER_STRATEGY_CLASS_LIST
+RESOLVER_CONFIG_LIST = resolver.RESOLVER_CONFIG_LIST
 
-ResolverNode = deprecation_utils.deprecated_alias(  # pylint: disable=invalid-name
-    deprecated_name='tfx.components.common_nodes.resolver_node.ResolverNode',
-    name='tfx.dsl.components.common.resolver_node.ResolverNode',
-    func_or_class=resolver_node.ResolverNode)
+ResolverNode = _make_deprecated_resolver_node_alias()

@@ -17,7 +17,7 @@ from typing import Any, Dict
 
 from absl import logging
 from tfx import types
-from tfx.dsl.components.common import importer_node
+from tfx.dsl.components.common import importer
 from tfx.orchestration import metadata
 from tfx.orchestration.portable import execution_publish_utils
 from tfx.orchestration.portable import inputs_utils
@@ -76,20 +76,19 @@ class ImporterNodeHandler(system_node_handler.SystemNodeHandler):
           exec_properties=exec_properties)
 
       # 4. Generate output artifacts to represent the imported artifacts.
-      output_spec = pipeline_node.outputs.outputs[
-          importer_node.IMPORT_RESULT_KEY]
+      output_spec = pipeline_node.outputs.outputs[importer.IMPORT_RESULT_KEY]
       properties = self._extract_proto_map(
           output_spec.artifact_spec.additional_properties)
       custom_properties = self._extract_proto_map(
           output_spec.artifact_spec.additional_custom_properties)
       output_artifact_class = types.Artifact(
           output_spec.artifact_spec.type).type
-      output_artifacts = importer_node.generate_output_dict(
+      output_artifacts = importer.generate_output_dict(
           metadata_handler=m,
-          uri=str(exec_properties[importer_node.SOURCE_URI_KEY]),
+          uri=str(exec_properties[importer.SOURCE_URI_KEY]),
           properties=properties,
           custom_properties=custom_properties,
-          reimport=bool(exec_properties[importer_node.REIMPORT_OPTION_KEY]),
+          reimport=bool(exec_properties[importer.REIMPORT_OPTION_KEY]),
           output_artifact_class=output_artifact_class,
           mlmd_artifact_type=output_spec.artifact_spec.type)
 

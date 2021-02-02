@@ -22,7 +22,7 @@ from tfx.dsl.compiler import compiler_utils
 from tfx.dsl.compiler.testdata import additional_properties_test_pipeline_async
 from tfx.dsl.compiler.testdata import iris_pipeline_async
 from tfx.dsl.compiler.testdata import iris_pipeline_sync
-from tfx.dsl.components.common import importer_node
+from tfx.dsl.components.common import importer
 from tfx.orchestration import pipeline
 from tfx.proto.orchestration import pipeline_pb2
 from tfx.utils import import_utils
@@ -78,9 +78,9 @@ class CompilerTest(tf.test.TestCase, parameterized.TestCase):
   def testCompileImporterAdditionalPropertyTypeError(self):
     dsl_compiler = compiler.Compiler()
     test_pipeline = self._get_test_pipeline_definition(iris_pipeline_async)
-    importer = next(
+    impt = next(
         c for c in test_pipeline.components if compiler_utils.is_importer(c))
-    importer.exec_properties[importer_node.PROPERTIES_KEY]["split_names"] = 2.1
+    impt.exec_properties[importer.PROPERTIES_KEY]["split_names"] = 2.1
     with self.assertRaisesRegex(TypeError, "Expected STRING but given DOUBLE"):
       dsl_compiler.compile(test_pipeline)
 

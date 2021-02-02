@@ -31,7 +31,8 @@ class ResolverStepProcessor:
   """
 
   def __init__(self, resolver_step: pipeline_pb2.ResolverConfig.ResolverStep):
-    self._resolver = resolver_factory.make_resolver_instance(resolver_step)
+    self._resolver = resolver_factory.make_resolver_strategy_instance(
+        resolver_step)
     self._input_keys = set(resolver_step.input_keys)
 
   def __call__(

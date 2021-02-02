@@ -220,17 +220,16 @@ class ImporterDriver(base_driver.BaseDriver):
         use_cached_results=False)
 
 
-class ImporterNode(base_node.BaseNode):
-  """Definition for TFX ImporterNode.
+class Importer(base_node.BaseNode):
+  """Definition for TFX Importer.
 
-  ImporterNode is a special TFX node which registers an external resource into
-  MLMD
-  so that downstream nodes can use the registered artifact as input.
+  The Importer is a special TFX node which registers an external resource into
+  MLMD so that downstream nodes can use the registered artifact as an input.
 
-  Here is an example to use the ImporterNode:
+  Here is an example to use the Importer:
 
   ...
-  importer = ImporterNode(
+  importer = Importer(
       instance_name='import_schema',
       source_uri='uri/to/schema',
       artifact_type=standard_artifacts.Schema,
@@ -254,10 +253,10 @@ class ImporterNode(base_node.BaseNode):
                properties: Optional[Dict[Text, Union[Text, int]]] = None,
                custom_properties: Optional[Dict[Text, Union[Text,
                                                             int]]] = None):
-    """Init function for ImporterNode.
+    """Init function for the Importer.
 
     Args:
-      instance_name: the name of the ImporterNode instance.
+      instance_name: the name of the Importer instance.
       source_uri: the URI of the resource that needs to be registered.
       artifact_type: the type of the artifact to import.
       reimport: whether or not to re-import as a new artifact if the URI has
@@ -281,7 +280,7 @@ class ImporterNode(base_node.BaseNode):
             types.Channel(type=artifact_type, artifacts=[artifact])
     }
 
-    super(ImporterNode, self).__init__(
+    super(Importer, self).__init__(
         instance_name=instance_name,
         driver_class=ImporterDriver,
     )

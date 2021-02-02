@@ -12,7 +12,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Tests for tfx.dsl.components.common.importer_node."""
+"""Tests for tfx.dsl.components.common.importer."""
 
 from __future__ import absolute_import
 from __future__ import division
@@ -22,7 +22,7 @@ from typing import Text
 
 import tensorflow as tf
 from tfx import types
-from tfx.dsl.components.common import importer_node
+from tfx.dsl.components.common import importer
 from tfx.orchestration import data_types
 from tfx.orchestration import metadata
 from tfx.types import artifact_utils
@@ -32,10 +32,10 @@ from tfx.utils import json_utils
 from ml_metadata.proto import metadata_store_pb2
 
 
-class ImporterNodeTest(tf.test.TestCase):
+class ImporterTest(tf.test.TestCase):
 
   def testImporterDefinitionWithSingleUri(self):
-    impt = importer_node.ImporterNode(
+    impt = importer.Importer(
         instance_name='my_importer',
         source_uri='m/y/u/r/i',
         properties={
@@ -48,24 +48,24 @@ class ImporterNodeTest(tf.test.TestCase):
         artifact_type=standard_artifacts.Examples)
     self.assertDictEqual(
         impt.exec_properties, {
-            importer_node.SOURCE_URI_KEY: 'm/y/u/r/i',
-            importer_node.REIMPORT_OPTION_KEY: 0,
-            importer_node.PROPERTIES_KEY: {
+            importer.SOURCE_URI_KEY: 'm/y/u/r/i',
+            importer.REIMPORT_OPTION_KEY: 0,
+            importer.PROPERTIES_KEY: {
                 'split_names': '["train", "eval"]',
             },
-            importer_node.CUSTOM_PROPERTIES_KEY: {
+            importer.CUSTOM_PROPERTIES_KEY: {
                 'str_custom_property': 'abc',
                 'int_custom_property': 123,
             },
         })
     self.assertEmpty(impt.inputs.get_all())
-    self.assertEqual(impt.outputs[importer_node.IMPORT_RESULT_KEY].type,
+    self.assertEqual(impt.outputs[importer.IMPORT_RESULT_KEY].type,
                      standard_artifacts.Examples)
 
-  def testImporterNodeDumpsJsonRoundtrip(self):
+  def testImporterDumpsJsonRoundtrip(self):
     instance_name = 'my_importer'
     source_uris = ['m/y/u/r/i']
-    impt = importer_node.ImporterNode(
+    impt = importer.Importer(
         instance_name=instance_name,
         source_uri=source_uris,
         artifact_type=standard_artifacts.Examples)
@@ -85,7 +85,7 @@ class ImporterDriverTest(tf.test.TestCase):
     self.connection_config = metadata_store_pb2.ConnectionConfig()
     self.connection_config.sqlite.SetInParent()
     self.output_dict = {
-        importer_node.IMPORT_RESULT_KEY:
+        importer.IMPORT_RESULT_KEY:
             types.Channel(type=standard_artifacts.Examples)
     }
     self.source_uri = 'm/y/u/r/i'
@@ -114,7 +114,7 @@ class ImporterDriverTest(tf.test.TestCase):
   def _callImporterDriver(self, reimport: bool):
     with metadata.Metadata(connection_config=self.connection_config) as m:
       m.publish_artifacts(self.existing_artifacts)
-      driver = importer_node.ImporterDriver(metadata_handler=m)
+      driver = importer.ImporterDriver(metadata_handler=m)
       execution_result = driver.pre_execution(
           component_info=self.component_info,
           pipeline_info=self.pipeline_info,
@@ -122,23 +122,22 @@ class ImporterDriverTest(tf.test.TestCase):
           input_dict={},
           output_dict=self.output_dict,
           exec_properties={
-              importer_node.SOURCE_URI_KEY: self.source_uri,
-              importer_node.REIMPORT_OPTION_KEY: int(reimport),
-              importer_node.PROPERTIES_KEY: self.properties,
-              importer_node.CUSTOM_PROPERTIES_KEY: self.custom_properties,
+              importer.SOURCE_URI_KEY: self.source_uri,
+              importer.REIMPORT_OPTION_KEY: int(reimport),
+              importer.PROPERTIES_KEY: self.properties,
+              importer.CUSTOM_PROPERTIES_KEY: self.custom_properties,
           })
       self.assertFalse(execution_result.use_cached_results)
       self.assertEmpty(execution_result.input_dict)
       self.assertEqual(
-          1, len(execution_result.output_dict[importer_node.IMPORT_RESULT_KEY]))
+          1, len(execution_result.output_dict[importer.IMPORT_RESULT_KEY]))
       self.assertEqual(
-          execution_result.output_dict[importer_node.IMPORT_RESULT_KEY][0].uri,
+          execution_result.output_dict[importer.IMPORT_RESULT_KEY][0].uri,
           self.source_uri)
 
-      self.assertNotEmpty(
-          self.output_dict[importer_node.IMPORT_RESULT_KEY].get())
+      self.assertNotEmpty(self.output_dict[importer.IMPORT_RESULT_KEY].get())
 
-      results = self.output_dict[importer_node.IMPORT_RESULT_KEY].get()
+      results = self.output_dict[importer.IMPORT_RESULT_KEY].get()
       self.assertEqual(1, len(results))
       result = results[0]
       self.assertEqual(result.uri, result.uri)

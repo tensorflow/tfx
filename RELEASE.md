@@ -56,7 +56,15 @@
     `${HOME}/tfx/kubeflow` or `${HOME}/kubeflow` but those will not be used
     any more.
 *   The `tfx.components.common_nodes.importer_node.ImporterNode` class has been
-    moved to `tfx.dsl.components.common.importer_node.ImporterNode`, with its
+    moved to `tfx.dsl.components.common.importer.Importer`, with its
+    old module path kept as a deprecated alias, which will be removed in a
+    future version.
+*   The `tfx.components.common_nodes.resolver_node.ResolverNode` class has been
+    moved to `tfx.dsl.components.common.resolver.Resolver`, with its
+    old module path kept as a deprecated alias, which will be removed in a
+    future version.
+*   The `tfx.dsl.resolvers.BaseResolver` class has been
+    moved to `tfx.dsl.components.common.resolver.ResolverStrategy`, with its
     old module path kept as a deprecated alias, which will be removed in a
     future version.
 
