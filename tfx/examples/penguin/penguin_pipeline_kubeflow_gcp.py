@@ -303,7 +303,7 @@ def create_pipeline(
       model=Channel(type=Model),
       model_blessing=Channel(type=ModelBlessing))
 
-  # Uses TFMA to compute an evaluation statistics over features of a model and
+  # Uses TFMA to compute evaluation statistics over features of a model and
   # perform quality validation of a candidate model (compared to a baseline).
   eval_config = tfma.EvalConfig(
       model_specs=[tfma.ModelSpec(label_key='species')],

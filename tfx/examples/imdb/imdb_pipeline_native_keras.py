@@ -125,7 +125,7 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
       model=Channel(type=Model),
       model_blessing=Channel(type=ModelBlessing))
 
-  # Uses TFMA to compute an evaluation statistics over features of a model and
+  # Uses TFMA to compute evaluation statistics over features of a model and
   # perform quality validation of a candidate model (compared to a baseline).
   eval_config = tfma.EvalConfig(
       model_specs=[tfma.ModelSpec(label_key='label')],

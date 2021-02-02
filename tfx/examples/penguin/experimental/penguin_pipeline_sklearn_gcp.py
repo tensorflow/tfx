@@ -1,4 +1,4 @@
-# Copyright 2020 Google LLC. All Rights Reserved.
+# Copyright 2021 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -17,19 +17,26 @@ import os
 from typing import Dict, List, Optional, Text
 
 import absl
+import tensorflow_model_analysis as tfma
 from tfx.components import CsvExampleGen
+from tfx.components import Evaluator
 from tfx.components import ExampleValidator
 from tfx.components import Pusher
+from tfx.components import ResolverNode
 from tfx.components import SchemaGen
 from tfx.components import StatisticsGen
 from tfx.components import Trainer
 from tfx.dsl.components.base import executor_spec
+from tfx.dsl.experimental import latest_blessed_model_resolver
 from tfx.extensions.google_cloud_ai_platform.pusher import executor as ai_platform_pusher_executor
 from tfx.extensions.google_cloud_ai_platform.trainer import executor as ai_platform_trainer_executor
 from tfx.orchestration import metadata
 from tfx.orchestration import pipeline
 from tfx.orchestration.local.local_dag_runner import LocalDagRunner
 from tfx.proto import trainer_pb2
+from tfx.types import Channel
+from tfx.types.standard_artifacts import Model
+from tfx.types.standard_artifacts import ModelBlessing
 
 
 # Identifier for the pipeline. This will also be used as the model name on AI
@@ -88,10 +95,17 @@ _ai_platform_serving_args = {
 # utility function is in ~/penguin. Feel free to customize as needed.
 _penguin_root = os.path.join(_bucket, 'penguin')
 _data_root = os.path.join(_penguin_root, 'data')
+
 # Python module file to inject customized logic into the TFX components.
 # Trainer requires user-defined functions to run successfully.
-_module_file = os.path.join(_penguin_root, 'experimental',
-                            'penguin_utils_sklearn.py')
+_trainer_module_file = os.path.join(
+    _penguin_root, 'experimental', 'penguin_utils_sklearn.py')
+
+# Python module file to inject customized logic into the TFX components. The
+# Evaluator component needs a custom extractor in order to make predictions
+# using the scikit-learn model.
+_evaluator_module_file = os.path.join(
+    _penguin_root, 'experimental', 'sklearn_predict_extractor.py')
 
 # Directory and data locations. This example assumes all of the
 # example code and metadata library is relative to $HOME, but you can store
@@ -106,18 +120,20 @@ _metadata_path = os.path.join(os.environ['HOME'], 'tfx', 'metadata',
                               _pipeline_name, 'metadata.db')
 
 # Pipeline arguments for Beam powered Components.
-# TODO(humichael): Use Dataflow runner once there is support for user modules
-# for Evaluator and BulkInferrer.
+# TODO(b/171316320): Change direct_running_mode back to multi_processing and set
+# direct_num_workers to 0. Additionally, try to use the Dataflow runner instead
+# of the direct runner.
 _beam_pipeline_args = [
-    '--direct_running_mode=multi_processing',
+    '--direct_running_mode=multi_threading',
     # 0 means auto-detect based on on the number of CPUs available
     # during execution time.
-    '--direct_num_workers=0',
+    '--direct_num_workers=1',
 ]
 
 
 def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
-                     module_file: Text, metadata_path: Text,
+                     trainer_module_file: Text, evaluator_module_file: Text,
+                     metadata_path: Text,
                      ai_platform_training_args: Optional[Dict[Text, Text]],
                      ai_platform_serving_args: Optional[Dict[Text, Text]],
                      beam_pipeline_args: List[Text]) -> pipeline.Pipeline:
@@ -144,7 +160,7 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
   # loads and evaluates the entire test set at once.
   # TODO(b/159470716): Make schema optional in Trainer.
   trainer = Trainer(
-      module_file=module_file,
+      module_file=trainer_module_file,
       custom_executor_spec=executor_spec.ExecutorClassSpec(
           ai_platform_trainer_executor.GenericExecutor),
       examples=example_gen.outputs['examples'],
@@ -156,13 +172,42 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
           ai_platform_training_args,
       })
 
-  # TODO(humichael): Add Evaluator once it's decided how to proceed with
-  # Milestone 2.
+  # Get the latest blessed model for model validation.
+  model_resolver = ResolverNode(
+      instance_name='latest_blessed_model_resolver',
+      resolver_class=latest_blessed_model_resolver.LatestBlessedModelResolver,
+      model=Channel(type=Model),
+      model_blessing=Channel(type=ModelBlessing))
+
+  # Uses TFMA to compute evaluation statistics over features of a model and
+  # perform quality validation of a candidate model (compared to a baseline).
+  eval_config = tfma.EvalConfig(
+      model_specs=[tfma.ModelSpec(label_key='species')],
+      slicing_specs=[tfma.SlicingSpec()],
+      metrics_specs=[
+          tfma.MetricsSpec(metrics=[
+              tfma.MetricConfig(
+                  class_name='Accuracy',
+                  threshold=tfma.MetricThreshold(
+                      value_threshold=tfma.GenericValueThreshold(
+                          lower_bound={'value': 0.6}),
+                      change_threshold=tfma.GenericChangeThreshold(
+                          direction=tfma.MetricDirection.HIGHER_IS_BETTER,
+                          absolute={'value': -1e-10})))
+          ])
+      ])
+  evaluator = Evaluator(
+      module_file=evaluator_module_file,
+      examples=example_gen.outputs['examples'],
+      model=trainer.outputs['model'],
+      baseline_model=model_resolver.outputs['model'],
+      eval_config=eval_config)
 
   pusher = Pusher(
       custom_executor_spec=executor_spec.ExecutorClassSpec(
           ai_platform_pusher_executor.Executor),
       model=trainer.outputs['model'],
+      model_blessing=evaluator.outputs['blessing'],
       custom_config={
           ai_platform_pusher_executor.SERVING_ARGS_KEY:
           ai_platform_serving_args,
@@ -177,6 +222,8 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
           schema_gen,
           example_validator,
           trainer,
+          model_resolver,
+          evaluator,
           pusher,
       ],
       enable_cache=True,
@@ -190,12 +237,14 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
 #   $python penguin_pipeline_sklearn_gcp.py
 if __name__ == '__main__':
   absl.logging.set_verbosity(absl.logging.INFO)
+  # TODO(humichael): Switch to KubeflowDagRunner.
   LocalDagRunner().run(
       _create_pipeline(
           pipeline_name=_pipeline_name,
           pipeline_root=_pipeline_root,
           data_root=_data_root,
-          module_file=_module_file,
+          trainer_module_file=_trainer_module_file,
+          evaluator_module_file=_evaluator_module_file,
           metadata_path=_metadata_path,
           ai_platform_training_args=_ai_platform_training_args,
           ai_platform_serving_args=_ai_platform_serving_args,

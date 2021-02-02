@@ -31,7 +31,7 @@ source ./penguin/bin/activate
 Then, install the dependencies required by the Penguin example:
 
 <pre class="devsite-terminal devsite-click-to-copy">
-pip install tfx==0.25.0 \
+pip install tfx==0.26.1 \
   numpy==1.16.5 \
   scikit-learn==0.20.4
 </pre>
@@ -53,7 +53,7 @@ image and upload it to Google Container Registry (GCR).
 gcloud auth configure-docker
 docker build \
   --tag tfx-example-sklearn \
-  --build-arg TFX_VERSION=`python -c 'import tfx; print(tfx.__version__)'` \
+  --build-arg TFX_VERSION=$(python -c 'import tfx; print(tfx.__version__)') \
   .
 docker tag tfx-example-sklearn gcr.io/[PROJECT-ID]/tfx-example-sklearn
 docker push gcr.io/[PROJECT-ID]/tfx-example-sklearn

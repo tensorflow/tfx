@@ -1,4 +1,4 @@
-# Copyright 2020 Google LLC. All Rights Reserved.
+# Copyright 2021 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -105,6 +105,8 @@ def run_fn(fn_args: FnArgs):
       learning_rate_init=0.0005,
       max_iter=int(fn_args.train_steps / steps_per_epoch),
       verbose=True)
+  model.feature_keys = _FEATURE_KEYS
+  model.label_key = _LABEL_KEY
   model.fit(x_train, y_train)
   absl.logging.info(model)
 

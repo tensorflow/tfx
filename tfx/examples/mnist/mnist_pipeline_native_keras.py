@@ -121,7 +121,7 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
 
   # TODO(b/150949276): Add resolver back once it supports two trainers.
 
-  # Uses TFMA to compute an evaluation statistics over features of a model and
+  # Uses TFMA to compute evaluation statistics over features of a model and
   # performs quality validation of a candidate model.
   eval_config = tfma.EvalConfig(
       model_specs=[tfma.ModelSpec(label_key='image_class')],
