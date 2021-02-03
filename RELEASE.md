@@ -84,6 +84,7 @@
     on Kubeflow.
 *   Depends on `apache-beam[gcp]>=2.27,<3`.
 *   Depends on `ml-metadata>=0.27.0,<0.28.0`.
+*   Depends on `numpy>=1.16,<1.20`.
 *   Depends on `pyarrow>=1,<3`.
 *   Depends on `tensorflow>=1.15.2,!=2.0.*,!=2.1.*,!=2.2.*,!=2.3.*,<3`.
 *   Depends on `tensorflow-data-validation>=0.27.0,<0.28.0`.
