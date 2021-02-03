@@ -93,6 +93,19 @@ class _PrepareExecutionResult:
   is_execution_needed = attr.ib(type=bool, default=False)
 
 
+class _ExecutionFailedError(Exception):
+  """An internal error to carry ExecutorOutput when it is raised."""
+
+  def __init__(self, err_msg: str,
+               executor_output: execution_result_pb2.ExecutorOutput):
+    super(_ExecutionFailedError, self).__init__(err_msg)
+    self._executor_output = executor_output
+
+  @property
+  def executor_output(self):
+    return self._executor_output
+
+
 class Launcher(object):
   """Launcher is the main entrance of nodes in TFleX.
 
@@ -297,7 +310,7 @@ class Launcher(object):
                f'failed with error code {code} and '
                f'error message {result_message}')
         logging.error(err)
-        raise RuntimeError(err)
+        raise _ExecutionFailedError(err, executor_output)
       return executor_output
     except Exception:  # pylint: disable=broad-except
       outputs_utils.remove_output_dirs(execution_info.output_dict)
@@ -318,11 +331,16 @@ class Launcher(object):
 
   def _publish_failed_execution(
       self, execution_id: int,
-      contexts: List[metadata_store_pb2.Context]) -> None:
+      contexts: List[metadata_store_pb2.Context],
+      executor_output: Optional[execution_result_pb2.ExecutorOutput] = None
+  ) -> None:
     """Publishes failed execution to ml metadata."""
     with self._mlmd_connection as m:
       execution_publish_utils.publish_failed_execution(
-          metadata_handler=m, execution_id=execution_id, contexts=contexts)
+          metadata_handler=m,
+          execution_id=execution_id,
+          contexts=contexts,
+          executor_output=executor_output)
 
   def _clean_up_stateless_execution_info(
       self, execution_info: data_types.ExecutionInfo):
@@ -383,8 +401,11 @@ class Launcher(object):
     if is_execution_needed:
       try:
         executor_output = self._run_executor(execution_info)
-      except Exception:  # pylint: disable=broad-except
-        self._publish_failed_execution(execution_info.execution_id, contexts)
+      except Exception as e:  # pylint: disable=broad-except
+        execution_output = (
+            e.executor_output if isinstance(e, _ExecutionFailedError) else None)
+        self._publish_failed_execution(execution_info.execution_id, contexts,
+                                       execution_output)
         logging.error('Execution %d failed.', execution_info.execution_id)
         raise
       finally:
