@@ -21,6 +21,7 @@ from typing import Dict, List, Optional, Text
 from absl import logging
 from tfx import types
 from tfx.dsl.io import fileio
+from tfx.orchestration import data_types_utils
 from tfx.proto.orchestration import pipeline_pb2
 from tfx.types import artifact_utils
 from tfx.types.value_artifact import ValueArtifact
@@ -86,6 +87,29 @@ def remove_stateful_working_dir(stateful_working_dir: Text) -> None:
       raise
 
 
+def _attach_artifact_properties(spec: pipeline_pb2.OutputSpec.ArtifactSpec,
+                                artifact: types.Artifact):
+  """Attaches properties of an artifact using ArtifactSpec."""
+  for key, value in spec.additional_properties.items():
+    if not value.HasField('field_value'):
+      raise RuntimeError('Property value is not a field_value for %s' % key)
+    setattr(artifact, key,
+            data_types_utils.get_metadata_value(value.field_value))
+
+  for key, value in spec.additional_custom_properties.items():
+    if not value.HasField('field_value'):
+      raise RuntimeError('Property value is not a field_value for %s' % key)
+    value_type = value.field_value.WhichOneof('value')
+    if value_type == 'int_value':
+      artifact.set_int_custom_property(key, value.field_value.int_value)
+    elif value_type == 'string_value':
+      artifact.set_string_custom_property(key, value.field_value.string_value)
+    elif value_type == 'double_value':
+      artifact.set_float_custom_property(key, value.field_value.double_value)
+    else:
+      raise RuntimeError(f'Unexpected value_type: {value_type}')
+
+
 class OutputsResolver:
   """This class has methods to handle launcher output related logic."""
 
@@ -126,8 +150,9 @@ class OutputsResolver:
       artifact_name = (
           f'{artifact_name}:{self._pipeline_node.node_info.id}:{key}:0')
       artifact.name = artifact_name
-      logging.debug('Creating output artifact uri %s as directory',
-                    artifact.uri)
+      _attach_artifact_properties(output_spec.artifact_spec, artifact)
+
+      logging.debug('Creating output artifact uri %s', artifact.uri)
       output_artifacts[key].append(artifact)
 
     return output_artifacts

@@ -41,6 +41,66 @@ _PIPELINE_NODE = text_format.Parse(
           type {
             id: 1
             name: "test_type_1"
+            properties {
+              key: "int_prop"
+              value: INT
+            }
+            properties {
+              key: "string_prop"
+              value: STRING
+            }
+            properties {
+              key: "float_prop"
+              value: DOUBLE
+            }
+          }
+          additional_properties {
+            key: "int_prop"
+            value {
+              field_value {
+                int_value: 42
+              }
+            }
+          }
+          additional_properties {
+            key: "string_prop"
+            value {
+              field_value {
+                string_value: "foo"
+              }
+            }
+          }
+          additional_properties {
+            key: "float_prop"
+            value {
+              field_value {
+                double_value: 0.5
+              }
+            }
+          }
+          additional_custom_properties {
+            key: "float_custom_prop"
+            value {
+              field_value {
+                double_value: 0.25
+              }
+            }
+          }
+          additional_custom_properties {
+            key: "int_custom_prop"
+            value {
+              field_value {
+                int_value: 21
+              }
+            }
+          }
+          additional_custom_properties {
+            key: "string_custom_prop"
+            value {
+              field_value {
+                string_value: "bar"
+              }
+            }
           }
         }
       }
@@ -108,7 +168,30 @@ class OutputUtilsTest(test_case_utils.TfxTest, parameterized.TestCase):
         """
         id: 1
         name: "test_type_1"
+        properties {
+          key: "int_prop"
+          value: INT
+        }
+        properties {
+          key: "string_prop"
+          value: STRING
+        }
+        properties {
+          key: "float_prop"
+          value: DOUBLE
+        }
         """, artifact_1.artifact_type)
+    self.assertLen(artifact_1.mlmd_artifact.properties, 3)
+    # `name` is already a custom property of the artifact and 3 will be added.
+    self.assertLen(artifact_1.mlmd_artifact.custom_properties, 4)
+    self.assertEqual(artifact_1.int_prop, 42)
+    self.assertEqual(artifact_1.float_prop, 0.5)
+    self.assertEqual(artifact_1.string_prop, 'foo')
+    self.assertEqual(artifact_1.get_int_custom_property('int_custom_prop'), 21)
+    self.assertEqual(
+        artifact_1.get_string_custom_property('string_custom_prop'), 'bar')
+    self.assertEqual(
+        artifact_1.get_float_custom_property('float_custom_prop'), 0.25)
 
     artifact_2 = output_artifacts['output_2'][0]
     self.assertRegex(artifact_2.uri, '.*/test_node/output_2/1')
@@ -118,13 +201,14 @@ class OutputUtilsTest(test_case_utils.TfxTest, parameterized.TestCase):
         id: 2
         name: "test_type_2"
         """, artifact_2.artifact_type)
+    self.assertEmpty(artifact_2.mlmd_artifact.properties)
+    # `name` custom property is automatically generated.
+    self.assertLen(artifact_2.mlmd_artifact.custom_properties, 1)
 
     artifact_3 = output_artifacts['output_3'][0]
-    self.assertRegex(artifact_3.uri,
-                     '.*/test_node/output_3/1/value')
+    self.assertRegex(artifact_3.uri, '.*/test_node/output_3/1/value')
     self.assertRegex(artifact_3.name, artifact_name_prefix + ':output_3:0')
-    self.assertProtoEquals(
-        """
+    self.assertProtoEquals("""
         id: 3
         name: "String"
         """, artifact_3.artifact_type)

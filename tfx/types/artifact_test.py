@@ -19,6 +19,7 @@ from __future__ import division
 from __future__ import print_function
 
 import json
+import textwrap
 from typing import Text
 
 # Standard Imports
@@ -144,54 +145,64 @@ class ArtifactTest(tf.test.TestCase):
         'string_value',
         instance.mlmd_artifact.custom_properties['string_key'].string_value)
 
+    instance.set_float_custom_property('float_key', 0.5)
     self.assertEqual(
-        'Artifact(artifact: id: 1\n'
-        'type_id: 2\n'
-        'uri: "/tmp/uri2"\n'
-        'custom_properties {\n'
-        '  key: "int_key"\n'
-        '  value {\n'
-        '    int_value: 20\n'
-        '  }\n'
-        '}\n'
-        'custom_properties {\n'
-        '  key: "state"\n'
-        '  value {\n'
-        '    string_value: "deleted"\n'
-        '  }\n'
-        '}\n'
-        'custom_properties {\n'
-        '  key: "string_key"\n'
-        '  value {\n'
-        '    string_value: "string_value"\n'
-        '  }\n'
-        '}\n'
-        ', artifact_type: name: "MyTypeName"\n'
-        'properties {\n'
-        '  key: "float1"\n'
-        '  value: DOUBLE\n'
-        '}\n'
-        'properties {\n'
-        '  key: "float2"\n'
-        '  value: DOUBLE\n'
-        '}\n'
-        'properties {\n'
-        '  key: "int1"\n'
-        '  value: INT\n'
-        '}\n'
-        'properties {\n'
-        '  key: "int2"\n'
-        '  value: INT\n'
-        '}\n'
-        'properties {\n'
-        '  key: "string1"\n'
-        '  value: STRING\n'
-        '}\n'
-        'properties {\n'
-        '  key: "string2"\n'
-        '  value: STRING\n'
-        '}\n'
-        ')', str(instance))
+        0.5, instance.mlmd_artifact.custom_properties['float_key'].double_value)
+
+    self.assertEqual(textwrap.dedent("""\
+        Artifact(artifact: id: 1
+        type_id: 2
+        uri: "/tmp/uri2"
+        custom_properties {
+          key: "float_key"
+          value {
+            double_value: 0.5
+          }
+        }
+        custom_properties {
+          key: "int_key"
+          value {
+            int_value: 20
+          }
+        }
+        custom_properties {
+          key: "state"
+          value {
+            string_value: "deleted"
+          }
+        }
+        custom_properties {
+          key: "string_key"
+          value {
+            string_value: "string_value"
+          }
+        }
+        , artifact_type: name: "MyTypeName"
+        properties {
+          key: "float1"
+          value: DOUBLE
+        }
+        properties {
+          key: "float2"
+          value: DOUBLE
+        }
+        properties {
+          key: "int1"
+          value: INT
+        }
+        properties {
+          key: "int2"
+          value: INT
+        }
+        properties {
+          key: "string1"
+          value: STRING
+        }
+        properties {
+          key: "string2"
+          value: STRING
+        }
+        )"""), str(instance))
 
     # Test json serialization.
     json_dict = json_utils.dumps(instance)

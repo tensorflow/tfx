@@ -68,7 +68,8 @@ class CustomProducer(base_component.BaseComponent):
     stats = stats or types.Channel(type=standard_artifacts.ExampleStatistics)
     stats.additional_properties['span'] = 42
     stats.additional_properties['split_names'] = '[\'train\', \'eval\']'
-    stats.additional_custom_properties['bar'] = 0.5
+    stats.additional_custom_properties['bar'] = 'foo'
+    stats.additional_custom_properties['baz'] = 0.5
     spec = CustomProducerSpec(stats=stats)
     super().__init__(spec=spec)
 

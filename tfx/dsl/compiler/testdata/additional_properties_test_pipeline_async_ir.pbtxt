@@ -73,6 +73,14 @@ nodes {
               key: "bar"
               value {
                 field_value {
+                  string_value: "foo"
+                }
+              }
+            }
+            additional_custom_properties {
+              key: "baz"
+              value {
+                field_value {
                   double_value: 0.5
                 }
               }
