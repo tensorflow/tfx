@@ -179,7 +179,7 @@
             "infer_feature_shape":{
               "runtimeValue":{
                 "constantValue":{
-                  "intValue":"1"
+                  "intValue":"0"
                 }
               }
             },
