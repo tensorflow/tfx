@@ -131,7 +131,7 @@ def _create_parameterized_pipeline(
       module_file=trainer_module_file,
       transformed_examples=transform.outputs['transformed_examples'],
       schema=schema_gen.outputs['schema'],
-      transform_output=transform.outputs['transform_graph'],
+      transform_graph=transform.outputs['transform_graph'],
       train_args={'num_steps': train_steps},
       eval_args={'num_steps': eval_steps})
 
