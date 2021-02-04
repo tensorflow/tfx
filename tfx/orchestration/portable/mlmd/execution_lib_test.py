@@ -22,11 +22,11 @@ import itertools
 import random
 
 import tensorflow as tf
+
 from tfx.orchestration import metadata
 from tfx.orchestration.portable.mlmd import common_utils
 from tfx.orchestration.portable.mlmd import context_lib
 from tfx.orchestration.portable.mlmd import execution_lib
-from tfx.proto.orchestration import execution_result_pb2
 from tfx.proto.orchestration import pipeline_pb2
 from tfx.types import standard_artifacts
 from tfx.utils import test_case_utils
@@ -307,23 +307,6 @@ class ExecutionLibTest(test_case_utils.TfxTest):
       self.assertEqual([model.uri for model in output_models],
                        [a.uri for a in artifacts_dict['model']])
 
-  def test_set_and_get_execution_result(self):
-    execution = metadata_store_pb2.Execution()
-    execution_result = text_format.Parse("""
-        code: 1
-        result_message: 'error message.'
-      """, execution_result_pb2.ExecutionResult())
-    execution_lib.set_execution_result(execution_result, execution)
-
-    self.assertProtoEquals(
-        """
-          custom_properties {
-            key: '__execution_result__'
-            value {
-              string_value: '{\\n  "resultMessage": "error message.",\\n  "code": 1\\n}'
-            }
-          }
-          """, execution)
 
 if __name__ == '__main__':
   tf.test.main()

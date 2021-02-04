@@ -310,7 +310,7 @@ message TaskInputsSpec {
       // Pass the input parameter from parent component input parameter.
       string component_input_parameter = 3;
     }
-    reserved 4;  // parameter_expression_selector
+    reserved 5;  // parameter_expression_selector
   }
 
   // A map of input parameters which are small values, stored by the system and

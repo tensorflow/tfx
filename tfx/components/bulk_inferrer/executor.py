@@ -14,7 +14,7 @@
 """TFX bulk_inferrer executor."""
 
 import os
-from typing import Any, Callable, Dict, List, Optional, Text, Union
+from typing import Any, Dict, List, Optional, Text
 
 from absl import logging
 import apache_beam as beam
@@ -22,10 +22,8 @@ import tensorflow as tf
 from tfx import types
 from tfx.components.bulk_inferrer import prediction_to_example_utils
 from tfx.components.util import model_utils
-from tfx.components.util import tfxio_utils
 from tfx.dsl.components.base import base_executor
 from tfx.proto import bulk_inferrer_pb2
-from tfx.proto import example_gen_pb2
 from tfx.types import artifact_utils
 from tfx.types import standard_component_specs
 from tfx.utils import io_utils
@@ -33,14 +31,48 @@ from tfx.utils import path_utils
 from tfx.utils import proto_utils
 from tfx_bsl.public.beam import run_inference
 from tfx_bsl.public.proto import model_spec_pb2
-from tfx_bsl.tfxio import record_based_tfxio
 
 from tensorflow_serving.apis import prediction_log_pb2
 
 
 _PREDICTION_LOGS_FILE_NAME = 'prediction_logs'
 _EXAMPLES_FILE_NAME = 'examples'
-_TELEMETRY_DESCRIPTORS = ['BulkInferrer']
+
+
+@beam.ptransform_fn
+@beam.typehints.with_input_types(beam.Pipeline)
+@beam.typehints.with_output_types(prediction_log_pb2.PredictionLog)
+def _RunInference(
+    pipeline: beam.Pipeline, example_uri: Text,
+    inference_endpoint: model_spec_pb2.InferenceSpecType
+) -> beam.pvalue.PCollection:
+  """Runs model inference on given examples data."""
+  # TODO(b/174703893): adopt standardized input.
+  return (
+      pipeline
+      | 'ReadData' >> beam.io.ReadFromTFRecord(
+          file_pattern=io_utils.all_files_pattern(example_uri))
+      # TODO(b/131873699): Use the correct Example type here, which
+      # is either Example or SequenceExample.
+      | 'ParseExamples' >> beam.Map(tf.train.Example.FromString)
+      | 'RunInference' >> run_inference.RunInference(inference_endpoint))
+
+
+@beam.ptransform_fn
+@beam.typehints.with_input_types(prediction_log_pb2.PredictionLog)
+@beam.typehints.with_output_types(beam.pvalue.PDone)
+def _WriteExamples(prediction_log: beam.pvalue.PCollection,
+                   output_example_spec: bulk_inferrer_pb2.OutputExampleSpec,
+                   output_path: Text) -> beam.pvalue.PDone:
+  """Converts `prediction_log` to `tf.train.Example` and materializes."""
+  return (prediction_log
+          | 'ConvertToExamples' >> beam.Map(
+              prediction_to_example_utils.convert,
+              output_example_spec=output_example_spec)
+          | 'WriteExamples' >> beam.io.WriteToTFRecord(
+              os.path.join(output_path, _EXAMPLES_FILE_NAME),
+              file_name_suffix='.gz',
+              coder=beam.coders.ProtoCoder(tf.train.Example)))
 
 
 class Executor(base_executor.BaseExecutor):
@@ -160,19 +192,6 @@ class Executor(base_executor.BaseExecutor):
           example_uris[split] = artifact_utils.get_split_uri([example_artifact],
                                                              split)
 
-    payload_format, _ = tfxio_utils.resolve_payload_format_and_data_view_uri(
-        examples)
-
-    tfxio_factory = tfxio_utils.get_tfxio_factory_from_artifact(
-        examples,
-        _TELEMETRY_DESCRIPTORS,
-        schema=None,
-        read_as_raw_records=True,
-        # We have to specify this parameter in order to create a RawRecord TFXIO
-        # but we won't use the RecordBatches so the column name of the raw
-        # records does not matter.
-        raw_record_column_name='unused')
-
     if output_examples:
       output_examples.split_names = artifact_utils.encode_split_names(
           sorted(example_uris.keys()))
@@ -180,15 +199,12 @@ class Executor(base_executor.BaseExecutor):
     with self._make_beam_pipeline() as pipeline:
       data_list = []
       for split, example_uri in example_uris.items():
-        tfxio = tfxio_factory([io_utils.all_files_pattern(example_uri)])
-        assert isinstance(tfxio, record_based_tfxio.RecordBasedTFXIO), (
-            'Unable to use TFXIO {} as it does not support reading raw records.'
-            .format(type(tfxio)))
         # pylint: disable=no-value-for-parameter
-        data = (pipeline
-                | 'ReadData[{}]'.format(split) >> tfxio.RawRecordBeamSource()
-                | 'RunInference[{}]'.format(split) >> _RunInference(
-                    payload_format, inference_endpoint))
+        data = (
+            pipeline
+            | 'RunInference[{}]'.format(split) >> _RunInference(
+                example_uri, inference_endpoint))
+
         if output_examples:
           output_examples_split_uri = artifact_utils.get_split_uri(
               [output_examples], split)
@@ -215,51 +231,3 @@ class Executor(base_executor.BaseExecutor):
       logging.info('Output examples written to %s.', output_examples.uri)
     if inference_result:
       logging.info('Inference result written to %s.', inference_result.uri)
-
-
-def _MakeParseFn(
-    payload_format: int
-) -> Union[Callable[[bytes], tf.train.Example], Callable[
-    [bytes], tf.train.SequenceExample]]:
-  """Returns a function to parse bytes to payload."""
-  if payload_format == example_gen_pb2.PayloadFormat.FORMAT_TF_EXAMPLE:
-    return tf.train.Example.FromString
-  elif (payload_format ==
-        example_gen_pb2.PayloadFormat.FORMAT_TF_SEQUENCE_EXAMPLE):
-    return tf.train.SequenceExample.FromString
-  else:
-    raise NotImplementedError(
-        'Payload format %s is not supported.' %
-        example_gen_pb2.PayloadFormat.Name(payload_format))
-
-
-@beam.ptransform_fn
-@beam.typehints.with_input_types(beam.Pipeline)
-@beam.typehints.with_output_types(prediction_log_pb2.PredictionLog)
-def _RunInference(
-    pipeline: beam.Pipeline,
-    payload_format: int,
-    inference_endpoint: model_spec_pb2.InferenceSpecType
-) -> beam.pvalue.PCollection:
-  """Runs model inference on given examples data."""
-  return (
-      pipeline
-      | 'ParseExamples' >> beam.Map(_MakeParseFn(payload_format))
-      | 'RunInference' >> run_inference.RunInference(inference_endpoint))
-
-
-@beam.ptransform_fn
-@beam.typehints.with_input_types(prediction_log_pb2.PredictionLog)
-@beam.typehints.with_output_types(beam.pvalue.PDone)
-def _WriteExamples(prediction_log: beam.pvalue.PCollection,
-                   output_example_spec: bulk_inferrer_pb2.OutputExampleSpec,
-                   output_path: Text) -> beam.pvalue.PDone:
-  """Converts `prediction_log` to `tf.train.Example` and materializes."""
-  return (prediction_log
-          | 'ConvertToExamples' >> beam.Map(
-              prediction_to_example_utils.convert,
-              output_example_spec=output_example_spec)
-          | 'WriteExamples' >> beam.io.WriteToTFRecord(
-              os.path.join(output_path, _EXAMPLES_FILE_NAME),
-              file_name_suffix='.gz',
-              coder=beam.coders.ProtoCoder(tf.train.Example)))

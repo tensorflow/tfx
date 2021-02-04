@@ -30,7 +30,6 @@ from tfx.utils import test_case_utils
 from google.protobuf import text_format
 from ml_metadata.proto import metadata_store_pb2
 
-
 _TESTDATA_DIR = os.path.join(os.path.dirname(__file__), 'testdata')
 
 
@@ -50,8 +49,7 @@ class _TestMixin:
     return result
 
   def _make_artifact(self, type_name, **kwargs):
-    result = types.Artifact(
-        metadata_store_pb2.ArtifactType(name=type_name))
+    result = types.Artifact(metadata_store_pb2.ArtifactType(name=type_name))
     for key, value in kwargs.items():
       setattr(result, key, value)
     return result
@@ -67,8 +65,8 @@ class _TestMixin:
 
   def fake_execute(self, metadata_handler, pipeline_node, input_map,
                    output_map):
-    contexts = context_lib.prepare_contexts(
-        metadata_handler, pipeline_node.contexts)
+    contexts = context_lib.prepare_contexts(metadata_handler,
+                                            pipeline_node.contexts)
     execution = execution_publish_utils.register_execution(
         metadata_handler, pipeline_node.node_info.type, contexts, input_map)
     return execution_publish_utils.publish_succeeded_execution(
@@ -163,11 +161,11 @@ class InputsUtilsTest(test_case_utils.TfxTest, _TestMixin):
       # key as the first ExampleGen. However this is not consumed by downstream
       # nodes.
       another_output_example = self.make_examples(uri='another_examples_uri')
-      self.fake_execute(m, another_example_gen,
-                        input_map=None,
-                        output_map={
-                            'output_examples': [another_output_example]
-                        })
+      self.fake_execute(
+          m,
+          another_example_gen,
+          input_map=None,
+          output_map={'output_examples': [another_output_example]})
 
       # Gets inputs for transform. Should get back what the first ExampleGen
       # published in the `output_examples` channel.
@@ -201,8 +199,8 @@ class InputsUtilsTest(test_case_utils.TfxTest, _TestMixin):
       output_example_1 = output_artifacts['output_examples'][0]
       output_example_2 = output_artifacts['output_examples'][1]
 
-      transform_resolver = (my_transform.inputs.resolver_config
-                            .resolver_steps.add())
+      transform_resolver = (
+          my_transform.inputs.resolver_config.resolver_steps.add())
       transform_resolver.class_path = (
           'tfx.dsl.experimental.latest_artifacts_resolver'
           '.LatestArtifactsResolver')
@@ -231,10 +229,23 @@ class InputsUtilsTest(test_case_utils.TfxTest, _TestMixin):
 
       # Gets inputs for pusher. Should get back what the first Model
       # published in the `output_model` channel.
-      pusher_inputs = inputs_utils.resolve_input_artifacts(
-          m, my_pusher.inputs)
-      self.assertArtifactMapEqual({'model': [output_model]},
-                                  pusher_inputs)
+      pusher_inputs = inputs_utils.resolve_input_artifacts(m, my_pusher.inputs)
+      self.assertArtifactMapEqual({'model': [output_model]}, pusher_inputs)
+
+  def testResolveInputArtifacts_NoInputsAndMinCount0(self):
+    pipeline = self.load_pipeline_proto(
+        'pipeline_for_input_resolver_test.pbtxt')
+
+    # Set min_count = 0 for all transform inputs.
+    my_transform = pipeline.nodes[2].pipeline_node
+    for input_spec in my_transform.inputs.inputs.values():
+      input_spec.min_count = 0
+
+    with self.get_metadata() as m:
+      # Since there are no input artifacts, result should be `None`.
+      transform_inputs = inputs_utils.resolve_input_artifacts(
+          m, my_transform.inputs)
+      self.assertIsNone(transform_inputs)
 
 
 def unprocessed_artifacts_resolvers_available():
@@ -271,9 +282,8 @@ class InputsUtilsResolverTests(test_case_utils.TfxTest, _TestMixin):
         '.UnprocessedArtifactsResolver')
     resolver1.config_json = '{"execution_type_name": "Transform"}'
     resolver2 = my_transform.inputs.resolver_config.resolver_steps.add()
-    resolver2.class_path = (
-        'tfx.dsl.experimental.latest_artifacts_resolver'
-        '.LatestArtifactsResolver')
+    resolver2.class_path = ('tfx.dsl.experimental.latest_artifacts_resolver'
+                            '.LatestArtifactsResolver')
     resolver2.config_json = '{}'
 
     with self.get_metadata() as m:
@@ -293,8 +303,7 @@ class InputsUtilsResolverTests(test_case_utils.TfxTest, _TestMixin):
       ex2 = output_artifacts['output_examples'][0]
 
       result = inputs_utils.resolve_input_artifacts(
-          metadata_handler=m,
-          node_inputs=my_transform.inputs)
+          metadata_handler=m, node_inputs=my_transform.inputs)
 
     self.assertArtifactMapEqual({'examples': [ex2]}, result)
 
@@ -312,9 +321,8 @@ class InputsUtilsResolverTests(test_case_utils.TfxTest, _TestMixin):
         '.UnprocessedArtifactsResolver')
     resolver1.config_json = '{"execution_type_name": "Transform"}'
     resolver2 = my_transform.inputs.resolver_config.resolver_steps.add()
-    resolver2.class_path = (
-        'tfx.dsl.experimental.latest_artifacts_resolver'
-        '.LatestArtifactsResolver')
+    resolver2.class_path = ('tfx.dsl.experimental.latest_artifacts_resolver'
+                            '.LatestArtifactsResolver')
     resolver2.config_json = '{}'
 
     with self.get_metadata() as m:
@@ -336,8 +344,7 @@ class InputsUtilsResolverTests(test_case_utils.TfxTest, _TestMixin):
           m, my_transform, input_map={'examples': [ex2]}, output_map=None)
 
       result = inputs_utils.resolve_input_artifacts(
-          metadata_handler=m,
-          node_inputs=my_transform.inputs)
+          metadata_handler=m, node_inputs=my_transform.inputs)
 
     self.assertArtifactMapEqual({'examples': [ex1]}, result)
 
@@ -355,9 +362,8 @@ class InputsUtilsResolverTests(test_case_utils.TfxTest, _TestMixin):
         '.UnprocessedArtifactsResolver')
     resolver1.config_json = '{"execution_type_name": "Transform"}'
     resolver2 = my_transform.inputs.resolver_config.resolver_steps.add()
-    resolver2.class_path = (
-        'tfx.dsl.experimental.latest_artifacts_resolver'
-        '.LatestArtifactsResolver')
+    resolver2.class_path = ('tfx.dsl.experimental.latest_artifacts_resolver'
+                            '.LatestArtifactsResolver')
     resolver2.config_json = '{}'
 
     with self.get_metadata() as m:
@@ -375,16 +381,13 @@ class InputsUtilsResolverTests(test_case_utils.TfxTest, _TestMixin):
           input_map=None,
           output_map={'output_examples': [ex2]})
       ex2 = output_artifacts['output_examples'][0]
-      self.fake_execute(m, my_transform,
-                        input_map={'examples': [ex1]},
-                        output_map=None)
-      self.fake_execute(m, my_transform,
-                        input_map={'examples': [ex2]},
-                        output_map=None)
+      self.fake_execute(
+          m, my_transform, input_map={'examples': [ex1]}, output_map=None)
+      self.fake_execute(
+          m, my_transform, input_map={'examples': [ex2]}, output_map=None)
 
       result = inputs_utils.resolve_input_artifacts(
-          metadata_handler=m,
-          node_inputs=my_transform.inputs)
+          metadata_handler=m, node_inputs=my_transform.inputs)
 
     self.assertIsNone(result)
 
@@ -397,9 +400,8 @@ class InputsUtilsResolverTests(test_case_utils.TfxTest, _TestMixin):
 
     # Use LatestArtifactsResolver for TransformGraph only.
     resolver = my_trainer.inputs.resolver_config.resolver_steps.add()
-    resolver.class_path = (
-        'tfx.dsl.experimental.latest_artifacts_resolver'
-        '.LatestArtifactsResolver')
+    resolver.class_path = ('tfx.dsl.experimental.latest_artifacts_resolver'
+                           '.LatestArtifactsResolver')
     resolver.config_json = '{}'
     resolver.input_keys.append('transform_graph')
 
@@ -433,17 +435,17 @@ class InputsUtilsResolverTests(test_case_utils.TfxTest, _TestMixin):
           output_map={'transform_graph': [tf2]})
       tf2 = output_artifacts['transform_graph'][0]
       result = inputs_utils.resolve_input_artifacts(
-          metadata_handler=m,
-          node_inputs=my_trainer.inputs)
+          metadata_handler=m, node_inputs=my_trainer.inputs)
 
     # "examples" input channel doesn't go through the resolver and its order is
     # undeterministic. Sort artifacts by ID for testing convenience.
     result['examples'].sort(key=lambda a: a.id)
 
     self.assertArtifactMapEqual(
-        {'examples': [ex1, ex2],
-         'transform_graph': [tf2]},
-        result)
+        {
+            'examples': [ex1, ex2],
+            'transform_graph': [tf2]
+        }, result)
 
 
 if __name__ == '__main__':

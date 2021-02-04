@@ -125,8 +125,8 @@ def resolve_input_artifacts(
       resolution for a pipeline node.
 
   Returns:
-    If `min_count` for every input is met, returns a Dict[str, List[Artifact]].
-    Otherwise, return None.
+    If `min_count` for every input is met and any inputs could be resolved,
+    returns a `Dict[str, List[Artifact]]`. Otherwise, returns `None`.
   """
   result = collections.defaultdict(set)
   for key, input_spec in node_inputs.inputs.items():
@@ -148,7 +148,7 @@ def resolve_input_artifacts(
     result = processor(metadata_handler, result)
     if result is None:
       return None
-  return result
+  return result if any(bool(v) for v in result.values()) else None
 
 
 def resolve_parameters(

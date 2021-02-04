@@ -148,25 +148,18 @@ def publish_succeeded_execution(
   return output_artifacts
 
 
-def publish_failed_execution(
-    metadata_handler: metadata.Metadata,
-    contexts: Sequence[metadata_store_pb2.Context],
-    execution_id: int,
-    executor_output: Optional[execution_result_pb2.ExecutorOutput] = None
-) -> None:
+def publish_failed_execution(metadata_handler: metadata.Metadata,
+                             contexts: Sequence[metadata_store_pb2.Context],
+                             execution_id: int) -> None:
   """Marks an existing execution as failed.
 
   Args:
     metadata_handler: A handler to access MLMD.
     contexts: MLMD contexts to associated with the execution.
     execution_id: The id of the execution.
-    executor_output: The output of executor.
   """
   [execution] = metadata_handler.store.get_executions_by_id([execution_id])
   execution.last_known_state = metadata_store_pb2.Execution.FAILED
-  if executor_output and executor_output.HasField('execution_result'):
-    execution_lib.set_execution_result(
-        executor_output.execution_result, execution)
 
   execution_lib.put_execution(metadata_handler, execution, contexts)
 

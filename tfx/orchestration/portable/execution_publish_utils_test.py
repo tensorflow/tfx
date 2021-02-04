@@ -410,30 +410,17 @@ class ExecutionPublisherTest(test_case_utils.TfxTest):
 
   def testPublishFailedExecution(self):
     with metadata.Metadata(connection_config=self._connection_config) as m:
-      executor_output = text_format.Parse("""
-        execution_result {
-          code: 1
-          result_message: 'error message.'
-         }
-      """, execution_result_pb2.ExecutorOutput())
       contexts = self._generate_contexts(m)
       execution_id = execution_publish_utils.register_execution(
           m, self._execution_type, contexts).id
       execution_publish_utils.publish_failed_execution(m, contexts,
-                                                       execution_id,
-                                                       executor_output)
+                                                       execution_id)
       [execution] = m.store.get_executions_by_id([execution_id])
       self.assertProtoPartiallyEquals(
           """
           id: 1
           type_id: 3
           last_known_state: FAILED
-          custom_properties {
-            key: '__execution_result__'
-            value {
-              string_value: '{\\n  "resultMessage": "error message.",\\n  "code": 1\\n}'
-            }
-          }
           """,
           execution,
           ignored_fields=[

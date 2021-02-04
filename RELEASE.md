@@ -18,12 +18,6 @@
 
 ## Major Features and Improvements
 
-*   Updated the `tfx.components.evaluator.Evaluator` component to support
-    [TFMA's "model-agnostic" evaluation](https://www.tensorflow.org/tfx/model_analysis/faq#how_do_i_setup_tfma_to_work_with_pre-calculated_ie_model-agnostic_predictions_tfrecord_and_tfexample).
-    The `model` channel is now optional when constructing the component, which
-    is useful when the `examples` channel provides tf.Examples containing both
-    the labels and pre-computed model predictions, i.e. "model-agnostic"
-    evaluation.
 *   Supports different types of quantizations on TFLite conversion using
     TFLITE_REWRITER by setting `quantization_optimizations`,
     `quantization_supported_types` and `quantization_enable_full_integer`. Flag
