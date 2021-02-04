@@ -170,7 +170,7 @@ def _create_parameterized_pipeline(
       eval_config=eval_config)
 
   pusher = Pusher(
-      model_export=trainer.outputs['model'],
+      model=trainer.outputs['model'],
       model_blessing=evaluator.outputs['blessing'],
       push_destination=pusher_pb2.PushDestination(
           filesystem=pusher_pb2.PushDestination.Filesystem(

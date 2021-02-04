@@ -47,7 +47,7 @@ _PIPELINE_ROOT = 'pipeline-root'
 # root placeholder when defining a pipeline. For example,
 #
 # pusher = Pusher(
-#     model_export=trainer.outputs['model'],
+#     model=trainer.outputs['model'],
 #     model_blessing=evaluator.outputs['blessing'],
 #     push_destination=pusher_pb2.PushDestination(
 #         filesystem=pusher_pb2.PushDestination.Filesystem(
