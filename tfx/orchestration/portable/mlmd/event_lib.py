@@ -24,12 +24,12 @@ from ml_metadata.proto import metadata_store_pb2
 
 
 _VALID_OUTPUT_EVENT_TYPES = frozenset([
-    metadata_store_pb2.Event.OUTPUT,
-    metadata_store_pb2.Event.INTERNAL_OUTPUT,
+    metadata_store_pb2.Event.OUTPUT, metadata_store_pb2.Event.INTERNAL_OUTPUT,
+    metadata_store_pb2.Event.DECLARED_OUTPUT
 ])
 _VALID_INPUT_EVENT_TYPES = frozenset([
-    metadata_store_pb2.Event.INPUT,
-    metadata_store_pb2.Event.INTERNAL_INPUT,
+    metadata_store_pb2.Event.INPUT, metadata_store_pb2.Event.INTERNAL_INPUT,
+    metadata_store_pb2.Event.DECLARED_INPUT
 ])
 
 

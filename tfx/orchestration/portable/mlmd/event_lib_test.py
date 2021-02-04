@@ -30,8 +30,7 @@ from ml_metadata.proto import metadata_store_pb2
 class EventLibTest(tf.test.TestCase):
 
   def testIsDesiredOutputEvent(self):
-    output_event = metadata_store_pb2.Event()
-    text_format.Parse(
+    output_event = text_format.Parse(
         """
         type: OUTPUT
         path {
@@ -42,9 +41,32 @@ class EventLibTest(tf.test.TestCase):
             index: 1
           }
         }
-        """, output_event)
-    input_event = metadata_store_pb2.Event()
-    text_format.Parse(
+        """, metadata_store_pb2.Event())
+    declared_output_event = text_format.Parse(
+        """
+        type: DECLARED_OUTPUT
+        path {
+          steps {
+            key: 'right_key'
+          }
+          steps {
+            index: 1
+          }
+        }
+        """, metadata_store_pb2.Event())
+    internal_output_event = text_format.Parse(
+        """
+        type: INTERNAL_OUTPUT
+        path {
+          steps {
+            key: 'right_key'
+          }
+          steps {
+            index: 1
+          }
+        }
+        """, metadata_store_pb2.Event())
+    input_event = text_format.Parse(
         """
         type: INPUT
         path {
@@ -55,12 +77,15 @@ class EventLibTest(tf.test.TestCase):
             index: 1
           }
         }
-        """, input_event)
-    empty_event = metadata_store_pb2.Event()
-    text_format.Parse('type: OUTPUT', empty_event)
+        """, metadata_store_pb2.Event())
+    empty_event = text_format.Parse('type: OUTPUT', metadata_store_pb2.Event())
 
     self.assertTrue(
         event_lib.is_valid_output_event(output_event, 'right_key'))
+    self.assertTrue(
+        event_lib.is_valid_output_event(declared_output_event, 'right_key'))
+    self.assertTrue(
+        event_lib.is_valid_output_event(internal_output_event, 'right_key'))
     self.assertFalse(
         event_lib.is_valid_output_event(output_event, 'wrong_key'))
     self.assertFalse(
