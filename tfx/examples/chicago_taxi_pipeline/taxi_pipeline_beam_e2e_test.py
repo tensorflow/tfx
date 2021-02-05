@@ -12,7 +12,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""E2E Tests for tfx.examples.chicago_taxi_pipeline.taxi_pipeline_beam."""
+"""E2E Tests for tfx.examples.chicago_taxi_pipeline.taxi_pipeline_beam using Beam's Direct Runner."""
 
 from __future__ import absolute_import
 from __future__ import division
@@ -76,7 +76,11 @@ class TaxiPipelineBeamEndToEndTest(tf.test.TestCase, parameterized.TestCase):
     self.assertExecutedOnce('Trainer')
     self.assertExecutedOnce('Transform')
 
+  def _make_beam_pipeline_args(self):
+    return []
+
   def testTaxiPipelineBeam(self):
+    beam_pipeline_args = self._make_beam_pipeline_args()
     BeamDagRunner().run(
         taxi_pipeline_beam._create_pipeline(
             pipeline_name=self._pipeline_name,
@@ -85,7 +89,7 @@ class TaxiPipelineBeamEndToEndTest(tf.test.TestCase, parameterized.TestCase):
             serving_model_dir=self._serving_model_dir,
             pipeline_root=self._pipeline_root,
             metadata_path=self._metadata_path,
-            beam_pipeline_args=[]))
+            beam_pipeline_args=beam_pipeline_args))
 
     self.assertTrue(fileio.exists(self._serving_model_dir))
     self.assertTrue(fileio.exists(self._metadata_path))
@@ -108,7 +112,7 @@ class TaxiPipelineBeamEndToEndTest(tf.test.TestCase, parameterized.TestCase):
             serving_model_dir=self._serving_model_dir,
             pipeline_root=self._pipeline_root,
             metadata_path=self._metadata_path,
-            beam_pipeline_args=[]))
+            beam_pipeline_args=beam_pipeline_args))
 
     # All executions but Evaluator and Pusher are cached.
     # Note that Resolver will always execute.
@@ -127,7 +131,7 @@ class TaxiPipelineBeamEndToEndTest(tf.test.TestCase, parameterized.TestCase):
             serving_model_dir=self._serving_model_dir,
             pipeline_root=self._pipeline_root,
             metadata_path=self._metadata_path,
-            beam_pipeline_args=[]))
+            beam_pipeline_args=beam_pipeline_args))
 
     # Asserts cache execution.
     with metadata.Metadata(metadata_config) as m:
