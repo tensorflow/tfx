@@ -60,9 +60,8 @@ _tfx_root = os.path.join(_output_bucket, 'tfx')
 _pipeline_root = os.path.join(_tfx_root, _pipeline_name)
 
 # Google Cloud Platform project id to use when deploying this pipeline.
-# This project configuration is for running Dataflow, AIP Training service and
-# Prediction service. Note that the AIP Vizier service (CloudTuner) is
-# separately configured in the module file.
+# This project configuration is for running Dataflow, CAIP Training,
+# CAIP Vizier (CloudTuner), and CAIP Prediction services.
 _project_id = 'my-gcp-project'
 
 # Python module file to inject customized logic into the TFX components. The
@@ -95,26 +94,23 @@ _ai_platform_training_args = {
     # component can be used together, in which case it allows distributed
     # parallel tuning backed by AI Platform Vizier's hyperparameter search
     # algorithm. However, in order to do so, the Cloud AI Platform Job must be
-    # given access to the AI Platform Vizier service.
+    # given access to the AI Platform Vizier service and Cloud Storage by
+    # granting it the ml.admin and storage.objectAdmin roles.
     # https://cloud.google.com/ai-platform/training/docs/custom-service-account#custom
     # Then, you should specify the custom service account for the training job.
     'serviceAccount': '<SA_NAME>@my-gcp-project.iam.gserviceaccount.com',
 }
 
-_pusher_custom_config = {
-    # A dict which contains the serving job parameters to be passed to Google
-    # Cloud AI Platform. For the full set of parameters supported by Google
-    # Cloud AI Platform, refer to
-    # https://cloud.google.com/ml-engine/reference/rest/v1/projects.models
-    ai_platform_pusher_executor.SERVING_ARGS_KEY: {
-        'model_name': 'penguin',
-        'project_id': _project_id,
-        'machine_type': 'n1-standard-8',
-    },
-    # Regional endpoint for prediction service. See
-    # https://cloud.google.com/ai-platform/prediction/docs/regional-endpoints#using_regional_endpoints
-    ai_platform_pusher_executor.ENDPOINT_ARGS_KEY:
-        'https://%s-ml.googleapis.com' % _gcp_region,
+
+# A dict which contains the serving job parameters to be passed to Google
+# Cloud AI Platform. For the full set of parameters supported by Google
+# Cloud AI Platform, refer to
+# https://cloud.google.com/ml-engine/reference/rest/v1/projects.models
+_ai_platform_serving_args = {
+    'model_name': 'penguin',
+    'project_id': _project_id,
+    'machine_type': 'n1-standard-8',
+    'regions': [_gcp_region]
 }
 
 
@@ -124,7 +120,7 @@ def create_pipeline(
     data_root: Text,
     module_file: Text,
     ai_platform_training_args: Dict[Text, Text],
-    pusher_custom_config: Dict[Text, Text],
+    ai_platform_serving_args: Dict[Text, Text],
     enable_tuning: bool,
     beam_pipeline_args: Optional[List[Text]] = None) -> pipeline.Pipeline:
   """Implements the penguin pipeline with TFX and Kubeflow Pipeline.
@@ -138,7 +134,9 @@ def create_pipeline(
     ai_platform_training_args: Args of CAIP training job. Please refer to
       https://cloud.google.com/ml-engine/reference/rest/v1/projects.jobs#Job
       for detailed description.
-    pusher_custom_config: Custom configs passed to pusher.
+    ai_platform_serving_args: Args of CAIP model deployment. Please refer to
+      https://cloud.google.com/ml-engine/reference/rest/v1/projects.models
+      for detailed description.
     enable_tuning: If True, the hyperparameter tuning through CloudTuner is
       enabled.
     beam_pipeline_args: Optional list of beam pipeline options. Please refer to
@@ -162,7 +160,7 @@ def create_pipeline(
     beam_pipeline_args = [
         '--runner=DataflowRunner',
         '--project=' + _project_id,
-        '--temp_location=' + os.path.join(_output_bucket, 'tmp'),
+        '--temp_location=' + os.path.join(_pipeline_root, 'tmp'),
         '--region=' + _gcp_region,
 
         # Temporary overrides of defaults.
@@ -239,10 +237,10 @@ def create_pipeline(
   # function. Note that once the hyperparameters are tuned, you can drop the
   # Tuner component from pipeline and feed Trainer with tuned hyperparameters.
   if enable_tuning:
-    # The Tuner component launches 1 AIP Training job for flock management.
+    # The Tuner component launches 1 CAIP Training job for flock management.
     # For example, 3 workers (defined by num_parallel_trials) in the flock
-    # management AIP Training job, each runs Tuner.Executor.
-    # Then, 3 AIP Training Jobs (defined by local_training_args) are invoked
+    # management CAIP Training job, each runs Tuner.Executor.
+    # Then, 3 CAIP Training Jobs (defined by local_training_args) are invoked
     # from each worker in the flock management Job for Trial execution.
     tuner = Tuner(
         module_file=module_file,
@@ -315,16 +313,18 @@ def create_pipeline(
                   threshold=tfma.MetricThreshold(
                       value_threshold=tfma.GenericValueThreshold(
                           lower_bound={'value': 0.6}),
+                      # Change threshold will be ignored if there is no
+                      # baseline model resolved from MLMD (first run).
                       change_threshold=tfma.GenericChangeThreshold(
                           direction=tfma.MetricDirection.HIGHER_IS_BETTER,
                           absolute={'value': -1e-10})))
           ])
       ])
+
   evaluator = Evaluator(
       examples=example_gen.outputs['examples'],
       model=trainer.outputs['model'],
       baseline_model=model_resolver.outputs['model'],
-      # Change threshold will be ignored if there is no baseline (first run).
       eval_config=eval_config)
 
   pusher = Pusher(
@@ -332,7 +332,9 @@ def create_pipeline(
           ai_platform_pusher_executor.Executor),
       model=trainer.outputs['model'],
       model_blessing=evaluator.outputs['blessing'],
-      custom_config=pusher_custom_config,
+      custom_config={
+          ai_platform_pusher_executor.SERVING_ARGS_KEY: ai_platform_serving_args
+      },
   )
 
   components = [
@@ -381,12 +383,16 @@ def main(unused_argv):
           module_file=_module_file,
           enable_tuning=True,
           ai_platform_training_args=_ai_platform_training_args,
-          pusher_custom_config=_pusher_custom_config,
+          ai_platform_serving_args=_ai_platform_serving_args,
       ))
 
 
 # $ tfx pipeline create \
 # --pipeline-path=penguin_pipeline_kubeflow_gcp.py
+# --endpoint='my-gcp-endpoint.pipelines.googleusercontent.com'
+# See TFX CLI guide for creating TFX pipelines:
 # https://github.com/tensorflow/tfx/blob/master/docs/guide/cli.md#create
+# For endpoint, see guide on connecting to hosted AI Platform Pipelines:
+# https://cloud.google.com/ai-platform/pipelines/docs/connecting-with-sdk
 if __name__ == '__main__':
   app.run(main)

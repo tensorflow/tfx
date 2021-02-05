@@ -73,11 +73,31 @@ _beam_pipeline_args = [
 ]
 
 
-def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
-                     module_file: Text, serving_model_dir: Text,
-                     metadata_path: Text, enable_tuning: bool,
+def _create_pipeline(pipeline_name: Text,
+                     pipeline_root: Text,
+                     data_root: Text,
+                     module_file: Text,
+                     serving_model_dir: Text,
+                     metadata_path: Text,
+                     enable_tuning: bool,
                      beam_pipeline_args: List[Text]) -> pipeline.Pipeline:
-  """Implements the penguin pipeline with TFX."""
+  """Implements the penguin pipeline with TFX.
+
+  Args:
+    pipeline_name: name of the TFX pipeline being created.
+    pipeline_root: root directory of the pipeline.
+    data_root: directory containing the penguin data.
+    module_file: path to files used in Trainer and Transform components.
+    serving_model_dir: filepath to write pipeline SavedModel to.
+    metadata_path: path to local pipeline ML Metadata store.
+    enable_tuning: If True, the hyperparameter tuning through KerasTuner is
+      enabled.
+    beam_pipeline_args: list of beam pipeline options for LocalDAGRunner. Please
+      refer to https://beam.apache.org/documentation/runners/direct/.
+  Returns:
+    A TFX pipeline object.
+  """
+
   # Brings data into the pipeline or otherwise joins/converts training data.
   example_gen = CsvExampleGen(input_base=data_root)
 
@@ -157,6 +177,8 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
                   threshold=tfma.MetricThreshold(
                       value_threshold=tfma.GenericValueThreshold(
                           lower_bound={'value': 0.6}),
+                      # Change threshold will be ignored if there is no
+                      # baseline model resolved from MLMD (first run).
                       change_threshold=tfma.GenericChangeThreshold(
                           direction=tfma.MetricDirection.HIGHER_IS_BETTER,
                           absolute={'value': -1e-10})))
@@ -166,7 +188,6 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
       examples=example_gen.outputs['examples'],
       model=trainer.outputs['model'],
       baseline_model=model_resolver.outputs['model'],
-      # Change threshold will be ignored if there is no baseline (first run).
       eval_config=eval_config)
 
   # Checks whether the model passed the validation steps and pushes the model

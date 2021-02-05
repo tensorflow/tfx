@@ -184,7 +184,7 @@ def create_pipeline(
     beam_pipeline_args = [
         '--runner=DataflowRunner',
         '--project=' + _project_id,
-        '--temp_location=' + os.path.join(_output_bucket, 'tmp'),
+        '--temp_location=' + os.path.join(_pipeline_root, 'tmp'),
         '--region=' + _gcp_region,
 
         # Temporary overrides of defaults.
