@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2020 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,13 +13,10 @@
 # limitations under the License.
 """E2E test using Beam orchestrator for taxi template."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import os
 import subprocess
 import sys
+import unittest
 
 from absl import logging
 import tensorflow as tf
@@ -28,6 +24,8 @@ import tensorflow as tf
 from tfx.experimental.templates import test_utils
 
 
+@unittest.skipIf(tf.__version__ < '2',
+                 'Uses keras Model only compatible with TF 2.x')
 class TaxiTemplateLocalEndToEndTest(test_utils.BaseEndToEndTest):
   """This test covers step 1~6 of the accompanying document[1] for taxi template.
 

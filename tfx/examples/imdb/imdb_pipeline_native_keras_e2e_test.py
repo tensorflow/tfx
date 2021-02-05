@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,12 +13,9 @@
 # limitations under the License.
 """E2E Tests for tfx.examples.imdb.imdb_pipeline_native_keras."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import os
 from typing import Text
+import unittest
 
 import tensorflow as tf
 
@@ -29,6 +25,8 @@ from tfx.orchestration import metadata
 from tfx.orchestration.beam.beam_dag_runner import BeamDagRunner
 
 
+@unittest.skipIf(tf.__version__ < '2',
+                 'Uses keras Model only compatible with TF 2.x')
 class ImdbPipelineNativeKerasEndToEndTest(tf.test.TestCase):
 
   def setUp(self):

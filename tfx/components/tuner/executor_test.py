@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,13 +13,10 @@
 # limitations under the License.
 """Tests for tfx.components.tuner.executor."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import copy
 import json
 import os
+import unittest
 
 from kerastuner import HyperParameters
 import tensorflow as tf
@@ -38,6 +34,8 @@ from tfx.utils import proto_utils
 from tensorflow.python.lib.io import file_io  # pylint: disable=g-direct-tensorflow-import
 
 
+@unittest.skipIf(tf.__version__ < '2',
+                 'This test uses testdata only compatible with TF 2.x')
 class ExecutorTest(tf.test.TestCase):
 
   def setUp(self):

@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2020 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,18 +13,26 @@
 # limitations under the License.
 """Tests for third_party.tfx.components.trainer.rewriting.tfjs_rewriter."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
+import unittest
 import mock
 
 import tensorflow as tf
 
 from tfx.components.trainer.rewriting import rewriter
-from tfx.components.trainer.rewriting import tfjs_rewriter
 
 
+try:
+  from tfx.components.trainer.rewriting import tfjs_rewriter  # pylint: disable=g-import-not-at-top
+except ImportError as err:
+  tfjs_rewriter = None
+
+
+@unittest.skipIf(tf.__version__ < '2',
+                 'TFJS requires TF2 which is not satisfied for TF1 environment,'
+                 ' thus skip any TFJS related tests.')
+@unittest.skipIf(tfjs_rewriter is None,
+                 'Cannot import tfjs_rewriter. This can happen when tfjs is not'
+                 ' available.')
 class TFJSRewriterTest(tf.test.TestCase):
 
   @mock.patch('tfx.components.trainer.rewriting.'
