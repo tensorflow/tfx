@@ -145,9 +145,10 @@ following list provides a non-exhaustive overview of some of the major benefits.
     changelist used for a workflow run; group the lineage by experiments; manage
     artifacts by projects.
 
-See the [MLMD tutorial](../tutorials/mlmd/mlmd_tutorial) for an example that
-shows you how to use the MLMD API and the metadata store to retrieve lineage
-information.
+See the
+[MLMD tutorial](https://www.tensorflow.org/tfx/tutorials/mlmd/mlmd_tutorial) for
+an example that shows you how to use the MLMD API and the metadata store to
+retrieve lineage information.
 
 ### Integrate ML Metadata into your ML Workflows
 
