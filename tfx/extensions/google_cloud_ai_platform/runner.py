@@ -31,9 +31,9 @@ from googleapiclient import errors
 import tensorflow as tf
 
 from tfx import types
-from tfx import version
 from tfx.types import artifact_utils
 from tfx.utils import telemetry_utils
+from tfx.utils import version_utils
 
 _POLLING_INTERVAL_IN_SECONDS = 30
 
@@ -42,7 +42,8 @@ _CONNECTION_ERROR_RETRY_LIMIT = 5
 # Default contaier image being used for CAIP training jobs.
 # TODO(b/139934802) Ensure mirroring of released TFX containers in Docker Hub
 # and gcr.io/tfx-oss-public/ registries.
-_TFX_IMAGE = 'gcr.io/tfx-oss-public/tfx:{}'.format(version.__version__)
+_TFX_IMAGE = 'gcr.io/tfx-oss-public/tfx:{}'.format(
+    version_utils.get_image_version())
 
 # Entrypoint of cloud AI platform training. The module comes from `tfx`
 # package installation into a default location of 'python'.
