@@ -50,6 +50,7 @@ class ResolverTest(tf.test.TestCase):
                      channel_to_resolve)
     self.assertEqual(rnode.outputs.get_all()['channel_to_resolve'].type_name,
                      channel_to_resolve.type_name)
+    self.assertEqual(rnode.id, 'my_resolver')
 
   def testResolverDefinitionBadArgs(self):
     with self.assertRaisesRegexp(

@@ -228,6 +228,9 @@ class Resolver(base_node.BaseNode):
       **kwargs: a key -> Channel dict, describing what are the Channels to be
         resolved. This is set by user through keyword args.
     """
+    super(Resolver, self).__init__(
+        driver_class=_ResolverDriver,
+    )
     self._strategy_class = strategy_class
     self._config = config or {}
     self._input_dict = kwargs
@@ -238,10 +241,7 @@ class Resolver(base_node.BaseNode):
             ('Expected extra kwarg %r to be of type `tfx.types.Channel` (but '
              'got %r instead).') % (k, c))
       self._output_dict[k] = types.Channel(type=c.type, artifacts=[c.type()])
-    super(Resolver, self).__init__(
-        instance_name=instance_name,
-        driver_class=_ResolverDriver,
-    )
+    self.id = instance_name
 
   @property
   def inputs(self) -> node_common._PropertyDictWrapper:  # pylint: disable=protected-access
