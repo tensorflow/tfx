@@ -27,11 +27,11 @@ from typing import Any, Dict, Text
 import mock
 import tensorflow as tf
 
-from tfx import version
 from tfx.extensions.google_cloud_ai_platform import runner
 from tfx.extensions.google_cloud_ai_platform.trainer import executor
 from tfx.utils import json_utils
 from tfx.utils import telemetry_utils
+from tfx.utils import version_utils
 
 
 class RunnerTest(tf.test.TestCase):
@@ -98,7 +98,8 @@ class RunnerTest(tf.test.TestCase):
     (_, kwargs) = self._mock_create.call_args
     body = kwargs['body']
 
-    default_image = 'gcr.io/tfx-oss-public/tfx:{}'.format(version.__version__)
+    default_image = 'gcr.io/tfx-oss-public/tfx:{}'.format(
+        version_utils.get_image_version())
     self.assertDictContainsSubset(
         {
             'masterConfig': {
