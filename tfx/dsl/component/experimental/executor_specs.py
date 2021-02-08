@@ -23,9 +23,9 @@ import operator
 from typing import List, Optional, Text, Union
 
 from tfx import types
-from tfx.dsl.component.experimental import placeholders
+from tfx.dsl.component.experimental import placeholders as experimental_placeholders
+from tfx.dsl.components import placeholders
 from tfx.dsl.components.base import executor_spec
-from tfx.dsl.placeholder import placeholder
 from tfx.proto.orchestration import executable_spec_pb2
 from tfx.proto.orchestration import placeholder_pb2
 
@@ -84,7 +84,7 @@ class TemplatedExecutorContainerSpec(executor_spec.ExecutorSpec):
   def __init__(
       self,
       image: Text,
-      command: List[placeholders.CommandlineArgumentType],
+      command: List[experimental_placeholders.CommandlineArgumentType],
   ):
     self.image = image
     self.command = command
@@ -98,18 +98,18 @@ class TemplatedExecutorContainerSpec(executor_spec.ExecutorSpec):
     return not self.__eq__(other)
 
   def _recursively_encode(
-      self, command: placeholders.CommandlineArgumentType
-  ) -> Union[str, placeholder.Placeholder]:
+      self, command: experimental_placeholders.CommandlineArgumentType
+  ) -> Union[str, placeholders.Placeholder]:
     if isinstance(command, str):
       return command
-    elif isinstance(command, placeholders.InputValuePlaceholder):
-      return placeholder.input(command.input_name)[0]
-    elif isinstance(command, placeholders.InputUriPlaceholder):
-      return placeholder.input(command.input_name)[0].uri
-    elif isinstance(command, placeholders.OutputUriPlaceholder):
-      return placeholder.output(command.output_name)[0].uri
-    elif isinstance(command, placeholders.ConcatPlaceholder):
-      # operator.add wil use the overloaded __add__ operator for Placeholder
+    elif isinstance(command, experimental_placeholders.InputValuePlaceholder):
+      return placeholders.input(command.input_name)[0]
+    elif isinstance(command, experimental_placeholders.InputUriPlaceholder):
+      return placeholders.input(command.input_name)[0].uri
+    elif isinstance(command, experimental_placeholders.OutputUriPlaceholder):
+      return placeholders.output(command.output_name)[0].uri
+    elif isinstance(command, experimental_placeholders.ConcatPlaceholder):
+      # operator.add will use the overloaded __add__ operator for Placeholder
       # instances.
       return functools.reduce(
           operator.add,
@@ -117,8 +117,9 @@ class TemplatedExecutorContainerSpec(executor_spec.ExecutorSpec):
     else:
       raise TypeError(
           ('Unsupported type of command-line arguments: "{}".'
-           ' Supported types are {}.')
-          .format(type(command), str(placeholders.CommandlineArgumentType)))
+           ' Supported types are {}.').format(
+               type(command),
+               str(experimental_placeholders.CommandlineArgumentType)))
 
   def encode(
       self,

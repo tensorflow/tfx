@@ -19,7 +19,7 @@ from typing import Any, Callable, Dict, Union
 
 from absl import logging
 import attr
-from tfx.dsl.placeholder import placeholder as ph
+from tfx.dsl.components import placeholders as ph
 from tfx.orchestration.portable import data_types
 from tfx.proto.orchestration import placeholder_pb2
 from tfx.types import artifact

@@ -70,6 +70,9 @@
     moved to `tfx.dsl.components.common.resolver.ResolverStrategy`, with its
     old module path kept as a deprecated alias, which will be removed in a
     future version.
+*   The `tfx.dsl.placeholder.placeholder` module has been moved to
+    `tfx.dsl.components.placeholders`, with symbols in its old module path
+    kept as deprecated aliases, which will be removed in a future version.
 *   Deprecated input/output compatibility aliases for ExampleValidator,
     Evaluator, Trainer and Pusher.
 
