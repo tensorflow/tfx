@@ -15,6 +15,8 @@
 
 import os
 import tempfile
+import unittest
+
 import apache_beam as beam
 from apache_beam.testing import util
 import numpy as np
@@ -25,6 +27,7 @@ from tfx.experimental.distributed_inference.graphdef_experiments.subgraph_partit
 from tfx.experimental.distributed_inference.graphdef_experiments.subgraph_partitioning import graph_partition
 
 
+@unittest.skipIf(tf.__version__ < '2', 'Incompatible with TF1')
 class BeamPipelineTest(tf.test.TestCase):
   """A test for the beam pipeline library."""
 
