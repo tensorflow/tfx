@@ -13,6 +13,7 @@
 ## Bug fixes and other changes
 
 ## Documentation updates
+*   Published a migration instruction for legacy custom Launcher developers.
 
 # Version 0.27.0
 
