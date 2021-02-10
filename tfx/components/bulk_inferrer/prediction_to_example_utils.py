@@ -53,9 +53,13 @@ def convert(prediction_log: prediction_log_pb2.PredictionLog,
         prediction_log.multi_inference_log, output_example_spec)
   else:
     if len(specs) != 1:
-      raise ValueError('Got single inference result, so expect single spec in'
+      raise ValueError('Got single inference result, so expect single spec in '
                        'output_example_spec: %s' % output_example_spec)
     if prediction_log.HasField('regress_log'):
+      if not specs[0].HasField('regress_output'):
+        raise ValueError(
+            'Regression predictions require a regress_output in output_example_spec: %s'
+            % output_example_spec)
       example = tf.train.Example()
       example.CopyFrom(
           prediction_log.regress_log.request.input.example_list.examples[0])
@@ -64,14 +68,23 @@ def convert(prediction_log: prediction_log_pb2.PredictionLog,
            [prediction_log.regress_log.response.result.regressions[0].value])
       ]
     elif prediction_log.HasField('classify_log'):
+      if not specs[0].HasField('classify_output'):
+        raise ValueError(
+            'Classification predictions require a classify_output in output_example_spec: %s'
+            % output_example_spec)
       example, output_features = _parse_classify_log(
           prediction_log.classify_log, specs[0].classify_output)
     elif prediction_log.HasField('predict_log'):
+      if not specs[0].HasField('predict_output'):
+        raise ValueError(
+            'Predict predictions require a predict_output in output_example_spec: %s'
+            % output_example_spec)
       example, output_features = _parse_predict_log(prediction_log.predict_log,
                                                     specs[0].predict_output)
     else:
       raise ValueError('Unsupported prediction type in prediction_log: %s' %
                        prediction_log)
+
   return _add_columns(example, output_features)
 
 
@@ -92,9 +105,8 @@ def _parse_multi_inference_log(
       output_features += _parse_classification_result(
           result.classification_result, spec.classify_output)
     elif result.HasField('regression_result'):
-      output_features.append((
-          spec.regress_output.value_column,
-          [result.regression_result.regressions[0].value]))
+      output_features.append((spec.regress_output.value_column,
+                              [result.regression_result.regressions[0].value]))
     else:
       raise ValueError('Unsupported multi_inferrence_log: %s' %
                        multi_inference_log)

@@ -76,6 +76,10 @@
 
 ## Bug fixes and other changes
 
+*   Add error condition checks to BulkInferrer's `output_example_spec`.
+    Previously, when the `output_example_spec` did not include the correct spec
+    definitions, the BulkInferrer would fail silently and output examples
+    without predictions.
 *   InfraValidator supports using alternative TensorFlow Serving image in case
     deployed environment cannot reach the public internet (nor the docker hub).
     Such alternative image should behave the same as official
@@ -164,7 +168,7 @@
     [new TFX package build instructions]
     (https://github.com/tensorflow/tfx/blob/master/package_build/README.md) to
     build wheels for TFX.
-    
+
 
 ### For pipeline authors
 

@@ -307,6 +307,137 @@ class PredictionToExampleUtilsTest(tf.test.TestCase):
     self.assertProtoEquals(expected_example,
                            utils.convert(prediction_log, output_example_spec))
 
+  def test_convert_for_regress_invalid_output_example_spec(self):
+    prediction_log = text_format.Parse(
+        """
+      regress_log {
+        request {
+          input {
+            example_list {
+              examples {
+                features {
+                  feature: {
+                    key: "regress_input"
+                    value: { bytes_list: { value: "feature" } }
+                  }
+                }
+              }
+            }
+          }
+        }
+        response {
+          result {
+            regressions {
+              value: 0.7
+            }
+          }
+        }
+      }
+    """, prediction_log_pb2.PredictionLog())
+
+    output_example_spec = text_format.Parse(
+        """
+        output_columns_spec {
+        }
+    """, bulk_inferrer_pb2.OutputExampleSpec())
+    with self.assertRaises(ValueError):
+      utils.convert(prediction_log, output_example_spec)
+
+  def test_convert_for_classify_invalid_output_example_spec(self):
+    prediction_log = text_format.Parse(
+        """
+      classify_log {
+        request {
+          input {
+            example_list {
+              examples {
+                features {
+                  feature: {
+                    key: "classify_input"
+                    value: { bytes_list: { value: "feature" } }
+                  }
+                }
+              }
+            }
+          }
+        }
+        response {
+          result {
+            classifications {
+              classes {
+                label: '1'
+                score: 0.6
+              }
+              classes {
+                label: '0'
+                score: 0.4
+              }
+            }
+          }
+        }
+      }
+    """, prediction_log_pb2.PredictionLog())
+    output_example_spec = text_format.Parse(
+        """
+        output_columns_spec {
+        }
+    """, bulk_inferrer_pb2.OutputExampleSpec())
+    with self.assertRaises(ValueError):
+      utils.convert(prediction_log, output_example_spec)
+
+  def test_convert_for_predict_invalid_output_example_spec(self):
+    example = text_format.Parse(
+        """
+      features {
+        feature { key: "predict_input" value: { bytes_list: { value: "feature" } } }
+      }""", tf.train.Example())
+    prediction_log = text_format.Parse(
+        """
+      predict_log {
+        request {
+          inputs {
+            key: "%s"
+            value {
+              dtype: DT_STRING
+              tensor_shape { dim { size: 1 } }
+            }
+          }
+       }
+       response {
+         outputs {
+           key: "output_float"
+           value {
+             dtype: DT_FLOAT
+             tensor_shape { dim { size: 1 } dim { size: 2 }}
+             float_val: 0.1
+             float_val: 0.2
+           }
+         }
+         outputs {
+           key: "output_bytes"
+           value {
+             dtype: DT_STRING
+             tensor_shape { dim { size: 1 }}
+             string_val: "prediction"
+           }
+         }
+       }
+     }
+    """ % (utils.INPUT_KEY), prediction_log_pb2.PredictionLog())
+
+    # The ending quote cannot be recognized correctly when `string_val` field
+    # is directly set with a serialized string quoted in the text format.
+    prediction_log.predict_log.request.inputs[
+        utils.INPUT_KEY].string_val.append(example.SerializeToString())
+
+    output_example_spec = text_format.Parse(
+        """
+        output_columns_spec {
+        }
+    """, bulk_inferrer_pb2.OutputExampleSpec())
+    with self.assertRaises(ValueError):
+      utils.convert(prediction_log, output_example_spec)
+
 
 if __name__ == '__main__':
   tf.test.main()
