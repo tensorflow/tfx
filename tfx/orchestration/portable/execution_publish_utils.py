@@ -25,15 +25,27 @@ from ml_metadata.proto import metadata_store_pb2
 
 
 def _check_validity(new_artifact: metadata_store_pb2.Artifact,
-                    original_artifact: types.Artifact) -> None:
+                    original_artifact: types.Artifact,
+                    has_multiple_artifacts: bool
+                    ) -> None:
   """Check the validity of new artifact against the original artifact."""
   if new_artifact.type_id != original_artifact.type_id:
     raise RuntimeError('Executor output should not change artifact type.')
-  if not (new_artifact.uri == original_artifact.uri or
-          os.path.dirname(new_artifact.uri) == original_artifact.uri):
-    raise RuntimeError(
-        'The URI of executor generated artifacts should either be identical to '
-        'the URI of system generated artifact or be a direct sub-dir of it.')
+
+  if has_multiple_artifacts:
+    # If there are multiple artifacts in the executor output, their URIs should
+    # be a direct sub-dir of the system generated URI.
+    if os.path.dirname(new_artifact.uri) != original_artifact.uri:
+      raise RuntimeError(
+          'When there are multiple artifacts to publish, their URIs '
+          'should be direct sub-directories of the URI of the system generated '
+          'artifact.')
+  else:
+    # If there is only one output artifact, its URI should not be changed
+    if new_artifact.uri != original_artifact.uri:
+      raise RuntimeError(
+          'When there is one artifact to publish, the URI of it should be '
+          'identical to the URI of system generated artifact.')
 
 
 def publish_cached_execution(
@@ -126,7 +138,8 @@ def publish_succeeded_execution(
       #    use driver instead to create the list of output artifact instead
       #    of letting executor to create them.
       for proto_artifact in updated_artifact_list:
-        _check_validity(proto_artifact, original_artifact)
+        _check_validity(
+            proto_artifact, original_artifact, len(updated_artifact_list) > 1)
         python_artifact = types.Artifact(original_artifact.artifact_type)
         python_artifact.set_mlmd_artifact(proto_artifact)
         artifact_list.append(python_artifact)

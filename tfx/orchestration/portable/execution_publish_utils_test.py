@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Tests for tfx.orchestration.portable.execution_publish_utils."""
+from absl.testing import parameterized
 import tensorflow as tf
 from tfx.orchestration import metadata
 from tfx.orchestration.portable import execution_publish_utils
@@ -25,7 +26,7 @@ from google.protobuf import text_format
 from ml_metadata.proto import metadata_store_pb2
 
 
-class ExecutionPublisherTest(test_case_utils.TfxTest):
+class ExecutionPublisherTest(test_case_utils.TfxTest, parameterized.TestCase):
 
   def setUp(self):
     super().setUp()
@@ -382,13 +383,26 @@ class ExecutionPublisherTest(test_case_utils.TfxTest):
 
       with self.assertRaisesRegex(
           RuntimeError,
-          'The URI of executor generated artifacts should either be identical '
-          'to the URI of system generated artifact or be a direct sub-dir of '
-          'it.'):
+          'When there is one artifact to publish, the URI of it should be '
+          'identical to the URI of system generated artifact.'):
         execution_publish_utils.publish_succeeded_execution(
             m, execution_id, contexts, output_dict, executor_output)
 
-  def testPublishSuccessExecutionFailTooManyLayerOfSubDir(self):
+  @parameterized.named_parameters(
+      # Not direct sub-dir of the original uri
+      dict(
+          testcase_name='TooManyDirLayers',
+          invalid_uri='/my/original_uri/1/1'),
+      # Identical to the original uri
+      dict(
+          testcase_name='IdenticalToTheOriginal',
+          invalid_uri='/my/original_uri'),
+      # Identical to the original uri
+      dict(
+          testcase_name='ParentDirChanged',
+          invalid_uri='/my/other_uri/1'),
+      )
+  def testPublishSuccessExecutionFailInvalidUri(self, invalid_uri):
     output_example = standard_artifacts.Examples()
     output_example.uri = '/my/original_uri'
     output_dict = {'examples': [output_example]}
@@ -397,14 +411,18 @@ class ExecutionPublisherTest(test_case_utils.TfxTest):
       execution_id = execution_publish_utils.register_execution(
           m, self._execution_type, contexts).id
       executor_output = execution_result_pb2.ExecutorOutput()
-      new_example = executor_output.output_artifacts['examples'].artifacts.add()
-      new_example.uri = '/my/original_uri/1/1'
+      system_generated_artifact = executor_output.output_artifacts[
+          'examples'].artifacts.add()
+      system_generated_artifact.uri = '/my/original_uri/0'
+      new_artifact = executor_output.output_artifacts[
+          'examples'].artifacts.add()
+      new_artifact.uri = invalid_uri
 
       with self.assertRaisesRegex(
           RuntimeError,
-          'The URI of executor generated artifacts should either be identical '
-          'to the URI of system generated artifact or be a direct sub-dir of '
-          'it.'):
+          'When there are multiple artifacts to publish, their URIs should be '
+          'direct sub-directories of the URI of the system generated artifact.'
+          ):
         execution_publish_utils.publish_succeeded_execution(
             m, execution_id, contexts, output_dict, executor_output)
 
