@@ -19,7 +19,6 @@ from __future__ import print_function
 
 from typing import Any, Dict, Optional, Text, Union
 
-import absl
 from tfx import types
 from tfx.components.transform import executor
 from tfx.dsl.components.base import base_component
@@ -74,7 +73,6 @@ class Transform(base_component.BaseComponent):
       splits_config: transform_pb2.SplitsConfig = None,
       transform_graph: Optional[types.Channel] = None,
       transformed_examples: Optional[types.Channel] = None,
-      input_data: Optional[types.Channel] = None,
       analyzer_cache: Optional[types.Channel] = None,
       instance_name: Optional[Text] = None,
       materialize: bool = True,
@@ -126,7 +124,6 @@ class Transform(base_component.BaseComponent):
         materialized transformed examples, which includes transform splits as
         specified in splits_config. If custom split is not provided, this should
         include both 'train' and 'eval' splits.
-      input_data: Backwards compatibility alias for the 'examples' argument.
       analyzer_cache: Optional input 'TransformCache' channel containing
         cached information from previous Transform runs. When provided,
         Transform will try use the cached calculation if possible.
@@ -148,12 +145,6 @@ class Transform(base_component.BaseComponent):
       ValueError: When both or neither of 'module_file' and 'preprocessing_fn'
         is supplied.
     """
-    if input_data:
-      absl.logging.warning(
-          'The "input_data" argument to the Transform component has '
-          'been renamed to "examples" and is deprecated. Please update your '
-          'usage as support for this argument will be removed soon.')
-      examples = input_data
     if bool(module_file) == bool(preprocessing_fn):
       raise ValueError(
           "Exactly one of 'module_file' or 'preprocessing_fn' must be supplied."

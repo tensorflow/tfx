@@ -59,7 +59,7 @@ EXAMPLE_SPLITS_KEY = 'example_splits'
 MODULE_PATH_KEY = 'module_path'
 BASELINE_MODEL_KEY = 'baseline_model'
 EVALUATION_KEY = 'evaluation'
-# Key for for infra_validator
+# Key for infra_validator
 SERVING_SPEC_KEY = 'serving_spec'
 VALIDATION_SPEC_KEY = 'validation_spec'
 REQUEST_SPEC_KEY = 'request_spec'
@@ -83,6 +83,13 @@ TRAINER_FN_KEY = 'trainer_fn'
 BASE_MODEL_KEY = 'base_model'
 HYPERPARAMETERS_KEY = 'hyperparameters'
 MODEL_RUN_KEY = 'model_run'
+# Key for transform
+PREPROCESSING_FN_KEY = 'preprocessing_fn'
+FORCE_TF_COMPAT_V1_KEY = 'force_tf_compat_v1'
+SPLITS_CONFIG_KEY = 'splits_config'
+ANALYZER_CACHE_KEY = 'analyzer_cache'
+TRANSFORMED_EXAMPLES_KEY = 'transformed_examples'
+UPDATED_ANALYZER_CACHE_KEY = 'updated_analyzer_cache'
 
 
 class BulkInferrerSpec(ComponentSpec):
@@ -384,41 +391,32 @@ class TransformSpec(ComponentSpec):
   """Transform component spec."""
 
   PARAMETERS = {
-      'module_file':
+      MODULE_FILE_KEY:
           ExecutionParameter(type=(str, Text), optional=True),
-      'preprocessing_fn':
+      PREPROCESSING_FN_KEY:
           ExecutionParameter(type=(str, Text), optional=True),
-      'force_tf_compat_v1':
+      FORCE_TF_COMPAT_V1_KEY:
           ExecutionParameter(type=int, optional=True),
-      'custom_config':
+      CUSTOM_CONFIG_KEY:
           ExecutionParameter(type=(str, Text), optional=True),
-      'splits_config':
+      SPLITS_CONFIG_KEY:
           ExecutionParameter(type=transform_pb2.SplitsConfig, optional=True),
   }
   INPUTS = {
-      'examples':
+      EXAMPLES_KEY:
           ChannelParameter(type=standard_artifacts.Examples),
-      'schema':
+      SCHEMA_KEY:
           ChannelParameter(type=standard_artifacts.Schema),
-      'analyzer_cache':
+      ANALYZER_CACHE_KEY:
           ChannelParameter(
               type=standard_artifacts.TransformCache, optional=True),
   }
   OUTPUTS = {
-      'transform_graph':
+      TRANSFORM_GRAPH_KEY:
           ChannelParameter(type=standard_artifacts.TransformGraph),
-      'transformed_examples':
+      TRANSFORMED_EXAMPLES_KEY:
           ChannelParameter(type=standard_artifacts.Examples, optional=True),
-      'updated_analyzer_cache':
+      UPDATED_ANALYZER_CACHE_KEY:
           ChannelParameter(
               type=standard_artifacts.TransformCache, optional=True),
-  }
-  # TODO(b/139281215): these input / output names have recently been renamed.
-  # These compatibility aliases are temporarily provided for backwards
-  # compatibility.
-  _INPUT_COMPATIBILITY_ALIASES = {
-      'input_data': 'examples',
-  }
-  _OUTPUT_COMPATIBILITY_ALIASES = {
-      'transform_output': 'transform_graph',
   }

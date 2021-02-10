@@ -33,6 +33,7 @@ from tfx.dsl.io import fileio
 from tfx.proto import transform_pb2
 from tfx.types import artifact_utils
 from tfx.types import standard_artifacts
+from tfx.types import standard_component_specs
 from tfx.utils import io_utils
 from tfx.utils import proto_utils
 
@@ -104,8 +105,8 @@ class ExecutorTest(tft_unit.TransformTestCase):
     schema_artifact.uri = os.path.join(source_data_dir, 'schema_gen')
 
     self._input_dict = {
-        executor.EXAMPLES_KEY: self._example_artifacts[:1],
-        executor.SCHEMA_KEY: [schema_artifact],
+        standard_component_specs.EXAMPLES_KEY: self._example_artifacts[:1],
+        standard_component_specs.SCHEMA_KEY: [schema_artifact],
     }
 
     # Create output dict.
@@ -128,11 +129,13 @@ class ExecutorTest(tft_unit.TransformTestCase):
         self._output_data_dir, 'CACHE')
 
     self._output_dict = {
-        executor.TRANSFORM_GRAPH_KEY: [self._transformed_output],
-        executor.TRANSFORMED_EXAMPLES_KEY:
+        standard_component_specs.TRANSFORM_GRAPH_KEY: [
+            self._transformed_output
+        ],
+        standard_component_specs.TRANSFORMED_EXAMPLES_KEY:
             self._transformed_example_artifacts[:1],
         executor.TEMP_PATH_KEY: [temp_path_output],
-        executor.UPDATED_ANALYZER_CACHE_KEY: [
+        standard_component_specs.UPDATED_ANALYZER_CACHE_KEY: [
             self._updated_analyzer_cache_artifact
         ],
     }
@@ -152,9 +155,10 @@ class ExecutorTest(tft_unit.TransformTestCase):
     self._preprocessing_fn = '%s.%s' % (
         transform_module.preprocessing_fn.__module__,
         transform_module.preprocessing_fn.__name__)
-    self._exec_properties['splits_config'] = None
-    self._exec_properties['force_tf_compat_v1'] = int(
-        self._use_force_tf_compat_v1())
+    self._exec_properties[standard_component_specs.SPLITS_CONFIG_KEY] = None
+    self._exec_properties[
+        standard_component_specs.FORCE_TF_COMPAT_V1_KEY] = int(
+            self._use_force_tf_compat_v1())
 
     # Executor for test.
     self._transform_executor = executor.Executor()
@@ -238,47 +242,54 @@ class ExecutorTest(tft_unit.TransformTestCase):
     return pipelines[0].metrics
 
   def test_do_with_module_file(self):
-    self._exec_properties['module_file'] = self._module_file
+    self._exec_properties[
+        standard_component_specs.MODULE_FILE_KEY] = self._module_file
     self._transform_executor.Do(self._input_dict, self._output_dict,
                                 self._exec_properties)
     self._verify_transform_outputs()
 
   def test_do_with_preprocessing_fn(self):
-    self._exec_properties['preprocessing_fn'] = self._preprocessing_fn
+    self._exec_properties[
+        standard_component_specs.PREPROCESSING_FN_KEY] = self._preprocessing_fn
     self._transform_executor.Do(self._input_dict, self._output_dict,
                                 self._exec_properties)
     self._verify_transform_outputs()
 
   def test_do_with_materialization_disabled(self):
-    self._exec_properties['preprocessing_fn'] = self._preprocessing_fn
-    del self._output_dict[executor.TRANSFORMED_EXAMPLES_KEY]
+    self._exec_properties[
+        standard_component_specs.PREPROCESSING_FN_KEY] = self._preprocessing_fn
+    del self._output_dict[standard_component_specs.TRANSFORMED_EXAMPLES_KEY]
     self._transform_executor.Do(self._input_dict, self._output_dict,
                                 self._exec_properties)
     self._verify_transform_outputs(materialize=False)
 
   def test_do_with_cache_materialization_disabled(self):
-    self._exec_properties['preprocessing_fn'] = self._preprocessing_fn
-    del self._output_dict[executor.UPDATED_ANALYZER_CACHE_KEY]
+    self._exec_properties[
+        standard_component_specs.PREPROCESSING_FN_KEY] = self._preprocessing_fn
+    del self._output_dict[standard_component_specs.UPDATED_ANALYZER_CACHE_KEY]
     self._transform_executor.Do(self._input_dict, self._output_dict,
                                 self._exec_properties)
     self._verify_transform_outputs(store_cache=False)
 
   def test_do_with_preprocessing_fn_custom_config(self):
-    self._exec_properties['preprocessing_fn'] = '%s.%s' % (
-        transform_module.preprocessing_fn.__module__,
-        transform_module.preprocessing_fn.__name__)
-    self._exec_properties['custom_config'] = json.dumps({
-        'VOCAB_SIZE': 1000,
-        'OOV_SIZE': 10
-    })
+    self._exec_properties[
+        standard_component_specs.PREPROCESSING_FN_KEY] = '%s.%s' % (
+            transform_module.preprocessing_fn.__module__,
+            transform_module.preprocessing_fn.__name__)
+    self._exec_properties[
+        standard_component_specs.CUSTOM_CONFIG_KEY] = json.dumps({
+            'VOCAB_SIZE': 1000,
+            'OOV_SIZE': 10
+        })
     self._transform_executor.Do(self._input_dict, self._output_dict,
                                 self._exec_properties)
     self._verify_transform_outputs()
 
   def test_do_with_preprocessing_fn_and_none_custom_config(self):
-    self._exec_properties['preprocessing_fn'] = '%s.%s' % (
-        transform_module.preprocessing_fn.__module__,
-        transform_module.preprocessing_fn.__name__)
+    self._exec_properties[
+        standard_component_specs.PREPROCESSING_FN_KEY] = '%s.%s' % (
+            transform_module.preprocessing_fn.__module__,
+            transform_module.preprocessing_fn.__name__)
     self._exec_properties['custom_config'] = json.dumps(None)
     self._transform_executor.Do(self._input_dict, self._output_dict,
                                 self._exec_properties)
@@ -290,34 +301,42 @@ class ExecutorTest(tft_unit.TransformTestCase):
                                   self._exec_properties)
 
   def test_do_with_duplicate_preprocessing_fn(self):
-    self._exec_properties['module_file'] = self._module_file
-    self._exec_properties['preprocessing_fn'] = self._preprocessing_fn
+    self._exec_properties[
+        standard_component_specs.MODULE_FILE_KEY] = self._module_file
+    self._exec_properties[
+        standard_component_specs.PREPROCESSING_FN_KEY] = self._preprocessing_fn
     with self.assertRaises(ValueError):
       self._transform_executor.Do(self._input_dict, self._output_dict,
                                   self._exec_properties)
 
   def test_do_with_multiple_artifacts(self):
-    self._exec_properties['module_file'] = self._module_file
-    self._input_dict[executor.EXAMPLES_KEY] = self._example_artifacts
-    self._output_dict[executor.TRANSFORMED_EXAMPLES_KEY] = (
+    self._exec_properties[
+        standard_component_specs.MODULE_FILE_KEY] = self._module_file
+    self._input_dict[
+        standard_component_specs.EXAMPLES_KEY] = self._example_artifacts
+    self._output_dict[standard_component_specs.TRANSFORMED_EXAMPLES_KEY] = (
         self._transformed_example_artifacts)
     self._transform_executor.Do(self._input_dict, self._output_dict,
                                 self._exec_properties)
     self._verify_transform_outputs(multiple_example_inputs=True)
 
   def test_do_with_custom_splits(self):
-    self._exec_properties['splits_config'] = proto_utils.proto_to_json(
-        transform_pb2.SplitsConfig(
-            analyze=['train'], transform=['train', 'eval']))
-    self._exec_properties['module_file'] = self._module_file
+    self._exec_properties[
+        standard_component_specs.SPLITS_CONFIG_KEY] = proto_utils.proto_to_json(
+            transform_pb2.SplitsConfig(
+                analyze=['train'], transform=['train', 'eval']))
+    self._exec_properties[
+        standard_component_specs.MODULE_FILE_KEY] = self._module_file
     self._transform_executor.Do(self._input_dict, self._output_dict,
                                 self._exec_properties)
     self._verify_transform_outputs()
 
   def test_do_with_empty_analyze_splits(self):
-    self._exec_properties['splits_config'] = proto_utils.proto_to_json(
-        transform_pb2.SplitsConfig(analyze=[], transform=['train', 'eval']))
-    self._exec_properties['module_file'] = self._module_file
+    self._exec_properties[
+        standard_component_specs.SPLITS_CONFIG_KEY] = proto_utils.proto_to_json(
+            transform_pb2.SplitsConfig(analyze=[], transform=['train', 'eval']))
+    self._exec_properties[
+        standard_component_specs.MODULE_FILE_KEY] = self._module_file
     with self.assertRaises(ValueError):
       self._transform_executor.Do(self._input_dict, self._output_dict,
                                   self._exec_properties)
@@ -325,8 +344,9 @@ class ExecutorTest(tft_unit.TransformTestCase):
   def test_do_with_empty_transform_splits(self):
     self._exec_properties['splits_config'] = proto_utils.proto_to_json(
         transform_pb2.SplitsConfig(analyze=['train'], transform=[]))
-    self._exec_properties['module_file'] = self._module_file
-    self._output_dict[executor.TRANSFORMED_EXAMPLES_KEY] = (
+    self._exec_properties[
+        standard_component_specs.MODULE_FILE_KEY] = self._module_file
+    self._output_dict[standard_component_specs.TRANSFORMED_EXAMPLES_KEY] = (
         self._transformed_example_artifacts[:1])
 
     self._transform_executor.Do(self._input_dict, self._output_dict,
@@ -343,12 +363,13 @@ class ExecutorTest(tft_unit.TransformTestCase):
     self.assertTrue(fileio.exists(path_to_saved_model))
 
   def test_counters(self):
-    self._exec_properties['preprocessing_fn'] = self._preprocessing_fn
+    self._exec_properties[
+        standard_component_specs.PREPROCESSING_FN_KEY] = self._preprocessing_fn
     metrics = self._run_pipeline_get_metrics()
 
     # The test data has 10036 instances in the train dataset, and 4964 instances
     # in the eval dataset (obtained by running:
-    #   gqui third_party/py/tfx/components/testdata/csv_example_gen/train/data* \
+    # gqui third_party/py/tfx/components/testdata/csv_example_gen/train/data* \
     #     'select count(*)'
     # )
     # Since the analysis dataset (train) is read twice (once for analysis and
@@ -378,7 +399,8 @@ class ExecutorTest(tft_unit.TransformTestCase):
 
   def test_do_with_cache(self):
     # First run that creates cache.
-    self._exec_properties['module_file'] = self._module_file
+    self._exec_properties[
+        standard_component_specs.MODULE_FILE_KEY] = self._module_file
     metrics = self._run_pipeline_get_metrics()
 
     # The test data has 10036 instances in the train dataset, and 4964 instances
@@ -395,9 +417,12 @@ class ExecutorTest(tft_unit.TransformTestCase):
 
     self._make_base_do_params(self._SOURCE_DATA_DIR, self._output_data_dir)
 
-    self._input_dict[executor.ANALYZER_CACHE_KEY] = [analyzer_cache_artifact]
+    self._input_dict[standard_component_specs.ANALYZER_CACHE_KEY] = [
+        analyzer_cache_artifact
+    ]
 
-    self._exec_properties['module_file'] = self._module_file
+    self._exec_properties[
+        standard_component_specs.MODULE_FILE_KEY] = self._module_file
     metrics = self._run_pipeline_get_metrics()
 
     # Since input cache should now cover all analysis (train) paths, the train
@@ -408,7 +433,8 @@ class ExecutorTest(tft_unit.TransformTestCase):
 
   @tft_unit.mock.patch.object(executor, '_MAX_ESTIMATED_STAGES_COUNT', 21)
   def test_do_with_cache_disabled_too_many_stages(self):
-    self._exec_properties['module_file'] = self._module_file
+    self._exec_properties[
+        standard_component_specs.MODULE_FILE_KEY] = self._module_file
     self._transform_executor.Do(self._input_dict, self._output_dict,
                                 self._exec_properties)
     self._verify_transform_outputs(store_cache=False)

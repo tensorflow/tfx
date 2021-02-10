@@ -72,7 +72,7 @@
     old module path kept as a deprecated alias, which will be removed in a
     future version.
 *   Deprecated input/output compatibility aliases for ExampleValidator,
-    Evaluator, Trainer and Pusher.
+    Evaluator, Trainer, Pusher and Transform.
 
 ## Bug fixes and other changes
 
