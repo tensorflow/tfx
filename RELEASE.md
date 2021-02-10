@@ -9,6 +9,7 @@
 ### For component authors
 
 ## Deprecations
+*   Deprecated input/output compatibility aliases for Transform.
 
 ## Bug fixes and other changes
 
@@ -72,7 +73,7 @@
     old module path kept as a deprecated alias, which will be removed in a
     future version.
 *   Deprecated input/output compatibility aliases for ExampleValidator,
-    Evaluator, Trainer, Pusher and Transform.
+    Evaluator, Trainer and Pusher.
 
 ## Bug fixes and other changes
 
