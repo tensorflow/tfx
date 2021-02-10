@@ -35,13 +35,9 @@ from tfx.dsl.components.base import base_executor
 from tfx.proto import example_gen_pb2
 from tfx.types import artifact_utils
 from tfx.utils import proto_utils
-from tfx_bsl.telemetry import util
 
 # Default file name for TFRecord output file prefix.
 DEFAULT_FILE_NAME = 'data_tfrecord'
-
-# Metrics namespace for ExampleGen.
-_METRICS_NAMESPACE = util.MakeTfxNamespace(['ExampleGen'])
 
 
 def _GeneratePartitionKey(record: Union[tf.train.Example,
@@ -99,29 +95,18 @@ def _PartitionFn(
 @beam.typehints.with_input_types(Union[tf.train.Example,
                                        tf.train.SequenceExample, bytes])
 @beam.typehints.with_output_types(beam.pvalue.PDone)
-def _WriteSplit(
-    example_split: beam.pvalue.PCollection,
-    output_split_path: Text,
-) -> beam.pvalue.PDone:
+def _WriteSplit(example_split: beam.pvalue.PCollection,
+                output_split_path: Text) -> beam.pvalue.PDone:
   """Shuffles and writes output split as serialized records in TFRecord."""
 
-  class _MaybeSerialize(beam.DoFn):
-    """Serializes the proto if needed."""
-
-    def __init__(self):
-      self._num_instances = beam.metrics.Metrics.counter(
-          _METRICS_NAMESPACE, 'num_instances')
-
-    def process(self, e):
-      self._num_instances.inc(1)
-      if isinstance(e, (tf.train.Example, tf.train.SequenceExample)):
-        yield e.SerializeToString()
-      else:
-        yield e
+  def _MaybeSerialize(x):
+    if isinstance(x, (tf.train.Example, tf.train.SequenceExample)):
+      return x.SerializeToString()
+    return x
 
   return (example_split
           # TODO(jyzhao): make shuffle optional.
-          | 'MaybeSerialize' >> beam.ParDo(_MaybeSerialize())
+          | 'MaybeSerialize' >> beam.Map(_MaybeSerialize)
           | 'Shuffle' >> beam.transforms.Reshuffle()
           # TODO(jyzhao): multiple output format.
           | 'Write' >> beam.io.WriteToTFRecord(

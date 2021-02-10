@@ -15,9 +15,37 @@
 import os
 
 import tensorflow as tf
+
 from tfx.examples.ranking import ranking_pipeline
 from tfx.orchestration import metadata
 from tfx.orchestration.beam.beam_dag_runner import BeamDagRunner
+
+from google.protobuf import text_format
+from tensorflow_serving.apis import input_pb2
+
+
+_ELWC = text_format.Parse("""
+context {
+  features {
+    feature {
+      key: "query_tokens"
+      value {
+        bytes_list { value: ["cat", "dog"] }
+      }
+    }
+  }
+}
+examples {
+  features {
+    feature {
+      key: "document_tokens"
+      value {
+        bytes_list { value: ["red", "blue"] }
+      }
+    }
+  }
+}
+""", input_pb2.ExampleListWithContext())
 
 
 class RankingPipelineTest(tf.test.TestCase):
@@ -39,14 +67,48 @@ class RankingPipelineTest(tf.test.TestCase):
                                        self._pipeline_name, 'metadata.db')
     print('TFX ROOT: ', self._tfx_root)
 
-  def assertExecutedOnce(self, component) -> None:
-    """Check the component is executed exactly once."""
-    component_path = os.path.join(self._pipeline_root, component)
-    self.assertTrue(tf.io.gfile.exists(component_path))
-    outputs = tf.io.gfile.listdir(component_path)
-    for output in outputs:
-      execution = tf.io.gfile.listdir(os.path.join(component_path, output))
-      self.assertEqual(1, len(execution))
+  def _AssertAllComponentsExecuted(
+      self, metadata_path, num_expected_components):
+     # Make sure that all the components ran successfully.
+    metadata_config = metadata.sqlite_metadata_connection_config(metadata_path)
+    with metadata.Metadata(metadata_config) as m:
+      artifact_count = len(m.store.get_artifacts())
+      execution_count = len(m.store.get_executions())
+      self.assertGreaterEqual(artifact_count, execution_count)
+      self.assertEqual(execution_count, num_expected_components)
+
+  def _ValidateServingSignatures(self, saved_model_path):
+    serving_model = tf.saved_model.load(saved_model_path)
+    self.assertLen(serving_model.signatures, 3)
+    self.assertIn('tensorflow/serving/regress', serving_model.signatures)
+    self.assertIn('tensorflow/serving/predict', serving_model.signatures)
+    self.assertIn('serving_default', serving_model.signatures)
+
+    def validate_output_dict(d):
+      self.assertIsInstance(d, dict)
+      self.assertLen(d, 1)
+      self.assertIn('outputs', d)
+
+    predict = serving_model.signatures['tensorflow/serving/predict']
+    predict_output = predict(tf.convert_to_tensor([_ELWC.SerializeToString()]))
+    validate_output_dict(predict_output)
+
+    regress = serving_model.signatures['tensorflow/serving/regress']
+    tf_example = tf.train.Example()
+    tf_example.MergeFrom(_ELWC.context)
+    tf_example.MergeFrom(_ELWC.examples[0])
+    regress_output = regress(
+        tf.convert_to_tensor([tf_example.SerializeToString()]))
+    validate_output_dict(regress_output)
+    self.assertAllEqual(predict_output['outputs'],
+                        tf.expand_dims(regress_output['outputs'], axis=0))
+
+    serving_default = serving_model.signatures['serving_default']
+    serving_default_output = serving_default(
+        tf.convert_to_tensor([_ELWC.SerializeToString()]))
+    validate_output_dict(serving_default_output)
+    self.assertAllEqual(predict_output['outputs'],
+                        serving_default_output['outputs'])
 
   def testPipeline(self):
     BeamDagRunner().run(
@@ -58,16 +120,15 @@ class RankingPipelineTest(tf.test.TestCase):
             serving_model_dir=self._serving_model_dir,
             metadata_path=self._metadata_path,
             beam_pipeline_args=['--direct_num_workers=1']))
-    self.assertTrue(tf.io.gfile.exists(self._serving_model_dir))
-    self.assertTrue(tf.io.gfile.exists(self._metadata_path))
 
-    metadata_config = metadata.sqlite_metadata_connection_config(
-        self._metadata_path)
-    with metadata.Metadata(metadata_config) as m:
-      artifact_count = len(m.store.get_artifacts())
-      execution_count = len(m.store.get_executions())
-      self.assertGreaterEqual(artifact_count, execution_count)
-      self.assertEqual(9, execution_count)
+    self.assertTrue(tf.io.gfile.exists(self._metadata_path))
+    self._AssertAllComponentsExecuted(self._metadata_path, 9)
+
+    self.assertTrue(tf.io.gfile.exists(self._serving_model_dir))
+    serving_model_dir_contents = tf.io.gfile.listdir(self._serving_model_dir)
+    self.assertLen(serving_model_dir_contents, 1)
+    self._ValidateServingSignatures(
+        os.path.join(self._serving_model_dir, serving_model_dir_contents[0]))
 
 
 if __name__ == '__main__':

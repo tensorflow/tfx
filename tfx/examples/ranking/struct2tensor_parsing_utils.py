@@ -13,6 +13,7 @@
 # limitations under the License.
 """Utils using struct2tensor to parse ELWC."""
 
+import functools
 import itertools
 from typing import Dict, List, Optional, Text, Union
 
@@ -22,6 +23,7 @@ from struct2tensor import path
 from struct2tensor import prensor_util
 from struct2tensor.expression_impl import proto as proto_expr
 import tensorflow as tf
+import tensorflow_ranking as tfr
 from tfx_bsl.public import tfxio
 
 from tensorflow_serving.apis import input_pb2
@@ -77,6 +79,10 @@ class Feature(object):
                   'Feature %s: type of default_value (%s) must match '
                   'dtype' % (name, type(default_value)))
 
+  def __repr__(self) -> Text:
+    return 'Feature(name={}, dtype={}, default_value={}, length={})'.format(
+        self.name, self.dtype, self.default_value, self.length)
+
 
 class ELWCDecoder(tfxio.TFGraphRecordDecoder):
   """A TFGraphRecordDecoder that decodes ExampleListWithContext proto."""
@@ -90,6 +96,22 @@ class ELWCDecoder(tfxio.TFGraphRecordDecoder):
     self._example_features = example_features
     self._size_feature_name = size_feature_name
     self._label_feature = label_feature
+
+  @property
+  def context_features(self) -> List[Feature]:
+    return self._context_features
+
+  @property
+  def example_features(self) -> List[Feature]:
+    return self._example_features
+
+  @property
+  def size_feature_name(self) -> Optional[Text]:
+    return self._size_feature_name
+
+  @property
+  def label_feature(self) -> Optional[Feature]:
+    return self._label_feature
 
   def decode_record(self, records):
     example_features = list(self._example_features)
@@ -251,6 +273,7 @@ def parse_elwc_with_struct2tensor(
   projection = s2t_expr.project(to_project)
 
   options = calculate_options.get_options_with_minimal_checks()
+  options.use_string_view = True
   prensor_result = calculate.calculate_prensors(
       [projection], options)[0]
   # a map from path.Path to RaggedTensors.
@@ -293,3 +316,100 @@ def make_ragged_densify_layer():
     A Keras Layer.
   """
   return tf.keras.layers.Lambda(lambda x: x.to_tensor())
+
+
+def make_serving_signatures(decoder: ELWCDecoder,
+                            model: tf.keras.Model,
+                            serving_default: Text = 'predict'):
+  """Create serving signatures of a TF Ranking SavedModel.
+
+  Args:
+    decoder: An ELWCDecoder.
+    model: A Keras Model.
+    serving_default: one of "predict" or "regress".
+
+  Returns:
+    A dict containing 3 keys:
+      tf.saved_model.PREDICT_METHOD_NAME -- corresponds to the "Predict" API
+      of TensorFlow Serving. The signature takes a single 1-D string tensor that
+      contains serialized ELWC protos.
+      tf.saved_model.REGRESS_METHOD_NAME -- corresponds to the "Regress" API
+      of TensorFlow Serving. The signature takes a single 1-D string tensor that
+      contains serialized tf.Example protos. Note that each tf.Example must
+      contain all the context features and example features. The model will
+      assign each tf.Example a score independenly (as if the inputs were ELWCs
+      that each contains only one example).
+      tf.saved_model.DEFAULT_SERVING_SIGNATURE_DEF_KEY: depending on
+      `serving_default`, it's an alias to either of the above signature.
+  """
+  @tf.function(
+      input_signature=[tf.TensorSpec([None], tf.string)], autograph=False)
+  def predict_serving_fn(
+      serialized_elwc_records: tf.Tensor) -> Dict[Text, tf.Tensor]:
+    decoded = decoder.decode_record(serialized_elwc_records)
+    if decoder.label_feature is not None:
+      decoded.pop(decoder.label_feature.name)
+    return _normalize_outputs(tf.saved_model.PREDICT_OUTPUTS, model(decoded))
+
+  @tf.function(
+      input_signature=[tf.TensorSpec([None], tf.string)], autograph=False)
+  def regress_serving_fn(
+      serialized_tf_example_records: tf.Tensor) -> Dict[Text, tf.Tensor]:
+    decoded = tfr.data.parse_from_tf_example(
+        serialized_tf_example_records,
+        context_feature_spec={
+            feature.name: tf.io.RaggedFeature(feature.dtype)
+            for feature in decoder.context_features
+        },
+        example_feature_spec={
+            feature.name: tf.io.RaggedFeature(feature.dtype)
+            for feature in decoder.example_features
+        })
+    if decoder.size_feature_name is not None:
+      num_examples = tf.size(serialized_tf_example_records)
+      decoded[decoder.size_feature_name] = tf.RaggedTensor.from_row_splits(
+          values=tf.ones(shape=[num_examples], dtype=tf.int64),
+          row_splits=tf.range(num_examples + 1, dtype=tf.int64))
+    outputs = tf.nest.map_structure(
+        functools.partial(tf.squeeze, axis=1), model(decoded))
+    return _normalize_outputs(tf.saved_model.PREDICT_OUTPUTS, outputs)
+
+  assert serving_default in [
+      'regress', 'predict'
+  ], 'serving_default must be one of "regress" or "predict" but got {}'.format(
+      serving_default)
+  serving_default_function = (
+      regress_serving_fn
+      if serving_default == 'regress' else predict_serving_fn)
+  return {
+      tf.saved_model.DEFAULT_SERVING_SIGNATURE_DEF_KEY:
+          serving_default_function.get_concrete_function(),
+      tf.saved_model.REGRESS_METHOD_NAME:
+          regress_serving_fn.get_concrete_function(),
+      tf.saved_model.PREDICT_METHOD_NAME:
+          predict_serving_fn.get_concrete_function(),
+  }
+
+
+def _normalize_outputs(
+    default_key: Text,
+    outputs: Union[tf.Tensor, Dict[Text, tf.Tensor]]) -> Dict[Text, tf.Tensor]:
+  """Returns a dict of Tensors for outputs.
+
+  Args:
+    default_key: If outputs is a Tensor, use the default_key to make a dict.
+    outputs: outputs to be normalized.
+
+  Returns:
+    A dict maps from str-like key(s) to Tensor(s).
+
+  Raises:
+    TypeError if outputs is not a Tensor nor a dict.
+  """
+  if isinstance(outputs, tf.Tensor):
+    return {default_key: outputs}
+  elif isinstance(outputs, dict):
+    return outputs
+  else:
+    raise TypeError(
+        'Model outputs need to be either a tensor or a dict of tensors.')

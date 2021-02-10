@@ -90,22 +90,11 @@ def run_fn(trainer_fn_args):
       validation_steps=trainer_fn_args.eval_steps,
       callbacks=[tensorboard_callback])
 
-  # TODO(zhuo): Add support for Regress signature.
-  @tf.function(input_signature=[tf.TensorSpec([None], tf.string)],
-               autograph=False)
-  def predict_serving_fn(serialized_elwc_records):
-    decoder = make_decoder()
-    decoded = decoder.decode_record(serialized_elwc_records)
-    decoded.pop(features.LABEL)
-    return {tf.saved_model.PREDICT_OUTPUTS: model(decoded)}
-
   model.save(
       trainer_fn_args.serving_model_dir,
       save_format='tf',
-      signatures={
-          'serving_default':
-              predict_serving_fn.get_concrete_function(),
-      })
+      signatures=struct2tensor_parsing_utils.make_serving_signatures(
+          make_decoder(), model, serving_default='predict'))
 
 
 def _input_fn(file_patterns,
