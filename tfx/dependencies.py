@@ -167,6 +167,9 @@ def make_extra_packages_examples():
       # Required for tfx/examples/cifar10
       'flatbuffers>=1.12,<2',
       'tflite-support>=0.1.0a1,<0.1.1',
+      # Required for tfx/examples/ranking
+      'tensorflow-ranking>=0.3.3,<0.4',
+      'struct2tensor>=0.27,<0.28',
   ]
 
 
