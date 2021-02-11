@@ -172,7 +172,8 @@ warnings when the drift is higher than is acceptable. Setting the correct
 distance is typically an iterative process requiring domain knowledge and
 experimentation.
 
-See the See the [TensorFlow Data Validation Get Started Guide](https://www.tensorflow.org/tfx/data_validation/get_started#checking_data_skew_and_drift)
+See the
+[TensorFlow Data Validation Get Started Guide](https://www.tensorflow.org/tfx/data_validation/get_started#checking_data_skew_and_drift)
 for information about configuring drift detection.
 
 ## Using Visualizations to Check Your Data
