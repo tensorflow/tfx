@@ -22,21 +22,10 @@ from tfx import types
 from tfx.components.util import tfxio_utils
 from tfx.dsl.components.base import base_executor
 from tfx.types import artifact_utils
+from tfx.types import standard_component_specs
 from tfx.utils import io_utils
 from tfx.utils import json_utils
 
-# Key for examples in executor input_dict.
-EXAMPLES_KEY = 'examples'
-# Key for statistics in executor input_dict.
-SCHEMA_KEY = 'schema'
-
-# Key for stats options json in executor exec_properties dict.
-STATS_OPTIONS_JSON_KEY = 'stats_options_json'
-# Key for exclude splits in executor exec_properties dict.
-EXCLUDE_SPLITS_KEY = 'exclude_splits'
-
-# Key for statistics in executor output_dict.
-STATISTICS_KEY = 'statistics'
 
 # Default file name for stats generated.
 _DEFAULT_FILE_NAME = 'stats_tfrecord'
@@ -62,14 +51,14 @@ class Executor(base_executor.BaseExecutor):
 
     Args:
       input_dict: Input dict from input key to a list of Artifacts.
-        - input_data: A list of type `standard_artifacts.Examples`. This should
+        - examples: A list of type `standard_artifacts.Examples`. This should
           contain both 'train' and 'eval' split.
         - schema: Optionally, a list of type `standard_artifacts.Schema`. When
           the stats_options exec_property also contains a schema, this input
           should not be provided.
       output_dict: Output dict from output key to a list of Artifacts.
-        - output: A list of type `standard_artifacts.ExampleStatistics`. This
-          should contain both the 'train' and 'eval' splits.
+        - statistics: A list of type `standard_artifacts.ExampleStatistics`.
+          This should contain both the 'train' and 'eval' splits.
       exec_properties: A dict of execution properties.
         - stats_options_json: Optionally, a JSON representation of StatsOptions.
           When a schema is provided as an input, the StatsOptions value should
@@ -88,29 +77,32 @@ class Executor(base_executor.BaseExecutor):
 
     # Load and deserialize exclude splits from execution properties.
     exclude_splits = json_utils.loads(
-        exec_properties.get(EXCLUDE_SPLITS_KEY, 'null')) or []
+        exec_properties.get(standard_component_specs.EXCLUDE_SPLITS_KEY,
+                            'null')) or []
     if not isinstance(exclude_splits, list):
       raise ValueError('exclude_splits in execution properties needs to be a '
                        'list. Got %s instead.' % type(exclude_splits))
     # Setup output splits.
-    examples = artifact_utils.get_single_instance(input_dict[EXAMPLES_KEY])
+    examples = artifact_utils.get_single_instance(
+        input_dict[standard_component_specs.EXAMPLES_KEY])
     examples_split_names = artifact_utils.decode_split_names(
         examples.split_names)
     split_names = [
         split for split in examples_split_names if split not in exclude_splits
     ]
     statistics_artifact = artifact_utils.get_single_instance(
-        output_dict[STATISTICS_KEY])
+        output_dict[standard_component_specs.STATISTICS_KEY])
     statistics_artifact.split_names = artifact_utils.encode_split_names(
         split_names)
 
     stats_options = options.StatsOptions()
-    stats_options_json = exec_properties.get(STATS_OPTIONS_JSON_KEY)
+    stats_options_json = exec_properties.get(
+        standard_component_specs.STATS_OPTIONS_JSON_KEY)
     if stats_options_json:
       # TODO(b/150802589): Move jsonable interface to tfx_bsl and use
       # json_utils
       stats_options = options.StatsOptions.from_json(stats_options_json)
-    if input_dict.get(SCHEMA_KEY):
+    if input_dict.get(standard_component_specs.SCHEMA_KEY):
       if stats_options.schema:
         raise ValueError('A schema was provided as an input and the '
                          'stats_options exec_property also contains a schema '
@@ -118,7 +110,8 @@ class Executor(base_executor.BaseExecutor):
       else:
         schema = io_utils.SchemaReader().read(
             io_utils.get_only_uri_in_dir(
-                artifact_utils.get_single_uri(input_dict[SCHEMA_KEY])))
+                artifact_utils.get_single_uri(
+                    input_dict[standard_component_specs.SCHEMA_KEY])))
         stats_options.schema = schema
 
     split_and_tfxio = []
@@ -135,8 +128,8 @@ class Executor(base_executor.BaseExecutor):
     with self._make_beam_pipeline() as p:
       for split, tfxio in split_and_tfxio:
         logging.info('Generating statistics for split %s.', split)
-        output_uri = artifact_utils.get_split_uri(output_dict[STATISTICS_KEY],
-                                                  split)
+        output_uri = artifact_utils.get_split_uri(
+            output_dict[standard_component_specs.STATISTICS_KEY], split)
         output_path = os.path.join(output_uri, _DEFAULT_FILE_NAME)
         data = p | 'TFXIORead[%s]' % split >> tfxio.BeamSource()
         _ = (

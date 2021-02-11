@@ -42,14 +42,14 @@ EXAMPLES_KEY = 'examples'
 MODEL_KEY = 'model'
 BLESSING_KEY = 'blessing'
 TRAIN_ARGS_KEY = 'train_args'
-MODULE_FILE_KEY = 'module_file'
 CUSTOM_CONFIG_KEY = 'custom_config'
 MODEL_BLESSING_KEY = 'model_blessing'
 TRANSFORM_GRAPH_KEY = 'transform_graph'
 EVAL_ARGS_KEY = 'eval_args'
-# Key for example_validator
+MODULE_FILE_KEY = 'module_file'
 EXCLUDE_SPLITS_KEY = 'exclude_splits'
 STATISTICS_KEY = 'statistics'
+# Key for example_validator
 ANOMALIES_KEY = 'anomalies'
 # Key for evaluator
 EVAL_CONFIG_KEY = 'eval_config'
@@ -73,6 +73,8 @@ DATA_SPEC_KEY = 'data_spec'
 OUTPUT_EXAMPLE_SPEC_KEY = 'output_example_spec'
 INFERENCE_RESULT_KEY = 'inference_result'
 OUTPUT_EXAMPLES_KEY = 'output_examples'
+# Key for statistics_gen
+STATS_OPTIONS_JSON_KEY = 'stats_options_json'
 # Key for pusher
 PUSH_DESTINATION_KEY = 'push_destination'
 INFRA_BLESSING_KEY = 'infra_blessing'
@@ -309,24 +311,20 @@ class StatisticsGenSpec(ComponentSpec):
   """StatisticsGen component spec."""
 
   PARAMETERS = {
-      'stats_options_json': ExecutionParameter(type=(str, Text), optional=True),
-      'exclude_splits': ExecutionParameter(type=(str, Text), optional=True),
+      STATS_OPTIONS_JSON_KEY:
+          ExecutionParameter(type=(str, Text), optional=True),
+      EXCLUDE_SPLITS_KEY:
+          ExecutionParameter(type=(str, Text), optional=True),
   }
   INPUTS = {
-      'examples': ChannelParameter(type=standard_artifacts.Examples),
-      'schema': ChannelParameter(type=standard_artifacts.Schema, optional=True),
+      EXAMPLES_KEY:
+          ChannelParameter(type=standard_artifacts.Examples),
+      SCHEMA_KEY:
+          ChannelParameter(type=standard_artifacts.Schema, optional=True),
   }
   OUTPUTS = {
-      'statistics': ChannelParameter(type=standard_artifacts.ExampleStatistics),
-  }
-  # TODO(b/139281215): these input / output names have recently been renamed.
-  # These compatibility aliases are temporarily provided for backwards
-  # compatibility.
-  _INPUT_COMPATIBILITY_ALIASES = {
-      'input_data': 'examples',
-  }
-  _OUTPUT_COMPATIBILITY_ALIASES = {
-      'output': 'statistics',
+      STATISTICS_KEY:
+          ChannelParameter(type=standard_artifacts.ExampleStatistics),
   }
 
 
