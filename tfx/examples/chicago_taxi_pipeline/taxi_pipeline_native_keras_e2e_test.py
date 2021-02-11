@@ -38,7 +38,7 @@ class TaxiPipelineNativeKerasEndToEndTest(
 
     self._pipeline_name = 'native_keras_test'
     self._data_root = os.path.join(
-        os.path.dirname(__file__), 'data', 'big_tipper_label')
+        os.path.dirname(__file__), 'data', 'simple')
     self._module_file = os.path.join(
         os.path.dirname(__file__), 'taxi_utils_native_keras.py')
     self._serving_model_dir = os.path.join(self._test_dir, 'serving_model')
