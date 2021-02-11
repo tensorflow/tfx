@@ -151,7 +151,13 @@ class AsyncPipelineTaskGeneratorTest(tu.TfxTest, parameterized.TestCase):
           self._task_queue.enqueue(task)
       return tasks, active_executions
 
-  def test_no_tasks_generated_when_new(self):
+  @parameterized.parameters(0, 1)
+  def test_no_tasks_generated_when_no_inputs(self, min_count):
+    """Tests no tasks are generated when there are no inputs, regardless of min_count."""
+    for node in self._pipeline.nodes:
+      for v in node.pipeline_node.inputs.inputs.values():
+        v.min_count = min_count
+
     with self._mlmd_connection as m:
       task_gen = asptg.AsyncPipelineTaskGenerator(m, self._pipeline,
                                                   lambda _: False)

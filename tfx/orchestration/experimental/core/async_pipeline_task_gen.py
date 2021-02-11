@@ -119,7 +119,8 @@ class AsyncPipelineTaskGenerator(task_gen.TaskGenerator):
 
     resolved_info = task_gen_utils.generate_resolved_info(
         metadata_handler, node)
-    if resolved_info.input_artifacts is None:
+    if resolved_info.input_artifacts is None or not any(
+        resolved_info.input_artifacts.values()):
       logging.info(
           'Task cannot be generated for node %s since no input artifacts '
           'are resolved.', node.node_info.id)
