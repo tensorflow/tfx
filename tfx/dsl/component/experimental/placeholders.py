@@ -41,6 +41,24 @@ class InputValuePlaceholder(json_utils.Jsonable):
     return not self.__eq__(other)
 
 
+class InputPathPlaceholder(json_utils.Jsonable):
+  """Represents a placeholder for the local path of the input artifact argument.
+
+  Represents a placeholder that will be replaced at runtime with the local path
+  of the input artifact argument data.
+  """
+
+  def __init__(self, input_name: Text):
+    self.input_name = input_name
+
+  def __eq__(self, other) -> bool:
+    return (isinstance(other, self.__class__) and
+            self.input_name == other.input_name)
+
+  def __ne__(self, other) -> bool:
+    return not self.__eq__(other)
+
+
 class InputUriPlaceholder(json_utils.Jsonable):
   """Represents a placeholder for the URI of the input artifact argument.
 
@@ -54,6 +72,24 @@ class InputUriPlaceholder(json_utils.Jsonable):
   def __eq__(self, other) -> bool:
     return (isinstance(other, self.__class__) and
             self.input_name == other.input_name)
+
+  def __ne__(self, other) -> bool:
+    return not self.__eq__(other)
+
+
+class OutputPathPlaceholder(json_utils.Jsonable):
+  """Represents a placeholder for the local path for the output artifact.
+
+  Represents a placeholder that will be replaced at runtime with the local path
+  for the output artifact data.
+  """
+
+  def __init__(self, output_name: Text):
+    self.output_name = output_name
+
+  def __eq__(self, other) -> bool:
+    return (isinstance(other, self.__class__) and
+            self.output_name == other.output_name)
 
   def __ne__(self, other) -> bool:
     return not self.__eq__(other)

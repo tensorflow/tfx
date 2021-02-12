@@ -7,7 +7,9 @@ executors {
     container {
       image: "dummy/producer"
       command: "producer"
-      command: "--output1"
+      command: "--output1-path"
+      command: "{{$.outputs.artifacts['output1'].path}}"
+      command: "--output1-uri"
       command: "{{$.outputs.artifacts['output1'].uri}}"
       command: "--param1"
       command: "{{$.inputs.parameters['param1']}}"

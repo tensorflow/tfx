@@ -10,6 +10,7 @@
    [tensorflow_ranking](https://github.com/tensorflow/ranking))
    at `tfx/examples/ranking`. More documentation will be available in future
    releases.
+*  Added support for artifact path placeholders to the Kubeflow V2 runner.
 
 ## Breaking changes
 

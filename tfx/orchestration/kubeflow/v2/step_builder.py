@@ -85,8 +85,12 @@ def _resolve_command_line(
         return "{{$.inputs.parameters['%s']}}" % cmd_arg.input_name
       else:
         return "{{$.inputs.artifacts['%s'].value}}" % cmd_arg.input_name
+    elif isinstance(cmd_arg, placeholders.InputPathPlaceholder):
+      return "{{$.inputs.artifacts['%s'].path}}" % cmd_arg.input_name
     elif isinstance(cmd_arg, placeholders.InputUriPlaceholder):
       return "{{$.inputs.artifacts['%s'].uri}}" % cmd_arg.input_name
+    elif isinstance(cmd_arg, placeholders.OutputPathPlaceholder):
+      return "{{$.outputs.artifacts['%s'].path}}" % cmd_arg.output_name
     elif isinstance(cmd_arg, placeholders.OutputUriPlaceholder):
       return "{{$.outputs.artifacts['%s'].uri}}" % cmd_arg.output_name
     elif isinstance(cmd_arg, placeholders.ConcatPlaceholder):

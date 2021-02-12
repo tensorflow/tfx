@@ -123,13 +123,25 @@ deployment_spec {
                             string_value: "transformer"
                           }
                           values {
-                            string_value: "--input1"
+                            string_value: "--input1-path"
+                          }
+                          values {
+                            string_value: "{{$.inputs.artifacts[\'input1\'].path}}"
+                          }
+                          values {
+                            string_value: "--input1-uri"
                           }
                           values {
                             string_value: "{{$.inputs.artifacts[\'input1\'].uri}}"
                           }
                           values {
-                            string_value: "--output1"
+                            string_value: "--output1-path"
+                          }
+                          values {
+                            string_value: "{{$.outputs.artifacts[\'output1\'].path}}"
+                          }
+                          values {
+                            string_value: "--output1-uri"
                           }
                           values {
                             string_value: "{{$.outputs.artifacts[\'output1\'].uri}}"
