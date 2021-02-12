@@ -234,8 +234,13 @@ message ComponentOutputsSpec {
   // Definition of an artifact output.
   message ArtifactSpec {
     ArtifactTypeSchema artifact_type = 1;
-    map<string, ValueOrRuntimeParameter> properties = 2;
-    map<string, ValueOrRuntimeParameter> custom_properties = 3;
+    // Deprecated. Use [ArtifactSpec.metadata][] instead.
+    map<string, ValueOrRuntimeParameter> properties = 2 [deprecated = true];
+    // Deprecated. Use [ArtifactSpec.metadata][] instead.
+    map<string, ValueOrRuntimeParameter> custom_properties = 3
+        [deprecated = true];
+    // Properties of the Artifact.
+    google.protobuf.Struct metadata = 4;
   }
   // Definition of a parameter output.
   message ParameterSpec {
@@ -633,10 +638,16 @@ message PipelineDeploymentConfig {
     ArtifactTypeSchema type_schema = 2;
 
     // The properties of the artifact.
-    map<string, ValueOrRuntimeParameter> properties = 3;
+    // Deprecated. Use [ImporterSpec.metadata][] instead.
+    map<string, ValueOrRuntimeParameter> properties = 3 [deprecated = true];
 
     // The custom properties of the artifact.
-    map<string, ValueOrRuntimeParameter> custom_properties = 4;
+    // Deprecated. Use [ImporterSpec.metadata][] instead.
+    map<string, ValueOrRuntimeParameter> custom_properties = 4
+        [deprecated = true];
+
+    // Properties of the Artifact.
+    google.protobuf.Struct metadata = 6;
 
     // Whether or not import an artifact regardless it has been imported before.
     bool reimport = 5;
@@ -725,10 +736,15 @@ message RuntimeArtifact {
   string uri = 3;
 
   // The properties of the artifact.
-  map<string, Value> properties = 4;
+  // Deprecated. Use [RuntimeArtifact.metadata][] instead.
+  map<string, Value> properties = 4 [deprecated = true];
 
   // The custom properties of the artifact.
-  map<string, Value> custom_properties = 5;
+  // Deprecated. Use [RuntimeArtifact.metadata][] instead.
+  map<string, Value> custom_properties = 5 [deprecated = true];
+
+  // Properties of the Artifact.
+  google.protobuf.Struct metadata = 6;
 }
 
 // Message that represents a list of artifacts.
