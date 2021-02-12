@@ -26,8 +26,8 @@ import apache_beam as beam
 import tensorflow as tf
 
 from tfx.components.example_gen import base_example_gen_executor
-from tfx.components.example_gen import utils
 from tfx.proto import example_gen_pb2
+from tfx.types import standard_component_specs
 
 
 @beam.ptransform_fn
@@ -50,7 +50,7 @@ def _ImportSerializedRecord(  # pylint: disable=invalid-name
   Returns:
     PCollection of records (tf.Example, tf.SequenceExample, or bytes).
   """
-  input_base_uri = exec_properties[utils.INPUT_BASE_KEY]
+  input_base_uri = exec_properties[standard_component_specs.INPUT_BASE_KEY]
   input_split_pattern = os.path.join(input_base_uri, split_pattern)
   logging.info('Reading input TFRecord data %s.', input_split_pattern)
 
@@ -88,7 +88,8 @@ class Executor(base_example_gen_executor.BaseExampleGenExecutor):
       Returns:
         PCollection of records (tf.Example, tf.SequenceExample, or bytes).
       """
-      output_payload_format = exec_properties.get(utils.OUTPUT_DATA_FORMAT_KEY)
+      output_payload_format = exec_properties.get(
+          standard_component_specs.OUTPUT_DATA_FORMAT_KEY)
 
       serialized_records = (
           pipeline
