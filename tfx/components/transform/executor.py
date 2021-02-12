@@ -1200,9 +1200,10 @@ class Executor(base_executor.BaseExecutor):
         # WriteTransformFn writes transform_fn and metadata to subdirectories
         # tensorflow_transform.SAVED_MODEL_DIR and
         # tensorflow_transform.TRANSFORMED_METADATA_DIR respectively.
-        (transform_fn
-         | 'WriteTransformFn'
-         >> tft_beam.WriteTransformFn(transform_output_path))
+        completed_transform = (
+            transform_fn
+            | 'WriteTransformFn' >>
+            tft_beam.WriteTransformFn(transform_output_path))
 
         if output_cache_dir is not None and cache_output is not None:
           fileio.makedirs(output_cache_dir)
@@ -1326,6 +1327,9 @@ class Executor(base_executor.BaseExecutor):
             ([dataset.transformed_and_standardized
               for dataset in transform_data_list]
              | 'FlattenTransformedDatasets' >> beam.Flatten()
+             | 'WaitForTransformWrite' >> beam.Map(
+                 lambda x, completion: x,
+                 completion=beam.pvalue.AsSingleton(completed_transform))
              | 'GenerateStats[FlattenedTransformedDatasets]' >>
              self._GenerateStats(
                  post_transform_feature_stats_path,
@@ -1338,6 +1342,9 @@ class Executor(base_executor.BaseExecutor):
               for dataset in transform_data_list:
                 infix = 'TransformIndex{}'.format(dataset.index)
                 (dataset.transformed_and_standardized
+                 | 'WaitForTransformWrite[{}]'.format(infix) >> beam.Map(
+                     lambda x, completion: x,
+                     completion=beam.pvalue.AsSingleton(completed_transform))
                  | 'GenerateStats[{}]'.format(infix) >> self._GenerateStats(
                      dataset.stats_output_path,
                      stats_options=post_transform_stats_options))
