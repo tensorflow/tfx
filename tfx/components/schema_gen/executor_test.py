@@ -19,11 +19,13 @@ from __future__ import division
 from __future__ import print_function
 
 import os
+
 import tensorflow as tf
 from tfx.components.schema_gen import executor
 from tfx.dsl.io import fileio
 from tfx.types import artifact_utils
 from tfx.types import standard_artifacts
+from tfx.types import standard_component_specs
 from tfx.utils import json_utils
 
 
@@ -46,17 +48,17 @@ class ExecutorTest(tf.test.TestCase):
     schema_output.uri = os.path.join(output_data_dir, 'schema_output')
 
     input_dict = {
-        executor.STATISTICS_KEY: [statistics_artifact],
+        standard_component_specs.STATISTICS_KEY: [statistics_artifact],
     }
 
     exec_properties = {
         # List needs to be serialized before being passed into Do function.
-        executor.EXCLUDE_SPLITS_KEY:
+        standard_component_specs.EXCLUDE_SPLITS_KEY:
             json_utils.dumps(['test'])
     }
 
     output_dict = {
-        executor.SCHEMA_KEY: [schema_output],
+        standard_component_specs.SCHEMA_KEY: [schema_output],
     }
 
     schema_gen_executor = executor.Executor()

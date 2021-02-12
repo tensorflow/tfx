@@ -42,14 +42,14 @@ EXAMPLES_KEY = 'examples'
 MODEL_KEY = 'model'
 BLESSING_KEY = 'blessing'
 TRAIN_ARGS_KEY = 'train_args'
-MODULE_FILE_KEY = 'module_file'
 CUSTOM_CONFIG_KEY = 'custom_config'
 MODEL_BLESSING_KEY = 'model_blessing'
 TRANSFORM_GRAPH_KEY = 'transform_graph'
 EVAL_ARGS_KEY = 'eval_args'
-# Key for example_validator
+MODULE_FILE_KEY = 'module_file'
 EXCLUDE_SPLITS_KEY = 'exclude_splits'
 STATISTICS_KEY = 'statistics'
+# Key for example_validator
 ANOMALIES_KEY = 'anomalies'
 # Key for evaluator
 EVAL_CONFIG_KEY = 'eval_config'
@@ -73,6 +73,8 @@ DATA_SPEC_KEY = 'data_spec'
 OUTPUT_EXAMPLE_SPEC_KEY = 'output_example_spec'
 INFERENCE_RESULT_KEY = 'inference_result'
 OUTPUT_EXAMPLES_KEY = 'output_examples'
+# Key for schema_gen
+INFER_FEATURE_SHAPE_KEY = 'infer_feature_shape'
 # Key for pusher
 PUSH_DESTINATION_KEY = 'push_destination'
 INFRA_BLESSING_KEY = 'infra_blessing'
@@ -293,15 +295,6 @@ class SchemaGenSpec(ComponentSpec):
   }
   OUTPUTS = {
       'schema': ChannelParameter(type=standard_artifacts.Schema),
-  }
-  # TODO(b/139281215): these input / output names have recently been renamed.
-  # These compatibility aliases are temporarily provided for backwards
-  # compatibility.
-  _INPUT_COMPATIBILITY_ALIASES = {
-      'stats': 'statistics',
-  }
-  _OUTPUT_COMPATIBILITY_ALIASES = {
-      'output': 'schema',
   }
 
 

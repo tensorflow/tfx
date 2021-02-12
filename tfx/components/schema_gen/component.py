@@ -63,8 +63,7 @@ class SchemaGen(base_component.BaseComponent):
       infer_feature_shape: Optional[Union[bool,
                                           data_types.RuntimeParameter]] = True,
       exclude_splits: Optional[List[Text]] = None,
-      output: Optional[types.Channel] = None,
-      stats: Optional[types.Channel] = None,
+      schema: Optional[types.Channel] = None,
       instance_name: Optional[Text] = None):
     """Constructs a SchemaGen component.
 
@@ -79,23 +78,15 @@ class SchemaGen(base_component.BaseComponent):
       exclude_splits: Names of splits that will not be taken into consideration
         when auto-generating a schema. Default behavior (when exclude_splits is
         set to None) is excluding no splits.
-      output: Output `Schema` channel for schema result.
-      stats: Backwards compatibility alias for the 'statistics' argument.
+      schema: Output `Schema` channel for schema result.
       instance_name: Optional name assigned to this specific instance of
         SchemaGen.  Required only if multiple SchemaGen components are declared
-        in the same pipeline.  Either `statistics` or `stats` must be present in
-        the input arguments.
+        in the same pipeline.
     """
-    if stats:
-      logging.warning(
-          'The "stats" argument to the SchemaGen component has '
-          'been renamed to "statistics" and is deprecated. Please update your '
-          'usage as support for this argument will be removed soon.')
-      statistics = stats
     if exclude_splits is None:
       exclude_splits = []
       logging.info('Excluding no splits because exclude_splits is not set.')
-    schema = output or types.Channel(type=standard_artifacts.Schema)
+    schema = schema or types.Channel(type=standard_artifacts.Schema)
     if isinstance(infer_feature_shape, bool):
       infer_feature_shape = int(infer_feature_shape)
     spec = SchemaGenSpec(
