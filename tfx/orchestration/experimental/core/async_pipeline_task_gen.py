@@ -78,12 +78,11 @@ class AsyncPipelineTaskGenerator(task_gen.TaskGenerator):
       A `list` of tasks to execute.
     """
     result = []
-    filtered_nodes = [
-        n.pipeline_node
-        for n in self._pipeline.nodes
-        if n.pipeline_node.node_info.id not in self._ignore_node_ids
-    ]
-    for node in filtered_nodes:
+    for node in [n.pipeline_node for n in self._pipeline.nodes]:
+      if node.node_info.id in self._ignore_node_ids:
+        logging.info('Ignoring node for task generation: %s',
+                     task_lib.NodeUid.from_pipeline_node(self._pipeline, node))
+        continue
       # If a task for the node is already tracked by the task queue, it need
       # not be considered for generation again.
       if self._is_task_id_tracked_fn(
@@ -108,9 +107,6 @@ class AsyncPipelineTaskGenerator(task_gen.TaskGenerator):
     Returns:
       Returns a `Task` or `None` if task generation is deemed infeasible.
     """
-    if not task_gen_utils.is_feasible_node(node):
-      return None
-
     executions = task_gen_utils.get_executions(metadata_handler, node)
     result = task_gen_utils.generate_task_from_active_execution(
         metadata_handler, self._pipeline, node, executions)

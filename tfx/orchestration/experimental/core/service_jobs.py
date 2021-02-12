@@ -59,3 +59,16 @@ class ServiceJobManager(abc.ABC):
     Args:
       pipeline_state: A `PipelineState` object for an active pipeline.
     """
+
+  @abc.abstractmethod
+  def is_pure_service_node(self, pipeline_state: pstate.PipelineState,
+                           node_id: str) -> bool:
+    """Returns `True` if the given node only has service job(s).
+
+    Args:
+      pipeline_state: A `PipelineState` object for an active pipeline.
+      node_id: Id of the node in the pipeline to be checked.
+
+    Returns:
+      `True` if the node only has service job(s).
+    """

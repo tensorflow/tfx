@@ -208,22 +208,3 @@ def get_latest_successful_execution(
         key=lambda e: e.create_time_since_epoch,
         reverse=True)[0]
   return None
-
-
-def is_feasible_node(node: pipeline_pb2.PipelineNode) -> bool:
-  """Returns whether the node is feasible for task generation.
-
-  Currently, ExampleGen is ignored for task generation as the component is
-  expected to contain the entire driver + executor + publish lifecycle which is
-  managed outside the scope of the task generator.
-
-  TODO(goutham): This is a short-term heuristic and may need revision when a
-  standard approach to detect such nodes is instituted.
-
-  Args:
-    node: A pipeline node.
-
-  Returns:
-    `True` if the node is feasible, `False` otherwise.
-  """
-  return node.node_info.type.name != 'ExampleGen'
