@@ -121,7 +121,7 @@ def _create_parameterized_pipeline(
   # The module file used in Transform and Trainer component is paramterized by
   # transform_module_file.
   transform = Transform(
-      input_data=example_gen.outputs['examples'],
+      examples=example_gen.outputs['examples'],
       schema=schema_gen.outputs['schema'],
       module_file=transform_module_file)
 
