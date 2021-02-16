@@ -695,6 +695,17 @@ message PipelineDeploymentConfig {
     google.protobuf.Struct custom_job = 1;
   }
 
+  message DataflowFlexTemplateSpec {
+    // API Specification for launching a Dataflow flex template.
+    // The fields must match the field names and structures defined in
+    // https://cloud.google.com/dataflow/docs/reference/rest/v1b3/projects.locations.flexTemplates/launch#request-body
+    // The field types must be either the same, or be a string containing the
+    // string based placeholder contract defined in [ExecutorInput](). The
+    // placeholders will be replaced with the actual value during the runtime
+    // before the job is launched.
+    google.protobuf.Struct dataflow_flex_template = 1;
+  }
+
   // The specification of the executor.
   message ExecutorSpec {
     oneof spec {
@@ -706,6 +717,8 @@ message PipelineDeploymentConfig {
       ResolverSpec resolver = 3;
       // Starts a Google Cloud AI Platform CustomJob.
       AIPlatformCustomJobSpec custom_job = 4;
+      // Launches a dataflow flex template.
+      DataflowFlexTemplateSpec dataflow_flex_template = 5;
     }
   }
   // Map from executor label to executor spec.
