@@ -62,16 +62,14 @@ class TFLiteRewriterTest(tf.test.TestCase):
     return src_model, dst_model, src_model_path, dst_model_path
 
   @mock.patch('tfx.components.trainer.rewriting.'
-              'tflite_rewriter._create_tflite_converter')
+              'tflite_rewriter.TFLiteRewriter._create_tflite_converter')
   def testInvokeTFLiteRewriterNoAssetsSucceeds(self, converter):
     m = self.ConverterMock()
     converter.return_value = m
 
     src_model, dst_model, _, dst_model_path = self.create_temp_model_template()
 
-    tfrw = tflite_rewriter.TFLiteRewriter(
-        name='myrw',
-        filename='fname')
+    tfrw = tflite_rewriter.TFLiteRewriter(name='myrw', filename='fname')
     tfrw.perform_rewrite(src_model, dst_model)
 
     converter.assert_called_once_with(
@@ -86,7 +84,7 @@ class TFLiteRewriterTest(tf.test.TestCase):
       self.assertEqual(six.ensure_text(f.readline()), 'model')
 
   @mock.patch('tfx.components.trainer.rewriting'
-              '.tflite_rewriter._create_tflite_converter')
+              '.tflite_rewriter.TFLiteRewriter._create_tflite_converter')
   def testInvokeTFLiteRewriterWithAssetsSucceeds(self, converter):
     m = self.ConverterMock()
     converter.return_value = m
@@ -136,7 +134,7 @@ class TFLiteRewriterTest(tf.test.TestCase):
       self.assertEqual(six.ensure_text(f.readline()), 'assets_extra_file')
 
   @mock.patch('tfx.components.trainer.rewriting.'
-              'tflite_rewriter._create_tflite_converter')
+              'tflite_rewriter.TFLiteRewriter._create_tflite_converter')
   def testInvokeTFLiteRewriterQuantizationHybridSucceeds(self, converter):
     m = self.ConverterMock()
     converter.return_value = m
@@ -161,7 +159,7 @@ class TFLiteRewriterTest(tf.test.TestCase):
       self.assertEqual(six.ensure_text(f.readline()), 'model')
 
   @mock.patch('tfx.components.trainer.rewriting.'
-              'tflite_rewriter._create_tflite_converter')
+              'tflite_rewriter.TFLiteRewriter._create_tflite_converter')
   def testInvokeTFLiteRewriterQuantizationFloat16Succeeds(self, converter):
     m = self.ConverterMock()
     converter.return_value = m
@@ -226,6 +224,26 @@ class TFLiteRewriterTest(tf.test.TestCase):
 
     _, kwargs = converter.call_args
     self.assertListEqual(kwargs['signature_keys'], ['tflite'])
+
+  @mock.patch('tfx.components.trainer.rewriting.'
+              'tflite_rewriter.TFLiteRewriter._create_tflite_converter')
+  def testInvokeConverterWithKwargs(self, converter):
+    converter.return_value = self.ConverterMock()
+
+    src_model, dst_model, _, _ = self.create_temp_model_template()
+
+    tfrw = tflite_rewriter.TFLiteRewriter(
+        name='myrw', filename='fname', output_arrays=['head'])
+    tfrw.perform_rewrite(src_model, dst_model)
+
+    converter.assert_called_once_with(
+        saved_model_path=mock.ANY,
+        quantization_optimizations=[],
+        quantization_supported_types=[],
+        input_data=None,
+        signature_key=None,
+        output_arrays=['head'])
+
 
 if __name__ == '__main__':
   tf.test.main()

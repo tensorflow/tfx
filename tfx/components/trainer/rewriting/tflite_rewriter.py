@@ -33,62 +33,6 @@ from tfx.utils import io_utils
 EXTRA_ASSETS_DIRECTORY = 'assets.extra'
 
 
-def _create_tflite_converter(
-    saved_model_path: Text,
-    quantization_optimizations: Sequence[tf.lite.Optimize],
-    quantization_supported_types: Sequence[tf.DType],
-    # TODO(b/175699054): Enable once data API is adopted.
-    input_data=None,
-    signature_key: Text = None) -> tf.lite.TFLiteConverter:
-  """Creates a TFLite converter with proper quantization options.
-
-  Currently,
-  this supports DYNAMIC_RANGE, FULL_INTEGER and FLOAT16 quantizations.
-
-  Args:
-    saved_model_path: Path for the TF SavedModel.
-    quantization_optimizations: Options for optimizations in quantization. If
-      empty, no quantization will be applied(float32). Check
-      https://www.tensorflow.org/lite/performance/post_training_quantization for
-        details.
-    quantization_supported_types: Options for optimizations in quantization.
-      Check
-      https://www.tensorflow.org/lite/performance/post_training_quantization for
-        details.
-    input_data: Data for full-integer quantization to be used as a
-      representative dataset. None if quantization is not full-integer.
-    signature_key: Key identifying SignatureDef containing TFLite inputs and
-      outputs. (default tf.saved_model.DEFAULT_SERVING_SIGNATURE_DEF_KEY)
-
-  Returns:
-    A TFLite converter with the proper flags being set.
-
-  Raises:
-    NotImplementedError: Raises when full-integer quantization is called.
-  """
-
-  if signature_key:
-    # Need the check here because from_saved_model takes signature_keys list.
-    # [None] is not None.
-    converter = tf.lite.TFLiteConverter.from_saved_model(
-        saved_model_path, signature_keys=[signature_key])
-  else:
-    converter = tf.lite.TFLiteConverter.from_saved_model(saved_model_path)
-
-  converter.optimizations = quantization_optimizations
-  converter.target_spec.supported_types = quantization_supported_types
-
-  if input_data:
-    def _representative_dataset():
-      # TODO(b/175699054): Fill the logic once input_data is landed.
-      pass
-    converter.representative_dataset = _representative_dataset
-    # TODO(b/175699054): Remove once data API is adopted.
-    raise NotImplementedError('Full-integer quantization is not supported yet.')
-
-  return converter
-
-
 def _create_tflite_compatible_saved_model(src: Text, dst: Text):
   io_utils.copy_dir(src, dst)
   assets_path = os.path.join(dst, tf.saved_model.ASSETS_DIRECTORY)
@@ -111,7 +55,8 @@ class TFLiteRewriter(rewriter.BaseRewriter):
       quantization_optimizations: Optional[Sequence[tf.lite.Optimize]] = None,
       quantization_supported_types: Optional[Sequence[tf.DType]] = None,
       quantization_enable_full_integer: bool = False,
-      signature_key: Text = None):
+      signature_key: Text = None,
+      **kwargs):
     """Create an instance of the TFLiteRewriter.
 
     Args:
@@ -133,6 +78,7 @@ class TFLiteRewriter(rewriter.BaseRewriter):
         option.
       signature_key: Key identifying SignatureDef containing TFLite inputs and
         outputs.
+      **kwargs: Additional keyword arguments to create TFlite converter.
     """
     # TODO(b/152636072): Add support for representative_dataset.
     self._name = name
@@ -154,6 +100,7 @@ class TFLiteRewriter(rewriter.BaseRewriter):
       # NotImplementedError inside _create_tflite_converter.
       self._input_data = 1
     self._signature_key = signature_key
+    self._kwargs = kwargs
 
   @property
   def name(self) -> Text:
@@ -205,13 +152,14 @@ class TFLiteRewriter(rewriter.BaseRewriter):
     _create_tflite_compatible_saved_model(
         six.ensure_text(original_model.path), tmp_model_dir)
 
-    converter = _create_tflite_converter(
+    converter = self._create_tflite_converter(
         saved_model_path=tmp_model_dir,
         quantization_optimizations=self._quantization_optimizations,
         quantization_supported_types=self._quantization_supported_types,
         # TODO(b/175699054): Enable once data API is landed.
         input_data=self._input_data,
-        signature_key=self._signature_key)
+        signature_key=self._signature_key,
+        **self._kwargs)
     tflite_model = converter.convert()
 
     output_path = os.path.join(
@@ -253,3 +201,64 @@ class TFLiteRewriter(rewriter.BaseRewriter):
     """
     # TODO(dzats): Implement post-rewrite validation.
     pass
+
+  def _create_tflite_converter(
+      self,
+      saved_model_path: Text,
+      quantization_optimizations: Sequence[tf.lite.Optimize],
+      quantization_supported_types: Sequence[tf.DType],
+      # TODO(b/175699054): Enable once data API is adopted.
+      input_data=None,
+      signature_key: Text = None,
+      **kwargs) -> tf.lite.TFLiteConverter:
+    """Creates a TFLite converter with proper quantization options.
+
+    Currently,
+    this supports DYNAMIC_RANGE, FULL_INTEGER and FLOAT16 quantizations.
+
+    Args:
+      saved_model_path: Path for the TF SavedModel.
+      quantization_optimizations: Options for optimizations in quantization. If
+        empty, no quantization will be applied(float32). Check
+        https://www.tensorflow.org/lite/performance/post_training_quantization
+          for details.
+      quantization_supported_types: Options for optimizations in quantization.
+        Check
+        https://www.tensorflow.org/lite/performance/post_training_quantization
+          for details.
+      input_data: Data for full-integer quantization to be used as a
+        representative dataset. None if quantization is not full-integer.
+      signature_key: Key identifying SignatureDef containing TFLite inputs and
+        outputs. (default tf.saved_model.DEFAULT_SERVING_SIGNATURE_DEF_KEY)
+      **kwargs: Additional arguments to create tflite converter.
+
+    Returns:
+      A TFLite converter with the proper flags being set.
+
+    Raises:
+      NotImplementedError: Raises when full-integer quantization is called.
+    """
+
+    if signature_key:
+      # Need the check here because from_saved_model takes signature_keys list.
+      # [None] is not None.
+      converter = tf.lite.TFLiteConverter.from_saved_model(
+          saved_model_path, signature_keys=[signature_key])
+    else:
+      converter = tf.lite.TFLiteConverter.from_saved_model(saved_model_path)
+
+    converter.optimizations = quantization_optimizations
+    converter.target_spec.supported_types = quantization_supported_types
+
+    if input_data:
+
+      def _representative_dataset():
+        # TODO(b/175699054): Fill the logic once input_data is landed.
+        pass
+
+      converter.representative_dataset = _representative_dataset
+      # TODO(b/175699054): Remove once data API is adopted.
+      raise NotImplementedError(
+          'Full-integer quantization is not supported yet.')
+
+    return converter
