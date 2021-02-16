@@ -11,24 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+ARG BASE_IMAGE
+ARG BEAM_VERSION
 
-FROM gcr.io/tfx-oss-public/tfx_base:py37-20200729
-# Change to following base image if docker hub is preferred.
-# FROM tensorflow/tfx_base:latest
-
-LABEL maintainer="tensorflow-extended-dev@googlegroups.com"
-
-# TODO(zhitaoli): Remove pinned version of tensorflow and related packages here
-# once we switch default tensorflow version in released image to TF 2.x.
-# TODO(b/151392812): Remove `google-api-python-client` and `google-apitools`
-#                    when patching is not needed any more.
-RUN CFLAGS=$(/usr/bin/python-config --cflags) python -m pip install \
-  "kubernetes>=10.0.1,<11" \
-  "tensorflow>=1.15,<3" \
-  "tensorflow-serving-api>=1.15,<3" \
-  "google-api-python-client==1.8.0" \
-  "google-apitools==0.5.30"
-
+FROM gcr.io/tfx-oss-public/tfx_base:py37-20200729 as wheel-builder
 # docker build command should be run under root directory of github checkout.
 ENV TFX_DIR=/tfx
 ADD . ${TFX_DIR}/src
@@ -62,24 +48,54 @@ RUN cd ${TFX_DIR}/src; \
     else \
       CFLAGS=$(/usr/bin/python-config --cflags) \
         python -m pip install ${MLSDK_WHEEL} ${TFX_WHEEL}[docker-image] ; \
-    fi; \
-    cd ${TFX_DIR}
+    fi;
+
+# We need to name this step for the next COPY --from command.
+FROM apache/beam_python3.7_sdk:${BEAM_VERSION} as beam-worker
+
+# Build stage to extend DLVM image.
+FROM ${BASE_IMAGE} as install
+
+ARG TFX_DEPENDENCY_SELECTOR
+ENV TFX_DEPENDENCY_SELECTOR=${TFX_DEPENDENCY_SELECTOR}
+
+# Copy from image matching installed version of 'apache-beam'.
+COPY --from=beam-worker /opt/apache/beam /opt/apache/beam
+# Dataflow SDK worker image looks for pip at a different location by default
+# without following pip environment variable.
+# TODO(zhitaoli): Remove hack on pip environment after
+# https://github.com/apache/beam/pull/13850 is widely available.
+ENV pip=/opt/conda/bin/pip
+ENTRYPOINT ["/opt/apache/beam/boot"]
+
+LABEL maintainer="tensorflow-extended-dev@googlegroups.com"
+
+# TODO(b/151392812): Remove `google-api-python-client` and `google-apitools`
+#                    when patching is not needed any more.
+RUN python -m pip install \
+  "google-api-python-client==1.8.0" \
+  "google-apitools==0.5.30"
+
+COPY --from=wheel-builder /tfx/src/dist/*.whl /tfx/src/dist/
+WORKDIR /tfx/src
+
+RUN MLSDK_WHEEL=$(find dist -name "ml_pipelines_sdk-*.whl"); \
+    TFX_WHEEL=$(find dist -name "tfx-*.whl"); \
+    if [ "${TFX_DEPENDENCY_SELECTOR}" = "NIGHTLY" ]; then \
+      python -m pip install \
+        --extra-index-url https://pypi-nightly.tensorflow.org/simple \
+        ${MLSDK_WHEEL} ${TFX_WHEEL}[docker-image] ; \
+    else \
+      python -m pip install ${MLSDK_WHEEL} ${TFX_WHEEL}[docker-image] ; \
+    fi;
 
 RUN echo "Installed python packages:\n" && python -m pip list
 
 # Patch http.py in googleapiclient and base_api.py in apitools
 # to use our own UserAgent.
 # TODO(b/151392812): Remove this when other telemetries become available.
+COPY --from=wheel-builder /tfx/src/tfx/tools/docker/patches /tfx/src/tfx/tools/docker/patches
 RUN patch `python -c 'import googleapiclient; print(googleapiclient.__path__[0])'`/http.py \
   /tfx/src/tfx/tools/docker/patches/http.patch && \
  patch `python -c 'import apitools; print(apitools.__path__[0])'`/base/py/base_api.py \
   /tfx/src/tfx/tools/docker/patches/base_api.patch
-
-
-# Copy the boot loader program from latest released beam python sdk, so TFX
-# image and any child can be used in Dataflow as custom worker images.
-COPY --from=apache/beam_python3.7_sdk:latest /opt/apache/beam/boot /opt/apache/beam/boot
-# Dataflow SDK worker image looks for pip at a different location by default
-# without following pip environment variable.
-RUN export pip=$(which pip);echo $pip;
-ENTRYPOINT ["/opt/apache/beam/boot"]

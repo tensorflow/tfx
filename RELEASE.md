@@ -1,6 +1,10 @@
 # Current Version (Still in Development)
 
 ## Major Features and Improvements
+*   Publically released TFX docker image in tensorflow/tfx will use GPU
+    compatible based TensorFlow images from [Deep Learning Containers](
+    https://cloud.google.com/ai-platform/deep-learning-containers). This allow
+    these images to be used with GPU out of box.
 
 *  Added an example pipeline for a ranking model (using
    [tensorflow_ranking](https://github.com/tensorflow/ranking))
