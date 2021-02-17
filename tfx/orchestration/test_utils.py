@@ -14,6 +14,7 @@
 # limitations under the License.
 """Common utilities for testing various runners."""
 
+import contextlib
 import datetime
 import os
 import random
@@ -83,7 +84,7 @@ def build_docker_image(container_image: str, repo_base: str):
 
   logging.info('Building image %s with %s dependency', container_image,
                dependency_selector)
-  with Timer('BuildingTFXContainerImage'):
+  with Timer('BuildingTFXContainerImage'), _chdir(repo_base):
     subprocess.check_call(
         args=[
             os.path.join(repo_base, 'tfx/tools/docker/build_docker_image.sh'),
@@ -95,6 +96,18 @@ def build_docker_image(container_image: str, repo_base: str):
         },
         shell=True,
     )
+
+
+@contextlib.contextmanager
+def _chdir(path):
+  old_cwd = os.getcwd()
+  try:
+    os.chdir(path)
+    logging.info('cwd changed from %s to %s', old_cwd, path)
+    yield
+  finally:
+    os.chdir(old_cwd)
+    logging.info('cwd changed back to %s', old_cwd)
 
 
 def build_and_push_docker_image(container_image: str, repo_base: str):
