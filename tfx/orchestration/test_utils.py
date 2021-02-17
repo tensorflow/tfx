@@ -18,6 +18,7 @@ import datetime
 import os
 import random
 import string
+import subprocess
 import time
 
 from absl import logging
@@ -72,25 +73,27 @@ def build_docker_image(container_image: str, repo_base: str):
     container_image: Docker container image name.
     repo_base: The src path to use to build docker image.
   """
-  client = docker.from_env(timeout=_DOCKER_TIMEOUT_SECONDS)
 
   # Default to NIGHTLY. GIT_MASTER might be better to use the latest source,
   # But it takes too long (~1h) to build packages from scratch. If some changes
   # in a dependent package break tests, just run a nightly build of dependent
   # package again.
   dependency_selector = os.getenv('TFX_DEPENDENCY_SELECTOR') or 'NIGHTLY'
+  [docker_image_repo, docker_image_tag] = container_image.split(':')
 
   logging.info('Building image %s with %s dependency', container_image,
                dependency_selector)
   with Timer('BuildingTFXContainerImage'):
-    _ = client.images.build(
-        path=repo_base,
-        dockerfile='tfx/tools/docker/Dockerfile',
-        tag=container_image,
-        buildargs={
+    subprocess.check_call(
+        args=[
+            os.path.join(repo_base, 'tfx/tools/docker/build_docker_image.sh'),
+        ],
+        env={
+            'DOCKER_IMAGE_REPO': docker_image_repo,
+            'DOCKER_IMAGE_TAG': docker_image_tag,
             'TFX_DEPENDENCY_SELECTOR': dependency_selector,
         },
-        rm=True,
+        shell=True,
     )
 
 

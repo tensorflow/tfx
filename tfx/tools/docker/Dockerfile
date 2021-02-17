@@ -70,6 +70,9 @@ ENTRYPOINT ["/opt/apache/beam/boot"]
 
 LABEL maintainer="tensorflow-extended-dev@googlegroups.com"
 
+# TODO(b/156745950): remove once all DLVM images have libsnappy-dev.
+RUN apt-get update && apt-get install -y libsnappy-dev && apt-get clean all
+
 # TODO(b/151392812): Remove `google-api-python-client` and `google-apitools`
 #                    when patching is not needed any more.
 RUN python -m pip install \
