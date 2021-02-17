@@ -210,8 +210,8 @@ class AirflowDagRunnerTest(tf.test.TestCase):
 
     self.assertEqual(airflow_config, runner._config.airflow_dag_config)
 
-  def testRuntimParam(self):
-    param = RuntimeParameter('name', str, 'tfx')
+  def testRuntimeParam(self):
+    param = RuntimeParameter('name', str, 'tf"x')
     component_f = _FakeComponent(_FakeComponentSpecF(a=param))
     airflow_config = {
         'schedule_interval': '* * * * *',
@@ -230,9 +230,9 @@ class AirflowDagRunnerTest(tf.test.TestCase):
             airflow_dag_config=airflow_config))
     dag = runner.run(test_pipeline)
     task = dag.tasks[0]
-    self.assertDictEqual({'exec_properties':{'a':'{{ dag_run.conf.get("name", "tfx") }}'}}, task.op_kwargs)
+    self.assertDictEqual({'exec_properties':{'a':'{{ dag_run.conf.get("name", "tf\\"x") }}'}}, task.op_kwargs)
 
-  def testRuntimParamTemplated(self):
+  def testRuntimeParamTemplated(self):
     param = RuntimeParameter('name', str, '{{execution_date}}')
     component_f = _FakeComponent(_FakeComponentSpecF(a=param))
     airflow_config = {
@@ -254,7 +254,7 @@ class AirflowDagRunnerTest(tf.test.TestCase):
     task = dag.tasks[0]
     self.assertDictEqual({'exec_properties':{'a':'{{ dag_run.conf.get("name", execution_date) }}'}}, task.op_kwargs)
 
-  def testRuntimParamIntError(self):
+  def testRuntimeParamIntError(self):
     param = RuntimeParameter('name', int, 1)
     component_f = _FakeComponent(_FakeComponentSpecG(a=param))
     airflow_config = {

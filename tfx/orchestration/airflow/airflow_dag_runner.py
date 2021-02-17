@@ -20,7 +20,6 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 import os
-from tfx.orchestration.data_types import RuntimeParameter
 from typing import Any, Dict, Optional, Text, Union
 
 import absl
@@ -31,7 +30,8 @@ from tfx.orchestration import tfx_runner
 from tfx.orchestration.airflow import airflow_component
 from tfx.orchestration.config import config_utils
 from tfx.orchestration.config import pipeline_config
-
+from tfx.orchestration.data_types import RuntimeParameter
+from tfx.utils.json_utils import json
 
 class AirflowPipelineConfig(pipeline_config.PipelineConfig):
   """Pipeline config for AirflowDagRunner."""
@@ -119,21 +119,23 @@ class AirflowDagRunner(tfx_runner.TfxRunner):
   def _replace_runtime_params(self, comp):
     for k, prop in comp.spec.exec_properties.copy().items():
       if isinstance(prop, RuntimeParameter):
-        
-        # Airflow only supports string parameters
+
+        # Airflow only supports string parameters.
         if prop.ptype != str:
           raise RuntimeError(
             f'RuntimeParameter in Airflow does not support {prop.ptype} only ptype supported is string'
           )
-        
-        # If default is a template, we can just remove the template markers to make it work.
+
+        # If default is a template, drop the template markers when inserting it into the .get()
+        # default argument below. Otherwise, provide the default as a quoted string.
         if prop.default.startswith('{{') and prop.default.endswith('}}'):
           default = prop.default.replace('{{','').replace('}}', '')
         else:
-          default = f'"{prop.default}"'
-        
-        # Once we move to support Airflow 2.0 we should instead use airflow.models.DagParam class 
-        comp.spec.exec_properties[k] = f'{{{{ dag_run.conf.get("{prop.name}", {default}) }}}}'
+          default = json.dumps(prop.default)
+
+        # Todo: Once we move to Airflow 2.0 we should instead use airflow.models.DagParam class.
+        template_field = f'{{{{ dag_run.conf.get("{prop.name}", {default}) }}}}'
+        comp.spec.exec_properties[k] = template_field
     return comp
 
       
