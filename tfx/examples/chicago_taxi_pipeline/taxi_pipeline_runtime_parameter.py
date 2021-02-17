@@ -157,6 +157,8 @@ def _create_parameterized_pipeline(
                       tfma.config.MetricThreshold(
                           value_threshold=tfma.GenericValueThreshold(
                               lower_bound={'value': 0.6}),
+                          # Change threshold will be ignored if there is no
+                          # baseline model resolved from MLMD (first run).
                           change_threshold=tfma.GenericChangeThreshold(
                               direction=tfma.MetricDirection.HIGHER_IS_BETTER,
                               absolute={'value': -1e-10}))
@@ -166,7 +168,6 @@ def _create_parameterized_pipeline(
       examples=example_gen.outputs['examples'],
       model=trainer.outputs['model'],
       baseline_model=model_resolver.outputs['model'],
-      # Change threshold will be ignored if there is no baseline (first run).
       eval_config=eval_config)
 
   pusher = Pusher(

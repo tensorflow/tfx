@@ -40,7 +40,8 @@ class TaxiPipelineKubeflowTest(test_case_utils.TfxTest):
         ai_platform_training_args=taxi_pipeline_kubeflow_gcp
         ._ai_platform_training_args,
         ai_platform_serving_args=taxi_pipeline_kubeflow_gcp
-        ._ai_platform_serving_args)
+        ._ai_platform_serving_args,
+        beam_pipeline_args=taxi_pipeline_kubeflow_gcp._beam_pipeline_args)
     self.assertEqual(8, len(logical_pipeline.components))
 
     KubeflowDagRunner().run(logical_pipeline)
