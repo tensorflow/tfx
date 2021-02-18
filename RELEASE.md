@@ -173,6 +173,7 @@
     "ml-pipelines-sdk" pip package. This package does not include first-party
     TFX components. The "tfx" pip package is still the recommended installation
     path for TFX.
+*   Migrated LocalDagRunner to the new [IR](https://github.com/tensorflow/tfx/blob/master/tfx/proto/orchestration/pipeline.proto) stack.
 
 ## Breaking changes
 

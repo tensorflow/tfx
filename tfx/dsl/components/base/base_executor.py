@@ -110,18 +110,28 @@ class BaseExecutor(with_metaclass(abc.ABCMeta, object)):
     self._beam_pipeline_args = context.beam_pipeline_args if context else None
 
     if self._beam_pipeline_args:
-      self._beam_pipeline_args = dependency_utils.make_beam_dependency_flags(
-          self._beam_pipeline_args)
-      executor_class_path = '%s.%s' % (self.__class__.__module__,
-                                       self.__class__.__name__)
-      # TODO(zhitaoli): Rethink how we can add labels and only normalize them
-      # if the job is submitted against GCP.
-      with telemetry_utils.scoped_labels(
-          {telemetry_utils.LABEL_TFX_EXECUTOR: executor_class_path}):
-        self._beam_pipeline_args.extend(telemetry_utils.make_beam_labels_args())
+      if beam:
+        self._beam_pipeline_args = dependency_utils.make_beam_dependency_flags(
+            self._beam_pipeline_args)
+        executor_class_path = '%s.%s' % (self.__class__.__module__,
+                                         self.__class__.__name__)
+        # TODO(zhitaoli): Rethink how we can add labels and only normalize them
+        # if the job is submitted against GCP.
+        with telemetry_utils.scoped_labels(
+            {telemetry_utils.LABEL_TFX_EXECUTOR: executor_class_path}):
+          self._beam_pipeline_args.extend(
+              telemetry_utils.make_beam_labels_args())
 
-      # TODO(b/174174381): Don't use beam_pipeline_args to set ABSL flags.
-      flags.FLAGS(sys.argv + self._beam_pipeline_args, known_only=True)
+        # TODO(b/174174381): Don't use beam_pipeline_args to set ABSL flags.
+        flags.FLAGS(sys.argv + self._beam_pipeline_args, known_only=True)
+      else:
+        # TODO(b/156000550): We should not specialize `Context` to embed beam
+        # pipeline args. Instead, the `Context` should consists of generic
+        # purpose `extra_flags` which can be interpreted differently by
+        # different implementations of executors.
+        absl.logging.warning(
+            'Executor context\'s beam_pipeline_args is being ignored because '
+            'Apache Beam is not installed.')
 
   # TODO(b/126182711): Look into how to support fusion of multiple executors
   # into same pipeline.
