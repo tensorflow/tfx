@@ -87,7 +87,6 @@ class TFLiteRewriter(rewriter.BaseRewriter):
           for details.
       **kwargs: Additional keyword arguments to create TFlite converter.
     """
-    # TODO(b/152636072): Add support for representative_dataset.
     self._name = name
     self._filename = six.ensure_text(filename)
     self._copy_assets = copy_assets
