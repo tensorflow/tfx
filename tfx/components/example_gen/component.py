@@ -87,7 +87,7 @@ class QueryBasedExampleGen(base_component.BaseComponent):
           is provided as a RuntimeParameter, output_config should be constructed
           as a dict.
       output_data_format: Payload format of generated data in output artifact,
-        one of example_gen_pb2.PayloadFormat enum.
+        one of [example_gen_pb2.PayloadFormat](https://github.com/tensorflow/tfx/blob/master/tfx/proto/example_gen.proto) enum.
       example_artifacts: Channel of `standard_artifacts.Examples` for output
         train and eval examples.
       instance_name: Optional unique instance name. Required only if multiple
