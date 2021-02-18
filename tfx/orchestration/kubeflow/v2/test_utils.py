@@ -675,8 +675,8 @@ class BaseKubeflowV2Test(test_case_utils.TfxTest):
 
   # The location of test user module file.
   # It is retrieved from inside the container subject to testing.
-  # This location depends on intall path of TFX in the docker image.
-  _MODULE_FILE = '/tfx/src/tfx/examples/chicago_taxi_pipeline/taxi_utils.py'
+  # This location depends on install path of TFX in the docker image.
+  _MODULE_FILE = '/opt/conda/lib/python3.7/site-packages/tfx/examples/chicago_taxi_pipeline/taxi_utils.py'
 
   _CONTAINER_IMAGE = '{}:{}'.format(_BASE_CONTAINER_IMAGE,
                                     test_utils.random_id())
