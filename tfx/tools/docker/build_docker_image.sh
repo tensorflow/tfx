@@ -28,7 +28,8 @@ echo "Env for TFX_DEPENDENCY_SELECTOR is set as ${TFX_DEPENDENCY_SELECTOR}"
 # https://cloud.google.com/ai-platform/deep-learning-containers/docs/choosing-container
 # for possible images to use here.
 
-wheel_builder_tag="tfx-wheel-builder:$(date +%s)"
+# Use timestmap-rand for tag, to avoid collision of concurrent runs.
+wheel_builder_tag="tfx-wheel-builder:$(date +%s)-$RANDOM"
 # Run docker build command to build the wheel-builder first. We have to extract
 # TF version from it.
 docker build --target wheel-builder\
