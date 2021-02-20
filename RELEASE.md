@@ -11,6 +11,8 @@
    at `tfx/examples/ranking`. More documentation will be available in future
    releases.
 
+*  Added a resolver that can resolve spans based on range_config.
+
 ## Breaking changes
 
 ### For pipeline authors
