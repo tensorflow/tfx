@@ -60,6 +60,7 @@ DEFAULT_DRIVER_OPERATORS = {
         python_driver_operator.PythonDriverOperator
 }
 
+# LINT.IfChange
 _SYSTEM_NODE_HANDLERS = {
     'tfx.dsl.components.common.importer.Importer':
         importer_node_handler.ImporterNodeHandler,
@@ -71,6 +72,7 @@ _SYSTEM_NODE_HANDLERS = {
     'tfx.dsl.components.common.resolver_node.ResolverNode':
         resolver_node_handler.ResolverNodeHandler,
 }
+# LINT.ThenChange(Internal system node list)
 
 
 # TODO(b/165359991): Restore 'auto_attribs=True' once we drop Python3.5 support.
@@ -264,8 +266,7 @@ class Launcher(object):
             output_artifacts=cached_outputs)
         logging.info('An cached execusion %d is used.', execution.id)
         return _PrepareExecutionResult(
-            execution_info=data_types.ExecutionInfo(
-                execution_id=execution.id),
+            execution_info=data_types.ExecutionInfo(execution_id=execution.id),
             execution_metadata=execution,
             contexts=contexts,
             is_execution_needed=False)
@@ -330,7 +331,8 @@ class Launcher(object):
           executor_output=executor_output)
 
   def _publish_failed_execution(
-      self, execution_id: int,
+      self,
+      execution_id: int,
       contexts: List[metadata_store_pb2.Context],
       executor_output: Optional[execution_result_pb2.ExecutorOutput] = None
   ) -> None:
@@ -414,9 +416,8 @@ class Launcher(object):
       logging.info('Execution %d succeeded.', execution_info.execution_id)
       self._clean_up_stateful_execution_info(execution_info)
       logging.info('Publishing output artifacts %s for exeuction %s',
-                   execution_info.output_dict,
-                   execution_info.execution_id)
-      self._publish_successful_execution(execution_info.execution_id,
-                                         contexts, execution_info.output_dict,
+                   execution_info.output_dict, execution_info.execution_id)
+      self._publish_successful_execution(execution_info.execution_id, contexts,
+                                         execution_info.output_dict,
                                          executor_output)
     return prepare_execution_result.execution_metadata
