@@ -70,6 +70,7 @@ def import_func_from_source(source_path: Text, fn_name: Text) -> Callable:  # py
         module = importlib.util.module_from_spec(spec)
         sys.modules[loader.name] = module
         loader.exec_module(module)
+        sys.meta_path.append(_ModuleFinder({module_name: source_path}))
         _imported_modules_from_source[source_path] = module
       except IOError:
         raise ImportError('{} in {} not found in '
@@ -84,3 +85,19 @@ def import_func_from_module(module_path: Text, fn_name: Text) -> Callable:  # py
   """Imports a function from a module provided as source file or module path."""
   user_module = importlib.import_module(module_path)
   return getattr(user_module, fn_name)
+
+
+class _ModuleFinder(importlib.abc.MetaPathFinder):
+  """Registers custom modules for Interactive Context."""
+
+  def __init__(self, path_map: dict):  # pylint: disable=g-bare-generic
+    self.path_map = path_map
+
+  def find_spec(self, fullname, path, target=None):  # pylint: disable=unused-argument
+    if fullname not in self.path_map:
+      return None
+    return importlib.util.spec_from_file_location(
+        fullname, self.path_map[fullname])
+
+  def find_module(self, fullname, path):
+    pass
