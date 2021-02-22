@@ -19,7 +19,9 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 
+import importlib
 import os
+import sys
 # Standard Imports
 
 import tensorflow as tf
@@ -69,6 +71,30 @@ class ImportUtilsTest(tf.test.TestCase):
       _ = import_utils.import_func_from_module(test_fn.test_fn.__module__,
                                                'non_existing_fn')
 
+  def testtestImportFuncFromModuleReload(self):
+    temp_dir = self.create_tempdir().full_path
+    test_fn_file = os.path.join(temp_dir, 'fn.py')
+    with tf.io.gfile.GFile(test_fn_file, mode='w') as f:
+      f.write(
+          """def test_fn(inputs):
+            return sum(inputs)
+          """)
+    i = len(import_utils._imported_modules_from_source.keys())
+    fn_1 = import_utils.import_func_from_source(test_fn_file, 'test_fn')
+    self.assertEqual(10, fn_1([1, 2, 3, 4]))
+    with tf.io.gfile.GFile(test_fn_file, mode='w') as f:
+      f.write(
+          """def test_fn(inputs):
+            return 1+sum(inputs)
+          """)
+
+    self.assertEqual(10, fn_1([1, 2, 3, 4]))
+    fn_2 = getattr(
+        importlib.reload(sys.modules['user_module_%d' % i]), 'test_fn')
+    self.assertEqual(11, fn_2([1, 2, 3, 4]))
+    fn_3 = import_utils.import_func_from_source(test_fn_file, 'test_fn')
+    self.assertEqual(11, fn_3([1, 2, 3, 4]))
+    self.assertIs(fn_2, fn_3)
 
 if __name__ == '__main__':
   tf.test.main()
