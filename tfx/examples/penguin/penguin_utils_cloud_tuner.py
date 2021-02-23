@@ -166,7 +166,7 @@ def tuner_fn(fn_args: FnArgs) -> TunerFnResult:
       https://www.tensorflow.org/tfx/api_docs/python/tfx/components/trainer/fn_args_utils/FnArgs.
       - transform_graph_path: optional transform graph produced by TFT.
       - custom_config: An optional dictionary passed to the component. In this
-        example, it contains the dict ai_platform_training_args.
+        example, it contains the dict ai_platform_tuning_args.
       - working_dir: working dir for tuning.
       - train_files: List of file paths containing training tf.Example data.
       - eval_files: List of file paths containing eval tf.Example data.
@@ -191,8 +191,8 @@ def tuner_fn(fn_args: FnArgs) -> TunerFnResult:
       # CAIP Training service for distributed tuning flock management to view
       # all of the pipeline's jobs and resources in the same project. It can
       # also be configured separately.
-      project_id=fn_args.custom_config['ai_platform_training_args']['project'],
-      region=fn_args.custom_config['ai_platform_training_args']['region'],
+      project_id=fn_args.custom_config['ai_platform_tuning_args']['project'],
+      region=fn_args.custom_config['ai_platform_tuning_args']['region'],
       objective=kerastuner.Objective('val_sparse_categorical_accuracy', 'max'),
       hyperparameters=_get_hyperparameters(),
       max_trials=8,  # Optional.

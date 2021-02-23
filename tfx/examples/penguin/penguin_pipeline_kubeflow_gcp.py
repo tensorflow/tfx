@@ -13,12 +13,10 @@
 # limitations under the License.
 """Penguin example using TFX."""
 
-import copy
 import os
 from typing import Dict, List, Text
 
 from absl import app
-from absl import flags
 import tensorflow_model_analysis as tfma
 from tfx.components import CsvExampleGen
 from tfx.components import Evaluator
@@ -33,6 +31,7 @@ from tfx.dsl.components.base import executor_spec
 from tfx.dsl.experimental import latest_blessed_model_resolver
 from tfx.extensions.google_cloud_ai_platform.pusher import executor as ai_platform_pusher_executor
 from tfx.extensions.google_cloud_ai_platform.trainer import executor as ai_platform_trainer_executor
+from tfx.extensions.google_cloud_ai_platform.tuner import executor as ai_platform_tuner_executor
 from tfx.extensions.google_cloud_ai_platform.tuner.component import Tuner
 from tfx.orchestration import data_types
 from tfx.orchestration import pipeline
@@ -42,10 +41,6 @@ from tfx.types import Channel
 from tfx.types.standard_artifacts import Model
 from tfx.types.standard_artifacts import ModelBlessing
 
-
-FLAGS = flags.FLAGS
-flags.DEFINE_bool('distributed_training', False,
-                  'If True, enable distributed training.')
 
 _pipeline_name = 'penguin_kubeflow_gcp'
 
@@ -197,44 +192,27 @@ def create_pipeline(
       schema=schema_gen.outputs['schema'],
       module_file=module_file)
 
-  # Update ai_platform_training_args if distributed training was enabled.
-  # Number of worker machines used in distributed training.
-  worker_count = data_types.RuntimeParameter(
-      name='worker_count',
-      default=2,
-      ptype=int,
-  )
-
-  # Type of worker machines used in distributed training.
-  worker_type = data_types.RuntimeParameter(
-      name='worker_type',
-      default='standard',
-      ptype=str,
-  )
-
-  ai_platform_training_args = copy.copy(ai_platform_training_args)
-  if FLAGS.distributed_training:
-    ai_platform_training_args.update({
-        # You can specify the machine types, the number of replicas for workers
-        # and parameter servers.
-        # https://cloud.google.com/ml-engine/reference/rest/v1/projects.jobs#ScaleTier
-        'scaleTier': 'CUSTOM',
-        'masterType': 'large_model',
-        'workerType': worker_type,
-        'parameterServerType': 'standard',
-        'workerCount': worker_count,
-        'parameterServerCount': 1,
-    })
-
   # Tunes the hyperparameters for model training based on user-provided Python
   # function. Note that once the hyperparameters are tuned, you can drop the
   # Tuner component from pipeline and feed Trainer with tuned hyperparameters.
   if enable_tuning:
-    # The Tuner component launches 1 CAIP Training job for flock management.
-    # For example, 3 workers (defined by num_parallel_trials) in the flock
-    # management CAIP Training job, each runs Tuner.Executor.
-    # Then, 3 CAIP Training Jobs (defined by training_args) are invoked
-    # from each worker in the flock management Job for Trial execution.
+    # The Tuner component launches 1 AIP Training job for flock management of
+    # parallel tuning. For example, 2 workers (defined by num_parallel_trials)
+    # in the flock management AIP Training job, each runs a search loop for
+    # trials as shown below.
+    #   Tuner component -> CAIP job X -> CloudTunerA -> tuning trials
+    #                                 -> CloudTunerB -> tuning trials
+    #
+    # Distributed training for each trial depends on the Tuner
+    # (kerastuner.BaseTuner) setup in tuner_fn. Currently CloudTuner is single
+    # worker training per trial. DistributedCloudTuner is WIP.
+    #
+    # E.g., single worker training per trial
+    #   ... -> CloudTunerA -> single worker training
+    #       -> CloudTunerB -> single worker training
+    # vs distributed training per trial
+    #   ... -> DistributedCloudTunerA -> CAIP job Y -> master,worker1,2,3
+    #       -> DistributedCloudTunerB -> CAIP job Z -> master,worker1,2,3
     tuner = Tuner(
         module_file=module_file,
         examples=transform.outputs['transformed_examples'],
@@ -244,13 +222,15 @@ def create_pipeline(
         tune_args=tuner_pb2.TuneArgs(
             # num_parallel_trials=3 means that 3 search loops are
             # running in parallel.
-            # Each tuner may include a distributed training job which can be
-            # specified in training_args above (e.g. 1 PS + 2 workers).
             num_parallel_trials=3),
         custom_config={
-            # Configures Cloud AI Platform-specific configs . For details, see
-            # https://cloud.google.com/ai-platform/training/docs/reference/rest/v1/projects.jobs#traininginput.
-            ai_platform_trainer_executor.TRAINING_ARGS_KEY:
+            # Note that this TUNING_ARGS_KEY will be used to start the CAIP job
+            # for parallel tuning (CAIP job X above).
+            #
+            # num_parallel_trials will be used to fill/overwrite the
+            # workerCount specified by TUNING_ARGS_KEY:
+            #   num_parallel_trials = workerCount + 1 (for master)
+            ai_platform_tuner_executor.TUNING_ARGS_KEY:
                 ai_platform_training_args
         })
 
