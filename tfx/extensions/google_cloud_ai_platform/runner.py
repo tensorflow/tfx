@@ -19,8 +19,6 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import datetime
-import json
 import sys
 import time
 from typing import Any, Dict, List, Optional, Text
@@ -31,15 +29,14 @@ from googleapiclient import errors
 import tensorflow as tf
 
 from tfx import types
-from tfx.types import artifact_utils
-from tfx.utils import telemetry_utils
+from tfx.extensions.google_cloud_ai_platform import training_clients
 from tfx.utils import version_utils
 
 _POLLING_INTERVAL_IN_SECONDS = 30
 
 _CONNECTION_ERROR_RETRY_LIMIT = 5
 
-# Default contaier image being used for CAIP training jobs.
+# Default container image being used for CAIP training jobs.
 # TODO(b/139934802) Ensure mirroring of released TFX containers in Docker Hub
 # and gcr.io/tfx-oss-public/ registries.
 _TFX_IMAGE = 'gcr.io/tfx-oss-public/tfx:{}'.format(
@@ -56,10 +53,6 @@ _TF_COMPATIBILITY_OVERRIDE = {
     # CAIP pusher. See:
     # https://cloud.google.com/ai-platform/prediction/docs/runtime-version-list
     '2.0': '1.15',
-    # TODO(b/168249383) Remove this once CAIP model support TF 2.3 runtime.
-    '2.3': '2.2',
-    '2.4': '2.2',
-    '2.5': '2.2',
 }
 
 # Default endpoint for v1 API.
@@ -82,6 +75,7 @@ def _get_tf_runtime_version(tf_version: Text) -> Text:
   return _TF_COMPATIBILITY_OVERRIDE.get(tf_version) or tf_version
 
 
+# TODO(b/180967044): This can be removed, and use 3.7 as default.
 def _get_caip_python_version(caip_tf_runtime_version: Text) -> Text:
   """Returns supported python version on Cloud AI Platform.
 
@@ -123,26 +117,15 @@ def _launch_aip_training(
     ConnectionError: if the status polling of the training job failed due to
       connection issue.
   """
+  client = training_clients.get_job_client()
   # Configure AI Platform training job
-  api_client = discovery.build('ml', 'v1')
   project_id = 'projects/{}'.format(project)
-  job_spec = {
-      'jobId': job_id,
-      'trainingInput': training_input,
-      'labels': job_labels,
-  }
 
-  # Submit job to AIP Training
-  logging.info('TrainingInput=%s', training_input)
-  logging.info('Submitting job=\'%s\', project=\'%s\' to AI Platform.', job_id,
-               project)
-  request = api_client.projects().jobs().create(
-      body=job_spec, parent=project_id)
-  request.execute()
+  client.launch_job(job_id, project_id, training_input, job_labels)
 
   # Wait for AIP Training job to finish
   job_name = '{}/jobs/{}'.format(project_id, job_id)
-  request = api_client.projects().jobs().get(name=job_name)
+  request = client.get_job_request()
   response = request.execute()
   retry_count = 0
 
@@ -176,8 +159,8 @@ def _launch_aip_training(
             'ConnectionError (%s) encountered when polling job: %s. Trying to '
             'recreate the API client.', err, job_id)
         # Recreate the Python API client.
-        api_client = discovery.build('ml', 'v1')
-        request = api_client.projects().jobs().get(name=job_name)
+        client.create_client()
+        request = client.get_job_request()
       else:
         logging.error('Request failed after %s retries.',
                       _CONNECTION_ERROR_RETRY_LIMIT)
@@ -248,57 +231,17 @@ def start_aip_training(input_dict: Dict[Text, List[types.Artifact]],
   Returns:
     None
   """
-  training_inputs = training_inputs.copy()
-
-  json_inputs = artifact_utils.jsonify_artifact_dict(input_dict)
-  logging.info('json_inputs=\'%s\'.', json_inputs)
-  json_outputs = artifact_utils.jsonify_artifact_dict(output_dict)
-  logging.info('json_outputs=\'%s\'.', json_outputs)
-  json_exec_properties = json.dumps(exec_properties, sort_keys=True)
-  logging.info('json_exec_properties=\'%s\'.', json_exec_properties)
-
-  # We use custom containers to launch training on AI Platform, which invokes
-  # the specified image using the container's entrypoint. The default
-  # entrypoint for TFX containers is to call scripts/run_executor.py. The
-  # arguments below are passed to this run_executor entry to run the executor
-  # specified in `executor_class_path`.
-  container_command = _CONTAINER_COMMAND + [
-      '--executor_class_path',
-      executor_class_path,
-      '--inputs',
-      json_inputs,
-      '--outputs',
-      json_outputs,
-      '--exec-properties',
-      json_exec_properties,
-  ]
-
-  if not training_inputs.get('masterConfig'):
-    training_inputs['masterConfig'] = {
-        'imageUri': _TFX_IMAGE,
-    }
-
-  # Always use our own entrypoint instead of relying on container default.
-  if 'containerCommand' in training_inputs['masterConfig']:
-    logging.warn('Overriding custom value of containerCommand')
-  training_inputs['masterConfig']['containerCommand'] = container_command
-
-  # Pop project_id so AIP doesn't complain about an unexpected parameter.
-  # It's been a stowaway in aip_args and has finally reached its destination.
-  project = training_inputs.pop('project')
-  with telemetry_utils.scoped_labels(
-      {telemetry_utils.LABEL_TFX_EXECUTOR: executor_class_path}):
-    job_labels = telemetry_utils.get_labels_dict()
-
-  # 'tfx_YYYYmmddHHMMSS' is the default job ID if not explicitly specified.
-  job_id = job_id or 'tfx_{}'.format(
-      datetime.datetime.now().strftime('%Y%m%d%H%M%S'))
+  client = training_clients.get_job_client()
+  training_args = client.create_training_args(input_dict, output_dict,
+                                              exec_properties,
+                                              executor_class_path,
+                                              training_inputs, job_id)
 
   _launch_aip_training(
-      job_id=job_id,
-      project=project,
-      training_input=training_inputs,
-      job_labels=job_labels)
+      job_id=training_args['job_id'],
+      project=training_args['project'],
+      training_input=training_args['training_input'],
+      job_labels=training_args['job_labels'])
 
 
 # TODO(zhitaoli): remove this function since we are not going to support

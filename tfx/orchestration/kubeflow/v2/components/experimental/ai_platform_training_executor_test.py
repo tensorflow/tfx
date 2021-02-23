@@ -102,7 +102,8 @@ class AiPlatformTrainingExecutorTest(tf.test.TestCase):
         'state': 'SUCCEEDED',
     }
 
-  @mock.patch('tfx.extensions.google_cloud_ai_platform.runner.discovery')
+  @mock.patch(
+      'tfx.extensions.google_cloud_ai_platform.training_clients.discovery')
   def testRunAipTraining(self, mock_discovery):
     mock_discovery.build.return_value = self._mock_api_client
     self._setUpTrainingMocks()
