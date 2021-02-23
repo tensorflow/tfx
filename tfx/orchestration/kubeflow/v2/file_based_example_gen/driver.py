@@ -113,8 +113,8 @@ def _run_driver(exec_properties: Dict[str, Any],
                                                        name_from_id))
 
   fileio.makedirs(os.path.dirname(output_metadata_uri))
-  fileio.open(output_metadata_uri, 'wb').write(
-      json_format.MessageToJson(output_metadata, sort_keys=True))
+  with fileio.open(output_metadata_uri, 'wb') as f:
+    f.write(json_format.MessageToJson(output_metadata, sort_keys=True))
 
 
 def main(argv):

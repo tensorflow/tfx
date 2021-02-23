@@ -49,7 +49,8 @@ class ValueArtifact(Artifact):
 
   def write(self, value):
     serialized_value = self.encode(value)
-    fileio.open(self.uri, 'wb').write(serialized_value)
+    with fileio.open(self.uri, 'wb') as f:
+      f.write(serialized_value)
 
   @property
   def value(self):

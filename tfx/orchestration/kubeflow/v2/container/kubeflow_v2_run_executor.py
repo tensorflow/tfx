@@ -97,8 +97,8 @@ def _run_executor(args: argparse.Namespace, beam_args: List[str]) -> None:
     executor_output.artifacts[k].CopyFrom(v)
 
   fileio.makedirs(os.path.dirname(metadata_uri))
-  fileio.open(metadata_uri,
-              'wb').write(json_format.MessageToJson(executor_output))
+  with fileio.open(metadata_uri, 'wb') as f:
+    f.write(json_format.MessageToJson(executor_output))
 
 
 def main(argv):
