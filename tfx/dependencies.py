@@ -70,7 +70,6 @@ def make_pipeline_sdk_required_install_packages():
 def make_required_install_packages():
   # Make sure to sync the versions of common dependencies (absl-py, numpy,
   # six, and protobuf) with TF.
-  # TODO(b/130767399): add flask once the frontend is exposed externally.
   return make_pipeline_sdk_required_install_packages() + [
       # LINT.IfChange
       'apache-beam[gcp]>=2.27,<3',
