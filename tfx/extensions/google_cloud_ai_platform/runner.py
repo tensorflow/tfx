@@ -54,8 +54,8 @@ _TF_COMPATIBILITY_OVERRIDE = {
     # https://cloud.google.com/ai-platform/prediction/docs/runtime-version-list
     '2.0': '1.15',
     # TODO(b/168249383) Update this once CAIP model support TF 2.4 runtime.
-    '2.4': '2.2',
-    '2.5': '2.2',
+    '2.4': '2.3',
+    '2.5': '2.3',
 }
 
 # Default endpoint for v1 API.
