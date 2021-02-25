@@ -34,6 +34,7 @@ set -ex
 
 PYTHON_BINARY=$(which python)
 
+TENSORFLOW_VERSION=$(${PYTHON_BINARY} -c 'import tensorflow; print(tensorflow.__version__)')
 TFX_VERSION=$(${PYTHON_BINARY} -c 'from tfx import version; print(version.__version__)')
 
 rm -rf tfx
@@ -49,20 +50,6 @@ mv tfx src
 
 # All items must start with 'tfx/'.
 SKIP_LIST=(
-  # TODO(b/175507983): Will be fixed in 0.26.0. Delete after 0.26.0 release.
-  'tfx/orchestration/beam/beam_dag_runner_test.py'
-  # TODO(b/175507983): Will be fixed in 0.26.0. Delete after 0.26.0 release.
-  'tfx/utils/dependency_utils_test.py'
-  # TODO(b/175507983): Will be fixed in 0.26.0. Delete after 0.26.0 release.
-  'tfx/orchestration/metadata_test.py'
-  # TODO(b/175507983): Will be fixed in 0.26.0. Delete after 0.26.0 release.
-  'tfx/experimental/distributed_inference/*'
-
-  # TODO(b/177609153): Will be fixed in 0.27.0. Delete after 0.27.0 release.
-  'tfx/tools/cli/container_builder/dockerfile_test.py'
-  'tfx/tools/cli/handler/beam_handler_test.py'
-  'tfx/tools/cli/handler/local_handler_test.py'
-
   # TODO(b/174968932): Delete after renaming this file.
   'tfx/orchestration/kubeflow/kubeflow_gcp_perf_test.py'
 
@@ -83,6 +70,60 @@ SKIP_LIST=(
   'tfx/components/trainer/rewriting/rewriter_factory_test.py'
   'tfx/components/trainer/rewriting/tfjs_rewriter_test.py'
 )
+
+# TODO(b/179861879): Delete the following tests after TF1 images using TFX 0.28
+#                    which includes skipIf branches for TF2 only tests.
+if [[ "${TENSORFLOW_VERSION}" == 1.* ]]; then
+  SKIP_LIST+=(
+    "tfx/experimental/distributed_inference/graphdef_experiments/subgraph_partitioning/beam_pipeline_test.py"
+    "tfx/experimental/distributed_inference/graphdef_experiments/subgraph_partitioning/graph_partition_test.py"
+    # Output of components test result is only compatible with TF2.
+    "tfx/components/bulk_inferrer/executor_test.py"
+    "tfx/components/evaluator/executor_test.py"
+    "tfx/components/model_validator/executor_test.py"
+    "tfx/components/tuner/executor_test.py"
+    # Native keras models only work with TF2.
+    "tfx/examples/chicago_taxi_pipeline/taxi_pipeline_infraval_beam_e2e_test.py"
+    "tfx/examples/chicago_taxi_pipeline/taxi_pipeline_native_keras_e2e_test.py"
+    "tfx/examples/imdb/imdb_pipeline_native_keras_e2e_test.py"
+    "tfx/examples/penguin/"
+    "tfx/examples/mnist/mnist_pipeline_native_keras_e2e_test.py"
+    "tfx/experimental/templates/penguin/e2e_tests/local_e2e_test.py"
+    "tfx/experimental/templates/taxi/e2e_tests/local_e2e_test.py"
+  )
+fi
+
+# TODO(b/179328863): TF 2.1 is LTS and we should keep TFX 0.21.x until TF 2.1 retires.
+if [[ "${TFX_VERSION}" == 0.21.* ]]; then
+  SKIP_LIST+=(
+    "tfx/utils/dependency_utils_test.py"
+    "tfx/components/transform/executor_with_tfxio_test.py"
+    "tfx/components/statistics_gen/executor_test.py"
+    "tfx/components/evaluator/executor_test.py"
+    "tfx/orchestration/beam/beam_dag_runner_test.py"
+    "tfx/examples/chicago_taxi_pipeline/taxi_pipeline_portable_beam_test.py"
+    "tfx/examples/chicago_taxi_pipeline/taxi_utils_test.py"
+    "tfx/tools/cli/container_builder/dockerfile_test.py"
+    "tfx/tools/cli/handler/beam_handler_test.py"
+  )
+fi
+
+# TODO(b/177609153): TF 2.3 is LTS and we should keep TFX 0.26.x until TF 2.3 retires
+if [[ "${TFX_VERSION}" == 0.26.* ]]; then
+  SKIP_LIST+=(
+    'tfx/tools/cli/container_builder/dockerfile_test.py'
+    'tfx/tools/cli/handler/beam_handler_test.py'
+    'tfx/tools/cli/handler/local_handler_test.py'
+  )
+fi
+
+# TODO(b/179861879): Delete the following two tests after TFX 0.28.x released.
+if [[ "${TFX_VERSION}" == 0.27.* ]]; then
+  SKIP_LIST+=(
+    "tfx/examples/ranking/ranking_pipeline_e2e_test.py"
+    "tfx/examples/ranking/struct2tensor_parsing_utils_test.py"
+  )
+fi
 
 # TODO(b/154871293): Migrate to pytest after fixing pytest issues.
 # xargs stops only when the exit code is 255, so we convert any
