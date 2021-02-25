@@ -79,11 +79,12 @@ class Executor(base_executor.BaseExecutor):
       raise TypeError('custom_config in execution properties must be a dict, '
                       'but received %s' % type(custom_config))
 
-    training_inputs = custom_config.get(TUNING_ARGS_KEY).copy()
+    training_inputs = custom_config.get(TUNING_ARGS_KEY)
     if training_inputs is None:
       err_msg = ('\'%s\' not found in custom_config.' % TUNING_ARGS_KEY)
       logging.error(err_msg)
       raise ValueError(err_msg)
+    training_inputs = training_inputs.copy()
 
     tune_args = tuner_executor.get_tune_args(exec_properties)
 

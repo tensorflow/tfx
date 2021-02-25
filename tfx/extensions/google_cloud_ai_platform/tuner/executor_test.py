@@ -68,12 +68,6 @@ class ExecutorTest(tf.test.TestCase):
     executor = ai_platform_tuner_executor.Executor()
     executor.Do(self._inputs, self._outputs,
                 self._serialize_custom_config_under_test())
-    self.mock_runner.start_aip_training.assert_called_with(
-        self._inputs, self._outputs, self._serialize_custom_config_under_test(),
-        self._executor_class_path, {
-            'project': self._project_id,
-            'jobDir': self._job_dir,
-        }, mock.ANY)
 
   def testDoWithTuneArgs(self):
     executor = ai_platform_tuner_executor.Executor()
@@ -126,6 +120,13 @@ class ExecutorTest(tf.test.TestCase):
             'workerCount': 5,
         },
         mock.ANY)
+
+  def testDoWithoutCustomCaipTuneArgs(self):
+    executor = ai_platform_tuner_executor.Executor()
+    self._exec_properties = {'custom_config': {}}
+    with self.assertRaises(ValueError):
+      executor.Do(self._inputs, self._outputs,
+                  self._serialize_custom_config_under_test())
 
 
 if __name__ == '__main__':
