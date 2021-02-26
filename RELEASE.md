@@ -17,6 +17,10 @@
 
 ### For pipeline authors
 
+*   Custom arg key in `google_cloud_ai_platform.tuner.executor` is renamed to
+    `ai_platform_tuning_args` from `ai_platform_training_args`, to better
+    distinguish usage with Trainer.
+
 ### For component authors
 
 ## Deprecations
