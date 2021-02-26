@@ -33,6 +33,7 @@ from tfx.extensions.google_cloud_ai_platform import runner
 from tfx.extensions.google_cloud_ai_platform.pusher import executor as ai_platform_pusher_executor
 from tfx.extensions.google_cloud_ai_platform.trainer import executor as ai_platform_trainer_executor
 from tfx.extensions.google_cloud_ai_platform.tuner import component as ai_platform_tuner_component
+from tfx.extensions.google_cloud_ai_platform.tuner import executor as ai_platform_tuner_executor
 from tfx.orchestration import test_utils
 from tfx.orchestration.kubeflow import test_utils as kubeflow_test_utils
 from tfx.proto import trainer_pb2
@@ -232,7 +233,7 @@ class KubeflowGCPIntegrationTest(kubeflow_test_utils.BaseKubeflowTest):
                 # 3 worker parallel tuning.
                 tune_args=tuner_pb2.TuneArgs(num_parallel_trials=3),
                 custom_config={
-                    ai_platform_trainer_executor.TRAINING_ARGS_KEY:
+                    ai_platform_tuner_executor.TUNING_ARGS_KEY:
                         self._getCaipTrainingArgs(pipeline_name)
                 })
         ])
