@@ -50,7 +50,8 @@ class KubeflowV2DagRunnerTest(test_case_utils.TfxTest):
     actual_output = runner.run(pipeline=pipeline, write_out=True)
 
     expected_json = json.loads(test_utils.get_text_from_test_data(golden_file))
-    expected_json['pipelineSpec']['sdkVersion'] = version.__version__
+    expected_json['pipelineSpec']['sdkVersion'] = 'tfx-{}'.format(
+        version.__version__)
     if 'labels' in expected_json:
       expected_json['labels']['tfx_version'] = telemetry_utils._normalize_label(
           version.__version__)
