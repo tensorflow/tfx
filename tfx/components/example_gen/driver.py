@@ -34,6 +34,7 @@ from tfx.orchestration.portable import data_types as portable_data_types
 from tfx.proto import example_gen_pb2
 from tfx.proto import range_config_pb2
 from tfx.proto.orchestration import driver_output_pb2
+from tfx.types import standard_component_specs
 from tfx.utils import proto_utils
 
 from ml_metadata.proto import metadata_store_pb2
@@ -85,14 +86,16 @@ class Driver(base_driver.BaseDriver, ir_base_driver.BaseDriver):
     del pipeline_info, component_info
 
     input_config = example_gen_pb2.Input()
-    proto_utils.json_to_proto(exec_properties[utils.INPUT_CONFIG_KEY],
-                              input_config)
+    proto_utils.json_to_proto(
+        exec_properties[standard_component_specs.INPUT_CONFIG_KEY],
+        input_config)
 
-    input_base = exec_properties[utils.INPUT_BASE_KEY]
+    input_base = exec_properties[standard_component_specs.INPUT_BASE_KEY]
     logging.debug('Processing input %s.', input_base)
 
     range_config = None
-    range_config_entry = exec_properties.get(utils.RANGE_CONFIG_KEY)
+    range_config_entry = exec_properties.get(
+        standard_component_specs.RANGE_CONFIG_KEY)
     if range_config_entry:
       range_config = range_config_pb2.RangeConfig()
       proto_utils.json_to_proto(range_config_entry, range_config)
@@ -111,8 +114,8 @@ class Driver(base_driver.BaseDriver, ir_base_driver.BaseDriver):
     fingerprint, span, version = utils.calculate_splits_fingerprint_span_and_version(
         input_base, input_config.splits, range_config)
 
-    exec_properties[utils.INPUT_CONFIG_KEY] = proto_utils.proto_to_json(
-        input_config)
+    exec_properties[standard_component_specs
+                    .INPUT_CONFIG_KEY] = proto_utils.proto_to_json(input_config)
     exec_properties[utils.SPAN_PROPERTY_NAME] = span
     exec_properties[utils.VERSION_PROPERTY_NAME] = version
     exec_properties[utils.FINGERPRINT_PROPERTY_NAME] = fingerprint
@@ -131,16 +134,16 @@ class Driver(base_driver.BaseDriver, ir_base_driver.BaseDriver):
     """Overrides BaseDriver._prepare_output_artifacts()."""
     del input_artifacts
 
-    example_artifact = output_dict[utils.EXAMPLES_KEY].type()
+    example_artifact = output_dict[standard_component_specs.EXAMPLES_KEY].type()
     base_output_dir = os.path.join(pipeline_info.pipeline_root,
                                    component_info.component_id)
 
     example_artifact.uri = base_driver._generate_output_uri(  # pylint: disable=protected-access
-        base_output_dir, utils.EXAMPLES_KEY, execution_id)
+        base_output_dir, standard_component_specs.EXAMPLES_KEY, execution_id)
     update_output_artifact(exec_properties, example_artifact.mlmd_artifact)
     base_driver._prepare_output_paths(example_artifact)  # pylint: disable=protected-access
 
-    return {utils.EXAMPLES_KEY: [example_artifact]}
+    return {standard_component_specs.EXAMPLES_KEY: [example_artifact]}
 
   def run(
       self, execution_info: portable_data_types.ExecutionInfo
@@ -159,8 +162,9 @@ class Driver(base_driver.BaseDriver, ir_base_driver.BaseDriver):
         data_types_utils.set_metadata_value(result.exec_properties[k], v)
 
     # Populate output_dict
-    output_example = copy.deepcopy(
-        execution_info.output_dict[utils.EXAMPLES_KEY][0].mlmd_artifact)
+    output_example = copy.deepcopy(execution_info.output_dict[
+        standard_component_specs.EXAMPLES_KEY][0].mlmd_artifact)
     update_output_artifact(exec_properties, output_example)
-    result.output_artifacts[utils.EXAMPLES_KEY].artifacts.append(output_example)
+    result.output_artifacts[
+        standard_component_specs.EXAMPLES_KEY].artifacts.append(output_example)
     return result

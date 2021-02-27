@@ -27,6 +27,7 @@ from tfx.dsl.components.base import executor_spec
 from tfx.proto import example_gen_pb2
 from tfx.proto import range_config_pb2
 from tfx.types import standard_artifacts
+from tfx.types import standard_component_specs
 from tfx.utils import proto_utils
 
 from google.protobuf import any_pb2
@@ -83,11 +84,16 @@ class ComponentTest(tf.test.TestCase):
         ]))
     self.assertEqual({}, example_gen.inputs.get_all())
     self.assertEqual(base_driver.BaseDriver, example_gen.driver_class)
-    self.assertEqual(standard_artifacts.Examples.TYPE_NAME,
-                     example_gen.outputs['examples'].type_name)
-    self.assertEqual(example_gen.exec_properties['output_data_format'],
-                     example_gen_pb2.FORMAT_TF_EXAMPLE)
-    self.assertIsNone(example_gen.exec_properties.get('custom_config'))
+    self.assertEqual(
+        standard_artifacts.Examples.TYPE_NAME,
+        example_gen.outputs[standard_component_specs.EXAMPLES_KEY].type_name)
+    self.assertEqual(
+        example_gen.exec_properties[
+            standard_component_specs.OUTPUT_DATA_FORMAT_KEY],
+        example_gen_pb2.FORMAT_TF_EXAMPLE)
+    self.assertIsNone(
+        example_gen.exec_properties.get(
+            standard_component_specs.CUSTOM_CONFIG_KEY))
 
   def testConstructSubclassQueryBasedWithInvalidOutputDataFormat(self):
     self.assertRaises(
@@ -101,11 +107,15 @@ class ComponentTest(tf.test.TestCase):
 
   def testConstructSubclassFileBased(self):
     example_gen = TestFileBasedExampleGenComponent(input_base='path')
-    self.assertIn('input_base', example_gen.exec_properties)
+    self.assertIn(standard_component_specs.INPUT_BASE_KEY,
+                  example_gen.exec_properties)
     self.assertEqual(driver.Driver, example_gen.driver_class)
-    self.assertEqual(standard_artifacts.Examples.TYPE_NAME,
-                     example_gen.outputs['examples'].type_name)
-    self.assertIsNone(example_gen.exec_properties.get('custom_config'))
+    self.assertEqual(
+        standard_artifacts.Examples.TYPE_NAME,
+        example_gen.outputs[standard_component_specs.EXAMPLES_KEY].type_name)
+    self.assertIsNone(
+        example_gen.exec_properties.get(
+            standard_component_specs.CUSTOM_CONFIG_KEY))
 
   def testConstructCustomExecutor(self):
     example_gen = component.FileBasedExampleGen(
@@ -113,8 +123,9 @@ class ComponentTest(tf.test.TestCase):
         custom_executor_spec=executor_spec.ExecutorClassSpec(
             TestExampleGenExecutor))
     self.assertEqual(driver.Driver, example_gen.driver_class)
-    self.assertEqual(standard_artifacts.Examples.TYPE_NAME,
-                     example_gen.outputs['examples'].type_name)
+    self.assertEqual(
+        standard_artifacts.Examples.TYPE_NAME,
+        example_gen.outputs[standard_component_specs.EXAMPLES_KEY].type_name)
 
   def testConstructWithOutputConfig(self):
     output_config = example_gen_pb2.Output(
@@ -125,12 +136,14 @@ class ComponentTest(tf.test.TestCase):
         ]))
     example_gen = TestFileBasedExampleGenComponent(
         input_base='path', output_config=output_config)
-    self.assertEqual(standard_artifacts.Examples.TYPE_NAME,
-                     example_gen.outputs['examples'].type_name)
+    self.assertEqual(
+        standard_artifacts.Examples.TYPE_NAME,
+        example_gen.outputs[standard_component_specs.EXAMPLES_KEY].type_name)
 
     stored_output_config = example_gen_pb2.Output()
-    proto_utils.json_to_proto(example_gen.exec_properties['output_config'],
-                              stored_output_config)
+    proto_utils.json_to_proto(
+        example_gen.exec_properties[standard_component_specs.OUTPUT_CONFIG_KEY],
+        stored_output_config)
     self.assertEqual(output_config, stored_output_config)
 
   def testConstructWithInputConfig(self):
@@ -141,12 +154,14 @@ class ComponentTest(tf.test.TestCase):
     ])
     example_gen = TestFileBasedExampleGenComponent(
         input_base='path', input_config=input_config)
-    self.assertEqual(standard_artifacts.Examples.TYPE_NAME,
-                     example_gen.outputs['examples'].type_name)
+    self.assertEqual(
+        standard_artifacts.Examples.TYPE_NAME,
+        example_gen.outputs[standard_component_specs.EXAMPLES_KEY].type_name)
 
     stored_input_config = example_gen_pb2.Input()
-    proto_utils.json_to_proto(example_gen.exec_properties['input_config'],
-                              stored_input_config)
+    proto_utils.json_to_proto(
+        example_gen.exec_properties[standard_component_specs.INPUT_CONFIG_KEY],
+        stored_input_config)
     self.assertEqual(input_config, stored_input_config)
 
   def testConstructWithCustomConfig(self):
@@ -158,8 +173,9 @@ class ComponentTest(tf.test.TestCase):
             TestExampleGenExecutor))
 
     stored_custom_config = example_gen_pb2.CustomConfig()
-    proto_utils.json_to_proto(example_gen.exec_properties['custom_config'],
-                              stored_custom_config)
+    proto_utils.json_to_proto(
+        example_gen.exec_properties[standard_component_specs.CUSTOM_CONFIG_KEY],
+        stored_custom_config)
     self.assertEqual(custom_config, stored_custom_config)
 
   def testConstructWithStaticRangeConfig(self):
@@ -172,8 +188,9 @@ class ComponentTest(tf.test.TestCase):
         custom_executor_spec=executor_spec.ExecutorClassSpec(
             TestExampleGenExecutor))
     stored_range_config = range_config_pb2.RangeConfig()
-    proto_utils.json_to_proto(example_gen.exec_properties['range_config'],
-                              stored_range_config)
+    proto_utils.json_to_proto(
+        example_gen.exec_properties[standard_component_specs.RANGE_CONFIG_KEY],
+        stored_range_config)
     self.assertEqual(range_config, stored_range_config)
 
 

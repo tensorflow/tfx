@@ -18,11 +18,11 @@ from typing import Any, Dict, List, Mapping, MutableMapping, Optional
 
 from absl import logging
 from tfx.components.evaluator import constants
-from tfx.components.example_gen import utils
 from tfx.orchestration.kubeflow.v2 import compiler_utils
 from tfx.orchestration.kubeflow.v2.proto import pipeline_pb2
 from tfx.types import artifact
 from tfx.types import artifact_utils
+from tfx.types import standard_component_specs
 from tfx.utils import import_utils
 import yaml
 
@@ -128,7 +128,7 @@ def parse_execution_properties(exec_properties: Any) -> Dict[str, Any]:
   for k, v in exec_properties.items():
     # TODO(b/159835994): Remove this once pipeline populates INPUT_BASE_KEY
     if k == _OLD_INPUT_BASE_PROPERTY_NAME:
-      k = utils.INPUT_BASE_KEY
+      k = standard_component_specs.INPUT_BASE_KEY
     # Translate each field from Value pb to plain value.
     result[k] = getattr(v, v.WhichOneof('value'))
     if result[k] is None:

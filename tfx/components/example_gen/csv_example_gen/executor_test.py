@@ -19,16 +19,16 @@ from __future__ import division
 from __future__ import print_function
 
 import os
+
 import apache_beam as beam
 from apache_beam.testing import util
 import tensorflow as tf
-
-from tfx.components.example_gen import utils
 from tfx.components.example_gen.csv_example_gen import executor
 from tfx.dsl.io import fileio
 from tfx.proto import example_gen_pb2
 from tfx.types import artifact_utils
 from tfx.types import standard_artifacts
+from tfx.types import standard_component_specs
 from tfx.utils import proto_utils
 
 
@@ -45,7 +45,9 @@ class ExecutorTest(tf.test.TestCase):
       examples = (
           pipeline
           | 'ToTFExample' >> executor._CsvToExample(
-              exec_properties={utils.INPUT_BASE_KEY: self._input_data_dir},
+              exec_properties={
+                  standard_component_specs.INPUT_BASE_KEY: self._input_data_dir
+              },
               split_pattern='csv/*'))
 
       def check_results(results):
@@ -61,7 +63,9 @@ class ExecutorTest(tf.test.TestCase):
       examples = (
           pipeline
           | 'ToTFExample' >> executor._CsvToExample(
-              exec_properties={utils.INPUT_BASE_KEY: self._input_data_dir},
+              exec_properties={
+                  standard_component_specs.INPUT_BASE_KEY: self._input_data_dir
+              },
               split_pattern='csv_empty/*'))
 
       def check_results(results):
@@ -88,18 +92,18 @@ class ExecutorTest(tf.test.TestCase):
     # Create output dict.
     examples = standard_artifacts.Examples()
     examples.uri = output_data_dir
-    output_dict = {utils.EXAMPLES_KEY: [examples]}
+    output_dict = {standard_component_specs.EXAMPLES_KEY: [examples]}
 
     # Create exec proterties.
     exec_properties = {
-        utils.INPUT_BASE_KEY:
+        standard_component_specs.INPUT_BASE_KEY:
             self._input_data_dir,
-        utils.INPUT_CONFIG_KEY:
+        standard_component_specs.INPUT_CONFIG_KEY:
             proto_utils.proto_to_json(
                 example_gen_pb2.Input(splits=[
                     example_gen_pb2.Input.Split(name='csv', pattern='csv/*'),
                 ])),
-        utils.OUTPUT_CONFIG_KEY:
+        standard_component_specs.OUTPUT_CONFIG_KEY:
             proto_utils.proto_to_json(
                 example_gen_pb2.Output(
                     split_config=example_gen_pb2.SplitConfig(splits=[

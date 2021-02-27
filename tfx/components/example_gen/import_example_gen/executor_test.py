@@ -19,16 +19,17 @@ from __future__ import division
 from __future__ import print_function
 
 import os
+
 import apache_beam as beam
 from apache_beam.testing import util
 import tensorflow as tf
-
 from tfx.components.example_gen import utils
 from tfx.components.example_gen.import_example_gen import executor
 from tfx.dsl.io import fileio
 from tfx.proto import example_gen_pb2
 from tfx.types import artifact_utils
 from tfx.types import standard_artifacts
+from tfx.types import standard_component_specs
 from tfx.utils import proto_utils
 
 
@@ -57,7 +58,9 @@ class ExecutorTest(tf.test.TestCase):
       examples = (
           pipeline
           | 'ToSerializedRecord' >> executor._ImportSerializedRecord(
-              exec_properties={utils.INPUT_BASE_KEY: self._input_data_dir},
+              exec_properties={
+                  standard_component_specs.INPUT_BASE_KEY: self._input_data_dir
+              },
               split_pattern='tfrecord/*')
           | 'ToTFExample' >> beam.Map(tf.train.Example.FromString))
 
@@ -71,10 +74,10 @@ class ExecutorTest(tf.test.TestCase):
 
   def _testDo(self, payload_format):
     exec_properties = {
-        utils.INPUT_BASE_KEY: self._input_data_dir,
-        utils.INPUT_CONFIG_KEY: self._input_config,
-        utils.OUTPUT_CONFIG_KEY: self._output_config,
-        utils.OUTPUT_DATA_FORMAT_KEY: payload_format,
+        standard_component_specs.INPUT_BASE_KEY: self._input_data_dir,
+        standard_component_specs.INPUT_CONFIG_KEY: self._input_config,
+        standard_component_specs.OUTPUT_CONFIG_KEY: self._output_config,
+        standard_component_specs.OUTPUT_DATA_FORMAT_KEY: payload_format,
     }
 
     output_data_dir = os.path.join(
@@ -84,7 +87,7 @@ class ExecutorTest(tf.test.TestCase):
     # Create output dict.
     self.examples = standard_artifacts.Examples()
     self.examples.uri = output_data_dir
-    output_dict = {utils.EXAMPLES_KEY: [self.examples]}
+    output_dict = {standard_component_specs.EXAMPLES_KEY: [self.examples]}
 
     # Run executor.
     import_example_gen = executor.Executor()
