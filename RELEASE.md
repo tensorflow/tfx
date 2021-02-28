@@ -29,6 +29,8 @@
 *   Deprecated input/output compatibility aliases for SchemaGen.
 
 ## Bug fixes and other changes
+*  Change Bigquery ML Pusher to publish the model to the user specified project
+   instead of the default project from run time context.
 
 ## Documentation updates
 *   Published a migration instruction for legacy custom Launcher developers.
