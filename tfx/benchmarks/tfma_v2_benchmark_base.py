@@ -43,7 +43,6 @@ from tfx_bsl.coders import example_coder
 from tfx_bsl.tfxio import record_based_tfxio
 from tfx_bsl.tfxio import test_util
 
-
 # Maximum number of examples within a record batch.
 _BATCH_SIZE = 1000
 
@@ -119,10 +118,12 @@ class TFMAV2BenchmarkBase(benchmark_base.BenchmarkBase):
       kwargs["extras"] = {}
     # Note that the GIT_COMMIT_ID is not included in the packages themselves:
     # it must be injected by an external script.
-    kwargs["extras"]["commit_tfx"] = (getattr(tfx, "GIT_COMMIT_ID", None) or
-                                      getattr(tfx, "__version__", None))
-    kwargs["extras"]["commit_tfma"] = (getattr(tfma, "GIT_COMMIT_ID", None) or
-                                       getattr(tfma, "__version__", None))
+    kwargs["extras"]["commit_tfx"] = (
+        getattr(tfx, "GIT_COMMIT_ID", None) or
+        getattr(tfx, "__version__", None))
+    kwargs["extras"]["commit_tfma"] = (
+        getattr(tfma, "GIT_COMMIT_ID", None) or
+        getattr(tfma, "__version__", None))
     # Stdout for use in tools which read the benchmark results from stdout.
     print(self._get_name(), kwargs["wall_time"],
           "({}x)".format(kwargs["iters"]))
@@ -387,7 +388,7 @@ class TFMAV2BenchmarkBase(benchmark_base.BenchmarkBase):
     inputs_per_accumulator = 1000
     start = time.time()
     for _ in range(_ITERS):
-      computations, _ = (
+      computations, _, _ = (
           # pylint: disable=protected-access
           metrics_plots_and_validations_evaluator
           ._filter_and_separate_computations(
