@@ -110,7 +110,7 @@ def _create_parameterized_pipeline(
   # The input data location is parameterized by data_root
   example_gen = CsvExampleGen(input_base=data_root)
 
-  statistics_gen = StatisticsGen(input_data=example_gen.outputs['examples'])
+  statistics_gen = StatisticsGen(examples=example_gen.outputs['examples'])
   schema_gen = SchemaGen(
       statistics=statistics_gen.outputs['statistics'],
       infer_feature_shape=False)
