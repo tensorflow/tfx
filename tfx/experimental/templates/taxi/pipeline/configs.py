@@ -29,7 +29,7 @@ PIPELINE_NAME = '{{PIPELINE_NAME}}'
 # Following code will retrieve your GCP project. You can choose which project
 # to use by setting GOOGLE_CLOUD_PROJECT environment variable.
 try:
-  import google.auth  # pylint: disable=g-import-not-at-top
+  import google.auth  # pylint: disable=g-import-not-at-top  # pytype: disable=import-error
   try:
     _, GOOGLE_CLOUD_PROJECT = google.auth.default()
   except google.auth.exceptions.DefaultCredentialsError:
