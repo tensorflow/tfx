@@ -18,13 +18,16 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import sys
 from typing import Any, Dict, List, Text
 
 from apache_beam.options.pipeline_options import DirectOptions
+from apache_beam.options.pipeline_options import GoogleCloudOptions
 from apache_beam.options.pipeline_options import StandardOptions
 import tensorflow as tf
 
 from tfx import types
+from tfx import version
 from tfx.dsl.components.base import base_executor
 
 
@@ -44,7 +47,17 @@ class BaseExecutorTest(tf.test.TestCase):
         beam_pipeline_args=['--runner=DirectRunner'])
     executor = _TestExecutor(executor_context)
     options = executor._make_beam_pipeline().options.view_as(StandardOptions)
-    self.assertEqual('DirectRunner', options.runner)
+    self.assertEqual('DirectRunner', options.view_as(StandardOptions).runner)
+    # Verify labels.
+    self.assertListEqual(
+        [
+            # Label is coverted to lowercase.
+            'tfx_executor=__main__-_testexecutor',
+            'tfx_py_version=%d-%d' %
+            (sys.version_info.major, sys.version_info.minor),
+            'tfx_version=%s' % version.__version__.replace('.', '-'),
+        ],
+        options.view_as(GoogleCloudOptions).labels)
 
     executor_context = base_executor.BaseExecutor.Context(
         beam_pipeline_args=['--direct_num_workers=2'])
