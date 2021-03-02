@@ -9,6 +9,7 @@
 ### For Component Authors
 
 ## Deprecations
+*   Deprecated input/output compatibility aliases for Transform and StatisticsGen.
 
 ## Bug Fixes and Other Changes
 

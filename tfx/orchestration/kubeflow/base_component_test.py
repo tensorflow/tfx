@@ -110,6 +110,7 @@ class BaseComponentTest(tf.test.TestCase):
       self.assertEqual(
           self.component.container_op.arguments[:len(expected_args)],
           expected_args)
+
     except AssertionError:
       # Print out full arguments for debugging.
       absl.logging.error('==== BEGIN CONTAINER OP ARGUMENT DUMP ====')

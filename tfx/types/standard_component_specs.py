@@ -76,6 +76,8 @@ INFERENCE_RESULT_KEY = 'inference_result'
 OUTPUT_EXAMPLES_KEY = 'output_examples'
 # Key for schema_gen
 INFER_FEATURE_SHAPE_KEY = 'infer_feature_shape'
+# Key for statistics_gen
+STATS_OPTIONS_JSON_KEY = 'stats_options_json'
 # Key for example_gen
 INPUT_BASE_KEY = 'input_base'
 INPUT_CONFIG_KEY = 'input_config'
@@ -309,24 +311,20 @@ class StatisticsGenSpec(ComponentSpec):
   """StatisticsGen component spec."""
 
   PARAMETERS = {
-      'stats_options_json': ExecutionParameter(type=(str, Text), optional=True),
-      'exclude_splits': ExecutionParameter(type=(str, Text), optional=True),
+      STATS_OPTIONS_JSON_KEY:
+          ExecutionParameter(type=(str, Text), optional=True),
+      EXCLUDE_SPLITS_KEY:
+          ExecutionParameter(type=(str, Text), optional=True),
   }
   INPUTS = {
-      'examples': ChannelParameter(type=standard_artifacts.Examples),
-      'schema': ChannelParameter(type=standard_artifacts.Schema, optional=True),
+      EXAMPLES_KEY:
+          ChannelParameter(type=standard_artifacts.Examples),
+      SCHEMA_KEY:
+          ChannelParameter(type=standard_artifacts.Schema, optional=True),
   }
   OUTPUTS = {
-      'statistics': ChannelParameter(type=standard_artifacts.ExampleStatistics),
-  }
-  # TODO(b/139281215): these input / output names have recently been renamed.
-  # These compatibility aliases are temporarily provided for backwards
-  # compatibility.
-  _INPUT_COMPATIBILITY_ALIASES = {
-      'input_data': 'examples',
-  }
-  _OUTPUT_COMPATIBILITY_ALIASES = {
-      'output': 'statistics',
+      STATISTICS_KEY:
+          ChannelParameter(type=standard_artifacts.ExampleStatistics),
   }
 
 

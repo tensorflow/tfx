@@ -85,7 +85,7 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text,
 
   # Computes statistics over data for visualization and example validation.
   statistics_gen = StatisticsGen(
-      input_data=training_example_gen.outputs['examples'])
+      examples=training_example_gen.outputs['examples'])
 
   # Generates schema based on statistics files.
   schema_gen = SchemaGen(

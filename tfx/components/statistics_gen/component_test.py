@@ -18,6 +18,7 @@ from tfx.components.statistics_gen import component
 from tfx.types import artifact_utils
 from tfx.types import channel_utils
 from tfx.types import standard_artifacts
+from tfx.types import standard_component_specs
 
 
 class ComponentTest(tf.test.TestCase):
@@ -29,10 +30,12 @@ class ComponentTest(tf.test.TestCase):
     statistics_gen = component.StatisticsGen(
         examples=channel_utils.as_channel([examples]),
         exclude_splits=exclude_splits)
-    self.assertEqual(standard_artifacts.ExampleStatistics.TYPE_NAME,
-                     statistics_gen.outputs['statistics'].type_name)
-    self.assertEqual(statistics_gen.spec.exec_properties['exclude_splits'],
-                     '["eval"]')
+    self.assertEqual(
+        standard_artifacts.ExampleStatistics.TYPE_NAME, statistics_gen.outputs[
+            standard_component_specs.STATISTICS_KEY].type_name)
+    self.assertEqual(
+        statistics_gen.spec.exec_properties[
+            standard_component_specs.EXCLUDE_SPLITS_KEY], '["eval"]')
 
   def testConstructWithSchemaAndStatsOptions(self):
     examples = standard_artifacts.Examples()
@@ -50,8 +53,9 @@ class ComponentTest(tf.test.TestCase):
         examples=channel_utils.as_channel([examples]),
         schema=channel_utils.as_channel([schema]),
         stats_options=stats_options)
-    self.assertEqual(standard_artifacts.ExampleStatistics.TYPE_NAME,
-                     statistics_gen.outputs['statistics'].type_name)
+    self.assertEqual(
+        standard_artifacts.ExampleStatistics.TYPE_NAME, statistics_gen.outputs[
+            standard_component_specs.STATISTICS_KEY].type_name)
 
 
 if __name__ == '__main__':
