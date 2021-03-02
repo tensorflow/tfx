@@ -169,6 +169,8 @@ def make_extra_packages_examples():
       # Required for tfx/examples/ranking
       'tensorflow-ranking>=0.3.3,<0.4',
       'struct2tensor>=0.28,<0.29',
+      # Required for tfx/examples/penguin/experimental
+      'scikit-learn>=0.24,<0.25',
   ]
 
 
