@@ -5,6 +5,9 @@
 ## Breaking Changes
 
 ### For Pipeline Authors
+*   Added aliases to the `tfx.dsl.components.common.importer.Importer` and
+    `tfx.dsl.components.common.importer.Resolver` in `tfx.components`.
+
 
 ### For Component Authors
 
