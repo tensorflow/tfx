@@ -50,6 +50,7 @@ MAX_EXECUTIONS_FOR_CACHE = 100
 EXECUTION_STATE_CACHED = 'cached'
 EXECUTION_STATE_COMPLETE = 'complete'
 EXECUTION_STATE_NEW = 'new'
+EXECUTION_STATE_NO_OP = 'noop'
 FINAL_EXECUTION_STATES = frozenset(
     (EXECUTION_STATE_CACHED, EXECUTION_STATE_COMPLETE))
 # Context type, the following three types of contexts are supported:
@@ -477,6 +478,9 @@ class Metadata(object):
       execution.last_known_state = metadata_store_pb2.Execution.COMPLETE
     elif state == EXECUTION_STATE_NEW:
       execution.last_known_state = metadata_store_pb2.Execution.RUNNING
+    # dummy change
+    elif state == EXECUTION_STATE_NO_OP:
+      execution.last_known_state = metadata_store_pb2.Execution.UNKNOWN
 
     exec_properties = exec_properties or {}
     # TODO(ruoyu): Enforce a formal rule for execution schema change.
