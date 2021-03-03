@@ -17,8 +17,8 @@ import argparse
 import os
 from typing import List
 
+from absl import app
 from absl import logging
-
 from tfx.components.evaluator import executor as evaluator_executor
 from tfx.dsl.components.base import base_executor
 from tfx.dsl.io import fileio
@@ -29,7 +29,6 @@ from tfx.types.standard_component_specs import BLESSING_KEY
 from tfx.utils import import_utils
 
 from google.protobuf import json_format
-from tensorflow.python.platform import app  # pylint: disable=g-direct-tensorflow-import
 
 
 # TODO(b/166202742): Consolidate container entrypoint with Kubeflow runner.

@@ -23,11 +23,10 @@ import base64
 import json
 
 import absl
+from absl import app
 from tfx.dsl.components.base import base_executor
 from tfx.types import artifact_utils
 from tfx.utils import import_utils
-
-from tensorflow.python.platform import app  # pylint: disable=g-direct-tensorflow-import
 
 
 def _run_executor(args, pipeline_args) -> None:

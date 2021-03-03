@@ -17,8 +17,8 @@ import argparse
 import os
 from typing import Any, Dict, List, Optional
 
+from absl import app
 from absl import logging
-
 from tfx.components.example_gen import driver
 from tfx.components.example_gen import utils
 from tfx.dsl.io import fileio
@@ -30,7 +30,6 @@ from tfx.types import artifact_utils
 from tfx.utils import proto_utils
 
 from google.protobuf import json_format
-from tensorflow.python.platform import app  # pylint: disable=g-direct-tensorflow-import
 
 
 def _run_driver(exec_properties: Dict[str, Any],

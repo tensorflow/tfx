@@ -19,14 +19,12 @@ from __future__ import division
 from __future__ import print_function
 
 import argparse
+
 import absl
+from absl import app
 from tfx.components.transform import labels
 from tfx.components.transform.executor import Executor
 from tfx.proto import example_gen_pb2
-
-# pylint: disable=g-direct-tensorflow-import
-from tensorflow.python.platform import app
-# pylint: enable=g-direct-tensorflow-import
 
 
 def _run_transform(args, beam_pipeline_args):
