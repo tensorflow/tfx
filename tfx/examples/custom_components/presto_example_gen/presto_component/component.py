@@ -29,7 +29,8 @@ class PrestoExampleGen(component.QueryBasedExampleGen):  # pylint: disable=prote
   """Official TFX PrestoExampleGen component.
 
   The Presto examplegen component takes a query, connection client
-  configuration, and generates train and eval examples for downsteam components.
+  configuration, and generates train and eval examples for downstream
+  components.
   """
   EXECUTOR_SPEC = executor_spec.ExecutorClassSpec(executor.Executor)
 
