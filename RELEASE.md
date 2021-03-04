@@ -2,6 +2,8 @@
 
 ## Major Features and Improvements
 
+*  Added a simple query based driver that supports Span spec and static_range.
+
 ## Breaking Changes
 
 ### For Pipeline Authors

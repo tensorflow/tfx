@@ -117,11 +117,11 @@ class RunDriverTest(test_case_utils.TfxTest):
 
   def testDriverWithSpan(self):
     # Test align of span number.
-    span1_split1 = os.path.join(_TEST_INPUT_DIR, 'span01', 'split1', 'data')
+    span1_split1 = os.path.join(_TEST_INPUT_DIR, 'span1', 'split1', 'data')
     io_utils.write_string_file(span1_split1, 'testing11')
-    span1_split2 = os.path.join(_TEST_INPUT_DIR, 'span01', 'split2', 'data')
+    span1_split2 = os.path.join(_TEST_INPUT_DIR, 'span1', 'split2', 'data')
     io_utils.write_string_file(span1_split2, 'testing12')
-    span2_split1 = os.path.join(_TEST_INPUT_DIR, 'span02', 'split1', 'data')
+    span2_split1 = os.path.join(_TEST_INPUT_DIR, 'span2', 'split1', 'data')
     io_utils.write_string_file(span2_split1, 'testing21')
 
     serialized_args = [
@@ -133,7 +133,7 @@ class RunDriverTest(test_case_utils.TfxTest):
       driver.main(serialized_args)
 
     # Test if latest span is selected when span aligns for each split.
-    span2_split2 = os.path.join(_TEST_INPUT_DIR, 'span02', 'split2', 'data')
+    span2_split2 = os.path.join(_TEST_INPUT_DIR, 'span2', 'split2', 'data')
     io_utils.write_string_file(span2_split2, 'testing22')
 
     driver.main(serialized_args)
@@ -149,9 +149,9 @@ class RunDriverTest(test_case_utils.TfxTest):
           json_format.MessageToJson(
               example_gen_pb2.Input(splits=[
                   example_gen_pb2.Input.Split(
-                      name='s1', pattern='span02/split1/*'),
+                      name='s1', pattern='span2/split1/*'),
                   example_gen_pb2.Input.Split(
-                      name='s2', pattern='span02/split2/*')
+                      name='s2', pattern='span2/split2/*')
               ])))
 
   def testDriverJsonContract(self):
