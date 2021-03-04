@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,10 +13,6 @@
 # limitations under the License.
 """E2E Tests for tfx.examples.cifar10.cifar10_pipeline_native_keras."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import os
 from typing import Text
 
@@ -26,7 +21,7 @@ import tensorflow as tf
 from tfx.dsl.io import fileio
 from tfx.examples.cifar10 import cifar10_pipeline_native_keras
 from tfx.orchestration import metadata
-from tfx.orchestration.beam.beam_dag_runner import BeamDagRunner
+from tfx.orchestration.local.local_dag_runner import LocalDagRunner
 
 
 class CIFAR10PipelineNativeKerasEndToEndTest(tf.test.TestCase):
@@ -89,7 +84,7 @@ class CIFAR10PipelineNativeKerasEndToEndTest(tf.test.TestCase):
         labels_path=self._labels_path,
         beam_pipeline_args=[])
 
-    BeamDagRunner().run(pipeline)
+    LocalDagRunner().run(pipeline)
 
     self.assertTrue(fileio.exists(self._serving_model_dir_lite))
     self.assertTrue(fileio.exists(self._metadata_path))
@@ -103,27 +98,6 @@ class CIFAR10PipelineNativeKerasEndToEndTest(tf.test.TestCase):
       self.assertEqual(expected_execution_count, execution_count)
 
     self.assertPipelineExecution()
-
-    # Runs pipeline the second time.
-    BeamDagRunner().run(pipeline)
-
-    # All executions but Evaluator and Pusher are cached.
-    with metadata.Metadata(metadata_config) as m:
-      # Artifact count is increased by 3 caused by Evaluator and Pusher.
-      self.assertEqual(artifact_count + 3, len(m.store.get_artifacts()))
-      artifact_count = len(m.store.get_artifacts())
-      self.assertEqual(expected_execution_count * 2,
-                       len(m.store.get_executions()))
-
-    # Runs pipeline the third time.
-    BeamDagRunner().run(pipeline)
-
-    # Asserts cache execution.
-    with metadata.Metadata(metadata_config) as m:
-      # Artifact count is unchanged.
-      self.assertEqual(artifact_count, len(m.store.get_artifacts()))
-      self.assertEqual(expected_execution_count * 3,
-                       len(m.store.get_executions()))
 
 
 if __name__ == '__main__':
