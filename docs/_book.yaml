@@ -17,6 +17,10 @@ upper_tabs:
     - name: "Guide"
       contents:
       - include: /tfx/guide/_toc.yaml
+    - name: "Solutions"
+      contents:
+      - title: TFX Solutions
+        path: /tfx/solutions/index.md
     - name: API
       skip_translation: true
       contents:

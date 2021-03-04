@@ -20,11 +20,10 @@ from __future__ import print_function
 
 import copy
 import os
-from typing import Any, Dict, List, Iterable, Optional, Text
+from typing import Any, Dict, List, Text
 
 from absl import logging
 from tfx import types
-from tfx.components.example_gen import input_processor
 from tfx.components.example_gen import utils
 from tfx.dsl.components.base import base_driver
 from tfx.orchestration import data_types
@@ -67,19 +66,15 @@ def update_output_artifact(
 
 
 class Driver(base_driver.BaseDriver, ir_base_driver.BaseDriver):
-  """Custom driver for ExampleGen."""
+  """Custom driver for ExampleGen.
+
+  This driver supports file based ExampleGen, e.g., for CsvExampleGen and
+  ImportExampleGen.
+  """
 
   def __init__(self, metadata_handler: metadata.Metadata):
     base_driver.BaseDriver.__init__(self, metadata_handler)
     ir_base_driver.BaseDriver.__init__(self, metadata_handler)
-
-  def get_input_processor(
-      self,
-      splits: Iterable[example_gen_pb2.Input.Split],
-      range_config: Optional[range_config_pb2.RangeConfig] = None,
-      input_base_uri: Optional[Text] = None) -> input_processor.InputProcessor:
-    """Returns the custom InputProcessor for this driver."""
-    raise NotImplementedError
 
   def resolve_exec_properties(
       self,
@@ -95,7 +90,7 @@ class Driver(base_driver.BaseDriver, ir_base_driver.BaseDriver):
         exec_properties[standard_component_specs.INPUT_CONFIG_KEY],
         input_config)
 
-    input_base = exec_properties.get(standard_component_specs.INPUT_BASE_KEY)
+    input_base = exec_properties[standard_component_specs.INPUT_BASE_KEY]
     logging.debug('Processing input %s.', input_base)
 
     range_config = None
@@ -105,18 +100,19 @@ class Driver(base_driver.BaseDriver, ir_base_driver.BaseDriver):
       range_config = range_config_pb2.RangeConfig()
       proto_utils.json_to_proto(range_config_entry, range_config)
 
-    processor = self.get_input_processor(
-        splits=input_config.splits,
-        range_config=range_config,
-        input_base_uri=input_base)
+      if range_config.HasField('static_range'):
+        # For ExampleGen, StaticRange must specify an exact span to look for,
+        # since only one span is processed at a time.
+        start_span_number = range_config.static_range.start_span_number
+        end_span_number = range_config.static_range.end_span_number
+        if start_span_number != end_span_number:
+          raise ValueError(
+              'Start and end span numbers for RangeConfig.static_range must '
+              'be equal: (%s, %s)' % (start_span_number, end_span_number))
 
-    span, version = processor.resolve_span_and_version()
-    fingerprint = processor.get_input_fingerprint(span, version)
-
-    # Updates the input_config.splits.pattern.
-    for split in input_config.splits:
-      split.pattern = processor.get_pattern_for_span_version(
-          split.pattern, span, version)
+    # Note that this function updates the input_config.splits.pattern.
+    fingerprint, span, version = utils.calculate_splits_fingerprint_span_and_version(
+        input_base, input_config.splits, range_config)
 
     exec_properties[standard_component_specs
                     .INPUT_CONFIG_KEY] = proto_utils.proto_to_json(input_config)
@@ -172,29 +168,3 @@ class Driver(base_driver.BaseDriver, ir_base_driver.BaseDriver):
     result.output_artifacts[
         standard_component_specs.EXAMPLES_KEY].artifacts.append(output_example)
     return result
-
-
-class FileBasedDriver(Driver):
-  """Custom Driver for file based ExampleGen, e.g., ImportExampleGen."""
-
-  def get_input_processor(
-      self,
-      splits: Iterable[example_gen_pb2.Input.Split],
-      range_config: Optional[range_config_pb2.RangeConfig] = None,
-      input_base_uri: Optional[Text] = None) -> input_processor.InputProcessor:
-    """Returns FileBasedInputProcessor."""
-    assert input_base_uri
-    return input_processor.FileBasedInputProcessor(input_base_uri, splits,
-                                                   range_config)
-
-
-class QueryBasedDriver(Driver):
-  """Custom Driver for query based ExampleGen, e.g., BigQueryExampleGen."""
-
-  def get_input_processor(
-      self,
-      splits: Iterable[example_gen_pb2.Input.Split],
-      range_config: Optional[range_config_pb2.RangeConfig] = None,
-      input_base_uri: Optional[Text] = None) -> input_processor.InputProcessor:
-    """Returns QueryBasedInputProcessor."""
-    return input_processor.QueryBasedInputProcessor(splits, range_config)

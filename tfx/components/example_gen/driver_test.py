@@ -48,7 +48,7 @@ class DriverTest(tf.test.TestCase):
 
     # Mock metadata and create driver.
     self._mock_metadata = tf.compat.v1.test.mock.Mock()
-    self._file_based_driver = driver.FileBasedDriver(self._mock_metadata)
+    self._example_gen_driver = driver.Driver(self._mock_metadata)
 
   def testResolveExecProperties(self):
     # Create input dir.
@@ -64,10 +64,10 @@ class DriverTest(tf.test.TestCase):
                 example_gen_pb2.Input(splits=[
                     example_gen_pb2.Input.Split(
                         name='s1',
-                        pattern='span{SPAN:2}/version{VERSION:2}/split1/*'),
+                        pattern='span{SPAN}/version{VERSION}/split1/*'),
                     example_gen_pb2.Input.Split(
                         name='s2',
-                        pattern='span{SPAN:2}/version{VERSION:2}/split2/*')
+                        pattern='span{SPAN}/version{VERSION}/split2/*')
                 ])),
         standard_component_specs.RANGE_CONFIG_KEY:
             None,
@@ -87,8 +87,8 @@ class DriverTest(tf.test.TestCase):
     # Check that error raised when span does not match.
     with self.assertRaisesRegexp(
         ValueError, 'Latest span should be the same for each split'):
-      self._file_based_driver.resolve_exec_properties(self._exec_properties,
-                                                      None, None)
+      self._example_gen_driver.resolve_exec_properties(self._exec_properties,
+                                                       None, None)
 
     span2_v1_split2 = os.path.join(self._input_base_path, 'span02', 'version01',
                                    'split2', 'data')
@@ -100,8 +100,8 @@ class DriverTest(tf.test.TestCase):
     # Check that error raised when span matches, but version does not match.
     with self.assertRaisesRegexp(
         ValueError, 'Latest version should be the same for each split'):
-      self._file_based_driver.resolve_exec_properties(self._exec_properties,
-                                                      None, None)
+      self._example_gen_driver.resolve_exec_properties(self._exec_properties,
+                                                       None, None)
 
     span2_v2_split2 = os.path.join(self._input_base_path, 'span02', 'version02',
                                    'split2', 'data')
@@ -109,8 +109,8 @@ class DriverTest(tf.test.TestCase):
 
     # Test if latest span and version selected when span and version aligns
     # for each split.
-    self._file_based_driver.resolve_exec_properties(self._exec_properties, None,
-                                                    None)
+    self._example_gen_driver.resolve_exec_properties(self._exec_properties,
+                                                     None, None)
     self.assertEqual(self._exec_properties[utils.SPAN_PROPERTY_NAME], 2)
     self.assertEqual(self._exec_properties[utils.VERSION_PROPERTY_NAME], 2)
     self.assertRegex(
@@ -140,10 +140,9 @@ class DriverTest(tf.test.TestCase):
             example_gen_pb2.Input(splits=[
                 example_gen_pb2.Input.Split(
                     name='s1',
-                    pattern='span{SPAN:2}/version{VERSION:2}/split1/*'),
+                    pattern='span{SPAN:2}/version{VERSION}/split1/*'),
                 example_gen_pb2.Input.Split(
-                    name='s2',
-                    pattern='span{SPAN:2}/version{VERSION:2}/split2/*'),
+                    name='s2', pattern='span{SPAN:2}/version{VERSION}/split2/*')
             ]))
 
     self._exec_properties[
@@ -151,18 +150,18 @@ class DriverTest(tf.test.TestCase):
             range_config_pb2.RangeConfig(
                 static_range=range_config_pb2.StaticRange(
                     start_span_number=1, end_span_number=2)))
-    with self.assertRaisesRegexp(ValueError,
-                                 'For ExampleGen, start and end span numbers'):
-      self._file_based_driver.resolve_exec_properties(self._exec_properties,
-                                                      None, None)
+    with self.assertRaisesRegexp(
+        ValueError, 'Start and end span numbers for RangeConfig.static_range'):
+      self._example_gen_driver.resolve_exec_properties(self._exec_properties,
+                                                       None, None)
 
     self._exec_properties[
         standard_component_specs.RANGE_CONFIG_KEY] = proto_utils.proto_to_json(
             range_config_pb2.RangeConfig(
                 static_range=range_config_pb2.StaticRange(
                     start_span_number=1, end_span_number=1)))
-    self._file_based_driver.resolve_exec_properties(self._exec_properties, None,
-                                                    None)
+    self._example_gen_driver.resolve_exec_properties(self._exec_properties,
+                                                     None, None)
     self.assertEqual(self._exec_properties[utils.SPAN_PROPERTY_NAME], 1)
     self.assertEqual(self._exec_properties[utils.VERSION_PROPERTY_NAME], 1)
     self.assertRegex(
@@ -203,7 +202,7 @@ class DriverTest(tf.test.TestCase):
         component_type='type', component_id='cid', pipeline_info=pipeline_info)
 
     input_artifacts = {}
-    output_artifacts = self._file_based_driver._prepare_output_artifacts(  # pylint: disable=protected-access
+    output_artifacts = self._example_gen_driver._prepare_output_artifacts(  # pylint: disable=protected-access
         input_artifacts, output_dict, exec_properties, 1, pipeline_info,
         component_info)
     examples = artifact_utils.get_single_instance(
@@ -234,7 +233,7 @@ class DriverTest(tf.test.TestCase):
                                    'data')
     io_utils.write_string_file(span1_v1_split2, 'testing12')
 
-    ir_driver = driver.FileBasedDriver(self._mock_metadata)
+    ir_driver = driver.Driver(self._mock_metadata)
     example = standard_artifacts.Examples()
 
     # Prepare output_dic
@@ -249,9 +248,9 @@ class DriverTest(tf.test.TestCase):
             proto_utils.proto_to_json(
                 example_gen_pb2.Input(splits=[
                     example_gen_pb2.Input.Split(
-                        name='s1', pattern='span{SPAN:2}/split1/*'),
+                        name='s1', pattern='span{SPAN}/split1/*'),
                     example_gen_pb2.Input.Split(
-                        name='s2', pattern='span{SPAN:2}/split2/*')
+                        name='s2', pattern='span{SPAN}/split2/*')
                 ])),
     }
     result = ir_driver.run(
@@ -293,49 +292,6 @@ class DriverTest(tf.test.TestCase):
             utils.FINGERPRINT_PROPERTY_NAME].string_value,
         r'split:s1,num_files:1,total_bytes:9,xor_checksum:.*,sum_checksum:.*\nsplit:s2,num_files:1,total_bytes:9,xor_checksum:.*,sum_checksum:.*'
     )
-
-  def testQueryBasedDriver(self):
-    # Create exec proterties.
-    exec_properties = {
-        standard_component_specs.INPUT_CONFIG_KEY:
-            proto_utils.proto_to_json(
-                example_gen_pb2.Input(splits=[
-                    example_gen_pb2.Input.Split(
-                        name='s1',
-                        pattern="select * from table where span={SPAN} and split='s1'"
-                    ),
-                    example_gen_pb2.Input.Split(
-                        name='s2',
-                        pattern="select * from table where span={SPAN} and split='s2'"
-                    )
-                ])),
-        standard_component_specs.RANGE_CONFIG_KEY:
-            proto_utils.proto_to_json(
-                range_config_pb2.RangeConfig(
-                    static_range=range_config_pb2.StaticRange(
-                        start_span_number=2, end_span_number=2))),
-    }
-
-    query_based_driver = driver.QueryBasedDriver(self._mock_metadata)
-    query_based_driver.resolve_exec_properties(exec_properties, None, None)
-
-    self.assertEqual(exec_properties[utils.SPAN_PROPERTY_NAME], 2)
-    self.assertIsNone(exec_properties[utils.VERSION_PROPERTY_NAME])
-    self.assertIsNone(exec_properties[utils.FINGERPRINT_PROPERTY_NAME])
-    updated_input_config = example_gen_pb2.Input()
-    proto_utils.json_to_proto(
-        exec_properties[standard_component_specs.INPUT_CONFIG_KEY],
-        updated_input_config)
-    self.assertProtoEquals(
-        """
-        splits {
-          name: "s1"
-          pattern: "select * from table where span=2 and split='s1'"
-        }
-        splits {
-          name: "s2"
-          pattern: "select * from table where span=2 and split='s2'"
-        }""", updated_input_config)
 
 
 if __name__ == '__main__':

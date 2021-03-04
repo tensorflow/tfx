@@ -92,6 +92,44 @@ class PenguinPipelineSklearnLocalEndToEndTest(tf.test.TestCase):
 
     self.assertPipelineExecution()
 
+    # Runs pipeline the second time.
+    LocalDagRunner().run(
+        penguin_pipeline_sklearn_local._create_pipeline(
+            pipeline_name=self._pipeline_name,
+            pipeline_root=self._pipeline_root,
+            data_root=self._data_root,
+            trainer_module_file=self._trainer_module_file,
+            evaluator_module_file=self._evaluator_module_file,
+            serving_model_dir=self._serving_model_dir,
+            metadata_path=self._metadata_path,
+            beam_pipeline_args=[]))
+
+    with metadata.Metadata(metadata_config) as m:
+      # Artifact count is increased by 3 caused by Evaluator and Pusher.
+      self.assertEqual(artifact_count + 3, len(m.store.get_artifacts()))
+      artifact_count = len(m.store.get_artifacts())
+      self.assertEqual(expected_execution_count * 2,
+                       len(m.store.get_executions()))
+
+    # Runs pipeline the third time.
+    LocalDagRunner().run(
+        penguin_pipeline_sklearn_local._create_pipeline(
+            pipeline_name=self._pipeline_name,
+            pipeline_root=self._pipeline_root,
+            data_root=self._data_root,
+            trainer_module_file=self._trainer_module_file,
+            evaluator_module_file=self._evaluator_module_file,
+            serving_model_dir=self._serving_model_dir,
+            metadata_path=self._metadata_path,
+            beam_pipeline_args=[]))
+
+    # Asserts cache execution.
+    with metadata.Metadata(metadata_config) as m:
+      # Artifact count is unchanged.
+      self.assertEqual(artifact_count, len(m.store.get_artifacts()))
+      self.assertEqual(expected_execution_count * 3,
+                       len(m.store.get_executions()))
+
 
 if __name__ == '__main__':
   tf.compat.v1.enable_v2_behavior()

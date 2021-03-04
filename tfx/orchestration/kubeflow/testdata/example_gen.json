@@ -46,7 +46,7 @@
   },
   "_type": "tfx.components.example_gen.csv_example_gen.component.CsvExampleGen",
   "driver_class": {
-    "__class__": "FileBasedDriver",
+    "__class__": "Driver",
     "__module__": "tfx.components.example_gen.driver",
     "__tfx_object_type__": "class"
   },

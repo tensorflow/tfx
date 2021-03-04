@@ -22,7 +22,7 @@ import tensorflow as tf
 from tfx.dsl.io import fileio
 from tfx.examples.bert.cola import bert_cola_pipeline
 from tfx.orchestration import metadata
-from tfx.orchestration.local.local_dag_runner import LocalDagRunner
+from tfx.orchestration.beam.beam_dag_runner import BeamDagRunner
 
 
 @unittest.skipIf(tf.__version__ < '2',
@@ -72,9 +72,9 @@ class ColaPipelineNativeKerasEndToEndTest(tf.test.TestCase):
         serving_model_dir=self._serving_model_dir,
         pipeline_root=self._pipeline_root,
         metadata_path=self._metadata_path,
-        beam_pipeline_args=[])
+        beam_pipeline_args=['--direct_num_workers=1'])
 
-    LocalDagRunner().run(pipeline)
+    BeamDagRunner().run(pipeline)
 
     self.assertTrue(fileio.exists(self._serving_model_dir))
     self.assertTrue(fileio.exists(self._metadata_path))
@@ -88,6 +88,27 @@ class ColaPipelineNativeKerasEndToEndTest(tf.test.TestCase):
       self.assertEqual(expected_execution_count, execution_count)
 
     self.assertPipelineExecution()
+
+    # Runs pipeline the second time.
+    BeamDagRunner().run(pipeline)
+
+    # All executions but Evaluator and Pusher are cached.
+    with metadata.Metadata(metadata_config) as m:
+      # Artifact count is increased by 3 caused by Evaluator and Pusher.
+      self.assertEqual(artifact_count + 3, len(m.store.get_artifacts()))
+      artifact_count = len(m.store.get_artifacts())
+      self.assertEqual(expected_execution_count * 2,
+                       len(m.store.get_executions()))
+
+    # Runs pipeline the third time.
+    BeamDagRunner().run(pipeline)
+
+    # Asserts cache execution.
+    with metadata.Metadata(metadata_config) as m:
+      # Artifact count is unchanged.
+      self.assertEqual(artifact_count, len(m.store.get_artifacts()))
+      self.assertEqual(expected_execution_count * 3,
+                       len(m.store.get_executions()))
 
 
 if __name__ == '__main__':

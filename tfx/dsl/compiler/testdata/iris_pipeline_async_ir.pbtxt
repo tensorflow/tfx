@@ -1157,7 +1157,7 @@ deployment_config {
       key: "CsvExampleGen"
       value {
         [type.googleapis.com/tfx.orchestration.executable_spec.PythonClassExecutableSpec] {
-          class_path: "tfx.components.example_gen.driver.FileBasedDriver"
+          class_path: "tfx.components.example_gen.driver.Driver"
         }
       }
     }

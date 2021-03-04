@@ -55,7 +55,6 @@ class QueryBasedExampleGen(base_component.BaseComponent):
   SPEC_CLASS = QueryBasedExampleGenSpec
   # EXECUTOR_SPEC should be overridden by subclasses.
   EXECUTOR_SPEC = executor_spec.ExecutorClassSpec(base_executor.BaseExecutor)
-  DRIVER_CLASS = driver.QueryBasedDriver
 
   def __init__(
       self,
@@ -139,7 +138,7 @@ class FileBasedExampleGen(base_component.BaseComponent):
   SPEC_CLASS = FileBasedExampleGenSpec
   # EXECUTOR_SPEC should be overridden by subclasses.
   EXECUTOR_SPEC = executor_spec.ExecutorClassSpec(base_executor.BaseExecutor)
-  DRIVER_CLASS = driver.FileBasedDriver
+  DRIVER_CLASS = driver.Driver
 
   def __init__(
       self,

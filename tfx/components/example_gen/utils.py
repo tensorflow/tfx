@@ -248,29 +248,7 @@ def span_number_to_date(span: int) -> Tuple[int, int, int]:
   return date.year, date.month, date.day
 
 
-def _make_zero_padding_spec_value(spec_full_regex: Text, pattern: Text,
-                                  spec_value: int) -> Text:
-  """Returns spec value, applies zero padding if needed."""
-  match_result = re.search(spec_full_regex, pattern)
-  assert match_result, 'No %s found in split %s' % (spec_full_regex, pattern)
-  width_str = match_result.group('width')
-  if width_str:
-    width_int = 0
-    try:
-      width_int = int(width_str)
-    except ValueError:
-      raise ValueError('Width modifier is not a integer: %s' % pattern)
-    if width_int <= 0:
-      raise ValueError('Width modifier is not positive: %s' % pattern)
-    if width_int < len(str(spec_value)):
-      raise ValueError(
-          'Spec width is less than number of digits in spec: (%s, %s)' %
-          (width_int, spec_value))
-    return str(spec_value).zfill(width_int)
-  return str(spec_value)
-
-
-def verify_split_pattern_specs(
+def _verify_split_pattern_specs(
     split: example_gen_pb2.Input.Split) -> Tuple[bool, bool, bool]:
   """Verify and identify specs to be matched in split pattern."""
   # Match occurences of pattern '{SPAN}|{SPAN:*}'. If it exists, capture
@@ -310,26 +288,6 @@ def verify_split_pattern_specs(
                      (VERSION_SPEC, split.pattern))
 
   return is_match_span, is_match_date, is_match_version
-
-
-def get_pattern_for_span_version(pattern: Text, is_match_span: bool,
-                                 is_match_date: bool, is_match_version: bool,
-                                 span: int, version: Optional[int]) -> Text:
-  """Return pattern with Span and Version spec filled."""
-  if is_match_span:
-    span_token = _make_zero_padding_spec_value(SPAN_FULL_REGEX, pattern, span)
-    pattern = re.sub(SPAN_FULL_REGEX, span_token, pattern)
-  elif is_match_date:
-    year, month, day = span_number_to_date(span)
-    date_tokens = [str(year).zfill(4), str(month).zfill(2), str(day).zfill(2)]
-    for spec, value in zip(DATE_SPECS, date_tokens):
-      pattern = pattern.replace(spec, value)
-  if is_match_version:
-    version_token = _make_zero_padding_spec_value(VERSION_FULL_REGEX, pattern,
-                                                  version)
-    pattern = re.sub(VERSION_FULL_REGEX, version_token, pattern)
-
-  return pattern
 
 
 def _find_matched_span_version_from_path(
@@ -427,6 +385,7 @@ def _get_span_replace_glob_and_regex(
 
     else:
       raise ValueError('One of Span or Date should be specified.')
+
   else:
     raise ValueError('Only static_range in RangeConfig is supported.')
 
@@ -482,7 +441,7 @@ def _create_matching_glob_and_regex(
     if span_width_str:
       span_regex_replace = '.{%s}' % span_width_str
 
-    if range_config and range_config.HasField('static_range'):
+    if range_config:
       span_str = _get_span_replace_glob_and_regex(range_config, is_match_span,
                                                   is_match_date, span_width_str)
       span_regex_replace = span_str
@@ -502,7 +461,7 @@ def _create_matching_glob_and_regex(
     # seperators between them.
     date_regex_replace = ['.{4}', '.{2}', '.{2}']
 
-    if range_config and range_config.HasField('static_range'):
+    if range_config:
       date_tokens = _get_span_replace_glob_and_regex(range_config,
                                                      is_match_span,
                                                      is_match_date, None)
@@ -574,7 +533,7 @@ def _get_target_span_version(
       - If Span or Version found is not an integer.
       - If a matching cannot be found for split pattern provided.
   """
-  is_match_span, is_match_date, is_match_version = verify_split_pattern_specs(
+  is_match_span, is_match_date, is_match_version = _verify_split_pattern_specs(
       split)
 
   if not is_match_span and not is_match_date:
