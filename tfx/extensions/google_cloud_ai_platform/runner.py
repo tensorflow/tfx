@@ -149,7 +149,7 @@ def _launch_aip_training(
   # for a detailed description of the problem. If the error persists for
   # _CONNECTION_ERROR_RETRY_LIMIT consecutive attempts, the function will raise
   # ConnectionError.
-  while response['state'] not in ('SUCCEEDED', 'FAILED', 'CANCELLED'):
+  while response['state'] not in client.JOB_STATES_COMPLETED:
     time.sleep(_POLLING_INTERVAL_IN_SECONDS)
     try:
       response = request.execute()
@@ -169,7 +169,7 @@ def _launch_aip_training(
                       _CONNECTION_ERROR_RETRY_LIMIT)
         raise
 
-  if response['state'] in ('FAILED', 'CANCELLED'):
+  if response['state'] in client.JOB_STATES_FAILED:
     err_msg = 'Job \'{}\' did not succeed.  Detailed response {}.'.format(
         job_name, response)
     logging.error(err_msg)
