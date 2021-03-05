@@ -16,7 +16,7 @@
 
 import filecmp
 import os
-from typing import Dict, Text, Optional
+from typing import Dict, List, Text, Optional
 
 from absl import logging
 
@@ -69,7 +69,7 @@ def _compare_relative_difference(value: float, expected_value: float,
   Args:
     value: a float value to be compared to expected value.
     expected_value: a float value that is expected.
-    threshold: a float between 0 and 1.
+    threshold: a float larger than 0.
 
   Returns:
     a boolean indicating whether the relative difference is within the
@@ -177,13 +177,14 @@ def _group_metric_by_slice(
 
 
 def compare_eval_results(output_uri: Text, expected_uri: Text,
-                         threshold: float) -> bool:
+                         threshold: float, metrics: List[Text]) -> bool:
   """Compares accuracy on overall dataset using two EvalResult.
 
   Args:
     output_uri: pipeline output artifact uri.
     expected_uri: recorded pipeline output artifact uri.
-    threshold: a float between 0 and 1.
+    threshold: a float larger than 0.
+    metrics: metric names to compare.
 
   Returns:
     boolean whether the eval result values differ within a threshold.
@@ -193,8 +194,11 @@ def compare_eval_results(output_uri: Text, expected_uri: Text,
   slice_map = _group_metric_by_slice(eval_result)
   expected_slice_map = _group_metric_by_slice(expected_eval_result)
   for metric_name, value in slice_map[()].items():
+    if metric_name not in metrics:
+      continue
     expected_value = expected_slice_map[()][metric_name]
     if not _compare_relative_difference(value, expected_value, threshold):
+      logging.warning('Check following metric: %s', metric_name)
       return False
   return True
 

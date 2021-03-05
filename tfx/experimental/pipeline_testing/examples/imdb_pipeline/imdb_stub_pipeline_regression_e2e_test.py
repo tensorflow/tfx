@@ -94,7 +94,7 @@ class ImdbStubPipelineRegressionEndToEndTest(tf.test.TestCase):
   def _verify_evaluation(self, output_uri: Text, expected_uri: Text):
     self.assertTrue(
         executor_verifier_utils.compare_eval_results(output_uri, expected_uri,
-                                                     .5))
+                                                     1.0, ['accuracy']))
 
   def _verify_schema(self, output_uri: Text, expected_uri: Text):
     self.assertTrue(
