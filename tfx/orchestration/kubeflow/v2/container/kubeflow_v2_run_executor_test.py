@@ -108,7 +108,7 @@ class KubeflowV2RunExecutorTest(test_case_utils.TfxTest):
           "%s.%s" % (_FakeExecutor.__module__, _FakeExecutor.__name__),
           "--json_serialized_invocation_args", self._serialized_metadata
       ]
-      kubeflow_v2_run_executor.main(args)
+      kubeflow_v2_run_executor.main(kubeflow_v2_run_executor._parse_flags(args))
       # TODO(b/131417512): Add equal comparison to types.Artifact class so we
       # can use asserters.
       self.assertEqual(

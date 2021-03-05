@@ -19,6 +19,7 @@ from typing import Any, Dict, List, Optional
 
 from absl import app
 from absl import logging
+from absl.flags import argparse_flags
 from tfx.components.example_gen import driver
 from tfx.components.example_gen import input_processor
 from tfx.components.example_gen import utils
@@ -136,15 +137,18 @@ def _run_driver(exec_properties: Dict[str, Any],
     f.write(json_format.MessageToJson(output_metadata, sort_keys=True))
 
 
-def main(argv):
-  parser = argparse.ArgumentParser()
+def _parse_flags(argv: List[str]) -> argparse.Namespace:
+  """Command lines flag parsing."""
+  parser = argparse_flags.ArgumentParser()
   parser.add_argument(
       '--json_serialized_invocation_args',
       type=str,
       required=True,
       help='JSON-serialized metadata for this execution.')
-  args, _ = parser.parse_known_args(argv)
+  return parser.parse_args(argv)
 
+
+def main(args):
   executor_input = pipeline_pb2.ExecutorInput()
   json_format.Parse(
       args.json_serialized_invocation_args,
@@ -163,4 +167,4 @@ def main(argv):
 
 
 if __name__ == '__main__':
-  app.run(main=main)
+  app.run(main, flags_parser=_parse_flags)

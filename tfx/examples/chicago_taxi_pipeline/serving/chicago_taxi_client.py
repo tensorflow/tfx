@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,10 +13,6 @@
 # limitations under the License.
 """A client for the chicago_taxi demo."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import argparse
 import base64
 import json
@@ -25,7 +20,10 @@ import os
 import subprocess
 import tempfile
 
+from typing import List
+
 from absl import app
+from absl.flags import argparse_flags
 import requests
 from tensorflow_transform import coders as tft_coders
 from tensorflow_transform.tf_metadata import dataset_schema
@@ -164,8 +162,9 @@ def _do_inference(model_handle, examples_file, num_examples, schema):
         serialized_examples=serialized_examples)
 
 
-def main(_):
-  parser = argparse.ArgumentParser()
+def _parse_flags(argv: List[str]) -> argparse.Namespace:
+  """Command lines flag parsing."""
+  parser = argparse_flags.ArgumentParser()
   parser.add_argument(
       '--num_examples',
       help=('Number of examples to send to the server.'),
@@ -184,10 +183,13 @@ def main(_):
 
   parser.add_argument(
       '--schema_file', help='File holding the schema for the input data')
-  known_args, _ = parser.parse_known_args()
-  _do_inference(known_args.server, known_args.examples_file,
-                known_args.num_examples, _read_schema(known_args.schema_file))
+  return parser.parse_args(argv)
+
+
+def main(args: argparse.Namespace):
+  _do_inference(args.server, args.examples_file,
+                args.num_examples, _read_schema(args.schema_file))
 
 
 if __name__ == '__main__':
-  app.run(main)
+  app.run(main, flags_parser=_parse_flags)
