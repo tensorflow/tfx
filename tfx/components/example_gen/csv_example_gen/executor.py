@@ -24,10 +24,9 @@ from typing import Any, Dict, Iterable, List, Text
 from absl import logging
 import apache_beam as beam
 import tensorflow as tf
-
-from tfx.components.example_gen import utils
 from tfx.components.example_gen.base_example_gen_executor import BaseExampleGenExecutor
 from tfx.dsl.io import fileio
+from tfx.types import standard_component_specs
 from tfx.utils import io_utils
 from tfx_bsl.coders import csv_decoder
 
@@ -122,7 +121,7 @@ def _CsvToExample(  # pylint: disable=invalid-name
   Raises:
     RuntimeError: if split is empty or csv headers are not equal.
   """
-  input_base_uri = exec_properties[utils.INPUT_BASE_KEY]
+  input_base_uri = exec_properties[standard_component_specs.INPUT_BASE_KEY]
   csv_pattern = os.path.join(input_base_uri, split_pattern)
   logging.info('Processing input csv data %s to TFExample.', csv_pattern)
 

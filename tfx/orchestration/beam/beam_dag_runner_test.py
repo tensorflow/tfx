@@ -163,7 +163,7 @@ class _FakeComponentAsDoFn(beam_dag_runner.PipelineNodeAsDoFn):
         pipeline_run = context.name.field_value.string_value
     _conponent_to_pipeline_run[self._node_id] = pipeline_run
 
-  def _run_component(self):
+  def _run_node(self):
     _executed_components.append(self._node_id)
 
 

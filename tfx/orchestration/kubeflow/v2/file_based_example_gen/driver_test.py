@@ -91,11 +91,11 @@ class RunDriverTest(test_case_utils.TfxTest):
                 example_gen_pb2.Input.Split(name='s2', pattern='split2/*')
             ]))
     serialized_args = [
-        'driver.py', '--json_serialized_invocation_args',
+        '--json_serialized_invocation_args',
         json_format.MessageToJson(message=self._executor_invocation)
     ]
     # Invoke the driver
-    driver.main(serialized_args)
+    driver.main(driver._parse_flags(serialized_args))
 
     # Check the output metadata file for the expected outputs
     with open(_TEST_OUTPUT_METADATA_JSON) as output_meta_json:
@@ -117,26 +117,26 @@ class RunDriverTest(test_case_utils.TfxTest):
 
   def testDriverWithSpan(self):
     # Test align of span number.
-    span1_split1 = os.path.join(_TEST_INPUT_DIR, 'span01', 'split1', 'data')
+    span1_split1 = os.path.join(_TEST_INPUT_DIR, 'span1', 'split1', 'data')
     io_utils.write_string_file(span1_split1, 'testing11')
-    span1_split2 = os.path.join(_TEST_INPUT_DIR, 'span01', 'split2', 'data')
+    span1_split2 = os.path.join(_TEST_INPUT_DIR, 'span1', 'split2', 'data')
     io_utils.write_string_file(span1_split2, 'testing12')
-    span2_split1 = os.path.join(_TEST_INPUT_DIR, 'span02', 'split1', 'data')
+    span2_split1 = os.path.join(_TEST_INPUT_DIR, 'span2', 'split1', 'data')
     io_utils.write_string_file(span2_split1, 'testing21')
 
     serialized_args = [
-        'driver.py', '--json_serialized_invocation_args',
+        '--json_serialized_invocation_args',
         json_format.MessageToJson(message=self._executor_invocation)
     ]
     with self.assertRaisesRegexp(
         ValueError, 'Latest span should be the same for each split'):
-      driver.main(serialized_args)
+      driver.main(driver._parse_flags(serialized_args))
 
     # Test if latest span is selected when span aligns for each split.
-    span2_split2 = os.path.join(_TEST_INPUT_DIR, 'span02', 'split2', 'data')
+    span2_split2 = os.path.join(_TEST_INPUT_DIR, 'span2', 'split2', 'data')
     io_utils.write_string_file(span2_split2, 'testing22')
 
-    driver.main(serialized_args)
+    driver.main(driver._parse_flags(serialized_args))
 
     # Check the output metadata file for the expected outputs
     with open(_TEST_OUTPUT_METADATA_JSON) as output_meta_json:
@@ -149,9 +149,9 @@ class RunDriverTest(test_case_utils.TfxTest):
           json_format.MessageToJson(
               example_gen_pb2.Input(splits=[
                   example_gen_pb2.Input.Split(
-                      name='s1', pattern='span02/split1/*'),
+                      name='s1', pattern='span2/split1/*'),
                   example_gen_pb2.Input.Split(
-                      name='s2', pattern='span02/split2/*')
+                      name='s2', pattern='span2/split2/*')
               ])))
 
   def testDriverJsonContract(self):
@@ -166,12 +166,11 @@ class RunDriverTest(test_case_utils.TfxTest):
     os.utime(split2, (0, 3))
 
     serialized_args = [
-        'driver.py', '--json_serialized_invocation_args',
-        self._executor_invocation_from_file
+        '--json_serialized_invocation_args', self._executor_invocation_from_file
     ]
 
     # Invoke the driver
-    driver.main(serialized_args)
+    driver.main(driver._parse_flags(serialized_args))
 
     # Check the output metadata file for the expected outputs
     with open(_TEST_OUTPUT_METADATA_JSON) as output_meta_json:

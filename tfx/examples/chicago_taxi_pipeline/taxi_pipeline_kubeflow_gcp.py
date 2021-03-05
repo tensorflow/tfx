@@ -20,7 +20,7 @@ from __future__ import print_function
 
 import copy
 import os
-from typing import Dict, List, Optional, Text
+from typing import Dict, List, Text
 from absl import app
 from absl import flags
 import tensorflow_model_analysis as tfma
@@ -101,6 +101,24 @@ _ai_platform_serving_args = {
     'regions': [_gcp_region],
 }
 
+# Beam args to run data processing on DataflowRunner.
+#
+# TODO(b/151114974): Remove `disk_size_gb` flag after default is increased.
+# TODO(b/151116587): Remove `shuffle_mode` flag after default is changed.
+# TODO(b/156874687): Remove `machine_type` after IP addresses are no longer a
+#                    scaling bottleneck.
+_beam_pipeline_args = [
+    '--runner=DataflowRunner',
+    '--project=' + _project_id,
+    '--temp_location=' + os.path.join(_pipeline_root, 'tmp'),
+    '--region=' + _gcp_region,
+
+    # Temporary overrides of defaults.
+    '--disk_size_gb=50',
+    '--experiments=shuffle_mode=auto',
+    '--machine_type=e2-standard-8',
+]
+
 
 def create_pipeline(
     pipeline_name: Text,
@@ -108,7 +126,8 @@ def create_pipeline(
     module_file: Text,
     ai_platform_training_args: Dict[Text, Text],
     ai_platform_serving_args: Dict[Text, Text],
-    beam_pipeline_args: Optional[List[Text]] = None) -> pipeline.Pipeline:
+    beam_pipeline_args: List[Text],
+) -> pipeline.Pipeline:
   """Implements the chicago taxi pipeline with TFX and Kubeflow Pipelines.
 
   Args:
@@ -122,13 +141,8 @@ def create_pipeline(
     ai_platform_serving_args: Args of CAIP model deployment. Please refer to
       https://cloud.google.com/ml-engine/reference/rest/v1/projects.models
       for detailed description.
-    beam_pipeline_args: Optional list of beam pipeline options. Please refer to
+    beam_pipeline_args: List of beam pipeline options. Please refer to
       https://cloud.google.com/dataflow/docs/guides/specifying-exec-params#setting-other-cloud-dataflow-pipeline-options.
-      When this argument is not provided, the default is to use GCP
-      DataflowRunner with 50GB disk size as specified in this function. If an
-      empty list is passed in, default specified by Beam will be used, which can
-      be found at
-      https://cloud.google.com/dataflow/docs/guides/specifying-exec-params#setting-other-cloud-dataflow-pipeline-options
 
   Returns:
     A TFX pipeline object.
@@ -173,25 +187,6 @@ def create_pipeline(
           WHERE (ABS(FARM_FINGERPRINT(unique_key)) / {max_int64})
             < {query_sample_rate}""".format(
                 max_int64=max_int64, query_sample_rate=str(query_sample_rate))
-
-  # Beam args to run data processing on DataflowRunner.
-  #
-  # TODO(b/151114974): Remove `disk_size_gb` flag after default is increased.
-  # TODO(b/151116587): Remove `shuffle_mode` flag after default is changed.
-  # TODO(b/156874687): Remove `machine_type` after IP addresses are no longer a
-  #                    scaling bottleneck.
-  if beam_pipeline_args is None:
-    beam_pipeline_args = [
-        '--runner=DataflowRunner',
-        '--project=' + _project_id,
-        '--temp_location=' + os.path.join(_pipeline_root, 'tmp'),
-        '--region=' + _gcp_region,
-
-        # Temporary overrides of defaults.
-        '--disk_size_gb=50',
-        '--experiments=shuffle_mode=auto',
-        '--machine_type=e2-standard-8',
-    ]
 
   # Number of epochs in training.
   train_steps = data_types.RuntimeParameter(
@@ -244,10 +239,9 @@ def create_pipeline(
       ptype=str,
   )
 
-  local_training_args = copy.deepcopy(ai_platform_training_args)
-
+  ai_platform_training_args = copy.copy(ai_platform_training_args)
   if FLAGS.distributed_training:
-    local_training_args.update({
+    ai_platform_training_args.update({
         # You can specify the machine types, the number of replicas for workers
         # and parameter servers.
         # https://cloud.google.com/ml-engine/reference/rest/v1/projects.jobs#ScaleTier
@@ -272,7 +266,7 @@ def create_pipeline(
       eval_args={'num_steps': eval_steps},
       custom_config={
           ai_platform_trainer_executor.TRAINING_ARGS_KEY:
-              local_training_args
+              ai_platform_training_args
       })
 
   # Get the latest blessed model for model validation.
@@ -297,6 +291,8 @@ def create_pipeline(
                       tfma.config.MetricThreshold(
                           value_threshold=tfma.GenericValueThreshold(
                               lower_bound={'value': 0.6}),
+                          # Change threshold will be ignored if there is no
+                          # baseline model resolved from MLMD (first run).
                           change_threshold=tfma.GenericChangeThreshold(
                               direction=tfma.MetricDirection.HIGHER_IS_BETTER,
                               absolute={'value': -1e-10}))
@@ -306,7 +302,6 @@ def create_pipeline(
       examples=example_gen.outputs['examples'],
       model=trainer.outputs['model'],
       baseline_model=model_resolver.outputs['model'],
-      # Change threshold will be ignored if there is no baseline (first run).
       eval_config=eval_config)
 
   # Checks whether the model passed the validation steps and pushes the model
@@ -356,6 +351,7 @@ def main(unused_argv):
           module_file=_module_file,
           ai_platform_training_args=_ai_platform_training_args,
           ai_platform_serving_args=_ai_platform_serving_args,
+          beam_pipeline_args=_beam_pipeline_args,
       ))
 
 

@@ -130,7 +130,10 @@ class Executor(tfx_pusher_executor.Executor):
         {telemetry_utils.LABEL_TFX_EXECUTOR: executor_class_path}):
       default_query_job_config = bigquery.job.QueryJobConfig(
           labels=telemetry_utils.get_labels_dict())
-    client = bigquery.Client(default_query_job_config=default_query_job_config)
+    # TODO(b/181368842) Add integration test for BQML Pusher + Managed Pipeline
+    client = bigquery.Client(
+        default_query_job_config=default_query_job_config,
+        project=bigquery_serving_args[_PROJECT_ID_KEY])
 
     try:
       query_job = client.query(query)

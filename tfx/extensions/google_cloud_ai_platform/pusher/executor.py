@@ -65,7 +65,7 @@ class Executor(tfx_pusher_executor.Executor):
           by Google Cloud AI Platform, refer to
           https://cloud.google.com/ml-engine/reference/rest/v1/projects.models.versions#Version.
         - endpoint: Optional endpoint override. Should be in format of
-          `https://ml-[region].googleapis.com`. Default to global endpoint if
+          `https://[region]-ml.googleapis.com`. Default to global endpoint if
           not set. Using regional endpoint is recommended by Cloud AI Platform.
           When set, 'regions' key in ai_platform_serving_args cannot be set.
           For more details, please see

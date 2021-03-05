@@ -110,7 +110,7 @@ def _create_parameterized_pipeline(
   # The input data location is parameterized by data_root
   example_gen = CsvExampleGen(input_base=data_root)
 
-  statistics_gen = StatisticsGen(input_data=example_gen.outputs['examples'])
+  statistics_gen = StatisticsGen(examples=example_gen.outputs['examples'])
   schema_gen = SchemaGen(
       statistics=statistics_gen.outputs['statistics'],
       infer_feature_shape=False)
@@ -121,7 +121,7 @@ def _create_parameterized_pipeline(
   # The module file used in Transform and Trainer component is paramterized by
   # transform_module_file.
   transform = Transform(
-      input_data=example_gen.outputs['examples'],
+      examples=example_gen.outputs['examples'],
       schema=schema_gen.outputs['schema'],
       module_file=transform_module_file)
 
@@ -157,6 +157,8 @@ def _create_parameterized_pipeline(
                       tfma.config.MetricThreshold(
                           value_threshold=tfma.GenericValueThreshold(
                               lower_bound={'value': 0.6}),
+                          # Change threshold will be ignored if there is no
+                          # baseline model resolved from MLMD (first run).
                           change_threshold=tfma.GenericChangeThreshold(
                               direction=tfma.MetricDirection.HIGHER_IS_BETTER,
                               absolute={'value': -1e-10}))
@@ -166,7 +168,6 @@ def _create_parameterized_pipeline(
       examples=example_gen.outputs['examples'],
       model=trainer.outputs['model'],
       baseline_model=model_resolver.outputs['model'],
-      # Change threshold will be ignored if there is no baseline (first run).
       eval_config=eval_config)
 
   pusher = Pusher(

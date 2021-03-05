@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,20 +13,17 @@
 # limitations under the License.
 """Common script to invoke TFX executors."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import argparse
 import base64
 import json
+from typing import List, Tuple
 
 import absl
+from absl import app
+from absl.flags import argparse_flags
 from tfx.dsl.components.base import base_executor
 from tfx.types import artifact_utils
 from tfx.utils import import_utils
-
-from tensorflow.python.platform import app  # pylint: disable=g-direct-tensorflow-import
 
 
 def _run_executor(args, pipeline_args) -> None:
@@ -109,8 +105,8 @@ def _run_executor(args, pipeline_args) -> None:
     print(artifact_utils.jsonify_artifact_dict(outputs))
 
 
-def main(argv):
-  """Parses  the arguments for _run_executor() then invokes it.
+def _parse_flags(argv: List[str]) -> Tuple[argparse.Namespace, List[str]]:
+  """Parses command line arguments.
 
   # pylint: disable=line-too-long
   Args:
@@ -133,7 +129,7 @@ def main(argv):
     None
   """
 
-  parser = argparse.ArgumentParser()
+  parser = argparse_flags.ArgumentParser()
   parser.add_argument(
       '--executor_class_path',
       type=str,
@@ -181,9 +177,14 @@ def main(argv):
       'be pushed to xcom in Airflow. Please ignore by other users or '
       'orchestrators.')
 
-  args, beam_pipeline_args = parser.parse_known_args(argv)
-  _run_executor(args, beam_pipeline_args)
+  return parser.parse_known_args(argv)
+
+
+def main(parsed_argv: Tuple[argparse.Namespace, List[str]]):
+  args, beam_args = parsed_argv
+  _run_executor(args, beam_args)
 
 
 if __name__ == '__main__':
-  app.run(main=main)
+  app.run(main, flags_parser=_parse_flags)
+

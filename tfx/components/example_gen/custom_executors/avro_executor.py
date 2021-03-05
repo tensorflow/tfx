@@ -27,6 +27,7 @@ import tensorflow as tf
 
 from tfx.components.example_gen import utils
 from tfx.components.example_gen.base_example_gen_executor import BaseExampleGenExecutor
+from tfx.types import standard_component_specs
 
 
 @beam.ptransform_fn
@@ -49,7 +50,7 @@ def _AvroToExample(  # pylint: disable=invalid-name
   Returns:
     PCollection of TF examples.
   """
-  input_base_uri = exec_properties[utils.INPUT_BASE_KEY]
+  input_base_uri = exec_properties[standard_component_specs.INPUT_BASE_KEY]
   avro_pattern = os.path.join(input_base_uri, split_pattern)
   logging.info('Processing input avro data %s to TFExample.', avro_pattern)
 

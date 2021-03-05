@@ -11,9 +11,7 @@
     "__class__": "_PropertyDictWrapper",
     "__module__": "tfx.types.node_common",
     "__tfx_object_type__": "jsonable",
-    "_compat_aliases": {
-      "input_data": "examples"
-    },
+    "_compat_aliases": {},
     "_data": {
       "examples": {
         "__class__": "Channel",
@@ -39,9 +37,7 @@
     "__class__": "_PropertyDictWrapper",
     "__module__": "tfx.types.node_common",
     "__tfx_object_type__": "jsonable",
-    "_compat_aliases": {
-      "output": "statistics"
-    },
+    "_compat_aliases": {},
     "_data": {
       "statistics": {
         "__class__": "Channel",

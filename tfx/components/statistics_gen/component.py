@@ -50,8 +50,7 @@ class StatisticsGen(base_component.BaseComponent):
                schema: Optional[types.Channel] = None,
                stats_options: Optional[tfdv.StatsOptions] = None,
                exclude_splits: Optional[List[Text]] = None,
-               output: Optional[types.Channel] = None,
-               input_data: Optional[types.Channel] = None,
+               statistics: Optional[types.Channel] = None,
                instance_name: Optional[Text] = None):
     """Construct a StatisticsGen component.
 
@@ -69,24 +68,17 @@ class StatisticsGen(base_component.BaseComponent):
       exclude_splits: Names of splits where statistics and sample should not
         be generated. Default behavior (when exclude_splits is set to None)
         is excluding no splits.
-      output: `ExampleStatisticsPath` channel for statistics of each split
+      statistics: `ExampleStatisticsPath` channel for statistics of each split
         provided in the input examples.
-      input_data: Backwards compatibility alias for the `examples` argument.
       instance_name: Optional name assigned to this specific instance of
         StatisticsGen.  Required only if multiple StatisticsGen components are
         declared in the same pipeline.
     """
-    if input_data:
-      logging.warning(
-          'The "input_data" argument to the StatisticsGen component has '
-          'been renamed to "examples" and is deprecated. Please update your '
-          'usage as support for this argument will be removed soon.')
-      examples = input_data
     if exclude_splits is None:
       exclude_splits = []
       logging.info('Excluding no splits because exclude_splits is not set.')
-    if not output:
-      output = types.Channel(type=standard_artifacts.ExampleStatistics)
+    statistics = statistics or types.Channel(
+        type=standard_artifacts.ExampleStatistics)
     # TODO(b/150802589): Move jsonable interface to tfx_bsl and use json_utils.
     stats_options_json = stats_options.to_json() if stats_options else None
     spec = StatisticsGenSpec(
@@ -94,5 +86,5 @@ class StatisticsGen(base_component.BaseComponent):
         schema=schema,
         stats_options_json=stats_options_json,
         exclude_splits=json_utils.dumps(exclude_splits),
-        statistics=output)
+        statistics=statistics)
     super(StatisticsGen, self).__init__(spec=spec, instance_name=instance_name)

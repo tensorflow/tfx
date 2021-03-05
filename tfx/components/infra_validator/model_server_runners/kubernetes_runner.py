@@ -188,6 +188,10 @@ class KubernetesRunner(base_runner.BaseModelServerRunner):
       logger=logging.warning,
       retry_filter=_api_exception_retry_filter)
   def _DeleteModelServerPod(self):
+    if self._pod_name is None:
+      # No model server Pod has been created yet.
+      logging.info('Server pod has not been created.')
+      return
     try:
       logging.info('Deleting Pod (name=%s)', self._pod_name)
       self._k8s_core_api.delete_namespaced_pod(

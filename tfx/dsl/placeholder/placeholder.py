@@ -320,21 +320,29 @@ class ArtifactPlaceholder(Placeholder):
 
   @property
   def uri(self):
+    self._try_inject_index_operator()
     self._operators.append(_ArtifactUriOperator())
     return self
 
   def split_uri(self, split: str):
+    self._try_inject_index_operator()
     self._operators.append(_ArtifactUriOperator(split))
     return self
 
   @property
   def value(self):
+    self._try_inject_index_operator()
     self._operators.append(_ArtifactValueOperator())
     return self
 
   def __getitem__(self, key: int):
     self._operators.append(_IndexOperator(key))
     return self
+
+  def _try_inject_index_operator(self):
+    if not self._operators or not isinstance(self._operators[-1],
+                                             _IndexOperator):
+      self._operators.append(_IndexOperator(0))
 
 
 class _ProtoAccessiblePlaceholder(Placeholder, abc.ABC):
@@ -420,7 +428,8 @@ def input(key: str) -> ArtifactPlaceholder:  # pylint: disable=redefined-builtin
       1. Rendering the whole MLMD artifact proto as text_format.
          Example: input('model')
       2. Accessing a specific index using [index], if multiple artifacts are
-         associated with the given key.
+         associated with the given key. If not specified, default to the first
+         artifact.
          Example: input('model')[0]
       3. Getting the URI of an artifact through .uri property.
          Example: input('model').uri or input('model')[0].uri
@@ -449,7 +458,8 @@ def output(key: str) -> ArtifactPlaceholder:
       1. Rendering the whole artifact as text_format.
          Example: output('model')
       2. Accessing a specific index using [index], if multiple artifacts are
-         associated with the given key.
+         associated with the given key. If not specified, default to the first
+         artifact.
          Example: output('model')[0]
       3. Getting the URI of an artifact through .uri property.
          Example: output('model').uri or output('model')[0].uri

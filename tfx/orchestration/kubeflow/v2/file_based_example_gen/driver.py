@@ -17,20 +17,23 @@ import argparse
 import os
 from typing import Any, Dict, List, Optional
 
+from absl import app
 from absl import logging
-
+from absl.flags import argparse_flags
 from tfx.components.example_gen import driver
+from tfx.components.example_gen import input_processor
 from tfx.components.example_gen import utils
 from tfx.dsl.io import fileio
 from tfx.orchestration.kubeflow.v2.container import kubeflow_v2_entrypoint_utils
 from tfx.orchestration.kubeflow.v2.proto import pipeline_pb2
 from tfx.proto import example_gen_pb2
+from tfx.proto import range_config_pb2
 from tfx.types import artifact
 from tfx.types import artifact_utils
+from tfx.types import standard_component_specs
 from tfx.utils import proto_utils
 
 from google.protobuf import json_format
-from tensorflow.python.platform import app  # pylint: disable=g-direct-tensorflow-import
 
 
 def _run_driver(exec_properties: Dict[str, Any],
@@ -74,26 +77,43 @@ def _run_driver(exec_properties: Dict[str, Any],
   logging.info('exec_properties = %s\noutput_metadata_uri = %s',
                exec_properties, output_metadata_uri)
 
-  input_base_uri = exec_properties[utils.INPUT_BASE_KEY]
+  input_base_uri = exec_properties.get(standard_component_specs.INPUT_BASE_KEY)
 
   input_config = example_gen_pb2.Input()
-  proto_utils.json_to_proto(exec_properties[utils.INPUT_CONFIG_KEY],
-                            input_config)
+  proto_utils.json_to_proto(
+      exec_properties[standard_component_specs.INPUT_CONFIG_KEY], input_config)
 
-  # TODO(b/161734559): Support range config.
-  fingerprint, select_span, version = utils.calculate_splits_fingerprint_span_and_version(
-      input_base_uri, input_config.splits)
-  logging.info('Calculated span: %s', select_span)
+  range_config = None
+  range_config_entry = exec_properties.get(
+      standard_component_specs.RANGE_CONFIG_KEY)
+  if range_config_entry:
+    range_config = range_config_pb2.RangeConfig()
+    proto_utils.json_to_proto(range_config_entry, range_config)
+
+  processor = input_processor.FileBasedInputProcessor(input_base_uri,
+                                                      input_config.splits,
+                                                      range_config)
+  span, version = processor.resolve_span_and_version()
+  fingerprint = processor.get_input_fingerprint(span, version)
+
+  logging.info('Calculated span: %s', span)
   logging.info('Calculated fingerprint: %s', fingerprint)
 
-  exec_properties[utils.SPAN_PROPERTY_NAME] = select_span
+  exec_properties[utils.SPAN_PROPERTY_NAME] = span
   exec_properties[utils.FINGERPRINT_PROPERTY_NAME] = fingerprint
   exec_properties[utils.VERSION_PROPERTY_NAME] = version
 
-  if utils.EXAMPLES_KEY not in outputs_dict:
+  # Updates the input_config.splits.pattern.
+  for split in input_config.splits:
+    split.pattern = processor.get_pattern_for_span_version(
+        split.pattern, span, version)
+  exec_properties[standard_component_specs
+                  .INPUT_CONFIG_KEY] = proto_utils.proto_to_json(input_config)
+
+  if standard_component_specs.EXAMPLES_KEY not in outputs_dict:
     raise ValueError('Example artifact was missing in the ExampleGen outputs.')
   example_artifact = artifact_utils.get_single_instance(
-      outputs_dict[utils.EXAMPLES_KEY])
+      outputs_dict[standard_component_specs.EXAMPLES_KEY])
 
   driver.update_output_artifact(
       exec_properties=exec_properties,
@@ -103,29 +123,32 @@ def _run_driver(exec_properties: Dict[str, Any],
   output_metadata = pipeline_pb2.ExecutorOutput()
   output_metadata.parameters[
       utils.FINGERPRINT_PROPERTY_NAME].string_value = fingerprint
-  output_metadata.parameters[utils.SPAN_PROPERTY_NAME].string_value = str(
-      select_span)
+  output_metadata.parameters[utils.SPAN_PROPERTY_NAME].string_value = str(span)
   output_metadata.parameters[
-      utils.INPUT_CONFIG_KEY].string_value = json_format.MessageToJson(
-          input_config)
-  output_metadata.artifacts[utils.EXAMPLES_KEY].artifacts.add().CopyFrom(
-      kubeflow_v2_entrypoint_utils.to_runtime_artifact(example_artifact,
-                                                       name_from_id))
+      standard_component_specs
+      .INPUT_CONFIG_KEY].string_value = json_format.MessageToJson(input_config)
+  output_metadata.artifacts[
+      standard_component_specs.EXAMPLES_KEY].artifacts.add().CopyFrom(
+          kubeflow_v2_entrypoint_utils.to_runtime_artifact(
+              example_artifact, name_from_id))
 
   fileio.makedirs(os.path.dirname(output_metadata_uri))
-  fileio.open(output_metadata_uri, 'wb').write(
-      json_format.MessageToJson(output_metadata, sort_keys=True))
+  with fileio.open(output_metadata_uri, 'wb') as f:
+    f.write(json_format.MessageToJson(output_metadata, sort_keys=True))
 
 
-def main(argv):
-  parser = argparse.ArgumentParser()
+def _parse_flags(argv: List[str]) -> argparse.Namespace:
+  """Command lines flag parsing."""
+  parser = argparse_flags.ArgumentParser()
   parser.add_argument(
       '--json_serialized_invocation_args',
       type=str,
       required=True,
       help='JSON-serialized metadata for this execution.')
-  args, _ = parser.parse_known_args(argv)
+  return parser.parse_args(argv)
 
+
+def main(args):
   executor_input = pipeline_pb2.ExecutorInput()
   json_format.Parse(
       args.json_serialized_invocation_args,
@@ -144,4 +167,4 @@ def main(argv):
 
 
 if __name__ == '__main__':
-  app.run(main=main)
+  app.run(main, flags_parser=_parse_flags)

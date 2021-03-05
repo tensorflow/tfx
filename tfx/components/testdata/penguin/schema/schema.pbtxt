@@ -1,3 +1,5 @@
+# proto-file: tensorflow_metadata/proto/v0/schema.proto
+# proto-message: Schema
 feature {
   name: "body_mass_g"
   type: FLOAT

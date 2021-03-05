@@ -1,8 +1,17 @@
 # TensorFlow Ranking Example
 
-This pipeline is still WIP and requires a `tensorflow_ranking` version that
-is not released yet.
+This example pipeline has two extra dependencies:
 
-This file will be updated once this example is ready.
+- `struct2tensor`: for decoding the training data
+  (which is not in tf.Example, but a different proto, ExampleListWithContext)
+- `tensorflow_ranking` for ranking specific keras layers, losses and metrics.
 
-<!-- TODO(b/178805236): update the documentation.-->
+To try this example, install tfx using
+
+```
+pip install tfx[examples]
+```
+
+This file will be updated with more information.
+
+<!-- TODO(b/179804018): update the documentation.-->

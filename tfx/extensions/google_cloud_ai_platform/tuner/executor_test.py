@@ -21,7 +21,6 @@ from typing import Any, Dict, Text
 import mock
 import tensorflow as tf
 
-from tfx.extensions.google_cloud_ai_platform.trainer import executor as ai_platform_trainer_executor
 from tfx.extensions.google_cloud_ai_platform.tuner import executor as ai_platform_tuner_executor
 from tfx.proto import tuner_pb2
 from tfx.utils import json_utils
@@ -44,7 +43,7 @@ class ExecutorTest(tf.test.TestCase):
     # before being passed into Do function.
     self._exec_properties = {
         'custom_config': {
-            ai_platform_trainer_executor.TRAINING_ARGS_KEY: {
+            ai_platform_tuner_executor.TUNING_ARGS_KEY: {
                 'project': self._project_id,
                 'jobDir': self._job_dir,
             },
@@ -69,12 +68,6 @@ class ExecutorTest(tf.test.TestCase):
     executor = ai_platform_tuner_executor.Executor()
     executor.Do(self._inputs, self._outputs,
                 self._serialize_custom_config_under_test())
-    self.mock_runner.start_aip_training.assert_called_with(
-        self._inputs, self._outputs, self._serialize_custom_config_under_test(),
-        self._executor_class_path, {
-            'project': self._project_id,
-            'jobDir': self._job_dir,
-        }, mock.ANY)
 
   def testDoWithTuneArgs(self):
     executor = ai_platform_tuner_executor.Executor()
@@ -101,7 +94,7 @@ class ExecutorTest(tf.test.TestCase):
         tuner_pb2.TuneArgs(num_parallel_trials=6))
 
     self._exec_properties['custom_config'][
-        ai_platform_trainer_executor.TRAINING_ARGS_KEY].update({
+        ai_platform_tuner_executor.TUNING_ARGS_KEY].update({
             'scaleTier': 'CUSTOM',
             'masterType': 'n1-highmem-16',
             'workerType': 'n1-highmem-16',
@@ -127,6 +120,13 @@ class ExecutorTest(tf.test.TestCase):
             'workerCount': 5,
         },
         mock.ANY)
+
+  def testDoWithoutCustomCaipTuneArgs(self):
+    executor = ai_platform_tuner_executor.Executor()
+    self._exec_properties = {'custom_config': {}}
+    with self.assertRaises(ValueError):
+      executor.Do(self._inputs, self._outputs,
+                  self._serialize_custom_config_under_test())
 
 
 if __name__ == '__main__':

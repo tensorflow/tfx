@@ -82,7 +82,7 @@ class KubeflowGcpPerfTest(kubeflow_test_utils.BaseKubeflowTest):
   # The location of test user module file.
   # It is retrieved from inside the container subject to testing.
   # This location depends on install path of TFX in the docker image.
-  _MODULE_FILE = '/tfx/src/tfx/examples/chicago_taxi_pipeline/taxi_utils.py'
+  _MODULE_FILE = '/opt/conda/lib/python3.7/site-packages/tfx/examples/chicago_taxi_pipeline/taxi_utils.py'
 
   # Parameterize worker type/count for easily ramping up the pipeline scale.
   _WORKER_COUNT = data_types.RuntimeParameter(

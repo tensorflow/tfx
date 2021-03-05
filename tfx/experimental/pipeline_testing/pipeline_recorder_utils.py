@@ -128,13 +128,28 @@ def get_latest_executions(
     List of executions for the latest run of a pipeline with the given
     pipeline_name.
   """
-  pipeline_run_contexts = [
-      c for c in metadata_connection.store.get_contexts()
-      if c.name == pipeline_name
-  ]
-  latest_context = max(
-      pipeline_run_contexts, key=lambda c: c.last_update_time_since_epoch)
-  return metadata_connection.store.get_executions_by_context(latest_context.id)
+  store = metadata_connection.store
+  pipeline_context = store.get_context_by_type_and_name('pipeline',
+                                                        pipeline_name)
+  if pipeline_context is None:
+    raise ValueError(f'Cannot find any execution for {pipeline_name}')
+
+  # Sort all pipeline run contexts and find first pipeline run for the pipeline.
+  pipeline_run_contexts = sorted(
+      store.get_contexts_by_type('pipeline_run'),
+      key=lambda c: c.last_update_time_since_epoch,
+      reverse=True)
+
+  executions_for_pipeline = store.get_executions_by_context(pipeline_context.id)
+  execution_ids_for_pipeline = {e.id for e in executions_for_pipeline}
+  for pipeline_run_context in pipeline_run_contexts:
+    executions_for_pipelin_run = store.get_executions_by_context(
+        pipeline_run_context.id)
+    if executions_for_pipelin_run and executions_for_pipelin_run[
+        0].id in execution_ids_for_pipeline:
+      return executions_for_pipelin_run
+
+  raise ValueError(f'Cannot find any execution for {pipeline_name}')
 
 
 def record_pipeline(output_dir: Text,

@@ -53,10 +53,10 @@ class PenguinPipelineSklearnLocalEndToEndTest(tf.test.TestCase):
     """Check the component is executed exactly once."""
     component_path = os.path.join(self._pipeline_root, component)
     self.assertTrue(fileio.exists(component_path))
-    outputs = fileio.listdir(component_path)
-    for output in outputs:
-      execution = fileio.listdir(os.path.join(component_path, output))
-      self.assertEqual(1, len(execution))
+    execution_path = os.path.join(
+        component_path, '.system', 'executor_execution')
+    execution = fileio.listdir(execution_path)
+    self.assertLen(execution, 1)
 
   def assertPipelineExecution(self) -> None:
     self.assertExecutedOnce('CsvExampleGen')
@@ -91,44 +91,6 @@ class PenguinPipelineSklearnLocalEndToEndTest(tf.test.TestCase):
       self.assertEqual(expected_execution_count, execution_count)
 
     self.assertPipelineExecution()
-
-    # Runs pipeline the second time.
-    LocalDagRunner().run(
-        penguin_pipeline_sklearn_local._create_pipeline(
-            pipeline_name=self._pipeline_name,
-            pipeline_root=self._pipeline_root,
-            data_root=self._data_root,
-            trainer_module_file=self._trainer_module_file,
-            evaluator_module_file=self._evaluator_module_file,
-            serving_model_dir=self._serving_model_dir,
-            metadata_path=self._metadata_path,
-            beam_pipeline_args=[]))
-
-    with metadata.Metadata(metadata_config) as m:
-      # Artifact count is increased by 3 caused by Evaluator and Pusher.
-      self.assertEqual(artifact_count + 3, len(m.store.get_artifacts()))
-      artifact_count = len(m.store.get_artifacts())
-      self.assertEqual(expected_execution_count * 2,
-                       len(m.store.get_executions()))
-
-    # Runs pipeline the third time.
-    LocalDagRunner().run(
-        penguin_pipeline_sklearn_local._create_pipeline(
-            pipeline_name=self._pipeline_name,
-            pipeline_root=self._pipeline_root,
-            data_root=self._data_root,
-            trainer_module_file=self._trainer_module_file,
-            evaluator_module_file=self._evaluator_module_file,
-            serving_model_dir=self._serving_model_dir,
-            metadata_path=self._metadata_path,
-            beam_pipeline_args=[]))
-
-    # Asserts cache execution.
-    with metadata.Metadata(metadata_config) as m:
-      # Artifact count is unchanged.
-      self.assertEqual(artifact_count, len(m.store.get_artifacts()))
-      self.assertEqual(expected_execution_count * 3,
-                       len(m.store.get_executions()))
 
 
 if __name__ == '__main__':

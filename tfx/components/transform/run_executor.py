@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,19 +13,17 @@
 # limitations under the License.
 """Invoke transform executor for data transformation."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import argparse
+
+from typing import List, Tuple
+
 import absl
+from absl import app
+from absl.flags import argparse_flags
+
 from tfx.components.transform import labels
 from tfx.components.transform.executor import Executor
 from tfx.proto import example_gen_pb2
-
-# pylint: disable=g-direct-tensorflow-import
-from tensorflow.python.platform import app
-# pylint: enable=g-direct-tensorflow-import
 
 
 def _run_transform(args, beam_pipeline_args):
@@ -66,8 +63,10 @@ def _run_transform(args, beam_pipeline_args):
   executor.Transform(inputs, outputs, args.status_file)
 
 
-def main(argv):
-  parser = argparse.ArgumentParser()
+def _parse_flags(argv: List[str]) -> Tuple[argparse.Namespace, List[str]]:
+  """Command lines flag parsing."""
+  parser = argparse_flags.ArgumentParser()
+
   # Arguments in inputs
   parser.add_argument(
       '--input_schema_path',
@@ -135,9 +134,13 @@ def main(argv):
       help='Paths to statistics output')
   parser.add_argument(
       '--status_file', type=str, default='', help='Path to write status')
-  args, beam_args = parser.parse_known_args(argv)
+  return parser.parse_known_args(argv)
+
+
+def main(parsed_argv: Tuple[argparse.Namespace, List[str]]):
+  args, beam_args = parsed_argv
   _run_transform(args, beam_args)
 
 
 if __name__ == '__main__':
-  app.run(main=main)
+  app.run(main, flags_parser=_parse_flags)

@@ -34,6 +34,7 @@ from tfx.components.util import examples_utils
 from tfx.dsl.components.base import base_executor
 from tfx.proto import example_gen_pb2
 from tfx.types import artifact_utils
+from tfx.types import standard_component_specs
 from tfx.utils import proto_utils
 from tfx_bsl.telemetry import util
 
@@ -212,12 +213,14 @@ class BaseExampleGenExecutor(
     """
     # Get input split information.
     input_config = example_gen_pb2.Input()
-    proto_utils.json_to_proto(exec_properties[utils.INPUT_CONFIG_KEY],
-                              input_config)
+    proto_utils.json_to_proto(
+        exec_properties[standard_component_specs.INPUT_CONFIG_KEY],
+        input_config)
     # Get output split information.
     output_config = example_gen_pb2.Output()
-    proto_utils.json_to_proto(exec_properties[utils.OUTPUT_CONFIG_KEY],
-                              output_config)
+    proto_utils.json_to_proto(
+        exec_properties[standard_component_specs.OUTPUT_CONFIG_KEY],
+        output_config)
     # Get output split names.
     split_names = utils.generate_output_split_names(input_config, output_config)
     # Make beam_pipeline_args available in exec_properties since certain
@@ -295,14 +298,16 @@ class BaseExampleGenExecutor(
     self._log_startup(input_dict, output_dict, exec_properties)
 
     input_config = example_gen_pb2.Input()
-    proto_utils.json_to_proto(exec_properties[utils.INPUT_CONFIG_KEY],
-                              input_config)
+    proto_utils.json_to_proto(
+        exec_properties[standard_component_specs.INPUT_CONFIG_KEY],
+        input_config)
     output_config = example_gen_pb2.Output()
-    proto_utils.json_to_proto(exec_properties[utils.OUTPUT_CONFIG_KEY],
-                              output_config)
+    proto_utils.json_to_proto(
+        exec_properties[standard_component_specs.OUTPUT_CONFIG_KEY],
+        output_config)
 
     examples_artifact = artifact_utils.get_single_instance(
-        output_dict[utils.EXAMPLES_KEY])
+        output_dict[standard_component_specs.EXAMPLES_KEY])
     examples_artifact.split_names = artifact_utils.encode_split_names(
         utils.generate_output_split_names(input_config, output_config))
 
@@ -314,13 +319,16 @@ class BaseExampleGenExecutor(
       for split_name, example_split in example_splits.items():
         (example_split
          | 'WriteSplit[{}]'.format(split_name) >> _WriteSplit(
-             artifact_utils.get_split_uri(output_dict[utils.EXAMPLES_KEY],
-                                          split_name)))
+             artifact_utils.get_split_uri(
+                 output_dict[standard_component_specs.EXAMPLES_KEY],
+                 split_name)))
       # pylint: enable=expression-not-assigned, no-value-for-parameter
 
-    output_payload_format = exec_properties.get(utils.OUTPUT_DATA_FORMAT_KEY)
+    output_payload_format = exec_properties.get(
+        standard_component_specs.OUTPUT_DATA_FORMAT_KEY)
     if output_payload_format:
-      for output_examples_artifact in output_dict[utils.EXAMPLES_KEY]:
-        examples_utils.set_payload_format(
-            output_examples_artifact, output_payload_format)
+      for output_examples_artifact in output_dict[
+          standard_component_specs.EXAMPLES_KEY]:
+        examples_utils.set_payload_format(output_examples_artifact,
+                                          output_payload_format)
     logging.info('Examples generated.')

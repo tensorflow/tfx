@@ -13,7 +13,7 @@
 # limitations under the License.
 """TaskGenerator implementation for sync pipelines."""
 
-from typing import Callable, List, Optional
+from typing import Callable, List, Optional, Set
 
 from absl import logging
 from tfx.orchestration import metadata
@@ -37,7 +37,8 @@ class SyncPipelineTaskGenerator(task_gen.TaskGenerator):
 
   def __init__(self, mlmd_handle: metadata.Metadata,
                pipeline: pipeline_pb2.Pipeline,
-               is_task_id_tracked_fn: Callable[[task_lib.TaskId], bool]):
+               is_task_id_tracked_fn: Callable[[task_lib.TaskId], bool],
+               ignore_node_ids: Optional[Set[str]] = None):
     """Constructs `SyncPipelineTaskGenerator`.
 
     Args:
@@ -45,6 +46,7 @@ class SyncPipelineTaskGenerator(task_gen.TaskGenerator):
       pipeline: A pipeline IR proto.
       is_task_id_tracked_fn: A callable that returns `True` if a task_id is
         tracked by the task queue.
+      ignore_node_ids: Set of node ids of nodes to ignore for task generation.
     """
     self._mlmd_handle = mlmd_handle
     if pipeline.execution_mode != pipeline_pb2.Pipeline.ExecutionMode.SYNC:
@@ -64,6 +66,7 @@ class SyncPipelineTaskGenerator(task_gen.TaskGenerator):
         node.pipeline_node.node_info.id: node.pipeline_node
         for node in pipeline.nodes
     }
+    self._ignore_node_ids = ignore_node_ids or set()
 
   def generate(self) -> List[task_lib.Task]:
     """Generates tasks for executing the next executable nodes in the pipeline.
@@ -87,6 +90,11 @@ class SyncPipelineTaskGenerator(task_gen.TaskGenerator):
       # in the current layer.
       executed_nodes = False
       for node in nodes:
+        if node.node_info.id in self._ignore_node_ids:
+          logging.info(
+              'Ignoring node for task generation: %s',
+              task_lib.NodeUid.from_pipeline_node(self._pipeline, node))
+          continue
         # If a task for the node is already tracked by the task queue, it need
         # not be considered for generation again.
         if self._is_task_id_tracked_fn(
@@ -122,9 +130,6 @@ class SyncPipelineTaskGenerator(task_gen.TaskGenerator):
     Returns:
       Returns a `Task` or `None` if task generation is deemed infeasible.
     """
-    if not task_gen_utils.is_feasible_node(node):
-      return None
-
     executions = task_gen_utils.get_executions(self._mlmd_handle, node)
     result = task_gen_utils.generate_task_from_active_execution(
         self._mlmd_handle, self._pipeline, node, executions)
@@ -164,6 +169,7 @@ class SyncPipelineTaskGenerator(task_gen.TaskGenerator):
             execution.id),
         pipeline=self._pipeline)
 
+  # TODO(goutham): Handle pure service nodes.
   def _upstream_nodes_executed(self, node: pipeline_pb2.PipelineNode) -> bool:
     """Returns `True` if all the upstream nodes have been successfully executed."""
     upstream_nodes = [

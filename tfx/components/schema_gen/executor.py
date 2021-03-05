@@ -23,24 +23,13 @@ from typing import Any, Dict, List, Text
 
 from absl import logging
 import tensorflow_data_validation as tfdv
-
 from tfx import types
 from tfx.dsl.components.base import base_executor
 from tfx.types import artifact_utils
+from tfx.types import standard_component_specs
 from tfx.utils import io_utils
 from tfx.utils import json_utils
 
-
-# Key for statistics in executor input_dict.
-STATISTICS_KEY = 'statistics'
-
-# Key for infer feature shape in executor exec_properties dict.
-INFER_FEATURE_SHAPE_KEY = 'infer_feature_shape'
-# Key for exclude splits in executor exec_properties dict.
-EXCLUDE_SPLITS_KEY = 'exclude_splits'
-
-# Key for output schema in executor output_dict.
-SCHEMA_KEY = 'schema'
 
 # Default file name for generated schema file.
 _DEFAULT_FILE_NAME = 'schema.pbtxt'
@@ -59,11 +48,10 @@ class Executor(base_executor.BaseExecutor):
 
     Args:
       input_dict: Input dict from input key to a list of artifacts, including:
-        - 'stats': A list of 'ExampleStatistics' type which must contain
-          split 'train'. Stats on other splits are ignored.
-        - 'statistics': Synonym for 'stats'.
+        - 'statistics': A list of 'ExampleStatistics' type which must contain
+          split 'train'.
       output_dict: Output dict from key to a list of artifacts, including:
-        - output: A list of 'Schema' artifact of size one.
+        - schema: A list of 'Schema' artifact of size one.
       exec_properties: A dict of execution properties, includes:
         - infer_feature_shape: Whether or not to infer the shape of the feature.
         - exclude_splits: Names of splits that will not be taken into
@@ -75,11 +63,13 @@ class Executor(base_executor.BaseExecutor):
     # TODO(zhitaoli): Move constants between this file and component.py to a
     # constants.py.
     infer_feature_shape = bool(
-        exec_properties.get(INFER_FEATURE_SHAPE_KEY, True))
+        exec_properties.get(standard_component_specs.INFER_FEATURE_SHAPE_KEY,
+                            True))
 
     # Load and deserialize exclude splits from execution properties.
     exclude_splits = json_utils.loads(
-        exec_properties.get(EXCLUDE_SPLITS_KEY, 'null')) or []
+        exec_properties.get(standard_component_specs.EXCLUDE_SPLITS_KEY,
+                            'null')) or []
     if not isinstance(exclude_splits, list):
       raise ValueError('exclude_splits in execution properties needs to be a '
                        'list. Got %s instead.' % type(exclude_splits))
@@ -87,7 +77,7 @@ class Executor(base_executor.BaseExecutor):
     # Only one schema is generated for all splits.
     schema = None
     stats_artifact = artifact_utils.get_single_instance(
-        input_dict[STATISTICS_KEY])
+        input_dict[standard_component_specs.STATISTICS_KEY])
     for split in artifact_utils.decode_split_names(stats_artifact.split_names):
       if split in exclude_splits:
         continue
@@ -103,7 +93,8 @@ class Executor(base_executor.BaseExecutor):
                                     infer_feature_shape)
 
     output_uri = os.path.join(
-        artifact_utils.get_single_uri(output_dict[SCHEMA_KEY]),
+        artifact_utils.get_single_uri(
+            output_dict[standard_component_specs.SCHEMA_KEY]),
         _DEFAULT_FILE_NAME)
     io_utils.write_pbtxt_file(output_uri, schema)
     logging.info('Schema written to %s.', output_uri)

@@ -141,6 +141,8 @@ bazel-*
 # Github integration settings
 .github
 
-# .dockerignore and Dockerfile themselves are not needed by docker build.
+# .dockerignore, Dockerfile and builder script themselves are not needed by
+# docker build.
 .dockerignore
 tfx/tools/docker/Dockerfile*
+tfx/tools/docker/build_docker_image.sh

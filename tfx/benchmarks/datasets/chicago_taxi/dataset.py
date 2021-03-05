@@ -53,8 +53,11 @@ class ChicagoTaxiDataset(benchmark_dataset.BenchmarkDataset):
   def trained_saved_model_path(self):
     return self.datasets_dir("chicago_taxi/model/trained_saved_model")
 
-  def tft_saved_model_path(self):
-    return self.datasets_dir("chicago_taxi/model/tft_saved_model")
+  def tft_saved_model_path(self, force_tf_compat_v1):
+    if force_tf_compat_v1:
+      return self.datasets_dir("chicago_taxi/model/tft_saved_model")
+    else:
+      return self.datasets_dir("chicago_taxi/model/tft_tf2_saved_model")
 
   def tfma_saved_model_path(self):
     return self.datasets_dir("chicago_taxi/model/tfma_saved_model")
@@ -128,7 +131,7 @@ class ChicagoTaxiDataset(benchmark_dataset.BenchmarkDataset):
       self.convert_csv_to_tf_examples(args, self.dataset_path())
       logging.info("TFRecords written to %s", self.dataset_path())
 
-  def generate_models(self, args):
+  def generate_models(self, args, force_tf_compat_v1=True):
     # Modified version of Chicago Taxi Example pipeline
     # tfx/examples/chicago_taxi_pipeline/taxi_pipeline_beam.py
 
@@ -149,7 +152,8 @@ class ChicagoTaxiDataset(benchmark_dataset.BenchmarkDataset):
     transform = components.Transform(
         examples=example_gen.outputs["examples"],
         schema=schema_gen.outputs["schema"],
-        module_file=module_file)
+        module_file=module_file,
+        force_tf_compat_v1=force_tf_compat_v1)
     trainer = components.Trainer(
         module_file=module_file,
         transformed_examples=transform.outputs["transformed_examples"],
@@ -183,11 +187,17 @@ class ChicagoTaxiDataset(benchmark_dataset.BenchmarkDataset):
     serving_model_dir = join_unique_subdir(
         os.path.join(trainer_output_dir,
                      "serving_model_dir/export/chicago-taxi"))
+    transform_output_dir = join_unique_subdir(
+        os.path.join(pipeline_root, "Transform/transform_graph"))
+    transform_model_dir = os.path.join(transform_output_dir, "transform_fn")
+    tft_saved_model_path = self.tft_saved_model_path(force_tf_compat_v1)
 
     shutil.rmtree(self.trained_saved_model_path(), ignore_errors=True)
     shutil.rmtree(self.tfma_saved_model_path(), ignore_errors=True)
+    shutil.rmtree(tft_saved_model_path, ignore_errors=True)
     shutil.copytree(serving_model_dir, self.trained_saved_model_path())
     shutil.copytree(eval_model_dir, self.tfma_saved_model_path())
+    shutil.copytree(transform_model_dir, tft_saved_model_path)
 
 
 class WideChicagoTaxiDataset(ChicagoTaxiDataset):

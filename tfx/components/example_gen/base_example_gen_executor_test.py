@@ -19,17 +19,17 @@ from __future__ import division
 from __future__ import print_function
 
 import os
+
 import apache_beam as beam
 from apache_beam.metrics.metric import MetricsFilter
 from apache_beam.runners.direct import direct_runner
 import tensorflow as tf
-
 from tfx.components.example_gen import base_example_gen_executor
-from tfx.components.example_gen import utils
 from tfx.dsl.io import fileio
 from tfx.proto import example_gen_pb2
 from tfx.types import artifact_utils
 from tfx.types import standard_artifacts
+from tfx.types import standard_component_specs
 from tfx.utils import proto_utils
 
 
@@ -94,7 +94,9 @@ class BaseExampleGenExecutorTest(tf.test.TestCase):
     # Create output dict.
     self._examples = standard_artifacts.Examples()
     self._examples.uri = self._output_data_dir
-    self._output_dict = {utils.EXAMPLES_KEY: [self._examples]}
+    self._output_dict = {
+        standard_component_specs.EXAMPLES_KEY: [self._examples]
+    }
 
     self._train_output_file = os.path.join(self._examples.uri, 'train',
                                            'data_tfrecord-00000-of-00001.gz')
@@ -103,13 +105,13 @@ class BaseExampleGenExecutorTest(tf.test.TestCase):
 
     # Create exec proterties for output splits.
     self._exec_properties = {
-        utils.INPUT_CONFIG_KEY:
+        standard_component_specs.INPUT_CONFIG_KEY:
             proto_utils.proto_to_json(
                 example_gen_pb2.Input(splits=[
                     example_gen_pb2.Input.Split(
                         name='single', pattern='single/*'),
                 ])),
-        utils.OUTPUT_CONFIG_KEY:
+        standard_component_specs.OUTPUT_CONFIG_KEY:
             proto_utils.proto_to_json(
                 example_gen_pb2.Output(
                     split_config=example_gen_pb2.SplitConfig(splits=[
@@ -141,14 +143,14 @@ class BaseExampleGenExecutorTest(tf.test.TestCase):
   def testDoInputSplit(self):
     # Create exec proterties for input split.
     self._exec_properties = {
-        utils.INPUT_CONFIG_KEY:
+        standard_component_specs.INPUT_CONFIG_KEY:
             proto_utils.proto_to_json(
                 example_gen_pb2.Input(splits=[
                     example_gen_pb2.Input.Split(
                         name='train', pattern='train/*'),
                     example_gen_pb2.Input.Split(name='eval', pattern='eval/*')
                 ])),
-        utils.OUTPUT_CONFIG_KEY:
+        standard_component_specs.OUTPUT_CONFIG_KEY:
             proto_utils.proto_to_json(example_gen_pb2.Output())
     }
 
@@ -170,16 +172,17 @@ class BaseExampleGenExecutorTest(tf.test.TestCase):
     self._testDo()
 
   def _testFeatureBasedPartition(self, partition_feature_name):
-    self._exec_properties[utils.OUTPUT_CONFIG_KEY] = proto_utils.proto_to_json(
-        example_gen_pb2.Output(
-            split_config=example_gen_pb2.SplitConfig(
-                splits=[
-                    example_gen_pb2.SplitConfig.Split(
-                        name='train', hash_buckets=2),
-                    example_gen_pb2.SplitConfig.Split(
-                        name='eval', hash_buckets=1)
-                ],
-                partition_feature_name=partition_feature_name)))
+    self._exec_properties[
+        standard_component_specs.OUTPUT_CONFIG_KEY] = proto_utils.proto_to_json(
+            example_gen_pb2.Output(
+                split_config=example_gen_pb2.SplitConfig(
+                    splits=[
+                        example_gen_pb2.SplitConfig.Split(
+                            name='train', hash_buckets=2),
+                        example_gen_pb2.SplitConfig.Split(
+                            name='eval', hash_buckets=1)
+                    ],
+                    partition_feature_name=partition_feature_name)))
 
   def testFeatureBasedPartition(self):
     # Update exec proterties.

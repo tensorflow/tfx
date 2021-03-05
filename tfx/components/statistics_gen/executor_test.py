@@ -16,14 +16,14 @@ import os
 import tempfile
 
 from absl.testing import absltest
-
 import tensorflow_data_validation as tfdv
-
 from tfx.components.statistics_gen import executor
 from tfx.dsl.io import fileio
 from tfx.types import artifact_utils
 from tfx.types import standard_artifacts
+from tfx.types import standard_component_specs
 from tfx.utils import json_utils
+
 from tensorflow_metadata.proto.v0 import schema_pb2
 
 
@@ -59,12 +59,12 @@ class ExecutorTest(absltest.TestCase):
         ['train', 'eval', 'test'])
 
     input_dict = {
-        executor.EXAMPLES_KEY: [examples],
+        standard_component_specs.EXAMPLES_KEY: [examples],
     }
 
     exec_properties = {
         # List needs to be serialized before being passed into Do function.
-        executor.EXCLUDE_SPLITS_KEY:
+        standard_component_specs.EXCLUDE_SPLITS_KEY:
             json_utils.dumps(['test']),
     }
 
@@ -72,7 +72,7 @@ class ExecutorTest(absltest.TestCase):
     stats = standard_artifacts.ExampleStatistics()
     stats.uri = output_data_dir
     output_dict = {
-        executor.STATISTICS_KEY: [stats],
+        standard_component_specs.STATISTICS_KEY: [stats],
     }
 
     # Run executor.
@@ -109,14 +109,14 @@ class ExecutorTest(absltest.TestCase):
     schema.uri = os.path.join(source_data_dir, 'schema_gen')
 
     input_dict = {
-        executor.EXAMPLES_KEY: [examples],
-        executor.SCHEMA_KEY: [schema]
+        standard_component_specs.EXAMPLES_KEY: [examples],
+        standard_component_specs.SCHEMA_KEY: [schema]
     }
 
     exec_properties = {
-        executor.STATS_OPTIONS_JSON_KEY:
+        standard_component_specs.STATS_OPTIONS_JSON_KEY:
             tfdv.StatsOptions(label_feature='company').to_json(),
-        executor.EXCLUDE_SPLITS_KEY:
+        standard_component_specs.EXCLUDE_SPLITS_KEY:
             json_utils.dumps([])
     }
 
@@ -124,7 +124,7 @@ class ExecutorTest(absltest.TestCase):
     stats = standard_artifacts.ExampleStatistics()
     stats.uri = output_data_dir
     output_dict = {
-        executor.STATISTICS_KEY: [stats],
+        standard_component_specs.STATISTICS_KEY: [stats],
     }
 
     # Run executor.
@@ -154,15 +154,15 @@ class ExecutorTest(absltest.TestCase):
     schema.uri = os.path.join(source_data_dir, 'schema_gen')
 
     input_dict = {
-        executor.EXAMPLES_KEY: [examples],
-        executor.SCHEMA_KEY: [schema]
+        standard_component_specs.EXAMPLES_KEY: [examples],
+        standard_component_specs.SCHEMA_KEY: [schema]
     }
 
     exec_properties = {
-        executor.STATS_OPTIONS_JSON_KEY:
+        standard_component_specs.STATS_OPTIONS_JSON_KEY:
             tfdv.StatsOptions(
                 label_feature='company', schema=schema_pb2.Schema()).to_json(),
-        executor.EXCLUDE_SPLITS_KEY:
+        standard_component_specs.EXCLUDE_SPLITS_KEY:
             json_utils.dumps([])
     }
 
@@ -170,7 +170,7 @@ class ExecutorTest(absltest.TestCase):
     stats = standard_artifacts.ExampleStatistics()
     stats.uri = output_data_dir
     output_dict = {
-        executor.STATISTICS_KEY: [stats],
+        standard_component_specs.STATISTICS_KEY: [stats],
     }
 
     # Run executor.

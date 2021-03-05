@@ -31,13 +31,23 @@ class TelemetryUtilsTest(tf.test.TestCase):
   def testMakeBeamLabelsArgs(self):
     """Test for make_beam_labels_args."""
     beam_pipeline_args = telemetry_utils.make_beam_labels_args()
-    self.assertListEqual([
+    expected_beam_pipeline_args = [
         '--labels',
         'tfx_py_version=%d-%d' %
         (sys.version_info.major, sys.version_info.minor),
         '--labels',
         'tfx_version=%s' % version.__version__.replace('.', '-'),
-    ], beam_pipeline_args)
+    ]
+    self.assertListEqual(expected_beam_pipeline_args, beam_pipeline_args)
+
+    with telemetry_utils.scoped_labels(
+        {telemetry_utils.LABEL_TFX_EXECUTOR: 'TestExecutor'}):
+      beam_pipeline_args = telemetry_utils.make_beam_labels_args()
+      expected_beam_pipeline_args = [
+          '--labels',
+          'tfx_executor=testexecutor',  # Label is coverted to lowercase.
+      ] + expected_beam_pipeline_args
+      self.assertListEqual(expected_beam_pipeline_args, beam_pipeline_args)
 
   def testScopedLabels(self):
     """Test for scoped_labels."""

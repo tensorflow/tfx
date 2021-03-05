@@ -35,11 +35,15 @@ def main(argv):
   logging.info("Generating raw dataset")
   dataset.generate_raw_dataset(args=FLAGS.generate_dataset_args)
   logging.info("Generating models")
-  dataset.generate_models(args=FLAGS.generate_dataset_args)
+  logging.info("force_tf_compat_v1: %s", FLAGS.force_tf_compat_v1)
+  dataset.generate_models(
+      args=FLAGS.generate_dataset_args,
+      force_tf_compat_v1=FLAGS.force_tf_compat_v1)
 
   # Regenerate intermediate outputs for TFT benchmarks.
   logging.info("Generating intermediate outputs for TFT benchmarks")
-  tft_benchmark_base.regenerate_intermediates_for_dataset(dataset)
+  tft_benchmark_base.regenerate_intermediates_for_dataset(
+      dataset, force_tf_compat_v1=FLAGS.force_tf_compat_v1)
 
 
 if __name__ == "__main__":
@@ -50,4 +54,8 @@ if __name__ == "__main__":
       "generate_dataset_args", "",
       "Arguments to pass to the dataset when regenerating the raw dataset or "
       "the models.")
+  flags.DEFINE_bool(
+      "force_tf_compat_v1", True,
+      "If False, TFT will use native TF 2 implementation if TF 2 behaviors are "
+      "enabled.")
   app.run(main)

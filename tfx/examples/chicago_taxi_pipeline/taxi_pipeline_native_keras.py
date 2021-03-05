@@ -49,7 +49,7 @@ _pipeline_name = 'chicago_taxi_native_keras'
 # This example assumes that the taxi data is stored in ~/taxi/data and the
 # taxi utility function is in ~/taxi.  Feel free to customize this as needed.
 _taxi_root = os.path.join(os.environ['HOME'], 'taxi')
-_data_root = os.path.join(_taxi_root, 'data', 'big_tipper_label')
+_data_root = os.path.join(_taxi_root, 'data', 'simple')
 # Python module file to inject customized logic into the TFX components. The
 # Transform and Trainer both require user-defined functions to run successfully.
 _module_file = os.path.join(_taxi_root, 'taxi_utils_native_keras.py')
@@ -125,7 +125,8 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
   eval_config = tfma.EvalConfig(
       model_specs=[
           tfma.ModelSpec(
-              signature_name='serving_default', label_key='big_tipper')
+              signature_name='serving_default', label_key='tips_xf',
+              preprocessing_function_names=['tft_layer'])
       ],
       slicing_specs=[tfma.SlicingSpec()],
       metrics_specs=[
@@ -135,6 +136,8 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
                   threshold=tfma.MetricThreshold(
                       value_threshold=tfma.GenericValueThreshold(
                           lower_bound={'value': 0.6}),
+                      # Change threshold will be ignored if there is no
+                      # baseline model resolved from MLMD (first run).
                       change_threshold=tfma.GenericChangeThreshold(
                           direction=tfma.MetricDirection.HIGHER_IS_BETTER,
                           absolute={'value': -1e-10})))
@@ -144,7 +147,6 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
       examples=example_gen.outputs['examples'],
       model=trainer.outputs['model'],
       baseline_model=model_resolver.outputs['model'],
-      # Change threshold will be ignored if there is no baseline (first run).
       eval_config=eval_config)
 
   # Checks whether the model passed the validation steps and pushes the model

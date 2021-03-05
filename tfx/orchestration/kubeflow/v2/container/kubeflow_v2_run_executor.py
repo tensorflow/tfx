@@ -15,10 +15,11 @@
 
 import argparse
 import os
-from typing import List
+from typing import List, Tuple
 
+from absl import app
 from absl import logging
-
+from absl.flags import argparse_flags
 from tfx.components.evaluator import executor as evaluator_executor
 from tfx.dsl.components.base import base_executor
 from tfx.dsl.io import fileio
@@ -29,7 +30,6 @@ from tfx.types.standard_component_specs import BLESSING_KEY
 from tfx.utils import import_utils
 
 from google.protobuf import json_format
-from tensorflow.python.platform import app  # pylint: disable=g-direct-tensorflow-import
 
 
 # TODO(b/166202742): Consolidate container entrypoint with Kubeflow runner.
@@ -97,38 +97,36 @@ def _run_executor(args: argparse.Namespace, beam_args: List[str]) -> None:
     executor_output.artifacts[k].CopyFrom(v)
 
   fileio.makedirs(os.path.dirname(metadata_uri))
-  fileio.open(metadata_uri,
-              'wb').write(json_format.MessageToJson(executor_output))
+  with fileio.open(metadata_uri, 'wb') as f:
+    f.write(json_format.MessageToJson(executor_output))
 
 
-def main(argv):
-  """Parses the arguments for _run_executor() then invokes it.
+def _parse_flags(argv: List[str]) -> Tuple[argparse.Namespace, List[str]]:
+  """Parses command line arguments.
 
   Args:
     argv: Unparsed arguments for run_executor.py. Known argument names include
       --executor_class_path: Python class of executor in format of
         <module>.<class>.
       --json_serialized_invocation_args: Full JSON-serialized parameters for
-        this execution. The remaining part of the arguments will be parsed as
-        the beam args used by each component executors. Some commonly used beam
-        args are as follows:
+        this execution.
+
+      The remaining part of the arguments will be parsed as the beam args used
+      by each component executors. Some commonly used beam args are as follows:
         --runner: The beam pipeline runner environment. Can be DirectRunner (for
           running locally) or DataflowRunner (for running on GCP Dataflow
           service).
         --project: The GCP project ID. Neede when runner==DataflowRunner
         --direct_num_workers: Number of threads or subprocesses executing the
           work load.
-        For more about the beam arguments please refer to:
-        https://cloud.google.com/dataflow/docs/guides/specifying-exec-params
+      For more about the beam arguments please refer to:
+      https://cloud.google.com/dataflow/docs/guides/specifying-exec-params
 
   Returns:
-    None
-
-  Raises:
-    None
+    Tuple of an argparse result and remaining beam args.
   """
 
-  parser = argparse.ArgumentParser()
+  parser = argparse_flags.ArgumentParser()
   parser.add_argument(
       '--executor_class_path',
       type=str,
@@ -140,9 +138,14 @@ def main(argv):
       required=True,
       help='JSON-serialized metadata for this execution.')
 
-  args, beam_args = parser.parse_known_args(argv)
+  return parser.parse_known_args(argv)
+
+
+def main(parsed_argv: Tuple[argparse.Namespace, List[str]]):
+  args, beam_args = parsed_argv
   _run_executor(args, beam_args)
 
 
 if __name__ == '__main__':
-  app.run(main=main)
+  app.run(main, flags_parser=_parse_flags)
+

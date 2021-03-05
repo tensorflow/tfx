@@ -319,6 +319,7 @@ def tuner_fn(fn_args: FnArgs) -> TunerFnResult:
                     model , e.g., the training and validation dataset. Required
                     args depend on the above tuner's implementation.
   """
+<<<<<<< HEAD
   transform_graph = tft.TFTransformOutput(fn_args.transform_graph_path)
 
   # CloudTuner is a subclass of kerastuner.Tuner which inherits from
@@ -357,6 +358,40 @@ def tuner_fn(fn_args: FnArgs) -> TunerFnResult:
           'steps_per_epoch': fn_args.train_steps,
           'validation_steps': fn_args.eval_steps
       })
+=======
+  outputs = {}
+  for key in _DENSE_FLOAT_FEATURE_KEYS:
+    # Preserve this feature as a dense float, setting nan's to the mean.
+    outputs[_transformed_name(key)] = tft.scale_to_z_score(
+        _fill_in_missing(inputs[key]))
+
+  for key in _VOCAB_FEATURE_KEYS:
+    # Build a vocabulary for this feature.
+    outputs[_transformed_name(key)] = tft.compute_and_apply_vocabulary(
+        _fill_in_missing(inputs[key]),
+        top_k=_VOCAB_SIZE,
+        num_oov_buckets=_OOV_SIZE)
+
+  for key in _BUCKET_FEATURE_KEYS:
+    outputs[_transformed_name(key)] = tft.bucketize(
+        _fill_in_missing(inputs[key]),
+        _FEATURE_BUCKET_COUNT)
+
+  for key in _CATEGORICAL_FEATURE_KEYS:
+    outputs[_transformed_name(key)] = _fill_in_missing(inputs[key])
+
+  # Was this passenger a big tipper?
+  taxi_fare = _fill_in_missing(inputs[_FARE_KEY])
+  tips = _fill_in_missing(inputs[_LABEL_KEY])
+  outputs[_transformed_name(_LABEL_KEY)] = tf.where(
+      tf.math.is_nan(taxi_fare),
+      tf.cast(tf.zeros_like(taxi_fare), tf.int64),
+      # Test if the tip was > 20% of the fare.
+      tf.cast(
+          tf.greater(tips, tf.multiply(taxi_fare, tf.constant(0.2))), tf.int64))
+
+  return outputs
+>>>>>>> master
 
 
 # TFX Trainer will call this function.

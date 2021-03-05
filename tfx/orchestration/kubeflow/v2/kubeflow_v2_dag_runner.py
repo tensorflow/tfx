@@ -144,7 +144,7 @@ class KubeflowV2DagRunner(tfx_runner.TfxRunner):
         tfx_pipeline=pipeline,
         default_image=self._config.default_image,
         default_commands=self._config.default_commands).build()
-    pipeline_spec.sdk_version = version.__version__
+    pipeline_spec.sdk_version = 'tfx-{}'.format(version.__version__)
     pipeline_spec.schema_version = _SCHEMA_VERSION
     runtime_config = pipeline_builder.RuntimeConfigBuilder(
         pipeline_info=pipeline.pipeline_info,
@@ -164,8 +164,9 @@ class KubeflowV2DagRunner(tfx_runner.TfxRunner):
       if not fileio.exists(self._output_dir):
         fileio.makedirs(self._output_dir)
 
-      fileio.open(os.path.join(self._output_dir, self._output_filename),
-                  'wb').write(json.dumps(pipeline_json_dict, sort_keys=True))
+      with fileio.open(
+          os.path.join(self._output_dir, self._output_filename), 'wb') as f:
+        f.write(json.dumps(pipeline_json_dict, sort_keys=True))
 
     return pipeline_json_dict
 

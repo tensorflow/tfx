@@ -40,16 +40,17 @@ from tfx.types.component_spec import ExecutionParameter
 SCHEMA_KEY = 'schema'
 EXAMPLES_KEY = 'examples'
 MODEL_KEY = 'model'
+CUSTOM_CONFIG_KEY = 'custom_config'
 BLESSING_KEY = 'blessing'
 TRAIN_ARGS_KEY = 'train_args'
-MODULE_FILE_KEY = 'module_file'
 CUSTOM_CONFIG_KEY = 'custom_config'
 MODEL_BLESSING_KEY = 'model_blessing'
 TRANSFORM_GRAPH_KEY = 'transform_graph'
 EVAL_ARGS_KEY = 'eval_args'
-# Key for example_validator
+MODULE_FILE_KEY = 'module_file'
 EXCLUDE_SPLITS_KEY = 'exclude_splits'
 STATISTICS_KEY = 'statistics'
+# Key for example_validator
 ANOMALIES_KEY = 'anomalies'
 # Key for evaluator
 EVAL_CONFIG_KEY = 'eval_config'
@@ -73,6 +74,16 @@ DATA_SPEC_KEY = 'data_spec'
 OUTPUT_EXAMPLE_SPEC_KEY = 'output_example_spec'
 INFERENCE_RESULT_KEY = 'inference_result'
 OUTPUT_EXAMPLES_KEY = 'output_examples'
+# Key for schema_gen
+INFER_FEATURE_SHAPE_KEY = 'infer_feature_shape'
+# Key for statistics_gen
+STATS_OPTIONS_JSON_KEY = 'stats_options_json'
+# Key for example_gen
+INPUT_BASE_KEY = 'input_base'
+INPUT_CONFIG_KEY = 'input_config'
+OUTPUT_CONFIG_KEY = 'output_config'
+OUTPUT_DATA_FORMAT_KEY = 'output_data_format'
+RANGE_CONFIG_KEY = 'range_config'
 # Key for pusher
 PUSH_DESTINATION_KEY = 'push_destination'
 INFRA_BLESSING_KEY = 'infra_blessing'
@@ -128,7 +139,7 @@ class EvaluatorSpec(ComponentSpec):
   PARAMETERS = {
       EVAL_CONFIG_KEY:
           ExecutionParameter(type=tfma.EvalConfig, optional=True),
-      # TODO(mdreves): Deprecated, use eval_config.slicing_specs.
+      # TODO(b/181911822): Deprecated, use eval_config.slicing_specs.
       FEATURE_SLICING_SPEC_KEY:
           ExecutionParameter(
               type=evaluator_pb2.FeatureSlicingSpec, optional=True),
@@ -180,22 +191,22 @@ class FileBasedExampleGenSpec(ComponentSpec):
   """File-based ExampleGen component spec."""
 
   PARAMETERS = {
-      'input_base':
+      INPUT_BASE_KEY:
           ExecutionParameter(type=(str, Text)),
-      'input_config':
+      INPUT_CONFIG_KEY:
           ExecutionParameter(type=example_gen_pb2.Input),
-      'output_config':
+      OUTPUT_CONFIG_KEY:
           ExecutionParameter(type=example_gen_pb2.Output),
-      'output_data_format':
+      OUTPUT_DATA_FORMAT_KEY:
           ExecutionParameter(type=int),  # example_gen_pb2.PayloadType enum.
-      'custom_config':
+      CUSTOM_CONFIG_KEY:
           ExecutionParameter(type=example_gen_pb2.CustomConfig, optional=True),
-      'range_config':
+      RANGE_CONFIG_KEY:
           ExecutionParameter(type=range_config_pb2.RangeConfig, optional=True),
   }
   INPUTS = {}
   OUTPUTS = {
-      'examples': ChannelParameter(type=standard_artifacts.Examples),
+      EXAMPLES_KEY: ChannelParameter(type=standard_artifacts.Examples),
   }
 
 
@@ -203,18 +214,18 @@ class QueryBasedExampleGenSpec(ComponentSpec):
   """Query-based ExampleGen component spec."""
 
   PARAMETERS = {
-      'input_config':
+      INPUT_CONFIG_KEY:
           ExecutionParameter(type=example_gen_pb2.Input),
-      'output_config':
+      OUTPUT_CONFIG_KEY:
           ExecutionParameter(type=example_gen_pb2.Output),
-      'output_data_format':
+      OUTPUT_DATA_FORMAT_KEY:
           ExecutionParameter(type=int),  # example_gen_pb2.PayloadType enum.
-      'custom_config':
+      CUSTOM_CONFIG_KEY:
           ExecutionParameter(type=example_gen_pb2.CustomConfig, optional=True),
   }
   INPUTS = {}
   OUTPUTS = {
-      'examples': ChannelParameter(type=standard_artifacts.Examples),
+      EXAMPLES_KEY: ChannelParameter(type=standard_artifacts.Examples),
   }
 
 
@@ -294,39 +305,26 @@ class SchemaGenSpec(ComponentSpec):
   OUTPUTS = {
       'schema': ChannelParameter(type=standard_artifacts.Schema),
   }
-  # TODO(b/139281215): these input / output names have recently been renamed.
-  # These compatibility aliases are temporarily provided for backwards
-  # compatibility.
-  _INPUT_COMPATIBILITY_ALIASES = {
-      'stats': 'statistics',
-  }
-  _OUTPUT_COMPATIBILITY_ALIASES = {
-      'output': 'schema',
-  }
 
 
 class StatisticsGenSpec(ComponentSpec):
   """StatisticsGen component spec."""
 
   PARAMETERS = {
-      'stats_options_json': ExecutionParameter(type=(str, Text), optional=True),
-      'exclude_splits': ExecutionParameter(type=(str, Text), optional=True),
+      STATS_OPTIONS_JSON_KEY:
+          ExecutionParameter(type=(str, Text), optional=True),
+      EXCLUDE_SPLITS_KEY:
+          ExecutionParameter(type=(str, Text), optional=True),
   }
   INPUTS = {
-      'examples': ChannelParameter(type=standard_artifacts.Examples),
-      'schema': ChannelParameter(type=standard_artifacts.Schema, optional=True),
+      EXAMPLES_KEY:
+          ChannelParameter(type=standard_artifacts.Examples),
+      SCHEMA_KEY:
+          ChannelParameter(type=standard_artifacts.Schema, optional=True),
   }
   OUTPUTS = {
-      'statistics': ChannelParameter(type=standard_artifacts.ExampleStatistics),
-  }
-  # TODO(b/139281215): these input / output names have recently been renamed.
-  # These compatibility aliases are temporarily provided for backwards
-  # compatibility.
-  _INPUT_COMPATIBILITY_ALIASES = {
-      'input_data': 'examples',
-  }
-  _OUTPUT_COMPATIBILITY_ALIASES = {
-      'output': 'statistics',
+      STATISTICS_KEY:
+          ChannelParameter(type=standard_artifacts.ExampleStatistics),
   }
 
 

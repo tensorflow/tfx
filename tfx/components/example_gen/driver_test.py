@@ -32,6 +32,7 @@ from tfx.proto import range_config_pb2
 from tfx.types import artifact_utils
 from tfx.types import channel_utils
 from tfx.types import standard_artifacts
+from tfx.types import standard_component_specs
 from tfx.utils import io_utils
 from tfx.utils import proto_utils
 
@@ -47,7 +48,7 @@ class DriverTest(tf.test.TestCase):
 
     # Mock metadata and create driver.
     self._mock_metadata = tf.compat.v1.test.mock.Mock()
-    self._example_gen_driver = driver.Driver(self._mock_metadata)
+    self._file_based_driver = driver.FileBasedDriver(self._mock_metadata)
 
   def testResolveExecProperties(self):
     # Create input dir.
@@ -56,19 +57,19 @@ class DriverTest(tf.test.TestCase):
 
     # Create exec proterties.
     self._exec_properties = {
-        utils.INPUT_BASE_KEY:
+        standard_component_specs.INPUT_BASE_KEY:
             self._input_base_path,
-        utils.INPUT_CONFIG_KEY:
+        standard_component_specs.INPUT_CONFIG_KEY:
             proto_utils.proto_to_json(
                 example_gen_pb2.Input(splits=[
                     example_gen_pb2.Input.Split(
                         name='s1',
-                        pattern='span{SPAN}/version{VERSION}/split1/*'),
+                        pattern='span{SPAN:2}/version{VERSION:2}/split1/*'),
                     example_gen_pb2.Input.Split(
                         name='s2',
-                        pattern='span{SPAN}/version{VERSION}/split2/*')
+                        pattern='span{SPAN:2}/version{VERSION:2}/split2/*')
                 ])),
-        utils.RANGE_CONFIG_KEY:
+        standard_component_specs.RANGE_CONFIG_KEY:
             None,
     }
 
@@ -86,8 +87,8 @@ class DriverTest(tf.test.TestCase):
     # Check that error raised when span does not match.
     with self.assertRaisesRegexp(
         ValueError, 'Latest span should be the same for each split'):
-      self._example_gen_driver.resolve_exec_properties(self._exec_properties,
-                                                       None, None)
+      self._file_based_driver.resolve_exec_properties(self._exec_properties,
+                                                      None, None)
 
     span2_v1_split2 = os.path.join(self._input_base_path, 'span02', 'version01',
                                    'split2', 'data')
@@ -99,8 +100,8 @@ class DriverTest(tf.test.TestCase):
     # Check that error raised when span matches, but version does not match.
     with self.assertRaisesRegexp(
         ValueError, 'Latest version should be the same for each split'):
-      self._example_gen_driver.resolve_exec_properties(self._exec_properties,
-                                                       None, None)
+      self._file_based_driver.resolve_exec_properties(self._exec_properties,
+                                                      None, None)
 
     span2_v2_split2 = os.path.join(self._input_base_path, 'span02', 'version02',
                                    'split2', 'data')
@@ -108,8 +109,8 @@ class DriverTest(tf.test.TestCase):
 
     # Test if latest span and version selected when span and version aligns
     # for each split.
-    self._example_gen_driver.resolve_exec_properties(self._exec_properties,
-                                                     None, None)
+    self._file_based_driver.resolve_exec_properties(self._exec_properties, None,
+                                                    None)
     self.assertEqual(self._exec_properties[utils.SPAN_PROPERTY_NAME], 2)
     self.assertEqual(self._exec_properties[utils.VERSION_PROPERTY_NAME], 2)
     self.assertRegex(
@@ -117,8 +118,9 @@ class DriverTest(tf.test.TestCase):
         r'split:s1,num_files:1,total_bytes:9,xor_checksum:.*,sum_checksum:.*\nsplit:s2,num_files:1,total_bytes:9,xor_checksum:.*,sum_checksum:.*'
     )
     updated_input_config = example_gen_pb2.Input()
-    proto_utils.json_to_proto(self._exec_properties[utils.INPUT_CONFIG_KEY],
-                              updated_input_config)
+    proto_utils.json_to_proto(
+        self._exec_properties[standard_component_specs.INPUT_CONFIG_KEY],
+        updated_input_config)
 
     # Check if latest span is selected.
     self.assertProtoEquals(
@@ -133,29 +135,34 @@ class DriverTest(tf.test.TestCase):
         }""", updated_input_config)
 
     # Test driver behavior using RangeConfig with static range.
-    self._exec_properties[utils.INPUT_CONFIG_KEY] = proto_utils.proto_to_json(
-        example_gen_pb2.Input(splits=[
-            example_gen_pb2.Input.Split(
-                name='s1', pattern='span{SPAN:2}/version{VERSION}/split1/*'),
-            example_gen_pb2.Input.Split(
-                name='s2', pattern='span{SPAN:2}/version{VERSION}/split2/*')
-        ]))
+    self._exec_properties[
+        standard_component_specs.INPUT_CONFIG_KEY] = proto_utils.proto_to_json(
+            example_gen_pb2.Input(splits=[
+                example_gen_pb2.Input.Split(
+                    name='s1',
+                    pattern='span{SPAN:2}/version{VERSION:2}/split1/*'),
+                example_gen_pb2.Input.Split(
+                    name='s2',
+                    pattern='span{SPAN:2}/version{VERSION:2}/split2/*'),
+            ]))
 
-    self._exec_properties[utils.RANGE_CONFIG_KEY] = proto_utils.proto_to_json(
-        range_config_pb2.RangeConfig(
-            static_range=range_config_pb2.StaticRange(
-                start_span_number=1, end_span_number=2)))
-    with self.assertRaisesRegexp(
-        ValueError, 'Start and end span numbers for RangeConfig.static_range'):
-      self._example_gen_driver.resolve_exec_properties(self._exec_properties,
-                                                       None, None)
+    self._exec_properties[
+        standard_component_specs.RANGE_CONFIG_KEY] = proto_utils.proto_to_json(
+            range_config_pb2.RangeConfig(
+                static_range=range_config_pb2.StaticRange(
+                    start_span_number=1, end_span_number=2)))
+    with self.assertRaisesRegexp(ValueError,
+                                 'For ExampleGen, start and end span numbers'):
+      self._file_based_driver.resolve_exec_properties(self._exec_properties,
+                                                      None, None)
 
-    self._exec_properties[utils.RANGE_CONFIG_KEY] = proto_utils.proto_to_json(
-        range_config_pb2.RangeConfig(
-            static_range=range_config_pb2.StaticRange(
-                start_span_number=1, end_span_number=1)))
-    self._example_gen_driver.resolve_exec_properties(self._exec_properties,
-                                                     None, None)
+    self._exec_properties[
+        standard_component_specs.RANGE_CONFIG_KEY] = proto_utils.proto_to_json(
+            range_config_pb2.RangeConfig(
+                static_range=range_config_pb2.StaticRange(
+                    start_span_number=1, end_span_number=1)))
+    self._file_based_driver.resolve_exec_properties(self._exec_properties, None,
+                                                    None)
     self.assertEqual(self._exec_properties[utils.SPAN_PROPERTY_NAME], 1)
     self.assertEqual(self._exec_properties[utils.VERSION_PROPERTY_NAME], 1)
     self.assertRegex(
@@ -163,8 +170,9 @@ class DriverTest(tf.test.TestCase):
         r'split:s1,num_files:1,total_bytes:9,xor_checksum:.*,sum_checksum:.*\nsplit:s2,num_files:1,total_bytes:9,xor_checksum:.*,sum_checksum:.*'
     )
     updated_input_config = example_gen_pb2.Input()
-    proto_utils.json_to_proto(self._exec_properties[utils.INPUT_CONFIG_KEY],
-                              updated_input_config)
+    proto_utils.json_to_proto(
+        self._exec_properties[standard_component_specs.INPUT_CONFIG_KEY],
+        updated_input_config)
     # Check if correct span inside static range is selected.
     self.assertProtoEquals(
         """
@@ -179,7 +187,10 @@ class DriverTest(tf.test.TestCase):
 
   def testPrepareOutputArtifacts(self):
     examples = standard_artifacts.Examples()
-    output_dict = {utils.EXAMPLES_KEY: channel_utils.as_channel([examples])}
+    output_dict = {
+        standard_component_specs.EXAMPLES_KEY:
+            channel_utils.as_channel([examples])
+    }
     exec_properties = {
         utils.SPAN_PROPERTY_NAME: 2,
         utils.VERSION_PROPERTY_NAME: 1,
@@ -192,11 +203,11 @@ class DriverTest(tf.test.TestCase):
         component_type='type', component_id='cid', pipeline_info=pipeline_info)
 
     input_artifacts = {}
-    output_artifacts = self._example_gen_driver._prepare_output_artifacts(  # pylint: disable=protected-access
+    output_artifacts = self._file_based_driver._prepare_output_artifacts(  # pylint: disable=protected-access
         input_artifacts, output_dict, exec_properties, 1, pipeline_info,
         component_info)
     examples = artifact_utils.get_single_instance(
-        output_artifacts[utils.EXAMPLES_KEY])
+        output_artifacts[standard_component_specs.EXAMPLES_KEY])
     base_output_dir = os.path.join(self._test_dir, component_info.component_id)
     expected_uri = base_driver._generate_output_uri(  # pylint: disable=protected-access
         base_output_dir, 'examples', 1)
@@ -223,24 +234,24 @@ class DriverTest(tf.test.TestCase):
                                    'data')
     io_utils.write_string_file(span1_v1_split2, 'testing12')
 
-    ir_driver = driver.Driver(self._mock_metadata)
+    ir_driver = driver.FileBasedDriver(self._mock_metadata)
     example = standard_artifacts.Examples()
 
     # Prepare output_dic
     example.uri = 'my_uri'  # Will verify that this uri is not changed.
-    output_dic = {utils.EXAMPLES_KEY: [example]}
+    output_dic = {standard_component_specs.EXAMPLES_KEY: [example]}
 
     # Prepare output_dic exec_proterties.
     exec_properties = {
-        utils.INPUT_BASE_KEY:
+        standard_component_specs.INPUT_BASE_KEY:
             self._input_base_path,
-        utils.INPUT_CONFIG_KEY:
+        standard_component_specs.INPUT_CONFIG_KEY:
             proto_utils.proto_to_json(
                 example_gen_pb2.Input(splits=[
                     example_gen_pb2.Input.Split(
-                        name='s1', pattern='span{SPAN}/split1/*'),
+                        name='s1', pattern='span{SPAN:2}/split1/*'),
                     example_gen_pb2.Input.Split(
-                        name='s2', pattern='span{SPAN}/split2/*')
+                        name='s2', pattern='span{SPAN:2}/split2/*')
                 ])),
     }
     result = ir_driver.run(
@@ -251,7 +262,7 @@ class DriverTest(tf.test.TestCase):
     self.assertEqual(exec_properties[utils.SPAN_PROPERTY_NAME].int_value, 1)
     updated_input_config = example_gen_pb2.Input()
     proto_utils.json_to_proto(
-        exec_properties[utils.INPUT_CONFIG_KEY].string_value,
+        exec_properties[standard_component_specs.INPUT_CONFIG_KEY].string_value,
         updated_input_config)
     self.assertProtoEquals(
         """
@@ -268,8 +279,11 @@ class DriverTest(tf.test.TestCase):
         r'split:s1,num_files:1,total_bytes:9,xor_checksum:.*,sum_checksum:.*\nsplit:s2,num_files:1,total_bytes:9,xor_checksum:.*,sum_checksum:.*'
     )
     # Assert output_artifacts' values
-    self.assertLen(result.output_artifacts[utils.EXAMPLES_KEY].artifacts, 1)
-    output_example = result.output_artifacts[utils.EXAMPLES_KEY].artifacts[0]
+    self.assertLen(
+        result.output_artifacts[
+            standard_component_specs.EXAMPLES_KEY].artifacts, 1)
+    output_example = result.output_artifacts[
+        standard_component_specs.EXAMPLES_KEY].artifacts[0]
     self.assertEqual(output_example.uri, example.uri)
     self.assertEqual(
         output_example.custom_properties[utils.SPAN_PROPERTY_NAME].string_value,
@@ -279,6 +293,49 @@ class DriverTest(tf.test.TestCase):
             utils.FINGERPRINT_PROPERTY_NAME].string_value,
         r'split:s1,num_files:1,total_bytes:9,xor_checksum:.*,sum_checksum:.*\nsplit:s2,num_files:1,total_bytes:9,xor_checksum:.*,sum_checksum:.*'
     )
+
+  def testQueryBasedDriver(self):
+    # Create exec proterties.
+    exec_properties = {
+        standard_component_specs.INPUT_CONFIG_KEY:
+            proto_utils.proto_to_json(
+                example_gen_pb2.Input(splits=[
+                    example_gen_pb2.Input.Split(
+                        name='s1',
+                        pattern="select * from table where span={SPAN} and split='s1'"
+                    ),
+                    example_gen_pb2.Input.Split(
+                        name='s2',
+                        pattern="select * from table where span={SPAN} and split='s2'"
+                    )
+                ])),
+        standard_component_specs.RANGE_CONFIG_KEY:
+            proto_utils.proto_to_json(
+                range_config_pb2.RangeConfig(
+                    static_range=range_config_pb2.StaticRange(
+                        start_span_number=2, end_span_number=2))),
+    }
+
+    query_based_driver = driver.QueryBasedDriver(self._mock_metadata)
+    query_based_driver.resolve_exec_properties(exec_properties, None, None)
+
+    self.assertEqual(exec_properties[utils.SPAN_PROPERTY_NAME], 2)
+    self.assertIsNone(exec_properties[utils.VERSION_PROPERTY_NAME])
+    self.assertIsNone(exec_properties[utils.FINGERPRINT_PROPERTY_NAME])
+    updated_input_config = example_gen_pb2.Input()
+    proto_utils.json_to_proto(
+        exec_properties[standard_component_specs.INPUT_CONFIG_KEY],
+        updated_input_config)
+    self.assertProtoEquals(
+        """
+        splits {
+          name: "s1"
+          pattern: "select * from table where span=2 and split='s1'"
+        }
+        splits {
+          name: "s2"
+          pattern: "select * from table where span=2 and split='s2'"
+        }""", updated_input_config)
 
 
 if __name__ == '__main__':
