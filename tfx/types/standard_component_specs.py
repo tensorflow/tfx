@@ -139,7 +139,7 @@ class EvaluatorSpec(ComponentSpec):
   PARAMETERS = {
       EVAL_CONFIG_KEY:
           ExecutionParameter(type=tfma.EvalConfig, optional=True),
-      # TODO(mdreves): Deprecated, use eval_config.slicing_specs.
+      # TODO(b/181911822): Deprecated, use eval_config.slicing_specs.
       FEATURE_SLICING_SPEC_KEY:
           ExecutionParameter(
               type=evaluator_pb2.FeatureSlicingSpec, optional=True),
