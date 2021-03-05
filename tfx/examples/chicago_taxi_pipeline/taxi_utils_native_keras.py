@@ -63,7 +63,8 @@ _VOCAB_FEATURE_KEYS = [
 ]
 
 # Keys
-_LABEL_KEY = 'big_tipper'
+_LABEL_KEY = 'tips'
+_FARE_KEY = 'fare'
 
 
 def _transformed_name(key):
@@ -106,11 +107,17 @@ def _get_serve_tf_examples_fn(model, tf_transform_output):
   def serve_tf_examples_fn(serialized_tf_examples):
     """Returns the output to be used in the serving signature."""
     feature_spec = tf_transform_output.raw_feature_spec()
+    if not model.tft_layer.built:
+      # TODO(b/175357313): We need to call the tft_layer with the label so that
+      # it will be included in the layer's input_spec. This is needed so that
+      # TFMA can call tft_layer with labels. However, the actual call for
+      # inference is done without the label.
+      parsed_features_with_label = tf.io.parse_example(
+          serialized_tf_examples, feature_spec)
+      _ = model.tft_layer(parsed_features_with_label)
     feature_spec.pop(_LABEL_KEY)
     parsed_features = tf.io.parse_example(serialized_tf_examples, feature_spec)
-
     transformed_features = model.tft_layer(parsed_features)
-
     return model(transformed_features)
 
   return serve_tf_examples_fn
@@ -140,12 +147,59 @@ def _input_fn(file_pattern: List[Text],
       tf_transform_output.transformed_metadata.schema).repeat()
 
 
-def _build_keras_model(hidden_units: List[int] = None) -> tf.keras.Model:
-  """Creates a DNN Keras model for classifying taxi data.
+# TFX Transform will call this function.
+def preprocessing_fn(inputs):
+  """tf.transform's callback function for preprocessing inputs.
 
   Args:
-    hidden_units: [int], the layer sizes of the DNN (input layer first).
+    inputs: map from feature keys to raw not-yet-transformed features.
 
+  Returns:
+    Map from string feature key to transformed feature operations.
+  """
+  outputs = {}
+
+  for key in _DENSE_FLOAT_FEATURE_KEYS:
+    # Preserve this feature as a dense float, setting nan's to the mean.
+    outputs[_transformed_name(key)] = tft.scale_to_z_score(
+        _fill_in_missing(inputs[key]))
+
+  for key in _VOCAB_FEATURE_KEYS:
+    # Build a vocabulary for this feature.
+    outputs[_transformed_name(key)] = tft.compute_and_apply_vocabulary(
+        _fill_in_missing(inputs[key]),
+        top_k=_VOCAB_SIZE,
+        num_oov_buckets=_OOV_SIZE)
+
+  for key in _BUCKET_FEATURE_KEYS:
+    outputs[_transformed_name(key)] = tft.bucketize(
+        _fill_in_missing(inputs[key]),
+        _FEATURE_BUCKET_COUNT)
+
+  for key in _CATEGORICAL_FEATURE_KEYS:
+    outputs[_transformed_name(key)] = _fill_in_missing(inputs[key])
+
+  # Was this passenger a big tipper?
+  taxi_fare = _fill_in_missing(inputs[_FARE_KEY])
+  tips = _fill_in_missing(inputs[_LABEL_KEY])
+  outputs[_transformed_name(_LABEL_KEY)] = tf.where(
+      tf.math.is_nan(taxi_fare),
+      tf.cast(tf.zeros_like(taxi_fare), tf.int64),
+      # Test if the tip was > 20% of the fare.
+      tf.cast(
+          tf.greater(tips, tf.multiply(taxi_fare, tf.constant(0.2))), tf.int64))
+
+  return outputs
+
+
+def _build_keras_model(hparams: kerastuner.HyperParameters,
+                       tf_transform_output: tft.TFTransformOutput) -> tf.keras.Model:
+  """Creates a Keras model for classifying taxi data.
+
+  Args:
+    hparams: Holds `HyperParameters` for tuning.  
+    tf_transform_output: A `TFTransformOutput` object, containing statistics
+      and metadata from TFTransform component.
   Returns:
     A keras Model.
   """
@@ -180,18 +234,18 @@ def _build_keras_model(hidden_units: List[int] = None) -> tf.keras.Model:
       # TODO(b/139668410) replace with premade wide_and_deep keras model
       wide_columns=indicator_column,
       deep_columns=real_valued_columns,
-      dnn_hidden_units=hidden_units or [100, 70, 50, 25])
+      hparams=hparams
   return model
 
 
-def _wide_and_deep_classifier(wide_columns, deep_columns, dnn_hidden_units):
+def _wide_and_deep_classifier(wide_columns, deep_columns, hparams):
   """Build a simple keras wide and deep model.
 
   Args:
     wide_columns: Feature columns wrapped in indicator_column for wide (linear)
       part of the model.
     deep_columns: Feature columns for deep part of the model.
-    dnn_hidden_units: [int], the layer sizes of the hidden DNN.
+    hparams: Holds `HyperParameters` for tuning.
 
   Returns:
     A Wide and Deep Keras model
@@ -221,8 +275,9 @@ def _wide_and_deep_classifier(wide_columns, deep_columns, dnn_hidden_units):
   # TODO(b/161952382): Replace with Keras premade models and
   # Keras preprocessing layers.
   deep = tf.keras.layers.DenseFeatures(deep_columns)(input_layers)
-  for numnodes in dnn_hidden_units:
-    deep = tf.keras.layers.Dense(numnodes)(deep)
+  for n in range(int(hparams.get('n_layers'))):
+    deep = tf.keras.layers.Dense(units=hparams.get('n_units_' + str(n + 1)))(deep)
+
   wide = tf.keras.layers.DenseFeatures(wide_columns)(input_layers)
 
   output = tf.keras.layers.Dense(
@@ -231,50 +286,77 @@ def _wide_and_deep_classifier(wide_columns, deep_columns, dnn_hidden_units):
   output = tf.squeeze(output, -1)
 
   model = tf.keras.Model(input_layers, output)
+
   model.compile(
       loss='binary_crossentropy',
-      optimizer=tf.keras.optimizers.Adam(lr=0.001),
+      optimizer=tf.keras.optimizers.Adam(lr=hparams.get('learning_rate')),
       metrics=[tf.keras.metrics.BinaryAccuracy()])
   model.summary(print_fn=absl.logging.info)
+
   return model
 
 
-# TFX Transform will call this function.
-def preprocessing_fn(inputs):
-  """tf.transform's callback function for preprocessing inputs.
+# TFX Tuner will call this function.
+def tuner_fn(fn_args: FnArgs) -> TunerFnResult:
+  """Build the tuner using the CloudTuner API.
 
   Args:
-    inputs: map from feature keys to raw not-yet-transformed features.
+    fn_args: Holds args as name/value pairs. See
+      https://www.tensorflow.org/tfx/api_docs/python/tfx/components/trainer/fn_args_utils/FnArgs.
+      - transform_graph_path: optional transform graph produced by TFT.
+      - custom_config: An optional dictionary passed to the component. In this
+        example, it contains the dict ai_platform_training_args.
+      - working_dir: working dir for tuning.
+      - train_files: List of file paths containing training tf.Example data.
+      - eval_files: List of file paths containing eval tf.Example data.
+      - train_steps: number of train steps.
+      - eval_steps: number of eval steps.
 
   Returns:
-    Map from string feature key to transformed feature operations.
+    A namedtuple contains the following:
+      - tuner: A BaseTuner that will be used for tuning.
+      - fit_kwargs: Args to pass to tuner's run_trial function for fitting the
+                    model , e.g., the training and validation dataset. Required
+                    args depend on the above tuner's implementation.
   """
-  outputs = {}
-  for key in _DENSE_FLOAT_FEATURE_KEYS:
-    # Preserve this feature as a dense float, setting nan's to the mean.
-    outputs[_transformed_name(key)] = tft.scale_to_z_score(
-        _fill_in_missing(inputs[key]))
+  transform_graph = tft.TFTransformOutput(fn_args.transform_graph_path)
 
-  for key in _VOCAB_FEATURE_KEYS:
-    # Build a vocabulary for this feature.
-    outputs[_transformed_name(key)] = tft.compute_and_apply_vocabulary(
-        _fill_in_missing(inputs[key]),
-        top_k=_VOCAB_SIZE,
-        num_oov_buckets=_OOV_SIZE)
+  # CloudTuner is a subclass of kerastuner.Tuner which inherits from
+  # BaseTuner.
+  tuner = CloudTuner(
+      _build_keras_model,
+      # The project/region configuations for Cloud Vizier service and its trial
+      # executions. Note: this example uses the same configuration as the
+      # CAIP Training service for distributed tuning flock management to view
+      # all of the pipeline's jobs and resources in the same project. It can
+      # also be configured separately.
+      project_id=fn_args.custom_config['ai_platform_training_args']['project'],
+      region=fn_args.custom_config['ai_platform_training_args']['region'],
+      objective=kerastuner.Objective('val_sparse_categorical_accuracy', 'max'),
+      hyperparameters=_get_hyperparameters(),
+      max_trials=10,  # Optional.
+      directory=fn_args.working_dir)
 
-  for key in _BUCKET_FEATURE_KEYS:
-    outputs[_transformed_name(key)] = tft.bucketize(
-        _fill_in_missing(inputs[key]),
-        _FEATURE_BUCKET_COUNT)
+  train_dataset = _input_fn(
+      fn_args.train_files,
+      fn_args.data_accessor,
+      transform_graph,
+      batch_size=_TRAIN_BATCH_SIZE)
 
-  for key in _CATEGORICAL_FEATURE_KEYS:
-    outputs[_transformed_name(key)] = _fill_in_missing(inputs[key])
+  eval_dataset = _input_fn(
+      fn_args.eval_files,
+      fn_args.data_accessor,
+      transform_graph,
+      batch_size=_EVAL_BATCH_SIZE)
 
-  # TODO(b/157064428): Support label transformation for Keras.
-  # Do not apply label transformation as it will result in wrong evaluation.
-  outputs[_transformed_name(_LABEL_KEY)] = inputs[_LABEL_KEY]
-
-  return outputs
+  return TunerFnResult(
+      tuner=tuner,
+      fit_kwargs={
+          'x': train_dataset,
+          'validation_data': eval_dataset,
+          'steps_per_epoch': fn_args.train_steps,
+          'validation_steps': fn_args.eval_steps
+      })
 
 
 # TFX Trainer will call this function.
@@ -284,11 +366,6 @@ def run_fn(fn_args: FnArgs):
   Args:
     fn_args: Holds args used to train the model as name/value pairs.
   """
-  # Number of nodes in the first layer of the DNN
-  first_dnn_layer_size = 100
-  num_dnn_layers = 4
-  dnn_decay_factor = 0.7
-
   tf_transform_output = tft.TFTransformOutput(fn_args.transform_output)
 
   train_dataset = _input_fn(fn_args.train_files, fn_args.data_accessor,

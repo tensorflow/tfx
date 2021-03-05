@@ -241,6 +241,13 @@ Use [Kubeflow as orchestrator](https://github.com/tensorflow/tfx/blob/r0.21/docs
 Instead of estimator, this example uses native Keras in user module file
 `taxi_utils_native_keras.py`.
 
+# Chicago Taxi Native Keras Example (tfx 0.25.1)
+
+
+
+Instead of estimator, this example uses native Keras in user module file
+`taxi_utils_native_keras.py`.
+
 # Chicago Taxi Flink Example
 
 This section requires the [local prerequisites](#local_prerequisites) and adds a
