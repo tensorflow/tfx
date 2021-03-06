@@ -14,12 +14,14 @@
 """Pipeline-level operations."""
 
 import copy
+import datetime
 import functools
 import threading
 import time
-from typing import List, Optional, Sequence, Set, Text
+from typing import List, Optional, Sequence, Set
 
 from absl import logging
+from tfx.dsl.compiler import constants
 from tfx.orchestration import metadata
 from tfx.orchestration.experimental.core import async_pipeline_task_gen
 from tfx.orchestration.experimental.core import pipeline_state as pstate
@@ -29,6 +31,7 @@ from tfx.orchestration.experimental.core import sync_pipeline_task_gen
 from tfx.orchestration.experimental.core import task as task_lib
 from tfx.orchestration.experimental.core import task_gen_utils
 from tfx.orchestration.experimental.core import task_queue as tq
+from tfx.orchestration.portable import runtime_parameter_utils
 from tfx.orchestration.portable.mlmd import execution_lib
 from tfx.proto.orchestration import pipeline_pb2
 
@@ -71,7 +74,7 @@ def _to_status_not_ok_error(fn):
 @_pipeline_ops_lock
 def save_pipeline_property(mlmd_handle: metadata.Metadata,
                            pipeline_uid: task_lib.PipelineUid,
-                           property_key: Text, property_value: Text) -> None:
+                           property_key: str, property_value: str) -> None:
   """Saves a property to the pipeline execution.
 
   Args:
@@ -88,7 +91,7 @@ def save_pipeline_property(mlmd_handle: metadata.Metadata,
 @_pipeline_ops_lock
 def remove_pipeline_property(mlmd_handle: metadata.Metadata,
                              pipeline_uid: task_lib.PipelineUid,
-                             property_key: Text) -> None:
+                             property_key: str) -> None:
   """Removes a property from the pipeline execution.
 
   Args:
@@ -108,8 +111,7 @@ def initiate_pipeline_start(
     pipeline: pipeline_pb2.Pipeline) -> pstate.PipelineState:
   """Initiates a pipeline start operation.
 
-  Upon success, MLMD is updated to signal that the given pipeline must be
-  started.
+  Upon success, MLMD is updated to signal that the pipeline must be started.
 
   Args:
     mlmd_handle: A handle to the MLMD db.
@@ -119,9 +121,24 @@ def initiate_pipeline_start(
     The `PipelineState` object upon success.
 
   Raises:
-    status_lib.StatusNotOkError: Failure to initiate pipeline start or if
-      execution is not inactive after waiting `timeout_secs`.
+    status_lib.StatusNotOkError: Failure to initiate pipeline start. With code
+      `INVALILD_ARGUMENT` if a sync pipeline is not configured for runtime
+      parameter substitution of `pipeline_run_id`.
   """
+  pipeline = copy.deepcopy(pipeline)
+  if pipeline.execution_mode == pipeline_pb2.Pipeline.SYNC:
+    if not pipeline.runtime_spec.pipeline_run_id.HasField('runtime_parameter'):
+      raise status_lib.StatusNotOkError(
+          code=status_lib.Code.INVALID_ARGUMENT,
+          message=(
+              'Sync pipeline IR must be configured for runtime substitution of '
+              'pipeline_run_id'))
+    pipeline_run_id = datetime.datetime.now().strftime('%Y%m%d-%H%M%S-%f')
+    runtime_parameter_utils.substitute_runtime_parameter(
+        pipeline, {constants.PIPELINE_RUN_ID_PARAMETER_NAME: pipeline_run_id})
+    assert (pipeline.runtime_spec.pipeline_run_id.field_value.string_value ==
+            pipeline_run_id)
+
   with pstate.PipelineState.new(mlmd_handle, pipeline) as pipeline_state:
     pass
   return pipeline_state
@@ -159,6 +176,18 @@ def stop_pipeline(
 @_pipeline_ops_lock
 def initiate_node_start(mlmd_handle: metadata.Metadata,
                         node_uid: task_lib.NodeUid) -> pstate.PipelineState:
+  """Initiates a node start operation for a node in an async pipeline.
+
+  Args:
+    mlmd_handle: A handle to the MLMD db.
+    node_uid: Uid of the node to be started.
+
+  Returns:
+    The `PipelineState` object upon success.
+
+  Raises:
+    status_lib.StatusNotOkError: Failure to initiate node start operation.
+  """
   with pstate.PipelineState.load(mlmd_handle,
                                  node_uid.pipeline_uid) as pipeline_state:
     pipeline_state.initiate_node_start(node_uid)
@@ -170,7 +199,7 @@ def stop_node(
     mlmd_handle: metadata.Metadata,
     node_uid: task_lib.NodeUid,
     timeout_secs: float = DEFAULT_WAIT_FOR_INACTIVATION_TIMEOUT_SECS) -> None:
-  """Stops a node in a pipeline.
+  """Stops a node in an async pipeline.
 
   Initiates a node stop operation and waits for the node execution to become
   inactive.

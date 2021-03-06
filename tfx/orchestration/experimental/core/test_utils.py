@@ -92,3 +92,10 @@ def create_exec_node_task(node_uid,
       stateful_working_dir=stateful_working_dir or '',
       pipeline=pipeline or mock.Mock(),
       is_cancelled=is_cancelled)
+
+
+def create_node_uid(pipeline_id, node_id):
+  """Creates node uid."""
+  return task_lib.NodeUid(
+      pipeline_uid=task_lib.PipelineUid(pipeline_id=pipeline_id),
+      node_id=node_id)

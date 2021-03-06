@@ -36,21 +36,16 @@ from tfx.utils import test_case_utils as tu
 from ml_metadata.proto import metadata_store_pb2
 
 
-def _test_exec_node_task(node_id,
-                         pipeline_id,
-                         pipeline_run_id=None,
-                         pipeline=None):
+def _test_exec_node_task(node_id, pipeline_id, pipeline=None):
   node_uid = task_lib.NodeUid(
-      pipeline_uid=task_lib.PipelineUid(
-          pipeline_id=pipeline_id, pipeline_run_id=pipeline_run_id),
+      pipeline_uid=task_lib.PipelineUid(pipeline_id=pipeline_id),
       node_id=node_id)
   return test_utils.create_exec_node_task(node_uid, pipeline=pipeline)
 
 
-def _test_cancel_node_task(node_id, pipeline_id, pipeline_run_id=None):
+def _test_cancel_node_task(node_id, pipeline_id):
   node_uid = task_lib.NodeUid(
-      pipeline_uid=task_lib.PipelineUid(
-          pipeline_id=pipeline_id, pipeline_run_id=pipeline_run_id),
+      pipeline_uid=task_lib.PipelineUid(pipeline_id=pipeline_id),
       node_id=node_id)
   return task_lib.CancelNodeTask(node_uid=node_uid)
 
@@ -142,18 +137,18 @@ class TaskManagerTest(tu.TfxTest):
     task_queue = tq.TaskQueue()
 
     # Enqueue some tasks.
-    trainer_exec_task = _test_exec_node_task('Trainer', 'test-pipeline',
-                                             pipeline=self._pipeline)
+    trainer_exec_task = _test_exec_node_task(
+        'Trainer', 'test-pipeline', pipeline=self._pipeline)
     task_queue.enqueue(trainer_exec_task)
     task_queue.enqueue(_test_cancel_node_task('Trainer', 'test-pipeline'))
 
     with self._task_manager(task_queue) as task_manager:
       # Enqueue more tasks after task manager starts.
-      transform_exec_task = _test_exec_node_task('Transform', 'test-pipeline',
-                                                 pipeline=self._pipeline)
+      transform_exec_task = _test_exec_node_task(
+          'Transform', 'test-pipeline', pipeline=self._pipeline)
       task_queue.enqueue(transform_exec_task)
-      evaluator_exec_task = _test_exec_node_task('Evaluator', 'test-pipeline',
-                                                 pipeline=self._pipeline)
+      evaluator_exec_task = _test_exec_node_task(
+          'Evaluator', 'test-pipeline', pipeline=self._pipeline)
       task_queue.enqueue(evaluator_exec_task)
       task_queue.enqueue(_test_cancel_node_task('Transform', 'test-pipeline'))
 
@@ -168,17 +163,11 @@ class TaskManagerTest(tu.TfxTest):
                           collector.cancelled_tasks)
     mock_publish.assert_has_calls([
         mock.call(
-            mlmd_handle=mock.ANY,
-            task=trainer_exec_task,
-            result=mock.ANY),
+            mlmd_handle=mock.ANY, task=trainer_exec_task, result=mock.ANY),
         mock.call(
-            mlmd_handle=mock.ANY,
-            task=transform_exec_task,
-            result=mock.ANY),
+            mlmd_handle=mock.ANY, task=transform_exec_task, result=mock.ANY),
         mock.call(
-            mlmd_handle=mock.ANY,
-            task=evaluator_exec_task,
-            result=mock.ANY),
+            mlmd_handle=mock.ANY, task=evaluator_exec_task, result=mock.ANY),
     ],
                                   any_order=True)
 
@@ -205,10 +194,10 @@ class TaskManagerTest(tu.TfxTest):
     task_queue = tq.TaskQueue()
 
     with self._task_manager(task_queue) as task_manager:
-      transform_task = _test_exec_node_task('Transform', 'test-pipeline',
-                                            pipeline=self._pipeline)
-      trainer_task = _test_exec_node_task('Trainer', 'test-pipeline',
-                                          pipeline=self._pipeline)
+      transform_task = _test_exec_node_task(
+          'Transform', 'test-pipeline', pipeline=self._pipeline)
+      trainer_task = _test_exec_node_task(
+          'Trainer', 'test-pipeline', pipeline=self._pipeline)
       task_queue.enqueue(transform_task)
       task_queue.enqueue(trainer_task)
 
@@ -222,14 +211,8 @@ class TaskManagerTest(tu.TfxTest):
     self.assertCountEqual([transform_task, trainer_task],
                           collector.scheduled_tasks)
     mock_publish.assert_has_calls([
-        mock.call(
-            mlmd_handle=mock.ANY,
-            task=transform_task,
-            result=mock.ANY),
-        mock.call(
-            mlmd_handle=mock.ANY,
-            task=trainer_task,
-            result=mock.ANY),
+        mock.call(mlmd_handle=mock.ANY, task=transform_task, result=mock.ANY),
+        mock.call(mlmd_handle=mock.ANY, task=trainer_task, result=mock.ANY),
     ],
                                   any_order=True)
 

@@ -14,7 +14,7 @@
 """Pipeline state management functionality."""
 
 import base64
-from typing import List, Text
+from typing import List
 
 from absl import logging
 from tfx.orchestration import data_types_utils
@@ -234,12 +234,12 @@ class PipelineState:
           self.execution.custom_properties[property_name]) == 1
     return False
 
-  def save_property(self, property_key: Text, property_value: Text) -> None:
+  def save_property(self, property_key: str, property_value: str) -> None:
     """Saves a custom property to the pipeline execution."""
     self.execution.custom_properties[property_key].string_value = property_value
     self._commit = True
 
-  def remove_property(self, property_key: Text) -> None:
+  def remove_property(self, property_key: str) -> None:
     """Removes a custom property of the pipeline execution if exists."""
     if self.execution.custom_properties.get(property_key):
       del self.execution.custom_properties[property_key]
@@ -267,18 +267,21 @@ def get_orchestrator_contexts(
   return mlmd_handle.store.get_contexts_by_type(_ORCHESTRATOR_RESERVED_ID)
 
 
-# TODO(goutham): Handle sync pipelines.
 def orchestrator_context_name(pipeline_uid: task_lib.PipelineUid) -> str:
   """Returns orchestrator reserved context name."""
-  return f'{_ORCHESTRATOR_RESERVED_ID}_{pipeline_uid.pipeline_id}'
+  result = f'{pipeline_uid.pipeline_id}'
+  if pipeline_uid.key:
+    result = f'{result}:{pipeline_uid.key}'
+  return result
 
 
-# TODO(goutham): Handle sync pipelines.
 def pipeline_uid_from_orchestrator_context(
     context: metadata_store_pb2.Context) -> task_lib.PipelineUid:
   """Returns pipeline uid from orchestrator reserved context."""
-  pipeline_id = context.name.split(_ORCHESTRATOR_RESERVED_ID + '_')[1]
-  return task_lib.PipelineUid(pipeline_id=pipeline_id, pipeline_run_id=None)
+  splits = context.name.split(':')
+  pipeline_id = splits[0]
+  key = splits[1] if len(splits) > 1 else ''
+  return task_lib.PipelineUid(pipeline_id=pipeline_id, key=key)
 
 
 def _node_stop_initiated_property(node_uid: task_lib.NodeUid) -> str:

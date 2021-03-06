@@ -25,13 +25,11 @@ class TaskTest(tu.TfxTest):
   def test_node_uid_from_pipeline_node(self):
     pipeline = pipeline_pb2.Pipeline()
     pipeline.pipeline_info.id = 'pipeline'
-    pipeline.runtime_spec.pipeline_run_id.field_value.string_value = 'run0'
     node = pipeline_pb2.PipelineNode()
     node.node_info.id = 'Trainer'
     self.assertEqual(
         task_lib.NodeUid(
-            pipeline_uid=task_lib.PipelineUid(
-                pipeline_id='pipeline', pipeline_run_id='run0'),
+            pipeline_uid=task_lib.PipelineUid(pipeline_id='pipeline'),
             node_id='Trainer'),
         task_lib.NodeUid.from_pipeline_node(pipeline, node))
 
@@ -40,8 +38,7 @@ class TaskTest(tu.TfxTest):
     self.assertEqual('CancelNodeTask', task_lib.CancelNodeTask.task_type_id())
 
   def test_task_ids(self):
-    pipeline_uid = task_lib.PipelineUid(
-        pipeline_id='pipeline', pipeline_run_id='run0')
+    pipeline_uid = task_lib.PipelineUid(pipeline_id='pipeline')
     node_uid = task_lib.NodeUid(pipeline_uid=pipeline_uid, node_id='Trainer')
     exec_node_task = test_utils.create_exec_node_task(node_uid)
     self.assertEqual(('ExecNodeTask', node_uid), exec_node_task.task_id)

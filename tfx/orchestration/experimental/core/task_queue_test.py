@@ -20,10 +20,9 @@ from tfx.orchestration.experimental.core import test_utils
 from tfx.utils import test_case_utils as tu
 
 
-def _test_task(node_id, pipeline_id, pipeline_run_id=None):
+def _test_task(node_id, pipeline_id, key=''):
   node_uid = task_lib.NodeUid(
-      pipeline_uid=task_lib.PipelineUid(
-          pipeline_id=pipeline_id, pipeline_run_id=pipeline_run_id),
+      pipeline_uid=task_lib.PipelineUid(pipeline_id=pipeline_id, key=key),
       node_id=node_id)
   return test_utils.create_exec_node_task(node_uid)
 
@@ -32,8 +31,7 @@ class TaskQueueTest(tu.TfxTest):
 
   def test_task_queue_operations(self):
     t1 = _test_task(node_id='trainer', pipeline_id='my_pipeline')
-    t2 = _test_task(
-        node_id='transform', pipeline_id='my_pipeline', pipeline_run_id='run_0')
+    t2 = _test_task(node_id='transform', pipeline_id='my_pipeline', key='sync')
     tq = task_queue.TaskQueue()
 
     # Enqueueing new tasks is successful.
@@ -63,8 +61,7 @@ class TaskQueueTest(tu.TfxTest):
 
   def test_invalid_task_done_raises_errors(self):
     t1 = _test_task(node_id='trainer', pipeline_id='my_pipeline')
-    t2 = _test_task(
-        node_id='transform', pipeline_id='my_pipeline', pipeline_run_id='run_0')
+    t2 = _test_task(node_id='transform', pipeline_id='my_pipeline', key='sync')
     tq = task_queue.TaskQueue()
 
     # Enqueue t1, but calling `task_done` raises error since t1 is not dequeued.

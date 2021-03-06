@@ -17,7 +17,7 @@ Keep the status codes aligned with `google.rpc.Code`:
 https://github.com/googleapis/googleapis/blob/master/google/rpc/code.proto
 """
 
-from typing import Optional, Text
+from typing import Optional
 
 import attr
 
@@ -47,7 +47,7 @@ class Code:
   UNAUTHENTICATED = 16
 
 
-@attr.s(frozen=True)
+@attr.s(auto_attribs=True, frozen=True)
 class Status:
   """Class to record status of operations.
 
@@ -55,14 +55,14 @@ class Status:
     code: A status code integer. Should be an enum value of `google.rpc.Code`.
     message: An optional message associated with the status.
   """
-  code = attr.ib(type=int)
-  message = attr.ib(type=Optional[Text], default=None)
+  code: int
+  message: Optional[str] = None
 
 
 class StatusNotOkError(Exception):
   """Error class useful when status not OK."""
 
-  def __init__(self, code: int, message: Text):
+  def __init__(self, code: int, message: str):
     self.code = code
     self.message = message
     Exception.__init__(self, str(self))
@@ -70,5 +70,5 @@ class StatusNotOkError(Exception):
   def status(self) -> Status:
     return Status(code=self.code, message=self.message)
 
-  def __str__(self) -> Text:
+  def __str__(self) -> str:
     return f'Error ({self.code}): {self.message}'

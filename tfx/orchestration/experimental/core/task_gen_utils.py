@@ -14,7 +14,7 @@
 """Utilities for task generation."""
 
 import itertools
-from typing import Dict, Iterable, List, Optional, Sequence, Text
+from typing import Dict, Iterable, List, Optional, Sequence
 
 import attr
 from tfx import types
@@ -30,11 +30,11 @@ from tfx.proto.orchestration import pipeline_pb2
 from ml_metadata.proto import metadata_store_pb2
 
 
-@attr.s
+@attr.s(auto_attribs=True)
 class ResolvedInfo:
-  contexts = attr.ib(type=List[metadata_store_pb2.Context])
-  exec_properties = attr.ib(type=Dict[Text, types.Property])
-  input_artifacts = attr.ib(type=Optional[Dict[Text, List[types.Artifact]]])
+  contexts: List[metadata_store_pb2.Context]
+  exec_properties: Dict[str, types.Property]
+  input_artifacts: Optional[Dict[str, List[types.Artifact]]]
 
 
 def _generate_task_from_execution(metadata_handler: metadata.Metadata,
@@ -107,7 +107,7 @@ def generate_task_from_active_execution(
 
 
 def _extract_properties(
-    execution: metadata_store_pb2.Execution) -> Dict[Text, types.Property]:
+    execution: metadata_store_pb2.Execution) -> Dict[str, types.Property]:
   result = {}
   for key, prop in itertools.chain(execution.properties.items(),
                                    execution.custom_properties.items()):

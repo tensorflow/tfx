@@ -15,7 +15,7 @@
 
 import abc
 import typing
-from typing import Optional, Text, Type, TypeVar
+from typing import Optional, Type, TypeVar
 
 import attr
 from tfx.orchestration import metadata
@@ -25,21 +25,20 @@ from tfx.proto.orchestration import execution_result_pb2
 from tfx.proto.orchestration import pipeline_pb2
 
 
-@attr.s(frozen=True)
+@attr.s(auto_attribs=True, frozen=True)
 class TaskSchedulerResult:
   """Response from the task scheduler.
 
   Attributes:
-    status: Scheduler status that reflects scheduler level issues, such as
-      task cancellation, failure to start the executor, etc. Executor status set
-      in `executor_output` matters if the scheduler status is `OK`. Otherwise,
+    status: Scheduler status that reflects scheduler level issues, such as task
+      cancellation, failure to start the executor, etc. Executor status set in
+      `executor_output` matters if the scheduler status is `OK`. Otherwise,
       `executor_output` may be `None` and is ignored.
     executor_output: An instance of `ExecutorOutput` containing the results of
       task execution.
   """
-  status = attr.ib(type=status_lib.Status)
-  executor_output = attr.ib(
-      type=Optional[execution_result_pb2.ExecutorOutput], default=None)
+  status: status_lib.Status
+  executor_output: Optional[execution_result_pb2.ExecutorOutput] = None
 
 
 class TaskScheduler(abc.ABC):
@@ -94,7 +93,7 @@ class TaskSchedulerRegistry:
   _task_scheduler_registry = {}
 
   @classmethod
-  def register(cls: Type[T], executor_spec_type_url: Text,
+  def register(cls: Type[T], executor_spec_type_url: str,
                scheduler_class: Type[TaskScheduler]) -> None:
     """Registers a new task scheduler for the given executor spec type url.
 

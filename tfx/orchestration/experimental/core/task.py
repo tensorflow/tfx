@@ -19,7 +19,7 @@ core task generation loop based on the state of MLMD db.
 
 import abc
 import typing
-from typing import Dict, List, Optional, Text, Type, TypeVar
+from typing import Dict, List, Type, TypeVar
 
 import attr
 from tfx import types
@@ -28,33 +28,25 @@ from tfx.proto.orchestration import pipeline_pb2
 from ml_metadata.proto import metadata_store_pb2
 
 
-# TODO(goutham): Include pipeline key/tag in PipelineUid.
-@attr.s(frozen=True)
+@attr.s(auto_attribs=True, frozen=True)
 class PipelineUid:
   """Unique identifier for a pipeline.
 
   Attributes:
     pipeline_id: Id of the pipeline containing the node. Corresponds to
       `Pipeline.pipeline_info.id` in the pipeline IR.
-    pipeline_run_id: This is set only for sync pipelines and corresponds to
-      `PipelineRuntimeSpec.pipeline_run_id` in the pipeline IR.
+    key: An optional key associated with the pipeline.
   """
-  pipeline_id = attr.ib(type=Text)
-  pipeline_run_id = attr.ib(type=Optional[Text])
+  pipeline_id: str
+  key: str = ''
 
   @classmethod
   def from_pipeline(cls: Type['PipelineUid'],
                     pipeline: pipeline_pb2.Pipeline) -> 'PipelineUid':
-    if pipeline.runtime_spec.HasField('pipeline_run_id'):
-      pipeline_run_id = (
-          pipeline.runtime_spec.pipeline_run_id.field_value.string_value)
-    else:
-      pipeline_run_id = None
-    return cls(
-        pipeline_id=pipeline.pipeline_info.id, pipeline_run_id=pipeline_run_id)
+    return cls(pipeline_id=pipeline.pipeline_info.id)
 
 
-@attr.s(frozen=True)
+@attr.s(auto_attribs=True, frozen=True)
 class NodeUid:
   """Unique identifier for a node in the pipeline.
 
@@ -63,8 +55,8 @@ class NodeUid:
     node_id: Node id. Corresponds to `PipelineNode.node_info.id` in the pipeline
       IR.
   """
-  pipeline_uid = attr.ib(type=PipelineUid)
-  node_id = attr.ib(type=Text)
+  pipeline_uid: PipelineUid
+  node_id: str
 
   @classmethod
   def from_pipeline_node(cls: Type['NodeUid'], pipeline: pipeline_pb2.Pipeline,
@@ -93,7 +85,7 @@ class Task(abc.ABC):
     """
 
   @classmethod
-  def task_type_id(cls: Type[_TaskT]) -> Text:
+  def task_type_id(cls: Type[_TaskT]) -> str:
     """Returns task type id."""
     return cls.__name__
 
@@ -107,7 +99,7 @@ class HasNodeUid(abc.ABC):
     """Returns the unique identifier of the node."""
 
 
-@attr.s(frozen=True)
+@attr.s(auto_attribs=True, frozen=True)
 class ExecNodeTask(Task, HasNodeUid):
   """Task to instruct execution of a node in the pipeline.
 
@@ -124,16 +116,16 @@ class ExecNodeTask(Task, HasNodeUid):
       scheduler is expected to gracefully exit after doing any necessary
       cleanup.
   """
-  _node_uid = attr.ib(type=NodeUid)
-  execution = attr.ib(type=metadata_store_pb2.Execution)
-  contexts = attr.ib(type=List[metadata_store_pb2.Context])
-  exec_properties = attr.ib(type=Dict[Text, types.Property])
-  input_artifacts = attr.ib(type=Dict[Text, List[types.Artifact]])
-  output_artifacts = attr.ib(type=Dict[Text, List[types.Artifact]])
-  executor_output_uri = attr.ib(type=Text)
-  stateful_working_dir = attr.ib(type=Text)
-  pipeline = attr.ib(type=pipeline_pb2.Pipeline)
-  is_cancelled = attr.ib(type=bool, default=False)
+  _node_uid: NodeUid
+  execution: metadata_store_pb2.Execution
+  contexts: List[metadata_store_pb2.Context]
+  exec_properties: Dict[str, types.Property]
+  input_artifacts: Dict[str, List[types.Artifact]]
+  output_artifacts: Dict[str, List[types.Artifact]]
+  executor_output_uri: str
+  stateful_working_dir: str
+  pipeline: pipeline_pb2.Pipeline
+  is_cancelled: bool = False
 
   @property
   def node_uid(self) -> NodeUid:
@@ -144,10 +136,10 @@ class ExecNodeTask(Task, HasNodeUid):
     return _exec_node_task_id(self.task_type_id(), self.node_uid)
 
 
-@attr.s(frozen=True)
+@attr.s(auto_attribs=True, frozen=True)
 class CancelNodeTask(Task, HasNodeUid):
   """Task to instruct cancellation of an ongoing node execution."""
-  _node_uid = attr.ib(type=NodeUid)
+  _node_uid: NodeUid
 
   @property
   def node_uid(self) -> NodeUid:
@@ -173,5 +165,5 @@ def exec_node_task_id_from_pipeline_node(
                             NodeUid.from_pipeline_node(pipeline, node))
 
 
-def _exec_node_task_id(task_type_id: Text, node_uid: NodeUid) -> TaskId:
+def _exec_node_task_id(task_type_id: str, node_uid: NodeUid) -> TaskId:
   return (task_type_id, node_uid)
