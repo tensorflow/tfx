@@ -23,6 +23,7 @@ from absl.testing.absltest import mock
 import tensorflow as tf
 from tfx.orchestration import metadata
 from tfx.orchestration.experimental.core import async_pipeline_task_gen as asptg
+from tfx.orchestration.experimental.core import pipeline_state as pstate
 from tfx.orchestration.experimental.core import status as status_lib
 from tfx.orchestration.experimental.core import task as task_lib
 from tfx.orchestration.experimental.core import task_manager as tm
@@ -301,16 +302,18 @@ class TaskManagerE2ETest(tu.TfxTest):
 
     # Task generator should produce a task to run transform.
     with self._mlmd_connection as m:
+      pipeline_state = pstate.PipelineState.new(m, self._pipeline)
       tasks = asptg.AsyncPipelineTaskGenerator(
-          m, self._pipeline, self._task_queue.contains_task_id).generate()
+          m, pipeline_state, self._task_queue.contains_task_id).generate()
     self.assertLen(tasks, 1)
     task = tasks[0]
     self.assertEqual('my_transform', task.node_uid.node_id)
 
     # Task generator should produce a task to run transform.
     with self._mlmd_connection as m:
+      pipeline_state = pstate.PipelineState.new(m, self._pipeline)
       tasks = asptg.AsyncPipelineTaskGenerator(
-          m, self._pipeline, self._task_queue.contains_task_id).generate()
+          m, pipeline_state, self._task_queue.contains_task_id).generate()
     self.assertLen(tasks, 1)
     self._task = tasks[0]
     self.assertEqual('my_transform', self._task.node_uid.node_id)

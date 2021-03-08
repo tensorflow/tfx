@@ -18,6 +18,9 @@ from typing import Callable, List, Optional, Set
 
 from absl import logging
 from tfx.orchestration import metadata
+from tfx.orchestration.experimental.core import pipeline_state as pstate
+from tfx.orchestration.experimental.core import service_jobs
+from tfx.orchestration.experimental.core import status as status_lib
 from tfx.orchestration.experimental.core import task as task_lib
 from tfx.orchestration.experimental.core import task_gen
 from tfx.orchestration.experimental.core import task_gen_utils
@@ -38,21 +41,25 @@ class AsyncPipelineTaskGenerator(task_gen.TaskGenerator):
   where the instances refer to the same MLMD db and the same pipeline IR.
   """
 
-  def __init__(self,
-               mlmd_handle: metadata.Metadata,
-               pipeline: pipeline_pb2.Pipeline,
-               is_task_id_tracked_fn: Callable[[task_lib.TaskId], bool],
-               ignore_node_ids: Optional[Set[str]] = None):
+  def __init__(
+      self,
+      mlmd_handle: metadata.Metadata,
+      pipeline_state: pstate.PipelineState,
+      is_task_id_tracked_fn: Callable[[task_lib.TaskId], bool],
+      service_job_manager: Optional[service_jobs.ServiceJobManager] = None,
+      ignore_node_ids: Optional[Set[str]] = None):
     """Constructs `AsyncPipelineTaskGenerator`.
 
     Args:
       mlmd_handle: A handle to MLMD db.
-      pipeline: A pipeline IR proto.
+      pipeline_state: Pipeline state.
       is_task_id_tracked_fn: A callable that returns `True` if a task_id is
         tracked by the task queue.
+      service_job_manager: Used for handling service nodes in the pipeline.
       ignore_node_ids: Set of node ids of nodes to ignore for task generation.
     """
     self._mlmd_handle = mlmd_handle
+    pipeline = pipeline_state.pipeline
     if pipeline.execution_mode != pipeline_pb2.Pipeline.ExecutionMode.ASYNC:
       raise ValueError(
           'AsyncPipelineTaskGenerator should be instantiated with a pipeline '
@@ -64,8 +71,10 @@ class AsyncPipelineTaskGenerator(task_gen.TaskGenerator):
         raise ValueError(
             'Sub-pipelines are not yet supported. Async pipeline should have '
             'nodes of type `PipelineNode`; found: `{}`'.format(which_node))
+    self._pipeline_state = pipeline_state
     self._pipeline = pipeline
     self._is_task_id_tracked_fn = is_task_id_tracked_fn
+    self._service_job_manager = service_job_manager
     self._ignore_node_ids = ignore_node_ids or set()
 
   def generate(self) -> List[task_lib.Task]:
@@ -79,10 +88,32 @@ class AsyncPipelineTaskGenerator(task_gen.TaskGenerator):
     """
     result = []
     for node in [n.pipeline_node for n in self._pipeline.nodes]:
-      if node.node_info.id in self._ignore_node_ids:
-        logging.info('Ignoring node for task generation: %s',
-                     task_lib.NodeUid.from_pipeline_node(self._pipeline, node))
+      node_uid = task_lib.NodeUid.from_pipeline_node(self._pipeline, node)
+      node_id = node.node_info.id
+      if node_id in self._ignore_node_ids:
+        logging.info('Ignoring node for task generation: %s', node_uid)
         continue
+
+      if (self._service_job_manager and
+          self._service_job_manager.is_pure_service_node(
+              self._pipeline_state, node_id)):
+        service_status = self._service_job_manager.ensure_node_services(
+            self._pipeline_state, node_id)
+        if service_status != service_jobs.ServiceStatus.RUNNING:
+          logging.error(
+              'Required service node not running or healthy, node uid: %s',
+              node_uid)
+          result.append(
+              task_lib.FinalizeNodeTask(
+                  node_uid=node_uid,
+                  status=status_lib.Status(
+                      code=status_lib.Code.ABORTED,
+                      message=(
+                          f'Aborting node execution as the associated service '
+                          f'job is not running or healthy; problematic node '
+                          f'uid: {node_uid}'))))
+        continue
+
       # If a task for the node is already tracked by the task queue, it need
       # not be considered for generation again.
       if self._is_task_id_tracked_fn(

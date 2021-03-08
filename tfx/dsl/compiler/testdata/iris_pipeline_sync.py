@@ -89,8 +89,7 @@ def create_test_pipeline():
   model_resolver = ResolverNode(
       instance_name="latest_blessed_model_resolver",
       resolver_class=latest_blessed_model_resolver.LatestBlessedModelResolver,
-      model=Channel(
-          type=standard_artifacts.Model, producer_component_id=trainer.id),
+      model=Channel(type=standard_artifacts.Model),
       model_blessing=Channel(type=standard_artifacts.ModelBlessing))
 
   eval_config = tfma.EvalConfig(

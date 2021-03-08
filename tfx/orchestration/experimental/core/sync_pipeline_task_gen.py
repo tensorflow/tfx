@@ -13,10 +13,13 @@
 # limitations under the License.
 """TaskGenerator implementation for sync pipelines."""
 
-from typing import Callable, List, Optional, Set
+from typing import Callable, List, Optional
 
 from absl import logging
 from tfx.orchestration import metadata
+from tfx.orchestration.experimental.core import pipeline_state as pstate
+from tfx.orchestration.experimental.core import service_jobs
+from tfx.orchestration.experimental.core import status as status_lib
 from tfx.orchestration.experimental.core import task as task_lib
 from tfx.orchestration.experimental.core import task_gen
 from tfx.orchestration.experimental.core import task_gen_utils
@@ -35,20 +38,23 @@ class SyncPipelineTaskGenerator(task_gen.TaskGenerator):
   where the instances refer to the same MLMD db and the same pipeline IR.
   """
 
-  def __init__(self, mlmd_handle: metadata.Metadata,
-               pipeline: pipeline_pb2.Pipeline,
-               is_task_id_tracked_fn: Callable[[task_lib.TaskId], bool],
-               ignore_node_ids: Optional[Set[str]] = None):
+  def __init__(
+      self,
+      mlmd_handle: metadata.Metadata,
+      pipeline_state: pstate.PipelineState,
+      is_task_id_tracked_fn: Callable[[task_lib.TaskId], bool],
+      service_job_manager: Optional[service_jobs.ServiceJobManager] = None):
     """Constructs `SyncPipelineTaskGenerator`.
 
     Args:
       mlmd_handle: A handle to the MLMD db.
-      pipeline: A pipeline IR proto.
+      pipeline_state: Pipeline state.
       is_task_id_tracked_fn: A callable that returns `True` if a task_id is
         tracked by the task queue.
-      ignore_node_ids: Set of node ids of nodes to ignore for task generation.
+      service_job_manager: Used for handling service nodes in the pipeline.
     """
     self._mlmd_handle = mlmd_handle
+    pipeline = pipeline_state.pipeline
     if pipeline.execution_mode != pipeline_pb2.Pipeline.ExecutionMode.SYNC:
       raise ValueError(
           'SyncPipelineTaskGenerator should be instantiated with a pipeline '
@@ -60,13 +66,14 @@ class SyncPipelineTaskGenerator(task_gen.TaskGenerator):
         raise ValueError(
             'All sync pipeline nodes should be of type `PipelineNode`; found: '
             '`{}`'.format(which_node))
+    self._pipeline_state = pipeline_state
     self._pipeline = pipeline
     self._is_task_id_tracked_fn = is_task_id_tracked_fn
     self._node_map = {
         node.pipeline_node.node_info.id: node.pipeline_node
         for node in pipeline.nodes
     }
-    self._ignore_node_ids = ignore_node_ids or set()
+    self._service_job_manager = service_job_manager
 
   def generate(self) -> List[task_lib.Task]:
     """Generates tasks for executing the next executable nodes in the pipeline.
@@ -85,16 +92,33 @@ class SyncPipelineTaskGenerator(task_gen.TaskGenerator):
         get_child_nodes=(
             lambda node: [self._node_map[n] for n in node.downstream_nodes]))
     result = []
-    for nodes in layers:
+    for layer_num, nodes in enumerate(layers):
       # Boolean that's set if there's at least one successfully executed node
       # in the current layer.
-      executed_nodes = False
+      completed_node_ids = set()
       for node in nodes:
-        if node.node_info.id in self._ignore_node_ids:
-          logging.info(
-              'Ignoring node for task generation: %s',
-              task_lib.NodeUid.from_pipeline_node(self._pipeline, node))
+        node_uid = task_lib.NodeUid.from_pipeline_node(self._pipeline, node)
+        node_id = node.node_info.id
+        if self._is_pure_service_node(node_id):
+          service_status = self._service_job_manager.ensure_node_services(
+              self._pipeline_state, node_id)
+          if service_status == service_jobs.ServiceStatus.SUCCESS:
+            logging.info('Service node completed successfully: %s', node_uid)
+            completed_node_ids.add(node_id)
+          elif service_status == service_jobs.ServiceStatus.FAILED:
+            logging.error('Failed service node: %s', node_uid)
+            return [
+                task_lib.FinalizePipelineTask(
+                    pipeline_uid=self._pipeline_state.pipeline_uid,
+                    status=status_lib.Status(
+                        code=status_lib.Code.ABORTED,
+                        message=(f'Aborting pipeline execution due to service '
+                                 f'node failure; failed node uid: {node_uid}')))
+            ]
+          else:
+            logging.info('Pure service node in progress: %s', node_uid)
           continue
+
         # If a task for the node is already tracked by the task queue, it need
         # not be considered for generation again.
         if self._is_task_id_tracked_fn(
@@ -104,22 +128,35 @@ class SyncPipelineTaskGenerator(task_gen.TaskGenerator):
         executions = task_gen_utils.get_executions(self._mlmd_handle, node)
         if (executions and
             task_gen_utils.is_latest_execution_successful(executions)):
-          executed_nodes = True
+          completed_node_ids.add(node_id)
           continue
         # If all upstream nodes are executed but current node is not executed,
         # the node is deemed ready for execution.
         if self._upstream_nodes_executed(node):
           task = self._generate_task(node)
-          if task:
+          if task_lib.is_finalize_pipeline_task(task):
+            return [task]
+          else:
             result.append(task)
-      # If there are no executed nodes in the current layer, downstream nodes
+      # If there are no completed nodes in the current layer, downstream nodes
       # need not be checked.
-      if not executed_nodes:
+      if not completed_node_ids:
         break
+      # If all nodes in the final layer are completed successfully , the
+      # pipeline can be finalized.
+      # TODO(goutham): If there are conditional eval nodes, not all nodes may be
+      # executed in the final layer. Handle this case when conditionals are
+      # supported.
+      if layer_num == len(layers) - 1 and completed_node_ids == set(
+          node.node_info.id for node in nodes):
+        return [
+            task_lib.FinalizePipelineTask(
+                pipeline_uid=self._pipeline_state.pipeline_uid,
+                status=status_lib.Status(code=status_lib.Code.OK))
+        ]
     return result
 
-  def _generate_task(
-      self, node: pipeline_pb2.PipelineNode) -> Optional[task_lib.Task]:
+  def _generate_task(self, node: pipeline_pb2.PipelineNode) -> task_lib.Task:
     """Generates a node execution task.
 
     If node execution is not feasible, `None` is returned.
@@ -128,7 +165,8 @@ class SyncPipelineTaskGenerator(task_gen.TaskGenerator):
       node: The pipeline node for which to generate a task.
 
     Returns:
-      Returns a `Task` or `None` if task generation is deemed infeasible.
+      Returns an `ExecNodeTask` if node can be executed. If an error occurs,
+      a `FinalizePipelineTask` is returned to abort the pipeline execution.
     """
     executions = task_gen_utils.get_executions(self._mlmd_handle, node)
     result = task_gen_utils.generate_task_from_active_execution(
@@ -136,15 +174,16 @@ class SyncPipelineTaskGenerator(task_gen.TaskGenerator):
     if result:
       return result
 
+    node_uid = task_lib.NodeUid.from_pipeline_node(self._pipeline, node)
     resolved_info = task_gen_utils.generate_resolved_info(
         self._mlmd_handle, node)
     if resolved_info.input_artifacts is None:
-      # TODO(goutham): If the pipeline can't make progress, there should be a
-      # standard mechanism to surface it to the user.
-      logging.warning(
-          'Task cannot be generated for node %s since no input artifacts '
-          'are resolved.', node.node_info.id)
-      return None
+      return task_lib.FinalizePipelineTask(
+          pipeline_uid=self._pipeline_state.pipeline_uid,
+          status=status_lib.Status(
+              code=status_lib.Code.ABORTED,
+              message=(f'Aborting pipeline execution due to failure to resolve '
+                       f'inputs; problematic node uid: {node_uid}')))
 
     execution = execution_publish_utils.register_execution(
         metadata_handler=self._mlmd_handle,
@@ -156,7 +195,7 @@ class SyncPipelineTaskGenerator(task_gen.TaskGenerator):
         node, self._pipeline.pipeline_info, self._pipeline.runtime_spec,
         self._pipeline.execution_mode)
     return task_lib.ExecNodeTask(
-        node_uid=task_lib.NodeUid.from_pipeline_node(self._pipeline, node),
+        node_uid=node_uid,
         execution=execution,
         contexts=resolved_info.contexts,
         input_artifacts=resolved_info.input_artifacts,
@@ -169,7 +208,6 @@ class SyncPipelineTaskGenerator(task_gen.TaskGenerator):
             execution.id),
         pipeline=self._pipeline)
 
-  # TODO(goutham): Handle pure service nodes.
   def _upstream_nodes_executed(self, node: pipeline_pb2.PipelineNode) -> bool:
     """Returns `True` if all the upstream nodes have been successfully executed."""
     upstream_nodes = [
@@ -179,9 +217,21 @@ class SyncPipelineTaskGenerator(task_gen.TaskGenerator):
     if not upstream_nodes:
       return True
     for node in upstream_nodes:
+      if self._is_pure_service_node(node.node_info.id):
+        service_status = self._service_job_manager.ensure_node_services(
+            self._pipeline_state, node.node_info.id)
+        if service_status == service_jobs.ServiceStatus.SUCCESS:
+          continue
+        else:
+          return False
       upstream_node_executions = task_gen_utils.get_executions(
           self._mlmd_handle, node)
       if not task_gen_utils.is_latest_execution_successful(
           upstream_node_executions):
         return False
     return True
+
+  def _is_pure_service_node(self, node_id: str) -> bool:
+    return (self._service_job_manager and
+            self._service_job_manager.is_pure_service_node(
+                self._pipeline_state, node_id))

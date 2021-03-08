@@ -23,6 +23,7 @@ from typing import Dict, List, Type, TypeVar
 
 import attr
 from tfx import types
+from tfx.orchestration.experimental.core import status as status_lib
 from tfx.proto.orchestration import pipeline_pb2
 
 from ml_metadata.proto import metadata_store_pb2
@@ -90,20 +91,12 @@ class Task(abc.ABC):
     return cls.__name__
 
 
-class HasNodeUid(abc.ABC):
-  """Abstract mixin class for node tasks."""
-
-  @property
-  @abc.abstractmethod
-  def node_uid(self) -> NodeUid:
-    """Returns the unique identifier of the node."""
-
-
 @attr.s(auto_attribs=True, frozen=True)
-class ExecNodeTask(Task, HasNodeUid):
+class ExecNodeTask(Task):
   """Task to instruct execution of a node in the pipeline.
 
   Attributes:
+    node_uid: Uid of the node to be executed.
     execution: MLMD execution associated with current node.
     contexts: List of contexts associated with the execution.
     exec_properties: Execution properties of the execution.
@@ -116,7 +109,7 @@ class ExecNodeTask(Task, HasNodeUid):
       scheduler is expected to gracefully exit after doing any necessary
       cleanup.
   """
-  _node_uid: NodeUid
+  node_uid: NodeUid
   execution: metadata_store_pb2.Execution
   contexts: List[metadata_store_pb2.Context]
   exec_properties: Dict[str, types.Property]
@@ -128,22 +121,36 @@ class ExecNodeTask(Task, HasNodeUid):
   is_cancelled: bool = False
 
   @property
-  def node_uid(self) -> NodeUid:
-    return self._node_uid
-
-  @property
   def task_id(self) -> TaskId:
     return _exec_node_task_id(self.task_type_id(), self.node_uid)
 
 
 @attr.s(auto_attribs=True, frozen=True)
-class CancelNodeTask(Task, HasNodeUid):
+class CancelNodeTask(Task):
   """Task to instruct cancellation of an ongoing node execution."""
-  _node_uid: NodeUid
+  node_uid: NodeUid
 
   @property
-  def node_uid(self) -> NodeUid:
-    return self._node_uid
+  def task_id(self) -> TaskId:
+    return (self.task_type_id(), self.node_uid)
+
+
+@attr.s(auto_attribs=True, frozen=True)
+class FinalizePipelineTask(Task):
+  """Task to instruct finalizing a pipeline run."""
+  pipeline_uid: PipelineUid
+  status: status_lib.Status
+
+  @property
+  def task_id(self) -> TaskId:
+    return (self.task_type_id(), self.pipeline_uid)
+
+
+@attr.s(auto_attribs=True, frozen=True)
+class FinalizeNodeTask(Task):
+  """Task to instruct finalizing a node execution."""
+  node_uid: NodeUid
+  status: status_lib.Status
 
   @property
   def task_id(self) -> TaskId:
@@ -156,6 +163,14 @@ def is_exec_node_task(task: Task) -> bool:
 
 def is_cancel_node_task(task: Task) -> bool:
   return task.task_type_id() == CancelNodeTask.task_type_id()
+
+
+def is_finalize_pipeline_task(task: Task) -> bool:
+  return task.task_type_id() == FinalizePipelineTask.task_type_id()
+
+
+def is_finalize_node_task(task: Task) -> bool:
+  return task.task_type_id() == FinalizeNodeTask.task_type_id()
 
 
 def exec_node_task_id_from_pipeline_node(

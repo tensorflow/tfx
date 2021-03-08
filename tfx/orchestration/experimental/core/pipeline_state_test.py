@@ -178,14 +178,16 @@ class PipelineStateTest(tu.TfxTest):
     with self._mlmd_connection as m:
       pipeline = _test_pipeline('pipeline1')
       with pstate.PipelineState.new(m, pipeline) as pipeline_state:
-        self.assertFalse(pipeline_state.is_stop_initiated())
-        pipeline_state.initiate_stop()
-        self.assertTrue(pipeline_state.is_stop_initiated())
+        self.assertIsNone(pipeline_state.stop_initiated_reason())
+        status = status_lib.Status(
+            code=status_lib.Code.CANCELLED, message='foo bar')
+        pipeline_state.initiate_stop(status)
+        self.assertEqual(status, pipeline_state.stop_initiated_reason())
 
       # Reload from MLMD and verify.
       with pstate.PipelineState.load(
           m, task_lib.PipelineUid.from_pipeline(pipeline)) as pipeline_state:
-        self.assertTrue(pipeline_state.is_stop_initiated())
+        self.assertEqual(status, pipeline_state.stop_initiated_reason())
 
   def test_initiate_node_start_stop(self):
     with self._mlmd_connection as m:
@@ -195,30 +197,34 @@ class PipelineStateTest(tu.TfxTest):
           pipeline_uid=task_lib.PipelineUid.from_pipeline(pipeline))
       with pstate.PipelineState.new(m, pipeline) as pipeline_state:
         pipeline_state.initiate_node_start(node_uid)
-        self.assertFalse(pipeline_state.is_node_stop_initiated(node_uid))
+        self.assertIsNone(pipeline_state.node_stop_initiated_reason(node_uid))
 
       # Reload from MLMD and verify node is started.
       with pstate.PipelineState.load(
           m, task_lib.PipelineUid.from_pipeline(pipeline)) as pipeline_state:
-        self.assertFalse(pipeline_state.is_node_stop_initiated(node_uid))
+        self.assertIsNone(pipeline_state.node_stop_initiated_reason(node_uid))
 
         # Stop the node.
-        pipeline_state.initiate_node_stop(node_uid)
-        self.assertTrue(pipeline_state.is_node_stop_initiated(node_uid))
+        status = status_lib.Status(
+            code=status_lib.Code.ABORTED, message='foo bar')
+        pipeline_state.initiate_node_stop(node_uid, status)
+        self.assertEqual(status,
+                         pipeline_state.node_stop_initiated_reason(node_uid))
 
       # Reload from MLMD and verify node is stopped.
       with pstate.PipelineState.load(
           m, task_lib.PipelineUid.from_pipeline(pipeline)) as pipeline_state:
-        self.assertTrue(pipeline_state.is_node_stop_initiated(node_uid))
+        self.assertEqual(status,
+                         pipeline_state.node_stop_initiated_reason(node_uid))
 
         # Restart node.
         pipeline_state.initiate_node_start(node_uid)
-        self.assertFalse(pipeline_state.is_node_stop_initiated(node_uid))
+        self.assertIsNone(pipeline_state.node_stop_initiated_reason(node_uid))
 
       # Reload from MLMD and verify node is started.
       with pstate.PipelineState.load(
           m, task_lib.PipelineUid.from_pipeline(pipeline)) as pipeline_state:
-        self.assertFalse(pipeline_state.is_node_stop_initiated(node_uid))
+        self.assertIsNone(pipeline_state.node_stop_initiated_reason(node_uid))
 
   def test_save_and_remove_property(self):
     property_key = 'key'

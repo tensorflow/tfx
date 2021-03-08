@@ -42,8 +42,8 @@ class ImportUtilsTest(tf.test.TestCase):
     test_fn_file = os.path.join(source_data_dir, 'test_fn.ext')
     fn_1 = import_utils.import_func_from_source(test_fn_file, 'test_fn')
     fn_2 = import_utils.import_func_from_source(test_fn_file, 'test_fn')
+    self.assertIs(fn_1, fn_2)
     self.assertEqual(10, fn_1([1, 2, 3, 4]))
-    self.assertEqual(10, fn_2([1, 2, 3, 4]))
 
   def testImportFuncFromSourceMissingFile(self):
     source_data_dir = os.path.join(os.path.dirname(__file__), 'testdata')
@@ -79,7 +79,7 @@ class ImportUtilsTest(tf.test.TestCase):
           """def test_fn(inputs):
             return sum(inputs)
           """)
-    i = import_utils._tfx_module_finder.count_registered
+    i = len(import_utils._imported_modules_from_source.keys())
     fn_1 = import_utils.import_func_from_source(test_fn_file, 'test_fn')
     self.assertEqual(10, fn_1([1, 2, 3, 4]))
     with tf.io.gfile.GFile(test_fn_file, mode='w') as f:
@@ -87,11 +87,14 @@ class ImportUtilsTest(tf.test.TestCase):
           """def test_fn(inputs):
             return 1+sum(inputs)
           """)
-    fn_2 = import_utils.import_func_from_source(test_fn_file, 'test_fn')
-    self.assertEqual(11, fn_2([1, 2, 3, 4]))
-    fn_3 = getattr(
+
+    self.assertEqual(10, fn_1([1, 2, 3, 4]))
+    fn_2 = getattr(
         importlib.reload(sys.modules['user_module_%d' % i]), 'test_fn')
+    self.assertEqual(11, fn_2([1, 2, 3, 4]))
+    fn_3 = import_utils.import_func_from_source(test_fn_file, 'test_fn')
     self.assertEqual(11, fn_3([1, 2, 3, 4]))
+    self.assertIs(fn_2, fn_3)
 
 if __name__ == '__main__':
   tf.test.main()

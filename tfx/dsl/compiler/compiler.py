@@ -42,7 +42,6 @@ class _CompilerContext(object):
     self.pipeline_info = pipeline_info
     self.execution_mode = execution_mode
     self.node_pbs = {}
-    self.node_outputs = set()
     self._topological_order = topological_order
 
   @classmethod
@@ -159,10 +158,7 @@ class Compiler(object):
     for key, value in tfx_node_inputs.items():
       input_spec = node.inputs.inputs[key]
       channel = input_spec.channels.add()
-
-      # If the node input comes from another node's output, fill the context
-      # queries with the producer node's contexts.
-      if value in compile_context.node_outputs:
+      if value.producer_component_id:
         channel.producer_node_query.id = value.producer_component_id
 
         # Here we rely on pipeline.components to be topologically sorted.
@@ -170,28 +166,21 @@ class Compiler(object):
             "producer component should have already been compiled.")
         producer_pb = compile_context.node_pbs[value.producer_component_id]
         for producer_context in producer_pb.contexts.contexts:
-          context_query = channel.context_queries.add()
-          context_query.type.CopyFrom(producer_context.type)
-          context_query.name.CopyFrom(producer_context.name)
-
-      # If the node input does not come from another node's output, fill the
-      # context queries based on Channel info. We requires every channel to have
-      # pipeline context and will fill it automatically.
+          if (not compiler_utils.is_resolver(tfx_node) or
+              producer_context.name.runtime_parameter.name !=
+              constants.PIPELINE_RUN_CONTEXT_TYPE_NAME):
+            context_query = channel.context_queries.add()
+            context_query.type.CopyFrom(producer_context.type)
+            context_query.name.CopyFrom(producer_context.name)
       else:
-        # Add pipeline context query.
+        # Caveat: portable core requires every channel to have at least one
+        # Contex. But For cases like system nodes and producer-consumer
+        # pipelines, a channel may not have contexts at all. In these cases,
+        # we want to use the pipeline level context as the input channel
+        # context.
         context_query = channel.context_queries.add()
         context_query.type.CopyFrom(pipeline_context_pb.type)
         context_query.name.CopyFrom(pipeline_context_pb.name)
-
-        # Optionally add node context query.
-        if value.producer_component_id:
-          # Add node context query if `producer_component_id` is present.
-          channel.producer_node_query.id = value.producer_component_id
-          node_context_query = channel.context_queries.add()
-          node_context_query.type.name = constants.NODE_CONTEXT_TYPE_NAME
-          node_context_query.name.field_value.string_value = "{}.{}".format(
-              compile_context.pipeline_info.pipeline_context_name,
-              value.producer_component_id)
 
       artifact_type = value.type._get_artifact_type()  # pylint: disable=protected-access
       channel.artifact_query.type.CopyFrom(artifact_type)
@@ -210,9 +199,6 @@ class Compiler(object):
           _convert_to_resolver_steps(tfx_node))
 
     # Step 4: Node outputs
-    for key, value in tfx_node.outputs.items():
-      # Register the output in the context.
-      compile_context.node_outputs.add(value)
     if isinstance(tfx_node, base_component.BaseComponent):
       for key, value in tfx_node.outputs.items():
         output_spec = node.outputs.outputs[key]

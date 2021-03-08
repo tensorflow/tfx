@@ -277,9 +277,6 @@ nodes {
         key: "model"
         value {
           channels {
-            producer_node_query {
-              id: "Trainer"
-            }
             context_queries {
               type {
                 name: "pipeline"
@@ -287,16 +284,6 @@ nodes {
               name {
                 field_value {
                   string_value: "iris"
-                }
-              }
-            }
-            context_queries {
-              type {
-                name: "node"
-              }
-              name {
-                field_value {
-                  string_value: "iris.Trainer"
                 }
               }
             }
