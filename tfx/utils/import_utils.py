@@ -26,8 +26,44 @@ from typing import Any, Callable, Text, Type
 from absl import logging
 from tfx.utils import io_utils
 
-_imported_modules_from_source = {}
+
+class _TfxModuleFinder(importlib.abc.MetaPathFinder):
+  """Registers custom modules for Interactive Context."""
+
+  _modules = {}  # a mapping fullname -> source_path
+  count_registered = 0
+
+  def find_spec(self, fullname, path, target=None):
+    del path
+    del target
+    if fullname not in self._modules:
+      return None
+    source_path = self._modules[fullname]
+    loader = importlib.machinery.SourceFileLoader(
+        fullname=fullname,
+        path=source_path)
+    return importlib.util.spec_from_loader(fullname, loader, origin=source_path)
+
+  def find_module(self, fullname, path):
+    pass
+
+  def register_module(self, fullname, path):
+    """Registers and imports a new module."""
+    if fullname in self._modules:
+      raise ValueError('Module %s is already registered' % fullname)
+    self._modules[fullname] = path
+    self.count_registered += 1
+
+  def get_module_name_by_path(self, path):
+    for module_name, source_path in self._modules.items():
+      if source_path == path:
+        return module_name
+    return None
+
+
 _imported_modules_from_source_lock = threading.Lock()
+_tfx_module_finder = _TfxModuleFinder()
+sys.meta_path.append(_tfx_module_finder)
 
 
 def import_class_by_path(class_path: Text) -> Type[Any]:
@@ -54,12 +90,13 @@ def import_func_from_source(source_path: Text, fn_name: Text) -> Callable:  # py
   # because importlib can't import from GCS
   source_path = io_utils.ensure_local(source_path)
 
+  module = None
   with _imported_modules_from_source_lock:
-    if source_path not in _imported_modules_from_source:
+    if _tfx_module_finder.get_module_name_by_path(source_path) is None:
       logging.info('Loading %s because it has not been loaded before.',
                    source_path)
       # Create a unique module name.
-      module_name = 'user_module_%d' % len(_imported_modules_from_source)
+      module_name = 'user_module_%d' % _tfx_module_finder.count_registered
       try:
         loader = importlib.machinery.SourceFileLoader(
             fullname=module_name,
@@ -70,14 +107,17 @@ def import_func_from_source(source_path: Text, fn_name: Text) -> Callable:  # py
         module = importlib.util.module_from_spec(spec)
         sys.modules[loader.name] = module
         loader.exec_module(module)
-        _imported_modules_from_source[source_path] = module
+        _tfx_module_finder.register_module(module_name, source_path)
       except IOError:
         raise ImportError('{} in {} not found in '
                           'import_func_from_source()'.format(
                               fn_name, source_path))
     else:
-      logging.info('%s is already loaded.', source_path)
-  return getattr(_imported_modules_from_source[source_path], fn_name)
+      logging.info('%s is already loaded, reloading', source_path)
+      module_name = _tfx_module_finder.get_module_name_by_path(source_path)
+      module = sys.modules[module_name]
+      importlib.reload(module)
+  return getattr(module, fn_name)
 
 
 def import_func_from_module(module_path: Text, fn_name: Text) -> Callable:  # pylint: disable=g-bare-generic
