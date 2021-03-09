@@ -108,6 +108,7 @@ _query_sample_rate = 0.0001  # Generate a 0.01% random sample.
 # TODO(b/151116587): Remove `shuffle_mode` flag after default is changed.
 # TODO(b/156874687): Remove `machine_type` after IP addresses are no longer a
 #                    scaling bottleneck.
+# TODO(b/171733562): Remove `use_runner_v2` once it is the default for Dataflow.
 # TODO(step 8): (Optional) Uncomment below to use Dataflow.
 # DATAFLOW_BEAM_PIPELINE_ARGS = [
 #    '--project=' + GOOGLE_CLOUD_PROJECT,
@@ -119,7 +120,8 @@ _query_sample_rate = 0.0001  # Generate a 0.01% random sample.
 #    '--disk_size_gb=50',
 #    '--experiments=shuffle_mode=auto',
 #    '--machine_type=e2-standard-8',
-#    ]
+#    '--experiments=use_runner_v2',
+# ]
 
 # A dict which contains the training job parameters to be passed to Google
 # Cloud AI Platform. For the full set of parameters supported by Google Cloud AI
