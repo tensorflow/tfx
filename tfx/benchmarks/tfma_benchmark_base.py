@@ -173,6 +173,7 @@ class TFMABenchmarkBase(benchmark_base.BenchmarkBase):
     combiner = tfma.evaluators.legacy_aggregate._AggregateCombineFn(  # pylint: disable=protected-access
         eval_shared_model=tfma.default_eval_shared_model(
             eval_saved_model_path=self._dataset.tfma_saved_model_path()))
+    combiner.setup()
     accumulators = []
 
     start = time.time()

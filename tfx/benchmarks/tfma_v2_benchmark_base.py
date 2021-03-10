@@ -406,6 +406,7 @@ class TFMAV2BenchmarkBase(benchmark_base.BenchmarkBase):
       combiner = metrics_plots_and_validations_evaluator._ComputationsCombineFn(  # pylint: disable=protected-access
           computations=computations,
           compute_with_sampling=with_confidence_intervals)
+      combiner.setup()
 
       accumulators = []
       for batch in benchmark_utils.batched_iterator(processed,
