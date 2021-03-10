@@ -504,7 +504,7 @@ class Artifact(json_utils.Jsonable):
 
 
 def _ArtifactType(  # pylint: disable=invalid-name
-    name: Optional[str] = None,  # pylint: disable=g-ambiguous-str-annotation
+    name: Optional[str] = None,
     properties: Optional[Dict[Text, Property]] = None,
     mlmd_artifact_type: Optional[metadata_store_pb2.ArtifactType] = None
 ) -> Type[Artifact]:
