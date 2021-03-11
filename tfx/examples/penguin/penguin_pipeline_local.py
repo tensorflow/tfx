@@ -14,7 +14,7 @@
 """Penguin example using TFX."""
 
 import os
-from typing import List, Text
+from typing import List, Optional, Text
 
 import absl
 import tensorflow_model_analysis as tfma
@@ -22,7 +22,6 @@ from tfx.components import CsvExampleGen
 from tfx.components import Evaluator
 from tfx.components import ExampleValidator
 from tfx.components import Pusher
-from tfx.components import ResolverNode
 from tfx.components import SchemaGen
 from tfx.components import StatisticsGen
 from tfx.components import Trainer
@@ -30,13 +29,18 @@ from tfx.components import Transform
 from tfx.components import Tuner
 from tfx.components.trainer.executor import GenericExecutor
 from tfx.dsl.components.base import executor_spec
+from tfx.dsl.components.common import resolver
 from tfx.dsl.experimental import latest_blessed_model_resolver
+from tfx.dsl.experimental import spans_resolver
 from tfx.orchestration import metadata
 from tfx.orchestration import pipeline
 from tfx.orchestration.local.local_dag_runner import LocalDagRunner
+from tfx.proto import example_gen_pb2
 from tfx.proto import pusher_pb2
+from tfx.proto import range_config_pb2
 from tfx.proto import trainer_pb2
 from tfx.types import Channel
+from tfx.types.standard_artifacts import Examples
 from tfx.types.standard_artifacts import Model
 from tfx.types.standard_artifacts import ModelBlessing
 
@@ -72,16 +76,39 @@ _beam_pipeline_args = [
     '--direct_num_workers=0',
 ]
 
+# Configs for ExampleGen and SpansResolver, e.g.,
+#
+# This will match the <input_base>/day3/* as ExampleGen's input and generate
+# Examples artifact with Span equals to 3.
+#   examplegen_input_config = example_gen_pb2.Input(splits=[
+#       example_gen_pb2.Input.Split(name='input', pattern='day{SPAN}/*'),
+#   ])
+#   examplegen_range_config = range_config_pb2.RangeConfig(
+#       static_range=range_config_pb2.StaticRange(
+#           start_span_number=3, end_span_number=3))
+#
+# This will get the latest 2 Spans (Examples artifacts) from MLMD for training.
+#   resolver_range_config = range_config_pb2.RangeConfig(
+#       rolling_range=range_config_pb2.RollingRange(num_spans=2))
+_examplegen_input_config = None
+_examplegen_range_config = None
+_resolver_range_config = None
 
-def _create_pipeline(pipeline_name: Text,
-                     pipeline_root: Text,
-                     data_root: Text,
-                     module_file: Text,
-                     accuracy_threshold: float,
-                     serving_model_dir: Text,
-                     metadata_path: Text,
-                     enable_tuning: bool,
-                     beam_pipeline_args: List[Text]) -> pipeline.Pipeline:
+
+def _create_pipeline(
+    pipeline_name: Text,
+    pipeline_root: Text,
+    data_root: Text,
+    module_file: Text,
+    accuracy_threshold: float,
+    serving_model_dir: Text,
+    metadata_path: Text,
+    enable_tuning: bool,
+    examplegen_input_config: Optional[example_gen_pb2.Input],
+    examplegen_range_config: Optional[range_config_pb2.RangeConfig],
+    resolver_range_config: Optional[range_config_pb2.RangeConfig],
+    beam_pipeline_args: List[Text],
+) -> pipeline.Pipeline:
   """Implements the penguin pipeline with TFX.
 
   Args:
@@ -94,14 +121,23 @@ def _create_pipeline(pipeline_name: Text,
     metadata_path: path to local pipeline ML Metadata store.
     enable_tuning: If True, the hyperparameter tuning through KerasTuner is
       enabled.
+    examplegen_input_config: ExampleGen's input_config.
+    examplegen_range_config: ExampleGen's range_config.
+    resolver_range_config: SpansResolver's range_config. Specify this will
+      enable SpansResolver to get a window of ExampleGen's output Spans for
+      transform and training.
     beam_pipeline_args: list of beam pipeline options for LocalDAGRunner. Please
       refer to https://beam.apache.org/documentation/runners/direct/.
+
   Returns:
     A TFX pipeline object.
   """
 
   # Brings data into the pipeline or otherwise joins/converts training data.
-  example_gen = CsvExampleGen(input_base=data_root)
+  example_gen = CsvExampleGen(
+      input_base=data_root,
+      input_config=examplegen_input_config,
+      range_config=examplegen_range_config)
 
   # Computes statistics over data for visualization and example validation.
   statistics_gen = StatisticsGen(examples=example_gen.outputs['examples'])
@@ -115,9 +151,18 @@ def _create_pipeline(pipeline_name: Text,
       statistics=statistics_gen.outputs['statistics'],
       schema=schema_gen.outputs['schema'])
 
+  # Gets multiple Spans for transform and training.
+  if resolver_range_config:
+    examples_resolver = resolver.Resolver(
+        instance_name='span_resolver',
+        strategy_class=spans_resolver.SpansResolver,
+        config={'range_config': resolver_range_config},
+        examples=Channel(type=Examples, producer_component_id=example_gen.id))
+
   # Performs transformations and feature engineering in training and serving.
   transform = Transform(
-      examples=example_gen.outputs['examples'],
+      examples=(examples_resolver.outputs['examples']
+                if resolver_range_config else example_gen.outputs['examples']),
       schema=schema_gen.outputs['schema'],
       module_file=module_file)
 
@@ -161,9 +206,9 @@ def _create_pipeline(pipeline_name: Text,
       eval_args=trainer_pb2.EvalArgs(num_steps=5))
 
   # Get the latest blessed model for model validation.
-  model_resolver = ResolverNode(
+  model_resolver = resolver.Resolver(
       instance_name='latest_blessed_model_resolver',
-      resolver_class=latest_blessed_model_resolver.LatestBlessedModelResolver,
+      strategy_class=latest_blessed_model_resolver.LatestBlessedModelResolver,
       model=Channel(type=Model),
       model_blessing=Channel(type=ModelBlessing))
 
@@ -212,6 +257,8 @@ def _create_pipeline(pipeline_name: Text,
       evaluator,
       pusher,
   ]
+  if resolver_range_config:
+    components.append(examples_resolver)
   if enable_tuning:
     components.append(tuner)
 
@@ -239,4 +286,7 @@ if __name__ == '__main__':
           serving_model_dir=_serving_model_dir,
           metadata_path=_metadata_path,
           enable_tuning=True,
+          examplegen_input_config=_examplegen_input_config,
+          examplegen_range_config=_examplegen_range_config,
+          resolver_range_config=_resolver_range_config,
           beam_pipeline_args=_beam_pipeline_args))

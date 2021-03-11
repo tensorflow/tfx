@@ -369,25 +369,6 @@ class ExecutionPublisherTest(test_case_utils.TfxTest, parameterized.TestCase):
             m, execution_id, contexts,
             {'examples': [standard_artifacts.Examples(),]}, executor_output)
 
-  def testPublishSuccessExecutionFailChangedUriDir(self):
-    output_example = standard_artifacts.Examples()
-    output_example.uri = '/my/original_uri'
-    output_dict = {'examples': [output_example]}
-    with metadata.Metadata(connection_config=self._connection_config) as m:
-      contexts = self._generate_contexts(m)
-      execution_id = execution_publish_utils.register_execution(
-          m, self._execution_type, contexts).id
-      executor_output = execution_result_pb2.ExecutorOutput()
-      new_example = executor_output.output_artifacts['examples'].artifacts.add()
-      new_example.uri = '/my/new_uri/1'
-
-      with self.assertRaisesRegex(
-          RuntimeError,
-          'When there is one artifact to publish, the URI of it should be '
-          'identical to the URI of system generated artifact.'):
-        execution_publish_utils.publish_succeeded_execution(
-            m, execution_id, contexts, output_dict, executor_output)
-
   @parameterized.named_parameters(
       # Not direct sub-dir of the original uri
       dict(

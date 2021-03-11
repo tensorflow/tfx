@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Base class to define how to operator an executor."""
+import copy
 import sys
 from typing import Dict, List, Optional, cast
 
@@ -106,7 +107,8 @@ class PythonExecutorOperator(base_executor_operator.BaseExecutorOperator):
           # Read ValueArtifact into memory.
           artifact.read()
 
-    result = executor.Do(execution_info.input_dict, execution_info.output_dict,
+    output_dict = copy.deepcopy(execution_info.output_dict)
+    result = executor.Do(execution_info.input_dict, output_dict,
                          execution_info.exec_properties)
     if not result:
       # If result is not returned from the Do function, then try to
@@ -120,5 +122,5 @@ class PythonExecutorOperator(base_executor_operator.BaseExecutorOperator):
         # we use their executor_output and exec_properties to construct
         # ExecutorOutput.
         result = execution_result_pb2.ExecutorOutput()
-        _populate_output_artifact(result, execution_info.output_dict)
+        _populate_output_artifact(result, output_dict)
     return result

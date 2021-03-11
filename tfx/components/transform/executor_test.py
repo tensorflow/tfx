@@ -115,10 +115,10 @@ class ExecutorTest(tft_unit.TransformTestCase):
                                                 'transformed_graph')
     transformed1 = standard_artifacts.Examples()
     transformed1.uri = os.path.join(output_data_dir, 'transformed_examples',
-                                    '1')
+                                    '0')
     transformed2 = standard_artifacts.Examples()
     transformed2.uri = os.path.join(output_data_dir, 'transformed_examples',
-                                    '2')
+                                    '1')
 
     self._transformed_example_artifacts = [transformed1, transformed2]
 
@@ -316,6 +316,21 @@ class ExecutorTest(tft_unit.TransformTestCase):
         standard_component_specs.EXAMPLES_KEY] = self._example_artifacts
     self._output_dict[standard_component_specs.TRANSFORMED_EXAMPLES_KEY] = (
         self._transformed_example_artifacts)
+    self._transform_executor.Do(self._input_dict, self._output_dict,
+                                self._exec_properties)
+    self._verify_transform_outputs(multiple_example_inputs=True)
+
+  def test_do_with_multiple_artifacts_single_output_artifact(self):
+    self._exec_properties[
+        standard_component_specs.MODULE_FILE_KEY] = self._module_file
+    self._input_dict[
+        standard_component_specs.EXAMPLES_KEY] = self._example_artifacts
+    transformed = standard_artifacts.Examples()
+    transformed.uri = os.path.join(self._output_data_dir,
+                                   'transformed_examples')
+    self._output_dict[standard_component_specs.TRANSFORMED_EXAMPLES_KEY] = ([
+        transformed
+    ])
     self._transform_executor.Do(self._input_dict, self._output_dict,
                                 self._exec_properties)
     self._verify_transform_outputs(multiple_example_inputs=True)

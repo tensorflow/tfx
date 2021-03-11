@@ -48,6 +48,7 @@ from tfx.dsl.io import fileio
 from tfx.proto import example_gen_pb2
 from tfx.proto import transform_pb2
 from tfx.types import artifact_utils
+from tfx.types import standard_artifacts
 from tfx.types import standard_component_specs
 from tfx.utils import import_utils
 from tfx.utils import io_utils
@@ -344,6 +345,23 @@ class Executor(base_executor.BaseExecutor):
       None
     """
     self._log_startup(input_dict, output_dict, exec_properties)
+
+    # TODO(b/175426744): use executor util to create output artifact.
+    # Create output artifacts when input Examples Channel contains more than
+    # one artifacts.
+    num_examples = len(input_dict[standard_component_specs.EXAMPLES_KEY])
+    if num_examples > 1 and len(
+        output_dict[standard_component_specs.TRANSFORMED_EXAMPLES_KEY]) == 1:
+      transformed_examples = artifact_utils.get_single_instance(
+          output_dict[standard_component_specs.TRANSFORMED_EXAMPLES_KEY])
+      transformed_examples_list = []
+      for i in range(num_examples):
+        tft_examples = standard_artifacts.Examples()
+        tft_examples.copy_from(transformed_examples)
+        tft_examples.uri = os.path.join(transformed_examples.uri, str(i))
+        transformed_examples_list.append(tft_examples)
+      output_dict[standard_component_specs
+                  .TRANSFORMED_EXAMPLES_KEY] = transformed_examples_list
 
     splits_config = transform_pb2.SplitsConfig()
     if exec_properties.get(standard_component_specs.SPLITS_CONFIG_KEY, None):

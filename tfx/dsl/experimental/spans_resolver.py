@@ -46,7 +46,7 @@ class SpansResolver(resolver.ResolverStrategy):
         # Get the artifacts within range.
         for artifact in artifact_list:
           if not artifact.has_custom_property(utils.SPAN_PROPERTY_NAME):
-            raise RuntimeError('Span does not exist for' % str(artifact))
+            raise RuntimeError(f'Span does not exist for {artifact}')
           span = int(
               artifact.get_string_custom_property(utils.SPAN_PROPERTY_NAME))
           if span >= start_span_number and span <= end_span_number:
@@ -61,7 +61,7 @@ class SpansResolver(resolver.ResolverStrategy):
         # Get most recent span number.
         for artifact in artifact_list:
           if not artifact.has_custom_property(utils.SPAN_PROPERTY_NAME):
-            raise RuntimeError('Span does not exist for' % str(artifact))
+            raise RuntimeError(f'Span does not exist for {artifact}')
           span = int(
               artifact.get_string_custom_property(utils.SPAN_PROPERTY_NAME))
           if span > most_recent_span:
@@ -95,7 +95,7 @@ class SpansResolver(resolver.ResolverStrategy):
   ) -> resolver.ResolveResult:
     pipeline_context = metadata_handler.get_pipeline_context(pipeline_info)
     if pipeline_context is None:
-      raise RuntimeError('Pipeline context absent for %s' % pipeline_context)
+      raise RuntimeError(f'Pipeline context absent for {pipeline_context}')
 
     candidate_dict = {}
     for k, c in source_channels.items():
