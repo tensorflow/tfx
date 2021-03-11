@@ -163,7 +163,7 @@ class PipelineOpsTest(tu.TfxTest, parameterized.TestCase):
       thread.start()
 
       pipeline_ops.stop_pipeline(
-          m, task_lib.PipelineUid.from_pipeline(pipeline), timeout_secs=5.0)
+          m, task_lib.PipelineUid.from_pipeline(pipeline), timeout_secs=10.0)
 
       thread.join()
 
