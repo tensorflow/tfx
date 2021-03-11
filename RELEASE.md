@@ -14,6 +14,8 @@
 *   Deprecated input/output compatibility aliases for Transform and StatisticsGen.
 
 ## Bug Fixes and Other Changes
+*   The `tfx_version` custom property of output artifacts is now set by the
+    default publisher to the TFX SDK version.
 
 ## Documentation Updates
 

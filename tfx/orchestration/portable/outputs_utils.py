@@ -20,6 +20,7 @@ from typing import Dict, List, Optional, Text
 
 from absl import logging
 from tfx import types
+from tfx import version
 from tfx.dsl.io import fileio
 from tfx.orchestration import data_types_utils
 from tfx.proto.orchestration import pipeline_pb2
@@ -33,6 +34,7 @@ _STATEFUL_WORKING_DIR = 'stateful_working_dir'
 _DRIVER_OUTPUT_FILE = 'driver_output.pb'
 _EXECUTOR_OUTPUT_FILE = 'executor_output.pb'
 _VALUE_ARTIFACT_FILE_NAME = 'value'
+_ARTIFACT_TFX_VERSION_CUSTOM_PROPERTY_KEY = 'tfx_version'
 
 
 def make_output_dirs(output_dict: Dict[Text, List[types.Artifact]]) -> None:
@@ -225,3 +227,16 @@ class OutputsResolver:
                           str(execution_id), '.temp', '')
     fileio.makedirs(result)
     return result
+
+
+def tag_output_artifacts_with_version(
+    output_artifacts: Optional[Dict[Text, List[types.Artifact]]] = None):
+  """Tag output artifacts with the current TFX version."""
+  if not output_artifacts:
+    return
+  for unused_key, artifact_list in output_artifacts.items():
+    for artifact in artifact_list:
+      if not artifact.has_custom_property(
+          _ARTIFACT_TFX_VERSION_CUSTOM_PROPERTY_KEY):
+        artifact.set_string_custom_property(
+            _ARTIFACT_TFX_VERSION_CUSTOM_PROPERTY_KEY, version.__version__)

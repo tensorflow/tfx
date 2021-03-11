@@ -17,8 +17,10 @@ import json
 import os
 from typing import Any, Mapping, Sequence
 
+import mock
 import tensorflow as tf
 
+from tfx import version
 from tfx.components.evaluator import constants
 from tfx.components.evaluator import executor as evaluator_executor
 from tfx.dsl.io import fileio
@@ -81,6 +83,12 @@ class KubeflowV2RunExecutorTest(test_case_utils.TfxTest):
 
   def setUp(self):
     super().setUp()
+
+    # Set a constant version for artifact version tag.
+    patcher = mock.patch("tfx.version.__version__")
+    patcher.start()
+    version.__version__ = "0.123.4.dev"
+    self.addCleanup(patcher.stop)
 
     # Prepare executor input.
     serialized_metadata = self._get_text_from_test_data(

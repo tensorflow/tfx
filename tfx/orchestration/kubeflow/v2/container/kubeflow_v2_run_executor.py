@@ -25,6 +25,7 @@ from tfx.dsl.components.base import base_executor
 from tfx.dsl.io import fileio
 from tfx.orchestration.kubeflow.v2.container import kubeflow_v2_entrypoint_utils
 from tfx.orchestration.kubeflow.v2.proto import pipeline_pb2
+from tfx.orchestration.portable import outputs_utils
 from tfx.types import artifact_utils
 from tfx.types.standard_component_specs import BLESSING_KEY
 from tfx.utils import import_utils
@@ -78,6 +79,10 @@ def _run_executor(args: argparse.Namespace, beam_args: List[str]) -> None:
   executor = executor_cls(executor_context)
   logging.info('Starting executor')
   executor.Do(inputs, outputs, exec_properties)
+
+  # TODO(b/182316162): Unify publisher handling so that post-execution artifact
+  # logic is more cleanly handled.
+  outputs_utils.tag_output_artifacts_with_version(outputs)  # pylint: disable=protected-access
 
   # TODO(b/169583143): Remove this workaround when TFX migrates to use str-typed
   # id/name to identify artifacts.
@@ -148,4 +153,3 @@ def main(parsed_argv: Tuple[argparse.Namespace, List[str]]):
 
 if __name__ == '__main__':
   app.run(main, flags_parser=_parse_flags)
-

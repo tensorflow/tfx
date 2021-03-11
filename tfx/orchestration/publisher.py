@@ -25,6 +25,7 @@ from absl import logging
 from tfx import types
 from tfx.orchestration import data_types
 from tfx.orchestration import metadata
+from tfx.orchestration.portable import outputs_utils
 
 
 class Publisher(object):
@@ -60,6 +61,8 @@ class Publisher(object):
     Returns:
       A dict containing output artifacts.
     """
+    outputs_utils.tag_output_artifacts_with_version(output_artifacts)
+
     logging.debug('Outputs: %s', output_artifacts)
     logging.debug('Execution properties: %s', exec_properties)
 

@@ -415,7 +415,13 @@ class Launcher(object):
 
       logging.info('Execution %d succeeded.', execution_info.execution_id)
       self._clean_up_stateful_execution_info(execution_info)
-      logging.info('Publishing output artifacts %s for exeuction %s',
+
+      # TODO(b/182316162): Unify publisher handing so that post-execution
+      # artifact logic is more cleanly handled.
+      outputs_utils.tag_output_artifacts_with_version(
+          execution_info.output_dict)  # pylint: disable=protected-access
+
+      logging.info('Publishing output artifacts %s for execution %s',
                    execution_info.output_dict, execution_info.execution_id)
       self._publish_successful_execution(execution_info.execution_id, contexts,
                                          execution_info.output_dict,

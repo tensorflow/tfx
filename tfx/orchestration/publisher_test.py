@@ -20,6 +20,7 @@ from __future__ import print_function
 
 import tensorflow as tf
 from tfx import types
+from tfx import version
 from tfx.orchestration import data_types
 from tfx.orchestration import publisher
 
@@ -59,6 +60,9 @@ class PublisherTest(tf.test.TestCase):
         component_info=self._component_info,
         output_artifacts=self._output_dict,
         exec_properties=self._exec_properties)
+    self.assertEqual(
+        self._output_dict['output_data'][0].get_string_custom_property(
+            'tfx_version'), version.__version__)
 
 
 if __name__ == '__main__':
