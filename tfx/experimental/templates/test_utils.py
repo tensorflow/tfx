@@ -21,6 +21,7 @@ from __future__ import print_function
 import codecs
 import locale
 import os
+import re
 
 from typing import Text, List, Iterable, Tuple
 
@@ -126,7 +127,7 @@ class BaseEndToEndTest(test_case_utils.TfxTest):
     with open(path) as fp:
       for line in fp:
         if in_variable_definition:
-          if line.startswith('#  ') or line.startswith('# }'):
+          if re.match(r'# [\]\}\) ]', line):
             result.append(line[2:])
             continue
           elif line == '#\n':
