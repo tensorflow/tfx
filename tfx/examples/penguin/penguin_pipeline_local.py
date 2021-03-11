@@ -77,6 +77,7 @@ def _create_pipeline(pipeline_name: Text,
                      pipeline_root: Text,
                      data_root: Text,
                      module_file: Text,
+                     accuracy_threshold: float,
                      serving_model_dir: Text,
                      metadata_path: Text,
                      enable_tuning: bool,
@@ -88,6 +89,7 @@ def _create_pipeline(pipeline_name: Text,
     pipeline_root: root directory of the pipeline.
     data_root: directory containing the penguin data.
     module_file: path to files used in Trainer and Transform components.
+    accuracy_threshold: minimum accuracy to push the model.
     serving_model_dir: filepath to write pipeline SavedModel to.
     metadata_path: path to local pipeline ML Metadata store.
     enable_tuning: If True, the hyperparameter tuning through KerasTuner is
@@ -176,7 +178,7 @@ def _create_pipeline(pipeline_name: Text,
                   class_name='SparseCategoricalAccuracy',
                   threshold=tfma.MetricThreshold(
                       value_threshold=tfma.GenericValueThreshold(
-                          lower_bound={'value': 0.6}),
+                          lower_bound={'value': accuracy_threshold}),
                       # Change threshold will be ignored if there is no
                       # baseline model resolved from MLMD (first run).
                       change_threshold=tfma.GenericChangeThreshold(
@@ -233,6 +235,7 @@ if __name__ == '__main__':
           pipeline_root=_pipeline_root,
           data_root=_data_root,
           module_file=_module_file,
+          accuracy_threshold=0.6,
           serving_model_dir=_serving_model_dir,
           metadata_path=_metadata_path,
           enable_tuning=True,
