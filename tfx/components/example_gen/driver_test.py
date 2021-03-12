@@ -315,9 +315,15 @@ class DriverTest(tf.test.TestCase):
                     static_range=range_config_pb2.StaticRange(
                         start_span_number=2, end_span_number=2))),
     }
+    # Prepare output_dict
+    example = standard_artifacts.Examples()
+    example.uri = 'my_uri'
+    output_dict = {standard_component_specs.EXAMPLES_KEY: [example]}
 
     query_based_driver = driver.QueryBasedDriver(self._mock_metadata)
-    query_based_driver.resolve_exec_properties(exec_properties, None, None)
+    result = query_based_driver.run(
+        portable_data_types.ExecutionInfo(
+            output_dict=output_dict, exec_properties=exec_properties))
 
     self.assertEqual(exec_properties[utils.SPAN_PROPERTY_NAME], 2)
     self.assertIsNone(exec_properties[utils.VERSION_PROPERTY_NAME])
@@ -336,6 +342,15 @@ class DriverTest(tf.test.TestCase):
           name: "s2"
           pattern: "select * from table where span=2 and split='s2'"
         }""", updated_input_config)
+    self.assertLen(
+        result.output_artifacts[
+            standard_component_specs.EXAMPLES_KEY].artifacts, 1)
+    output_example = result.output_artifacts[
+        standard_component_specs.EXAMPLES_KEY].artifacts[0]
+    self.assertEqual(output_example.uri, example.uri)
+    self.assertEqual(
+        output_example.custom_properties[utils.SPAN_PROPERTY_NAME].string_value,
+        '2')
 
 
 if __name__ == '__main__':
