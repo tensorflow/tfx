@@ -40,7 +40,7 @@ def _make_deprecated_resolver_node_alias():
   """
   parent_deprecated_class = deprecation_utils.deprecated_alias(  # pylint: disable=invalid-name
       deprecated_name='tfx.components.common_nodes.resolver_node.ResolverNode',
-      name='tfx.dsl.components.common.resolver.ResolverNode',
+      name='tfx.dsl.components.common.resolver.Resolver',
       func_or_class=resolver.Resolver)
 
   class _NewDeprecatedClass(parent_deprecated_class):
