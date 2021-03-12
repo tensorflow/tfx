@@ -147,6 +147,7 @@ def _parse_flags(argv: List[str]) -> argparse.Namespace:
       help='JSON-serialized metadata for this execution.')
   # Ignore unknown args which is expected. Beam related args are also supplied
   # as command line arguments.
+  # TODO(b/182333035): Wrap beam related flags into a dedicated flag.
   namespace, _ = parser.parse_known_args(argv)
   return namespace
 
