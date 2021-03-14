@@ -18,7 +18,8 @@ import datetime
 import functools
 import threading
 import time
-from typing import List, Optional, Sequence, Set
+import typing
+from typing import List
 
 from absl import logging
 from tfx.dsl.compiler import constants
@@ -167,7 +168,10 @@ def stop_pipeline(
   """
   with _PIPELINE_OPS_LOCK:
     with pstate.PipelineState.load(mlmd_handle, pipeline_uid) as pipeline_state:
-      pipeline_state.initiate_stop()
+      pipeline_state.initiate_stop(
+          status_lib.Status(
+              code=status_lib.Code.CANCELLED,
+              message='Cancellation requested by client.'))
   _wait_for_inactivation(
       mlmd_handle, pipeline_state.execution, timeout_secs=timeout_secs)
 
@@ -224,7 +228,11 @@ def stop_node(
                 f'`stop_node` operation failed, unable to find node to stop: '
                 f'{node_uid}'))
       node = filtered_nodes[0]
-      pipeline_state.initiate_node_stop(node_uid)
+      pipeline_state.initiate_node_stop(
+          node_uid,
+          status_lib.Status(
+              code=status_lib.Code.CANCELLED,
+              message='Cancellation requested by client.'))
 
     executions = task_gen_utils.get_executions(mlmd_handle, node)
     active_executions = [
@@ -273,11 +281,8 @@ def _wait_for_inactivation(
 
 @_to_status_not_ok_error
 @_pipeline_ops_lock
-def orchestrate(
-    mlmd_handle: metadata.Metadata,
-    task_queue: tq.TaskQueue,
-    service_job_manager: Optional[service_jobs.ServiceJobManager] = None,
-) -> None:
+def orchestrate(mlmd_handle: metadata.Metadata, task_queue: tq.TaskQueue,
+                service_job_manager: service_jobs.ServiceJobManager) -> None:
   """Performs a single iteration of the orchestration loop.
 
   Embodies the core functionality of the main orchestration loop that scans MLMD
@@ -286,8 +291,8 @@ def orchestrate(
   Args:
     mlmd_handle: A handle to the MLMD db.
     task_queue: A `TaskQueue` instance into which any tasks will be enqueued.
-    service_job_manager: An optional `ServiceJobManager` instance if service
-      jobs are supported.
+    service_job_manager: A `ServiceJobManager` instance for handling service
+      jobs.
 
   Raises:
     status_lib.StatusNotOkError: If error generating tasks.
@@ -300,7 +305,7 @@ def orchestrate(
   active_pipeline_states = []
   stop_initiated_pipeline_states = []
   for pipeline_state in pipeline_states:
-    if pipeline_state.is_stop_initiated():
+    if pipeline_state.stop_initiated_reason() is not None:
       stop_initiated_pipeline_states.append(pipeline_state)
     elif execution_lib.is_execution_active(pipeline_state.execution):
       active_pipeline_states.append(pipeline_state)
@@ -310,21 +315,16 @@ def orchestrate(
           message=(f'Found pipeline (uid: {pipeline_state.pipeline_uid}) which '
                    f'is neither active nor stop-initiated.'))
 
-  if stop_initiated_pipeline_states:
-    logging.info(
-        'Stop-initiated pipeline uids:\n%s', '\n'.join(
-            str(pipeline_state.pipeline_uid)
-            for pipeline_state in stop_initiated_pipeline_states))
-    _process_stop_initiated_pipelines(mlmd_handle, task_queue,
-                                      service_job_manager,
-                                      stop_initiated_pipeline_states)
-  if active_pipeline_states:
-    logging.info(
-        'Active (excluding stop-initiated) pipeline uids:\n%s', '\n'.join(
-            str(pipeline_state.pipeline_uid)
-            for pipeline_state in active_pipeline_states))
-    _process_active_pipelines(mlmd_handle, task_queue, service_job_manager,
-                              active_pipeline_states)
+  for pipeline_state in stop_initiated_pipeline_states:
+    logging.info('Orchestrating stop-initiated pipeline: %s',
+                 pipeline_state.pipeline_uid)
+    _orchestrate_stop_initiated_pipeline(mlmd_handle, task_queue,
+                                         service_job_manager, pipeline_state)
+
+  for pipeline_state in active_pipeline_states:
+    logging.info('Orchestrating pipeline: %s', pipeline_state.pipeline_uid)
+    _orchestrate_active_pipeline(mlmd_handle, task_queue, service_job_manager,
+                                 pipeline_state)
 
 
 def _get_pipeline_states(
@@ -347,103 +347,92 @@ def _get_pipeline_states(
   return result
 
 
-def _get_pure_service_node_ids(
+def _orchestrate_stop_initiated_pipeline(
+    mlmd_handle: metadata.Metadata, task_queue: tq.TaskQueue,
     service_job_manager: service_jobs.ServiceJobManager,
-    pipeline_state: pstate.PipelineState) -> Set[str]:
-  result = set()
-  for node in pstate.get_all_pipeline_nodes(pipeline_state.pipeline):
+    pipeline_state: pstate.PipelineState) -> None:
+  """Orchestrates stop initiated pipeline."""
+  stop_reason = pipeline_state.stop_initiated_reason()
+  assert stop_reason is not None
+  pipeline = pipeline_state.pipeline
+  has_active_executions = False
+  for node in pstate.get_all_pipeline_nodes(pipeline):
     if service_job_manager.is_pure_service_node(pipeline_state,
                                                 node.node_info.id):
-      result.add(node.node_info.id)
-  return result
-
-
-def _process_stop_initiated_pipelines(
-    mlmd_handle: metadata.Metadata, task_queue: tq.TaskQueue,
-    service_job_manager: Optional[service_jobs.ServiceJobManager],
-    pipeline_states: Sequence[pstate.PipelineState]) -> None:
-  """Processes stop initiated pipelines."""
-  for pipeline_state in pipeline_states:
-    pipeline = pipeline_state.pipeline
-    pure_service_node_ids = _get_pure_service_node_ids(
-        service_job_manager, pipeline_state) if service_job_manager else set()
-    execution = pipeline_state.execution
-    has_active_executions = False
-    for node in pstate.get_all_pipeline_nodes(pipeline):
-      if node.node_info.id not in pure_service_node_ids:
-        if _maybe_enqueue_cancellation_task(mlmd_handle, pipeline, node,
-                                            task_queue):
-          has_active_executions = True
-    if not has_active_executions:
-      if service_job_manager is not None:
-        # Stop all the services associated with the pipeline.
-        service_job_manager.stop_services(pipeline_state)
-      # Update pipeline execution state in MLMD.
-      updated_execution = copy.deepcopy(execution)
-      updated_execution.last_known_state = metadata_store_pb2.Execution.CANCELED
-      mlmd_handle.store.put_executions([updated_execution])
-
-
-def _process_active_pipelines(
-    mlmd_handle: metadata.Metadata, task_queue: tq.TaskQueue,
-    service_job_manager: Optional[service_jobs.ServiceJobManager],
-    pipeline_states: Sequence[pstate.PipelineState]) -> None:
-  """Processes active pipelines."""
-  for pipeline_state in pipeline_states:
-    pipeline = pipeline_state.pipeline
-    execution = pipeline_state.execution
-    assert execution.last_known_state in (metadata_store_pb2.Execution.NEW,
-                                          metadata_store_pb2.Execution.RUNNING)
-    if execution.last_known_state != metadata_store_pb2.Execution.RUNNING:
-      updated_execution = copy.deepcopy(execution)
-      updated_execution.last_known_state = metadata_store_pb2.Execution.RUNNING
-      mlmd_handle.store.put_executions([updated_execution])
-
-    if service_job_manager is not None:
-      # Ensure all the required services are running.
-      _ensure_services(service_job_manager, pipeline_state)
-      pure_service_node_ids = _get_pure_service_node_ids(
-          service_job_manager, pipeline_state)
+      service_job_manager.stop_node_services(pipeline_state, node.node_info.id)
     else:
-      pure_service_node_ids = set()
+      if _maybe_enqueue_cancellation_task(mlmd_handle, pipeline, node,
+                                          task_queue):
+        has_active_executions = True
+  if not has_active_executions:
+    with pipeline_state:
+      # Update pipeline execution state in MLMD.
+      pipeline_state.update_pipeline_execution_state(stop_reason)
 
+
+def _orchestrate_active_pipeline(
+    mlmd_handle: metadata.Metadata, task_queue: tq.TaskQueue,
+    service_job_manager: service_jobs.ServiceJobManager,
+    pipeline_state: pstate.PipelineState) -> None:
+  """Orchestrates active pipeline."""
+  pipeline = pipeline_state.pipeline
+  execution = pipeline_state.execution
+  assert execution.last_known_state in (metadata_store_pb2.Execution.NEW,
+                                        metadata_store_pb2.Execution.RUNNING)
+  if execution.last_known_state != metadata_store_pb2.Execution.RUNNING:
+    updated_execution = copy.deepcopy(execution)
+    updated_execution.last_known_state = metadata_store_pb2.Execution.RUNNING
+    mlmd_handle.store.put_executions([updated_execution])
+
+  # Initialize task generator for the pipeline.
+  if pipeline.execution_mode == pipeline_pb2.Pipeline.SYNC:
+    generator = sync_pipeline_task_gen.SyncPipelineTaskGenerator(
+        mlmd_handle, pipeline_state, task_queue.contains_task_id,
+        service_job_manager)
+  elif pipeline.execution_mode == pipeline_pb2.Pipeline.ASYNC:
     # Create cancellation tasks for stop-initiated nodes if necessary.
     stop_initiated_nodes = _get_stop_initiated_nodes(pipeline_state)
     for node in stop_initiated_nodes:
-      if node.node_info.id not in pure_service_node_ids:
+      if service_job_manager.is_pure_service_node(pipeline_state,
+                                                  node.node_info.id):
+        service_job_manager.stop_node_services(pipeline_state,
+                                               node.node_info.id)
+      else:
         _maybe_enqueue_cancellation_task(mlmd_handle, pipeline, node,
                                          task_queue)
+    generator = async_pipeline_task_gen.AsyncPipelineTaskGenerator(
+        mlmd_handle, pipeline_state, task_queue.contains_task_id,
+        service_job_manager, set(n.node_info.id for n in stop_initiated_nodes))
+  else:
+    raise status_lib.StatusNotOkError(
+        code=status_lib.Code.FAILED_PRECONDITION,
+        message=(
+            f'Only SYNC and ASYNC pipeline execution modes supported; '
+            f'found pipeline with execution mode: {pipeline.execution_mode}'))
 
-    ignore_node_ids = set(
-        n.node_info.id for n in stop_initiated_nodes) | pure_service_node_ids
+  tasks = generator.generate()
 
-    # Initialize task generator for the pipeline.
-    if pipeline.execution_mode == pipeline_pb2.Pipeline.SYNC:
-      generator = sync_pipeline_task_gen.SyncPipelineTaskGenerator(
-          mlmd_handle, pipeline, task_queue.contains_task_id, ignore_node_ids)
-    elif pipeline.execution_mode == pipeline_pb2.Pipeline.ASYNC:
-      generator = async_pipeline_task_gen.AsyncPipelineTaskGenerator(
-          mlmd_handle, pipeline, task_queue.contains_task_id, ignore_node_ids)
-    else:
-      raise status_lib.StatusNotOkError(
-          code=status_lib.Code.FAILED_PRECONDITION,
-          message=(
-              f'Only SYNC and ASYNC pipeline execution modes supported; '
-              f'found pipeline with execution mode: {pipeline.execution_mode}'))
-
-    # TODO(goutham): Consider concurrent task generation.
-    tasks = generator.generate()
+  with pipeline_state:
     for task in tasks:
-      task_queue.enqueue(task)
-
-
-def _ensure_services(service_job_manager: service_jobs.ServiceJobManager,
-                     pipeline_state: pstate.PipelineState) -> None:
-  failed_node_uids = service_job_manager.ensure_services(pipeline_state)
-  if failed_node_uids:
-    with pipeline_state:
-      for node_uid in failed_node_uids:
-        pipeline_state.initiate_node_stop(node_uid)
+      if task_lib.is_exec_node_task(task):
+        task = typing.cast(task_lib.ExecNodeTask, task)
+        task_queue.enqueue(task)
+      elif task_lib.is_finalize_node_task(task):
+        assert pipeline.execution_mode == pipeline_pb2.Pipeline.ASYNC
+        task = typing.cast(task_lib.FinalizeNodeTask, task)
+        pipeline_state.initiate_node_stop(task.node_uid, task.status)
+      else:
+        assert task_lib.is_finalize_pipeline_task(task)
+        assert pipeline.execution_mode == pipeline_pb2.Pipeline.SYNC
+        assert len(tasks) == 1
+        task = typing.cast(task_lib.FinalizePipelineTask, task)
+        if task.status.code == status_lib.Code.OK:
+          logging.info('Pipeline run successful; pipeline uid: %s',
+                       pipeline_state.pipeline_uid)
+        else:
+          logging.info('Pipeline run failed; pipeline uid: %s',
+                       pipeline_state.pipeline_uid)
+        pipeline_state.initiate_stop(task.status)
 
 
 def _get_stop_initiated_nodes(
@@ -454,7 +443,7 @@ def _get_stop_initiated_nodes(
   for node in nodes:
     node_uid = task_lib.NodeUid.from_pipeline_node(pipeline_state.pipeline,
                                                    node)
-    if pipeline_state.is_node_stop_initiated(node_uid):
+    if pipeline_state.node_stop_initiated_reason(node_uid) is not None:
       result.append(node)
   return result
 
