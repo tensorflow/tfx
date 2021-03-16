@@ -1,3 +1,4 @@
+# Lint as: python3
 # Copyright 2020 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,7 +22,6 @@ import urllib.request
 
 from absl import logging
 import docker
-from google.cloud import storage
 import kfp
 import tensorflow as tf
 from tfx.dsl.io import fileio
@@ -31,13 +31,13 @@ from tfx.orchestration.kubeflow import test_utils as kubeflow_test_utils
 from tfx.utils import retry
 from tfx.utils import telemetry_utils
 import yaml
+from google.cloud import storage
 
 
 class TaxiTemplateKubeflowE2ETest(test_utils.BaseEndToEndTest):
 
-  _POLLING_INTERVAL_IN_SECONDS = 30
-  _RETRY_LIMIT = 3
-  _TIME_OUT = datetime.timedelta(hours=2)
+  _POLLING_INTERVAL_IN_SECONDS = 10
+  _MAX_POLLING_COUNT = 20 * 6  # 20 min.
 
   _DATA_DIRECTORY_NAME = 'template_data'
 
@@ -227,8 +227,10 @@ class TaxiTemplateKubeflowE2ETest(test_utils.BaseEndToEndTest):
     return run_id_lines[0].split('|')[2].strip()
 
   def _wait_until_completed(self, run_id: str):
+    # This timeout will never expire. polling_count * interval == 20min.
+    timeout = datetime.timedelta(hours=1)
     end_state = kubeflow_test_utils.poll_kfp_with_retry(
-        self._endpoint, run_id, self._RETRY_LIMIT, self._TIME_OUT,
+        self._endpoint, run_id, self._MAX_POLLING_COUNT, timeout,
         self._POLLING_INTERVAL_IN_SECONDS)
     self.assertEqual(end_state.lower(), kubeflow_test_utils.KFP_SUCCESS_STATUS)
 
@@ -303,22 +305,22 @@ class TaxiTemplateKubeflowE2ETest(test_utils.BaseEndToEndTest):
     self._run_pipeline()
 
     # TODO(b/173065862) Re-enable Dataflow tests after timeout is resolved.
-    #     # Enable Dataflow
-    #     self._comment('kubeflow_runner.py', [
-    #         'beam_pipeline_args=configs\n',
-    #         '.BIG_QUERY_WITH_DIRECT_RUNNER_BEAM_PIPELINE_ARGS',
-    #     ])
-    #     self._uncomment('kubeflow_runner.py', [
-    #         'beam_pipeline_args=configs.DATAFLOW_BEAM_PIPELINE_ARGS',
-    #     ])
-    #     logging.info('Added Dataflow to pipeline.')
-    #     self._update_pipeline()
-    #     self._run_pipeline()
+#     # Enable Dataflow
+#     self._comment('kubeflow_runner.py', [
+#         'beam_pipeline_args=configs\n',
+#         '.BIG_QUERY_WITH_DIRECT_RUNNER_BEAM_PIPELINE_ARGS',
+#     ])
+#     self._uncomment('kubeflow_runner.py', [
+#         'beam_pipeline_args=configs.DATAFLOW_BEAM_PIPELINE_ARGS',
+#     ])
+#     logging.info('Added Dataflow to pipeline.')
+#     self._update_pipeline()
+#     self._run_pipeline()
 
-    #     # Enable CAIP extension.
-    #     self._comment('kubeflow_runner.py', [
-    #         'beam_pipeline_args=configs.DATAFLOW_BEAM_PIPELINE_ARGS',
-    #     ])
+#     # Enable CAIP extension.
+#     self._comment('kubeflow_runner.py', [
+#         'beam_pipeline_args=configs.DATAFLOW_BEAM_PIPELINE_ARGS',
+#     ])
     self._uncomment('kubeflow_runner.py', [
         'ai_platform_training_args=configs.GCP_AI_PLATFORM_TRAINING_ARGS,',
         'ai_platform_serving_args=configs.GCP_AI_PLATFORM_SERVING_ARGS,',

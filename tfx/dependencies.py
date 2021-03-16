@@ -129,9 +129,6 @@ def make_extra_packages_test():
       'kfp>=1.1.0,<2',
       'kfp-pipeline-spec>=0.1.6,<0.2',
       'pytest>=5,<6',
-      # TODO(b/182848576): Delete pinned sqlalchemy after apache-airflow 2.0.2
-      # or later.(github.com/apache/airflow/issues/14811)
-      'sqlalchemy>=1.3, <1.4',
       # TODO(b/175740170): Delete pinned werkzeug version after using the new
       # pip resolver.
       'werkzeug==0.16.1',

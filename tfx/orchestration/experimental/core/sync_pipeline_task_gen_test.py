@@ -18,7 +18,9 @@ import os
 from absl.testing import parameterized
 from absl.testing.absltest import mock
 import tensorflow as tf
+from tfx.orchestration import data_types_utils
 from tfx.orchestration import metadata
+from tfx.orchestration.experimental.core import constants
 from tfx.orchestration.experimental.core import pipeline_state as pstate
 from tfx.orchestration.experimental.core import service_jobs
 from tfx.orchestration.experimental.core import status as status_lib
@@ -289,6 +291,55 @@ class SyncPipelineTaskGeneratorTest(tu.TfxTest, parameterized.TestCase):
     self.assertLen(tasks, 1)
     self.assertTrue(task_lib.is_finalize_pipeline_task(tasks[0]))
     self.assertEqual(status_lib.Code.ABORTED, tasks[0].status.code)
+    self.assertRegexMatch(tasks[0].status.message,
+                          ['.*due to service node failure.*'])
+
+  @parameterized.parameters(False, True)
+  def test_node_failed(self, use_task_queue):
+    """Tests task generation when a node registers a failed execution."""
+    otu.fake_example_gen_run(self._mlmd_connection, self._example_gen, 1, 1)
+
+    def _ensure_node_services(unused_pipeline_state, node_id):
+      self.assertEqual(self._example_gen.node_info.id, node_id)
+      return service_jobs.ServiceStatus.SUCCESS
+
+    self._mock_service_job_manager.ensure_node_services.side_effect = (
+        _ensure_node_services)
+
+    tasks, active_executions = self._generate_and_test(
+        use_task_queue,
+        num_initial_executions=1,
+        num_tasks_generated=1,
+        num_new_executions=1,
+        num_active_executions=1)
+    self.assertEqual(
+        task_lib.NodeUid.from_pipeline_node(self._pipeline, self._transform),
+        tasks[0].node_uid)
+    transform_exec = active_executions[0]
+
+    # Fail transform execution.
+    transform_exec.last_known_state = metadata_store_pb2.Execution.FAILED
+    data_types_utils.set_metadata_value(
+        transform_exec.custom_properties[constants.EXECUTION_ERROR_MSG_KEY],
+        'foobar error')
+    with self._mlmd_connection as m:
+      m.store.put_executions([transform_exec])
+    if use_task_queue:
+      task = self._task_queue.dequeue()
+      self._task_queue.task_done(task)
+
+    # Test generation of FinalizePipelineTask.
+    tasks, _ = self._generate_and_test(
+        True,
+        num_initial_executions=2,
+        num_tasks_generated=1,
+        num_new_executions=0,
+        num_active_executions=0)
+    self.assertLen(tasks, 1)
+    self.assertTrue(task_lib.is_finalize_pipeline_task(tasks[0]))
+    self.assertEqual(status_lib.Code.ABORTED, tasks[0].status.code)
+    self.assertRegexMatch(tasks[0].status.message,
+                          ['.*due to node failure.*foobar error'])
 
 
 if __name__ == '__main__':

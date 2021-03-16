@@ -16,7 +16,9 @@
 from typing import Callable, List
 
 from absl import logging
+from tfx.orchestration import data_types_utils
 from tfx.orchestration import metadata
+from tfx.orchestration.experimental.core import constants
 from tfx.orchestration.experimental.core import pipeline_state as pstate
 from tfx.orchestration.experimental.core import service_jobs
 from tfx.orchestration.experimental.core import status as status_lib
@@ -25,6 +27,7 @@ from tfx.orchestration.experimental.core import task_gen
 from tfx.orchestration.experimental.core import task_gen_utils
 from tfx.orchestration.portable import execution_publish_utils
 from tfx.orchestration.portable import outputs_utils
+from tfx.orchestration.portable.mlmd import execution_lib
 from tfx.proto.orchestration import pipeline_pb2
 from tfx.utils import topsort
 
@@ -91,9 +94,8 @@ class SyncPipelineTaskGenerator(task_gen.TaskGenerator):
             lambda node: [self._node_map[n] for n in node.downstream_nodes]))
     result = []
     for layer_num, nodes in enumerate(layers):
-      # Boolean that's set if there's at least one successfully executed node
-      # in the current layer.
-      completed_node_ids = set()
+      # Tracks successful node ids in current layer.
+      successful_node_ids = set()
       for node in nodes:
         node_uid = task_lib.NodeUid.from_pipeline_node(self._pipeline, node)
         node_id = node.node_info.id
@@ -105,7 +107,7 @@ class SyncPipelineTaskGenerator(task_gen.TaskGenerator):
               self._pipeline_state, node_id)
           if service_status == service_jobs.ServiceStatus.SUCCESS:
             logging.info('Service node completed successfully: %s', node_uid)
-            completed_node_ids.add(node_id)
+            successful_node_ids.add(node_id)
           elif service_status == service_jobs.ServiceStatus.FAILED:
             logging.error('Failed service node: %s', node_uid)
             return [
@@ -126,11 +128,31 @@ class SyncPipelineTaskGenerator(task_gen.TaskGenerator):
             task_lib.exec_node_task_id_from_pipeline_node(self._pipeline,
                                                           node)):
           continue
+
         executions = task_gen_utils.get_executions(self._mlmd_handle, node)
-        if (executions and
-            task_gen_utils.is_latest_execution_successful(executions)):
-          completed_node_ids.add(node_id)
-          continue
+        latest_execution = task_gen_utils.get_latest_execution(executions)
+        if latest_execution:
+          if execution_lib.is_execution_successful(latest_execution):
+            logging.info('Successful node: %s', node_uid)
+            successful_node_ids.add(node_id)
+            continue
+          if not execution_lib.is_execution_active(latest_execution):
+            error_msg_value = latest_execution.custom_properties.get(
+                constants.EXECUTION_ERROR_MSG_KEY)
+            error_msg = data_types_utils.get_metadata_value(
+                error_msg_value) if error_msg_value else ''
+            logging.error('Failed node: %s; error msg: %s', node_uid, error_msg)
+            return [
+                task_lib.FinalizePipelineTask(
+                    pipeline_uid=self._pipeline_state.pipeline_uid,
+                    status=status_lib.Status(
+                        code=status_lib.Code.ABORTED,
+                        message=(
+                            f'Aborting pipeline execution due to node failure; '
+                            f'failed node uid: {node_uid}; error msg: '
+                            f'{error_msg}')))
+            ]
+
         # If all upstream nodes are executed but current node is not executed,
         # the node is deemed ready for execution.
         if self._upstream_nodes_executed(node):
@@ -139,16 +161,16 @@ class SyncPipelineTaskGenerator(task_gen.TaskGenerator):
             return [task]
           else:
             result.append(task)
-      # If there are no completed nodes in the current layer, downstream nodes
+      # If there are no successful nodes in the current layer, downstream nodes
       # need not be checked.
-      if not completed_node_ids:
+      if not successful_node_ids:
         break
       # If all nodes in the final layer are completed successfully , the
       # pipeline can be finalized.
       # TODO(goutham): If there are conditional eval nodes, not all nodes may be
       # executed in the final layer. Handle this case when conditionals are
       # supported.
-      if layer_num == len(layers) - 1 and completed_node_ids == set(
+      if layer_num == len(layers) - 1 and successful_node_ids == set(
           node.node_info.id for node in nodes):
         return [
             task_lib.FinalizePipelineTask(
