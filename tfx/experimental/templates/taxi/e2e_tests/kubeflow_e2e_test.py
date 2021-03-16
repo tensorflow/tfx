@@ -82,9 +82,9 @@ class TaxiTemplateKubeflowE2ETest(test_utils.BaseEndToEndTest):
 
     self._prepare_skaffold()
 
-  def tearDown(self):
-    super(TaxiTemplateKubeflowE2ETest, self).tearDown()
-    self._cleanup_kfp()
+  # def tearDown(self):
+  #   super(TaxiTemplateKubeflowE2ETest, self).tearDown()
+  #   self._cleanup_kfp()
 
   def _cleanup_kfp(self):
     self._delete_base_container_image()
@@ -264,6 +264,7 @@ class TaxiTemplateKubeflowE2ETest(test_utils.BaseEndToEndTest):
         os.path.join('pipeline', 'configs.py'), [
             ('GOOGLE_CLOUD_REGION = \'\'',
              'GOOGLE_CLOUD_REGION = \'{}\''.format(self._GCP_REGION)),
+            ('_query_sample_rate = 0.0001', '_query_sample_rate = 0.000001'),
             ('\'imageUri\': \'gcr.io/\' + GOOGLE_CLOUD_PROJECT + \'/tfx-pipeline\'',
              '\'imageUri\': \'{}\''.format(self._target_container_image)),
         ])
