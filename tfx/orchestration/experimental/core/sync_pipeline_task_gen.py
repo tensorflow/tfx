@@ -209,14 +209,13 @@ class SyncPipelineTaskGenerator(task_gen.TaskGenerator):
             execution.id),
         pipeline=self._pipeline)
 
-  def _upstream_nodes_executed(self, node: pipeline_pb2.PipelineNode) -> bool:
+  def _upstream_nodes_executed(self,
+                               cur_node: pipeline_pb2.PipelineNode) -> bool:
     """Returns `True` if all the upstream nodes have been successfully executed."""
     upstream_nodes = [
         node for node_id, node in self._node_map.items()
-        if node_id in set(node.upstream_nodes)
+        if node_id in set(cur_node.upstream_nodes)
     ]
-    if not upstream_nodes:
-      return True
     for node in upstream_nodes:
       if self._service_job_manager.is_pure_service_node(self._pipeline_state,
                                                         node.node_info.id):
