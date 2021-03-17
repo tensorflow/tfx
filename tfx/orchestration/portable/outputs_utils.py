@@ -78,16 +78,10 @@ def remove_stateful_working_dir(stateful_working_dir: Text) -> None:
       os.path.join(stateful_working_dir, os.pardir))
   try:
     fileio.rmtree(stateful_working_dir)
-  except Exception as e:  # pylint: disable=broad-except
-    if 'NotFoundError' in str(type(e)):
-      # TODO(b/175244977): This is a workaround to avoid introducing
-      # tensorflow dependency. Change this except block to use a generic
-      # NotFoundError once it is Defined in fileio.
-      logging.warning(
-          'stateful_working_dir %s is not found, not going to delete it.',
-          stateful_working_dir)
-    else:
-      raise
+  except fileio.NotFoundError:
+    logging.warning(
+        'stateful_working_dir %s is not found, not going to delete it.',
+        stateful_working_dir)
 
 
 def _attach_artifact_properties(spec: pipeline_pb2.OutputSpec.ArtifactSpec,
