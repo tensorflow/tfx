@@ -26,7 +26,6 @@ from absl import app
 from absl.flags import argparse_flags
 import requests
 from tensorflow_transform import coders as tft_coders
-from tensorflow_transform.tf_metadata import dataset_schema
 from tensorflow_transform.tf_metadata import schema_utils
 from tfx.utils import io_utils
 
@@ -46,14 +45,14 @@ def _get_raw_feature_spec(schema):
 
 def _make_proto_coder(schema):
   raw_feature_spec = _get_raw_feature_spec(schema)
-  raw_schema = dataset_schema.from_feature_spec(raw_feature_spec)
+  raw_schema = schema_utils.schema_from_feature_spec(raw_feature_spec)
   return tft_coders.ExampleProtoCoder(raw_schema)
 
 
 def _make_csv_coder(schema, column_names):
   """Return a coder for tf.transform to read csv files."""
   raw_feature_spec = _get_raw_feature_spec(schema)
-  parsing_schema = dataset_schema.from_feature_spec(raw_feature_spec)
+  parsing_schema = schema_utils.schema_from_feature_spec(raw_feature_spec)
   return tft_coders.CsvCoder(column_names, parsing_schema)
 
 

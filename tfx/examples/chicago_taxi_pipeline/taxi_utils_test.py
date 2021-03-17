@@ -27,7 +27,7 @@ import tensorflow_model_analysis as tfma
 import tensorflow_transform as tft
 from tensorflow_transform import beam as tft_beam
 from tensorflow_transform.tf_metadata import dataset_metadata
-from tensorflow_transform.tf_metadata import dataset_schema
+from tensorflow_transform.tf_metadata import schema_utils
 from tfx.components.trainer import executor as trainer_executor
 from tfx.components.trainer.fn_args_utils import DataAccessor
 from tfx.components.util import tfxio_utils
@@ -68,7 +68,7 @@ class TaxiUtilsTest(tf.test.TestCase):
     # Generate legacy `DatasetMetadata` object.  Future version of Transform
     # will accept the `Schema` proto directly.
     legacy_metadata = dataset_metadata.DatasetMetadata(
-        dataset_schema.from_feature_spec(feature_spec))
+        schema_utils.schema_from_feature_spec(feature_spec))
     tfxio = tf_example_record.TFExampleRecord(
         file_pattern=os.path.join(self._testdata_path,
                                   'csv_example_gen/train/*'),
