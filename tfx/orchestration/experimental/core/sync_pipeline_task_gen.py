@@ -13,7 +13,7 @@
 # limitations under the License.
 """TaskGenerator implementation for sync pipelines."""
 
-from typing import Callable, List
+from typing import Callable, List, Sequence
 
 from absl import logging
 from tfx.orchestration import metadata
@@ -27,6 +27,8 @@ from tfx.orchestration.portable import execution_publish_utils
 from tfx.orchestration.portable import outputs_utils
 from tfx.proto.orchestration import pipeline_pb2
 from tfx.utils import topsort
+
+from ml_metadata.proto import metadata_store_pb2
 
 
 class SyncPipelineTaskGenerator(task_gen.TaskGenerator):
@@ -126,15 +128,14 @@ class SyncPipelineTaskGenerator(task_gen.TaskGenerator):
             task_lib.exec_node_task_id_from_pipeline_node(self._pipeline,
                                                           node)):
           continue
-        executions = task_gen_utils.get_executions(self._mlmd_handle, node)
-        if (executions and
-            task_gen_utils.is_latest_execution_successful(executions)):
+        node_executions = task_gen_utils.get_executions(self._mlmd_handle, node)
+        if task_gen_utils.is_latest_execution_successful(node_executions):
           completed_node_ids.add(node_id)
           continue
         # If all upstream nodes are executed but current node is not executed,
         # the node is deemed ready for execution.
         if self._upstream_nodes_executed(node):
-          task = self._generate_task(node)
+          task = self._generate_task(node, node_executions)
           if task_lib.is_finalize_pipeline_task(task):
             return [task]
           else:
@@ -157,21 +158,23 @@ class SyncPipelineTaskGenerator(task_gen.TaskGenerator):
         ]
     return result
 
-  def _generate_task(self, node: pipeline_pb2.PipelineNode) -> task_lib.Task:
+  def _generate_task(
+      self, node: pipeline_pb2.PipelineNode,
+      node_executions: Sequence[metadata_store_pb2.Execution]) -> task_lib.Task:
     """Generates a node execution task.
 
     If node execution is not feasible, `None` is returned.
 
     Args:
       node: The pipeline node for which to generate a task.
+      node_executions: Node executions fetched from MLMD.
 
     Returns:
       Returns an `ExecNodeTask` if node can be executed. If an error occurs,
       a `FinalizePipelineTask` is returned to abort the pipeline execution.
     """
-    executions = task_gen_utils.get_executions(self._mlmd_handle, node)
     result = task_gen_utils.generate_task_from_active_execution(
-        self._mlmd_handle, self._pipeline, node, executions)
+        self._mlmd_handle, self._pipeline, node, node_executions)
     if result:
       return result
 
@@ -225,9 +228,7 @@ class SyncPipelineTaskGenerator(task_gen.TaskGenerator):
           continue
         else:
           return False
-      upstream_node_executions = task_gen_utils.get_executions(
-          self._mlmd_handle, node)
-      if not task_gen_utils.is_latest_execution_successful(
-          upstream_node_executions):
+      node_executions = task_gen_utils.get_executions(self._mlmd_handle, node)
+      if not task_gen_utils.is_latest_execution_successful(node_executions):
         return False
     return True
