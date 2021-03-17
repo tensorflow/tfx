@@ -55,7 +55,16 @@ class _FakeExecutorOperator(base_executor_operator.BaseExecutorOperator):
       self, execution_info: data_types.ExecutionInfo
   ) -> execution_result_pb2.ExecutorOutput:
     self._exec_properties = execution_info.exec_properties
-    return execution_result_pb2.ExecutorOutput()
+    # The Launcher expects the ExecutorOperator to return an ExecutorOutput
+    # structure with the output artifact information for MLMD publishing.
+    output_dict = copy.deepcopy(execution_info.output_dict)
+    result = execution_result_pb2.ExecutorOutput()
+    for key, artifact_list in output_dict.items():
+      artifacts = execution_result_pb2.ExecutorOutput.ArtifactList()
+      for artifact in artifact_list:
+        artifacts.artifacts.append(artifact.mlmd_artifact)
+      result.output_artifacts[key].CopyFrom(artifacts)
+    return result
 
 
 class _FakeCrashingExecutorOperator(base_executor_operator.BaseExecutorOperator
