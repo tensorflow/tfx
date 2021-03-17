@@ -6,6 +6,10 @@
 
 *  Added e2e rolling window example/test for Span Resolver.
 
+*  Performance improvement in Transform by avoiding excess encodings and
+   decodings when it materializes transformed examples or generates statistics
+   (both enabled by default).
+
 ## Breaking Changes
 
 ### For Pipeline Authors
