@@ -31,7 +31,7 @@ source ./penguin/bin/activate
 Next, install the dependencies required by the penguin example:
 
 <pre class="devsite-terminal devsite-click-to-copy">
-pip install tfx
+pip install -U tfx[examples]
 </pre>
 
 Then, clone the tfx repo and copy penguin/ folder to home directory:

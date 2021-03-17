@@ -37,7 +37,7 @@ Next, install the dependencies required by the MNIST example (appropriate
 version of TF2 will be installed automatically).
 
 <pre class="devsite-terminal devsite-click-to-copy">
-pip install tfx
+pip install -U tfx[examples]
 </pre>
 
 Then, clone the tfx repo and copy mnist/ folder to home directory:

@@ -97,7 +97,7 @@ Next, install the dependencies required by the Chicago Taxi example:
 
 <pre class="devsite-terminal devsite-click-to-copy">
 pip install apache-airflow==1.10.9
-pip install -U tfx
+pip install -U tfx[examples]
 </pre>
 
 Next, initialize Airflow
