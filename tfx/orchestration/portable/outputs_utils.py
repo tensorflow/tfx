@@ -35,7 +35,6 @@ _STATEFUL_WORKING_DIR = 'stateful_working_dir'
 _DRIVER_OUTPUT_FILE = 'driver_output.pb'
 _EXECUTOR_OUTPUT_FILE = 'executor_output.pb'
 _VALUE_ARTIFACT_FILE_NAME = 'value'
-_ARTIFACT_TFX_VERSION_CUSTOM_PROPERTY_KEY = 'tfx_version'
 
 
 def make_output_dirs(output_dict: Dict[Text, List[types.Artifact]]) -> None:
@@ -232,9 +231,10 @@ def tag_output_artifacts_with_version(
   for unused_key, artifact_list in output_artifacts.items():
     for artifact in artifact_list:
       if not artifact.has_custom_property(
-          _ARTIFACT_TFX_VERSION_CUSTOM_PROPERTY_KEY):
+          artifact_utils.ARTIFACT_TFX_VERSION_CUSTOM_PROPERTY_KEY):
         artifact.set_string_custom_property(
-            _ARTIFACT_TFX_VERSION_CUSTOM_PROPERTY_KEY, version.__version__)
+            artifact_utils.ARTIFACT_TFX_VERSION_CUSTOM_PROPERTY_KEY,
+            version.__version__)
 
 
 def tag_executor_output_with_version(
@@ -242,8 +242,9 @@ def tag_executor_output_with_version(
   """Tag output artifacts in ExecutorOutput with the current TFX version."""
   for unused_key, artifacts in executor_output.output_artifacts.items():
     for artifact in artifacts.artifacts:
-      if (_ARTIFACT_TFX_VERSION_CUSTOM_PROPERTY_KEY not in
-          artifact.custom_properties):
+      if (artifact_utils.ARTIFACT_TFX_VERSION_CUSTOM_PROPERTY_KEY
+          not in artifact.custom_properties):
         artifact.custom_properties[
-            _ARTIFACT_TFX_VERSION_CUSTOM_PROPERTY_KEY].string_value = (
+            artifact_utils
+            .ARTIFACT_TFX_VERSION_CUSTOM_PROPERTY_KEY].string_value = (
                 version.__version__)

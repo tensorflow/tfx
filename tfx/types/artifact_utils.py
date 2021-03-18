@@ -24,12 +24,16 @@ import json
 import os
 import re
 from typing import Dict, List, Optional, Text, Type
-
 import absl
+from packaging import version
+
 from tfx.types.artifact import _ArtifactType
 from tfx.types.artifact import Artifact
 
 from ml_metadata.proto import metadata_store_pb2
+
+
+ARTIFACT_TFX_VERSION_CUSTOM_PROPERTY_KEY = 'tfx_version'
 
 
 # TODO(ruoyu): Deprecate this function since it is no longer needed.
@@ -81,6 +85,28 @@ def get_single_uri(artifact_list: List[Artifact]) -> Text:
     ValueError: If length of artifact_list is not one.
   """
   return get_single_instance(artifact_list).uri
+
+
+def is_artifact_version_older_than(artifact: Artifact,
+                                   artifact_version: Text) -> bool:
+  """Check if artifact belongs to old version."""
+  if artifact.mlmd_artifact.state == metadata_store_pb2.Artifact.UNKNOWN:
+    # Newly generated artifact should use the latest artifact payload format.
+    return False
+
+  # For artifact that resolved from MLMD.
+  if not artifact.has_custom_property(ARTIFACT_TFX_VERSION_CUSTOM_PROPERTY_KEY):
+    # Artifact without version.
+    return True
+
+  if (version.parse(
+      artifact.get_string_custom_property(
+          ARTIFACT_TFX_VERSION_CUSTOM_PROPERTY_KEY)) <
+      version.parse(artifact_version)):
+    # Artifact with old version.
+    return True
+  else:
+    return False
 
 
 def get_split_uris(artifact_list: List[Artifact], split: Text) -> List[Text]:

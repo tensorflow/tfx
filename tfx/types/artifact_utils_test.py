@@ -30,6 +30,8 @@ from tfx.types import artifact
 from tfx.types import artifact_utils
 from tfx.types import standard_artifacts
 
+from ml_metadata.proto import metadata_store_pb2
+
 
 class _MyArtifact(artifact.Artifact):
   TYPE_NAME = 'ArtifactUtilsTypeName'
@@ -112,6 +114,24 @@ class ArtifactUtilsTest(tf.test.TestCase):
     self.assertEqual('UnknownTypeName', reconstructed_class.TYPE_NAME)
     self.assertEqual(mlmd_artifact_type,
                      reconstructed_class._get_artifact_type())
+
+  def testIsArtifactVersionOlderThan(self):
+    examples = standard_artifacts.Examples()
+    self.assertFalse(
+        artifact_utils.is_artifact_version_older_than(examples, '0.1'))
+    examples.mlmd_artifact.state = metadata_store_pb2.Artifact.LIVE
+    self.assertTrue(
+        artifact_utils.is_artifact_version_older_than(examples, '0.1'))
+    examples.set_string_custom_property(
+        artifact_utils.ARTIFACT_TFX_VERSION_CUSTOM_PROPERTY_KEY, '0.2')
+    self.assertTrue(
+        artifact_utils.is_artifact_version_older_than(examples, '0.10'))
+    self.assertTrue(
+        artifact_utils.is_artifact_version_older_than(examples, '0.3'))
+    self.assertFalse(
+        artifact_utils.is_artifact_version_older_than(examples, '0.2'))
+    self.assertFalse(
+        artifact_utils.is_artifact_version_older_than(examples, '0.1'))
 
 
 if __name__ == '__main__':
