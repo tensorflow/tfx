@@ -125,6 +125,11 @@ if [[ "${TFX_VERSION}" == 0.27.* ]]; then
   )
 fi
 
+# TODO(b/182435431): Delete the following test after the hanging issue resolved.
+SKIP_LIST+=(
+  "tfx/experimental/distributed_inference/graphdef_experiments/subgraph_partitioning/beam_pipeline_test.py"
+)
+
 # TODO(b/154871293): Migrate to pytest after fixing pytest issues.
 # xargs stops only when the exit code is 255, so we convert any
 # failure to exit code 255.
