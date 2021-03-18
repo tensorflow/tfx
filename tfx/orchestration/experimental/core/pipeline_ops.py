@@ -14,7 +14,6 @@
 """Pipeline-level operations."""
 
 import copy
-import datetime
 import functools
 import threading
 import time
@@ -22,7 +21,6 @@ import typing
 from typing import List
 
 from absl import logging
-from tfx.dsl.compiler import constants
 from tfx.orchestration import metadata
 from tfx.orchestration.experimental.core import async_pipeline_task_gen
 from tfx.orchestration.experimental.core import pipeline_state as pstate
@@ -32,7 +30,6 @@ from tfx.orchestration.experimental.core import sync_pipeline_task_gen
 from tfx.orchestration.experimental.core import task as task_lib
 from tfx.orchestration.experimental.core import task_gen_utils
 from tfx.orchestration.experimental.core import task_queue as tq
-from tfx.orchestration.portable import runtime_parameter_utils
 from tfx.orchestration.portable.mlmd import execution_lib
 from tfx.proto.orchestration import pipeline_pb2
 
@@ -123,22 +120,16 @@ def initiate_pipeline_start(
 
   Raises:
     status_lib.StatusNotOkError: Failure to initiate pipeline start. With code
-      `INVALILD_ARGUMENT` if a sync pipeline is not configured for runtime
-      parameter substitution of `pipeline_run_id`.
+      `INVALILD_ARGUMENT` if it's a sync pipeline without `pipeline_run_id`
+      provided.
   """
   pipeline = copy.deepcopy(pipeline)
-  if pipeline.execution_mode == pipeline_pb2.Pipeline.SYNC:
-    if not pipeline.runtime_spec.pipeline_run_id.HasField('runtime_parameter'):
-      raise status_lib.StatusNotOkError(
-          code=status_lib.Code.INVALID_ARGUMENT,
-          message=(
-              'Sync pipeline IR must be configured for runtime substitution of '
-              'pipeline_run_id'))
-    pipeline_run_id = datetime.datetime.now().strftime('%Y%m%d-%H%M%S-%f')
-    runtime_parameter_utils.substitute_runtime_parameter(
-        pipeline, {constants.PIPELINE_RUN_ID_PARAMETER_NAME: pipeline_run_id})
-    assert (pipeline.runtime_spec.pipeline_run_id.field_value.string_value ==
-            pipeline_run_id)
+  if pipeline.execution_mode == pipeline_pb2.Pipeline.SYNC and not (
+      pipeline.runtime_spec.pipeline_run_id.HasField('field_value') and
+      pipeline.runtime_spec.pipeline_run_id.field_value.string_value):
+    raise status_lib.StatusNotOkError(
+        code=status_lib.Code.INVALID_ARGUMENT,
+        message='Sync pipeline IR must specify pipeline_run_id.')
 
   with pstate.PipelineState.new(mlmd_handle, pipeline) as pipeline_state:
     pass
