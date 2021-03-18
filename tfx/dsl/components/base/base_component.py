@@ -33,12 +33,6 @@ from tfx.utils import abc_utils
 
 from google.protobuf import message
 
-# Constants that used for serializing and de-serializing components.
-_DRIVER_CLASS_KEY = 'driver_class'
-_EXECUTOR_SPEC_KEY = 'executor_spec'
-_INSTANCE_NAME_KEY = '_instance_name'
-_SPEC_KEY = 'spec'
-
 
 class BaseComponent(with_metaclass(abc.ABCMeta, base_node.BaseNode)):
   """Base class for a TFX pipeline component.
