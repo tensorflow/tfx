@@ -21,6 +21,7 @@ from __future__ import print_function
 from typing import Any, Dict, List, Optional, Text, Union
 
 from absl import logging
+from tensorflow_docs.api_generator import doc_controls
 import tensorflow_model_analysis as tfma
 from tfx import types
 from tfx.components.evaluator import executor
@@ -33,6 +34,7 @@ from tfx.types.standard_component_specs import EvaluatorSpec
 from tfx.utils import json_utils
 
 
+@doc_controls.do_not_generate_docs
 class Evaluator(base_component.BaseComponent):
   """A TFX component to evaluate models trained by a TFX Trainer component.
 

@@ -46,7 +46,10 @@ def _test_pipeline(pipeline_id,
   pipeline.pipeline_info.id = pipeline_id
   pipeline.execution_mode = execution_mode
   if execution_mode == pipeline_pb2.Pipeline.SYNC:
-    pipeline.runtime_spec.pipeline_run_id.field_value.string_value = 'run0'
+    pipeline.runtime_spec.pipeline_run_id.runtime_parameter.name = (
+        'pipeline_run_id')
+    pipeline.runtime_spec.pipeline_run_id.runtime_parameter.type = (
+        pipeline_pb2.RuntimeParameter.STRING)
   return pipeline
 
 
@@ -102,6 +105,16 @@ class PipelineOpsTest(tu.TfxTest, parameterized.TestCase):
       pipeline_state3 = pipeline_ops.initiate_pipeline_start(m, pipeline)
       self.assertEqual(metadata_store_pb2.Execution.NEW,
                        pipeline_state3.execution.last_known_state)
+
+  def test_sync_pipeline_run_id_runtime_parameter(self):
+    with self._mlmd_connection as m:
+      pipeline = _test_pipeline('pipeline1', pipeline_pb2.Pipeline.SYNC)
+      pipeline_state = pipeline_ops.initiate_pipeline_start(m, pipeline)
+      self.assertNotEmpty(pipeline_state.pipeline.runtime_spec.pipeline_run_id
+                          .field_value.string_value)
+      self.assertEqual(
+          task_lib.PipelineUid(pipeline_id='pipeline1'),
+          pipeline_state.pipeline_uid)
 
   @parameterized.named_parameters(
       dict(testcase_name='async', pipeline=_test_pipeline('pipeline1')),

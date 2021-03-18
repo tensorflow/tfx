@@ -39,19 +39,18 @@ from absl import flags
 import tensorflow_docs.api_generator as api_generator
 from tensorflow_docs.api_generator import doc_controls
 from tensorflow_docs.api_generator import generate_lib
+# import tensorflow_docs.api_generator.utils as doc_utils
 
 
 import tfx
 # pylint: disable=unused-import
-from tfx import components
-from tfx import extensions
-from tfx import orchestration
+# from tfx import components
+# from tfx import orchestration
 
 import tfx.version
 # pylint: enable=unused-import
 
-GITHUB_URL_PREFIX = ("https://github.com/tensorflow/tfx/blob/{}/tfx".format(
-    tfx.__version__))
+GITHUB_URL_PREFIX = ("https://github.com/tensorflow/tfx/blob/master/tfx")
 
 flags.DEFINE_string("output_dir", "/tmp/tfx_api", "Where to output the docs")
 flags.DEFINE_string(
@@ -98,9 +97,7 @@ def ignore_test_objects(path, parent, children):
 
 def main(_):
   # These make up for the empty __init__.py files.
-  api_generator.utils.recursive_import(tfx.orchestration)
-  api_generator.utils.recursive_import(tfx.components)
-  api_generator.utils.recursive_import(tfx.extensions)
+  # doc_utils.recursive_import(tfx)
 
   do_not_generate_docs_for = []
   for name in ["utils", "proto", "dependencies", "version", "examples"]:
@@ -123,7 +120,8 @@ def main(_):
       # documented in the location that defines them, instead of every location
       # that imports them.
       callbacks=[
-          api_generator.public_api.local_definitions_filter, ignore_test_objects
+          api_generator.public_api.explicit_package_contents_filter,
+          ignore_test_objects
       ])
   doc_generator.build(output_dir=FLAGS.output_dir)
 
