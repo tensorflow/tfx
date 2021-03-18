@@ -70,14 +70,40 @@ protobuf stub code generation. Check whether Bazel is installed and executable:
 bazel --version
 ```
 
-After installing Bazel, you can install TFX source code in a virtual
-environment in editable (`-e`) mode, which will pick up your local changes
-immediately without re-installing every time.
+After installing Bazel, you can move to the cloned source directory.
 
 ```shell
 pushd <your_source_dir>
-pip install -e .[all]   # the [all] suffix includes additional packages for test
 ```
+
+TFX has many dependent family libraries like TensorFlow Data Validation and
+TensorFlow Model Analysis. Sometimes, TFX uses their most recent API changes
+before published. So it is safer to use nightly versions of those libraries when
+you develop TFX. You have to set property depdendency using
+`TFX_DEPENDENCY_SELECTOR` environment variable, and supply our nightly package
+index URL when installing TFX.
+
+You can install TFX source code in a virtual environment in editable (`-e`)
+mode, which will pick up your local changes immediately without re-installing
+every time.
+
+```shell
+export TFX_DEPENDENCY_SELECTOR=NIGHTLY
+
+# the [all] suffix includes additional packages for test
+pip install -e .[all] -i https://pypi-nightly.tensorflow.org/simple
+```
+
+Alternatively, you can also build all TFX family libraries from github source
+although it takes quite long.
+
+```shell
+export TFX_DEPENDENCY_SELECTOR=GIT_MASTER
+pip install -e .[all]
+```
+
+You can read more description on
+[our dependency definition](https://github.com/tensorflow/tfx/blob/981d28e6d83a44d48cf070c28807fdf129ce2a1d/tfx/dependencies.py#L15-L36).
 
 If you have a local change in `.proto` files, you should re-generate the
 protobuf stub code before using it with the following command. (This is
