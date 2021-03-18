@@ -16,9 +16,12 @@ the respective repo directly:
 
 [TensorFlow Serving Repo](https://github.com/tensorflow/serving/issues)
 
-**System information** - TFX Version (you are using): - Environment in which you
-plan to use the feature (e.g., Local (Linux/MacOS/Windows), Interactive
-Notebook, Google Cloud, etc..): - Are you willing to contribute it (Yes/No):
+**System information**
+
+- TFX Version (you are using):
+- Environment in which you plan to use the feature (e.g., Local
+  (Linux/MacOS/Windows), Interactive Notebook, Google Cloud, etc..):
+- Are you willing to contribute it (Yes/No):
 
 **Describe the feature and the current behavior/state.**
 

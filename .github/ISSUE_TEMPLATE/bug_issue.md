@@ -17,21 +17,29 @@ respective repo directly:
 
 [TensorFlow Serving Repo](https://github.com/tensorflow/serving/issues)
 
-**System information** - Have I specified the code to reproduce the issue
-(Yes/No): - Environment in which the code is executed (e.g., Local
-(Linux/MacOS/Windows), Interactive Notebook, Google Cloud, etc): - TensorFlow
-version (you are using): - TFX Version: - Python version:
+**System information**
+
+- Have I specified the code to reproduce the issue(Yes/No):
+- Environment in which the code is executed (e.g., Local(Linux/MacOS/Windows),
+  Interactive Notebook, Google Cloud, etc):
+- TensorFlow version (you are using):
+- TFX Version:
+- Python version:
 
 **Describe the current behavior**
 
 **Describe the expected behavior**
 
-**Standalone code to reproduce the issue** Providing a bare minimum test case or
-step(s) to reproduce the problem will greatly help us to debug the issue. If
-possible, please share a link to Colab/Jupyter/any notebook.
+**Standalone code to reproduce the issue**
+
+Providing a bare minimum test case or step(s) to reproduce the problem will
+greatly help us to debug the issue. If possible, please share a link to
+Colab/Jupyter/any notebook.
 
 **Name of your Organization (Optional)**
 
-**Other info / logs** Include any logs or source code that would be helpful to
-diagnose the problem. If including tracebacks, please include the full
-traceback. Large logs and files should be attached.
+**Other info / logs**
+
+Include any logs or source code that would be helpful to diagnose the problem.
+If including tracebacks, please include the full traceback. Large logs and files
+should be attached.
