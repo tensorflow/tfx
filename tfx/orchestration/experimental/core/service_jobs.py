@@ -46,8 +46,8 @@ class ServiceJobManager(abc.ABC):
     * Start any service jobs required by the pipeline node.
     * Probe job health, handle failure and return appropriate status.
 
-    Note that this method will only be called if there's at least one
-    service job defined in the particular node.
+    Note that this method will only be called if either `is_pure_service_node`
+    or `is_mixed_service_node` return `True` for the node.
 
     Args:
       pipeline_state: A `PipelineState` object for an active pipeline.
@@ -62,8 +62,8 @@ class ServiceJobManager(abc.ABC):
                          node_id: str) -> None:
     """Stops service jobs (if any) associated with the node.
 
-    Note that this method will only be called if there's at least one
-    service job defined in the particular node.
+    Note that this method will only be called if either `is_pure_service_node`
+    or `is_mixed_service_node` return `True` for the node.
 
     Args:
       pipeline_state: A `PipelineState` object for an active pipeline.
@@ -83,18 +83,39 @@ class ServiceJobManager(abc.ABC):
       `True` if the node only has service job(s).
     """
 
+  @abc.abstractmethod
+  def is_mixed_service_node(self, pipeline_state: pstate.PipelineState,
+                            node_id: str) -> bool:
+    """Returns `True` if the given node has a mix of executor and service jobs.
+
+    Args:
+      pipeline_state: A `PipelineState` object for an active pipeline.
+      node_id: Id of the node in the pipeline to be checked.
+
+    Returns:
+      `True` if the node has a mix of executor and service jobs.
+    """
+
 
 class DummyServiceJobManager(ServiceJobManager):
   """A service job manager for environments without service jobs support."""
 
-  def ensure_node_services(self, unused_pipeline_state: pstate.PipelineState,
-                           unused_node_id: str) -> ServiceStatus:
+  def ensure_node_services(self, pipeline_state: pstate.PipelineState,
+                           node_id: str) -> ServiceStatus:
+    del pipeline_state, node_id
     raise NotImplementedError('Service jobs not supported.')
 
-  def stop_node_services(self, unused_pipeline_state: pstate.PipelineState,
-                         unused_node_id: str) -> None:
+  def stop_node_services(self, pipeline_state: pstate.PipelineState,
+                         node_id: str) -> None:
+    del pipeline_state, node_id
     raise NotImplementedError('Service jobs not supported.')
 
-  def is_pure_service_node(self, unused_pipeline_state: pstate.PipelineState,
-                           unused_node_id: str) -> bool:
+  def is_pure_service_node(self, pipeline_state: pstate.PipelineState,
+                           node_id: str) -> bool:
+    del pipeline_state, node_id
+    return False
+
+  def is_mixed_service_node(self, pipeline_state: pstate.PipelineState,
+                            node_id: str) -> bool:
+    del pipeline_state, node_id
     return False
