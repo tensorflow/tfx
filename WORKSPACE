@@ -63,4 +63,4 @@ tfx_workspace()
 # Specify the minimum required bazel version.
 load("@org_tensorflow//tensorflow:version_check.bzl", "check_bazel_version_at_least")
 
-check_bazel_version_at_least("0.24.1")
+check_bazel_version_at_least("3.7.2")
