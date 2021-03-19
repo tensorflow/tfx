@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -79,7 +78,7 @@ class ImportUtilsTest(tf.test.TestCase):
           """def test_fn(inputs):
             return sum(inputs)
           """)
-    i = import_utils._tfx_module_finder.count_registered
+    count_registered = import_utils._tfx_module_finder.count_registered
     fn_1 = import_utils.import_func_from_source(test_fn_file, 'test_fn')
     self.assertEqual(10, fn_1([1, 2, 3, 4]))
     with tf.io.gfile.GFile(test_fn_file, mode='w') as f:
@@ -90,7 +89,8 @@ class ImportUtilsTest(tf.test.TestCase):
     fn_2 = import_utils.import_func_from_source(test_fn_file, 'test_fn')
     self.assertEqual(11, fn_2([1, 2, 3, 4]))
     fn_3 = getattr(
-        importlib.reload(sys.modules['user_module_%d' % i]), 'test_fn')
+        importlib.reload(sys.modules['user_module_%d' % count_registered]),
+        'test_fn')
     self.assertEqual(11, fn_3([1, 2, 3, 4]))
 
 if __name__ == '__main__':
