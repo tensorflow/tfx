@@ -14,17 +14,12 @@
 # limitations under the License.
 set -u
 
-source `dirname "$(readlink -f "$0")"`/setup_beam.sh
-
-if [ "${VIRTUAL_ENV:-unset}" == "unset" ]; then
-  echo "Please run the setup script from a vritual environment and make sure environment variable\
-  VIRTUAL_ENV is set correctly."
-  exit 1
-fi
-
-FLINK_VERSION="1.9.1"
+WORK_DIR="/tmp/beam"
+# LINT.IfChange
+FLINK_VERSION="1.12.1"
+# LINT.ThenChange(../taxi_pipeline_beam.py)
 FLINK_NAME="flink-$FLINK_VERSION"
-FLINK_BINARY="$FLINK_NAME-bin-scala_2.11.tgz"
+FLINK_BINARY="$FLINK_NAME-bin-scala_2.12.tgz"
 FLINK_DOWNLOAD_URL="http://archive.apache.org/dist/flink/flink-$FLINK_VERSION/$FLINK_BINARY"
 
 function setup_flink() {
@@ -51,19 +46,8 @@ function start_flink() {
   sed -i "s/taskmanager.numberOfTaskSlots: [0-9]*/taskmanager.numberOfTaskSlots: $parallelism/g" $flink_conf
   sed -i "s/#*rest.bind-address: .*/rest.bind-address: localhost/g" $flink_conf
 
-  # TODO(b/175810858): Obviate setting this.
-  # Increase taskmanager heap size to reduce back pressure
-  sed -i "s/taskmanager.heap.size: [0-9]*m/taskmanager.heap.size: 2048m/g" $flink_conf
-
   cd $WORK_DIR/$FLINK_NAME && ./bin/stop-cluster.sh && ./bin/start-cluster.sh
   echo "Flink running from $WORK_DIR/$FLINK_NAME"
-}
-
-# TODO(b/139747527): Start the job server through the SDK automatically.
-function start_job_server() {
-  echo "Starting Beam Flink jobserver"
-  cd $BEAM_DIR
-  ./gradlew :runners:flink:1.9:job-server:runShadow -PflinkMasterUrl=localhost:8081
 }
 
 # LINT.IfChange
@@ -77,21 +61,11 @@ except NotImplementedError:
 print(parallelism)
 "
 }
-# LINT.ThenChange(../taxi_pipeline_portable_beam.py)
+# LINT.ThenChange(../taxi_pipeline_beam.py)
 
 function main(){
-  check_java
-  # Check and create the relevant directory
-  if [ ! -d "$WORK_DIR" ]; then
-    install_beam
-  else
-    echo "Work directory $WORK_DIR already exists."
-    echo "Please delete $WORK_DIR in case of issue."
-    update_beam
-  fi
   setup_flink
   start_flink
-  start_job_server
 }
 
 main $@

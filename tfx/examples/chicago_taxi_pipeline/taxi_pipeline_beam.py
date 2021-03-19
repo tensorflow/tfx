@@ -18,10 +18,14 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import multiprocessing
 import os
+import socket
+import sys
 from typing import List, Text
 
 import absl
+from absl.flags import argparse_flags
 import tensorflow_model_analysis as tfma
 
 from tfx.components import CsvExampleGen
@@ -65,13 +69,54 @@ _pipeline_root = os.path.join(_tfx_root, 'pipelines', _pipeline_name)
 _metadata_path = os.path.join(_tfx_root, 'metadata', _pipeline_name,
                               'metadata.db')
 
-# Pipeline arguments for Beam powered Components.
-_beam_pipeline_args = [
-    '--direct_running_mode=multi_processing',
-    # 0 means auto-detect based on on the number of CPUs available
-    # during execution time.
-    '--direct_num_workers=0',
+# LINT.IfChange
+try:
+  _parallelism = multiprocessing.cpu_count()
+except NotImplementedError:
+  _parallelism = 1
+# LINT.ThenChange(setup/setup_beam_on_flink.sh)
+
+# Common pipeline arguments used by both Flink and Spark runners.
+_beam_portable_pipeline_args = [
+    # The runner will instruct the original Python process to start Beam Python
+    # workers.
+    '--environment_type=LOOPBACK',
+    # Start Beam Python workers as separate processes as opposed to threads.
+    '--experiments=use_loopback_process_worker=True',
+    '--sdk_worker_parallelism=%d' % _parallelism,
+
+    # Setting environment_cache_millis to practically infinity enables
+    # continual reuse of Beam SDK workers, improving performance.
+    '--environment_cache_millis=1000000',
+
+    # TODO(b/183057237): Obviate setting this.
+    '--experiments=pre_optimize=all',
 ]
+
+# Pipeline arguments for Beam powered Components.
+# Arguments differ according to runner.
+_beam_pipeline_args_by_runner = {
+    'DirectRunner': [
+        '--direct_running_mode=multi_processing',
+        # 0 means auto-detect based on on the number of CPUs available
+        # during execution time.
+        '--direct_num_workers=0',
+    ],
+    'SparkRunner': [
+        '--runner=SparkRunner',
+        '--spark_submit_uber_jar',
+        '--spark_rest_url=http://%s:6066' % socket.gethostname(),
+    ] + _beam_portable_pipeline_args,
+    'FlinkRunner': [
+        '--runner=FlinkRunner',
+        # LINT.IfChange
+        '--flink_version=1.12',
+        # LINT.ThenChange(setup/setup_beam_on_flink.sh)
+        '--flink_submit_uber_jar',
+        '--flink_master=http://localhost:8081',
+        '--parallelism=%d' % _parallelism,
+    ] + _beam_portable_pipeline_args
+}
 
 
 # TODO(b/137289334): rename this as simple after DAG visualization is done.
@@ -180,6 +225,17 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
 if __name__ == '__main__':
   absl.logging.set_verbosity(absl.logging.INFO)
 
+  parser = argparse_flags.ArgumentParser()
+  parser.add_argument(
+      '--runner',
+      type=str,
+      default='DirectRunner',
+      choices=['DirectRunner', 'FlinkRunner', 'SparkRunner'],
+      help='The Beam runner to execute Beam-powered components. '
+      'For FlinkRunner or SparkRunner, first run setup/setup_beam_on_flink.sh '
+      'or setup/setup_beam_on_spark.sh, respectively.')
+  parsed_args, _ = parser.parse_known_args(sys.argv)
+
   BeamDagRunner().run(
       _create_pipeline(
           pipeline_name=_pipeline_name,
@@ -188,4 +244,4 @@ if __name__ == '__main__':
           module_file=_module_file,
           serving_model_dir=_serving_model_dir,
           metadata_path=_metadata_path,
-          beam_pipeline_args=_beam_pipeline_args))
+          beam_pipeline_args=_beam_pipeline_args_by_runner[parsed_args.runner]))

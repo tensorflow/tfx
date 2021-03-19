@@ -24,6 +24,10 @@
     default publisher to the TFX SDK version.
 
 ## Documentation Updates
+*   Simplified Apache Spark and Flink example deployment scripts by using Beam's
+    SparkRunner and FlinkRunner classes.
+*   Upgraded example Apache Flink deployment to Flink 1.12.1.
+*   Upgraded example Apache Spark deployment to Spark 2.4.7.
 
 # Version 0.28.0
 

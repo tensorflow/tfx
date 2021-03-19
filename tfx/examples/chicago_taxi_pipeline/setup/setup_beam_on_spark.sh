@@ -14,15 +14,8 @@
 # limitations under the License.
 set -u
 
-source `dirname "$(readlink -f "$0")"`/setup_beam.sh
-
-if [ "${VIRTUAL_ENV:-unset}" == "unset" ]; then
-  echo "Please run the setup script from a vritual environment and make sure environment variable\
-  VIRTUAL_ENV is set correctly."
-  exit 1
-fi
-
-SPARK_VERSION="2.4.4"
+WORK_DIR="/tmp/beam"
+SPARK_VERSION="2.4.7"
 SPARK_NAME="spark-$SPARK_VERSION"
 SPARK_ROOT="$SPARK_NAME-bin-hadoop2.7"
 SPARK_BINARY="$SPARK_ROOT.tgz"
@@ -35,6 +28,8 @@ SPARK_CONF=spark.conf
 SPARK_SECRET=`openssl rand -hex 20`
 
 function setup_spark() {
+  echo "Using work directory $WORK_DIR"
+  mkdir -p $WORK_DIR
   if [ ! -d $WORK_DIR/$SPARK_ROOT ]; then
     echo "SETUP SPARK at $WORK_DIR/$SPARK_ROOT"
     cd $WORK_DIR && curl $SPARK_DOWNLOAD_URL -o $WORK_DIR/$SPARK_BINARY  && tar -xvf $SPARK_BINARY
@@ -57,36 +52,18 @@ function start_spark() {
   ./sbin/stop-all.sh
   # Authenticate to avoid CVE-2018-17190
   # https://spark.apache.org/security.html
-  echo -e "spark.authenticate true\nspark.authenticate.secret $SPARK_SECRET" > $SPARK_CONF
+  echo -e "spark.authenticate true" > $SPARK_CONF
+  echo -e "spark.authenticate.secret $SPARK_SECRET" > $SPARK_CONF
+  echo -e "spark.master.rest.enabled true" > $SPARK_CONF
   # default web UI port (8080) is also used by Airflow
   ./sbin/start-master.sh -h $SPARK_HOST -p $SPARK_PORT --webui-port 8081 --properties-file $SPARK_CONF
   ./sbin/start-slave.sh $SPARK_LEADER_URL --properties-file $SPARK_CONF
   echo "Spark running from $WORK_DIR/$SPARK_ROOT"
 }
 
-# TODO(b/139747527): Start the job server through the SDK automatically.
-function start_job_server() {
-  echo "Starting Beam Spark jobserver"
-  cd $BEAM_DIR
-  ./gradlew :runners:spark:job-server:runShadow \
-      -PsparkMasterUrl=$SPARK_LEADER_URL \
-      -Dspark.authenticate=true \
-      -Dspark.authenticate.secret=$SPARK_SECRET
-}
-
 function main(){
-  check_java
-  # Check and create the relevant directory
-  if [ ! -d "$WORK_DIR" ]; then
-    install_beam
-  else
-    echo "Work directory $WORK_DIR already exists."
-    echo "Please delete $WORK_DIR in case of issue."
-    update_beam
-  fi
   setup_spark
   start_spark
-  start_job_server
 }
 
 main $@
