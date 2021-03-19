@@ -425,7 +425,11 @@ class Launcher(object):
 
       # TODO(b/182316162): Unify publisher handing so that post-execution
       # artifact logic is more cleanly handled.
+      # Note that currently both the ExecutionInfo and ExecutorOutput are
+      # consulted in `execution_publish_utils.publish_succeeded_execution()`.
       outputs_utils.tag_executor_output_with_version(executor_output)
+      outputs_utils.tag_output_artifacts_with_version(
+          execution_info.output_dict)
       logging.info('Publishing output artifacts %s for execution %s',
                    execution_info.output_dict, execution_info.execution_id)
       self._publish_successful_execution(execution_info.execution_id, contexts,

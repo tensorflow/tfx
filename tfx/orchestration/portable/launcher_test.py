@@ -68,6 +68,18 @@ class _FakeExecutorOperator(base_executor_operator.BaseExecutorOperator):
     return result
 
 
+class _FakeEmptyExecutorOperator(base_executor_operator.BaseExecutorOperator):
+
+  SUPPORTED_EXECUTOR_SPEC_TYPE = [_PYTHON_CLASS_EXECUTABLE_SPEC]
+  SUPPORTED_PLATFORM_CONFIG_TYPE = None
+
+  def run_executor(
+      self, execution_info: data_types.ExecutionInfo
+  ) -> execution_result_pb2.ExecutorOutput:
+    self._exec_properties = execution_info.exec_properties
+    return execution_result_pb2.ExecutorOutput()
+
+
 class _FakeCrashingExecutorOperator(base_executor_operator.BaseExecutorOperator
                                    ):
 
@@ -339,6 +351,9 @@ class LauncherTest(test_case_utils.TfxTest):
       self.assertCountEqual(existing_exeuctions, m.store.get_executions())
 
   def testLauncher_EmptyOptionalInputTriggersExecution(self):
+    self._test_executor_operators = {
+        _PYTHON_CLASS_EXECUTABLE_SPEC: _FakeEmptyExecutorOperator
+    }
     # In this test case, both inputs of trainer are mark as optional. So even
     # when there is no input from them, the trainer can stil be triggered.
     self._trainer.inputs.inputs['examples'].min_count = 0
