@@ -130,6 +130,7 @@ def _input_fn(file_patterns,
 def _preprocess_keras_inputs(context_keras_inputs, example_keras_inputs,
                              tf_transform_output, hparams):
   """Preprocesses the inputs, including vocab lookup and embedding."""
+  # The stringlookup table seems not saved correctly.
   lookup_layer = tf.keras.layers.experimental.preprocessing.StringLookup(
       max_tokens=(
           tf_transform_output.vocabulary_size_by_name('shared_vocab') + 1),

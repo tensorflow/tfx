@@ -264,6 +264,8 @@ class Executor(base_executor.BaseExecutor):
            slice_spec=slice_spec,
            tensor_adapter_config=tensor_adapter_config))
     logging.info('Evaluation complete. Results written to %s.', output_uri)
+    logging.info('!!!!!!!!!!!!!!!!')
+    logging.info(tfma.load_eval_result(output_uri))
 
     if not run_validation:
       # TODO(jinhuang): delete the BLESSING_KEY from output_dict when supported.
@@ -290,6 +292,8 @@ class Executor(base_executor.BaseExecutor):
     # Check validation result and write BLESSED file accordingly.
     logging.info('Checking validation results.')
     validation_result = tfma.load_validation_result(output_uri)
+    logging.info('!!!!!!!!!!!!!!!!')
+    logging.info(validation_result)
     if validation_result.validation_ok:
       io_utils.write_string_file(
           os.path.join(blessing.uri, constants.BLESSED_FILE_NAME), '')

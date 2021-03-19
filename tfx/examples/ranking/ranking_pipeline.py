@@ -73,8 +73,9 @@ _beam_pipeline_args = [
 
 
 def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
-                     module_file: Text, serving_model_dir: Text,
-                     metadata_path: Text, beam_pipeline_args: List[Text]):
+                     module_file: Text, accuracy_threshold: float,
+                     serving_model_dir: Text, metadata_path: Text,
+                     beam_pipeline_args: List[Text]):
   """Creates pipeline."""
   pipeline_root = os.path.join(pipeline_root, 'pipelines', pipeline_name)
   examples = external_input(data_root)
@@ -116,6 +117,7 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
   eval_config = tfma.EvalConfig(
       model_specs=[
           tfma.ModelSpec(
+              model_type='tf_keras',
               signature_name='',
               label_key='relevance',
               padding_options=tfma.config.PaddingOptions(
@@ -135,7 +137,8 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
                               slicing_specs=[tfma.SlicingSpec()],
                               threshold=tfma.MetricThreshold(
                                   value_threshold=tfma.GenericValueThreshold(
-                                      lower_bound={'value': 0.6})))
+                                      lower_bound={'value': accuracy_threshold
+                                                  })))
                       ])
               })
       ])
@@ -184,6 +187,7 @@ if __name__ == '__main__':
           pipeline_root=_pipeline_root,
           data_root=_data_root,
           module_file=_module_file,
+          accuracy_threshold=0.6,
           metadata_path=_metadata_path,
           serving_model_dir=_serving_model_dir,
           beam_pipeline_args=_beam_pipeline_args))

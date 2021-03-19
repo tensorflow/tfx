@@ -55,6 +55,7 @@ class RankingPipelineTest(tf.test.TestCase):
             pipeline_root=self._tfx_root,
             data_root=self._data_root,
             module_file=self._module_file,
+            accuracy_threshold=0.5,
             serving_model_dir=self._serving_model_dir,
             metadata_path=self._metadata_path,
             beam_pipeline_args=['--direct_num_workers=1']))
