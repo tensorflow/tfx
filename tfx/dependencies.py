@@ -52,14 +52,14 @@ def select_constraint(default, nightly=None, git_master=None):
 
 def make_pipeline_sdk_required_install_packages():
   return [
-      'absl-py>=0.9,<0.11',
+      'absl-py>=0.9,<0.13',
       'ml-metadata' + select_constraint(
           # LINT.IfChange
           default='>=0.28,<0.29',
           # LINT.ThenChange(tfx/workspace.bzl)
           nightly='>=0.29.0.dev',
           git_master='@git+https://github.com/google/ml-metadata@master'),
-      'packaging>=20,<23',
+      'packaging>=20,<21',
       'protobuf>=3.12.2,<4',
       'six>=1.10,<2',
       'docker>=4.1,<5',
