@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -27,45 +26,6 @@ from absl import logging
 from tfx.utils import io_utils
 
 
-class _TfxModuleFinder(importlib.abc.MetaPathFinder):
-  """Registers custom modules for Interactive Context."""
-
-  _modules = {}  # a mapping fullname -> source_path
-  count_registered = 0
-
-  def find_spec(self, fullname, path, target=None):
-    del path
-    del target
-    if fullname not in self._modules:
-      return None
-    source_path = self._modules[fullname]
-    loader = importlib.machinery.SourceFileLoader(
-        fullname=fullname,
-        path=source_path)
-    return importlib.util.spec_from_loader(fullname, loader, origin=source_path)
-
-  def find_module(self, fullname, path):
-    pass
-
-  def register_module(self, fullname, path):
-    """Registers and imports a new module."""
-    if fullname in self._modules:
-      raise ValueError('Module %s is already registered' % fullname)
-    self._modules[fullname] = path
-    self.count_registered += 1
-
-  def get_module_name_by_path(self, path):
-    for module_name, source_path in self._modules.items():
-      if source_path == path:
-        return module_name
-    return None
-
-
-_imported_modules_from_source_lock = threading.Lock()
-_tfx_module_finder = _TfxModuleFinder()
-sys.meta_path.append(_tfx_module_finder)
-
-
 def import_class_by_path(class_path: Text) -> Type[Any]:
   """Import a class by its <module>.<name> path.
 
@@ -81,6 +41,63 @@ def import_class_by_path(class_path: Text) -> Type[Any]:
   return getattr(mod, classname)
 
 
+def import_func_from_module(module_path: Text, fn_name: Text) -> Callable:  # pylint: disable=g-bare-generic
+  """Imports a function from a module provided as source file or module path."""
+  user_module = importlib.import_module(module_path)
+  return getattr(user_module, fn_name)
+
+
+# This lock is used both for access to class variables for _TfxModuleFinder
+# and usage of that class, therefore must be RLock
+# to avoid deadlock among multiple levels of call stack.
+_imported_modules_from_source_lock = threading.RLock()
+
+
+class _TfxModuleFinder(importlib.abc.MetaPathFinder):
+  """Registers custom modules for Interactive Context."""
+
+  _modules = {}  # a mapping fullname -> source_path
+
+  def find_spec(self, fullname, path, target=None):
+    del path
+    del target
+    with _imported_modules_from_source_lock:
+      if fullname not in self._modules:
+        return None
+      source_path = self._modules[fullname]
+      loader = importlib.machinery.SourceFileLoader(
+          fullname=fullname, path=source_path)
+      return importlib.util.spec_from_loader(
+          fullname, loader, origin=source_path)
+
+  def find_module(self, fullname, path):
+    pass
+
+  def register_module(self, fullname, path):
+    """Registers and imports a new module."""
+    with _imported_modules_from_source_lock:
+      if fullname in self._modules:
+        raise ValueError('Module %s is already registered' % fullname)
+      self._modules[fullname] = path
+
+  def get_module_name_by_path(self, path):
+    with _imported_modules_from_source_lock:
+      for module_name, source_path in self._modules.items():
+        if source_path == path:
+          return module_name
+      return None
+
+  @property
+  def count_registered(self):
+    with _imported_modules_from_source_lock:
+      return len(self._modules)
+
+
+_tfx_module_finder = _TfxModuleFinder()
+with _imported_modules_from_source_lock:
+  sys.meta_path.append(_tfx_module_finder)
+
+
 # TODO(b/175174419): Revisit the workaround for multiple invocations of
 # import_func_from_source.
 def import_func_from_source(source_path: Text, fn_name: Text) -> Callable:  # pylint: disable=g-bare-generic
@@ -93,10 +110,11 @@ def import_func_from_source(source_path: Text, fn_name: Text) -> Callable:  # py
   module = None
   with _imported_modules_from_source_lock:
     if _tfx_module_finder.get_module_name_by_path(source_path) is None:
-      logging.info('Loading %s because it has not been loaded before.',
-                   source_path)
       # Create a unique module name.
       module_name = 'user_module_%d' % _tfx_module_finder.count_registered
+      logging.info(
+          'Loading source_path %s as name %s '
+          'because it has not been loaded before.', source_path, module_name)
       try:
         loader = importlib.machinery.SourceFileLoader(
             fullname=module_name,
@@ -118,9 +136,3 @@ def import_func_from_source(source_path: Text, fn_name: Text) -> Callable:  # py
       module = sys.modules[module_name]
       importlib.reload(module)
   return getattr(module, fn_name)
-
-
-def import_func_from_module(module_path: Text, fn_name: Text) -> Callable:  # pylint: disable=g-bare-generic
-  """Imports a function from a module provided as source file or module path."""
-  user_module = importlib.import_module(module_path)
-  return getattr(user_module, fn_name)
