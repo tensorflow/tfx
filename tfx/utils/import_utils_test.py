@@ -1,3 +1,4 @@
+# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -68,28 +69,6 @@ class ImportUtilsTest(tf.test.TestCase):
       _ = import_utils.import_func_from_module(test_fn.test_fn.__module__,
                                                'non_existing_fn')
 
-  def testtestImportFuncFromModuleReload(self):
-    temp_dir = self.create_tempdir().full_path
-    test_fn_file = os.path.join(temp_dir, 'fn.py')
-    with tf.io.gfile.GFile(test_fn_file, mode='w') as f:
-      f.write(
-          """def test_fn(inputs):
-            return sum(inputs)
-          """)
-    count_registered = import_utils._tfx_module_finder.count_registered
-    fn_1 = import_utils.import_func_from_source(test_fn_file, 'test_fn')
-    self.assertEqual(10, fn_1([1, 2, 3, 4]))
-    with tf.io.gfile.GFile(test_fn_file, mode='w') as f:
-      f.write(
-          """def test_fn(inputs):
-            return 1+sum(inputs)
-          """)
-    fn_2 = import_utils.import_func_from_source(test_fn_file, 'test_fn')
-    self.assertEqual(11, fn_2([1, 2, 3, 4]))
-    fn_3 = getattr(
-        importlib.reload(sys.modules['user_module_%d' % count_registered]),
-        'test_fn')
-    self.assertEqual(11, fn_3([1, 2, 3, 4]))
 
 if __name__ == '__main__':
   tf.test.main()
