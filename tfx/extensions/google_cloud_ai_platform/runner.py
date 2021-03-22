@@ -377,7 +377,7 @@ def deploy_model_for_aip_prediction(api: discovery.Resource,
     if e.resp.status == 409:
       logging.warn('Model version %s already exists', model_version)
     else:
-      raise RuntimeError('Creating model version to AI Platform failed: {}'
+      raise RuntimeError('Creating model verseion to AI Platform failed: {}'
                          .format(e))
 
   if set_default_version:

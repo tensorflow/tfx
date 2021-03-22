@@ -207,13 +207,13 @@ class BaseHandlerTest(tf.test.TestCase):
     handler = FakeHandler(flags_dict)
     self.assertEqual(
         textwrap.dedent("""\
-      +=====+=====+=======+
-      | abc | d   | False |
-      +=====+=====+=======+
-      | 1   | 234 | None  |
-      +-----+-----+-------+
-      | xxx |     | []    |
-      +=====+=====+=======+
+      +===+===+=====+
+      |abc|d  |False|
+      +===+===+=====+
+      |1  |234|None |
+      +---+---+-----+
+      |xxx|   |[]   |
+      +===+===+=====+
       """),
         handler._format_table(('abc', 'd', False),
                               [[1, '234', None], ['xxx', '', []]]))

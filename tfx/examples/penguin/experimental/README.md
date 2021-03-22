@@ -45,9 +45,10 @@ image and upload it to Google Container Registry (GCR).
 <pre class="devsite-terminal devsite-click-to-copy">
 gcloud auth configure-docker
 docker build \
-  --tag gcr.io/[PROJECT-ID]/tfx-example-sklearn
+  --tag tfx-example-sklearn \
   --build-arg TFX_VERSION=$(python -c 'import tfx; print(tfx.__version__)') \
   .
+docker tag tfx-example-sklearn gcr.io/[PROJECT-ID]/tfx-example-sklearn
 docker push gcr.io/[PROJECT-ID]/tfx-example-sklearn
 </pre>
 

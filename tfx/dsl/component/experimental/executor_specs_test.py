@@ -166,19 +166,11 @@ class ExecutorSpecsTest(tf.test.TestCase):
         image='image',
         command=[
             self._text_concat_placeholder
-        ],
-        args=[
-            self._text_concat_placeholder
         ])
     encode_result = specs.encode()
     self.assertProtoEquals("""
       image: "image"
       commands {
-        value {
-          string_value: "texttext1text2"
-        }
-      }
-      args {
         value {
           string_value: "texttext1text2"
         }
