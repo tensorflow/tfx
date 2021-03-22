@@ -124,8 +124,7 @@ class TaxiUtilsTest(tf.test.TestCase):
     data_accessor = DataAccessor(
         tf_dataset_factory=tfxio_utils.get_tf_dataset_factory_from_artifact(
             [standard_artifacts.Examples()], []),
-        record_batch_factory=None,
-        data_view_decode_fn=None)
+        record_batch_factory=None)
     trainer_fn_args = trainer_executor.TrainerFnArgs(
         train_files=os.path.join(self._testdata_path,
                                  'transform/transformed_examples/train/*.gz'),

@@ -7,16 +7,10 @@
 *  Performance improvement in Transform by avoiding excess encodings and
    decodings when it materializes transformed examples or generates statistics
    (both enabled by default).
-*  Added an accessor (`.data_view_decode_fn`) to the decoder function wrapped in
-   the DataView in Trainer `FnArgs.data_accessor`.
 
 ## Breaking Changes
 
 ### For Pipeline Authors
-
-*  CLI requires Apache Airflow 1.10.14 or later. If you are using an older
-   version of airflow, you can still copy runner definition to the DAG
-   directory manually and run using airflow UIs.
 
 ### For Component Authors
 
@@ -180,39 +174,6 @@
 *   Depends on `tensorflow-serving-api>=1.15,!=2.0.*,!=2.1.*,!=2.2.*,!=2.3.*,<3`.
 *   Depends on `tensorflow-transform>=0.27.0,<0.28.0`.
 *   Depends on `tfx-bsl>=0.27.0,<0.28.0`.
-
-## Documentation updates
-
-*   N/A
-
-# Version 0.26.3
-
-*   This a bug fix only version.
-
-## Major Features and Improvements
-
-*   N/A
-
-## Breaking changes
-
-*   N/A
-
-### For pipeline authors
-
-*   N/A
-
-### For component authors
-
-*   N/A
-
-## Deprecations
-
-*   N/A
-
-## Bug fixes and other changes
-
-*   Automatic autoreload of underlying modules a single `_ModuleFinder`
-    registered per module.
 
 ## Documentation updates
 

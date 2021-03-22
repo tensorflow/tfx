@@ -26,6 +26,7 @@ from typing import Any, Dict, Optional, Text
 
 import click
 import kfp
+from tabulate import tabulate
 
 from tfx.dsl.io import fileio
 from tfx.tools.cli import labels
@@ -291,4 +292,4 @@ class KubeflowHandler(base_handler.BaseHandler):
             _get_run_details(run.id)
         ] for run in runs
     ]
-    click.echo(self._format_table(headers, data))
+    click.echo(tabulate(data, headers=headers, tablefmt='grid'))

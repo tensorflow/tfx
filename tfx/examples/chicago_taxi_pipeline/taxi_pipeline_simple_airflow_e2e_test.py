@@ -1,3 +1,4 @@
+# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,9 +13,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """End to end test for tfx.orchestration.airflow."""
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
 
 import os
 import subprocess
+import tempfile
 import time
 from typing import Sequence, Set, Text
 
@@ -25,7 +30,6 @@ from tfx.dsl.io import fileio
 from tfx.orchestration.airflow import test_utils as airflow_test_utils
 from tfx.tools.cli.e2e import test_utils
 from tfx.utils import io_utils
-from tfx.utils import test_case_utils
 
 
 class AirflowSubprocess(object):
@@ -54,15 +58,14 @@ _SUCCESS_TASK_STATES = set(['success'])
 _PENDING_TASK_STATES = set(['queued', 'scheduled', 'running', 'none'])
 
 
-class AirflowEndToEndTest(test_case_utils.TfxTest):
+class AirflowEndToEndTest(tf.test.TestCase):
   """An end to end test using fully orchestrated Airflow."""
 
   def _GetState(self, task_name: Text) -> Text:
     """Get a task state as a string."""
     try:
       output = subprocess.check_output([
-          'airflow', 'tasks', 'state', self._dag_id, task_name,
-          self._execution_date
+          'airflow', 'task_state', self._dag_id, task_name, self._execution_date
       ]).split()
       # Some logs are emitted to stdout, so we take the last word as state.
       return tf.compat.as_str(output[-1])
@@ -110,11 +113,13 @@ class AirflowEndToEndTest(test_case_utils.TfxTest):
   def setUp(self):
     super(AirflowEndToEndTest, self).setUp()
     # setup airflow_home in a temp directory, config and init db.
-    self._airflow_home = self.tmp_dir
-    self.enter_context(
-        test_case_utils.override_env_var('AIRFLOW_HOME', self._airflow_home))
-    self.enter_context(
-        test_case_utils.override_env_var('HOME', self._airflow_home))
+    self._airflow_home = os.path.join(
+        os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR', tempfile.mkdtemp()),
+        self._testMethodName)
+    self._old_airflow_home = os.environ.get('AIRFLOW_HOME')
+    os.environ['AIRFLOW_HOME'] = self._airflow_home
+    self._old_home = os.environ.get('HOME')
+    os.environ['HOME'] = self._airflow_home
     absl.logging.info('Using %s as AIRFLOW_HOME and HOME in this e2e test',
                       self._airflow_home)
 
@@ -180,14 +185,13 @@ class AirflowEndToEndTest(test_case_utils.TfxTest):
         os.path.join(self._airflow_home, 'taxi', 'taxi_utils.py'))
 
     # Initialize database.
-    subprocess.run(['airflow', 'db', 'init'], check=True)
-    subprocess.run(['airflow', 'dags', 'unpause', self._dag_id], check=True)
+    subprocess.run(['airflow', 'initdb'], check=True)
+    subprocess.run(['airflow', 'unpause', self._dag_id], check=True)
 
   def testSimplePipeline(self):
     subprocess.run([
         'airflow',
-        'dags',
-        'trigger',
+        'trigger_dag',
         self._dag_id,
         '-r',
         self._run_id,
@@ -220,6 +224,13 @@ class AirflowEndToEndTest(test_case_utils.TfxTest):
         else:
           self.fail('No pending tasks in %s finished within %d secs' %
                     (pending_tasks, _MAX_TASK_STATE_CHANGE_SEC))
+
+  def tearDown(self):
+    super(AirflowEndToEndTest, self).tearDown()
+    if self._old_airflow_home:
+      os.environ['AIRFLOW_HOME'] = self._old_airflow_home
+    if self._old_home:
+      os.environ['HOME'] = self._old_home
 
 
 if __name__ == '__main__':

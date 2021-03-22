@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Compiles a TFX pipeline into a TFX DSL IR proto."""
+import json
+import re
 from typing import cast, Iterable, List, Mapping
 
 from tfx import types
@@ -226,6 +228,12 @@ class Compiler(object):
           compiler_utils.set_runtime_parameter_pb(
               parameter_value.runtime_parameter, value.name, value.ptype,
               value.default)
+        elif isinstance(value, str) and re.search(
+            data_types.RUNTIME_PARAMETER_PATTERN, value):
+          runtime_param = json.loads(value)
+          compiler_utils.set_runtime_parameter_pb(
+              parameter_value.runtime_parameter, runtime_param.name,
+              runtime_param.ptype, runtime_param.default)
         else:
           try:
             data_types_utils.set_metadata_value(parameter_value.field_value,

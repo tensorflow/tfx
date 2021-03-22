@@ -1,3 +1,4 @@
+# Lint as: python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -116,7 +117,14 @@ def make_extra_packages_test():
   # Note: It is okay to pin packages to exact verions in this list to minimize
   # conflicts.
   return [
-      'apache-airflow[mysql]>=1.10.14,<3',
+      # TODO(b/178137745): Delete version cap in macos when SegFault resolved.
+      ('apache-airflow[mysql]>=1.10.10,<2; '
+       'python_version!="3.7" or platform_system!="Darwin"'),
+      ('apache-airflow[mysql]>=1.10.10,<1.10.14; '
+       'python_version=="3.7" and platform_system=="Darwin"'),
+      # TODO(b/172014039): Delete pinned cattrs version after we upgrade to
+      # apache-airflow 1.0.14 or later.(github.com/apache/airflow/issues/11965).
+      'cattrs==1.0.0',
       'kfp>=1.1.0,<2',
       'kfp-pipeline-spec>=0.1.6,<0.2',
       'pytest>=5,<6',
@@ -164,10 +172,7 @@ def make_extra_packages_examples():
       'tensorflow-ranking>=0.3.3,<0.4',
       'struct2tensor>=0.28,<0.29',
       # Required for tfx/examples/penguin/experimental
-      # LINT.IfChange
-      'scikit-learn>=0.23,<0.24',
-      # LINT.ThenChange(
-      #     examples/penguin/experimental/penguin_pipeline_sklearn_gcp.py)
+      'scikit-learn>=0.24,<0.25',
   ]
 
 

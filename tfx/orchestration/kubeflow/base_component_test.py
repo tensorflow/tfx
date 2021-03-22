@@ -31,7 +31,6 @@ from tfx.orchestration import pipeline as tfx_pipeline
 from tfx.orchestration.kubeflow import base_component
 from tfx.orchestration.kubeflow.proto import kubeflow_pb2
 from tfx.orchestration.launcher import in_process_component_launcher
-from tfx.proto.orchestration import pipeline_pb2
 from tfx.types import channel_utils
 from tfx.types import standard_artifacts
 
@@ -61,7 +60,6 @@ class BaseComponentTest(tf.test.TestCase):
 
     self._metadata_config = kubeflow_pb2.KubeflowMetadataConfig()
     self._metadata_config.mysql_db_service_host.environment_variable = 'MYSQL_SERVICE_HOST'
-    self._tfx_ir = pipeline_pb2.Pipeline()
     with dsl.Pipeline('test_pipeline'):
       self.component = base_component.BaseComponent(
           component=statistics_gen,
@@ -74,7 +72,6 @@ class BaseComponentTest(tf.test.TestCase):
           tfx_image='container_image',
           kubeflow_metadata_config=self._metadata_config,
           component_config=None,
-          tfx_ir=self._tfx_ir,
       )
     self.tfx_component = statistics_gen
 
@@ -162,7 +159,6 @@ class BaseComponentWithPipelineParamTest(tf.test.TestCase):
 
     self._metadata_config = kubeflow_pb2.KubeflowMetadataConfig()
     self._metadata_config.mysql_db_service_host.environment_variable = 'MYSQL_SERVICE_HOST'
-    self._tfx_ir = pipeline_pb2.Pipeline()
     with dsl.Pipeline('test_pipeline'):
       self.example_gen = base_component.BaseComponent(
           component=example_gen,
@@ -174,8 +170,7 @@ class BaseComponentWithPipelineParamTest(tf.test.TestCase):
           pipeline_root=test_pipeline_root,
           tfx_image='container_image',
           kubeflow_metadata_config=self._metadata_config,
-          component_config=None,
-          tfx_ir=self._tfx_ir)
+          component_config=None)
       self.statistics_gen = base_component.BaseComponent(
           component=statistics_gen,
           component_launcher_class=in_process_component_launcher
@@ -187,7 +182,6 @@ class BaseComponentWithPipelineParamTest(tf.test.TestCase):
           tfx_image='container_image',
           kubeflow_metadata_config=self._metadata_config,
           component_config=None,
-          tfx_ir=self._tfx_ir
       )
 
     self.tfx_example_gen = example_gen
@@ -227,10 +221,6 @@ class BaseComponentWithPipelineParamTest(tf.test.TestCase):
         formatted_statistics_gen,
         '--component_config',
         'null',
-        '--tfx_ir',
-        '{}',
-        '--node_id',
-        'StatisticsGen.foo',
     ]
     example_gen_expected_args = [
         '--pipeline_name',
@@ -253,10 +243,6 @@ class BaseComponentWithPipelineParamTest(tf.test.TestCase):
         formatted_example_gen,
         '--component_config',
         'null',
-        '--tfx_ir',
-        '{}',
-        '--node_id',
-        'CsvExampleGen',
     ]
     try:
       self.assertEqual(

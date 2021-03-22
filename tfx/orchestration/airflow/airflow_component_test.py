@@ -1,3 +1,4 @@
+# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,14 +13,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Tests for tfx.orchestration.airflow.airflow_component."""
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
 
 import collections
 import datetime
-import functools
 import os
-from unittest import mock
-
 from airflow import models
+import mock
 
 import tensorflow as tf
 from tfx import types
@@ -97,7 +99,7 @@ class AirflowComponentTest(tf.test.TestCase):
     self.assertEqual(arg_list[0][1]['pipeline_info'].run_id, 'run_id')
     mock_component_launcher.launch.assert_called_once()
 
-  @mock.patch.object(functools, 'partial', wraps=functools.partial)
+  @mock.patch('functools.partial')
   def testAirflowComponent(self, mock_functools_partial):
     mock_component_launcher_class = mock.Mock()
     airflow_component.AirflowComponent(
@@ -110,25 +112,18 @@ class AirflowComponentTest(tf.test.TestCase):
         beam_pipeline_args=[],
         additional_pipeline_args={},
         component_config=None)
-    # Airflow complained if we completely mock this function. So we "wraps" the
-    # function. `partial` can be called multiple times from other than
-    # AirflowComponent. We will check the first call only.
-    mock_functools_partial.assert_called()
-    args = mock_functools_partial.call_args_list[0][0]
-    kwargs = mock_functools_partial.call_args_list[0][1]
-    self.assertCountEqual(args,
-                          (airflow_component._airflow_component_launcher,))
-    self.assertTrue(kwargs.pop('driver_args').enable_cache)
-    self.assertEqual(
-        kwargs, {
-            'component': self._component,
-            'component_launcher_class': mock_component_launcher_class,
-            'pipeline_info': self._pipeline_info,
-            'metadata_connection_config': self._metadata_connection_config,
-            'beam_pipeline_args': [],
-            'additional_pipeline_args': {},
-            'component_config': None
-        })
+    mock_functools_partial.assert_called_once_with(
+        airflow_component._airflow_component_launcher,
+        component=self._component,
+        component_launcher_class=mock_component_launcher_class,
+        pipeline_info=self._pipeline_info,
+        driver_args=mock.ANY,
+        metadata_connection_config=self._metadata_connection_config,
+        beam_pipeline_args=[],
+        additional_pipeline_args={},
+        component_config=None)
+    arg_list = mock_functools_partial.call_args_list
+    self.assertTrue(arg_list[0][1]['driver_args'].enable_cache)
 
 
 if __name__ == '__main__':

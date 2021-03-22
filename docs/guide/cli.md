@@ -338,13 +338,36 @@ Recommended to use before creating or updating a pipeline.
 Usage:
 
 <pre class="devsite-click-to-copy devsite-terminal">
-tfx pipeline compile --pipeline_path=<var>pipeline-path</var> [--engine=<var>engine</var> \
---package_path=<var>package-path</var>]
+tfx pipeline compile --pipeline_path=<var>pipeline-path</var> [--endpoint=<var>endpoint</var> --engine=<var>engine</var> \
+--iap_client_id=<var>iap-client-id</var> --namespace=<var>namespace</var> --package_path=<var>package-path</var>]
 </pre>
 
 <dl>
   <dt>--pipeline_path=<var>pipeline-path</var></dt>
   <dd>The path to the pipeline configuration file.</dd>
+  <dt>--endpoint=<var>endpoint</var></dt>
+  <dd>
+    <p>
+      (Optional.) Endpoint of the Kubeflow Pipelines API service. The endpoint
+      of your Kubeflow Pipelines API service is the same as URL of the Kubeflow
+      Pipelines dashboard. Your endpoint value should be something like:
+    </p>
+
+    <pre>https://<var>host-name</var>/pipeline</pre>
+
+    <p>
+      If you do not know the endpoint for your Kubeflow Pipelines cluster,
+      contact you cluster administrator.
+    </p>
+
+    <p>
+      If the <code>--endpoint</code> is not specified, the in-cluster service
+      DNS name is used as the default value. This name works only if the
+      CLI command executes in a pod on the Kubeflow Pipelines cluster, such as a
+      <a href="https://www.kubeflow.org/docs/notebooks/why-use-jupyter-notebook/"
+           class="external">Kubeflow Jupyter notebooks</a> instance.
+    </p>
+  </dd>
   <dt>--engine=<var>engine</var></dt>
   <dd>
     <p>
@@ -368,6 +391,18 @@ tfx pipeline compile --pipeline_path=<var>pipeline-path</var> [--engine=<var>eng
       default.
     </p>
   </dd>
+  <dt>--iap_client_id=<var>iap-client-id</var></dt>
+  <dd>
+    (Optional.) Client ID for IAP protected endpoint.
+  </dd>
+
+  <dt>--namespace=<var>namespace</var>
+  <dd>
+    (Optional.) Kubernetes namespace to connect to the Kubeflow Pipelines API.
+    If the namespace is not specified, the value defaults to
+    <code>kubeflow</code>.
+  </dd>
+
   <dt>--package_path=<var>package-path</var></dt>
   <dd>
     <p>
@@ -401,7 +436,8 @@ tfx pipeline compile --engine=beam --pipeline_path=<var>pipeline-path</var>
 Kubeflow:
 
 <pre class="devsite-terminal">
-tfx pipeline compile --engine=kubeflow --pipeline_path=<var>pipeline-path</var> --package_path=<var>package-path</var>
+tfx pipeline compile --engine=kubeflow --pipeline_path=<var>pipeline-path</var> --package_path=<var>package-path</var> \
+--iap_client_id=<var>iap-client-id</var> --namespace=<var>namespace</var> --endpoint=<var>endpoint</var>
 </pre>
 
 ### delete

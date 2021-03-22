@@ -39,19 +39,17 @@ from tensorflow_metadata.proto.v0 import schema_pb2
 
 _TELEMETRY_DESCRIPTORS = ['Trainer']
 
-DataAccessor = NamedTuple(
-    'DataAccessor',
-    [('tf_dataset_factory', Callable[[
-        List[Text],
-        dataset_options.TensorFlowDatasetOptions,
-        Optional[schema_pb2.Schema],
-    ], tf.data.Dataset]),
-     ('record_batch_factory', Callable[[
-         List[Text],
-         dataset_options.RecordBatchesOptions,
-         Optional[schema_pb2.Schema],
-     ], Iterator[pa.RecordBatch]]),
-     ('data_view_decode_fn', Optional[Callable[[tf.Tensor], Dict[Text, Any]]])])
+DataAccessor = NamedTuple('DataAccessor',
+                          [('tf_dataset_factory', Callable[[
+                              List[Text],
+                              dataset_options.TensorFlowDatasetOptions,
+                              Optional[schema_pb2.Schema],
+                          ], tf.data.Dataset]),
+                           ('record_batch_factory', Callable[[
+                               List[Text],
+                               dataset_options.RecordBatchesOptions,
+                               Optional[schema_pb2.Schema],
+                           ], Iterator[pa.RecordBatch]])])
 
 
 @attr.s
@@ -157,11 +155,7 @@ def get_common_fn_args(input_dict: Dict[Text, List[types.Artifact]],
           _TELEMETRY_DESCRIPTORS),
       record_batch_factory=tfxio_utils.get_record_batch_factory_from_artifact(
           input_dict[standard_component_specs.EXAMPLES_KEY],
-          _TELEMETRY_DESCRIPTORS),
-      data_view_decode_fn=tfxio_utils.get_data_view_decode_fn_from_artifact(
-          input_dict[standard_component_specs.EXAMPLES_KEY],
-          _TELEMETRY_DESCRIPTORS)
-      )
+          _TELEMETRY_DESCRIPTORS))
 
   # https://github.com/tensorflow/tfx/issues/45: Replace num_steps=0 with
   # num_steps=None.  Conversion of the proto to python will set the default

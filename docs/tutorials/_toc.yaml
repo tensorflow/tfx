@@ -2,29 +2,17 @@ toc:
 - title: "Get started with TFX"
   path: /tfx/tutorials/
 
-- heading: "TFX: Getting started tutorials"
-- title: "1. Starter pipeline"
-  path: /tfx/tutorials/tfx/penguin_simple
-- title: "2. Adding data validation"
-  path: /tfx/tutorials/tfx/penguin_tfdv
-- title: "3. Adding feature engineering"
-  path: /tfx/tutorials/tfx/penguin_tft
-- title: "4. Adding model analysis"
-  path: /tfx/tutorials/tfx/penguin_tfma
-
-- heading: "TFX: Interactive tutorials"
+- heading: "End-to-end tutorials"
 - title: "Interactive tutorial (TF2 Keras)"
   path: /tfx/tutorials/tfx/components_keras
 - title: "Interactive tutorial (Estimator)"
   path: /tfx/tutorials/tfx/components
-
-- heading: "TFX: Advanced tutorials"
-- title: "Custom component tutorial"
+- title: "Python function component tutorial"
   path: /tfx/tutorials/tfx/python_function_component
-- title: "Cloud AI Platform Pipelines tutorial"
-  path: /tfx/tutorials/tfx/cloud-ai-platform-pipelines
 - title: "Airflow tutorial"
   path: /tfx/tutorials/tfx/airflow_workshop
+- title: "Cloud AI Platform Pipelines tutorial"
+  path: /tfx/tutorials/tfx/cloud-ai-platform-pipelines
 - title: "Neural Structured Learning in TFX"
   path: /tfx/tutorials/tfx/neural_structured_learning
 

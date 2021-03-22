@@ -39,7 +39,6 @@ from tfx.orchestration.kubeflow import node_wrapper
 from tfx.orchestration.kubeflow import utils
 from tfx.orchestration.kubeflow.proto import kubeflow_pb2
 from tfx.orchestration.launcher import base_component_launcher
-from tfx.proto.orchestration import pipeline_pb2
 from tfx.utils import json_utils
 
 from google.protobuf import json_format
@@ -71,7 +70,6 @@ class BaseComponent(object):
       tfx_image: Text,
       kubeflow_metadata_config: Optional[kubeflow_pb2.KubeflowMetadataConfig],
       component_config: base_component_config.BaseComponentConfig,
-      tfx_ir: pipeline_pb2.Pipeline,
       pod_labels_to_attach: Optional[Dict[Text, Text]] = None):
     """Creates a new Kubeflow-based component.
 
@@ -91,7 +89,6 @@ class BaseComponent(object):
       kubeflow_metadata_config: Configuration settings for connecting to the
         MLMD store in a Kubeflow cluster.
       component_config: Component config to launch the component.
-      tfx_ir: The TFX intermedia representation of the pipeline.
       pod_labels_to_attach: Optional dict of pod labels to attach to the
         GKE pod.
     """
@@ -120,10 +117,6 @@ class BaseComponent(object):
         serialized_component,
         '--component_config',
         json_utils.dumps(component_config),
-        '--tfx_ir',
-        json_format.MessageToJson(tfx_ir),
-        '--node_id',
-        component.id,
     ]
 
     if pipeline.enable_cache:

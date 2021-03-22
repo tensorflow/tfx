@@ -1,3 +1,4 @@
+# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,13 +14,17 @@
 # limitations under the License.
 """Base handler class."""
 
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+
 import abc
 import json
 import os
 import subprocess
 import sys
 import tempfile
-from typing import Any, Collection, Dict, List, Text
+from typing import Any, Dict, List, Text
 
 import click
 from six import with_metaclass
@@ -187,39 +192,6 @@ class BaseHandler(with_metaclass(abc.ABCMeta, object)):
     return_code = subprocess.call(command, env=env)
     if return_code != 0:
       sys.exit('Error while running "{}" '.format(' '.join(command)))
-
-  def _format_table(self, header: Collection[Any],
-                    data: Collection[Collection[Any]]):
-
-    def _format_as_strings(items):
-      return [f' {item} ' for item in items]
-
-    header = _format_as_strings(header)
-    data = [_format_as_strings(row) for row in data]
-
-    max_widths = [len(s) for s in header]
-    for row in data:
-      max_widths = [
-          max(c_max, len(item)) for c_max, item in zip(max_widths, row)
-      ]
-
-    def _make_line(record, widths, sep='|', fill=' '):
-      return (sep + sep.join(
-          item.ljust(width, fill) for item, width in zip(record, widths)) +
-              sep + '\n')
-
-    empty_data = [''] * len(header)  # empty data for horizontal line
-    double_separator = _make_line(empty_data, max_widths, '+', '=')
-    single_separator = _make_line(empty_data, max_widths, '+', '-')
-
-    result = double_separator
-    result += _make_line(header, max_widths)
-    result += double_separator
-    result += single_separator.join(
-        _make_line(record, max_widths) for record in data)
-    result += double_separator
-
-    return result
 
   def _check_pipeline_existence(self,
                                 pipeline_name: Text,

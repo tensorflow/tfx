@@ -94,8 +94,8 @@ def run_fn(trainer_fn_args):
   @tf.function(input_signature=[tf.TensorSpec([None], tf.string)],
                autograph=False)
   def predict_serving_fn(serialized_elwc_records):
-    decode_fn = trainer_fn_args.data_accessor.data_view_decode_fn
-    decoded = decode_fn(serialized_elwc_records)
+    decoder = make_decoder()
+    decoded = decoder.decode_record(serialized_elwc_records)
     decoded.pop(features.LABEL)
     return {tf.saved_model.PREDICT_OUTPUTS: model(decoded)}
 

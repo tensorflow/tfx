@@ -289,9 +289,6 @@ class KubeflowHandlerTest(test_case_utils.TfxTest):
       self.assertTrue(fileio.exists(curr_dir_path))
 
   def testCreateRun(self):
-    self.mock_client.run_pipeline.return_value = _MockRunResponse(
-        self.pipeline_name, '1', 'Success', datetime.datetime.now())
-
     handler = kubeflow_handler.KubeflowHandler(self.flags_with_name)
     with self.captureWritesToStream(sys.stdout) as captured:
       handler.create_run()

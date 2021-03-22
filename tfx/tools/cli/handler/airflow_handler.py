@@ -1,3 +1,4 @@
+# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,11 +14,15 @@
 # limitations under the License.
 """Handler for Airflow."""
 
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+
 import json
 import os
 import subprocess
 import sys
-from typing import Any, Dict, List, Text
+from typing import Any, Dict, Text
 
 import click
 
@@ -31,18 +36,8 @@ class AirflowHandler(base_handler.BaseHandler):
   """Helper methods for Airflow Handler."""
 
   def __init__(self, flags_dict):
-    self._check_airflow_version()
     super(AirflowHandler, self).__init__(flags_dict)
     self._handler_home_dir = os.path.join(self._handler_home_dir, 'dags', '')
-
-  def _get_airflow_version(self):
-    return subprocess.check_output(['airflow', 'version'],
-                                   encoding='utf-8').rstrip()
-
-  def _check_airflow_version(self):
-    [major, minor, patch] = self._get_airflow_version().split('.')
-    if (int(major), int(minor), int(patch)) < (1, 10, 14):
-      raise RuntimeError('Apache-airflow 1.10.14 or later required.')
 
   def create_pipeline(self, overwrite: bool = False) -> None:
     """Creates pipeline in Airflow.
@@ -119,10 +114,10 @@ class AirflowHandler(base_handler.BaseHandler):
     self._check_pipeline_existence(pipeline_name)
 
     # Unpause DAG.
-    self._subprocess_call(['airflow', 'dags', 'unpause', pipeline_name])
+    self._subprocess_call(['airflow', 'unpause', pipeline_name])
 
     # Trigger DAG.
-    self._subprocess_call(['airflow', 'dags', 'trigger', pipeline_name])
+    self._subprocess_call(['airflow', 'trigger_dag', pipeline_name])
 
     click.echo('Run created for pipeline: ' + pipeline_name)
 
@@ -134,42 +129,41 @@ class AirflowHandler(base_handler.BaseHandler):
     """Stops a run in Airflow."""
     click.echo('Not supported for Airflow.')
 
-  def _get_all_runs(self, pipeline_name) -> List[Dict[str, str]]:
-    dag_runs_list = subprocess.check_output(
-        ['airflow', 'dags', 'list-runs', '-d', pipeline_name, '-o',
-         'json'], encoding='utf-8')
-    return json.loads(dag_runs_list)
-
-  def _print_runs(self, runs):
-    """Prints runs in a tabular format with headers mentioned below."""
-    headers = ('pipeline_name', 'run_id', 'state', 'execution_date',
-               'start_date', 'end_date')
-    data = []
-    for run in runs:
-      # Replace header name 'dag_id' with 'pipeline_name'.
-      data.append([run['dag_id'], *[run[key] for key in headers[1:]]])
-    click.echo(self._format_table(headers, data))
-
   def list_runs(self) -> None:
     """Lists all runs of a pipeline in Airflow."""
+    # Check if pipeline exists.
     pipeline_name = self.flags_dict[labels.PIPELINE_NAME]
     self._check_pipeline_existence(pipeline_name)
-    runs = self._get_all_runs(pipeline_name)
-    self._print_runs(runs)
+
+    # Get status of all DAG runs.
+    dag_runs_list = str(
+        subprocess.check_output(['airflow', 'list_dag_runs', pipeline_name]))
+
+    # No runs to display.
+    if 'No dag runs for {}'.format(pipeline_name) in dag_runs_list:
+      sys.exit('No pipeline runs for {}'.format(pipeline_name))
+
+    self._subprocess_call(['airflow', 'list_dag_runs', pipeline_name])
 
   def get_run(self) -> None:
     """Checks run status in Airflow."""
     pipeline_name = self.flags_dict[labels.PIPELINE_NAME]
-    run_id = self.flags_dict[labels.RUN_ID]
+
+    # Check if pipeline exists.
     self._check_pipeline_existence(pipeline_name)
 
-    runs = self._get_all_runs(pipeline_name)
-    for run in runs:
-      if run['run_id'] == run_id:
-        self._print_runs([run])
-    else:
-      click.echo(
-          f'Run "{run_id}" of pipeline "{pipeline_name}" does not exist.')
+    # Get status of all DAG runs.
+    dag_runs_list = str(
+        subprocess.check_output(['airflow', 'list_dag_runs', pipeline_name]))
+
+    lines = dag_runs_list.split('\\n')
+    for line in lines:
+      # The tokens are id, run_id, state, execution_date, state_date
+      tokens = line.split('|')
+      if self.flags_dict[labels.RUN_ID] in line:
+        click.echo('run_id :' + tokens[1])
+        click.echo('state :' + tokens[2])
+        break
 
   def _save_pipeline(self, pipeline_args: Dict[Text, Any]) -> None:
     """Creates/updates pipeline folder in the handler directory.

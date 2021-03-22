@@ -27,7 +27,8 @@ from ml_metadata.proto import metadata_store_pb2
 
 def _check_validity(new_artifact: metadata_store_pb2.Artifact,
                     original_artifact: types.Artifact,
-                    has_multiple_artifacts: bool) -> None:
+                    has_multiple_artifacts: bool
+                    ) -> None:
   """Check the validity of new artifact against the original artifact."""
   if new_artifact.type_id != original_artifact.type_id:
     raise RuntimeError('Executor output should not change artifact type.')
@@ -74,16 +75,6 @@ def publish_cached_execution(
       contexts,
       input_artifacts=None,
       output_artifacts=output_artifacts)
-
-
-def _set_execution_result_if_not_empty(
-    executor_output: Optional[execution_result_pb2.ExecutorOutput],
-    execution: metadata_store_pb2.Execution) -> bool:
-  if executor_output and (executor_output.execution_result.result_message or
-                          executor_output.execution_result.metadata_details or
-                          executor_output.execution_result.code):
-    execution_lib.set_execution_result(executor_output.execution_result,
-                                       execution)
 
 
 def publish_succeeded_execution(
@@ -149,8 +140,8 @@ def publish_succeeded_execution(
       #    use driver instead to create the list of output artifact instead
       #    of letting executor to create them.
       for proto_artifact in updated_artifact_list:
-        _check_validity(proto_artifact, original_artifact,
-                        len(updated_artifact_list) > 1)
+        _check_validity(
+            proto_artifact, original_artifact, len(updated_artifact_list) > 1)
         python_artifact = types.Artifact(original_artifact.artifact_type)
         python_artifact.set_mlmd_artifact(proto_artifact)
         artifact_list.append(python_artifact)
@@ -162,10 +153,12 @@ def publish_succeeded_execution(
 
   [execution] = metadata_handler.store.get_executions_by_id([execution_id])
   execution.last_known_state = metadata_store_pb2.Execution.COMPLETE
-  _set_execution_result_if_not_empty(executor_output, execution)
 
   execution_lib.put_execution(
-      metadata_handler, execution, contexts, output_artifacts=output_artifacts)
+      metadata_handler,
+      execution,
+      contexts,
+      output_artifacts=output_artifacts)
 
   return output_artifacts
 
@@ -186,7 +179,9 @@ def publish_failed_execution(
   """
   [execution] = metadata_handler.store.get_executions_by_id([execution_id])
   execution.last_known_state = metadata_store_pb2.Execution.FAILED
-  _set_execution_result_if_not_empty(executor_output, execution)
+  if executor_output and executor_output.HasField('execution_result'):
+    execution_lib.set_execution_result(
+        executor_output.execution_result, execution)
 
   execution_lib.put_execution(metadata_handler, execution, contexts)
 

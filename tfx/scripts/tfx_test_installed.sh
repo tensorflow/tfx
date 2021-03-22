@@ -125,12 +125,6 @@ if [[ "${TFX_VERSION}" == 0.27.* ]]; then
   )
 fi
 
-if [[ "${TFX_VERSION}" == 0.28.* ]]; then
-  # Skipping all TFX 0.28.0 tests until all the issues has been resolved
-  # http://b/183541263 TFX Tests fails for TFX 0.28.0
-  exit 0
-fi
-
 # TODO(b/182435431): Delete the following test after the hanging issue resolved.
 SKIP_LIST+=(
   "tfx/experimental/distributed_inference/graphdef_experiments/subgraph_partitioning/beam_pipeline_test.py"

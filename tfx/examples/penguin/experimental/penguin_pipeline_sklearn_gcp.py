@@ -86,11 +86,9 @@ _ai_platform_serving_args = {
     # Note that serving currently only supports a single region:
     # https://cloud.google.com/ml-engine/reference/rest/v1/projects.models#Model
     'regions': [_gcp_region],
-    # TODO(b/176256164): Update to runtime version 2.4 once that is available
-    # to align with the version of TF supported by TFX.
-    # LINT.IfChange
-    'runtime_version': '2.3',
-    # LINT.ThenChange(../../../dependencies.py)
+    # TODO(b/157646655): Update the version once sklearn support is added back
+    # to CAIP in the next runtime release.
+    'runtime_version': '1.15',
 }
 
 # This example assumes that Penguin data is stored in ~/penguin/data and the
@@ -160,6 +158,7 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
   # Uses user-provided Python function that trains a model using TF-Learn.
   # Num_steps is not provided during evaluation because the scikit-learn model
   # loads and evaluates the entire test set at once.
+  # TODO(b/159470716): Make schema optional in Trainer.
   trainer = Trainer(
       module_file=trainer_module_file,
       custom_executor_spec=executor_spec.ExecutorClassSpec(

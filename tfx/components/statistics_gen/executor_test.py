@@ -16,6 +16,7 @@ import os
 import tempfile
 
 from absl.testing import absltest
+from apache_beam.options import pipeline_options
 import tensorflow_data_validation as tfdv
 from tfx.components.statistics_gen import executor
 from tfx.dsl.io import fileio
@@ -25,6 +26,10 @@ from tfx.types import standard_component_specs
 from tfx.utils import json_utils
 
 from tensorflow_metadata.proto.v0 import schema_pb2
+
+
+# TODO(b/181911927): Remove this workaround.
+pipeline_options.TypeOptions.allow_non_deterministic_key_coders = True
 
 
 # TODO(b/133421802): Investigate why tensorflow.TestCase could cause a crash

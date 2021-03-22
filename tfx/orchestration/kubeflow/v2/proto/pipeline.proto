@@ -47,10 +47,15 @@ message PipelineJob {
 
   // The runtime config of a PipelineJob.
   message RuntimeConfig {
-    // The runtime parameters of the PipelineJob. The parameters will be
-    // passed into [PipelineJob.pipeline_spec][] to replace the placeholders
-    // at runtime.
-    map<string, Value> parameters = 1;
+    // The runtime parameters of the PipelineJob. The field can only have values
+    // if the schema version is `1.0.0`. The parameters will be passed into
+    // [PipelineJob.pipeline_spec][] to replace the placeholders at runtime.
+    map<string, Value> parameters = 1 [deprecated = true];
+
+    // The runtime parameters of the PipelineJob. The field can only have values
+    // if the schema version is `2.0.0`. The parameters will be passed into
+    // [PipelineJob.pipeline_spec][] to replace the placeholders at runtime.
+    google.protobuf.Struct structured_parameters = 3;
 
     // A path in a Cloud Storage bucket which will be treated as the root
     // output directory of the pipeline. It is used by the system to
@@ -221,7 +226,7 @@ message ComponentInputsSpec {
   }
   // Definition of a parameter input.
   message ParameterSpec {
-    PrimitiveType.PrimitiveTypeEnum type = 1;
+    PrimitiveType.PrimitiveTypeEnum type = 1 [deprecated = true];
   }
   // Name to artifact input.
   map<string, ArtifactSpec> artifacts = 1;
@@ -244,7 +249,7 @@ message ComponentOutputsSpec {
   }
   // Definition of a parameter output.
   message ParameterSpec {
-    PrimitiveType.PrimitiveTypeEnum type = 1;
+    PrimitiveType.PrimitiveTypeEnum type = 1 [deprecated = true];
   }
   // Name to artifact output.
   map<string, ArtifactSpec> artifacts = 1;
@@ -319,8 +324,12 @@ message TaskInputsSpec {
     oneof kind {
       // Output parameter from an upstream task.
       TaskOutputParameterSpec task_output_parameter = 1;
-      // A constant value or runtime parameter.
-      ValueOrRuntimeParameter runtime_value = 2;
+      // A constant value or runtime parameter. The field can only be set if
+      // the schema version is `1.0.0`.
+      ValueOrRuntimeParameter runtime_value = 2 [deprecated = true];
+      // A constant value. The field can only be set if the schema version is
+      // `2.0.0`.
+      google.protobuf.Value constant_value = 6;
       // Pass the input parameter from parent component input parameter.
       string component_input_parameter = 3;
       // The final status of an uptream task.
@@ -665,8 +674,13 @@ message PipelineDeploymentConfig {
 
   // The specification to import or reimport a new artifact to the pipeline.
   message ImporterSpec {
-    // The URI of the artifact.
-    ValueOrRuntimeParameter artifact_uri = 1;
+    // The URI of the artifact. The field can only be set if the schema version
+    // is `1.0.0`.
+    ValueOrRuntimeParameter artifact_uri = 1 [deprecated = true];
+
+    // The URI of the artifact. The field can only be set if the schema version
+    // is `2.0.0`.
+    string uri = 7;
 
     // The type of the artifact.
     ArtifactTypeSchema type_schema = 2;
@@ -828,8 +842,13 @@ message ArtifactList {
 message ExecutorInput {
   // The runtime inputs data of the execution.
   message Inputs {
-    // Input parameters of the execution.
-    map<string, Value> parameters = 1;
+    // Input parameters of the execution. The field can only have values if the
+    // schema version is `1.0.0`.
+    map<string, Value> parameters = 1 [deprecated = true];
+
+    // Input parameters of the execution. The field can only have values if the
+    // schema version is `2.0.0`.
+    google.protobuf.Struct structured_parameters = 3;
 
     // Input artifacts of the execution.
     map<string, ArtifactList> artifacts = 2;
@@ -868,8 +887,13 @@ message ExecutorInput {
 // The schema of the output metadata of an execution. It will be used to parse
 // the output metadata file.
 message ExecutorOutput {
-  // The values for output parameters.
-  map<string, Value> parameters = 1;
+  // The values for output parameters. The field can only have values if the
+  // schema version is `1.0.0`.
+  map<string, Value> parameters = 1 [deprecated = true];
+
+  // The values for output parameters. The field can only have values if the
+  // schema version is `2.0.0`.
+  google.protobuf.Struct structured_parameters = 3;
 
   // The updated metadata for output artifact.
   map<string, ArtifactList> artifacts = 2;

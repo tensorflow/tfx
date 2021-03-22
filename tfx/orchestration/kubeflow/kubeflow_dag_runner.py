@@ -19,15 +19,14 @@ from __future__ import print_function
 
 import os
 import re
-from typing import Callable, Dict, List, Optional, Text, Type, cast
+from typing import Callable, Dict, List, Optional, Text, Type
 
-from absl import logging
 from kfp import compiler
 from kfp import dsl
 from kfp import gcp
 from kubernetes import client as k8s_client
+
 from tfx import version
-from tfx.dsl.compiler import compiler as tfx_compiler
 from tfx.orchestration import data_types
 from tfx.orchestration import pipeline as tfx_pipeline
 from tfx.orchestration import tfx_runner
@@ -39,10 +38,8 @@ from tfx.orchestration.kubeflow.proto import kubeflow_pb2
 from tfx.orchestration.launcher import base_component_launcher
 from tfx.orchestration.launcher import in_process_component_launcher
 from tfx.orchestration.launcher import kubernetes_component_launcher
-from tfx.proto.orchestration import pipeline_pb2
 from tfx.utils import json_utils
 from tfx.utils import telemetry_utils
-
 
 # OpFunc represents the type of a function that takes as input a
 # dsl.ContainerOp and returns the same object. Common operations such as adding
@@ -252,11 +249,9 @@ class KubeflowDagRunner(tfx_runner.TfxRunner):
     if config and not isinstance(config, KubeflowDagRunnerConfig):
       raise TypeError('config must be type of KubeflowDagRunnerConfig.')
     super(KubeflowDagRunner, self).__init__(config or KubeflowDagRunnerConfig())
-    self._config = cast(KubeflowDagRunnerConfig, self._config)
     self._output_dir = output_dir or os.getcwd()
     self._output_filename = output_filename
     self._compiler = compiler.Compiler()
-    self._tfx_compiler = tfx_compiler.Compiler()
     self._params = []  # List of dsl.PipelineParam used in this pipeline.
     self._deduped_parameter_names = set()  # Set of unique param names used.
     if pod_labels_to_attach is None:
@@ -312,7 +307,6 @@ class KubeflowDagRunner(tfx_runner.TfxRunner):
       pipeline_root: dsl.PipelineParam representing the pipeline root.
     """
     component_to_kfp_op = {}
-    tfx_ir = self._generate_tfx_ir(pipeline)
 
     # Assumption: There is a partial ordering of components in the list, i.e.,
     # if component A depends on component B and C, then A appears after B and C
@@ -338,19 +332,12 @@ class KubeflowDagRunner(tfx_runner.TfxRunner):
           tfx_image=self._config.tfx_image,
           kubeflow_metadata_config=self._config.kubeflow_metadata_config,
           component_config=component_config,
-          pod_labels_to_attach=self._pod_labels_to_attach,
-          tfx_ir=tfx_ir)
+          pod_labels_to_attach=self._pod_labels_to_attach)
 
       for operator in self._config.pipeline_operator_funcs:
         kfp_component.container_op.apply(operator)
 
       component_to_kfp_op[component] = kfp_component.container_op
-
-  def _generate_tfx_ir(
-      self, pipeline: tfx_pipeline.Pipeline) -> pipeline_pb2.Pipeline:
-    result = self._tfx_compiler.compile(pipeline)
-    logging.info('Generated pipeline:\n %s', result)
-    return result
 
   def run(self, pipeline: tfx_pipeline.Pipeline):
     """Compiles and outputs a Kubeflow Pipeline YAML definition file.

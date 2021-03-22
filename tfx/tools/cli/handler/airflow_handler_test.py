@@ -1,3 +1,4 @@
+# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,13 +14,15 @@
 # limitations under the License.
 """Tests for tfx.tools.cli.handler.airflow_handler."""
 
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+
 import json
 import os
-import subprocess
 import sys
-from unittest import mock
-
 import click
+import mock
 import tensorflow as tf
 
 from tfx.dsl.components.base import base_driver
@@ -69,15 +72,6 @@ def _MockSubprocess4(cmd):  # pylint: disable=invalid-name, unused-argument
   return list_dags_output
 
 
-_TEST_DATA_LIST_DAGS_JSON = """[{
-    "dag_id": "chicago_taxi_simple",
-    "run_id": "manual__2019-07-19T19:56:02+00:00",
-    "state": "running",
-    "execution_date": "2019-02-01T01:07:01+00:00",
-    "start_date": "2021-03-16T07:11:24.709626+00:00",
-    "end_date": ""}]"""
-
-
 class AirflowHandlerTest(test_case_utils.TfxTest):
 
   def setUp(self):
@@ -100,11 +94,6 @@ class AirflowHandlerTest(test_case_utils.TfxTest):
 
     # Pipeline args for mocking subprocess
     self.pipeline_args = {'pipeline_name': 'chicago_taxi_simple'}
-    self._mock_get_airflow_version = self.enter_context(
-        mock.patch.object(
-            airflow_handler.AirflowHandler,
-            '_get_airflow_version',
-            return_value='2.0.1'))
 
   @mock.patch('subprocess.call', _MockSubprocess)
   def testSavePipeline(self):
@@ -352,12 +341,10 @@ class AirflowHandlerTest(test_case_utils.TfxTest):
     handler = airflow_handler.AirflowHandler(flags_dict)
     with self.captureWritesToStream(sys.stdout) as captured:
       handler.create_run()
-    self.assertIn(
-        "['airflow', 'dags', 'unpause', '" + self.pipeline_name + "']",
-        captured.contents())
-    self.assertIn(
-        "['airflow', 'dags', 'trigger', '" + self.pipeline_name + "']",
-        captured.contents())
+    self.assertIn("['airflow', 'unpause', '" + self.pipeline_name + "']",
+                  captured.contents())
+    self.assertIn("['airflow', 'trigger_dag', '" + self.pipeline_name + "']",
+                  captured.contents())
 
   def testCreateRunNoPipeline(self):
     # Run pipeline without creating one.
@@ -370,12 +357,9 @@ class AirflowHandlerTest(test_case_utils.TfxTest):
         str(err.exception), 'Pipeline "{}" does not exist.'.format(
             flags_dict[labels.PIPELINE_NAME]))
 
-  @mock.patch.object(
-      subprocess,
-      'check_output',
-      autospec=True,
-      return_value=_TEST_DATA_LIST_DAGS_JSON)
-  def testListRuns(self, mock_check_output):
+  @mock.patch('subprocess.call', _MockSubprocess2)
+  @mock.patch('subprocess.check_output', _MockSubprocess2)
+  def testListRuns(self):
     # Create a pipeline in dags folder.
     handler_pipeline_path = os.path.join(
         os.environ['AIRFLOW_HOME'], 'dags',
@@ -390,10 +374,8 @@ class AirflowHandlerTest(test_case_utils.TfxTest):
     handler = airflow_handler.AirflowHandler(flags_dict)
     with self.captureWritesToStream(sys.stdout) as captured:
       handler.list_runs()
-    mock_check_output.assert_called_once()
-
-    # Just check the run_id is succesfully parsed.
-    self.assertIn(self.run_id, captured.contents())
+    self.assertIn("['airflow', 'list_dag_runs', '" + self.pipeline_name + "']",
+                  captured.contents())
 
   def testListRunsWrongPipeline(self):
     # Run pipeline without creating one.
@@ -408,12 +390,8 @@ class AirflowHandlerTest(test_case_utils.TfxTest):
         str(err.exception), 'Pipeline "{}" does not exist.'.format(
             flags_dict[labels.PIPELINE_NAME]))
 
-  @mock.patch.object(
-      subprocess,
-      'check_output',
-      autospec=True,
-      return_value=_TEST_DATA_LIST_DAGS_JSON)
-  def testGetRun(self, mock_check_output):
+  @mock.patch('subprocess.check_output', _MockSubprocess4)
+  def testGetRun(self):
     # Create a pipeline in dags folder.
     handler_pipeline_path = os.path.join(
         os.environ['AIRFLOW_HOME'], 'dags',
@@ -429,8 +407,8 @@ class AirflowHandlerTest(test_case_utils.TfxTest):
     handler = airflow_handler.AirflowHandler(flags_dict)
     with self.captureWritesToStream(sys.stdout) as captured:
       handler.get_run()
-    self.assertIn(self.run_id, captured.contents())
-    self.assertIn('running', captured.contents())
+    self.assertIn('run_id : ' + self.run_id, captured.contents())
+    self.assertIn('state : running', captured.contents())
 
   def testGetRunWrongPipeline(self):
     # Run pipeline without creating one.
@@ -475,11 +453,6 @@ class AirflowHandlerTest(test_case_utils.TfxTest):
     with self.captureWritesToStream(sys.stdout) as captured:
       handler.terminate_run()
     self.assertIn('Not supported for Airflow.', captured.contents())
-
-  def testAirflowVersion(self):
-    self._mock_get_airflow_version.return_value = '1.10.10'
-    with self.assertRaises(RuntimeError):
-      _ = airflow_handler.AirflowHandler({})
 
 
 if __name__ == '__main__':

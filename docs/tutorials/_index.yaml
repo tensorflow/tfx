@@ -22,31 +22,27 @@ landing_page:
         for when you really want to dive into more advanced parts of TFX.
         </p>
 
-  - heading: "Getting started tutorials"
+  - heading: "Beginner tutorials"
     classname: devsite-landing-row-100
     items:
     - classname: tfo-landing-page-card
       description: >
-        <a href="/tfx/tutorials/tfx/penguin_simple"><h3 class="no-link">1. Starter Pipeline</h3></a>
-        Probably the simplest pipeline you can build, to help you get started.
-        Click the <em>Run in Google&nbsp;Colab</em> button.
-      path: /tfx/tutorials/tfx/penguin_simple
+        <a href="/tfx/tutorials/tfx/components_keras"><h3 class="no-link">TFX Component Tutorial</h3></a>
+        A component-by-component introduction to TensorFlow Extended, using the Keras API and
+        running in a Google&nbsp;Colab notebook. Click the <em>Run in Google&nbsp;Colab</em> button.
+      path: /tfx/tutorials/tfx/components_keras
     - classname: tfo-landing-page-card
       description: >
-        <a href="/tfx/tutorials/tfx/penguin_tfdv"><h3 class="no-link">2. Adding Data Validation</h3></a>
-        Building on the simple pipeline to add data validation components.
-      path: /tfx/tutorials/tfx/penguin_tfdv
+        <a href="/tfx/tutorials/tfx/airflow_workshop"><h3 class="no-link">TFX Airflow Tutorial</h3></a>
+        A step-by-step tutorial building a TFX pipeline in your local development environment,
+        showing integration with TensorBoard and Jupyter noteboooks.
+      path: /tfx/tutorials/tfx/airflow_workshop
     - classname: tfo-landing-page-card
       description: >
-        <a href="/tfx/tutorials/tfx/penguin_transform"><h3 class="no-link">3. Adding Feature Engineering</h3></a>
-        Building on the data validation pipeline to add a feature engineering component.
-      path: /tfx/tutorials/tfx/penguin_tft
-    - classname: tfo-landing-page-card
-      description: >
-        <a href="/tfx/tutorials/tfx/penguin_tfma"><h3 class="no-link">4. Adding Model Analysis</h3></a>
-        Building on the simple pipeline to add a model analysis component.
-      path: /tfx/tutorials/tfx/penguin_tfma
-
+        <a href="/tfx/tutorials/tfx/cloud-ai-platform-pipelines"><h3 class="no-link">TFX on Cloud AI Platform Pipelines</h3></a>
+        An introduction to using TensorFlow Extended and Cloud AI Platform Pipelines, to help you
+        learn how to create machine learning pipelines on Google Cloud.
+      path: /tfx/tutorials/tfx/cloud-ai-platform-pipelines
 
   - heading: "Next steps"
   - classname: devsite-landing-row-100
@@ -54,26 +50,6 @@ landing_page:
     - description: >
         Once you have a basic understanding of TFX, check these additional tutorials and guides.
         And don't forget to read the <a href="/tfx/guide">TFX User Guide</a>.
-
-  - classname: devsite-landing-row-100
-    items:
-    - classname: tfo-landing-page-card
-      description: >
-        <a href="/tfx/tutorials/tfx/components_keras"><h3 class="no-link">TFX Component Tutorial</h3></a>
-        A component-by-component introduction to TFX, including the <em>interactive context</em>, a
-        very useful development tool. Click the <em>Run in Google&nbsp;Colab</em> button.
-      path: /tfx/tutorials/tfx/components_keras
-    - classname: tfo-landing-page-card
-      description: >
-        <a href="/tfx/tutorials/tfx/airflow_workshop"><h3 class="no-link">Custom Component Tutorial</h3></a>
-        A tutorial showing how to develop your own custom TFX components.
-      path: /tfx/tutorials/tfx/python_function_component
-    - classname: tfo-landing-page-card
-      description: >
-        <a href="/tfx/tutorials/tfx/cloud-ai-platform-pipelines"><h3 class="no-link">TFX on Cloud AI Platform Pipelines</h3></a>
-        An introduction to using TFX and Cloud AI Platform Pipelines, to help you
-        learn how to create machine learning pipelines on Google Cloud.
-      path: /tfx/tutorials/tfx/cloud-ai-platform-pipelines
 
   - classname: devsite-landing-row-100
     items:

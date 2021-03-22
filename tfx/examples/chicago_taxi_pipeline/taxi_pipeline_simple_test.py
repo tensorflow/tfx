@@ -1,3 +1,4 @@
+# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,7 +14,12 @@
 # limitations under the License.
 """Tests for tfx.examples.chicago_taxi_pipeline.taxi_pipeline_simple."""
 
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+
 import datetime
+import os
 from airflow import models
 
 import tensorflow as tf
@@ -21,14 +27,15 @@ import tensorflow as tf
 from tfx.examples.chicago_taxi_pipeline import taxi_pipeline_simple
 from tfx.orchestration.airflow.airflow_dag_runner import AirflowDagRunner
 from tfx.orchestration.airflow.airflow_dag_runner import AirflowPipelineConfig
-from tfx.utils import test_case_utils
 
 
-class TaxiPipelineSimpleTest(test_case_utils.TfxTest):
+class TaxiPipelineSimpleTest(tf.test.TestCase):
 
   def setUp(self):
     super(TaxiPipelineSimpleTest, self).setUp()
-    self._test_dir = self.tmp_dir
+    self._test_dir = os.path.join(
+        os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR', self.get_temp_dir()),
+        self._testMethodName)
 
   def testTaxiPipelineCheckDagConstruction(self):
     airflow_config = {

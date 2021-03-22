@@ -19,7 +19,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from typing import Any, Callable, Dict, List, Iterator, Optional, Text, Tuple, Union
+from typing import Callable, List, Iterator, Optional, Text, Tuple, Union
 
 import pyarrow as pa
 import tensorflow as tf
@@ -212,37 +212,6 @@ def get_record_batch_factory_from_artifact(
         schema=schema).RecordBatches(options)
 
   return record_batch_factory
-
-
-def get_data_view_decode_fn_from_artifact(
-    examples: List[artifact.Artifact],
-    telemetry_descriptors: List[Text],
-) -> Optional[Callable[[tf.Tensor], Dict[Text, Any]]]:
-  """Returns the decode function wrapped in the examples' Data View.
-
-  Args:
-    examples: The Examples artifacts from which the data view is resolved.
-    telemetry_descriptors: A set of descriptors that identify the component that
-      is instantiating the TFXIO. These will be used to construct the namespace
-      to contain metrics for profiling and are therefore expected to be
-      identifiers of the component itself and not individual instances of source
-      use.
-  Returns:
-    If a Data View can be resolved from `examples`, then it returns
-    a TF Function that takes a 1-D string tensor (example records) and returns
-    decoded (composite) tensors. Otherwise returns None.
-  """
-  payload_format, data_view_uri = resolve_payload_format_and_data_view_uri(
-      examples)
-  if (payload_format != example_gen_pb2.PayloadFormat.FORMAT_PROTO or
-      data_view_uri is None):
-    return None
-
-  return record_to_tensor_tfxio.BeamRecordToTensorTFXIO(
-      saved_decoder_path=data_view_uri,
-      telemetry_descriptors=telemetry_descriptors,
-      physical_format='data_view_access_only',
-      raw_record_column_name=None).DecodeFunction()
 
 
 def make_tfxio(file_pattern: OneOrMorePatterns,
