@@ -1,4 +1,4 @@
-# Version 0.26.1
+# Version 0.26.2
 
 *   This a bug fix only version
 ## Major Features and Improvements
@@ -23,7 +23,7 @@
 
 ## Bug fixes and other changes
 
-*   The tfx.__version__ attribute was restored.
+*   Automatic autoreload of underlying modules a single `_ModuleFinder` registered per module.
 
 ## Documentation updates
 
