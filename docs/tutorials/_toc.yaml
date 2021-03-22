@@ -7,6 +7,8 @@ toc:
   path: /tfx/tutorials/tfx/components_keras
 - title: "Interactive tutorial (Estimator)"
   path: /tfx/tutorials/tfx/components
+- title: "Python function component tutorial"
+  path: /tfx/tutorials/tfx/python_function_component
 - title: "Airflow tutorial"
   path: /tfx/tutorials/tfx/airflow_workshop
 - title: "Cloud AI Platform Pipelines tutorial"
