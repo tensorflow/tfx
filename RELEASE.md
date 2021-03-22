@@ -3,9 +3,7 @@
 ## Major Features and Improvements
 
 *  Added a simple query based driver that supports Span spec and static_range.
-
 *  Added e2e rolling window example/test for Span Resolver.
-
 *  Performance improvement in Transform by avoiding excess encodings and
    decodings when it materializes transformed examples or generates statistics
    (both enabled by default).
@@ -17,11 +15,16 @@
 ### For Component Authors
 
 ## Deprecations
-*   Deprecated input/output compatibility aliases for Transform and StatisticsGen.
+
+*   Deprecated input/output compatibility aliases for Transform and
+    StatisticsGen.
 
 ## Bug Fixes and Other Changes
+
 *   The `tfx_version` custom property of output artifacts is now set by the
     default publisher to the TFX SDK version.
+*   Depends on `absl-py>=0.9,<0.13`.
+*   Depends on `packaging>=20,<21`.
 
 ## Documentation Updates
 *   Simplified Apache Spark and Flink example deployment scripts by using Beam's
