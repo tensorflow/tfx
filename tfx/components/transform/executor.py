@@ -35,7 +35,6 @@ import tensorflow_transform.beam as tft_beam
 from tensorflow_transform.beam import analyzer_cache
 from tensorflow_transform.beam import common as tft_beam_common
 from tensorflow_transform.tf_metadata import dataset_metadata
-from tensorflow_transform.tf_metadata import dataset_schema
 from tensorflow_transform.tf_metadata import metadata_io
 from tensorflow_transform.tf_metadata import schema_utils
 from tfx import types
@@ -233,25 +232,6 @@ class _Dataset(object):
   @tfxio.setter
   def tfxio(self, val):
     self._tfxio = val
-
-
-def _GetSchemaProto(
-    metadata: dataset_metadata.DatasetMetadata) -> schema_pb2.Schema:
-  """Gets the schema proto associated with a DatasetMetadata.
-
-  This is needed because tensorflow_transform 0.13 and tensorflow_transform 0.14
-  have a different API for DatasetMetadata.
-
-  Args:
-    metadata: A dataset_metadata.DatasetMetadata.
-
-  Returns:
-    A schema_pb2.Schema.
-  """
-  # `schema` is either a Schema proto or dataset_schema.Schema.
-  schema = metadata.schema
-  # In the case where it's a dataset_schema.Schema, fetch the schema proto.
-  return getattr(schema, '_schema_proto', schema)
 
 
 def _InvokeStatsOptionsUpdaterFn(
@@ -576,11 +556,7 @@ class Executor(base_executor.BaseExecutor):
         self._IsDataFormatProto(data_format)):
       return dataset_metadata.DatasetMetadata(_RAW_EXAMPLE_SCHEMA)
     schema_proto = self._GetSchema(schema_path)
-    # For compatibility with tensorflow_transform 0.13 and 0.14, we create and
-    # then update a DatasetMetadata.
-    result = dataset_metadata.DatasetMetadata(dataset_schema.Schema({}))
-    _GetSchemaProto(result).CopyFrom(schema_proto)
-    return result
+    return dataset_metadata.DatasetMetadata(schema_proto)
 
   @staticmethod
   @beam.ptransform_fn
@@ -1195,7 +1171,7 @@ class Executor(base_executor.BaseExecutor):
             if self._IsDataFormatSequenceExample(raw_examples_data_format):
               schema_proto = None
             else:
-              schema_proto = _GetSchemaProto(input_dataset_metadata)
+              schema_proto = input_dataset_metadata.schema
 
             if self._IsDataFormatSequenceExample(raw_examples_data_format):
               def _ExtractRawExampleBatches(record_batch):
@@ -1249,7 +1225,7 @@ class Executor(base_executor.BaseExecutor):
             # TODO(b/70392441): Retain tf.Metadata (e.g., IntDomain) in
             # schema. Currently input dataset schema only contains dtypes,
             # and other metadata is dropped due to roundtrip to tensors.
-            transformed_schema_proto = _GetSchemaProto(metadata)
+            transformed_schema_proto = metadata.schema
 
             for dataset in transform_data_list:
               infix = 'TransformIndex{}'.format(dataset.index)
@@ -1328,7 +1304,7 @@ class Executor(base_executor.BaseExecutor):
     metadata_io.write_metadata(metadata, raw_metadata_dir)
     # TODO(b/149997088): Use typespecs for the tf.compat.v1 path as well.
     feature_specs = schema_utils.schema_as_feature_spec(
-        _GetSchemaProto(metadata)).feature_spec
+        metadata.schema).feature_spec
     impl_helper.analyze_in_place(preprocessing_fn, force_tf_compat_v1,
                                  feature_specs, typespecs,
                                  transform_output_path)
