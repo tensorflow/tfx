@@ -22,7 +22,6 @@ from tfx.dsl.compiler import constants
 from tfx.dsl.components.base import base_component
 from tfx.dsl.components.base import base_driver
 from tfx.dsl.components.base import base_node
-from tfx.dsl.components.common import importer
 from tfx.dsl.components.common import resolver
 from tfx.orchestration import data_types
 from tfx.orchestration import data_types_utils
@@ -70,17 +69,16 @@ class _CompilerContext(object):
 class Compiler(object):
   """Compiles a TFX pipeline or a component into a uDSL IR proto."""
 
-  def _compile_importer_node_outputs(self, tfx_node: base_node.BaseNode,
-                                     node_pb: pipeline_pb2.PipelineNode):
-    """Compiles the outputs of an importer node."""
+  def _compile_node_outputs(self, tfx_node: base_node.BaseNode,
+                            node_pb: pipeline_pb2.PipelineNode):
+    """Compiles the outputs of a node/component."""
     for key, value in tfx_node.outputs.items():
       output_spec = node_pb.outputs.outputs[key]
       artifact_type = value.type._get_artifact_type()  # pylint: disable=protected-access
       output_spec.artifact_spec.type.CopyFrom(artifact_type)
 
       # Attach additional properties for artifacts produced by importer nodes.
-      for property_name, property_value in tfx_node.exec_properties[
-          importer.PROPERTIES_KEY].items():
+      for property_name, property_value in value.additional_properties.items():
         _check_property_value_type(property_name, property_value, artifact_type)
         value_field = output_spec.artifact_spec.additional_properties[
             property_name].field_value
@@ -91,8 +89,8 @@ class Compiler(object):
               "Component {} got unsupported parameter {} with type {}.".format(
                   tfx_node.id, property_name, type(property_value)))
 
-      for property_name, property_value in tfx_node.exec_properties[
-          importer.CUSTOM_PROPERTIES_KEY].items():
+      for property_name, property_value in (
+          value.additional_custom_properties.items()):
         value_field = output_spec.artifact_spec.additional_custom_properties[
             property_name].field_value
         try:
@@ -203,6 +201,7 @@ class Compiler(object):
       # TODO(b/158712886): Calculate min_count based on if inputs are optional.
       # min_count = 0 stands for optional input and 1 stands for required input.
 
+    # TODO(b/170694459): Refactor special nodes as plugins.
     # Step 3.1: Special treatment for Resolver node.
     if compiler_utils.is_resolver(tfx_node):
       assert compile_context.is_sync_mode
@@ -213,37 +212,14 @@ class Compiler(object):
     for key, value in tfx_node.outputs.items():
       # Register the output in the context.
       compile_context.node_outputs.add(value)
-    if isinstance(tfx_node, base_component.BaseComponent):
-      for key, value in tfx_node.outputs.items():
-        output_spec = node.outputs.outputs[key]
-        artifact_type = value.type._get_artifact_type()  # pylint: disable=protected-access
-        output_spec.artifact_spec.type.CopyFrom(artifact_type)
-        for prop_key, prop_value in value.additional_properties.items():
-          _check_property_value_type(prop_key, prop_value,
-                                     output_spec.artifact_spec.type)
-          data_types_utils.set_metadata_value(
-              output_spec.artifact_spec.additional_properties[prop_key]
-              .field_value, prop_value)
-        for prop_key, prop_value in value.additional_custom_properties.items():
-          data_types_utils.set_metadata_value(
-              output_spec.artifact_spec.additional_custom_properties[prop_key]
-              .field_value, prop_value)
-
-    # TODO(b/170694459): Refactor special nodes as plugins.
-    # Step 4.1: Special treament for Importer node
-    if compiler_utils.is_importer(tfx_node):
-      self._compile_importer_node_outputs(tfx_node, node)
+    if (isinstance(tfx_node, base_component.BaseComponent) or
+        compiler_utils.is_importer(tfx_node)):
+      self._compile_node_outputs(tfx_node, node)
 
     # Step 5: Node parameters
     if not compiler_utils.is_resolver(tfx_node):
       for key, value in tfx_node.exec_properties.items():
         if value is None:
-          continue
-        # Ignore following two properties for a importer node, because they are
-        # already attached to the artifacts produced by the importer node.
-        if compiler_utils.is_importer(tfx_node) and (
-            key == importer.PROPERTIES_KEY or
-            key == importer.CUSTOM_PROPERTIES_KEY):
           continue
         parameter_value = node.parameters.parameters[key]
 

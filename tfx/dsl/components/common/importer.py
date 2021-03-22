@@ -34,12 +34,26 @@ from ml_metadata.proto import metadata_store_pb2
 IMPORT_RESULT_KEY = 'result'
 # Constant to access artifact uri from importer exec_properties dict.
 SOURCE_URI_KEY = 'artifact_uri'
-# Constant to access artifact properties from importer exec_properties dict.
-PROPERTIES_KEY = 'properties'
-# Constant to access artifact properties from importer exec_properties dict.
-CUSTOM_PROPERTIES_KEY = 'custom_properties'
 # Constant to access re-import option from importer exec_properties dict.
 REIMPORT_OPTION_KEY = 'reimport'
+
+
+def _set_artifact_properties(artifact: types.Artifact,
+                             properties: Optional[Dict[str, Any]],
+                             custom_properties: Optional[Dict[str, Any]]):
+  """Sets properties and custom_properties to the given artifact."""
+  if properties is not None:
+    for key, value in properties.items():
+      setattr(artifact, key, value)
+  if custom_properties is not None:
+    for key, value in custom_properties.items():
+      if isinstance(value, int):
+        artifact.set_int_custom_property(key, value)
+      elif isinstance(value, (str, bytes)):
+        artifact.set_string_custom_property(key, value)
+      else:
+        raise NotImplementedError(
+            f'Unexpected custom_property value type:{type(value)}')
 
 
 def _prepare_artifact(
@@ -110,13 +124,7 @@ def _prepare_artifact(
 
   result = output_artifact_class(mlmd_artifact_type)
   result.uri = uri
-  for key, value in properties.items():
-    setattr(result, key, value)
-  for key, value in custom_properties.items():
-    if isinstance(value, int):
-      result.set_int_custom_property(key, value)
-    elif isinstance(value, (Text, bytes)):
-      result.set_string_custom_property(key, value)
+  _set_artifact_properties(result, properties, custom_properties)
 
   # If a registered artifact has the same uri and properties and the user does
   # not explicitly ask for reimport, reuse that artifact.
@@ -193,13 +201,14 @@ class ImporterDriver(base_driver.BaseDriver):
         component_info=component_info,
         contexts=contexts)
     # Create imported artifacts.
+    output_channel = output_dict[IMPORT_RESULT_KEY]
     output_artifacts = generate_output_dict(
         self._metadata_handler,
         uri=exec_properties[SOURCE_URI_KEY],
-        properties=exec_properties.get(PROPERTIES_KEY),
-        custom_properties=exec_properties.get(CUSTOM_PROPERTIES_KEY),
+        properties=output_channel.additional_properties,
+        custom_properties=output_channel.additional_custom_properties,
         reimport=exec_properties[REIMPORT_OPTION_KEY],
-        output_artifact_class=output_dict[IMPORT_RESULT_KEY].type)
+        output_artifact_class=output_channel.type)
 
     # Update execution with imported artifacts.
     self._metadata_handler.update_execution(
@@ -269,15 +278,17 @@ class Importer(base_node.BaseNode):
     """
     self._source_uri = source_uri
     self._reimport = reimport
-    self._properties = properties or {}
-    self._custom_properties = custom_properties or {}
 
     artifact = artifact_type()
-    for key, value in self._properties.items():
-      setattr(artifact, key, value)
+    _set_artifact_properties(artifact, properties, custom_properties)
+
     self._output_dict = {
         IMPORT_RESULT_KEY:
-            types.Channel(type=artifact_type, artifacts=[artifact])
+            types.Channel(
+                type=artifact_type,
+                artifacts=[artifact],
+                additional_properties=properties,
+                additional_custom_properties=custom_properties)
     }
 
     super(Importer, self).__init__(
@@ -298,6 +309,4 @@ class Importer(base_node.BaseNode):
     return {
         SOURCE_URI_KEY: self._source_uri,
         REIMPORT_OPTION_KEY: int(self._reimport),
-        PROPERTIES_KEY: self._properties,
-        CUSTOM_PROPERTIES_KEY: self._custom_properties,
     }

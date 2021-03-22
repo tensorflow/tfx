@@ -20,26 +20,6 @@ tasks {
       }
     }
     parameters {
-      key: "custom_properties"
-      value {
-        runtime_value {
-          constant_value {
-            string_value: "{}"
-          }
-        }
-      }
-    }
-    parameters {
-      key: "properties"
-      value {
-        runtime_value {
-          constant_value {
-            string_value: "{}"
-          }
-        }
-      }
-    }
-    parameters {
       key: "reimport"
       value {
         runtime_value {
