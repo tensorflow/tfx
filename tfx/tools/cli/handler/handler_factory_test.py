@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,15 +13,11 @@
 # limitations under the License.
 """Tests for tfx.tools.cli.cmd.helper."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import os
 import sys
 import tempfile
+from unittest import mock
 
-import mock
 import tensorflow as tf
 
 from tfx.tools.cli import labels
@@ -50,11 +45,12 @@ class HandlerFactoryTest(tf.test.TestCase):
     return b'absl-py==0.7.1\nalembic==0.9.10\napache-beam==2.12.0\napache-airflow==1.10.3\n'
 
   @mock.patch('subprocess.check_output', _MockSubprocessAirflow)
-  def testCreateHandlerAirflow(self):
+  @mock.patch.object(airflow_handler, 'AirflowHandler', autospec=True)
+  def testCreateHandlerAirflow(self, mock_airflow_handler):
     self.flags_dict[labels.ENGINE_FLAG] = 'airflow'
-    self.assertIsInstance(
-        handler_factory.create_handler(self.flags_dict),
-        airflow_handler.AirflowHandler)
+
+    handler_factory.create_handler(self.flags_dict)
+    mock_airflow_handler.assert_called_once_with(self.flags_dict)
 
   def _MockSubprocessKubeflow(self):
     return b'absl-py==0.7.1\nadal==1.2.1\nalembic==0.9.10\napache-beam==2.12.0\nkfp==0.1\n'

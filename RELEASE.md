@@ -12,6 +12,10 @@
 
 ### For Pipeline Authors
 
+*  CLI requires Apache Airflow 1.10.14 or later. If you are using an older
+   version of airflow, you can still copy runner definition to the DAG
+   directory manually and run using airflow UIs.
+
 ### For Component Authors
 
 ## Deprecations

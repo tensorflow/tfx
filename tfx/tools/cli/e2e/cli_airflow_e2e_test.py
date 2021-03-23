@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,10 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """E2E Airflow tests for CLI."""
-
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
 
 import codecs
 import locale
@@ -36,9 +31,10 @@ from tfx.tools.cli.cli_main import cli_group
 from tfx.tools.cli.e2e import test_utils
 from tfx.utils import io_utils
 from tfx.utils import retry
+from tfx.utils import test_case_utils
 
 
-class CliAirflowEndToEndTest(tf.test.TestCase):
+class CliAirflowEndToEndTest(test_case_utils.TfxTest):
 
   def setUp(self):
     super(CliAirflowEndToEndTest, self).setUp()
@@ -56,13 +52,12 @@ class CliAirflowEndToEndTest(tf.test.TestCase):
       os.environ['LANG'] = 'en_US.utf-8'
 
     # Setup airflow_home in a temp directory
-    self._airflow_home = os.path.join(
-        os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR', self.get_temp_dir()),
-        self._testMethodName, 'airflow')
-    self._old_airflow_home = os.environ.get('AIRFLOW_HOME')
-    os.environ['AIRFLOW_HOME'] = self._airflow_home
-    self._old_home = os.environ.get('HOME')
-    os.environ['HOME'] = self._airflow_home
+    self._airflow_home = os.path.join(self.tmp_dir, 'airflow')
+    self.enter_context(
+        test_case_utils.override_env_var('AIRFLOW_HOME', self._airflow_home))
+    self.enter_context(
+        test_case_utils.override_env_var('HOME', self._airflow_home))
+
     absl.logging.info('Using %s as AIRFLOW_HOME and HOME in this e2e test',
                       self._airflow_home)
 
@@ -96,29 +91,26 @@ class CliAirflowEndToEndTest(tf.test.TestCase):
     db_port = airflow_test_utils.create_mysql_container(
         self._mysql_container_name)
     self.addCleanup(self._cleanup_mysql_container)
-    os.environ['AIRFLOW__CORE__SQL_ALCHEMY_CONN'] = (
-        'mysql://tfx@127.0.0.1:%d/airflow' % db_port)
+    self.enter_context(
+        test_case_utils.override_env_var(
+            'AIRFLOW__CORE__SQL_ALCHEMY_CONN',
+            'mysql://tfx@127.0.0.1:%d/airflow' % db_port))
     # Do not load examples to make this a bit faster.
-    os.environ['AIRFLOW__CORE__LOAD_EXAMPLES'] = 'False'
+    self.enter_context(
+        test_case_utils.override_env_var('AIRFLOW__CORE__LOAD_EXAMPLES',
+                                         'False'))
 
     self._airflow_initdb()
 
     # Initialize CLI runner.
     self.runner = click_testing.CliRunner()
 
-  def tearDown(self):
-    super(CliAirflowEndToEndTest, self).tearDown()
-    if self._old_airflow_home:
-      os.environ['AIRFLOW_HOME'] = self._old_airflow_home
-    if self._old_home:
-      os.environ['HOME'] = self._old_home
-
   @retry.retry(ignore_eventual_failure=True)
   def _cleanup_mysql_container(self):
     airflow_test_utils.delete_mysql_container(self._mysql_container_name)
 
   def _airflow_initdb(self):
-    _ = subprocess.check_output(['airflow', 'initdb'])
+    _ = subprocess.check_output(['airflow', 'db', 'init'])
 
   def _reload_airflow_dags(self):
     # Created pipelines can be registered to the DB by airflow scheduler
@@ -285,7 +277,7 @@ class CliAirflowEndToEndTest(tf.test.TestCase):
     response = ''
     while pipeline_name not in response:
       response = str(
-          subprocess.check_output(['airflow', 'list_dags', '--report']))
+          subprocess.check_output(['airflow', 'dags', 'list']))
 
     self._reload_airflow_dags()
 
@@ -332,8 +324,10 @@ class CliAirflowEndToEndTest(tf.test.TestCase):
     self.assertIn(
         'Listing all runs of pipeline: {}'.format(self._pipeline_name),
         result.output)
-    self.assertIn('No pipeline runs for {}'.format(self._pipeline_name),
-                  result.output)
+    self.assertEqual(
+        result.output.count(self._pipeline_name),
+        1,
+        msg=f'actual message={result.output}')
 
     # Run pipeline.
     self._valid_run_and_check(self._pipeline_name)
@@ -350,6 +344,11 @@ class CliAirflowEndToEndTest(tf.test.TestCase):
     self.assertIn(
         'Listing all runs of pipeline: {}'.format(self._pipeline_name),
         result.output)
+
+    self.assertEqual(
+        result.output.count(self._pipeline_name),
+        3,
+        msg=f'actual message={result.output}')
 
   def testUninstalledOrchestratorKubeflow(self):
     result = self.runner.invoke(cli_group,

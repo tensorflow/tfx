@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,12 +13,9 @@
 # limitations under the License.
 """Tests for tfx.tools.cli.handler.base_handler."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import json
 import os
+import textwrap
 import mock
 
 import tensorflow as tf
@@ -202,6 +198,25 @@ class BaseHandlerTest(tf.test.TestCase):
 
     self.assertTrue(fileio.exists(new_path))
     self.assertFalse(fileio.exists(old_path))
+
+  def testFormatTable(self):
+    flags_dict = {
+        labels.ENGINE_FLAG: 'engine',
+        labels.PIPELINE_DSL_PATH: 'path_to_pipeline_dsl'
+    }
+    handler = FakeHandler(flags_dict)
+    self.assertEqual(
+        textwrap.dedent("""\
+      +===+===+====+
+      |abc|d  |x   |
+      +===+===+====+
+      |1  |234|abcd|
+      +---+---+----+
+      |xxx|   |ff  |
+      +===+===+====+
+      """),
+        handler._format_table(('abc', 'd', 'x'),
+                              [['1', '234', 'abcd'], ['xxx', '', 'ff']]))
 
 
 if __name__ == '__main__':

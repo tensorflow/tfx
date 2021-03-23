@@ -21,7 +21,6 @@ import sys
 from typing import Any, Dict, List, Optional, Text
 
 import click
-from tabulate import tabulate
 from tfx.dsl.io import fileio
 from tfx.tools.cli import labels
 from tfx.tools.cli.container_builder import builder
@@ -335,5 +334,4 @@ class KubeflowV2Handler(base_handler.BaseHandler):
           run.get('createTime'),
           _get_job_link(job_name=_get_job_name(run), project_id=project_id),
       ])
-
-    click.echo(tabulate(data, headers=headers, tablefmt='grid'))
+    click.echo(self._format_table(headers, data))
