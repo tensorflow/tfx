@@ -7,6 +7,8 @@
 *  Performance improvement in Transform by avoiding excess encodings and
    decodings when it materializes transformed examples or generates statistics
    (both enabled by default).
+*  Added an accessor (`.data_view_decode_fn`) to the decoder function wrapped in
+   the DataView in Trainer `FnArgs.data_accessor`.
 
 ## Breaking Changes
 
