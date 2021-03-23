@@ -14,11 +14,14 @@
 """Tests for tfx.orchestration.experimental.core.sync_pipeline_task_gen."""
 
 import os
+import uuid
 
 from absl.testing import parameterized
 from absl.testing.absltest import mock
 import tensorflow as tf
+from tfx.orchestration import data_types_utils
 from tfx.orchestration import metadata
+from tfx.orchestration.experimental.core import constants
 from tfx.orchestration.experimental.core import pipeline_state as pstate
 from tfx.orchestration.experimental.core import service_jobs
 from tfx.orchestration.experimental.core import status as status_lib
@@ -26,10 +29,18 @@ from tfx.orchestration.experimental.core import sync_pipeline_task_gen as sptg
 from tfx.orchestration.experimental.core import task as task_lib
 from tfx.orchestration.experimental.core import task_queue as tq
 from tfx.orchestration.experimental.core import test_utils as otu
+from tfx.orchestration.portable import runtime_parameter_utils
 from tfx.proto.orchestration import pipeline_pb2
 from tfx.utils import test_case_utils as tu
 
 from ml_metadata.proto import metadata_store_pb2
+
+
+def _get_node(pipeline, node_id):
+  for node in pipeline.nodes:
+    if node.pipeline_node.node_info.id == node_id:
+      return node.pipeline_node
+  raise ValueError(f'could not find {node_id}')
 
 
 class SyncPipelineTaskGeneratorTest(tu.TfxTest, parameterized.TestCase):
@@ -57,49 +68,45 @@ class SyncPipelineTaskGeneratorTest(tu.TfxTest, parameterized.TestCase):
         os.path.join(
             os.path.dirname(__file__), 'testdata', 'sync_pipeline.pbtxt'),
         pipeline)
+    self._pipeline_run_id = str(uuid.uuid4())
+    runtime_parameter_utils.substitute_runtime_parameter(
+        pipeline, {
+            'pipeline_root': pipeline_root,
+            'pipeline_run_id': self._pipeline_run_id
+        })
     self._pipeline = pipeline
-    self._pipeline_info = pipeline.pipeline_info
-    self._pipeline_runtime_spec = pipeline.runtime_spec
-    self._pipeline_runtime_spec.pipeline_root.field_value.string_value = (
-        pipeline_root)
-    self._pipeline_runtime_spec.pipeline_run_id.field_value.string_value = (
-        'run_0')
 
     # Extracts components.
-    self._example_gen = pipeline.nodes[0].pipeline_node
-    self._transform = pipeline.nodes[1].pipeline_node
-    self._trainer = pipeline.nodes[2].pipeline_node
+    self._example_gen = _get_node(pipeline, 'my_example_gen')
+    self._stats_gen = _get_node(pipeline, 'my_statistics_gen')
+    self._schema_gen = _get_node(pipeline, 'my_schema_gen')
+    self._transform = _get_node(pipeline, 'my_transform')
+    self._example_validator = _get_node(pipeline, 'my_example_validator')
+    self._trainer = _get_node(pipeline, 'my_trainer')
 
     self._task_queue = tq.TaskQueue()
 
     self._mock_service_job_manager = mock.create_autospec(
         service_jobs.ServiceJobManager, instance=True)
 
-    def _is_pure_service_node(unused_pipeline_state, node_id):
-      return node_id == self._example_gen.node_info.id
-
     self._mock_service_job_manager.is_pure_service_node.side_effect = (
-        _is_pure_service_node)
+        lambda _, node_id: node_id == self._example_gen.node_info.id)
+    self._mock_service_job_manager.is_mixed_service_node.side_effect = (
+        lambda _, node_id: node_id == self._transform.node_info.id)
 
   def _verify_exec_node_task(self, node, execution_id, task):
     self.assertEqual(
         task_lib.NodeUid.from_pipeline_node(self._pipeline, node),
         task.node_uid)
     self.assertEqual(execution_id, task.execution.id)
-    if node == self._transform:
-      expected_context_names = ['my_pipeline', 'my_transform', 'run_0']
-      expected_input_artifacts_keys = ['examples']
-      expected_output_artifacts_keys = ['transform_graph']
-      output_artifact_uri = os.path.join(self._pipeline_root, node.node_info.id,
-                                         'transform_graph', str(execution_id))
-    elif node == self._trainer:
-      expected_context_names = ['my_pipeline', 'my_trainer', 'run_0']
-      expected_input_artifacts_keys = ['examples', 'transform_graph']
-      expected_output_artifacts_keys = ['model']
-      output_artifact_uri = os.path.join(self._pipeline_root, node.node_info.id,
-                                         'model', str(execution_id))
-    else:
-      raise ValueError('Not configured to verify for node: {}'.format(node))
+    expected_context_names = [
+        'my_pipeline', node.node_info.id, self._pipeline_run_id
+    ]
+    expected_input_artifacts_keys = list(iter(node.inputs.inputs.keys()))
+    expected_output_artifacts_keys = list(iter(node.outputs.outputs.keys()))
+    output_artifact_uri = os.path.join(self._pipeline_root, node.node_info.id,
+                                       expected_output_artifacts_keys[0],
+                                       str(execution_id))
     self.assertCountEqual(expected_context_names,
                           [c.name for c in task.contexts])
     self.assertCountEqual(expected_input_artifacts_keys,
@@ -175,56 +182,37 @@ class SyncPipelineTaskGeneratorTest(tu.TfxTest, parameterized.TestCase):
     otu.fake_example_gen_run(self._mlmd_connection, self._example_gen, 1, 1)
 
     def _ensure_node_services(unused_pipeline_state, node_id):
-      self.assertEqual(self._example_gen.node_info.id, node_id)
+      self.assertIn(
+          node_id,
+          (self._example_gen.node_info.id, self._transform.node_info.id))
       return service_jobs.ServiceStatus.SUCCESS
 
     self._mock_service_job_manager.ensure_node_services.side_effect = (
         _ensure_node_services)
 
-    # Generate once.
-    with self.subTest(generate=1):
+    # Generate once. Stats-gen task should be generated.
+    with self.subTest(generate='stats_gen'):
       tasks, active_executions = self._generate_and_test(
           use_task_queue,
           num_initial_executions=1,
           num_tasks_generated=1,
           num_new_executions=1,
           num_active_executions=1)
-      self._verify_exec_node_task(self._transform, active_executions[0].id,
-                                  tasks[0])
-
-    self._mock_service_job_manager.ensure_node_services.assert_called()
-
-    # Should be fine to regenerate multiple times. There should be no new
-    # effects.
-    with self.subTest(generate=2):
-      tasks, active_executions = self._generate_and_test(
-          use_task_queue,
-          num_initial_executions=2,
-          num_tasks_generated=0 if use_task_queue else 1,
-          num_new_executions=0,
-          num_active_executions=1)
-      if not use_task_queue:
-        self._verify_exec_node_task(self._transform, active_executions[0].id,
-                                    tasks[0])
-    with self.subTest(generate=3):
-      tasks, active_executions = self._generate_and_test(
-          use_task_queue,
-          num_initial_executions=2,
-          num_tasks_generated=0 if use_task_queue else 1,
-          num_new_executions=0,
-          num_active_executions=1)
       execution_id = active_executions[0].id
-      if not use_task_queue:
-        self._verify_exec_node_task(self._transform, execution_id, tasks[0])
+      self._verify_exec_node_task(self._stats_gen, execution_id, tasks[0])
 
-    # Mark transform execution complete.
-    otu.fake_transform_output(self._mlmd_connection, self._transform,
+    self._mock_service_job_manager.ensure_node_services.assert_called_with(
+        mock.ANY, self._example_gen.node_info.id)
+    self._mock_service_job_manager.reset_mock()
+
+    # Finish stats-gen execution.
+    otu.fake_component_output(self._mlmd_connection, self._stats_gen,
                               active_executions[0])
     # Dequeue the corresponding task if task queue is enabled.
-    self._dequeue_and_test(use_task_queue, self._transform, execution_id)
+    self._dequeue_and_test(use_task_queue, self._stats_gen, execution_id)
 
-    # Trainer execution task should be generated when generate called again.
-    with self.subTest(generate=4):
+    # Schema-gen should execute next.
+    with self.subTest(generate='schema_gen'):
       tasks, active_executions = self._generate_and_test(
           use_task_queue,
           num_initial_executions=2,
@@ -232,19 +220,77 @@ class SyncPipelineTaskGeneratorTest(tu.TfxTest, parameterized.TestCase):
           num_new_executions=1,
           num_active_executions=1)
       execution_id = active_executions[0].id
-      self._verify_exec_node_task(self._trainer, execution_id, tasks[0])
+      self._verify_exec_node_task(self._schema_gen, execution_id, tasks[0])
 
-    # Mark the trainer execution complete.
-    otu.fake_trainer_output(self._mlmd_connection, self._trainer,
-                            active_executions[0])
+    # Finish schema-gen execution.
+    otu.fake_component_output(self._mlmd_connection, self._schema_gen,
+                              active_executions[0])
     # Dequeue the corresponding task if task queue is enabled.
-    self._dequeue_and_test(use_task_queue, self._trainer, execution_id)
+    self._dequeue_and_test(use_task_queue, self._schema_gen, execution_id)
 
-    # No more components to execute, FinalizePipelineTask should be generated.
-    with self.subTest(generate=5):
-      tasks, _ = self._generate_and_test(
+    # Transform and ExampleValidator should both execute next.
+    with self.subTest(generate='transform_and_example_validator'):
+      tasks, active_executions = self._generate_and_test(
           use_task_queue,
           num_initial_executions=3,
+          num_tasks_generated=2,
+          num_new_executions=2,
+          num_active_executions=2)
+      self._verify_exec_node_task(self._example_validator,
+                                  active_executions[0].id, tasks[0])
+      transform_exec = active_executions[1]
+      self._verify_exec_node_task(self._transform, transform_exec.id, tasks[1])
+
+    # Transform is a "mixed service node".
+    self._mock_service_job_manager.ensure_node_services.assert_called_once_with(
+        mock.ANY, self._transform.node_info.id)
+    self._mock_service_job_manager.reset_mock()
+
+    # Finish example-validator execution.
+    otu.fake_component_output(self._mlmd_connection, self._example_validator,
+                              active_executions[0])
+    self._dequeue_and_test(use_task_queue, self._example_validator,
+                           active_executions[0].id)
+
+    # Since transform hasn't finished, trainer will not be triggered yet.
+    with self.subTest(generate='trainer_not_triggered'):
+      tasks, active_executions = self._generate_and_test(
+          use_task_queue,
+          num_initial_executions=5,
+          num_tasks_generated=0 if use_task_queue else 1,
+          num_new_executions=0,
+          num_active_executions=1)
+      if not use_task_queue:
+        self._verify_exec_node_task(self._transform, active_executions[0].id,
+                                    tasks[0])
+
+    # Finish transform execution.
+    otu.fake_component_output(self._mlmd_connection, self._transform,
+                              transform_exec)
+    self._dequeue_and_test(use_task_queue, self._transform, transform_exec.id)
+
+    # Now all trainer upstream nodes are done, so trainer will be triggered.
+    with self.subTest(generate='trainer'):
+      tasks, active_executions = self._generate_and_test(
+          use_task_queue,
+          num_initial_executions=5,
+          num_tasks_generated=1,
+          num_new_executions=1,
+          num_active_executions=1)
+      self._verify_exec_node_task(self._trainer, active_executions[0].id,
+                                  tasks[0])
+
+    # Finish trainer execution.
+    otu.fake_component_output(self._mlmd_connection, self._trainer,
+                              active_executions[0])
+    self._dequeue_and_test(use_task_queue, self._trainer,
+                           active_executions[0].id)
+
+    # No more components to execute, FinalizePipelineTask should be generated.
+    with self.subTest(generate='finalize'):
+      tasks, _ = self._generate_and_test(
+          use_task_queue,
+          num_initial_executions=6,
           num_tasks_generated=1,
           num_new_executions=0,
           num_active_executions=0)
@@ -289,6 +335,53 @@ class SyncPipelineTaskGeneratorTest(tu.TfxTest, parameterized.TestCase):
     self.assertLen(tasks, 1)
     self.assertTrue(task_lib.is_finalize_pipeline_task(tasks[0]))
     self.assertEqual(status_lib.Code.ABORTED, tasks[0].status.code)
+    self.assertRegexMatch(tasks[0].status.message, ['service job failed'])
+
+  @parameterized.parameters(False, True)
+  def test_node_failed(self, use_task_queue):
+    """Tests task generation when a node registers a failed execution."""
+    otu.fake_example_gen_run(self._mlmd_connection, self._example_gen, 1, 1)
+
+    def _ensure_node_services(unused_pipeline_state, node_id):
+      self.assertEqual(self._example_gen.node_info.id, node_id)
+      return service_jobs.ServiceStatus.SUCCESS
+
+    self._mock_service_job_manager.ensure_node_services.side_effect = (
+        _ensure_node_services)
+
+    tasks, active_executions = self._generate_and_test(
+        use_task_queue,
+        num_initial_executions=1,
+        num_tasks_generated=1,
+        num_new_executions=1,
+        num_active_executions=1)
+    self.assertEqual(
+        task_lib.NodeUid.from_pipeline_node(self._pipeline, self._stats_gen),
+        tasks[0].node_uid)
+    stats_gen_exec = active_executions[0]
+
+    # Fail stats-gen execution.
+    stats_gen_exec.last_known_state = metadata_store_pb2.Execution.FAILED
+    data_types_utils.set_metadata_value(
+        stats_gen_exec.custom_properties[constants.EXECUTION_ERROR_MSG_KEY],
+        'foobar error')
+    with self._mlmd_connection as m:
+      m.store.put_executions([stats_gen_exec])
+    if use_task_queue:
+      task = self._task_queue.dequeue()
+      self._task_queue.task_done(task)
+
+    # Test generation of FinalizePipelineTask.
+    tasks, _ = self._generate_and_test(
+        True,
+        num_initial_executions=2,
+        num_tasks_generated=1,
+        num_new_executions=0,
+        num_active_executions=0)
+    self.assertLen(tasks, 1)
+    self.assertTrue(task_lib.is_finalize_pipeline_task(tasks[0]))
+    self.assertEqual(status_lib.Code.ABORTED, tasks[0].status.code)
+    self.assertRegexMatch(tasks[0].status.message, ['foobar error'])
 
 
 if __name__ == '__main__':

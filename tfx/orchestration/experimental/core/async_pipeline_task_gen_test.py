@@ -235,7 +235,7 @@ class AsyncPipelineTaskGeneratorTest(tu.TfxTest, parameterized.TestCase):
         self._verify_exec_node_task(self._transform, execution_id, tasks[0])
 
     # Mark transform execution complete.
-    otu.fake_transform_output(self._mlmd_connection, self._transform,
+    otu.fake_component_output(self._mlmd_connection, self._transform,
                               active_executions[0])
     # Dequeue the corresponding task if task queue is enabled.
     self._dequeue_and_test(use_task_queue, self._transform,
@@ -253,8 +253,8 @@ class AsyncPipelineTaskGeneratorTest(tu.TfxTest, parameterized.TestCase):
       self._verify_exec_node_task(self._trainer, execution_id, tasks[0])
 
     # Mark the trainer execution complete.
-    otu.fake_trainer_output(self._mlmd_connection, self._trainer,
-                            active_executions[0])
+    otu.fake_component_output(self._mlmd_connection, self._trainer,
+                              active_executions[0])
     # Dequeue the corresponding task if task queue is enabled.
     self._dequeue_and_test(use_task_queue, self._trainer, execution_id)
 
@@ -299,15 +299,15 @@ class AsyncPipelineTaskGeneratorTest(tu.TfxTest, parameterized.TestCase):
                                     tasks[1])
 
     # Mark transform execution complete.
-    otu.fake_transform_output(self._mlmd_connection, self._transform,
+    otu.fake_component_output(self._mlmd_connection, self._transform,
                               active_executions[0])
     # Dequeue the corresponding task.
     self._dequeue_and_test(use_task_queue, self._transform,
                            active_executions[0].id)
 
     # Mark the trainer execution complete.
-    otu.fake_trainer_output(self._mlmd_connection, self._trainer,
-                            active_executions[1])
+    otu.fake_component_output(self._mlmd_connection, self._trainer,
+                              active_executions[1])
     self._dequeue_and_test(use_task_queue, self._trainer,
                            active_executions[1].id)
 
@@ -323,8 +323,8 @@ class AsyncPipelineTaskGeneratorTest(tu.TfxTest, parameterized.TestCase):
                                   tasks[0])
 
     # Finally, no new tasks once trainer completes.
-    otu.fake_trainer_output(self._mlmd_connection, self._trainer,
-                            active_executions[0])
+    otu.fake_component_output(self._mlmd_connection, self._trainer,
+                              active_executions[0])
     # Dequeue corresponding task.
     self._dequeue_and_test(use_task_queue, self._trainer,
                            active_executions[0].id)

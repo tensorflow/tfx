@@ -202,7 +202,8 @@ class PipelineOpsTest(tu.TfxTest, parameterized.TestCase):
             os.path.dirname(__file__), 'testdata', 'async_pipeline.pbtxt'),
         pipeline)
     trainer = pipeline.nodes[2].pipeline_node
-    test_utils.fake_trainer_output(self._mlmd_connection, trainer, active=True)
+    test_utils.fake_component_output(
+        self._mlmd_connection, trainer, active=True)
     pipeline_uid = task_lib.PipelineUid.from_pipeline(pipeline)
     node_uid = task_lib.NodeUid(node_id='my_trainer', pipeline_uid=pipeline_uid)
     with self._mlmd_connection as m:
@@ -236,7 +237,8 @@ class PipelineOpsTest(tu.TfxTest, parameterized.TestCase):
             os.path.dirname(__file__), 'testdata', 'async_pipeline.pbtxt'),
         pipeline)
     trainer = pipeline.nodes[2].pipeline_node
-    test_utils.fake_trainer_output(self._mlmd_connection, trainer, active=True)
+    test_utils.fake_component_output(
+        self._mlmd_connection, trainer, active=True)
     pipeline_uid = task_lib.PipelineUid.from_pipeline(pipeline)
     node_uid = task_lib.NodeUid(node_id='my_trainer', pipeline_uid=pipeline_uid)
     with self._mlmd_connection as m:
@@ -357,6 +359,8 @@ class PipelineOpsTest(tu.TfxTest, parameterized.TestCase):
           service_jobs.ServiceJobManager, instance=True)
       mock_service_job_manager.is_pure_service_node.side_effect = (
           lambda _, node_id: node_id == 'ExampleGen')
+      mock_service_job_manager.is_mixed_service_node.side_effect = (
+          lambda _, node_id: node_id == 'Transform')
 
       pipeline_ops.initiate_pipeline_start(m, pipeline)
       with pstate.PipelineState.load(
@@ -394,6 +398,7 @@ class PipelineOpsTest(tu.TfxTest, parameterized.TestCase):
       # service node.
       mock_service_job_manager.stop_node_services.assert_called_once_with(
           mock.ANY, 'ExampleGen')
+      mock_service_job_manager.reset_mock()
 
       task_queue.task_done(transform_task)  # Pop out transform task.
 
@@ -440,6 +445,13 @@ class PipelineOpsTest(tu.TfxTest, parameterized.TestCase):
       [execution] = m.store.get_executions_by_id([pipeline_execution.id])
       self.assertEqual(metadata_store_pb2.Execution.CANCELED,
                        execution.last_known_state)
+
+      # stop_node_services should be called on both ExampleGen and Transform
+      # which are service nodes.
+      mock_service_job_manager.stop_node_services.assert_has_calls(
+          [mock.call(mock.ANY, 'ExampleGen'),
+           mock.call(mock.ANY, 'Transform')],
+          any_order=True)
 
   @mock.patch.object(async_pipeline_task_gen, 'AsyncPipelineTaskGenerator')
   @mock.patch.object(task_gen_utils, 'generate_task_from_active_execution')

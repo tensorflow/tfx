@@ -21,8 +21,10 @@ import threading
 from absl import logging
 from absl.testing.absltest import mock
 import tensorflow as tf
+from tfx.orchestration import data_types_utils
 from tfx.orchestration import metadata
 from tfx.orchestration.experimental.core import async_pipeline_task_gen as asptg
+from tfx.orchestration.experimental.core import constants
 from tfx.orchestration.experimental.core import pipeline_state as pstate
 from tfx.orchestration.experimental.core import service_jobs
 from tfx.orchestration.experimental.core import status as status_lib
@@ -235,7 +237,7 @@ class _FakeComponentScheduler(ts.TaskScheduler):
     pass
 
 
-def _make_executor_output(task, code=status_lib.Code.OK):
+def _make_executor_output(task, code=status_lib.Code.OK, msg=''):
   assert task_lib.is_exec_node_task(task)
   executor_output = execution_result_pb2.ExecutorOutput()
   for key, artifacts in task.output_artifacts.items():
@@ -243,6 +245,7 @@ def _make_executor_output(task, code=status_lib.Code.OK):
       executor_output.output_artifacts[key].artifacts.add().CopyFrom(
           artifact.mlmd_artifact)
   executor_output.execution_result.code = code
+  executor_output.execution_result.result_message = msg
   return executor_output
 
 
@@ -379,7 +382,8 @@ class TaskManagerE2ETest(tu.TfxTest):
     # Register a fake task scheduler that returns a failure status.
     self._register_task_scheduler(
         ts.TaskSchedulerResult(
-            status=status_lib.Status(code=status_lib.Code.ABORTED),
+            status=status_lib.Status(
+                code=status_lib.Code.ABORTED, message='foobar error'),
             executor_output=None))
     task_manager = self._run_task_manager()
     self.assertTrue(task_manager.done())
@@ -390,6 +394,10 @@ class TaskManagerE2ETest(tu.TfxTest):
     execution = self._get_execution()
     self.assertEqual(metadata_store_pb2.Execution.FAILED,
                      execution.last_known_state)
+    self.assertEqual(
+        'foobar error',
+        data_types_utils.get_metadata_value(
+            execution.custom_properties[constants.EXECUTION_ERROR_MSG_KEY]))
 
   def test_executor_failure(self):
     # Register a fake task scheduler that returns success but the executor
@@ -398,7 +406,9 @@ class TaskManagerE2ETest(tu.TfxTest):
         ts.TaskSchedulerResult(
             status=status_lib.Status(code=status_lib.Code.OK),
             executor_output=_make_executor_output(
-                self._task, code=status_lib.Code.FAILED_PRECONDITION)))
+                self._task,
+                code=status_lib.Code.FAILED_PRECONDITION,
+                msg='foobar error')))
     task_manager = self._run_task_manager()
     self.assertTrue(task_manager.done())
     self.assertIsNone(task_manager.exception())
@@ -408,6 +418,10 @@ class TaskManagerE2ETest(tu.TfxTest):
     execution = self._get_execution()
     self.assertEqual(metadata_store_pb2.Execution.FAILED,
                      execution.last_known_state)
+    self.assertEqual(
+        'foobar error',
+        data_types_utils.get_metadata_value(
+            execution.custom_properties[constants.EXECUTION_ERROR_MSG_KEY]))
 
   def test_scheduler_raises_exception(self):
     # Register a fake task scheduler that raises an exception in `schedule`.

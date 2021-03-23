@@ -21,7 +21,9 @@ import typing
 from typing import Optional
 
 from absl import logging
+from tfx.orchestration import data_types_utils
 from tfx.orchestration import metadata
+from tfx.orchestration.experimental.core import constants
 from tfx.orchestration.experimental.core import status as status_lib
 from tfx.orchestration.experimental.core import task as task_lib
 from tfx.orchestration.experimental.core import task_queue as tq
@@ -208,9 +210,8 @@ class TaskManager:
     try:
       result = scheduler.schedule()
     except Exception as e:  # pylint: disable=broad-except
-      logging.info(
-          'Exception raised by task scheduler for node uid %s; error: %s',
-          task.node_uid, e)
+      logging.exception('Exception raised by task scheduler; node uid: %s',
+                        task.node_uid)
       result = ts.TaskSchedulerResult(
           status=status_lib.Status(
               code=status_lib.Code.ABORTED, message=str(e)))
@@ -238,9 +239,13 @@ class TaskManager:
 
 def _update_execution_state_in_mlmd(
     mlmd_handle: metadata.Metadata, execution: metadata_store_pb2.Execution,
-    new_state: metadata_store_pb2.Execution.State) -> None:
+    new_state: metadata_store_pb2.Execution.State, error_msg: str) -> None:
   updated_execution = copy.deepcopy(execution)
   updated_execution.last_known_state = new_state
+  if error_msg:
+    data_types_utils.set_metadata_value(
+        updated_execution.custom_properties[constants.EXECUTION_ERROR_MSG_KEY],
+        error_msg)
   mlmd_handle.store.put_executions([updated_execution])
 
 
@@ -252,18 +257,16 @@ def _publish_execution_results(mlmd_handle: metadata.Metadata,
   def _update_state(status: status_lib.Status) -> None:
     assert status.code != status_lib.Code.OK
     if status.code == status_lib.Code.CANCELLED:
+      logging.info('Cancelling execution (id: %s); task id: %s; status: %s',
+                   task.execution.id, task.task_id, status)
       execution_state = metadata_store_pb2.Execution.CANCELED
-      state_msg = 'cancelled'
     else:
+      logging.info(
+          'Aborting execution (id: %s) due to error (code: %s); task id: %s',
+          task.execution.id, status.code, task.task_id)
       execution_state = metadata_store_pb2.Execution.FAILED
-      state_msg = 'failed'
-    logging.info(
-        'Got error (status: %s) for task id: %s; marking execution (id: %s) '
-        'as %s.', status, task.task_id, task.execution.id, state_msg)
-    # TODO(goutham): Also record error code and error message as custom property
-    # of the execution.
     _update_execution_state_in_mlmd(mlmd_handle, task.execution,
-                                    execution_state)
+                                    execution_state, status.message)
 
   if result.status.code != status_lib.Code.OK:
     _update_state(result.status)
@@ -271,9 +274,10 @@ def _publish_execution_results(mlmd_handle: metadata.Metadata,
 
   if (result.executor_output and
       result.executor_output.execution_result.code != status_lib.Code.OK):
-    _update_state(status_lib.Status(
-        code=result.executor_output.execution_result.code,
-        message=result.executor_output.execution_result.result_message))
+    _update_state(
+        status_lib.Status(
+            code=result.executor_output.execution_result.code,
+            message=result.executor_output.execution_result.result_message))
     return
 
   execution_publish_utils.publish_succeeded_execution(mlmd_handle,

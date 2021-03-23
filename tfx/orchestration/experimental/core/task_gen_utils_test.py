@@ -78,11 +78,11 @@ class TaskGenUtilsTest(tu.TfxTest):
     self._set_pipeline_context('my_pipeline1')
     otu.fake_example_gen_run(self._mlmd_connection, self._example_gen, 1, 1)
     otu.fake_example_gen_run(self._mlmd_connection, self._example_gen, 2, 1)
-    otu.fake_transform_output(self._mlmd_connection, self._transform)
+    otu.fake_component_output(self._mlmd_connection, self._transform)
     self._set_pipeline_context('my_pipeline2')
     otu.fake_example_gen_run(self._mlmd_connection, self._example_gen, 1, 1)
     otu.fake_example_gen_run(self._mlmd_connection, self._example_gen, 2, 1)
-    otu.fake_transform_output(self._mlmd_connection, self._transform)
+    otu.fake_component_output(self._mlmd_connection, self._transform)
 
     # Get all executions across all pipeline contexts.
     with self._mlmd_connection as m:
@@ -158,7 +158,7 @@ class TaskGenUtilsTest(tu.TfxTest):
               m, self._pipeline, self._trainer, executions))
 
     # Next, ensure an active execution for trainer.
-    otu.fake_trainer_output(self._mlmd_connection, self._trainer)
+    otu.fake_component_output(self._mlmd_connection, self._trainer)
     with self._mlmd_connection as m:
       execution = m.store.get_executions()[0]
       execution.last_known_state = metadata_store_pb2.Execution.RUNNING
@@ -210,9 +210,9 @@ class TaskGenUtilsTest(tu.TfxTest):
           ])
 
   def test_get_latest_successful_execution(self):
-    otu.fake_transform_output(self._mlmd_connection, self._transform)
-    otu.fake_transform_output(self._mlmd_connection, self._transform)
-    otu.fake_transform_output(self._mlmd_connection, self._transform)
+    otu.fake_component_output(self._mlmd_connection, self._transform)
+    otu.fake_component_output(self._mlmd_connection, self._transform)
+    otu.fake_component_output(self._mlmd_connection, self._transform)
     with self._mlmd_connection as m:
       execs = sorted(m.store.get_executions(), key=lambda e: e.id)
       execs[2].last_known_state = metadata_store_pb2.Execution.FAILED

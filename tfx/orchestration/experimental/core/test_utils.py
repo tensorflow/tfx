@@ -13,6 +13,8 @@
 # limitations under the License.
 """Test utilities."""
 
+import uuid
+
 from absl.testing.absltest import mock
 from tfx import types
 from tfx.orchestration.experimental.core import task as task_lib
@@ -37,37 +39,22 @@ def fake_example_gen_run(mlmd_connection, example_gen, span, version):
         })
 
 
-def fake_transform_output(mlmd_connection, transform, execution=None):
-  """Writes fake transform output and execution to MLMD."""
+def fake_component_output(mlmd_connection,
+                          component,
+                          execution=None,
+                          active=False):
+  """Writes fake component output and execution to MLMD."""
   with mlmd_connection as m:
-    output_transform_graph = types.Artifact(
-        transform.outputs.outputs['transform_graph'].artifact_spec.type)
-    output_transform_graph.uri = 'my_transform_graph_uri'
-    contexts = context_lib.prepare_contexts(m, transform.contexts)
+    output_key, output_value = next(iter(component.outputs.outputs.items()))
+    output = types.Artifact(output_value.artifact_spec.type)
+    output.uri = str(uuid.uuid4())
+    contexts = context_lib.prepare_contexts(m, component.contexts)
     if not execution:
       execution = execution_publish_utils.register_execution(
-          m, transform.node_info.type, contexts)
-    execution_publish_utils.publish_succeeded_execution(
-        m, execution.id, contexts, {
-            'transform_graph': [output_transform_graph],
-        })
-
-
-def fake_trainer_output(mlmd_connection, trainer, execution=None, active=False):
-  """Writes fake trainer output and execution to MLMD."""
-  with mlmd_connection as m:
-    output_trainer_model = types.Artifact(
-        trainer.outputs.outputs['model'].artifact_spec.type)
-    output_trainer_model.uri = 'my_trainer_model_uri'
-    contexts = context_lib.prepare_contexts(m, trainer.contexts)
-    if not execution:
-      execution = execution_publish_utils.register_execution(
-          m, trainer.node_info.type, contexts)
+          m, component.node_info.type, contexts)
     if not active:
       execution_publish_utils.publish_succeeded_execution(
-          m, execution.id, contexts, {
-              'model': [output_trainer_model],
-          })
+          m, execution.id, contexts, {output_key: [output]})
 
 
 def create_exec_node_task(node_uid,

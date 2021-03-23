@@ -189,10 +189,9 @@ def is_latest_execution_successful(
     `True` if latest execution (per `create_time_since_epoch` was successful.
     `False` if `executions` is empty or if latest execution was not successful.
   """
-  sorted_executions = sorted(
-      executions, key=lambda e: e.create_time_since_epoch, reverse=True)
-  return (execution_lib.is_execution_successful(sorted_executions[0])
-          if sorted_executions else False)
+  execution = get_latest_execution(executions)
+  return execution_lib.is_execution_successful(
+      execution) if execution else False
 
 
 def get_latest_successful_execution(
@@ -202,9 +201,13 @@ def get_latest_successful_execution(
   successful_executions = [
       e for e in executions if execution_lib.is_execution_successful(e)
   ]
-  if successful_executions:
-    return sorted(
-        successful_executions,
-        key=lambda e: e.create_time_since_epoch,
-        reverse=True)[0]
-  return None
+  return get_latest_execution(successful_executions)
+
+
+def get_latest_execution(
+    executions: Iterable[metadata_store_pb2.Execution]
+) -> Optional[metadata_store_pb2.Execution]:
+  """Returns latest execution or `None` if iterable is empty."""
+  sorted_executions = sorted(
+      executions, key=lambda e: e.create_time_since_epoch, reverse=True)
+  return sorted_executions[0] if sorted_executions else None
