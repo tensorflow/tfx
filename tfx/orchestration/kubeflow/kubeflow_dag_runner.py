@@ -328,16 +328,14 @@ class KubeflowDagRunner(tfx_runner.TfxRunner):
       for upstream_component in component.upstream_nodes:
         depends_on.add(component_to_kfp_op[upstream_component])
 
-      (component_launcher_class,
+      (_,
        component_config) = config_utils.find_component_launch_info(
            self._config, component)
 
       kfp_component = base_component.BaseComponent(
           component=component,
-          component_launcher_class=component_launcher_class,
           depends_on=depends_on,
           pipeline=pipeline,
-          pipeline_name=pipeline.pipeline_info.pipeline_name,
           pipeline_root=pipeline_root,
           tfx_image=self._config.tfx_image,
           kubeflow_metadata_config=self._config.kubeflow_metadata_config,
@@ -352,14 +350,8 @@ class KubeflowDagRunner(tfx_runner.TfxRunner):
 
   def _generate_tfx_ir(
       self, pipeline: tfx_pipeline.Pipeline) -> Optional[pipeline_pb2.Pipeline]:
-    try:
-      result = self._tfx_compiler.compile(pipeline)
-      logging.info('Generated pipeline:\n %s', result)
-    except NotImplementedError:
-      # TODO(b/158712976): Delete NotImplementedError handling after
-      # ExecutorContainerSpec support is added.
-      logging.info('Failed to generate IR. Proceeding without IR')
-      result = None
+    result = self._tfx_compiler.compile(pipeline)
+    logging.info('Generated pipeline:\n %s', result)
     return result
 
   def run(self, pipeline: tfx_pipeline.Pipeline):
@@ -389,6 +381,7 @@ class KubeflowDagRunner(tfx_runner.TfxRunner):
 
     file_name = self._output_filename or get_default_output_filename(
         pipeline.pipeline_info.pipeline_name)
+    print('DO NOT SUBMIT: self._params', self._params)
     # Create workflow spec and write out to package.
     self._compiler._create_and_write_workflow(  # pylint: disable=protected-access
         pipeline_func=_construct_pipeline,

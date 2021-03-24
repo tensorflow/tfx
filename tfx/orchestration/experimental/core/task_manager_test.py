@@ -107,9 +107,6 @@ class TaskManagerTest(tu.TfxTest):
     deployment_config.executor_specs['Transform'].Pack(executor_spec)
     deployment_config.executor_specs['Evaluator'].Pack(executor_spec)
     pipeline = pipeline_pb2.Pipeline()
-    pipeline.nodes.add().pipeline_node.node_info.id = 'Trainer'
-    pipeline.nodes.add().pipeline_node.node_info.id = 'Transform'
-    pipeline.nodes.add().pipeline_node.node_info.id = 'Evaluator'
     pipeline.pipeline_info.id = 'test-pipeline'
     pipeline.deployment_config.Pack(deployment_config)
 
@@ -364,30 +361,13 @@ class TaskManagerE2ETest(tu.TfxTest):
       executions = m.store.get_executions_by_id([self._execution_id])
     return executions[0]
 
-  def test_successful_execution_resulting_in_executor_output(self):
+  def test_successful_execution(self):
     # Register a fake task scheduler that returns a successful execution result
     # and `OK` task scheduler status.
     self._register_task_scheduler(
         ts.TaskSchedulerResult(
             status=status_lib.Status(code=status_lib.Code.OK),
             executor_output=_make_executor_output(self._task, code=0)))
-    task_manager = self._run_task_manager()
-    self.assertTrue(task_manager.done())
-    self.assertIsNone(task_manager.exception())
-
-    # Check that the task was processed and MLMD execution marked successful.
-    self.assertTrue(self._task_queue.is_empty())
-    execution = self._get_execution()
-    self.assertEqual(metadata_store_pb2.Execution.COMPLETE,
-                     execution.last_known_state)
-
-  def test_successful_execution_resulting_in_output_artifacts(self):
-    # Register a fake task scheduler that returns a successful execution result
-    # and `OK` task scheduler status.
-    self._register_task_scheduler(
-        ts.TaskSchedulerResult(
-            status=status_lib.Status(code=status_lib.Code.OK),
-            output_artifacts=self._task.output_artifacts))
     task_manager = self._run_task_manager()
     self.assertTrue(task_manager.done())
     self.assertIsNone(task_manager.exception())

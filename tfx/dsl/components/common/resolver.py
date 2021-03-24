@@ -159,8 +159,8 @@ class _ResolverDriver(base_driver.BaseDriver):
         source_channels=input_dict.copy())
     # TODO(b/148828122): This is a temporary walkaround for interactive mode.
     for k, c in output_dict.items():
-      output_dict[k] = types.Channel(type=c.type).set_artifacts(
-          resolve_result.per_key_resolve_result[k])
+      output_dict[k] = types.Channel(
+          type=c.type, artifacts=resolve_result.per_key_resolve_result[k])
     # Updates execution to reflect artifact resolution results and mark
     # as cached.
     self._metadata_handler.update_execution(
@@ -231,9 +231,7 @@ class Resolver(base_node.BaseNode):
         raise ValueError(
             ('Expected extra kwarg %r to be of type `tfx.types.Channel` (but '
              'got %r instead).') % (k, c))
-      # TODO(b/161490287): remove static artifacts.
-      self._output_dict[k] = types.Channel(type=c.type).set_artifacts(
-          [c.type()])
+      self._output_dict[k] = types.Channel(type=c.type, artifacts=[c.type()])
     super(Resolver, self).__init__(
         instance_name=instance_name,
         driver_class=_ResolverDriver,

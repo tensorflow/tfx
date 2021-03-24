@@ -53,7 +53,7 @@ class ChannelUtilsTest(tf.test.TestCase):
     instance_a = _MyArtifact()
     instance_b = _MyArtifact()
     channel_dict = {
-        'id': Channel(_MyArtifact).set_artifacts([instance_a, instance_b])
+        'id': Channel(_MyArtifact, artifacts=[instance_a, instance_b])
     }
     result = channel_utils.unwrap_channel_dict(channel_dict)
     self.assertDictEqual(result, {'id': [instance_a, instance_b]})

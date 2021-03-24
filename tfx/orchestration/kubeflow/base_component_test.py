@@ -25,7 +25,6 @@ from tfx.orchestration import data_types
 from tfx.orchestration import pipeline as tfx_pipeline
 from tfx.orchestration.kubeflow import base_component
 from tfx.orchestration.kubeflow.proto import kubeflow_pb2
-from tfx.orchestration.launcher import in_process_component_launcher
 from tfx.proto.orchestration import pipeline_pb2
 
 from ml_metadata.proto import metadata_store_pb2
@@ -57,11 +56,8 @@ class BaseComponentTest(tf.test.TestCase):
     with dsl.Pipeline('test_pipeline'):
       self.component = base_component.BaseComponent(
           component=statistics_gen,
-          component_launcher_class=in_process_component_launcher
-          .InProcessComponentLauncher,
           depends_on=set(),
           pipeline=pipeline,
-          pipeline_name=self._test_pipeline_name,
           pipeline_root=test_pipeline_root,
           tfx_image='container_image',
           kubeflow_metadata_config=self._metadata_config,
@@ -80,8 +76,6 @@ class BaseComponentTest(tf.test.TestCase):
           json.load(component_json_file), sort_keys=True)
 
     expected_args = [
-        '--pipeline_name',
-        'test_pipeline',
         '--pipeline_root',
         '{{pipelineparam:op=;name=pipeline-root-param}}',
         '--kubeflow_metadata_config',
@@ -90,16 +84,10 @@ class BaseComponentTest(tf.test.TestCase):
         '    "environment_variable": "MYSQL_SERVICE_HOST"\n'
         '  }\n'
         '}',
-        '--beam_pipeline_args',
-        '[]',
         '--additional_pipeline_args',
         '{}',
-        '--component_launcher_class_path',
-        'tfx.orchestration.launcher.in_process_component_launcher.InProcessComponentLauncher',
-        '--serialized_component',
-        formatted_component_json,
-        '--component_config',
-        'null',
+        '--node_id',
+        'StatisticsGen.foo',
     ]
     try:
       self.assertEqual(
@@ -126,7 +114,6 @@ class BaseComponentWithPipelineParamTest(tf.test.TestCase):
   def setUp(self):
     super(BaseComponentWithPipelineParamTest, self).setUp()
 
-    test_pipeline_root = dsl.PipelineParam(name='pipeline-root-param')
     example_gen_buckets = data_types.RuntimeParameter(
         name='example-gen-buckets', ptype=int, default=10)
 
@@ -143,6 +130,7 @@ class BaseComponentWithPipelineParamTest(tf.test.TestCase):
     statistics_gen = statistics_gen_component.StatisticsGen(
         examples=example_gen.outputs['examples'], instance_name='foo')
 
+    test_pipeline_root = dsl.PipelineParam(name='pipeline-root-param')
     pipeline = tfx_pipeline.Pipeline(
         pipeline_name=self._test_pipeline_name,
         pipeline_root='test_pipeline_root',
@@ -156,11 +144,8 @@ class BaseComponentWithPipelineParamTest(tf.test.TestCase):
     with dsl.Pipeline('test_pipeline'):
       self.example_gen = base_component.BaseComponent(
           component=example_gen,
-          component_launcher_class=in_process_component_launcher
-          .InProcessComponentLauncher,
           depends_on=set(),
           pipeline=pipeline,
-          pipeline_name=self._test_pipeline_name,
           pipeline_root=test_pipeline_root,
           tfx_image='container_image',
           kubeflow_metadata_config=self._metadata_config,
@@ -168,15 +153,13 @@ class BaseComponentWithPipelineParamTest(tf.test.TestCase):
           tfx_ir=self._tfx_ir)
       self.statistics_gen = base_component.BaseComponent(
           component=statistics_gen,
-          component_launcher_class=in_process_component_launcher
-          .InProcessComponentLauncher,
           depends_on=set(),
           pipeline=pipeline,
-          pipeline_name=self._test_pipeline_name,
           pipeline_root=test_pipeline_root,
           tfx_image='container_image',
           kubeflow_metadata_config=self._metadata_config,
-          component_config=None
+          component_config=None,
+          tfx_ir=self._tfx_ir
       )
 
     self.tfx_example_gen = example_gen
@@ -194,10 +177,7 @@ class BaseComponentWithPipelineParamTest(tf.test.TestCase):
                            'example_gen.json')) as component_json_file:
       formatted_example_gen = json.dumps(
           json.load(component_json_file), sort_keys=True)
-
     statistics_gen_expected_args = [
-        '--pipeline_name',
-        'test_pipeline',
         '--pipeline_root',
         '{{pipelineparam:op=;name=pipeline-root-param}}',
         '--kubeflow_metadata_config',
@@ -206,22 +186,16 @@ class BaseComponentWithPipelineParamTest(tf.test.TestCase):
         '    "environment_variable": "MYSQL_SERVICE_HOST"\n'
         '  }\n'
         '}',
-        '--beam_pipeline_args',
-        '[]',
         '--additional_pipeline_args',
         '{}',
-        '--component_launcher_class_path',
-        'tfx.orchestration.launcher.in_process_component_launcher.InProcessComponentLauncher',
-        '--serialized_component',
-        formatted_statistics_gen,
-        '--component_config',
-        'null',
         '--node_id',
         'StatisticsGen.foo',
+        '--serialized_component',
+        formatted_statistics_gen,
+        '--tfx_ir',
+        '{}',
     ]
     example_gen_expected_args = [
-        '--pipeline_name',
-        'test_pipeline',
         '--pipeline_root',
         '{{pipelineparam:op=;name=pipeline-root-param}}',
         '--kubeflow_metadata_config',
@@ -230,18 +204,12 @@ class BaseComponentWithPipelineParamTest(tf.test.TestCase):
         '    "environment_variable": "MYSQL_SERVICE_HOST"\n'
         '  }\n'
         '}',
-        '--beam_pipeline_args',
-        '[]',
         '--additional_pipeline_args',
         '{}',
-        '--component_launcher_class_path',
-        'tfx.orchestration.launcher.in_process_component_launcher.InProcessComponentLauncher',
-        '--serialized_component',
-        formatted_example_gen,
-        '--component_config',
-        'null',
         '--node_id',
         'CsvExampleGen',
+        '--serialized_component',
+        formatted_example_gen,
         '--tfx_ir',
         '{}',
     ]

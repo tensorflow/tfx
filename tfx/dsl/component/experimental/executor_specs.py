@@ -98,7 +98,10 @@ class TemplatedExecutorContainerSpec(executor_spec.ExecutorSpec):
   def _recursively_encode(
       self, ph: placeholders.CommandlineArgumentType
   ) -> Union[str, placeholder.Placeholder]:
-    if isinstance(ph, str):
+    if isinstance(ph, str) or isinstance(ph, placeholder.Placeholder):
+      # If there is no place holder. Or if the placeholder is already a
+      # new style placeholder.
+      # No further transformation is needed.
       return ph
     elif isinstance(ph, placeholders.InputValuePlaceholder):
       return placeholder.input(ph.input_name)[0]

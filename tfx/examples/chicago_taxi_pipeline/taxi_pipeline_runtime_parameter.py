@@ -47,7 +47,7 @@ from tfx.types.standard_artifacts import ModelBlessing
 _pipeline_name = 'taxi_pipeline_with_parameters'
 
 # Path of pipeline root, should be a GCS path.
-_pipeline_root = os.path.join('gs://my-bucket', 'tfx_taxi_simple',
+_pipeline_root = os.path.join('gs://tfx-oss-testing-bucket', 'tfx_taxi_simple',
                               kfp.dsl.RUN_ID_PLACEHOLDER)
 
 # Pipeline arguments for Beam powered Components.

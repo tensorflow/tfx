@@ -27,7 +27,6 @@ from absl import logging
 from grpc import insecure_channel
 import tensorflow as tf
 from tfx.dsl.io import fileio
-from tfx.orchestration import metadata
 from tfx.orchestration import test_utils
 from tfx.orchestration.kubeflow import test_utils as kubeflow_test_utils
 from tfx.orchestration.test_pipelines import download_grep_print_pipeline
@@ -178,13 +177,13 @@ class KubeflowEndToEndTest(kubeflow_test_utils.BaseKubeflowTest):
     return self._stub.GetExecutionsByContext(request).executions
 
   def _get_executions_by_pipeline_name_and_state(
-      self, pipeline_name: Text,
-      state: Text) -> List[metadata_store_pb2.Execution]:
+      self, pipeline_name: Text, state: metadata_store_pb2.Execution.State
+  ) -> List[metadata_store_pb2.Execution]:
     """Helper function returns executions for a given state."""
     executions = self._get_executions_by_pipeline_name(pipeline_name)
     result = []
     for e in executions:
-      if e.properties['state'].string_value == state:
+      if e.last_known_state == state:
         result.append(e)
 
     return result
@@ -236,7 +235,8 @@ class KubeflowEndToEndTest(kubeflow_test_utils.BaseKubeflowTest):
     self._compile_and_run_pipeline(
         pipeline=pipeline, workflow_name=pipeline_name + '-run-2')
     cached_execution = self._get_executions_by_pipeline_name_and_state(
-        pipeline_name=pipeline_name, state=metadata.EXECUTION_STATE_CACHED)
+        pipeline_name=pipeline_name,
+        state=metadata_store_pb2.Execution.State.CACHED)
     self.assertEqual(2, len(cached_execution))
 
   def testCreateContainerComponentEnd2EndPipeline(self):

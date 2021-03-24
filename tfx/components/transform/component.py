@@ -154,8 +154,9 @@ class Transform(base_beam_component.BaseBeamComponent):
         type=standard_artifacts.TransformGraph)
 
     if materialize and transformed_examples is None:
-      transformed_examples = types.Channel(type=standard_artifacts.Examples)
-      transformed_examples.matching_channel_name = 'examples'
+      transformed_examples = types.Channel(
+          type=standard_artifacts.Examples,
+          matching_channel_name='examples')
     elif not materialize and transformed_examples is not None:
       raise ValueError(
           'Must not specify transformed_examples when materialize is False.')

@@ -31,7 +31,6 @@ from absl import logging
 import kfp
 from kfp_server_api import rest
 import tensorflow_model_analysis as tfma
-
 from tfx.components import CsvExampleGen
 from tfx.components import Evaluator
 from tfx.components import ExampleValidator
@@ -42,10 +41,11 @@ from tfx.components import SchemaGen
 from tfx.components import StatisticsGen
 from tfx.components import Trainer
 from tfx.components import Transform
-from tfx.dsl.components.base import executor_spec
+from tfx.dsl.component.experimental import executor_specs
 from tfx.dsl.components.base.base_component import BaseComponent
 from tfx.dsl.experimental import latest_artifacts_resolver
 from tfx.dsl.io import fileio
+from tfx.dsl.placeholder import placeholder as ph
 from tfx.orchestration import pipeline as tfx_pipeline
 from tfx.orchestration import test_utils
 from tfx.orchestration.kubeflow import kubeflow_dag_runner
@@ -204,13 +204,16 @@ class HelloWorldComponent(BaseComponent):
   """Producer component."""
 
   SPEC_CLASS = _HelloWorldSpec
-  EXECUTOR_SPEC = executor_spec.ExecutorContainerSpec(
+  EXECUTOR_SPEC = executor_specs.TemplatedExecutorContainerSpec(
       # TODO(b/143965964): move the image to private repo if the test is flaky
       # due to docker hub.
       image='google/cloud-sdk:latest',
       command=['sh', '-c'],
       args=[
-          'echo "hello {{exec_properties.word}}" | gsutil cp - {{output_dict["greeting"][0].uri}}'
+          'echo "hello ' +
+          ph.exec_property('word') +
+          '" | gsutil cp - ' +
+          ph.output('greeting')[0].uri
       ])
 
   def __init__(self, word, greeting=None):
@@ -225,10 +228,10 @@ class ByeWorldComponent(BaseComponent):
   """Consumer component."""
 
   SPEC_CLASS = _ByeWorldSpec
-  EXECUTOR_SPEC = executor_spec.ExecutorContainerSpec(
+  EXECUTOR_SPEC = executor_specs.TemplatedExecutorContainerSpec(
       image='bash:latest',
       command=['echo'],
-      args=['received {{input_dict["hearing"][0].value}}'])
+      args=['received ' + ph.input('hearing')[0].value])
 
   def __init__(self, hearing):
     super(ByeWorldComponent, self).__init__(_ByeWorldSpec(hearing=hearing))

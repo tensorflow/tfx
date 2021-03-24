@@ -44,7 +44,7 @@ class ChannelTest(tf.test.TestCase):
   def testValidChannel(self):
     instance_a = _MyType()
     instance_b = _MyType()
-    chnl = Channel(_MyType).set_artifacts([instance_a, instance_b])
+    chnl = Channel(_MyType, artifacts=[instance_a, instance_b])
     self.assertEqual(chnl.type_name, 'MyTypeName')
     self.assertCountEqual(chnl.get(), [instance_a, instance_b])
 
@@ -52,7 +52,7 @@ class ChannelTest(tf.test.TestCase):
     instance_a = _MyType()
     instance_b = _MyType()
     with self.assertRaises(ValueError):
-      Channel(_AnotherType).set_artifacts([instance_a, instance_b])
+      Channel(_AnotherType, artifacts=[instance_a, instance_b])
 
   def testStringTypeNameNotAllowed(self):
     with self.assertRaises(ValueError):
@@ -61,6 +61,7 @@ class ChannelTest(tf.test.TestCase):
   def testJsonRoundTrip(self):
     channel = Channel(
         type=_MyType,
+        artifacts=[_MyType()],
         additional_properties={
             'string_value': metadata_store_pb2.Value(string_value='forty-two')
         },

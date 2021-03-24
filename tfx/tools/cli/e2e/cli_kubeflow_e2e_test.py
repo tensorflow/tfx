@@ -331,30 +331,20 @@ class CliKubeflowEndToEndTest(test_case_utils.TfxTest):
     self.assertIn(self._pipeline_name, result)
     self.assertIn(self._pipeline_name_v2, result)
 
-  def testPipelineCreateAutoDetectFail(self):
-    if labels.AIRFLOW_PACKAGE_NAME not in self._pip_list:
-      self.skipTest(
-          'Airflow doesn\'t exist. Airflow needed to make auto detect fail.')
-    with self.assertRaises(subprocess.CalledProcessError) as cm:
-      test_utils.run_cli([
-          'pipeline', 'create', '--engine', 'auto', '--pipeline_path',
-          self._pipeline_path, '--endpoint', self._endpoint
-      ])
-    self.assertIn(
-        'Multiple orchestrators found. Choose one using --engine flag.',
-        cm.exception.output)
-
-  def testPipelineCreateAutoDetectSuccess(self):
-    if labels.AIRFLOW_PACKAGE_NAME in self._pip_list:
-      self.skipTest(
-          'Airflow exists. Airflow should not exist to make auto detect fail.')
+  def testPipelineCreateAutoDetect(self):
     result = test_utils.run_cli([
         'pipeline', 'create', '--engine', 'auto', '--pipeline_path',
         self._pipeline_path, '--endpoint', self._endpoint
     ])
-    self.assertIn(
-        'Pipeline "{}" created successfully.'.format(self._pipeline_name),
-        result)
+    self.assertIn('Creating pipeline', result)
+    if labels.AIRFLOW_PACKAGE_NAME in self._pip_list and labels.KUBEFLOW_PACKAGE_NAME in self._pip_list:
+      self.assertIn(
+          'Multiple orchestrators found. Choose one using --engine flag.',
+          result)
+    else:
+      self.assertIn(
+          'Pipeline "{}" created successfully.'.format(self._pipeline_name),
+          result)
 
   def testRunCreate(self):
     with self.assertRaises(subprocess.CalledProcessError) as cm:

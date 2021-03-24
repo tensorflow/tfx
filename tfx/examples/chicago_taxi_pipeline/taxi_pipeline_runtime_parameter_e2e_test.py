@@ -40,6 +40,9 @@ class TaxiPipelineRuntimeParameterEndToEndTest(
         enable_cache=True,
         beam_pipeline_args=taxi_pipeline_runtime_parameter._beam_pipeline_args)
 
+    pipeline.additional_pipeline_args['WORKFLOW_ID'] = (
+        'kubeflow-e2e-test-parameter-{}'.format(test_utils.random_id()))
+
     parameters = {
         'pipeline-root': self._pipeline_root(pipeline_name),
         'transform-module': self._transform_module,

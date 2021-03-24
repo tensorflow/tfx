@@ -21,5 +21,4 @@ from tfx.orchestration.data_types import RuntimeParameter
 from tfx.orchestration.pipeline import ExecutionMode
 from tfx.orchestration.pipeline import Pipeline
 from tfx.types.artifact import Artifact
-from tfx.types.channel import Channel
 from tfx.v1.dsl import experimental

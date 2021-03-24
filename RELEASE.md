@@ -55,8 +55,6 @@
    artifact from string to int.
 *  `ResolverStrategy.resolve_artifacts()` method signature has changed to take
    `ml_metadata.MetadataStore` object as the first argument.
-*  Artifacts param is deprecated/ignored in Channel constructor.
-*  Removed matching_channel_name from Channel's constructor.
 
 ### For Pipeline Authors
 

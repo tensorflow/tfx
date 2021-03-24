@@ -22,11 +22,9 @@ from typing import List, Text
 import tensorflow as tf
 import tensorflow_hub as hub
 import tensorflow_transform as tft
-from tfx.components.trainer.fn_args_utils import DataAccessor
 from tfx.components.trainer.fn_args_utils import FnArgs
 from tfx.examples.bert.utils.bert_models import build_and_compile_bert_classifier
 from tfx.examples.bert.utils.bert_tokenizer_utils import BertPreprocessor
-from tfx_bsl.tfxio import dataset_options
 
 
 _TRAIN_BATCH_SIZE = 16
@@ -36,6 +34,11 @@ _LABEL_KEY = 'label'
 _BERT_LINK = 'https://tfhub.dev/tensorflow/bert_en_cased_L-12_H-768_A-12/2'
 _MAX_LEN = 256
 _EPOCHS = 1
+
+
+def _gzip_reader_fn(filenames):
+  """Small utility returning a record reader that can read gzip'ed files."""
+  return tf.data.TFRecordDataset(filenames, compression_type='GZIP')
 
 
 def _tokenize(feature):
@@ -64,7 +67,6 @@ def preprocessing_fn(inputs):
 
 
 def _input_fn(file_pattern: List[Text],
-              data_accessor: DataAccessor,
               tf_transform_output: tft.TFTransformOutput,
               batch_size: int = 200) -> tf.data.Dataset:
   """Generates features and label for tuning/training.
@@ -72,7 +74,6 @@ def _input_fn(file_pattern: List[Text],
   Args:
     file_pattern: List of paths or patterns of materialized transformed input
       tfrecord files.
-    data_accessor: DataAccessor for converting input to RecordBatch.
     tf_transform_output: A TFTransformOutput.
     batch_size: representing the number of consecutive elements of returned
       dataset to combine in a single batch
@@ -81,12 +82,16 @@ def _input_fn(file_pattern: List[Text],
     A dataset that contains (features, indices) tuple where features is a
       dictionary of Tensors, and indices is a single Tensor of label indices.
   """
-  dataset = data_accessor.tf_dataset_factory(
-      file_pattern,
-      dataset_options.TensorFlowDatasetOptions(
-          batch_size=batch_size, label_key=_LABEL_KEY),
-      tf_transform_output.transformed_metadata.schema)
-  dataset = dataset.repeat()
+  transformed_feature_spec = (
+      tf_transform_output.transformed_feature_spec().copy())
+
+  dataset = tf.data.experimental.make_batched_features_dataset(
+      file_pattern=file_pattern,
+      batch_size=batch_size,
+      features=transformed_feature_spec,
+      reader=_gzip_reader_fn,
+      label_key=_LABEL_KEY)
+
   return dataset.prefetch(tf.data.AUTOTUNE)
 
 
@@ -119,16 +124,10 @@ def run_fn(fn_args: FnArgs):
   tf_transform_output = tft.TFTransformOutput(fn_args.transform_output)
 
   train_dataset = _input_fn(
-      fn_args.train_files,
-      fn_args.data_accessor,
-      tf_transform_output,
-      batch_size=_TRAIN_BATCH_SIZE)
+      fn_args.train_files, tf_transform_output, batch_size=_TRAIN_BATCH_SIZE)
 
   eval_dataset = _input_fn(
-      fn_args.eval_files,
-      fn_args.data_accessor,
-      tf_transform_output,
-      batch_size=_EVAL_BATCH_SIZE)
+      fn_args.eval_files, tf_transform_output, batch_size=_EVAL_BATCH_SIZE)
 
   mirrored_strategy = tf.distribute.MirroredStrategy()
   with mirrored_strategy.scope():

@@ -107,6 +107,22 @@ class _ExecutionFailedError(Exception):
     return self._executor_output
 
 
+def _register_execution(
+    metadata_handler: metadata.Metadata,
+    execution_type: metadata_store_pb2.ExecutionType,
+    contexts: List[metadata_store_pb2.Context],
+    input_artifacts: MutableMapping[str, Sequence[types.Artifact]],
+    exec_properties: Mapping[str, types.Property]
+) -> metadata_store_pb2.Execution:
+  """Registers an execution in MLMD."""
+  return execution_publish_utils.register_execution(
+      metadata_handler=metadata_handler,
+      execution_type=execution_type,
+      contexts=contexts,
+      input_artifacts=input_artifacts,
+      exec_properties=exec_properties)
+
+
 class Launcher(object):
   """Launcher is the main entrance of nodes in TFleX.
 
@@ -189,20 +205,6 @@ class Launcher(object):
         self._system_node_handler
     ), 'A node must be system node or have an executor.'
 
-  def _register_execution(
-      self, metadata_handler: metadata.Metadata,
-      contexts: List[metadata_store_pb2.Context],
-      input_artifacts: MutableMapping[str, Sequence[types.Artifact]],
-      exec_properties: Mapping[str, types.Property]
-  ) -> metadata_store_pb2.Execution:
-    """Registers an execution in MLMD."""
-    return execution_publish_utils.register_execution(
-        metadata_handler=metadata_handler,
-        execution_type=self._pipeline_node.node_info.type,
-        contexts=contexts,
-        input_artifacts=input_artifacts,
-        exec_properties=exec_properties)
-
   def _prepare_execution(self) -> _ExecutionPreparationResult:
     """Prepares inputs, outputs and execution properties for actual execution."""
     # TODO(b/150979622): handle the edge case that the component get evicted
@@ -230,8 +232,9 @@ class Launcher(object):
             is_execution_needed=False)
 
       # 4. Registers execution in metadata.
-      execution = self._register_execution(
+      execution = _register_execution(
           metadata_handler=m,
+          execution_type=self._pipeline_node.node_info.type,
           contexts=contexts,
           input_artifacts=input_artifacts,
           exec_properties=exec_properties)

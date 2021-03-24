@@ -60,14 +60,19 @@ class BaseDriverTest(tf.test.TestCase):
     self._input_dict = {
         'input_data':
             types.Channel(
-                type=_InputArtifact, producer_component_id='c', output_key='k'),
+                type=_InputArtifact,
+                artifacts=[_InputArtifact()],
+                producer_component_id='c',
+                output_key='k'),
         'input_string':
             types.Channel(
                 type=standard_artifacts.String,
+                artifacts=[
+                    standard_artifacts.String(),
+                    standard_artifacts.String()
+                ],
                 producer_component_id='c2',
-                output_key='k2').set_artifacts(
-                    [standard_artifacts.String(),
-                     standard_artifacts.String()]),
+                output_key='k2'),
     }
     input_dir = os.path.join(
         os.environ.get('TEST_TMP_DIR', self.get_temp_dir()),
@@ -80,11 +85,12 @@ class BaseDriverTest(tf.test.TestCase):
         artifact.uri = uri
         fileio.makedirs(uri)
     self._output_dict = {
-        'output_data': types.Channel(type=_OutputArtifact),
-        'output_multi_data': types.Channel(type=_OutputArtifact)
+        'output_data':
+            types.Channel(type=_OutputArtifact, artifacts=[_OutputArtifact()]),
+        'output_multi_data':
+            types.Channel(
+                type=_OutputArtifact, matching_channel_name='input_string')
     }
-    self._output_dict[
-        'output_multi_data'].matching_channel_name = 'input_string'
     self._input_artifacts = channel_utils.unwrap_channel_dict(self._input_dict)
     self._output_artifacts = channel_utils.unwrap_channel_dict(
         self._output_dict)
