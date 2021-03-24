@@ -23,6 +23,8 @@
 
 ## Documentation Updates
 
+*   Added the "TFX container component" notebook tutorial.
+
 # Version 0.29.0
 
 ## Major Features and Improvements

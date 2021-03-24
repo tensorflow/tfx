@@ -19,8 +19,10 @@ toc:
   path: /tfx/tutorials/tfx/components
 
 - heading: "TFX: Advanced tutorials"
-- title: "Custom component tutorial"
+- title: "Python component authoring"
   path: /tfx/tutorials/tfx/python_function_component
+- title: "Container component authoring"
+  path: /tfx/tutorials/tfx/container_component
 - title: "Cloud AI Platform Pipelines tutorial"
   path: /tfx/tutorials/tfx/cloud-ai-platform-pipelines
 - title: "Airflow tutorial"
