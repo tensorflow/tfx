@@ -79,5 +79,30 @@ class MLMDConfigTest(tf.test.TestCase):
     self.assertEqual(ml_metadata_config.port, 8080)
 
 
+class BeamArgsTest(tf.test.TestCase):
+
+  def testResolveBeamArgs(self):
+    self._set_required_env_vars({
+      'S3_SECRET_ACCESS_KEY': 'minio123',
+      'S3_VERIFY': '1',
+    })
+
+    beam_pipeline_args = [f'--s3_endpoint_url=s3_endpoint_url',
+                          f'--s3_access_key_id=minio',
+                          's3_verify=0'
+                          ]
+    additional_pipeline_args = {'foo': 'bar',
+                                'beam_pipeline_args_from_env': {'s3_secret_access_key': 'S3_SECRET_ACCESS_KEY',
+                                                                's3_verify': 'S3_VERIFY'}}
+
+    updated_beam_pipeline_args = container_entrypoint._add_beam_args_from_env(beam_pipeline_args=beam_pipeline_args,
+                                                                              additional_pipeline_args=
+                                                                              additional_pipeline_args)
+    self.assertEqual(set(updated_beam_pipeline_args), {f'--s3_endpoint_url=s3_endpoint_url',
+                                                       f'--s3_access_key_id=minio',
+                                                       f'--s3_secret_access_key=minio123',
+                                                       's3_verify=0'})
+
+
 if __name__ == '__main__':
   tf.test.main()

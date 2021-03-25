@@ -292,6 +292,27 @@ def _dump_ui_metadata(component: base_node.BaseNode,
     json.dump(metadata, f)
 
 
+def _add_beam_args_from_env(beam_pipeline_args, additional_pipeline_args):
+  BEAM_PIPELINE_ARGS_FROM_ENV = 'beam_pipeline_args_from_env'
+
+  beam_pipeline_args_from_env_set = set()
+  if BEAM_PIPELINE_ARGS_FROM_ENV in additional_pipeline_args:
+    beam_pipeline_args_from_env = additional_pipeline_args[BEAM_PIPELINE_ARGS_FROM_ENV]
+    supplied_beam_pipeline_args = set([arg.split('=')[0].strip('--') for arg in beam_pipeline_args])
+
+    for beam_pipeline_arg, env_var in beam_pipeline_args_from_env.items():
+      # If an arg is present in beam_pipeline_args, it should take precedence over env vars.
+      if beam_pipeline_arg in supplied_beam_pipeline_args:
+        logging.info(f'Arg {beam_pipeline_arg} already present in beam_pipeline_args and will not be fetched from env.')
+      else:
+        env_var_value = os.environ.get(env_var, None)
+        logging.info(f'Env var {env_var} not present. Skipping beam arg: {beam_pipeline_arg}.')
+        if env_var_value:
+          beam_pipeline_args_from_env_set.add(f'--{beam_pipeline_arg}={env_var_value}')
+  logging.info(f'Beam pipeline args fetched from env: {beam_pipeline_args_from_env_set}')
+  return list(beam_pipeline_args_from_env_set)
+
+
 def main():
   # Log to the container's stdout so Kubeflow Pipelines UI can display logs to
   # the user.
@@ -332,24 +353,8 @@ def main():
 
   beam_pipeline_args = json.loads(args.beam_pipeline_args)
 
-  BEAM_PIPELINE_ARGS_FROM_ENV = 'beam_pipeline_args_from_env'
-
-  if BEAM_PIPELINE_ARGS_FROM_ENV in additional_pipeline_args:
-    beam_pipeline_args_from_env = additional_pipeline_args[BEAM_PIPELINE_ARGS_FROM_ENV]
-    supplied_beam_pipeline_args = set([arg.split('=')[0].strip('--') for arg in beam_pipeline_args])
-
-    beam_pipeline_args_from_env_set = set()
-    for beam_pipeline_arg, env_var in beam_pipeline_args_from_env.items():
-      # If an arg is present in beam_pipeline_args, it should take precedence over env vars.
-      if beam_pipeline_arg in supplied_beam_pipeline_args:
-        logging.info(f'Arg {beam_pipeline_arg} already present in beam_pipeline_args and will not be fetched from env.')
-      else:
-        env_var_value = os.environ.get(env_var, None)
-        logging.info(f'Env var {env_var} not present. Skipping beam arg: {beam_pipeline_arg}.')
-        if env_var_value:
-          beam_pipeline_args_from_env_set.add(f'--{beam_pipeline_arg}={env_var_value}')
-    logging.info(f'Beam pipeline args fetched from env: {beam_pipeline_args_from_env_set}')
-    beam_pipeline_args += list(beam_pipeline_args_from_env_set)
+  beam_pipeline_args_from_env_set = _add_beam_args_from_env(beam_pipeline_args, additional_pipeline_args)
+  beam_pipeline_args += list(beam_pipeline_args_from_env_set)
 
   launcher = component_launcher_class.create(
       component=component,
