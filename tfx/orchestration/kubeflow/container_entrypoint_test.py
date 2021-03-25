@@ -92,17 +92,17 @@ class BeamArgsTest(tf.test.TestCase):
 
     beam_pipeline_args = ['--s3_endpoint_url=s3_endpoint_url',
                           '--s3_access_key_id=minio',
-                          's3_verify=0'
+                          '--s3_verify=0'
                           ]
     additional_pipeline_args = {'foo': 'bar',
-                                container_entrypoint.BEAM_PIPELINE_ARGS_FROM_ENV
-                                :
+                                'beam_pipeline_args_from_env':
                                 {'s3_secret_access_key': 'S3_SECRET_ACCESS_KEY',
                                  's3_verify': 'S3_VERIFY'}}
 
     beam_pipeline_args_from_env = container_entrypoint._get_beam_args_from_env(
         beam_pipeline_args=beam_pipeline_args,
-        additional_pipeline_args=additional_pipeline_args)
+        additional_pipeline_args=
+        additional_pipeline_args)
     self.assertEqual(set(beam_pipeline_args + beam_pipeline_args_from_env),
                      {'--s3_endpoint_url=s3_endpoint_url',
                       '--s3_access_key_id=minio',
