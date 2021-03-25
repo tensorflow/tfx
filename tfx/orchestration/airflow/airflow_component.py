@@ -60,7 +60,7 @@ def _airflow_component_launcher(
       For more details, please refer to the code:
       https://github.com/apache/airflow/blob/master/airflow/operators/python_operator.py
   """
-  component.spec.exec_properties.update(exec_properties)
+  component.exec_properties.update(exec_properties)
 
   # Populate run id from Airflow task instance.
   pipeline_info.run_id = kwargs['ti'].get_dagrun().run_id
