@@ -294,7 +294,8 @@ def _dump_ui_metadata(component: base_node.BaseNode,
     json.dump(metadata, f)
 
 
-def _get_beam_args_from_env(beam_pipeline_args, additional_pipeline_args):
+def _get_beam_args_from_env(beam_pipeline_args, additional_pipeline_args) -> \
+        list:
   beam_pipeline_args_from_env_set = set()
   if BEAM_PIPELINE_ARGS_FROM_ENV in additional_pipeline_args:
     beam_pipeline_args_from_env = additional_pipeline_args[
@@ -307,13 +308,13 @@ def _get_beam_args_from_env(beam_pipeline_args, additional_pipeline_args):
       # over env vars.
       if beam_pipeline_arg in supplied_beam_pipeline_args:
         logging.info('Arg %s already present in '
-                     'beam_pipeline_args and will not be fetched from env.'
-            , beam_pipeline_args)
+                     'beam_pipeline_args and will not be fetched from env.',
+                     beam_pipeline_args)
       else:
         env_var_value = os.environ.get(env_var, None)
         if env_var_value:
           beam_pipeline_args_from_env_set.add('--{}={}'
-                  .format(beam_pipeline_args, env_var_value))
+                  .format(beam_pipeline_arg, env_var_value))
         else:
           logging.info('Env var %s not present. Skipping corresponding beam arg'
                        ': %s.', env_var, beam_pipeline_args)

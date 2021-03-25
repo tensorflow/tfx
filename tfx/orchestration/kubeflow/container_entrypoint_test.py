@@ -101,8 +101,7 @@ class BeamArgsTest(tf.test.TestCase):
 
     beam_pipeline_args_from_env = container_entrypoint._get_beam_args_from_env(
         beam_pipeline_args=beam_pipeline_args,
-        additional_pipeline_args=
-        additional_pipeline_args)
+        additional_pipeline_args=additional_pipeline_args)
     self.assertEqual(set(beam_pipeline_args + beam_pipeline_args_from_env),
                      {'--s3_endpoint_url=s3_endpoint_url',
                       '--s3_access_key_id=minio',
