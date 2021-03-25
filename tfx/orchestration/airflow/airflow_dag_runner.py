@@ -117,7 +117,7 @@ class AirflowDagRunner(tfx_runner.TfxRunner):
 
 
   def _replace_runtime_params(self, comp):
-    for k, prop in comp.spec.exec_properties.copy().items():
+    for k, prop in comp.exec_properties.copy().items():
       if isinstance(prop, RuntimeParameter):
 
         # Airflow only supports string parameters.
@@ -135,7 +135,7 @@ class AirflowDagRunner(tfx_runner.TfxRunner):
 
         # Todo: Once we move to Airflow 2.0 we should instead use airflow.models.DagParam class.
         template_field = f'{{{{ dag_run.conf.get("{prop.name}", {default}) }}}}'
-        comp.spec.exec_properties[k] = template_field
+        comp.exec_properties[k] = template_field
     return comp
 
       

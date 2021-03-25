@@ -110,7 +110,7 @@ class AirflowComponent(python_operator.PythonOperator):
     # Prepare parameters to create TFX worker.
     driver_args = data_types.DriverArgs(enable_cache=enable_cache)
 
-    exec_properties = component.spec.exec_properties
+    exec_properties = component.exec_properties
 
     super(AirflowComponent, self).__init__(
         task_id=component.id,
