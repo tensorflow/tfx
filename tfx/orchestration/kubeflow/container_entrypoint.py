@@ -310,6 +310,10 @@ def main():
   parser.add_argument('--serialized_component', type=str, required=True)
   parser.add_argument('--component_config', type=str, required=True)
 
+  # TODO(b/182220464): Uses following flags and change to required.
+  parser.add_argument('--tfx_ir', type=str, required=False)
+  parser.add_argument('--node_id', type=str, required=False)
+
   args = parser.parse_args()
 
   component = json_utils.loads(args.serialized_component)
