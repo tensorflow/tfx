@@ -87,6 +87,8 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
                      beam_pipeline_args: List[Text]) -> pipeline.Pipeline:
   """Implements the chicago taxi pipeline with TFX."""
   # Parametrize data root so it can be replaced on runtime.
+  # See: https://airflow.apache.org/docs/apache-airflow/stable/dag-run.html#passing-parameters-when-triggering-dags 
+  # for more details.
   data_root_runtime = data_types.RuntimeParameter(
     'data_root', ptype=str, default=data_root
   )
