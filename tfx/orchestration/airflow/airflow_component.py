@@ -127,5 +127,7 @@ class AirflowComponent(python_operator.PythonOperator):
             beam_pipeline_args=beam_pipeline_args,
             additional_pipeline_args=additional_pipeline_args,
             component_config=component_config),
+        # op_kwargs is a templated field for PythonOperator, which means Airflow
+        # will inspect the dictionary and resolve any templated fields.
         op_kwargs={'exec_properties': exec_properties},
         dag=parent_dag)
