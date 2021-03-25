@@ -74,20 +74,18 @@ class TemplatedExecutorContainerSpec(executor_spec.ExecutorSpec):
     command: Container entrypoint command-line. Not executed within a shell.
       The command-line can use placeholder objects that will be replaced at
       the compilation time. Note: Jinja templates are not supported.
+    args: Container entrypoint command-args.
   """
-
-  # The "command" parameter holds the name of the program and its arguments.
-  # The "command" parameter is required to enable instrumentation.
-  # The command-line is often split into command+args, but here "args" would be
-  # redundant since all items can just be added to "command".
 
   def __init__(
       self,
       image: Text,
-      command: List[placeholders.CommandlineArgumentType],
+      command: Optional[List[placeholders.CommandlineArgumentType]] = None,
+      args: Optional[List[placeholders.CommandlineArgumentType]] = None,
   ):
     self.image = image
-    self.command = command
+    self.command = command or []
+    self.args = args or []
     super(TemplatedExecutorContainerSpec, self).__init__()
 
   def __eq__(self, other) -> bool:
@@ -98,27 +96,27 @@ class TemplatedExecutorContainerSpec(executor_spec.ExecutorSpec):
     return not self.__eq__(other)
 
   def _recursively_encode(
-      self, command: placeholders.CommandlineArgumentType
+      self, ph: placeholders.CommandlineArgumentType
   ) -> Union[str, placeholder.Placeholder]:
-    if isinstance(command, str):
-      return command
-    elif isinstance(command, placeholders.InputValuePlaceholder):
-      return placeholder.input(command.input_name)[0]
-    elif isinstance(command, placeholders.InputUriPlaceholder):
-      return placeholder.input(command.input_name)[0].uri
-    elif isinstance(command, placeholders.OutputUriPlaceholder):
-      return placeholder.output(command.output_name)[0].uri
-    elif isinstance(command, placeholders.ConcatPlaceholder):
+    if isinstance(ph, str):
+      return ph
+    elif isinstance(ph, placeholders.InputValuePlaceholder):
+      return placeholder.input(ph.input_name)[0]
+    elif isinstance(ph, placeholders.InputUriPlaceholder):
+      return placeholder.input(ph.input_name)[0].uri
+    elif isinstance(ph, placeholders.OutputUriPlaceholder):
+      return placeholder.output(ph.output_name)[0].uri
+    elif isinstance(ph, placeholders.ConcatPlaceholder):
       # operator.add wil use the overloaded __add__ operator for Placeholder
       # instances.
       return functools.reduce(
           operator.add,
-          [self._recursively_encode(item) for item in command.items])
+          [self._recursively_encode(item) for item in ph.items])
     else:
       raise TypeError(
-          ('Unsupported type of command-line arguments: "{}".'
+          ('Unsupported type of placeholder arguments: "{}".'
            ' Supported types are {}.')
-          .format(type(command), str(placeholders.CommandlineArgumentType)))
+          .format(type(ph), str(placeholders.CommandlineArgumentType)))
 
   def encode(
       self,
@@ -144,4 +142,14 @@ class TemplatedExecutorContainerSpec(executor_spec.ExecutorSpec):
         cmd.CopyFrom(expression)
       else:
         cmd.CopyFrom(self._recursively_encode(command).encode())
+
+    for arg in self.args:
+      cmd = result.args.add()
+      str_or_placeholder = self._recursively_encode(arg)
+      if isinstance(str_or_placeholder, str):
+        expression = placeholder_pb2.PlaceholderExpression()
+        expression.value.string_value = str_or_placeholder
+        cmd.CopyFrom(expression)
+      else:
+        cmd.CopyFrom(self._recursively_encode(arg).encode())
     return result
