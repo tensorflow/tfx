@@ -294,7 +294,7 @@ def _dump_ui_metadata(component: base_node.BaseNode,
     json.dump(metadata, f)
 
 
-def _add_beam_args_from_env(beam_pipeline_args, additional_pipeline_args):
+def _get_beam_args_from_env(beam_pipeline_args, additional_pipeline_args):
   beam_pipeline_args_from_env_set = set()
   if BEAM_PIPELINE_ARGS_FROM_ENV in additional_pipeline_args:
     beam_pipeline_args_from_env = additional_pipeline_args[
@@ -360,7 +360,7 @@ def main():
 
   beam_pipeline_args = json.loads(args.beam_pipeline_args)
 
-  beam_pipeline_args_from_env_set = _add_beam_args_from_env(beam_pipeline_args,
+  beam_pipeline_args_from_env_set = _get_beam_args_from_env(beam_pipeline_args,
                                                     additional_pipeline_args)
   beam_pipeline_args += list(beam_pipeline_args_from_env_set)
 

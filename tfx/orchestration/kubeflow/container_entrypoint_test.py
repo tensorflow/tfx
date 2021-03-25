@@ -27,14 +27,15 @@ from tfx.orchestration.kubeflow.proto import kubeflow_pb2
 from ml_metadata.proto import metadata_store_pb2
 
 
+def set_required_env_vars(env_vars):
+  for k, v in env_vars.items():
+    os.environ[k] = v
+
+
 class MLMDConfigTest(tf.test.TestCase):
 
-  def _set_required_env_vars(self, env_vars):
-    for k, v in env_vars.items():
-      os.environ[k] = v
-
   def testDeprecatedMysqlMetadataConnectionConfig(self):
-    self._set_required_env_vars({
+    set_required_env_vars({
         'mysql_host': 'mysql',
         'mysql_port': '3306',
         'mysql_database': 'metadb',
@@ -60,7 +61,7 @@ class MLMDConfigTest(tf.test.TestCase):
     self.assertEqual(ml_metadata_config.mysql.password, 'test')
 
   def testGrpcMetadataConnectionConfig(self):
-    self._set_required_env_vars({
+    set_required_env_vars({
         'METADATA_GRPC_SERVICE_HOST': 'metadata-grpc',
         'METADATA_GRPC_SERVICE_PORT': '8080',
     })
@@ -84,7 +85,7 @@ class MLMDConfigTest(tf.test.TestCase):
 class BeamArgsTest(tf.test.TestCase):
 
   def testResolveBeamArgsFromEnv(self):
-    self._set_required_env_vars({
+    set_required_env_vars({
       'S3_SECRET_ACCESS_KEY': 'minio123',
       'S3_VERIFY': '1',
     })
@@ -99,14 +100,14 @@ class BeamArgsTest(tf.test.TestCase):
                                 {'s3_secret_access_key': 'S3_SECRET_ACCESS_KEY',
                                  's3_verify': 'S3_VERIFY'}}
 
-    updated_beam_pipeline_args = container_entrypoint._add_beam_args_from_env(
+    beam_pipeline_args_from_env = container_entrypoint._get_beam_args_from_env(
         beam_pipeline_args=beam_pipeline_args,
         additional_pipeline_args=additional_pipeline_args)
-    self.assertEqual(set(updated_beam_pipeline_args),
+    self.assertEqual(set(beam_pipeline_args + beam_pipeline_args_from_env),
                      {'--s3_endpoint_url=s3_endpoint_url',
                       '--s3_access_key_id=minio',
                       '--s3_secret_access_key=minio123',
-                      's3_verify=0'})
+                      '--s3_verify=0'})
 
 
 if __name__ == '__main__':
