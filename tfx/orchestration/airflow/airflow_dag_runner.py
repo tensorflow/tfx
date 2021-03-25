@@ -64,7 +64,8 @@ class AirflowDagRunner(tfx_runner.TfxRunner):
     """
     if config and not isinstance(config, AirflowPipelineConfig):
       absl.logging.warning(
-          'Pass config as a dict type is going to deprecated in 0.1.16. Use AirflowPipelineConfig type instead.',
+          'Pass config as a dict type is going to deprecated in 0.1.16. '
+          'Use AirflowPipelineConfig type instead.',
           PendingDeprecationWarning)
       config = AirflowPipelineConfig(airflow_dag_config=config)
     super(AirflowDagRunner, self).__init__(config)
@@ -137,5 +138,4 @@ class AirflowDagRunner(tfx_runner.TfxRunner):
         template_field = f'{{{{ dag_run.conf.get("{prop.name}", {default}) }}}}'
         comp.exec_properties[k] = template_field
     return comp
-
-      
+    
