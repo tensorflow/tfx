@@ -66,8 +66,10 @@ class MLMDConfigTest(tf.test.TestCase):
     })
 
     grpc_config = kubeflow_pb2.KubeflowGrpcMetadataConfig()
-    grpc_config.grpc_service_host.environment_variable = 'METADATA_GRPC_SERVICE_HOST'
-    grpc_config.grpc_service_port.environment_variable = 'METADATA_GRPC_SERVICE_PORT'
+    grpc_config.grpc_service_host.environment_variable = \
+        'METADATA_GRPC_SERVICE_HOST'
+    grpc_config.grpc_service_port.environment_variable = \
+        'METADATA_GRPC_SERVICE_PORT'
     metadata_config = kubeflow_pb2.KubeflowMetadataConfig()
     metadata_config.grpc_config.CopyFrom(grpc_config)
 
@@ -81,27 +83,30 @@ class MLMDConfigTest(tf.test.TestCase):
 
 class BeamArgsTest(tf.test.TestCase):
 
-  def testResolveBeamArgs(self):
+  def testResolveBeamArgsFromEnv(self):
     self._set_required_env_vars({
       'S3_SECRET_ACCESS_KEY': 'minio123',
       'S3_VERIFY': '1',
     })
 
-    beam_pipeline_args = [f'--s3_endpoint_url=s3_endpoint_url',
-                          f'--s3_access_key_id=minio',
+    beam_pipeline_args = ['--s3_endpoint_url=s3_endpoint_url',
+                          '--s3_access_key_id=minio',
                           's3_verify=0'
                           ]
     additional_pipeline_args = {'foo': 'bar',
-                                'beam_pipeline_args_from_env': {'s3_secret_access_key': 'S3_SECRET_ACCESS_KEY',
-                                                                's3_verify': 'S3_VERIFY'}}
+                                container_entrypoint.BEAM_PIPELINE_ARGS_FROM_ENV
+                                :
+                                {'s3_secret_access_key': 'S3_SECRET_ACCESS_KEY',
+                                 's3_verify': 'S3_VERIFY'}}
 
-    updated_beam_pipeline_args = container_entrypoint._add_beam_args_from_env(beam_pipeline_args=beam_pipeline_args,
-                                                                              additional_pipeline_args=
-                                                                              additional_pipeline_args)
-    self.assertEqual(set(updated_beam_pipeline_args), {f'--s3_endpoint_url=s3_endpoint_url',
-                                                       f'--s3_access_key_id=minio',
-                                                       f'--s3_secret_access_key=minio123',
-                                                       's3_verify=0'})
+    updated_beam_pipeline_args = container_entrypoint._add_beam_args_from_env(
+        beam_pipeline_args=beam_pipeline_args,
+        additional_pipeline_args=additional_pipeline_args)
+    self.assertEqual(set(updated_beam_pipeline_args),
+                     {'--s3_endpoint_url=s3_endpoint_url',
+                      '--s3_access_key_id=minio',
+                      '--s3_secret_access_key=minio123',
+                      's3_verify=0'})
 
 
 if __name__ == '__main__':
