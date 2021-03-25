@@ -12,7 +12,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Python source file include taxi pipeline functions and necesasry utils.
+"""Python source file include taxi pipeline functions and necessary utils.
 
 For a TFX pipeline to successfully run, a preprocessing_fn and a
 trainer_fn function needs to be provided. This file contains both.
@@ -342,7 +342,7 @@ def trainer_fn(trainer_fn_args, schema):
   warm_start_from = trainer_fn_args.base_model
 
   estimator = _build_estimator(
-      # Construct layers sizes with exponetial decay
+      # Construct layers sizes with exponential decay
       hidden_units=[
           max(2, int(first_dnn_layer_size * dnn_decay_factor**i))
           for i in range(num_dnn_layers)
