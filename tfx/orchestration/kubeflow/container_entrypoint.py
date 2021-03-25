@@ -309,7 +309,7 @@ def _get_beam_args_from_env(beam_pipeline_args, additional_pipeline_args) -> \
       if beam_pipeline_arg in supplied_beam_pipeline_args:
         logging.info('Arg %s already present in '
                      'beam_pipeline_args and will not be fetched from env.',
-                     beam_pipeline_args)
+                     beam_pipeline_arg)
       else:
         env_var_value = os.environ.get(env_var, None)
         if env_var_value:
@@ -317,7 +317,7 @@ def _get_beam_args_from_env(beam_pipeline_args, additional_pipeline_args) -> \
                   .format(beam_pipeline_arg, env_var_value))
         else:
           logging.info('Env var %s not present. Skipping corresponding beam arg'
-                       ': %s.', env_var, beam_pipeline_args)
+                       ': %s.', env_var, beam_pipeline_arg)
   return list(beam_pipeline_args_from_env_set)
 
 
@@ -357,13 +357,13 @@ def main():
       _get_metadata_connection_config(kubeflow_metadata_config))
   driver_args = data_types.DriverArgs(enable_cache=args.enable_cache)
 
-  additional_pipeline_args = json.loads(args.additional_pipeline_args)
-
   beam_pipeline_args = json.loads(args.beam_pipeline_args)
 
-  beam_pipeline_args_from_env_set = _get_beam_args_from_env(beam_pipeline_args,
+  additional_pipeline_args = json.loads(args.additional_pipeline_args)
+
+  beam_pipeline_args_from_env = _get_beam_args_from_env(beam_pipeline_args,
                                                     additional_pipeline_args)
-  beam_pipeline_args += list(beam_pipeline_args_from_env_set)
+  beam_pipeline_args += beam_pipeline_args_from_env
 
   launcher = component_launcher_class.create(
       component=component,
