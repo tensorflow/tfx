@@ -86,9 +86,11 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
                      metadata_path: Text,
                      beam_pipeline_args: List[Text]) -> pipeline.Pipeline:
   """Implements the chicago taxi pipeline with TFX."""
+  # Parametrize data root so it can be replaced on runtime.
   data_root_runtime = data_types.RuntimeParameter(
-    'data_root', default=data_root
+    'data_root', ptype=str, default=data_root
   )
+
   # Brings data into the pipeline or otherwise joins/converts training data.
   example_gen = CsvExampleGen(input_base=data_root_runtime)
 
