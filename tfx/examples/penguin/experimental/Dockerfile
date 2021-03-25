@@ -13,8 +13,5 @@
 # limitations under the License.
 
 ARG TFX_VERSION
-FROM gcr.io/tfx-oss-public/tfx:$TFX_VERSION
-
-RUN pip install \
-    scikit-learn==0.20.4 \
-    numpy==1.16.5
+FROM tensorflow/tfx:$TFX_VERSION
+RUN pip install -U tfx[examples]

@@ -106,7 +106,6 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
   # Uses user-provided Python function that trains a model using TF-Learn.
   # Num_steps is not provided during evaluation because the scikit-learn model
   # loads and evaluates the entire test set at once.
-  # TODO(b/159470716): Make schema optional in Trainer.
   trainer = Trainer(
       module_file=trainer_module_file,
       custom_executor_spec=executor_spec.ExecutorClassSpec(GenericExecutor),

@@ -164,7 +164,10 @@ def make_extra_packages_examples():
       'tensorflow-ranking>=0.3.3,<0.4',
       'struct2tensor>=0.28,<0.29',
       # Required for tfx/examples/penguin/experimental
-      'scikit-learn>=0.24,<0.25',
+      # LINT.IfChange
+      'scikit-learn>=0.23,<0.24',
+      # LINT.ThenChange(
+      #     examples/penguin/experimental/penguin_pipeline_sklearn_gcp.py)
   ]
 
 
