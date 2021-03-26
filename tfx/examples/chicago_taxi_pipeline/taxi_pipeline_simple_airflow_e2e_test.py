@@ -14,9 +14,11 @@
 """End to end test for tfx.orchestration.airflow."""
 
 import os
+import platform
 import subprocess
 import time
 from typing import Sequence, Set, Text
+import unittest
 
 import absl
 import tensorflow as tf
@@ -54,6 +56,11 @@ _SUCCESS_TASK_STATES = set(['success'])
 _PENDING_TASK_STATES = set(['queued', 'scheduled', 'running', 'none'])
 
 
+@unittest.skipIf(
+    platform.system() == 'Darwin',
+    'Airflow is not compatible with TF in some environments on macos and '
+    'Airflow Executor is not supported on macos. See b/178137745.'
+)
 class AirflowEndToEndTest(test_case_utils.TfxTest):
   """An end to end test using fully orchestrated Airflow."""
 
