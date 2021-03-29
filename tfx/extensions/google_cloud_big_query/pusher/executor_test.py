@@ -64,6 +64,7 @@ class ExecutorTest(tf.test.TestCase):
                 'model_name': 'model_name',
                 'project_id': 'project_id',
                 'bq_dataset_id': 'bq_dataset_id',
+                'compute_project_id': 'compute_project_id',
             },
         },
         'push_destination': None,

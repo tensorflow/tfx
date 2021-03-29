@@ -41,6 +41,9 @@ _PROJECT_ID_KEY = 'project_id'
 _BQ_DATASET_ID_KEY = 'bq_dataset_id'
 _MODEL_NAME_KEY = 'model_name'
 
+# Project where query will be executed
+_COMPUTE_PROJECT_ID_KEY = 'compute_project_id'
+
 # Keys for custom_config.
 _CUSTOM_CONFIG_KEY = 'custom_config'
 
@@ -131,9 +134,11 @@ class Executor(tfx_pusher_executor.Executor):
       default_query_job_config = bigquery.job.QueryJobConfig(
           labels=telemetry_utils.get_labels_dict())
     # TODO(b/181368842) Add integration test for BQML Pusher + Managed Pipeline
+    project_id = (bigquery_serving_args.get(_COMPUTE_PROJECT_ID_KEY) or
+      bigquery_serving_args[_PROJECT_ID_KEY])
     client = bigquery.Client(
         default_query_job_config=default_query_job_config,
-        project=bigquery_serving_args[_PROJECT_ID_KEY])
+        project=project_id)
 
     try:
       query_job = client.query(query)
