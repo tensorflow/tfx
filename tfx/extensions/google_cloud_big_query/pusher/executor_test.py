@@ -35,7 +35,7 @@ from google.cloud import bigquery
 class ExecutorTest(tf.test.TestCase):
 
   def setUp(self):
-    super(ExecutorTest, self).setUp()
+    super().setUp()
     self._source_data_dir = os.path.join(
         os.path.dirname(
             os.path.dirname(os.path.dirname(os.path.dirname(__file__)))),
@@ -64,6 +64,7 @@ class ExecutorTest(tf.test.TestCase):
                 'model_name': 'model_name',
                 'project_id': 'project_id',
                 'bq_dataset_id': 'bq_dataset_id',
+                'compute_project_id': 'compute_project_id',
             },
         },
         'push_destination': None,

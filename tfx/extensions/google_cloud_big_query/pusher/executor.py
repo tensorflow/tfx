@@ -41,6 +41,9 @@ _PROJECT_ID_KEY = 'project_id'
 _BQ_DATASET_ID_KEY = 'bq_dataset_id'
 _MODEL_NAME_KEY = 'model_name'
 
+# Project where query will be executed
+_COMPUTE_PROJECT_ID_KEY = 'compute_project_id'
+
 # Keys for custom_config.
 _CUSTOM_CONFIG_KEY = 'custom_config'
 
@@ -70,7 +73,15 @@ class Executor(tfx_pusher_executor.Executor):
           include the model in this push execution if the model was pushed.
       exec_properties: Mostly a passthrough input dict for
         tfx.components.Pusher.executor.  custom_config.bigquery_serving_args is
-        consumed by this class.  For the full set of parameters supported by
+        consumed by this class, including:
+        - bq_dataset_id: ID of the dataset you're creating or replacing
+        - model_name: name of the model you're creating or replacing
+        - project_id: GCP project where the model will be stored. It is also
+          the project where the query is executed unless a compute_project_id
+          is provided.
+        - compute_project_id: GCP project where query is executed. If not
+          provided, the query is executed in the project specified in project_id.
+        For the full set of parameters supported by
         Big Query ML, refer to https://cloud.google.com/bigquery-ml/
 
     Returns:
@@ -80,6 +91,23 @@ class Executor(tfx_pusher_executor.Executor):
         If bigquery_serving_args is not in exec_properties.custom_config.
         If pipeline_root is not 'gs://...'
       RuntimeError: if the Big Query job failed.
+
+    Example usage:
+      from tfx.extensions.google_cloud_big_query.pusher import executor
+
+      pusher = Pusher(
+        model=trainer.outputs['model'],
+        model_blessing=evaluator.outputs['blessing'],
+        custom_executor_spec=executor_spec.ExecutorClassSpec(executor.Executor),
+        custom_config={
+          'bigquery_serving_args': {
+            'model_name': 'your_model_name',
+            'project_id': 'your_gcp_storage_project',
+            'bq_dataset_id': 'your_dataset_id',
+            'compute_project_id': 'your_gcp_compute_project',
+          },
+        },
+      )
     """
     self._log_startup(input_dict, output_dict, exec_properties)
     model_push = artifact_utils.get_single_instance(
@@ -131,15 +159,17 @@ class Executor(tfx_pusher_executor.Executor):
       default_query_job_config = bigquery.job.QueryJobConfig(
           labels=telemetry_utils.get_labels_dict())
     # TODO(b/181368842) Add integration test for BQML Pusher + Managed Pipeline
+    project_id = (bigquery_serving_args.get(_COMPUTE_PROJECT_ID_KEY) or
+      bigquery_serving_args[_PROJECT_ID_KEY])
     client = bigquery.Client(
         default_query_job_config=default_query_job_config,
-        project=bigquery_serving_args[_PROJECT_ID_KEY])
+        project=project_id)
 
     try:
       query_job = client.query(query)
       query_job.result()  # Waits for the query to finish
     except Exception as e:
-      raise RuntimeError('BigQuery ML Push failed: {}'.format(e))
+      raise RuntimeError('BigQuery ML Push failed: {}'.format(e)) from e
 
     logging.info('Successfully deployed model %s serving from %s', bq_model_uri,
                  model_path)
