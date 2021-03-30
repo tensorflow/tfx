@@ -109,3 +109,28 @@ def ensure_topological_order(nodes: List[base_node.BaseNode]) -> bool:
         return False
     visited.add(node)
   return True
+
+
+def has_task_dependency(tfx_pipeline: pipeline.Pipeline):
+  """Checks if a pipeline contains task dependency."""
+  producer_map = {}
+  for component in tfx_pipeline.components:
+    for output_channel in component.outputs.values():
+      producer_map[output_channel] = component.id
+
+  for component in tfx_pipeline.components:
+    # Resolver node is a special case. It sets producer_component_id, but not
+    # upstream_nodes. Excludes the case by filtering using producer_map.
+    upstream_data_dep_ids = {
+        input_channel.producer_component_id
+        for input_channel in component.inputs.values()
+        if input_channel in producer_map
+    }
+    upstream_deps_ids = {node.id for node in component._upstream_nodes}  # pylint: disable=protected-access
+
+    # Compares a node's all upstream nodes and all upstream data dependencies.
+    # A task dependency is a dependency between nodes that do not have artifact
+    # associated.
+    if upstream_data_dep_ids != upstream_deps_ids:
+      return True
+  return False

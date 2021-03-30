@@ -17,6 +17,7 @@ import itertools
 import tensorflow as tf
 from tfx import types
 from tfx.components import CsvExampleGen
+from tfx.components import StatisticsGen
 from tfx.components.common_nodes import importer_node as legacy_importer_node
 from tfx.components.common_nodes import resolver_node as legacy_resolver_node
 from tfx.dsl.compiler import compiler_utils
@@ -113,6 +114,23 @@ class CompilerUtilsTest(tf.test.TestCase):
 
     with self.assertRaisesRegex(RuntimeError, "Caching is a feature only"):
       compiler_utils.resolve_execution_mode(p)
+
+  def testHasTaskDependency(self):
+    example_gen = CsvExampleGen(input=external_input("data_path"))
+    statistics_gen = StatisticsGen(examples=example_gen.outputs["examples"])
+    p1 = pipeline.Pipeline(
+        pipeline_name="fake_name",
+        pipeline_root="fake_root",
+        components=[example_gen, statistics_gen])
+    self.assertFalse(compiler_utils.has_task_dependency(p1))
+
+    a = EmptyComponent(name="a").with_id("a")
+    statistics_gen.add_downstream_node(a)
+    p2 = pipeline.Pipeline(
+        pipeline_name="fake_name",
+        pipeline_root="fake_root",
+        components=[example_gen, statistics_gen, a])
+    self.assertTrue(compiler_utils.has_task_dependency(p2))
 
 
 if __name__ == "__main__":
