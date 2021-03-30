@@ -97,9 +97,11 @@ class GenericExecutor(base_executor.BaseExecutor):
                  exec_properties: Dict[Text, Any]) -> fn_args_utils.FnArgs:
     # TODO(ruoyu): Make this a dict of tag -> uri instead of list.
     if input_dict.get(standard_component_specs.BASE_MODEL_KEY):
+      base_model_artifact = artifact_utils.get_single_instance(
+          input_dict[standard_component_specs.BASE_MODEL_KEY])
       base_model = path_utils.serving_model_path(
-          artifact_utils.get_single_uri(
-              input_dict[standard_component_specs.BASE_MODEL_KEY]))
+          base_model_artifact.uri,
+          path_utils.is_old_model_artifact(base_model_artifact))
     else:
       base_model = None
 

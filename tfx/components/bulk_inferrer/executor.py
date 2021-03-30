@@ -100,7 +100,8 @@ class Executor(base_executor.BaseExecutor):
 
     model = artifact_utils.get_single_instance(
         input_dict[standard_component_specs.MODEL_KEY])
-    model_path = path_utils.serving_model_path(model.uri)
+    model_path = path_utils.serving_model_path(
+        model.uri, path_utils.is_old_model_artifact(model))
     logging.info('Use exported model from %s.', model_path)
 
     data_spec = bulk_inferrer_pb2.DataSpec()

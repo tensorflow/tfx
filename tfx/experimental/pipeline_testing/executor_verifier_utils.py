@@ -245,7 +245,8 @@ def compare_model_file_sizes(output_uri: Text, expected_uri: Text,
      boolean whether file sizes differ within a threshold.
   """
   for dir_name, sub_dirs, leaf_files in fileio.walk(expected_uri):
-    if 'eval_model_dir' in dir_name or 'export' in dir_name:
+    if ('Format-TFMA' in dir_name or 'eval_model_dir' in dir_name or
+        'export' in dir_name):
       continue
     for sub_dir in sub_dirs:
       new_file_path = os.path.join(

@@ -133,7 +133,8 @@ class Executor(bulk_inferrer_executor.Executor):
         {telemetry_utils.LABEL_TFX_EXECUTOR: executor_class_path}):
       job_labels = telemetry_utils.get_labels_dict()
     model = artifact_utils.get_single_instance(input_dict['model'])
-    model_path = path_utils.serving_model_path(model.uri)
+    model_path = path_utils.serving_model_path(
+        model.uri, path_utils.is_old_model_artifact(model))
     logging.info('Use exported model from %s.', model_path)
     # Use model artifact uri to generate model version to guarantee the
     # 1:1 mapping from model version to model.

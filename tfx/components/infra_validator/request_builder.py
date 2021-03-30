@@ -83,7 +83,8 @@ def build_requests(  # pylint: disable=invalid-name
   if kind == _TENSORFLOW_SERVING:
     spec = request_spec.tensorflow_serving
     signatures = _parse_saved_model_signatures(
-        model_path=path_utils.serving_model_path(model.uri),
+        model_path=path_utils.serving_model_path(
+            model.uri, path_utils.is_old_model_artifact(model)),
         tag_set=spec.tag_set,
         signature_names=spec.signature_names)
     builder = _TFServingRpcRequestBuilder(

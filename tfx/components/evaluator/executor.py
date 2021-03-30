@@ -158,14 +158,19 @@ class Executor(base_executor.BaseExecutor):
                 'model_spec.prediction_key required if model not provided')
           continue
         if model_spec.is_baseline:
-          model_uri = artifact_utils.get_single_uri(
+          model_artifact = artifact_utils.get_single_instance(
               input_dict[BASELINE_MODEL_KEY])
         else:
-          model_uri = artifact_utils.get_single_uri(input_dict[MODEL_KEY])
+          model_artifact = artifact_utils.get_single_instance(
+              input_dict[MODEL_KEY])
         if tfma.get_model_type(model_spec) == tfma.TF_ESTIMATOR:
-          model_path = path_utils.eval_model_path(model_uri)
+          model_path = path_utils.eval_model_path(
+              model_artifact.uri,
+              path_utils.is_old_model_artifact(model_artifact))
         else:
-          model_path = path_utils.serving_model_path(model_uri)
+          model_path = path_utils.serving_model_path(
+              model_artifact.uri,
+              path_utils.is_old_model_artifact(model_artifact))
         logging.info('Using %s as %s model.', model_path, model_spec.name)
         models.append(
             eval_shared_model_fn(
@@ -183,8 +188,9 @@ class Executor(base_executor.BaseExecutor):
                                 feature_slicing_spec)
       slice_spec = self._get_slice_spec_from_feature_slicing_spec(
           feature_slicing_spec)
-      model_uri = artifact_utils.get_single_uri(input_dict[MODEL_KEY])
-      model_path = path_utils.eval_model_path(model_uri)
+      model_artifact = artifact_utils.get_single_instance(input_dict[MODEL_KEY])
+      model_path = path_utils.eval_model_path(
+          model_artifact.uri, path_utils.is_old_model_artifact(model_artifact))
       logging.info('Using %s for model eval.', model_path)
       models.append(
           eval_shared_model_fn(

@@ -108,7 +108,9 @@ class Executor(tfx_pusher_executor.Executor):
         ai_platform_serving_args)
     # Deploy the model.
     io_utils.copy_dir(
-        src=path_utils.serving_model_path(model_export.uri), dst=model_push.uri)
+        src=path_utils.serving_model_path(
+            model_export.uri, path_utils.is_old_model_artifact(model_export)),
+        dst=model_push.uri)
     model_path = model_push.uri
     # TODO(jjong): Introduce Versioning.
     # Note that we're adding "v" prefix as Cloud AI Prediction only allows the

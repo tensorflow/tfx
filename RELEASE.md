@@ -28,6 +28,10 @@
 *   Change split sub-folder format to 'Split-<split_name>': artifacts with old
     split format can still be loaded by TFX.
 
+*   Change Model artifact's sub-folder name to 'Format-TFMA' for eval model and
+    'Format-Serving' for serving model: artifacts with old Model format
+    ('eval_model_dir'/'serving_model_dir') can still be loaded by TFX.
+
 ## Bug Fixes and Other Changes
 
 *   The `tfx_version` custom property of output artifacts is now set by the

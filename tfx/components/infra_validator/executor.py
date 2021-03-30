@@ -258,7 +258,7 @@ class Executor(base_executor.BaseExecutor):
       logging.info('InfraValidator will be run in LOAD_ONLY mode.')
       requests = []
 
-    model_path = self._PrepareModelPath(model.uri, serving_spec)
+    model_path = self._PrepareModelPath(model, serving_spec)
     # TODO(jjong): Make logic parallel.
     all_passed = True
     for serving_binary in serving_bins.parse_serving_binaries(serving_spec):
@@ -274,10 +274,10 @@ class Executor(base_executor.BaseExecutor):
     else:
       _mark_not_blessed(blessing)
 
-  def _PrepareModelPath(
-      self, model_uri: Text,
-      serving_spec: infra_validator_pb2.ServingSpec) -> Text:
-    model_path = path_utils.serving_model_path(model_uri)
+  def _PrepareModelPath(self, model: types.Artifact,
+                        serving_spec: infra_validator_pb2.ServingSpec) -> Text:
+    model_path = path_utils.serving_model_path(
+        model.uri, path_utils.is_old_model_artifact(model))
     serving_binary = serving_spec.WhichOneof('serving_binary')
     if serving_binary == _TENSORFLOW_SERVING:
       # TensorFlow Serving requires model to be stored in its own directory
