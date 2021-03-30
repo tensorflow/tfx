@@ -15,11 +15,11 @@
 
 import collections
 import datetime
-import functools
 import os
 from unittest import mock
 
 from airflow import models
+from airflow.operators import python_operator
 
 import tensorflow as tf
 from tfx import types
@@ -97,8 +97,8 @@ class AirflowComponentTest(tf.test.TestCase):
     self.assertEqual(arg_list[0][1]['pipeline_info'].run_id, 'run_id')
     mock_component_launcher.launch.assert_called_once()
 
-  @mock.patch.object(functools, 'partial', wraps=functools.partial)
-  def testAirflowComponent(self, mock_functools_partial):
+  @mock.patch.object(python_operator.PythonOperator, '__init__')
+  def testAirflowComponent(self, mock_python_operator_init):
     mock_component_launcher_class = mock.Mock()
     airflow_component.AirflowComponent(
         parent_dag=self._parent_dag,
@@ -110,24 +110,27 @@ class AirflowComponentTest(tf.test.TestCase):
         beam_pipeline_args=[],
         additional_pipeline_args={},
         component_config=None)
-    # Airflow complained if we completely mock this function. So we "wraps" the
-    # function. `partial` can be called multiple times from other than
-    # AirflowComponent. We will check the first call only.
-    mock_functools_partial.assert_called()
-    args = mock_functools_partial.call_args_list[0][0]
-    kwargs = mock_functools_partial.call_args_list[0][1]
-    self.assertCountEqual(args,
-                          (airflow_component._airflow_component_launcher,))
-    self.assertTrue(kwargs.pop('driver_args').enable_cache)
+
+    mock_python_operator_init.assert_called_once_with(
+        task_id=self._component.id,
+        provide_context=True,
+        python_callable=mock.ANY,
+        dag=self._parent_dag)
+
+    python_callable = mock_python_operator_init.call_args_list[0][1][
+        'python_callable']
+    self.assertEqual(python_callable.func,
+                     airflow_component._airflow_component_launcher)
+    self.assertTrue(python_callable.keywords.pop('driver_args').enable_cache)
     self.assertEqual(
-        kwargs, {
+        python_callable.keywords, {
             'component': self._component,
             'component_launcher_class': mock_component_launcher_class,
             'pipeline_info': self._pipeline_info,
             'metadata_connection_config': self._metadata_connection_config,
             'beam_pipeline_args': [],
             'additional_pipeline_args': {},
-            'component_config': None
+            'component_config': None,
         })
 
 
