@@ -84,9 +84,9 @@ class ExecutorTest(absltest.TestCase):
 
     # Check statistics_gen outputs.
     self._validate_stats_output(
-        os.path.join(stats.uri, 'train', 'stats_tfrecord'))
+        os.path.join(stats.uri, 'Split-train', 'stats_tfrecord'))
     self._validate_stats_output(
-        os.path.join(stats.uri, 'eval', 'stats_tfrecord'))
+        os.path.join(stats.uri, 'Split-eval', 'stats_tfrecord'))
 
     # Assert 'test' split is excluded.
     self.assertFalse(
@@ -133,9 +133,9 @@ class ExecutorTest(absltest.TestCase):
 
     # Check statistics_gen outputs.
     self._validate_stats_output(
-        os.path.join(stats.uri, 'train', 'stats_tfrecord'))
+        os.path.join(stats.uri, 'Split-train', 'stats_tfrecord'))
     self._validate_stats_output(
-        os.path.join(stats.uri, 'eval', 'stats_tfrecord'))
+        os.path.join(stats.uri, 'Split-eval', 'stats_tfrecord'))
 
   def testDoWithTwoSchemas(self):
     source_data_dir = os.path.join(

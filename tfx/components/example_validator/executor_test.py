@@ -77,9 +77,9 @@ class ExecutorTest(tf.test.TestCase):
         validation_output.split_names)
 
     # Check example_validator outputs.
-    train_anomalies_path = os.path.join(validation_output.uri, 'train',
+    train_anomalies_path = os.path.join(validation_output.uri, 'Split-train',
                                         'anomalies.pbtxt')
-    eval_anomalies_path = os.path.join(validation_output.uri, 'eval',
+    eval_anomalies_path = os.path.join(validation_output.uri, 'Split-eval',
                                        'anomalies.pbtxt')
     self.assertTrue(fileio.exists(train_anomalies_path))
     self.assertTrue(fileio.exists(eval_anomalies_path))
@@ -91,7 +91,7 @@ class ExecutorTest(tf.test.TestCase):
     self.assertEqual(0, len(eval_anomalies.anomaly_info))
 
     # Assert 'test' split is excluded.
-    train_file_path = os.path.join(validation_output.uri, 'test',
+    train_file_path = os.path.join(validation_output.uri, 'Split-test',
                                    'anomalies.pbtxt')
     self.assertFalse(fileio.exists(train_file_path))
     # TODO(zhitaoli): Add comparison to expected anomolies.

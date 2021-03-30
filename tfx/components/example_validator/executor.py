@@ -104,7 +104,7 @@ class Executor(base_executor.BaseExecutor):
           STATISTICS_KEY:
               tfdv.load_statistics(
                   io_utils.get_only_uri_in_dir(
-                      os.path.join(stats_artifact.uri, split))),
+                      artifact_utils.get_split_uri([stats_artifact], split))),
           SCHEMA_KEY:
               schema
       }

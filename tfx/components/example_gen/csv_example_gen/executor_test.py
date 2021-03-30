@@ -123,9 +123,9 @@ class ExecutorTest(tf.test.TestCase):
         examples.split_names)
 
     # Check CSV example gen outputs.
-    train_output_file = os.path.join(examples.uri, 'train',
+    train_output_file = os.path.join(examples.uri, 'Split-train',
                                      'data_tfrecord-00000-of-00001.gz')
-    eval_output_file = os.path.join(examples.uri, 'eval',
+    eval_output_file = os.path.join(examples.uri, 'Split-eval',
                                     'data_tfrecord-00000-of-00001.gz')
     self.assertTrue(fileio.exists(train_output_file))
     self.assertTrue(fileio.exists(eval_output_file))

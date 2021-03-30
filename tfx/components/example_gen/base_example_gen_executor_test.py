@@ -98,9 +98,9 @@ class BaseExampleGenExecutorTest(tf.test.TestCase):
         standard_component_specs.EXAMPLES_KEY: [self._examples]
     }
 
-    self._train_output_file = os.path.join(self._examples.uri, 'train',
+    self._train_output_file = os.path.join(self._examples.uri, 'Split-train',
                                            'data_tfrecord-00000-of-00001.gz')
-    self._eval_output_file = os.path.join(self._examples.uri, 'eval',
+    self._eval_output_file = os.path.join(self._examples.uri, 'Split-eval',
                                           'data_tfrecord-00000-of-00001.gz')
 
     # Create exec proterties for output splits.

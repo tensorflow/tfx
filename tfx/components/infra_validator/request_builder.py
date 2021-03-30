@@ -180,7 +180,8 @@ class _BaseRequestBuilder(six.with_metaclass(abc.ABCMeta, object)):
               split_name, ', '.join(available_splits)))
 
     # ExampleGen generates artifacts under each split_name directory.
-    glob_pattern = os.path.join(examples.uri, split_name, '*')
+    glob_pattern = os.path.join(
+        artifact_utils.get_split_uri([examples], split_name), '*')
     tfxio_factory = tfxio_utils.get_tfxio_factory_from_artifact(
         examples=[examples],
         telemetry_descriptors=_TELEMETRY_DESCRIPTORS,

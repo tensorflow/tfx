@@ -134,11 +134,11 @@ class ExecutorTest(tf.test.TestCase):
   def testDoWithCustomSplits(self):
     # Update input dict.
     io_utils.copy_dir(
-        os.path.join(self._testdata_dir, 'penguin/data/train'),
-        os.path.join(self._output_data_dir, 'data/training'))
+        os.path.join(self._testdata_dir, 'penguin/data/Split-train'),
+        os.path.join(self._output_data_dir, 'data/Split-training'))
     io_utils.copy_dir(
-        os.path.join(self._testdata_dir, 'penguin/data/eval'),
-        os.path.join(self._output_data_dir, 'data/evaluating'))
+        os.path.join(self._testdata_dir, 'penguin/data/Split-eval'),
+        os.path.join(self._output_data_dir, 'data/Split-evaluating'))
     examples = standard_artifacts.Examples()
     examples.uri = os.path.join(self._output_data_dir, 'data')
     examples.split_names = artifact_utils.encode_split_names(

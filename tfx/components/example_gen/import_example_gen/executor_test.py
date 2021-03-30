@@ -98,15 +98,15 @@ class ExecutorTest(tf.test.TestCase):
         self.examples.split_names)
 
     # Check import_example_gen outputs.
-    train_output_file = os.path.join(self.examples.uri, 'train',
+    train_output_file = os.path.join(self.examples.uri, 'Split-train',
                                      'data_tfrecord-00000-of-00001.gz')
-    eval_output_file = os.path.join(self.examples.uri, 'eval',
+    eval_output_file = os.path.join(self.examples.uri, 'Split-eval',
                                     'data_tfrecord-00000-of-00001.gz')
 
     # Check import_example_gen outputs.
-    train_output_file = os.path.join(self.examples.uri, 'train',
+    train_output_file = os.path.join(self.examples.uri, 'Split-train',
                                      'data_tfrecord-00000-of-00001.gz')
-    eval_output_file = os.path.join(self.examples.uri, 'eval',
+    eval_output_file = os.path.join(self.examples.uri, 'Split-eval',
                                     'data_tfrecord-00000-of-00001.gz')
     self.assertTrue(fileio.exists(train_output_file))
     self.assertTrue(fileio.exists(eval_output_file))

@@ -122,7 +122,7 @@ class Executor(base_executor.BaseExecutor):
       if split in exclude_splits:
         continue
 
-      uri = os.path.join(examples.uri, split)
+      uri = artifact_utils.get_split_uri([examples], split)
       split_and_tfxio.append(
           (split, tfxio_factory(io_utils.all_files_pattern(uri))))
     with self._make_beam_pipeline() as p:

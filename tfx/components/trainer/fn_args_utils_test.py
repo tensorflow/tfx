@@ -69,10 +69,10 @@ class FnArgsUtilsTest(tf.test.TestCase):
     self.assertEqual(fn_args.eval_steps, 500)
     self.assertLen(fn_args.train_files, 1)
     self.assertEqual(fn_args.train_files[0],
-                     os.path.join(examples.uri, 'train', '*'))
+                     os.path.join(examples.uri, 'Split-train', '*'))
     self.assertLen(fn_args.eval_files, 1)
     self.assertEqual(fn_args.eval_files[0],
-                     os.path.join(examples.uri, 'eval', '*'))
+                     os.path.join(examples.uri, 'Split-eval', '*'))
     self.assertEqual(fn_args.schema_path,
                      os.path.join(schema.uri, 'schema.pbtxt'))
     self.assertEqual(fn_args.transform_graph_path, transform_output.uri)

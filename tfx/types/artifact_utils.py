@@ -35,6 +35,10 @@ from ml_metadata.proto import metadata_store_pb2
 
 ARTIFACT_TFX_VERSION_CUSTOM_PROPERTY_KEY = 'tfx_version'
 
+# TODO(b/182526033): deprecate old artifact payload format.
+# Version that "Split-{split_name}" is introduced.
+_ARTIFACT_VERSION_FOR_SPLIT_UPDATE = '0.29.0.dev'
+
 
 # TODO(ruoyu): Deprecate this function since it is no longer needed.
 def parse_artifact_dict(json_str: Text) -> Dict[Text, List[Artifact]]:
@@ -127,7 +131,12 @@ def get_split_uris(artifact_list: List[Artifact], split: Text) -> List[Text]:
   for artifact in artifact_list:
     split_names = decode_split_names(artifact.split_names)
     if split in split_names:
-      result.append(os.path.join(artifact.uri, split))
+      # TODO(b/182526033): deprecate old split format.
+      if is_artifact_version_older_than(artifact,
+                                        _ARTIFACT_VERSION_FOR_SPLIT_UPDATE):
+        result.append(os.path.join(artifact.uri, split))
+      else:
+        result.append(os.path.join(artifact.uri, f'Split-{split}'))
   if len(result) != len(artifact_list):
     raise ValueError('Split does not exist over all example artifacts: %s' %
                      split)

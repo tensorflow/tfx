@@ -49,9 +49,9 @@ class ExecutorTest(tf.test.TestCase):
                                    'unlabelled')
     self._examples.uri = os.path.join(self._output_data_dir, 'csv_example_gen')
     io_utils.copy_dir(unlabelled_path,
-                      os.path.join(self._examples.uri, 'unlabelled'))
+                      os.path.join(self._examples.uri, 'Split-unlabelled'))
     io_utils.copy_dir(unlabelled_path,
-                      os.path.join(self._examples.uri, 'unlabelled2'))
+                      os.path.join(self._examples.uri, 'Split-unlabelled2'))
     self._examples.split_names = artifact_utils.encode_split_names(
         ['unlabelled', 'unlabelled2'])
     self._model = standard_artifacts.Model()
@@ -119,9 +119,10 @@ class ExecutorTest(tf.test.TestCase):
 
   def _verify_example_split(self, split_name):
     self.assertTrue(
-        fileio.exists(os.path.join(self._output_examples_dir, split_name)))
+        fileio.exists(
+            os.path.join(self._output_examples_dir, f'Split-{split_name}')))
     results = self._get_results(
-        os.path.join(self._output_examples_dir, split_name),
+        os.path.join(self._output_examples_dir, f'Split-{split_name}'),
         executor._EXAMPLES_FILE_NAME, tf.train.Example)
     self.assertTrue(results)
     self.assertIn('classify_label', results[0].features.feature)
@@ -196,7 +197,8 @@ class ExecutorTest(tf.test.TestCase):
     self.assertTrue(fileio.exists(self._output_examples_dir))
     self._verify_example_split('unlabelled')
     self.assertFalse(
-        fileio.exists(os.path.join(self._output_examples_dir, 'unlabelled2')))
+        fileio.exists(
+            os.path.join(self._output_examples_dir, 'Split-unlabelled2')))
 
 
 if __name__ == '__main__':

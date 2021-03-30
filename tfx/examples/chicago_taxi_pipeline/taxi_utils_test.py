@@ -71,7 +71,7 @@ class TaxiUtilsTest(tf.test.TestCase):
         schema_utils.schema_from_feature_spec(feature_spec))
     tfxio = tf_example_record.TFExampleRecord(
         file_pattern=os.path.join(self._testdata_path,
-                                  'csv_example_gen/train/*'),
+                                  'csv_example_gen/Split-train/*'),
         telemetry_descriptors=['Tests'],
         schema=legacy_metadata.schema)
     with beam.Pipeline() as p:
@@ -95,7 +95,7 @@ class TaxiUtilsTest(tf.test.TestCase):
          | 'EncodeTrainData' >> beam.Map(encoder.encode)
          | 'WriteTrainData' >> beam.io.WriteToTFRecord(
              os.path.join(transformed_examples_path,
-                          'train/transformed_examples.gz'),
+                          'Split-train/transformed_examples.gz'),
              coder=beam.coders.BytesCoder()))
         # pylint: enable=expression-not-assigned
 
@@ -127,13 +127,15 @@ class TaxiUtilsTest(tf.test.TestCase):
         record_batch_factory=None,
         data_view_decode_fn=None)
     trainer_fn_args = trainer_executor.TrainerFnArgs(
-        train_files=os.path.join(self._testdata_path,
-                                 'transform/transformed_examples/train/*.gz'),
+        train_files=os.path.join(
+            self._testdata_path,
+            'transform/transformed_examples/Split-train/*.gz'),
         transform_output=os.path.join(self._testdata_path,
                                       'transform/transform_graph'),
         serving_model_dir=os.path.join(temp_dir, 'serving_model_dir'),
-        eval_files=os.path.join(self._testdata_path,
-                                'transform/transformed_examples/eval/*.gz'),
+        eval_files=os.path.join(
+            self._testdata_path,
+            'transform/transformed_examples/Split-eval/*.gz'),
         schema_file=schema_file,
         train_steps=1,
         eval_steps=1,

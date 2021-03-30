@@ -89,7 +89,7 @@ class Executor(base_executor.BaseExecutor):
     split_to_instance = {}
     for artifact in input_dict['input_data']:
       for split in json.loads(artifact.split_names):
-        uri = os.path.join(artifact.uri, split)
+        uri = artifact_utils.get_split_uri([artifact], split)
         split_to_instance[split] = uri
 
     for split, instance in split_to_instance.items():

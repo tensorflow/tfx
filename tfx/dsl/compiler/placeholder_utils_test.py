@@ -204,7 +204,7 @@ class PlaceholderUtilsTest(tf.test.TestCase):
                            placeholder_pb2.PlaceholderExpression())
     self.assertEqual(
         placeholder_utils.resolve_placeholder_expression(
-            pb, self._resolution_context), "/tmp/train/1")
+            pb, self._resolution_context), "/tmp/Split-train/1")
 
   def testArtifactUriNoneAccess(self):
     # Access a missing optional channel.

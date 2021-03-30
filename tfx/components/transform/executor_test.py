@@ -187,15 +187,15 @@ class ExecutorTest(tft_unit.TransformTestCase):
       for example, transformed_example in zip(example_artifacts,
                                               transformed_example_artifacts):
         examples_train_files = fileio.glob(
-            os.path.join(example.uri, 'train', '*'))
+            os.path.join(example.uri, 'Split-train', '*'))
         transformed_train_files = fileio.glob(
-            os.path.join(transformed_example.uri, 'train', '*'))
+            os.path.join(transformed_example.uri, 'Split-train', '*'))
         self.assertGreater(len(transformed_train_files), 0)
 
         examples_eval_files = fileio.glob(
-            os.path.join(example.uri, 'eval', '*'))
+            os.path.join(example.uri, 'Split-eval', '*'))
         transformed_eval_files = fileio.glob(
-            os.path.join(transformed_example.uri, 'eval', '*'))
+            os.path.join(transformed_example.uri, 'Split-eval', '*'))
         self.assertGreater(len(transformed_eval_files), 0)
 
         # Construct datasets and count number of records in each split.

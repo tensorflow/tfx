@@ -84,7 +84,7 @@ class Executor(base_executor.BaseExecutor):
 
       logging.info('Processing schema from statistics for split %s.', split)
       stats_uri = io_utils.get_only_uri_in_dir(
-          os.path.join(stats_artifact.uri, split))
+          artifact_utils.get_split_uri([stats_artifact], split))
       if not schema:
         schema = tfdv.infer_schema(
             tfdv.load_statistics(stats_uri), infer_feature_shape)
