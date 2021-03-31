@@ -347,9 +347,15 @@ class KubeflowDagRunner(tfx_runner.TfxRunner):
       component_to_kfp_op[component] = kfp_component.container_op
 
   def _generate_tfx_ir(
-      self, pipeline: tfx_pipeline.Pipeline) -> pipeline_pb2.Pipeline:
-    result = self._tfx_compiler.compile(pipeline)
-    logging.info('Generated pipeline:\n %s', result)
+      self, pipeline: tfx_pipeline.Pipeline) -> Optional[pipeline_pb2.Pipeline]:
+    try:
+      result = self._tfx_compiler.compile(pipeline)
+      logging.info('Generated pipeline:\n %s', result)
+    except NotImplementedError:
+      # TODO(b/158712976): Delete NotImplementedError handling after
+      # ExecutorContainerSpec support is added.
+      logging.info('Failed to generate IR. Proceeding without IR')
+      result = None
     return result
 
   def run(self, pipeline: tfx_pipeline.Pipeline):

@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,14 +13,10 @@
 # limitations under the License.
 """Tests for tfx.orchestration.kubeflow.base_component."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import json
 import os
 
-import absl
+from absl import logging
 from kfp import dsl
 import tensorflow as tf
 from tfx.components.example_gen.csv_example_gen import component as csv_example_gen_component
@@ -116,10 +111,9 @@ class BaseComponentTest(tf.test.TestCase):
 
     except AssertionError:
       # Print out full arguments for debugging.
-      absl.logging.error('==== BEGIN CONTAINER OP ARGUMENT DUMP ====')
-      absl.logging.error(
-          json.dumps(self.component.container_op.arguments, indent=2))
-      absl.logging.error('==== END CONTAINER OP ARGUMENT DUMP ====')
+      logging.error('==== BEGIN CONTAINER OP ARGUMENT DUMP ====')
+      logging.error(json.dumps(self.component.container_op.arguments, indent=2))
+      logging.error('==== END CONTAINER OP ARGUMENT DUMP ====')
       raise
 
   def testContainerOpName(self):
@@ -186,8 +180,7 @@ class BaseComponentWithPipelineParamTest(tf.test.TestCase):
           pipeline_root=test_pipeline_root,
           tfx_image='container_image',
           kubeflow_metadata_config=self._metadata_config,
-          component_config=None,
-          tfx_ir=self._tfx_ir
+          component_config=None
       )
 
     self.tfx_example_gen = example_gen
@@ -227,8 +220,6 @@ class BaseComponentWithPipelineParamTest(tf.test.TestCase):
         formatted_statistics_gen,
         '--component_config',
         'null',
-        '--tfx_ir',
-        '{}',
         '--node_id',
         'StatisticsGen.foo',
     ]
@@ -253,10 +244,10 @@ class BaseComponentWithPipelineParamTest(tf.test.TestCase):
         formatted_example_gen,
         '--component_config',
         'null',
-        '--tfx_ir',
-        '{}',
         '--node_id',
         'CsvExampleGen',
+        '--tfx_ir',
+        '{}',
     ]
     try:
       self.assertEqual(
@@ -269,17 +260,14 @@ class BaseComponentWithPipelineParamTest(tf.test.TestCase):
           example_gen_expected_args)
     except AssertionError:
       # Print out full arguments for debugging.
-      absl.logging.error(
-          '==== BEGIN STATISTICSGEN CONTAINER OP ARGUMENT DUMP ====')
-      absl.logging.error(
+      logging.error('==== BEGIN STATISTICSGEN CONTAINER OP ARGUMENT DUMP ====')
+      logging.error(
           json.dumps(self.statistics_gen.container_op.arguments, indent=2))
-      absl.logging.error(
-          '==== END STATISTICSGEN CONTAINER OP ARGUMENT DUMP ====')
-      absl.logging.error(
-          '==== BEGIN EXAMPLEGEN CONTAINER OP ARGUMENT DUMP ====')
-      absl.logging.error(
+      logging.error('==== END STATISTICSGEN CONTAINER OP ARGUMENT DUMP ====')
+      logging.error('==== BEGIN EXAMPLEGEN CONTAINER OP ARGUMENT DUMP ====')
+      logging.error(
           json.dumps(self.example_gen.container_op.arguments, indent=2))
-      absl.logging.error('==== END EXAMPLEGEN CONTAINER OP ARGUMENT DUMP ====')
+      logging.error('==== END EXAMPLEGEN CONTAINER OP ARGUMENT DUMP ====')
       raise
 
   def testContainerOpName(self):

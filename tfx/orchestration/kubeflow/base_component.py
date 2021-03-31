@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -22,14 +21,11 @@ components, thus ensuring that both types of pipeline definitions are
 compatible.
 Note: This requires Kubeflow Pipelines SDK to be installed.
 """
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
 
 import json
 from typing import Dict, Optional, Set, Text, Type
 
-import absl
+from absl import logging
 from kfp import dsl
 from kubernetes import client as k8s_client
 from tfx.dsl.components.base import base_node as tfx_base_node
@@ -71,7 +67,7 @@ class BaseComponent(object):
       tfx_image: Text,
       kubeflow_metadata_config: Optional[kubeflow_pb2.KubeflowMetadataConfig],
       component_config: base_component_config.BaseComponentConfig,
-      tfx_ir: pipeline_pb2.Pipeline,
+      tfx_ir: Optional[pipeline_pb2.Pipeline] = None,
       pod_labels_to_attach: Optional[Dict[Text, Text]] = None):
     """Creates a new Kubeflow-based component.
 
@@ -120,11 +116,14 @@ class BaseComponent(object):
         serialized_component,
         '--component_config',
         json_utils.dumps(component_config),
-        '--tfx_ir',
-        json_format.MessageToJson(tfx_ir),
         '--node_id',
         component.id,
     ]
+
+    if tfx_ir is not None:
+      arguments += ['--tfx_ir', json_format.MessageToJson(tfx_ir)]
+    else:
+      logging.info('No tfx_ir is given. Proceeding without tfx_ir.')
 
     if pipeline.enable_cache:
       arguments.append('--enable_cache')
@@ -139,10 +138,10 @@ class BaseComponent(object):
         },
     )
 
-    absl.logging.info('Adding upstream dependencies for component {}'.format(
-        self.container_op.name))
+    logging.info('Adding upstream dependencies for component %s',
+                 self.container_op.name)
     for op in depends_on:
-      absl.logging.info('   ->  Component: {}'.format(op.name))
+      logging.info('   ->  Component: %s', op.name)
       self.container_op.after(op)
 
     # TODO(b/140172100): Document the use of additional_pipeline_args.

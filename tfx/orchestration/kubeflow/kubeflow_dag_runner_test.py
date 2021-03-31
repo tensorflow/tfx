@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,10 +13,6 @@
 # limitations under the License.
 """Tests for tfx.orchestration.kubeflow.kubeflow_dag_runner."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import os
 import tarfile
 from typing import Text
@@ -25,11 +20,14 @@ from typing import Text
 from kfp import onprem
 import tensorflow as tf
 from tfx.components.statistics_gen import component as statistics_gen_component
+from tfx.dsl.components.base import base_component
+from tfx.dsl.components.base import executor_spec
 from tfx.dsl.io import fileio
 from tfx.extensions.google_cloud_big_query.example_gen import component as big_query_example_gen_component
 from tfx.orchestration import data_types
 from tfx.orchestration import pipeline as tfx_pipeline
 from tfx.orchestration.kubeflow import kubeflow_dag_runner
+from tfx.types import component_spec
 from tfx.utils import telemetry_utils
 from tfx.utils import test_case_utils
 import yaml
@@ -50,6 +48,30 @@ def _two_step_pipeline() -> tfx_pipeline.Pipeline:
       pipeline_root='pipeline_root',
       metadata_connection_config=metadata_store_pb2.ConnectionConfig(),
       components=[example_gen, statistics_gen],
+  )
+
+
+class _DummySpec(component_spec.ComponentSpec):
+  INPUTS = {}
+  OUTPUTS = {}
+  PARAMETERS = {}
+
+
+class _DummyComponent(base_component.BaseComponent):
+  SPEC_CLASS = _DummySpec
+  EXECUTOR_SPEC = executor_spec.ExecutorContainerSpec(
+      image='dummy:latest', command=['ls'])
+
+  def __init__(self):
+    super().__init__(_DummySpec())
+
+
+def _container_component_pipeline() -> tfx_pipeline.Pipeline:
+  return tfx_pipeline.Pipeline(
+      pipeline_name='container_component_pipeline',
+      pipeline_root='pipeline_root',
+      metadata_connection_config=metadata_store_pb2.ConnectionConfig(),
+      components=[_DummyComponent()],
   )
 
 
@@ -84,6 +106,8 @@ class KubeflowDagRunnerTest(test_case_utils.TfxTest):
           '-m',
           'tfx.orchestration.kubeflow.container_entrypoint',
       ], big_query_container[0]['container']['command'])
+      self.assertIn('--tfx_ir', big_query_container[0]['container']['args'])
+      self.assertIn('--node_id', big_query_container[0]['container']['args'])
 
       statistics_gen_container = [
           c for c in containers if c['name'] == 'statisticsgen'
@@ -226,6 +250,23 @@ class KubeflowDagRunnerTest(test_case_utils.TfxTest):
         if 'volumes' in template:
           self.assertEqual(volumes, template['volumes'])
 
+  def testContainerComponent(self):
+    kubeflow_dag_runner.KubeflowDagRunner().run(_container_component_pipeline())
+    file_path = os.path.join(self.tmp_dir,
+                             'container_component_pipeline.tar.gz')
+    self.assertTrue(fileio.exists(file_path))
+
+    with tarfile.TarFile.open(file_path).extractfile(
+        'pipeline.yaml') as pipeline_file:
+      self.assertIsNotNone(pipeline_file)
+      pipeline = yaml.safe_load(pipeline_file)
+      containers = [
+          c for c in pipeline['spec']['templates'] if 'container' in c
+      ]
+      self.assertLen(containers, 1)
+      component_args = containers[0]['container']['args']
+      self.assertNotIn('--tfx_ir', component_args)
+      self.assertIn('--node_id', component_args)
 
 if __name__ == '__main__':
   tf.test.main()
