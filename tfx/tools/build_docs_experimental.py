@@ -35,17 +35,15 @@ Note:
 """
 from absl import app
 from absl import flags
-
 import tensorflow_docs.api_generator as api_generator
 from tensorflow_docs.api_generator import doc_controls
 from tensorflow_docs.api_generator import generate_lib
-
-
 import tfx
 # pylint: disable=unused-import
-
 import tfx.version
 # pylint: enable=unused-import
+
+from google.protobuf.reflection import GeneratedProtocolMessageType
 
 GITHUB_URL_PREFIX = ("https://github.com/tensorflow/tfx/blob/{}/tfx".format(
     tfx.__version__))
@@ -93,10 +91,36 @@ def ignore_test_objects(path, parent, children):
   return new_children
 
 
+def ignore_proto_method(path, parent, children):
+  """Remove all the proto inherited methods.
+
+  Args:
+    path: A tuple of name parts forming the attribute-lookup path to this
+      object. For `tf.keras.layers.Dense` path is:
+        ("tf","keras","layers","Dense")
+    parent: The parent object.
+    children: A list of (name, value) pairs. The attributes of the patent.
+
+  Returns:
+    A filtered list of children `(name, value)` pairs. With all proto methods
+    removed.
+  """
+  del path
+  new_children = []
+  if not isinstance(parent, GeneratedProtocolMessageType):
+    return children
+  new_children = []
+  for (name, obj) in children:
+    if "function" in str(obj.__class__):
+      continue
+    new_children.append((name, obj))
+  return new_children
+
+
 def main(_):
 
   do_not_generate_docs_for = []
-  for name in ["utils", "proto", "dependencies", "version", "examples"]:
+  for name in ["utils", "dependencies", "version", "examples"]:
     submodule = getattr(tfx, name, None)
     if submodule is not None:
       do_not_generate_docs_for.append(submodule)
@@ -117,7 +141,7 @@ def main(_):
       # that imports them.
       callbacks=[
           api_generator.public_api.explicit_package_contents_filter,
-          ignore_test_objects
+          ignore_test_objects, ignore_proto_method
       ])
   doc_generator.build(output_dir=FLAGS.output_dir)
 
