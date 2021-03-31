@@ -28,7 +28,7 @@ from tfx.utils import json_utils
 
 
 # Default file name for stats generated.
-_DEFAULT_FILE_NAME = 'stats_tfrecord'
+_DEFAULT_FILE_NAME = 'FeatureStats.pb'
 
 _TELEMETRY_DESCRIPTORS = ['StatisticsGen']
 
@@ -137,6 +137,6 @@ class Executor(base_executor.BaseExecutor):
             | 'GenerateStatistics[%s]' % split >>
             stats_api.GenerateStatistics(stats_options)
             | 'WriteStatsOutput[%s]' % split >>
-            stats_api.WriteStatisticsToTFRecord(output_path))
+            stats_api.WriteStatisticsToBinaryFile(output_path))
         logging.info('Statistics for split %s written to %s.', split,
                      output_uri)

@@ -85,12 +85,15 @@ class Executor(base_executor.BaseExecutor):
       logging.info('Processing schema from statistics for split %s.', split)
       stats_uri = io_utils.get_only_uri_in_dir(
           artifact_utils.get_split_uri([stats_artifact], split))
-      if not schema:
-        schema = tfdv.infer_schema(
-            tfdv.load_statistics(stats_uri), infer_feature_shape)
+      if artifact_utils.is_artifact_version_older_than(
+          stats_artifact, artifact_utils._ARTIFACT_VERSION_FOR_STATS_UPDATE):  # pylint: disable=protected-access
+        stats = tfdv.load_statistics(stats_uri)
       else:
-        schema = tfdv.update_schema(schema, tfdv.load_statistics(stats_uri),
-                                    infer_feature_shape)
+        stats = tfdv.load_stats_binary(stats_uri)
+      if not schema:
+        schema = tfdv.infer_schema(stats, infer_feature_shape)
+      else:
+        schema = tfdv.update_schema(schema, stats, infer_feature_shape)
 
     output_uri = os.path.join(
         artifact_utils.get_single_uri(

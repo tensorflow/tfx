@@ -12,6 +12,19 @@
 
 ## Breaking Changes
 
+*   Starting in this version, following artifacts will be stored in new format,
+    but artifacts produced by older versions can be read in a backwards
+    compatible way:
+    *   Change split sub-folder format to 'Split-<split_name>', this applies to
+        all artifacts that contain splits. Old format '<split_name>' can still
+        be loaded by TFX.
+    *   Change Model artifact's sub-folder name to 'Format-TFMA' for eval model
+        and 'Format-Serving' for serving model. Old Model artifact format
+        ('eval_model_dir'/'serving_model_dir') can still be loaded by TFX.
+    *   Change ExampleStatistics artifact payload to binary proto
+        FeatureStats.pb file. Old tfrecord stats_tfrecord file can still be
+        loaded by TFX.
+
 ### For Pipeline Authors
 
 *  CLI requires Apache Airflow 1.10.14 or later. If you are using an older
@@ -24,13 +37,6 @@
 
 *   Deprecated input/output compatibility aliases for Transform and
     StatisticsGen.
-
-*   Change split sub-folder format to 'Split-<split_name>': artifacts with old
-    split format can still be loaded by TFX.
-
-*   Change Model artifact's sub-folder name to 'Format-TFMA' for eval model and
-    'Format-Serving' for serving model: artifacts with old Model format
-    ('eval_model_dir'/'serving_model_dir') can still be loaded by TFX.
 
 ## Bug Fixes and Other Changes
 

@@ -36,7 +36,7 @@ class ExecutorTest(absltest.TestCase):
 
   def _validate_stats_output(self, stats_path):
     self.assertTrue(fileio.exists(stats_path))
-    stats = tfdv.load_statistics(stats_path)
+    stats = tfdv.load_stats_binary(stats_path)
     self.assertLen(stats.datasets, 1)
     data_set = stats.datasets[0]
     self.assertGreater(data_set.num_examples, 0)
@@ -84,13 +84,13 @@ class ExecutorTest(absltest.TestCase):
 
     # Check statistics_gen outputs.
     self._validate_stats_output(
-        os.path.join(stats.uri, 'Split-train', 'stats_tfrecord'))
+        os.path.join(stats.uri, 'Split-train', 'FeatureStats.pb'))
     self._validate_stats_output(
-        os.path.join(stats.uri, 'Split-eval', 'stats_tfrecord'))
+        os.path.join(stats.uri, 'Split-eval', 'FeatureStats.pb'))
 
     # Assert 'test' split is excluded.
     self.assertFalse(
-        fileio.exists(os.path.join(stats.uri, 'test', 'stats_tfrecord')))
+        fileio.exists(os.path.join(stats.uri, 'test', 'FeatureStats.pb')))
 
   def testDoWithSchemaAndStatsOptions(self):
     source_data_dir = os.path.join(
@@ -133,9 +133,9 @@ class ExecutorTest(absltest.TestCase):
 
     # Check statistics_gen outputs.
     self._validate_stats_output(
-        os.path.join(stats.uri, 'Split-train', 'stats_tfrecord'))
+        os.path.join(stats.uri, 'Split-train', 'FeatureStats.pb'))
     self._validate_stats_output(
-        os.path.join(stats.uri, 'Split-eval', 'stats_tfrecord'))
+        os.path.join(stats.uri, 'Split-eval', 'FeatureStats.pb'))
 
   def testDoWithTwoSchemas(self):
     source_data_dir = os.path.join(

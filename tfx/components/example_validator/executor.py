@@ -100,14 +100,14 @@ class Executor(base_executor.BaseExecutor):
       logging.info(
           'Validating schema against the computed statistics for '
           'split %s.', split)
-      label_inputs = {
-          STATISTICS_KEY:
-              tfdv.load_statistics(
-                  io_utils.get_only_uri_in_dir(
-                      artifact_utils.get_split_uri([stats_artifact], split))),
-          SCHEMA_KEY:
-              schema
-      }
+      stats_uri = io_utils.get_only_uri_in_dir(
+          artifact_utils.get_split_uri([stats_artifact], split))
+      if artifact_utils.is_artifact_version_older_than(
+          stats_artifact, artifact_utils._ARTIFACT_VERSION_FOR_STATS_UPDATE):  # pylint: disable=protected-access
+        stats = tfdv.load_statistics(stats_uri)
+      else:
+        stats = tfdv.load_stats_binary(stats_uri)
+      label_inputs = {STATISTICS_KEY: stats, SCHEMA_KEY: schema}
       output_uri = artifact_utils.get_split_uri(
           output_dict[ANOMALIES_KEY], split)
       label_outputs = {labels.SCHEMA_DIFF_PATH: output_uri}
