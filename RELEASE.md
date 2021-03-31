@@ -22,8 +22,13 @@
         and 'Format-Serving' for serving model. Old Model artifact format
         ('eval_model_dir'/'serving_model_dir') can still be loaded by TFX.
     *   Change ExampleStatistics artifact payload to binary proto
-        FeatureStats.pb file. Old tfrecord stats_tfrecord file can still be
-        loaded by TFX.
+        FeatureStats.pb file. Old payload format (tfrecord stats_tfrecord file)
+        can still be loaded by TFX.
+    *   Change ExampleAnomalies artifact payload to binary proto SchemaDiff.pb
+        file. Old payload format (text proto anomalies.pbtxt file) is deprecated
+        as TFX doesn't have downstream components that take ExampleAnomalies
+        artifact.
+
 
 ### For Pipeline Authors
 

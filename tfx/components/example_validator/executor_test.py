@@ -78,21 +78,23 @@ class ExecutorTest(tf.test.TestCase):
 
     # Check example_validator outputs.
     train_anomalies_path = os.path.join(validation_output.uri, 'Split-train',
-                                        'anomalies.pbtxt')
+                                        'SchemaDiff.pb')
     eval_anomalies_path = os.path.join(validation_output.uri, 'Split-eval',
-                                       'anomalies.pbtxt')
+                                       'SchemaDiff.pb')
     self.assertTrue(fileio.exists(train_anomalies_path))
     self.assertTrue(fileio.exists(eval_anomalies_path))
-    train_anomalies = io_utils.parse_pbtxt_file(train_anomalies_path,
-                                                anomalies_pb2.Anomalies())
-    eval_anomalies = io_utils.parse_pbtxt_file(eval_anomalies_path,
-                                               anomalies_pb2.Anomalies())
+    train_anomalies_bytes = io_utils.read_bytes_file(train_anomalies_path)
+    train_anomalies = anomalies_pb2.Anomalies()
+    train_anomalies.ParseFromString(train_anomalies_bytes)
+    eval_anomalies_bytes = io_utils.read_bytes_file(eval_anomalies_path)
+    eval_anomalies = anomalies_pb2.Anomalies()
+    eval_anomalies.ParseFromString(eval_anomalies_bytes)
     self.assertEqual(0, len(train_anomalies.anomaly_info))
     self.assertEqual(0, len(eval_anomalies.anomaly_info))
 
     # Assert 'test' split is excluded.
     train_file_path = os.path.join(validation_output.uri, 'Split-test',
-                                   'anomalies.pbtxt')
+                                   'SchemaDiff.pb')
     self.assertFalse(fileio.exists(train_file_path))
     # TODO(zhitaoli): Add comparison to expected anomolies.
 

@@ -30,6 +30,7 @@ from tfx.orchestration.experimental.interactive import visualizations
 from tfx.types import artifact_utils
 from tfx.types import standard_artifacts
 from tfx.utils import io_utils
+from tensorflow_metadata.proto.v0 import anomalies_pb2
 
 
 class ExampleAnomaliesVisualization(visualizations.ArtifactVisualization):
@@ -42,8 +43,15 @@ class ExampleAnomaliesVisualization(visualizations.ArtifactVisualization):
     from IPython.core.display import HTML  # pylint: disable=g-import-not-at-top
     for split in artifact_utils.decode_split_names(artifact.split_names):
       display(HTML('<div><b>%r split:</b></div><br/>' % split))
-      anomalies_path = os.path.join(artifact.uri, split, 'anomalies.pbtxt')
-      anomalies = tfdv.load_anomalies_text(anomalies_path)
+      anomalies_path = io_utils.get_only_uri_in_dir(
+          artifact_utils.get_split_uri([artifact], split))
+      if artifact_utils.is_artifact_version_older_than(
+          artifact, artifact_utils._ARTIFACT_VERSION_FOR_ANOMALIES_UPDATE):  # pylint: disable=protected-access
+        anomalies = tfdv.load_anomalies_text(anomalies_path)
+      else:
+        anomalies = anomalies_pb2.Anomalies()
+        anomalies_bytes = io_utils.read_bytes_file(anomalies_path)
+        anomalies.ParseFromString(anomalies_bytes)
       tfdv.display_anomalies(anomalies)
 
 

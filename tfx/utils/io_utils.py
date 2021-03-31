@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,14 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Utility class for I/O."""
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
 
 import os
 from typing import List, Text, TypeVar
-
-import six
 
 from tfx.dsl.io import fileio
 from google.protobuf import json_format
@@ -104,6 +98,14 @@ def write_string_file(file_name: Text, string_value: Text) -> None:
     f.write(string_value)
 
 
+def write_bytes_file(file_name: Text, content: bytes) -> None:
+  """Writes bytes to file."""
+
+  fileio.makedirs(os.path.dirname(file_name))
+  with fileio.open(file_name, 'wb') as f:
+    f.write(content)
+
+
 def write_pbtxt_file(file_name: Text, proto: Message) -> None:
   """Writes a text protobuf to file."""
 
@@ -176,11 +178,16 @@ def read_string_file(file_name: Text) -> Text:
   """Reads a string from a file."""
   if not fileio.exists(file_name):
     msg = '{} does not exist'.format(file_name)
-    if six.PY2:
-      raise OSError(msg)
-    else:
-      raise FileNotFoundError(msg)  # pylint: disable=undefined-variable
+    raise FileNotFoundError(msg)
   return fileio.open(file_name).read()
+
+
+def read_bytes_file(file_name: Text) -> bytes:
+  """Reads bytes from a file."""
+  if not fileio.exists(file_name):
+    msg = '{} does not exist'.format(file_name)
+    raise FileNotFoundError(msg)
+  return fileio.open(file_name, 'rb').read()
 
 
 class SchemaReader(object):

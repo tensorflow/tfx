@@ -37,7 +37,7 @@ from tfx.utils import json_utils
 
 
 # Default file name for anomalies output.
-DEFAULT_FILE_NAME = 'anomalies.pbtxt'
+DEFAULT_FILE_NAME = 'SchemaDiff.pb'
 
 
 class Executor(base_executor.BaseExecutor):
@@ -58,8 +58,8 @@ class Executor(base_executor.BaseExecutor):
           contain a single schema artifact.
       output_dict: Output dict from key to a list of artifacts, including:
         - output: A list of 'standard_artifacts.ExampleAnomalies' of size one.
-          It will include a single pbtxt file which contains all anomalies
-          found.
+          It will include a single binary proto file which contains all
+          anomalies found.
       exec_properties: A dict of execution properties.
         - exclude_splits: JSON-serialized list of names of splits that the
           example validator should not validate.
@@ -148,5 +148,6 @@ class Executor(base_executor.BaseExecutor):
     schema_diff_path = value_utils.GetSoleValue(
         outputs, labels.SCHEMA_DIFF_PATH)
     anomalies = tfdv.validate_statistics(stats, schema)
-    io_utils.write_pbtxt_file(
-        os.path.join(schema_diff_path, DEFAULT_FILE_NAME), anomalies)
+    io_utils.write_bytes_file(
+        os.path.join(schema_diff_path, DEFAULT_FILE_NAME),
+        anomalies.SerializeToString())
