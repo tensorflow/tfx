@@ -2,6 +2,22 @@
 
 ## Major Features and Improvements
 
+## Breaking Changes
+
+### For Pipeline Authors
+
+### For Component Authors
+
+## Deprecations
+
+## Bug Fixes and Other Changes
+
+## Documentation Updates
+
+# Version 0.29.0
+
+## Major Features and Improvements
+
 *  Added a simple query based driver that supports Span spec and static_range.
 *  Added e2e rolling window example/test for Span Resolver.
 *  Performance improvement in Transform by avoiding excess encodings and
@@ -38,6 +54,8 @@
 
 ### For Component Authors
 
+*   N/A
+
 ## Deprecations
 
 *   Deprecated input/output compatibility aliases for Transform and
@@ -48,9 +66,17 @@
 *   The `tfx_version` custom property of output artifacts is now set by the
     default publisher to the TFX SDK version.
 *   Depends on `absl-py>=0.9,<0.13`.
+*   Depends on `kfp-pipeline-spec>=0.1.7,<0.2`.
+*   Depends on `ml-metadata>=0.29.0,<0.30.0`.
 *   Depends on `packaging>=20,<21`.
+*   Depends on `struct2tensor>=0.29.0,<0.30.0`.
+*   Depends on `tensorflow-data-validation>=0.29.0,<0.30.0`.
+*   Depends on `tensorflow-model-analysis>=0.29.0,<0.30.0`.
+*   Depends on `tensorflow-transform>=0.29.0,<0.30.0`.
+*   Depends on `tfx-bsl>=0.29.0,<0.30.0`.
 
 ## Documentation Updates
+
 *   Simplified Apache Spark and Flink example deployment scripts by using Beam's
     SparkRunner and FlinkRunner classes.
 *   Upgraded example Apache Flink deployment to Flink 1.12.1.

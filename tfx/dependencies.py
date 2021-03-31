@@ -54,9 +54,9 @@ def make_pipeline_sdk_required_install_packages():
       'absl-py>=0.9,<0.13',
       'ml-metadata' + select_constraint(
           # LINT.IfChange
-          default='>=0.28,<0.29',
+          default='>=0.29,<0.30',
           # LINT.ThenChange(tfx/workspace.bzl)
-          nightly='>=0.29.0.dev',
+          nightly='>=0.30.0.dev',
           git_master='@git+https://github.com/google/ml-metadata@master'),
       'packaging>=20,<21',
       'protobuf>=3.12.2,<4',
@@ -90,23 +90,23 @@ def make_required_install_packages():
       # TODO(b/159488890): remove user module-only dependency.
       'tensorflow-cloud>=0.1,<0.2',
       'tensorflow-data-validation' + select_constraint(
-          default='>=0.28,<0.29',
-          nightly='>=0.29.0.dev',
+          default='>=0.29,<0.30',
+          nightly='>=0.30.0.dev',
           git_master='@git+https://github.com/tensorflow/data-validation@master'
       ),
       'tensorflow-model-analysis' + select_constraint(
-          default='>=0.28,<0.29',
-          nightly='>=0.29.0.dev',
+          default='>=0.29,<0.30',
+          nightly='>=0.30.0.dev',
           git_master='@git+https://github.com/tensorflow/model-analysis@master'
       ),
       'tensorflow-serving-api>=1.15,!=2.0.*,!=2.1.*,!=2.2.*,!=2.3.*,<3',
       'tensorflow-transform' + select_constraint(
-          default='>=0.28,<0.29',
-          nightly='>=0.29.0.dev',
+          default='>=0.29,<0.30',
+          nightly='>=0.30.0.dev',
           git_master='@git+https://github.com/tensorflow/transform@master'),
       'tfx-bsl' + select_constraint(
-          default='>=0.28.1,<0.29',
-          nightly='>=0.29.0.dev',
+          default='>=0.29,<0.30',
+          nightly='>=0.30.0.dev',
           git_master='@git+https://github.com/tensorflow/tfx-bsl@master'),
   ]
 
@@ -118,7 +118,7 @@ def make_extra_packages_test():
   return [
       'apache-airflow[mysql]>=1.10.14,<3',
       'kfp>=1.1.0,<2',
-      'kfp-pipeline-spec>=0.1.6,<0.2',
+      'kfp-pipeline-spec>=0.1.7,<0.2',
       'pytest>=5,<6',
       # TODO(b/182848576): Delete pinned sqlalchemy after apache-airflow 2.0.2
       # or later.(github.com/apache/airflow/issues/14811)
@@ -132,7 +132,7 @@ def make_extra_packages_test():
 def make_extra_packages_docker_image():
   # Packages needed for tfx docker image.
   return [
-      'kfp-pipeline-spec>=0.1.6,<0.2',
+      'kfp-pipeline-spec>=0.1.7,<0.2',
       'mmh>=2.2,<3',
       'python-snappy>=0.5,<0.6',
   ]
@@ -162,7 +162,7 @@ def make_extra_packages_examples():
       'tflite-support>=0.1.0a1,<0.1.1',
       # Required for tfx/examples/ranking
       'tensorflow-ranking>=0.3.3,<0.4',
-      'struct2tensor>=0.28,<0.29',
+      'struct2tensor>=0.29,<0.30',
       # Required for tfx/examples/penguin/experimental
       # LINT.IfChange
       'scikit-learn>=0.23,<0.24',
