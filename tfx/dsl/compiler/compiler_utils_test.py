@@ -109,6 +109,7 @@ class CompilerUtilsTest(tf.test.TestCase):
     p = pipeline.Pipeline(
         pipeline_name="fake_name",
         pipeline_root="fake_root",
+        components=[],
         enable_cache=True,
         execution_mode=pipeline.ExecutionMode.ASYNC)
 

@@ -193,7 +193,7 @@ class PipelineTest(tf.test.TestCase):
   def testPipelineWithLongname(self):
     with self.assertRaises(ValueError):
       pipeline.Pipeline(
-          pipeline_name='a' * (1 + pipeline.MAX_PIPELINE_NAME_LENGTH),
+          pipeline_name='a' * (1 + pipeline._MAX_PIPELINE_NAME_LENGTH),
           pipeline_root='root',
           components=[],
           metadata_connection_config=self._metadata_connection_config)
