@@ -22,12 +22,12 @@ from tfx.components import CsvExampleGen
 from tfx.components import Evaluator
 from tfx.components import ExampleValidator
 from tfx.components import Pusher
-from tfx.components import ResolverNode
 from tfx.components import SchemaGen
 from tfx.components import StatisticsGen
 from tfx.components import Trainer
 from tfx.components import Transform
 from tfx.dsl.components.base import executor_spec
+from tfx.dsl.components.common import resolver
 from tfx.dsl.experimental import latest_blessed_model_resolver
 from tfx.extensions.google_cloud_ai_platform.pusher import executor as ai_platform_pusher_executor
 from tfx.extensions.google_cloud_ai_platform.trainer import executor as ai_platform_trainer_executor
@@ -248,13 +248,13 @@ def create_pipeline(
       # best_hyperparameters artifact as input and utilize it in the user module
       # code.
       #
-      # If there isn't Tuner in the pipeline, either use ImporterNode to import
+      # If there isn't Tuner in the pipeline, either use Importer to import
       # a previous Tuner's output to feed to Trainer, or directly use the tuned
       # hyperparameters in user module code and set hyperparameters to None
       # here.
       #
-      # Example of ImporterNode,
-      #   hparams_importer = ImporterNode(
+      # Example of Importer,
+      #   hparams_importer = importer.Importer(
       #     instance_name='import_hparams',
       #     source_uri='path/to/best_hyperparameters.txt',
       #     artifact_type=HyperParameters)
@@ -270,7 +270,7 @@ def create_pipeline(
       })
 
   # Get the latest blessed model for model validation.
-  model_resolver = ResolverNode(
+  model_resolver = resolver.Resolver(
       instance_name='latest_blessed_model_resolver',
       resolver_class=latest_blessed_model_resolver.LatestBlessedModelResolver,
       model=Channel(type=Model),

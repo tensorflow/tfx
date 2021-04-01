@@ -25,13 +25,13 @@ from tfx.components import CsvExampleGen
 from tfx.components import Evaluator
 from tfx.components import ExampleValidator
 from tfx.components import Pusher
-from tfx.components import ResolverNode
 from tfx.components import SchemaGen
 from tfx.components import StatisticsGen
 from tfx.components import Trainer
 from tfx.components import Transform
 from tfx.components.trainer import executor as trainer_executor
 from tfx.dsl.components.base import executor_spec
+from tfx.dsl.components.common import resolver
 from tfx.dsl.experimental import latest_blessed_model_resolver
 from tfx.experimental.templates.penguin.models import features
 from tfx.orchestration import pipeline
@@ -106,12 +106,12 @@ def create_pipeline(
   # components.append(trainer)
 
   # Get the latest blessed model for model validation.
-  model_resolver = ResolverNode(
+  model_resolver = resolver.Resolver(
       instance_name='latest_blessed_model_resolver',
       resolver_class=latest_blessed_model_resolver.LatestBlessedModelResolver,
       model=Channel(type=Model),
       model_blessing=Channel(type=ModelBlessing))
-  # TODO(step 5): Uncomment here to add ResolverNode to the pipeline.
+  # TODO(step 5): Uncomment here to add Resolver to the pipeline.
   # components.append(model_resolver)
 
   # Uses TFMA to compute a evaluation statistics over features of a model and

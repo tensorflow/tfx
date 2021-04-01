@@ -18,14 +18,14 @@ import tensorflow_model_analysis as tfma
 from tfx.components import CsvExampleGen
 from tfx.components import Evaluator
 from tfx.components import ExampleValidator
-from tfx.components import ImporterNode
 from tfx.components import Pusher
-from tfx.components import ResolverNode
 from tfx.components import SchemaGen
 from tfx.components import StatisticsGen
 from tfx.components import Trainer
 from tfx.components.trainer.executor import GenericExecutor
 from tfx.dsl.components.base import executor_spec
+from tfx.dsl.components.common import importer
+from tfx.dsl.components.common import resolver
 from tfx.dsl.experimental import latest_blessed_model_resolver
 from tfx.orchestration import data_types
 from tfx.orchestration import pipeline
@@ -49,7 +49,7 @@ def create_test_pipeline():
 
   statistics_gen = StatisticsGen(examples=example_gen.outputs["examples"])
 
-  importer = ImporterNode(
+  my_importer = importer.Importer(
       instance_name="my_importer",
       source_uri="m/y/u/r/i",
       properties={
@@ -61,7 +61,7 @@ def create_test_pipeline():
       },
       artifact_type=standard_artifacts.Examples)
   another_statistics_gen = StatisticsGen(
-      examples=importer.outputs["result"],
+      examples=my_importer.outputs["result"],
       instance_name="another_statistics_gen")
 
   schema_gen = SchemaGen(statistics=statistics_gen.outputs["statistics"])
@@ -86,7 +86,7 @@ def create_test_pipeline():
       eval_args=trainer_pb2.EvalArgs(num_steps=5)).with_platform_config(
           config=trainer_pb2.TrainArgs(num_steps=2000))
 
-  model_resolver = ResolverNode(
+  model_resolver = resolver.Resolver(
       instance_name="latest_blessed_model_resolver",
       resolver_class=latest_blessed_model_resolver.LatestBlessedModelResolver,
       model=Channel(
@@ -128,7 +128,7 @@ def create_test_pipeline():
           example_gen,
           statistics_gen,
           another_statistics_gen,
-          importer,
+          my_importer,
           schema_gen,
           example_validator,
           trainer,

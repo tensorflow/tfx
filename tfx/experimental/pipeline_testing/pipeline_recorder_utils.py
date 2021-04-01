@@ -73,7 +73,7 @@ def _get_paths(metadata_connection: metadata.Metadata,
   for execution in executions:
     component_id = get_component_id_from_execution(metadata_connection,
                                                    execution)
-    if component_id.startswith('ResolverNode'):
+    if component_id.startswith('resolver.Resolver'):
       continue
     eid = [execution.id]
     events = metadata_connection.store.get_events_by_execution_ids(eid)

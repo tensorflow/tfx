@@ -24,10 +24,10 @@ import absl
 from googleapiclient import discovery
 from googleapiclient import errors as googleapiclient_errors
 import tensorflow as tf
-from tfx.components.common_nodes.importer_node import ImporterNode
 from tfx.components.pusher.component import Pusher
 from tfx.components.trainer.component import Trainer
 from tfx.dsl.components.base import executor_spec
+from tfx.dsl.components.common import importer
 from tfx.dsl.io import fileio
 from tfx.extensions.google_cloud_ai_platform import runner
 from tfx.extensions.google_cloud_ai_platform.pusher import executor as ai_platform_pusher_executor
@@ -48,7 +48,7 @@ class KubeflowGCPIntegrationTest(kubeflow_test_utils.BaseKubeflowTest):
     super(KubeflowGCPIntegrationTest, self).setUp()
 
     # Transformed Example artifacts for testing.
-    self.transformed_examples_importer = ImporterNode(
+    self.transformed_examples_importer = importer.Importer(
         instance_name='transformed_examples',
         source_uri=os.path.join(self._testdata_root, 'transform',
                                 'transformed_examples'),
@@ -57,14 +57,14 @@ class KubeflowGCPIntegrationTest(kubeflow_test_utils.BaseKubeflowTest):
         properties={'split_names': '["train", "eval"]'})
 
     # Schema artifact for testing.
-    self.schema_importer = ImporterNode(
+    self.schema_importer = importer.Importer(
         instance_name='schema',
         source_uri=os.path.join(self._testdata_root, 'schema_gen'),
         artifact_type=standard_artifacts.Schema,
         reimport=True)
 
     # TransformGraph artifact for testing.
-    self.transform_graph_importer = ImporterNode(
+    self.transform_graph_importer = importer.Importer(
         instance_name='transform_graph',
         source_uri=os.path.join(self._testdata_root, 'transform',
                                 'transform_graph'),
@@ -72,20 +72,20 @@ class KubeflowGCPIntegrationTest(kubeflow_test_utils.BaseKubeflowTest):
         reimport=True)
 
     # Model artifact for testing.
-    self.model_1_importer = ImporterNode(
+    self.model_1_importer = importer.Importer(
         instance_name='model_1',
         source_uri=os.path.join(self._testdata_root, 'trainer', 'previous'),
         artifact_type=standard_artifacts.Model,
         reimport=True)
 
-    self.model_2_importer = ImporterNode(
+    self.model_2_importer = importer.Importer(
         instance_name='model_2',
         source_uri=os.path.join(self._testdata_root, 'trainer', 'current'),
         artifact_type=standard_artifacts.Model,
         reimport=True)
 
     # ModelBlessing artifact for testing.
-    self.model_blessing_importer = ImporterNode(
+    self.model_blessing_importer = importer.Importer(
         instance_name='model_blessing',
         source_uri=os.path.join(self._testdata_root, 'model_validator',
                                 'blessed'),
@@ -96,13 +96,13 @@ class KubeflowGCPIntegrationTest(kubeflow_test_utils.BaseKubeflowTest):
     ### Test data and modules for native Keras trainer and tuner.
     self._penguin_tuner_module = os.path.join(self._MODULE_ROOT,
                                               'tuner_module.py')
-    self.penguin_examples_importer = ImporterNode(
+    self.penguin_examples_importer = importer.Importer(
         instance_name='penguin_examples',
         source_uri=os.path.join(self._testdata_root, 'penguin', 'data'),
         artifact_type=standard_artifacts.Examples,
         reimport=True,
         properties={'split_names': '["train", "eval"]'})
-    self.penguin_schema_importer = ImporterNode(
+    self.penguin_schema_importer = importer.Importer(
         instance_name='penguin_schema',
         source_uri=os.path.join(self._testdata_root, 'penguin', 'schema'),
         artifact_type=standard_artifacts.Schema,

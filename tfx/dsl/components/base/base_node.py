@@ -49,7 +49,7 @@ class BaseNode(with_metaclass(abc.ABCMeta, json_utils.Jsonable)):
     This can be used during pipeline authoring time. For example:
     from tfx.components import Trainer
 
-    resolver = ResolverNode(..., model=Channel(
+    resolver = resolver.Resolver(..., model=Channel(
         type=Model, producer_component_id=Trainer.get_id('my_trainer')))
 
     Args:

@@ -22,11 +22,11 @@ import os
 
 import absl
 import tensorflow as tf
-from tfx.components.common_nodes.importer_node import ImporterNode
 from tfx.components.evaluator.component import Evaluator
 from tfx.components.example_gen.csv_example_gen.component import CsvExampleGen
 from tfx.components.statistics_gen.component import StatisticsGen
 from tfx.components.transform.component import Transform
+from tfx.dsl.components.common import importer
 from tfx.orchestration import test_utils
 from tfx.orchestration.kubeflow import test_utils as kubeflow_test_utils
 from tfx.proto import evaluator_pb2
@@ -39,7 +39,7 @@ class KubeflowDataflowIntegrationTest(kubeflow_test_utils.BaseKubeflowTest):
     super(KubeflowDataflowIntegrationTest, self).setUp()
 
     # Example artifacts for testing.
-    self.raw_examples_importer = ImporterNode(
+    self.raw_examples_importer = importer.Importer(
         instance_name='raw_examples',
         source_uri=os.path.join(self._testdata_root, 'csv_example_gen'),
         artifact_type=standard_artifacts.Examples,
@@ -47,14 +47,14 @@ class KubeflowDataflowIntegrationTest(kubeflow_test_utils.BaseKubeflowTest):
         properties={'split_names': '["train", "eval"]'})
 
     # Schema artifact for testing.
-    self.schema_importer = ImporterNode(
+    self.schema_importer = importer.Importer(
         instance_name='schema',
         source_uri=os.path.join(self._testdata_root, 'schema_gen'),
         artifact_type=standard_artifacts.Schema,
         reimport=True)
 
     # Model artifact for testing.
-    self.model_1_importer = ImporterNode(
+    self.model_1_importer = importer.Importer(
         instance_name='model_1',
         source_uri=os.path.join(self._testdata_root, 'trainer', 'previous'),
         artifact_type=standard_artifacts.Model,

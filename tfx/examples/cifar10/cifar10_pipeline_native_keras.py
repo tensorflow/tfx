@@ -32,13 +32,13 @@ from tfx.components import Evaluator
 from tfx.components import ExampleValidator
 from tfx.components import ImportExampleGen
 from tfx.components import Pusher
-from tfx.components import ResolverNode
 from tfx.components import SchemaGen
 from tfx.components import StatisticsGen
 from tfx.components import Trainer
 from tfx.components import Transform
 from tfx.components.trainer.executor import GenericExecutor
 from tfx.dsl.components.base import executor_spec
+from tfx.dsl.components.common import resolver
 from tfx.dsl.experimental import latest_blessed_model_resolver
 from tfx.orchestration import metadata
 from tfx.orchestration import pipeline
@@ -141,7 +141,7 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
       custom_config={'labels_path': labels_path})
 
   # Get the latest blessed model for model validation.
-  model_resolver = ResolverNode(
+  model_resolver = resolver.Resolver(
       instance_name='latest_blessed_model_resolver',
       resolver_class=latest_blessed_model_resolver.LatestBlessedModelResolver,
       model=Channel(type=Model),

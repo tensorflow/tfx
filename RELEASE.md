@@ -10,6 +10,8 @@
 
 ## Deprecations
 
+*    Deprecated components.common_nodes, use dsl.components.common instead.
+
 ## Bug Fixes and Other Changes
 
 ## Documentation Updates

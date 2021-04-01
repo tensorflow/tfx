@@ -26,13 +26,13 @@ import tensorflow_model_analysis as tfma
 from tfx.components import CsvExampleGen
 from tfx.components import Evaluator
 from tfx.components import ExampleValidator
-from tfx.components import ImporterNode
 from tfx.components import Pusher
-from tfx.components import ResolverNode
 from tfx.components import SchemaGen
 from tfx.components import StatisticsGen
 from tfx.components import Trainer
 from tfx.components import Transform
+from tfx.dsl.components.common import importer
+from tfx.dsl.components.common import resolver
 from tfx.dsl.experimental import latest_blessed_model_resolver
 from tfx.orchestration import metadata
 from tfx.orchestration import pipeline
@@ -89,7 +89,7 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
   statistics_gen = StatisticsGen(examples=example_gen.outputs['examples'])
 
   # Import user-provided schema.
-  user_schema_importer = ImporterNode(
+  user_schema_importer = importer.Importer(
       instance_name='import_user_schema',
       source_uri=user_schema_path,
       artifact_type=Schema)
@@ -122,7 +122,7 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
       eval_args=trainer_pb2.EvalArgs(num_steps=5000))
 
   # Get the latest blessed model for model validation.
-  model_resolver = ResolverNode(
+  model_resolver = resolver.Resolver(
       instance_name='latest_blessed_model_resolver',
       resolver_class=latest_blessed_model_resolver.LatestBlessedModelResolver,
       model=Channel(type=Model),
