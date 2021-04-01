@@ -29,8 +29,9 @@ nodes {
           name: "pipeline_run"
         }
         name {
-          field_value {
-            string_value: "run_0"
+          runtime_parameter {
+            name: "pipeline_run_id"
+            type: STRING
           }
         }
       }
@@ -57,8 +58,204 @@ nodes {
         }
       }
     }
-    downstream_nodes: "my_trainer"
+    downstream_nodes: "my_statistics_gen"
     downstream_nodes: "my_transform"
+    downstream_nodes: "my_trainer"
+  }
+}
+nodes {
+  pipeline_node {
+    node_info {
+      type {
+        name: "StatisticsGen"
+      }
+      id: "my_statistics_gen"
+    }
+    contexts {
+      contexts {
+        type {
+          name: "pipeline"
+        }
+        name {
+          field_value {
+            string_value: "my_pipeline"
+          }
+        }
+      }
+      contexts {
+        type {
+          name: "pipeline_run"
+        }
+        name {
+          runtime_parameter {
+            name: "pipeline_run_id"
+            type: STRING
+          }
+        }
+      }
+      contexts {
+        type {
+          name: "component"
+        }
+        name {
+          field_value {
+            string_value: "my_statistics_gen"
+          }
+        }
+      }
+    }
+    inputs {
+      inputs {
+        key: "examples"
+        value {
+          channels {
+            producer_node_query {
+              id: "my_example_gen"
+            }
+            context_queries {
+              type {
+                name: "pipeline"
+              }
+              name {
+                field_value {
+                  string_value: "my_pipeline"
+                }
+              }
+            }
+            context_queries {
+              type {
+                name: "component"
+              }
+              name {
+                field_value {
+                  string_value: "my_example_gen"
+                }
+              }
+            }
+            artifact_query {
+              type {
+                name: "Examples"
+              }
+            }
+            output_key: "output_examples"
+          }
+          min_count: 1
+        }
+      }
+    }
+    outputs {
+      outputs {
+        key: "statistics"
+        value {
+          artifact_spec {
+            type {
+              name: "ExampleStatistics"
+            }
+          }
+        }
+      }
+    }
+    upstream_nodes: "my_example_gen"
+    downstream_nodes: "my_example_validator"
+    downstream_nodes: "my_schema_gen"
+  }
+}
+nodes {
+  pipeline_node {
+    node_info {
+      type {
+        name: "SchemaGen"
+      }
+      id: "my_schema_gen"
+    }
+    contexts {
+      contexts {
+        type {
+          name: "pipeline"
+        }
+        name {
+          field_value {
+            string_value: "my_pipeline"
+          }
+        }
+      }
+      contexts {
+        type {
+          name: "pipeline_run"
+        }
+        name {
+          runtime_parameter {
+            name: "pipeline_run_id"
+            type: STRING
+          }
+        }
+      }
+      contexts {
+        type {
+          name: "component"
+        }
+        name {
+          field_value {
+            string_value: "my_schema_gen"
+          }
+        }
+      }
+    }
+    inputs {
+      inputs {
+        key: "statistics"
+        value {
+          channels {
+            producer_node_query {
+              id: "my_statistics_gen"
+            }
+            context_queries {
+              type {
+                name: "pipeline"
+              }
+              name {
+                field_value {
+                  string_value: "my_pipeline"
+                }
+              }
+            }
+            context_queries {
+              type {
+                name: "component"
+              }
+              name {
+                field_value {
+                  string_value: "my_statistics_gen"
+                }
+              }
+            }
+            artifact_query {
+              type {
+                name: "ExampleStatistics"
+              }
+            }
+            output_key: "statistics"
+          }
+          min_count: 1
+        }
+      }
+    }
+    outputs {
+      outputs {
+        key: "schema"
+        value {
+          artifact_spec {
+            type {
+              name: "Schema"
+            }
+          }
+        }
+      }
+    }
+    upstream_nodes: "my_statistics_gen"
+    downstream_nodes: "my_example_validator"
+    downstream_nodes: "my_transform"
+    downstream_nodes: "my_trainer"
   }
 }
 nodes {
@@ -85,8 +282,9 @@ nodes {
           name: "pipeline_run"
         }
         name {
-          field_value {
-            string_value: "run_0"
+          runtime_parameter {
+            name: "pipeline_run_id"
+            type: STRING
           }
         }
       }
@@ -139,6 +337,43 @@ nodes {
           min_count: 1
         }
       }
+      inputs {
+        key: "schema"
+        value {
+          channels {
+            producer_node_query {
+              id: "my_schema_gen"
+            }
+            context_queries {
+              type {
+                name: "pipeline"
+              }
+              name {
+                field_value {
+                  string_value: "my_pipeline"
+                }
+              }
+            }
+            context_queries {
+              type {
+                name: "component"
+              }
+              name {
+                field_value {
+                  string_value: "my_schema_gen"
+                }
+              }
+            }
+            artifact_query {
+              type {
+                name: "Schema"
+              }
+            }
+            output_key: "schema"
+          }
+          min_count: 1
+        }
+      }
     }
     outputs {
       outputs {
@@ -153,7 +388,141 @@ nodes {
       }
     }
     upstream_nodes: "my_example_gen"
+    upstream_nodes: "my_schema_gen"
     downstream_nodes: "my_trainer"
+  }
+}
+nodes {
+  pipeline_node {
+    node_info {
+      type {
+        name: "ExampleValidator"
+      }
+      id: "my_example_validator"
+    }
+    contexts {
+      contexts {
+        type {
+          name: "pipeline"
+        }
+        name {
+          field_value {
+            string_value: "my_pipeline"
+          }
+        }
+      }
+      contexts {
+        type {
+          name: "pipeline_run"
+        }
+        name {
+          runtime_parameter {
+            name: "pipeline_run_id"
+            type: STRING
+          }
+        }
+      }
+      contexts {
+        type {
+          name: "component"
+        }
+        name {
+          field_value {
+            string_value: "my_example_validator"
+          }
+        }
+      }
+    }
+    inputs {
+      inputs {
+        key: "statistics"
+        value {
+          channels {
+            producer_node_query {
+              id: "my_statistics_gen"
+            }
+            context_queries {
+              type {
+                name: "pipeline"
+              }
+              name {
+                field_value {
+                  string_value: "my_pipeline"
+                }
+              }
+            }
+            context_queries {
+              type {
+                name: "component"
+              }
+              name {
+                field_value {
+                  string_value: "my_statistics_gen"
+                }
+              }
+            }
+            artifact_query {
+              type {
+                name: "ExampleStatistics"
+              }
+            }
+            output_key: "statistics"
+          }
+          min_count: 1
+        }
+      }
+      inputs {
+        key: "schema"
+        value {
+          channels {
+            producer_node_query {
+              id: "my_schema_gen"
+            }
+            context_queries {
+              type {
+                name: "pipeline"
+              }
+              name {
+                field_value {
+                  string_value: "my_pipeline"
+                }
+              }
+            }
+            context_queries {
+              type {
+                name: "component"
+              }
+              name {
+                field_value {
+                  string_value: "my_schema_gen"
+                }
+              }
+            }
+            artifact_query {
+              type {
+                name: "Schema"
+              }
+            }
+            output_key: "schema"
+          }
+          min_count: 1
+        }
+      }
+    }
+    outputs {
+      outputs {
+        key: "anomalies"
+        value {
+          artifact_spec {
+            type {
+              name: "Anomalies"
+            }
+          }
+        }
+      }
+    }
+    upstream_nodes: "my_statistics_gen"
+    upstream_nodes: "my_schema_gen"
   }
 }
 nodes {
@@ -180,8 +549,9 @@ nodes {
           name: "pipeline_run"
         }
         name {
-          field_value {
-            string_value: "run_0"
+          runtime_parameter {
+            name: "pipeline_run_id"
+            type: STRING
           }
         }
       }
@@ -230,6 +600,43 @@ nodes {
               }
             }
             output_key: "output_examples"
+          }
+          min_count: 1
+        }
+      }
+      inputs {
+        key: "schema"
+        value {
+          channels {
+            producer_node_query {
+              id: "my_schema_gen"
+            }
+            context_queries {
+              type {
+                name: "pipeline"
+              }
+              name {
+                field_value {
+                  string_value: "my_pipeline"
+                }
+              }
+            }
+            context_queries {
+              type {
+                name: "component"
+              }
+              name {
+                field_value {
+                  string_value: "my_schema_gen"
+                }
+              }
+            }
+            artifact_query {
+              type {
+                name: "Schema"
+              }
+            }
+            output_key: "schema"
           }
           min_count: 1
         }
@@ -286,5 +693,20 @@ nodes {
     }
     upstream_nodes: "my_example_gen"
     upstream_nodes: "my_transform"
+    upstream_nodes: "my_schema_gen"
+  }
+}
+runtime_spec {
+  pipeline_root {
+    runtime_parameter {
+      name: "pipeline_root"
+      type: STRING
+    }
+  }
+  pipeline_run_id {
+    runtime_parameter {
+      name: "pipeline_run_id"
+      type: STRING
+    }
   }
 }
