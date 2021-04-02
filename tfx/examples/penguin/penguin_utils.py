@@ -206,7 +206,7 @@ def tuner_fn(fn_args: FnArgs) -> TunerFnResult:
 
 
 # TFX Trainer will call this function.
-def run_fn(fn_args: FnArgs):
+def trainer_fn(fn_args: FnArgs):
   """Train the model based on given args.
 
   Args:
