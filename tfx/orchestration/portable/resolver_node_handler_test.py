@@ -85,7 +85,7 @@ class ResolverNodeHandlerTest(test_case_utils.TfxTest):
           })
 
     handler = resolver_node_handler.ResolverNodeHandler()
-    execution_metadata = handler.run(
+    execution_info = handler.run(
         mlmd_connection=self._mlmd_connection,
         pipeline_node=self._resolver_node,
         pipeline_info=self._pipeline_info,
@@ -151,7 +151,7 @@ class ResolverNodeHandlerTest(test_case_utils.TfxTest):
           ignored_fields=[
               'create_time_since_epoch', 'last_update_time_since_epoch'
           ])
-      [execution] = m.store.get_executions_by_id([execution_metadata.id])
+      [execution] = m.store.get_executions_by_id([execution_info.execution_id])
 
       self.assertProtoPartiallyEquals(
           """

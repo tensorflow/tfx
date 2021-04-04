@@ -38,7 +38,6 @@ from tfx.proto.orchestration import pipeline_pb2
 from tfx.utils import test_case_utils
 
 from google.protobuf import text_format
-from ml_metadata.proto import metadata_store_pb2
 
 _PYTHON_CLASS_EXECUTABLE_SPEC = executable_spec_pb2.PythonClassExecutableSpec
 
@@ -321,9 +320,9 @@ class LauncherTest(test_case_utils.TfxTest):
         pipeline_runtime_spec=self._pipeline_runtime_spec,
         executor_spec=self._trainer_executor_spec,
         custom_executor_operators=self._test_executor_operators)
-    execution_metadata = test_launcher.launch()
+    execution_info = test_launcher.launch()
 
-    self.assertIsNone(execution_metadata)
+    self.assertIsNone(execution_info.execution_id)
     with self._mlmd_connection as m:
       # No execution is registered in MLMD.
       self.assertEmpty(m.store.get_executions())
@@ -343,8 +342,8 @@ class LauncherTest(test_case_utils.TfxTest):
     with self._mlmd_connection as m:
       existing_exeuctions = m.store.get_executions()
 
-    execution_metadata = test_launcher.launch()
-    self.assertIsNone(execution_metadata)
+    execution_info = test_launcher.launch()
+    self.assertIsNone(execution_info.execution_id)
 
     with self._mlmd_connection as m:
       # No new execution is registered in MLMD.
@@ -365,7 +364,7 @@ class LauncherTest(test_case_utils.TfxTest):
         pipeline_runtime_spec=self._pipeline_runtime_spec,
         executor_spec=self._trainer_executor_spec,
         custom_executor_operators=self._test_executor_operators)
-    execution_metadata = test_launcher.launch()
+    execution_info = test_launcher.launch()
 
     with self._mlmd_connection as m:
       [artifact] = m.store.get_artifacts_by_type('Model')
@@ -390,7 +389,7 @@ class LauncherTest(test_case_utils.TfxTest):
           ignored_fields=[
               'uri', 'create_time_since_epoch', 'last_update_time_since_epoch'
           ])
-      [execution] = m.store.get_executions_by_id([execution_metadata.id])
+      [execution] = m.store.get_executions_by_id([execution_info.execution_id])
       self.assertProtoPartiallyEquals(
           """
           id: 1
@@ -417,7 +416,7 @@ class LauncherTest(test_case_utils.TfxTest):
         pipeline_runtime_spec=self._pipeline_runtime_spec,
         executor_spec=self._trainer_executor_spec,
         custom_executor_operators=self._test_executor_operators)
-    execution_metadata = test_launcher.launch()
+    execution_info = test_launcher.launch()
 
     with self._mlmd_connection as m:
       [artifact] = m.store.get_artifacts_by_type('Model')
@@ -442,7 +441,7 @@ class LauncherTest(test_case_utils.TfxTest):
           ignored_fields=[
               'uri', 'create_time_since_epoch', 'last_update_time_since_epoch'
           ])
-      [execution] = m.store.get_executions_by_id([execution_metadata.id])
+      [execution] = m.store.get_executions_by_id([execution_info.execution_id])
       self.assertProtoPartiallyEquals(
           """
           id: 3
@@ -454,9 +453,9 @@ class LauncherTest(test_case_utils.TfxTest):
               'create_time_since_epoch', 'last_update_time_since_epoch'
           ])
 
-    execution_metadata = test_launcher.launch()
+    execution_info = test_launcher.launch()
     with self._mlmd_connection as m:
-      [execution] = m.store.get_executions_by_id([execution_metadata.id])
+      [execution] = m.store.get_executions_by_id([execution_info.execution_id])
       self.assertProtoPartiallyEquals(
           """
           id: 4
@@ -485,7 +484,7 @@ class LauncherTest(test_case_utils.TfxTest):
         pipeline_runtime_spec=self._pipeline_runtime_spec,
         executor_spec=self._trainer_executor_spec,
         custom_executor_operators=self._test_executor_operators)
-    execution_metadata = test_launcher.launch()
+    execution_info = test_launcher.launch()
 
     with self._mlmd_connection as m:
       [artifact] = m.store.get_artifacts_by_type('Model')
@@ -510,7 +509,7 @@ class LauncherTest(test_case_utils.TfxTest):
           ignored_fields=[
               'uri', 'create_time_since_epoch', 'last_update_time_since_epoch'
           ])
-      [execution] = m.store.get_executions_by_id([execution_metadata.id])
+      [execution] = m.store.get_executions_by_id([execution_info.execution_id])
       self.assertProtoPartiallyEquals(
           """
           id: 3
@@ -522,7 +521,7 @@ class LauncherTest(test_case_utils.TfxTest):
               'create_time_since_epoch', 'last_update_time_since_epoch'
           ])
 
-    execution_metadata = test_launcher.launch()
+    execution_info = test_launcher.launch()
     with self._mlmd_connection as m:
       artifacts = m.store.get_artifacts_by_type('Model')
       self.assertLen(artifacts, 2)
@@ -547,7 +546,7 @@ class LauncherTest(test_case_utils.TfxTest):
           ignored_fields=[
               'uri', 'create_time_since_epoch', 'last_update_time_since_epoch'
           ])
-      [execution] = m.store.get_executions_by_id([execution_metadata.id])
+      [execution] = m.store.get_executions_by_id([execution_info.execution_id])
       self.assertProtoPartiallyEquals(
           """
           id: 4
@@ -576,7 +575,7 @@ class LauncherTest(test_case_utils.TfxTest):
         pipeline_runtime_spec=self._pipeline_runtime_spec,
         executor_spec=self._trainer_executor_spec,
         custom_executor_operators=executor_operators)
-    execution_metadata = test_launcher.launch()
+    execution_info = test_launcher.launch()
 
     with self._mlmd_connection as m:
       [artifact] = m.store.get_artifacts_by_type('Model')
@@ -601,7 +600,7 @@ class LauncherTest(test_case_utils.TfxTest):
           ignored_fields=[
               'uri', 'create_time_since_epoch', 'last_update_time_since_epoch'
           ])
-      [execution] = m.store.get_executions_by_id([execution_metadata.id])
+      [execution] = m.store.get_executions_by_id([execution_info.execution_id])
       self.assertProtoPartiallyEquals(
           """
           id: 3
@@ -780,9 +779,9 @@ class LauncherTest(test_case_utils.TfxTest):
     mock_import_node_handler = mock.create_autospec(
         system_node_handler.SystemNodeHandler, instance=True)
     mock_import_node_handler_class.return_value = mock_import_node_handler
-    expected_execution = metadata_store_pb2.Execution()
-    expected_execution.id = 123
-    mock_import_node_handler.run.return_value = expected_execution
+    expected_execution_info = data_types.ExecutionInfo()
+    expected_execution_info.execution_id = 123
+    mock_import_node_handler.run.return_value = expected_execution_info
     launcher._SYSTEM_NODE_HANDLERS[
         'tfx.dsl.components.common.importer.Importer'] = (
             mock_import_node_handler_class)
@@ -791,11 +790,11 @@ class LauncherTest(test_case_utils.TfxTest):
         mlmd_connection=self._mlmd_connection,
         pipeline_info=self._pipeline_info,
         pipeline_runtime_spec=self._pipeline_runtime_spec)
-    execution_metadata = test_launcher.launch()
+    execution_info = test_launcher.launch()
     mock_import_node_handler.run.assert_called_once_with(
         self._mlmd_connection, self._importer, self._pipeline_info,
         self._pipeline_runtime_spec)
-    self.assertEqual(execution_metadata, expected_execution)
+    self.assertEqual(execution_info, expected_execution_info)
 
   def testLauncher_resolver_node(self):
     mock_resolver_node_handler_class = mock.create_autospec(
@@ -803,9 +802,9 @@ class LauncherTest(test_case_utils.TfxTest):
     mock_resolver_node_handler = mock.create_autospec(
         system_node_handler.SystemNodeHandler, instance=True)
     mock_resolver_node_handler_class.return_value = mock_resolver_node_handler
-    expected_execution = metadata_store_pb2.Execution()
-    expected_execution.id = 123
-    mock_resolver_node_handler.run.return_value = expected_execution
+    expected_execution_info = data_types.ExecutionInfo()
+    expected_execution_info.execution_id = 123
+    mock_resolver_node_handler.run.return_value = expected_execution_info
     launcher._SYSTEM_NODE_HANDLERS[
         'tfx.dsl.components.common.resolver.Resolver'] = (
             mock_resolver_node_handler_class)
@@ -814,11 +813,11 @@ class LauncherTest(test_case_utils.TfxTest):
         mlmd_connection=self._mlmd_connection,
         pipeline_info=self._pipeline_info,
         pipeline_runtime_spec=self._pipeline_runtime_spec)
-    execution_metadata = test_launcher.launch()
+    execution_info = test_launcher.launch()
     mock_resolver_node_handler.run.assert_called_once_with(
         self._mlmd_connection, self._resolver, self._pipeline_info,
         self._pipeline_runtime_spec)
-    self.assertEqual(execution_metadata, expected_execution)
+    self.assertEqual(execution_info, expected_execution_info)
 
 
 if __name__ == '__main__':

@@ -44,10 +44,11 @@ class ExecutionInfo:
   # Stateful working dir will be deterministic given pipeline, node and run_id.
   # The typical usecase is to restore long running executor's state after
   # eviction. For examples, a Trainer can use this directory to store
-  # checkpoints.
+  # checkpoints. This dir is undefined when Launcher.launch() is done.
   stateful_working_dir = attr.ib(type=str, default=None)
   # A tempory dir for executions and it is expected to be cleared up at the end
-  # of executions in both success and failure cases.
+  # of executions in both success and failure cases. This dir is undefined when
+  # Launcher.launch() is done.
   tmp_dir = attr.ib(type=str, default=None)
   # The config of this Node.
   pipeline_node = attr.ib(type=pipeline_pb2.PipelineNode, default=None)

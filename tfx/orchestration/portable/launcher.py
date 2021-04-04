@@ -77,7 +77,7 @@ _SYSTEM_NODE_HANDLERS = {
 
 # TODO(b/165359991): Restore 'auto_attribs=True' once we drop Python3.5 support.
 @attr.s
-class _PrepareExecutionResult:
+class _ExecutionPreparationResult:
   """A wrapper class using as the return value of _prepare_execution()."""
 
   # The information used by executor operators.
@@ -189,7 +189,7 @@ class Launcher(object):
     assert bool(self._executor_operator) or bool(self._system_node_handler), \
         'A node must be system node or have an executor.'
 
-  def _prepare_execution(self) -> _PrepareExecutionResult:
+  def _prepare_execution(self) -> _ExecutionPreparationResult:
     """Prepares inputs, outputs and execution properties for actual execution."""
     # TODO(b/150979622): handle the edge case that the component get evicted
     # between successful pushlish and stateful working dir being clean up.
@@ -210,7 +210,7 @@ class Launcher(object):
       # nodes won't be triggered.
       if input_artifacts is None:
         logging.info('No all required input are ready, abandoning execution.')
-        return _PrepareExecutionResult(
+        return _ExecutionPreparationResult(
             execution_info=data_types.ExecutionInfo(),
             contexts=contexts,
             is_execution_needed=False)
@@ -265,7 +265,7 @@ class Launcher(object):
             execution_id=execution.id,
             output_artifacts=cached_outputs)
         logging.info('An cached execusion %d is used.', execution.id)
-        return _PrepareExecutionResult(
+        return _ExecutionPreparationResult(
             execution_info=data_types.ExecutionInfo(execution_id=execution.id),
             execution_metadata=execution,
             contexts=contexts,
@@ -276,7 +276,7 @@ class Launcher(object):
 
       # 8. Going to trigger executor.
       logging.info('Going to run a new execution %d', execution.id)
-      return _PrepareExecutionResult(
+      return _ExecutionPreparationResult(
           execution_info=data_types.ExecutionInfo(
               execution_id=execution.id,
               input_dict=input_artifacts,
@@ -383,7 +383,7 @@ class Launcher(object):
     for key, value in driver_output.exec_properties.items():
       exec_properties[key] = getattr(value, value.WhichOneof('value'))
 
-  def launch(self) -> Optional[metadata_store_pb2.Execution]:
+  def launch(self) -> Optional[data_types.ExecutionInfo]:
     """Executes the component, includes driver, executor and publisher.
 
     Returns:
@@ -402,11 +402,11 @@ class Launcher(object):
                                            self._pipeline_runtime_spec)
 
     # Runs as a normal node.
-    prepare_execution_result = self._prepare_execution()
+    execution_preparation_result = self._prepare_execution()
     (execution_info, contexts,
-     is_execution_needed) = (prepare_execution_result.execution_info,
-                             prepare_execution_result.contexts,
-                             prepare_execution_result.is_execution_needed)
+     is_execution_needed) = (execution_preparation_result.execution_info,
+                             execution_preparation_result.contexts,
+                             execution_preparation_result.is_execution_needed)
     if is_execution_needed:
       try:
         executor_output = self._run_executor(execution_info)
@@ -435,4 +435,4 @@ class Launcher(object):
       self._publish_successful_execution(execution_info.execution_id, contexts,
                                          execution_info.output_dict,
                                          executor_output)
-    return prepare_execution_result.execution_metadata
+    return execution_info
