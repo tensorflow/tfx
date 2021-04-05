@@ -70,11 +70,6 @@ _SYSTEM_NODE_HANDLERS = {
         importer_node_handler.ImporterNodeHandler,
     'tfx.dsl.components.common.resolver.Resolver':
         resolver_node_handler.ResolverNodeHandler,
-    # TODO(b/177457236): Remove support for the following after release.
-    'tfx.dsl.components.common.importer_node.ImporterNode':
-        importer_node_handler.ImporterNodeHandler,
-    'tfx.dsl.components.common.resolver_node.ResolverNode':
-        resolver_node_handler.ResolverNodeHandler,
 }
 # LINT.ThenChange(Internal system node list)
 
