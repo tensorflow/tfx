@@ -18,6 +18,8 @@ from typing import List, Text
 import unittest
 
 from absl import logging
+from absl.testing import parameterized
+
 import tensorflow as tf
 
 from tfx.components.example_gen import utils
@@ -35,7 +37,8 @@ from ml_metadata.proto import metadata_store_pb2
 
 @unittest.skipIf(tf.__version__ < '2',
                  'Uses keras Model only compatible with TF 2.x')
-class PenguinPipelineLocalEndToEndTest(tf.test.TestCase):
+class PenguinPipelineLocalEndToEndTest(tf.test.TestCase,
+                                       parameterized.TestCase):
 
   def setUp(self):
     super(PenguinPipelineLocalEndToEndTest, self).setUp()
@@ -63,15 +66,19 @@ class PenguinPipelineLocalEndToEndTest(tf.test.TestCase):
     io_utils.copy_dir(self._data_root, os.path.join(self._data_root_span,
                                                     'day3'))
 
-    self._module_file = os.path.join(
-        os.path.dirname(__file__), 'penguin_utils.py')
+    self._data_root = os.path.join(os.path.dirname(__file__), 'data')
+
     self._serving_model_dir = os.path.join(self._test_dir, 'serving_model')
     self._pipeline_root = os.path.join(self._test_dir, 'tfx', 'pipelines',
                                        self._pipeline_name)
     self._metadata_path = os.path.join(self._test_dir, 'tfx', 'metadata',
                                        self._pipeline_name, 'metadata.db')
 
-  def assertExecutedOnce(self, component: Text) -> None:
+  def _module_file_name(self, model_framework: str) -> str:
+    return os.path.join(
+        os.path.dirname(__file__), f'penguin_utils_{model_framework}.py')
+
+  def _assertExecutedOnce(self, component: Text) -> None:
     """Check the component is executed exactly once."""
     component_path = os.path.join(self._pipeline_root, component)
     self.assertTrue(fileio.exists(component_path))
@@ -80,23 +87,27 @@ class PenguinPipelineLocalEndToEndTest(tf.test.TestCase):
     execution = fileio.listdir(execution_path)
     self.assertLen(execution, 1)
 
-  def assertPipelineExecution(self, has_tuner: bool) -> None:
-    self.assertExecutedOnce('CsvExampleGen')
-    self.assertExecutedOnce('Evaluator')
-    self.assertExecutedOnce('ExampleValidator')
-    self.assertExecutedOnce('Pusher')
-    self.assertExecutedOnce('SchemaGen')
-    self.assertExecutedOnce('StatisticsGen')
-    self.assertExecutedOnce('Trainer')
-    self.assertExecutedOnce('Transform')
+  def _assertPipelineExecution(self, has_tuner: bool) -> None:
+    self._assertExecutedOnce('CsvExampleGen')
+    self._assertExecutedOnce('Evaluator')
+    self._assertExecutedOnce('ExampleValidator')
+    self._assertExecutedOnce('Pusher')
+    self._assertExecutedOnce('SchemaGen')
+    self._assertExecutedOnce('StatisticsGen')
+    self._assertExecutedOnce('Trainer')
+    self._assertExecutedOnce('Transform')
     if has_tuner:
-      self.assertExecutedOnce('Tuner')
+      self._assertExecutedOnce('Tuner')
 
-  def testPenguinPipelineLocal(self):
+  @parameterized.parameters(
+      ('keras',),
+      ('flax_experimental',))
+  def testPenguinPipelineLocal(self, model_framework):
+    module_file = self._module_file_name(model_framework)
     pipeline = penguin_pipeline_local._create_pipeline(
         pipeline_name=self._pipeline_name,
         data_root=self._data_root,
-        module_file=self._module_file,
+        module_file=module_file,
         accuracy_threshold=0.1,
         serving_model_dir=self._serving_model_dir,
         pipeline_root=self._pipeline_root,
@@ -121,7 +132,7 @@ class PenguinPipelineLocalEndToEndTest(tf.test.TestCase):
       self.assertGreaterEqual(artifact_count, execution_count)
       self.assertEqual(expected_execution_count, execution_count)
 
-    self.assertPipelineExecution(False)
+    self._assertPipelineExecution(False)
 
     logging.info('Starting the second pipeline run. All components except '
                  'Evaluator and Pusher will use cached results.')
@@ -129,10 +140,9 @@ class PenguinPipelineLocalEndToEndTest(tf.test.TestCase):
 
     with metadata.Metadata(metadata_config) as m:
       # Artifact count is increased by 3 caused by Evaluator and Pusher.
-      self.assertEqual(artifact_count + 3, len(m.store.get_artifacts()))
+      self.assertLen(m.store.get_artifacts(), artifact_count + 3)
       artifact_count = len(m.store.get_artifacts())
-      self.assertEqual(expected_execution_count * 2,
-                       len(m.store.get_executions()))
+      self.assertLen(m.store.get_executions(), expected_execution_count * 2)
 
     logging.info('Starting the third pipeline run. '
                  'All components will use cached results.')
@@ -141,16 +151,17 @@ class PenguinPipelineLocalEndToEndTest(tf.test.TestCase):
     # Asserts cache execution.
     with metadata.Metadata(metadata_config) as m:
       # Artifact count is unchanged.
-      self.assertEqual(artifact_count, len(m.store.get_artifacts()))
-      self.assertEqual(expected_execution_count * 3,
-                       len(m.store.get_executions()))
+      self.assertLen(m.store.get_artifacts(), artifact_count)
+      self.assertLen(m.store.get_executions(), expected_execution_count * 3)
 
   def testPenguinPipelineLocalWithTuner(self):
+    # TODO(b/180723394): Parameterize this test when Flax supports tuning.
+    module_file = self._module_file_name('keras')
     LocalDagRunner().run(
         penguin_pipeline_local._create_pipeline(
             pipeline_name=self._pipeline_name,
             data_root=self._data_root,
-            module_file=self._module_file,
+            module_file=module_file,
             accuracy_threshold=0.1,
             serving_model_dir=self._serving_model_dir,
             pipeline_root=self._pipeline_root,
@@ -172,7 +183,7 @@ class PenguinPipelineLocalEndToEndTest(tf.test.TestCase):
       self.assertGreaterEqual(artifact_count, execution_count)
       self.assertEqual(expected_execution_count, execution_count)
 
-    self.assertPipelineExecution(True)
+    self._assertPipelineExecution(True)
 
   def _get_input_examples_artifacts(
       self, store: mlmd.MetadataStore,
@@ -189,7 +200,11 @@ class PenguinPipelineLocalEndToEndTest(tf.test.TestCase):
           break
     return store.get_artifacts_by_id(artifact_ids)
 
-  def testPenguinPipelineLocalWithRollingWindow(self):
+  @parameterized.parameters(
+      ('keras',),
+      ('flax_experimental',))
+  def testPenguinPipelineLocalWithRollingWindow(self, model_framework):
+    module_file = self._module_file_name('keras')
     examplegen_input_config = example_gen_pb2.Input(splits=[
         example_gen_pb2.Input.Split(name='test', pattern='day{SPAN}/*'),
     ])
@@ -201,7 +216,7 @@ class PenguinPipelineLocalEndToEndTest(tf.test.TestCase):
           penguin_pipeline_local._create_pipeline(
               pipeline_name=self._pipeline_name,
               data_root=self._data_root_span,
-              module_file=self._module_file,
+              module_file=module_file,
               accuracy_threshold=0.1,
               serving_model_dir=self._serving_model_dir,
               pipeline_root=self._pipeline_root,
@@ -220,7 +235,7 @@ class PenguinPipelineLocalEndToEndTest(tf.test.TestCase):
 
     self.assertTrue(fileio.exists(self._serving_model_dir))
     self.assertTrue(fileio.exists(self._metadata_path))
-    self.assertPipelineExecution(False)
+    self._assertPipelineExecution(False)
     transform_execution_type = 'tfx.components.transform.component.Transform'
     trainer_execution_type = 'tfx.components.trainer.component.Trainer'
     expected_execution_count = 10  # 8 components + 2 resolver
