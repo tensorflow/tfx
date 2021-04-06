@@ -42,13 +42,7 @@ class ComponentTest(tf.test.TestCase):
     examples.split_names = artifact_utils.encode_split_names(['train', 'eval'])
     schema = standard_artifacts.Schema()
     stats_options = tfdv.StatsOptions(
-        weight_feature='weight',
-        generators=[  # generators should be dropped
-            tfdv.LiftStatsGenerator(
-                schema=None,
-                y_path=tfdv.FeaturePath(['label']),
-                x_paths=[tfdv.FeaturePath(['feature'])])
-        ])
+        weight_feature='weight')
     statistics_gen = component.StatisticsGen(
         examples=channel_utils.as_channel([examples]),
         schema=channel_utils.as_channel([schema]),
