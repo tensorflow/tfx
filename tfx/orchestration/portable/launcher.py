@@ -22,7 +22,6 @@ from tfx.dsl.io import fileio
 from tfx.orchestration import metadata
 from tfx.orchestration.portable import base_driver_operator
 from tfx.orchestration.portable import base_executor_operator
-from tfx.orchestration.portable import beam_executor_operator
 from tfx.orchestration.portable import cache_utils
 from tfx.orchestration.portable import data_types
 from tfx.orchestration.portable import docker_executor_operator
@@ -41,7 +40,6 @@ from tfx.proto.orchestration import pipeline_pb2
 
 from google.protobuf import message
 from ml_metadata.proto import metadata_store_pb2
-
 # Subclasses of BaseExecutorOperator
 ExecutorOperator = TypeVar(
     'ExecutorOperator', bound=base_executor_operator.BaseExecutorOperator)
@@ -53,8 +51,6 @@ DriverOperator = TypeVar(
 DEFAULT_EXECUTOR_OPERATORS = {
     executable_spec_pb2.PythonClassExecutableSpec:
         python_executor_operator.PythonExecutorOperator,
-    executable_spec_pb2.BeamExecutableSpec:
-        beam_executor_operator.BeamExecutorOperator,
     executable_spec_pb2.ContainerExecutableSpec:
         docker_executor_operator.DockerExecutorOperator
 }
@@ -70,13 +66,18 @@ _SYSTEM_NODE_HANDLERS = {
         importer_node_handler.ImporterNodeHandler,
     'tfx.dsl.components.common.resolver.Resolver':
         resolver_node_handler.ResolverNodeHandler,
+    # TODO(b/177457236): Remove support for the following after release.
+    'tfx.dsl.components.common.importer_node.ImporterNode':
+        importer_node_handler.ImporterNodeHandler,
+    'tfx.dsl.components.common.resolver_node.ResolverNode':
+        resolver_node_handler.ResolverNodeHandler,
 }
 # LINT.ThenChange(Internal system node list)
 
 
 # TODO(b/165359991): Restore 'auto_attribs=True' once we drop Python3.5 support.
 @attr.s
-class _ExecutionPreparationResult:
+class _PrepareExecutionResult:
   """A wrapper class using as the return value of _prepare_execution()."""
 
   # The information used by executor operators.
@@ -185,11 +186,10 @@ class Launcher(object):
     if system_node_handler_class:
       self._system_node_handler = system_node_handler_class()
 
-    assert bool(self._executor_operator) or bool(
-        self._system_node_handler
-    ), 'A node must be system node or have an executor.'
+    assert bool(self._executor_operator) or bool(self._system_node_handler), \
+        'A node must be system node or have an executor.'
 
-  def _prepare_execution(self) -> _ExecutionPreparationResult:
+  def _prepare_execution(self) -> _PrepareExecutionResult:
     """Prepares inputs, outputs and execution properties for actual execution."""
     # TODO(b/150979622): handle the edge case that the component get evicted
     # between successful pushlish and stateful working dir being clean up.
@@ -210,7 +210,7 @@ class Launcher(object):
       # nodes won't be triggered.
       if input_artifacts is None:
         logging.info('No all required input are ready, abandoning execution.')
-        return _ExecutionPreparationResult(
+        return _PrepareExecutionResult(
             execution_info=data_types.ExecutionInfo(),
             contexts=contexts,
             is_execution_needed=False)
@@ -265,7 +265,7 @@ class Launcher(object):
             execution_id=execution.id,
             output_artifacts=cached_outputs)
         logging.info('An cached execusion %d is used.', execution.id)
-        return _ExecutionPreparationResult(
+        return _PrepareExecutionResult(
             execution_info=data_types.ExecutionInfo(execution_id=execution.id),
             execution_metadata=execution,
             contexts=contexts,
@@ -276,7 +276,7 @@ class Launcher(object):
 
       # 8. Going to trigger executor.
       logging.info('Going to run a new execution %d', execution.id)
-      return _ExecutionPreparationResult(
+      return _PrepareExecutionResult(
           execution_info=data_types.ExecutionInfo(
               execution_id=execution.id,
               input_dict=input_artifacts,
@@ -383,7 +383,7 @@ class Launcher(object):
     for key, value in driver_output.exec_properties.items():
       exec_properties[key] = getattr(value, value.WhichOneof('value'))
 
-  def launch(self) -> Optional[data_types.ExecutionInfo]:
+  def launch(self) -> Optional[metadata_store_pb2.Execution]:
     """Executes the component, includes driver, executor and publisher.
 
     Returns:
@@ -402,11 +402,11 @@ class Launcher(object):
                                            self._pipeline_runtime_spec)
 
     # Runs as a normal node.
-    execution_preparation_result = self._prepare_execution()
+    prepare_execution_result = self._prepare_execution()
     (execution_info, contexts,
-     is_execution_needed) = (execution_preparation_result.execution_info,
-                             execution_preparation_result.contexts,
-                             execution_preparation_result.is_execution_needed)
+     is_execution_needed) = (prepare_execution_result.execution_info,
+                             prepare_execution_result.contexts,
+                             prepare_execution_result.is_execution_needed)
     if is_execution_needed:
       try:
         executor_output = self._run_executor(execution_info)
@@ -435,4 +435,4 @@ class Launcher(object):
       self._publish_successful_execution(execution_info.execution_id, contexts,
                                          execution_info.output_dict,
                                          executor_output)
-    return execution_info
+    return prepare_execution_result.execution_metadata

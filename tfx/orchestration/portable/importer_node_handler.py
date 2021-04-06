@@ -19,12 +19,13 @@ from absl import logging
 from tfx import types
 from tfx.dsl.components.common import importer
 from tfx.orchestration import metadata
-from tfx.orchestration.portable import data_types
 from tfx.orchestration.portable import execution_publish_utils
 from tfx.orchestration.portable import inputs_utils
 from tfx.orchestration.portable import system_node_handler
 from tfx.orchestration.portable.mlmd import context_lib
 from tfx.proto.orchestration import pipeline_pb2
+
+from ml_metadata.proto import metadata_store_pb2
 
 
 class ImporterNodeHandler(system_node_handler.SystemNodeHandler):
@@ -43,7 +44,7 @@ class ImporterNodeHandler(system_node_handler.SystemNodeHandler):
       pipeline_node: pipeline_pb2.PipelineNode,
       pipeline_info: pipeline_pb2.PipelineInfo,
       pipeline_runtime_spec: pipeline_pb2.PipelineRuntimeSpec
-  ) -> data_types.ExecutionInfo:
+  ) -> metadata_store_pb2.Execution:
     """Runs Importer specific logic.
 
     Args:
@@ -98,10 +99,4 @@ class ImporterNodeHandler(system_node_handler.SystemNodeHandler):
           contexts=contexts,
           output_artifacts=output_artifacts)
 
-      return data_types.ExecutionInfo(
-          execution_id=execution.id,
-          input_dict={},
-          output_dict=output_artifacts,
-          exec_properties=exec_properties,
-          pipeline_node=pipeline_node,
-          pipeline_info=pipeline_info)
+      return execution

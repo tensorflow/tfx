@@ -168,11 +168,6 @@ def make_extra_packages_examples():
       'scikit-learn>=0.23,<0.24',
       # LINT.ThenChange(
       #     examples/penguin/experimental/penguin_pipeline_sklearn_gcp.py)
-      # Required for the experimental tfx/examples using Flax, e.g.,
-      # tfx/examples/penguin.
-      'jax>=0.2.12,<0.3',
-      'jaxlib>=0.1.64,<0.2',
-      'flax>=0.3.3,<0.4'
   ]
 
 

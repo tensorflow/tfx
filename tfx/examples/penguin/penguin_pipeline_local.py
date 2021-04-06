@@ -14,12 +14,9 @@
 """Penguin example using TFX."""
 
 import os
-import sys
 from typing import List, Optional, Text
 
 import absl
-from absl import flags
-
 import tensorflow_model_analysis as tfma
 from tfx.components import CsvExampleGen
 from tfx.components import Evaluator
@@ -47,20 +44,29 @@ from tfx.types.standard_artifacts import Examples
 from tfx.types.standard_artifacts import Model
 from tfx.types.standard_artifacts import ModelBlessing
 
-flags.DEFINE_enum(
-    'model_framework', 'keras', ['keras', 'flax_experimental'],
-    'The modeling framework.')
-
+_pipeline_name = 'penguin_local'
 
 # This example assumes that penguin data is stored in ~/penguin/data and the
 # utility function is in ~/penguin. Feel free to customize as needed.
 _penguin_root = os.path.join(os.environ['HOME'], 'penguin')
 _data_root = os.path.join(_penguin_root, 'data')
+# Python module file to inject customized logic into the TFX components. The
+# Transform, Trainer and Tuner all require user-defined functions to run
+# successfully.
+_module_file = os.path.join(_penguin_root, 'penguin_utils.py')
+# Path which can be listened to by the model server.  Pusher will output the
+# trained model here.
+_serving_model_dir = os.path.join(_penguin_root, 'serving_model',
+                                  _pipeline_name)
 
 # Directory and data locations.  This example assumes all of the
 # example code and metadata library is relative to $HOME, but you can store
 # these files anywhere on your local filesystem.
 _tfx_root = os.path.join(os.environ['HOME'], 'tfx')
+_pipeline_root = os.path.join(_tfx_root, 'pipelines', _pipeline_name)
+# Sqlite ML-metadata db path.
+_metadata_path = os.path.join(_tfx_root, 'metadata', _pipeline_name,
+                              'metadata.db')
 
 # Pipeline arguments for Beam powered Components.
 _beam_pipeline_args = [
@@ -267,26 +273,9 @@ def _create_pipeline(
 
 
 # To run this pipeline from the python CLI:
-#   $python penguin_pipeline_local.py [--model_framework=flax_experimental]
+#   $python penguin_pipeline_local.py
 if __name__ == '__main__':
   absl.logging.set_verbosity(absl.logging.INFO)
-  absl.flags.FLAGS(sys.argv)
-  _pipeline_name = f'penguin_local_{flags.FLAGS.model_framework}'
-
-  # Python module file to inject customized logic into the TFX components. The
-  # Transform, Trainer and Tuner all require user-defined functions to run
-  # successfully.
-  _module_file_name = f'penguin_utils_{flags.FLAGS.model_framework}.py'
-  _module_file = os.path.join(_penguin_root, _module_file_name)
-  # Path which can be listened to by the model server.  Pusher will output the
-  # trained model here.
-  _serving_model_dir = os.path.join(_penguin_root, 'serving_model',
-                                    _pipeline_name)
-  # Pipeline root for artifacts.
-  _pipeline_root = os.path.join(_tfx_root, 'pipelines', _pipeline_name)
-  # Sqlite ML-metadata db path.
-  _metadata_path = os.path.join(_tfx_root, 'metadata', _pipeline_name,
-                                'metadata.db')
   LocalDagRunner().run(
       _create_pipeline(
           pipeline_name=_pipeline_name,
@@ -296,8 +285,7 @@ if __name__ == '__main__':
           accuracy_threshold=0.6,
           serving_model_dir=_serving_model_dir,
           metadata_path=_metadata_path,
-          # TODO(b/180723394): support tuning for Flax.
-          enable_tuning=(flags.FLAGS.model_framework == 'keras'),
+          enable_tuning=True,
           examplegen_input_config=_examplegen_input_config,
           examplegen_range_config=_examplegen_range_config,
           resolver_range_config=_resolver_range_config,

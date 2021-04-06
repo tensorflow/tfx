@@ -25,10 +25,6 @@
    (both enabled by default).
 *  Added an accessor (`.data_view_decode_fn`) to the decoder function wrapped in
    the DataView in Trainer `FnArgs.data_accessor`.
-*  Expanded the penguin example pipeline with instructions for using
-   [JAX/Flax](https://github.com/google/flax) in addition to
-   TensorFlow/Keras to write and train the model. The support for JAX/Flax in
-   TFX is still experimental.
 
 ## Breaking Changes
 

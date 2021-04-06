@@ -48,25 +48,6 @@ class ExecutorSpecTest(tf.test.TestCase):
         """,
         spec_copy.encode())
 
-  def testBeamExecutorSpecCopy(self):
-
-    class _NestedExecutor(base_executor.BaseExecutor):
-      pass
-
-    spec = executor_spec.BeamExecutorSpec(_NestedExecutor)
-    spec.add_extra_flags('a')
-    spec.add_beam_pipeline_args('b')
-    spec_copy = spec.copy()
-    del spec
-    self.assertProtoEquals(
-        """
-        python_executor_spec: {
-            class_path: "__main__._NestedExecutor"
-            extra_flags: "a"
-        }
-        beam_pipeline_args: "b"
-        """, spec_copy.encode())
-
   def testExecutorContainerSpecCopy(self):
     spec = executor_spec.ExecutorContainerSpec(
         image='path/to:image', command=['command'], args=['args'])

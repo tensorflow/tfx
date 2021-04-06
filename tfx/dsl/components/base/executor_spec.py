@@ -142,36 +142,6 @@ class ExecutorClassSpec(ExecutorSpec):
     return result
 
 
-class BeamExecutorSpec(ExecutorClassSpec):
-  """A specification of Beam executor.
-
-  Attributes:
-    executor_class: a subclass of base_executor.BaseExecutor used to execute
-      this component (required).
-    extra_flags: extra flags to be set in the Python base executor.
-    beam_pipeline_args: arguments for Beam powered Components.
-  """
-
-  def __init__(self, executor_class: Type[base_executor.BaseExecutor]):
-    super(BeamExecutorSpec, self).__init__(executor_class=executor_class)
-    self.beam_pipeline_args = []
-
-  def encode(
-      self,
-      component_spec: Optional[types.ComponentSpec] = None) -> message.Message:
-    result = executable_spec_pb2.BeamExecutableSpec()
-    result.python_executor_spec.CopyFrom(
-        super(BeamExecutorSpec, self).encode(component_spec=component_spec))
-    result.beam_pipeline_args.extend(self.beam_pipeline_args)
-    return result
-
-  def add_beam_pipeline_args(self, beam_pipeline_args: Iterable[str]) -> None:
-    self.beam_pipeline_args.extend(beam_pipeline_args)
-
-  def copy(self) -> 'BeamExecutorSpec':
-    return cast(self.__class__, super(BeamExecutorSpec, self).copy())
-
-
 class ExecutorContainerSpec(ExecutorSpec):
   """A specification of a container.
 

@@ -16,6 +16,7 @@
 import os
 from typing import Any, Dict, List, Text
 
+import mock
 import tensorflow as tf
 from tfx import types
 from tfx.dsl.components.base import base_executor
@@ -64,6 +65,16 @@ class InplaceUpdateExecutor(base_executor.BaseExecutor):
          exec_properties: Dict[Text, Any]) -> None:
     model = output_dict['output_key'][0]
     model.name = 'my_model'
+
+
+class ValidateBeamPipelineArgsExecutor(base_executor.BaseExecutor):
+  """A Fake executor for validating beam pipeline args passing."""
+
+  def Do(self, input_dict: Dict[Text, List[types.Artifact]],
+         output_dict: Dict[Text, List[types.Artifact]],
+         exec_properties: Dict[Text, Any]) -> None:
+    assert '--runner=DirectRunner' in self._beam_pipeline_args
+    assert '--arg_one=1' in self._beam_pipeline_args
 
 
 class PythonExecutorOperatorTest(test_case_utils.TfxTest):
@@ -167,6 +178,23 @@ class PythonExecutorOperatorTest(test_case_utils.TfxTest):
               }
             }
           }""", executor_output)
+
+  @mock.patch('sys.argv', new=['mybinary', '--arg_one=1'])
+  def testRunExecutorWithBeamPipelineArgs(self):
+    executor_sepc = text_format.Parse(
+        """
+      class_path: "tfx.orchestration.portable.python_executor_operator_test.ValidateBeamPipelineArgsExecutor"
+      extra_flags: "--runner=DirectRunner"
+    """, executable_spec_pb2.PythonClassExecutableSpec())
+    operator = python_executor_operator.PythonExecutorOperator(executor_sepc)
+    executor_output_uri = os.path.join(self.tmp_dir, 'executor_output')
+    operator.run_executor(
+        data_types.ExecutionInfo(
+            execution_id=1,
+            input_dict={},
+            output_dict={},
+            exec_properties={},
+            execution_output_uri=executor_output_uri))
 
 
 if __name__ == '__main__':

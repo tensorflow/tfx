@@ -39,14 +39,14 @@ class PenguinPipelineLocalInfravalEndToEndTest(tf.test.TestCase):
     self._pipeline_name = 'penguin_test'
     self._data_root = os.path.join(os.path.dirname(__file__), 'data')
     self._module_file = os.path.join(
-        os.path.dirname(__file__), 'penguin_utils_keras.py')
+        os.path.dirname(__file__), 'penguin_utils.py')
     self._serving_model_dir = os.path.join(self._test_dir, 'serving_model')
     self._pipeline_root = os.path.join(self._test_dir, 'tfx', 'pipelines',
                                        self._pipeline_name)
     self._metadata_path = os.path.join(self._test_dir, 'tfx', 'metadata',
                                        self._pipeline_name, 'metadata.db')
 
-  def _assertExecutedOnce(self, component: Text) -> None:
+  def assertExecutedOnce(self, component: Text) -> None:
     """Check the component is executed exactly once."""
     component_path = os.path.join(self._pipeline_root, component)
     self.assertTrue(fileio.exists(component_path))
@@ -55,7 +55,7 @@ class PenguinPipelineLocalInfravalEndToEndTest(tf.test.TestCase):
     execution = fileio.listdir(execution_path)
     self.assertLen(execution, 1)
 
-  def _assertInfraValidatorPassed(self) -> None:
+  def assertInfraValidatorPassed(self) -> None:
     infra_validator_path = os.path.join(self._pipeline_root, 'InfraValidator')
     blessing_path = os.path.join(self._pipeline_root, 'InfraValidator',
                                  'blessing')
@@ -67,16 +67,16 @@ class PenguinPipelineLocalInfravalEndToEndTest(tf.test.TestCase):
       blessed = os.path.join(blessing_uri, 'INFRA_BLESSED')
       self.assertTrue(fileio.exists(blessed))
 
-  def _assertPipelineExecution(self) -> None:
-    self._assertExecutedOnce('CsvExampleGen')
-    self._assertExecutedOnce('Evaluator')
-    self._assertExecutedOnce('ExampleValidator')
-    self._assertExecutedOnce('InfraValidator')
-    self._assertExecutedOnce('Pusher')
-    self._assertExecutedOnce('SchemaGen')
-    self._assertExecutedOnce('StatisticsGen')
-    self._assertExecutedOnce('Trainer')
-    self._assertExecutedOnce('Transform')
+  def assertPipelineExecution(self) -> None:
+    self.assertExecutedOnce('CsvExampleGen')
+    self.assertExecutedOnce('Evaluator')
+    self.assertExecutedOnce('ExampleValidator')
+    self.assertExecutedOnce('InfraValidator')
+    self.assertExecutedOnce('Pusher')
+    self.assertExecutedOnce('SchemaGen')
+    self.assertExecutedOnce('StatisticsGen')
+    self.assertExecutedOnce('Trainer')
+    self.assertExecutedOnce('Transform')
 
   def testPenguinPipelineLocal(self):
     LocalDagRunner().run(
@@ -101,8 +101,8 @@ class PenguinPipelineLocalInfravalEndToEndTest(tf.test.TestCase):
       self.assertGreaterEqual(artifact_count, execution_count)
       self.assertEqual(expected_execution_count, execution_count)
 
-    self._assertPipelineExecution()
-    self._assertInfraValidatorPassed()
+    self.assertPipelineExecution()
+    self.assertInfraValidatorPassed()
 
     # Runs pipeline the second time.
     LocalDagRunner().run(

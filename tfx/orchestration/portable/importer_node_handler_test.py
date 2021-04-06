@@ -59,7 +59,7 @@ class ImporterNodeHandlerTest(test_case_utils.TfxTest):
 
   def testLauncher_importer_mode_reimport_enabled(self):
     handler = importer_node_handler.ImporterNodeHandler()
-    execution_info = handler.run(
+    execution_metadata = handler.run(
         mlmd_connection=self._mlmd_connection,
         pipeline_node=self._importer,
         pipeline_info=self._pipeline_info,
@@ -89,7 +89,7 @@ class ImporterNodeHandlerTest(test_case_utils.TfxTest):
           ignored_fields=[
               'create_time_since_epoch', 'last_update_time_since_epoch'
           ])
-      [execution] = m.store.get_executions_by_id([execution_info.execution_id])
+      [execution] = m.store.get_executions_by_id([execution_metadata.id])
       self.assertProtoPartiallyEquals(
           """
           id: 1
@@ -113,7 +113,7 @@ class ImporterNodeHandlerTest(test_case_utils.TfxTest):
               'create_time_since_epoch', 'last_update_time_since_epoch'
           ])
 
-    execution_info = handler.run(
+    execution_metadata = handler.run(
         mlmd_connection=self._mlmd_connection,
         pipeline_node=self._importer,
         pipeline_info=self._pipeline_info,
@@ -142,7 +142,7 @@ class ImporterNodeHandlerTest(test_case_utils.TfxTest):
           ignored_fields=[
               'create_time_since_epoch', 'last_update_time_since_epoch'
           ])
-      [execution] = m.store.get_executions_by_id([execution_info.execution_id])
+      [execution] = m.store.get_executions_by_id([execution_metadata.id])
       self.assertProtoPartiallyEquals(
           """
           id: 2
@@ -169,7 +169,7 @@ class ImporterNodeHandlerTest(test_case_utils.TfxTest):
   def testLauncher_importer_mode_reimport_disabled(self):
     self._importer.parameters.parameters['reimport'].field_value.int_value = 0
     handler = importer_node_handler.ImporterNodeHandler()
-    execution_info = handler.run(
+    execution_metadata = handler.run(
         mlmd_connection=self._mlmd_connection,
         pipeline_node=self._importer,
         pipeline_info=self._pipeline_info,
@@ -199,7 +199,7 @@ class ImporterNodeHandlerTest(test_case_utils.TfxTest):
           ignored_fields=[
               'create_time_since_epoch', 'last_update_time_since_epoch'
           ])
-      [execution] = m.store.get_executions_by_id([execution_info.execution_id])
+      [execution] = m.store.get_executions_by_id([execution_metadata.id])
       self.assertProtoPartiallyEquals(
           """
           id: 1
@@ -223,7 +223,7 @@ class ImporterNodeHandlerTest(test_case_utils.TfxTest):
               'create_time_since_epoch', 'last_update_time_since_epoch'
           ])
 
-    execution_info = handler.run(
+    execution_metadata = handler.run(
         mlmd_connection=self._mlmd_connection,
         pipeline_node=self._importer,
         pipeline_info=self._pipeline_info,
@@ -231,7 +231,7 @@ class ImporterNodeHandlerTest(test_case_utils.TfxTest):
     with self._mlmd_connection as m:
       # No new Schema is produced.
       self.assertLen(m.store.get_artifacts_by_type('Schema'), 1)
-      [execution] = m.store.get_executions_by_id([execution_info.execution_id])
+      [execution] = m.store.get_executions_by_id([execution_metadata.id])
       self.assertProtoPartiallyEquals(
           """
           id: 2

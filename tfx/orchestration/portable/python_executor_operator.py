@@ -42,44 +42,6 @@ def _populate_output_artifact(
     executor_output.output_artifacts[key].CopyFrom(artifacts)
 
 
-def run_with_executor(
-    execution_info: data_types.ExecutionInfo,
-    executor: base_executor.BaseExecutor
-) -> execution_result_pb2.ExecutorOutput:
-  """Invokes executors given an executor instance and input from the Launcher.
-
-  Args:
-    execution_info: A wrapper of the details of this execution.
-    executor: An executor instance.
-
-  Returns:
-    The output from executor.
-  """
-  for _, artifact_list in execution_info.input_dict.items():
-    for artifact in artifact_list:
-      if isinstance(artifact, ValueArtifact):
-        # Read ValueArtifact into memory.
-        artifact.read()
-
-  output_dict = copy.deepcopy(execution_info.output_dict)
-  result = executor.Do(execution_info.input_dict, output_dict,
-                       execution_info.exec_properties)
-  if not result:
-    # If result is not returned from the Do function, then try to
-    # read from the executor_output_uri.
-    if fileio.exists(execution_info.execution_output_uri):
-      result = execution_result_pb2.ExecutorOutput.FromString(
-          fileio.open(execution_info.execution_output_uri, 'rb').read())
-    else:
-      # Old style TFX executor doesn't return executor_output, but modify
-      # output_dict and exec_properties in place. For backward compatibility,
-      # we use their executor_output and exec_properties to construct
-      # ExecutorOutput.
-      result = execution_result_pb2.ExecutorOutput()
-      _populate_output_artifact(result, output_dict)
-  return result
-
-
 class PythonExecutorOperator(base_executor_operator.BaseExecutorOperator):
   """PythonExecutorOperator handles python class based executor's init and execution.
 
@@ -98,7 +60,7 @@ class PythonExecutorOperator(base_executor_operator.BaseExecutorOperator):
   def __init__(self,
                executor_spec: message.Message,
                platform_config: Optional[message.Message] = None):
-    """Initializes a PythonExecutorOperator.
+    """Initialize an PythonExecutorOperator.
 
     Args:
       executor_spec: The specification of how to initialize the executor.
@@ -119,7 +81,7 @@ class PythonExecutorOperator(base_executor_operator.BaseExecutorOperator):
   def run_executor(
       self, execution_info: data_types.ExecutionInfo
   ) -> execution_result_pb2.ExecutorOutput:
-    """Invokes executors given input from the Launcher.
+    """Invokers executors given input from the Launcher.
 
     Args:
       execution_info: A wrapper of the details of this execution.
@@ -138,4 +100,27 @@ class PythonExecutorOperator(base_executor_operator.BaseExecutorOperator):
         executor_output_uri=execution_info.execution_output_uri,
         stateful_working_dir=execution_info.stateful_working_dir)
     executor = self._executor_cls(context=context)
-    return run_with_executor(execution_info, executor)
+
+    for _, artifact_list in execution_info.input_dict.items():
+      for artifact in artifact_list:
+        if isinstance(artifact, ValueArtifact):
+          # Read ValueArtifact into memory.
+          artifact.read()
+
+    output_dict = copy.deepcopy(execution_info.output_dict)
+    result = executor.Do(execution_info.input_dict, output_dict,
+                         execution_info.exec_properties)
+    if not result:
+      # If result is not returned from the Do function, then try to
+      # read from the executor_output_uri.
+      if fileio.exists(execution_info.execution_output_uri):
+        result = execution_result_pb2.ExecutorOutput.FromString(
+            fileio.open(execution_info.execution_output_uri, 'rb').read())
+      else:
+        # Old style TFX executor doesn't return executor_output, but modify
+        # output_dict and exec_properties in place. For backward compatibility,
+        # we use their executor_output and exec_properties to construct
+        # ExecutorOutput.
+        result = execution_result_pb2.ExecutorOutput()
+        _populate_output_artifact(result, output_dict)
+    return result

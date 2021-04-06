@@ -25,14 +25,6 @@ message PythonClassExecutableSpec {
   repeated string extra_flags = 2;
 }
 
-// Specification for Beam based executables.
-message BeamExecutableSpec {
-  // Nested python executor spec.
-  PythonClassExecutableSpec python_executor_spec = 1;
-  // Args for Apache Beam pipeline.
-  repeated string beam_pipeline_args = 2;
-}
-
 // Specification for Container based executables.
 // This executable resembles the spec defined by TemplatedExecutorContainerSpec.
 message ContainerExecutableSpec {
