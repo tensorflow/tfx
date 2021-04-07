@@ -11,25 +11,35 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Python source which includes pipeline functions for cloud tuner example.
+"""Python source which includes pipeline functions for Cloud Tuner example.
 
 The utilities in this file are used to build a model with native Keras.
 This module file will be used in the Transform, Tuner and generic Trainer
 components.
+CloudTuner (a subclass of kerastuner.Tuner) creates a seamless integration with
+Cloud AI Platform Vizier as a backend to get suggestions of hyperparameters
+and run trials. DistributingCloudTuner is a subclass of CloudTuner which
+launches remote distributed training job for each trial on Cloud AI Platform
+Training Service. More details see:
+https://github.com/tensorflow/cloud/blob/master/src/python/tensorflow_cloud/tuner/tuner.py
 """
 
+import datetime
+import os
 from typing import List, Text
+
 import absl
 import kerastuner
 import tensorflow as tf
 from tensorflow import keras
-from tensorflow_cloud import CloudTuner
 import tensorflow_transform as tft
-
 from tfx.components.trainer.fn_args_utils import DataAccessor
 from tfx.components.trainer.fn_args_utils import FnArgs
 from tfx.components.tuner.component import TunerFnResult
 from tfx_bsl.tfxio import dataset_options
+
+from tensorflow_cloud.core import machine_config
+from tensorflow_cloud.tuner import tuner as cloud_tuner
 
 
 _FEATURE_KEYS = [
@@ -39,6 +49,14 @@ _LABEL_KEY = 'species'
 
 _TRAIN_BATCH_SIZE = 20
 _EVAL_BATCH_SIZE = 10
+
+# Base image to use for AI Platform Training. This image must follow
+# cloud_fit image with a cloud_fit.remote() as entry point. Refer to
+# cloud_fit documentation for more details at
+# https://github.com/tensorflow/cloud/blob/master/src/python/tensorflow_cloud/tuner/cloud_fit_readme.md
+#  TODO(b/184093307) Push official cloud_fit images for future release of
+# tensorflow-cloud.
+_CLOUD_FIT_IMAGE = 'gcr.io/my-project-id/cloud_fit'
 
 
 def _transformed_name(key):
@@ -178,13 +196,21 @@ def tuner_fn(fn_args: FnArgs) -> TunerFnResult:
       - tuner: A BaseTuner that will be used for tuning.
       - fit_kwargs: Args to pass to tuner's run_trial function for fitting the
                     model , e.g., the training and validation dataset. Required
-                    args depend on the above tuner's implementation.
+                    args depend on the above tuner's implementation. For
+                    DistributingCloudTuner, we generate datasets at the remote
+                    jobs rather than serialize and then deserialize them.
   """
-  transform_graph = tft.TFTransformOutput(fn_args.transform_graph_path)
 
-  # CloudTuner is a subclass of kerastuner.Tuner which inherits from
-  # BaseTuner.
-  tuner = CloudTuner(
+  # study_id should be the same across multiple tuner workers which starts
+  # approximately at the same time.
+  study_id = 'DistributingCloudTuner_study_{}'.format(
+            datetime.datetime.now().strftime('%Y%m%d%H'))
+
+  if _CLOUD_FIT_IMAGE == 'gcr.io/my-project-id/cloud_fit':
+    raise ValueError('Build your own cloud_fit image, ' +
+                     'default dummy one is used!')
+
+  tuner = cloud_tuner.DistributingCloudTuner(
       _build_keras_model,
       # The project/region configuations for Cloud Vizier service and its trial
       # executions. Note: this example uses the same configuration as the
@@ -195,28 +221,30 @@ def tuner_fn(fn_args: FnArgs) -> TunerFnResult:
       region=fn_args.custom_config['ai_platform_tuning_args']['region'],
       objective=kerastuner.Objective('val_sparse_categorical_accuracy', 'max'),
       hyperparameters=_get_hyperparameters(),
-      max_trials=8,  # Optional.
-      directory=fn_args.working_dir)
-
-  train_dataset = _input_fn(
-      fn_args.train_files,
-      fn_args.data_accessor,
-      transform_graph,
-      batch_size=_TRAIN_BATCH_SIZE)
-
-  eval_dataset = _input_fn(
-      fn_args.eval_files,
-      fn_args.data_accessor,
-      transform_graph,
-      batch_size=_EVAL_BATCH_SIZE)
+      max_trials=5,  # Optional.
+      directory=os.path.join(fn_args.custom_config['remote_trials_working_dir'],
+                             study_id),
+      study_id=study_id,
+      container_uri=_CLOUD_FIT_IMAGE,
+      # Optional `MachineConfig` that represents the configuration for the
+      # general workers in a distribution cluster. More options see:
+      # https://github.com/tensorflow/cloud/blob/master/src/python/tensorflow_cloud/core/machine_config.py
+      replica_config=machine_config.COMMON_MACHINE_CONFIGS['K80_1X'],
+      # Optional total number of workers in a distribution cluster including a
+      # chief worker.
+      replica_count=2)
 
   return TunerFnResult(
       tuner=tuner,
       fit_kwargs={
-          'x': train_dataset,
-          'validation_data': eval_dataset,
           'steps_per_epoch': fn_args.train_steps,
-          'validation_steps': fn_args.eval_steps
+          'validation_steps': fn_args.eval_steps,
+          'train_files': fn_args.train_files,
+          'eval_files': fn_args.eval_files,
+          'transform_graph_path': fn_args.transform_graph_path,
+          'label_key': _LABEL_KEY,
+          'train_batch_size': _TRAIN_BATCH_SIZE,
+          'eval_batch_size': _EVAL_BATCH_SIZE,
       })
 
 

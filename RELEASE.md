@@ -29,6 +29,8 @@
    [JAX/Flax](https://github.com/google/flax) in addition to
    TensorFlow/Keras to write and train the model. The support for JAX/Flax in
    TFX is still experimental.
+*  Updated CloudTuner KFP e2e example running on Google Cloud Platform with
+   distributed tuning and GPU distributed training for each trial.
 
 ## Breaking Changes
 

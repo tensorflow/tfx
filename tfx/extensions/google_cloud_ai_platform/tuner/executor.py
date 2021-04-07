@@ -29,9 +29,11 @@ from tfx.extensions.google_cloud_ai_platform.trainer import executor as ai_platf
 from tfx.types import standard_component_specs
 from tfx.utils import json_utils
 
+
+TUNING_ARGS_KEY = 'ai_platform_tuning_args'
+REMOTE_TRIALS_WORKING_DIR_KEY = 'remote_trials_working_dir'
 # Directory to store intermediate hyperparamter search progress.
 # TODO(b/160188053): Use the same temp dir as the calling Executor.
-TUNING_ARGS_KEY = 'ai_platform_tuning_args'
 _WORKING_DIRECTORY = '/tmp'
 
 

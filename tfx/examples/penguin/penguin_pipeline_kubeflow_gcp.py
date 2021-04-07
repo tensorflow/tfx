@@ -207,14 +207,15 @@ def create_pipeline(
     #
     # Distributed training for each trial depends on the Tuner
     # (kerastuner.BaseTuner) setup in tuner_fn. Currently CloudTuner is single
-    # worker training per trial. DistributedCloudTuner is WIP.
+    # worker training per trial. DistributingCloudTuner (a subclass of
+    # CloudTuner) launches remote distributed training job per trial.
     #
     # E.g., single worker training per trial
     #   ... -> CloudTunerA -> single worker training
     #       -> CloudTunerB -> single worker training
     # vs distributed training per trial
-    #   ... -> DistributedCloudTunerA -> CAIP job Y -> master,worker1,2,3
-    #       -> DistributedCloudTunerB -> CAIP job Z -> master,worker1,2,3
+    #   ... -> DistributingCloudTunerA -> CAIP job Y -> master,worker1,2,3
+    #       -> DistributingCloudTunerB -> CAIP job Z -> master,worker1,2,3
     tuner = Tuner(
         module_file=module_file,
         examples=transform.outputs['transformed_examples'],
@@ -233,7 +234,11 @@ def create_pipeline(
             # workerCount specified by TUNING_ARGS_KEY:
             #   num_parallel_trials = workerCount + 1 (for master)
             ai_platform_tuner_executor.TUNING_ARGS_KEY:
-                ai_platform_training_args
+                ai_platform_training_args,
+            # This working directory has to be a valid GCS path and will be used
+            # to launch remote training job per trial.
+            ai_platform_tuner_executor.REMOTE_TRIALS_WORKING_DIR_KEY:
+                os.path.join(_pipeline_root, 'trials'),
         })
 
   # Uses user-provided Python function that trains a model.
