@@ -92,7 +92,7 @@ def _input_fn(file_pattern: List[Text],
       reader=_gzip_reader_fn,
       label_key=_LABEL_KEY)
 
-  return dataset.prefetch(tf.data.experimental.AUTOTUNE)
+  return dataset.prefetch(tf.data.AUTOTUNE)
 
 
 def _get_serve_tf_examples_fn(model, tf_transform_output):
