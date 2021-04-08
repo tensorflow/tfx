@@ -159,6 +159,8 @@ def get_cached_outputs(
   cached_executions = filter(
       execution_lib.is_execution_successful,
       metadata_handler.store.get_executions_by_context(cache_context.id))
+  if not cached_executions:
+    return None
   # Sorts the candidate executions from newer to older.
   cached_executions = sorted(
       cached_executions,
@@ -170,7 +172,7 @@ def get_cached_outputs(
   for execution in cached_executions:
     cached_output_artifacts = _get_outputs_of_execution(metadata_handler,
                                                         execution.id)
-    if cached_output_artifacts:
+    if cached_output_artifacts is not None:
       return cached_output_artifacts
 
   return None

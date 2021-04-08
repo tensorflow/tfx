@@ -188,6 +188,10 @@ class CacheUtilsTest(test_case_utils.TfxTest):
     with metadata.Metadata(connection_config=self._connection_config) as m:
       cache_context = context_lib.register_context_if_not_exists(
           m, context_lib.CONTEXT_TYPE_EXECUTION_CACHE, 'cache_key')
+      cached_output = cache_utils.get_cached_outputs(m, cache_context)
+      # No succeed execution is associate with this context yet, so the cached
+      # output is None
+      self.assertIsNone(cached_output)
       execution_one = execution_publish_utils.register_execution(
           m, metadata_store_pb2.ExecutionType(name='my_type'), [cache_context])
       execution_publish_utils.publish_succeeded_execution(
@@ -230,6 +234,25 @@ class CacheUtilsTest(test_case_utils.TfxTest):
           ignored_fields=[
               'create_time_since_epoch', 'last_update_time_since_epoch'
           ])
+
+  def testGetCachedOutputArtifactsForNodesWithNoOuput(self):
+    with metadata.Metadata(connection_config=self._connection_config) as m:
+      cache_context = context_lib.register_context_if_not_exists(
+          m, context_lib.CONTEXT_TYPE_EXECUTION_CACHE, 'cache_key')
+      cached_output = cache_utils.get_cached_outputs(m, cache_context)
+      # No succeed execution is associate with this context yet, so the cached
+      # output is None.
+      self.assertIsNone(cached_output)
+      execution_one = execution_publish_utils.register_execution(
+          m, metadata_store_pb2.ExecutionType(name='my_type'), [cache_context])
+      execution_publish_utils.publish_succeeded_execution(
+          m,
+          execution_one.id, [cache_context])
+      cached_output = cache_utils.get_cached_outputs(m, cache_context)
+      # A succeed execution is associate with this context, so the cached
+      # output is not None but an empty dict.
+      self.assertIsNotNone(cached_output)
+      self.assertEmpty(cached_output)
 
 
 if __name__ == '__main__':

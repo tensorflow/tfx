@@ -13,7 +13,7 @@
 # limitations under the License.
 """This module defines a generic Launcher for all TFleX nodes."""
 
-from typing import Any, Dict, List, Optional, Text, Type, TypeVar
+from typing import Any, Dict, List, Mapping, MutableMapping, Optional, Sequence, Text, Type, TypeVar
 
 from absl import logging
 import attr
@@ -189,6 +189,20 @@ class Launcher(object):
         self._system_node_handler
     ), 'A node must be system node or have an executor.'
 
+  def _register_execution(
+      self, metadata_handler: metadata.Metadata,
+      contexts: List[metadata_store_pb2.Context],
+      input_artifacts: MutableMapping[str, Sequence[types.Artifact]],
+      exec_properties: Mapping[str, types.Property]
+  ) -> metadata_store_pb2.Execution:
+    """Registers an execution in MLMD."""
+    return execution_publish_utils.register_execution(
+        metadata_handler=metadata_handler,
+        execution_type=self._pipeline_node.node_info.type,
+        contexts=contexts,
+        input_artifacts=input_artifacts,
+        exec_properties=exec_properties)
+
   def _prepare_execution(self) -> _ExecutionPreparationResult:
     """Prepares inputs, outputs and execution properties for actual execution."""
     # TODO(b/150979622): handle the edge case that the component get evicted
@@ -216,9 +230,8 @@ class Launcher(object):
             is_execution_needed=False)
 
       # 4. Registers execution in metadata.
-      execution = execution_publish_utils.register_execution(
+      execution = self._register_execution(
           metadata_handler=m,
-          execution_type=self._pipeline_node.node_info.type,
           contexts=contexts,
           input_artifacts=input_artifacts,
           exec_properties=exec_properties)
@@ -239,6 +252,8 @@ class Launcher(object):
       self._update_with_driver_output(driver_output, exec_properties,
                                       output_artifacts)
 
+    pipeline_run_id = (
+        self._pipeline_runtime_spec.pipeline_run_id.field_value.string_value)
     # We reconnect to MLMD here because the custom driver closes MLMD connection
     # on returning.
     with self._mlmd_connection as m:
@@ -252,27 +267,31 @@ class Launcher(object):
           output_artifacts=output_artifacts,
           parameters=exec_properties)
       contexts.append(cache_context)
-      cached_outputs = cache_utils.get_cached_outputs(
-          metadata_handler=m, cache_context=cache_context)
 
       # 7. Should cache be used?
-      if (self._pipeline_node.execution_options.caching_options.enable_cache and
-          cached_outputs):
-        # Publishes cache result
-        execution_publish_utils.publish_cached_execution(
-            metadata_handler=m,
-            contexts=contexts,
-            execution_id=execution.id,
-            output_artifacts=cached_outputs)
-        logging.info('An cached execusion %d is used.', execution.id)
-        return _ExecutionPreparationResult(
-            execution_info=data_types.ExecutionInfo(execution_id=execution.id),
-            execution_metadata=execution,
-            contexts=contexts,
-            is_execution_needed=False)
-
-      pipeline_run_id = (
-          self._pipeline_runtime_spec.pipeline_run_id.field_value.string_value)
+      if self._pipeline_node.execution_options.caching_options.enable_cache:
+        cached_outputs = cache_utils.get_cached_outputs(
+            metadata_handler=m, cache_context=cache_context)
+        if cached_outputs is not None:
+          # Publishes cache result
+          execution_publish_utils.publish_cached_execution(
+              metadata_handler=m,
+              contexts=contexts,
+              execution_id=execution.id,
+              output_artifacts=cached_outputs)
+          logging.info('An cached execusion %d is used.', execution.id)
+          return _ExecutionPreparationResult(
+              execution_info=data_types.ExecutionInfo(
+                  execution_id=execution.id,
+                  input_dict=input_artifacts,
+                  output_dict=output_artifacts,
+                  exec_properties=exec_properties,
+                  pipeline_node=self._pipeline_node,
+                  pipeline_info=self._pipeline_info,
+                  pipeline_run_id=pipeline_run_id),
+              execution_metadata=execution,
+              contexts=contexts,
+              is_execution_needed=False)
 
       # 8. Going to trigger executor.
       logging.info('Going to run a new execution %d', execution.id)

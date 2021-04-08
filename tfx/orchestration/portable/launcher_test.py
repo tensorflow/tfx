@@ -467,6 +467,48 @@ class LauncherTest(test_case_utils.TfxTest):
               'create_time_since_epoch', 'last_update_time_since_epoch'
           ])
 
+  def testLauncher_CacheIsSupportedForNodeWithNoOutput(self):
+    # Even though a node has no output at all, the launcher should treat the
+    # second execution as CACHED as long as the cache context is the same.
+    LauncherTest.fakeUpstreamOutputs(self._mlmd_connection, self._example_gen,
+                                     self._transform)
+    self._trainer.ClearField('outputs')
+    test_launcher = launcher.Launcher(
+        pipeline_node=self._trainer,
+        mlmd_connection=self._mlmd_connection,
+        pipeline_info=self._pipeline_info,
+        pipeline_runtime_spec=self._pipeline_runtime_spec,
+        executor_spec=self._trainer_executor_spec,
+        custom_executor_operators=self._test_executor_operators)
+    execution_info = test_launcher.launch()
+
+    with self._mlmd_connection as m:
+      [execution] = m.store.get_executions_by_id([execution_info.execution_id])
+      self.assertProtoPartiallyEquals(
+          """
+          id: 3
+          type_id: 8
+          last_known_state: COMPLETE
+          """,
+          execution,
+          ignored_fields=[
+              'create_time_since_epoch', 'last_update_time_since_epoch'
+          ])
+
+    execution_info = test_launcher.launch()
+    with self._mlmd_connection as m:
+      [execution] = m.store.get_executions_by_id([execution_info.execution_id])
+      self.assertProtoPartiallyEquals(
+          """
+          id: 4
+          type_id: 8
+          last_known_state: CACHED
+          """,
+          execution,
+          ignored_fields=[
+              'create_time_since_epoch', 'last_update_time_since_epoch'
+          ])
+
   def testLauncher_CacheDisabled(self):
     # In this test case, there are two executions:
     # In the first one,trainer reads the fake upstream outputs and publish
