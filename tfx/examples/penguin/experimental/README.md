@@ -63,10 +63,11 @@ be stored in `~/tfx`:
 
 <pre class="devsite-terminal devsite-click-to-copy">
 vi ~/penguin/experimental/penguin_pipeline_sklearn_gcp.py
-gsutil cp -r ~/penguin/data gs://[BUCKET]/penguin
-gsutil cp -r ~/penguin/experimental gs://[BUCKET]/penguin
+gsutil -m cp -r ~/penguin/data gs://[BUCKET]/penguin
+gsutil -m cp ~/penguin/experimental/\*.py gs://[BUCKET]/penguin/experimental
 python ~/penguin/experimental/penguin_pipeline_sklearn_gcp.py
 </pre>
 
-Note that `gsutil cp -r ~/penguin/experimental gs://[BUCKET]/penguin` will need to be
-run every time updates are made to `penguin_pipeline_sklearn_gcp.py`.
+Note that
+`gsutil -m cp ~/penguin/experimental/*.py gs://[BUCKET]/penguin/experimental`
+will need to be run every time updates are made to the GCP example.
