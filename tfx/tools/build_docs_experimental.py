@@ -36,17 +36,14 @@ Note:
 from absl import app
 from absl import flags
 import tensorflow_docs.api_generator as api_generator
-from tensorflow_docs.api_generator import doc_controls
 from tensorflow_docs.api_generator import generate_lib
-import tfx
-# pylint: disable=unused-import
-import tfx.version
-# pylint: enable=unused-import
+from tfx import v1 as tfx
+from tfx import version
 
 from google.protobuf.reflection import GeneratedProtocolMessageType
 
 GITHUB_URL_PREFIX = ("https://github.com/tensorflow/tfx/blob/{}/tfx".format(
-    tfx.__version__))
+    version.__version__))
 
 flags.DEFINE_string("output_dir", "/tmp/tfx_api", "Where to output the docs")
 flags.DEFINE_string(
@@ -119,17 +116,9 @@ def ignore_proto_method(path, parent, children):
 
 def main(_):
 
-  do_not_generate_docs_for = []
-  for name in ["utils", "dependencies", "version", "examples"]:
-    submodule = getattr(tfx, name, None)
-    if submodule is not None:
-      do_not_generate_docs_for.append(submodule)
-
-  for obj in do_not_generate_docs_for:
-    doc_controls.do_not_generate_docs(obj)
-
   doc_generator = generate_lib.DocGenerator(
       root_title="TFX",
+      # TODO(b/181877171): change to 'tfx.v1' and update related _book.yaml.
       py_modules=[("tfx", tfx)],
       code_url_prefix=FLAGS.code_url_prefix,
       search_hints=FLAGS.search_hints,

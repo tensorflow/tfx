@@ -1,5 +1,4 @@
-# Lint as: python3
-# Copyright 2019 Google LLC. All Rights Reserved.
+# Copyright 2021 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,12 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Init module for TFX."""
+"""Public modules for TFX 1.x."""
 
-# `tfx` is a namespace package.
-# https://packaging.python.org/guides/packaging-namespace-packages/#pkgutil-style-namespace-packages
-__path__ = __import__('pkgutil').extend_path(__path__, __name__)
-
-
-# Import version string.
-from tfx.version import __version__
+from tfx.v1 import components
+from tfx.v1 import dsl
+from tfx.v1 import orchestration
+from tfx.v1 import proto
