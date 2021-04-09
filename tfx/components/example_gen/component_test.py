@@ -46,13 +46,13 @@ class TestQueryBasedExampleGenComponent(component.QueryBasedExampleGen):
                input_config,
                output_config=None,
                output_data_format=example_gen_pb2.FORMAT_TF_EXAMPLE,
-               example_artifacts=None,
+               examples=None,
                instance_name=None):
     super(TestQueryBasedExampleGenComponent, self).__init__(
         input_config=input_config,
         output_config=output_config,
         output_data_format=output_data_format,
-        example_artifacts=example_artifacts,
+        examples=examples,
         instance_name=instance_name)
 
 
@@ -64,13 +64,13 @@ class TestFileBasedExampleGenComponent(component.FileBasedExampleGen):
                input_base,
                input_config=None,
                output_config=None,
-               example_artifacts=None,
+               examples=None,
                instance_name=None):
     super(TestFileBasedExampleGenComponent, self).__init__(
         input_base=input_base,
         input_config=input_config,
         output_config=output_config,
-        example_artifacts=example_artifacts,
+        examples=examples,
         instance_name=instance_name)
 
 

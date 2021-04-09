@@ -53,7 +53,7 @@ class ImportExampleGen(component.FileBasedExampleGen):  # pylint: disable=protec
       range_config: Optional[Union[range_config_pb2.RangeConfig,
                                    Dict[Text, Any]]] = None,
       payload_format: Optional[int] = example_gen_pb2.FORMAT_TF_EXAMPLE,
-      example_artifacts: Optional[types.Channel] = None,
+      examples: Optional[types.Channel] = None,
       instance_name: Optional[Text] = None):
     """Construct an ImportExampleGen component.
 
@@ -78,7 +78,7 @@ class ImportExampleGen(component.FileBasedExampleGen):  # pylint: disable=protec
       payload_format: Payload format of input data. Should be one of
         example_gen_pb2.PayloadFormat enum. Note that payload format of output
         data is the same as input.
-      example_artifacts: Optional channel of 'ExamplesPath' for output train and
+      examples: Optional channel of 'ExamplesPath' for output train and
         eval examples.
       instance_name: Optional unique instance name. Necessary if multiple
         ImportExampleGen components are declared in the same pipeline.
@@ -94,6 +94,6 @@ class ImportExampleGen(component.FileBasedExampleGen):  # pylint: disable=protec
         input_config=input_config,
         output_config=output_config,
         range_config=range_config,
-        example_artifacts=example_artifacts,
+        examples=examples,
         output_data_format=payload_format,
         instance_name=instance_name)

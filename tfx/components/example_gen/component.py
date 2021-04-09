@@ -65,7 +65,7 @@ class QueryBasedExampleGen(base_component.BaseComponent):
       custom_config: Optional[Union[example_gen_pb2.CustomConfig,
                                     Dict[Text, Any]]] = None,
       output_data_format: Optional[int] = example_gen_pb2.FORMAT_TF_EXAMPLE,
-      example_artifacts: Optional[types.Channel] = None,
+      examples: Optional[types.Channel] = None,
       instance_name: Optional[Text] = None):
     """Construct a QueryBasedExampleGen component.
 
@@ -89,7 +89,7 @@ class QueryBasedExampleGen(base_component.BaseComponent):
           as a dict.
       output_data_format: Payload format of generated data in output artifact,
         one of example_gen_pb2.PayloadFormat enum.
-      example_artifacts: Channel of `standard_artifacts.Examples` for output
+      examples: Channel of `standard_artifacts.Examples` for output
         train and eval examples.
       instance_name: Optional unique instance name. Required only if multiple
         ExampleGen components are declared in the same pipeline.
@@ -101,8 +101,8 @@ class QueryBasedExampleGen(base_component.BaseComponent):
     # Configure outputs.
     output_config = output_config or utils.make_default_output_config(
         input_config)
-    if not example_artifacts:
-      example_artifacts = types.Channel(type=standard_artifacts.Examples)
+    if not examples:
+      examples = types.Channel(type=standard_artifacts.Examples)
     if output_data_format not in example_gen_pb2.PayloadFormat.values():
       raise ValueError('The value of output_data_format must be defined in'
                        'the example_gen_pb2.PayloadFormat proto.')
@@ -112,7 +112,7 @@ class QueryBasedExampleGen(base_component.BaseComponent):
         output_config=output_config,
         output_data_format=output_data_format,
         custom_config=custom_config,
-        examples=example_artifacts)
+        examples=examples)
     super(QueryBasedExampleGen, self).__init__(
         spec=spec, instance_name=instance_name)
 
@@ -155,7 +155,7 @@ class FileBasedExampleGen(base_component.BaseComponent):
       range_config: Optional[Union[range_config_pb2.RangeConfig,
                                    Dict[Text, Any]]] = None,
       output_data_format: Optional[int] = example_gen_pb2.FORMAT_TF_EXAMPLE,
-      example_artifacts: Optional[types.Channel] = None,
+      examples: Optional[types.Channel] = None,
       custom_executor_spec: Optional[executor_spec.ExecutorSpec] = None,
       instance_name: Optional[Text] = None):
     """Construct a FileBasedExampleGen component.
@@ -179,8 +179,7 @@ class FileBasedExampleGen(base_component.BaseComponent):
         default to searching for latest span with no restrictions.
       output_data_format: Payload format of generated data in output artifact,
         one of example_gen_pb2.PayloadFormat enum.
-      example_artifacts: Channel of 'ExamplesPath' for output train and eval
-        examples.
+      examples: Channel of 'ExamplesPath' for output train and eval examples.
       custom_executor_spec: Optional custom executor spec overriding the default
         executor spec specified in the component attribute.
       instance_name: Optional unique instance name. Required only if multiple
@@ -197,8 +196,8 @@ class FileBasedExampleGen(base_component.BaseComponent):
     output_config = output_config or utils.make_default_output_config(
         input_config)
 
-    if not example_artifacts:
-      example_artifacts = types.Channel(type=standard_artifacts.Examples)
+    if not examples:
+      examples = types.Channel(type=standard_artifacts.Examples)
     spec = FileBasedExampleGenSpec(
         input_base=input_base,
         input_config=input_config,
@@ -206,7 +205,7 @@ class FileBasedExampleGen(base_component.BaseComponent):
         custom_config=custom_config,
         range_config=range_config,
         output_data_format=output_data_format,
-        examples=example_artifacts)
+        examples=examples)
     super(FileBasedExampleGen, self).__init__(
         spec=spec,
         custom_executor_spec=custom_executor_spec,

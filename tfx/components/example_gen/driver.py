@@ -138,16 +138,16 @@ class Driver(base_driver.BaseDriver, ir_base_driver.BaseDriver):
     """Overrides BaseDriver._prepare_output_artifacts()."""
     del input_artifacts
 
-    example_artifact = output_dict[standard_component_specs.EXAMPLES_KEY].type()
+    examples = output_dict[standard_component_specs.EXAMPLES_KEY].type()
     base_output_dir = os.path.join(pipeline_info.pipeline_root,
                                    component_info.component_id)
 
-    example_artifact.uri = base_driver._generate_output_uri(  # pylint: disable=protected-access
+    examples.uri = base_driver._generate_output_uri(  # pylint: disable=protected-access
         base_output_dir, standard_component_specs.EXAMPLES_KEY, execution_id)
-    update_output_artifact(exec_properties, example_artifact.mlmd_artifact)
-    base_driver._prepare_output_paths(example_artifact)  # pylint: disable=protected-access
+    update_output_artifact(exec_properties, examples.mlmd_artifact)
+    base_driver._prepare_output_paths(examples)  # pylint: disable=protected-access
 
-    return {standard_component_specs.EXAMPLES_KEY: [example_artifact]}
+    return {standard_component_specs.EXAMPLES_KEY: [examples]}
 
   def run(
       self, execution_info: portable_data_types.ExecutionInfo
