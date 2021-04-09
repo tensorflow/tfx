@@ -13,7 +13,7 @@
 # limitations under the License.
 """TaskGenerator implementation for sync pipelines."""
 
-from typing import Callable, Hashable, List, Optional, Sequence, Set
+from typing import Callable, Hashable, List, MutableSet, Optional, Sequence, Set
 
 from absl import logging
 import cachetools
@@ -26,12 +26,14 @@ from tfx.orchestration.experimental.core import status as status_lib
 from tfx.orchestration.experimental.core import task as task_lib
 from tfx.orchestration.experimental.core import task_gen
 from tfx.orchestration.experimental.core import task_gen_utils
+from tfx.orchestration.portable import cache_utils
 from tfx.orchestration.portable import execution_publish_utils
 from tfx.orchestration.portable import outputs_utils
 from tfx.orchestration.portable.mlmd import execution_lib
 from tfx.proto.orchestration import pipeline_pb2
 from tfx.utils import topsort
 
+from google.protobuf import any_pb2
 from ml_metadata.proto import metadata_store_pb2
 
 # Caches nodes that completed successfully so that we don't have to query MLMD
@@ -165,21 +167,14 @@ class SyncPipelineTaskGenerator(task_gen.TaskGenerator):
                   f'node failed; node uid: {node_uid}; error: {error_msg}')
           ]
 
-        # For mixed service nodes, we ensure node services and check service
-        # status; pipeline is aborted if the service jobs have failed.
-        service_status = self._ensure_node_services_if_mixed(node_id)
-        if service_status == service_jobs.ServiceStatus.FAILED:
-          return [
-              self._abort_task(
-                  f'associated service job failed; node uid: {node_uid}')
-          ]
-
         # Finally, we are ready to generate an ExecNodeTask for the node.
-        task = self._generate_task(node, node_executions)
-        if task_lib.is_finalize_pipeline_task(task):
-          return [task]
-        else:
-          result.append(task)
+        task = self._maybe_generate_task(node, node_executions,
+                                         successful_node_ids)
+        if task:
+          if task_lib.is_finalize_pipeline_task(task):
+            return [task]
+          else:
+            result.append(task)
 
       layer_node_ids = set(node.node_info.id for node in layer_nodes)
       successful_layer_node_ids = layer_node_ids & successful_node_ids
@@ -199,16 +194,28 @@ class SyncPipelineTaskGenerator(task_gen.TaskGenerator):
         ]
     return result
 
-  def _generate_task(
-      self, node: pipeline_pb2.PipelineNode,
-      node_executions: Sequence[metadata_store_pb2.Execution]) -> task_lib.Task:
-    """Generates a node execution task if the node is runnable.
+  def _maybe_generate_task(
+      self,
+      node: pipeline_pb2.PipelineNode,
+      node_executions: Sequence[metadata_store_pb2.Execution],
+      successful_node_ids: MutableSet[str],
+  ) -> Optional[task_lib.Task]:
+    """Generates a task to execute or `None` if no action is required.
 
-    If node execution is not feasible, task to abort pipeline is returned.
+    If node is executable, `ExecNodeTask` is returned.
+
+    If node execution is infeasible due to unsatisfied preconditions such as
+    missing inputs or service job failure, task to abort the pipeline is
+    returned.
+
+    If cache is enabled and previously computed outputs are found, those outputs
+    are used to finish the execution. Since node execution can be elided, `None`
+    is returned after adding the node_id to `successful_node_ids` set.
 
     Args:
       node: The pipeline node for which to generate a task.
       node_executions: Node executions fetched from MLMD.
+      successful_node_ids: Set that tracks successful node ids.
 
     Returns:
       Returns an `ExecNodeTask` if node can be executed. If an error occurs,
@@ -234,14 +241,48 @@ class SyncPipelineTaskGenerator(task_gen.TaskGenerator):
     outputs_resolver = outputs_utils.OutputsResolver(
         node, self._pipeline.pipeline_info, self._pipeline.runtime_spec,
         self._pipeline.execution_mode)
+    output_artifacts = outputs_resolver.generate_output_artifacts(execution.id)
+
+    # Check if we can elide node execution by reusing previously computed
+    # outputs for the node.
+    cache_context = cache_utils.get_cache_context(
+        self._mlmd_handle,
+        pipeline_node=node,
+        pipeline_info=self._pipeline.pipeline_info,
+        executor_spec=_get_executor_spec(self._pipeline, node.node_info.id),
+        input_artifacts=resolved_info.input_artifacts,
+        output_artifacts=output_artifacts,
+        parameters=resolved_info.exec_properties)
+    contexts = resolved_info.contexts + [cache_context]
+    if node.execution_options.caching_options.enable_cache:
+      cached_outputs = cache_utils.get_cached_outputs(
+          self._mlmd_handle, cache_context=cache_context)
+      if cached_outputs is not None:
+        logging.info(
+            'Eliding node execution, using cached outputs; node uid: %s',
+            node_uid)
+        execution_publish_utils.publish_cached_execution(
+            self._mlmd_handle,
+            contexts=contexts,
+            execution_id=execution.id,
+            output_artifacts=cached_outputs)
+        successful_node_ids.add(node.node_info.id)
+        return None
+
+    # For mixed service nodes, we ensure node services and check service
+    # status; pipeline is aborted if the service jobs have failed.
+    service_status = self._ensure_node_services_if_mixed(node.node_info.id)
+    if service_status == service_jobs.ServiceStatus.FAILED:
+      return self._abort_task(
+          f'associated service job failed; node uid: {node_uid}')
+
     return task_lib.ExecNodeTask(
         node_uid=node_uid,
         execution=execution,
-        contexts=resolved_info.contexts,
+        contexts=contexts,
         input_artifacts=resolved_info.input_artifacts,
         exec_properties=resolved_info.exec_properties,
-        output_artifacts=outputs_resolver.generate_output_artifacts(
-            execution.id),
+        output_artifacts=output_artifacts,
         executor_output_uri=outputs_resolver.get_executor_output_uri(
             execution.id),
         stateful_working_dir=outputs_resolver.get_stateful_working_directory(
@@ -292,3 +333,16 @@ class SyncPipelineTaskGenerator(task_gen.TaskGenerator):
 
   def _node_cache_key(self, node_uid: task_lib.NodeUid) -> Hashable:
     return (self._pipeline_run_id, node_uid)
+
+
+# TODO(b/182944474): Raise error in _get_executor_spec if executor spec is
+# missing for a non-system node.
+def _get_executor_spec(pipeline: pipeline_pb2.Pipeline,
+                       node_id: str) -> Optional[any_pb2.Any]:
+  """Returns executor spec for given node_id if it exists in pipeline IR, None otherwise."""
+  if not pipeline.deployment_config.Is(
+      pipeline_pb2.IntermediateDeploymentConfig.DESCRIPTOR):
+    return None
+  depl_config = pipeline_pb2.IntermediateDeploymentConfig()
+  pipeline.deployment_config.Unpack(depl_config)
+  return depl_config.executor_specs.get(node_id)

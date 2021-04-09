@@ -62,6 +62,25 @@ def fake_component_output(mlmd_connection,
           m, execution.id, contexts, {output_key: [output]})
 
 
+def get_node(pipeline, node_id):
+  for node in pipeline.nodes:
+    if node.pipeline_node.node_info.id == node_id:
+      return node.pipeline_node
+  raise ValueError(f'could not find {node_id}')
+
+
+def fake_execute_node(mlmd_connection, task):
+  """Simulates node execution given ExecNodeTask."""
+  node = get_node(task.pipeline, task.node_uid.node_id)
+  with mlmd_connection as m:
+    output_key, output_value = next(iter(node.outputs.outputs.items()))
+    output = types.Artifact(output_value.artifact_spec.type)
+    output.uri = str(uuid.uuid4())
+    execution_publish_utils.publish_succeeded_execution(m, task.execution.id,
+                                                        task.contexts,
+                                                        {output_key: [output]})
+
+
 def create_exec_node_task(node_uid,
                           execution=None,
                           contexts=None,
@@ -156,8 +175,9 @@ def verify_exec_node_task(test_case, pipeline, node, execution_id, task):
   output_artifact_uri = os.path.join(
       pipeline.runtime_spec.pipeline_root.field_value.string_value,
       node.node_info.id, expected_output_artifacts_keys[0], str(execution_id))
-  test_case.assertCountEqual(expected_context_names,
-                             [c.name for c in task.contexts])
+  # There may be cached context which we ignore.
+  test_case.assertContainsSubset(expected_context_names,
+                                 [c.name for c in task.contexts])
   test_case.assertCountEqual(expected_input_artifacts_keys,
                              list(task.input_artifacts.keys()))
   test_case.assertCountEqual(expected_output_artifacts_keys,

@@ -124,6 +124,17 @@ nodes {
             }
             context_queries {
               type {
+                name: "pipeline_run"
+              }
+              name {
+                runtime_parameter {
+                  name: "pipeline_run_id"
+                  type: STRING
+                }
+              }
+            }
+            context_queries {
+              type {
                 name: "component"
               }
               name {
@@ -153,6 +164,11 @@ nodes {
             }
           }
         }
+      }
+    }
+    execution_options: {
+      caching_options: {
+        enable_cache: true
       }
     }
     upstream_nodes: "my_example_gen"
@@ -216,6 +232,17 @@ nodes {
               name {
                 field_value {
                   string_value: "my_pipeline"
+                }
+              }
+            }
+            context_queries {
+              type {
+                name: "pipeline_run"
+              }
+              name {
+                runtime_parameter {
+                  name: "pipeline_run_id"
+                  type: STRING
                 }
               }
             }
@@ -319,6 +346,17 @@ nodes {
             }
             context_queries {
               type {
+                name: "pipeline_run"
+              }
+              name {
+                runtime_parameter {
+                  name: "pipeline_run_id"
+                  type: STRING
+                }
+              }
+            }
+            context_queries {
+              type {
                 name: "component"
               }
               name {
@@ -351,6 +389,17 @@ nodes {
               name {
                 field_value {
                   string_value: "my_pipeline"
+                }
+              }
+            }
+            context_queries {
+              type {
+                name: "pipeline_run"
+              }
+              name {
+                runtime_parameter {
+                  name: "pipeline_run_id"
+                  type: STRING
                 }
               }
             }
@@ -453,6 +502,17 @@ nodes {
             }
             context_queries {
               type {
+                name: "pipeline_run"
+              }
+              name {
+                runtime_parameter {
+                  name: "pipeline_run_id"
+                  type: STRING
+                }
+              }
+            }
+            context_queries {
+              type {
                 name: "component"
               }
               name {
@@ -485,6 +545,17 @@ nodes {
               name {
                 field_value {
                   string_value: "my_pipeline"
+                }
+              }
+            }
+            context_queries {
+              type {
+                name: "pipeline_run"
+              }
+              name {
+                runtime_parameter {
+                  name: "pipeline_run_id"
+                  type: STRING
                 }
               }
             }
@@ -586,6 +657,17 @@ nodes {
             }
             context_queries {
               type {
+                name: "pipeline_run"
+              }
+              name {
+                runtime_parameter {
+                  name: "pipeline_run_id"
+                  type: STRING
+                }
+              }
+            }
+            context_queries {
+              type {
                 name: "component"
               }
               name {
@@ -623,6 +705,17 @@ nodes {
             }
             context_queries {
               type {
+                name: "pipeline_run"
+              }
+              name {
+                runtime_parameter {
+                  name: "pipeline_run_id"
+                  type: STRING
+                }
+              }
+            }
+            context_queries {
+              type {
                 name: "component"
               }
               name {
@@ -655,6 +748,17 @@ nodes {
               name {
                 field_value {
                   string_value: "my_pipeline"
+                }
+              }
+            }
+            context_queries {
+              type {
+                name: "pipeline_run"
+              }
+              name {
+                runtime_parameter {
+                  name: "pipeline_run_id"
+                  type: STRING
                 }
               }
             }
