@@ -16,7 +16,9 @@
 import os
 
 import tensorflow as tf
+from tfx.dsl.io import fileio
 from tfx.examples.penguin.experimental import penguin_pipeline_sklearn_gcp
+from tfx.orchestration.kubeflow.kubeflow_dag_runner import KubeflowDagRunner
 from tfx.utils import test_case_utils
 
 
@@ -25,6 +27,7 @@ class PenguinPipelineSklearnGcpTest(test_case_utils.TfxTest):
   def setUp(self):
     super(PenguinPipelineSklearnGcpTest, self).setUp()
     self.enter_context(test_case_utils.change_working_dir(self.tmp_dir))
+
     self._experimental_root = os.path.dirname(__file__)
     self._penguin_root = os.path.dirname(self._experimental_root)
 
@@ -36,8 +39,6 @@ class PenguinPipelineSklearnGcpTest(test_case_utils.TfxTest):
         self._experimental_root, 'sklearn_predict_extractor.py')
     self._pipeline_root = os.path.join(self.tmp_dir, 'tfx', 'pipelines',
                                        self._pipeline_name)
-    self._metadata_path = os.path.join(self.tmp_dir, 'tfx', 'metadata',
-                                       self._pipeline_name, 'metadata.db')
     self._ai_platform_training_args = {
         'project': 'project_id',
         'region': 'us-central1',
@@ -55,11 +56,14 @@ class PenguinPipelineSklearnGcpTest(test_case_utils.TfxTest):
         data_root=self._data_root,
         trainer_module_file=self._trainer_module_file,
         evaluator_module_file=self._evaluator_module_file,
-        metadata_path=self._metadata_path,
         ai_platform_training_args=self._ai_platform_training_args,
         ai_platform_serving_args=self._ai_platform_serving_args,
         beam_pipeline_args=[])
     self.assertEqual(8, len(logical_pipeline.components))
+
+    KubeflowDagRunner().run(logical_pipeline)
+    file_path = os.path.join(self.tmp_dir, 'sklearn_test.tar.gz')
+    self.assertTrue(fileio.exists(file_path))
 
 
 if __name__ == '__main__':

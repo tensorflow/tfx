@@ -30,9 +30,8 @@ from tfx.dsl.components.base import executor_spec
 from tfx.dsl.experimental import latest_blessed_model_resolver
 from tfx.extensions.google_cloud_ai_platform.pusher import executor as ai_platform_pusher_executor
 from tfx.extensions.google_cloud_ai_platform.trainer import executor as ai_platform_trainer_executor
-from tfx.orchestration import metadata
 from tfx.orchestration import pipeline
-from tfx.orchestration.local.local_dag_runner import LocalDagRunner
+from tfx.orchestration.kubeflow import kubeflow_dag_runner
 from tfx.proto import trainer_pb2
 from tfx.types import Channel
 from tfx.types.standard_artifacts import Model
@@ -115,11 +114,6 @@ _evaluator_module_file = os.path.join(
 # that pipeline outputs are stored in a GCS bucket.
 _tfx_root = os.path.join(_bucket, 'tfx')
 _pipeline_root = os.path.join(_tfx_root, 'pipelines', _pipeline_name)
-# Sqlite ML-metadata db path.
-# TODO(humichael): Beam dag runner expects this to be a local path. Switch to
-# kubeflow dag runner when making cloud example.
-_metadata_path = os.path.join(os.environ['HOME'], 'tfx', 'metadata',
-                              _pipeline_name, 'metadata.db')
 
 # Pipeline arguments for Beam powered Components.
 # TODO(b/171316320): Change direct_running_mode back to multi_processing and set
@@ -135,7 +129,6 @@ _beam_pipeline_args = [
 
 def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
                      trainer_module_file: Text, evaluator_module_file: Text,
-                     metadata_path: Text,
                      ai_platform_training_args: Optional[Dict[Text, Text]],
                      ai_platform_serving_args: Optional[Dict[Text, Text]],
                      beam_pipeline_args: List[Text]) -> pipeline.Pipeline:
@@ -228,25 +221,31 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
           pusher,
       ],
       enable_cache=True,
-      metadata_connection_config=metadata.sqlite_metadata_connection_config(
-          metadata_path),
       beam_pipeline_args=beam_pipeline_args,
   )
 
 
 # To run this pipeline from the python CLI:
-#   $python penguin_pipeline_sklearn_gcp.py
+# $ tfx pipeline create \
+#   --engine kubeflow \
+#   --pipeline-path penguin_pipeline_sklearn_gcp.py \
+#   --endpoint my-gcp-endpoint.pipelines.googleusercontent.com
+# See TFX CLI guide for creating TFX pipelines:
+# https://github.com/tensorflow/tfx/blob/master/docs/guide/cli.md#create
+# For endpoint, see guide on connecting to hosted AI Platform Pipelines:
+# https://cloud.google.com/ai-platform/pipelines/docs/connecting-with-sdk
 if __name__ == '__main__':
   absl.logging.set_verbosity(absl.logging.INFO)
-  # TODO(humichael): Switch to KubeflowDagRunner.
-  LocalDagRunner().run(
+  runner_config = kubeflow_dag_runner.KubeflowDagRunnerConfig(
+      tfx_image=_tfx_image)
+
+  kubeflow_dag_runner.KubeflowDagRunner(config=runner_config).run(
       _create_pipeline(
           pipeline_name=_pipeline_name,
           pipeline_root=_pipeline_root,
           data_root=_data_root,
           trainer_module_file=_trainer_module_file,
           evaluator_module_file=_evaluator_module_file,
-          metadata_path=_metadata_path,
           ai_platform_training_args=_ai_platform_training_args,
           ai_platform_serving_args=_ai_platform_serving_args,
           beam_pipeline_args=_beam_pipeline_args))

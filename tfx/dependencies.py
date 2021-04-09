@@ -117,7 +117,11 @@ def make_extra_packages_test():
   # conflicts.
   return [
       'apache-airflow[mysql]>=1.10.14,<3',
+      # TODO(b/183898519): Remove linter directives and use tfx[kubeflow]
+      # in relevant files.
+      # LINT.IfChange
       'kfp>=1.1.0,<2',
+      # LINT.ThenChange(examples/penguin/experimental/README.md)
       'kfp-pipeline-spec>=0.1.7,<0.2',
       'pytest>=5,<6',
       # TODO(b/182848576): Delete pinned sqlalchemy after apache-airflow 2.0.2
