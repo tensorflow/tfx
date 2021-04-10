@@ -103,16 +103,13 @@ class SyncPipelineTaskGeneratorTest(tu.TfxTest, parameterized.TestCase):
   def _verify_exec_node_task(self, node, execution_id, task):
     otu.verify_exec_node_task(self, self._pipeline, node, execution_id, task)
 
-  def _dequeue_and_test(self, use_task_queue, node, execution_id):
-    if use_task_queue:
-      task = self._task_queue.dequeue()
-      self._task_queue.task_done(task)
-      self._verify_exec_node_task(node, execution_id, task)
-
-  def _finish_node_execution(self, use_task_queue, node, execution):
+  def _finish_node_execution(self, use_task_queue, exec_node_task):
     """Simulates successful execution of a node."""
-    otu.fake_component_output(self._mlmd_connection, node, execution)
-    self._dequeue_and_test(use_task_queue, node, execution.id)
+    otu.fake_execute_node(self._mlmd_connection, exec_node_task)
+    if use_task_queue:
+      dequeued_task = self._task_queue.dequeue()
+      self._task_queue.task_done(dequeued_task)
+      self.assertEqual(exec_node_task.task_id, dequeued_task.task_id)
 
   def _generate_and_test(self,
                          use_task_queue,
@@ -163,8 +160,7 @@ class SyncPipelineTaskGeneratorTest(tu.TfxTest, parameterized.TestCase):
     self._mock_service_job_manager.reset_mock()
 
     # Finish stats-gen execution.
-    self._finish_node_execution(use_task_queue, self._stats_gen,
-                                active_executions[0])
+    self._finish_node_execution(use_task_queue, tasks[0])
 
     # Schema-gen should execute next.
     tasks, active_executions = self._generate_and_test(
@@ -177,20 +173,21 @@ class SyncPipelineTaskGeneratorTest(tu.TfxTest, parameterized.TestCase):
     self._verify_exec_node_task(self._schema_gen, execution_id, tasks[0])
 
     # Finish schema-gen execution.
-    self._finish_node_execution(use_task_queue, self._schema_gen,
-                                active_executions[0])
+    self._finish_node_execution(use_task_queue, tasks[0])
 
     # Transform and ExampleValidator should both execute next.
-    tasks, active_executions = self._generate_and_test(
-        use_task_queue,
-        num_initial_executions=3,
-        num_tasks_generated=2,
-        num_new_executions=2,
-        num_active_executions=2)
+    [example_validator_task,
+     transform_task], active_executions = self._generate_and_test(
+         use_task_queue,
+         num_initial_executions=3,
+         num_tasks_generated=2,
+         num_new_executions=2,
+         num_active_executions=2)
     self._verify_exec_node_task(self._example_validator,
-                                active_executions[0].id, tasks[0])
+                                active_executions[0].id, example_validator_task)
     transform_exec = active_executions[1]
-    self._verify_exec_node_task(self._transform, transform_exec.id, tasks[1])
+    self._verify_exec_node_task(self._transform, transform_exec.id,
+                                transform_task)
 
     # Transform is a "mixed service node".
     self._mock_service_job_manager.ensure_node_services.assert_called_once_with(
@@ -198,8 +195,7 @@ class SyncPipelineTaskGeneratorTest(tu.TfxTest, parameterized.TestCase):
     self._mock_service_job_manager.reset_mock()
 
     # Finish example-validator execution.
-    self._finish_node_execution(use_task_queue, self._example_validator,
-                                active_executions[0])
+    self._finish_node_execution(use_task_queue, example_validator_task)
 
     # Since transform hasn't finished, trainer will not be triggered yet.
     tasks, active_executions = self._generate_and_test(
@@ -209,11 +205,12 @@ class SyncPipelineTaskGeneratorTest(tu.TfxTest, parameterized.TestCase):
         num_new_executions=0,
         num_active_executions=1)
     if not use_task_queue:
+      transform_task = tasks[0]
       self._verify_exec_node_task(self._transform, active_executions[0].id,
-                                  tasks[0])
+                                  transform_task)
 
     # Finish transform execution.
-    self._finish_node_execution(use_task_queue, self._transform, transform_exec)
+    self._finish_node_execution(use_task_queue, transform_task)
 
     # Now all trainer upstream nodes are done, so trainer will be triggered.
     tasks, active_executions = self._generate_and_test(
@@ -226,8 +223,7 @@ class SyncPipelineTaskGeneratorTest(tu.TfxTest, parameterized.TestCase):
                                 tasks[0])
 
     # Finish trainer execution.
-    self._finish_node_execution(use_task_queue, self._trainer,
-                                active_executions[0])
+    self._finish_node_execution(use_task_queue, tasks[0])
 
     # No more components to execute, FinalizePipelineTask should be generated.
     tasks, _ = self._generate_and_test(
