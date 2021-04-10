@@ -181,17 +181,17 @@ class AsyncPipelineTaskGeneratorTest(tu.TfxTest, parameterized.TestCase):
     self._finish_node_execution(use_task_queue, transform_task)
 
     # Trainer execution task should be generated next.
-    tasks, active_executions = self._generate_and_test(
+    [trainer_task], active_executions = self._generate_and_test(
         use_task_queue,
         num_initial_executions=2,
         num_tasks_generated=1,
         num_new_executions=1,
         num_active_executions=1)
     execution_id = active_executions[0].id
-    self._verify_exec_node_task(self._trainer, execution_id, tasks[0])
+    self._verify_exec_node_task(self._trainer, execution_id, trainer_task)
 
     # Mark the trainer execution complete.
-    self._finish_node_execution(use_task_queue, tasks[0])
+    self._finish_node_execution(use_task_queue, trainer_task)
 
     # No more tasks should be generated as there are no new inputs.
     self._generate_and_test(
@@ -239,17 +239,17 @@ class AsyncPipelineTaskGeneratorTest(tu.TfxTest, parameterized.TestCase):
     self._finish_node_execution(use_task_queue, trainer_task)
 
     # Trainer should be triggered again due to transform producing new output.
-    tasks, active_executions = self._generate_and_test(
+    [trainer_task], active_executions = self._generate_and_test(
         use_task_queue,
         num_initial_executions=6,
         num_tasks_generated=1,
         num_new_executions=1,
         num_active_executions=1)
     self._verify_exec_node_task(self._trainer, active_executions[0].id,
-                                tasks[0])
+                                trainer_task)
 
     # Finally, no new tasks once trainer completes.
-    self._finish_node_execution(use_task_queue, tasks[0])
+    self._finish_node_execution(use_task_queue, trainer_task)
     self._generate_and_test(
         use_task_queue,
         num_initial_executions=7,
@@ -307,15 +307,14 @@ class AsyncPipelineTaskGeneratorTest(tu.TfxTest, parameterized.TestCase):
 
     self._mock_service_job_manager.ensure_node_services.side_effect = (
         _ensure_node_services)
-    tasks, _ = self._generate_and_test(
+    [finalize_task], _ = self._generate_and_test(
         True,
         num_initial_executions=0,
         num_tasks_generated=1,
         num_new_executions=0,
         num_active_executions=0)
-    self.assertLen(tasks, 1)
-    self.assertTrue(task_lib.is_finalize_node_task(tasks[0]))
-    self.assertEqual(status_lib.Code.ABORTED, tasks[0].status.code)
+    self.assertTrue(task_lib.is_finalize_node_task(finalize_task))
+    self.assertEqual(status_lib.Code.ABORTED, finalize_task.status.code)
 
 
 if __name__ == '__main__':

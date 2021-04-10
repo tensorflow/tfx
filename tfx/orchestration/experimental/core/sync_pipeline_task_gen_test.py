@@ -146,34 +146,34 @@ class SyncPipelineTaskGeneratorTest(tu.TfxTest, parameterized.TestCase):
     otu.fake_example_gen_run(self._mlmd_connection, self._example_gen, 1, 1)
 
     # Generate once. Stats-gen task should be generated.
-    tasks, active_executions = self._generate_and_test(
+    [stats_gen_task], active_executions = self._generate_and_test(
         use_task_queue,
         num_initial_executions=1,
         num_tasks_generated=1,
         num_new_executions=1,
         num_active_executions=1)
     execution_id = active_executions[0].id
-    self._verify_exec_node_task(self._stats_gen, execution_id, tasks[0])
+    self._verify_exec_node_task(self._stats_gen, execution_id, stats_gen_task)
 
     self._mock_service_job_manager.ensure_node_services.assert_called_with(
         mock.ANY, self._example_gen.node_info.id)
     self._mock_service_job_manager.reset_mock()
 
     # Finish stats-gen execution.
-    self._finish_node_execution(use_task_queue, tasks[0])
+    self._finish_node_execution(use_task_queue, stats_gen_task)
 
     # Schema-gen should execute next.
-    tasks, active_executions = self._generate_and_test(
+    [schema_gen_task], active_executions = self._generate_and_test(
         use_task_queue,
         num_initial_executions=2,
         num_tasks_generated=1,
         num_new_executions=1,
         num_active_executions=1)
     execution_id = active_executions[0].id
-    self._verify_exec_node_task(self._schema_gen, execution_id, tasks[0])
+    self._verify_exec_node_task(self._schema_gen, execution_id, schema_gen_task)
 
     # Finish schema-gen execution.
-    self._finish_node_execution(use_task_queue, tasks[0])
+    self._finish_node_execution(use_task_queue, schema_gen_task)
 
     # Transform and ExampleValidator should both execute next.
     [example_validator_task,
@@ -213,28 +213,27 @@ class SyncPipelineTaskGeneratorTest(tu.TfxTest, parameterized.TestCase):
     self._finish_node_execution(use_task_queue, transform_task)
 
     # Now all trainer upstream nodes are done, so trainer will be triggered.
-    tasks, active_executions = self._generate_and_test(
+    [trainer_task], active_executions = self._generate_and_test(
         use_task_queue,
         num_initial_executions=5,
         num_tasks_generated=1,
         num_new_executions=1,
         num_active_executions=1)
     self._verify_exec_node_task(self._trainer, active_executions[0].id,
-                                tasks[0])
+                                trainer_task)
 
     # Finish trainer execution.
-    self._finish_node_execution(use_task_queue, tasks[0])
+    self._finish_node_execution(use_task_queue, trainer_task)
 
     # No more components to execute, FinalizePipelineTask should be generated.
-    tasks, _ = self._generate_and_test(
+    [finalize_task], _ = self._generate_and_test(
         use_task_queue,
         num_initial_executions=6,
         num_tasks_generated=1,
         num_new_executions=0,
         num_active_executions=0)
-    self.assertLen(tasks, 1)
-    self.assertTrue(task_lib.is_finalize_pipeline_task(tasks[0]))
-    self.assertEqual(status_lib.Code.OK, tasks[0].status.code)
+    self.assertTrue(task_lib.is_finalize_pipeline_task(finalize_task))
+    self.assertEqual(status_lib.Code.OK, finalize_task.status.code)
     if use_task_queue:
       self.assertTrue(self._task_queue.is_empty())
 
@@ -264,16 +263,15 @@ class SyncPipelineTaskGeneratorTest(tu.TfxTest, parameterized.TestCase):
 
     self._mock_service_job_manager.ensure_node_services.side_effect = (
         _ensure_node_services)
-    tasks, _ = self._generate_and_test(
+    [finalize_task], _ = self._generate_and_test(
         True,
         num_initial_executions=0,
         num_tasks_generated=1,
         num_new_executions=0,
         num_active_executions=0)
-    self.assertLen(tasks, 1)
-    self.assertTrue(task_lib.is_finalize_pipeline_task(tasks[0]))
-    self.assertEqual(status_lib.Code.ABORTED, tasks[0].status.code)
-    self.assertRegexMatch(tasks[0].status.message, ['service job failed'])
+    self.assertTrue(task_lib.is_finalize_pipeline_task(finalize_task))
+    self.assertEqual(status_lib.Code.ABORTED, finalize_task.status.code)
+    self.assertRegexMatch(finalize_task.status.message, ['service job failed'])
 
   @parameterized.parameters(False, True)
   def test_node_failed(self, use_task_queue):
@@ -287,7 +285,7 @@ class SyncPipelineTaskGeneratorTest(tu.TfxTest, parameterized.TestCase):
     self._mock_service_job_manager.ensure_node_services.side_effect = (
         _ensure_node_services)
 
-    tasks, active_executions = self._generate_and_test(
+    [stats_gen_task], active_executions = self._generate_and_test(
         use_task_queue,
         num_initial_executions=1,
         num_tasks_generated=1,
@@ -295,7 +293,7 @@ class SyncPipelineTaskGeneratorTest(tu.TfxTest, parameterized.TestCase):
         num_active_executions=1)
     self.assertEqual(
         task_lib.NodeUid.from_pipeline_node(self._pipeline, self._stats_gen),
-        tasks[0].node_uid)
+        stats_gen_task.node_uid)
     stats_gen_exec = active_executions[0]
 
     # Fail stats-gen execution.
@@ -310,16 +308,15 @@ class SyncPipelineTaskGeneratorTest(tu.TfxTest, parameterized.TestCase):
       self._task_queue.task_done(task)
 
     # Test generation of FinalizePipelineTask.
-    tasks, _ = self._generate_and_test(
+    [finalize_task], _ = self._generate_and_test(
         True,
         num_initial_executions=2,
         num_tasks_generated=1,
         num_new_executions=0,
         num_active_executions=0)
-    self.assertLen(tasks, 1)
-    self.assertTrue(task_lib.is_finalize_pipeline_task(tasks[0]))
-    self.assertEqual(status_lib.Code.ABORTED, tasks[0].status.code)
-    self.assertRegexMatch(tasks[0].status.message, ['foobar error'])
+    self.assertTrue(task_lib.is_finalize_pipeline_task(finalize_task))
+    self.assertEqual(status_lib.Code.ABORTED, finalize_task.status.code)
+    self.assertRegexMatch(finalize_task.status.message, ['foobar error'])
 
   def test_cached_execution(self):
     """Tests that cached execution is used if one is available."""
