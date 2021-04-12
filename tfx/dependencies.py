@@ -113,10 +113,11 @@ def make_required_install_packages():
 
 def make_extra_packages_test():
   """Prepare extra packages needed for running unit tests."""
-  # Note: It is okay to pin packages to exact verions in this list to minimize
+  # Note: It is okay to pin packages to exact versions in this list to minimize
   # conflicts.
   return [
       'apache-airflow[mysql]>=1.10.14,<3',
+      'google-cloud-aiplatform>=0.5.0,<0.6',
       # TODO(b/183898519): Remove linter directives and use tfx[kubeflow]
       # in relevant files.
       # LINT.IfChange
@@ -126,7 +127,7 @@ def make_extra_packages_test():
       'pytest>=5,<6',
       # TODO(b/182848576): Delete pinned sqlalchemy after apache-airflow 2.0.2
       # or later.(github.com/apache/airflow/issues/14811)
-      'sqlalchemy>=1.3, <1.4',
+      'sqlalchemy>=1.3,<1.4',
       # TODO(b/175740170): Delete pinned werkzeug version after using the new
       # pip resolver.
       'werkzeug==0.16.1',
