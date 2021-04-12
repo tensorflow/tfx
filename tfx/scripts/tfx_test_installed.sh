@@ -24,15 +24,23 @@
 # The list of the container images can be found in:
 # https://cloud.google.com/ai-platform/deep-learning-containers/docs/choosing-container
 #
+# You can also force TFX version by supplying optional INSTALL_TFX_VERSION
+# environment variable.
+#
 # Prerequites:
 #  - Installed TFX package.
 # Example usage;
-#  $ cat tfx_test_installed.sh | docker run --rm -i gcr.io/deeplearning-platform-release/tf2-cpu.2-4  bash -c 'source /dev/stdin'
+#  $ cat tfx/scripts/tfx_test_installed.sh | docker run --rm -i gcr.io/deeplearning-platform-release/tf2-cpu.2-4  bash -c 'source /dev/stdin'
+#  $ cat tfx/scripts/tfx_test_installed.sh | docker run --rm -e 'INSTALL_TFX_VERSION=0.28.0' -i gcr.io/deeplearning-platform-release/tf2-cpu.2-4  bash -c 'source /dev/stdin'
 #
 
 set -ex
 
 PYTHON_BINARY=$(which python)
+
+if [[ -n "${INSTALL_TFX_VERSION}" ]]; then
+  ${PYTHON_BINARY} -m pip install "tfx==${INSTALL_TFX_VERSION}"
+fi
 
 TENSORFLOW_VERSION=$(${PYTHON_BINARY} -c 'import tensorflow; print(tensorflow.__version__)')
 TFX_VERSION=$(${PYTHON_BINARY} -c 'from tfx import version; print(version.__version__)')
@@ -50,21 +58,14 @@ mv tfx src
 
 # All items must start with 'tfx/'.
 SKIP_LIST=(
-  # TODO(b/174968932): Delete after renaming this file.
-  'tfx/orchestration/kubeflow/kubeflow_gcp_perf_test.py'
-
   # Following example code was not included in the package.
   'tfx/examples/bigquery_ml/taxi_utils_bqml_test.py'
   # Skip tests which require additional packages.
   'tfx/examples/custom_components/*'
   'tfx/examples/chicago_taxi_pipeline/taxi_pipeline_simple_test.py'
-  'tfx/examples/chicago_taxi_pipeline/taxi_pipeline_kubeflow_*'
-  'tfx/orchestration/airflow/*'
-  'tfx/orchestration/kubeflow/*'
-  'tfx/tools/cli/handler/airflow_handler_test.py'
-  'tfx/tools/cli/handler/kubeflow_handler_test.py'
-  'tfx/tools/cli/kubeflow_v2/commands/pipeline_test.py'
-  'tfx/tools/cli/kubeflow_v2/handler/kubeflow_v2_handler_test.py'
+  'tfx/examples/ranking/*'
+  'tfx/*airflow*'
+  'tfx/*kubeflow*'
   'tfx/*e2e*'
   'tfx/*integration*'
   'tfx/components/trainer/rewriting/rewriter_factory_test.py'
@@ -123,12 +124,6 @@ if [[ "${TFX_VERSION}" == 0.27.* ]]; then
     "tfx/examples/ranking/ranking_pipeline_e2e_test.py"
     "tfx/examples/ranking/struct2tensor_parsing_utils_test.py"
   )
-fi
-
-if [[ "${TFX_VERSION}" == 0.28.* ]]; then
-  # Skipping all TFX 0.28.0 tests until all the issues has been resolved
-  # http://b/183541263 TFX Tests fails for TFX 0.28.0
-  exit 0
 fi
 
 # TODO(b/182435431): Delete the following test after the hanging issue resolved.
