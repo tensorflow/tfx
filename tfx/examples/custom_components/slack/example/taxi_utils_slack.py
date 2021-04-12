@@ -21,14 +21,9 @@ This file is equivalent to examples/chicago_taxi/trainer/model.py and
 examples/chicago_taxi/preprocess.py.
 """
 
-import os
-
 import tensorflow as tf
 import tensorflow_model_analysis as tfma
 import tensorflow_transform as tft
-from tensorflow_transform.beam.tft_beam_io import transform_fn_io
-from tensorflow_transform.saved import saved_transform_io
-from tensorflow_transform.tf_metadata import metadata_io
 from tensorflow_transform.tf_metadata import schema_utils
 
 # Categorical features are assumed to each have a maximum value in the dataset.
@@ -200,8 +195,7 @@ def _example_serving_receiver_fn(transform_output, schema):
   """Build the serving in inputs.
 
   Args:
-    transform_output: directory in which the tf-transform model was written
-      during the preprocessing step.
+    transform_output: a `tft.TFTransformOutput` object.
     schema: the schema of the input data.
 
   Returns:
@@ -214,10 +208,8 @@ def _example_serving_receiver_fn(transform_output, schema):
       raw_feature_spec, default_batch_size=None)
   serving_input_receiver = raw_input_fn()
 
-  _, transformed_features = (
-      saved_transform_io.partially_apply_saved_transform(
-          os.path.join(transform_output, transform_fn_io.TRANSFORM_FN_DIR),
-          serving_input_receiver.features))
+  _, transformed_features = transform_output.transform_raw_features(
+      serving_input_receiver.features, drop_unused_features=True)
 
   return tf.estimator.export.ServingInputReceiver(
       transformed_features, serving_input_receiver.receiver_tensors)
@@ -227,8 +219,7 @@ def _eval_input_receiver_fn(transform_output, schema):
   """Build everything needed for the tf-model-analysis to run the model.
 
   Args:
-    transform_output: directory in which the tf-transform model was written
-      during the preprocessing step.
+    transform_output: a `tft.TFTransformOutput` object.
     schema: the schema of the input data.
 
   Returns:
@@ -251,10 +242,8 @@ def _eval_input_receiver_fn(transform_output, schema):
 
   # Now that we have our raw examples, process them through the tf-transform
   # function computed during the preprocessing step.
-  _, transformed_features = (
-      saved_transform_io.partially_apply_saved_transform(
-          os.path.join(transform_output, transform_fn_io.TRANSFORM_FN_DIR),
-          features))
+  _, transformed_features = transform_output.transform_raw_features(
+      features, drop_unused_features=True)
 
   # The key name MUST be 'examples'.
   receiver_tensors = {'examples': serialized_tf_example}
@@ -274,17 +263,14 @@ def _input_fn(filenames, transform_output, batch_size=200):
 
   Args:
     filenames: [str] list of CSV files to read data from.
-    transform_output: directory in which the tf-transform model was written
-      during the preprocessing step.
+    transform_output: a `tft.TFTransformOutput` object.
     batch_size: int First dimension size of the Tensors returned by input_fn
 
   Returns:
     A (features, indices) tuple where features is a dictionary of
       Tensors, and indices is a single Tensor of label indices.
   """
-  metadata_dir = os.path.join(transform_output,
-                              transform_fn_io.TRANSFORMED_METADATA_DIR)
-  transformed_metadata = metadata_io.read_metadata(metadata_dir)
+  transformed_metadata = transform_output.transformed_metadata
   transformed_feature_spec = transformed_metadata.schema.as_feature_spec()
 
   transformed_features = tf.contrib.learn.io.read_batch_features(
@@ -319,22 +305,23 @@ def trainer_fn(trainer_fn_args, schema):
   train_batch_size = 40
   eval_batch_size = 40
 
+  tf_transform_output = tft.TFTransformOutput(trainer_fn_args.transform_output)
+
   train_input_fn = lambda: _input_fn(  # pylint: disable=g-long-lambda
       trainer_fn_args.train_files,
-      trainer_fn_args.transform_output,
+      tf_transform_output,
       batch_size=train_batch_size)
 
   eval_input_fn = lambda: _input_fn(  # pylint: disable=g-long-lambda
       trainer_fn_args.eval_files,
-      trainer_fn_args.transform_output,
+      tf_transform_output,
       batch_size=eval_batch_size)
 
-  train_spec = tf.estimator.TrainSpec(  # pylint: disable=g-long-lambda
-      train_input_fn,
-      max_steps=trainer_fn_args.train_steps)
+  train_spec = tf.estimator.TrainSpec(
+      train_input_fn, max_steps=trainer_fn_args.train_steps)
 
-  serving_receiver_fn = lambda: _example_serving_receiver_fn(  # pylint: disable=g-long-lambda
-      trainer_fn_args.transform_output, schema)
+  serving_receiver_fn = (
+      lambda: _example_serving_receiver_fn(tf_transform_output, schema))
 
   exporter = tf.estimator.FinalExporter('chicago-taxi', serving_receiver_fn)
   eval_spec = tf.estimator.EvalSpec(
@@ -358,8 +345,7 @@ def trainer_fn(trainer_fn_args, schema):
       warm_start_from=trainer_fn_args.base_model)
 
   # Create an input receiver for TFMA processing
-  receiver_fn = lambda: _eval_input_receiver_fn(  # pylint: disable=g-long-lambda
-      trainer_fn_args.transform_output, schema)
+  receiver_fn = lambda: _eval_input_receiver_fn(tf_transform_output, schema)
 
   return {
       'estimator': estimator,
