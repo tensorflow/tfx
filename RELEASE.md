@@ -1,4 +1,4 @@
-# Version 0.29.1
+# Version 0.29.0
 
 ## Major Features and Improvements
 
