@@ -31,8 +31,9 @@ from tfx.utils import io_utils
 _OLD_EVAL_MODEL_DIR = 'eval_model_dir'
 _OLD_SERVING_MODEL_DIR = 'serving_model_dir'
 EVAL_MODEL_DIR = 'Format-TFMA'
+# LINT.IfChange
 SERVING_MODEL_DIR = 'Format-Serving'
-
+# LINT.ThenChange(Internal serving model dir)
 """Directory structure of exported model for estimator based trainer:
 
   |-- <ModelExportPath>
