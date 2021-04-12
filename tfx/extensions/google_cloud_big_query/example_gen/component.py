@@ -32,7 +32,7 @@ class BigQueryExampleGen(component.QueryBasedExampleGen):
   """Official TFX BigQueryExampleGen component.
 
   The BigQuery examplegen component takes a query, and generates train
-  and eval examples for downsteam components.
+  and eval examples for downstream components.
   """
 
   EXECUTOR_SPEC = executor_spec.ExecutorClassSpec(executor.Executor)

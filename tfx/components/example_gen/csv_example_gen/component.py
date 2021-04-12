@@ -34,7 +34,7 @@ class CsvExampleGen(component.FileBasedExampleGen):  # pylint: disable=protected
   """Official TFX CsvExampleGen component.
 
   The csv examplegen component takes csv data, and generates train
-  and eval examples for downsteam components.
+  and eval examples for downstream components.
 
   The csv examplegen encodes column values to tf.Example int/float/byte feature.
   For the case when there's missing cells, the csv examplegen uses:

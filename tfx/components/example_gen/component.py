@@ -42,7 +42,7 @@ class QueryBasedExampleGen(base_component.BaseComponent):
   query based systems such as Presto or Bigquery. The component will also
   convert the input data into
   tf.record](https://www.tensorflow.org/tutorials/load_data/tf_records)
-  and generate train and eval example splits for downsteam components.
+  and generate train and eval example splits for downstream components.
 
   ## Example
   ```
@@ -125,7 +125,7 @@ class FileBasedExampleGen(base_component.BaseComponent):
   be used by other internal components like StatisticsGen or Trainers.  The
   component will also convert the input data into
   [tf.record](https://www.tensorflow.org/tutorials/load_data/tf_records)
-  and generate train and eval example splits for downsteam components.
+  and generate train and eval example splits for downstream components.
 
   ## Example
   ```

@@ -34,7 +34,7 @@ class ImportExampleGen(component.FileBasedExampleGen):  # pylint: disable=protec
   """Official TFX ImportExampleGen component.
 
   The ImportExampleGen component takes TFRecord files with TF Example data
-  format, and generates train and eval examples for downsteam components.
+  format, and generates train and eval examples for downstream components.
   This component provides consistent and configurable partition, and it also
   shuffle the dataset for ML best practice.
   """
