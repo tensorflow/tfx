@@ -58,17 +58,27 @@ def replace_executor_with_stub(pipeline: pipeline_pb2.Pipeline,
   for component_id in deployment_config.executor_specs:
     if component_id not in test_component_ids:
       executable_spec = deployment_config.executor_specs[component_id]
-      if not executable_spec.Is(
+      if executable_spec.Is(
           executable_spec_pb2.PythonClassExecutableSpec.DESCRIPTOR):
+        stub_executor_class_spec = executor_spec.ExecutorClassSpec(
+            base_stub_executor.BaseStubExecutor)
+        stub_executor_class_spec.add_extra_flags(
+            (base_stub_executor.TEST_DATA_DIR_FLAG + '=' + test_data_dir,
+             base_stub_executor.COMPONENT_ID_FLAG + '=' + component_id))
+        stub_executor_spec = stub_executor_class_spec.encode()
+        executable_spec.Pack(stub_executor_spec)
+      elif executable_spec.Is(
+          executable_spec_pb2.BeamExecutableSpec.DESCRIPTOR):
+        stub_beam_executor_spec = executor_spec.BeamExecutorSpec(
+            base_stub_executor.BaseStubExecutor)
+        stub_beam_executor_spec.add_extra_flags(
+            (base_stub_executor.TEST_DATA_DIR_FLAG + '=' + test_data_dir,
+             base_stub_executor.COMPONENT_ID_FLAG + '=' + component_id))
+        stub_executor_spec = stub_beam_executor_spec.encode()
+        executable_spec.Pack(stub_executor_spec)
+      else:
         raise NotImplementedError(
             'Unexpected executable_spec type "{}". Currently only '
-            'PythonClassExecutableSpec is supported.'.format(
-                executable_spec.type_url))
-      stub_executor_class_spec = executor_spec.ExecutorClassSpec(
-          base_stub_executor.BaseStubExecutor)
-      stub_executor_class_spec.add_extra_flags(
-          (base_stub_executor.TEST_DATA_DIR_FLAG + '=' + test_data_dir,
-           base_stub_executor.COMPONENT_ID_FLAG + '=' + component_id))
-      stub_executor_spec = stub_executor_class_spec.encode()
-      executable_spec.Pack(stub_executor_spec)
+            'PythonClassExecutableSpec and BeamExecutorSpec is supported.'
+            .format(executable_spec.type_url))
   pipeline.deployment_config.Pack(deployment_config)

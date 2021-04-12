@@ -22,7 +22,7 @@ from google.protobuf import text_format
 
 class PipelineMockTest(tf.test.TestCase):
 
-  def testReplaceExecutorWithStub(self):
+  def testReplacePythonClassExecutorWithStub(self):
     pipeline = text_format.Parse(
         """
         deployment_config {
@@ -32,7 +32,7 @@ class PipelineMockTest(tf.test.TestCase):
               value {
                 [type.googleapis.com/tfx.orchestration.executable_spec.PythonClassExecutableSpec] {
                   class_path: "tfx.components.example_gen.csv_example_gen.executor.Executor"
-                  extra_flags: "--my_testing_beam_pipeline_args=foo"
+                  extra_flags: "--my_testing_extra_flags=foo"
                 }
               }
             }
@@ -46,14 +46,52 @@ class PipelineMockTest(tf.test.TestCase):
               value {
                 [type.googleapis.com/tfx.orchestration.executable_spec.PythonClassExecutableSpec] {
                   class_path: "tfx.experimental.pipeline_testing.base_stub_executor.BaseStubExecutor"
-                  extra_flags: "--test_data_dir=/dummy/a"
+                  extra_flags: "--test_data_dir=/mock/a"
                   extra_flags: "--component_id=CsvExampleGen"
                 }
               }
             }
           }
         }"""
-    pipeline_mock.replace_executor_with_stub(pipeline, '/dummy/a', [])
+    pipeline_mock.replace_executor_with_stub(pipeline, '/mock/a', [])
+    self.assertProtoEquals(expected, pipeline)
+
+  def testReplaceBeamExecutorWithStub(self):
+    pipeline = text_format.Parse(
+        """
+        deployment_config {
+          [type.googleapis.com/tfx.orchestration.IntermediateDeploymentConfig] {
+            executor_specs {
+              key: "CsvExampleGen"
+              value {
+                [type.googleapis.com/tfx.orchestration.executable_spec.BeamExecutableSpec] {
+                  python_executor_spec {
+                    class_path: "tfx.components.example_gen.csv_example_gen.executor.Executor"
+                    extra_flags: "--my_testing_extra_flags=foo"
+                  }
+                }
+              }
+            }
+          }
+        }""", pipeline_pb2.Pipeline())
+    expected = """
+        deployment_config {
+          [type.googleapis.com/tfx.orchestration.IntermediateDeploymentConfig] {
+            executor_specs {
+              key: "CsvExampleGen"
+              value {
+                [type.googleapis.com/tfx.orchestration.executable_spec.BeamExecutableSpec] {
+                  python_executor_spec {
+                    class_path: "tfx.experimental.pipeline_testing.base_stub_executor.BaseStubExecutor"
+                    extra_flags: "--test_data_dir=/mock/a"
+                    extra_flags: "--component_id=CsvExampleGen"
+                  }
+                }
+              }
+            }
+          }
+        }"""
+    pipeline_mock.replace_executor_with_stub(pipeline, '/mock/a', [])
     self.assertProtoEquals(expected, pipeline)
 
 
