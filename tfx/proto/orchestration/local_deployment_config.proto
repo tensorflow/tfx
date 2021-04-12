@@ -21,14 +21,19 @@ import "tfx/proto/orchestration/platform_config.proto";
 
 message ExecutableSpec {
   oneof spec {
-    tfx.orchestration.executable_spec.PythonClassExecutableSpec python_class_executable_spec = 1;
-    tfx.orchestration.executable_spec.ContainerExecutableSpec container_executable_spec = 2;
+    tfx.orchestration.executable_spec.PythonClassExecutableSpec
+        python_class_executable_spec = 1;
+    tfx.orchestration.executable_spec.ContainerExecutableSpec
+        container_executable_spec = 2;
+    tfx.orchestration.executable_spec.BeamExecutableSpec beam_executable_spec =
+        3;
   }
 }
 
 message LocalPlatformConfig {
   oneof config {
-    tfx.orchestration.platform_config.DockerPlatformConfig docker_platform_config = 1;
+    tfx.orchestration.platform_config.DockerPlatformConfig
+        docker_platform_config = 1;
   }
 }
 
@@ -43,7 +48,7 @@ message LocalDeploymentConfig {
   map<string, ExecutableSpec> custom_driver_specs = 2;
   // Connection config for ML-metadata.
   ml_metadata.ConnectionConfig metadata_connection_config = 3;
-  // A key from `node_id` to platform configs. Specifies platform settings to pass
-  // to individual node operators.
+  // A key from `node_id` to platform configs. Specifies platform settings to
+  // pass to individual node operators.
   map<string, LocalPlatformConfig> node_level_platform_configs = 4;
 }
