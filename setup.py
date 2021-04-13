@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Package Setup script for TFX."""
-
-from __future__ import print_function
 
 import logging
 import os
@@ -204,6 +201,7 @@ tfx_extras_requires = {
     # under 'tfx/tools/docker/Dockerfile' are required
     'docker-image': dependencies.make_extra_packages_docker_image(),
     'tfjs': dependencies.make_extra_packages_tfjs(),
+    'tf-ranking': dependencies.make_extra_packages_tf_ranking(),
     'examples': dependencies.make_extra_packages_examples(),
     'test': dependencies.make_extra_packages_test(),
     'all': dependencies.make_extra_packages_all(),

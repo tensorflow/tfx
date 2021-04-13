@@ -14,6 +14,9 @@
 ## Deprecations
 
 ## Bug Fixes and Other Changes
+*   Factored out tensorflow-ranking example dependencies into a dedicated extra
+    `[tf-ranking]`. Because TensorFlow Ranking requires TF 2 or later, we cound
+    not install `[examples]` with TF1.
 
 ## Documentation Updates
 

@@ -150,6 +150,17 @@ def make_extra_packages_tfjs():
   ]
 
 
+def make_extra_packages_tf_ranking():
+  # Packages needed for tf-ranking which is used in tfx/examples/ranking.
+  return [
+      'tensorflow-ranking>=0.3.3,<0.4',
+      'struct2tensor' + select_constraint(
+          default='>=0.29,<0.30',
+          nightly='>=0.30.0.dev',
+          git_master='@git+https://github.com/google/struct2tensor@master'),
+  ]
+
+
 def make_extra_packages_examples():
   # Extra dependencies required for tfx/examples.
   return [
@@ -165,9 +176,6 @@ def make_extra_packages_examples():
       # Required for tfx/examples/cifar10
       'flatbuffers>=1.12,<2',
       'tflite-support>=0.1.0a1,<0.1.1',
-      # Required for tfx/examples/ranking
-      'tensorflow-ranking>=0.3.3,<0.4',
-      'struct2tensor>=0.29,<0.30',
       # Required for tfx/examples/penguin/experimental
       # LINT.IfChange
       'scikit-learn>=0.23,<0.24',
@@ -186,5 +194,6 @@ def make_extra_packages_all():
   return [
       *make_extra_packages_test(),
       *make_extra_packages_tfjs(),
+      *make_extra_packages_tf_ranking(),
       *make_extra_packages_examples(),
   ]
