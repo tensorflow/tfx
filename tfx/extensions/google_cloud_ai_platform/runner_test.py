@@ -23,6 +23,8 @@ import sys
 from typing import Any, Dict, Text
 
 # Standard Imports
+from google.cloud.aiplatform_v1beta1.types.custom_job import CustomJob
+from google.cloud.aiplatform_v1beta1.types.job_state import JobState
 
 import mock
 import tensorflow as tf
@@ -76,6 +78,14 @@ class RunnerTest(tf.test.TestCase):
     self._mock_get.execute.return_value = {
         'state': 'SUCCEEDED',
     }
+
+  def _setUpUcaipTrainingMocks(self):
+    self._mock_create = mock.Mock()
+    self._mock_api_client.create_custom_job = self._mock_create
+    self._mock_create.return_value = CustomJob(name='ucaip_job_study_id')
+    self._mock_get = mock.Mock()
+    self._mock_api_client.get_custom_job = self._mock_get
+    self._mock_get.return_value = CustomJob(state=JobState.JOB_STATE_SUCCEEDED)
 
   def _serialize_custom_config_under_test(self) -> Dict[Text, Any]:
     """Converts self._exec_properties['custom_config'] to string."""
@@ -161,6 +171,104 @@ class RunnerTest(tf.test.TestCase):
     self.assertEqual(body['jobId'], 'my_jobid')
     self._mock_get.execute.assert_called_with()
     self._mock_create_request.execute.assert_called_with()
+
+  @mock.patch(
+      'tfx.extensions.google_cloud_ai_platform.training_clients.gapic')
+  def testStartAIPTraining_uCAIP(self, mock_gapic):
+    mock_gapic.JobServiceClient.return_value = self._mock_api_client
+    self._setUpUcaipTrainingMocks()
+
+    class_path = 'foo.bar.class'
+    region = 'us-central1'
+
+    runner.start_aip_training(self._inputs, self._outputs,
+                              self._serialize_custom_config_under_test(),
+                              class_path,
+                              self._training_inputs, None, True, region)
+
+    self._mock_create.assert_called_with(
+        parent='projects/{}/locations/{}'.format(self._project_id, region),
+        custom_job=mock.ANY)
+    (_, kwargs) = self._mock_create.call_args
+    body = kwargs['custom_job']
+
+    default_image = 'gcr.io/tfx-oss-public/tfx:{}'.format(
+        version_utils.get_image_version())
+    self.assertDictContainsSubset(
+        {
+            'worker_pool_specs': [
+                {
+                    'container_spec': {
+                        'image_uri':
+                            default_image,
+                        'command':
+                            runner._CONTAINER_COMMAND + [
+                                '--executor_class_path', class_path, '--inputs',
+                                '{}', '--outputs', '{}', '--exec-properties',
+                                '{"custom_config": '
+                                '"{\\"ai_platform_training_args\\": '
+                                '{\\"project\\": \\"12345\\"'
+                                '}}"}'
+                            ],
+                    },
+                },
+            ],
+        }, body['job_spec'])
+    self.assertStartsWith(body['display_name'], 'tfx_')
+    self._mock_get.assert_called_with(name='ucaip_job_study_id')
+
+  @mock.patch(
+      'tfx.extensions.google_cloud_ai_platform.training_clients.gapic')
+  def testStartAIPTrainingWithUserContainer_uCAIP(self, mock_gapic):
+    mock_gapic.JobServiceClient.return_value = self._mock_api_client
+    self._setUpUcaipTrainingMocks()
+
+    class_path = 'foo.bar.class'
+
+    self._training_inputs['worker_pool_specs'] = [
+        {
+            'container_spec': {'image_uri': 'my-custom-image'}
+        }
+    ]
+    self._exec_properties['custom_config'][executor.JOB_ID_KEY] = self._job_id
+    region = 'us-central2'
+    runner.start_aip_training(self._inputs, self._outputs,
+                              self._serialize_custom_config_under_test(),
+                              class_path,
+                              self._training_inputs, self._job_id, True, region)
+
+    self._mock_create.assert_called_with(
+        parent='projects/{}/locations/{}'.format(self._project_id, region),
+        custom_job=mock.ANY)
+    (_, kwargs) = self._mock_create.call_args
+    body = kwargs['custom_job']
+    self.assertDictContainsSubset(
+        {
+            'worker_pool_specs': [
+                {
+                    'container_spec': {
+                        'image_uri':
+                            'my-custom-image',
+                        'command':
+                            runner._CONTAINER_COMMAND + [
+                                '--executor_class_path', class_path,
+                                '--inputs', '{}',
+                                '--outputs', '{}', '--exec-properties',
+                                '{"custom_config": '
+                                '"{\\"ai_platform_training_args\\": '
+                                '{\\"project\\": \\"12345\\", '
+                                '\\"worker_pool_specs\\": '
+                                '[{\\"container_spec\\": '
+                                '{\\"image_uri\\": \\"my-custom-image\\"}}]}, '
+                                '\\"ai_platform_training_job_id\\": '
+                                '\\"my_jobid\\"}"}'
+                            ],
+                    },
+                },
+            ],
+        }, body['job_spec'])
+    self.assertEqual(body['display_name'], 'my_jobid')
+    self._mock_get.assert_called_with(name='ucaip_job_study_id')
 
   def _setUpPredictionMocks(self):
     self._serving_path = os.path.join(self._output_data_dir, 'serving_path')

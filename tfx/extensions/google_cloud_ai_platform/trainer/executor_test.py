@@ -82,7 +82,7 @@ class ExecutorTest(tf.test.TestCase):
         self._executor_class_path, {
             'project': self._project_id,
             'jobDir': self._job_dir,
-        }, None)
+        }, None, False, None)
 
   def testDoWithJobIdOverride(self):
     executor = ai_platform_trainer_executor.Executor()
@@ -96,7 +96,7 @@ class ExecutorTest(tf.test.TestCase):
         self._executor_class_path, {
             'project': self._project_id,
             'jobDir': self._job_dir,
-        }, job_id)
+        }, job_id, False, None)
 
   def testDoWithGenericExecutorClass(self):
     executor = ai_platform_trainer_executor.GenericExecutor()
@@ -107,7 +107,24 @@ class ExecutorTest(tf.test.TestCase):
         self._generic_executor_class_path, {
             'project': self._project_id,
             'jobDir': self._job_dir,
-        }, None)
+        }, None, False, None)
+
+  def testDoWithEnableUCaipOverride(self):
+    executor = ai_platform_trainer_executor.Executor()
+    enable_ucaip = True
+    ucaip_region = 'us-central2'
+    self._exec_properties[standard_component_specs.CUSTOM_CONFIG_KEY][
+        ai_platform_trainer_executor.ENABLE_UCAIP_KEY] = enable_ucaip
+    self._exec_properties[standard_component_specs.CUSTOM_CONFIG_KEY][
+        ai_platform_trainer_executor.UCAIP_REGION_KEY] = ucaip_region
+    executor.Do(self._inputs, self._outputs,
+                self._serialize_custom_config_under_test())
+    self.mock_runner.start_aip_training.assert_called_with(
+        self._inputs, self._outputs, self._serialize_custom_config_under_test(),
+        self._executor_class_path, {
+            'project': self._project_id,
+            'jobDir': self._job_dir,
+        }, None, enable_ucaip, ucaip_region)
 
 
 if __name__ == '__main__':

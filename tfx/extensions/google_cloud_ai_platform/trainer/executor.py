@@ -30,6 +30,8 @@ from tfx.utils import json_utils
 # Keys to the items in custom_config passed as a part of exec_properties.
 TRAINING_ARGS_KEY = 'ai_platform_training_args'
 JOB_ID_KEY = 'ai_platform_training_job_id'
+ENABLE_UCAIP_KEY = 'ai_platform_training_enable_ucaip'
+UCAIP_REGION_KEY = 'ai_platform_training_ucaip_region'
 
 
 class GenericExecutor(base_executor.BaseExecutor):
@@ -75,6 +77,8 @@ class GenericExecutor(base_executor.BaseExecutor):
       raise ValueError(err_msg)
 
     job_id = custom_config.get(JOB_ID_KEY)
+    enable_ucaip = custom_config.get(ENABLE_UCAIP_KEY, False)
+    ucaip_region = custom_config.get(UCAIP_REGION_KEY)
 
     executor_class = self._GetExecutorClass()
     executor_class_path = '%s.%s' % (executor_class.__module__,
@@ -82,7 +86,7 @@ class GenericExecutor(base_executor.BaseExecutor):
     # Note: exec_properties['custom_config'] here is a dict.
     return runner.start_aip_training(input_dict, output_dict, exec_properties,
                                      executor_class_path, training_inputs,
-                                     job_id)
+                                     job_id, enable_ucaip, ucaip_region)
 
 
 class Executor(GenericExecutor):
