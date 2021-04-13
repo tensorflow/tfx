@@ -21,6 +21,7 @@ from absl import logging
 import tensorflow_model_analysis as tfma
 from tfx import components
 from tfx import types
+from tfx.components.trainer.executor import Executor
 from tfx.dsl.component.experimental import container_component
 from tfx.dsl.component.experimental import executor_specs
 from tfx.dsl.component.experimental import placeholders
@@ -145,6 +146,7 @@ def create_pipeline_components(
       strategy_class=latest_artifacts_resolver.LatestArtifactsResolver,
       model=channel.Channel(type=standard_artifacts.Model))
   trainer = components.Trainer(
+      custom_executor_spec=executor_spec.ExecutorClassSpec(Executor),
       transformed_examples=transform.outputs['transformed_examples'],
       schema=schema_gen.outputs['schema'],
       base_model=latest_model_resolver.outputs['model'],

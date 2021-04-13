@@ -30,8 +30,6 @@ from tfx.components import StatisticsGen
 from tfx.components import Trainer
 from tfx.components import Transform
 from tfx.components import Tuner
-from tfx.components.trainer.executor import GenericExecutor
-from tfx.dsl.components.base import executor_spec
 from tfx.dsl.components.common import resolver
 from tfx.dsl.experimental import latest_blessed_model_resolver
 from tfx.dsl.experimental import spans_resolver
@@ -174,7 +172,6 @@ def _create_pipeline(
   # Uses user-provided Python function that trains a model.
   trainer = Trainer(
       module_file=module_file,
-      custom_executor_spec=executor_spec.ExecutorClassSpec(GenericExecutor),
       examples=transform.outputs['transformed_examples'],
       transform_graph=transform.outputs['transform_graph'],
       schema=schema_gen.outputs['schema'],

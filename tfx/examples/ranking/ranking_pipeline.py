@@ -28,8 +28,6 @@ from tfx.components import Trainer
 from tfx.components import Transform
 from tfx.components.experimental.data_view import binder_component
 from tfx.components.experimental.data_view import provider_component
-from tfx.components.trainer.executor import GenericExecutor
-from tfx.dsl.components.base import executor_spec
 from tfx.orchestration import metadata
 from tfx.orchestration import pipeline
 from tfx.orchestration.beam.beam_dag_runner import BeamDagRunner
@@ -106,7 +104,6 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
 
   trainer = Trainer(
       examples=data_view_binder.outputs['output_examples'],
-      custom_executor_spec=executor_spec.ExecutorClassSpec(GenericExecutor),
       transform_graph=transform.outputs['transform_graph'],
       module_file=module_file,
       train_args=trainer_pb2.TrainArgs(num_steps=1000),

@@ -33,7 +33,6 @@ from tfx.components import SchemaGen
 from tfx.components import StatisticsGen
 from tfx.components import Trainer
 from tfx.components import Transform
-from tfx.components.trainer import executor as trainer_executor
 from tfx.dsl.components.base import executor_spec
 from tfx.dsl.experimental import latest_blessed_model_resolver
 from tfx.extensions.google_cloud_ai_platform.pusher import executor as ai_platform_pusher_executor
@@ -114,8 +113,6 @@ def create_pipeline(
       'transform_graph': transform.outputs['transform_graph'],
       'train_args': train_args,
       'eval_args': eval_args,
-      'custom_executor_spec':
-          executor_spec.ExecutorClassSpec(trainer_executor.GenericExecutor),
   }
   if ai_platform_training_args is not None:
     trainer_args.update({

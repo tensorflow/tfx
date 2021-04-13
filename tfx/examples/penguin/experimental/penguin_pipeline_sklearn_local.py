@@ -26,8 +26,6 @@ from tfx.components import ResolverNode
 from tfx.components import SchemaGen
 from tfx.components import StatisticsGen
 from tfx.components import Trainer
-from tfx.components.trainer.executor import GenericExecutor
-from tfx.dsl.components.base import executor_spec
 from tfx.dsl.experimental import latest_blessed_model_resolver
 from tfx.orchestration import metadata
 from tfx.orchestration import pipeline
@@ -108,7 +106,6 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
   # loads and evaluates the entire test set at once.
   trainer = Trainer(
       module_file=trainer_module_file,
-      custom_executor_spec=executor_spec.ExecutorClassSpec(GenericExecutor),
       examples=example_gen.outputs['examples'],
       schema=schema_gen.outputs['schema'],
       train_args=trainer_pb2.TrainArgs(num_steps=2000),

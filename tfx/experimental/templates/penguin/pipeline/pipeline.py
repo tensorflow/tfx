@@ -30,8 +30,6 @@ from tfx.components import SchemaGen
 from tfx.components import StatisticsGen
 from tfx.components import Trainer
 from tfx.components import Transform
-from tfx.components.trainer import executor as trainer_executor
-from tfx.dsl.components.base import executor_spec
 from tfx.dsl.experimental import latest_blessed_model_resolver
 from tfx.experimental.templates.penguin.models import features
 from tfx.orchestration import pipeline
@@ -99,9 +97,7 @@ def create_pipeline(
       # transform_graph=transform.outputs['transform_graph'],
       schema=schema_gen.outputs['schema'],
       train_args=train_args,
-      eval_args=eval_args,
-      custom_executor_spec=executor_spec.ExecutorClassSpec(
-          trainer_executor.GenericExecutor))
+      eval_args=eval_args)
   # TODO(step 4): Uncomment here to add Trainer to the pipeline.
   # components.append(trainer)
 

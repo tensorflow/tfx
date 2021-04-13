@@ -31,16 +31,16 @@ We provide support for alternate model formats such as
 See the link to the Model Rewriting Library for examples of how to convert both Estimator and Keras
 models.
 
+## Generic Trainer
 
-## Estimator based Trainer
+Generic trainer enables developers to use any TensorFlow model API with the
+Trainer component. In addition to TensorFlow Estimators, developers can use
+Keras models or custom training loops. For details, please see the
+[RFC for generic trainer](https://github.com/tensorflow/community/blob/master/rfcs/20200117-tfx-generic-trainer.md).
 
-To learn about using an [Estimator](https://www.tensorflow.org/guide/estimator)
-based model with TFX and Trainer, see
-[Designing TensorFlow modeling code with tf.Estimator for TFX](train.md).
+### Configuring the Trainer Component
 
-### Configuring a Trainer Component
-
-Typical pipeline Python DSL code looks like this:
+Typical pipeline DSL code for the generic Trainer would look like this:
 
 ```python
 from tfx.components import Trainer
@@ -48,6 +48,67 @@ from tfx.components import Trainer
 ...
 
 trainer = Trainer(
+    module_file=module_file,
+    examples=transform.outputs['transformed_examples'],
+    transform_graph=transform.outputs['transform_graph'],
+    train_args=trainer_pb2.TrainArgs(num_steps=10000),
+    eval_args=trainer_pb2.EvalArgs(num_steps=5000))
+```
+
+Trainer invokes a training module, which is specified in the `module_file`
+parameter. Instead of `trainer_fn`, a `run_fn` is required in the module file if
+the `GenericExecutor` is specified in the `custom_executor_spec`. The
+`trainer_fn` was responsible for creating the model. In addition to that,
+`run_fn` also needs to handle the training part and output the trained model to
+a the desired location given by
+[FnArgs](https://github.com/tensorflow/tfx/blob/master/tfx/components/trainer/fn_args_utils.py):
+
+```python
+from tfx.components.trainer.fn_args_utils import FnArgs
+
+def run_fn(fn_args: FnArgs) -> None:
+  """Build the TF model and train it."""
+  model = _build_keras_model()
+  model.fit(...)
+  # Save model to fn_args.serving_model_dir.
+  model.save(fn_args.serving_model_dir, ...)
+```
+
+Here is an
+[example module file](https://github.com/tensorflow/tfx/blob/master/tfx/examples/penguin/penguin_utils.py)
+with `run_fn`.
+
+Note that if the Transform component is not used in the pipeline, then the
+Trainer would take the examples from ExampleGen directly:
+
+```python
+trainer = Trainer(
+    module_file=module_file,
+    examples=example_gen.outputs['examples'],
+    schema=infer_schema.outputs['schema'],
+    train_args=trainer_pb2.TrainArgs(num_steps=10000),
+    eval_args=trainer_pb2.EvalArgs(num_steps=5000))
+```
+
+## Estimator based Trainer (Deprecated)
+
+To learn about using an [Estimator](https://www.tensorflow.org/guide/estimator)
+based model with TFX and Trainer, see
+[Designing TensorFlow modeling code with tf.Estimator for TFX](train.md).
+
+### Configuring a Trainer Component to use the Estimator based Executor
+
+Typical pipeline Python DSL code looks like this:
+
+```python
+from tfx.components import Trainer
+from tfx.components.trainer.executor import Executor
+from tfx.dsl.components.base import executor_spec
+
+...
+
+trainer = Trainer(
+      custom_executor_spec=executor_spec.ExecutorClassSpec(Executor),
       module_file=module_file,
       examples=transform.outputs['transformed_examples'],
       schema=infer_schema.outputs['schema'],
@@ -136,67 +197,4 @@ def trainer_fn(trainer_fn_args, schema):
       'eval_spec': eval_spec,
       'eval_input_receiver_fn': receiver_fn
   }
-```
-
-## Generic Trainer
-
-Generic trainer enables developers to use any TensorFlow model API with the
-Trainer component. In addition to TensorFlow Estimators, developers can use
-Keras models or custom training loops.
-For details, please see the
-[RFC for generic trainer](https://github.com/tensorflow/community/blob/master/rfcs/20200117-tfx-generic-trainer.md).
-
-### Configuring the Trainer Component to use the GenericExecutor
-
-Typical pipeline DSL code for the generic Trainer would look like this:
-
-```python
-from tfx.components import Trainer
-from tfx.dsl.components.base import executor_spec
-from tfx.components.trainer.executor import GenericExecutor
-
-...
-
-trainer = Trainer(
-    module_file=module_file,
-    custom_executor_spec=executor_spec.ExecutorClassSpec(GenericExecutor),
-    examples=transform.outputs['transformed_examples'],
-    transform_graph=transform.outputs['transform_graph'],
-    train_args=trainer_pb2.TrainArgs(num_steps=10000),
-    eval_args=trainer_pb2.EvalArgs(num_steps=5000))
-```
-
-Trainer invokes a training module, which is specified in the `module_file`
-parameter. Instead of `trainer_fn`, a `run_fn` is required in the module file if
-the `GenericExecutor` is specified in the `custom_executor_spec`. The
-`trainer_fn` was responsible for creating the model. In addition to that,
-`run_fn` also needs to handle the training part and output the trained model to a
-the desired location given by [FnArgs](https://github.com/tensorflow/tfx/blob/master/tfx/components/trainer/fn_args_utils.py):
-
-```python
-from tfx.components.trainer.fn_args_utils import FnArgs
-
-def run_fn(fn_args: FnArgs) -> None:
-  """Build the TF model and train it."""
-  model = _build_keras_model()
-  model.fit(...)
-  # Save model to fn_args.serving_model_dir.
-  model.save(fn_args.serving_model_dir, ...)
-```
-
-Here is an
-[example module file](https://github.com/tensorflow/tfx/blob/master/tfx/examples/penguin/penguin_utils.py)
-with `run_fn`.
-
-Note that if the Transform component is not used in the pipeline, then the
-Trainer would take the examples from ExampleGen directly:
-
-```python
-trainer = Trainer(
-    module_file=module_file,
-    custom_executor_spec=executor_spec.ExecutorClassSpec(GenericExecutor),
-    examples=example_gen.outputs['examples'],
-    schema=infer_schema.outputs['schema'],
-    train_args=trainer_pb2.TrainArgs(num_steps=10000),
-    eval_args=trainer_pb2.EvalArgs(num_steps=5000))
 ```

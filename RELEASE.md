@@ -7,6 +7,9 @@
    `beam` orchestrator. You can still use `beam` orchestrator with
    `--engine=beam` flag.
 
+*  Trainer now uses GenericExecutor as default. To use the previous Estimator
+   based Trainer, please set custom_executor_spec to trainer.executor.Executor.
+
 ### For Pipeline Authors
 
 ### For Component Authors

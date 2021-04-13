@@ -31,8 +31,6 @@ from tfx.components import SchemaGen
 from tfx.components import StatisticsGen
 from tfx.components import Trainer
 from tfx.components import Transform
-from tfx.components.trainer.executor import GenericExecutor
-from tfx.dsl.components.base import executor_spec
 from tfx.orchestration import metadata
 from tfx.orchestration import pipeline
 from tfx.orchestration.beam.beam_dag_runner import BeamDagRunner
@@ -105,7 +103,6 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
   def _create_trainer(module_file, instance_name):
     return Trainer(
         module_file=module_file,
-        custom_executor_spec=executor_spec.ExecutorClassSpec(GenericExecutor),
         examples=transform.outputs['transformed_examples'],
         transform_graph=transform.outputs['transform_graph'],
         schema=schema_gen.outputs['schema'],

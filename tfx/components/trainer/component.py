@@ -35,33 +35,11 @@ class Trainer(base_component.BaseComponent):
   """A TFX component to train a TensorFlow model.
 
   The Trainer component is used to train and eval a model using given inputs and
-  a user-supplied estimator.
+  a user-supplied run_fn function.
 
-  ## Providing an estimator
-  The TFX executor will use the estimator provided in the `module_file` file
-  to train the model.  The Trainer executor will look specifically for the
-  `trainer_fn()` function within that file.  Before training, the executor will
-  call that function expecting the following returned as a dictionary:
-
-    - estimator: The
-    [estimator](https://www.tensorflow.org/api_docs/python/tf/estimator/Estimator)
-    to be used by TensorFlow to train the model.
-    - train_spec: The
-    [configuration](https://www.tensorflow.org/api_docs/python/tf/estimator/TrainSpec)
-    to be used by the "train" part of the TensorFlow `train_and_evaluate()`
-    call.
-    - eval_spec: The
-    [configuration](https://www.tensorflow.org/api_docs/python/tf/estimator/EvalSpec)
-    to be used by the "eval" part of the TensorFlow `train_and_evaluate()` call.
-    - eval_input_receiver_fn: The
-    [configuration](https://www.tensorflow.org/tfx/model_analysis/get_started#modify_an_existing_model)
-    to be used
-    by the [ModelValidator](https://www.tensorflow.org/tfx/guide/modelval)
-    component when validating the model.
-
-  An example of `trainer_fn()` can be found in the [user-supplied
-  code]((https://github.com/tensorflow/tfx/blob/master/tfx/examples/chicago_taxi_pipeline/taxi_utils.py))
-  of the TFX Chicago Taxi pipeline example.
+  An example of `run_fn()` can be found in the [user-supplied
+  code](https://github.com/tensorflow/tfx/blob/master/tfx/examples/penguin/penguin_utils_keras.py)
+  of the TFX penguin pipeline example.
 
   *Note:* The default executor for this component trains locally.  This can be
   overriden to enable the model to be trained on other platforms.  The [Cloud AI
@@ -69,11 +47,11 @@ class Trainer(base_component.BaseComponent):
   executor](https://github.com/tensorflow/tfx/tree/master/tfx/extensions/google_cloud_ai_platform/trainer)
   provides an example how to implement this.
 
-  Please see https://www.tensorflow.org/guide/estimators for more details.
+  Please see https://www.tensorflow.org/tfx/guide/trainer for more details.
 
   ## Example 1: Training locally
   ```
-  # Uses user-provided Python function that implements a model using TF-Learn.
+  # Uses user-provided Python function that trains a model using TF.
   trainer = Trainer(
       module_file=module_file,
       transformed_examples=transform.outputs['transformed_examples'],
@@ -90,7 +68,7 @@ class Trainer(base_component.BaseComponent):
   # Train using Google Cloud AI Platform.
   trainer = Trainer(
       custom_executor_spec=executor_spec.ExecutorClassSpec(
-          ai_platform_trainer_executor.Executor),
+          ai_platform_trainer_executor.GenericExecutor),
       module_file=module_file,
       transformed_examples=transform.outputs['transformed_examples'],
       schema=infer_schema.outputs['schema'],
@@ -101,7 +79,7 @@ class Trainer(base_component.BaseComponent):
   """
 
   SPEC_CLASS = TrainerSpec
-  EXECUTOR_SPEC = executor_spec.ExecutorClassSpec(executor.Executor)
+  EXECUTOR_SPEC = executor_spec.ExecutorClassSpec(executor.GenericExecutor)
 
   def __init__(
       self,
@@ -143,33 +121,31 @@ class Trainer(base_component.BaseComponent):
         serving as the hyperparameters for training module. Tuner's output best
         hyperparameters can be feed into this.
       module_file: A path to python module file containing UDF model definition.
+        The module_file must implement a function named `run_fn` at its top
+        level with function signature:
+          `def run_fn(trainer.fn_args_utils.FnArgs)`,
+        and the trained model must be saved to FnArgs.serving_model_dir when
+        this function is executed.
 
-        For default executor, The module_file must implement a function named
-        `trainer_fn` at its top level. The function must have the following
-        signature.
+        For Estimator based Executor, The module_file must implement a function
+        named `trainer_fn` at its top level. The function must have the
+        following signature.
+          def trainer_fn(trainer.fn_args_utils.FnArgs,
+                         tensorflow_metadata.proto.v0.schema_pb2) -> Dict:
+            ...
+          where the returned Dict has the following key-values.
+            'estimator': an instance of tf.estimator.Estimator
+            'train_spec': an instance of tf.estimator.TrainSpec
+            'eval_spec': an instance of tf.estimator.EvalSpec
+            'eval_input_receiver_fn': an instance of tfma EvalInputReceiver.
 
-        def trainer_fn(trainer.fn_args_utils.FnArgs,
-                       tensorflow_metadata.proto.v0.schema_pb2) -> Dict:
-          ...
-
-        where the returned Dict has the following key-values.
-          'estimator': an instance of tf.estimator.Estimator
-          'train_spec': an instance of tf.estimator.TrainSpec
-          'eval_spec': an instance of tf.estimator.EvalSpec
-          'eval_input_receiver_fn': an instance of
-            tfma.export.EvalInputReceiver. Exactly one of 'module_file' or
-            'trainer_fn' must be supplied.
-
-        For generic executor, The module_file must implement a function named
-        `run_fn` at its top level with function signature:
-        `def run_fn(trainer.fn_args_utils.FnArgs)`, and the trained model must
-        be saved to FnArgs.serving_model_dir when execute this function.
       run_fn:  A python path to UDF model definition function for generic
         trainer. See 'module_file' for details. Exactly one of 'module_file' or
-        'run_fn' must be supplied if Trainer uses GenericExecutor.
+        'run_fn' must be supplied if Trainer uses GenericExecutor (default).
       trainer_fn:  A python path to UDF model definition function for estimator
         based trainer. See 'module_file' for the required signature of the UDF.
-        Exactly one of 'module_file' or 'trainer_fn' must be supplied.
+        Exactly one of 'module_file' or 'trainer_fn' must be supplied if Trainer
+        uses Estimator based Executor
       train_args: A trainer_pb2.TrainArgs instance or a dict, containing args
         used for training. Currently only splits and num_steps are available. If
         it's provided as a dict and any field is a RuntimeParameter, it should
