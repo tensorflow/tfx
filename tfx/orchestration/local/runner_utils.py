@@ -50,6 +50,8 @@ def _build_executable_spec(
     spec.Unpack(result.python_class_executable_spec)
   elif spec.Is(result.container_executable_spec.DESCRIPTOR):
     spec.Unpack(result.container_executable_spec)
+  elif spec.Is(result.beam_executable_spec.DESCRIPTOR):
+    spec.Unpack(result.beam_executable_spec)
   else:
     raise ValueError(
         'Executor spec of {} is expected to be of one of the '
