@@ -178,9 +178,20 @@ def _create_ranking_model(tf_transform_output, hparams) -> tf.keras.Model:
           features.LIST_SIZE_FEATURE_NAME))
   context_features, example_features, mask = _preprocess_keras_inputs(
       context_keras_inputs, example_keras_inputs, tf_transform_output, hparams)
-  (flattened_context_features,
-   flattened_example_features) = tfr.keras.layers.FlattenList()(
-       context_features, example_features, mask)
+
+  # Since argspec inspection is expensive, for keras layer,
+  # layer_obj._call_fn_args is a property that uses cached argspec for call.
+  # We use this to determine whether the layer expects `inputs` as first
+  # argument.
+  # TODO(b/185176464): update tfr dependency to remove this branch.
+  flatten_list = tfr.keras.layers.FlattenList()
+  if 'inputs' == flatten_list._call_fn_args[0]:  # pylint: disable=protected-access
+    (flattened_context_features, flattened_example_features) = flatten_list(
+        inputs=(context_features, example_features, mask))
+  else:
+    (flattened_context_features,
+     flattened_example_features) = flatten_list(context_features,
+                                                example_features, mask)
 
   # Concatenate flattened context and example features along `list_size` dim.
   context_input = [
@@ -207,7 +218,15 @@ def _create_ranking_model(tf_transform_output, hparams) -> tf.keras.Model:
 
   dnn.add(tf.keras.layers.Dense(units=1))
 
-  logits = tfr.keras.layers.RestoreList()(dnn(input_layer), mask)
+  # Since argspec inspection is expensive, for keras layer,
+  # layer_obj._call_fn_args is a property that uses cached argspec for call.
+  # We use this to determine whether the layer expects `inputs` as first
+  # argument.
+  restore_list = tfr.keras.layers.RestoreList()
+  if 'inputs' == restore_list._call_fn_args[0]:  # pylint: disable=protected-access
+    logits = restore_list(inputs=(dnn(input_layer), mask))
+  else:
+    logits = restore_list(dnn(input_layer), mask)
 
   model = tf.keras.Model(
       inputs={
