@@ -64,15 +64,12 @@ def detect_handler(flags_dict: Dict[Text, Any]) -> base_handler.BaseHandler:
     from tfx.tools.cli.handler import kubeflow_handler  # pylint: disable=g-import-not-at-top
     return kubeflow_handler.KubeflowHandler(flags_dict)
   else:
-    click.echo('Detected Beam.')
-    click.echo(
-        '[WARNING] Default engine will be changed to "local" in the near future.'
-    )
+    click.echo('Detected Local.')
     click.echo(
         'Use --engine flag if you intend to use a different orchestrator.')
-    flags_dict[labels.ENGINE_FLAG] = 'beam'
-    from tfx.tools.cli.handler import beam_handler  # pylint: disable=g-import-not-at-top
-    return beam_handler.BeamHandler(flags_dict)
+    flags_dict[labels.ENGINE_FLAG] = 'local'
+    from tfx.tools.cli.handler import local_handler  # pylint: disable=g-import-not-at-top
+    return local_handler.LocalHandler(flags_dict)
 
 
 def create_handler(flags_dict: Dict[Text, Any]) -> base_handler.BaseHandler:

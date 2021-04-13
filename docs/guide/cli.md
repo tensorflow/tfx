@@ -2,7 +2,8 @@
 
 The TFX command-line interface (CLI) performs a full range of pipeline actions
 using pipeline orchestrators, such as Apache Airflow, Apache Beam, and Kubeflow
-Pipelines. For example, you can use the CLI to:
+Pipelines. Local orchestrator can be also used for faster development or
+debugging. For example, you can use the CLI to:
 
 *   Create, update, and delete pipelines.
 *   Run a pipeline and monitor the run on various orchestrators.
@@ -102,6 +103,7 @@ tfx pipeline create --pipeline_path=<var>pipeline-path</var> [--endpoint=<var>en
       <li><strong>airflow</strong>: sets engine to Apache Airflow</li>
       <li><strong>beam</strong>: sets engine to Apache Beam</li>
       <li><strong>kubeflow</strong>: sets engine to Kubeflow</li>
+      <li><strong>local</strong>: sets engine to local orchestrator</li>
     </ul>
     <p>
       If the engine is not set, the engine is auto-detected based on the
@@ -111,8 +113,8 @@ tfx pipeline create --pipeline_path=<var>pipeline-path</var> [--endpoint=<var>en
       ** Important note: The orchestrator required by the DagRunner in the
       pipeline config file must match the selected or autodetected engine.
       Engine auto-detection is based on user environment. If Apache Airflow
-      and Kubeflow Pipelines are not installed, then Apache Beam is used by
-      default.
+      and Kubeflow Pipelines are not installed, then the local orchestrator is
+      used by default.
     </p>
   </dd>
   <dt>--iap_client_id=<var>iap-client-id</var></dt>
@@ -181,18 +183,18 @@ Apache Airflow:
 tfx pipeline create --engine=airflow --pipeline_path=<var>pipeline-path</var>
 </pre>
 
-Apache Beam:
-
-<pre class="devsite-terminal">
-tfx pipeline create --engine=beam --pipeline_path=<var>pipeline-path</var>
-</pre>
-
 Kubeflow:
 
 <pre class="devsite-terminal">
 tfx pipeline create --engine=kubeflow --pipeline_path=<var>pipeline-path</var> --package_path=<var>package-path</var> \
 --iap_client_id=<var>iap-client-id</var> --namespace=<var>namespace</var> --endpoint=<var>endpoint</var> \
 --skaffold_cmd=<var>skaffold-cmd</var>
+</pre>
+
+Local:
+
+<pre class="devsite-terminal">
+tfx pipeline create --engine=local --pipeline_path=<var>pipeline-path</var>
 </pre>
 
 To autodetect engine from user environment, simply avoid using the engine flag
@@ -251,6 +253,7 @@ tfx pipeline update --pipeline_path=<var>pipeline-path</var> [--endpoint=<var>en
       <li><strong>airflow</strong>: sets engine to Apache Airflow</li>
       <li><strong>beam</strong>: sets engine to Apache Beam</li>
       <li><strong>kubeflow</strong>: sets engine to Kubeflow</li>
+      <li><strong>local</strong>: sets engine to local orchestrator</li>
     </ul>
     <p>
       If the engine is not set, the engine is auto-detected based on the
@@ -260,8 +263,8 @@ tfx pipeline update --pipeline_path=<var>pipeline-path</var> [--endpoint=<var>en
       ** Important note: The orchestrator required by the DagRunner in the
       pipeline config file must match the selected or autodetected engine.
       Engine auto-detection is based on user environment. If Apache Airflow
-      and Kubeflow Pipelines are not installed, then Apache Beam is used by
-      default.
+      and Kubeflow Pipelines are not installed, then the local orchestrator is
+      used by default.
     </p>
   </dd>
   <dt>--iap_client_id=<var>iap-client-id</var></dt>
@@ -307,18 +310,18 @@ Apache Airflow:
 tfx pipeline update --engine=airflow --pipeline_path=<var>pipeline-path</var>
 </pre>
 
-Apache Beam:
-
-<pre class="devsite-terminal">
-tfx pipeline update --engine=beam --pipeline_path=<var>pipeline-path</var>
-</pre>
-
 Kubeflow:
 
 <pre class="devsite-terminal">
 tfx pipeline update --engine=kubeflow --pipeline_path=<var>pipeline-path</var> --package_path=<var>package-path</var> \
 --iap_client_id=<var>iap-client-id</var> --namespace=<var>namespace</var> --endpoint=<var>endpoint</var> \
 --skaffold_cmd=<var>skaffold-cmd</var>
+</pre>
+
+Local:
+
+<pre class="devsite-terminal">
+tfx pipeline update --engine=local --pipeline_path=<var>pipeline-path</var>
 </pre>
 
 ### compile
@@ -355,6 +358,7 @@ tfx pipeline compile --pipeline_path=<var>pipeline-path</var> [--engine=<var>eng
       <li><strong>airflow</strong>: sets engine to Apache Airflow</li>
       <li><strong>beam</strong>: sets engine to Apache Beam</li>
       <li><strong>kubeflow</strong>: sets engine to Kubeflow</li>
+      <li><strong>local</strong>: sets engine to local orchestrator</li>
     </ul>
     <p>
       If the engine is not set, the engine is auto-detected based on the
@@ -364,8 +368,8 @@ tfx pipeline compile --pipeline_path=<var>pipeline-path</var> [--engine=<var>eng
       ** Important note: The orchestrator required by the DagRunner in the
       pipeline config file must match the selected or autodetected engine.
       Engine auto-detection is based on user environment. If Apache Airflow
-      and Kubeflow Pipelines are not installed, then Apache Beam is used by
-      default.
+      and Kubeflow Pipelines are not installed, then the local orchestrator is
+      used by default.
     </p>
   </dd>
   <dt>--package_path=<var>package-path</var></dt>
@@ -392,16 +396,16 @@ Apache Airflow:
 tfx pipeline compile --engine=airflow --pipeline_path=<var>pipeline-path</var>
 </pre>
 
-Apache Beam:
-
-<pre class="devsite-terminal">
-tfx pipeline compile --engine=beam --pipeline_path=<var>pipeline-path</var>
-</pre>
-
 Kubeflow:
 
 <pre class="devsite-terminal">
 tfx pipeline compile --engine=kubeflow --pipeline_path=<var>pipeline-path</var> --package_path=<var>package-path</var>
+</pre>
+
+Local:
+
+<pre class="devsite-terminal">
+tfx pipeline compile --engine=local --pipeline_path=<var>pipeline-path</var>
 </pre>
 
 ### delete
@@ -451,6 +455,7 @@ tfx pipeline delete --pipeline_path=<var>pipeline-path</var> [--endpoint=<var>en
       <li><strong>airflow</strong>: sets engine to Apache Airflow</li>
       <li><strong>beam</strong>: sets engine to Apache Beam</li>
       <li><strong>kubeflow</strong>: sets engine to Kubeflow</li>
+      <li><strong>local</strong>: sets engine to local orchestrator</li>
     </ul>
     <p>
       If the engine is not set, the engine is auto-detected based on the
@@ -460,8 +465,8 @@ tfx pipeline delete --pipeline_path=<var>pipeline-path</var> [--endpoint=<var>en
       ** Important note: The orchestrator required by the DagRunner in the
       pipeline config file must match the selected or autodetected engine.
       Engine auto-detection is based on user environment. If Apache Airflow
-      and Kubeflow Pipelines are not installed, then Apache Beam is used by
-      default.
+      and Kubeflow Pipelines are not installed, then the local orchestrator is
+      used by default.
     </p>
   </dd>
   <dt>--iap_client_id=<var>iap-client-id</var></dt>
@@ -485,17 +490,17 @@ Apache Airflow:
 tfx pipeline delete --engine=airflow --pipeline_name=<var>pipeline-name</var>
 </pre>
 
-Apache Beam:
-
-<pre class="devsite-terminal">
-tfx pipeline delete --engine=beam --pipeline_name=<var>pipeline-name</var>
-</pre>
-
 Kubeflow:
 
 <pre class="devsite-terminal">
 tfx pipeline delete --engine=kubeflow --pipeline_name=<var>pipeline-name</var> \
 --iap_client_id=<var>iap-client-id</var> --namespace=<var>namespace</var> --endpoint=<var>endpoint</var>
+</pre>
+
+Local:
+
+<pre class="devsite-terminal">
+tfx pipeline delete --engine=local --pipeline_name=<var>pipeline-name</var>
 </pre>
 
 ### list
@@ -543,6 +548,7 @@ tfx pipeline list [--endpoint=<var>endpoint</var> --engine=<var>engine</var> \
       <li><strong>airflow</strong>: sets engine to Apache Airflow</li>
       <li><strong>beam</strong>: sets engine to Apache Beam</li>
       <li><strong>kubeflow</strong>: sets engine to Kubeflow</li>
+      <li><strong>local</strong>: sets engine to local orchestrator</li>
     </ul>
     <p>
       If the engine is not set, the engine is auto-detected based on the
@@ -552,8 +558,8 @@ tfx pipeline list [--endpoint=<var>endpoint</var> --engine=<var>engine</var> \
       ** Important note: The orchestrator required by the DagRunner in the
       pipeline config file must match the selected or autodetected engine.
       Engine auto-detection is based on user environment. If Apache Airflow
-      and Kubeflow Pipelines are not installed, then Apache Beam is used by
-      default.
+      and Kubeflow Pipelines are not installed, then the local orchestrator is
+      used by default.
     </p>
   </dd>
   <dt>--iap_client_id=<var>iap-client-id</var></dt>
@@ -577,17 +583,17 @@ Apache Airflow:
 tfx pipeline list --engine=airflow
 </pre>
 
-Apache Beam:
-
-<pre class="devsite-terminal">
-tfx pipeline list --engine=beam
-</pre>
-
 Kubeflow:
 
 <pre class="devsite-terminal">
 tfx pipeline list --engine=kubeflow --iap_client_id=<var>iap-client-id</var> \
 --namespace=<var>namespace</var> --endpoint=<var>endpoint</var>
+</pre>
+
+Local:
+
+<pre class="devsite-terminal">
+tfx pipeline list --engine=local
 </pre>
 
 ## tfx run
@@ -649,6 +655,7 @@ tfx run create --pipeline_name=<var>pipeline-name</var> [--endpoint=<var>endpoin
       <li><strong>airflow</strong>: sets engine to Apache Airflow</li>
       <li><strong>beam</strong>: sets engine to Apache Beam</li>
       <li><strong>kubeflow</strong>: sets engine to Kubeflow</li>
+      <li><strong>local</strong>: sets engine to local orchestrator</li>
     </ul>
     <p>
       If the engine is not set, the engine is auto-detected based on the
@@ -658,8 +665,8 @@ tfx run create --pipeline_name=<var>pipeline-name</var> [--endpoint=<var>endpoin
       ** Important note: The orchestrator required by the DagRunner in the
       pipeline config file must match the selected or autodetected engine.
       Engine auto-detection is based on user environment. If Apache Airflow
-      and Kubeflow Pipelines are not installed, then Apache Beam is used by
-      default.
+      and Kubeflow Pipelines are not installed, then the local orchestrator is
+      used by default.
     </p>
   </dd>
   <dt>--iap_client_id=<var>iap-client-id</var></dt>
@@ -683,17 +690,17 @@ Apache Airflow:
 tfx run create --engine=airflow --pipeline_name=<var>pipeline-name</var>
 </pre>
 
-Apache Beam:
-
-<pre class="devsite-terminal">
-tfx run create --engine=beam --pipeline_name=<var>pipeline-name</var>
-</pre>
-
 Kubeflow:
 
 <pre class="devsite-terminal">
 tfx run create --engine=kubeflow --pipeline_name=<var>pipeline-name</var> --iap_client_id=<var>iap-client-id</var> \
 --namespace=<var>namespace</var> --endpoint=<var>endpoint</var>
+</pre>
+
+Local:
+
+<pre class="devsite-terminal">
+tfx run create --engine=local --pipeline_name=<var>pipeline-name</var>
 </pre>
 
 ### terminate
@@ -742,8 +749,6 @@ tfx run terminate --run_id=<var>run-id</var> [--endpoint=<var>endpoint</var> --e
       engine must match on of the following values:
     </p>
     <ul>
-      <li><strong>airflow</strong>: sets engine to Apache Airflow</li>
-      <li><strong>beam</strong>: sets engine to Apache Beam</li>
       <li><strong>kubeflow</strong>: sets engine to Kubeflow</li>
     </ul>
     <p>
@@ -754,8 +759,8 @@ tfx run terminate --run_id=<var>run-id</var> [--endpoint=<var>endpoint</var> --e
       ** Important note: The orchestrator required by the DagRunner in the
       pipeline config file must match the selected or autodetected engine.
       Engine auto-detection is based on user environment. If Apache Airflow
-      and Kubeflow Pipelines are not installed, then Apache Beam is used by
-      default.
+      and Kubeflow Pipelines are not installed, then the local orchestrator is
+      used by default.
     </p>
   </dd>
   <dt>--iap_client_id=<var>iap-client-id</var></dt>
@@ -784,7 +789,7 @@ tfx run delete --engine=kubeflow --run_id=<var>run-id</var> --iap_client_id=<var
 
 Lists all runs of a pipeline.
 
-** Important Note: Currently not supported in Apache Beam.
+** Important Note: Currently not supported in Local and Apache Beam.
 
 Usage:
 
@@ -827,7 +832,6 @@ tfx run list --pipeline_name=<var>pipeline-name</var> [--endpoint=<var>endpoint<
     </p>
     <ul>
       <li><strong>airflow</strong>: sets engine to Apache Airflow</li>
-      <li><strong>beam</strong>: sets engine to Apache Beam</li>
       <li><strong>kubeflow</strong>: sets engine to Kubeflow</li>
     </ul>
     <p>
@@ -838,8 +842,8 @@ tfx run list --pipeline_name=<var>pipeline-name</var> [--endpoint=<var>endpoint<
       ** Important note: The orchestrator required by the DagRunner in the
       pipeline config file must match the selected or autodetected engine.
       Engine auto-detection is based on user environment. If Apache Airflow
-      and Kubeflow Pipelines are not installed, then Apache Beam is used by
-      default.
+      and Kubeflow Pipelines are not installed, then the local orchestrator is
+      used by default.
     </p>
   </dd>
   <dt>--iap_client_id=<var>iap-client-id</var></dt>
@@ -874,7 +878,7 @@ tfx run list --engine=kubeflow --pipeline_name=<var>pipeline-name</var> --iap_cl
 
 Returns the current status of a run.
 
-** Important Note: Currently not supported in Apache Beam.
+** Important Note: Currently not supported in Local and Apache Beam.
 
 Usage:
 
@@ -919,7 +923,6 @@ tfx run status --pipeline_name=<var>pipeline-name</var> --run_id=<var>run-id</va
     </p>
     <ul>
       <li><strong>airflow</strong>: sets engine to Apache Airflow</li>
-      <li><strong>beam</strong>: sets engine to Apache Beam</li>
       <li><strong>kubeflow</strong>: sets engine to Kubeflow</li>
     </ul>
     <p>
@@ -930,8 +933,8 @@ tfx run status --pipeline_name=<var>pipeline-name</var> --run_id=<var>run-id</va
       ** Important note: The orchestrator required by the DagRunner in the
       pipeline config file must match the selected or autodetected engine.
       Engine auto-detection is based on user environment. If Apache Airflow
-      and Kubeflow Pipelines are not installed, then Apache Beam is used by
-      default.
+      and Kubeflow Pipelines are not installed, then the local orchestrator is
+      used by default.
     </p>
   </dd>
   <dt>--iap_client_id=<var>iap-client-id</var></dt>
@@ -1008,8 +1011,6 @@ tfx run delete --run_id=<var>run-id</var> [--engine=<var>engine</var> --iap_clie
       engine must match on of the following values:
     </p>
     <ul>
-      <li><strong>airflow</strong>: sets engine to Apache Airflow</li>
-      <li><strong>beam</strong>: sets engine to Apache Beam</li>
       <li><strong>kubeflow</strong>: sets engine to Kubeflow</li>
     </ul>
     <p>
@@ -1020,8 +1021,8 @@ tfx run delete --run_id=<var>run-id</var> [--engine=<var>engine</var> --iap_clie
       ** Important note: The orchestrator required by the DagRunner in the
       pipeline config file must match the selected or autodetected engine.
       Engine auto-detection is based on user environment. If Apache Airflow
-      and Kubeflow Pipelines are not installed, then Apache Beam is used by
-      default.
+      and Kubeflow Pipelines are not installed, then the local orchestrator is
+      used by default.
     </p>
   </dd>
   <dt>--iap_client_id=<var>iap-client-id</var></dt>
@@ -1103,6 +1104,7 @@ tfx template copy --model=<var>model</var> --pipeline_name=<var>pipeline-name</v
       <li><strong>airflow</strong>: sets engine to Apache Airflow</li>
       <li><strong>beam</strong>: sets engine to Apache Beam</li>
       <li><strong>kubeflow</strong>: sets engine to Kubeflow</li>
+      <li><strong>local</strong>: sets engine to local orchestrator</li>
     </ul>
     <p>
       If the engine is not set, the engine is auto-detected based on the
@@ -1112,8 +1114,8 @@ tfx template copy --model=<var>model</var> --pipeline_name=<var>pipeline-name</v
       ** Important note: The orchestrator required by the DagRunner in the
       pipeline config file must match the selected or autodetected engine.
       Engine auto-detection is based on user environment. If Apache Airflow
-      and Kubeflow Pipelines are not installed, then Apache Beam is used by
-      default.
+      and Kubeflow Pipelines are not installed, then the local orchestrator is
+      used by default.
     </p>
   </dd>
 

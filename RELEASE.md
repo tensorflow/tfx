@@ -3,6 +3,9 @@
 ## Major Features and Improvements
 
 ## Breaking Changes
+*  Default orchestration engine of CLI was changed to `local` orchestrator from
+   `beam` orchestrator. You can still use `beam` orchestrator with
+   `--engine=beam` flag.
 
 ### For Pipeline Authors
 
