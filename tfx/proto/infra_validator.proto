@@ -119,6 +119,25 @@ message KubernetesConfig {
   //
   // Should be a positive integer. Default to 24 hours (86400).
   int32 active_deadline_seconds = 2;
+
+  // Optional.
+  // Additional Kubernetes pod specifications to apply to the serving pod
+  ServingPodSpecsOverrides serving_pod_specs_overrides = 3;
+}
+
+message ServingPodSpecsOverrides {
+  // Optional.
+  // Kubernetes annotations to apply to the pod
+  repeated KeyValuePair annotations = 1;
+
+  // Optional.
+  // Kubernetes environment variables to apply to the pod
+  repeated KeyValuePair environment_variables = 2;
+}
+
+message KeyValuePair {
+  string key = 1;
+  string value = 2;
 }
 
 // Specification for validation criteria and thresholds.
