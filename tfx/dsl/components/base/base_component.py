@@ -30,6 +30,7 @@ from tfx.dsl.components.base import base_node
 from tfx.dsl.components.base import executor_spec
 from tfx.types import node_common
 from tfx.utils import abc_utils
+from tfx.utils import doc_controls
 
 from google.protobuf import message
 
@@ -59,15 +60,18 @@ class BaseComponent(with_metaclass(abc.ABCMeta, base_node.BaseNode)):
   # Subclasses must override this property (by specifying a types.ComponentSpec
   # class, e.g. "SPEC_CLASS = MyComponentSpec").
   SPEC_CLASS = abc_utils.abstract_property()
+  doc_controls.do_not_doc_in_subclasses(SPEC_CLASS)
   # Subclasses must also override the executor spec.
   #
   # Note: EXECUTOR_CLASS has been replaced with EXECUTOR_SPEC. A custom
   # component's existing executor class definition "EXECUTOR_CLASS = MyExecutor"
   # should be replaced with "EXECUTOR_SPEC = ExecutorClassSpec(MyExecutor).
   EXECUTOR_SPEC = abc_utils.abstract_property()
+  doc_controls.do_not_doc_in_subclasses(EXECUTOR_SPEC)
   # Subclasses will usually use the default driver class, but may override this
   # property as well.
   DRIVER_CLASS = base_driver.BaseDriver
+  doc_controls.do_not_doc_in_subclasses(DRIVER_CLASS)
 
   def __init__(
       self,
@@ -147,6 +151,7 @@ class BaseComponent(with_metaclass(abc.ABCMeta, base_node.BaseNode)):
 
   # TODO(b/170682320): This function is not widely available until we migrate
   # the entire stack to IR-based.
+  @doc_controls.do_not_doc_in_subclasses
   def with_platform_config(self, config: message.Message) -> 'BaseComponent':
     """Attaches a proto-form platform config to a component.
 
@@ -168,13 +173,16 @@ class BaseComponent(with_metaclass(abc.ABCMeta, base_node.BaseNode)):
                 self.driver_class, self.id, self.inputs, self.outputs)
 
   @property
+  @doc_controls.do_not_doc_in_subclasses
   def inputs(self) -> node_common._PropertyDictWrapper:  # pylint: disable=protected-access
     return self.spec.inputs
 
   @property
   def outputs(self) -> node_common._PropertyDictWrapper:  # pylint: disable=protected-access
+    """Component's output channel dict."""
     return self.spec.outputs
 
   @property
+  @doc_controls.do_not_doc_in_subclasses
   def exec_properties(self) -> Dict[Text, Any]:
     return self.spec.exec_properties

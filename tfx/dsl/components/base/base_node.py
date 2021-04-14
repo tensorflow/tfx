@@ -29,6 +29,7 @@ from tfx.dsl.components.base import base_executor
 from tfx.dsl.components.base import executor_spec as executor_spec_module
 from tfx.types import node_common
 from tfx.utils import deprecation_utils
+from tfx.utils import doc_controls
 from tfx.utils import json_utils
 
 
@@ -43,6 +44,7 @@ class BaseNode(with_metaclass(abc.ABCMeta, json_utils.Jsonable)):
   @classmethod
   @deprecation_utils.deprecated(
       None, '`get_id` is deprecated as `instance_name is deprecated.`')
+  @doc_controls.do_not_doc_in_subclasses
   def get_id(cls, instance_name: Optional[Text] = None):
     """Gets the id of a node.
 
@@ -102,6 +104,7 @@ class BaseNode(with_metaclass(abc.ABCMeta, json_utils.Jsonable)):
     self._downstream_nodes = set()
     self._id = None
 
+  @doc_controls.do_not_doc_in_subclasses
   def to_json_dict(self) -> Dict[Text, Any]:
     """Convert from an object to a JSON serializable dictionary."""
     return dict((k, v)
@@ -109,12 +112,14 @@ class BaseNode(with_metaclass(abc.ABCMeta, json_utils.Jsonable)):
                 if k not in ['_upstream_nodes', '_downstream_nodes'])
 
   @classmethod
+  @doc_controls.do_not_doc_in_subclasses
   def get_class_type(cls) -> Text:
     nondeprecated_class = deprecation_utils.get_first_nondeprecated_class(cls)
     return '.'.join(
         [nondeprecated_class.__module__, nondeprecated_class.__name__])
 
   @property
+  @doc_controls.do_not_doc_in_subclasses
   def type(self) -> Text:
     return self.__class__.get_class_type()
 
@@ -122,10 +127,12 @@ class BaseNode(with_metaclass(abc.ABCMeta, json_utils.Jsonable)):
   @deprecation_utils.deprecated(None,
                                 'component_type is deprecated, use type instead'
                                )
+  @doc_controls.do_not_doc_in_subclasses
   def component_type(self) -> Text:
     return self.type
 
   @property
+  @doc_controls.do_not_doc_in_subclasses
   def id(self) -> Text:
     """Node id, unique across all TFX nodes in a pipeline.
 
@@ -150,13 +157,16 @@ class BaseNode(with_metaclass(abc.ABCMeta, json_utils.Jsonable)):
   @property
   @deprecation_utils.deprecated(None,
                                 'component_id is deprecated, use id instead')
+  @doc_controls.do_not_doc_in_subclasses
   def component_id(self) -> Text:
     return self.id
 
   @id.setter
+  @doc_controls.do_not_doc_in_subclasses
   def id(self, id: Text) -> None:  # pylint: disable=redefined-builtin
     self._id = id
 
+  @doc_controls.do_not_doc_in_subclasses
   def with_id(self, id: Text) -> 'BaseNode':  # pylint: disable=redefined-builtin
     self._id = id
     return self
@@ -177,9 +187,11 @@ class BaseNode(with_metaclass(abc.ABCMeta, json_utils.Jsonable)):
     pass
 
   @property
+  @doc_controls.do_not_doc_in_subclasses
   def upstream_nodes(self):
     return self._upstream_nodes
 
+  @doc_controls.do_not_doc_in_subclasses
   def add_upstream_node(self, upstream_node):
     """Experimental: Add another component that must run before this one.
 
@@ -202,9 +214,11 @@ class BaseNode(with_metaclass(abc.ABCMeta, json_utils.Jsonable)):
       upstream_node.add_downstream_node(self)
 
   @property
+  @doc_controls.do_not_doc_in_subclasses
   def downstream_nodes(self):
     return self._downstream_nodes
 
+  @doc_controls.do_not_doc_in_subclasses
   def add_downstream_node(self, downstream_node):
     """Experimental: Add another component that must run after this one.
 
