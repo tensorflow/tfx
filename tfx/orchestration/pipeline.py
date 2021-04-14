@@ -37,7 +37,7 @@ from google.protobuf import message
 # see https://github.com/argoproj/argo/issues/1324.
 # MySQL's database name cannot exceed 64 chars:
 # https://dev.mysql.com/doc/refman/5.6/en/identifiers.html
-MAX_PIPELINE_NAME_LENGTH = 63
+_MAX_PIPELINE_NAME_LENGTH = 63
 
 # Name of pipeline_root parameter.
 _PIPELINE_ROOT = 'pipeline-root'
@@ -59,8 +59,8 @@ ROOT_PARAMETER = data_types.RuntimeParameter(name=_PIPELINE_ROOT, ptype=Text)
 class ExecutionMode(enum.Enum):
   """Execution mode of a pipeline.
 
-  Please see `this RFC
-  <https://github.com/tensorflow/community/blob/master/rfcs/20200601-tfx-udsl-semantics.md>`
+  Please see this
+  [RFC](https://github.com/tensorflow/community/blob/master/rfcs/20200601-tfx-udsl-semantics.md)
   for more details.
   """
   SYNC = 1
@@ -70,58 +70,59 @@ class ExecutionMode(enum.Enum):
 class Pipeline(object):
   """Logical TFX pipeline object.
 
+  Pipeline object represents the DAG of TFX components, which can be run using
+  one of the pipeline orchestration systems that TFX supports. For details,
+  please refer to the
+  [guide](https://github.com/tensorflow/tfx/blob/master/docs/guide/build_tfx_pipeline.md).
+
   Attributes:
-    pipeline_args: Kwargs used to create real pipeline implementation. This is
-      forwarded to PipelineRunners instead of consumed in this class. This
-      should include:
-      - pipeline_name: Required. The unique name of this pipeline.
-      - pipeline_root: Required. The root of the pipeline outputs.
-    components: Logical components of this pipeline. When read, this is in
-      topologically sorted order.
-    pipeline_info: An instance of data_types.PipelineInfo that contains basic
-      properties of the pipeline.
+    components: A deterministic list of logical components of this pipeline,
+      which are deduped and topologically sorted.
     enable_cache: Whether or not cache is enabled for this run.
     metadata_connection_config: The config to connect to ML metadata.
     execution_mode: Execution mode of the pipeline. Currently only support
       synchronous execution mode.
-    beam_pipeline_args: Pipeline arguments for Beam powered Components.
+    beam_pipeline_args: Pipeline arguments for Beam powered Components. Note
+      that this will be deprecated by component level Beam args.
     platform_config: Pipeline level platform config, in proto form.
-    additional_pipeline_args: Other pipeline args.
   """
 
-  def __init__(self,
-               pipeline_name: Text,
-               pipeline_root: Text,
-               metadata_connection_config: Optional[
-                   metadata.ConnectionConfigType] = None,
-               components: Optional[List[base_node.BaseNode]] = None,
-               enable_cache: Optional[bool] = False,
-               beam_pipeline_args: Optional[List[Text]] = None,
-               platform_config: Optional[message.Message] = None,
-               execution_mode: Optional[ExecutionMode] = ExecutionMode.SYNC,
-               **kwargs):
+  def __init__(
+      self,
+      pipeline_name: Text,
+      pipeline_root: Text,
+      metadata_connection_config: Optional[
+          metadata.ConnectionConfigType] = None,
+      components: Optional[List[base_node.BaseNode]] = None,
+      enable_cache: Optional[bool] = False,
+      # TODO(b/173621791): deprecate pipeline level beam args.
+      beam_pipeline_args: Optional[List[Text]] = None,
+      platform_config: Optional[message.Message] = None,
+      execution_mode: Optional[ExecutionMode] = ExecutionMode.SYNC,
+      **kwargs):
     """Initialize pipeline.
 
     Args:
       pipeline_name: Name of the pipeline;
       pipeline_root: Path to root directory of the pipeline;
       metadata_connection_config: The config to connect to ML metadata.
-      components: A list of components in the pipeline (optional only for
-        backward compatible purpose to be used with deprecated
-        PipelineDecorator).
+      components: Optional list of components to construct the pipeline.
       enable_cache: Whether or not cache is enabled for this run.
       beam_pipeline_args: Pipeline arguments for Beam powered Components.
       platform_config: Pipeline level platform config, in proto form.
       execution_mode: The execution mode of the pipeline, can be SYNC or ASYNC.
       **kwargs: Additional kwargs forwarded as pipeline args.
     """
-    if len(pipeline_name) > MAX_PIPELINE_NAME_LENGTH:
-      raise ValueError('pipeline name %s exceeds maximum allowed lenght' %
-                       pipeline_name)
+    if len(pipeline_name) > _MAX_PIPELINE_NAME_LENGTH:
+      raise ValueError(
+          f'pipeline {pipeline_name} exceeds maximum allowed length: {_MAX_PIPELINE_NAME_LENGTH}.'
+      )
     pipeline_args = dict(kwargs)
 
-    self.pipeline_info = data_types.PipelineInfo(
-        pipeline_name=pipeline_name, pipeline_root=pipeline_root)
+    # TODO(b/183621450): deprecate PipelineInfo.
+    self.pipeline_info = data_types.PipelineInfo(  # pylint: disable=g-missing-from-attributes
+        pipeline_name=pipeline_name,
+        pipeline_root=pipeline_root)
     self.enable_cache = enable_cache
     self.metadata_connection_config = metadata_connection_config
     self.execution_mode = execution_mode
@@ -130,7 +131,7 @@ class Pipeline(object):
 
     self.platform_config = platform_config
 
-    self.additional_pipeline_args = pipeline_args.get(
+    self.additional_pipeline_args = pipeline_args.get(  # pylint: disable=g-missing-from-attributes
         'additional_pipeline_args', {})
 
     # Store pipeline_args in a json file only when temp file exists.

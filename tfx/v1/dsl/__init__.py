@@ -12,3 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """TFX dsl module."""
+
+# TODO(b/184980265): move Pipeline implementation to tfx/dsl.
+from tfx.orchestration.pipeline import ExecutionMode
+from tfx.orchestration.pipeline import Pipeline
