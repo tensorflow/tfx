@@ -13,14 +13,11 @@
 # limitations under the License.
 """Tests for tfx.utils.request_builder."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import os
-from typing import Any, Dict, Text
+from typing import Any, Dict
+import unittest
+from unittest import mock
 
-import mock
 import tensorflow as tf
 from tfx.components.infra_validator import request_builder
 from tfx.proto import infra_validator_pb2
@@ -44,19 +41,19 @@ _ESTIMATOR_MODEL_URI = os.path.join(_TEST_DATA_ROOT, 'trainer', 'current')
 _KERAS_MODEL_URI = os.path.join(_TEST_DATA_ROOT, 'trainer', 'keras')
 
 
-def _make_saved_model(payload: Dict[Text, Any]):
+def _make_saved_model(payload: Dict[str, Any]):
   result = saved_model_pb2.SavedModel()
   json_format.ParseDict(payload, result)
   return result
 
 
-def _make_signature_def(payload: Dict[Text, Any]):
+def _make_signature_def(payload: Dict[str, Any]):
   result = meta_graph_pb2.SignatureDef()
   json_format.ParseDict(payload, result)
   return result
 
 
-def _make_request_spec(payload: Dict[Text, Any]):
+def _make_request_spec(payload: Dict[str, Any]):
   result = infra_validator_pb2.RequestSpec()
   json_format.ParseDict(payload, result)
   return result
@@ -333,6 +330,9 @@ class TFServingRpcRequestBuilderTest(tf.test.TestCase):
     self.assertEqual(result[0].inputs[input_key].dtype,
                      tf.dtypes.string.as_datatype_enum)
 
+  @unittest.skipIf(
+      tf.__version__ < '2',
+      'The test uses testdata only compatible with TF2.')
   def testBuildRequests_KerasModel(self):
     builder = request_builder._TFServingRpcRequestBuilder(
         model_name='foo',
