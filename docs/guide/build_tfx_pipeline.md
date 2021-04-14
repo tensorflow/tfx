@@ -1,7 +1,7 @@
 # Building TFX pipelines
 
 Note: For a conceptual view of TFX Pipelines, see
-[Understanding TFX Pipelines](understanding_tfx_pipelines).
+[Understanding TFX Pipelines](https://www.tensorflow.org/tfx/guide/build_tfx_pipeline).
 
 Note: Want to build your first pipeline before you dive into the details? Get
 started
