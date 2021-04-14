@@ -29,12 +29,17 @@ from tfx.orchestration import data_types
 from tfx.orchestration.portable import data_types as portable_data_types
 from tfx.proto import example_gen_pb2
 from tfx.proto import range_config_pb2
+from tfx.types.artifact import Artifact
 from tfx.types import artifact_utils
 from tfx.types import channel_utils
 from tfx.types import standard_artifacts
 from tfx.types import standard_component_specs
 from tfx.utils import io_utils
 from tfx.utils import proto_utils
+
+
+class _OutputArtifact(Artifact):
+  TYPE_NAME = 'OutputArtifact'
 
 
 class DriverTest(tf.test.TestCase):
@@ -184,6 +189,31 @@ class DriverTest(tf.test.TestCase):
           name: "s2"
           pattern: "span01/version01/split2/*"
         }""", updated_input_config)
+
+
+  def testUpdateArtifactsMinimumExecProperties(self):
+    # Test updating the output artifact with the minimum set of input exec properties
+    artifact = _OutputArtifact()._artifact
+    exec_properties = {
+        utils.SPAN_PROPERTY_NAME: 2,
+        utils.VERSION_PROPERTY_NAME: None,
+        utils.FINGERPRINT_PROPERTY_NAME: None
+    }
+    driver.update_output_artifact(exec_properties, artifact)
+    self.assertEqual(artifact.custom_properties[utils.SPAN_PROPERTY_NAME].string_value, '2')
+
+  def testUpdateArtifactsAllExecProperties(self):
+    # Test updating the output artifact with as many input exec properties as possible
+    artifact = _OutputArtifact()._artifact
+    exec_properties = {
+        utils.SPAN_PROPERTY_NAME: 2,
+        utils.VERSION_PROPERTY_NAME: 1,
+        utils.FINGERPRINT_PROPERTY_NAME: 'fp'
+    }
+    driver.update_output_artifact(exec_properties, artifact)
+    self.assertEqual(artifact.custom_properties[utils.SPAN_PROPERTY_NAME].string_value, '2')
+    self.assertEqual(artifact.custom_properties[utils.VERSION_PROPERTY_NAME].string_value, '1')
+    self.assertEqual(artifact.custom_properties[utils.FINGERPRINT_PROPERTY_NAME].string_value, 'fp')
 
   def testPrepareOutputArtifacts(self):
     examples = standard_artifacts.Examples()
