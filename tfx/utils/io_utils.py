@@ -112,7 +112,7 @@ def write_pbtxt_file(file_name: Text, proto: Message) -> None:
   write_string_file(file_name, text_format.MessageToString(proto))
 
 
-def write_tfrecord_file(file_name: Text, proto: Message) -> None:
+def write_tfrecord_file(file_name: Text, *proto: Message) -> None:
   """Writes a serialized tfrecord to file."""
   try:
     import tensorflow as tf  # pylint: disable=g-import-not-at-top
@@ -121,7 +121,8 @@ def write_tfrecord_file(file_name: Text, proto: Message) -> None:
         'TensorFlow must be installed to use this functionality.') from e
   fileio.makedirs(os.path.dirname(file_name))
   with tf.io.TFRecordWriter(file_name) as writer:
-    writer.write(proto.SerializeToString())
+    for message in proto:
+      writer.write(message.SerializeToString())
 
 
 # Type for a subclass of message.Message which will be used as a return type.

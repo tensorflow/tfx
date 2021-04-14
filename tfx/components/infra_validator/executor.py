@@ -13,17 +13,13 @@
 # limitations under the License.
 """TFX InfraValidator executor definition."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import contextlib
 import functools
 import os
 import signal
 import threading
 import time
-from typing import Any, Dict, List, Optional, Text
+from typing import Any, Dict, List, Optional
 
 from absl import logging
 from tfx import types
@@ -47,6 +43,11 @@ from tfx.utils import path_utils
 from tfx.utils import proto_utils
 from tfx.utils.model_paths import tf_serving_flavor
 
+from tensorflow_serving.apis import classification_pb2
+from tensorflow_serving.apis import predict_pb2
+from tensorflow_serving.apis import prediction_log_pb2
+from tensorflow_serving.apis import regression_pb2
+
 
 _DEFAULT_NUM_TRIES = 5
 _DEFAULT_POLLING_INTERVAL_SEC = 1
@@ -60,6 +61,7 @@ _KUBERNETES = 'kubernetes'
 
 # Artifact property keys
 _BLESSED_KEY = 'blessed'
+_MODEL_FLAG_KEY = 'has_model'
 # Filename of infra blessing artifact on succeed.
 _BLESSED_FILENAME = 'INFRA_BLESSED'
 # Filename of infra blessing artifact on fail.
@@ -67,7 +69,7 @@ _NOT_BLESSED_FILENAME = 'INFRA_NOT_BLESSED'
 
 
 def _create_model_server_runner(
-    model_path: Text,
+    model_path: str,
     serving_binary: serving_bins.ServingBinary,
     serving_spec: infra_validator_pb2.ServingSpec):
   """Create a ModelServerRunner from a model, a ServingBinary and a ServingSpec.
@@ -96,6 +98,22 @@ def _create_model_server_runner(
     )
   else:
     raise NotImplementedError('Invalid serving_platform {}'.format(platform))
+
+
+def _convert_to_prediction_log(request: iv_types.Request):
+  """Try convert infra validation request to TF-Serving PredictionLog."""
+  if isinstance(request, classification_pb2.ClassificationRequest):
+    return prediction_log_pb2.PredictionLog(
+        classify_log=prediction_log_pb2.ClassifyLog(request=request))
+  elif isinstance(request, regression_pb2.RegressionRequest):
+    return prediction_log_pb2.PredictionLog(
+        regress_log=prediction_log_pb2.RegressLog(request=request))
+  elif isinstance(request, predict_pb2.PredictRequest):
+    return prediction_log_pb2.PredictionLog(
+        predict_log=prediction_log_pb2.PredictLog(request=request))
+  else:
+    raise NotImplementedError(
+        f'Cannot convert {type(request)} to PredictionLog')
 
 
 def _mark_blessed(blessing: types.Artifact) -> None:
@@ -130,9 +148,9 @@ class Executor(base_executor.BaseExecutor):
       except:  # pylint: disable=broad-except, bare-except
         logging.warning('Error occurred during cleanup.', exc_info=True)
 
-  def Do(self, input_dict: Dict[Text, List[types.Artifact]],
-         output_dict: Dict[Text, List[types.Artifact]],
-         exec_properties: Dict[Text, Any]) -> None:
+  def Do(self, input_dict: Dict[str, List[types.Artifact]],
+         output_dict: Dict[str, List[types.Artifact]],
+         exec_properties: Dict[str, Any]) -> None:
     """Contract for running InfraValidator Executor.
 
     Args:
@@ -141,8 +159,9 @@ class Executor(base_executor.BaseExecutor):
         - `examples`: `Examples` artifacts to be used for test requests.
       output_dict:
         - `blessing`: Single `InfraBlessing` artifact containing the validated
-          result. It is an empty file with the name either of INFRA_BLESSED or
-          INFRA_NOT_BLESSED.
+          result and optinally validated model if warmup requests are appended.
+          Artifact URI includes an empty file with the name either of
+          INFRA_BLESSED or INFRA_NOT_BLESSED.
       exec_properties:
         - `serving_spec`: Serialized `ServingSpec` configuration.
         - `validation_spec`: Serialized `ValidationSpec` configuration.
@@ -271,11 +290,22 @@ class Executor(base_executor.BaseExecutor):
 
     if all_passed:
       _mark_blessed(blessing)
+      if requests and request_spec.make_warmup:
+        self._CreateWarmupModel(blessing, model_path, warmup_requests=requests)
     else:
       _mark_not_blessed(blessing)
 
+  def _CreateWarmupModel(self, blessing: types.Artifact, model_path: str,
+                         warmup_requests: List[iv_types.Request]):
+    output_model_path = path_utils.stamped_model_path(blessing.uri)
+    io_utils.copy_dir(src=model_path, dst=output_model_path)
+    io_utils.write_tfrecord_file(
+        path_utils.warmup_file_path(output_model_path),
+        *[_convert_to_prediction_log(r) for r in warmup_requests])
+    blessing.set_int_custom_property(_MODEL_FLAG_KEY, 1)
+
   def _PrepareModelPath(self, model: types.Artifact,
-                        serving_spec: infra_validator_pb2.ServingSpec) -> Text:
+                        serving_spec: infra_validator_pb2.ServingSpec) -> str:
     model_path = path_utils.serving_model_path(
         model.uri, path_utils.is_old_model_artifact(model))
     serving_binary = serving_spec.WhichOneof('serving_binary')
@@ -303,7 +333,7 @@ class Executor(base_executor.BaseExecutor):
     return model_path
 
   def _ValidateWithRetry(
-      self, model_path: Text,
+      self, model_path: str,
       serving_binary: serving_bins.ServingBinary,
       serving_spec: infra_validator_pb2.ServingSpec,
       validation_spec: infra_validator_pb2.ValidationSpec,
@@ -339,7 +369,7 @@ class Executor(base_executor.BaseExecutor):
     return False
 
   def _ValidateOnce(
-      self, model_path: Text,
+      self, model_path: str,
       serving_binary: serving_bins.ServingBinary,
       serving_spec: infra_validator_pb2.ServingSpec,
       validation_spec: infra_validator_pb2.ValidationSpec,
