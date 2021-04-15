@@ -19,9 +19,12 @@
 ## Deprecations
 
 ## Bug Fixes and Other Changes
-*   Factored out tensorflow-ranking example dependencies into a dedicated extra
-    `[tf-ranking]`. Because TensorFlow Ranking requires TF 2 or later, we cound
-    not install `[examples]` with TF1.
+*  New extra dependencies for convenience.
+   - tfx[airflow] installs all Apache Airflow orchestrator dependencies.
+   - tfx[kfp] installs all Kubeflow Pipelines orchestrator dependencies.
+   - tfx[tf-ranking] installs packages for TensorFlow Ranking.
+     NOTE: TensorFlow Ranking only compatible with TF >= 2.0.
+*  Depends on `google-cloud-aiplatform>=0.5.0,<0.8`.
 
 ## Documentation Updates
 
@@ -91,7 +94,6 @@
 *   Depends on `tensorflow-model-analysis>=0.29.0,<0.30.0`.
 *   Depends on `tensorflow-transform>=0.29.0,<0.30.0`.
 *   Depends on `tfx-bsl>=0.29.0,<0.30.0`.
-*   Depends on `google-cloud-aiplatform>=0.5.0,<0.6`.
 
 ## Documentation Updates
 
