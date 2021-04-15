@@ -1,16 +1,25 @@
 # proto-file: tfx/orchestration/kubeflow/v2/proto/pipeline.proto
-# proto-message: PipelineDeploymentConfig
+# proto-message: ComponentSpec
 
-executors {
-  key: "Importer.my_importer_executor"
-  value {
-    importer {
-      artifact_uri {
-        constant_value {
-          string_value: "m/y/u/r/i"
-        }
-      }
-      type_schema {
+input_definitions {
+  parameters {
+    key: "artifact_uri"
+    value {
+      type: STRING
+    }
+  }
+  parameters {
+    key: "reimport"
+    value {
+      type: INT
+    }
+  }
+}
+output_definitions {
+  artifacts {
+    key: "result"
+    value {
+      artifact_type {
         instance_schema: "title: tfx.Examples\ntype: object\nproperties:\n  span:\n    type: integer\n    description: Span for an artifact.\n  version:\n    type: integer\n    description: Version for an artifact.\n  split_names:\n    type: string\n    description: JSON-encoded list of splits for an artifact. Empty string means artifact has no split.\n"
       }
       metadata {
@@ -36,3 +45,4 @@ executors {
     }
   }
 }
+executor_label: "Importer.my_importer_executor"

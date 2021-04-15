@@ -5,13 +5,9 @@
         {
           "name":"projects/123456789/locations/us-central1/metadataStores/default/artifacts/3",
           "uri":"gs://root/output/",
-          "customProperties":{
-            "my_property":{
-              "stringValue":"my_value"
-            },
-            "tfx_version": {
-              "stringValue":"0.123.4.dev"
-            }
+          "metadata":{
+            "my_property": "my_value",
+            "tfx_version": "0.123.4.dev"
           }
         }
       ]
@@ -21,17 +17,11 @@
         {
           "name":"projects/123456789/locations/us-central1/metadataStores/default/artifacts/4",
           "uri": "gs://root/blessing/",
-          "customProperties": {
-            "blessed": { "intValue": "1" },
-            "current_model_id": {
-              "stringValue": "projects/123456789/locations/us-central1/metadataStores/default/artifacts/2"
-            },
-            "baseline_model_id": {
-              "stringValue": "projects/123456789/locations/us-central1/metadataStores/default/artifacts/1"
-            },
-            "tfx_version": {
-              "stringValue":"0.123.4.dev"
-            }
+          "metadata": {
+            "blessed": 1.0,
+            "current_model_id": "projects/123456789/locations/us-central1/metadataStores/default/artifacts/2",
+            "baseline_model_id": "projects/123456789/locations/us-central1/metadataStores/default/artifacts/1",
+            "tfx_version": "0.123.4.dev"
           }
         }
       ]

@@ -1,0 +1,31 @@
+# proto-file: tfx/orchestration/kubeflow/v2/proto/pipeline.proto
+# proto-message: PipelineTaskSpec
+
+task_info {
+  name: "Resolver.my_resolver"
+}
+inputs {
+  parameters {
+    key: "resolver_class"
+    value {
+      runtime_value {
+        constant_value {
+          string_value: "{\"__class__\": \"LatestArtifactsResolver\", \"__module__\": \"tfx.dsl.experimental.latest_artifacts_resolver\", \"__tfx_object_type__\": \"class\"}"
+        }
+      }
+    }
+  }
+  parameters {
+    key: "source_uri"
+    value {
+      runtime_value {
+        constant_value {
+          string_value: "{}"
+        }
+      }
+    }
+  }
+}
+component_ref {
+  name: "Resolver.my_resolver"
+}

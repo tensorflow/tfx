@@ -2,77 +2,9 @@
 # artifact types.
 # proto-file: tfx/orchestration/kubeflow/v2/proto/pipeline.proto
 # proto-message: PipelineSpec
+
 pipeline_info {
   name: "two-step-kubeflow-artifacts-pipeline"
-}
-tasks {
-  task_info {
-    name: "ProducerComponent"
-  }
-  outputs {
-    artifacts {
-      key: "examples"
-      value {
-        artifact_type {
-          instance_schema: "title: tfx.Dataset\ntype: object\nproperties:\n"
-        }
-      }
-    }
-    artifacts {
-      key: "external_data"
-      value {
-        artifact_type {
-          instance_schema: "title: tfx.File\ntype: object\nproperties:\n"
-        }
-      }
-    }
-  }
-  executor_label: "ProducerComponent_executor"
-  caching_options {
-  }
-}
-tasks {
-  task_info {
-    name: "ConsumerComponent"
-  }
-  inputs {
-    artifacts {
-      key: "examples"
-      value {
-        producer_task: "ProducerComponent"
-        output_artifact_key: "examples"
-      }
-    }
-    artifacts {
-      key: "external_data"
-      value {
-        producer_task: "ProducerComponent"
-        output_artifact_key: "external_data"
-      }
-    }
-  }
-  outputs {
-    artifacts {
-      key: "metrics"
-      value {
-        artifact_type {
-          instance_schema: "title: tfx.Metrics\ntype: object\nproperties:\n"
-        }
-      }
-    }
-    artifacts {
-      key: "stats"
-      value {
-        artifact_type {
-          instance_schema: "title: tfx.Statistics\ntype: object\nproperties:\n"
-        }
-      }
-    }
-  }
-  executor_label: "ConsumerComponent_executor"
-  dependent_tasks: "ProducerComponent"
-  caching_options {
-  }
 }
 deployment_spec {
   fields {
@@ -162,6 +94,119 @@ deployment_spec {
               }
             }
           }
+        }
+      }
+    }
+  }
+}
+components {
+  key: "ConsumerComponent"
+  value {
+    input_definitions {
+      artifacts {
+        key: "examples"
+        value {
+          artifact_type {
+            instance_schema: "title: tfx.Dataset\ntype: object\n"
+          }
+        }
+      }
+      artifacts {
+        key: "external_data"
+        value {
+          artifact_type {
+            instance_schema: "title: tfx.File\ntype: object\n"
+          }
+        }
+      }
+    }
+    output_definitions {
+      artifacts {
+        key: "metrics"
+        value {
+          artifact_type {
+            instance_schema: "title: tfx.Metrics\ntype: object\n"
+          }
+        }
+      }
+      artifacts {
+        key: "stats"
+        value {
+          artifact_type {
+            instance_schema: "title: tfx.Statistics\ntype: object\n"
+          }
+        }
+      }
+    }
+    executor_label: "ConsumerComponent_executor"
+  }
+}
+components {
+  key: "ProducerComponent"
+  value {
+    output_definitions {
+      artifacts {
+        key: "examples"
+        value {
+          artifact_type {
+            instance_schema: "title: tfx.Dataset\ntype: object\n"
+          }
+        }
+      }
+      artifacts {
+        key: "external_data"
+        value {
+          artifact_type {
+            instance_schema: "title: tfx.File\ntype: object\n"
+          }
+        }
+      }
+    }
+    executor_label: "ProducerComponent_executor"
+  }
+}
+root {
+  dag {
+    tasks {
+      key: "ConsumerComponent"
+      value {
+        task_info {
+          name: "ConsumerComponent"
+        }
+        inputs {
+          artifacts {
+            key: "examples"
+            value {
+              task_output_artifact {
+                producer_task: "ProducerComponent"
+                output_artifact_key: "examples"
+              }
+            }
+          }
+          artifacts {
+            key: "external_data"
+            value {
+              task_output_artifact {
+                producer_task: "ProducerComponent"
+                output_artifact_key: "external_data"
+              }
+            }
+          }
+        }
+        dependent_tasks: "ProducerComponent"
+        component_ref {
+          name: "ConsumerComponent"
+        }
+      }
+    }
+    tasks {
+      key: "ProducerComponent"
+      value {
+        task_info {
+          name: "ProducerComponent"
+        }
+        component_ref {
+          name: "ProducerComponent"
         }
       }
     }

@@ -14,26 +14,30 @@
 """Tests for tfx.orchestration.kubeflow.v2.compiler_utils."""
 
 import os
-import tensorflow as tf
 
+import tensorflow as tf
 from tfx.dsl.io import fileio
+from tfx.orchestration import data_types
 from tfx.orchestration.kubeflow.v2 import compiler_utils
+from tfx.orchestration.kubeflow.v2.proto import pipeline_pb2
 from tfx.types import artifact
+from tfx.types import channel
 from tfx.types import channel_utils
 from tfx.types import standard_artifacts
 from tfx.types.experimental import simple_artifacts
 import yaml
 
+from google.protobuf import struct_pb2
+from google.protobuf import text_format
+
 _EXPECTED_MY_ARTIFACT_SCHEMA = """
 title: __main__._MyArtifact
 type: object
-properties:
 """
 
 _EXPECTED_MY_BAD_ARTIFACT_SCHEMA = """
 title: __main__._MyBadArtifact
 type: object
-properties:
 """
 
 _MY_BAD_ARTIFACT_SCHEMA_WITH_PROPERTIES = """
@@ -103,6 +107,115 @@ class CompilerUtilsTest(tf.test.TestCase):
     with self.assertRaisesRegexp(TypeError, 'Property type mismatched at'):
       compiler_utils._validate_properties_schema(
           _MY_BAD_ARTIFACT_SCHEMA_WITH_PROPERTIES, _MyBadArtifact.PROPERTIES)
+
+  def testBuildParameterTypeSpec(self):
+    type_enum = pipeline_pb2.PrimitiveType.PrimitiveTypeEnum
+    testdata = {
+        42: type_enum.INT,
+        42.1: type_enum.DOUBLE,
+        '42': type_enum.STRING,
+        data_types.RuntimeParameter(name='_', ptype=int): type_enum.INT,
+        data_types.RuntimeParameter(name='_', ptype=float): type_enum.DOUBLE,
+        data_types.RuntimeParameter(name='_', ptype=str): type_enum.STRING,
+    }
+    for value, expected_type_enum in testdata.items():
+      self.assertEqual(
+          compiler_utils.build_parameter_type_spec(value).type,
+          expected_type_enum)
+
+  def testBuildInputArtifactSpec(self):
+    spec = compiler_utils.build_input_artifact_spec(
+        channel.Channel(type=standard_artifacts.Model))
+    expected_spec = text_format.Parse(
+        r'artifact_type { instance_schema: "title: tfx.Model\ntype: object\n" }',
+        pipeline_pb2.ComponentInputsSpec.ArtifactSpec())
+    self.assertProtoEquals(spec, expected_spec)
+
+    # Test artifact type with properties
+    spec = compiler_utils.build_input_artifact_spec(
+        channel.Channel(type=standard_artifacts.Examples))
+    expected_spec = text_format.Parse(
+        """
+        artifact_type {
+          instance_schema: "title: tfx.Examples\\ntype: object\\nproperties:\\n  span:\\n    type: integer\\n    description: Span for an artifact.\\n  version:\\n    type: integer\\n    description: Version for an artifact.\\n  split_names:\\n    type: string\\n    description: JSON-encoded list of splits for an artifact. Empty string means artifact has no split.\\n"
+        }
+        """, pipeline_pb2.ComponentInputsSpec.ArtifactSpec())
+    self.assertProtoEquals(spec, expected_spec)
+
+  def testBuildOutputArtifactSpec(self):
+    examples = standard_artifacts.Examples()
+    examples.span = 1
+    examples.set_int_custom_property(key='int_param', value=42)
+    examples.set_string_custom_property(key='str_param', value='42')
+    example_channel = channel.Channel(
+        type=standard_artifacts.Examples, artifacts=[examples])
+    spec = compiler_utils.build_output_artifact_spec(example_channel)
+    expected_spec = text_format.Parse(
+        """
+        artifact_type {
+          instance_schema: "title: tfx.Examples\\ntype: object\\nproperties:\\n  span:\\n    type: integer\\n    description: Span for an artifact.\\n  version:\\n    type: integer\\n    description: Version for an artifact.\\n  split_names:\\n    type: string\\n    description: JSON-encoded list of splits for an artifact. Empty string means artifact has no split.\\n"
+        }
+        metadata {
+          fields {
+            key: "int_param"
+            value {
+              number_value: 42.0
+            }
+          }
+          fields {
+            key: "span"
+            value {
+              number_value: 1.0
+            }
+          }
+          fields {
+            key: "str_param"
+            value {
+              string_value: "42"
+            }
+          }
+        }
+        """, pipeline_pb2.ComponentOutputsSpec.ArtifactSpec())
+    self.assertProtoEquals(spec, expected_spec)
+
+    # Empty output channel with only type info.
+    model_channel = channel.Channel(type=standard_artifacts.Model)
+    spec = compiler_utils.build_output_artifact_spec(model_channel)
+    expected_spec = text_format.Parse(
+        """
+        artifact_type {
+          instance_schema: "title: tfx.Model\\ntype: object\\n"
+        }
+        """, pipeline_pb2.ComponentOutputsSpec.ArtifactSpec())
+    self.assertProtoEquals(spec, expected_spec)
+
+  def testGetMLMDValue(self):
+    struct_val_int = struct_pb2.Value(number_value=42)
+    struct_val_float = struct_pb2.Value(number_value=42.0)
+    struct_val_str = struct_pb2.Value(string_value='42')
+
+    # With type info.
+    mlmd_val_int = compiler_utils.get_mlmd_value(
+        struct_val_int, value_type=artifact.PropertyType.INT)
+    self.assertEqual(mlmd_val_int.int_value, 42)
+
+    mlmd_val_float = compiler_utils.get_mlmd_value(
+        struct_val_float, value_type=artifact.PropertyType.FLOAT)
+    self.assertEqual(mlmd_val_float.double_value, 42.0)
+
+    mlmd_val_str = compiler_utils.get_mlmd_value(
+        struct_val_str, value_type=artifact.PropertyType.STRING)
+    self.assertEqual(mlmd_val_str.string_value, '42')
+
+    # Without type info, int maps to double.
+    mlmd_val_int = compiler_utils.get_mlmd_value(struct_val_int)
+    self.assertEqual(mlmd_val_int.double_value, 42.0)
+
+    mlmd_val_float = compiler_utils.get_mlmd_value(struct_val_float)
+    self.assertEqual(mlmd_val_float.double_value, 42.0)
+
+    mlmd_val_str = compiler_utils.get_mlmd_value(struct_val_str)
+    self.assertEqual(mlmd_val_str.string_value, '42')
 
 
 if __name__ == '__main__':

@@ -2,6 +2,8 @@
 
 ## Major Features and Improvements
 
+* Upgraded TFX to KFP compiler to use KFP IR schema version 2.0.0.
+
 ## Breaking Changes
 *  Default orchestration engine of CLI was changed to `local` orchestrator from
    `beam` orchestrator. You can still use `beam` orchestrator with

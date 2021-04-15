@@ -81,7 +81,7 @@ class KubeflowV2EntrypointUtilsTest(tf.test.TestCase):
     # Hash value of
     # 'projects/123456789/locations/us-central1/metadataStores/default/artifacts/22222'
     _ARTIFACT_2.id = 6826273797600318744
-    _ARTIFACT_2.set_int_custom_property(key='my_property_2', value=42)
+    _ARTIFACT_2.set_float_custom_property(key='my_property_2', value=42.0)
     _ARTIFACT_3.uri = 'gs://root/examples/'
     # Hash value of
     # 'projects/123456789/locations/us-central1/metadataStores/default/artifacts/33333'
