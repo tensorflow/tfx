@@ -156,6 +156,7 @@ message PodSecretToEnvironmentMapping {
 
   // Name of the secret in k8s
   string secret_name = 1;
+
   // A dict that contains a mapping from secret keys to environment variables
   map<string, string> k8s_secret_key_to_environment_variable = 2;
 }
