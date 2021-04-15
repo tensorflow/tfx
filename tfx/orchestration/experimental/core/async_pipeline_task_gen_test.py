@@ -78,9 +78,6 @@ class AsyncPipelineTaskGeneratorTest(tu.TfxTest, parameterized.TestCase):
     self._mock_service_job_manager.is_pure_service_node.side_effect = (
         _is_pure_service_node)
 
-  def _verify_exec_node_task(self, node, execution_id, task):
-    otu.verify_exec_node_task(self, self._pipeline, node, execution_id, task)
-
   def _finish_node_execution(self, use_task_queue, exec_node_task):
     """Simulates successful execution of a node."""
     otu.fake_execute_node(self._mlmd_connection, exec_node_task)
@@ -95,6 +92,7 @@ class AsyncPipelineTaskGeneratorTest(tu.TfxTest, parameterized.TestCase):
                          num_tasks_generated,
                          num_new_executions,
                          num_active_executions,
+                         expected_exec_nodes=None,
                          ignore_node_ids=None):
     """Generates tasks and tests the effects."""
     return otu.run_generator_and_test(
@@ -109,6 +107,7 @@ class AsyncPipelineTaskGeneratorTest(tu.TfxTest, parameterized.TestCase):
         num_tasks_generated=num_tasks_generated,
         num_new_executions=num_new_executions,
         num_active_executions=num_active_executions,
+        expected_exec_nodes=expected_exec_nodes,
         ignore_node_ids=ignore_node_ids)
 
   @parameterized.parameters(0, 1)
@@ -154,41 +153,38 @@ class AsyncPipelineTaskGeneratorTest(tu.TfxTest, parameterized.TestCase):
         _ensure_node_services)
 
     # Generate once.
-    [transform_task], active_executions = self._generate_and_test(
+    [transform_task] = self._generate_and_test(
         use_task_queue,
         num_initial_executions=1,
         num_tasks_generated=1,
         num_new_executions=1,
-        num_active_executions=1)
-    self._verify_exec_node_task(self._transform, active_executions[0].id,
-                                transform_task)
+        num_active_executions=1,
+        expected_exec_nodes=[self._transform])
 
     self._mock_service_job_manager.ensure_node_services.assert_called()
 
     # No new effects if generate called again.
-    tasks, active_executions = self._generate_and_test(
+    tasks = self._generate_and_test(
         use_task_queue,
         num_initial_executions=2,
         num_tasks_generated=0 if use_task_queue else 1,
         num_new_executions=0,
-        num_active_executions=1)
-    execution_id = active_executions[0].id
+        num_active_executions=1,
+        expected_exec_nodes=[] if use_task_queue else [self._transform])
     if not use_task_queue:
       transform_task = tasks[0]
-      self._verify_exec_node_task(self._transform, execution_id, transform_task)
 
     # Mark transform execution complete.
     self._finish_node_execution(use_task_queue, transform_task)
 
     # Trainer execution task should be generated next.
-    [trainer_task], active_executions = self._generate_and_test(
+    [trainer_task] = self._generate_and_test(
         use_task_queue,
         num_initial_executions=2,
         num_tasks_generated=1,
         num_new_executions=1,
-        num_active_executions=1)
-    execution_id = active_executions[0].id
-    self._verify_exec_node_task(self._trainer, execution_id, trainer_task)
+        num_active_executions=1,
+        expected_exec_nodes=[self._trainer])
 
     # Mark the trainer execution complete.
     self._finish_node_execution(use_task_queue, trainer_task)
@@ -206,31 +202,26 @@ class AsyncPipelineTaskGeneratorTest(tu.TfxTest, parameterized.TestCase):
 
     # Both transform and trainer tasks should be generated as they both find
     # new inputs.
-    [transform_task, trainer_task], active_executions = self._generate_and_test(
+    [transform_task, trainer_task] = self._generate_and_test(
         use_task_queue,
         num_initial_executions=4,
         num_tasks_generated=2,
         num_new_executions=2,
-        num_active_executions=2)
-    self._verify_exec_node_task(self._transform, active_executions[0].id,
-                                transform_task)
-    self._verify_exec_node_task(self._trainer, active_executions[1].id,
-                                trainer_task)
+        num_active_executions=2,
+        expected_exec_nodes=[self._transform, self._trainer])
 
-    # Re-generation will produce the same tasks when task queue enabled.
-    tasks, active_executions = self._generate_and_test(
+    # Re-generation will produce the same tasks when task queue disabled.
+    tasks = self._generate_and_test(
         use_task_queue,
         num_initial_executions=6,
         num_tasks_generated=0 if use_task_queue else 2,
         num_new_executions=0,
-        num_active_executions=2)
+        num_active_executions=2,
+        expected_exec_nodes=[]
+        if use_task_queue else [self._transform, self._trainer])
     if not use_task_queue:
       transform_task = tasks[0]
       trainer_task = tasks[1]
-      self._verify_exec_node_task(self._transform, active_executions[0].id,
-                                  transform_task)
-      self._verify_exec_node_task(self._trainer, active_executions[1].id,
-                                  trainer_task)
 
     # Mark transform execution complete.
     self._finish_node_execution(use_task_queue, transform_task)
@@ -239,14 +230,13 @@ class AsyncPipelineTaskGeneratorTest(tu.TfxTest, parameterized.TestCase):
     self._finish_node_execution(use_task_queue, trainer_task)
 
     # Trainer should be triggered again due to transform producing new output.
-    [trainer_task], active_executions = self._generate_and_test(
+    [trainer_task] = self._generate_and_test(
         use_task_queue,
         num_initial_executions=6,
         num_tasks_generated=1,
         num_new_executions=1,
-        num_active_executions=1)
-    self._verify_exec_node_task(self._trainer, active_executions[0].id,
-                                trainer_task)
+        num_active_executions=1,
+        expected_exec_nodes=[self._trainer])
 
     # Finally, no new tasks once trainer completes.
     self._finish_node_execution(use_task_queue, trainer_task)
@@ -284,7 +274,7 @@ class AsyncPipelineTaskGeneratorTest(tu.TfxTest, parameterized.TestCase):
       num_new_executions = 1
       num_active_executions = 1
       ignore_node_ids = None
-    tasks, active_executions = self._generate_and_test(
+    tasks = self._generate_and_test(
         True,
         num_initial_executions=num_initial_executions,
         num_tasks_generated=num_tasks_generated,
@@ -293,10 +283,6 @@ class AsyncPipelineTaskGeneratorTest(tu.TfxTest, parameterized.TestCase):
         ignore_node_ids=ignore_node_ids)
     if ignore_transform:
       self.assertEmpty(tasks)
-      self.assertEmpty(active_executions)
-    else:
-      self._verify_exec_node_task(self._transform, active_executions[0].id,
-                                  tasks[0])
 
   def test_service_job_failed(self):
     """Tests task generation when example-gen service job fails."""
@@ -307,7 +293,7 @@ class AsyncPipelineTaskGeneratorTest(tu.TfxTest, parameterized.TestCase):
 
     self._mock_service_job_manager.ensure_node_services.side_effect = (
         _ensure_node_services)
-    [finalize_task], _ = self._generate_and_test(
+    [finalize_task] = self._generate_and_test(
         True,
         num_initial_executions=0,
         num_tasks_generated=1,

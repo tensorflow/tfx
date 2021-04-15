@@ -123,6 +123,7 @@ def run_generator_and_test(test_case,
                            num_tasks_generated,
                            num_new_executions,
                            num_active_executions,
+                           expected_exec_nodes=None,
                            ignore_node_ids=None):
   """Runs generator.generate() and tests the effects."""
   with mlmd_connection as m:
@@ -154,14 +155,18 @@ def run_generator_and_test(test_case,
     test_case.assertLen(
         active_executions, num_active_executions,
         f'Expected {num_active_executions} active execution(s) in MLMD.')
+    if expected_exec_nodes:
+      for i, task in enumerate(tasks):
+        _verify_exec_node_task(test_case, pipeline, expected_exec_nodes[i],
+                               active_executions[i].id, task)
     if use_task_queue:
       for task in tasks:
         if task_lib.is_exec_node_task(task):
           task_queue.enqueue(task)
-    return tasks, active_executions
+    return tasks
 
 
-def verify_exec_node_task(test_case, pipeline, node, execution_id, task):
+def _verify_exec_node_task(test_case, pipeline, node, execution_id, task):
   """Verifies that generated ExecNodeTask has the expected properties for the node."""
   test_case.assertEqual(
       task_lib.NodeUid.from_pipeline_node(pipeline, node), task.node_uid)
