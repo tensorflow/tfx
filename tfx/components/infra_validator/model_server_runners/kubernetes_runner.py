@@ -112,10 +112,7 @@ class KubernetesRunner(base_runner.BaseModelServerRunner):
     self._label_dict = {
         _APP_KEY: _MODEL_SERVER_APP_LABEL,
     }
-    self._annotations_dict = {k_v_pair.k: k_v_pair.v for k_v_pair in
-                              self._config.serving_pod_specs_overrides.annotations}
-    self._custom_env_vars_dict = {k_v_pair.k: k_v_pair.v for k_v_pair in
-                                  self._config.serving_pod_specs_overrides.environment_variables}
+    self._serving_pod_manifest_overrides = self._config.serving_pod_manifest_overrides
     # Pod name would be populated once creation request sent.
     self._pod_name = None
     # Endpoint would be populated once the Pod is running.
@@ -212,9 +209,9 @@ class KubernetesRunner(base_runner.BaseModelServerRunner):
     if isinstance(self._serving_binary, serving_bins.TensorFlowServing):
       env_vars_dict = self._serving_binary.MakeEnvVars(
           model_path=self._model_path)
-      for key, value in self._custom_env_vars_dict.items():
-        if key not in env_vars_dict:
-          env_vars_dict[key] = value
+      if self._serving_pod_manifest_overrides:
+        env_vars_dict = self._serving_pod_manifest_overrides.\
+            environment_variables.update(env_vars_dict)
       env_vars = [k8s_client.V1EnvVar(name=key, value=value)
                   for key, value in env_vars_dict.items()]
     else:
@@ -232,7 +229,7 @@ class KubernetesRunner(base_runner.BaseModelServerRunner):
     result = k8s_client.V1Pod(
         metadata=k8s_client.V1ObjectMeta(
             generate_name=_MODEL_SERVER_POD_NAME_PREFIX,
-            annotations=self._annotations_dict,
+            annotations=self._serving_pod_manifest_overrides.annotations,
             labels=self._label_dict,
             # Resources with ownerReferences are automatically deleted once all
             # its owners are deleted.
