@@ -16,6 +16,16 @@ inputs {
     }
   }
 }
-component_ref {
-  name: "DummyProducerComponent"
+outputs {
+  artifacts {
+    key: "output1"
+    value {
+      artifact_type {
+        instance_schema: "title: tfx.Model\ntype: object\nproperties:\n"
+      }
+    }
+  }
+}
+executor_label: "DummyProducerComponent_executor"
+caching_options {
 }

@@ -4,6 +4,109 @@
 pipeline_info {
   name: "pipeline-with-runtime-parameter"
 }
+tasks {
+  task_info {
+    name: "ProducePrimitives"
+  }
+  outputs {
+    artifacts {
+      key: "output_float"
+      value {
+        artifact_type {
+          instance_schema: "title: tfx.Float\ntype: object\nproperties:\n"
+        }
+      }
+    }
+    artifacts {
+      key: "output_int"
+      value {
+        artifact_type {
+          instance_schema: "title: tfx.Integer\ntype: object\nproperties:\n"
+        }
+      }
+    }
+    artifacts {
+      key: "output_string"
+      value {
+        artifact_type {
+          instance_schema: "title: tfx.String\ntype: object\nproperties:\n"
+        }
+      }
+    }
+  }
+  executor_label: "ProducePrimitives_executor"
+  caching_options {
+  }
+}
+tasks {
+  task_info {
+    name: "ConsumeByValue"
+  }
+  inputs {
+    parameters {
+      key: "param_float"
+      value {
+        runtime_value {
+          constant_value {
+            double_value: 3.14
+          }
+        }
+      }
+    }
+    parameters {
+      key: "param_int"
+      value {
+        runtime_value {
+          constant_value {
+            int_value: 42
+          }
+        }
+      }
+    }
+    parameters {
+      key: "param_string"
+      value {
+        runtime_value {
+          runtime_parameter: "string_param"
+        }
+      }
+    }
+    artifacts {
+      key: "input_float"
+      value {
+        producer_task: "ProducePrimitives"
+        output_artifact_key: "output_float"
+      }
+    }
+    artifacts {
+      key: "input_int"
+      value {
+        producer_task: "ProducePrimitives"
+        output_artifact_key: "output_int"
+      }
+    }
+    artifacts {
+      key: "input_string"
+      value {
+        producer_task: "ProducePrimitives"
+        output_artifact_key: "output_string"
+      }
+    }
+  }
+  executor_label: "ConsumeByValue_executor"
+  dependent_tasks: "ProducePrimitives"
+  caching_options {
+  }
+}
+runtime_parameters {
+  key: "string_param"
+  value {
+    type: STRING
+    default_value {
+      string_value: "string value"
+    }
+  }
+}
 deployment_spec {
   fields {
     key: "executors"
@@ -95,178 +198,6 @@ deployment_spec {
               }
             }
           }
-        }
-      }
-    }
-  }
-}
-components {
-  key: "ConsumeByValue"
-  value {
-    input_definitions {
-      artifacts {
-        key: "input_float"
-        value {
-          artifact_type {
-            instance_schema: "title: tfx.Float\ntype: object\n"
-          }
-        }
-      }
-      artifacts {
-        key: "input_int"
-        value {
-          artifact_type {
-            instance_schema: "title: tfx.Integer\ntype: object\n"
-          }
-        }
-      }
-      artifacts {
-        key: "input_string"
-        value {
-          artifact_type {
-            instance_schema: "title: tfx.String\ntype: object\n"
-          }
-        }
-      }
-      parameters {
-        key: "param_float"
-        value {
-          type: DOUBLE
-        }
-      }
-      parameters {
-        key: "param_int"
-        value {
-          type: INT
-        }
-      }
-      parameters {
-        key: "param_string"
-        value {
-          type: STRING
-        }
-      }
-    }
-    executor_label: "ConsumeByValue_executor"
-  }
-}
-components {
-  key: "ProducePrimitives"
-  value {
-    output_definitions {
-      artifacts {
-        key: "output_float"
-        value {
-          artifact_type {
-            instance_schema: "title: tfx.Float\ntype: object\n"
-          }
-        }
-      }
-      artifacts {
-        key: "output_int"
-        value {
-          artifact_type {
-            instance_schema: "title: tfx.Integer\ntype: object\n"
-          }
-        }
-      }
-      artifacts {
-        key: "output_string"
-        value {
-          artifact_type {
-            instance_schema: "title: tfx.String\ntype: object\n"
-          }
-        }
-      }
-    }
-    executor_label: "ProducePrimitives_executor"
-  }
-}
-root {
-  input_definitions {
-    parameters {
-      key: "string_param"
-      value {
-        type: STRING
-      }
-    }
-  }
-  dag {
-    tasks {
-      key: "ConsumeByValue"
-      value {
-        task_info {
-          name: "ConsumeByValue"
-        }
-        inputs {
-          parameters {
-            key: "param_float"
-            value {
-              runtime_value {
-                constant_value {
-                  double_value: 3.14
-                }
-              }
-            }
-          }
-          parameters {
-            key: "param_int"
-            value {
-              runtime_value {
-                constant_value {
-                  int_value: 42
-                }
-              }
-            }
-          }
-          parameters {
-            key: "param_string"
-            value {
-              component_input_parameter: "string_param"
-            }
-          }
-          artifacts {
-            key: "input_float"
-            value {
-              task_output_artifact {
-                producer_task: "ProducePrimitives"
-                output_artifact_key: "output_float"
-              }
-            }
-          }
-          artifacts {
-            key: "input_int"
-            value {
-              task_output_artifact {
-                producer_task: "ProducePrimitives"
-                output_artifact_key: "output_int"
-              }
-            }
-          }
-          artifacts {
-            key: "input_string"
-            value {
-              task_output_artifact {
-                producer_task: "ProducePrimitives"
-                output_artifact_key: "output_string"
-              }
-            }
-          }
-        }
-        dependent_tasks: "ProducePrimitives"
-        component_ref {
-          name: "ConsumeByValue"
-        }
-      }
-    }
-    tasks {
-      key: "ProducePrimitives"
-      value {
-        task_info {
-          name: "ProducePrimitives"
-        }
-        component_ref {
-          name: "ProducePrimitives"
         }
       }
     }

@@ -13,7 +13,7 @@
 # limitations under the License.
 """Tests for Kubeflow V2 step builder."""
 
-from typing import Any, Dict
+from typing import Sequence
 
 import tensorflow as tf
 from tfx import components
@@ -31,38 +31,107 @@ from tfx.types import channel
 from tfx.types import channel_utils
 from tfx.types import standard_artifacts
 
+from google.protobuf import text_format
+
 _TEST_CMDS = ('python', '-m', 'my_entrypoint.app_module')
+
+_EXPECTED_LATEST_BLESSED_MODEL_RESOLVER_1 = r"""
+task_info {
+  name: "Resolver.my_resolver2-model-blessing-resolver"
+}
+outputs {
+  artifacts {
+    key: "model_blessing"
+    value {
+      artifact_type {
+        instance_schema: "title: tfx.ModelBlessing\ntype: object\nproperties:\n"
+      }
+    }
+  }
+}
+executor_label: "Resolver.my_resolver2-model-blessing-resolver_executor"
+"""
+
+_EXPECTED_LATEST_BLESSED_MODEL_RESOLVER_2 = r"""
+task_info {
+  name: "Resolver.my_resolver2-model-resolver"
+}
+inputs {
+  artifacts {
+    key: "input"
+    value {
+      producer_task: "Resolver.my_resolver2-model-blessing-resolver"
+      output_artifact_key: "model_blessing"
+    }
+  }
+}
+outputs {
+  artifacts {
+    key: "model"
+    value {
+      artifact_type {
+        instance_schema: "title: tfx.Model\ntype: object\nproperties:\n"
+      }
+    }
+  }
+}
+executor_label: "Resolver.my_resolver2-model-resolver_executor"
+"""
+
+_EXPECTED_LATEST_BLESSED_MODEL_EXECUTOR = r"""
+executors {
+  key: "Resolver.my_resolver2-model-blessing-resolver_executor"
+  value {
+    resolver {
+      output_artifact_queries {
+        key: "model_blessing"
+        value {
+          filter: "artifact_type='tfx.ModelBlessing' and state=LIVE and custom_properties['blessed']='1'"
+        }
+      }
+    }
+  }
+}
+executors {
+  key: "Resolver.my_resolver2-model-resolver_executor"
+  value {
+    resolver {
+      output_artifact_queries {
+        key: "model"
+        value {
+          filter: "artifact_type='tfx.Model' and state=LIVE and name={$.inputs.artifacts[\'input\'].custom_properties[\'current_model_id\']}"
+        }
+      }
+    }
+  }
+}
+"""
 
 
 class StepBuilderTest(tf.test.TestCase):
 
-  def _sole(self, d: Dict[Any, Any]) -> Any:
-    """Asserts the dictionary has length 1 and returns the only value."""
-    self.assertLen(d, 1)
-    return list(d.values())[0]
+  def _sole(
+      self, task_specs: Sequence[pipeline_pb2.PipelineTaskSpec]
+  ) -> pipeline_pb2.PipelineTaskSpec:
+    """Asserts the task_specs has length 1 and returns the only element."""
+    self.assertLen(task_specs, 1)
+    return task_specs[0]
 
   def testBuildTask(self):
     query = 'SELECT * FROM TABLE'
     bq_example_gen = big_query_example_gen_component.BigQueryExampleGen(
         query=query)
     deployment_config = pipeline_pb2.PipelineDeploymentConfig()
-    component_defs = {}
     my_builder = step_builder.StepBuilder(
         node=bq_example_gen,
         image='gcr.io/tensorflow/tfx:latest',
         deployment_config=deployment_config,
-        component_defs=component_defs,
         enable_cache=True)
     actual_step_spec = self._sole(my_builder.build())
-    actual_component_def = self._sole(component_defs)
 
     self.assertProtoEquals(
         test_utils.get_proto_from_test_data(
-            'expected_bq_example_gen_component.pbtxt',
-            pipeline_pb2.ComponentSpec()), actual_component_def)
-    self.assertProtoEquals(
-        test_utils.get_proto_from_test_data(
-            'expected_bq_example_gen_task.pbtxt',
+            'expected_bq_example_gen.pbtxt',
             pipeline_pb2.PipelineTaskSpec()), actual_step_spec)
     self.assertProtoEquals(
         test_utils.get_proto_from_test_data(
@@ -75,19 +144,12 @@ class StepBuilderTest(tf.test.TestCase):
         param1='value1',
     )
     deployment_config = pipeline_pb2.PipelineDeploymentConfig()
-    component_defs = {}
     my_builder = step_builder.StepBuilder(
         node=task,
         image='gcr.io/tensorflow/tfx:latest',  # Note this has no effect here.
-        deployment_config=deployment_config,
-        component_defs=component_defs)
+        deployment_config=deployment_config)
     actual_step_spec = self._sole(my_builder.build())
-    actual_component_def = self._sole(component_defs)
 
-    self.assertProtoEquals(
-        test_utils.get_proto_from_test_data(
-            'expected_dummy_container_spec_component.pbtxt',
-            pipeline_pb2.ComponentSpec()), actual_component_def)
     self.assertProtoEquals(
         test_utils.get_proto_from_test_data(
             'expected_dummy_container_spec_task.pbtxt',
@@ -103,24 +165,18 @@ class StepBuilderTest(tf.test.TestCase):
         param1='value1',
     )
     deployment_config = pipeline_pb2.PipelineDeploymentConfig()
-    component_defs = {}
     my_builder = step_builder.StepBuilder(
         node=task,
         image='gcr.io/tensorflow/tfx:latest',
-        deployment_config=deployment_config,
-        component_defs=component_defs)
+        deployment_config=deployment_config)
     actual_step_spec = self._sole(my_builder.build())
-    actual_component_def = self._sole(component_defs)
 
-    # Same as in testBuildContainerTask
     self.assertProtoEquals(
         test_utils.get_proto_from_test_data(
-            'expected_dummy_container_spec_component.pbtxt',
-            pipeline_pb2.ComponentSpec()), actual_component_def)
-    self.assertProtoEquals(
-        test_utils.get_proto_from_test_data(
+            # Same as in testBuildContainerTask
             'expected_dummy_container_spec_task.pbtxt',
-            pipeline_pb2.PipelineTaskSpec()), actual_step_spec)
+            pipeline_pb2.PipelineTaskSpec()),
+        actual_step_spec)
     self.assertProtoEquals(
         test_utils.get_proto_from_test_data(
             'expected_dummy_container_spec_executor.pbtxt',
@@ -130,24 +186,16 @@ class StepBuilderTest(tf.test.TestCase):
     beam_pipeline_args = ['runner=DataflowRunner']
     example_gen = components.CsvExampleGen(input_base='path/to/data/root')
     deployment_config = pipeline_pb2.PipelineDeploymentConfig()
-    component_defs = {}
     my_builder = step_builder.StepBuilder(
         node=example_gen,
         image='gcr.io/tensorflow/tfx:latest',
         image_cmds=_TEST_CMDS,
         beam_pipeline_args=beam_pipeline_args,
-        deployment_config=deployment_config,
-        component_defs=component_defs)
+        deployment_config=deployment_config)
     actual_step_spec = self._sole(my_builder.build())
-    actual_component_def = self._sole(component_defs)
-
     self.assertProtoEquals(
         test_utils.get_proto_from_test_data(
-            'expected_csv_example_gen_component.pbtxt',
-            pipeline_pb2.ComponentSpec()), actual_component_def)
-    self.assertProtoEquals(
-        test_utils.get_proto_from_test_data(
-            'expected_csv_example_gen_task.pbtxt',
+            'expected_csv_example_gen.pbtxt',
             pipeline_pb2.PipelineTaskSpec()), actual_step_spec)
     self.assertProtoEquals(
         test_utils.get_proto_from_test_data(
@@ -162,22 +210,14 @@ class StepBuilderTest(tf.test.TestCase):
     example_gen = components.ImportExampleGen(
         input_base='path/to/data/root', input_config=input_config)
     deployment_config = pipeline_pb2.PipelineDeploymentConfig()
-    component_defs = {}
     my_builder = step_builder.StepBuilder(
         node=example_gen,
         image='gcr.io/tensorflow/tfx:latest',
-        deployment_config=deployment_config,
-        component_defs=component_defs)
+        deployment_config=deployment_config)
     actual_step_spec = self._sole(my_builder.build())
-    actual_component_def = self._sole(component_defs)
-
     self.assertProtoEquals(
         test_utils.get_proto_from_test_data(
-            'expected_import_example_gen_component.pbtxt',
-            pipeline_pb2.ComponentSpec()), actual_component_def)
-    self.assertProtoEquals(
-        test_utils.get_proto_from_test_data(
-            'expected_import_example_gen_task.pbtxt',
+            'expected_import_example_gen.pbtxt',
             pipeline_pb2.PipelineTaskSpec()), actual_step_spec)
     self.assertProtoEquals(
         test_utils.get_proto_from_test_data(
@@ -197,21 +237,12 @@ class StepBuilderTest(tf.test.TestCase):
         },
         artifact_type=standard_artifacts.Examples)
     deployment_config = pipeline_pb2.PipelineDeploymentConfig()
-    component_defs = {}
     my_builder = step_builder.StepBuilder(
-        node=impt,
-        deployment_config=deployment_config,
-        component_defs=component_defs)
+        node=impt, deployment_config=deployment_config)
     actual_step_spec = self._sole(my_builder.build())
-    actual_component_def = self._sole(component_defs)
-
     self.assertProtoEquals(
-        test_utils.get_proto_from_test_data('expected_importer_component.pbtxt',
-                                            pipeline_pb2.ComponentSpec()),
-        actual_component_def)
-    self.assertProtoEquals(
-        test_utils.get_proto_from_test_data('expected_importer_task.pbtxt',
-                                            pipeline_pb2.PipelineTaskSpec()),
+        test_utils.get_proto_from_test_data(
+            'expected_importer.pbtxt', pipeline_pb2.PipelineTaskSpec()),
         actual_step_spec)
     self.assertProtoEquals(
         test_utils.get_proto_from_test_data(
@@ -219,6 +250,7 @@ class StepBuilderTest(tf.test.TestCase):
             pipeline_pb2.PipelineDeploymentConfig()), deployment_config)
 
   def testBuildLatestBlessedModelResolverSucceed(self):
+
     latest_blessed_resolver = resolver.Resolver(
         instance_name='my_resolver2',
         strategy_class=latest_blessed_model_resolver.LatestBlessedModelResolver,
@@ -228,46 +260,26 @@ class StepBuilderTest(tf.test.TestCase):
         pipeline_name='test-pipeline', pipeline_root='gs://path/to/my/root')
 
     deployment_config = pipeline_pb2.PipelineDeploymentConfig()
-    component_defs = {}
     my_builder = step_builder.StepBuilder(
         node=latest_blessed_resolver,
         deployment_config=deployment_config,
-        pipeline_info=test_pipeline_info,
-        component_defs=component_defs)
+        pipeline_info=test_pipeline_info)
     actual_step_specs = my_builder.build()
 
-    model_blessing_resolver_id = 'Resolver.my_resolver2-model-blessing-resolver'
-    model_resolver_id = 'Resolver.my_resolver2-model-resolver'
-    self.assertSameElements(actual_step_specs.keys(),
-                            [model_blessing_resolver_id, model_resolver_id])
+    self.assertProtoEquals(
+        text_format.Parse(_EXPECTED_LATEST_BLESSED_MODEL_RESOLVER_1,
+                          pipeline_pb2.PipelineTaskSpec()),
+        actual_step_specs[0])
 
     self.assertProtoEquals(
-        test_utils.get_proto_from_test_data(
-            'expected_latest_blessed_model_resolver_component_1.pbtxt',
-            pipeline_pb2.ComponentSpec()),
-        component_defs[model_blessing_resolver_id])
+        text_format.Parse(_EXPECTED_LATEST_BLESSED_MODEL_RESOLVER_2,
+                          pipeline_pb2.PipelineTaskSpec()),
+        actual_step_specs[1])
 
     self.assertProtoEquals(
-        test_utils.get_proto_from_test_data(
-            'expected_latest_blessed_model_resolver_task_1.pbtxt',
-            pipeline_pb2.PipelineTaskSpec()),
-        actual_step_specs[model_blessing_resolver_id])
-
-    self.assertProtoEquals(
-        test_utils.get_proto_from_test_data(
-            'expected_latest_blessed_model_resolver_component_2.pbtxt',
-            pipeline_pb2.ComponentSpec()), component_defs[model_resolver_id])
-
-    self.assertProtoEquals(
-        test_utils.get_proto_from_test_data(
-            'expected_latest_blessed_model_resolver_task_2.pbtxt',
-            pipeline_pb2.PipelineTaskSpec()),
-        actual_step_specs[model_resolver_id])
-
-    self.assertProtoEquals(
-        test_utils.get_proto_from_test_data(
-            'expected_latest_blessed_model_resolver_executor.pbtxt',
-            pipeline_pb2.PipelineDeploymentConfig()), deployment_config)
+        text_format.Parse(_EXPECTED_LATEST_BLESSED_MODEL_EXECUTOR,
+                          pipeline_pb2.PipelineDeploymentConfig()),
+        deployment_config)
 
   def testBuildLatestArtifactResolverSucceed(self):
     latest_model_resolver = resolver.Resolver(
@@ -276,24 +288,17 @@ class StepBuilderTest(tf.test.TestCase):
         model=channel.Channel(type=standard_artifacts.Model),
         examples=channel.Channel(type=standard_artifacts.Examples))
     deployment_config = pipeline_pb2.PipelineDeploymentConfig()
-    component_defs = {}
     test_pipeline_info = data_types.PipelineInfo(
         pipeline_name='test-pipeline', pipeline_root='gs://path/to/my/root')
     my_builder = step_builder.StepBuilder(
         node=latest_model_resolver,
         deployment_config=deployment_config,
-        pipeline_info=test_pipeline_info,
-        component_defs=component_defs)
+        pipeline_info=test_pipeline_info)
     actual_step_spec = self._sole(my_builder.build())
-    actual_component_def = self._sole(component_defs)
 
     self.assertProtoEquals(
         test_utils.get_proto_from_test_data(
-            'expected_latest_artifact_resolver_component.pbtxt',
-            pipeline_pb2.ComponentSpec()), actual_component_def)
-    self.assertProtoEquals(
-        test_utils.get_proto_from_test_data(
-            'expected_latest_artifact_resolver_task.pbtxt',
+            'expected_latest_artifact_resolver.pbtxt',
             pipeline_pb2.PipelineTaskSpec()), actual_step_spec)
     self.assertProtoEquals(
         test_utils.get_proto_from_test_data(

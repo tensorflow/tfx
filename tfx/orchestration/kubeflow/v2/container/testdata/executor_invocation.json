@@ -6,9 +6,13 @@
           {
             "uri": "gs://root/input_1/",
             "name": "projects/123456789/locations/us-central1/metadataStores/default/artifacts/1",
-            "metadata": {
-              "custom_property_1": "string property",
-              "custom_property_2": 42.0
+            "customProperties": {
+              "custom_property_1": {
+                "stringValue": "string property"
+              },
+              "custom_property_2": {
+                "intValue": 42
+              }
             },
             "type": { "instanceSchema": "title: tfx.Examples\ntype: object\nproperties:\n  span:\n    type: int\n    description: Span for an artifact.\n  version:\n    type: int\n    description: Version for an artifact.\n  split_names:\n    type: string\n    description: JSON-encoded list of splits for an artifact. Empty string means artifact has no split.\n" },
             "createTimeSinceEpoch":"1587611829506"

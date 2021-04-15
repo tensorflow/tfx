@@ -480,12 +480,7 @@ class Artifact(json_utils.Jsonable):
     """Get a custom property of int type."""
     if key not in self._artifact.custom_properties:
       return 0
-    value_pb = self._artifact.custom_properties[key]
-    # In some cases, the storage type of an int custom property may be float.
-    if value_pb.WhichOneof('value') == 'double_value':
-      return int(value_pb.double_value)
-    else:
-      return value_pb.int_value
+    return self._artifact.custom_properties[key].int_value
 
   # TODO(b/179215351): Standardize type name into one of float and double.
   def get_float_custom_property(self, key: str) -> float:

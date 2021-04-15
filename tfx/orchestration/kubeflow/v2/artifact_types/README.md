@@ -26,7 +26,7 @@ types, the title is `tfx.{TypeName}`. For example, `tfx.Model` and
 where property type can be one of `int`, `float`, `string`, and description is
 a string literal to document the purpose of the property. For first party TFX
 artifact types, the property schema mirrors what was defined in
-`tfx.types.standard_artifacts`. This field is omitted if it's empty.
+`tfx.types.standard_artifacts`
 
 # Tests
 Currently in TFX Kubeflow V2 runner and its associated compilation logic,

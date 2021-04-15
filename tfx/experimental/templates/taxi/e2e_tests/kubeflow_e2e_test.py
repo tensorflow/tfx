@@ -82,9 +82,9 @@ class TaxiTemplateKubeflowE2ETest(test_utils.BaseEndToEndTest):
 
     self._prepare_skaffold()
 
-  def tearDown(self):
-    super(TaxiTemplateKubeflowE2ETest, self).tearDown()
-    self._cleanup_kfp()
+#  def tearDown(self):
+#    super(TaxiTemplateKubeflowE2ETest, self).tearDown()
+#    self._cleanup_kfp()
 
   def _cleanup_kfp(self):
     self._delete_base_container_image()

@@ -8,13 +8,13 @@ executors {
       output_artifact_queries {
         key: "examples"
         value {
-          filter: "artifact_type=\"tfx.Examples\" and state=LIVE"
+          filter: "artifact_type='tfx.Examples' and state=LIVE"
         }
       }
       output_artifact_queries {
         key: "model"
         value {
-          filter: "artifact_type=\"tfx.Model\" and state=LIVE"
+          filter: "artifact_type='tfx.Model' and state=LIVE"
         }
       }
     }

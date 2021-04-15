@@ -179,11 +179,12 @@ def to_runtime_artifact(
     artifact_instance: artifact.Artifact,
     name_from_id: Mapping[int, str]) -> pipeline_pb2.RuntimeArtifact:
   """Converts TFX artifact instance to RuntimeArtifact proto message."""
-  result = pipeline_pb2.RuntimeArtifact(uri=artifact_instance.uri)
-  struct_proto = compiler_utils.pack_artifact_properties(artifact_instance)
-  if struct_proto:
-    result.metadata.CopyFrom(struct_proto)
-
+  result = pipeline_pb2.RuntimeArtifact(
+      uri=artifact_instance.uri,
+      properties=_get_kubeflow_value_mapping(
+          artifact_instance.mlmd_artifact.properties),
+      custom_properties=_get_kubeflow_value_mapping(
+          artifact_instance.mlmd_artifact.custom_properties))
   # TODO(b/135056715): Change to a unified getter/setter of Artifact type
   # once it's ready.
   # Try convert tfx artifact id to string-typed name. This should be the case
@@ -198,22 +199,16 @@ def to_runtime_artifact(
   return result
 
 
-def _retrieve_class_path(type_schema: pipeline_pb2.ArtifactTypeSchema) -> str:
-  """Gets the class path from an artifact type schema."""
-  if type_schema.WhichOneof('kind') == 'schema_title':
-    title = type_schema.schema_title
-
-  if type_schema.WhichOneof('kind') == 'instance_schema':
-    data = yaml.safe_load(type_schema.instance_schema)
-    title = data.get('title', 'tfx.Artifact')
-
-  if title in compiler_utils.TITLE_TO_CLASS_PATH:
+def _retrieve_class_path(schema: str) -> str:
+  """Gets the class path from a yaml string."""
+  data = yaml.safe_load(schema)
+  if data['title'] in compiler_utils.TITLE_TO_CLASS_PATH:
     # For first party types, the actual import path is maintained in
     # TITLE_TO_CLASS_PATH map.
-    return compiler_utils.TITLE_TO_CLASS_PATH[title]
+    return compiler_utils.TITLE_TO_CLASS_PATH[data['title']]
   else:
     # For custom types, the import path is encoded as the schema title.
-    return title
+    return data['title']
 
 
 def _parse_raw_artifact(
@@ -225,10 +220,13 @@ def _parse_raw_artifact(
   # Recovers the type information from artifact type schema.
   # TODO(b/170261670): Replace this workaround by a more resilient
   # implementation. Currently custom artifact type can hardly be supported.
-  assert artifact_pb.type, 'RuntimeArtifact is expected to have a type.'
-
+  assert (artifact_pb.type and
+          artifact_pb.type.WhichOneof('kind') == 'instance_schema' and
+          artifact_pb.type.instance_schema), (
+              'RuntimeArtifact is expected to have '
+              'instance_schema populated.')
   # 1. Import the artifact class from preloaded TFX library.
-  type_path = _retrieve_class_path(artifact_pb.type)
+  type_path = _retrieve_class_path(artifact_pb.type.instance_schema)
   artifact_cls = import_utils.import_class_by_path(type_path)
 
   # 2. Copy properties and custom properties to the MLMD artifact pb.
@@ -242,18 +240,12 @@ def _parse_raw_artifact(
     mlmd_artifact.id = _get_hashed_id(artifact_pb.name, name_from_id)
 
   mlmd_artifact.uri = artifact_pb.uri
+  for k, v in artifact_pb.properties.items():
+    mlmd_artifact.properties[k].CopyFrom(compiler_utils.get_mlmd_value(v))
 
-  # KFP IR schema 2.0.0 does not differentiate between properties and custom
-  # properties, which MLMD Artifact does. We need to seperate them by looking at
-  # the declared properties in the artifact class.
-  for name, value in artifact_pb.metadata.fields.items():
-    if artifact_cls.PROPERTIES and name in artifact_cls.PROPERTIES:
-      mlmd_artifact.properties[name].CopyFrom(
-          compiler_utils.get_mlmd_value(
-              value, value_type=artifact_cls.PROPERTIES[name].type))
-    else:
-      mlmd_artifact.custom_properties[name].CopyFrom(
-          compiler_utils.get_mlmd_value(value))
+  for k, v in artifact_pb.custom_properties.items():
+    mlmd_artifact.custom_properties[k].CopyFrom(
+        compiler_utils.get_mlmd_value(v))
 
   # 3. Instantiate the artifact Python object.
   result = artifact_cls()

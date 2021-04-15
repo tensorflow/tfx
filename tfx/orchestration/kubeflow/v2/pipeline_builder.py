@@ -22,7 +22,6 @@ from tfx.orchestration.kubeflow.v2 import compiler_utils
 from tfx.orchestration.kubeflow.v2 import parameter_utils
 from tfx.orchestration.kubeflow.v2 import step_builder
 from tfx.orchestration.kubeflow.v2.proto import pipeline_pb2
-
 from google.protobuf import json_format
 
 _LEGAL_NAME_PATTERN = re.compile(r'[a-z0-9][a-z0-9-]{0,127}')
@@ -102,8 +101,7 @@ class PipelineBuilder(object):
     pipeline_info = pipeline_pb2.PipelineInfo(
         name=self._pipeline_info.pipeline_name)
 
-    tasks = {}
-    component_defs = {}
+    tasks = []
     # Map from (producer component id, output key) to (new producer component
     # id, output key)
     channel_redirect_map = {}
@@ -116,25 +114,19 @@ class PipelineBuilder(object):
         built_tasks = step_builder.StepBuilder(
             node=component,
             deployment_config=deployment_config,
-            component_defs=component_defs,
             image=self._default_image,
             image_cmds=self._default_commands,
             beam_pipeline_args=self._pipeline.beam_pipeline_args,
             enable_cache=self._pipeline.enable_cache,
             pipeline_info=self._pipeline_info,
             channel_redirect_map=channel_redirect_map).build()
-        tasks.update(built_tasks)
+        tasks.extend(built_tasks)
 
-    result = pipeline_pb2.PipelineSpec(pipeline_info=pipeline_info)
+    result = pipeline_pb2.PipelineSpec(
+        pipeline_info=pipeline_info,
+        tasks=tasks,
+        runtime_parameters=compiler_utils.build_runtime_parameter_spec(
+            pc.parameters))
     result.deployment_spec.update(json_format.MessageToDict(deployment_config))
-    for name, component_def in component_defs.items():
-      result.components[name].CopyFrom(component_def)
-    for name, task_spec in tasks.items():
-      result.root.dag.tasks[name].CopyFrom(task_spec)
-
-    # Attach runtime parameter to root's input parameter
-    for param in pc.parameters:
-      result.root.input_definitions.parameters[param.name].CopyFrom(
-          compiler_utils.build_parameter_type_spec(param))
 
     return result

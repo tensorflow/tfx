@@ -46,6 +46,16 @@ inputs {
     }
   }
 }
-component_ref {
-  name: "ImportExampleGen"
+outputs {
+  artifacts {
+    key: "examples"
+    value {
+      artifact_type {
+        instance_schema: "title: tfx.Examples\ntype: object\nproperties:\n  span:\n    type: int\n    description: Span for an artifact.\n  version:\n    type: int\n    description: Version for an artifact.\n  split_names:\n    type: string\n    description: JSON-encoded list of splits for an artifact. Empty string means artifact has no split.\n"
+      }
+    }
+  }
+}
+executor_label: "ImportExampleGen_executor"
+caching_options {
 }

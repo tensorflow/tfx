@@ -14,12 +14,10 @@
 """Utility methods for Kubeflow V2 pipeline compilation."""
 # TODO(b/172080784): Add more tests for this module.
 
-import itertools
 import json
 import os
 from typing import Any, Dict, List, Mapping, Optional, Text, Type, Union
 
-from tfx import types
 from tfx.dsl.io import fileio
 from tfx.orchestration import data_types
 from tfx.orchestration.kubeflow.v2 import parameter_utils
@@ -31,7 +29,6 @@ from tfx.types.experimental import simple_artifacts
 from tfx.utils import json_utils
 import yaml
 
-from google.protobuf import struct_pb2
 from google.protobuf import json_format
 from google.protobuf import message
 from ml_metadata.proto import metadata_store_pb2
@@ -113,22 +110,16 @@ def build_runtime_parameter_spec(
   return {param.name: to_message(param) for param in parameters}
 
 
-def build_parameter_type_spec(
-    value: Union[types.Property, data_types.RuntimeParameter]
-) -> pipeline_pb2.ComponentInputsSpec.ParameterSpec:
-  """Extracts the artifact type info into ComponentInputsSpec.ParameterSpec."""
-  is_runtime_param = isinstance(value, data_types.RuntimeParameter)
-  result = pipeline_pb2.ComponentInputsSpec.ParameterSpec()
-  if isinstance(value, int) or (is_runtime_param and value.ptype == int):
-    result.type = pipeline_pb2.PrimitiveType.PrimitiveTypeEnum.INT
-  elif isinstance(value, float) or (is_runtime_param and value.ptype == float):
-    result.type = pipeline_pb2.PrimitiveType.PrimitiveTypeEnum.DOUBLE
-  elif isinstance(value, str) or (is_runtime_param and value.ptype == str):
-    result.type = pipeline_pb2.PrimitiveType.PrimitiveTypeEnum.STRING
-  else:
-    # By default, unrecognized object will be json dumped, hence is string type.
-    # For example, resolver class.
-    result.type = pipeline_pb2.PrimitiveType.PrimitiveTypeEnum.STRING
+def build_input_parameter_spec(
+    dict_data: Dict[str, Any]
+) -> Dict[str, pipeline_pb2.TaskInputsSpec.InputParameterSpec]:
+  """Converts a dict into Kubeflow pipeline input parameter section."""
+  # Skip None value.
+  result = {}
+  for k, v in dict_data.items():
+    if v is not None:
+      result[k] = pipeline_pb2.TaskInputsSpec.InputParameterSpec(
+          runtime_value=value_converter(v))
   return result
 
 
@@ -147,7 +138,7 @@ def _validate_properties_schema(
     TypeError: When the same property is declared with different types in YAML
       schema and the Artifact Python class.
   """
-  schema = yaml.safe_load(instance_schema).get('properties', {})
+  schema = yaml.safe_load(instance_schema)['properties'] or {}
   properties = properties or {}
 
   for k, v in properties.items():
@@ -165,62 +156,32 @@ def _validate_properties_schema(
         v.type != artifact.PropertyType.STRING or
         schema[k]['type'] == _YAML_DOUBLE_TYPE and
         v.type != artifact.PropertyType.FLOAT):
-      raise TypeError(f'Property type mismatched at {k} for schema: {schema}. '
-                      f'Expected {schema[k]["type"]} but got {v.type}')
-
-
-def build_input_artifact_spec(
-    channel_spec: channel.Channel
-) -> pipeline_pb2.ComponentInputsSpec.ArtifactSpec:
-  """Builds artifact type spec for an input channel."""
-  artifact_instance = channel_spec.type()
-  result = pipeline_pb2.ComponentInputsSpec.ArtifactSpec()
-  result.artifact_type.CopyFrom(
-      pipeline_pb2.ArtifactTypeSchema(
-          instance_schema=get_artifact_schema(artifact_instance)))
-  _validate_properties_schema(
-      instance_schema=result.artifact_type.instance_schema,
-      properties=channel_spec.type.PROPERTIES)
-  return result
+      raise TypeError('Property type mismatched at {} for schema: {}. '
+                      'Expected {} but got {}'.format(
+                          k, schema, schema[k]['type'], v.type))
 
 
 def build_output_artifact_spec(
     channel_spec: channel.Channel
-) -> pipeline_pb2.ComponentOutputsSpec.ArtifactSpec:
-  """Builds artifact type spec for an output channel."""
-  # We use the first artifact instance if available from channel, otherwise
-  # create one.
-  artifacts = list(channel_spec.get())
-  artifact_instance = artifacts[0] if artifacts else channel_spec.type()
-
-  result = pipeline_pb2.ComponentOutputsSpec.ArtifactSpec()
+) -> pipeline_pb2.TaskOutputsSpec.OutputArtifactSpec:
+  """Builds the Kubeflow pipeline output artifact spec from TFX channel spec."""
+  artifact_instance = channel_spec.type()
+  result = pipeline_pb2.TaskOutputsSpec.OutputArtifactSpec()
   result.artifact_type.CopyFrom(
       pipeline_pb2.ArtifactTypeSchema(
           instance_schema=get_artifact_schema(artifact_instance)))
+  for k, v in convert_from_tfx_properties(
+      artifact_instance.mlmd_artifact.properties).items():
+    result.properties[k].CopyFrom(v)
 
   _validate_properties_schema(
       instance_schema=result.artifact_type.instance_schema,
       properties=channel_spec.type.PROPERTIES)
 
-  struct_proto = pack_artifact_properties(artifact_instance)
-  if struct_proto:
-    result.metadata.CopyFrom(struct_proto)
+  for k, v in convert_from_tfx_properties(
+      artifact_instance.mlmd_artifact.custom_properties).items():
+    result.custom_properties[k].CopyFrom(v)
   return result
-
-
-def pack_artifact_properties(artifact_instance: artifact.Artifact):
-  """Packs artifact properties and custom properties into a Struct proto."""
-  struct_proto = struct_pb2.Struct()
-  metadata = {}
-  for k, v in itertools.chain(
-      artifact_instance.mlmd_artifact.properties.items(),
-      artifact_instance.mlmd_artifact.custom_properties.items()):
-    metadata[k] = getattr(v, v.WhichOneof('value'))
-
-  # JSON does not differetiate between int and double, but MLMD value type does.
-  # MLMD int is stored as double as a result.
-  struct_proto.update(metadata)
-  return struct_proto
 
 
 def value_converter(
@@ -281,40 +242,17 @@ def get_kubeflow_value(
 
 
 def get_mlmd_value(
-    value: struct_pb2.Value,
-    value_type: Optional[artifact.PropertyType] = None
-) -> metadata_store_pb2.Value:
-  """Converts Struct Value proto to MLMD Value."""
+    kubeflow_value: pipeline_pb2.Value) -> metadata_store_pb2.Value:
+  """Converts Kubeflow pipeline Value pb message to MLMD Value."""
   result = metadata_store_pb2.Value()
-  # If value type is provided, we directly set the corresponding field.
-  if value_type:
-    if value_type == artifact.PropertyType.INT and value.WhichOneof(
-        'kind') == 'number_value':
-      result.int_value = int(value.number_value)
-    elif value_type == artifact.PropertyType.FLOAT and value.WhichOneof(
-        'kind') == 'number_value':
-      result.double_value = value.number_value
-    elif value_type == artifact.PropertyType.STRING and value.WhichOneof(
-        'kind') == 'string_value':
-      result.string_value = value.string_value
-    else:
-      raise TypeError('Actual value type and provided type do not match.')
-    return result
-
-  # If value type is unknown, e.g. for custom properties, we make a best guess.
-  # Because MLMD value type differentiate between int and float, while Struct
-  # proto value type does not, both int and float will be stored as float.
-  # When user retrives the value, we make float to int conversion if needed.
-  if value.WhichOneof('kind') == 'number_value':
-    result.double_value = value.number_value
-  elif value.WhichOneof('kind') == 'string_value':
-    result.string_value = value.string_value
-  elif value.WhichOneof('kind') == 'bool_value':
-    result.int_value = int(value.bool_value)
-  elif value.WhichOneof('kind') == 'struct_value':
-    result.struct_value.CopyFrom(value.struct_value)
+  if kubeflow_value.WhichOneof('value') == 'int_value':
+    result.int_value = kubeflow_value.int_value
+  elif kubeflow_value.WhichOneof('value') == 'double_value':
+    result.double_value = kubeflow_value.double_value
+  elif kubeflow_value.WhichOneof('value') == 'string_value':
+    result.string_value = kubeflow_value.string_value
   else:
-    raise TypeError(f'Get unknown type of value: {value}.')
+    raise TypeError('Get unknown type of value: {}'.format(kubeflow_value))
 
   return result
 
@@ -348,3 +286,18 @@ def get_artifact_title(artifact_type: Type[artifact.Artifact]) -> Text:
   if artifact_type in _SUPPORTED_STANDARD_ARTIFACT_TYPES:
     return 'tfx.{}'.format(artifact_type.__name__)
   return 'tfx.Artifact'
+
+
+def convert_from_tfx_properties(
+    tfx_properties) -> Dict[Any, pipeline_pb2.ValueOrRuntimeParameter]:
+  """Converts (custom) properties to mapping to ValueOrRuntimeParameter pb.
+
+  Args:
+    tfx_properties: a mapping field in a proto message, from string to
+      pipeline.Value.
+
+  Returns:
+    A mapping from string to pipeline_spec.ValueOrRuntimeParameter containing
+    the same information.
+  """
+  return {k: value_converter(v) for k, v in tfx_properties.items()}
