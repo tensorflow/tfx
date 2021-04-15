@@ -214,6 +214,20 @@ class KubernetesRunner(base_runner.BaseModelServerRunner):
             environment_variables.update(env_vars_dict)
       env_vars = [k8s_client.V1EnvVar(name=key, value=value)
                   for key, value in env_vars_dict.items()]
+      if self._serving_pod_manifest_overrides.pod_secret_to_environment_mapping:
+        for secret_name, secret_key_to_env_var in self._serving_pod_manifest_overrides.pod_secret_to_environment_mapping:
+          for secret_key, env_var in secret_key_to_env_var.items():
+            env_vars.append(
+              k8s_client.V1EnvVar(
+                name=env_var,
+                value_from=k8s_client.V1EnvVarSource(
+                  secret_key_ref=k8s_client.V1SecretKeySelector(
+                    name=secret_name,
+                    key=secret_key
+                  )
+                )
+              )
+            )
     else:
       raise NotImplementedError('Unsupported serving binary {}'.format(
           type(self._serving_binary).__name__))
