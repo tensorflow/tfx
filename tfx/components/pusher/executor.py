@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,10 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """TFX pusher executor."""
-
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
 
 import os
 import time
@@ -42,6 +37,9 @@ _Versioning = pusher_pb2.Versioning
 _PUSHED_KEY = 'pushed'
 _PUSHED_DESTINATION_KEY = 'pushed_destination'
 _PUSHED_VERSION_KEY = 'pushed_version'
+
+# InfraBlessing property keys.
+_INFRA_BLESSING_MODEL_FLAG_KEY = 'has_model'
 
 
 class Executor(base_executor.BaseExecutor):
@@ -102,6 +100,41 @@ class Executor(base_executor.BaseExecutor):
                       'pipeline.')
     return True
 
+  def GetModelPath(self, input_dict: Dict[Text, List[types.Artifact]]) -> str:
+    """Get input model path to push.
+
+    Pusher can push various types of artifacts if it contains the model. This
+    method decides which artifact type is given to the Pusher and extracts the
+    real model path. Subclass of Pusher Executor should use this method to
+    acquire the source model path.
+
+    Args:
+      input_dict: A dictionary of artifacts that is given as the fisrt argument
+          to the Executor.Do() method.
+    Returns:
+      A resolved input model path.
+    Raises:
+      RuntimeError: If no model path is found from input_dict.
+    """
+    # Check input_dict['model'] first.
+    models = input_dict.get(standard_component_specs.MODEL_KEY)
+    if models:
+      model = artifact_utils.get_single_instance(models)
+      return path_utils.serving_model_path(
+          model.uri, path_utils.is_old_model_artifact(model))
+
+    # Falls back to input_dict['infra_blessing']
+    blessed_models = input_dict.get(standard_component_specs.INFRA_BLESSING_KEY)
+    if not blessed_models:
+      # Should not reach here; Pusher.__init__ prohibits creating a component
+      # without having any of model or infra_blessing inputs.
+      raise RuntimeError('Pusher has no model input.')
+    model = artifact_utils.get_single_instance(blessed_models)
+    if not model.get_int_custom_property(_INFRA_BLESSING_MODEL_FLAG_KEY):
+      raise RuntimeError('InfraBlessing does not contain a model. Check '
+                         'request_spec.make_warmup is set to True.')
+    return path_utils.stamped_model_path(model.uri)
+
   def Do(self, input_dict: Dict[Text, List[types.Artifact]],
          output_dict: Dict[Text, List[types.Artifact]],
          exec_properties: Dict[Text, Any]) -> None:
@@ -129,10 +162,7 @@ class Executor(base_executor.BaseExecutor):
     if not self.CheckBlessing(input_dict):
       self._MarkNotPushed(model_push)
       return
-    model_export = artifact_utils.get_single_instance(
-        input_dict[standard_component_specs.MODEL_KEY])
-    model_path = path_utils.serving_model_path(
-        model_export.uri, path_utils.is_old_model_artifact(model_export))
+    model_path = self.GetModelPath(input_dict)
 
     # Push model to the destination, which can be listened by a model server.
     #

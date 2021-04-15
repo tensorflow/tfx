@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,18 +13,12 @@
 # limitations under the License.
 """Tests for tfx.extensions.google_cloud_ai_platform.pusher.executor."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import copy
 import os
-from typing import Any, Dict, Text
+from typing import Any, Dict
 import unittest
+from unittest import mock
 
-# Standard Imports
-
-import mock
 import tensorflow as tf
 from tfx.dsl.io import fileio
 from tfx.extensions.google_cloud_ai_platform.pusher import executor
@@ -85,7 +78,7 @@ class ExecutorTest(tf.test.TestCase):
     }
     self._executor = executor.Executor()
 
-  def _serialize_custom_config_under_test(self) -> Dict[Text, Any]:
+  def _serialize_custom_config_under_test(self) -> Dict[str, Any]:
     """Converts self._exec_properties['custom_config'] to string."""
     result = copy.deepcopy(self._exec_properties)
     result['custom_config'] = json_utils.dumps(result['custom_config'])

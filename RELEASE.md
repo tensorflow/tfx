@@ -2,7 +2,16 @@
 
 ## Major Features and Improvements
 
-* Upgraded TFX to KFP compiler to use KFP IR schema version 2.0.0.
+*  Upgraded TFX to KFP compiler to use KFP IR schema version 2.0.0.
+*  InfraValidator can now produce a [SavedModel with warmup requests](
+   https://www.tensorflow.org/tfx/serving/saved_model_warmup). This feature is
+   enabled by setting `RequestSpec.make_warmup = True`. The SavedModel will be
+   stored in the InfraBlessing artifact (`blessing` output of InfraValidator).
+*  Pusher's `model` input is now optional, and `infra_blessing` can be used
+   instead to push the SavedModel with warmup requests, produced by an
+   InfraValidator. Note that InfraValidator does not always create a SavedModel,
+   and the producer InfraValidator must be configured with
+   `RequestSpec.make_warmup = True` in order to be pushed by a Pusher.
 
 ## Breaking Changes
 *  Default orchestration engine of CLI was changed to `local` orchestrator from
