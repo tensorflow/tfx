@@ -135,6 +135,7 @@ message ComponentSpec {
   oneof implementation {
     DagSpec dag = 3;
     string executor_label = 4;
+    PipelineDeploymentConfig.PipelineContainerSpec container = 5;
   }
 }
 
