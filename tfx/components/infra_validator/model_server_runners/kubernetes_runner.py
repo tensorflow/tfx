@@ -209,24 +209,32 @@ class KubernetesRunner(base_runner.BaseModelServerRunner):
     if isinstance(self._serving_binary, serving_bins.TensorFlowServing):
       env_vars_dict = self._serving_binary.MakeEnvVars(
           model_path=self._model_path)
-      if self._serving_pod_manifest_overrides and self._serving_pod_manifest_overrides.environment_variables:
-        env_vars_dict.update(self._serving_pod_manifest_overrides.environment_variables)
       env_vars = [k8s_client.V1EnvVar(name=key, value=value)
                   for key, value in env_vars_dict.items()]
-      if self._serving_pod_manifest_overrides.pod_secret_to_environment_mapping:
-        for secret_to_environment_mapping in self._serving_pod_manifest_overrides.pod_secret_to_environment_mapping:
-          for secret_key, env_var in secret_to_environment_mapping.k8s_secret_key_to_environment_variable.items():
-            env_vars.append(
+
+      if self._serving_pod_manifest_overrides and \
+              self._serving_pod_manifest_overrides.env:
+        additional_env_vars = []
+        for env in self._serving_pod_manifest_overrides.env:
+          if env.value:
+            logging.info(f'name={env.name} value={env.value}')
+            additional_env_vars.append(
+              k8s_client.V1EnvVar(name=env.name, value=env.value))
+          else:
+            logging.info(f'name={env.name} value={env.valueFrom}')
+            additional_env_vars.append(
               k8s_client.V1EnvVar(
-                name=env_var,
+                name=env.name,
                 value_from=k8s_client.V1EnvVarSource(
                   secret_key_ref=k8s_client.V1SecretKeySelector(
-                    name=secret_to_environment_mapping.secret_name,
-                    key=secret_key
+                    name=env.valueFrom.secretKeyRef.name,
+                    key=env.valueFrom.secretKeyRef.key
                   )
                 )
               )
             )
+        env_vars += additional_env_vars
+
     else:
       raise NotImplementedError('Unsupported serving binary {}'.format(
           type(self._serving_binary).__name__))

@@ -132,33 +132,23 @@ message PodManifestOverrides {
 
   // Optional.
   // Kubernetes environment variables to apply to the pod
-  map<string, string> environment_variables = 2;
-
-  // Optional.
-  // Mapping from Kubernetes secret to environment variable to apply to the pod
-  repeated PodSecretToEnvironmentMapping pod_secret_to_environment_mapping = 3;
+  repeated EnvVar env = 2;
 }
 
-message PodSecretToEnvironmentMapping {
-  // Mapping from Kubernetes secret to environment variable to apply to the pod
-  // Example:
-  // s3-secret = my_s3_secret
-  // k8s_secret_key_to_environment_variable = {'secret_key': 'AWS_SECRET_ACCESS_KEY'}
-  // This will load the value in secret 's3-secret' at key 'secret_key' and source it as the environment variable
-  //    'AWS_SECRET_ACCESS_KEY'. I.e. it will produce the following section on the pod:
-  //    env:
-  //    - name: AWS_SECRET_ACCESS_KEY
-  //      valueFrom:
-  //        secretKeyRef:
-  //          name: s3-secret
-  //          key: secret_key
-  // Note that the the secret 'my_s3_secret' needs to be deployed a priori
+message EnvVar {
+  string name = 1;
+  string value = 2;
+  EnvVarSource valueFrom = 3;
+}
 
-  // Name of the secret in k8s
-  string secret_name = 1;
+message EnvVarSource {
+  SecretKeySelector secretKeyRef = 4;
+  reserved 1, 2, 3;
+}
 
-  // A dict that contains a mapping from secret keys to environment variables
-  map<string, string> k8s_secret_key_to_environment_variable = 2;
+message SecretKeySelector {
+  string name = 1;
+  string key = 2;
 }
 
 // Specification for validation criteria and thresholds.
