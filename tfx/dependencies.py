@@ -134,9 +134,6 @@ def make_extra_packages_test():
   # conflicts.
   return make_extra_packages_airflow() + make_extra_packages_kfp() + [
       'pytest>=5,<6',
-      # TODO(b/175740170): Delete pinned werkzeug version after using the new
-      # pip resolver.
-      'werkzeug==0.16.1',
   ]
 
 
