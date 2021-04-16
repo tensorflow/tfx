@@ -19,7 +19,7 @@
             "name": "projects/123456789/locations/us-central1/metadataStores/default/artifacts/22222",
             "uri": "gs://root/model/",
             "metadata": {
-              "my_property_2": 42
+              "my_property_2": 42.0
             },
             "type": { "schemaTitle": "tfx.ModelBlessing" }
           }
@@ -30,6 +30,9 @@
           {
             "name": "projects/123456789/locations/us-central1/metadataStores/default/artifacts/33333",
             "uri": "gs://root/examples/",
+            "metadata": {
+              "span": 9000
+            },
             "type": { "schemaTitle": "tfx.Examples" }
           }
         ]

@@ -55,6 +55,20 @@ _MyArtifact2 = artifact._ArtifactType(  # pylint: disable=invalid-name
         'float2': artifact.Property(type=artifact.PropertyType.FLOAT),
         'string1': artifact.Property(type=artifact.PropertyType.STRING),
         'string2': artifact.Property(type=artifact.PropertyType.STRING),
+        'jsonvalue_string':
+            artifact.Property(type=artifact.PropertyType.JSON_VALUE),
+        'jsonvalue_dict':
+            artifact.Property(type=artifact.PropertyType.JSON_VALUE),
+        'jsonvalue_int':
+            artifact.Property(type=artifact.PropertyType.JSON_VALUE),
+        'jsonvalue_float':
+            artifact.Property(type=artifact.PropertyType.JSON_VALUE),
+        'jsonvalue_list':
+            artifact.Property(type=artifact.PropertyType.JSON_VALUE),
+        'jsonvalue_null':
+            artifact.Property(type=artifact.PropertyType.JSON_VALUE),
+        'jsonvalue_empty':
+            artifact.Property(type=artifact.PropertyType.JSON_VALUE),
     })
 
 _mlmd_artifact_type = metadata_store_pb2.ArtifactType()
@@ -149,7 +163,8 @@ class ArtifactTest(tf.test.TestCase):
     self.assertEqual(
         0.5, instance.mlmd_artifact.custom_properties['float_key'].double_value)
 
-    self.assertEqual(textwrap.dedent("""\
+    self.assertEqual(
+        textwrap.dedent("""\
         Artifact(artifact: id: 1
         type_id: 2
         uri: "/tmp/uri2"
@@ -238,6 +253,515 @@ class ArtifactTest(tf.test.TestCase):
       self.assertEqual(my_artifact.float2, 222.2)
       self.assertEqual(my_artifact.string1, '111')
       self.assertEqual(my_artifact.string2, '222')
+
+  def testArtifactJsonValue(self):
+    # Construct artifact.
+    my_artifact = _MyArtifact2()
+    my_artifact.jsonvalue_string = 'aaa'
+    my_artifact.jsonvalue_dict = {'k1': ['v1', 'v2', 333]}
+    my_artifact.jsonvalue_int = 123
+    my_artifact.jsonvalue_float = 3.14
+    my_artifact.jsonvalue_list = ['a1', '2', 3, {'4': 5.0}]
+    my_artifact.jsonvalue_null = None
+    my_artifact.set_json_value_custom_property('customjson1', {})
+    my_artifact.set_json_value_custom_property('customjson2', ['a', 'b', 3])
+    my_artifact.set_json_value_custom_property('customjson3', 'xyz')
+    my_artifact.set_json_value_custom_property('customjson4', 3.14)
+
+    # Test string and proto serialization.
+    self.assertEqual(
+        textwrap.dedent("""\
+        Artifact(artifact: properties {
+          key: "jsonvalue_dict"
+          value {
+            struct_value {
+              fields {
+                key: "k1"
+                value {
+                  list_value {
+                    values {
+                      string_value: "v1"
+                    }
+                    values {
+                      string_value: "v2"
+                    }
+                    values {
+                      number_value: 333.0
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+        properties {
+          key: "jsonvalue_float"
+          value {
+            struct_value {
+              fields {
+                key: "__value__"
+                value {
+                  number_value: 3.14
+                }
+              }
+            }
+          }
+        }
+        properties {
+          key: "jsonvalue_int"
+          value {
+            struct_value {
+              fields {
+                key: "__value__"
+                value {
+                  number_value: 123.0
+                }
+              }
+            }
+          }
+        }
+        properties {
+          key: "jsonvalue_list"
+          value {
+            struct_value {
+              fields {
+                key: "__value__"
+                value {
+                  list_value {
+                    values {
+                      string_value: "a1"
+                    }
+                    values {
+                      string_value: "2"
+                    }
+                    values {
+                      number_value: 3.0
+                    }
+                    values {
+                      struct_value {
+                        fields {
+                          key: "4"
+                          value {
+                            number_value: 5.0
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+        properties {
+          key: "jsonvalue_string"
+          value {
+            struct_value {
+              fields {
+                key: "__value__"
+                value {
+                  string_value: "aaa"
+                }
+              }
+            }
+          }
+        }
+        custom_properties {
+          key: "customjson1"
+          value {
+            struct_value {
+            }
+          }
+        }
+        custom_properties {
+          key: "customjson2"
+          value {
+            struct_value {
+              fields {
+                key: "__value__"
+                value {
+                  list_value {
+                    values {
+                      string_value: "a"
+                    }
+                    values {
+                      string_value: "b"
+                    }
+                    values {
+                      number_value: 3.0
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+        custom_properties {
+          key: "customjson3"
+          value {
+            struct_value {
+              fields {
+                key: "__value__"
+                value {
+                  string_value: "xyz"
+                }
+              }
+            }
+          }
+        }
+        custom_properties {
+          key: "customjson4"
+          value {
+            struct_value {
+              fields {
+                key: "__value__"
+                value {
+                  number_value: 3.14
+                }
+              }
+            }
+          }
+        }
+        , artifact_type: name: "MyTypeName2"
+        properties {
+          key: "float1"
+          value: DOUBLE
+        }
+        properties {
+          key: "float2"
+          value: DOUBLE
+        }
+        properties {
+          key: "int1"
+          value: INT
+        }
+        properties {
+          key: "int2"
+          value: INT
+        }
+        properties {
+          key: "jsonvalue_dict"
+          value: STRUCT
+        }
+        properties {
+          key: "jsonvalue_empty"
+          value: STRUCT
+        }
+        properties {
+          key: "jsonvalue_float"
+          value: STRUCT
+        }
+        properties {
+          key: "jsonvalue_int"
+          value: STRUCT
+        }
+        properties {
+          key: "jsonvalue_list"
+          value: STRUCT
+        }
+        properties {
+          key: "jsonvalue_null"
+          value: STRUCT
+        }
+        properties {
+          key: "jsonvalue_string"
+          value: STRUCT
+        }
+        properties {
+          key: "string1"
+          value: STRING
+        }
+        properties {
+          key: "string2"
+          value: STRING
+        }
+        )"""), str(my_artifact))
+
+    copied_artifact = _MyArtifact2()
+    copied_artifact.set_mlmd_artifact(my_artifact.mlmd_artifact)
+
+    self.assertEqual(copied_artifact.jsonvalue_string, 'aaa')
+    self.assertEqual(
+        json.dumps(copied_artifact.jsonvalue_dict),
+        '{"k1": ["v1", "v2", 333.0]}')
+    self.assertEqual(copied_artifact.jsonvalue_int, 123.0)
+    self.assertEqual(copied_artifact.jsonvalue_float, 3.14)
+    self.assertEqual(
+        json.dumps(copied_artifact.jsonvalue_list),
+        '["a1", "2", 3.0, {"4": 5.0}]')
+    self.assertIsNone(copied_artifact.jsonvalue_null)
+    self.assertIsNone(copied_artifact.jsonvalue_empty)
+    self.assertEqual(
+        json.dumps(
+            copied_artifact.get_json_value_custom_property('customjson1')),
+        '{}')
+    self.assertEqual(
+        json.dumps(
+            copied_artifact.get_json_value_custom_property('customjson2')),
+        '["a", "b", 3.0]')
+    self.assertEqual(
+        copied_artifact.get_string_custom_property('customjson2'), '')
+    self.assertEqual(copied_artifact.get_int_custom_property('customjson2'), 0)
+    self.assertEqual(
+        copied_artifact.get_float_custom_property('customjson2'), 0.0)
+    self.assertEqual(
+        copied_artifact.get_json_value_custom_property('customjson3'), 'xyz')
+    self.assertEqual(
+        copied_artifact.get_string_custom_property('customjson3'), 'xyz')
+    self.assertEqual(
+        copied_artifact.get_json_value_custom_property('customjson4'), 3.14)
+    self.assertEqual(
+        copied_artifact.get_float_custom_property('customjson4'), 3.14)
+    self.assertEqual(copied_artifact.get_int_custom_property('customjson4'), 3)
+
+    # Modify nested structure and check proto serialization reflects changes.
+    copied_artifact.jsonvalue_dict['k1'].append({'4': 'x'})
+    copied_artifact.jsonvalue_dict['k2'] = 'y'
+    copied_artifact.jsonvalue_dict['k3'] = None
+    copied_artifact.jsonvalue_int = None
+    copied_artifact.jsonvalue_list.append([6, '7'])
+    copied_artifact.get_json_value_custom_property('customjson1')['y'] = ['z']
+    copied_artifact.get_json_value_custom_property('customjson2').append(4)
+
+    self.assertEqual(
+        textwrap.dedent("""\
+        Artifact(artifact: properties {
+          key: "jsonvalue_dict"
+          value {
+            struct_value {
+              fields {
+                key: "k1"
+                value {
+                  list_value {
+                    values {
+                      string_value: "v1"
+                    }
+                    values {
+                      string_value: "v2"
+                    }
+                    values {
+                      number_value: 333.0
+                    }
+                    values {
+                      struct_value {
+                        fields {
+                          key: "4"
+                          value {
+                            string_value: "x"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+              fields {
+                key: "k2"
+                value {
+                  string_value: "y"
+                }
+              }
+              fields {
+                key: "k3"
+                value {
+                  null_value: NULL_VALUE
+                }
+              }
+            }
+          }
+        }
+        properties {
+          key: "jsonvalue_float"
+          value {
+            struct_value {
+              fields {
+                key: "__value__"
+                value {
+                  number_value: 3.14
+                }
+              }
+            }
+          }
+        }
+        properties {
+          key: "jsonvalue_list"
+          value {
+            struct_value {
+              fields {
+                key: "__value__"
+                value {
+                  list_value {
+                    values {
+                      string_value: "a1"
+                    }
+                    values {
+                      string_value: "2"
+                    }
+                    values {
+                      number_value: 3.0
+                    }
+                    values {
+                      struct_value {
+                        fields {
+                          key: "4"
+                          value {
+                            number_value: 5.0
+                          }
+                        }
+                      }
+                    }
+                    values {
+                      list_value {
+                        values {
+                          number_value: 6.0
+                        }
+                        values {
+                          string_value: "7"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+        properties {
+          key: "jsonvalue_string"
+          value {
+            struct_value {
+              fields {
+                key: "__value__"
+                value {
+                  string_value: "aaa"
+                }
+              }
+            }
+          }
+        }
+        custom_properties {
+          key: "customjson1"
+          value {
+            struct_value {
+              fields {
+                key: "y"
+                value {
+                  list_value {
+                    values {
+                      string_value: "z"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+        custom_properties {
+          key: "customjson2"
+          value {
+            struct_value {
+              fields {
+                key: "__value__"
+                value {
+                  list_value {
+                    values {
+                      string_value: "a"
+                    }
+                    values {
+                      string_value: "b"
+                    }
+                    values {
+                      number_value: 3.0
+                    }
+                    values {
+                      number_value: 4.0
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+        custom_properties {
+          key: "customjson3"
+          value {
+            struct_value {
+              fields {
+                key: "__value__"
+                value {
+                  string_value: "xyz"
+                }
+              }
+            }
+          }
+        }
+        custom_properties {
+          key: "customjson4"
+          value {
+            struct_value {
+              fields {
+                key: "__value__"
+                value {
+                  number_value: 3.14
+                }
+              }
+            }
+          }
+        }
+        , artifact_type: name: "MyTypeName2"
+        properties {
+          key: "float1"
+          value: DOUBLE
+        }
+        properties {
+          key: "float2"
+          value: DOUBLE
+        }
+        properties {
+          key: "int1"
+          value: INT
+        }
+        properties {
+          key: "int2"
+          value: INT
+        }
+        properties {
+          key: "jsonvalue_dict"
+          value: STRUCT
+        }
+        properties {
+          key: "jsonvalue_empty"
+          value: STRUCT
+        }
+        properties {
+          key: "jsonvalue_float"
+          value: STRUCT
+        }
+        properties {
+          key: "jsonvalue_int"
+          value: STRUCT
+        }
+        properties {
+          key: "jsonvalue_list"
+          value: STRUCT
+        }
+        properties {
+          key: "jsonvalue_null"
+          value: STRUCT
+        }
+        properties {
+          key: "jsonvalue_string"
+          value: STRUCT
+        }
+        properties {
+          key: "string1"
+          value: STRING
+        }
+        properties {
+          key: "string2"
+          value: STRING
+        }
+        )"""), str(copied_artifact))
 
   def testInvalidArtifact(self):
     with self.assertRaisesRegexp(
@@ -370,8 +894,9 @@ class ArtifactTest(tf.test.TestCase):
     self.assertEqual(original.uri, copied.uri)
     self.assertEqual(original.int1, copied.int1)
     self.assertEqual(original.string1, copied.string1)
-    self.assertEqual(original.get_string_custom_property('my_custom_property'),
-                     copied.get_string_custom_property('my_custom_property'))
+    self.assertEqual(
+        original.get_string_custom_property('my_custom_property'),
+        copied.get_string_custom_property('my_custom_property'))
 
   def testCopyFromDifferentArtifactType(self):
     artifact1 = _MyArtifact()

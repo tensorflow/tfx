@@ -26,6 +26,8 @@ from tfx.types import standard_component_specs
 from tfx.utils import import_utils
 import yaml
 
+from google.protobuf import struct_pb2
+from google.protobuf import json_format
 from ml_metadata.proto import metadata_store_pb2
 
 # Old execution property name. This is mapped to utils.INPUT_BASE_KEY.
@@ -153,37 +155,53 @@ def translate_executor_output(
   return result
 
 
-def _get_kubeflow_value_mapping(
-    mlmd_value_mapping: Any) -> Dict[str, pipeline_pb2.Value]:
-  """Converts a mapping field with MLMD Value to Kubeflow Value."""
+def _get_json_value_mapping(
+    mlmd_value_mapping: Dict[str, metadata_store_pb2.Value]) -> Dict[str, Any]:
+  """Converts a mapping field with MLMD Value to JSON Value."""
 
-  def get_kubeflow_value(
-      mlmd_value: metadata_store_pb2.Value) -> pipeline_pb2.Value:
-    result = pipeline_pb2.Value()
+  def get_json_value(
+      mlmd_value: metadata_store_pb2.Value) -> artifact.JsonValueType:
     if not mlmd_value.HasField('value'):
-      return result
-    if mlmd_value.WhichOneof('value') == 'int_value':
-      result.int_value = mlmd_value.int_value
+      return None
+    elif mlmd_value.WhichOneof('value') == 'int_value':
+      return float(mlmd_value.int_value)
     elif mlmd_value.WhichOneof('value') == 'double_value':
-      result.double_value = mlmd_value.double_value
+      return mlmd_value.double_value
     elif mlmd_value.WhichOneof('value') == 'string_value':
-      result.string_value = mlmd_value.string_value
+      return mlmd_value.string_value
+    elif mlmd_value.WhichOneof('value') == 'struct_value':
+      return artifact._decode_struct_value(mlmd_value.struct_value)  # pylint: disable=protected-access
     else:
       raise TypeError('Get unknown type of value: {}'.format(mlmd_value))
-    return result
 
-  return {k: get_kubeflow_value(v) for k, v in mlmd_value_mapping.items()}
+  return {k: get_json_value(v) for k, v in mlmd_value_mapping.items()}
+
+
+def _get_json_metadata_mapping(
+    artifact_instance: artifact.Artifact) -> Dict[str, Any]:
+  """Converts Artifact properties to a JSON dictionary."""
+  properties_json = _get_json_value_mapping(
+      artifact_instance.mlmd_artifact.properties)
+  custom_properties_json = _get_json_value_mapping(
+      artifact_instance.mlmd_artifact.custom_properties)
+  metadata_dict = {}
+  for key, value in properties_json.items():
+    metadata_dict[key] = value
+  for key, value in custom_properties_json.items():
+    if key in artifact_instance.artifact_type.properties:
+      key = artifact.CUSTOM_PROPERTIES_PREFIX + key
+    metadata_dict[key] = value
+  return metadata_dict
 
 
 def to_runtime_artifact(
     artifact_instance: artifact.Artifact,
     name_from_id: Mapping[int, str]) -> pipeline_pb2.RuntimeArtifact:
   """Converts TFX artifact instance to RuntimeArtifact proto message."""
-  result = pipeline_pb2.RuntimeArtifact(uri=artifact_instance.uri)
-  struct_proto = compiler_utils.pack_artifact_properties(artifact_instance)
-  if struct_proto:
-    result.metadata.CopyFrom(struct_proto)
-
+  metadata = struct_pb2.Struct()
+  json_format.ParseDict(_get_json_metadata_mapping(artifact_instance), metadata)
+  result = pipeline_pb2.RuntimeArtifact(
+      uri=artifact_instance.uri, metadata=metadata)
   # TODO(b/135056715): Change to a unified getter/setter of Artifact type
   # once it's ready.
   # Try convert tfx artifact id to string-typed name. This should be the case
@@ -242,18 +260,43 @@ def _parse_raw_artifact(
     mlmd_artifact.id = _get_hashed_id(artifact_pb.name, name_from_id)
 
   mlmd_artifact.uri = artifact_pb.uri
+  for k, v in artifact_pb.properties.items():
+    mlmd_artifact.properties[k].CopyFrom(compiler_utils.get_mlmd_value(v))
 
-  # KFP IR schema 2.0.0 does not differentiate between properties and custom
-  # properties, which MLMD Artifact does. We need to seperate them by looking at
-  # the declared properties in the artifact class.
-  for name, value in artifact_pb.metadata.fields.items():
-    if artifact_cls.PROPERTIES and name in artifact_cls.PROPERTIES:
-      mlmd_artifact.properties[name].CopyFrom(
-          compiler_utils.get_mlmd_value(
-              value, value_type=artifact_cls.PROPERTIES[name].type))
-    else:
-      mlmd_artifact.custom_properties[name].CopyFrom(
-          compiler_utils.get_mlmd_value(value))
+  for k, v in artifact_pb.custom_properties.items():
+    mlmd_artifact.custom_properties[k].CopyFrom(
+        compiler_utils.get_mlmd_value(v))
+
+  # Translate metadata items into properties and custom properties.
+  mlmd_artifact_type = artifact_cls().artifact_type
+  metadata_dict = json_format.MessageToDict(artifact_pb.metadata)
+  for k, v in metadata_dict.items():
+    if k in mlmd_artifact_type.properties:
+      property_type = mlmd_artifact_type.properties[k]
+      if property_type == metadata_store_pb2.INT and isinstance(v, float):
+        mlmd_artifact.properties[k].int_value = int(v)
+        continue
+      elif property_type == metadata_store_pb2.DOUBLE and isinstance(v, float):
+        mlmd_artifact.properties[k].double_value = v
+        continue
+      elif property_type == metadata_store_pb2.STRING and isinstance(v, str):
+        mlmd_artifact.properties[k].string_value = v
+        continue
+      elif property_type == metadata_store_pb2.STRUCT:
+        mlmd_artifact.properties[k].struct_value.CopyFrom(
+            artifact._encode_struct_value(v))  # pylint: disable=protected-access
+        continue
+      # We fell through, which means the property doesn't actually fit the
+      # schema. Therefore, we treat it as a custom property.
+
+    # First, we drop the custom property prefix if we had to drop it because
+    # of a property name conflict.
+    if k.startswith(artifact.CUSTOM_PROPERTIES_PREFIX):
+      stripped_k = k[len(artifact.CUSTOM_PROPERTIES_PREFIX):]
+      if stripped_k in mlmd_artifact_type.properties:
+        k = stripped_k
+    mlmd_artifact.custom_properties[k].struct_value.CopyFrom(
+        artifact._encode_struct_value(v))  # pylint: disable=protected-access
 
   # 3. Instantiate the artifact Python object.
   result = artifact_cls()

@@ -14,7 +14,6 @@
 
 import json
 import os
-import re
 
 from absl import logging
 
@@ -174,9 +173,13 @@ class RunDriverTest(test_case_utils.TfxTest):
 
     # Check the output metadata file for the expected outputs
     with open(_TEST_OUTPUT_METADATA_JSON) as output_meta_json:
-      self.assertDictEqual(
-          json.loads(re.sub(r'\s+', '', output_meta_json.read())),
-          json.loads(re.sub(r'\s+', '', self._expected_result_from_file)))
+      self.assertEqual(
+          json.dumps(
+              json.loads(output_meta_json.read()), indent=2, sort_keys=True),
+          json.dumps(
+              json.loads(self._expected_result_from_file),
+              indent=2,
+              sort_keys=True))
 
 
 if __name__ == '__main__':
