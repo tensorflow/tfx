@@ -53,7 +53,8 @@ _PIPELINE_ROOT = 'pipeline-root'
 #         filesystem=pusher_pb2.PushDestination.Filesystem(
 #             base_directory=os.path.join(
 #                 str(pipeline.ROOT_PARAMETER), 'model_serving'))))
-ROOT_PARAMETER = data_types.RuntimeParameter(name=_PIPELINE_ROOT, ptype=Text)
+ROOT_PARAMETER = data_types.RuntimeParameter(
+    name=_PIPELINE_ROOT, ptype=Text, system_parameter=True)
 
 
 class ExecutionMode(enum.Enum):
