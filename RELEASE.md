@@ -23,6 +23,11 @@
    `--engine=beam` flag.
 *  Trainer now uses GenericExecutor as default. To use the previous Estimator
    based Trainer, please set custom_executor_spec to trainer.executor.Executor.
+*  Changed the pattern spec supported for QueryBasedDriver:
+   *   @span_begin_timestamp: Start of span interval, Timestamp in seconds.
+   *   @span_end_timestamp: End of span interval, Timestamp in seconds.
+   *   @span_yyyymmdd_utc: STRING with format, e.g., '20180114', corresponding
+                           to the span interval begin in UTC.
 
 ### For Pipeline Authors
 
