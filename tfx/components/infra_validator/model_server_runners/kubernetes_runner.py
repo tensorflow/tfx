@@ -214,15 +214,12 @@ class KubernetesRunner(base_runner.BaseModelServerRunner):
 
       if self._serving_pod_manifest_overrides and \
               self._serving_pod_manifest_overrides.env:
-        additional_env_vars = []
         for env in self._serving_pod_manifest_overrides.env:
           if env.value:
-            logging.info(f'name={env.name} value={env.value}')
-            additional_env_vars.append(
+            env_vars.append(
               k8s_client.V1EnvVar(name=env.name, value=env.value))
-          else:
-            logging.info(f'name={env.name} value={env.valueFrom}')
-            additional_env_vars.append(
+          elif env.valueFrom and env.valueFrom.secretKeyRef:
+            env_vars.append(
               k8s_client.V1EnvVar(
                 name=env.name,
                 value_from=k8s_client.V1EnvVarSource(
@@ -233,7 +230,9 @@ class KubernetesRunner(base_runner.BaseModelServerRunner):
                 )
               )
             )
-        env_vars += additional_env_vars
+          else:
+            logging.warning('Only fetching environment variables from secret '
+                            'is supported.')
 
     else:
       raise NotImplementedError('Unsupported serving binary {}'.format(
@@ -250,7 +249,8 @@ class KubernetesRunner(base_runner.BaseModelServerRunner):
     result = k8s_client.V1Pod(
         metadata=k8s_client.V1ObjectMeta(
             generate_name=_MODEL_SERVER_POD_NAME_PREFIX,
-            annotations=self._serving_pod_manifest_overrides.annotations,
+            annotations=dict(self._serving_pod_manifest_overrides.annotations)
+            if self._serving_pod_manifest_overrides.annotations else {},
             labels=self._label_dict,
             # Resources with ownerReferences are automatically deleted once all
             # its owners are deleted.
