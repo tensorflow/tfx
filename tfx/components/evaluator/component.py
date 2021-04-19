@@ -98,9 +98,8 @@ class Evaluator(base_component.BaseComponent):
         blessing result.
       schema: A `Schema` channel to use for TFXIO.
       module_file: A path to python module file containing UDFs for Evaluator
-        customization. This functionality is experimental and may change at any
-        time. The module_file can implement following functions at its top
-        level.
+        customization. The module_file can implement following functions at its
+        top level.
           def custom_eval_shared_model(
              eval_saved_model_path, model_name, eval_config, **kwargs,
           ) -> tfma.EvalSharedModel:
@@ -108,8 +107,7 @@ class Evaluator(base_component.BaseComponent):
             eval_shared_model, eval_config, tensor_adapter_config,
           ) -> List[tfma.extractors.Extractor]:
       module_path: A python path to the custom module that contains the UDFs.
-        See 'module_file' for the required signature of UDFs. This functionality
-        is experimental and this API may change at any time. Note this can
+        See 'module_file' for the required signature of UDFs. Note this can
         not be set together with module_file.
     """
     if bool(module_file) and bool(module_path):

@@ -75,25 +75,8 @@ MONTH_SPEC = '{MM}'
 DAY_SPEC = '{DD}'
 # Order of importance for Date specs.
 DATE_SPECS = [YEAR_SPEC, MONTH_SPEC, DAY_SPEC]
-# Specs for query:
-#   @span_begin_timestamp: Start of span interval, Timestamp in seconds.
-#   @span_end_timestamp: End of span interval, Timestamp in seconds.
-#   @span_yyyymmdd_utc: STRING with format, e.g., '20180114', corresponding to
-#                       the span interval begin in UTC.
-#   Query examples,
-#     1. SELECT * FROM table WHERE date = @span_yyyymmdd_utc
-#     2. SELECT * FROM table WHERE timestamp
-#        BETWEEN @span_begin_timestamp AND @span_end_timestamp
-SPAN_BEGIN_TIMESTAMP = '@span_begin_timestamp'
-SPAN_END_TIMESTMAP = '@span_end_timestamp'
-SPAN_YYYYMMDD_UTC = '@span_yyyymmdd_utc'
 # Unix epoch date to calculate span number from.
 UNIX_EPOCH_DATE = datetime.datetime(1970, 1, 1)
-UNIX_EPOCH_DATE_UTC = datetime.datetime(  # pylint: disable=g-tzinfo-datetime
-    1970,
-    1,
-    1,
-    tzinfo=datetime.timezone.utc)
 
 _DEFAULT_ENCODING = 'utf-8'
 
@@ -346,19 +329,6 @@ def get_pattern_for_span_version(pattern: Text, is_match_span: bool,
                                                   version)
     pattern = re.sub(VERSION_FULL_REGEX, version_token, pattern)
 
-  return pattern
-
-
-def get_query_for_span(pattern: Text, span: int) -> Text:
-  """Return query with timestamp placeholders filled."""
-  # TODO(b/179853017): make UNIX_EPOCH_DATE_UTC timezone configurable.
-  begin = UNIX_EPOCH_DATE_UTC + datetime.timedelta(days=span)
-  end = begin + datetime.timedelta(days=1)
-  pattern = pattern.replace(SPAN_BEGIN_TIMESTAMP, str(int(begin.timestamp())))
-  pattern = pattern.replace(SPAN_END_TIMESTMAP, str(int(end.timestamp())))
-  pattern = pattern.replace(
-      SPAN_YYYYMMDD_UTC,
-      begin.astimezone(datetime.timezone.utc).strftime("'%Y%m%d'"))
   return pattern
 
 

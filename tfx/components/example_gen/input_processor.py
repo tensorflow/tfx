@@ -36,7 +36,31 @@ class InputProcessor(six.with_metaclass(abc.ABCMeta, object)):
       range_config: An instance of range_config_pb2.RangeConfig, defines the
         rules for span resolving.
     """
+    self._is_match_span = None
+    self._is_match_date = None
+    self._is_match_version = None
+    for split in splits:
+      is_match_span, is_match_date, is_match_version = utils.verify_split_pattern_specs(
+          split)
+      if self._is_match_span is None:
+        self._is_match_span = is_match_span
+        self._is_match_date = is_match_date
+        self._is_match_version = is_match_version
+      elif (self._is_match_span != is_match_span or
+            self._is_match_date != is_match_date or
+            self._is_match_version != is_match_version):
+        raise ValueError('Spec setup should the same for all splits: %s.' %
+                         split.pattern)
+
     self._splits = splits
+
+    if (self._is_match_span or self._is_match_date) and not range_config:
+      range_config = range_config_pb2.RangeConfig(
+          rolling_range=range_config_pb2.RollingRange(num_spans=1))
+    if not self._is_match_span and not self._is_match_date and range_config:
+      raise ValueError(
+          'Span or Date spec should be specified in split pattern if RangeConfig is specified.'
+      )
 
     if range_config:
       if range_config.HasField('static_range'):
@@ -86,16 +110,21 @@ class InputProcessor(six.with_metaclass(abc.ABCMeta, object)):
         target_span = self.get_latest_span()
 
     # TODO(b/162622803): add default behavior for when version spec not present.
-    target_version = self.get_latest_version(target_span)  # pylint: disable=assignment-from-none
+    if self._is_match_version:
+      target_version = self.get_latest_version(target_span)  # pylint: disable=assignment-from-none
 
     return target_span, target_version
 
-  @abc.abstractmethod
   def get_pattern_for_span_version(self, pattern: Text, span: int,
                                    version: Optional[int]) -> Text:
     """Return pattern with Span and Version spec filled."""
-    # TODO(b/181275944): refactor as not all type of ExampleGen has pattern.
-    raise NotImplementedError
+    return utils.get_pattern_for_span_version(
+        pattern=pattern,
+        is_match_span=self._is_match_span,
+        is_match_date=self._is_match_date,
+        is_match_version=self._is_match_version,
+        span=span,
+        version=version)
 
   @abc.abstractmethod
   def get_latest_span(self) -> int:
@@ -129,31 +158,6 @@ class FileBasedInputProcessor(InputProcessor):
     """
     super(FileBasedInputProcessor, self).__init__(
         splits=splits, range_config=range_config)
-
-    self._is_match_span = None
-    self._is_match_date = None
-    self._is_match_version = None
-    for split in splits:
-      is_match_span, is_match_date, is_match_version = utils.verify_split_pattern_specs(
-          split)
-      if self._is_match_span is None:
-        self._is_match_span = is_match_span
-        self._is_match_date = is_match_date
-        self._is_match_version = is_match_version
-      elif (self._is_match_span != is_match_span or
-            self._is_match_date != is_match_date or
-            self._is_match_version != is_match_version):
-        raise ValueError('Spec setup should the same for all splits: %s.' %
-                         split.pattern)
-
-    if (self._is_match_span or self._is_match_date) and not range_config:
-      range_config = range_config_pb2.RangeConfig(
-          rolling_range=range_config_pb2.RollingRange(num_spans=1))
-    if not self._is_match_span and not self._is_match_date and range_config:
-      raise ValueError(
-          'Span or Date spec should be specified in split pattern if RangeConfig is specified.'
-      )
-
     self._input_base_uri = input_base_uri
     self._fingerprint = None
 
@@ -165,17 +169,6 @@ class FileBasedInputProcessor(InputProcessor):
     self._fingerprint, span, version = utils.calculate_splits_fingerprint_span_and_version(
         self._input_base_uri, splits, self._range_config)
     return span, version
-
-  def get_pattern_for_span_version(self, pattern: Text, span: int,
-                                   version: Optional[int]) -> Text:
-    """Return pattern with Span and Version spec filled."""
-    return utils.get_pattern_for_span_version(
-        pattern=pattern,
-        is_match_span=self._is_match_span,
-        is_match_date=self._is_match_date,
-        is_match_version=self._is_match_version,
-        span=span,
-        version=version)
 
   def get_latest_span(self) -> int:
     """Resolves the latest Span information."""
@@ -195,11 +188,6 @@ class FileBasedInputProcessor(InputProcessor):
 class QueryBasedInputProcessor(InputProcessor):
   """Custom InputProcessor for query based ExampleGen driver."""
 
-  def get_pattern_for_span_version(self, pattern: Text, span: int,
-                                   version: Optional[int]) -> Text:
-    """Return pattern with Span and Version spec filled."""
-    return utils.get_query_for_span(pattern, span)
-
   def get_latest_span(self) -> int:
     """Resolves the latest Span information."""
     # TODO(b/179853017): support latest span based on timestamp.
@@ -209,8 +197,9 @@ class QueryBasedInputProcessor(InputProcessor):
 
   def get_latest_version(self, span: int) -> Optional[int]:
     """Resolves the latest Version of a Span."""
-    # TODO(b/179853017): support Version.
-    return None
+    # TODO(b/179853017): support Version spec.
+    raise NotImplementedError(
+        'For QueryBasedExampleGen, Version spec is not supported.')
 
   def get_input_fingerprint(self, span: int,
                             version: Optional[int]) -> Optional[Text]:

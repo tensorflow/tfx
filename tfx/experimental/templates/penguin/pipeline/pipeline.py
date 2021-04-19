@@ -25,11 +25,11 @@ from tfx.components import CsvExampleGen
 from tfx.components import Evaluator
 from tfx.components import ExampleValidator
 from tfx.components import Pusher
+from tfx.components import ResolverNode
 from tfx.components import SchemaGen
 from tfx.components import StatisticsGen
 from tfx.components import Trainer
 from tfx.components import Transform
-from tfx.dsl.components.common import resolver
 from tfx.dsl.experimental import latest_blessed_model_resolver
 from tfx.experimental.templates.penguin.models import features
 from tfx.orchestration import pipeline
@@ -38,6 +38,7 @@ from tfx.proto import trainer_pb2
 from tfx.types import Channel
 from tfx.types.standard_artifacts import Model
 from tfx.types.standard_artifacts import ModelBlessing
+from tfx.utils.dsl_utils import external_input
 from ml_metadata.proto import metadata_store_pb2
 
 
@@ -61,7 +62,7 @@ def create_pipeline(
 
   # Brings data into the pipeline or otherwise joins/converts training data.
   # TODO(step 2): Might use another ExampleGen class for your data.
-  example_gen = CsvExampleGen(input_base=data_path)
+  example_gen = CsvExampleGen(input=external_input(data_path))
   components.append(example_gen)
 
   # Computes statistics over data for visualization and example validation.
@@ -101,9 +102,9 @@ def create_pipeline(
   # components.append(trainer)
 
   # Get the latest blessed model for model validation.
-  model_resolver = resolver.Resolver(
+  model_resolver = ResolverNode(
       instance_name='latest_blessed_model_resolver',
-      strategy_class=latest_blessed_model_resolver.LatestBlessedModelResolver,
+      resolver_class=latest_blessed_model_resolver.LatestBlessedModelResolver,
       model=Channel(type=Model),
       model_blessing=Channel(type=ModelBlessing))
   # TODO(step 5): Uncomment here to add ResolverNode to the pipeline.

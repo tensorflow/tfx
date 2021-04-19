@@ -1,6 +1,7 @@
 # Current Version (Still in Development)
 
 ## Major Features and Improvements
+
 *  Upgraded TFX to KFP compiler to use KFP IR schema version 2.0.0.
 *  InfraValidator can now produce a [SavedModel with warmup requests](
    https://www.tensorflow.org/tfx/serving/saved_model_warmup). This feature is
@@ -11,23 +12,14 @@
    InfraValidator. Note that InfraValidator does not always create a SavedModel,
    and the producer InfraValidator must be configured with
    `RequestSpec.make_warmup = True` in order to be pushed by a Pusher.
-*  Support is added for the JSON_VALUE artifact property type, allowing storage
-   of JSON-compatible objects as artifact metadata.
-*  Support is added for the KFP v2 artifact metadata field when executing using
-   the KFP v2 container entrypoint.
 
 ## Breaking Changes
-
 *  Default orchestration engine of CLI was changed to `local` orchestrator from
    `beam` orchestrator. You can still use `beam` orchestrator with
    `--engine=beam` flag.
+
 *  Trainer now uses GenericExecutor as default. To use the previous Estimator
    based Trainer, please set custom_executor_spec to trainer.executor.Executor.
-*  Changed the pattern spec supported for QueryBasedDriver:
-   *   @span_begin_timestamp: Start of span interval, Timestamp in seconds.
-   *   @span_end_timestamp: End of span interval, Timestamp in seconds.
-   *   @span_yyyymmdd_utc: STRING with format, e.g., '20180114', corresponding
-                           to the span interval begin in UTC.
 
 ### For Pipeline Authors
 

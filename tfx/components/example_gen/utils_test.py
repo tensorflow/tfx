@@ -758,21 +758,6 @@ class UtilsTest(tf.test.TestCase):
     self.assertIsNone(version)
     self.assertEqual(splits[0].pattern, '19700102/split1/*')
 
-  def testGetQueryForSpan(self):
-    query = 'select * from table'
-    self.assertEqual(utils.get_query_for_span(query, 1), 'select * from table')
-    query = 'select * from table where date=@span_yyyymmdd_utc'
-    self.assertEqual(
-        utils.get_query_for_span(query, 1),
-        "select * from table where date='19700102'")
-    query = ('select * from table where '
-             'ts>=TIMESTAMP_SECONDS(@span_begin_timestamp) and '
-             'ts<TIMESTAMP_SECONDS(@span_end_timestamp)')
-    self.assertEqual(
-        utils.get_query_for_span(query, 2),
-        'select * from table where ts>=TIMESTAMP_SECONDS(172800) and ts<TIMESTAMP_SECONDS(259200)'
-    )
-
 
 if __name__ == '__main__':
   tf.test.main()

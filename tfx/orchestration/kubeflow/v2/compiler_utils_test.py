@@ -27,6 +27,7 @@ from tfx.types import standard_artifacts
 from tfx.types.experimental import simple_artifacts
 import yaml
 
+from google.protobuf import struct_pb2
 from google.protobuf import text_format
 
 _EXPECTED_MY_ARTIFACT_SCHEMA = """
@@ -187,6 +188,34 @@ class CompilerUtilsTest(tf.test.TestCase):
         }
         """, pipeline_pb2.ComponentOutputsSpec.ArtifactSpec())
     self.assertProtoEquals(spec, expected_spec)
+
+  def testGetMLMDValue(self):
+    struct_val_int = struct_pb2.Value(number_value=42)
+    struct_val_float = struct_pb2.Value(number_value=42.0)
+    struct_val_str = struct_pb2.Value(string_value='42')
+
+    # With type info.
+    mlmd_val_int = compiler_utils.get_mlmd_value(
+        struct_val_int, value_type=artifact.PropertyType.INT)
+    self.assertEqual(mlmd_val_int.int_value, 42)
+
+    mlmd_val_float = compiler_utils.get_mlmd_value(
+        struct_val_float, value_type=artifact.PropertyType.FLOAT)
+    self.assertEqual(mlmd_val_float.double_value, 42.0)
+
+    mlmd_val_str = compiler_utils.get_mlmd_value(
+        struct_val_str, value_type=artifact.PropertyType.STRING)
+    self.assertEqual(mlmd_val_str.string_value, '42')
+
+    # Without type info, int maps to double.
+    mlmd_val_int = compiler_utils.get_mlmd_value(struct_val_int)
+    self.assertEqual(mlmd_val_int.double_value, 42.0)
+
+    mlmd_val_float = compiler_utils.get_mlmd_value(struct_val_float)
+    self.assertEqual(mlmd_val_float.double_value, 42.0)
+
+    mlmd_val_str = compiler_utils.get_mlmd_value(struct_val_str)
+    self.assertEqual(mlmd_val_str.string_value, '42')
 
 
 if __name__ == '__main__':

@@ -281,17 +281,40 @@ def get_kubeflow_value(
 
 
 def get_mlmd_value(
-    kubeflow_value: pipeline_pb2.Value) -> metadata_store_pb2.Value:
-  """Converts Kubeflow pipeline Value pb message to MLMD Value."""
+    value: struct_pb2.Value,
+    value_type: Optional[artifact.PropertyType] = None
+) -> metadata_store_pb2.Value:
+  """Converts Struct Value proto to MLMD Value."""
   result = metadata_store_pb2.Value()
-  if kubeflow_value.WhichOneof('value') == 'int_value':
-    result.int_value = kubeflow_value.int_value
-  elif kubeflow_value.WhichOneof('value') == 'double_value':
-    result.double_value = kubeflow_value.double_value
-  elif kubeflow_value.WhichOneof('value') == 'string_value':
-    result.string_value = kubeflow_value.string_value
+  # If value type is provided, we directly set the corresponding field.
+  if value_type:
+    if value_type == artifact.PropertyType.INT and value.WhichOneof(
+        'kind') == 'number_value':
+      result.int_value = int(value.number_value)
+    elif value_type == artifact.PropertyType.FLOAT and value.WhichOneof(
+        'kind') == 'number_value':
+      result.double_value = value.number_value
+    elif value_type == artifact.PropertyType.STRING and value.WhichOneof(
+        'kind') == 'string_value':
+      result.string_value = value.string_value
+    else:
+      raise TypeError('Actual value type and provided type do not match.')
+    return result
+
+  # If value type is unknown, e.g. for custom properties, we make a best guess.
+  # Because MLMD value type differentiate between int and float, while Struct
+  # proto value type does not, both int and float will be stored as float.
+  # When user retrives the value, we make float to int conversion if needed.
+  if value.WhichOneof('kind') == 'number_value':
+    result.double_value = value.number_value
+  elif value.WhichOneof('kind') == 'string_value':
+    result.string_value = value.string_value
+  elif value.WhichOneof('kind') == 'bool_value':
+    result.int_value = int(value.bool_value)
+  elif value.WhichOneof('kind') == 'struct_value':
+    result.struct_value.CopyFrom(value.struct_value)
   else:
-    raise TypeError('Get unknown type of value: {}'.format(kubeflow_value))
+    raise TypeError(f'Get unknown type of value: {value}.')
 
   return result
 
