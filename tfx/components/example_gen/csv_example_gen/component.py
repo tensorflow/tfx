@@ -62,7 +62,7 @@ class CsvExampleGen(component.FileBasedExampleGen):  # pylint: disable=protected
     feature is `tf.train.Feature(bytes_list=tf.train.BytesList(value=[]))`.
   """
 
-  EXECUTOR_SPEC = executor_spec.ExecutorClassSpec(executor.Executor)
+  EXECUTOR_SPEC = executor_spec.BeamExecutorSpec(executor.Executor)
 
   def __init__(
       self,

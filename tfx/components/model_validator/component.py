@@ -23,14 +23,14 @@ from typing import Optional, Text
 from tfx import types
 from tfx.components.model_validator import driver
 from tfx.components.model_validator import executor
-from tfx.dsl.components.base import base_component
+from tfx.dsl.components.base import base_beam_component
 from tfx.dsl.components.base import executor_spec
 from tfx.types import standard_artifacts
 from tfx.types.standard_component_specs import ModelValidatorSpec
 from tfx.utils import deprecation_utils
 
 
-class ModelValidator(base_component.BaseComponent):
+class ModelValidator(base_beam_component.BaseBeamComponent):
   """DEPRECATED: Please use `Evaluator` instead.
 
   The model validator component can be used to check model metrics threshold
@@ -65,7 +65,7 @@ class ModelValidator(base_component.BaseComponent):
   """
 
   SPEC_CLASS = ModelValidatorSpec
-  EXECUTOR_SPEC = executor_spec.ExecutorClassSpec(executor.Executor)
+  EXECUTOR_SPEC = executor_spec.BeamExecutorSpec(executor.Executor)
   DRIVER_CLASS = driver.Driver
 
   @deprecation_utils.deprecated(

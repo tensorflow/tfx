@@ -21,7 +21,7 @@ from typing import Any, Dict, Optional, Text, Union
 
 from tfx import types
 from tfx.components.transform import executor
-from tfx.dsl.components.base import base_component
+from tfx.dsl.components.base import base_beam_component
 from tfx.dsl.components.base import executor_spec
 from tfx.orchestration import data_types
 from tfx.proto import transform_pb2
@@ -30,7 +30,7 @@ from tfx.types.standard_component_specs import TransformSpec
 from tfx.utils import json_utils
 
 
-class Transform(base_component.BaseComponent):
+class Transform(base_beam_component.BaseBeamComponent):
   """A TFX component to transform the input examples.
 
   The Transform component wraps TensorFlow Transform (tf.Transform) to
@@ -61,7 +61,7 @@ class Transform(base_component.BaseComponent):
   """
 
   SPEC_CLASS = TransformSpec
-  EXECUTOR_SPEC = executor_spec.ExecutorClassSpec(executor.Executor)
+  EXECUTOR_SPEC = executor_spec.BeamExecutorSpec(executor.Executor)
 
   def __init__(
       self,

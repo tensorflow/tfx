@@ -1553,18 +1553,22 @@ deployment_config {
     executor_specs {
       key: "CsvExampleGen"
       value {
-        [type.googleapis.com/tfx.orchestration.executable_spec.PythonClassExecutableSpec] {
-          class_path: "tfx.components.example_gen.csv_example_gen.executor.Executor"
-          extra_flags: "--my_testing_beam_pipeline_args=foo"
+        [type.googleapis.com/tfx.orchestration.executable_spec.BeamExecutableSpec] {
+          python_executor_spec {
+            class_path: "tfx.components.example_gen.csv_example_gen.executor.Executor"
+          }
+          beam_pipeline_args: "--my_testing_beam_pipeline_args=foo"
         }
       }
     }
     executor_specs {
       key: "Evaluator"
       value {
-        [type.googleapis.com/tfx.orchestration.executable_spec.PythonClassExecutableSpec] {
-          class_path: "tfx.components.evaluator.executor.Executor"
-          extra_flags: "--my_testing_beam_pipeline_args=foo"
+        [type.googleapis.com/tfx.orchestration.executable_spec.BeamExecutableSpec] {
+          python_executor_spec {
+            class_path: "tfx.components.evaluator.executor.Executor"
+          }
+          beam_pipeline_args: "--my_testing_beam_pipeline_args=foo"
         }
       }
     }
@@ -1598,18 +1602,22 @@ deployment_config {
     executor_specs {
       key: "StatisticsGen"
       value {
-        [type.googleapis.com/tfx.orchestration.executable_spec.PythonClassExecutableSpec] {
-          class_path: "tfx.components.statistics_gen.executor.Executor"
-          extra_flags: "--my_testing_beam_pipeline_args=foo"
+        [type.googleapis.com/tfx.orchestration.executable_spec.BeamExecutableSpec] {
+          python_executor_spec {
+            class_path: "tfx.components.statistics_gen.executor.Executor"
+          }
+          beam_pipeline_args: "--my_testing_beam_pipeline_args=foo"
         }
       }
     }
     executor_specs {
       key: "StatisticsGen.another_statistics_gen"
       value {
-        [type.googleapis.com/tfx.orchestration.executable_spec.PythonClassExecutableSpec] {
-          class_path: "tfx.components.statistics_gen.executor.Executor"
-          extra_flags: "--my_testing_beam_pipeline_args=foo"
+        [type.googleapis.com/tfx.orchestration.executable_spec.BeamExecutableSpec] {
+          python_executor_spec {
+            class_path: "tfx.components.statistics_gen.executor.Executor"
+          }
+          beam_pipeline_args: "--my_testing_beam_pipeline_args=foo"
         }
       }
     }

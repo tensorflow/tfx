@@ -20,7 +20,7 @@ from tensorflow_data_validation.api import stats_api
 from tensorflow_data_validation.statistics import stats_options as options
 from tfx import types
 from tfx.components.util import tfxio_utils
-from tfx.dsl.components.base import base_executor
+from tfx.dsl.components.base import base_beam_executor
 from tfx.types import artifact_utils
 from tfx.types import standard_component_specs
 from tfx.utils import io_utils
@@ -33,7 +33,7 @@ _DEFAULT_FILE_NAME = 'FeatureStats.pb'
 _TELEMETRY_DESCRIPTORS = ['StatisticsGen']
 
 
-class Executor(base_executor.BaseExecutor):
+class Executor(base_beam_executor.BaseBeamExecutor):
   """Computes statistics over input training data for example validation.
 
   The StatisticsGen component generates features statistics and random samples

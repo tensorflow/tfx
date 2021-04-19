@@ -17,14 +17,14 @@ from typing import Any, Dict, Optional, Text, Union
 
 from tfx import types
 from tfx.components.bulk_inferrer import executor
-from tfx.dsl.components.base import base_component
+from tfx.dsl.components.base import base_beam_component
 from tfx.dsl.components.base import executor_spec
 from tfx.proto import bulk_inferrer_pb2
 from tfx.types import standard_artifacts
 from tfx.types.standard_component_specs import BulkInferrerSpec
 
 
-class BulkInferrer(base_component.BaseComponent):
+class BulkInferrer(base_beam_component.BaseBeamComponent):
   """A TFX component to do batch inference on a model with unlabelled examples.
 
   BulkInferrer consumes examples data and a model, and produces the inference
@@ -42,7 +42,7 @@ class BulkInferrer(base_component.BaseComponent):
   """
 
   SPEC_CLASS = BulkInferrerSpec
-  EXECUTOR_SPEC = executor_spec.ExecutorClassSpec(executor.Executor)
+  EXECUTOR_SPEC = executor_spec.BeamExecutorSpec(executor.Executor)
 
   def __init__(
       self,

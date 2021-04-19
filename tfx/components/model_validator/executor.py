@@ -27,14 +27,14 @@ import apache_beam as beam
 import tensorflow_model_analysis as tfma
 from tfx import types
 from tfx.components.model_validator import constants
-from tfx.dsl.components.base import base_executor
+from tfx.dsl.components.base import base_beam_executor
 from tfx.dsl.io import fileio
 from tfx.types import artifact_utils
 from tfx.utils import io_utils
 from tfx.utils import path_utils
 
 
-class Executor(base_executor.BaseExecutor):
+class Executor(base_beam_executor.BaseBeamExecutor):
   """DEPRECATED: Please use `Evaluator` instead.
 
   The model validator helps prevent bad models from being pushed to production.

@@ -24,8 +24,8 @@ from absl import logging
 from tfx import types
 from tfx.components.example_gen import driver
 from tfx.components.example_gen import utils
-from tfx.dsl.components.base import base_component
-from tfx.dsl.components.base import base_executor
+from tfx.dsl.components.base import base_beam_component
+from tfx.dsl.components.base import base_beam_executor
 from tfx.dsl.components.base import executor_spec
 from tfx.proto import example_gen_pb2
 from tfx.proto import range_config_pb2
@@ -35,7 +35,7 @@ from tfx.types.standard_component_specs import FileBasedExampleGenSpec
 from tfx.types.standard_component_specs import QueryBasedExampleGenSpec
 
 
-class QueryBasedExampleGen(base_component.BaseComponent):
+class QueryBasedExampleGen(base_beam_component.BaseBeamComponent):
   """A TFX component to ingest examples from query based systems.
 
   The QueryBasedExampleGen component can be extended to ingest examples from
@@ -54,7 +54,8 @@ class QueryBasedExampleGen(base_component.BaseComponent):
 
   SPEC_CLASS = QueryBasedExampleGenSpec
   # EXECUTOR_SPEC should be overridden by subclasses.
-  EXECUTOR_SPEC = executor_spec.ExecutorClassSpec(base_executor.BaseExecutor)
+  EXECUTOR_SPEC = executor_spec.BeamExecutorSpec(
+      base_beam_executor.BaseBeamExecutor)
   DRIVER_CLASS = driver.QueryBasedDriver
 
   def __init__(
@@ -117,7 +118,7 @@ class QueryBasedExampleGen(base_component.BaseComponent):
         spec=spec, instance_name=instance_name)
 
 
-class FileBasedExampleGen(base_component.BaseComponent):
+class FileBasedExampleGen(base_beam_component.BaseBeamComponent):
   """A TFX component to ingest examples from a file system.
 
   The FileBasedExampleGen component is an API for getting file-based records
@@ -138,7 +139,8 @@ class FileBasedExampleGen(base_component.BaseComponent):
 
   SPEC_CLASS = FileBasedExampleGenSpec
   # EXECUTOR_SPEC should be overridden by subclasses.
-  EXECUTOR_SPEC = executor_spec.ExecutorClassSpec(base_executor.BaseExecutor)
+  EXECUTOR_SPEC = executor_spec.BeamExecutorSpec(
+      base_beam_executor.BaseBeamExecutor)
   DRIVER_CLASS = driver.FileBasedDriver
 
   def __init__(

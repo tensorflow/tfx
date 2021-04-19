@@ -153,7 +153,11 @@ class Pipeline(object):
     if not self.beam_pipeline_args:
       return
     for component in components:
-      if isinstance(component.executor_spec, executor_spec.ExecutorClassSpec):
+      if isinstance(component.executor_spec, executor_spec.BeamExecutorSpec):
+        cast(executor_spec.BeamExecutorSpec,
+             component.executor_spec).beam_pipeline_args.extend(
+                 beam_pipeline_args)
+      elif isinstance(component.executor_spec, executor_spec.ExecutorClassSpec):
         cast(executor_spec.ExecutorClassSpec,
              component.executor_spec).extra_flags.extend(beam_pipeline_args)
 

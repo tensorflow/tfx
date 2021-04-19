@@ -23,7 +23,7 @@ from tfx import types
 from tfx.components.bulk_inferrer import prediction_to_example_utils
 from tfx.components.util import model_utils
 from tfx.components.util import tfxio_utils
-from tfx.dsl.components.base import base_executor
+from tfx.dsl.components.base import base_beam_executor
 from tfx.proto import bulk_inferrer_pb2
 from tfx.proto import example_gen_pb2
 from tfx.types import artifact_utils
@@ -48,7 +48,7 @@ _EXAMPLES_FILE_NAME = 'examples'
 _TELEMETRY_DESCRIPTORS = ['BulkInferrer']
 
 
-class Executor(base_executor.BaseExecutor):
+class Executor(base_beam_executor.BaseBeamExecutor):
   """TFX bulk inferer executor."""
 
   def Do(self, input_dict: Dict[Text, List[types.Artifact]],
