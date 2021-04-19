@@ -12,9 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Custom executor to push TFX model to AI Platform."""
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
 
 import time
 from typing import Any, Dict, List, Text
@@ -28,7 +25,6 @@ from tfx.types import artifact_utils
 from tfx.types import standard_component_specs
 from tfx.utils import io_utils
 from tfx.utils import json_utils
-from tfx.utils import path_utils
 from tfx.utils import telemetry_utils
 
 # Google Cloud AI Platform's ModelVersion resource path format.
@@ -101,16 +97,10 @@ class Executor(tfx_pusher_executor.Executor):
       self._MarkNotPushed(model_push)
       return
 
-    model_export = artifact_utils.get_single_instance(
-        input_dict[standard_component_specs.MODEL_KEY])
-
     service_name, api_version = runner.get_service_name_and_api_version(
         ai_platform_serving_args)
     # Deploy the model.
-    io_utils.copy_dir(
-        src=path_utils.serving_model_path(
-            model_export.uri, path_utils.is_old_model_artifact(model_export)),
-        dst=model_push.uri)
+    io_utils.copy_dir(src=self.GetModelPath(input_dict), dst=model_push.uri)
     model_path = model_push.uri
     # TODO(jjong): Introduce Versioning.
     # Note that we're adding "v" prefix as Cloud AI Prediction only allows the

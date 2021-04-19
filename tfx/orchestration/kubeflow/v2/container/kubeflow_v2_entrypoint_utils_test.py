@@ -14,7 +14,6 @@
 """Tests for kubeflow_v2_entrypoint_utils.py."""
 
 import os
-from typing import Any, Mapping
 import tensorflow as tf
 
 from tfx.components.evaluator import constants
@@ -81,8 +80,9 @@ class KubeflowV2EntrypointUtilsTest(tf.test.TestCase):
     # Hash value of
     # 'projects/123456789/locations/us-central1/metadataStores/default/artifacts/22222'
     _ARTIFACT_2.id = 6826273797600318744
-    _ARTIFACT_2.set_int_custom_property(key='my_property_2', value=42)
+    _ARTIFACT_2.set_float_custom_property(key='my_property_2', value=42.0)
     _ARTIFACT_3.uri = 'gs://root/examples/'
+    _ARTIFACT_3.span = 9000
     # Hash value of
     # 'projects/123456789/locations/us-central1/metadataStores/default/artifacts/33333'
     _ARTIFACT_3.id = 27709763105391302
@@ -97,29 +97,42 @@ class KubeflowV2EntrypointUtilsTest(tf.test.TestCase):
     io_utils.parse_json_file(
         os.path.join(source_data_dir, 'artifacts.json'), artifacts_pb)
     self._artifacts = artifacts_pb.inputs.artifacts
+
+    # Test legacy properties/custom properties deserialization.
+    artifacts_legacy_pb = pipeline_pb2.ExecutorInput()
+    io_utils.parse_json_file(
+        os.path.join(source_data_dir, 'artifacts_legacy.json'),
+        artifacts_legacy_pb)
+    self._artifacts_legacy = artifacts_legacy_pb.inputs.artifacts
+
     properties_pb = pipeline_pb2.ExecutorInput()
     io_utils.parse_json_file(
         os.path.join(source_data_dir, 'exec_properties.json'), properties_pb)
     self._properties = properties_pb.inputs.parameters
 
   def testParseRawArtifactDict(self):
-    # TODO(b/131417512): Add equal comparison to types.Artifact class so we
-    # can use asserters.
-    def _convert_artifact_to_dict(
-        inputs: Mapping[str, Any]) -> Mapping[str, Any]:
-      """Convert artifact to its string representation."""
-      result = {}
-      for k, artifacts in inputs.items():
-        result[k] = [artifact.to_json_dict() for artifact in artifacts]
-
-      return result
-
-    name_from_id = {}
-    actual_result = kubeflow_v2_entrypoint_utils.parse_raw_artifact_dict(
-        self._artifacts, name_from_id)
-    self.assertDictEqual(
-        _convert_artifact_to_dict(self._expected_dict),
-        _convert_artifact_to_dict(actual_result))
+    for artifacts_dict in [self._artifacts, self._artifacts_legacy]:
+      name_from_id = {}
+      actual_result = kubeflow_v2_entrypoint_utils.parse_raw_artifact_dict(
+          artifacts_dict, name_from_id)
+      for key in self._expected_dict:
+        (expected_artifact,) = self._expected_dict[key]
+        (actual_artifact,) = actual_result[key]
+        self.assertEqual(expected_artifact.id, actual_artifact.id)
+        self.assertEqual(expected_artifact.uri, actual_artifact.uri)
+        for prop in expected_artifact.artifact_type.properties:
+          self.assertEqual(
+              getattr(expected_artifact, prop), getattr(actual_artifact, prop))
+      self.assertEqual(
+          self._expected_dict[_KEY_1][0].get_string_custom_property(
+              'my_property_1'),
+          actual_result[_KEY_1][0].get_string_custom_property('my_property_1'))
+      self.assertEqual(
+          self._expected_dict[_KEY_2][0].get_string_custom_property(
+              'my_property_2'),
+          actual_result[_KEY_2][0].get_string_custom_property('my_property_2'))
+      self.assertEqual(self._expected_dict[_KEY_3][0].span,
+                       actual_result[_KEY_3][0].span)
 
   def testParseExecutionProperties(self):
     self.assertDictEqual(

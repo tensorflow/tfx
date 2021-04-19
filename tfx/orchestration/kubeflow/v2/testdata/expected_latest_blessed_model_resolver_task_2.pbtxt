@@ -1,0 +1,20 @@
+# proto-file: tfx/orchestration/kubeflow/v2/proto/pipeline.proto
+# proto-message: PipelineTaskSpec
+
+task_info {
+  name: "Resolver.my_resolver2-model-resolver"
+}
+inputs {
+  artifacts {
+    key: "input"
+    value {
+      task_output_artifact {
+        producer_task: "Resolver.my_resolver2-model-blessing-resolver"
+        output_artifact_key: "model_blessing"
+      }
+    }
+  }
+}
+component_ref {
+  name: "Resolver.my_resolver2-model-resolver"
+}

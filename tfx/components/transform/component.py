@@ -45,7 +45,7 @@ class Transform(base_component.BaseComponent):
   `preprocessing_fn()` function within that file.
 
   An example of `preprocessing_fn()` can be found in the [user-supplied
-  code]((https://github.com/tensorflow/tfx/blob/master/tfx/examples/chicago_taxi_pipeline/taxi_utils.py))
+  code](https://github.com/tensorflow/tfx/blob/master/tfx/examples/chicago_taxi_pipeline/taxi_utils.py)
   of the TFX Chicago Taxi pipeline example.
 
   ## Example

@@ -21,7 +21,7 @@
         "artifacts": [
           {
             "type":{
-              "instanceSchema": "title: tfx.Examples\ntype: object\nproperties:\n  span:\n    type: int\n    description: Span for an artifact.\n  version:\n    type: int\n    description: Version for an artifact.\n  split_names:\n    type: string\n    description: JSON-encoded list of splits for an artifact. Empty string means artifact has no split.\n"
+              "instanceSchema": "title: tfx.Examples\ntype: object\nproperties:\n  span:\n    type: integer\n    description: Span for an artifact.\n  version:\n    type: integer\n    description: Version for an artifact.\n  split_names:\n    type: string\n    description: JSON-encoded list of splits for an artifact. Empty string means artifact has no split.\n"
             },
             "uri": "gs://root/output",
             "name": "projects/123456789/locations/us-central1/metadataStores/default/artifacts/1"

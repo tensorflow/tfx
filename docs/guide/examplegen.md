@@ -492,11 +492,9 @@ ExampleGen component as shown below.
 from tfx.components.base import executor_spec
 from tfx.components.example_gen.component import FileBasedExampleGen
 from tfx.components.example_gen.csv_example_gen import executor
-from tfx.utils.dsl_utils import external_input
 
-examples = external_input(os.path.join(base_dir, 'data/simple'))
 example_gen = FileBasedExampleGen(
-    input=examples,
+    input_base=os.path.join(base_dir, 'data/simple'),
     custom_executor_spec=executor_spec.ExecutorClassSpec(executor.Executor))
 ```
 

@@ -52,6 +52,13 @@ DataAccessor = NamedTuple(
          Optional[schema_pb2.Schema],
      ], Iterator[pa.RecordBatch]]),
      ('data_view_decode_fn', Optional[Callable[[tf.Tensor], Dict[Text, Any]]])])
+DataAccessor.__doc__ = """
+For accessing the data on disk.
+
+Contains factories that can create tf.data.Datasets or other means to access
+the train/eval data. They provide a uniform way of accessing data, regardless
+of how the data is stored on disk.
+"""
 
 
 @attr.s
@@ -68,7 +75,7 @@ class FnArgs:
     schema_file: Deprecated, use `schema_path` instead.
     transform_graph_path: An optional single uri for transform graph produced by
       TFT. Will be None if not specified.
-    transform_output: Deprecated, use `transform_graph_path` instead.'
+    transform_output: Deprecated, use `transform_graph_path` instead.
     data_accessor: Contains factories that can create tf.data.Datasets or other
       means to access the train/eval data. They provide a uniform way of
       accessing data, regardless of how the data is stored on disk.

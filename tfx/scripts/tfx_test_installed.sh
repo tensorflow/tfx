@@ -84,7 +84,6 @@ if [[ "${TENSORFLOW_VERSION}" == 1.* ]]; then
     "tfx/components/model_validator/executor_test.py"
     "tfx/components/tuner/executor_test.py"
     # Native keras models only work with TF2.
-    "tfx/examples/chicago_taxi_pipeline/taxi_pipeline_infraval_beam_e2e_test.py"
     "tfx/examples/chicago_taxi_pipeline/taxi_pipeline_native_keras_e2e_test.py"
     "tfx/examples/imdb/imdb_pipeline_native_keras_e2e_test.py"
     "tfx/examples/penguin/"

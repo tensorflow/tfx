@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,10 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Tests for tfx.utils.path_utils."""
-
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
 
 import os
 from absl.testing import parameterized
@@ -74,6 +69,16 @@ class PathUtilsTest(tf.test.TestCase, parameterized.TestCase):
     self.assertFalse(path_utils.is_old_model_artifact(artifact))
     artifact.mlmd_artifact.state = metadata_store_pb2.Artifact.LIVE
     self.assertTrue(path_utils.is_old_model_artifact(artifact))
+
+  def testStampedModelPath(self):
+    self.assertEqual(
+        path_utils.stamped_model_path('/my-artifact'),
+        '/my-artifact/stamped_model')
+
+  def testWarmupFilePath(self):
+    self.assertEqual(
+        path_utils.warmup_file_path('/my-model'),
+        '/my-model/assets.extra/tf_serving_warmup_requests')
 
 
 if __name__ == '__main__':

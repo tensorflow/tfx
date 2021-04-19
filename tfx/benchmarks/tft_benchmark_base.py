@@ -26,6 +26,7 @@ import time
 
 from absl import logging
 import apache_beam as beam
+from apache_beam.utils import shared
 import tensorflow as tf
 import tensorflow_transform as tft
 from tensorflow_transform import graph_tools
@@ -38,7 +39,6 @@ from tensorflow_transform.tf_metadata import schema_utils
 import tfx
 from tfx.benchmarks import benchmark_utils
 from tfx.benchmarks import benchmark_base
-from tfx_bsl.beam import shared
 from tfx_bsl.coders import example_coder
 from tfx_bsl.tfxio import tensor_adapter
 from tfx_bsl.tfxio import tf_example_record

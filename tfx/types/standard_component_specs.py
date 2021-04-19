@@ -279,7 +279,7 @@ class PusherSpec(ComponentSpec):
   }
   INPUTS = {
       MODEL_KEY:
-          ChannelParameter(type=standard_artifacts.Model),
+          ChannelParameter(type=standard_artifacts.Model, optional=True),
       MODEL_BLESSING_KEY:
           ChannelParameter(
               type=standard_artifacts.ModelBlessing, optional=True),

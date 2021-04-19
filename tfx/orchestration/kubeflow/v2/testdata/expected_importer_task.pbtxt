@@ -1,0 +1,31 @@
+# proto-file: tfx/orchestration/kubeflow/v2/proto/pipeline.proto
+# proto-message: PipelineTaskSpec
+
+task_info {
+  name: "Importer.my_importer"
+}
+inputs {
+  parameters {
+    key: "artifact_uri"
+    value {
+      runtime_value {
+        constant_value {
+          string_value: "m/y/u/r/i"
+        }
+      }
+    }
+  }
+  parameters {
+    key: "reimport"
+    value {
+      runtime_value {
+        constant_value {
+          int_value: 0
+        }
+      }
+    }
+  }
+}
+component_ref {
+  name: "Importer.my_importer"
+}

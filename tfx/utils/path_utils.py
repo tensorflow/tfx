@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,12 +13,7 @@
 # limitations under the License.
 """Utilities for retrieving paths for various types of artifacts."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import os
-from typing import Text
 import absl
 
 from tfx.dsl.io import fileio
@@ -34,6 +28,8 @@ EVAL_MODEL_DIR = 'Format-TFMA'
 # LINT.IfChange
 SERVING_MODEL_DIR = 'Format-Serving'
 # LINT.ThenChange(Internal serving model dir)
+STAMPED_MODEL_DIR = 'stamped_model'
+
 """Directory structure of exported model for estimator based trainer:
 
   |-- <ModelExportPath>
@@ -81,14 +77,14 @@ def is_old_model_artifact(model_artifact: artifact.Artifact) -> bool:
       model_artifact, artifact_utils._ARTIFACT_VERSION_FOR_MODEL_UPDATE)  # pylint: disable=protected-access
 
 
-def eval_model_dir(output_uri: Text, is_old_artifact: bool = False) -> Text:
+def eval_model_dir(output_uri: str, is_old_artifact: bool = False) -> str:
   """Returns directory for exported model for evaluation purpose."""
   if is_old_artifact:
     return os.path.join(output_uri, _OLD_EVAL_MODEL_DIR)
   return os.path.join(output_uri, EVAL_MODEL_DIR)
 
 
-def eval_model_path(output_uri: Text, is_old_artifact: bool = False) -> Text:
+def eval_model_path(output_uri: str, is_old_artifact: bool = False) -> str:
   """Returns final path to exported model for evaluation purpose."""
   model_dir = eval_model_dir(output_uri, is_old_artifact)
   model_file = os.path.join(model_dir, 'saved_model.pb')
@@ -106,14 +102,14 @@ def eval_model_path(output_uri: Text, is_old_artifact: bool = False) -> Text:
     return serving_model_path(output_uri, is_old_artifact)
 
 
-def serving_model_dir(output_uri: Text, is_old_artifact: bool = False) -> Text:
+def serving_model_dir(output_uri: str, is_old_artifact: bool = False) -> str:
   """Returns directory for exported model for serving purpose."""
   if is_old_artifact:
     return os.path.join(output_uri, _OLD_SERVING_MODEL_DIR)
   return os.path.join(output_uri, SERVING_MODEL_DIR)
 
 
-def serving_model_path(output_uri: Text, is_old_artifact: bool = False) -> Text:
+def serving_model_path(output_uri: str, is_old_artifact: bool = False) -> str:
   """Returns path for exported serving model."""
   model_dir = serving_model_dir(output_uri, is_old_artifact)
   export_dir = os.path.join(model_dir, 'export')
@@ -128,3 +124,26 @@ def serving_model_path(output_uri: Text, is_old_artifact: bool = False) -> Text:
   else:
     # If dir doesn't match estimator structure, use serving model root directly.
     return model_dir
+
+
+def stamped_model_path(output_uri: str) -> str:
+  """Returns path for the stamped model."""
+  return os.path.join(output_uri, STAMPED_MODEL_DIR)
+
+
+def warmup_file_path(saved_model_path: str) -> str:
+  """Returns SavedModel Warmup file path.
+
+  See https://www.tensorflow.org/tfx/serving/saved_model_warmup.
+  This is a lexical operation, and does not guarantee the path is valid.
+
+  Args:
+    saved_model_path: A POSIX path to the TensorFlow SavedModel.
+
+  Returns:
+    A POSIX path to the SavedModel Warmup file.
+  """
+  return os.path.join(
+      saved_model_path,
+      'assets.extra',
+      'tf_serving_warmup_requests')

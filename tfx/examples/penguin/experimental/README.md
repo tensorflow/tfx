@@ -29,6 +29,10 @@ Then, install the dependencies required by the Penguin example:
 pip install -U tfx[examples]
 </pre>
 
+TODO(b/183898519): Replace pip install in all examples to use [kfp] extra
+after 1.0.
+
+
 ### Local Example
 Execute the pipeline python file. Output can be found at `~/tfx`:
 

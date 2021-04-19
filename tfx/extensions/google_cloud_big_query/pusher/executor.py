@@ -12,9 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Custom executor to push TFX model to Big Query."""
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
 
 from typing import Any, Dict, List, Text
 
@@ -26,7 +23,6 @@ from tfx.types import artifact_utils
 from tfx.types import standard_component_specs
 from tfx.utils import io_utils
 from tfx.utils import json_utils
-from tfx.utils import path_utils
 from tfx.utils import telemetry_utils
 
 _POLLING_INTERVAL_IN_SECONDS = 30
@@ -88,10 +84,6 @@ class Executor(tfx_pusher_executor.Executor):
       self._MarkNotPushed(model_push)
       return
 
-    model_export = artifact_utils.get_single_instance(
-        input_dict[standard_component_specs.MODEL_KEY])
-    model_export_uri = model_export.uri
-
     custom_config = json_utils.loads(
         exec_properties.get(_CUSTOM_CONFIG_KEY, 'null'))
     if custom_config is not None and not isinstance(custom_config, Dict):
@@ -110,10 +102,7 @@ class Executor(tfx_pusher_executor.Executor):
     ])
 
     # Deploy the model.
-    io_utils.copy_dir(
-        src=path_utils.serving_model_path(
-            model_export_uri, path_utils.is_old_model_artifact(model_export)),
-        dst=model_push.uri)
+    io_utils.copy_dir(src=self.GetModelPath(input_dict), dst=model_push.uri)
     model_path = model_push.uri
     if not model_path.startswith(_GCS_PREFIX):
       raise ValueError('pipeline_root must be gs:// for BigQuery ML Pusher.')

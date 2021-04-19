@@ -1,14 +1,33 @@
 # Current Version (Still in Development)
 
 ## Major Features and Improvements
+*  Upgraded TFX to KFP compiler to use KFP IR schema version 2.0.0.
+*  InfraValidator can now produce a [SavedModel with warmup requests](
+   https://www.tensorflow.org/tfx/serving/saved_model_warmup). This feature is
+   enabled by setting `RequestSpec.make_warmup = True`. The SavedModel will be
+   stored in the InfraBlessing artifact (`blessing` output of InfraValidator).
+*  Pusher's `model` input is now optional, and `infra_blessing` can be used
+   instead to push the SavedModel with warmup requests, produced by an
+   InfraValidator. Note that InfraValidator does not always create a SavedModel,
+   and the producer InfraValidator must be configured with
+   `RequestSpec.make_warmup = True` in order to be pushed by a Pusher.
+*  Support is added for the JSON_VALUE artifact property type, allowing storage
+   of JSON-compatible objects as artifact metadata.
+*  Support is added for the KFP v2 artifact metadata field when executing using
+   the KFP v2 container entrypoint.
 
 ## Breaking Changes
+
 *  Default orchestration engine of CLI was changed to `local` orchestrator from
    `beam` orchestrator. You can still use `beam` orchestrator with
    `--engine=beam` flag.
-
 *  Trainer now uses GenericExecutor as default. To use the previous Estimator
    based Trainer, please set custom_executor_spec to trainer.executor.Executor.
+*  Changed the pattern spec supported for QueryBasedDriver:
+   *   @span_begin_timestamp: Start of span interval, Timestamp in seconds.
+   *   @span_end_timestamp: End of span interval, Timestamp in seconds.
+   *   @span_yyyymmdd_utc: STRING with format, e.g., '20180114', corresponding
+                           to the span interval begin in UTC.
 
 ### For Pipeline Authors
 
@@ -17,9 +36,12 @@
 ## Deprecations
 
 ## Bug Fixes and Other Changes
-*   Factored out tensorflow-ranking example dependencies into a dedicated extra
-    `[tf-ranking]`. Because TensorFlow Ranking requires TF 2 or later, we cound
-    not install `[examples]` with TF1.
+*  New extra dependencies for convenience.
+   - tfx[airflow] installs all Apache Airflow orchestrator dependencies.
+   - tfx[kfp] installs all Kubeflow Pipelines orchestrator dependencies.
+   - tfx[tf-ranking] installs packages for TensorFlow Ranking.
+     NOTE: TensorFlow Ranking only compatible with TF >= 2.0.
+*  Depends on `google-cloud-aiplatform>=0.5.0,<0.8`.
 
 ## Documentation Updates
 
@@ -89,7 +111,6 @@
 *   Depends on `tensorflow-model-analysis>=0.29.0,<0.30.0`.
 *   Depends on `tensorflow-transform>=0.29.0,<0.30.0`.
 *   Depends on `tfx-bsl>=0.29.0,<0.30.0`.
-*   Depends on `google-cloud-aiplatform>=0.5.0,<0.6`.
 
 ## Documentation Updates
 

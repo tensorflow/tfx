@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,10 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Tests for tfx.components.pusher.component."""
-
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
 
 from typing import Text
 
@@ -39,17 +34,20 @@ class ComponentTest(tf.test.TestCase):
 
   def setUp(self):
     super(ComponentTest, self).setUp()
-    self.model = channel_utils.as_channel([standard_artifacts.Model()])
-    self.model_blessing = channel_utils.as_channel(
+    self._model = channel_utils.as_channel([standard_artifacts.Model()])
+    self._model_blessing = channel_utils.as_channel(
         [standard_artifacts.ModelBlessing()])
+    self._infra_blessing = channel_utils.as_channel(
+        [standard_artifacts.InfraBlessing()])
+    self._push_destination = pusher_pb2.PushDestination(
+        filesystem=pusher_pb2.PushDestination.Filesystem(
+            base_directory=self.get_temp_dir()))
 
   def testConstruct(self):
     pusher = component.Pusher(
-        model=self.model,
-        model_blessing=self.model_blessing,
-        push_destination=pusher_pb2.PushDestination(
-            filesystem=pusher_pb2.PushDestination.Filesystem(
-                base_directory='push_destination')))
+        model=self._model,
+        model_blessing=self._model_blessing,
+        push_destination=self._push_destination)
     self.assertEqual(
         standard_artifacts.PushedModel.TYPE_NAME,
         pusher.outputs[standard_component_specs.PUSHED_MODEL_KEY].type_name)
@@ -57,8 +55,8 @@ class ComponentTest(tf.test.TestCase):
   def testConstructWithParameter(self):
     push_dir = data_types.RuntimeParameter(name='push-dir', ptype=Text)
     pusher = component.Pusher(
-        model=self.model,
-        model_blessing=self.model_blessing,
+        model=self._model,
+        model_blessing=self._model_blessing,
         push_destination={'filesystem': {
             'base_directory': push_dir
         }})
@@ -69,20 +67,40 @@ class ComponentTest(tf.test.TestCase):
   def testConstructNoDestination(self):
     with self.assertRaises(ValueError):
       _ = component.Pusher(
-          model=self.model,
-          model_blessing=self.model_blessing,
+          model=self._model,
+          model_blessing=self._model_blessing,
       )
 
   def testConstructNoDestinationCustomExecutor(self):
     pusher = component.Pusher(
-        model=self.model,
-        model_blessing=self.model_blessing,
+        model=self._model,
+        model_blessing=self._model_blessing,
         custom_executor_spec=executor_spec.ExecutorClassSpec(
             self._MyCustomPusherExecutor),
     )
     self.assertEqual(
         standard_artifacts.PushedModel.TYPE_NAME,
         pusher.outputs[standard_component_specs.PUSHED_MODEL_KEY].type_name)
+
+  def testConstruct_InfraBlessingReplacesModel(self):
+    pusher = component.Pusher(
+        # model=self._model,  # No model.
+        model_blessing=self._model_blessing,
+        infra_blessing=self._infra_blessing,
+        push_destination=self._push_destination)
+
+    self.assertCountEqual(
+        pusher.inputs.keys(),
+        ['model_blessing', 'infra_blessing'])
+
+  def testConstruct_NoModelAndNoInfraBlessing_Fails(self):
+    with self.assertRaisesRegex(ValueError, (
+        'Either one of model or infra_blessing channel should be given')):
+      component.Pusher(
+          # model=self._model,  # No model.
+          model_blessing=self._model_blessing,
+          # infra_blessing=self._infra_blessing,  # No infra_blessing.
+          push_destination=self._push_destination)
 
 
 if __name__ == '__main__':

@@ -168,6 +168,20 @@ message RequestSpec {
   // will send total 6 requests (3 for each signature) to a model server.
   // Default to 1.
   int32 num_examples = 3;
+
+  // Optional.
+  // If True, requests built from the RequestSpec would be used as warmup
+  // requests of the model, and output InfraBlessing artifact would contain the
+  // model with warmup.
+  //
+  // WARNING: Examples data that is used to build the warmup request will be
+  // included to model assets without any encryption, so make sure the data
+  // does not contain any sensitive information. For example, personally
+  // identifiable information (PII) SHOULD NOT be included in the examples data.
+  //
+  // Currently only supports [TensorFlow SavedModel
+  // warmup](https://www.tensorflow.org/tfx/serving/saved_model_warmup) now.
+  bool make_warmup = 4;
 }
 
 // Request spec for building TF Serving requests.

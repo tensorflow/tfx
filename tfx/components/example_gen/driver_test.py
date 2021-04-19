@@ -302,11 +302,11 @@ class DriverTest(tf.test.TestCase):
                 example_gen_pb2.Input(splits=[
                     example_gen_pb2.Input.Split(
                         name='s1',
-                        pattern="select * from table where span={SPAN} and split='s1'"
+                        pattern='select * from table where date=@span_yyyymmdd_utc'
                     ),
                     example_gen_pb2.Input.Split(
                         name='s2',
-                        pattern="select * from table where span={SPAN} and split='s2'"
+                        pattern='select * from table2 where date=@span_yyyymmdd_utc'
                     )
                 ])),
         standard_component_specs.RANGE_CONFIG_KEY:
@@ -336,11 +336,11 @@ class DriverTest(tf.test.TestCase):
         """
         splits {
           name: "s1"
-          pattern: "select * from table where span=2 and split='s1'"
+          pattern: "select * from table where date='19700103'"
         }
         splits {
           name: "s2"
-          pattern: "select * from table where span=2 and split='s2'"
+          pattern: "select * from table2 where date='19700103'"
         }""", updated_input_config)
     self.assertLen(
         result.output_artifacts[

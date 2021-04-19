@@ -75,7 +75,8 @@ _beam_pipeline_args = [
 def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
                      module_file: Text, accuracy_threshold: float,
                      serving_model_dir: Text, metadata_path: Text,
-                     beam_pipeline_args: List[Text]) -> pipeline.Pipeline:
+                     beam_pipeline_args: List[Text],
+                     make_warmup: bool) -> pipeline.Pipeline:
   """Implements the penguin pipeline with TFX."""
   # Brings data into the pipeline or otherwise joins/converts training data.
   example_gen = CsvExampleGen(input_base=data_root)
@@ -150,18 +151,34 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
               tags=['latest']),
           local_docker=infra_validator_pb2.LocalDockerConfig()),
       request_spec=infra_validator_pb2.RequestSpec(
-          tensorflow_serving=infra_validator_pb2.TensorFlowServingRequestSpec())
-  )
+          tensorflow_serving=infra_validator_pb2.TensorFlowServingRequestSpec(),
+          # If this flag is set, InfraValidator will produce a model with
+          # warmup requests (in its outputs['blessing']).
+          make_warmup=make_warmup))
 
   # Checks whether the model passed the validation steps and pushes the model
   # to a file destination if check passed.
-  pusher = Pusher(
-      model=trainer.outputs['model'],
-      model_blessing=evaluator.outputs['blessing'],
-      infra_blessing=infra_validator.outputs['blessing'],
-      push_destination=pusher_pb2.PushDestination(
-          filesystem=pusher_pb2.PushDestination.Filesystem(
-              base_directory=serving_model_dir)))
+  if make_warmup:
+    # If InfraValidator.request_spec.make_warmup = True, its output contains
+    # a model so that Pusher can push 'infra_blessing' input instead of
+    # 'model' input.
+    pusher = Pusher(
+        model_blessing=evaluator.outputs['blessing'],
+        infra_blessing=infra_validator.outputs['blessing'],
+        push_destination=pusher_pb2.PushDestination(
+            filesystem=pusher_pb2.PushDestination.Filesystem(
+                base_directory=serving_model_dir)))
+  else:
+    # Otherwise, 'infra_blessing' does not contain a model and is used as a
+    # conditional checker just like 'model_blessing' does. This is the typical
+    # use case.
+    pusher = Pusher(
+        model=trainer.outputs['model'],
+        model_blessing=evaluator.outputs['blessing'],
+        infra_blessing=infra_validator.outputs['blessing'],
+        push_destination=pusher_pb2.PushDestination(
+            filesystem=pusher_pb2.PushDestination.Filesystem(
+                base_directory=serving_model_dir)))
 
   return pipeline.Pipeline(
       pipeline_name=pipeline_name,
@@ -197,4 +214,5 @@ if __name__ == '__main__':
           accuracy_threshold=0.6,
           serving_model_dir=_serving_model_dir,
           metadata_path=_metadata_path,
-          beam_pipeline_args=_beam_pipeline_args))
+          beam_pipeline_args=_beam_pipeline_args,
+          make_warmup=True))

@@ -13,16 +13,12 @@
 # limitations under the License.
 """Tests for tfx.components.infra_validator.executor."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import os
 import signal
 import threading
 from typing import Any, Dict, Text
+from unittest import mock
 
-import mock
 import tensorflow as tf
 from tfx.components.infra_validator import error_types
 from tfx.components.infra_validator import executor
@@ -175,6 +171,33 @@ class ExecutorTest(tf.test.TestCase):
     # Check not blessed.
     self.assertNotBlessed()
 
+  def testDo_MakeSavedModelWarmup(self):
+    infra_validator = executor.Executor(self._context)
+    self._request_spec.make_warmup = True
+    self._exec_properties[REQUEST_SPEC_KEY] = (
+        proto_utils.proto_to_json(self._request_spec))
+
+    with mock.patch.object(infra_validator, '_ValidateOnce'):
+      infra_validator.Do(self._input_dict, self._output_dict,
+                         self._exec_properties)
+
+    warmup_file = path_utils.warmup_file_path(
+        path_utils.stamped_model_path(self._blessing.uri))
+    self.assertFileExists(warmup_file)
+    self.assertEqual(self._blessing.get_int_custom_property('has_model'), 1)
+
+  def testDo_WarmupNotCreatedWithoutRequests(self):
+    infra_validator = executor.Executor(self._context)
+    del self._exec_properties[REQUEST_SPEC_KEY]  # No request
+
+    with mock.patch.object(infra_validator, '_ValidateOnce'):
+      infra_validator.Do(self._input_dict, self._output_dict,
+                         self._exec_properties)
+
+    warmup_file = path_utils.warmup_file_path(
+        path_utils.stamped_model_path(self._blessing.uri))
+    self.assertFileDoesNotExist(warmup_file)
+
   def testValidateOnce_LoadOnly_Succeed(self):
     infra_validator = executor.Executor(self._context)
     with mock.patch.object(self._serving_binary, 'MakeClient'):
@@ -291,6 +314,8 @@ class ExecutorTest(tf.test.TestCase):
   def assertFileExists(self, path: Text):
     self.assertTrue(fileio.exists(path))
 
+  def assertFileDoesNotExist(self, path: Text):
+    self.assertFalse(fileio.exists(path))
 
 if __name__ == '__main__':
   tf.test.main()

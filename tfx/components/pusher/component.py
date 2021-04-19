@@ -66,7 +66,7 @@ class Pusher(base_component.BaseComponent):
 
   def __init__(
       self,
-      model: types.Channel = None,
+      model: Optional[types.Channel] = None,
       model_blessing: Optional[types.Channel] = None,
       infra_blessing: Optional[types.Channel] = None,
       push_destination: Optional[Union[pusher_pb2.PushDestination,
@@ -78,8 +78,8 @@ class Pusher(base_component.BaseComponent):
     """Construct a Pusher component.
 
     Args:
-      model: A Channel of type `standard_artifacts.Model`, usually produced by
-        a Trainer component.
+      model: An optional Channel of type `standard_artifacts.Model`, usually
+        produced by a Trainer component.
       model_blessing: An optional Channel of type
         `standard_artifacts.ModelBlessing`, usually produced from an Evaluator
         component.
@@ -107,6 +107,13 @@ class Pusher(base_component.BaseComponent):
       raise ValueError('push_destination is required unless a '
                        'custom_executor_spec is supplied that does not require '
                        'it.')
+    if model is None and infra_blessing is None:
+      raise ValueError(
+          'Either one of model or infra_blessing channel should be given. '
+          'If infra_blessing is used in place of model, it must have been '
+          'created with InfraValidator with RequestSpec.make_warmup = True. '
+          'This cannot be checked during pipeline construction time but will '
+          'raise runtime error if infra_blessing does not contain a model.')
     spec = PusherSpec(
         model=model,
         model_blessing=model_blessing,
