@@ -75,7 +75,7 @@ def run_fn(fn_args: FnArgs) -> None:
 ```
 
 Here is an
-[example module file](https://github.com/tensorflow/tfx/blob/master/tfx/examples/penguin/penguin_utils.py)
+[example module file](https://github.com/tensorflow/tfx/blob/master/tfx/examples/penguin/penguin_utils_keras.py)
 with `run_fn`.
 
 Note that if the Transform component is not used in the pipeline, then the
