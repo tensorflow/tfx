@@ -65,9 +65,10 @@
     "__tfx_object_type__": "class"
   },
   "executor_spec": {
-    "__class__": "ExecutorClassSpec",
+    "__class__": "BeamExecutorSpec",
     "__module__": "tfx.dsl.components.base.executor_spec",
     "__tfx_object_type__": "jsonable",
+    "beam_pipeline_args": [],
     "executor_class": {
       "__class__": "Executor",
       "__module__": "tfx.components.statistics_gen.executor",

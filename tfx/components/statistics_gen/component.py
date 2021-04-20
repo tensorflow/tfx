@@ -18,14 +18,14 @@ from absl import logging
 import tensorflow_data_validation as tfdv
 from tfx import types
 from tfx.components.statistics_gen import executor
-from tfx.dsl.components.base import base_component
+from tfx.dsl.components.base import base_beam_component
 from tfx.dsl.components.base import executor_spec
 from tfx.types import standard_artifacts
 from tfx.types.standard_component_specs import StatisticsGenSpec
 from tfx.utils import json_utils
 
 
-class StatisticsGen(base_component.BaseComponent):
+class StatisticsGen(base_beam_component.BaseBeamComponent):
   """Official TFX StatisticsGen component.
 
   The StatisticsGen component generates features statistics and random samples
@@ -43,7 +43,7 @@ class StatisticsGen(base_component.BaseComponent):
   """
 
   SPEC_CLASS = StatisticsGenSpec
-  EXECUTOR_SPEC = executor_spec.ExecutorClassSpec(executor.Executor)
+  EXECUTOR_SPEC = executor_spec.BeamExecutorSpec(executor.Executor)
 
   def __init__(self,
                examples: types.Channel = None,

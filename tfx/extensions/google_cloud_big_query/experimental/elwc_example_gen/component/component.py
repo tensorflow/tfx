@@ -17,9 +17,9 @@
 from typing import Optional, Text
 
 from tfx import types
-from tfx.components.base import executor_spec
 from tfx.components.example_gen import component
 from tfx.components.example_gen import utils
+from tfx.dsl.components.base import executor_spec
 from tfx.extensions.google_cloud_big_query.experimental.elwc_example_gen.component import executor
 from tfx.extensions.google_cloud_big_query.experimental.elwc_example_gen.proto import elwc_config_pb2
 from tfx.proto import example_gen_pb2
@@ -32,7 +32,7 @@ class BigQueryToElwcExampleGen(component.QueryBasedExampleGen):
   and eval ExampleListWithContext(ELWC) for downstream components.
   """
 
-  EXECUTOR_SPEC = executor_spec.ExecutorClassSpec(executor.Executor)
+  EXECUTOR_SPEC = executor_spec.BeamExecutorSpec(executor.Executor)
 
   def __init__(self,
                query: Optional[Text] = None,

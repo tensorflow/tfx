@@ -52,19 +52,19 @@ specified in your bulk inferrer.
 """
 
 ClassifyOutput.__doc__ = """
-One type of output_type under `OutputColumnsSpec`.
+One type of output_type under `proto.OutputColumnsSpec`.
 """
 
 RegressOutput.__doc__ = """
-One type of output_type under `OutputColumnsSpec`.
+One type of output_type under `proto.OutputColumnsSpec`.
 """
 
 PredictOutput.__doc__ = """
-One type of output_type under `OutputColumnsSpec`.
+One type of output_type under `proto.OutputColumnsSpec`.
 """
 
 PredictOutputCol.__doc__ = """
-Proto type of output_columns under `PredictOutput`.
+Proto type of output_columns under `proto.PredictOutput`.
 """
 
 FeatureSlicingSpec = evaluator_pb2.FeatureSlicingSpec
@@ -88,23 +88,23 @@ PayloadFormat = example_gen_pb2.PayloadFormat
 del example_gen_pb2
 
 CustomConfig.__doc__ = """
-Optional specified configuration for `components.ExampleGen`.
+Optional specified configuration for `components.FileBasedExampleGen`.
 """
 
 Input.__doc__ = """
-Specification of the input of `components.ExampleGen`.
+Specification of the input of the ExampleGen components.
 """
 
 Output.__doc__ = """
-Specification of the output of the `components.ExampleGen`.
+Specification of the output of the ExampleGen components.
 """
 
 SplitConfig.__doc__ = """
-A config to partition examples into split in `components.ExampleGen`.
+A config to partition examples into split in `proto.Output` of ExampleGen.
 """
 
 PayloadFormat.__doc__ = """
-Enum to indicate payload format that `components.ExampleGen` produces.
+Enum to indicate payload format ExampleGen produces.
 """
 
 ServingSpec = infra_validator_pb2.ServingSpec
@@ -117,7 +117,7 @@ TensorFlowServingRequestSpec = infra_validator_pb2.TensorFlowServingRequestSpec
 del infra_validator_pb2
 
 ServingSpec.__doc__ = """
-`ServingSpec` defines an environment of the validating infrastructure in `components.InfraValidator`.
+Defines an environment of the validating infrastructure in `components.InfraValidator`.
 """
 
 ValidationSpec.__doc__ = """
@@ -182,12 +182,12 @@ For example, say you want the range to include only the latest span,
 the appropriate RollingRange would simply be:
 `RollingRange <  num_spans = 1 >`
 The range is clipped based on available data.
-ote that num_spans is required in `RollingRange`, while others are optional.
+ote that num_spans is required in `proto.RollingRange`, while others are optional.
 """
 
 StaticRange.__doc__ = """
 Describes a static window within the specified span numbers `[start_span_number, end_span_number]`.
-Note that both numbers should be specified for `StaticRange`.
+Note that both numbers should be specified for `proto.StaticRange`.
 """
 
 TrainArgs = trainer_pb2.TrainArgs

@@ -31,7 +31,7 @@ import tensorflow as tf
 from tfx import types
 from tfx.components.example_gen import utils
 from tfx.components.util import examples_utils
-from tfx.dsl.components.base import base_executor
+from tfx.dsl.components.base import base_beam_executor
 from tfx.proto import example_gen_pb2
 from tfx.types import artifact_utils
 from tfx.types import standard_component_specs
@@ -131,7 +131,7 @@ def _WriteSplit(
 
 
 class BaseExampleGenExecutor(
-    with_metaclass(abc.ABCMeta, base_executor.BaseExecutor)):
+    with_metaclass(abc.ABCMeta, base_beam_executor.BaseBeamExecutor)):
   """Generic TFX example gen base executor.
 
   The base ExampleGen executor takes a configuration and converts external data

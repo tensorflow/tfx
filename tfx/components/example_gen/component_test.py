@@ -40,7 +40,7 @@ class TestExampleGenExecutor(base_example_gen_executor.BaseExampleGenExecutor):
 
 class TestQueryBasedExampleGenComponent(component.QueryBasedExampleGen):
 
-  EXECUTOR_SPEC = executor_spec.ExecutorClassSpec(TestExampleGenExecutor)
+  EXECUTOR_SPEC = executor_spec.BeamExecutorSpec(TestExampleGenExecutor)
 
   def __init__(self,
                input_config,
@@ -58,7 +58,7 @@ class TestQueryBasedExampleGenComponent(component.QueryBasedExampleGen):
 
 class TestFileBasedExampleGenComponent(component.FileBasedExampleGen):
 
-  EXECUTOR_SPEC = executor_spec.ExecutorClassSpec(TestExampleGenExecutor)
+  EXECUTOR_SPEC = executor_spec.BeamExecutorSpec(TestExampleGenExecutor)
 
   def __init__(self,
                input_base,
@@ -119,7 +119,7 @@ class ComponentTest(tf.test.TestCase):
   def testConstructCustomExecutor(self):
     example_gen = component.FileBasedExampleGen(
         input_base='path',
-        custom_executor_spec=executor_spec.ExecutorClassSpec(
+        custom_executor_spec=executor_spec.BeamExecutorSpec(
             TestExampleGenExecutor))
     self.assertEqual(driver.FileBasedDriver, example_gen.driver_class)
     self.assertEqual(
@@ -168,7 +168,7 @@ class ComponentTest(tf.test.TestCase):
     example_gen = component.FileBasedExampleGen(
         input_base='path',
         custom_config=custom_config,
-        custom_executor_spec=executor_spec.ExecutorClassSpec(
+        custom_executor_spec=executor_spec.BeamExecutorSpec(
             TestExampleGenExecutor))
 
     stored_custom_config = example_gen_pb2.CustomConfig()
@@ -184,7 +184,7 @@ class ComponentTest(tf.test.TestCase):
     example_gen = component.FileBasedExampleGen(
         input_base='path',
         range_config=range_config,
-        custom_executor_spec=executor_spec.ExecutorClassSpec(
+        custom_executor_spec=executor_spec.BeamExecutorSpec(
             TestExampleGenExecutor))
     stored_range_config = range_config_pb2.RangeConfig()
     proto_utils.json_to_proto(

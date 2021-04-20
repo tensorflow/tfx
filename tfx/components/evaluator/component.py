@@ -24,7 +24,7 @@ from absl import logging
 import tensorflow_model_analysis as tfma
 from tfx import types
 from tfx.components.evaluator import executor
-from tfx.dsl.components.base import base_component
+from tfx.dsl.components.base import base_beam_component
 from tfx.dsl.components.base import executor_spec
 from tfx.orchestration import data_types
 from tfx.proto import evaluator_pb2
@@ -33,7 +33,7 @@ from tfx.types.standard_component_specs import EvaluatorSpec
 from tfx.utils import json_utils
 
 
-class Evaluator(base_component.BaseComponent):
+class Evaluator(base_beam_component.BaseBeamComponent):
   """A TFX component to evaluate models trained by a TFX Trainer component.
 
   See [Evaluator](https://www.tensorflow.org/tfx/guide/evaluator) for more
@@ -42,7 +42,7 @@ class Evaluator(base_component.BaseComponent):
   """
 
   SPEC_CLASS = EvaluatorSpec
-  EXECUTOR_SPEC = executor_spec.ExecutorClassSpec(executor.Executor)
+  EXECUTOR_SPEC = executor_spec.BeamExecutorSpec(executor.Executor)
 
   def __init__(
       self,

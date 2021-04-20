@@ -219,7 +219,7 @@ class OutputUtilsTest(test_case_utils.TfxTest, parameterized.TestCase):
         executor_output_uri,
         '.*/test_node/.system/executor_execution/1/executor_output.pb')
     # Verify that executor_output_uri is writable.
-    with fileio.open(executor_output_uri, mode='w') as f:
+    with fileio.open(executor_output_uri, mode='wb') as f:
       executor_output = execution_result_pb2.ExecutorOutput()
       f.write(executor_output.SerializeToString())
 

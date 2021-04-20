@@ -122,6 +122,6 @@ if tf:
         raise filesystem.NotFoundError() from e
 
   filesystem_registry.DEFAULT_FILESYSTEM_REGISTRY.register(
-      TensorflowFilesystem, priority=0, use_as_fallback=True)
+      TensorflowFilesystem, priority=10, use_as_fallback=True)
 else:
   TensorflowFilesystem = None  # pylint: disable=invalid-name

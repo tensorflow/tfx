@@ -39,7 +39,7 @@ class ImportExampleGen(component.FileBasedExampleGen):  # pylint: disable=protec
   shuffle the dataset for ML best practice.
   """
 
-  EXECUTOR_SPEC = executor_spec.ExecutorClassSpec(executor.Executor)
+  EXECUTOR_SPEC = executor_spec.BeamExecutorSpec(executor.Executor)
 
   def __init__(
       self,

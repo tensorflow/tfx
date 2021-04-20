@@ -42,7 +42,7 @@ from tfx.components.transform import labels
 from tfx.components.transform import stats_options_util
 from tfx.components.util import tfxio_utils
 from tfx.components.util import value_utils
-from tfx.dsl.components.base import base_executor
+from tfx.dsl.components.base import base_beam_executor
 from tfx.dsl.io import fileio
 from tfx.proto import example_gen_pb2
 from tfx.proto import transform_pb2
@@ -266,7 +266,7 @@ def _InvokeStatsOptionsUpdaterFn(
   return stats_options_updater_fn(stats_type, tfdv.StatsOptions(**options))
 
 
-class Executor(base_executor.BaseExecutor):
+class Executor(base_beam_executor.BaseBeamExecutor):
   """Transform executor."""
 
   def Do(self, input_dict: Dict[Text, List[types.Artifact]],

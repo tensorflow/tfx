@@ -32,7 +32,7 @@ class PrestoExampleGen(component.QueryBasedExampleGen):  # pylint: disable=prote
   configuration, and generates train and eval examples for downstream
   components.
   """
-  EXECUTOR_SPEC = executor_spec.ExecutorClassSpec(executor.Executor)
+  EXECUTOR_SPEC = executor_spec.BeamExecutorSpec(executor.Executor)
 
   def __init__(self,
                conn_config: presto_config_pb2.PrestoConnConfig,

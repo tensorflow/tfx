@@ -32,7 +32,7 @@ from tfx import types
 from tfx.components.evaluator import constants
 from tfx.components.util import tfxio_utils
 from tfx.components.util import udf_utils
-from tfx.dsl.components.base import base_executor
+from tfx.dsl.components.base import base_beam_executor
 from tfx.proto import evaluator_pb2
 from tfx.types import artifact_utils
 from tfx.types.standard_component_specs import BASELINE_MODEL_KEY
@@ -53,7 +53,7 @@ from tfx_bsl.tfxio import tensor_adapter
 _TELEMETRY_DESCRIPTORS = ['Evaluator']
 
 
-class Executor(base_executor.BaseExecutor):
+class Executor(base_beam_executor.BaseBeamExecutor):
   """Executor for [Evaluator](https://www.tensorflow.org/tfx/guide/evaluator)."""
 
   def _get_slice_spec_from_feature_slicing_spec(
