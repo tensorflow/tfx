@@ -28,6 +28,7 @@
    *   @span_end_timestamp: End of span interval, Timestamp in seconds.
    *   @span_yyyymmdd_utc: STRING with format, e.g., '20180114', corresponding
                            to the span interval begin in UTC.
+*  Removed the already deprecated compile() method on Kubeflow V2 Dag Runner.
 
 ### For Pipeline Authors
 
