@@ -127,4 +127,4 @@ class LocalFilesystem(filesystem.Filesystem):
 
 
 filesystem_registry.DEFAULT_FILESYSTEM_REGISTRY.register(
-    LocalFilesystem, priority=10)
+    LocalFilesystem, priority=20)

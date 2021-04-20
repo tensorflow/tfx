@@ -52,7 +52,7 @@ class NotInprocessExecutor(base_executor.BaseExecutor):
     executor_output = execution_result_pb2.ExecutorOutput()
     python_executor_operator._populate_output_artifact(executor_output,
                                                        output_dict)
-    with fileio.open(self._context.executor_output_uri, 'w') as f:
+    with fileio.open(self._context.executor_output_uri, 'wb') as f:
       f.write(executor_output.SerializeToString())
 
 
