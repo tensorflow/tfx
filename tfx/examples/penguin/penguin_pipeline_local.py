@@ -191,6 +191,7 @@ def _create_pipeline(
       #     artifact_type=HyperParameters)
       #   ...
       #   hyperparameters = hparams_importer.outputs['result'],
+      custom_executor_spec=executor_spec.ExecutorClassSpec(GenericExecutor),
       hyperparameters=(tuner.outputs['best_hyperparameters']
                        if enable_tuning else None),
       train_args=trainer_pb2.TrainArgs(num_steps=100),
