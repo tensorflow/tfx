@@ -21,6 +21,7 @@ from __future__ import print_function
 import functools
 import hashlib
 import os
+import shutil
 from typing import Any, Callable, Dict, Generator, Iterable, List, Mapping, Optional, Sequence, Set, Text, Tuple, Union
 
 import absl
@@ -744,9 +745,9 @@ class Executor(base_beam_executor.BaseBeamExecutor):
       fn = functools.partial(fn, custom_config=custom_config)
     return fn
 
-  def _GetPreprocessingFn(
-      self, inputs: Mapping[Text, Any],
-      unused_outputs: Mapping[Text, Any]) -> Callable[..., Any]:
+  def _GetPreprocessingFn(self, inputs: Mapping[Text, Any],
+                          unused_outputs: Mapping[Text, Any],
+                          temp_path: str) -> Callable[..., Any]:
     """Returns a user defined preprocessing_fn.
 
     If a custom config is provided in inputs, and also needed in
@@ -755,6 +756,7 @@ class Executor(base_beam_executor.BaseBeamExecutor):
     Args:
       inputs: A dictionary of labelled input values.
       unused_outputs: A dictionary of labelled output values.
+      temp_path: Path to temp files
 
     Returns:
       User defined function, optionally bound with a custom config.
@@ -774,9 +776,10 @@ class Executor(base_beam_executor.BaseBeamExecutor):
           'supplied in inputs.')
 
     if has_module_file:
+      module_path_copy = shutil.copy(
+          value_utils.GetSoleValue(inputs, labels.MODULE_FILE), temp_path)
       fn = import_utils.import_func_from_source(
-          value_utils.GetSoleValue(inputs, labels.MODULE_FILE),
-          standard_component_specs.PREPROCESSING_FN_KEY)
+          module_path_copy, standard_component_specs.PREPROCESSING_FN_KEY)
     else:
       preprocessing_fn_path_split = value_utils.GetSoleValue(
           inputs, labels.PREPROCESSING_FN).split('.')
@@ -879,7 +882,6 @@ class Executor(base_beam_executor.BaseBeamExecutor):
                                                 schema)
     materialize_output_paths = value_utils.GetValues(
         outputs, labels.TRANSFORM_MATERIALIZE_OUTPUT_PATHS_LABEL)
-    preprocessing_fn = self._GetPreprocessingFn(inputs, outputs)
     stats_options_updater_fn = self._GetStatsOptionsUpdaterFn(inputs)
     per_set_stats_output_paths = value_utils.GetValues(
         outputs, labels.PER_SET_STATS_OUTPUT_PATHS_LABEL)
@@ -902,6 +904,7 @@ class Executor(base_beam_executor.BaseBeamExecutor):
         inputs, labels.DATA_VIEW_LABEL, strict=False)
     force_tf_compat_v1 = value_utils.GetSoleValue(
         inputs, labels.FORCE_TF_COMPAT_V1_LABEL)
+    preprocessing_fn = self._GetPreprocessingFn(inputs, outputs, temp_path)
 
     absl.logging.debug('Force tf.compat.v1: %s', force_tf_compat_v1)
     absl.logging.debug('Analyze data patterns: %s',
