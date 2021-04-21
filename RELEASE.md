@@ -15,6 +15,8 @@
    of JSON-compatible objects as artifact metadata.
 *  Support is added for the KFP v2 artifact metadata field when executing using
    the KFP v2 container entrypoint.
+*  InfraValidator for Kubernetes now can override Pod manifest to customize
+   annotations and environment variables.
 
 ## Breaking Changes
 

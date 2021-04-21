@@ -112,6 +112,10 @@ ValidationSpec = infra_validator_pb2.ValidationSpec
 TensorFlowServing = infra_validator_pb2.TensorFlowServing
 LocalDockerConfig = infra_validator_pb2.LocalDockerConfig
 KubernetesConfig = infra_validator_pb2.KubernetesConfig
+PodOverrides = infra_validator_pb2.PodOverrides
+EnvVar = infra_validator_pb2.EnvVar
+EnvVarSource = infra_validator_pb2.EnvVarSource
+SecretKeySelector = infra_validator_pb2.SecretKeySelector
 RequestSpec = infra_validator_pb2.RequestSpec
 TensorFlowServingRequestSpec = infra_validator_pb2.TensorFlowServingRequestSpec
 del infra_validator_pb2
@@ -137,6 +141,22 @@ KubernetesConfig.__doc__ = """
 Kubernetes configuration. We currently only support the use case when infra validator is run by `orchestration.KubeflowDagRunner`.
 Model server will be launched in the same namespace KFP is running on, as well as same service account will be used (unless specified).
 Model server will have `ownerReferences` to the infra validator, which delegates the strict cleanup guarantee to the kubernetes cluster.
+"""
+
+PodOverrides.__doc__ = """
+Flattened collections of overridable variables for Pod and its submessages.
+"""
+
+EnvVar.__doc__ = """
+EnvVar represents an environment variable present in a Container.
+"""
+
+EnvVarSource.__doc__ = """
+EnvVarSource represents a source for the value of an EnvVar.
+"""
+
+SecretKeySelector.__doc__ = """
+SecretKeySelector selects a key of a Secret.
 """
 
 RequestSpec.__doc__ = """

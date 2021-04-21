@@ -198,6 +198,17 @@ class KubernetesRunnerTest(tf.test.TestCase):
     runner = self._CreateKubernetesRunner(k8s_config_dict={
         'service_account_name': 'chocolate-latte',
         'active_deadline_seconds': 123,
+        'serving_pod_overrides': {
+            'annotations': {'best_ticker': 'goog'},
+            'env': [
+                {'name': 'TICKER', 'value': 'GOOG'},
+                {'name': 'NAME_ONLY'},
+                {'name': 'SECRET', 'value_from': {
+                    'secret_key_ref': {
+                        'name': 'my_secret',
+                        'key': 'my_key'}}}
+            ]
+        }
     })
 
     # Act.
@@ -206,6 +217,15 @@ class KubernetesRunnerTest(tf.test.TestCase):
     # Check result.
     self.assertEqual(pod_manifest.spec.service_account_name, 'chocolate-latte')
     self.assertEqual(pod_manifest.spec.active_deadline_seconds, 123)
+    self.assertEqual(pod_manifest.metadata.annotations, {'best_ticker': 'goog'})
+    container_envs = {
+        env.name: env for env in pod_manifest.spec.containers[0].env}
+    self.assertEqual(container_envs['TICKER'].value, 'GOOG')
+    self.assertEqual(container_envs['NAME_ONLY'].value, '')
+    self.assertEqual(container_envs['SECRET'].value_from.secret_key_ref.name,
+                     'my_secret')
+    self.assertEqual(container_envs['SECRET'].value_from.secret_key_ref.key,
+                     'my_key')
 
   def testStart_FailsIfOutsideKfp(self):
     # Prepare mocks and variables.

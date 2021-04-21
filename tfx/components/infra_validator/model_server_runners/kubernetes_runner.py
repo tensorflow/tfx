@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2020 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,15 +13,11 @@
 # limitations under the License.
 """Model server runner for kubernetes runtime."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import datetime
 import os
 import sys
 import time
-from typing import Optional, Text
+from typing import Optional
 
 from absl import logging
 from apache_beam.utils import retry
@@ -58,14 +53,14 @@ _MODEL_SERVER_MODEL_VOLUME_NAME = 'model-volume'
 
 
 # TODO(b/149534564): Use pathlib.
-def _is_subdirectory(maybe_parent: Text, maybe_child: Text) -> bool:
+def _is_subdirectory(maybe_parent: str, maybe_child: str) -> bool:
   paren = os.path.realpath(maybe_parent).split(os.path.sep)
   child = os.path.realpath(maybe_child).split(os.path.sep)
   return len(paren) <= len(child) and all(a == b for a, b in zip(paren, child))
 
 
 def _get_container_or_error(
-    pod: k8s_client.V1Pod, container_name: Text) -> k8s_client.V1Container:
+    pod: k8s_client.V1Pod, container_name: str) -> k8s_client.V1Container:
   for container in pod.spec.containers:
     if container.name == container_name:
       return container
@@ -78,12 +73,31 @@ def _api_exception_retry_filter(exception: Exception):
   return isinstance(exception, rest.ApiException)
 
 
+def _convert_to_kube_env(
+    env: infra_validator_pb2.EnvVar) -> k8s_client.V1EnvVar:
+  """Convert infra_validator_pb2.EnvVar to kubernetes.V1EnvVar."""
+  if not env.name:
+    raise ValueError('EnvVar.name must be specified.')
+  if env.HasField('value_from'):
+    if env.value_from.HasField('secret_key_ref'):
+      value_source = k8s_client.V1EnvVarSource(
+          secret_key_ref=k8s_client.V1SecretKeySelector(
+              name=env.value_from.secret_key_ref.name,
+              key=env.value_from.secret_key_ref.key))
+      return k8s_client.V1EnvVar(name=env.name, value_from=value_source)
+    else:
+      raise ValueError(f'Bad EnvVar: {env}')
+  else:
+    # Note that env.value can be empty.
+    return k8s_client.V1EnvVar(name=env.name, value=env.value)
+
+
 class KubernetesRunner(base_runner.BaseModelServerRunner):
   """A model server runner that launches model server in kubernetes cluster."""
 
   def __init__(
       self,
-      model_path: Text,
+      model_path: str,
       serving_binary: serving_bins.ServingBinary,
       serving_spec: infra_validator_pb2.ServingSpec):
     """Create a kubernetes model server runner.
@@ -122,7 +136,7 @@ class KubernetesRunner(base_runner.BaseModelServerRunner):
         image=self._serving_binary.image,
         pod_name=self._pod_name)
 
-  def GetEndpoint(self) -> Text:
+  def GetEndpoint(self) -> str:
     assert self._endpoint is not None, (
         'self._endpoint is not ready. You should call Start() and '
         'WaitUntilRunning() first.')
@@ -205,26 +219,36 @@ class KubernetesRunner(base_runner.BaseModelServerRunner):
         six.reraise(*sys.exc_info())
 
   def _BuildPodManifest(self) -> k8s_client.V1Pod:
+    annotations = {}
+    env_vars = []
+
     if isinstance(self._serving_binary, serving_bins.TensorFlowServing):
       env_vars_dict = self._serving_binary.MakeEnvVars(
           model_path=self._model_path)
-      env_vars = [k8s_client.V1EnvVar(name=key, value=value)
-                  for key, value in env_vars_dict.items()]
-    else:
-      raise NotImplementedError('Unsupported serving binary {}'.format(
-          type(self._serving_binary).__name__))
+      env_vars.extend(
+          k8s_client.V1EnvVar(name=key, value=value)
+          for key, value in env_vars_dict.items())
+
+    if self._config.serving_pod_overrides:
+      overrides = self._config.serving_pod_overrides
+      if overrides.annotations:
+        annotations.update(overrides.annotations)
+      if overrides.env:
+        env_vars.extend(_convert_to_kube_env(env) for env in overrides.env)
 
     service_account_name = (self._config.service_account_name or
                             self._executor_pod.spec.service_account_name)
     active_deadline_seconds = (self._config.active_deadline_seconds or
                                _DEFAULT_ACTIVE_DEADLINE_SEC)
     if active_deadline_seconds < 0:
-      raise ValueError('active_deadline_seconds should be > 0. Got {}'
-                       .format(active_deadline_seconds))
+      raise ValueError(
+          'active_deadline_seconds should be > 0, but got '
+          f'{active_deadline_seconds}.')
 
     result = k8s_client.V1Pod(
         metadata=k8s_client.V1ObjectMeta(
             generate_name=_MODEL_SERVER_POD_NAME_PREFIX,
+            annotations=annotations,
             labels=self._label_dict,
             # Resources with ownerReferences are automatically deleted once all
             # its owners are deleted.
