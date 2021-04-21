@@ -57,7 +57,7 @@ OpFunc = Callable[[dsl.ContainerOp], dsl.ContainerOp]
 _KUBEFLOW_GCP_SECRET_NAME = 'user-gcp-sa'
 
 # Default TFX container image to use in KubeflowDagRunner.
-_KUBEFLOW_TFX_IMAGE = 'tensorflow/tfx:%s' % (version.__version__)
+_KUBEFLOW_TFX_IMAGE = 'tensorflow/tfx:%s' % (version.__version__,)
 
 
 def _mount_config_map_op(config_map_name: Text) -> OpFunc:
@@ -159,6 +159,10 @@ def get_default_pod_labels() -> Dict[Text, Text]:
       telemetry_utils.LABEL_KFP_SDK_ENV: 'tfx'
   }
   return result
+
+
+def get_default_output_filename(pipeline_name: str) -> str:
+  return pipeline_name + '.tar.gz'
 
 
 class KubeflowDagRunnerConfig(pipeline_config.PipelineConfig):
@@ -383,7 +387,8 @@ class KubeflowDagRunner(tfx_runner.TfxRunner):
     # can correctly match default value with PipelineParam.
     self._parse_parameter_from_pipeline(pipeline)
 
-    file_name = self._output_filename or pipeline.pipeline_info.pipeline_name + '.tar.gz'
+    file_name = self._output_filename or get_default_output_filename(
+        pipeline.pipeline_info.pipeline_name)
     # Create workflow spec and write out to package.
     self._compiler._create_and_write_workflow(  # pylint: disable=protected-access
         pipeline_func=_construct_pipeline,

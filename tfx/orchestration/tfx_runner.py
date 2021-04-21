@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,17 +13,13 @@
 # limitations under the License.
 """Definition of TFX runner base class."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
-
 import abc
 from typing import Any, Optional
 
 import six
 
 from tfx.orchestration.config import pipeline_config
+from tfx.utils import doc_controls
 
 
 class TfxRunner(six.with_metaclass(abc.ABCMeta, object)):
@@ -53,3 +48,8 @@ class TfxRunner(six.with_metaclass(abc.ABCMeta, object)):
       Platform-specific object.
     """
     pass
+
+  @property
+  @doc_controls.do_not_doc_in_subclasses
+  def config(self) -> pipeline_config.PipelineConfig:
+    return self._config

@@ -18,13 +18,10 @@ import random
 import string
 from typing import Any, List, Text
 
-from tfx.components import CsvExampleGen
-from tfx.components import SchemaGen
-from tfx.components import StatisticsGen
+from tfx import components
 from tfx.dsl.components.base.base_component import BaseComponent
 from tfx.utils import dsl_utils
-
-from tensorflow.python.lib.io import file_io  # pylint: disable=g-direct-tensorflow-import
+from tfx.utils import io_utils
 
 
 def create_e2e_components(csv_input_location: Text,) -> List[BaseComponent]:
@@ -41,9 +38,10 @@ def create_e2e_components(csv_input_location: Text,) -> List[BaseComponent]:
   """
   examples = dsl_utils.external_input(csv_input_location)
 
-  example_gen = CsvExampleGen(input=examples)
-  statistics_gen = StatisticsGen(examples=example_gen.outputs['examples'])
-  schema_gen = SchemaGen(
+  example_gen = components.CsvExampleGen(input=examples)
+  statistics_gen = components.StatisticsGen(
+      examples=example_gen.outputs['examples'])
+  schema_gen = components.SchemaGen(
       statistics=statistics_gen.outputs['statistics'],
       infer_feature_shape=False)
 
@@ -63,8 +61,8 @@ def copy_and_change_pipeline_name(orig_path: Text, new_path: Text,
                                   origin_pipeline_name: Text,
                                   new_pipeline_name: Text) -> None:
   """Copy pipeline file to new path with pipeline name changed."""
-  contents = file_io.read_file_to_string(orig_path)
+  contents = io_utils.read_string_file(orig_path)
   assert contents.count(
       origin_pipeline_name) == 1, 'DSL file can only contain one pipeline name'
   contents = contents.replace(origin_pipeline_name, new_pipeline_name)
-  file_io.write_string_to_file(new_path, contents)
+  io_utils.write_string_file(new_path, contents)
