@@ -136,7 +136,40 @@ CommonVariablesTuple = collections.namedtuple("CommonVariablesTuple", [
 ])
 
 
-def _get_common_variables(dataset):
+def _feature_spec_as_type_spec(feature_spec):
+  """Returns `tf.TensorSpec`/`tf.SparseTensorSpec`s for the given feature spec.
+
+  Returns a dictionary of type_spec with the same type and shape as defined by
+  `feature_spec`.
+
+  Args:
+    feature_spec: A TensorFlow feature spec.
+
+  Returns:
+    A dictionary from strings to `tf.TensorSpec` or `tf.SparseTensorSpec`s.
+
+  Raises:
+    ValueError: If the feature spec contains feature types not supported.
+  """
+  result = {}
+
+  for name, spec in feature_spec.items():
+    if spec.dtype not in (tf.int64, tf.float32, tf.string):
+      raise ValueError("Feature {} ({}) had invalid dtype".format(name, spec))
+    if isinstance(spec, tf.io.FixedLenFeature):
+      result[name] = tf.TensorSpec(shape=[None] + spec.shape, dtype=spec.dtype)
+    elif isinstance(spec, tf.io.VarLenFeature):
+      result[name] = tf.SparseTensorSpec(shape=[None, None], dtype=spec.dtype)
+    elif isinstance(spec, tf.io.SparseFeature):
+      result[name] = tf.SparseTensorSpec(
+          shape=[None, spec.size], dtype=spec.dtype)
+    else:
+      raise TypeError("Feature spec {} of type {} is not supported for feature "
+                      "{}".format(spec, type(spec), name))
+  return result
+
+
+def _get_common_variables(dataset, force_tf_compat_v1):
   """Returns metadata schema, preprocessing fn, input dataset metadata."""
 
   tf_metadata_schema = benchmark_utils.read_schema(
@@ -146,8 +179,10 @@ def _get_common_variables(dataset):
 
   feature_spec = schema_utils.schema_as_feature_spec(
       tf_metadata_schema).feature_spec
+  type_spec = _feature_spec_as_type_spec(feature_spec)
   transform_input_columns = (
-      tft.get_transform_input_columns(preprocessing_fn, feature_spec))
+      tft.get_transform_input_columns(
+          preprocessing_fn, type_spec, force_tf_compat_v1=force_tf_compat_v1))
   transform_input_dataset_metadata = dataset_metadata.DatasetMetadata(
       schema_utils.schema_from_feature_spec({
           feature: feature_spec[feature] for feature in transform_input_columns
@@ -169,7 +204,7 @@ def regenerate_intermediates_for_dataset(dataset,
                                          max_num_examples=None):
   """Regenerate intermediate outputs required for the benchmark."""
 
-  common_variables = _get_common_variables(dataset)
+  common_variables = _get_common_variables(dataset, force_tf_compat_v1)
 
   logging.info("Regenerating intermediate outputs required for benchmark.")
   with beam.Pipeline() as p:
@@ -184,11 +219,13 @@ def regenerate_intermediates_for_dataset(dataset,
   logging.info("Intermediate outputs regenerated.")
 
 
-def _get_batched_records(dataset, max_num_examples=None):
+def _get_batched_records(dataset, force_tf_compat_v1, max_num_examples=None):
   """Returns a (batch_size, iterator for batched records) tuple for the dataset.
 
   Args:
     dataset: BenchmarkDataset object.
+    force_tf_compat_v1: If False then Transform will use its native TF2 version,
+      if True then Transform will use its TF1 version.
     max_num_examples: Maximum number of examples to read from the dataset.
 
   Returns:
@@ -196,7 +233,7 @@ def _get_batched_records(dataset, max_num_examples=None):
     decoded tf.train.Examples.
   """
   batch_size = 1000
-  common_variables = _get_common_variables(dataset)
+  common_variables = _get_common_variables(dataset, force_tf_compat_v1)
   converter = example_coder.ExamplesToRecordBatchDecoder(
       common_variables.transform_input_dataset_metadata.schema
       .SerializeToString())
@@ -229,7 +266,7 @@ class TFTBenchmarkBase(benchmark_base.BenchmarkBase):
 
   def _benchmarkAnalyzeAndTransformDatasetCommon(self, force_tf_compat_v1):
     """Common implementation to benchmark AnalyzeAndTransformDataset."""
-    common_variables = _get_common_variables(self._dataset)
+    common_variables = _get_common_variables(self._dataset, force_tf_compat_v1)
 
     pipeline = self._create_beam_pipeline()
     _ = pipeline | _AnalyzeAndTransformDataset(
@@ -271,8 +308,9 @@ class TFTBenchmarkBase(benchmark_base.BenchmarkBase):
 
   def _benchmarkRunMetaGraphDoFnManualActuationCommon(self, force_tf_compat_v1):
     """Common implementation to benchmark RunMetaGraphDoFn "manually"."""
-    common_variables = _get_common_variables(self._dataset)
+    common_variables = _get_common_variables(self._dataset, force_tf_compat_v1)
     batch_size, batched_records = _get_batched_records(self._dataset,
+                                                       force_tf_compat_v1,
                                                        self._max_num_examples())
     fn = tft_beam_impl._RunMetaGraphDoFn(  # pylint: disable=protected-access
         tf_config=None,
@@ -331,7 +369,8 @@ class TFTBenchmarkBase(benchmark_base.BenchmarkBase):
     since it's benchmarking the low-level internals of TFT, which are not
     exposed for use in this way.
     """
-    common_variables = _get_common_variables(self._dataset)
+    common_variables = _get_common_variables(
+        self._dataset, force_tf_compat_v1=True)
     tf_config = tft_beam_impl._FIXED_PARALLELISM_TF_CONFIG  # pylint: disable=protected-access
 
     # This block copied from _GraphStateCompatV1.__init__
@@ -353,8 +392,10 @@ class TFTBenchmarkBase(benchmark_base.BenchmarkBase):
       feed_list = [inputs[key] for key in input_tensor_keys]
       callable_get_outputs = session.make_callable(fetches, feed_list=feed_list)
 
-    batch_size, batched_records = _get_batched_records(self._dataset,
-                                                       self._max_num_examples())
+    batch_size, batched_records = _get_batched_records(
+        self._dataset,
+        force_tf_compat_v1=True,
+        max_num_examples=self._max_num_examples())
 
     input_tensor_adapter = tensor_adapter.TensorAdapter(
         common_variables.tfxio.TensorAdapterConfig())
@@ -390,7 +431,8 @@ class TFTBenchmarkBase(benchmark_base.BenchmarkBase):
     since it's benchmarking the low-level internals of TFT, which are not
     exposed for use in this way.
     """
-    common_variables = _get_common_variables(self._dataset)
+    common_variables = _get_common_variables(
+        self._dataset, force_tf_compat_v1=False)
     tensor_adapter_config = common_variables.tfxio.TensorAdapterConfig()
 
     # This block copied from _GraphStateV2.__init__
@@ -403,8 +445,10 @@ class TFTBenchmarkBase(benchmark_base.BenchmarkBase):
         tensor_adapter_config.tensor_representations.keys(),
         outputs_tensor_keys)
 
-    batch_size, batched_records = _get_batched_records(self._dataset,
-                                                       self._max_num_examples())
+    batch_size, batched_records = _get_batched_records(
+        self._dataset,
+        force_tf_compat_v1=False,
+        max_num_examples=self._max_num_examples())
 
     input_tensor_adapter = tensor_adapter.TensorAdapter(tensor_adapter_config)
 
