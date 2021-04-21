@@ -16,65 +16,27 @@
 
 import datetime
 import os
-from typing import Optional
-from typing import Union
 
 from absl import logging
 from tfx.dsl.compiler import compiler
 from tfx.dsl.compiler import constants
 from tfx.orchestration import metadata
 from tfx.orchestration import pipeline as pipeline_py
-from tfx.orchestration.config import pipeline_config
 from tfx.orchestration.local import runner_utils
-from tfx.orchestration.local.legacy import local_dag_runner as legacy_local_dag_runner
 from tfx.orchestration.portable import launcher
 from tfx.orchestration.portable import runtime_parameter_utils
 from tfx.orchestration.portable import tfx_runner
-from tfx.proto.orchestration import pipeline_pb2
 from tfx.utils import telemetry_utils
 
 
 class LocalDagRunner(tfx_runner.TfxRunner):
   """Local TFX DAG runner."""
 
-  def __new__(
-      cls,
-      config: Optional[pipeline_config.PipelineConfig] = None):
-    """Initializes LocalDagRunner as a TFX orchestrator.
+  def __init__(self):
+    """Initializes LocalDagRunner as a TFX orchestrator."""
+    pass
 
-    Create the legacy LocalDagRunner object if any of the legacy
-    `config` arguments is passed. A migration guide will be provided in a future
-    TFX version for users of these arguments.
-
-    Args:
-      config: Deprecated optional pipeline config for customizing the launching
-        of each component. Defaults to pipeline config that supports
-        InProcessComponentLauncher and DockerComponentLauncher. If this option
-        is used, the legacy non-IR-based LocalDagRunner will be constructed.
-
-    Returns:
-      Legacy or IR-based LocalDagRunner object.
-    """
-    if config:
-      logging.info(
-          'Using the legacy LocalDagRunner since `config` argument was passed.')
-      return legacy_local_dag_runner.LocalDagRunner(config=config)
-    else:
-      return super(LocalDagRunner, cls).__new__(cls)
-
-  def __init__(self,
-               config: Optional[pipeline_config.PipelineConfig] = None):
-    super().__init__()
-    if config:
-      logging.warning(
-          'The argument config of LocalDagRunner will be deprecated soon, '
-          'and passing it in will return a legacy instance of LocalDagRunner. '
-          'Its information has been automatically complied to the intermediate '
-          'representation. Please remove this argument if you are using it and '
-          'we will remove it in the next release.')
-
-  def run(self, pipeline: Union[pipeline_pb2.Pipeline,
-                                pipeline_py.Pipeline]) -> None:
+  def run(self, pipeline: pipeline_py.Pipeline) -> None:
     """Runs given logical pipeline locally.
 
     Args:
@@ -85,9 +47,8 @@ class LocalDagRunner(tfx_runner.TfxRunner):
     if 'TFX_JSON_EXPORT_PIPELINE_ARGS_PATH' in os.environ:
       return
 
-    if isinstance(pipeline, pipeline_py.Pipeline):
-      c = compiler.Compiler()
-      pipeline = c.compile(pipeline)
+    c = compiler.Compiler()
+    pipeline = c.compile(pipeline)
 
     # Substitute the runtime parameter to be a concrete run_id
     runtime_parameter_utils.substitute_runtime_parameter(

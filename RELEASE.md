@@ -30,6 +30,9 @@
                            to the span interval begin in UTC.
 *  Removed the already deprecated compile() method on Kubeflow V2 Dag Runner.
 
+*  Removed config from LocalDagRunner's constructor, and dropped pipeline proto
+   support from LocalDagRunner's run function.
+
 ### For Pipeline Authors
 
 ### For Component Authors

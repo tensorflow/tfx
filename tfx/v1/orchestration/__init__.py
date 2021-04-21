@@ -13,4 +13,5 @@
 # limitations under the License.
 """TFX orchestration module."""
 
+from tfx.orchestration.local.local_dag_runner import LocalDagRunner
 from tfx.v1.orchestration import metadata
