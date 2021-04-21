@@ -29,9 +29,11 @@
    *   @span_yyyymmdd_utc: STRING with format, e.g., '20180114', corresponding
                            to the span interval begin in UTC.
 *  Removed the already deprecated compile() method on Kubeflow V2 Dag Runner.
-
 *  Removed config from LocalDagRunner's constructor, and dropped pipeline proto
    support from LocalDagRunner's run function.
+*  Transform will use the native TF2 implementation of tf.transform unless TF2
+   behaviors are explicitly disabled. The previous behaviour can still be
+   obtained by setting `force_tf_compat_v1=True`.
 
 ### For Pipeline Authors
 
