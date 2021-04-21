@@ -22,13 +22,25 @@ from tfx.orchestration import data_types
 from tfx.orchestration import metadata
 from tfx.proto import range_config_pb2
 from tfx.types import artifact_utils
+from tfx.utils import doc_controls
 
 
+# TODO(b/185938426): consider renaming this to XxxResolverStrategy.
 class SpansResolver(resolver.ResolverStrategy):
   """Resolver that return the artifacts based on Span.
 
   Note that this Resolver is experimental and is subject to change in terms of
   both interface and implementation.
+
+  Don't construct SpansResolver directly, example usage:
+  ```
+    examples_resolver = Resolver(
+        instance_name='span_resolver',
+        strategy_class=SpansResolver,
+        config={'range_config': range_config},
+        examples=Channel(type=Examples, producer_component_id=example_gen.id))
+    examples_resolver.outputs['examples']
+  ```
   """
 
   def __init__(self, range_config: range_config_pb2.RangeConfig):
@@ -87,6 +99,7 @@ class SpansResolver(resolver.ResolverStrategy):
 
     return result
 
+  @doc_controls.do_not_generate_docs
   def resolve(
       self,
       pipeline_info: data_types.PipelineInfo,
@@ -118,6 +131,7 @@ class SpansResolver(resolver.ResolverStrategy):
         per_key_resolve_result=resolved_dict,
         per_key_resolve_state=resolve_state_dict)
 
+  @doc_controls.do_not_generate_docs
   def resolve_artifacts(
       self, metadata_handler: metadata.Metadata,
       input_dict: Dict[Text, List[types.Artifact]]

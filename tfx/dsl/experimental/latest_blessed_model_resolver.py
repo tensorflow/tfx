@@ -27,13 +27,25 @@ from tfx.orchestration import data_types
 from tfx.orchestration import metadata
 from tfx.types import artifact_utils
 from tfx.types import standard_artifacts
+from tfx.utils import doc_controls
 
 
+# TODO(b/185938426): consider renaming this to XxxResolverStrategy.
 class LatestBlessedModelResolver(resolver.ResolverStrategy):
   """Special Resolver that return the latest blessed model.
 
   Note that this Resolver is experimental and is subject to change in terms of
   both interface and implementation.
+
+  Don't construct LatestBlessedModelResolver directly, example usage:
+  ```
+    model_resolver = Resolver(
+        instance_name='latest_blessed_model_resolver',
+        strategy_class=LatestBlessedModelResolver,
+        model=Channel(type=Model),
+        model_blessing=Channel(type=ModelBlessing))
+    model_resolver.outputs['model']
+  ```
   """
 
   def _resolve(self, input_dict: Dict[Text, List[types.Artifact]],
@@ -63,6 +75,7 @@ class LatestBlessedModelResolver(resolver.ResolverStrategy):
 
     return result
 
+  @doc_controls.do_not_generate_docs
   def resolve(
       self,
       pipeline_info: data_types.PipelineInfo,
@@ -124,6 +137,7 @@ class LatestBlessedModelResolver(resolver.ResolverStrategy):
         per_key_resolve_result=resolved_dict,
         per_key_resolve_state=resolve_state_dict)
 
+  @doc_controls.do_not_generate_docs
   def resolve_artifacts(
       self, metadata_handler: metadata.Metadata,
       input_dict: Dict[Text, List[types.Artifact]]

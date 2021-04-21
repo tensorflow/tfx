@@ -29,6 +29,7 @@ from tfx.orchestration import data_types
 from tfx.orchestration import metadata
 from tfx.types import node_common
 from tfx.utils import deprecation_utils
+from tfx.utils import doc_controls
 from tfx.utils import json_utils
 
 # Constant to access resolver class from resolver exec_properties.
@@ -71,6 +72,7 @@ class ResolverStrategy(with_metaclass(abc.ABCMeta, object)):
   @deprecation_utils.deprecated(
       date='2020-09-24',
       instructions='Please switch to the `resolve_artifacts`.')
+  @doc_controls.do_not_generate_docs
   def resolve(
       self,
       pipeline_info: data_types.PipelineInfo,
@@ -94,6 +96,8 @@ class ResolverStrategy(with_metaclass(abc.ABCMeta, object)):
     """
     raise DeprecationWarning
 
+  # TODO(b/185799094): metadata_handler should be mlmd.MetadataStore.
+  #                    move ResolverStrategy to public when this is done.
   @abc.abstractmethod
   def resolve_artifacts(
       self, metadata_handler: metadata.Metadata,
@@ -113,7 +117,8 @@ class ResolverStrategy(with_metaclass(abc.ABCMeta, object)):
     is to preserve all keys in the input_dict unless you have specific reason.
 
     Args:
-      metadata_handler: A metadata handler to access MLMD store.
+      metadata_handler: A metadata handler to access MLMD store. This is
+        subject to change in the future.
       input_dict: The input_dict to resolve from.
 
     Returns:
@@ -188,28 +193,26 @@ class Resolver(base_node.BaseNode):
   logics that will be used as inputs for downstream nodes.
 
   To use Resolver, pass the followings to the Resolver constructor:
-    a. name of the Resolver instance
-    g. a subclass of ResolverStrategy
-    c. the configs that will be used to construct an instance of (a)
-    d. channels to resolve with their tag, in the form of kwargs
+
+  * Name of the Resolver instance
+  * A subclass of ResolverStrategy
+  * Configs that will be used to construct an instance of ResolverStrategy
+  * Channels to resolve with their tag, in the form of kwargs
+
   Here is an example:
 
-  ...
+  ```
   example_gen = ImportExampleGen(...)
-  latest_five_examples_resolver = Resolver(
-      instance_name='latest_five_examples_resolver',
-      strategy_class=latest_artifacts_strategy.LatestArtifactsStrategy,
-      resolver_config={'desired_num_of_artifacts' : 5},
-      examples=example_gen.outputs['examples'])
-  trainer = MyTrainer(
-      examples=latest_five_examples_resolver.outputs['examples'],
-      user_module=...)
-  ...
-
-  Attributes:
-    _strategy_class: the class of the ResolverStrategy.
-    _resolver_configs: the configs that will be used to construct an instance of
-      _strategy_class.
+  examples_resolver = Resolver(
+        instance_name='span_resolver',
+        strategy_class=SpansResolver,
+        config={'range_config': range_config},
+        examples=Channel(type=Examples, producer_component_id=example_gen.id))
+    examples_resolver.outputs['examples']
+  trainer = Trainer(
+      examples=examples_resolver.outputs['examples'],
+      ...)
+  ```
   """
 
   def __init__(self,
@@ -244,14 +247,17 @@ class Resolver(base_node.BaseNode):
     )
 
   @property
+  @doc_controls.do_not_generate_docs
   def inputs(self) -> node_common._PropertyDictWrapper:  # pylint: disable=protected-access
     return node_common._PropertyDictWrapper(self._input_dict)  # pylint: disable=protected-access
 
   @property
   def outputs(self) -> node_common._PropertyDictWrapper:  # pylint: disable=protected-access
+    """Output Channel dict that contains resolved artifacts."""
     return node_common._PropertyDictWrapper(self._output_dict)  # pylint: disable=protected-access
 
   @property
+  @doc_controls.do_not_generate_docs
   def exec_properties(self) -> Dict[Text, Any]:
     return {
         RESOLVER_STRATEGY_CLASS: self._strategy_class,

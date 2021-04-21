@@ -25,13 +25,24 @@ from tfx.dsl.components.common import resolver
 from tfx.orchestration import data_types
 from tfx.orchestration import metadata
 from tfx.types import artifact_utils
+from tfx.utils import doc_controls
 
 
+# TODO(b/185938426): consider renaming this to XxxResolverStrategy.
 class LatestArtifactsResolver(resolver.ResolverStrategy):
   """Resolver that return the latest n artifacts in a given channel.
 
   Note that this Resolver is experimental and is subject to change in terms of
   both interface and implementation.
+
+  Don't construct LatestArtifactsResolver directly, example usage:
+  ```
+    model_resolver = Resolver(
+        instance_name='latest_model_resolver',
+        strategy_class=LatestArtifactsResolver,
+        model=Channel(type=Model))
+    model_resolver.outputs['model']
+  ```
   """
 
   def __init__(self, desired_num_of_artifacts: Optional[int] = 1):
@@ -46,6 +57,7 @@ class LatestArtifactsResolver(resolver.ResolverStrategy):
           len(sorted_artifact_list), self._desired_num_of_artifact)]
     return result
 
+  @doc_controls.do_not_generate_docs
   def resolve(
       self,
       pipeline_info: data_types.PipelineInfo,
@@ -78,6 +90,7 @@ class LatestArtifactsResolver(resolver.ResolverStrategy):
         per_key_resolve_result=resolved_dict,
         per_key_resolve_state=resolve_state_dict)
 
+  @doc_controls.do_not_generate_docs
   def resolve_artifacts(
       self, metadata_handler: metadata.Metadata,
       input_dict: Dict[Text, List[types.Artifact]]

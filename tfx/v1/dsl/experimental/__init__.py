@@ -11,7 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""TFX utils module."""
+"""TFX dsl.experimental module."""
 
-from tfx.utils.io_utils import parse_pbtxt_file
-from tfx.utils.json_utils import JsonableType
+from tfx.dsl.components.common.resolver import ResolverStrategy
+from tfx.dsl.experimental.latest_artifacts_resolver import LatestArtifactsResolver
+from tfx.dsl.experimental.latest_blessed_model_resolver import LatestBlessedModelResolver
+from tfx.dsl.experimental.spans_resolver import SpansResolver
