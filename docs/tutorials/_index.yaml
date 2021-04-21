@@ -59,13 +59,13 @@ landing_page:
     items:
     - classname: tfo-landing-page-card
       description: >
-        <a href="/tfx/tutorials/tfx/components_keras"><h3 class="no-link">TFX Component Tutorial</h3></a>
+        <a href="/tfx/tutorials/tfx/components_keras"><h3 class="no-link">Complete Pipeline Tutorial</h3></a>
         A component-by-component introduction to TFX, including the <em>interactive context</em>, a
         very useful development tool. Click the <em>Run in Google&nbsp;Colab</em> button.
       path: /tfx/tutorials/tfx/components_keras
     - classname: tfo-landing-page-card
       description: >
-        <a href="/tfx/tutorials/tfx/airflow_workshop"><h3 class="no-link">Custom Component Tutorial</h3></a>
+        <a href="/tfx/tutorials/tfx/python_function_component"><h3 class="no-link">Custom Component Tutorial</h3></a>
         A tutorial showing how to develop your own custom TFX components.
       path: /tfx/tutorials/tfx/python_function_component
     - classname: tfo-landing-page-card
