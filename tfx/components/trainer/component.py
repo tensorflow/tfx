@@ -158,7 +158,8 @@ class Trainer(base_component.BaseComponent):
         behavior (when splits is empty) is evaluate on `eval` split.
       custom_config: A dict which contains addtional training job parameters
         that will be passed into user module.
-      custom_executor_spec: Optional custom executor spec.
+      custom_executor_spec: Optional custom executor spec. This is experimental
+        and is subject to change in the future.
       model: Optional `Model` channel for result of exported models.
       model_run: Optional `ModelRun` channel, as the working dir of models,
         can be used to output non-model related output (e.g., TensorBoard logs).

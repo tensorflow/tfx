@@ -95,7 +95,8 @@ class Pusher(base_component.BaseComponent):
         passed to cloud-based training platforms. The [Kubeflow example](
           https://github.com/tensorflow/tfx/blob/6ff57e36a7b65818d4598d41e584a42584d361e6/tfx/examples/chicago_taxi_pipeline/taxi_pipeline_kubeflow_gcp.py#L278-L285)
           contains an example how this can be used by custom executors.
-      custom_executor_spec: Optional custom executor spec.
+      custom_executor_spec: Optional custom executor spec. This is experimental
+        and is subject to change in the future.
       pushed_model: Optional output `standard_artifacts.PushedModel` channel
         with result of push.
       instance_name: Optional unique instance name. Necessary if multiple Pusher
