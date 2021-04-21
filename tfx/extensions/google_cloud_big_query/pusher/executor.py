@@ -79,8 +79,8 @@ class Executor(tfx_pusher_executor.Executor):
         - project_id: GCP project where the model will be stored. It is also
           the project where the query is executed unless a compute_project_id
           is provided.
-        - compute_project_id: GCP project where query is executed. If not
-          provided, the query is executed in the project specified in project_id.
+        - compute_project_id: GCP project where the query is executed. If not
+          provided, the query is executed in project_id.
         For the full set of parameters supported by
         Big Query ML, refer to https://cloud.google.com/bigquery-ml/
 
