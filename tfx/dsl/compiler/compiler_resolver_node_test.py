@@ -23,7 +23,6 @@ from tfx.dsl.components.base import base_component
 from tfx.dsl.components.base import base_executor
 from tfx.dsl.components.base import executor_spec
 from tfx.dsl.components.common import resolver
-from tfx.dsl.resolvers import base_resolver
 from tfx.orchestration import metadata
 from tfx.orchestration import pipeline
 from tfx.proto.orchestration import execution_result_pb2
@@ -31,7 +30,7 @@ from tfx.types.component_spec import ChannelParameter
 from tfx.types.component_spec import ComponentSpec
 
 
-class ResolverNode(resolver.Resolver):
+class Resolver(resolver.Resolver):
 
   def override_output_dict(self, **output_dict):
     self._output_dict.clear()
@@ -104,7 +103,7 @@ class DummyComponents:
       })
 
 
-class DummyResolver(base_resolver.BaseResolver):
+class DummyResolverStrategy(resolver.ResolverStrategy):
   """Dummy resolver class that does nothing."""
 
   def __init__(self, **unused_kwargs):
@@ -143,11 +142,11 @@ class TestCase(tf.test.TestCase):
     return None
 
 
-class CompilerResolverNodeTest(TestCase):
+class CompilerResolverTest(TestCase):
 
   def test_resolver_node_is_not_in_ir(self):
     a = DummyComponents.A()
-    r = ResolverNode('R', DummyResolver, x=a.outputs['x'])
+    r = Resolver('R', DummyResolverStrategy, x=a.outputs['x'])
     b = DummyComponents.B(x=r.outputs['x'])
     pipeline_ir = self.compile_async_pipeline([a, r, b])
 
@@ -156,7 +155,7 @@ class CompilerResolverNodeTest(TestCase):
 
   def test_input_channel_skips_resolver_node(self):
     a = DummyComponents.A()
-    r = ResolverNode('R', DummyResolver, x=a.outputs['x'])
+    r = Resolver('R', DummyResolverStrategy, x=a.outputs['x'])
     b = DummyComponents.B(x=r.outputs['x'])
     pipeline_ir = self.compile_async_pipeline([a, r, b])
 
@@ -167,19 +166,19 @@ class CompilerResolverNodeTest(TestCase):
 
   def test_resolver_config_is_added(self):
     a = DummyComponents.A()
-    r = ResolverNode('R', DummyResolver, x=a.outputs['x'])
+    r = Resolver('R', DummyResolverStrategy, x=a.outputs['x'])
     b = DummyComponents.B(x=r.outputs['x'])
     pipeline_ir = self.compile_async_pipeline([a, r, b])
 
     b_ir = self.extract_pipeline_node(pipeline_ir, 'B')
     resolver_steps = b_ir.inputs.resolver_config.resolver_steps
     self.assertLen(resolver_steps, 1)
-    self.assertEndsWith(resolver_steps[0].class_path, '.DummyResolver')
+    self.assertEndsWith(resolver_steps[0].class_path, '.DummyResolverStrategy')
     self.assertEqual(resolver_steps[0].input_keys, ['x'])
 
   def test_resolver_input_key_and_downstream_input_key_should_be_same(self):
     a = DummyComponents.A()
-    r = ResolverNode('R', DummyResolver, alt_x=a.outputs['x'])
+    r = Resolver('R', DummyResolverStrategy, alt_x=a.outputs['x'])
     b = DummyComponents.B(x=r.outputs['alt_x'])
 
     with self.assertRaisesRegex(ValueError, r'Downstream node input key \(x\) '
@@ -189,9 +188,9 @@ class CompilerResolverNodeTest(TestCase):
 
   def test_multichannel_resolver(self):
     a = DummyComponents.A()
-    r = ResolverNode('R', DummyResolver,
-                     x=a.outputs['x'],
-                     y=a.outputs['y'])
+    r = Resolver('R', DummyResolverStrategy,
+                 x=a.outputs['x'],
+                 y=a.outputs['y'])
     b = DummyComponents.B(x=r.outputs['x'],
                           y=r.outputs['y'])
     pipeline_ir = self.compile_async_pipeline([a, r, b])
@@ -201,12 +200,12 @@ class CompilerResolverNodeTest(TestCase):
     self.assertIn('y', b_ir.inputs.inputs)
     resolver_steps = b_ir.inputs.resolver_config.resolver_steps
     self.assertLen(resolver_steps, 1)
-    self.assertEndsWith(resolver_steps[0].class_path, '.DummyResolver')
+    self.assertEndsWith(resolver_steps[0].class_path, '.DummyResolverStrategy')
     self.assertCountEqual(resolver_steps[0].input_keys, ['x', 'y'])
 
   def test_skip_connection(self):
     a = DummyComponents.A()
-    r = ResolverNode('R', DummyResolver, x=a.outputs['x'])
+    r = Resolver('R', DummyResolverStrategy, x=a.outputs['x'])
     b = DummyComponents.B(x=r.outputs['x'], y=a.outputs['y'])
     pipeline_ir = self.compile_async_pipeline([a, r, b])
 
@@ -215,15 +214,15 @@ class CompilerResolverNodeTest(TestCase):
     self.assertIn('y', b_ir.inputs.inputs)
     resolver_steps = b_ir.inputs.resolver_config.resolver_steps
     self.assertLen(resolver_steps, 1)
-    self.assertEndsWith(resolver_steps[0].class_path, '.DummyResolver')
+    self.assertEndsWith(resolver_steps[0].class_path, '.DummyResolverStrategy')
     self.assertCountEqual(resolver_steps[0].input_keys, ['x'])
 
   def test_duplicated_key_error_if_different_channel(self):
     a1 = DummyComponents.A().with_id('A1')
     a2 = DummyComponents.A().with_id('A2')
-    r = ResolverNode('R', DummyResolver,
-                     x=a1.outputs['x'],
-                     y=a1.outputs['y'])
+    r = Resolver('R', DummyResolverStrategy,
+                 x=a1.outputs['x'],
+                 y=a1.outputs['y'])
     b = DummyComponents.B(x=r.outputs['x'],
                           y=a2.outputs['y'])
 
@@ -235,9 +234,9 @@ class CompilerResolverNodeTest(TestCase):
   def test_multiple_upstream_nodes(self):
     a1 = DummyComponents.A().with_id('A1')
     a2 = DummyComponents.A().with_id('A2')
-    r = ResolverNode('R', DummyResolver,
-                     x=a1.outputs['x'],
-                     y=a2.outputs['y'])
+    r = Resolver('R', DummyResolverStrategy,
+                 x=a1.outputs['x'],
+                 y=a2.outputs['y'])
     b = DummyComponents.B(x=r.outputs['x'],
                           y=r.outputs['y'])
     pipeline_ir = self.compile_async_pipeline([a1, a2, r, b])
@@ -252,9 +251,9 @@ class CompilerResolverNodeTest(TestCase):
     # resolver node can be shared across multiple downstream nodes with their
     # own resolver config.
     a = DummyComponents.A()
-    r = ResolverNode('R', DummyResolver,
-                     x=a.outputs['x'],
-                     y=a.outputs['y'])
+    r = Resolver('R', DummyResolverStrategy,
+                 x=a.outputs['x'],
+                 y=a.outputs['y'])
     b1 = DummyComponents.B(x=r.outputs['x']).with_id('B1')
     b2 = DummyComponents.B(y=r.outputs['y']).with_id('B2')
     pipeline_ir = self.compile_async_pipeline([a, r, b1, b2])
@@ -263,21 +262,21 @@ class CompilerResolverNodeTest(TestCase):
     b2_ir = self.extract_pipeline_node(pipeline_ir, 'B2')
     b1_steps = b1_ir.inputs.resolver_config.resolver_steps
     self.assertLen(b1_steps, 1)
-    self.assertEndsWith(b1_steps[0].class_path, '.DummyResolver')
+    self.assertEndsWith(b1_steps[0].class_path, '.DummyResolverStrategy')
     self.assertEqual(b1_steps[0].input_keys, ['x', 'y'])
     b2_steps = b2_ir.inputs.resolver_config.resolver_steps
     self.assertLen(b2_steps, 1)
-    self.assertEndsWith(b2_steps[0].class_path, '.DummyResolver')
+    self.assertEndsWith(b2_steps[0].class_path, '.DummyResolverStrategy')
     self.assertEqual(b2_steps[0].input_keys, ['x', 'y'])
 
   def test_sequential_resolver_nodes(self):
     a = DummyComponents.A()
-    r1 = ResolverNode('R1', DummyResolver,
-                      config={'iam': 'r1'},
-                      x=a.outputs['x'])
-    r2 = ResolverNode('R2', DummyResolver,
-                      config={'iam': 'r2'},
-                      x=r1.outputs['x'])
+    r1 = Resolver('R1', DummyResolverStrategy,
+                  config={'iam': 'r1'},
+                  x=a.outputs['x'])
+    r2 = Resolver('R2', DummyResolverStrategy,
+                  config={'iam': 'r2'},
+                  x=r1.outputs['x'])
     b = DummyComponents.B(x=r2.outputs['x'])
     pipeline_ir = self.compile_async_pipeline([a, r1, r2, b])
 
@@ -290,23 +289,23 @@ class CompilerResolverNodeTest(TestCase):
     resolver_steps = b_ir.inputs.resolver_config.resolver_steps
     self.assertLen(resolver_steps, 2)
     # R1 resolver.
-    self.assertEndsWith(resolver_steps[0].class_path, '.DummyResolver')
+    self.assertEndsWith(resolver_steps[0].class_path, '.DummyResolverStrategy')
     self.assertEqual(json.loads(resolver_steps[0].config_json), {'iam': 'r1'})
     self.assertEqual(resolver_steps[0].input_keys, ['x'])
     # R2 resolver.
-    self.assertEndsWith(resolver_steps[1].class_path, '.DummyResolver')
+    self.assertEndsWith(resolver_steps[1].class_path, '.DummyResolverStrategy')
     self.assertEqual(json.loads(resolver_steps[1].config_json), {'iam': 'r2'})
     self.assertEqual(resolver_steps[1].input_keys, ['x'])
 
   def test_sequential_resolver_nodes_with_skip_connection(self):
     a = DummyComponents.A()
-    r1 = ResolverNode('R1', DummyResolver,
-                      config={'iam': 'r1'},
-                      x=a.outputs['x'])
-    r2 = ResolverNode('R2', DummyResolver,
-                      config={'iam': 'r2'},
-                      x=r1.outputs['x'],
-                      y=a.outputs['y'])
+    r1 = Resolver('R1', DummyResolverStrategy,
+                  config={'iam': 'r1'},
+                  x=a.outputs['x'])
+    r2 = Resolver('R2', DummyResolverStrategy,
+                  config={'iam': 'r2'},
+                  x=r1.outputs['x'],
+                  y=a.outputs['y'])
     b = DummyComponents.B(x=r1.outputs['x'],
                           y=r2.outputs['y'])
     pipeline_ir = self.compile_async_pipeline([a, r1, r2, b])
@@ -323,18 +322,18 @@ class CompilerResolverNodeTest(TestCase):
     resolver_steps = b_ir.inputs.resolver_config.resolver_steps
     self.assertLen(resolver_steps, 2)
     # R1 resolver.
-    self.assertEndsWith(resolver_steps[0].class_path, '.DummyResolver')
+    self.assertEndsWith(resolver_steps[0].class_path, '.DummyResolverStrategy')
     self.assertEqual(json.loads(resolver_steps[0].config_json), {'iam': 'r1'})
     self.assertEqual(resolver_steps[0].input_keys, ['x'])
     # R2 resolver.
-    self.assertEndsWith(resolver_steps[1].class_path, '.DummyResolver')
+    self.assertEndsWith(resolver_steps[1].class_path, '.DummyResolverStrategy')
     self.assertEqual(json.loads(resolver_steps[1].config_json), {'iam': 'r2'})
     self.assertEqual(resolver_steps[1].input_keys, ['x', 'y'])
 
   def test_parallel_resolver_nodes(self):
     a = DummyComponents.A()
-    r1 = ResolverNode('R1', DummyResolver, x=a.outputs['x'])
-    r2 = ResolverNode('R2', DummyResolver, y=a.outputs['y'])
+    r1 = Resolver('R1', DummyResolverStrategy, x=a.outputs['x'])
+    r2 = Resolver('R2', DummyResolverStrategy, y=a.outputs['y'])
     b = DummyComponents.B(x=r1.outputs['x'], y=r2.outputs['y'])
     pipeline_ir = self.compile_async_pipeline([a, r1, r2, b])
 
