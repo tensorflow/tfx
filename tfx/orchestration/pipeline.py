@@ -19,7 +19,6 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 
-import collections
 import enum
 import json
 import os
@@ -170,15 +169,15 @@ class Pipeline(object):
   def components(self, components: List[base_node.BaseNode]):
     deduped_components = set(components)
     producer_map = {}
-    instances_per_component_type = collections.defaultdict(set)
+    node_ids = set()
 
     # Fills in producer map.
     for component in deduped_components:
-      # Guarantees every component of a component type has unique component_id.
-      if component.id in instances_per_component_type[component.type]:
-        raise RuntimeError('Duplicated component_id %s for component type %s' %
+      # Checks every node has an unique id.
+      if component.id in node_ids:
+        raise RuntimeError('Duplicated node_id %s for component type %s' %
                            (component.id, component.type))
-      instances_per_component_type[component.type].add(component.id)
+      node_ids.add(component.id)
       for key, output_channel in component.outputs.items():
         assert not producer_map.get(
             output_channel), '{} produced more than once'.format(output_channel)

@@ -244,13 +244,12 @@ class PipelineTest(tf.test.TestCase):
           components=[component_c, component_d, component_b, component_a],
           metadata_connection_config=self._metadata_connection_config)
 
-  def testPipelineWithDuplicatedComponentId(self):
-    component_a = _make_fake_component_instance('component_a', _OutputTypeA, {},
-                                                {})
-    component_b = _make_fake_component_instance('component_a', _OutputTypeA, {},
-                                                {})
-    component_c = _make_fake_component_instance('component_a', _OutputTypeA, {},
-                                                {})
+  def testPipelineWithDuplicatedNodeId(self):
+    component_a = _make_fake_node_instance('').with_id('component_a')
+    component_b = _make_fake_component_instance('', _OutputTypeA, {},
+                                                {}).with_id('component_a')
+    component_c = _make_fake_component_instance('', _OutputTypeA, {},
+                                                {}).with_id('component_a')
 
     with self.assertRaises(RuntimeError):
       pipeline.Pipeline(
