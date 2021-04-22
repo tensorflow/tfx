@@ -27,6 +27,7 @@ from tfx.orchestration import data_types
 from tfx.orchestration import metadata
 from tfx.types import channel_utils
 from tfx.types import node_common
+from tfx.utils import doc_controls
 
 from ml_metadata.proto import metadata_store_pb2
 
@@ -237,7 +238,7 @@ class Importer(base_node.BaseNode):
 
   Here is an example to use the Importer:
 
-  ...
+  ```
   importer = Importer(
       instance_name='import_schema',
       source_uri='uri/to/schema',
@@ -246,12 +247,7 @@ class Importer(base_node.BaseNode):
   schema_gen = SchemaGen(
       fixed_schema=importer.outputs['result'],
       examples=...)
-  ...
-
-  Attributes:
-    _source_uri: the source uri to import.
-    _reimport: whether or not to re-import the URI even if it already exists in
-      MLMD.
+  ```
   """
 
   def __init__(self,
@@ -297,14 +293,17 @@ class Importer(base_node.BaseNode):
     )
 
   @property
+  @doc_controls.do_not_generate_docs
   def inputs(self) -> node_common._PropertyDictWrapper:  # pylint: disable=protected-access
     return node_common._PropertyDictWrapper({})  # pylint: disable=protected-access
 
   @property
   def outputs(self) -> node_common._PropertyDictWrapper:  # pylint: disable=protected-access
+    """Output Channel dict that contains imported artifacts."""
     return node_common._PropertyDictWrapper(self._output_dict)  # pylint: disable=protected-access
 
   @property
+  @doc_controls.do_not_generate_docs
   def exec_properties(self) -> Dict[Text, Any]:
     return {
         SOURCE_URI_KEY: self._source_uri,
