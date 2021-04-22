@@ -45,11 +45,12 @@ class DependencyUtilsTest(tf.test.TestCase, parameterized.TestCase):
     self.assertListEqual(['--extra_package=mock_file'], beam_flags)
     mock_build_ephemeral_package.assert_called_with()
 
+  # TODO(zhitaoli): Add check on 'sdk_container_image' once supported version of
+  #                 Beam converges.
   @parameterized.named_parameters(
       ('ExtraPackages', '--extra_packages=foo'),
       ('SetupFile', '--setup_file=foo'),
       ('RequirementsFile', '--requirements_file=foo'),
-      ('WorkerHarnessContainerImage', '--worker_harness_container_image=foo'),
   )
   def testNoActionOnFlag(self, flag_value):
     beam_pipeline_args = [flag_value]
