@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,14 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """TFX Resolver definition."""
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
 
 import abc
 from typing import Any, Dict, List, Optional, Text, Type
-
-from six import with_metaclass
 
 from tfx import types
 from tfx.dsl.components.base import base_driver
@@ -60,7 +54,7 @@ class ResolveResult(object):
     self.has_complete_result = all(s for s in per_key_resolve_state.values())
 
 
-class ResolverStrategy(with_metaclass(abc.ABCMeta, object)):
+class ResolverStrategy(abc.ABC):
   """Base resolver strategy class.
 
   A resolver strategy defines a type behavior used for input selection. A
@@ -245,6 +239,11 @@ class Resolver(base_node.BaseNode):
         instance_name=instance_name,
         driver_class=_ResolverDriver,
     )
+
+  @property
+  @doc_controls.do_not_generate_docs
+  def strategy_class_and_configs(self):
+    return [(self._strategy_class, self._config)]
 
   @property
   @doc_controls.do_not_generate_docs

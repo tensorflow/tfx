@@ -450,34 +450,18 @@ class Compiler(object):
     return pipeline_pb
 
 
-def _iterate_resolver_cls_and_config(resolver_node: base_node.BaseNode):
-  """Iterates through resolver class and configs that are bind to the node."""
-  assert compiler_utils.is_resolver(resolver_node)
-  exec_properties = resolver_node.exec_properties
-  if (resolver.RESOLVER_STRATEGY_CLASS in exec_properties and
-      resolver.RESOLVER_CONFIG in exec_properties):
-    yield (exec_properties[resolver.RESOLVER_STRATEGY_CLASS],
-           exec_properties[resolver.RESOLVER_CONFIG])
-  elif (resolver.RESOLVER_STRATEGY_CLASS_LIST in exec_properties and
-        resolver.RESOLVER_CONFIG_LIST in exec_properties):
-    yield from zip(exec_properties[resolver.RESOLVER_STRATEGY_CLASS_LIST],
-                   exec_properties[resolver.RESOLVER_CONFIG_LIST])
-  else:
-    raise ValueError(f"Invalid ResolverNode exec_properties: {exec_properties}")
-
-
 def _convert_to_resolver_steps(resolver_node: base_node.BaseNode):
   """Converts ResolverNode to a corresponding ResolverSteps."""
   assert compiler_utils.is_resolver(resolver_node)
+  resolver_node = cast(resolver.Resolver, resolver_node)
   result = []
-  for resolver_cls, resolver_config in (
-      _iterate_resolver_cls_and_config(resolver_node)):
-    resolver_step = pipeline_pb2.ResolverConfig.ResolverStep()
-    resolver_step.class_path = (
-        f"{resolver_cls.__module__}.{resolver_cls.__name__}")
-    resolver_step.config_json = json_utils.dumps(resolver_config)
-    resolver_step.input_keys.extend(resolver_node.inputs.keys())
-    result.append(resolver_step)
+  for strategy_cls, config in resolver_node.strategy_class_and_configs:
+    step = pipeline_pb2.ResolverConfig.ResolverStep()
+    step.class_path = (
+        f"{strategy_cls.__module__}.{strategy_cls.__name__}")
+    step.config_json = json_utils.dumps(config)
+    step.input_keys.extend(resolver_node.inputs.keys())
+    result.append(step)
   return result
 
 
