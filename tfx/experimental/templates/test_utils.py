@@ -48,12 +48,17 @@ class BaseEndToEndTest(test_case_utils.TfxTest):
   def _runCli(self, args: List[str]) -> str:
     """Run CLI with given arguments. Raises CalledProcessError if failed."""
     logging.info('Running cli: %s', args)
-    result = subprocess.run(
-        ['tfx'] + args,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
-        encoding='utf-8',
-        check=True)
+    try:
+      result = subprocess.run(
+          ['tfx'] + args,
+          stdout=subprocess.PIPE,
+          stderr=subprocess.STDOUT,
+          encoding='utf-8',
+          check=True)
+    except subprocess.CalledProcessError as err:
+      logging.error('Command failed (exit code %d) with output: %s',
+                    err.returncode, err.output)
+      raise err
     logging.info('[CLI] %s', result.stdout)
 
     return result.stdout
