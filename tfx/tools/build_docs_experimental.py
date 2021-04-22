@@ -39,6 +39,7 @@ import tensorflow_docs.api_generator as api_generator
 from tensorflow_docs.api_generator import generate_lib
 from tfx import v1 as tfx
 from tfx import version
+from tfx.v1.extensions.google_cloud_ai_platform import _EXTRA_DOCS
 
 from google.protobuf.reflection import GeneratedProtocolMessageType
 
@@ -131,7 +132,8 @@ def main(_):
       callbacks=[
           api_generator.public_api.explicit_package_contents_filter,
           ignore_test_objects, ignore_proto_method
-      ])
+      ],
+      extra_docs=_EXTRA_DOCS)
   doc_generator.build(output_dir=FLAGS.output_dir)
 
 

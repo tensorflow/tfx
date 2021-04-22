@@ -20,6 +20,6 @@ from tfx.extensions.google_cloud_ai_platform.pusher import executor
 
 
 class Pusher(pusher_component.Pusher):
-  """Cloud AI Platform Pusher component."""
+  """Component for pushing model to Cloud AI Platform serving."""
 
   EXECUTOR_SPEC = executor_spec.ExecutorClassSpec(executor.Executor)

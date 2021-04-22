@@ -11,11 +11,15 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Public modules for TFX 1.x."""
+"""Google cloud AI platform module."""
 
-from tfx.v1 import components
-from tfx.v1 import dsl
-from tfx.v1 import extensions
-from tfx.v1 import orchestration
-from tfx.v1 import proto
-from tfx.v1 import utils
+from tfx.extensions.google_cloud_ai_platform.bulk_inferrer.component import CloudAIBulkInferrerComponent as BulkInferrer
+from tfx.extensions.google_cloud_ai_platform.pusher.component import Pusher
+from tfx.extensions.google_cloud_ai_platform.trainer.component import Trainer
+from tfx.extensions.google_cloud_ai_platform.trainer.executor import TRAINING_ARGS_KEY
+
+from tfx.extensions.google_cloud_ai_platform.tuner.component import Tuner
+
+_EXTRA_DOCS = {
+    id(TRAINING_ARGS_KEY): "Keys to the items in custom_config of Trainer.",
+}
