@@ -20,7 +20,6 @@ from typing import Any, List, Text
 
 from tfx import components
 from tfx.dsl.components.base.base_component import BaseComponent
-from tfx.utils import dsl_utils
 from tfx.utils import io_utils
 
 
@@ -36,9 +35,8 @@ def create_e2e_components(csv_input_location: Text,) -> List[BaseComponent]:
   Returns:
     A list of TFX components that constitutes an end-to-end test pipeline.
   """
-  examples = dsl_utils.external_input(csv_input_location)
 
-  example_gen = components.CsvExampleGen(input=examples)
+  example_gen = components.CsvExampleGen(input_base=csv_input_location)
   statistics_gen = components.StatisticsGen(
       examples=example_gen.outputs['examples'])
   schema_gen = components.SchemaGen(

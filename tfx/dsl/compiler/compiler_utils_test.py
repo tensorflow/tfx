@@ -30,7 +30,6 @@ from tfx.dsl.experimental import latest_blessed_model_resolver
 from tfx.orchestration import pipeline
 from tfx.proto.orchestration import pipeline_pb2
 from tfx.types import standard_artifacts
-from tfx.utils.dsl_utils import external_input
 
 from ml_metadata.proto import metadata_store_pb2
 
@@ -74,7 +73,7 @@ class CompilerUtilsTest(tf.test.TestCase):
         resolver_class=latest_blessed_model_resolver.LatestBlessedModelResolver)
     self.assertTrue(compiler_utils.is_resolver(resv))
 
-    example_gen = CsvExampleGen(input=external_input("data_path"))
+    example_gen = CsvExampleGen(input_base="data_path")
     self.assertFalse(compiler_utils.is_resolver(example_gen))
 
   def testIsImporter(self):
@@ -89,7 +88,7 @@ class CompilerUtilsTest(tf.test.TestCase):
         artifact_type=standard_artifacts.Schema)
     self.assertTrue(compiler_utils.is_importer(impt))
 
-    example_gen = CsvExampleGen(input=external_input("data_path"))
+    example_gen = CsvExampleGen(input_base="data_path")
     self.assertFalse(compiler_utils.is_importer(example_gen))
 
   def testEnsureTopologicalOrder(self):
@@ -116,7 +115,7 @@ class CompilerUtilsTest(tf.test.TestCase):
       compiler_utils.resolve_execution_mode(p)
 
   def testHasTaskDependency(self):
-    example_gen = CsvExampleGen(input=external_input("data_path"))
+    example_gen = CsvExampleGen(input_base="data_path")
     statistics_gen = StatisticsGen(examples=example_gen.outputs["examples"])
     p1 = pipeline.Pipeline(
         pipeline_name="fake_name",

@@ -46,6 +46,8 @@
 
 *  Removed config from LocalDagRunner's constructor, and dropped pipeline proto
    support from LocalDagRunner's run function.
+*  Removed input parameter in ExampleGen constructor and external_input in
+   dsl_utils, which were called as deprecated in TFX 0.23.
 
 ### For Pipeline Authors
 

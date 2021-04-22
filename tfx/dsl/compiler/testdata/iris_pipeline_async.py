@@ -33,7 +33,6 @@ from tfx.proto import pusher_pb2
 from tfx.proto import trainer_pb2
 from tfx.types import Channel
 from tfx.types import standard_artifacts
-from tfx.utils.dsl_utils import external_input
 
 
 def create_test_pipeline():
@@ -45,7 +44,7 @@ def create_test_pipeline():
   data_path = os.path.join(tfx_root, "data_path")
   pipeline_root = os.path.join(tfx_root, "pipelines", pipeline_name)
 
-  example_gen = CsvExampleGen(input=external_input(data_path))
+  example_gen = CsvExampleGen(input_base=data_path)
 
   statistics_gen = StatisticsGen(examples=example_gen.outputs["examples"])
 

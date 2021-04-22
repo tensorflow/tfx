@@ -82,10 +82,9 @@ class Executor(BaseExampleGenExecutor):
     FileBasedExampleGen
     from tfx.components.example_gen.custom_executors import
     avro_executor
-    from tfx.utils.dsl_utils import external_input
 
     example_gen = FileBasedExampleGen(
-        input=external_input(avro_dir_path),
+        input_base=avro_dir_path,
         custom_executor_spec=executor_spec.ExecutorClassSpec(
             avro_executor.Executor))
   """

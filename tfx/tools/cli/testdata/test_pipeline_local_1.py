@@ -24,7 +24,6 @@ from tfx.components.statistics_gen.component import StatisticsGen
 from tfx.orchestration import metadata
 from tfx.orchestration import pipeline
 from tfx.orchestration.local import local_dag_runner
-from tfx.utils.dsl_utils import external_input
 
 _pipeline_name = 'chicago_taxi_local'
 _taxi_root = os.path.join(os.environ['HOME'], 'taxi')
@@ -39,10 +38,9 @@ _metadata_path = os.path.join(_tfx_root, 'metadata', _pipeline_name,
 def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
                      metadata_path: Text) -> pipeline.Pipeline:
   """Implements the chicago taxi pipeline with TFX."""
-  examples = external_input(data_root)
 
   # Brings data into the pipeline or otherwise joins/converts training data.
-  example_gen = CsvExampleGen(input=examples)
+  example_gen = CsvExampleGen(input_base=data_root)
 
   # Computes statistics over data for visualization and example validation.
   statistics_gen = StatisticsGen(examples=example_gen.outputs['examples'])

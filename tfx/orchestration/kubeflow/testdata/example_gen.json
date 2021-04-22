@@ -3,7 +3,7 @@
   "__module__": "tfx.orchestration.kubeflow.node_wrapper",
   "__tfx_object_type__": "jsonable",
   "_exec_properties": {
-    "input_base": "",
+    "input_base": "data_root",
     "custom_config": null,
     "input_config": "{\n  \"splits\": [\n    {\n      \"name\": \"single_split\",\n      \"pattern\": \"*\"\n    }\n  ]\n}",
     "output_config": "{\"split_config\": {\"splits\": [{\"hash_buckets\": {{pipelineparam:op=;name=example-gen-buckets}}, \"name\": \"examples\"}]}}",

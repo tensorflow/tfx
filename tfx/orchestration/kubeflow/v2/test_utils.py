@@ -46,7 +46,6 @@ from tfx.types import channel_utils
 from tfx.types import component_spec
 from tfx.types import standard_artifacts
 from tfx.types.experimental import simple_artifacts
-from tfx.utils import dsl_utils
 from tfx.utils import io_utils
 from tfx.utils import test_case_utils
 
@@ -126,8 +125,7 @@ def create_pipeline_components(
     example_gen = big_query_example_gen_component.BigQueryExampleGen(
         query=bigquery_query)
   else:
-    examples = dsl_utils.external_input(csv_input_location)
-    example_gen = components.CsvExampleGen(input=examples)
+    example_gen = components.CsvExampleGen(input_base=csv_input_location)
 
   statistics_gen = components.StatisticsGen(
       examples=example_gen.outputs['examples'])

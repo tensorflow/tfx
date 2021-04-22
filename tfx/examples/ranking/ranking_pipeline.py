@@ -34,7 +34,6 @@ from tfx.orchestration.beam.beam_dag_runner import BeamDagRunner
 from tfx.proto import example_gen_pb2
 from tfx.proto import pusher_pb2
 from tfx.proto import trainer_pb2
-from tfx.utils.dsl_utils import external_input
 
 _pipeline_name = 'tf_ranking_antique'
 
@@ -75,10 +74,9 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
                      metadata_path: Text, beam_pipeline_args: List[Text]):
   """Creates pipeline."""
   pipeline_root = os.path.join(pipeline_root, 'pipelines', pipeline_name)
-  examples = external_input(data_root)
 
   example_gen = ImportExampleGen(
-      input=examples,
+      input_base=data_root,
       # IMPORTANT: must set FORMAT_PROTO
       payload_format=example_gen_pb2.FORMAT_PROTO)
 

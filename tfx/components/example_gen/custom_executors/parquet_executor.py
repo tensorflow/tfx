@@ -84,10 +84,9 @@ class Executor(BaseExampleGenExecutor):
     FileBasedExampleGen
     from tfx.components.example_gen.custom_executors import
     parquet_executor
-    from tfx.utils.dsl_utils import external_input
 
     example_gen = FileBasedExampleGen(
-        input=external_input(parquet_dir_path),
+        input_base=parquet_dir_path,
         custom_executor_spec=executor_spec.ExecutorClassSpec(
             parquet_executor.Executor))
   """

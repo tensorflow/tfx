@@ -20,7 +20,6 @@ from __future__ import print_function
 
 from typing import Any, Dict, Optional, Text, Union
 
-from absl import logging
 from tfx import types
 from tfx.components.example_gen import driver
 from tfx.components.example_gen import utils
@@ -29,7 +28,6 @@ from tfx.dsl.components.base import base_beam_executor
 from tfx.dsl.components.base import executor_spec
 from tfx.proto import example_gen_pb2
 from tfx.proto import range_config_pb2
-from tfx.types import artifact_utils
 from tfx.types import standard_artifacts
 from tfx.types.standard_component_specs import FileBasedExampleGenSpec
 from tfx.types.standard_component_specs import QueryBasedExampleGenSpec
@@ -145,8 +143,6 @@ class FileBasedExampleGen(base_beam_component.BaseBeamComponent):
 
   def __init__(
       self,
-      # TODO(b/159467778): deprecate this, use input_base instead.
-      input: Optional[types.Channel] = None,  # pylint: disable=redefined-builtin
       input_base: Optional[Text] = None,
       input_config: Optional[Union[example_gen_pb2.Input, Dict[Text,
                                                                Any]]] = None,
@@ -163,9 +159,6 @@ class FileBasedExampleGen(base_beam_component.BaseBeamComponent):
     """Construct a FileBasedExampleGen component.
 
     Args:
-      input: A Channel of type `standard_artifacts.ExternalArtifact`, which
-        includes one artifact whose uri is an external directory containing the
-        data files. (Deprecated by input_base)
       input_base: an external directory containing the data files.
       input_config: An
         [`example_gen_pb2.Input`](https://github.com/tensorflow/tfx/blob/master/tfx/proto/example_gen.proto)
@@ -188,12 +181,6 @@ class FileBasedExampleGen(base_beam_component.BaseBeamComponent):
       instance_name: Optional unique instance name. Required only if multiple
         ExampleGen components are declared in the same pipeline.
     """
-    if input:
-      logging.warning(
-          'The "input" argument to the ExampleGen component has been '
-          'deprecated by "input_base". Please update your usage as support for '
-          'this argument will be removed soon.')
-      input_base = artifact_utils.get_single_uri(list(input.get()))
     # Configure inputs and outputs.
     input_config = input_config or utils.make_default_input_config()
     output_config = output_config or utils.make_default_output_config(

@@ -276,7 +276,6 @@ without using a template.
 
     <pre class="devsite-click-to-copy prettyprint">
     from tfx.components import CsvExampleGen
-    from tfx.utils.dsl_utils import external_input
 
     DATA_PATH = os.path.join('.', 'data')
 
@@ -291,7 +290,7 @@ without using a template.
     ):
       components = []
 
-      example_gen = CsvExampleGen(input=external_input(data_path))
+      example_gen = CsvExampleGen(input_base=data_path)
       components.append(example_gen)
 
       return pipeline.Pipeline(
@@ -317,10 +316,7 @@ without using a template.
 
     `CsvExampleGen` creates serialized example records using the data in the CSV
     at the specified data path. By setting the `CsvExampleGen` component's
-    `input` parameter with
-    [`external_input`](https://github.com/tensorflow/tfx/blob/master/tfx/utils/dsl_utils.py){: .external },
-    you specify that the data path is passed into the pipeline and that the path
-    should be stored as an artifact.
+    `input_base` parameter with the data root.
 
 1.  Create a `data` directory in the same directory as `my_pipeline.py`. Add a
     small CSV file to the `data` directory.

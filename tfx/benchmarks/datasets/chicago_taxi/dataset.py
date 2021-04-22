@@ -35,7 +35,6 @@ from tfx.orchestration import metadata
 from tfx.orchestration import pipeline
 from tfx.orchestration.beam.beam_dag_runner import BeamDagRunner
 from tfx.proto import trainer_pb2
-from tfx.utils.dsl_utils import external_input
 from tfx_bsl.coders import csv_decoder
 
 
@@ -142,8 +141,8 @@ class ChicagoTaxiDataset(benchmark_dataset.BenchmarkDataset):
         os.path.dirname(__file__),
         "../../../examples/chicago_taxi_pipeline/taxi_utils.py")
 
-    examples = external_input(os.path.dirname(self.dataset_path()))
-    example_gen = components.ImportExampleGen(input=examples)
+    example_gen = components.ImportExampleGen(
+        input_base=os.path.dirname(self.dataset_path()))
     statistics_gen = components.StatisticsGen(
         examples=example_gen.outputs["examples"])
     schema_gen = components.SchemaGen(

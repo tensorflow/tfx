@@ -23,7 +23,6 @@ from tfx.components.example_gen.csv_example_gen.component import CsvExampleGen
 from tfx.orchestration import pipeline
 from tfx.orchestration.kubeflow.v2 import kubeflow_v2_dag_runner
 from tfx.tools.cli.kubeflow_v2 import labels
-from tfx.utils.dsl_utils import external_input
 
 _pipeline_name = 'chicago_taxi_kubeflow'
 _taxi_root = os.path.join(os.environ['HOME'], 'taxi')
@@ -35,10 +34,9 @@ _pipeline_root = os.path.join(_tfx_root, 'pipelines', _pipeline_name)
 def _create_pipeline(pipeline_name: Text, pipeline_root: Text,
                      data_root: Text) -> pipeline.Pipeline:
   """Implements the chicago taxi pipeline with TFX."""
-  examples = external_input(data_root)
 
   # Brings data into the pipeline or otherwise joins/converts training data.
-  example_gen = CsvExampleGen(input=examples)
+  example_gen = CsvExampleGen(input_base=data_root)
 
   return pipeline.Pipeline(
       pipeline_name=pipeline_name,

@@ -27,8 +27,6 @@ from tfx.orchestration.kubeflow import base_component
 from tfx.orchestration.kubeflow.proto import kubeflow_pb2
 from tfx.orchestration.launcher import in_process_component_launcher
 from tfx.proto.orchestration import pipeline_pb2
-from tfx.types import channel_utils
-from tfx.types import standard_artifacts
 
 from ml_metadata.proto import metadata_store_pb2
 
@@ -39,9 +37,8 @@ class BaseComponentTest(tf.test.TestCase):
 
   def setUp(self):
     super(BaseComponentTest, self).setUp()
-    examples = standard_artifacts.ExternalArtifact()
     example_gen = csv_example_gen_component.CsvExampleGen(
-        input=channel_utils.as_channel([examples]))
+        input_base='data_input')
     statistics_gen = statistics_gen_component.StatisticsGen(
         examples=example_gen.outputs['examples'], instance_name='foo')
 
@@ -133,9 +130,8 @@ class BaseComponentWithPipelineParamTest(tf.test.TestCase):
     example_gen_buckets = data_types.RuntimeParameter(
         name='example-gen-buckets', ptype=int, default=10)
 
-    examples = standard_artifacts.ExternalArtifact()
     example_gen = csv_example_gen_component.CsvExampleGen(
-        input=channel_utils.as_channel([examples]),
+        input_base='data_root',
         output_config={
             'split_config': {
                 'splits': [{
