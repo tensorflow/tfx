@@ -193,9 +193,9 @@ class KubernetesComponentLauncher(base_component_launcher.BaseComponentLauncher
     })
     # TODO(hongyes): figure out a better way to figure out type hints for nested
     # dict.
-    metadata = pod_manifest.setdefault('metadata', {})  # type: Dict[Text, Any]
+    metadata = pod_manifest.setdefault('metadata', {})  # type: Dict[Text, Any]  # pytype: disable=annotation-type-mismatch
     metadata.update({'name': pod_name})
-    spec = pod_manifest.setdefault('spec', {})  # type: Dict[Text, Any]
+    spec = pod_manifest.setdefault('spec', {})  # type: Dict[Text, Any]  # pytype: disable=annotation-type-mismatch
     spec.update({'restartPolicy': 'Never'})
     containers = spec.setdefault('containers',
                                  [])  # type: List[Dict[Text, Any]]
