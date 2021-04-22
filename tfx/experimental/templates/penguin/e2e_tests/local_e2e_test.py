@@ -65,13 +65,12 @@ class PenguinTemplateLocalEndToEndTest(test_utils.BaseEndToEndTest):
         '--pipeline_path',
         'local_runner.py',
     ])
-    self.assertEqual(0, result.exit_code)
     self.assertIn(
         'Pipeline "{}" created successfully.'.format(self._pipeline_name),
-        result.output)
+        result)
 
     # Run the pipeline.
-    result = self._runCli([
+    self._runCli([
         'run',
         'create',
         '--engine',
@@ -79,7 +78,6 @@ class PenguinTemplateLocalEndToEndTest(test_utils.BaseEndToEndTest):
         '--pipeline_name',
         self._pipeline_name,
     ])
-    self.assertEqual(0, result.exit_code)
 
     # Update the pipeline to include all components.
     updated_pipeline_file = self._addAllComponents()
@@ -88,8 +86,7 @@ class PenguinTemplateLocalEndToEndTest(test_utils.BaseEndToEndTest):
     # Lowers required threshold to make tests stable.
     self._replaceFileContent(
         os.path.join('pipeline', 'configs.py'), [
-            ('EVAL_ACCURACY_THRESHOLD = 0.6',
-             'EVAL_ACCURACY_THRESHOLD = 0.1'),
+            ('EVAL_ACCURACY_THRESHOLD = 0.6', 'EVAL_ACCURACY_THRESHOLD = 0.1'),
         ])
     result = self._runCli([
         'pipeline',
@@ -99,13 +96,12 @@ class PenguinTemplateLocalEndToEndTest(test_utils.BaseEndToEndTest):
         '--pipeline_path',
         'local_runner.py',
     ])
-    self.assertEqual(0, result.exit_code)
     self.assertIn(
         'Pipeline "{}" updated successfully.'.format(self._pipeline_name),
-        result.output)
+        result)
 
     # Run the updated pipeline.
-    result = self._runCli([
+    self._runCli([
         'run',
         'create',
         '--engine',
@@ -113,7 +109,6 @@ class PenguinTemplateLocalEndToEndTest(test_utils.BaseEndToEndTest):
         '--pipeline_name',
         self._pipeline_name,
     ])
-    self.assertEqual(0, result.exit_code)
 
 
 if __name__ == '__main__':

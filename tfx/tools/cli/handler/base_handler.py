@@ -98,6 +98,7 @@ class BaseHandler(with_metaclass(abc.ABCMeta, object)):
     if not fileio.exists(pipeline_dsl_path):
       sys.exit('Invalid pipeline path: {}'.format(pipeline_dsl_path))
 
+  # TODO(b/185948467): Remove string check in favor of DagRunnerPatcher.
   def _check_dsl_runner(self) -> None:
     """Check if runner in dsl is same as engine flag."""
     engine_flag = self.flags_dict[labels.ENGINE_FLAG]
@@ -105,7 +106,6 @@ class BaseHandler(with_metaclass(abc.ABCMeta, object)):
       dsl_contents = f.read()
       runner_names = {
           labels.AIRFLOW_ENGINE: 'AirflowDagRunner',
-          labels.KUBEFLOW_ENGINE: 'KubeflowDagRunner',
           labels.BEAM_ENGINE: 'BeamDagRunner',
           labels.LOCAL_ENGINE: 'LocalDagRunner',
       }

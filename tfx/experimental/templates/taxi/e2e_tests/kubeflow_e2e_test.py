@@ -17,7 +17,6 @@ import datetime
 import os
 import subprocess
 import tarfile
-import urllib.request
 
 from absl import logging
 import docker
@@ -77,10 +76,8 @@ class TaxiTemplateKubeflowE2ETest(test_utils.BaseEndToEndTest):
       self._prepare_base_container_image()
     else:
       self._base_container_image = self._BASE_CONTAINER_IMAGE
-    self._target_container_image = 'gcr.io/{}/{}:{}'.format(
-        self._GCP_PROJECT_ID, 'taxi-template-kubeflow-e2e-test', random_id)
-
-    self._prepare_skaffold()
+    self._target_container_image = 'gcr.io/{}/{}'.format(
+        self._GCP_PROJECT_ID, self._pipeline_name)
 
   def tearDown(self):
     super(TaxiTemplateKubeflowE2ETest, self).tearDown()
@@ -160,15 +157,8 @@ class TaxiTemplateKubeflowE2ETest(test_utils.BaseEndToEndTest):
     orchestration_test_utils.build_docker_image(self._base_container_image,
                                                 self._REPO_BASE)
 
-  def _prepare_skaffold(self):
-    self._skaffold = os.path.join(self._temp_dir, 'skaffold')
-    urllib.request.urlretrieve(
-        'https://storage.googleapis.com/skaffold/releases/latest/skaffold-linux-amd64',
-        self._skaffold)
-    os.chmod(self._skaffold, 0o775)
-
   def _create_pipeline(self):
-    result = self._runCli([
+    self._runCli([
         'pipeline',
         'create',
         '--engine',
@@ -177,17 +167,23 @@ class TaxiTemplateKubeflowE2ETest(test_utils.BaseEndToEndTest):
         'kubeflow_runner.py',
         '--endpoint',
         self._endpoint,
-        '--build-target-image',
-        self._target_container_image,
-        '--skaffold-cmd',
-        self._skaffold,
+        '--build-image',
         '--build-base-image',
         self._base_container_image,
     ])
-    self.assertEqual(0, result.exit_code)
+
+  def _compile_pipeline(self):
+    self._runCli([
+        'pipeline',
+        'compile',
+        '--engine',
+        'kubeflow',
+        '--pipeline_path',
+        'kubeflow_runner.py',
+    ])
 
   def _update_pipeline(self):
-    result = self._runCli([
+    self._runCli([
         'pipeline',
         'update',
         '--engine',
@@ -196,10 +192,8 @@ class TaxiTemplateKubeflowE2ETest(test_utils.BaseEndToEndTest):
         'kubeflow_runner.py',
         '--endpoint',
         self._endpoint,
-        '--skaffold-cmd',
-        self._skaffold,
+        '--build-image',
     ])
-    self.assertEqual(0, result.exit_code)
 
   def _run_pipeline(self):
     result = self._runCli([
@@ -212,8 +206,7 @@ class TaxiTemplateKubeflowE2ETest(test_utils.BaseEndToEndTest):
         '--endpoint',
         self._endpoint,
     ])
-    self.assertEqual(0, result.exit_code)
-    run_id = self._parse_run_id(result.output)
+    run_id = self._parse_run_id(result)
     self._wait_until_completed(run_id)
     kubeflow_test_utils.print_failure_log_for_run(self._endpoint, run_id,
                                                   self._namespace)
@@ -264,8 +257,6 @@ class TaxiTemplateKubeflowE2ETest(test_utils.BaseEndToEndTest):
         os.path.join('pipeline', 'configs.py'), [
             ('GOOGLE_CLOUD_REGION = \'\'',
              'GOOGLE_CLOUD_REGION = \'{}\''.format(self._GCP_REGION)),
-            ('\'imageUri\': \'gcr.io/\' + GOOGLE_CLOUD_PROJECT + \'/tfx-pipeline\'',
-             '\'imageUri\': \'{}\''.format(self._target_container_image)),
         ])
 
     # Prepare data
@@ -276,11 +267,12 @@ class TaxiTemplateKubeflowE2ETest(test_utils.BaseEndToEndTest):
          .format(self._DATA_DIRECTORY_NAME, self._pipeline_name)),
     ])
 
+    self._compile_pipeline()
+    self._check_telemetry_label()
+
     # Create a pipeline with only one component.
     self._create_pipeline()
     self._run_pipeline()
-
-    self._check_telemetry_label()
 
     # Update the pipeline to include all components.
     updated_pipeline_file = self._addAllComponents()

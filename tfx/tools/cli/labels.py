@@ -31,10 +31,6 @@ PIPELINE_ROOT = 'pipeline_root'
 PIPELINE_COMPONENTS = 'pipeline_components'
 
 # Kubeflow specific labels.
-# Path to the output workflow file for Kubeflow pipelines.
-PIPELINE_PACKAGE_PATH = 'pipeline_package_path'
-# Target container image path.
-TARGET_IMAGE = 'build_target_image'
 # Base container image path.
 BASE_IMAGE = 'build_base_image'
 # Skaffold command
@@ -51,8 +47,8 @@ PIPELINE_ID = 'pipeline_id'
 PIPELINE_VERSION_ID = 'pipeline_version_id'
 # Experiment id generated when a new experiment is created on KFP server.
 EXPERIMENT_ID = 'experiment_id'
-# Environment variable for the default Kubeflow TFX image.
-KUBEFLOW_TFX_IMAGE_ENV = 'KUBEFLOW_TFX_IMAGE'
+# Flag to decide whether an image build is needed
+BUILD_IMAGE = 'build_image'
 
 # Template specific labels.
 # Destination directory path to copy files

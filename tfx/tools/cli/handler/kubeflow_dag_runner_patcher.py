@@ -24,22 +24,22 @@ from tfx.orchestration.kubeflow import kubeflow_dag_runner
 from tfx.tools.cli.handler import dag_runner_patcher
 
 
-def _get_temporary_package_path(pipeline_name: str, directory: str) -> str:
+def _get_temporary_package_filename(pipeline_name: str, directory: str) -> str:
   # mkstemp will create and open a file named 'temp_xxxxx.tar.gz'.
   fd, path = tempfile.mkstemp('.tar.gz', f'temp_{pipeline_name}', directory)
   os.close(fd)
-  return path
+  return os.path.basename(path)
 
 
 class KubeflowDagRunnerPatcher(dag_runner_patcher.DagRunnerPatcher):
   """Patches KubeflowDagRunner.run() with several customizations for CLI."""
 
   USE_TEMPORARY_OUTPUT_FILE = 'use_temporary_output_file'
-  OUTPUT_FILENAME = 'output_filename'
+  OUTPUT_FILE_PATH = 'output_file_path'
 
   def __init__(self,
                call_real_run: bool,
-               use_temporary_output_file: bool,
+               use_temporary_output_file: bool = False,
                build_image_fn: Optional[Callable[[str], str]] = None):
     """Initialize KubeflowDagRunnerPatcher.
 
@@ -73,12 +73,14 @@ class KubeflowDagRunnerPatcher(dag_runner_patcher.DagRunnerPatcher):
     if context[self.USE_TEMPORARY_OUTPUT_FILE]:
       # Replace the output of the kfp compile to a temporary file.
       # This file will be deleted after job submission in kubeflow_handler.py
-      runner._output_filename = _get_temporary_package_path(
+      runner._output_filename = _get_temporary_package_filename(
           context[self.PIPELINE_NAME], runner._output_dir)
-    context[self.OUTPUT_FILENAME] = (
+    output_filename = (
         runner._output_filename or
         kubeflow_dag_runner.get_default_output_filename(
             context[self.PIPELINE_NAME]))
+    context[self.OUTPUT_FILE_PATH] = os.path.join(runner._output_dir,
+                                                  output_filename)
 
   def get_runner_class(self) -> Type[tfx_runner.TfxRunner]:
     return kubeflow_dag_runner.KubeflowDagRunner

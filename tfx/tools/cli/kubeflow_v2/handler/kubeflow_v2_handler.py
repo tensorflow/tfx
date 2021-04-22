@@ -87,12 +87,10 @@ class KubeflowV2Handler(base_handler.BaseHandler):
     # Build pipeline container image.
     try:
       target_image = self.flags_dict.get(kubeflow_labels.TFX_IMAGE_ENV)
-      skaffold_cmd = self.flags_dict.get(labels.SKAFFOLD_CMD)
       if target_image is not None or os.path.exists(
           container_builder_labels.BUILD_SPEC_FILENAME):
         base_image = self.flags_dict.get(labels.BASE_IMAGE)
-        target_image = self._build_pipeline_image(target_image, base_image,
-                                                  skaffold_cmd)
+        target_image = builder.build(target_image, base_image)
         os.environ[kubeflow_labels.TFX_IMAGE_ENV] = target_image
     except (ValueError, subprocess.CalledProcessError, RuntimeError):
       click.echo('No container image is built.')
@@ -286,15 +284,6 @@ class KubeflowV2Handler(base_handler.BaseHandler):
     with open(os.path.join(handler_pipeline_path, _PIPELINE_ARG_FILE),
               'w') as f:
       json.dump(pipeline_args, f)
-
-  def _build_pipeline_image(self,
-                            target_image: Optional[Text] = None,
-                            base_image: Optional[Text] = None,
-                            skaffold_cmd: Optional[Text] = None) -> Text:
-    return builder.ContainerBuilder(
-        target_image=target_image,
-        base_image=base_image,
-        skaffold_cmd=skaffold_cmd).build()
 
   def _get_pipeline_args(self, pipeline_name: Text,
                          arg_name: Text) -> Optional[Text]:

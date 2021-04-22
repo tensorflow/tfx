@@ -19,7 +19,19 @@
    annotations and environment variables.
 
 ## Breaking Changes
-
+*  CLI usage with kubeflow changed significantly.
+  *  You MUST use the new `--build-image` to build a container image when
+     updating a pipeline with kubeflow engine.
+  *  `--build-target-image` flag in CLI is changed to `--build-image` without
+     any container image argument. TFX will auto detect the image specified in
+     the KubeflowDagRunnerConfig class instance. For example,
+     ```python
+     tfx pipeline create --pipeline-path=runner.py --endpoint=xxx --build-image
+     tfx pipeline update --pipeline-path=runner.py --endpoint=xxx --build-image
+     ```
+  *  `--package-path` and `--skaffold_cmd` flags were deleted. The compiled path
+     can be specified when creating a KubeflowDagRunner class instance. TFX CLI
+     doesn't depend on skaffold any more and use Docker SDK directly.
 *  Default orchestration engine of CLI was changed to `local` orchestrator from
    `beam` orchestrator. You can still use `beam` orchestrator with
    `--engine=beam` flag.

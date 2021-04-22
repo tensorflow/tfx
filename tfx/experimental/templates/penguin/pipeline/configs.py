@@ -43,6 +43,11 @@ except ImportError:
 # This bucket is created automatically when you deploy KFP from marketplace.
 GCS_BUCKET_NAME = GOOGLE_CLOUD_PROJECT + '-kubeflowpipelines-default'
 
+# Following image will be used to run pipeline components run if Kubeflow
+# Pipelines used.
+# This image will be automatically built by CLI if we use --build-image flag.
+PIPELINE_IMAGE = f'gcr.io/{GOOGLE_CLOUD_PROJECT}/{PIPELINE_NAME}'
+
 PREPROCESSING_FN = 'models.preprocessing.preprocessing_fn'
 RUN_FN = 'models.model.run_fn'
 

@@ -47,6 +47,11 @@ GCS_BUCKET_NAME = GOOGLE_CLOUD_PROJECT + '-kubeflowpipelines-default'
 #                      BigQuery, Dataflow and Cloud AI Platform.
 # GOOGLE_CLOUD_REGION = ''  # ex) 'us-central1'
 
+# Following image will be used to run pipeline components run if Kubeflow
+# Pipelines used.
+# This image will be automatically built by CLI if we use --build-image flag.
+PIPELINE_IMAGE = f'gcr.io/{GOOGLE_CLOUD_PROJECT}/{PIPELINE_NAME}'
+
 PREPROCESSING_FN = 'models.preprocessing.preprocessing_fn'
 RUN_FN = 'models.keras.model.run_fn'
 # NOTE: Uncomment below to use an estimator based model.
@@ -137,7 +142,7 @@ _query_sample_rate = 0.0001  # Generate a 0.01% random sample.
 #     # a public container image matching the installed version of TFX.
 #     # TODO(step 9): (Optional) Set your container name below.
 #     'masterConfig': {
-#       'imageUri': 'gcr.io/' + GOOGLE_CLOUD_PROJECT + '/tfx-pipeline'
+#       'imageUri': PIPELINE_IMAGE
 #     },
 #     # Note that if you do specify a custom container, ensure the entrypoint
 #     # calls into TFX's run_executor script (tfx/scripts/run_executor.py)

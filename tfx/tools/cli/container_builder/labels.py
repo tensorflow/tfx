@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,9 +13,6 @@
 # limitations under the License.
 """Common variables."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
 
 from tfx import version
 
@@ -26,5 +22,3 @@ BUILD_SPEC_FILENAME = 'build.yaml'
 BUILD_CONTEXT = '.'
 DOCKERFILE_NAME = 'Dockerfile'
 SETUP_PY_FILENAME = 'setup.py'
-SKAFFOLD_COMMAND = 'skaffold'
-SKAFFOLD_API_VERSION = 'skaffold/v1beta13'

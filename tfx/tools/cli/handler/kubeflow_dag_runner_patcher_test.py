@@ -13,6 +13,7 @@
 # limitations under the License.
 """Tests for tfx.tools.cli.handler.kubeflow_dag_runner_patcher."""
 
+import os
 from unittest import mock
 
 import tensorflow as tf
@@ -44,7 +45,7 @@ class KubeflowDagRunnerPatcherTest(test_case_utils.TfxTest):
     with patcher.patch() as context:
       runner.run(pipeline)
     self.assertTrue(context[patcher.USE_TEMPORARY_OUTPUT_FILE])
-    self.assertIn(patcher.OUTPUT_FILENAME, context)
+    self.assertIn(patcher.OUTPUT_FILE_PATH, context)
 
     mock_build_image_fn.assert_called_once_with(given_image_name)
     self.assertEqual(runner_config.tfx_image, built_image_name)
@@ -61,7 +62,8 @@ class KubeflowDagRunnerPatcherTest(test_case_utils.TfxTest):
     with patcher.patch() as context:
       runner.run(pipeline)
     self.assertFalse(context[patcher.USE_TEMPORARY_OUTPUT_FILE])
-    self.assertEqual(context[patcher.OUTPUT_FILENAME], output_filename)
+    self.assertEqual(
+        os.path.basename(context[patcher.OUTPUT_FILE_PATH]), output_filename)
     self.assertEqual(runner._output_filename, output_filename)
 
 

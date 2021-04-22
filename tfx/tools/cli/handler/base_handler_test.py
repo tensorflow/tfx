@@ -102,7 +102,7 @@ class BaseHandlerTest(tf.test.TestCase):
     handler._check_dsl_runner()
 
   def testCheckDslRunner_WrongEngine(self):
-    flags_dict = {labels.ENGINE_FLAG: 'kubeflow',
+    flags_dict = {labels.ENGINE_FLAG: 'beam',
                   labels.PIPELINE_DSL_PATH: self.pipeline_path}
     handler = FakeHandler(flags_dict)
     with self.assertRaises(SystemExit) as err:
@@ -136,16 +136,6 @@ class BaseHandlerTest(tf.test.TestCase):
                                  'test_pipeline_airflow_1.py')
     flags_dict = {
         labels.ENGINE_FLAG: 'airflow',
-        labels.PIPELINE_DSL_PATH: pipeline_path
-    }
-    handler = FakeHandler(flags_dict)
-    self.assertIsNone(handler._check_dsl_runner())
-
-  def testCheckDslRunnerKubeflow(self):
-    pipeline_path = os.path.join(self.chicago_taxi_pipeline_dir,
-                                 'test_pipeline_kubeflow_1.py')
-    flags_dict = {
-        labels.ENGINE_FLAG: 'kubeflow',
         labels.PIPELINE_DSL_PATH: pipeline_path
     }
     handler = FakeHandler(flags_dict)

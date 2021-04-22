@@ -64,13 +64,12 @@ class TaxiTemplateLocalEndToEndTest(test_utils.BaseEndToEndTest):
         '--pipeline_path',
         'local_runner.py',
     ])
-    self.assertEqual(0, result.exit_code)
     self.assertIn(
         'Pipeline "{}" created successfully.'.format(self._pipeline_name),
-        result.output)
+        result)
 
     # Run the pipeline.
-    result = self._runCli([
+    self._runCli([
         'run',
         'create',
         '--engine',
@@ -78,7 +77,6 @@ class TaxiTemplateLocalEndToEndTest(test_utils.BaseEndToEndTest):
         '--pipeline_name',
         self._pipeline_name,
     ])
-    self.assertEqual(0, result.exit_code)
 
     # Update the pipeline to include all components.
     updated_pipeline_file = self._addAllComponents()
@@ -92,13 +90,12 @@ class TaxiTemplateLocalEndToEndTest(test_utils.BaseEndToEndTest):
         '--pipeline_path',
         'local_runner.py',
     ])
-    self.assertEqual(0, result.exit_code)
     self.assertIn(
         'Pipeline "{}" updated successfully.'.format(self._pipeline_name),
-        result.output)
+        result)
 
     # Run the updated pipeline.
-    result = self._runCli([
+    self._runCli([
         'run',
         'create',
         '--engine',
@@ -106,7 +103,6 @@ class TaxiTemplateLocalEndToEndTest(test_utils.BaseEndToEndTest):
         '--pipeline_name',
         self._pipeline_name,
     ])
-    self.assertEqual(0, result.exit_code)
 
 
 if __name__ == '__main__':

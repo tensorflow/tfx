@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,24 +13,35 @@
 # limitations under the License.
 """Handler for Kubeflow."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
+import functools
+from importlib import machinery
+from importlib import util as import_util
 import os
-import subprocess
 import sys
 import time
-from typing import Any, Dict, Optional, Text
+from typing import Any, Dict, Optional
 
 import click
 import kfp
 
-from tfx.dsl.io import fileio
+from tfx.orchestration.kubeflow import kubeflow_dag_runner
 from tfx.tools.cli import labels
 from tfx.tools.cli.container_builder import builder
-from tfx.tools.cli.container_builder import labels as container_builder_labels
 from tfx.tools.cli.handler import base_handler
+from tfx.tools.cli.handler import dag_runner_patcher
+from tfx.tools.cli.handler import kubeflow_dag_runner_patcher
+
+
+def _create_container_image(image: str, base_image: Optional[str]) -> str:
+  if image == kubeflow_dag_runner.DEFAULT_KUBEFLOW_TFX_IMAGE:
+    sys.exit('Default image for KubeflowDagRunner given and used with '
+             '--build-image flag. If you want to use your custom image, please '
+             'specify the image name that will be built at the '
+             'KubeflowDagRunnerConfig. Otherwise, do not use --build-image '
+             'flag.')
+  built_image = builder.build(target_image=image, base_image=base_image)
+  click.echo(f'New container image "{built_image}" was built.')
+  return built_image
 
 
 # TODO(b/132286477): Change generated api methods to client methods after SDK is
@@ -39,7 +49,7 @@ from tfx.tools.cli.handler import base_handler
 class KubeflowHandler(base_handler.BaseHandler):
   """Helper methods for Kubeflow Handler."""
 
-  def __init__(self, flags_dict: Dict[Text, Any]):
+  def __init__(self, flags_dict: Dict[str, Any]):
     """Initialize Kubeflow handler.
 
     Args:
@@ -61,29 +71,32 @@ class KubeflowHandler(base_handler.BaseHandler):
     Args:
       update: set as true to update pipeline.
     """
-    # Build pipeline container image.
-    try:
-      target_image = self.flags_dict.get(labels.TARGET_IMAGE)
-      skaffold_cmd = self.flags_dict.get(labels.SKAFFOLD_CMD)
-      if target_image is not None or os.path.exists(
-          container_builder_labels.BUILD_SPEC_FILENAME):
-        base_image = self.flags_dict.get(labels.BASE_IMAGE)
-        target_image = self._build_pipeline_image(target_image, base_image,
-                                                  skaffold_cmd)
-        os.environ[labels.KUBEFLOW_TFX_IMAGE_ENV] = target_image
-    except (ValueError, subprocess.CalledProcessError, RuntimeError):
-      click.echo('No container image is built.')
-      raise
+
+    if self.flags_dict.get(labels.BUILD_IMAGE):
+      build_image_fn = functools.partial(
+          _create_container_image,
+          base_image=self.flags_dict.get(labels.BASE_IMAGE))
     else:
-      click.echo('New container image is built. Target image is available in '
-                 'the build spec file.')
+      build_image_fn = None
+      if os.path.exists('build.yaml'):
+        click.echo(
+            '[Warning] TFX doesn\'t depend on skaffold anymore and you can '
+            'delete the auto-genrated build.yaml file. TFX will NOT build a '
+            'container even if build.yaml file exists. Use --build-image flag '
+            'to trigger an image build when creating or updating a pipeline.',
+            err=True)
+    patcher = kubeflow_dag_runner_patcher.KubeflowDagRunnerPatcher(
+        call_real_run=True,
+        use_temporary_output_file=True,
+        build_image_fn=build_image_fn)
+    context = self.execute_dsl(patcher)
+    pipeline_name = context[patcher.PIPELINE_NAME]
+    pipeline_package_path = context[patcher.OUTPUT_FILE_PATH]
 
-    # Compile pipeline to check if pipeline_args are extracted successfully.
-    pipeline_args = self.compile_pipeline()
+    self._save_pipeline(pipeline_name, pipeline_package_path, update=update)
 
-    pipeline_name = pipeline_args[labels.PIPELINE_NAME]
-
-    self._save_pipeline(pipeline_name, update=update)
+    if context[patcher.USE_TEMPORARY_OUTPUT_FILE]:
+      os.remove(pipeline_package_path)
 
     if update:
       click.echo('Pipeline "{}" updated successfully.'.format(pipeline_name))
@@ -120,22 +133,41 @@ class KubeflowHandler(base_handler.BaseHandler):
 
     click.echo('Pipeline ' + pipeline_name + ' deleted successfully.')
 
-  def compile_pipeline(self) -> Dict[Text, Any]:
+  def execute_dsl(
+      self, patcher: dag_runner_patcher.DagRunnerPatcher) -> Dict[str, Any]:
+    self._check_pipeline_dsl_path()
+    dsl_path = self.flags_dict[labels.PIPELINE_DSL_PATH]
+
+    with patcher.patch() as context:
+      # Simluate python script execution.
+      # - Need to add the script directory as a first entry of sys.path.
+      # - Load the script as if we are in __main__ module.
+      dir_path = os.path.dirname(os.path.realpath(dsl_path))
+      sys.path.insert(0, dir_path)
+      loader = machinery.SourceFileLoader('__main__', dsl_path)
+      loader.exec_module(
+          import_util.module_from_spec(
+              import_util.spec_from_loader(loader.name, loader)))
+      sys.path.pop(0)
+
+    if not patcher.run_called:
+      sys.exit('Cannot find ' + patcher.get_runner_class().__name__ +
+               '.run() in ' + dsl_path)
+    return context
+
+  def compile_pipeline(self) -> None:
     """Compiles pipeline in Kubeflow.
 
     Returns:
       pipeline_args: python dictionary with pipeline details extracted from DSL.
     """
-    self._check_pipeline_dsl_path()
-    self._check_dsl_runner()
-    pipeline_args = self._extract_pipeline_args()
-    self._check_pipeline_package_path(pipeline_args[labels.PIPELINE_NAME])
-    if not pipeline_args:
-      sys.exit('Unable to compile pipeline. Check your pipeline dsl.')
+    patcher = kubeflow_dag_runner_patcher.KubeflowDagRunnerPatcher(
+        call_real_run=True,
+        use_temporary_output_file=False)
+    context = self.execute_dsl(patcher)
+
     click.echo('Pipeline compiled successfully.')
-    click.echo('Pipeline package path: {}'.format(
-        self.flags_dict[labels.PIPELINE_PACKAGE_PATH]))
-    return pipeline_args
+    click.echo(f'Pipeline package path: {context[patcher.OUTPUT_FILE_PATH]}')
 
   def create_run(self) -> None:
     """Runs a pipeline in Kubeflow."""
@@ -190,18 +222,21 @@ class KubeflowHandler(base_handler.BaseHandler):
     self._print_runs(pipeline_name, [run])
 
   def get_schema(self):
-    pipeline_args = self._extract_pipeline_args()
-    self._read_schema_from_pipeline_root(pipeline_args[labels.PIPELINE_NAME],
-                                         pipeline_args[labels.PIPELINE_ROOT])
+    patcher = kubeflow_dag_runner_patcher.KubeflowDagRunnerPatcher(
+        call_real_run=False)
+    context = self.execute_dsl(patcher)
 
-  def _get_experiment_name(self, pipeline_name: Text) -> Text:
+    self._read_schema_from_pipeline_root(context[patcher.PIPELINE_NAME],
+                                         context[patcher.PIPELINE_ROOT])
+
+  def _get_experiment_name(self, pipeline_name: str) -> str:
     return pipeline_name
 
-  def _get_run_job_name(self, pipeline_name: Text) -> Text:
+  def _get_run_job_name(self, pipeline_name: str) -> str:
     return pipeline_name
 
   def _get_pipeline_id(self,
-                       pipeline_name: Text,
+                       pipeline_name: str,
                        check: bool = True) -> Optional[None]:
     pipeline_id = self._client.get_pipeline_id(pipeline_name)
     if check and pipeline_id is None:
@@ -209,15 +244,16 @@ class KubeflowHandler(base_handler.BaseHandler):
                'correct endpoint and pipeline name?')
     return pipeline_id
 
-  def _save_pipeline(self, pipeline_name: Text, update: bool = False) -> None:
+  def _save_pipeline(self,
+                     pipeline_name: str,
+                     pipeline_package_path: str,
+                     update: bool = False) -> None:
     """Creates/updates pipeline in the Kubeflow Pipelines cluster."""
 
     pipeline_id = self._get_pipeline_id(pipeline_name, check=update)
     if pipeline_id is not None and not update:
       sys.exit(
           f'Pipeline "{pipeline_name}" already exists. id="{pipeline_id}")')
-
-    pipeline_package_path = self.flags_dict[labels.PIPELINE_PACKAGE_PATH]
 
     if update:
       # A timestamp will be appended for the uniqueness of `version_name`.
@@ -242,35 +278,14 @@ class KubeflowHandler(base_handler.BaseHandler):
                    prefix=self._client._get_url_prefix(),  # pylint: disable=protected-access
                    pipeline_id=pipeline_id))
 
-  def _check_pipeline_package_path(self, pipeline_name: Text) -> None:
-    # When unset, search for the workflow file in the current dir.
-    if not self.flags_dict[labels.PIPELINE_PACKAGE_PATH]:
-      self.flags_dict[labels.PIPELINE_PACKAGE_PATH] = os.path.join(
-          os.getcwd(), '{}.tar.gz'.format(pipeline_name))
-
-    pipeline_package_path = self.flags_dict[labels.PIPELINE_PACKAGE_PATH]
-    if not fileio.exists(pipeline_package_path):
-      sys.exit(
-          'Pipeline package not found at {}. When --package_path is unset, it will try to find the workflow file, "<pipeline_name>.tar.gz" in the current directory.'
-          .format(pipeline_package_path))
-
-  def _build_pipeline_image(self,
-                            target_image: Optional[Text] = None,
-                            base_image: Optional[Text] = None,
-                            skaffold_cmd: Optional[Text] = None) -> Text:
-    return builder.ContainerBuilder(
-        target_image=target_image,
-        base_image=base_image,
-        skaffold_cmd=skaffold_cmd).build()
-
-  def _get_pipeline_version_id(self, pipeline_id: Text) -> Optional[Text]:
+  def _get_pipeline_version_id(self, pipeline_id: str) -> Optional[str]:
     # Get the latest version.
     response = self._client.list_pipeline_versions(
         pipeline_id, page_size=1, sort_by='created_at desc')
     assert len(response.versions) == 1
     return response.versions[0].id
 
-  def _get_experiment_id(self, pipeline_name: Text) -> Text:
+  def _get_experiment_id(self, pipeline_name: str) -> str:
     experiment = self._client.get_experiment(
         experiment_name=self._get_experiment_name(pipeline_name))
     return experiment.id
