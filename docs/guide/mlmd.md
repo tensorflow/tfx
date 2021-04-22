@@ -84,6 +84,21 @@ connection_config.mysql.password = '...'
 store = metadata_store.MetadataStore(connection_config)
 ```
 
+Similarly, when using a MySQL instance with Google
+CloudSQL([quickstart](https://cloud.google.com/sql/docs/mysql/quickstart),
+[connect-overview](https://cloud.google.com/sql/docs/mysql/connect-overview)),
+one could also use SSL option if applicable.
+
+```python
+connection_config.mysql.ssl_options.key = '...'
+connection_config.mysql.ssl_options.cert = '...'
+connection_config.mysql.ssl_options.ca = '...'
+connection_config.mysql.ssl_options.capath = '...'
+connection_config.mysql.ssl_options.cipher = '...'
+connection_config.mysql.ssl_options.verify_server_cert = '...'
+store = metadata_store.MetadataStore(connection_config)
+```
+
 ## Data model
 
 The Metadata Store uses the following data model to record and retrieve metadata
@@ -174,6 +189,9 @@ model_type.name = "SavedModel"
 model_type.properties["version"] = metadata_store_pb2.INT
 model_type.properties["name"] = metadata_store_pb2.STRING
 model_type_id = store.put_artifact_type(model_type)
+
+# Query all registered Artifact types.
+artifact_types = store.get_artifact_types()
 ```
 
 2) Register execution types for all steps in the ML workflow
@@ -184,6 +202,9 @@ trainer_type = metadata_store_pb2.ExecutionType()
 trainer_type.name = "Trainer"
 trainer_type.properties["state"] = metadata_store_pb2.STRING
 trainer_type_id = store.put_execution_type(trainer_type)
+
+# Query a registered Execution type with the returned id
+[registered_type] = store.get_execution_types_by_id([trainer_type_id])
 ```
 
 3) Create an artifact of DataSet ArtifactType
@@ -195,17 +216,27 @@ data_artifact.uri = 'path/to/data'
 data_artifact.properties["day"].int_value = 1
 data_artifact.properties["split"].string_value = 'train'
 data_artifact.type_id = data_type_id
-data_artifact_id = store.put_artifacts([data_artifact])[0]
+[data_artifact_id] = store.put_artifacts([data_artifact])
+
+# Query all registered Artifacts
+artifacts = store.get_artifacts()
+
+# Plus, there are many ways to query the same Artifact
+[stored_data_artifact] = store.get_artifacts_by_id([data_artifact_id])
+artifacts_with_uri = store.get_artifacts_by_uri(data_artifact.uri)
 ```
 
-4) Create the execution for the Trainer run (typically a
-`tfx.components.Trainer` ExecutionType)
+4) Create an execution of the Trainer run
 
 ```python
+# Register the Execution of a Trainer run
 trainer_run = metadata_store_pb2.Execution()
 trainer_run.type_id = trainer_type_id
 trainer_run.properties["state"].string_value = "RUNNING"
-run_id = store.put_executions([trainer_run])[0]
+[run_id] = store.put_executions([trainer_run])
+
+# Query all registered Execution
+executions = store.get_executions_by_id([run_id])
 ```
 
 5) Define the input event and read data
@@ -230,7 +261,7 @@ model_artifact.uri = 'path/to/model/file'
 model_artifact.properties["version"].int_value = 1
 model_artifact.properties["name"].string_value = 'MNIST-v1'
 model_artifact.type_id = model_type_id
-model_artifact_id = store.put_artifacts([model_artifact])[0]
+[model_artifact_id] = store.put_artifacts([model_artifact])
 ```
 
 7) Record the output event
@@ -270,7 +301,7 @@ my_experiment.type_id = experiment_type_id
 # Give the experiment a name
 my_experiment.name = "exp1"
 my_experiment.properties["note"].string_value = "My first experiment."
-experiment_id = store.put_contexts([my_experiment])[0]
+[experiment_id] = store.put_contexts([my_experiment])
 
 attribution = metadata_store_pb2.Attribution()
 attribution.artifact_id = model_artifact_id
@@ -281,6 +312,10 @@ association.execution_id = run_id
 association.context_id = experiment_id
 
 store.put_attributions_and_associations([attribution], [association])
+
+# Query the Artifacts and Executions that are linked to the Context.
+experiment_artifacts = store.get_artifacts_by_context(experiment_id))
+experiment_executions store.get_executions_by_context(experiment_id))
 ```
 
 ## Use MLMD with a remote gRPC server
