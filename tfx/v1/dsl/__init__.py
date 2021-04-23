@@ -18,4 +18,5 @@ from tfx.dsl.components.common.resolver import Resolver
 # TODO(b/184980265): move Pipeline implementation to tfx/dsl.
 from tfx.orchestration.pipeline import ExecutionMode
 from tfx.orchestration.pipeline import Pipeline
+from tfx.types.artifact import Artifact
 from tfx.v1.dsl import experimental

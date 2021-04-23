@@ -21,11 +21,15 @@ except ModuleNotFoundError:
 if doc_controls:
 
   do_not_doc_in_subclasses = doc_controls.do_not_doc_in_subclasses
+  do_not_doc_inheritable = doc_controls.do_not_doc_inheritable
   do_not_generate_docs = doc_controls.do_not_generate_docs
 
 else:
 
   def do_not_doc_in_subclasses(obj):
+    return obj
+
+  def do_not_doc_inheritable(obj):
     return obj
 
   def do_not_generate_docs(obj):
