@@ -252,8 +252,8 @@ class PenguinPipelineLocalEndToEndTest(tf.test.TestCase,
       self.assertLen(tft_input_examples_artifacts, 1)
       # SpansResolver (controlled by resolver_range_config) returns span 1.
       self.assertEqual(
-          '1', tft_input_examples_artifacts[0].custom_properties[
-              utils.SPAN_PROPERTY_NAME].string_value)
+          1, tft_input_examples_artifacts[0].custom_properties[
+              utils.SPAN_PROPERTY_NAME].int_value)
 
     # Trigger the pipeline for the second span.
     examplegen_range_config = range_config_pb2.RangeConfig(
@@ -270,12 +270,12 @@ class PenguinPipelineLocalEndToEndTest(tf.test.TestCase,
       self.assertLen(tft_input_examples_artifacts, 2)
       spans = {
           tft_input_examples_artifacts[0].custom_properties[
-              utils.SPAN_PROPERTY_NAME].string_value,
+              utils.SPAN_PROPERTY_NAME].int_value,
           tft_input_examples_artifacts[1].custom_properties[
-              utils.SPAN_PROPERTY_NAME].string_value
+              utils.SPAN_PROPERTY_NAME].int_value
       }
       # SpansResolver (controlled by resolver_range_config) returns span 1 & 2.
-      self.assertSetEqual({'1', '2'}, spans)
+      self.assertSetEqual({1, 2}, spans)
       # Verify Trainer's input examples artifacts.
       self.assertLen(
           self._get_input_examples_artifacts(m.store, trainer_execution_type),
@@ -298,12 +298,12 @@ class PenguinPipelineLocalEndToEndTest(tf.test.TestCase,
       self.assertLen(tft_input_examples_artifacts, 2)
       spans = {
           tft_input_examples_artifacts[0].custom_properties[
-              utils.SPAN_PROPERTY_NAME].string_value,
+              utils.SPAN_PROPERTY_NAME].int_value,
           tft_input_examples_artifacts[1].custom_properties[
-              utils.SPAN_PROPERTY_NAME].string_value
+              utils.SPAN_PROPERTY_NAME].int_value
       }
       # SpansResolver (controlled by resolver_range_config) returns span 2 & 3.
-      self.assertSetEqual({'2', '3'}, spans)
+      self.assertSetEqual({2, 3}, spans)
       # Verify Trainer's input examples artifacts.
       self.assertLen(
           self._get_input_examples_artifacts(m.store, trainer_execution_type),

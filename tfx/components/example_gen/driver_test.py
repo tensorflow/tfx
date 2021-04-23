@@ -217,9 +217,9 @@ class DriverTest(tf.test.TestCase):
         examples.get_string_custom_property(utils.FINGERPRINT_PROPERTY_NAME),
         'fp')
     self.assertEqual(
-        examples.get_string_custom_property(utils.SPAN_PROPERTY_NAME), '2')
+        examples.get_int_custom_property(utils.SPAN_PROPERTY_NAME), 2)
     self.assertEqual(
-        examples.get_string_custom_property(utils.VERSION_PROPERTY_NAME), '1')
+        examples.get_int_custom_property(utils.VERSION_PROPERTY_NAME), 1)
 
   def testDriverRunFn(self):
     # Create input dir.
@@ -286,8 +286,7 @@ class DriverTest(tf.test.TestCase):
         standard_component_specs.EXAMPLES_KEY].artifacts[0]
     self.assertEqual(output_example.uri, example.uri)
     self.assertEqual(
-        output_example.custom_properties[utils.SPAN_PROPERTY_NAME].string_value,
-        '1')
+        output_example.custom_properties[utils.SPAN_PROPERTY_NAME].int_value, 1)
     self.assertRegex(
         output_example.custom_properties[
             utils.FINGERPRINT_PROPERTY_NAME].string_value,
@@ -349,8 +348,7 @@ class DriverTest(tf.test.TestCase):
         standard_component_specs.EXAMPLES_KEY].artifacts[0]
     self.assertEqual(output_example.uri, example.uri)
     self.assertEqual(
-        output_example.custom_properties[utils.SPAN_PROPERTY_NAME].string_value,
-        '2')
+        output_example.custom_properties[utils.SPAN_PROPERTY_NAME].int_value, 2)
 
 
 if __name__ == '__main__':

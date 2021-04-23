@@ -48,6 +48,8 @@
    support from LocalDagRunner's run function.
 *  Removed input parameter in ExampleGen constructor and external_input in
    dsl_utils, which were called as deprecated in TFX 0.23.
+*  Changed the storage type of `span` and `version` custom property in Examples
+   artifact from string to int.
 
 ### For Pipeline Authors
 

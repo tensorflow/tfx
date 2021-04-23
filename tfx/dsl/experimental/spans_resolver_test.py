@@ -13,7 +13,6 @@
 # limitations under the License.
 """Test for SpansResolver."""
 
-from typing import Text
 # Standard Imports
 
 import tensorflow as tf
@@ -41,10 +40,10 @@ class SpansResolverTest(tf.test.TestCase):
         component_id='my_component',
         pipeline_info=self._pipeline_info)
 
-  def _createExamples(self, span: Text) -> standard_artifacts.Examples:
+  def _createExamples(self, span: int) -> standard_artifacts.Examples:
     artifact = standard_artifacts.Examples()
-    artifact.uri = 'uri' + span
-    artifact.set_string_custom_property(utils.SPAN_PROPERTY_NAME, span)
+    artifact.uri = f'uri{span}'
+    artifact.set_int_custom_property(utils.SPAN_PROPERTY_NAME, span)
     return artifact
 
   def testResolve(self):
@@ -52,11 +51,11 @@ class SpansResolverTest(tf.test.TestCase):
       contexts = m.register_pipeline_contexts_if_not_exists(self._pipeline_info)
       artifact_one = standard_artifacts.Examples()
       artifact_one.uri = 'uri_one'
-      artifact_one.set_string_custom_property(utils.SPAN_PROPERTY_NAME, '1')
+      artifact_one.set_int_custom_property(utils.SPAN_PROPERTY_NAME, 1)
       m.publish_artifacts([artifact_one])
       artifact_two = standard_artifacts.Examples()
       artifact_two.uri = 'uri_two'
-      artifact_two.set_string_custom_property(utils.SPAN_PROPERTY_NAME, '2')
+      artifact_two.set_int_custom_property(utils.SPAN_PROPERTY_NAME, 2)
       m.register_execution(
           exec_properties={},
           pipeline_info=self._pipeline_info,
@@ -90,11 +89,11 @@ class SpansResolverTest(tf.test.TestCase):
 
   def testResolveArtifacts(self):
     with metadata.Metadata(connection_config=self._connection_config) as m:
-      artifact1 = self._createExamples('1')
-      artifact2 = self._createExamples('2')
-      artifact3 = self._createExamples('3')
-      artifact4 = self._createExamples('4')
-      artifact5 = self._createExamples('5')
+      artifact1 = self._createExamples(1)
+      artifact2 = self._createExamples(2)
+      artifact3 = self._createExamples(3)
+      artifact4 = self._createExamples(4)
+      artifact5 = self._createExamples(5)
 
       # Test StaticRange.
       resolver = spans_resolver.SpansResolver(
@@ -104,8 +103,8 @@ class SpansResolverTest(tf.test.TestCase):
       result = resolver.resolve_artifacts(
           m, {'input': [artifact1, artifact2, artifact3, artifact4, artifact5]})
       self.assertIsNotNone(result)
-      self.assertEqual([a.uri for a in result['input']],
-                       [artifact3.uri, artifact2.uri])
+      self.assertEqual({a.uri for a in result['input']},
+                       {artifact3.uri, artifact2.uri})
 
       # Test RollingRange.
       resolver = spans_resolver.SpansResolver(

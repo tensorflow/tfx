@@ -25,6 +25,14 @@ from tfx.types import artifact_utils
 from tfx.utils import doc_controls
 
 
+def _get_span_custom_property(artifact: types.Artifact) -> int:
+  # For backward compatibility, span may be stored as a string.
+  str_span = artifact.get_string_custom_property(utils.SPAN_PROPERTY_NAME)
+  if str_span:
+    return int(str_span)
+  return artifact.get_int_custom_property(utils.SPAN_PROPERTY_NAME)
+
+
 # TODO(b/185938426): consider renaming this to XxxResolverStrategy.
 class SpansResolver(resolver.ResolverStrategy):
   """Resolver that return the artifacts based on Span.
@@ -59,8 +67,7 @@ class SpansResolver(resolver.ResolverStrategy):
         for artifact in artifact_list:
           if not artifact.has_custom_property(utils.SPAN_PROPERTY_NAME):
             raise RuntimeError(f'Span does not exist for {artifact}')
-          span = int(
-              artifact.get_string_custom_property(utils.SPAN_PROPERTY_NAME))
+          span = _get_span_custom_property(artifact)
           if span >= start_span_number and span <= end_span_number:
             in_range_artifacts.append(artifact)
 
@@ -74,8 +81,7 @@ class SpansResolver(resolver.ResolverStrategy):
         for artifact in artifact_list:
           if not artifact.has_custom_property(utils.SPAN_PROPERTY_NAME):
             raise RuntimeError(f'Span does not exist for {artifact}')
-          span = int(
-              artifact.get_string_custom_property(utils.SPAN_PROPERTY_NAME))
+          span = _get_span_custom_property(artifact)
           if span > most_recent_span:
             most_recent_span = span
 
@@ -84,8 +90,7 @@ class SpansResolver(resolver.ResolverStrategy):
         end_span_number = most_recent_span
         # Get the artifacts within range.
         for artifact in artifact_list:
-          span = int(
-              artifact.get_string_custom_property(utils.SPAN_PROPERTY_NAME))
+          span = _get_span_custom_property(artifact)
           if span >= start_span_number and span <= end_span_number:
             in_range_artifacts.append(artifact)
 
@@ -94,7 +99,7 @@ class SpansResolver(resolver.ResolverStrategy):
 
       result[k] = sorted(
           in_range_artifacts,
-          key=lambda a: a.get_string_custom_property(utils.SPAN_PROPERTY_NAME),
+          key=_get_span_custom_property,
           reverse=True)
 
     return result

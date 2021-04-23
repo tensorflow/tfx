@@ -57,13 +57,13 @@ def update_output_artifact(
       utils.FINGERPRINT_PROPERTY_NAME].string_value = str(
           exec_properties[utils.FINGERPRINT_PROPERTY_NAME])
   output_artifact.custom_properties[
-      utils.SPAN_PROPERTY_NAME].string_value = str(
-          exec_properties[utils.SPAN_PROPERTY_NAME])
+      utils.SPAN_PROPERTY_NAME].int_value = exec_properties[
+          utils.SPAN_PROPERTY_NAME]
   # TODO(b/162622803): add default behavior for when version spec not present.
   if exec_properties[utils.VERSION_PROPERTY_NAME] is not None:
     output_artifact.custom_properties[
-        utils.VERSION_PROPERTY_NAME].string_value = str(
-            exec_properties[utils.VERSION_PROPERTY_NAME])
+        utils.VERSION_PROPERTY_NAME].int_value = exec_properties[
+            utils.VERSION_PROPERTY_NAME]
 
 
 class Driver(base_driver.BaseDriver, ir_base_driver.BaseDriver):
