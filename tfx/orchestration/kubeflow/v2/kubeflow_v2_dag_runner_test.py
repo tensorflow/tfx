@@ -74,7 +74,6 @@ class KubeflowV2DagRunnerTest(test_case_utils.TfxTest):
         output_dir=_TEST_DIR,
         output_filename=_TEST_FILE_NAME,
         config=kubeflow_v2_dag_runner.KubeflowV2DagRunnerConfig(
-            project_id='my-project',
             display_name='my-pipeline',
             default_image='gcr.io/my-tfx:latest'))
 
@@ -94,7 +93,6 @@ class KubeflowV2DagRunnerTest(test_case_utils.TfxTest):
         output_dir=_TEST_DIR,
         output_filename=_TEST_FILE_NAME,
         config=kubeflow_v2_dag_runner.KubeflowV2DagRunnerConfig(
-            project_id='my-project',
             display_name='my-pipeline',
             default_image='tensorflow/tfx:latest'))
 

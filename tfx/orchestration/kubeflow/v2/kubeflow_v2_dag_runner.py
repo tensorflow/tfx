@@ -52,7 +52,6 @@ class KubeflowV2DagRunnerConfig(pipeline_config.PipelineConfig):
   """Runtime configuration specific to execution on Kubeflow pipelines."""
 
   def __init__(self,
-               project_id: Text,
                display_name: Optional[Text] = None,
                default_image: Optional[Text] = None,
                default_commands: Optional[List[Text]] = None,
@@ -60,7 +59,6 @@ class KubeflowV2DagRunnerConfig(pipeline_config.PipelineConfig):
     """Constructs a Kubeflow V2 runner config.
 
     Args:
-      project_id: GCP project ID to be used.
       display_name: Optional human-readable pipeline name. Defaults to the
         pipeline name passed into `KubeflowV2DagRunner.run()`.
       default_image: The default TFX image to be used if not overriden by per
@@ -77,7 +75,6 @@ class KubeflowV2DagRunnerConfig(pipeline_config.PipelineConfig):
       **kwargs: Additional args passed to base PipelineConfig.
     """
     super(KubeflowV2DagRunnerConfig, self).__init__(**kwargs)
-    self.project_id = project_id
     self.display_name = display_name
     self.default_image = default_image or _KUBEFLOW_TFX_IMAGE
     if default_commands is None:
