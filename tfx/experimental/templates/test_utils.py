@@ -17,12 +17,10 @@ import codecs
 import locale
 import os
 import re
-import subprocess
 
 from typing import List, Iterable, Tuple
 
-from absl import logging
-
+from tfx.tools.cli.e2e import test_utils as cli_test_utils
 from tfx.utils import io_utils
 from tfx.utils import test_case_utils
 
@@ -46,17 +44,7 @@ class BaseEndToEndTest(test_case_utils.TfxTest):
     os.makedirs(self._temp_dir)
 
   def _runCli(self, args: List[str]) -> str:
-    """Run CLI with given arguments. Raises CalledProcessError if failed."""
-    logging.info('Running cli: %s', args)
-    result = subprocess.run(
-        ['tfx'] + args,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
-        encoding='utf-8',
-        check=True)
-    logging.info('[CLI] %s', result.stdout)
-
-    return result.stdout
+    return cli_test_utils.run_cli(args)
 
   def _addAllComponents(self) -> str:
     """Change 'pipeline.py' file to put all components into the pipeline."""

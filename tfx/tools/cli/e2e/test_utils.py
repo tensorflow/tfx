@@ -16,8 +16,10 @@
 import datetime
 import random
 import string
+import subprocess
 from typing import Any, List, Text
 
+from absl import logging
 from tfx import components
 from tfx.dsl.components.base.base_component import BaseComponent
 from tfx.utils import io_utils
@@ -64,3 +66,21 @@ def copy_and_change_pipeline_name(orig_path: Text, new_path: Text,
       origin_pipeline_name) == 1, 'DSL file can only contain one pipeline name'
   contents = contents.replace(origin_pipeline_name, new_pipeline_name)
   io_utils.write_string_file(new_path, contents)
+
+
+def run_cli(args: List[str]) -> str:
+  """Run CLI with given arguments. Raises CalledProcessError if failed."""
+  logging.info('Running cli: %s', args)
+  try:
+    result = subprocess.run(
+        ['tfx'] + args,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        encoding='utf-8',
+        check=True)
+  except subprocess.CalledProcessError as err:
+    logging.error('Command failed (exit code %d) with output: %s',
+                  err.returncode, err.output)
+    raise err
+  logging.info('[CLI] %s', result.stdout)
+  return result.stdout
