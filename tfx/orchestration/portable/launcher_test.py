@@ -15,7 +15,7 @@
 import copy
 import os
 
-import mock
+from unittest import mock
 import tensorflow as tf
 from tfx import types
 from tfx import version as tfx_version

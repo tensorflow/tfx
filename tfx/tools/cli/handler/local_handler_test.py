@@ -21,10 +21,10 @@ from __future__ import print_function
 import json
 import os
 import sys
-import click
-import mock
-import tensorflow as tf
+from unittest import mock
 
+import click
+import tensorflow as tf
 from tfx.dsl.components.base import base_driver
 from tfx.dsl.io import fileio
 from tfx.tools.cli import labels

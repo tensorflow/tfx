@@ -16,7 +16,7 @@
 import json
 import os
 import textwrap
-import mock
+from unittest import mock
 
 import tensorflow as tf
 

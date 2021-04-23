@@ -16,7 +16,7 @@
 
 import copy
 
-import mock
+from unittest import mock
 import tensorflow as tf  # pylint: disable=g-explicit-tensorflow-version-import
 from tfx.dsl.component.experimental import placeholders
 from tfx.orchestration.kubeflow.v2.components.experimental import ai_platform_training_executor

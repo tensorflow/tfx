@@ -22,11 +22,10 @@ import codecs
 import locale
 import os
 import sys
+from unittest import mock
 
 from click import testing as click_testing
-import mock
 import tensorflow as tf
-
 from tfx.tools.cli.commands.run import run_group
 
 

@@ -18,7 +18,7 @@ import copy
 import os
 
 from typing import Any, Dict, Text
-import mock
+from unittest import mock
 import tensorflow as tf
 
 from tfx.extensions.google_cloud_ai_platform.tuner import executor as ai_platform_tuner_executor

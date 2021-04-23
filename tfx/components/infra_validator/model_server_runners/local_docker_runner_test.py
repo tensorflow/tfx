@@ -19,9 +19,9 @@ from __future__ import print_function
 
 import os
 from typing import Any, Dict, Text
+from unittest import mock
 
 from docker import errors as docker_errors
-import mock
 import tensorflow as tf
 from tfx.components.infra_validator import error_types
 from tfx.components.infra_validator import serving_bins

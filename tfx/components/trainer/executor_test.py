@@ -22,7 +22,7 @@ import copy
 import json
 import os
 
-import mock
+from unittest import mock
 import tensorflow as tf
 from tfx.components.testdata.module_file import trainer_module
 from tfx.components.trainer import executor

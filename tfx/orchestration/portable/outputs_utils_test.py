@@ -12,8 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Tests for tfx.orchestration.portable.output_utils."""
+from unittest import mock
+
 from absl.testing import parameterized
-import mock
 import tensorflow as tf
 from tfx.dsl.io import fileio
 from tfx.orchestration.portable import outputs_utils

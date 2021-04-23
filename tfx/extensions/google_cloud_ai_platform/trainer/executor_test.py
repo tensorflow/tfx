@@ -21,10 +21,10 @@ from __future__ import print_function
 import copy
 import os
 from typing import Any, Dict, Text
+from unittest import mock
 
 # Standard Imports
 
-import mock
 import tensorflow as tf
 from tfx.components.trainer import executor as tfx_trainer_executor
 from tfx.extensions.google_cloud_ai_platform.trainer import executor as ai_platform_trainer_executor

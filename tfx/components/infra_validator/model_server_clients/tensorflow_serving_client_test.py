@@ -18,9 +18,9 @@ from __future__ import division
 from __future__ import print_function
 
 from typing import Any, Dict, Text
+from unittest import mock
 
 import grpc
-import mock
 import tensorflow as tf
 from tfx.components.infra_validator import error_types
 from tfx.components.infra_validator import types

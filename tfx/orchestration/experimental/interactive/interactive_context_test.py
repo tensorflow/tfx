@@ -23,13 +23,12 @@ import shutil
 import tempfile
 import textwrap
 from typing import Any, Dict, List, Text
+from unittest import mock
 
 import jinja2
-import mock
 import nbformat
 from six.moves import builtins
 import tensorflow as tf
-
 from tfx import types
 from tfx.dsl.components.base import base_component
 from tfx.dsl.components.base import base_executor

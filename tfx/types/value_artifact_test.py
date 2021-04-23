@@ -19,10 +19,10 @@ from __future__ import division
 from __future__ import print_function
 
 from typing import Text
+from unittest import mock
 
 # Standard Imports
 
-import mock
 import tensorflow as tf
 from tfx.dsl.io import fileio
 from tfx.types import value_artifact

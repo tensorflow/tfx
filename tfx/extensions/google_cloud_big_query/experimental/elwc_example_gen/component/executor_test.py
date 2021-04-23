@@ -14,10 +14,11 @@
 # limitations under the License.
 """Tests for tfx.extensions.google_cloud_big_query.elwc_example_gen.component.executor."""
 
+from unittest import mock
+
 import apache_beam as beam
 from apache_beam.testing import util
 from google.cloud import bigquery
-import mock
 import tensorflow as tf
 from tfx.extensions.google_cloud_big_query import utils
 from tfx.extensions.google_cloud_big_query.experimental.elwc_example_gen.component import executor

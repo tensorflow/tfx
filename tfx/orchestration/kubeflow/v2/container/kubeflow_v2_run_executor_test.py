@@ -17,7 +17,7 @@ import json
 import os
 from typing import Any, Mapping, Sequence
 
-import mock
+from unittest import mock
 import tensorflow as tf
 
 from tfx import version

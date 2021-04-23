@@ -20,7 +20,7 @@ from __future__ import print_function
 
 import os
 
-import mock
+from unittest import mock
 import tensorflow as tf
 
 from tfx.dsl.io import fileio

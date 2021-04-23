@@ -19,10 +19,10 @@ from __future__ import division
 from __future__ import print_function
 
 import os
+from unittest import mock
 
 from kubernetes import client
 from kubernetes import config
-import mock
 import tensorflow as tf
 from tfx.orchestration import publisher
 from tfx.orchestration.launcher import test_utils

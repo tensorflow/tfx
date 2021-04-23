@@ -17,10 +17,10 @@ import datetime
 import json
 import os
 from typing import Text
+from unittest import mock
 
 # Standard Imports
 
-import mock
 import tensorflow as tf
 from tfx import version
 from tfx.orchestration import pipeline as tfx_pipeline

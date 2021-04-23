@@ -21,7 +21,7 @@ from __future__ import print_function
 import os
 import tempfile
 
-import mock
+from unittest import mock
 import numpy as np
 import six
 

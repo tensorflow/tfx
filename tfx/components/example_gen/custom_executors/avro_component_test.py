@@ -19,7 +19,7 @@ from __future__ import print_function
 
 import os
 
-import mock
+from unittest import mock
 import tensorflow as tf
 from tfx.components.example_gen.component import FileBasedExampleGen
 from tfx.components.example_gen.custom_executors import avro_executor

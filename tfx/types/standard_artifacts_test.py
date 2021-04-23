@@ -19,10 +19,10 @@ from __future__ import division
 from __future__ import print_function
 
 import math
-import absl
-import mock
-import tensorflow as tf
+from unittest import mock
 
+import absl
+import tensorflow as tf
 from tfx.types import standard_artifacts
 
 # Define constant value for tests.

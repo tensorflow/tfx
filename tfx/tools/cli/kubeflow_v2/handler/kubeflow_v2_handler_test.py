@@ -16,10 +16,10 @@
 import os
 import sys
 from typing import Mapping, Optional, Sequence, Text
+from unittest import mock
 
 import click
 from googleapiclient import http
-import mock
 import tensorflow as tf
 from tfx.dsl.io import fileio
 from tfx.orchestration.kubeflow.v2.proto import pipeline_pb2

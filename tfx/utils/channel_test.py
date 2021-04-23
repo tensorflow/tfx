@@ -19,12 +19,12 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 
+from unittest import mock
+
 # Standard Imports
 
 from absl import logging
-import mock
 import tensorflow as tf
-
 from tfx.types import standard_artifacts
 from tfx.utils import channel
 

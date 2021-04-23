@@ -18,11 +18,10 @@ import codecs
 import locale
 import os
 import sys
+from unittest import mock
 
 from click import testing as click_testing
-import mock
 import tensorflow as tf
-
 from tfx.tools.cli.kubeflow_v2.commands.pipeline import pipeline_group
 
 

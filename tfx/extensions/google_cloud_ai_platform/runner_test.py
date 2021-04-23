@@ -21,14 +21,13 @@ import copy
 import os
 import sys
 from typing import Any, Dict, Text
+from unittest import mock
 
 # Standard Imports
+
 from google.cloud.aiplatform_v1beta1.types.custom_job import CustomJob
 from google.cloud.aiplatform_v1beta1.types.job_state import JobState
-
-import mock
 import tensorflow as tf
-
 from tfx.extensions.google_cloud_ai_platform import runner
 from tfx.extensions.google_cloud_ai_platform.trainer import executor
 from tfx.utils import json_utils
@@ -108,7 +107,7 @@ class RunnerTest(tf.test.TestCase):
 
     self._mock_create.assert_called_with(
         body=mock.ANY, parent='projects/{}'.format(self._project_id))
-    (_, kwargs) = self._mock_create.call_args
+    kwargs = self._mock_create.call_args[1]
     body = kwargs['body']
 
     default_image = 'gcr.io/tfx-oss-public/tfx:{}'.format(
@@ -149,7 +148,7 @@ class RunnerTest(tf.test.TestCase):
 
     self._mock_create.assert_called_with(
         body=mock.ANY, parent='projects/{}'.format(self._project_id))
-    (_, kwargs) = self._mock_create.call_args
+    kwargs = self._mock_create.call_args[1]
     body = kwargs['body']
     self.assertDictContainsSubset(
         {
@@ -189,7 +188,7 @@ class RunnerTest(tf.test.TestCase):
     self._mock_create.assert_called_with(
         parent='projects/{}/locations/{}'.format(self._project_id, region),
         custom_job=mock.ANY)
-    (_, kwargs) = self._mock_create.call_args
+    kwargs = self._mock_create.call_args[1]
     body = kwargs['custom_job']
 
     default_image = 'gcr.io/tfx-oss-public/tfx:{}'.format(
@@ -240,7 +239,7 @@ class RunnerTest(tf.test.TestCase):
     self._mock_create.assert_called_with(
         parent='projects/{}/locations/{}'.format(self._project_id, region),
         custom_job=mock.ANY)
-    (_, kwargs) = self._mock_create.call_args
+    kwargs = self._mock_create.call_args[1]
     body = kwargs['custom_job']
     self.assertDictContainsSubset(
         {
@@ -332,7 +331,7 @@ class RunnerTest(tf.test.TestCase):
         body=mock.ANY,
         parent='projects/{}'.format(self._project_id),
     )
-    (_, models_create_kwargs) = self._mock_models_create.call_args
+    models_create_kwargs = self._mock_models_create.call_args[1]
     self.assertDictEqual(expected_models_create_body,
                          models_create_kwargs['body'])
 
@@ -340,7 +339,7 @@ class RunnerTest(tf.test.TestCase):
         body=mock.ANY,
         parent='projects/{}/models/{}'.format(self._project_id,
                                               self._model_name))
-    (_, versions_create_kwargs) = self._mock_versions_create.call_args
+    versions_create_kwargs = self._mock_versions_create.call_args[1]
 
     self.assertDictEqual(expected_versions_create_body,
                          versions_create_kwargs['body'])
@@ -501,8 +500,7 @@ class RunnerTest(tf.test.TestCase):
         name='projects/{}/models/{}/versions/{}'.format(self._project_id,
                                                         self._model_name,
                                                         self._model_version),)
-    (_, model_version_delete_kwargs) = (
-        self._mock_models_version_delete.call_args)
+    model_version_delete_kwargs = self._mock_models_version_delete.call_args[1]
     self.assertNotIn('body', model_version_delete_kwargs)
 
   @mock.patch('tfx.extensions.google_cloud_ai_platform.runner.discovery')
@@ -532,7 +530,7 @@ class RunnerTest(tf.test.TestCase):
     self._mock_models_delete.assert_called_with(
         name='projects/{}/models/{}'.format(self._project_id,
                                             self._model_name),)
-    (_, model_delete_kwargs) = self._mock_models_delete.call_args
+    model_delete_kwargs = self._mock_models_delete.call_args[1]
     self.assertNotIn('body', model_delete_kwargs)
 
   @mock.patch('tfx.extensions.google_cloud_ai_platform.runner.discovery')

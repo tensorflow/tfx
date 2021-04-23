@@ -18,8 +18,8 @@ from __future__ import division
 from __future__ import print_function
 
 import datetime
+from unittest import mock
 
-import mock
 import tensorflow as tf
 
 # TODO(b/158143615): importing airflow after kerastuner causes issue.

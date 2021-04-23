@@ -13,11 +13,11 @@
 # limitations under the License.
 """Tests for tfx.utils.deprecation_utils."""
 
+from unittest import mock
+
 # Standard Imports
 
-import mock
 import tensorflow as tf
-
 from tfx.utils import deprecation_utils
 
 

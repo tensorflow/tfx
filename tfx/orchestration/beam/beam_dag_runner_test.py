@@ -15,7 +15,7 @@
 import os
 from typing import Optional
 
-import mock
+from unittest import mock
 import tensorflow as tf
 from tfx.dsl.compiler import constants
 from tfx.orchestration import metadata

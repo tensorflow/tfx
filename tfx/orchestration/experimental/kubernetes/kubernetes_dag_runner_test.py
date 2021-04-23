@@ -15,7 +15,7 @@
 
 from typing import Optional, Text
 
-import mock
+from unittest import mock
 import tensorflow as tf
 from tfx import types
 from tfx.dsl.components.base import base_component

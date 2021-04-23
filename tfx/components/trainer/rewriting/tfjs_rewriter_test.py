@@ -14,7 +14,7 @@
 """Tests for third_party.tfx.components.trainer.rewriting.tfjs_rewriter."""
 
 import unittest
-import mock
+from unittest import mock
 
 import tensorflow as tf
 

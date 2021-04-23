@@ -21,11 +21,11 @@ from __future__ import print_function
 import json
 import textwrap
 from typing import Text
+from unittest import mock
 
 # Standard Imports
 
 import absl
-import mock
 import tensorflow as tf
 from tfx.types import artifact
 from tfx.types import value_artifact

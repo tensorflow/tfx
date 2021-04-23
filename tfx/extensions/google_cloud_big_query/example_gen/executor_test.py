@@ -16,11 +16,11 @@
 
 import os
 import random
+from unittest import mock
 
 import apache_beam as beam
 from apache_beam.testing import util
 from google.cloud import bigquery
-import mock
 import tensorflow as tf
 from tfx.dsl.components.base import base_executor
 from tfx.dsl.io import fileio

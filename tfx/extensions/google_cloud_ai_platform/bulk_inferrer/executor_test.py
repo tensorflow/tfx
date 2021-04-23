@@ -21,7 +21,7 @@ from __future__ import print_function
 import hashlib
 import os
 
-import mock
+from unittest import mock
 import tensorflow as tf
 from tfx.extensions.google_cloud_ai_platform.bulk_inferrer import executor
 from tfx.proto import bulk_inferrer_pb2
