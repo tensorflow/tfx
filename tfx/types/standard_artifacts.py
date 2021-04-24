@@ -44,9 +44,16 @@ STRING_VALUE_PROPERTY = Property(type=PropertyType.STRING)
 
 
 class _TfxArtifact(Artifact):
-  """TFX first-party component artifact definition."""
+  """TFX first-party component artifact definition.
+
+  Do not construct directly, used for creating Channel, e.g.,
+  ```
+    Channel(type=standard_artifacts.Model)
+  ```
+  """
 
   def __init__(self, *args, **kwargs):
+    """Construct TFX first-party component artifact."""
     # TODO(b/176795331): Refactor directory structure to make it clearer that
     # TFX-specific artifacts require the full "tfx" package be installed.
     #
