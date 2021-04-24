@@ -17,7 +17,8 @@
    the KFP v2 container entrypoint.
 *  InfraValidator for Kubernetes now can override Pod manifest to customize
    annotations and environment variables.
-
+*  Allow Beam pipeline args to be extended by specifying
+   `beam_pipeline_args` per component.
 ## Breaking Changes
 *  CLI usage with kubeflow changed significantly.
   *  You MUST use the new `--build-image` to build a container image when

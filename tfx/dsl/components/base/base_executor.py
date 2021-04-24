@@ -27,11 +27,11 @@ from typing import Any, Dict, List, Optional, Text
 import absl
 from absl import flags
 from six import with_metaclass
-
 from tfx import types
 from tfx.dsl.io import fileio
 from tfx.proto.orchestration import execution_result_pb2
 from tfx.types import artifact_utils
+from tfx.utils import deprecation_utils
 from tfx.utils import telemetry_utils
 from tfx.utils import dependency_utils
 
@@ -136,6 +136,10 @@ class BaseExecutor(with_metaclass(abc.ABCMeta, object)):
   # TODO(b/126182711): Look into how to support fusion of multiple executors
   # into same pipeline.
   # TODO(b/158811104): Extract this logic into a Beam-specific subclass.
+  @deprecation_utils.deprecated(
+      date='2021-04-21',
+      instructions='Please use `BaseBeamExecutor` to create Beam pipelines '
+      'instead.')
   def _make_beam_pipeline(self) -> _BeamPipeline:
     """Makes beam pipeline."""
     if not beam:

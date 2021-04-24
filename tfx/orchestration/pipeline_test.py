@@ -25,8 +25,8 @@ import tempfile
 from typing import Any, Dict, Text, Type
 
 import tensorflow as tf
-
 from tfx import types
+from tfx.dsl.components.base import base_beam_component
 from tfx.dsl.components.base import base_component
 from tfx.dsl.components.base import base_executor
 from tfx.dsl.components.base import base_node
@@ -61,9 +61,11 @@ def _make_fake_node_instance(name: Text):
   return _FakeNode(instance_name=name)
 
 
-def _make_fake_component_instance(name: Text, output_type: Type[types.Artifact],
+def _make_fake_component_instance(name: Text,
+                                  output_type: Type[types.Artifact],
                                   inputs: Dict[Text, types.Channel],
-                                  outputs: Dict[Text, types.Channel]):
+                                  outputs: Dict[Text, types.Channel],
+                                  with_beam: bool = False):
 
   class _FakeComponentSpec(types.ComponentSpec):
     PARAMETERS = {}
@@ -85,8 +87,22 @@ def _make_fake_component_instance(name: Text, output_type: Type[types.Artifact],
       spec = _FakeComponentSpec(output=types.Channel(type=type), **spec_kwargs)
       super(_FakeComponent, self).__init__(spec=spec, instance_name=name)
 
+  class _FakeBeamComponent(base_beam_component.BaseBeamComponent):
+
+    SPEC_CLASS = _FakeComponentSpec
+    EXECUTOR_SPEC = executor_spec.BeamExecutorSpec(base_executor.BaseExecutor)
+
+    def __init__(
+        self,
+        type: Type[types.Artifact],  # pylint: disable=redefined-builtin
+        spec_kwargs: Dict[Text, Any]):
+      spec = _FakeComponentSpec(output=types.Channel(type=type), **spec_kwargs)
+      super(_FakeBeamComponent, self).__init__(spec=spec, instance_name=name)
+
   spec_kwargs = dict(itertools.chain(inputs.items(), outputs.items()))
-  return _FakeComponent(output_type, spec_kwargs)
+  return _FakeBeamComponent(output_type,
+                            spec_kwargs) if with_beam else _FakeComponent(
+                                output_type, spec_kwargs)
 
 
 class _ArtifactTypeOne(types.Artifact):
@@ -158,11 +174,13 @@ class PipelineTest(tf.test.TestCase):
         'c': component_c.outputs['output']
     }, {})
     component_e = _make_fake_component_instance(
-        'component_e', _OutputTypeE, {
+        'component_e',
+        _OutputTypeE, {
             'a': component_a.outputs['output'],
             'b': component_b.outputs['output'],
             'd': component_d.outputs['output']
-        }, {})
+        }, {},
+        with_beam=True)
 
     my_pipeline = pipeline.Pipeline(
         pipeline_name='a',
@@ -186,6 +204,8 @@ class PipelineTest(tf.test.TestCase):
     self.assertEqual(my_pipeline.metadata_connection_config,
                      self._metadata_connection_config)
     self.assertTrue(my_pipeline.enable_cache)
+    self.assertEqual(component_e.executor_spec.beam_pipeline_args,
+                     ['--runner=PortableRunner'])
     self.assertCountEqual(my_pipeline.beam_pipeline_args,
                           ['--runner=PortableRunner'])
     self.assertDictEqual(my_pipeline.additional_pipeline_args, {})
@@ -282,17 +302,23 @@ class PipelineTest(tf.test.TestCase):
     self.assertNotIn('TFX_JSON_EXPORT_PIPELINE_ARGS_PATH', os.environ)
 
   def testPipelineWithBeamPipelineArgs(self):
+    expected_args = [
+        '--my_first_beam_pipeline_args=foo',
+        '--my_second_beam_pipeline_args=bar'
+    ]
     p = pipeline.Pipeline(
         pipeline_name='a',
         pipeline_root='b',
         log_root='c',
         components=[
-            _make_fake_component_instance('component_a', _OutputTypeA, {}, {})
+            _make_fake_component_instance(
+                'component_a', _OutputTypeA, {}, {},
+                with_beam=True).with_beam_pipeline_args([expected_args[1]])
         ],
-        beam_pipeline_args=['--my_testing_beam_pipeline_args=foo'],
+        beam_pipeline_args=[expected_args[0]],
         metadata_connection_config=self._metadata_connection_config)
-    self.assertIn('--my_testing_beam_pipeline_args=foo',
-                  p.components[0].executor_spec.extra_flags)
+    self.assertEqual(expected_args,
+                     p.components[0].executor_spec.beam_pipeline_args)
 
 
 if __name__ == '__main__':

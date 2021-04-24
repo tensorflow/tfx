@@ -81,8 +81,8 @@ class Pipeline(object):
     metadata_connection_config: The config to connect to ML metadata.
     execution_mode: Execution mode of the pipeline. Currently only support
       synchronous execution mode.
-    beam_pipeline_args: Pipeline arguments for Beam powered Components. Note
-      that this will be deprecated by component level Beam args.
+    beam_pipeline_args: Pipeline arguments for Beam powered Components. Use
+      `with_beam_pipeline_args` to set component level Beam args.
     platform_config: Pipeline level platform config, in proto form.
   """
 
@@ -94,7 +94,6 @@ class Pipeline(object):
           metadata.ConnectionConfigType] = None,
       components: Optional[List[base_node.BaseNode]] = None,
       enable_cache: Optional[bool] = False,
-      # TODO(b/173621791): deprecate pipeline level beam args.
       beam_pipeline_args: Optional[List[Text]] = None,
       platform_config: Optional[message.Message] = None,
       execution_mode: Optional[ExecutionMode] = ExecutionMode.SYNC,
@@ -149,16 +148,19 @@ class Pipeline(object):
     # TODO(b/156000550): Currently `beam_pipeline_args` is set at pipeline
     # level in the SDK. However it is subject to change, to move to per-node
     # configuration. We will need to change the following logic accordingly.
-    if not self.beam_pipeline_args:
-      return
-    for component in components:
-      if isinstance(component.executor_spec, executor_spec.BeamExecutorSpec):
-        cast(executor_spec.BeamExecutorSpec,
-             component.executor_spec).beam_pipeline_args.extend(
-                 beam_pipeline_args)
-      elif isinstance(component.executor_spec, executor_spec.ExecutorClassSpec):
-        cast(executor_spec.ExecutorClassSpec,
-             component.executor_spec).extra_flags.extend(beam_pipeline_args)
+    if self.beam_pipeline_args:
+      for component in components:
+        if isinstance(component.executor_spec, executor_spec.BeamExecutorSpec):
+          cast(executor_spec.BeamExecutorSpec, component.executor_spec
+              ).beam_pipeline_args = beam_pipeline_args + cast(
+                  executor_spec.BeamExecutorSpec,
+                  component.executor_spec).beam_pipeline_args
+        elif isinstance(component.executor_spec,
+                        executor_spec.ExecutorClassSpec):
+          cast(executor_spec.ExecutorClassSpec,
+               component.executor_spec).extra_flags = beam_pipeline_args + cast(
+                   executor_spec.ExecutorClassSpec,
+                   component.executor_spec).extra_flags
 
   @property
   def components(self):

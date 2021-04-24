@@ -38,8 +38,8 @@ class ComponentTest(tf.test.TestCase):
           base_beam_executor.BaseBeamExecutor)
       SPEC_CLASS = _EmptyComponentSpec
 
-    beam_component = BeamComponent(spec=_EmptyComponentSpec())
-    beam_component.with_beam_pipeline_args(_TestBeamPipelineArgs)
+    beam_component = BeamComponent(spec=_EmptyComponentSpec(
+    )).with_beam_pipeline_args(_TestBeamPipelineArgs)
     self.assertEqual(beam_component.executor_spec.beam_pipeline_args,
                      _TestBeamPipelineArgs)
 
