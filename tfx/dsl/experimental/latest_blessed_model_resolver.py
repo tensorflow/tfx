@@ -1,3 +1,4 @@
+# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,6 +14,10 @@
 # limitations under the License.
 """Experimental Resolver for getting the latest artifact."""
 
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+
 from typing import Dict, List, Text, Optional
 
 from tfx import types
@@ -23,8 +28,6 @@ from tfx.orchestration import metadata
 from tfx.types import artifact_utils
 from tfx.types import standard_artifacts
 from tfx.utils import doc_controls
-
-import ml_metadata as mlmd
 
 
 # TODO(b/185938426): consider renaming this to XxxResolverStrategy.
@@ -136,13 +139,13 @@ class LatestBlessedModelResolver(resolver.ResolverStrategy):
 
   @doc_controls.do_not_generate_docs
   def resolve_artifacts(
-      self, store: mlmd.MetadataStore,
+      self, metadata_handler: metadata.Metadata,
       input_dict: Dict[Text, List[types.Artifact]]
   ) -> Optional[Dict[Text, List[types.Artifact]]]:
     """Resolves artifacts from channels by querying MLMD.
 
     Args:
-      store: An MLMD MetadataStore object.
+      metadata_handler: A metadata handler to access MLMD store.
       input_dict: The input_dict to resolve from.
 
     Returns:

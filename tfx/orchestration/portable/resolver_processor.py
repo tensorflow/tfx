@@ -59,9 +59,7 @@ class ResolverStepProcessor:
         for key, value in input_dict.items()
         if key not in filtered_keys
     }
-    result = self._resolver.resolve_artifacts(
-        metadata_handler.store,
-        filtered_inputs)
+    result = self._resolver.resolve_artifacts(metadata_handler, filtered_inputs)
     if result is not None:
       result.update(bypassed_inputs)
     return result

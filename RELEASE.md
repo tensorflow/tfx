@@ -53,8 +53,6 @@
    dsl_utils, which were called as deprecated in TFX 0.23.
 *  Changed the storage type of `span` and `version` custom property in Examples
    artifact from string to int.
-*  `ResolverStrategy.resolve_artifacts()` method signature has changed to take
-   `ml_metadata.MetadataStore` object as the first argument.
 
 ### For Pipeline Authors
 
