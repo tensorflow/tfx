@@ -15,10 +15,9 @@
 
 import abc
 import typing
-from typing import Dict, List, Optional, Type, TypeVar
+from typing import Optional, Type, TypeVar
 
 import attr
-from tfx import types
 from tfx.orchestration import metadata
 from tfx.orchestration.experimental.core import status as status_lib
 from tfx.orchestration.experimental.core import task as task_lib
@@ -36,20 +35,10 @@ class TaskSchedulerResult:
       `executor_output` matters if the scheduler status is `OK`. Otherwise,
       `executor_output` may be `None` and is ignored.
     executor_output: An instance of `ExecutorOutput` containing the results of
-      task execution. Neither or one of `executor_output` or `output_artifacts`
-      but not both should be returned in the response.
-    output_artifacts: Output artifacts dict containing the results of task
-      execution. Neither or one of `executor_output` or `output_artifacts` but
-      not both should be returned in the response.
+      task execution.
   """
   status: status_lib.Status
   executor_output: Optional[execution_result_pb2.ExecutorOutput] = None
-  output_artifacts: Optional[Dict[str, List[types.Artifact]]] = None
-
-  def __attrs_post_init__(self):
-    if self.executor_output is not None and self.output_artifacts is not None:
-      raise ValueError(
-          'Only one of output_artifacts or executor_output must be set.')
 
 
 class TaskScheduler(abc.ABC):
@@ -104,21 +93,22 @@ class TaskSchedulerRegistry:
   _task_scheduler_registry = {}
 
   @classmethod
-  def register(cls: Type[T], url: str,
+  def register(cls: Type[T], executor_spec_type_url: str,
                scheduler_class: Type[TaskScheduler]) -> None:
-    """Registers a new task scheduler for the given url.
+    """Registers a new task scheduler for the given executor spec type url.
 
     Args:
-      url: The URL associated with the task scheduler. It should either be the
-        node type url or executor spec url.
+      executor_spec_type_url: The URL of the executor spec type.
       scheduler_class: The class that will be instantiated for a matching task.
 
     Raises:
-      ValueError: If `url` is already in the registry.
+      ValueError: If `executor_spec_type_url` is already in the registry.
     """
-    if url in cls._task_scheduler_registry:
-      raise ValueError(f'A task scheduler already exists for the url: {url}')
-    cls._task_scheduler_registry[url] = scheduler_class
+    if executor_spec_type_url in cls._task_scheduler_registry:
+      raise ValueError(
+          'A task scheduler already exists for the executor spec type url: {}'
+          .format(executor_spec_type_url))
+    cls._task_scheduler_registry[executor_spec_type_url] = scheduler_class
 
   @classmethod
   def clear(cls: Type[T]) -> None:
@@ -130,14 +120,8 @@ class TaskSchedulerRegistry:
                             task: task_lib.Task) -> TaskScheduler:
     """Creates a task scheduler for the given task.
 
-    The task is matched as follows:
-    1. The node type name of the node associated with the task is looked up in
-       the registry and a scheduler is instantiated if present.
-    2. Next, the executor spec url of the node (if one exists) is looked up in
-       the registry and a scheduler is instantiated if present. This assumes
-       deployment_config packed in the pipeline IR is of type
-       `IntermediateDeploymentConfig`.
-    3. Lastly, a ValueError is raised if no match can be found.
+    Note that this assumes deployment_config packed in the pipeline IR is of
+    type `IntermediateDeploymentConfig`. This detail may change in the future.
 
     Args:
       mlmd_handle: A handle to the MLMD db.
@@ -149,54 +133,24 @@ class TaskSchedulerRegistry:
 
     Raises:
       NotImplementedError: Raised if not an `ExecNodeTask`.
-      ValueError: If a scheduler could not be found in the registry for the
-        given task.
+      ValueError: Deployment config not present in the IR proto or if executor
+        spec for the node corresponding to `task` not configured in the IR.
     """
-
     if not task_lib.is_exec_node_task(task):
       raise NotImplementedError(
           'Can create a task scheduler only for an `ExecNodeTask`.')
     task = typing.cast(task_lib.ExecNodeTask, task)
-
-    try:
-      scheduler_class = cls._scheduler_class_for_node_type(task)
-    except ValueError as e1:
-      try:
-        scheduler_class = cls._scheduler_class_for_executor_spec(pipeline, task)
-      except ValueError as e2:
-        raise ValueError(f'No task scheduler found: {e1}, {e2}') from None
-
-    return scheduler_class(
-        mlmd_handle=mlmd_handle, pipeline=pipeline, task=task)
-
-  @classmethod
-  def _scheduler_class_for_node_type(
-      cls: Type[T], task: task_lib.ExecNodeTask) -> Type[TaskScheduler]:
-    """Returns scheduler class for node type or raises error if none registered."""
-    node_type = task.get_pipeline_node().node_info.type.name
-    scheduler_class = cls._task_scheduler_registry.get(node_type)
-    if scheduler_class is None:
-      raise ValueError(
-          f'No task scheduler registered for node type: {node_type}')
-    return scheduler_class
-
-  @classmethod
-  def _scheduler_class_for_executor_spec(
-      cls: Type[T], pipeline: pipeline_pb2.Pipeline,
-      task: task_lib.ExecNodeTask) -> Type[TaskScheduler]:
-    """Returns scheduler class for executor spec url if feasible, raises error otherwise."""
+    # TODO(b/170383494): Decide which DeploymentConfig to use.
     if not pipeline.deployment_config.Is(
         pipeline_pb2.IntermediateDeploymentConfig.DESCRIPTOR):
-      raise ValueError('No deployment config found in pipeline IR')
+      raise ValueError('No deployment config found in pipeline IR.')
     depl_config = pipeline_pb2.IntermediateDeploymentConfig()
     pipeline.deployment_config.Unpack(depl_config)
     node_id = task.node_uid.node_id
     if node_id not in depl_config.executor_specs:
-      raise ValueError(f'Executor spec not found for node id: {node_id}')
-    executor_spec_type_url = depl_config.executor_specs[node_id].type_url
-    scheduler_class = cls._task_scheduler_registry.get(executor_spec_type_url)
-    if scheduler_class is None:
       raise ValueError(
-          f'No task scheduler registered for executor spec type url: '
-          f'{executor_spec_type_url}')
-    return scheduler_class
+          'Executor spec for node id `{}` not found in pipeline IR.'.format(
+              node_id))
+    executor_spec_type_url = depl_config.executor_specs[node_id].type_url
+    return cls._task_scheduler_registry[executor_spec_type_url](
+        mlmd_handle=mlmd_handle, pipeline=pipeline, task=task)

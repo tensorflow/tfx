@@ -39,7 +39,7 @@ def as_channel(artifacts: Iterable[Artifact]) -> Channel:
   try:
     first_element = next(iter(artifacts))
     if isinstance(first_element, Artifact):
-      return Channel(type=first_element.type).set_artifacts(artifacts)
+      return Channel(type=first_element.type, artifacts=artifacts)
     else:
       raise ValueError('Invalid artifact iterable: {}'.format(artifacts))
   except StopIteration:

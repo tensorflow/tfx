@@ -44,8 +44,9 @@ class NotebookFormattersTest(tf.test.TestCase):
                   self._format(examples)))
 
     # Channel containing artifact.
-    channel = types.Channel(type=standard_artifacts.Examples).set_artifacts(
-        [examples])
+    channel = types.Channel(
+        type=standard_artifacts.Examples,
+        artifacts=[examples])
     self.assertIsNotNone(
         re.search(('.*Channel.*of type.*Examples'
                    '(.|\n)*Artifact.*of type.*Examples'),

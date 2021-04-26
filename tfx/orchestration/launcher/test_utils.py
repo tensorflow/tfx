@@ -100,7 +100,7 @@ class _FakeComponent(base_component.BaseComponent):
                output_channel: Optional[types.Channel] = None,
                custom_executor_spec: executor_spec.ExecutorSpec = None):
     output_channel = output_channel or types.Channel(
-        type=_OutputArtifact).set_artifacts([_OutputArtifact()])
+        type=_OutputArtifact, artifacts=[_OutputArtifact()])
     spec = _FakeComponentSpec(input=input_channel, output=output_channel)
     super(_FakeComponent, self).__init__(
         spec=spec,

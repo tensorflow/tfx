@@ -16,9 +16,10 @@
 from tfx.extensions.google_cloud_ai_platform.bulk_inferrer.component import CloudAIBulkInferrerComponent as BulkInferrer
 from tfx.extensions.google_cloud_ai_platform.pusher.component import Pusher
 from tfx.extensions.google_cloud_ai_platform.trainer.component import Trainer
-from tfx.extensions.google_cloud_ai_platform.trainer.executor import ENABLE_UCAIP_KEY
-from tfx.extensions.google_cloud_ai_platform.trainer.executor import JOB_ID_KEY
 from tfx.extensions.google_cloud_ai_platform.trainer.executor import TRAINING_ARGS_KEY
-from tfx.extensions.google_cloud_ai_platform.trainer.executor import UCAIP_REGION_KEY
+
 from tfx.extensions.google_cloud_ai_platform.tuner.component import Tuner
-from tfx.v1.extensions.google_cloud_ai_platform import experimental
+
+_EXTRA_DOCS = {
+    id(TRAINING_ARGS_KEY): "Keys to the items in custom_config of Trainer.",
+}

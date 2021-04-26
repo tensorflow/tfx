@@ -182,7 +182,8 @@ class ComponentTest(tf.test.TestCase):
       InvalidDriverComponent._validate_component_class()
 
   def testJsonify(self):
-    input_channel = types.Channel(type=_InputArtifact)
+    input_channel = types.Channel(
+        type=_InputArtifact, artifacts=[_InputArtifact()])
     component = _BasicComponent(folds=10, input=input_channel)
     json_dict = json_utils.dumps(component)
     recovered_component = json_utils.loads(json_dict)
@@ -190,6 +191,7 @@ class ComponentTest(tf.test.TestCase):
     self.assertEqual(recovered_component.component_id, "_BasicComponent")
     self.assertEqual(input_channel.type,
                      recovered_component.inputs["input"].type)
+    self.assertEqual(len(recovered_component.inputs["input"].get()), 1)
     self.assertIsInstance(recovered_component.outputs["output"], types.Channel)
     self.assertEqual(recovered_component.outputs["output"].type,
                      _OutputArtifact)

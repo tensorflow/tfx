@@ -28,13 +28,11 @@ import absl
 import tensorflow as tf
 import tensorflow_transform as tft
 
-from tfx.components.trainer.fn_args_utils import DataAccessor
 from tfx.components.trainer.fn_args_utils import FnArgs
 from tfx.components.trainer.rewriting import converters
 from tfx.components.trainer.rewriting import rewriter
 from tfx.components.trainer.rewriting import rewriter_factory
 from tfx.dsl.io import fileio
-from tfx_bsl.tfxio import dataset_options
 
 import flatbuffers
 from tflite_support import metadata_schema_py_generated as _metadata_fb
@@ -66,6 +64,11 @@ _TFLITE_MODEL_NAME = 'tflite'
 
 def _transformed_name(key):
   return key + '_xf'
+
+
+def _gzip_reader_fn(filenames):
+  """Small utility returning a record reader that can read gzip'ed files."""
+  return tf.data.TFRecordDataset(filenames, compression_type='GZIP')
 
 
 def _get_serve_image_fn(model):
@@ -120,7 +123,6 @@ def _data_augmentation(feature_dict):
 
 
 def _input_fn(file_pattern: List[Text],
-              data_accessor: DataAccessor,
               tf_transform_output: tft.TFTransformOutput,
               is_train: bool = False,
               batch_size: int = 200) -> tf.data.Dataset:
@@ -128,7 +130,6 @@ def _input_fn(file_pattern: List[Text],
 
   Args:
     file_pattern: List of paths or patterns of input tfrecord files.
-    data_accessor: DataAccessor for converting input to RecordBatch.
     tf_transform_output: A TFTransformOutput.
     is_train: Whether the input dataset is train split or not.
     batch_size: representing the number of consecutive elements of returned
@@ -138,11 +139,15 @@ def _input_fn(file_pattern: List[Text],
     A dataset that contains (features, indices) tuple where features is a
       dictionary of Tensors, and indices is a single Tensor of label indices.
   """
-  dataset = data_accessor.tf_dataset_factory(
-      file_pattern,
-      dataset_options.TensorFlowDatasetOptions(
-          batch_size=batch_size, label_key=_transformed_name(_LABEL_KEY)),
-      tf_transform_output.transformed_metadata.schema)
+  transformed_feature_spec = (
+      tf_transform_output.transformed_feature_spec().copy())
+  dataset = tf.data.experimental.make_batched_features_dataset(
+      file_pattern=file_pattern,
+      batch_size=batch_size,
+      features=transformed_feature_spec,
+      reader=_gzip_reader_fn,
+      label_key=_transformed_name(_LABEL_KEY))
+
   # Apply data augmentation. We have to do data augmentation here because
   # we need to apply data agumentation on-the-fly during training. If we put
   # it in Transform, it will only be applied once on the whole dataset, which
@@ -319,13 +324,11 @@ def run_fn(fn_args: FnArgs):
 
   train_dataset = _input_fn(
       fn_args.train_files,
-      fn_args.data_accessor,
       tf_transform_output,
       is_train=True,
       batch_size=_TRAIN_BATCH_SIZE)
   eval_dataset = _input_fn(
       fn_args.eval_files,
-      fn_args.data_accessor,
       tf_transform_output,
       is_train=False,
       batch_size=_EVAL_BATCH_SIZE)

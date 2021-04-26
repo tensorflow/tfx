@@ -272,19 +272,16 @@ def _publish_execution_results(mlmd_handle: metadata.Metadata,
     _update_state(result.status)
     return
 
-  publish_params = dict(output_artifacts=task.output_artifacts)
-  if result.output_artifacts is not None:
-    publish_params['output_artifacts'] = result.output_artifacts
-  elif result.executor_output is not None:
-    if result.executor_output.execution_result.code != status_lib.Code.OK:
-      _update_state(
-          status_lib.Status(
-              code=result.executor_output.execution_result.code,
-              message=result.executor_output.execution_result.result_message))
-      return
-    publish_params['executor_output'] = result.executor_output
+  if (result.executor_output and
+      result.executor_output.execution_result.code != status_lib.Code.OK):
+    _update_state(
+        status_lib.Status(
+            code=result.executor_output.execution_result.code,
+            message=result.executor_output.execution_result.result_message))
+    return
 
   execution_publish_utils.publish_succeeded_execution(mlmd_handle,
                                                       task.execution.id,
                                                       task.contexts,
-                                                      **publish_params)
+                                                      task.output_artifacts,
+                                                      result.executor_output)

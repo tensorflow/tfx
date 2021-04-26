@@ -661,6 +661,23 @@ message PipelineDeploymentConfig {
       // TODO(b/171299035): Support persistent disk spec.
     }
     ResourceSpec resources = 5;
+
+    // Environment variables to be passed to the container.
+    message EnvVar {
+      // Name of the environment variable. Must be a valid C identifier.
+      string name = 1;
+
+      // Variables that reference a $(VAR_NAME) are expanded
+      // using the previous defined environment variables in the container and
+      // any service environment variables. If a variable cannot be resolved,
+      // the reference in the input string will be unchanged. The $(VAR_NAME)
+      // syntax can be escaped with a double $$, ie: $$(VAR_NAME). Escaped
+      // references will never be expanded, regardless of whether the variable
+      // exists or not.
+      string value = 2;
+    }
+    // Environment variables to be passed to the container.
+    repeated EnvVar env = 6;
   }
 
   // The specification to import or reimport a new artifact to the pipeline.
