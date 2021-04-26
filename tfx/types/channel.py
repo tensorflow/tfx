@@ -17,6 +17,7 @@ import inspect
 import json
 import textwrap
 from typing import Any, Dict, Iterable, Optional, Text, Type, Union
+from absl import logging
 
 from tfx.types import artifact_utils
 from tfx.types.artifact import Artifact
@@ -60,8 +61,7 @@ class Channel(json_utils.Jsonable):
       additional_custom_properties: (Optional) A mapping of custom_properties
         which will be added to artifacts when this channel is used as an output
         of components.
-      artifacts: (Optional) A collection of artifacts as the values that can be
-        read from the Channel. This is used to construct a static Channel.
+      artifacts: Deprecated and ignored, kept only for backward compatibility.
       matching_channel_name: This targets to the key of an input Channel dict
         in a Component. The artifacts count of this channel will be decided at
         runtime in Driver, based on the artifacts count of the target channel.
@@ -76,12 +76,7 @@ class Channel(json_utils.Jsonable):
           'tfx.Artifact (got %r).' % (type,))
 
     self.type = type
-    self._artifacts = artifacts or []
     self.matching_channel_name = matching_channel_name
-    if self.matching_channel_name and self._artifacts:
-      raise ValueError(
-          'Only one of `artifacts` and `matching_channel_name` should be set.')
-    self._validate_type()
 
     self.additional_properties = additional_properties or {}
     self.additional_custom_properties = additional_custom_properties or {}
@@ -89,6 +84,11 @@ class Channel(json_utils.Jsonable):
     # The following fields will be populated during compilation time.
     self.producer_component_id = producer_component_id
     self.output_key = output_key
+
+    if artifacts:
+      logging.warning(
+          'Artifacts param is ignored by Channel constructor, please remove!')
+    self._artifacts = []
 
   @property
   def type_name(self):
@@ -111,6 +111,16 @@ class Channel(json_utils.Jsonable):
         raise ValueError(
             "Artifacts provided do not match Channel's artifact type {}".format(
                 self.type_name))
+
+  # TODO(b/161490287): deprecate static artifact.
+  def set_artifacts(self, artifacts: Iterable[Artifact]) -> 'Channel':
+    """Sets artifacts for a static Channel. Will be deprecated."""
+    if self.matching_channel_name:
+      raise ValueError(
+          'Only one of `artifacts` and `matching_channel_name` should be set.')
+    self._artifacts = artifacts
+    self._validate_type()
+    return self
 
   def get(self) -> Iterable[Artifact]:
     """Returns all artifacts that can be get from this Channel.
@@ -151,8 +161,7 @@ class Channel(json_utils.Jsonable):
     output_key = dict_data.get('output_key', None)
     return Channel(
         type=type_cls,
-        artifacts=artifacts,
         additional_properties=additional_properties,
         additional_custom_properties=additional_custom_properties,
         producer_component_id=producer_component_id,
-        output_key=output_key)
+        output_key=output_key).set_artifacts(artifacts)

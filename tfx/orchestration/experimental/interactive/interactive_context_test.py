@@ -161,9 +161,8 @@ class InteractiveContextTest(tf.test.TestCase):
         super(_FakeComponent, self).__init__(spec=spec)
 
     c = interactive_context.InteractiveContext()
-    foo = types.Channel(
-        type=standard_artifacts.Examples,
-        artifacts=[standard_artifacts.Examples()])
+    foo = types.Channel(type=standard_artifacts.Examples).set_artifacts(
+        [standard_artifacts.Examples()])
     component = _FakeComponent(_FakeComponentSpec(input=foo))
     with self.assertRaisesRegexp(ValueError, 'Unresolved input channel'):
       c.run(component)
@@ -213,8 +212,8 @@ class InteractiveContextTest(tf.test.TestCase):
     mock_object.assert_not_called()
     artifact = standard_artifacts.ExampleAnomalies()
     context.show(
-        types.Channel(
-            type=standard_artifacts.ExampleAnomalies, artifacts=[artifact]))
+        types.Channel(type=standard_artifacts.ExampleAnomalies).set_artifacts(
+            [artifact]))
     mock_object.assert_called_with(artifact)
 
   @mock.patch('tfx.orchestration.launcher.in_process_component_launcher.'

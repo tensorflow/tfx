@@ -278,13 +278,14 @@ class Importer(base_node.BaseNode):
     artifact = artifact_type()
     _set_artifact_properties(artifact, properties, custom_properties)
 
+    # TODO(b/161490287): remove static artifacts.
     self._output_dict = {
         IMPORT_RESULT_KEY:
             types.Channel(
                 type=artifact_type,
-                artifacts=[artifact],
                 additional_properties=properties,
-                additional_custom_properties=custom_properties)
+                additional_custom_properties=custom_properties).set_artifacts(
+                    [artifact])
     }
 
     super(Importer, self).__init__(

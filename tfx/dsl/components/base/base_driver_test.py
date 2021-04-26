@@ -60,19 +60,15 @@ class BaseDriverTest(tf.test.TestCase):
     self._input_dict = {
         'input_data':
             types.Channel(
-                type=_InputArtifact,
-                artifacts=[_InputArtifact()],
-                producer_component_id='c',
-                output_key='k'),
+                type=_InputArtifact, producer_component_id='c',
+                output_key='k').set_artifacts([_InputArtifact()]),
         'input_string':
             types.Channel(
                 type=standard_artifacts.String,
-                artifacts=[
-                    standard_artifacts.String(),
-                    standard_artifacts.String()
-                ],
                 producer_component_id='c2',
-                output_key='k2'),
+                output_key='k2').set_artifacts(
+                    [standard_artifacts.String(),
+                     standard_artifacts.String()]),
     }
     input_dir = os.path.join(
         os.environ.get('TEST_TMP_DIR', self.get_temp_dir()),

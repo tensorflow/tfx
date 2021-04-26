@@ -147,7 +147,7 @@ class CompilerUtilsTest(tf.test.TestCase):
     examples.set_int_custom_property(key='int_param', value=42)
     examples.set_string_custom_property(key='str_param', value='42')
     example_channel = channel.Channel(
-        type=standard_artifacts.Examples, artifacts=[examples])
+        type=standard_artifacts.Examples).set_artifacts([examples])
     spec = compiler_utils.build_output_artifact_spec(example_channel)
     expected_spec = text_format.Parse(
         """
