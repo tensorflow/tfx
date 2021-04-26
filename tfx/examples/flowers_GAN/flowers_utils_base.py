@@ -50,7 +50,8 @@ def preprocessing_fn(inputs: Dict[str, Any]) -> Dict[str, Any]:
     Preprocessing function that follows the TFX requirements.
     For more information how this function could be set up: notebooks/read-tfrecords-image.ipynb.
 
-    :param inputs: dictionary containing TFRecords data metrics.
+    Args:
+        inputs: dictionary containing TFRecords data metrics.
     """
     image_key = 'image_raw'
 

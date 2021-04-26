@@ -27,13 +27,13 @@ from tfx.components import SchemaGen
 from tfx.components import StatisticsGen
 from tfx.components import Trainer
 from tfx.components import Transform
-from tfx.components import Tuner
 from tfx.orchestration import metadata
 from tfx.orchestration import pipeline
 from tfx.orchestration.local.local_dag_runner import LocalDagRunner
 from tfx.proto import example_gen_pb2
 from tfx.proto import pusher_pb2
 from tfx.proto import trainer_pb2
+from tfx.proto import range_config_pb2
 
 flags.DEFINE_enum(
     'model_framework', 'keras', ['keras', 'flax_experimental'],
@@ -47,7 +47,7 @@ _data_root = os.path.join(_flowers_root, 'data')
 # Directory and data locations.  This example assumes all of the
 # example code and metadata library is relative to $HOME, but you can store
 # these files anywhere on your local filesystem.
-_tfx_root = os.path.join(os.environ['HOME'], 'tfx')
+_tfx_root = os.path.join(_flowers_root, 'tfx')
 
 # Pipeline arguments for Beam powered Components.
 _beam_pipeline_args = [
@@ -67,6 +67,8 @@ def _create_pipeline(
         metadata_path: Text,
         train_steps: int,
         eval_steps: int,
+        examplegen_input_config: Optional[example_gen_pb2.Input],
+        examplegen_range_config: Optional[range_config_pb2.RangeConfig],
         beam_pipeline_args: List[Text],
         enable_cache: Optional[bool] = True
 ) -> pipeline.Pipeline:
@@ -79,6 +81,8 @@ def _create_pipeline(
       module_file: path to files used in Trainer and Transform components.
       serving_model_dir: filepath to write pipeline SavedModel to.
       metadata_path: path to local pipeline ML Metadata store.
+      examplegen_input_config: ExampleGen's input_config.
+      examplegen_range_config: ExampleGen's range_config.
       beam_pipeline_args: list of beam pipeline options for LocalDAGRunner. Please
         refer to https://beam.apache.org/documentation/runners/direct/.
       enable_cache: Optional boolean
@@ -94,6 +98,8 @@ def _create_pipeline(
         ]))
 
     example_gen = ImportExampleGen(input_base=data_root,
+                                   input_config=examplegen_input_config,
+                                   range_config=examplegen_range_config,
                                    output_config=output_config)
 
     # Computes statistics over data for visualization and example validation.

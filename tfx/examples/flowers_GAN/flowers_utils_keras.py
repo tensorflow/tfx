@@ -41,8 +41,8 @@ BATCH_SIZE = 64
 MODEL_VERSION = 1
 
 
-def _gzip_reader_fn(
-        filenames: Union[type(tf.string), type(tf.data.Dataset)]) -> tf.data.TFRecordDataset:
+def _gzip_reader_fn(filenames: Union[type(tf.string), type(tf.data.Dataset)]
+                    ) -> tf.data.TFRecordDataset:
     """Function to read in GZipped TFRecords as datasets."""
     return tf.data.TFRecordDataset(filenames,
                                    compression_type='GZIP')
@@ -93,7 +93,7 @@ def _get_serve_tf_examples_fn(model, tf_transform_output: tft.TFTransformOutput)
     return serve_tf_examples_fn
 
 
-def _get_serve_tf_examples_fn_generator(model):
+def _get_serve_tf_examples_fn_generator(model: Model):
     """Returns a function that parses a serialized tf.Example.
     Serving function for a GAN generator that receives noise as input."""
 
