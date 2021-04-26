@@ -23,13 +23,13 @@ from typing import Dict, Union, List, Text
 
 import tensorflow as tf
 import tensorflow_transform as tft
-from tfx.components.trainer.fn_args_utils import FnArgs
 from tensorflow.keras import layers, Input, Sequential, Model
 from tensorflow.keras.optimizers import Optimizer
 from tensorflow.keras.losses import Loss
 from tensorflow import Tensor
 import tensorflow.keras as keras
 
+from tfx.components.trainer.fn_args_utils import FnArgs
 from tfx.examples.flowers_GAN import flowers_utils_base as base
 from tfx.examples.flowers_GAN.flowers_utils_base import transformed_name, _LABEL_KEY
 

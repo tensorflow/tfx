@@ -39,7 +39,7 @@ from ml_metadata.proto import metadata_store_pb2
                  'Uses keras Model only compatible with TF 2.x')
 class FlowersPipelineLocalEndToEndTest(tf.test.TestCase,
                                        parameterized.TestCase):
-
+    """Test class for flower GAN pipeline."""
     def setUp(self):
         super(FlowersPipelineLocalEndToEndTest, self).setUp()
 
@@ -58,10 +58,12 @@ class FlowersPipelineLocalEndToEndTest(tf.test.TestCase,
         self._metadata_path = os.path.join(self._test_dir, 'tfx', 'metadata',
                                            self._pipeline_name, 'metadata.db')
 
-    def _module_file_name(self, model_framework: str) -> str:
+    @staticmethod
+    def _module_file_name(model_framework: str) -> str:
         return os.path.join(
             os.path.dirname(__file__), f'flowers_utils_{model_framework}.py')
 
+    # pylint: disable=invalid-name
     def _assertExecutedOnce(self, component: Text) -> None:
         """Check the component is executed exactly once."""
         component_path = os.path.join(self._pipeline_root, component)
@@ -71,6 +73,7 @@ class FlowersPipelineLocalEndToEndTest(tf.test.TestCase,
         execution = fileio.listdir(execution_path)
         self.assertLen(execution, 1)
 
+    # pylint: disable=invalid-name
     def _assertPipelineExecution(self) -> None:
         self._assertExecutedOnce('ImportExampleGen')
         self._assertExecutedOnce('ExampleValidator')
@@ -83,6 +86,7 @@ class FlowersPipelineLocalEndToEndTest(tf.test.TestCase,
     @parameterized.parameters(
         ('keras',))
     def testFlowersPipelineLocal(self, model_framework):
+        """Function to test flowers GAN pipeline with local runner."""
         module_file = self._module_file_name(model_framework)
         pipeline = flowers_pipeline_local._create_pipeline(
             pipeline_name=self._pipeline_name,
@@ -123,8 +127,9 @@ class FlowersPipelineLocalEndToEndTest(tf.test.TestCase,
             self.assertLen(m.store.get_artifacts(), artifact_count)
             self.assertLen(m.store.get_executions(), expected_execution_count * 2)
 
+    @staticmethod
     def _get_input_examples_artifacts(
-            self, store: mlmd.MetadataStore,
+            store: mlmd.MetadataStore,
             execution_type: Text) -> List[metadata_store_pb2.Artifact]:
         executions = store.get_executions_by_type(execution_type)
         # Get latest execution.

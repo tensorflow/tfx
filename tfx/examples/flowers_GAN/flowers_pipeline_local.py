@@ -209,4 +209,6 @@ if __name__ == '__main__':
             # enable_tuning=(flags.FLAGS.model_framework == 'keras'),
             train_steps=30,
             eval_steps=10,
+            examplegen_input_config=None,
+            examplegen_range_config=None,
             beam_pipeline_args=_beam_pipeline_args))
