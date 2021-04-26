@@ -24,6 +24,8 @@ from tfx.proto import range_config_pb2
 from tfx.types import artifact_utils
 from tfx.utils import doc_controls
 
+import ml_metadata as mlmd
+
 
 def _get_span_custom_property(artifact: types.Artifact) -> int:
   # For backward compatibility, span may be stored as a string.
@@ -138,13 +140,13 @@ class SpansResolver(resolver.ResolverStrategy):
 
   @doc_controls.do_not_generate_docs
   def resolve_artifacts(
-      self, metadata_handler: metadata.Metadata,
+      self, store: mlmd.MetadataStore,
       input_dict: Dict[Text, List[types.Artifact]]
   ) -> Optional[Dict[Text, List[types.Artifact]]]:
     """Resolves artifacts from channels by querying MLMD.
 
     Args:
-      metadata_handler: A metadata handler to access MLMD store.
+      store: An MLMD MetadataStore object.
       input_dict: The input_dict to resolve from.
 
     Returns:

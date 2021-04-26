@@ -26,6 +26,8 @@ from tfx.utils import deprecation_utils
 from tfx.utils import doc_controls
 from tfx.utils import json_utils
 
+import ml_metadata as mlmd
+
 # Constant to access resolver class from resolver exec_properties.
 RESOLVER_STRATEGY_CLASS = 'resolver_class'
 # Constant to access resolver config from resolver exec_properties.
@@ -90,11 +92,9 @@ class ResolverStrategy(abc.ABC):
     """
     raise DeprecationWarning
 
-  # TODO(b/185799094): metadata_handler should be mlmd.MetadataStore.
-  #                    move ResolverStrategy to public when this is done.
   @abc.abstractmethod
   def resolve_artifacts(
-      self, metadata_handler: metadata.Metadata,
+      self, store: mlmd.MetadataStore,
       input_dict: Dict[Text, List[types.Artifact]]
   ) -> Optional[Dict[Text, List[types.Artifact]]]:
     """Resolves artifacts from channels, optionally querying MLMD if needed.
@@ -111,15 +111,13 @@ class ResolverStrategy(abc.ABC):
     is to preserve all keys in the input_dict unless you have specific reason.
 
     Args:
-      metadata_handler: A metadata handler to access MLMD store. This is
-        subject to change in the future.
+      store: An MLMD MetadataStore.
       input_dict: The input_dict to resolve from.
 
     Returns:
       If all entries has enough data after the resolving, returns the resolved
       input_dict. Otherise, return None.
     """
-    raise NotImplementedError
 
 
 class _ResolverDriver(base_driver.BaseDriver):
@@ -202,7 +200,6 @@ class Resolver(base_node.BaseNode):
         strategy_class=SpansResolver,
         config={'range_config': range_config},
         examples=Channel(type=Examples, producer_component_id=example_gen.id))
-    examples_resolver.outputs['examples']
   trainer = Trainer(
       examples=examples_resolver.outputs['examples'],
       ...)
