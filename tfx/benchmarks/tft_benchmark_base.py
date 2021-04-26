@@ -124,7 +124,8 @@ class _AnalyzeAndTransformDataset(beam.PTransform):
       (transformed_dataset, transformed_metadata) = (
           ((raw_data, self._tfxio.TensorAdapterConfig()),
            (transform_fn, output_metadata))
-          | "TransformDataset" >> tft_beam.TransformDataset())
+          | "TransformDataset" >>
+          tft_beam.TransformDataset(output_record_batches=True))
       return transformed_dataset, transformed_metadata
 
 
