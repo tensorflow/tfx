@@ -11,10 +11,3 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Types used in Google Cloud AI Platform under experimental stage."""
-
-from tfx.extensions.google_cloud_ai_platform.bulk_inferrer.executor import SERVING_ARGS_KEY as BULK_INFERRER_SERVING_ARGS_KEY
-from tfx.extensions.google_cloud_ai_platform.pusher.executor import ENDPOINT_ARGS_KEY
-from tfx.extensions.google_cloud_ai_platform.pusher.executor import SERVING_ARGS_KEY as PUSHER_SERVING_ARGS_KEY
-from tfx.extensions.google_cloud_ai_platform.tuner.executor import REMOTE_TRIALS_WORKING_DIR_KEY
-from tfx.extensions.google_cloud_ai_platform.tuner.executor import TUNING_ARGS_KEY

@@ -23,6 +23,8 @@ from tfx.dsl.components.base import base_component
 from tfx.dsl.components.base import base_executor
 from tfx.dsl.components.base import executor_spec
 from tfx.dsl.components.common import resolver
+from tfx.dsl.input_resolution import decorator
+from tfx.dsl.input_resolution import resolver_operator
 from tfx.orchestration import metadata
 from tfx.orchestration import pipeline
 from tfx.proto.orchestration import execution_result_pb2
@@ -72,8 +74,7 @@ def create_dummy_component_type(name, inputs, outputs):
       spec_kwargs[output_key] = types.Channel(type=channel_param.type)
     spec = spec_cls(**spec_kwargs)
     component_cls = component_cls_holder[0]
-    super(component_cls, self).__init__(
-        spec=spec, instance_name=kwargs.get('instance_name'))
+    super(component_cls, self).__init__(spec=spec)
 
   component_cls = type(name, (base_component.BaseComponent,), {
       'SPEC_CLASS': spec_cls,
@@ -113,6 +114,16 @@ class DummyResolverStrategy(resolver.ResolverStrategy):
     return input_dict
 
 
+class Foo(resolver_operator.ResolverOp):
+  """Dummy ResolverOperator Foo."""
+  foo = resolver_operator.ResolverOpProperty(type=int)
+
+
+class Bar(resolver_operator.ResolverOp):
+  """Dummy ResolverOperator Bar."""
+  bar = resolver_operator.ResolverOpProperty(type=str)
+
+
 class TestCase(tf.test.TestCase):
 
   def setUp(self):
@@ -122,6 +133,16 @@ class TestCase(tf.test.TestCase):
     self.metadata_conn_config = metadata.sqlite_metadata_connection_config(
         os.path.join(temp_dir, 'metadata', 'metadata.db'))
     self.compiler = compiler.Compiler()
+
+  def compile_sync_pipeline(self, components):
+    p = pipeline.Pipeline(
+        'TestPipeline',
+        pipeline_root=self.pipeline_root,
+        metadata_connection_config=self.metadata_conn_config,
+        execution_mode=pipeline.ExecutionMode.SYNC,
+        components=components,
+    )
+    return self.compiler.compile(p)
 
   def compile_async_pipeline(self, components):
     p = pipeline.Pipeline(
@@ -146,7 +167,7 @@ class CompilerResolverTest(TestCase):
 
   def test_resolver_node_is_not_in_ir(self):
     a = DummyComponents.A()
-    r = Resolver('R', DummyResolverStrategy, x=a.outputs['x'])
+    r = Resolver(strategy_class=DummyResolverStrategy, x=a.outputs['x'])
     b = DummyComponents.B(x=r.outputs['x'])
     pipeline_ir = self.compile_async_pipeline([a, r, b])
 
@@ -155,7 +176,7 @@ class CompilerResolverTest(TestCase):
 
   def test_input_channel_skips_resolver_node(self):
     a = DummyComponents.A()
-    r = Resolver('R', DummyResolverStrategy, x=a.outputs['x'])
+    r = Resolver(strategy_class=DummyResolverStrategy, x=a.outputs['x'])
     b = DummyComponents.B(x=r.outputs['x'])
     pipeline_ir = self.compile_async_pipeline([a, r, b])
 
@@ -166,7 +187,7 @@ class CompilerResolverTest(TestCase):
 
   def test_resolver_config_is_added(self):
     a = DummyComponents.A()
-    r = Resolver('R', DummyResolverStrategy, x=a.outputs['x'])
+    r = Resolver(strategy_class=DummyResolverStrategy, x=a.outputs['x'])
     b = DummyComponents.B(x=r.outputs['x'])
     pipeline_ir = self.compile_async_pipeline([a, r, b])
 
@@ -178,7 +199,7 @@ class CompilerResolverTest(TestCase):
 
   def test_resolver_input_key_and_downstream_input_key_should_be_same(self):
     a = DummyComponents.A()
-    r = Resolver('R', DummyResolverStrategy, alt_x=a.outputs['x'])
+    r = Resolver(strategy_class=DummyResolverStrategy, alt_x=a.outputs['x'])
     b = DummyComponents.B(x=r.outputs['alt_x'])
 
     with self.assertRaisesRegex(ValueError, r'Downstream node input key \(x\) '
@@ -188,7 +209,7 @@ class CompilerResolverTest(TestCase):
 
   def test_multichannel_resolver(self):
     a = DummyComponents.A()
-    r = Resolver('R', DummyResolverStrategy,
+    r = Resolver(strategy_class=DummyResolverStrategy,
                  x=a.outputs['x'],
                  y=a.outputs['y'])
     b = DummyComponents.B(x=r.outputs['x'],
@@ -205,7 +226,7 @@ class CompilerResolverTest(TestCase):
 
   def test_skip_connection(self):
     a = DummyComponents.A()
-    r = Resolver('R', DummyResolverStrategy, x=a.outputs['x'])
+    r = Resolver(strategy_class=DummyResolverStrategy, x=a.outputs['x'])
     b = DummyComponents.B(x=r.outputs['x'], y=a.outputs['y'])
     pipeline_ir = self.compile_async_pipeline([a, r, b])
 
@@ -220,7 +241,7 @@ class CompilerResolverTest(TestCase):
   def test_duplicated_key_error_if_different_channel(self):
     a1 = DummyComponents.A().with_id('A1')
     a2 = DummyComponents.A().with_id('A2')
-    r = Resolver('R', DummyResolverStrategy,
+    r = Resolver(strategy_class=DummyResolverStrategy,
                  x=a1.outputs['x'],
                  y=a1.outputs['y'])
     b = DummyComponents.B(x=r.outputs['x'],
@@ -234,7 +255,7 @@ class CompilerResolverTest(TestCase):
   def test_multiple_upstream_nodes(self):
     a1 = DummyComponents.A().with_id('A1')
     a2 = DummyComponents.A().with_id('A2')
-    r = Resolver('R', DummyResolverStrategy,
+    r = Resolver(strategy_class=DummyResolverStrategy,
                  x=a1.outputs['x'],
                  y=a2.outputs['y'])
     b = DummyComponents.B(x=r.outputs['x'],
@@ -251,7 +272,7 @@ class CompilerResolverTest(TestCase):
     # resolver node can be shared across multiple downstream nodes with their
     # own resolver config.
     a = DummyComponents.A()
-    r = Resolver('R', DummyResolverStrategy,
+    r = Resolver(strategy_class=DummyResolverStrategy,
                  x=a.outputs['x'],
                  y=a.outputs['y'])
     b1 = DummyComponents.B(x=r.outputs['x']).with_id('B1')
@@ -271,12 +292,12 @@ class CompilerResolverTest(TestCase):
 
   def test_sequential_resolver_nodes(self):
     a = DummyComponents.A()
-    r1 = Resolver('R1', DummyResolverStrategy,
+    r1 = Resolver(strategy_class=DummyResolverStrategy,
                   config={'iam': 'r1'},
-                  x=a.outputs['x'])
-    r2 = Resolver('R2', DummyResolverStrategy,
+                  x=a.outputs['x']).with_id('R1')
+    r2 = Resolver(strategy_class=DummyResolverStrategy,
                   config={'iam': 'r2'},
-                  x=r1.outputs['x'])
+                  x=r1.outputs['x']).with_id('R2')
     b = DummyComponents.B(x=r2.outputs['x'])
     pipeline_ir = self.compile_async_pipeline([a, r1, r2, b])
 
@@ -299,13 +320,13 @@ class CompilerResolverTest(TestCase):
 
   def test_sequential_resolver_nodes_with_skip_connection(self):
     a = DummyComponents.A()
-    r1 = Resolver('R1', DummyResolverStrategy,
+    r1 = Resolver(strategy_class=DummyResolverStrategy,
                   config={'iam': 'r1'},
-                  x=a.outputs['x'])
-    r2 = Resolver('R2', DummyResolverStrategy,
+                  x=a.outputs['x']).with_id('R1')
+    r2 = Resolver(strategy_class=DummyResolverStrategy,
                   config={'iam': 'r2'},
                   x=r1.outputs['x'],
-                  y=a.outputs['y'])
+                  y=a.outputs['y']).with_id('R2')
     b = DummyComponents.B(x=r1.outputs['x'],
                           y=r2.outputs['y'])
     pipeline_ir = self.compile_async_pipeline([a, r1, r2, b])
@@ -332,8 +353,10 @@ class CompilerResolverTest(TestCase):
 
   def test_parallel_resolver_nodes(self):
     a = DummyComponents.A()
-    r1 = Resolver('R1', DummyResolverStrategy, x=a.outputs['x'])
-    r2 = Resolver('R2', DummyResolverStrategy, y=a.outputs['y'])
+    r1 = Resolver(strategy_class=DummyResolverStrategy,
+                  x=a.outputs['x']).with_id('R1')
+    r2 = Resolver(strategy_class=DummyResolverStrategy,
+                  y=a.outputs['y']).with_id('R2')
     b = DummyComponents.B(x=r1.outputs['x'], y=r2.outputs['y'])
     pipeline_ir = self.compile_async_pipeline([a, r1, r2, b])
 
@@ -346,6 +369,32 @@ class CompilerResolverTest(TestCase):
     self.assertEqual(
         b_ir.inputs.inputs['y'].channels[0].producer_node_query.id, 'A')
 
+  def test_functional_resolver_node(self):
+    # Linter doesn't understand the @resolver decorator has changed the
+    # signature of MyResolver, thus disables linters.
+    # pylint: disable=invalid-name
+    # pylint: disable=unexpected-keyword-arg
+    # pylint: disable=no-value-for-parameter
+
+    @decorator.resolver
+    def MyResolver(input_dict):
+      return Bar(Foo(input_dict, foo=1), bar='z')
+
+    a = DummyComponents.A()
+    r = MyResolver(x=a.outputs['x']).with_id('R')
+    pipeline_ir = self.compile_sync_pipeline([a, r])
+
+    r_ir = self.extract_pipeline_node(pipeline_ir, 'R')
+    resolver_steps = r_ir.inputs.resolver_config.resolver_steps
+    self.assertLen(resolver_steps, 2)
+    # Check steps[0]
+    self.assertEndsWith(resolver_steps[0].class_path, '.Foo')
+    self.assertEqual(json.loads(resolver_steps[0].config_json), {'foo': 1})
+    self.assertEqual(resolver_steps[0].input_keys, ['x'])
+    # Check steps[1]
+    self.assertEndsWith(resolver_steps[1].class_path, '.Bar')
+    self.assertEqual(json.loads(resolver_steps[1].config_json), {'bar': 'z'})
+    self.assertEqual(resolver_steps[1].input_keys, ['x'])
 
 if __name__ == '__main__':
   tf.test.main()

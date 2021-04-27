@@ -80,7 +80,4 @@ RESOLVER_CLASS = resolver.RESOLVER_STRATEGY_CLASS
 # Constant to access resolver config from resolver exec_properties.
 RESOLVER_CONFIGS = resolver.RESOLVER_CONFIG
 
-RESOLVER_CLASS_LIST = resolver.RESOLVER_STRATEGY_CLASS_LIST
-RESOLVER_CONFIG_LIST = resolver.RESOLVER_CONFIG_LIST
-
 ResolverNode = _make_deprecated_resolver_node_alias()

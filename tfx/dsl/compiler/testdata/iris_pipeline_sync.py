@@ -20,12 +20,12 @@ from tfx.components import Evaluator
 from tfx.components import ExampleValidator
 from tfx.components import ImporterNode
 from tfx.components import Pusher
-from tfx.components import ResolverNode
 from tfx.components import SchemaGen
 from tfx.components import StatisticsGen
 from tfx.components import Trainer
 from tfx.components.trainer.executor import GenericExecutor
 from tfx.dsl.components.base import executor_spec
+from tfx.dsl.components.common.resolver import Resolver
 from tfx.dsl.experimental import latest_blessed_model_resolver
 from tfx.orchestration import data_types
 from tfx.orchestration import pipeline
@@ -85,12 +85,13 @@ def create_test_pipeline():
       eval_args=trainer_pb2.EvalArgs(num_steps=5)).with_platform_config(
           config=trainer_pb2.TrainArgs(num_steps=2000))
 
-  model_resolver = ResolverNode(
+  model_resolver = Resolver(
       instance_name="latest_blessed_model_resolver",
-      resolver_class=latest_blessed_model_resolver.LatestBlessedModelResolver,
+      strategy_class=latest_blessed_model_resolver.LatestBlessedModelResolver,
       model=Channel(
           type=standard_artifacts.Model, producer_component_id=trainer.id),
-      model_blessing=Channel(type=standard_artifacts.ModelBlessing))
+      model_blessing=Channel(type=standard_artifacts.ModelBlessing)
+  ).with_id("Resolver.latest_blessed_model_resolver")
 
   eval_config = tfma.EvalConfig(
       model_specs=[tfma.ModelSpec(signature_name="eval")],

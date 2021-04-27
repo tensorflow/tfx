@@ -23,7 +23,6 @@ from tfx.components.pusher import executor as tfx_pusher_executor
 from tfx.extensions.google_cloud_ai_platform import runner
 from tfx.types import artifact_utils
 from tfx.types import standard_component_specs
-from tfx.utils import doc_controls
 from tfx.utils import io_utils
 from tfx.utils import json_utils
 from tfx.utils import telemetry_utils
@@ -34,16 +33,8 @@ _CAIP_MODEL_VERSION_PATH_FORMAT = (
     'projects/{project_id}/models/{model}/versions/{version}')
 
 # Keys to the items in custom_config passed as a part of exec_properties.
-SERVING_ARGS_KEY = doc_controls.documented(
-    obj='ai_platform_serving_args',
-    doc='Keys to the items in custom_config of Pusher for passing serving args '
-    'to AI Platform.')
-
-ENDPOINT_ARGS_KEY = doc_controls.documented(
-    obj='endpoint',
-    doc='Keys to the items in custom_config of Pusher for optional endpoint '
-    'override.')
-
+SERVING_ARGS_KEY = 'ai_platform_serving_args'
+ENDPOINT_ARGS_KEY = 'endpoint'
 # Keys for custom_config.
 _CUSTOM_CONFIG_KEY = 'custom_config'
 
