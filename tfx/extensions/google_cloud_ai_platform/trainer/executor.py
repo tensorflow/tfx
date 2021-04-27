@@ -25,13 +25,27 @@ from tfx.components.trainer import executor as tfx_trainer_executor
 from tfx.dsl.components.base import base_executor
 from tfx.extensions.google_cloud_ai_platform import runner
 from tfx.types import standard_component_specs
+from tfx.utils import doc_controls
 from tfx.utils import json_utils
 
-# Keys to the items in custom_config passed as a part of exec_properties.
-TRAINING_ARGS_KEY = 'ai_platform_training_args'
-JOB_ID_KEY = 'ai_platform_training_job_id'
-ENABLE_UCAIP_KEY = 'ai_platform_training_enable_ucaip'
-UCAIP_REGION_KEY = 'ai_platform_training_ucaip_region'
+TRAINING_ARGS_KEY = doc_controls.documented(
+    obj='ai_platform_training_args',
+    doc='Keys to the items in custom_config of Trainer for passing '
+    'training_args to AI Platform.')
+
+JOB_ID_KEY = doc_controls.documented(
+    obj='ai_platform_training_job_id',
+    doc='Keys to the items in custom_config of Trainer for specifying job id.')
+
+ENABLE_UCAIP_KEY = doc_controls.documented(
+    obj='ai_platform_training_enable_ucaip',
+    doc='Keys to the items in custom_config of Trainer for enabling uCAIP '
+    'Training.')
+
+UCAIP_REGION_KEY = doc_controls.documented(
+    obj='ai_platform_training_ucaip_region',
+    doc='Keys to the items in custom_config of Trainer for specify the region '
+    'of uCAIP.')
 
 
 class GenericExecutor(base_executor.BaseExecutor):

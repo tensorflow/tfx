@@ -31,6 +31,7 @@ from tfx.components.util import model_utils
 from tfx.extensions.google_cloud_ai_platform import runner
 from tfx.proto import bulk_inferrer_pb2
 from tfx.types import artifact_utils
+from tfx.utils import doc_controls
 from tfx.utils import json_utils
 from tfx.utils import path_utils
 from tfx.utils import proto_utils
@@ -50,7 +51,10 @@ _CLOUD_PUSH_DESTINATION_RE_DEFAULT_VERSION = re.compile(
 _SignatureDef = Any
 
 # Keys to the items in custom_config passed as a part of exec_properties.
-SERVING_ARGS_KEY = 'ai_platform_serving_args'
+SERVING_ARGS_KEY = doc_controls.documented(
+    obj='ai_platform_serving_args',
+    doc='Keys to the items in custom_config of Bulk Inferrer for passing bulk'
+    'inferrer args to AI Platform.')
 # Keys for custom_config.
 _CUSTOM_CONFIG_KEY = 'custom_config'
 

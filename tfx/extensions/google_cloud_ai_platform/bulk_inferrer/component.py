@@ -22,7 +22,7 @@ from typing import Any, Dict, Optional, Text, Union
 
 from tfx import types
 from tfx.components.base import base_component
-from tfx.components.base import executor_spec
+from tfx.dsl.components.base import executor_spec
 from tfx.extensions.google_cloud_ai_platform.bulk_inferrer import executor
 from tfx.proto import bulk_inferrer_pb2
 from tfx.types import standard_artifacts
