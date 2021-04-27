@@ -18,7 +18,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from typing import Optional, Text
+from typing import Optional
 
 from tfx import types
 from tfx.components.example_gen import component
@@ -29,7 +29,7 @@ from tfx.proto import example_gen_pb2
 
 
 class BigQueryExampleGen(component.QueryBasedExampleGen):
-  """Official TFX BigQueryExampleGen component.
+  """Cloud BigQueryExampleGen component.
 
   The BigQuery examplegen component takes a query, and generates train
   and eval examples for downstream components.
@@ -38,11 +38,11 @@ class BigQueryExampleGen(component.QueryBasedExampleGen):
   EXECUTOR_SPEC = executor_spec.BeamExecutorSpec(executor.Executor)
 
   def __init__(self,
-               query: Optional[Text] = None,
+               query: Optional[str] = None,
                input_config: Optional[example_gen_pb2.Input] = None,
                output_config: Optional[example_gen_pb2.Output] = None,
                example_artifacts: Optional[types.Channel] = None,
-               instance_name: Optional[Text] = None):
+               instance_name: Optional[str] = None):
     """Constructs a BigQueryExampleGen component.
 
     Args:

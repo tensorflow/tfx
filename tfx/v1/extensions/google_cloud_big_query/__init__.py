@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""TFX extensions module."""
+"""Google Cloud Big Query module."""
 
-from tfx.v1.extensions import google_cloud_ai_platform
-from tfx.v1.extensions import google_cloud_big_query
+from tfx.extensions.google_cloud_big_query.example_gen.component import BigQueryExampleGen
+from tfx.extensions.google_cloud_big_query.pusher.component import Pusher
