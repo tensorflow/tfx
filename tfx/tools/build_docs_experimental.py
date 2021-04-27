@@ -37,7 +37,7 @@ from absl import app
 from absl import flags
 import tensorflow_docs.api_generator as api_generator
 from tensorflow_docs.api_generator import generate_lib
-from tfx import v1
+from tfx import v1 as tfx
 from tfx import version
 from tfx.utils import doc_controls
 
@@ -119,7 +119,8 @@ def main(_):
 
   doc_generator = generate_lib.DocGenerator(
       root_title="TFX",
-      py_modules=[("tfx.v1", v1)],
+      # TODO(b/181877171): change to 'tfx.v1' and update related _book.yaml.
+      py_modules=[("tfx", tfx)],
       code_url_prefix=FLAGS.code_url_prefix,
       search_hints=FLAGS.search_hints,
       site_path=FLAGS.site_path,

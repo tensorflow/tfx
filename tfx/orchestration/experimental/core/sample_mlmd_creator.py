@@ -29,7 +29,6 @@ from ml_metadata.proto import metadata_store_pb2
 FLAGS = flags.FLAGS
 
 flags.DEFINE_string('path', '', 'path of mlmd database file')
-flags.DEFINE_string('ir_dir', '', 'directory path of output IR files')
 
 _PIPELINE_RUN_NUM = 5
 _PIPELINE_ID = 'uci-sample-generated'
@@ -76,18 +75,12 @@ def _execute_nodes(handle: metadata.Metadata, pipeline: pipeline_pb2.Pipeline,
   test_utils.fake_component_output_with_handle(handle, trainer, active=False)
 
 
-def create_sample_pipeline(m: metadata.Metadata,
-                           pipeline_id: str,
-                           run_num: int,
-                           export_ir_path: str = ''):
+def create_sample_pipeline(m: metadata.Metadata, pipeline_id: str,
+                           run_num: int):
   """Creates a list of pipeline and node execution."""
   for i in range(run_num):
     run_id = 'run%02d' % i
     pipeline = _test_pipeline(pipeline_id, run_id)
-    if export_ir_path:
-      output_path = os.path.join(export_ir_path,
-                                 '%s_%s.pbtxt' % (pipeline_id, run_id))
-      io_utils.write_pbtxt_file(output_path, pipeline)
     pipeline_state = pipeline_ops.initiate_pipeline_start(m, pipeline)
     _execute_nodes(m, pipeline, i)
     if i < run_num - 1:
@@ -99,7 +92,7 @@ def create_sample_pipeline(m: metadata.Metadata,
 def main(argv):
   del argv
   with _get_mlmd_connection(FLAGS.path) as m:
-    create_sample_pipeline(m, _PIPELINE_ID, _PIPELINE_RUN_NUM, FLAGS.ir_dir)
+    create_sample_pipeline(m, _PIPELINE_ID, _PIPELINE_RUN_NUM)
 
 
 if __name__ == '__main__':

@@ -19,6 +19,8 @@ from typing import Any, Dict, List, Optional, Type
 from tfx import types
 from tfx.dsl.components.base import base_driver
 from tfx.dsl.components.base import base_node
+from tfx.dsl.input_resolution import resolver_function
+from tfx.dsl.input_resolution import resolver_operator
 from tfx.orchestration import data_types
 from tfx.orchestration import metadata
 from tfx.types import node_common
@@ -32,9 +34,6 @@ import ml_metadata as mlmd
 RESOLVER_STRATEGY_CLASS = 'resolver_class'
 # Constant to access resolver config from resolver exec_properties.
 RESOLVER_CONFIG = 'source_uri'
-
-RESOLVER_STRATEGY_CLASS_LIST = 'resolver_class_list'
-RESOLVER_CONFIG_LIST = 'resolver_config_list'
 
 
 class ResolveResult(object):
@@ -207,23 +206,38 @@ class Resolver(base_node.BaseNode):
   """
 
   def __init__(self,
-               strategy_class: Type[ResolverStrategy],
+               strategy_class: Optional[Type[ResolverStrategy]] = None,
                config: Optional[Dict[str, json_utils.JsonableType]] = None,
+               function: Optional[resolver_function.ResolverFunction] = None,
                **channels: types.Channel):
     """Init function for Resolver.
 
     Args:
-      strategy_class: a ResolverStrategy subclass which contains the artifact
-        resolution logic.
-      config: a dict of key to Jsonable type representing configuration that
-        will be used to construct the resolver strategy.
+      strategy_class: Optional `ResolverStrategy` which contains the artifact
+          resolution logic. One of `strategy_class` or `function`
+          argument should be set.
+      config: Optional dict of key to Jsonable type for constructing
+          resolver_strategy.
+      function: Optional `ResolverFunction` which contains the artifact
+          resolution logic. User should not use this parameter directly but use
+          `@resolver` decorated function instead. One of `strategy_class` or
+          `function` argument should be set.
       **channels: Input channels to the Resolver node as keyword arguments.
     """
-    if not issubclass(strategy_class, ResolverStrategy):
+    if (strategy_class is not None) + (function is not None) != 1:
+      raise ValueError('Exactly one of strategy_class= or function= argument '
+                       'should be given.')
+    if (strategy_class is not None and
+        not issubclass(strategy_class, ResolverStrategy)):
       raise TypeError('strategy_class should be ResolverStrategy, but got '
                       f'{strategy_class} instead.')
+    if (function is not None and
+        not isinstance(function, resolver_function.ResolverFunction)):
+      raise TypeError(f'function should be ResolverFunction, but got '
+                      f'{function} instead.')
     self._strategy_class = strategy_class
     self._config = config or {}
+    self._function = function
     self._input_dict = channels
     self._output_dict = {}
     for k, c in self._input_dict.items():
@@ -238,7 +252,23 @@ class Resolver(base_node.BaseNode):
 
   @property
   @doc_controls.do_not_generate_docs
+  def use_function(self):
+    """Whether Resolver uses ResolverFunction backend."""
+    return self._function is not None
+
+  @property
+  @doc_controls.do_not_generate_docs
+  def function_output_node(self) -> resolver_operator.OpNode:
+    """Get ResolverFunction's output OpNode."""
+    if not self.use_function:
+      raise ValueError('This resolver does not use ResolverFunction.')
+    return self._function.output_node
+
+  @property
+  @doc_controls.do_not_generate_docs
   def strategy_class_and_configs(self):
+    if self.use_function:
+      raise ValueError('This resolver does not use ResolverStrategy.')
     return [(self._strategy_class, self._config)]
 
   @property
