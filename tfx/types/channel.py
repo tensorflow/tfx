@@ -21,6 +21,8 @@ from absl import logging
 
 from tfx.types import artifact_utils
 from tfx.types.artifact import Artifact
+from tfx.utils import deprecation_utils
+from tfx.utils import doc_controls
 from tfx.utils import json_utils
 from google.protobuf import json_format
 from ml_metadata.proto import metadata_store_pb2
@@ -49,7 +51,6 @@ class Channel(json_utils.Jsonable):
       additional_custom_properties: Optional[Dict[str, Property]] = None,
       # TODO(b/161490287): deprecate static artifact.
       artifacts: Optional[Iterable[Artifact]] = None,
-      matching_channel_name: Optional[str] = None,
       producer_component_id: Optional[str] = None,
       output_key: Optional[Text] = None):
     """Initialization of Channel.
@@ -58,14 +59,12 @@ class Channel(json_utils.Jsonable):
       type: Subclass of Artifact that represents the type of this Channel.
       additional_properties: (Optional) A mapping of properties which will be
         added to artifacts when this channel is used as an output of components.
+        This is experimental and is subject to change in the future.
       additional_custom_properties: (Optional) A mapping of custom_properties
         which will be added to artifacts when this channel is used as an output
-        of components.
+        of components. This is experimental and is subject to change in the
+        future.
       artifacts: Deprecated and ignored, kept only for backward compatibility.
-      matching_channel_name: This targets to the key of an input Channel dict
-        in a Component. The artifacts count of this channel will be decided at
-        runtime in Driver, based on the artifacts count of the target channel.
-        Only one of `artifacts` and `matching_channel_name` should be set.
       producer_component_id: (Optional) Producer component id of the Channel.
       output_key: (Optional) The output key when producer component produces
         the artifacts in this Channel.
@@ -76,7 +75,6 @@ class Channel(json_utils.Jsonable):
           'tfx.Artifact (got %r).' % (type,))
 
     self.type = type
-    self.matching_channel_name = matching_channel_name
 
     self.additional_properties = additional_properties or {}
     self.additional_custom_properties = additional_custom_properties or {}
@@ -89,9 +87,11 @@ class Channel(json_utils.Jsonable):
       logging.warning(
           'Artifacts param is ignored by Channel constructor, please remove!')
     self._artifacts = []
+    self._matching_channel_name = None
 
   @property
   def type_name(self):
+    """Name of the artifact type class that Channel takes."""
     return self.type.TYPE_NAME
 
   def __repr__(self):
@@ -113,15 +113,17 @@ class Channel(json_utils.Jsonable):
                 self.type_name))
 
   # TODO(b/161490287): deprecate static artifact.
+  @doc_controls.do_not_doc_inheritable
   def set_artifacts(self, artifacts: Iterable[Artifact]) -> 'Channel':
     """Sets artifacts for a static Channel. Will be deprecated."""
-    if self.matching_channel_name:
+    if self._matching_channel_name:
       raise ValueError(
           'Only one of `artifacts` and `matching_channel_name` should be set.')
     self._artifacts = artifacts
     self._validate_type()
     return self
 
+  @doc_controls.do_not_doc_inheritable
   def get(self) -> Iterable[Artifact]:
     """Returns all artifacts that can be get from this Channel.
 
@@ -132,6 +134,26 @@ class Channel(json_utils.Jsonable):
     # instead of a static Artifact collection.
     return self._artifacts
 
+  # TODO(b/185957572): deprecate matching_channel_name.
+  @property
+  @deprecation_utils.deprecated(
+      None, '`matching_channel_name` will be deprecated soon.')
+  @doc_controls.do_not_doc_inheritable
+  def matching_channel_name(self) -> Text:
+    return self._matching_channel_name
+
+  # TODO(b/185957572): deprecate matching_channel_name.
+  @matching_channel_name.setter
+  def matching_channel_name(self, matching_channel_name: str):
+    # This targets to the key of an input Channel dict in a Component.
+    # The artifacts count of this channel will be decided at runtime in Driver,
+    # based on the artifacts count of the target channel.
+    if self._artifacts:
+      raise ValueError(
+          'Only one of `artifacts` and `matching_channel_name` should be set.')
+    self._matching_channel_name = matching_channel_name
+
+  @doc_controls.do_not_doc_inheritable
   def to_json_dict(self) -> Dict[Text, Any]:
     return {
         'type':
@@ -150,6 +172,7 @@ class Channel(json_utils.Jsonable):
     }
 
   @classmethod
+  @doc_controls.do_not_doc_inheritable
   def from_json_dict(cls, dict_data: Dict[Text, Any]) -> Any:
     artifact_type = metadata_store_pb2.ArtifactType()
     json_format.Parse(json.dumps(dict_data['type']), artifact_type)

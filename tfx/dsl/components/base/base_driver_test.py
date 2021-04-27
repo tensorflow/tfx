@@ -60,8 +60,7 @@ class BaseDriverTest(tf.test.TestCase):
     self._input_dict = {
         'input_data':
             types.Channel(
-                type=_InputArtifact, producer_component_id='c',
-                output_key='k').set_artifacts([_InputArtifact()]),
+                type=_InputArtifact, producer_component_id='c', output_key='k'),
         'input_string':
             types.Channel(
                 type=standard_artifacts.String,
@@ -81,12 +80,11 @@ class BaseDriverTest(tf.test.TestCase):
         artifact.uri = uri
         fileio.makedirs(uri)
     self._output_dict = {
-        'output_data':
-            types.Channel(type=_OutputArtifact, artifacts=[_OutputArtifact()]),
-        'output_multi_data':
-            types.Channel(
-                type=_OutputArtifact, matching_channel_name='input_string')
+        'output_data': types.Channel(type=_OutputArtifact),
+        'output_multi_data': types.Channel(type=_OutputArtifact)
     }
+    self._output_dict[
+        'output_multi_data'].matching_channel_name = 'input_string'
     self._input_artifacts = channel_utils.unwrap_channel_dict(self._input_dict)
     self._output_artifacts = channel_utils.unwrap_channel_dict(
         self._output_dict)
