@@ -20,6 +20,7 @@ from absl.testing.absltest import mock
 from tfx import types
 from tfx.orchestration.experimental.core import async_pipeline_task_gen as asptg
 from tfx.orchestration.experimental.core import pipeline_state as pstate
+from tfx.orchestration.experimental.core import service_jobs
 from tfx.orchestration.experimental.core import task as task_lib
 from tfx.orchestration.portable import execution_publish_utils
 from tfx.orchestration.portable.mlmd import context_lib
@@ -71,7 +72,7 @@ def get_node(pipeline, node_id):
 
 def fake_execute_node(mlmd_connection, task):
   """Simulates node execution given ExecNodeTask."""
-  node = get_node(task.pipeline, task.node_uid.node_id)
+  node = task.get_pipeline_node()
   with mlmd_connection as m:
     output_key, output_value = next(iter(node.outputs.outputs.items()))
     output = types.Artifact(output_value.artifact_spec.type)
@@ -126,6 +127,8 @@ def run_generator_and_test(test_case,
                            expected_exec_nodes=None,
                            ignore_node_ids=None):
   """Runs generator.generate() and tests the effects."""
+  if service_job_manager is None:
+    service_job_manager = service_jobs.DummyServiceJobManager()
   with mlmd_connection as m:
     executions = m.store.get_executions()
     test_case.assertLen(

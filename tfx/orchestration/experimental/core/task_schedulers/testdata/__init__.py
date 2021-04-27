@@ -11,8 +11,3 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Constants shared across modules."""
-
-EXECUTION_ERROR_MSG_KEY = '__execution_error_msg__'
-
-IMPORTER_NODE_TYPE = 'tfx.dsl.components.common.importer.Importer'

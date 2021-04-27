@@ -124,6 +124,13 @@ class ExecNodeTask(Task):
   def task_id(self) -> TaskId:
     return _exec_node_task_id(self.task_type_id(), self.node_uid)
 
+  def get_pipeline_node(self) -> pipeline_pb2.PipelineNode:
+    for node in self.pipeline.nodes:
+      if node.pipeline_node.node_info.id == self.node_uid.node_id:
+        return node.pipeline_node
+    raise ValueError(
+        f'Node not found in pipeline IR; node uid: {self.node_uid}')
+
 
 @attr.s(auto_attribs=True, frozen=True)
 class CancelNodeTask(Task):
