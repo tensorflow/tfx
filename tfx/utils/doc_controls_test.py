@@ -27,12 +27,6 @@ class DocControlsTest(tf.test.TestCase):
     self.assertEqual(tfx_doc_controls.do_not_doc_in_subclasses,
                      doc_controls.do_not_doc_in_subclasses)
 
-  def testDocumentSuccess(self):
-    documented_test_key = tfx_doc_controls.documented('test key', 'test value')
-    self.assertEqual(1, len(tfx_doc_controls.EXTRA_DOCS))
-    self.assertEqual('test value',
-                     tfx_doc_controls.EXTRA_DOCS.get(id(documented_test_key)))
-
 
 if __name__ == '__main__':
   tf.test.main()

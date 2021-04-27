@@ -14,4 +14,3 @@
 """TFX extensions module."""
 
 from tfx.v1.extensions import google_cloud_ai_platform
-from tfx.v1.extensions import google_cloud_big_query
