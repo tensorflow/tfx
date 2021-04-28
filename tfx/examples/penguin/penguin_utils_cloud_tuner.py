@@ -63,11 +63,6 @@ def _transformed_name(key):
   return key + '_xf'
 
 
-def _gzip_reader_fn(filenames):
-  """Small utility returning a record reader that can read gzip'ed files."""
-  return tf.data.TFRecordDataset(filenames, compression_type='GZIP')
-
-
 def _get_serve_tf_examples_fn(model, tf_transform_output):
   """Returns a function that parses a serialized tf.Example."""
 
