@@ -32,6 +32,7 @@ function tfx::copy_proto_stubs() {
   # Failure of copy should not be ignored.
   set -e
   find . -name "*_pb2.py" -exec cp -f {} ${dst_dir}/{} \;
+  find . -name "*_pb2_grpc.py" -exec cp -f {} ${dst_dir}/{} \;
 }
 
 function tfx::gen_proto_main() {

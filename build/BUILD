@@ -37,6 +37,8 @@ sh_binary(
         "//tfx/proto/orchestration:executable_spec_pb2.py",
         "//tfx/proto/orchestration:execution_invocation_pb2.py",
         "//tfx/proto/orchestration:execution_result_pb2.py",
+        "//tfx/proto/orchestration:execution_watcher_pb2.py",
+        "//tfx/proto/orchestration:execution_watcher_pb2_grpc.py",
         "//tfx/proto/orchestration:local_deployment_config_pb2.py",
         "//tfx/proto/orchestration:pipeline_pb2.py",
         "//tfx/proto/orchestration:placeholder_pb2.py",

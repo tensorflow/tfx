@@ -16,7 +16,7 @@
 
 load("@com_google_protobuf//:protobuf.bzl", "py_proto_library")
 
-def tfx_py_proto_library(name, srcs = [], deps = [], visibility = None, testonly = 0):
+def tfx_py_proto_library(name, srcs = [], deps = [], visibility = None, testonly = 0, use_grpc_plugin = False):
     """Opensource py_proto_library."""
     py_proto_library(
         name = name,
@@ -27,4 +27,5 @@ def tfx_py_proto_library(name, srcs = [], deps = [], visibility = None, testonly
         protoc = "@com_google_protobuf//:protoc",
         visibility = visibility,
         testonly = testonly,
+        use_grpc_plugin = use_grpc_plugin,
     )

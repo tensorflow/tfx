@@ -1,0 +1,126 @@
+# Copyright 2021 Google LLC. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+"""This module provides a gRPC service for updating remote job info to MLMD."""
+
+from concurrent import futures
+
+from typing import Optional
+from absl import logging
+import grpc
+from tfx.orchestration import metadata
+
+from tfx.proto.orchestration import execution_watcher_pb2
+from tfx.proto.orchestration import execution_watcher_pb2_grpc
+
+from ml_metadata.proto import metadata_store_pb2
+
+
+def generate_server_stub(
+    address: str,
+    creds: Optional[grpc.ChannelCredentials] = None,
+) -> execution_watcher_pb2_grpc.ExecutionWatcherServiceStub:
+  """Generate a gRPC service stub for a given server address."""
+  channel = grpc.secure_channel(
+      address, creds) if creds else grpc.insecure_channel(address)
+  return execution_watcher_pb2_grpc.ExecutionWatcherServiceStub(channel)
+
+
+class ExecutionWatcher(
+    execution_watcher_pb2_grpc.ExecutionWatcherServiceServicer):
+  """A gRPC service server for updating remote job info to MLMD."""
+
+  def __init__(self,
+               port: int,
+               mlmd_connection: metadata.Metadata,
+               address: Optional[str] = None,
+               creds: Optional[grpc.ServerCredentials] = None):
+    """Initializes the gRPC server.
+
+    Args:
+      port: Which port the service will be using.
+      mlmd_connection: ML metadata connection.
+      address: Remote address used to contact the server. Should be formatted as
+               an ipv4 or ipv6 address in the format `address:port`. If left as
+               None, server will use local address.
+      creds: gRPC server credentials. If left as None, server will use an
+             insecure port.
+    """
+    super().__init__()
+    self._port = port
+    self._address = address
+    self._creds = creds
+    self._mlmd_connection = mlmd_connection
+    self._executions = {}
+    self.server = self._create_server()
+    self.stopped = False
+
+  def UpdateExecutionInfo(
+      self, req: execution_watcher_pb2.UpdateExecutionInfoRequest,
+      context: grpc.ServicerContext
+  ) -> execution_watcher_pb2.UpdateExecutionInfoResponse:
+    """Call back for executor operator to update execution info."""
+    logging.info('Received request to update execution info: updates %s, '
+                 'execution_id %s', req.updates, req.execution_id)
+    if req.execution_id not in self._executions:
+      context.set_code(grpc.StatusCode.NOT_FOUND)
+      context.set_details(
+          'Execution with given execution_id not found or not being added to '
+          f'server: {req.execution_id}')
+      return execution_watcher_pb2.UpdateExecutionInfoResponse()
+    for key, value in req.updates.items():
+      self._executions[req.execution_id].custom_properties[key].CopyFrom(value)
+    # Only the execution is needed
+    with self._mlmd_connection as m:
+      m.store.put_execution(
+          self._executions[req.execution_id],
+          artifact_and_events=[],
+          contexts=[])
+    return execution_watcher_pb2.UpdateExecutionInfoResponse()
+
+  def addExecution(self, execution: metadata_store_pb2.Execution):
+    """Register the MLMD Execution instance to update to."""
+    if not execution.HasField('id'):
+      raise ValueError(
+          'execution id must be set to be tracked by ExecutionWatcher.')
+    self._executions[execution.id] = execution
+
+  def _create_server(self):
+    """Creates a gRPC server and add `self` on to it."""
+    server = grpc.server(futures.ThreadPoolExecutor())
+    execution_watcher_pb2_grpc.add_ExecutionWatcherServiceServicer_to_server(
+        self, server)
+    if self._creds is None:
+      server.add_insecure_port(self.local_address)
+    else:
+      server.add_secure_port(self.local_address, self._creds)
+    return server
+
+  @property
+  def local_address(self) -> str:
+    # Local network address to the server.
+    return f'[::]:{self._port}'
+
+  @property
+  def address(self) -> str:
+    return self._address or self.local_address
+
+  def start(self):
+    """Starts the server."""
+    self.server.start()
+
+  def stop(self):
+    """Stops the server."""
+    self.server.stop(grace=None)
+    self.stopped = True
+
