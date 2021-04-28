@@ -116,6 +116,7 @@ class BaseComponent(with_metaclass(abc.ABCMeta, base_node.BaseNode)):
     self._validate_component_class()
     self._validate_spec(spec)
     self.platform_config = None
+    self._pip_dependencies = []
 
   @classmethod
   def _validate_component_class(cls):
@@ -164,6 +165,11 @@ class BaseComponent(with_metaclass(abc.ABCMeta, base_node.BaseNode)):
       the same component itself.
     """
     self.platform_config = config
+    return self
+
+  def _with_pip_dependency(self, dependency):
+    """Mark a wheel file path as a pip dependency. Internal experimental API."""
+    self._pip_dependencies.append(dependency)
     return self
 
   def __repr__(self):

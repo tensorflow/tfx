@@ -21,6 +21,7 @@ from typing import Any, Dict, Optional, Text, Union
 
 from tfx import types
 from tfx.components.trainer import executor
+from tfx.components.util import udf_utils
 from tfx.dsl.components.base import base_component
 from tfx.dsl.components.base import executor_spec
 from tfx.orchestration import data_types
@@ -190,6 +191,8 @@ class Trainer(base_component.BaseComponent):
     examples = examples or transformed_examples
     model = model or types.Channel(type=standard_artifacts.Model)
     model_run = model_run or types.Channel(type=standard_artifacts.ModelRun)
+    wheel_file, module_path = udf_utils.package_user_module_file(
+        instance_name or self.__class__.__name__, module_file)
     spec = TrainerSpec(
         examples=examples,
         transform_graph=transform_graph,
@@ -198,7 +201,7 @@ class Trainer(base_component.BaseComponent):
         hyperparameters=hyperparameters,
         train_args=train_args,
         eval_args=eval_args,
-        module_file=module_file,
+        module_path=module_path,
         run_fn=run_fn,
         trainer_fn=trainer_fn,
         custom_config=json_utils.dumps(custom_config),
@@ -208,3 +211,6 @@ class Trainer(base_component.BaseComponent):
         spec=spec,
         custom_executor_spec=custom_executor_spec,
         instance_name=instance_name)
+
+    # Register dependency on generated user code wheel package.
+    self._with_pip_dependency(wheel_file)

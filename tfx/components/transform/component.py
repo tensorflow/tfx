@@ -21,6 +21,7 @@ from typing import Any, Dict, Optional, Text, Union
 
 from tfx import types
 from tfx.components.transform import executor
+from tfx.components.util import udf_utils
 from tfx.dsl.components.base import base_beam_component
 from tfx.dsl.components.base import executor_spec
 from tfx.orchestration import data_types
@@ -170,10 +171,18 @@ class Transform(base_beam_component.BaseBeamComponent):
       updated_analyzer_cache = types.Channel(
           type=standard_artifacts.TransformCache)
 
+    if module_file:
+      wheel_file, module_path = udf_utils.package_user_module_file(
+          instance_name or self.__class__.__name__, module_file)
+      module_file = None
+    else:
+      module_path = None
+
     spec = TransformSpec(
         examples=examples,
         schema=schema,
         module_file=module_file,
+        module_path=module_path,
         preprocessing_fn=preprocessing_fn,
         force_tf_compat_v1=int(force_tf_compat_v1),
         splits_config=splits_config,
@@ -183,3 +192,7 @@ class Transform(base_beam_component.BaseBeamComponent):
         updated_analyzer_cache=updated_analyzer_cache,
         custom_config=json_utils.dumps(custom_config))
     super(Transform, self).__init__(spec=spec, instance_name=instance_name)
+
+    # Register dependency on generated user code wheel package.
+    if module_file:
+      self._with_pip_dependency(wheel_file)

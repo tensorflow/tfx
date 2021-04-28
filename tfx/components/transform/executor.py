@@ -20,7 +20,9 @@ from __future__ import print_function
 
 import functools
 import hashlib
+import importlib
 import os
+import sys
 from typing import Any, Callable, Dict, Generator, Iterable, List, Mapping, Optional, Sequence, Set, Text, Tuple, Union
 
 import absl
@@ -41,6 +43,7 @@ from tfx import types
 from tfx.components.transform import labels
 from tfx.components.transform import stats_options_util
 from tfx.components.util import tfxio_utils
+from tfx.components.util import udf_utils
 from tfx.components.util import value_utils
 from tfx.dsl.components.base import base_beam_executor
 from tfx.dsl.io import fileio
@@ -300,9 +303,11 @@ class Executor(base_beam_executor.BaseBeamExecutor):
       exec_properties: A dict of execution properties, including:
         - module_file: The file path to a python module file, from which the
           'preprocessing_fn' function will be loaded.
+        - module_path: The python module path, from which the
+          'preprocessing_fn' function will be loaded.
         - preprocessing_fn: The module path to a python function that
-          implements 'preprocessing_fn'. Exactly one of 'module_file' and
-          'preprocessing_fn' should be set.
+          implements 'preprocessing_fn'. Exactly one of 'module_file',
+          'module_path' and 'preprocessing_fn' should be set.
         - splits_config: A transform_pb2.SplitsConfig instance, providing splits
           that should be analyzed and splits that should be transformed. Note
           analyze and transform splits can have overlap. Default behavior (when
@@ -419,6 +424,11 @@ class Executor(base_beam_executor.BaseBeamExecutor):
           'or disable it by explicitly setting `force_tf_compat_v1=True` in '
           'the Transform component.')
 
+    module_path, extra_pip_packages = udf_utils.decode_user_module_key(
+        exec_properties.get('module_path', None))
+    for pip_package_path in extra_pip_packages:
+      self._beam_pipeline_args.append('--extra_package=%s' % pip_package_path)
+
     label_inputs = {
         labels.COMPUTE_STATISTICS_LABEL:
             False,
@@ -438,6 +448,7 @@ class Executor(base_beam_executor.BaseBeamExecutor):
                                                    len(transform_data_paths),
         labels.MODULE_FILE:
             exec_properties.get(standard_component_specs.MODULE_FILE_KEY, None),
+        labels.MODULE_PATH: module_path,
         labels.PREPROCESSING_FN:
             exec_properties.get(standard_component_specs.PREPROCESSING_FN_KEY,
                                 None),
@@ -765,24 +776,30 @@ class Executor(base_beam_executor.BaseBeamExecutor):
     """
     has_module_file = bool(
         value_utils.GetSoleValue(inputs, labels.MODULE_FILE, strict=False))
+    has_module_path = bool(
+        value_utils.GetSoleValue(inputs, labels.MODULE_PATH, strict=False))
     has_preprocessing_fn = bool(
         value_utils.GetSoleValue(inputs, labels.PREPROCESSING_FN, strict=False))
 
-    if has_module_file == has_preprocessing_fn:
+    if (int(has_module_file) + int(has_module_path) +
+        int(has_preprocessing_fn)) != 1:
       raise ValueError(
-          'Neither or both of MODULE_FILE and PREPROCESSING_FN have been '
-          'supplied in inputs.')
+          'Exactly one of MODULE_FILE, MODULE_PATH or PREPROCESSING_FN should '
+          'be supplied in inputs.')
 
-    if has_module_file:
-      fn = import_utils.import_func_from_source(
-          value_utils.GetSoleValue(inputs, labels.MODULE_FILE),
-          standard_component_specs.PREPROCESSING_FN_KEY)
-    else:
+    if has_preprocessing_fn:
       preprocessing_fn_path_split = value_utils.GetSoleValue(
           inputs, labels.PREPROCESSING_FN).split('.')
       fn = import_utils.import_func_from_module(
           '.'.join(preprocessing_fn_path_split[0:-1]),
           preprocessing_fn_path_split[-1])
+    else:
+      fn = udf_utils.get_fn({
+          udf_utils._MODULE_FILE_KEY:
+              value_utils.GetSoleValue(inputs, labels.MODULE_FILE, strict=False),
+          udf_utils._MODULE_PATH_KEY:
+              value_utils.GetSoleValue(inputs, labels.MODULE_PATH, strict=False),
+      }, standard_component_specs.PREPROCESSING_FN_KEY)
 
     return self._MaybeBindCustomConfig(inputs, fn)
 
@@ -842,6 +859,8 @@ class Executor(base_beam_executor.BaseBeamExecutor):
         - labels.TRANSFORM_PATHS_FILE_FORMATS_LABEL: File formats of paths to
           transform data.
         - labels.MODULE_FILE: Path to a Python module that contains the
+          preprocessing_fn, optional.
+        - labels.MODULE_PATH: Python module path that contains the
           preprocessing_fn, optional.
         - labels.PREPROCESSING_FN: Path to a Python function that implements
           preprocessing_fn, optional.

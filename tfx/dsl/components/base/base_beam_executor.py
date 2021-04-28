@@ -57,6 +57,7 @@ class BaseBeamExecutor(BaseExecutor):
       raise Exception(
           'Apache Beam must be installed to use this functionality.')
 
+    print('self._beam_pipeline_args', self._beam_pipeline_args)
     result = beam.Pipeline(argv=self._beam_pipeline_args)
 
     # TODO(b/159468583): Obivate this code block by moving the warning to Beam.
