@@ -24,9 +24,9 @@ import logging
 import os
 import sys
 import textwrap
-from typing import Dict, List, Text, Union
+from typing import Dict, List, Optional, Text, Union
 
-import absl
+from tfx import components
 from tfx.dsl.components.base import base_node
 from tfx.orchestration import data_types
 from tfx.orchestration.kubeflow import kubeflow_metadata_adapter
@@ -42,7 +42,7 @@ from google.protobuf import json_format
 from ml_metadata.proto import metadata_store_pb2
 
 
-def _get_config_value(config_value: kubeflow_pb2.ConfigValue) -> Text:
+def _get_config_value(config_value: kubeflow_pb2.ConfigValue) -> Optional[Text]:
   value_from = config_value.WhichOneof('value_from')
 
   if value_from is None:
@@ -71,7 +71,7 @@ def _get_metadata_connection_config(
   config_type = kubeflow_metadata_config.WhichOneof('connection_config')
 
   if config_type is None:
-    absl.logging.warning(
+    logging.warning(
         'Providing mysql configuration through KubeflowMetadataConfig will be '
         'deprecated soon. Use one of KubeflowGrpcMetadataConfig or'
         'KubeflowMySqlMetadataConfig instead')
@@ -115,7 +115,7 @@ def _get_grpc_metadata_connection_config(
   return connection_config
 
 
-def _sanitize_underscore(name: Text) -> Text:
+def _sanitize_underscore(name: Text) -> Optional[Text]:
   """Sanitize the underscore in pythonic name for markdown visualization."""
   if name:
     return str(name).replace('_', '\\_')
@@ -207,8 +207,10 @@ def _render_artifact_as_mdstr(single_artifact: artifact.Artifact) -> Text:
               single_artifact.producer_component) or 'None'))
 
 
-def _dump_ui_metadata(component: base_node.BaseNode,
-                      execution_info: data_types.ExecutionInfo) -> None:
+def _dump_ui_metadata(
+    component: base_node.BaseNode,
+    execution_info: data_types.ExecutionInfo,
+    ui_metadata_path: str = '/mlpipeline-ui-metadata.json') -> None:
   """Dump KFP UI metadata json file for visualization purpose.
 
   For general components we just render a simple Markdown file for
@@ -218,6 +220,7 @@ def _dump_ui_metadata(component: base_node.BaseNode,
     component: associated TFX component.
     execution_info: runtime execution info for this component, including
       materialized inputs/outputs/execution properties and id.
+    ui_metadata_path: path to dump ui metadata.
   """
   exec_properties_list = [
       '**{}**: {}'.format(
@@ -279,7 +282,7 @@ def _dump_ui_metadata(component: base_node.BaseNode,
   # TODO(b/142804764): Visualization based on component type seems a bit of
   # arbitrary and fragile. We need a better way to improve this. See also
   # b/146594754
-  if component.type == 'tfx.components.trainer.component.Trainer':
+  if isinstance(component, components.Trainer):
     output_model = execution_info.output_dict['model_run'][0]
 
     # Add Tensorboard view.
@@ -288,7 +291,7 @@ def _dump_ui_metadata(component: base_node.BaseNode,
 
   metadata = {'outputs': outputs}
 
-  with open('/mlpipeline-ui-metadata.json', 'w') as f:
+  with open(ui_metadata_path, 'w') as f:
     json.dump(metadata, f)
 
 
