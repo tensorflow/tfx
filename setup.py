@@ -32,7 +32,6 @@ from distutils.command import build
 
 from tfx import dependencies
 from tfx import version
-from tfx.tools import resolve_deps
 from wheel import bdist_wheel
 
 # Prefer to import `package_config` from the setup.py script's directory. The
@@ -344,18 +343,12 @@ setup(
     # TODO(b/158761800): Move to [build-system] requires in pyproject.toml.
     setup_requires=[
         'pytest-runner',
-        # Required for ResolveDeps command.
-        # Poetry API is not officially documented and subject
-        # to change in the future. Thus fix the version.
-        'poetry==1.0.9',
-        'clikit>=0.4.3,<0.5',  # Required for ResolveDeps command.
     ],
     cmdclass={
         'bdist_wheel': build_wheel_command,
         'build': _BuildCommand,
         'develop': _DevelopCommand,
         'gen_proto': _GenProtoCommand,
-        'resolve_deps': resolve_deps.ResolveDepsCommand,
     },
     python_requires='>=3.6,<3.9',
     packages=packages,
