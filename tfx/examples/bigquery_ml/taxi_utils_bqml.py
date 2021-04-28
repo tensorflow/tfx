@@ -24,10 +24,14 @@ examples/chicago_taxi/preprocess.py.
 from __future__ import division
 from __future__ import print_function
 
+from typing import List, Text
+
 import tensorflow as tf
 import tensorflow_model_analysis as tfma
 import tensorflow_transform as tft
 from tensorflow_transform.tf_metadata import schema_utils
+from tfx.components.trainer.fn_args_utils import DataAccessor
+from tfx_bsl.tfxio import dataset_options
 
 # Categorical features are assumed to each have a maximum value in the dataset.
 _MAX_CATEGORICAL_FEATURE_VALUES = [24, 31, 12]
@@ -75,11 +79,6 @@ def _transformed_names(keys):
 # Tf.Transform considers these features as "raw"
 def _get_raw_feature_spec(schema):
   return schema_utils.schema_as_feature_spec(schema).feature_spec
-
-
-def _gzip_reader_fn(filenames):
-  """Small utility returning a record reader that can read gzip'ed files."""
-  return tf.data.TFRecordDataset(filenames, compression_type='GZIP')
 
 
 def _fill_in_missing(x):
@@ -264,30 +263,28 @@ def _eval_input_receiver_fn(tf_transform_output, schema):
       labels=transformed_features[_transformed_name(_LABEL_KEY)])
 
 
-def _input_fn(filenames, tf_transform_output, batch_size=200):
-  """Generates features and labels for training or evaluation.
+def _input_fn(file_pattern: List[Text],
+              data_accessor: DataAccessor,
+              tf_transform_output: tft.TFTransformOutput,
+              batch_size: int = 200) -> tf.data.Dataset:
+  """Generates features and label for tuning/training.
 
   Args:
-    filenames: [str] list of CSV files to read data from.
+    file_pattern: List of paths or patterns of input tfrecord files.
+    data_accessor: DataAccessor for converting input to RecordBatch.
     tf_transform_output: A TFTransformOutput.
-    batch_size: int First dimension size of the Tensors returned by input_fn
+    batch_size: representing the number of consecutive elements of returned
+      dataset to combine in a single batch
 
   Returns:
-    A (features, indices) tuple where features is a dictionary of
-      Tensors, and indices is a single Tensor of label indices.
+    A dataset that contains (features, indices) tuple where features is a
+      dictionary of Tensors, and indices is a single Tensor of label indices.
   """
-  transformed_feature_spec = (
-      tf_transform_output.transformed_feature_spec().copy())
-
-  dataset = tf.data.experimental.make_batched_features_dataset(
-      filenames, batch_size, transformed_feature_spec, reader=_gzip_reader_fn)
-
-  transformed_features = tf.compat.v1.data.make_one_shot_iterator(
-      dataset).get_next()
-  # We pop the label because we do not want to use it as a feature while we're
-  # training.
-  return transformed_features, transformed_features.pop(
-      _transformed_name(_LABEL_KEY))
+  return data_accessor.tf_dataset_factory(
+      file_pattern,
+      dataset_options.TensorFlowDatasetOptions(
+          batch_size=batch_size, label_key=_transformed_name(_LABEL_KEY)),
+      tf_transform_output.transformed_metadata.schema)
 
 
 # TFX will call this function
@@ -317,11 +314,13 @@ def trainer_fn(trainer_fn_args, schema):
 
   train_input_fn = lambda: _input_fn(  # pylint: disable=g-long-lambda
       trainer_fn_args.train_files,
+      trainer_fn_args.data_accessor,
       tf_transform_output,
       batch_size=train_batch_size)
 
   eval_input_fn = lambda: _input_fn(  # pylint: disable=g-long-lambda
       trainer_fn_args.eval_files,
+      trainer_fn_args.data_accessor,
       tf_transform_output,
       batch_size=eval_batch_size)
 

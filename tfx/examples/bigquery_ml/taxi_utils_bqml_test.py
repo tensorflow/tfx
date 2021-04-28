@@ -29,8 +29,11 @@ from tensorflow_transform import beam as tft_beam
 from tensorflow_transform.tf_metadata import dataset_metadata
 from tensorflow_transform.tf_metadata import schema_utils
 from tfx.components.trainer import executor as trainer_executor
+from tfx.components.trainer.fn_args_utils import DataAccessor
+from tfx.components.util import tfxio_utils
 from tfx.dsl.io import fileio
 from tfx.examples.bigquery_ml import taxi_utils_bqml
+from tfx.types import standard_artifacts
 from tfx.utils import io_utils
 from tfx.utils import path_utils
 
@@ -129,7 +132,12 @@ class TaxiUtilsTest(tf.test.TestCase):
         train_steps=1,
         eval_steps=1,
         base_model=os.path.join(self._testdata_path,
-                                'trainer/current/serving_model_dir'))
+                                'trainer/current/serving_model_dir'),
+        data_accessor=DataAccessor(
+            tf_dataset_factory=tfxio_utils.get_tf_dataset_factory_from_artifact(
+                [standard_artifacts.Examples()], []),
+            record_batch_factory=None,
+            data_view_decode_fn=None))
     schema = io_utils.parse_pbtxt_file(schema_file, schema_pb2.Schema())
     training_spec = taxi_utils_bqml.trainer_fn(trainer_fn_args, schema)
 
