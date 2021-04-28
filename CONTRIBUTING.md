@@ -83,6 +83,10 @@ you develop TFX. You have to set property depdendency using
 `TFX_DEPENDENCY_SELECTOR` environment variable, and supply our nightly package
 index URL when installing TFX.
 
+> NOTE: Please use the latest version of `pip` (Possibly after 21.0) before
+> running following commands. TFX works well with the new dependency resolver
+> from TFX 0.30.0. `pip install --upgrade pip` should upgrade pip.
+
 You can install TFX source code in a virtual environment in editable (`-e`)
 mode, which will pick up your local changes immediately without re-installing
 every time.
@@ -90,8 +94,13 @@ every time.
 ```shell
 export TFX_DEPENDENCY_SELECTOR=NIGHTLY
 
-# the [all] suffix includes additional packages for test
-pip install -e .[all] -i https://pypi-nightly.tensorflow.org/simple
+# You might need to install additional packages to run all end-to-end tests.
+# To run all tests, use [test] extra requirements which includes all
+# dependencies including airflow and kfp. If you want to test a specific
+# orchestrator only, use [airflow] or [kfp]. (Beam and Local orchestators can
+# be run without any extra dependency.) For example,
+# $ pip install -e .[kfp] -i https://pypi-nightly.tensorflow.org/simple
+pip install -e . -i https://pypi-nightly.tensorflow.org/simple
 ```
 
 Alternatively, you can also build all TFX family libraries from github source
@@ -99,11 +108,16 @@ although it takes quite long.
 
 ```shell
 export TFX_DEPENDENCY_SELECTOR=GIT_MASTER
-pip install -e .[all]
+pip install -e .
 ```
 
 You can read more description on
 [our dependency definition](https://github.com/tensorflow/tfx/blob/981d28e6d83a44d48cf070c28807fdf129ce2a1d/tfx/dependencies.py#L15-L36).
+
+Some end-to-end tests in TFX uses MySQL as a database for `Apache Airflow`
+orchestrator. You might need to install mysql client libraries in your
+environment. For example, if you runs tests on Debian/Ubuntu, following command
+will install required library: `sudo apt install libmysqlclient-dev`
 
 If you have a local change in `.proto` files, you should re-generate the
 protobuf stub code before using it with the following command. (This is
