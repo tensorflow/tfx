@@ -14,6 +14,7 @@
 """Utility class for I/O."""
 
 import os
+import tempfile
 from typing import List, Text, TypeVar
 
 from tfx.dsl.io import fileio
@@ -38,7 +39,8 @@ def ensure_local(file_path: Text) -> Text:
   if not any([file_path.startswith(prefix) for prefix in _REMOTE_FS_PREFIX]):
     return file_path
 
-  local_path = os.path.basename(file_path)
+  temp_dir = tempfile.mkdtemp()
+  local_path = os.path.join(temp_dir, os.path.basename(file_path))
   copy_file(file_path, local_path, True)
   return local_path
 

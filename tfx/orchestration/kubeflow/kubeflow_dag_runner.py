@@ -28,6 +28,7 @@ from kfp import gcp
 from kubernetes import client as k8s_client
 from tfx import version
 from tfx.dsl.compiler import compiler as tfx_compiler
+from tfx.dsl.components.base import base_component as tfx_base_component
 from tfx.orchestration import data_types
 from tfx.orchestration import pipeline as tfx_pipeline
 from tfx.orchestration import tfx_runner
@@ -370,6 +371,13 @@ class KubeflowDagRunner(tfx_runner.TfxRunner):
         pipeline.
     """
     pipeline_root = tfx_pipeline.ROOT_PARAMETER
+
+    for component in pipeline.components:
+      # TODO(b/187122662): Pass through pip dependencies as a first-class
+      # component flag.
+      if isinstance(component, tfx_base_component.BaseComponent):
+        component._resolve_pip_dependencies(pipeline_root)  # pylint: disable=protected-access
+
     # KFP DSL representation of pipeline root parameter.
     dsl_pipeline_root = dsl.PipelineParam(
         name=pipeline_root.name, value=pipeline.pipeline_info.pipeline_root)

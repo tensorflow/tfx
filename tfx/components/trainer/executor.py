@@ -162,6 +162,14 @@ class GenericExecutor(base_executor.BaseExecutor):
         - eval_args: JSON string of trainer_pb2.EvalArgs instance, providing
           args for eval.
         - module_file: Python module file containing UDF model definition.
+          Exactly one of `module_file`, `module_path` and `run_fn` should
+          be passed.
+        - module_path: Python module path containing UDF model definition.
+          Exactly one of `module_file`, `module_path` and `run_fn` should
+          be passed.
+        - run_fn: Python module path to the run function.
+          Exactly one of `module_file`, `module_path` and `run_fn` should
+          be passed.
         - warm_starting: Whether or not we need to do warm starting.
         - warm_start_from: Optional. If warm_starting is True, this is the
           directory to find previous model to warm start on.
@@ -172,8 +180,8 @@ class GenericExecutor(base_executor.BaseExecutor):
       None
 
     Raises:
-      ValueError: When neither or both of 'module_file' and 'run_fn'
-        are present in 'exec_properties'.
+      ValueError: When not exactly one of `module_file`, `module_path` and
+        `run_fn` are present in 'exec_properties'.
       RuntimeError: If run_fn failed to generate model in desired location.
     """
     self._log_startup(input_dict, output_dict, exec_properties)
@@ -232,6 +240,14 @@ class Executor(GenericExecutor):
         - eval_args: JSON string of trainer_pb2.EvalArgs instance, providing
           args for eval.
         - module_file: Python module file containing UDF model definition.
+          Exactly one of `module_file`, `module_path` and `trainer_fn` should
+          be passed.
+        - module_path: Python module path containing UDF model definition.
+          Exactly one of `module_file`, `module_path` and `trainer_fn` should
+          be passed.
+        - trainer_fn: Python module path to the trainer function.
+          Exactly one of `module_file`, `module_path` and `trainer_fn` should
+          be passed.
         - warm_starting: Whether or not we need to do warm starting.
         - warm_start_from: Optional. If warm_starting is True, this is the
           directory to find previous model to warm start on.
@@ -242,8 +258,8 @@ class Executor(GenericExecutor):
       None
 
     Raises:
-      ValueError: When neither or both of 'module_file' and 'trainer_fn'
-        are present in 'exec_properties'.
+      ValueError: When not exactly one of `module_file`, `module_path` and
+        `trainer_fn` are present in `exec_properties`.
     """
     self._log_startup(input_dict, output_dict, exec_properties)
 

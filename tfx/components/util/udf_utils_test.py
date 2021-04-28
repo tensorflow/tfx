@@ -18,6 +18,10 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import hashlib
+import os
+import tempfile
+
 from unittest import mock
 import tensorflow as tf
 
@@ -49,6 +53,49 @@ class UdfUtilsTest(tf.test.TestCase):
   def testGetFnFailure(self):
     with self.assertRaises(ValueError):
       udf_utils.get_fn({}, 'test_fn')
+
+  def test_ephemeral_setup_py_contents(self):
+    contents = udf_utils._get_ephemeral_setup_py_contents(
+        'my_pkg', '0.0+xyz', ['a', 'abc', 'xyz'])
+    self.assertIn("name='my_pkg',", contents)
+    self.assertIn("version='0.0+xyz',", contents)
+    self.assertIn("py_modules=['a', 'abc', 'xyz'],", contents)
+
+  def test_version_hash(self):
+
+    def _write_temp_file(user_module_dir, file_name, contents):
+      with open(os.path.join(user_module_dir, file_name), 'w') as f:
+        f.write(contents)
+
+    user_module_dir = tempfile.mkdtemp()
+    _write_temp_file(user_module_dir, 'a.py', 'aa1')
+    _write_temp_file(user_module_dir, 'bb.py', 'bbb2')
+    _write_temp_file(user_module_dir, 'ccc.py', 'cccc3')
+    _write_temp_file(user_module_dir, 'dddd.py', 'ddddd4')
+
+    expected_plaintext = (
+        # Length and encoding of "a.py".
+        b'\x00\x00\x00\x00\x00\x00\x00\x04a.py'
+        # Length and encoding of contents of "a.py".
+        b'\x00\x00\x00\x00\x00\x00\x00\x03aa1'
+        # Length and encoding of "ccc.py".
+        b'\x00\x00\x00\x00\x00\x00\x00\x06ccc.py'
+        # Length and encoding of contents of "ccc.py".
+        b'\x00\x00\x00\x00\x00\x00\x00\x05cccc3'
+        # Length and encoding of "dddd.py".
+        b'\x00\x00\x00\x00\x00\x00\x00\x07dddd.py'
+        # Length and encoding of contents of "dddd.py".
+        b'\x00\x00\x00\x00\x00\x00\x00\x06ddddd4')
+    h = hashlib.sha256()
+    h.update(expected_plaintext)
+    expected_version_hash = h.hexdigest()
+    self.assertEqual(
+        expected_version_hash,
+        '4fecd9af212c76ee4097037caf78c6ba02a2e82584837f2031bcffa0f21df43e')
+    self.assertEqual(
+        udf_utils._get_version_hash(user_module_dir,
+                                    ['dddd.py', 'a.py', 'ccc.py']),
+        expected_version_hash)
 
 
 if __name__ == '__main__':
