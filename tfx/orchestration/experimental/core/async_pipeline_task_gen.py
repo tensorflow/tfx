@@ -93,29 +93,23 @@ class AsyncPipelineTaskGenerator(task_gen.TaskGenerator):
         logging.info('Ignoring node for task generation: %s', node_uid)
         continue
 
-      if self._service_job_manager.is_pure_service_node(self._pipeline_state,
-                                                        node_id):
-        service_status = self._service_job_manager.ensure_node_services(
-            self._pipeline_state, node_id)
+      # If this is a pure service node, there is no ExecNodeTask to generate
+      # but we ensure node services and check service status.
+      service_status = self._ensure_node_services_if_pure(node_id)
+      if service_status is not None:
         if service_status != service_jobs.ServiceStatus.RUNNING:
-          logging.error(
-              'Required service node not running or healthy, node uid: %s',
-              node_uid)
-          result.append(
-              task_lib.FinalizeNodeTask(
-                  node_uid=node_uid,
-                  status=status_lib.Status(
-                      code=status_lib.Code.ABORTED,
-                      message=(
-                          f'Aborting node execution as the associated service '
-                          f'job is not running or healthy; problematic node '
-                          f'uid: {node_uid}'))))
+          result.append(self._abort_node_task(node_uid))
         continue
 
       # If a task for the node is already tracked by the task queue, it need
-      # not be considered for generation again.
+      # not be considered for generation again but we ensure node services
+      # in case of a mixed service node.
       if self._is_task_id_tracked_fn(
           task_lib.exec_node_task_id_from_pipeline_node(self._pipeline, node)):
+        service_status = self._ensure_node_services_if_mixed(node_id)
+        if service_status is not None:
+          if service_status != service_jobs.ServiceStatus.RUNNING:
+            result.append(self._abort_node_task(node_uid))
         continue
       task = self._generate_task(self._mlmd_handle, node)
       if task:
@@ -170,6 +164,7 @@ class AsyncPipelineTaskGenerator(task_gen.TaskGenerator):
       if latest_exec_input_artifact_ids == current_exec_input_artifact_ids:
         return None
 
+    node_uid = task_lib.NodeUid.from_pipeline_node(self._pipeline, node)
     execution = execution_publish_utils.register_execution(
         metadata_handler=metadata_handler,
         execution_type=node.node_info.type,
@@ -179,8 +174,16 @@ class AsyncPipelineTaskGenerator(task_gen.TaskGenerator):
     outputs_resolver = outputs_utils.OutputsResolver(
         node, self._pipeline.pipeline_info, self._pipeline.runtime_spec,
         self._pipeline.execution_mode)
+
+    # For mixed service nodes, we ensure node services and check service
+    # status; the node is aborted if its service jobs have failed.
+    service_status = self._ensure_node_services_if_mixed(node.node_info.id)
+    if service_status is not None:
+      if service_status != service_jobs.ServiceStatus.RUNNING:
+        return self._abort_node_task(node_uid)
+
     return task_lib.ExecNodeTask(
-        node_uid=task_lib.NodeUid.from_pipeline_node(self._pipeline, node),
+        node_uid=node_uid,
         execution=execution,
         contexts=resolved_info.contexts,
         input_artifacts=resolved_info.input_artifacts,
@@ -192,3 +195,34 @@ class AsyncPipelineTaskGenerator(task_gen.TaskGenerator):
         stateful_working_dir=outputs_resolver.get_stateful_working_directory(
             execution.id),
         pipeline=self._pipeline)
+
+  def _ensure_node_services_if_pure(
+      self, node_id: str) -> Optional[service_jobs.ServiceStatus]:
+    """Calls `ensure_node_services` and returns status if given node is pure service node."""
+    if self._service_job_manager.is_pure_service_node(self._pipeline_state,
+                                                      node_id):
+      return self._service_job_manager.ensure_node_services(
+          self._pipeline_state, node_id)
+    return None
+
+  def _ensure_node_services_if_mixed(
+      self, node_id: str) -> Optional[service_jobs.ServiceStatus]:
+    """Calls `ensure_node_services` and returns status if given node is mixed service node."""
+    if self._service_job_manager.is_mixed_service_node(self._pipeline_state,
+                                                       node_id):
+      return self._service_job_manager.ensure_node_services(
+          self._pipeline_state, node_id)
+    return None
+
+  def _abort_node_task(self,
+                       node_uid: task_lib.NodeUid) -> task_lib.FinalizeNodeTask:
+    """Returns task to abort the node execution."""
+    logging.error('Required service node not running or healthy, node uid: %s',
+                  node_uid)
+    return task_lib.FinalizeNodeTask(
+        node_uid=node_uid,
+        status=status_lib.Status(
+            code=status_lib.Code.ABORTED,
+            message=(f'Aborting node execution as the associated service '
+                     f'job is not running or healthy; problematic node '
+                     f'uid: {node_uid}')))

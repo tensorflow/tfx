@@ -75,8 +75,22 @@ class AsyncPipelineTaskGeneratorTest(tu.TfxTest, parameterized.TestCase):
     def _is_pure_service_node(unused_pipeline_state, node_id):
       return node_id == self._example_gen.node_info.id
 
+    def _is_mixed_service_node(unused_pipeline_state, node_id):
+      return node_id == self._transform.node_info.id
+
     self._mock_service_job_manager.is_pure_service_node.side_effect = (
         _is_pure_service_node)
+    self._mock_service_job_manager.is_mixed_service_node.side_effect = (
+        _is_mixed_service_node)
+
+    def _default_ensure_node_services(unused_pipeline_state, node_id):
+      self.assertIn(
+          node_id,
+          (self._example_gen.node_info.id, self._transform.node_info.id))
+      return service_jobs.ServiceStatus.RUNNING
+
+    self._mock_service_job_manager.ensure_node_services.side_effect = (
+        _default_ensure_node_services)
 
   def _finish_node_execution(self, use_task_queue, exec_node_task):
     """Simulates successful execution of a node."""
@@ -145,13 +159,6 @@ class AsyncPipelineTaskGeneratorTest(tu.TfxTest, parameterized.TestCase):
     # Simulate that ExampleGen has already completed successfully.
     otu.fake_example_gen_run(self._mlmd_connection, self._example_gen, 1, 1)
 
-    def _ensure_node_services(unused_pipeline_state, node_id):
-      self.assertEqual('my_example_gen', node_id)
-      return service_jobs.ServiceStatus.RUNNING
-
-    self._mock_service_job_manager.ensure_node_services.side_effect = (
-        _ensure_node_services)
-
     # Generate once.
     [transform_task] = self._generate_and_test(
         use_task_queue,
@@ -161,7 +168,10 @@ class AsyncPipelineTaskGeneratorTest(tu.TfxTest, parameterized.TestCase):
         num_active_executions=1,
         expected_exec_nodes=[self._transform])
 
-    self._mock_service_job_manager.ensure_node_services.assert_called()
+    self._mock_service_job_manager.ensure_node_services.assert_has_calls([
+        mock.call(mock.ANY, self._example_gen.node_info.id),
+        mock.call(mock.ANY, self._transform.node_info.id)
+    ])
 
     # No new effects if generate called again.
     tasks = self._generate_and_test(
@@ -254,13 +264,6 @@ class AsyncPipelineTaskGeneratorTest(tu.TfxTest, parameterized.TestCase):
     """Tests nodes can be ignored while generating tasks."""
     # Simulate that ExampleGen has already completed successfully.
     otu.fake_example_gen_run(self._mlmd_connection, self._example_gen, 1, 1)
-
-    def _ensure_node_services(unused_pipeline_state, node_id):
-      self.assertEqual('my_example_gen', node_id)
-      return service_jobs.ServiceStatus.RUNNING
-
-    self._mock_service_job_manager.ensure_node_services.side_effect = (
-        _ensure_node_services)
 
     # Generate once.
     num_initial_executions = 1

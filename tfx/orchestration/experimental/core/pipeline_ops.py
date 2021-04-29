@@ -351,15 +351,13 @@ def _orchestrate_stop_initiated_pipeline(
     if service_job_manager.is_pure_service_node(pipeline_state,
                                                 node.node_info.id):
       service_job_manager.stop_node_services(pipeline_state, node.node_info.id)
-    else:
-      if _maybe_enqueue_cancellation_task(mlmd_handle, pipeline, node,
+    elif _maybe_enqueue_cancellation_task(mlmd_handle, pipeline, node,
                                           task_queue):
-        has_active_executions = True
-      else:
-        if service_job_manager.is_mixed_service_node(pipeline_state,
-                                                     node.node_info.id):
-          service_job_manager.stop_node_services(pipeline_state,
-                                                 node.node_info.id)
+      has_active_executions = True
+    elif service_job_manager.is_mixed_service_node(pipeline_state,
+                                                   node.node_info.id):
+      service_job_manager.stop_node_services(pipeline_state,
+                                             node.node_info.id)
   if not has_active_executions:
     with pipeline_state:
       # Update pipeline execution state in MLMD.
@@ -393,9 +391,13 @@ def _orchestrate_active_pipeline(
                                                   node.node_info.id):
         service_job_manager.stop_node_services(pipeline_state,
                                                node.node_info.id)
-      else:
-        _maybe_enqueue_cancellation_task(mlmd_handle, pipeline, node,
-                                         task_queue)
+      elif _maybe_enqueue_cancellation_task(mlmd_handle, pipeline, node,
+                                            task_queue):
+        pass
+      elif service_job_manager.is_mixed_service_node(pipeline_state,
+                                                     node.node_info.id):
+        service_job_manager.stop_node_services(pipeline_state,
+                                               node.node_info.id)
     generator = async_pipeline_task_gen.AsyncPipelineTaskGenerator(
         mlmd_handle, pipeline_state, task_queue.contains_task_id,
         service_job_manager, set(n.node_info.id for n in stop_initiated_nodes))
