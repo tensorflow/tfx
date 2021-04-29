@@ -13,12 +13,5 @@
 # limitations under the License.
 """TFX extensions module."""
 
-try:
-  from tfx.v1.extensions import google_cloud_ai_platform  # pylint: disable=g-import-not-at-top
-except ImportError:  # Import will fail without cloud ai platform package.
-  pass
-
-try:
-  from tfx.v1.extensions import google_cloud_big_query  # pylint: disable=g-import-not-at-top
-except ImportError:  # Import will fail without cloud big query package.
-  pass
+from tfx.v1.extensions import google_cloud_ai_platform
+from tfx.v1.extensions import google_cloud_big_query
