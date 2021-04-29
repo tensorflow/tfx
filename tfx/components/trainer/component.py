@@ -98,8 +98,7 @@ class Trainer(base_component.BaseComponent):
       custom_config: Optional[Dict[Text, Any]] = None,
       custom_executor_spec: Optional[executor_spec.ExecutorSpec] = None,
       model: Optional[types.Channel] = None,
-      model_run: Optional[types.Channel] = None,
-      instance_name: Optional[Text] = None):
+      model_run: Optional[types.Channel] = None):
     """Construct a Trainer component.
 
     Args:
@@ -163,8 +162,6 @@ class Trainer(base_component.BaseComponent):
       model: Optional `Model` channel for result of exported models.
       model_run: Optional `ModelRun` channel, as the working dir of models,
         can be used to output non-model related output (e.g., TensorBoard logs).
-      instance_name: Optional unique instance name. Necessary iff multiple
-        Trainer components are declared in the same pipeline.
 
     Raises:
       ValueError:
@@ -206,5 +203,4 @@ class Trainer(base_component.BaseComponent):
         model_run=model_run)
     super(Trainer, self).__init__(
         spec=spec,
-        custom_executor_spec=custom_executor_spec,
-        instance_name=instance_name)
+        custom_executor_spec=custom_executor_spec)

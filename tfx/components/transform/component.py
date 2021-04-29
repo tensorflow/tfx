@@ -74,7 +74,6 @@ class Transform(base_beam_component.BaseBeamComponent):
       transform_graph: Optional[types.Channel] = None,
       transformed_examples: Optional[types.Channel] = None,
       analyzer_cache: Optional[types.Channel] = None,
-      instance_name: Optional[Text] = None,
       materialize: bool = True,
       disable_analyzer_cache: bool = False,
       force_tf_compat_v1: bool = True,
@@ -127,8 +126,6 @@ class Transform(base_beam_component.BaseBeamComponent):
       analyzer_cache: Optional input 'TransformCache' channel containing
         cached information from previous Transform runs. When provided,
         Transform will try use the cached calculation if possible.
-      instance_name: Optional unique instance name. Necessary iff multiple
-        transform components are declared in the same pipeline.
       materialize: If True, write transformed examples as an output. If False,
         `transformed_examples` must not be provided.
       disable_analyzer_cache: If False, Transform will use input cache if
@@ -181,4 +178,4 @@ class Transform(base_beam_component.BaseBeamComponent):
         analyzer_cache=analyzer_cache,
         updated_analyzer_cache=updated_analyzer_cache,
         custom_config=json_utils.dumps(custom_config))
-    super(Transform, self).__init__(spec=spec, instance_name=instance_name)
+    super(Transform, self).__init__(spec=spec)

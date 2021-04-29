@@ -18,7 +18,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from typing import Optional, Text
+from typing import Optional
 
 from tfx import types
 from tfx.components.model_validator import driver
@@ -73,8 +73,7 @@ class ModelValidator(base_beam_component.BaseBeamComponent):
   def __init__(self,
                examples: types.Channel,
                model: types.Channel,
-               blessing: Optional[types.Channel] = None,
-               instance_name: Optional[Text] = None):
+               blessing: Optional[types.Channel] = None):
     """Construct a ModelValidator component.
 
     Args:
@@ -87,10 +86,7 @@ class ModelValidator(base_beam_component.BaseBeamComponent):
         _required_
       blessing: Output channel of type `standard_artifacts.ModelBlessing`
         that contains the validation result.
-      instance_name: Optional name assigned to this specific instance of
-        ModelValidator.  Required only if multiple ModelValidator components are
-        declared in the same pipeline.
     """
     blessing = blessing or types.Channel(type=standard_artifacts.ModelBlessing)
     spec = ModelValidatorSpec(examples=examples, model=model, blessing=blessing)
-    super(ModelValidator, self).__init__(spec=spec, instance_name=instance_name)
+    super(ModelValidator, self).__init__(spec=spec)

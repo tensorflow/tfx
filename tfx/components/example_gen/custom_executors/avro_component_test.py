@@ -64,8 +64,7 @@ class ExampleGenComponentWithAvroExecutorTest(tf.test.TestCase):
             avro_executor.Executor),
         input_base=self.avro_dir_path,
         input_config=self.input_config,
-        output_config=self.output_config,
-        instance_name='AvroExampleGen')
+        output_config=self.output_config).with_id('AvroExampleGen')
 
     output_data_dir = os.path.join(
         os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR', self.get_temp_dir()),

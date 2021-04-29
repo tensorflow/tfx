@@ -146,10 +146,11 @@ def _create_pipeline(
   # Gets multiple Spans for transform and training.
   if resolver_range_config:
     examples_resolver = resolver.Resolver(
-        instance_name='span_resolver',
         strategy_class=spans_resolver.SpansResolver,
         config={'range_config': resolver_range_config},
-        examples=Channel(type=Examples, producer_component_id=example_gen.id))
+        examples=Channel(
+            type=Examples,
+            producer_component_id=example_gen.id)).with_id('span_resolver')
 
   # Performs transformations and feature engineering in training and serving.
   transform = Transform(
@@ -186,9 +187,8 @@ def _create_pipeline(
       #
       # Example of ImporterNode,
       #   hparams_importer = ImporterNode(
-      #     instance_name='import_hparams',
       #     source_uri='path/to/best_hyperparameters.txt',
-      #     artifact_type=HyperParameters)
+      #     artifact_type=HyperParameters).with_id('import_hparams')
       #   ...
       #   hyperparameters = hparams_importer.outputs['result'],
       hyperparameters=(tuner.outputs['best_hyperparameters']
@@ -198,10 +198,10 @@ def _create_pipeline(
 
   # Get the latest blessed model for model validation.
   model_resolver = resolver.Resolver(
-      instance_name='latest_blessed_model_resolver',
       strategy_class=latest_blessed_model_resolver.LatestBlessedModelResolver,
       model=Channel(type=Model),
-      model_blessing=Channel(type=ModelBlessing))
+      model_blessing=Channel(
+          type=ModelBlessing)).with_id('latest_blessed_model_resolver')
 
   # Uses TFMA to compute evaluation statistics over features of a model and
   # perform quality validation of a candidate model (compared to a baseline).

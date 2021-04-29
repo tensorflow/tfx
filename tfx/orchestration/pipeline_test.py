@@ -58,7 +58,7 @@ def _make_fake_node_instance(name: Text):
     def exec_properties(self) -> Dict[Text, Any]:
       return {}
 
-  return _FakeNode(instance_name=name)
+  return _FakeNode().with_id(name)
 
 
 def _make_fake_component_instance(name: Text,
@@ -85,7 +85,8 @@ def _make_fake_component_instance(name: Text,
         type: Type[types.Artifact],  # pylint: disable=redefined-builtin
         spec_kwargs: Dict[Text, Any]):
       spec = _FakeComponentSpec(output=types.Channel(type=type), **spec_kwargs)
-      super(_FakeComponent, self).__init__(spec=spec, instance_name=name)
+      super(_FakeComponent, self).__init__(spec=spec)
+      self._id = name
 
   class _FakeBeamComponent(base_beam_component.BaseBeamComponent):
 
@@ -97,7 +98,8 @@ def _make_fake_component_instance(name: Text,
         type: Type[types.Artifact],  # pylint: disable=redefined-builtin
         spec_kwargs: Dict[Text, Any]):
       spec = _FakeComponentSpec(output=types.Channel(type=type), **spec_kwargs)
-      super(_FakeBeamComponent, self).__init__(spec=spec, instance_name=name)
+      super(_FakeBeamComponent, self).__init__(spec=spec)
+      self._id = name
 
   spec_kwargs = dict(itertools.chain(inputs.items(), outputs.items()))
   return _FakeBeamComponent(output_type,

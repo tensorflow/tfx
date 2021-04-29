@@ -36,7 +36,6 @@ class ImporterTest(tf.test.TestCase):
 
   def testImporterDefinitionWithSingleUri(self):
     impt = importer.Importer(
-        instance_name='my_importer',
         source_uri='m/y/u/r/i',
         properties={
             'split_names': '["train", "eval"]',
@@ -45,7 +44,7 @@ class ImporterTest(tf.test.TestCase):
             'str_custom_property': 'abc',
             'int_custom_property': 123,
         },
-        artifact_type=standard_artifacts.Examples)
+        artifact_type=standard_artifacts.Examples).with_id('my_importer')
     self.assertDictEqual(
         impt.exec_properties, {
             importer.SOURCE_URI_KEY: 'm/y/u/r/i',
@@ -72,18 +71,17 @@ class ImporterTest(tf.test.TestCase):
         output_artifact.get_int_custom_property('int_custom_property'), 123)
 
   def testImporterDumpsJsonRoundtrip(self):
-    instance_name = 'my_importer'
+    component_id = 'my_importer'
     source_uris = ['m/y/u/r/i']
     impt = importer.Importer(
-        instance_name=instance_name,
         source_uri=source_uris,
-        artifact_type=standard_artifacts.Examples)
+        artifact_type=standard_artifacts.Examples).with_id(component_id)
 
     # The following line will raise an assertion if object not JSONable.
     json_text = json_utils.dumps(impt)
 
     actual_obj = json_utils.loads(json_text)
-    self.assertEqual(actual_obj._instance_name, instance_name)
+    self.assertEqual(actual_obj.id, component_id)
     self.assertEqual(actual_obj._source_uri, source_uris)
 
 

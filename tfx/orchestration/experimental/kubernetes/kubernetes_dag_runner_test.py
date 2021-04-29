@@ -13,8 +13,6 @@
 # limitations under the License.
 """Tests for tfx.orchestration.kubernetes.kubernetes_dag_runner."""
 
-from typing import Optional, Text
-
 from unittest import mock
 import tensorflow as tf
 from tfx import types
@@ -118,13 +116,9 @@ class _FakeComponent(base_component.BaseComponent):
   SPEC_CLASS = types.ComponentSpec
   EXECUTOR_SPEC = executor_spec.ExecutorClassSpec(base_executor.BaseExecutor)
 
-  def __init__(self,
-               spec: types.ComponentSpec,
-               instance_name: Optional[Text] = None):
-    if instance_name is None:
-      instance_name = spec.__class__.__name__.replace('_FakeComponentSpec',
-                                                      '').lower()
-    super(_FakeComponent, self).__init__(spec=spec, instance_name=instance_name)
+  def __init__(self, spec: types.ComponentSpec):
+    super(_FakeComponent, self).__init__(spec=spec)
+    self._id = spec.__class__.__name__.replace('_FakeComponentSpec', '').lower()
 
 
 class KubernetesDagRunnerTest(tf.test.TestCase):
@@ -171,11 +165,9 @@ class KubernetesDagRunnerTest(tf.test.TestCase):
         ])
 
     kubernetes_dag_runner.KubernetesDagRunner().run(test_pipeline)
-    self.assertEqual(_executed_components, [
-        '_FakeComponent.a.Wrapper', '_FakeComponent.b.Wrapper',
-        '_FakeComponent.c.Wrapper', '_FakeComponent.d.Wrapper',
-        '_FakeComponent.e.Wrapper'
-    ])
+    self.assertEqual(
+        _executed_components,
+        ['a.Wrapper', 'b.Wrapper', 'c.Wrapper', 'd.Wrapper', 'e.Wrapper'])
 
   @mock.patch.object(
       kubernetes_dag_runner,
@@ -190,11 +182,9 @@ class KubernetesDagRunnerTest(tf.test.TestCase):
     component_a = _FakeComponent(
         spec=_FakeComponentSpecA(output=types.Channel(type=_ArtifactTypeA)))
     component_f1 = _FakeComponent(
-        spec=_FakeComponentSpecF(a=component_a.outputs['output']),
-        instance_name='f1')
+        spec=_FakeComponentSpecF(a=component_a.outputs['output'])).with_id('f1')
     component_f2 = _FakeComponent(
-        spec=_FakeComponentSpecF(a=component_a.outputs['output']),
-        instance_name='f2')
+        spec=_FakeComponentSpecF(a=component_a.outputs['output'])).with_id('f2')
     component_f2.add_upstream_node(component_f1)
 
     test_pipeline = pipeline.Pipeline(
@@ -203,10 +193,8 @@ class KubernetesDagRunnerTest(tf.test.TestCase):
         metadata_connection_config=metadata_store_pb2.ConnectionConfig(),
         components=[component_f1, component_f2, component_a])
     kubernetes_dag_runner.KubernetesDagRunner().run(test_pipeline)
-    self.assertEqual(_executed_components, [
-        '_FakeComponent.a.Wrapper', '_FakeComponent.f1.Wrapper',
-        '_FakeComponent.f2.Wrapper'
-    ])
+    self.assertEqual(_executed_components,
+                     ['a.Wrapper', 'f1.Wrapper', 'f2.Wrapper'])
 
 
 if __name__ == '__main__':

@@ -40,25 +40,24 @@ class KubeflowDataflowIntegrationTest(kubeflow_test_utils.BaseKubeflowTest):
 
     # Example artifacts for testing.
     self.raw_examples_importer = ImporterNode(
-        instance_name='raw_examples',
         source_uri=os.path.join(self._testdata_root, 'csv_example_gen'),
         artifact_type=standard_artifacts.Examples,
         reimport=True,
-        properties={'split_names': '["train", "eval"]'})
+        properties={
+            'split_names': '["train", "eval"]'
+        }).with_id('raw_examples')
 
     # Schema artifact for testing.
     self.schema_importer = ImporterNode(
-        instance_name='schema',
         source_uri=os.path.join(self._testdata_root, 'schema_gen'),
         artifact_type=standard_artifacts.Schema,
-        reimport=True)
+        reimport=True).with_id('schema')
 
     # Model artifact for testing.
     self.model_1_importer = ImporterNode(
-        instance_name='model_1',
         source_uri=os.path.join(self._testdata_root, 'trainer', 'previous'),
         artifact_type=standard_artifacts.Model,
-        reimport=True)
+        reimport=True).with_id('model_1')
 
   def testCsvExampleGenOnDataflowRunner(self):
     """CsvExampleGen-only test pipeline on DataflowRunner invocation."""

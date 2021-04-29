@@ -246,8 +246,6 @@ def deserialize_pipeline(serialized_pipeline: Text) -> tfx_pipeline.Pipeline:
     # serialization process, we initialize them here.
     component._upstream_nodes = set()  # pylint: disable=protected-access
     component._downstream_nodes = set()  # pylint: disable=protected-access
-    # Restore dropped instance name from component id.
-    component._instance_name = component.id.split(',')[-1]  # pylint: disable=protected-access
 
   for upstream_id, downstream_id_list in downstream_ids.items():
     upstream_component = id_to_component[upstream_id]

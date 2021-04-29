@@ -63,8 +63,7 @@ class SchemaGen(base_component.BaseComponent):
       infer_feature_shape: Optional[Union[bool,
                                           data_types.RuntimeParameter]] = True,
       exclude_splits: Optional[List[Text]] = None,
-      schema: Optional[types.Channel] = None,
-      instance_name: Optional[Text] = None):
+      schema: Optional[types.Channel] = None):
     """Constructs a SchemaGen component.
 
     Args:
@@ -79,9 +78,6 @@ class SchemaGen(base_component.BaseComponent):
         when auto-generating a schema. Default behavior (when exclude_splits is
         set to None) is excluding no splits.
       schema: Output `Schema` channel for schema result.
-      instance_name: Optional name assigned to this specific instance of
-        SchemaGen.  Required only if multiple SchemaGen components are declared
-        in the same pipeline.
     """
     if exclude_splits is None:
       exclude_splits = []
@@ -94,4 +90,4 @@ class SchemaGen(base_component.BaseComponent):
         infer_feature_shape=infer_feature_shape,
         exclude_splits=json_utils.dumps(exclude_splits),
         schema=schema)
-    super(SchemaGen, self).__init__(spec=spec, instance_name=instance_name)
+    super(SchemaGen, self).__init__(spec=spec)

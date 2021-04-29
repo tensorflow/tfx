@@ -186,7 +186,6 @@ class StepBuilderTest(tf.test.TestCase):
 
   def testBuildImporter(self):
     impt = importer.Importer(
-        instance_name='my_importer',
         source_uri='m/y/u/r/i',
         properties={
             'split_names': '["train", "eval"]',
@@ -195,7 +194,7 @@ class StepBuilderTest(tf.test.TestCase):
             'str_custom_property': 'abc',
             'int_custom_property': 123,
         },
-        artifact_type=standard_artifacts.Examples)
+        artifact_type=standard_artifacts.Examples).with_id('my_importer')
     deployment_config = pipeline_pb2.PipelineDeploymentConfig()
     component_defs = {}
     my_builder = step_builder.StepBuilder(
@@ -220,10 +219,10 @@ class StepBuilderTest(tf.test.TestCase):
 
   def testBuildLatestBlessedModelResolverSucceed(self):
     latest_blessed_resolver = resolver.Resolver(
-        instance_name='my_resolver2',
         strategy_class=latest_blessed_model_resolver.LatestBlessedModelResolver,
         model=channel.Channel(type=standard_artifacts.Model),
-        model_blessing=channel.Channel(type=standard_artifacts.ModelBlessing))
+        model_blessing=channel.Channel(
+            type=standard_artifacts.ModelBlessing)).with_id('my_resolver2')
     test_pipeline_info = data_types.PipelineInfo(
         pipeline_name='test-pipeline', pipeline_root='gs://path/to/my/root')
 
@@ -236,8 +235,8 @@ class StepBuilderTest(tf.test.TestCase):
         component_defs=component_defs)
     actual_step_specs = my_builder.build()
 
-    model_blessing_resolver_id = 'Resolver.my_resolver2-model-blessing-resolver'
-    model_resolver_id = 'Resolver.my_resolver2-model-resolver'
+    model_blessing_resolver_id = 'my_resolver2-model-blessing-resolver'
+    model_resolver_id = 'my_resolver2-model-resolver'
     self.assertSameElements(actual_step_specs.keys(),
                             [model_blessing_resolver_id, model_resolver_id])
 
@@ -271,10 +270,10 @@ class StepBuilderTest(tf.test.TestCase):
 
   def testBuildLatestArtifactResolverSucceed(self):
     latest_model_resolver = resolver.Resolver(
-        instance_name='my_resolver',
         strategy_class=latest_artifacts_resolver.LatestArtifactsResolver,
         model=channel.Channel(type=standard_artifacts.Model),
-        examples=channel.Channel(type=standard_artifacts.Examples))
+        examples=channel.Channel(
+            type=standard_artifacts.Examples)).with_id('my_resolver')
     deployment_config = pipeline_pb2.PipelineDeploymentConfig()
     component_defs = {}
     test_pipeline_info = data_types.PipelineInfo(

@@ -260,9 +260,8 @@ def create_pipeline(
       #
       # Example of ImporterNode,
       #   hparams_importer = ImporterNode(
-      #     instance_name='import_hparams',
       #     source_uri='path/to/best_hyperparameters.txt',
-      #     artifact_type=HyperParameters)
+      #     artifact_type=HyperParameters).with_id('import_hparams')
       #   ...
       #   hyperparameters = hparams_importer.outputs['result'],
       hyperparameters=(tuner.outputs['best_hyperparameters']
@@ -276,10 +275,10 @@ def create_pipeline(
 
   # Get the latest blessed model for model validation.
   model_resolver = ResolverNode(
-      instance_name='latest_blessed_model_resolver',
       resolver_class=latest_blessed_model_resolver.LatestBlessedModelResolver,
       model=Channel(type=Model),
-      model_blessing=Channel(type=ModelBlessing))
+      model_blessing=Channel(
+          type=ModelBlessing)).with_id('latest_blessed_model_resolver')
 
   # Uses TFMA to compute evaluation statistics over features of a model and
   # perform quality validation of a candidate model (compared to a baseline).

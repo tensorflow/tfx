@@ -196,10 +196,10 @@ class Resolver(base_node.BaseNode):
   ```
   example_gen = ImportExampleGen(...)
   examples_resolver = Resolver(
-        instance_name='span_resolver',
         strategy_class=SpansResolver,
         config={'range_config': range_config},
-        examples=Channel(type=Examples, producer_component_id=example_gen.id))
+        examples=Channel(type=Examples, producer_component_id=example_gen.id)
+        ).with_id('Resolver.span_resolver')
   trainer = Trainer(
       examples=examples_resolver.outputs['examples'],
       ...)
@@ -207,14 +207,12 @@ class Resolver(base_node.BaseNode):
   """
 
   def __init__(self,
-               instance_name: Text,
                strategy_class: Type[ResolverStrategy],
                config: Dict[Text, json_utils.JsonableType] = None,
                **kwargs: types.Channel):
     """Init function for Resolver.
 
     Args:
-      instance_name: the name of the Resolver instance.
       strategy_class: a ResolverStrategy subclass which contains the artifact
         resolution logic.
       config: a dict of key to Jsonable type representing configuration that
@@ -235,7 +233,6 @@ class Resolver(base_node.BaseNode):
       self._output_dict[k] = types.Channel(type=c.type).set_artifacts(
           [c.type()])
     super(Resolver, self).__init__(
-        instance_name=instance_name,
         driver_class=_ResolverDriver,
     )
 

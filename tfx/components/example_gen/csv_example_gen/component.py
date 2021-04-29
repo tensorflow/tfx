@@ -71,8 +71,7 @@ class CsvExampleGen(component.FileBasedExampleGen):  # pylint: disable=protected
                                                                  Any]]] = None,
       range_config: Optional[Union[range_config_pb2.RangeConfig,
                                    Dict[Text, Any]]] = None,
-      example_artifacts: Optional[types.Channel] = None,
-      instance_name: Optional[Text] = None):
+      example_artifacts: Optional[types.Channel] = None):
     """Construct a CsvExampleGen component.
 
     Args:
@@ -92,13 +91,10 @@ class CsvExampleGen(component.FileBasedExampleGen):  # pylint: disable=protected
         default to searching for latest span with no restrictions.
       example_artifacts: Optional channel of 'ExamplesPath' for output train and
         eval examples.
-      instance_name: Optional unique instance name. Necessary if multiple
-        CsvExampleGen components are declared in the same pipeline.
     """
     super(CsvExampleGen, self).__init__(
         input_base=input_base,
         input_config=input_config,
         output_config=output_config,
         range_config=range_config,
-        example_artifacts=example_artifacts,
-        instance_name=instance_name)
+        example_artifacts=example_artifacts)

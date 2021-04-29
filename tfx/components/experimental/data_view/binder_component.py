@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """TFX DataViewBinder component definition."""
-from typing import Optional, Text
+from typing import Optional
 
 from tfx import types
 from tfx.components.experimental.data_view import binder_executor
@@ -70,8 +70,7 @@ class DataViewBinder(base_component.BaseComponent):
   def __init__(self,
                input_examples: types.Channel,
                data_view: types.Channel,
-               output_examples: Optional[types.Channel] = None,
-               instance_name: Optional[Text] = None):
+               output_examples: Optional[types.Channel] = None):
     if not output_examples:
       output_examples = types.Channel(type=standard_artifacts.Examples)
 
@@ -79,4 +78,4 @@ class DataViewBinder(base_component.BaseComponent):
         input_examples=input_examples,
         data_view=data_view,
         output_examples=output_examples)
-    super().__init__(spec=spec, instance_name=instance_name)
+    super().__init__(spec=spec)

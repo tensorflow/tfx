@@ -120,9 +120,9 @@ nodes {
   pipeline_node {
     node_info {
       type {
-        name: "tfx.dsl.components.common.importer.Importer"
+        name: "tfx.dsl.components.common.resolver.Resolver"
       }
-      id: "Importer.my_importer"
+      id: "latest_blessed_model_resolver"
     }
     contexts {
       contexts {
@@ -152,7 +152,123 @@ nodes {
         }
         name {
           field_value {
-            string_value: "iris.Importer.my_importer"
+            string_value: "iris.latest_blessed_model_resolver"
+          }
+        }
+      }
+    }
+    inputs {
+      inputs {
+        key: "model"
+        value {
+          channels {
+            producer_node_query {
+              id: "Trainer"
+            }
+            context_queries {
+              type {
+                name: "pipeline"
+              }
+              name {
+                field_value {
+                  string_value: "iris"
+                }
+              }
+            }
+            context_queries {
+              type {
+                name: "node"
+              }
+              name {
+                field_value {
+                  string_value: "iris.Trainer"
+                }
+              }
+            }
+            artifact_query {
+              type {
+                name: "Model"
+              }
+            }
+          }
+        }
+      }
+      inputs {
+        key: "model_blessing"
+        value {
+          channels {
+            context_queries {
+              type {
+                name: "pipeline"
+              }
+              name {
+                field_value {
+                  string_value: "iris"
+                }
+              }
+            }
+            artifact_query {
+              type {
+                name: "ModelBlessing"
+              }
+            }
+          }
+        }
+      }
+      resolver_config {
+        resolver_steps {
+          class_path: "tfx.dsl.experimental.latest_blessed_model_resolver.LatestBlessedModelResolver"
+          config_json: "{}"
+          input_keys: "model"
+          input_keys: "model_blessing"
+        }
+      }
+    }
+    downstream_nodes: "Evaluator"
+    execution_options {
+      caching_options {
+        enable_cache: true
+      }
+    }
+  }
+}
+nodes {
+  pipeline_node {
+    node_info {
+      type {
+        name: "tfx.dsl.components.common.importer.Importer"
+      }
+      id: "my_importer"
+    }
+    contexts {
+      contexts {
+        type {
+          name: "pipeline"
+        }
+        name {
+          field_value {
+            string_value: "iris"
+          }
+        }
+      }
+      contexts {
+        type {
+          name: "pipeline_run"
+        }
+        name {
+          runtime_parameter {
+            name: "pipeline_run_id"
+            type: STRING
+          }
+        }
+      }
+      contexts {
+        type {
+          name: "node"
+        }
+        name {
+          field_value {
+            string_value: "iris.my_importer"
           }
         }
       }
@@ -228,123 +344,7 @@ nodes {
         enable_cache: true
       }
     }
-    downstream_nodes: "StatisticsGen.another_statistics_gen"
-  }
-}
-nodes {
-  pipeline_node {
-    node_info {
-      type {
-        name: "tfx.dsl.components.common.resolver.Resolver"
-      }
-      id: "Resolver.latest_blessed_model_resolver"
-    }
-    contexts {
-      contexts {
-        type {
-          name: "pipeline"
-        }
-        name {
-          field_value {
-            string_value: "iris"
-          }
-        }
-      }
-      contexts {
-        type {
-          name: "pipeline_run"
-        }
-        name {
-          runtime_parameter {
-            name: "pipeline_run_id"
-            type: STRING
-          }
-        }
-      }
-      contexts {
-        type {
-          name: "node"
-        }
-        name {
-          field_value {
-            string_value: "iris.Resolver.latest_blessed_model_resolver"
-          }
-        }
-      }
-    }
-    inputs {
-      inputs {
-        key: "model"
-        value {
-          channels {
-            producer_node_query {
-              id: "Trainer"
-            }
-            context_queries {
-              type {
-                name: "pipeline"
-              }
-              name {
-                field_value {
-                  string_value: "iris"
-                }
-              }
-            }
-            context_queries {
-              type {
-                name: "node"
-              }
-              name {
-                field_value {
-                  string_value: "iris.Trainer"
-                }
-              }
-            }
-            artifact_query {
-              type {
-                name: "Model"
-              }
-            }
-          }
-        }
-      }
-      inputs {
-        key: "model_blessing"
-        value {
-          channels {
-            context_queries {
-              type {
-                name: "pipeline"
-              }
-              name {
-                field_value {
-                  string_value: "iris"
-                }
-              }
-            }
-            artifact_query {
-              type {
-                name: "ModelBlessing"
-              }
-            }
-          }
-        }
-      }
-      resolver_config {
-        resolver_steps {
-          class_path: "tfx.dsl.experimental.latest_blessed_model_resolver.LatestBlessedModelResolver"
-          config_json: "{}"
-          input_keys: "model"
-          input_keys: "model_blessing"
-        }
-      }
-    }
-    execution_options {
-      caching_options {
-        enable_cache: true
-      }
-    }
-    downstream_nodes: "Evaluator"
+    downstream_nodes: "another_statistics_gen"
   }
 }
 nodes {
@@ -483,7 +483,7 @@ nodes {
       type {
         name: "tfx.components.statistics_gen.component.StatisticsGen"
       }
-      id: "StatisticsGen.another_statistics_gen"
+      id: "another_statistics_gen"
     }
     contexts {
       contexts {
@@ -513,7 +513,7 @@ nodes {
         }
         name {
           field_value {
-            string_value: "iris.StatisticsGen.another_statistics_gen"
+            string_value: "iris.another_statistics_gen"
           }
         }
       }
@@ -524,7 +524,7 @@ nodes {
         value {
           channels {
             producer_node_query {
-              id: "Importer.my_importer"
+              id: "my_importer"
             }
             context_queries {
               type {
@@ -553,7 +553,7 @@ nodes {
               }
               name {
                 field_value {
-                  string_value: "iris.Importer.my_importer"
+                  string_value: "iris.my_importer"
                 }
               }
             }
@@ -597,7 +597,7 @@ nodes {
         }
       }
     }
-    upstream_nodes: "Importer.my_importer"
+    upstream_nodes: "my_importer"
     execution_options {
       caching_options {
         enable_cache: true
@@ -1166,7 +1166,7 @@ nodes {
         value {
           channels {
             producer_node_query {
-              id: "Resolver.latest_blessed_model_resolver"
+              id: "latest_blessed_model_resolver"
             }
             context_queries {
               type {
@@ -1195,7 +1195,7 @@ nodes {
               }
               name {
                 field_value {
-                  string_value: "iris.Resolver.latest_blessed_model_resolver"
+                  string_value: "iris.latest_blessed_model_resolver"
                 }
               }
             }
@@ -1349,8 +1349,8 @@ nodes {
       }
     }
     upstream_nodes: "CsvExampleGen"
-    upstream_nodes: "Resolver.latest_blessed_model_resolver"
     upstream_nodes: "Trainer"
+    upstream_nodes: "latest_blessed_model_resolver"
     downstream_nodes: "Pusher"
   }
 }
@@ -1611,7 +1611,7 @@ deployment_config {
       }
     }
     executor_specs {
-      key: "StatisticsGen.another_statistics_gen"
+      key: "another_statistics_gen"
       value {
         [type.googleapis.com/tfx.orchestration.executable_spec.BeamExecutableSpec] {
           python_executor_spec {

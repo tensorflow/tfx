@@ -41,8 +41,7 @@ class BigQueryExampleGen(component.QueryBasedExampleGen):
                query: Optional[str] = None,
                input_config: Optional[example_gen_pb2.Input] = None,
                output_config: Optional[example_gen_pb2.Output] = None,
-               example_artifacts: Optional[types.Channel] = None,
-               instance_name: Optional[str] = None):
+               example_artifacts: Optional[types.Channel] = None):
     """Constructs a BigQueryExampleGen component.
 
     Args:
@@ -60,8 +59,6 @@ class BigQueryExampleGen(component.QueryBasedExampleGen):
         as Output proto message.
       example_artifacts: Optional channel of 'ExamplesPath' for output train and
         eval examples.
-      instance_name: Optional unique instance name. Necessary if multiple
-        BigQueryExampleGen components are declared in the same pipeline.
 
     Raises:
       RuntimeError: Only one of query and input_config should be set.
@@ -72,5 +69,4 @@ class BigQueryExampleGen(component.QueryBasedExampleGen):
     super(BigQueryExampleGen, self).__init__(
         input_config=input_config,
         output_config=output_config,
-        example_artifacts=example_artifacts,
-        instance_name=instance_name)
+        example_artifacts=example_artifacts)

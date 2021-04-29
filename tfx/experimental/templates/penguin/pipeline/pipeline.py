@@ -102,10 +102,10 @@ def create_pipeline(
 
   # Get the latest blessed model for model validation.
   model_resolver = resolver.Resolver(
-      instance_name='latest_blessed_model_resolver',
       strategy_class=latest_blessed_model_resolver.LatestBlessedModelResolver,
       model=Channel(type=Model),
-      model_blessing=Channel(type=ModelBlessing))
+      model_blessing=Channel(
+          type=ModelBlessing)).with_id('latest_blessed_model_resolver')
   # TODO(step 5): Uncomment here to add ResolverNode to the pipeline.
   # components.append(model_resolver)
 

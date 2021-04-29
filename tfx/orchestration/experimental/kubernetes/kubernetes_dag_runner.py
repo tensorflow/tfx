@@ -253,5 +253,5 @@ class KubernetesDagRunner(tfx_runner.TfxRunner):
         outputs={},
         parameters={},
         image=self._config.tfx_image,
-        command=_CONTAINER_COMMAND + arguments)(
-            instance_name=component._instance_name + _WRAPPER_SUFFIX)  # pylint: disable=protected-access
+        command=_CONTAINER_COMMAND + arguments)().with_id(component.id +
+                                                          _WRAPPER_SUFFIX)

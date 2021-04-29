@@ -278,9 +278,8 @@ def create_e2e_components(
       schema=schema_gen.outputs['schema'],
       module_file=transform_module)
   latest_model_resolver = ResolverNode(
-      instance_name='latest_model_resolver',
       resolver_class=latest_artifacts_resolver.LatestArtifactsResolver,
-      latest_model=Channel(type=Model))
+      latest_model=Channel(type=Model)).with_id('latest_model_resolver')
   trainer = Trainer(
       transformed_examples=transform.outputs['transformed_examples'],
       schema=schema_gen.outputs['schema'],

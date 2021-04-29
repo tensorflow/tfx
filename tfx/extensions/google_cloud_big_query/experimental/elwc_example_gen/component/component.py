@@ -39,8 +39,7 @@ class BigQueryToElwcExampleGen(component.QueryBasedExampleGen):
                elwc_config: Optional[elwc_config_pb2.ElwcConfig] = None,
                input_config: Optional[example_gen_pb2.Input] = None,
                output_config: Optional[example_gen_pb2.Output] = None,
-               example_artifacts: Optional[types.Channel] = None,
-               instance_name: Optional[Text] = None):
+               example_artifacts: Optional[types.Channel] = None):
     """Constructs a BigQueryElwcExampleGen component.
 
     Args:
@@ -63,8 +62,6 @@ class BigQueryToElwcExampleGen(component.QueryBasedExampleGen):
           proto message.
       example_artifacts: Optional channel of 'ExamplesPath' for output train and
         eval examples.
-      instance_name: Optional unique instance name. Necessary if multiple
-        BigQueryExampleGen components are declared in the same pipeline.
 
     Raises:
       RuntimeError: Only one of query and input_config should be set and
@@ -84,5 +81,4 @@ class BigQueryToElwcExampleGen(component.QueryBasedExampleGen):
         output_config=output_config,
         output_data_format=example_gen_pb2.FORMAT_PROTO,
         custom_config=packed_custom_config,
-        example_artifacts=example_artifacts,
-        instance_name=instance_name)
+        example_artifacts=example_artifacts)

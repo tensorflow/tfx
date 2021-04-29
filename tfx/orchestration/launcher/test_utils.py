@@ -104,5 +104,5 @@ class _FakeComponent(base_component.BaseComponent):
     spec = _FakeComponentSpec(input=input_channel, output=output_channel)
     super(_FakeComponent, self).__init__(
         spec=spec,
-        instance_name=name,
         custom_executor_spec=custom_executor_spec)
+    self._id = '{}.{}'.format(self.__class__.__name__, name)

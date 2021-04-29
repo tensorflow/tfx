@@ -49,64 +49,62 @@ class KubeflowGCPIntegrationTest(kubeflow_test_utils.BaseKubeflowTest):
 
     # Transformed Example artifacts for testing.
     self.transformed_examples_importer = ImporterNode(
-        instance_name='transformed_examples',
         source_uri=os.path.join(self._testdata_root, 'transform',
                                 'transformed_examples'),
         artifact_type=standard_artifacts.Examples,
         reimport=True,
-        properties={'split_names': '["train", "eval"]'})
+        properties={
+            'split_names': '["train", "eval"]'
+        }).with_id('transformed_examples')
 
     # Schema artifact for testing.
     self.schema_importer = ImporterNode(
-        instance_name='schema',
         source_uri=os.path.join(self._testdata_root, 'schema_gen'),
         artifact_type=standard_artifacts.Schema,
-        reimport=True)
+        reimport=True).with_id('schema')
 
     # TransformGraph artifact for testing.
     self.transform_graph_importer = ImporterNode(
-        instance_name='transform_graph',
         source_uri=os.path.join(self._testdata_root, 'transform',
                                 'transform_graph'),
         artifact_type=standard_artifacts.TransformGraph,
-        reimport=True)
+        reimport=True).with_id('transform_graph')
 
     # Model artifact for testing.
     self.model_1_importer = ImporterNode(
-        instance_name='model_1',
         source_uri=os.path.join(self._testdata_root, 'trainer', 'previous'),
         artifact_type=standard_artifacts.Model,
-        reimport=True)
+        reimport=True).with_id('model_1')
 
     self.model_2_importer = ImporterNode(
-        instance_name='model_2',
         source_uri=os.path.join(self._testdata_root, 'trainer', 'current'),
         artifact_type=standard_artifacts.Model,
-        reimport=True)
+        reimport=True).with_id('model_2')
 
     # ModelBlessing artifact for testing.
     self.model_blessing_importer = ImporterNode(
-        instance_name='model_blessing',
         source_uri=os.path.join(self._testdata_root, 'model_validator',
                                 'blessed'),
         artifact_type=standard_artifacts.ModelBlessing,
         reimport=True,
-        custom_properties={'blessed': 1})
+        custom_properties={
+            'blessed': 1
+        }).with_id('model_blessing')
 
     ### Test data and modules for native Keras trainer and tuner.
     self._penguin_tuner_module = os.path.join(self._MODULE_ROOT,
                                               'tuner_module.py')
     self.penguin_examples_importer = ImporterNode(
-        instance_name='penguin_examples',
         source_uri=os.path.join(self._testdata_root, 'penguin', 'data'),
         artifact_type=standard_artifacts.Examples,
         reimport=True,
-        properties={'split_names': '["train", "eval"]'})
+        properties={
+            'split_names': '["train", "eval"]'
+        }).with_id('penguin_examples')
     self.penguin_schema_importer = ImporterNode(
-        instance_name='penguin_schema',
         source_uri=os.path.join(self._testdata_root, 'penguin', 'schema'),
         artifact_type=standard_artifacts.Schema,
-        reimport=True)
+        reimport=True).with_id('penguin_schema')
 
   def _getCaipTrainingArgs(self, pipeline_name):
     """Training args for Google CAIP Training."""

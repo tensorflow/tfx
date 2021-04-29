@@ -49,7 +49,6 @@ def create_test_pipeline():
   statistics_gen = StatisticsGen(examples=example_gen.outputs["examples"])
 
   importer = ImporterNode(
-      instance_name="my_importer",
       source_uri="m/y/u/r/i",
       properties={
           "split_names": "['train', 'eval']",
@@ -58,10 +57,9 @@ def create_test_pipeline():
           "int_custom_property": 42,
           "str_custom_property": "42",
       },
-      artifact_type=standard_artifacts.Examples)
+      artifact_type=standard_artifacts.Examples).with_id("my_importer")
   another_statistics_gen = StatisticsGen(
-      examples=importer.outputs["result"],
-      instance_name="another_statistics_gen")
+      examples=importer.outputs["result"]).with_id("another_statistics_gen")
 
   schema_gen = SchemaGen(statistics=statistics_gen.outputs["statistics"])
 
@@ -86,11 +84,11 @@ def create_test_pipeline():
           config=trainer_pb2.TrainArgs(num_steps=2000))
 
   model_resolver = ResolverNode(
-      instance_name="latest_blessed_model_resolver",
       resolver_class=latest_blessed_model_resolver.LatestBlessedModelResolver,
       model=Channel(
           type=standard_artifacts.Model, producer_component_id=trainer.id),
-      model_blessing=Channel(type=standard_artifacts.ModelBlessing))
+      model_blessing=Channel(type=standard_artifacts.ModelBlessing)).with_id(
+          "latest_blessed_model_resolver")
 
   eval_config = tfma.EvalConfig(
       model_specs=[tfma.ModelSpec(signature_name="eval")],

@@ -33,4 +33,4 @@ output_definitions {
     }
   }
 }
-executor_label: "Resolver.my_resolver_executor"
+executor_label: "my_resolver_executor"

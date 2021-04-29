@@ -107,9 +107,8 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
 
   # Get the latest model so that we can warm start from the model.
   latest_model_resolver = ResolverNode(
-      instance_name='latest_model_resolver',
       resolver_class=latest_artifacts_resolver.LatestArtifactsResolver,
-      latest_model=Channel(type=Model))
+      latest_model=Channel(type=Model)).with_id('latest_model_resolver')
 
   # Uses user-provided Python function that implements a model using TF-Learn.
   trainer = Trainer(
@@ -124,10 +123,10 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
 
   # Get the latest blessed model for model validation.
   model_resolver = ResolverNode(
-      instance_name='latest_blessed_model_resolver',
       resolver_class=latest_blessed_model_resolver.LatestBlessedModelResolver,
       model=Channel(type=Model),
-      model_blessing=Channel(type=ModelBlessing))
+      model_blessing=Channel(
+          type=ModelBlessing)).with_id('latest_blessed_model_resolver')
 
   # Uses TFMA to compute a evaluation statistics over features of a model and
   # perform quality validation of a candidate model (compared to a baseline).

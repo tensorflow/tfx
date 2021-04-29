@@ -83,7 +83,7 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text,
   # Brings training data into the pipeline or otherwise joins/converts
   # training data.
   training_example_gen = CsvExampleGen(
-      input_base=training_data_root, instance_name='training_example_gen')
+      input_base=training_data_root).with_id('training_example_gen')
 
   # Computes statistics over data for visualization and example validation.
   statistics_gen = StatisticsGen(
@@ -117,10 +117,10 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text,
 
   # Get the latest blessed model for model validation.
   model_resolver = ResolverNode(
-      instance_name='latest_blessed_model_resolver',
       resolver_class=latest_blessed_model_resolver.LatestBlessedModelResolver,
       model=Channel(type=Model),
-      model_blessing=Channel(type=ModelBlessing))
+      model_blessing=Channel(
+          type=ModelBlessing)).with_id('latest_blessed_model_resolver')
 
   # Uses TFMA to compute a evaluation statistics over features of a model and
   # perform quality validation of a candidate model (compared to a baseline).
@@ -157,8 +157,7 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text,
           split_config=example_gen_pb2.SplitConfig(splits=[
               example_gen_pb2.SplitConfig.Split(
                   name='unlabelled', hash_buckets=100)
-          ])),
-      instance_name='inference_example_gen')
+          ]))).with_id('inference_example_gen')
 
   # Performs offline batch inference over inference examples.
   bulk_inferrer = BulkInferrer(

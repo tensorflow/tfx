@@ -76,18 +76,13 @@ class BaseComponent(with_metaclass(abc.ABCMeta, base_node.BaseNode)):
   def __init__(
       self,
       spec: types.ComponentSpec,
-      custom_executor_spec: Optional[executor_spec.ExecutorSpec] = None,
-      instance_name: Optional[Text] = None):
+      custom_executor_spec: Optional[executor_spec.ExecutorSpec] = None):
     """Initialize a component.
 
     Args:
       spec: types.ComponentSpec object for this component instance.
       custom_executor_spec: Optional custom executor spec overriding the default
         executor specified in the component attribute.
-      instance_name: Deprecated. Please set `id` directly using `with_id()`
-        function or `.id` setter in the `BaseNode` class. The pipeline
-        assembling will fail if there are two nodes in the pipeline with the
-        same id.
     """
     if custom_executor_spec:
       if not isinstance(custom_executor_spec, executor_spec.ExecutorSpec):
@@ -108,7 +103,6 @@ class BaseComponent(with_metaclass(abc.ABCMeta, base_node.BaseNode)):
 
     driver_class = self.__class__.DRIVER_CLASS
     super(BaseComponent, self).__init__(
-        instance_name=instance_name,
         executor_spec=executor_spec_obj,
         driver_class=driver_class,
     )

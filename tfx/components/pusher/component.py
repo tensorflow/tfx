@@ -73,8 +73,7 @@ class Pusher(base_component.BaseComponent):
                                        Dict[Text, Any]]] = None,
       custom_config: Optional[Dict[Text, Any]] = None,
       custom_executor_spec: Optional[executor_spec.ExecutorSpec] = None,
-      pushed_model: Optional[types.Channel] = None,
-      instance_name: Optional[Text] = None):
+      pushed_model: Optional[types.Channel] = None):
     """Construct a Pusher component.
 
     Args:
@@ -99,8 +98,6 @@ class Pusher(base_component.BaseComponent):
         and is subject to change in the future.
       pushed_model: Optional output `standard_artifacts.PushedModel` channel
         with result of push.
-      instance_name: Optional unique instance name. Necessary if multiple Pusher
-        components are declared in the same pipeline.
     """
     pushed_model = pushed_model or types.Channel(
         type=standard_artifacts.PushedModel)
@@ -123,6 +120,4 @@ class Pusher(base_component.BaseComponent):
         custom_config=json_utils.dumps(custom_config),
         pushed_model=pushed_model)
     super(Pusher, self).__init__(
-        spec=spec,
-        custom_executor_spec=custom_executor_spec,
-        instance_name=instance_name)
+        spec=spec, custom_executor_spec=custom_executor_spec)

@@ -17,7 +17,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from typing import Optional, Text
+from typing import Optional
 
 from tfx import types
 from tfx.components.infra_validator import executor
@@ -88,8 +88,7 @@ class InfraValidator(base_component.BaseComponent):
       examples: Optional[types.Channel] = None,
       blessing: Optional[types.Channel] = None,
       request_spec: Optional[infra_validator_pb2.RequestSpec] = None,
-      validation_spec: Optional[infra_validator_pb2.ValidationSpec] = None,
-      instance_name: Optional[Text] = None):
+      validation_spec: Optional[infra_validator_pb2.ValidationSpec] = None):
     """Construct a InfraValidator component.
 
     Args:
@@ -107,9 +106,6 @@ class InfraValidator(base_component.BaseComponent):
         from `examples` input. If not specified, InfraValidator does not issue
         requests for validation.
       validation_spec: Optional `ValidationSpec` configuration.
-      instance_name: Optional name assigned to this specific instance of
-        InfraValidator.  Required only if multiple InfraValidator components are
-        declared in the same pipeline.
     """
     blessing = blessing or types.Channel(type=standard_artifacts.InfraBlessing)
     spec = standard_component_specs.InfraValidatorSpec(
@@ -120,4 +116,4 @@ class InfraValidator(base_component.BaseComponent):
         validation_spec=validation_spec,
         request_spec=request_spec
     )
-    super(InfraValidator, self).__init__(spec=spec, instance_name=instance_name)
+    super(InfraValidator, self).__init__(spec=spec)

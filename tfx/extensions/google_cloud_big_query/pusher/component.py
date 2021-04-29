@@ -56,5 +56,4 @@ class Pusher(pusher_component.Pusher):
         push_destination=None,
         custom_config=custom_config,
         custom_executor_spec=executor_spec.ExecutorClassSpec(executor.Executor),
-        pushed_model=pushed_model,
-        instance_name=None)
+        pushed_model=pushed_model)

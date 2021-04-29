@@ -11,4 +11,4 @@ output_definitions {
     }
   }
 }
-executor_label: "Resolver.my_resolver2-model-blessing-resolver_executor"
+executor_label: "my_resolver2-model-blessing-resolver_executor"

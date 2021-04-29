@@ -87,8 +87,7 @@ class CloudAIBulkInferrerComponent(base_component.BaseComponent):
                                           Dict[Text, Any]]] = None,
       custom_config: Dict[Text, Any] = None,
       inference_result: Optional[types.Channel] = None,
-      output_examples: Optional[types.Channel] = None,
-      instance_name: Optional[Text] = None):
+      output_examples: Optional[types.Channel] = None):
     """Construct an BulkInferrer component.
 
     Args:
@@ -118,9 +117,6 @@ class CloudAIBulkInferrerComponent(base_component.BaseComponent):
       output_examples: Channel of type `standard_artifacts.Examples`
         to store the output examples, must not be specified when
         output_example_spec is unset. Check output_example_spec for details.
-      instance_name: Optional name assigned to this specific instance of
-        BulkInferrer. Required only if multiple BulkInferrer components are
-        declared in the same pipeline.
 
     Raises:
       ValueError: Must not specify inference_result or output_examples depends
@@ -150,5 +146,4 @@ class CloudAIBulkInferrerComponent(base_component.BaseComponent):
         custom_config=json_utils.dumps(custom_config),
         inference_result=inference_result,
         output_examples=output_examples)
-    super(CloudAIBulkInferrerComponent, self).__init__(
-        spec=spec, instance_name=instance_name)
+    super(CloudAIBulkInferrerComponent, self).__init__(spec=spec)

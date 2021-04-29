@@ -61,8 +61,7 @@ class TfGraphDataViewProvider(base_component.BaseComponent):
   def __init__(self,
                create_decoder_func: Text,
                module_file: Optional[Text] = None,
-               data_view: Optional[types.Channel] = None,
-               instance_name: Optional[Text] = None):
+               data_view: Optional[types.Channel] = None):
     """Construct a StatisticsGen component.
 
     Args:
@@ -79,8 +78,6 @@ class TfGraphDataViewProvider(base_component.BaseComponent):
         provided, `create_decoder_func` is expected to be a path to a function.
       data_view: Output 'DataView' channel, in which a the decoder will be
         saved.
-      instance_name: Optional unique instance name. Necessary iff multiple
-        transform components are declared in the same pipeline.
     """
     if data_view is None:
       data_view = types.Channel(type=standard_artifacts.DataView)
@@ -88,4 +85,4 @@ class TfGraphDataViewProvider(base_component.BaseComponent):
         module_file=module_file,
         create_decoder_func=create_decoder_func,
         data_view=data_view)
-    super().__init__(spec=spec, instance_name=instance_name)
+    super().__init__(spec=spec)

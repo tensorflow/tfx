@@ -46,8 +46,8 @@ class EmptyComponent(base_component.BaseComponent):
   EXECUTOR_SPEC = executor_spec.ExecutorClassSpec(base_executor.BaseExecutor)
 
   def __init__(self, name):
-    super(EmptyComponent, self).__init__(
-        spec=EmptyComponentSpec(), instance_name=name)
+    super(EmptyComponent, self).__init__(spec=EmptyComponentSpec())
+    self._id = name
 
 
 class CompilerUtilsTest(tf.test.TestCase):
@@ -65,11 +65,9 @@ class CompilerUtilsTest(tf.test.TestCase):
 
   def testIsResolver(self):
     resv = resolver.Resolver(
-        instance_name="test_resolver_name",
         strategy_class=latest_blessed_model_resolver.LatestBlessedModelResolver)
     self.assertTrue(compiler_utils.is_resolver(resv))
     resv = legacy_resolver_node.ResolverNode(
-        instance_name="test_resolver_name",
         resolver_class=latest_blessed_model_resolver.LatestBlessedModelResolver)
     self.assertTrue(compiler_utils.is_resolver(resv))
 
@@ -78,12 +76,10 @@ class CompilerUtilsTest(tf.test.TestCase):
 
   def testIsImporter(self):
     impt = importer.Importer(
-        instance_name="import_schema",
         source_uri="uri/to/schema",
         artifact_type=standard_artifacts.Schema)
     self.assertTrue(compiler_utils.is_importer(impt))
     impt = legacy_importer_node.ImporterNode(
-        instance_name="import_schema",
         source_uri="uri/to/schema",
         artifact_type=standard_artifacts.Schema)
     self.assertTrue(compiler_utils.is_importer(impt))
@@ -99,7 +95,7 @@ class CompilerUtilsTest(tf.test.TestCase):
     a.add_downstream_node(c)
     valid_orders = {"abc", "acb"}
     for order in itertools.permutations([a, b, c]):
-      if "".join([c._instance_name for c in order]) in valid_orders:
+      if "".join([c.id for c in order]) in valid_orders:
         self.assertTrue(compiler_utils.ensure_topological_order(order))
       else:
         self.assertFalse(compiler_utils.ensure_topological_order(order))

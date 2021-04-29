@@ -34,7 +34,6 @@ class ResolverTest(tf.test.TestCase):
   def testResolverDefinition(self):
     channel_to_resolve = types.Channel(type=standard_artifacts.Examples)
     rnode = resolver.Resolver(
-        instance_name='my_resolver',
         strategy_class=latest_artifacts_resolver.LatestArtifactsResolver,
         config={'desired_num_of_artifacts': 5},
         channel_to_resolve=channel_to_resolve)
@@ -56,7 +55,6 @@ class ResolverTest(tf.test.TestCase):
         ValueError,
         'Expected extra kwarg .* to be of type .*tfx.types.Channel'):
       _ = resolver.Resolver(
-          instance_name='my_resolver',
           strategy_class=latest_artifacts_resolver.LatestArtifactsResolver,
           config={'desired_num_of_artifacts': 5},
           blah=object())

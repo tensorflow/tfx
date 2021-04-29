@@ -240,10 +240,9 @@ class Importer(base_node.BaseNode):
 
   ```
   importer = Importer(
-      instance_name='import_schema',
       source_uri='uri/to/schema',
       artifact_type=standard_artifacts.Schema,
-      reimport=False)
+      reimport=False).with_id('import_schema')
   schema_gen = SchemaGen(
       fixed_schema=importer.outputs['result'],
       examples=...)
@@ -251,7 +250,6 @@ class Importer(base_node.BaseNode):
   """
 
   def __init__(self,
-               instance_name: Text,
                source_uri: Text,
                artifact_type: Type[types.Artifact],
                reimport: Optional[bool] = False,
@@ -261,7 +259,6 @@ class Importer(base_node.BaseNode):
     """Init function for the Importer.
 
     Args:
-      instance_name: the name of the Importer instance.
       source_uri: the URI of the resource that needs to be registered.
       artifact_type: the type of the artifact to import.
       reimport: whether or not to re-import as a new artifact if the URI has
@@ -288,10 +285,7 @@ class Importer(base_node.BaseNode):
                     [artifact])
     }
 
-    super(Importer, self).__init__(
-        instance_name=instance_name,
-        driver_class=ImporterDriver,
-    )
+    super(Importer, self).__init__(driver_class=ImporterDriver)
 
   @property
   @doc_controls.do_not_generate_docs

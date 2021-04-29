@@ -129,7 +129,7 @@ class BaseComponent(object):
       arguments.append('--enable_cache')
 
     self.container_op = dsl.ContainerOp(
-        name=component.id.replace('.', '_'),
+        name=component.id,
         command=_COMMAND,
         image=tfx_image,
         arguments=arguments,

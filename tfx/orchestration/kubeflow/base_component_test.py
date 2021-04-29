@@ -40,7 +40,7 @@ class BaseComponentTest(tf.test.TestCase):
     example_gen = csv_example_gen_component.CsvExampleGen(
         input_base='data_input')
     statistics_gen = statistics_gen_component.StatisticsGen(
-        examples=example_gen.outputs['examples'], instance_name='foo')
+        examples=example_gen.outputs['examples']).with_id('foo')
 
     pipeline = tfx_pipeline.Pipeline(
         pipeline_name=self._test_pipeline_name,
@@ -114,8 +114,8 @@ class BaseComponentTest(tf.test.TestCase):
       raise
 
   def testContainerOpName(self):
-    self.assertEqual('StatisticsGen.foo', self.tfx_component.id)
-    self.assertEqual('statisticsgen-foo', self.component.container_op.name)
+    self.assertEqual('foo', self.tfx_component.id)
+    self.assertEqual('foo', self.component.container_op.name)
 
 
 class BaseComponentWithPipelineParamTest(tf.test.TestCase):
@@ -141,7 +141,7 @@ class BaseComponentWithPipelineParamTest(tf.test.TestCase):
             }
         })
     statistics_gen = statistics_gen_component.StatisticsGen(
-        examples=example_gen.outputs['examples'], instance_name='foo')
+        examples=example_gen.outputs['examples']).with_id('foo')
 
     pipeline = tfx_pipeline.Pipeline(
         pipeline_name=self._test_pipeline_name,
@@ -217,7 +217,7 @@ class BaseComponentWithPipelineParamTest(tf.test.TestCase):
         '--component_config',
         'null',
         '--node_id',
-        'StatisticsGen.foo',
+        'foo',
     ]
     example_gen_expected_args = [
         '--pipeline_name',
@@ -267,8 +267,8 @@ class BaseComponentWithPipelineParamTest(tf.test.TestCase):
       raise
 
   def testContainerOpName(self):
-    self.assertEqual('StatisticsGen.foo', self.tfx_statistics_gen.id)
-    self.assertEqual('statisticsgen-foo', self.statistics_gen.container_op.name)
+    self.assertEqual('foo', self.tfx_statistics_gen.id)
+    self.assertEqual('foo', self.statistics_gen.container_op.name)
 
 
 if __name__ == '__main__':

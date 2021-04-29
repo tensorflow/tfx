@@ -64,8 +64,7 @@ class Tuner(base_component.BaseComponent):
                eval_args: trainer_pb2.EvalArgs = None,
                tune_args: Optional[tuner_pb2.TuneArgs] = None,
                custom_config: Optional[Dict[Text, Any]] = None,
-               best_hyperparameters: Optional[types.Channel] = None,
-               instance_name: Optional[Text] = None):
+               best_hyperparameters: Optional[types.Channel] = None):
     """Construct a Tuner component.
 
     Args:
@@ -97,8 +96,6 @@ class Tuner(base_component.BaseComponent):
         that will be passed into user module.
       best_hyperparameters: Optional Channel of type
         `standard_artifacts.HyperParameters` for result of the best hparams.
-      instance_name: Optional unique instance name. Necessary if multiple Tuner
-        components are declared in the same pipeline.
     """
     if bool(module_file) == bool(tuner_fn):
       raise ValueError(
@@ -118,4 +115,4 @@ class Tuner(base_component.BaseComponent):
         best_hyperparameters=best_hyperparameters,
         custom_config=json_utils.dumps(custom_config),
     )
-    super(Tuner, self).__init__(spec=spec, instance_name=instance_name)
+    super(Tuner, self).__init__(spec=spec)

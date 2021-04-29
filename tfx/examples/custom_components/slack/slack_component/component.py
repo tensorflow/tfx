@@ -85,8 +85,7 @@ class SlackComponent(base_component.BaseComponent):
                slack_token: Text,
                slack_channel_id: Text,
                timeout_sec: int,
-               slack_blessing: Optional[types.Channel] = None,
-               instance_name: Optional[Text] = None):
+               slack_blessing: Optional[types.Channel] = None):
     """Construct a SlackComponent.
 
     Args:
@@ -100,8 +99,6 @@ class SlackComponent(base_component.BaseComponent):
       slack_blessing: Optional output channel of type
         `standard_artifacts.ModelBlessing` with result of blessing; will be
         created for you if not specified.
-      instance_name: Optional unique instance name. Necessary if multiple Pusher
-        components are declared in the same pipeline.
     """
     slack_blessing = slack_blessing or types.Channel(
         type=standard_artifacts.ModelBlessing)
@@ -112,4 +109,4 @@ class SlackComponent(base_component.BaseComponent):
         model=model,
         model_blessing=model_blessing,
         slack_blessing=slack_blessing)
-    super(SlackComponent, self).__init__(spec=spec, instance_name=instance_name)
+    super(SlackComponent, self).__init__(spec=spec)

@@ -58,7 +58,7 @@ deployment_spec {
           }
         }
         fields {
-          key: "Importer.my_importer_executor"
+          key: "my_importer_executor"
           value {
             struct_value {
               fields {
@@ -141,7 +141,7 @@ components {
   }
 }
 components {
-  key: "Importer.my_importer"
+  key: "my_importer"
   value {
     input_definitions {
       parameters {
@@ -167,7 +167,7 @@ components {
         }
       }
     }
-    executor_label: "Importer.my_importer_executor"
+    executor_label: "my_importer_executor"
   }
 }
 root {
@@ -193,23 +193,23 @@ root {
             key: "input1"
             value {
               task_output_artifact {
-                producer_task: "Importer.my_importer"
+                producer_task: "my_importer"
                 output_artifact_key: "result"
               }
             }
           }
         }
-        dependent_tasks: "Importer.my_importer"
+        dependent_tasks: "my_importer"
         component_ref {
           name: "DummyContainerSpecComponent"
         }
       }
     }
     tasks {
-      key: "Importer.my_importer"
+      key: "my_importer"
       value {
         task_info {
-          name: "Importer.my_importer"
+          name: "my_importer"
         }
         inputs {
           parameters {
@@ -234,7 +234,7 @@ root {
           }
         }
         component_ref {
-          name: "Importer.my_importer"
+          name: "my_importer"
         }
       }
     }

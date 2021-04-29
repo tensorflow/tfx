@@ -49,8 +49,7 @@ class ImportExampleGen(component.FileBasedExampleGen):  # pylint: disable=protec
       range_config: Optional[Union[range_config_pb2.RangeConfig,
                                    Dict[Text, Any]]] = None,
       payload_format: Optional[int] = example_gen_pb2.FORMAT_TF_EXAMPLE,
-      example_artifacts: Optional[types.Channel] = None,
-      instance_name: Optional[Text] = None):
+      example_artifacts: Optional[types.Channel] = None):
     """Construct an ImportExampleGen component.
 
     Args:
@@ -73,8 +72,6 @@ class ImportExampleGen(component.FileBasedExampleGen):  # pylint: disable=protec
         data is the same as input.
       example_artifacts: Optional channel of 'ExamplesPath' for output train and
         eval examples.
-      instance_name: Optional unique instance name. Necessary if multiple
-        ImportExampleGen components are declared in the same pipeline.
     """
     super(ImportExampleGen, self).__init__(
         input_base=input_base,
@@ -82,5 +79,4 @@ class ImportExampleGen(component.FileBasedExampleGen):  # pylint: disable=protec
         output_config=output_config,
         range_config=range_config,
         example_artifacts=example_artifacts,
-        output_data_format=payload_format,
-        instance_name=instance_name)
+        output_data_format=payload_format)

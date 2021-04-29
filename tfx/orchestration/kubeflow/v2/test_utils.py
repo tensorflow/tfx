@@ -140,9 +140,9 @@ def create_pipeline_components(
       schema=schema_gen.outputs['schema'],
       module_file=transform_module)
   latest_model_resolver = resolver.Resolver(
-      instance_name='latest_model_resolver',
       strategy_class=latest_artifacts_resolver.LatestArtifactsResolver,
-      model=channel.Channel(type=standard_artifacts.Model))
+      model=channel.Channel(type=standard_artifacts.Model)).with_id(
+          'Resolver.latest_model_resolver')
   trainer = components.Trainer(
       custom_executor_spec=executor_spec.ExecutorClassSpec(Executor),
       transformed_examples=transform.outputs['transformed_examples'],
@@ -155,10 +155,10 @@ def create_pipeline_components(
   )
   # Get the latest blessed model for model validation.
   model_resolver = resolver.Resolver(
-      instance_name='latest_blessed_model_resolver',
       strategy_class=latest_blessed_model_resolver.LatestBlessedModelResolver,
       model=channel.Channel(type=standard_artifacts.Model),
-      model_blessing=channel.Channel(type=standard_artifacts.ModelBlessing))
+      model_blessing=channel.Channel(type=standard_artifacts.ModelBlessing)
+  ).with_id('Resolver.latest_blessed_model_resolver')
   # Set the TFMA config for Model Evaluation and Validation.
   eval_config = tfma.EvalConfig(
       model_specs=[tfma.ModelSpec(signature_name='eval')],
@@ -257,10 +257,11 @@ class DummyContainerSpecComponent(base_component.BaseComponent):
         output1=output1,
         param1=param1,
     )
-    super(DummyContainerSpecComponent, self).__init__(
-        spec=spec,
-        instance_name=instance_name,
-    )
+    super(DummyContainerSpecComponent, self).__init__(spec=spec)
+    if instance_name:
+      self._id = '{}.{}'.format(self.__class__.__name__, instance_name)
+    else:
+      self._id = self.__class__.__name__
 
 
 class DummyProducerComponent(base_component.BaseComponent):
@@ -288,10 +289,11 @@ class DummyProducerComponent(base_component.BaseComponent):
         output1=output1,
         param1=param1,
     )
-    super(DummyProducerComponent, self).__init__(
-        spec=spec,
-        instance_name=instance_name,
-    )
+    super(DummyProducerComponent, self).__init__(spec=spec)
+    if instance_name:
+      self._id = '{}.{}'.format(self.__class__.__name__, instance_name)
+    else:
+      self._id = self.__class__.__name__
 
 
 dummy_transformer_component = container_component.create_container_component(
@@ -346,10 +348,9 @@ def pipeline_with_one_container_spec_component() -> tfx_pipeline.Pipeline:
   """Pipeline with container."""
 
   importer_task = importer.Importer(
-      instance_name='my_importer',
       source_uri='some-uri',
       artifact_type=standard_artifacts.Model,
-  )
+  ).with_id('my_importer')
 
   container_task = DummyContainerSpecComponent(
       input1=importer_task.outputs['result'],

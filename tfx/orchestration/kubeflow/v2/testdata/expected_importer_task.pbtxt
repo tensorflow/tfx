@@ -2,7 +2,7 @@
 # proto-message: PipelineTaskSpec
 
 task_info {
-  name: "Importer.my_importer"
+  name: "my_importer"
 }
 inputs {
   parameters {
@@ -27,5 +27,5 @@ inputs {
   }
 }
 component_ref {
-  name: "Importer.my_importer"
+  name: "my_importer"
 }

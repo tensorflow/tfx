@@ -111,15 +111,15 @@ def _get_fake_executor(label: Text):
 
 
 def _get_fake_component(spec: types.ComponentSpec):
-  instance_name = spec.__class__.__name__.replace(
-      '_FakeComponentSpec', '').lower()
-  label = '_FakeComponent.%s' % instance_name
+  component_id = spec.__class__.__name__.replace('_FakeComponentSpec',
+                                                 '').lower()
+  label = '_FakeComponent.%s' % component_id
 
   class _FakeComponent(base_component.BaseComponent):
     SPEC_CLASS = types.ComponentSpec
     EXECUTOR_SPEC = executor_spec.ExecutorClassSpec(_get_fake_executor(label))
 
-  return _FakeComponent(spec=spec, instance_name=instance_name)
+  return _FakeComponent(spec=spec).with_id(component_id)
 
 
 class LocalDagRunnerTest(absl.testing.absltest.TestCase):

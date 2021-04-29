@@ -21,4 +21,4 @@ output_definitions {
     }
   }
 }
-executor_label: "Resolver.my_resolver2-model-resolver_executor"
+executor_label: "my_resolver2-model-resolver_executor"

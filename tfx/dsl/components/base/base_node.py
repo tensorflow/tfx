@@ -21,8 +21,6 @@ from __future__ import print_function
 import abc
 from typing import Any, Dict, Optional, Text, Type
 
-from absl import logging
-
 from six import with_metaclass
 from tfx.dsl.components.base import base_driver
 from tfx.dsl.components.base import base_executor
@@ -41,46 +39,14 @@ def _abstract_property() -> Any:
 class BaseNode(with_metaclass(abc.ABCMeta, json_utils.Jsonable)):
   """Base class for a node in TFX pipeline."""
 
-  @classmethod
-  @deprecation_utils.deprecated(
-      None, '`get_id` is deprecated as `instance_name is deprecated.`')
-  @doc_controls.do_not_doc_in_subclasses
-  def get_id(cls, instance_name: Optional[Text] = None):
-    """Gets the id of a node.
-
-    This can be used during pipeline authoring time. For example:
-    from tfx.components import Trainer
-
-    resolver = ResolverNode(..., model=Channel(
-        type=Model, producer_component_id=Trainer.get_id('my_trainer')))
-
-    Args:
-      instance_name: (Optional) instance name of a node. If given, the instance
-        name will be taken into consideration when generating the id.
-
-    Returns:
-      an id for the node.
-    """
-    node_class = deprecation_utils.get_first_nondeprecated_class(cls)
-    node_class_name = node_class.__name__
-    if instance_name:
-      return '{}.{}'.format(node_class_name, instance_name)
-    else:
-      return node_class_name
-
   def __init__(
       self,
-      instance_name: Optional[Text] = None,
       executor_spec: Optional[executor_spec_module.ExecutorSpec] = None,
       driver_class: Optional[Type[base_driver.BaseDriver]] = None,
   ):
     """Initialize a node.
 
     Args:
-      instance_name: Deprecated. Please set `id` directly using `with_id()`
-        function or `.id` setter in the `BaseNode` class. The pipeline
-        assembling will fail if there are two nodes in the pipeline with the
-        same id.
       executor_spec: Optional instance of executor_spec.ExecutorSpec which
         describes how to execute this node (optional, defaults to an empty
         executor indicates no-op.
@@ -88,16 +54,11 @@ class BaseNode(with_metaclass(abc.ABCMeta, json_utils.Jsonable)):
         driver for this node (optional, defaults to base_driver.BaseDriver).
         Nodes usually use the default driver class, but may override it.
     """
-    if instance_name:
-      logging.warning(
-          '`instance_name` is deprecated, please set the node id directly '
-          'using `with_id()` or the `.id` setter.')
     if executor_spec is None:
       executor_spec = executor_spec_module.ExecutorClassSpec(
           base_executor.EmptyExecutor)
     if driver_class is None:
       driver_class = base_driver.BaseDriver
-    self._instance_name = instance_name
     self.executor_spec = executor_spec
     self.driver_class = driver_class
     self._upstream_nodes = set()
@@ -137,10 +98,7 @@ class BaseNode(with_metaclass(abc.ABCMeta, json_utils.Jsonable)):
     """Node id, unique across all TFX nodes in a pipeline.
 
     If `id` is set by the user, return it directly.
-    otherwise, if instance name (deprecated) is available, node id will be:
-      <node_class_name>.<instance_name>
-    otherwise, node id will be:
-      <node_class_name>
+    Otherwise, return <node_class_name>.
 
     Returns:
       node id.
@@ -148,11 +106,7 @@ class BaseNode(with_metaclass(abc.ABCMeta, json_utils.Jsonable)):
     if self._id:
       return self._id
     node_class = deprecation_utils.get_first_nondeprecated_class(self.__class__)
-    node_class_name = node_class.__name__
-    if self._instance_name:
-      return '{}.{}'.format(node_class_name, self._instance_name)
-    else:
-      return node_class_name
+    return node_class.__name__
 
   @property
   @deprecation_utils.deprecated(None,

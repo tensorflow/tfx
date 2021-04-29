@@ -131,11 +131,11 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
   #     eval_args=trainer_pb2.EvalArgs(num_steps=5000)) # Step 5
 
   # Get the latest blessed model for model validation.
-  # model_resolver = ResolverNode( # Step 6
-  #     instance_name='latest_blessed_model_resolver', # Step 6
-  #     resolver_class=latest_blessed_model_resolver.LatestBlessedModelResolver, # Step 6
-  #     model=Channel(type=Model), # Step 6
-  #     model_blessing=Channel(type=ModelBlessing)) # Step 6
+  # model_resolver = ResolverNode(  # Step 6
+  #     resolver_class=latest_blessed_model_resolver.LatestBlessedModelResolver,  # Step 6
+  #     model=Channel(type=Model),  # Step 6
+  #     model_blessing=Channel(type=ModelBlessing)).with_id(  # Step 6
+  #         'latest_blessed_model_resolver')  # Step 6
 
   # Uses TFMA to compute a evaluation statistics over features of a model and
   # perform quality validation of a candidate model (compared to a baseline).

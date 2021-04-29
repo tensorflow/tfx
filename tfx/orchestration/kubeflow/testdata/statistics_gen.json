@@ -6,7 +6,7 @@
     "stats_options_json": null,
     "exclude_splits": "[]"
   },
-  "_id": "StatisticsGen.foo",
+  "_id": "foo",
   "_inputs": {
     "__class__": "_PropertyDictWrapper",
     "__module__": "tfx.types.node_common",
@@ -47,7 +47,7 @@
         "additional_properties": {},
         "artifacts": [],
         "output_key": "statistics",
-        "producer_component_id": "StatisticsGen.foo",
+        "producer_component_id": "foo",
         "type": {
           "name": "ExampleStatistics",
           "properties": {

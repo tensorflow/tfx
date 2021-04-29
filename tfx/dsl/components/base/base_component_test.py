@@ -200,12 +200,6 @@ class ComponentTest(tf.test.TestCase):
     new_json_dict = json_utils.dumps(recovered_component)
     self.assertEqual(new_json_dict, json_dict)
 
-  def testGetId(self):
-    self.assertEqual(_BasicComponent.get_id(), "_BasicComponent")
-    self.assertEqual(
-        _BasicComponent.get_id(instance_name="my_instance"),
-        "_BasicComponent.my_instance")
-
   def testTaskDependency(self):
     channel_1 = types.Channel(type=_InputArtifact)
     component_1 = _BasicComponent(folds=10, input=channel_1)

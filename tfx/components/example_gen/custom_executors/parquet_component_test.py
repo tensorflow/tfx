@@ -65,8 +65,7 @@ class ExampleGenComponentWithParquetExecutorTest(tf.test.TestCase):
             parquet_executor.Executor),
         input_base=self.parquet_dir_path,
         input_config=self.input_config,
-        output_config=self.output_config,
-        instance_name='ParquetExampleGen')
+        output_config=self.output_config).with_id('ParquetExampleGen')
 
     output_data_dir = os.path.join(
         os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR', self.get_temp_dir()),

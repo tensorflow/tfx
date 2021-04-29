@@ -2,7 +2,7 @@
 # proto-message: PipelineDeploymentConfig
 
 executors {
-  key: "Importer.my_importer_executor"
+  key: "my_importer_executor"
   value {
     importer {
       artifact_uri {

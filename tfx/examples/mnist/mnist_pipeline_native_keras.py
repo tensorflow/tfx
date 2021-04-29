@@ -100,21 +100,20 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
       schema=schema_gen.outputs['schema'],
       module_file=module_file)
 
-  def _create_trainer(module_file, instance_name):
+  def _create_trainer(module_file, component_id):
     return Trainer(
         module_file=module_file,
         examples=transform.outputs['transformed_examples'],
         transform_graph=transform.outputs['transform_graph'],
         schema=schema_gen.outputs['schema'],
         train_args=trainer_pb2.TrainArgs(num_steps=5000),
-        eval_args=trainer_pb2.EvalArgs(num_steps=100),
-        instance_name=instance_name)
+        eval_args=trainer_pb2.EvalArgs(num_steps=100)).with_id(component_id)
 
   # Uses user-provided Python function that trains a Keras model.
-  trainer = _create_trainer(module_file, 'mnist')
+  trainer = _create_trainer(module_file, 'Trainer.mnist')
 
   # Trains the same model as the one above, but converts it into a TFLite one.
-  trainer_lite = _create_trainer(module_file_lite, 'mnist_lite')
+  trainer_lite = _create_trainer(module_file_lite, 'Trainer.mnist_lite')
 
   # TODO(b/150949276): Add resolver back once it supports two trainers.
 
@@ -142,16 +141,14 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
   evaluator = Evaluator(
       examples=example_gen.outputs['examples'],
       model=trainer.outputs['model'],
-      eval_config=eval_config,
-      instance_name='mnist')
+      eval_config=eval_config).with_id('Evaluator.mnist')
 
   # Uses TFMA to compute the evaluation statistics over features of a TFLite
   # model.
   evaluator_lite = Evaluator(
       examples=example_gen.outputs['examples'],
       model=trainer_lite.outputs['model'],
-      eval_config=eval_config_lite,
-      instance_name='mnist_lite')
+      eval_config=eval_config_lite).with_id('Evaluator.mnist_lite')
 
   # Checks whether the model passed the validation steps and pushes the model
   # to a file destination if check passed.
@@ -160,8 +157,7 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
       model_blessing=evaluator.outputs['blessing'],
       push_destination=pusher_pb2.PushDestination(
           filesystem=pusher_pb2.PushDestination.Filesystem(
-              base_directory=serving_model_dir)),
-      instance_name='mnist')
+              base_directory=serving_model_dir))).with_id('Pusher.mnist')
 
   # Checks whether the TFLite model passed the validation steps and pushes the
   # model to a file destination if check passed.
@@ -170,8 +166,8 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
       model_blessing=evaluator_lite.outputs['blessing'],
       push_destination=pusher_pb2.PushDestination(
           filesystem=pusher_pb2.PushDestination.Filesystem(
-              base_directory=serving_model_dir_lite)),
-      instance_name='mnist_lite')
+              base_directory=serving_model_dir_lite))).with_id(
+                  'Pusher.mnist_lite')
 
   return pipeline.Pipeline(
       pipeline_name=pipeline_name,

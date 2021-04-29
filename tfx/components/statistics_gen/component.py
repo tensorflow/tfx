@@ -50,8 +50,7 @@ class StatisticsGen(base_beam_component.BaseBeamComponent):
                schema: Optional[types.Channel] = None,
                stats_options: Optional[tfdv.StatsOptions] = None,
                exclude_splits: Optional[List[Text]] = None,
-               statistics: Optional[types.Channel] = None,
-               instance_name: Optional[Text] = None):
+               statistics: Optional[types.Channel] = None):
     """Construct a StatisticsGen component.
 
     Args:
@@ -70,9 +69,6 @@ class StatisticsGen(base_beam_component.BaseBeamComponent):
         is excluding no splits.
       statistics: `ExampleStatisticsPath` channel for statistics of each split
         provided in the input examples.
-      instance_name: Optional name assigned to this specific instance of
-        StatisticsGen.  Required only if multiple StatisticsGen components are
-        declared in the same pipeline.
     """
     if exclude_splits is None:
       exclude_splits = []
@@ -87,4 +83,4 @@ class StatisticsGen(base_beam_component.BaseBeamComponent):
         stats_options_json=stats_options_json,
         exclude_splits=json_utils.dumps(exclude_splits),
         statistics=statistics)
-    super(StatisticsGen, self).__init__(spec=spec, instance_name=instance_name)
+    super(StatisticsGen, self).__init__(spec=spec)

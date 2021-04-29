@@ -45,4 +45,4 @@ output_definitions {
     }
   }
 }
-executor_label: "Importer.my_importer_executor"
+executor_label: "my_importer_executor"

@@ -46,7 +46,6 @@
 *  Removed the already deprecated compile() method on Kubeflow V2 Dag Runner.
 *  Removed project_id argument from KubeflowV2DagRunnerConfig which is not used
    and meaningless if not used with GCP.
-
 *  Removed config from LocalDagRunner's constructor, and dropped pipeline proto
    support from LocalDagRunner's run function.
 *  Removed input parameter in ExampleGen constructor and external_input in
@@ -57,6 +56,8 @@
    `ml_metadata.MetadataStore` object as the first argument.
 *  Artifacts param is deprecated/ignored in Channel constructor.
 *  Removed matching_channel_name from Channel's constructor.
+*  Deleted all usages of instance_name, which was deprecated in version 0.25.0.
+   Please use .with_id() method of components.
 
 ### For Pipeline Authors
 

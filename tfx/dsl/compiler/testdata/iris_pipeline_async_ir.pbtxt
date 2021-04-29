@@ -107,7 +107,7 @@ nodes {
       type {
         name: "tfx.dsl.components.common.importer.Importer"
       }
-      id: "Importer.my_importer"
+      id: "my_importer"
     }
     contexts {
       contexts {
@@ -126,7 +126,7 @@ nodes {
         }
         name {
           field_value {
-            string_value: "iris.Importer.my_importer"
+            string_value: "iris.my_importer"
           }
         }
       }

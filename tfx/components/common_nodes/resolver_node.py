@@ -52,14 +52,12 @@ def _make_deprecated_resolver_node_alias():
     """
 
     def __init__(self,
-                 instance_name: Text,
-                 resolver_class: Type[resolver.ResolverStrategy],
+                 resolver_class: Type[resolver.ResolverStrategy] = None,
                  resolver_configs: Dict[Text, json_utils.JsonableType] = None,
                  **kwargs: types.Channel):
       """Forwarding shim for deprecated ResolverNode alias constructor.
 
       Args:
-        instance_name: the name of the Resolver instance.
         resolver_class: a ResolverStrategy subclass which contains the artifact
           resolution logic.
         resolver_configs: a dict of key to Jsonable type representing
@@ -68,7 +66,6 @@ def _make_deprecated_resolver_node_alias():
           resolved. This is set by user through keyword args.
       """
       super(ResolverNode, self).__init__(
-          instance_name=instance_name,
           strategy_class=resolver_class,
           config=resolver_configs,
           **kwargs)

@@ -2,7 +2,7 @@
 # proto-message: PipelineTaskSpec
 
 task_info {
-  name: "Resolver.my_resolver"
+  name: "my_resolver"
 }
 inputs {
   parameters {
@@ -27,5 +27,5 @@ inputs {
   }
 }
 component_ref {
-  name: "Resolver.my_resolver"
+  name: "my_resolver"
 }

@@ -66,8 +66,7 @@ class ExampleValidator(base_component.BaseComponent):
                statistics: types.Channel = None,
                schema: types.Channel = None,
                exclude_splits: Optional[List[Text]] = None,
-               anomalies: Optional[Text] = None,
-               instance_name: Optional[Text] = None):
+               anomalies: Optional[Text] = None):
     """Construct an ExampleValidator component.
 
     Args:
@@ -77,10 +76,6 @@ class ExampleValidator(base_component.BaseComponent):
         validate. Default behavior (when exclude_splits is set to None)
         is excluding no splits.
       anomalies: Output channel of type `standard_artifacts.ExampleAnomalies`.
-      instance_name: Optional name assigned to this specific instance of
-        ExampleValidator. Required only if multiple ExampleValidator components
-        are declared in the same pipeline.  Either `stats` or `statistics` must
-        be present in the arguments.
     """
     if exclude_splits is None:
       exclude_splits = []
@@ -92,5 +87,4 @@ class ExampleValidator(base_component.BaseComponent):
         schema=schema,
         exclude_splits=json_utils.dumps(exclude_splits),
         anomalies=anomalies)
-    super(ExampleValidator, self).__init__(
-        spec=spec, instance_name=instance_name)
+    super(ExampleValidator, self).__init__(spec=spec)

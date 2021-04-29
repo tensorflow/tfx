@@ -2,7 +2,7 @@
 # proto-message: PipelineDeploymentConfig
 
 executors {
-  key: "Resolver.my_resolver_executor"
+  key: "my_resolver_executor"
   value {
     resolver {
       output_artifact_queries {

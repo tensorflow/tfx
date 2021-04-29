@@ -69,7 +69,12 @@ class _SimpleComponent(base_component.BaseComponent):
     for key, channel_parameter in self.SPEC_CLASS.OUTPUTS.items():
       spec_kwargs[key] = channel_utils.as_channel([channel_parameter.type()])
     spec = self.SPEC_CLASS(**spec_kwargs)
-    super(_SimpleComponent, self).__init__(spec, instance_name=instance_name)
+    super(_SimpleComponent, self).__init__(spec)
+
+    if instance_name:
+      self._id = '{}.{}'.format(self.__class__.__name__, instance_name)
+    else:
+      self._id = self.__class__.__name__
 
 
 class _FunctionExecutor(base_executor.BaseExecutor):

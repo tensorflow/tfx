@@ -92,9 +92,8 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
 
   # Import user-provided schema.
   user_schema_importer = ImporterNode(
-      instance_name='import_user_schema',
       source_uri=user_schema_path,
-      artifact_type=Schema)
+      artifact_type=Schema).with_id('import_user_schema')
 
   # Generates schema based on statistics files. Even we use user-provided schema
   # in downstream components, we still want to generate the schema of the newest
@@ -126,10 +125,10 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
 
   # Get the latest blessed model for model validation.
   model_resolver = ResolverNode(
-      instance_name='latest_blessed_model_resolver',
       resolver_class=latest_blessed_model_resolver.LatestBlessedModelResolver,
       model=Channel(type=Model),
-      model_blessing=Channel(type=ModelBlessing))
+      model_blessing=Channel(
+          type=ModelBlessing)).with_id('latest_blessed_model_resolver')
 
   # Uses TFMA to compute a evaluation statistics over features of a model and
   # perform quality validation of a candidate model (compared to a baseline).

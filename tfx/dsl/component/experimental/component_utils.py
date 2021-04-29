@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Utils for TFX component types. Intended for internal usage only."""
+
 from typing import Any, Callable, Dict, Optional, Text
 
 from tfx import types
@@ -57,9 +58,14 @@ def create_tfx_component_class(
     base_component.BaseComponent.__init__(
         self,
         # Generate spec by wiring up the input/output channel.
-        spec=self.__class__.SPEC_CLASS(**arguments),
-        instance_name=instance_name,
-    )
+        spec=self.__class__.SPEC_CLASS(**arguments))
+
+    if instance_name:
+      node_id = '{}.{}'.format(self.__class__.__name__, instance_name)
+    else:
+      node_id = self.__class__.__name__
+
+    base_component.BaseComponent.with_id(self, node_id)
 
   tfx_component_class = type(
       str(name),

@@ -64,8 +64,7 @@ class QueryBasedExampleGen(base_beam_component.BaseBeamComponent):
       custom_config: Optional[Union[example_gen_pb2.CustomConfig,
                                     Dict[Text, Any]]] = None,
       output_data_format: Optional[int] = example_gen_pb2.FORMAT_TF_EXAMPLE,
-      example_artifacts: Optional[types.Channel] = None,
-      instance_name: Optional[Text] = None):
+      example_artifacts: Optional[types.Channel] = None):
     """Construct a QueryBasedExampleGen component.
 
     Args:
@@ -90,8 +89,6 @@ class QueryBasedExampleGen(base_beam_component.BaseBeamComponent):
         one of example_gen_pb2.PayloadFormat enum.
       example_artifacts: Channel of `standard_artifacts.Examples` for output
         train and eval examples.
-      instance_name: Optional unique instance name. Required only if multiple
-        ExampleGen components are declared in the same pipeline.
 
     Raises:
       ValueError: The output_data_format value must be defined in the
@@ -112,8 +109,7 @@ class QueryBasedExampleGen(base_beam_component.BaseBeamComponent):
         output_data_format=output_data_format,
         custom_config=custom_config,
         examples=example_artifacts)
-    super(QueryBasedExampleGen, self).__init__(
-        spec=spec, instance_name=instance_name)
+    super(QueryBasedExampleGen, self).__init__(spec=spec)
 
 
 class FileBasedExampleGen(base_beam_component.BaseBeamComponent):
@@ -154,8 +150,7 @@ class FileBasedExampleGen(base_beam_component.BaseBeamComponent):
                                    Dict[Text, Any]]] = None,
       output_data_format: Optional[int] = example_gen_pb2.FORMAT_TF_EXAMPLE,
       example_artifacts: Optional[types.Channel] = None,
-      custom_executor_spec: Optional[executor_spec.ExecutorSpec] = None,
-      instance_name: Optional[Text] = None):
+      custom_executor_spec: Optional[executor_spec.ExecutorSpec] = None):
     """Construct a FileBasedExampleGen component.
 
     Args:
@@ -178,8 +173,6 @@ class FileBasedExampleGen(base_beam_component.BaseBeamComponent):
         examples.
       custom_executor_spec: Optional custom executor spec overriding the default
         executor spec specified in the component attribute.
-      instance_name: Optional unique instance name. Required only if multiple
-        ExampleGen components are declared in the same pipeline.
     """
     # Configure inputs and outputs.
     input_config = input_config or utils.make_default_input_config()
@@ -197,6 +190,4 @@ class FileBasedExampleGen(base_beam_component.BaseBeamComponent):
         output_data_format=output_data_format,
         examples=example_artifacts)
     super(FileBasedExampleGen, self).__init__(
-        spec=spec,
-        custom_executor_spec=custom_executor_spec,
-        instance_name=instance_name)
+        spec=spec, custom_executor_spec=custom_executor_spec)

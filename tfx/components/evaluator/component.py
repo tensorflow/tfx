@@ -56,7 +56,6 @@ class Evaluator(base_beam_component.BaseBeamComponent):
           float, data_types.RuntimeParameter]]] = None,
       example_splits: Optional[List[Text]] = None,
       evaluation: Optional[types.Channel] = None,
-      instance_name: Optional[Text] = None,
       eval_config: Optional[tfma.EvalConfig] = None,
       blessing: Optional[types.Channel] = None,
       schema: Optional[types.Channel] = None,
@@ -87,10 +86,6 @@ class Evaluator(base_beam_component.BaseBeamComponent):
         Default behavior (when example_splits is set to None or Empty) is using
         the 'eval' split.
       evaluation: Channel of `ModelEvaluation` to store the evaluation results.
-      instance_name: Optional name assigned to this specific instance of
-        Evaluator. Required only if multiple Evaluator components are declared
-        in the same pipeline.  Either `model_exports` or `model` must be present
-        in the input arguments.
       eval_config: Instance of tfma.EvalConfig containg configuration settings
         for running the evaluation. This config has options for both estimator
         and Keras.
@@ -143,4 +138,4 @@ class Evaluator(base_beam_component.BaseBeamComponent):
         schema=schema,
         module_file=module_file,
         module_path=module_path)
-    super(Evaluator, self).__init__(spec=spec, instance_name=instance_name)
+    super(Evaluator, self).__init__(spec=spec)
