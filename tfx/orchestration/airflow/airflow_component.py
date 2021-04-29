@@ -35,7 +35,6 @@ def _airflow_component_launcher(
     metadata_connection_config: metadata_store_pb2.ConnectionConfig,
     beam_pipeline_args: List[Text], additional_pipeline_args: Dict[Text, Any],
     component_config: base_component_config.BaseComponentConfig,
-    exec_properties: Dict[Text, Any],
     **kwargs) -> None:
   """Helper function to launch TFX component execution.
 
@@ -53,15 +52,12 @@ def _airflow_component_launcher(
     beam_pipeline_args: Pipeline arguments for Beam powered Components.
     additional_pipeline_args: A dict of additional pipeline args.
     component_config: Component config to launch the component.
-    exec_properties: Execution properties from the ComponentSpec.
     **kwargs: Context arguments that will be passed in by Airflow, including:
       - ti: TaskInstance object from which we can get run_id of the running
         pipeline.
       For more details, please refer to the code:
       https://github.com/apache/airflow/blob/master/airflow/operators/python_operator.py
   """
-  component.exec_properties.update(exec_properties)
-
   # Populate run id from Airflow task instance.
   pipeline_info.run_id = kwargs['ti'].get_dagrun().run_id
   launcher = component_launcher_class.create(
@@ -110,8 +106,6 @@ class AirflowComponent(python_operator.PythonOperator):
     # Prepare parameters to create TFX worker.
     driver_args = data_types.DriverArgs(enable_cache=enable_cache)
 
-    exec_properties = component.exec_properties
-
     super(AirflowComponent, self).__init__(
         task_id=component.id,
         # TODO(b/183172663): Delete `provide_context` when we drop support of
@@ -127,7 +121,4 @@ class AirflowComponent(python_operator.PythonOperator):
             beam_pipeline_args=beam_pipeline_args,
             additional_pipeline_args=additional_pipeline_args,
             component_config=component_config),
-        # op_kwargs is a templated field for PythonOperator, which means Airflow
-        # will inspect the dictionary and resolve any templated fields.
-        op_kwargs={'exec_properties': exec_properties},
         dag=parent_dag)

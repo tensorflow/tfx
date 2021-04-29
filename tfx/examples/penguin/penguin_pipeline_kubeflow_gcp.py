@@ -18,7 +18,29 @@ from typing import Dict, List, Text
 
 from absl import app
 import tensorflow_model_analysis as tfma
-from tfx import v1 as tfx
+from tfx.components import CsvExampleGen
+from tfx.components import Evaluator
+from tfx.components import ExampleValidator
+from tfx.components import Pusher
+from tfx.components import SchemaGen
+from tfx.components import StatisticsGen
+from tfx.components import Trainer
+from tfx.components import Transform
+from tfx.dsl.components.base import executor_spec
+from tfx.dsl.components.common import resolver
+from tfx.dsl.experimental import latest_blessed_model_resolver
+from tfx.extensions.google_cloud_ai_platform.pusher import executor as ai_platform_pusher_executor
+from tfx.extensions.google_cloud_ai_platform.trainer import executor as ai_platform_trainer_executor
+from tfx.extensions.google_cloud_ai_platform.tuner import executor as ai_platform_tuner_executor
+from tfx.extensions.google_cloud_ai_platform.tuner.component import Tuner
+from tfx.orchestration import data_types
+from tfx.orchestration import pipeline
+from tfx.orchestration.kubeflow import kubeflow_dag_runner
+from tfx.proto import tuner_pb2
+from tfx.types import Channel
+from tfx.types.standard_artifacts import Model
+from tfx.types.standard_artifacts import ModelBlessing
+
 
 _pipeline_name = 'penguin_kubeflow_gcp'
 
@@ -114,7 +136,7 @@ def create_pipeline(
     ai_platform_serving_args: Dict[Text, Text],
     enable_tuning: bool,
     beam_pipeline_args: List[Text],
-) -> tfx.dsl.Pipeline:
+) -> pipeline.Pipeline:
   """Implements the penguin pipeline with TFX and Kubeflow Pipeline.
 
   Args:
@@ -138,37 +160,36 @@ def create_pipeline(
     A TFX pipeline object.
   """
   # Number of epochs in training.
-  train_steps = tfx.dsl.RuntimeParameter(
+  train_steps = data_types.RuntimeParameter(
       name='train_steps',
       default=100,
       ptype=int,
   )
 
   # Number of epochs in evaluation.
-  eval_steps = tfx.dsl.RuntimeParameter(
+  eval_steps = data_types.RuntimeParameter(
       name='eval_steps',
       default=50,
       ptype=int,
   )
 
   # Brings data into the pipeline or otherwise joins/converts training data.
-  example_gen = tfx.components.CsvExampleGen(input_base=data_root)
+  example_gen = CsvExampleGen(input_base=data_root)
 
   # Computes statistics over data for visualization and example validation.
-  statistics_gen = tfx.components.StatisticsGen(
-      examples=example_gen.outputs['examples'])
+  statistics_gen = StatisticsGen(examples=example_gen.outputs['examples'])
 
   # Generates schema based on statistics files.
-  schema_gen = tfx.components.SchemaGen(
+  schema_gen = SchemaGen(
       statistics=statistics_gen.outputs['statistics'], infer_feature_shape=True)
 
   # Performs anomaly detection based on statistics and data schema.
-  example_validator = tfx.components.ExampleValidator(
+  example_validator = ExampleValidator(
       statistics=statistics_gen.outputs['statistics'],
       schema=schema_gen.outputs['schema'])
 
   # Performs transformations and feature engineering in training and serving.
-  transform = tfx.components.Transform(
+  transform = Transform(
       examples=example_gen.outputs['examples'],
       schema=schema_gen.outputs['schema'],
       module_file=module_file)
@@ -195,13 +216,13 @@ def create_pipeline(
     # vs distributed training per trial
     #   ... -> DistributingCloudTunerA -> CAIP job Y -> master,worker1,2,3
     #       -> DistributingCloudTunerB -> CAIP job Z -> master,worker1,2,3
-    tuner = tfx.components.Tuner(
+    tuner = Tuner(
         module_file=module_file,
         examples=transform.outputs['transformed_examples'],
         transform_graph=transform.outputs['transform_graph'],
         train_args={'num_steps': train_steps},
         eval_args={'num_steps': eval_steps},
-        tune_args=tfx.proto.TuneArgs(
+        tune_args=tuner_pb2.TuneArgs(
             # num_parallel_trials=3 means that 3 search loops are
             # running in parallel.
             num_parallel_trials=3),
@@ -212,18 +233,18 @@ def create_pipeline(
             # num_parallel_trials will be used to fill/overwrite the
             # workerCount specified by TUNING_ARGS_KEY:
             #   num_parallel_trials = workerCount + 1 (for master)
-            tfx.extensions.google_cloud_ai_platform.experimental
-            .TUNING_ARGS_KEY:
+            ai_platform_tuner_executor.TUNING_ARGS_KEY:
                 ai_platform_training_args,
             # This working directory has to be a valid GCS path and will be used
             # to launch remote training job per trial.
-            tfx.extensions.google_cloud_ai_platform.experimental
-            .REMOTE_TRIALS_WORKING_DIR_KEY:
+            ai_platform_tuner_executor.REMOTE_TRIALS_WORKING_DIR_KEY:
                 os.path.join(_pipeline_root, 'trials'),
         })
 
   # Uses user-provided Python function that trains a model.
-  trainer = tfx.extensions.google_cloud_ai_platform.Trainer(
+  trainer = Trainer(
+      custom_executor_spec=executor_spec.ExecutorClassSpec(
+          ai_platform_trainer_executor.GenericExecutor),
       module_file=module_file,
       examples=transform.outputs['transformed_examples'],
       transform_graph=transform.outputs['transform_graph'],
@@ -248,17 +269,16 @@ def create_pipeline(
       train_args={'num_steps': train_steps},
       eval_args={'num_steps': eval_steps},
       custom_config={
-          tfx.extensions.google_cloud_ai_platform.TRAINING_ARGS_KEY:
+          ai_platform_trainer_executor.TRAINING_ARGS_KEY:
               ai_platform_training_args
       })
 
   # Get the latest blessed model for model validation.
-  model_resolver = tfx.dsl.Resolver(
-      strategy_class=tfx.dsl.experimental.LatestBlessedModelResolver,
-      model=tfx.dsl.Channel(type=tfx.types.standard_artifacts.Model),
-      model_blessing=tfx.dsl.Channel(
-          type=tfx.types.standard_artifacts.ModelBlessing)).with_id(
-              'latest_blessed_model_resolver')
+  model_resolver = resolver.Resolver(
+      strategy_class=latest_blessed_model_resolver.LatestBlessedModelResolver,
+      model=Channel(type=Model),
+      model_blessing=Channel(
+          type=ModelBlessing)).with_id('latest_blessed_model_resolver')
 
   # Uses TFMA to compute evaluation statistics over features of a model and
   # perform quality validation of a candidate model (compared to a baseline).
@@ -280,20 +300,21 @@ def create_pipeline(
           ])
       ])
 
-  evaluator = tfx.components.Evaluator(
+  evaluator = Evaluator(
       examples=example_gen.outputs['examples'],
       model=trainer.outputs['model'],
       baseline_model=model_resolver.outputs['model'],
       eval_config=eval_config)
 
-  pusher = tfx.extensions.google_cloud_ai_platform.Pusher(
+  pusher = Pusher(
+      custom_executor_spec=executor_spec.ExecutorClassSpec(
+          ai_platform_pusher_executor.Executor),
       model=trainer.outputs['model'],
       model_blessing=evaluator.outputs['blessing'],
       custom_config={
-          tfx.extensions.google_cloud_ai_platform.experimental
-          .PUSHER_SERVING_ARGS_KEY:
-              ai_platform_serving_args
-      })
+          ai_platform_pusher_executor.SERVING_ARGS_KEY: ai_platform_serving_args
+      },
+  )
 
   components = [
       example_gen,
@@ -309,7 +330,7 @@ def create_pipeline(
   if enable_tuning:
     components.append(tuner)
 
-  return tfx.dsl.Pipeline(
+  return pipeline.Pipeline(
       pipeline_name=pipeline_name,
       pipeline_root=pipeline_root,
       components=components,
@@ -321,20 +342,19 @@ def main(unused_argv):
   # Metadata config. The defaults works work with the installation of
   # KF Pipelines using Kubeflow. If installing KF Pipelines using the
   # lightweight deployment option, you may need to override the defaults.
-  metadata_config = (tfx.orchestration.experimental
-                     .get_default_kubeflow_metadata_config())
+  metadata_config = kubeflow_dag_runner.get_default_kubeflow_metadata_config()
 
   # This pipeline automatically injects the Kubeflow TFX image if the
   # environment variable 'KUBEFLOW_TFX_IMAGE' is defined. The tfx
   # cli tool exports the environment variable to pass to the pipelines.
   tfx_image = os.environ.get('KUBEFLOW_TFX_IMAGE', None)
 
-  runner_config = tfx.orchestration.experimental.KubeflowDagRunnerConfig(
+  runner_config = kubeflow_dag_runner.KubeflowDagRunnerConfig(
       kubeflow_metadata_config=metadata_config,
       # Specify custom docker image to use.
       tfx_image=tfx_image)
 
-  tfx.orchestration.experimental.KubeflowDagRunner(config=runner_config).run(
+  kubeflow_dag_runner.KubeflowDagRunner(config=runner_config).run(
       create_pipeline(
           pipeline_name=_pipeline_name,
           pipeline_root=_pipeline_root,

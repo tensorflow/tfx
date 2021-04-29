@@ -1,3 +1,4 @@
+# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,6 +13,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Tests for tfx.dsl.components.common.resolver."""
+
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
 
 import tensorflow as tf
 from tfx import types
@@ -45,22 +50,14 @@ class ResolverTest(tf.test.TestCase):
     self.assertEqual(rnode.outputs.get_all()['channel_to_resolve'].type_name,
                      channel_to_resolve.type_name)
 
-  def testResolverDefinition_BadChannel(self):
-    with self.assertRaisesRegex(
+  def testResolverDefinitionBadArgs(self):
+    with self.assertRaisesRegexp(
         ValueError,
         'Expected extra kwarg .* to be of type .*tfx.types.Channel'):
-      resolver.Resolver(
+      _ = resolver.Resolver(
           strategy_class=latest_artifacts_resolver.LatestArtifactsResolver,
           config={'desired_num_of_artifacts': 5},
-          not_a_channel=object())
-
-  def testResolverDefinition_BadStrategyClass(self):
-    class NotAStrategy:
-      pass
-
-    with self.assertRaisesRegex(
-        TypeError, 'strategy_class should be ResolverStrategy'):
-      resolver.Resolver(strategy_class=NotAStrategy)
+          blah=object())
 
 
 class ResolverDriverTest(tf.test.TestCase):

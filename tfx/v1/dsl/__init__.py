@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""TFX DSL module."""
+"""TFX dsl module."""
 
 from tfx.dsl.components.common.importer import Importer
 from tfx.dsl.components.common.resolver import Resolver
@@ -24,5 +24,4 @@ from tfx.types.artifact import Artifact
 from tfx.types.channel import Channel
 from tfx.v1.dsl import components
 from tfx.v1.dsl import experimental
-from tfx.v1.dsl import io
 from tfx.v1.dsl import placeholders

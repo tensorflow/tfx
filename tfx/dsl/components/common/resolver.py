@@ -14,7 +14,7 @@
 """TFX Resolver definition."""
 
 import abc
-from typing import Any, Dict, List, Optional, Type
+from typing import Any, Dict, List, Optional, Text, Type
 
 from tfx import types
 from tfx.dsl.components.base import base_driver
@@ -49,8 +49,8 @@ class ResolveResult(object):
       have been resolved.
   """
 
-  def __init__(self, per_key_resolve_result: Dict[str, List[types.Artifact]],
-               per_key_resolve_state: Dict[str, bool]):
+  def __init__(self, per_key_resolve_result: Dict[Text, List[types.Artifact]],
+               per_key_resolve_state: Dict[Text, bool]):
     self.per_key_resolve_result = per_key_resolve_result
     self.per_key_resolve_state = per_key_resolve_state
     self.has_complete_result = all(s for s in per_key_resolve_state.values())
@@ -61,7 +61,7 @@ class ResolverStrategy(abc.ABC):
 
   A resolver strategy defines a type behavior used for input selection. A
   resolver strategy subclass must override the resolve_artifacts() function
-  which takes a dict of <str, List<types.Artifact>> as parameters and return
+  which takes a dict of <Text, List<types.Artifact>> as parameters and return
   the resolved dict.
   """
 
@@ -73,7 +73,7 @@ class ResolverStrategy(abc.ABC):
       self,
       pipeline_info: data_types.PipelineInfo,
       metadata_handler: metadata.Metadata,
-      source_channels: Dict[str, types.Channel],
+      source_channels: Dict[Text, types.Channel],
   ) -> ResolveResult:
     """Resolves artifacts from channels by querying MLMD.
 
@@ -95,8 +95,8 @@ class ResolverStrategy(abc.ABC):
   @abc.abstractmethod
   def resolve_artifacts(
       self, store: mlmd.MetadataStore,
-      input_dict: Dict[str, List[types.Artifact]]
-  ) -> Optional[Dict[str, List[types.Artifact]]]:
+      input_dict: Dict[Text, List[types.Artifact]]
+  ) -> Optional[Dict[Text, List[types.Artifact]]]:
     """Resolves artifacts from channels, optionally querying MLMD if needed.
 
     In asynchronous execution mode, resolver classes may composed in sequence
@@ -132,9 +132,9 @@ class _ResolverDriver(base_driver.BaseDriver):
   # incomplete data.
   def pre_execution(
       self,
-      input_dict: Dict[str, types.Channel],
-      output_dict: Dict[str, types.Channel],
-      exec_properties: Dict[str, Any],
+      input_dict: Dict[Text, types.Channel],
+      output_dict: Dict[Text, types.Channel],
+      exec_properties: Dict[Text, Any],
       driver_args: data_types.DriverArgs,
       pipeline_info: data_types.PipelineInfo,
       component_info: data_types.ComponentInfo,
@@ -157,7 +157,7 @@ class _ResolverDriver(base_driver.BaseDriver):
         pipeline_info=pipeline_info,
         metadata_handler=self._metadata_handler,
         source_channels=input_dict.copy())
-    # TODO(b/148828122): This is a temporary workaround for interactive mode.
+    # TODO(b/148828122): This is a temporary walkaround for interactive mode.
     for k, c in output_dict.items():
       output_dict[k] = types.Channel(type=c.type).set_artifacts(
           resolve_result.per_key_resolve_result[k])
@@ -208,8 +208,8 @@ class Resolver(base_node.BaseNode):
 
   def __init__(self,
                strategy_class: Type[ResolverStrategy],
-               config: Optional[Dict[str, json_utils.JsonableType]] = None,
-               **channels: types.Channel):
+               config: Dict[Text, json_utils.JsonableType] = None,
+               **kwargs: types.Channel):
     """Init function for Resolver.
 
     Args:
@@ -217,24 +217,24 @@ class Resolver(base_node.BaseNode):
         resolution logic.
       config: a dict of key to Jsonable type representing configuration that
         will be used to construct the resolver strategy.
-      **channels: Input channels to the Resolver node as keyword arguments.
+      **kwargs: a key -> Channel dict, describing what are the Channels to be
+        resolved. This is set by user through keyword args.
     """
-    if not issubclass(strategy_class, ResolverStrategy):
-      raise TypeError('strategy_class should be ResolverStrategy, but got '
-                      f'{strategy_class} instead.')
     self._strategy_class = strategy_class
     self._config = config or {}
-    self._input_dict = channels
+    self._input_dict = kwargs
     self._output_dict = {}
     for k, c in self._input_dict.items():
       if not isinstance(c, types.Channel):
         raise ValueError(
-            f'Expected extra kwarg {k!r} to be of type `tfx.types.Channel` '
-            f'but got {c!r} instead.')
+            ('Expected extra kwarg %r to be of type `tfx.types.Channel` (but '
+             'got %r instead).') % (k, c))
       # TODO(b/161490287): remove static artifacts.
-      self._output_dict[k] = (
-          types.Channel(type=c.type).set_artifacts([c.type()]))
-    super().__init__(driver_class=_ResolverDriver)
+      self._output_dict[k] = types.Channel(type=c.type).set_artifacts(
+          [c.type()])
+    super(Resolver, self).__init__(
+        driver_class=_ResolverDriver,
+    )
 
   @property
   @doc_controls.do_not_generate_docs
@@ -253,7 +253,7 @@ class Resolver(base_node.BaseNode):
 
   @property
   @doc_controls.do_not_generate_docs
-  def exec_properties(self) -> Dict[str, Any]:
+  def exec_properties(self) -> Dict[Text, Any]:
     return {
         RESOLVER_STRATEGY_CLASS: self._strategy_class,
         RESOLVER_CONFIG: self._config

@@ -11,6 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""TFX DSL I/O module."""
+"""Public API for running TFX with Kubeflow."""
+from tfx.orchestration.kubeflow.v2 import kubeflow_v2_dag_runner
 
-from tfx.v1.dsl.io import fileio
+KubeflowV2DagRunner = kubeflow_v2_dag_runner.KubeflowV2DagRunner
+KubeflowV2DagRunnerConfig = kubeflow_v2_dag_runner.KubeflowV2DagRunnerConfig
+del kubeflow_v2_dag_runner

@@ -33,7 +33,9 @@ import kerastuner
 import tensorflow as tf
 from tensorflow import keras
 import tensorflow_transform as tft
-import tfx.v1 as tfx
+from tfx.components.trainer.fn_args_utils import DataAccessor
+from tfx.components.trainer.fn_args_utils import FnArgs
+from tfx.components.tuner.component import TunerFnResult
 from tfx_bsl.tfxio import dataset_options
 
 from tensorflow_cloud.core import machine_config
@@ -81,7 +83,7 @@ def _get_serve_tf_examples_fn(model, tf_transform_output):
 
 
 def _input_fn(file_pattern: List[Text],
-              data_accessor: tfx.components.DataAccessor,
+              data_accessor: DataAccessor,
               tf_transform_output: tft.TFTransformOutput,
               batch_size: int = 200) -> tf.data.Dataset:
   """Generates features and label for tuning/training.
@@ -169,7 +171,7 @@ def _build_keras_model(hparams: kerastuner.HyperParameters) -> tf.keras.Model:
 
 
 # TFX Tuner will call this function.
-def tuner_fn(fn_args: tfx.components.FnArgs) -> tfx.components.TunerFnResult:
+def tuner_fn(fn_args: FnArgs) -> TunerFnResult:
   """Build the tuner using the CloudTuner API.
 
   Args:
@@ -227,7 +229,7 @@ def tuner_fn(fn_args: tfx.components.FnArgs) -> tfx.components.TunerFnResult:
       # chief worker.
       replica_count=2)
 
-  return tfx.components.TunerFnResult(
+  return TunerFnResult(
       tuner=tuner,
       fit_kwargs={
           'steps_per_epoch': fn_args.train_steps,
@@ -242,7 +244,7 @@ def tuner_fn(fn_args: tfx.components.FnArgs) -> tfx.components.TunerFnResult:
 
 
 # TFX Trainer will call this function.
-def run_fn(fn_args: tfx.components.FnArgs):
+def run_fn(fn_args: FnArgs):
   """Train the model based on given args.
 
   Args:
@@ -251,13 +253,13 @@ def run_fn(fn_args: tfx.components.FnArgs):
       - train_files: List of file paths containing training tf.Example data.
       - eval_files: List of file paths containing eval tf.Example data.
       - data_accessor: Contains factories that can create tf.data.Datasets or
-        other means to access the train/eval data. They provide a uniform way of
-        accessing data, regardless of how the data is stored on disk.
+        other means to access the train/eval data. They provide a uniform way
+        of accessing data, regardless of how the data is stored on disk.
       - train_steps: number of train steps.
       - eval_steps: number of eval steps.
       - transform_output: A uri to a path containing statistics and metadata
-        from TFTransform component. produced by TFT. Will be None if not
-        specified.
+        from TFTransform component.
+        produced by TFT. Will be None if not specified.
       - model_run_dir: A single uri for the output directory of model training
         related files.
       - hyperparameters: An optional kerastuner.HyperParameters config.
