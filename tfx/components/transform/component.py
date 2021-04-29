@@ -21,6 +21,7 @@ from typing import Any, Dict, Optional, Text, Union
 
 from tfx import types
 from tfx.components.transform import executor
+from tfx.components.util import udf_utils
 from tfx.dsl.components.base import base_beam_component
 from tfx.dsl.components.base import executor_spec
 from tfx.orchestration import data_types
@@ -76,7 +77,7 @@ class Transform(base_beam_component.BaseBeamComponent):
       analyzer_cache: Optional[types.Channel] = None,
       materialize: bool = True,
       disable_analyzer_cache: bool = False,
-      force_tf_compat_v1: bool = True,
+      force_tf_compat_v1: bool = False,
       custom_config: Optional[Dict[Text, Any]] = None):
     """Construct a Transform component.
 
@@ -166,10 +167,18 @@ class Transform(base_beam_component.BaseBeamComponent):
       updated_analyzer_cache = types.Channel(
           type=standard_artifacts.TransformCache)
 
+    if module_file and udf_utils.should_package_user_modules():
+      wheel_file, module_path = udf_utils.package_user_module_file(
+          self.__class__.__name__, module_file)
+      module_file = None
+    else:
+      module_path = None
+
     spec = TransformSpec(
         examples=examples,
         schema=schema,
         module_file=module_file,
+        module_path=module_path,
         preprocessing_fn=preprocessing_fn,
         force_tf_compat_v1=int(force_tf_compat_v1),
         splits_config=splits_config,

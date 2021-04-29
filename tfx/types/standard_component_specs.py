@@ -391,6 +391,8 @@ class TransformSpec(ComponentSpec):
   PARAMETERS = {
       MODULE_FILE_KEY:
           ExecutionParameter(type=(str, Text), optional=True),
+      MODULE_PATH_KEY:
+          ExecutionParameter(type=(str, Text), optional=True),
       PREPROCESSING_FN_KEY:
           ExecutionParameter(type=(str, Text), optional=True),
       FORCE_TF_COMPAT_V1_KEY:
