@@ -15,11 +15,11 @@
 
 import os
 
+from kfp.pipeline_spec import pipeline_spec_pb2 as pipeline_pb2
 import tensorflow as tf
 from tfx.dsl.io import fileio
 from tfx.orchestration import data_types
 from tfx.orchestration.kubeflow.v2 import compiler_utils
-from tfx.orchestration.kubeflow.v2.proto import pipeline_pb2
 from tfx.types import artifact
 from tfx.types import channel
 from tfx.types import channel_utils

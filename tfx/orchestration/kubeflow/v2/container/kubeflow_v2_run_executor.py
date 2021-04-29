@@ -17,14 +17,15 @@ import argparse
 import os
 from typing import List, Tuple
 
+
 from absl import app
 from absl import logging
 from absl.flags import argparse_flags
+from kfp.pipeline_spec import pipeline_spec_pb2
 from tfx.components.evaluator import executor as evaluator_executor
 from tfx.dsl.components.base import base_executor
 from tfx.dsl.io import fileio
 from tfx.orchestration.kubeflow.v2.container import kubeflow_v2_entrypoint_utils
-from tfx.orchestration.kubeflow.v2.proto import pipeline_pb2
 from tfx.orchestration.portable import outputs_utils
 from tfx.types import artifact_utils
 from tfx.types.standard_component_specs import BLESSING_KEY
@@ -53,7 +54,7 @@ def _run_executor(args: argparse.Namespace, beam_args: List[str]) -> None:
   logging.set_verbosity(logging.INFO)
 
   # Rehydrate inputs/outputs/exec_properties from the serialized metadata.
-  executor_input = pipeline_pb2.ExecutorInput()
+  executor_input = pipeline_spec_pb2.ExecutorInput()
   json_format.Parse(
       args.json_serialized_invocation_args,
       executor_input,
@@ -96,7 +97,7 @@ def _run_executor(args: argparse.Namespace, beam_args: List[str]) -> None:
 
   # Log the output metadata to a file. So that it can be picked up by MP.
   metadata_uri = executor_input.outputs.output_file
-  executor_output = pipeline_pb2.ExecutorOutput()
+  executor_output = pipeline_spec_pb2.ExecutorOutput()
   for k, v in kubeflow_v2_entrypoint_utils.translate_executor_output(
       outputs, name_from_id).items():
     executor_output.artifacts[k].CopyFrom(v)

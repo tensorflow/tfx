@@ -17,9 +17,9 @@ import hashlib
 from typing import Any, Dict, List, Mapping, MutableMapping, Optional
 
 from absl import logging
+from kfp.pipeline_spec import pipeline_spec_pb2 as pipeline_pb2
 from tfx.components.evaluator import constants
 from tfx.orchestration.kubeflow.v2 import compiler_utils
-from tfx.orchestration.kubeflow.v2.proto import pipeline_pb2
 from tfx.types import artifact
 from tfx.types import artifact_utils
 from tfx.types import standard_component_specs

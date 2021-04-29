@@ -20,9 +20,9 @@ from unittest import mock
 
 import click
 from googleapiclient import http
+from kfp.pipeline_spec import pipeline_spec_pb2 as pipeline_pb2
 import tensorflow as tf
 from tfx.dsl.io import fileio
-from tfx.orchestration.kubeflow.v2.proto import pipeline_pb2
 from tfx.tools.cli import labels
 from tfx.tools.cli.kubeflow_v2 import labels as kubeflow_labels
 from tfx.tools.cli.kubeflow_v2.handler import kubeflow_v2_handler

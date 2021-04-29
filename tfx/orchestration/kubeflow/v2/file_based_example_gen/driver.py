@@ -20,12 +20,12 @@ from typing import Any, Dict, List, Optional
 from absl import app
 from absl import logging
 from absl.flags import argparse_flags
+from kfp.pipeline_spec import pipeline_spec_pb2
 from tfx.components.example_gen import driver
 from tfx.components.example_gen import input_processor
 from tfx.components.example_gen import utils
 from tfx.dsl.io import fileio
 from tfx.orchestration.kubeflow.v2.container import kubeflow_v2_entrypoint_utils
-from tfx.orchestration.kubeflow.v2.proto import pipeline_pb2
 from tfx.proto import example_gen_pb2
 from tfx.proto import range_config_pb2
 from tfx.types import artifact
@@ -120,7 +120,7 @@ def _run_driver(exec_properties: Dict[str, Any],
       output_artifact=example_artifact.mlmd_artifact)
 
   # Log the output metadata file
-  output_metadata = pipeline_pb2.ExecutorOutput()
+  output_metadata = pipeline_spec_pb2.ExecutorOutput()
   output_metadata.parameters[
       utils.FINGERPRINT_PROPERTY_NAME].string_value = fingerprint
   output_metadata.parameters[utils.SPAN_PROPERTY_NAME].string_value = str(span)
@@ -153,7 +153,7 @@ def _parse_flags(argv: List[str]) -> argparse.Namespace:
 
 
 def main(args):
-  executor_input = pipeline_pb2.ExecutorInput()
+  executor_input = pipeline_spec_pb2.ExecutorInput()
   json_format.Parse(
       args.json_serialized_invocation_args,
       executor_input,

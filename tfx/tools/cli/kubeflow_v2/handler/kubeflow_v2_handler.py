@@ -202,17 +202,17 @@ class KubeflowV2Handler(base_handler.BaseHandler):
     self._subprocess_call(
         command=[sys.executable, pipeline_dsl_path], env=temp_env)
 
-    # Only import pipeline_pb2 when needed to guard CLI dependency.
-    from tfx.orchestration.kubeflow.v2.proto import pipeline_pb2  # pylint: disable=g-import-not-at-top
+    # Only import pipeline_spec_pb2 when needed to guard CLI dependency.
+    from kfp.pipeline_spec import pipeline_spec_pb2  # pylint: disable=g-import-not-at-top
 
     # Extract the needed information from compiled pipeline spec.
-    job_message = pipeline_pb2.PipelineJob()
+    job_message = pipeline_spec_pb2.PipelineJob()
     io_utils.parse_json_file(
         file_name=os.path.join(os.getcwd(), _PIPELINE_SPEC_FILE),
         message=job_message)
 
     pipeline_spec_pb = json_format.ParseDict(job_message.pipeline_spec,
-                                             pipeline_pb2.PipelineSpec())
+                                             pipeline_spec_pb2.PipelineSpec())
 
     pipeline_name = pipeline_spec_pb.pipeline_info.name
     pipeline_args = {

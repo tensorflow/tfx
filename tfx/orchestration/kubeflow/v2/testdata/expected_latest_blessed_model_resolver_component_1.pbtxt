@@ -1,4 +1,4 @@
-# proto-file: tfx/orchestration/kubeflow/v2/proto/pipeline.proto
+# proto-file: kfp/pipeline_spec/pipeline_spec.proto
 # proto-message: ComponentSpec
 
 output_definitions {

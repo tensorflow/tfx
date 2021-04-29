@@ -15,6 +15,7 @@
 
 from typing import Any, Dict, List, Optional, Text, Tuple
 
+from kfp.pipeline_spec import pipeline_spec_pb2 as pipeline_pb2
 from tfx import components
 from tfx.components.evaluator import constants
 from tfx.dsl.component.experimental import executor_specs
@@ -29,7 +30,6 @@ from tfx.dsl.experimental import latest_blessed_model_resolver
 from tfx.orchestration import data_types
 from tfx.orchestration.kubeflow.v2 import compiler_utils
 from tfx.orchestration.kubeflow.v2 import parameter_utils
-from tfx.orchestration.kubeflow.v2.proto import pipeline_pb2
 from tfx.types import artifact_utils
 from tfx.types import standard_artifacts
 

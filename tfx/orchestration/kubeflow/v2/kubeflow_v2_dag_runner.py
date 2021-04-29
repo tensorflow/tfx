@@ -18,13 +18,13 @@ import json
 import os
 from typing import Any, Dict, List, Optional, Text
 
+from kfp.pipeline_spec import pipeline_spec_pb2
 from tfx import version
 from tfx.dsl.io import fileio
 from tfx.orchestration import pipeline as tfx_pipeline
 from tfx.orchestration import tfx_runner
 from tfx.orchestration.config import pipeline_config
 from tfx.orchestration.kubeflow.v2 import pipeline_builder
-from tfx.orchestration.kubeflow.v2.proto import pipeline_pb2
 from tfx.utils import telemetry_utils
 from tfx.utils import version_utils
 
@@ -147,7 +147,7 @@ class KubeflowV2DagRunner(tfx_runner.TfxRunner):
         parameter_values=parameter_values).build()
     with telemetry_utils.scoped_labels(
         {telemetry_utils.LABEL_TFX_RUNNER: 'kubeflow_v2'}):
-      result = pipeline_pb2.PipelineJob(
+      result = pipeline_spec_pb2.PipelineJob(
           display_name=display_name or pipeline.pipeline_info.pipeline_name,
           labels=telemetry_utils.get_labels_dict(),
           runtime_config=runtime_config)

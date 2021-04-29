@@ -19,11 +19,11 @@ import urllib.request
 
 from absl import logging
 from click import testing as click_testing
+from kfp.pipeline_spec import pipeline_spec_pb2
 import tensorflow as tf
 from tfx.experimental.templates.taxi.e2e_tests import test_utils
 from tfx.orchestration import test_utils as orchestration_test_utils
 from tfx.orchestration.kubeflow.v2 import test_utils as kubeflow_test_utils
-from tfx.orchestration.kubeflow.v2.proto import pipeline_pb2
 from tfx.tools.cli.kubeflow.v2 import cli_main
 from tfx.utils import io_utils
 
@@ -128,7 +128,7 @@ class TaxiTemplateKubeflowV2E2ETest(test_utils.BaseEndToEndTest,
     self._create_pipeline()
 
     # Extract the compiled pipeline spec.
-    kubeflow_v2_pb = pipeline_pb2.PipelineJob()
+    kubeflow_v2_pb = pipeline_spec_pb2.PipelineJob()
     io_utils.parse_json_file(
         file_name=os.path.join(os.getcwd(), 'pipeline.json'),
         message=kubeflow_v2_pb)

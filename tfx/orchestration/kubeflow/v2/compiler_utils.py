@@ -19,11 +19,11 @@ import json
 import os
 from typing import Any, Dict, List, Mapping, Optional, Text, Type, Union
 
+from kfp.pipeline_spec import pipeline_spec_pb2 as pipeline_pb2
 from tfx import types
 from tfx.dsl.io import fileio
 from tfx.orchestration import data_types
 from tfx.orchestration.kubeflow.v2 import parameter_utils
-from tfx.orchestration.kubeflow.v2.proto import pipeline_pb2
 from tfx.types import artifact
 from tfx.types import channel
 from tfx.types import standard_artifacts

@@ -15,6 +15,7 @@
 
 from typing import Any, Dict
 
+from kfp.pipeline_spec import pipeline_spec_pb2 as pipeline_pb2
 import tensorflow as tf
 from tfx import components
 from tfx.dsl.components.common import importer
@@ -25,7 +26,6 @@ from tfx.extensions.google_cloud_big_query.example_gen import component as big_q
 from tfx.orchestration import data_types
 from tfx.orchestration.kubeflow.v2 import step_builder
 from tfx.orchestration.kubeflow.v2 import test_utils
-from tfx.orchestration.kubeflow.v2.proto import pipeline_pb2
 from tfx.proto import example_gen_pb2
 from tfx.types import channel
 from tfx.types import channel_utils

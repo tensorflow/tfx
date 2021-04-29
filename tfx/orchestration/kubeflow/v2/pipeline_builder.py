@@ -16,12 +16,12 @@
 import re
 from typing import Any, Dict, List, Optional, Text
 
+from kfp.pipeline_spec import pipeline_spec_pb2 as pipeline_pb2
 from tfx.orchestration import data_types
 from tfx.orchestration import pipeline
 from tfx.orchestration.kubeflow.v2 import compiler_utils
 from tfx.orchestration.kubeflow.v2 import parameter_utils
 from tfx.orchestration.kubeflow.v2 import step_builder
-from tfx.orchestration.kubeflow.v2.proto import pipeline_pb2
 
 from google.protobuf import json_format
 

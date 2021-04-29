@@ -18,6 +18,7 @@ import subprocess
 from typing import List, Text
 
 from absl import logging
+from kfp.pipeline_spec import pipeline_spec_pb2 as pipeline_pb2
 import tensorflow_model_analysis as tfma
 from tfx import components
 from tfx import types
@@ -38,7 +39,6 @@ from tfx.extensions.google_cloud_big_query.example_gen import component as big_q
 from tfx.orchestration import data_types
 from tfx.orchestration import pipeline as tfx_pipeline
 from tfx.orchestration import test_utils
-from tfx.orchestration.kubeflow.v2.proto import pipeline_pb2
 from tfx.proto import pusher_pb2
 from tfx.proto import trainer_pb2
 from tfx.types import channel

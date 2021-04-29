@@ -1,4 +1,4 @@
-# proto-file: tfx/orchestration/kubeflow/v2/proto/pipeline.proto
+# proto-file: kfp/pipeline_spec/pipeline_spec.proto
 # proto-message: PipelineSpec
 
 # Note: Due to the inconsistent behavior of json_format under Py2 and Py3,
