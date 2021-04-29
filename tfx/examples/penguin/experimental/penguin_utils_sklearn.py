@@ -24,6 +24,8 @@ from typing import Text, Tuple
 import absl
 import numpy as np
 from sklearn.neural_network import MLPClassifier
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import StandardScaler
 
 from tfx.components.trainer.fn_args_utils import DataAccessor
 from tfx.components.trainer.fn_args_utils import FnArgs
@@ -97,7 +99,7 @@ def run_fn(fn_args: FnArgs):
 
   steps_per_epoch = _TRAIN_DATA_SIZE / _TRAIN_BATCH_SIZE
 
-  model = MLPClassifier(
+  estimator = MLPClassifier(
       hidden_layer_sizes=[8, 8, 8],
       activation='relu',
       solver='adam',
@@ -105,6 +107,14 @@ def run_fn(fn_args: FnArgs):
       learning_rate_init=0.0005,
       max_iter=int(fn_args.train_steps / steps_per_epoch),
       verbose=True)
+
+  # Create a pipeline that standardizes the input data before passing it to an
+  # estimator. Once the scaler is fit, it will use the same mean and stdev to
+  # transform inputs at both training and serving time.
+  model = Pipeline([
+      ('scaler', StandardScaler()),
+      ('estimator', estimator),
+  ])
   model.feature_keys = _FEATURE_KEYS
   model.label_key = _LABEL_KEY
   model.fit(x_train, y_train)
@@ -113,6 +123,8 @@ def run_fn(fn_args: FnArgs):
   score = model.score(x_eval, y_eval)
   absl.logging.info('Accuracy: %f', score)
 
+  # Export the model as a pickle named model.pkl. AI Platform Prediction expects
+  # sklearn model artifacts to follow this naming convention.
   os.makedirs(fn_args.serving_model_dir)
 
   model_path = os.path.join(fn_args.serving_model_dir, 'model.pkl')

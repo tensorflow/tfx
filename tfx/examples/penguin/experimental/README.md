@@ -26,7 +26,7 @@ source ./penguin/bin/activate
 Then, install the dependencies required by the Penguin example:
 
 <pre class="devsite-terminal devsite-click-to-copy">
-pip install -U tfx[examples]
+pip install -U tfx[examples,kfp]
 </pre>
 
 TODO(b/183898519): Replace pip install in all examples to use [kfp] extra
@@ -47,9 +47,10 @@ version of scikit-learn is installed. Run the following commands to build this
 image and upload it to Google Container Registry (GCR).
 
 <pre class="devsite-terminal devsite-click-to-copy">
+cd ~/penguin/experimental
 gcloud auth configure-docker
 docker build \
-  --tag gcr.io/[PROJECT-ID]/tfx-example-sklearn
+  --tag gcr.io/[PROJECT-ID]/tfx-example-sklearn \
   --build-arg TFX_VERSION=$(python -c 'import tfx; print(tfx.__version__)') \
   .
 docker push gcr.io/[PROJECT-ID]/tfx-example-sklearn
@@ -69,11 +70,10 @@ vi ~/penguin/experimental/penguin_pipeline_sklearn_gcp.py
 gsutil -m cp -r ~/penguin/data gs://[BUCKET]/penguin
 gsutil -m cp ~/penguin/experimental/\*.py gs://[BUCKET]/penguin/experimental
 
-pip install kfp>=1.1.0,<2
 tfx pipeline create \
   --engine kubeflow \
   --pipeline-path penguin_pipeline_sklearn_gcp.py \
-  --endpoint my-gcp-endpoint.pipelines.googleusercontent.com
+  --endpoint [MY-GCP-ENDPOINT.PIPELINES.GOOGLEUSERCONTENT.COM]
 </pre>
 
 Note that
