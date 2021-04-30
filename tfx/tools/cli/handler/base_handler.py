@@ -14,6 +14,8 @@
 """Base handler class."""
 
 import abc
+from importlib import machinery
+from importlib import util as import_util
 import json
 import os
 import subprocess
@@ -24,10 +26,10 @@ from typing import Any, Collection, Dict, List, Text
 import click
 from six import with_metaclass
 
-
 from tfx.dsl.components.base import base_driver
 from tfx.dsl.io import fileio
 from tfx.tools.cli import labels
+from tfx.tools.cli.handler import dag_runner_patcher
 from tfx.utils import io_utils
 
 
@@ -118,9 +120,7 @@ class BaseHandler(with_metaclass(abc.ABCMeta, object)):
     Returns:
       Python dictionary with pipeline details extracted from DSL.
     """
-    # TODO(b/157599419): Consider using a better way to extract pipeline info:
-    # e.g. pipeline name/root. Currently we relies on consulting a env var when
-    # creating Pipeline object, which is brittle.
+    # TODO(b/157599419): This method will be replaced with execute_dsl() below.
     pipeline_dsl_path = self.flags_dict[labels.PIPELINE_DSL_PATH]
     if os.path.isdir(pipeline_dsl_path):
       sys.exit('Provide dsl file path.')
@@ -156,6 +156,33 @@ class BaseHandler(with_metaclass(abc.ABCMeta, object)):
     io_utils.delete_dir(temp_file)
 
     return pipeline_args
+
+  def execute_dsl(
+      self, patcher: dag_runner_patcher.DagRunnerPatcher) -> Dict[str, Any]:
+    self._check_pipeline_dsl_path()
+    dsl_path = self.flags_dict[labels.PIPELINE_DSL_PATH]
+
+    with patcher.patch() as context:
+      # Simluate python script execution.
+      # - Need to add the script directory as a first entry of sys.path.
+      # - Load the script as if we are in __main__ module.
+      dir_path = os.path.dirname(os.path.realpath(dsl_path))
+      sys.path.insert(0, dir_path)
+      loader = machinery.SourceFileLoader('__main__', dsl_path)
+      try:
+        loader.exec_module(
+            import_util.module_from_spec(
+                import_util.spec_from_loader(loader.name, loader)))
+      except SystemExit as system_exit:  # Swallow normal exit in absl.app.run()
+        if system_exit.code != 0 and system_exit.code is not None:
+          raise
+
+      sys.path.pop(0)
+
+      if not patcher.run_called:
+        sys.exit('Cannot find ' + patcher.get_runner_class().__name__ +
+                 '.run() in ' + dsl_path)
+      return context
 
   def _get_handler_home(self) -> Text:
     """Sets handler home.

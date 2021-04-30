@@ -15,28 +15,26 @@
 
 import os
 import sys
-from typing import Mapping, Optional, Sequence, Text
 from unittest import mock
 
 import click
 from googleapiclient import http
-from kfp.pipeline_spec import pipeline_spec_pb2 as pipeline_pb2
 import tensorflow as tf
 from tfx.dsl.io import fileio
 from tfx.tools.cli import labels
 from tfx.tools.cli.kubeflow_v2 import labels as kubeflow_labels
+from tfx.tools.cli.kubeflow_v2.handler import kubeflow_v2_dag_runner_patcher
 from tfx.tools.cli.kubeflow_v2.handler import kubeflow_v2_handler
-from tfx.utils import io_utils
 from tfx.utils import test_case_utils
 
-from google.protobuf import json_format
 
-_TEST_PIPELINE_NAME = 'chicago_taxi_kubeflow'
+_TEST_PIPELINE_NAME = 'chicago-taxi-kubeflow'
 _TEST_PIPELINE_JOB_NAME = 'chicago_taxi_kubeflow_20200101000000'
 _TEST_PROJECT_1 = 'gcp_project_1'
 _TEST_PROJECT_2 = 'gcp_project_2'  # _TEST_PROJECT_2 is assumed to have no runs.
 _TEST_TFX_IMAGE = 'gcr.io/tfx-oss-public/tfx:latest'
 _DUMMY_APIKEY = 'dummy-api-key'
+
 
 # A good pipeline run JSON dict.
 _VALID_RUN = {
@@ -108,42 +106,6 @@ def _mock_subprocess_noop(cmd, env):
   return 0
 
 
-# The following mock is used when we need to compile the pipeline by calling its
-# DSL file.
-# The subprocess call will be mostly in the following format
-# [sys.executable, pipeline_dsl_path] where in the tests pipeline_dsl_path can
-# be pointed to test_pipeline_(1|2|bad).py
-# when it's test_pipeline_(1|2).py a pipeline spec json file is written
-# under cwd/pipeline.json;
-# when it's calling test_pipeline_bad.py the process exists with
-# code 1.
-def _mock_subprocess_call(cmd: Sequence[Optional[Text]],
-                          env: Mapping[Text, Text]) -> int:
-  """Mocks the subprocess call."""
-  assert len(cmd) == 2, 'Unexpected number of commands: {}'.format(cmd)
-  del env
-  dsl_path = cmd[1]
-
-  if dsl_path.endswith('test_pipeline_bad.py'):
-    sys.exit(1)
-  if not dsl_path.endswith(
-      'test_pipeline_1.py') and not dsl_path.endswith(
-          'test_pipeline_2.py'):
-    raise ValueError('Unexpected dsl path: {}'.format(dsl_path))
-
-  spec_pb = pipeline_pb2.PipelineSpec(
-      pipeline_info=pipeline_pb2.PipelineInfo(name='chicago_taxi_kubeflow'))
-  runtime_pb = pipeline_pb2.PipelineJob.RuntimeConfig(
-      gcs_output_directory=os.path.join(os.environ['HOME'], 'tfx', 'pipelines',
-                                        'chicago_taxi_kubeflow'))
-  job_pb = pipeline_pb2.PipelineJob(runtime_config=runtime_pb)
-  job_pb.pipeline_spec.update(json_format.MessageToDict(spec_pb))
-  io_utils.write_string_file(
-      file_name='pipeline.json',
-      string_value=json_format.MessageToJson(message=job_pb, sort_keys=True))
-  return 0
-
-
 # Mock the Python API client class for testing purpose.
 class _MockClient(object):
   """Mocks Python Google API client."""
@@ -164,7 +126,7 @@ class _MockPipelineJobsResource(object):
 
   class _MockListRequest(http.HttpRequest):
 
-    def __init__(self, parent: Text):
+    def __init__(self, parent: str):
       self._parent = parent
 
     def execute(self):
@@ -172,17 +134,17 @@ class _MockPipelineJobsResource(object):
 
   class _MockGetRequest(http.HttpRequest):
 
-    def __init__(self, name: Text):
+    def __init__(self, name: str):
       self._name = name
 
     def execute(self):
       return _GET_RESPONSES.get(self._name)
 
-  def list(self, parent: Text):  # pylint: disable=invalid-name
+  def list(self, parent: str):  # pylint: disable=invalid-name
     """Mocks the list request."""
     return self._MockListRequest(parent=parent)
 
-  def get(self, name: Text):  # pylint: disable=invalid-name
+  def get(self, name: str):  # pylint: disable=invalid-name
     """Mocks get job request."""
     return self._MockGetRequest(name=name)
 
@@ -206,18 +168,10 @@ class KubeflowV2HandlerTest(test_case_utils.TfxTest):
     self.engine = 'kubeflow_v2'
     self.pipeline_path = os.path.join(self.chicago_taxi_pipeline_dir,
                                       'test_pipeline_1.py')
-    self.bad_pipeline_path = os.path.join(self.chicago_taxi_pipeline_dir,
-                                          'test_pipeline_bad.py')
     self.pipeline_name = _TEST_PIPELINE_NAME
     self.pipeline_root = os.path.join(self._home, 'tfx', 'pipelines',
                                       self.pipeline_name)
     self.run_id = 'dummyID'
-
-    # Pipeline args for mocking subprocess
-    self.pipeline_args = {
-        'pipeline_name': _TEST_PIPELINE_NAME,
-        'pipeline_dsl_path': self.pipeline_path
-    }
 
     # Setting up Mock for API client, so that this Python test is hermatic.
     # subprocess Mock will be setup per-test.
@@ -237,21 +191,6 @@ class KubeflowV2HandlerTest(test_case_utils.TfxTest):
         kubeflow_v2_handler._get_job_link(
             job_name=_TEST_PIPELINE_JOB_NAME, project_id=_TEST_PROJECT_1))
 
-  @mock.patch('subprocess.call', _mock_subprocess_call)
-  def testSavePipeline(self):
-    flags_dict = {
-        labels.ENGINE_FLAG: self.engine,
-        labels.PIPELINE_DSL_PATH: self.pipeline_path
-    }
-    handler = kubeflow_v2_handler.KubeflowV2Handler(flags_dict)
-    pipeline_args = handler._extract_pipeline_args()
-    handler._save_pipeline(pipeline_args)
-    self.assertTrue(
-        fileio.exists(
-            os.path.join(handler._handler_home_dir,
-                         self.pipeline_args[labels.PIPELINE_NAME])))
-
-  @mock.patch('subprocess.call', _mock_subprocess_call)
   def testCreatePipeline(self):
     flags_dict = {
         labels.ENGINE_FLAG: self.engine,
@@ -259,13 +198,13 @@ class KubeflowV2HandlerTest(test_case_utils.TfxTest):
     }
     handler = kubeflow_v2_handler.KubeflowV2Handler(flags_dict)
     handler.create_pipeline()
-    handler_pipeline_path = os.path.join(
-        handler._handler_home_dir, self.pipeline_args[labels.PIPELINE_NAME], '')
+    handler_pipeline_path = os.path.join(handler._handler_home_dir,
+                                         self.pipeline_name)
     self.assertTrue(
         fileio.exists(
-            os.path.join(handler_pipeline_path, 'pipeline_args.json')))
+            os.path.join(handler_pipeline_path,
+                         kubeflow_v2_dag_runner_patcher._OUTPUT_FILENAME)))
 
-  @mock.patch('subprocess.call', _mock_subprocess_call)
   def testCreatePipelineExistentPipeline(self):
     flags_dict = {
         labels.ENGINE_FLAG: self.engine,
@@ -277,10 +216,9 @@ class KubeflowV2HandlerTest(test_case_utils.TfxTest):
     with self.assertRaises(SystemExit) as err:
       handler.create_pipeline()
     self.assertEqual(
-        str(err.exception), 'Pipeline "{}" already exists.'.format(
-            self.pipeline_args[labels.PIPELINE_NAME]))
+        str(err.exception),
+        'Pipeline "{}" already exists.'.format(self.pipeline_name))
 
-  @mock.patch('subprocess.call', _mock_subprocess_call)
   def testUpdatePipeline(self):
     # First create pipeline with test_pipeline.py
     pipeline_path_1 = os.path.join(self.chicago_taxi_pipeline_dir,
@@ -302,12 +240,12 @@ class KubeflowV2HandlerTest(test_case_utils.TfxTest):
     handler = kubeflow_v2_handler.KubeflowV2Handler(flags_dict_2)
     handler.update_pipeline()
     handler_pipeline_path = os.path.join(
-        handler._handler_home_dir, self.pipeline_args[labels.PIPELINE_NAME], '')
+        handler._handler_home_dir, self.pipeline_name)
     self.assertTrue(
         fileio.exists(
-            os.path.join(handler_pipeline_path, 'pipeline_args.json')))
+            os.path.join(handler_pipeline_path,
+                         kubeflow_v2_dag_runner_patcher._OUTPUT_FILENAME)))
 
-  @mock.patch('subprocess.call', _mock_subprocess_call)
   def testUpdatePipelineNoPipeline(self):
     # Update pipeline without creating one.
     flags_dict = {
@@ -319,34 +257,18 @@ class KubeflowV2HandlerTest(test_case_utils.TfxTest):
       handler.update_pipeline()
     self.assertEqual(
         str(err.exception), 'Pipeline "{}" does not exist.'.format(
-            self.pipeline_args[labels.PIPELINE_NAME]))
+            self.pipeline_name))
 
-  @mock.patch('subprocess.call', _mock_subprocess_call)
   def testCompilePipeline(self):
     flags_dict = {
         labels.ENGINE_FLAG: self.engine,
         labels.PIPELINE_DSL_PATH: self.pipeline_path,
-        kubeflow_labels.TFX_IMAGE_ENV: _TEST_TFX_IMAGE,
-        kubeflow_labels.GCP_PROJECT_ID_ENV: _TEST_PROJECT_1
     }
     handler = kubeflow_v2_handler.KubeflowV2Handler(flags_dict)
     with self.captureWritesToStream(sys.stdout) as captured:
-      _ = handler.compile_pipeline()
-    self.assertIn('Pipeline compiled successfully', captured.contents())
-
-  @mock.patch('subprocess.call', _mock_subprocess_call)
-  def testCompilePipelineNoPipelineArgs(self):
-    # Test against a ill-formed pipeline DSL.
-    flags_dict = {
-        labels.ENGINE_FLAG: self.engine,
-        labels.PIPELINE_DSL_PATH: self.bad_pipeline_path,
-        kubeflow_labels.TFX_IMAGE_ENV: _TEST_TFX_IMAGE,
-        kubeflow_labels.GCP_PROJECT_ID_ENV: _TEST_PROJECT_1
-    }
-    handler = kubeflow_v2_handler.KubeflowV2Handler(flags_dict)
-    # Compilation will fail and a SystemExist will be thrown by subprocess.
-    with self.assertRaises(SystemExit):
-      _ = handler.compile_pipeline()
+      handler.compile_pipeline()
+    self.assertIn(f'Pipeline {self.pipeline_name} compiled successfully',
+                  captured.contents())
 
   def testListPipelinesNonEmpty(self):
     # First create two pipelines in the dags folder.
@@ -373,7 +295,6 @@ class KubeflowV2HandlerTest(test_case_utils.TfxTest):
       handler.list_pipelines()
     self.assertIn('No pipelines to display.', captured.contents())
 
-  @mock.patch('subprocess.call', _mock_subprocess_call)
   def testDeletePipeline(self):
     # First create a pipeline.
     flags_dict = {
@@ -391,7 +312,7 @@ class KubeflowV2HandlerTest(test_case_utils.TfxTest):
     handler = kubeflow_v2_handler.KubeflowV2Handler(flags_dict)
     handler.delete_pipeline()
     handler_pipeline_path = os.path.join(
-        handler._handler_home_dir, self.pipeline_args[labels.PIPELINE_NAME], '')
+        handler._handler_home_dir, self.pipeline_name)
     self.assertFalse(fileio.exists(handler_pipeline_path))
 
   def testDeletePipelineNonExistentPipeline(self):

@@ -18,7 +18,6 @@ from tfx import version
 
 # Default values
 BASE_IMAGE = 'tensorflow/tfx:%s' % version.__version__
-BUILD_SPEC_FILENAME = 'build.yaml'
 BUILD_CONTEXT = '.'
 DOCKERFILE_NAME = 'Dockerfile'
 SETUP_PY_FILENAME = 'setup.py'

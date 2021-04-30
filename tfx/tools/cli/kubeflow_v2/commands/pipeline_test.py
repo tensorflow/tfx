@@ -38,46 +38,50 @@ class PipelineTest(tf.test.TestCase):
 
   def testPipelineCreate(self):
     result = self.runner.invoke(pipeline_group, [
-        'create', '--pipeline_path', 'chicago.py',
-        '--build_target_image', 'gcr.io/my-image', '--build_base_image',
-        'gcr.io/my-base-image'
+        'create', '--pipeline_path', 'chicago.py', '--build_image',
+        '--build_base_image', 'gcr.io/my-base-image'
     ])
     self.assertIn('Creating pipeline', result.output)
     result = self.runner.invoke(pipeline_group, [
-        'create', '--pipeline-path', 'chicago.py',
-        '--build_target_image', 'gcr.io/my-image', '--build_base_image',
-        'gcr.io/my-base-image'
+        'create', '--pipeline-path', 'chicago.py', '--build-image',
+        '--build-base-image', 'gcr.io/my-base-image'
     ])
     self.assertIn('Creating pipeline', result.output)
 
   def testPipelineUpdate(self):
     result = self.runner.invoke(pipeline_group, [
-        'update', '--pipeline_path', 'chicago.py',
+        'update',
+        '--pipeline_path',
+        'chicago.py',
     ])
     self.assertIn('Updating pipeline', result.output)
     result = self.runner.invoke(pipeline_group, [
-        'update', '--pipeline-path', 'chicago.py',
+        'update',
+        '--pipeline-path',
+        'chicago.py',
     ])
     self.assertIn('Updating pipeline', result.output)
 
   def testPipelineCompile(self):
     result = self.runner.invoke(pipeline_group, [
-        'compile', '--pipeline_path', 'chicago.py', '--project_id', 'my-project'
+        'compile',
+        '--pipeline_path',
+        'chicago.py',
     ])
     self.assertIn('Compiling pipeline', result.output)
     result = self.runner.invoke(pipeline_group, [
-        'compile', '--pipeline-path', 'chicago.py', '--project-id', 'my-project'
+        'compile',
+        '--pipeline-path',
+        'chicago.py',
     ])
     self.assertIn('Compiling pipeline', result.output)
 
   def testPipelineDelete(self):
-    result = self.runner.invoke(
-        pipeline_group,
-        ['delete', '--pipeline_name', 'chicago'])
+    result = self.runner.invoke(pipeline_group,
+                                ['delete', '--pipeline_name', 'chicago'])
     self.assertIn('Deleting pipeline', result.output)
-    result = self.runner.invoke(
-        pipeline_group,
-        ['delete', '--pipeline-name', 'chicago'])
+    result = self.runner.invoke(pipeline_group,
+                                ['delete', '--pipeline-name', 'chicago'])
     self.assertIn('Deleting pipeline', result.output)
 
   def testPipelineInvalidFlag(self):

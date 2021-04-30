@@ -33,8 +33,6 @@ PIPELINE_COMPONENTS = 'pipeline_components'
 # Kubeflow specific labels.
 # Base container image path.
 BASE_IMAGE = 'build_base_image'
-# Skaffold command
-SKAFFOLD_CMD = 'skaffold_cmd'
 # Client ID for IAP protected endpoint.
 IAP_CLIENT_ID = 'iap_client_id'
 # Endpoint of the KFP API service to connect.

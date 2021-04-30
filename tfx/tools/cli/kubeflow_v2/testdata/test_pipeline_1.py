@@ -24,9 +24,8 @@ from tfx.components.schema_gen.component import SchemaGen
 from tfx.components.statistics_gen.component import StatisticsGen
 from tfx.orchestration import pipeline
 from tfx.orchestration.kubeflow.v2 import kubeflow_v2_dag_runner
-from tfx.tools.cli.kubeflow_v2 import labels
 
-_pipeline_name = 'chicago_taxi_kubeflow'
+_pipeline_name = 'chicago-taxi-kubeflow'
 _taxi_root = os.path.join(os.environ['HOME'], 'taxi')
 _data_root = os.path.join(_taxi_root, 'data', 'simple')
 _tfx_root = os.path.join(os.environ['HOME'], 'tfx')
@@ -55,27 +54,19 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text,
   )
 
 
-def main():
+def main(_):
   absl.logging.set_verbosity(absl.logging.INFO)
-  tfx_image = os.environ.get(labels.TFX_IMAGE_ENV)
-  project_id = os.environ.get(labels.GCP_PROJECT_ID_ENV)
-  api_key = os.environ.get(labels.API_KEY_ENV)
-
   dsl_pipeline = _create_pipeline(
       pipeline_name=_pipeline_name,
       pipeline_root=_pipeline_root,
       data_root=_data_root)
 
-  runner_config = kubeflow_v2_dag_runner.KubeflowV2DagRunnerConfig(
-      project_id=project_id, default_image=tfx_image)
+  runner_config = kubeflow_v2_dag_runner.KubeflowV2DagRunnerConfig()
 
   runner = kubeflow_v2_dag_runner.KubeflowV2DagRunner(
       config=runner_config)
 
-  if os.environ.get(labels.RUN_FLAG_ENV, False):
-    runner.run(pipeline=dsl_pipeline, api_key=api_key)
-  else:
-    runner.compile(pipeline=dsl_pipeline, write_out=True)
+  runner.run(pipeline=dsl_pipeline)
 
 
 if __name__ == '__main__':

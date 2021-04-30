@@ -89,8 +89,10 @@ class DagRunnerPatcher(abc.ABC):
     runner_class = self.get_runner_class()
     old_run = runner_class.run
     runner_class.run = self._decorate(runner_class.run)
-    yield self._context
-    runner_class.run = old_run
+    try:
+      yield self._context
+    finally:
+      runner_class.run = old_run
 
   def _decorate(self, f):
     """Decorate the run function."""

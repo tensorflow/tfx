@@ -14,8 +14,7 @@
 """Handler for Kubeflow."""
 
 import functools
-from importlib import machinery
-from importlib import util as import_util
+
 import os
 import sys
 import time
@@ -28,11 +27,10 @@ from tfx.orchestration.kubeflow import kubeflow_dag_runner
 from tfx.tools.cli import labels
 from tfx.tools.cli.container_builder import builder
 from tfx.tools.cli.handler import base_handler
-from tfx.tools.cli.handler import dag_runner_patcher
 from tfx.tools.cli.handler import kubeflow_dag_runner_patcher
 
 
-def _create_container_image(image: str, base_image: Optional[str]) -> str:
+def create_container_image(image: str, base_image: Optional[str]) -> str:
   if image == kubeflow_dag_runner.DEFAULT_KUBEFLOW_TFX_IMAGE:
     sys.exit('Default image for KubeflowDagRunner given and used with '
              '--build-image flag. If you want to use your custom image, please '
@@ -74,7 +72,7 @@ class KubeflowHandler(base_handler.BaseHandler):
 
     if self.flags_dict.get(labels.BUILD_IMAGE):
       build_image_fn = functools.partial(
-          _create_container_image,
+          create_container_image,
           base_image=self.flags_dict.get(labels.BASE_IMAGE))
     else:
       build_image_fn = None
@@ -132,28 +130,6 @@ class KubeflowHandler(base_handler.BaseHandler):
     self._client._experiment_api.delete_experiment(experiment_id)  # pylint: disable=protected-access
 
     click.echo('Pipeline ' + pipeline_name + ' deleted successfully.')
-
-  def execute_dsl(
-      self, patcher: dag_runner_patcher.DagRunnerPatcher) -> Dict[str, Any]:
-    self._check_pipeline_dsl_path()
-    dsl_path = self.flags_dict[labels.PIPELINE_DSL_PATH]
-
-    with patcher.patch() as context:
-      # Simluate python script execution.
-      # - Need to add the script directory as a first entry of sys.path.
-      # - Load the script as if we are in __main__ module.
-      dir_path = os.path.dirname(os.path.realpath(dsl_path))
-      sys.path.insert(0, dir_path)
-      loader = machinery.SourceFileLoader('__main__', dsl_path)
-      loader.exec_module(
-          import_util.module_from_spec(
-              import_util.spec_from_loader(loader.name, loader)))
-      sys.path.pop(0)
-
-    if not patcher.run_called:
-      sys.exit('Cannot find ' + patcher.get_runner_class().__name__ +
-               '.run() in ' + dsl_path)
-    return context
 
   def compile_pipeline(self) -> None:
     """Compiles pipeline in Kubeflow.

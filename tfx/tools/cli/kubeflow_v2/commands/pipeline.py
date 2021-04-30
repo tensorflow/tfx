@@ -24,12 +24,11 @@ from tfx.tools.cli import labels
 from tfx.tools.cli.cli_context import Context
 from tfx.tools.cli.cli_context import pass_context
 from tfx.tools.cli.kubeflow_v2 import labels as kubeflow_labels
-from tfx.tools.cli.kubeflow_v2.handler import kubeflow_v2_handler
-from tfx.utils import version_utils
 
-
-_DEFAULT_TFX_IMAGE = 'gcr.io/tfx-oss-public/tfx:{}'.format(
-    version_utils.get_image_version())
+try:
+  from tfx.tools.cli.kubeflow_v2.handler import kubeflow_v2_handler  # pylint: disable=g-import-not-at-top
+except ImportError:
+  pass
 
 
 @click.group('pipeline')
@@ -47,19 +46,6 @@ def pipeline_group() -> None:
     type=str,
     help='Path to Python DSL.')
 @click.option(
-    '--build_target_image',
-    '--build-target-image',
-    default=None,
-    type=str,
-    help='Target container image path. The target image will be built by this '
-    'command to include local python codes to the TFX default image. By default, '
-    'it uses docker daemon to build an image which will install the local '
-    'python setup file onto TFX default image. You can place a setup.py file '
-    'to control the python code to install the dependent packages. You can also '
-    'customize the Skaffold building options by placing a build.yaml in the '
-    'local directory. In addition, you can place a Dockerfile file to customize'
-    'the docker building script.')
-@click.option(
     '--build_base_image',
     '--build-base-image',
     default=None,
@@ -67,20 +53,21 @@ def pipeline_group() -> None:
     help='Container image path to be used as the base image. If not specified, '
     'target image will be build based on the released TFX image.')
 @click.option(
-    '--skaffold_cmd',
-    '--skaffold-cmd',
-    default=None,
-    type=str,
-    help='Skaffold program command.')
-def create_pipeline(ctx: Context, pipeline_path: Text, build_target_image: Text,
-                    skaffold_cmd: Text, build_base_image: Text) -> None:
+    '--build_image',
+    '--build-image',
+    is_flag=True,
+    default=False,
+    help='Build a container image for the pipeline using Dockerfile in the '
+    'current directory. If Dockerfile does not exist, a default Dockerfile '
+    'will be generated using --build-base-image.')
+def create_pipeline(ctx: Context, pipeline_path: Text, build_base_image: Text,
+                    build_image: bool) -> None:
   """Command definition to create a pipeline."""
   click.echo('Creating pipeline')
   ctx.flags_dict[labels.ENGINE_FLAG] = kubeflow_labels.KUBEFLOW_V2_ENGINE
   ctx.flags_dict[labels.PIPELINE_DSL_PATH] = pipeline_path
-  ctx.flags_dict[kubeflow_labels.TFX_IMAGE_ENV] = build_target_image
+  ctx.flags_dict[labels.BUILD_IMAGE] = build_image
   ctx.flags_dict[labels.BASE_IMAGE] = build_base_image
-  ctx.flags_dict[labels.SKAFFOLD_CMD] = skaffold_cmd
   kubeflow_v2_handler.KubeflowV2Handler(ctx.flags_dict).create_pipeline()
 
 
@@ -94,18 +81,20 @@ def create_pipeline(ctx: Context, pipeline_path: Text, build_target_image: Text,
     type=str,
     help='Path to Python DSL file')
 @click.option(
-    '--skaffold_cmd',
-    '--skaffold-cmd',
-    default=None,
-    type=str,
-    help='Skaffold program command.')
+    '--build_image',
+    '--build-image',
+    is_flag=True,
+    default=False,
+    help='Build a container image for the pipeline using Dockerfile in the '
+    'current directory. If Dockerfile does not exist, a default Dockerfile '
+    'will be generated using --build-base-image.')
 def update_pipeline(ctx: Context, pipeline_path: Text,
-                    skaffold_cmd: Text) -> None:
+                    build_image: bool) -> None:
   """Command definition to update a pipeline."""
   click.echo('Updating pipeline')
   ctx.flags_dict[labels.ENGINE_FLAG] = kubeflow_labels.KUBEFLOW_V2_ENGINE
   ctx.flags_dict[labels.PIPELINE_DSL_PATH] = pipeline_path
-  ctx.flags_dict[labels.SKAFFOLD_CMD] = skaffold_cmd
+  ctx.flags_dict[labels.BUILD_IMAGE] = build_image
   kubeflow_v2_handler.KubeflowV2Handler(ctx.flags_dict).update_pipeline()
 
 
@@ -142,27 +131,10 @@ def delete_pipeline(ctx: Context, pipeline_name: Text) -> None:
     required=True,
     type=str,
     help='Path to Python DSL file.')
-@click.option(
-    '--target_image',
-    '--target-image',
-    default=_DEFAULT_TFX_IMAGE,
-    type=str,
-    help='Target container image path. The target image will used as the '
-    'container in the TFX pipeline execution. Default to the latest TFX '
-    'image.')
-@click.option(
-    '--project_id',
-    '--project-id',
-    type=str,
-    required=True,
-    help='GCP project ID that will be used to invoke the service.')
-def compile_pipeline(ctx: Context, pipeline_path: Text, target_image: Text,
-                     project_id: Text) -> None:
+def compile_pipeline(ctx: Context, pipeline_path: Text) -> None:
   """Command definition to compile a pipeline."""
   click.echo('Compiling pipeline')
   ctx.flags_dict[labels.ENGINE_FLAG] = kubeflow_labels.KUBEFLOW_V2_ENGINE
   ctx.flags_dict[labels.PIPELINE_DSL_PATH] = pipeline_path
-  ctx.flags_dict[kubeflow_labels.TFX_IMAGE_ENV] = target_image
-  ctx.flags_dict[kubeflow_labels.GCP_PROJECT_ID_ENV] = project_id
 
   kubeflow_v2_handler.KubeflowV2Handler(ctx.flags_dict).compile_pipeline()

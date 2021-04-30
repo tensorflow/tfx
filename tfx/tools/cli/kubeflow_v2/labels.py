@@ -14,12 +14,5 @@
 """Kubeflow pipelines V2 specific flags."""
 
 KUBEFLOW_V2_ENGINE = 'kubeflow_v2'
-JOB_NAME = 'job_name'
-# Environment variable for the default TFX image.
-TFX_IMAGE_ENV = 'TFX_IMAGE'
-# API key used to authenticate services on GCP.
-API_KEY_ENV = 'API_KEY'
-# GCP project ID used.
-GCP_PROJECT_ID_ENV = 'GCP_PROJECT_ID'
-# Flag used to indicate whether an actual execution is intended.
-RUN_FLAG_ENV = 'run'
+
+API_KEY = 'api_key'
