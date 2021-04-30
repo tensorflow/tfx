@@ -98,10 +98,11 @@ artifact from a previous training run to feed to Trainer.
 
 ```python
 hparams_importer = ImporterNode(
+    instance_name='import_hparams',
     # This can be Tuner's output file or manually edited file. The file contains
     # text format of hyperparameters (kerastuner.HyperParameters.get_config())
     source_uri='path/to/best_hyperparameters.txt',
-    artifact_type=HyperParameters).with_id('import_hparams')
+    artifact_type=HyperParameters)
 
 trainer = Trainer(
     ...

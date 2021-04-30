@@ -67,10 +67,10 @@ eval_config = tfma.EvalConfig(
     ])
 
 model_resolver = ResolverNode(
+      instance_name='latest_blessed_model_resolver',
       resolver_class=latest_blessed_model_resolver.LatestBlessedModelResolver,
       model=Channel(type=Model),
-      model_blessing=Channel(
-        type=ModelBlessing)).with_id('latest_blessed_model_resolver')
+      model_blessing=Channel(type=ModelBlessing))
 
 model_analyzer = components.Evaluator(
       examples=examples_gen.outputs['examples'],

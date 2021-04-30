@@ -48,8 +48,9 @@ from tfx.types import standard_artifacts
 ...
 
 user_schema_importer = components.ImporterNode(
+    instance_name='import_user_schema',
     source_uri=user_schema_dir, # directory containing only schema text proto
-    artifact_type=standard_artifacts.Schema).with_id('import_user_schema')
+    artifact_type=standard_artifacts.Schema)
 
 compute_eval_stats = components.StatisticsGen(
       examples=example_gen.outputs['examples'],
