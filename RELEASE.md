@@ -56,6 +56,9 @@
    `ml_metadata.MetadataStore` object as the first argument.
 *  Artifacts param is deprecated/ignored in Channel constructor.
 *  Removed matching_channel_name from Channel's constructor.
+*  `LatestArtifactsResolver`, `LatestBlessedModelResolver`, `SpansResolver`
+   are renamed to `LatestStrategy`, `LatestBlessedModelStrategy`,
+   `SpansStrategy` respectively.
 *  Deleted all usages of instance_name, which was deprecated in version 0.25.0.
    Please use .with_id() method of components.
 

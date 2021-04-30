@@ -11,12 +11,12 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Test for SpansResolver."""
+"""Test for SpansStrategy."""
 
 import tensorflow as tf
 from tfx import types
 from tfx.components.example_gen import utils
-from tfx.dsl.experimental import spans_resolver
+from tfx.dsl.input_resolution.strategies import spans_strategy
 from tfx.orchestration import data_types
 from tfx.orchestration import metadata
 from tfx.proto import range_config_pb2
@@ -26,10 +26,10 @@ from tfx.utils import test_case_utils
 from ml_metadata.proto import metadata_store_pb2
 
 
-class SpansResolverTest(test_case_utils.TfxTest):
+class SpansStrategyTest(test_case_utils.TfxTest):
 
   def setUp(self):
-    super(SpansResolverTest, self).setUp()
+    super().setUp()
     self._connection_config = metadata_store_pb2.ConnectionConfig()
     self._connection_config.sqlite.SetInParent()
     self._metadata = self.enter_context(
@@ -48,7 +48,7 @@ class SpansResolverTest(test_case_utils.TfxTest):
     artifact.set_int_custom_property(utils.SPAN_PROPERTY_NAME, span)
     return artifact
 
-  def testResolve(self):
+  def testStrategy(self):
     contexts = self._metadata.register_pipeline_contexts_if_not_exists(
         self._pipeline_info)
     artifact_one = standard_artifacts.Examples()
@@ -67,7 +67,7 @@ class SpansResolverTest(test_case_utils.TfxTest):
         component_info=self._component_info,
         output_artifacts={'key': [artifact_one, artifact_two]})
 
-    resolver = spans_resolver.SpansResolver(
+    resolver = spans_strategy.SpansStrategy(
         range_config=range_config_pb2.RangeConfig(
             static_range=range_config_pb2.StaticRange(
                 start_span_number=1, end_span_number=1)))
@@ -89,7 +89,7 @@ class SpansResolverTest(test_case_utils.TfxTest):
     ], [artifact_one.uri])
     self.assertTrue(resolve_result.per_key_resolve_state['input'])
 
-  def testResolveArtifacts(self):
+  def testStrategy_IrMode(self):
     artifact1 = self._createExamples(1)
     artifact2 = self._createExamples(2)
     artifact3 = self._createExamples(3)
@@ -97,7 +97,7 @@ class SpansResolverTest(test_case_utils.TfxTest):
     artifact5 = self._createExamples(5)
 
     # Test StaticRange.
-    resolver = spans_resolver.SpansResolver(
+    resolver = spans_strategy.SpansStrategy(
         range_config=range_config_pb2.RangeConfig(
             static_range=range_config_pb2.StaticRange(
                 start_span_number=2, end_span_number=3)))
@@ -109,7 +109,7 @@ class SpansResolverTest(test_case_utils.TfxTest):
                      {artifact3.uri, artifact2.uri})
 
     # Test RollingRange.
-    resolver = spans_resolver.SpansResolver(
+    resolver = spans_strategy.SpansStrategy(
         range_config=range_config_pb2.RangeConfig(
             rolling_range=range_config_pb2.RollingRange(num_spans=3)))
     result = resolver.resolve_artifacts(
@@ -120,7 +120,7 @@ class SpansResolverTest(test_case_utils.TfxTest):
                      [artifact5.uri, artifact4.uri, artifact3.uri])
 
     # Test RollingRange with start_span_number.
-    resolver = spans_resolver.SpansResolver(
+    resolver = spans_strategy.SpansStrategy(
         range_config=range_config_pb2.RangeConfig(
             rolling_range=range_config_pb2.RollingRange(
                 start_span_number=4, num_spans=3)))

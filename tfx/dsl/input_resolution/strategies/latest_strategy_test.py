@@ -1,4 +1,4 @@
-# Copyright 2019 Google LLC. All Rights Reserved.
+# Copyright 2021 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,11 +11,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Resolver for getting latest n artifacts."""
+"""Test for LatestStrategy."""
 
 import tensorflow as tf
 from tfx import types
-from tfx.dsl.experimental import latest_artifacts_resolver
+from tfx.dsl.input_resolution.strategies import latest_strategy
 from tfx.orchestration import data_types
 from tfx.orchestration import metadata
 from tfx.types import standard_artifacts
@@ -24,10 +24,10 @@ from tfx.utils import test_case_utils
 from ml_metadata.proto import metadata_store_pb2
 
 
-class LatestArtifactsResolverTest(test_case_utils.TfxTest):
+class LatestStrategyTest(test_case_utils.TfxTest):
 
   def setUp(self):
-    super(LatestArtifactsResolverTest, self).setUp()
+    super().setUp()
     self._connection_config = metadata_store_pb2.ConnectionConfig()
     self._connection_config.sqlite.SetInParent()
     self._metadata = self.enter_context(
@@ -40,7 +40,7 @@ class LatestArtifactsResolverTest(test_case_utils.TfxTest):
         component_id='my_component',
         pipeline_info=self._pipeline_info)
 
-  def testGetLatestArtifact(self):
+  def testStrategy(self):
     contexts = self._metadata.register_pipeline_contexts_if_not_exists(
         self._pipeline_info)
     artifact_one = standard_artifacts.Examples()
@@ -58,8 +58,8 @@ class LatestArtifactsResolverTest(test_case_utils.TfxTest):
         output_artifacts={'key': [artifact_one, artifact_two]})
     expected_artifact = max(artifact_one, artifact_two, key=lambda a: a.id)
 
-    resolver = latest_artifacts_resolver.LatestArtifactsResolver()
-    resolve_result = resolver.resolve(
+    strategy = latest_strategy.LatestStrategy()
+    resolve_result = strategy.resolve(
         pipeline_info=self._pipeline_info,
         metadata_handler=self._metadata,
         source_channels={
@@ -77,7 +77,7 @@ class LatestArtifactsResolverTest(test_case_utils.TfxTest):
     ], [expected_artifact.uri])
     self.assertTrue(resolve_result.per_key_resolve_state['input'])
 
-  def testGetLatestArtifact_IrMode(self):
+  def testStrategy_IrMode(self):
     artifact_one = standard_artifacts.Examples()
     artifact_one.uri = 'uri_one'
     artifact_one.id = 1
@@ -87,8 +87,8 @@ class LatestArtifactsResolverTest(test_case_utils.TfxTest):
 
     expected_artifact = max(artifact_one, artifact_two, key=lambda a: a.id)
 
-    resolver = latest_artifacts_resolver.LatestArtifactsResolver()
-    result = resolver.resolve_artifacts(
+    strategy = latest_strategy.LatestStrategy()
+    result = strategy.resolve_artifacts(
         self._store, {'input': [artifact_two, artifact_one]})
     self.assertIsNotNone(result)
     self.assertEqual([a.uri for a in result['input']],

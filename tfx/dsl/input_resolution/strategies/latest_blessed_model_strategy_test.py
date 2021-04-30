@@ -1,4 +1,4 @@
-# Copyright 2019 Google LLC. All Rights Reserved.
+# Copyright 2021 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,12 +11,12 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Resolver for getting latest n artifacts."""
+"""Test for LatestBlessedModelStrategy."""
 
 import tensorflow as tf
 from tfx import types
 from tfx.components.model_validator import constants as model_validator
-from tfx.dsl.experimental import latest_blessed_model_resolver
+from tfx.dsl.input_resolution.strategies import latest_blessed_model_strategy
 from tfx.orchestration import data_types
 from tfx.orchestration import metadata
 from tfx.proto.orchestration import pipeline_pb2
@@ -84,10 +84,10 @@ _PIPLINE_NODE = text_format.Parse(
 """, pipeline_pb2.PipelineNode())
 
 
-class LatestBlessedModelResolverTest(test_case_utils.TfxTest):
+class LatestBlessedModelStrategyTest(test_case_utils.TfxTest):
 
   def setUp(self):
-    super(LatestBlessedModelResolverTest, self).setUp()
+    super().setUp()
     self._connection_config = metadata_store_pb2.ConnectionConfig()
     self._connection_config.sqlite.SetInParent()
     self._metadata = self.enter_context(
@@ -108,7 +108,7 @@ class LatestBlessedModelResolverTest(test_case_utils.TfxTest):
         model_validator
         .ARTIFACT_PROPERTY_CURRENT_MODEL_ID_KEY].int_value = model_id
 
-  def testGetLatestBlessedModelArtifact(self):
+  def testStrategy(self):
     contexts = self._metadata.register_pipeline_contexts_if_not_exists(
         self._pipeline_info)
     # Model with id 1, will be blessed.
@@ -142,8 +142,8 @@ class LatestBlessedModelResolverTest(test_case_utils.TfxTest):
             'b': [model_blessing_one, model_blessing_two]
         })
 
-    resolver = latest_blessed_model_resolver.LatestBlessedModelResolver()
-    resolve_result = resolver.resolve(
+    strategy = latest_blessed_model_strategy.LatestBlessedModelStrategy()
+    resolve_result = strategy.resolve(
         pipeline_info=self._pipeline_info,
         metadata_handler=self._metadata,
         source_channels={
@@ -165,7 +165,7 @@ class LatestBlessedModelResolverTest(test_case_utils.TfxTest):
     ], ['model_two'])
     self.assertTrue(resolve_result.per_key_resolve_state['model'])
 
-  def testGetLatestBlessedModelArtifact_IrMode(self):
+  def testStrategy_IrMode(self):
     # Model with id 1, will be blessed.
     model_one = standard_artifacts.Model()
     model_one.uri = 'model_one'
@@ -184,8 +184,8 @@ class LatestBlessedModelResolverTest(test_case_utils.TfxTest):
     model_blessing_two = standard_artifacts.ModelBlessing()
     self._set_model_blessing_bit(model_blessing_two, model_two.id, 1)
 
-    resolver = latest_blessed_model_resolver.LatestBlessedModelResolver()
-    result = resolver.resolve_artifacts(
+    strategy = latest_blessed_model_strategy.LatestBlessedModelStrategy()
+    result = strategy.resolve_artifacts(
         self._store, {
             'model': [model_one, model_two, model_three],
             'model_blessing': [model_blessing_one, model_blessing_two]
