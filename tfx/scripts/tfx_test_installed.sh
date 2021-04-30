@@ -45,6 +45,15 @@ fi
 TENSORFLOW_VERSION=$(${PYTHON_BINARY} -c 'import tensorflow; print(tensorflow.__version__)')
 TFX_VERSION=$(${PYTHON_BINARY} -c 'from tfx import version; print(version.__version__)')
 
+# TODO(b/186808513): Delete following workaround when the root cause found.
+if [[ "${TFX_VERSION}" < "0.29" ]]; then
+  pip install "apache-beam[gcp]<2.29"
+fi
+# TFX didn't include `mock` dependency until 0.30.0. See b/186808315.
+if [[ "${TFX_VERSION}" < "0.30" ]]; then
+  pip install mock
+fi
+
 rm -rf tfx
 if [[ "${TFX_VERSION}" != *dev* ]]; then
   VERSION_TAG_FLAG="-b v${TFX_VERSION} --single-branch"
