@@ -41,13 +41,17 @@ class RuntimeParameterUtilsTest(test_case_utils.TfxTest):
         os.path.join(self._testdata_dir,
                      'pipeline_with_runtime_parameter_substituted.pbtxt'),
         expected)
-    runtime_parameter_utils.substitute_runtime_parameter(
+    parameters = runtime_parameter_utils.substitute_runtime_parameter(
         pipeline, {
             'context_name_rp': 'my_context',
             'prop_one_rp': 2,
             'prop_two_rp': 'X'
         })
     self.assertProtoEquals(pipeline, expected)
+    self.assertEqual(len(parameters), 3)
+    self.assertEqual(parameters['context_name_rp'], 'my_context')
+    self.assertEqual(parameters['prop_one_rp'], 2)
+    self.assertEqual(parameters['prop_two_rp'], 'X')
 
   def testPartiallySubstituteRuntimeParameter(self):
     pipeline = pipeline_pb2.Pipeline()
@@ -60,11 +64,15 @@ class RuntimeParameterUtilsTest(test_case_utils.TfxTest):
             self._testdata_dir,
             'pipeline_with_runtime_parameter_partially_substituted.pbtxt'),
         expected)
-    runtime_parameter_utils.substitute_runtime_parameter(
+    parameters = runtime_parameter_utils.substitute_runtime_parameter(
         pipeline, {
             'context_name_rp': 'my_context',
         })
     self.assertProtoEquals(pipeline, expected)
+    self.assertEqual(len(parameters), 3)
+    self.assertEqual(parameters['context_name_rp'], 'my_context')
+    self.assertEqual(parameters['prop_one_rp'], 1)
+    self.assertIsNone(parameters['prop_two_rp'])
 
   def testSubstituteRuntimeParameterFail(self):
     pipeline = pipeline_pb2.Pipeline()
