@@ -23,8 +23,7 @@ import tensorflow as tf
 from tensorflow import keras
 import tensorflow_transform as tft
 
-from tfx.components.trainer.fn_args_utils import FnArgs
-from tfx.components.tuner.component import TunerFnResult
+from tfx import v1 as tfx
 from tfx.examples.penguin import penguin_utils_base as base
 
 
@@ -72,7 +71,7 @@ def _make_keras_model(hparams: kerastuner.HyperParameters) -> tf.keras.Model:
 
 
 # TFX Tuner will call this function.
-def tuner_fn(fn_args: FnArgs) -> TunerFnResult:
+def tuner_fn(fn_args: tfx.components.FnArgs) -> tfx.components.TunerFnResult:
   """Build the tuner using the KerasTuner API.
 
   Args:
@@ -117,7 +116,7 @@ def tuner_fn(fn_args: FnArgs) -> TunerFnResult:
       transform_graph,
       base.EVAL_BATCH_SIZE)
 
-  return TunerFnResult(
+  return tfx.components.TunerFnResult(
       tuner=tuner,
       fit_kwargs={
           'x': train_dataset,
@@ -128,7 +127,7 @@ def tuner_fn(fn_args: FnArgs) -> TunerFnResult:
 
 
 # TFX Trainer will call this function.
-def run_fn(fn_args: FnArgs):
+def run_fn(fn_args: tfx.components.FnArgs):
   """Train the model based on given args.
 
   Args:

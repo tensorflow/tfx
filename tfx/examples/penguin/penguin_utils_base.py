@@ -21,9 +21,9 @@ from typing import List, Optional, Text
 import tensorflow as tf
 import tensorflow_transform as tft
 
-from tfx.components.trainer.fn_args_utils import DataAccessor
+from tfx import v1 as tfx
 
-from tfx_bsl.tfxio import dataset_options
+from tfx_bsl.public import tfxio
 
 FEATURE_KEYS = [
     'culmen_length_mm', 'culmen_depth_mm', 'flipper_length_mm', 'body_mass_g'
@@ -77,7 +77,8 @@ def make_serving_signatures(model,
   }
 
 
-def input_fn(file_pattern: List[Text], data_accessor: DataAccessor,
+def input_fn(file_pattern: List[Text],
+             data_accessor: tfx.components.DataAccessor,
              tf_transform_output: tft.TFTransformOutput,
              batch_size: int) -> tf.data.Dataset:
   """Generates features and label for tuning/training.
@@ -95,7 +96,7 @@ def input_fn(file_pattern: List[Text], data_accessor: DataAccessor,
   """
   return data_accessor.tf_dataset_factory(
       file_pattern,
-      dataset_options.TensorFlowDatasetOptions(
+      tfxio.TensorFlowDatasetOptions(
           batch_size=batch_size, label_key=transformed_name(_LABEL_KEY)),
       tf_transform_output.transformed_metadata.schema).repeat()
 

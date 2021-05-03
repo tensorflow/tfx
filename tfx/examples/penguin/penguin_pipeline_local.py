@@ -21,29 +21,7 @@ import absl
 from absl import flags
 
 import tensorflow_model_analysis as tfma
-from tfx.components import CsvExampleGen
-from tfx.components import Evaluator
-from tfx.components import ExampleValidator
-from tfx.components import Pusher
-from tfx.components import SchemaGen
-from tfx.components import StatisticsGen
-from tfx.components import Trainer
-from tfx.components import Transform
-from tfx.components import Tuner
-from tfx.dsl.components.common import resolver
-from tfx.dsl.experimental import latest_blessed_model_resolver
-from tfx.dsl.experimental import spans_resolver
-from tfx.orchestration import metadata
-from tfx.orchestration import pipeline
-from tfx.orchestration.local.local_dag_runner import LocalDagRunner
-from tfx.proto import example_gen_pb2
-from tfx.proto import pusher_pb2
-from tfx.proto import range_config_pb2
-from tfx.proto import trainer_pb2
-from tfx.types import Channel
-from tfx.types.standard_artifacts import Examples
-from tfx.types.standard_artifacts import Model
-from tfx.types.standard_artifacts import ModelBlessing
+from tfx import v1 as tfx
 
 flags.DEFINE_enum(
     'model_framework', 'keras', ['keras', 'flax_experimental'],
@@ -72,16 +50,16 @@ _beam_pipeline_args = [
 #
 # This will match the <input_base>/day3/* as ExampleGen's input and generate
 # Examples artifact with Span equals to 3.
-#   examplegen_input_config = example_gen_pb2.Input(splits=[
-#       example_gen_pb2.Input.Split(name='input', pattern='day{SPAN}/*'),
+#   examplegen_input_config = tfx.proto.Input(splits=[
+#       tfx.proto.Input.Split(name='input', pattern='day{SPAN}/*'),
 #   ])
-#   examplegen_range_config = range_config_pb2.RangeConfig(
-#       static_range=range_config_pb2.StaticRange(
+#   examplegen_range_config = tfx.proto.RangeConfig(
+#       static_range=tfx.proto.StaticRange(
 #           start_span_number=3, end_span_number=3))
 #
 # This will get the latest 2 Spans (Examples artifacts) from MLMD for training.
-#   resolver_range_config = range_config_pb2.RangeConfig(
-#       rolling_range=range_config_pb2.RollingRange(num_spans=2))
+#   resolver_range_config = tfx.proto.RangeConfig(
+#       rolling_range=tfx.proto.RollingRange(num_spans=2))
 _examplegen_input_config = None
 _examplegen_range_config = None
 _resolver_range_config = None
@@ -96,11 +74,11 @@ def _create_pipeline(
     serving_model_dir: Text,
     metadata_path: Text,
     enable_tuning: bool,
-    examplegen_input_config: Optional[example_gen_pb2.Input],
-    examplegen_range_config: Optional[range_config_pb2.RangeConfig],
-    resolver_range_config: Optional[range_config_pb2.RangeConfig],
+    examplegen_input_config: Optional[tfx.proto.Input],
+    examplegen_range_config: Optional[tfx.proto.RangeConfig],
+    resolver_range_config: Optional[tfx.proto.RangeConfig],
     beam_pipeline_args: List[Text],
-) -> pipeline.Pipeline:
+) -> tfx.dsl.Pipeline:
   """Implements the penguin pipeline with TFX.
 
   Args:
@@ -126,34 +104,37 @@ def _create_pipeline(
   """
 
   # Brings data into the pipeline or otherwise joins/converts training data.
-  example_gen = CsvExampleGen(
+  example_gen = tfx.components.CsvExampleGen(
       input_base=data_root,
       input_config=examplegen_input_config,
       range_config=examplegen_range_config)
 
   # Computes statistics over data for visualization and example validation.
-  statistics_gen = StatisticsGen(examples=example_gen.outputs['examples'])
+  statistics_gen = tfx.components.StatisticsGen(
+      examples=example_gen.outputs['examples'])
 
   # Generates schema based on statistics files.
-  schema_gen = SchemaGen(
+  schema_gen = tfx.components.SchemaGen(
       statistics=statistics_gen.outputs['statistics'], infer_feature_shape=True)
 
   # Performs anomaly detection based on statistics and data schema.
-  example_validator = ExampleValidator(
+  example_validator = tfx.components.ExampleValidator(
       statistics=statistics_gen.outputs['statistics'],
       schema=schema_gen.outputs['schema'])
 
   # Gets multiple Spans for transform and training.
   if resolver_range_config:
-    examples_resolver = resolver.Resolver(
-        strategy_class=spans_resolver.SpansResolver,
-        config={'range_config': resolver_range_config},
-        examples=Channel(
-            type=Examples,
+    examples_resolver = tfx.dsl.Resolver(
+        strategy_class=tfx.dsl.experimental.SpansResolver,
+        config={
+            'range_config': resolver_range_config
+        },
+        examples=tfx.dsl.Channel(
+            type=tfx.types.standard_artifacts.Examples,
             producer_component_id=example_gen.id)).with_id('span_resolver')
 
   # Performs transformations and feature engineering in training and serving.
-  transform = Transform(
+  transform = tfx.components.Transform(
       examples=(examples_resolver.outputs['examples']
                 if resolver_range_config else example_gen.outputs['examples']),
       schema=schema_gen.outputs['schema'],
@@ -163,15 +144,15 @@ def _create_pipeline(
   # function. Note that once the hyperparameters are tuned, you can drop the
   # Tuner component from pipeline and feed Trainer with tuned hyperparameters.
   if enable_tuning:
-    tuner = Tuner(
+    tuner = tfx.components.Tuner(
         module_file=module_file,
         examples=transform.outputs['transformed_examples'],
         transform_graph=transform.outputs['transform_graph'],
-        train_args=trainer_pb2.TrainArgs(num_steps=20),
-        eval_args=trainer_pb2.EvalArgs(num_steps=5))
+        train_args=tfx.proto.TrainArgs(num_steps=20),
+        eval_args=tfx.proto.EvalArgs(num_steps=5))
 
   # Uses user-provided Python function that trains a model.
-  trainer = Trainer(
+  trainer = tfx.components.Trainer(
       module_file=module_file,
       examples=transform.outputs['transformed_examples'],
       transform_graph=transform.outputs['transform_graph'],
@@ -193,15 +174,16 @@ def _create_pipeline(
       #   hyperparameters = hparams_importer.outputs['result'],
       hyperparameters=(tuner.outputs['best_hyperparameters']
                        if enable_tuning else None),
-      train_args=trainer_pb2.TrainArgs(num_steps=100),
-      eval_args=trainer_pb2.EvalArgs(num_steps=5))
+      train_args=tfx.proto.TrainArgs(num_steps=100),
+      eval_args=tfx.proto.EvalArgs(num_steps=5))
 
   # Get the latest blessed model for model validation.
-  model_resolver = resolver.Resolver(
-      strategy_class=latest_blessed_model_resolver.LatestBlessedModelResolver,
-      model=Channel(type=Model),
-      model_blessing=Channel(
-          type=ModelBlessing)).with_id('latest_blessed_model_resolver')
+  model_resolver = tfx.dsl.Resolver(
+      strategy_class=tfx.dsl.experimental.LatestBlessedModelResolver,
+      model=tfx.dsl.Channel(type=tfx.types.standard_artifacts.Model),
+      model_blessing=tfx.dsl.Channel(
+          type=tfx.types.standard_artifacts.ModelBlessing)).with_id(
+              'latest_blessed_model_resolver')
 
   # Uses TFMA to compute evaluation statistics over features of a model and
   # perform quality validation of a candidate model (compared to a baseline).
@@ -222,7 +204,7 @@ def _create_pipeline(
                           absolute={'value': -1e-10})))
           ])
       ])
-  evaluator = Evaluator(
+  evaluator = tfx.components.Evaluator(
       examples=example_gen.outputs['examples'],
       model=trainer.outputs['model'],
       baseline_model=model_resolver.outputs['model'],
@@ -230,14 +212,14 @@ def _create_pipeline(
 
   # Checks whether the model passed the validation steps and pushes the model
   # to a file destination if check passed.
-  pusher = Pusher(
+  pusher = tfx.components.Pusher(
       model=trainer.outputs['model'],
       model_blessing=evaluator.outputs['blessing'],
-      push_destination=pusher_pb2.PushDestination(
-          filesystem=pusher_pb2.PushDestination.Filesystem(
+      push_destination=tfx.proto.PushDestination(
+          filesystem=tfx.proto.PushDestination.Filesystem(
               base_directory=serving_model_dir)))
 
-  components = [
+  components_list = [
       example_gen,
       statistics_gen,
       schema_gen,
@@ -249,17 +231,17 @@ def _create_pipeline(
       pusher,
   ]
   if resolver_range_config:
-    components.append(examples_resolver)
+    components_list.append(examples_resolver)
   if enable_tuning:
-    components.append(tuner)
+    components_list.append(tuner)
 
-  return pipeline.Pipeline(
+  return tfx.dsl.Pipeline(
       pipeline_name=pipeline_name,
       pipeline_root=pipeline_root,
-      components=components,
+      components=components_list,
       enable_cache=True,
-      metadata_connection_config=metadata.sqlite_metadata_connection_config(
-          metadata_path),
+      metadata_connection_config=tfx.orchestration.metadata
+      .sqlite_metadata_connection_config(metadata_path),
       beam_pipeline_args=beam_pipeline_args)
 
 
@@ -284,7 +266,7 @@ if __name__ == '__main__':
   # Sqlite ML-metadata db path.
   _metadata_path = os.path.join(_tfx_root, 'metadata', _pipeline_name,
                                 'metadata.db')
-  LocalDagRunner().run(
+  tfx.orchestration.LocalDagRunner().run(
       _create_pipeline(
           pipeline_name=_pipeline_name,
           pipeline_root=_pipeline_root,

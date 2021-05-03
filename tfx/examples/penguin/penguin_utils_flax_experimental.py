@@ -44,8 +44,9 @@ import numpy as np
 import tensorflow as tf
 import tensorflow_transform as tft
 
-from tfx.components.trainer.fn_args_utils import FnArgs
+from tfx import v1 as tfx
 from tfx.examples.penguin import penguin_utils_base as base
+
 
 # The transformed feature names
 _FEATURE_KEYS_XF = list(map(base.transformed_name, base.FEATURE_KEYS))
@@ -299,7 +300,7 @@ preprocessing_fn = base.preprocessing_fn
 
 
 # TFX Trainer will call this function.
-def run_fn(fn_args: FnArgs):
+def run_fn(fn_args: tfx.components.FnArgs):
   """Train the model based on given args.
 
   Args:
