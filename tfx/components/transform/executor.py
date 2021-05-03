@@ -56,8 +56,8 @@ from tfx.utils import proto_utils
 import tfx_bsl
 from tfx_bsl.tfxio import tfxio as tfxio_module
 
+from tensorflow_metadata.proto.v0 import anomalies_pb2
 from tensorflow_metadata.proto.v0 import schema_pb2
-from tensorflow_metadata.proto.v0 import statistics_pb2
 
 
 # Key for temp path, for internal use only.
@@ -561,12 +561,14 @@ class Executor(base_beam_executor.BaseBeamExecutor):
   @staticmethod
   @beam.ptransform_fn
   @beam.typehints.with_input_types(pa.RecordBatch)
-  @beam.typehints.with_output_types(beam.pvalue.PDone)
-  def _GenerateStats(
-      pcoll: beam.pvalue.PCollection,
-      stats_output_path: Text,
-      stats_options: tfdv.StatsOptions,
-  ) -> beam.pvalue.PDone:
+  @beam.typehints.with_output_types(Tuple[beam.pvalue.PDone,
+                                          Optional[beam.pvalue.PDone],
+                                          Optional[beam.pvalue.PDone]])
+  def _GenerateAndMaybeValidateStats(
+      pcoll: beam.pvalue.PCollection, stats_output_path: Text,
+      stats_options: tfdv.StatsOptions, enable_validation: bool
+  ) -> Tuple[beam.pvalue.PDone, Optional[beam.pvalue.PDone],
+             Optional[beam.pvalue.PDone]]:
     """Generates statistics.
 
     Args:
@@ -574,15 +576,55 @@ class Executor(base_beam_executor.BaseBeamExecutor):
       stats_output_path: path where statistics is written to.
       stats_options: An instance of `tfdv.StatsOptions()` used when computing
         statistics.
+      enable_validation: Whether to enable stats validation.
 
     Returns:
-      beam.pvalue.PDone.
+      A tuple containing the beam.pvalue.PDones for generating the stats,
+      writing the schema, and writing the validation, in that order. If the
+      schema is not present or validation is not enabled, the corresponding
+      values are replaced with Nones.
     """
-    return (pcoll
-            | 'FilterInternalColumn' >> beam.Map(Executor._FilterInternalColumn)
-            | 'GenerateStatistics' >> tfdv.GenerateStatistics(stats_options)
-            | 'WriteStats' >> Executor._WriteStats(stats_output_path,
-                                                   stats_options.schema))
+    generated_stats = (
+        pcoll
+        | 'FilterInternalColumn' >> beam.Map(Executor._FilterInternalColumn)
+        | 'GenerateStatistics' >> tfdv.GenerateStatistics(stats_options))
+
+    stats_result = (
+        generated_stats
+        | 'WriteStats' >>
+        tfdv.WriteStatisticsToBinaryFile(output_path=stats_output_path))
+
+    if stats_options.schema is None:
+      return (stats_result, None, None)
+
+    stats_dir = os.path.dirname(stats_output_path)
+    schema_output_path = os.path.join(stats_dir, 'Schema.pb')
+    # TODO(b/186867968): See if we should switch to common libraries.
+    schema_result = (
+        pcoll.pipeline
+        | 'CreateSchema' >> beam.Create([stats_options.schema])
+        | 'WriteSchema' >> beam.io.WriteToText(
+            schema_output_path,
+            append_trailing_newlines=False,
+            shard_name_template='',  # To force unsharded output.
+            coder=beam.coders.ProtoCoder(schema_pb2.Schema)))
+
+    if not enable_validation:
+      return (stats_result, schema_result, None)
+
+    validation_output_path = os.path.join(stats_dir, 'SchemaDiff.pb')
+    # TODO(b/186867968): See if we should switch to common libraries.
+    validation_result = (
+        generated_stats
+        | 'ValidateStatistics' >> beam.Map(
+            lambda stats: tfdv.validate_statistics(stats, stats_options.schema))
+        | 'WriteValidation' >> beam.io.WriteToText(
+            validation_output_path,
+            append_trailing_newlines=False,
+            shard_name_template='',  # To force unsharded output.
+            coder=beam.coders.ProtoCoder(anomalies_pb2.Anomalies)))
+
+    return (stats_result, schema_result, validation_result)
 
   # TODO(b/130807807): This is still used by pre-transform stats to decode
   # sequence example as tf.example. Once the support is implemented this can be
@@ -603,39 +645,6 @@ class Executor(base_beam_executor.BaseBeamExecutor):
 
     def process(self, element: List[bytes]) -> Iterable[pa.RecordBatch]:
       yield self._decoder.DecodeBatch(element)
-
-  @staticmethod
-  @beam.ptransform_fn
-  @beam.typehints.with_input_types(statistics_pb2.DatasetFeatureStatisticsList)
-  @beam.typehints.with_output_types(beam.pvalue.PDone)
-  def _WriteStats(
-      pcollection_stats: beam.pvalue.PCollection,
-      stats_output_path: Text,
-      schema: Optional[schema_pb2.Schema] = None) -> beam.pvalue.PDone:
-    """Writs Statistics outputs.
-
-    Args:
-      pcollection_stats: pcollection of statistics.
-      stats_output_path: path to write statistics and the schema. The schema
-        used to generate the statistics (if any) will be placed within the same
-        subdirectory.
-      schema: the schema used to generate the statistics.
-
-    Returns:
-      beam.pvalue.PDone.
-    """
-    stats_dir = os.path.dirname(stats_output_path)
-    fileio.makedirs(stats_dir)
-    if schema is not None:
-      io_utils.write_pbtxt_file(os.path.join(stats_dir, 'schema.pbtxt'), schema)
-
-    # TODO(b/117601471): Replace with utility method to write stats.
-    return (pcollection_stats | 'Write' >> beam.io.WriteToText(
-        stats_output_path,
-        append_trailing_newlines=False,
-        shard_name_template='',  # To force unsharded output.
-        coder=beam.coders.ProtoCoder(
-            statistics_pb2.DatasetFeatureStatisticsList)))
 
   @beam.typehints.with_input_types(beam.Pipeline)
   class _OptimizeRun(beam.PTransform):
@@ -1202,9 +1211,11 @@ class Executor(base_beam_executor.BaseBeamExecutor):
 
             (stats_input
              | 'FlattenAnalysisDatasets' >> beam.Flatten(pipeline=pipeline)
-             | 'GenerateStats[FlattenedAnalysisDataset]' >> self._GenerateStats(
+             | 'GenerateStats[FlattenedAnalysisDataset]' >>
+             self._GenerateAndMaybeValidateStats(
                  pre_transform_feature_stats_path,
-                 stats_options=pre_transform_stats_options))
+                 stats_options=pre_transform_stats_options,
+                 enable_validation=False))
 
           # transform_data_list is a superset of analyze_data_list, we pay the
           # cost to read the same dataset (analyze_data_list) again here to
@@ -1247,16 +1258,19 @@ class Executor(base_beam_executor.BaseBeamExecutor):
 
             post_transform_stats_options.experimental_use_sketch_based_topk_uniques = (
                 self._TfdvUseSketchBasedTopKUniques())
-            ([dataset.transformed_and_standardized
-              for dataset in transform_data_list]
+            ([
+                dataset.transformed_and_standardized
+                for dataset in transform_data_list
+            ]
              | 'FlattenTransformedDatasets' >> beam.Flatten()
              | 'WaitForTransformWrite' >> beam.Map(
                  lambda x, completion: x,
                  completion=beam.pvalue.AsSingleton(completed_transform))
-             | 'GenerateStats[FlattenedTransformedDatasets]' >>
-             self._GenerateStats(
+             | 'GenerateAndValidateStats[FlattenedTransformedDatasets]' >>
+             self._GenerateAndMaybeValidateStats(
                  post_transform_feature_stats_path,
-                 stats_options=post_transform_stats_options))
+                 stats_options=post_transform_stats_options,
+                 enable_validation=True))
 
             if per_set_stats_output_paths:
               # TODO(b/130885503): Remove duplicate stats gen compute that is
@@ -1268,9 +1282,11 @@ class Executor(base_beam_executor.BaseBeamExecutor):
                  | 'WaitForTransformWrite[{}]'.format(infix) >> beam.Map(
                      lambda x, completion: x,
                      completion=beam.pvalue.AsSingleton(completed_transform))
-                 | 'GenerateStats[{}]'.format(infix) >> self._GenerateStats(
+                 | 'GenerateAndValidateStats[{}]'.format(infix) >>
+                 self._GenerateAndMaybeValidateStats(
                      dataset.stats_output_path,
-                     stats_options=post_transform_stats_options))
+                     stats_options=post_transform_stats_options,
+                     enable_validation=True))
 
           if materialization_format is not None:
             for dataset in transform_data_list:
