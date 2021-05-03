@@ -81,3 +81,12 @@ tfx_py_proto_library(
     name = "platform_config_py_pb2",
     srcs = ["platform_config.proto"],
 )
+
+tfx_py_proto_library(
+    name = "execution_watcher_py_pb2",
+    srcs = ["execution_watcher.proto"],
+    use_grpc_plugin = True,
+    deps = [
+        "@com_github_google_ml_metadata//ml_metadata/proto:metadata_store_py_pb2",
+    ],
+)
