@@ -71,6 +71,12 @@ class CloudAIBulkInferrerComponent(base_component.BaseComponent):
   Google Cloud AI Platform.
 
   TODO(b/155325467): Creates a end-to-end test for this component.
+
+  Component `outputs` contains:
+   - `inference_result`: Channel of type `standard_artifacts.InferenceResult`
+                         to store the inference results.
+   - `output_examples`: Channel of type `standard_artifacts.Examples`
+                        to store the output examples.
   """
 
   SPEC_CLASS = CloudAIBulkInferrerComponentSpec
@@ -85,9 +91,7 @@ class CloudAIBulkInferrerComponent(base_component.BaseComponent):
                                                                  Any]]] = None,
       output_example_spec: Optional[Union[bulk_inferrer_pb2.OutputExampleSpec,
                                           Dict[Text, Any]]] = None,
-      custom_config: Dict[Text, Any] = None,
-      inference_result: Optional[types.Channel] = None,
-      output_examples: Optional[types.Channel] = None):
+      custom_config: Dict[Text, Any] = None):
     """Construct an BulkInferrer component.
 
     Args:
@@ -111,31 +115,17 @@ class CloudAIBulkInferrerComponent(base_component.BaseComponent):
         custom_config.ai_platform_serving_args need to contain the serving job
         parameters. For the full set of parameters, refer to
         https://cloud.google.com/ml-engine/reference/rest/v1/projects.models
-      inference_result: Channel of type `standard_artifacts.InferenceResult`
-        to store the inference results, must not be specified when
-        output_example_spec is set.
-      output_examples: Channel of type `standard_artifacts.Examples`
-        to store the output examples, must not be specified when
-        output_example_spec is unset. Check output_example_spec for details.
 
     Raises:
       ValueError: Must not specify inference_result or output_examples depends
         on whether output_example_spec is set or not.
     """
     if output_example_spec:
-      if inference_result:
-        raise ValueError(
-            'Must not specify inference_result when output_example_spec is set.'
-        )
-      output_examples = output_examples or types.Channel(
-          type=standard_artifacts.Examples)
+      output_examples = types.Channel(type=standard_artifacts.Examples)
+      inference_result = None
     else:
-      if output_examples:
-        raise ValueError(
-            'Must not specify output_examples when output_example_spec is unset.'
-        )
-      inference_result = inference_result or types.Channel(
-          type=standard_artifacts.InferenceResult)
+      inference_result = types.Channel(type=standard_artifacts.InferenceResult)
+      output_examples = None
 
     spec = CloudAIBulkInferrerComponentSpec(
         examples=examples,

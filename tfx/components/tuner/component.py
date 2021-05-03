@@ -49,7 +49,13 @@ tuner_fn returns a TunerFnResult that contains:
 
 
 class Tuner(base_component.BaseComponent):
-  """A TFX component for model hyperparameter tuning."""
+  """A TFX component for model hyperparameter tuning.
+
+  Component `outputs` contains:
+   - `best_hyperparameters`: Channel of type
+                             `standard_artifacts.HyperParameters` for result of
+                             the best hparams.
+  """
 
   SPEC_CLASS = TunerSpec
   EXECUTOR_SPEC = executor_spec.ExecutorClassSpec(executor.Executor)
@@ -63,8 +69,7 @@ class Tuner(base_component.BaseComponent):
                train_args: trainer_pb2.TrainArgs = None,
                eval_args: trainer_pb2.EvalArgs = None,
                tune_args: Optional[tuner_pb2.TuneArgs] = None,
-               custom_config: Optional[Dict[Text, Any]] = None,
-               best_hyperparameters: Optional[types.Channel] = None):
+               custom_config: Optional[Dict[Text, Any]] = None):
     """Construct a Tuner component.
 
     Args:
@@ -94,14 +99,12 @@ class Tuner(base_component.BaseComponent):
         Currently only num_parallel_trials is available.
       custom_config: A dict which contains addtional training job parameters
         that will be passed into user module.
-      best_hyperparameters: Optional Channel of type
-        `standard_artifacts.HyperParameters` for result of the best hparams.
     """
     if bool(module_file) == bool(tuner_fn):
       raise ValueError(
           "Exactly one of 'module_file' or 'tuner_fn' must be supplied")
 
-    best_hyperparameters = best_hyperparameters or types.Channel(
+    best_hyperparameters = types.Channel(
         type=standard_artifacts.HyperParameters)
     spec = TunerSpec(
         examples=examples,

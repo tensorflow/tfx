@@ -20,7 +20,6 @@ from __future__ import print_function
 
 from typing import Any, Dict, Optional, Text, Union
 
-from tfx import types
 from tfx.components.example_gen import component
 from tfx.components.example_gen.csv_example_gen import executor
 from tfx.dsl.components.base import executor_spec
@@ -58,20 +57,22 @@ class CsvExampleGen(component.FileBasedExampleGen):  # pylint: disable=protected
 
     Note that the empty feature is `tf.train.Feature()` while empty list string
     feature is `tf.train.Feature(bytes_list=tf.train.BytesList(value=[]))`.
+
+  Component `outputs` contains:
+   - `examples`: Channel of type `standard_artifacts.Examples` for output train
+                 and eval examples.
   """
 
   EXECUTOR_SPEC = executor_spec.BeamExecutorSpec(executor.Executor)
 
-  def __init__(
-      self,
-      input_base: Optional[Text] = None,
-      input_config: Optional[Union[example_gen_pb2.Input, Dict[Text,
-                                                               Any]]] = None,
-      output_config: Optional[Union[example_gen_pb2.Output, Dict[Text,
-                                                                 Any]]] = None,
-      range_config: Optional[Union[range_config_pb2.RangeConfig,
-                                   Dict[Text, Any]]] = None,
-      example_artifacts: Optional[types.Channel] = None):
+  def __init__(self,
+               input_base: Optional[Text] = None,
+               input_config: Optional[Union[example_gen_pb2.Input,
+                                            Dict[Text, Any]]] = None,
+               output_config: Optional[Union[example_gen_pb2.Output,
+                                             Dict[Text, Any]]] = None,
+               range_config: Optional[Union[range_config_pb2.RangeConfig,
+                                            Dict[Text, Any]]] = None):
     """Construct a CsvExampleGen component.
 
     Args:
@@ -83,18 +84,15 @@ class CsvExampleGen(component.FileBasedExampleGen):  # pylint: disable=protected
         as Input proto message.
       output_config: An example_gen_pb2.Output instance, providing output
         configuration. If unset, default splits will be 'train' and 'eval' with
-        size 2:1. If any field is provided as a RuntimeParameter,
-        output_config should be constructed as a dict with the same field names
-        as Output proto message.
+        size 2:1. If any field is provided as a RuntimeParameter, output_config
+        should be constructed as a dict with the same field names as Output
+        proto message.
       range_config: An optional range_config_pb2.RangeConfig instance,
         specifying the range of span values to consider. If unset, driver will
         default to searching for latest span with no restrictions.
-      example_artifacts: Optional channel of 'ExamplesPath' for output train and
-        eval examples.
     """
     super(CsvExampleGen, self).__init__(
         input_base=input_base,
         input_config=input_config,
         output_config=output_config,
-        range_config=range_config,
-        example_artifacts=example_artifacts)
+        range_config=range_config)

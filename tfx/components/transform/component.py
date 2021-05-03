@@ -57,6 +57,15 @@ class Transform(base_beam_component.BaseBeamComponent):
       module_file=module_file)
   ```
 
+  Component `outputs` contains:
+   - `transform_graph`: Channel of type `standard_artifacts.TransformGraph`,
+                        which includes an exported Tensorflow graph suitable
+                        for both training and serving.
+   - `transformed_examples`: Channel of type `standard_artifacts.Examples` for
+                             materialized transformed examples, which includes
+                             transform splits as specified in splits_config.
+                             This is optional controlled by `materialize`.
+
   Please see https://www.tensorflow.org/tfx/transform for more details.
   """
 
@@ -71,8 +80,6 @@ class Transform(base_beam_component.BaseBeamComponent):
       preprocessing_fn: Optional[Union[Text,
                                        data_types.RuntimeParameter]] = None,
       splits_config: transform_pb2.SplitsConfig = None,
-      transform_graph: Optional[types.Channel] = None,
-      transformed_examples: Optional[types.Channel] = None,
       analyzer_cache: Optional[types.Channel] = None,
       materialize: bool = True,
       disable_analyzer_cache: bool = False,
@@ -116,18 +123,10 @@ class Transform(base_beam_component.BaseBeamComponent):
         analyze and transform splits can have overlap. Default behavior (when
         splits_config is not set) is analyze the 'train' split and transform
         all splits. If splits_config is set, analyze cannot be empty.
-      transform_graph: Optional output 'TransformPath' channel for output of
-        'tf.Transform', which includes an exported Tensorflow graph suitable for
-        both training and serving;
-      transformed_examples: Optional output 'ExamplesPath' channel for
-        materialized transformed examples, which includes transform splits as
-        specified in splits_config. If custom split is not provided, this should
-        include both 'train' and 'eval' splits.
       analyzer_cache: Optional input 'TransformCache' channel containing
         cached information from previous Transform runs. When provided,
         Transform will try use the cached calculation if possible.
-      materialize: If True, write transformed examples as an output. If False,
-        `transformed_examples` must not be provided.
+      materialize: If True, write transformed examples as an output.
       disable_analyzer_cache: If False, Transform will use input cache if
         provided and write cache output. If True, `analyzer_cache` must not be
         provided.
@@ -147,15 +146,11 @@ class Transform(base_beam_component.BaseBeamComponent):
           "Exactly one of 'module_file' or 'preprocessing_fn' must be supplied."
       )
 
-    transform_graph = transform_graph or types.Channel(
-        type=standard_artifacts.TransformGraph)
-
-    if materialize and transformed_examples is None:
+    transform_graph = types.Channel(type=standard_artifacts.TransformGraph)
+    transformed_examples = None
+    if materialize:
       transformed_examples = types.Channel(type=standard_artifacts.Examples)
       transformed_examples.matching_channel_name = 'examples'
-    elif not materialize and transformed_examples is not None:
-      raise ValueError(
-          'Must not specify transformed_examples when materialize is False.')
 
     if disable_analyzer_cache:
       updated_analyzer_cache = None

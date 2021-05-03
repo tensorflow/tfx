@@ -45,29 +45,22 @@ class TestQueryBasedExampleGenComponent(component.QueryBasedExampleGen):
   def __init__(self,
                input_config,
                output_config=None,
-               output_data_format=example_gen_pb2.FORMAT_TF_EXAMPLE,
-               example_artifacts=None):
+               output_data_format=example_gen_pb2.FORMAT_TF_EXAMPLE):
     super(TestQueryBasedExampleGenComponent, self).__init__(
         input_config=input_config,
         output_config=output_config,
-        output_data_format=output_data_format,
-        example_artifacts=example_artifacts)
+        output_data_format=output_data_format)
 
 
 class TestFileBasedExampleGenComponent(component.FileBasedExampleGen):
 
   EXECUTOR_SPEC = executor_spec.BeamExecutorSpec(TestExampleGenExecutor)
 
-  def __init__(self,
-               input_base,
-               input_config=None,
-               output_config=None,
-               example_artifacts=None):
+  def __init__(self, input_base, input_config=None, output_config=None):
     super(TestFileBasedExampleGenComponent, self).__init__(
         input_base=input_base,
         input_config=input_config,
-        output_config=output_config,
-        example_artifacts=example_artifacts)
+        output_config=output_config)
 
 
 class ComponentTest(tf.test.TestCase):

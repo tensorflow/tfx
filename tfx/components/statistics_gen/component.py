@@ -40,6 +40,10 @@ class StatisticsGen(base_beam_component.BaseBeamComponent):
     # Computes statistics over data for visualization and example validation.
     statistics_gen = StatisticsGen(examples=example_gen.outputs['examples'])
   ```
+
+  Component `outputs` contains:
+   - `statistics`: Channel of type `standard_artifacts.ExampleStatistics` for
+                   statistics of each split provided in the input examples.
   """
 
   SPEC_CLASS = StatisticsGenSpec
@@ -49,8 +53,7 @@ class StatisticsGen(base_beam_component.BaseBeamComponent):
                examples: types.Channel = None,
                schema: Optional[types.Channel] = None,
                stats_options: Optional[tfdv.StatsOptions] = None,
-               exclude_splits: Optional[List[Text]] = None,
-               statistics: Optional[types.Channel] = None):
+               exclude_splits: Optional[List[Text]] = None):
     """Construct a StatisticsGen component.
 
     Args:
@@ -67,14 +70,11 @@ class StatisticsGen(base_beam_component.BaseBeamComponent):
       exclude_splits: Names of splits where statistics and sample should not
         be generated. Default behavior (when exclude_splits is set to None)
         is excluding no splits.
-      statistics: `ExampleStatisticsPath` channel for statistics of each split
-        provided in the input examples.
     """
     if exclude_splits is None:
       exclude_splits = []
       logging.info('Excluding no splits because exclude_splits is not set.')
-    statistics = statistics or types.Channel(
-        type=standard_artifacts.ExampleStatistics)
+    statistics = types.Channel(type=standard_artifacts.ExampleStatistics)
     # TODO(b/150802589): Move jsonable interface to tfx_bsl and use json_utils.
     stats_options_json = stats_options.to_json() if stats_options else None
     spec = StatisticsGenSpec(

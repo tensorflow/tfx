@@ -52,24 +52,6 @@ class ComponentTest(tf.test.TestCase):
             standard_component_specs.OUTPUT_EXAMPLES_KEY].type_name)
     self.assertNotIn('inference_result', bulk_inferrer.outputs.keys())
 
-  def testConstructInferenceResultAndOutputExample(self):
-    with self.assertRaises(ValueError):
-      component.BulkInferrer(
-          examples=self._examples,
-          model=self._model,
-          model_blessing=self._model_blessing,
-          output_examples=channel_utils.as_channel(
-              [standard_artifacts.Examples()]))
-
-    with self.assertRaises(ValueError):
-      component.BulkInferrer(
-          examples=self._examples,
-          model=self._model,
-          model_blessing=self._model_blessing,
-          output_example_spec=bulk_inferrer_pb2.OutputExampleSpec(),
-          inference_result=channel_utils.as_channel(
-              [standard_artifacts.InferenceResult()]))
-
 
 if __name__ == '__main__':
   tf.test.main()

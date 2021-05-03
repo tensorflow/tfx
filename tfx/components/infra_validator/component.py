@@ -75,6 +75,10 @@ class InfraValidator(base_component.BaseComponent):
       ),
   )
   ```
+
+  Component `outputs` contains:
+   - `blessing`: Channel of type `standard_artifacts.InfraBlessing` that
+                 contains the validation result.
   """
 
   SPEC_CLASS = standard_component_specs.InfraValidatorSpec
@@ -86,7 +90,6 @@ class InfraValidator(base_component.BaseComponent):
       model: types.Channel,
       serving_spec: infra_validator_pb2.ServingSpec,
       examples: Optional[types.Channel] = None,
-      blessing: Optional[types.Channel] = None,
       request_spec: Optional[infra_validator_pb2.RequestSpec] = None,
       validation_spec: Optional[infra_validator_pb2.ValidationSpec] = None):
     """Construct a InfraValidator component.
@@ -100,14 +103,13 @@ class InfraValidator(base_component.BaseComponent):
       examples: A `Channel` of `ExamplesPath` type, usually produced by
         [ExampleGen](https://www.tensorflow.org/tfx/guide/examplegen) component.
         If not specified, InfraValidator does not issue requests for validation.
-      blessing: Output `Channel` of `InfraBlessingPath` that contains the
-        validation result.
+
       request_spec: Optional `RequestSpec` configuration about making requests
         from `examples` input. If not specified, InfraValidator does not issue
         requests for validation.
       validation_spec: Optional `ValidationSpec` configuration.
     """
-    blessing = blessing or types.Channel(type=standard_artifacts.InfraBlessing)
+    blessing = types.Channel(type=standard_artifacts.InfraBlessing)
     spec = standard_component_specs.InfraValidatorSpec(
         model=model,
         examples=examples,

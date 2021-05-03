@@ -16,7 +16,6 @@
 
 from typing import Optional, Text
 
-from tfx import types
 from tfx.components.example_gen import component
 from tfx.components.example_gen import utils
 from tfx.dsl.components.base import executor_spec
@@ -38,8 +37,7 @@ class BigQueryToElwcExampleGen(component.QueryBasedExampleGen):
                query: Optional[Text] = None,
                elwc_config: Optional[elwc_config_pb2.ElwcConfig] = None,
                input_config: Optional[example_gen_pb2.Input] = None,
-               output_config: Optional[example_gen_pb2.Output] = None,
-               example_artifacts: Optional[types.Channel] = None):
+               output_config: Optional[example_gen_pb2.Output] = None):
     """Constructs a BigQueryElwcExampleGen component.
 
     Args:
@@ -60,8 +58,6 @@ class BigQueryToElwcExampleGen(component.QueryBasedExampleGen):
         size 2:1. If any field is provided as a RuntimeParameter, input_config
           should be constructed as a dict with the same field names as Output
           proto message.
-      example_artifacts: Optional channel of 'ExamplesPath' for output train and
-        eval examples.
 
     Raises:
       RuntimeError: Only one of query and input_config should be set and
@@ -80,5 +76,4 @@ class BigQueryToElwcExampleGen(component.QueryBasedExampleGen):
         input_config=input_config,
         output_config=output_config,
         output_data_format=example_gen_pb2.FORMAT_PROTO,
-        custom_config=packed_custom_config,
-        example_artifacts=example_artifacts)
+        custom_config=packed_custom_config)

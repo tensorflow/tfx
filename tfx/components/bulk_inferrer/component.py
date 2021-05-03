@@ -39,6 +39,13 @@ class BulkInferrer(base_beam_component.BaseBeamComponent):
         examples=example_gen.outputs['examples'],
         model=trainer.outputs['model'])
   ```
+
+  Component `outputs` contains:
+   - `inference_result`: Channel of type `standard_artifacts.InferenceResult`
+                         to store the inference results.
+   - `output_examples`: Channel of type `standard_artifacts.Examples`
+                        to store the output examples. This is optional
+                        controlled by `output_example_spec`.
   """
 
   SPEC_CLASS = BulkInferrerSpec
@@ -54,9 +61,7 @@ class BulkInferrer(base_beam_component.BaseBeamComponent):
       model_spec: Optional[Union[bulk_inferrer_pb2.ModelSpec,
                                  Dict[Text, Any]]] = None,
       output_example_spec: Optional[Union[bulk_inferrer_pb2.OutputExampleSpec,
-                                          Dict[Text, Any]]] = None,
-      inference_result: Optional[types.Channel] = None,
-      output_examples: Optional[types.Channel] = None):
+                                          Dict[Text, Any]]] = None):
     """Construct an BulkInferrer component.
 
     Args:
@@ -79,31 +84,13 @@ class BulkInferrer(base_beam_component.BaseBeamComponent):
         If any field is provided as a RuntimeParameter, output_example_spec
         should be constructed as a dict with the same field names as
         OutputExampleSpec proto message.
-      inference_result: Channel of type `standard_artifacts.InferenceResult`
-        to store the inference results, must not be specified when
-        output_example_spec is set.
-      output_examples: Channel of type `standard_artifacts.Examples`
-        to store the output examples, must not be specified when
-        output_example_spec is unset. Check output_example_spec for details.
-
-    Raises:
-      ValueError: Must not specify inference_result or output_examples depends
-        on whether output_example_spec is set or not.
     """
     if output_example_spec:
-      if inference_result:
-        raise ValueError(
-            'Must not specify inference_result when output_example_spec is set.'
-        )
-      output_examples = output_examples or types.Channel(
-          type=standard_artifacts.Examples)
+      output_examples = types.Channel(type=standard_artifacts.Examples)
+      inference_result = None
     else:
-      if output_examples:
-        raise ValueError(
-            'Must not specify output_examples when output_example_spec is unset.'
-        )
-      inference_result = inference_result or types.Channel(
-          type=standard_artifacts.InferenceResult)
+      inference_result = types.Channel(type=standard_artifacts.InferenceResult)
+      output_examples = None
 
     spec = BulkInferrerSpec(
         examples=examples,

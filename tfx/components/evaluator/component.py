@@ -39,6 +39,12 @@ class Evaluator(base_beam_component.BaseBeamComponent):
   See [Evaluator](https://www.tensorflow.org/tfx/guide/evaluator) for more
   information on what this component's required inputs are, how to configure it,
   and what outputs it produces.
+
+  Component `outputs` contains:
+   - `evaluation`: Channel of type `standard_artifacts.ModelEvaluation` to store
+                   the evaluation results.
+   - `blessing`: Channel of type `standard_artifacts.ModelBlessing' that
+                 contains the blessing result.
   """
 
   SPEC_CLASS = EvaluatorSpec
@@ -55,9 +61,7 @@ class Evaluator(base_beam_component.BaseBeamComponent):
       fairness_indicator_thresholds: Optional[List[Union[
           float, data_types.RuntimeParameter]]] = None,
       example_splits: Optional[List[Text]] = None,
-      evaluation: Optional[types.Channel] = None,
       eval_config: Optional[tfma.EvalConfig] = None,
-      blessing: Optional[types.Channel] = None,
       schema: Optional[types.Channel] = None,
       module_file: Optional[Text] = None,
       module_path: Optional[Text] = None):
@@ -85,12 +89,9 @@ class Evaluator(base_beam_component.BaseBeamComponent):
       example_splits: Names of splits on which the metrics are computed.
         Default behavior (when example_splits is set to None or Empty) is using
         the 'eval' split.
-      evaluation: Channel of `ModelEvaluation` to store the evaluation results.
       eval_config: Instance of tfma.EvalConfig containg configuration settings
         for running the evaluation. This config has options for both estimator
         and Keras.
-      blessing: Output channel of 'ModelBlessing' that contains the
-        blessing result.
       schema: A `Schema` channel to use for TFXIO.
       module_file: A path to python module file containing UDFs for Evaluator
         customization. This functionality is experimental and may change at any
@@ -123,7 +124,7 @@ class Evaluator(base_beam_component.BaseBeamComponent):
       logging.warning('feature_slicing_spec is deprecated, please use '
                       'eval_config instead.')
 
-    blessing = blessing or types.Channel(type=standard_artifacts.ModelBlessing)
+    blessing = types.Channel(type=standard_artifacts.ModelBlessing)
     evaluation = types.Channel(type=standard_artifacts.ModelEvaluation)
     spec = EvaluatorSpec(
         examples=examples,

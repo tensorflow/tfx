@@ -16,7 +16,6 @@
 
 from typing import Optional, Text
 
-from tfx import types
 from tfx.components.example_gen import component
 from tfx.components.example_gen import utils
 from tfx.dsl.components.base import executor_spec
@@ -31,6 +30,10 @@ class PrestoExampleGen(component.QueryBasedExampleGen):  # pylint: disable=prote
   The Presto examplegen component takes a query, connection client
   configuration, and generates train and eval examples for downstream
   components.
+
+  Component `outputs` contains:
+   - `examples`: Channel of type `standard_artifacts.Examples` for output train
+                 and eval examples.
   """
   EXECUTOR_SPEC = executor_spec.BeamExecutorSpec(executor.Executor)
 
@@ -38,8 +41,7 @@ class PrestoExampleGen(component.QueryBasedExampleGen):  # pylint: disable=prote
                conn_config: presto_config_pb2.PrestoConnConfig,
                query: Optional[Text] = None,
                input_config: Optional[example_gen_pb2.Input] = None,
-               output_config: Optional[example_gen_pb2.Output] = None,
-               example_artifacts: Optional[types.Channel] = None):
+               output_config: Optional[example_gen_pb2.Output] = None):
     """Constructs a PrestoExampleGen component.
 
     Args:
@@ -52,8 +54,6 @@ class PrestoExampleGen(component.QueryBasedExampleGen):  # pylint: disable=prote
       output_config: An example_gen_pb2.Output instance, providing output
         configuration. If unset, default splits will be 'train' and 'eval' with
         size 2:1.
-      example_artifacts: Optional channel of 'ExamplesPath' for output train and
-        eval examples.
 
     Raises:
       RuntimeError: Only one of query and input_config should be set. Or
@@ -76,5 +76,4 @@ class PrestoExampleGen(component.QueryBasedExampleGen):  # pylint: disable=prote
     super(PrestoExampleGen, self).__init__(
         input_config=input_config,
         output_config=output_config,
-        custom_config=packed_custom_config,
-        example_artifacts=example_artifacts)
+        custom_config=packed_custom_config)

@@ -58,6 +58,7 @@
 *  Removed matching_channel_name from Channel's constructor.
 *  Deleted all usages of instance_name, which was deprecated in version 0.25.0.
    Please use .with_id() method of components.
+*  Removed output channel overwrite functionality from all official components.
 
 ### For Pipeline Authors
 

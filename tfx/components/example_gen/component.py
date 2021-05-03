@@ -48,6 +48,10 @@ class QueryBasedExampleGen(base_beam_component.BaseBeamComponent):
   # Brings data into the pipeline or otherwise joins/converts training data.
   example_gen = BigQueryExampleGen(query=_query)
   ```
+
+  Component `outputs` contains:
+   - `examples`: Channel of type `standard_artifacts.Examples` for output train
+                 and eval examples.
   """
 
   SPEC_CLASS = QueryBasedExampleGenSpec
@@ -63,8 +67,7 @@ class QueryBasedExampleGen(base_beam_component.BaseBeamComponent):
                                                                  Any]]] = None,
       custom_config: Optional[Union[example_gen_pb2.CustomConfig,
                                     Dict[Text, Any]]] = None,
-      output_data_format: Optional[int] = example_gen_pb2.FORMAT_TF_EXAMPLE,
-      example_artifacts: Optional[types.Channel] = None):
+      output_data_format: Optional[int] = example_gen_pb2.FORMAT_TF_EXAMPLE):
     """Construct a QueryBasedExampleGen component.
 
     Args:
@@ -87,8 +90,6 @@ class QueryBasedExampleGen(base_beam_component.BaseBeamComponent):
           as a dict.
       output_data_format: Payload format of generated data in output artifact,
         one of example_gen_pb2.PayloadFormat enum.
-      example_artifacts: Channel of `standard_artifacts.Examples` for output
-        train and eval examples.
 
     Raises:
       ValueError: The output_data_format value must be defined in the
@@ -97,8 +98,7 @@ class QueryBasedExampleGen(base_beam_component.BaseBeamComponent):
     # Configure outputs.
     output_config = output_config or utils.make_default_output_config(
         input_config)
-    if not example_artifacts:
-      example_artifacts = types.Channel(type=standard_artifacts.Examples)
+    example_artifacts = types.Channel(type=standard_artifacts.Examples)
     if output_data_format not in example_gen_pb2.PayloadFormat.values():
       raise ValueError('The value of output_data_format must be defined in'
                        'the example_gen_pb2.PayloadFormat proto.')
@@ -129,6 +129,10 @@ class FileBasedExampleGen(base_beam_component.BaseBeamComponent):
   # Brings data into the pipeline or otherwise joins/converts training data.
   example_gen = FileBasedExampleGen(input_base=_data_root)
   ```
+
+  Component `outputs` contains:
+   - `examples`: Channel of type `standard_artifacts.Examples` for output train
+                 and eval examples.
   """
 
   SPEC_CLASS = FileBasedExampleGenSpec
@@ -149,7 +153,6 @@ class FileBasedExampleGen(base_beam_component.BaseBeamComponent):
       range_config: Optional[Union[range_config_pb2.RangeConfig,
                                    Dict[Text, Any]]] = None,
       output_data_format: Optional[int] = example_gen_pb2.FORMAT_TF_EXAMPLE,
-      example_artifacts: Optional[types.Channel] = None,
       custom_executor_spec: Optional[executor_spec.ExecutorSpec] = None):
     """Construct a FileBasedExampleGen component.
 
@@ -169,8 +172,6 @@ class FileBasedExampleGen(base_beam_component.BaseBeamComponent):
         default to searching for latest span with no restrictions.
       output_data_format: Payload format of generated data in output artifact,
         one of example_gen_pb2.PayloadFormat enum.
-      example_artifacts: Channel of 'ExamplesPath' for output train and eval
-        examples.
       custom_executor_spec: Optional custom executor spec overriding the default
         executor spec specified in the component attribute.
     """
@@ -178,9 +179,7 @@ class FileBasedExampleGen(base_beam_component.BaseBeamComponent):
     input_config = input_config or utils.make_default_input_config()
     output_config = output_config or utils.make_default_output_config(
         input_config)
-
-    if not example_artifacts:
-      example_artifacts = types.Channel(type=standard_artifacts.Examples)
+    example_artifacts = types.Channel(type=standard_artifacts.Examples)
     spec = FileBasedExampleGenSpec(
         input_base=input_base,
         input_config=input_config,

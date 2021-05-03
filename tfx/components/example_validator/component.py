@@ -57,6 +57,9 @@ class ExampleValidator(base_component.BaseComponent):
       statistics=statistics_gen.outputs['statistics'],
       schema=infer_schema.outputs['schema'])
   ```
+
+  Component `outputs` contains:
+   - `anomalies`: Channel of type `standard_artifacts.ExampleAnomalies`.
   """
 
   SPEC_CLASS = ExampleValidatorSpec
@@ -65,8 +68,7 @@ class ExampleValidator(base_component.BaseComponent):
   def __init__(self,
                statistics: types.Channel = None,
                schema: types.Channel = None,
-               exclude_splits: Optional[List[Text]] = None,
-               anomalies: Optional[Text] = None):
+               exclude_splits: Optional[List[Text]] = None):
     """Construct an ExampleValidator component.
 
     Args:
@@ -75,13 +77,11 @@ class ExampleValidator(base_component.BaseComponent):
       exclude_splits: Names of splits that the example validator should not
         validate. Default behavior (when exclude_splits is set to None)
         is excluding no splits.
-      anomalies: Output channel of type `standard_artifacts.ExampleAnomalies`.
     """
     if exclude_splits is None:
       exclude_splits = []
       logging.info('Excluding no splits because exclude_splits is not set.')
-    if not anomalies:
-      anomalies = types.Channel(type=standard_artifacts.ExampleAnomalies)
+    anomalies = types.Channel(type=standard_artifacts.ExampleAnomalies)
     spec = ExampleValidatorSpec(
         statistics=statistics,
         schema=schema,

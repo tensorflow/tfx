@@ -51,6 +51,9 @@ class SchemaGen(base_component.BaseComponent):
     # Generates schema based on statistics files.
     infer_schema = SchemaGen(statistics=statistics_gen.outputs['statistics'])
   ```
+
+  Component `outputs` contains:
+   - `schema`: Channel of type `standard_artifacts.Schema` for schema result.
   """
   # TODO(b/123941608): Update pydoc about how to use a user provided schema
 
@@ -62,8 +65,7 @@ class SchemaGen(base_component.BaseComponent):
       statistics: Optional[types.Channel] = None,
       infer_feature_shape: Optional[Union[bool,
                                           data_types.RuntimeParameter]] = True,
-      exclude_splits: Optional[List[Text]] = None,
-      schema: Optional[types.Channel] = None):
+      exclude_splits: Optional[List[Text]] = None):
     """Constructs a SchemaGen component.
 
     Args:
@@ -77,12 +79,11 @@ class SchemaGen(base_component.BaseComponent):
       exclude_splits: Names of splits that will not be taken into consideration
         when auto-generating a schema. Default behavior (when exclude_splits is
         set to None) is excluding no splits.
-      schema: Output `Schema` channel for schema result.
     """
     if exclude_splits is None:
       exclude_splits = []
       logging.info('Excluding no splits because exclude_splits is not set.')
-    schema = schema or types.Channel(type=standard_artifacts.Schema)
+    schema = types.Channel(type=standard_artifacts.Schema)
     if isinstance(infer_feature_shape, bool):
       infer_feature_shape = int(infer_feature_shape)
     spec = SchemaGenSpec(

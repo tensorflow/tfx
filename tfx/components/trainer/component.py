@@ -76,6 +76,12 @@ class Trainer(base_component.BaseComponent):
       train_args=trainer_pb2.TrainArgs(splits=['train'], num_steps=10000),
       eval_args=trainer_pb2.EvalArgs(splits=['eval'], num_steps=5000))
   ```
+
+  Component `outputs` contains:
+   - `model`: Channel of type `standard_artifacts.Model` for trained model.
+   - `model_run`: Channel of type `standard_artifacts.ModelRun`, as the working
+                  dir of models, can be used to output non-model related output
+                  (e.g., TensorBoard logs).
   """
 
   SPEC_CLASS = TrainerSpec
@@ -96,9 +102,7 @@ class Trainer(base_component.BaseComponent):
       train_args: Union[trainer_pb2.TrainArgs, Dict[Text, Any]] = None,
       eval_args: Union[trainer_pb2.EvalArgs, Dict[Text, Any]] = None,
       custom_config: Optional[Dict[Text, Any]] = None,
-      custom_executor_spec: Optional[executor_spec.ExecutorSpec] = None,
-      model: Optional[types.Channel] = None,
-      model_run: Optional[types.Channel] = None):
+      custom_executor_spec: Optional[executor_spec.ExecutorSpec] = None):
     """Construct a Trainer component.
 
     Args:
@@ -159,9 +163,6 @@ class Trainer(base_component.BaseComponent):
         that will be passed into user module.
       custom_executor_spec: Optional custom executor spec. This is experimental
         and is subject to change in the future.
-      model: Optional `Model` channel for result of exported models.
-      model_run: Optional `ModelRun` channel, as the working dir of models,
-        can be used to output non-model related output (e.g., TensorBoard logs).
 
     Raises:
       ValueError:
@@ -185,8 +186,8 @@ class Trainer(base_component.BaseComponent):
       raise ValueError("If 'transformed_examples' is supplied, "
                        "'transform_graph' must be supplied too.")
     examples = examples or transformed_examples
-    model = model or types.Channel(type=standard_artifacts.Model)
-    model_run = model_run or types.Channel(type=standard_artifacts.ModelRun)
+    model = types.Channel(type=standard_artifacts.Model)
+    model_run = types.Channel(type=standard_artifacts.ModelRun)
     spec = TrainerSpec(
         examples=examples,
         transform_graph=transform_graph,

@@ -166,16 +166,6 @@ class ComponentTest(tf.test.TestCase):
         proto_utils.proto_to_json(splits_config),
         transform.exec_properties[standard_component_specs.SPLITS_CONFIG_KEY])
 
-  def test_construct_with_materialization_disabled_but_output_examples(self):
-    with self.assertRaises(ValueError):
-      _ = component.Transform(
-          examples=self.examples,
-          schema=self.schema,
-          preprocessing_fn='my_preprocessing_fn',
-          materialize=False,
-          transformed_examples=channel_utils.as_channel(
-              [standard_artifacts.Examples()]))
-
   def test_construct_with_cache_disabled_but_input_cache(self):
     with self.assertRaises(ValueError):
       _ = component.Transform(

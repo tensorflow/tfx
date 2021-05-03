@@ -59,6 +59,10 @@ class Pusher(base_component.BaseComponent):
             filesystem=pusher_pb2.PushDestination.Filesystem(
                 base_directory=serving_model_dir)))
   ```
+
+  Component `outputs` contains:
+   - `pushed_model`: Channel of type `standard_artifacts.PushedModel` with
+                     result of push.
   """
 
   SPEC_CLASS = PusherSpec
@@ -72,8 +76,7 @@ class Pusher(base_component.BaseComponent):
       push_destination: Optional[Union[pusher_pb2.PushDestination,
                                        Dict[Text, Any]]] = None,
       custom_config: Optional[Dict[Text, Any]] = None,
-      custom_executor_spec: Optional[executor_spec.ExecutorSpec] = None,
-      pushed_model: Optional[types.Channel] = None):
+      custom_executor_spec: Optional[executor_spec.ExecutorSpec] = None):
     """Construct a Pusher component.
 
     Args:
@@ -96,11 +99,8 @@ class Pusher(base_component.BaseComponent):
           contains an example how this can be used by custom executors.
       custom_executor_spec: Optional custom executor spec. This is experimental
         and is subject to change in the future.
-      pushed_model: Optional output `standard_artifacts.PushedModel` channel
-        with result of push.
     """
-    pushed_model = pushed_model or types.Channel(
-        type=standard_artifacts.PushedModel)
+    pushed_model = types.Channel(type=standard_artifacts.PushedModel)
     if push_destination is None and not custom_executor_spec:
       raise ValueError('push_destination is required unless a '
                        'custom_executor_spec is supplied that does not require '

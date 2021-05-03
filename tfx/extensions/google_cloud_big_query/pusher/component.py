@@ -22,15 +22,18 @@ from tfx.extensions.google_cloud_big_query.pusher import executor
 
 
 class Pusher(pusher_component.Pusher):
-  """Cloud Big Query Pusher component."""
+  """Cloud Big Query Pusher component.
 
-  def __init__(
-      self,
-      model: Optional[types.Channel] = None,
-      model_blessing: Optional[types.Channel] = None,
-      infra_blessing: Optional[types.Channel] = None,
-      custom_config: Optional[Dict[str, Any]] = None,
-      pushed_model: Optional[types.Channel] = None):
+  Component `outputs` contains:
+   - `pushed_model`: Channel of type `standard_artifacts.PushedModel` with
+                     result of push.
+  """
+
+  def __init__(self,
+               model: Optional[types.Channel] = None,
+               model_blessing: Optional[types.Channel] = None,
+               infra_blessing: Optional[types.Channel] = None,
+               custom_config: Optional[Dict[str, Any]] = None):
     """Construct a Pusher component.
 
     Args:
@@ -46,14 +49,10 @@ class Pusher(pusher_component.Pusher):
         passed to cloud-based training platforms. The [Kubeflow example](
         https://github.com/tensorflow/tfx/blob/6ff57e36a7b65818d4598d41e584a42584d361e6/tfx/examples/chicago_taxi_pipeline/taxi_pipeline_kubeflow_gcp.py#L278-L285)
         contains an example how this can be used by custom executors.
-      pushed_model: Optional output `standard_artifacts.PushedModel` channel
-        with result of push.
     """
     super(Pusher, self).__init__(
         model=model,
         model_blessing=model_blessing,
         infra_blessing=infra_blessing,
-        push_destination=None,
         custom_config=custom_config,
-        custom_executor_spec=executor_spec.ExecutorClassSpec(executor.Executor),
-        pushed_model=pushed_model)
+        custom_executor_spec=executor_spec.ExecutorClassSpec(executor.Executor))

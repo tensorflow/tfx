@@ -20,7 +20,6 @@ from __future__ import print_function
 
 from typing import Optional
 
-from tfx import types
 from tfx.components.example_gen import component
 from tfx.components.example_gen import utils
 from tfx.dsl.components.base import executor_spec
@@ -33,6 +32,10 @@ class BigQueryExampleGen(component.QueryBasedExampleGen):
 
   The BigQuery examplegen component takes a query, and generates train
   and eval examples for downstream components.
+
+  Component `outputs` contains:
+   - `examples`: Channel of type `standard_artifacts.Examples` for output train
+                 and eval examples.
   """
 
   EXECUTOR_SPEC = executor_spec.BeamExecutorSpec(executor.Executor)
@@ -40,8 +43,7 @@ class BigQueryExampleGen(component.QueryBasedExampleGen):
   def __init__(self,
                query: Optional[str] = None,
                input_config: Optional[example_gen_pb2.Input] = None,
-               output_config: Optional[example_gen_pb2.Output] = None,
-               example_artifacts: Optional[types.Channel] = None):
+               output_config: Optional[example_gen_pb2.Output] = None):
     """Constructs a BigQueryExampleGen component.
 
     Args:
@@ -57,8 +59,6 @@ class BigQueryExampleGen(component.QueryBasedExampleGen):
         size 2:1. If any field is provided as a RuntimeParameter,
         input_config should be constructed as a dict with the same field names
         as Output proto message.
-      example_artifacts: Optional channel of 'ExamplesPath' for output train and
-        eval examples.
 
     Raises:
       RuntimeError: Only one of query and input_config should be set.
@@ -67,6 +67,4 @@ class BigQueryExampleGen(component.QueryBasedExampleGen):
       raise RuntimeError('Exactly one of query and input_config should be set.')
     input_config = input_config or utils.make_default_input_config(query)
     super(BigQueryExampleGen, self).__init__(
-        input_config=input_config,
-        output_config=output_config,
-        example_artifacts=example_artifacts)
+        input_config=input_config, output_config=output_config)
