@@ -16,14 +16,13 @@
 import abc
 import copy
 from typing import Iterable, Optional, Text, Tuple
-import six
 
 from tfx.components.example_gen import utils
 from tfx.proto import example_gen_pb2
 from tfx.proto import range_config_pb2
 
 
-class InputProcessor(six.with_metaclass(abc.ABCMeta, object)):
+class InputProcessor(abc.ABC):
   """Base InputProcessor class."""
 
   def __init__(self,
@@ -102,12 +101,15 @@ class InputProcessor(six.with_metaclass(abc.ABCMeta, object)):
     """Resolves the latest Span information."""
     raise NotImplementedError
 
-  def get_latest_version(self, span: int) -> Optional[int]:
+  def get_latest_version(self, span: int) -> Optional[int]:  # pylint: disable=unused-argument
     """Resolves the latest Version of a Span."""
     return None
 
-  def get_input_fingerprint(self, span: int,
-                            version: Optional[int]) -> Optional[Text]:
+  def get_input_fingerprint(
+      self,
+      span: int,  # pylint: disable=unused-argument
+      version: Optional[int],  # pylint: disable=unused-argument
+  ) -> Optional[Text]:
     """Returns the fingerprint for a certain Version of a certain Span."""
     return None
 

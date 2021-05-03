@@ -20,8 +20,6 @@ from __future__ import print_function
 
 from typing import Text
 
-import six
-
 from tensorflowjs.converters import converter
 
 from tfx.components.trainer.rewriting import rewriter
@@ -86,9 +84,7 @@ class TFJSRewriter(rewriter.BaseRewriter):
     ]:
       raise ValueError('TFJSConverter can only convert to the TFJS format.')
 
-    _convert_tfjs_model(
-        six.ensure_text(original_model.path),
-        six.ensure_text(rewritten_model.path))
+    _convert_tfjs_model(original_model.path, rewritten_model.path)
 
   def _post_rewrite_validate(self, rewritten_model: rewriter.ModelDescription):
     """Performs post-rewrite checks to see if the rewritten model is valid.

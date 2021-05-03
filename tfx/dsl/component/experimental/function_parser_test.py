@@ -19,11 +19,7 @@ from __future__ import division
 from __future__ import print_function
 
 from typing import Dict, Optional, Text
-import unittest
 
-# Standard Imports
-
-import six
 import tensorflow as tf
 
 from tfx.dsl.component.experimental.annotations import InputArtifact
@@ -35,7 +31,6 @@ from tfx.dsl.component.experimental.function_parser import parse_typehint_compon
 from tfx.types import standard_artifacts
 
 
-@unittest.skipIf(six.PY2, 'Not compatible with Python 2.')
 class FunctionParserTest(tf.test.TestCase):
 
   def testSimpleFunctionParse(self):

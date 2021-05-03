@@ -24,8 +24,6 @@ import enum
 
 from typing import Text
 
-import six
-
 ModelDescription = collections.namedtuple('ModelDescription',
                                           ['model_type', 'path'])
 
@@ -38,7 +36,7 @@ class ModelType(enum.Enum):
   TFJS_MODEL = 4
 
 
-class BaseRewriter(six.with_metaclass(abc.ABCMeta, object)):
+class BaseRewriter(abc.ABC):
   """Base class from which all rewriters should inherit."""
 
   @abc.abstractproperty

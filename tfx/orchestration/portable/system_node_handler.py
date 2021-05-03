@@ -15,14 +15,13 @@
 
 import abc
 
-import six
 from tfx.orchestration import metadata
 from tfx.proto.orchestration import pipeline_pb2
 
 from ml_metadata.proto import metadata_store_pb2
 
 
-class SystemNodeHandler(six.with_metaclass(abc.ABCMeta, object)):
+class SystemNodeHandler(abc.ABC):
   """SystemNodeHandler is the base class of all system nodes' handler."""
 
   @abc.abstractmethod

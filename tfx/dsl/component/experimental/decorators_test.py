@@ -20,11 +20,9 @@ from __future__ import print_function
 
 import os
 from typing import Optional, Text
-import unittest
 
 # Standard Imports
 
-import six
 import tensorflow as tf
 from tfx import types
 from tfx.dsl.component.experimental.annotations import InputArtifact
@@ -64,78 +62,77 @@ class _BasicComponentSpec(component_spec.ComponentSpec):
   }
 
 
-if not six.PY2:
-  # Currently, function components must be defined at the module level (not in
-  # nested class or function scope). We define the test components here.
-
-  @component
-  def _injector_1(
-      foo: Parameter[int], bar: Parameter[Text]) -> OutputDict(
-          a=int, b=int, c=Text, d=bytes):
-    assert foo == 9
-    assert bar == 'secret'
-    return {'a': 10, 'b': 22, 'c': 'unicode', 'd': b'bytes'}
-
-  @component
-  def _simple_component(a: int, b: int, c: Text, d: bytes) -> OutputDict(
-      e=float, f=float):
-    del c, d
-    return {'e': float(a + b), 'f': float(a * b)}
-
-  @component
-  def _verify(e: float, f: float):
-    assert (e, f) == (32.0, 220.0), (e, f)
-
-  @component
-  def _injector_2(
-      examples: OutputArtifact[standard_artifacts.Examples]
-  ) -> OutputDict(
-      a=int, b=float, c=Text, d=bytes, e=Text):
-    fileio.makedirs(examples.uri)
-    return {'a': 1, 'b': 2.0, 'c': '3', 'd': b'4', 'e': 'passed'}
-
-  @component
-  def _optionalarg_component(
-      foo: Parameter[int],
-      bar: Parameter[Text],
-      examples: InputArtifact[standard_artifacts.Examples],
-      a: int,
-      b: float,
-      c: Text,
-      d: bytes,
-      e1: Text = 'default',
-      e2: Optional[Text] = 'default',
-      f: bytes = b'default',
-      g: Parameter[float] = 1000.0,
-      h: Parameter[Text] = '2000',
-      optional_examples_1: InputArtifact[standard_artifacts.Examples] = None,
-      optional_examples_2: InputArtifact[standard_artifacts.Examples] = None):
-    # Test non-optional parameters.
-    assert foo == 9
-    assert bar == 'secret'
-    assert isinstance(examples, standard_artifacts.Examples)
-    # Test non-optional `int`, `float`, `Text` and `bytes` input values.
-    assert a == 1
-    assert b == 2.0
-    assert c == '3'
-    assert d == b'4'
-    # Test passed optional arguments (with and without the `Optional` typehint
-    # specifier).
-    assert e1 == 'passed'
-    assert e2 == 'passed'
-    # Test that non-passed optional argument becomes the argument default.
-    assert f == b'default'
-    # Test passed optional parameter.
-    assert g == 999.0
-    # Test non-passed optional parameter.
-    assert h == '2000'
-    # Test passed optional input artifact.
-    assert optional_examples_1 and optional_examples_1.uri
-    # Test non-passed optional input artifact.
-    assert optional_examples_2 is None
+@component
+def _injector_1(
+    foo: Parameter[int], bar: Parameter[Text]) -> OutputDict(
+        a=int, b=int, c=Text, d=bytes):
+  assert foo == 9
+  assert bar == 'secret'
+  return {'a': 10, 'b': 22, 'c': 'unicode', 'd': b'bytes'}
 
 
-@unittest.skipIf(six.PY2, 'Not compatible with Python 2.')
+@component
+def _simple_component(a: int, b: int, c: Text, d: bytes) -> OutputDict(
+    e=float, f=float):
+  del c, d
+  return {'e': float(a + b), 'f': float(a * b)}
+
+
+@component
+def _verify(e: float, f: float):
+  assert (e, f) == (32.0, 220.0), (e, f)
+
+
+@component
+def _injector_2(
+    examples: OutputArtifact[standard_artifacts.Examples]
+) -> OutputDict(
+    a=int, b=float, c=Text, d=bytes, e=Text):
+  fileio.makedirs(examples.uri)
+  return {'a': 1, 'b': 2.0, 'c': '3', 'd': b'4', 'e': 'passed'}
+
+
+@component
+def _optionalarg_component(
+    foo: Parameter[int],
+    bar: Parameter[Text],
+    examples: InputArtifact[standard_artifacts.Examples],
+    a: int,
+    b: float,
+    c: Text,
+    d: bytes,
+    e1: Text = 'default',
+    e2: Optional[Text] = 'default',
+    f: bytes = b'default',
+    g: Parameter[float] = 1000.0,
+    h: Parameter[Text] = '2000',
+    optional_examples_1: InputArtifact[standard_artifacts.Examples] = None,
+    optional_examples_2: InputArtifact[standard_artifacts.Examples] = None):
+  # Test non-optional parameters.
+  assert foo == 9
+  assert bar == 'secret'
+  assert isinstance(examples, standard_artifacts.Examples)
+  # Test non-optional `int`, `float`, `Text` and `bytes` input values.
+  assert a == 1
+  assert b == 2.0
+  assert c == '3'
+  assert d == b'4'
+  # Test passed optional arguments (with and without the `Optional` typehint
+  # specifier).
+  assert e1 == 'passed'
+  assert e2 == 'passed'
+  # Test that non-passed optional argument becomes the argument default.
+  assert f == b'default'
+  # Test passed optional parameter.
+  assert g == 999.0
+  # Test non-passed optional parameter.
+  assert h == '2000'
+  # Test passed optional input artifact.
+  assert optional_examples_1 and optional_examples_1.uri
+  # Test non-passed optional input artifact.
+  assert optional_examples_2 is None
+
+
 class ComponentDecoratorTest(tf.test.TestCase):
 
   def setUp(self):

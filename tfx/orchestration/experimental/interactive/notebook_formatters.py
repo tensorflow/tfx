@@ -23,12 +23,9 @@ from __future__ import division
 from __future__ import print_function
 
 import abc
+import builtins
 import html
 from typing import Callable, List, Optional, Text, Tuple, Type, Union
-
-# Standard Imports
-
-from six.moves import builtins
 
 from tfx.dsl.components.base.base_component import BaseComponent
 from tfx.orchestration.experimental.interactive.execution_result import ExecutionResult

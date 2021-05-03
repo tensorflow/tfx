@@ -18,13 +18,10 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import abc
 import copy
 import inspect
 import itertools
 from typing import Any, Dict, List, Optional, Text, Type
-
-from six import with_metaclass
 
 from tfx.types.artifact import Artifact
 from tfx.types.channel import Channel
@@ -87,7 +84,7 @@ def _put_default_list(list_data: List[Any]) -> None:
       list_data[index] = ptype.__new__(ptype)
 
 
-class ComponentSpec(with_metaclass(abc.ABCMeta, json_utils.Jsonable)):
+class ComponentSpec(json_utils.Jsonable):
   """A specification of the inputs, outputs and parameters for a component.
 
   Components should have a corresponding ComponentSpec inheriting from this

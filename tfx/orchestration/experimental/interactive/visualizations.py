@@ -23,13 +23,11 @@ from typing import Text, Type
 
 # Standard Imports
 
-from six import with_metaclass
-
 from tfx import types
 from tfx.utils import abc_utils
 
 
-class ArtifactVisualization(with_metaclass(abc.ABCMeta)):
+class ArtifactVisualization(abc.ABC):
   """Visualization for a certain type of Artifact."""
 
   # Artifact type (of type `Type[types.Artifact]`) to which the visualization

@@ -24,7 +24,6 @@ import tempfile
 from typing import Any, Collection, Dict, List, Text
 
 import click
-from six import with_metaclass
 
 from tfx.dsl.components.base import base_driver
 from tfx.dsl.io import fileio
@@ -33,7 +32,7 @@ from tfx.tools.cli.handler import dag_runner_patcher
 from tfx.utils import io_utils
 
 
-class BaseHandler(with_metaclass(abc.ABCMeta, object)):
+class BaseHandler(abc.ABC):
   """Base Handler for CLI.
 
   Attributes:
@@ -159,6 +158,7 @@ class BaseHandler(with_metaclass(abc.ABCMeta, object)):
 
   def execute_dsl(
       self, patcher: dag_runner_patcher.DagRunnerPatcher) -> Dict[str, Any]:
+    """Execute DSL file with given patcher applied to the DSL Runner."""
     self._check_pipeline_dsl_path()
     dsl_path = self.flags_dict[labels.PIPELINE_DSL_PATH]
 
@@ -217,6 +217,7 @@ class BaseHandler(with_metaclass(abc.ABCMeta, object)):
 
   def _format_table(self, header: Collection[Any],
                     data: Collection[Collection[Any]]):
+    """Pretty-print the table (like tabluate library does)."""
 
     def _format_as_strings(items):
       return [f' {item} ' for item in items]
@@ -291,6 +292,7 @@ class BaseHandler(with_metaclass(abc.ABCMeta, object)):
       sys.exit('Pipeline "{}" already exists.'.format(pipeline_name))
 
   def get_schema(self):
+    """Get the schema of the pipeline."""
     pipeline_name = self.flags_dict[labels.PIPELINE_NAME]
 
     # Check if pipeline exists.
@@ -309,6 +311,7 @@ class BaseHandler(with_metaclass(abc.ABCMeta, object)):
                                          pipeline_args[labels.PIPELINE_ROOT])
 
   def _read_schema_from_pipeline_root(self, pipeline_name, pipeline_root):
+    """Read Schema from the latest SchemaGen output of the pipeline."""
     # Check if pipeline root created. If not, it means that the user has not
     # created a run yet or the pipeline is still running for the first time.
 

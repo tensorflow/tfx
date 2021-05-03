@@ -18,11 +18,9 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import abc
 import copy
 from typing import cast, Iterable, List, Optional, Text, Type
 
-from six import with_metaclass
 from tfx import types
 from tfx.dsl.components.base import base_executor
 from tfx.proto.orchestration import executable_spec_pb2
@@ -32,7 +30,7 @@ from tfx.utils import json_utils
 from google.protobuf import message
 
 
-class ExecutorSpec(with_metaclass(abc.ABCMeta, json_utils.Jsonable)):
+class ExecutorSpec(json_utils.Jsonable):
   """A specification for a component executor.
 
   An instance of ExecutorSpec describes the implementation of a component.

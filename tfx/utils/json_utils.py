@@ -24,7 +24,6 @@ import inspect
 import json
 from typing import Any, Dict, List, Text, Type, Union
 
-from six import with_metaclass
 from tfx.utils import deprecation_utils
 from tfx.utils import doc_controls
 from tfx.utils import proto_utils
@@ -60,7 +59,7 @@ class _ObjectType(object):
   PROTO = 'proto'
 
 
-class Jsonable(with_metaclass(abc.ABCMeta, object)):
+class Jsonable(abc.ABC):
   """Base class for serializing and deserializing objects to/from JSON.
 
   The default implementation assumes that the subclass can be restored by

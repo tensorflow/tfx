@@ -16,13 +16,11 @@
 import abc
 from typing import Any, Optional
 
-import six
-
 from tfx.orchestration.config import pipeline_config
 from tfx.utils import doc_controls
 
 
-class TfxRunner(six.with_metaclass(abc.ABCMeta, object)):
+class TfxRunner(abc.ABC):
   """Base runner class for TFX.
 
   This is the base class for every TFX runner.
