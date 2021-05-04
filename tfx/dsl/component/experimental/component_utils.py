@@ -44,7 +44,6 @@ def create_tfx_component_class(
   )
 
   def tfx_component_class_init(self, **kwargs):
-    instance_name = kwargs.pop('instance_name', None)
     arguments = {}
     arguments.update(kwargs)
     arguments.update(default_init_args)
@@ -59,13 +58,8 @@ def create_tfx_component_class(
         self,
         # Generate spec by wiring up the input/output channel.
         spec=self.__class__.SPEC_CLASS(**arguments))
-
-    if instance_name:
-      node_id = '{}.{}'.format(self.__class__.__name__, instance_name)
-    else:
-      node_id = self.__class__.__name__
-
-    base_component.BaseComponent.with_id(self, node_id)
+    # Set class name as the default id. It can be overwritten by the user.
+    base_component.BaseComponent.with_id(self, self.__class__.__name__)
 
   tfx_component_class = type(
       str(name),

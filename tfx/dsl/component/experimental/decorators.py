@@ -60,8 +60,6 @@ class _SimpleComponent(base_component.BaseComponent):
       if key in kwargs:
         spec_kwargs[key] = kwargs[key]
         unseen_args.remove(key)
-    instance_name = kwargs.get('instance_name', None)
-    unseen_args.discard('instance_name')
     if unseen_args:
       raise ValueError(
           'Unknown arguments to %r: %s.' %
@@ -70,11 +68,9 @@ class _SimpleComponent(base_component.BaseComponent):
       spec_kwargs[key] = channel_utils.as_channel([channel_parameter.type()])
     spec = self.SPEC_CLASS(**spec_kwargs)
     super(_SimpleComponent, self).__init__(spec)
-
-    if instance_name:
-      self._id = '{}.{}'.format(self.__class__.__name__, instance_name)
-    else:
-      self._id = self.__class__.__name__
+    # Set class name, which is the decorated function name, as the default id.
+    # It can be overwritten by the user.
+    self._id = self.__class__.__name__
 
 
 class _FunctionExecutor(base_executor.BaseExecutor):
