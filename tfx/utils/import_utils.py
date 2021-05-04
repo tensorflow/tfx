@@ -43,7 +43,27 @@ def import_class_by_path(class_path: Text) -> Type[Any]:
 
 def import_func_from_module(module_path: Text, fn_name: Text) -> Callable:  # pylint: disable=g-bare-generic
   """Imports a function from a module provided as source file or module path."""
+  temp_install_path = None
+  if '@' in module_path:
+    # The module path is a combined specification of a module path in a wheel
+    # file path.
+    # TODO(b/187122068): Consider use of a pipeline staging directory to store
+    # component wheel dependencies instead of assuming a relative path.
+    module_path, wheel_path = module_path.split('@', maxsplit=1)
+    # Install pip dependencies and add it to the import resolution path.
+    # TODO(b/187122070): Move `udf_utils.py` to `tfx/utils` and fix circular
+    # dependency.
+    from tfx.components.util import udf_utils  # pylint: disable=g-import-not-at-top # pytype: disable=import-error
+    temp_install_path = udf_utils.install_to_temp_directory(wheel_path)
+    with _imported_modules_from_source_lock:
+      sys.path = [temp_install_path] + sys.path
+  if module_path in sys.modules:
+    importlib.reload(sys.modules[module_path])
   user_module = importlib.import_module(module_path)
+# Restore original sys.path.
+  if temp_install_path:
+    with _imported_modules_from_source_lock:
+      sys.path = [p for p in sys.path if p != temp_install_path]
   return getattr(user_module, fn_name)
 
 

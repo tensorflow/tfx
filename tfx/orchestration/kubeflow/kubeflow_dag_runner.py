@@ -28,6 +28,7 @@ from kfp import gcp
 from kubernetes import client as k8s_client
 from tfx import version
 from tfx.dsl.compiler import compiler as tfx_compiler
+from tfx.dsl.components.base import base_component as tfx_base_component
 from tfx.orchestration import data_types
 from tfx.orchestration import pipeline as tfx_pipeline
 from tfx.orchestration import tfx_runner
@@ -322,6 +323,11 @@ class KubeflowDagRunner(tfx_runner.TfxRunner):
     # if component A depends on component B and C, then A appears after B and C
     # in the list.
     for component in pipeline.components:
+      # TODO(b/187122662): Pass through pip dependencies as a first-class
+      # component flag.
+      if isinstance(component, tfx_base_component.BaseComponent):
+        component._resolve_pip_dependencies()  # pylint: disable=protected-access
+
       # Keep track of the set of upstream dsl.ContainerOps for this component.
       depends_on = set()
 

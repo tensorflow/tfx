@@ -43,6 +43,7 @@ from tfx.types.standard_component_specs import EXAMPLE_SPLITS_KEY
 from tfx.types.standard_component_specs import EXAMPLES_KEY
 from tfx.types.standard_component_specs import FEATURE_SLICING_SPEC_KEY
 from tfx.types.standard_component_specs import MODEL_KEY
+from tfx.types.standard_component_specs import MODULE_PATH_KEY
 from tfx.types.standard_component_specs import SCHEMA_KEY
 from tfx.utils import io_utils
 from tfx.utils import json_utils
@@ -126,6 +127,12 @@ class Executor(base_beam_executor.BaseBeamExecutor):
 
     output_uri = artifact_utils.get_single_uri(
         output_dict[constants.EVALUATION_KEY])
+
+    # Make sure user packages get propagated to the remote Beam worker.
+    unused_module_path, extra_pip_packages = udf_utils.decode_user_module_key(
+        exec_properties.get(MODULE_PATH_KEY, None))
+    for pip_package_path in extra_pip_packages:
+      self._beam_pipeline_args.append('--extra_package=%s' % pip_package_path)
 
     eval_shared_model_fn = udf_utils.try_get_fn(
         exec_properties=exec_properties,

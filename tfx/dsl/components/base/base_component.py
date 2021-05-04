@@ -20,7 +20,7 @@ from __future__ import print_function
 
 import abc
 import inspect
-from typing import Any, Dict, Optional, Text
+from typing import Any, Dict, Optional, Text, Union
 
 from six import with_metaclass
 
@@ -110,6 +110,7 @@ class BaseComponent(with_metaclass(abc.ABCMeta, base_node.BaseNode)):
     self._validate_component_class()
     self._validate_spec(spec)
     self.platform_config = None
+    self._pip_dependencies = []
 
   @classmethod
   def _validate_component_class(cls):
@@ -180,3 +181,30 @@ class BaseComponent(with_metaclass(abc.ABCMeta, base_node.BaseNode)):
   @doc_controls.do_not_doc_in_subclasses
   def exec_properties(self) -> Dict[Text, Any]:
     return self.spec.exec_properties
+
+  def _add_pip_dependency(
+      self, dependency: Union[Text, '_PipDependencyFuture']) -> None:
+    """Internal use only: add pip dependency to current component."""
+    # TODO(b/187122662): Provide separate Python component hierarchy and remove
+    # logic from this class.
+    self._pip_dependencies.append(dependency)
+
+  def _resolve_pip_dependencies(self) -> None:
+    """Experimental: resolve pip dependencies into specifiers."""
+    new_pip_dependencies = []
+    for dependency in self._pip_dependencies:
+      if isinstance(dependency, Text):
+        new_pip_dependencies.append(dependency)
+      elif isinstance(dependency, _PipDependencyFuture):
+        new_pip_dependencies.append(dependency.resolve())
+      else:
+        raise ValueError('Invalid pip dependency object: %s.' % dependency)
+    self._pip_dependencies = new_pip_dependencies
+
+
+class _PipDependencyFuture:
+  """Experimental: Represents a pip dependency resolved at pipeline runtime."""
+
+  def resolve(self) -> Text:
+    """Returns a pip installable target spec, as a string."""
+    raise NotImplementedError()

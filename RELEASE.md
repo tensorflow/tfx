@@ -19,6 +19,10 @@
    annotations and environment variables.
 *  Allow Beam pipeline args to be extended by specifying
    `beam_pipeline_args` per component.
+*  User code specified through the `module_file` argument for the Evaluator,
+   Transform and Trainer components is now packaged as a pip wheel for
+   execution. For Evaluator and Transform, these wheel packages are now
+   installed on remote Apache Beam workers.
 ## Breaking Changes
 *  CLI usage with kubeflow changed significantly.
   *  You MUST use the new `--build-image` to build a container image when

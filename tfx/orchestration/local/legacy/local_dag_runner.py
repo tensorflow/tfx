@@ -20,6 +20,7 @@ from typing import Optional
 
 from absl import logging
 
+from tfx.dsl.components.base import base_component
 from tfx.orchestration import data_types
 from tfx.orchestration import metadata
 from tfx.orchestration import pipeline
@@ -74,6 +75,10 @@ class LocalDagRunner(tfx_runner.TfxRunner):
       # TODO(b/171319478): After IR-based execution is used, used multi-threaded
       # execution so that independent components can be run in parallel.
       for component in tfx_pipeline.components:
+        # TODO(b/187122662): Pass through pip dependencies as a first-class
+        # component flag.
+        if isinstance(component, base_component.BaseComponent):
+          component._resolve_pip_dependencies()  # pylint: disable=protected-access
         (component_launcher_class, component_config) = (
             config_utils.find_component_launch_info(self._config, component))
         driver_args = data_types.DriverArgs(

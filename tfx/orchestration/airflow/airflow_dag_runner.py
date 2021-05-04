@@ -25,6 +25,7 @@ from typing import Any, Dict, Optional, Text, Union
 import absl
 from airflow import models
 
+from tfx.dsl.components.base import base_component
 from tfx.orchestration import pipeline
 from tfx.orchestration import tfx_runner
 from tfx.orchestration.airflow import airflow_component
@@ -89,6 +90,10 @@ class AirflowDagRunner(tfx_runner.TfxRunner):
 
     component_impl_map = {}
     for tfx_component in tfx_pipeline.components:
+      # TODO(b/187122662): Pass through pip dependencies as a first-class
+      # component flag.
+      if isinstance(tfx_component, base_component.BaseComponent):
+        tfx_component._resolve_pip_dependencies()  # pylint: disable=protected-access
 
       (component_launcher_class,
        component_config) = config_utils.find_component_launch_info(

@@ -18,6 +18,8 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import time
+
 from unittest import mock
 import tensorflow as tf
 
@@ -49,6 +51,15 @@ class UdfUtilsTest(tf.test.TestCase):
   def testGetFnFailure(self):
     with self.assertRaises(ValueError):
       udf_utils.get_fn({}, 'test_fn')
+
+  @mock.patch('time.time')
+  def test_ephemeral_setup_py_contents(self, *unused_mocks):
+    time.time.side_effect = [123456789.1]
+    contents = udf_utils._get_ephemeral_setup_py_contents(
+        'my_pkg', ['a', 'abc', 'xyz'])
+    self.assertIn("name='my_pkg',", contents)
+    self.assertIn("version='0.123456789',", contents)
+    self.assertIn("py_modules=['a', 'abc', 'xyz'],", contents)
 
 
 if __name__ == '__main__':

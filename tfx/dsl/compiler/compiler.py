@@ -118,6 +118,12 @@ class Compiler(object):
     Returns:
       A PipelineNode proto that encodes information of the node.
     """
+    # Special treatment for pip dependencies.
+    # TODO(b/187122662): Pass through pip dependencies as a first-class
+    # component flag.
+    if isinstance(tfx_node, base_component.BaseComponent):
+      tfx_node._resolve_pip_dependencies()  # pylint: disable=protected-access
+
     node = pipeline_pb2.PipelineNode()
 
     # Step 1: Node info

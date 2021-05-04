@@ -21,12 +21,13 @@ from typing import Any, Dict, Optional, Text, Union
 
 from tfx import types
 from tfx.components.trainer import executor
+from tfx.components.util import udf_utils
 from tfx.dsl.components.base import base_component
 from tfx.dsl.components.base import executor_spec
 from tfx.orchestration import data_types
 from tfx.proto import trainer_pb2
 from tfx.types import standard_artifacts
-from tfx.types.standard_component_specs import TrainerSpec
+from tfx.types import standard_component_specs
 from tfx.utils import json_utils
 
 
@@ -84,7 +85,7 @@ class Trainer(base_component.BaseComponent):
                   (e.g., TensorBoard logs).
   """
 
-  SPEC_CLASS = TrainerSpec
+  SPEC_CLASS = standard_component_specs.TrainerSpec
   EXECUTOR_SPEC = executor_spec.ExecutorClassSpec(executor.GenericExecutor)
 
   def __init__(
@@ -188,7 +189,7 @@ class Trainer(base_component.BaseComponent):
     examples = examples or transformed_examples
     model = types.Channel(type=standard_artifacts.Model)
     model_run = types.Channel(type=standard_artifacts.ModelRun)
-    spec = TrainerSpec(
+    spec = standard_component_specs.TrainerSpec(
         examples=examples,
         transform_graph=transform_graph,
         schema=schema,
@@ -205,3 +206,10 @@ class Trainer(base_component.BaseComponent):
     super(Trainer, self).__init__(
         spec=spec,
         custom_executor_spec=custom_executor_spec)
+
+    if module_file and udf_utils.should_package_user_modules():
+      # In this case, the `MODULE_PATH_KEY` execution property will be injected
+      # as a reference to the given user module file after packaging.
+      udf_utils.add_user_module_dependency(
+          self, standard_component_specs.MODULE_PATH_KEY, module_file)
+      spec.exec_properties[standard_component_specs.MODULE_FILE_KEY] = None

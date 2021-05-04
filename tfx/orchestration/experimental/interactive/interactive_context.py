@@ -37,6 +37,7 @@ import jinja2
 import nbformat
 from six.moves import builtins
 from tfx import types
+from tfx.dsl.components.base import base_component
 from tfx.dsl.components.base import base_node
 from tfx.orchestration import data_types
 from tfx.orchestration import metadata
@@ -166,6 +167,11 @@ class InteractiveContext(object):
         artifact.pipeline_name = self.pipeline_name
         artifact.producer_component = component.id
         artifact.name = name
+    # Special treatment for pip dependencies.
+    # TODO(b/187122662): Pass through pip dependencies as a first-class
+    # component flag.
+    if isinstance(component, base_component.BaseComponent):
+      component._resolve_pip_dependencies()  # pylint: disable=protected-access
     # TODO(hongyes): figure out how to resolve launcher class in the interactive
     # context.
     launcher = in_process_component_launcher.InProcessComponentLauncher.create(

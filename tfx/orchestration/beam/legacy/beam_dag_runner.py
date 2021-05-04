@@ -25,6 +25,7 @@ from typing import Any, Iterable, List, Optional, Text, Type
 import absl
 import apache_beam as beam
 
+from tfx.dsl.components.base import base_component
 from tfx.dsl.components.base import base_node
 from tfx.orchestration import data_types
 from tfx.orchestration import metadata
@@ -138,6 +139,10 @@ class BeamDagRunner(tfx_runner.TfxRunner):
         signal_map = {}
         # pipeline.components are in topological order.
         for component in tfx_pipeline.components:
+          # TODO(b/187122662): Pass through pip dependencies as a first-class
+          # component flag.
+          if isinstance(component, base_component.BaseComponent):
+            component._resolve_pip_dependencies()  # pylint: disable=protected-access
           component_id = component.id
 
           # Signals from upstream components.

@@ -24,12 +24,14 @@ from absl import logging
 import tensorflow_model_analysis as tfma
 from tfx import types
 from tfx.components.evaluator import executor
+from tfx.components.util import udf_utils
 from tfx.dsl.components.base import base_beam_component
 from tfx.dsl.components.base import executor_spec
 from tfx.orchestration import data_types
 from tfx.proto import evaluator_pb2
 from tfx.types import standard_artifacts
-from tfx.types.standard_component_specs import EvaluatorSpec
+from tfx.types import standard_component_specs import EvaluatorSpec
+from tfx.types.standard_component_specs import MODULE_PATH_KEY
 from tfx.utils import json_utils
 
 
@@ -47,7 +49,7 @@ class Evaluator(base_beam_component.BaseBeamComponent):
                  contains the blessing result.
   """
 
-  SPEC_CLASS = EvaluatorSpec
+  SPEC_CLASS = standard_component_specs.EvaluatorSpec
   EXECUTOR_SPEC = executor_spec.BeamExecutorSpec(executor.Executor)
 
   def __init__(
@@ -140,3 +142,10 @@ class Evaluator(base_beam_component.BaseBeamComponent):
         module_file=module_file,
         module_path=module_path)
     super(Evaluator, self).__init__(spec=spec)
+
+    if module_file and udf_utils.should_package_user_modules():
+      # In this case, the `MODULE_PATH_KEY` execution property will be injected
+      # as a reference to the given user module file after packaging.
+      udf_utils.add_user_module_dependency(
+          self, standard_component_specs.MODULE_PATH_KEY, module_file)
+      spec.exec_properties[standard_component_specs.MODULE_FILE_KEY] = None
