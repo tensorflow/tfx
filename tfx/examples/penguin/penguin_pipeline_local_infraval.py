@@ -18,26 +18,7 @@ from typing import List, Text
 
 import absl
 import tensorflow_model_analysis as tfma
-from tfx.components import CsvExampleGen
-from tfx.components import Evaluator
-from tfx.components import ExampleValidator
-from tfx.components import InfraValidator
-from tfx.components import Pusher
-from tfx.components import ResolverNode
-from tfx.components import SchemaGen
-from tfx.components import StatisticsGen
-from tfx.components import Trainer
-from tfx.components import Transform
-from tfx.dsl.experimental import latest_blessed_model_resolver
-from tfx.orchestration import metadata
-from tfx.orchestration import pipeline
-from tfx.orchestration.local.local_dag_runner import LocalDagRunner
-from tfx.proto import infra_validator_pb2
-from tfx.proto import pusher_pb2
-from tfx.proto import trainer_pb2
-from tfx.types import Channel
-from tfx.types.standard_artifacts import Model
-from tfx.types.standard_artifacts import ModelBlessing
+from tfx import v1 as tfx
 
 _pipeline_name = 'penguin_local_infraval'
 
@@ -76,44 +57,46 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
                      module_file: Text, accuracy_threshold: float,
                      serving_model_dir: Text, metadata_path: Text,
                      beam_pipeline_args: List[Text],
-                     make_warmup: bool) -> pipeline.Pipeline:
+                     make_warmup: bool) -> tfx.dsl.Pipeline:
   """Implements the penguin pipeline with TFX."""
   # Brings data into the pipeline or otherwise joins/converts training data.
-  example_gen = CsvExampleGen(input_base=data_root)
+  example_gen = tfx.components.CsvExampleGen(input_base=data_root)
 
   # Computes statistics over data for visualization and example validation.
-  statistics_gen = StatisticsGen(examples=example_gen.outputs['examples'])
+  statistics_gen = tfx.components.StatisticsGen(
+      examples=example_gen.outputs['examples'])
 
   # Generates schema based on statistics files.
-  schema_gen = SchemaGen(
+  schema_gen = tfx.components.SchemaGen(
       statistics=statistics_gen.outputs['statistics'], infer_feature_shape=True)
 
   # Performs anomaly detection based on statistics and data schema.
-  example_validator = ExampleValidator(
+  example_validator = tfx.components.ExampleValidator(
       statistics=statistics_gen.outputs['statistics'],
       schema=schema_gen.outputs['schema'])
 
   # Performs transformations and feature engineering in training and serving.
-  transform = Transform(
+  transform = tfx.components.Transform(
       examples=example_gen.outputs['examples'],
       schema=schema_gen.outputs['schema'],
       module_file=module_file)
 
   # Uses user-provided Python function that trains a model using TF-Learn.
-  trainer = Trainer(
+  trainer = tfx.components.Trainer(
       module_file=module_file,
       examples=transform.outputs['transformed_examples'],
       transform_graph=transform.outputs['transform_graph'],
       schema=schema_gen.outputs['schema'],
-      train_args=trainer_pb2.TrainArgs(num_steps=2000),
-      eval_args=trainer_pb2.EvalArgs(num_steps=5))
+      train_args=tfx.proto.TrainArgs(num_steps=2000),
+      eval_args=tfx.proto.EvalArgs(num_steps=5))
 
   # Get the latest blessed model for model validation.
-  model_resolver = ResolverNode(
-      resolver_class=latest_blessed_model_resolver.LatestBlessedModelResolver,
-      model=Channel(type=Model),
-      model_blessing=Channel(
-          type=ModelBlessing)).with_id('latest_blessed_model_resolver')
+  model_resolver = tfx.dsl.Resolver(
+      strategy_class=tfx.dsl.experimental.LatestBlessedModelResolver,
+      model=tfx.dsl.Channel(type=tfx.types.standard_artifacts.Model),
+      model_blessing=tfx.dsl.Channel(
+          type=tfx.types.standard_artifacts.ModelBlessing)).with_id(
+              'latest_blessed_model_resolver')
 
   # Uses TFMA to compute evaluation statistics over features of a model and
   # perform quality validation of a candidate model (compared to a baseline).
@@ -134,7 +117,7 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
                           absolute={'value': -1e-10})))
           ])
       ])
-  evaluator = Evaluator(
+  evaluator = tfx.components.Evaluator(
       examples=example_gen.outputs['examples'],
       model=trainer.outputs['model'],
       baseline_model=model_resolver.outputs['model'],
@@ -143,15 +126,14 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
   # Performs infra validation of a candidate model to prevent unservable model
   # from being pushed. This config will launch a model server of the latest
   # TensorFlow Serving image in a local docker engine.
-  infra_validator = InfraValidator(
+  infra_validator = tfx.components.InfraValidator(
       model=trainer.outputs['model'],
       examples=example_gen.outputs['examples'],
-      serving_spec=infra_validator_pb2.ServingSpec(
-          tensorflow_serving=infra_validator_pb2.TensorFlowServing(
-              tags=['latest']),
-          local_docker=infra_validator_pb2.LocalDockerConfig()),
-      request_spec=infra_validator_pb2.RequestSpec(
-          tensorflow_serving=infra_validator_pb2.TensorFlowServingRequestSpec(),
+      serving_spec=tfx.proto.ServingSpec(
+          tensorflow_serving=tfx.proto.TensorFlowServing(tags=['latest']),
+          local_docker=tfx.proto.LocalDockerConfig()),
+      request_spec=tfx.proto.RequestSpec(
+          tensorflow_serving=tfx.proto.TensorFlowServingRequestSpec(),
           # If this flag is set, InfraValidator will produce a model with
           # warmup requests (in its outputs['blessing']).
           make_warmup=make_warmup))
@@ -162,25 +144,25 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
     # If InfraValidator.request_spec.make_warmup = True, its output contains
     # a model so that Pusher can push 'infra_blessing' input instead of
     # 'model' input.
-    pusher = Pusher(
+    pusher = tfx.components.Pusher(
         model_blessing=evaluator.outputs['blessing'],
         infra_blessing=infra_validator.outputs['blessing'],
-        push_destination=pusher_pb2.PushDestination(
-            filesystem=pusher_pb2.PushDestination.Filesystem(
+        push_destination=tfx.proto.PushDestination(
+            filesystem=tfx.proto.PushDestination.Filesystem(
                 base_directory=serving_model_dir)))
   else:
     # Otherwise, 'infra_blessing' does not contain a model and is used as a
     # conditional checker just like 'model_blessing' does. This is the typical
     # use case.
-    pusher = Pusher(
+    pusher = tfx.components.Pusher(
         model=trainer.outputs['model'],
         model_blessing=evaluator.outputs['blessing'],
         infra_blessing=infra_validator.outputs['blessing'],
-        push_destination=pusher_pb2.PushDestination(
-            filesystem=pusher_pb2.PushDestination.Filesystem(
+        push_destination=tfx.proto.PushDestination(
+            filesystem=tfx.proto.PushDestination.Filesystem(
                 base_directory=serving_model_dir)))
 
-  return pipeline.Pipeline(
+  return tfx.dsl.Pipeline(
       pipeline_name=pipeline_name,
       pipeline_root=pipeline_root,
       components=[
@@ -196,8 +178,8 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
           pusher,
       ],
       enable_cache=True,
-      metadata_connection_config=metadata.sqlite_metadata_connection_config(
-          metadata_path),
+      metadata_connection_config=tfx.orchestration.metadata
+      .sqlite_metadata_connection_config(metadata_path),
       beam_pipeline_args=beam_pipeline_args)
 
 
@@ -205,7 +187,7 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
 #   $python penguin_pipeline_local_infraval.py
 if __name__ == '__main__':
   absl.logging.set_verbosity(absl.logging.INFO)
-  LocalDagRunner().run(
+  tfx.orchestration.LocalDagRunner().run(
       _create_pipeline(
           pipeline_name=_pipeline_name,
           pipeline_root=_pipeline_root,
