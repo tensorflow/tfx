@@ -61,6 +61,10 @@ class PathUtilsTest(tf.test.TestCase, parameterized.TestCase):
                      path_utils.serving_model_path(output_uri, is_old_artifact))
 
   def testIsOldModelArtifact(self):
+    artifact = standard_artifacts.Examples()
+    with self.assertRaisesRegex(AssertionError, 'Wrong artifact type'):
+      path_utils.is_old_model_artifact(artifact)
+
     artifact = standard_artifacts.Model()
     self.assertFalse(path_utils.is_old_model_artifact(artifact))
     artifact.mlmd_artifact.state = metadata_store_pb2.Artifact.LIVE
