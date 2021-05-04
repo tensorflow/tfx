@@ -67,8 +67,8 @@ pipeline python file. Output can be found at `[BUCKET]/tfx`.
 
 <pre class="devsite-terminal devsite-click-to-copy">
 vi ~/penguin/experimental/penguin_pipeline_sklearn_gcp.py
-gsutil -m cp -r ~/penguin/data gs://[BUCKET]/penguin
-gsutil -m cp ~/penguin/experimental/\*.py gs://[BUCKET]/penguin/experimental
+gsutil -m cp -r ~/penguin/data/* gs://[BUCKET]/penguin/data/
+gsutil -m cp ~/penguin/experimental/\*.py gs://[BUCKET]/penguin/experimental/
 
 tfx pipeline create \
   --engine kubeflow \
