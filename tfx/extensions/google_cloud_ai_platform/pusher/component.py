@@ -13,7 +13,9 @@
 # limitations under the License.
 """TFX Pusher for pushing models to AI Platform serving."""
 
+from typing import Any, Dict, Optional
 
+from tfx import types
 from tfx.components.pusher import component as pusher_component
 from tfx.dsl.components.base import executor_spec
 from tfx.extensions.google_cloud_ai_platform.pusher import executor
@@ -23,3 +25,31 @@ class Pusher(pusher_component.Pusher):
   """Component for pushing model to Cloud AI Platform serving."""
 
   EXECUTOR_SPEC = executor_spec.ExecutorClassSpec(executor.Executor)
+
+  def __init__(self,
+               model: Optional[types.Channel] = None,
+               model_blessing: Optional[types.Channel] = None,
+               infra_blessing: Optional[types.Channel] = None,
+               custom_config: Optional[Dict[str, Any]] = None):
+    """Construct a Pusher component.
+
+    Args:
+      model: An optional Channel of type `standard_artifacts.Model`, usually
+        produced by a Trainer component, representing the model used for
+        training.
+      model_blessing: An optional Channel of type
+        `standard_artifacts.ModelBlessing`, usually produced from an Evaluator
+        component, containing the blessing model.
+      infra_blessing: An optional Channel of type
+        `standard_artifacts.InfraBlessing`, usually produced from an
+        InfraValidator component, containing the validation result.
+      custom_config: A dict which contains the deployment job parameters to be
+        passed to cloud-based training platforms. The [Kubeflow example](
+          https://github.com/tensorflow/tfx/blob/6ff57e36a7b65818d4598d41e584a42584d361e6/tfx/examples/chicago_taxi_pipeline/taxi_pipeline_kubeflow_gcp.py#L278-L285)
+            contains an example how this can be used by custom executors.
+    """
+    super(Pusher, self).__init__(
+        model=model,
+        model_blessing=model_blessing,
+        infra_blessing=infra_blessing,
+        custom_config=custom_config)

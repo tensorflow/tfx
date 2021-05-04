@@ -16,8 +16,8 @@
 from typing import Any, Dict, Optional
 
 from tfx import types
-from tfx.components.base import executor_spec
 from tfx.components.pusher import component as pusher_component
+from tfx.dsl.components.base import executor_spec
 from tfx.extensions.google_cloud_big_query.pusher import executor
 
 
@@ -28,6 +28,8 @@ class Pusher(pusher_component.Pusher):
    - `pushed_model`: Channel of type `standard_artifacts.PushedModel` with
                      result of push.
   """
+
+  EXECUTOR_SPEC = executor_spec.ExecutorClassSpec(executor.Executor)
 
   def __init__(self,
                model: Optional[types.Channel] = None,
@@ -54,5 +56,4 @@ class Pusher(pusher_component.Pusher):
         model=model,
         model_blessing=model_blessing,
         infra_blessing=infra_blessing,
-        custom_config=custom_config,
-        custom_executor_spec=executor_spec.ExecutorClassSpec(executor.Executor))
+        custom_config=custom_config)

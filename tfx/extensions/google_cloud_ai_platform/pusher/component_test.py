@@ -15,7 +15,6 @@
 
 import tensorflow as tf
 from tfx.extensions.google_cloud_ai_platform.pusher import component
-from tfx.proto import pusher_pb2
 from tfx.types import channel_utils
 from tfx.types import standard_artifacts
 from tfx.types import standard_component_specs
@@ -27,13 +26,8 @@ class PusherTest(tf.test.TestCase):
     self._model = channel_utils.as_channel([standard_artifacts.Model()])
     self._model_blessing = channel_utils.as_channel(
         [standard_artifacts.ModelBlessing()])
-    self._push_destination = pusher_pb2.PushDestination(
-        filesystem=pusher_pb2.PushDestination.Filesystem(
-            base_directory=self.get_temp_dir()))
     pusher = component.Pusher(
-        model=self._model,
-        model_blessing=self._model_blessing,
-        push_destination=self._push_destination)
+        model=self._model, model_blessing=self._model_blessing)
     self.assertEqual(
         standard_artifacts.PushedModel.TYPE_NAME,
         pusher.outputs[standard_component_specs.PUSHED_MODEL_KEY].type_name)

@@ -19,6 +19,7 @@ from __future__ import print_function
 
 from typing import Any, Dict, Optional, Text, Union
 
+from absl import logging
 from tfx import types
 from tfx.components.pusher import executor
 from tfx.dsl.components.base import base_component
@@ -101,10 +102,13 @@ class Pusher(base_component.BaseComponent):
         and is subject to change in the future.
     """
     pushed_model = types.Channel(type=standard_artifacts.PushedModel)
-    if push_destination is None and not custom_executor_spec:
+    if (push_destination is None and not custom_executor_spec and
+        self.EXECUTOR_SPEC.executor_class == executor.Executor):
       raise ValueError('push_destination is required unless a '
                        'custom_executor_spec is supplied that does not require '
                        'it.')
+    if custom_executor_spec:
+      logging.warning('`custom_executor_spec` is going to be deprecated.')
     if model is None and infra_blessing is None:
       raise ValueError(
           'Either one of model or infra_blessing channel should be given. '

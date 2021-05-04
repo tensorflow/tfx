@@ -19,6 +19,7 @@ from __future__ import print_function
 
 from typing import Any, Dict, Optional, Text, Union
 
+from absl import logging
 from tfx import types
 from tfx.components.trainer import executor
 from tfx.dsl.components.base import base_component
@@ -185,6 +186,9 @@ class Trainer(base_component.BaseComponent):
     if transformed_examples and not transform_graph:
       raise ValueError("If 'transformed_examples' is supplied, "
                        "'transform_graph' must be supplied too.")
+
+    if custom_executor_spec:
+      logging.warning("`custom_executor_spec` is going to be deprecated.")
     examples = examples or transformed_examples
     model = types.Channel(type=standard_artifacts.Model)
     model_run = types.Channel(type=standard_artifacts.ModelRun)
