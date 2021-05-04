@@ -20,10 +20,10 @@ from typing import Dict, List, Optional, Type, TypeVar
 import attr
 from tfx import types
 from tfx.orchestration import metadata
-from tfx.orchestration.experimental.core import status as status_lib
 from tfx.orchestration.experimental.core import task as task_lib
 from tfx.proto.orchestration import execution_result_pb2
 from tfx.proto.orchestration import pipeline_pb2
+from tfx.utils import status as status_lib
 
 
 @attr.s(auto_attribs=True, frozen=True)

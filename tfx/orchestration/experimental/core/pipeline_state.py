@@ -20,11 +20,11 @@ from absl import logging
 from tfx import types
 from tfx.orchestration import data_types_utils
 from tfx.orchestration import metadata
-from tfx.orchestration.experimental.core import status as status_lib
 from tfx.orchestration.experimental.core import task as task_lib
 from tfx.orchestration.portable.mlmd import context_lib
 from tfx.orchestration.portable.mlmd import execution_lib
 from tfx.proto.orchestration import pipeline_pb2
+from tfx.utils import status as status_lib
 
 from ml_metadata.proto import metadata_store_pb2
 

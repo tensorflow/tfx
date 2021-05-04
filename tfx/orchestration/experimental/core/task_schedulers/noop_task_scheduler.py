@@ -16,10 +16,10 @@
 import typing
 from absl import logging
 
-from tfx.orchestration.experimental.core import status as status_lib
 from tfx.orchestration.experimental.core import task as task_lib
 from tfx.orchestration.experimental.core import task_scheduler as ts
 from tfx.proto.orchestration import execution_result_pb2
+from tfx.utils import status as status_lib
 
 
 class NoOpTaskScheduler(ts.TaskScheduler):

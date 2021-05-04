@@ -19,9 +19,9 @@ from typing import Dict
 from tfx import types
 from tfx.dsl.components.common import importer
 from tfx.orchestration import data_types_utils
-from tfx.orchestration.experimental.core import status as status_lib
 from tfx.orchestration.experimental.core import task as task_lib
 from tfx.orchestration.experimental.core import task_scheduler
+from tfx.utils import status as status_lib
 
 
 class ImporterTaskScheduler(task_scheduler.TaskScheduler):

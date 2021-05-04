@@ -24,11 +24,11 @@ from absl import logging
 from tfx.orchestration import data_types_utils
 from tfx.orchestration import metadata
 from tfx.orchestration.experimental.core import constants
-from tfx.orchestration.experimental.core import status as status_lib
 from tfx.orchestration.experimental.core import task as task_lib
 from tfx.orchestration.experimental.core import task_queue as tq
 from tfx.orchestration.experimental.core import task_scheduler as ts
 from tfx.orchestration.portable import execution_publish_utils
+from tfx.utils import status as status_lib
 
 from ml_metadata.proto import metadata_store_pb2
 

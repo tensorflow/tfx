@@ -20,7 +20,6 @@ from absl import logging
 from tfx.orchestration import metadata
 from tfx.orchestration.experimental.core import pipeline_state as pstate
 from tfx.orchestration.experimental.core import service_jobs
-from tfx.orchestration.experimental.core import status as status_lib
 from tfx.orchestration.experimental.core import task as task_lib
 from tfx.orchestration.experimental.core import task_gen
 from tfx.orchestration.experimental.core import task_gen_utils
@@ -28,6 +27,7 @@ from tfx.orchestration.portable import execution_publish_utils
 from tfx.orchestration.portable import outputs_utils
 from tfx.orchestration.portable.mlmd import execution_lib
 from tfx.proto.orchestration import pipeline_pb2
+from tfx.utils import status as status_lib
 
 from ml_metadata.proto import metadata_store_pb2
 

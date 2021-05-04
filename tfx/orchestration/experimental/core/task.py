@@ -23,8 +23,8 @@ from typing import Dict, List, Type, TypeVar
 
 import attr
 from tfx import types
-from tfx.orchestration.experimental.core import status as status_lib
 from tfx.proto.orchestration import pipeline_pb2
+from tfx.utils import status as status_lib
 
 from ml_metadata.proto import metadata_store_pb2
 

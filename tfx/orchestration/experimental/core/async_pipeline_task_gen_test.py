@@ -23,11 +23,11 @@ from tfx.orchestration import metadata
 from tfx.orchestration.experimental.core import async_pipeline_task_gen as asptg
 from tfx.orchestration.experimental.core import pipeline_state as pstate
 from tfx.orchestration.experimental.core import service_jobs
-from tfx.orchestration.experimental.core import status as status_lib
 from tfx.orchestration.experimental.core import task as task_lib
 from tfx.orchestration.experimental.core import task_queue as tq
 from tfx.orchestration.experimental.core import test_utils as otu
 from tfx.proto.orchestration import pipeline_pb2
+from tfx.utils import status as status_lib
 from tfx.utils import test_case_utils as tu
 
 
