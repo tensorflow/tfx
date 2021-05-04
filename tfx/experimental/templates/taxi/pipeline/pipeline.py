@@ -134,7 +134,7 @@ def create_pipeline(
       model=Channel(type=Model),
       model_blessing=Channel(
           type=ModelBlessing)).with_id('latest_blessed_model_resolver')
-  # TODO(step 6): Uncomment here to add ResolverNode to the pipeline.
+  # TODO(step 6): Uncomment here to add Resolver to the pipeline.
   # components.append(model_resolver)
 
   # Uses TFMA to compute a evaluation statistics over features of a model and

@@ -255,7 +255,7 @@ class Compiler(object):
     # run to run. We sort them so that compiler generates consistent results.
     # For ASYNC mode upstream/downstream node information is not set as
     # compiled IR graph topology can be different from that on pipeline
-    # authoring time; for example ResolverNode is removed.
+    # authoring time; for example Resolver nodes are removed.
     if compile_context.is_sync_mode:
       node.upstream_nodes.extend(
           sorted(node.id for node in tfx_node.upstream_nodes))
@@ -277,7 +277,7 @@ class Compiler(object):
   def _compile_resolver_config(self, context: _CompilerContext,
                                tfx_node: base_node.BaseNode,
                                node: pipeline_pb2.PipelineNode):
-    """Compiles upstream ResolverNodes as a ResolverConfig.
+    """Compiles upstream Resolver nodes as a ResolverConfig.
 
     Iteratively reduces upstream resolver nodes into a resolver config of the
     current node until no upstream resolver node remains.
@@ -293,11 +293,11 @@ class Compiler(object):
         c|    |d            |
          v    v             |
     +----+----+----+        |
-    | ResolverNode |        |
+    | Resolver     |        |
     | cls=Foo      |   +----+
     +--------------+   |
-        c|    |d <---- | ----- output key of the ResolverNode should be the
-         |    |        |       the same as the input key of the Current Node.
+        c|    |d <---- | ----- output key of the Resolver should be the same
+         |    |        |       as the input key of the Current Node.
         c|    |d       |j  <-- input key
          v    v        v
         ++----+--------+-+
@@ -306,7 +306,7 @@ class Compiler(object):
         |   - ...        |
         +----------------+
 
-    After one iteration, the ResolverNode would be replaced by the resolver
+    After one iteration, the Resolver node would be replaced by the resolver
     step of the downstream (current node).
 
     +--------------+  +------------+
@@ -431,7 +431,7 @@ class Compiler(object):
       deployment_config.metadata_connection_config.Pack(
           tfx_pipeline.metadata_connection_config)
     for node in tfx_pipeline.components:
-      # In ASYNC mode ResolverNode is merged into the downstream node as a
+      # In ASYNC mode Resolver nodes are merged into the downstream node as a
       # ResolverConfig
       if compiler_utils.is_resolver(node) and context.is_async_mode:
         continue
@@ -451,7 +451,7 @@ class Compiler(object):
 
 
 def _convert_to_resolver_steps(resolver_node: base_node.BaseNode):
-  """Converts ResolverNode to a corresponding ResolverSteps."""
+  """Converts Resolver node to a corresponding ResolverSteps."""
   assert compiler_utils.is_resolver(resolver_node)
   resolver_node = cast(resolver.Resolver, resolver_node)
   result = []

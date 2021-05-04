@@ -146,7 +146,7 @@ class TaxiPipelineRegressionEndToEndTest(tf.test.TestCase):
       for execution in executions:
         component_id = pipeline_recorder_utils.get_component_id_from_execution(
             m, execution)
-        if component_id.startswith('ResolverNode'):
+        if component_id.startswith('Resolver'):
           continue
         eid = [execution.id]
         events = m.store.get_events_by_execution_ids(eid)
@@ -180,12 +180,12 @@ class TaxiPipelineRegressionEndToEndTest(tf.test.TestCase):
         'updated_analyzer_cache': self._veryify_root_dir,
     }
 
-    # List of components to verify. ResolverNode is ignored because it
+    # List of components to verify. Resolver is ignored because it
     # doesn't have an executor.
     verify_component_ids = [
         component.id
         for component in self.taxi_pipeline.components
-        if not component.id.startswith('ResolverNode')
+        if not component.id.startswith('Resolver')
     ]
 
     for component_id in verify_component_ids:

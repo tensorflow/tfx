@@ -48,7 +48,7 @@ from tfx.types.standard_artifacts import ModelBlessing
 # import tensorflow_model_analysis as tfma # Step 5
 
 # from tfx.components import Evaluator # Step 6
-# from tfx.components import ResolverNode # Step 6
+# from tfx.dsl.components.common import resolver # Step 6
 # from tfx.dsl.experimental import latest_blessed_model_resolver # Step 6
 
 # from tfx.components import Pusher # Step 7
@@ -131,8 +131,8 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
   #     eval_args=trainer_pb2.EvalArgs(num_steps=5000)) # Step 5
 
   # Get the latest blessed model for model validation.
-  # model_resolver = ResolverNode(  # Step 6
-  #     resolver_class=latest_blessed_model_resolver.LatestBlessedModelResolver,  # Step 6
+  # model_resolver = resolver.Resolver(  # Step 6
+  #     strategy_class=latest_blessed_model_resolver.LatestBlessedModelResolver,  # Step 6
   #     model=Channel(type=Model),  # Step 6
   #     model_blessing=Channel(type=ModelBlessing)).with_id(  # Step 6
   #         'latest_blessed_model_resolver')  # Step 6

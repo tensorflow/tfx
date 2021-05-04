@@ -21,19 +21,19 @@ from __future__ import print_function
 import copy
 import os
 from typing import Dict, List, Text
+
 from absl import app
 from absl import flags
 import tensorflow_model_analysis as tfma
-
 from tfx.components import Evaluator
 from tfx.components import ExampleValidator
 from tfx.components import Pusher
-from tfx.components import ResolverNode
 from tfx.components import SchemaGen
 from tfx.components import StatisticsGen
 from tfx.components import Trainer
 from tfx.components import Transform
 from tfx.dsl.components.base import executor_spec
+from tfx.dsl.components.common import resolver
 from tfx.dsl.experimental import latest_blessed_model_resolver
 from tfx.extensions.google_cloud_ai_platform.pusher import executor as ai_platform_pusher_executor
 from tfx.extensions.google_cloud_ai_platform.trainer import executor as ai_platform_trainer_executor
@@ -272,8 +272,8 @@ def create_pipeline(
       })
 
   # Get the latest blessed model for model validation.
-  model_resolver = ResolverNode(
-      resolver_class=latest_blessed_model_resolver.LatestBlessedModelResolver,
+  model_resolver = resolver.Resolver(
+      strategy_class=latest_blessed_model_resolver.LatestBlessedModelResolver,
       model=Channel(type=Model),
       model_blessing=Channel(
           type=ModelBlessing)).with_id('latest_blessed_model_resolver')

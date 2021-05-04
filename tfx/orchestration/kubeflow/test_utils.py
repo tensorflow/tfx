@@ -37,13 +37,13 @@ from tfx.components import Evaluator
 from tfx.components import ExampleValidator
 from tfx.components import InfraValidator
 from tfx.components import Pusher
-from tfx.components import ResolverNode
 from tfx.components import SchemaGen
 from tfx.components import StatisticsGen
 from tfx.components import Trainer
 from tfx.components import Transform
 from tfx.dsl.components.base import executor_spec
 from tfx.dsl.components.base.base_component import BaseComponent
+from tfx.dsl.components.common import resolver
 from tfx.dsl.experimental import latest_artifacts_resolver
 from tfx.dsl.io import fileio
 from tfx.orchestration import pipeline as tfx_pipeline
@@ -277,8 +277,8 @@ def create_e2e_components(
       examples=example_gen.outputs['examples'],
       schema=schema_gen.outputs['schema'],
       module_file=transform_module)
-  latest_model_resolver = ResolverNode(
-      resolver_class=latest_artifacts_resolver.LatestArtifactsResolver,
+  latest_model_resolver = resolver.Resolver(
+      strategy_class=latest_artifacts_resolver.LatestArtifactsResolver,
       latest_model=Channel(type=Model)).with_id('latest_model_resolver')
   trainer = Trainer(
       transformed_examples=transform.outputs['transformed_examples'],

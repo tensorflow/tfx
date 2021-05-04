@@ -19,7 +19,6 @@ from tfx import types
 from tfx.components import CsvExampleGen
 from tfx.components import StatisticsGen
 from tfx.components.common_nodes import importer_node as legacy_importer_node
-from tfx.components.common_nodes import resolver_node as legacy_resolver_node
 from tfx.dsl.compiler import compiler_utils
 from tfx.dsl.components.base import base_component
 from tfx.dsl.components.base import base_executor
@@ -66,9 +65,6 @@ class CompilerUtilsTest(tf.test.TestCase):
   def testIsResolver(self):
     resv = resolver.Resolver(
         strategy_class=latest_blessed_model_resolver.LatestBlessedModelResolver)
-    self.assertTrue(compiler_utils.is_resolver(resv))
-    resv = legacy_resolver_node.ResolverNode(
-        resolver_class=latest_blessed_model_resolver.LatestBlessedModelResolver)
     self.assertTrue(compiler_utils.is_resolver(resv))
 
     example_gen = CsvExampleGen(input_base="data_path")
