@@ -22,5 +22,6 @@ from tfx.orchestration.pipeline import ExecutionMode
 from tfx.orchestration.pipeline import Pipeline
 from tfx.types.artifact import Artifact
 from tfx.types.channel import Channel
+from tfx.v1.dsl import components
 from tfx.v1.dsl import experimental
 from tfx.v1.dsl import placeholders
