@@ -11,16 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""TFX dsl module."""
+"""TFX placeholders module."""
 
-from tfx.dsl.components.common.importer import Importer
-from tfx.dsl.components.common.resolver import Resolver
-# TODO(b/185911128): move RuntimeParameter implementation to tfx/dsl.
-from tfx.orchestration.data_types import RuntimeParameter
-# TODO(b/184980265): move Pipeline implementation to tfx/dsl.
-from tfx.orchestration.pipeline import ExecutionMode
-from tfx.orchestration.pipeline import Pipeline
-from tfx.types.artifact import Artifact
-from tfx.types.channel import Channel
-from tfx.v1.dsl import experimental
-from tfx.v1.dsl import placeholders
+from tfx.dsl.placeholder.placeholder import exec_property
+from tfx.dsl.placeholder.placeholder import input  # pylint: disable=redefined-builtin
+from tfx.dsl.placeholder.placeholder import output
