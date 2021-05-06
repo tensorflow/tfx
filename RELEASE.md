@@ -74,6 +74,8 @@
      NOTE: TensorFlow Ranking only compatible with TF >= 2.0.
 *  Depends on `google-cloud-aiplatform>=0.5.0,<0.8`.
 *  Depends on `portpicker>=1.3.1,<2`.
+*  Depends on 'google-cloud-bigquery>=1.6.0,<3'. (This was already installed as
+   a transitive dependency from the first release of TFX.)
 
 ## Documentation Updates
 
