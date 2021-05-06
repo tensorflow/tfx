@@ -1,7 +1,3 @@
-# Copyright 2021 Google LLC. All Rights Reserved.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
 #
 #     http://www.apache.org/licenses/LICENSE-2.0
@@ -11,9 +7,14 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Public API for running TFX with Kubeflow."""
+"""TFX orchestration.experimental module."""
+from tfx.orchestration.kubeflow import kubeflow_dag_runner
+from tfx.orchestration.kubeflow.kubeflow_dag_runner import get_default_kubeflow_metadata_config
 from tfx.orchestration.kubeflow.v2 import kubeflow_v2_dag_runner
 
 KubeflowV2DagRunner = kubeflow_v2_dag_runner.KubeflowV2DagRunner
 KubeflowV2DagRunnerConfig = kubeflow_v2_dag_runner.KubeflowV2DagRunnerConfig
+KubeflowDagRunner = kubeflow_dag_runner.KubeflowDagRunner
+KubeflowDagRunnerConfig = kubeflow_dag_runner.KubeflowDagRunnerConfig
 del kubeflow_v2_dag_runner
+del kubeflow_dag_runner

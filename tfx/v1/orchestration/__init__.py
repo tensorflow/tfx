@@ -17,6 +17,6 @@ from tfx.orchestration.local.local_dag_runner import LocalDagRunner
 from tfx.v1.orchestration import metadata
 
 try:
-  from tfx.v1.orchestration import kubeflow  # pylint: disable=g-import-not-at-top
+  from tfx.v1.orchestration import experimental  # pylint: disable=g-import-not-at-top
 except ImportError:  # Import will fail without kfp package.
   pass

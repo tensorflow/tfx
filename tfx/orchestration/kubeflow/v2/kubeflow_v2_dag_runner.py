@@ -49,7 +49,7 @@ def _get_current_time():
 
 
 class KubeflowV2DagRunnerConfig(pipeline_config.PipelineConfig):
-  """Runtime configuration specific to execution on Kubeflow pipelines."""
+  """Runtime configuration specific to execution on Kubeflow V2 pipelines."""
 
   def __init__(self,
                display_name: Optional[Text] = None,
@@ -84,7 +84,7 @@ class KubeflowV2DagRunnerConfig(pipeline_config.PipelineConfig):
 
 
 class KubeflowV2DagRunner(tfx_runner.TfxRunner):
-  """Kubeflow V2 pipeline runner.
+  """Kubeflow V2 pipeline runner (currently for managed pipelines).
 
   Builds a pipeline job spec in json format based on TFX pipeline DSL object.
   """
