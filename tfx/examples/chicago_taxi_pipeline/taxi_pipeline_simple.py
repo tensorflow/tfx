@@ -35,6 +35,7 @@ from tfx.components.trainer.executor import Executor
 from tfx.dsl.components.base import executor_spec
 from tfx.dsl.components.common import resolver
 from tfx.dsl.experimental import latest_blessed_model_resolver
+from tfx.orchestration import data_types
 from tfx.orchestration import metadata
 from tfx.orchestration import pipeline
 from tfx.orchestration.airflow.airflow_dag_runner import AirflowDagRunner
@@ -88,8 +89,15 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
                      metadata_path: Text,
                      beam_pipeline_args: List[Text]) -> pipeline.Pipeline:
   """Implements the chicago taxi pipeline with TFX."""
+  # Parametrize data root so it can be replaced on runtime. See the
+  # "Passing Parameters when triggering dags" section of
+  # https://airflow.apache.org/docs/apache-airflow/stable/dag-run.html
+  # for more details.
+  data_root_runtime = data_types.RuntimeParameter(
+      'data_root', ptype=str, default=data_root)
+
   # Brings data into the pipeline or otherwise joins/converts training data.
-  example_gen = CsvExampleGen(input_base=data_root)
+  example_gen = CsvExampleGen(input_base=data_root_runtime)
 
   # Computes statistics over data for visualization and example validation.
   statistics_gen = StatisticsGen(examples=example_gen.outputs['examples'])

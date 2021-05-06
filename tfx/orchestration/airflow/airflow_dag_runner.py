@@ -30,6 +30,8 @@ from tfx.orchestration import tfx_runner
 from tfx.orchestration.airflow import airflow_component
 from tfx.orchestration.config import config_utils
 from tfx.orchestration.config import pipeline_config
+from tfx.orchestration.data_types import RuntimeParameter
+from tfx.utils.json_utils import json
 
 
 class AirflowPipelineConfig(pipeline_config.PipelineConfig):
@@ -63,8 +65,8 @@ class AirflowDagRunner(tfx_runner.TfxRunner):
     """
     if config and not isinstance(config, AirflowPipelineConfig):
       absl.logging.warning(
-          'Pass config as a dict type is going to deprecated in 0.1.16. Use AirflowPipelineConfig type instead.',
-          PendingDeprecationWarning)
+          'Pass config as a dict type is going to deprecated in 0.1.16. '
+          'Use AirflowPipelineConfig type instead.', PendingDeprecationWarning)
       config = AirflowPipelineConfig(airflow_dag_config=config)
     super(AirflowDagRunner, self).__init__(config)
 
@@ -90,6 +92,8 @@ class AirflowDagRunner(tfx_runner.TfxRunner):
     component_impl_map = {}
     for tfx_component in tfx_pipeline.components:
 
+      tfx_component = self._replace_runtime_params(tfx_component)
+
       (component_launcher_class,
        component_config) = config_utils.find_component_launch_info(
            self._config, tfx_component)
@@ -111,3 +115,27 @@ class AirflowDagRunner(tfx_runner.TfxRunner):
             component_impl_map[upstream_node])
 
     return airflow_dag
+
+  def _replace_runtime_params(self, comp):
+    for k, prop in comp.exec_properties.copy().items():
+      if isinstance(prop, RuntimeParameter):
+        # Airflow only supports string parameters.
+        if prop.ptype != str:
+          raise RuntimeError(
+              f'RuntimeParameter in Airflow does not support {prop.ptype}. The'
+              'only ptype supported is string.')
+
+        # If the default is a template, drop the template markers when inserting
+        # it into the .get() default argument below. Otherwise, provide the
+        # default as a quoted string.
+        if prop.default.startswith('{{') and prop.default.endswith('}}'):
+          default = prop.default[2:-2]
+        else:
+          default = json.dumps(prop.default)
+
+        # TODO(b/186118336): Once we move to Airflow 2.0, we should instead use
+        # the airflow.models.DagParam class.
+        template_field = '{{ dag_run.conf.get("%s", %s) }}' % (
+            prop.name, default)
+        comp.exec_properties[k] = template_field
+    return comp

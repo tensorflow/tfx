@@ -19,6 +19,7 @@
    annotations and environment variables.
 *  Allow Beam pipeline args to be extended by specifying
    `beam_pipeline_args` per component.
+*  Support string RuntimeParameters on Airflow.
 ## Breaking Changes
 *  CLI usage with kubeflow changed significantly.
   *  You MUST use the new `--build-image` to build a container image when
