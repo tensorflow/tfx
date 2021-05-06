@@ -21,18 +21,10 @@ Internal use only, no backwards compatibility guarantees.
 """
 import functools
 import inspect
-import warnings
 
-_PRINTED_WARNING = set()
+import absl
 
-
-def _should_warn(func_or_class, warn_once=True):
-  """Check whether to warn or not with side effect."""
-  if id(func_or_class) in _PRINTED_WARNING:
-    return False
-  if warn_once:
-    _PRINTED_WARNING.add(id(func_or_class))
-  return True
+_PRINTED_WARNING = {}
 
 
 def _validate_callable(func):
@@ -72,16 +64,15 @@ def deprecated(date, instructions, warn_once=True):
 
     @functools.wraps(func)
     def new_func(*args, **kwargs):
-      if _should_warn(func, warn_once=warn_once):
-        call_loc = _call_location()
-        func_name = getattr(func, '__qualname__', func.__name__)
-        func_module = func.__module__
-        removed_at = f'after {date}' if date else 'in a future version'
-        message = (
-            f'From {call_loc}: {func_name} (from {func_module}) is deprecated '
-            f'and will be removed {removed_at}. Instructions for updating:\n'
-            + instructions)
-        warn_deprecated(message)
+      if func not in _PRINTED_WARNING:
+        if warn_once:
+          _PRINTED_WARNING[func] = True
+        absl.logging.warning(
+            'From %s: %s (from %s) is deprecated and will be removed %s.\n'
+            'Instructions for updating:\n%s', _call_location(),
+            getattr(func, '__qualname__', None) or func.__name__,
+            func.__module__, 'in a future version' if date is None else
+            ('after %s' % date), instructions)
       return func(*args, **kwargs)
 
     return new_func
@@ -139,11 +130,12 @@ def deprecated_alias(deprecated_name, name, func_or_class, warn_once=True):
       @functools.wraps(func_or_class.__init__)
       def __init__(self, *args, **kwargs):
         _NewDeprecatedClass.__init__.__doc__ = func_or_class.__init__.__doc__
-        if _should_warn(_NewDeprecatedClass.__init__, warn_once=warn_once):
-          call_loc = _call_location()
-          warn_deprecated(
-              f'From {call_loc}: The name {deprecated_name} is deprecated. '
-              f'Please use {name} instead.')
+        if _NewDeprecatedClass.__init__ not in _PRINTED_WARNING:
+          if warn_once:
+            _PRINTED_WARNING[_NewDeprecatedClass.__init__] = True
+          absl.logging.warning(
+              'From %s: The name %s is deprecated. Please use %s instead.',
+              _call_location(), deprecated_name, name)
         super(_NewDeprecatedClass, self).__init__(*args, **kwargs)
 
     return _NewDeprecatedClass
@@ -152,11 +144,12 @@ def deprecated_alias(deprecated_name, name, func_or_class, warn_once=True):
 
     @functools.wraps(func_or_class)
     def new_func(*args, **kwargs):  # pylint: disable=empty-docstring
-      if _should_warn(new_func, warn_once=warn_once):
-        call_loc = _call_location()
-        warn_deprecated(
-            f'From {call_loc}: The name {deprecated_name} is deprecated. '
-            f'Please use {name} instead.')
+      if new_func not in _PRINTED_WARNING:
+        if warn_once:
+          _PRINTED_WARNING[new_func] = True
+        absl.logging.warning(
+            'From %s: The name %s is deprecated. Please use %s instead.',
+            _call_location(), deprecated_name, name)
       return func_or_class(*args, **kwargs)
 
     return new_func
@@ -177,12 +170,3 @@ def get_first_nondeprecated_class(cls):
   for mro_class in inspect.getmro(cls):
     if mro_class.__name__ != '_NewDeprecatedClass':
       return mro_class
-
-
-class TfxDeprecationWarning(DeprecationWarning):  # pylint: disable=g-bad-exception-name
-  """DeprecationWarning for TFX API."""
-
-
-def warn_deprecated(msg):
-  """Convenient method to warn TfxDeprecationWarning."""
-  warnings.warn(msg, TfxDeprecationWarning)

@@ -15,46 +15,39 @@
 
 from unittest import mock
 
+# Standard Imports
+
 import tensorflow as tf
 from tfx.utils import deprecation_utils
-from tfx.utils import test_case_utils
 
 
-class DependencyUtilsTest(test_case_utils.TfxTest):
+class DependencyUtilsTest(tf.test.TestCase):
 
   def setUp(self):
-    super().setUp()
-    deprecation_utils._PRINTED_WARNING = set()
-    self._mock_warn = self.enter_context(mock.patch('warnings.warn'))
+    super(tf.test.TestCase, self).setUp()
+    deprecation_utils._PRINTED_WARNING = {}
 
-  def _assertDeprecatedWarningRegex(self, expected_regex):
-    self._mock_warn.assert_called()
-    (message, warning_cls), unused_kwargs = self._mock_warn.call_args
-    self.assertEqual(warning_cls, deprecation_utils.TfxDeprecationWarning)
-    self.assertRegex(message, expected_regex)
-
-  def _mock_function(self, name='function'):
+  def _mock_function(self):
     """Return a mock function."""
     function = mock.MagicMock()
     # Either `__qualname__` or `__name__` is expected to be set for a function.
-    setattr(function, '__qualname__', name)
-    setattr(function, '__name__', name)
+    setattr(function, '__qualname__', 'function')
     return function
 
-  def testDeprecated(self):
+  @mock.patch('absl.logging.warning')
+  def testDeprecated(self, mock_absl_warning):
     # By default, we warn once across all calls.
-    my_function_1 = self._mock_function(name='my_function_1')
+    my_function_1 = self._mock_function()
     deprecated_func_1 = deprecation_utils.deprecated(
         '2099-01-02', 'Please change to new_my_function_1')(
             my_function_1)
     deprecated_func_1()
     deprecated_func_1()
-    self._assertDeprecatedWarningRegex(
-        r'From .*: my_function_1 \(from .*\) is deprecated and will be '
-        r'removed after 2099-01-02. Instructions for updating:\n'
-        r'Please change to new_my_function_1')
+    mock_absl_warning.assert_called_once_with(
+        mock.ANY, mock.ANY, mock.ANY, mock.ANY, 'after 2099-01-02',
+        'Please change to new_my_function_1')
     self.assertEqual(my_function_1.call_count, 2)
-    self._mock_warn.reset_mock()
+    mock_absl_warning.reset_mock()
 
     # If `warn_once=False`, we warn once for each call.
     my_function_2 = self._mock_function()
@@ -64,21 +57,22 @@ class DependencyUtilsTest(test_case_utils.TfxTest):
     deprecated_func_2()
     deprecated_func_2()
     deprecated_func_2()
-    self.assertEqual(self._mock_warn.call_count, 3)
+    self.assertEqual(mock_absl_warning.call_count, 3)
     self.assertEqual(my_function_2.call_count, 3)
 
-  def testDeprecationAliasFunction(self):
+  @mock.patch('absl.logging.warning')
+  def testDeprecationAliasFunction(self, mock_absl_warning):
     # By default, we warn once across all calls.
-    my_function_1 = self._mock_function(name='my_function_1')
+    my_function_1 = self._mock_function()
     deprecation_alias_1 = deprecation_utils.deprecated_alias(
         'deprecation_alias_1', 'my_function_1', my_function_1)
     deprecation_alias_1()
     deprecation_alias_1()
-    self._assertDeprecatedWarningRegex(
-        'From .*: The name deprecation_alias_1 is deprecated. Please use '
-        'my_function_1 instead.')
+    mock_absl_warning.assert_called_once_with(mock.ANY, mock.ANY,
+                                              'deprecation_alias_1',
+                                              'my_function_1')
     self.assertEqual(my_function_1.call_count, 2)
-    self._mock_warn.reset_mock()
+    mock_absl_warning.reset_mock()
 
     # If `warn_once=False`, we warn once for each call.
     my_function_2 = self._mock_function()
@@ -87,10 +81,12 @@ class DependencyUtilsTest(test_case_utils.TfxTest):
     deprecation_alias_2()
     deprecation_alias_2()
     deprecation_alias_2()
-    self.assertEqual(self._mock_warn.call_count, 3)
+    self.assertEqual(mock_absl_warning.call_count, 3)
     self.assertEqual(my_function_2.call_count, 3)
+    mock_absl_warning.reset_mock()
 
-  def testDeprecationClass(self):
+  @mock.patch('absl.logging.warning')
+  def testDeprecationClass(self, mock_absl_warning):
 
     class MyClass1(object):
       __init__ = mock.MagicMock()
@@ -103,11 +99,11 @@ class DependencyUtilsTest(test_case_utils.TfxTest):
         'DeprecatedAliasClass1', 'MyClass1', MyClass1)
     DeprecatedAliasClass1()
     DeprecatedAliasClass1()
-    self._assertDeprecatedWarningRegex(
-        'From .*: The name DeprecatedAliasClass1 is deprecated. Please use '
-        'MyClass1 instead.')
+    mock_absl_warning.assert_called_once_with(mock.ANY, mock.ANY,
+                                              'DeprecatedAliasClass1',
+                                              'MyClass1')
     self.assertEqual(MyClass1.__init__.call_count, 2)
-    self._mock_warn.reset_mock()
+    mock_absl_warning.reset_mock()
 
     # Check properties of the deprecated class.
     self.assertEqual(DeprecatedAliasClass1.__name__, '_NewDeprecatedClass')
@@ -127,8 +123,9 @@ Please use MyClass1 instead."""))
     DeprecatedAliasClass2()
     DeprecatedAliasClass2()
     DeprecatedAliasClass2()
-    self.assertEqual(self._mock_warn.call_count, 3)
+    self.assertEqual(mock_absl_warning.call_count, 3)
     self.assertEqual(MyClass2.__init__.call_count, 3)
+    mock_absl_warning.reset_mock()
 
 
 if __name__ == '__main__':

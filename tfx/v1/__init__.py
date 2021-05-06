@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Public modules for TFX."""
+"""Public modules for TFX 1.x."""
 
 from tfx.v1 import components
 from tfx.v1 import dsl
@@ -20,6 +20,3 @@ from tfx.v1 import orchestration
 from tfx.v1 import proto
 from tfx.v1 import types
 from tfx.v1 import utils
-
-# Import version string.
-from tfx.version import __version__

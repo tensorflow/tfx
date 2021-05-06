@@ -19,6 +19,7 @@ import tensorflow as tf
 from tfx.orchestration import metadata
 from tfx.orchestration.experimental.core import pipeline_state as pstate
 from tfx.orchestration.experimental.core import task as task_lib
+from tfx.orchestration.portable import runtime_parameter_utils
 from tfx.proto.orchestration import pipeline_pb2
 from tfx.utils import status as status_lib
 from tfx.utils import test_case_utils as tu
@@ -250,6 +251,66 @@ class PipelineStateTest(tu.TfxTest):
       mlmd_executions = m.store.get_executions_by_context(mlmd_contexts[0].id)
       self.assertLen(mlmd_executions, 1)
       self.assertIsNone(mlmd_executions[0].custom_properties.get(property_key))
+
+  def test_async_pipeline_views(self):
+    with self._mlmd_connection as m:
+      pipeline = _test_pipeline('pipeline1')
+      with pstate.PipelineState.new(m, pipeline) as pipeline_state:
+        execution = pipeline_state.execution
+        execution.last_known_state = metadata_store_pb2.Execution.COMPLETE
+        m.store.put_executions([execution])
+
+      views = pstate.PipelineView.load_all(
+          m, task_lib.PipelineUid.from_pipeline(pipeline))
+      self.assertLen(views, 1)
+      self.assertProtoEquals(pipeline, views[0].pipeline)
+
+      with pstate.PipelineState.new(m, pipeline) as pipeline_state:
+        execution = pipeline_state.execution
+
+      views = pstate.PipelineView.load_all(
+          m, task_lib.PipelineUid.from_pipeline(pipeline))
+      self.assertLen(views, 2)
+      self.assertProtoEquals(pipeline, views[0].pipeline)
+      self.assertProtoEquals(pipeline, views[1].pipeline)
+
+  def test_sync_pipeline_views(self):
+
+    def _create_sync_pipeline(pipeline_id: str, run_id: str):
+      pipeline = _test_pipeline(pipeline_id, pipeline_pb2.Pipeline.SYNC)
+      pipeline.runtime_spec.pipeline_run_id.runtime_parameter.name = 'pipeline_run_id'
+      pipeline.runtime_spec.pipeline_run_id.runtime_parameter.type = (
+          pipeline_pb2.RuntimeParameter.STRING)
+      runtime_parameter_utils.substitute_runtime_parameter(
+          pipeline, {
+              'pipeline_run_id': run_id,
+          })
+      return pipeline
+
+    with self._mlmd_connection as m:
+      pipeline = _create_sync_pipeline('pipeline', '001')
+      with pstate.PipelineState.new(m, pipeline) as pipeline_state:
+        execution = pipeline_state.execution
+        execution.last_known_state = metadata_store_pb2.Execution.COMPLETE
+        m.store.put_executions([execution])
+
+      views = pstate.PipelineView.load_all(
+          m, task_lib.PipelineUid.from_pipeline(pipeline))
+      self.assertLen(views, 1)
+      self.assertEqual(views[0].pipeline_run_id, '001')
+      self.assertProtoEquals(pipeline, views[0].pipeline)
+
+      pipeline2 = _create_sync_pipeline('pipeline', '002')
+      with pstate.PipelineState.new(m, pipeline2) as pipeline_state:
+        execution = pipeline_state.execution
+
+      views = pstate.PipelineView.load_all(
+          m, task_lib.PipelineUid.from_pipeline(pipeline))
+      self.assertLen(views, 2)
+      self.assertEqual(views[0].pipeline_run_id, '001')
+      self.assertEqual(views[1].pipeline_run_id, '002')
+      self.assertProtoEquals(pipeline, views[0].pipeline)
+      self.assertProtoEquals(pipeline2, views[1].pipeline)
 
 
 if __name__ == '__main__':

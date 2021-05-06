@@ -91,8 +91,7 @@ class AirflowComponentTest(tf.test.TestCase):
         beam_pipeline_args=[],
         additional_pipeline_args={},
         component_config=None,
-        ti=mock_ti,
-        exec_properties={})
+        ti=mock_ti)
     mock_component_launcher_class.create.assert_called_once()
     arg_list = mock_component_launcher_class.create.call_args_list
     self.assertEqual(arg_list[0][1]['pipeline_info'].run_id, 'run_id')
@@ -116,8 +115,7 @@ class AirflowComponentTest(tf.test.TestCase):
         task_id=self._component.id,
         provide_context=True,
         python_callable=mock.ANY,
-        dag=self._parent_dag,
-        op_kwargs={'exec_properties': {}})
+        dag=self._parent_dag)
 
     python_callable = mock_python_operator_init.call_args_list[0][1][
         'python_callable']
