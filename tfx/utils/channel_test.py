@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,51 +13,43 @@
 # limitations under the License.
 """Tests for tfx.utils.types."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
-
 from unittest import mock
 
-# Standard Imports
-
-from absl import logging
 import tensorflow as tf
 from tfx.types import standard_artifacts
 from tfx.utils import channel
+from tfx.utils import deprecation_utils
+from tfx.utils import test_case_utils
 
 
-class ChannelTest(tf.test.TestCase):
+class ChannelTest(test_case_utils.TfxTest):
+
+  def setUp(self):
+    super().setUp()
+    self._mock_warn = self.enter_context(mock.patch('warnings.warn'))
+
+  def _assertDeprecatedWarningRegex(self, expected_regex):
+    self._mock_warn.assert_called()
+    (message, warning_cls), unused_kwargs = self._mock_warn.call_args
+    self.assertEqual(warning_cls, deprecation_utils.TfxDeprecationWarning)
+    self.assertRegex(message, expected_regex)
 
   def testChannelDeprecated(self):
-    with mock.patch.object(logging, 'warning'):
-      warn_mock = mock.MagicMock()
-      logging.warning = warn_mock
-      channel.Channel(type=standard_artifacts.Examples)
-      warn_mock.assert_called_once()
-      self.assertIn(
-          'tfx.utils.types.Channel has been renamed to tfx.types.Channel',
-          warn_mock.call_args[0][5])
+    channel.Channel(type=standard_artifacts.Examples)
+    self._assertDeprecatedWarningRegex(
+        'tfx.utils.types.Channel has been renamed to tfx.types.Channel')
 
   def testAsChannelDeprecated(self):
-    with mock.patch.object(logging, 'warning'):
-      warn_mock = mock.MagicMock()
-      artifact = standard_artifacts.Model()
-      logging.warning = warn_mock
-      channel.as_channel([artifact])
-      warn_mock.assert_called_once()
-      self.assertIn('tfx.utils.channel.as_channel has been renamed to',
-                    warn_mock.call_args[0][5])
+    channel.as_channel([standard_artifacts.Model()])
+    self._assertDeprecatedWarningRegex(
+        'tfx.utils.channel.as_channel has been renamed to '
+        'tfx.types.channel_utils.as_channel')
 
   def testUnwrapChannelDictDeprecated(self):
-    with mock.patch.object(logging, 'warning'):
-      warn_mock = mock.MagicMock()
-      logging.warning = warn_mock
-      channel.unwrap_channel_dict({})
-      warn_mock.assert_called_once()
-      self.assertIn('tfx.utils.channel.unwrap_channel_dict has been renamed to',
-                    warn_mock.call_args[0][5])
+    channel.unwrap_channel_dict({})
+    self._assertDeprecatedWarningRegex(
+        'tfx.utils.channel.unwrap_channel_dict has been renamed to '
+        'tfx.types.channel_utils.unwrap_channel_dict')
 
 
 if __name__ == '__main__':
