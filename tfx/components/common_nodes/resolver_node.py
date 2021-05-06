@@ -16,11 +16,8 @@
 
 The new location is `tfx.dsl.components.common.resolver.Resolver`.
 """
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
 
-from typing import Dict, Text, Type
+from typing import Dict, Type
 
 from tfx import types
 from tfx.dsl.components.common import resolver
@@ -53,7 +50,7 @@ def _make_deprecated_resolver_node_alias():
 
     def __init__(self,
                  resolver_class: Type[resolver.ResolverStrategy] = None,
-                 resolver_configs: Dict[Text, json_utils.JsonableType] = None,
+                 resolver_configs: Dict[str, json_utils.JsonableType] = None,
                  **kwargs: types.Channel):
       """Forwarding shim for deprecated ResolverNode alias constructor.
 
@@ -76,8 +73,5 @@ def _make_deprecated_resolver_node_alias():
 RESOLVER_CLASS = resolver.RESOLVER_STRATEGY_CLASS
 # Constant to access resolver config from resolver exec_properties.
 RESOLVER_CONFIGS = resolver.RESOLVER_CONFIG
-
-RESOLVER_CLASS_LIST = resolver.RESOLVER_STRATEGY_CLASS_LIST
-RESOLVER_CONFIG_LIST = resolver.RESOLVER_CONFIG_LIST
 
 ResolverNode = _make_deprecated_resolver_node_alias()

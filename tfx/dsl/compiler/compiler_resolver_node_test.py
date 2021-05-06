@@ -146,7 +146,7 @@ class CompilerResolverTest(TestCase):
 
   def test_resolver_node_is_not_in_ir(self):
     a = DummyComponents.A()
-    r = Resolver(DummyResolverStrategy, x=a.outputs['x'])
+    r = Resolver(strategy_class=DummyResolverStrategy, x=a.outputs['x'])
     b = DummyComponents.B(x=r.outputs['x'])
     pipeline_ir = self.compile_async_pipeline([a, r, b])
 
@@ -155,7 +155,7 @@ class CompilerResolverTest(TestCase):
 
   def test_input_channel_skips_resolver_node(self):
     a = DummyComponents.A()
-    r = Resolver(DummyResolverStrategy, x=a.outputs['x'])
+    r = Resolver(strategy_class=DummyResolverStrategy, x=a.outputs['x'])
     b = DummyComponents.B(x=r.outputs['x'])
     pipeline_ir = self.compile_async_pipeline([a, r, b])
 
@@ -166,7 +166,7 @@ class CompilerResolverTest(TestCase):
 
   def test_resolver_config_is_added(self):
     a = DummyComponents.A()
-    r = Resolver(DummyResolverStrategy, x=a.outputs['x'])
+    r = Resolver(strategy_class=DummyResolverStrategy, x=a.outputs['x'])
     b = DummyComponents.B(x=r.outputs['x'])
     pipeline_ir = self.compile_async_pipeline([a, r, b])
 
@@ -178,7 +178,7 @@ class CompilerResolverTest(TestCase):
 
   def test_resolver_input_key_and_downstream_input_key_should_be_same(self):
     a = DummyComponents.A()
-    r = Resolver(DummyResolverStrategy, alt_x=a.outputs['x'])
+    r = Resolver(strategy_class=DummyResolverStrategy, alt_x=a.outputs['x'])
     b = DummyComponents.B(x=r.outputs['alt_x'])
 
     with self.assertRaisesRegex(ValueError, r'Downstream node input key \(x\) '
@@ -188,7 +188,7 @@ class CompilerResolverTest(TestCase):
 
   def test_multichannel_resolver(self):
     a = DummyComponents.A()
-    r = Resolver(DummyResolverStrategy,
+    r = Resolver(strategy_class=DummyResolverStrategy,
                  x=a.outputs['x'],
                  y=a.outputs['y'])
     b = DummyComponents.B(x=r.outputs['x'],
@@ -205,7 +205,7 @@ class CompilerResolverTest(TestCase):
 
   def test_skip_connection(self):
     a = DummyComponents.A()
-    r = Resolver(DummyResolverStrategy, x=a.outputs['x'])
+    r = Resolver(strategy_class=DummyResolverStrategy, x=a.outputs['x'])
     b = DummyComponents.B(x=r.outputs['x'], y=a.outputs['y'])
     pipeline_ir = self.compile_async_pipeline([a, r, b])
 
@@ -220,7 +220,7 @@ class CompilerResolverTest(TestCase):
   def test_duplicated_key_error_if_different_channel(self):
     a1 = DummyComponents.A().with_id('A1')
     a2 = DummyComponents.A().with_id('A2')
-    r = Resolver(DummyResolverStrategy,
+    r = Resolver(strategy_class=DummyResolverStrategy,
                  x=a1.outputs['x'],
                  y=a1.outputs['y'])
     b = DummyComponents.B(x=r.outputs['x'],
@@ -234,7 +234,7 @@ class CompilerResolverTest(TestCase):
   def test_multiple_upstream_nodes(self):
     a1 = DummyComponents.A().with_id('A1')
     a2 = DummyComponents.A().with_id('A2')
-    r = Resolver(DummyResolverStrategy,
+    r = Resolver(strategy_class=DummyResolverStrategy,
                  x=a1.outputs['x'],
                  y=a2.outputs['y'])
     b = DummyComponents.B(x=r.outputs['x'],
@@ -251,7 +251,7 @@ class CompilerResolverTest(TestCase):
     # resolver node can be shared across multiple downstream nodes with their
     # own resolver config.
     a = DummyComponents.A()
-    r = Resolver(DummyResolverStrategy,
+    r = Resolver(strategy_class=DummyResolverStrategy,
                  x=a.outputs['x'],
                  y=a.outputs['y'])
     b1 = DummyComponents.B(x=r.outputs['x']).with_id('B1')
@@ -271,10 +271,10 @@ class CompilerResolverTest(TestCase):
 
   def test_sequential_resolver_nodes(self):
     a = DummyComponents.A()
-    r1 = Resolver(DummyResolverStrategy,
+    r1 = Resolver(strategy_class=DummyResolverStrategy,
                   config={'iam': 'r1'},
                   x=a.outputs['x']).with_id('R1')
-    r2 = Resolver(DummyResolverStrategy,
+    r2 = Resolver(strategy_class=DummyResolverStrategy,
                   config={'iam': 'r2'},
                   x=r1.outputs['x']).with_id('R2')
     b = DummyComponents.B(x=r2.outputs['x'])
@@ -299,10 +299,10 @@ class CompilerResolverTest(TestCase):
 
   def test_sequential_resolver_nodes_with_skip_connection(self):
     a = DummyComponents.A()
-    r1 = Resolver(DummyResolverStrategy,
+    r1 = Resolver(strategy_class=DummyResolverStrategy,
                   config={'iam': 'r1'},
                   x=a.outputs['x']).with_id('R1')
-    r2 = Resolver(DummyResolverStrategy,
+    r2 = Resolver(strategy_class=DummyResolverStrategy,
                   config={'iam': 'r2'},
                   x=r1.outputs['x'],
                   y=a.outputs['y']).with_id('R2')
@@ -332,8 +332,10 @@ class CompilerResolverTest(TestCase):
 
   def test_parallel_resolver_nodes(self):
     a = DummyComponents.A()
-    r1 = Resolver(DummyResolverStrategy, x=a.outputs['x']).with_id('R1')
-    r2 = Resolver(DummyResolverStrategy, y=a.outputs['y']).with_id('R2')
+    r1 = Resolver(strategy_class=DummyResolverStrategy,
+                  x=a.outputs['x']).with_id('R1')
+    r2 = Resolver(strategy_class=DummyResolverStrategy,
+                  y=a.outputs['y']).with_id('R2')
     b = DummyComponents.B(x=r1.outputs['x'], y=r2.outputs['y'])
     pipeline_ir = self.compile_async_pipeline([a, r1, r2, b])
 
