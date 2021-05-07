@@ -9,12 +9,12 @@
 # limitations under the License.
 """TFX orchestration.experimental module."""
 from tfx.orchestration.kubeflow import kubeflow_dag_runner
-from tfx.orchestration.kubeflow.kubeflow_dag_runner import get_default_kubeflow_metadata_config
 from tfx.orchestration.kubeflow.v2 import kubeflow_v2_dag_runner
 
 KubeflowV2DagRunner = kubeflow_v2_dag_runner.KubeflowV2DagRunner
 KubeflowV2DagRunnerConfig = kubeflow_v2_dag_runner.KubeflowV2DagRunnerConfig
 KubeflowDagRunner = kubeflow_dag_runner.KubeflowDagRunner
 KubeflowDagRunnerConfig = kubeflow_dag_runner.KubeflowDagRunnerConfig
+get_default_kubeflow_metadata_config = kubeflow_dag_runner.get_default_kubeflow_metadata_config
 del kubeflow_v2_dag_runner
 del kubeflow_dag_runner
