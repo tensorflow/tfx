@@ -37,7 +37,7 @@ pip install -U tfx[examples]
 Then, clone the tfx repo and copy penguin/ folder to home directory:
 
 <pre class="devsite-terminal devsite-click-to-copy">
-git clone https://github.com/tensorflow/tfx ~/tfx-source && pushd ~/tfx-source
+git clone https://github.com/tensorflow/tfx/releases/tag/v0.29.0 ~/tfx-source && pushd ~/tfx-source
 cp -r ~/tfx-source/tfx/examples/penguin ~/
 </pre>
 
