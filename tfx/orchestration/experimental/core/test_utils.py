@@ -88,12 +88,16 @@ def fake_execute_node(mlmd_connection, task):
   """Simulates node execution given ExecNodeTask."""
   node = task.get_pipeline_node()
   with mlmd_connection as m:
-    output_key, output_value = next(iter(node.outputs.outputs.items()))
-    output = types.Artifact(output_value.artifact_spec.type)
-    output.uri = str(uuid.uuid4())
+    if node.HasField('outputs'):
+      output_key, output_value = next(iter(node.outputs.outputs.items()))
+      output = types.Artifact(output_value.artifact_spec.type)
+      output.uri = str(uuid.uuid4())
+      output_artifacts = {output_key: [output]}
+    else:
+      output_artifacts = None
     execution_publish_utils.publish_succeeded_execution(m, task.execution.id,
                                                         task.contexts,
-                                                        {output_key: [output]})
+                                                        output_artifacts)
 
 
 def create_exec_node_task(node_uid,
@@ -194,9 +198,13 @@ def _verify_exec_node_task(test_case, pipeline, node, execution_id, task):
         pipeline.runtime_spec.pipeline_run_id.field_value.string_value)
   expected_input_artifacts_keys = list(iter(node.inputs.inputs.keys()))
   expected_output_artifacts_keys = list(iter(node.outputs.outputs.keys()))
-  output_artifact_uri = os.path.join(
-      pipeline.runtime_spec.pipeline_root.field_value.string_value,
-      node.node_info.id, expected_output_artifacts_keys[0], str(execution_id))
+  if expected_output_artifacts_keys:
+    output_artifact_uri = os.path.join(
+        pipeline.runtime_spec.pipeline_root.field_value.string_value,
+        node.node_info.id, expected_output_artifacts_keys[0], str(execution_id))
+    test_case.assertEqual(
+        output_artifact_uri,
+        task.output_artifacts[expected_output_artifacts_keys[0]][0].uri)
   # There may be cached context which we ignore.
   test_case.assertContainsSubset(expected_context_names,
                                  [c.name for c in task.contexts])
@@ -204,9 +212,6 @@ def _verify_exec_node_task(test_case, pipeline, node, execution_id, task):
                              list(task.input_artifacts.keys()))
   test_case.assertCountEqual(expected_output_artifacts_keys,
                              list(task.output_artifacts.keys()))
-  test_case.assertEqual(
-      output_artifact_uri,
-      task.output_artifacts[expected_output_artifacts_keys[0]][0].uri)
   test_case.assertEqual(
       os.path.join(pipeline.runtime_spec.pipeline_root.field_value.string_value,
                    node.node_info.id, '.system', 'executor_execution',

@@ -798,6 +798,97 @@ nodes {
     upstream_nodes: "my_example_gen"
     upstream_nodes: "my_transform"
     upstream_nodes: "my_schema_gen"
+    downstream_nodes: "chore_a"
+  }
+}
+# Nodes with no input or output specs for testing task only dependencies.
+nodes {
+  pipeline_node {
+    node_info {
+      type {
+        name: "Task"
+      }
+      id: "chore_a"
+    }
+    contexts {
+      contexts {
+        type {
+          name: "pipeline"
+        }
+        name {
+          field_value {
+            string_value: "my_pipeline"
+          }
+        }
+      }
+      contexts {
+        type {
+          name: "pipeline_run"
+        }
+        name {
+          runtime_parameter {
+            name: "pipeline_run_id"
+            type: STRING
+          }
+        }
+      }
+      contexts {
+        type {
+          name: "component"
+        }
+        name {
+          field_value {
+            string_value: "chore_a"
+          }
+        }
+      }
+    }
+    upstream_nodes: "my_trainer"
+    downstream_nodes: "chore_b"
+  }
+}
+nodes {
+  pipeline_node {
+    node_info {
+      type {
+        name: "Task"
+      }
+      id: "chore_b"
+    }
+    contexts {
+      contexts {
+        type {
+          name: "pipeline"
+        }
+        name {
+          field_value {
+            string_value: "my_pipeline"
+          }
+        }
+      }
+      contexts {
+        type {
+          name: "pipeline_run"
+        }
+        name {
+          runtime_parameter {
+            name: "pipeline_run_id"
+            type: STRING
+          }
+        }
+      }
+      contexts {
+        type {
+          name: "component"
+        }
+        name {
+          field_value {
+            string_value: "chore_b"
+          }
+        }
+      }
+    }
+    upstream_nodes: "chore_a"
   }
 }
 runtime_spec {

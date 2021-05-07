@@ -67,6 +67,8 @@ class SyncPipelineTaskGeneratorTest(tu.TfxTest, parameterized.TestCase):
     self._transform = otu.get_node(pipeline, 'my_transform')
     self._example_validator = otu.get_node(pipeline, 'my_example_validator')
     self._trainer = otu.get_node(pipeline, 'my_trainer')
+    self._chore_a = otu.get_node(pipeline, 'chore_a')
+    self._chore_b = otu.get_node(pipeline, 'chore_b')
 
     self._task_queue = tq.TaskQueue()
 
@@ -215,10 +217,29 @@ class SyncPipelineTaskGeneratorTest(tu.TfxTest, parameterized.TestCase):
     # Finish trainer execution.
     self._finish_node_execution(use_task_queue, trainer_task)
 
+    # Test task-only dependencies: chore_a and chore_b nodes have no input or
+    # output specs but should still be executed in the DAG order.
+    [chore_a_task] = self._generate_and_test(
+        use_task_queue,
+        num_initial_executions=6,
+        num_tasks_generated=1,
+        num_new_executions=1,
+        num_active_executions=1,
+        expected_exec_nodes=[self._chore_a])
+    self._finish_node_execution(use_task_queue, chore_a_task)
+    [chore_b_task] = self._generate_and_test(
+        use_task_queue,
+        num_initial_executions=7,
+        num_tasks_generated=1,
+        num_new_executions=1,
+        num_active_executions=1,
+        expected_exec_nodes=[self._chore_b])
+    self._finish_node_execution(use_task_queue, chore_b_task)
+
     # No more components to execute, FinalizePipelineTask should be generated.
     [finalize_task] = self._generate_and_test(
         use_task_queue,
-        num_initial_executions=6,
+        num_initial_executions=8,
         num_tasks_generated=1,
         num_new_executions=0,
         num_active_executions=0)
