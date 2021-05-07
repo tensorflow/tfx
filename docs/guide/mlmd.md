@@ -330,9 +330,9 @@ bazel run -c opt --define grpc_no_ares=true  //ml_metadata/metadata_store:metada
 
 By default, the server uses a fake in-memory db per request and does not
 persist the metadata across calls. It can also be configured with a MLMD
-`ConnectionConfig` to use MySQL instances or Sqlite files.
+`ConnectionConfig` to use SQLite files or MySQL instances.
 The config can be stored in a text protobuf file and passed to the binary with
-`-metadata_store_server_config_file`.
+`--metadata_store_server_config_file=path_to_the_config_file`.
 
 *   Create the client stub and use it in Python
 
