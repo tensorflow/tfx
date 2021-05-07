@@ -113,7 +113,6 @@ class KubeflowGcpPerfTest(kubeflow_test_utils.BaseKubeflowTest):
   }
 
   # TODO(b/151114974): Remove `disk_size_gb` flag after default is increased.
-  # TODO(b/151116587): Remove `shuffle_mode` flag after default is changed.
   # TODO(b/156874687): Remove `machine_type` after IP addresses are no longer a
   #                    scaling bottleneck.
   # TODO(b/171733562): Remove `use_runner_v2` once it is the default for
@@ -132,7 +131,6 @@ class KubeflowGcpPerfTest(kubeflow_test_utils.BaseKubeflowTest):
 
       # Temporary overrides of defaults.
       '--disk_size_gb=50',
-      '--experiments=shuffle_mode=auto',
       '--machine_type=e2-standard-8',
       '--experiments=use_runner_v2',
   ]
