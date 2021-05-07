@@ -76,7 +76,7 @@ def make_required_install_packages():
       'click>=7,<8',
       'google-api-python-client>=1.7.8,<2',
       'google-cloud-aiplatform>=0.5.0,<0.8',
-      'google-cloud-bigquery>=1.6.0,<3',
+      'google-cloud-bigquery>=1.28.0,<3',
       'grpcio>=1.28.1,<2',
       # TODO(b/173976603): remove pinned keras-tuner upperbound when its
       # dependency expecatation with TensorFlow is sorted out.
