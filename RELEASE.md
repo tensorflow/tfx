@@ -1,23 +1,6 @@
 # Current Version (Still in Development)
 
 ## Major Features and Improvements
-
-## Breaking Changes
-
-### For Pipeline Authors
-
-### For Component Authors
-
-## Deprecations
-
-## Bug Fixes and Other Changes
-
-## Documentation Updates
-
-# Version 0.30.0
-
-## Major Features and Improvements
-
 *  Upgraded TFX to KFP compiler to use KFP IR schema version 2.0.0.
 *  InfraValidator can now produce a [SavedModel with warmup requests](
    https://www.tensorflow.org/tfx/serving/saved_model_warmup). This feature is
@@ -37,13 +20,9 @@
 *  Allow Beam pipeline args to be extended by specifying
    `beam_pipeline_args` per component.
 *  Support string RuntimeParameters on Airflow.
-
 ## Breaking Changes
-
-### For Pipeline Authors
-
-*  CLI usage with kubeflow changed significantly. You MUST use the new:
-  *  `--build-image` to build a container image when
+*  CLI usage with kubeflow changed significantly.
+  *  You MUST use the new `--build-image` to build a container image when
      updating a pipeline with kubeflow engine.
   *  `--build-target-image` flag in CLI is changed to `--build-image` without
      any container image argument. TFX will auto detect the image specified in
@@ -82,35 +61,24 @@
    Please use .with_id() method of components.
 *  Removed output channel overwrite functionality from all official components.
 
-### For Component Authors
+### For Pipeline Authors
 
-*   N/A
+### For Component Authors
 
 ## Deprecations
 
-*   N/A
-
 ## Bug Fixes and Other Changes
-
-*   New extra dependencies for convenience.
-    - tfx[airflow] installs all Apache Airflow orchestrator dependencies.
-    - tfx[kfp] installs all Kubeflow Pipelines orchestrator dependencies.
-    - tfx[tf-ranking] installs packages for TensorFlow Ranking.
-      NOTE: TensorFlow Ranking only compatible with TF >= 2.0.
-*   Depends on 'google-cloud-bigquery>=1.6.0,<3'. (This was already installed as
-    a transitive dependency from the first release of TFX.)
-*   Depends on `google-cloud-aiplatform>=0.5.0,<0.8`.
-*   Depends on `ml-metadata>=0.30.0,<0.31.0`.
-*   Depends on `portpicker>=1.3.1,<2`.
-*   Depends on `struct2tensor>=0.30.0,<0.31.0`.
-*   Depends on `tensorflow-data-validation>=0.30.0,<0.31.0`.
-*   Depends on `tensorflow-model-analysis>=0.30.0,<0.31.0`.
-*   Depends on `tensorflow-transform>=0.30.0,<0.31.0`.
-*   Depends on `tfx-bsl>=0.30.0,<0.31.0`.
+*  New extra dependencies for convenience.
+   - tfx[airflow] installs all Apache Airflow orchestrator dependencies.
+   - tfx[kfp] installs all Kubeflow Pipelines orchestrator dependencies.
+   - tfx[tf-ranking] installs packages for TensorFlow Ranking.
+     NOTE: TensorFlow Ranking only compatible with TF >= 2.0.
+*  Depends on `google-cloud-aiplatform>=0.5.0,<0.8`.
+*  Depends on `portpicker>=1.3.1,<2`.
+*  Depends on 'google-cloud-bigquery>=1.6.0,<3'. (This was already installed as
+   a transitive dependency from the first release of TFX.)
 
 ## Documentation Updates
-
-*   N/A
 
 # Version 0.29.0
 
