@@ -76,6 +76,7 @@
 
 ## Bug Fixes and Other Changes
 
+*   GCP compute project in BigQuery Pusher executor can be specified.
 *   New extra dependencies for convenience.
     - tfx[airflow] installs all Apache Airflow orchestrator dependencies.
     - tfx[kfp] installs all Kubeflow Pipelines orchestrator dependencies.
