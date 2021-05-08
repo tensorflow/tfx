@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""An abstract class for the runner for both CAIP and uCAIP."""
+"""An abstract class for the Trainer for both CAIP and uCAIP."""
 
 import abc
 import datetime
@@ -510,8 +510,9 @@ class UCAIPJobClient(AbstractJobClient):
 
 
 def get_job_client(
-    enable_ucaip: bool = False,
-    ucaip_region: Text = None) -> Union[CAIPJobClient, UCAIPJobClient]:
+    enable_ucaip: Optional[bool] = False,
+    ucaip_region: Optional[Text] = None
+) -> Union[CAIPJobClient, UCAIPJobClient]:
   """Gets the job client.
 
   Args:

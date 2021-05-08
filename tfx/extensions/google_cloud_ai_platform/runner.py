@@ -19,16 +19,14 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import sys
 import time
 from typing import Any, Dict, List, Optional, Text
 
 from absl import logging
 from googleapiclient import discovery
-from googleapiclient import errors
-import tensorflow as tf
 
 from tfx import types
+from tfx.extensions.google_cloud_ai_platform import prediction_clients
 from tfx.extensions.google_cloud_ai_platform import training_clients
 from tfx.utils import version_utils
 
@@ -46,58 +44,10 @@ _TFX_IMAGE = 'gcr.io/tfx-oss-public/tfx:{}'.format(
 # package installation into a default location of 'python'.
 _CONTAINER_COMMAND = ['python', '-m', 'tfx.scripts.run_executor']
 
-_TF_COMPATIBILITY_OVERRIDE = {
-    # Generally, runtimeVersion should be same as <major>.<minor> of currently
-    # installed tensorflow version, with certain compatibility hacks since
-    # some TensorFlow runtime versions are not explicitly supported by
-    # CAIP pusher. See:
-    # https://cloud.google.com/ai-platform/prediction/docs/runtime-version-list
-    '2.0': '1.15',
-    # TODO(b/168249383) Update this once CAIP model support TF 2.4 runtime.
-    '2.4': '2.3',
-    '2.5': '2.3',
-}
-
 # Default endpoint for v1 API.
 DEFAULT_ENDPOINT = 'https://ml.googleapis.com'
 # Default API version.
 _DEFAULT_API_VERSION = 'v1'
-
-
-def _get_tf_runtime_version(tf_version: Text) -> Text:
-  """Returns the tensorflow runtime version used in Cloud AI Platform.
-
-  This is only used for prediction service.
-
-  Args:
-    tf_version: version string returned from `tf.__version__`.
-  Returns: same major.minor version of installed tensorflow, except when
-    overriden by _TF_COMPATIBILITY_OVERRIDE.
-  """
-  tf_version = '.'.join(tf_version.split('.')[0:2])
-  return _TF_COMPATIBILITY_OVERRIDE.get(tf_version) or tf_version
-
-
-# TODO(b/180967044): This can be removed, and use 3.7 as default.
-def _get_caip_python_version(caip_tf_runtime_version: Text) -> Text:
-  """Returns supported python version on Cloud AI Platform.
-
-  See
-  https://cloud.google.com/ml-engine/docs/tensorflow/versioning#set-python-version-training
-
-  Args:
-    caip_tf_runtime_version: version string returned from
-      _get_tf_runtime_version().
-
-  Returns:
-    '2.7' for PY2. '3.5' or '3.7' for PY3 depending on caip_tf_runtime_version.
-  """
-  if sys.version_info.major == 2:
-    return '2.7'
-  (major, minor) = caip_tf_runtime_version.split('.')[0:2]
-  if (int(major), int(minor)) >= (1, 15):
-    return '3.7'
-  return '3.5'
 
 
 def _launch_aip_training(
@@ -291,22 +241,9 @@ def create_model_for_aip_prediction_if_not_exist(
     RuntimeError if model creation failed.
   """
 
-  model_name = ai_platform_serving_args['model_name']
-  project_id = ai_platform_serving_args['project_id']
-  regions = ai_platform_serving_args.get('regions', [])
-  body = {'name': model_name, 'regions': regions, 'labels': job_labels}
-  parent = 'projects/{}'.format(project_id)
-  result = True
-  try:
-    api.projects().models().create(body=body, parent=parent).execute()
-  except errors.HttpError as e:
-    # If the error is to create an already existing model, it's ok to ignore.
-    if e.resp.status == 409:
-      logging.warn('Model %s already exists', model_name)
-      result = False
-    else:
-      raise RuntimeError('Creating model to AI Platform failed: {}'.format(e))
-  return result
+  client = prediction_clients.get_prediction_client(api)
+  return client.create_model_for_aip_prediction_if_not_exist(
+      job_labels, ai_platform_serving_args)
 
 
 def deploy_model_for_aip_prediction(api: discovery.Resource,
@@ -344,59 +281,13 @@ def deploy_model_for_aip_prediction(api: discovery.Resource,
   Raises:
     RuntimeError: if an error is encountered when trying to push.
   """
-  logging.info(
-      'Deploying to model with version %s to AI Platform for serving: %s',
-      model_version, ai_platform_serving_args)
-
-  model_name = ai_platform_serving_args['model_name']
-  project_id = ai_platform_serving_args['project_id']
-  default_runtime_version = _get_tf_runtime_version(tf.__version__)
-  runtime_version = ai_platform_serving_args.get('runtime_version',
-                                                 default_runtime_version)
-  python_version = _get_caip_python_version(runtime_version)
-
-  if not skip_model_creation:
-    create_model_for_aip_prediction_if_not_exist(api, job_labels,
-                                                 ai_platform_serving_args)
-  version_body = dict(ai_platform_serving_args)
-  for model_only_key in ['model_name', 'project_id', 'regions']:
-    version_body.pop(model_only_key, None)
-  version_body['name'] = model_version
-  version_body['deployment_uri'] = serving_path
-  version_body['runtime_version'] = version_body.get('runtime_version',
-                                                     runtime_version)
-  version_body['python_version'] = version_body.get('python_version',
-                                                    python_version)
-  version_body['labels'] = {**version_body.get('labels', {}), **job_labels}
-  logging.info(
-      'Creating new version of model_name %s in project %s, request body: %s',
-      model_name, project_id, version_body)
-
-  # Push to AIP, and record the operation name so we can poll for its state.
-  model_name = 'projects/{}/models/{}'.format(project_id, model_name)
-  try:
-    operation = api.projects().models().versions().create(
-        body=version_body, parent=model_name).execute()
-    _wait_for_operation(api, operation, 'projects.models.versions.create')
-  except errors.HttpError as e:
-    # If the error is to create an already existing model version, it's ok to
-    # ignore.
-    if e.resp.status == 409:
-      logging.warn('Model version %s already exists', model_version)
-    else:
-      raise RuntimeError('Creating model version to AI Platform failed: {}'
-                         .format(e))
-
-  if set_default_version:
-    # Set the new version as default.
-    # By API specification, if Long-Running-Operation is done and there is
-    # no error, 'response' is guaranteed to exist.
-    api.projects().models().versions().setDefault(name='{}/versions/{}'.format(
-        model_name, model_version)).execute()
-
-  logging.info(
-      'Successfully deployed model %s with version %s, serving from %s',
-      model_name, model_version, serving_path)
+  client = prediction_clients.get_prediction_client(api)
+  client.deploy_model(serving_path,
+                      model_version,
+                      ai_platform_serving_args,
+                      job_labels,
+                      skip_model_creation,
+                      set_default_version)
 
 
 def delete_model_version_from_aip_if_exists(
@@ -416,28 +307,10 @@ def delete_model_version_from_aip_if_exists(
   Raises:
     RuntimeError: if an error is encountered when trying to delete.
   """
-  logging.info('Deleting model version %s from AI Platform: %s', model_version,
-               ai_platform_serving_args)
-  model_name = ai_platform_serving_args['model_name']
-  project_id = ai_platform_serving_args['project_id']
-  version_name = 'projects/{}/models/{}/versions/{}'.format(
-      project_id, model_name, model_version)
-  try:
-    operation = api.projects().models().versions().delete(
-        name=version_name).execute()
-    _wait_for_operation(api, operation, 'projects.models.versions.delete')
-  except errors.HttpError as e:
-    # If the error is to delete an non-exist model version, it's ok to ignore.
-    if e.resp.status == 404:
-      logging.warn('Model version %s does not exist', version_name)
-    if e.resp.status == 400:
-      logging.warn('Model version %s won\'t be deleted because it is the '
-                   'default version and not the only version in the model',
-                   version_name)
-    else:
-      raise RuntimeError(
-          'Deleting model version {} from AI Platform failed: {}'.format(
-              version_name, e))
+  client = prediction_clients.get_prediction_client(api)
+  client.delete_model_version_from_aip_if_exists(
+      model_version,
+      ai_platform_serving_args)
 
 
 def delete_model_from_aip_if_exists(
@@ -455,17 +328,6 @@ def delete_model_from_aip_if_exists(
   Raises:
     RuntimeError: if an error is encountered when trying to delete.
   """
-  logging.info('Deleting model with from AI Platform: %s',
-               ai_platform_serving_args)
-  model_name = ai_platform_serving_args['model_name']
-  project_id = ai_platform_serving_args['project_id']
-  name = 'projects/{}/models/{}'.format(project_id, model_name)
-  try:
-    operation = api.projects().models().delete(name=name).execute()
-    _wait_for_operation(api, operation, 'projects.models.delete')
-  except errors.HttpError as e:
-    # If the error is to delete an non-exist model, it's ok to ignore.
-    if e.resp.status == 404:
-      logging.warn('Model %s does not exist', model_name)
-    else:
-      raise RuntimeError('Deleting model from AI Platform failed: {}'.format(e))
+  client = prediction_clients.get_prediction_client(api)
+  client.delete_model_from_aip_if_exists(
+      ai_platform_serving_args)

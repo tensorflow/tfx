@@ -19,7 +19,6 @@ from __future__ import print_function
 
 import copy
 import os
-import sys
 from typing import Any, Dict, Text
 from unittest import mock
 
@@ -27,7 +26,10 @@ from unittest import mock
 
 from google.cloud.aiplatform_v1beta1.types.custom_job import CustomJob
 from google.cloud.aiplatform_v1beta1.types.job_state import JobState
+from googleapiclient import errors
+import httplib2
 import tensorflow as tf
+from tfx.extensions.google_cloud_ai_platform import prediction_clients
 from tfx.extensions.google_cloud_ai_platform import runner
 from tfx.extensions.google_cloud_ai_platform.trainer import executor
 from tfx.utils import json_utils
@@ -319,10 +321,8 @@ class RunnerTest(tf.test.TestCase):
           'deployment_uri':
               self._serving_path,
           'runtime_version':
-              runner._get_tf_runtime_version(tf.__version__),
-          'python_version':
-              runner._get_caip_python_version(
-                  runner._get_tf_runtime_version(tf.__version__)),
+              prediction_clients._get_tf_runtime_version(tf.__version__),
+          'python_version': '3.7',
           'labels':
               self._job_labels
       }
@@ -396,6 +396,25 @@ class RunnerTest(tf.test.TestCase):
         expected_models_create_body=expected_models_create_body,
         expect_set_default=False)
 
+  def testCreateModel(self):
+    self._setUpPredictionMocks()
+
+    self.assertTrue(runner.create_model_for_aip_prediction_if_not_exist(
+        self._mock_api_client,
+        self._job_labels,
+        self._ai_platform_serving_args))
+
+  def testCreateModelCreateError(self):
+    self._setUpPredictionMocks()
+
+    self._mock_models_create.return_value.execute.side_effect = (
+        errors.HttpError(httplib2.Response(info={'status': 409}), b''))
+
+    self.assertFalse(
+        runner.create_model_for_aip_prediction_if_not_exist(
+            self._mock_api_client, self._job_labels,
+            self._ai_platform_serving_args))
+
   def testDeployModelForAIPPredictionWithCustomRegion(self):
     self._setUpPredictionMocks()
 
@@ -428,7 +447,7 @@ class RunnerTest(tf.test.TestCase):
         'name': self._model_version,
         'deployment_uri': self._serving_path,
         'runtime_version': '1.23.45',
-        'python_version': runner._get_caip_python_version('1.23.45'),
+        'python_version': '3.7',
         'labels': self._job_labels,
     }
     self._assertDeployModelMockCalls(
@@ -452,32 +471,13 @@ class RunnerTest(tf.test.TestCase):
         'machine_type':
             'custom_machine_type',
         'runtime_version':
-            runner._get_tf_runtime_version(tf.__version__),
-        'python_version':
-            runner._get_caip_python_version(
-                runner._get_tf_runtime_version(tf.__version__)),
+            prediction_clients._get_tf_runtime_version(tf.__version__),
+        'python_version': '3.7',
         'labels':
             self._job_labels,
     }
     self._assertDeployModelMockCalls(
         expected_versions_create_body=expected_versions_create_body)
-
-  def testGetTensorflowRuntime(self):
-    self.assertEqual('1.14', runner._get_tf_runtime_version('1.14'))
-    self.assertEqual('1.15', runner._get_tf_runtime_version('1.15.0'))
-    self.assertEqual('1.15', runner._get_tf_runtime_version('1.15.1'))
-    self.assertEqual('1.15', runner._get_tf_runtime_version('2.0.0'))
-    self.assertEqual('1.15', runner._get_tf_runtime_version('2.0.1'))
-    self.assertEqual('2.1', runner._get_tf_runtime_version('2.1.0'))
-
-  def testGetAiPlatformTrainingPythonVersion(self):
-    if sys.version_info.major == 2:
-      self.assertEqual('2.7', runner._get_caip_python_version('1.14'))
-      self.assertEqual('2.7', runner._get_caip_python_version('1.15'))
-    else:  # 3.x
-      self.assertEqual('3.5', runner._get_caip_python_version('1.14'))
-      self.assertEqual('3.7', runner._get_caip_python_version('1.15'))
-      self.assertEqual('3.7', runner._get_caip_python_version('2.1'))
 
   def _setUpDeleteModelVersionMocks(self):
     self._model_version = 'model_version'
