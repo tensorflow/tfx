@@ -90,7 +90,7 @@ def make_required_install_packages():
       # TODO(b/159488890): remove user module-only dependency.
       'tensorflow-cloud>=0.1,<0.2',
       'tensorflow-data-validation' + select_constraint(
-          default='>=0.26,<0.27',
+          default='>=0.26.1,<0.27',
           nightly='>=0.27.0.dev',
           git_master='@git+https://github.com/tensorflow/data-validation@master'
       ),
