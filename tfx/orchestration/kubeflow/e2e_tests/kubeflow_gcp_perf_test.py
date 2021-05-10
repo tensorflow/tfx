@@ -29,7 +29,7 @@ import kfp
 import tensorflow as tf
 
 from tfx.dsl.io import fileio
-from tfx.examples.chicago_taxi_pipeline import taxi_pipeline_kubeflow_gcp
+from tfx.examples.penguin import penguin_kubeflow_gcp
 from tfx.orchestration import data_types
 from tfx.orchestration import pipeline as tfx_pipeline
 from tfx.orchestration import test_utils
@@ -82,7 +82,7 @@ class KubeflowGcpPerfTest(kubeflow_test_utils.BaseKubeflowTest):
   # The location of test user module file.
   # It is retrieved from inside the container subject to testing.
   # This location depends on install path of TFX in the docker image.
-  _MODULE_FILE = '/opt/conda/lib/python3.7/site-packages/tfx/examples/chicago_taxi_pipeline/taxi_utils.py'
+  _MODULE_FILE = '/opt/conda/lib/python3.7/site-packages/tfx/examples/penguin/penguin_utils_cloud_tuner.py'
 
   # Parameterize worker type/count for easily ramping up the pipeline scale.
   _WORKER_COUNT = data_types.RuntimeParameter(
@@ -104,7 +104,7 @@ class KubeflowGcpPerfTest(kubeflow_test_utils.BaseKubeflowTest):
       ptype=int,
   )
 
-  _MODEL_NAME = 'chicago_taxi'
+  _MODEL_NAME = 'penguin'
 
   _AI_PLATFORM_SERVING_ARGS = {
       'model_name': _MODEL_NAME,
@@ -248,7 +248,7 @@ class KubeflowGcpPerfTest(kubeflow_test_utils.BaseKubeflowTest):
         'parameterServerCount': self._PARAMETER_SERVER_COUNT
     }
 
-    pipeline = taxi_pipeline_kubeflow_gcp.create_pipeline(
+    pipeline = penguin_kubeflow_gcp.create_pipeline(
         pipeline_name=pipeline_name,
         pipeline_root=self._pipeline_root(pipeline_name),
         module_file=self._MODULE_FILE,
