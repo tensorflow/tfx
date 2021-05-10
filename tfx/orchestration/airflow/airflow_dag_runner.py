@@ -104,7 +104,7 @@ class AirflowDagRunner(tfx_runner.TfxRunner):
        component_config) = config_utils.find_component_launch_info(
            self._config, tfx_component)
       current_airflow_component = airflow_component.AirflowComponent(
-          parent_dag=airflow_dag,
+          airflow_dag,
           component=tfx_component,
           component_launcher_class=component_launcher_class,
           pipeline_info=tfx_pipeline.pipeline_info,

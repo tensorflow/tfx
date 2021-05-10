@@ -83,7 +83,7 @@ class AirflowComponent(python_operator.PythonOperator):
   This class wrap a component run into its own PythonOperator in Airflow.
   """
 
-  def __init__(self, *, parent_dag: models.DAG, component: base_node.BaseNode,
+  def __init__(self, parent_dag: models.DAG, component: base_node.BaseNode,
                component_launcher_class: Type[
                    base_component_launcher.BaseComponentLauncher],
                pipeline_info: data_types.PipelineInfo, enable_cache: bool,

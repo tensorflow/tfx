@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Tests for Kubeflow V2 CLI handler."""
+"""Tests for Vertex handler."""
 
 import os
 import sys
@@ -22,19 +22,16 @@ from googleapiclient import http
 import tensorflow as tf
 from tfx.dsl.io import fileio
 from tfx.tools.cli import labels
-from tfx.tools.cli.kubeflow_v2 import labels as kubeflow_labels
-from tfx.tools.cli.kubeflow_v2.handler import kubeflow_v2_dag_runner_patcher
-from tfx.tools.cli.kubeflow_v2.handler import kubeflow_v2_handler
+from tfx.tools.cli.handler import kubeflow_v2_dag_runner_patcher
+from tfx.tools.cli.handler import vertex_handler
 from tfx.utils import test_case_utils
 
-
 _TEST_PIPELINE_NAME = 'chicago-taxi-kubeflow'
-_TEST_PIPELINE_JOB_NAME = 'chicago_taxi_kubeflow_20200101000000'
+_TEST_PIPELINE_JOB_NAME = 'chicago_taxi_vertex_20200101000000'
 _TEST_PROJECT_1 = 'gcp_project_1'
 _TEST_PROJECT_2 = 'gcp_project_2'  # _TEST_PROJECT_2 is assumed to have no runs.
 _TEST_TFX_IMAGE = 'gcr.io/tfx-oss-public/tfx:latest'
 _DUMMY_APIKEY = 'dummy-api-key'
-
 
 # A good pipeline run JSON dict.
 _VALID_RUN = {
@@ -55,7 +52,7 @@ _VALID_RUN = {
 }
 
 # Expected job detail page link associated with _VALID_RUN.
-_VALID_LINK = 'https://console.cloud.google.com/ai-platform/pipelines/runs/chicago_taxi_kubeflow_20200101000000?project=gcp_project_1'
+_VALID_LINK = 'https://console.cloud.google.com/ai-platform/pipelines/runs/chicago_taxi_vertex_20200101000000?project=gcp_project_1'
 
 # A pipeline run JSON dict with invalid name.
 _ILLEGALLY_NAMED_RUN = {
@@ -149,25 +146,24 @@ class _MockPipelineJobsResource(object):
     return self._MockGetRequest(name=name)
 
 
-class KubeflowV2HandlerTest(test_case_utils.TfxTest):
+class VertexHandlerTest(test_case_utils.TfxTest):
 
   def setUp(self):
-    super(KubeflowV2HandlerTest, self).setUp()
+    super(VertexHandlerTest, self).setUp()
     self.chicago_taxi_pipeline_dir = os.path.join(
         os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'testdata')
 
     self._home = self.tmp_dir
     self.enter_context(test_case_utils.change_working_dir(self.tmp_dir))
     self.enter_context(test_case_utils.override_env_var('HOME', self._home))
-    self._kubeflow_v2_home = os.path.join(self._home, 'kubeflow_v2')
+    self._vertex_home = os.path.join(self._home, 'vertex')
     self.enter_context(
-        test_case_utils.override_env_var('KUBEFLOW_V2_HOME',
-                                         self._kubeflow_v2_home))
+        test_case_utils.override_env_var('VERTEX_HOME', self._vertex_home))
 
     # Flags for handler.
-    self.engine = 'kubeflow_v2'
+    self.engine = 'vertex'
     self.pipeline_path = os.path.join(self.chicago_taxi_pipeline_dir,
-                                      'test_pipeline_1.py')
+                                      'test_pipeline_kubeflow_v2_1.py')
     self.pipeline_name = _TEST_PIPELINE_NAME
     self.pipeline_root = os.path.join(self._home, 'tfx', 'pipelines',
                                       self.pipeline_name)
@@ -179,16 +175,16 @@ class KubeflowV2HandlerTest(test_case_utils.TfxTest):
 
   def testGetJobName(self):
     self.assertEqual(_TEST_PIPELINE_JOB_NAME,
-                     kubeflow_v2_handler._get_job_name(_VALID_RUN))
+                     vertex_handler._get_job_name(_VALID_RUN))
 
   def testGetJobNameInvalidName(self):
     with self.assertRaisesRegex(RuntimeError, 'Invalid job name is received.'):
-      kubeflow_v2_handler._get_job_name(_ILLEGALLY_NAMED_RUN)
+      vertex_handler._get_job_name(_ILLEGALLY_NAMED_RUN)
 
   def testGetJobLink(self):
     self.assertEqual(
         _VALID_LINK,
-        kubeflow_v2_handler._get_job_link(
+        vertex_handler._get_job_link(
             job_name=_TEST_PIPELINE_JOB_NAME, project_id=_TEST_PROJECT_1))
 
   def testCreatePipeline(self):
@@ -196,7 +192,7 @@ class KubeflowV2HandlerTest(test_case_utils.TfxTest):
         labels.ENGINE_FLAG: self.engine,
         labels.PIPELINE_DSL_PATH: self.pipeline_path
     }
-    handler = kubeflow_v2_handler.KubeflowV2Handler(flags_dict)
+    handler = vertex_handler.VertexHandler(flags_dict)
     handler.create_pipeline()
     handler_pipeline_path = os.path.join(handler._handler_home_dir,
                                          self.pipeline_name)
@@ -210,7 +206,7 @@ class KubeflowV2HandlerTest(test_case_utils.TfxTest):
         labels.ENGINE_FLAG: self.engine,
         labels.PIPELINE_DSL_PATH: self.pipeline_path
     }
-    handler = kubeflow_v2_handler.KubeflowV2Handler(flags_dict)
+    handler = vertex_handler.VertexHandler(flags_dict)
     handler.create_pipeline()
     # Run create_pipeline again to test.
     with self.assertRaises(SystemExit) as err:
@@ -222,25 +218,25 @@ class KubeflowV2HandlerTest(test_case_utils.TfxTest):
   def testUpdatePipeline(self):
     # First create pipeline with test_pipeline.py
     pipeline_path_1 = os.path.join(self.chicago_taxi_pipeline_dir,
-                                   'test_pipeline_1.py')
+                                   'test_pipeline_kubeflow_v2_1.py')
     flags_dict_1 = {
         labels.ENGINE_FLAG: self.engine,
         labels.PIPELINE_DSL_PATH: pipeline_path_1
     }
-    handler = kubeflow_v2_handler.KubeflowV2Handler(flags_dict_1)
+    handler = vertex_handler.VertexHandler(flags_dict_1)
     handler.create_pipeline()
 
     # Update test_pipeline and run update_pipeline
     pipeline_path_2 = os.path.join(self.chicago_taxi_pipeline_dir,
-                                   'test_pipeline_2.py')
+                                   'test_pipeline_kubeflow_v2_2.py')
     flags_dict_2 = {
         labels.ENGINE_FLAG: self.engine,
         labels.PIPELINE_DSL_PATH: pipeline_path_2
     }
-    handler = kubeflow_v2_handler.KubeflowV2Handler(flags_dict_2)
+    handler = vertex_handler.VertexHandler(flags_dict_2)
     handler.update_pipeline()
-    handler_pipeline_path = os.path.join(
-        handler._handler_home_dir, self.pipeline_name)
+    handler_pipeline_path = os.path.join(handler._handler_home_dir,
+                                         self.pipeline_name)
     self.assertTrue(
         fileio.exists(
             os.path.join(handler_pipeline_path,
@@ -252,19 +248,19 @@ class KubeflowV2HandlerTest(test_case_utils.TfxTest):
         labels.ENGINE_FLAG: self.engine,
         labels.PIPELINE_DSL_PATH: self.pipeline_path
     }
-    handler = kubeflow_v2_handler.KubeflowV2Handler(flags_dict)
+    handler = vertex_handler.VertexHandler(flags_dict)
     with self.assertRaises(SystemExit) as err:
       handler.update_pipeline()
     self.assertEqual(
-        str(err.exception), 'Pipeline "{}" does not exist.'.format(
-            self.pipeline_name))
+        str(err.exception),
+        'Pipeline "{}" does not exist.'.format(self.pipeline_name))
 
   def testCompilePipeline(self):
     flags_dict = {
         labels.ENGINE_FLAG: self.engine,
         labels.PIPELINE_DSL_PATH: self.pipeline_path,
     }
-    handler = kubeflow_v2_handler.KubeflowV2Handler(flags_dict)
+    handler = vertex_handler.VertexHandler(flags_dict)
     with self.captureWritesToStream(sys.stdout) as captured:
       handler.compile_pipeline()
     self.assertIn(f'Pipeline {self.pipeline_name} compiled successfully',
@@ -272,16 +268,16 @@ class KubeflowV2HandlerTest(test_case_utils.TfxTest):
 
   def testListPipelinesNonEmpty(self):
     # First create two pipelines in the dags folder.
-    handler_pipeline_path_1 = os.path.join(os.environ['KUBEFLOW_V2_HOME'],
+    handler_pipeline_path_1 = os.path.join(os.environ['VERTEX_HOME'],
                                            'pipeline_1')
-    handler_pipeline_path_2 = os.path.join(os.environ['KUBEFLOW_V2_HOME'],
+    handler_pipeline_path_2 = os.path.join(os.environ['VERTEX_HOME'],
                                            'pipeline_2')
     fileio.makedirs(handler_pipeline_path_1)
     fileio.makedirs(handler_pipeline_path_2)
 
     # Now, list the pipelines
-    flags_dict = {labels.ENGINE_FLAG: kubeflow_labels.KUBEFLOW_V2_ENGINE}
-    handler = kubeflow_v2_handler.KubeflowV2Handler(flags_dict)
+    flags_dict = {labels.ENGINE_FLAG: labels.VERTEX_ENGINE}
+    handler = vertex_handler.VertexHandler(flags_dict)
 
     with self.captureWritesToStream(sys.stdout) as captured:
       handler.list_pipelines()
@@ -289,8 +285,8 @@ class KubeflowV2HandlerTest(test_case_utils.TfxTest):
     self.assertIn('pipeline_2', captured.contents())
 
   def testListPipelinesEmpty(self):
-    flags_dict = {labels.ENGINE_FLAG: kubeflow_labels.KUBEFLOW_V2_ENGINE}
-    handler = kubeflow_v2_handler.KubeflowV2Handler(flags_dict)
+    flags_dict = {labels.ENGINE_FLAG: labels.VERTEX_ENGINE}
+    handler = vertex_handler.VertexHandler(flags_dict)
     with self.captureWritesToStream(sys.stdout) as captured:
       handler.list_pipelines()
     self.assertIn('No pipelines to display.', captured.contents())
@@ -301,7 +297,7 @@ class KubeflowV2HandlerTest(test_case_utils.TfxTest):
         labels.ENGINE_FLAG: self.engine,
         labels.PIPELINE_DSL_PATH: self.pipeline_path
     }
-    handler = kubeflow_v2_handler.KubeflowV2Handler(flags_dict)
+    handler = vertex_handler.VertexHandler(flags_dict)
     handler.create_pipeline()
 
     # Now delete the pipeline created aand check if pipeline folder is deleted.
@@ -309,10 +305,10 @@ class KubeflowV2HandlerTest(test_case_utils.TfxTest):
         labels.ENGINE_FLAG: self.engine,
         labels.PIPELINE_NAME: self.pipeline_name
     }
-    handler = kubeflow_v2_handler.KubeflowV2Handler(flags_dict)
+    handler = vertex_handler.VertexHandler(flags_dict)
     handler.delete_pipeline()
-    handler_pipeline_path = os.path.join(
-        handler._handler_home_dir, self.pipeline_name)
+    handler_pipeline_path = os.path.join(handler._handler_home_dir,
+                                         self.pipeline_name)
     self.assertFalse(fileio.exists(handler_pipeline_path))
 
   def testDeletePipelineNonExistentPipeline(self):
@@ -320,7 +316,7 @@ class KubeflowV2HandlerTest(test_case_utils.TfxTest):
         labels.ENGINE_FLAG: self.engine,
         labels.PIPELINE_NAME: self.pipeline_name
     }
-    handler = kubeflow_v2_handler.KubeflowV2Handler(flags_dict)
+    handler = vertex_handler.VertexHandler(flags_dict)
     with self.assertRaises(SystemExit) as err:
       handler.delete_pipeline()
     self.assertEqual(
@@ -330,7 +326,6 @@ class KubeflowV2HandlerTest(test_case_utils.TfxTest):
 
 # TODO(b/169095387): re-surrect the tests related with run commandwhen the
 # a unified client becomes vailable.
-
 
 if __name__ == '__main__':
   tf.test.main()

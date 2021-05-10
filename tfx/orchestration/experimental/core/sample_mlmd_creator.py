@@ -30,8 +30,9 @@ FLAGS = flags.FLAGS
 
 flags.DEFINE_string('path', '', 'path of mlmd database file')
 flags.DEFINE_string('ir_dir', '', 'directory path of output IR files')
-flags.DEFINE_integer('pipeline_run_num', 5, 'number of pipeline run')
-flags.DEFINE_string('pipeline_id', 'uci-sample-generated', 'id of pipeline')
+
+_PIPELINE_RUN_NUM = 5
+_PIPELINE_ID = 'uci-sample-generated'
 
 
 def _get_mlmd_connection(path: str) -> metadata.Metadata:
@@ -95,16 +96,11 @@ def create_sample_pipeline(m: metadata.Metadata,
             metadata_store_pb2.Execution.COMPLETE)
 
 
-def main_factory(mlmd_connection_func):
-
-  def main(argv):
-    del argv
-    with mlmd_connection_func(FLAGS.path) as m:
-      create_sample_pipeline(m, FLAGS.pipeline_id, FLAGS.pipeline_run_num,
-                             FLAGS.ir_dir)
-
-  return main
+def main(argv):
+  del argv
+  with _get_mlmd_connection(FLAGS.path) as m:
+    create_sample_pipeline(m, _PIPELINE_ID, _PIPELINE_RUN_NUM, FLAGS.ir_dir)
 
 
 if __name__ == '__main__':
-  app.run(main_factory(_get_mlmd_connection))
+  app.run(main)

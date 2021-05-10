@@ -25,6 +25,8 @@ AIRFLOW_ENGINE = 'airflow'
 BEAM_ENGINE = 'beam'
 KUBEFLOW_ENGINE = 'kubeflow'
 LOCAL_ENGINE = 'local'
+VERTEX_ENGINE = 'vertex'
+
 # Path to root directory of the pipeline.
 PIPELINE_ROOT = 'pipeline_root'
 # List of components in the pipeline.
@@ -47,6 +49,8 @@ PIPELINE_VERSION_ID = 'pipeline_version_id'
 EXPERIMENT_ID = 'experiment_id'
 # Flag to decide whether an image build is needed
 BUILD_IMAGE = 'build_image'
+# API key for GCP API call.
+API_KEY = 'api_key'
 
 # Template specific labels.
 # Destination directory path to copy files

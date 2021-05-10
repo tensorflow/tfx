@@ -150,8 +150,7 @@ def create_pipeline(
   )
 
   # Brings data into the pipeline or otherwise joins/converts training data.
-  example_gen = tfx.components.CsvExampleGen(
-      input_base=os.path.join(data_root, 'labelled'))
+  example_gen = tfx.components.CsvExampleGen(input_base=data_root)
 
   # Computes statistics over data for visualization and example validation.
   statistics_gen = tfx.components.StatisticsGen(
@@ -194,7 +193,7 @@ def create_pipeline(
     # vs distributed training per trial
     #   ... -> DistributingCloudTunerA -> CAIP job Y -> master,worker1,2,3
     #       -> DistributingCloudTunerB -> CAIP job Z -> master,worker1,2,3
-    tuner = tfx.extensions.google_cloud_ai_platform.Tuner(
+    tuner = tfx.components.Tuner(
         module_file=module_file,
         examples=transform.outputs['transformed_examples'],
         transform_graph=transform.outputs['transform_graph'],

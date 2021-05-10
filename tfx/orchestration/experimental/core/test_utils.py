@@ -23,7 +23,6 @@ from tfx.orchestration.experimental.core import mlmd_state
 from tfx.orchestration.experimental.core import pipeline_state as pstate
 from tfx.orchestration.experimental.core import service_jobs
 from tfx.orchestration.experimental.core import task as task_lib
-from tfx.orchestration.portable import cache_utils
 from tfx.orchestration.portable import execution_publish_utils
 from tfx.orchestration.portable.mlmd import context_lib
 from tfx.orchestration.portable.mlmd import execution_lib
@@ -51,13 +50,12 @@ def fake_example_gen_run_with_handle(mlmd_handle, example_gen, span, version):
       mlmd_handle, execution.id, contexts, {
           'output_examples': [output_example],
       })
-  return execution
 
 
 def fake_example_gen_run(mlmd_connection, example_gen, span, version):
   """Writes fake example_gen output and successful execution to MLMD."""
   with mlmd_connection as m:
-    return fake_example_gen_run_with_handle(m, example_gen, span, version)
+    fake_example_gen_run_with_handle(m, example_gen, span, version)
 
 
 def fake_component_output_with_handle(mlmd_handle,
@@ -85,21 +83,6 @@ def fake_component_output(mlmd_connection,
   """Writes fake component output and execution to MLMD."""
   with mlmd_connection as m:
     fake_component_output_with_handle(m, component, execution, active)
-
-
-def fake_cached_execution(mlmd_connection, cache_context, component):
-  """Writes cached execution; MLMD must have previous execution associated with cache_context."""
-  with mlmd_connection as m:
-    cached_outputs = cache_utils.get_cached_outputs(
-        m, cache_context=cache_context)
-    contexts = context_lib.prepare_contexts(m, component.contexts)
-    execution = execution_publish_utils.register_execution(
-        m, component.node_info.type, contexts)
-    execution_publish_utils.publish_cached_execution(
-        m,
-        contexts=contexts,
-        execution_id=execution.id,
-        output_artifacts=cached_outputs)
 
 
 def get_node(pipeline, node_id):

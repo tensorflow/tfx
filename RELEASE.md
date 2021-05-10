@@ -46,8 +46,6 @@
 
 ## Bug Fixes and Other Changes
 
-*   Forces keyword arguments for AirflowComponent to make it compatible with
-    Apache Airflow 2.1.0 and later.
 *   Removed `six` dependency.
 *   Depends on `apache-beam[gcp]>=2.29,<3`.
 *   Depends on `tensorflow>=1.15.2,!=2.0.*,!=2.1.*,!=2.2.*,!=2.3.*,!=2.5.*,<3`.
@@ -105,11 +103,6 @@
   *  `--package-path` and `--skaffold_cmd` flags were deleted. The compiled path
      can be specified when creating a KubeflowDagRunner class instance. TFX CLI
      doesn't depend on skaffold any more and use Docker SDK directly.
-*  Specify the container image for KubeflowDagRunner in the
-   KubeflowDagRunnerConfig directly instead of reading it from an environment
-   variable. CLI will not set `KUBEFLOW_TFX_IMAGE` environment variable any
-   more. See
-   [example](https://github.com/tensorflow/tfx/blob/c315e7cf75822088e974e15b43c96fab86746733/tfx/experimental/templates/taxi/kubeflow_runner.py#L63).
 *  Default orchestration engine of CLI was changed to `local` orchestrator from
    `beam` orchestrator. You can still use `beam` orchestrator with
    `--engine=beam` flag.

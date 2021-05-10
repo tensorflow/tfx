@@ -18,9 +18,11 @@ from typing import Text
 import unittest
 
 import tensorflow as tf
-from tfx import v1 as tfx
+
+from tfx.dsl.io import fileio
 from tfx.examples.penguin.experimental import penguin_pipeline_sklearn_local
 from tfx.orchestration import metadata
+from tfx.orchestration.local.local_dag_runner import LocalDagRunner
 
 
 @unittest.skipIf(tf.__version__ < '2',
@@ -50,10 +52,10 @@ class PenguinPipelineSklearnLocalEndToEndTest(tf.test.TestCase):
   def assertExecutedOnce(self, component: Text) -> None:
     """Check the component is executed exactly once."""
     component_path = os.path.join(self._pipeline_root, component)
-    self.assertTrue(tfx.dsl.io.fileio.exists(component_path))
+    self.assertTrue(fileio.exists(component_path))
     execution_path = os.path.join(
         component_path, '.system', 'executor_execution')
-    execution = tfx.dsl.io.fileio.listdir(execution_path)
+    execution = fileio.listdir(execution_path)
     self.assertLen(execution, 1)
 
   def assertPipelineExecution(self) -> None:
@@ -66,7 +68,7 @@ class PenguinPipelineSklearnLocalEndToEndTest(tf.test.TestCase):
     self.assertExecutedOnce('Trainer')
 
   def testPenguinPipelineSklearnLocal(self):
-    tfx.orchestration.LocalDagRunner().run(
+    LocalDagRunner().run(
         penguin_pipeline_sklearn_local._create_pipeline(
             pipeline_name=self._pipeline_name,
             pipeline_root=self._pipeline_root,
@@ -77,12 +79,11 @@ class PenguinPipelineSklearnLocalEndToEndTest(tf.test.TestCase):
             metadata_path=self._metadata_path,
             beam_pipeline_args=[]))
 
-    self.assertTrue(tfx.dsl.io.fileio.exists(self._serving_model_dir))
-    self.assertTrue(tfx.dsl.io.fileio.exists(self._metadata_path))
+    self.assertTrue(fileio.exists(self._serving_model_dir))
+    self.assertTrue(fileio.exists(self._metadata_path))
     expected_execution_count = 8  # 7 components + 1 resolver
-    metadata_config = (
-        tfx.orchestration.metadata.sqlite_metadata_connection_config(
-            self._metadata_path))
+    metadata_config = metadata.sqlite_metadata_connection_config(
+        self._metadata_path)
     with metadata.Metadata(metadata_config) as m:
       artifact_count = len(m.store.get_artifacts())
       execution_count = len(m.store.get_executions())

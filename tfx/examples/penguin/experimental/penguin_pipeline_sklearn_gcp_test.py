@@ -17,8 +17,9 @@ import os
 from unittest import mock
 
 import tensorflow as tf
-from tfx import v1 as tfx
+from tfx.dsl.io import fileio
 from tfx.examples.penguin.experimental import penguin_pipeline_sklearn_gcp
+from tfx.orchestration.kubeflow.kubeflow_dag_runner import KubeflowDagRunner
 from tfx.utils import test_case_utils
 
 
@@ -67,9 +68,9 @@ class PenguinPipelineSklearnGcpTest(test_case_utils.TfxTest):
         beam_pipeline_args=[])
     self.assertEqual(8, len(logical_pipeline.components))
 
-    tfx.orchestration.experimental.KubeflowDagRunner().run(logical_pipeline)
+    KubeflowDagRunner().run(logical_pipeline)
     file_path = os.path.join(self.tmp_dir, 'sklearn_test.tar.gz')
-    self.assertTrue(tfx.dsl.io.fileio.exists(file_path))
+    self.assertTrue(fileio.exists(file_path))
 
 
 if __name__ == '__main__':
