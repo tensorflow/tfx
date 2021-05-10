@@ -60,7 +60,6 @@ def make_pipeline_sdk_required_install_packages():
           git_master='@git+https://github.com/google/ml-metadata@master'),
       'packaging>=20,<21',
       'protobuf>=3.12.2,<4',
-      'six>=1.10,<2',
       'docker>=4.1,<5',
       # TODO(b/176812386): Deprecate usage of jinja2 for placeholders.
       'jinja2>=2.7.3,<3',
@@ -69,7 +68,7 @@ def make_pipeline_sdk_required_install_packages():
 
 def make_required_install_packages():
   # Make sure to sync the versions of common dependencies (absl-py, numpy,
-  # six, and protobuf) with TF.
+  # and protobuf) with TF.
   return make_pipeline_sdk_required_install_packages() + [
       'apache-beam[gcp]>=2.28,<3',
       'attrs>=19.3.0,<21',

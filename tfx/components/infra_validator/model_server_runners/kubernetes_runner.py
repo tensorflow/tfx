@@ -15,7 +15,6 @@
 
 import datetime
 import os
-import sys
 import time
 from typing import Optional
 
@@ -23,7 +22,6 @@ from absl import logging
 from apache_beam.utils import retry
 from kubernetes import client as k8s_client
 from kubernetes.client import rest
-import six
 
 from tfx.components.infra_validator import error_types
 from tfx.components.infra_validator import serving_bins
@@ -216,7 +214,7 @@ class KubernetesRunner(base_runner.BaseModelServerRunner):
         logging.info('Pod (name=%s) does not exist.', self._pod_name)
         return
       else:
-        six.reraise(*sys.exc_info())
+        raise
 
   def _BuildPodManifest(self) -> k8s_client.V1Pod:
     annotations = {}

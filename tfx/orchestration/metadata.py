@@ -29,7 +29,6 @@ import types
 from typing import Any, Dict, List, Optional, Set, Text, Tuple, Type, Union
 
 import absl
-import six
 from tfx.dsl.io import fileio
 from tfx.orchestration import data_types
 from tfx.types import artifact_utils
@@ -469,7 +468,7 @@ class Metadata(object):
     """Updates the execution proto with given type and state."""
     if state is not None:
       execution.properties[
-          _EXECUTION_TYPE_KEY_STATE].string_value = six.ensure_text(state)
+          _EXECUTION_TYPE_KEY_STATE].string_value = state
     # Forward-compatible change to leverage built-in schema to track states.
     if state == EXECUTION_STATE_CACHED:
       execution.last_known_state = metadata_store_pb2.Execution.CACHED
@@ -1016,8 +1015,7 @@ class Metadata(object):
     properties = properties or {}
     property_type_mapping = {
         int: metadata_store_pb2.INT,
-        six.binary_type: metadata_store_pb2.STRING,
-        six.text_type: metadata_store_pb2.STRING,
+        str: metadata_store_pb2.STRING,
         float: metadata_store_pb2.DOUBLE
     }
     context_type_id = self._register_context_type_if_not_exist(
@@ -1030,7 +1028,7 @@ class Metadata(object):
     for k, v in properties.items():
       if isinstance(v, int):
         context.properties[k].int_value = v
-      elif isinstance(v, six.string_types):
+      elif isinstance(v, str):
         context.properties[k].string_value = v
       elif isinstance(v, float):
         context.properties[k].double_value = v

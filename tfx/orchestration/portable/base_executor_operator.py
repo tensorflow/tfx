@@ -16,7 +16,6 @@
 import abc
 from typing import Optional
 
-import six
 from tfx.orchestration.portable import data_types
 from tfx.proto.orchestration import execution_result_pb2
 from tfx.utils import abc_utils
@@ -24,7 +23,7 @@ from tfx.utils import abc_utils
 from google.protobuf import message
 
 
-class BaseExecutorOperator(six.with_metaclass(abc.ABCMeta, object)):
+class BaseExecutorOperator(abc.ABC):
   """The base class of all executor operators."""
 
   SUPPORTED_EXECUTOR_SPEC_TYPE = abc_utils.abstract_property()

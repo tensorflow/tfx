@@ -21,7 +21,6 @@ from __future__ import print_function
 import abc
 from typing import Any, Dict, Optional, Text, Type
 
-from six import with_metaclass
 from tfx.dsl.components.base import base_driver
 from tfx.dsl.components.base import base_executor
 from tfx.dsl.components.base import executor_spec as executor_spec_module
@@ -36,7 +35,7 @@ def _abstract_property() -> Any:
   return abc.abstractmethod(lambda: None)
 
 
-class BaseNode(with_metaclass(abc.ABCMeta, json_utils.Jsonable)):
+class BaseNode(json_utils.Jsonable, abc.ABC):
   """Base class for a node in TFX pipeline."""
 
   def __init__(

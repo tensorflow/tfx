@@ -22,8 +22,6 @@ import abc
 import inspect
 from typing import Any, Dict, Optional, Text
 
-from six import with_metaclass
-
 from tfx import types
 from tfx.dsl.components.base import base_driver
 from tfx.dsl.components.base import base_node
@@ -35,7 +33,7 @@ from tfx.utils import doc_controls
 from google.protobuf import message
 
 
-class BaseComponent(with_metaclass(abc.ABCMeta, base_node.BaseNode)):
+class BaseComponent(base_node.BaseNode, abc.ABC):
   """Base class for a TFX pipeline component.
 
   An instance of a subclass of BaseComponent represents the parameters for a
@@ -168,7 +166,7 @@ class BaseComponent(with_metaclass(abc.ABCMeta, base_node.BaseNode)):
 
   @property
   @doc_controls.do_not_doc_in_subclasses
-  def inputs(self) -> node_common._PropertyDictWrapper:  # pylint: disable=protected-access
+  def inputs(self) -> node_common._PropertyDictWrapper:  # pylint: disable=protected-access, g-missing-from-attributes
     return self.spec.inputs
 
   @property
@@ -178,5 +176,5 @@ class BaseComponent(with_metaclass(abc.ABCMeta, base_node.BaseNode)):
 
   @property
   @doc_controls.do_not_doc_in_subclasses
-  def exec_properties(self) -> Dict[Text, Any]:
+  def exec_properties(self) -> Dict[Text, Any]:  # pylint: disable=g-missing-from-attributes
     return self.spec.exec_properties

@@ -22,7 +22,6 @@ import os
 from typing import Any, Iterable, List, Mapping, Optional, Text
 
 from absl import logging
-import six
 import tensorflow as tf
 from tfx import types
 from tfx.components.infra_validator import types as iv_types
@@ -102,7 +101,7 @@ def build_requests(  # pylint: disable=invalid-name
 
 
 # TODO(b/151790176): Move to tfx_bsl, or keep it if TF adds a proper public API.
-def _parse_saved_model_signatures(
+def _parse_saved_model_signatures(  # pylint: disable=invalid-name
     model_path: Text,
     tag_set: Iterable[Text],
     signature_names: Iterable[Text]) -> Mapping[Text, _SignatureDef]:
@@ -138,7 +137,7 @@ def _parse_saved_model_signatures(
   return result
 
 
-class _BaseRequestBuilder(six.with_metaclass(abc.ABCMeta, object)):
+class _BaseRequestBuilder(abc.ABC):
   """Base class for all RequestBuilders."""
 
   def __init__(self):
@@ -202,6 +201,7 @@ class _BaseRequestBuilder(six.with_metaclass(abc.ABCMeta, object)):
             dataset_options.TensorFlowDatasetOptions(batch_size=num_examples)))
 
   def _ReadFromDataset(self, dataset: tf.data.Dataset):
+    """Fill self._records from TF Dataset."""
     dataset = dataset.take(1)
     if tf.executing_eagerly():
       for d in dataset:
@@ -251,6 +251,7 @@ class _TFServingRpcRequestBuilder(_BaseRequestBuilder):
 
   @property
   def examples(self) -> List[tf.train.Example]:
+    """Get parsed TF.Examples that the builder has built."""
     if not self._examples:
       if (self._payload_format !=
           example_gen_pb2.PayloadFormat.FORMAT_TF_EXAMPLE):

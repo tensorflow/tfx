@@ -15,13 +15,12 @@
 
 import abc
 
-import six
 from tfx.orchestration import metadata
 from tfx.orchestration.portable import data_types
 from tfx.proto.orchestration import driver_output_pb2
 
 
-class BaseDriver(six.with_metaclass(abc.ABCMeta, object)):
+class BaseDriver(abc.ABC):
   """The base class of all drivers."""
 
   def __init__(self, mlmd_connection: metadata.Metadata):

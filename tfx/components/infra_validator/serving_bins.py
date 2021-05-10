@@ -23,7 +23,6 @@ import os
 from typing import Any, Dict, List, Optional, Text
 
 from docker import types as docker_types
-import six
 
 from tfx.components.infra_validator.model_server_clients import base_client
 from tfx.components.infra_validator.model_server_clients import tensorflow_serving_client
@@ -52,7 +51,7 @@ def parse_serving_binaries(  # pylint: disable=invalid-name
     raise ValueError('Invalid serving_binary {}'.format(serving_binary))
 
 
-class ServingBinary(six.with_metaclass(abc.ABCMeta, object)):
+class ServingBinary(abc.ABC):
   """Base class for serving binaries."""
 
   @abc.abstractproperty

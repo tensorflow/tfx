@@ -25,6 +25,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import builtins
 import datetime
 import functools
 import html
@@ -35,7 +36,6 @@ from typing import List, Optional, Text
 import absl
 import jinja2
 import nbformat
-from six.moves import builtins
 from tfx import types
 from tfx.dsl.components.base import base_node
 from tfx.orchestration import data_types

@@ -23,7 +23,6 @@ import copy
 from typing import Any, Dict, List, Optional, Text
 
 import absl
-from six import with_metaclass
 
 from tfx import types
 from tfx.dsl.components.base import base_node
@@ -34,7 +33,7 @@ from tfx.orchestration import publisher
 from tfx.orchestration.config import base_component_config
 
 
-class BaseComponentLauncher(with_metaclass(abc.ABCMeta, object)):
+class BaseComponentLauncher(abc.ABC):
   """Responsible for launching driver, executor and publisher of component."""
 
   def __init__(

@@ -24,7 +24,6 @@ import re
 from typing import Any, Dict, Iterable, List, Optional, Text, Tuple, Union
 
 from absl import logging
-import six
 import tensorflow as tf
 
 from tfx.dsl.io import fileio
@@ -105,26 +104,26 @@ def dict_to_example(instance: Dict[Text, Any]) -> tf.train.Example:
     # TODO(jyzhao): support more types.
     if value is None:
       feature[key] = tf.train.Feature()
-    elif isinstance(value, six.integer_types):
+    elif isinstance(value, int):
       feature[key] = tf.train.Feature(
           int64_list=tf.train.Int64List(value=[value]))
     elif isinstance(value, float):
       feature[key] = tf.train.Feature(
           float_list=tf.train.FloatList(value=[value]))
-    elif isinstance(value, six.text_type) or isinstance(value, str):
+    elif isinstance(value, str):
       feature[key] = tf.train.Feature(
           bytes_list=tf.train.BytesList(
               value=[value.encode(_DEFAULT_ENCODING)]))
     elif isinstance(value, list):
       if not value:
         feature[key] = tf.train.Feature()
-      elif isinstance(value[0], six.integer_types):
+      elif isinstance(value[0], int):
         feature[key] = tf.train.Feature(
             int64_list=tf.train.Int64List(value=value))
       elif isinstance(value[0], float):
         feature[key] = tf.train.Feature(
             float_list=tf.train.FloatList(value=value))
-      elif isinstance(value[0], six.text_type) or isinstance(value[0], str):
+      elif isinstance(value[0], str):
         feature[key] = tf.train.Feature(
             bytes_list=tf.train.BytesList(
                 value=[v.encode(_DEFAULT_ENCODING) for v in value]))

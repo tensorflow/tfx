@@ -25,9 +25,6 @@ import sys
 import types
 from typing import Any, Callable, Dict, List, Text
 
-# Standard Imports
-
-import six
 from tfx import types as tfx_types
 from tfx.dsl.component.experimental import function_parser
 from tfx.dsl.components.base import base_component
@@ -257,9 +254,6 @@ def component(func: types.FunctionType) -> Callable[..., Any]:
   Raises:
     EnvironmentError: if the current Python interpreter is not Python 3.
   """
-  if six.PY2:
-    raise EnvironmentError('`@component` is only supported in Python 3.')
-
   # Defining a component within a nested class or function closure causes
   # problems because in this case, the generated component classes can't be
   # referenced via their qualified module path.

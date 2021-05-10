@@ -18,6 +18,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import builtins
 import os
 import shutil
 import tempfile
@@ -27,7 +28,6 @@ from unittest import mock
 
 import jinja2
 import nbformat
-from six.moves import builtins
 import tensorflow as tf
 from tfx import types
 from tfx.dsl.components.base import base_component

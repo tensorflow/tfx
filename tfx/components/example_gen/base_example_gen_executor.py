@@ -26,7 +26,6 @@ from typing import Any, Dict, List, Text, Union
 
 from absl import logging
 import apache_beam as beam
-from six import with_metaclass
 import tensorflow as tf
 from tfx import types
 from tfx.components.example_gen import utils
@@ -130,8 +129,7 @@ def _WriteSplit(
               file_name_suffix='.gz'))
 
 
-class BaseExampleGenExecutor(
-    with_metaclass(abc.ABCMeta, base_beam_executor.BaseBeamExecutor)):
+class BaseExampleGenExecutor(base_beam_executor.BaseBeamExecutor, abc.ABC):
   """Generic TFX example gen base executor.
 
   The base ExampleGen executor takes a configuration and converts external data

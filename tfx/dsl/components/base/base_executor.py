@@ -26,7 +26,6 @@ from typing import Any, Dict, List, Optional, Text
 
 import absl
 from absl import flags
-from six import with_metaclass
 from tfx import types
 from tfx.dsl.io import fileio
 from tfx.proto.orchestration import execution_result_pb2
@@ -43,7 +42,7 @@ except ModuleNotFoundError:
   _BeamPipeline = Any
 
 
-class BaseExecutor(with_metaclass(abc.ABCMeta, object)):
+class BaseExecutor(abc.ABC):
   """Abstract TFX executor class."""
 
   class Context(object):
@@ -80,10 +79,10 @@ class BaseExecutor(with_metaclass(abc.ABCMeta, object)):
       return self._stateful_working_dir
 
   @abc.abstractmethod
-  def Do(
+  def Do(  # pylint: disable=invalid-name
       self, input_dict: Dict[Text, List[types.Artifact]],
-      output_dict: Dict[Text, List[types.Artifact]], exec_properties: Dict[Text,
-                                                                           Any]
+      output_dict: Dict[Text, List[types.Artifact]],
+      exec_properties: Dict[Text, Any],
   ) -> Optional[execution_result_pb2.ExecutorOutput]:
     """Execute underlying component implementation.
 

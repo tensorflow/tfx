@@ -23,7 +23,6 @@ import tempfile
 
 from unittest import mock
 import numpy as np
-import six
 
 import tensorflow as tf
 
@@ -53,7 +52,7 @@ class TFLiteRewriterTest(tf.test.TestCase):
     saved_model_path = os.path.join(src_model_path,
                                     tf.saved_model.SAVED_MODEL_FILENAME_PBTXT)
     with fileio.open(saved_model_path, 'wb') as f:
-      f.write(six.ensure_binary('saved_model'))
+      f.write(b'saved_model')
 
     src_model = rewriter.ModelDescription(rewriter.ModelType.SAVED_MODEL,
                                           src_model_path)
@@ -82,7 +81,7 @@ class TFLiteRewriterTest(tf.test.TestCase):
     expected_model = os.path.join(dst_model_path, 'fname')
     self.assertTrue(fileio.exists(expected_model))
     with fileio.open(expected_model, 'rb') as f:
-      self.assertEqual(six.ensure_text(f.readline()), 'model')
+      self.assertEqual(f.read(), b'model')
 
   @mock.patch('tfx.components.trainer.rewriting'
               '.tflite_rewriter.TFLiteRewriter._create_tflite_converter')
@@ -97,13 +96,13 @@ class TFLiteRewriterTest(tf.test.TestCase):
     fileio.mkdir(assets_dir)
     assets_file_path = os.path.join(assets_dir, 'assets_file')
     with fileio.open(assets_file_path, 'wb') as f:
-      f.write(six.ensure_binary('assets_file'))
+      f.write(b'assets_file')
 
     assets_extra_dir = os.path.join(src_model_path, EXTRA_ASSETS_DIRECTORY)
     fileio.mkdir(assets_extra_dir)
     assets_extra_file_path = os.path.join(assets_extra_dir, 'assets_extra_file')
     with fileio.open(assets_extra_file_path, 'wb') as f:
-      f.write(six.ensure_binary('assets_extra_file'))
+      f.write(b'assets_extra_file')
 
     tfrw = tflite_rewriter.TFLiteRewriter(
         name='myrw',
@@ -120,19 +119,19 @@ class TFLiteRewriterTest(tf.test.TestCase):
     expected_model = os.path.join(dst_model_path, 'fname')
     self.assertTrue(fileio.exists(expected_model))
     with fileio.open(expected_model, 'rb') as f:
-      self.assertEqual(six.ensure_text(f.readline()), 'model')
+      self.assertEqual(f.read(), b'model')
 
     expected_assets_file = os.path.join(dst_model_path,
                                         tf.saved_model.ASSETS_DIRECTORY,
                                         'assets_file')
     with fileio.open(expected_assets_file, 'rb') as f:
-      self.assertEqual(six.ensure_text(f.readline()), 'assets_file')
+      self.assertEqual(f.read(), b'assets_file')
 
     expected_assets_extra_file = os.path.join(dst_model_path,
                                               EXTRA_ASSETS_DIRECTORY,
                                               'assets_extra_file')
     with fileio.open(expected_assets_extra_file, 'rb') as f:
-      self.assertEqual(six.ensure_text(f.readline()), 'assets_extra_file')
+      self.assertEqual(f.read(), b'assets_extra_file')
 
   @mock.patch('tfx.components.trainer.rewriting.'
               'tflite_rewriter.TFLiteRewriter._create_tflite_converter')
@@ -157,7 +156,7 @@ class TFLiteRewriterTest(tf.test.TestCase):
     expected_model = os.path.join(dst_model_path, 'fname')
     self.assertTrue(fileio.exists(expected_model))
     with fileio.open(expected_model, 'rb') as f:
-      self.assertEqual(six.ensure_text(f.readline()), 'model')
+      self.assertEqual(f.read(), b'model')
 
   @mock.patch('tfx.components.trainer.rewriting.'
               'tflite_rewriter.TFLiteRewriter._create_tflite_converter')
@@ -183,7 +182,7 @@ class TFLiteRewriterTest(tf.test.TestCase):
     expected_model = os.path.join(dst_model_path, 'fname')
     self.assertTrue(fileio.exists(expected_model))
     with fileio.open(expected_model, 'rb') as f:
-      self.assertEqual(six.ensure_text(f.readline()), 'model')
+      self.assertEqual(f.read(), b'model')
 
   @mock.patch('tfx.components.trainer.rewriting.'
               'tflite_rewriter._create_tflite_compatible_saved_model')
@@ -235,7 +234,7 @@ class TFLiteRewriterTest(tf.test.TestCase):
     expected_model = os.path.join(dst_model_path, 'fname')
     self.assertTrue(fileio.exists(expected_model))
     with fileio.open(expected_model, 'rb') as f:
-      self.assertEqual(six.ensure_text(f.readline()), 'model')
+      self.assertEqual(f.read(), b'model')
 
   @mock.patch('tensorflow.lite.TFLiteConverter.from_saved_model')
   def testInvokeTFLiteRewriterWithSignatureKey(self, converter):

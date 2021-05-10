@@ -20,10 +20,8 @@ from __future__ import print_function
 import abc
 from typing import Text
 
-import six
 
-
-class BaseModelServerRunner(six.with_metaclass(abc.ABCMeta, object)):
+class BaseModelServerRunner(abc.ABC):
   """Shared interface of all model server runners.
 
   Model server runner is responsible for managing the model server job and

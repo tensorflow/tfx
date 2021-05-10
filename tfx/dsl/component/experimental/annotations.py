@@ -23,7 +23,6 @@ from __future__ import print_function
 
 import inspect
 from typing import Text, Type, Union
-from six import with_metaclass
 
 from tfx.types import artifact
 
@@ -37,7 +36,7 @@ class _ArtifactGenericMeta(type):
     return cls._generic_getitem(params)  # pytype: disable=attribute-error
 
 
-class _ArtifactGeneric(with_metaclass(_ArtifactGenericMeta, object)):
+class _ArtifactGeneric(metaclass=_ArtifactGenericMeta):
   """A generic that takes a Type[tfx.types.Artifact] as its single argument."""
 
   def __init__(  # pylint: disable=invalid-name
@@ -79,7 +78,7 @@ class _PrimitiveTypeGenericMeta(type):
     return cls._generic_getitem(params)  # pytype: disable=attribute-error
 
 
-class _PrimitiveTypeGeneric(with_metaclass(_PrimitiveTypeGenericMeta, object)):
+class _PrimitiveTypeGeneric(metaclass=_PrimitiveTypeGenericMeta):
   """A generic that takes a primitive type as its single argument."""
 
   def __init__(  # pylint: disable=invalid-name

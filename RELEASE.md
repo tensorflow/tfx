@@ -12,6 +12,8 @@
 
 ## Bug Fixes and Other Changes
 
+*  Removed `six` dependency.
+
 ## Documentation Updates
 
 # Version 0.30.0

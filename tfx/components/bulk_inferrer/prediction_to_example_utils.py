@@ -16,7 +16,6 @@
 from typing import Any, List, Tuple, Text, Union
 
 import numpy as np
-import six
 import tensorflow as tf
 
 from tfx.proto import bulk_inferrer_pb2
@@ -173,8 +172,8 @@ def _add_columns(example: tf.train.Example,
     assert col not in feature_map, ('column name %s already exists in example: '
                                     '%s') % (col, example)
     # Note: we only consider two types, bytes and float for now.
-    if isinstance(value[0], (six.text_type, six.binary_type)):
-      if isinstance(value[0], six.text_type):
+    if isinstance(value[0], (str, bytes)):
+      if isinstance(value[0], str):
         bytes_value = [v.encode('utf-8') for v in value]
       else:
         bytes_value = value
