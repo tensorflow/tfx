@@ -104,7 +104,6 @@ _ai_platform_serving_args = {
 # Beam args to run data processing on DataflowRunner.
 #
 # TODO(b/151114974): Remove `disk_size_gb` flag after default is increased.
-# TODO(b/151116587): Remove `shuffle_mode` flag after default is changed.
 # TODO(b/156874687): Remove `machine_type` after IP addresses are no longer a
 #                    scaling bottleneck.
 # TODO(b/171733562): Remove `use_runner_v2` once it is the default for Dataflow.
@@ -116,7 +115,6 @@ _beam_pipeline_args = [
 
     # Temporary overrides of defaults.
     '--disk_size_gb=50',
-    '--experiments=shuffle_mode=auto',
     '--machine_type=e2-standard-8',
     '--experiments=use_runner_v2',
 ]
