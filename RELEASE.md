@@ -24,6 +24,7 @@
 ## Bug fixes and other changes
 
 *   Depends on `apache-beam[gcp]>=2.25,!=2.26.*,<2.29`.
+*   Depends on `tensorflow-data-validation>=0.26.1,<0.27`.
 
 ## Documentation updates
 
