@@ -73,7 +73,7 @@ def make_required_install_packages():
   # TODO(b/130767399): add flask once the frontend is exposed externally.
   return make_pipeline_sdk_required_install_packages() + [
       # LINT.IfChange
-      'apache-beam[gcp]>=2.25,!=2.26.*,<3',
+      'apache-beam[gcp]>=2.25,!=2.26.*,<2.29',
       # LINT.ThenChange(examples/chicago_taxi_pipeline/setup/setup_beam.sh)
       'attrs>=19.3.0,<21',
       'click>=7,<8',
