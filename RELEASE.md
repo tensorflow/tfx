@@ -1,4 +1,4 @@
-# Version 0.26.3
+# Version 0.26.4
 
 *   This a bug fix only version
 ## Major Features and Improvements
@@ -23,7 +23,7 @@
 
 ## Bug fixes and other changes
 
-*   Automatic autoreload of underlying modules a single `_ModuleFinder` registered per module.
+*   Depends on `apache-beam[gcp]>=2.25,!=2.26.*,<2.29`.
 
 ## Documentation updates
 
