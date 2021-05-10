@@ -20,6 +20,7 @@ import os
 from absl import logging
 from tfx.dsl.compiler import compiler
 from tfx.dsl.compiler import constants
+from tfx.dsl.components.base import base_component
 from tfx.orchestration import metadata
 from tfx.orchestration import pipeline as pipeline_py
 from tfx.orchestration.local import runner_utils
@@ -46,6 +47,13 @@ class LocalDagRunner(tfx_runner.TfxRunner):
     # and hence we avoid executing the pipeline.
     if 'TFX_JSON_EXPORT_PIPELINE_ARGS_PATH' in os.environ:
       return
+
+    for component in pipeline.components:
+      # TODO(b/187122662): Pass through pip dependencies as a first-class
+      # component flag.
+      if isinstance(component, base_component.BaseComponent):
+        component._resolve_pip_dependencies(  # pylint: disable=protected-access
+            pipeline.pipeline_info.pipeline_root)
 
     c = compiler.Compiler()
     pipeline = c.compile(pipeline)
