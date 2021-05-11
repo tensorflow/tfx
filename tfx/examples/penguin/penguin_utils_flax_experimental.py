@@ -131,8 +131,10 @@ def _make_trained_model(train_data: tf.data.Dataset,
 
   trained_params = optimizer.target
 
-  # Convert the prediction function to TF.
-  tf_fn = jax2tf.convert(predict, with_gradient=False, enable_xla=True)
+  # Convert the prediction function to TF, with a variable batch dimension
+  # for all inputs.
+  tf_fn = jax2tf.convert(predict, with_gradient=False, enable_xla=True,
+                         polymorphic_shapes=(None, '(b, 1)'))
 
   # Create tf.Variables for the parameters. If you want more useful variable
   # names, you can use `tree.map_structure_with_path` from the `dm-tree`
@@ -327,8 +329,6 @@ def run_fn(fn_args: tfx.components.FnArgs):
       steps_per_epoch=fn_args.train_steps,
       eval_steps_per_epoch=fn_args.eval_steps,
       tensorboard_log_dir=fn_args.model_run_dir)
-  # TODO(b/180721874): batch polymorphic model not yet supported.
 
-  signatures = base.make_serving_signatures(model, tf_transform_output,
-                                            serving_batch_size=1)
+  signatures = base.make_serving_signatures(model, tf_transform_output)
   tf.saved_model.save(model, fn_args.serving_model_dir, signatures=signatures)
