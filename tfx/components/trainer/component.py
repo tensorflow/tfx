@@ -22,12 +22,13 @@ from typing import Any, Dict, Optional, Text, Union
 from absl import logging
 from tfx import types
 from tfx.components.trainer import executor
+from tfx.components.util import udf_utils
 from tfx.dsl.components.base import base_component
 from tfx.dsl.components.base import executor_spec
 from tfx.orchestration import data_types
 from tfx.proto import trainer_pb2
 from tfx.types import standard_artifacts
-from tfx.types.standard_component_specs import TrainerSpec
+from tfx.types import standard_component_specs
 from tfx.utils import json_utils
 
 
@@ -85,7 +86,7 @@ class Trainer(base_component.BaseComponent):
                   (e.g., TensorBoard logs).
   """
 
-  SPEC_CLASS = TrainerSpec
+  SPEC_CLASS = standard_component_specs.TrainerSpec
   EXECUTOR_SPEC = executor_spec.ExecutorClassSpec(executor.GenericExecutor)
 
   def __init__(
@@ -142,14 +143,18 @@ class Trainer(base_component.BaseComponent):
             'train_spec': an instance of tf.estimator.TrainSpec
             'eval_spec': an instance of tf.estimator.EvalSpec
             'eval_input_receiver_fn': an instance of tfma EvalInputReceiver.
-
+        Exactly one of 'module_file' or 'run_fn' must be supplied if Trainer
+        uses GenericExecutor (default). Use of a RuntimeParameter for this
+        argument is experimental.
       run_fn:  A python path to UDF model definition function for generic
         trainer. See 'module_file' for details. Exactly one of 'module_file' or
         'run_fn' must be supplied if Trainer uses GenericExecutor (default).
+         Use of a RuntimeParameter for this argument is experimental.
       trainer_fn:  A python path to UDF model definition function for estimator
         based trainer. See 'module_file' for the required signature of the UDF.
         Exactly one of 'module_file' or 'trainer_fn' must be supplied if Trainer
-        uses Estimator based Executor
+        uses Estimator based Executor Use of a RuntimeParameter for this
+        argument is experimental.
       train_args: A trainer_pb2.TrainArgs instance or a dict, containing args
         used for training. Currently only splits and num_steps are available. If
         it's provided as a dict and any field is a RuntimeParameter, it should
@@ -192,7 +197,7 @@ class Trainer(base_component.BaseComponent):
     examples = examples or transformed_examples
     model = types.Channel(type=standard_artifacts.Model)
     model_run = types.Channel(type=standard_artifacts.ModelRun)
-    spec = TrainerSpec(
+    spec = standard_component_specs.TrainerSpec(
         examples=examples,
         transform_graph=transform_graph,
         schema=schema,
@@ -209,3 +214,11 @@ class Trainer(base_component.BaseComponent):
     super(Trainer, self).__init__(
         spec=spec,
         custom_executor_spec=custom_executor_spec)
+
+    if udf_utils.should_package_user_modules():
+      # In this case, the `MODULE_PATH_KEY` execution property will be injected
+      # as a reference to the given user module file after packaging, at which
+      # point the `MODULE_FILE_KEY` execution property will be removed.
+      udf_utils.add_user_module_dependency(
+          self, standard_component_specs.MODULE_FILE_KEY,
+          standard_component_specs.MODULE_PATH_KEY)

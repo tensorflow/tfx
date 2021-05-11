@@ -335,6 +335,7 @@ class TrainerSpec(ComponentSpec):
       TRAIN_ARGS_KEY: ExecutionParameter(type=trainer_pb2.TrainArgs),
       EVAL_ARGS_KEY: ExecutionParameter(type=trainer_pb2.EvalArgs),
       MODULE_FILE_KEY: ExecutionParameter(type=(str, Text), optional=True),
+      MODULE_PATH_KEY: ExecutionParameter(type=(str, Text), optional=True),
       RUN_FN_KEY: ExecutionParameter(type=(str, Text), optional=True),
       TRAINER_FN_KEY: ExecutionParameter(type=(str, Text), optional=True),
       CUSTOM_CONFIG_KEY: ExecutionParameter(type=(str, Text), optional=True),
@@ -390,6 +391,8 @@ class TransformSpec(ComponentSpec):
 
   PARAMETERS = {
       MODULE_FILE_KEY:
+          ExecutionParameter(type=(str, Text), optional=True),
+      MODULE_PATH_KEY:
           ExecutionParameter(type=(str, Text), optional=True),
       PREPROCESSING_FN_KEY:
           ExecutionParameter(type=(str, Text), optional=True),

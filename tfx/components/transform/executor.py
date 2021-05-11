@@ -41,6 +41,7 @@ from tfx import types
 from tfx.components.transform import labels
 from tfx.components.transform import stats_options_util
 from tfx.components.util import tfxio_utils
+from tfx.components.util import udf_utils
 from tfx.components.util import value_utils
 from tfx.dsl.components.base import base_beam_executor
 from tfx.dsl.io import fileio
@@ -85,6 +86,9 @@ _TELEMETRY_DESCRIPTORS = [_TRANSFORM_COMPONENT_DESCRIPTOR]
 # TODO(b/37788560): Increase this max, based on results of experimentation with
 # many non-packable analyzers on our benchmarks.
 _MAX_ESTIMATED_STAGES_COUNT = 20000
+
+# Beam extra pip package prefix.
+_BEAM_EXTRA_PACKAGE_PREFIX = '--extra_package='
 
 
 # TODO(b/122478841): Move it to a common place that is shared across components.
@@ -299,10 +303,14 @@ class Executor(base_beam_executor.BaseBeamExecutor):
           cached information for analyzed examples will be written.
       exec_properties: A dict of execution properties, including:
         - module_file: The file path to a python module file, from which the
-          'preprocessing_fn' function will be loaded.
+          'preprocessing_fn' function will be loaded. Exactly one of
+          'module_file', 'module_path' and 'preprocessing_fn' should be set.
+        - module_path: The python module path, from which the
+          'preprocessing_fn' function will be loaded. Exactly one of
+          'module_file', 'module_path' and 'preprocessing_fn' should be set.
         - preprocessing_fn: The module path to a python function that
-          implements 'preprocessing_fn'. Exactly one of 'module_file' and
-          'preprocessing_fn' should be set.
+          implements 'preprocessing_fn'. Exactly one of 'module_file',
+          'module_path' and 'preprocessing_fn' should be set.
         - splits_config: A transform_pb2.SplitsConfig instance, providing splits
           that should be analyzed and splits that should be transformed. Note
           analyze and transform splits can have overlap. Default behavior (when
@@ -419,6 +427,15 @@ class Executor(base_beam_executor.BaseBeamExecutor):
           'or disable it by explicitly setting `force_tf_compat_v1=True` in '
           'the Transform component.')
 
+    # Make sure user packages get propagated to the remote Beam worker.
+    user_module_key = exec_properties.get(
+        standard_component_specs.MODULE_PATH_KEY, None)
+    _, extra_pip_packages = udf_utils.decode_user_module_key(user_module_key)
+    for pip_package_path in extra_pip_packages:
+      local_pip_package_path = io_utils.ensure_local(pip_package_path)
+      self._beam_pipeline_args.append(_BEAM_EXTRA_PACKAGE_PREFIX +
+                                      local_pip_package_path)
+
     label_inputs = {
         labels.COMPUTE_STATISTICS_LABEL:
             False,
@@ -438,6 +455,8 @@ class Executor(base_beam_executor.BaseBeamExecutor):
                                                    len(transform_data_paths),
         labels.MODULE_FILE:
             exec_properties.get(standard_component_specs.MODULE_FILE_KEY, None),
+        labels.MODULE_PATH:
+            user_module_key,
         labels.PREPROCESSING_FN:
             exec_properties.get(standard_component_specs.PREPROCESSING_FN_KEY,
                                 None),
@@ -774,24 +793,29 @@ class Executor(base_beam_executor.BaseBeamExecutor):
     """
     has_module_file = bool(
         value_utils.GetSoleValue(inputs, labels.MODULE_FILE, strict=False))
+    has_module_path = bool(
+        value_utils.GetSoleValue(inputs, labels.MODULE_PATH, strict=False))
     has_preprocessing_fn = bool(
         value_utils.GetSoleValue(inputs, labels.PREPROCESSING_FN, strict=False))
 
-    if has_module_file == has_preprocessing_fn:
+    if (int(has_module_file) + int(has_module_path) +
+        int(has_preprocessing_fn)) != 1:
       raise ValueError(
-          'Neither or both of MODULE_FILE and PREPROCESSING_FN have been '
-          'supplied in inputs.')
+          'Exactly one of MODULE_FILE, MODULE_PATH or PREPROCESSING_FN should '
+          'be supplied in inputs.')
 
-    if has_module_file:
-      fn = import_utils.import_func_from_source(
-          value_utils.GetSoleValue(inputs, labels.MODULE_FILE),
-          standard_component_specs.PREPROCESSING_FN_KEY)
-    else:
-      preprocessing_fn_path_split = value_utils.GetSoleValue(
-          inputs, labels.PREPROCESSING_FN).split('.')
-      fn = import_utils.import_func_from_module(
-          '.'.join(preprocessing_fn_path_split[0:-1]),
-          preprocessing_fn_path_split[-1])
+    fn = udf_utils.get_fn(
+        {
+            standard_component_specs.MODULE_FILE_KEY:
+                value_utils.GetSoleValue(
+                    inputs, labels.MODULE_FILE, strict=False),
+            standard_component_specs.MODULE_PATH_KEY:
+                value_utils.GetSoleValue(
+                    inputs, labels.MODULE_PATH, strict=False),
+            standard_component_specs.PREPROCESSING_FN_KEY:
+                value_utils.GetSoleValue(
+                    inputs, labels.PREPROCESSING_FN, strict=False),
+        }, standard_component_specs.PREPROCESSING_FN_KEY)
 
     return self._MaybeBindCustomConfig(inputs, fn)
 
@@ -851,6 +875,8 @@ class Executor(base_beam_executor.BaseBeamExecutor):
         - labels.TRANSFORM_PATHS_FILE_FORMATS_LABEL: File formats of paths to
           transform data.
         - labels.MODULE_FILE: Path to a Python module that contains the
+          preprocessing_fn, optional.
+        - labels.MODULE_PATH: Python module path that contains the
           preprocessing_fn, optional.
         - labels.PREPROCESSING_FN: Path to a Python function that implements
           preprocessing_fn, optional.
@@ -1066,236 +1092,249 @@ class Executor(base_beam_executor.BaseBeamExecutor):
 
     desired_batch_size = self._GetDesiredBatchSize(raw_examples_data_format)
 
-    with self._CreatePipeline(transform_output_path) as pipeline:
-      with tft_beam.Context(
-          temp_dir=temp_path,
-          desired_batch_size=desired_batch_size,
-          passthrough_keys=self._GetTFXIOPassthroughKeys(),
-          use_deep_copy_optimization=True,
-          force_tf_compat_v1=force_tf_compat_v1):
-        # pylint: disable=expression-not-assigned
-        # pylint: disable=no-value-for-parameter
-        _ = (
-            pipeline
-            | 'IncrementPipelineMetrics' >> self._IncrementPipelineMetrics(
-                len(unprojected_typespecs), len(analyze_input_columns),
-                len(transform_input_columns), analyze_paths_count))
+    # TempPipInstallContext is needed here so that subprocesses (which
+    # may be created by the Beam multi-process DirectRunner) can find the
+    # needed dependencies.
+    # TODO(b/187122662): Move this to the ExecutorOperator or Launcher.
+    pip_dependencies = [
+        arg[len(_BEAM_EXTRA_PACKAGE_PREFIX):]
+        for arg in self._beam_pipeline_args or []
+        if arg.startswith(_BEAM_EXTRA_PACKAGE_PREFIX)
+    ]
+    with udf_utils.TempPipInstallContext(pip_dependencies):
+      with self._CreatePipeline(transform_output_path) as pipeline:
+        with tft_beam.Context(
+            temp_dir=temp_path,
+            desired_batch_size=desired_batch_size,
+            passthrough_keys=self._GetTFXIOPassthroughKeys(),
+            use_deep_copy_optimization=True,
+            force_tf_compat_v1=force_tf_compat_v1):
+          # pylint: disable=expression-not-assigned
+          # pylint: disable=no-value-for-parameter
+          _ = (
+              pipeline
+              | 'IncrementPipelineMetrics' >> self._IncrementPipelineMetrics(
+                  len(unprojected_typespecs), len(analyze_input_columns),
+                  len(transform_input_columns), analyze_paths_count))
 
-        (new_analyze_data_dict, input_cache) = (
-            pipeline
-            | 'OptimizeRun' >> self._OptimizeRun(
-                input_cache_dir, output_cache_dir,
-                analyze_data_list, unprojected_typespecs, preprocessing_fn,
-                self._GetCacheSource(), force_tf_compat_v1))
+          (new_analyze_data_dict, input_cache) = (
+              pipeline
+              | 'OptimizeRun' >> self._OptimizeRun(
+                  input_cache_dir, output_cache_dir,
+                  analyze_data_list, unprojected_typespecs, preprocessing_fn,
+                  self._GetCacheSource(), force_tf_compat_v1))
 
-        if input_cache:
-          absl.logging.debug('Analyzing data with cache.')
+          if input_cache:
+            absl.logging.debug('Analyzing data with cache.')
 
-        full_analyze_dataset_keys_list = [
-            dataset.dataset_key for dataset in analyze_data_list
-        ]
-
-        # Removing unneeded datasets if they won't be needed for statistics or
-        # materialization.
-        if materialization_format is None and not compute_statistics:
-          if None in new_analyze_data_dict.values():
-            absl.logging.debug(
-                'Not reading the following datasets due to cache: %s', [
-                    dataset.file_pattern
-                    for dataset in analyze_data_list
-                    if new_analyze_data_dict[dataset.dataset_key] is None
-                ])
-          analyze_data_list = [
-              d for d in new_analyze_data_dict.values() if d is not None
+          full_analyze_dataset_keys_list = [
+              dataset.dataset_key for dataset in analyze_data_list
           ]
 
-        for dataset in analyze_data_list:
-          infix = 'AnalysisIndex{}'.format(dataset.index)
-          dataset.standardized = (
-              pipeline
-              | 'TFXIOReadAndDecode[{}]'.format(infix) >>
-              dataset.tfxio.BeamSource(desired_batch_size))
+          # Removing unneeded datasets if they won't be needed for statistics or
+          # materialization.
+          if materialization_format is None and not compute_statistics:
+            if None in new_analyze_data_dict.values():
+              absl.logging.debug(
+                  'Not reading the following datasets due to cache: %s', [
+                      dataset.file_pattern
+                      for dataset in analyze_data_list
+                      if new_analyze_data_dict[dataset.dataset_key] is None
+                  ])
+            analyze_data_list = [
+                d for d in new_analyze_data_dict.values() if d is not None
+            ]
 
-        input_analysis_data = {}
-        for key, dataset in new_analyze_data_dict.items():
-          input_analysis_data[key] = (
-              None if dataset is None else dataset.standardized)
-
-        transform_fn, cache_output = (
-            (input_analysis_data, input_cache,
-             analyze_data_tensor_adapter_config)
-            | 'Analyze' >> tft_beam.AnalyzeDatasetWithCache(
-                preprocessing_fn, pipeline=pipeline))
-
-        # Write the raw/input metadata.
-        (input_dataset_metadata
-         | 'WriteMetadata' >> tft_beam.WriteMetadata(
-             os.path.join(transform_output_path,
-                          tft.TFTransformOutput.RAW_METADATA_DIR), pipeline))
-
-        # WriteTransformFn writes transform_fn and metadata to subdirectories
-        # tensorflow_transform.SAVED_MODEL_DIR and
-        # tensorflow_transform.TRANSFORMED_METADATA_DIR respectively.
-        completed_transform = (
-            transform_fn
-            | 'WriteTransformFn' >>
-            tft_beam.WriteTransformFn(transform_output_path))
-
-        if output_cache_dir is not None and cache_output is not None:
-          fileio.makedirs(output_cache_dir)
-          absl.logging.debug('Using existing cache in: %s', input_cache_dir)
-          if input_cache_dir is not None:
-            # Only copy cache that is relevant to this iteration. This is
-            # assuming that this pipeline operates on rolling ranges, so those
-            # cache entries may also be relevant for future iterations.
-            for span_cache_dir in input_analysis_data:
-              full_span_cache_dir = os.path.join(input_cache_dir,
-                                                 span_cache_dir.key)
-              if fileio.isdir(full_span_cache_dir):
-                self._CopyCache(
-                    full_span_cache_dir,
-                    os.path.join(output_cache_dir, span_cache_dir.key))
-
-          # TODO(b/157479287, b/171165988): Remove this condition when beam 2.26
-          # is used.
-          if cache_output:
-            (cache_output
-             | 'WriteCache' >> analyzer_cache.WriteAnalysisCacheToFS(
-                 pipeline=pipeline,
-                 cache_base_dir=output_cache_dir,
-                 sink=self._GetCacheSink(),
-                 dataset_keys=full_analyze_dataset_keys_list))
-
-        if compute_statistics or materialization_format is not None:
-          # Do not compute pre-transform stats if the input format is raw proto,
-          # as StatsGen would treat any input as tf.Example. Note that
-          # tf.SequenceExamples are wire-format compatible with tf.Examples.
-          if (compute_statistics and
-              not self._IsDataFormatProto(raw_examples_data_format)):
-            # Aggregated feature stats before transformation.
-            pre_transform_feature_stats_path = os.path.join(
-                transform_output_path,
-                tft.TFTransformOutput.PRE_TRANSFORM_FEATURE_STATS_PATH)
-
-            if self._IsDataFormatSequenceExample(raw_examples_data_format):
-              schema_proto = None
-            else:
-              schema_proto = input_dataset_metadata.schema
-
-            if self._IsDataFormatSequenceExample(raw_examples_data_format):
-              def _ExtractRawExampleBatches(record_batch):
-                return record_batch.column(
-                    record_batch.schema.get_field_index(
-                        RAW_EXAMPLE_KEY)).flatten().to_pylist()
-              # Make use of the fact that tf.SequenceExample is wire-format
-              # compatible with tf.Example
-              stats_input = []
-              for dataset in analyze_data_list:
-                infix = 'AnalysisIndex{}'.format(dataset.index)
-                stats_input.append(
-                    dataset.standardized
-                    | 'ExtractRawExampleBatches[{}]'.format(infix) >> beam.Map(
-                        _ExtractRawExampleBatches)
-                    | 'DecodeSequenceExamplesAsExamplesIntoRecordBatches[{}]'
-                    .format(infix) >> beam.ParDo(
-                        self._ToArrowRecordBatchesFn(schema_proto)))
-            else:
-              stats_input = [
-                  dataset.standardized for dataset in analyze_data_list]
-
-            pre_transform_stats_options = _InvokeStatsOptionsUpdaterFn(
-                stats_options_updater_fn,
-                stats_options_util.StatsType.PRE_TRANSFORM, schema_proto)
-            pre_transform_stats_options.experimental_use_sketch_based_topk_uniques = (
-                self._TfdvUseSketchBasedTopKUniques())
-
-            (stats_input
-             | 'FlattenAnalysisDatasets' >> beam.Flatten(pipeline=pipeline)
-             | 'GenerateStats[FlattenedAnalysisDataset]' >>
-             self._GenerateAndMaybeValidateStats(
-                 pre_transform_feature_stats_path,
-                 stats_options=pre_transform_stats_options,
-                 enable_validation=False))
-
-          # transform_data_list is a superset of analyze_data_list, we pay the
-          # cost to read the same dataset (analyze_data_list) again here to
-          # prevent certain beam runner from doing large temp materialization.
-          for dataset in transform_data_list:
-            infix = 'TransformIndex{}'.format(dataset.index)
+          for dataset in analyze_data_list:
+            infix = 'AnalysisIndex{}'.format(dataset.index)
             dataset.standardized = (
-                pipeline | 'TFXIOReadAndDecode[{}]'.format(infix) >>
+                pipeline
+                | 'TFXIOReadAndDecode[{}]'.format(infix) >>
                 dataset.tfxio.BeamSource(desired_batch_size))
-            (dataset.transformed,
-             metadata) = (((dataset.standardized,
-                            dataset.tfxio.TensorAdapterConfig()), transform_fn)
-                          | 'Transform[{}]'.format(infix) >>
-                          tft_beam.TransformDataset(output_record_batches=True))
 
-          if compute_statistics:
-            # Aggregated feature stats after transformation.
-            _, metadata = transform_fn
+          input_analysis_data = {}
+          for key, dataset in new_analyze_data_dict.items():
+            input_analysis_data[key] = (None if dataset is None else
+                                        dataset.standardized)
 
-            # TODO(b/70392441): Retain tf.Metadata (e.g., IntDomain) in
-            # schema. Currently input dataset schema only contains dtypes,
-            # and other metadata is dropped due to roundtrip to tensors.
-            transformed_schema_proto = metadata.schema
+          transform_fn, cache_output = (
+              (input_analysis_data, input_cache,
+               analyze_data_tensor_adapter_config)
+              | 'Analyze' >> tft_beam.AnalyzeDatasetWithCache(
+                  preprocessing_fn, pipeline=pipeline))
 
+          # Write the raw/input metadata.
+          (input_dataset_metadata
+           | 'WriteMetadata' >> tft_beam.WriteMetadata(
+               os.path.join(transform_output_path,
+                            tft.TFTransformOutput.RAW_METADATA_DIR), pipeline))
+
+          # WriteTransformFn writes transform_fn and metadata to subdirectories
+          # tensorflow_transform.SAVED_MODEL_DIR and
+          # tensorflow_transform.TRANSFORMED_METADATA_DIR respectively.
+          completed_transform = (
+              transform_fn
+              | 'WriteTransformFn' >>
+              tft_beam.WriteTransformFn(transform_output_path))
+
+          if output_cache_dir is not None and cache_output is not None:
+            fileio.makedirs(output_cache_dir)
+            absl.logging.debug('Using existing cache in: %s', input_cache_dir)
+            if input_cache_dir is not None:
+              # Only copy cache that is relevant to this iteration. This is
+              # assuming that this pipeline operates on rolling ranges, so those
+              # cache entries may also be relevant for future iterations.
+              for span_cache_dir in input_analysis_data:
+                full_span_cache_dir = os.path.join(input_cache_dir,
+                                                   span_cache_dir.key)
+                if fileio.isdir(full_span_cache_dir):
+                  self._CopyCache(
+                      full_span_cache_dir,
+                      os.path.join(output_cache_dir, span_cache_dir.key))
+
+            # TODO(b/157479287, b/171165988): Remove this condition when beam
+            # 2.26 is used.
+            if cache_output:
+              (cache_output
+               | 'WriteCache' >> analyzer_cache.WriteAnalysisCacheToFS(
+                   pipeline=pipeline,
+                   cache_base_dir=output_cache_dir,
+                   sink=self._GetCacheSink(),
+                   dataset_keys=full_analyze_dataset_keys_list))
+
+          if compute_statistics or materialization_format is not None:
+            # Do not compute pre-transform stats if the input format is raw
+            # proto, as StatsGen would treat any input as tf.Example. Note that
+            # tf.SequenceExamples are wire-format compatible with tf.Examples.
+            if (compute_statistics and
+                not self._IsDataFormatProto(raw_examples_data_format)):
+              # Aggregated feature stats before transformation.
+              pre_transform_feature_stats_path = os.path.join(
+                  transform_output_path,
+                  tft.TFTransformOutput.PRE_TRANSFORM_FEATURE_STATS_PATH)
+
+              if self._IsDataFormatSequenceExample(raw_examples_data_format):
+                schema_proto = None
+              else:
+                schema_proto = input_dataset_metadata.schema
+
+              if self._IsDataFormatSequenceExample(raw_examples_data_format):
+
+                def _ExtractRawExampleBatches(record_batch):
+                  return record_batch.column(
+                      record_batch.schema.get_field_index(
+                          RAW_EXAMPLE_KEY)).flatten().to_pylist()
+
+                # Make use of the fact that tf.SequenceExample is wire-format
+                # compatible with tf.Example
+                stats_input = []
+                for dataset in analyze_data_list:
+                  infix = 'AnalysisIndex{}'.format(dataset.index)
+                  stats_input.append(
+                      dataset.standardized
+                      | 'ExtractRawExampleBatches[{}]'.format(
+                          infix) >> beam.Map(_ExtractRawExampleBatches)
+                      | 'DecodeSequenceExamplesAsExamplesIntoRecordBatches[{}]'
+                      .format(infix) >> beam.ParDo(
+                          self._ToArrowRecordBatchesFn(schema_proto)))
+              else:
+                stats_input = [
+                    dataset.standardized for dataset in analyze_data_list
+                ]
+
+              pre_transform_stats_options = _InvokeStatsOptionsUpdaterFn(
+                  stats_options_updater_fn,
+                  stats_options_util.StatsType.PRE_TRANSFORM, schema_proto)
+              pre_transform_stats_options.experimental_use_sketch_based_topk_uniques = (
+                  self._TfdvUseSketchBasedTopKUniques())
+
+              (stats_input
+               | 'FlattenAnalysisDatasets' >> beam.Flatten(pipeline=pipeline)
+               | 'GenerateStats[FlattenedAnalysisDataset]' >>
+               self._GenerateAndMaybeValidateStats(
+                   pre_transform_feature_stats_path,
+                   stats_options=pre_transform_stats_options,
+                   enable_validation=False))
+
+            # transform_data_list is a superset of analyze_data_list, we pay the
+            # cost to read the same dataset (analyze_data_list) again here to
+            # prevent certain beam runner from doing large temp materialization.
             for dataset in transform_data_list:
               infix = 'TransformIndex{}'.format(dataset.index)
-              dataset.transformed_and_standardized = (
-                  dataset.transformed
-                  | 'ExtractRecordBatches[{}]'.format(infix) >> beam.Keys())
+              dataset.standardized = (
+                  pipeline | 'TFXIOReadAndDecode[{}]'.format(infix) >>
+                  dataset.tfxio.BeamSource(desired_batch_size))
+              (dataset.transformed, metadata) = (
+                  ((dataset.standardized, dataset.tfxio.TensorAdapterConfig()),
+                   transform_fn)
+                  | 'Transform[{}]'.format(infix) >>
+                  tft_beam.TransformDataset(output_record_batches=True))
 
-            post_transform_feature_stats_path = os.path.join(
-                transform_output_path,
-                tft.TFTransformOutput.POST_TRANSFORM_FEATURE_STATS_PATH)
+            if compute_statistics:
+              # Aggregated feature stats after transformation.
+              _, metadata = transform_fn
 
-            post_transform_stats_options = _InvokeStatsOptionsUpdaterFn(
-                stats_options_updater_fn,
-                stats_options_util.StatsType.POST_TRANSFORM,
-                transformed_schema_proto, metadata.asset_map,
-                transform_output_path)
+              # TODO(b/70392441): Retain tf.Metadata (e.g., IntDomain) in
+              # schema. Currently input dataset schema only contains dtypes,
+              # and other metadata is dropped due to roundtrip to tensors.
+              transformed_schema_proto = metadata.schema
 
-            post_transform_stats_options.experimental_use_sketch_based_topk_uniques = (
-                self._TfdvUseSketchBasedTopKUniques())
-            ([
-                dataset.transformed_and_standardized
-                for dataset in transform_data_list
-            ]
-             | 'FlattenTransformedDatasets' >> beam.Flatten()
-             | 'WaitForTransformWrite' >> beam.Map(
-                 lambda x, completion: x,
-                 completion=beam.pvalue.AsSingleton(completed_transform))
-             | 'GenerateAndValidateStats[FlattenedTransformedDatasets]' >>
-             self._GenerateAndMaybeValidateStats(
-                 post_transform_feature_stats_path,
-                 stats_options=post_transform_stats_options,
-                 enable_validation=True))
-
-            if per_set_stats_output_paths:
-              # TODO(b/130885503): Remove duplicate stats gen compute that is
-              # done both on a flattened view of the data, and on each span
-              # below.
               for dataset in transform_data_list:
                 infix = 'TransformIndex{}'.format(dataset.index)
-                (dataset.transformed_and_standardized
-                 | 'WaitForTransformWrite[{}]'.format(infix) >> beam.Map(
-                     lambda x, completion: x,
-                     completion=beam.pvalue.AsSingleton(completed_transform))
-                 | 'GenerateAndValidateStats[{}]'.format(infix) >>
-                 self._GenerateAndMaybeValidateStats(
-                     dataset.stats_output_path,
-                     stats_options=post_transform_stats_options,
-                     enable_validation=True))
+                dataset.transformed_and_standardized = (
+                    dataset.transformed
+                    | 'ExtractRecordBatches[{}]'.format(infix) >> beam.Keys())
 
-          if materialization_format is not None:
-            for dataset in transform_data_list:
-              infix = 'TransformIndex{}'.format(dataset.index)
-              (dataset.transformed
-               | 'EncodeAndSerialize[{}]'.format(infix) >> beam.FlatMap(
-                   Executor._RecordBatchToExamples)
-               | 'Materialize[{}]'.format(infix) >> self._WriteExamples(
-                   materialization_format, dataset.materialize_output_path))
+              post_transform_feature_stats_path = os.path.join(
+                  transform_output_path,
+                  tft.TFTransformOutput.POST_TRANSFORM_FEATURE_STATS_PATH)
+
+              post_transform_stats_options = _InvokeStatsOptionsUpdaterFn(
+                  stats_options_updater_fn,
+                  stats_options_util.StatsType.POST_TRANSFORM,
+                  transformed_schema_proto, metadata.asset_map,
+                  transform_output_path)
+
+              post_transform_stats_options.experimental_use_sketch_based_topk_uniques = (
+                  self._TfdvUseSketchBasedTopKUniques())
+              ([
+                  dataset.transformed_and_standardized
+                  for dataset in transform_data_list
+              ]
+               | 'FlattenTransformedDatasets' >> beam.Flatten()
+               | 'WaitForTransformWrite' >> beam.Map(
+                   lambda x, completion: x,
+                   completion=beam.pvalue.AsSingleton(completed_transform))
+               | 'GenerateAndValidateStats[FlattenedTransformedDatasets]' >>
+               self._GenerateAndMaybeValidateStats(
+                   post_transform_feature_stats_path,
+                   stats_options=post_transform_stats_options,
+                   enable_validation=True))
+
+              if per_set_stats_output_paths:
+                # TODO(b/130885503): Remove duplicate stats gen compute that is
+                # done both on a flattened view of the data, and on each span
+                # below.
+                for dataset in transform_data_list:
+                  infix = 'TransformIndex{}'.format(dataset.index)
+                  (dataset.transformed_and_standardized
+                   | 'WaitForTransformWrite[{}]'.format(infix) >> beam.Map(
+                       lambda x, completion: x,
+                       completion=beam.pvalue.AsSingleton(completed_transform))
+                   | 'GenerateAndValidateStats[{}]'.format(infix) >>
+                   self._GenerateAndMaybeValidateStats(
+                       dataset.stats_output_path,
+                       stats_options=post_transform_stats_options,
+                       enable_validation=True))
+
+            if materialization_format is not None:
+              for dataset in transform_data_list:
+                infix = 'TransformIndex{}'.format(dataset.index)
+                (dataset.transformed
+                 | 'EncodeAndSerialize[{}]'.format(infix) >> beam.FlatMap(
+                     Executor._RecordBatchToExamples)
+                 | 'Materialize[{}]'.format(infix) >> self._WriteExamples(
+                     materialization_format, dataset.materialize_output_path))
 
     return _Status.OK()
 
