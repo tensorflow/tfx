@@ -55,6 +55,9 @@ class Tuner(base_component.BaseComponent):
    - `best_hyperparameters`: Channel of type
                              `standard_artifacts.HyperParameters` for result of
                              the best hparams.
+
+  See [the Tuner guide](https://www.tensorflow.org/tfx/guide/tuner)
+  for more details.
   """
 
   SPEC_CLASS = TunerSpec

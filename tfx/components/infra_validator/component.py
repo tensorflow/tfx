@@ -79,6 +79,10 @@ class InfraValidator(base_component.BaseComponent):
   Component `outputs` contains:
    - `blessing`: Channel of type `standard_artifacts.InfraBlessing` that
                  contains the validation result.
+
+  See [the InfraValidator
+  guide](https://www.tensorflow.org/tfx/guide/infra_validator) for more
+  details.
   """
 
   SPEC_CLASS = standard_component_specs.InfraValidatorSpec

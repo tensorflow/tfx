@@ -67,7 +67,8 @@ class Transform(base_beam_component.BaseBeamComponent):
                              transform splits as specified in splits_config.
                              This is optional controlled by `materialize`.
 
-  Please see https://www.tensorflow.org/tfx/transform for more details.
+  Please see [the Transform
+  guide](https://www.tensorflow.org/tfx/guide/transform) for more details.
   """
 
   SPEC_CLASS = standard_component_specs.TransformSpec

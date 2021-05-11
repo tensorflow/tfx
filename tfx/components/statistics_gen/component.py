@@ -33,8 +33,6 @@ class StatisticsGen(base_beam_component.BaseBeamComponent):
   StatisticsGen uses Apache Beam and approximate algorithms to scale to large
   datasets.
 
-  Please see https://www.tensorflow.org/tfx/data_validation for more details.
-
   ## Example
   ```
     # Computes statistics over data for visualization and example validation.
@@ -44,6 +42,9 @@ class StatisticsGen(base_beam_component.BaseBeamComponent):
   Component `outputs` contains:
    - `statistics`: Channel of type `standard_artifacts.ExampleStatistics` for
                    statistics of each split provided in the input examples.
+
+  Please see [the StatisticsGen
+  guide](https://www.tensorflow.org/tfx/guide/statsgen) for more details.
   """
 
   SPEC_CLASS = StatisticsGenSpec
