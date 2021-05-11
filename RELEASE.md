@@ -46,6 +46,9 @@
 
 ## Bug Fixes and Other Changes
 
+*   TFX CLI now supports
+    [Vertex Pipelines](https://cloud.google.com/vertex-ai/docs/pipelines/introduction).
+    use it with `--engine=vertex` flag.
 *   Removed `six` dependency.
 *   Depends on `apache-beam[gcp]>=2.29,<3`.
 *   Depends on `tensorflow>=1.15.2,!=2.0.*,!=2.1.*,!=2.2.*,!=2.3.*,!=2.5.*,<3`.

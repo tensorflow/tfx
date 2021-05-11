@@ -13,8 +13,10 @@
 # limitations under the License.
 """Test utilities for kubeflow v2 runner."""
 
+import datetime
 import os
 import subprocess
+import time
 from typing import List, Text
 
 from absl import logging
@@ -51,6 +53,7 @@ from tfx.utils import test_case_utils
 
 from google.protobuf import message
 
+
 _TEST_TWO_STEP_PIPELINE_NAME = 'two-step-pipeline'
 
 _TEST_FULL_PIPELINE_NAME = 'full-taxi-pipeline'
@@ -69,13 +72,44 @@ TEST_RUNTIME_CONFIG = pipeline_pb2.PipelineJob.RuntimeConfig(
         'float_param': pipeline_pb2.Value(double_value=3.14)
     })
 
-_POLLING_INTERVAL_IN_SECONDS = 60
 
-_MAX_JOB_EXECUTION_TIME_IN_SECONDS = 2400
+_VERTEX_SUCCEEDED_STATE = 'PIPELINE_STATE_SUCCEEDED'
 
-_KUBEFLOW_SUCCEEDED_STATE = 'SUCCEEDED'
+_VERTEX_RUNNING_STATES = frozenset(
+    ('PIPELINE_STATE_QUEUED', 'PIPELINE_STATE_PENDING',
+     'PIPELINE_STATE_RUNNING'))
 
-_KUBEFLOW_RUNNING_STATES = frozenset(('PENDING', 'RUNNING'))
+
+# TODO(b/182792980): Add type annotation for the client.
+def poll_job_status(vertex_client, job_id: str,
+                    timeout: datetime.timedelta, polling_interval_secs: int):
+  """Checks the status of the job.
+
+  Args:
+    vertex_client: Vertex Pipelines client object.
+    job_id: The relative ID of the pipeline job.
+    timeout: Timeout duration for the job execution.
+    polling_interval_secs: Interval to check the job status.
+
+  Raises:
+    RuntimeError: On (1) unexpected response from service; or (2) on
+      unexpected job status; or (2) timed out waiting for finishing.
+  """
+  deadline = datetime.datetime.now() + timeout
+  while datetime.datetime.now() < deadline:
+    time.sleep(polling_interval_secs)
+
+    response = vertex_client.get_job(job_id)
+    if not response or not response.get('state'):
+      raise RuntimeError('Unexpected response received: %s' % response)
+    state = response.get('state')
+    if state == _VERTEX_SUCCEEDED_STATE:
+      logging.info('Job succeeded: %s', response)
+      return
+    if state not in _VERTEX_RUNNING_STATES:
+      raise RuntimeError('Job is in an unexpected state: %s' % response)
+
+  raise RuntimeError('Timed out waiting for job to finish.')
 
 
 # TODO(b/158245564): Reevaluate whether to keep this test helper function
