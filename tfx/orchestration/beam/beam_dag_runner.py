@@ -21,6 +21,7 @@ from absl import logging
 import apache_beam as beam
 from tfx.dsl.compiler import compiler
 from tfx.dsl.compiler import constants
+from tfx.dsl.components.base import base_component
 from tfx.orchestration import metadata
 from tfx.orchestration import pipeline as pipeline_py
 from tfx.orchestration.beam.legacy import beam_dag_runner as legacy_beam_dag_runner
@@ -204,6 +205,14 @@ class BeamDagRunner(tfx_runner.TfxRunner):
     # and hence we avoid deploying the pipeline.
     if 'TFX_JSON_EXPORT_PIPELINE_ARGS_PATH' in os.environ:
       return
+
+    if isinstance(pipeline, pipeline_py.Pipeline):
+      for component in pipeline.components:
+        # TODO(b/187122662): Pass through pip dependencies as a first-class
+        # component flag.
+        if isinstance(component, base_component.BaseComponent):
+          component._resolve_pip_dependencies(  # pylint: disable=protected-access
+              pipeline.pipeline_info.pipeline_root)
 
     if isinstance(pipeline, pipeline_py.Pipeline):
       c = compiler.Compiler()

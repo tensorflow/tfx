@@ -43,6 +43,7 @@ from tfx.types.standard_component_specs import EXAMPLE_SPLITS_KEY
 from tfx.types.standard_component_specs import EXAMPLES_KEY
 from tfx.types.standard_component_specs import FEATURE_SLICING_SPEC_KEY
 from tfx.types.standard_component_specs import MODEL_KEY
+from tfx.types.standard_component_specs import MODULE_PATH_KEY
 from tfx.types.standard_component_specs import SCHEMA_KEY
 from tfx.utils import io_utils
 from tfx.utils import json_utils
@@ -126,6 +127,14 @@ class Executor(base_beam_executor.BaseBeamExecutor):
 
     output_uri = artifact_utils.get_single_uri(
         output_dict[constants.EVALUATION_KEY])
+
+    # Make sure user packages get propagated to the remote Beam worker.
+    unused_module_path, extra_pip_packages = udf_utils.decode_user_module_key(
+        exec_properties.get(MODULE_PATH_KEY, None))
+    for pip_package_path in extra_pip_packages:
+      local_pip_package_path = io_utils.ensure_local(pip_package_path)
+      self._beam_pipeline_args.append('--extra_package=%s' %
+                                      local_pip_package_path)
 
     eval_shared_model_fn = udf_utils.try_get_fn(
         exec_properties=exec_properties,
@@ -215,60 +224,65 @@ class Executor(base_beam_executor.BaseBeamExecutor):
                    'split.')
 
     logging.info('Evaluating model.')
-    with self._make_beam_pipeline() as pipeline:
-      examples_list = []
-      tensor_adapter_config = None
-      # pylint: disable=expression-not-assigned
-      if tfma.is_batched_input(eval_shared_model, eval_config):
-        tfxio_factory = tfxio_utils.get_tfxio_factory_from_artifact(
-            examples=[
-                artifact_utils.get_single_instance(input_dict[EXAMPLES_KEY])
-            ],
-            telemetry_descriptors=_TELEMETRY_DESCRIPTORS,
-            schema=schema,
-            raw_record_column_name=tfma_constants.ARROW_INPUT_COLUMN)
-        # TODO(b/161935932): refactor after TFXIO supports multiple patterns.
-        for split in example_splits:
-          file_pattern = io_utils.all_files_pattern(
-              artifact_utils.get_split_uri(input_dict[EXAMPLES_KEY], split))
-          tfxio = tfxio_factory(file_pattern)
-          data = (
-              pipeline
-              | 'ReadFromTFRecordToArrow[%s]' % split >> tfxio.BeamSource())
-          examples_list.append(data)
-        if schema is not None:
-          # Use last tfxio as TensorRepresentations and ArrowSchema are fixed.
-          tensor_adapter_config = tensor_adapter.TensorAdapterConfig(
-              arrow_schema=tfxio.ArrowSchema(),
-              tensor_representations=tfxio.TensorRepresentations())
-      else:
-        for split in example_splits:
-          file_pattern = io_utils.all_files_pattern(
-              artifact_utils.get_split_uri(input_dict[EXAMPLES_KEY], split))
-          data = (
-              pipeline
-              | 'ReadFromTFRecord[%s]' % split >>
-              beam.io.ReadFromTFRecord(file_pattern=file_pattern))
-          examples_list.append(data)
+    # TempPipInstallContext is needed here so that subprocesses (which
+    # may be created by the Beam multi-process DirectRunner) can find the
+    # needed dependencies.
+    # TODO(b/187122662): Move this to the ExecutorOperator or Launcher.
+    with udf_utils.TempPipInstallContext(extra_pip_packages):
+      with self._make_beam_pipeline() as pipeline:
+        examples_list = []
+        tensor_adapter_config = None
+        # pylint: disable=expression-not-assigned
+        if tfma.is_batched_input(eval_shared_model, eval_config):
+          tfxio_factory = tfxio_utils.get_tfxio_factory_from_artifact(
+              examples=[
+                  artifact_utils.get_single_instance(input_dict[EXAMPLES_KEY])
+              ],
+              telemetry_descriptors=_TELEMETRY_DESCRIPTORS,
+              schema=schema,
+              raw_record_column_name=tfma_constants.ARROW_INPUT_COLUMN)
+          # TODO(b/161935932): refactor after TFXIO supports multiple patterns.
+          for split in example_splits:
+            file_pattern = io_utils.all_files_pattern(
+                artifact_utils.get_split_uri(input_dict[EXAMPLES_KEY], split))
+            tfxio = tfxio_factory(file_pattern)
+            data = (
+                pipeline
+                | 'ReadFromTFRecordToArrow[%s]' % split >> tfxio.BeamSource())
+            examples_list.append(data)
+          if schema is not None:
+            # Use last tfxio as TensorRepresentations and ArrowSchema are fixed.
+            tensor_adapter_config = tensor_adapter.TensorAdapterConfig(
+                arrow_schema=tfxio.ArrowSchema(),
+                tensor_representations=tfxio.TensorRepresentations())
+        else:
+          for split in example_splits:
+            file_pattern = io_utils.all_files_pattern(
+                artifact_utils.get_split_uri(input_dict[EXAMPLES_KEY], split))
+            data = (
+                pipeline
+                | 'ReadFromTFRecord[%s]' % split >>
+                beam.io.ReadFromTFRecord(file_pattern=file_pattern))
+            examples_list.append(data)
 
-      custom_extractors = udf_utils.try_get_fn(
-          exec_properties=exec_properties, fn_name='custom_extractors')
-      extractors = None
-      if custom_extractors:
-        extractors = custom_extractors(
-            eval_shared_model=eval_shared_model,
-            eval_config=eval_config,
-            tensor_adapter_config=tensor_adapter_config)
+        custom_extractors = udf_utils.try_get_fn(
+            exec_properties=exec_properties, fn_name='custom_extractors')
+        extractors = None
+        if custom_extractors:
+          extractors = custom_extractors(
+              eval_shared_model=eval_shared_model,
+              eval_config=eval_config,
+              tensor_adapter_config=tensor_adapter_config)
 
-      (examples_list | 'FlattenExamples' >> beam.Flatten()
-       |
-       'ExtractEvaluateAndWriteResults' >> tfma.ExtractEvaluateAndWriteResults(
-           eval_shared_model=models[0] if len(models) == 1 else models,
-           eval_config=eval_config,
-           extractors=extractors,
-           output_path=output_uri,
-           slice_spec=slice_spec,
-           tensor_adapter_config=tensor_adapter_config))
+        (examples_list | 'FlattenExamples' >> beam.Flatten()
+         | 'ExtractEvaluateAndWriteResults' >>
+         (tfma.ExtractEvaluateAndWriteResults(
+             eval_shared_model=models[0] if len(models) == 1 else models,
+             eval_config=eval_config,
+             extractors=extractors,
+             output_path=output_uri,
+             slice_spec=slice_spec,
+             tensor_adapter_config=tensor_adapter_config)))
     logging.info('Evaluation complete. Results written to %s.', output_uri)
 
     if not run_validation:

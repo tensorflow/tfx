@@ -20,7 +20,7 @@ from __future__ import print_function
 
 import abc
 import inspect
-from typing import Any, Dict, Optional, Text
+from typing import Any, Dict, Optional, Text, Union
 
 from tfx import types
 from tfx.dsl.components.base import base_driver
@@ -108,6 +108,7 @@ class BaseComponent(base_node.BaseNode, abc.ABC):
     self._validate_component_class()
     self._validate_spec(spec)
     self.platform_config = None
+    self._pip_dependencies = []
 
   @classmethod
   def _validate_component_class(cls):
@@ -178,3 +179,34 @@ class BaseComponent(base_node.BaseNode, abc.ABC):
   @doc_controls.do_not_doc_in_subclasses
   def exec_properties(self) -> Dict[Text, Any]:  # pylint: disable=g-missing-from-attributes
     return self.spec.exec_properties
+
+  def _add_pip_dependency(
+      self, dependency: Union[Text, '_PipDependencyFuture']) -> None:
+    """Internal use only: add pip dependency to current component."""
+    # TODO(b/187122662): Provide separate Python component hierarchy and remove
+    # logic from this class.
+    self._pip_dependencies.append(dependency)
+
+  def _resolve_pip_dependencies(self, pipeline_root: Text) -> None:
+    """Experimental: resolve pip dependencies into specifiers."""
+    if not hasattr(self, '_pip_dependencies'):
+      return
+    new_pip_dependencies = []
+    for dependency in self._pip_dependencies:
+      if isinstance(dependency, Text):
+        new_pip_dependencies.append(dependency)
+      elif isinstance(dependency, _PipDependencyFuture):
+        resolved_dependency = dependency.resolve(pipeline_root)
+        if resolved_dependency:
+          new_pip_dependencies.append(resolved_dependency)
+      else:
+        raise ValueError('Invalid pip dependency object: %s.' % dependency)
+    self._pip_dependencies = new_pip_dependencies
+
+
+class _PipDependencyFuture:
+  """Experimental: Represents a pip dependency resolved at pipeline runtime."""
+
+  def resolve(self, pipeline_root: Text) -> Text:
+    """Returns a pip installable target spec, as string, or None to ignore."""
+    raise NotImplementedError()
