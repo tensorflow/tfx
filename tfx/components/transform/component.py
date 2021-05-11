@@ -84,7 +84,7 @@ class Transform(base_beam_component.BaseBeamComponent):
       analyzer_cache: Optional[types.Channel] = None,
       materialize: bool = True,
       disable_analyzer_cache: bool = False,
-      force_tf_compat_v1: bool = True,
+      force_tf_compat_v1: bool = False,
       custom_config: Optional[Dict[Text, Any]] = None):
     """Construct a Transform component.
 
