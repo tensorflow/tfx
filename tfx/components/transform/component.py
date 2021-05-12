@@ -21,12 +21,13 @@ from typing import Any, Dict, Optional, Text, Union
 
 from tfx import types
 from tfx.components.transform import executor
+from tfx.components.util import udf_utils
 from tfx.dsl.components.base import base_beam_component
 from tfx.dsl.components.base import executor_spec
 from tfx.orchestration import data_types
 from tfx.proto import transform_pb2
 from tfx.types import standard_artifacts
-from tfx.types.standard_component_specs import TransformSpec
+from tfx.types import standard_component_specs
 from tfx.utils import json_utils
 
 
@@ -69,7 +70,7 @@ class Transform(base_beam_component.BaseBeamComponent):
   Please see https://www.tensorflow.org/tfx/transform for more details.
   """
 
-  SPEC_CLASS = TransformSpec
+  SPEC_CLASS = standard_component_specs.TransformSpec
   EXECUTOR_SPEC = executor_spec.BeamExecutorSpec(executor.Executor)
 
   def __init__(
@@ -114,10 +115,11 @@ class Transform(base_beam_component.BaseBeamComponent):
                              Dict[Text, Any]) -> Dict[Text, Any]:
           ...
         ```
+        Use of a RuntimeParameter for this argument is experimental.
       preprocessing_fn: The path to python function that implements a
         'preprocessing_fn'. See 'module_file' for expected signature of the
         function. Exactly one of 'module_file' or 'preprocessing_fn' must be
-        supplied.
+        supplied. Use of a RuntimeParameter for this argument is experimental.
       splits_config: A transform_pb2.SplitsConfig instance, providing splits
         that should be analyzed and splits that should be transformed. Note
         analyze and transform splits can have overlap. Default behavior (when
@@ -161,7 +163,7 @@ class Transform(base_beam_component.BaseBeamComponent):
       updated_analyzer_cache = types.Channel(
           type=standard_artifacts.TransformCache)
 
-    spec = TransformSpec(
+    spec = standard_component_specs.TransformSpec(
         examples=examples,
         schema=schema,
         module_file=module_file,
@@ -174,3 +176,11 @@ class Transform(base_beam_component.BaseBeamComponent):
         updated_analyzer_cache=updated_analyzer_cache,
         custom_config=json_utils.dumps(custom_config))
     super(Transform, self).__init__(spec=spec)
+
+    if udf_utils.should_package_user_modules():
+      # In this case, the `MODULE_PATH_KEY` execution property will be injected
+      # as a reference to the given user module file after packaging, at which
+      # point the `MODULE_FILE_KEY` execution property will be removed.
+      udf_utils.add_user_module_dependency(
+          self, standard_component_specs.MODULE_FILE_KEY,
+          standard_component_specs.MODULE_PATH_KEY)

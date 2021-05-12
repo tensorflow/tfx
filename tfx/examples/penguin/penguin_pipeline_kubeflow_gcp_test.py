@@ -19,6 +19,8 @@ from __future__ import division
 from __future__ import print_function
 
 import os
+from unittest import mock
+
 import tensorflow as tf
 from tfx.dsl.io import fileio
 from tfx.examples.penguin import penguin_pipeline_kubeflow_gcp
@@ -32,7 +34,14 @@ class TaxiPipelineKubeflowTest(test_case_utils.TfxTest):
     super().setUp()
     self.enter_context(test_case_utils.change_working_dir(self.tmp_dir))
 
-  def testPenguinPipelineConstructionAndDefinitionFileExists(self):
+  @mock.patch('tfx.components.util.udf_utils.UserModuleFilePipDependency.'
+              'resolve')
+  def testPenguinPipelineConstructionAndDefinitionFileExists(
+      self, resolve_mock):
+    # Avoid actually performing user module packaging because a placeholder
+    # GCS bucket is used.
+    resolve_mock.side_effect = lambda pipeline_root: None
+
     logical_pipeline = penguin_pipeline_kubeflow_gcp.create_pipeline(
         pipeline_name=penguin_pipeline_kubeflow_gcp._pipeline_name,
         pipeline_root=penguin_pipeline_kubeflow_gcp._pipeline_root,
