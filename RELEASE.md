@@ -76,12 +76,13 @@
 
 ## Bug Fixes and Other Changes
 
+*   GCP compute project in BigQuery Pusher executor can be specified.
 *   New extra dependencies for convenience.
     - tfx[airflow] installs all Apache Airflow orchestrator dependencies.
     - tfx[kfp] installs all Kubeflow Pipelines orchestrator dependencies.
     - tfx[tf-ranking] installs packages for TensorFlow Ranking.
       NOTE: TensorFlow Ranking only compatible with TF >= 2.0.
-*   Depends on 'google-cloud-bigquery>=1.6.0,<3'. (This was already installed as
+*   Depends on 'google-cloud-bigquery>=1.28.0,<3'. (This was already installed as
     a transitive dependency from the first release of TFX.)
 *   Depends on `google-cloud-aiplatform>=0.5.0,<0.8`.
 *   Depends on `ml-metadata>=0.30.0,<0.31.0`.
