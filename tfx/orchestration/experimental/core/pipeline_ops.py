@@ -72,7 +72,8 @@ def _to_status_not_ok_error(fn):
 @_pipeline_ops_lock
 def save_pipeline_property(mlmd_handle: metadata.Metadata,
                            pipeline_uid: task_lib.PipelineUid,
-                           property_key: str, property_value: str) -> None:
+                           property_key: str,
+                           property_value: str) -> pstate.PipelineState:
   """Saves a property to the pipeline execution.
 
   Args:
@@ -80,26 +81,34 @@ def save_pipeline_property(mlmd_handle: metadata.Metadata,
     pipeline_uid: Uid of the pipeline to be updated.
     property_key: Key of the property to be saved.
     property_value: Value of the property to be saved.
+
+  Returns:
+    The `PipelineState` object upon success.
   """
   with pstate.PipelineState.load(mlmd_handle,
                                  pipeline_uid) as loaded_pipeline_state:
     loaded_pipeline_state.save_property(property_key, property_value)
+  return loaded_pipeline_state
 
 
 @_pipeline_ops_lock
 def remove_pipeline_property(mlmd_handle: metadata.Metadata,
                              pipeline_uid: task_lib.PipelineUid,
-                             property_key: str) -> None:
+                             property_key: str) -> pstate.PipelineState:
   """Removes a property from the pipeline execution.
 
   Args:
     mlmd_handle: A handle to the MLMD db.
     pipeline_uid: Uid of the pipeline to be updated.
     property_key: Key of the property to be removed.
+
+  Returns:
+    The `PipelineState` object upon success.
   """
   with pstate.PipelineState.load(mlmd_handle,
                                  pipeline_uid) as loaded_pipeline_state:
     loaded_pipeline_state.remove_property(property_key)
+  return loaded_pipeline_state
 
 
 @_to_status_not_ok_error
@@ -374,9 +383,8 @@ def _orchestrate_active_pipeline(
   assert execution.last_known_state in (metadata_store_pb2.Execution.NEW,
                                         metadata_store_pb2.Execution.RUNNING)
   if execution.last_known_state != metadata_store_pb2.Execution.RUNNING:
-    updated_execution = copy.deepcopy(execution)
-    updated_execution.last_known_state = metadata_store_pb2.Execution.RUNNING
-    mlmd_handle.store.put_executions([updated_execution])
+    execution.last_known_state = metadata_store_pb2.Execution.RUNNING
+    mlmd_handle.store.put_executions([execution])
 
   # Initialize task generator for the pipeline.
   if pipeline.execution_mode == pipeline_pb2.Pipeline.SYNC:
