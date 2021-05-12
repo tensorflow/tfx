@@ -78,6 +78,9 @@
 
 *   RuntimeParameter usage for `module_file` and user-defined function paths is
     marked experimental.
+*  `LatestArtifactsResolver`, `LatestBlessedModelResolver`, `SpansResolver`
+   are renamed to `LatestArtifactStrategy`, `LatestBlessedModelStrategy`,
+   `SpanRangeStrategy` respectively.
 
 ## Bug Fixes and Other Changes
 

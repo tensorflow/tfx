@@ -44,7 +44,7 @@ from tfx.components import Transform
 from tfx.dsl.components.base import executor_spec
 from tfx.dsl.components.base.base_component import BaseComponent
 from tfx.dsl.components.common import resolver
-from tfx.dsl.experimental import latest_artifacts_resolver
+from tfx.dsl.input_resolution.strategies import latest_artifact_strategy
 from tfx.dsl.io import fileio
 from tfx.orchestration import pipeline as tfx_pipeline
 from tfx.orchestration import test_utils
@@ -278,7 +278,7 @@ def create_e2e_components(
       schema=schema_gen.outputs['schema'],
       module_file=transform_module)
   latest_model_resolver = resolver.Resolver(
-      strategy_class=latest_artifacts_resolver.LatestArtifactsResolver,
+      strategy_class=latest_artifact_strategy.LatestArtifactStrategy,
       latest_model=Channel(type=Model)).with_id('latest_model_resolver')
   trainer = Trainer(
       transformed_examples=transform.outputs['transformed_examples'],

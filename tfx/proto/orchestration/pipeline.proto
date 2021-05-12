@@ -28,7 +28,7 @@ message ResolverConfig {
   // triggered.
   message ResolverStep {
     // Class path (<module_name>.<class_name>) of the resolver. For example
-    // "tfx.dsl.resolvers.latest_artifacts_resolver.LatestArtifactsResolver".
+    // "tfx.dsl.resolvers.latest_artifact_strategy.LatestArtifactStrategy".
     // Resolver class should be the subclass of the
     // `tfx.dsl.components.common.resolver.ResolverStrategy` class.
     string class_path = 1;
