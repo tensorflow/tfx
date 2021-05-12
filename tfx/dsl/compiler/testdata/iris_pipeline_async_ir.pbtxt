@@ -883,7 +883,7 @@ nodes {
       }
       resolver_config {
         resolver_steps {
-          class_path: "tfx.dsl.experimental.latest_blessed_model_resolver.LatestBlessedModelResolver"
+          class_path: "tfx.dsl.input_resolution.strategies.latest_blessed_model_strategy.LatestBlessedModelStrategy"
           config_json: "{}"
           input_keys: "baseline_model"
           input_keys: "model_blessing"

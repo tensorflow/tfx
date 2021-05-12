@@ -10,6 +10,10 @@
 
 ## Deprecations
 
+*  `LatestArtifactsResolver`, `LatestBlessedModelResolver`, `SpansResolver`
+   are renamed to `LatestArtifactStrategy`, `LatestBlessedModelStrategy`,
+   `SpanRangeStrategy` respectively.
+
 ## Bug Fixes and Other Changes
 
 *  Removed `six` dependency.

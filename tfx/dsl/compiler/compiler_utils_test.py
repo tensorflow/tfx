@@ -25,7 +25,7 @@ from tfx.dsl.components.base import base_executor
 from tfx.dsl.components.base import executor_spec
 from tfx.dsl.components.common import importer
 from tfx.dsl.components.common import resolver
-from tfx.dsl.experimental import latest_blessed_model_resolver
+from tfx.dsl.input_resolution.strategies import latest_blessed_model_strategy
 from tfx.orchestration import pipeline
 from tfx.proto.orchestration import pipeline_pb2
 from tfx.types import standard_artifacts
@@ -64,7 +64,7 @@ class CompilerUtilsTest(tf.test.TestCase):
 
   def testIsResolver(self):
     resv = resolver.Resolver(
-        strategy_class=latest_blessed_model_resolver.LatestBlessedModelResolver)
+        strategy_class=latest_blessed_model_strategy.LatestBlessedModelStrategy)
     self.assertTrue(compiler_utils.is_resolver(resv))
 
     example_gen = CsvExampleGen(input_base="data_path")

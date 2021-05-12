@@ -938,7 +938,7 @@
                 "resolver_class": {
                   "runtimeValue": {
                     "constantValue": {
-                      "stringValue": "{\"__class__\": \"LatestArtifactsResolver\", \"__module__\": \"tfx.dsl.experimental.latest_artifacts_resolver\", \"__tfx_object_type__\": \"class\"}"
+                      "stringValue": "{\"__class__\": \"LatestArtifactStrategy\", \"__module__\": \"tfx.dsl.input_resolution.strategies.latest_artifact_strategy\", \"__tfx_object_type__\": \"class\"}"
                     }
                   }
                 }

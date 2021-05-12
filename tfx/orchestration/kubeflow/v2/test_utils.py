@@ -32,8 +32,8 @@ from tfx.dsl.components.base import base_node
 from tfx.dsl.components.base import executor_spec
 from tfx.dsl.components.common import importer
 from tfx.dsl.components.common import resolver
-from tfx.dsl.experimental import latest_artifacts_resolver
-from tfx.dsl.experimental import latest_blessed_model_resolver
+from tfx.dsl.input_resolution.strategies import latest_artifact_strategy
+from tfx.dsl.input_resolution.strategies import latest_blessed_model_strategy
 from tfx.dsl.io import fileio
 from tfx.extensions.google_cloud_big_query.example_gen import component as big_query_example_gen_component
 from tfx.orchestration import data_types
@@ -140,7 +140,7 @@ def create_pipeline_components(
       schema=schema_gen.outputs['schema'],
       module_file=transform_module)
   latest_model_resolver = resolver.Resolver(
-      strategy_class=latest_artifacts_resolver.LatestArtifactsResolver,
+      strategy_class=latest_artifact_strategy.LatestArtifactStrategy,
       model=channel.Channel(type=standard_artifacts.Model)).with_id(
           'Resolver.latest_model_resolver')
   trainer = components.Trainer(
@@ -155,7 +155,7 @@ def create_pipeline_components(
   )
   # Get the latest blessed model for model validation.
   model_resolver = resolver.Resolver(
-      strategy_class=latest_blessed_model_resolver.LatestBlessedModelResolver,
+      strategy_class=latest_blessed_model_strategy.LatestBlessedModelStrategy,
       model=channel.Channel(type=standard_artifacts.Model),
       model_blessing=channel.Channel(type=standard_artifacts.ModelBlessing)
   ).with_id('Resolver.latest_blessed_model_resolver')

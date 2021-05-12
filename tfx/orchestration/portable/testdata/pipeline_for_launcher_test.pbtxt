@@ -462,7 +462,7 @@ nodes {
       }
       resolver_config {
         resolver_steps {
-          class_path: "tfx.dsl.experimental.latest_artifacts_resolver.LatestArtifactsResolver"
+          class_path: "tfx.dsl.input_resolution.strategies.latest_artifact_strategy.LatestArtifactStrategy"
           config_json: "{}"
         }
       }

@@ -25,13 +25,14 @@ from tfx.dsl.components.base import base_node
 from tfx.dsl.components.base import executor_spec
 from tfx.dsl.components.common import importer
 from tfx.dsl.components.common import resolver
-from tfx.dsl.experimental import latest_artifacts_resolver
-from tfx.dsl.experimental import latest_blessed_model_resolver
+from tfx.dsl.input_resolution.strategies import latest_artifact_strategy
+from tfx.dsl.input_resolution.strategies import latest_blessed_model_strategy
 from tfx.orchestration import data_types
 from tfx.orchestration.kubeflow.v2 import compiler_utils
 from tfx.orchestration.kubeflow.v2 import parameter_utils
 from tfx.types import artifact_utils
 from tfx.types import standard_artifacts
+from tfx.utils import deprecation_utils
 
 from ml_metadata.proto import metadata_store_pb2
 
@@ -662,21 +663,18 @@ class StepBuilder(object):
       task(s).
     Raises:
       TypeError: When get unsupported resolver policy. Currently only support
-        LatestBlessedModelResolver and LatestArtifactsResolver.
+        LatestBlessedModelStrategy and LatestArtifactsStrategy.
     """
     assert isinstance(self._node, resolver.Resolver)
 
-    if (self._exec_properties[resolver.RESOLVER_STRATEGY_CLASS] !=
-        latest_blessed_model_resolver.LatestBlessedModelResolver and
-        self._exec_properties[resolver.RESOLVER_STRATEGY_CLASS] !=
-        latest_artifacts_resolver.LatestArtifactsResolver):
-      raise TypeError(
-          ('Unexpected resolver policy encountered. Currently '
-           'only support latest artifact and latest blessed model '
-           'resolver. Got: {}').format(
-               self._exec_properties[resolver.RESOLVER_STRATEGY_CLASS]))
-    if (self._exec_properties[resolver.RESOLVER_STRATEGY_CLASS] ==
-        latest_blessed_model_resolver.LatestBlessedModelResolver):
+    strategy_cls = self._exec_properties[resolver.RESOLVER_STRATEGY_CLASS]
+    strategy_cls = deprecation_utils.get_first_nondeprecated_class(strategy_cls)
+    if strategy_cls == latest_blessed_model_strategy.LatestBlessedModelStrategy:
       return self._build_latest_blessed_model_resolver()
-    # Otherwise, this will be a LatestArtifactsResolver.
-    return self._build_latest_artifact_resolver()
+    elif strategy_cls == latest_artifact_strategy.LatestArtifactStrategy:
+      return self._build_latest_artifact_resolver()
+    else:
+      raise TypeError(
+          'Unexpected resolver policy encountered. Currently '
+          'only support LatestArtifactStrategy and LatestBlessedModelStrategy '
+          f'but got: {strategy_cls}.')
