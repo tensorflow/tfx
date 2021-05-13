@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,15 +13,11 @@
 # limitations under the License.
 """Utilities for gathering telemetry for TFX components and pipelines."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import contextlib
 import re
 import sys
 import threading
-from typing import Dict, List, Text
+from typing import Dict, List
 
 from tfx import version
 
@@ -41,7 +36,7 @@ _thread_local_labels_state.dictionary = {}
 
 
 @contextlib.contextmanager
-def scoped_labels(labels: Dict[Text, Text]):
+def scoped_labels(labels: Dict[str, str]):
   """Register thread local labels used in current context."""
   if getattr(_thread_local_labels_state, 'dictionary', None) is None:
     _thread_local_labels_state.dictionary = {}
@@ -54,13 +49,13 @@ def scoped_labels(labels: Dict[Text, Text]):
       _thread_local_labels_state.dictionary.pop(key)
 
 
-def _normalize_label(value: Text) -> Text:
+def _normalize_label(value: str) -> str:
   """Lowercase and replace illegal characters in labels."""
   # See https://cloud.google.com/compute/docs/labeling-resources.
   return re.sub(r'[^a-z0-9\_\-]', '-', value.lower())[-63:]
 
 
-def get_labels_dict() -> Dict[Text, Text]:
+def get_labels_dict() -> Dict[str, str]:
   """Get all registered and system generated labels as a dict.
 
   Returns:
@@ -78,7 +73,7 @@ def get_labels_dict() -> Dict[Text, Text]:
   return result
 
 
-def make_beam_labels_args() -> List[Text]:
+def make_beam_labels_args() -> List[str]:
   """Make Beam arguments for common labels used in TFX pipelines.
 
   Returns:

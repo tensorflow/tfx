@@ -144,7 +144,7 @@ def deprecated_alias(deprecated_name, name, func_or_class, warn_once=True):
           warn_deprecated(
               f'From {call_loc}: The name {deprecated_name} is deprecated. '
               f'Please use {name} instead.')
-        super(_NewDeprecatedClass, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
     return _NewDeprecatedClass
   else:

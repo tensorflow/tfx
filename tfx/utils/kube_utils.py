@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2020 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -17,16 +16,12 @@
 Internal interface: no backwards compatibility guarantees.
 """
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import datetime
 import enum
 import os
 import re
 import time
-from typing import Callable, Dict, List, Optional, Text
+from typing import Callable, Dict, List, Optional
 
 from absl import logging
 from kubernetes import client as k8s_client
@@ -87,7 +82,7 @@ class PersistentVolumeAccessMode(enum.Enum):
   READ_WRITE_MANY = 'ReadWriteMany'
 
 
-class _KubernetesClientFactory(object):
+class _KubernetesClientFactory:
   """Factory class for creating kubernetes API client."""
 
   def __init__(self):
@@ -152,7 +147,7 @@ class _KubernetesClientFactory(object):
 _factory = _KubernetesClientFactory()
 
 
-def sanitize_pod_name(pod_name: Text) -> Text:
+def sanitize_pod_name(pod_name: str) -> str:
   pod_name = re.sub(r'[^a-z0-9-]', '-', pod_name.lower())
   pod_name = re.sub(r'^[-]+', '', pod_name)
   return re.sub(r'[-]+', '-', pod_name)
@@ -177,13 +172,13 @@ def make_batch_v1_api() -> k8s_client.BatchV1Api:
 
 
 def make_job_object(
-    name: Text,
-    container_image: Text,
-    command: List[Text],
-    namespace: Text = 'default',
-    container_name: Text = 'jobcontainer',
-    pod_labels: Dict[Text, Text] = None,
-    service_account_name: Text = 'default',
+    name: str,
+    container_image: str,
+    command: List[str],
+    namespace: str = 'default',
+    container_name: str = 'jobcontainer',
+    pod_labels: Dict[str, str] = None,
+    service_account_name: str = 'default',
 ) -> k8s_client.V1Job:
   """Make a Kubernetes Job object with a single pod.
 
@@ -243,7 +238,7 @@ def is_inside_kfp() -> bool:
   )
 
 
-def get_kfp_namespace() -> Text:
+def get_kfp_namespace() -> str:
   """Get kubernetes namespace for the KFP.
 
   Raises:
@@ -279,8 +274,8 @@ def get_current_kfp_pod(client: k8s_client.CoreV1Api) -> k8s_client.V1Pod:
     raise RuntimeError('Cannot determine KFP pod from the environment.')
 
 
-def get_pod(core_api: k8s_client.CoreV1Api, pod_name: Text,
-            namespace: Text) -> Optional[k8s_client.V1Pod]:
+def get_pod(core_api: k8s_client.CoreV1Api, pod_name: str,
+            namespace: str) -> Optional[k8s_client.V1Pod]:
   """Get a pod from Kubernetes metadata API.
 
   Args:
@@ -303,10 +298,10 @@ def get_pod(core_api: k8s_client.CoreV1Api, pod_name: Text,
 
 
 def wait_pod(core_api: k8s_client.CoreV1Api,
-             pod_name: Text,
-             namespace: Text,
+             pod_name: str,
+             namespace: str,
              exit_condition_lambda: Callable[[k8s_client.V1Pod], bool],
-             condition_description: Text,
+             condition_description: str,
              timeout_sec: int = 0,
              exponential_backoff: bool = False) -> k8s_client.V1Pod:
   """Wait for a Pod to meet an exit condition.

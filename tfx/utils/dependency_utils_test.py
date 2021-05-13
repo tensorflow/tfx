@@ -13,15 +13,10 @@
 # limitations under the License.
 """Tests for tfx.utils.dependency_utils."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import os
 import sys
 from unittest import mock
 
-# Standard Imports
 
 from absl import logging
 from absl.testing import parameterized
@@ -33,7 +28,7 @@ from tfx.utils import dependency_utils
 class DependencyUtilsTest(tf.test.TestCase, parameterized.TestCase):
 
   def setUp(self):
-    super(tf.test.TestCase, self).setUp()
+    super().setUp()
     self._tmp_dir = os.path.join(
         os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR', self.get_temp_dir()),
         self._testMethodName)

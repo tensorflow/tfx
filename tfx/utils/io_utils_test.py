@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,14 +13,9 @@
 # limitations under the License.
 """Tests for tfx.utils.io_utils."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import os
 from unittest import mock
 
-# Standard Imports
 
 import tensorflow as tf
 from tfx.dsl.io import fileio
@@ -35,11 +29,11 @@ class IoUtilsTest(tf.test.TestCase):
   def setUp(self):
     self._base_dir = os.path.join(self.get_temp_dir(), 'base_dir')
     file_io.create_dir(self._base_dir)
-    super(IoUtilsTest, self).setUp()
+    super().setUp()
 
   def tearDown(self):
     file_io.delete_recursively(self._base_dir)
-    super(IoUtilsTest, self).tearDown()
+    super().tearDown()
 
   def testEnsureLocal(self):
     file_path = os.path.join(

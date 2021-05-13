@@ -15,7 +15,7 @@
 
 import os
 import tempfile
-from typing import List, Text, TypeVar
+from typing import List, TypeVar
 
 from tfx.dsl.io import fileio
 from google.protobuf import json_format
@@ -34,7 +34,7 @@ NANO_PER_SEC = 1000 * 1000 * 1000
 _REMOTE_FS_PREFIX = ['gs://', 'hdfs://', 's3://']
 
 
-def ensure_local(file_path: Text) -> Text:
+def ensure_local(file_path: str) -> str:
   """Ensures that the given file path is made available locally."""
   if not any([file_path.startswith(prefix) for prefix in _REMOTE_FS_PREFIX]):
     return file_path
@@ -45,7 +45,7 @@ def ensure_local(file_path: Text) -> Text:
   return local_path
 
 
-def copy_file(src: Text, dst: Text, overwrite: bool = False):
+def copy_file(src: str, dst: str, overwrite: bool = False):
   """Copies a single file from source to destination."""
 
   if overwrite and fileio.exists(dst):
@@ -55,7 +55,7 @@ def copy_file(src: Text, dst: Text, overwrite: bool = False):
   fileio.copy(src, dst, overwrite=overwrite)
 
 
-def copy_dir(src: Text, dst: Text) -> None:
+def copy_dir(src: str, dst: str) -> None:
   """Copies the whole directory recursively from source to destination."""
   src = src.rstrip('/')
   dst = dst.rstrip('/')
@@ -74,7 +74,7 @@ def copy_dir(src: Text, dst: Text) -> None:
       fileio.makedirs(os.path.join(dir_name.replace(src, dst, 1), sub_dir))
 
 
-def get_only_uri_in_dir(dir_path: Text) -> Text:
+def get_only_uri_in_dir(dir_path: str) -> str:
   """Gets the only uri from given directory."""
 
   files = fileio.listdir(dir_path)
@@ -85,14 +85,14 @@ def get_only_uri_in_dir(dir_path: Text) -> Text:
   return os.path.join(dir_path, filename)
 
 
-def delete_dir(path: Text) -> None:
+def delete_dir(path: str) -> None:
   """Deletes a directory if exists."""
 
   if fileio.isdir(path):
     fileio.rmtree(path)
 
 
-def write_string_file(file_name: Text, string_value: Text) -> None:
+def write_string_file(file_name: str, string_value: str) -> None:
   """Writes a string to file."""
 
   fileio.makedirs(os.path.dirname(file_name))
@@ -100,7 +100,7 @@ def write_string_file(file_name: Text, string_value: Text) -> None:
     f.write(string_value)
 
 
-def write_bytes_file(file_name: Text, content: bytes) -> None:
+def write_bytes_file(file_name: str, content: bytes) -> None:
   """Writes bytes to file."""
 
   fileio.makedirs(os.path.dirname(file_name))
@@ -108,13 +108,13 @@ def write_bytes_file(file_name: Text, content: bytes) -> None:
     f.write(content)
 
 
-def write_pbtxt_file(file_name: Text, proto: Message) -> None:
+def write_pbtxt_file(file_name: str, proto: Message) -> None:
   """Writes a text protobuf to file."""
 
   write_string_file(file_name, text_format.MessageToString(proto))
 
 
-def write_tfrecord_file(file_name: Text, *proto: Message) -> None:
+def write_tfrecord_file(file_name: str, *proto: Message) -> None:
   """Writes a serialized tfrecord to file."""
   try:
     import tensorflow as tf  # pylint: disable=g-import-not-at-top
@@ -131,32 +131,32 @@ def write_tfrecord_file(file_name: Text, *proto: Message) -> None:
 ProtoMessage = TypeVar('ProtoMessage', bound=Message)
 
 
-def parse_pbtxt_file(file_name: Text, message: ProtoMessage) -> ProtoMessage:
+def parse_pbtxt_file(file_name: str, message: ProtoMessage) -> ProtoMessage:
   """Parses a protobuf message from a text file and return message itself."""
   contents = fileio.open(file_name).read()
   text_format.Parse(contents, message)
   return message
 
 
-def parse_json_file(file_name: Text, message: ProtoMessage) -> ProtoMessage:
+def parse_json_file(file_name: str, message: ProtoMessage) -> ProtoMessage:
   """Parses a protobuf message from a JSON file and return itself."""
   contents = fileio.open(file_name).read()
   json_format.Parse(contents, message)
   return message
 
 
-def load_csv_column_names(csv_file: Text) -> List[Text]:
+def load_csv_column_names(csv_file: str) -> List[str]:
   """Parse the first line of a csv file as column names."""
   with fileio.open(csv_file) as f:
     return f.readline().strip().split(',')
 
 
-def all_files_pattern(file_pattern: Text) -> Text:
+def all_files_pattern(file_pattern: str) -> str:
   """Returns file pattern suitable for Beam to locate multiple files."""
   return os.path.join(file_pattern, '*')
 
 
-def generate_fingerprint(split_name: Text, file_pattern: Text) -> Text:
+def generate_fingerprint(split_name: str, file_pattern: str) -> str:
   """Generates a fingerprint for all files that match the pattern."""
   files = fileio.glob(file_pattern)
   total_bytes = 0
@@ -177,7 +177,7 @@ def generate_fingerprint(split_name: Text, file_pattern: Text) -> Text:
       split_name, len(files), total_bytes, xor_checksum, sum_checksum)
 
 
-def read_string_file(file_name: Text) -> Text:
+def read_string_file(file_name: str) -> str:
   """Reads a string from a file."""
   if not fileio.exists(file_name):
     msg = '{} does not exist'.format(file_name)
@@ -185,7 +185,7 @@ def read_string_file(file_name: Text) -> Text:
   return fileio.open(file_name).read()
 
 
-def read_bytes_file(file_name: Text) -> bytes:
+def read_bytes_file(file_name: str) -> bytes:
   """Reads bytes from a file."""
   if not fileio.exists(file_name):
     msg = '{} does not exist'.format(file_name)
@@ -193,10 +193,10 @@ def read_bytes_file(file_name: Text) -> bytes:
   return fileio.open(file_name, 'rb').read()
 
 
-class SchemaReader(object):
+class SchemaReader:
   """Schema reader."""
 
-  def read(self, schema_path: Text) -> schema_pb2_Schema:  # pytype: disable=invalid-annotation
+  def read(self, schema_path: str) -> schema_pb2_Schema:  # pytype: disable=invalid-annotation
     """Gets a tf.metadata schema.
 
     Args:

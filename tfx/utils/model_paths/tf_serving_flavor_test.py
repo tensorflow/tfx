@@ -13,10 +13,6 @@
 # limitations under the License.
 """Tests for tfx.utils.model_paths.tf_serving_flavor."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import tensorflow as tf
 
 from tfx.utils.model_paths import tf_serving_flavor as tfs_flavor
