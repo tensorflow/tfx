@@ -37,15 +37,14 @@ from tfx.utils import json_utils
 class Evaluator(base_beam_component.BaseBeamComponent):
   """A TFX component to evaluate models trained by a TFX Trainer component.
 
-  See [Evaluator](https://www.tensorflow.org/tfx/guide/evaluator) for more
-  information on what this component's required inputs are, how to configure it,
-  and what outputs it produces.
-
   Component `outputs` contains:
    - `evaluation`: Channel of type `standard_artifacts.ModelEvaluation` to store
                    the evaluation results.
    - `blessing`: Channel of type `standard_artifacts.ModelBlessing' that
                  contains the blessing result.
+
+  See [the Evaluator guide](https://www.tensorflow.org/tfx/guide/evaluator) for
+  more details.
   """
 
   SPEC_CLASS = standard_component_specs.EvaluatorSpec

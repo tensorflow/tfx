@@ -46,8 +46,8 @@ Defines how the inferrence results map to columns in output example in `componen
 """
 
 OutputColumnsSpec.__doc__ = """
-The signature_name should exist in `ModelSpec.model_signature_name`. 
-You can leave it unset if no more than one `ModelSpec.model_signature_name` is 
+The signature_name should exist in `ModelSpec.model_signature_name`.
+You can leave it unset if no more than one `ModelSpec.model_signature_name` is
 specified in your bulk inferrer.
 """
 
@@ -88,7 +88,7 @@ PayloadFormat = example_gen_pb2.PayloadFormat
 del example_gen_pb2
 
 CustomConfig.__doc__ = """
-Optional specified configuration for `components.FileBasedExampleGen`.
+Optional specified configuration for ExampleGen components.
 """
 
 Input.__doc__ = """
@@ -133,7 +133,7 @@ TensorFlow Serving docker image (tensorflow/serving) for serving binary.
 """
 
 LocalDockerConfig.__doc__ = """
-Docker runtime in a local machine. This is useful when you're running pipeline with infra validator component in your your local machine. 
+Docker runtime in a local machine. This is useful when you're running pipeline with infra validator component in your your local machine.
 You need to install docker in advance.
 """
 
@@ -177,7 +177,7 @@ Defines the destination of pusher in `components.Pusher`.
 """
 
 Versioning.__doc__ = """
-Versioning method for the model to be pushed. Note that This is the semantic TFX provides, therefore depending on the platform, some versioning method might not be compatible. 
+Versioning method for the model to be pushed. Note that This is the semantic TFX provides, therefore depending on the platform, some versioning method might not be compatible.
 For example TF Serving only accepts an integer version that is monotonically increasing.
 """
 

@@ -33,8 +33,8 @@ class ExampleValidator(base_component.BaseComponent):
   """A TFX component to validate input examples.
 
   The ExampleValidator component uses [Tensorflow Data
-  Validation](https://www.tensorflow.org/tfx/data_validation) to
-  validate the statistics of some splits on input examples against a schema.
+  Validation](https://www.tensorflow.org/tfx/data_validation/api_docs/python/tfdv)
+  to validate the statistics of some splits on input examples against a schema.
 
   The ExampleValidator component identifies anomalies in training and serving
   data. The component can be configured to detect different classes of anomalies
@@ -48,8 +48,6 @@ class ExampleValidator(base_component.BaseComponent):
   schema. The schema codifies properties which the input data is expected to
   satisfy, and is provided and maintained by the user.
 
-  Please see https://www.tensorflow.org/tfx/data_validation for more details.
-
   ## Example
   ```
   # Performs anomaly detection based on statistics and data schema.
@@ -60,6 +58,9 @@ class ExampleValidator(base_component.BaseComponent):
 
   Component `outputs` contains:
    - `anomalies`: Channel of type `standard_artifacts.ExampleAnomalies`.
+
+  See [the ExampleValidator
+  guide](https://www.tensorflow.org/tfx/guide/exampleval) for more details.
   """
 
   SPEC_CLASS = ExampleValidatorSpec

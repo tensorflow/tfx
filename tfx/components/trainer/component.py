@@ -49,8 +49,6 @@ class Trainer(base_component.BaseComponent):
   executor](https://github.com/tensorflow/tfx/tree/master/tfx/extensions/google_cloud_ai_platform/trainer)
   provides an example how to implement this.
 
-  Please see https://www.tensorflow.org/tfx/guide/trainer for more details.
-
   ## Example 1: Training locally
   ```
   # Uses user-provided Python function that trains a model using TF.
@@ -59,8 +57,8 @@ class Trainer(base_component.BaseComponent):
       transformed_examples=transform.outputs['transformed_examples'],
       schema=infer_schema.outputs['schema'],
       transform_graph=transform.outputs['transform_graph'],
-      train_args=trainer_pb2.TrainArgs(splits=['train'], num_steps=10000),
-      eval_args=trainer_pb2.EvalArgs(splits=['eval'], num_steps=5000))
+      train_args=proto.TrainArgs(splits=['train'], num_steps=10000),
+      eval_args=proto.EvalArgs(splits=['eval'], num_steps=5000))
   ```
 
   ## Example 2: Training through a cloud provider
@@ -75,8 +73,8 @@ class Trainer(base_component.BaseComponent):
       transformed_examples=transform.outputs['transformed_examples'],
       schema=infer_schema.outputs['schema'],
       transform_graph=transform.outputs['transform_graph'],
-      train_args=trainer_pb2.TrainArgs(splits=['train'], num_steps=10000),
-      eval_args=trainer_pb2.EvalArgs(splits=['eval'], num_steps=5000))
+      train_args=proto.TrainArgs(splits=['train'], num_steps=10000),
+      eval_args=proto.EvalArgs(splits=['eval'], num_steps=5000))
   ```
 
   Component `outputs` contains:
@@ -84,6 +82,9 @@ class Trainer(base_component.BaseComponent):
    - `model_run`: Channel of type `standard_artifacts.ModelRun`, as the working
                   dir of models, can be used to output non-model related output
                   (e.g., TensorBoard logs).
+
+  Please see [the Trainer guide](https://www.tensorflow.org/tfx/guide/trainer)
+  for more details.
   """
 
   SPEC_CLASS = standard_component_specs.TrainerSpec
@@ -155,12 +156,12 @@ class Trainer(base_component.BaseComponent):
         Exactly one of 'module_file' or 'trainer_fn' must be supplied if Trainer
         uses Estimator based Executor Use of a RuntimeParameter for this
         argument is experimental.
-      train_args: A trainer_pb2.TrainArgs instance or a dict, containing args
+      train_args: A proto.TrainArgs instance or a dict, containing args
         used for training. Currently only splits and num_steps are available. If
         it's provided as a dict and any field is a RuntimeParameter, it should
         have the same field names as a TrainArgs proto message. Default
         behavior (when splits is empty) is train on `train` split.
-      eval_args: A trainer_pb2.EvalArgs instance or a dict, containing args
+      eval_args: A proto.EvalArgs instance or a dict, containing args
         used for evaluation. Currently only splits and num_steps are available.
         If it's provided as a dict and any field is a RuntimeParameter, it
         should have the same field names as a EvalArgs proto message. Default

@@ -56,14 +56,17 @@ class Pusher(base_component.BaseComponent):
     pusher = Pusher(
         model=trainer.outputs['model'],
         model_blessing=evaluator.outputs['blessing'],
-        push_destination=pusher_pb2.PushDestination(
-            filesystem=pusher_pb2.PushDestination.Filesystem(
+        push_destination=proto.PushDestination(
+            filesystem=proto.PushDestination.Filesystem(
                 base_directory=serving_model_dir)))
   ```
 
   Component `outputs` contains:
    - `pushed_model`: Channel of type `standard_artifacts.PushedModel` with
                      result of push.
+
+  See [the Pusher guide](https://www.tensorflow.org/tfx/guide/pusher) for more
+  details.
   """
 
   SPEC_CLASS = PusherSpec

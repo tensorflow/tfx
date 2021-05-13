@@ -34,17 +34,15 @@ class SchemaGen(base_component.BaseComponent):
   """A TFX SchemaGen component to generate a schema from the training data.
 
   The SchemaGen component uses [TensorFlow Data
-  Validation](https://www.tensorflow.org/tfx/data_validation) to
-  generate a schema from input statistics.  The following TFX libraries use the
-  schema:
+  Validation](https://www.tensorflow.org/tfx/data_validation/api_docs/python/tfdv)
+  to generate a schema from input statistics. The following TFX libraries use
+  the schema:
     - TensorFlow Data Validation
     - TensorFlow Transform
     - TensorFlow Model Analysis
 
   In a typical TFX pipeline, the SchemaGen component generates a schema which is
   is consumed by the other pipeline components.
-
-  Please see https://www.tensorflow.org/tfx/data_validation for more details.
 
   ## Example
   ```
@@ -54,6 +52,9 @@ class SchemaGen(base_component.BaseComponent):
 
   Component `outputs` contains:
    - `schema`: Channel of type `standard_artifacts.Schema` for schema result.
+
+  See [the SchemaGen guide](https://www.tensorflow.org/tfx/guide/schemagen)
+  for more details.
   """
   # TODO(b/123941608): Update pydoc about how to use a user provided schema
 

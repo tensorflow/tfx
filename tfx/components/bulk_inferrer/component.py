@@ -46,6 +46,9 @@ class BulkInferrer(base_beam_component.BaseBeamComponent):
    - `output_examples`: Channel of type `standard_artifacts.Examples`
                         to store the output examples. This is optional
                         controlled by `output_example_spec`.
+
+  See [the BulkInferrer
+  guide](https://www.tensorflow.org/tfx/guide/bulkinferrer) for more details.
   """
 
   SPEC_CLASS = BulkInferrerSpec

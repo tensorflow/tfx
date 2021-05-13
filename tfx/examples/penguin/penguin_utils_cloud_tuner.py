@@ -34,7 +34,7 @@ import tensorflow as tf
 from tensorflow import keras
 import tensorflow_transform as tft
 import tfx.v1 as tfx
-from tfx_bsl.tfxio import dataset_options
+from tfx_bsl.public import tfxio
 
 from tensorflow_cloud.core import machine_config
 from tensorflow_cloud.tuner import tuner as cloud_tuner
@@ -100,7 +100,7 @@ def _input_fn(file_pattern: List[Text],
   """
   return data_accessor.tf_dataset_factory(
       file_pattern,
-      dataset_options.TensorFlowDatasetOptions(
+      tfxio.TensorFlowDatasetOptions(
           batch_size=batch_size, label_key=_transformed_name(_LABEL_KEY)),
       tf_transform_output.transformed_metadata.schema).repeat()
 
