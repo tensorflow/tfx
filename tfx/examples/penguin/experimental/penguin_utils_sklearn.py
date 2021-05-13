@@ -33,7 +33,8 @@ from tfx.dsl.io import fileio
 from tfx.utils import io_utils
 from tfx_bsl.tfxio import dataset_options
 
-from tensorflow_metadata.proto.v0 import schema_pb2
+from tensorflow_metadata.proto import schema_pb2
+
 
 _FEATURE_KEYS = [
     'culmen_length_mm', 'culmen_depth_mm', 'flipper_length_mm', 'body_mass_g'
