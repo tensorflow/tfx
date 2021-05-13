@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,11 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Tests for tfx.utils.channel."""
-
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
 
 import tensorflow as tf
 from tfx.types.artifact import Artifact

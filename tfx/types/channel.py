@@ -16,7 +16,7 @@
 import inspect
 import json
 import textwrap
-from typing import Any, Dict, Iterable, Optional, Text, Type, Union
+from typing import Any, Dict, Iterable, Optional, Type, Union
 from absl import logging
 
 from tfx.types import artifact_utils
@@ -52,7 +52,7 @@ class Channel(json_utils.Jsonable):
       # TODO(b/161490287): deprecate static artifact.
       artifacts: Optional[Iterable[Artifact]] = None,
       producer_component_id: Optional[str] = None,
-      output_key: Optional[Text] = None):
+      output_key: Optional[str] = None):
     """Initialization of Channel.
 
     Args:
@@ -139,7 +139,7 @@ class Channel(json_utils.Jsonable):
   @deprecation_utils.deprecated(
       None, '`matching_channel_name` will be deprecated soon.')
   @doc_controls.do_not_doc_inheritable
-  def matching_channel_name(self) -> Text:
+  def matching_channel_name(self) -> str:
     return self._matching_channel_name
 
   # TODO(b/185957572): deprecate matching_channel_name.
@@ -154,7 +154,7 @@ class Channel(json_utils.Jsonable):
     self._matching_channel_name = matching_channel_name
 
   @doc_controls.do_not_doc_inheritable
-  def to_json_dict(self) -> Dict[Text, Any]:
+  def to_json_dict(self) -> Dict[str, Any]:
     return {
         'type':
             json.loads(
@@ -173,7 +173,7 @@ class Channel(json_utils.Jsonable):
 
   @classmethod
   @doc_controls.do_not_doc_inheritable
-  def from_json_dict(cls, dict_data: Dict[Text, Any]) -> Any:
+  def from_json_dict(cls, dict_data: Dict[str, Any]) -> Any:
     artifact_type = metadata_store_pb2.ArtifactType()
     json_format.Parse(json.dumps(dict_data['type']), artifact_type)
     type_cls = artifact_utils.get_artifact_type_class(artifact_type)

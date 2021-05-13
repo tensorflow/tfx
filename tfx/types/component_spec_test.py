@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,14 +13,8 @@
 # limitations under the License.
 """Tests for tfx.types.artifact_utils."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
-
 import json
-from typing import Dict, List, Text
-# Standard Imports
+from typing import Dict, List
 
 import tensorflow as tf
 from tfx.proto import example_gen_pb2
@@ -112,20 +105,20 @@ class ComponentSpecTest(tf.test.TestCase):
     self.assertIs(spec.inputs['future_input_name'], spec.inputs['input'])
     self.assertIs(spec.outputs['future_output_name'], spec.outputs['output'])
 
-    with self.assertRaisesRegexp(
+    with self.assertRaisesRegex(
         TypeError,
         "Expected type <(class|type) 'int'> for parameter u?'folds' but got "
         'string.'):
       spec = _BasicComponentSpec(
           folds='string', input=input_channel, output=output_channel)
 
-    with self.assertRaisesRegexp(
+    with self.assertRaisesRegex(
         TypeError,
         '.*should be a Channel of .*InputArtifact.*got (.|\\s)*Examples.*'):
       spec = _BasicComponentSpec(
           folds=10, input=Channel(type=Examples), output=output_channel)
 
-    with self.assertRaisesRegexp(
+    with self.assertRaisesRegex(
         TypeError,
         '.*should be a Channel of .*OutputArtifact.*got (.|\\s)*Examples.*'):
       spec = _BasicComponentSpec(
@@ -133,7 +126,7 @@ class ComponentSpecTest(tf.test.TestCase):
 
   def testInvalidComponentspecMissingProperties(self):
 
-    with self.assertRaisesRegexp(TypeError, "Can't instantiate abstract class"):
+    with self.assertRaisesRegex(TypeError, "Can't instantiate abstract class"):
 
       class InvalidComponentSpecA(ComponentSpec):
         # Missing PARAMETERS.
@@ -142,7 +135,7 @@ class ComponentSpecTest(tf.test.TestCase):
 
       InvalidComponentSpecA()
 
-    with self.assertRaisesRegexp(TypeError, "Can't instantiate abstract class"):
+    with self.assertRaisesRegex(TypeError, "Can't instantiate abstract class"):
 
       class InvalidComponentSpecB(ComponentSpec):
         PARAMETERS = {}
@@ -151,7 +144,7 @@ class ComponentSpecTest(tf.test.TestCase):
 
       InvalidComponentSpecB()
 
-    with self.assertRaisesRegexp(TypeError, "Can't instantiate abstract class"):
+    with self.assertRaisesRegex(TypeError, "Can't instantiate abstract class"):
 
       class InvalidComponentSpecC(ComponentSpec):
         PARAMETERS = {}
@@ -162,8 +155,8 @@ class ComponentSpecTest(tf.test.TestCase):
 
   def testInvalidComponentspecWrongProperties(self):
 
-    with self.assertRaisesRegexp(TypeError,
-                                 'must override PARAMETERS with a dict'):
+    with self.assertRaisesRegex(TypeError,
+                                'must override PARAMETERS with a dict'):
 
       class InvalidComponentSpecA(ComponentSpec):
         PARAMETERS = object()
@@ -172,7 +165,7 @@ class ComponentSpecTest(tf.test.TestCase):
 
       InvalidComponentSpecA()
 
-    with self.assertRaisesRegexp(TypeError, 'must override INPUTS with a dict'):
+    with self.assertRaisesRegex(TypeError, 'must override INPUTS with a dict'):
 
       class InvalidComponentSpecB(ComponentSpec):
         PARAMETERS = {}
@@ -181,8 +174,8 @@ class ComponentSpecTest(tf.test.TestCase):
 
       InvalidComponentSpecB()
 
-    with self.assertRaisesRegexp(TypeError,
-                                 'must override OUTPUTS with a dict'):
+    with self.assertRaisesRegex(TypeError,
+                                'must override OUTPUTS with a dict'):
 
       class InvalidComponentSpecC(ComponentSpec):
         PARAMETERS = {}
@@ -198,8 +191,8 @@ class ComponentSpecTest(tf.test.TestCase):
       INPUTS = {}
       OUTPUTS = {}
 
-    with self.assertRaisesRegexp(ValueError,
-                                 'expects .* dicts are _ComponentParameter'):
+    with self.assertRaisesRegex(ValueError,
+                                'expects .* dicts are _ComponentParameter'):
       _ = WrongTypeComponentSpecA()
 
     class WrongTypeComponentSpecB(ComponentSpec):
@@ -207,8 +200,8 @@ class ComponentSpecTest(tf.test.TestCase):
       INPUTS = {}
       OUTPUTS = {}
 
-    with self.assertRaisesRegexp(TypeError,
-                                 'expects values of type ExecutionParameter'):
+    with self.assertRaisesRegex(TypeError,
+                                'expects values of type ExecutionParameter'):
       _ = WrongTypeComponentSpecB()
 
     class WrongTypeComponentSpecC(ComponentSpec):
@@ -216,8 +209,8 @@ class ComponentSpecTest(tf.test.TestCase):
       INPUTS = {'x': ExecutionParameter(type=int)}
       OUTPUTS = {}
 
-    with self.assertRaisesRegexp(TypeError,
-                                 'expect values of type ChannelParameter'):
+    with self.assertRaisesRegex(TypeError,
+                                'expect values of type ChannelParameter'):
       _ = WrongTypeComponentSpecC()
 
     class WrongTypeComponentSpecD(ComponentSpec):
@@ -225,8 +218,8 @@ class ComponentSpecTest(tf.test.TestCase):
       INPUTS = {'x': ExecutionParameter(type=int)}
       OUTPUTS = {}
 
-    with self.assertRaisesRegexp(TypeError,
-                                 'expect values of type ChannelParameter'):
+    with self.assertRaisesRegex(TypeError,
+                                'expect values of type ChannelParameter'):
       _ = WrongTypeComponentSpecD()
 
   def testInvalidComponentspecDuplicateProperty(self):
@@ -236,7 +229,7 @@ class ComponentSpecTest(tf.test.TestCase):
       INPUTS = {'x': ChannelParameter(type=_X)}
       OUTPUTS = {}
 
-    with self.assertRaisesRegexp(ValueError, 'has a duplicate argument'):
+    with self.assertRaisesRegex(ValueError, 'has a duplicate argument'):
       _ = DuplicatePropertyComponentSpec()
 
   def testComponentspecMissingArguments(self):
@@ -249,10 +242,10 @@ class ComponentSpecTest(tf.test.TestCase):
       INPUTS = {'z': ChannelParameter(type=_Z)}
       OUTPUTS = {}
 
-    with self.assertRaisesRegexp(ValueError, 'Missing argument'):
+    with self.assertRaisesRegex(ValueError, 'Missing argument'):
       _ = SimpleComponentSpec(x=10)
 
-    with self.assertRaisesRegexp(ValueError, 'Missing argument'):
+    with self.assertRaisesRegex(ValueError, 'Missing argument'):
       _ = SimpleComponentSpec(z=Channel(type=_Z))
 
     # Okay since y is optional.
@@ -285,28 +278,28 @@ class ComponentSpecTest(tf.test.TestCase):
   def testExecutionParameterTypeCheck(self):
     int_parameter = ExecutionParameter(type=int)
     int_parameter.type_check('int_parameter', 8)
-    with self.assertRaisesRegexp(TypeError, "Expected type <(class|type) 'int'>"
-                                 " for parameter u?'int_parameter'"):
+    with self.assertRaisesRegex(TypeError, "Expected type <(class|type) 'int'>"
+                                " for parameter u?'int_parameter'"):
       int_parameter.type_check('int_parameter', 'string')
 
     list_parameter = ExecutionParameter(type=List[int])
     list_parameter.type_check('list_parameter', [])
     list_parameter.type_check('list_parameter', [42])
-    with self.assertRaisesRegexp(TypeError, 'Expecting a list for parameter'):
+    with self.assertRaisesRegex(TypeError, 'Expecting a list for parameter'):
       list_parameter.type_check('list_parameter', 42)
 
-    with self.assertRaisesRegexp(TypeError, "Expecting item type <(class|type) "
-                                 "'int'> for parameter u?'list_parameter'"):
+    with self.assertRaisesRegex(TypeError, "Expecting item type <(class|type) "
+                                "'int'> for parameter u?'list_parameter'"):
       list_parameter.type_check('list_parameter', [42, 'wrong item'])
 
-    dict_parameter = ExecutionParameter(type=Dict[Text, int])
+    dict_parameter = ExecutionParameter(type=Dict[str, int])
     dict_parameter.type_check('dict_parameter', {})
     dict_parameter.type_check('dict_parameter', {'key1': 1, 'key2': 2})
-    with self.assertRaisesRegexp(TypeError, 'Expecting a dict for parameter'):
+    with self.assertRaisesRegex(TypeError, 'Expecting a dict for parameter'):
       dict_parameter.type_check('dict_parameter', 'simple string')
 
-    with self.assertRaisesRegexp(TypeError, "Expecting value type "
-                                 "<(class|type) 'int'>"):
+    with self.assertRaisesRegex(TypeError, "Expecting value type "
+                                "<(class|type) 'int'>"):
       dict_parameter.type_check('dict_parameter', {'key1': '1'})
 
     proto_parameter = ExecutionParameter(type=example_gen_pb2.Input)
@@ -316,7 +309,7 @@ class ComponentSpecTest(tf.test.TestCase):
                                    'name': 'hello'
                                }]})
     proto_parameter.type_check('proto_parameter', {'wrong_field': 42})
-    with self.assertRaisesRegexp(
+    with self.assertRaisesRegex(
         TypeError, "Expected type <class 'tfx.proto.example_gen_pb2.Input'>"):
       proto_parameter.type_check('proto_parameter', 42)
     with self.assertRaises(json_format.ParseError):

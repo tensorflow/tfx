@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,10 +13,6 @@
 # limitations under the License.
 """TFX artifact type definition."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import abc
 from typing import Any
 
@@ -32,7 +27,7 @@ class ValueArtifact(Artifact):
     self._has_value = False
     self._modified = False
     self._value = None
-    super(ValueArtifact, self).__init__(*args, **kwargs)
+    super().__init__(*args, **kwargs)
 
   def read(self):
     if not self._has_value:

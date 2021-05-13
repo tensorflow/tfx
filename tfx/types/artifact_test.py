@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,16 +13,10 @@
 # limitations under the License.
 """Tests for tfx.types.artifact."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import json
 import textwrap
-from typing import Text
 from unittest import mock
 
-# Standard Imports
 
 import absl
 import tensorflow as tf
@@ -90,8 +83,8 @@ _MyArtifact3 = artifact._ArtifactType(mlmd_artifact_type=_mlmd_artifact_type)  #
 class _MyValueArtifact(value_artifact.ValueArtifact):
   TYPE_NAME = 'MyValueTypeName'
 
-  def encode(self, value: Text):
-    assert isinstance(value, Text), value
+  def encode(self, value: str):
+    assert isinstance(value, str), value
     return value.encode('utf-8')
 
   def decode(self, value: bytes):
@@ -123,10 +116,10 @@ class ArtifactTest(tf.test.TestCase):
     self.assertEqual('', instance.state)
 
     # Default property does not have span or split_names.
-    with self.assertRaisesRegexp(AttributeError, "has no property 'span'"):
+    with self.assertRaisesRegex(AttributeError, "has no property 'span'"):
       instance.span  # pylint: disable=pointless-statement
-    with self.assertRaisesRegexp(AttributeError,
-                                 "has no property 'split_names'"):
+    with self.assertRaisesRegex(AttributeError,
+                                "has no property 'split_names'"):
       instance.split_names  # pylint: disable=pointless-statement
 
     # Test property setters.
@@ -143,11 +136,11 @@ class ArtifactTest(tf.test.TestCase):
     self.assertEqual(artifact.ArtifactState.DELETED, instance.state)
 
     # Default artifact does not have span.
-    with self.assertRaisesRegexp(AttributeError, "unknown property 'span'"):
+    with self.assertRaisesRegex(AttributeError, "unknown property 'span'"):
       instance.span = 20190101
     # Default artifact does not have span.
-    with self.assertRaisesRegexp(AttributeError,
-                                 "unknown property 'split_names'"):
+    with self.assertRaisesRegex(AttributeError,
+                                "unknown property 'split_names'"):
       instance.split_names = ''
 
     instance.set_int_custom_property('int_key', 20)
@@ -764,7 +757,7 @@ class ArtifactTest(tf.test.TestCase):
         )"""), str(copied_artifact))
 
   def testInvalidArtifact(self):
-    with self.assertRaisesRegexp(
+    with self.assertRaisesRegex(
         ValueError, 'The "mlmd_artifact_type" argument must be passed'):
       artifact.Artifact()
 
@@ -772,7 +765,7 @@ class ArtifactTest(tf.test.TestCase):
       # No TYPE_NAME
       pass
 
-    with self.assertRaisesRegexp(
+    with self.assertRaisesRegex(
         ValueError,
         'The Artifact subclass .* must override the TYPE_NAME attribute '):
       MyBadArtifact()
@@ -784,7 +777,7 @@ class ArtifactTest(tf.test.TestCase):
     MyNewArtifact()
 
     # Not okay to pass type_name on subclass.
-    with self.assertRaisesRegexp(
+    with self.assertRaisesRegex(
         ValueError,
         'The "mlmd_artifact_type" argument must not be passed for Artifact '
         'subclass'):
@@ -808,20 +801,20 @@ class ArtifactTest(tf.test.TestCase):
     self.assertEqual(my_artifact.get_int_custom_property('invalid'), 0)
     self.assertNotIn('invalid', my_artifact._artifact.custom_properties)
 
-    with self.assertRaisesRegexp(
+    with self.assertRaisesRegex(
         AttributeError, "Cannot set unknown property 'invalid' on artifact"):
       my_artifact.invalid = 1
 
-    with self.assertRaisesRegexp(
+    with self.assertRaisesRegex(
         AttributeError, "Cannot set unknown property 'invalid' on artifact"):
       my_artifact.invalid = 'x'
 
-    with self.assertRaisesRegexp(AttributeError,
-                                 "Artifact has no property 'invalid'"):
+    with self.assertRaisesRegex(AttributeError,
+                                "Artifact has no property 'invalid'"):
       my_artifact.invalid  # pylint: disable=pointless-statement
 
   def testStringTypeNameNotAllowed(self):
-    with self.assertRaisesRegexp(
+    with self.assertRaisesRegex(
         ValueError,
         'The "mlmd_artifact_type" argument must be an instance of the proto '
         'message'):
