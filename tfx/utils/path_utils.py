@@ -21,14 +21,10 @@ from tfx.types import artifact
 from tfx.types import artifact_utils
 from tfx.types import standard_artifacts
 from tfx.utils import io_utils
+from tfx.utils import path_constants
 
 _OLD_EVAL_MODEL_DIR = 'eval_model_dir'
 _OLD_SERVING_MODEL_DIR = 'serving_model_dir'
-EVAL_MODEL_DIR = 'Format-TFMA'
-# LINT.IfChange
-SERVING_MODEL_DIR = 'Format-Serving'
-# LINT.ThenChange(Internal serving model dir)
-STAMPED_MODEL_DIR = 'stamped_model'
 
 """Directory structure of exported model for estimator based trainer:
 
@@ -80,7 +76,7 @@ def eval_model_dir(output_uri: str, is_old_artifact: bool = False) -> str:
   """Returns directory for exported model for evaluation purpose."""
   if is_old_artifact:
     return os.path.join(output_uri, _OLD_EVAL_MODEL_DIR)
-  return os.path.join(output_uri, EVAL_MODEL_DIR)
+  return os.path.join(output_uri, path_constants.EVAL_MODEL_DIR)
 
 
 def eval_model_path(output_uri: str, is_old_artifact: bool = False) -> str:
@@ -105,7 +101,7 @@ def serving_model_dir(output_uri: str, is_old_artifact: bool = False) -> str:
   """Returns directory for exported model for serving purpose."""
   if is_old_artifact:
     return os.path.join(output_uri, _OLD_SERVING_MODEL_DIR)
-  return os.path.join(output_uri, SERVING_MODEL_DIR)
+  return os.path.join(output_uri, path_constants.SERVING_MODEL_DIR)
 
 
 def serving_model_path(output_uri: str, is_old_artifact: bool = False) -> str:
@@ -127,7 +123,7 @@ def serving_model_path(output_uri: str, is_old_artifact: bool = False) -> str:
 
 def stamped_model_path(output_uri: str) -> str:
   """Returns path for the stamped model."""
-  return os.path.join(output_uri, STAMPED_MODEL_DIR)
+  return os.path.join(output_uri, path_constants.STAMPED_MODEL_DIR)
 
 
 def warmup_file_path(saved_model_path: str) -> str:
