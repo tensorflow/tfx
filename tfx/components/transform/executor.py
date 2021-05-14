@@ -44,6 +44,7 @@ from tfx.components.util import tfxio_utils
 from tfx.components.util import udf_utils
 from tfx.components.util import value_utils
 from tfx.dsl.components.base import base_beam_executor
+from tfx.dsl.components.base import base_executor
 from tfx.dsl.io import fileio
 from tfx.proto import example_gen_pb2
 from tfx.proto import transform_pb2
@@ -273,6 +274,11 @@ def _InvokeStatsOptionsUpdaterFn(
 class Executor(base_beam_executor.BaseBeamExecutor):
   """Transform executor."""
 
+  def __init__(
+      self, context: Optional[base_executor.BaseExecutor.Context] = None):
+    super(Executor, self).__init__(context)
+    self._pip_dependencies = []
+
   def Do(self, input_dict: Dict[Text, List[types.Artifact]],
          output_dict: Dict[Text, List[types.Artifact]],
          exec_properties: Dict[Text, Any]) -> None:
@@ -435,6 +441,7 @@ class Executor(base_beam_executor.BaseBeamExecutor):
       local_pip_package_path = io_utils.ensure_local(pip_package_path)
       self._beam_pipeline_args.append(_BEAM_EXTRA_PACKAGE_PREFIX +
                                       local_pip_package_path)
+      self._pip_dependencies.append(local_pip_package_path)
 
     label_inputs = {
         labels.COMPUTE_STATISTICS_LABEL:
@@ -1095,13 +1102,9 @@ class Executor(base_beam_executor.BaseBeamExecutor):
     # TempPipInstallContext is needed here so that subprocesses (which
     # may be created by the Beam multi-process DirectRunner) can find the
     # needed dependencies.
-    # TODO(b/187122662): Move this to the ExecutorOperator or Launcher.
-    pip_dependencies = [
-        arg[len(_BEAM_EXTRA_PACKAGE_PREFIX):]
-        for arg in self._beam_pipeline_args or []
-        if arg.startswith(_BEAM_EXTRA_PACKAGE_PREFIX)
-    ]
-    with udf_utils.TempPipInstallContext(pip_dependencies):
+    # TODO(b/187122662): Move this to the ExecutorOperator or Launcher and
+    # remove the `_pip_dependencies` attribute.
+    with udf_utils.TempPipInstallContext(self._pip_dependencies):
       with self._CreatePipeline(transform_output_path) as pipeline:
         with tft_beam.Context(
             temp_dir=temp_path,

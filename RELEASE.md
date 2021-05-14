@@ -22,7 +22,7 @@
    `beam_pipeline_args` per component.
 *  Support string RuntimeParameters on Airflow.
 *  User code specified through the `module_file` argument for the Evaluator,
-   Transform and Trainer components is now packaged as a pip wheel for
+   Transform, Trainer and Tuner components is now packaged as a pip wheel for
    execution. For Evaluator and Transform, these wheel packages are now
    installed on remote Apache Beam workers.
 
