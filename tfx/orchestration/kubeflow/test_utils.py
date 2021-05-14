@@ -44,7 +44,7 @@ from tfx.components import Transform
 from tfx.dsl.components.base import executor_spec
 from tfx.dsl.components.base.base_component import BaseComponent
 from tfx.dsl.components.common import resolver
-from tfx.dsl.experimental import latest_artifacts_resolver
+from tfx.dsl.input_resolution.strategies import latest_artifact_strategy
 from tfx.dsl.io import fileio
 from tfx.orchestration import pipeline as tfx_pipeline
 from tfx.orchestration import test_utils
@@ -278,7 +278,7 @@ def create_e2e_components(
       schema=schema_gen.outputs['schema'],
       module_file=transform_module)
   latest_model_resolver = resolver.Resolver(
-      strategy_class=latest_artifacts_resolver.LatestArtifactsResolver,
+      strategy_class=latest_artifact_strategy.LatestArtifactStrategy,
       latest_model=Channel(type=Model)).with_id('latest_model_resolver')
   trainer = Trainer(
       transformed_examples=transform.outputs['transformed_examples'],
@@ -407,10 +407,11 @@ class BaseKubeflowTest(test_case_utils.TfxTest):
   # location for each invocation, and cleaned up at the end of test.
   _TEST_DATA_ROOT = os.environ['KFP_E2E_TEST_DATA_ROOT']
 
-  # The location of test user module
-  # It is retrieved from inside the container subject to testing.
-  # This location depends on install path of TFX in the docker image.
-  _MODULE_ROOT = '/opt/conda/lib/python3.7/site-packages/tfx/components/testdata/module_file'
+  # The location of test user module. Will be packaged and copied to under the
+  # pipeline root before pipeline execution.
+  _MODULE_ROOT = os.path.join(
+      os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
+      'components/testdata/module_file')
 
   @classmethod
   def setUpClass(cls):

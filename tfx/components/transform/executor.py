@@ -30,7 +30,6 @@ import tensorflow as tf
 import tensorflow_data_validation as tfdv
 import tensorflow_transform as tft
 from tensorflow_transform import impl_helper
-from tensorflow_transform import tf2_utils
 import tensorflow_transform.beam as tft_beam
 from tensorflow_transform.beam import analyzer_cache
 from tensorflow_transform.beam import common as tft_beam_common
@@ -44,6 +43,7 @@ from tfx.components.util import tfxio_utils
 from tfx.components.util import udf_utils
 from tfx.components.util import value_utils
 from tfx.dsl.components.base import base_beam_executor
+from tfx.dsl.components.base import base_executor
 from tfx.dsl.io import fileio
 from tfx.proto import example_gen_pb2
 from tfx.proto import transform_pb2
@@ -273,6 +273,11 @@ def _InvokeStatsOptionsUpdaterFn(
 class Executor(base_beam_executor.BaseBeamExecutor):
   """Transform executor."""
 
+  def __init__(
+      self, context: Optional[base_executor.BaseExecutor.Context] = None):
+    super(Executor, self).__init__(context)
+    self._pip_dependencies = []
+
   def Do(self, input_dict: Dict[Text, List[types.Artifact]],
          output_dict: Dict[Text, List[types.Artifact]],
          exec_properties: Dict[Text, Any]) -> None:
@@ -417,15 +422,17 @@ class Executor(base_beam_executor.BaseBeamExecutor):
         return artifact_utils.get_single_uri(params_dict[label])
 
     force_tf_compat_v1 = bool(
-        exec_properties.get(standard_component_specs.FORCE_TF_COMPAT_V1_KEY, 1))
-    if force_tf_compat_v1 and not tf2_utils.use_tf_compat_v1(False):
-      absl.logging.warning(
-          'The default value of `force_tf_compat_v1` will change in a future '
-          'release from `True` to `False`. Since this pipeline has TF 2 '
-          'behaviors enabled, Transform will use native TF 2 at that point. You'
-          ' can test this behavior now by passing `force_tf_compat_v1=False` '
-          'or disable it by explicitly setting `force_tf_compat_v1=True` in '
-          'the Transform component.')
+        exec_properties.get(standard_component_specs.FORCE_TF_COMPAT_V1_KEY, 0))
+
+    # Make sure user packages get propagated to the remote Beam worker.
+    user_module_key = exec_properties.get(
+        standard_component_specs.MODULE_PATH_KEY, None)
+    _, extra_pip_packages = udf_utils.decode_user_module_key(user_module_key)
+    for pip_package_path in extra_pip_packages:
+      local_pip_package_path = io_utils.ensure_local(pip_package_path)
+      self._beam_pipeline_args.append(_BEAM_EXTRA_PACKAGE_PREFIX +
+                                      local_pip_package_path)
+      self._pip_dependencies.append(local_pip_package_path)
 
     # Make sure user packages get propagated to the remote Beam worker.
     user_module_key = exec_properties.get(
@@ -1095,13 +1102,9 @@ class Executor(base_beam_executor.BaseBeamExecutor):
     # TempPipInstallContext is needed here so that subprocesses (which
     # may be created by the Beam multi-process DirectRunner) can find the
     # needed dependencies.
-    # TODO(b/187122662): Move this to the ExecutorOperator or Launcher.
-    pip_dependencies = [
-        arg[len(_BEAM_EXTRA_PACKAGE_PREFIX):]
-        for arg in self._beam_pipeline_args or []
-        if arg.startswith(_BEAM_EXTRA_PACKAGE_PREFIX)
-    ]
-    with udf_utils.TempPipInstallContext(pip_dependencies):
+    # TODO(b/187122662): Move this to the ExecutorOperator or Launcher and
+    # remove the `_pip_dependencies` attribute.
+    with udf_utils.TempPipInstallContext(self._pip_dependencies):
       with self._CreatePipeline(transform_output_path) as pipeline:
         with tft_beam.Context(
             temp_dir=temp_path,

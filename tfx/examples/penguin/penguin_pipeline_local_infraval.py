@@ -92,7 +92,7 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
 
   # Get the latest blessed model for model validation.
   model_resolver = tfx.dsl.Resolver(
-      strategy_class=tfx.dsl.experimental.LatestBlessedModelResolver,
+      strategy_class=tfx.dsl.experimental.LatestBlessedModelStrategy,
       model=tfx.dsl.Channel(type=tfx.types.standard_artifacts.Model),
       model_blessing=tfx.dsl.Channel(
           type=tfx.types.standard_artifacts.ModelBlessing)).with_id(

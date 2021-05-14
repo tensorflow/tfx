@@ -20,8 +20,8 @@ import tensorflow as tf
 from tfx import components
 from tfx.dsl.components.common import importer
 from tfx.dsl.components.common import resolver
-from tfx.dsl.experimental import latest_artifacts_resolver
-from tfx.dsl.experimental import latest_blessed_model_resolver
+from tfx.dsl.input_resolution.strategies import latest_artifact_strategy
+from tfx.dsl.input_resolution.strategies import latest_blessed_model_strategy
 from tfx.extensions.google_cloud_big_query.example_gen import component as big_query_example_gen_component
 from tfx.orchestration import data_types
 from tfx.orchestration.kubeflow.v2 import step_builder
@@ -217,9 +217,9 @@ class StepBuilderTest(tf.test.TestCase):
             'expected_importer_executor.pbtxt',
             pipeline_pb2.PipelineDeploymentConfig()), deployment_config)
 
-  def testBuildLatestBlessedModelResolverSucceed(self):
+  def testBuildLatestBlessedModelStrategySucceed(self):
     latest_blessed_resolver = resolver.Resolver(
-        strategy_class=latest_blessed_model_resolver.LatestBlessedModelResolver,
+        strategy_class=latest_blessed_model_strategy.LatestBlessedModelStrategy,
         model=channel.Channel(type=standard_artifacts.Model),
         model_blessing=channel.Channel(
             type=standard_artifacts.ModelBlessing)).with_id('my_resolver2')
@@ -270,7 +270,7 @@ class StepBuilderTest(tf.test.TestCase):
 
   def testBuildLatestArtifactResolverSucceed(self):
     latest_model_resolver = resolver.Resolver(
-        strategy_class=latest_artifacts_resolver.LatestArtifactsResolver,
+        strategy_class=latest_artifact_strategy.LatestArtifactStrategy,
         model=channel.Channel(type=standard_artifacts.Model),
         examples=channel.Channel(
             type=standard_artifacts.Examples)).with_id('my_resolver')

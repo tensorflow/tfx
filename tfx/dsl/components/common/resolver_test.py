@@ -16,7 +16,7 @@
 import tensorflow as tf
 from tfx import types
 from tfx.dsl.components.common import resolver
-from tfx.dsl.experimental import latest_artifacts_resolver
+from tfx.dsl.input_resolution.strategies import latest_artifact_strategy
 from tfx.orchestration import data_types
 from tfx.orchestration import metadata
 from tfx.types import standard_artifacts
@@ -29,13 +29,13 @@ class ResolverTest(tf.test.TestCase):
   def testResolverDefinition(self):
     channel_to_resolve = types.Channel(type=standard_artifacts.Examples)
     rnode = resolver.Resolver(
-        strategy_class=latest_artifacts_resolver.LatestArtifactsResolver,
+        strategy_class=latest_artifact_strategy.LatestArtifactStrategy,
         config={'desired_num_of_artifacts': 5},
         channel_to_resolve=channel_to_resolve)
     self.assertDictEqual(
         rnode.exec_properties, {
             resolver.RESOLVER_STRATEGY_CLASS:
-                latest_artifacts_resolver.LatestArtifactsResolver,
+                latest_artifact_strategy.LatestArtifactStrategy,
             resolver.RESOLVER_CONFIG: {
                 'desired_num_of_artifacts': 5
             }
@@ -50,7 +50,7 @@ class ResolverTest(tf.test.TestCase):
         ValueError,
         'Expected extra kwarg .* to be of type .*tfx.types.Channel'):
       resolver.Resolver(
-          strategy_class=latest_artifacts_resolver.LatestArtifactsResolver,
+          strategy_class=latest_artifact_strategy.LatestArtifactStrategy,
           config={'desired_num_of_artifacts': 5},
           not_a_channel=object())
 
@@ -105,7 +105,7 @@ class ResolverDriverTest(tf.test.TestCase):
           output_dict=output_dict,
           exec_properties={
               resolver.RESOLVER_STRATEGY_CLASS:
-                  latest_artifacts_resolver.LatestArtifactsResolver,
+                  latest_artifact_strategy.LatestArtifactStrategy,
               resolver.RESOLVER_CONFIG: {
                   'desired_num_of_artifacts': 1
               }
@@ -115,7 +115,7 @@ class ResolverDriverTest(tf.test.TestCase):
       self.assertDictEqual(
           execution_result.exec_properties, {
               resolver.RESOLVER_STRATEGY_CLASS:
-                  latest_artifacts_resolver.LatestArtifactsResolver,
+                  latest_artifact_strategy.LatestArtifactStrategy,
               resolver.RESOLVER_CONFIG: {
                   'desired_num_of_artifacts': 1
               }
@@ -138,7 +138,7 @@ class ResolverDriverTest(tf.test.TestCase):
           output_dict=self.source_channels.copy(),
           exec_properties={
               resolver.RESOLVER_STRATEGY_CLASS:
-                  latest_artifacts_resolver.LatestArtifactsResolver,
+                  latest_artifact_strategy.LatestArtifactStrategy,
               resolver.RESOLVER_CONFIG: {}
           })
 

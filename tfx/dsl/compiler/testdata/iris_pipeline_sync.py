@@ -26,7 +26,7 @@ from tfx.components import Trainer
 from tfx.components.trainer.executor import GenericExecutor
 from tfx.dsl.components.base import executor_spec
 from tfx.dsl.components.common import resolver
-from tfx.dsl.experimental import latest_blessed_model_resolver
+from tfx.dsl.input_resolution.strategies import latest_blessed_model_strategy
 from tfx.orchestration import data_types
 from tfx.orchestration import pipeline
 from tfx.proto import pusher_pb2
@@ -84,7 +84,7 @@ def create_test_pipeline():
           config=trainer_pb2.TrainArgs(num_steps=2000))
 
   model_resolver = resolver.Resolver(
-      strategy_class=latest_blessed_model_resolver.LatestBlessedModelResolver,
+      strategy_class=latest_blessed_model_strategy.LatestBlessedModelStrategy,
       model=Channel(
           type=standard_artifacts.Model, producer_component_id=trainer.id),
       model_blessing=Channel(type=standard_artifacts.ModelBlessing)).with_id(

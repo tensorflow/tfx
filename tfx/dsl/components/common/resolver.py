@@ -196,7 +196,7 @@ class Resolver(base_node.BaseNode):
   ```
   example_gen = ImportExampleGen(...)
   examples_resolver = Resolver(
-        strategy_class=SpansResolver,
+        strategy_class=SpanRangeStrategy,
         config={'range_config': range_config},
         examples=Channel(type=Examples, producer_component_id=example_gen.id)
         ).with_id('Resolver.span_resolver')

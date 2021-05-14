@@ -49,6 +49,7 @@ def import_func_from_module(module_path: Text, fn_name: Text) -> Callable:  # py
     # The module path is a combined specification of a module path in a wheel
     # file path.
     module_path, wheel_path = module_path.split('@', maxsplit=1)
+    wheel_path = io_utils.ensure_local(wheel_path)
     # Install pip dependencies and add it to the import resolution path.
     # TODO(b/187122070): Move `udf_utils.py` to `tfx/utils` and fix circular
     # dependency.

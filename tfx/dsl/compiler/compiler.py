@@ -26,6 +26,7 @@ from tfx.orchestration import data_types_utils
 from tfx.orchestration import pipeline
 from tfx.proto.orchestration import executable_spec_pb2
 from tfx.proto.orchestration import pipeline_pb2
+from tfx.utils import deprecation_utils
 from tfx.utils import json_utils
 from ml_metadata.proto import metadata_store_pb2
 
@@ -456,6 +457,7 @@ def _convert_to_resolver_steps(resolver_node: base_node.BaseNode):
   resolver_node = cast(resolver.Resolver, resolver_node)
   result = []
   for strategy_cls, config in resolver_node.strategy_class_and_configs:
+    strategy_cls = deprecation_utils.get_first_nondeprecated_class(strategy_cls)
     step = pipeline_pb2.ResolverConfig.ResolverStep()
     step.class_path = (
         f"{strategy_cls.__module__}.{strategy_cls.__name__}")

@@ -14,6 +14,6 @@
 """TFX dsl.experimental module."""
 
 from tfx.dsl.components.common.resolver import ResolverStrategy
-from tfx.dsl.experimental.latest_artifacts_resolver import LatestArtifactsResolver
-from tfx.dsl.experimental.latest_blessed_model_resolver import LatestBlessedModelResolver
-from tfx.dsl.experimental.spans_resolver import SpansResolver
+from tfx.dsl.input_resolution.strategies.latest_artifact_strategy import LatestArtifactStrategy
+from tfx.dsl.input_resolution.strategies.latest_blessed_model_strategy import LatestBlessedModelStrategy
+from tfx.dsl.input_resolution.strategies.span_range_strategy import SpanRangeStrategy

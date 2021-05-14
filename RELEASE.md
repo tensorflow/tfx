@@ -22,7 +22,7 @@
    `beam_pipeline_args` per component.
 *  Support string RuntimeParameters on Airflow.
 *  User code specified through the `module_file` argument for the Evaluator,
-   Transform and Trainer components is now packaged as a pip wheel for
+   Transform, Trainer and Tuner components is now packaged as a pip wheel for
    execution. For Evaluator and Transform, these wheel packages are now
    installed on remote Apache Beam workers.
 
@@ -69,6 +69,9 @@
 *  Deleted all usages of instance_name, which was deprecated in version 0.25.0.
    Please use .with_id() method of components.
 *  Removed output channel overwrite functionality from all official components.
+*  Transform will use the native TF2 implementation of tf.transform unless TF2
+   behaviors are explicitly disabled. The previous behaviour can still be
+   obtained by setting `force_tf_compat_v1=True`.
 
 ### For Component Authors
 
@@ -78,6 +81,9 @@
 
 *   RuntimeParameter usage for `module_file` and user-defined function paths is
     marked experimental.
+*  `LatestArtifactsResolver`, `LatestBlessedModelResolver`, `SpansResolver`
+   are renamed to `LatestArtifactStrategy`, `LatestBlessedModelStrategy`,
+   `SpanRangeStrategy` respectively.
 
 ## Bug Fixes and Other Changes
 

@@ -120,7 +120,7 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
 
   # Get the latest blessed model for model validation.
   model_resolver = dsl.Resolver(
-      strategy_class=dsl.experimental.LatestBlessedModelResolver,
+      strategy_class=dsl.experimental.LatestBlessedModelStrategy,
       model=dsl.Channel(type=types.standard_artifacts.Model),
       model_blessing=dsl.Channel(
           type=types.standard_artifacts.ModelBlessing)).with_id(

@@ -18,7 +18,9 @@ from absl.testing import parameterized
 import tensorflow as tf
 from tfx.dsl.components.common import resolver
 from tfx.orchestration.portable.resolver import factory
+from tfx.proto import range_config_pb2
 from tfx.proto.orchestration import pipeline_pb2
+from tfx.utils import json_utils
 
 
 class FactoryTest(tf.test.TestCase, parameterized.TestCase):
@@ -39,12 +41,19 @@ class FactoryTest(tf.test.TestCase, parameterized.TestCase):
       ('tfx.dsl.resolvers.unprocessed_artifacts_resolver'
        '.UnprocessedArtifactsResolver',
        '{"execution_type_name": "Foo"}'),
-      ('tfx.dsl.experimental.latest_artifacts_resolver'
-       '.LatestArtifactsResolver',
+      ('tfx.dsl.input_resolution.strategies.latest_artifact_strategy'
+       '.LatestArtifactStrategy',
        '{}'),
-      ('tfx.dsl.experimental.latest_blessed_model_resolver'
-       '.LatestBlessedModelResolver',
-       '{}'))
+      ('tfx.dsl.input_resolution.strategies.latest_blessed_model_strategy'
+       '.LatestBlessedModelStrategy',
+       '{}'),
+      ('tfx.dsl.input_resolution.strategies.span_range_strategy'
+       '.SpanRangeStrategy',
+       json_utils.dumps({
+           'range_config': range_config_pb2.StaticRange(
+               start_span_number=1, end_span_number=10)
+       })),
+      )
   def test_make_resolver_strategy_instance(self, class_path, config_json):
     if not self.class_path_exists(class_path):
       self.skipTest(f"Class path {class_path} doesn't exist.")

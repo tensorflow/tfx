@@ -182,7 +182,7 @@ class InputsUtilsTest(test_case_utils.TfxTest, _TestMixin):
       self.assertIsNone(
           inputs_utils.resolve_input_artifacts(m, my_trainer.inputs))
 
-  def testResolverWithLatestArtifactsResolver(self):
+  def testResolverWithLatestArtifactStrategy(self):
     pipeline = self.load_pipeline_proto(
         'pipeline_for_input_resolver_test.pbtxt')
     my_example_gen = pipeline.nodes[0].pipeline_node
@@ -204,8 +204,8 @@ class InputsUtilsTest(test_case_utils.TfxTest, _TestMixin):
       transform_resolver = (my_transform.inputs.resolver_config
                             .resolver_steps.add())
       transform_resolver.class_path = (
-          'tfx.dsl.experimental.latest_artifacts_resolver'
-          '.LatestArtifactsResolver')
+          'tfx.dsl.input_resolution.strategies.latest_artifact_strategy'
+          '.LatestArtifactStrategy')
       transform_resolver.config_json = '{}'
 
       # Gets inputs for transform. Should get back what the first ExampleGen
@@ -272,8 +272,8 @@ class InputsUtilsResolverTests(test_case_utils.TfxTest, _TestMixin):
     resolver1.config_json = '{"execution_type_name": "Transform"}'
     resolver2 = my_transform.inputs.resolver_config.resolver_steps.add()
     resolver2.class_path = (
-        'tfx.dsl.experimental.latest_artifacts_resolver'
-        '.LatestArtifactsResolver')
+        'tfx.dsl.input_resolution.strategies.latest_artifact_strategy'
+        '.LatestArtifactStrategy')
     resolver2.config_json = '{}'
 
     with self.get_metadata() as m:
@@ -313,8 +313,8 @@ class InputsUtilsResolverTests(test_case_utils.TfxTest, _TestMixin):
     resolver1.config_json = '{"execution_type_name": "Transform"}'
     resolver2 = my_transform.inputs.resolver_config.resolver_steps.add()
     resolver2.class_path = (
-        'tfx.dsl.experimental.latest_artifacts_resolver'
-        '.LatestArtifactsResolver')
+        'tfx.dsl.input_resolution.strategies.latest_artifact_strategy'
+        '.LatestArtifactStrategy')
     resolver2.config_json = '{}'
 
     with self.get_metadata() as m:
@@ -356,8 +356,8 @@ class InputsUtilsResolverTests(test_case_utils.TfxTest, _TestMixin):
     resolver1.config_json = '{"execution_type_name": "Transform"}'
     resolver2 = my_transform.inputs.resolver_config.resolver_steps.add()
     resolver2.class_path = (
-        'tfx.dsl.experimental.latest_artifacts_resolver'
-        '.LatestArtifactsResolver')
+        'tfx.dsl.input_resolution.strategies.latest_artifact_strategy'
+        '.LatestArtifactStrategy')
     resolver2.config_json = '{}'
 
     with self.get_metadata() as m:
@@ -395,11 +395,11 @@ class InputsUtilsResolverTests(test_case_utils.TfxTest, _TestMixin):
     my_transform = pipeline.nodes[2].pipeline_node
     my_trainer = pipeline.nodes[3].pipeline_node
 
-    # Use LatestArtifactsResolver for TransformGraph only.
+    # Use LatestArtifactStrategy for TransformGraph only.
     resolver = my_trainer.inputs.resolver_config.resolver_steps.add()
     resolver.class_path = (
-        'tfx.dsl.experimental.latest_artifacts_resolver'
-        '.LatestArtifactsResolver')
+        'tfx.dsl.input_resolution.strategies.latest_artifact_strategy'
+        '.LatestArtifactStrategy')
     resolver.config_json = '{}'
     resolver.input_keys.append('transform_graph')
 

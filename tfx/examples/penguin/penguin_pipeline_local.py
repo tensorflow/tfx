@@ -125,7 +125,7 @@ def _create_pipeline(
   # Gets multiple Spans for transform and training.
   if resolver_range_config:
     examples_resolver = tfx.dsl.Resolver(
-        strategy_class=tfx.dsl.experimental.SpansResolver,
+        strategy_class=tfx.dsl.experimental.SpanRangeStrategy,
         config={
             'range_config': resolver_range_config
         },
@@ -179,7 +179,7 @@ def _create_pipeline(
 
   # Get the latest blessed model for model validation.
   model_resolver = tfx.dsl.Resolver(
-      strategy_class=tfx.dsl.experimental.LatestBlessedModelResolver,
+      strategy_class=tfx.dsl.experimental.LatestBlessedModelStrategy,
       model=tfx.dsl.Channel(type=tfx.types.standard_artifacts.Model),
       model_blessing=tfx.dsl.Channel(
           type=tfx.types.standard_artifacts.ModelBlessing)).with_id(
