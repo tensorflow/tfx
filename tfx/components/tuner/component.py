@@ -23,12 +23,13 @@ from typing import Any, Dict, NamedTuple, Optional, Text
 from kerastuner.engine import base_tuner
 from tfx import types
 from tfx.components.tuner import executor
+from tfx.components.util import udf_utils
 from tfx.dsl.components.base import base_component
 from tfx.dsl.components.base import executor_spec
 from tfx.proto import trainer_pb2
 from tfx.proto import tuner_pb2
 from tfx.types import standard_artifacts
-from tfx.types.standard_component_specs import TunerSpec
+from tfx.types import standard_component_specs
 from tfx.utils import json_utils
 
 # tuner: A BaseTuner that will be used for tuning.
@@ -60,7 +61,7 @@ class Tuner(base_component.BaseComponent):
   for more details.
   """
 
-  SPEC_CLASS = TunerSpec
+  SPEC_CLASS = standard_component_specs.TunerSpec
   EXECUTOR_SPEC = executor_spec.ExecutorClassSpec(executor.Executor)
 
   def __init__(self,
@@ -109,7 +110,7 @@ class Tuner(base_component.BaseComponent):
 
     best_hyperparameters = types.Channel(
         type=standard_artifacts.HyperParameters)
-    spec = TunerSpec(
+    spec = standard_component_specs.TunerSpec(
         examples=examples,
         schema=schema,
         transform_graph=transform_graph,
@@ -122,3 +123,11 @@ class Tuner(base_component.BaseComponent):
         custom_config=json_utils.dumps(custom_config),
     )
     super(Tuner, self).__init__(spec=spec)
+
+    if udf_utils.should_package_user_modules():
+      # In this case, the `MODULE_PATH_KEY` execution property will be injected
+      # as a reference to the given user module file after packaging, at which
+      # point the `MODULE_FILE_KEY` execution property will be removed.
+      udf_utils.add_user_module_dependency(
+          self, standard_component_specs.MODULE_FILE_KEY,
+          standard_component_specs.MODULE_PATH_KEY)

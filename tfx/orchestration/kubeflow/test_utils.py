@@ -407,10 +407,11 @@ class BaseKubeflowTest(test_case_utils.TfxTest):
   # location for each invocation, and cleaned up at the end of test.
   _TEST_DATA_ROOT = os.environ['KFP_E2E_TEST_DATA_ROOT']
 
-  # The location of test user module
-  # It is retrieved from inside the container subject to testing.
-  # This location depends on install path of TFX in the docker image.
-  _MODULE_ROOT = '/opt/conda/lib/python3.7/site-packages/tfx/components/testdata/module_file'
+  # The location of test user module. Will be packaged and copied to under the
+  # pipeline root before pipeline execution.
+  _MODULE_ROOT = os.path.join(
+      os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
+      'components/testdata/module_file')
 
   @classmethod
   def setUpClass(cls):

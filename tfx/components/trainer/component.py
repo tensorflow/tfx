@@ -154,7 +154,7 @@ class Trainer(base_component.BaseComponent):
       trainer_fn:  A python path to UDF model definition function for estimator
         based trainer. See 'module_file' for the required signature of the UDF.
         Exactly one of 'module_file' or 'trainer_fn' must be supplied if Trainer
-        uses Estimator based Executor Use of a RuntimeParameter for this
+        uses Estimator based Executor. Use of a RuntimeParameter for this
         argument is experimental.
       train_args: A proto.TrainArgs instance or a dict, containing args
         used for training. Currently only splits and num_steps are available. If

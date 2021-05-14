@@ -370,17 +370,17 @@ class KubeflowDagRunner(tfx_runner.TfxRunner):
       pipeline: The logical TFX pipeline to use when building the Kubeflow
         pipeline.
     """
-    pipeline_root = tfx_pipeline.ROOT_PARAMETER
-
     for component in pipeline.components:
       # TODO(b/187122662): Pass through pip dependencies as a first-class
       # component flag.
       if isinstance(component, tfx_base_component.BaseComponent):
-        component._resolve_pip_dependencies(pipeline_root)  # pylint: disable=protected-access
+        component._resolve_pip_dependencies(  # pylint: disable=protected-access
+            pipeline.pipeline_info.pipeline_root)
 
     # KFP DSL representation of pipeline root parameter.
     dsl_pipeline_root = dsl.PipelineParam(
-        name=pipeline_root.name, value=pipeline.pipeline_info.pipeline_root)
+        name=tfx_pipeline.ROOT_PARAMETER.name,
+        value=pipeline.pipeline_info.pipeline_root)
     self._params.append(dsl_pipeline_root)
 
     def _construct_pipeline():
