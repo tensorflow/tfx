@@ -69,6 +69,9 @@
 *  Deleted all usages of instance_name, which was deprecated in version 0.25.0.
    Please use .with_id() method of components.
 *  Removed output channel overwrite functionality from all official components.
+*  Transform will use the native TF2 implementation of tf.transform unless TF2
+   behaviors are explicitly disabled. The previous behaviour can still be
+   obtained by setting `force_tf_compat_v1=True`.
 
 ### For Component Authors
 
