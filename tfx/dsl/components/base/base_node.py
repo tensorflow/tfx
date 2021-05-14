@@ -166,6 +166,12 @@ class BaseNode(json_utils.Jsonable, abc.ABC):
     if self not in upstream_node.downstream_nodes:
       upstream_node.add_downstream_node(self)
 
+  @doc_controls.do_not_doc_in_subclasses
+  def remove_upstream_node(self, upstream_node):
+    self._upstream_nodes.remove(upstream_node)
+    if self in upstream_node.downstream_nodes:
+      upstream_node.remove_downstream_node(self)
+
   @property
   @doc_controls.do_not_doc_in_subclasses
   def downstream_nodes(self):
@@ -192,3 +198,9 @@ class BaseNode(json_utils.Jsonable, abc.ABC):
     self._downstream_nodes.add(downstream_node)
     if self not in downstream_node.upstream_nodes:
       downstream_node.add_upstream_node(self)
+
+  @doc_controls.do_not_doc_in_subclasses
+  def remove_downstream_node(self, downstream_node):
+    self._downstream_nodes.remove(downstream_node)
+    if self in downstream_node.upstream_nodes:
+      downstream_node.remove_upstream_node(self)
