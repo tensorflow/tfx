@@ -23,6 +23,8 @@ from tfx.dsl.components.base import base_component
 from tfx.dsl.components.base import base_executor
 from tfx.dsl.components.base import executor_spec
 from tfx.dsl.components.common import resolver
+from tfx.dsl.input_resolution import decorator
+from tfx.dsl.input_resolution import resolver_op
 from tfx.orchestration import metadata
 from tfx.orchestration import pipeline
 from tfx.proto.orchestration import execution_result_pb2
@@ -113,6 +115,22 @@ class DummyResolverStrategy(resolver.ResolverStrategy):
     return input_dict
 
 
+class Foo(resolver_op.ResolverOp):
+  """Dummy ResolverOperator Foo."""
+  foo = resolver_op.ResolverOpProperty(type=int)
+
+  def apply(self, input_dict):
+    return input_dict
+
+
+class Bar(resolver_op.ResolverOp):
+  """Dummy ResolverOperator Bar."""
+  bar = resolver_op.ResolverOpProperty(type=str)
+
+  def apply(self, input_dict):
+    return input_dict
+
+
 class TestCase(tf.test.TestCase):
 
   def setUp(self):
@@ -122,6 +140,16 @@ class TestCase(tf.test.TestCase):
     self.metadata_conn_config = metadata.sqlite_metadata_connection_config(
         os.path.join(temp_dir, 'metadata', 'metadata.db'))
     self.compiler = compiler.Compiler()
+
+  def compile_sync_pipeline(self, components):
+    p = pipeline.Pipeline(
+        'TestPipeline',
+        pipeline_root=self.pipeline_root,
+        metadata_connection_config=self.metadata_conn_config,
+        execution_mode=pipeline.ExecutionMode.SYNC,
+        components=components,
+    )
+    return self.compiler.compile(p)
 
   def compile_async_pipeline(self, components):
     p = pipeline.Pipeline(
@@ -348,6 +376,32 @@ class CompilerResolverTest(TestCase):
     self.assertEqual(
         b_ir.inputs.inputs['y'].channels[0].producer_node_query.id, 'A')
 
+  def test_functional_resolver_node(self):
+    # Linter doesn't understand the @resolver decorator has changed the
+    # signature of MyResolver, thus disables linters.
+    # pylint: disable=invalid-name
+    # pylint: disable=unexpected-keyword-arg
+    # pylint: disable=no-value-for-parameter
+
+    @decorator.resolver
+    def MyResolver(input_dict):
+      return Bar(Foo(input_dict, foo=1), bar='z')
+
+    a = DummyComponents.A()
+    r = MyResolver(x=a.outputs['x']).with_id('R')
+    pipeline_ir = self.compile_sync_pipeline([a, r])
+
+    r_ir = self.extract_pipeline_node(pipeline_ir, 'R')
+    resolver_steps = r_ir.inputs.resolver_config.resolver_steps
+    self.assertLen(resolver_steps, 2)
+    # Check steps[0]
+    self.assertEndsWith(resolver_steps[0].class_path, '.Foo')
+    self.assertEqual(json.loads(resolver_steps[0].config_json), {'foo': 1})
+    self.assertEqual(resolver_steps[0].input_keys, ['x'])
+    # Check steps[1]
+    self.assertEndsWith(resolver_steps[1].class_path, '.Bar')
+    self.assertEqual(json.loads(resolver_steps[1].config_json), {'bar': 'z'})
+    self.assertEqual(resolver_steps[1].input_keys, ['x'])
 
 if __name__ == '__main__':
   tf.test.main()

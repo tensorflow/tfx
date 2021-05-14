@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Compiles a TFX pipeline into a TFX DSL IR proto."""
-from typing import cast, Iterable, List, Mapping
+from typing import cast, Iterable, List, Mapping, Type
 
 from tfx import types
 from tfx.dsl.compiler import compiler_utils
@@ -21,6 +21,7 @@ from tfx.dsl.components.base import base_component
 from tfx.dsl.components.base import base_driver
 from tfx.dsl.components.base import base_node
 from tfx.dsl.components.common import resolver
+from tfx.dsl.input_resolution import resolver_op
 from tfx.orchestration import data_types
 from tfx.orchestration import data_types_utils
 from tfx.orchestration import pipeline
@@ -245,8 +246,7 @@ class Compiler:
       # TODO(b/163433174): Remove specialized logic once generalization of
       # driver spec is done.
       if tfx_node.driver_class != base_driver.BaseDriver:
-        driver_class_path = "{}.{}".format(tfx_node.driver_class.__module__,
-                                           tfx_node.driver_class.__name__)
+        driver_class_path = _fully_qualified_name(tfx_node.driver_class)
         driver_spec = executable_spec_pb2.PythonClassExecutableSpec()
         driver_spec.class_path = driver_class_path
         deployment_config.custom_driver_specs[tfx_node.id].Pack(driver_spec)
@@ -451,19 +451,49 @@ class Compiler:
     return pipeline_pb
 
 
-def _convert_to_resolver_steps(resolver_node: base_node.BaseNode):
+def _fully_qualified_name(typ):
+  typ = deprecation_utils.get_first_nondeprecated_class(typ)
+  return f"{typ.__module__}.{typ.__qualname__}"
+
+
+def _compile_resolver_strategy(
+    strategy_cls: Type[resolver.ResolverStrategy],
+    config: Mapping[str, json_utils.JsonableType],
+) -> pipeline_pb2.ResolverConfig.ResolverStep:
+  result = pipeline_pb2.ResolverConfig.ResolverStep()
+  result.class_path = _fully_qualified_name(strategy_cls)
+  result.config_json = json_utils.dumps(config)
+  return result
+
+
+def _compile_resolver_op(
+    op_node: resolver_op.OpNode,
+) -> pipeline_pb2.ResolverConfig.ResolverStep:
+  result = pipeline_pb2.ResolverConfig.ResolverStep()
+  result.class_path = _fully_qualified_name(op_node.op_type)
+  result.config_json = json_utils.dumps(op_node.kwargs)
+  return result
+
+
+def _convert_to_resolver_steps(
+    resolver_node: base_node.BaseNode
+) -> List[pipeline_pb2.ResolverConfig.ResolverStep]:
   """Converts Resolver node to a corresponding ResolverSteps."""
   assert compiler_utils.is_resolver(resolver_node)
   resolver_node = cast(resolver.Resolver, resolver_node)
   result = []
-  for strategy_cls, config in resolver_node.strategy_class_and_configs:
-    strategy_cls = deprecation_utils.get_first_nondeprecated_class(strategy_cls)
-    step = pipeline_pb2.ResolverConfig.ResolverStep()
-    step.class_path = (
-        f"{strategy_cls.__module__}.{strategy_cls.__name__}")
-    step.config_json = json_utils.dumps(config)
+  if resolver_node.use_function:  # ResolverFunction based Resolver (new).
+    op_node = resolver_node.function_output_node
+    while not op_node.is_input_node:
+      result.append(_compile_resolver_op(op_node))
+      op_node = op_node.arg
+    result = result[::-1]
+  else:  # ResolverStrategy based Resolver (old).
+    for strategy_cls, config in (
+        resolver_node.strategy_class_and_configs):
+      result.append(_compile_resolver_strategy(strategy_cls, config))
+  for step in result:
     step.input_keys.extend(resolver_node.inputs.keys())
-    result.append(step)
   return result
 
 
