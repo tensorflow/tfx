@@ -85,7 +85,7 @@ class Transform(base_beam_component.BaseBeamComponent):
       analyzer_cache: Optional[types.Channel] = None,
       materialize: bool = True,
       disable_analyzer_cache: bool = False,
-      force_tf_compat_v1: bool = True,
+      force_tf_compat_v1: bool = False,
       custom_config: Optional[Dict[Text, Any]] = None):
     """Construct a Transform component.
 
@@ -133,10 +133,9 @@ class Transform(base_beam_component.BaseBeamComponent):
       disable_analyzer_cache: If False, Transform will use input cache if
         provided and write cache output. If True, `analyzer_cache` must not be
         provided.
-      force_tf_compat_v1: (Optional) If True, Transform will use Tensorflow in
-        compat.v1 mode irrespective of installed version of Tensorflow. Defaults
-        to `True`. Note: The default value will be switched to `False` in a
-        future release.
+      force_tf_compat_v1: (Optional) If True and/or TF2 behaviors are disabled
+        Transform will use Tensorflow in compat.v1 mode irrespective of
+        installed version of Tensorflow. Defaults to `False`.
       custom_config: A dict which contains additional parameters that will be
         passed to preprocessing_fn.
 
