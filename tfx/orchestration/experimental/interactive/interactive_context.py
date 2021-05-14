@@ -14,7 +14,7 @@
 # limitations under the License.
 """TFX interactive context for iterative development.
 
-See `examples/chicago_taxi_pipeline/taxi_pipeline_interactive.ipynb` for an
+See `https://www.tensorflow.org/tfx/tutorials/tfx/components_keras` for an
 example of how to run TFX in a Jupyter notebook for iterative development.
 
 Note: these APIs are **experimental** and major changes to interface and
