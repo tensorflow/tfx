@@ -18,17 +18,20 @@ from typing import Any
 
 from tfx.dsl.io import fileio
 from tfx.types.artifact import Artifact
+from tfx.utils import doc_controls
 
 
 class ValueArtifact(Artifact):
   """Artifacts of small scalar-values that can be easily loaded into memory."""
 
   def __init__(self, *args, **kwargs):
+    """Initializes ValueArtifact."""
     self._has_value = False
     self._modified = False
     self._value = None
     super().__init__(*args, **kwargs)
 
+  @doc_controls.do_not_doc_inheritable
   def read(self):
     if not self._has_value:
       file_path = self.uri
@@ -42,6 +45,7 @@ class ValueArtifact(Artifact):
       self._value = self.decode(serialized_value)
     return self._value
 
+  @doc_controls.do_not_doc_inheritable
   def write(self, value):
     serialized_value = self.encode(value)
     with fileio.open(self.uri, 'wb') as f:
@@ -49,6 +53,7 @@ class ValueArtifact(Artifact):
 
   @property
   def value(self):
+    """Value stored in the artifact."""
     if not self._has_value:
       raise ValueError('The artifact value has not yet been read from storage.')
     return self._value
@@ -61,6 +66,7 @@ class ValueArtifact(Artifact):
 
   # Note: behavior of decode() method should not be changed to provide
   # backward/forward compatibility.
+  @doc_controls.do_not_doc_inheritable
   @abc.abstractmethod
   def decode(self, serialized_value) -> bytes:
     """Method decoding the file content. Implemented by subclasses."""
@@ -68,6 +74,7 @@ class ValueArtifact(Artifact):
 
   # Note: behavior of encode() method should not be changed to provide
   # backward/forward compatibility.
+  @doc_controls.do_not_doc_inheritable
   @abc.abstractmethod
   def encode(self, value) -> Any:
     """Method encoding the file content. Implemented by subclasses."""

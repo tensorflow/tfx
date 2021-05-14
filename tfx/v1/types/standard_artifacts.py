@@ -29,3 +29,9 @@ Schema = standard_artifacts.Schema
 TransformCache = standard_artifacts.TransformCache
 TransformGraph = standard_artifacts.TransformGraph
 HyperParameters = standard_artifacts.HyperParameters
+
+# Artifacts of small scalar-values.
+Bytes = standard_artifacts.Bytes
+Float = standard_artifacts.Float
+Integer = standard_artifacts.Integer
+String = standard_artifacts.String
