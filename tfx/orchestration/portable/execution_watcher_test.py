@@ -13,29 +13,90 @@
 # limitations under the License.
 """Tests for tfx.orchestration.portable.execution_watcher."""
 
+import os
+
 import grpc
 import portpicker
 import tensorflow as tf
+from tfx.orchestration import metadata
+from tfx.orchestration.portable import execution_publish_utils
 from tfx.orchestration.portable import execution_watcher
 from tfx.proto.orchestration import execution_watcher_pb2
-from tfx.proto.orchestration import execution_watcher_pb2_grpc
 from tfx.utils import test_case_utils
+
+from ml_metadata.proto import metadata_store_pb2
 
 
 class ExecutionWatcherTest(test_case_utils.TfxTest):
 
-  def testExecutionWatcher_LocalWithEmptyRequest(self):
+  def setUp(self):
+    super().setUp()
+    # Set up MLMD connection.
+    pipeline_root = os.path.join(
+        os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR', self.get_temp_dir()),
+        self.id())
+    metadata_path = os.path.join(pipeline_root, 'metadata', 'metadata.db')
+    connection_config = metadata.sqlite_metadata_connection_config(
+        metadata_path)
+    connection_config.sqlite.SetInParent()
+    self._mlmd_connection = metadata.Metadata(
+        connection_config=connection_config)
+    with self._mlmd_connection as m:
+      self._execution = execution_publish_utils.register_execution(
+          metadata_handler=m,
+          execution_type=metadata_store_pb2.ExecutionType(
+              name='test_execution_type'),
+          contexts=[],
+          input_artifacts=[])
+    # Set up gRPC stub.
     port = portpicker.pick_unused_port()
-    sidecar = execution_watcher.ExecutionWatcher(
-        port, creds=grpc.local_server_credentials())
-    sidecar.start()
-    creds = grpc.local_channel_credentials()
-    channel = grpc.secure_channel(sidecar.local_address, creds)
-    stub = execution_watcher_pb2_grpc.ExecutionWatcherServiceStub(channel)
+    self.sidecar = execution_watcher.ExecutionWatcher(
+        port,
+        mlmd_connection=self._mlmd_connection,
+        execution=self._execution,
+        creds=grpc.local_server_credentials())
+    self.sidecar.start()
+    self.stub = execution_watcher.generate_service_stub(
+        self.sidecar.address, grpc.local_channel_credentials())
+
+  def tearDown(self):
+    super().tearDown()
+    self.sidecar.stop()
+
+  def testExecutionWatcher_LocalWithEmptyUpdates(self):
     req = execution_watcher_pb2.UpdateExecutionInfoRequest()
-    res = stub.UpdateExecutionInfo(req)
-    sidecar.stop()
+    with self.assertRaisesRegex(grpc.RpcError,
+                                'not tracked') as exception_context:
+      self.stub.UpdateExecutionInfo(req)
+    self.assertIs(grpc.StatusCode.NOT_FOUND, exception_context.exception.code())
+
+  def testExecutionWatcher_Local(self):
+    req = execution_watcher_pb2.UpdateExecutionInfoRequest()
+    value = metadata_store_pb2.Value()
+    value.string_value = 'string_value'
+    req.execution_id = self._execution.id
+    req.updates['test_key'].CopyFrom(value)
+    res = self.stub.UpdateExecutionInfo(req)
     self.assertEqual(execution_watcher_pb2.UpdateExecutionInfoResponse(), res)
+    with self._mlmd_connection as m:
+      executions = m.store.get_executions_by_id([self._execution.id])
+    self.assertEqual(len(executions), 1)
+    self.assertProtoPartiallyEquals(
+        """
+      id: 1
+      type_id: 1
+      last_known_state: RUNNING
+      custom_properties {
+        key: "test_key"
+        value {
+          string_value: "string_value"
+        }
+      }
+      """,
+        executions[0],
+        ignored_fields=[
+            'create_time_since_epoch', 'last_update_time_since_epoch'
+        ])
 
 
 if __name__ == '__main__':

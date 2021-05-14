@@ -50,6 +50,7 @@ class BaseExecutorOperator(abc.ABC):
       raise RuntimeError('Platform spec not supported: %s' % platform_config)
     self._executor_spec = executor_spec
     self._platform_config = platform_config
+    self._execution_watcher_address = None
 
   @abc.abstractmethod
   def run_executor(
@@ -65,3 +66,17 @@ class BaseExecutorOperator(abc.ABC):
       The output from executor.
     """
     pass
+
+  def with_execution_watcher(
+      self, execution_watcher_address: str) -> 'BaseExecutorOperator':
+    """Attatch an execution watcher to the executor operator.
+
+    Args:
+      execution_watcher_address: The address to an executor watcher gRPC service
+        which can be used to update execution properties.
+
+    Returns:
+      The executor operator itself.
+    """
+    self._execution_watcher_address = execution_watcher_address
+    return self

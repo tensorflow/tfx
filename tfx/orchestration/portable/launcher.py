@@ -17,6 +17,8 @@ from typing import Any, Dict, List, Mapping, MutableMapping, Optional, Sequence,
 
 from absl import logging
 import attr
+import grpc
+import portpicker
 from tfx import types
 from tfx.dsl.io import fileio
 from tfx.orchestration import metadata
@@ -27,6 +29,7 @@ from tfx.orchestration.portable import cache_utils
 from tfx.orchestration.portable import data_types
 from tfx.orchestration.portable import docker_executor_operator
 from tfx.orchestration.portable import execution_publish_utils
+from tfx.orchestration.portable import execution_watcher
 from tfx.orchestration.portable import importer_node_handler
 from tfx.orchestration.portable import inputs_utils
 from tfx.orchestration.portable import outputs_utils
@@ -428,6 +431,20 @@ class Launcher(object):
                              execution_preparation_result.is_execution_needed)
     if is_execution_needed:
       try:
+        executor_watcher = None
+        if self._executor_operator:
+          # Create an execution watcher and save an in memory copy of the
+          # Execution object to execution to it. Launcher calls executor
+          # operator in process, thus there won't be race condition between the
+          # execution watcher and the launcher to write to MLMD.
+          executor_watcher = execution_watcher.ExecutionWatcher(
+              port=portpicker.pick_unused_port(),
+              mlmd_connection=self._mlmd_connection,
+              execution=execution_preparation_result.execution_metadata,
+              creds=grpc.local_server_credentials())
+          self._executor_operator.with_execution_watcher(
+              executor_watcher.address)
+          executor_watcher.start()
         executor_output = self._run_executor(execution_info)
       except Exception as e:  # pylint: disable=broad-except
         execution_output = (
@@ -438,6 +455,8 @@ class Launcher(object):
         raise
       finally:
         self._clean_up_stateless_execution_info(execution_info)
+        if executor_watcher:
+          executor_watcher.stop()
 
       logging.info('Execution %d succeeded.', execution_info.execution_id)
       self._clean_up_stateful_execution_info(execution_info)
