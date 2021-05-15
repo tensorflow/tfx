@@ -436,7 +436,7 @@ class Executor(base_beam_executor.BaseBeamExecutor):
 
     label_inputs = {
         labels.COMPUTE_STATISTICS_LABEL:
-            False,
+            True,
         labels.SCHEMA_PATH_LABEL:
             schema_file,
         labels.EXAMPLES_DATA_FORMAT_LABEL:

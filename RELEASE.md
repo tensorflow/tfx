@@ -94,6 +94,7 @@
 *  Transform will use the native TF2 implementation of tf.transform unless TF2
    behaviors are explicitly disabled. The previous behaviour can still be
    obtained by setting `force_tf_compat_v1=True`.
+*  Transform will now compute statistics on post-transform data.
 
 ### For Component Authors
 
