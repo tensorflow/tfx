@@ -87,7 +87,7 @@ RUN MLSDK_WHEEL=$(find dist -name "ml_pipelines_sdk-*.whl"); \
         ${MLSDK_WHEEL} ${TFX_WHEEL}[docker-image] ; \
     else \
       python -m pip install ${MLSDK_WHEEL} ${TFX_WHEEL}[docker-image] ; \
-    fi; \
+    fi && \
     echo "Installed python packages:\n" && python -m pip list
 
 # Patch http.py in googleapiclient and base_api.py in apitools
