@@ -314,8 +314,8 @@ association.context_id = experiment_id
 store.put_attributions_and_associations([attribution], [association])
 
 # Query the Artifacts and Executions that are linked to the Context.
-experiment_artifacts = store.get_artifacts_by_context(experiment_id))
-experiment_executions store.get_executions_by_context(experiment_id))
+experiment_artifacts = store.get_artifacts_by_context(experiment_id)
+experiment_executions = store.get_executions_by_context(experiment_id)
 ```
 
 ## Use MLMD with a remote gRPC server
@@ -328,11 +328,22 @@ You can use MLMD with remote gRPC servers as shown below:
 bazel run -c opt --define grpc_no_ares=true  //ml_metadata/metadata_store:metadata_store_server
 ```
 
-By default, the server uses a fake in-memory db per request and does not
-persist the metadata across calls. It can also be configured with a MLMD
-`ConnectionConfig` to use MySQL instances or Sqlite files.
-The config can be stored in a text protobuf file and passed to the binary with
-`-metadata_store_server_config_file`.
+By default, the server uses a fake in-memory db per request and does not persist
+the metadata across calls. It can also be configured with a MLMD
+`MetadataStoreServerConfig` to use SQLite files or MySQL instances. The config
+can be stored in a text protobuf file and passed to the binary with
+`--metadata_store_server_config_file=path_to_the_config_file`.
+
+An example `MetadataStoreServerConfig` file in text protobuf format:
+
+```textpb
+connection_config {
+  sqlite {
+    filename_uri: '/tmp/test_db'
+    connection_mode: READWRITE_OPENCREATE
+  }
+}
+```
 
 *   Create the client stub and use it in Python
 
