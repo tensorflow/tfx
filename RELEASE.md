@@ -10,13 +10,13 @@
 
 ## Deprecations
 
-*  `LatestArtifactsResolver`, `LatestBlessedModelResolver`, `SpansResolver`
-   are renamed to `LatestArtifactStrategy`, `LatestBlessedModelStrategy`,
-   `SpanRangeStrategy` respectively.
-
 ## Bug Fixes and Other Changes
 
-*  Removed `six` dependency.
+*   Removed `six` dependency.
+*   Depends on `apache-beam[gcp]>=2.29,<3`.
+*   Depends on `tensorflow>=1.15.2,!=2.0.*,!=2.1.*,!=2.2.*,!=2.3.*,!=2.4.*,<3`.
+*   Depends on `tensorflowjs>=3.6.0,<4`.
+*   Depends on `tensorflow-serving-api>=1.15,!=2.0.*,!=2.1.*,!=2.2.*,!=2.3.*,!=2.4.*,<3`.
 
 ## Documentation Updates
 
@@ -109,6 +109,9 @@
 
 *   RuntimeParameter usage for `module_file` and user-defined function paths is
     marked experimental.
+*  `LatestArtifactsResolver`, `LatestBlessedModelResolver`, `SpansResolver`
+   are renamed to `LatestArtifactStrategy`, `LatestBlessedModelStrategy`,
+   `SpanRangeStrategy` respectively.
 
 ## Bug Fixes and Other Changes
 
