@@ -50,7 +50,6 @@ from tfx.proto import transform_pb2
 from tfx.types import artifact_utils
 from tfx.types import standard_artifacts
 from tfx.types import standard_component_specs
-from tfx.utils import import_utils
 from tfx.utils import io_utils
 from tfx.utils import json_utils
 from tfx.utils import proto_utils
@@ -839,20 +838,29 @@ class Executor(base_beam_executor.BaseBeamExecutor):
     """
     has_module_file = bool(
         value_utils.GetSoleValue(inputs, labels.MODULE_FILE, strict=False))
+    has_module_path = bool(
+        value_utils.GetSoleValue(inputs, labels.MODULE_PATH, strict=False))
 
-    fn = None
-    if has_module_file:
-      # Users do not have to define a stats_options_updater_fn. Return None if
-      # they do not.
-      try:
-        fn = import_utils.import_func_from_source(
-            value_utils.GetSoleValue(inputs, labels.MODULE_FILE),
-            'stats_options_updater_fn')
-        fn = self._MaybeBindCustomConfig(inputs, fn)
-      except AttributeError:
-        return None
+    if has_module_file and has_module_path:
+      raise ValueError(
+          'At most one of MODULE_FILE or MODULE_PATH should be '
+          'supplied in inputs.')
 
-    return fn
+    if not has_module_file and not has_module_path:
+      return None
+
+    fn = udf_utils.try_get_fn(
+        {
+            standard_component_specs.MODULE_FILE_KEY:
+                value_utils.GetSoleValue(
+                    inputs, labels.MODULE_FILE, strict=False),
+            standard_component_specs.MODULE_PATH_KEY:
+                value_utils.GetSoleValue(
+                    inputs, labels.MODULE_PATH, strict=False),
+        }, standard_component_specs.STATS_OPTIONS_UPDATER_FN_KEY)
+    if fn is None:
+      return fn
+    return self._MaybeBindCustomConfig(inputs, fn)
 
   # TODO(b/122478841): Refine this API in following cls.
   # Note: This API is up to change.

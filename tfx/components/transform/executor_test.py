@@ -260,6 +260,9 @@ class ExecutorTest(tft_unit.TransformTestCase):
         standard_component_specs.MODULE_FILE_KEY] = self._module_file
     self._transform_executor.Do(self._input_dict, self._output_dict,
                                 self._exec_properties)
+    self.assertIsNotNone(
+        self._transform_executor._GetStatsOptionsUpdaterFn(
+            self._exec_properties))
     self._verify_transform_outputs()
 
   def test_do_with_preprocessing_fn(self):
@@ -267,6 +270,9 @@ class ExecutorTest(tft_unit.TransformTestCase):
         standard_component_specs.PREPROCESSING_FN_KEY] = self._preprocessing_fn
     self._transform_executor.Do(self._input_dict, self._output_dict,
                                 self._exec_properties)
+    self.assertIsNone(
+        self._transform_executor._GetStatsOptionsUpdaterFn(
+            self._exec_properties))
     self._verify_transform_outputs()
 
   def test_do_with_materialization_disabled(self):
