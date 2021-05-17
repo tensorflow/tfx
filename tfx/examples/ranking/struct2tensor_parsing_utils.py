@@ -19,7 +19,6 @@ from typing import Dict, List, Optional, Text, Union
 from struct2tensor import calculate
 from struct2tensor import calculate_options
 from struct2tensor import path
-from struct2tensor import prensor_util
 from struct2tensor.expression_impl import proto as proto_expr
 import tensorflow as tf
 from tfx_bsl.public import tfxio
@@ -254,8 +253,7 @@ def parse_elwc_with_struct2tensor(
   prensor_result = calculate.calculate_prensors(
       [projection], options)[0]
   # a map from path.Path to RaggedTensors.
-  projected_with_paths = prensor_util.get_ragged_tensors(
-      prensor_result, options)
+  projected_with_paths = prensor_result.get_ragged_tensors(options)
 
   context_dict = {
       f: projected_with_paths[context_keys_to_promoted_paths[f]]
