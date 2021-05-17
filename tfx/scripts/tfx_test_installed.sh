@@ -130,6 +130,11 @@ SKIP_LIST+=(
   "tfx/experimental/distributed_inference/graphdef_experiments/subgraph_partitioning/beam_pipeline_test.py"
 )
 
+# TODO(b/188223200): Add back following test for TFX 1.0 and later.
+SKIP_LIST+=(
+  "tfx/tools/cli/commands/pipeline_test.py"
+)
+
 # TODO(b/154871293): Migrate to pytest after fixing pytest issues.
 # xargs stops only when the exit code is 255, so we convert any
 # failure to exit code 255.
