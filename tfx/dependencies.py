@@ -87,7 +87,7 @@ def make_required_install_packages():
       'numpy>=1.16,<1.20',
       'pyarrow>=1,<3',
       'pyyaml>=3.12,<6',
-      'tensorflow>=1.15.2,!=2.0.*,!=2.1.*,!=2.2.*,!=2.3.*,<3',
+      'tensorflow>=1.15.2,!=2.0.*,!=2.1.*,!=2.2.*,!=2.3.*,!=2.4.*,<3',
       'tensorflow-hub>=0.9.0,<0.10',
       'tensorflow-data-validation' + select_constraint(
           default='>=0.30,<0.31',

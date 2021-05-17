@@ -10,10 +10,6 @@
 
 ## Deprecations
 
-*  `LatestArtifactsResolver`, `LatestBlessedModelResolver`, `SpansResolver`
-   are renamed to `LatestArtifactStrategy`, `LatestBlessedModelStrategy`,
-   `SpanRangeStrategy` respectively.
-
 ## Bug Fixes and Other Changes
 
 *  Removed `six` dependency.
@@ -103,6 +99,9 @@
 
 *   RuntimeParameter usage for `module_file` and user-defined function paths is
     marked experimental.
+*  `LatestArtifactsResolver`, `LatestBlessedModelResolver`, `SpansResolver`
+   are renamed to `LatestArtifactStrategy`, `LatestBlessedModelStrategy`,
+   `SpanRangeStrategy` respectively.
 
 ## Bug Fixes and Other Changes
 
@@ -118,6 +117,7 @@
 *   Depends on `ml-metadata>=0.30.0,<0.31.0`.
 *   Depends on `portpicker>=1.3.1,<2`.
 *   Depends on `struct2tensor>=0.30.0,<0.31.0`.
+*   Depends on `tensorflow>=1.15.2,!=2.0.*,!=2.1.*,!=2.2.*,!=2.3.*,!=2.4.*,<3`.
 *   Depends on `tensorflow-data-validation>=0.30.0,<0.31.0`.
 *   Depends on `tensorflow-model-analysis>=0.30.0,<0.31.0`.
 *   Depends on `tensorflow-transform>=0.30.0,<0.31.0`.
