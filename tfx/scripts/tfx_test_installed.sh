@@ -135,6 +135,12 @@ SKIP_LIST+=(
   "tfx/tools/cli/commands/pipeline_test.py"
 )
 
+# TODO(b/188223200): InteractiveContext export feature is not compatible with
+# jinja>3 which is installed in DLVM image.
+SKIP_LIST+=(
+  "tfx/orchestration/experimental/interactive/interactive_context_test.py"
+)
+
 # TODO(b/154871293): Migrate to pytest after fixing pytest issues.
 # xargs stops only when the exit code is 255, so we convert any
 # failure to exit code 255.
