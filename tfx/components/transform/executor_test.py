@@ -166,7 +166,8 @@ class ExecutorTest(tft_unit.TransformTestCase):
   def _verify_transform_outputs(self,
                                 materialize=True,
                                 store_cache=True,
-                                multiple_example_inputs=False):
+                                multiple_example_inputs=False,
+                                compute_statistics=False):
     expected_outputs = ['transformed_graph']
 
     if store_cache:
@@ -210,6 +211,19 @@ class ExecutorTest(tft_unit.TransformTestCase):
         self.assertEqual(examples_train_count, transformed_train_count)
         self.assertEqual(examples_eval_count, transformed_eval_count)
         self.assertGreater(transformed_train_count, transformed_eval_count)
+
+    path_to_pre_transform_statistics = os.path.join(
+        self._transformed_output.uri,
+        tft.TFTransformOutput.PRE_TRANSFORM_FEATURE_STATS_PATH)
+    path_to_post_transform_statistics = os.path.join(
+        self._transformed_output.uri,
+        tft.TFTransformOutput.POST_TRANSFORM_FEATURE_STATS_PATH)
+    if compute_statistics:
+      self.assertTrue(fileio.exists(path_to_pre_transform_statistics))
+      self.assertTrue(fileio.exists(path_to_post_transform_statistics))
+    else:
+      self.assertFalse(fileio.exists(path_to_pre_transform_statistics))
+      self.assertFalse(fileio.exists(path_to_post_transform_statistics))
 
     # Depending on `materialize` and `store_cache`, check that
     # expected outputs are exactly correct. If either flag is False, its
@@ -270,6 +284,15 @@ class ExecutorTest(tft_unit.TransformTestCase):
     self._transform_executor.Do(self._input_dict, self._output_dict,
                                 self._exec_properties)
     self._verify_transform_outputs(store_cache=False)
+
+  def test_do_with_compute_statistics_enabled(self):
+    self._exec_properties[
+        standard_component_specs.MODULE_FILE_KEY] = self._module_file
+    self._exec_properties[
+        standard_component_specs.COMPUTE_STATISTICS_KEY] = True
+    self._transform_executor.Do(self._input_dict, self._output_dict,
+                                self._exec_properties)
+    self._verify_transform_outputs(compute_statistics=True)
 
   def test_do_with_preprocessing_fn_custom_config(self):
     self._exec_properties[

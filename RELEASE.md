@@ -47,6 +47,12 @@
    Transform, Trainer and Tuner components is now packaged as a pip wheel for
    execution. For Evaluator and Transform, these wheel packages are now
    installed on remote Apache Beam workers.
+*  TFT can now compute pre-transform and post-transform statistics. This can
+   be enabled by setting `compute_statistics=True` in the Transform component.
+   By default, statistics are not computed in Transform (as before). When
+   enabled, the pre-transform and post-transform stats will be stored in the
+   `pre_transform_feature_stats/` and `post_transform_feature_stats/` subfolders
+   of the `transform_graph` export.
 
 ## Breaking Changes
 

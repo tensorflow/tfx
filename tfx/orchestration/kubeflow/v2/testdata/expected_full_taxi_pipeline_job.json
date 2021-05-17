@@ -403,6 +403,9 @@
             "module_file": {
               "type": "STRING"
             },
+            "compute_statistics": {
+              "type": "INT"
+            },
             "custom_config": {
               "type": "STRING"
             },
@@ -559,6 +562,13 @@
                   "runtimeValue": {
                     "constantValue": {
                       "stringValue": "path/to/my/module_utils.py"
+                    }
+                  }
+                },
+                "compute_statistics": {
+                  "runtimeValue": {
+                    "constantValue": {
+                      "intValue": "0"
                     }
                   }
                 },

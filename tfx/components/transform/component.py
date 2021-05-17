@@ -86,7 +86,8 @@ class Transform(base_beam_component.BaseBeamComponent):
       materialize: bool = True,
       disable_analyzer_cache: bool = False,
       force_tf_compat_v1: bool = False,
-      custom_config: Optional[Dict[Text, Any]] = None):
+      custom_config: Optional[Dict[Text, Any]] = None,
+      compute_statistics: bool = False):
     """Construct a Transform component.
 
     Args:
@@ -138,6 +139,8 @@ class Transform(base_beam_component.BaseBeamComponent):
         installed version of Tensorflow. Defaults to `False`.
       custom_config: A dict which contains additional parameters that will be
         passed to preprocessing_fn.
+      compute_statistics: If True, invoke TFDV to compute pre-transform and
+        post-transform statistics.
 
     Raises:
       ValueError: When both or neither of 'module_file' and 'preprocessing_fn'
@@ -174,7 +177,8 @@ class Transform(base_beam_component.BaseBeamComponent):
         transformed_examples=transformed_examples,
         analyzer_cache=analyzer_cache,
         updated_analyzer_cache=updated_analyzer_cache,
-        custom_config=json_utils.dumps(custom_config))
+        custom_config=json_utils.dumps(custom_config),
+        compute_statistics=int(compute_statistics))
     super(Transform, self).__init__(spec=spec)
 
     if udf_utils.should_package_user_modules():

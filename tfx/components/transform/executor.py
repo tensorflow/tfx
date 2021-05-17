@@ -323,6 +323,8 @@ class Executor(base_beam_executor.BaseBeamExecutor):
           all splits. If splits_config is set, analyze cannot be empty.
         - force_tf_compat_v1: Whether to use TF in compat.v1 mode
           irrespective of installed/enabled TF behaviors.
+        - compute_statistics: Whether to compute pre-transform and
+          post-transform statistics.
 
     Returns:
       None
@@ -424,6 +426,9 @@ class Executor(base_beam_executor.BaseBeamExecutor):
     force_tf_compat_v1 = bool(
         exec_properties.get(standard_component_specs.FORCE_TF_COMPAT_V1_KEY, 0))
 
+    compute_statistics = bool(
+        exec_properties.get(standard_component_specs.COMPUTE_STATISTICS_KEY, 0))
+
     # Make sure user packages get propagated to the remote Beam worker.
     user_module_key = exec_properties.get(
         standard_component_specs.MODULE_PATH_KEY, None)
@@ -436,7 +441,7 @@ class Executor(base_beam_executor.BaseBeamExecutor):
 
     label_inputs = {
         labels.COMPUTE_STATISTICS_LABEL:
-            False,
+            compute_statistics,
         labels.SCHEMA_PATH_LABEL:
             schema_file,
         labels.EXAMPLES_DATA_FORMAT_LABEL:
