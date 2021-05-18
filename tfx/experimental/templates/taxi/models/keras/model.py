@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2020 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,16 +17,13 @@ A DNN keras model which uses features defined in features.py and network
 parameters defined in constants.py.
 """
 
-from __future__ import division
-from __future__ import print_function
-
 from absl import logging
 import tensorflow as tf
 import tensorflow_transform as tft
 
 from tfx.experimental.templates.taxi.models import features
 from tfx.experimental.templates.taxi.models.keras import constants
-from tfx_bsl.tfxio import dataset_options
+from tfx_bsl.public import tfxio
 
 
 def _get_serve_tf_examples_fn(model, tf_transform_output):
@@ -65,7 +61,7 @@ def _input_fn(file_pattern, data_accessor, tf_transform_output, batch_size=200):
   """
   return data_accessor.tf_dataset_factory(
       file_pattern,
-      dataset_options.TensorFlowDatasetOptions(
+      tfxio.TensorFlowDatasetOptions(
           batch_size=batch_size,
           label_key=features.transformed_name(features.LABEL_KEY)),
       tf_transform_output.transformed_metadata.schema).repeat()

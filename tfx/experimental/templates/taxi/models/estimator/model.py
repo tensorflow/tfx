@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2020 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,18 +17,16 @@ A tf.estimator.DNNLinearCombinedClassifier which uses features
 defined in features.py and network parameters defined in constants.py.
 """
 
-from __future__ import division
-from __future__ import print_function
-
 from absl import logging
 import tensorflow as tf
 import tensorflow_model_analysis as tfma
 import tensorflow_transform as tft
 from tensorflow_transform.tf_metadata import schema_utils
+
+from tfx import v1 as tfx
 from tfx.experimental.templates.taxi.models import features
 from tfx.experimental.templates.taxi.models.estimator import constants
-from tfx.utils import io_utils
-from tfx_bsl.tfxio import dataset_options
+from tfx_bsl.public import tfxio
 
 from tensorflow_metadata.proto.v0 import schema_pb2
 
@@ -179,7 +176,7 @@ def _input_fn(file_pattern, data_accessor, tf_transform_output, batch_size=200):
   """
   return data_accessor.tf_dataset_factory(
       file_pattern,
-      dataset_options.TensorFlowDatasetOptions(
+      tfxio.TensorFlowDatasetOptions(
           batch_size=batch_size,
           label_key=features.transformed_name(features.LABEL_KEY)),
       tf_transform_output.transformed_metadata.schema)
@@ -255,7 +252,7 @@ def run_fn(fn_args):
   Args:
     fn_args: Holds args used to train the model as name/value pairs.
   """
-  schema = io_utils.parse_pbtxt_file(fn_args.schema_file, schema_pb2.Schema())
+  schema = tfx.utils.parse_pbtxt_file(fn_args.schema_file, schema_pb2.Schema())
 
   train_and_eval_spec = _create_train_and_eval_spec(fn_args, schema)
 

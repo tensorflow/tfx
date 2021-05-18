@@ -14,11 +14,15 @@
 """TFX orchestration.experimental module."""
 from tfx.orchestration.kubeflow import kubeflow_dag_runner
 from tfx.orchestration.kubeflow.v2 import kubeflow_v2_dag_runner
+from tfx.utils import telemetry_utils
 
 KubeflowV2DagRunner = kubeflow_v2_dag_runner.KubeflowV2DagRunner
 KubeflowV2DagRunnerConfig = kubeflow_v2_dag_runner.KubeflowV2DagRunnerConfig
 KubeflowDagRunner = kubeflow_dag_runner.KubeflowDagRunner
 KubeflowDagRunnerConfig = kubeflow_dag_runner.KubeflowDagRunnerConfig
 get_default_kubeflow_metadata_config = kubeflow_dag_runner.get_default_kubeflow_metadata_config
+LABEL_KFP_SDK_ENV = telemetry_utils.LABEL_KFP_SDK_ENV
+
 del kubeflow_v2_dag_runner
 del kubeflow_dag_runner
+del telemetry_utils

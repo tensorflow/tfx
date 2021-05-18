@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2020 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,18 +13,12 @@
 # limitations under the License.
 """Define LocalDagRunner to run the pipeline locally."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import os
 from absl import logging
 
+from tfx import v1 as tfx
 from tfx.experimental.templates.taxi.pipeline import configs
 from tfx.experimental.templates.taxi.pipeline import pipeline
-from tfx.orchestration import metadata
-from tfx.orchestration.local.local_dag_runner import LocalDagRunner
-from tfx.proto import trainer_pb2
 
 # TFX pipeline produces many output files and metadata. All output data will be
 # stored under this OUTPUT_DIR.
@@ -59,7 +52,7 @@ DATA_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data')
 def run():
   """Define a local pipeline."""
 
-  LocalDagRunner().run(
+  tfx.orchestration.LocalDagRunner().run(
       pipeline.create_pipeline(
           pipeline_name=configs.PIPELINE_NAME,
           pipeline_root=PIPELINE_ROOT,
@@ -68,16 +61,16 @@ def run():
           # query=configs.BIG_QUERY_QUERY,
           preprocessing_fn=configs.PREPROCESSING_FN,
           run_fn=configs.RUN_FN,
-          train_args=trainer_pb2.TrainArgs(num_steps=configs.TRAIN_NUM_STEPS),
-          eval_args=trainer_pb2.EvalArgs(num_steps=configs.EVAL_NUM_STEPS),
+          train_args=tfx.proto.TrainArgs(num_steps=configs.TRAIN_NUM_STEPS),
+          eval_args=tfx.proto.EvalArgs(num_steps=configs.EVAL_NUM_STEPS),
           eval_accuracy_threshold=configs.EVAL_ACCURACY_THRESHOLD,
           serving_model_dir=SERVING_MODEL_DIR,
           # TODO(step 7): (Optional) Uncomment here to use provide GCP related
           #               config for BigQuery with Beam DirectRunner.
           # beam_pipeline_args=configs.
           # BIG_QUERY_WITH_DIRECT_RUNNER_BEAM_PIPELINE_ARGS,
-          metadata_connection_config=metadata.sqlite_metadata_connection_config(
-              METADATA_PATH)))
+          metadata_connection_config=tfx.orchestration.metadata
+          .sqlite_metadata_connection_config(METADATA_PATH)))
 
 
 if __name__ == '__main__':

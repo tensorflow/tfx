@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2020 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -17,11 +16,9 @@
 import os
 from absl import logging
 
+from tfx import v1 as tfx
 from tfx.experimental.templates.penguin.pipeline import configs
 from tfx.experimental.templates.penguin.pipeline import pipeline
-from tfx.orchestration.kubeflow import kubeflow_dag_runner
-from tfx.proto import trainer_pb2
-from tfx.utils import telemetry_utils
 
 # TFX pipeline produces many output files and metadata. All output data will be
 # stored under this OUTPUT_DIR.
@@ -58,14 +55,17 @@ def run():
   # lightweight deployment option, you may need to override the defaults.
   # If you use Kubeflow, metadata will be written to MySQL database inside
   # Kubeflow cluster.
-  metadata_config = kubeflow_dag_runner.get_default_kubeflow_metadata_config()
+  metadata_config = tfx.orchestration.experimental.get_default_kubeflow_metadata_config(
+  )
 
-  runner_config = kubeflow_dag_runner.KubeflowDagRunnerConfig(
+  runner_config = tfx.orchestration.experimental.KubeflowDagRunnerConfig(
       kubeflow_metadata_config=metadata_config,
       tfx_image=configs.PIPELINE_IMAGE)
-  pod_labels = kubeflow_dag_runner.get_default_pod_labels()
-  pod_labels.update({telemetry_utils.LABEL_KFP_SDK_ENV: 'tfx-template'})
-  kubeflow_dag_runner.KubeflowDagRunner(
+  pod_labels = {
+      'add-pod-env': 'true',
+      tfx.orchestration.experimental.LABEL_KFP_SDK_ENV: 'tfx-template'
+  }
+  tfx.orchestration.experimental.KubeflowDagRunner(
       config=runner_config, pod_labels_to_attach=pod_labels
   ).run(
       pipeline.create_pipeline(
@@ -76,8 +76,8 @@ def run():
           # query=configs.BIG_QUERY_QUERY,
           preprocessing_fn=configs.PREPROCESSING_FN,
           run_fn=configs.RUN_FN,
-          train_args=trainer_pb2.TrainArgs(num_steps=configs.TRAIN_NUM_STEPS),
-          eval_args=trainer_pb2.EvalArgs(num_steps=configs.EVAL_NUM_STEPS),
+          train_args=tfx.proto.TrainArgs(num_steps=configs.TRAIN_NUM_STEPS),
+          eval_args=tfx.proto.EvalArgs(num_steps=configs.EVAL_NUM_STEPS),
           eval_accuracy_threshold=configs.EVAL_ACCURACY_THRESHOLD,
           serving_model_dir=SERVING_MODEL_DIR,
           # NOTE: Provide GCP configs to use BigQuery with Beam DirectRunner.

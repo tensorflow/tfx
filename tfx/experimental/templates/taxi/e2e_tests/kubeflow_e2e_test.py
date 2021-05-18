@@ -283,8 +283,11 @@ class TaxiTemplateKubeflowE2ETest(test_utils.BaseEndToEndTest):
 
     # Enable BigQuery
     self._uncomment(
-        os.path.join('pipeline', 'pipeline.py'),
-        ['query: Text,', 'example_gen = BigQueryExampleGen('])
+        os.path.join('pipeline', 'pipeline.py'), [
+            'query: Text,',
+            'example_gen = tfx.extensions.google_cloud_big_query.BigQueryExampleGen(',
+            '    query=query)'
+        ])
     self._uncomment('kubeflow_runner.py', [
         'query=configs.BIG_QUERY_QUERY',
         'beam_pipeline_args=configs\n',
