@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -29,12 +28,17 @@ from tfx.orchestration import data_types
 from tfx.orchestration.portable import data_types as portable_data_types
 from tfx.proto import example_gen_pb2
 from tfx.proto import range_config_pb2
+from tfx.types import artifact
 from tfx.types import artifact_utils
 from tfx.types import channel_utils
 from tfx.types import standard_artifacts
 from tfx.types import standard_component_specs
 from tfx.utils import io_utils
 from tfx.utils import proto_utils
+
+
+class _OutputArtifact(artifact.Artifact):
+  TYPE_NAME = 'OutputArtifact'
 
 
 class DriverTest(tf.test.TestCase):
@@ -184,6 +188,38 @@ class DriverTest(tf.test.TestCase):
           name: "s2"
           pattern: "span01/version01/split2/*"
         }""", updated_input_config)
+
+  def testUpdateArtifactsMinimumExecProperties(self):
+    # Test updating the output artifact with the minimum set of input exec
+    # properties
+    out_artifact = _OutputArtifact()._artifact
+    exec_properties = {
+        utils.SPAN_PROPERTY_NAME: 2,
+        utils.VERSION_PROPERTY_NAME: None,
+        utils.FINGERPRINT_PROPERTY_NAME: None
+    }
+    driver.update_output_artifact(exec_properties, out_artifact)
+    self.assertEqual(
+        out_artifact.custom_properties[utils.SPAN_PROPERTY_NAME].int_value, 2)
+
+  def testUpdateArtifactsAllExecProperties(self):
+    # Test updating the output artifact with as many input exec properties as
+    # possible
+    out_artifact = _OutputArtifact()._artifact
+    exec_properties = {
+        utils.SPAN_PROPERTY_NAME: 2,
+        utils.VERSION_PROPERTY_NAME: 1,
+        utils.FINGERPRINT_PROPERTY_NAME: 'fp'
+    }
+    driver.update_output_artifact(exec_properties, out_artifact)
+    self.assertEqual(
+        out_artifact.custom_properties[utils.SPAN_PROPERTY_NAME].int_value, 2)
+    self.assertEqual(
+        out_artifact.custom_properties[utils.VERSION_PROPERTY_NAME].int_value,
+        1)
+    self.assertEqual(
+        out_artifact.custom_properties[
+            utils.FINGERPRINT_PROPERTY_NAME].string_value, 'fp')
 
   def testPrepareOutputArtifacts(self):
     examples = standard_artifacts.Examples()
