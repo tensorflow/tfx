@@ -23,6 +23,8 @@ WORKDIR ${TFX_DIR}
 ARG TFX_DEPENDENCY_SELECTOR
 ENV TFX_DEPENDENCY_SELECTOR=${TFX_DEPENDENCY_SELECTOR}
 
+RUN python -m pip install --upgrade pip
+
 # TODO(b/175089240): clean up conditional checks on whether ml-pipelines-sdk is
 # built after TFX versions <= 0.25 are no longer eligible for cherry-picks.
 RUN cd ${TFX_DIR}/src; \
@@ -69,6 +71,8 @@ ENV pip=/opt/conda/bin/pip
 ENTRYPOINT ["/opt/apache/beam/boot"]
 
 LABEL maintainer="tensorflow-extended-dev@googlegroups.com"
+
+RUN python -m pip install --upgrade pip
 
 # TODO(b/151392812): Remove `google-api-python-client` and `google-apitools`
 #                    when patching is not needed any more.
