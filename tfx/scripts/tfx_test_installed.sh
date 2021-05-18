@@ -63,6 +63,7 @@ SKIP_LIST=(
   # Skip tests which require additional packages.
   'tfx/examples/custom_components/*'
   'tfx/examples/chicago_taxi_pipeline/taxi_pipeline_simple_test.py'
+  'tfx/examples/penguin/experimental/penguin_pipeline_sklearn_gcp_test.py'
   'tfx/examples/ranking/*'
   'tfx/*airflow*'
   'tfx/*kubeflow*'
