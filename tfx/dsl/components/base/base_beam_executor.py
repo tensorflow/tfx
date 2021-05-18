@@ -14,7 +14,7 @@
 """Abstract TFX executor class for Beam powered components."""
 
 import sys
-from typing import Any, List, Optional
+from typing import Any, List, Optional, Text
 
 from absl import flags
 from absl import logging
@@ -37,12 +37,12 @@ class BaseBeamExecutor(BaseExecutor):
     """Context class for base Beam excecutor."""
 
     def __init__(self,
-                 beam_pipeline_args: Optional[List[str]] = None,
-                 extra_flags: Optional[List[str]] = None,
-                 tmp_dir: Optional[str] = None,
-                 unique_id: Optional[str] = None,
-                 executor_output_uri: Optional[str] = None,
-                 stateful_working_dir: Optional[str] = None):
+                 beam_pipeline_args: Optional[List[Text]] = None,
+                 extra_flags: Optional[List[Text]] = None,
+                 tmp_dir: Optional[Text] = None,
+                 unique_id: Optional[Text] = None,
+                 executor_output_uri: Optional[Text] = None,
+                 stateful_working_dir: Optional[Text] = None):
       super().__init__(
           extra_flags=extra_flags,
           tmp_dir=tmp_dir,

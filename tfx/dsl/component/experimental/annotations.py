@@ -1,3 +1,4 @@
+# Lint as: python2, python3
 # Copyright 2020 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -16,8 +17,12 @@
 Experimental. No backwards compatibility guarantees.
 """
 
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+
 import inspect
-from typing import Type, Union
+from typing import Text, Type, Union
 
 from tfx.types import artifact
 
@@ -67,7 +72,7 @@ class _ArtifactGeneric(metaclass=_ArtifactGenericMeta):
 class _PrimitiveTypeGenericMeta(type):
   """Metaclass for _PrimitiveTypeGeneric, to enable primitive type indexing."""
 
-  def __getitem__(cls: Type[Union[int, float, str, bytes]],
+  def __getitem__(cls: Type[Union[int, float, Text, bytes]],
                   params: Type[artifact.Artifact]):
     """Metaclass method allowing indexing class (`_PrimitiveTypeGeneric[T]`)."""
     return cls._generic_getitem(params)  # pytype: disable=attribute-error
@@ -78,7 +83,7 @@ class _PrimitiveTypeGeneric(metaclass=_PrimitiveTypeGenericMeta):
 
   def __init__(  # pylint: disable=invalid-name
       self,
-      artifact_type: Type[Union[int, float, str, bytes]],
+      artifact_type: Type[Union[int, float, Text, bytes]],
       _init_via_getitem=False):
     if not _init_via_getitem:
       class_name = self.__class__.__name__
@@ -91,7 +96,7 @@ class _PrimitiveTypeGeneric(metaclass=_PrimitiveTypeGenericMeta):
   def _generic_getitem(cls, params):
     """Return the result of `_PrimitiveTypeGeneric[T]` for a given type T."""
     # Check that the given parameter is a primitive type.
-    if inspect.isclass(params) and params in (int, float, str, bytes):
+    if inspect.isclass(params) and params in (int, float, Text, bytes):
       return cls(params, _init_via_getitem=True)
     else:
       class_name = cls.__name__
@@ -123,7 +128,7 @@ class Parameter(_PrimitiveTypeGeneric):
 
 # TODO(ccy): potentially make this compatible `typing.TypedDict` in
 # Python 3.8, to allow for component return value type checking.
-class OutputDict:
+class OutputDict(object):
   """Decorator declaring component executor function outputs."""
 
   def __init__(self, **kwargs):

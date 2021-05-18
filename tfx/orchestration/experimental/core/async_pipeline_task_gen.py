@@ -184,7 +184,7 @@ class AsyncPipelineTaskGenerator(task_gen.TaskGenerator):
 
     return task_lib.ExecNodeTask(
         node_uid=node_uid,
-        execution_id=execution.id,
+        execution=execution,
         contexts=resolved_info.contexts,
         input_artifacts=resolved_info.input_artifacts,
         exec_properties=resolved_info.exec_properties,

@@ -35,6 +35,7 @@ from tfx.orchestration.experimental.core import test_utils
 from tfx.proto.orchestration import execution_result_pb2
 from tfx.proto.orchestration import pipeline_pb2
 from tfx.utils import status as status_lib
+from tfx.utils import test_case_utils as tu
 
 from ml_metadata.proto import metadata_store_pb2
 
@@ -93,7 +94,7 @@ class _FakeTaskScheduler(ts.TaskScheduler):
     self._stop_event.set()
 
 
-class TaskManagerTest(test_utils.TfxTest):
+class TaskManagerTest(tu.TfxTest):
 
   def setUp(self):
     super(TaskManagerTest, self).setUp()
@@ -251,7 +252,7 @@ def _make_executor_output(task, code=status_lib.Code.OK, msg=''):
   return executor_output
 
 
-class TaskManagerE2ETest(test_utils.TfxTest):
+class TaskManagerE2ETest(tu.TfxTest):
   """Test end-to-end from task generation to publication of results to MLMD."""
 
   def setUp(self):

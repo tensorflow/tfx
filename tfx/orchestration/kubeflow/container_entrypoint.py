@@ -319,6 +319,21 @@ def main():
 
   args = parser.parse_args()
 
+  print('jjong: About to deserialize component.')
+  import tfx.version  # pylint: disable=g-import-not-at-top
+  print(f'jjong: tfx version: {tfx.version.__version__}')
+  print(f'jjong: Serialized components: {args.serialized_component}')
+  print(f'jjong: sys.path: {sys.path}')
+  for path in sys.path:
+    if 'tfx' in os.listdir(path):
+      print(f'jjong: os.listdir({path}): {os.listdir(path)}')
+      dsl_path = os.path.join(path, 'tfx', 'dsl')
+      if os.path.exists(dsl_path):
+        print(f'jjong: os.listdir({dsl_path}): {dsl_path}')
+        ir_path = os.path.join(dsl_path, 'input_resolution')
+        if os.path.exists(ir_path):
+          print(f'jjong: os.listdir({ir_path}): {ir_path}')
+
   component = json_utils.loads(args.serialized_component)
   component_config = json_utils.loads(args.component_config)
   component_launcher_class = import_utils.import_class_by_path(

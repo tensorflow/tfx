@@ -1,3 +1,4 @@
+# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,9 +13,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Abstract TFX driver class."""
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
 
 import os
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Text
 
 import absl
 
@@ -24,11 +28,11 @@ from tfx.orchestration import data_types
 from tfx.orchestration import metadata
 
 
-def _generate_output_uri(base_output_dir: str,
-                         name: str,
+def _generate_output_uri(base_output_dir: Text,
+                         name: Text,
                          execution_id: int,
                          is_single_artifact: bool = True,
-                         index: int = 0) -> str:
+                         index: int = 0) -> Text:
   """Generate uri for output artifact."""
   if is_single_artifact:
     # TODO(b/145680633): Consider differentiating different types of uris.
@@ -61,7 +65,7 @@ def _prepare_output_paths(artifact: types.Artifact):
   fileio.makedirs(artifact_dir)
 
 
-class BaseDriver:
+class BaseDriver(object):
   """BaseDriver is the base class of all custom drivers.
 
   This can also be used as the default driver of a component if no custom logic
@@ -75,7 +79,7 @@ class BaseDriver:
     self._metadata_handler = metadata_handler
 
   def verify_input_artifacts(
-      self, artifacts_dict: Dict[str, List[types.Artifact]]) -> None:
+      self, artifacts_dict: Dict[Text, List[types.Artifact]]) -> None:
     """Verify that all artifacts have existing uri.
 
     Args:
@@ -91,9 +95,9 @@ class BaseDriver:
         if not fileio.exists(artifact.uri):
           raise RuntimeError('Artifact uri %s is missing' % artifact.uri)
 
-  def _log_properties(self, input_dict: Dict[str, List[types.Artifact]],
-                      output_dict: Dict[str, List[types.Artifact]],
-                      exec_properties: Dict[str, Any]):
+  def _log_properties(self, input_dict: Dict[Text, List[types.Artifact]],
+                      output_dict: Dict[Text, List[types.Artifact]],
+                      exec_properties: Dict[Text, Any]):
     """Log inputs, outputs, and executor properties in a standard format."""
     absl.logging.debug('Starting %s driver.', self.__class__.__name__)
     absl.logging.debug('Inputs for %s are: %s', self.__class__.__name__,
@@ -105,11 +109,11 @@ class BaseDriver:
 
   def resolve_input_artifacts(
       self,
-      input_dict: Dict[str, types.Channel],
-      exec_properties: Dict[str, Any],  # pylint: disable=unused-argument
+      input_dict: Dict[Text, types.Channel],
+      exec_properties: Dict[Text, Any],  # pylint: disable=unused-argument
       driver_args: data_types.DriverArgs,
       pipeline_info: data_types.PipelineInfo,
-  ) -> Dict[str, List[types.Artifact]]:
+  ) -> Dict[Text, List[types.Artifact]]:
     """Resolve input artifacts from metadata.
 
     Subclasses might override this function for customized artifact properties
@@ -161,10 +165,10 @@ class BaseDriver:
 
   def resolve_exec_properties(
       self,
-      exec_properties: Dict[str, Any],
+      exec_properties: Dict[Text, Any],
       pipeline_info: data_types.PipelineInfo,  # pylint: disable=unused-argument
       component_info: data_types.ComponentInfo,  # pylint: disable=unused-argument
-  ) -> Dict[str, Any]:
+  ) -> Dict[Text, Any]:
     """Resolve execution properties.
 
     Subclasses might override this function for customized execution properties
@@ -184,13 +188,13 @@ class BaseDriver:
 
   def _prepare_output_artifacts(
       self,
-      input_artifacts: Dict[str, List[types.Artifact]],
-      output_dict: Dict[str, types.Channel],
-      exec_properties: Dict[str, Any],
+      input_artifacts: Dict[Text, List[types.Artifact]],
+      output_dict: Dict[Text, types.Channel],
+      exec_properties: Dict[Text, Any],
       execution_id: int,
       pipeline_info: data_types.PipelineInfo,
       component_info: data_types.ComponentInfo,
-  ) -> Dict[str, List[types.Artifact]]:
+  ) -> Dict[Text, List[types.Artifact]]:
     """Prepare output artifacts by assigning uris to each artifact."""
     del exec_properties
 
@@ -225,9 +229,9 @@ class BaseDriver:
 
   def pre_execution(
       self,
-      input_dict: Dict[str, types.Channel],
-      output_dict: Dict[str, types.Channel],
-      exec_properties: Dict[str, Any],
+      input_dict: Dict[Text, types.Channel],
+      output_dict: Dict[Text, types.Channel],
+      exec_properties: Dict[Text, Any],
       driver_args: data_types.DriverArgs,
       pipeline_info: data_types.PipelineInfo,
       component_info: data_types.ComponentInfo,

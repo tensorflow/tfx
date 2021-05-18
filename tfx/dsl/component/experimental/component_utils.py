@@ -1,3 +1,4 @@
+# Lint as: python3
 # Copyright 2020 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,7 +14,7 @@
 # limitations under the License.
 """Utils for TFX component types. Intended for internal usage only."""
 
-from typing import Any, Callable, Dict, Optional
+from typing import Any, Callable, Dict, Optional, Text
 
 from tfx import types
 from tfx.dsl.components.base import base_component
@@ -22,14 +23,14 @@ from tfx.types import component_spec
 
 
 def create_tfx_component_class(
-    name: str,
+    name: Text,
     tfx_executor_spec: base_executor_spec.ExecutorSpec,
-    input_channel_parameters: Dict[str,
+    input_channel_parameters: Dict[Text,
                                    component_spec.ChannelParameter] = None,
-    output_channel_parameters: Dict[str,
+    output_channel_parameters: Dict[Text,
                                     component_spec.ChannelParameter] = None,
-    execution_parameters: Dict[str, component_spec.ExecutionParameter] = None,
-    default_init_args: Optional[Dict[str, Any]] = None
+    execution_parameters: Dict[Text, component_spec.ExecutionParameter] = None,
+    default_init_args: Optional[Dict[Text, Any]] = None
 ) -> Callable[..., base_component.BaseComponent]:
   """Creates a TFX component class dynamically."""
   tfx_component_spec_class = type(
