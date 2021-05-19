@@ -15,16 +15,11 @@ generating statistics from your dataset.
 
 ## Using the StatsGen Component
 
-A StatisticsGen pipeline component is typically very easy to deploy and
-requires little
-customization. Typical code looks like this:
+A StatisticsGen pipeline component is typically very easy to deploy and requires
+little customization. Typical code looks like this:
 
 ```python
-from tfx import components
-
-...
-
-compute_eval_stats = components.StatisticsGen(
+compute_eval_stats = StatisticsGen(
       examples=example_gen.outputs['examples'],
       name='compute-eval-stats'
       )
@@ -42,17 +37,11 @@ In this setting, you will invoke StatisticsGen with a curated schema that has
 been imported by an ImporterNode like this:
 
 ```python
-from tfx import components
-from tfx.types import standard_artifacts
-
-...
-
-user_schema_importer = components.ImporterNode(
-    instance_name='import_user_schema',
+user_schema_importer = Importer(
     source_uri=user_schema_dir, # directory containing only schema text proto
-    artifact_type=standard_artifacts.Schema)
+    artifact_type=standard_artifacts.Schema).with_id('schema_importer')
 
-compute_eval_stats = components.StatisticsGen(
+compute_eval_stats = StatisticsGen(
       examples=example_gen.outputs['examples'],
       schema=user_schema_importer.outputs['result'],
       name='compute-eval-stats'
@@ -77,3 +66,6 @@ the dataset which cannot be reliably inferred, which will make the output of
 `StatisticsGen` more useful and the validation performed in the
 [`ExampleValidator`](https://www.tensorflow.org/tfx/guide/exampleval) component
 more stringent.
+
+More details are available in the
+[StatisticsGen API reference](https://www.tensorflow.org/tfx/api_docs/python/tfx/v1/components/StatisticsGen).

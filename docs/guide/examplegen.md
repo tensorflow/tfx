@@ -63,18 +63,12 @@ queries) the ExampleGen pipeline component can be used directly in deploy and
 requires little customization. For example:
 
 ```python
-from tfx.utils.dsl_utils import csv_input
-from tfx.components.example_gen.csv_example_gen.component import CsvExampleGen
-
-examples = csv_input(os.path.join(base_dir, 'data/simple'))
-example_gen = CsvExampleGen(input=examples)
+example_gen = CsvExampleGen(input_base='data_root')
 ```
 
 or like below for importing external TFRecord with `tf.Example` directly:
 
 ```python
-from tfx.components.example_gen.import_example_gen.component import ImportExampleGen
-
 example_gen = ImportExampleGen(input_base=path_to_tfrecord_dir)
 ```
 
@@ -108,13 +102,12 @@ from  tfx.proto import example_gen_pb2
 
 # Input has a single split 'input_dir/*'.
 # Output 2 splits: train:eval=3:1.
-output = example_gen_pb2.Output(
+output = proto.Output(
              split_config=example_gen_pb2.SplitConfig(splits=[
-                 example_gen_pb2.SplitConfig.Split(name='train', hash_buckets=3),
-                 example_gen_pb2.SplitConfig.Split(name='eval', hash_buckets=1)
+                 proto.SplitConfig.Split(name='train', hash_buckets=3),
+                 proto.SplitConfig.Split(name='eval', hash_buckets=1)
              ]))
-examples = csv_input(input_dir)
-example_gen = CsvExampleGen(input=examples, output_config=output)
+example_gen = CsvExampleGen(input_base=input_dir, output_config=output)
 ```
 
 Notice how the `hash_buckets` were set in this example.
@@ -123,16 +116,14 @@ For an input source which has already been split, set the `input_config` for
 ExampleGen component:
 
 ```python
-from  tfx.proto import example_gen_pb2
 
 # Input train split is 'input_dir/train/*', eval split is 'input_dir/eval/*'.
 # Output splits are generated one-to-one mapping from input splits.
-input = example_gen_pb2.Input(splits=[
+input = proto.Input(splits=[
                 example_gen_pb2.Input.Split(name='train', pattern='train/*'),
                 example_gen_pb2.Input.Split(name='eval', pattern='eval/*')
             ])
-examples = csv_input(input_dir)
-example_gen = CsvExampleGen(input=examples, input_config=input)
+example_gen = CsvExampleGen(input_base=input_dir, input_config=input)
 ```
 
 For file based example gen (e.g. CsvExampleGen and ImportExampleGen), `pattern`
@@ -181,18 +172,15 @@ To output the train/eval split based on a feature in the examples, set the
 `output_config` for ExampleGen component. For example:
 
 ```python
-from  tfx.proto import example_gen_pb2
-
 # Input has a single split 'input_dir/*'.
 # Output 2 splits based on 'user_id' features: train:eval=3:1.
-output = example_gen_pb2.Output(
-             split_config=example_gen_pb2.SplitConfig(splits=[
-                 example_gen_pb2.SplitConfig.Split(name='train', hash_buckets=3),
-                 example_gen_pb2.SplitConfig.Split(name='eval', hash_buckets=1)
+output = proto.Output(
+             split_config=proto.SplitConfig(splits=[
+                 proto.SplitConfig.Split(name='train', hash_buckets=3),
+                 proto.SplitConfig.Split(name='eval', hash_buckets=1)
              ],
              partition_feature_name='user_id'))
-examples = csv_input(input_dir)
-example_gen = CsvExampleGen(input=examples, output_config=output)
+example_gen = CsvExampleGen(input_base=input_dir, output_config=output)
 ```
 
 Notice how the `partition_feature_name` was set in this example.
@@ -245,16 +233,13 @@ trigger the pipeline again and it will pick up span '3' for processing. Below
 shows the code example for using span spec:
 
 ```python
-from  tfx.proto import example_gen_pb2
-
-input = example_gen_pb2.Input(splits=[
-                example_gen_pb2.Input.Split(name='train',
+input = proto.Input(splits=[
+                proto.Input.Split(name='train',
                                             pattern='span-{SPAN}/train/*'),
-                example_gen_pb2.Input.Split(name='eval',
+                proto.Input.Split(name='eval',
                                             pattern='span-{SPAN}/eval/*')
             ])
-examples = csv_input('/tmp')
-example_gen = CsvExampleGen(input=examples, input_config=input)
+example_gen = CsvExampleGen(input_base='/tmp', input_config=input)
 ```
 
 Retrieving a certain span can be done with RangeConfig, which is detailed below.
@@ -309,16 +294,13 @@ trigger the pipeline again and it will pick up span '3' for processing. Below
 shows the code example for using date spec:
 
 ```python
-from  tfx.proto import example_gen_pb2
-
-input = example_gen_pb2.Input(splits=[
-                example_gen_pb2.Input.Split(name='train',
+input = proto.Input(splits=[
+                proto.Input.Split(name='train',
                                             pattern='{YYYY}-{MM}-{DD}/train/*'),
-                example_gen_pb2.Input.Split(name='eval',
+                proto.Input.Split(name='eval',
                                             pattern='{YYYY}-{MM}-{DD}/eval/*')
             ])
-examples = csv_input('/tmp')
-example_gen = CsvExampleGen(input=examples, input_config=input)
+example_gen = CsvExampleGen(input_base='/tmp', input_config=input)
 ```
 
 ### Version
@@ -372,16 +354,13 @@ will pick up span '2' and version '3' for processing. Below shows the code
 example for using version spec:
 
 ```python
-from  tfx.proto import example_gen_pb2
-
-input = example_gen_pb2.Input(splits=[
-                example_gen_pb2.Input.Split(name='train',
+input = proto.Input(splits=[
+                proto.Input.Split(name='train',
                                             pattern='span-{SPAN}/ver-{VERSION}/train/*'),
-                example_gen_pb2.Input.Split(name='eval',
+                proto.Input.Split(name='eval',
                                             pattern='span-{SPAN}/ver-{VERSION}/eval/*')
             ])
-examples = csv_input('/tmp')
-example_gen = CsvExampleGen(input=examples, input_config=input)
+example_gen = CsvExampleGen(input_base='/tmp', input_config=input)
 ```
 
 ### Range Config
@@ -408,27 +387,23 @@ ExampleGen will replace the SPAN spec in the provided split patterns with the
 desired span number. An example of usage is shown below:
 
 ```python
-from  tfx.proto import example_gen_pb2
-from  tfx.proto import range_config_pb2
-
 # In cases where files have zero-padding, the width modifier in SPAN spec is
 # required so TFX can correctly substitute spec with zero-padded span number.
-input = example_gen_pb2.Input(splits=[
-                example_gen_pb2.Input.Split(name='train',
+input = proto.Input(splits=[
+                proto.Input.Split(name='train',
                                             pattern='span-{SPAN:2}/train/*'),
-                example_gen_pb2.Input.Split(name='eval',
+                proto.Input.Split(name='eval',
                                             pattern='span-{SPAN:2}/eval/*')
             ])
 # Specify the span number to be processed here using StaticRange.
-range = range_config_pb2.RangeConfig(
-                static_range=range_config_pb2.StaticRange(
+range = proto.RangeConfig(
+                static_range=proto.StaticRange(
                         start_span_number=1, end_span_number=1)
             )
 
 # After substitution, the train and eval split patterns will be
 # 'input_dir/span-01/train/*' and 'input_dir/span-01/eval/*', respectively.
-examples = csv_input(input_dir)
-example_gen = CsvExampleGen(input=examples, input_config=input,
+example_gen = CsvExampleGen(input_base=input_dir, input_config=input,
                             range_config=range)
 ```
 
@@ -446,18 +421,16 @@ following:
 
 ```python
 from  tfx.components.example_gen import utils
-from  tfx.proto import example_gen_pb2
-from  tfx.proto import range_config_pb2
 
-input = example_gen_pb2.Input(splits=[
-                example_gen_pb2.Input.Split(name='train',
+input = proto.Input(splits=[
+                proto.Input.Split(name='train',
                                             pattern='{YYYY}-{MM}-{DD}/train/*'),
-                example_gen_pb2.Input.Split(name='eval',
+                proto.Input.Split(name='eval',
                                             pattern='{YYYY}-{MM}-{DD}/eval/*')
             ])
 # Specify date to be converted to span number to be processed using StaticRange.
 span = utils.date_to_span_number(1970, 1, 2)
-range = range_config_pb2.RangeConfig(
+range = proto.RangeConfig(
                 static_range=range_config_pb2.StaticRange(
                         start_span_number=span, end_span_number=span)
             )
@@ -465,8 +438,7 @@ range = range_config_pb2.RangeConfig(
 # After substitution, the train and eval split patterns will be
 # 'input_dir/1970-01-02/train/*' and 'input_dir/1970-01-02/eval/*',
 # respectively.
-examples = csv_input(input_dir)
-example_gen = CsvExampleGen(input=examples, input_config=input,
+example_gen = CsvExampleGen(input_base=input_dir, input_config=input,
                             range_config=range)
 ```
 
@@ -476,7 +448,7 @@ If the currently available ExampleGen components don't fit your needs, you can
 create a custom ExampleGen, which will enable you to read from different data
 sources or in different data formats.
 
-### File-Based ExampleGen
+### File-Based ExampleGen Customization (Experimental)
 
 First, extend BaseExampleGenExecutor with a custom Beam PTransform, which
 provides the conversion from your train/eval input split to TF examples. For
@@ -490,7 +462,6 @@ ExampleGen component as shown below.
 
 ```python
 from tfx.components.base import executor_spec
-from tfx.components.example_gen.component import FileBasedExampleGen
 from tfx.components.example_gen.csv_example_gen import executor
 
 example_gen = FileBasedExampleGen(
@@ -532,7 +503,7 @@ Python SDK include:
 Check the [Beam docs](https://beam.apache.org/documentation/io/built-in/) for
 the latest list.
 
-### Query-Based ExampleGen
+### Query-Based ExampleGen Customization (Experimental)
 
 First, extend BaseExampleGenExecutor with a custom Beam PTransform, which reads
 from the external data source. Then, create a simple component by
@@ -572,12 +543,8 @@ To exclude any splits, set the `exclude_splits` for StatisticsGen component. For
 example:
 
 ```python
-from tfx import components
-
-...
-
 # Exclude the 'eval' split.
-statistics_gen = components.StatisticsGen(
+statistics_gen = StatisticsGen(
              examples=example_gen.outputs['examples'],
              exclude_splits=['eval'])
 ```
@@ -590,12 +557,8 @@ To exclude any splits, set the `exclude_splits` for SchemaGen component. For
 example:
 
 ```python
-from tfx import components
-
-...
-
 # Exclude the 'eval' split.
-schema_gen = components.SchemaGen(
+schema_gen = SchemaGen(
              statistics=statistics_gen.outputs['statistics'],
              exclude_splits=['eval'])
 ```
@@ -609,12 +572,8 @@ To exclude any splits, set the `exclude_splits` for ExampleValidator component.
 For example:
 
 ```python
-from tfx import components
-
-...
-
 # Exclude the 'eval' split.
-example_validator = components.ExampleValidator(
+example_validator = ExampleValidator(
              statistics=statistics_gen.outputs['statistics'],
              schema=schema_gen.outputs['schema'],
              exclude_splits=['eval'])
@@ -629,17 +588,12 @@ To specify the analyze splits and transform splits, set the `splits_config` for
 Transform component. For example:
 
 ```python
-from tfx import components
-from  tfx.proto import transform_pb2
-
-...
-
 # Analyze the 'train' split and transform all splits.
-transform = components.Transform(
+transform = Transform(
       examples=example_gen.outputs['examples'],
       schema=schema_gen.outputs['schema'],
       module_file=_taxi_module_file,
-      splits_config=transform_pb2.SplitsConfig(analyze=['train'],
+      splits_config=proto.SplitsConfig(analyze=['train'],
                                                transform=['train', 'eval']))
 ```
 
@@ -651,19 +605,14 @@ To specify the train splits and evaluate splits, set the `train_args` and
 `eval_args` for Trainer component. For example:
 
 ```python
-from tfx import components
-from  tfx.proto import trainer_pb2
-
-...
-
 # Train on the 'train' split and evaluate on the 'eval' split.
-Trainer = components.Trainer(
+Trainer = Trainer(
       module_file=_taxi_module_file,
       examples=transform.outputs['transformed_examples'],
       schema=schema_gen.outputs['schema'],
       transform_graph=transform.outputs['transform_graph'],
-      train_args=trainer_pb2.TrainArgs(splits=['train'], num_steps=10000),
-      eval_args=trainer_pb2.EvalArgs(splits=['eval'], num_steps=5000))
+      train_args=proto.TrainArgs(splits=['train'], num_steps=10000),
+      eval_args=proto.EvalArgs(splits=['eval'], num_steps=5000))
 ```
 
 ### Evaluator
@@ -674,14 +623,15 @@ To compute a evaluation statistics on custom splits, set the `example_splits`
 for Evaluator component. For example:
 
 ```python
-from tfx import components
-from  tfx.proto import evaluator_pb2
-
-...
-
 # Compute metrics on the 'eval1' split and the 'eval2' split.
-Trainer = components.Evaluator(
+Trainer = Evaluator(
       examples=example_gen.outputs['examples'],
       model=trainer.outputs['model'],
       example_splits=['eval1', 'eval2'])
 ```
+
+More details are available in the
+[CsvExampleGen API reference](https://www.tensorflow.org/tfx/api_docs/python/tfx/v1/components/CsvExampleGen),
+[FileBasedExampleGen API reference](https://www.tensorflow.org/tfx/api_docs/python/tfx/v1/components/FileBasedExampleGen)
+and
+[ImportExampleGen API reference](https://www.tensorflow.org/tfx/api_docs/python/tfx/v1/components/ImportExampleGen).
