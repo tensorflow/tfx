@@ -145,9 +145,6 @@ class Pipeline(object):
     # Calls property setter.
     self.components = components or []
 
-    # TODO(b/156000550): Currently `beam_pipeline_args` is set at pipeline
-    # level in the SDK. However it is subject to change, to move to per-node
-    # configuration. We will need to change the following logic accordingly.
     if self.beam_pipeline_args:
       for component in components:
         if isinstance(component.executor_spec, executor_spec.BeamExecutorSpec):
@@ -155,12 +152,6 @@ class Pipeline(object):
               ).beam_pipeline_args = beam_pipeline_args + cast(
                   executor_spec.BeamExecutorSpec,
                   component.executor_spec).beam_pipeline_args
-        elif isinstance(component.executor_spec,
-                        executor_spec.ExecutorClassSpec):
-          cast(executor_spec.ExecutorClassSpec,
-               component.executor_spec).extra_flags = beam_pipeline_args + cast(
-                   executor_spec.ExecutorClassSpec,
-                   component.executor_spec).extra_flags
 
   @property
   def components(self):

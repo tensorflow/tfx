@@ -21,18 +21,13 @@ from __future__ import print_function
 import abc
 import json
 import os
-import sys
 from typing import Any, Dict, List, Optional, Text
 
-import absl
-from absl import flags
+from absl import logging
 from tfx import types
 from tfx.dsl.io import fileio
 from tfx.proto.orchestration import execution_result_pb2
 from tfx.types import artifact_utils
-from tfx.utils import deprecation_utils
-from tfx.utils import telemetry_utils
-from tfx.utils import dependency_utils
 
 try:
   import apache_beam as beam  # pylint: disable=g-import-not-at-top
@@ -49,12 +44,12 @@ class BaseExecutor(abc.ABC):
     """A context class for all excecutors."""
 
     def __init__(self,
-                 beam_pipeline_args: Optional[List[Text]] = None,
+                 extra_flags: Optional[List[Text]] = None,
                  tmp_dir: Optional[Text] = None,
                  unique_id: Optional[Text] = None,
                  executor_output_uri: Optional[Text] = None,
                  stateful_working_dir: Optional[Text] = None):
-      self.beam_pipeline_args = beam_pipeline_args
+      self.extra_flags = extra_flags
       # Base temp directory for the pipeline
       self._tmp_dir = tmp_dir
       # A unique id to distinguish every execution run
@@ -104,64 +99,9 @@ class BaseExecutor(abc.ABC):
     pass
 
   def __init__(self, context: Optional[Context] = None):
-    """Constructs a beam based executor."""
+    """Constructs a base executor."""
     self._context = context
-    self._beam_pipeline_args = context.beam_pipeline_args if context else None
-
-    if self._beam_pipeline_args:
-      if beam:
-        self._beam_pipeline_args = dependency_utils.make_beam_dependency_flags(
-            self._beam_pipeline_args)
-        executor_class_path = '%s.%s' % (self.__class__.__module__,
-                                         self.__class__.__name__)
-        # TODO(zhitaoli): Rethink how we can add labels and only normalize them
-        # if the job is submitted against GCP.
-        with telemetry_utils.scoped_labels(
-            {telemetry_utils.LABEL_TFX_EXECUTOR: executor_class_path}):
-          self._beam_pipeline_args.extend(
-              telemetry_utils.make_beam_labels_args())
-
-        # TODO(b/174174381): Don't use beam_pipeline_args to set ABSL flags.
-        flags.FLAGS(sys.argv + self._beam_pipeline_args, known_only=True)
-      else:
-        # TODO(b/156000550): We should not specialize `Context` to embed beam
-        # pipeline args. Instead, the `Context` should consists of generic
-        # purpose `extra_flags` which can be interpreted differently by
-        # different implementations of executors.
-        absl.logging.warning(
-            'Executor context\'s beam_pipeline_args is being ignored because '
-            'Apache Beam is not installed.')
-
-  # TODO(b/126182711): Look into how to support fusion of multiple executors
-  # into same pipeline.
-  # TODO(b/158811104): Extract this logic into a Beam-specific subclass.
-  @deprecation_utils.deprecated(
-      date='2021-04-21',
-      instructions='Please use `BaseBeamExecutor` to create Beam pipelines '
-      'instead.')
-  def _make_beam_pipeline(self) -> _BeamPipeline:
-    """Makes beam pipeline."""
-    if not beam:
-      raise Exception(
-          'Apache Beam must be installed to use this functionality.')
-
-    result = beam.Pipeline(argv=self._beam_pipeline_args)
-
-    # TODO(b/159468583): Obivate this code block by moving the warning to Beam.
-    #
-    # pylint: disable=g-import-not-at-top
-    from apache_beam.options.pipeline_options import DirectOptions
-    from apache_beam.options.pipeline_options import PipelineOptions
-    options = PipelineOptions(self._beam_pipeline_args)
-    direct_running_mode = options.view_as(DirectOptions).direct_running_mode
-    direct_num_workers = options.view_as(DirectOptions).direct_num_workers
-    if direct_running_mode == 'in_memory' and direct_num_workers != 1:
-      absl.logging.warning(
-          'If direct_num_workers is not equal to 1, direct_running_mode should '
-          'be `multi_processing` or `multi_threading` instead of `in_memory` '
-          'in order for it to have the desired worker parallelism effect.')
-
-    return result
+    self._extra_flags = context.extra_flags if context else None
 
   def _get_tmp_dir(self) -> Text:
     """Get the temporary directory path."""
@@ -169,7 +109,7 @@ class BaseExecutor(abc.ABC):
       raise RuntimeError('No context for the executor')
     tmp_path = self._context.get_tmp_path()
     if not fileio.exists(tmp_path):
-      absl.logging.info('Creating temp directory at %s', tmp_path)
+      logging.info('Creating temp directory at %s', tmp_path)
       fileio.makedirs(tmp_path)
     return tmp_path
 
@@ -177,13 +117,13 @@ class BaseExecutor(abc.ABC):
                    outputs: Dict[Text, List[types.Artifact]],
                    exec_properties: Dict[Text, Any]) -> None:
     """Log inputs, outputs, and executor properties in a standard format."""
-    absl.logging.debug('Starting %s execution.', self.__class__.__name__)
-    absl.logging.debug('Inputs for %s are: %s', self.__class__.__name__,
-                       artifact_utils.jsonify_artifact_dict(inputs))
-    absl.logging.debug('Outputs for %s are: %s', self.__class__.__name__,
-                       artifact_utils.jsonify_artifact_dict(outputs))
-    absl.logging.debug('Execution properties for %s are: %s',
-                       self.__class__.__name__, json.dumps(exec_properties))
+    logging.debug('Starting %s execution.', self.__class__.__name__)
+    logging.debug('Inputs for %s are: %s', self.__class__.__name__,
+                  artifact_utils.jsonify_artifact_dict(inputs))
+    logging.debug('Outputs for %s are: %s', self.__class__.__name__,
+                  artifact_utils.jsonify_artifact_dict(outputs))
+    logging.debug('Execution properties for %s are: %s',
+                  self.__class__.__name__, json.dumps(exec_properties))
 
 
 class EmptyExecutor(BaseExecutor):

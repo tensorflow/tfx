@@ -26,6 +26,7 @@ import os
 import sys
 from typing import List, Text
 
+from tfx.dsl.components.base import base_beam_executor
 from tfx.dsl.components.base import base_executor
 from tfx.types import channel_utils
 from tfx.utils import import_utils
@@ -124,11 +125,19 @@ def run_component(
       for artifact in artifacts:
         artifact.uri = uri
 
-  executor_context = base_executor.BaseExecutor.Context(
-      beam_pipeline_args=beam_pipeline_args,
-      tmp_dir=temp_directory_path,
-      unique_id='',
-  )
+  if issubclass(component_instance.executor_spec.executor_class,
+                base_beam_executor.BaseBeamExecutor):
+    executor_context = base_beam_executor.BaseBeamExecutor.Context(
+        beam_pipeline_args=beam_pipeline_args,
+        tmp_dir=temp_directory_path,
+        unique_id='',
+    )
+  else:
+    executor_context = base_executor.BaseExecutor.Context(
+        extra_flags=beam_pipeline_args,
+        tmp_dir=temp_directory_path,
+        unique_id='',
+    )
   executor = component_instance.executor_spec.executor_class(executor_context)
   executor.Do(
       input_dict=input_dict,

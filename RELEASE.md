@@ -8,6 +8,11 @@
 
 ### For Component Authors
 
+* Apache Beam support is migrated from TFX Base Components and Executors to
+  dedicated Beam Components and Executors. `BaseExecutor` will no longer embed
+  `beam_pipeline_args`. Custom executors for Beam powered components should now
+  extend BaseBeamExecutor instead of BaseExecutor.
+
 ## Deprecations
 
 ## Bug Fixes and Other Changes

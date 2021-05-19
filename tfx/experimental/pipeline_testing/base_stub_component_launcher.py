@@ -92,7 +92,7 @@ class BaseStubComponentLauncher(
                                 exec_properties)
     else:
       executor_context = base_executor.BaseExecutor.Context(
-          beam_pipeline_args=self._beam_pipeline_args,
+          extra_flags=self._beam_pipeline_args,
           tmp_dir=os.path.join(self._pipeline_info.pipeline_root, '.temp', ''),
           unique_id=str(execution_id))
       executor = base_stub_executor.BaseStubExecutor(component_id,
