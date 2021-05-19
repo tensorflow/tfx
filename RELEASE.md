@@ -2,6 +2,9 @@
 
 ## Major Features and Improvements
 
+*  Added tfx.v1 Public APIs, please refer to
+   [API doc](https://www.tensorflow.org/tfx/api_docs/python/tfx/v1) for details.
+
 ## Breaking Changes
 
 ### For Pipeline Authors
