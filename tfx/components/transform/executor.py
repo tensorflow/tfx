@@ -493,11 +493,11 @@ class Executor(base_beam_executor.BaseBeamExecutor):
   @beam.ptransform_fn
   @beam.typehints.with_input_types(beam.Pipeline)
   @beam.typehints.with_output_types(beam.pvalue.PDone)
-  def _IncrementPipelineMetrics(pipeline: beam.Pipeline,
-                                total_columns_count: int,
-                                analyze_columns_count: int,
-                                transform_columns_count: int,
-                                analyze_paths_count: int):
+  def _IncrementPipelineMetrics(
+      pipeline: beam.Pipeline, total_columns_count: int,
+      analyze_columns_count: int, transform_columns_count: int,
+      analyze_paths_count: int, analyzer_cache_enabled: bool,
+      compute_statistics: bool, materialize: bool):
     """A beam PTransform to increment counters of column usage."""
 
     def _MakeAndIncrementCounters(unused_element):
@@ -515,6 +515,15 @@ class Executor(base_beam_executor.BaseBeamExecutor):
       beam.metrics.Metrics.counter(
           tft_beam_common.METRICS_NAMESPACE,
           'analyze_paths_count').inc(analyze_paths_count)
+      beam.metrics.Metrics.counter(
+          tft_beam_common.METRICS_NAMESPACE,
+          'analyzer_cache_enabled').inc(int(analyzer_cache_enabled))
+      beam.metrics.Metrics.counter(
+          tft_beam_common.METRICS_NAMESPACE,
+          'compute_statistics').inc(int(compute_statistics))
+      beam.metrics.Metrics.counter(
+          tft_beam_common.METRICS_NAMESPACE,
+          'materialize').inc(int(materialize))
       return beam.pvalue.PDone(pipeline)
 
     return (
@@ -1031,6 +1040,7 @@ class Executor(base_beam_executor.BaseBeamExecutor):
                       len(analyze_data_paths))
   # TODO(b/122478841): Writes status to status file.
 
+  # pylint: disable=expression-not-assigned, no-value-for-parameter
   def _RunBeamImpl(self, analyze_data_list: List[_Dataset],
                    transform_data_list: List[_Dataset], preprocessing_fn: Any,
                    stats_options_updater_fn: Callable[
@@ -1116,20 +1126,23 @@ class Executor(base_beam_executor.BaseBeamExecutor):
             passthrough_keys=self._GetTFXIOPassthroughKeys(),
             use_deep_copy_optimization=True,
             force_tf_compat_v1=force_tf_compat_v1):
-          # pylint: disable=expression-not-assigned
-          # pylint: disable=no-value-for-parameter
-          _ = (
-              pipeline
-              | 'IncrementPipelineMetrics' >> self._IncrementPipelineMetrics(
-                  len(unprojected_typespecs), len(analyze_input_columns),
-                  len(transform_input_columns), analyze_paths_count))
-
           (new_analyze_data_dict, input_cache) = (
               pipeline
               | 'OptimizeRun' >> self._OptimizeRun(
                   input_cache_dir, output_cache_dir,
                   analyze_data_list, unprojected_typespecs, preprocessing_fn,
                   self._GetCacheSource(), force_tf_compat_v1))
+
+          _ = (
+              pipeline
+              | 'IncrementPipelineMetrics' >> self._IncrementPipelineMetrics(
+                  total_columns_count=len(unprojected_typespecs),
+                  analyze_columns_count=len(analyze_input_columns),
+                  transform_columns_count=len(transform_input_columns),
+                  analyze_paths_count=analyze_paths_count,
+                  analyzer_cache_enabled=input_cache is not None,
+                  compute_statistics=compute_statistics,
+                  materialize=materialization_format is not None))
 
           if input_cache:
             absl.logging.debug('Analyzing data with cache.')
@@ -1344,6 +1357,7 @@ class Executor(base_beam_executor.BaseBeamExecutor):
                      materialization_format, dataset.materialize_output_path))
 
     return _Status.OK()
+    # pylint: enable=expression-not-assigned, no-value-for-parameter
 
   def _RunInPlaceImpl(self, preprocessing_fn: Any, force_tf_compat_v1: bool,
                       metadata: dataset_metadata.DatasetMetadata,
