@@ -2,7 +2,7 @@
 
 ## Major Features and Improvements
 
-*   N/A
+*   Added tfx.v1 Public APIs
 
 ## Breaking Changes
 
