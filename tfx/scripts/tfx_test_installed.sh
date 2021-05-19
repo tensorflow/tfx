@@ -126,6 +126,13 @@ if [[ "${TFX_VERSION}" == 0.27.* ]]; then
   )
 fi
 
+# TODO(b/188658375): Delete the following test after TFX 1.0.0 released.
+if [[ "${TFX_VERSION}" == 0.30.0 ]]; then
+  SKIP_LIST+=(
+    "tfx/orchestration/portable/execution_watcher_test.py"
+  )
+fi
+
 # TODO(b/182435431): Delete the following test after the hanging issue resolved.
 SKIP_LIST+=(
   "tfx/experimental/distributed_inference/graphdef_experiments/subgraph_partitioning/beam_pipeline_test.py"
