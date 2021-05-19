@@ -8,12 +8,34 @@
 
 ### For Component Authors
 
-* Apache Beam support is migrated from TFX Base Components and Executors to
-  dedicated Beam Components and Executors. `BaseExecutor` will no longer embed
-  `beam_pipeline_args`. Custom executors for Beam powered components should now
-  extend BaseBeamExecutor instead of BaseExecutor.
+## Deprecations
+
+## Bug Fixes and Other Changes
+
+## Documentation Updates
+
+# Version 1.0.0
+
+## Major Features and Improvements
+
+*   N/A
+
+## Breaking Changes
+
+### For Pipeline Authors
+
+*   N/A
+
+### For Component Authors
+
+*   Apache Beam support is migrated from TFX Base Components and Executors to
+    dedicated Beam Components and Executors. `BaseExecutor` will no longer embed
+    `beam_pipeline_args`. Custom executors for Beam powered components should
+    now extend BaseBeamExecutor instead of BaseExecutor.
 
 ## Deprecations
+
+*   N/A
 
 ## Bug Fixes and Other Changes
 
@@ -24,6 +46,8 @@
 *   Depends on `tensorflow-serving-api>=1.15,!=2.0.*,!=2.1.*,!=2.2.*,!=2.3.*,!=2.4.*,<3`.
 
 ## Documentation Updates
+
+*   N/A
 
 # Version 0.30.0
 
