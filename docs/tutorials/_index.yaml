@@ -22,6 +22,20 @@ landing_page:
         for when you really want to dive into more advanced parts of TFX.
         </p>
 
+  - classname:
+      devsite-landing-row-100
+    heading: "TFX 1.0"
+    items:
+    - description: >
+        <p>
+        We are happy to announce the
+        <a href="https://github.com/tensorflow/tfx/releases">TFX 1.0.0 Release Candidate</a>.
+        This is the first stable release of TFX, which provides stable public APIs and Artifacts.
+        You can be assured that your future TFX pipelines will keep working after an upgrade within
+        the compatibility scope defined in this
+        [RFC](https://github.com/tensorflow/community/blob/master/rfcs/20210307-tfx-api-artifact-compat.md).
+        </p>
+
   - heading: "Getting started tutorials"
     classname: devsite-landing-row-100
     items:
@@ -65,7 +79,7 @@ landing_page:
       path: /tfx/tutorials/tfx/gcp/vertex_pipelines_bq
     - classname: tfo-landing-page-card
       description: >
-        <a href="/tfx/tutorials/tfx/gcp/vertex_pipelines_vertex_training"><h3 class="no-link">Vertex Training</h3></a>
+        <a href="/tfx/tutorials/tfx/gcp/vertex_pipelines_vertex_training"><h3 class="no-link">Vertex AI Training</h3></a>
         Using cloud resources for ML training with Vertex AI Training.
       path: /tfx/tutorials/tfx/gcp/vertex_pipelines_vertex_training
     - classname: tfo-landing-page-card

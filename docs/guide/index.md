@@ -7,15 +7,25 @@ TensorFlow. It provides a configuration framework and shared libraries to
 integrate common components needed to define, launch, and monitor your machine
 learning system.
 
-## Installation
+## TFX 1.0
 
+We are happy to announce the
+[TFX 1.0.0 Release Candidate](https://github.com/tensorflow/tfx/releases). This
+is the first stable release of TFX, which provides stable public APIs and
+Artifacts. You can be assured that your future TFX pipelines will keep working
+after an upgrade within the compatibility scope defined in this
+[RFC](https://github.com/tensorflow/community/blob/master/rfcs/20210307-tfx-api-artifact-compat.md).
+
+## Installation
 
 [![Python](https://img.shields.io/pypi/pyversions/tfx.svg?style=plastic)](
 https://github.com/tensorflow/tfx)
 [![PyPI](https://badge.fury.io/py/tfx.svg)](https://badge.fury.io/py/tfx)
 
-```
+```bash
 pip install tfx
+# If you want to try TFX 1.0.0 RC, Use --pre flag like following:
+#   pip install --pre tfx
 ```
 
 Note: See the [TensorFlow Serving](https://www.tensorflow.org/serving/),
@@ -34,7 +44,7 @@ TFX also hosts nightly packages at https://pypi-nightly.tensorflow.org on Google
 Cloud. To install the latest nightly package, please use the following command:
 
 ```
-pip install -i https://pypi-nightly.tensorflow.org/simple tfx
+pip install -i https://pypi-nightly.tensorflow.org/simple --pre tfx
 ```
 
 This will install the nightly packages for the major dependencies of TFX such as
