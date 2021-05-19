@@ -20,11 +20,7 @@ customization, since all of the work is done by the Pusher TFX component.
 Typical code looks like this:
 
 ```python
-from tfx import components
-
-...
-
-pusher = components.Pusher(
+pusher = Pusher(
   model=trainer.outputs['model'],
   model_blessing=evaluator.outputs['blessing'],
   infra_blessing=infra_validator.outputs['blessing'],
@@ -34,3 +30,6 @@ pusher = components.Pusher(
   )
 )
 ```
+
+More details are available in the
+[Pusher API reference](https://www.tensorflow.org/tfx/api_docs/python/tfx/v1/components/Pusher).

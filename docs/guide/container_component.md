@@ -57,17 +57,15 @@ The following is an example of a non-python component that downloads,
 transforms, and uploads the data:
 
 ```python
-from tfx.dsl.component.experimental import container_component
-from tfx.dsl.component.experimental import placeholders
-from tfx.types import standard_artifacts
+import tfx.v1 as tfx
 
-grep_component = container_component.create_container_component(
+grep_component = tfx.dsl.components.create_container_component(
     name='FilterWithGrep',
     inputs={
-        'text': standard_artifacts.ExternalArtifact,
+        'text': tfx.standard_artifacts.ExternalArtifact,
     },
     outputs={
-        'filtered_text': standard_artifacts.ExternalArtifact,
+        'filtered_text': tfx.standard_artifacts.ExternalArtifact,
     },
     parameters={
         'pattern': str,
@@ -93,9 +91,9 @@ grep_component = container_component.create_container_component(
           # Getting data out of the container
           gsutil cp "$filtered_text_path" "$filtered_text_uri"
         ''',
-        '--pattern', placeholders.InputValuePlaceholder('pattern'),
-        '--text', placeholders.InputUriPlaceholder('text'),
-        '--filtered-text', placeholders.OutputUriPlaceholder('filtered_text'),
+        '--pattern', tfx.dsl.placeholders.InputValuePlaceholder('pattern'),
+        '--text', tfx.dsl.placeholders.InputUriPlaceholder('text'),
+        '--filtered-text', tfx.dsl.placeholders.OutputUriPlaceholder('filtered_text'),
     ],
 )
 ```

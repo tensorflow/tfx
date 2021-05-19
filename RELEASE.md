@@ -50,7 +50,7 @@
 
 ## Documentation Updates
 
-*   N/A
+*  Update the Guide of TFX to adopt 1.0 API.
 
 # Version 0.30.0
 

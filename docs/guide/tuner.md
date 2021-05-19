@@ -80,7 +80,6 @@ tuner = Tuner(
 
 trainer = Trainer(
     module_file=module_file,  # Contains `run_fn`.
-    custom_executor_spec=executor_spec.ExecutorClassSpec(GenericExecutor),
     examples=transform.outputs['transformed_examples'],
     transform_graph=transform.outputs['transform_graph'],
     schema=schema_gen.outputs['schema'],
@@ -178,17 +177,13 @@ is the configuration given to this component. This is a drop-in replacement of
 the stock Tuner component.
 
 ```python
-from tfx.extensions.google_cloud_ai_platform.tuner.component import Tuner
-from tfx.extensions.google_cloud_ai_platform.trainer import executor as ai_platform_trainer_executor
-
-...
-tuner = Tuner(
+tuner = google_cloud_ai_platform.Tuner(
     ...   # Same kwargs as the above stock Tuner component.
-    tune_args=tuner_pb2.TuneArgs(num_parallel_trials=3),  # 3-worker parallel
+    tune_args=proto.TuneArgs(num_parallel_trials=3),  # 3-worker parallel
     custom_config={
         # Configures Cloud AI Platform-specific configs . For for details, see
         # https://cloud.google.com/ai-platform/training/docs/reference/rest/v1/projects.jobs#traininginput.
-        ai_platform_trainer_executor.TRAINING_ARGS_KEY:
+        TUNING_ARGS_KEY:
             {
                 'project': ...,
                 'region': ...,
@@ -239,3 +234,6 @@ service account for your training job in the pipeline code. More details see
 [CloudTuner tutorial](https://github.com/GoogleCloudPlatform/ai-platform-samples/blob/master/notebooks/samples/optimizer/ai_platform_vizier_tuner.ipynb)
 
 [Proposal](https://github.com/tensorflow/community/blob/master/rfcs/20200420-tfx-tuner-component.md)
+
+More details are available in the
+[Tuner API reference](https://www.tensorflow.org/tfx/api_docs/python/tfx/v1/components/Tuner).
