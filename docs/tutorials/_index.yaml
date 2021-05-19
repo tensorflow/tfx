@@ -28,12 +28,12 @@ landing_page:
     items:
     - description: >
         <p>
-        We are happy to announce the
+        We are happy to announce the availability of the
         <a href="https://github.com/tensorflow/tfx/releases">TFX 1.0.0 Release Candidate</a>.
-        This is the first stable release of TFX, which provides stable public APIs and Artifacts.
-        You can be assured that your future TFX pipelines will keep working after an upgrade within
-        the compatibility scope defined in this
-        [RFC](https://github.com/tensorflow/community/blob/master/rfcs/20210307-tfx-api-artifact-compat.md).
+        This is the initial post-beta release of TFX, which provides stable public APIs and
+        artifacts. You can be assured that your future TFX pipelines will keep working after an
+        upgrade within the compatibility scope defined in this
+        <a href="https://github.com/tensorflow/community/blob/master/rfcs/20210307-tfx-api-artifact-compat.md">RFC</a>.
         </p>
 
   - heading: "Getting started tutorials"

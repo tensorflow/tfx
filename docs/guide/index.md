@@ -9,10 +9,10 @@ learning system.
 
 ## TFX 1.0
 
-We are happy to announce the
+We are happy to announce the availability of the
 [TFX 1.0.0 Release Candidate](https://github.com/tensorflow/tfx/releases). This
-is the first stable release of TFX, which provides stable public APIs and
-Artifacts. You can be assured that your future TFX pipelines will keep working
+is the initial post-beta release of TFX, which provides stable public APIs and
+artifacts. You can be assured that your future TFX pipelines will keep working
 after an upgrade within the compatibility scope defined in this
 [RFC](https://github.com/tensorflow/community/blob/master/rfcs/20210307-tfx-api-artifact-compat.md).
 
