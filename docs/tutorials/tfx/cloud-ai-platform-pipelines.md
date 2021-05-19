@@ -210,15 +210,7 @@ here as a reference.
 The Getting Started Notebook starts by installing
 [TFX](https://www.tensorflow.org/tfx) and
 [Kubeflow Pipelines (KFP)](https://www.kubeflow.org/docs/pipelines/) into the VM
-which Jupyter Lab is running in, along with the
-[Skaffold](https://github.com/GoogleContainerTools/skaffold) module:
-
-![Install tf and kfp](images/cloud-ai-platform-pipelines/pip-install-nb-cell.png)
-
-It then sets the `PATH` to include user Python binary directory and a directory
-containing `skaffold`:
-
-![set path](images/cloud-ai-platform-pipelines/set-path-nb-cell.png)
+which Jupyter Lab is running in.
 
 It then checks which version of TFX is installed, does an import, and sets and
 prints the Project ID:
@@ -313,7 +305,7 @@ Here is brief description of the Python files.
     -   `keras` - This directory contains a Keras based model.
         -   `constants.py` — defines constants of the model
         -   `model.py` / `model_test.py` — defines DNN model using Keras
--   `beam_dag_runner.py` / `kubeflow_dag_runner.py` — define runners for each
+-   `beam_runner.py` / `kubeflow_runner.py` — define runners for each
     orchestration engine
 
 ## 7. Run your first TFX pipeline on Kubeflow
@@ -336,21 +328,21 @@ The notebook will upload our sample data to GCS bucket so that we can use it in
 our pipeline later.
 
 ```python
-!gsutil cp data/data.csv gs://{GOOGLE_CLOUD_PROJECT}-kubeflowpipelines-default/tfx-template/data/data.csv
+!gsutil cp data/data.csv gs://{GOOGLE_CLOUD_PROJECT}-kubeflowpipelines-default/tfx-template/data/taxi/data.csv
 ```
 
 The notebook then uses the `tfx pipeline create` command to create the pipeline.
 
 ```python
 !tfx pipeline create  \
---pipeline-path=kubeflow_dag_runner.py \
+--pipeline-path=kubeflow_runner.py \
 --endpoint={ENDPOINT} \
---build-target-image={CUSTOM_TFX_IMAGE}
+--build-image
 ```
 
-While creating a pipeline, `Dockerfile` and `build.yaml` will be generated to
-build a Docker image. Don't forget to add these files to your source control
-system (for example, git) along with other source files.
+While creating a pipeline, `Dockerfile` will be generated to build a Docker
+image. Don't forget to add these files to your source control system (for
+example, git) along with other source files.
 
 ### Run the pipeline
 
@@ -413,7 +405,7 @@ to your pipeline:
 ```python
 # Update the pipeline
 ! tfx pipeline update \
-  --pipeline-path=kubeflow_dag_runner.py \
+  --pipeline-path=kubeflow_runner.py \
   --endpoint={ENDPOINT}
 
 ! tfx run create --pipeline-name "{PIPELINE_NAME}"
@@ -471,7 +463,7 @@ In `pipeline`/`pipeline.py`, find and uncomment the line which appends
 ```python
 # Update the pipeline
 ! tfx pipeline update \
-  --pipeline-path=kubeflow_dag_runner.py \
+  --pipeline-path=kubeflow_runner.py \
   --endpoint={ENDPOINT}
 
 ! tfx run create --pipeline-name "{PIPELINE_NAME}"
@@ -519,7 +511,7 @@ pipeline:
 ```python
 # Update the pipeline
 ! tfx pipeline update \
-  --pipeline-path=kubeflow_dag_runner.py \
+  --pipeline-path=kubeflow_runner.py \
   --endpoint={ENDPOINT}
 
 ! tfx run create --pipeline-name "{PIPELINE_NAME}"
@@ -570,7 +562,7 @@ components.append(evaluator)
 ```python
 # Update the pipeline
 ! tfx pipeline update \
-  --pipeline-path=kubeflow_dag_runner.py \
+  --pipeline-path=kubeflow_runner.py \
   --endpoint={ENDPOINT}
 
 ! tfx run create --pipeline-name "{PIPELINE_NAME}"
@@ -705,8 +697,8 @@ before proceeding.**
 file list. The name of the directory is the name of the pipeline which is
 `my_pipeline` if you didn't change the pipeline name.
 
-**Double-click to open `kubeflow_dag_runner.py`**. Uncomment two arguments,
-`query` and `beam_pipeline_args`, for the `create_pipeline` function.
+**Double-click to open `kubeflow_runner.py`**. Uncomment two arguments, `query`
+and `beam_pipeline_args`, for the `create_pipeline` function.
 
 Now the pipeline is ready to use BigQuery as an example source. Update the
 pipeline as before and create a new execution run as we did in step 5 and 6.
@@ -716,8 +708,8 @@ pipeline as before and create a new execution run as we did in step 5 and 6.
 ```python
 # Update the pipeline
 !tfx pipeline update \
---pipeline-path=kubeflow_dag_runner.py \
---endpoint={ENDPOINT}
+  --pipeline-path=kubeflow_runner.py \
+  --endpoint={ENDPOINT}
 
 !tfx run create --pipeline-name {PIPELINE_NAME} --endpoint={ENDPOINT}
 ```
@@ -768,17 +760,17 @@ gcloud services enable dataflow.googleapis.com
 file list. The name of the directory is the name of the pipeline which is
 `my_pipeline` if you didn't change.
 
-**Double-click to open `kubeflow_dag_runner.py`**. Uncomment
-`beam_pipeline_args`. (Also make sure to comment out current
-`beam_pipeline_args` that you added in Step 7.)
+**Double-click to open `kubeflow_runner.py`**. Uncomment `beam_pipeline_args`.
+(Also make sure to comment out current `beam_pipeline_args` that you added in
+Step 7.)
 
 #### Update the pipeline and re-run it
 
 ```python
 # Update the pipeline
 !tfx pipeline update \
---pipeline-path=kubeflow_dag_runner.py \
---endpoint={ENDPOINT}
+  --pipeline-path=kubeflow_runner.py \
+  --endpoint={ENDPOINT}
 
 !tfx run create --pipeline-name {PIPELINE_NAME} --endpoint={ENDPOINT}
 ```
@@ -807,7 +799,7 @@ so we should set `masterConfig.imageUri` in `GCP_AI_PLATFORM_TRAINING_ARGS` to
 the same value as `CUSTOM_TFX_IMAGE` above.
 
 **Change directory one level up, and double-click to open
-`kubeflow_dag_runner.py`**. Uncomment `ai_platform_training_args` and
+`kubeflow_runner.py`**. Uncomment `ai_platform_training_args` and
 `ai_platform_serving_args`.
 
 > Note: If you receive a permissions error in the Training step, you may need to
@@ -821,8 +813,8 @@ the same value as `CUSTOM_TFX_IMAGE` above.
 ```python
 # Update the pipeline
 !tfx pipeline update \
---pipeline-path=kubeflow_dag_runner.py \
---endpoint={ENDPOINT}
+  --pipeline-path=kubeflow_runner.py \
+  --endpoint={ENDPOINT}
 
 !tfx run create --pipeline-name {PIPELINE_NAME} --endpoint={ENDPOINT}
 ```
@@ -843,7 +835,7 @@ You need to modify the pipeline definition to accommodate your data.
 
 ### If your data is stored in files
 
-1.  Modify `DATA_PATH` in `kubeflow_dag_runner.py`, indicating the location.
+1.  Modify `DATA_PATH` in `kubeflow_runner.py`, indicating the location.
 
 ### If your data is stored in BigQuery
 
