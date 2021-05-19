@@ -110,7 +110,7 @@ class ExecutionWatcher(
   @property
   def local_address(self) -> str:
     # Local network address to the server.
-    return f'[::]:{self._port}'
+    return f'localhost:{self._port}'
 
   @property
   def address(self) -> str:
