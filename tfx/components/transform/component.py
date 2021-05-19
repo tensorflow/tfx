@@ -87,6 +87,7 @@ class Transform(base_beam_component.BaseBeamComponent):
       disable_analyzer_cache: bool = False,
       force_tf_compat_v1: bool = False,
       custom_config: Optional[Dict[Text, Any]] = None,
+      # Experimental, will change soon.
       compute_statistics: bool = False):
     """Construct a Transform component.
 
@@ -139,8 +140,8 @@ class Transform(base_beam_component.BaseBeamComponent):
         installed version of Tensorflow. Defaults to `False`.
       custom_config: A dict which contains additional parameters that will be
         passed to preprocessing_fn.
-      compute_statistics: If True, invoke TFDV to compute pre-transform and
-        post-transform statistics.
+      compute_statistics: Experimental. If True, invoke TFDV to compute
+        pre-transform and post-transform statistics.
 
     Raises:
       ValueError: When both or neither of 'module_file' and 'preprocessing_fn'
