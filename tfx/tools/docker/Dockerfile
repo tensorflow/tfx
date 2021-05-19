@@ -27,6 +27,8 @@ RUN python -m pip install --upgrade pip
 
 # TODO(b/175089240): clean up conditional checks on whether ml-pipelines-sdk is
 # built after TFX versions <= 0.25 are no longer eligible for cherry-picks.
+# TODO(b/188374122): Delete pinned version of tensorflow 2.5 after all
+# dependencies including TFT move to TF 2.5.
 RUN cd ${TFX_DIR}/src; \
     if [ -e "package_build" ]; then \
       bash -x package_build/initialize.sh; \
@@ -46,10 +48,11 @@ RUN cd ${TFX_DIR}/src; \
       CFLAGS=$(/usr/bin/python-config --cflags) \
         python -m pip install \
           --extra-index-url https://pypi-nightly.tensorflow.org/simple \
-          ${MLSDK_WHEEL} ${TFX_WHEEL}[docker-image] ; \
+          ${MLSDK_WHEEL} ${TFX_WHEEL}[docker-image] 'tensorflow<2.5' ; \
     else \
       CFLAGS=$(/usr/bin/python-config --cflags) \
-        python -m pip install ${MLSDK_WHEEL} ${TFX_WHEEL}[docker-image] ; \
+        python -m pip install ${MLSDK_WHEEL} ${TFX_WHEEL}[docker-image] \
+        'tensorflow<2.5' ; \
     fi;
 
 # We need to name this step for the next COPY --from command.

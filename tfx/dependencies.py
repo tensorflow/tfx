@@ -87,7 +87,7 @@ def make_required_install_packages():
       'numpy>=1.16,<1.20',
       'pyarrow>=1,<3',
       'pyyaml>=3.12,<6',
-      'tensorflow>=1.15.2,!=2.0.*,!=2.1.*,!=2.2.*,!=2.3.*,!=2.4.*,<3',
+      'tensorflow>=1.15.2,!=2.0.*,!=2.1.*,!=2.2.*,!=2.3.*,!=2.5.*,<3',
       'tensorflow-hub>=0.9.0,<0.10',
       'tensorflow-data-validation' + select_constraint(
           default='>=0.30,<0.31',
@@ -99,7 +99,7 @@ def make_required_install_packages():
           nightly='>=0.31.0.dev',
           git_master='@git+https://github.com/tensorflow/model-analysis@master'
       ),
-      'tensorflow-serving-api>=1.15,!=2.0.*,!=2.1.*,!=2.2.*,!=2.3.*,!=2.4.*,<3',
+      'tensorflow-serving-api>=1.15,!=2.0.*,!=2.1.*,!=2.2.*,!=2.3.*,!=2.5.*,<3',
       'tensorflow-transform' + select_constraint(
           default='>=0.30,<0.31',
           nightly='>=0.31.0.dev',
@@ -150,7 +150,7 @@ def make_extra_packages_docker_image():
 def make_extra_packages_tfjs():
   # Packages needed for tfjs.
   return [
-      'tensorflowjs>=3.6.0,<4',
+      'tensorflowjs>=2.0.1.post1,<3',
   ]
 
 
