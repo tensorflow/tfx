@@ -19,6 +19,7 @@ from typing import Any, List, Optional
 from absl import flags
 from absl import logging
 from tfx.dsl.components.base.base_executor import BaseExecutor
+from tfx.proto.orchestration import pipeline_pb2
 from tfx.utils import telemetry_utils
 from tfx.utils import dependency_utils
 
@@ -42,13 +43,19 @@ class BaseBeamExecutor(BaseExecutor):
                  tmp_dir: Optional[str] = None,
                  unique_id: Optional[str] = None,
                  executor_output_uri: Optional[str] = None,
-                 stateful_working_dir: Optional[str] = None):
+                 stateful_working_dir: Optional[str] = None,
+                 pipeline_node: Optional[pipeline_pb2.PipelineNode] = None,
+                 pipeline_info: Optional[pipeline_pb2.PipelineInfo] = None,
+                 pipeline_run_id: Optional[str] = None):
       super().__init__(
           extra_flags=extra_flags,
           tmp_dir=tmp_dir,
           unique_id=unique_id,
           executor_output_uri=executor_output_uri,
-          stateful_working_dir=stateful_working_dir)
+          stateful_working_dir=stateful_working_dir,
+          pipeline_node=pipeline_node,
+          pipeline_info=pipeline_info,
+          pipeline_run_id=pipeline_run_id)
       self.beam_pipeline_args = beam_pipeline_args
 
   def __init__(self, context: Optional[Context] = None):

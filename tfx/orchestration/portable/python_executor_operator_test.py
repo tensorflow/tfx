@@ -24,6 +24,7 @@ from tfx.orchestration.portable import data_types
 from tfx.orchestration.portable import python_executor_operator
 from tfx.proto.orchestration import executable_spec_pb2
 from tfx.proto.orchestration import execution_result_pb2
+from tfx.proto.orchestration import pipeline_pb2
 from tfx.types import standard_artifacts
 from tfx.utils import test_case_utils
 
@@ -57,16 +58,34 @@ class NotInprocessExecutor(base_executor.BaseExecutor):
 
 
 class InplaceUpdateExecutor(base_executor.BaseExecutor):
-  """A Fake noop executor."""
+  """A Fake executor that uses the executor Context to compute its output."""
 
   def Do(self, input_dict: Dict[Text, List[types.Artifact]],
          output_dict: Dict[Text, List[types.Artifact]],
          exec_properties: Dict[Text, Any]) -> None:
     model = output_dict['output_key'][0]
-    model.name = 'my_model'
+    model.name = '{0}.{1}.my_model'.format(
+        self._context.pipeline_info.id,
+        self._context.pipeline_node.node_info.id)
 
 
 class PythonExecutorOperatorTest(test_case_utils.TfxTest):
+
+  def _get_execution_info(self, input_dict, output_dict, exec_properties):
+    pipeline_node = pipeline_pb2.PipelineNode(node_info={'id': 'MyPythonNode'})
+    pipeline_info = pipeline_pb2.PipelineInfo(id='MyPipeline')
+    stateful_working_dir = os.path.join(self.tmp_dir, 'stateful_working_dir')
+    executor_output_uri = os.path.join(self.tmp_dir, 'executor_output')
+    return data_types.ExecutionInfo(
+        execution_id=1,
+        input_dict=input_dict,
+        output_dict=output_dict,
+        exec_properties=exec_properties,
+        stateful_working_dir=stateful_working_dir,
+        execution_output_uri=executor_output_uri,
+        pipeline_node=pipeline_node,
+        pipeline_info=pipeline_info,
+        pipeline_run_id=99)
 
   def testRunExecutor_with_InprocessExecutor(self):
     executor_sepc = text_format.Parse(
@@ -77,16 +96,8 @@ class PythonExecutorOperatorTest(test_case_utils.TfxTest):
     input_dict = {'input_key': [standard_artifacts.Examples()]}
     output_dict = {'output_key': [standard_artifacts.Model()]}
     exec_properties = {'key': 'value'}
-    stateful_working_dir = os.path.join(self.tmp_dir, 'stateful_working_dir')
-    executor_output_uri = os.path.join(self.tmp_dir, 'executor_output')
     executor_output = operator.run_executor(
-        data_types.ExecutionInfo(
-            execution_id=1,
-            input_dict=input_dict,
-            output_dict=output_dict,
-            exec_properties=exec_properties,
-            stateful_working_dir=stateful_working_dir,
-            execution_output_uri=executor_output_uri))
+        self._get_execution_info(input_dict, output_dict, exec_properties))
     self.assertProtoPartiallyEquals(
         """
           output_artifacts {
@@ -106,16 +117,8 @@ class PythonExecutorOperatorTest(test_case_utils.TfxTest):
     input_dict = {'input_key': [standard_artifacts.Examples()]}
     output_dict = {'output_key': [standard_artifacts.Model()]}
     exec_properties = {'key': 'value'}
-    stateful_working_dir = os.path.join(self.tmp_dir, 'stateful_working_dir')
-    executor_output_uri = os.path.join(self.tmp_dir, 'executor_output')
     executor_output = operator.run_executor(
-        data_types.ExecutionInfo(
-            execution_id=1,
-            input_dict=input_dict,
-            output_dict=output_dict,
-            exec_properties=exec_properties,
-            stateful_working_dir=stateful_working_dir,
-            execution_output_uri=executor_output_uri))
+        self._get_execution_info(input_dict, output_dict, exec_properties))
     self.assertProtoPartiallyEquals(
         """
           output_artifacts {
@@ -142,16 +145,8 @@ class PythonExecutorOperatorTest(test_case_utils.TfxTest):
         # dropped.
         'proto': execution_result_pb2.ExecutorOutput()
     }
-    stateful_working_dir = os.path.join(self.tmp_dir, 'stateful_working_dir')
-    executor_output_uri = os.path.join(self.tmp_dir, 'executor_output')
     executor_output = operator.run_executor(
-        data_types.ExecutionInfo(
-            execution_id=1,
-            input_dict=input_dict,
-            output_dict=output_dict,
-            exec_properties=exec_properties,
-            stateful_working_dir=stateful_working_dir,
-            execution_output_uri=executor_output_uri))
+        self._get_execution_info(input_dict, output_dict, exec_properties))
     self.assertProtoPartiallyEquals(
         """
           output_artifacts {
@@ -161,7 +156,7 @@ class PythonExecutorOperatorTest(test_case_utils.TfxTest):
                 custom_properties {
                   key: "name"
                   value {
-                    string_value: "my_model"
+                    string_value: "MyPipeline.MyPythonNode.my_model"
                   }
                 }
               }

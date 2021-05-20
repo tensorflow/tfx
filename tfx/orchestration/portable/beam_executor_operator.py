@@ -81,6 +81,9 @@ class BeamExecutorOperator(base_executor_operator.BaseExecutorOperator):
         tmp_dir=execution_info.tmp_dir,
         unique_id=str(execution_info.execution_id),
         executor_output_uri=execution_info.execution_output_uri,
-        stateful_working_dir=execution_info.stateful_working_dir)
+        stateful_working_dir=execution_info.stateful_working_dir,
+        pipeline_node=execution_info.pipeline_node,
+        pipeline_info=execution_info.pipeline_info,
+        pipeline_run_id=execution_info.pipeline_run_id)
     executor = self._executor_cls(context=context)
     return python_executor_operator.run_with_executor(execution_info, executor)

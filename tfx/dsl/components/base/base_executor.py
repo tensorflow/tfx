@@ -22,6 +22,7 @@ from absl import logging
 from tfx import types
 from tfx.dsl.io import fileio
 from tfx.proto.orchestration import execution_result_pb2
+from tfx.proto.orchestration import pipeline_pb2
 from tfx.types import artifact_utils
 
 try:
@@ -43,7 +44,10 @@ class BaseExecutor(abc.ABC):
                  tmp_dir: Optional[str] = None,
                  unique_id: Optional[str] = None,
                  executor_output_uri: Optional[str] = None,
-                 stateful_working_dir: Optional[str] = None):
+                 stateful_working_dir: Optional[str] = None,
+                 pipeline_node: Optional[pipeline_pb2.PipelineNode] = None,
+                 pipeline_info: Optional[pipeline_pb2.PipelineInfo] = None,
+                 pipeline_run_id: Optional[str] = None):
       self.extra_flags = extra_flags
       # Base temp directory for the pipeline
       self._tmp_dir = tmp_dir
@@ -54,6 +58,12 @@ class BaseExecutor(abc.ABC):
       # A path to store information for stateful run, e.g. checkpoints for
       # tensorflow trainers.
       self._stateful_working_dir = stateful_working_dir
+      # The config of this Node.
+      self._pipeline_node = pipeline_node
+      # The config of the pipeline that this node is running in.
+      self._pipeline_info = pipeline_info
+      # The id of the pipeline run that this execution is in.
+      self._pipeline_run_id = pipeline_run_id
 
     def get_tmp_path(self) -> str:
       if not self._tmp_dir or not self._unique_id:
@@ -67,6 +77,18 @@ class BaseExecutor(abc.ABC):
     @property
     def stateful_working_dir(self) -> str:
       return self._stateful_working_dir
+
+    @property
+    def pipeline_node(self) -> pipeline_pb2.PipelineNode:
+      return self._pipeline_node
+
+    @property
+    def pipeline_info(self) -> pipeline_pb2.PipelineInfo:
+      return self._pipeline_info
+
+    @property
+    def pipeline_run_id(self) -> str:
+      return self._pipeline_run_id
 
   @abc.abstractmethod
   def Do(  # pylint: disable=invalid-name

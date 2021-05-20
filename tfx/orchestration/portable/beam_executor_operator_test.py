@@ -22,6 +22,8 @@ from tfx.dsl.components.base import base_beam_executor
 from tfx.orchestration.portable import beam_executor_operator
 from tfx.orchestration.portable import data_types
 from tfx.proto.orchestration import executable_spec_pb2
+from tfx.proto.orchestration import pipeline_pb2
+from tfx.types import standard_artifacts
 from tfx.utils import test_case_utils
 
 from google.protobuf import text_format
@@ -34,6 +36,10 @@ class ValidateBeamPipelineArgsExecutor(base_beam_executor.BaseBeamExecutor):
          output_dict: Dict[Text, List[types.Artifact]],
          exec_properties: Dict[Text, Any]) -> None:
     assert '--runner=DirectRunner' in self._beam_pipeline_args
+    model = output_dict['output_key'][0]
+    model.name = '{0}.{1}.my_model'.format(
+        self._context.pipeline_info.id,
+        self._context.pipeline_node.node_info.id)
 
 
 class BeamExecutorOperatorTest(test_case_utils.TfxTest):
@@ -47,14 +53,34 @@ class BeamExecutorOperatorTest(test_case_utils.TfxTest):
       beam_pipeline_args: "--runner=DirectRunner"
     """, executable_spec_pb2.BeamExecutableSpec())
     operator = beam_executor_operator.BeamExecutorOperator(executor_spec)
+    pipeline_node = pipeline_pb2.PipelineNode(node_info={'id': 'MyBeamNode'})
+    pipeline_info = pipeline_pb2.PipelineInfo(id='MyPipeline')
     executor_output_uri = os.path.join(self.tmp_dir, 'executor_output')
-    operator.run_executor(
+    executor_output = operator.run_executor(
         data_types.ExecutionInfo(
             execution_id=1,
-            input_dict={},
-            output_dict={},
+            input_dict={'input_key': [standard_artifacts.Examples()]},
+            output_dict={'output_key': [standard_artifacts.Model()]},
             exec_properties={},
-            execution_output_uri=executor_output_uri))
+            execution_output_uri=executor_output_uri,
+            pipeline_node=pipeline_node,
+            pipeline_info=pipeline_info,
+            pipeline_run_id=99))
+    self.assertProtoPartiallyEquals(
+        """
+          output_artifacts {
+            key: "output_key"
+            value {
+              artifacts {
+                custom_properties {
+                  key: "name"
+                  value {
+                    string_value: "MyPipeline.MyBeamNode.my_model"
+                  }
+                }
+              }
+            }
+          }""", executor_output)
 
 
 if __name__ == '__main__':
