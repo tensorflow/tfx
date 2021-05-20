@@ -58,7 +58,9 @@ that were defined.
 Typical code looks like this:
 
 ```python
+from tfx import components
 import tensorflow_model_analysis as tfma
+
 ...
 
 # For TFMA evaluation
@@ -102,12 +104,12 @@ eval_config = tfma.EvalConfig(
 # The following component is experimental and may change in the future. This is
 # required to specify the latest blessed model will be used as the baseline.
 model_resolver = Resolver(
-      strategy_class=dsl.experimental.LatestBlessedModelStrategy,
+      strategy_class=latest_blessed_model_resolver.LatestBlessedModelResolver,
       model=Channel(type=Model),
       model_blessing=Channel(type=ModelBlessing)
 ).with_id('latest_blessed_model_resolver')
 
-model_analyzer = Evaluator(
+model_analyzer = components.Evaluator(
       examples=examples_gen.outputs['examples'],
       model=trainer.outputs['model'],
       baseline_model=model_resolver.outputs['model'],
@@ -140,6 +142,3 @@ validation_result = tfma.load_validation_result(output_path)
 if not validation_result.validation_ok:
   ...
 ```
-
-More details are available in the
-[Evaluator API reference](https://www.tensorflow.org/tfx/api_docs/python/tfx/v1/components/Evaluator).

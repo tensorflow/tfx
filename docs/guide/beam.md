@@ -114,7 +114,8 @@ configured with `beam_pipeline_args`, which is specified during during pipeline
 creation:
 
 ```python
-my_pipeline = Pipeline(
+from tfx.orchestration import pipeline
+my_pipeline = pipeline.Pipeline(
     ...,
     beam_pipeline_args=[...])
 ```
@@ -123,5 +124,6 @@ TFX 0.30 and above adds an interface, `with_beam_pipeline_args`, for extending
 the pipeline level beam args per component:
 
 ```python
+from tfx.components import CsvExampleGen
 example_gen = CsvExampleGen(input_base=data_root).with_beam_pipeline_args([...])
 ```

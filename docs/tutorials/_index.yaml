@@ -22,20 +22,6 @@ landing_page:
         for when you really want to dive into more advanced parts of TFX.
         </p>
 
-  - classname:
-      devsite-landing-row-100
-    heading: "TFX 1.0"
-    items:
-    - description: >
-        <p>
-        We are happy to announce the availability of the
-        <a href="https://github.com/tensorflow/tfx/releases">TFX 1.0.0 Release Candidate</a>.
-        This is the initial post-beta release of TFX, which provides stable public APIs and
-        artifacts. You can be assured that your future TFX pipelines will keep working after an
-        upgrade within the compatibility scope defined in this
-        <a href="https://github.com/tensorflow/community/blob/master/rfcs/20210307-tfx-api-artifact-compat.md">RFC</a>.
-        </p>
-
   - heading: "Getting started tutorials"
     classname: devsite-landing-row-100
     items:
@@ -61,33 +47,6 @@ landing_page:
         Building on the simple pipeline to add a model analysis component.
       path: /tfx/tutorials/tfx/penguin_tfma
 
-  - heading: "TFX on Google Cloud"
-    classname: devsite-landing-row-100
-    description: >
-      Google Cloud provides various products like BigQuery, Vertex AI to make your ML workflow
-      cost-effective and scalable. You will learn how to use those products in your TFX pipeline.
-    items:
-    - classname: tfo-landing-page-card
-      description: >
-        <a href="/tfx/tutorials/tfx/gcp/vertex_pipelines_simple"><h3 class="no-link">Running on Vertex Pipelines</h3></a>
-        Running pipelines on a managed pipeline service, Cloud AI Platform Pipelines.
-      path: /tfx/tutorials/tfx/gcp/vertex_pipelines_simple
-    - classname: tfo-landing-page-card
-      description: >
-        <a href="/tfx/tutorials/tfx/gcp/vertex_pipelines_bq"><h3 class="no-link">Read data from BigQuery</h3></a>
-        Using BigQuery as a data source of ML pipelines.
-      path: /tfx/tutorials/tfx/gcp/vertex_pipelines_bq
-    - classname: tfo-landing-page-card
-      description: >
-        <a href="/tfx/tutorials/tfx/gcp/vertex_pipelines_vertex_training"><h3 class="no-link">Vertex AI Training</h3></a>
-        Using cloud resources for ML training with Vertex AI Training.
-      path: /tfx/tutorials/tfx/gcp/vertex_pipelines_vertex_training
-    - classname: tfo-landing-page-card
-      description: >
-        <a href="/tfx/tutorials/tfx/cloud-ai-platform-pipelines"><h3 class="no-link">TFX on Cloud AI Platform Pipelines</h3></a>
-        An introduction to using TFX and Cloud AI Platform Pipelines.
-      path: /tfx/tutorials/tfx/cloud-ai-platform-pipelines
-
 
   - heading: "Next steps"
   - classname: devsite-landing-row-100
@@ -109,6 +68,12 @@ landing_page:
         <a href="/tfx/tutorials/tfx/python_function_component"><h3 class="no-link">Custom Component Tutorial</h3></a>
         A tutorial showing how to develop your own custom TFX components.
       path: /tfx/tutorials/tfx/python_function_component
+    - classname: tfo-landing-page-card
+      description: >
+        <a href="/tfx/tutorials/tfx/cloud-ai-platform-pipelines"><h3 class="no-link">TFX on Cloud AI Platform Pipelines</h3></a>
+        An introduction to using TFX and Cloud AI Platform Pipelines, to help you
+        learn how to create machine learning pipelines on Google Cloud.
+      path: /tfx/tutorials/tfx/cloud-ai-platform-pipelines
 
   - classname: devsite-landing-row-100
     items:

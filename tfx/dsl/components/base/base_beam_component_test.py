@@ -50,7 +50,7 @@ class ComponentTest(tf.test.TestCase):
           base_executor.BaseExecutor)
       SPEC_CLASS = _EmptyComponentSpec
 
-    with self.assertRaisesRegex(
+    with self.assertRaisesRegexp(
         TypeError, "expects EXECUTOR_SPEC property to be an instance of "
         "BeamExecutorSpec"):
       InvalidExecutorComponent._validate_component_class()

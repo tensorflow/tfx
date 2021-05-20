@@ -22,7 +22,7 @@ import apache_beam as beam
 from apache_beam.testing import util
 from google.cloud import bigquery
 import tensorflow as tf
-from tfx.dsl.components.base import base_beam_executor
+from tfx.dsl.components.base import base_executor
 from tfx.dsl.io import fileio
 from tfx.extensions.google_cloud_big_query import utils
 from tfx.extensions.google_cloud_big_query.example_gen import executor
@@ -149,7 +149,7 @@ class ExecutorTest(tf.test.TestCase):
 
     # Run executor.
     big_query_example_gen = executor.Executor(
-        base_beam_executor.BaseBeamExecutor.Context(
+        base_executor.BaseExecutor.Context(
             beam_pipeline_args=['--project=test-project']))
     big_query_example_gen.Do({}, output_dict, exec_properties)
 

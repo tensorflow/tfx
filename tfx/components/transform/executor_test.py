@@ -441,15 +441,6 @@ class ExecutorTest(tft_unit.TransformTestCase):
     # specifies.
     self.assertMetricsCounterEqual(metrics, 'analyze_paths_count', 1)
 
-    # Analysis cache optimization is enabled (cache writing).
-    self.assertMetricsCounterEqual(metrics, 'analyzer_cache_enabled', 1)
-
-    # StatsGen is disabled for the test.
-    self.assertMetricsCounterEqual(metrics, 'compute_statistics', 0)
-
-    # Output materialization is enabled.
-    self.assertMetricsCounterEqual(metrics, 'materialize', 1)
-
   def test_do_with_cache(self):
     # First run that creates cache.
     self._exec_properties[

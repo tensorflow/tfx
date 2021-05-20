@@ -111,7 +111,7 @@ class ImporterTaskSchedulerTest(test_case_utils.TfxTest):
           ])
 
       [execution
-      ] = m.store.get_executions_by_id([self._importer_task.execution_id])
+      ] = m.store.get_executions_by_id([self._importer_task.execution.id])
       self.assertProtoPartiallyEquals(
           """
           id: 1

@@ -2,9 +2,6 @@
 
 ## Major Features and Improvements
 
-*  Added tfx.v1 Public APIs, please refer to
-   [API doc](https://www.tensorflow.org/tfx/api_docs/python/tfx/v1) for details.
-
 ## Breaking Changes
 
 ### For Pipeline Authors
@@ -12,33 +9,6 @@
 ### For Component Authors
 
 ## Deprecations
-
-## Bug Fixes and Other Changes
-
-## Documentation Updates
-
-# Version 1.0.0
-
-## Major Features and Improvements
-
-*   N/A
-
-## Breaking Changes
-
-### For Pipeline Authors
-
-*   N/A
-
-### For Component Authors
-
-*   Apache Beam support is migrated from TFX Base Components and Executors to
-    dedicated Beam Components and Executors. `BaseExecutor` will no longer embed
-    `beam_pipeline_args`. Custom executors for Beam powered components should
-    now extend BaseBeamExecutor instead of BaseExecutor.
-
-## Deprecations
-
-*   N/A
 
 ## Bug Fixes and Other Changes
 
@@ -49,8 +19,6 @@
 *   Depends on `tensorflow-serving-api>=1.15,!=2.0.*,!=2.1.*,!=2.2.*,!=2.3.*,!=2.4.*,<3`.
 
 ## Documentation Updates
-
-*  Update the Guide of TFX to adopt 1.0 API.
 
 # Version 0.30.0
 

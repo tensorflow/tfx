@@ -22,7 +22,6 @@ import tensorflow as tf
 from tfx.orchestration import data_types_utils
 from tfx.orchestration import metadata
 from tfx.orchestration.experimental.core import constants
-from tfx.orchestration.experimental.core import mlmd_state
 from tfx.orchestration.experimental.core import service_jobs
 from tfx.orchestration.experimental.core import sync_pipeline_task_gen as sptg
 from tfx.orchestration.experimental.core import task as task_lib
@@ -33,11 +32,12 @@ from tfx.orchestration.portable import runtime_parameter_utils
 from tfx.orchestration.portable.mlmd import execution_lib
 from tfx.proto.orchestration import pipeline_pb2
 from tfx.utils import status as status_lib
+from tfx.utils import test_case_utils as tu
 
 from ml_metadata.proto import metadata_store_pb2
 
 
-class SyncPipelineTaskGeneratorTest(otu.TfxTest, parameterized.TestCase):
+class SyncPipelineTaskGeneratorTest(tu.TfxTest, parameterized.TestCase):
 
   def setUp(self):
     super(SyncPipelineTaskGeneratorTest, self).setUp()
@@ -305,14 +305,15 @@ class SyncPipelineTaskGeneratorTest(otu.TfxTest, parameterized.TestCase):
     self.assertEqual(
         task_lib.NodeUid.from_pipeline_node(self._pipeline, self._stats_gen),
         stats_gen_task.node_uid)
+    stats_gen_exec = stats_gen_task.execution
+
+    # Fail stats-gen execution.
+    stats_gen_exec.last_known_state = metadata_store_pb2.Execution.FAILED
+    data_types_utils.set_metadata_value(
+        stats_gen_exec.custom_properties[constants.EXECUTION_ERROR_MSG_KEY],
+        'foobar error')
     with self._mlmd_connection as m:
-      with mlmd_state.mlmd_execution_atomic_op(
-          m, stats_gen_task.execution_id) as stats_gen_exec:
-        # Fail stats-gen execution.
-        stats_gen_exec.last_known_state = metadata_store_pb2.Execution.FAILED
-        data_types_utils.set_metadata_value(
-            stats_gen_exec.custom_properties[constants.EXECUTION_ERROR_MSG_KEY],
-            'foobar error')
+      m.store.put_executions([stats_gen_exec])
     if use_task_queue:
       task = self._task_queue.dequeue()
       self._task_queue.task_done(task)

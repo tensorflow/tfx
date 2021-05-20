@@ -1,3 +1,4 @@
+# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,6 +13,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Tests for tfx.dsl.components.common.importer."""
+
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+
+from typing import Text
 
 import tensorflow as tf
 from tfx import types
@@ -81,7 +88,7 @@ class ImporterTest(tf.test.TestCase):
 class ImporterDriverTest(tf.test.TestCase):
 
   def setUp(self):
-    super().setUp()
+    super(ImporterDriverTest, self).setUp()
     self.connection_config = metadata_store_pb2.ConnectionConfig()
     self.connection_config.sqlite.SetInParent()
     self.properties = {
@@ -147,7 +154,7 @@ class ImporterDriverTest(tf.test.TestCase):
       for key, value in self.custom_properties.items():
         if isinstance(value, int):
           self.assertEqual(value, result.get_int_custom_property(key))
-        elif isinstance(value, (str, bytes)):
+        elif isinstance(value, (Text, bytes)):
           self.assertEqual(value, result.get_string_custom_property(key))
         else:
           raise ValueError('Invalid custom property value: %r.' % value)

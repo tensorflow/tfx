@@ -37,7 +37,7 @@ RESOLVER_STRATEGY_CLASS_LIST = 'resolver_class_list'
 RESOLVER_CONFIG_LIST = 'resolver_config_list'
 
 
-class ResolveResult:
+class ResolveResult(object):
   """The data structure to hold results from Resolver.
 
   Attributes:

@@ -17,12 +17,12 @@ import argparse
 import os
 from typing import List, Tuple
 
+
 from absl import app
 from absl import logging
 from absl.flags import argparse_flags
 from kfp.pipeline_spec import pipeline_spec_pb2
 from tfx.components.evaluator import executor as evaluator_executor
-from tfx.dsl.components.base import base_beam_executor
 from tfx.dsl.components.base import base_executor
 from tfx.dsl.io import fileio
 from tfx.orchestration.kubeflow.v2.container import kubeflow_v2_entrypoint_utils
@@ -75,12 +75,8 @@ def _run_executor(args: argparse.Namespace, beam_args: List[str]) -> None:
   logging.info('Executor %s do: inputs: %s, outputs: %s, exec_properties: %s',
                args.executor_class_path, inputs, outputs, exec_properties)
   executor_cls = import_utils.import_class_by_path(args.executor_class_path)
-  if issubclass(executor_cls, base_beam_executor.BaseBeamExecutor):
-    executor_context = base_beam_executor.BaseBeamExecutor.Context(
-        beam_pipeline_args=beam_args, unique_id='')
-  else:
-    executor_context = base_executor.BaseExecutor.Context(
-        extra_flags=beam_args, unique_id='')
+  executor_context = base_executor.BaseExecutor.Context(
+      beam_pipeline_args=beam_args, unique_id='')
   executor = executor_cls(executor_context)
   logging.info('Starting executor')
   executor.Do(inputs, outputs, exec_properties)

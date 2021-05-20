@@ -13,7 +13,7 @@
 # limitations under the License.
 """Experimental Resolver for getting the artifacts based on Span."""
 
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Text
 
 from tfx import types
 from tfx.components.example_gen import utils
@@ -55,7 +55,7 @@ class SpanRangeStrategy(resolver.ResolverStrategy):
   def __init__(self, range_config: range_config_pb2.RangeConfig):
     self._range_config = range_config
 
-  def _resolve(self, input_dict: Dict[str, List[types.Artifact]]):
+  def _resolve(self, input_dict: Dict[Text, List[types.Artifact]]):
     result = {}
 
     for k, artifact_list in input_dict.items():
@@ -110,7 +110,7 @@ class SpanRangeStrategy(resolver.ResolverStrategy):
       self,
       pipeline_info: data_types.PipelineInfo,
       metadata_handler: metadata.Metadata,
-      source_channels: Dict[str, types.Channel],
+      source_channels: Dict[Text, types.Channel],
   ) -> resolver.ResolveResult:
     pipeline_context = metadata_handler.get_pipeline_context(pipeline_info)
     if pipeline_context is None:
@@ -140,8 +140,8 @@ class SpanRangeStrategy(resolver.ResolverStrategy):
   @doc_controls.do_not_generate_docs
   def resolve_artifacts(
       self, store: mlmd.MetadataStore,
-      input_dict: Dict[str, List[types.Artifact]]
-  ) -> Optional[Dict[str, List[types.Artifact]]]:
+      input_dict: Dict[Text, List[types.Artifact]]
+  ) -> Optional[Dict[Text, List[types.Artifact]]]:
     """Resolves artifacts from channels by querying MLMD.
 
     Args:

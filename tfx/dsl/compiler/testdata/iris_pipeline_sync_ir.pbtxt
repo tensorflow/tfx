@@ -1577,6 +1577,7 @@ deployment_config {
       value {
         [type.googleapis.com/tfx.orchestration.executable_spec.PythonClassExecutableSpec] {
           class_path: "tfx.components.example_validator.executor.Executor"
+          extra_flags: "--my_testing_beam_pipeline_args=foo"
         }
       }
     }
@@ -1585,6 +1586,7 @@ deployment_config {
       value {
         [type.googleapis.com/tfx.orchestration.executable_spec.PythonClassExecutableSpec] {
           class_path: "tfx.components.pusher.executor.Executor"
+          extra_flags: "--my_testing_beam_pipeline_args=foo"
         }
       }
     }
@@ -1593,6 +1595,7 @@ deployment_config {
       value {
         [type.googleapis.com/tfx.orchestration.executable_spec.PythonClassExecutableSpec] {
           class_path: "tfx.components.schema_gen.executor.Executor"
+          extra_flags: "--my_testing_beam_pipeline_args=foo"
         }
       }
     }
@@ -1623,6 +1626,7 @@ deployment_config {
       value {
         [type.googleapis.com/tfx.orchestration.executable_spec.PythonClassExecutableSpec] {
           class_path: "tfx.components.trainer.executor.GenericExecutor"
+          extra_flags: "--my_testing_beam_pipeline_args=foo"
         }
       }
     }

@@ -1,3 +1,4 @@
+# Lint as: python2, python3
 # Copyright 2020 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,9 +14,13 @@
 # limitations under the License.
 """Executor specifications for components."""
 
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+
 import functools
 import operator
-from typing import List, Optional, Union
+from typing import List, Optional, Text, Union
 
 from tfx import types
 from tfx.dsl.component.experimental import placeholders
@@ -74,14 +79,14 @@ class TemplatedExecutorContainerSpec(executor_spec.ExecutorSpec):
 
   def __init__(
       self,
-      image: str,
+      image: Text,
       command: Optional[List[placeholders.CommandlineArgumentType]] = None,
       args: Optional[List[placeholders.CommandlineArgumentType]] = None,
   ):
     self.image = image
     self.command = command or []
     self.args = args or []
-    super().__init__()
+    super(TemplatedExecutorContainerSpec, self).__init__()
 
   def __eq__(self, other) -> bool:
     return (isinstance(other, self.__class__) and self.image == other.image and

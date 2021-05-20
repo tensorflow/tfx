@@ -66,9 +66,10 @@ A SchemaGen pipeline component is typically very easy to deploy and requires lit
 customization. Typical code looks like this:
 
 ```python
-infer_schema = SchemaGen(
-    statistics=stats_gen.outputs['statistics'])
-```
+from tfx import components
 
-More details are available in the
-[SchemaGen API reference](https://www.tensorflow.org/tfx/api_docs/python/tfx/v1/components/SchemaGen).
+...
+
+infer_schema = components.SchemaGen(
+    statistics=compute_training_stats.outputs['statistics'])
+```

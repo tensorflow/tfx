@@ -62,8 +62,9 @@ Usage:
 
 <pre class="devsite-click-to-copy devsite-terminal">
 tfx pipeline create --pipeline_path=<var>pipeline-path</var> [--endpoint=<var>endpoint</var> --engine=<var>engine</var> \
---iap_client_id=<var>iap-client-id</var> --namespace=<var>namespace</var> \
---build_image --build_base_image=<var>build-base-image</var>]
+--iap_client_id=<var>iap-client-id</var> --namespace=<var>namespace</var> --package_path=<var>package-path</var> \
+--build_target_image=<var>build-target-image</var> --build_base_image=<var>build-base-image</var> \
+--skaffold_cmd=<var>skaffold-command</var>]
 </pre>
 
 <dl>
@@ -128,17 +129,32 @@ tfx pipeline create --pipeline_path=<var>pipeline-path</var> [--endpoint=<var>en
     <code>kubeflow</code>.
   </dd>
 
-  <dt>--build_image</dt>
+  <dt>--package_path=<var>package-path</var></dt>
+  <dd>
+    <p>
+      (Optional.) Path to the compiled pipeline as a file. The compiled pipeline
+      should be a compressed file (<code>.tar.gz</code>, <code>.tgz</code>, or
+      <code>.zip</code>) or a YAML file (<code>.yaml</code> or
+      <code>.yml</code>).
+    </p>
+    <p>
+      If <var>package-path</var> is not specified, TFX uses the following as
+      the default path:
+      <code><var>current_directory</var>/<var>pipeline_name</var>.tar.gz</code>
+    </p>
+  </dd>
+  <dt>--build_target_image=<var>build-target-image</var></dt>
   <dd>
     <p>
       (Optional.) When the <var>engine</var> is <strong>kubeflow</strong>, TFX
-      creates a container image for your pipeline if specified. `Dockerfile` in
-      the current directory will be used, and TFX will automatically generate
-      one if not exists.
+      creates a container image for your pipeline. The build target image
+      specifies the name, container image repository, and tag to use when
+      creating the pipeline container image. If you do not specify a tag, the
+      container image is tagged as <code>latest</code>.
     </p>
     <p>
-      The built image will be pushed to the remote registry which is specified
-      in `KubeflowDagRunnerConfig`.
+      For your Kubeflow Pipelines cluster to run your pipeline, the cluster must
+      be able to access the specified container image repository.
     </p>
   </dd>
   <dt>--build_base_image=<var>build-base-image</var></dt>
@@ -148,6 +164,13 @@ tfx pipeline create --pipeline_path=<var>pipeline-path</var> [--endpoint=<var>en
       creates a container image for your pipeline. The build base image
       specifies the base container image to use when building the pipeline
       container image.
+    </p>
+  </dd>
+  <dt>--skaffold_cmd=<var>skaffold-cmd</var></dt>
+  <dd>
+    <p>
+      (Optional.) The path to <a href="https://skaffold.dev/" class="external">
+      Skaffold</a> on your computer.
     </p>
   </dd>
 </dl>
@@ -163,9 +186,9 @@ tfx pipeline create --engine=airflow --pipeline_path=<var>pipeline-path</var>
 Kubeflow:
 
 <pre class="devsite-terminal">
-tfx pipeline create --engine=kubeflow --pipeline_path=<var>pipeline-path</var> \
+tfx pipeline create --engine=kubeflow --pipeline_path=<var>pipeline-path</var> --package_path=<var>package-path</var> \
 --iap_client_id=<var>iap-client-id</var> --namespace=<var>namespace</var> --endpoint=<var>endpoint</var> \
---build_image
+--skaffold_cmd=<var>skaffold-cmd</var>
 </pre>
 
 Local:
@@ -178,7 +201,8 @@ To autodetect engine from user environment, simply avoid using the engine flag
 like the example below. For more details, check the flags section.
 
 <pre class="devsite-terminal">
-tfx pipeline create --pipeline_path=<var>pipeline-path</var>
+tfx pipeline create --pipeline_path=<var>pipeline-path</var> --endpoint --iap_client_id --namespace \
+--package_path --skaffold_cmd
 </pre>
 
 ### update
@@ -189,7 +213,8 @@ Usage:
 
 <pre class="devsite-click-to-copy devsite-terminal">
 tfx pipeline update --pipeline_path=<var>pipeline-path</var> [--endpoint=<var>endpoint</var> --engine=<var>engine</var> \
---iap_client_id=<var>iap-client-id</var> --namespace=<var>namespace</var> --build_image]
+--iap_client_id=<var>iap-client-id</var> --namespace=<var>namespace</var> --package_path=<var>package-path</var> \
+--skaffold_cmd=<var>skaffold-command</var>]
 </pre>
 
 <dl>
@@ -253,16 +278,26 @@ tfx pipeline update --pipeline_path=<var>pipeline-path</var> [--endpoint=<var>en
     If the namespace is not specified, the value defaults to
     <code>kubeflow</code>.
   </dd>
-  <dt>--build_image</dt>
+
+  <dt>--package_path=<var>package-path</var></dt>
   <dd>
     <p>
-      (Optional.) When the <var>engine</var> is <strong>kubeflow</strong>, TFX
-      creates a container image for your pipeline if specified. `Dockerfile` in
-      the current directory will be used.
+      (Optional.) Path to the compiled pipeline as a file. The compiled pipeline
+      should be a compressed file (<code>.tar.gz</code>, <code>.tgz</code>, or
+      <code>.zip</code>) or a YAML file (<code>.yaml</code> or
+      <code>.yml</code>).
     </p>
     <p>
-      The built image will be pushed to the remote registry which is specified
-      in `KubeflowDagRunnerConfig`.
+      If <var>package-path</var> is not specified, TFX uses the following as
+      the default path:
+      <code><var>current_directory</var>/<var>pipeline_name</var>.tar.gz</code>
+    </p>
+  </dd>
+  <dt>--skaffold_cmd=<var>skaffold-cmd</var></dt>
+  <dd>
+    <p>
+      (Optional.) The path to <a href="https://skaffold.dev/" class="external">
+      Skaffold</a> on your computer.
     </p>
   </dd>
 </dl>
@@ -278,9 +313,9 @@ tfx pipeline update --engine=airflow --pipeline_path=<var>pipeline-path</var>
 Kubeflow:
 
 <pre class="devsite-terminal">
-tfx pipeline update --engine=kubeflow --pipeline_path=<var>pipeline-path</var> \
+tfx pipeline update --engine=kubeflow --pipeline_path=<var>pipeline-path</var> --package_path=<var>package-path</var> \
 --iap_client_id=<var>iap-client-id</var> --namespace=<var>namespace</var> --endpoint=<var>endpoint</var> \
---build_image
+--skaffold_cmd=<var>skaffold-cmd</var>
 </pre>
 
 Local:
@@ -306,7 +341,8 @@ Recommended to use before creating or updating a pipeline.
 Usage:
 
 <pre class="devsite-click-to-copy devsite-terminal">
-tfx pipeline compile --pipeline_path=<var>pipeline-path</var> [--engine=<var>engine</var>]
+tfx pipeline compile --pipeline_path=<var>pipeline-path</var> [--engine=<var>engine</var> \
+--package_path=<var>package-path</var>]
 </pre>
 
 <dl>
@@ -336,6 +372,20 @@ tfx pipeline compile --pipeline_path=<var>pipeline-path</var> [--engine=<var>eng
       used by default.
     </p>
   </dd>
+  <dt>--package_path=<var>package-path</var></dt>
+  <dd>
+    <p>
+      (Optional.) Path to the compiled pipeline as a file. The compiled pipeline
+      should be a compressed file (<code>.tar.gz</code>, <code>.tgz</code>, or
+      <code>.zip</code>) or a YAML file (<code>.yaml</code> or
+      <code>.yml</code>).
+    </p>
+    <p>
+      If <var>package-path</var> is not specified, TFX uses the following as
+      the default path:
+      <code><var>current_directory</var>/<var>pipeline_name</var>.tar.gz</code>
+    </p>
+  </dd>
 </dl>
 
 #### Examples:
@@ -349,7 +399,7 @@ tfx pipeline compile --engine=airflow --pipeline_path=<var>pipeline-path</var>
 Kubeflow:
 
 <pre class="devsite-terminal">
-tfx pipeline compile --engine=kubeflow --pipeline_path=<var>pipeline-path</var>
+tfx pipeline compile --engine=kubeflow --pipeline_path=<var>pipeline-path</var> --package_path=<var>package-path</var>
 </pre>
 
 Local:
@@ -1118,6 +1168,22 @@ tfx template copy --model=<var>model</var> --pipeline_name=<var>pipeline-name</v
     namespace is not specified, the value defaults to
     <code>kubeflow</code>.
   </dd>
+
+  <dt>--package_path=<var>package-path</var></dt>
+  <dd>
+    <p>
+      Path to the compiled pipeline as a file. The compiled pipeline should be a
+      compressed file (<code>.tar.gz</code>, <code>.tgz</code>, or
+      <code>.zip</code>) or a YAML file (<code>.yaml</code> or
+      <code>.yml</code>).
+    </p>
+    <p>
+      If <var>package-path</var> is not specified, TFX uses the following as
+      the default path:
+      <code><var>current_directory</var>/<var>pipeline_name</var>.tar.gz</code>
+    </p>
+  </dd>
+
 </dl>
 
 ## Generated files by TFX CLI
@@ -1139,11 +1205,16 @@ management.
         migration.
     -   From TFX 0.27, kubeflow doesn't create these metadata files in local
         filesystem. However, see below for other files that kubeflow creates.
--   (Kubeflow only) Dockerfile and a container image
+-   (Kubeflow only) Dockerfile, build.yaml, *pipeline_name*.tar.gz
     -   Kubeflow Pipelines requires two kinds of input for a pipeline. These
         files are generated by TFX in the current directory.
     -   One is a container image which will be used to run components in the
         pipeline. This container image is built when a pipeline for Kubeflow
-        Pipelines is created or updated with `--build-image` flag. TFX CLI will
-        generate `Dockerfile` if not exists, and will build and push a container
-        image to the registry specified in KubeflowDagRunnerConfig.
+        Pipelines is created using TFX CLI. TFX uses
+        [skaffold](https://skaffold.dev/) to build container images.
+        `Dockerfile` and `build.yaml` is generated by TFX and passed to
+        skaffold.(These file names are fixed and cannot be changed for now.)
+    -   TFX CLI *compiles* given pipeline definitions into a format for Kubeflow
+        Pipelines understands. The result of compilation is stored as
+        `_pipeline_name_.tar.gz`. This filename can be customized using
+        `--package-path` flag.

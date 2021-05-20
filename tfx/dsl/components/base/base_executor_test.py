@@ -12,7 +12,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Tests for tfx.dsl.components.base.base_beam_executor."""
+"""Tests for tfx.dsl.components.base.base_executor."""
 
 from __future__ import absolute_import
 from __future__ import division
@@ -28,10 +28,10 @@ import tensorflow as tf
 
 from tfx import types
 from tfx import version
-from tfx.dsl.components.base import base_beam_executor
+from tfx.dsl.components.base import base_executor
 
 
-class _TestExecutor(base_beam_executor.BaseBeamExecutor):
+class _TestExecutor(base_executor.BaseExecutor):
   """Fake executor for testing purpose only."""
 
   def Do(self, input_dict: Dict[Text, List[types.Artifact]],
@@ -40,10 +40,10 @@ class _TestExecutor(base_beam_executor.BaseBeamExecutor):
     pass
 
 
-class BaseBeamExecutorTest(tf.test.TestCase):
+class BaseExecutorTest(tf.test.TestCase):
 
   def testBeamSettings(self):
-    executor_context = base_beam_executor.BaseBeamExecutor.Context(
+    executor_context = base_executor.BaseExecutor.Context(
         beam_pipeline_args=['--runner=DirectRunner'])
     executor = _TestExecutor(executor_context)
     options = executor._make_beam_pipeline().options.view_as(StandardOptions)
@@ -59,7 +59,7 @@ class BaseBeamExecutorTest(tf.test.TestCase):
         ],
         options.view_as(GoogleCloudOptions).labels)
 
-    executor_context = base_beam_executor.BaseBeamExecutor.Context(
+    executor_context = base_executor.BaseExecutor.Context(
         beam_pipeline_args=['--direct_num_workers=2'])
     executor = _TestExecutor(executor_context)
     options = executor._make_beam_pipeline().options.view_as(DirectOptions)

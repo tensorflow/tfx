@@ -1,3 +1,4 @@
+# Lint as: python2, python3
 # Copyright 2020 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,7 +14,11 @@
 # limitations under the License.
 """Pluggable file I/O interface for use in TFX system and components."""
 
-from typing import Any, Callable, Iterable, List, Tuple, Type
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+
+from typing import Any, Callable, Iterable, List, Text, Tuple, Type
 
 from tfx.dsl.io import filesystem
 from tfx.dsl.io import filesystem_registry
@@ -33,7 +38,7 @@ def _get_filesystem(path) -> Type[filesystem.Filesystem]:
           .get_filesystem_for_path(path))
 
 
-def open(path: PathType, mode: str = 'r'):  # pylint: disable=redefined-builtin
+def open(path: PathType, mode: Text = 'r'):  # pylint: disable=redefined-builtin
   """Open a file at the given path."""
   return _get_filesystem(path).open(path, mode=mode)
 

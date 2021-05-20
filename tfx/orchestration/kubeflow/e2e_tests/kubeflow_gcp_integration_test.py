@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,10 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Integration tests for Kubeflow-based orchestrator and GCP backend."""
-
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
 
 import os
 
@@ -40,6 +35,7 @@ from tfx.proto import trainer_pb2
 from tfx.proto import tuner_pb2
 from tfx.types import standard_artifacts
 from tfx.utils import path_utils
+from tfx.utils import telemetry_utils
 
 
 class KubeflowGCPIntegrationTest(kubeflow_test_utils.BaseKubeflowTest):
@@ -279,7 +275,11 @@ class KubeflowGCPIntegrationTest(kubeflow_test_utils.BaseKubeflowTest):
 
     # Use default service_name / api_version.
     service_name, api_version = runner.get_service_name_and_api_version({})
-    api = discovery.build(service_name, api_version)
+    api = discovery.build(
+        service_name,
+        api_version,
+        requestBuilder=telemetry_utils.TFXHttpRequest,
+    )
 
     # The model should be NotFound yet.
     with self.assertRaisesRegex(googleapiclient_errors.HttpError,

@@ -87,6 +87,7 @@ class PipelineTest(test_case_utils.TfxTest):
   def testPipelineInvalidFlag(self):
     result = self.runner.invoke(pipeline_group,
                                 ['create', '--pipeline_name', 'chicago.py'])
+    self.assertIn('no such option', result.output)
     self.assertNotEqual(0, result.exit_code)
 
   def testPipelineInvalidFlagType(self):
@@ -96,14 +97,17 @@ class PipelineTest(test_case_utils.TfxTest):
 
   def testPipelineMissingFlag(self):
     result = self.runner.invoke(pipeline_group, ['update'])
+    self.assertIn('Missing option', result.output)
     self.assertNotEqual(0, result.exit_code)
 
   def testPipelineInvalidCommand(self):
     result = self.runner.invoke(pipeline_group, ['rerun'])
+    self.assertIn('No such command', result.output)
     self.assertNotEqual(0, result.exit_code)
 
   def testPipelineEmptyFlagValue(self):
     result = self.runner.invoke(pipeline_group, ['create', '--pipeline_path'])
+    self.assertIn('option requires an argument', result.output)
     self.assertNotEqual(0, result.exit_code)
 
   def testPipelineDeprecatedFlags(self):

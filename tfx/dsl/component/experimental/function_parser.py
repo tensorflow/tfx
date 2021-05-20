@@ -1,3 +1,4 @@
+# Lint as: python2, python3
 # Copyright 2020 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -19,10 +20,14 @@ Internal use only. No backwards compatibility guarantees.
 # TODO(ccy): Remove pytype "disable=attribute-error" and "disable=module-attr"
 # overrides after Python 2 support is removed from TFX.
 
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+
 import enum
 import inspect
 import types
-from typing import Any, Dict, Optional, Set, Tuple, Type, Union
+from typing import Any, Dict, Optional, Set, Text, Tuple, Type, Union
 
 from tfx.dsl.component.experimental import annotations
 from tfx.types import artifact
@@ -39,7 +44,7 @@ class ArgFormats(enum.Enum):
 _PRIMITIVE_TO_ARTIFACT = {
     int: standard_artifacts.Integer,
     float: standard_artifacts.Float,
-    str: standard_artifacts.String,
+    Text: standard_artifacts.String,
     bytes: standard_artifacts.Bytes,
 }
 
@@ -53,8 +58,8 @@ _OPTIONAL_PRIMITIVE_MAP = dict((Optional[t], t) for t in _PRIMITIVE_TO_ARTIFACT)
 def _validate_signature(
     func: types.FunctionType,
     argspec: inspect.FullArgSpec,  # pytype: disable=module-attr
-    typehints: Dict[str, Any],
-    subject_message: str) -> None:
+    typehints: Dict[Text, Any],
+    subject_message: Text) -> None:
   """Validates signature of a typehint-annotated component executor function."""
   args, varargs, keywords = argspec.args, argspec.varargs, argspec.varkw
   if varargs or keywords:
@@ -95,14 +100,11 @@ def _validate_signature(
 def _parse_signature(
     func: types.FunctionType,
     argspec: inspect.FullArgSpec,  # pytype: disable=module-attr
-    typehints: Dict[str, Any]
-) -> Tuple[
-    Dict[str, Type[artifact.Artifact]],
-    Dict[str, Type[artifact.Artifact]],
-    Dict[str, Type[Union[int, float, str, bytes]]],
-    Dict[str, Any],
-    Dict[str, ArgFormats],
-    Set[str]]:
+    typehints: Dict[Text, Any]
+) -> Tuple[Dict[Text, Type[artifact.Artifact]], Dict[
+    Text, Type[artifact.Artifact]], Dict[Text, Type[Union[
+        int, float, Text, bytes]]], Dict[Text, Any], Dict[Text, ArgFormats],
+           Set[Text]]:
   """Parses signature of a typehint-annotated component executor function.
 
   Args:
@@ -210,13 +212,10 @@ def _parse_signature(
 
 def parse_typehint_component_function(
     func: types.FunctionType
-) -> Tuple[
-    Dict[str, Type[artifact.Artifact]],
-    Dict[str, Type[artifact.Artifact]],
-    Dict[str, Type[Union[int, float, str, bytes]]],
-    Dict[str, Any],
-    Dict[str, ArgFormats],
-    Set[str]]:
+) -> Tuple[Dict[Text, Type[artifact.Artifact]], Dict[
+    Text, Type[artifact.Artifact]], Dict[Text, Type[Union[
+        int, float, Text, bytes]]], Dict[Text, Any], Dict[Text, ArgFormats],
+           Set[Text]]:
   """Parses the given component executor function.
 
   This method parses a typehinted-annotated Python function that is intended to

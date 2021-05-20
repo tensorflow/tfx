@@ -1,3 +1,4 @@
+# Lint as: python3
 # Copyright 2020 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -28,7 +29,7 @@ class _TestSpecWithoutEncode(executor_spec.ExecutorSpec):
 class ExecutorSpecTest(tf.test.TestCase):
 
   def testNotImplementedError(self):
-    with self.assertRaisesRegex(
+    with self.assertRaisesRegexp(
         NotImplementedError,
         '_TestSpecWithoutEncode does not support encoding into IR.'):
       _TestSpecWithoutEncode().encode()

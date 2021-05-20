@@ -30,11 +30,12 @@ An ExampleValidator pipeline component is typically very easy to deploy and
 requires little customization. Typical code looks like this:
 
 ```python
-validate_stats = ExampleValidator(
-      statistics=statistics_gen.outputs['statistics'],
-      schema=schema_gen.outputs['schema']
+from tfx import components
+
+...
+
+validate_stats = components.ExampleValidator(
+      statistics=compute_eval_stats.outputs['statistics'],
+      schema=infer_schema.outputs['schema']
       )
 ```
-
-More details are available in the
-[ExampleValidator API reference](https://www.tensorflow.org/tfx/api_docs/python/tfx/v1/components/ExampleValidator).

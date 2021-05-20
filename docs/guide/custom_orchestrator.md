@@ -25,12 +25,15 @@ which runs the components one by one in DAG's topological order.
 This orchestrator can be used in the Python DSL:
 
 ```python
-def _create_pipeline(...) -> dsl.Pipeline:
+from tfx.orchestration import pipeline
+from tfx.orchestration.local import local_dag_runner
+
+def _create_pipeline(...) -> pipeline.Pipeline:
   ...
-  return dsl.Pipeline(...)
+  return pipeline.Pipeline(...)
 
 if __name__ == '__main__':
-  orchestration.LocalDagRunner().run(_create_pipeline(...))
+  local_dag_runner.LocalDagRunner().run(_create_pipeline(...))
 ```
 
 To run above Python DSL file (assuming it is named dsl.py), simply do the

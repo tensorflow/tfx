@@ -31,7 +31,7 @@ from google.protobuf import text_format
 class CompilerTest(tf.test.TestCase, parameterized.TestCase):
 
   def setUp(self):
-    super().setUp()
+    super(CompilerTest, self).setUp()
     # pylint: disable=g-bad-name
     self.maxDiff = 80 * 1000  # Let's hear what assertEqual has to say.
 

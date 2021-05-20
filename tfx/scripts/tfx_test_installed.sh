@@ -63,7 +63,6 @@ SKIP_LIST=(
   # Skip tests which require additional packages.
   'tfx/examples/custom_components/*'
   'tfx/examples/chicago_taxi_pipeline/taxi_pipeline_simple_test.py'
-  'tfx/examples/penguin/experimental/penguin_pipeline_sklearn_gcp_test.py'
   'tfx/examples/ranking/*'
   'tfx/*airflow*'
   'tfx/*kubeflow*'
@@ -123,13 +122,6 @@ if [[ "${TFX_VERSION}" == 0.27.* ]]; then
   SKIP_LIST+=(
     "tfx/examples/ranking/ranking_pipeline_e2e_test.py"
     "tfx/examples/ranking/struct2tensor_parsing_utils_test.py"
-  )
-fi
-
-# TODO(b/188658375): Delete the following test after TFX 1.0.0 released.
-if [[ "${TFX_VERSION}" == 0.30.0 ]]; then
-  SKIP_LIST+=(
-    "tfx/orchestration/portable/execution_watcher_test.py"
   )
 fi
 

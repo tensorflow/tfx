@@ -1,3 +1,4 @@
+# Lint as: python2, python3
 # Copyright 2020 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,15 +14,19 @@
 # limitations under the License.
 """Filesystem registry managing filesystem plugins."""
 
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+
 import re
 import threading
-from typing import Type
+from typing import Text, Type
 
 from tfx.dsl.io import filesystem
 from tfx.dsl.io.filesystem import PathType
 
 
-class FilesystemRegistry:
+class FilesystemRegistry(object):
   """Registry of pluggable filesystem implementations used in TFX components."""
 
   def __init__(self):
@@ -74,7 +79,7 @@ class FilesystemRegistry:
                               path: PathType) -> Type[filesystem.Filesystem]:
     """Get filesystem plugin for given path."""
     # Assume local path by default, but extract filesystem prefix if available.
-    if isinstance(path, str):
+    if isinstance(path, Text):
       path_bytes = path.encode('utf-8')
     elif isinstance(path, bytes):
       path_bytes = path

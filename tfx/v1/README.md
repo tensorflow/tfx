@@ -1,3 +1,4 @@
-# Public API
+# Public API (WIP)
 
-Please refer to [API doc](https://www.tensorflow.org/tfx/api_docs/python/tfx/v1).
+<!-- (b/181877171): update when API doc is ready.-->
+NOTE: currently WIP with no backwards compatibility guarantees.

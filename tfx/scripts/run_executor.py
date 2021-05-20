@@ -21,7 +21,6 @@ from typing import List, Tuple
 import absl
 from absl import app
 from absl.flags import argparse_flags
-from tfx.dsl.components.base import base_beam_executor
 from tfx.dsl.components.base import base_executor
 from tfx.types import artifact_utils
 from tfx.utils import import_utils
@@ -93,17 +92,10 @@ def _run_executor(args, pipeline_args) -> None:
       'Executor {} do: inputs: {}, outputs: {}, exec_properties: {}'.format(
           args.executor_class_path, inputs, outputs, exec_properties))
   executor_cls = import_utils.import_class_by_path(args.executor_class_path)
-  if issubclass(executor_cls,
-                base_beam_executor.BaseBeamExecutor):
-    executor_context = base_beam_executor.BaseBeamExecutor.Context(
-        beam_pipeline_args=pipeline_args,
-        tmp_dir=args.temp_directory_path,
-        unique_id='')
-  else:
-    executor_context = base_executor.BaseExecutor.Context(
-        extra_flags=pipeline_args,
-        tmp_dir=args.temp_directory_path,
-        unique_id='')
+  executor_context = base_executor.BaseExecutor.Context(
+      beam_pipeline_args=pipeline_args,
+      tmp_dir=args.temp_directory_path,
+      unique_id='')
   executor = executor_cls(executor_context)
   absl.logging.info('Starting executor')
   executor.Do(inputs, outputs, exec_properties)

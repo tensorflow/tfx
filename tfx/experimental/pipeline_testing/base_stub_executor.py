@@ -23,6 +23,7 @@ from typing import Any, Dict, List, Optional, Text
 
 from absl import logging
 from tfx import types
+from tfx.dsl.components.base import base_beam_executor
 from tfx.dsl.components.base import base_executor
 from tfx.dsl.io import fileio
 from tfx.utils import io_utils
@@ -50,9 +51,14 @@ class BaseStubExecutor(base_executor.BaseExecutor):
     Raises:
       ValueError: If the recorded pipeline data doesn't exist at test_data_dir.
     """
-    # Fill parameters from extra_flags if empty.
+    # Fill parameters from beam_pipeline_args if empty.
+    # TODO(b/156000550): Migrate beam_pipeline_args to extra_flags
     if context:
-      extra_flags = context.extra_flags
+      extra_flags = []
+      if isinstance(context, base_beam_executor.BaseBeamExecutor.Context):
+        extra_flags = context.extra_flags
+      elif context.beam_pipeline_args:
+        extra_flags = context.beam_pipeline_args
       for extra_flag in extra_flags:
         if extra_flag.startswith(TEST_DATA_DIR_FLAG) and test_data_dir is None:
           test_data_dir = extra_flag[len(TEST_DATA_DIR_FLAG)+1:]  # skip '='.

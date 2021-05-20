@@ -127,8 +127,12 @@ class PythonExecutorOperator(base_executor_operator.BaseExecutorOperator):
     Returns:
       The output from executor.
     """
+    # TODO(b/156000550): We should not specialize `Context` to embed beam
+    # pipeline args. Instead, the `Context` should consists of generic purpose
+    # `extra_flags` which can be interpreted differently by different
+    # implementations of executors.
     context = base_executor.BaseExecutor.Context(
-        extra_flags=self.extra_flags,
+        beam_pipeline_args=self.extra_flags,
         tmp_dir=execution_info.tmp_dir,
         unique_id=str(execution_info.execution_id),
         executor_output_uri=execution_info.execution_output_uri,
