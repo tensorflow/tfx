@@ -322,8 +322,8 @@ class Executor(base_beam_executor.BaseBeamExecutor):
           all splits. If splits_config is set, analyze cannot be empty.
         - force_tf_compat_v1: Whether to use TF in compat.v1 mode
           irrespective of installed/enabled TF behaviors.
-        - compute_statistics: Whether to compute pre-transform and
-          post-transform statistics.
+        - disable_statistics: Whether to disable computation of pre-transform
+          and post-transform statistics.
 
     Returns:
       None
@@ -395,6 +395,12 @@ class Executor(base_beam_executor.BaseBeamExecutor):
         analyze_data_paths.append(io_utils.all_files_pattern(data_uri))
 
     transform_data_paths = []
+    for split in splits_config.transform:
+      data_uris = artifact_utils.get_split_uris(
+          input_dict[standard_component_specs.EXAMPLES_KEY], split)
+      for data_uri in data_uris:
+        transform_data_paths.append(io_utils.all_files_pattern(data_uri))
+
     materialize_output_paths = []
     if output_dict.get(
         standard_component_specs.TRANSFORMED_EXAMPLES_KEY) is not None:
@@ -404,10 +410,6 @@ class Executor(base_beam_executor.BaseBeamExecutor):
             artifact_utils.encode_split_names(list(splits_config.transform)))
 
       for split in splits_config.transform:
-        data_uris = artifact_utils.get_split_uris(
-            input_dict[standard_component_specs.EXAMPLES_KEY], split)
-        for data_uri in data_uris:
-          transform_data_paths.append(io_utils.all_files_pattern(data_uri))
 
         transformed_example_uris = artifact_utils.get_split_uris(
             output_dict[standard_component_specs.TRANSFORMED_EXAMPLES_KEY],
@@ -425,8 +427,8 @@ class Executor(base_beam_executor.BaseBeamExecutor):
     force_tf_compat_v1 = bool(
         exec_properties.get(standard_component_specs.FORCE_TF_COMPAT_V1_KEY, 0))
 
-    compute_statistics = bool(
-        exec_properties.get(standard_component_specs.COMPUTE_STATISTICS_KEY, 0))
+    disable_statistics = bool(
+        exec_properties.get(standard_component_specs.DISABLE_STATISTICS_KEY, 0))
 
     # Make sure user packages get propagated to the remote Beam worker.
     user_module_key = exec_properties.get(
@@ -439,8 +441,8 @@ class Executor(base_beam_executor.BaseBeamExecutor):
       self._pip_dependencies.append(local_pip_package_path)
 
     label_inputs = {
-        labels.COMPUTE_STATISTICS_LABEL:
-            compute_statistics,
+        labels.DISABLE_STATISTICS_LABEL:
+            disable_statistics,
         labels.SCHEMA_PATH_LABEL:
             schema_file,
         labels.EXAMPLES_DATA_FORMAT_LABEL:
@@ -497,7 +499,7 @@ class Executor(base_beam_executor.BaseBeamExecutor):
       pipeline: beam.Pipeline, total_columns_count: int,
       analyze_columns_count: int, transform_columns_count: int,
       analyze_paths_count: int, analyzer_cache_enabled: bool,
-      compute_statistics: bool, materialize: bool):
+      disable_statistics: bool, materialize: bool):
     """A beam PTransform to increment counters of column usage."""
 
     def _MakeAndIncrementCounters(unused_element):
@@ -520,7 +522,7 @@ class Executor(base_beam_executor.BaseBeamExecutor):
           'analyzer_cache_enabled').inc(int(analyzer_cache_enabled))
       beam.metrics.Metrics.counter(
           tft_beam_common.METRICS_NAMESPACE,
-          'compute_statistics').inc(int(compute_statistics))
+          'disable_statistics').inc(int(disable_statistics))
       beam.metrics.Metrics.counter(
           tft_beam_common.METRICS_NAMESPACE,
           'materialize').inc(int(materialize))
@@ -882,7 +884,8 @@ class Executor(base_beam_executor.BaseBeamExecutor):
 
     Args:
       inputs: A dictionary of labelled input values, including:
-        - labels.COMPUTE_STATISTICS_LABEL: Whether compute statistics.
+        - labels.DISABLE_STATISTICS_LABEL: Whether disable statistics
+          compuatation.
         - labels.SCHEMA_PATH_LABEL: Path to schema file.
         - labels.EXAMPLES_DATA_FORMAT_LABEL: Example data format, one of the
             enums from example_gen_pb2.PayloadFormat.
@@ -923,8 +926,8 @@ class Executor(base_beam_executor.BaseBeamExecutor):
     absl.logging.debug(
         'Outputs to executor.Transform function: {}'.format(outputs))
 
-    compute_statistics = value_utils.GetSoleValue(
-        inputs, labels.COMPUTE_STATISTICS_LABEL)
+    disable_statistics = value_utils.GetSoleValue(
+        inputs, labels.DISABLE_STATISTICS_LABEL)
     transform_output_path = value_utils.GetSoleValue(
         outputs, labels.TRANSFORM_METADATA_OUTPUT_PATH_LABEL)
     raw_examples_data_format = value_utils.GetSoleValue(
@@ -1008,7 +1011,7 @@ class Executor(base_beam_executor.BaseBeamExecutor):
     analyze_input_columns = tft.get_analyze_input_columns(
         preprocessing_fn, typespecs, force_tf_compat_v1=force_tf_compat_v1)
 
-    if (not compute_statistics and not materialize_output_paths and
+    if (disable_statistics and not materialize_output_paths and
         stats_options_updater_fn is None):
       if analyze_input_columns:
         absl.logging.warning(
@@ -1017,7 +1020,7 @@ class Executor(base_beam_executor.BaseBeamExecutor):
                 tuple(c for c in analyze_input_columns)))
       else:
         absl.logging.warning(
-            'Using the in-place Transform since compute_statistics=False, '
+            'Using the in-place Transform since disable_statistics=True, '
             'it does not materialize transformed data, and the configured '
             'preprocessing_fn appears to not require analyzing the data.')
         self._RunInPlaceImpl(preprocessing_fn, force_tf_compat_v1,
@@ -1035,7 +1038,7 @@ class Executor(base_beam_executor.BaseBeamExecutor):
                       stats_options_updater_fn, force_tf_compat_v1,
                       input_dataset_metadata, transform_output_path,
                       raw_examples_data_format, temp_path, input_cache_dir,
-                      output_cache_dir, compute_statistics,
+                      output_cache_dir, disable_statistics,
                       per_set_stats_output_paths, materialization_format,
                       len(analyze_data_paths))
   # TODO(b/122478841): Writes status to status file.
@@ -1049,7 +1052,7 @@ class Executor(base_beam_executor.BaseBeamExecutor):
                    input_dataset_metadata: dataset_metadata.DatasetMetadata,
                    transform_output_path: Text, raw_examples_data_format: int,
                    temp_path: Text, input_cache_dir: Optional[Text],
-                   output_cache_dir: Optional[Text], compute_statistics: bool,
+                   output_cache_dir: Optional[Text], disable_statistics: bool,
                    per_set_stats_output_paths: Sequence[Text],
                    materialization_format: Optional[Text],
                    analyze_paths_count: int) -> _Status:
@@ -1070,7 +1073,7 @@ class Executor(base_beam_executor.BaseBeamExecutor):
       temp_path: A path to a temporary dir.
       input_cache_dir: A dir containing the input analysis cache. May be None.
       output_cache_dir: A dir to write the analysis cache to. May be None.
-      compute_statistics: A bool indicating whether or not compute statistics.
+      disable_statistics: A bool indicating whether or to disable statistics.
       per_set_stats_output_paths: Paths to per-set statistics output. If empty,
         per-set statistics is not produced.
       materialization_format: A string describing the format of the materialized
@@ -1089,6 +1092,7 @@ class Executor(base_beam_executor.BaseBeamExecutor):
         preprocessing_fn,
         unprojected_typespecs,
         force_tf_compat_v1=force_tf_compat_v1)
+    analyze_columns_count = len(analyze_input_columns)
 
     transform_input_columns = tft.get_transform_input_columns(
         preprocessing_fn,
@@ -1097,7 +1101,7 @@ class Executor(base_beam_executor.BaseBeamExecutor):
     # Use the same dataset (same columns) for AnalyzeDataset and computing
     # pre-transform stats so that the data will only be read once for these
     # two operations.
-    if compute_statistics:
+    if not disable_statistics:
       analyze_input_columns = list(
           set(list(analyze_input_columns) + list(transform_input_columns)))
 
@@ -1137,11 +1141,11 @@ class Executor(base_beam_executor.BaseBeamExecutor):
               pipeline
               | 'IncrementPipelineMetrics' >> self._IncrementPipelineMetrics(
                   total_columns_count=len(unprojected_typespecs),
-                  analyze_columns_count=len(analyze_input_columns),
+                  analyze_columns_count=analyze_columns_count,
                   transform_columns_count=len(transform_input_columns),
                   analyze_paths_count=analyze_paths_count,
                   analyzer_cache_enabled=input_cache is not None,
-                  compute_statistics=compute_statistics,
+                  disable_statistics=disable_statistics,
                   materialize=materialization_format is not None))
 
           if input_cache:
@@ -1153,7 +1157,7 @@ class Executor(base_beam_executor.BaseBeamExecutor):
 
           # Removing unneeded datasets if they won't be needed for statistics or
           # materialization.
-          if materialization_format is None and not compute_statistics:
+          if materialization_format is None and disable_statistics:
             if None in new_analyze_data_dict.values():
               absl.logging.debug(
                   'Not reading the following datasets due to cache: %s', [
@@ -1222,11 +1226,11 @@ class Executor(base_beam_executor.BaseBeamExecutor):
                    sink=self._GetCacheSink(),
                    dataset_keys=full_analyze_dataset_keys_list))
 
-          if compute_statistics or materialization_format is not None:
+          if not disable_statistics or materialization_format is not None:
             # Do not compute pre-transform stats if the input format is raw
             # proto, as StatsGen would treat any input as tf.Example. Note that
             # tf.SequenceExamples are wire-format compatible with tf.Examples.
-            if (compute_statistics and
+            if (not disable_statistics and
                 not self._IsDataFormatProto(raw_examples_data_format)):
               # Aggregated feature stats before transformation.
               pre_transform_feature_stats_path = os.path.join(
@@ -1290,7 +1294,7 @@ class Executor(base_beam_executor.BaseBeamExecutor):
                   | 'Transform[{}]'.format(infix) >>
                   tft_beam.TransformDataset(output_record_batches=True))
 
-            if compute_statistics:
+            if not disable_statistics:
               # Aggregated feature stats after transformation.
               _, metadata = transform_fn
 
@@ -1321,7 +1325,7 @@ class Executor(base_beam_executor.BaseBeamExecutor):
                   dataset.transformed_and_standardized
                   for dataset in transform_data_list
               ]
-               | 'FlattenTransformedDatasets' >> beam.Flatten()
+               | 'FlattenTransformedDatasets' >> beam.Flatten(pipeline=pipeline)
                | 'WaitForTransformWrite' >> beam.Map(
                    lambda x, completion: x,
                    completion=beam.pvalue.AsSingleton(completed_transform))

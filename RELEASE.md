@@ -4,6 +4,9 @@
 
 *  Added tfx.v1 Public APIs, please refer to
    [API doc](https://www.tensorflow.org/tfx/api_docs/python/tfx/v1) for details.
+*  Transform component now computes pre-transform and post-transform statistics
+   by default. This can be disabled by setting `disable_statistics=True` in the
+   Transform component.
 
 ## Breaking Changes
 

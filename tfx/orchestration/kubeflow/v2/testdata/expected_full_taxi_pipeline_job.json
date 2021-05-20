@@ -403,7 +403,7 @@
             "module_file": {
               "type": "STRING"
             },
-            "compute_statistics": {
+            "disable_statistics": {
               "type": "INT"
             },
             "custom_config": {
@@ -565,7 +565,7 @@
                     }
                   }
                 },
-                "compute_statistics": {
+                "disable_statistics": {
                   "runtimeValue": {
                     "constantValue": {
                       "intValue": "0"
