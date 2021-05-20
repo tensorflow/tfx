@@ -15,3 +15,4 @@
 
 from tfx.extensions.google_cloud_big_query.example_gen.component import BigQueryExampleGen
 from tfx.extensions.google_cloud_big_query.pusher.component import Pusher
+from tfx.extensions.google_cloud_big_query.pusher.executor import SERVING_ARGS_KEY as PUSHER_SERVING_ARGS_KEY
