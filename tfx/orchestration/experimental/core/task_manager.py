@@ -27,6 +27,7 @@ from tfx.orchestration.experimental.core import mlmd_state
 from tfx.orchestration.experimental.core import task as task_lib
 from tfx.orchestration.experimental.core import task_queue as tq
 from tfx.orchestration.experimental.core import task_scheduler as ts
+from tfx.orchestration.experimental.core import telemetry
 from tfx.orchestration.portable import execution_publish_utils
 from tfx.utils import status as status_lib
 
@@ -288,3 +289,4 @@ def _publish_execution_results(mlmd_handle: metadata.Metadata,
                                                       task.execution_id,
                                                       task.contexts,
                                                       **publish_params)
+  telemetry.TELEMETRY_LOGGER.log_component_run(task.pipeline)
