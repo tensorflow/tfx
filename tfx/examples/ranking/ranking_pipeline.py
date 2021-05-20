@@ -34,6 +34,7 @@ from tfx.orchestration.beam.beam_dag_runner import BeamDagRunner
 from tfx.proto import example_gen_pb2
 from tfx.proto import pusher_pb2
 from tfx.proto import trainer_pb2
+from tfx.proto import transform_pb2
 
 _pipeline_name = 'tf_ranking_antique'
 
@@ -97,7 +98,9 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
       examples=data_view_binder.outputs['output_examples'],
       schema=schema_gen.outputs['schema'],
       module_file=module_file,
-      # important: must disable Transform materialization.
+      # important: must disable Transform materialization and ensure the
+      # transform field of the splits config is empty.
+      splits_config=transform_pb2.SplitsConfig(analyze=['train']),
       materialize=False)
 
   trainer = Trainer(

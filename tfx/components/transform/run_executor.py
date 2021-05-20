@@ -47,8 +47,8 @@ def _run_transform(args, beam_pipeline_args):
           args.preprocessing_fn_path,
       labels.EXAMPLES_DATA_FORMAT_LABEL:
           example_gen_pb2.PayloadFormat.Value(args.example_data_format),
-      labels.COMPUTE_STATISTICS_LABEL:
-          args.compute_statistics,
+      labels.DISABLE_STATISTICS_LABEL:
+          args.disable_statistics,
       labels.BEAM_PIPELINE_ARGS:
           beam_pipeline_args,
   }
@@ -85,10 +85,10 @@ def _parse_flags(argv: List[str]) -> Tuple[argparse.Namespace, List[str]]:
       default=True,
       help='Deprecated and ignored. DO NOT SET.')
   parser.add_argument(
-      '--compute_statistics',
+      '--disable_statistics',
       type=bool,
       default=False,
-      help='Whether computes statistics')
+      help='Whether to disable statistics')
   parser.add_argument(
       '--analyze_examples',
       nargs='+',

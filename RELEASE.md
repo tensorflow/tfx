@@ -21,7 +21,9 @@
 
 ## Major Features and Improvements
 
-*   N/A
+*  Transform component now computes pre-transform and post-transform statistics
+   by default. This can be disabled by setting `disable_statistics=True` in the
+   Transform component.
 
 ## Breaking Changes
 
@@ -44,9 +46,8 @@
 
 *   Removed `six` dependency.
 *   Depends on `apache-beam[gcp]>=2.29,<3`.
-*   Depends on `tensorflow>=1.15.2,!=2.0.*,!=2.1.*,!=2.2.*,!=2.3.*,!=2.4.*,<3`.
-*   Depends on `tensorflowjs>=3.6.0,<4`.
-*   Depends on `tensorflow-serving-api>=1.15,!=2.0.*,!=2.1.*,!=2.2.*,!=2.3.*,!=2.4.*,<3`.
+*   Depends on `tensorflow>=1.15.2,!=2.0.*,!=2.1.*,!=2.2.*,!=2.3.*,!=2.5.*,<3`.
+*   Depends on `tensorflow-serving-api>=1.15,!=2.0.*,!=2.1.*,!=2.2.*,!=2.3.*,!=2.5.*,<3`.
 
 ## Documentation Updates
 
@@ -79,12 +80,6 @@
    Transform, Trainer and Tuner components is now packaged as a pip wheel for
    execution. For Evaluator and Transform, these wheel packages are now
    installed on remote Apache Beam workers.
-*  TFT can now compute pre-transform and post-transform statistics. This can
-   be enabled by setting `compute_statistics=True` in the Transform component.
-   By default, statistics are not computed in Transform (as before). When
-   enabled, the pre-transform and post-transform stats will be stored in the
-   `pre_transform_feature_stats/` and `post_transform_feature_stats/` subfolders
-   of the `transform_graph` export.
 
 ## Breaking Changes
 
