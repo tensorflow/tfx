@@ -97,7 +97,7 @@ class ExecNodeTask(Task):
 
   Attributes:
     node_uid: Uid of the node to be executed.
-    execution: MLMD execution associated with current node.
+    execution_id: Id of the MLMD execution associated with the current node.
     contexts: List of contexts associated with the execution.
     exec_properties: Execution properties of the execution.
     input_artifacts: Input artifacts dict.
@@ -110,7 +110,7 @@ class ExecNodeTask(Task):
       cleanup.
   """
   node_uid: NodeUid
-  execution: metadata_store_pb2.Execution
+  execution_id: int
   contexts: List[metadata_store_pb2.Context]
   exec_properties: Dict[str, types.Property]
   input_artifacts: Dict[str, List[types.Artifact]]

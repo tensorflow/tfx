@@ -52,7 +52,7 @@ def _generate_task_from_execution(metadata_handler: metadata.Metadata,
                                                    pipeline.execution_mode)
   return task_lib.ExecNodeTask(
       node_uid=task_lib.NodeUid.from_pipeline_node(pipeline, node),
-      execution=execution,
+      execution_id=execution.id,
       contexts=contexts,
       exec_properties=exec_properties,
       input_artifacts=input_artifacts,

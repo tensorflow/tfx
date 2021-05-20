@@ -19,6 +19,7 @@ import uuid
 from absl.testing.absltest import mock
 from tfx import types
 from tfx.orchestration.experimental.core import async_pipeline_task_gen as asptg
+from tfx.orchestration.experimental.core import mlmd_state
 from tfx.orchestration.experimental.core import pipeline_state as pstate
 from tfx.orchestration.experimental.core import service_jobs
 from tfx.orchestration.experimental.core import task as task_lib
@@ -26,6 +27,13 @@ from tfx.orchestration.portable import execution_publish_utils
 from tfx.orchestration.portable.mlmd import context_lib
 from tfx.orchestration.portable.mlmd import execution_lib
 from tfx.proto.orchestration import pipeline_pb2
+from tfx.utils import test_case_utils
+
+
+class TfxTest(test_case_utils.TfxTest):
+
+  def setUp(self):
+    mlmd_state.clear_in_memory_state()
 
 
 def fake_example_gen_run_with_handle(mlmd_handle, example_gen, span, version):
@@ -95,7 +103,7 @@ def fake_execute_node(mlmd_connection, task):
       output_artifacts = {output_key: [output]}
     else:
       output_artifacts = None
-    execution_publish_utils.publish_succeeded_execution(m, task.execution.id,
+    execution_publish_utils.publish_succeeded_execution(m, task.execution_id,
                                                         task.contexts,
                                                         output_artifacts)
 
@@ -113,7 +121,7 @@ def create_exec_node_task(node_uid,
   """Creates an `ExecNodeTask` for testing."""
   return task_lib.ExecNodeTask(
       node_uid=node_uid,
-      execution=execution or mock.Mock(),
+      execution_id=execution.id if execution else 1,
       contexts=contexts or [],
       exec_properties=exec_properties or {},
       input_artifacts=input_artifacts or {},
@@ -191,7 +199,7 @@ def _verify_exec_node_task(test_case, pipeline, node, execution_id, task):
   """Verifies that generated ExecNodeTask has the expected properties for the node."""
   test_case.assertEqual(
       task_lib.NodeUid.from_pipeline_node(pipeline, node), task.node_uid)
-  test_case.assertEqual(execution_id, task.execution.id)
+  test_case.assertEqual(execution_id, task.execution_id)
   expected_context_names = ['my_pipeline', node.node_info.id]
   if pipeline.execution_mode == pipeline_pb2.Pipeline.SYNC:
     expected_context_names.append(

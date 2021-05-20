@@ -278,7 +278,7 @@ class SyncPipelineTaskGenerator(task_gen.TaskGenerator):
 
     return task_lib.ExecNodeTask(
         node_uid=node_uid,
-        execution=execution,
+        execution_id=execution.id,
         contexts=contexts,
         input_artifacts=resolved_info.input_artifacts,
         exec_properties=resolved_info.exec_properties,
