@@ -31,7 +31,7 @@ from tfx.utils import json_utils
 from ml_metadata.proto import metadata_store_pb2
 
 
-class _CompilerContext(object):
+class _CompilerContext:
   """Encapsulates resources needed to compile a pipeline."""
 
   def __init__(self, pipeline_info: data_types.PipelineInfo,
@@ -65,7 +65,7 @@ class _CompilerContext(object):
     return self.execution_mode == pipeline_pb2.Pipeline.ASYNC
 
 
-class Compiler(object):
+class Compiler:
   """Compiles a TFX pipeline or a component into a uDSL IR proto."""
 
   def _compile_node_outputs(self, tfx_node: base_node.BaseNode,

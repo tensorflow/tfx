@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,11 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """TFX Importer definition."""
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
 
-from typing import Any, Dict, List, Optional, Text, Type, Union
+from typing import Any, Dict, List, Optional, Type, Union
 
 import absl
 from tfx import types
@@ -59,9 +55,9 @@ def _set_artifact_properties(artifact: types.Artifact,
 
 def _prepare_artifact(
     metadata_handler: metadata.Metadata,
-    uri: Text,
-    properties: Dict[Text, Any],
-    custom_properties: Dict[Text, Any],
+    uri: str,
+    properties: Dict[str, Any],
+    custom_properties: Dict[str, Any],
     reimport: bool, output_artifact_class: Type[types.Artifact],
     mlmd_artifact_type: Optional[metadata_store_pb2.ArtifactType]
 ) -> types.Artifact:
@@ -93,7 +89,7 @@ def _prepare_artifact(
 
   # Check types of custom properties.
   for key, value in custom_properties.items():
-    if not isinstance(value, (int, Text, bytes)):
+    if not isinstance(value, (int, str, bytes)):
       raise ValueError(
           ('Custom property value for key %r must be a string or integer '
            '(got %r instead)') % (key, value))
@@ -116,7 +112,7 @@ def _prepare_artifact(
         if candidate_artifact.get_int_custom_property(key) != value:
           is_candidate = False
           break
-      elif isinstance(value, (Text, bytes)):
+      elif isinstance(value, (str, bytes)):
         if candidate_artifact.get_string_custom_property(key) != value:
           is_candidate = False
           break
@@ -138,13 +134,13 @@ def _prepare_artifact(
 
 def generate_output_dict(
     metadata_handler: metadata.Metadata,
-    uri: Text,
-    properties: Dict[Text, Any],
-    custom_properties: Dict[Text, Any],
+    uri: str,
+    properties: Dict[str, Any],
+    custom_properties: Dict[str, Any],
     reimport: bool,
     output_artifact_class: Type[types.Artifact],
     mlmd_artifact_type: Optional[metadata_store_pb2.ArtifactType] = None
-) -> Dict[Text, List[types.Artifact]]:
+) -> Dict[str, List[types.Artifact]]:
   """Generates importer's output dict.
 
   If there is already an artifact in MLMD with the same URI and properties /
@@ -186,9 +182,9 @@ class ImporterDriver(base_driver.BaseDriver):
 
   def pre_execution(
       self,
-      input_dict: Dict[Text, types.Channel],
-      output_dict: Dict[Text, types.Channel],
-      exec_properties: Dict[Text, Any],
+      input_dict: Dict[str, types.Channel],
+      output_dict: Dict[str, types.Channel],
+      exec_properties: Dict[str, Any],
       driver_args: data_types.DriverArgs,
       pipeline_info: data_types.PipelineInfo,
       component_info: data_types.ComponentInfo,
@@ -250,12 +246,11 @@ class Importer(base_node.BaseNode):
   """
 
   def __init__(self,
-               source_uri: Text,
+               source_uri: str,
                artifact_type: Type[types.Artifact],
                reimport: Optional[bool] = False,
-               properties: Optional[Dict[Text, Union[Text, int]]] = None,
-               custom_properties: Optional[Dict[Text, Union[Text,
-                                                            int]]] = None):
+               properties: Optional[Dict[str, Union[str, int]]] = None,
+               custom_properties: Optional[Dict[str, Union[str, int]]] = None):
     """Init function for the Importer.
 
     Args:
@@ -285,7 +280,7 @@ class Importer(base_node.BaseNode):
                     [artifact])
     }
 
-    super(Importer, self).__init__(driver_class=ImporterDriver)
+    super().__init__(driver_class=ImporterDriver)
 
   @property
   @doc_controls.do_not_generate_docs
@@ -299,7 +294,7 @@ class Importer(base_node.BaseNode):
 
   @property
   @doc_controls.do_not_generate_docs
-  def exec_properties(self) -> Dict[Text, Any]:
+  def exec_properties(self) -> Dict[str, Any]:
     return {
         SOURCE_URI_KEY: self._source_uri,
         REIMPORT_OPTION_KEY: int(self._reimport),

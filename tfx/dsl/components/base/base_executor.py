@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,14 +13,10 @@
 # limitations under the License.
 """Abstract TFX executor class."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import abc
 import json
 import os
-from typing import Any, Dict, List, Optional, Text
+from typing import Any, Dict, List, Optional
 
 from absl import logging
 from tfx import types
@@ -40,15 +35,15 @@ except ModuleNotFoundError:
 class BaseExecutor(abc.ABC):
   """Abstract TFX executor class."""
 
-  class Context(object):
+  class Context:
     """A context class for all excecutors."""
 
     def __init__(self,
-                 extra_flags: Optional[List[Text]] = None,
-                 tmp_dir: Optional[Text] = None,
-                 unique_id: Optional[Text] = None,
-                 executor_output_uri: Optional[Text] = None,
-                 stateful_working_dir: Optional[Text] = None):
+                 extra_flags: Optional[List[str]] = None,
+                 tmp_dir: Optional[str] = None,
+                 unique_id: Optional[str] = None,
+                 executor_output_uri: Optional[str] = None,
+                 stateful_working_dir: Optional[str] = None):
       self.extra_flags = extra_flags
       # Base temp directory for the pipeline
       self._tmp_dir = tmp_dir
@@ -60,24 +55,24 @@ class BaseExecutor(abc.ABC):
       # tensorflow trainers.
       self._stateful_working_dir = stateful_working_dir
 
-    def get_tmp_path(self) -> Text:
+    def get_tmp_path(self) -> str:
       if not self._tmp_dir or not self._unique_id:
         raise RuntimeError('Temp path not available')
       return os.path.join(self._tmp_dir, str(self._unique_id), '')
 
     @property
-    def executor_output_uri(self) -> Text:
+    def executor_output_uri(self) -> str:
       return self._executor_output_uri
 
     @property
-    def stateful_working_dir(self) -> Text:
+    def stateful_working_dir(self) -> str:
       return self._stateful_working_dir
 
   @abc.abstractmethod
   def Do(  # pylint: disable=invalid-name
-      self, input_dict: Dict[Text, List[types.Artifact]],
-      output_dict: Dict[Text, List[types.Artifact]],
-      exec_properties: Dict[Text, Any],
+      self, input_dict: Dict[str, List[types.Artifact]],
+      output_dict: Dict[str, List[types.Artifact]],
+      exec_properties: Dict[str, Any],
   ) -> Optional[execution_result_pb2.ExecutorOutput]:
     """Execute underlying component implementation.
 
@@ -103,7 +98,7 @@ class BaseExecutor(abc.ABC):
     self._context = context
     self._extra_flags = context.extra_flags if context else None
 
-  def _get_tmp_dir(self) -> Text:
+  def _get_tmp_dir(self) -> str:
     """Get the temporary directory path."""
     if not self._context:
       raise RuntimeError('No context for the executor')
@@ -113,9 +108,9 @@ class BaseExecutor(abc.ABC):
       fileio.makedirs(tmp_path)
     return tmp_path
 
-  def _log_startup(self, inputs: Dict[Text, List[types.Artifact]],
-                   outputs: Dict[Text, List[types.Artifact]],
-                   exec_properties: Dict[Text, Any]) -> None:
+  def _log_startup(self, inputs: Dict[str, List[types.Artifact]],
+                   outputs: Dict[str, List[types.Artifact]],
+                   exec_properties: Dict[str, Any]) -> None:
     """Log inputs, outputs, and executor properties in a standard format."""
     logging.debug('Starting %s execution.', self.__class__.__name__)
     logging.debug('Inputs for %s are: %s', self.__class__.__name__,
@@ -129,7 +124,7 @@ class BaseExecutor(abc.ABC):
 class EmptyExecutor(BaseExecutor):
   """An empty executor that does nothing."""
 
-  def Do(self, input_dict: Dict[Text, List[types.Artifact]],
-         output_dict: Dict[Text, List[types.Artifact]],
-         exec_properties: Dict[Text, Any]) -> None:
+  def Do(self, input_dict: Dict[str, List[types.Artifact]],
+         output_dict: Dict[str, List[types.Artifact]],
+         exec_properties: Dict[str, Any]) -> None:
     pass

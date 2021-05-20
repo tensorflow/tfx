@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2020 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -157,7 +156,7 @@ pipeline_node {
 class PlaceholderUtilsTest(tf.test.TestCase):
 
   def setUp(self):
-    super(PlaceholderUtilsTest, self).setUp()
+    super().setUp()
     examples = [standard_artifacts.Examples()]
     examples[0].uri = "/tmp"
     examples[0].split_names = artifact_utils.encode_split_names(

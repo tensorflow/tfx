@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,12 +13,8 @@
 # limitations under the License.
 """Tests for tfx.dsl.components.base.base_beam_executor."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import sys
-from typing import Any, Dict, List, Text
+from typing import Any, Dict, List
 
 from apache_beam.options.pipeline_options import DirectOptions
 from apache_beam.options.pipeline_options import GoogleCloudOptions
@@ -34,9 +29,9 @@ from tfx.dsl.components.base import base_beam_executor
 class _TestExecutor(base_beam_executor.BaseBeamExecutor):
   """Fake executor for testing purpose only."""
 
-  def Do(self, input_dict: Dict[Text, List[types.Artifact]],
-         output_dict: Dict[Text, List[types.Artifact]],
-         exec_properties: Dict[Text, Any]) -> None:
+  def Do(self, input_dict: Dict[str, List[types.Artifact]],
+         output_dict: Dict[str, List[types.Artifact]],
+         exec_properties: Dict[str, Any]) -> None:
     pass
 
 

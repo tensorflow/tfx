@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,12 +13,8 @@
 # limitations under the License.
 """Executor specifications for defining what to to execute."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import copy
-from typing import cast, Iterable, List, Optional, Text, Type
+from typing import cast, Iterable, List, Optional, Type
 
 from tfx import types
 from tfx.dsl.components.base import base_executor
@@ -84,7 +79,7 @@ class ExecutorClassSpec(ExecutorSpec):
       raise ValueError('executor_class is required')
     self.executor_class = executor_class
     self.extra_flags = []
-    super(ExecutorClassSpec, self).__init__()
+    super().__init__()
 
   def __reduce__(self):
     # When executing on the Beam DAG runner, the ExecutorClassSpec instance
@@ -151,7 +146,7 @@ class BeamExecutorSpec(ExecutorClassSpec):
   """
 
   def __init__(self, executor_class: Type[base_executor.BaseExecutor]):
-    super(BeamExecutorSpec, self).__init__(executor_class=executor_class)
+    super().__init__(executor_class=executor_class)
     self.beam_pipeline_args = []
 
   def encode(
@@ -159,7 +154,7 @@ class BeamExecutorSpec(ExecutorClassSpec):
       component_spec: Optional[types.ComponentSpec] = None) -> message.Message:
     result = executable_spec_pb2.BeamExecutableSpec()
     result.python_executor_spec.CopyFrom(
-        super(BeamExecutorSpec, self).encode(component_spec=component_spec))
+        super().encode(component_spec=component_spec))
     result.beam_pipeline_args.extend(self.beam_pipeline_args)
     return result
 
@@ -167,7 +162,7 @@ class BeamExecutorSpec(ExecutorClassSpec):
     self.beam_pipeline_args.extend(beam_pipeline_args)
 
   def copy(self) -> 'BeamExecutorSpec':
-    return cast(self.__class__, super(BeamExecutorSpec, self).copy())
+    return cast(self.__class__, super().copy())
 
 
 class ExecutorContainerSpec(ExecutorSpec):
@@ -196,12 +191,12 @@ class ExecutorContainerSpec(ExecutorSpec):
   """
 
   def __init__(self,
-               image: Text,
-               command: List[Text] = None,
-               args: List[Text] = None):
+               image: str,
+               command: List[str] = None,
+               args: List[str] = None):
     if not image:
       raise ValueError('image cannot be None or empty.')
     self.image = image
     self.command = command
     self.args = args
-    super(ExecutorContainerSpec, self).__init__()
+    super().__init__()

@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,12 +13,8 @@
 # limitations under the License.
 """Base class for TFX nodes."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import abc
-from typing import Any, Dict, Optional, Text, Type
+from typing import Any, Dict, Optional, Type
 
 from tfx.dsl.components.base import base_driver
 from tfx.dsl.components.base import base_executor
@@ -65,7 +60,7 @@ class BaseNode(json_utils.Jsonable, abc.ABC):
     self._id = None
 
   @doc_controls.do_not_doc_in_subclasses
-  def to_json_dict(self) -> Dict[Text, Any]:
+  def to_json_dict(self) -> Dict[str, Any]:
     """Convert from an object to a JSON serializable dictionary."""
     return dict((k, v)
                 for k, v in self.__dict__.items()
@@ -73,14 +68,14 @@ class BaseNode(json_utils.Jsonable, abc.ABC):
 
   @classmethod
   @doc_controls.do_not_doc_in_subclasses
-  def get_class_type(cls) -> Text:
+  def get_class_type(cls) -> str:
     nondeprecated_class = deprecation_utils.get_first_nondeprecated_class(cls)
     return '.'.join(
         [nondeprecated_class.__module__, nondeprecated_class.__name__])
 
   @property
   @doc_controls.do_not_doc_in_subclasses
-  def type(self) -> Text:
+  def type(self) -> str:
     return self.__class__.get_class_type()
 
   @property
@@ -88,12 +83,12 @@ class BaseNode(json_utils.Jsonable, abc.ABC):
                                 'component_type is deprecated, use type instead'
                                )
   @doc_controls.do_not_doc_in_subclasses
-  def component_type(self) -> Text:
+  def component_type(self) -> str:
     return self.type
 
   @property
   @doc_controls.do_not_doc_in_subclasses
-  def id(self) -> Text:
+  def id(self) -> str:
     """Node id, unique across all TFX nodes in a pipeline.
 
     If `id` is set by the user, return it directly.
@@ -111,16 +106,16 @@ class BaseNode(json_utils.Jsonable, abc.ABC):
   @deprecation_utils.deprecated(None,
                                 'component_id is deprecated, use id instead')
   @doc_controls.do_not_doc_in_subclasses
-  def component_id(self) -> Text:
+  def component_id(self) -> str:
     return self.id
 
   @id.setter
   @doc_controls.do_not_doc_in_subclasses
-  def id(self, id: Text) -> None:  # pylint: disable=redefined-builtin
+  def id(self, id: str) -> None:  # pylint: disable=redefined-builtin
     self._id = id
 
   @doc_controls.do_not_doc_in_subclasses
-  def with_id(self, id: Text) -> 'BaseNode':  # pylint: disable=redefined-builtin
+  def with_id(self, id: str) -> 'BaseNode':  # pylint: disable=redefined-builtin
     self._id = id
     return self
 
@@ -136,7 +131,7 @@ class BaseNode(json_utils.Jsonable, abc.ABC):
 
   @property
   @abc.abstractmethod
-  def exec_properties(self) -> Dict[Text, Any]:
+  def exec_properties(self) -> Dict[str, Any]:
     pass
 
   @property

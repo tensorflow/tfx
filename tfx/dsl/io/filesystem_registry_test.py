@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,10 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Tests for tfx.dsl.io.filesystem_registry."""
-
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
 
 import tensorflow as tf
 
@@ -44,19 +39,19 @@ class FilesystemRegistryTest(tf.test.TestCase):
     registry = filesystem_registry.FilesystemRegistry()
 
     # Test exceptions properly raised when schemes not registered.
-    with self.assertRaisesRegexp(Exception, 'is not available for use'):
+    with self.assertRaisesRegex(Exception, 'is not available for use'):
       registry.get_filesystem_for_scheme('')
-    with self.assertRaisesRegexp(Exception, 'is not available for use'):
+    with self.assertRaisesRegex(Exception, 'is not available for use'):
       registry.get_filesystem_for_path('/tmp/my/file')
-    with self.assertRaisesRegexp(Exception, 'is not available for use'):
+    with self.assertRaisesRegex(Exception, 'is not available for use'):
       registry.get_filesystem_for_scheme('gs://')
-    with self.assertRaisesRegexp(Exception, 'is not available for use'):
+    with self.assertRaisesRegex(Exception, 'is not available for use'):
       registry.get_filesystem_for_path('gs://bucket/tmp/my/file')
-    with self.assertRaisesRegexp(Exception, 'is not available for use'):
+    with self.assertRaisesRegex(Exception, 'is not available for use'):
       registry.get_filesystem_for_scheme('s3://')
-    with self.assertRaisesRegexp(Exception, 'is not available for use'):
+    with self.assertRaisesRegex(Exception, 'is not available for use'):
       registry.get_filesystem_for_path('s3://bucket/tmp/my/file')
-    with self.assertRaisesRegexp(Exception, 'is not available for use'):
+    with self.assertRaisesRegex(Exception, 'is not available for use'):
       registry.get_filesystem_for_path('unknown://bucket/tmp/my/file')
 
     # Test after local filesystem is registered.
@@ -64,11 +59,11 @@ class FilesystemRegistryTest(tf.test.TestCase):
     self.assertIs(local.LocalFilesystem, registry.get_filesystem_for_scheme(''))
     self.assertIs(local.LocalFilesystem,
                   registry.get_filesystem_for_path('/tmp/my/file'))
-    with self.assertRaisesRegexp(Exception, 'is not available for use'):
+    with self.assertRaisesRegex(Exception, 'is not available for use'):
       registry.get_filesystem_for_scheme('gs://')
-    with self.assertRaisesRegexp(Exception, 'is not available for use'):
+    with self.assertRaisesRegex(Exception, 'is not available for use'):
       registry.get_filesystem_for_path('gs://bucket/tmp/my/file')
-    with self.assertRaisesRegexp(Exception, 'is not available for use'):
+    with self.assertRaisesRegex(Exception, 'is not available for use'):
       registry.get_filesystem_for_path('unknown://bucket/tmp/my/file')
 
     # Test after Tensorflow filesystems are registered with higher priority.
@@ -120,7 +115,7 @@ class FilesystemRegistryTest(tf.test.TestCase):
     self.assertIs(
         tensorflow_gfile.TensorflowFilesystem,
         registry.get_filesystem_for_path(b'hdfs://bucket/tmp/my/file'))
-    with self.assertRaisesRegexp(ValueError, 'Invalid path type'):
+    with self.assertRaisesRegex(ValueError, 'Invalid path type'):
       registry.get_filesystem_for_path(123)
 
 

@@ -22,7 +22,7 @@ from tfx.dsl.component.experimental import placeholders
 class ExecutorSpecsTest(tf.test.TestCase):
 
   def setUp(self):
-    super(ExecutorSpecsTest, self).setUp()
+    super().setUp()
     self._text = 'text'
     self._input_value_placeholder = placeholders.InputValuePlaceholder(
         'input_artifact')

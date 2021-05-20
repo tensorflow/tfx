@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2020 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,7 +13,7 @@
 # limitations under the License.
 """Functions for creating container components."""
 
-from typing import Any, Callable, Dict, List, Text
+from typing import Any, Callable, Dict, List
 
 from tfx.dsl.component.experimental import component_utils
 from tfx.dsl.component.experimental import executor_specs
@@ -25,12 +24,12 @@ from tfx.types import component_spec
 
 
 def create_container_component(
-    name: Text,
-    image: Text,
+    name: str,
+    image: str,
     command: List[placeholders.CommandlineArgumentType],
-    inputs: Dict[Text, Any] = None,
-    outputs: Dict[Text, Any] = None,
-    parameters: Dict[Text, Any] = None,
+    inputs: Dict[str, Any] = None,
+    outputs: Dict[str, Any] = None,
+    parameters: Dict[str, Any] = None,
 ) -> Callable[..., base_component.BaseComponent]:
   """Creates a container-based component.
 

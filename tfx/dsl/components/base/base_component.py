@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,13 +13,9 @@
 # limitations under the License.
 """Base class for TFX components."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import abc
 import inspect
-from typing import Any, Dict, Optional, Text, Union
+from typing import Any, Dict, Optional, Union
 
 from tfx import types
 from tfx.dsl.components.base import base_driver
@@ -100,7 +95,7 @@ class BaseComponent(base_node.BaseNode, abc.ABC):
                        f'not copyable.') from e
 
     driver_class = self.__class__.DRIVER_CLASS
-    super(BaseComponent, self).__init__(
+    super().__init__(
         executor_spec=executor_spec_obj,
         driver_class=driver_class,
     )
@@ -177,23 +172,23 @@ class BaseComponent(base_node.BaseNode, abc.ABC):
 
   @property
   @doc_controls.do_not_doc_in_subclasses
-  def exec_properties(self) -> Dict[Text, Any]:  # pylint: disable=g-missing-from-attributes
+  def exec_properties(self) -> Dict[str, Any]:  # pylint: disable=g-missing-from-attributes
     return self.spec.exec_properties
 
   def _add_pip_dependency(
-      self, dependency: Union[Text, '_PipDependencyFuture']) -> None:
+      self, dependency: Union[str, '_PipDependencyFuture']) -> None:
     """Internal use only: add pip dependency to current component."""
     # TODO(b/187122662): Provide separate Python component hierarchy and remove
     # logic from this class.
     self._pip_dependencies.append(dependency)
 
-  def _resolve_pip_dependencies(self, pipeline_root: Text) -> None:
+  def _resolve_pip_dependencies(self, pipeline_root: str) -> None:
     """Experimental: resolve pip dependencies into specifiers."""
     if not hasattr(self, '_pip_dependencies'):
       return
     new_pip_dependencies = []
     for dependency in self._pip_dependencies:
-      if isinstance(dependency, Text):
+      if isinstance(dependency, str):
         new_pip_dependencies.append(dependency)
       elif isinstance(dependency, _PipDependencyFuture):
         resolved_dependency = dependency.resolve(pipeline_root)
@@ -207,6 +202,6 @@ class BaseComponent(base_node.BaseNode, abc.ABC):
 class _PipDependencyFuture:
   """Experimental: Represents a pip dependency resolved at pipeline runtime."""
 
-  def resolve(self, pipeline_root: Text) -> Text:
+  def resolve(self, pipeline_root: str) -> str:
     """Returns a pip installable target spec, as string, or None to ignore."""
     raise NotImplementedError()

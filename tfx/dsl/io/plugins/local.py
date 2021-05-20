@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2020 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,15 +13,11 @@
 # limitations under the License.
 """Local filesystem-based filesystem plugin."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import glob
 import os
 import shutil
 
-from typing import Any, Callable, Iterable, List, Text, Tuple
+from typing import Any, Callable, Iterable, List, Tuple
 
 from tfx.dsl.io import filesystem
 from tfx.dsl.io import filesystem_registry
@@ -35,7 +30,7 @@ class LocalFilesystem(filesystem.Filesystem):
   SUPPORTED_SCHEMES = ['']
 
   @staticmethod
-  def open(name: PathType, mode: Text = 'r') -> Any:
+  def open(name: PathType, mode: str = 'r') -> Any:
     try:
       return open(name, mode=mode)
     except FileNotFoundError as e:

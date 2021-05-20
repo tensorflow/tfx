@@ -66,7 +66,7 @@ class ResolverTest(tf.test.TestCase):
 class ResolverDriverTest(tf.test.TestCase):
 
   def setUp(self):
-    super(ResolverDriverTest, self).setUp()
+    super().setUp()
     self.connection_config = metadata_store_pb2.ConnectionConfig()
     self.connection_config.sqlite.SetInParent()
     self.pipeline_info = data_types.PipelineInfo(

@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2020 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,14 +13,9 @@
 # limitations under the License.
 """Tests for tfx.dsl.components.base.decorators."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import os
-from typing import Optional, Text
+from typing import Optional
 
-# Standard Imports
 
 import tensorflow as tf
 from tfx import types
@@ -64,15 +58,15 @@ class _BasicComponentSpec(component_spec.ComponentSpec):
 
 @component
 def _injector_1(
-    foo: Parameter[int], bar: Parameter[Text]) -> OutputDict(
-        a=int, b=int, c=Text, d=bytes):
+    foo: Parameter[int], bar: Parameter[str]) -> OutputDict(
+        a=int, b=int, c=str, d=bytes):
   assert foo == 9
   assert bar == 'secret'
   return {'a': 10, 'b': 22, 'c': 'unicode', 'd': b'bytes'}
 
 
 @component
-def _simple_component(a: int, b: int, c: Text, d: bytes) -> OutputDict(
+def _simple_component(a: int, b: int, c: str, d: bytes) -> OutputDict(
     e=float, f=float):
   del c, d
   return {'e': float(a + b), 'f': float(a * b)}
@@ -87,7 +81,7 @@ def _verify(e: float, f: float):
 def _injector_2(
     examples: OutputArtifact[standard_artifacts.Examples]
 ) -> OutputDict(
-    a=int, b=float, c=Text, d=bytes, e=Text):
+    a=int, b=float, c=str, d=bytes, e=str):
   fileio.makedirs(examples.uri)
   return {'a': 1, 'b': 2.0, 'c': '3', 'd': b'4', 'e': 'passed'}
 
@@ -95,17 +89,17 @@ def _injector_2(
 @component
 def _optionalarg_component(
     foo: Parameter[int],
-    bar: Parameter[Text],
+    bar: Parameter[str],
     examples: InputArtifact[standard_artifacts.Examples],
     a: int,
     b: float,
-    c: Text,
+    c: str,
     d: bytes,
-    e1: Text = 'default',
-    e2: Optional[Text] = 'default',
+    e1: str = 'default',
+    e2: Optional[str] = 'default',
     f: bytes = b'default',
     g: Parameter[float] = 1000.0,
-    h: Parameter[Text] = '2000',
+    h: Parameter[str] = '2000',
     optional_examples_1: InputArtifact[standard_artifacts.Examples] = None,
     optional_examples_2: InputArtifact[standard_artifacts.Examples] = None):
   # Test non-optional parameters.
@@ -136,7 +130,7 @@ def _optionalarg_component(
 class ComponentDecoratorTest(tf.test.TestCase):
 
   def setUp(self):
-    super(ComponentDecoratorTest, self).setUp()
+    super().setUp()
     self._test_dir = os.path.join(
         os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR', self.get_temp_dir()),
         self._testMethodName)
@@ -157,7 +151,7 @@ class ComponentDecoratorTest(tf.test.TestCase):
     self.assertEqual(instance.id, 'my_instance')
 
   def testDefinitionInClosureFails(self):
-    with self.assertRaisesRegexp(
+    with self.assertRaisesRegex(
         ValueError,
         'The @component decorator can only be applied to a function defined at '
         'the module level'):
@@ -167,7 +161,7 @@ class ComponentDecoratorTest(tf.test.TestCase):
         return None
 
   def testNonKwargFails(self):
-    with self.assertRaisesRegexp(
+    with self.assertRaisesRegex(
         ValueError,
         'expects arguments to be passed as keyword arguments'):
       _injector_1(9, 'secret')
@@ -211,8 +205,8 @@ class ComponentDecoratorTest(tf.test.TestCase):
         metadata_connection_config=metadata_config,
         components=[instance_1, instance_2, instance_3])
 
-    with self.assertRaisesRegexp(RuntimeError,
-                                 r'AssertionError: \(220.0, 32.0\)'):
+    with self.assertRaisesRegex(RuntimeError,
+                                r'AssertionError: \(220.0, 32.0\)'):
       beam_dag_runner.BeamDagRunner().run(test_pipeline)
 
   def testBeamExecutionOptionalInputsAndParameters(self):

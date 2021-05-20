@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2020 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,11 +13,7 @@
 # limitations under the License.
 """Tensorflow GFile-based filesystem plugin."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
-from typing import Any, Callable, Iterable, List, Text, Tuple
+from typing import Any, Callable, Iterable, List, Tuple
 
 from tfx.dsl.io import filesystem
 from tfx.dsl.io import filesystem_registry
@@ -37,7 +32,7 @@ if tf:
     SUPPORTED_SCHEMES = ['', 'gs://', 'hdfs://', 's3://']
 
     @staticmethod
-    def open(name: PathType, mode: Text = 'r') -> Any:
+    def open(name: PathType, mode: str = 'r') -> Any:
       # Because the GFile implementation delays I/O until necessary, we cannot
       # catch `NotFoundError` here.
       return tf.io.gfile.GFile(name, mode=mode)

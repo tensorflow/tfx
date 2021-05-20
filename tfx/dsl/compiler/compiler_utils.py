@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2020 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,12 +13,7 @@
 # limitations under the License.
 """Utility functions for DSL Compiler."""
 
-# TODO(b/149535307): Remove __future__ imports
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
-from typing import List, Optional, Text, Type
+from typing import List, Optional, Type
 
 from tfx import types
 from tfx.dsl.components.base import base_node
@@ -31,7 +25,7 @@ from tfx.proto.orchestration import pipeline_pb2
 
 def set_runtime_parameter_pb(
     pb: pipeline_pb2.RuntimeParameter,
-    name: Text,
+    name: str,
     ptype: Type[types.Property],
     default_value: Optional[types.Property] = None
 ) -> pipeline_pb2.RuntimeParameter:

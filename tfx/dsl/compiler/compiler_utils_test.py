@@ -45,7 +45,7 @@ class EmptyComponent(base_component.BaseComponent):
   EXECUTOR_SPEC = executor_spec.ExecutorClassSpec(base_executor.BaseExecutor)
 
   def __init__(self, name):
-    super(EmptyComponent, self).__init__(spec=EmptyComponentSpec())
+    super().__init__(spec=EmptyComponentSpec())
     self._id = name
 
 

@@ -14,7 +14,7 @@
 
 import json
 import os
-from typing import Any, Dict, List, Optional, Text
+from typing import Any, Dict, List, Optional
 
 import tensorflow as tf
 from tfx import types
@@ -49,9 +49,9 @@ class DummyArtifacts:
 class DummyExecutor(base_executor.BaseExecutor):
   """Dummy Executor that does nothing."""
 
-  def Do(self, input_dict: Dict[Text, List[types.Artifact]],
-         output_dict: Dict[Text, List[types.Artifact]],
-         exec_properties: Dict[Text, Any]
+  def Do(self, input_dict: Dict[str, List[types.Artifact]],
+         output_dict: Dict[str, List[types.Artifact]],
+         exec_properties: Dict[str, Any]
          ) -> Optional[execution_result_pb2.ExecutorOutput]:
     pass
 
