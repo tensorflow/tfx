@@ -7,6 +7,8 @@
 *  Transform component now computes pre-transform and post-transform statistics
    by default. This can be disabled by setting `disable_statistics=True` in the
    Transform component.
+*  BERT cola and mrpc examples now demonstrate how to calculate statistics for
+   NLP features.
 
 ## Breaking Changes
 
@@ -35,3 +37,6 @@
 ## Documentation Updates
 
 *   Update the Guide of TFX to adopt 1.0 API.
+*   TFT and TFDV component documentation now describes how to
+    configure pre-transform and post-transform statistics, which can be used for
+    validating text features.
