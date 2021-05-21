@@ -67,7 +67,7 @@ def compile_bert_classifier(
     loss: tf.keras.losses = tf.keras.losses.SparseCategoricalCrossentropy(
         from_logits=True),
     learning_rate: float = 2e-5,
-    metrics: List[Union[Text, tf.keras.metrics.Metric]] = None):
+    metrics: Optional[List[Union[Text, tf.keras.metrics.Metric]]] = None):
   """Compile the BERT classifier using suggested parameters.
 
   Args:
@@ -98,7 +98,7 @@ def build_and_compile_bert_classifier(
     max_len: int,
     num_classes: int,
     learning_rate: float = 5e-5,
-    metrics: List[Union[Text, tf.keras.metrics.Metric]] = None):
+    metrics: Optional[List[Union[Text, tf.keras.metrics.Metric]]] = None):
   """Build and compile keras BERT classification model.
 
   Apart from the necessary inputs, use default/suggested parameters in build

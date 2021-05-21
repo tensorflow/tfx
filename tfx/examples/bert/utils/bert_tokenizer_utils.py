@@ -18,6 +18,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import os
 from typing import Text
 
 import tensorflow as tf
@@ -38,26 +39,20 @@ class BertPreprocessor(object):
   def __init__(self, model_link: Text):
     self._model_link = model_link
     self._model = hub.KerasLayer(model_link)
-    self._find_special_tokens()
-
-  def _find_special_tokens(self):
-    """Find the special token ID's for [CLS] [PAD] [SEP].
-
-    Since each Bert model is trained on different vocabulary, it's important
-    to find the special token indices pertaining to that model.
-    Since in Transform, tensorflow_hub.KerasLayer loads a symbolic tensor, turn
-    on eager mode to get the actual vocab_file location.
-    """
-
     with eager_mode():
       model = hub.KerasLayer(self._model_link)
-      vocab = model.resolved_object.vocab_file.asset_path.numpy()
+      self._vocab_path = model.resolved_object.vocab_file.asset_path.numpy()
       self._do_lower_case = model.resolved_object.do_lower_case.numpy()
-      with tf.io.gfile.GFile(vocab, 'r') as f:
-        lines = f.read().split('\n')
-        self._sep_id = lines.index(_SEP)
-        self._cls_id = lines.index(_CLS)
-        self._pad_id = lines.index(_PAD)
+
+    with tf.io.gfile.GFile(self._vocab_path, 'r') as f:
+      lines = f.read().split('\n')
+      self._sep_id = lines.index(_SEP)
+      self._cls_id = lines.index(_CLS)
+      self._pad_id = lines.index(_PAD)
+
+  def get_vocab_name(self):
+    """Get the vocab name."""
+    return os.path.basename(self._vocab_path)
 
   def tokenize_single_sentence_unpad(self,
                                      sequence: tf.Tensor,

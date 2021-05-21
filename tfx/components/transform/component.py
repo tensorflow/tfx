@@ -40,6 +40,13 @@ class Transform(base_beam_component.BaseBeamComponent):
   splits of input examples, generate the `tf.Transform` output, and save both
   transform function and transformed examples to orchestrator desired locations.
 
+  The Transform component can also invoke TFDV to compute statistics on the
+  pre-transform and post-transform data. Invocations of TFDV take an optional
+  [StatsOptions](https://github.com/tensorflow/data-validation/blob/master/tensorflow_data_validation/statistics/stats_options.py)
+  object. To configure the StatsOptions object that is passed to TFDV for both
+  pre-transform and post-transform statistics, users
+  can define the optional `stats_options_updater_fn` within the module file.
+
   ## Providing a preprocessing function
   The TFX executor will use the estimator provided in the `module_file` file
   to train the model.  The Transform executor will look specifically for the
@@ -48,6 +55,14 @@ class Transform(base_beam_component.BaseBeamComponent):
   An example of `preprocessing_fn()` can be found in the [user-supplied
   code](https://github.com/tensorflow/tfx/blob/master/tfx/examples/chicago_taxi_pipeline/taxi_utils.py)
   of the TFX Chicago Taxi pipeline example.
+
+  ## Updating StatsOptions
+  The Transform executor will look specifically for the
+  `stats_options_updater_fn()` within the module file specified above.
+
+  An example of `stats_options_updater_fn()` can be found in the [user-supplied
+  code](https://github.com/tensorflow/tfx/blob/master/tfx/examples/bert/mrpc/bert_mrpc_utils.py)
+  of the TFX BERT MRPC pipeline example.
 
   ## Example
   ```
