@@ -19,16 +19,26 @@ from __future__ import division
 from __future__ import print_function
 
 from typing import List, Text
+
 import tensorflow as tf
+import tensorflow_data_validation as tfdv
 import tensorflow_hub as hub
 import tensorflow_transform as tft
-from tfx.components.trainer.fn_args_utils import DataAccessor
-from tfx.components.trainer.fn_args_utils import FnArgs
+
+from tfx import v1 as tfx
+from tfx.components.transform import stats_options_util
 from tfx.examples.bert.utils.bert_models import build_and_compile_bert_classifier
 from tfx.examples.bert.utils.bert_tokenizer_utils import BertPreprocessor
-from tfx_bsl.tfxio import dataset_options
 
 
+from tfx_bsl.public import tfxio
+
+from google.protobuf import text_format
+
+_BERT_VOCAB = 'bert_vocab'
+_INPUT_WORD_IDS = 'input_word_ids'
+_INPUT_MASK = 'input_mask'
+_SEGMENT_IDS = 'segment_ids'
 _TRAIN_BATCH_SIZE = 16
 _EVAL_BATCH_SIZE = 16
 _FEATURE_KEY = 'sentence'
@@ -41,6 +51,13 @@ _EPOCHS = 1
 def _tokenize(feature):
   """Tokenize the two sentences and insert appropriate tokens."""
   processor = BertPreprocessor(_BERT_LINK)
+  vocab = processor.get_vocab_name()
+  # Annotate asset provides the mapping between the name (_BERT_VOCAB) and the
+  # path within the StatsOptions object passed to TFDV (
+  # https://github.com/tensorflow/data-validation/blob/master/tensorflow_data_validation/statistics/stats_options.py).
+  # This vocab can then be used to compute NLP statistics (see the description
+  # of the stats_options_updater_fn below_.
+  tft.annotate_asset(_BERT_VOCAB, vocab.decode())
   return processor.tokenize_single_sentence_pad(
       tf.reshape(feature, [-1]), max_len=_MAX_LEN)
 
@@ -56,15 +73,90 @@ def preprocessing_fn(inputs):
   """
   input_word_ids, input_mask, segment_ids = _tokenize(inputs[_FEATURE_KEY])
   return {
-      'label': inputs[_LABEL_KEY],
-      'input_word_ids': input_word_ids,
-      'input_mask': input_mask,
-      'segment_ids': segment_ids
+      _LABEL_KEY: inputs[_LABEL_KEY],
+      _INPUT_WORD_IDS: input_word_ids,
+      _INPUT_MASK: input_mask,
+      _SEGMENT_IDS: segment_ids
   }
 
 
+def stats_options_updater_fn(
+    stats_type: stats_options_util.StatsType,
+    stats_options: tfdv.StatsOptions) -> tfdv.StatsOptions:
+  """Update transform stats.
+
+  This function is called by the Transform component before it computes
+  pre-transform or post-transform statistics. It takes as input a stats_type,
+  which indicates whether this call is intended for pre-transform or
+  post-transform statistics. It also takes as argument the StatsOptions that
+  are to be (optionally) modified before being passed onto TDFV.
+
+  Args:
+    stats_type: The type of statistics that are to be computed (pre-transform or
+      post-transform).
+    stats_options: The configuration to pass to TFDV for computing the desired
+      statistics.
+
+  Returns:
+    An updated StatsOptions object.
+  """
+  if stats_type == stats_options_util.StatsType.POST_TRANSFORM:
+    for f in stats_options.schema.feature:
+      if f.name == _INPUT_WORD_IDS:
+        # Here we extend the schema for the input_word_ids feature to enable
+        # NLP statistics to be computed. We pass the vocabulary (_BERT_VOCAB)
+        # that was used in tokenizing this feature, key tokens of interest
+        # (e.g. "[CLS]",  "[PAD]", "[SEP]", "[UNK]") and key thresholds to
+        # validate. For more information on the field descriptions, see here:
+        # https://github.com/tensorflow/metadata/blob/master/tensorflow_metadata/proto/v0/schema.proto
+        text_format.Parse(
+            """
+            vocabulary: "{vocab}"
+            coverage: {{
+              min_coverage: 1.0
+              min_avg_token_length: 3.0
+              excluded_string_tokens: ["[CLS]", "[PAD]", "[SEP]"]
+              oov_string_tokens: ["[UNK]"]
+             }}
+             token_constraints {{
+               string_value: "[CLS]"
+               min_per_sequence: 1
+               max_per_sequence: 1
+               min_fraction_of_sequences: 1
+               max_fraction_of_sequences: 1
+             }}
+             token_constraints {{
+               string_value: "[PAD]"
+               min_per_sequence: 0
+               max_per_sequence: {max_pad_per_seq}
+               min_fraction_of_sequences: 0
+               max_fraction_of_sequences: 1
+             }}
+             token_constraints {{
+               string_value: "[SEP]"
+               min_per_sequence: 1
+               max_per_sequence: 1
+               min_fraction_of_sequences: 1
+               max_fraction_of_sequences: 1
+             }}
+             token_constraints {{
+               string_value: "[UNK]"
+               min_per_sequence: 0
+               max_per_sequence: {max_unk_per_seq}
+               min_fraction_of_sequences: 0
+               max_fraction_of_sequences: 1
+             }}
+            """.format(
+                vocab=_BERT_VOCAB,
+                max_pad_per_seq=_MAX_LEN - 3,  # [CLS], [SEP], Token
+                max_unk_per_seq=_MAX_LEN - 2  # [CLS], [SEP]
+            ),
+            f.natural_language_domain)
+  return stats_options
+
+
 def _input_fn(file_pattern: List[Text],
-              data_accessor: DataAccessor,
+              data_accessor: tfx.components.DataAccessor,
               tf_transform_output: tft.TFTransformOutput,
               batch_size: int = 200) -> tf.data.Dataset:
   """Generates features and label for tuning/training.
@@ -83,7 +175,7 @@ def _input_fn(file_pattern: List[Text],
   """
   dataset = data_accessor.tf_dataset_factory(
       file_pattern,
-      dataset_options.TensorFlowDatasetOptions(
+      tfxio.TensorFlowDatasetOptions(
           batch_size=batch_size, label_key=_LABEL_KEY),
       tf_transform_output.transformed_metadata.schema)
   dataset = dataset.repeat()
@@ -110,7 +202,7 @@ def _get_serve_tf_examples_fn(model, tf_transform_output):
 
 
 # TFX Trainer will call this function.
-def run_fn(fn_args: FnArgs):
+def run_fn(fn_args: tfx.components.FnArgs):
   """Train the model based on given args.
 
   Args:

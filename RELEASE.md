@@ -23,6 +23,9 @@
 *  Transform component now computes pre-transform and post-transform statistics
    by default. This can be disabled by setting `disable_statistics=True` in the
    Transform component.
+*  BERT cola and mrpc examples now demonstrate how to calculate statistics for
+   NLP features.
+
 
 ## Breaking Changes
 
