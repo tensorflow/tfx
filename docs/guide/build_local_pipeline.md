@@ -205,9 +205,7 @@ without using a template.
     from typing import Optional, Text, List
     from absl import logging
     from ml_metadata.proto import metadata_store_pb2
-    from tfx.orchestration import metadata
-    from tfx.orchestration import pipeline
-    from tfx.orchestration.local.local_dag_runner import LocalDagRunner
+    import tfx.v1 as tfx
 
     PIPELINE_NAME = 'my_pipeline'
     PIPELINE_ROOT = os.path.join('.', 'my_pipeline_output')
@@ -223,7 +221,7 @@ without using a template.
     ):
       components = []
 
-      return pipeline.Pipeline(
+      return tfx.dsl.Pipeline(
             pipeline_name=pipeline_name,
             pipeline_root=pipeline_root,
             components=components,
@@ -237,10 +235,10 @@ without using a template.
           pipeline_name=PIPELINE_NAME,
           pipeline_root=PIPELINE_ROOT,
           enable_cache=ENABLE_CACHE,
-          metadata_connection_config=metadata.sqlite_metadata_connection_config(METADATA_PATH)
+          metadata_connection_config=tfx.orchestration.metadata.sqlite_metadata_connection_config(METADATA_PATH)
           )
 
-      LocalDagRunner().run(my_pipeline)
+      tfx.orchestration.LocalDagRunner().run(my_pipeline)
 
     if __name__ == '__main__':
       logging.set_verbosity(logging.INFO)
@@ -290,10 +288,10 @@ without using a template.
     ):
       components = []
 
-      example_gen = CsvExampleGen(input_base=data_path)
+      example_gen = tfx.components.CsvExampleGen(input_base=data_path)
       components.append(example_gen)
 
-      return pipeline.Pipeline(
+      return tfx.dsl.Pipeline(
             pipeline_name=pipeline_name,
             pipeline_root=pipeline_root,
             components=components,

@@ -189,18 +189,18 @@ class ComponentTest(tf.test.TestCase):
         bool(transform.spec.exec_properties[
             standard_component_specs.FORCE_TF_COMPAT_V1_KEY]))
 
-  def test_construct_with_stats_enabled(self):
+  def test_construct_with_stats_disabled(self):
     transform = component.Transform(
         examples=self.examples,
         schema=self.schema,
         preprocessing_fn='my_preprocessing_fn',
-        compute_statistics=True,
+        disable_statistics=True,
     )
     self._verify_outputs(transform)
     self.assertEqual(
         True,
         bool(transform.spec.exec_properties[
-            standard_component_specs.COMPUTE_STATISTICS_KEY]))
+            standard_component_specs.DISABLE_STATISTICS_KEY]))
 
 
 if __name__ == '__main__':

@@ -2,7 +2,11 @@
 
 ## Major Features and Improvements
 
-*   Added tfx.v1 Public APIs
+*  Added tfx.v1 Public APIs, please refer to
+   [API doc](https://www.tensorflow.org/tfx/api_docs/python/tfx/v1) for details.
+*  Transform component now computes pre-transform and post-transform statistics
+   by default. This can be disabled by setting `disable_statistics=True` in the
+   Transform component.
 
 ## Breaking Changes
 
@@ -30,4 +34,4 @@
 
 ## Documentation Updates
 
-*   N/A
+*   Update the Guide of TFX to adopt 1.0 API.

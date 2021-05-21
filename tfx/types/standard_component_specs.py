@@ -97,7 +97,7 @@ SPLITS_CONFIG_KEY = 'splits_config'
 ANALYZER_CACHE_KEY = 'analyzer_cache'
 TRANSFORMED_EXAMPLES_KEY = 'transformed_examples'
 UPDATED_ANALYZER_CACHE_KEY = 'updated_analyzer_cache'
-COMPUTE_STATISTICS_KEY = 'compute_statistics'
+DISABLE_STATISTICS_KEY = 'disable_statistics'
 
 
 class BulkInferrerSpec(ComponentSpec):
@@ -399,7 +399,7 @@ class TransformSpec(ComponentSpec):
           ExecutionParameter(type=str, optional=True),
       SPLITS_CONFIG_KEY:
           ExecutionParameter(type=transform_pb2.SplitsConfig, optional=True),
-      COMPUTE_STATISTICS_KEY:
+      DISABLE_STATISTICS_KEY:
           ExecutionParameter(type=int, optional=True),
   }
   INPUTS = {
