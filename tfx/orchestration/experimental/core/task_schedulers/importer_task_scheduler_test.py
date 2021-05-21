@@ -26,10 +26,9 @@ from tfx.orchestration.experimental.core.task_schedulers import importer_task_sc
 from tfx.orchestration.portable import runtime_parameter_utils
 from tfx.proto.orchestration import pipeline_pb2
 from tfx.utils import status as status_lib
-from tfx.utils import test_case_utils
 
 
-class ImporterTaskSchedulerTest(test_case_utils.TfxTest):
+class ImporterTaskSchedulerTest(test_utils.TfxTest):
 
   def setUp(self):
     super().setUp()
@@ -90,7 +89,6 @@ class ImporterTaskSchedulerTest(test_case_utils.TfxTest):
       self.assertProtoPartiallyEquals(
           """
           id: 1
-          type_id: 8
           uri: "my_url"
           custom_properties {
             key: "int_custom_property"
@@ -107,7 +105,9 @@ class ImporterTaskSchedulerTest(test_case_utils.TfxTest):
           state: LIVE""",
           artifact,
           ignored_fields=[
-              'create_time_since_epoch', 'last_update_time_since_epoch'
+              'type_id',
+              'create_time_since_epoch',
+              'last_update_time_since_epoch',
           ])
 
       [execution
@@ -115,7 +115,6 @@ class ImporterTaskSchedulerTest(test_case_utils.TfxTest):
       self.assertProtoPartiallyEquals(
           """
           id: 1
-          type_id: 6
           last_known_state: COMPLETE
           custom_properties {
             key: "artifact_uri"
@@ -132,7 +131,9 @@ class ImporterTaskSchedulerTest(test_case_utils.TfxTest):
           """,
           execution,
           ignored_fields=[
-              'create_time_since_epoch', 'last_update_time_since_epoch'
+              'type_id',
+              'create_time_since_epoch',
+              'last_update_time_since_epoch',
           ])
 
 

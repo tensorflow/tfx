@@ -160,7 +160,7 @@ def run_generator_and_test(test_case,
     test_case.assertLen(
         executions, num_initial_executions,
         f'Expected {num_initial_executions} execution(s) in MLMD.')
-    pipeline_state = pstate.PipelineState.new(m, pipeline)
+    pipeline_state = pstate.PipelineState(m, pipeline, 0)
     generator_params = dict(
         mlmd_handle=m,
         pipeline_state=pipeline_state,

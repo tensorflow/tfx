@@ -19,10 +19,10 @@ import tensorflow as tf
 from tfx.orchestration import metadata
 from tfx.orchestration.experimental.core import pipeline_state as pstate
 from tfx.orchestration.experimental.core import task as task_lib
+from tfx.orchestration.experimental.core import test_utils
 from tfx.orchestration.portable import runtime_parameter_utils
 from tfx.proto.orchestration import pipeline_pb2
 from tfx.utils import status as status_lib
-from tfx.utils import test_case_utils as tu
 
 from ml_metadata.proto import metadata_store_pb2
 
@@ -37,7 +37,7 @@ def _test_pipeline(pipeline_id,
   return pipeline
 
 
-class PipelineStateTest(tu.TfxTest):
+class PipelineStateTest(test_utils.TfxTest):
 
   def setUp(self):
     super(PipelineStateTest, self).setUp()
@@ -58,26 +58,20 @@ class PipelineStateTest(tu.TfxTest):
   def test_new_pipeline_state(self):
     with self._mlmd_connection as m:
       pipeline = _test_pipeline('pipeline1')
-      with pstate.PipelineState.new(m, pipeline) as pipeline_state:
-        pass
+      pipeline_state = pstate.PipelineState.new(m, pipeline)
 
       mlmd_contexts = pstate.get_orchestrator_contexts(m)
       self.assertLen(mlmd_contexts, 1)
-      self.assertProtoPartiallyEquals(
-          mlmd_contexts[0],
-          pipeline_state.context,
-          ignored_fields=[
-              'create_time_since_epoch', 'last_update_time_since_epoch'
-          ])
 
       mlmd_executions = m.store.get_executions_by_context(mlmd_contexts[0].id)
       self.assertLen(mlmd_executions, 1)
-      self.assertProtoPartiallyEquals(
-          mlmd_executions[0],
-          pipeline_state.execution,
-          ignored_fields=[
-              'create_time_since_epoch', 'last_update_time_since_epoch'
-          ])
+      with pipeline_state:
+        self.assertProtoPartiallyEquals(
+            mlmd_executions[0],
+            pipeline_state.execution,
+            ignored_fields=[
+                'create_time_since_epoch', 'last_update_time_since_epoch'
+            ])
 
       self.assertEqual(pipeline, pipeline_state.pipeline)
       self.assertEqual(
@@ -87,20 +81,17 @@ class PipelineStateTest(tu.TfxTest):
   def test_load_pipeline_state(self):
     with self._mlmd_connection as m:
       pipeline = _test_pipeline('pipeline1')
-      with pstate.PipelineState.new(m, pipeline):
-        pass
-
-      pipeline_state = pstate.PipelineState.load(
-          m, task_lib.PipelineUid.from_pipeline(pipeline))
+      pstate.PipelineState.new(m, pipeline)
 
       mlmd_contexts = pstate.get_orchestrator_contexts(m)
       self.assertLen(mlmd_contexts, 1)
-      self.assertProtoPartiallyEquals(mlmd_contexts[0], pipeline_state.context)
 
       mlmd_executions = m.store.get_executions_by_context(mlmd_contexts[0].id)
       self.assertLen(mlmd_executions, 1)
-      self.assertProtoPartiallyEquals(mlmd_executions[0],
-                                      pipeline_state.execution)
+      with pstate.PipelineState.load(
+          m, task_lib.PipelineUid.from_pipeline(pipeline)) as pipeline_state:
+        self.assertProtoPartiallyEquals(mlmd_executions[0],
+                                        pipeline_state.execution)
 
       self.assertEqual(pipeline, pipeline_state.pipeline)
       self.assertEqual(
@@ -110,22 +101,20 @@ class PipelineStateTest(tu.TfxTest):
   def test_load_from_orchestrator_context(self):
     with self._mlmd_connection as m:
       pipeline = _test_pipeline('pipeline1')
-      with pstate.PipelineState.new(m, pipeline):
-        pass
+      pstate.PipelineState.new(m, pipeline)
 
       mlmd_contexts = pstate.get_orchestrator_contexts(m)
       self.assertLen(mlmd_contexts, 1)
-      pipeline_state = pstate.PipelineState.load_from_orchestrator_context(
-          m, mlmd_contexts[0])
 
       mlmd_contexts = pstate.get_orchestrator_contexts(m)
       self.assertLen(mlmd_contexts, 1)
-      self.assertProtoPartiallyEquals(mlmd_contexts[0], pipeline_state.context)
 
       mlmd_executions = m.store.get_executions_by_context(mlmd_contexts[0].id)
       self.assertLen(mlmd_executions, 1)
-      self.assertProtoPartiallyEquals(mlmd_executions[0],
-                                      pipeline_state.execution)
+      with pstate.PipelineState.load_from_orchestrator_context(
+          m, mlmd_contexts[0]) as pipeline_state:
+        self.assertProtoPartiallyEquals(mlmd_executions[0],
+                                        pipeline_state.execution)
 
       self.assertEqual(pipeline, pipeline_state.pipeline)
       self.assertEqual(
@@ -135,12 +124,10 @@ class PipelineStateTest(tu.TfxTest):
   def test_new_pipeline_state_when_pipeline_already_exists(self):
     with self._mlmd_connection as m:
       pipeline = _test_pipeline('pipeline1')
-      with pstate.PipelineState.new(m, pipeline):
-        pass
+      pstate.PipelineState.new(m, pipeline)
 
       with self.assertRaises(status_lib.StatusNotOkError) as exception_context:
-        with pstate.PipelineState.new(m, pipeline):
-          pass
+        pstate.PipelineState.new(m, pipeline)
       self.assertEqual(status_lib.Code.ALREADY_EXISTS,
                        exception_context.exception.code)
 
@@ -151,22 +138,19 @@ class PipelineStateTest(tu.TfxTest):
 
       # No such pipeline so NOT_FOUND error should be raised.
       with self.assertRaises(status_lib.StatusNotOkError) as exception_context:
-        with pstate.PipelineState.load(m, pipeline_uid):
-          pass
+        pstate.PipelineState.load(m, pipeline_uid)
       self.assertEqual(status_lib.Code.NOT_FOUND,
                        exception_context.exception.code)
 
-      with pstate.PipelineState.new(m, pipeline) as pipeline_state:
-        pass
+      pipeline_state = pstate.PipelineState.new(m, pipeline)
 
       # No error as there's an active pipeline.
-      with pstate.PipelineState.load(m, pipeline_uid):
-        pass
+      pstate.PipelineState.load(m, pipeline_uid)
 
       # Inactivate the pipeline.
-      execution = pipeline_state.execution
-      execution.last_known_state = metadata_store_pb2.Execution.COMPLETE
-      m.store.put_executions([execution])
+      with pipeline_state:
+        execution = pipeline_state.execution
+        execution.last_known_state = metadata_store_pb2.Execution.COMPLETE
 
       # No active pipeline so NOT_FOUND error should be raised.
       with self.assertRaises(status_lib.StatusNotOkError) as exception_context:
@@ -256,18 +240,15 @@ class PipelineStateTest(tu.TfxTest):
     with self._mlmd_connection as m:
       pipeline = _test_pipeline('pipeline1')
       with pstate.PipelineState.new(m, pipeline) as pipeline_state:
-        execution = pipeline_state.execution
-        execution.last_known_state = metadata_store_pb2.Execution.COMPLETE
-        m.store.put_executions([execution])
+        pipeline_state.execution.last_known_state = (
+            metadata_store_pb2.Execution.COMPLETE)
 
       views = pstate.PipelineView.load_all(
           m, task_lib.PipelineUid.from_pipeline(pipeline))
       self.assertLen(views, 1)
       self.assertProtoEquals(pipeline, views[0].pipeline)
 
-      with pstate.PipelineState.new(m, pipeline) as pipeline_state:
-        execution = pipeline_state.execution
-
+      pstate.PipelineState.new(m, pipeline)
       views = pstate.PipelineView.load_all(
           m, task_lib.PipelineUid.from_pipeline(pipeline))
       self.assertLen(views, 2)
@@ -290,9 +271,8 @@ class PipelineStateTest(tu.TfxTest):
     with self._mlmd_connection as m:
       pipeline = _create_sync_pipeline('pipeline', '001')
       with pstate.PipelineState.new(m, pipeline) as pipeline_state:
-        execution = pipeline_state.execution
-        execution.last_known_state = metadata_store_pb2.Execution.COMPLETE
-        m.store.put_executions([execution])
+        pipeline_state.execution.last_known_state = (
+            metadata_store_pb2.Execution.COMPLETE)
 
       views = pstate.PipelineView.load_all(
           m, task_lib.PipelineUid.from_pipeline(pipeline))
@@ -301,8 +281,7 @@ class PipelineStateTest(tu.TfxTest):
       self.assertProtoEquals(pipeline, views[0].pipeline)
 
       pipeline2 = _create_sync_pipeline('pipeline', '002')
-      with pstate.PipelineState.new(m, pipeline2) as pipeline_state:
-        execution = pipeline_state.execution
+      pstate.PipelineState.new(m, pipeline2)
 
       views = pstate.PipelineView.load_all(
           m, task_lib.PipelineUid.from_pipeline(pipeline))

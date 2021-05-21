@@ -34,7 +34,6 @@ from tfx.orchestration.experimental.core import test_utils
 from tfx.orchestration.portable.mlmd import execution_lib
 from tfx.proto.orchestration import pipeline_pb2
 from tfx.utils import status as status_lib
-from tfx.utils import test_case_utils as tu
 
 from ml_metadata.proto import metadata_store_pb2
 
@@ -50,7 +49,7 @@ def _test_pipeline(pipeline_id,
   return pipeline
 
 
-class PipelineOpsTest(tu.TfxTest, parameterized.TestCase):
+class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
 
   def setUp(self):
     super(PipelineOpsTest, self).setUp()
@@ -76,18 +75,19 @@ class PipelineOpsTest(tu.TfxTest, parameterized.TestCase):
   def test_initiate_pipeline_start(self, pipeline):
     with self._mlmd_connection as m:
       # Initiate a pipeline start.
-      pipeline_state1 = pipeline_ops.initiate_pipeline_start(m, pipeline)
-      self.assertProtoPartiallyEquals(
-          pipeline, pipeline_state1.pipeline, ignored_fields=['runtime_spec'])
-      self.assertEqual(metadata_store_pb2.Execution.NEW,
-                       pipeline_state1.execution.last_known_state)
+      with pipeline_ops.initiate_pipeline_start(m, pipeline) as pipeline_state1:
+        self.assertProtoPartiallyEquals(
+            pipeline, pipeline_state1.pipeline, ignored_fields=['runtime_spec'])
+        self.assertEqual(metadata_store_pb2.Execution.NEW,
+                         pipeline_state1.execution.last_known_state)
 
       # Initiate another pipeline start.
       pipeline2 = _test_pipeline('pipeline2')
-      pipeline_state2 = pipeline_ops.initiate_pipeline_start(m, pipeline2)
-      self.assertEqual(pipeline2, pipeline_state2.pipeline)
-      self.assertEqual(metadata_store_pb2.Execution.NEW,
-                       pipeline_state2.execution.last_known_state)
+      with pipeline_ops.initiate_pipeline_start(m,
+                                                pipeline2) as pipeline_state2:
+        self.assertEqual(pipeline2, pipeline_state2.pipeline)
+        self.assertEqual(metadata_store_pb2.Execution.NEW,
+                         pipeline_state2.execution.last_known_state)
 
       # Error if attempted to initiate when old one is active.
       with self.assertRaises(status_lib.StatusNotOkError) as exception_context:
@@ -96,12 +96,12 @@ class PipelineOpsTest(tu.TfxTest, parameterized.TestCase):
                        exception_context.exception.code)
 
       # Fine to initiate after the previous one is inactive.
-      execution = pipeline_state1.execution
-      execution.last_known_state = metadata_store_pb2.Execution.COMPLETE
-      m.store.put_executions([execution])
-      pipeline_state3 = pipeline_ops.initiate_pipeline_start(m, pipeline)
-      self.assertEqual(metadata_store_pb2.Execution.NEW,
-                       pipeline_state3.execution.last_known_state)
+      with pipeline_state1:
+        execution = pipeline_state1.execution
+        execution.last_known_state = metadata_store_pb2.Execution.COMPLETE
+      with pipeline_ops.initiate_pipeline_start(m, pipeline) as pipeline_state3:
+        self.assertEqual(metadata_store_pb2.Execution.NEW,
+                         pipeline_state3.execution.last_known_state)
 
   @parameterized.named_parameters(
       dict(testcase_name='async', pipeline=_test_pipeline('pipeline1')),
@@ -118,12 +118,12 @@ class PipelineOpsTest(tu.TfxTest, parameterized.TestCase):
                        exception_context.exception.code)
 
       # Initiate pipeline start and mark it completed.
-      execution = pipeline_ops.initiate_pipeline_start(m, pipeline).execution
+      pipeline_ops.initiate_pipeline_start(m, pipeline)
       pipeline_uid = task_lib.PipelineUid.from_pipeline(pipeline)
       with pstate.PipelineState.load(m, pipeline_uid) as pipeline_state:
         pipeline_state.initiate_stop(status_lib.Status(code=status_lib.Code.OK))
-      execution.last_known_state = metadata_store_pb2.Execution.COMPLETE
-      m.store.put_executions([execution])
+        pipeline_state.execution.last_known_state = (
+            metadata_store_pb2.Execution.COMPLETE)
 
       # Try to initiate stop again.
       with self.assertRaises(status_lib.StatusNotOkError) as exception_context:
@@ -138,16 +138,16 @@ class PipelineOpsTest(tu.TfxTest, parameterized.TestCase):
           pipeline=_test_pipeline('pipeline1', pipeline_pb2.Pipeline.SYNC)))
   def test_stop_pipeline_wait_for_inactivation(self, pipeline):
     with self._mlmd_connection as m:
-      execution = pipeline_ops.initiate_pipeline_start(m, pipeline).execution
+      pipeline_state = pipeline_ops.initiate_pipeline_start(m, pipeline)
 
-      def _inactivate(execution):
+      def _inactivate(pipeline_state):
         time.sleep(2.0)
         with pipeline_ops._PIPELINE_OPS_LOCK:
-          execution.last_known_state = metadata_store_pb2.Execution.COMPLETE
-          m.store.put_executions([execution])
+          with pipeline_state:
+            execution = pipeline_state.execution
+            execution.last_known_state = metadata_store_pb2.Execution.COMPLETE
 
-      thread = threading.Thread(
-          target=_inactivate, args=(copy.deepcopy(execution),))
+      thread = threading.Thread(target=_inactivate, args=(pipeline_state,))
       thread.start()
 
       pipeline_ops.stop_pipeline(
@@ -182,18 +182,21 @@ class PipelineOpsTest(tu.TfxTest, parameterized.TestCase):
     pipeline_uid = task_lib.PipelineUid.from_pipeline(pipeline)
     node_uid = task_lib.NodeUid(node_id='my_trainer', pipeline_uid=pipeline_uid)
     with self._mlmd_connection as m:
-      pstate.PipelineState.new(m, pipeline).commit()
+      pstate.PipelineState.new(m, pipeline)
       pipeline_ops.stop_node(m, node_uid)
       pipeline_state = pstate.PipelineState.load(m, pipeline_uid)
 
       # The node should be stop-initiated even when node is inactive to prevent
       # future triggers.
-      self.assertEqual(status_lib.Code.CANCELLED,
-                       pipeline_state.node_stop_initiated_reason(node_uid).code)
+      with pipeline_state:
+        self.assertEqual(
+            status_lib.Code.CANCELLED,
+            pipeline_state.node_stop_initiated_reason(node_uid).code)
 
       # Restart node.
       pipeline_state = pipeline_ops.initiate_node_start(m, node_uid)
-      self.assertIsNone(pipeline_state.node_stop_initiated_reason(node_uid))
+      with pipeline_state:
+        self.assertIsNone(pipeline_state.node_stop_initiated_reason(node_uid))
 
   def test_stop_node_wait_for_inactivation(self):
     pipeline = pipeline_pb2.Pipeline()
@@ -207,7 +210,7 @@ class PipelineOpsTest(tu.TfxTest, parameterized.TestCase):
     pipeline_uid = task_lib.PipelineUid.from_pipeline(pipeline)
     node_uid = task_lib.NodeUid(node_id='my_trainer', pipeline_uid=pipeline_uid)
     with self._mlmd_connection as m:
-      pstate.PipelineState.new(m, pipeline).commit()
+      pstate.PipelineState.new(m, pipeline)
 
       def _inactivate(execution):
         time.sleep(2.0)
@@ -222,13 +225,14 @@ class PipelineOpsTest(tu.TfxTest, parameterized.TestCase):
       pipeline_ops.stop_node(m, node_uid, timeout_secs=5.0)
       thread.join()
 
-      pipeline_state = pstate.PipelineState.load(m, pipeline_uid)
-      self.assertEqual(status_lib.Code.CANCELLED,
-                       pipeline_state.node_stop_initiated_reason(node_uid).code)
+      with pstate.PipelineState.load(m, pipeline_uid) as pipeline_state:
+        self.assertEqual(
+            status_lib.Code.CANCELLED,
+            pipeline_state.node_stop_initiated_reason(node_uid).code)
 
       # Restart node.
-      pipeline_state = pipeline_ops.initiate_node_start(m, node_uid)
-      self.assertIsNone(pipeline_state.node_stop_initiated_reason(node_uid))
+      with pipeline_ops.initiate_node_start(m, node_uid) as pipeline_state:
+        self.assertIsNone(pipeline_state.node_stop_initiated_reason(node_uid))
 
   def test_stop_node_wait_for_inactivation_timeout(self):
     pipeline = pipeline_pb2.Pipeline()
@@ -242,7 +246,7 @@ class PipelineOpsTest(tu.TfxTest, parameterized.TestCase):
     pipeline_uid = task_lib.PipelineUid.from_pipeline(pipeline)
     node_uid = task_lib.NodeUid(node_id='my_trainer', pipeline_uid=pipeline_uid)
     with self._mlmd_connection as m:
-      pstate.PipelineState.new(m, pipeline).commit()
+      pstate.PipelineState.new(m, pipeline)
       with self.assertRaisesRegex(
           status_lib.StatusNotOkError,
           'Timed out.*waiting for execution inactivation.'
@@ -253,9 +257,10 @@ class PipelineOpsTest(tu.TfxTest, parameterized.TestCase):
 
       # Even if `wait_for_inactivation` times out, the node should be stop
       # initiated to prevent future triggers.
-      pipeline_state = pstate.PipelineState.load(m, pipeline_uid)
-      self.assertEqual(status_lib.Code.CANCELLED,
-                       pipeline_state.node_stop_initiated_reason(node_uid).code)
+      with pstate.PipelineState.load(m, pipeline_uid) as pipeline_state:
+        self.assertEqual(
+            status_lib.Code.CANCELLED,
+            pipeline_state.node_stop_initiated_reason(node_uid).code)
 
   @mock.patch.object(sync_pipeline_task_gen, 'SyncPipelineTaskGenerator')
   @mock.patch.object(async_pipeline_task_gen, 'AsyncPipelineTaskGenerator')
@@ -367,7 +372,7 @@ class PipelineOpsTest(tu.TfxTest, parameterized.TestCase):
           m, task_lib.PipelineUid.from_pipeline(pipeline)) as pipeline_state:
         pipeline_state.initiate_stop(
             status_lib.Status(code=status_lib.Code.CANCELLED))
-      pipeline_execution = pipeline_state.execution
+        pipeline_execution_id = pipeline_state.execution.id
 
       task_queue = tq.TaskQueue()
 
@@ -435,14 +440,14 @@ class PipelineOpsTest(tu.TfxTest, parameterized.TestCase):
 
       # Pipeline execution should continue to be active since active node
       # executions were found in the last call to `orchestrate`.
-      [execution] = m.store.get_executions_by_id([pipeline_execution.id])
+      [execution] = m.store.get_executions_by_id([pipeline_execution_id])
       self.assertTrue(execution_lib.is_execution_active(execution))
 
       # Call `orchestrate` again; this time there are no more active node
       # executions so the pipeline should be marked as cancelled.
       pipeline_ops.orchestrate(m, task_queue, mock_service_job_manager)
       self.assertTrue(task_queue.is_empty())
-      [execution] = m.store.get_executions_by_id([pipeline_execution.id])
+      [execution] = m.store.get_executions_by_id([pipeline_execution_id])
       self.assertEqual(metadata_store_pb2.Execution.CANCELED,
                        execution.last_known_state)
 
@@ -607,34 +612,6 @@ class PipelineOpsTest(tu.TfxTest, parameterized.TestCase):
             finalize_reason,
             pipeline_state.node_stop_initiated_reason(
                 task_lib.NodeUid(pipeline_uid=pipeline_uid, node_id='Trainer')))
-
-  def test_save_and_remove_pipeline_property(self):
-    with self._mlmd_connection as m:
-      pipeline1 = _test_pipeline('pipeline1')
-      pipeline_state1 = pipeline_ops.initiate_pipeline_start(m, pipeline1)
-      property_key = 'test_key'
-      property_value = 'bala'
-      self.assertIsNone(
-          pipeline_state1.execution.custom_properties.get(property_key))
-      pipeline_ops.save_pipeline_property(pipeline_state1.mlmd_handle,
-                                          pipeline_state1.pipeline_uid,
-                                          property_key, property_value)
-
-      with pstate.PipelineState.load(
-          m, pipeline_state1.pipeline_uid) as pipeline_state2:
-        self.assertIsNotNone(
-            pipeline_state2.execution.custom_properties.get(property_key))
-        self.assertEqual(
-            pipeline_state2.execution.custom_properties[property_key]
-            .string_value, property_value)
-
-      pipeline_ops.remove_pipeline_property(pipeline_state2.mlmd_handle,
-                                            pipeline_state2.pipeline_uid,
-                                            property_key)
-      with pstate.PipelineState.load(
-          m, pipeline_state2.pipeline_uid) as pipeline_state3:
-        self.assertIsNone(
-            pipeline_state3.execution.custom_properties.get(property_key))
 
   def test_to_status_not_ok_error_decorator(self):
 

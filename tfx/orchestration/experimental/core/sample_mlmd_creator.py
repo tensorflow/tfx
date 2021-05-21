@@ -91,9 +91,9 @@ def create_sample_pipeline(m: metadata.Metadata,
     pipeline_state = pipeline_ops.initiate_pipeline_start(m, pipeline)
     _execute_nodes(m, pipeline, i)
     if i < run_num - 1:
-      execution = pipeline_state.execution
-      execution.last_known_state = metadata_store_pb2.Execution.COMPLETE
-      m.store.put_executions([execution])
+      with pipeline_state:
+        pipeline_state.execution.last_known_state = (
+            metadata_store_pb2.Execution.COMPLETE)
 
 
 def main(argv):

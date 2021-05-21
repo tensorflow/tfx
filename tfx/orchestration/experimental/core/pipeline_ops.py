@@ -69,48 +69,6 @@ def _to_status_not_ok_error(fn):
   return _wrapper
 
 
-@_pipeline_ops_lock
-def save_pipeline_property(mlmd_handle: metadata.Metadata,
-                           pipeline_uid: task_lib.PipelineUid,
-                           property_key: str,
-                           property_value: str) -> pstate.PipelineState:
-  """Saves a property to the pipeline execution.
-
-  Args:
-    mlmd_handle: A handle to the MLMD db.
-    pipeline_uid: Uid of the pipeline to be updated.
-    property_key: Key of the property to be saved.
-    property_value: Value of the property to be saved.
-
-  Returns:
-    The `PipelineState` object upon success.
-  """
-  with pstate.PipelineState.load(mlmd_handle,
-                                 pipeline_uid) as loaded_pipeline_state:
-    loaded_pipeline_state.save_property(property_key, property_value)
-  return loaded_pipeline_state
-
-
-@_pipeline_ops_lock
-def remove_pipeline_property(mlmd_handle: metadata.Metadata,
-                             pipeline_uid: task_lib.PipelineUid,
-                             property_key: str) -> pstate.PipelineState:
-  """Removes a property from the pipeline execution.
-
-  Args:
-    mlmd_handle: A handle to the MLMD db.
-    pipeline_uid: Uid of the pipeline to be updated.
-    property_key: Key of the property to be removed.
-
-  Returns:
-    The `PipelineState` object upon success.
-  """
-  with pstate.PipelineState.load(mlmd_handle,
-                                 pipeline_uid) as loaded_pipeline_state:
-    loaded_pipeline_state.remove_property(property_key)
-  return loaded_pipeline_state
-
-
 @_to_status_not_ok_error
 @_pipeline_ops_lock
 def initiate_pipeline_start(
@@ -140,9 +98,7 @@ def initiate_pipeline_start(
         code=status_lib.Code.INVALID_ARGUMENT,
         message='Sync pipeline IR must specify pipeline_run_id.')
 
-  with pstate.PipelineState.new(mlmd_handle, pipeline) as pipeline_state:
-    pass
-  return pipeline_state
+  return pstate.PipelineState.new(mlmd_handle, pipeline)
 
 
 DEFAULT_WAIT_FOR_INACTIVATION_TIMEOUT_SECS = 120.0
@@ -173,7 +129,7 @@ def stop_pipeline(
               code=status_lib.Code.CANCELLED,
               message='Cancellation requested by client.'))
   _wait_for_inactivation(
-      mlmd_handle, pipeline_state.execution, timeout_secs=timeout_secs)
+      mlmd_handle, pipeline_state.execution_id, timeout_secs=timeout_secs)
 
 
 @_to_status_not_ok_error
@@ -247,19 +203,19 @@ def stop_node(
           message=(
               f'Unexpected multiple active executions for node: {node_uid}'))
   _wait_for_inactivation(
-      mlmd_handle, active_executions[0], timeout_secs=timeout_secs)
+      mlmd_handle, active_executions[0].id, timeout_secs=timeout_secs)
 
 
 @_to_status_not_ok_error
 def _wait_for_inactivation(
     mlmd_handle: metadata.Metadata,
-    execution: metadata_store_pb2.Execution,
+    execution_id: metadata_store_pb2.Execution,
     timeout_secs: float = DEFAULT_WAIT_FOR_INACTIVATION_TIMEOUT_SECS) -> None:
   """Waits for the given execution to become inactive.
 
   Args:
     mlmd_handle: A handle to the MLMD db.
-    execution: Execution whose inactivation is waited.
+    execution_id: Id of the execution whose inactivation is awaited.
     timeout_secs: Amount of time in seconds to wait.
 
   Raises:
@@ -269,7 +225,7 @@ def _wait_for_inactivation(
   polling_interval_secs = min(10.0, timeout_secs / 4)
   end_time = time.time() + timeout_secs
   while end_time - time.time() > 0:
-    updated_executions = mlmd_handle.store.get_executions_by_id([execution.id])
+    updated_executions = mlmd_handle.store.get_executions_by_id([execution_id])
     if not execution_lib.is_execution_active(updated_executions[0]):
       return
     time.sleep(max(0, min(polling_interval_secs, end_time - time.time())))
@@ -305,15 +261,16 @@ def orchestrate(mlmd_handle: metadata.Metadata, task_queue: tq.TaskQueue,
   active_pipeline_states = []
   stop_initiated_pipeline_states = []
   for pipeline_state in pipeline_states:
-    if pipeline_state.stop_initiated_reason() is not None:
-      stop_initiated_pipeline_states.append(pipeline_state)
-    elif execution_lib.is_execution_active(pipeline_state.execution):
-      active_pipeline_states.append(pipeline_state)
-    else:
-      raise status_lib.StatusNotOkError(
-          code=status_lib.Code.INTERNAL,
-          message=(f'Found pipeline (uid: {pipeline_state.pipeline_uid}) which '
-                   f'is neither active nor stop-initiated.'))
+    with pipeline_state:
+      if pipeline_state.stop_initiated_reason() is not None:
+        stop_initiated_pipeline_states.append(pipeline_state)
+      elif execution_lib.is_execution_active(pipeline_state.execution):
+        active_pipeline_states.append(pipeline_state)
+      else:
+        raise status_lib.StatusNotOkError(
+            code=status_lib.Code.INTERNAL,
+            message=(f'Found pipeline (uid: {pipeline_state.pipeline_uid}) '
+                     f'which is neither active nor stop-initiated.'))
 
   for pipeline_state in stop_initiated_pipeline_states:
     logging.info('Orchestrating stop-initiated pipeline: %s',
@@ -352,7 +309,8 @@ def _orchestrate_stop_initiated_pipeline(
     service_job_manager: service_jobs.ServiceJobManager,
     pipeline_state: pstate.PipelineState) -> None:
   """Orchestrates stop initiated pipeline."""
-  stop_reason = pipeline_state.stop_initiated_reason()
+  with pipeline_state:
+    stop_reason = pipeline_state.stop_initiated_reason()
   assert stop_reason is not None
   pipeline = pipeline_state.pipeline
   has_active_executions = False
@@ -365,8 +323,7 @@ def _orchestrate_stop_initiated_pipeline(
       has_active_executions = True
     elif service_job_manager.is_mixed_service_node(pipeline_state,
                                                    node.node_info.id):
-      service_job_manager.stop_node_services(pipeline_state,
-                                             node.node_info.id)
+      service_job_manager.stop_node_services(pipeline_state, node.node_info.id)
   if not has_active_executions:
     with pipeline_state:
       # Update pipeline execution state in MLMD.
@@ -379,12 +336,12 @@ def _orchestrate_active_pipeline(
     pipeline_state: pstate.PipelineState) -> None:
   """Orchestrates active pipeline."""
   pipeline = pipeline_state.pipeline
-  execution = pipeline_state.execution
-  assert execution.last_known_state in (metadata_store_pb2.Execution.NEW,
-                                        metadata_store_pb2.Execution.RUNNING)
-  if execution.last_known_state != metadata_store_pb2.Execution.RUNNING:
-    execution.last_known_state = metadata_store_pb2.Execution.RUNNING
-    mlmd_handle.store.put_executions([execution])
+  with pipeline_state:
+    execution = pipeline_state.execution
+    assert execution.last_known_state in (metadata_store_pb2.Execution.NEW,
+                                          metadata_store_pb2.Execution.RUNNING)
+    if execution.last_known_state != metadata_store_pb2.Execution.RUNNING:
+      execution.last_known_state = metadata_store_pb2.Execution.RUNNING
 
   # Initialize task generator for the pipeline.
   if pipeline.execution_mode == pipeline_pb2.Pipeline.SYNC:
@@ -446,11 +403,12 @@ def _get_stop_initiated_nodes(
   """Returns list of all stop initiated nodes."""
   nodes = pstate.get_all_pipeline_nodes(pipeline_state.pipeline)
   result = []
-  for node in nodes:
-    node_uid = task_lib.NodeUid.from_pipeline_node(pipeline_state.pipeline,
-                                                   node)
-    if pipeline_state.node_stop_initiated_reason(node_uid) is not None:
-      result.append(node)
+  with pipeline_state:
+    for node in nodes:
+      node_uid = task_lib.NodeUid.from_pipeline_node(pipeline_state.pipeline,
+                                                     node)
+      if pipeline_state.node_stop_initiated_reason(node_uid) is not None:
+        result.append(node)
   return result
 
 

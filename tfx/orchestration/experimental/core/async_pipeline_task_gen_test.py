@@ -132,7 +132,7 @@ class AsyncPipelineTaskGeneratorTest(tu.TfxTest, parameterized.TestCase):
         v.min_count = min_count
 
     with self._mlmd_connection as m:
-      pipeline_state = pstate.PipelineState.new(m, self._pipeline)
+      pipeline_state = pstate.PipelineState(m, self._pipeline, 0)
       task_gen = asptg.AsyncPipelineTaskGenerator(
           m,
           pipeline_state,
