@@ -54,6 +54,9 @@
 ## Documentation Updates
 
 *  Update the Guide of TFX to adopt 1.0 API.
+*  TFT and TFDV component documentation now describes how to
+   configure pre-transform and post-transform statistics, which can be used for
+   validating text features.
 
 # Version 0.30.0
 
