@@ -409,6 +409,8 @@ class ExecutorTest(tft_unit.TransformTestCase):
   def test_counters(self):
     self._exec_properties[
         standard_component_specs.PREPROCESSING_FN_KEY] = self._preprocessing_fn
+    self._exec_properties[
+        standard_component_specs.DISABLE_STATISTICS_KEY] = True
     metrics = self._run_pipeline_get_metrics()
 
     # The test data has 9909 instances in the train dataset, and 5091 instances
@@ -422,8 +424,8 @@ class ExecutorTest(tft_unit.TransformTestCase):
     self.assertMetricsCounterEqual(metrics, 'num_instances', 24909,
                                    ['tfx.Transform'])
 
-    # Additionally we have 24909 instances due to generating statistics.
-    self.assertMetricsCounterEqual(metrics, 'num_instances', 24909,
+    # Since disable_statistics is True, TFDV should see 0 instances.
+    self.assertMetricsCounterEqual(metrics, 'num_instances', 0,
                                    ['tfx.DataValidation'])
 
     # We expect 2 saved_models to be created because this is a 1 phase analysis
@@ -450,7 +452,7 @@ class ExecutorTest(tft_unit.TransformTestCase):
     self.assertMetricsCounterEqual(metrics, 'analyzer_cache_enabled', 1)
 
     # StatsGen is disabled for the test.
-    self.assertMetricsCounterEqual(metrics, 'compute_statistics', 0)
+    self.assertMetricsCounterEqual(metrics, 'disable_statistics', 1)
 
     # Output materialization is enabled.
     self.assertMetricsCounterEqual(metrics, 'materialize', 1)
