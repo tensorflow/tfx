@@ -16,14 +16,16 @@
 import abc
 import copy
 import enum
-from typing import Optional, Type, Union, cast
+from typing import Any, Optional, Type, Union, cast
 
-from tfx import types
+from tfx.dsl.placeholder import comparable
 from tfx.proto.orchestration import placeholder_pb2
 from tfx.utils import json_utils
 from tfx.utils import proto_utils
 
 from google.protobuf import message
+
+types = Any  # avoid circular dependencies during type checking.
 
 
 class _PlaceholderOperator(json_utils.Jsonable):
@@ -39,7 +41,7 @@ class _PlaceholderOperator(json_utils.Jsonable):
   def encode(
       self,
       sub_expression_pb: placeholder_pb2.PlaceholderExpression,
-      component_spec: Type[types.ComponentSpec] = None
+      component_spec: Type['types.ComponentSpec'] = None
   ) -> placeholder_pb2.PlaceholderExpression:
     pass
 
@@ -57,7 +59,7 @@ class _ArtifactUriOperator(_PlaceholderOperator):
   def encode(
       self,
       sub_expression_pb: placeholder_pb2.PlaceholderExpression,
-      component_spec: Optional[Type[types.ComponentSpec]] = None
+      component_spec: Optional[Type['types.ComponentSpec']] = None
   ) -> placeholder_pb2.PlaceholderExpression:
     del component_spec  # Unused by ArtifactUriOperator
 
@@ -77,7 +79,7 @@ class _ArtifactValueOperator(_PlaceholderOperator):
   def encode(
       self,
       sub_expression_pb: placeholder_pb2.PlaceholderExpression,
-      component_spec: Optional[Type[types.ComponentSpec]] = None
+      component_spec: Optional[Type['types.ComponentSpec']] = None
   ) -> placeholder_pb2.PlaceholderExpression:
     del component_spec  # Unused by ArtifactValueOperator
 
@@ -99,7 +101,7 @@ class _IndexOperator(_PlaceholderOperator):
   def encode(
       self,
       sub_expression_pb: placeholder_pb2.PlaceholderExpression,
-      component_spec: Optional[Type[types.ComponentSpec]] = None
+      component_spec: Optional[Type['types.ComponentSpec']] = None
   ) -> placeholder_pb2.PlaceholderExpression:
     del component_spec  # Unused by IndexOperator
 
@@ -123,7 +125,7 @@ class _ConcatOperator(_PlaceholderOperator):
   def encode(
       self,
       sub_expression_pb: placeholder_pb2.PlaceholderExpression,
-      component_spec: Optional[Type[types.ComponentSpec]] = None
+      component_spec: Optional[Type['types.ComponentSpec']] = None
   ) -> placeholder_pb2.PlaceholderExpression:
     del component_spec  # Unused by ConcatOperator
 
@@ -202,7 +204,7 @@ class _ProtoOperator(_PlaceholderOperator):
   def encode(
       self,
       sub_expression_pb: placeholder_pb2.PlaceholderExpression,
-      component_spec: Optional[Type[types.ComponentSpec]] = None
+      component_spec: Optional[Type['types.ComponentSpec']] = None
   ) -> placeholder_pb2.PlaceholderExpression:
     result = placeholder_pb2.PlaceholderExpression()
     result.operator.proto_op.expression.CopyFrom(sub_expression_pb)
@@ -247,7 +249,7 @@ class _Base64EncodeOperator(_PlaceholderOperator):
   def encode(
       self,
       sub_expression_pb: placeholder_pb2.PlaceholderExpression,
-      component_spec: Optional[Type[types.ComponentSpec]] = None
+      component_spec: Optional[Type['types.ComponentSpec']] = None
   ) -> placeholder_pb2.PlaceholderExpression:
     del component_spec  # Unused by B64EncodeOperator
 
@@ -294,7 +296,7 @@ class Placeholder(json_utils.Jsonable):
 
   def encode(
       self,
-      component_spec: Optional[Type[types.ComponentSpec]] = None
+      component_spec: Optional[Type['types.ComponentSpec']] = None
   ) -> placeholder_pb2.PlaceholderExpression:
     """Encodes a placeholder as PlaceholderExpression proto.
 
@@ -314,7 +316,7 @@ class Placeholder(json_utils.Jsonable):
     return result
 
 
-class ArtifactPlaceholder(Placeholder):
+class ArtifactPlaceholder(comparable.Comparable, Placeholder):
   """Artifact Placeholder represents an input or an output artifact.
 
   Prefer to use input(...) or output(...) to create artifact placeholders.
@@ -542,3 +544,15 @@ def execution_invocation() -> ExecInvocationPlaceholder:
     proto.
   """
   return ExecInvocationPlaceholder()
+
+
+class ChannelWrappedPlaceholder(ArtifactPlaceholder):
+  """Wraps a Channel in a Placeholder.
+
+  This allows it to make Predicates using syntax like:
+    channel.future().value > 5
+  """
+
+  def __init__(self, channel: 'types.Channel'):
+    super().__init__(placeholder_pb2.Placeholder.Type.INPUT_ARTIFACT)
+    self.channel = channel

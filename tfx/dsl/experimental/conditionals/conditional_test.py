@@ -40,7 +40,9 @@ class _FakeNode(base_node.BaseNode):
 class _FakePredicate(predicate.Predicate):
 
   def __init__(self, name):
-    super().__init__()
+    pred = predicate.Predicate.from_comparison(predicate.CompareOp.LESS_THAN, 1,
+                                               2)
+    super().__init__(value=pred.value)
     self.name = name
 
 

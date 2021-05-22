@@ -16,7 +16,9 @@
 import copy
 import os
 
+from absl.testing import parameterized
 import tensorflow as tf
+from tfx.dsl.experimental.conditionals import predicate
 from tfx.dsl.placeholder import placeholder as ph
 from tfx.proto.orchestration import placeholder_pb2
 from tfx.types import standard_component_specs
@@ -344,6 +346,29 @@ class PlaceholderTest(tf.test.TestCase):
     python_instance = json_utils.loads(json_text)
     self.assertEqual(ph.input('model').uri.encode(), python_instance.encode())
 
+
+class PlaceholderComparisonTest(parameterized.TestCase, tf.test.TestCase):
+
+  @parameterized.named_parameters(
+      {
+          'testcase_name': 'ph>=ph',
+          'left': ph.input('left'),
+          'right': ph.input('right')
+      },
+      {
+          'testcase_name': 'ph>=1',
+          'left': ph.input('left'),
+          'right': 1
+      },
+      {
+          'testcase_name': '1>=ph',
+          'left': 1,
+          'right': ph.input('right')
+      },
+  )
+  def testComparisonProducesPredicate(self, left, right):
+    pred = left >= right
+    self.assertIsInstance(pred, predicate.Predicate)
 
 if __name__ == '__main__':
   tf.test.main()
