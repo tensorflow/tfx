@@ -114,7 +114,8 @@ def make_required_install_packages():
 def make_extra_packages_airflow():
   """Prepare extra packages needed for Apache Airflow orchestrator."""
   return [
-      'apache-airflow[mysql]>=1.10.14,<3',
+      # TODO(b/188940096): update supported version.
+      'apache-airflow[mysql]>=1.10.14,!=2.1.*,<3',
       # TODO(b/182848576): Delete pinned sqlalchemy after apache-airflow 2.0.2
       # or later.(github.com/apache/airflow/issues/14811)
       'sqlalchemy>=1.3,<1.4',
