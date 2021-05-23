@@ -96,7 +96,9 @@ tfx                                                                       | apac
 
 ## Resources
 
+* [TensorFlow Page ](https://www.tensorflow.org/tfx)
 *   [TensorFlow Extended (TFX)](https://www.youtube.com/playlist?list=PLQY2H8rRoyvxR15n04JiW0ezF5HQRs_8F)
+* [ MLOps Specialization ](https://www.coursera.org/specializations/machine-learning-engineering-for-production-mlops)
 *   [ML Pipelines on Google Cloud](https://www.coursera.org/learn/ml-pipelines-google-cloud?specialization=preparing-for-google-cloud-machine-learning-engineer-professional-certificate)
 *   [Manage a production ML pipeline with TFX](https://www.youtube.com/watch?v=QQ13-Tkrbls)
 *   [How to build an ML pipeline with TFX](https://www.youtube.com/watch?v=17l3VR2MIeg)
