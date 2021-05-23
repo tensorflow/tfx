@@ -91,3 +91,12 @@ tfx                                                                       | apac
 0.14.0                                                                    | 2.14.0           | 0.14.0      | 0.14.0  | 1.14.0            | 0.14.1                     | 0.14.0              | 0.14.0                    | 1.14.0                 | 0.14.0               | n/a
 0.13.0                                                                    | 2.12.0           | 0.13.2      | n/a     | 1.13.1            | 0.13.1                     | 0.13.0              | 0.13.2                    | 1.13.0                 | 0.13.0               | n/a
 0.12.0                                                                    | 2.10.0           | 0.13.2      | n/a     | 1.12.0            | 0.12.0                     | 0.12.1              | 0.12.1                    | 1.12.0                 | 0.12.0               | n/a
+
+
+
+## Resources
+
+*   [TensorFlow Extended (TFX)](https://www.youtube.com/playlist?list=PLQY2H8rRoyvxR15n04JiW0ezF5HQRs_8F)
+*   [ML Pipelines on Google Cloud](https://www.coursera.org/learn/ml-pipelines-google-cloud?specialization=preparing-for-google-cloud-machine-learning-engineer-professional-certificate)
+*   [Manage a production ML pipeline with TFX](https://www.youtube.com/watch?v=QQ13-Tkrbls)
+*   [How to build an ML pipeline with TFX](https://www.youtube.com/watch?v=17l3VR2MIeg)
