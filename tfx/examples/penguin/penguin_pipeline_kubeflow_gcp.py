@@ -193,7 +193,7 @@ def create_pipeline(
     # vs distributed training per trial
     #   ... -> DistributingCloudTunerA -> CAIP job Y -> master,worker1,2,3
     #       -> DistributingCloudTunerB -> CAIP job Z -> master,worker1,2,3
-    tuner = tfx.components.Tuner(
+    tuner = tfx.extensions.google_cloud_ai_platform.Tuner(
         module_file=module_file,
         examples=transform.outputs['transformed_examples'],
         transform_graph=transform.outputs['transform_graph'],
