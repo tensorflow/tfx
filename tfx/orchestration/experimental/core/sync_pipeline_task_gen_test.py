@@ -332,7 +332,8 @@ class SyncPipelineTaskGeneratorTest(otu.TfxTest, parameterized.TestCase):
     """Tests that cached execution is used if one is available."""
 
     # Fake ExampleGen run.
-    otu.fake_example_gen_run(self._mlmd_connection, self._example_gen, 1, 1)
+    example_gen_exec = otu.fake_example_gen_run(self._mlmd_connection,
+                                                self._example_gen, 1, 1)
 
     # Invoking generator should produce an ExecNodeTask for StatsGen.
     [stats_gen_task] = self._generate_and_test(
@@ -349,6 +350,15 @@ class SyncPipelineTaskGeneratorTest(otu.TfxTest, parameterized.TestCase):
     # Prepare another pipeline with a new pipeline_run_id.
     pipeline_run_id = str(uuid.uuid4())
     new_pipeline = self._make_pipeline(self._pipeline_root, pipeline_run_id)
+
+    with self._mlmd_connection as m:
+      contexts = m.store.get_contexts_by_execution(example_gen_exec.id)
+      # We use node context as cache context for ease of testing.
+      cache_context = [c for c in contexts if c.name == 'my_example_gen'][0]
+    # Fake example_gen cached execution.
+    otu.fake_cached_execution(self._mlmd_connection, cache_context,
+                              otu.get_node(new_pipeline, 'my_example_gen'))
+
     stats_gen = otu.get_node(new_pipeline, 'my_statistics_gen')
 
     # Invoking generator for the new pipeline should result in:
@@ -359,7 +369,7 @@ class SyncPipelineTaskGeneratorTest(otu.TfxTest, parameterized.TestCase):
     [schema_gen_task] = self._generate_and_test(
         False,
         pipeline=new_pipeline,
-        num_initial_executions=2,
+        num_initial_executions=3,
         num_tasks_generated=1,
         num_new_executions=2,
         num_active_executions=1)
