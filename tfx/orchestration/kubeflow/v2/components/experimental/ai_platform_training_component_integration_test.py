@@ -20,7 +20,7 @@ from tfx.dsl.component.experimental import placeholders
 from tfx.dsl.components.common import importer
 from tfx.orchestration import pipeline
 from tfx.orchestration import test_utils
-from tfx.orchestration.kubeflow.v2 import kubeflow_v2_e2e_test
+from tfx.orchestration.kubeflow.v2 import vertex_e2e_test
 from tfx.orchestration.kubeflow.v2.components.experimental import ai_platform_training_component
 from tfx.types import standard_artifacts
 from tfx.types.experimental import simple_artifacts
@@ -29,7 +29,7 @@ _PIPELINE_NAME_PREFIX = 'aip-training-component-pipeline-{}'
 
 
 class AiPlatformTrainingComponentIntegrationTest(
-    kubeflow_v2_e2e_test.KubeflowV2E2ETestCase):
+    vertex_e2e_test.KubeflowV2E2ETestCase):
   """Integration tests of AiPlatformTrainingComponent on managed pipeline."""
 
   _TEST_DATA_BUCKET = os.environ.get('CAIP_E2E_DATA_BUCKET')

@@ -46,6 +46,9 @@
 
 ## Bug Fixes and Other Changes
 
+*   TFX CLI now supports
+    [Vertex Pipelines](https://cloud.google.com/vertex-ai/docs/pipelines/introduction).
+    use it with `--engine=vertex` flag.
 *   Forces keyword arguments for AirflowComponent to make it compatible with
     Apache Airflow 2.1.0 and later.
 *   Removed `six` dependency.
