@@ -41,7 +41,7 @@ class PenguinPipelineLocalEndToEndTest(tf.test.TestCase,
                                        parameterized.TestCase):
 
   def setUp(self):
-    super(PenguinPipelineLocalEndToEndTest, self).setUp()
+    super().setUp()
 
     self._test_dir = os.path.join(
         os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR', self.get_temp_dir()),
@@ -105,6 +105,9 @@ class PenguinPipelineLocalEndToEndTest(tf.test.TestCase,
       self._assertExecutedOnce('CsvExampleGen_Unlabelled')
       self._assertExecutedOnce('BulkInferrer')
 
+  def _make_beam_pipeline_args(self):
+    return []
+
   @parameterized.parameters(
       ('keras',),
       ('flax_experimental',))
@@ -123,7 +126,7 @@ class PenguinPipelineLocalEndToEndTest(tf.test.TestCase,
         examplegen_input_config=None,
         examplegen_range_config=None,
         resolver_range_config=None,
-        beam_pipeline_args=[])
+        beam_pipeline_args=self._make_beam_pipeline_args())
 
     logging.info('Starting the first pipeline run.')
     LocalDagRunner().run(pipeline)
@@ -178,7 +181,7 @@ class PenguinPipelineLocalEndToEndTest(tf.test.TestCase,
             examplegen_input_config=None,
             examplegen_range_config=None,
             resolver_range_config=None,
-            beam_pipeline_args=[]))
+            beam_pipeline_args=self._make_beam_pipeline_args()))
 
     self.assertTrue(fileio.exists(self._serving_model_dir))
     self.assertTrue(fileio.exists(self._metadata_path))
@@ -266,7 +269,7 @@ class PenguinPipelineLocalEndToEndTest(tf.test.TestCase,
               examplegen_input_config=examplegen_input_config,
               examplegen_range_config=examplegen_range_config,
               resolver_range_config=resolver_range_config,
-              beam_pipeline_args=[]))
+              beam_pipeline_args=self._make_beam_pipeline_args()))
 
     # Trigger the pipeline for the first span.
     examplegen_range_config = range_config_pb2.RangeConfig(
