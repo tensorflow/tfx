@@ -79,7 +79,7 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
         self.assertProtoPartiallyEquals(
             pipeline, pipeline_state1.pipeline, ignored_fields=['runtime_spec'])
         self.assertEqual(metadata_store_pb2.Execution.NEW,
-                         pipeline_state1.get_pipeline_execution_state())
+                         pipeline_state1.execution.last_known_state)
 
       # Initiate another pipeline start.
       pipeline2 = _test_pipeline('pipeline2')
@@ -87,7 +87,7 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
                                                 pipeline2) as pipeline_state2:
         self.assertEqual(pipeline2, pipeline_state2.pipeline)
         self.assertEqual(metadata_store_pb2.Execution.NEW,
-                         pipeline_state2.get_pipeline_execution_state())
+                         pipeline_state2.execution.last_known_state)
 
       # Error if attempted to initiate when old one is active.
       with self.assertRaises(status_lib.StatusNotOkError) as exception_context:
@@ -97,11 +97,11 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
 
       # Fine to initiate after the previous one is inactive.
       with pipeline_state1:
-        pipeline_state1.set_pipeline_execution_state(
-            metadata_store_pb2.Execution.COMPLETE)
+        execution = pipeline_state1.execution
+        execution.last_known_state = metadata_store_pb2.Execution.COMPLETE
       with pipeline_ops.initiate_pipeline_start(m, pipeline) as pipeline_state3:
         self.assertEqual(metadata_store_pb2.Execution.NEW,
-                         pipeline_state3.get_pipeline_execution_state())
+                         pipeline_state3.execution.last_known_state)
 
   @parameterized.named_parameters(
       dict(testcase_name='async', pipeline=_test_pipeline('pipeline1')),
@@ -122,7 +122,7 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
       pipeline_uid = task_lib.PipelineUid.from_pipeline(pipeline)
       with pstate.PipelineState.load(m, pipeline_uid) as pipeline_state:
         pipeline_state.initiate_stop(status_lib.Status(code=status_lib.Code.OK))
-        pipeline_state.set_pipeline_execution_state(
+        pipeline_state.execution.last_known_state = (
             metadata_store_pb2.Execution.COMPLETE)
 
       # Try to initiate stop again.
@@ -144,8 +144,8 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
         time.sleep(2.0)
         with pipeline_ops._PIPELINE_OPS_LOCK:
           with pipeline_state:
-            pipeline_state.set_pipeline_execution_state(
-                metadata_store_pb2.Execution.COMPLETE)
+            execution = pipeline_state.execution
+            execution.last_known_state = metadata_store_pb2.Execution.COMPLETE
 
       thread = threading.Thread(target=_inactivate, args=(pipeline_state,))
       thread.start()
@@ -372,7 +372,7 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
           m, task_lib.PipelineUid.from_pipeline(pipeline)) as pipeline_state:
         pipeline_state.initiate_stop(
             status_lib.Status(code=status_lib.Code.CANCELLED))
-        pipeline_execution_id = pipeline_state.execution_id
+        pipeline_execution_id = pipeline_state.execution.id
 
       task_queue = tq.TaskQueue()
 

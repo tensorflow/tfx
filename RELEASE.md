@@ -21,20 +21,13 @@
 *  Added tfx.v1 Public APIs, please refer to
    [API doc](https://www.tensorflow.org/tfx/api_docs/python/tfx/v1) for details.
 *  Transform component now computes pre-transform and post-transform statistics
-   and stores them in new, indvidual outputs ('pre_transform_schema',
-   'pre_transform_stats', 'post_transform_schema', 'post_transform_stats',
-   'post_transform_anomalies'). This can be disabled by setting
-   `disable_statistics=True` in the Transform component.
+   by default. This can be disabled by setting `disable_statistics=True` in the
+   Transform component.
 *  BERT cola and mrpc examples now demonstrate how to calculate statistics for
    NLP features.
-*  TFX CLI now supports
-   [Vertex Pipelines](https://cloud.google.com/vertex-ai/docs/pipelines/introduction).
-   use it with `--engine=vertex` flag.
 
 
 ## Breaking Changes
-
-*  Removed unneccessary default values for required component input Channels.
 
 ### For Pipeline Authors
 
@@ -53,6 +46,9 @@
 
 ## Bug Fixes and Other Changes
 
+*   TFX CLI now supports
+    [Vertex Pipelines](https://cloud.google.com/vertex-ai/docs/pipelines/introduction).
+    use it with `--engine=vertex` flag.
 *   Forces keyword arguments for AirflowComponent to make it compatible with
     Apache Airflow 2.1.0 and later.
 *   Removed `six` dependency.

@@ -32,7 +32,6 @@ from tfx.orchestration import pipeline as tfx_pipeline
 from tfx.orchestration.kubeflow import node_wrapper
 from tfx.orchestration.kubeflow import utils
 from tfx.orchestration.kubeflow.proto import kubeflow_pb2
-from tfx.proto.orchestration import pipeline_pb2
 from tfx.utils import json_utils
 
 from google.protobuf import json_format
@@ -60,7 +59,7 @@ class BaseComponent(object):
       pipeline_root: dsl.PipelineParam,
       tfx_image: Text,
       kubeflow_metadata_config: Optional[kubeflow_pb2.KubeflowMetadataConfig],
-      tfx_ir: Optional[pipeline_pb2.Pipeline] = None,
+      tfx_ir_path: str,
       pod_labels_to_attach: Optional[Dict[Text, Text]] = None):
     """Creates a new Kubeflow-based component.
 
@@ -76,7 +75,8 @@ class BaseComponent(object):
       tfx_image: The container image to use for this component.
       kubeflow_metadata_config: Configuration settings for connecting to the
         MLMD store in a Kubeflow cluster.
-      tfx_ir: The TFX intermedia representation of the pipeline.
+      tfx_ir_path: The path where TFX intermedia representation of the pipeline
+        persists
       pod_labels_to_attach: Optional dict of pod labels to attach to the
         GKE pod.
     """
@@ -94,11 +94,8 @@ class BaseComponent(object):
         component.id,
         '--serialized_component',
         serialized_component,
-        # TODO(b/182220464): write IR to pipeline_root and let
-        # container_entrypoint.py read it back to avoid future issue that IR
-        # exeeds the flag size limit.
-        '--tfx_ir',
-        json_format.MessageToJson(tfx_ir),
+        '--tfx_ir_path',
+        tfx_ir_path,
     ]
 
     self.container_op = dsl.ContainerOp(

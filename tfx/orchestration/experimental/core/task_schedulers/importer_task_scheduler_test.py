@@ -16,9 +16,7 @@
 import os
 import uuid
 
-from absl.testing.absltest import mock
 import tensorflow as tf
-from tfx import version as tfx_version
 from tfx.orchestration import metadata
 from tfx.orchestration.experimental.core import sync_pipeline_task_gen as sptg
 from tfx.orchestration.experimental.core import task_manager as tm
@@ -34,13 +32,6 @@ class ImporterTaskSchedulerTest(test_utils.TfxTest):
 
   def setUp(self):
     super().setUp()
-
-    # Set a constant version for artifact version tag.
-    patcher = mock.patch('tfx.version.__version__')
-    patcher.start()
-    tfx_version.__version__ = '0.123.4.dev'
-    self.addCleanup(patcher.stop)
-
     pipeline_root = os.path.join(
         os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR', self.get_temp_dir()),
         self.id())
@@ -109,12 +100,6 @@ class ImporterTaskSchedulerTest(test_utils.TfxTest):
             key: "str_custom_property"
             value {
               string_value: "abc"
-            }
-          }
-          custom_properties {
-            key: "tfx_version"
-            value {
-              string_value: "0.123.4.dev"
             }
           }
           state: LIVE""",

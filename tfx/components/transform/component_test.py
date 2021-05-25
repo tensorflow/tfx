@@ -46,8 +46,7 @@ class ComponentTest(tf.test.TestCase):
   def _verify_outputs(self,
                       transform,
                       materialize=True,
-                      disable_analyzer_cache=False,
-                      disable_statistics=False):
+                      disable_analyzer_cache=False):
     self.assertEqual(
         standard_artifacts.TransformGraph.TYPE_NAME, transform.outputs[
             standard_component_specs.TRANSFORM_GRAPH_KEY].type_name)
@@ -65,28 +64,6 @@ class ComponentTest(tf.test.TestCase):
       self.assertEqual(
           standard_artifacts.TransformCache.TYPE_NAME, transform.outputs[
               standard_component_specs.UPDATED_ANALYZER_CACHE_KEY].type_name)
-
-    if disable_statistics:
-      for key in [
-          standard_component_specs.PRE_TRANSFORM_STATS_KEY,
-          standard_component_specs.PRE_TRANSFORM_SCHEMA_KEY,
-          standard_component_specs.POST_TRANSFORM_ANOMALIES_KEY,
-          standard_component_specs.POST_TRANSFORM_STATS_KEY,
-          standard_component_specs.POST_TRANSFORM_SCHEMA_KEY
-      ]:
-        self.assertNotIn(key, transform.outputs.keys())
-    else:
-      for key, name in [(standard_component_specs.PRE_TRANSFORM_STATS_KEY,
-                         standard_artifacts.ExampleStatistics.TYPE_NAME),
-                        (standard_component_specs.PRE_TRANSFORM_SCHEMA_KEY,
-                         standard_artifacts.Schema.TYPE_NAME),
-                        (standard_component_specs.POST_TRANSFORM_ANOMALIES_KEY,
-                         standard_artifacts.ExampleAnomalies.TYPE_NAME),
-                        (standard_component_specs.POST_TRANSFORM_STATS_KEY,
-                         standard_artifacts.ExampleStatistics.TYPE_NAME),
-                        (standard_component_specs.POST_TRANSFORM_SCHEMA_KEY,
-                         standard_artifacts.Schema.TYPE_NAME)]:
-        self.assertEqual(name, transform.outputs[key].type_name)
 
   def test_construct_from_module_file(self):
     module_file = '/path/to/preprocessing.py'
@@ -219,7 +196,7 @@ class ComponentTest(tf.test.TestCase):
         preprocessing_fn='my_preprocessing_fn',
         disable_statistics=True,
     )
-    self._verify_outputs(transform, disable_statistics=True)
+    self._verify_outputs(transform)
     self.assertEqual(
         True,
         bool(transform.spec.exec_properties[

@@ -13,7 +13,7 @@
 # limitations under the License.
 """Tensorflow GFile-based filesystem plugin."""
 
-from typing import Any, Callable, Iterable, List, Optional, Tuple
+from typing import Any, Callable, Iterable, List, Tuple
 
 from tfx.dsl.io import filesystem
 from tfx.dsl.io import filesystem_registry
@@ -109,7 +109,7 @@ if tf:
     def walk(
         top: PathType,
         topdown: bool = True,
-        onerror: Optional[Callable[..., None]] = None
+        onerror: Callable[..., None] = None
     ) -> Iterable[Tuple[PathType, List[PathType], List[PathType]]]:
       try:
         yield from tf.io.gfile.walk(top, topdown=topdown, onerror=onerror)

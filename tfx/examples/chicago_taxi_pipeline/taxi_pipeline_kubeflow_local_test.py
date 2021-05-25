@@ -40,6 +40,7 @@ class TaxiPipelineKubeflowTest(test_case_utils.TfxTest):
     # Avoid actually performing user module packaging because a placeholder
     # GCS bucket is used.
     resolve_mock.side_effect = lambda pipeline_root: None
+    taxi_pipeline_kubeflow_local._pipeline_root = self.tmp_dir
 
     logical_pipeline = taxi_pipeline_kubeflow_local._create_pipeline(
         pipeline_name=taxi_pipeline_kubeflow_local._pipeline_name,

@@ -27,6 +27,7 @@ from tfx.extensions.google_cloud_big_query.example_gen import component as big_q
 from tfx.orchestration import data_types
 from tfx.orchestration import pipeline as tfx_pipeline
 from tfx.orchestration.kubeflow import kubeflow_dag_runner
+from tfx.proto.orchestration import pipeline_pb2
 from tfx.types import component_spec
 from tfx.utils import telemetry_utils
 from tfx.utils import test_case_utils
@@ -106,7 +107,6 @@ class KubeflowDagRunnerTest(test_case_utils.TfxTest):
           '-m',
           'tfx.orchestration.kubeflow.container_entrypoint',
       ], big_query_container[0]['container']['command'])
-      self.assertIn('--tfx_ir', big_query_container[0]['container']['args'])
       self.assertIn('--node_id', big_query_container[0]['container']['args'])
 
       statistics_gen_container = [
@@ -151,6 +151,11 @@ class KubeflowDagRunnerTest(test_case_utils.TfxTest):
                   'dependencies': ['bigqueryexamplegen'],
               }]
           }, dag[0]['dag'])
+
+    # Verified that the TFX IR is persisted to the pipeline root.
+    with fileio.open('pipeline_root/pipline.pb', 'rb') as f:
+      tfx_ir = pipeline_pb2.Pipeline().FromString(f.read())
+      self.assertEqual('two_step_pipeline', tfx_ir.pipeline_info.id)
 
   def testDefaultPipelineOperatorFuncs(self):
     kubeflow_dag_runner.KubeflowDagRunner().run(_two_step_pipeline())
@@ -266,6 +271,12 @@ class KubeflowDagRunnerTest(test_case_utils.TfxTest):
       self.assertLen(containers, 1)
       component_args = containers[0]['container']['args']
       self.assertIn('--node_id', component_args)
+
+    # Verified that the TFX IR is persisted to the pipeline root.
+    with fileio.open('pipeline_root/pipline.pb', 'rb') as f:
+      tfx_ir = pipeline_pb2.Pipeline().FromString(f.read())
+      self.assertEqual('container_component_pipeline', tfx_ir.pipeline_info.id)
+
 
 if __name__ == '__main__':
   tf.test.main()

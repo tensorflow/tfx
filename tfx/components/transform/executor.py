@@ -89,15 +89,6 @@ _MAX_ESTIMATED_STAGES_COUNT = 20000
 # Beam extra pip package prefix.
 _BEAM_EXTRA_PACKAGE_PREFIX = '--extra_package='
 
-# Stats output filename keys.
-_ANOMALIES_FILE = 'SchemaDiff.pb'
-_STATS_FILE = 'FeatureStats.pb'
-_SCHEMA_FILE = 'Schema.pb'
-
-_ANOMALIES_KEY = 'anomalies'
-_SCHEMA_KEY = 'schema'
-_STATS_KEY = 'stats'
-
 
 # TODO(b/122478841): Move it to a common place that is shared across components.
 class _Status(object):
@@ -393,32 +384,6 @@ class Executor(base_beam_executor.BaseBeamExecutor):
     transform_output = artifact_utils.get_single_uri(
         output_dict[standard_component_specs.TRANSFORM_GRAPH_KEY])
 
-    disable_statistics = bool(
-        exec_properties.get(standard_component_specs.DISABLE_STATISTICS_KEY, 0))
-
-    label_component_key_list = [
-        (labels.PRE_TRANSFORM_OUTPUT_STATS_PATH_LABEL,
-         standard_component_specs.PRE_TRANSFORM_STATS_KEY),
-        (labels.PRE_TRANSFORM_OUTPUT_SCHEMA_PATH_LABEL,
-         standard_component_specs.PRE_TRANSFORM_SCHEMA_KEY),
-        (labels.POST_TRANSFORM_OUTPUT_ANOMALIES_PATH_LABEL,
-         standard_component_specs.POST_TRANSFORM_ANOMALIES_KEY),
-        (labels.POST_TRANSFORM_OUTPUT_STATS_PATH_LABEL,
-         standard_component_specs.POST_TRANSFORM_STATS_KEY),
-        (labels.POST_TRANSFORM_OUTPUT_SCHEMA_PATH_LABEL,
-         standard_component_specs.POST_TRANSFORM_SCHEMA_KEY)
-    ]
-    stats_output_paths = {}
-    if not disable_statistics:
-      for label, component_key in label_component_key_list:
-        if component_key in output_dict:
-          stats_output_paths[label] = artifact_utils.get_single_uri(
-              output_dict[component_key])
-    if stats_output_paths and len(stats_output_paths) != len(
-        label_component_key_list):
-      raise ValueError(
-          'Either all stats_output_paths should be specified or none.')
-
     temp_path = os.path.join(transform_output, _TEMP_DIR_IN_TRANSFORM_OUTPUT)
     absl.logging.debug('Using temp path %s for tft.beam', temp_path)
 
@@ -461,6 +426,9 @@ class Executor(base_beam_executor.BaseBeamExecutor):
 
     force_tf_compat_v1 = bool(
         exec_properties.get(standard_component_specs.FORCE_TF_COMPAT_V1_KEY, 0))
+
+    disable_statistics = bool(
+        exec_properties.get(standard_component_specs.DISABLE_STATISTICS_KEY, 0))
 
     # Make sure user packages get propagated to the remote Beam worker.
     user_module_key = exec_properties.get(
@@ -513,8 +481,6 @@ class Executor(base_beam_executor.BaseBeamExecutor):
             materialize_output_paths,
         labels.TEMP_OUTPUT_LABEL: str(temp_path),
     }
-
-    label_outputs.update(stats_output_paths)
     cache_output = _GetCachePath(
         standard_component_specs.UPDATED_ANALYZER_CACHE_KEY, output_dict)
     if cache_output is not None:
@@ -631,8 +597,7 @@ class Executor(base_beam_executor.BaseBeamExecutor):
                                           Optional[beam.pvalue.PDone],
                                           Optional[beam.pvalue.PDone]])
   def _GenerateAndMaybeValidateStats(
-      pcoll: beam.pvalue.PCollection, stats_output_loc: Union[Text, Dict[Text,
-                                                                         Text]],
+      pcoll: beam.pvalue.PCollection, stats_output_path: Text,
       stats_options: tfdv.StatsOptions, enable_validation: bool
   ) -> Tuple[beam.pvalue.PDone, Optional[beam.pvalue.PDone],
              Optional[beam.pvalue.PDone]]:
@@ -640,9 +605,7 @@ class Executor(base_beam_executor.BaseBeamExecutor):
 
     Args:
       pcoll: PCollection of examples.
-      stats_output_loc: path to the statistics folder to write all results to
-        or a dictionary keyed with individual paths for 'schema', 'stats', and
-        'anomalies'.
+      stats_output_path: path where statistics is written to.
       stats_options: An instance of `tfdv.StatsOptions()` used when computing
         statistics.
       enable_validation: Whether to enable stats validation.
@@ -653,16 +616,6 @@ class Executor(base_beam_executor.BaseBeamExecutor):
       schema is not present or validation is not enabled, the corresponding
       values are replaced with Nones.
     """
-    if isinstance(stats_output_loc, dict):
-      stats_output_path = stats_output_loc[_STATS_KEY]
-      schema_output_path = stats_output_loc[_SCHEMA_KEY]
-      anomalies_output_path = stats_output_loc.get(_ANOMALIES_KEY)
-    else:
-      stats_output_path = stats_output_loc
-      stats_output_dir = os.path.dirname(stats_output_loc)
-      schema_output_path = os.path.join(stats_output_dir, _SCHEMA_FILE)
-      anomalies_output_path = os.path.join(stats_output_dir, _ANOMALIES_FILE)
-
     generated_stats = (
         pcoll
         | 'FilterInternalColumn' >> beam.Map(Executor._FilterInternalColumn)
@@ -676,6 +629,8 @@ class Executor(base_beam_executor.BaseBeamExecutor):
     if stats_options.schema is None:
       return (stats_result, None, None)
 
+    stats_dir = os.path.dirname(stats_output_path)
+    schema_output_path = os.path.join(stats_dir, 'Schema.pb')
     # TODO(b/186867968): See if we should switch to common libraries.
     schema_result = (
         pcoll.pipeline
@@ -689,13 +644,14 @@ class Executor(base_beam_executor.BaseBeamExecutor):
     if not enable_validation:
       return (stats_result, schema_result, None)
 
+    validation_output_path = os.path.join(stats_dir, 'SchemaDiff.pb')
     # TODO(b/186867968): See if we should switch to common libraries.
     validation_result = (
         generated_stats
         | 'ValidateStatistics' >> beam.Map(
             lambda stats: tfdv.validate_statistics(stats, stats_options.schema))
         | 'WriteValidation' >> beam.io.WriteToText(
-            anomalies_output_path,
+            validation_output_path,
             append_trailing_newlines=False,
             shard_name_template='',  # To force unsharded output.
             coder=beam.coders.ProtoCoder(anomalies_pb2.Anomalies)))
@@ -961,16 +917,6 @@ class Executor(base_beam_executor.BaseBeamExecutor):
         - labels.TRANSFORM_MATERIALIZE_OUTPUT_PATHS_LABEL: Paths to transform
           materialization.
         - labels.TEMP_OUTPUT_LABEL: A path to temporary directory.
-        - labels.PRE_TRANSFORM_OUTPUT_SCHEMA_PATH_LABEL: A path to the output
-          pre-transform schema, optional.
-        - labels.PRE_TRANSFORM_OUTPUT_STATS_PATH_LABEL: A path to the output
-          pre-transform statistics, optional.
-        - labels.POST_TRANSFORM_OUTPUT_SCHEMA_PATH_LABEL: A path to the output
-          post-transform schema, optional.
-        - labels.POST_TRANSFORM_OUTPUT_STATS_PATH_LABEL: A path to the output
-          post-transform statistics, optional.
-        - labels.POST_TRANSFORM_OUTPUT_ANOMALIES_PATH_LABEL: A path to the
-          output post-transform anomalies, optional.
       status_file: Where the status should be written (not yet implemented)
     """
     del status_file  # unused
@@ -1014,22 +960,6 @@ class Executor(base_beam_executor.BaseBeamExecutor):
         inputs, labels.DATA_VIEW_LABEL, strict=False)
     force_tf_compat_v1 = value_utils.GetSoleValue(
         inputs, labels.FORCE_TF_COMPAT_V1_LABEL)
-
-    stats_labels_list = [
-        labels.PRE_TRANSFORM_OUTPUT_STATS_PATH_LABEL,
-        labels.PRE_TRANSFORM_OUTPUT_SCHEMA_PATH_LABEL,
-        labels.POST_TRANSFORM_OUTPUT_ANOMALIES_PATH_LABEL,
-        labels.POST_TRANSFORM_OUTPUT_STATS_PATH_LABEL,
-        labels.POST_TRANSFORM_OUTPUT_SCHEMA_PATH_LABEL
-    ]
-    stats_output_paths = {}
-    for label in stats_labels_list:
-      value = value_utils.GetSoleValue(outputs, label, strict=False)
-      if value:
-        stats_output_paths[label] = value
-    if stats_output_paths and len(stats_output_paths) != len(stats_labels_list):
-      raise ValueError('Either all stats_output_paths should be'
-                       ' specified or none.')
 
     absl.logging.debug('Force tf.compat.v1: %s', force_tf_compat_v1)
     absl.logging.debug('Analyze data patterns: %s',
@@ -1110,7 +1040,7 @@ class Executor(base_beam_executor.BaseBeamExecutor):
                       raw_examples_data_format, temp_path, input_cache_dir,
                       output_cache_dir, disable_statistics,
                       per_set_stats_output_paths, materialization_format,
-                      len(analyze_data_paths), stats_output_paths)
+                      len(analyze_data_paths))
   # TODO(b/122478841): Writes status to status file.
 
   # pylint: disable=expression-not-assigned, no-value-for-parameter
@@ -1125,8 +1055,7 @@ class Executor(base_beam_executor.BaseBeamExecutor):
                    output_cache_dir: Optional[Text], disable_statistics: bool,
                    per_set_stats_output_paths: Sequence[Text],
                    materialization_format: Optional[Text],
-                   analyze_paths_count: int,
-                   stats_output_paths: Dict[Text, Text]) -> _Status:
+                   analyze_paths_count: int) -> _Status:
     """Perform data preprocessing with TFT.
 
     Args:
@@ -1151,10 +1080,6 @@ class Executor(base_beam_executor.BaseBeamExecutor):
         data or None if materialization is not enabled.
       analyze_paths_count: An integer, the number of paths that should be used
         for analysis.
-      stats_output_paths: A dictionary specifying the output paths to use when
-        computing statistics. If the dictionary is empty, the stats will be
-        placed within the transform_output_path to preserve backwards
-        compatibility.
 
     Returns:
       Status of the execution.
@@ -1308,6 +1233,10 @@ class Executor(base_beam_executor.BaseBeamExecutor):
             if (not disable_statistics and
                 not self._IsDataFormatProto(raw_examples_data_format)):
               # Aggregated feature stats before transformation.
+              pre_transform_feature_stats_path = os.path.join(
+                  transform_output_path,
+                  tft.TFTransformOutput.PRE_TRANSFORM_FEATURE_STATS_PATH)
+
               if self._IsDataFormatSequenceExample(raw_examples_data_format):
                 schema_proto = None
               else:
@@ -1343,29 +1272,11 @@ class Executor(base_beam_executor.BaseBeamExecutor):
               pre_transform_stats_options.experimental_use_sketch_based_topk_uniques = (
                   self._TfdvUseSketchBasedTopKUniques())
 
-              if stats_output_paths:
-                pre_transform_feature_stats_loc = {
-                    _STATS_KEY:
-                        os.path.join(
-                            stats_output_paths[
-                                labels.PRE_TRANSFORM_OUTPUT_STATS_PATH_LABEL],
-                            _STATS_FILE),
-                    _SCHEMA_KEY:
-                        os.path.join(
-                            stats_output_paths[
-                                labels.PRE_TRANSFORM_OUTPUT_SCHEMA_PATH_LABEL],
-                            _SCHEMA_FILE)
-                }
-              else:
-                pre_transform_feature_stats_loc = os.path.join(
-                    transform_output_path,
-                    tft.TFTransformOutput.PRE_TRANSFORM_FEATURE_STATS_PATH)
-
               (stats_input
                | 'FlattenAnalysisDatasets' >> beam.Flatten(pipeline=pipeline)
                | 'GenerateStats[FlattenedAnalysisDataset]' >>
                self._GenerateAndMaybeValidateStats(
-                   pre_transform_feature_stats_loc,
+                   pre_transform_feature_stats_path,
                    stats_options=pre_transform_stats_options,
                    enable_validation=False))
 
@@ -1398,6 +1309,10 @@ class Executor(base_beam_executor.BaseBeamExecutor):
                     dataset.transformed
                     | 'ExtractRecordBatches[{}]'.format(infix) >> beam.Keys())
 
+              post_transform_feature_stats_path = os.path.join(
+                  transform_output_path,
+                  tft.TFTransformOutput.POST_TRANSFORM_FEATURE_STATS_PATH)
+
               post_transform_stats_options = _InvokeStatsOptionsUpdaterFn(
                   stats_options_updater_fn,
                   stats_options_util.StatsType.POST_TRANSFORM,
@@ -1406,31 +1321,6 @@ class Executor(base_beam_executor.BaseBeamExecutor):
 
               post_transform_stats_options.experimental_use_sketch_based_topk_uniques = (
                   self._TfdvUseSketchBasedTopKUniques())
-
-              if stats_output_paths:
-                post_transform_feature_stats_loc = {
-                    _STATS_KEY:
-                        os.path.join(
-                            stats_output_paths[
-                                labels.POST_TRANSFORM_OUTPUT_STATS_PATH_LABEL],
-                            _STATS_FILE),
-                    _SCHEMA_KEY:
-                        os.path.join(
-                            stats_output_paths[
-                                labels.POST_TRANSFORM_OUTPUT_SCHEMA_PATH_LABEL],
-                            _SCHEMA_FILE),
-                    _ANOMALIES_KEY:
-                        os.path.join(
-                            stats_output_paths[
-                                labels
-                                .POST_TRANSFORM_OUTPUT_ANOMALIES_PATH_LABEL],
-                            _ANOMALIES_FILE)
-                }
-              else:
-                post_transform_feature_stats_loc = os.path.join(
-                    transform_output_path,
-                    tft.TFTransformOutput.POST_TRANSFORM_FEATURE_STATS_PATH)
-
               ([
                   dataset.transformed_and_standardized
                   for dataset in transform_data_list
@@ -1441,7 +1331,7 @@ class Executor(base_beam_executor.BaseBeamExecutor):
                    completion=beam.pvalue.AsSingleton(completed_transform))
                | 'GenerateAndValidateStats[FlattenedTransformedDatasets]' >>
                self._GenerateAndMaybeValidateStats(
-                   post_transform_feature_stats_loc,
+                   post_transform_feature_stats_path,
                    stats_options=post_transform_stats_options,
                    enable_validation=True))
 

@@ -58,6 +58,9 @@ class KubeflowHandlerTest(test_case_utils.TfxTest):
     self.enter_context(
         test_case_utils.override_env_var('KFP_E2E_TEST_DATA_ROOT',
                                          'dummy-root'))
+    self.enter_context(
+        test_case_utils.override_env_var('TFX_TEST_PIPELINT_OUTPUT_DIR',
+                                         self.tmp_dir))
 
     self.pipeline_path = os.path.join(self.chicago_taxi_pipeline_dir,
                                       'test_pipeline_kubeflow_1.py')

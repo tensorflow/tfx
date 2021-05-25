@@ -369,31 +369,6 @@
       "Transform": {
         "outputDefinitions": {
           "artifacts": {
-            "pre_transform_schema": {
-              "artifactType": {
-                "instanceSchema": "title: tfx.Schema\ntype: object\n"
-              }
-            },
-            "pre_transform_stats": {
-              "artifactType": {
-                "instanceSchema": "title: tfx.ExampleStatistics\ntype: object\nproperties:\n  span:\n    type: integer\n    description: Span for an artifact.\n  split_names:\n    type: string\n    description: JSON-encoded list of splits for an artifact. Empty string means artifact has no split.\n"
-              }
-            },
-            "post_transform_stats": {
-              "artifactType": {
-                "instanceSchema": "title: tfx.ExampleStatistics\ntype: object\nproperties:\n  span:\n    type: integer\n    description: Span for an artifact.\n  split_names:\n    type: string\n    description: JSON-encoded list of splits for an artifact. Empty string means artifact has no split.\n"
-              }
-            },
-            "post_transform_schema": {
-              "artifactType": {
-                "instanceSchema": "title: tfx.Schema\ntype: object\n"
-              }
-            },
-            "post_transform_anomalies": {
-              "artifactType": {
-                "instanceSchema": "title: tfx.ExampleAnomalies\ntype: object\nproperties:\n  span:\n    type: integer\n    description: Span for an artifact.\n  split_names:\n    type: string\n    description: JSON-encoded list of splits for an artifact. Empty string means artifact has no split.\n"
-              }
-            },
             "updated_analyzer_cache": {
               "artifactType": {
                 "instanceSchema": "title: tfx.TransformCache\ntype: object\n"

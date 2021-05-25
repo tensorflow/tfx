@@ -52,7 +52,7 @@ landing_page:
       path: /tfx/tutorials/tfx/penguin_tfdv
     - classname: tfo-landing-page-card
       description: >
-        <a href="/tfx/tutorials/tfx/penguin_tft"><h3 class="no-link">3. Adding Feature Engineering</h3></a>
+        <a href="/tfx/tutorials/tfx/penguin_transform"><h3 class="no-link">3. Adding Feature Engineering</h3></a>
         Building on the data validation pipeline to add a feature engineering component.
       path: /tfx/tutorials/tfx/penguin_tft
     - classname: tfo-landing-page-card

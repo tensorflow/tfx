@@ -18,7 +18,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from typing import Dict, List, Optional, Text, Type
+from typing import Dict, List, Text, Type
 
 from tfx.orchestration.config import base_component_config
 from tfx.orchestration.launcher import base_component_launcher
@@ -43,12 +43,12 @@ class PipelineConfig(object):
   # TODO(hongyes): figure out the best practice to put the
   # SUPPORTED_LAUNCHER_CLASSES.
   def __init__(self,
-               supported_launcher_classes: Optional[List[Type[
-                   base_component_launcher.BaseComponentLauncher]]] = None,
-               default_component_configs: Optional[List[
-                   base_component_config.BaseComponentConfig]] = None,
-               component_config_overrides: Optional[Dict[
-                   Text, base_component_config.BaseComponentConfig]] = None):
+               supported_launcher_classes: List[Type[
+                   base_component_launcher.BaseComponentLauncher]] = None,
+               default_component_configs: List[
+                   base_component_config.BaseComponentConfig] = None,
+               component_config_overrides: Dict[
+                   Text, base_component_config.BaseComponentConfig] = None):
     self.supported_launcher_classes = supported_launcher_classes or [
         in_process_component_launcher.InProcessComponentLauncher
     ]

@@ -20,11 +20,13 @@ import subprocess
 from absl import logging
 import docker
 from google.cloud import storage
+from kfp.pipeline_spec import pipeline_spec_pb2
 from kfp.v2.google import client
 import tensorflow as tf
-from tfx.experimental.templates import test_utils
+from tfx.experimental.templates.taxi.e2e_tests import test_utils
 from tfx.orchestration import test_utils as orchestration_test_utils
 from tfx.orchestration.kubeflow.v2 import test_utils as kubeflow_v2_test_utils
+from tfx.utils import io_utils
 from tfx.utils import retry
 
 
@@ -45,22 +47,17 @@ class TaxiTemplateKubeflowV2E2ETest(test_utils.BaseEndToEndTest):
   _REPO_BASE = os.environ['KFP_E2E_SRC']
 
   _GCP_PROJECT_ID = os.environ['KFP_E2E_GCP_PROJECT_ID']
-  _GCP_REGION = os.environ['KFP_E2E_GCP_REGION']
+  _GCP_REGION = os.environ.get['KFP_E2E_GCP_REGION']
+  _API_KEY = os.environ.get['CAIP_E2E_API_KEY']
   _BUCKET_NAME = os.environ['KFP_E2E_BUCKET_NAME']
 
   def setUp(self):
     super().setUp()
     random_id = orchestration_test_utils.random_id()
-    if ':' not in self._BASE_CONTAINER_IMAGE:
-      self._base_container_image = '{}:{}'.format(self._BASE_CONTAINER_IMAGE,
-                                                  random_id)
-      self._prepare_base_container_image()
-    else:
-      self._base_container_image = self._BASE_CONTAINER_IMAGE
     self._target_container_image = 'gcr.io/{}/{}:{}'.format(
         self._GCP_PROJECT_ID, 'taxi-template-vertex-e2e-test', random_id)
     # Overriding the pipeline name to
-    self._pipeline_name = 'taxi-template-vertex-e2e-{}'.format(
+    self._pipeline_name = 'taxi_template_vertex_e2e_test_{}'.format(
         random_id)
 
   def tearDown(self):
@@ -92,10 +89,6 @@ class TaxiTemplateKubeflowV2E2ETest(test_utils.BaseEndToEndTest):
   def _delete_target_container_image(self):
     self._delete_docker_image(self._target_container_image)
 
-  def _prepare_base_container_image(self):
-    orchestration_test_utils.build_docker_image(self._base_container_image,
-                                                self._REPO_BASE)
-
   def _create_pipeline(self):
     self._runCli([
         'pipeline',
@@ -106,18 +99,7 @@ class TaxiTemplateKubeflowV2E2ETest(test_utils.BaseEndToEndTest):
         'kubeflow_v2_runner.py',
         '--build-image',
         '--build-base-image',
-        self._base_container_image,
-    ])
-
-  def _update_pipeline(self):
-    self._runCli([
-        'pipeline',
-        'update',
-        '--engine',
-        'vertex',
-        '--pipeline_path',
-        'kubeflow_v2_runner.py',
-        '--build-image',
+        self._CONTAINER_IMAGE,
     ])
 
   def _run_pipeline(self):
@@ -132,6 +114,8 @@ class TaxiTemplateKubeflowV2E2ETest(test_utils.BaseEndToEndTest):
         self._GCP_PROJECT_ID,
         '--region',
         self._GCP_REGION,
+        '--api_key',
+        self._GCP_API_KEY,
     ])
     run_id = self._parse_run_id(result)
     self._wait_until_completed(run_id)
@@ -147,7 +131,8 @@ class TaxiTemplateKubeflowV2E2ETest(test_utils.BaseEndToEndTest):
   def _wait_until_completed(self, run_id: str):
     vertex_client = client.AIPlatformClient(
         project_id=self._GCP_PROJECT_ID,
-        region=self._GCP_REGION)
+        region=self._GCP_REGION,
+        api_key=self._GCP_API_KEY)
     kubeflow_v2_test_utils.poll_job_status(vertex_client, run_id,
                                            self._TIME_OUT,
                                            self._POLLING_INTERVAL_IN_SECONDS)
@@ -188,6 +173,16 @@ class TaxiTemplateKubeflowV2E2ETest(test_utils.BaseEndToEndTest):
 
     # Create a pipeline with only one component.
     self._create_pipeline()
+
+    # Extract the compiled pipeline spec.
+    kubeflow_v2_pb = pipeline_spec_pb2.PipelineJob()
+    io_utils.parse_json_file(
+        file_name=os.path.join(os.getcwd(), 'pipeline.json'),
+        message=kubeflow_v2_pb)
+    # There should be one step in the compiled pipeline.
+    self.assertLen(kubeflow_v2_pb.pipeline_spec['tasks'], 1)
+
+    self._run_pipeline()
 
     # Update the pipeline to include all components.
     updated_pipeline_file = self._addAllComponents()

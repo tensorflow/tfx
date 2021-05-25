@@ -41,8 +41,7 @@ class KubernetesComponentLauncher(base_component_launcher.BaseComponentLauncher
   def can_launch(
       cls,
       component_executor_spec: executor_spec.ExecutorSpec,
-      component_config: Optional[
-          base_component_config.BaseComponentConfig] = None
+      component_config: base_component_config.BaseComponentConfig = None
   ) -> bool:
     """Checks if the launcher can launch the executor spec."""
     if component_config and not isinstance(

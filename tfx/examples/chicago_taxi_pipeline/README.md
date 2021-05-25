@@ -223,6 +223,15 @@ as above local example with local directory changing to `gs://YOUR_BUCKET`.
 
 For more information, see [TensorFlow Serving](https://www.tensorflow.org/serving).
 
+# Chicago Taxi Beam Orchestrator Example
+
+Instead of using Airflow as orchestrator, [beam example](https://github.com/tensorflow/tfx/blob/r0.21/tfx/examples/chicago_taxi_pipeline/taxi_pipeline_beam.py)
+use [Beam as orchestrator](https://github.com/tensorflow/tfx/blob/r0.21/docs/guide/beam_orchestrator.md).
+
+To run the example, install tfx in the virtualenv, and copy data
+and user module file to $TAXI_DIR as above [instruction](#copy-the-pipeline-definition-to-airflows-dag-directory).
+Then simply run `python taxi_pipeline_beam.py` to execute the pipeline.
+
 # Chicago Taxi Kubeflow Orchestrator Example
 
 Use [Kubeflow as orchestrator](https://github.com/tensorflow/tfx/blob/r0.21/docs/guide/kubeflow.md), check [here](https://github.com/kubeflow/pipelines/tree/master/samples/core/tfx-oss) for details.
@@ -231,6 +240,43 @@ Use [Kubeflow as orchestrator](https://github.com/tensorflow/tfx/blob/r0.21/docs
 
 Instead of estimator, this example uses native Keras in user module file
 `taxi_utils_native_keras.py`.
+
+# Chicago Taxi Flink Example
+
+This section requires the [local prerequisites](#local_prerequisites) and adds
+another for [Apache Flink](https://flink.apache.org/).
+
+All you need is a local Apache Flink cluster with the Flink REST API enabled.
+You can download Flink and start a local cluster by running the script:
+
+<pre class="devsite-terminal devsite-click-to-copy">
+bash $TFX_EXAMPLES/setup/setup_beam_on_flink.sh
+</pre>
+
+The Apache Flink UI can be viewed at http://localhost:8081.
+
+To run tfx e2e on Flink, follow the setup for the [beam orchestrator example](#chicago-taxi-beam-orchestrator-example),
+and then within your virtual environment run `python taxi_pipeline_beam.py --runner=FlinkRunner`
+to execute the pipeline with Flink.
+
+# Chicago Taxi Spark Example
+
+This section requires the [local prerequisites](#local_prerequisites) and adds
+another for [Apache Spark](https://spark.apache.org/).
+
+All you need is a local Apache Spark cluster with the Spark REST API enabled.
+You can download Spark and start a local cluster by running the script:
+
+<pre class="devsite-terminal devsite-click-to-copy">
+bash $TFX_EXAMPLES/setup/setup_beam_on_spark.sh
+</pre>
+
+The Apache Spark UI can be viewed at http://localhost:8081. Check
+http://localhost:4040 for the Spark application UI (while a job is running).
+
+To run tfx e2e on Spark, follow the setup for the [beam orchestrator example](#chicago-taxi-beam-orchestrator-example),
+and then within your virtual environment run `python taxi_pipeline_beam.py --runner=SparkRunner`
+to execute the pipeline with Spark.
 
 # Learn more
 

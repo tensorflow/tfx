@@ -100,12 +100,11 @@ class NotebookFormatter(object):
   _DEFAULT_TITLE_FORMAT = ('<span class="class-name">%s</span>',
                            ['__class__.__name__'])
 
-  def __init__(
-      self,
-      cls: Type[object],
-      attributes: Optional[List[Text]] = None,
-      title_format: Optional[Tuple[Text, List[Union[Text, Callable]]]] = None,  # pylint: disable=g-bare-generic
-      _show_artifact_attributes: Optional[bool] = False):
+  def __init__(self,
+               cls: Type[object],
+               attributes: List[Text] = None,
+               title_format: Tuple[Text, List[Union[Text, Callable]]] = None,  # pylint: disable=g-bare-generic
+               _show_artifact_attributes: Optional[bool] = False):
     """Constructs a NotebookFormatter.
 
     Args:

@@ -38,6 +38,9 @@ _TESTDATA_ROOT = os.environ['KFP_E2E_TEST_DATA_ROOT']
 
 
 def _get_test_output_dir():
+  if 'TFX_TEST_PIPELINT_OUTPUT_DIR' in os.environ:
+    # For unit tests that need to override the output dir.
+    return os.environ['TFX_TEST_PIPELINT_OUTPUT_DIR']
   return 'gs://{}/test_output'.format(_BUCKET_NAME)
 
 

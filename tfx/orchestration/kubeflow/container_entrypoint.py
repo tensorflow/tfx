@@ -25,10 +25,11 @@ import logging
 import os
 import sys
 import textwrap
-from typing import cast, Dict, List, Mapping, MutableMapping, Optional, Sequence, Text, Union
+from typing import Dict, List, Mapping, MutableMapping, Optional, Sequence, Text, Union, cast
 
 from tfx import types
 from tfx.dsl.compiler import constants
+from tfx.dsl.io import fileio
 from tfx.orchestration import metadata
 from tfx.orchestration.kubeflow import kubeflow_metadata_adapter
 from tfx.orchestration.kubeflow.proto import kubeflow_pb2
@@ -384,14 +385,16 @@ def main():
   parser.add_argument('--pipeline_root', type=str, required=True)
   parser.add_argument('--kubeflow_metadata_config', type=str, required=True)
   parser.add_argument('--serialized_component', type=str, required=True)
-  parser.add_argument('--tfx_ir', type=str, required=True)
+  parser.add_argument('--tfx_ir_path', type=str, required=True)
   parser.add_argument('--node_id', type=str, required=True)
   launcher._register_execution = _register_execution  # pylint: disable=protected-access
 
   args = parser.parse_args()
 
   tfx_ir = pipeline_pb2.Pipeline()
-  json_format.Parse(args.tfx_ir, tfx_ir)
+  with fileio.open(args.tfx_ir_path, 'rb') as f:
+    tfx_ir.ParseFromString(f.read())
+
   # Substitute the runtime parameter to be a concrete run_id
   runtime_parameter_utils.substitute_runtime_parameter(
       tfx_ir, {

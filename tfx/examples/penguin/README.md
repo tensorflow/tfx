@@ -60,39 +60,3 @@ To execute the pipeline with a Flax model:
 <pre class="devsite-terminal devsite-click-to-copy">
 python ~/penguin/penguin_pipeline_local.py --model_framework=flax_experimental
 </pre>
-
-## Flink Example
-
-This section requires [Apache Flink](https://flink.apache.org/).
-
-All you need is a local Apache Flink cluster with the Flink REST API enabled.
-You can download Flink and start a local cluster by running the script:
-
-<pre class="devsite-terminal devsite-click-to-copy">
-bash ~/penguin/setup/setup_beam_on_flink.sh
-</pre>
-
-The Apache Flink UI can be viewed at http://localhost:8081.
-
-To run tfx e2e on Flink, follow the same instruction above with additional
-`runner` flag to execute the pipeline with Flink:
-`python ~/penguin/penguin_pipeline_local.py --runner=FlinkRunner`
-
-## Spark Example
-
-This section requires [Apache Spark](https://spark.apache.org/).
-
-All you need is a local Apache Spark cluster with the Spark REST API enabled.
-You can download Spark and start a local cluster by running the script:
-
-<pre class="devsite-terminal devsite-click-to-copy">
-bash ~/penguin/setup/setup_beam_on_spark.sh
-</pre>
-
-The Apache Spark UI can be viewed at http://localhost:8081. Check
-http://localhost:4040 for the Spark application UI (while a job is running).
-
-To run tfx e2e on Spark, follow the same instruction above with additional
-`runner` flag to execute the pipeline with Spark:
-`python ~/penguin/penguin_pipeline_local.py --runner=SparkRunner`
-

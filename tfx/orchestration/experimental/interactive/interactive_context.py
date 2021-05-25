@@ -83,12 +83,12 @@ class InteractiveContext(object):
 
   _DEFAULT_SQLITE_FILENAME = 'metadata.sqlite'
 
-  def __init__(self,
-               pipeline_name: Optional[Text] = None,
-               pipeline_root: Optional[Text] = None,
-               metadata_connection_config: Optional[
-                   metadata_store_pb2.ConnectionConfig] = None,
-               beam_pipeline_args: Optional[List[Text]] = None):
+  def __init__(
+      self,
+      pipeline_name: Text = None,
+      pipeline_root: Text = None,
+      metadata_connection_config: metadata_store_pb2.ConnectionConfig = None,
+      beam_pipeline_args: Optional[List[Text]] = None):
     """Initialize an InteractiveContext.
 
     Args:

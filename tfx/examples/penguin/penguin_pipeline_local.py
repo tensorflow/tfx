@@ -13,22 +13,15 @@
 # limitations under the License.
 """Penguin example using TFX."""
 
-import multiprocessing
 import os
-import socket
 import sys
 from typing import List, Optional, Text
+
 import absl
 from absl import flags
 
 import tensorflow_model_analysis as tfma
 from tfx import v1 as tfx
-
-flags.DEFINE_enum(
-    'runner', 'DirectRunner', ['DirectRunner', 'FlinkRunner', 'SparkRunner'],
-    'The Beam runner to execute Beam-powered components. '
-    'For FlinkRunner or SparkRunner, first run setup/setup_beam_on_flink.sh '
-    'or setup/setup_beam_on_spark.sh, respectively.')
 
 flags.DEFINE_enum(
     'model_framework', 'keras', ['keras', 'flax_experimental'],
@@ -46,54 +39,12 @@ _data_root = os.path.join(_penguin_root, 'data')
 _tfx_root = os.path.join(os.environ['HOME'], 'tfx')
 
 # Pipeline arguments for Beam powered Components.
-# LINT.IfChange
-try:
-  _parallelism = multiprocessing.cpu_count()
-except NotImplementedError:
-  _parallelism = 1
-# LINT.ThenChange(setup/setup_beam_on_flink.sh)
-
-# Common pipeline arguments used by both Flink and Spark runners.
-_beam_portable_pipeline_args = [
-    # The runner will instruct the original Python process to start Beam Python
-    # workers.
-    '--environment_type=LOOPBACK',
-    # Start Beam Python workers as separate processes as opposed to threads.
-    '--experiments=use_loopback_process_worker=True',
-    '--sdk_worker_parallelism=%d' % _parallelism,
-
-    # Setting environment_cache_millis to practically infinity enables
-    # continual reuse of Beam SDK workers, improving performance.
-    '--environment_cache_millis=1000000',
-
-    # TODO(b/183057237): Obviate setting this.
-    '--experiments=pre_optimize=all',
+_beam_pipeline_args = [
+    '--direct_running_mode=multi_processing',
+    # 0 means auto-detect based on on the number of CPUs available
+    # during execution time.
+    '--direct_num_workers=0',
 ]
-
-# Pipeline arguments for Beam powered Components.
-# Arguments differ according to runner.
-_beam_pipeline_args_by_runner = {
-    'DirectRunner': [
-        '--direct_running_mode=multi_processing',
-        # 0 means auto-detect based on on the number of CPUs available
-        # during execution time.
-        '--direct_num_workers=0',
-    ],
-    'SparkRunner': [
-        '--runner=SparkRunner',
-        '--spark_submit_uber_jar',
-        '--spark_rest_url=http://%s:6066' % socket.gethostname(),
-    ] + _beam_portable_pipeline_args,
-    'FlinkRunner': [
-        '--runner=FlinkRunner',
-        # LINT.IfChange
-        '--flink_version=1.12',
-        # LINT.ThenChange(setup/setup_beam_on_flink.sh)
-        '--flink_submit_uber_jar',
-        '--flink_master=http://localhost:8081',
-        '--parallelism=%d' % _parallelism,
-    ] + _beam_portable_pipeline_args
-}
 
 # Configs for ExampleGen and SpansResolver, e.g.,
 #
@@ -122,7 +73,6 @@ def _create_pipeline(
     accuracy_threshold: float,
     serving_model_dir: Text,
     metadata_path: Text,
-    user_provided_schema_path: Optional[Text],
     enable_tuning: bool,
     enable_bulk_inferrer: bool,
     examplegen_input_config: Optional[tfx.proto.Input],
@@ -140,7 +90,6 @@ def _create_pipeline(
     accuracy_threshold: minimum accuracy to push the model.
     serving_model_dir: filepath to write pipeline SavedModel to.
     metadata_path: path to local pipeline ML Metadata store.
-    user_provided_schema_path: path to user provided schema file.
     enable_tuning: If True, the hyperparameter tuning through KerasTuner is
       enabled.
     enable_bulk_inferrer: If True, the generated model will be used for a
@@ -167,23 +116,14 @@ def _create_pipeline(
   statistics_gen = tfx.components.StatisticsGen(
       examples=example_gen.outputs['examples'])
 
-  if user_provided_schema_path:
-    # Import user-provided schema.
-    schema_importer = tfx.dsl.Importer(
-        source_uri=user_provided_schema_path,
-        artifact_type=tfx.types.standard_artifacts.Schema).with_id(
-            'schema_importer')
-    schema = schema_importer.outputs['result']
-  else:
-    # Generates schema based on statistics files.
-    schema_gen = tfx.components.SchemaGen(
-        statistics=statistics_gen.outputs['statistics'],
-        infer_feature_shape=True)
-    schema = schema_gen.outputs['schema']
+  # Generates schema based on statistics files.
+  schema_gen = tfx.components.SchemaGen(
+      statistics=statistics_gen.outputs['statistics'], infer_feature_shape=True)
 
   # Performs anomaly detection based on statistics and data schema.
   example_validator = tfx.components.ExampleValidator(
-      statistics=statistics_gen.outputs['statistics'], schema=schema)
+      statistics=statistics_gen.outputs['statistics'],
+      schema=schema_gen.outputs['schema'])
 
   # Gets multiple Spans for transform and training.
   if resolver_range_config:
@@ -200,7 +140,7 @@ def _create_pipeline(
   transform = tfx.components.Transform(
       examples=(examples_resolver.outputs['examples']
                 if resolver_range_config else example_gen.outputs['examples']),
-      schema=schema,
+      schema=schema_gen.outputs['schema'],
       module_file=module_file)
 
   # Tunes the hyperparameters for model training based on user-provided Python
@@ -219,7 +159,7 @@ def _create_pipeline(
       module_file=module_file,
       examples=transform.outputs['transformed_examples'],
       transform_graph=transform.outputs['transform_graph'],
-      schema=schema,
+      schema=schema_gen.outputs['schema'],
       # If Tuner is in the pipeline, Trainer can take Tuner's output
       # best_hyperparameters artifact as input and utilize it in the user module
       # code.
@@ -300,6 +240,7 @@ def _create_pipeline(
   components_list = [
       example_gen,
       statistics_gen,
+      schema_gen,
       example_validator,
       transform,
       trainer,
@@ -307,10 +248,6 @@ def _create_pipeline(
       evaluator,
       pusher,
   ]
-  if user_provided_schema_path:
-    components_list.append(schema_importer)
-  else:
-    components_list.append(schema_gen)
   if resolver_range_config:
     components_list.append(examples_resolver)
   if enable_tuning:
@@ -334,7 +271,6 @@ def _create_pipeline(
 if __name__ == '__main__':
   absl.logging.set_verbosity(absl.logging.INFO)
   absl.flags.FLAGS(sys.argv)
-
   _pipeline_name = f'penguin_local_{flags.FLAGS.model_framework}'
 
   # Python module file to inject customized logic into the TFX components. The
@@ -360,11 +296,10 @@ if __name__ == '__main__':
           accuracy_threshold=0.6,
           serving_model_dir=_serving_model_dir,
           metadata_path=_metadata_path,
-          user_provided_schema_path=None,
           # TODO(b/180723394): support tuning for Flax.
           enable_tuning=(flags.FLAGS.model_framework == 'keras'),
           enable_bulk_inferrer=True,
           examplegen_input_config=_examplegen_input_config,
           examplegen_range_config=_examplegen_range_config,
           resolver_range_config=_resolver_range_config,
-          beam_pipeline_args=_beam_pipeline_args_by_runner[flags.FLAGS.runner]))
+          beam_pipeline_args=_beam_pipeline_args))

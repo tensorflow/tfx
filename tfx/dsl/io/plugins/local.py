@@ -17,7 +17,7 @@ import glob
 import os
 import shutil
 
-from typing import Any, Callable, Iterable, List, Optional, Tuple
+from typing import Any, Callable, Iterable, List, Tuple
 
 from tfx.dsl.io import filesystem
 from tfx.dsl.io import filesystem_registry
@@ -113,7 +113,7 @@ class LocalFilesystem(filesystem.Filesystem):
   def walk(
       top: PathType,
       topdown: bool = True,
-      onerror: Optional[Callable[..., None]] = None
+      onerror: Callable[..., None] = None
   ) -> Iterable[Tuple[PathType, List[PathType], List[PathType]]]:
     try:
       yield from os.walk(top, topdown=topdown, onerror=onerror)

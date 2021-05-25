@@ -17,7 +17,7 @@ set -u
 WORK_DIR="/tmp/beam"
 # LINT.IfChange
 FLINK_VERSION="1.12.1"
-# LINT.ThenChange(../penguin_pipeline_local.py)
+# LINT.ThenChange(../taxi_pipeline_beam.py)
 FLINK_NAME="flink-$FLINK_VERSION"
 FLINK_BINARY="$FLINK_NAME-bin-scala_2.12.tgz"
 FLINK_DOWNLOAD_URL="http://archive.apache.org/dist/flink/flink-$FLINK_VERSION/$FLINK_BINARY"
@@ -61,7 +61,7 @@ except NotImplementedError:
 print(parallelism)
 "
 }
-# LINT.ThenChange(../penguin_pipeline_local.py)
+# LINT.ThenChange(../taxi_pipeline_beam.py)
 
 function main(){
   setup_flink

@@ -94,12 +94,11 @@ class _FakeComponent(base_component.BaseComponent):
   EXECUTOR_SPEC = executor_spec.ExecutorClassSpec(_FakeExecutor)
   DRIVER_CLASS = _FakeDriver
 
-  def __init__(
-      self,
-      name: Text,
-      input_channel: types.Channel,
-      output_channel: Optional[types.Channel] = None,
-      custom_executor_spec: Optional[executor_spec.ExecutorSpec] = None):
+  def __init__(self,
+               name: Text,
+               input_channel: types.Channel,
+               output_channel: Optional[types.Channel] = None,
+               custom_executor_spec: executor_spec.ExecutorSpec = None):
     output_channel = output_channel or types.Channel(
         type=_OutputArtifact).set_artifacts([_OutputArtifact()])
     spec = _FakeComponentSpec(input=input_channel, output=output_channel)
