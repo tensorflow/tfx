@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Tests for tfx.tools.cli.kubeflow_v2.handler.kubeflow_v2_dag_runner_patcher."""
+"""Tests for tfx.tools.cli.handler.kubeflow_v2_dag_runner_patcher."""
 
 import os
 from unittest import mock
@@ -19,7 +19,7 @@ from unittest import mock
 import tensorflow as tf
 from tfx.orchestration import pipeline as tfx_pipeline
 from tfx.orchestration.kubeflow.v2 import kubeflow_v2_dag_runner
-from tfx.tools.cli.kubeflow_v2.handler import kubeflow_v2_dag_runner_patcher
+from tfx.tools.cli.handler import kubeflow_v2_dag_runner_patcher
 from tfx.utils import test_case_utils
 
 
