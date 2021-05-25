@@ -34,6 +34,7 @@ from tfx.components import Transform
 from tfx.components.trainer.executor import Executor
 from tfx.dsl.components.base import executor_spec
 from tfx.dsl.components.common import resolver
+from tfx.dsl.experimental import latest_artifacts_resolver
 from tfx.dsl.experimental import latest_blessed_model_resolver
 from tfx.orchestration import metadata
 from tfx.orchestration import pipeline
@@ -104,12 +105,18 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
       schema=schema_gen.outputs['schema'],
       module_file=module_file)
 
+  # Get the latest model so that we can warm start from the model.
+  latest_model_resolver = resolver.Resolver(
+      strategy_class=latest_artifacts_resolver.LatestArtifactsResolver,
+      latest_model=Channel(type=Model)).with_id('latest_model_resolver')
+
   # Uses user-provided Python function that implements a model using TF-Learn.
   trainer = Trainer(
       module_file=module_file,
       custom_executor_spec=executor_spec.ExecutorClassSpec(Executor),
       transformed_examples=transform.outputs['transformed_examples'],
       schema=schema_gen.outputs['schema'],
+      base_model=latest_model_resolver.outputs['latest_model'],
       transform_graph=transform.outputs['transform_graph'],
       train_args=trainer_pb2.TrainArgs(num_steps=10000),
       eval_args=trainer_pb2.EvalArgs(num_steps=5000))
@@ -166,6 +173,7 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
           schema_gen,
           example_validator,
           transform,
+          latest_model_resolver,
           trainer,
           model_resolver,
           evaluator,
