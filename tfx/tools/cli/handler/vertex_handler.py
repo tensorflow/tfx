@@ -16,9 +16,11 @@
 import functools
 import os
 import re
-from typing import Any, Dict, Text
+import sys
+from typing import Text
 
 import click
+
 from tfx.dsl.io import fileio
 from tfx.tools.cli import labels
 from tfx.tools.cli.handler import base_handler
@@ -26,53 +28,49 @@ from tfx.tools.cli.handler import kubeflow_handler
 from tfx.tools.cli.handler import kubeflow_v2_dag_runner_patcher
 from tfx.utils import io_utils
 
+# TODO(b/182792980): Move to regular import.
+try:
+  from kfp.v2.google import client as kfp_client  # pylint: disable=g-import-not-at-top # pytype: disable=import-error
+except ImportError:
+  kfp_client = None
+
 
 _PIPELINE_ARG_FILE = 'pipeline_args.json'
 _PIPELINE_SPEC_FILE = 'pipeline.json'
 
-# Regex pattern used to capture the project id and the pipeline job name.
-_FULL_JOB_NAME_PATTERN = r'projects/(\S+)/pipelineJobs/(\S+)'
+# Regex pattern used to capture the project id and the run id.
+_FULL_JOB_NAME_PATTERN = r'projects/(\S+)/locations/(\S+)/pipelineJobs/(\S+)'
 
-# Prefix for the pipeline run detail page link.
-_RUN_DETAIL_PREFIX = 'https://console.cloud.google.com/ai-platform/pipelines/runs/'
+# String format for the pipeline run detail page link.
+_RUN_DETAIL_FORMAT = 'https://console.cloud.google.com/vertex-ai/locations/{region}/pipelines/runs/{job_id}?project={project_id}'
 
 
-def _get_job_name(run: Dict[Text, Any]) -> Text:
-  """Extracts the job name from its full name by regex.
+def _get_job_id(full_name: str) -> str:
+  """Extracts the job id from its full name by regex.
 
   Args:
-    run: JSON dict of a pipeline run object returned by Kubeflow pipelines REST
-      API.
+    full_name: full name returned from Vertex Pipelines.
 
   Returns:
-    Job name extracted from the given JSON dict.
+    Job id extracted from the full name.
 
   Raises:
-    RuntimeError: if cannot find valid job name from the response.
+    RuntimeError: if cannot find valid job id from the response.
   """
-  full_name = run['name']
   match_result = re.match(_FULL_JOB_NAME_PATTERN, full_name)
   if not match_result:
     raise RuntimeError('Invalid job name is received.')
-  return match_result.group(2)
+  return match_result.group(3)
 
 
-def _get_job_link(job_name: Text, project_id: Text) -> Text:
+def _get_job_link(project_id: str, region: str, job_id: str) -> Text:
   """Gets the link to the pipeline job UI according to job name and project."""
-  return _RUN_DETAIL_PREFIX + '{job_name}?project={project_id}'.format(
-      job_name=job_name, project_id=project_id)
+  return _RUN_DETAIL_FORMAT.format(
+      region=region, job_id=job_id, project_id=project_id)
 
 
 class VertexHandler(base_handler.BaseHandler):
   """Helper methods for Vertex Handler."""
-
-  def __init__(self, flags_dict: Dict[Text, Any]):
-    super().__init__(flags_dict)
-    # Only when the given command is `run` and an API key is specified shall we
-    # create a API client.
-    # TODO(b/169095387): re-implement run commands when the unified client
-    # becomes available.
-    pass
 
   def create_pipeline(self, update: bool = False) -> None:
     """Creates or updates a pipeline to use in Vertex Pipelines.
@@ -135,45 +133,62 @@ class VertexHandler(base_handler.BaseHandler):
     click.echo(f'Pipeline {context[patcher.PIPELINE_NAME]} compiled '
                'successfully.')
 
+  def _create_vertex_client(self):  #-> kfp_client.AIPlatformClient:
+    if not self.flags_dict[labels.GCP_PROJECT_ID]:
+      sys.exit('Please set GCP project id with --project flag.')
+    if not self.flags_dict[labels.GCP_REGION]:
+      sys.exit('Please set GCP region with --region flag.')
+
+    return kfp_client.AIPlatformClient(
+        project_id=self.flags_dict[labels.GCP_PROJECT_ID],
+        region=self.flags_dict[labels.GCP_REGION])
+
   def create_run(self) -> None:
     """Runs a pipeline in Vertex Pipelines."""
-    # TODO(b/169095387): re-implement run commands when the unified client
-    # becomes available.
-    raise NotImplementedError('Creating a run has not been implemented for '
-                              'Kubeflow V2 runner yet.')
+    vertex_client = self._create_vertex_client()
+    pipeline_name = self.flags_dict[labels.PIPELINE_NAME]
+
+    run = vertex_client.create_run_from_job_spec(
+        job_spec_path=self._get_pipeline_definition_path(pipeline_name))
+
+    click.echo('Run created for pipeline: ' + pipeline_name)
+    self._print_run(run)
 
   def terminate_run(self) -> None:
     """Stops a run."""
-    # TODO(b/155096168): implement this.
-    raise NotImplementedError('Terminating runs has not been implemented for '
-                              'Kubeflow V2 runner yet.')
+    click.echo('Not supported for {} orchestrator.'.format(
+        self.flags_dict[labels.ENGINE_FLAG]))
 
   def list_runs(self) -> None:
     """Lists all runs of a pipeline."""
-    # TODO(b/169095387): re-implement run commands when the unified client
-    # becomes available.
-    raise NotImplementedError('Listing runs has not been implemented for '
-                              'Kubeflow V2 runner yet.')
+    click.echo('Not supported for {} orchestrator.'.format(
+        self.flags_dict[labels.ENGINE_FLAG]))
 
   def get_run(self) -> None:
     """Checks run status."""
-    # TODO(b/169095387): re-implement run commands when the unified client
-    # becomes available.
-    raise NotImplementedError('Getting run status has not been implemented for '
-                              'Kubeflow V2 runner yet.')
+    vertex_client = self._create_vertex_client()
+    run = vertex_client.get_job(self.flags_dict[labels.RUN_ID])
+    self._print_run(run)
 
   def delete_run(self) -> None:
     """Deletes a run."""
-    # TODO(b/155096168): implement this.
-    raise NotImplementedError('Deleting runs has not been implemented for '
-                              'Kubeflow V2 runner yet.')
+    click.echo('Not supported for {} orchestrator.'.format(
+        self.flags_dict[labels.ENGINE_FLAG]))
+
+  def _get_pipeline_dir(self, pipeline_name: str) -> str:
+    return os.path.join(self._handler_home_dir, pipeline_name)
+
+  def _get_pipeline_definition_path(self, pipeline_name: str) -> str:
+    return os.path.join(
+        self._get_pipeline_dir(pipeline_name),
+        kubeflow_v2_dag_runner_patcher.OUTPUT_FILENAME)
 
   def _prepare_pipeline_dir(self, pipeline_name: str, required: bool) -> str:
     """Create a directory for pipeline definition in the handler directory."""
 
     self._check_pipeline_existence(pipeline_name, required)
 
-    handler_pipeline_path = os.path.join(self._handler_home_dir, pipeline_name)
+    handler_pipeline_path = self._get_pipeline_dir(pipeline_name)
 
     # If updating pipeline, first delete the pipeline directory.
     if fileio.exists(handler_pipeline_path):
@@ -184,3 +199,11 @@ class VertexHandler(base_handler.BaseHandler):
     # pipeline.json will be stored in KubeflowV2DagRunner.run().
     return handler_pipeline_path
 
+  def _print_run(self, run):
+    """Prints a run in a tabular format with headers mentioned below."""
+    headers = ['run_id', 'status', 'created_at', 'link']
+    run_id = _get_job_id(run['name'])
+    job_link = _get_job_link(self.flags_dict[labels.GCP_PROJECT_ID],
+                             self.flags_dict[labels.GCP_REGION], run_id)
+    data = [[run_id, run['state'], run['createTime'], job_link]]
+    click.echo(self._format_table(headers, data))

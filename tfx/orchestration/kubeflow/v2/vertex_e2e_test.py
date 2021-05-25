@@ -11,13 +11,12 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""E2E tests for Kubeflow V2 runner."""
+"""E2E tests for Kubeflow V2 runner with Vertex Pipelines."""
 
+import datetime
 import os
-import time
 from typing import List, Optional
 
-from absl import logging
 from absl.testing import parameterized
 
 from kfp.v2.google import client
@@ -33,13 +32,7 @@ from tfx.orchestration.kubeflow.v2 import test_utils as kubeflow_v2_test_utils
 _POLLING_INTERVAL_IN_SECONDS = 60
 
 # TODO(b/184285790): Reduce timeout appropriately.
-_MAX_JOB_EXECUTION_TIME_IN_SECONDS = 90 * 60
-
-_CAIPP_SUCCEEDED_STATE = 'PIPELINE_STATE_SUCCEEDED'
-
-_CAIPP_RUNNING_STATES = frozenset(
-    ('PIPELINE_STATE_QUEUED', 'PIPELINE_STATE_PENDING',
-     'PIPELINE_STATE_RUNNING'))
+_MAX_JOB_EXECUTION_TIME = datetime.timedelta(minutes=90)
 
 
 class KubeflowV2E2ETestCase(kubeflow_v2_test_utils.BaseKubeflowV2Test):
@@ -54,11 +47,10 @@ class KubeflowV2E2ETestCase(kubeflow_v2_test_utils.BaseKubeflowV2Test):
   _BUCKET_NAME = os.environ['KFP_E2E_BUCKET_NAME']
 
   def setUp(self):
+    super().setUp()
     self._client = client.AIPlatformClient(
         project_id=self._GCP_PROJECT_ID,
         region=self._GCP_REGION)
-
-    super().setUp()
 
   def _create_pipeline(
       self,
@@ -72,8 +64,7 @@ class KubeflowV2E2ETestCase(kubeflow_v2_test_utils.BaseKubeflowV2Test):
         components=pipeline_components,
         beam_pipeline_args=beam_pipeline_args)
 
-  def _run_pipeline(self, pipeline: tfx_pipeline.Pipeline,
-                    job_id: str) -> None:
+  def _run_pipeline(self, pipeline: tfx_pipeline.Pipeline, job_id: str) -> None:
     """Trigger the pipeline execution with a specific job ID."""
     # Ensure cleanup regardless of whether pipeline succeeds or fails.
     self.addCleanup(self._delete_pipeline_output,
@@ -87,40 +78,15 @@ class KubeflowV2E2ETestCase(kubeflow_v2_test_utils.BaseKubeflowV2Test):
             pipeline, write_out=True)
 
     self._client.create_run_from_job_spec(
-        job_spec_path='pipeline.json',
-        job_id=job_id)
+        job_spec_path='pipeline.json', job_id=job_id)
 
   def _check_job_status(self, job_id: str) -> None:
-    """Checks the status of the job.
-
-    Args:
-      job_id: The relative ID of the pipeline job.
-
-    Raises:
-      RuntimeError: On (1) unexpected response from service; or (2) on
-        unexpected job status; or (2) timed out waiting for finishing.
-    """
-
-    deadline = time.time() + _MAX_JOB_EXECUTION_TIME_IN_SECONDS
-    while time.time() < deadline:
-      time.sleep(_POLLING_INTERVAL_IN_SECONDS)
-
-      response = self._client.get_job(job_id)
-      if not response or not response.get('state'):
-        raise RuntimeError('Unexpected response received: %s' % response)
-      state = response.get('state')
-      if state == _CAIPP_SUCCEEDED_STATE:
-        logging.info('Job succeeded: %s', response)
-        return
-      if state not in _CAIPP_RUNNING_STATES:
-        raise RuntimeError('Job is in an unexpected state: %s' % response)
-      logging.info('Pipeline job has not finished yet.')
-
-    raise RuntimeError('Timed out waiting for job to finish.')
+    kubeflow_v2_test_utils.poll_job_status(self._client, job_id,
+                                           _MAX_JOB_EXECUTION_TIME,
+                                           _POLLING_INTERVAL_IN_SECONDS)
 
 
-class KubeflowV2E2ETest(KubeflowV2E2ETestCase,
-                        parameterized.TestCase):
+class KubeflowV2E2ETest(KubeflowV2E2ETestCase, parameterized.TestCase):
   """Kubeflow V2 runner E2E test."""
 
   # The query to get data from BigQuery.

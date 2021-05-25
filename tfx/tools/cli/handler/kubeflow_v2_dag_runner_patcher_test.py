@@ -63,7 +63,7 @@ class KubeflowV2DagRunnerPatcherTest(test_case_utils.TfxTest):
     self.assertEqual(
         context[patcher.OUTPUT_FILE_PATH],
         os.path.join(pipeline_dir,
-                     kubeflow_v2_dag_runner_patcher._OUTPUT_FILENAME))
+                     kubeflow_v2_dag_runner_patcher.OUTPUT_FILENAME))
 
 
 if __name__ == '__main__':
