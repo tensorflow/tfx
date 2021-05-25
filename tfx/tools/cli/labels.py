@@ -49,8 +49,10 @@ PIPELINE_VERSION_ID = 'pipeline_version_id'
 EXPERIMENT_ID = 'experiment_id'
 # Flag to decide whether an image build is needed
 BUILD_IMAGE = 'build_image'
-# API key for GCP API call.
-API_KEY = 'api_key'
+# GCP Project ID for GCP API call.
+GCP_PROJECT_ID = 'gcp_project_id'
+# GCP Region for GCP API call.
+GCP_REGION = 'gcp_region'
 
 # Template specific labels.
 # Destination directory path to copy files

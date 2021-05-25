@@ -2,7 +2,9 @@
 
 ## Major Features and Improvements
 
-*   N/A
+*   TFX CLI now supports
+    [Vertex Pipelines](https://cloud.google.com/vertex-ai/docs/pipelines/introduction).
+    use it with `--engine=vertex` flag.
 
 ## Breaking Changes
 
