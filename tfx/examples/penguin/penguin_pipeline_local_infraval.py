@@ -60,7 +60,8 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
                      make_warmup: bool) -> tfx.dsl.Pipeline:
   """Implements the penguin pipeline with TFX."""
   # Brings data into the pipeline or otherwise joins/converts training data.
-  example_gen = tfx.components.CsvExampleGen(input_base=data_root)
+  example_gen = tfx.components.CsvExampleGen(
+      input_base=os.path.join(data_root, 'labelled'))
 
   # Computes statistics over data for visualization and example validation.
   statistics_gen = tfx.components.StatisticsGen(
