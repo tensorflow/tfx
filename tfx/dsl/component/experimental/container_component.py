@@ -51,6 +51,7 @@ def create_container_component(
   Example:
 
   ```
+    from tfx.v1.dsl import placeholders
     component = create_container_component(
         name='TrainModel',
         inputs={
@@ -65,9 +66,10 @@ def create_container_component(
         image='gcr.io/my-project/my-trainer',
         command=[
             'python3', 'my_trainer',
-            '--training_data_uri', InputUriPlaceholder('training_data'),
-            '--model_uri', OutputUriPlaceholder('model'),
-            '--num_training-steps', InputValuePlaceholder('num_training_steps'),
+            '--training_data_uri', placeholders.input('training_data').uri,
+            '--model_uri', placeholders.output('model').uri,
+            '--num_training-steps',
+            placeholders.exec_property('num_training_steps'),
         ]
     )
   ```

@@ -34,17 +34,18 @@ from tfx.components import Transform
 from tfx.components.trainer.executor import Executor
 from tfx.dsl.components.base import executor_spec
 from tfx.dsl.components.common import resolver
+from tfx.dsl.experimental import latest_artifacts_resolver
 from tfx.dsl.experimental import latest_blessed_model_resolver
 from tfx.orchestration import metadata
 from tfx.orchestration import pipeline
-from tfx.orchestration.local.local_dag_runner import LocalDagRunner
+from tfx.orchestration.beam.beam_dag_runner import BeamDagRunner
 from tfx.proto import pusher_pb2
 from tfx.proto import trainer_pb2
 from tfx.types import Channel
 from tfx.types.standard_artifacts import Model
 from tfx.types.standard_artifacts import ModelBlessing
 
-_pipeline_name = 'chicago_taxi_beam'
+_pipeline_name = 'chicago_taxi_warmstart'
 
 # This example assumes that the taxi data is stored in ~/taxi/data and the
 # taxi utility function is in ~/taxi.  Feel free to customize this as needed.
@@ -81,7 +82,6 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
                      metadata_path: Text,
                      beam_pipeline_args: List[Text]) -> pipeline.Pipeline:
   """Implements the chicago taxi pipeline with TFX."""
-
   # Brings data into the pipeline or otherwise joins/converts training data.
   example_gen = CsvExampleGen(input_base=data_root)
 
@@ -104,12 +104,18 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
       schema=schema_gen.outputs['schema'],
       module_file=module_file)
 
+  # Get the latest model so that we can warm start from the model.
+  latest_model_resolver = resolver.Resolver(
+      strategy_class=latest_artifacts_resolver.LatestArtifactsResolver,
+      latest_model=Channel(type=Model)).with_id('latest_model_resolver')
+
   # Uses user-provided Python function that implements a model using TF-Learn.
   trainer = Trainer(
       module_file=module_file,
       custom_executor_spec=executor_spec.ExecutorClassSpec(Executor),
       transformed_examples=transform.outputs['transformed_examples'],
       schema=schema_gen.outputs['schema'],
+      base_model=latest_model_resolver.outputs['latest_model'],
       transform_graph=transform.outputs['transform_graph'],
       train_args=trainer_pb2.TrainArgs(num_steps=10000),
       eval_args=trainer_pb2.EvalArgs(num_steps=5000))
@@ -136,6 +142,8 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
                       tfma.config.MetricThreshold(
                           value_threshold=tfma.GenericValueThreshold(
                               lower_bound={'value': 0.6}),
+                          # Change threshold will be ignored if there is no
+                          # baseline model resolved from MLMD (first run).
                           change_threshold=tfma.GenericChangeThreshold(
                               direction=tfma.MetricDirection.HIGHER_IS_BETTER,
                               absolute={'value': -1e-10}))
@@ -145,7 +153,6 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
       examples=example_gen.outputs['examples'],
       model=trainer.outputs['model'],
       baseline_model=model_resolver.outputs['model'],
-      # Change threshold will be ignored if there is no baseline (first run).
       eval_config=eval_config)
 
   # Checks whether the model passed the validation steps and pushes the model
@@ -161,15 +168,8 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
       pipeline_name=pipeline_name,
       pipeline_root=pipeline_root,
       components=[
-          example_gen,
-          statistics_gen,
-          schema_gen,
-          example_validator,
-          transform,
-          trainer,
-          model_resolver,
-          evaluator,
-          pusher,
+          example_gen, statistics_gen, schema_gen, example_validator, transform,
+          latest_model_resolver, trainer, model_resolver, evaluator, pusher
       ],
       enable_cache=True,
       metadata_connection_config=metadata.sqlite_metadata_connection_config(
@@ -178,11 +178,11 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
 
 
 # To run this pipeline from the python CLI:
-#   $python taxi_pipeline_beam.py
+#   $python taxi_pipeline_warmstart.py
 if __name__ == '__main__':
   absl.logging.set_verbosity(absl.logging.INFO)
 
-  LocalDagRunner().run(
+  BeamDagRunner().run(
       _create_pipeline(
           pipeline_name=_pipeline_name,
           pipeline_root=_pipeline_root,

@@ -12,7 +12,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""E2E Tests for tfx.examples.chicago_taxi_pipeline.taxi_pipeline_beam."""
+"""E2E Tests for tfx.examples.chicago_taxi_pipeline.taxi_pipeline_warmstart."""
 
 from __future__ import absolute_import
 from __future__ import division
@@ -24,15 +24,16 @@ from typing import Text
 from absl.testing import parameterized
 import tensorflow as tf
 from tfx.dsl.io import fileio
-from tfx.examples.chicago_taxi_pipeline import taxi_pipeline_beam
+from tfx.examples.chicago_taxi_pipeline import taxi_pipeline_warmstart
 from tfx.orchestration import metadata
-from tfx.orchestration.local.local_dag_runner import LocalDagRunner
+from tfx.orchestration.beam.beam_dag_runner import BeamDagRunner
 
 
-class TaxiPipelineBeamEndToEndTest(tf.test.TestCase, parameterized.TestCase):
+class TaxiPipelineWarmstartEndToEndTest(
+    tf.test.TestCase, parameterized.TestCase):
 
   def setUp(self):
-    super(TaxiPipelineBeamEndToEndTest, self).setUp()
+    super(TaxiPipelineWarmstartEndToEndTest, self).setUp()
     self._test_dir = os.path.join(
         os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR', self.get_temp_dir()),
         self._testMethodName)
@@ -46,7 +47,7 @@ class TaxiPipelineBeamEndToEndTest(tf.test.TestCase, parameterized.TestCase):
     self._metadata_path = os.path.join(self._test_dir, 'tfx', 'metadata',
                                        self._pipeline_name, 'metadata.db')
 
-  def assertExecutedOnce(self, component: Text) -> None:
+  def assertExecuted(self, component: Text, execution_count: int) -> None:
     """Check the component is executed exactly once."""
     component_path = os.path.join(self._pipeline_root, component)
     self.assertTrue(fileio.exists(component_path))
@@ -64,7 +65,13 @@ class TaxiPipelineBeamEndToEndTest(tf.test.TestCase, parameterized.TestCase):
     self.assertNotEmpty(outputs)
     for output in outputs:
       execution = fileio.listdir(os.path.join(component_path, output))
-      self.assertLen(execution, 1)
+      self.assertLen(execution, execution_count)
+
+  def assertExecutedOnce(self, component: Text) -> None:
+    self.assertExecuted(component, 1)
+
+  def assertExecutedTwice(self, component: Text) -> None:
+    self.assertExecuted(component, 2)
 
   def assertPipelineExecution(self) -> None:
     self.assertExecutedOnce('CsvExampleGen')
@@ -76,9 +83,9 @@ class TaxiPipelineBeamEndToEndTest(tf.test.TestCase, parameterized.TestCase):
     self.assertExecutedOnce('Trainer')
     self.assertExecutedOnce('Transform')
 
-  def testTaxiPipelineBeam(self):
-    LocalDagRunner().run(
-        taxi_pipeline_beam._create_pipeline(
+  def testTaxiPipelineWarmstart(self):
+    BeamDagRunner().run(
+        taxi_pipeline_warmstart._create_pipeline(
             pipeline_name=self._pipeline_name,
             data_root=self._data_root,
             module_file=self._module_file,
@@ -95,13 +102,13 @@ class TaxiPipelineBeamEndToEndTest(tf.test.TestCase, parameterized.TestCase):
       artifact_count = len(m.store.get_artifacts())
       execution_count = len(m.store.get_executions())
       self.assertGreaterEqual(artifact_count, execution_count)
-      self.assertEqual(9, execution_count)
+      self.assertEqual(10, execution_count)
 
     self.assertPipelineExecution()
 
-    # Runs pipeline the second time.
-    LocalDagRunner().run(
-        taxi_pipeline_beam._create_pipeline(
+    # Run pipeline again.
+    BeamDagRunner().run(
+        taxi_pipeline_warmstart._create_pipeline(
             pipeline_name=self._pipeline_name,
             data_root=self._data_root,
             module_file=self._module_file,
@@ -110,30 +117,12 @@ class TaxiPipelineBeamEndToEndTest(tf.test.TestCase, parameterized.TestCase):
             metadata_path=self._metadata_path,
             beam_pipeline_args=[]))
 
-    # All executions but Evaluator and Pusher are cached.
-    # Note that Resolver will always execute.
     with metadata.Metadata(metadata_config) as m:
-      # Artifact count is increased by 3 caused by Evaluator and Pusher.
-      self.assertLen(m.store.get_artifacts(), artifact_count + 3)
-      artifact_count = len(m.store.get_artifacts())
-      self.assertLen(m.store.get_executions(), 18)
+      # 10 more executions.
+      self.assertLen(m.store.get_executions(), 20)
 
-    # Runs pipeline the third time.
-    LocalDagRunner().run(
-        taxi_pipeline_beam._create_pipeline(
-            pipeline_name=self._pipeline_name,
-            data_root=self._data_root,
-            module_file=self._module_file,
-            serving_model_dir=self._serving_model_dir,
-            pipeline_root=self._pipeline_root,
-            metadata_path=self._metadata_path,
-            beam_pipeline_args=[]))
-
-    # Asserts cache execution.
-    with metadata.Metadata(metadata_config) as m:
-      # Artifact count is unchanged.
-      self.assertLen(m.store.get_artifacts(), artifact_count)
-      self.assertLen(m.store.get_executions(), 27)
+    # Two trainer outputs.
+    self.assertExecutedTwice('Trainer')
 
 
 if __name__ == '__main__':
