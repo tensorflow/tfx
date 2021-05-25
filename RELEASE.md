@@ -53,8 +53,15 @@
     Apache Airflow 2.1.0 and later.
 *   Removed `six` dependency.
 *   Depends on `apache-beam[gcp]>=2.29,<3`.
-*   Depends on `tensorflow>=1.15.2,!=2.0.*,!=2.1.*,!=2.2.*,!=2.3.*,!=2.5.*,<3`.
-*   Depends on `tensorflow-serving-api>=1.15,!=2.0.*,!=2.1.*,!=2.2.*,!=2.3.*,!=2.5.*,<3`.
+*   Depends on `ml-metadata>=1.0.0,<1.1.0`.
+*   Depends on `struct2tensor>=0.31.0,<0.32.0`.
+*   Depends on `tensorflow>=1.15.2,!=2.0.*,!=2.1.*,!=2.2.*,!=2.3.*,!=2.4.*,<3`.
+*   Depends on `tensorflow-data-validation>=1.0.0,<1.1.0`.
+*   Depends on `tensorflowjs>=3.6.0,<4`.
+*   Depends on `tensorflow-model-analysis>=0.31.0,<0.32.0`.
+*   Depends on `tensorflow-serving-api>=1.15,!=2.0.*,!=2.1.*,!=2.2.*,!=2.3.*,!=2.4.*,<3`.
+*   Depends on `tensorflow-transform>=1.0.0,<1.1.0`.
+*   Depends on `tfx-bsl>=1.0.0,<1.1.0`.
 
 ## Documentation Updates
 
