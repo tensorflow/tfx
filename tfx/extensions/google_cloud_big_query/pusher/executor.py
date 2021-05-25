@@ -26,15 +26,15 @@ from tfx.utils import io_utils
 from tfx.utils import json_utils
 from tfx.utils import telemetry_utils
 
+_POLLING_INTERVAL_IN_SECONDS = 30
+
+_GCS_PREFIX = 'gs://'
+
 # Keys to the items in custom_config passed as a part of exec_properties.
 SERVING_ARGS_KEY = doc_controls.documented(
     obj='bigquery_serving_args',
     doc='Keys to the items in custom_config of Pusher for passing serving args '
     'to Big Query.')
-
-_POLLING_INTERVAL_IN_SECONDS = 30
-
-_GCS_PREFIX = 'gs://'
 
 # BigQueryML serving argument keys
 _PROJECT_ID_KEY = 'project_id'

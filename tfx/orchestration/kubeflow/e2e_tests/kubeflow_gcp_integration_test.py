@@ -34,6 +34,7 @@ from tfx.extensions.google_cloud_ai_platform.pusher import executor as ai_platfo
 from tfx.extensions.google_cloud_ai_platform.trainer import executor as ai_platform_trainer_executor
 from tfx.extensions.google_cloud_ai_platform.tuner import component as ai_platform_tuner_component
 from tfx.extensions.google_cloud_ai_platform.tuner import executor as ai_platform_tuner_executor
+from tfx.extensions.google_cloud_big_query.pusher import executor as bigquery_pusher_executor
 from tfx.orchestration import test_utils
 from tfx.orchestration.kubeflow import test_utils as kubeflow_test_utils
 from tfx.proto import trainer_pb2
@@ -146,10 +147,12 @@ class KubeflowGCPIntegrationTest(kubeflow_test_utils.BaseKubeflowTest):
     self.assertEqual(1,
                      fileio.listdir(serving_model_dir).count('saved_model.pb'))
 
+  def _make_unique_pipeline_name(self, prefix):
+    return '-'.join([prefix, 'test', test_utils.random_id()])
+
   def testAIPlatformTrainerPipeline(self):
     """Trainer-only test pipeline on AI Platform Training."""
-    pipeline_name = 'kubeflow-aip-trainer-test-{}'.format(
-        test_utils.random_id())
+    pipeline_name = self._make_unique_pipeline_name('kubeflow-aip-trainer')
     pipeline = self._create_pipeline(pipeline_name, [
         self.schema_importer, self.transformed_examples_importer,
         self.transform_graph_importer,
@@ -173,8 +176,8 @@ class KubeflowGCPIntegrationTest(kubeflow_test_utils.BaseKubeflowTest):
 
   def testAIPlatformGenericTrainerPipeline(self):
     """Trainer-only pipeline on AI Platform Training with GenericTrainer."""
-    pipeline_name = 'kubeflow-aip-generic-trainer-test-{}'.format(
-        test_utils.random_id())
+    pipeline_name = self._make_unique_pipeline_name(
+        'kubeflow-aip-generic-trainer')
     pipeline = self._create_pipeline(pipeline_name, [
         self.schema_importer, self.transformed_examples_importer,
         self.transform_graph_importer,
@@ -215,8 +218,7 @@ class KubeflowGCPIntegrationTest(kubeflow_test_utils.BaseKubeflowTest):
 
   def testAIPlatformDistributedTunerPipeline(self):
     """Tuner-only pipeline for distributed Tuner flock on AIP Training."""
-    pipeline_name = 'kubeflow-aip-dist-tuner-test-{}'.format(
-        test_utils.random_id())
+    pipeline_name = self._make_unique_pipeline_name('kubeflow-aip-dist-tuner')
     pipeline = self._create_pipeline(
         pipeline_name,
         [
@@ -238,6 +240,64 @@ class KubeflowGCPIntegrationTest(kubeflow_test_utils.BaseKubeflowTest):
     self._compile_and_run_pipeline(pipeline)
     self._assertHyperparametersAreWritten(pipeline_name)
 
+  def _get_list_bigqueryml_models(self, api, dataset_name):
+    r = api.models().list(
+        projectId=self._GCP_PROJECT_ID,
+        datasetId=dataset_name).execute()
+    if r:
+      return [m['modelReference']['modelId'] for m in r['models']]
+    else:
+      return []
+
+  def testBigQueryMlPusherPipeline(self):
+    """BigQuery ML Pusher pipeline on CAIP."""
+    pipeline_name = self._make_unique_pipeline_name(
+        'kubeflow-aip-bqml-pusher')
+    # Big Query does not accept '-' in the dataset name.
+    dataset_name = ('%s_model' % pipeline_name).replace('-', '_')
+    self.addCleanup(_delete_bigquery_dataset,
+                    dataset_name, self._GCP_PROJECT_ID)
+
+    api = discovery.build('bigquery', 'v2')
+    api.datasets().insert(
+        projectId=self._GCP_PROJECT_ID,
+        body={'location': 'US',
+              'projectId': self._GCP_PROJECT_ID,
+              'datasetReference': {'datasetId': dataset_name,
+                                   'projectId': self._GCP_PROJECT_ID}
+              }).execute()
+
+    def _pusher(model_importer, model_blessing_importer, bigquery_dataset_id):
+      return Pusher(
+          custom_executor_spec=executor_spec.ExecutorClassSpec(
+              bigquery_pusher_executor.Executor),
+          model=model_importer.outputs['result'],
+          model_blessing=model_blessing_importer.outputs['result'],
+          custom_config={
+              bigquery_pusher_executor.SERVING_ARGS_KEY: {
+                  'bq_dataset_id': bigquery_dataset_id,
+                  'model_name': pipeline_name,
+                  'project_id': self._GCP_PROJECT_ID,
+              }
+          },
+      )
+
+    # The model list should be empty
+    self.assertEmpty(self._get_list_bigqueryml_models(
+        api, dataset_name))
+
+    # Test creation of multiple versions under the same model_name.
+    pipeline = self._create_pipeline(pipeline_name, [
+        self.model_1_importer,
+        self.model_blessing_importer,
+        _pusher(self.model_1_importer, self.model_blessing_importer,
+                dataset_name),
+    ])
+    self._compile_and_run_pipeline(pipeline)
+    self.assertIn(
+        pipeline_name, self._get_list_bigqueryml_models(
+            api, dataset_name))
+
   def _getNumberOfVersionsForModel(self, api, project, model_name):
     resource_name = f'projects/{project}/models/{model_name}'
     res = api.projects().models().versions().list(
@@ -257,8 +317,7 @@ class KubeflowGCPIntegrationTest(kubeflow_test_utils.BaseKubeflowTest):
 
   def testAIPlatformPusherPipeline(self):
     """Pusher-only test pipeline to AI Platform Prediction."""
-    pipeline_name_base = 'kubeflow-aip-pusher-test-{}'.format(
-        test_utils.random_id())
+    pipeline_name_base = self._make_unique_pipeline_name('kubeflow-aip-pusher')
     # AI Platform does not accept '-' in the model name.
     model_name = ('%s_model' % pipeline_name_base).replace('-', '_')
     self.addCleanup(kubeflow_test_utils.delete_ai_platform_model, model_name)
@@ -312,6 +371,24 @@ class KubeflowGCPIntegrationTest(kubeflow_test_utils.BaseKubeflowTest):
         self._getNumberOfVersionsForModel(api, self._GCP_PROJECT_ID,
                                           model_name))
     self._sendDummyRequestToModel(api, self._GCP_PROJECT_ID, model_name)
+
+
+def _delete_bigquery_dataset(dataset_name, project_id):
+  """Deletes Big Query dataset with all the content."""
+  api = discovery.build('bigquery', 'v2')
+  try:
+    api.datasets().delete(
+        projectId=project_id,
+        datasetId=dataset_name,
+        deleteContents=True).execute()
+  except googleapiclient_errors.HttpError as err:
+    err_descr = err._get_reson()  # pylint: disable=protected-access
+    if err.args[0].status == 404 and err_descr.startswith('Not found'):
+      absl.logging.info('Dataset %s not found at project %s!',
+                        dataset_name, project_id)
+      pass
+    else:
+      raise
 
 
 if __name__ == '__main__':
