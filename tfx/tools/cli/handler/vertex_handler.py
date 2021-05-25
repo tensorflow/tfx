@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Handler for Kubeflow V2 runner."""
+"""Handler for Vertex runner."""
 
 import functools
 import os
@@ -23,7 +23,7 @@ from tfx.dsl.io import fileio
 from tfx.tools.cli import labels
 from tfx.tools.cli.handler import base_handler
 from tfx.tools.cli.handler import kubeflow_handler
-from tfx.tools.cli.kubeflow_v2.handler import kubeflow_v2_dag_runner_patcher
+from tfx.tools.cli.handler import kubeflow_v2_dag_runner_patcher
 from tfx.utils import io_utils
 
 
@@ -63,8 +63,8 @@ def _get_job_link(job_name: Text, project_id: Text) -> Text:
       job_name=job_name, project_id=project_id)
 
 
-class KubeflowV2Handler(base_handler.BaseHandler):
-  """Helper methods for Kubeflow V2 Handler."""
+class VertexHandler(base_handler.BaseHandler):
+  """Helper methods for Vertex Handler."""
 
   def __init__(self, flags_dict: Dict[Text, Any]):
     super().__init__(flags_dict)
@@ -75,7 +75,7 @@ class KubeflowV2Handler(base_handler.BaseHandler):
     pass
 
   def create_pipeline(self, update: bool = False) -> None:
-    """Creates or updates a pipeline to use in Kubeflow pipelines.
+    """Creates or updates a pipeline to use in Vertex Pipelines.
 
     Args:
       update: set as true to update pipeline.
@@ -101,7 +101,7 @@ class KubeflowV2Handler(base_handler.BaseHandler):
       click.echo('Pipeline "{}" created successfully.'.format(pipeline_name))
 
   def update_pipeline(self) -> None:
-    """Updates pipeline in Kubeflow Pipelines."""
+    """Updates pipeline in Vertex Pipelines."""
     self.create_pipeline(update=True)
 
   def list_pipelines(self) -> None:
@@ -136,7 +136,7 @@ class KubeflowV2Handler(base_handler.BaseHandler):
                'successfully.')
 
   def create_run(self) -> None:
-    """Runs a pipeline in Kubeflow Pipelines."""
+    """Runs a pipeline in Vertex Pipelines."""
     # TODO(b/169095387): re-implement run commands when the unified client
     # becomes available.
     raise NotImplementedError('Creating a run has not been implemented for '

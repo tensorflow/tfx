@@ -102,6 +102,11 @@ def create_handler(flags_dict: Dict[Text, Any]) -> base_handler.BaseHandler:
   elif engine == 'local':
     from tfx.tools.cli.handler import local_handler  # pylint: disable=g-import-not-at-top
     return local_handler.LocalHandler(flags_dict)
+  elif engine == 'vertex':
+    if labels.KUBEFLOW_PACKAGE_NAME not in packages_list:
+      sys.exit('`kfp` python pacakge is required for Vertex.')
+    from tfx.tools.cli.handler import vertex_handler  # pylint: disable=g-import-not-at-top
+    return vertex_handler.VertexHandler(flags_dict)
   elif engine == 'auto':
     return detect_handler(flags_dict)
   else:
