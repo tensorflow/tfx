@@ -60,8 +60,21 @@ def run_group() -> None:
     default='kubeflow',
     type=str,
     help='Kubernetes namespace to connect to the KFP API.')
-def create_run(ctx: Context, engine: Text, pipeline_name: Text, endpoint: Text,
-               iap_client_id: Text, namespace: Text) -> None:
+@click.option(
+    '--project',
+    default='',
+    type=str,
+    help='GCP project ID that will be used to invoke Vertex Pipelines.'
+)
+@click.option(
+    '--region',
+    default='',
+    type=str,
+    help='GCP region that will be used to invoke Vertex Pipelines.'
+)
+def create_run(ctx: Context, engine: str, pipeline_name: str, endpoint: str,
+               iap_client_id: str, namespace: str, project: str,
+               region: str) -> None:
   """Command definition to create a pipeline run."""
   click.echo('Creating a run for pipeline: ' + pipeline_name)
   ctx.flags_dict[labels.ENGINE_FLAG] = engine
@@ -69,6 +82,8 @@ def create_run(ctx: Context, engine: Text, pipeline_name: Text, endpoint: Text,
   ctx.flags_dict[labels.ENDPOINT] = endpoint
   ctx.flags_dict[labels.IAP_CLIENT_ID] = iap_client_id
   ctx.flags_dict[labels.NAMESPACE] = namespace
+  ctx.flags_dict[labels.GCP_PROJECT_ID] = project
+  ctx.flags_dict[labels.GCP_REGION] = region
   handler_factory.create_handler(ctx.flags_dict).create_run()
 
 
@@ -183,8 +198,21 @@ def list_runs(ctx: Context, engine: Text, pipeline_name: Text, endpoint: Text,
     default='kubeflow',
     type=str,
     help='Kubernetes namespace to connect to the KFP API.')
-def get_run(ctx: Context, engine: Text, pipeline_name: Text, run_id: Text,
-            endpoint: Text, iap_client_id: Text, namespace: Text) -> None:
+@click.option(
+    '--project',
+    default='',
+    type=str,
+    help='GCP project ID that will be used to invoke Vertex Pipelines.'
+)
+@click.option(
+    '--region',
+    default='',
+    type=str,
+    help='GCP region that will be used to invoke Vertex Pipelines.'
+)
+def get_run(ctx: Context, engine: str, pipeline_name: str, run_id: str,
+            endpoint: str, iap_client_id: str, namespace: str, project: str,
+            region: str) -> None:
   """Command definition to stop a run."""
   click.echo('Retrieving run status.')
   ctx.flags_dict[labels.ENGINE_FLAG] = engine
@@ -193,6 +221,8 @@ def get_run(ctx: Context, engine: Text, pipeline_name: Text, run_id: Text,
   ctx.flags_dict[labels.ENDPOINT] = endpoint
   ctx.flags_dict[labels.IAP_CLIENT_ID] = iap_client_id
   ctx.flags_dict[labels.NAMESPACE] = namespace
+  ctx.flags_dict[labels.GCP_PROJECT_ID] = project
+  ctx.flags_dict[labels.GCP_REGION] = region
   handler_factory.create_handler(ctx.flags_dict).get_run()
 
 
