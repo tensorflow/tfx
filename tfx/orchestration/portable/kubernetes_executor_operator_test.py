@@ -136,7 +136,7 @@ class KubernetesComponentLauncherTest(tf.test.TestCase):
                 'containers': [{
                     'name': 'main',
                     'image': 'gcr://test',
-                    'command': None,
+                    'command': [],
                     'args': [context['input_artifact'].uri],
                 }],
                 'serviceAccount': 'sa-1',
@@ -196,7 +196,7 @@ class KubernetesComponentLauncherTest(tf.test.TestCase):
                 'containers': [{
                     'name': 'main',
                     'image': 'gcr://test',
-                    'command': None,
+                    'command': [],
                     'args': [context['input_artifact'].uri],
                 }],
             }

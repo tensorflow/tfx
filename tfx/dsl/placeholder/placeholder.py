@@ -17,14 +17,16 @@ import abc
 import copy
 import enum
 from typing import Optional, Type, Union, cast
+
 from tfx import types
 from tfx.proto.orchestration import placeholder_pb2
+from tfx.utils import json_utils
 from tfx.utils import proto_utils
 
 from google.protobuf import message
 
 
-class _PlaceholderOperator(abc.ABC):
+class _PlaceholderOperator(json_utils.Jsonable):
   """An Operator performs an operation on a Placeholder.
 
   It knows how to encode itself into a proto.
@@ -254,7 +256,7 @@ class _Base64EncodeOperator(_PlaceholderOperator):
     return result
 
 
-class Placeholder(abc.ABC):
+class Placeholder(json_utils.Jsonable):
   """A Placeholder represents not-yet-available values at the component authoring time."""
 
   def __init__(self, placeholder_type: placeholder_pb2.Placeholder.Type,

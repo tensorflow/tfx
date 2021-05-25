@@ -20,8 +20,8 @@ from typing import Text
 from kfp import onprem
 import tensorflow as tf
 from tfx.components.statistics_gen import component as statistics_gen_component
+from tfx.dsl.component.experimental import executor_specs
 from tfx.dsl.components.base import base_component
-from tfx.dsl.components.base import executor_spec
 from tfx.dsl.io import fileio
 from tfx.extensions.google_cloud_big_query.example_gen import component as big_query_example_gen_component
 from tfx.orchestration import data_types
@@ -59,7 +59,7 @@ class _DummySpec(component_spec.ComponentSpec):
 
 class _DummyComponent(base_component.BaseComponent):
   SPEC_CLASS = _DummySpec
-  EXECUTOR_SPEC = executor_spec.ExecutorContainerSpec(
+  EXECUTOR_SPEC = executor_specs.TemplatedExecutorContainerSpec(
       image='dummy:latest', command=['ls'])
 
   def __init__(self):
@@ -265,7 +265,6 @@ class KubeflowDagRunnerTest(test_case_utils.TfxTest):
       ]
       self.assertLen(containers, 1)
       component_args = containers[0]['container']['args']
-      self.assertNotIn('--tfx_ir', component_args)
       self.assertIn('--node_id', component_args)
 
 if __name__ == '__main__':

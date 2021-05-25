@@ -23,13 +23,11 @@ import os
 
 import tensorflow as tf
 from tfx.dsl.io import fileio
-from tfx.extensions.google_cloud_ai_platform.trainer.component import Trainer
 from tfx.orchestration import data_types
 from tfx.orchestration.kubeflow import container_entrypoint
 from tfx.orchestration.kubeflow.proto import kubeflow_pb2
-from tfx.proto import trainer_pb2
+from tfx.proto.orchestration import pipeline_pb2
 from tfx.types import standard_artifacts
-from tfx.types.channel import Channel
 
 from ml_metadata.proto import metadata_store_pb2
 
@@ -86,11 +84,8 @@ class MLMDConfigTest(tf.test.TestCase):
     self.assertEqual(ml_metadata_config.port, 8080)
 
   def testDumpUiMetadata(self):
-    trainer = Trainer(
-        examples=Channel(type=standard_artifacts.Examples),
-        module_file='module_file',
-        train_args=trainer_pb2.TrainArgs(splits=['train'], num_steps=100),
-        eval_args=trainer_pb2.EvalArgs(splits=['eval'], num_steps=50))
+    trainer = pipeline_pb2.PipelineNode()
+    trainer.node_info.type.name = 'tfx.components.trainer.component.Trainer'
     model_run = standard_artifacts.ModelRun()
     model_run.uri = 'model_run_uri'
     exec_info = data_types.ExecutionInfo(
@@ -102,7 +97,8 @@ class MLMDConfigTest(tf.test.TestCase):
         os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR', self.get_temp_dir()),
         self._testMethodName, 'json')
     fileio.makedirs(os.path.dirname(ui_metadata_path))
-    container_entrypoint._dump_ui_metadata(trainer, exec_info, ui_metadata_path)
+    container_entrypoint._dump_ui_metadata(
+        trainer, exec_info, ui_metadata_path)
     with open(ui_metadata_path) as f:
       ui_metadata = json.load(f)
       self.assertEqual('tensorboard', ui_metadata['outputs'][-1]['type'])

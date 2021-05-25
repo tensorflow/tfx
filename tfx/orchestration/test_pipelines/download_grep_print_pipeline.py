@@ -21,7 +21,7 @@ from __future__ import print_function
 from typing import Text
 
 from tfx.dsl.component.experimental import container_component
-from tfx.dsl.component.experimental import placeholders
+from tfx.dsl.placeholder import placeholder as ph
 from tfx.types import standard_artifacts
 
 
@@ -50,8 +50,8 @@ downloader_component = container_component.create_container_component(
           # Getting data out of the container
           gsutil cp "$output_data_path" "$output_data_uri"
         ''',
-        placeholders.InputValuePlaceholder('url'),
-        placeholders.OutputUriPlaceholder('data'),
+        ph.exec_property('url'),
+        ph.output('data')[0].uri,
     ],
 )
 
@@ -89,9 +89,9 @@ grep_component = container_component.create_container_component(
           # Getting data out of the container
           gsutil cp "$filtered_text_path" "$filtered_text_uri"
         ''',
-        placeholders.InputValuePlaceholder('pattern'),
-        placeholders.InputUriPlaceholder('text'),
-        placeholders.OutputUriPlaceholder('filtered_text'),
+        ph.exec_property('pattern'),
+        ph.input('text')[0].uri,
+        ph.output('filtered_text')[0].uri,
     ],
 )
 
@@ -117,7 +117,7 @@ print_component = container_component.create_container_component(
           # Running the main code
           cat "$text_path"
         ''',
-        placeholders.InputUriPlaceholder('text'),
+        ph.input('text')[0].uri,
     ],
 )
 

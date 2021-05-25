@@ -14,6 +14,7 @@
 # limitations under the License.
 from typing import Optional
 
+from absl import logging
 from tfx.proto.orchestration import local_deployment_config_pb2
 from tfx.proto.orchestration import pipeline_pb2
 
@@ -90,11 +91,16 @@ def _to_local_deployment(
     result.node_level_platform_configs[k].CopyFrom(
         _build_local_platform_config(k, v))
 
-  if not input_config.metadata_connection_config.Unpack(
-      result.metadata_connection_config):
-    raise ValueError('metadata_connection_config is expected to be in type '
-                     'ml_metadata.ConnectionConfig, but got type {}'.format(
-                         input_config.metadata_connection_config.type_url))
+  if input_config.HasField('metadata_connection_config'):
+    if not input_config.metadata_connection_config.Unpack(
+        result.metadata_connection_config):
+      raise ValueError('metadata_connection_config is expected to be in type '
+                       'ml_metadata.ConnectionConfig, but got type {}'.format(
+                           input_config.metadata_connection_config.type_url))
+  else:
+    # Some users like Kubernetes choose to use their own MLMD connection.
+    # So their IR doesn't contain it.
+    logging.warning('metadata_connection_config is not provided by IR.')
   return result
 
 

@@ -24,7 +24,7 @@ from typing import Any, Dict, List, Optional, Text, cast
 from absl import logging
 from kubernetes import client
 from tfx.dsl.compiler import placeholder_utils
-from tfx.dsl.components.base import executor_spec as executor_spec_lib
+from tfx.dsl.component.experimental import executor_specs
 from tfx.orchestration.launcher import container_common
 from tfx.orchestration.portable import base_executor_operator
 from tfx.orchestration.portable import data_types
@@ -73,7 +73,7 @@ class KubernetesExecutorOperator(base_executor_operator.BaseExecutorOperator):
         executor_spec=self._executor_spec,
         platform_config=self._platform_config)
 
-    container_spec = executor_spec_lib.ExecutorContainerSpec(
+    container_spec = executor_specs.TemplatedExecutorContainerSpec(
         image=self._container_executor_spec.image,
         command=[
             placeholder_utils.resolve_placeholder_expression(cmd, context)
@@ -85,12 +85,6 @@ class KubernetesExecutorOperator(base_executor_operator.BaseExecutorOperator):
         ] or None,
     )
 
-    # Replace container spec with jinja2 template.
-    input_dict = execution_info.input_dict
-    output_dict = execution_info.output_dict
-    exec_properties = execution_info.exec_properties
-    container_spec = container_common.resolve_container_template(
-        container_spec, input_dict, output_dict, exec_properties)
     pod_name = self._build_pod_name(execution_info)
     # TODO(hongyes): replace the default value from component config.
     try:
@@ -172,7 +166,7 @@ class KubernetesExecutorOperator(base_executor_operator.BaseExecutorOperator):
 
   def _build_pod_manifest(
       self, pod_name: Text,
-      container_spec: executor_spec_lib.ExecutorContainerSpec
+      container_spec: executor_specs.TemplatedExecutorContainerSpec
   ) -> Dict[Text, Any]:
     """Build a pod spec.
 

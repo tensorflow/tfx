@@ -15,7 +15,7 @@
 
 import functools
 import operator
-from typing import List, Optional, Union
+from typing import cast, List, Optional, Union
 
 from tfx import types
 from tfx.dsl.component.experimental import placeholders
@@ -91,10 +91,25 @@ class TemplatedExecutorContainerSpec(executor_spec.ExecutorSpec):
     return not self.__eq__(other)
 
   def _recursively_encode(
-      self, ph: placeholders.CommandlineArgumentType
+      self, ph: Union[placeholders.CommandlineArgumentType,
+                      placeholder.Placeholder, str]
   ) -> Union[str, placeholder.Placeholder]:
-    if isinstance(ph, str):
-      return ph
+    """This method recursively encodes placeholders.CommandlineArgumentType.
+
+       The recursion ending condision is that the input ph is alerady a string
+       or placeholder.Placeholder.
+
+    Args:
+      ph: the placeholder to encode.
+
+    Returns:
+      The encoded placeholder in the type of string or placeholder.Placeholder.
+    """
+    if isinstance(ph, str) or isinstance(ph, placeholder.Placeholder):
+      # If there is no place holder. Or if the placeholder is already a
+      # new style placeholder.
+      # No further encoding is needed.
+      return cast(Union[str, placeholder.Placeholder], ph)
     elif isinstance(ph, placeholders.InputValuePlaceholder):
       return placeholder.input(ph.input_name)[0]
     elif isinstance(ph, placeholders.InputUriPlaceholder):

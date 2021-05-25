@@ -22,19 +22,16 @@ compatible.
 Note: This requires Kubeflow Pipelines SDK to be installed.
 """
 
-import json
-from typing import Dict, Optional, Set, Text, Type
+from typing import Dict, Optional, Set, Text
 
 from absl import logging
 from kfp import dsl
 from kubernetes import client as k8s_client
 from tfx.dsl.components.base import base_node as tfx_base_node
 from tfx.orchestration import pipeline as tfx_pipeline
-from tfx.orchestration.config import base_component_config
 from tfx.orchestration.kubeflow import node_wrapper
 from tfx.orchestration.kubeflow import utils
 from tfx.orchestration.kubeflow.proto import kubeflow_pb2
-from tfx.orchestration.launcher import base_component_launcher
 from tfx.proto.orchestration import pipeline_pb2
 from tfx.utils import json_utils
 
@@ -58,15 +55,11 @@ class BaseComponent(object):
   def __init__(
       self,
       component: tfx_base_node.BaseNode,
-      component_launcher_class: Type[
-          base_component_launcher.BaseComponentLauncher],
       depends_on: Set[dsl.ContainerOp],
       pipeline: tfx_pipeline.Pipeline,
-      pipeline_name: Text,
       pipeline_root: dsl.PipelineParam,
       tfx_image: Text,
       kubeflow_metadata_config: Optional[kubeflow_pb2.KubeflowMetadataConfig],
-      component_config: base_component_config.BaseComponentConfig,
       tfx_ir: Optional[pipeline_pb2.Pipeline] = None,
       pod_labels_to_attach: Optional[Dict[Text, Text]] = None):
     """Creates a new Kubeflow-based component.
@@ -76,57 +69,37 @@ class BaseComponent(object):
 
     Args:
       component: The logical TFX component to wrap.
-      component_launcher_class: the class of the launcher to launch the
-        component.
       depends_on: The set of upstream KFP ContainerOp components that this
         component will depend on.
       pipeline: The logical TFX pipeline to which this component belongs.
-      pipeline_name: The name of the TFX pipeline.
       pipeline_root: The pipeline root specified, as a dsl.PipelineParam
       tfx_image: The container image to use for this component.
       kubeflow_metadata_config: Configuration settings for connecting to the
         MLMD store in a Kubeflow cluster.
-      component_config: Component config to launch the component.
       tfx_ir: The TFX intermedia representation of the pipeline.
       pod_labels_to_attach: Optional dict of pod labels to attach to the
         GKE pod.
     """
-    component_launcher_class_path = '.'.join([
-        component_launcher_class.__module__, component_launcher_class.__name__
-    ])
 
     serialized_component = utils.replace_placeholder(
         json_utils.dumps(node_wrapper.NodeWrapper(component)))
 
     arguments = [
-        '--pipeline_name',
-        pipeline_name,
         '--pipeline_root',
         pipeline_root,
         '--kubeflow_metadata_config',
         json_format.MessageToJson(
             message=kubeflow_metadata_config, preserving_proto_field_name=True),
-        '--beam_pipeline_args',
-        json.dumps(pipeline.beam_pipeline_args),
-        '--additional_pipeline_args',
-        json.dumps(pipeline.additional_pipeline_args),
-        '--component_launcher_class_path',
-        component_launcher_class_path,
-        '--serialized_component',
-        serialized_component,
-        '--component_config',
-        json_utils.dumps(component_config),
         '--node_id',
         component.id,
+        '--serialized_component',
+        serialized_component,
+        # TODO(b/182220464): write IR to pipeline_root and let
+        # container_entrypoint.py read it back to avoid future issue that IR
+        # exeeds the flag size limit.
+        '--tfx_ir',
+        json_format.MessageToJson(tfx_ir),
     ]
-
-    if tfx_ir is not None:
-      arguments += ['--tfx_ir', json_format.MessageToJson(tfx_ir)]
-    else:
-      logging.info('No tfx_ir is given. Proceeding without tfx_ir.')
-
-    if pipeline.enable_cache:
-      arguments.append('--enable_cache')
 
     self.container_op = dsl.ContainerOp(
         name=component.id,
