@@ -51,7 +51,7 @@ class PenguinPipelineLocalEndToEndTest(tf.test.TestCase,
     self._data_root = os.path.join(os.path.dirname(__file__), 'data')
 
     # Create a data root for rolling window test
-    # - data
+    # - data/labelled
     #   - day1
     #     - penguins_processed.csv
     #   - day2
@@ -59,14 +59,15 @@ class PenguinPipelineLocalEndToEndTest(tf.test.TestCase,
     #   - day3
     #     - penguins_processed.csv
     self._data_root_span = os.path.join(self._test_dir, 'data')
-    io_utils.copy_dir(self._data_root, os.path.join(self._data_root_span,
-                                                    'day1'))
-    io_utils.copy_dir(self._data_root, os.path.join(self._data_root_span,
-                                                    'day2'))
-    io_utils.copy_dir(self._data_root, os.path.join(self._data_root_span,
-                                                    'day3'))
-
-    self._data_root = os.path.join(os.path.dirname(__file__), 'data')
+    io_utils.copy_dir(
+        os.path.join(self._data_root, 'labelled'),
+        os.path.join(self._data_root_span, 'labelled', 'day1'))
+    io_utils.copy_dir(
+        os.path.join(self._data_root, 'labelled'),
+        os.path.join(self._data_root_span, 'labelled', 'day2'))
+    io_utils.copy_dir(
+        os.path.join(self._data_root, 'labelled'),
+        os.path.join(self._data_root_span, 'labelled', 'day3'))
 
     self._serving_model_dir = os.path.join(self._test_dir, 'serving_model')
     self._pipeline_root = os.path.join(self._test_dir, 'tfx', 'pipelines',
@@ -87,7 +88,9 @@ class PenguinPipelineLocalEndToEndTest(tf.test.TestCase,
     execution = fileio.listdir(execution_path)
     self.assertLen(execution, 1)
 
-  def _assertPipelineExecution(self, has_tuner: bool) -> None:
+  def _assertPipelineExecution(self,
+                               has_tuner: bool = False,
+                               has_bulk_inferrer: bool = False) -> None:
     self._assertExecutedOnce('CsvExampleGen')
     self._assertExecutedOnce('Evaluator')
     self._assertExecutedOnce('ExampleValidator')
@@ -98,6 +101,9 @@ class PenguinPipelineLocalEndToEndTest(tf.test.TestCase,
     self._assertExecutedOnce('Transform')
     if has_tuner:
       self._assertExecutedOnce('Tuner')
+    if has_bulk_inferrer:
+      self._assertExecutedOnce('CsvExampleGen_Unlabelled')
+      self._assertExecutedOnce('BulkInferrer')
 
   @parameterized.parameters(
       ('keras',),
@@ -113,6 +119,7 @@ class PenguinPipelineLocalEndToEndTest(tf.test.TestCase,
         pipeline_root=self._pipeline_root,
         metadata_path=self._metadata_path,
         enable_tuning=False,
+        enable_bulk_inferrer=False,
         examplegen_input_config=None,
         examplegen_range_config=None,
         resolver_range_config=None,
@@ -132,7 +139,7 @@ class PenguinPipelineLocalEndToEndTest(tf.test.TestCase,
       self.assertGreaterEqual(artifact_count, execution_count)
       self.assertEqual(expected_execution_count, execution_count)
 
-    self._assertPipelineExecution(False)
+    self._assertPipelineExecution()
 
     logging.info('Starting the second pipeline run. All components except '
                  'Evaluator and Pusher will use cached results.')
@@ -167,6 +174,7 @@ class PenguinPipelineLocalEndToEndTest(tf.test.TestCase,
             pipeline_root=self._pipeline_root,
             metadata_path=self._metadata_path,
             enable_tuning=True,
+            enable_bulk_inferrer=False,
             examplegen_input_config=None,
             examplegen_range_config=None,
             resolver_range_config=None,
@@ -183,7 +191,39 @@ class PenguinPipelineLocalEndToEndTest(tf.test.TestCase,
       self.assertGreaterEqual(artifact_count, execution_count)
       self.assertEqual(expected_execution_count, execution_count)
 
-    self._assertPipelineExecution(True)
+    self._assertPipelineExecution(has_tuner=True)
+
+  @parameterized.parameters(('keras',), ('flax_experimental',))
+  def testPenguinPipelineLocalWithBulkInferrer(self, model_framework):
+    module_file = self._module_file_name(model_framework)
+    LocalDagRunner().run(
+        penguin_pipeline_local._create_pipeline(
+            pipeline_name=self._pipeline_name,
+            data_root=self._data_root,
+            module_file=module_file,
+            accuracy_threshold=0.1,
+            serving_model_dir=self._serving_model_dir,
+            pipeline_root=self._pipeline_root,
+            metadata_path=self._metadata_path,
+            enable_tuning=False,
+            enable_bulk_inferrer=True,
+            examplegen_input_config=None,
+            examplegen_range_config=None,
+            resolver_range_config=None,
+            beam_pipeline_args=[]))
+
+    self.assertTrue(fileio.exists(self._serving_model_dir))
+    self.assertTrue(fileio.exists(self._metadata_path))
+    expected_execution_count = 11  # 11 components + 1 resolver
+    metadata_config = metadata.sqlite_metadata_connection_config(
+        self._metadata_path)
+    with metadata.Metadata(metadata_config) as m:
+      artifact_count = len(m.store.get_artifacts())
+      execution_count = len(m.store.get_executions())
+      self.assertGreaterEqual(artifact_count, execution_count)
+      self.assertEqual(expected_execution_count, execution_count)
+
+    self._assertPipelineExecution(has_bulk_inferrer=True)
 
   def _get_input_examples_artifacts(
       self, store: mlmd.MetadataStore,
@@ -222,6 +262,7 @@ class PenguinPipelineLocalEndToEndTest(tf.test.TestCase,
               pipeline_root=self._pipeline_root,
               metadata_path=self._metadata_path,
               enable_tuning=False,
+              enable_bulk_inferrer=False,
               examplegen_input_config=examplegen_input_config,
               examplegen_range_config=examplegen_range_config,
               resolver_range_config=resolver_range_config,
@@ -235,7 +276,7 @@ class PenguinPipelineLocalEndToEndTest(tf.test.TestCase,
 
     self.assertTrue(fileio.exists(self._serving_model_dir))
     self.assertTrue(fileio.exists(self._metadata_path))
-    self._assertPipelineExecution(False)
+    self._assertPipelineExecution()
     transform_execution_type = 'tfx.components.transform.component.Transform'
     trainer_execution_type = 'tfx.components.trainer.component.Trainer'
     expected_execution_count = 10  # 8 components + 2 resolver
