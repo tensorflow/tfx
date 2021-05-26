@@ -136,11 +136,13 @@ class TaxiPipelineRegressionEndToEndTest(tf.test.TestCase):
       artifact_count = len(artifacts)
       executions = m.store.get_executions()
       execution_count = len(executions)
-      # Artifact count is greater by 2 due to extra artifacts produced by
+      # Artifact count is greater by 7 due to extra artifacts produced by
       # Evaluator(blessing and evaluation), Trainer(model and model_run) and
-      # Transform(example, graph, cache) minus Resolver which doesn't generate
+      # Transform(example, graph, cache, pre_transform_statistics,
+      # pre_transform_schema, post_transform_statistics, post_transform_schema,
+      # post_transform_anomalies) minus Resolver which doesn't generate
       # new artifact.
-      self.assertEqual(artifact_count, execution_count + 2)
+      self.assertEqual(artifact_count, execution_count + 7)
       self.assertLen(self.taxi_pipeline.components, execution_count)
 
       for execution in executions:
