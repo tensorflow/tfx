@@ -48,6 +48,8 @@ class PenguinPipelineLocalEndToEndTest(tf.test.TestCase,
         self._testMethodName)
 
     self._pipeline_name = 'penguin_test'
+    self._schema_path = os.path.join(
+        os.path.dirname(__file__), 'schema', 'user_provided')
     self._data_root = os.path.join(os.path.dirname(__file__), 'data')
 
     # Create a data root for rolling window test
@@ -90,15 +92,17 @@ class PenguinPipelineLocalEndToEndTest(tf.test.TestCase,
 
   def _assertPipelineExecution(self,
                                has_tuner: bool = False,
-                               has_bulk_inferrer: bool = False) -> None:
+                               has_bulk_inferrer: bool = False,
+                               has_schema_gen: bool = True) -> None:
     self._assertExecutedOnce('CsvExampleGen')
     self._assertExecutedOnce('Evaluator')
     self._assertExecutedOnce('ExampleValidator')
     self._assertExecutedOnce('Pusher')
-    self._assertExecutedOnce('SchemaGen')
     self._assertExecutedOnce('StatisticsGen')
     self._assertExecutedOnce('Trainer')
     self._assertExecutedOnce('Transform')
+    if has_schema_gen:
+      self._assertExecutedOnce('SchemaGen')
     if has_tuner:
       self._assertExecutedOnce('Tuner')
     if has_bulk_inferrer:
@@ -121,6 +125,7 @@ class PenguinPipelineLocalEndToEndTest(tf.test.TestCase,
         serving_model_dir=self._serving_model_dir,
         pipeline_root=self._pipeline_root,
         metadata_path=self._metadata_path,
+        user_provided_schema_path=None,
         enable_tuning=False,
         enable_bulk_inferrer=False,
         examplegen_input_config=None,
@@ -176,6 +181,7 @@ class PenguinPipelineLocalEndToEndTest(tf.test.TestCase,
             serving_model_dir=self._serving_model_dir,
             pipeline_root=self._pipeline_root,
             metadata_path=self._metadata_path,
+            user_provided_schema_path=None,
             enable_tuning=True,
             enable_bulk_inferrer=False,
             examplegen_input_config=None,
@@ -208,6 +214,7 @@ class PenguinPipelineLocalEndToEndTest(tf.test.TestCase,
             serving_model_dir=self._serving_model_dir,
             pipeline_root=self._pipeline_root,
             metadata_path=self._metadata_path,
+            user_provided_schema_path=None,
             enable_tuning=False,
             enable_bulk_inferrer=True,
             examplegen_input_config=None,
@@ -227,6 +234,39 @@ class PenguinPipelineLocalEndToEndTest(tf.test.TestCase,
       self.assertEqual(expected_execution_count, execution_count)
 
     self._assertPipelineExecution(has_bulk_inferrer=True)
+
+  @parameterized.parameters(('keras',), ('flax_experimental',))
+  def testPenguinPipelineLocalWithImporter(self, model_framework):
+    module_file = self._module_file_name(model_framework)
+    LocalDagRunner().run(
+        penguin_pipeline_local._create_pipeline(
+            pipeline_name=self._pipeline_name,
+            data_root=self._data_root,
+            module_file=module_file,
+            accuracy_threshold=0.1,
+            serving_model_dir=self._serving_model_dir,
+            pipeline_root=self._pipeline_root,
+            metadata_path=self._metadata_path,
+            user_provided_schema_path=self._schema_path,
+            enable_tuning=False,
+            enable_bulk_inferrer=False,
+            examplegen_input_config=None,
+            examplegen_range_config=None,
+            resolver_range_config=None,
+            beam_pipeline_args=[]))
+
+    self.assertTrue(fileio.exists(self._serving_model_dir))
+    self.assertTrue(fileio.exists(self._metadata_path))
+    expected_execution_count = 9  # 7 components + 1 resolver + 1 importer
+    metadata_config = metadata.sqlite_metadata_connection_config(
+        self._metadata_path)
+    with metadata.Metadata(metadata_config) as m:
+      artifact_count = len(m.store.get_artifacts())
+      execution_count = len(m.store.get_executions())
+      self.assertGreaterEqual(artifact_count, execution_count)
+      self.assertEqual(expected_execution_count, execution_count)
+
+    self._assertPipelineExecution(has_schema_gen=False)
 
   def _get_input_examples_artifacts(
       self, store: mlmd.MetadataStore,
@@ -264,6 +304,7 @@ class PenguinPipelineLocalEndToEndTest(tf.test.TestCase,
               serving_model_dir=self._serving_model_dir,
               pipeline_root=self._pipeline_root,
               metadata_path=self._metadata_path,
+              user_provided_schema_path=None,
               enable_tuning=False,
               enable_bulk_inferrer=False,
               examplegen_input_config=examplegen_input_config,
