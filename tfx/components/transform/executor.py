@@ -18,7 +18,7 @@ import hashlib
 import os
 from typing import Any, Callable, Dict, Generator, Iterable, List, Mapping, Optional, Sequence, Set, Text, Tuple, Union
 
-from absl import logging
+import absl
 import apache_beam as beam
 import pyarrow as pa
 import tensorflow as tf
@@ -44,6 +44,7 @@ from tfx.dsl.io import fileio
 from tfx.proto import example_gen_pb2
 from tfx.proto import transform_pb2
 from tfx.types import artifact_utils
+from tfx.types import standard_artifacts
 from tfx.types import standard_component_specs
 from tfx.utils import io_utils
 from tfx.utils import json_utils
@@ -338,14 +339,22 @@ class Executor(base_beam_executor.BaseBeamExecutor):
     """
     self._log_startup(input_dict, output_dict, exec_properties)
 
+    # TODO(b/175426744): use executor util to create output artifact.
+    # Create output artifacts when input Examples Channel contains more than
+    # one artifacts.
     num_examples = len(input_dict[standard_component_specs.EXAMPLES_KEY])
     if num_examples > 1 and len(
         output_dict[standard_component_specs.TRANSFORMED_EXAMPLES_KEY]) == 1:
-      output_dict[
-          standard_component_specs
-          .TRANSFORMED_EXAMPLES_KEY] = artifact_utils.replicate_artifacts(
-              output_dict[standard_component_specs.TRANSFORMED_EXAMPLES_KEY][0],
-              num_examples)
+      transformed_examples = artifact_utils.get_single_instance(
+          output_dict[standard_component_specs.TRANSFORMED_EXAMPLES_KEY])
+      transformed_examples_list = []
+      for i in range(num_examples):
+        tft_examples = standard_artifacts.Examples()
+        tft_examples.copy_from(transformed_examples)
+        tft_examples.uri = os.path.join(transformed_examples.uri, str(i))
+        transformed_examples_list.append(tft_examples)
+      output_dict[standard_component_specs
+                  .TRANSFORMED_EXAMPLES_KEY] = transformed_examples_list
 
     splits_config = transform_pb2.SplitsConfig()
     if exec_properties.get(standard_component_specs.SPLITS_CONFIG_KEY, None):
@@ -371,8 +380,9 @@ class Executor(base_beam_executor.BaseBeamExecutor):
               (split_names, artifact_split_names))
 
       splits_config.transform.extend(split_names)
-      logging.info("Analyze the 'train' split and transform all splits when "
-                   'splits_config is not set.')
+      absl.logging.info(
+          "Analyze the 'train' split and transform all splits when "
+          'splits_config is not set.')
 
     payload_format, data_view_uri = (
         tfxio_utils.resolve_payload_format_and_data_view_uri(
@@ -414,7 +424,7 @@ class Executor(base_beam_executor.BaseBeamExecutor):
           'Either all stats_output_paths should be specified or none.')
 
     temp_path = os.path.join(transform_output, _TEMP_DIR_IN_TRANSFORM_OUTPUT)
-    logging.debug('Using temp path %s for tft.beam', temp_path)
+    absl.logging.debug('Using temp path %s for tft.beam', temp_path)
 
     analyze_data_paths = []
     analyze_file_formats = []
@@ -527,7 +537,8 @@ class Executor(base_beam_executor.BaseBeamExecutor):
       label_outputs[labels.CACHE_OUTPUT_PATH_LABEL] = cache_output
     status_file = 'status_file'  # Unused
     self.Transform(label_inputs, label_outputs, status_file)
-    logging.debug('Cleaning up temp path %s on executor success', temp_path)
+    absl.logging.debug('Cleaning up temp path %s on executor success',
+                       temp_path)
     io_utils.delete_dir(temp_path)
 
   @staticmethod
@@ -780,17 +791,17 @@ class Executor(base_beam_executor.BaseBeamExecutor):
       # analyzers * analysis_paths * 10.
       if (len(cache_entry_keys) * len(dataset_keys_list) * 10 >
           _MAX_ESTIMATED_STAGES_COUNT):
-        logging.warning(
+        absl.logging.warning(
             'Disabling cache because otherwise the number of stages might be '
-            'too high (%d analyzers, %d analysis paths)', len(cache_entry_keys),
-            len(dataset_keys_list))
+            'too high ({} analyzers, {} analysis paths)'.format(
+                len(cache_entry_keys), len(dataset_keys_list)))
         # Returning None as the input cache here disables both input and output
         # cache.
         return ({d.dataset_key: d for d in self._analyze_data_list}, None)
 
       if self._input_cache_dir is not None:
-        logging.info('Reading the following analysis cache entry keys: %s',
-                     cache_entry_keys)
+        absl.logging.info('Reading the following analysis cache entry keys: %s',
+                          cache_entry_keys)
         input_cache = (
             pipeline
             | 'ReadCache' >> analyzer_cache.ReadAnalysisCacheFromFS(
@@ -992,8 +1003,10 @@ class Executor(base_beam_executor.BaseBeamExecutor):
     """
     del status_file  # unused
 
-    logging.debug('Inputs to executor.Transform function: %s', inputs)
-    logging.debug('Outputs to executor.Transform function: %s', outputs)
+    absl.logging.debug(
+        'Inputs to executor.Transform function: {}'.format(inputs))
+    absl.logging.debug(
+        'Outputs to executor.Transform function: {}'.format(outputs))
 
     disable_statistics = value_utils.GetSoleValue(
         inputs, labels.DISABLE_STATISTICS_LABEL)
@@ -1046,14 +1059,14 @@ class Executor(base_beam_executor.BaseBeamExecutor):
       raise ValueError('Either all stats_output_paths should be'
                        ' specified or none.')
 
-    logging.debug('Force tf.compat.v1: %s', force_tf_compat_v1)
-    logging.debug('Analyze data patterns: %s',
-                  list(enumerate(analyze_data_paths)))
-    logging.debug('Transform data patterns: %s',
-                  list(enumerate(transform_data_paths)))
-    logging.debug('Transform materialization output paths: %s',
-                  list(enumerate(materialize_output_paths)))
-    logging.debug('Transform output path: %s', transform_output_path)
+    absl.logging.debug('Force tf.compat.v1: %s', force_tf_compat_v1)
+    absl.logging.debug('Analyze data patterns: %s',
+                       list(enumerate(analyze_data_paths)))
+    absl.logging.debug('Transform data patterns: %s',
+                       list(enumerate(transform_data_paths)))
+    absl.logging.debug('Transform materialization output paths: %s',
+                       list(enumerate(materialize_output_paths)))
+    absl.logging.debug('Transform output path: %s', transform_output_path)
 
     if len(analyze_data_paths) != len(analyze_paths_file_formats):
       raise ValueError(
@@ -1099,11 +1112,12 @@ class Executor(base_beam_executor.BaseBeamExecutor):
     if (disable_statistics and not materialize_output_paths and
         stats_options_updater_fn is None):
       if analyze_input_columns:
-        logging.warning(
+        absl.logging.warning(
             'Not using the in-place Transform because the following features '
-            'require analyzing: %s', tuple(c for c in analyze_input_columns))
+            'require analyzing: {}'.format(
+                tuple(c for c in analyze_input_columns)))
       else:
-        logging.warning(
+        absl.logging.warning(
             'Using the in-place Transform since disable_statistics=True, '
             'it does not materialize transformed data, and the configured '
             'preprocessing_fn appears to not require analyzing the data.')
@@ -1238,7 +1252,7 @@ class Executor(base_beam_executor.BaseBeamExecutor):
                   materialize=materialization_format is not None))
 
           if input_cache:
-            logging.debug('Analyzing data with cache.')
+            absl.logging.debug('Analyzing data with cache.')
 
           full_analyze_dataset_keys_list = [
               dataset.dataset_key for dataset in analyze_data_list
@@ -1248,7 +1262,7 @@ class Executor(base_beam_executor.BaseBeamExecutor):
           # materialization.
           if materialization_format is None and disable_statistics:
             if None in new_analyze_data_dict.values():
-              logging.debug(
+              absl.logging.debug(
                   'Not reading the following datasets due to cache: %s', [
                       dataset.file_pattern
                       for dataset in analyze_data_list
@@ -1292,7 +1306,7 @@ class Executor(base_beam_executor.BaseBeamExecutor):
 
           if output_cache_dir is not None and cache_output is not None:
             fileio.makedirs(output_cache_dir)
-            logging.debug('Using existing cache in: %s', input_cache_dir)
+            absl.logging.debug('Using existing cache in: %s', input_cache_dir)
             if input_cache_dir is not None:
               # Only copy cache that is relevant to this iteration. This is
               # assuming that this pipeline operates on rolling ranges, so those
@@ -1505,7 +1519,7 @@ class Executor(base_beam_executor.BaseBeamExecutor):
       Status of the execution.
     """
 
-    logging.debug('Processing an in-place transform')
+    absl.logging.debug('Processing an in-place transform')
 
     raw_metadata_dir = os.path.join(transform_output_path,
                                     tft.TFTransformOutput.RAW_METADATA_DIR)
