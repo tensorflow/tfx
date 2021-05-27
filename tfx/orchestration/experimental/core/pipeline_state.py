@@ -57,10 +57,6 @@ class PipelineState:
     pipeline: The pipeline proto associated with this `PipelineState` object.
     execution_id: Id of the underlying execution in MLMD.
     pipeline_uid: Unique id of the pipeline.
-    execution: The underlying MLMD execution proto. Must be accessed only within
-      pipeline state context. `RuntimeError` is raised otherwise. Any mutations
-      made within the context will be committed to MLMD while exiting the
-      context.
   """
 
   def __init__(self, mlmd_handle: metadata.Metadata,
@@ -178,10 +174,10 @@ class PipelineState:
         pipeline=pipeline,
         execution_id=active_execution.id)
 
-  @property
-  def execution(self) -> metadata_store_pb2.Execution:
+  def is_active(self) -> bool:
+    """Returns `True` if pipeline is active."""
     self._check_context()
-    return self._execution
+    return execution_lib.is_execution_active(self._execution)
 
   def initiate_stop(self, status: status_lib.Status) -> None:
     """Updates pipeline state to signal stopping pipeline execution."""
@@ -273,9 +269,27 @@ class PipelineState:
     else:
       return None
 
-  def update_pipeline_execution_state(self, status: status_lib.Status) -> None:
+  def get_pipeline_execution_state(self) -> metadata_store_pb2.Execution.State:
+    """Returns state of underlying pipeline execution."""
+    self._check_context()
+    return self._execution.last_known_state
+
+  def set_pipeline_execution_state(
+      self, state: metadata_store_pb2.Execution.State) -> None:
+    """Sets state of underlying pipeline execution."""
+    self._check_context()
+    self._execution.last_known_state = state
+
+  def set_pipeline_execution_state_from_status(
+      self, status: status_lib.Status) -> None:
+    """Sets state of underlying pipeline execution derived from input status."""
     self._check_context()
     self._execution.last_known_state = _mlmd_execution_code(status)
+
+  def get_property(self, property_key: str) -> Optional[types.Property]:
+    """Returns custom property value from the pipeline execution."""
+    return _get_metadata_value(
+        self._execution.custom_properties.get(property_key))
 
   def save_property(self, property_key: str, property_value: str) -> None:
     """Saves a custom property to the pipeline execution."""

@@ -264,7 +264,7 @@ def orchestrate(mlmd_handle: metadata.Metadata, task_queue: tq.TaskQueue,
     with pipeline_state:
       if pipeline_state.stop_initiated_reason() is not None:
         stop_initiated_pipeline_states.append(pipeline_state)
-      elif execution_lib.is_execution_active(pipeline_state.execution):
+      elif pipeline_state.is_active():
         active_pipeline_states.append(pipeline_state)
       else:
         raise status_lib.StatusNotOkError(
@@ -327,7 +327,7 @@ def _orchestrate_stop_initiated_pipeline(
   if not has_active_executions:
     with pipeline_state:
       # Update pipeline execution state in MLMD.
-      pipeline_state.update_pipeline_execution_state(stop_reason)
+      pipeline_state.set_pipeline_execution_state_from_status(stop_reason)
 
 
 def _orchestrate_active_pipeline(
@@ -337,11 +337,11 @@ def _orchestrate_active_pipeline(
   """Orchestrates active pipeline."""
   pipeline = pipeline_state.pipeline
   with pipeline_state:
-    execution = pipeline_state.execution
-    assert execution.last_known_state in (metadata_store_pb2.Execution.NEW,
-                                          metadata_store_pb2.Execution.RUNNING)
-    if execution.last_known_state != metadata_store_pb2.Execution.RUNNING:
-      execution.last_known_state = metadata_store_pb2.Execution.RUNNING
+    assert pipeline_state.is_active()
+    if pipeline_state.get_pipeline_execution_state() != (
+        metadata_store_pb2.Execution.RUNNING):
+      pipeline_state.set_pipeline_execution_state(
+          metadata_store_pb2.Execution.RUNNING)
 
   # Initialize task generator for the pipeline.
   if pipeline.execution_mode == pipeline_pb2.Pipeline.SYNC:

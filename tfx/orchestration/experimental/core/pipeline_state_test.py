@@ -68,7 +68,7 @@ class PipelineStateTest(test_utils.TfxTest):
       with pipeline_state:
         self.assertProtoPartiallyEquals(
             mlmd_executions[0],
-            pipeline_state.execution,
+            pipeline_state._execution,
             ignored_fields=[
                 'create_time_since_epoch', 'last_update_time_since_epoch'
             ])
@@ -91,7 +91,7 @@ class PipelineStateTest(test_utils.TfxTest):
       with pstate.PipelineState.load(
           m, task_lib.PipelineUid.from_pipeline(pipeline)) as pipeline_state:
         self.assertProtoPartiallyEquals(mlmd_executions[0],
-                                        pipeline_state.execution)
+                                        pipeline_state._execution)
 
       self.assertEqual(pipeline, pipeline_state.pipeline)
       self.assertEqual(
@@ -114,7 +114,7 @@ class PipelineStateTest(test_utils.TfxTest):
       with pstate.PipelineState.load_from_orchestrator_context(
           m, mlmd_contexts[0]) as pipeline_state:
         self.assertProtoPartiallyEquals(mlmd_executions[0],
-                                        pipeline_state.execution)
+                                        pipeline_state._execution)
 
       self.assertEqual(pipeline, pipeline_state.pipeline)
       self.assertEqual(
@@ -149,8 +149,8 @@ class PipelineStateTest(test_utils.TfxTest):
 
       # Inactivate the pipeline.
       with pipeline_state:
-        execution = pipeline_state.execution
-        execution.last_known_state = metadata_store_pb2.Execution.COMPLETE
+        pipeline_state.set_pipeline_execution_state(
+            metadata_store_pb2.Execution.COMPLETE)
 
       # No active pipeline so NOT_FOUND error should be raised.
       with self.assertRaises(status_lib.StatusNotOkError) as exception_context:
@@ -240,7 +240,7 @@ class PipelineStateTest(test_utils.TfxTest):
     with self._mlmd_connection as m:
       pipeline = _test_pipeline('pipeline1')
       with pstate.PipelineState.new(m, pipeline) as pipeline_state:
-        pipeline_state.execution.last_known_state = (
+        pipeline_state.set_pipeline_execution_state(
             metadata_store_pb2.Execution.COMPLETE)
 
       views = pstate.PipelineView.load_all(
@@ -271,7 +271,7 @@ class PipelineStateTest(test_utils.TfxTest):
     with self._mlmd_connection as m:
       pipeline = _create_sync_pipeline('pipeline', '001')
       with pstate.PipelineState.new(m, pipeline) as pipeline_state:
-        pipeline_state.execution.last_known_state = (
+        pipeline_state.set_pipeline_execution_state(
             metadata_store_pb2.Execution.COMPLETE)
 
       views = pstate.PipelineView.load_all(
