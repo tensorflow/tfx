@@ -291,6 +291,16 @@ class PipelineStateTest(test_utils.TfxTest):
       self.assertProtoEquals(pipeline, views_dict['001'].pipeline)
       self.assertProtoEquals(pipeline2, views_dict['002'].pipeline)
 
+      view1 = pstate.PipelineView.load(
+          m, task_lib.PipelineUid.from_pipeline(pipeline), '001')
+      view2 = pstate.PipelineView.load(
+          m, task_lib.PipelineUid.from_pipeline(pipeline), '002')
+      latest_view = pstate.PipelineView.load(
+          m, task_lib.PipelineUid.from_pipeline(pipeline))
+      self.assertProtoEquals(pipeline, view1.pipeline)
+      self.assertProtoEquals(pipeline2, view2.pipeline)
+      self.assertProtoEquals(pipeline2, latest_view.pipeline)
+
 
 if __name__ == '__main__':
   tf.test.main()
