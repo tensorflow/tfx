@@ -43,9 +43,7 @@ _ORCHESTRATOR_EXECUTION_TYPE = metadata_store_pb2.ExecutionType(
 
 
 class PipelineState:
-  """Class for dealing with pipeline state.
-
-  Can be used as a context manager.
+  """Class for dealing with pipeline state. Can be used as a context manager.
 
   Methods must be invoked inside the pipeline state context for thread safety
   and ensuring that in-memory state is kept in sync with corresponding state in
@@ -57,6 +55,10 @@ class PipelineState:
     pipeline: The pipeline proto associated with this `PipelineState` object.
     execution_id: Id of the underlying execution in MLMD.
     pipeline_uid: Unique id of the pipeline.
+    execution: The underlying MLMD execution proto. Must be accessed only within
+      pipeline state context. `RuntimeError` is raised otherwise. Any mutations
+      made within the context will be committed to MLMD while exiting the
+      context.
   """
 
   def __init__(self, mlmd_handle: metadata.Metadata,
@@ -143,7 +145,7 @@ class PipelineState:
     if not context:
       raise status_lib.StatusNotOkError(
           code=status_lib.Code.NOT_FOUND,
-          message=f'No pipeline with uid {pipeline_uid} found.')
+          message=f'No active pipeline with uid {pipeline_uid} found.')
     return cls.load_from_orchestrator_context(mlmd_handle, context)
 
   @classmethod
@@ -174,10 +176,10 @@ class PipelineState:
         pipeline=pipeline,
         execution_id=active_execution.id)
 
-  def is_active(self) -> bool:
-    """Returns `True` if pipeline is active."""
+  @property
+  def execution(self) -> metadata_store_pb2.Execution:
     self._check_context()
-    return execution_lib.is_execution_active(self._execution)
+    return self._execution
 
   def initiate_stop(self, status: status_lib.Status) -> None:
     """Updates pipeline state to signal stopping pipeline execution."""
@@ -269,27 +271,9 @@ class PipelineState:
     else:
       return None
 
-  def get_pipeline_execution_state(self) -> metadata_store_pb2.Execution.State:
-    """Returns state of underlying pipeline execution."""
-    self._check_context()
-    return self._execution.last_known_state
-
-  def set_pipeline_execution_state(
-      self, state: metadata_store_pb2.Execution.State) -> None:
-    """Sets state of underlying pipeline execution."""
-    self._check_context()
-    self._execution.last_known_state = state
-
-  def set_pipeline_execution_state_from_status(
-      self, status: status_lib.Status) -> None:
-    """Sets state of underlying pipeline execution derived from input status."""
+  def update_pipeline_execution_state(self, status: status_lib.Status) -> None:
     self._check_context()
     self._execution.last_known_state = _mlmd_execution_code(status)
-
-  def get_property(self, property_key: str) -> Optional[types.Property]:
-    """Returns custom property value from the pipeline execution."""
-    return _get_metadata_value(
-        self._execution.custom_properties.get(property_key))
 
   def save_property(self, property_key: str, property_value: str) -> None:
     """Saves a custom property to the pipeline execution."""
@@ -356,7 +340,7 @@ class PipelineView:
     if not context:
       raise status_lib.StatusNotOkError(
           code=status_lib.Code.NOT_FOUND,
-          message=f'No pipeline with uid {pipeline_uid} found.')
+          message=f'No active pipeline with uid {pipeline_uid} found.')
     executions = mlmd_handle.store.get_executions_by_context(context.id)
     return [cls(pipeline_uid, context, execution) for execution in executions]
 
@@ -388,11 +372,11 @@ class PipelineView:
     if not context:
       raise status_lib.StatusNotOkError(
           code=status_lib.Code.NOT_FOUND,
-          message=f'No pipeline with uid {pipeline_uid} found.')
+          message=f'No active pipeline with uid {pipeline_uid} found.')
     executions = mlmd_handle.store.get_executions_by_context(context.id)
 
-    if pipeline_run_id is None and executions:
-      execution = _get_latest_execution(executions)
+    if pipeline_run_id is None:
+      execution = _get_active_execution(pipeline_uid, executions)
       return cls(pipeline_uid, context, execution)
 
     for execution in executions:
@@ -518,14 +502,3 @@ def _get_active_execution(
             f'Expected 1 but found {len(active_executions)} active pipeline '
             f'executions for pipeline uid: {pipeline_uid}'))
   return active_executions[0]
-
-
-def _get_latest_execution(
-    executions: List[metadata_store_pb2.Execution]
-) -> metadata_store_pb2.Execution:
-  """gets a single latest execution from the executions."""
-
-  def _get_creation_time(execution):
-    return execution.create_time_since_epoch
-
-  return max(executions, key=_get_creation_time)

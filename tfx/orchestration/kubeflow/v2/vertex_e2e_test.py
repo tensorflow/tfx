@@ -71,7 +71,7 @@ class KubeflowV2E2ETestCase(kubeflow_v2_test_utils.BaseKubeflowV2Test):
                     pipeline.pipeline_info.pipeline_name)
 
     config = kubeflow_v2_dag_runner.KubeflowV2DagRunnerConfig(
-        default_image=self.container_image)
+        default_image=self._CONTAINER_IMAGE)
 
     _ = kubeflow_v2_dag_runner.KubeflowV2DagRunner(
         config=config, output_filename='pipeline.json').run(
@@ -152,7 +152,7 @@ class KubeflowV2E2ETest(KubeflowV2E2ETestCase, parameterized.TestCase):
           # TODO(b/171733562): Remove `use_runner_v2` once it is the default for
           # Dataflow.
           '--experiments=use_runner_v2',
-          '--worker_harness_container_image=%s' % self.container_image,
+          '--worker_harness_container_image=%s' % self._CONTAINER_IMAGE,
       ])
 
     pipeline = self._create_pipeline(pipeline_name, components,

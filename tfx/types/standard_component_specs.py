@@ -98,11 +98,6 @@ ANALYZER_CACHE_KEY = 'analyzer_cache'
 TRANSFORMED_EXAMPLES_KEY = 'transformed_examples'
 UPDATED_ANALYZER_CACHE_KEY = 'updated_analyzer_cache'
 DISABLE_STATISTICS_KEY = 'disable_statistics'
-PRE_TRANSFORM_SCHEMA_KEY = 'pre_transform_schema'
-PRE_TRANSFORM_STATS_KEY = 'pre_transform_stats'
-POST_TRANSFORM_SCHEMA_KEY = 'post_transform_schema'
-POST_TRANSFORM_STATS_KEY = 'post_transform_stats'
-POST_TRANSFORM_ANOMALIES_KEY = 'post_transform_anomalies'
 
 
 class BulkInferrerSpec(ComponentSpec):
@@ -424,17 +419,4 @@ class TransformSpec(ComponentSpec):
       UPDATED_ANALYZER_CACHE_KEY:
           ChannelParameter(
               type=standard_artifacts.TransformCache, optional=True),
-      PRE_TRANSFORM_SCHEMA_KEY:
-          ChannelParameter(type=standard_artifacts.Schema, optional=True),
-      PRE_TRANSFORM_STATS_KEY:
-          ChannelParameter(
-              type=standard_artifacts.ExampleStatistics, optional=True),
-      POST_TRANSFORM_SCHEMA_KEY:
-          ChannelParameter(type=standard_artifacts.Schema, optional=True),
-      POST_TRANSFORM_STATS_KEY:
-          ChannelParameter(
-              type=standard_artifacts.ExampleStatistics, optional=True),
-      POST_TRANSFORM_ANOMALIES_KEY:
-          ChannelParameter(
-              type=standard_artifacts.ExampleAnomalies, optional=True)
   }

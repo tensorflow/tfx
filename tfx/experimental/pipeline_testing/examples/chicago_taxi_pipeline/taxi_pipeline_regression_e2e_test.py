@@ -21,7 +21,7 @@ from absl import logging
 import tensorflow as tf
 from tfx.dsl.compiler import compiler
 from tfx.dsl.io import fileio
-from tfx.examples.chicago_taxi_pipeline import taxi_pipeline_local
+from tfx.examples.chicago_taxi_pipeline import taxi_pipeline_beam
 from tfx.experimental.pipeline_testing import executor_verifier_utils
 from tfx.experimental.pipeline_testing import pipeline_mock
 from tfx.experimental.pipeline_testing import pipeline_recorder_utils
@@ -42,7 +42,7 @@ class TaxiPipelineRegressionEndToEndTest(tf.test.TestCase):
     # This example assumes that the taxi data and taxi utility function are
     # stored in tfx/examples/chicago_taxi_pipeline. Feel free to customize this
     # as needed.
-    taxi_root = os.path.dirname(taxi_pipeline_local.__file__)
+    taxi_root = os.path.dirname(taxi_pipeline_beam.__file__)
     self._data_root = os.path.join(taxi_root, 'data', 'simple')
     self._module_file = os.path.join(taxi_root, 'taxi_utils.py')
     self._serving_model_dir = os.path.join(self._test_dir, 'serving_model')
@@ -57,7 +57,7 @@ class TaxiPipelineRegressionEndToEndTest(tf.test.TestCase):
     self._recorded_output_dir = os.path.join(self._test_dir, 'testdata')
 
     # Runs the pipeline and record to self._recorded_output_dir
-    record_taxi_pipeline = taxi_pipeline_local._create_pipeline(  # pylint:disable=protected-access
+    record_taxi_pipeline = taxi_pipeline_beam._create_pipeline(  # pylint:disable=protected-access
         pipeline_name=self._pipeline_name,
         data_root=self._data_root,
         module_file=self._module_file,
@@ -73,7 +73,7 @@ class TaxiPipelineRegressionEndToEndTest(tf.test.TestCase):
         metadata_db_uri=self._recorded_mlmd_path,
         pipeline_name=self._pipeline_name)
 
-    self.taxi_pipeline = taxi_pipeline_local._create_pipeline(  # pylint:disable=protected-access
+    self.taxi_pipeline = taxi_pipeline_beam._create_pipeline(  # pylint:disable=protected-access
         pipeline_name=self._pipeline_name,
         data_root=self._data_root,
         module_file=self._module_file,
@@ -136,13 +136,11 @@ class TaxiPipelineRegressionEndToEndTest(tf.test.TestCase):
       artifact_count = len(artifacts)
       executions = m.store.get_executions()
       execution_count = len(executions)
-      # Artifact count is greater by 7 due to extra artifacts produced by
+      # Artifact count is greater by 3 due to extra artifacts produced by
       # Evaluator(blessing and evaluation), Trainer(model and model_run) and
-      # Transform(example, graph, cache, pre_transform_statistics,
-      # pre_transform_schema, post_transform_statistics, post_transform_schema,
-      # post_transform_anomalies) minus Resolver which doesn't generate
+      # Transform(example, graph, cache) minus Resolver which doesn't generate
       # new artifact.
-      self.assertEqual(artifact_count, execution_count + 7)
+      self.assertEqual(artifact_count, execution_count + 3)
       self.assertLen(self.taxi_pipeline.components, execution_count)
 
       for execution in executions:

@@ -248,3 +248,14 @@ def tag_executor_output_with_version(
             artifact_utils
             .ARTIFACT_TFX_VERSION_CUSTOM_PROPERTY_KEY].string_value = (
                 version.__version__)
+
+
+def populate_output_artifact(
+    executor_output: execution_result_pb2.ExecutorOutput,
+    output_dict: Dict[str, List[types.Artifact]]):
+  """Populate output_dict to executor_output."""
+  for key, artifact_list in output_dict.items():
+    artifacts = execution_result_pb2.ExecutorOutput.ArtifactList()
+    for artifact in artifact_list:
+      artifacts.artifacts.append(artifact.mlmd_artifact)
+    executor_output.output_artifacts[key].CopyFrom(artifacts)

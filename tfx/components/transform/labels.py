@@ -45,12 +45,6 @@ TRANSFORM_MATERIALIZE_OUTPUT_PATHS_LABEL = (
 TRANSFORM_METADATA_OUTPUT_PATH_LABEL = 'transform_output_path'
 CACHE_OUTPUT_PATH_LABEL = 'cache_output_path'
 TEMP_OUTPUT_LABEL = 'temp_path'
-PRE_TRANSFORM_OUTPUT_SCHEMA_PATH_LABEL = 'pre_transform_output_schema_path'
-PRE_TRANSFORM_OUTPUT_STATS_PATH_LABEL = 'pre_transform_output_stats_path'
-POST_TRANSFORM_OUTPUT_SCHEMA_PATH_LABEL = 'post_transform_output_schema_path'
-POST_TRANSFORM_OUTPUT_STATS_PATH_LABEL = 'post_transform_output_stats_path'
-POST_TRANSFORM_OUTPUT_ANOMALIES_PATH_LABEL = (
-    'post_transform_output_anomalies_path')
 
 # Examples File Format
 FORMAT_TFRECORD = 'FORMAT_TFRECORD'

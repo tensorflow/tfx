@@ -175,18 +175,6 @@ class Transform(base_beam_component.BaseBeamComponent):
       transformed_examples = types.Channel(type=standard_artifacts.Examples)
       transformed_examples.matching_channel_name = 'examples'
 
-    (pre_transform_schema, pre_transform_stats, post_transform_schema,
-     post_transform_stats, post_transform_anomalies) = (None,) * 5
-    if not disable_statistics:
-      pre_transform_schema = types.Channel(type=standard_artifacts.Schema)
-      post_transform_schema = types.Channel(type=standard_artifacts.Schema)
-      pre_transform_stats = types.Channel(
-          type=standard_artifacts.ExampleStatistics)
-      post_transform_stats = types.Channel(
-          type=standard_artifacts.ExampleStatistics)
-      post_transform_anomalies = types.Channel(
-          type=standard_artifacts.ExampleAnomalies)
-
     if disable_analyzer_cache:
       updated_analyzer_cache = None
       if analyzer_cache:
@@ -208,12 +196,7 @@ class Transform(base_beam_component.BaseBeamComponent):
         analyzer_cache=analyzer_cache,
         updated_analyzer_cache=updated_analyzer_cache,
         custom_config=json_utils.dumps(custom_config),
-        disable_statistics=int(disable_statistics),
-        pre_transform_schema=pre_transform_schema,
-        pre_transform_stats=pre_transform_stats,
-        post_transform_schema=post_transform_schema,
-        post_transform_stats=post_transform_stats,
-        post_transform_anomalies=post_transform_anomalies)
+        disable_statistics=int(disable_statistics))
     super(Transform, self).__init__(spec=spec)
 
     if udf_utils.should_package_user_modules():

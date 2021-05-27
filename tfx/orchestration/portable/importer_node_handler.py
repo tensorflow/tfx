@@ -22,8 +22,10 @@ from tfx.orchestration import metadata
 from tfx.orchestration.portable import data_types
 from tfx.orchestration.portable import execution_publish_utils
 from tfx.orchestration.portable import inputs_utils
+from tfx.orchestration.portable import outputs_utils
 from tfx.orchestration.portable import system_node_handler
 from tfx.orchestration.portable.mlmd import context_lib
+from tfx.proto.orchestration import execution_result_pb2
 from tfx.proto.orchestration import pipeline_pb2
 
 
@@ -91,17 +93,28 @@ class ImporterNodeHandler(system_node_handler.SystemNodeHandler):
           output_artifact_class=output_artifact_class,
           mlmd_artifact_type=output_spec.artifact_spec.type)
 
-      # 5. Publish the output artifacts.
-      execution_publish_utils.publish_succeeded_execution(
-          metadata_handler=m,
-          execution_id=execution.id,
-          contexts=contexts,
-          output_artifacts=output_artifacts)
-
-      return data_types.ExecutionInfo(
+      result = data_types.ExecutionInfo(
           execution_id=execution.id,
           input_dict={},
           output_dict=output_artifacts,
           exec_properties=exec_properties,
           pipeline_node=pipeline_node,
           pipeline_info=pipeline_info)
+
+      # TODO(b/182316162): consider let the launcher level do the publish
+      # for system nodes. So that the version taging logic doesn't need to be
+      # handled per system node.
+      executor_output = execution_result_pb2.ExecutorOutput()
+      outputs_utils.populate_output_artifact(executor_output, output_artifacts)
+      outputs_utils.tag_executor_output_with_version(executor_output)
+      outputs_utils.tag_output_artifacts_with_version(result.output_dict)
+
+      # 5. Publish the output artifacts.
+      if not properties.get(importer.REIMPORT_OPTION_KEY):
+        execution_publish_utils.publish_succeeded_execution(
+            metadata_handler=m,
+            execution_id=execution.id,
+            contexts=contexts,
+            output_artifacts=output_artifacts)
+
+      return result

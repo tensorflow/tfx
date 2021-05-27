@@ -713,31 +713,25 @@ class BaseKubeflowV2Test(test_case_utils.TfxTest):
   # This location depends on install path of TFX in the docker image.
   _MODULE_FILE = '/opt/conda/lib/python3.7/site-packages/tfx/examples/chicago_taxi_pipeline/taxi_utils.py'
 
+  _CONTAINER_IMAGE = '{}:{}'.format(_BASE_CONTAINER_IMAGE,
+                                    test_utils.random_id())
+
   @classmethod
   def setUpClass(cls):
     super(BaseKubeflowV2Test, cls).setUpClass()
 
-    if ':' not in cls._BASE_CONTAINER_IMAGE:
-      # Generate base container image for the test if tag is not specified.
-      cls.container_image = '{}:{}'.format(cls._BASE_CONTAINER_IMAGE,
-                                           test_utils.random_id())
-
-      # Create a container image for use by test pipelines.
-      test_utils.build_and_push_docker_image(cls.container_image,
-                                             cls._REPO_BASE)
-    else:  # Use the given image as a base image.
-      cls.container_image = cls._BASE_CONTAINER_IMAGE
+    # Create a container image for use by test pipelines.
+    test_utils.build_and_push_docker_image(cls._CONTAINER_IMAGE, cls._REPO_BASE)
 
   @classmethod
   def tearDownClass(cls):
     super(BaseKubeflowV2Test, cls).tearDownClass()
 
-    if cls.container_image != cls._BASE_CONTAINER_IMAGE:
-      # Delete container image used in tests.
-      logging.info('Deleting image %s', cls.container_image)
-      subprocess.run(
-          ['gcloud', 'container', 'images', 'delete', cls.container_image],
-          check=True)
+    # Delete container image used in tests.
+    logging.info('Deleting image %s', cls._CONTAINER_IMAGE)
+    subprocess.run(
+        ['gcloud', 'container', 'images', 'delete', cls._CONTAINER_IMAGE],
+        check=True)
 
   def setUp(self):
     super(BaseKubeflowV2Test, self).setUp()

@@ -128,22 +128,6 @@ class ExecutorTest(tft_unit.TransformTestCase):
     self._updated_analyzer_cache_artifact.uri = os.path.join(
         self._output_data_dir, 'CACHE')
 
-    self._pre_transform_schema = standard_artifacts.Schema()
-    self._pre_transform_schema.uri = os.path.join(output_data_dir,
-                                                  'pre_transform_schema', '0')
-    self._pre_transform_stats = standard_artifacts.ExampleStatistics()
-    self._pre_transform_stats.uri = os.path.join(output_data_dir,
-                                                 'pre_transform_stats', '0')
-    self._post_transform_schema = standard_artifacts.Schema()
-    self._post_transform_schema.uri = os.path.join(output_data_dir,
-                                                   'post_transform_schema', '0')
-    self._post_transform_stats = standard_artifacts.ExampleStatistics()
-    self._post_transform_stats.uri = os.path.join(output_data_dir,
-                                                  'post_transform_stats', '0')
-    self._post_transform_anomalies = standard_artifacts.ExampleAnomalies()
-    self._post_transform_anomalies.uri = os.path.join(
-        output_data_dir, 'post_transform_anomalies', '0')
-
     self._output_dict = {
         standard_component_specs.TRANSFORM_GRAPH_KEY: [
             self._transformed_output
@@ -153,21 +137,6 @@ class ExecutorTest(tft_unit.TransformTestCase):
         executor.TEMP_PATH_KEY: [temp_path_output],
         standard_component_specs.UPDATED_ANALYZER_CACHE_KEY: [
             self._updated_analyzer_cache_artifact
-        ],
-        standard_component_specs.PRE_TRANSFORM_STATS_KEY: [
-            self._pre_transform_stats
-        ],
-        standard_component_specs.PRE_TRANSFORM_SCHEMA_KEY: [
-            self._pre_transform_schema
-        ],
-        standard_component_specs.POST_TRANSFORM_ANOMALIES_KEY: [
-            self._post_transform_anomalies
-        ],
-        standard_component_specs.POST_TRANSFORM_STATS_KEY: [
-            self._post_transform_stats
-        ],
-        standard_component_specs.POST_TRANSFORM_SCHEMA_KEY: [
-            self._post_transform_schema
         ],
     }
 
@@ -243,46 +212,18 @@ class ExecutorTest(tft_unit.TransformTestCase):
         self.assertEqual(examples_eval_count, transformed_eval_count)
         self.assertGreater(transformed_train_count, transformed_eval_count)
 
+    path_to_pre_transform_statistics = os.path.join(
+        self._transformed_output.uri,
+        tft.TFTransformOutput.PRE_TRANSFORM_FEATURE_STATS_PATH)
+    path_to_post_transform_statistics = os.path.join(
+        self._transformed_output.uri,
+        tft.TFTransformOutput.POST_TRANSFORM_FEATURE_STATS_PATH)
     if disable_statistics:
-      self.assertFalse(
-          fileio.exists(
-              os.path.join(self._pre_transform_schema.uri, 'Schema.pb')))
-      self.assertFalse(
-          fileio.exists(
-              os.path.join(self._post_transform_schema.uri, 'Schema.pb')))
-      self.assertFalse(
-          fileio.exists(
-              os.path.join(self._pre_transform_stats.uri, 'FeatureStats.pb')))
-      self.assertFalse(
-          fileio.exists(
-              os.path.join(self._post_transform_stats.uri, 'FeatureStats.pb')))
-      self.assertFalse(
-          fileio.exists(
-              os.path.join(self._post_transform_anomalies.uri,
-                           'SchemaDiff.pb')))
-
+      self.assertFalse(fileio.exists(path_to_pre_transform_statistics))
+      self.assertFalse(fileio.exists(path_to_post_transform_statistics))
     else:
-      expected_outputs.extend([
-          'pre_transform_schema', 'pre_transform_stats',
-          'post_transform_schema', 'post_transform_stats',
-          'post_transform_anomalies'
-      ])
-      self.assertTrue(
-          fileio.exists(
-              os.path.join(self._pre_transform_schema.uri, 'Schema.pb')))
-      self.assertTrue(
-          fileio.exists(
-              os.path.join(self._post_transform_schema.uri, 'Schema.pb')))
-      self.assertTrue(
-          fileio.exists(
-              os.path.join(self._pre_transform_stats.uri, 'FeatureStats.pb')))
-      self.assertTrue(
-          fileio.exists(
-              os.path.join(self._post_transform_stats.uri, 'FeatureStats.pb')))
-      self.assertTrue(
-          fileio.exists(
-              os.path.join(self._post_transform_anomalies.uri,
-                           'SchemaDiff.pb')))
+      self.assertTrue(fileio.exists(path_to_pre_transform_statistics))
+      self.assertTrue(fileio.exists(path_to_post_transform_statistics))
 
     # Depending on `materialize` and `store_cache`, check that
     # expected outputs are exactly correct. If either flag is False, its
@@ -355,14 +296,6 @@ class ExecutorTest(tft_unit.TransformTestCase):
         standard_component_specs.MODULE_FILE_KEY] = self._module_file
     self._exec_properties[
         standard_component_specs.DISABLE_STATISTICS_KEY] = True
-    for key in [
-        standard_component_specs.PRE_TRANSFORM_STATS_KEY,
-        standard_component_specs.PRE_TRANSFORM_SCHEMA_KEY,
-        standard_component_specs.POST_TRANSFORM_ANOMALIES_KEY,
-        standard_component_specs.POST_TRANSFORM_STATS_KEY,
-        standard_component_specs.POST_TRANSFORM_SCHEMA_KEY
-    ]:
-      self._output_dict.pop(key)
     self._transform_executor.Do(self._input_dict, self._output_dict,
                                 self._exec_properties)
     self._verify_transform_outputs(disable_statistics=True)

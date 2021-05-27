@@ -27,10 +27,11 @@ import os
 import tensorflow as tf
 import tensorflow_transform as tft
 
-from tfx import v1 as tfx
+from tfx.components.trainer.fn_args_utils import FnArgs
 from tfx.components.trainer.rewriting import converters
 from tfx.components.trainer.rewriting import rewriter
 from tfx.components.trainer.rewriting import rewriter_factory
+from tfx.dsl.io import fileio
 from tfx.examples.mnist import mnist_utils_native_keras_base as base
 
 
@@ -62,7 +63,7 @@ def preprocessing_fn(inputs):
 
 
 # TFX Trainer will call this function.
-def run_fn(fn_args: tfx.components.FnArgs):
+def run_fn(fn_args: FnArgs):
   """Train the model based on given args.
 
   Args:
@@ -109,4 +110,4 @@ def run_fn(fn_args: tfx.components.FnArgs):
                                  tfrw,
                                  rewriter.ModelType.TFLITE_MODEL)
 
-  tfx.dsl.io.fileio.rmtree(temp_saving_model_dir)
+  fileio.rmtree(temp_saving_model_dir)

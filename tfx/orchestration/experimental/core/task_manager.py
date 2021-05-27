@@ -28,7 +28,6 @@ from tfx.orchestration.experimental.core import task as task_lib
 from tfx.orchestration.experimental.core import task_queue as tq
 from tfx.orchestration.experimental.core import task_scheduler as ts
 from tfx.orchestration.portable import execution_publish_utils
-from tfx.orchestration.portable import outputs_utils
 from tfx.utils import status as status_lib
 
 from ml_metadata.proto import metadata_store_pb2
@@ -273,14 +272,8 @@ def _publish_execution_results(mlmd_handle: metadata.Metadata,
     _update_state(result.status)
     return
 
-  # TODO(b/182316162): Unify publisher handing so that post-execution artifact
-  # logic is more cleanly handled.
-  outputs_utils.tag_output_artifacts_with_version(task.output_artifacts)
   publish_params = dict(output_artifacts=task.output_artifacts)
   if result.output_artifacts is not None:
-    # TODO(b/182316162): Unify publisher handing so that post-execution artifact
-    # logic is more cleanly handled.
-    outputs_utils.tag_output_artifacts_with_version(result.output_artifacts)
     publish_params['output_artifacts'] = result.output_artifacts
   elif result.executor_output is not None:
     if result.executor_output.execution_result.code != status_lib.Code.OK:
@@ -289,9 +282,6 @@ def _publish_execution_results(mlmd_handle: metadata.Metadata,
               code=result.executor_output.execution_result.code,
               message=result.executor_output.execution_result.result_message))
       return
-    # TODO(b/182316162): Unify publisher handing so that post-execution artifact
-    # logic is more cleanly handled.
-    outputs_utils.tag_executor_output_with_version(result.executor_output)
     publish_params['executor_output'] = result.executor_output
 
   execution_publish_utils.publish_succeeded_execution(mlmd_handle,

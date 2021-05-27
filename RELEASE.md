@@ -21,10 +21,8 @@
 *  Added tfx.v1 Public APIs, please refer to
    [API doc](https://www.tensorflow.org/tfx/api_docs/python/tfx/v1) for details.
 *  Transform component now computes pre-transform and post-transform statistics
-   and stores them in new, indvidual outputs ('pre_transform_schema',
-   'pre_transform_stats', 'post_transform_schema', 'post_transform_stats',
-   'post_transform_anomalies'). This can be disabled by setting
-   `disable_statistics=True` in the Transform component.
+   by default. This can be disabled by setting `disable_statistics=True` in the
+   Transform component.
 *  BERT cola and mrpc examples now demonstrate how to calculate statistics for
    NLP features.
 
