@@ -18,7 +18,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from typing import Dict, List, Text, Union
+from typing import Dict, List, Optional, Text, Union
 
 from tfx.orchestration.config import base_component_config
 
@@ -49,12 +49,14 @@ class DockerComponentConfig(base_component_config.BaseComponentConfig):
   """
 
   def __init__(self,
-               docker_server_url: Text = None,
-               environment: Union[Dict[Text, Text], List[Text]] = None,
-               name: Text = None,
+               docker_server_url: Optional[Text] = None,
+               environment: Optional[Union[Dict[Text, Text],
+                                           List[Text]]] = None,
+               name: Optional[Text] = None,
                privileged: bool = False,
-               user: Union[Text, int] = None,
-               volumes: Union[Dict[Text, Dict[Text, Text]], List[Text]] = None,
+               user: Optional[Union[Text, int]] = None,
+               volumes: Optional[Union[Dict[Text, Dict[Text, Text]],
+                                       List[Text]]] = None,
                **kwargs):
     self.docker_server_url = docker_server_url
     self.environment = environment
