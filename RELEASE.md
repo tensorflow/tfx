@@ -27,6 +27,9 @@
    `disable_statistics=True` in the Transform component.
 *  BERT cola and mrpc examples now demonstrate how to calculate statistics for
    NLP features.
+*  TFX CLI now supports
+   [Vertex Pipelines](https://cloud.google.com/vertex-ai/docs/pipelines/introduction).
+   use it with `--engine=vertex` flag.
 
 
 ## Breaking Changes
@@ -48,9 +51,6 @@
 
 ## Bug Fixes and Other Changes
 
-*   TFX CLI now supports
-    [Vertex Pipelines](https://cloud.google.com/vertex-ai/docs/pipelines/introduction).
-    use it with `--engine=vertex` flag.
 *   Forces keyword arguments for AirflowComponent to make it compatible with
     Apache Airflow 2.1.0 and later.
 *   Removed `six` dependency.
