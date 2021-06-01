@@ -198,15 +198,9 @@ if __name__ == '__main__':
       enable_cache=True,
       beam_pipeline_args=_beam_pipeline_args)
 
-  # This pipeline automatically injects the Kubeflow TFX image if the
-  # environment variable 'KUBEFLOW_TFX_IMAGE' is defined. Currently, the tfx
-  # cli tool exports the environment variable to pass to the pipelines.
-  tfx_image = os.environ.get('KUBEFLOW_TFX_IMAGE', None)
-
   config = kubeflow_dag_runner.KubeflowDagRunnerConfig(
       kubeflow_metadata_config=kubeflow_dag_runner
-      .get_default_kubeflow_metadata_config(),
-      tfx_image=tfx_image)
+      .get_default_kubeflow_metadata_config())
   kfp_runner = kubeflow_dag_runner.KubeflowDagRunner(config=config)
 
   kfp_runner.run(pipeline)

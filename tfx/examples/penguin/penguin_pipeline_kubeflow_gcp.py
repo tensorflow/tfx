@@ -323,15 +323,8 @@ def main(unused_argv):
   metadata_config = (tfx.orchestration.experimental
                      .get_default_kubeflow_metadata_config())
 
-  # This pipeline automatically injects the Kubeflow TFX image if the
-  # environment variable 'KUBEFLOW_TFX_IMAGE' is defined. The tfx
-  # cli tool exports the environment variable to pass to the pipelines.
-  tfx_image = os.environ.get('KUBEFLOW_TFX_IMAGE', None)
-
   runner_config = tfx.orchestration.experimental.KubeflowDagRunnerConfig(
-      kubeflow_metadata_config=metadata_config,
-      # Specify custom docker image to use.
-      tfx_image=tfx_image)
+      kubeflow_metadata_config=metadata_config)
 
   tfx.orchestration.experimental.KubeflowDagRunner(config=runner_config).run(
       create_pipeline(
