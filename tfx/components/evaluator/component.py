@@ -52,8 +52,8 @@ class Evaluator(base_beam_component.BaseBeamComponent):
 
   def __init__(
       self,
-      examples: types.Channel = None,
-      model: types.Channel = None,
+      examples: types.Channel,
+      model: Optional[types.Channel] = None,
       baseline_model: Optional[types.Channel] = None,
       # TODO(b/148618405): deprecate feature_slicing_spec.
       feature_slicing_spec: Optional[Union[evaluator_pb2.FeatureSlicingSpec,

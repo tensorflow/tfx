@@ -99,8 +99,8 @@ class Pusher(base_component.BaseComponent):
         the same field names as PushDestination proto message.
       custom_config: A dict which contains the deployment job parameters to be
         passed to Cloud platforms.
-      custom_executor_spec: Optional custom executor spec. This is experimental
-        and is subject to change in the future.
+      custom_executor_spec: Optional custom executor spec. Deprecated (no
+        compatibility guarantee), please customize component directly.
     """
     pushed_model = types.Channel(type=standard_artifacts.PushedModel)
     if (push_destination is None and not custom_executor_spec and
@@ -109,7 +109,9 @@ class Pusher(base_component.BaseComponent):
                        'custom_executor_spec is supplied that does not require '
                        'it.')
     if custom_executor_spec:
-      logging.warning('`custom_executor_spec` is going to be deprecated.')
+      logging.warning(
+          '`custom_executor_spec` is deprecated. Please customize component directly.'
+      )
     if model is None and infra_blessing is None:
       raise ValueError(
           'Either one of model or infra_blessing channel should be given. '

@@ -91,12 +91,12 @@ class Transform(base_beam_component.BaseBeamComponent):
 
   def __init__(
       self,
-      examples: types.Channel = None,
-      schema: types.Channel = None,
+      examples: types.Channel,
+      schema: types.Channel,
       module_file: Optional[Union[Text, data_types.RuntimeParameter]] = None,
       preprocessing_fn: Optional[Union[Text,
                                        data_types.RuntimeParameter]] = None,
-      splits_config: transform_pb2.SplitsConfig = None,
+      splits_config: Optional[transform_pb2.SplitsConfig] = None,
       analyzer_cache: Optional[types.Channel] = None,
       materialize: bool = True,
       disable_analyzer_cache: bool = False,

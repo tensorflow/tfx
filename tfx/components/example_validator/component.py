@@ -67,8 +67,8 @@ class ExampleValidator(base_component.BaseComponent):
   EXECUTOR_SPEC = executor_spec.ExecutorClassSpec(executor.Executor)
 
   def __init__(self,
-               statistics: types.Channel = None,
-               schema: types.Channel = None,
+               statistics: types.Channel,
+               schema: types.Channel,
                exclude_splits: Optional[List[Text]] = None):
     """Construct an ExampleValidator component.
 

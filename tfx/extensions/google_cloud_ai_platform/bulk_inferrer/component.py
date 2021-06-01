@@ -84,14 +84,14 @@ class CloudAIBulkInferrerComponent(base_component.BaseComponent):
 
   def __init__(
       self,
-      examples: types.Channel = None,
+      examples: types.Channel,
       model: Optional[types.Channel] = None,
       model_blessing: Optional[types.Channel] = None,
       data_spec: Optional[Union[bulk_inferrer_pb2.DataSpec, Dict[Text,
                                                                  Any]]] = None,
       output_example_spec: Optional[Union[bulk_inferrer_pb2.OutputExampleSpec,
                                           Dict[Text, Any]]] = None,
-      custom_config: Dict[Text, Any] = None):
+      custom_config: Optional[Dict[Text, Any]] = None):
     """Construct an BulkInferrer component.
 
     Args:
