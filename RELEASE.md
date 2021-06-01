@@ -34,6 +34,8 @@
 
 ## Breaking Changes
 
+*  Removed unneccessary default values for required component input Channels.
+
 ### For Pipeline Authors
 
 *   N/A

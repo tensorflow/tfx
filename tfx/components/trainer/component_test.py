@@ -57,11 +57,9 @@ class ComponentTest(tf.test.TestCase):
     module_file = '/path/to/module/file'
     trainer = component.Trainer(
         module_file=module_file,
-        transformed_examples=self.examples,
+        examples=self.examples,
         transform_graph=self.transform_graph,
-        schema=self.schema,
-        train_args=self.train_args,
-        eval_args=self.eval_args)
+        schema=self.schema)
     self._verify_outputs(trainer)
     self.assertEqual(
         module_file,
@@ -72,7 +70,7 @@ class ComponentTest(tf.test.TestCase):
     n_steps = data_types.RuntimeParameter(name='n-steps', ptype=int)
     trainer = component.Trainer(
         module_file=module_file,
-        transformed_examples=self.examples,
+        examples=self.examples,
         transform_graph=self.transform_graph,
         schema=self.schema,
         train_args=dict(splits=['train'], num_steps=n_steps),
@@ -87,7 +85,7 @@ class ComponentTest(tf.test.TestCase):
     trainer_fn = 'path.to.my_trainer_fn'
     trainer = component.Trainer(
         trainer_fn=trainer_fn,
-        transformed_examples=self.examples,
+        examples=self.examples,
         transform_graph=self.transform_graph,
         train_args=self.train_args,
         eval_args=self.eval_args)
@@ -102,7 +100,7 @@ class ComponentTest(tf.test.TestCase):
         run_fn=run_fn,
         custom_executor_spec=executor_spec.ExecutorClassSpec(
             executor.GenericExecutor),
-        transformed_examples=self.examples,
+        examples=self.examples,
         transform_graph=self.transform_graph,
         train_args=self.train_args,
         eval_args=self.eval_args)
@@ -175,7 +173,7 @@ class ComponentTest(tf.test.TestCase):
   def testConstructWithHParams(self):
     trainer = component.Trainer(
         trainer_fn='path.to.my_trainer_fn',
-        transformed_examples=self.examples,
+        examples=self.examples,
         transform_graph=self.transform_graph,
         schema=self.schema,
         hyperparameters=self.hyperparameters,

@@ -51,7 +51,7 @@ class StatisticsGen(base_beam_component.BaseBeamComponent):
   EXECUTOR_SPEC = executor_spec.BeamExecutorSpec(executor.Executor)
 
   def __init__(self,
-               examples: types.Channel = None,
+               examples: types.Channel,
                schema: Optional[types.Channel] = None,
                stats_options: Optional[tfdv.StatsOptions] = None,
                exclude_splits: Optional[List[Text]] = None):
