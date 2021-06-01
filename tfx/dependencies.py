@@ -88,7 +88,7 @@ def make_required_install_packages():
       'pyarrow>=1,<3',
       'pyyaml>=3.12,<6',
       'tensorflow>=1.15.2,!=2.0.*,!=2.1.*,!=2.2.*,!=2.3.*,!=2.4.*,<3',
-      'tensorflow-hub>=0.9.0,<0.10',
+      'tensorflow-hub>=0.9.0,<=0.12.0',
       'tensorflow-data-validation' + select_constraint(
           default='>=1.0.0,<1.1.0',
           nightly='>=1.1.0.dev',
@@ -97,8 +97,7 @@ def make_required_install_packages():
       'tensorflow-model-analysis' + select_constraint(
           default='>=0.31,<0.32',
           nightly='>=0.32.0.dev',
-          git_master='@git+https://github.com/tensorflow/model-analysis@master'
-      ),
+          git_master='@git+https://github.com/tensorflow/model-analysis@master'),
       'tensorflow-serving-api>=1.15,!=2.0.*,!=2.1.*,!=2.2.*,!=2.3.*,!=2.4.*,<3',
       'tensorflow-transform' + select_constraint(
           default='>=1.0.0,<1.1.0',
