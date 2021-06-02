@@ -66,6 +66,7 @@
 *   Depends on `tensorflow-serving-api>=1.15,!=2.0.*,!=2.1.*,!=2.2.*,!=2.3.*,!=2.4.*,<3`.
 *   Depends on `tensorflow-transform>=1.0.0,<1.1.0`.
 *   Depends on `tfx-bsl>=1.0.0,<1.1.0`.
+*   Depends on `tensorflow-hub>=0.9.0,<0.13`
 
 ## Documentation Updates
 
