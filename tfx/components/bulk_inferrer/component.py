@@ -56,7 +56,7 @@ class BulkInferrer(base_beam_component.BaseBeamComponent):
 
   def __init__(
       self,
-      examples: types.Channel = None,
+      examples: types.Channel,
       model: Optional[types.Channel] = None,
       model_blessing: Optional[types.Channel] = None,
       data_spec: Optional[Union[bulk_inferrer_pb2.DataSpec, Dict[Text,

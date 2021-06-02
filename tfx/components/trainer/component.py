@@ -32,7 +32,6 @@ from tfx.types import standard_component_specs
 from tfx.utils import json_utils
 
 
-# TODO(b/147702778): update when switch generic executor as default.
 class Trainer(base_component.BaseComponent):
   """A TFX component to train a TensorFlow model.
 
@@ -43,34 +42,16 @@ class Trainer(base_component.BaseComponent):
   code](https://github.com/tensorflow/tfx/blob/master/tfx/examples/penguin/penguin_utils_keras.py)
   of the TFX penguin pipeline example.
 
-  *Note:* The default executor for this component trains locally.  This can be
-  overriden to enable the model to be trained on other platforms.  The [Cloud AI
-  Platform custom
-  executor](https://github.com/tensorflow/tfx/tree/master/tfx/extensions/google_cloud_ai_platform/trainer)
-  provides an example how to implement this.
+  *Note:* This component trains locally. For cloud distributed training, please
+  refer to [Cloud AI Platform
+  Trainer](https://github.com/tensorflow/tfx/tree/master/tfx/extensions/google_cloud_ai_platform/trainer).
 
-  ## Example 1: Training locally
+  ## Example
   ```
   # Uses user-provided Python function that trains a model using TF.
   trainer = Trainer(
       module_file=module_file,
-      transformed_examples=transform.outputs['transformed_examples'],
-      schema=infer_schema.outputs['schema'],
-      transform_graph=transform.outputs['transform_graph'],
-      train_args=proto.TrainArgs(splits=['train'], num_steps=10000),
-      eval_args=proto.EvalArgs(splits=['eval'], num_steps=5000))
-  ```
-
-  ## Example 2: Training through a cloud provider
-  ```
-  from tfx.extensions.google_cloud_ai_platform.trainer import executor as
-  ai_platform_trainer_executor
-  # Train using Google Cloud AI Platform.
-  trainer = Trainer(
-      custom_executor_spec=executor_spec.ExecutorClassSpec(
-          ai_platform_trainer_executor.GenericExecutor),
-      module_file=module_file,
-      transformed_examples=transform.outputs['transformed_examples'],
+      examples=transform.outputs['transformed_examples'],
       schema=infer_schema.outputs['schema'],
       transform_graph=transform.outputs['transform_graph'],
       train_args=proto.TrainArgs(splits=['train'], num_steps=10000),
@@ -92,7 +73,7 @@ class Trainer(base_component.BaseComponent):
 
   def __init__(
       self,
-      examples: types.Channel = None,
+      examples: Optional[types.Channel] = None,
       transformed_examples: Optional[types.Channel] = None,
       transform_graph: Optional[types.Channel] = None,
       schema: Optional[types.Channel] = None,
@@ -102,8 +83,9 @@ class Trainer(base_component.BaseComponent):
       run_fn: Optional[Union[Text, data_types.RuntimeParameter]] = None,
       # TODO(b/147702778): deprecate trainer_fn.
       trainer_fn: Optional[Union[Text, data_types.RuntimeParameter]] = None,
-      train_args: Union[trainer_pb2.TrainArgs, Dict[Text, Any]] = None,
-      eval_args: Union[trainer_pb2.EvalArgs, Dict[Text, Any]] = None,
+      train_args: Optional[Union[trainer_pb2.TrainArgs, Dict[Text,
+                                                             Any]]] = None,
+      eval_args: Optional[Union[trainer_pb2.EvalArgs, Dict[Text, Any]]] = None,
       custom_config: Optional[Dict[Text, Any]] = None,
       custom_executor_spec: Optional[executor_spec.ExecutorSpec] = None):
     """Construct a Trainer component.
@@ -112,7 +94,8 @@ class Trainer(base_component.BaseComponent):
       examples: A Channel of type `standard_artifacts.Examples`, serving as
         the source of examples used in training (required). May be raw or
         transformed.
-      transformed_examples: Deprecated field. Please set 'examples' instead.
+      transformed_examples: Deprecated (no compatibility guarantee). Please set
+        'examples' instead.
       transform_graph: An optional Channel of type
         `standard_artifacts.TransformGraph`, serving as the input transform
         graph if present.
@@ -168,8 +151,8 @@ class Trainer(base_component.BaseComponent):
         behavior (when splits is empty) is evaluate on `eval` split.
       custom_config: A dict which contains addtional training job parameters
         that will be passed into user module.
-      custom_executor_spec: Optional custom executor spec. This is experimental
-        and is subject to change in the future.
+      custom_executor_spec: Optional custom executor spec. Deprecated (no
+        compatibility guarantee), please customize component directly.
 
     Raises:
       ValueError:
@@ -194,7 +177,13 @@ class Trainer(base_component.BaseComponent):
                        "'transform_graph' must be supplied too.")
 
     if custom_executor_spec:
-      logging.warning("`custom_executor_spec` is going to be deprecated.")
+      logging.warning(
+          "`custom_executor_spec` is deprecated. Please customize component directly."
+      )
+    if transformed_examples:
+      logging.warning(
+          "`transformed_examples` is deprecated. Please use `examples` instead."
+      )
     examples = examples or transformed_examples
     model = types.Channel(type=standard_artifacts.Model)
     model_run = types.Channel(type=standard_artifacts.ModelRun)
@@ -204,8 +193,8 @@ class Trainer(base_component.BaseComponent):
         schema=schema,
         base_model=base_model,
         hyperparameters=hyperparameters,
-        train_args=train_args,
-        eval_args=eval_args,
+        train_args=train_args or trainer_pb2.TrainArgs(),
+        eval_args=eval_args or trainer_pb2.EvalArgs(),
         module_file=module_file,
         run_fn=run_fn,
         trainer_fn=trainer_fn,

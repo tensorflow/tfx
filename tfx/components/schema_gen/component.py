@@ -63,7 +63,7 @@ class SchemaGen(base_component.BaseComponent):
 
   def __init__(
       self,
-      statistics: Optional[types.Channel] = None,
+      statistics: types.Channel,
       infer_feature_shape: Optional[Union[bool,
                                           data_types.RuntimeParameter]] = True,
       exclude_splits: Optional[List[Text]] = None):
