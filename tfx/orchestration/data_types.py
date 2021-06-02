@@ -18,7 +18,6 @@ from __future__ import division
 from __future__ import print_function
 
 from typing import Any, Dict, List, Optional, Text, Type, Union
-from absl import logging
 
 from tfx import types
 from tfx.utils import json_utils
@@ -188,9 +187,6 @@ class RuntimeParameter(json_utils.Jsonable):
       ptype: Type = None,  # pylint: disable=g-bare-generic
       default: Optional[Union[int, float, Text]] = None,
       description: Optional[Text] = None):
-    logging.warn('RuntimeParameter is only supported on Cloud-based DAG '
-                 'runner currently.')
-
     if ptype and ptype not in [int, float, Text]:
       raise RuntimeError('Only str and scalar runtime parameters are supported')
     if (default and ptype) and not isinstance(default, ptype):
