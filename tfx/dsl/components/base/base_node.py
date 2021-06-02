@@ -19,6 +19,7 @@ from typing import Any, Dict, Optional, Type
 from tfx.dsl.components.base import base_driver
 from tfx.dsl.components.base import base_executor
 from tfx.dsl.components.base import executor_spec as executor_spec_module
+from tfx.dsl.components.base import node_registry
 from tfx.types import node_common
 from tfx.utils import deprecation_utils
 from tfx.utils import doc_controls
@@ -58,6 +59,7 @@ class BaseNode(json_utils.Jsonable, abc.ABC):
     self._upstream_nodes = set()
     self._downstream_nodes = set()
     self._id = None
+    node_registry.register_node(self)
 
   @doc_controls.do_not_doc_in_subclasses
   def to_json_dict(self) -> Dict[str, Any]:
