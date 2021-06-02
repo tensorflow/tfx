@@ -44,8 +44,7 @@ jobs:
 
     - name: Install dependencies
       run: |
-        # TODO(b/174469322): install the latest pip once resolved.
-        python -m pip install --upgrade 'pip<20.3' wheel
+        python -m pip install --upgrade pip wheel
         pip install -e .[all]
 
     - name: Run unit tests
