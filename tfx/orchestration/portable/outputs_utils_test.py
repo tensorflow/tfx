@@ -20,6 +20,7 @@ from tfx.dsl.io import fileio
 from tfx.orchestration.portable import outputs_utils
 from tfx.proto.orchestration import execution_result_pb2
 from tfx.proto.orchestration import pipeline_pb2
+from tfx.types import standard_artifacts
 from tfx.types.value_artifact import ValueArtifact
 from tfx.utils import test_case_utils
 
@@ -285,6 +286,21 @@ class OutputUtilsTest(test_case_utils.TfxTest, parameterized.TestCase):
     rmtree_fn.side_effect = ValueError('oops')
     with self.assertRaisesRegex(ValueError, 'oops'):
       outputs_utils.remove_stateful_working_dir('/a/fake/path')
+
+  def testPopulateOutputArtifact(self):
+    executor_output = execution_result_pb2.ExecutorOutput()
+    output_dict = {'output_key': [standard_artifacts.Model()]}
+    outputs_utils.populate_output_artifact(executor_output, output_dict)
+    self.assertProtoEquals(
+        """
+        output_artifacts {
+          key: "output_key"
+          value {
+            artifacts {
+            }
+          }
+        }
+        """, executor_output)
 
 
 if __name__ == '__main__':

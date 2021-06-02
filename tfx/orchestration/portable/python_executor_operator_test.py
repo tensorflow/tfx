@@ -21,6 +21,7 @@ from tfx import types
 from tfx.dsl.components.base import base_executor
 from tfx.dsl.io import fileio
 from tfx.orchestration.portable import data_types
+from tfx.orchestration.portable import outputs_utils
 from tfx.orchestration.portable import python_executor_operator
 from tfx.proto.orchestration import executable_spec_pb2
 from tfx.proto.orchestration import execution_result_pb2
@@ -39,8 +40,7 @@ class InprocessExecutor(base_executor.BaseExecutor):
       output_dict: Dict[Text, List[types.Artifact]],
       exec_properties: Dict[Text, Any]) -> execution_result_pb2.ExecutorOutput:
     executor_output = execution_result_pb2.ExecutorOutput()
-    python_executor_operator._populate_output_artifact(executor_output,
-                                                       output_dict)
+    outputs_utils.populate_output_artifact(executor_output, output_dict)
     return executor_output
 
 
@@ -51,8 +51,7 @@ class NotInprocessExecutor(base_executor.BaseExecutor):
          output_dict: Dict[Text, List[types.Artifact]],
          exec_properties: Dict[Text, Any]) -> None:
     executor_output = execution_result_pb2.ExecutorOutput()
-    python_executor_operator._populate_output_artifact(executor_output,
-                                                       output_dict)
+    outputs_utils.populate_output_artifact(executor_output, output_dict)
     with fileio.open(self._context.executor_output_uri, 'wb') as f:
       f.write(executor_output.SerializeToString())
 

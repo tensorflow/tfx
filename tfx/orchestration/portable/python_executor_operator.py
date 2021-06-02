@@ -14,13 +14,13 @@
 """Base class to define how to operator an executor."""
 import copy
 import sys
-from typing import Dict, List, Optional, cast
+from typing import Optional, cast
 
-from tfx import types
 from tfx.dsl.components.base import base_executor
 from tfx.dsl.io import fileio
 from tfx.orchestration.portable import base_executor_operator
 from tfx.orchestration.portable import data_types
+from tfx.orchestration.portable import outputs_utils
 from tfx.proto.orchestration import executable_spec_pb2
 from tfx.proto.orchestration import execution_result_pb2
 from tfx.types.value_artifact import ValueArtifact
@@ -29,17 +29,6 @@ from tfx.utils import import_utils
 from google.protobuf import message
 
 _STATEFUL_WORKING_DIR = 'stateful_working_dir'
-
-
-def _populate_output_artifact(
-    executor_output: execution_result_pb2.ExecutorOutput,
-    output_dict: Dict[str, List[types.Artifact]]):
-  """Populate output_dict to executor_output."""
-  for key, artifact_list in output_dict.items():
-    artifacts = execution_result_pb2.ExecutorOutput.ArtifactList()
-    for artifact in artifact_list:
-      artifacts.artifacts.append(artifact.mlmd_artifact)
-    executor_output.output_artifacts[key].CopyFrom(artifacts)
 
 
 def run_with_executor(
@@ -76,7 +65,7 @@ def run_with_executor(
       # we use their executor_output and exec_properties to construct
       # ExecutorOutput.
       result = execution_result_pb2.ExecutorOutput()
-      _populate_output_artifact(result, output_dict)
+      outputs_utils.populate_output_artifact(result, output_dict)
   return result
 
 

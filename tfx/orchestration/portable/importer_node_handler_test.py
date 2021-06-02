@@ -15,6 +15,7 @@
 import os
 
 import tensorflow as tf
+from tfx import version as tfx_version
 from tfx.dsl.compiler import constants
 from tfx.orchestration import metadata
 from tfx.orchestration.portable import importer_node_handler
@@ -56,6 +57,8 @@ class ImporterNodeHandlerTest(test_case_utils.TfxTest):
 
     # Extracts components
     self._importer = pipeline.nodes[3].pipeline_node
+    # Fake tfx_version for tests.
+    tfx_version.__version__ = '0.123.4.dev'
 
   def testLauncher_importer_mode_reimport_enabled(self):
     handler = importer_node_handler.ImporterNodeHandler()
@@ -82,6 +85,12 @@ class ImporterNodeHandlerTest(test_case_utils.TfxTest):
             key: "str_custom_property"
             value {
               string_value: "abc"
+            }
+          }
+          custom_properties {
+            key: "tfx_version"
+            value {
+              string_value: "0.123.4.dev"
             }
           }
           state: LIVE""",
@@ -135,6 +144,12 @@ class ImporterNodeHandlerTest(test_case_utils.TfxTest):
             key: "str_custom_property"
             value {
               string_value: "abc"
+            }
+          }
+          custom_properties {
+            key: "tfx_version"
+            value {
+              string_value: "0.123.4.dev"
             }
           }
           state: LIVE""",
@@ -192,6 +207,12 @@ class ImporterNodeHandlerTest(test_case_utils.TfxTest):
             key: "str_custom_property"
             value {
               string_value: "abc"
+            }
+          }
+          custom_properties {
+            key: "tfx_version"
+            value {
+              string_value: "0.123.4.dev"
             }
           }
           state: LIVE""",
@@ -258,4 +279,3 @@ class ImporterNodeHandlerTest(test_case_utils.TfxTest):
 
 if __name__ == '__main__':
   tf.test.main()
-
