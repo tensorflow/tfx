@@ -97,14 +97,18 @@ This section provides an overview of the scaffolding created by a template.
     *   Some templates also include Python Notebooks so that you can explore
         your data and artifacts with Machine Learning MetaData.
 
-1.  Run the following command in your pipeline directory:
+1.  Run the following commands in your pipeline directory:
 
     <pre class="devsite-click-to-copy devsite-terminal">
-    python run create --pipeline_name <var>pipeline_name</var>
+    tfx pipeline create --pipeline_path local_runner.py
     </pre>
 
-    The command creates a pipeline run using `LocalDagRunner`, which adds
-    the following directories to your pipeline:
+    <pre class="devsite-click-to-copy devsite-terminal">
+    tfx run create --pipeline_name <var>pipeline_name</var>
+    </pre>
+
+    The command creates a pipeline run using `LocalDagRunner`, which adds the
+    following directories to your pipeline:
 
     *   A **tfx_metadata** directory which contains the ML Metadata store used
         locally.
@@ -136,9 +140,9 @@ This section provides an overview of the scaffolding created by a template.
     -   Follow the instructions in the **TODO** comments in `pipeline.py` to add
         more steps to the pipeline.
 
-1.  Open `local_runner.py` (or `beam_dag_runner.py` for `taxi` template) file
-    and review the contents. This script creates a pipeline run and specifies
-    the run's _parameters_, such as the `data_path` and `preprocessing_fn`.
+1.  Open `local_runner.py` file and review the contents. This script creates a
+    pipeline run and specifies the run's _parameters_, such as the `data_path`
+    and `preprocessing_fn`.
 
 1.  You have reviewed the scaffolding created by the template and created a
     pipeline run using `LocalDagRunner`. Next, customize the template to fit
