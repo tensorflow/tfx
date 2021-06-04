@@ -59,9 +59,9 @@ class CommonUtilsTest(tf.test.TestCase, parameterized.TestCase):
       type_with_two_properties = _create_type(metadata_type_class)
       result_one = common_utils.register_type_if_not_exist(
           m, type_with_two_properties)
+      result_one.ClearField('id')
       self.assertProtoEquals(
           """
-          id: 1
           name: 'my_type'
           properties {
             key: 'p1'

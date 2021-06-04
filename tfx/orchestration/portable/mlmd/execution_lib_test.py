@@ -79,9 +79,9 @@ class ExecutionLibTest(test_case_utils.TfxTest):
               'p2': '2'
           },
           state=metadata_store_pb2.Execution.COMPLETE)
+      result.ClearField('type_id')
       self.assertProtoEquals(
           """
-          type_id: 1
           last_known_state: COMPLETE
           properties {
             key: 'p2'
@@ -103,10 +103,8 @@ class ExecutionLibTest(test_case_utils.TfxTest):
     example.id = 1
 
     expected_artifact = metadata_store_pb2.Artifact()
-    text_format.Parse(
-        """
+    text_format.Parse("""
         id: 1
-        type_id: 1
         uri: 'example'""", expected_artifact)
     expected_event = metadata_store_pb2.Event()
     text_format.Parse(
@@ -126,7 +124,8 @@ class ExecutionLibTest(test_case_utils.TfxTest):
           m, {
               'example': [example],
           }, metadata_store_pb2.Event.INPUT)
-
+      self.assertLen(result, 1)
+      result[0][0].ClearField('type_id')
       self.assertCountEqual([(expected_artifact, expected_event)], result)
 
   def testPutExecutionGraph(self):
@@ -309,7 +308,8 @@ class ExecutionLibTest(test_case_utils.TfxTest):
 
   def test_set_and_get_execution_result(self):
     execution = metadata_store_pb2.Execution()
-    execution_result = text_format.Parse("""
+    execution_result = text_format.Parse(
+        """
         code: 1
         result_message: 'error message.'
       """, execution_result_pb2.ExecutionResult())
@@ -324,6 +324,7 @@ class ExecutionLibTest(test_case_utils.TfxTest):
             }
           }
           """, execution)
+
 
 if __name__ == '__main__':
   tf.test.main()

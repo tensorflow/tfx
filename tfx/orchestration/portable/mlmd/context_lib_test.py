@@ -43,19 +43,24 @@ class ContextLibTest(test_case_utils.TfxTest):
       contexts = context_lib.prepare_contexts(
           metadata_handler=m, node_contexts=node_contexts)
 
+      got_context_type_one = m.store.get_context_type('my_context_type_one')
+      got_context_type_one.ClearField('id')
       self.assertProtoEquals(
           """
-          id: 1
           name: 'my_context_type_one'
-          """, m.store.get_context_type('my_context_type_one'))
+          """, got_context_type_one)
+      got_context_type_two = m.store.get_context_type('my_context_type_two')
+      got_context_type_two.ClearField('id')
+
+      contexts[0].ClearField('type_id')
+      contexts[1].ClearField('type_id')
+      contexts[2].ClearField('type_id')
       self.assertProtoEquals(
           """
-          id: 2
           name: 'my_context_type_two'
-          """, m.store.get_context_type('my_context_type_two'))
+          """, got_context_type_two)
       self.assertProtoEquals(
           """
-          type_id: 1
           name: "my_context_one"
           custom_properties {
             key: "property_a"
@@ -66,7 +71,6 @@ class ContextLibTest(test_case_utils.TfxTest):
           """, contexts[0])
       self.assertProtoEquals(
           """
-          type_id: 1
           name: "my_context_two"
           custom_properties {
             key: "property_a"
@@ -77,7 +81,6 @@ class ContextLibTest(test_case_utils.TfxTest):
           """, contexts[1])
       self.assertProtoEquals(
           """
-          type_id: 2
           name: "my_context_three"
           custom_properties {
             key: "property_a"
@@ -110,11 +113,12 @@ class ContextLibTest(test_case_utils.TfxTest):
           context_type_name='my_context_type',
           context_name='my_context')
 
+      got_context_type = m.store.get_context_type('my_context_type')
+      got_context_type.ClearField('id')
       self.assertProtoEquals(
           """
-          id: 1
           name: 'my_context_type'
-          """, m.store.get_context_type('my_context_type'))
+          """, got_context_type)
       self.assertEqual(
           context,
           m.store.get_context_by_type_and_name('my_context_type', 'my_context'))

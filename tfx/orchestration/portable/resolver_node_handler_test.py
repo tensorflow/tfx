@@ -95,7 +95,8 @@ class ResolverNodeHandlerTest(test_case_utils.TfxTest):
       # There is no way to directly verify the output artifact of the resolver
       # So here a fake downstream component is created which listens to the
       # resolver's output and we verify its input.
-      down_stream_node = text_format.Parse("""
+      down_stream_node = text_format.Parse(
+          """
         inputs {
           inputs {
             key: "input_models"
@@ -144,24 +145,24 @@ class ResolverNodeHandlerTest(test_case_utils.TfxTest):
       self.assertProtoPartiallyEquals(
           """
           id: 2
-          type_id: 5
           uri: "my_model_uri_2"
           state: LIVE""",
           downstream_input_model[0].mlmd_artifact,
           ignored_fields=[
-              'create_time_since_epoch', 'last_update_time_since_epoch'
+              'type_id', 'create_time_since_epoch',
+              'last_update_time_since_epoch'
           ])
       [execution] = m.store.get_executions_by_id([execution_info.execution_id])
 
       self.assertProtoPartiallyEquals(
           """
           id: 2
-          type_id: 6
           last_known_state: COMPLETE
           """,
           execution,
           ignored_fields=[
-              'create_time_since_epoch', 'last_update_time_since_epoch'
+              'type_id', 'create_time_since_epoch',
+              'last_update_time_since_epoch'
           ])
 
 

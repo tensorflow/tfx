@@ -73,7 +73,6 @@ class ImporterNodeHandlerTest(test_case_utils.TfxTest):
       self.assertProtoPartiallyEquals(
           """
           id: 1
-          type_id: 5
           uri: "my_url"
           custom_properties {
             key: "int_custom_property"
@@ -96,13 +95,13 @@ class ImporterNodeHandlerTest(test_case_utils.TfxTest):
           state: LIVE""",
           artifact,
           ignored_fields=[
-              'create_time_since_epoch', 'last_update_time_since_epoch'
+              'type_id', 'create_time_since_epoch',
+              'last_update_time_since_epoch'
           ])
       [execution] = m.store.get_executions_by_id([execution_info.execution_id])
       self.assertProtoPartiallyEquals(
           """
           id: 1
-          type_id: 4
           last_known_state: COMPLETE
           custom_properties {
             key: "artifact_uri"
@@ -119,7 +118,8 @@ class ImporterNodeHandlerTest(test_case_utils.TfxTest):
           """,
           execution,
           ignored_fields=[
-              'create_time_since_epoch', 'last_update_time_since_epoch'
+              'type_id', 'create_time_since_epoch',
+              'last_update_time_since_epoch'
           ])
 
     execution_info = handler.run(
@@ -132,7 +132,6 @@ class ImporterNodeHandlerTest(test_case_utils.TfxTest):
       self.assertProtoPartiallyEquals(
           """
           id: 2
-          type_id: 5
           uri: "my_url"
           custom_properties {
             key: "int_custom_property"
@@ -155,13 +154,13 @@ class ImporterNodeHandlerTest(test_case_utils.TfxTest):
           state: LIVE""",
           new_artifact,
           ignored_fields=[
-              'create_time_since_epoch', 'last_update_time_since_epoch'
+              'type_id', 'create_time_since_epoch',
+              'last_update_time_since_epoch'
           ])
       [execution] = m.store.get_executions_by_id([execution_info.execution_id])
       self.assertProtoPartiallyEquals(
           """
           id: 2
-          type_id: 4
           last_known_state: COMPLETE
           custom_properties {
             key: "artifact_uri"
@@ -178,7 +177,8 @@ class ImporterNodeHandlerTest(test_case_utils.TfxTest):
           """,
           execution,
           ignored_fields=[
-              'create_time_since_epoch', 'last_update_time_since_epoch'
+              'type_id', 'create_time_since_epoch',
+              'last_update_time_since_epoch'
           ])
 
   def testLauncher_importer_mode_reimport_disabled(self):
@@ -195,7 +195,6 @@ class ImporterNodeHandlerTest(test_case_utils.TfxTest):
       self.assertProtoPartiallyEquals(
           """
           id: 1
-          type_id: 5
           uri: "my_url"
           custom_properties {
             key: "int_custom_property"
@@ -218,13 +217,13 @@ class ImporterNodeHandlerTest(test_case_utils.TfxTest):
           state: LIVE""",
           artifact,
           ignored_fields=[
-              'create_time_since_epoch', 'last_update_time_since_epoch'
+              'type_id', 'create_time_since_epoch',
+              'last_update_time_since_epoch'
           ])
       [execution] = m.store.get_executions_by_id([execution_info.execution_id])
       self.assertProtoPartiallyEquals(
           """
           id: 1
-          type_id: 4
           last_known_state: COMPLETE
           custom_properties {
             key: "artifact_uri"
@@ -241,7 +240,8 @@ class ImporterNodeHandlerTest(test_case_utils.TfxTest):
           """,
           execution,
           ignored_fields=[
-              'create_time_since_epoch', 'last_update_time_since_epoch'
+              'type_id', 'create_time_since_epoch',
+              'last_update_time_since_epoch'
           ])
 
     execution_info = handler.run(
@@ -256,7 +256,6 @@ class ImporterNodeHandlerTest(test_case_utils.TfxTest):
       self.assertProtoPartiallyEquals(
           """
           id: 2
-          type_id: 4
           last_known_state: COMPLETE
           custom_properties {
             key: "artifact_uri"
@@ -273,7 +272,8 @@ class ImporterNodeHandlerTest(test_case_utils.TfxTest):
           """,
           execution,
           ignored_fields=[
-              'create_time_since_epoch', 'last_update_time_since_epoch'
+              'type_id', 'create_time_since_epoch',
+              'last_update_time_since_epoch'
           ])
 
 

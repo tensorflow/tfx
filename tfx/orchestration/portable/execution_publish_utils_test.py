@@ -68,7 +68,6 @@ class ExecutionPublisherTest(test_case_utils.TfxTest, parameterized.TestCase):
       self.assertProtoPartiallyEquals(
           """
           id: 1
-          type_id: 3
           custom_properties {
             key: 'p1'
             value {int_value: 1}
@@ -77,7 +76,8 @@ class ExecutionPublisherTest(test_case_utils.TfxTest, parameterized.TestCase):
           """,
           execution,
           ignored_fields=[
-              'create_time_since_epoch', 'last_update_time_since_epoch'
+              'type_id', 'create_time_since_epoch',
+              'last_update_time_since_epoch'
           ])
       [event] = m.store.get_events_by_execution_ids([execution.id])
       self.assertProtoPartiallyEquals(
@@ -119,12 +119,12 @@ class ExecutionPublisherTest(test_case_utils.TfxTest, parameterized.TestCase):
       self.assertProtoPartiallyEquals(
           """
           id: 1
-          type_id: 3
           last_known_state: CACHED
           """,
           execution,
           ignored_fields=[
-              'create_time_since_epoch', 'last_update_time_since_epoch'
+              'type_id', 'create_time_since_epoch',
+              'last_update_time_since_epoch'
           ])
       [event] = m.store.get_events_by_execution_ids([execution.id])
       self.assertProtoPartiallyEquals(
@@ -175,18 +175,17 @@ class ExecutionPublisherTest(test_case_utils.TfxTest, parameterized.TestCase):
       self.assertProtoPartiallyEquals(
           """
           id: 1
-          type_id: 3
           last_known_state: COMPLETE
           """,
           execution,
           ignored_fields=[
-              'create_time_since_epoch', 'last_update_time_since_epoch'
+              'type_id', 'create_time_since_epoch',
+              'last_update_time_since_epoch'
           ])
       [artifact] = m.store.get_artifacts()
       self.assertProtoPartiallyEquals(
           """
           id: 1
-          type_id: 4
           state: LIVE
           uri: '/examples_uri'
           custom_properties {
@@ -195,7 +194,8 @@ class ExecutionPublisherTest(test_case_utils.TfxTest, parameterized.TestCase):
           }""",
           artifact,
           ignored_fields=[
-              'create_time_since_epoch', 'last_update_time_since_epoch'
+              'type_id', 'create_time_since_epoch',
+              'last_update_time_since_epoch'
           ])
       [event] = m.store.get_events_by_execution_ids([execution.id])
       self.assertProtoPartiallyEquals(
@@ -275,19 +275,18 @@ class ExecutionPublisherTest(test_case_utils.TfxTest, parameterized.TestCase):
       self.assertProtoPartiallyEquals(
           """
           id: 1
-          type_id: 3
           last_known_state: COMPLETE
           """,
           execution,
           ignored_fields=[
-              'create_time_since_epoch', 'last_update_time_since_epoch'
+              'type_id', 'create_time_since_epoch',
+              'last_update_time_since_epoch'
           ])
       artifacts = m.store.get_artifacts()
       self.assertLen(artifacts, 2)
       self.assertProtoPartiallyEquals(
           """
           id: 1
-          type_id: 4
           state: LIVE
           uri: '/original_path/subdir_1'
           custom_properties {
@@ -296,12 +295,12 @@ class ExecutionPublisherTest(test_case_utils.TfxTest, parameterized.TestCase):
           }""",
           artifacts[0],
           ignored_fields=[
-              'create_time_since_epoch', 'last_update_time_since_epoch'
+              'type_id', 'create_time_since_epoch',
+              'last_update_time_since_epoch'
           ])
       self.assertProtoPartiallyEquals(
           """
           id: 2
-          type_id: 4
           state: LIVE
           uri: '/original_path/subdir_2'
           custom_properties {
@@ -310,7 +309,8 @@ class ExecutionPublisherTest(test_case_utils.TfxTest, parameterized.TestCase):
           }""",
           artifacts[1],
           ignored_fields=[
-              'create_time_since_epoch', 'last_update_time_since_epoch'
+              'type_id', 'create_time_since_epoch',
+              'last_update_time_since_epoch'
           ])
       events = m.store.get_events_by_execution_ids([execution.id])
       self.assertLen(events, 2)
@@ -372,17 +372,14 @@ class ExecutionPublisherTest(test_case_utils.TfxTest, parameterized.TestCase):
   @parameterized.named_parameters(
       # Not direct sub-dir of the original uri
       dict(
-          testcase_name='TooManyDirLayers',
-          invalid_uri='/my/original_uri/1/1'),
+          testcase_name='TooManyDirLayers', invalid_uri='/my/original_uri/1/1'),
       # Identical to the original uri
       dict(
           testcase_name='IdenticalToTheOriginal',
           invalid_uri='/my/original_uri'),
       # Identical to the original uri
-      dict(
-          testcase_name='ParentDirChanged',
-          invalid_uri='/my/other_uri/1'),
-      )
+      dict(testcase_name='ParentDirChanged', invalid_uri='/my/other_uri/1'),
+  )
   def testPublishSuccessExecutionFailInvalidUri(self, invalid_uri):
     output_example = standard_artifacts.Examples()
     output_example.uri = '/my/original_uri'
@@ -395,21 +392,22 @@ class ExecutionPublisherTest(test_case_utils.TfxTest, parameterized.TestCase):
       system_generated_artifact = executor_output.output_artifacts[
           'examples'].artifacts.add()
       system_generated_artifact.uri = '/my/original_uri/0'
-      new_artifact = executor_output.output_artifacts[
-          'examples'].artifacts.add()
+      new_artifact = executor_output.output_artifacts['examples'].artifacts.add(
+      )
       new_artifact.uri = invalid_uri
 
       with self.assertRaisesRegex(
           RuntimeError,
           'When there are multiple artifacts to publish, their URIs should be '
           'direct sub-directories of the URI of the system generated artifact.'
-          ):
+      ):
         execution_publish_utils.publish_succeeded_execution(
             m, execution_id, contexts, output_dict, executor_output)
 
   def testPublishSuccessExecutionRecordExecutionResult(self):
     with metadata.Metadata(connection_config=self._connection_config) as m:
-      executor_output = text_format.Parse("""
+      executor_output = text_format.Parse(
+          """
         execution_result {
           code: 0
           result_message: 'info message.'
@@ -425,7 +423,6 @@ class ExecutionPublisherTest(test_case_utils.TfxTest, parameterized.TestCase):
       self.assertProtoPartiallyEquals(
           """
           id: 1
-          type_id: 3
           last_known_state: FAILED
           custom_properties {
             key: '__execution_result__'
@@ -436,7 +433,8 @@ class ExecutionPublisherTest(test_case_utils.TfxTest, parameterized.TestCase):
           """,
           execution,
           ignored_fields=[
-              'create_time_since_epoch', 'last_update_time_since_epoch'
+              'type_id', 'create_time_since_epoch',
+              'last_update_time_since_epoch'
           ])
       # No events because there is no artifact published.
       events = m.store.get_events_by_execution_ids([execution.id])
@@ -448,7 +446,8 @@ class ExecutionPublisherTest(test_case_utils.TfxTest, parameterized.TestCase):
 
   def testPublishSuccessExecutionDropsEmptyResult(self):
     with metadata.Metadata(connection_config=self._connection_config) as m:
-      executor_output = text_format.Parse("""
+      executor_output = text_format.Parse(
+          """
         execution_result {
           code: 0
          }
@@ -463,17 +462,18 @@ class ExecutionPublisherTest(test_case_utils.TfxTest, parameterized.TestCase):
       self.assertProtoPartiallyEquals(
           """
           id: 1
-          type_id: 3
           last_known_state: FAILED
           """,
           execution,
           ignored_fields=[
-              'create_time_since_epoch', 'last_update_time_since_epoch'
+              'type_id', 'create_time_since_epoch',
+              'last_update_time_since_epoch'
           ])
 
   def testPublishFailedExecution(self):
     with metadata.Metadata(connection_config=self._connection_config) as m:
-      executor_output = text_format.Parse("""
+      executor_output = text_format.Parse(
+          """
         execution_result {
           code: 1
           result_message: 'error message.'
@@ -489,7 +489,6 @@ class ExecutionPublisherTest(test_case_utils.TfxTest, parameterized.TestCase):
       self.assertProtoPartiallyEquals(
           """
           id: 1
-          type_id: 3
           last_known_state: FAILED
           custom_properties {
             key: '__execution_result__'
@@ -500,7 +499,8 @@ class ExecutionPublisherTest(test_case_utils.TfxTest, parameterized.TestCase):
           """,
           execution,
           ignored_fields=[
-              'create_time_since_epoch', 'last_update_time_since_epoch'
+              'type_id', 'create_time_since_epoch',
+              'last_update_time_since_epoch'
           ])
       # No events because there is no artifact published.
       events = m.store.get_events_by_execution_ids([execution.id])
@@ -525,12 +525,12 @@ class ExecutionPublisherTest(test_case_utils.TfxTest, parameterized.TestCase):
       self.assertProtoPartiallyEquals(
           """
           id: 1
-          type_id: 3
           last_known_state: COMPLETE
           """,
           execution,
           ignored_fields=[
-              'create_time_since_epoch', 'last_update_time_since_epoch'
+              'type_id', 'create_time_since_epoch',
+              'last_update_time_since_epoch'
           ])
       [event] = m.store.get_events_by_execution_ids([execution.id])
       self.assertProtoPartiallyEquals(

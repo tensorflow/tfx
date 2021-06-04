@@ -120,9 +120,8 @@ class ImporterTaskSchedulerTest(test_utils.TfxTest):
           state: LIVE""",
           artifact,
           ignored_fields=[
-              'type_id',
-              'create_time_since_epoch',
-              'last_update_time_since_epoch',
+              'type_id', 'create_time_since_epoch',
+              'last_update_time_since_epoch'
           ])
 
       [execution
@@ -146,9 +145,8 @@ class ImporterTaskSchedulerTest(test_utils.TfxTest):
           """,
           execution,
           ignored_fields=[
-              'type_id',
-              'create_time_since_epoch',
-              'last_update_time_since_epoch',
+              'type_id', 'create_time_since_epoch',
+              'last_update_time_since_epoch'
           ])
 
 

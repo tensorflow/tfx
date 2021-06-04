@@ -117,11 +117,11 @@ class MetadataTest(tf.test.TestCase):
       m.publish_artifacts([artifact])
       [artifact] = m.store.get_artifacts()
       # Skip verifying time sensitive fields.
+      artifact.ClearField('type_id')
       artifact.ClearField('create_time_since_epoch')
       artifact.ClearField('last_update_time_since_epoch')
       self.assertProtoEquals(
           """id: 1
-        type_id: 1
         uri: "uri"
         properties {
           key: "split_names"
@@ -159,8 +159,9 @@ class MetadataTest(tf.test.TestCase):
       artifact = standard_artifacts.Examples()
       m.publish_artifacts([artifact])
       artifact_type = m.store.get_artifact_type(type_name='Examples')
+      artifact_type.ClearField('id')
       self.assertProtoEquals(
-          """id: 1
+          """
         name: "Examples"
         properties {
           key: "span"
@@ -184,8 +185,9 @@ class MetadataTest(tf.test.TestCase):
       artifact2 = standard_artifacts.Examples()
       m.publish_artifacts([artifact2])
       stored_type = m.store.get_artifact_type(type_name='Examples')
+      stored_type.ClearField('id')
       self.assertProtoEquals(
-          """id: 1
+          """
         name: "Examples"
         properties {
           key: "span"
@@ -223,12 +225,12 @@ class MetadataTest(tf.test.TestCase):
           contexts=contexts)
       [execution] = m.store.get_executions_by_context(contexts[0].id)
       # Skip verifying time sensitive fields.
+      execution.ClearField('type_id')
       execution.ClearField('create_time_since_epoch')
       execution.ClearField('last_update_time_since_epoch')
       self.assertProtoEquals(
           """
         id: 1
-        type_id: 3
         last_known_state: RUNNING
         properties {
           key: "state"
@@ -328,12 +330,12 @@ class MetadataTest(tf.test.TestCase):
       [execution_one, execution_two
       ] = m.store.get_executions_by_id([execution_one.id, execution_two.id])
       # Skip verifying time sensitive fields.
+      execution_one.ClearField('type_id')
       execution_one.ClearField('create_time_since_epoch')
       execution_one.ClearField('last_update_time_since_epoch')
       self.assertProtoEquals(
           """
         id: 1
-        type_id: 3
         last_known_state: RUNNING
         properties {
           key: "state"
@@ -372,12 +374,12 @@ class MetadataTest(tf.test.TestCase):
           }
         }""", execution_one)
       # Skip verifying time sensitive fields.
+      execution_two.ClearField('type_id')
       execution_two.ClearField('create_time_since_epoch')
       execution_two.ClearField('last_update_time_since_epoch')
       self.assertProtoEquals(
           """
         id: 2
-        type_id: 3
         last_known_state: RUNNING
         properties {
           key: "state"
@@ -471,12 +473,12 @@ class MetadataTest(tf.test.TestCase):
        execution_three] = m.store.get_executions_by_id(
            [execution_one.id, execution_two.id, execution_three.id])
       # Skip verifying time sensitive fields.
+      execution_one.ClearField('type_id')
       execution_one.ClearField('create_time_since_epoch')
       execution_one.ClearField('last_update_time_since_epoch')
       self.assertProtoEquals(
           """
         id: 1
-        type_id: 3
         last_known_state: RUNNING
         properties {
           key: "state"
@@ -521,12 +523,12 @@ class MetadataTest(tf.test.TestCase):
           }
         }""", execution_one)
       # Skip verifying time sensitive fields.
+      execution_two.ClearField('type_id')
       execution_two.ClearField('create_time_since_epoch')
       execution_two.ClearField('last_update_time_since_epoch')
       self.assertProtoEquals(
           """
         id: 2
-        type_id: 3
         last_known_state: RUNNING
         properties {
           key: "state"
@@ -565,12 +567,12 @@ class MetadataTest(tf.test.TestCase):
           }
         }""", execution_two)
       # Skip verifying time sensitive fields.
+      execution_three.ClearField('type_id')
       execution_three.ClearField('create_time_since_epoch')
       execution_three.ClearField('last_update_time_since_epoch')
       self.assertProtoEquals(
           """
         id: 3
-        type_id: 3
         last_known_state: RUNNING
         properties {
           key: "state"
@@ -921,16 +923,21 @@ class MetadataTest(tf.test.TestCase):
       # Duplicated call should succeed.
       contexts = m.register_pipeline_contexts_if_not_exists(self._pipeline_info)
 
-      self.assertProtoEquals("""
-          id: 1
+      pipeline_context_type = m.store.get_context_type(
+          metadata._CONTEXT_TYPE_PIPELINE)  # pylint: disable=protected-access
+      pipeline_context_type.ClearField('id')
+      self.assertProtoEquals(
+          """
           name: 'pipeline'
           properties {
             key: "pipeline_name"
             value: STRING
           }
-          """, m.store.get_context_type(metadata._CONTEXT_TYPE_PIPELINE))  # pylint: disable=protected-access
+          """, pipeline_context_type)
+      pipeline_run_context_type = m.store.get_context_type(
+          metadata._CONTEXT_TYPE_PIPELINE_RUN)  # pylint: disable=protected-access
+      pipeline_run_context_type.ClearField('id')
       self.assertProtoEquals("""
-          id: 2
           name: 'run'
           properties {
             key: "pipeline_name"
@@ -940,7 +947,7 @@ class MetadataTest(tf.test.TestCase):
             key: "run_id"
             value: STRING
           }
-          """, m.store.get_context_type(metadata._CONTEXT_TYPE_PIPELINE_RUN))  # pylint: disable=protected-access
+          """, pipeline_run_context_type)  # pylint: disable=protected-access
       self.assertEqual(len(contexts), 2)
       self.assertEqual(
           contexts[0],
