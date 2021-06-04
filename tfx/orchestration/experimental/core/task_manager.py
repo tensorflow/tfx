@@ -235,6 +235,10 @@ class TaskManager:
     self._ts_futures -= done_futures
     exceptions = [fut.exception() for fut in done_futures if fut.exception()]
     if exceptions:
+      logging.error('Exception(s) occurred during the pipeline run.')
+      for i, e in enumerate(exceptions, start=1):
+        logging.error('Exception %d (out of %d):', i, len(exceptions),
+                      exc_info=(type(e), e, e.__traceback__))
       raise TasksProcessingError(exceptions)
 
 
