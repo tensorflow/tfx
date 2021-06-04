@@ -244,6 +244,8 @@ class ImporterNodeHandlerTest(test_case_utils.TfxTest):
               'last_update_time_since_epoch'
           ])
 
+    # Run the 2nd execution. Since the reimport is disabled, no new schema
+    # is imported and the corresponding execution is published as CACHED.
     execution_info = handler.run(
         mlmd_connection=self._mlmd_connection,
         pipeline_node=self._importer,
@@ -256,7 +258,7 @@ class ImporterNodeHandlerTest(test_case_utils.TfxTest):
       self.assertProtoPartiallyEquals(
           """
           id: 2
-          last_known_state: COMPLETE
+          last_known_state: CACHED
           custom_properties {
             key: "artifact_uri"
             value {

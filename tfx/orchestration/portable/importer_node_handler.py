@@ -13,7 +13,7 @@
 # limitations under the License.
 """This module defines the handler for importer node."""
 
-from typing import Any, Dict
+from typing import Any, Dict, List
 
 from absl import logging
 from tfx import types
@@ -26,6 +26,14 @@ from tfx.orchestration.portable import outputs_utils
 from tfx.orchestration.portable import system_node_handler
 from tfx.orchestration.portable.mlmd import context_lib
 from tfx.proto.orchestration import pipeline_pb2
+
+
+def _is_artifact_reimported(
+    output_artifacts: Dict[str, List[types.Artifact]]) -> bool:
+  # The artifacts are reimported only when there are artifacts in the output
+  # dict and ids has been assign to them.
+  return (bool(output_artifacts[importer.IMPORT_RESULT_KEY]) and all(
+      (bool(a.id) for a in output_artifacts[importer.IMPORT_RESULT_KEY])))
 
 
 class ImporterNodeHandler(system_node_handler.SystemNodeHandler):
@@ -105,11 +113,20 @@ class ImporterNodeHandler(system_node_handler.SystemNodeHandler):
       # handled per system node.
       outputs_utils.tag_output_artifacts_with_version(result.output_dict)
 
-      # 5. Publish the output artifacts.
-      execution_publish_utils.publish_succeeded_execution(
-          metadata_handler=m,
-          execution_id=execution.id,
-          contexts=contexts,
-          output_artifacts=output_artifacts)
+      # 5. Publish the output artifacts. If artifacts are reimported, the
+      # execution is published as CACHED. Otherwise it is published as COMPLETE.
+      if _is_artifact_reimported(output_artifacts):
+        execution_publish_utils.publish_cached_execution(
+            metadata_handler=m,
+            contexts=contexts,
+            execution_id=execution.id,
+            output_artifacts=output_artifacts)
+
+      else:
+        execution_publish_utils.publish_succeeded_execution(
+            metadata_handler=m,
+            execution_id=execution.id,
+            contexts=contexts,
+            output_artifacts=output_artifacts)
 
       return result
