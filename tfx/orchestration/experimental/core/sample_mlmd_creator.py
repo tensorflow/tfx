@@ -28,8 +28,9 @@ from ml_metadata.proto import metadata_store_pb2
 
 FLAGS = flags.FLAGS
 
+flags.DEFINE_string('ir_file', '', 'path of ir file to create sample mlmd')
 flags.DEFINE_string('path', '', 'path of mlmd database file')
-flags.DEFINE_string('ir_dir', '', 'directory path of output IR files')
+flags.DEFINE_string('export_ir_dir', '', 'directory path of output IR files')
 flags.DEFINE_integer('pipeline_run_num', 5, 'number of pipeline run')
 flags.DEFINE_string('pipeline_id', 'uci-sample-generated', 'id of pipeline')
 
@@ -43,12 +44,10 @@ def _get_mlmd_connection(path: str) -> metadata.Metadata:
   return metadata.Metadata(connection_config=connection_config)
 
 
-def _test_pipeline(pipeline_id: str, run_id: str):
+def _test_pipeline(ir_path: str, pipeline_id: str, run_id: str):
   """Creates test pipeline with pipeline_id and run_id."""
   pipeline = pipeline_pb2.Pipeline()
-  path = os.path.join(
-      os.path.dirname(__file__), 'testdata', 'sync_pipeline.pbtxt')
-  io_utils.parse_pbtxt_file(path, pipeline)
+  io_utils.parse_pbtxt_file(ir_path, pipeline)
   pipeline.pipeline_info.id = pipeline_id
   runtime_parameter_utils.substitute_runtime_parameter(pipeline, {
       'pipeline_run_id': run_id,
@@ -75,20 +74,30 @@ def _execute_nodes(handle: metadata.Metadata, pipeline: pipeline_pb2.Pipeline,
   test_utils.fake_component_output_with_handle(handle, trainer, active=False)
 
 
+def _get_ir_path(external_ir_file: str):
+  if external_ir_file:
+    return external_ir_file
+  return os.path.join(
+      os.path.dirname(__file__), 'testdata', 'sync_pipeline.pbtxt')
+
+
 def create_sample_pipeline(m: metadata.Metadata,
                            pipeline_id: str,
                            run_num: int,
-                           export_ir_path: str = ''):
+                           export_ir_path: str = '',
+                           external_ir_file: str = ''):
   """Creates a list of pipeline and node execution."""
+  ir_path = _get_ir_path(external_ir_file)
   for i in range(run_num):
     run_id = 'run%02d' % i
-    pipeline = _test_pipeline(pipeline_id, run_id)
+    pipeline = _test_pipeline(ir_path, pipeline_id, run_id)
     if export_ir_path:
       output_path = os.path.join(export_ir_path,
                                  '%s_%s.pbtxt' % (pipeline_id, run_id))
       io_utils.write_pbtxt_file(output_path, pipeline)
     pipeline_state = pipeline_ops.initiate_pipeline_start(m, pipeline)
-    _execute_nodes(m, pipeline, i)
+    if not external_ir_file:
+      _execute_nodes(m, pipeline, i)
     if i < run_num - 1:
       with pipeline_state:
         pipeline_state.set_pipeline_execution_state(
@@ -101,7 +110,7 @@ def main_factory(mlmd_connection_func):
     del argv
     with mlmd_connection_func(FLAGS.path) as m:
       create_sample_pipeline(m, FLAGS.pipeline_id, FLAGS.pipeline_run_num,
-                             FLAGS.ir_dir)
+                             FLAGS.export_ir_dir, FLAGS.ir_file)
 
   return main
 
