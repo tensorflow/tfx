@@ -98,8 +98,6 @@ To customize the train/eval split ratio which ExampleGen will output, set the
 `output_config` for ExampleGen component. For example:
 
 ```python
-from  tfx.proto import example_gen_pb2
-
 # Input has a single split 'input_dir/*'.
 # Output 2 splits: train:eval=3:1.
 output = proto.Output(
