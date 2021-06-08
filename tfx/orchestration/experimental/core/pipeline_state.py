@@ -14,6 +14,8 @@
 """Pipeline state management functionality."""
 
 import base64
+import threading
+import time
 from typing import List, Optional
 
 from tfx import types
@@ -40,6 +42,28 @@ _NODE_STATUS_MSG_PREFIX = 'node_status_msg_'
 _ORCHESTRATOR_EXECUTION_TYPE = metadata_store_pb2.ExecutionType(
     name=_ORCHESTRATOR_RESERVED_ID,
     properties={_PIPELINE_IR: metadata_store_pb2.STRING})
+
+_last_state_change_time_secs = -1.0
+_state_change_time_lock = threading.Lock()
+
+
+def record_state_change_time() -> None:
+  """Records current time at the point of function call as state change time.
+
+  This function may be called after any operation that changes pipeline state or
+  node execution state that requires further processing in the next iteration of
+  the orchestration loop. As an optimization, the orchestration loop can elide
+  wait period in between iterations when such state change is detected.
+  """
+  global _last_state_change_time_secs
+  with _state_change_time_lock:
+    _last_state_change_time_secs = time.time()
+
+
+def last_state_change_time_secs() -> float:
+  """Returns last recorded state change time as seconds since epoch."""
+  with _state_change_time_lock:
+    return _last_state_change_time_secs
 
 
 class PipelineState:
@@ -116,6 +140,7 @@ class PipelineState:
           pipeline.runtime_spec.pipeline_run_id.field_value.string_value)
 
     execution = execution_lib.put_execution(mlmd_handle, execution, [context])
+    record_state_change_time()
 
     return cls(
         mlmd_handle=mlmd_handle, pipeline=pipeline, execution_id=execution.id)
@@ -191,6 +216,7 @@ class PipelineState:
       data_types_utils.set_metadata_value(
           self._execution.custom_properties[_PIPELINE_STATUS_MSG],
           status.message)
+    record_state_change_time()
 
   def stop_initiated_reason(self) -> Optional[status_lib.Status]:
     """Returns status object if stop initiated, `None` otherwise."""
@@ -223,6 +249,7 @@ class PipelineState:
           _node_status_code_property(node_uid), None)
       self._execution.custom_properties.pop(
           _node_status_msg_property(node_uid), None)
+    record_state_change_time()
 
   def initiate_node_stop(self, node_uid: task_lib.NodeUid,
                          status: status_lib.Status) -> None:
@@ -247,6 +274,7 @@ class PipelineState:
       data_types_utils.set_metadata_value(
           self._execution.custom_properties[_node_status_msg_property(
               node_uid)], status.message)
+    record_state_change_time()
 
   def node_stop_initiated_reason(
       self, node_uid: task_lib.NodeUid) -> Optional[status_lib.Status]:

@@ -15,7 +15,6 @@
 
 from concurrent import futures
 import threading
-import time
 import typing
 from typing import Optional
 
@@ -24,6 +23,7 @@ from tfx.orchestration import data_types_utils
 from tfx.orchestration import metadata
 from tfx.orchestration.experimental.core import constants
 from tfx.orchestration.experimental.core import mlmd_state
+from tfx.orchestration.experimental.core import pipeline_state
 from tfx.orchestration.experimental.core import task as task_lib
 from tfx.orchestration.experimental.core import task_queue as tq
 from tfx.orchestration.experimental.core import task_scheduler as ts
@@ -93,10 +93,6 @@ class TaskManager:
         max_workers=max_active_task_schedulers)
     self._ts_futures = set()
 
-    # Last MLMD publish time since epoch.
-    self._last_mlmd_publish_time = None
-    self._publish_time_lock = threading.Lock()
-
   def __enter__(self):
     if self._main_future is not None:
       raise RuntimeError('TaskManager already started.')
@@ -108,11 +104,6 @@ class TaskManager:
       raise RuntimeError('TaskManager not started.')
     self._stop_event.set()
     self._main_executor.shutdown()
-
-  def last_mlmd_publish_time(self) -> Optional[float]:
-    """Returns time-since-epoch of last MLMD publish; `None` if never published."""
-    with self._publish_time_lock:
-      return self._last_mlmd_publish_time
 
   def done(self) -> bool:
     """Returns `True` if the main task management thread has exited.
@@ -220,8 +211,6 @@ class TaskManager:
                  task.task_id, result.status)
     _publish_execution_results(
         mlmd_handle=self._mlmd_handle, task=task, result=result)
-    with self._publish_time_lock:
-      self._last_mlmd_publish_time = time.time()
     with self._tm_lock:
       del self._scheduler_by_node_uid[task.node_uid]
       self._task_queue.task_done(task)
@@ -272,6 +261,7 @@ def _publish_execution_results(mlmd_handle: metadata.Metadata,
       execution_state = metadata_store_pb2.Execution.FAILED
     _update_execution_state_in_mlmd(mlmd_handle, task.execution_id,
                                     execution_state, status.message)
+    pipeline_state.record_state_change_time()
 
   if result.status.code != status_lib.Code.OK:
     _update_state(result.status)
@@ -302,3 +292,4 @@ def _publish_execution_results(mlmd_handle: metadata.Metadata,
                                                       task.execution_id,
                                                       task.contexts,
                                                       **publish_params)
+  pipeline_state.record_state_change_time()

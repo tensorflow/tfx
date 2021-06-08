@@ -267,6 +267,7 @@ class SyncPipelineTaskGenerator(task_gen.TaskGenerator):
             execution_id=execution.id,
             output_artifacts=cached_outputs)
         successful_node_ids.add(node.node_info.id)
+        pstate.record_state_change_time()
         return None
 
     # For mixed service nodes, we ensure node services and check service
