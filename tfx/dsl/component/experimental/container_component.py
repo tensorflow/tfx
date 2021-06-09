@@ -13,7 +13,7 @@
 # limitations under the License.
 """Functions for creating container components."""
 
-from typing import Any, Callable, Dict, List
+from typing import Any, Callable, Dict, List, Optional
 
 from tfx.dsl.component.experimental import component_utils
 from tfx.dsl.component.experimental import executor_specs
@@ -27,9 +27,9 @@ def create_container_component(
     name: str,
     image: str,
     command: List[placeholders.CommandlineArgumentType],
-    inputs: Dict[str, Any] = None,
-    outputs: Dict[str, Any] = None,
-    parameters: Dict[str, Any] = None,
+    inputs: Optional[Dict[str, Any]] = None,
+    outputs: Optional[Dict[str, Any]] = None,
+    parameters: Optional[Dict[str, Any]] = None,
 ) -> Callable[..., base_component.BaseComponent]:
   """Creates a container-based component.
 

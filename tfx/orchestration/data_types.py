@@ -48,7 +48,7 @@ class ExecutionDecision(object):
                input_dict: Dict[Text, List[types.Artifact]],
                output_dict: Dict[Text, List[types.Artifact]],
                exec_properties: Dict[Text, Any],
-               execution_id: int = None,
+               execution_id: Optional[int] = None,
                use_cached_results: Optional[bool] = False):
     self.input_dict = input_dict
     self.output_dict = output_dict
@@ -184,7 +184,7 @@ class RuntimeParameter(json_utils.Jsonable):
   def __init__(
       self,
       name: Text,
-      ptype: Type = None,  # pylint: disable=g-bare-generic
+      ptype: Optional[Type] = None,  # pylint: disable=g-bare-generic
       default: Optional[Union[int, float, Text]] = None,
       description: Optional[Text] = None):
     if ptype and ptype not in [int, float, Text]:

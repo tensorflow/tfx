@@ -21,7 +21,7 @@ import os
 import subprocess
 import sys
 import tempfile
-from typing import Any, Collection, Dict, List, Text
+from typing import Any, Collection, Dict, List, Optional, Text
 
 import click
 
@@ -210,7 +210,7 @@ class BaseHandler(abc.ABC):
 
   def _subprocess_call(self,
                        command: List[Text],
-                       env: Dict[Text, Any] = None) -> None:
+                       env: Optional[Dict[Text, Any]] = None) -> None:
     return_code = subprocess.call(command, env=env)
     if return_code != 0:
       sys.exit('Error while running "{}" '.format(' '.join(command)))

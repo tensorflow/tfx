@@ -15,7 +15,7 @@
 
 import os
 
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 from tfx import types
 from tfx.dsl.components.base import base_component
@@ -64,7 +64,7 @@ class CustomProducer(base_component.BaseComponent):
   SPEC_CLASS = CustomProducerSpec
   EXECUTOR_SPEC = executor_spec.ExecutorClassSpec(DummyExecutor)
 
-  def __init__(self, stats: types.Channel = None):
+  def __init__(self, stats: Optional[types.Channel] = None):
     stats = stats or types.Channel(type=standard_artifacts.ExampleStatistics)
     stats.additional_properties['span'] = 42
     stats.additional_properties['split_names'] = '[\'train\', \'eval\']'

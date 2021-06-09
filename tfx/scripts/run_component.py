@@ -24,7 +24,7 @@ from __future__ import print_function
 
 import os
 import sys
-from typing import List, Text
+from typing import List, Optional, Text
 
 from tfx.dsl.components.base import base_beam_executor
 from tfx.dsl.components.base import base_executor
@@ -37,8 +37,8 @@ from google.protobuf import message
 
 def run_component(
     full_component_class_name: Text,
-    temp_directory_path: Text = None,
-    beam_pipeline_args: List[Text] = None,
+    temp_directory_path: Optional[Text] = None,
+    beam_pipeline_args: Optional[List[Text]] = None,
     **arguments
 ):
   r"""Loads a component, instantiates it with arguments and runs its executor.

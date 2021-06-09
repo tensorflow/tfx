@@ -177,7 +177,7 @@ def make_job_object(
     command: List[str],
     namespace: str = 'default',
     container_name: str = 'jobcontainer',
-    pod_labels: Dict[str, str] = None,
+    pod_labels: Optional[Dict[str, str]] = None,
     service_account_name: str = 'default',
 ) -> k8s_client.V1Job:
   """Make a Kubernetes Job object with a single pod.

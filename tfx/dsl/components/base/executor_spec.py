@@ -192,8 +192,8 @@ class ExecutorContainerSpec(ExecutorSpec):
 
   def __init__(self,
                image: str,
-               command: List[str] = None,
-               args: List[str] = None):
+               command: Optional[List[str]] = None,
+               args: Optional[List[str]] = None):
     if not image:
       raise ValueError('image cannot be None or empty.')
     self.image = image

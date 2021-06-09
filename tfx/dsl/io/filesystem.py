@@ -13,7 +13,7 @@
 # limitations under the License.
 """Interface for filesystem plugins."""
 
-from typing import Any, Callable, Iterable, List, Tuple, Union
+from typing import Any, Callable, Iterable, List, Optional, Tuple, Union
 
 PathType = Union[bytes, str]
 
@@ -79,6 +79,6 @@ class Filesystem:
   def walk(
       top: PathType,
       topdown: bool = True,
-      onerror: Callable[..., None] = None
+      onerror: Optional[Callable[..., None]] = None
   ) -> Iterable[Tuple[PathType, List[PathType], List[PathType]]]:
     raise NotImplementedError()

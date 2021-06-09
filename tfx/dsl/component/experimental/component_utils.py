@@ -24,11 +24,12 @@ from tfx.types import component_spec
 def create_tfx_component_class(
     name: str,
     tfx_executor_spec: base_executor_spec.ExecutorSpec,
-    input_channel_parameters: Dict[str,
-                                   component_spec.ChannelParameter] = None,
-    output_channel_parameters: Dict[str,
-                                    component_spec.ChannelParameter] = None,
-    execution_parameters: Dict[str, component_spec.ExecutionParameter] = None,
+    input_channel_parameters: Optional[Dict[
+        str, component_spec.ChannelParameter]] = None,
+    output_channel_parameters: Optional[Dict[
+        str, component_spec.ChannelParameter]] = None,
+    execution_parameters: Optional[Dict[
+        str, component_spec.ExecutionParameter]] = None,
     default_init_args: Optional[Dict[str, Any]] = None
 ) -> Callable[..., base_component.BaseComponent]:
   """Creates a TFX component class dynamically."""

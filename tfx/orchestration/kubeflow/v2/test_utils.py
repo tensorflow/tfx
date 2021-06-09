@@ -17,7 +17,7 @@ import datetime
 import os
 import subprocess
 import time
-from typing import List, Text
+from typing import List, Optional, Text
 
 from absl import logging
 from kfp.pipeline_spec import pipeline_spec_pb2 as pipeline_pb2
@@ -762,7 +762,7 @@ class BaseKubeflowV2Test(test_case_utils.TfxTest):
       self,
       pipeline_name: Text,
       pipeline_components: List[base_node.BaseNode],
-      beam_pipeline_args: List[Text] = None) -> tfx_pipeline.Pipeline:
+      beam_pipeline_args: Optional[List[Text]] = None) -> tfx_pipeline.Pipeline:
     """Creates a pipeline given name and list of components."""
     return tfx_pipeline.Pipeline(
         pipeline_name=pipeline_name,

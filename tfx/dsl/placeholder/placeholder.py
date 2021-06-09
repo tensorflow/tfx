@@ -39,7 +39,7 @@ class _PlaceholderOperator(json_utils.Jsonable):
   def encode(
       self,
       sub_expression_pb: placeholder_pb2.PlaceholderExpression,
-      component_spec: Type[types.ComponentSpec] = None
+      component_spec: Optional[Type[types.ComponentSpec]] = None
   ) -> placeholder_pb2.PlaceholderExpression:
     pass
 
@@ -115,7 +115,9 @@ class _ConcatOperator(_PlaceholderOperator):
   Prefer to use + operator overloading of Placeholder.
   """
 
-  def __init__(self, right: Union[str, 'Placeholder'] = None, left: str = None):
+  def __init__(self,
+               right: Optional[Union[str, 'Placeholder']] = None,
+               left: Optional[str] = None):
     super().__init__()
     self._left = left
     self._right = right

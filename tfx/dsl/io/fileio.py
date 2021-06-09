@@ -13,7 +13,7 @@
 # limitations under the License.
 """Pluggable file I/O interface for use in TFX system and components."""
 
-from typing import Any, Callable, Iterable, List, Tuple, Type
+from typing import Any, Callable, Iterable, List, Optional, Tuple, Type
 
 from tfx.dsl.io import filesystem
 from tfx.dsl.io import filesystem_registry
@@ -113,7 +113,7 @@ def stat(path: PathType) -> Any:
 def walk(
     top: PathType,
     topdown: bool = True,
-    onerror: Callable[..., None] = None
+    onerror: Optional[Callable[..., None]] = None
 ) -> Iterable[Tuple[PathType, List[PathType], List[PathType]]]:
   """Return an iterator walking a directory tree."""
   return _get_filesystem(top).walk(top, topdown=topdown, onerror=onerror)

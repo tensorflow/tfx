@@ -37,9 +37,9 @@ def create_ai_platform_training(
     scale_tier: Optional[Text] = None,
     training_input: Optional[Dict[Text, Any]] = None,
     labels: Optional[Dict[Text, Text]] = None,
-    inputs: Dict[Text, Any] = None,
-    outputs: Dict[Text, Any] = None,
-    parameters: Dict[Text, Any] = None,
+    inputs: Optional[Dict[Text, Any]] = None,
+    outputs: Optional[Dict[Text, Any]] = None,
+    parameters: Optional[Dict[Text, Any]] = None,
 ) -> base_component.BaseComponent:
   """Creates a pipeline step that launches a AIP training job.
 
