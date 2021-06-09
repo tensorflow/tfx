@@ -74,7 +74,7 @@ class TFLiteRewriter(rewriter.BaseRewriter):
       quantization_optimizations: Optional[Sequence[tf.lite.Optimize]] = None,
       quantization_supported_types: Optional[Sequence[tf.DType]] = None,
       quantization_enable_full_integer: bool = False,
-      signature_key: Text = None,
+      signature_key: Optional[Text] = None,
       representative_dataset: Optional[Iterable[Sequence[np.ndarray]]] = None,
       **kwargs):
     """Create an instance of the TFLiteRewriter.
@@ -228,7 +228,7 @@ class TFLiteRewriter(rewriter.BaseRewriter):
                                    tf.lite.Optimize],
                                quantization_supported_types: Sequence[tf.DType],
                                representative_dataset=None,
-                               signature_key: Text = None,
+                               signature_key: Optional[Text] = None,
                                **kwargs) -> tf.lite.TFLiteConverter:
     """Creates a TFLite converter with proper quantization options.
 

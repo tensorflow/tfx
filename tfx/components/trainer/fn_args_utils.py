@@ -109,7 +109,7 @@ class FnArgs:
 
 def get_common_fn_args(input_dict: Dict[Text, List[types.Artifact]],
                        exec_properties: Dict[Text, Any],
-                       working_dir: Text = None) -> FnArgs:
+                       working_dir: Optional[Text] = None) -> FnArgs:
   """Get common args of training and tuning."""
   if input_dict.get(standard_component_specs.TRANSFORM_GRAPH_KEY):
     transform_graph_path = artifact_utils.get_single_uri(
