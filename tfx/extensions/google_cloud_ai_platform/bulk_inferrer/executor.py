@@ -135,7 +135,7 @@ class Executor(bulk_inferrer_executor.Executor):
                                      self.__class__.__name__)
     with telemetry_utils.scoped_labels(
         {telemetry_utils.LABEL_TFX_EXECUTOR: executor_class_path}):
-      job_labels = telemetry_utils.get_labels_dict()
+      job_labels = telemetry_utils.make_labels_dict()
     model = artifact_utils.get_single_instance(input_dict['model'])
     model_path = path_utils.serving_model_path(
         model.uri, path_utils.is_old_model_artifact(model))

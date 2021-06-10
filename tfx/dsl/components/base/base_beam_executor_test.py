@@ -28,6 +28,7 @@ import tensorflow as tf
 
 from tfx import types
 from tfx import version
+from tfx.components.statistics_gen.executor import Executor as StatisticsGenExecutor
 from tfx.dsl.components.base import base_beam_executor
 
 
@@ -49,21 +50,27 @@ class BaseBeamExecutorTest(tf.test.TestCase):
     options = executor._make_beam_pipeline().options.view_as(StandardOptions)
     self.assertEqual('DirectRunner', options.view_as(StandardOptions).runner)
     # Verify labels.
-    self.assertListEqual(
-        [
-            # Label is coverted to lowercase.
-            'tfx_executor=__main__-_testexecutor',
-            'tfx_py_version=%d-%d' %
-            (sys.version_info.major, sys.version_info.minor),
-            'tfx_version=%s' % version.__version__.replace('.', '-'),
-        ],
-        options.view_as(GoogleCloudOptions).labels)
+    self.assertListEqual([
+        'tfx_executor=third_party_executor',
+        'tfx_py_version=%d-%d' %
+        (sys.version_info.major, sys.version_info.minor),
+        'tfx_version=%s' % version.__version__.replace('.', '-'),
+    ],
+                         options.view_as(GoogleCloudOptions).labels)
 
     executor_context = base_beam_executor.BaseBeamExecutor.Context(
         beam_pipeline_args=['--direct_num_workers=2'])
-    executor = _TestExecutor(executor_context)
+    executor = StatisticsGenExecutor(executor_context)
     options = executor._make_beam_pipeline().options.view_as(DirectOptions)
     self.assertEqual(2, options.direct_num_workers)
+    # Verify labels.
+    self.assertListEqual([
+        'tfx_executor=tfx-components-statistics_gen-executor-executor',
+        'tfx_py_version=%d-%d' %
+        (sys.version_info.major, sys.version_info.minor),
+        'tfx_version=%s' % version.__version__.replace('.', '-'),
+    ],
+                         options.view_as(GoogleCloudOptions).labels)
 
 
 if __name__ == '__main__':
