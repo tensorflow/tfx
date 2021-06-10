@@ -48,6 +48,8 @@ EXAMPLES_KEY = 'examples'
 
 # Key for the `payload_format` custom property of output examples artifact.
 PAYLOAD_FORMAT_PROPERTY_NAME = 'payload_format'
+# Key for the `file_format` custom property of output examples artifact.
+FILE_FORMAT_PROPERTY_NAME = 'file_format'
 # Key for the `input_fingerprint` custom property of output examples artifact.
 FINGERPRINT_PROPERTY_NAME = 'input_fingerprint'
 # Key for the `span` custom property of output examples artifact.
