@@ -12,6 +12,8 @@
 
 ## Bug Fixes and Other Changes
 
+*   Depends on `protobuf>=3.13,<4`.
+
 ## Documentation Updates
 
 # Version 1.0.0

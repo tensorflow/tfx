@@ -60,7 +60,7 @@ def make_pipeline_sdk_required_install_packages():
           git_master='@git+https://github.com/google/ml-metadata@master'),
       'packaging>=20,<21',
       'portpicker>=1.3.1,<2',
-      'protobuf>=3.12.2,<4',
+      'protobuf>=3.13,<4',
       'docker>=4.1,<5',
       # TODO(b/176812386): Deprecate usage of jinja2 for placeholders.
       'jinja2>=2.7.3,<3',
