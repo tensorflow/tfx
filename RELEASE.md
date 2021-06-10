@@ -14,6 +14,10 @@
 *  TFX CLI now supports
    [Vertex Pipelines](https://cloud.google.com/vertex-ai/docs/pipelines/introduction).
    use it with `--engine=vertex` flag.
+*  Telemetry: Only first-party tfx component's executor telemetry will be
+   collected. All other executors will be recorded as `third_party_executor`. 
+   For labels longer than 63, keep first 63 characters (instead of last 63
+   characters before).
 
 ## Breaking Changes
 

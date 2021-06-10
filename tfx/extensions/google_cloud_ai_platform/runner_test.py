@@ -67,7 +67,7 @@ class RunnerTest(tf.test.TestCase):
     self._executor_class_path = 'my.executor.Executor'
     with telemetry_utils.scoped_labels(
         {telemetry_utils.LABEL_TFX_EXECUTOR: self._executor_class_path}):
-      self._job_labels = telemetry_utils.get_labels_dict()
+      self._job_labels = telemetry_utils.make_labels_dict()
 
   def _setUpTrainingMocks(self):
     self._mock_create_request = mock.Mock()

@@ -44,7 +44,7 @@ def ReadFromBigQuery(
           | 'ReadFromBigQuery' >> bigquery.ReadFromBigQuery(
               query=query,
               use_standard_sql=True,
-              bigquery_job_labels=telemetry_utils.get_labels_dict()))
+              bigquery_job_labels=telemetry_utils.make_labels_dict()))
 
 
 def row_to_example(  # pylint: disable=invalid-name

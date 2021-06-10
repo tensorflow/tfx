@@ -120,7 +120,7 @@ class Executor(tfx_pusher_executor.Executor):
                                      self.__class__.__name__)
     with telemetry_utils.scoped_labels(
         {telemetry_utils.LABEL_TFX_EXECUTOR: executor_class_path}):
-      job_labels = telemetry_utils.get_labels_dict()
+      job_labels = telemetry_utils.make_labels_dict()
     endpoint = endpoint or runner.DEFAULT_ENDPOINT
     api = discovery.build(
         service_name,

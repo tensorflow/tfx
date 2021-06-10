@@ -237,7 +237,7 @@ class CAIPJobClient(AbstractJobClient):
     project = training_inputs.pop('project')
     with telemetry_utils.scoped_labels(
         {telemetry_utils.LABEL_TFX_EXECUTOR: executor_class_path}):
-      job_labels = telemetry_utils.get_labels_dict()
+      job_labels = telemetry_utils.make_labels_dict()
 
     # 'tfx_YYYYmmddHHMMSS' is the default job ID if not explicitly specified.
     job_id = job_id or 'tfx_{}'.format(
@@ -421,7 +421,7 @@ class UCAIPJobClient(AbstractJobClient):
     project = training_inputs.pop('project')
     with telemetry_utils.scoped_labels(
         {telemetry_utils.LABEL_TFX_EXECUTOR: executor_class_path}):
-      job_labels = telemetry_utils.get_labels_dict()
+      job_labels = telemetry_utils.make_labels_dict()
 
     # 'tfx_YYYYmmddHHMMSS' is the default job display name if not explicitly
     # specified.
