@@ -16,7 +16,6 @@
 import os
 from typing import Dict, List, Text
 
-from absl import app
 import tensorflow_model_analysis as tfma
 from tfx import v1 as tfx
 
@@ -316,7 +315,7 @@ def create_pipeline(
       beam_pipeline_args=beam_pipeline_args)
 
 
-def main(unused_argv):
+def main():
   # Metadata config. The defaults works work with the installation of
   # KF Pipelines using Kubeflow. If installing KF Pipelines using the
   # lightweight deployment option, you may need to override the defaults.
@@ -347,4 +346,4 @@ def main(unused_argv):
 # For endpoint, see guide on connecting to hosted AI Platform Pipelines:
 # https://cloud.google.com/ai-platform/pipelines/docs/connecting-with-sdk
 if __name__ == '__main__':
-  app.run(main)
+  main()
