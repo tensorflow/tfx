@@ -14,6 +14,7 @@
 """Creates testing MLMD with TFX data model."""
 import os
 
+from typing import Optional
 from absl import app
 from absl import flags
 
@@ -24,6 +25,7 @@ from tfx.orchestration.portable import runtime_parameter_utils
 from tfx.proto.orchestration import pipeline_pb2
 from tfx.utils import io_utils
 
+from google.protobuf import message
 from ml_metadata.proto import metadata_store_pb2
 
 FLAGS = flags.FLAGS
@@ -44,7 +46,8 @@ def _get_mlmd_connection(path: str) -> metadata.Metadata:
   return metadata.Metadata(connection_config=connection_config)
 
 
-def _test_pipeline(ir_path: str, pipeline_id: str, run_id: str):
+def _test_pipeline(ir_path: str, pipeline_id: str, run_id: str,
+                   deployment_config: Optional[message.Message]):
   """Creates test pipeline with pipeline_id and run_id."""
   pipeline = pipeline_pb2.Pipeline()
   io_utils.parse_pbtxt_file(ir_path, pipeline)
@@ -52,6 +55,8 @@ def _test_pipeline(ir_path: str, pipeline_id: str, run_id: str):
   runtime_parameter_utils.substitute_runtime_parameter(pipeline, {
       'pipeline_run_id': run_id,
   })
+  if deployment_config:
+    pipeline.deployment_config.Pack(deployment_config)
   return pipeline
 
 
@@ -85,12 +90,13 @@ def create_sample_pipeline(m: metadata.Metadata,
                            pipeline_id: str,
                            run_num: int,
                            export_ir_path: str = '',
-                           external_ir_file: str = ''):
+                           external_ir_file: str = '',
+                           deployment_config: Optional[message.Message] = None):
   """Creates a list of pipeline and node execution."""
   ir_path = _get_ir_path(external_ir_file)
   for i in range(run_num):
     run_id = 'run%02d' % i
-    pipeline = _test_pipeline(ir_path, pipeline_id, run_id)
+    pipeline = _test_pipeline(ir_path, pipeline_id, run_id, deployment_config)
     if export_ir_path:
       output_path = os.path.join(export_ir_path,
                                  '%s_%s.pbtxt' % (pipeline_id, run_id))
