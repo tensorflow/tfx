@@ -19,20 +19,17 @@ import unittest
 
 from absl import logging
 from absl.testing import parameterized
-
 import tensorflow as tf
-
-from tfx.components.example_gen import utils
-from tfx.dsl.io import fileio
 from tfx.examples.penguin import penguin_pipeline_local
-from tfx.orchestration import metadata
-from tfx.orchestration.local.local_dag_runner import LocalDagRunner
-from tfx.proto import example_gen_pb2
-from tfx.proto import range_config_pb2
-from tfx.utils import io_utils
+from tfx.v1 import proto
+from tfx.v1.dsl.io import fileio
+from tfx.v1.orchestration import LocalDagRunner
+from tfx.v1.orchestration import metadata
 
 import ml_metadata as mlmd
 from ml_metadata.proto import metadata_store_pb2
+
+_SPAN_PROPERTY_NAME = 'span'
 
 
 @unittest.skipIf(tf.__version__ < '2',
@@ -59,14 +56,12 @@ class PenguinPipelineLocalEndToEndTest(tf.test.TestCase,
     #   - day3
     #     - penguins_processed.csv
     self._data_root_span = os.path.join(self._test_dir, 'data')
-    io_utils.copy_dir(self._data_root, os.path.join(self._data_root_span,
-                                                    'day1'))
-    io_utils.copy_dir(self._data_root, os.path.join(self._data_root_span,
-                                                    'day2'))
-    io_utils.copy_dir(self._data_root, os.path.join(self._data_root_span,
-                                                    'day3'))
-
-    self._data_root = os.path.join(os.path.dirname(__file__), 'data')
+    for day in ['day1', 'day2', 'day3']:
+      dst_path = os.path.join(self._data_root_span, 'labelled', day)
+      fileio.makedirs(dst_path)
+      fileio.copy(
+          os.path.join(self._data_root, 'labelled', 'penguins_processed.csv'),
+          os.path.join(dst_path, 'penguins_processed.csv'))
 
     self._serving_model_dir = os.path.join(self._test_dir, 'serving_model')
     self._pipeline_root = os.path.join(self._test_dir, 'tfx', 'pipelines',
@@ -126,11 +121,11 @@ class PenguinPipelineLocalEndToEndTest(tf.test.TestCase,
     expected_execution_count = 9  # 8 components + 1 resolver
     metadata_config = metadata.sqlite_metadata_connection_config(
         self._metadata_path)
-    with metadata.Metadata(metadata_config) as m:
-      artifact_count = len(m.store.get_artifacts())
-      execution_count = len(m.store.get_executions())
-      self.assertGreaterEqual(artifact_count, execution_count)
-      self.assertEqual(expected_execution_count, execution_count)
+    store = mlmd.MetadataStore(metadata_config)
+    artifact_count = len(store.get_artifacts())
+    execution_count = len(store.get_executions())
+    self.assertGreaterEqual(artifact_count, execution_count)
+    self.assertEqual(expected_execution_count, execution_count)
 
     self._assertPipelineExecution(False)
 
@@ -138,21 +133,19 @@ class PenguinPipelineLocalEndToEndTest(tf.test.TestCase,
                  'Evaluator and Pusher will use cached results.')
     LocalDagRunner().run(pipeline)
 
-    with metadata.Metadata(metadata_config) as m:
-      # Artifact count is increased by 3 caused by Evaluator and Pusher.
-      self.assertLen(m.store.get_artifacts(), artifact_count + 3)
-      artifact_count = len(m.store.get_artifacts())
-      self.assertLen(m.store.get_executions(), expected_execution_count * 2)
+    # Artifact count is increased by 3 caused by Evaluator and Pusher.
+    self.assertLen(store.get_artifacts(), artifact_count + 3)
+    artifact_count = len(store.get_artifacts())
+    self.assertLen(store.get_executions(), expected_execution_count * 2)
 
     logging.info('Starting the third pipeline run. '
                  'All components will use cached results.')
     LocalDagRunner().run(pipeline)
 
     # Asserts cache execution.
-    with metadata.Metadata(metadata_config) as m:
-      # Artifact count is unchanged.
-      self.assertLen(m.store.get_artifacts(), artifact_count)
-      self.assertLen(m.store.get_executions(), expected_execution_count * 3)
+    # Artifact count is unchanged.
+    self.assertLen(store.get_artifacts(), artifact_count)
+    self.assertLen(store.get_executions(), expected_execution_count * 3)
 
   def testPenguinPipelineLocalWithTuner(self):
     # TODO(b/180723394): Parameterize this test when Flax supports tuning.
@@ -167,6 +160,73 @@ class PenguinPipelineLocalEndToEndTest(tf.test.TestCase,
             pipeline_root=self._pipeline_root,
             metadata_path=self._metadata_path,
             enable_tuning=True,
+            enable_bulk_inferrer=False,
+            examplegen_input_config=None,
+            examplegen_range_config=None,
+            resolver_range_config=None,
+            beam_pipeline_args=self._make_beam_pipeline_args()))
+
+    self.assertTrue(fileio.exists(self._serving_model_dir))
+    self.assertTrue(fileio.exists(self._metadata_path))
+    expected_execution_count = 10  # 9 components + 1 resolver
+    metadata_config = metadata.sqlite_metadata_connection_config(
+        self._metadata_path)
+    store = mlmd.MetadataStore(metadata_config)
+    artifact_count = len(store.get_artifacts())
+    execution_count = len(store.get_executions())
+    self.assertGreaterEqual(artifact_count, execution_count)
+    self.assertEqual(expected_execution_count, execution_count)
+
+    self._assertPipelineExecution(has_tuner=True)
+
+  @parameterized.parameters(('keras',), ('flax_experimental',))
+  def testPenguinPipelineLocalWithBulkInferrer(self, model_framework):
+    module_file = self._module_file_name(model_framework)
+    LocalDagRunner().run(
+        penguin_pipeline_local._create_pipeline(
+            pipeline_name=self._pipeline_name,
+            data_root=self._data_root,
+            module_file=module_file,
+            accuracy_threshold=0.1,
+            serving_model_dir=self._serving_model_dir,
+            pipeline_root=self._pipeline_root,
+            metadata_path=self._metadata_path,
+            user_provided_schema_path=None,
+            enable_tuning=False,
+            enable_bulk_inferrer=True,
+            examplegen_input_config=None,
+            examplegen_range_config=None,
+            resolver_range_config=None,
+            beam_pipeline_args=[]))
+
+    self.assertTrue(fileio.exists(self._serving_model_dir))
+    self.assertTrue(fileio.exists(self._metadata_path))
+    expected_execution_count = 11  # 11 components + 1 resolver
+    metadata_config = metadata.sqlite_metadata_connection_config(
+        self._metadata_path)
+    store = mlmd.MetadataStore(metadata_config)
+    artifact_count = len(store.get_artifacts())
+    execution_count = len(store.get_executions())
+    self.assertGreaterEqual(artifact_count, execution_count)
+    self.assertEqual(expected_execution_count, execution_count)
+
+    self._assertPipelineExecution(has_bulk_inferrer=True)
+
+  @parameterized.parameters(('keras',), ('flax_experimental',))
+  def testPenguinPipelineLocalWithImporter(self, model_framework):
+    module_file = self._module_file_name(model_framework)
+    LocalDagRunner().run(
+        penguin_pipeline_local._create_pipeline(
+            pipeline_name=self._pipeline_name,
+            data_root=self._data_root,
+            module_file=module_file,
+            accuracy_threshold=0.1,
+            serving_model_dir=self._serving_model_dir,
+            pipeline_root=self._pipeline_root,
+            metadata_path=self._metadata_path,
+            user_provided_schema_path=self._schema_path,
+            enable_tuning=False,
+            enable_bulk_inferrer=False,
             examplegen_input_config=None,
             examplegen_range_config=None,
             resolver_range_config=None,
@@ -177,11 +237,11 @@ class PenguinPipelineLocalEndToEndTest(tf.test.TestCase,
     expected_execution_count = 10  # 9 components + 1 resolver
     metadata_config = metadata.sqlite_metadata_connection_config(
         self._metadata_path)
-    with metadata.Metadata(metadata_config) as m:
-      artifact_count = len(m.store.get_artifacts())
-      execution_count = len(m.store.get_executions())
-      self.assertGreaterEqual(artifact_count, execution_count)
-      self.assertEqual(expected_execution_count, execution_count)
+    store = mlmd.MetadataStore(metadata_config)
+    artifact_count = len(store.get_artifacts())
+    execution_count = len(store.get_executions())
+    self.assertGreaterEqual(artifact_count, execution_count)
+    self.assertEqual(expected_execution_count, execution_count)
 
     self._assertPipelineExecution(True)
 
@@ -205,11 +265,11 @@ class PenguinPipelineLocalEndToEndTest(tf.test.TestCase,
       ('flax_experimental',))
   def testPenguinPipelineLocalWithRollingWindow(self, model_framework):
     module_file = self._module_file_name('keras')
-    examplegen_input_config = example_gen_pb2.Input(splits=[
-        example_gen_pb2.Input.Split(name='test', pattern='day{SPAN}/*'),
+    examplegen_input_config = proto.Input(splits=[
+        proto.Input.Split(name='test', pattern='day{SPAN}/*'),
     ])
-    resolver_range_config = range_config_pb2.RangeConfig(
-        rolling_range=range_config_pb2.RollingRange(num_spans=2))
+    resolver_range_config = proto.RangeConfig(
+        rolling_range=proto.RollingRange(num_spans=2))
 
     def run_pipeline(examplegen_range_config):
       LocalDagRunner().run(
@@ -228,8 +288,8 @@ class PenguinPipelineLocalEndToEndTest(tf.test.TestCase,
               beam_pipeline_args=[]))
 
     # Trigger the pipeline for the first span.
-    examplegen_range_config = range_config_pb2.RangeConfig(
-        static_range=range_config_pb2.StaticRange(
+    examplegen_range_config = proto.RangeConfig(
+        static_range=proto.StaticRange(
             start_span_number=1, end_span_number=1))
     run_pipeline(examplegen_range_config)
 
@@ -241,73 +301,71 @@ class PenguinPipelineLocalEndToEndTest(tf.test.TestCase,
     expected_execution_count = 10  # 8 components + 2 resolver
     metadata_config = metadata.sqlite_metadata_connection_config(
         self._metadata_path)
-    with metadata.Metadata(metadata_config) as m:
-      artifact_count = len(m.store.get_artifacts())
-      execution_count = len(m.store.get_executions())
-      self.assertGreaterEqual(artifact_count, execution_count)
-      self.assertEqual(expected_execution_count, execution_count)
-      # Verify Transform's input examples artifacts.
-      tft_input_examples_artifacts = self._get_input_examples_artifacts(
-          m.store, transform_execution_type)
-      self.assertLen(tft_input_examples_artifacts, 1)
-      # SpansResolver (controlled by resolver_range_config) returns span 1.
-      self.assertEqual(
-          1, tft_input_examples_artifacts[0].custom_properties[
-              utils.SPAN_PROPERTY_NAME].int_value)
+    store = mlmd.MetadataStore(metadata_config)
+    artifact_count = len(store.get_artifacts())
+    execution_count = len(store.get_executions())
+    self.assertGreaterEqual(artifact_count, execution_count)
+    self.assertEqual(expected_execution_count, execution_count)
+    # Verify Transform's input examples artifacts.
+    tft_input_examples_artifacts = self._get_input_examples_artifacts(
+        store, transform_execution_type)
+    self.assertLen(tft_input_examples_artifacts, 1)
+    # SpansResolver (controlled by resolver_range_config) returns span 1.
+    self.assertEqual(
+        1, tft_input_examples_artifacts[0].custom_properties[
+            _SPAN_PROPERTY_NAME].int_value)
 
     # Trigger the pipeline for the second span.
-    examplegen_range_config = range_config_pb2.RangeConfig(
-        static_range=range_config_pb2.StaticRange(
+    examplegen_range_config = proto.RangeConfig(
+        static_range=proto.StaticRange(
             start_span_number=2, end_span_number=2))
     run_pipeline(examplegen_range_config)
 
-    with metadata.Metadata(metadata_config) as m:
-      execution_count = len(m.store.get_executions())
-      self.assertEqual(expected_execution_count * 2, execution_count)
-      # Verify Transform's input examples artifacts.
-      tft_input_examples_artifacts = self._get_input_examples_artifacts(
-          m.store, transform_execution_type)
-      self.assertLen(tft_input_examples_artifacts, 2)
-      spans = {
-          tft_input_examples_artifacts[0].custom_properties[
-              utils.SPAN_PROPERTY_NAME].int_value,
-          tft_input_examples_artifacts[1].custom_properties[
-              utils.SPAN_PROPERTY_NAME].int_value
-      }
-      # SpansResolver (controlled by resolver_range_config) returns span 1 & 2.
-      self.assertSetEqual({1, 2}, spans)
-      # Verify Trainer's input examples artifacts.
-      self.assertLen(
-          self._get_input_examples_artifacts(m.store, trainer_execution_type),
-          2)
+    execution_count = len(store.get_executions())
+    self.assertEqual(expected_execution_count * 2, execution_count)
+    # Verify Transform's input examples artifacts.
+    tft_input_examples_artifacts = self._get_input_examples_artifacts(
+        store, transform_execution_type)
+    self.assertLen(tft_input_examples_artifacts, 2)
+    spans = {
+        tft_input_examples_artifacts[0].custom_properties[
+            _SPAN_PROPERTY_NAME].int_value,
+        tft_input_examples_artifacts[1].custom_properties[
+            _SPAN_PROPERTY_NAME].int_value
+    }
+    # SpansResolver (controlled by resolver_range_config) returns span 1 & 2.
+    self.assertSetEqual({1, 2}, spans)
+    # Verify Trainer's input examples artifacts.
+    self.assertLen(
+        self._get_input_examples_artifacts(store, trainer_execution_type),
+        2)
 
     # Trigger the pipeline for the thrid span.
-    examplegen_range_config = range_config_pb2.RangeConfig(
-        static_range=range_config_pb2.StaticRange(
+    examplegen_range_config = proto.RangeConfig(
+        static_range=proto.StaticRange(
             start_span_number=3, end_span_number=3))
     run_pipeline(examplegen_range_config)
 
     metadata_config = metadata.sqlite_metadata_connection_config(
         self._metadata_path)
-    with metadata.Metadata(metadata_config) as m:
-      execution_count = len(m.store.get_executions())
-      self.assertEqual(expected_execution_count * 3, execution_count)
-      # Verify Transform's input examples artifacts.
-      tft_input_examples_artifacts = self._get_input_examples_artifacts(
-          m.store, transform_execution_type)
-      self.assertLen(tft_input_examples_artifacts, 2)
-      spans = {
-          tft_input_examples_artifacts[0].custom_properties[
-              utils.SPAN_PROPERTY_NAME].int_value,
-          tft_input_examples_artifacts[1].custom_properties[
-              utils.SPAN_PROPERTY_NAME].int_value
-      }
-      # SpansResolver (controlled by resolver_range_config) returns span 2 & 3.
-      self.assertSetEqual({2, 3}, spans)
-      # Verify Trainer's input examples artifacts.
-      self.assertLen(
-          self._get_input_examples_artifacts(m.store, trainer_execution_type),
-          2)
+    execution_count = len(store.get_executions())
+    self.assertEqual(expected_execution_count * 3, execution_count)
+    # Verify Transform's input examples artifacts.
+    tft_input_examples_artifacts = self._get_input_examples_artifacts(
+        store, transform_execution_type)
+    self.assertLen(tft_input_examples_artifacts, 2)
+    spans = {
+        tft_input_examples_artifacts[0].custom_properties[
+            _SPAN_PROPERTY_NAME].int_value,
+        tft_input_examples_artifacts[1].custom_properties[
+            _SPAN_PROPERTY_NAME].int_value
+    }
+    # SpansResolver (controlled by resolver_range_config) returns span 2 & 3.
+    self.assertSetEqual({2, 3}, spans)
+    # Verify Trainer's input examples artifacts.
+    self.assertLen(
+        self._get_input_examples_artifacts(store, trainer_execution_type),
+        2)
 
 
 if __name__ == '__main__':
