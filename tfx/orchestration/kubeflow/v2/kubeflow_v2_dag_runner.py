@@ -149,7 +149,7 @@ class KubeflowV2DagRunner(tfx_runner.TfxRunner):
         {telemetry_utils.LABEL_TFX_RUNNER: 'kubeflow_v2'}):
       result = pipeline_spec_pb2.PipelineJob(
           display_name=display_name or pipeline.pipeline_info.pipeline_name,
-          labels=telemetry_utils.get_labels_dict(),
+          labels=telemetry_utils.make_labels_dict(),
           runtime_config=runtime_config)
     result.pipeline_spec.update(json_format.MessageToDict(pipeline_spec))
     pipeline_json_dict = json_format.MessageToDict(result)

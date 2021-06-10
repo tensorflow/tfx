@@ -152,7 +152,7 @@ class Executor(tfx_pusher_executor.Executor):
     with telemetry_utils.scoped_labels(
         {telemetry_utils.LABEL_TFX_EXECUTOR: executor_class_path}):
       default_query_job_config = bigquery.job.QueryJobConfig(
-          labels=telemetry_utils.get_labels_dict())
+          labels=telemetry_utils.make_labels_dict())
     # TODO(b/181368842) Add integration test for BQML Pusher + Managed Pipeline
     project_id = (
         bigquery_serving_args.get(_COMPUTE_PROJECT_ID_KEY) or

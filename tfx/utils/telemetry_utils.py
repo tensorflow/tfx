@@ -19,9 +19,12 @@ import sys
 import threading
 from typing import Dict, List
 
+from absl import logging
 from tfx import version
 
 # Common label names used.
+#
+# TODO(b/190444391): Add component label.
 LABEL_TFX_RUNNER = 'tfx_runner'
 LABEL_TFX_EXECUTOR = 'tfx_executor'
 _LABEL_TFX_VERSION = 'tfx_version'
@@ -41,7 +44,7 @@ def scoped_labels(labels: Dict[str, str]):
   if getattr(_thread_local_labels_state, 'dictionary', None) is None:
     _thread_local_labels_state.dictionary = {}
   for key, value in labels.items():
-    _thread_local_labels_state.dictionary[key] = _normalize_label(value)
+    _thread_local_labels_state.dictionary[key] = value
   try:
     yield
   finally:
@@ -52,10 +55,15 @@ def scoped_labels(labels: Dict[str, str]):
 def _normalize_label(value: str) -> str:
   """Lowercase and replace illegal characters in labels."""
   # See https://cloud.google.com/compute/docs/labeling-resources.
-  return re.sub(r'[^a-z0-9\_\-]', '-', value.lower())[-63:]
+  result = re.sub(r'[^a-z0-9\_\-]', '-', value.lower())
+  if len(result) > 63:
+    logging.warning('Length of label `%s` exceeds maximum length(63), trimmed.',
+                    result)
+    return result[:63]
+  return result
 
 
-def get_labels_dict() -> Dict[str, str]:
+def make_labels_dict() -> Dict[str, str]:
   """Get all registered and system generated labels as a dict.
 
   Returns:
@@ -68,6 +76,13 @@ def get_labels_dict() -> Dict[str, str]:
           _LABEL_TFX_PY_VERSION:
               '%d.%d' % (sys.version_info.major, sys.version_info.minor),
       }, **getattr(_thread_local_labels_state, 'dictionary', {}))
+
+  # Only first-party tfx component's executor telemetry will be collected.
+  # All other executors will be recorded as `third_party_executor`.
+  if (result.get(LABEL_TFX_EXECUTOR) and
+      not result[LABEL_TFX_EXECUTOR].startswith('tfx.')):
+    result[LABEL_TFX_EXECUTOR] = 'third_party_executor'
+
   for k, v in result.items():
     result[k] = _normalize_label(v)
   return result
@@ -79,7 +94,7 @@ def make_beam_labels_args() -> List[str]:
   Returns:
     New Beam pipeline args with labels.
   """
-  labels = get_labels_dict()
+  labels = make_labels_dict()
   # See following file for reference to the '--labels ' flag.
   # https://github.com/apache/beam/blob/master/sdks/python/apache_beam/options/pipeline_options.py
   result = []
