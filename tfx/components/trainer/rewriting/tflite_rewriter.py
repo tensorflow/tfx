@@ -21,7 +21,7 @@ from __future__ import print_function
 import os
 import time
 
-from typing import Iterable, Optional, Sequence, Text
+from typing import Iterable, List, Optional, Sequence, Text
 
 import numpy as np
 
@@ -76,6 +76,7 @@ class TFLiteRewriter(rewriter.BaseRewriter):
       quantization_enable_full_integer: bool = False,
       signature_key: Optional[Text] = None,
       representative_dataset: Optional[Iterable[Sequence[np.ndarray]]] = None,
+      supported_ops: Optional[List[tf.lite.OpsSet]] = None,
       **kwargs):
     """Create an instance of the TFLiteRewriter.
 
@@ -102,6 +103,9 @@ class TFLiteRewriter(rewriter.BaseRewriter):
         used for quantization. See
         https://www.tensorflow.org/lite/performance/post_training_quantization
           for details.
+      supported_ops: The list of supported ops to use when creating the TFLite
+        model. See
+        https://www.tensorflow.org/lite/guide/ops_select for details.
       **kwargs: Additional keyword arguments to create TFlite converter.
     """
     self._name = name
@@ -122,6 +126,7 @@ class TFLiteRewriter(rewriter.BaseRewriter):
                        '`True`, then `representative_dataset` must be '
                        'defined.')
     self._signature_key = signature_key
+    self._supported_ops = supported_ops
     self._kwargs = kwargs
 
   @property
@@ -180,6 +185,7 @@ class TFLiteRewriter(rewriter.BaseRewriter):
         quantization_supported_types=self._quantization_supported_types,
         representative_dataset=self._representative_dataset,
         signature_key=self._signature_key,
+        supported_ops=self._supported_ops,
         **self._kwargs)
     tflite_model = converter.convert()
 
@@ -222,14 +228,15 @@ class TFLiteRewriter(rewriter.BaseRewriter):
     # TODO(dzats): Implement post-rewrite validation.
     pass
 
-  def _create_tflite_converter(self,
-                               saved_model_path: Text,
-                               quantization_optimizations: Sequence[
-                                   tf.lite.Optimize],
-                               quantization_supported_types: Sequence[tf.DType],
-                               representative_dataset=None,
-                               signature_key: Optional[Text] = None,
-                               **kwargs) -> tf.lite.TFLiteConverter:
+  def _create_tflite_converter(
+      self,
+      saved_model_path: Text,
+      quantization_optimizations: Sequence[tf.lite.Optimize],
+      quantization_supported_types: Sequence[tf.DType],
+      representative_dataset=None,
+      signature_key: Optional[Text] = None,
+      supported_ops: Optional[List[tf.lite.OpsSet]] = None,
+      **kwargs) -> tf.lite.TFLiteConverter:
     """Creates a TFLite converter with proper quantization options.
 
     Currently,
@@ -251,6 +258,9 @@ class TFLiteRewriter(rewriter.BaseRewriter):
           for details.
       signature_key: Key identifying SignatureDef containing TFLite inputs and
         outputs. (default tf.saved_model.DEFAULT_SERVING_SIGNATURE_DEF_KEY)
+      supported_ops: The list of supported ops to use when creating the TFLite
+        model. See
+        https://www.tensorflow.org/lite/guide/ops_select for details.
       **kwargs: Additional arguments to create tflite converter.
 
     Returns:
@@ -269,7 +279,10 @@ class TFLiteRewriter(rewriter.BaseRewriter):
       converter = tf.lite.TFLiteConverter.from_saved_model(saved_model_path)
 
     converter.optimizations = quantization_optimizations
-    converter.target_spec.supported_types = quantization_supported_types
     converter.representative_dataset = representative_dataset
+    if quantization_supported_types:
+      converter.target_spec.supported_types = quantization_supported_types
+    if supported_ops:
+      converter.target_spec.supported_ops = supported_ops
 
     return converter

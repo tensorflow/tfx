@@ -77,7 +77,8 @@ class TFLiteRewriterTest(tf.test.TestCase):
         quantization_optimizations=[],
         quantization_supported_types=[],
         representative_dataset=None,
-        signature_key=None)
+        signature_key=None,
+        supported_ops=None)
     expected_model = os.path.join(dst_model_path, 'fname')
     self.assertTrue(fileio.exists(expected_model))
     with fileio.open(expected_model, 'rb') as f:
@@ -115,7 +116,8 @@ class TFLiteRewriterTest(tf.test.TestCase):
         quantization_optimizations=[tf.lite.Optimize.DEFAULT],
         quantization_supported_types=[],
         representative_dataset=None,
-        signature_key=None)
+        signature_key=None,
+        supported_ops=None)
     expected_model = os.path.join(dst_model_path, 'fname')
     self.assertTrue(fileio.exists(expected_model))
     with fileio.open(expected_model, 'rb') as f:
@@ -152,7 +154,8 @@ class TFLiteRewriterTest(tf.test.TestCase):
         quantization_optimizations=[tf.lite.Optimize.DEFAULT],
         quantization_supported_types=[],
         representative_dataset=None,
-        signature_key=None)
+        signature_key=None,
+        supported_ops=None)
     expected_model = os.path.join(dst_model_path, 'fname')
     self.assertTrue(fileio.exists(expected_model))
     with fileio.open(expected_model, 'rb') as f:
@@ -178,6 +181,36 @@ class TFLiteRewriterTest(tf.test.TestCase):
         quantization_optimizations=[tf.lite.Optimize.DEFAULT],
         quantization_supported_types=[tf.float16],
         representative_dataset=None,
+        supported_ops=None,
+        signature_key=None)
+    expected_model = os.path.join(dst_model_path, 'fname')
+    self.assertTrue(fileio.exists(expected_model))
+    with fileio.open(expected_model, 'rb') as f:
+      self.assertEqual(f.read(), b'model')
+
+  @mock.patch('tfx.components.trainer.rewriting.'
+              'tflite_rewriter.TFLiteRewriter._create_tflite_converter')
+  def testInvokeTFLiteRewriterSupportedOpsSucceeds(self, converter):
+    m = self.ConverterMock()
+    converter.return_value = m
+
+    src_model, dst_model, _, dst_model_path = self.create_temp_model_template()
+
+    tfrw = tflite_rewriter.TFLiteRewriter(
+        name='myrw',
+        filename='fname',
+        quantization_optimizations=[tf.lite.Optimize.DEFAULT],
+        supported_ops=[
+            tf.lite.OpsSet.TFLITE_BUILTINS, tf.lite.OpsSet.SELECT_TF_OPS])
+    tfrw.perform_rewrite(src_model, dst_model)
+
+    converter.assert_called_once_with(
+        saved_model_path=mock.ANY,
+        quantization_optimizations=[tf.lite.Optimize.DEFAULT],
+        quantization_supported_types=[],
+        representative_dataset=None,
+        supported_ops=[tf.lite.OpsSet.TFLITE_BUILTINS,
+                       tf.lite.OpsSet.SELECT_TF_OPS],
         signature_key=None)
     expected_model = os.path.join(dst_model_path, 'fname')
     self.assertTrue(fileio.exists(expected_model))
@@ -230,7 +263,8 @@ class TFLiteRewriterTest(tf.test.TestCase):
         quantization_optimizations=[tf.lite.Optimize.DEFAULT],
         quantization_supported_types=[],
         representative_dataset=representative_dataset,
-        signature_key=None)
+        signature_key=None,
+        supported_ops=None)
     expected_model = os.path.join(dst_model_path, 'fname')
     self.assertTrue(fileio.exists(expected_model))
     with fileio.open(expected_model, 'rb') as f:
@@ -269,6 +303,7 @@ class TFLiteRewriterTest(tf.test.TestCase):
         quantization_supported_types=[],
         representative_dataset=None,
         signature_key=None,
+        supported_ops=None,
         output_arrays=['head'])
 
 
