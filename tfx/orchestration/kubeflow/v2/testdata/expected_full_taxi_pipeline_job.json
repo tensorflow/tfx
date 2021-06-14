@@ -57,7 +57,7 @@
           "resolver": {
             "outputArtifactQueries": {
               "model": {
-                "filter": "artifact_type=\"tfx.Model\" and state=LIVE and name={$.inputs.artifacts[\"input\"].metadata.current_model_id.number_value}"
+                "filter": "schema_title=\"tfx.Model\" AND state=LIVE AND name={$.inputs.artifacts[\"input\"].metadata.current_model_id.number_value}"
               }
             }
           }
@@ -114,7 +114,7 @@
           "resolver": {
             "outputArtifactQueries": {
               "model": {
-                "filter": "artifact_type=\"tfx.Model\" and state=LIVE"
+                "filter": "schema_title=\"tfx.Model\" AND state=LIVE"
               }
             }
           }
@@ -139,7 +139,7 @@
           "resolver": {
             "outputArtifactQueries": {
               "model_blessing": {
-                "filter": "artifact_type=\"tfx.ModelBlessing\" and state=LIVE and metadata.blessed.number_value=1"
+                "filter": "schema_title=\"tfx.ModelBlessing\" AND state=LIVE AND metadata.blessed.number_value=1"
               }
             }
           }
