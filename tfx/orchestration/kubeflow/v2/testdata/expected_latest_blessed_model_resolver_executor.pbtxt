@@ -8,7 +8,7 @@ executors {
       output_artifact_queries {
         key: "model_blessing"
         value {
-          filter: "artifact_type=\"tfx.ModelBlessing\" and state=LIVE and metadata.blessed.number_value=1"
+          filter: "schema_title=\"tfx.ModelBlessing\" AND state=LIVE AND metadata.blessed.number_value=1"
         }
       }
     }
@@ -21,7 +21,7 @@ executors {
       output_artifact_queries {
         key: "model"
         value {
-          filter: "artifact_type=\"tfx.Model\" and state=LIVE and name={$.inputs.artifacts[\"input\"].metadata.current_model_id.number_value}"
+          filter: "schema_title=\"tfx.Model\" AND state=LIVE AND name={$.inputs.artifacts[\"input\"].metadata.current_model_id.number_value}"
         }
       }
     }
