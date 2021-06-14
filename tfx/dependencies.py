@@ -144,6 +144,8 @@ def make_extra_packages_docker_image():
       'kfp-pipeline-spec>=0.1.7,<0.2',
       'mmh>=2.2,<3',
       'python-snappy>=0.5,<0.6',
+      # Required for tfx/examples/penguin/penguin_utils_cloud_tuner.py
+      'tensorflow-cloud>=0.1,<0.2',
   ]
 
 
