@@ -115,8 +115,13 @@ def main_factory(mlmd_connection_func):
   def main(argv):
     del argv
     with mlmd_connection_func(FLAGS.path) as m:
+      depl_config = pipeline_pb2.IntermediateDeploymentConfig()
+      executor_spec = pipeline_pb2.ExecutorSpec.PythonClassExecutorSpec(
+          class_path='fake.ClassPath')
+      depl_config.executor_specs['arg1'].Pack(executor_spec)
+      depl_config.executor_specs['arg2'].Pack(executor_spec)
       create_sample_pipeline(m, FLAGS.pipeline_id, FLAGS.pipeline_run_num,
-                             FLAGS.export_ir_dir, FLAGS.ir_file)
+                             FLAGS.export_ir_dir, FLAGS.ir_file, depl_config)
 
   return main
 
