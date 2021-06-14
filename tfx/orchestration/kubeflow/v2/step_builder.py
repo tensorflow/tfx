@@ -497,7 +497,7 @@ class StepBuilder(object):
     artifact_queries = {}
     # Buid the artifact query for each channel in the input dict.
     for name, c in self._inputs.items():
-      query_filter = ('artifact_type="{type}" and state={state}').format(
+      query_filter = ('schema_title="{type}" AND state={state}').format(
           type=compiler_utils.get_artifact_title(c.type),
           state=metadata_store_pb2.Artifact.State.Name(
               metadata_store_pb2.Artifact.LIVE))
@@ -534,8 +534,8 @@ class StepBuilder(object):
     # Builds the resolver executor spec for latest valid ModelBlessing.
     executor = pipeline_pb2.PipelineDeploymentConfig.ExecutorSpec()
     artifact_queries = {}
-    query_filter = ('artifact_type="{type}" and state={state}'
-                    ' and metadata.{key}.number_value={value}').format(
+    query_filter = ('schema_title="{type}" AND state={state}'
+                    ' AND metadata.{key}.number_value={value}').format(
                         type=compiler_utils.get_artifact_title(
                             standard_artifacts.ModelBlessing),
                         state=metadata_store_pb2.Artifact.State.Name(
@@ -585,8 +585,8 @@ class StepBuilder(object):
     executor = pipeline_pb2.PipelineDeploymentConfig.ExecutorSpec()
     artifact_queries = {}
     query_filter = (
-        'artifact_type="{type}" and '
-        'state={state} and name={{$.inputs.artifacts["{input_key}"]'
+        'schema_title="{type}" AND '
+        'state={state} AND name={{$.inputs.artifacts["{input_key}"]'
         '.metadata.{property_key}.number_value}}').format(
             type=compiler_utils.get_artifact_title(standard_artifacts.Model),
             state=metadata_store_pb2.Artifact.State.Name(
