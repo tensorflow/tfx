@@ -20,7 +20,6 @@ import json
 import os
 import subprocess
 import sys
-import tempfile
 from typing import Any, Collection, Dict, List, Optional, Text
 
 import click
@@ -98,63 +97,6 @@ class BaseHandler(abc.ABC):
     pipeline_dsl_path = self.flags_dict[labels.PIPELINE_DSL_PATH]
     if not fileio.exists(pipeline_dsl_path):
       sys.exit('Invalid pipeline path: {}'.format(pipeline_dsl_path))
-
-  # TODO(b/185948467): Remove string check in favor of DagRunnerPatcher.
-  def _check_dsl_runner(self) -> None:
-    """Check if runner in dsl is same as engine flag."""
-    engine_flag = self.flags_dict[labels.ENGINE_FLAG]
-    with open(self.flags_dict[labels.PIPELINE_DSL_PATH], 'r') as f:
-      dsl_contents = f.read()
-      runner_names = {
-          labels.AIRFLOW_ENGINE: 'AirflowDagRunner',
-          labels.BEAM_ENGINE: 'BeamDagRunner',
-          labels.LOCAL_ENGINE: 'LocalDagRunner',
-      }
-      if runner_names[engine_flag] not in dsl_contents:
-        sys.exit('{} runner not found in dsl.'.format(engine_flag))
-
-  def _extract_pipeline_args(self) -> Dict[Text, Any]:
-    """Get pipeline args from the DSL.
-
-    Returns:
-      Python dictionary with pipeline details extracted from DSL.
-    """
-    # TODO(b/157599419): This method will be replaced with execute_dsl() below.
-    pipeline_dsl_path = self.flags_dict[labels.PIPELINE_DSL_PATH]
-    if os.path.isdir(pipeline_dsl_path):
-      sys.exit('Provide dsl file path.')
-
-    # Create an environment for subprocess.
-    temp_env = os.environ.copy()
-
-    # Create temp file to store pipeline_args from pipeline dsl.
-    temp_file = tempfile.mkstemp(prefix='cli_tmp_', suffix='_pipeline_args')[1]
-
-    # Store temp_file path in temp_env.
-    # LINT.IfChange
-    temp_env[labels.TFX_JSON_EXPORT_PIPELINE_ARGS_PATH] = temp_file
-    # LINT.ThenChange(
-    #     ../../../orchestration/beam/beam_dag_runner.py,
-    #     ../../../orchestration/local/local_dag_runner.py,
-    # )
-
-    # Run dsl with mock environment to store pipeline args in temp_file.
-    self._subprocess_call([sys.executable, pipeline_dsl_path], env=temp_env)
-    if os.stat(temp_file).st_size != 0:
-      # Load pipeline_args from temp_file for TFX pipelines
-      with open(temp_file, 'r') as f:
-        pipeline_args = json.load(f)
-    else:
-      # For non-TFX pipelines, extract pipeline name from the dsl filename.
-      pipeline_args = {
-          labels.PIPELINE_NAME:
-              os.path.basename(pipeline_dsl_path).split('.')[0]
-      }
-
-    # Delete temp file
-    io_utils.delete_dir(temp_file)
-
-    return pipeline_args
 
   def execute_dsl(
       self, patcher: dag_runner_patcher.DagRunnerPatcher) -> Dict[str, Any]:
@@ -291,6 +233,13 @@ class BaseHandler(abc.ABC):
     elif not required and exists:
       sys.exit('Pipeline "{}" already exists.'.format(pipeline_name))
 
+  def _get_pipeline_info_path(self, pipeline_name):
+    return os.path.join(self._handler_home_dir, pipeline_name)
+
+  def _get_pipeline_args_path(self, pipeline_name):
+    return os.path.join(
+        self._get_pipeline_info_path(pipeline_name), 'pipeline_args.json')
+
   def get_schema(self):
     """Get the schema of the pipeline."""
     pipeline_name = self.flags_dict[labels.PIPELINE_NAME]
@@ -299,9 +248,7 @@ class BaseHandler(abc.ABC):
     self._check_pipeline_existence(pipeline_name)
 
     # Path to pipeline args.
-    pipeline_args_path = os.path.join(self._handler_home_dir,
-                                      self.flags_dict[labels.PIPELINE_NAME],
-                                      'pipeline_args.json')
+    pipeline_args_path = self._get_pipeline_args_path(pipeline_name)
 
     # Get pipeline_root.
     with open(pipeline_args_path, 'r') as f:

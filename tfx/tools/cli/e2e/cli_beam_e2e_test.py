@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,14 +13,9 @@
 # limitations under the License.
 """E2E Beam tests for CLI."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import codecs
 import locale
 import os
-import tempfile
 
 from click import testing as click_testing
 import tensorflow as tf
@@ -29,9 +23,10 @@ import tensorflow as tf
 from tfx.dsl.io import fileio
 from tfx.tools.cli.cli_main import cli_group
 from tfx.utils import io_utils
+from tfx.utils import test_case_utils
 
 
-class CliBeamEndToEndTest(tf.test.TestCase):
+class CliBeamEndToEndTest(test_case_utils.TfxTest):
 
   def setUp(self):
     super(CliBeamEndToEndTest, self).setUp()
@@ -42,14 +37,12 @@ class CliBeamEndToEndTest(tf.test.TestCase):
       os.environ['LANG'] = 'en_US.utf-8'
 
     # Setup beam_home in a temp directory
-    self._home = os.path.join(
-        os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR', tempfile.mkdtemp()),
-        self._testMethodName)
-    self._old_home = os.environ.get('HOME')
-    os.environ['HOME'] = self._home
-    self._old_beam_home = os.environ.get('BEAM_HOME')
-    os.environ['BEAM_HOME'] = os.path.join(self._home, 'beam', '')
-    self._beam_home = os.environ['BEAM_HOME']
+    self._home = self.tmp_dir
+    self._beam_home = os.path.join(self._home, 'beam')
+    self.enter_context(
+        test_case_utils.override_env_var('BEAM_HOME', self._beam_home))
+    self.enter_context(
+        test_case_utils.override_env_var('HOME', self._home))
 
     # Testdata path.
     self._testdata_dir = os.path.join(
@@ -75,13 +68,6 @@ class CliBeamEndToEndTest(tf.test.TestCase):
 
     # Initialize CLI runner.
     self.runner = click_testing.CliRunner()
-
-  def tearDown(self):
-    super(CliBeamEndToEndTest, self).tearDown()
-    if self._old_beam_home:
-      os.environ['BEAM_HOME'] = self._old_beam_home
-    if self._old_home:
-      os.environ['HOME'] = self._old_home
 
   def _valid_create_and_check(self, pipeline_path, pipeline_name):
     handler_pipeline_path = os.path.join(self._beam_home, pipeline_name)
@@ -160,15 +146,15 @@ class CliBeamEndToEndTest(tf.test.TestCase):
                   result.output)
 
     # Wrong Runner.
-    pipeline_path = os.path.join(self._testdata_dir,
-                                 'test_pipeline_kubeflow_1.py')
+    pipeline_path = os.path.join(self.tmp_dir, 'empty_file.py')
+    io_utils.write_string_file(pipeline_path, '')
     result = self.runner.invoke(cli_group, [
         'pipeline', 'compile', '--engine', 'beam', '--pipeline_path',
         pipeline_path
     ])
     self.assertIn('CLI', result.output)
     self.assertIn('Compiling pipeline', result.output)
-    self.assertIn('beam runner not found in dsl.', result.output)
+    self.assertIn('Cannot find BeamDagRunner.run()', result.output)
 
     # Successful compilation.
     pipeline_path = os.path.join(self._testdata_dir, 'test_pipeline_beam_2.py')

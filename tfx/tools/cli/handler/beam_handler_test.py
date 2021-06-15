@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,51 +13,18 @@
 # limitations under the License.
 """Tests for tfx.tools.cli.handler.beam_handler."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import json
 import os
+import subprocess
 import sys
 from unittest import mock
 
-import click
 import tensorflow as tf
 from tfx.dsl.components.base import base_driver
 from tfx.dsl.io import fileio
 from tfx.tools.cli import labels
 from tfx.tools.cli.handler import beam_handler
 from tfx.utils import test_case_utils
-
-
-def _MockSubprocess(cmd, env):  # pylint: disable=invalid-name, unused-argument
-  # Store pipeline_args in a json file
-  pipeline_args_path = env[labels.TFX_JSON_EXPORT_PIPELINE_ARGS_PATH]
-  pipeline_name = 'chicago_taxi_beam'
-  pipeline_root = os.path.join(os.environ['HOME'], 'tfx', 'pipelines',
-                               pipeline_name)
-  pipeline_args = {
-      'pipeline_name': pipeline_name,
-      'pipeline_root': pipeline_root
-  }
-  with open(pipeline_args_path, 'w') as f:
-    json.dump(pipeline_args, f)
-  return 0
-
-
-def _MockSubprocess2(cmd, env):  # pylint: disable=invalid-name, unused-argument
-  # Store pipeline_args in a json file
-  pipeline_args_path = env[labels.TFX_JSON_EXPORT_PIPELINE_ARGS_PATH]
-  pipeline_args = {}
-  with open(pipeline_args_path, 'w') as f:
-    json.dump(pipeline_args, f)
-  return 0
-
-
-def _MockSubprocess3(cmd, env):  # pylint: disable=unused-argument
-  click.echo(cmd)
-  return 0
 
 
 class BeamHandlerTest(test_case_utils.TfxTest):
@@ -83,27 +49,22 @@ class BeamHandlerTest(test_case_utils.TfxTest):
                                       self.pipeline_name)
     self.run_id = 'dummyID'
 
-    # Pipeline args for mocking subprocess
     self.pipeline_args = {
-        'pipeline_name': 'chicago_taxi_beam',
-        'pipeline_dsl_path': self.pipeline_path
+        labels.PIPELINE_NAME: self.pipeline_name,
+        labels.PIPELINE_DSL_PATH: self.pipeline_path,
     }
 
-  @mock.patch('subprocess.call', _MockSubprocess)
   def testSavePipeline(self):
     flags_dict = {
         labels.ENGINE_FLAG: self.engine,
         labels.PIPELINE_DSL_PATH: self.pipeline_path
     }
     handler = beam_handler.BeamHandler(flags_dict)
-    pipeline_args = handler._extract_pipeline_args()
-    handler._save_pipeline(pipeline_args)
+    handler._save_pipeline({labels.PIPELINE_NAME: self.pipeline_name})
     self.assertTrue(
         fileio.exists(
-            os.path.join(handler._handler_home_dir,
-                         self.pipeline_args[labels.PIPELINE_NAME])))
+            os.path.join(handler._handler_home_dir, self.pipeline_name)))
 
-  @mock.patch('subprocess.call', _MockSubprocess)
   def testCreatePipeline(self):
     flags_dict = {
         labels.ENGINE_FLAG: self.engine,
@@ -111,13 +72,9 @@ class BeamHandlerTest(test_case_utils.TfxTest):
     }
     handler = beam_handler.BeamHandler(flags_dict)
     handler.create_pipeline()
-    handler_pipeline_path = os.path.join(
-        handler._handler_home_dir, self.pipeline_args[labels.PIPELINE_NAME], '')
     self.assertTrue(
-        fileio.exists(
-            os.path.join(handler_pipeline_path, 'pipeline_args.json')))
+        fileio.exists(handler._get_pipeline_args_path(self.pipeline_name)))
 
-  @mock.patch('subprocess.call', _MockSubprocess)
   def testCreatePipelineExistentPipeline(self):
     flags_dict = {
         labels.ENGINE_FLAG: self.engine,
@@ -132,7 +89,6 @@ class BeamHandlerTest(test_case_utils.TfxTest):
         str(err.exception), 'Pipeline "{}" already exists.'.format(
             self.pipeline_args[labels.PIPELINE_NAME]))
 
-  @mock.patch('subprocess.call', _MockSubprocess)
   def testUpdatePipeline(self):
     # First create pipeline with test_pipeline.py
     pipeline_path_1 = os.path.join(self.chicago_taxi_pipeline_dir,
@@ -153,13 +109,9 @@ class BeamHandlerTest(test_case_utils.TfxTest):
     }
     handler = beam_handler.BeamHandler(flags_dict_2)
     handler.update_pipeline()
-    handler_pipeline_path = os.path.join(
-        handler._handler_home_dir, self.pipeline_args[labels.PIPELINE_NAME], '')
     self.assertTrue(
-        fileio.exists(
-            os.path.join(handler_pipeline_path, 'pipeline_args.json')))
+        fileio.exists(handler._get_pipeline_args_path(self.pipeline_name)))
 
-  @mock.patch('subprocess.call', _MockSubprocess)
   def testUpdatePipelineNoPipeline(self):
     # Update pipeline without creating one.
     flags_dict = {
@@ -173,7 +125,6 @@ class BeamHandlerTest(test_case_utils.TfxTest):
         str(err.exception), 'Pipeline "{}" does not exist.'.format(
             self.pipeline_args[labels.PIPELINE_NAME]))
 
-  @mock.patch('subprocess.call', _MockSubprocess)
   def testCompilePipeline(self):
     flags_dict = {
         labels.ENGINE_FLAG: self.engine,
@@ -184,20 +135,15 @@ class BeamHandlerTest(test_case_utils.TfxTest):
       handler.compile_pipeline()
     self.assertIn('Pipeline compiled successfully', captured.contents())
 
-  @mock.patch('subprocess.call', _MockSubprocess2)
   def testCompilePipelineNoPipelineArgs(self):
     flags_dict = {
         labels.ENGINE_FLAG: self.engine,
-        labels.PIPELINE_DSL_PATH: self.pipeline_path
+        labels.PIPELINE_DSL_PATH: 'wrong_pipeline_path.py'
     }
     handler = beam_handler.BeamHandler(flags_dict)
-    with self.assertRaises(SystemExit) as err:
+    with self.assertRaisesRegex(SystemExit, 'Invalid pipeline path'):
       handler.compile_pipeline()
-    self.assertEqual(
-        str(err.exception),
-        'Unable to compile pipeline. Check your pipeline dsl.')
 
-  @mock.patch('subprocess.call', _MockSubprocess)
   def testDeletePipeline(self):
     # First create a pipeline.
     flags_dict = {
@@ -214,11 +160,9 @@ class BeamHandlerTest(test_case_utils.TfxTest):
     }
     handler = beam_handler.BeamHandler(flags_dict)
     handler.delete_pipeline()
-    handler_pipeline_path = os.path.join(
-        handler._handler_home_dir, self.pipeline_args[labels.PIPELINE_NAME], '')
-    self.assertFalse(fileio.exists(handler_pipeline_path))
+    self.assertFalse(
+        fileio.exists(handler._get_pipeline_info_path(self.pipeline_name)))
 
-  @mock.patch('subprocess.call', _MockSubprocess)
   def testDeletePipelineNonExistentPipeline(self):
     flags_dict = {
         labels.ENGINE_FLAG: self.engine,
@@ -256,7 +200,6 @@ class BeamHandlerTest(test_case_utils.TfxTest):
       handler.list_pipelines()
     self.assertIn('No pipelines to display.', captured.contents())
 
-  @mock.patch('subprocess.call', _MockSubprocess)
   def testPipelineSchemaNoPipelineRoot(self):
     flags_dict = {
         labels.ENGINE_FLAG: self.engine,
@@ -277,7 +220,6 @@ class BeamHandlerTest(test_case_utils.TfxTest):
         'Create a run before inferring schema. If pipeline is already running, then wait for it to successfully finish.'
     )
 
-  @mock.patch('subprocess.call', _MockSubprocess)
   def testPipelineSchemaNoSchemaGenOutput(self):
     # First create a pipeline.
     flags_dict = {
@@ -300,7 +242,6 @@ class BeamHandlerTest(test_case_utils.TfxTest):
         'Either SchemaGen component does not exist or pipeline is still running. If pipeline is running, then wait for it to successfully finish.'
     )
 
-  @mock.patch('subprocess.call', _MockSubprocess)
   def testPipelineSchemaSuccessfulRun(self):
     # First create a pipeline.
     flags_dict = {
@@ -333,25 +274,26 @@ class BeamHandlerTest(test_case_utils.TfxTest):
           captured.contents())
       self.assertTrue(fileio.exists(curr_dir_path))
 
-  @mock.patch('subprocess.call', _MockSubprocess3)
-  def testCreateRun(self):
+  @mock.patch.object(subprocess, 'call', autospec=True, return_value=0)
+  def testCreateRun(self, mock_call):
     # Create a pipeline in dags folder.
     handler_pipeline_path = os.path.join(
         os.environ['BEAM_HOME'], self.pipeline_args[labels.PIPELINE_NAME])
     fileio.makedirs(handler_pipeline_path)
-    with open(os.path.join(handler_pipeline_path, 'pipeline_args.json'),
-              'w') as f:
-      json.dump(self.pipeline_args, f)
 
-    # Now run the pipeline
     flags_dict = {
         labels.ENGINE_FLAG: self.engine,
         labels.PIPELINE_NAME: self.pipeline_name
     }
     handler = beam_handler.BeamHandler(flags_dict)
-    with self.captureWritesToStream(sys.stdout) as captured:
-      handler.create_run()
-    self.assertIn(self.pipeline_path, captured.contents())
+    with open(handler._get_pipeline_args_path(self.pipeline_name), 'w') as f:
+      json.dump(self.pipeline_args, f)
+
+    # Now run the pipeline
+    handler.create_run()
+
+    mock_call.assert_called_once()
+    self.assertIn(self.pipeline_path, mock_call.call_args[0][0])
 
   def testCreateRunNoPipeline(self):
     # Run pipeline without creating one.

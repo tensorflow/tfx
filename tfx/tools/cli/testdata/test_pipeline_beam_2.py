@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,14 +13,10 @@
 # limitations under the License.
 """Chicago taxi example using TFX on Beam."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import os
 from typing import Text
 
-import absl
+from absl import logging
 
 from tfx.components.example_gen.csv_example_gen.component import CsvExampleGen
 from tfx.orchestration import metadata
@@ -58,7 +53,7 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
 
 
 if __name__ == '__main__':
-  absl.logging.set_verbosity(absl.logging.INFO)
+  logging.set_verbosity(logging.INFO)
   BeamDagRunner().run(
       _create_pipeline(
           pipeline_name=_pipeline_name,

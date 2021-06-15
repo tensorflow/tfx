@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,10 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """E2E Tests for tfx.tools.cli."""
-
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
 
 import codecs
 import locale
@@ -38,29 +33,9 @@ class CliCommonEndToEndTest(tf.test.TestCase):
     if codecs.lookup(locale.getpreferredencoding()).name == 'ascii':
       os.environ['LANG'] = 'en_US.utf-8'
 
-    self._home = os.path.join(
-        os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR', self.get_temp_dir()),
-        self._testMethodName)
-
-    self._original_home_value = os.environ.get('HOME', '')
-    os.environ['HOME'] = self._home
-    self._original_beam_home_value = os.environ.get('BEAM_HOME', '')
-    os.environ['BEAM_HOME'] = os.path.join(os.environ['HOME'], 'beam')
-    self._original_airflow_home_value = os.environ.get('AIRFLOW_HOME', '')
-    os.environ['AIRFLOW_HOME'] = os.path.join(os.environ['HOME'], 'airflow')
-    self._original_kubeflow_home_value = os.environ.get('KUBEFLOW_HOME', '')
-    os.environ['KUBEFLOW_HOME'] = os.path.join(os.environ['HOME'], 'kubeflow')
-
     self.chicago_taxi_pipeline_dir = os.path.join(
         os.path.dirname(os.path.dirname(__file__)), 'testdata')
     self.runner = click_testing.CliRunner()
-
-  def tearDown(self):
-    super(CliCommonEndToEndTest, self).tearDown()
-    os.environ['HOME'] = self._original_home_value
-    os.environ['BEAM_HOME'] = self._original_beam_home_value
-    os.environ['AIRFLOW_HOME'] = self._original_airflow_home_value
-    os.environ['KUBEFLOW_HOME'] = self._original_kubeflow_home_value
 
   def testPipelineCreateUnsupportedEngine(self):
     pipeline_path = os.path.join(self.chicago_taxi_pipeline_dir,
@@ -72,29 +47,6 @@ class CliCommonEndToEndTest(tf.test.TestCase):
     self.assertIn('CLI', result.output)
     self.assertIn('Creating pipeline', result.output)
     self.assertIn('Engine flink is not supported.', str(result.exception))
-
-  def testPipelineCreateIncorrectRunner(self):
-    pipeline_path = os.path.join(self.chicago_taxi_pipeline_dir,
-                                 'test_pipeline_airflow_1.py')
-    result = self.runner.invoke(cli_group, [
-        'pipeline', 'create', '--engine', 'beam', '--pipeline_path',
-        pipeline_path
-    ])
-    self.assertIn('CLI', result.output)
-    self.assertIn('Creating pipeline', result.output)
-    self.assertIn('beam runner not found in dsl.', result.output)
-
-  def testPipelineCreateInvalidPipelinePath(self):
-    pipeline_path = os.path.join(self.chicago_taxi_pipeline_dir,
-                                 'test_pipeline.py')
-    result = self.runner.invoke(cli_group, [
-        'pipeline', 'create', '--engine', 'beam',
-        '--pipeline_path', pipeline_path
-    ])
-    self.assertIn('CLI', result.output)
-    self.assertIn('Creating pipeline', result.output)
-    self.assertIn('Invalid pipeline path: {}'.format(pipeline_path),
-                  result.output)
 
   def testMissingRequiredFlag(self):
     pipeline_name_1 = 'chicago_taxi_simple'

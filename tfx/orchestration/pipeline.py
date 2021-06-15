@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,14 +13,7 @@
 # limitations under the License.
 """Definition and related classes for TFX pipeline."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
-
 import enum
-import json
-import os
 from typing import List, Optional, Text, cast
 
 from tfx.dsl.components.base import base_node
@@ -115,7 +107,6 @@ class Pipeline(object):
       raise ValueError(
           f'pipeline {pipeline_name} exceeds maximum allowed length: {_MAX_PIPELINE_NAME_LENGTH}.'
       )
-    pipeline_args = dict(kwargs)
 
     # TODO(b/183621450): deprecate PipelineInfo.
     self.pipeline_info = data_types.PipelineInfo(  # pylint: disable=g-missing-from-attributes
@@ -129,18 +120,8 @@ class Pipeline(object):
 
     self.platform_config = platform_config
 
-    self.additional_pipeline_args = pipeline_args.get(  # pylint: disable=g-missing-from-attributes
+    self.additional_pipeline_args = kwargs.get(  # pylint: disable=g-missing-from-attributes
         'additional_pipeline_args', {})
-
-    # Store pipeline_args in a json file only when temp file exists.
-    pipeline_args.update({
-        'pipeline_name': pipeline_name,
-        'pipeline_root': pipeline_root,
-    })
-    if 'TFX_JSON_EXPORT_PIPELINE_ARGS_PATH' in os.environ:
-      pipeline_args_path = os.environ.get('TFX_JSON_EXPORT_PIPELINE_ARGS_PATH')
-      with open(pipeline_args_path, 'w') as f:
-        json.dump(pipeline_args, f)
 
     # Calls property setter.
     self.components = components or []

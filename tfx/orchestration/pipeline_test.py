@@ -21,7 +21,6 @@ from __future__ import unicode_literals
 
 import itertools
 import os
-import tempfile
 from typing import Any, Dict, Text, Type
 
 import tensorflow as tf
@@ -31,11 +30,11 @@ from tfx.dsl.components.base import base_component
 from tfx.dsl.components.base import base_executor
 from tfx.dsl.components.base import base_node
 from tfx.dsl.components.base import executor_spec
-from tfx.dsl.io import fileio
 from tfx.orchestration import metadata
 from tfx.orchestration import pipeline
 from tfx.types import node_common
 from tfx.types.component_spec import ChannelParameter
+from tfx.utils import test_case_utils
 
 
 class _OutputArtifact(types.Artifact):
@@ -139,30 +138,12 @@ class _OutputTypeE(types.Artifact):
   TYPE_NAME = 'OutputTypeE'
 
 
-class PipelineTest(tf.test.TestCase):
+class PipelineTest(test_case_utils.TfxTest):
 
   def setUp(self):
     super(PipelineTest, self).setUp()
-    tmp_dir = os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR', self.get_temp_dir())
-    self._tmp_file = os.path.join(tmp_dir, self._testMethodName,
-                                  tempfile.mkstemp(prefix='cli_tmp_')[1])
-    self._tmp_dir = os.path.join(tmp_dir, self._testMethodName,
-                                 tempfile.mkdtemp(prefix='cli_tmp_')[1])
-    # Back up the environmental variable.
-    self._original_tmp_value = os.environ.get(
-        'TFX_JSON_EXPORT_PIPELINE_ARGS_PATH')
     self._metadata_connection_config = metadata.sqlite_metadata_connection_config(
-        os.path.join(self._tmp_dir, 'metadata'))
-
-  def tearDown(self):
-    super(PipelineTest, self).tearDown()
-    # Restore the environmental variable. None means it was unset.
-    if self._original_tmp_value is None:
-      if 'TFX_JSON_EXPORT_PIPELINE_ARGS_PATH' in os.environ:
-        del os.environ['TFX_JSON_EXPORT_PIPELINE_ARGS_PATH']
-    else:
-      os.environ[
-          'TFX_JSON_EXPORT_PIPELINE_ARGS_PATH'] = self._original_tmp_value
+        os.path.join(self.tmp_dir, 'metadata'))
 
   def testPipeline(self):
     component_a = _make_fake_component_instance('component_a', _OutputTypeA, {},
@@ -279,29 +260,6 @@ class PipelineTest(tf.test.TestCase):
           pipeline_root='b',
           components=[component_c, component_b, component_a],
           metadata_connection_config=self._metadata_connection_config)
-
-  def testPipelineSavePipelineArgs(self):
-    os.environ['TFX_JSON_EXPORT_PIPELINE_ARGS_PATH'] = self._tmp_file
-    pipeline.Pipeline(
-        pipeline_name='a',
-        pipeline_root='b',
-        log_root='c',
-        components=[
-            _make_fake_component_instance('component_a', _OutputTypeA, {}, {})
-        ],
-        metadata_connection_config=self._metadata_connection_config)
-    self.assertTrue(fileio.exists(self._tmp_file))
-
-  def testPipelineNoTmpFolder(self):
-    pipeline.Pipeline(
-        pipeline_name='a',
-        pipeline_root='b',
-        log_root='c',
-        components=[
-            _make_fake_component_instance('component_a', _OutputTypeA, {}, {})
-        ],
-        metadata_connection_config=self._metadata_connection_config)
-    self.assertNotIn('TFX_JSON_EXPORT_PIPELINE_ARGS_PATH', os.environ)
 
   def testPipelineWithBeamPipelineArgs(self):
     expected_args = [

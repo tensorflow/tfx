@@ -204,14 +204,14 @@ class CliAirflowEndToEndTest(test_case_utils.TfxTest):
                   result.output)
 
     # Wrong Runner.
-    pipeline_path = os.path.join(self._testdata_dir,
-                                 'test_pipeline_kubeflow_1.py')
+    pipeline_path = os.path.join(self.tmp_dir, 'empty_file.py')
+    io_utils.write_string_file(pipeline_path, '')
     result = self.runner.invoke(cli_group, [
         'pipeline', 'compile', '--engine', 'airflow', '--pipeline_path',
         pipeline_path
     ])
     self.assertIn('Compiling pipeline', result.output)
-    self.assertIn('airflow runner not found in dsl.', result.output)
+    self.assertIn('Cannot find AirflowDagRunner.run()', result.output)
 
     # Successful compilation.
     result = self.runner.invoke(cli_group, [

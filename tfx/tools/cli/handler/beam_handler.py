@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,12 +13,7 @@
 # limitations under the License.
 """Handler for Beam."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import json
-import os
 import sys
 from typing import Any, Dict, Text
 
@@ -28,11 +22,16 @@ import click
 from tfx.dsl.io import fileio
 from tfx.tools.cli import labels
 from tfx.tools.cli.handler import base_handler
+from tfx.tools.cli.handler import beam_dag_runner_patcher
+from tfx.tools.cli.handler import dag_runner_patcher
 from tfx.utils import io_utils
 
 
 class BeamHandler(base_handler.BaseHandler):
   """Helper methods for Beam Handler."""
+
+  def _get_dag_runner_patcher(self) -> dag_runner_patcher.DagRunnerPatcher:
+    return beam_dag_runner_patcher.BeamDagRunnerPatcher()
 
   def create_pipeline(self, overwrite: bool = False) -> None:
     """Creates pipeline in Beam.
@@ -40,14 +39,15 @@ class BeamHandler(base_handler.BaseHandler):
     Args:
       overwrite: set as true to update pipeline.
     """
-    # Compile pipeline to check if pipeline_args are extracted successfully.
-    pipeline_args = self.compile_pipeline()
-
-    pipeline_name = pipeline_args[labels.PIPELINE_NAME]
+    patcher = self._get_dag_runner_patcher()
+    context = self.execute_dsl(patcher)
+    pipeline_name = context[patcher.PIPELINE_NAME]
 
     self._check_pipeline_existence(pipeline_name, required=overwrite)
-
-    self._save_pipeline(pipeline_args)
+    self._save_pipeline({
+        labels.PIPELINE_NAME: pipeline_name,
+        labels.PIPELINE_ROOT: context[patcher.PIPELINE_ROOT]
+    })
 
     if overwrite:
       click.echo('Pipeline "{}" updated successfully.'.format(pipeline_name))
@@ -75,10 +75,7 @@ class BeamHandler(base_handler.BaseHandler):
   def delete_pipeline(self) -> None:
     """Deletes pipeline in Beam."""
     pipeline_name = self.flags_dict[labels.PIPELINE_NAME]
-
-    # Path to pipeline folder.
-    handler_pipeline_path = os.path.join(self._handler_home_dir, pipeline_name,
-                                         '')
+    handler_pipeline_path = self._get_pipeline_info_path(pipeline_name)
 
     # Check if pipeline exists.
     self._check_pipeline_existence(pipeline_name)
@@ -87,19 +84,11 @@ class BeamHandler(base_handler.BaseHandler):
     io_utils.delete_dir(handler_pipeline_path)
     click.echo('Pipeline "{}" deleted successfully.'.format(pipeline_name))
 
-  def compile_pipeline(self) -> Dict[Text, Any]:
-    """Compiles pipeline in Beam.
-
-    Returns:
-      pipeline_args: python dictionary with pipeline details extracted from DSL.
-    """
-    self._check_pipeline_dsl_path()
-    self._check_dsl_runner()
-    pipeline_args = self._extract_pipeline_args()
-    if not pipeline_args:
-      sys.exit('Unable to compile pipeline. Check your pipeline dsl.')
+  def compile_pipeline(self) -> None:
+    """Compiles pipeline in Beam."""
+    patcher = self._get_dag_runner_patcher()
+    self.execute_dsl(patcher)
     click.echo('Pipeline compiled successfully.')
-    return pipeline_args
 
   def create_run(self) -> None:
     """Runs a pipeline in Beam."""
@@ -108,10 +97,7 @@ class BeamHandler(base_handler.BaseHandler):
     # Check if pipeline exists.
     self._check_pipeline_existence(pipeline_name)
 
-    # Get dsl path from pipeline args.
-    pipeline_args_path = os.path.join(self._handler_home_dir, pipeline_name,
-                                      'pipeline_args.json')
-    with open(pipeline_args_path, 'r') as f:
+    with open(self._get_pipeline_args_path(pipeline_name), 'r') as f:
       pipeline_args = json.load(f)
 
     # Run pipeline dsl.
@@ -144,11 +130,9 @@ class BeamHandler(base_handler.BaseHandler):
     # Add pipeline dsl path to pipeline args.
     pipeline_args[labels.PIPELINE_DSL_PATH] = self.flags_dict[
         labels.PIPELINE_DSL_PATH]
+    pipeline_name = pipeline_args[labels.PIPELINE_NAME]
 
-    # Path to pipeline folder in beam.
-    handler_pipeline_path = os.path.join(self._handler_home_dir,
-                                         pipeline_args[labels.PIPELINE_NAME],
-                                         '')
+    handler_pipeline_path = self._get_pipeline_info_path(pipeline_name)
 
     # If updating pipeline, first delete pipeline directory.
     if fileio.exists(handler_pipeline_path):
@@ -156,6 +140,6 @@ class BeamHandler(base_handler.BaseHandler):
 
     # Dump pipeline_args to handler pipeline folder as json.
     fileio.makedirs(handler_pipeline_path)
-    with open(os.path.join(handler_pipeline_path, 'pipeline_args.json'),
+    with open(self._get_pipeline_args_path(pipeline_name),
               'w') as f:
       json.dump(pipeline_args, f)

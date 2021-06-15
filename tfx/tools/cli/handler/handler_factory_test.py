@@ -21,7 +21,6 @@ from unittest import mock
 import tensorflow as tf
 
 from tfx.tools.cli import labels
-from tfx.tools.cli.handler import airflow_handler
 from tfx.tools.cli.handler import beam_handler
 from tfx.tools.cli.handler import handler_factory
 from tfx.tools.cli.handler import local_handler
@@ -46,12 +45,18 @@ class HandlerFactoryTest(tf.test.TestCase):
     return b'absl-py==0.7.1\nalembic==0.9.10\napache-beam==2.12.0\napache-airflow==1.10.3\n'
 
   @mock.patch('subprocess.check_output', _MockSubprocessAirflow)
-  @mock.patch.object(airflow_handler, 'AirflowHandler', autospec=True)
-  def testCreateHandlerAirflow(self, mock_airflow_handler):
-    self.flags_dict[labels.ENGINE_FLAG] = 'airflow'
+  def testCreateHandlerAirflow(self):
+    try:
+      from tfx.tools.cli.handler import airflow_handler  # pylint: disable=g-import-not-at-top
+    except ImportError:
+      self.skipTest('Airflow is not available.')
 
-    handler_factory.create_handler(self.flags_dict)
-    mock_airflow_handler.assert_called_once_with(self.flags_dict)
+    self.flags_dict[labels.ENGINE_FLAG] = 'airflow'
+    with mock.patch.object(
+        airflow_handler, 'AirflowHandler',
+        autospec=True) as mock_airflow_handler:
+      handler_factory.create_handler(self.flags_dict)
+      mock_airflow_handler.assert_called_once_with(self.flags_dict)
 
   def _MockSubprocessKubeflow(self):
     return b'absl-py==0.7.1\nadal==1.2.1\nalembic==0.9.10\napache-beam==2.12.0\nkfp==0.1\n'

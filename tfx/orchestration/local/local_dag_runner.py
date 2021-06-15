@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,7 +14,6 @@
 """Definition of Beam TFX runner."""
 
 import datetime
-import os
 
 from absl import logging
 from tfx.dsl.compiler import compiler
@@ -43,11 +41,6 @@ class LocalDagRunner(tfx_runner.TfxRunner):
     Args:
       pipeline: Logical pipeline containing pipeline args and components.
     """
-    # For CLI, while creating or updating pipeline, pipeline_args are extracted
-    # and hence we avoid executing the pipeline.
-    if 'TFX_JSON_EXPORT_PIPELINE_ARGS_PATH' in os.environ:
-      return
-
     for component in pipeline.components:
       # TODO(b/187122662): Pass through pip dependencies as a first-class
       # component flag.

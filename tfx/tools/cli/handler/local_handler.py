@@ -14,9 +14,14 @@
 """Handler for local orchestrator."""
 
 from tfx.tools.cli.handler import beam_handler
+from tfx.tools.cli.handler import dag_runner_patcher
+from tfx.tools.cli.handler import local_dag_runner_patcher
 
 
 class LocalHandler(beam_handler.BeamHandler):
   """CLI Actions for the local orchestrator."""
-  # All implementation is the same as BeamHandler.
-  pass
+  # All implementation is the same as BeamHandler except the patcher creation.
+
+  def _get_dag_runner_patcher(self) -> dag_runner_patcher.DagRunnerPatcher:
+    return local_dag_runner_patcher.LocalDagRunnerPatcher()
+
