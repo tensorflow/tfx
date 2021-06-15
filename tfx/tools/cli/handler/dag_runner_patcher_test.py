@@ -15,7 +15,9 @@
 
 from unittest import mock
 
+from absl.testing import parameterized
 import tensorflow as tf
+from tfx.dsl.compiler import compiler
 from tfx.orchestration import pipeline as tfx_pipeline
 from tfx.orchestration import tfx_runner
 from tfx.tools.cli.handler import dag_runner_patcher
@@ -53,12 +55,18 @@ class _DummyDagRunnerPatcher(dag_runner_patcher.DagRunnerPatcher):
     context['foo'] = 24
 
 
-class DagRunnerPatcherTest(tf.test.TestCase):
+class DagRunnerPatcherTest(tf.test.TestCase, parameterized.TestCase):
 
+  @parameterized.named_parameters(
+      ('PipelineObject', False),
+      ('PipelineProto', True),
+  )
   @mock.patch.object(_DummyDagRunner, 'run', autospec=True)
-  def testPatcher(self, mock_run):
+  def testPatcher(self, use_pipeline_proto, mock_run):
     patcher = _DummyDagRunnerPatcher(self)
     pipeline = tfx_pipeline.Pipeline(_PIPELINE_NAME, 'dummy_root')
+    if use_pipeline_proto:
+      pipeline = compiler.Compiler().compile(pipeline)
     runner = _DummyDagRunner()
 
     with patcher.patch() as context:

@@ -16,10 +16,12 @@
 import abc
 import contextlib
 import functools
-from typing import Any, MutableMapping, Type
+from typing import Any, MutableMapping, Type, Union
 
 from tfx.orchestration import pipeline as tfx_pipeline
 from tfx.orchestration import tfx_runner
+from tfx.orchestration.portable import tfx_runner as portable_tfx_runner
+from tfx.proto.orchestration import pipeline_pb2
 
 
 class DagRunnerPatcher(abc.ABC):
@@ -55,17 +57,19 @@ class DagRunnerPatcher(abc.ABC):
     self._call_real_run = call_real_run
 
   def _before_run(self, runner: tfx_runner.TfxRunner,
-                  pipeline: tfx_pipeline.Pipeline,
+                  pipeline: Union[pipeline_pb2.Pipeline, tfx_pipeline.Pipeline],
                   context: MutableMapping[str, Any]) -> None:
     pass
 
   def _after_run(self, runner: tfx_runner.TfxRunner,
-                 pipeline: tfx_pipeline.Pipeline,
+                 pipeline: Union[pipeline_pb2.Pipeline, tfx_pipeline.Pipeline],
                  context: MutableMapping[str, Any]) -> None:
     pass
 
   @abc.abstractmethod
-  def get_runner_class(self) -> Type[tfx_runner.TfxRunner]:
+  def get_runner_class(
+      self
+  ) -> Union[Type[tfx_runner.TfxRunner], Type[portable_tfx_runner.TfxRunner]]:
     raise NotImplementedError()
 
   @property
@@ -113,8 +117,14 @@ class DagRunnerPatcher(abc.ABC):
         assert len(args) >= 2, 'run() must have pipeline argument.'
         pipeline = args[1]
 
-      self._context[self.PIPELINE_NAME] = pipeline.pipeline_info.pipeline_name
-      self._context[self.PIPELINE_ROOT] = pipeline.pipeline_info.pipeline_root
+      if isinstance(pipeline, tfx_pipeline.Pipeline):
+        self._context[self.PIPELINE_NAME] = pipeline.pipeline_info.pipeline_name
+        self._context[self.PIPELINE_ROOT] = pipeline.pipeline_info.pipeline_root
+      else:  # pipeline_pb2.Pipeline
+        self._context[self.PIPELINE_NAME] = pipeline.pipeline_info.id
+        self._context[self.PIPELINE_ROOT] = (
+            pipeline.runtime_spec.pipeline_root.runtime_parameter.default_value
+            .string_value)
 
       self._before_run(runner, pipeline, self._context)
       if self._call_real_run:

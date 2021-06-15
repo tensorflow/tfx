@@ -20,9 +20,10 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 import os
+import typing
 from typing import Any, Dict, Optional, Text, Union
+import warnings
 
-import absl
 from airflow import models
 
 from tfx.dsl.components.base import base_component
@@ -38,7 +39,9 @@ from tfx.utils.json_utils import json
 class AirflowPipelineConfig(pipeline_config.PipelineConfig):
   """Pipeline config for AirflowDagRunner."""
 
-  def __init__(self, airflow_dag_config: Dict[Text, Any] = None, **kwargs):
+  def __init__(self,
+               airflow_dag_config: Optional[Dict[Text, Any]] = None,
+               **kwargs):
     """Creates an instance of AirflowPipelineConfig.
 
     Args:
@@ -65,7 +68,7 @@ class AirflowDagRunner(tfx_runner.TfxRunner):
         each component.
     """
     if config and not isinstance(config, AirflowPipelineConfig):
-      absl.logging.warning(
+      warnings.warn(
           'Pass config as a dict type is going to deprecated in 0.1.16. '
           'Use AirflowPipelineConfig type instead.', PendingDeprecationWarning)
       config = AirflowPipelineConfig(airflow_dag_config=config)
@@ -84,7 +87,7 @@ class AirflowDagRunner(tfx_runner.TfxRunner):
     # Merge airflow-specific configs with pipeline args
     airflow_dag = models.DAG(
         dag_id=tfx_pipeline.pipeline_info.pipeline_name,
-        **self._config.airflow_dag_config)
+        **(typing.cast(AirflowPipelineConfig, self._config).airflow_dag_config))
     if 'tmp_dir' not in tfx_pipeline.additional_pipeline_args:
       tmp_dir = os.path.join(tfx_pipeline.pipeline_info.pipeline_root, '.temp',
                              '')
