@@ -61,7 +61,7 @@ class _TfxArtifact(Artifact):
     except ModuleNotFoundError:
       pass
     try:
-      import tfx.components as _  # pytype: disable=module-attr  # pylint: disable=g-import-not-at-top
+      import tfx.components as _  # type: ignore  # pylint: disable=g-import-not-at-top
       can_import_components = True
     except ModuleNotFoundError:
       pass
