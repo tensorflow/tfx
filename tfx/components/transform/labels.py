@@ -53,4 +53,4 @@ POST_TRANSFORM_OUTPUT_ANOMALIES_PATH_LABEL = (
     'post_transform_output_anomalies_path')
 
 # Examples File Format
-FORMAT_TFRECORD = 'FORMAT_TFRECORD'
+FORMAT_TFRECORD = 'tfrecords_gzip'

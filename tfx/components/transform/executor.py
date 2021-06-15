@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,10 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Executor for TensorFlow Transform."""
-
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
 
 import functools
 import hashlib
@@ -39,9 +34,10 @@ from tensorflow_transform.tf_metadata import schema_utils
 from tfx import types
 from tfx.components.transform import labels
 from tfx.components.transform import stats_options_util
-from tfx.components.util import tfxio_utils
+from tfx.components.util import examples_utils
 from tfx.components.util import udf_utils
 from tfx.components.util import value_utils
+from tfx.components.util import tfxio_utils
 from tfx.dsl.components.base import base_beam_executor
 from tfx.dsl.components.base import base_executor
 from tfx.dsl.io import fileio
@@ -387,6 +383,10 @@ class Executor(base_beam_executor.BaseBeamExecutor):
     payload_format, data_view_uri = (
         tfxio_utils.resolve_payload_format_and_data_view_uri(
             input_dict[standard_component_specs.EXAMPLES_KEY]))
+    examples_file_formats = [
+        examples_utils.get_file_format(artifact)
+        for artifact in input_dict[standard_component_specs.EXAMPLES_KEY]
+    ]
     schema_file = io_utils.get_only_uri_in_dir(
         artifact_utils.get_single_uri(
             input_dict[standard_component_specs.SCHEMA_KEY]))
@@ -423,18 +423,26 @@ class Executor(base_beam_executor.BaseBeamExecutor):
     absl.logging.debug('Using temp path %s for tft.beam', temp_path)
 
     analyze_data_paths = []
+    analyze_file_formats = []
     for split in splits_config.analyze:
       data_uris = artifact_utils.get_split_uris(
           input_dict[standard_component_specs.EXAMPLES_KEY], split)
-      for data_uri in data_uris:
+      assert len(data_uris) == len(
+          examples_file_formats), 'Length of file formats is different'
+      for data_uri, file_format in zip(data_uris, examples_file_formats):
         analyze_data_paths.append(io_utils.all_files_pattern(data_uri))
+        analyze_file_formats.append(file_format)
 
     transform_data_paths = []
+    transform_file_formats = []
     for split in splits_config.transform:
       data_uris = artifact_utils.get_split_uris(
           input_dict[standard_component_specs.EXAMPLES_KEY], split)
-      for data_uri in data_uris:
+      assert len(data_uris) == len(
+          examples_file_formats), 'Length of file formats is different'
+      for data_uri, file_format in zip(data_uris, examples_file_formats):
         transform_data_paths.append(io_utils.all_files_pattern(data_uri))
+        transform_file_formats.append(file_format)
 
     materialize_output_paths = []
     if output_dict.get(
@@ -483,12 +491,12 @@ class Executor(base_beam_executor.BaseBeamExecutor):
             data_view_uri,
         labels.ANALYZE_DATA_PATHS_LABEL:
             analyze_data_paths,
-        labels.ANALYZE_PATHS_FILE_FORMATS_LABEL: [labels.FORMAT_TFRECORD] *
-                                                 len(analyze_data_paths),
+        labels.ANALYZE_PATHS_FILE_FORMATS_LABEL:
+            analyze_file_formats,
         labels.TRANSFORM_DATA_PATHS_LABEL:
             transform_data_paths,
-        labels.TRANSFORM_PATHS_FILE_FORMATS_LABEL: [labels.FORMAT_TFRECORD] *
-                                                   len(transform_data_paths),
+        labels.TRANSFORM_PATHS_FILE_FORMATS_LABEL:
+            transform_file_formats,
         labels.MODULE_FILE:
             exec_properties.get(standard_component_specs.MODULE_FILE_KEY, None),
         labels.MODULE_PATH:
@@ -1636,6 +1644,7 @@ class Executor(base_beam_executor.BaseBeamExecutor):
         dataset.data_format, dataset.data_view_uri)
     return tfxio_utils.make_tfxio(
         file_pattern=dataset.file_pattern,
+        file_format=dataset.file_format,
         telemetry_descriptors=_TELEMETRY_DESCRIPTORS,
         payload_format=dataset.data_format,
         data_view_uri=dataset.data_view_uri,
