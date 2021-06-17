@@ -25,7 +25,7 @@ from tensorflow_transform.tf_metadata import schema_utils
 
 from tfx import v1 as tfx
 from tfx.experimental.templates.taxi.models import features
-from tfx.experimental.templates.taxi.models.estimator import constants
+from tfx.experimental.templates.taxi.models.estimator_model import constants
 from tfx_bsl.public import tfxio
 
 from tensorflow_metadata.proto.v0 import schema_pb2

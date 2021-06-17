@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2020 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,12 +11,3 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Constants of the taxi model.
-
-These values can be tweaked to affect model training performance.
-"""
-
-HIDDEN_UNITS = [16, 8]
-
-TRAIN_BATCH_SIZE = 40
-EVAL_BATCH_SIZE = 40

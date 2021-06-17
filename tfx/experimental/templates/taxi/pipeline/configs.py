@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2020 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -53,9 +52,9 @@ GCS_BUCKET_NAME = GOOGLE_CLOUD_PROJECT + '-kubeflowpipelines-default'
 PIPELINE_IMAGE = f'gcr.io/{GOOGLE_CLOUD_PROJECT}/{PIPELINE_NAME}'
 
 PREPROCESSING_FN = 'models.preprocessing.preprocessing_fn'
-RUN_FN = 'models.keras.model.run_fn'
+RUN_FN = 'models.keras_model.model.run_fn'
 # NOTE: Uncomment below to use an estimator based model.
-# RUN_FN = 'models.estimator.model.run_fn'
+# RUN_FN = 'models.estimator_model.model.run_fn'
 
 TRAIN_NUM_STEPS = 1000
 EVAL_NUM_STEPS = 150
