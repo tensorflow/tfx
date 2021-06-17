@@ -58,6 +58,17 @@ class ExecutionMode(enum.Enum):
   ASYNC = 2
 
 
+def add_beam_pipeline_args_to_component(component, beam_pipeline_args):
+  if isinstance(component.executor_spec, executor_spec.BeamExecutorSpec):
+    # Prepend pipeline-level beam_pipeline_args in front of component specific
+    # ones to make component-level override pipeline-level args.
+    cast(
+        executor_spec.BeamExecutorSpec,
+        component.executor_spec).beam_pipeline_args = beam_pipeline_args + cast(
+            executor_spec.BeamExecutorSpec,
+            component.executor_spec).beam_pipeline_args
+
+
 class Pipeline(object):
   """Logical TFX pipeline object.
 
@@ -128,11 +139,7 @@ class Pipeline(object):
 
     if self.beam_pipeline_args:
       for component in components:
-        if isinstance(component.executor_spec, executor_spec.BeamExecutorSpec):
-          cast(executor_spec.BeamExecutorSpec, component.executor_spec
-              ).beam_pipeline_args = beam_pipeline_args + cast(
-                  executor_spec.BeamExecutorSpec,
-                  component.executor_spec).beam_pipeline_args
+        add_beam_pipeline_args_to_component(component, beam_pipeline_args)
 
   @property
   def components(self):
