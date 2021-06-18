@@ -14,23 +14,22 @@
 """Tests for tfx.dsl.components.base.node_registry."""
 
 import threading
-from typing import Any, Dict
+from typing import Any, Dict, Text
 
 import tensorflow as tf
 from tfx.dsl.components.base import base_node
 from tfx.dsl.components.base import node_registry
-from tfx.types import node_common
 
 
 class _FakeNode(base_node.BaseNode):
 
   @property
-  def inputs(self) -> node_common._PropertyDictWrapper:  # pylint: disable=protected-access
-    return node_common._PropertyDictWrapper({})  # pylint: disable=protected-access
+  def inputs(self) -> Dict[Text, Any]:
+    return {}
 
   @property
-  def outputs(self) -> node_common._PropertyDictWrapper:  # pylint: disable=protected-access
-    return node_common._PropertyDictWrapper({})  # pylint: disable=protected-access
+  def outputs(self) -> Dict[Text, Any]:
+    return {}
 
   @property
   def exec_properties(self) -> Dict[str, Any]:

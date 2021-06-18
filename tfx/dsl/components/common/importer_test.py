@@ -43,7 +43,7 @@ class ImporterTest(tf.test.TestCase):
             importer.SOURCE_URI_KEY: 'm/y/u/r/i',
             importer.REIMPORT_OPTION_KEY: 0,
         })
-    self.assertEmpty(impt.inputs.get_all())
+    self.assertEmpty(impt.inputs)
     output_channel = impt.outputs[importer.IMPORT_RESULT_KEY]
     self.assertEqual(output_channel.type, standard_artifacts.Examples)
     # Tests properties in channel.

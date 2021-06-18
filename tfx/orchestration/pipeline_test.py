@@ -32,7 +32,6 @@ from tfx.dsl.components.base import base_node
 from tfx.dsl.components.base import executor_spec
 from tfx.orchestration import metadata
 from tfx.orchestration import pipeline
-from tfx.types import node_common
 from tfx.types.component_spec import ChannelParameter
 from tfx.utils import test_case_utils
 
@@ -46,12 +45,12 @@ def _make_fake_node_instance(name: Text):
   class _FakeNode(base_node.BaseNode):
 
     @property
-    def inputs(self) -> node_common._PropertyDictWrapper:  # pylint: disable=protected-access
-      return node_common._PropertyDictWrapper({})  # pylint: disable=protected-access
+    def inputs(self) -> Dict[Text, Any]:
+      return {}
 
     @property
-    def outputs(self) -> node_common._PropertyDictWrapper:  # pylint: disable=protected-access
-      return node_common._PropertyDictWrapper({})  # pylint: disable=protected-access
+    def outputs(self) -> Dict[Text, Any]:
+      return {}
 
     @property
     def exec_properties(self) -> Dict[Text, Any]:

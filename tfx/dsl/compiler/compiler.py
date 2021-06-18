@@ -343,7 +343,7 @@ class Compiler:
     # This input_channels dict will be updated in the middle as the resolver
     # nodes are reduced, and this updated input_channels should be used
     # afterwise instead of tfx_node.inputs.
-    input_channels = dict(tfx_node.inputs.get_all())  # Shallow copy.
+    input_channels = dict(tfx_node.inputs)  # Shallow copy.
     resolver_steps = []
     resolver_nodes = self._get_upstream_resolver_nodes(tfx_node)
     # Reduce each resolver node into resolver steps in reversed topological

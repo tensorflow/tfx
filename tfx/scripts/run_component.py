@@ -108,9 +108,9 @@ def run_component(
   component_instance = component_class(**component_arguments)
 
   input_dict = channel_utils.unwrap_channel_dict(
-      component_instance.inputs.get_all())
+      component_instance.inputs)
   output_dict = channel_utils.unwrap_channel_dict(
-      component_instance.outputs.get_all())
+      component_instance.outputs)
   exec_properties = component_instance.exec_properties
 
   # Generating paths for output artifacts
