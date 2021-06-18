@@ -2,24 +2,24 @@
 
 ## TensorFlow Extended
 
-*   [TensorFlow Extended](api_docs/python/tfx)
+*   [TensorFlow Extended](tutorials/tfx)
 
 ## Data Validation
 
-*   [Data Validation](data_validation/api_docs/python/tfdv)
+*   [Data Validation](tutorials/data_validation)
 
 ## Transform
 
-*   [Transform](transform/api_docs/python/tft)
+*   [Transform](tutorials/transform)
 *   [Transform.beam](transform/api_docs/python/tft_beam)
 
 ## Model Analysis
 
-*   [Model Analysis](model_analysis/api_docs/python/tfma/)
+*   [Model Analysis](model_analysis)
 
 ## Serving
 
-*   [Client API (REST)](serving/api_rest/)
+*   [Client API (REST)](tutorials/serving)
 *   [Server API (C++)](serving/api_docs/cc/)
 
 ## ML Metadata
