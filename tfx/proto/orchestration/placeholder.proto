@@ -41,6 +41,9 @@ message PlaceholderExpressionOperator {
     IndexOperator index_op = 4;
     ProtoOperator proto_op = 5;
     Base64EncodeOperator base64_encode_op = 6;
+    ComparisonOperator compare_op = 7;
+    UnaryLogicalOperator unary_logical_op = 8;
+    BinaryLogicalOperator binary_logical_op = 9;
   }
 }
 
@@ -137,6 +140,69 @@ message ProtoOperator {
 message Base64EncodeOperator {
   // Required. It must evaluate to a String-like type value.
   PlaceholderExpression expression = 1;
+}
+
+// ComparisonOperator compares one ArtifactPlaceholder with another, evaluating
+// to a boolean at run time. This is primary used for encoding predicates used
+// by conditionals in the Pipeline-authoring DSL.
+//
+// Example:
+// Suppose `lhs` evaluates to 1, `rhs` evaluates to 2, and `op` is
+// Operation.LESS_THAN.
+// Then this comparison should evaluate to "true".
+message ComparisonOperator {
+  // Required. It must evaluate to something that can be compared (e.g., int,
+  // float, str). During evaluation, this expression is on the left side of the
+  // comparison operation.
+  PlaceholderExpression lhs = 1;
+
+  // Required. The placeholder expression to be compared against.
+  // It must evaluate to something that can be compared (e.g., int, float, str).
+  // During evaluation, this expression is on the right side of the comparison
+  // operation.
+  PlaceholderExpression rhs = 2;
+
+  enum Operation {
+    UNKNOWN = 0;
+    EQUAL = 1;
+    LESS_THAN = 2;
+    GREATER_THAN = 3;
+  }
+
+  // Required. The comparison op.
+  Operation op = 3;
+}
+
+// NotOperator applies a `NOT` boolean operation to a boolean expression.
+message UnaryLogicalOperator {
+  // Required. It must evaluate to a boolean.
+  PlaceholderExpression expression = 1;
+
+  enum Operation {
+    UNKNOWN = 0;
+    NOT = 1;
+  }
+
+  // Required. The boolean op.
+  Operation op = 2;
+}
+
+// BinaryLogicalOperator applies `AND`, or `OR` to two boolean expressions.
+message BinaryLogicalOperator {
+  // Required. It must evaluate to a boolean.
+  PlaceholderExpression lhs = 1;
+
+  // Required. It must evaluate to a boolean.
+  PlaceholderExpression rhs = 2;
+
+  enum Operation {
+    UNKNOWN = 0;
+    AND = 1;
+    OR = 2;
+  }
+
+  // Required. The boolean op.
+  Operation op = 3;
 }
 
 // Placeholder is an inseparable unit in a placeholder expression that

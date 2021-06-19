@@ -19,6 +19,7 @@ import textwrap
 from typing import Any, Dict, Iterable, Optional, Type, Union
 from absl import logging
 
+from tfx.dsl.placeholder import placeholder
 from tfx.types import artifact_utils
 from tfx.types.artifact import Artifact
 from tfx.utils import deprecation_utils
@@ -188,3 +189,6 @@ class Channel(json_utils.Jsonable):
         additional_custom_properties=additional_custom_properties,
         producer_component_id=producer_component_id,
         output_key=output_key).set_artifacts(artifacts)
+
+  def future(self) -> placeholder.ChannelWrappedPlaceholder:
+    return placeholder.ChannelWrappedPlaceholder(self)
