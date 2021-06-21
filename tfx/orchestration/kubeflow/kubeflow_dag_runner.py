@@ -176,8 +176,8 @@ class KubeflowDagRunnerConfig(pipeline_config.PipelineConfig):
           kubeflow_pb2.KubeflowMetadataConfig] = None,
       # TODO(b/143883035): Figure out the best practice to put the
       # SUPPORTED_LAUNCHER_CLASSES
-      supported_launcher_classes: List[Type[
-          base_component_launcher.BaseComponentLauncher]] = None,
+      supported_launcher_classes: Optional[List[Type[
+          base_component_launcher.BaseComponentLauncher]]] = None,
       **kwargs):
     """Creates a KubeflowDagRunnerConfig object.
 
