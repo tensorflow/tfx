@@ -56,6 +56,7 @@ from tfx.utils import proto_utils
 import tfx_bsl
 from tfx_bsl.tfxio import tfxio as tfxio_module
 
+from google.protobuf import text_format
 from tensorflow_metadata.proto.v0 import anomalies_pb2
 from tensorflow_metadata.proto.v0 import schema_pb2
 
@@ -92,7 +93,7 @@ _BEAM_EXTRA_PACKAGE_PREFIX = '--extra_package='
 # Stats output filename keys.
 _ANOMALIES_FILE = 'SchemaDiff.pb'
 _STATS_FILE = 'FeatureStats.pb'
-_SCHEMA_FILE = 'Schema.pb'
+_SCHEMA_FILE = 'schema.pbtxt'
 
 _ANOMALIES_KEY = 'anomalies'
 _SCHEMA_KEY = 'schema'
@@ -679,12 +680,13 @@ class Executor(base_beam_executor.BaseBeamExecutor):
     # TODO(b/186867968): See if we should switch to common libraries.
     schema_result = (
         pcoll.pipeline
-        | 'CreateSchema' >> beam.Create([stats_options.schema])
+        | 'CreateSchema' >> beam.Create([
+            text_format.MessageToString(stats_options.schema)])
         | 'WriteSchema' >> beam.io.WriteToText(
             schema_output_path,
             append_trailing_newlines=False,
-            shard_name_template='',  # To force unsharded output.
-            coder=beam.coders.ProtoCoder(schema_pb2.Schema)))
+            shard_name_template=''  # To force unsharded output.
+            ))
 
     if not enable_validation:
       return (stats_result, schema_result, None)
