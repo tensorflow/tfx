@@ -246,10 +246,10 @@ class ExecutorTest(tft_unit.TransformTestCase):
     if disable_statistics:
       self.assertFalse(
           fileio.exists(
-              os.path.join(self._pre_transform_schema.uri, 'Schema.pb')))
+              os.path.join(self._pre_transform_schema.uri, 'schema.pbtxt')))
       self.assertFalse(
           fileio.exists(
-              os.path.join(self._post_transform_schema.uri, 'Schema.pb')))
+              os.path.join(self._post_transform_schema.uri, 'schema.pbtxt')))
       self.assertFalse(
           fileio.exists(
               os.path.join(self._pre_transform_stats.uri, 'FeatureStats.pb')))
@@ -269,10 +269,10 @@ class ExecutorTest(tft_unit.TransformTestCase):
       ])
       self.assertTrue(
           fileio.exists(
-              os.path.join(self._pre_transform_schema.uri, 'Schema.pb')))
+              os.path.join(self._pre_transform_schema.uri, 'schema.pbtxt')))
       self.assertTrue(
           fileio.exists(
-              os.path.join(self._post_transform_schema.uri, 'Schema.pb')))
+              os.path.join(self._post_transform_schema.uri, 'schema.pbtxt')))
       self.assertTrue(
           fileio.exists(
               os.path.join(self._pre_transform_stats.uri, 'FeatureStats.pb')))
