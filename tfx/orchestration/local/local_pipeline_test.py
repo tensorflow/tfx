@@ -54,7 +54,7 @@ class DummyDataset(types.Artifact):
       return json.load(f)
 
   def write(self, data: List[Any]):
-    with fileio.open(os.path.join(self.uri, 'dataset.json'), 'w') as f:
+    with fileio.open(os.path.join(self.uri, 'dataset.json'), 'w+') as f:
       json.dump(data, f)
 
 
@@ -88,7 +88,7 @@ class SimpleModel(object):
 
   def write_to(self, model_uri: Text) -> None:
     data = {'prediction': self.always_predict}
-    with fileio.open(os.path.join(model_uri, 'model_data.json'), 'w') as f:
+    with fileio.open(os.path.join(model_uri, 'model_data.json'), 'w+') as f:
       json.dump(data, f)
 
 

@@ -116,6 +116,9 @@ class PythonExecutorOperator(base_executor_operator.BaseExecutorOperator):
     Returns:
       The output from executor.
     """
+    # In cases where output directories are not empty due to a previous or
+    # unrelated execution, clear the directories to ensure consistency.
+    outputs_utils.clear_output_dirs(execution_info.output_dict)
     context = base_executor.BaseExecutor.Context(
         extra_flags=self.extra_flags,
         tmp_dir=execution_info.tmp_dir,

@@ -64,6 +64,15 @@ def remove_output_dirs(output_dict: Dict[Text, List[types.Artifact]]) -> None:
         fileio.remove(artifact.uri)
 
 
+def clear_output_dirs(output_dict: Dict[Text, List[types.Artifact]]) -> None:
+  """Clear dirs of output artifacts' URI."""
+  for _, artifact_list in output_dict.items():
+    for artifact in artifact_list:
+      if fileio.isdir(artifact.uri) and fileio.listdir(artifact.uri):
+        fileio.rmtree(artifact.uri)
+        fileio.mkdir(artifact.uri)
+
+
 def remove_stateful_working_dir(stateful_working_dir: Text) -> None:
   """Remove stateful_working_dir."""
   # Clean up stateful working dir

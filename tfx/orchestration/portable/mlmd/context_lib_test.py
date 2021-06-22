@@ -52,49 +52,22 @@ class ContextLibTest(test_case_utils.TfxTest):
       got_context_type_two = m.store.get_context_type('my_context_type_two')
       got_context_type_two.ClearField('id')
 
-      contexts[0].ClearField('type_id')
-      contexts[1].ClearField('type_id')
-      contexts[2].ClearField('type_id')
       self.assertProtoEquals(
           """
           name: 'my_context_type_two'
           """, got_context_type_two)
-      self.assertProtoEquals(
-          """
-          name: "my_context_one"
-          custom_properties {
-            key: "property_a"
-            value {
-              int_value: 1
-            }
-          }
-          """, contexts[0])
-      self.assertProtoEquals(
-          """
-          name: "my_context_two"
-          custom_properties {
-            key: "property_a"
-            value {
-              int_value: 2
-            }
-          }
-          """, contexts[1])
-      self.assertProtoEquals(
-          """
-          name: "my_context_three"
-          custom_properties {
-            key: "property_a"
-            value {
-              int_value: 3
-            }
-          }
-          custom_properties {
-            key: "property_b"
-            value {
-              string_value: '4'
-            }
-          }
-          """, contexts[2])
+      self.assertEqual(
+          contexts[0],
+          m.store.get_context_by_type_and_name('my_context_type_one',
+                                               'my_context_one'))
+      self.assertEqual(
+          contexts[1],
+          m.store.get_context_by_type_and_name('my_context_type_one',
+                                               'my_context_two'))
+      self.assertEqual(
+          contexts[2],
+          m.store.get_context_by_type_and_name('my_context_type_two',
+                                               'my_context_three'))
       self.assertEqual(contexts[0].custom_properties['property_a'].int_value, 1)
       self.assertEqual(contexts[1].custom_properties['property_a'].int_value, 2)
       self.assertEqual(contexts[2].custom_properties['property_a'].int_value, 3)

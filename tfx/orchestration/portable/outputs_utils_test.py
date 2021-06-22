@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Tests for tfx.orchestration.portable.output_utils."""
+import os
 from unittest import mock
 
 from absl.testing import parameterized
@@ -253,7 +254,7 @@ class OutputUtilsTest(test_case_utils.TfxTest, parameterized.TestCase):
     self.assertRegex(tmp_dir,
                      '.*/test_node/.system/executor_execution/1/.temp/')
 
-  def testMakeOutputDirsAndRemoveOutputDirs(self):
+  def testMakeClearAndRemoveOutputDirs(self):
     output_artifacts = self._output_resolver().generate_output_artifacts(1)
     outputs_utils.make_output_dirs(output_artifacts)
     for _, artifact_list in output_artifacts.items():
@@ -262,7 +263,15 @@ class OutputUtilsTest(test_case_utils.TfxTest, parameterized.TestCase):
           self.assertFalse(fileio.isdir(artifact.uri))
         else:
           self.assertTrue(fileio.isdir(artifact.uri))
+          with fileio.open(os.path.join(artifact.uri, 'output'), 'w') as f:
+            f.write('')
         self.assertTrue(fileio.exists(artifact.uri))
+
+    outputs_utils.clear_output_dirs(output_artifacts)
+    for _, artifact_list in output_artifacts.items():
+      for artifact in artifact_list:
+        if not isinstance(artifact, ValueArtifact):
+          self.assertEqual(fileio.listdir(artifact.uri), [])
 
     outputs_utils.remove_output_dirs(output_artifacts)
     for _, artifact_list in output_artifacts.items():

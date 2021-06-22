@@ -37,6 +37,7 @@ from tfx.orchestration.portable import python_driver_operator
 from tfx.orchestration.portable import python_executor_operator
 from tfx.orchestration.portable import resolver_node_handler
 from tfx.orchestration.portable.mlmd import context_lib
+from tfx.orchestration.portable.mlmd import execution_lib
 from tfx.proto.orchestration import driver_output_pb2
 from tfx.proto.orchestration import executable_spec_pb2
 from tfx.proto.orchestration import execution_result_pb2
@@ -208,10 +209,41 @@ class Launcher(object):
         self._system_node_handler
     ), 'A node must be system node or have an executor.'
 
+  def _register_or_reuse_execution(
+      self, metadata_handler: metadata.Metadata,
+      execution_type: metadata_store_pb2.ExecutionType,
+      contexts: List[metadata_store_pb2.Context],
+      input_artifacts: MutableMapping[str, Sequence[types.Artifact]],
+      exec_properties: Mapping[str, types.Property]
+  ) -> metadata_store_pb2.Execution:
+    """Registers or reuses an execution in MLMD."""
+    executions = execution_lib.get_executions_associated_with_all_contexts(
+        metadata_handler, contexts)
+    if len(executions) > 1:
+      raise RuntimeError('Expecting no more than one previous executions for'
+                         'the associated contexts')
+    elif executions:
+      execution = executions.pop()
+      if execution_lib.is_execution_successful(execution):
+        raise RuntimeError('This execution has already succeeded. Aborting to '
+                           'avoid overwriting output artifacts.')
+      elif not execution_lib.is_execution_active(execution):
+        logging.warning(
+            'Expected execution to be in state NEW or RUNNING. Actual state: '
+            '%s. Output artifacts may be overwritten.',
+            execution.last_known_state)
+      return execution
+    return execution_publish_utils.register_execution(
+        metadata_handler=metadata_handler,
+        execution_type=execution_type,
+        contexts=contexts,
+        input_artifacts=input_artifacts,
+        exec_properties=exec_properties)
+
   def _prepare_execution(self) -> _ExecutionPreparationResult:
     """Prepares inputs, outputs and execution properties for actual execution."""
     # TODO(b/150979622): handle the edge case that the component get evicted
-    # between successful pushlish and stateful working dir being clean up.
+    # between successful publish and stateful working dir being clean up.
     # Otherwise following retries will keep failing because of duplicate
     # publishes.
     with self._mlmd_connection as m:
@@ -235,7 +267,7 @@ class Launcher(object):
             is_execution_needed=False)
 
       # 4. Registers execution in metadata.
-      execution = _register_execution(
+      execution = self._register_or_reuse_execution(
           metadata_handler=m,
           execution_type=self._pipeline_node.node_info.type,
           contexts=contexts,
