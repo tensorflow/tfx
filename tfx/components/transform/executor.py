@@ -463,7 +463,8 @@ class Executor(base_beam_executor.BaseBeamExecutor):
               os.path.join(output_uri, _DEFAULT_TRANSFORMED_EXAMPLES_PREFIX))
 
     def _GetCachePath(label, params_dict):
-      if params_dict.get(label) is None:
+      # Covers the cases: path wasn't provided, or was provided an empty list.
+      if not params_dict.get(label):
         return None
       else:
         return artifact_utils.get_single_uri(params_dict[label])

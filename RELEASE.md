@@ -12,6 +12,8 @@
 
 ## Bug Fixes and Other Changes
 
+*   Fixed issue where passing `analyzer_cache` to `tfx.components.Transform`
+    before there are any Transform cache artifacts published would fail.
 *   Depends on `protobuf>=3.13,<4`.
 
 ## Documentation Updates
