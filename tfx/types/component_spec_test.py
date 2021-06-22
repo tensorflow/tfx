@@ -18,6 +18,7 @@ from typing import Dict, List
 
 import tensorflow as tf
 from tfx.proto import example_gen_pb2
+from tfx.types import component_spec
 from tfx.types.artifact import Artifact
 from tfx.types.channel import Channel
 from tfx.types.component_spec import ChannelParameter
@@ -274,6 +275,28 @@ class ComponentSpecTest(tf.test.TestCase):
     self.assertNotIn('x', optional_not_specified.outputs.keys())
     optional_specified = SpecWithOptionalOutput(x=Channel(type=_Z))
     self.assertIn('x', optional_specified.outputs.keys())
+
+  def testChannelParameterType(self):
+    arg_name = 'foo'
+
+    class _FooArtifact(Artifact):
+      TYPE_NAME = 'FooArtifact'
+
+    class _BarArtifact(Artifact):
+      TYPE_NAME = 'BarArtifact'
+
+    channel_parameter = ChannelParameter(type=_FooArtifact)
+    # Following should pass.
+    channel_parameter.type_check(arg_name, Channel(type=_FooArtifact))
+
+    with self.assertRaisesRegex(TypeError, arg_name):
+      channel_parameter.type_check(arg_name, 42)  # Wrong value.
+
+    with self.assertRaisesRegex(TypeError, arg_name):
+      channel_parameter.type_check(arg_name, Channel(type=_BarArtifact))
+
+    setattr(_FooArtifact, component_spec.COMPATIBLE_TYPES_KEY, {_BarArtifact})
+    channel_parameter.type_check(arg_name, Channel(type=_BarArtifact))
 
   def testExecutionParameterTypeCheck(self):
     int_parameter = ExecutionParameter(type=int)
