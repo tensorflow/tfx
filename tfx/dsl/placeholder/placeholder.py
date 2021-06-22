@@ -25,10 +25,12 @@ from tfx.utils import proto_utils
 
 from google.protobuf import message
 
-types = Any  # Avoid circular dependency between placeholder.py and channel.py.
+# To resolve circular dependency caused by type annotations.
+# TODO(b/191610358): Reduce the number of circular type-dependencies.
+types = Any  # tfx.types imports channel.py, which in turn imports this module.
 
 # TODO(b/190409099): Support RuntimeParameter.
-_ValueLikeTypes = Union[int, float, str, 'ChannelWrappedPlaceholder']
+_ValueLikeType = Union[int, float, str, 'ChannelWrappedPlaceholder']
 
 
 class _PlaceholderOperator(json_utils.Jsonable):
@@ -321,7 +323,9 @@ class Placeholder(json_utils.Jsonable):
     return result
 
 
-T = TypeVar('T')
+# To ensure that ArtifactPlaceholder operations on a ChannelWrappedPlaceholder
+# still returns a ChannelWrappedPlaceholder.
+_T = TypeVar('_T')
 
 
 class ArtifactPlaceholder(Placeholder):
@@ -331,23 +335,23 @@ class ArtifactPlaceholder(Placeholder):
   """
 
   @property
-  def uri(self: T) -> T:
+  def uri(self: _T) -> _T:
     self._try_inject_index_operator()
     self._operators.append(_ArtifactUriOperator())
     return self
 
-  def split_uri(self: T, split: str) -> T:
+  def split_uri(self: _T, split: str) -> _T:
     self._try_inject_index_operator()
     self._operators.append(_ArtifactUriOperator(split))
     return self
 
   @property
-  def value(self: T) -> T:
+  def value(self: _T) -> _T:
     self._try_inject_index_operator()
     self._operators.append(_ArtifactValueOperator())
     return self
 
-  def __getitem__(self: T, key: int) -> T:
+  def __getitem__(self: _T, key: int) -> _T:
     self._operators.append(_IndexOperator(key))
     return self
 
@@ -448,29 +452,29 @@ class ChannelWrappedPlaceholder(ArtifactPlaceholder):
     super().__init__(placeholder_pb2.Placeholder.Type.INPUT_ARTIFACT)
     self.channel = channel
 
-  def __eq__(self, other: _ValueLikeTypes) -> 'Predicate':
+  def __eq__(self, other: _ValueLikeType) -> 'Predicate':
     return Predicate.from_comparison(_CompareOp.EQUAL, left=self, right=other)
 
-  def __ne__(self, other: _ValueLikeTypes) -> 'Predicate':
+  def __ne__(self, other: _ValueLikeType) -> 'Predicate':
     return logical_not(self == other)
 
-  def __lt__(self, other: _ValueLikeTypes) -> 'Predicate':
+  def __lt__(self, other: _ValueLikeType) -> 'Predicate':
     return Predicate.from_comparison(
         _CompareOp.LESS_THAN, left=self, right=other)
 
-  def __le__(self, other: _ValueLikeTypes) -> 'Predicate':
+  def __le__(self, other: _ValueLikeType) -> 'Predicate':
     return logical_not(self > other)
 
-  def __gt__(self, other: _ValueLikeTypes) -> 'Predicate':
+  def __gt__(self, other: _ValueLikeType) -> 'Predicate':
     return Predicate.from_comparison(
         _CompareOp.GREATER_THAN, left=self, right=other)
 
-  def __ge__(self, other: _ValueLikeTypes) -> 'Predicate':
+  def __ge__(self, other: _ValueLikeType) -> 'Predicate':
     return logical_not(self < other)
 
 
 def _encode_value_like(
-    x: _ValueLikeTypes,
+    x: _ValueLikeType,
     channel_to_key_fn: Optional[Callable[['types.Channel'], str]] = None
 ) -> placeholder_pb2.PlaceholderExpression:
   """Encodes x to a placeholder expression proto."""
@@ -499,8 +503,8 @@ def _encode_value_like(
   return result
 
 
-_PredicateSubtypes = Union['_Comparison', '_NotExpression',
-                           '_BinaryLogicalExpression']
+_PredicateSubtype = Union['_Comparison', '_NotExpression',
+                          '_BinaryLogicalExpression']
 
 
 @attr.s
@@ -508,8 +512,8 @@ class _Comparison:
   """Represents a comparison between two placeholders."""
 
   compare_op = attr.ib(type=_CompareOp)
-  left = attr.ib(type=_ValueLikeTypes)
-  right = attr.ib(type=_ValueLikeTypes)
+  left = attr.ib(type=_ValueLikeType)
+  right = attr.ib(type=_ValueLikeType)
 
   def encode_with_keys(
       self,
@@ -538,7 +542,7 @@ class _LogicalOp(enum.Enum):
 class _NotExpression:
   """Represents a logical negation."""
 
-  pred_dataclass = attr.ib(type=_PredicateSubtypes)
+  pred_dataclass = attr.ib(type=_PredicateSubtype)
 
   def encode_with_keys(
       self,
@@ -562,8 +566,8 @@ class _BinaryLogicalExpression:
   """Represents a boolean logical expression with exactly two arguments."""
 
   logical_op = attr.ib(type=_LogicalOp)
-  left = attr.ib(type=_PredicateSubtypes)
-  right = attr.ib(type=_PredicateSubtypes)
+  left = attr.ib(type=_PredicateSubtype)
+  right = attr.ib(type=_PredicateSubtype)
 
   def encode_with_keys(
       self,
@@ -592,7 +596,7 @@ class Predicate(Placeholder):
   Prefer to use syntax like `<channel>.future() > 5` to create a Predicate.
   """
 
-  def __init__(self, pred_dataclass: _PredicateSubtypes):
+  def __init__(self, pred_dataclass: _PredicateSubtype):
     """NOT INTENDED TO BE USED DIRECTLY BY PIPELINE AUTHORS."""
 
     super().__init__(placeholder_pb2.Placeholder.Type.INPUT_ARTIFACT)
@@ -601,7 +605,7 @@ class Predicate(Placeholder):
   @classmethod
   def from_comparison(cls, compare_op: _CompareOp,
                       left: ChannelWrappedPlaceholder,
-                      right: _ValueLikeTypes) -> 'Predicate':
+                      right: _ValueLikeType) -> 'Predicate':
     """Creates a Predicate instance.
 
     Note that even though the `left` argument is assumed to be a
@@ -702,14 +706,14 @@ def logical_not(pred: Predicate) -> Predicate:
 
 
 def logical_and(left: Predicate, right: Predicate) -> Predicate:
-  """Applies the AND boolean operation on a Predicate.
+  """Applies the AND boolean operation on two Predicates.
 
   Args:
     left: The first argument of the AND operation.
     right: The second argument of the AND operation.
 
   Returns:
-    A Predicate.
+    The Predicate resulting from the AND operation.
   """
 
   return Predicate(
@@ -718,14 +722,14 @@ def logical_and(left: Predicate, right: Predicate) -> Predicate:
 
 
 def logical_or(left: Predicate, right: Predicate) -> Predicate:
-  """Applies the OR boolean operation on a Predicate.
+  """Applies the OR boolean operation on two Predicates.
 
   Args:
     left: The first argument of the OR operation.
     right: The second argument of the OR operation.
 
   Returns:
-    A Predicate.
+    The Predicate resulting from the OR operation.
   """
 
   return Predicate(

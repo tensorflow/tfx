@@ -419,24 +419,36 @@ class PredicateTest(parameterized.TestCase, tf.test.TestCase):
           'expected_rhs_value_type': 'string_value',
       },
       {
-          'testcase_name': 'right_side_placeholder_left_side_int',
-          'left': 1,
-          'right': Channel(type=_MyType).future().value,
+          'testcase_name':
+              'right_side_placeholder_left_side_int',
+          'left':
+              1,
+          'right':
+              Channel(type=_MyType).future().value,
           'expected_op':
-              (placeholder_pb2.ComparisonOperator.Operation.GREATER_THAN),
-          'expected_lhs_field': 'operator',
-          'expected_rhs_field': 'value',
-          'expected_rhs_value_type': 'int_value',
+              placeholder_pb2.ComparisonOperator.Operation.GREATER_THAN,
+          'expected_lhs_field':
+              'operator',
+          'expected_rhs_field':
+              'value',
+          'expected_rhs_value_type':
+              'int_value',
       },
       {
-          'testcase_name': 'right_side_placeholder_left_side_float',
-          'left': 1.1,
-          'right': Channel(type=_MyType).future().value,
+          'testcase_name':
+              'right_side_placeholder_left_side_float',
+          'left':
+              1.1,
+          'right':
+              Channel(type=_MyType).future().value,
           'expected_op':
-              (placeholder_pb2.ComparisonOperator.Operation.GREATER_THAN),
-          'expected_lhs_field': 'operator',
-          'expected_rhs_field': 'value',
-          'expected_rhs_value_type': 'double_value',
+              placeholder_pb2.ComparisonOperator.Operation.GREATER_THAN,
+          'expected_lhs_field':
+              'operator',
+          'expected_rhs_field':
+              'value',
+          'expected_rhs_value_type':
+              'double_value',
       },
   )
   def testComparison(self,
