@@ -46,7 +46,7 @@ _ranking_root = os.path.join(os.environ['HOME'], 'tf_ranking_antique')
 _data_root = os.path.join(_ranking_root, 'data')
 # Python module file to inject customized logic into the TFX components. The
 # Transform and Trainer both require user-defined functions to run successfully.
-_module_file = os.path.join(_ranking_root, 'taxi_utils_native_keras.py')
+_module_file = os.path.join(_ranking_root, 'ranking_utils.py')
 # Path which can be listened to by the model server.  Pusher will output the
 # trained model here.
 _serving_model_dir = os.path.join(
