@@ -14,6 +14,7 @@
 """Utilities to evaluate and resolve Placeholders."""
 
 import base64
+import enum
 import re
 from typing import Any, Callable, Dict, Union
 
@@ -105,6 +106,52 @@ def resolve_placeholder_expression(
     raise ValueError(f"Placeholder {debug_str(expression)} evaluates to "
                      f"an unsupported type: {type(result)}.")
   return result
+
+
+class _Operation(enum.Enum):
+  """Alias for Operation enum types in placeholder.proto."""
+
+  EQUAL = placeholder_pb2.ComparisonOperator.Operation.EQUAL
+  LESS_THAN = placeholder_pb2.ComparisonOperator.Operation.LESS_THAN
+  GREATER_THAN = placeholder_pb2.ComparisonOperator.Operation.GREATER_THAN
+  NOT = placeholder_pb2.UnaryLogicalOperator.Operation.NOT
+  AND = placeholder_pb2.BinaryLogicalOperator.Operation.AND
+  OR = placeholder_pb2.BinaryLogicalOperator.Operation.OR
+
+
+def _resolve_and_ensure_boolean(
+    resolve_fn: Callable[[placeholder_pb2.PlaceholderExpression], Any],
+    expression: placeholder_pb2.PlaceholderExpression,
+    error_message: str,
+) -> bool:
+  # TODO(b/173529355): Block invalid placeholders during compilation time
+  """Ensures that expression resolves to boolean.
+
+  NOTE: This is currently used to ensure that the inputs to logical operators
+  are boolean. Since the DSL for creating Predicate expressions do not currently
+  perform implicit boolean conversions, the evaluator should not support it
+  either. If we support implicit boolean conversions in the DSL in the
+  future, this check can be removed.
+
+  Args:
+    resolve_fn: The function for resolving placeholder expressions.
+    expression: The placeholder expression to resolve.
+    error_message: The error message to display if the expression does not
+      resolve to a boolean type.
+
+  Returns:
+    The resolved boolean value.
+
+  Raises:
+    ValueError if expression does not resolve to boolean type.
+  """
+  value = resolve_fn(expression)
+  if isinstance(value, bool):
+    return value
+  raise ValueError(f"{error_message}\n"
+                   f"expression: {expression}\n"
+                   f"resolved value type: {type(value)}\n"
+                   f"resolved value: {value}")
 
 
 # Dictionary of registered placeholder operators,
@@ -341,6 +388,52 @@ class _ExpressionResolver:
         "Proto operator resolves to a proto message value. A serialization "
         "format is needed to render it.")
 
+  @_register(placeholder_pb2.ComparisonOperator)
+  def _resolve_comparison_operator(
+      self, op: placeholder_pb2.ComparisonOperator) -> bool:
+    """Evaluates the comparison operator."""
+    lhs_value = self.resolve(op.lhs)
+    rhs_value = self.resolve(op.rhs)
+    if op.op == _Operation.EQUAL.value:
+      return bool(lhs_value == rhs_value)
+    elif op.op == _Operation.LESS_THAN.value:
+      return bool(lhs_value < rhs_value)
+    elif op.op == _Operation.GREATER_THAN.value:
+      return bool(lhs_value > rhs_value)
+
+    raise ValueError(f"Unrecognized comparison operation {op.op}")
+
+  @_register(placeholder_pb2.UnaryLogicalOperator)
+  def _resolve_unary_logical_operator(
+      self, op: placeholder_pb2.UnaryLogicalOperator) -> bool:
+    """Evaluates the unary logical operator."""
+    error_message = (
+        "Unary logical operations' sub-expression must resolve to bool.")
+    value = _resolve_and_ensure_boolean(self.resolve, op.expression,
+                                        error_message)
+    if op.op == _Operation.NOT.value:
+      return not value
+
+    raise ValueError(f"Unrecognized unary logical operation {op.op}.")
+
+  @_register(placeholder_pb2.BinaryLogicalOperator)
+  def _resolve_binary_logical_operator(
+      self, op: placeholder_pb2.BinaryLogicalOperator) -> bool:
+    """Evaluates the binary logical operator."""
+    error_message = (
+        "Binary logical operations' sub-expression must resolve to bool. "
+        "{} is not bool.")
+    lhs_value = _resolve_and_ensure_boolean(self.resolve, op.lhs,
+                                            error_message.format("lhs"))
+    rhs_value = _resolve_and_ensure_boolean(self.resolve, op.rhs,
+                                            error_message.format("rhs"))
+    if op.op == _Operation.AND.value:
+      return lhs_value and rhs_value
+    elif op.op == _Operation.OR.value:
+      return lhs_value or rhs_value
+
+    raise ValueError(f"Unrecognized binary logical operation {op.op}.")
+
 
 def debug_str(expression: placeholder_pb2.PlaceholderExpression) -> str:
   """Gets the debug string of a placeholder expression proto.
@@ -405,6 +498,39 @@ def debug_str(expression: placeholder_pb2.PlaceholderExpression) -> str:
     if operator_name == "base64_encode_op":
       sub_expression_str = debug_str(operator_pb.expression)
       return f"{sub_expression_str}.b64encode()"
-    return "Unkown placeholder operator"
+
+    if operator_name == "compare_op":
+      lhs_str = debug_str(operator_pb.lhs)
+      rhs_str = debug_str(operator_pb.rhs)
+      if operator_pb.op == _Operation.EQUAL.value:
+        op_str = "=="
+      elif operator_pb.op == _Operation.LESS_THAN.value:
+        op_str = "<"
+      elif operator_pb.op == _Operation.LESS_THAN.value:
+        op_str = ">"
+      else:
+        return f"Unknown Comparison Operation {operator_pb.op}"
+      return f"({lhs_str} {op_str} {rhs_str})"
+
+    if operator_name == "unary_logical_op":
+      expression_str = debug_str(operator_pb.expression)
+      if operator_pb.op == _Operation.NOT.value:
+        op_str = "not"
+      else:
+        return f"Unknown Unary Logical Operation {operator_pb.op}"
+      return f"{op_str}({expression_str})"
+
+    if operator_name == "binary_logical_op":
+      lhs_str = debug_str(operator_pb.lhs)
+      rhs_str = debug_str(operator_pb.rhs)
+      if operator_pb.op == _Operation.AND.value:
+        op_str = "and"
+      elif operator_pb.op == _Operation.OR.value:
+        op_str = "or"
+      else:
+        return f"Unknown Binary Logical Operation {operator_pb.op}"
+      return f"({lhs_str} {op_str} {rhs_str})"
+
+    return "Unknown placeholder operator"
 
   return "Unknown placeholder expression"
