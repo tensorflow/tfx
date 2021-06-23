@@ -10,6 +10,7 @@ Below are the current and past TFX RFCs and their current status.
 
 Title | Date | Status |
 ----- | ---- | ------ |
+[Support structured data in TFX through struct2tensor and DataView](https://github.com/tensorflow/community/blob/master/rfcs/20210305-tfx-struct2tensor.md) | 2021-03-05 | Proposed |
 [TFX Periodic Training](https://github.com/tensorflow/community/blob/875c04645f9029cb3c5d75bfdb8bf63e5560e9d9/rfcs/20210115-tfx-periodic-training.md) | 2021-01-15 | Proposed |
 [Supporting tf.function in tf.transform](https://github.com/tensorflow/community/blob/master/rfcs/20201012-tfx-tf-function-in-tft.md) | 2021-01-20 | Accepted |
 [Data Model and Intermediate Representation of TFX DSL](https://github.com/tensorflow/community/blob/master/rfcs/20200705-tfx-ir.md) | 2021-01-20 | Implemented |
