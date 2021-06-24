@@ -111,10 +111,9 @@ def preprocessing_fn(inputs):
   outputs = {}
 
   for key in FEATURE_KEYS:
-    # Nothing to transform for the penguin dataset. This code is just to
-    # show how the preprocessing function for Transform should be defined.
-    # We just assign original values to the transformed feature.
-    outputs[transformed_name(key)] = inputs[key]
+    # tft.scale_to_z_score computes the mean and variance of the given feature
+    # and scales the output based on the result.
+    outputs[transformed_name(key)] = tft.scale_to_z_score(inputs[key])
   # TODO(b/157064428): Support label transformation for Keras.
   # Do not apply label transformation as it will result in wrong evaluation.
   outputs[transformed_name(_LABEL_KEY)] = inputs[_LABEL_KEY]
