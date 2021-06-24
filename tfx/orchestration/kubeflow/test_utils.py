@@ -410,6 +410,10 @@ class BaseKubeflowTest(test_case_utils.TfxTest):
   # location for each invocation, and cleaned up at the end of test.
   _TEST_DATA_ROOT = os.environ['KFP_E2E_TEST_DATA_ROOT']
 
+  # The location of the penguin test data. The input files are copied to a
+  # test-local location for each invocation, and cleaned up at the end of test.
+  _PENGUIN_TEST_DATA_ROOT = os.environ['KFP_E2E_PENGUIN_TEST_DATA_ROOT']
+
   # The location of test user module. Will be packaged and copied to under the
   # pipeline root before pipeline execution.
   _MODULE_ROOT = os.path.join(
@@ -486,7 +490,16 @@ class BaseKubeflowTest(test_case_utils.TfxTest):
         stderr=subprocess.DEVNULL,
     )
 
+    subprocess.run(
+        ['gsutil', 'cp', '-r', self._PENGUIN_TEST_DATA_ROOT,
+         self._testdata_root],
+        check=True,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+
     self._data_root = os.path.join(self._testdata_root, 'external', 'csv')
+    self._penguin_data_root = os.path.join(self._testdata_root, 'labelled')
     self._transform_module = os.path.join(self._MODULE_ROOT,
                                           'transform_module.py')
     self._trainer_module = os.path.join(self._MODULE_ROOT, 'trainer_module.py')
