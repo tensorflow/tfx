@@ -14,11 +14,11 @@
 """TFX Conditionals."""
 import collections
 import threading
-from typing import FrozenSet
+from typing import Tuple
 
 from tfx.dsl.components.base import base_node
 from tfx.dsl.components.base import node_registry
-from tfx.dsl.experimental.conditionals import predicate as predicate_lib
+from tfx.dsl.placeholder import placeholder
 
 
 class _ConditionalRegistry(threading.local):
@@ -32,36 +32,37 @@ class _ConditionalRegistry(threading.local):
     self.node_anchors = dict()
     # A reverse map of a node frame, mapping from a node to the predicates
     # it's associated with.
-    self.conditional_map = collections.defaultdict(set)
+    self.conditional_map = collections.defaultdict(list)
 
-  def enter_conditional(self, predicate: predicate_lib.Predicate):
+  def enter_conditional(self, predicate: placeholder.Predicate):
     if predicate in self.node_anchors:
       raise ValueError(
           f'Nested conditionals with duplicate predicates: {predicate}.'
           'Consider merging the nested conditionals.')
     self.node_anchors[predicate] = node_registry.registered_nodes()
 
-  def exit_conditional(self, predicate: predicate_lib.Predicate):
+  def exit_conditional(self, predicate: placeholder.Predicate):
     nodes_in_frame = (
         node_registry.registered_nodes() - self.node_anchors[predicate])
     for node in nodes_in_frame:
-      self.conditional_map[node].add(predicate)
+      self.conditional_map[node].append(predicate)
     del self.node_anchors[predicate]
 
 
 _conditional_registry = _ConditionalRegistry()
 
 
-def get_predicates(
-    node: base_node.BaseNode) -> FrozenSet[predicate_lib.Predicate]:
+def get_predicates(node: base_node.BaseNode) -> Tuple[placeholder.Predicate]:
   """Gets predicates that a node is associated with in local thread."""
-  return frozenset(_conditional_registry.conditional_map[node])
+  # Because inner with-block exits first, we reverse the list to make the order
+  # correct. Returns a tuple to ensure the result is consistent across tests.
+  return tuple(_conditional_registry.conditional_map[node][::-1])
 
 
 class Cond:
   """Context manager that registers a predicate with nodes in local thread."""
 
-  def __init__(self, predicate: predicate_lib.Predicate):
+  def __init__(self, predicate: placeholder.Predicate):
     self._predicate = predicate
 
   def __enter__(self):

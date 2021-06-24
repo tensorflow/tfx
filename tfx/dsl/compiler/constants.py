@@ -29,3 +29,6 @@ PIPELINE_RUN_CONTEXT_TYPE_NAME = "pipeline_run"
 # context of this type only covers node runs within a pipeline domain but not
 # across pipelines.
 NODE_CONTEXT_TYPE_NAME = "node"
+
+# Class path to the conditional resolver.
+CONDITIONAL_RESOLVER_CLASS_PATH = "tfx.dsl.input_resolution.strategies.conditional_strategy.ConditionalStrategy"

@@ -18,7 +18,7 @@ from typing import Any, Dict
 import tensorflow as tf
 from tfx.dsl.components.base import base_node
 from tfx.dsl.experimental.conditionals import conditional
-from tfx.dsl.experimental.conditionals import predicate
+from tfx.dsl.placeholder import placeholder
 from tfx.types import node_common
 
 
@@ -37,10 +37,10 @@ class _FakeNode(base_node.BaseNode):
     return {}
 
 
-class _FakePredicate(predicate.Predicate):
+class _FakePredicate(placeholder.Predicate):
 
   def __init__(self, name):
-    super().__init__()
+    super().__init__(pred_dataclass=None)
     self.name = name
 
 
@@ -51,8 +51,8 @@ class ConditionalTest(tf.test.TestCase):
     with conditional.Cond(pred):
       node1 = _FakeNode().with_id('node1')
       node2 = _FakeNode().with_id('node2')
-    self.assertSetEqual(conditional.get_predicates(node1), {pred})
-    self.assertSetEqual(conditional.get_predicates(node2), {pred})
+    self.assertEqual(conditional.get_predicates(node1), (pred,))
+    self.assertEqual(conditional.get_predicates(node2), (pred,))
 
   def testNestedCondition(self):
     pred1 = _FakePredicate('pred1')
@@ -61,8 +61,8 @@ class ConditionalTest(tf.test.TestCase):
       node1 = _FakeNode().with_id('node1')
       with conditional.Cond(pred2):
         node2 = _FakeNode().with_id('node2')
-    self.assertSetEqual(conditional.get_predicates(node1), {pred1})
-    self.assertSetEqual(conditional.get_predicates(node2), {pred1, pred2})
+    self.assertEqual(conditional.get_predicates(node1), (pred1,))
+    self.assertEqual(conditional.get_predicates(node2), (pred1, pred2))
 
   def testReusePredicate(self):
     pred = _FakePredicate('pred')
@@ -70,8 +70,8 @@ class ConditionalTest(tf.test.TestCase):
       node1 = _FakeNode().with_id('node1')
     with conditional.Cond(pred):
       node2 = _FakeNode().with_id('node2')
-    self.assertSetEqual(conditional.get_predicates(node1), {pred})
-    self.assertSetEqual(conditional.get_predicates(node2), {pred})
+    self.assertEqual(conditional.get_predicates(node1), (pred,))
+    self.assertEqual(conditional.get_predicates(node2), (pred,))
 
   def testNestedConditionWithDuplicatePredicates(self):
     pred = _FakePredicate('pred')

@@ -16,7 +16,7 @@
 import abc
 import copy
 import enum
-from typing import Any, Callable, Optional, Type, TypeVar, Union, cast
+from typing import Any, Callable, Iterator, Optional, Type, TypeVar, Union, cast
 
 import attr
 from tfx.proto.orchestration import placeholder_pb2
@@ -529,6 +529,12 @@ class _Comparison:
     result.operator.compare_op.rhs.CopyFrom(right_pb)
     return result
 
+  def dependent_channels(self) -> Iterator['types.Channel']:
+    if isinstance(self.left, ChannelWrappedPlaceholder):
+      yield self.left.channel
+    if isinstance(self.right, ChannelWrappedPlaceholder):
+      yield self.right.channel
+
 
 class _LogicalOp(enum.Enum):
   """An alias for logical operation enums in placeholder.proto."""
@@ -560,6 +566,9 @@ class _NotExpression:
     result.operator.unary_logical_op.expression.CopyFrom(pred_pb)
     return result
 
+  def dependent_channels(self) -> Iterator['types.Channel']:
+    yield from self.pred_dataclass.dependent_channels()
+
 
 @attr.s
 class _BinaryLogicalExpression:
@@ -582,6 +591,10 @@ class _BinaryLogicalExpression:
     right_pb = self.right.encode_with_keys(channel_to_key_fn)
     result.operator.binary_logical_op.rhs.CopyFrom(right_pb)
     return result
+
+  def dependent_channels(self) -> Iterator['types.Channel']:
+    yield from self.left.dependent_channels()
+    yield from self.right.dependent_channels()
 
 
 class Predicate(Placeholder):
@@ -647,6 +660,9 @@ class Predicate(Placeholder):
   def b64encode(self):
     # Unlike Placeholders, Predicates cannot be b64encoded.
     raise NotImplementedError
+
+  def dependent_channels(self) -> Iterator['types.Channel']:
+    yield from self.pred_dataclass.dependent_channels()
 
   def encode(
       self,

@@ -12,7 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Compiles a TFX pipeline into a TFX DSL IR proto."""
-from typing import cast, Iterable, List, Mapping
+import itertools
+from typing import Iterable, List, Mapping, cast
 
 from tfx import types
 from tfx.dsl.compiler import compiler_utils
@@ -21,6 +22,7 @@ from tfx.dsl.components.base import base_component
 from tfx.dsl.components.base import base_driver
 from tfx.dsl.components.base import base_node
 from tfx.dsl.components.common import resolver
+from tfx.dsl.experimental.conditionals import conditional
 from tfx.orchestration import data_types
 from tfx.orchestration import data_types_utils
 from tfx.orchestration import pipeline
@@ -28,6 +30,7 @@ from tfx.proto.orchestration import executable_spec_pb2
 from tfx.proto.orchestration import pipeline_pb2
 from tfx.utils import deprecation_utils
 from tfx.utils import json_utils
+
 from ml_metadata.proto import metadata_store_pb2
 
 
@@ -153,7 +156,38 @@ class Compiler:
       tfx_node_inputs = tfx_node.inputs
 
     # Step 3: Node inputs
-    for key, value in tfx_node_inputs.items():
+
+    # Step 3.1: Conditionals
+    implicit_input_channels = {}
+    implicit_upstream_node_ids = set()
+    predicates = conditional.get_predicates(tfx_node)
+    if predicates:
+      implicit_keys_map = {
+          compiler_utils.implicit_channel_key(channel): key
+          for key, channel in tfx_node_inputs.items()
+      }
+      encoded_predicates = []
+      for predicate in predicates:
+        for channel in predicate.dependent_channels():
+          implicit_key = compiler_utils.implicit_channel_key(channel)
+          if implicit_key not in implicit_keys_map:
+            # Store this channel and add it to the node inputs later.
+            implicit_input_channels[implicit_key] = channel
+            # Store the producer node and add it to the upstream nodes later.
+            implicit_upstream_node_ids.add(channel.producer_component_id)
+        encoded_predicates.append(
+            predicate.encode_with_keys(
+                compiler_utils.build_channel_to_key_fn(implicit_keys_map)))
+      # In async pipeline, conditional resolver step should be the last step
+      # in all resolver steps of a node.
+      resolver_step = node.inputs.resolver_config.resolver_steps.add()
+      resolver_step.class_path = constants.CONDITIONAL_RESOLVER_CLASS_PATH
+      resolver_step.config_json = json_utils.dumps(
+          {"predicates": encoded_predicates})
+
+    # Step 3.2: Fill node inputs
+    for key, value in itertools.chain(tfx_node_inputs.items(),
+                                      implicit_input_channels.items()):
       input_spec = node.inputs.inputs[key]
       channel = input_spec.channels.add()
 
@@ -201,7 +235,7 @@ class Compiler:
       # min_count = 0 stands for optional input and 1 stands for required input.
 
     # TODO(b/170694459): Refactor special nodes as plugins.
-    # Step 3.1: Special treatment for Resolver node.
+    # Step 3.3: Special treatment for Resolver node.
     if compiler_utils.is_resolver(tfx_node):
       assert compile_context.is_sync_mode
       node.inputs.resolver_config.resolver_steps.extend(
@@ -259,7 +293,13 @@ class Compiler:
     # authoring time; for example Resolver nodes are removed.
     if compile_context.is_sync_mode:
       node.upstream_nodes.extend(
-          sorted(node.id for node in tfx_node.upstream_nodes))
+          sorted({node.id for node in tfx_node.upstream_nodes}
+                 | implicit_upstream_node_ids))
+      # Add current node's id to its implicit upstream nodes' downstreams.
+      for upstream_node_id in implicit_upstream_node_ids:
+        upstream_pb = compile_context.node_pbs[upstream_node_id]
+        upstream_pb.downstream_nodes[:] = list(
+            set(upstream_pb.downstream_nodes) | {tfx_node.id})
       node.downstream_nodes.extend(
           sorted(node.id for node in tfx_node.downstream_nodes))
 

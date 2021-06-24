@@ -123,6 +123,25 @@ class CompilerUtilsTest(tf.test.TestCase):
         components=[example_gen, statistics_gen, a])
     self.assertTrue(compiler_utils.has_task_dependency(p2))
 
+  def testImplicitChannelKey(self):
+    model = types.Channel(type=standard_artifacts.Model)
+    model.producer_component_id = "trainer"
+    model.output_key = "model"
+    self.assertEqual("_trainer.model",
+                     compiler_utils.implicit_channel_key(model))
+
+  def testBuildChannelToKeyFn(self):
+    model = types.Channel(type=standard_artifacts.Model)
+    model.producer_component_id = "trainer"
+    model.output_key = "model"
+    examples = types.Channel(type=standard_artifacts.Examples)
+    examples.producer_component_id = "example_gen"
+    examples.output_key = "examples"
+
+    fn = compiler_utils.build_channel_to_key_fn({"_trainer.model": "real_key"})
+    self.assertEqual(fn(model), "real_key")
+    self.assertEqual(fn(examples), "_example_gen.examples")
+
 
 if __name__ == "__main__":
   tf.test.main()

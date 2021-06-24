@@ -128,3 +128,20 @@ def has_task_dependency(tfx_pipeline: pipeline.Pipeline):
     if upstream_data_dep_ids != upstream_deps_ids:
       return True
   return False
+
+
+def implicit_channel_key(channel: types.Channel):
+  """Key of a channel to the node that consumes the channel as input."""
+  return f"_{channel.producer_component_id}.{channel.output_key}"
+
+
+def build_channel_to_key_fn(implicit_keys_map):
+  """Builds a function that returns the key of a channel for consumer node."""
+
+  def channel_to_key_fn(channel: types.Channel) -> str:
+    implicit_key = implicit_channel_key(channel)
+    if implicit_key in implicit_keys_map:
+      return implicit_keys_map[implicit_key]
+    return implicit_key
+
+  return channel_to_key_fn

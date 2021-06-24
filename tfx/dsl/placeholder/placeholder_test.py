@@ -20,6 +20,7 @@ from absl.testing import parameterized
 import tensorflow as tf
 from tfx.dsl.placeholder import placeholder as ph
 from tfx.proto.orchestration import placeholder_pb2
+from tfx.types import standard_artifacts
 from tfx.types import standard_component_specs
 from tfx.types.artifact import Artifact
 from tfx.types.artifact import Property
@@ -1042,6 +1043,19 @@ class PredicateTest(parameterized.TestCase, tf.test.TestCase):
       }
     """, placeholder_pb2.PlaceholderExpression())
     self.assertProtoEquals(actual_pb, expected_pb)
+
+  def testPredicateDependentChannels(self):
+    int1 = Channel(type=standard_artifacts.Integer)
+    int2 = Channel(type=standard_artifacts.Integer)
+    pred1 = int1.future().value == 1
+    pred2 = int1.future().value == int2.future().value
+    pred3 = ph.logical_not(pred1)
+    pred4 = ph.logical_and(pred1, pred2)
+
+    self.assertEqual(set(pred1.dependent_channels()), {int1})
+    self.assertEqual(set(pred2.dependent_channels()), {int1, int2})
+    self.assertEqual(set(pred3.dependent_channels()), {int1})
+    self.assertEqual(set(pred4.dependent_channels()), {int1, int2})
 
 
 if __name__ == '__main__':
