@@ -24,6 +24,7 @@ from tfx.dsl.input_resolution.strategies import latest_artifact_strategy
 from tfx.dsl.input_resolution.strategies import latest_blessed_model_strategy
 from tfx.extensions.google_cloud_big_query.example_gen import component as big_query_example_gen_component
 from tfx.orchestration import data_types
+from tfx.orchestration.kubeflow.v2 import parameter_utils
 from tfx.orchestration.kubeflow.v2 import step_builder
 from tfx.orchestration.kubeflow.v2 import test_utils
 from tfx.proto import example_gen_pb2
@@ -216,6 +217,35 @@ class StepBuilderTest(tf.test.TestCase):
         test_utils.get_proto_from_test_data(
             'expected_importer_executor.pbtxt',
             pipeline_pb2.PipelineDeploymentConfig()), deployment_config)
+
+  def testBuildImporterWithRuntimeParam(self):
+    param = data_types.RuntimeParameter(name='runtime_flag', ptype=str)
+    impt = importer.Importer(
+        source_uri=param,
+        artifact_type=standard_artifacts.Examples).with_id('my_importer')
+    deployment_config = pipeline_pb2.PipelineDeploymentConfig()
+    component_defs = {}
+    with parameter_utils.ParameterContext() as pc:
+      my_builder = step_builder.StepBuilder(
+          node=impt,
+          deployment_config=deployment_config,
+          component_defs=component_defs)
+      actual_step_spec = self._sole(my_builder.build())
+    actual_component_def = self._sole(component_defs)
+
+    self.assertProtoEquals(
+        test_utils.get_proto_from_test_data(
+            'expected_importer_component_with_runtime_param.pbtxt',
+            pipeline_pb2.ComponentSpec()), actual_component_def)
+    self.assertProtoEquals(
+        test_utils.get_proto_from_test_data(
+            'expected_importer_task_with_runtime_param.pbtxt',
+            pipeline_pb2.PipelineTaskSpec()), actual_step_spec)
+    self.assertProtoEquals(
+        test_utils.get_proto_from_test_data(
+            'expected_importer_executor_with_runtime_param.pbtxt',
+            pipeline_pb2.PipelineDeploymentConfig()), deployment_config)
+    self.assertListEqual([param], pc.parameters)
 
   def testBuildLatestBlessedModelStrategySucceed(self):
     latest_blessed_resolver = resolver.Resolver(

@@ -1,0 +1,27 @@
+# proto-file: kfp/pipeline_spec/pipeline_spec.proto
+# proto-message: PipelineTaskSpec
+
+task_info {
+  name: "my_importer"
+}
+inputs {
+  parameters {
+    key: "artifact_uri"
+    value {
+      component_input_parameter: "runtime_flag"
+    }
+  }
+  parameters {
+    key: "reimport"
+    value {
+      runtime_value {
+        constant_value {
+          int_value: 0
+        }
+      }
+    }
+  }
+}
+component_ref {
+  name: "my_importer"
+}

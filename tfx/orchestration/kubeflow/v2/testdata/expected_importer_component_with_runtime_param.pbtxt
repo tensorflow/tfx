@@ -1,0 +1,28 @@
+# proto-file: kfp/pipeline_spec/pipeline_spec.proto
+# proto-message: ComponentSpec
+
+input_definitions {
+  parameters {
+    key: "artifact_uri"
+    value {
+      type: STRING
+    }
+  }
+  parameters {
+    key: "reimport"
+    value {
+      type: INT
+    }
+  }
+}
+output_definitions {
+  artifacts {
+    key: "result"
+    value {
+      artifact_type {
+        instance_schema: "title: tfx.Examples\ntype: object\nproperties:\n  span:\n    type: integer\n    description: Span for an artifact.\n  version:\n    type: integer\n    description: Version for an artifact.\n  split_names:\n    type: string\n    description: JSON-encoded list of splits for an artifact. Empty string means artifact has no split.\n"
+      }
+    }
+  }
+}
+executor_label: "my_importer_executor"

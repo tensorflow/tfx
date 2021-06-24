@@ -435,9 +435,21 @@ class StepBuilder(object):
       result.metadata.CopyFrom(struct_proto)
 
     result.reimport = bool(self._exec_properties[importer.REIMPORT_OPTION_KEY])
-    result.artifact_uri.CopyFrom(
-        compiler_utils.value_converter(
-            self._exec_properties[importer.SOURCE_URI_KEY]))
+
+    # 'artifact_uri' property of Importer node should be string, but the type
+    # is not checked (except the pytype hint) in Importer node.
+    # It is possible to escape the type constraint and pass a RuntimeParameter.
+    # If that happens, we need to overwrite the runtime parameter name to
+    # 'artifact_uri', instead of using the name of user-provided runtime
+    # parameter.
+    if isinstance(self._exec_properties[importer.SOURCE_URI_KEY],
+                  data_types.RuntimeParameter):
+      result.artifact_uri.runtime_parameter = importer.SOURCE_URI_KEY
+    else:
+      result.artifact_uri.CopyFrom(
+          compiler_utils.value_converter(
+              self._exec_properties[importer.SOURCE_URI_KEY]))
+
     single_artifact = artifact_utils.get_single_instance(
         list(output_channel.get()))
     result.type_schema.CopyFrom(
