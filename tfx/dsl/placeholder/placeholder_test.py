@@ -74,6 +74,53 @@ class PlaceholderTest(tf.test.TestCase):
         }
     """)
 
+  def testArtifactProperty(self):
+    self._assert_placeholder_pb_equal_and_deepcopyable(
+        ph.input('model')[0].property('blessed'), """
+        operator {
+          artifact_property_op {
+            expression {
+              operator {
+                index_op {
+                  expression {
+                    placeholder {
+                      type: INPUT_ARTIFACT
+                      key: "model"
+                    }
+                  }
+                  index: 0
+                }
+              }
+            }
+            key: "blessed"
+          }
+        }
+    """)
+
+  def testArtifactCustomProperty(self):
+    self._assert_placeholder_pb_equal_and_deepcopyable(
+        ph.input('model')[0].custom_property('blessed'), """
+        operator {
+          artifact_property_op {
+            expression {
+              operator {
+                index_op {
+                  expression {
+                    placeholder {
+                      type: INPUT_ARTIFACT
+                      key: "model"
+                    }
+                  }
+                  index: 0
+                }
+              }
+            }
+            key: "blessed"
+            is_custom_property: True
+          }
+        }
+    """)
+
   def testArtifactUriWithIndex(self):
     self._assert_placeholder_pb_equal_and_deepcopyable(
         ph.input('model')[0].uri, """

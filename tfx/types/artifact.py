@@ -610,6 +610,26 @@ class Artifact(json_utils.Jsonable):
       return json_value
     return self._artifact.custom_properties[key].double_value
 
+  @doc_controls.do_not_doc_in_subclasses
+  def get_custom_property(
+      self, key: str) -> Optional[Union[int, float, str, JsonValueType]]:
+    """Gets a custom property with key. Return None if not found."""
+    if key not in self._artifact.custom_properties:
+      return None
+
+    json_value = self.get_json_value_custom_property(key)
+    if json_value:
+      return json_value
+
+    mlmd_value = self._artifact.custom_properties[key]
+    if mlmd_value.HasField('int_value'):
+      return mlmd_value.int_value
+    elif mlmd_value.HasField('double_value'):
+      return mlmd_value.double_value
+    elif mlmd_value.HasField('string_value'):
+      return mlmd_value.string_value
+    return None
+
   @doc_controls.do_not_doc_inheritable
   def get_json_value_custom_property(self, key: str) -> JsonValueType:
     """Get a custom property of int type."""

@@ -296,6 +296,24 @@ class _ExpressionResolver:
       raise ValueError(
           f"IndexOperator failed to access the given index {op.index}.") from e
 
+  @_register(placeholder_pb2.ArtifactPropertyOperator)
+  def _resolve_property_operator(
+      self, op: placeholder_pb2.ArtifactPropertyOperator) -> Any:
+    """Evaluates the artifact property operator."""
+    value = self.resolve(op.expression)
+    if value is None or not value:
+      raise NullDereferenceError(op.expression)
+    if not isinstance(value, artifact.Artifact):
+      raise ValueError("ArtifactPropertyOperator failed to access property "
+                       f"{op.key}. Expected Artifact type. Got {type(value)}.")
+    try:
+      if op.is_custom_property:
+        return value.get_custom_property(op.key)
+      return value.__getattr__(op.key)
+    except:
+      raise ValueError("ArtifactPropertyOperator failed to find property with "
+                       f"key {op.key}.")
+
   @_register(placeholder_pb2.Base64EncodeOperator)
   def _resolve_base64_encode_operator(
       self, op: placeholder_pb2.Base64EncodeOperator) -> str:
@@ -476,6 +494,13 @@ def debug_str(expression: placeholder_pb2.PlaceholderExpression) -> str:
     if operator_name == "artifact_value_op":
       sub_expression_str = debug_str(operator_pb.expression)
       return f"{sub_expression_str}.value"
+
+    if operator_name == "artifact_property_op":
+      sub_expression_str = debug_str(operator_pb.expression)
+      if operator_pb.is_custom_property:
+        return f"{sub_expression_str}.custom_property(\"{operator_pb.key}\")"
+      else:
+        return f"{sub_expression_str}.property(\"{operator_pb.key}\")"
 
     if operator_name == "concat_op":
       expression_str = " + ".join(debug_str(e) for e in operator_pb.expressions)

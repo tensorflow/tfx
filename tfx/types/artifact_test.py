@@ -498,14 +498,19 @@ class ArtifactTest(tf.test.TestCase):
     self.assertEqual(
         copied_artifact.get_float_custom_property('customjson2'), 0.0)
     self.assertEqual(
+        json.dumps(copied_artifact.get_custom_property('customjson2')),
+        '["a", "b", 3.0]')
+    self.assertEqual(
         copied_artifact.get_json_value_custom_property('customjson3'), 'xyz')
     self.assertEqual(
         copied_artifact.get_string_custom_property('customjson3'), 'xyz')
+    self.assertEqual(copied_artifact.get_custom_property('customjson3'), 'xyz')
     self.assertEqual(
         copied_artifact.get_json_value_custom_property('customjson4'), 3.14)
     self.assertEqual(
         copied_artifact.get_float_custom_property('customjson4'), 3.14)
     self.assertEqual(copied_artifact.get_int_custom_property('customjson4'), 3)
+    self.assertEqual(copied_artifact.get_custom_property('customjson4'), 3.14)
 
     # Modify nested structure and check proto serialization reflects changes.
     copied_artifact.jsonvalue_dict['k1'].append({'4': 'x'})
@@ -799,6 +804,7 @@ class ArtifactTest(tf.test.TestCase):
     self.assertEqual(my_artifact.string2, '222')
     self.assertEqual(my_artifact.get_string_custom_property('invalid'), '')
     self.assertEqual(my_artifact.get_int_custom_property('invalid'), 0)
+    self.assertIsNone(my_artifact.get_custom_property('invalid'))
     self.assertNotIn('invalid', my_artifact._artifact.custom_properties)
 
     with self.assertRaisesRegex(

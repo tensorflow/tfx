@@ -2,6 +2,8 @@
 
 ## Major Features and Improvements
 
+* Placeholders support accessing artifact property and custom property.
+
 ## Breaking Changes
 
 ### For Pipeline Authors

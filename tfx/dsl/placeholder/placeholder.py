@@ -116,6 +116,32 @@ class _IndexOperator(_PlaceholderOperator):
     return result
 
 
+class _PropertyOperator(_PlaceholderOperator):
+  """Property Operator gets the property of an artifact Placeholder.
+
+  Prefer to use .property(key) method of Artifact Placeholder.
+  """
+
+  def __init__(self, key: str, is_custom_property: bool = False):
+    super().__init__()
+    self._key = key
+    self._is_custom_property = is_custom_property
+
+  def encode(
+      self,
+      sub_expression_pb: placeholder_pb2.PlaceholderExpression,
+      component_spec: Optional[Type['types.ComponentSpec']] = None
+  ) -> placeholder_pb2.PlaceholderExpression:
+    del component_spec  # Unused by PropertyOperator
+
+    result = placeholder_pb2.PlaceholderExpression()
+    result.operator.artifact_property_op.expression.CopyFrom(sub_expression_pb)
+    result.operator.artifact_property_op.key = self._key
+    result.operator.artifact_property_op.is_custom_property = (
+        self._is_custom_property)
+    return result
+
+
 class _ConcatOperator(_PlaceholderOperator):
   """Concat Operator concatenates multiple Placeholders.
 
@@ -359,6 +385,14 @@ class ArtifactPlaceholder(Placeholder):
     if not self._operators or not any(
         isinstance(op, _IndexOperator) for op in self._operators):
       self._operators.append(_IndexOperator(0))
+
+  def property(self, key: str):
+    self._operators.append(_PropertyOperator(key))
+    return self
+
+  def custom_property(self, key: str):
+    self._operators.append(_PropertyOperator(key, is_custom_property=True))
+    return self
 
 
 class _ProtoAccessiblePlaceholder(Placeholder, abc.ABC):

@@ -44,6 +44,7 @@ message PlaceholderExpressionOperator {
     ComparisonOperator compare_op = 7;
     UnaryLogicalOperator unary_logical_op = 8;
     BinaryLogicalOperator binary_logical_op = 9;
+    ArtifactPropertyOperator artifact_property_op = 10;
   }
 }
 
@@ -59,9 +60,23 @@ message ArtifactUriOperator {
   string split = 2;
 }
 
+// ArtifactPropertyOperator gets the property from a artifact placeholder.
+// ArtifactPropertyOperator: Artifact -> String/Int/Float
+message ArtifactPropertyOperator {
+  // Required. It must evaluate to an INPUT_ARTIFACT or OUTPUT_ARTIFACT type
+  // placeholder.
+  PlaceholderExpression expression = 1;
+
+  // Required. The key of the Artifact property.
+  string key = 2;
+
+  // Optional. If the property key is associated with a custom property.
+  bool is_custom_property = 3;
+}
+
 // ArtifactValueOperator evaluates to the value of primitive-type artifacts
 // from a placeholder expression, by reading the contents at the Artifact's URI.
-// ArtifactValueOperator: Artifact -> String
+// ArtifactValueOperator: Artifact -> String/Int/Float
 message ArtifactValueOperator {
   // Required. It must evaluate to a primitive-type artifact.
   PlaceholderExpression expression = 1;
