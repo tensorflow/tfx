@@ -17,7 +17,7 @@ The utilities in this file are used to build a model with native Keras or with
 Flax.
 """
 
-from typing import List, Optional, Text
+from typing import List, Text
 import tensorflow as tf
 import tensorflow_transform as tft
 
@@ -39,21 +39,19 @@ def transformed_name(key):
 
 
 def make_serving_signatures(model,
-                            tf_transform_features: tft.TFTransformOutput,
-                            serving_batch_size: Optional[int] = None):
+                            tf_transform_features: tft.TFTransformOutput):
   """Returns the serving signatures.
 
   Args:
     model: the model function to apply to the transformed features.
     tf_transform_features: The transformation to apply to the serialized
       tf.Example.
-    serving_batch_size: an optional specification for a concrete serving batch
-      size.
 
   Returns:
     The signatures to use for saving the mode. The 'serving_default' signature
-    will be a concrete function that takes a serialized tf.Example, parses it,
-    transformes the features and then applies the model.
+    will be a concrete function that takes a batch of unspecified length of
+    serialized tf.Example, parses them, transformes the features and
+    then applies the model.
   """
 
   model.tft_layer = tf_transform_features.transform_features_layer()
@@ -72,8 +70,7 @@ def make_serving_signatures(model,
   return {
       'serving_default':
           serve_tf_examples_fn.get_concrete_function(
-              tf.TensorSpec(
-                  shape=[serving_batch_size], dtype=tf.string, name='examples'))
+              tf.TensorSpec(shape=[None], dtype=tf.string, name='examples'))
   }
 
 
