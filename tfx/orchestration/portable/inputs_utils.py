@@ -107,6 +107,8 @@ def _resolve_single_channel(
         context_query.type.name, data_types_utils.get_value(context_query.name))
     if context:
       contexts.append(context)
+    else:
+      return []
   return get_qualified_artifacts(
       metadata_handler=metadata_handler,
       contexts=contexts,

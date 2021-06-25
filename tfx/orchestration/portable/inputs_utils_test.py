@@ -182,6 +182,17 @@ class InputsUtilsTest(test_case_utils.TfxTest, _TestMixin):
       self.assertIsNone(
           inputs_utils.resolve_input_artifacts(m, my_trainer.inputs))
 
+      # Tries to resolve inputs for transform after adding a new context query
+      # to the input spec that refers to a non-existent context. Inputs cannot
+      # be resolved in this case.
+      context_query = my_transform.inputs.inputs['examples'].channels[
+          0].context_queries.add()
+      context_query.type.name = 'non_existent_context'
+      context_query.name.field_value.string_value = 'non_existent_context'
+      transform_inputs = inputs_utils.resolve_input_artifacts(
+          m, my_transform.inputs)
+      self.assertIsNone(transform_inputs)
+
   def testResolverWithLatestArtifactStrategy(self):
     pipeline = self.load_pipeline_proto(
         'pipeline_for_input_resolver_test.pbtxt')
