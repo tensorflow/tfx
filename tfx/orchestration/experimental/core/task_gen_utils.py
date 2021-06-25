@@ -50,13 +50,15 @@ def _generate_task_from_execution(metadata_handler: metadata.Metadata,
   outputs_resolver = outputs_utils.OutputsResolver(node, pipeline.pipeline_info,
                                                    pipeline.runtime_spec,
                                                    pipeline.execution_mode)
+  output_artifacts = outputs_resolver.generate_output_artifacts(execution.id)
+  outputs_utils.make_output_dirs(output_artifacts)
   return task_lib.ExecNodeTask(
       node_uid=task_lib.NodeUid.from_pipeline_node(pipeline, node),
       execution_id=execution.id,
       contexts=contexts,
       exec_properties=exec_properties,
       input_artifacts=input_artifacts,
-      output_artifacts=outputs_resolver.generate_output_artifacts(execution.id),
+      output_artifacts=output_artifacts,
       executor_output_uri=outputs_resolver.get_executor_output_uri(
           execution.id),
       stateful_working_dir=outputs_resolver.get_stateful_working_directory(

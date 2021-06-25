@@ -277,6 +277,7 @@ class SyncPipelineTaskGenerator(task_gen.TaskGenerator):
       return self._abort_task(
           f'associated service job failed; node uid: {node_uid}')
 
+    outputs_utils.make_output_dirs(output_artifacts)
     return task_lib.ExecNodeTask(
         node_uid=node_uid,
         execution_id=execution.id,

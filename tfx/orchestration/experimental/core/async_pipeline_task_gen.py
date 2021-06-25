@@ -182,14 +182,15 @@ class AsyncPipelineTaskGenerator(task_gen.TaskGenerator):
       if service_status != service_jobs.ServiceStatus.RUNNING:
         return self._abort_node_task(node_uid)
 
+    output_artifacts = outputs_resolver.generate_output_artifacts(execution.id)
+    outputs_utils.make_output_dirs(output_artifacts)
     return task_lib.ExecNodeTask(
         node_uid=node_uid,
         execution_id=execution.id,
         contexts=resolved_info.contexts,
         input_artifacts=resolved_info.input_artifacts,
         exec_properties=resolved_info.exec_properties,
-        output_artifacts=outputs_resolver.generate_output_artifacts(
-            execution.id),
+        output_artifacts=output_artifacts,
         executor_output_uri=outputs_resolver.get_executor_output_uri(
             execution.id),
         stateful_working_dir=outputs_resolver.get_stateful_working_directory(
