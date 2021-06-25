@@ -20,7 +20,6 @@ from tfx.experimental.templates.taxi.pipeline import configs
 from tfx.experimental.templates.taxi.pipeline import pipeline
 from tfx.orchestration.kubeflow.v2 import kubeflow_v2_dag_runner
 from tfx.proto import trainer_pb2
-from tfx.tools.cli.kubeflow_v2 import labels
 
 # TFX pipeline produces many output files and metadata. All output data will be
 # stored under this OUTPUT_DIR.
@@ -49,21 +48,14 @@ _SERVING_MODEL_DIR = os.path.join(_PIPELINE_ROOT, 'serving_model')
 # _DATA_PATH = 'data'. Note that Dataflow does not support use container as a
 # dependency currently, so this means CsvExampleGen cannot be used with Dataflow
 # (step 8 in the template notebook).
-_DATA_PATH = 'gs://{}/tfx-template/data/'.format(configs.GCS_BUCKET_NAME)
+_DATA_PATH = 'gs://{}/tfx-template/data/taxi/'.format(configs.GCS_BUCKET_NAME)
 
 
 def run():
   """Define a pipeline to be executed using Kubeflow V2 runner."""
-  # TODO(b/157598477) Find a better way to pass parameters from CLI handler to
-  # pipeline DSL file, instead of using environment vars.
-  tfx_image = os.environ.get(labels.TFX_IMAGE_ENV)
-  project_id = os.environ.get(labels.GCP_PROJECT_ID_ENV)
-  api_key = os.environ.get(labels.API_KEY_ENV)
 
   runner_config = kubeflow_v2_dag_runner.KubeflowV2DagRunnerConfig(
-      project_id=project_id,
-      display_name='tfx-kubeflow-v2-pipeline-{}'.format(configs.PIPELINE_NAME),
-      default_image=tfx_image)
+      default_image=configs.PIPELINE_IMAGE)
 
   dsl_pipeline = pipeline.create_pipeline(
       pipeline_name=configs.PIPELINE_NAME,
@@ -89,15 +81,9 @@ def run():
       # ai_platform_serving_args=configs.GCP_AI_PLATFORM_SERVING_ARGS,
   )
 
-  runner = kubeflow_v2_dag_runner.KubeflowV2DagRunner(
-      config=runner_config)
+  runner = kubeflow_v2_dag_runner.KubeflowV2DagRunner(config=runner_config)
 
-  if os.environ.get(labels.RUN_FLAG_ENV, False):
-    # Only trigger the execution when invoked by 'run' command.
-    runner.run(
-        pipeline=dsl_pipeline, api_key=api_key)
-  else:
-    runner.compile(pipeline=dsl_pipeline, write_out=True)
+  runner.run(pipeline=dsl_pipeline)
 
 
 if __name__ == '__main__':

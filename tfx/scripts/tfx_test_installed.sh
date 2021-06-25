@@ -66,6 +66,7 @@ SKIP_LIST=(
   'tfx/examples/ranking/*'
   'tfx/*airflow*'
   'tfx/*kubeflow*'
+  'tfx/*vertex*'
   'tfx/*e2e*'
   'tfx/*integration*'
   'tfx/components/trainer/rewriting/rewriter_factory_test.py'

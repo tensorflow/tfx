@@ -18,7 +18,6 @@ import click
 from tfx.tools.cli.commands.pipeline import pipeline_group
 from tfx.tools.cli.commands.run import run_group
 from tfx.tools.cli.commands.template import template_group
-from tfx.tools.cli.kubeflow_v2.commands import kubeflow_v2
 
 
 @click.group('cli')
@@ -29,7 +28,6 @@ def cli_group():
 cli_group.add_command(pipeline_group)
 cli_group.add_command(run_group)
 cli_group.add_command(template_group)
-cli_group.add_command(kubeflow_v2.kubeflow_v2_group)
 
 
 if __name__ == '__main__':

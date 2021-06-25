@@ -23,7 +23,7 @@ from tfx.orchestration.kubeflow.v2 import kubeflow_v2_dag_runner
 from tfx.tools.cli.handler import dag_runner_patcher
 
 
-_OUTPUT_FILENAME = 'pipeline.json'
+OUTPUT_FILENAME = 'pipeline.json'
 
 
 class KubeflowV2DagRunnerPatcher(dag_runner_patcher.DagRunnerPatcher):
@@ -66,7 +66,7 @@ class KubeflowV2DagRunnerPatcher(dag_runner_patcher.DagRunnerPatcher):
     # pylint: disable=protected-access
     if self._prepare_dir_fn is not None:
       runner._output_dir = self._prepare_dir_fn(context[self.PIPELINE_NAME])
-      runner._output_filename = _OUTPUT_FILENAME
+      runner._output_filename = OUTPUT_FILENAME
 
     context[self.OUTPUT_FILE_PATH] = os.path.join(runner._output_dir,
                                                   runner._output_filename)
