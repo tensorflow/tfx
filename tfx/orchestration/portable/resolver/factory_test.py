@@ -20,6 +20,7 @@ from tfx.dsl.components.common import resolver
 from tfx.orchestration.portable.resolver import factory
 from tfx.proto import range_config_pb2
 from tfx.proto.orchestration import pipeline_pb2
+from tfx.proto.orchestration import placeholder_pb2
 from tfx.utils import json_utils
 
 
@@ -36,24 +37,25 @@ class FactoryTest(tf.test.TestCase, parameterized.TestCase):
 
   @parameterized.parameters(
       ('tfx.dsl.resolvers.oldest_artifacts_resolver'
-       '.OldestArtifactsResolver',
-       '{}'),
+       '.OldestArtifactsResolver', '{}'),
       ('tfx.dsl.resolvers.unprocessed_artifacts_resolver'
-       '.UnprocessedArtifactsResolver',
-       '{"execution_type_name": "Foo"}'),
+       '.UnprocessedArtifactsResolver', '{"execution_type_name": "Foo"}'),
       ('tfx.dsl.input_resolution.strategies.latest_artifact_strategy'
-       '.LatestArtifactStrategy',
-       '{}'),
+       '.LatestArtifactStrategy', '{}'),
       ('tfx.dsl.input_resolution.strategies.latest_blessed_model_strategy'
-       '.LatestBlessedModelStrategy',
-       '{}'),
+       '.LatestBlessedModelStrategy', '{}'),
       ('tfx.dsl.input_resolution.strategies.span_range_strategy'
        '.SpanRangeStrategy',
        json_utils.dumps({
-           'range_config': range_config_pb2.StaticRange(
-               start_span_number=1, end_span_number=10)
+           'range_config':
+               range_config_pb2.StaticRange(
+                   start_span_number=1, end_span_number=10)
        })),
-      )
+      ('tfx.dsl.input_resolution.strategies.conditional_strategy'
+       '.ConditionalStrategy',
+       json_utils.dumps(
+           {'predicates': [placeholder_pb2.PlaceholderExpression()]})),
+  )
   def test_make_resolver_strategy_instance(self, class_path, config_json):
     if not self.class_path_exists(class_path):
       self.skipTest(f"Class path {class_path} doesn't exist.")

@@ -86,10 +86,6 @@ def resolve_placeholder_expression(
   Returns:
     Resolved expression value.
   """
-  if not context.exec_info.pipeline_node or not context.exec_info.pipeline_info:
-    raise ValueError(
-        "Pipeline node or pipeline info is missing from the placeholder ResolutionContext."
-    )
   try:
     result = _ExpressionResolver(context).resolve(expression)
   except NullDereferenceError as err:
