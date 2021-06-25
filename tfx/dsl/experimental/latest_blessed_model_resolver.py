@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Experimental Resolver for getting the latest artifact."""
+"""Experimental Resolver for getting the latest blessed model."""
 
 from tfx.dsl.input_resolution.strategies import latest_blessed_model_strategy
 from tfx.utils import deprecation_utils
