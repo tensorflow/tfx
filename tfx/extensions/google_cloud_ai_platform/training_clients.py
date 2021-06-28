@@ -19,7 +19,6 @@ import json
 from typing import Any, Dict, List, Optional, Text, Union
 
 from absl import logging
-from google.api_core import retry
 from google.cloud.aiplatform import gapic
 from google.cloud.aiplatform_v1beta1.types.custom_job import CustomJob
 from google.cloud.aiplatform_v1beta1.types.job_state import JobState
@@ -149,9 +148,6 @@ class AbstractJobClient(abc.ABC):
   def get_job_name(self) -> Text:
     """Gets the job name."""
     return self._job_name
-
-
-_get_job_retry = retry.Retry(deadline=150)
 
 
 class CAIPJobClient(AbstractJobClient):
@@ -312,8 +308,7 @@ class CAIPJobClient(AbstractJobClient):
 
   def get_job(self) -> Dict[Text, Text]:
     """Gets the long-running job."""
-    request = self._client.projects().jobs().get(
-        name=self._job_name, retry=_get_job_retry)
+    request = self._client.projects().jobs().get(name=self._job_name)
     return request.execute()
 
   def get_job_state(self, response) -> Text:
@@ -501,8 +496,7 @@ class UCAIPJobClient(AbstractJobClient):
 
   def get_job(self) -> CustomJob:
     """Gets the long-running job."""
-    return self._client.get_custom_job(
-        name=self._job_name, retry=_get_job_retry)
+    return self._client.get_custom_job(name=self._job_name)
 
   def get_job_state(self, response) -> JobState:
     """Gets the state of the long-running job.

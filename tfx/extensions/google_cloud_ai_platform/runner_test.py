@@ -216,7 +216,7 @@ class RunnerTest(tf.test.TestCase):
             ],
         }, body['job_spec'])
     self.assertStartsWith(body['display_name'], 'tfx_')
-    self._mock_get.assert_called_with(name='ucaip_job_study_id', retry=mock.ANY)
+    self._mock_get.assert_called_with(name='ucaip_job_study_id')
 
   @mock.patch(
       'tfx.extensions.google_cloud_ai_platform.training_clients.gapic')
@@ -269,7 +269,7 @@ class RunnerTest(tf.test.TestCase):
             ],
         }, body['job_spec'])
     self.assertEqual(body['display_name'], 'my_jobid')
-    self._mock_get.assert_called_with(name='ucaip_job_study_id', retry=mock.ANY)
+    self._mock_get.assert_called_with(name='ucaip_job_study_id')
 
   def _setUpPredictionMocks(self):
     self._serving_path = os.path.join(self._output_data_dir, 'serving_path')

@@ -1,3 +1,4 @@
+# Lint as: python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -93,12 +94,11 @@ def _launch_aip_training(
   #   The following logic will keep polling the state of the job until the job
   #   enters a final state.
   #
-  # Note that even if client.get_job() retries on transient errors, it could
-  # still raise `ConnectionError` due to
-  # https://github.com/googleapis/google-api-python-client/issues/218.
-  # We need to recreate the Python API client to refresh the lifecycle
-  # of the connection being used, then retry again.
-  # If the error persists for
+  # During the polling, if a connection error was encountered, the GET request
+  # will be retried by recreating the Python API client to refresh the lifecycle
+  # of the connection being used. See
+  # https://github.com/googleapis/google-api-python-client/issues/218
+  # for a detailed description of the problem. If the error persists for
   # _CONNECTION_ERROR_RETRY_LIMIT consecutive attempts, the function will raise
   # ConnectionError.
   while client.get_job_state(response) not in client.JOB_STATES_COMPLETED:
