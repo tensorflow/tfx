@@ -398,6 +398,8 @@ class TransformSpec(ComponentSpec):
           ExecutionParameter(type=str, optional=True),
       PREPROCESSING_FN_KEY:
           ExecutionParameter(type=str, optional=True),
+      STATS_OPTIONS_UPDATER_FN_KEY:
+          ExecutionParameter(type=str, optional=True),
       FORCE_TF_COMPAT_V1_KEY:
           ExecutionParameter(type=int, optional=True),
       CUSTOM_CONFIG_KEY:

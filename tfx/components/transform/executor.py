@@ -321,6 +321,9 @@ class Executor(base_beam_executor.BaseBeamExecutor):
         - preprocessing_fn: The module path to a python function that
           implements 'preprocessing_fn'. Exactly one of 'module_file',
           'module_path' and 'preprocessing_fn' should be set.
+        - 'stats_options_updater_fn': The module path to a python function that
+          implements 'stats_options_updater_fn'. This cannot be specified
+          together with 'module_file'.
         - splits_config: A transform_pb2.SplitsConfig instance, providing splits
           that should be analyzed and splits that should be transformed. Note
           analyze and transform splits can have overlap. Default behavior (when
@@ -506,6 +509,9 @@ class Executor(base_beam_executor.BaseBeamExecutor):
         labels.PREPROCESSING_FN:
             exec_properties.get(standard_component_specs.PREPROCESSING_FN_KEY,
                                 None),
+        labels.STATS_OPTIONS_UPDATER_FN:
+            exec_properties.get(
+                standard_component_specs.STATS_OPTIONS_UPDATER_FN_KEY, None),
         labels.CUSTOM_CONFIG:
             exec_properties.get(standard_component_specs.CUSTOM_CONFIG_KEY,
                                 None),
@@ -906,13 +912,19 @@ class Executor(base_beam_executor.BaseBeamExecutor):
         value_utils.GetSoleValue(inputs, labels.MODULE_FILE, strict=False))
     has_module_path = bool(
         value_utils.GetSoleValue(inputs, labels.MODULE_PATH, strict=False))
+    has_stats_options_updater_fn = bool(
+        value_utils.GetSoleValue(
+            inputs, labels.STATS_OPTIONS_UPDATER_FN, strict=False))
 
-    if has_module_file and has_module_path:
+    num_fn_defs = (
+        int(has_module_file) + int(has_module_path) +
+        int(has_stats_options_updater_fn))
+    if num_fn_defs > 1:
       raise ValueError(
-          'At most one of MODULE_FILE or MODULE_PATH should be '
-          'supplied in inputs.')
+          'At most one of MODULE_FILE, MODULE_PATH, or STATS_OPTIONS_UPDATER_FN '
+          'should be supplied in inputs.')
 
-    if not has_module_file and not has_module_path:
+    if num_fn_defs == 0:
       return None
 
     fn = udf_utils.try_get_fn(
@@ -923,6 +935,9 @@ class Executor(base_beam_executor.BaseBeamExecutor):
             standard_component_specs.MODULE_PATH_KEY:
                 value_utils.GetSoleValue(
                     inputs, labels.MODULE_PATH, strict=False),
+            standard_component_specs.STATS_OPTIONS_UPDATER_FN_KEY:
+                value_utils.GetSoleValue(
+                    inputs, labels.STATS_OPTIONS_UPDATER_FN, strict=False)
         }, standard_component_specs.STATS_OPTIONS_UPDATER_FN_KEY)
     if fn is None:
       return fn
@@ -958,6 +973,8 @@ class Executor(base_beam_executor.BaseBeamExecutor):
           preprocessing_fn, optional.
         - labels.PREPROCESSING_FN: Path to a Python function that implements
           preprocessing_fn, optional.
+        - labels.STATS_OPTIONS_UPDATER_FN: Path to a Python function that
+          implements stats_options_updater_fn, optional.
         - labels.CUSTOM_CONFIG: Dictionary of additional parameters for
           preprocessing_fn, optional.
         - labels.DATA_VIEW_LABEL: DataView to be used to read the Example,

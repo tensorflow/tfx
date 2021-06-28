@@ -124,6 +124,24 @@ class ComponentTest(tf.test.TestCase):
     self.assertEqual(
         preprocessing_fn, transform.exec_properties[
             standard_component_specs.PREPROCESSING_FN_KEY])
+    self.assertIsNone(transform.exec_properties[
+        standard_component_specs.STATS_OPTIONS_UPDATER_FN_KEY])
+
+  def test_construct_from_preprocessing_fn_with_stats_options_updater_fn(self):
+    preprocessing_fn = 'path.to.my_preprocessing_fn'
+    stats_options_updater_fn = 'path.to.my.stats_options_updater_fn'
+    transform = component.Transform(
+        examples=self.examples,
+        schema=self.schema,
+        preprocessing_fn=preprocessing_fn,
+        stats_options_updater_fn=stats_options_updater_fn)
+    self._verify_outputs(transform)
+    self.assertEqual(
+        preprocessing_fn, transform.exec_properties[
+            standard_component_specs.PREPROCESSING_FN_KEY])
+    self.assertEqual(
+        stats_options_updater_fn, transform.exec_properties[
+            standard_component_specs.STATS_OPTIONS_UPDATER_FN_KEY])
 
   def test_construct_with_materialization_disabled(self):
     transform = component.Transform(

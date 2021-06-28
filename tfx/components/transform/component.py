@@ -102,7 +102,8 @@ class Transform(base_beam_component.BaseBeamComponent):
       disable_analyzer_cache: bool = False,
       force_tf_compat_v1: bool = False,
       custom_config: Optional[Dict[Text, Any]] = None,
-      disable_statistics: bool = False):
+      disable_statistics: bool = False,
+      stats_options_updater_fn: Optional[Text] = None):
     """Construct a Transform component.
 
     Args:
@@ -132,6 +133,16 @@ class Transform(base_beam_component.BaseBeamComponent):
                              Dict[Text, Any]) -> Dict[Text, Any]:
           ...
         ```
+        To update the stats options used to compute the pre-transform or
+        post-transform statistics, optionally define the
+        'stats-options_updater_fn' within the same module. If implemented,
+        this function needs to have the following signature:
+        ```
+        def stats_options_updater_fn(stats_type: tfx.components.transform
+          .stats_options_util.StatsType, stats_options: tfdv.StatsOptions)
+          -> tfdv.StatsOptions:
+          ...
+        ```
         Use of a RuntimeParameter for this argument is experimental.
       preprocessing_fn: The path to python function that implements a
         'preprocessing_fn'. See 'module_file' for expected signature of the
@@ -159,6 +170,10 @@ class Transform(base_beam_component.BaseBeamComponent):
         will be stored in the `pre_transform_feature_stats/` and
         `post_transform_feature_stats/` subfolders of the `transform_graph`
         export.
+      stats_options_updater_fn: The path to a python function that implements a
+        'stats_options_updater_fn'. See 'module_file' for expected signature of
+        the function. 'stats_options_updater_fn' cannot be defined if
+        'module_file' is specified.
 
     Raises:
       ValueError: When both or neither of 'module_file' and 'preprocessing_fn'
@@ -168,6 +183,11 @@ class Transform(base_beam_component.BaseBeamComponent):
       raise ValueError(
           "Exactly one of 'module_file' or 'preprocessing_fn' must be supplied."
       )
+
+    if bool(module_file) and bool(stats_options_updater_fn):
+      raise ValueError(
+          "'stats_options_updater_fn' cannot be specified together with "
+          "'module_file'")
 
     transform_graph = types.Channel(type=standard_artifacts.TransformGraph)
     transformed_examples = None
@@ -201,6 +221,7 @@ class Transform(base_beam_component.BaseBeamComponent):
         schema=schema,
         module_file=module_file,
         preprocessing_fn=preprocessing_fn,
+        stats_options_updater_fn=stats_options_updater_fn,
         force_tf_compat_v1=int(force_tf_compat_v1),
         splits_config=splits_config,
         transform_graph=transform_graph,

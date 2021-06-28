@@ -187,6 +187,9 @@ class ExecutorTest(tft_unit.TransformTestCase):
     self._preprocessing_fn = '%s.%s' % (
         transform_module.preprocessing_fn.__module__,
         transform_module.preprocessing_fn.__name__)
+    self._stats_options_updater_fn = '%s.%s' % (
+        transform_module.stats_options_updater_fn.__module__,
+        transform_module.stats_options_updater_fn.__name__)
     self._exec_properties[standard_component_specs.SPLITS_CONFIG_KEY] = None
     self._exec_properties[
         standard_component_specs.FORCE_TF_COMPAT_V1_KEY] = int(
@@ -331,6 +334,19 @@ class ExecutorTest(tft_unit.TransformTestCase):
     self._transform_executor.Do(self._input_dict, self._output_dict,
                                 self._exec_properties)
     self.assertIsNone(
+        self._transform_executor._GetStatsOptionsUpdaterFn(
+            self._exec_properties))
+    self._verify_transform_outputs()
+
+  def test_do_with_preprocessing_fn_and_stats_updater_fn(self):
+    self._exec_properties[
+        standard_component_specs.PREPROCESSING_FN_KEY] = self._preprocessing_fn
+    self._exec_properties[
+        standard_component_specs.STATS_OPTIONS_UPDATER_FN_KEY] = (
+            self._stats_options_updater_fn)
+    self._transform_executor.Do(self._input_dict, self._output_dict,
+                                self._exec_properties)
+    self.assertIsNotNone(
         self._transform_executor._GetStatsOptionsUpdaterFn(
             self._exec_properties))
     self._verify_transform_outputs()

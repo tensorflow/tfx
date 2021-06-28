@@ -1,6 +1,8 @@
 # Current Version (Still in Development)
 
 ## Major Features and Improvements
+* Transform component now supports passing `stats_options_updater_fn` directly
+  as well as through the module file.
 
 * Placeholders support accessing artifact property and custom property.
 
@@ -37,7 +39,7 @@
    [Vertex Pipelines](https://cloud.google.com/vertex-ai/docs/pipelines/introduction).
    use it with `--engine=vertex` flag.
 *  Telemetry: Only first-party tfx component's executor telemetry will be
-   collected. All other executors will be recorded as `third_party_executor`. 
+   collected. All other executors will be recorded as `third_party_executor`.
    For labels longer than 63, keep first 63 characters (instead of last 63
    characters before).
 
