@@ -15,6 +15,7 @@
 
 import logging
 import os
+import shutil
 import subprocess
 import sys
 
@@ -26,7 +27,6 @@ from setuptools.command import develop
 # It is recommended to import setuptools prior to importing distutils to avoid
 # using legacy behavior from distutils.
 # https://setuptools.readthedocs.io/en/latest/history.html#v48-0-0
-from distutils import spawn
 from distutils.command import build
 # pylint: enable=g-bad-import-order
 
@@ -151,7 +151,7 @@ class _GenProtoCommand(setuptools.Command):
     self.local_mlmd_repo = None
 
   def finalize_options(self):
-    self._bazel_cmd = spawn.find_executable('bazel')
+    self._bazel_cmd = shutil.which('bazel')
     if not self._bazel_cmd:
       raise RuntimeError(
           'Could not find "bazel" binary. Please visit '
