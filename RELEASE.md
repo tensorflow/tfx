@@ -19,6 +19,7 @@
 *   Fixed issue where passing `analyzer_cache` to `tfx.components.Transform`
     before there are any Transform cache artifacts published would fail.
 *   Depends on `protobuf>=3.13,<4`.
+*   Depends on `keras-tuner>=1`. The upperbound is removed.
 
 ## Documentation Updates
 

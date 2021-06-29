@@ -16,7 +16,7 @@
 The utilities in this file are used to build a model with native Keras.
 This module file will be used in the Transform, Tuner and generic Trainer
 components.
-CloudTuner (a subclass of kerastuner.Tuner) creates a seamless integration with
+CloudTuner (a subclass of keras_tuner.Tuner) creates a seamless integration with
 Cloud AI Platform Vizier as a backend to get suggestions of hyperparameters
 and run trials. DistributingCloudTuner is a subclass of CloudTuner which
 launches remote distributed training job for each trial on Cloud AI Platform
@@ -29,7 +29,7 @@ import os
 from typing import List, Text
 
 import absl
-import kerastuner
+import keras_tuner
 import tensorflow as tf
 from tensorflow import keras
 import tensorflow_transform as tft
@@ -129,16 +129,16 @@ def preprocessing_fn(inputs):
   return outputs
 
 
-def _get_hyperparameters() -> kerastuner.HyperParameters:
+def _get_hyperparameters() -> keras_tuner.HyperParameters:
   """Returns hyperparameters for building Keras model."""
-  hp = kerastuner.HyperParameters()
+  hp = keras_tuner.HyperParameters()
   # Defines search space.
   hp.Choice('learning_rate', [1e-5, 1e-4, 1e-3, 1e-2], default=1e-2)
   hp.Int('num_layers', 1, 4, default=2)
   return hp
 
 
-def _build_keras_model(hparams: kerastuner.HyperParameters) -> tf.keras.Model:
+def _build_keras_model(hparams: keras_tuner.HyperParameters) -> tf.keras.Model:
   """Creates a DNN Keras model for classifying penguin data.
 
   Args:
@@ -212,7 +212,7 @@ def tuner_fn(fn_args: tfx.components.FnArgs) -> tfx.components.TunerFnResult:
       # also be configured separately.
       project_id=fn_args.custom_config['ai_platform_tuning_args']['project'],
       region=fn_args.custom_config['ai_platform_tuning_args']['region'],
-      objective=kerastuner.Objective('val_sparse_categorical_accuracy', 'max'),
+      objective=keras_tuner.Objective('val_sparse_categorical_accuracy', 'max'),
       hyperparameters=_get_hyperparameters(),
       max_trials=5,  # Optional.
       directory=os.path.join(fn_args.custom_config['remote_trials_working_dir'],
@@ -260,7 +260,7 @@ def run_fn(fn_args: tfx.components.FnArgs):
         specified.
       - model_run_dir: A single uri for the output directory of model training
         related files.
-      - hyperparameters: An optional kerastuner.HyperParameters config.
+      - hyperparameters: An optional keras_tuner.HyperParameters config.
   """
   tf_transform_output = tft.TFTransformOutput(fn_args.transform_output)
 
@@ -277,7 +277,7 @@ def run_fn(fn_args: tfx.components.FnArgs):
       batch_size=_EVAL_BATCH_SIZE)
 
   if fn_args.hyperparameters:
-    hparams = kerastuner.HyperParameters.from_config(fn_args.hyperparameters)
+    hparams = keras_tuner.HyperParameters.from_config(fn_args.hyperparameters)
   else:
     # This is a shown case when hyperparameters is decided and Tuner is removed
     # from the pipeline. User can also inline the hyperparameters directly in

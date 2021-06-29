@@ -171,7 +171,7 @@ class ExecutorTest(tf.test.TestCase):
     hp_artifact = standard_artifacts.HyperParameters()
     hp_artifact.uri = os.path.join(self._output_data_dir, 'hyperparameters/')
 
-    # TODO(jyzhao): use real kerastuner.HyperParameters instead of dict.
+    # TODO(jyzhao): use real keras_tuner.HyperParameters instead of dict.
     hyperparameters = {}
     hyperparameters['first_dnn_layer_size'] = 100
     hyperparameters['num_dnn_layers'] = 4

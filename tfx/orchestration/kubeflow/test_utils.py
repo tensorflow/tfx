@@ -446,6 +446,32 @@ class BaseKubeflowTest(test_case_utils.TfxTest):
           ['gcloud', 'container', 'images', 'delete', cls.container_image],
           check=True)
 
+  @classmethod
+  def _get_mysql_pod_name(cls):
+    """Returns MySQL pod name in the cluster."""
+    pod_name = subprocess.check_output([
+        'kubectl',
+        '-n',
+        'kubeflow',
+        'get',
+        'pods',
+        '-l',
+        'app=mysql',
+        '--no-headers',
+        '-o',
+        'custom-columns=:metadata.name',
+    ]).decode('utf-8').strip('\n')
+    logging.info('MySQL pod name is: %s', pod_name)
+    return pod_name
+
+  @classmethod
+  def _get_mlmd_db_name(cls, pipeline_name: Text):
+    # MySQL DB names must not contain '-' while k8s names must not contain '_'.
+    # So we replace the dashes here for the DB name.
+    valid_mysql_name = pipeline_name.replace('-', '_')
+    # MySQL database name cannot exceed 64 characters.
+    return 'mlmd_{}'.format(valid_mysql_name[-59:])
+
   def setUp(self):
     super(BaseKubeflowTest, self).setUp()
     self._test_dir = self.tmp_dir
@@ -552,6 +578,34 @@ class BaseKubeflowTest(test_case_utils.TfxTest):
     test_utils.delete_gcs_files(self._GCP_PROJECT_ID, self._BUCKET_NAME,
                                 'test_output/{}'.format(pipeline_name))
 
+  def _delete_pipeline_metadata(self, pipeline_name: Text):
+    """Drops the database containing metadata produced by the pipeline.
+
+    Args:
+      pipeline_name: The name of the pipeline owning the database.
+    """
+    pod_name = self._get_mysql_pod_name()
+    db_name = self._get_mlmd_db_name(pipeline_name)
+
+    command = [
+        'kubectl',
+        '-n',
+        'kubeflow',
+        'exec',
+        '-it',
+        pod_name,
+        '--',
+        'mysql',
+        '--user',
+        'root',
+        '--execute',
+        'drop database if exists {};'.format(db_name),
+    ]
+    logging.info('Dropping MLMD DB with name: %s', db_name)
+
+    with test_utils.Timer('DeletingMLMDDatabase'):
+      subprocess.run(command, check=True)
+
   def _pipeline_root(self, pipeline_name: Text):
     return os.path.join(self._test_output_dir, pipeline_name)
 
@@ -634,6 +688,7 @@ class BaseKubeflowTest(test_case_utils.TfxTest):
     workflow_name = workflow_name or pipeline_name
     # Ensure cleanup regardless of whether pipeline succeeds or fails.
     self.addCleanup(self._delete_workflow, workflow_name)
+    self.addCleanup(self._delete_pipeline_metadata, pipeline_name)
     self.addCleanup(self._delete_pipeline_output, pipeline_name)
 
     # Run the pipeline to completion.

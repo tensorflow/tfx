@@ -23,7 +23,7 @@ import os
 from typing import Any, Callable, Dict, List, Optional, Text
 
 from absl import logging
-from kerastuner.engine import base_tuner
+from keras_tuner.engine import base_tuner
 from tfx import types
 from tfx.components.trainer import fn_args_utils
 from tfx.components.util import udf_utils

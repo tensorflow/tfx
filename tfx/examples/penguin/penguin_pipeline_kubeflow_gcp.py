@@ -183,7 +183,7 @@ def create_pipeline(
     #                                 -> CloudTunerB -> tuning trials
     #
     # Distributed training for each trial depends on the Tuner
-    # (kerastuner.BaseTuner) setup in tuner_fn. Currently CloudTuner is single
+    # (keras_tuner.BaseTuner) setup in tuner_fn. Currently CloudTuner is single
     # worker training per trial. DistributingCloudTuner (a subclass of
     # CloudTuner) launches remote distributed training job per trial.
     #
