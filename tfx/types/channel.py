@@ -67,8 +67,11 @@ class Channel(json_utils.Jsonable):
         future.
       artifacts: Deprecated and ignored, kept only for backward compatibility.
       producer_component_id: (Optional) Producer component id of the Channel.
+        This argument is internal/experimental and is subject to change in the
+        future.
       output_key: (Optional) The output key when producer component produces
-        the artifacts in this Channel.
+        the artifacts in this Channel. This argument is internal/experimental
+        and is subject to change in the future.
     """
     if not (inspect.isclass(type) and issubclass(type, Artifact)):  # pytype: disable=wrong-arg-types
       raise ValueError(
