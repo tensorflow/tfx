@@ -15,13 +15,12 @@
 
 import abc
 import inspect
-from typing import Any, Dict, Optional, Union
+from typing import Any, Dict, Optional, Text, Union
 
 from tfx import types
 from tfx.dsl.components.base import base_driver
 from tfx.dsl.components.base import base_node
 from tfx.dsl.components.base import executor_spec
-from tfx.types import node_common
 from tfx.utils import abc_utils
 from tfx.utils import doc_controls
 
@@ -162,11 +161,11 @@ class BaseComponent(base_node.BaseNode, abc.ABC):
 
   @property
   @doc_controls.do_not_doc_in_subclasses
-  def inputs(self) -> node_common._PropertyDictWrapper:  # pylint: disable=protected-access, g-missing-from-attributes
+  def inputs(self) -> Dict[Text, Any]:
     return self.spec.inputs
 
   @property
-  def outputs(self) -> node_common._PropertyDictWrapper:  # pylint: disable=protected-access
+  def outputs(self) -> Dict[Text, Any]:
     """Component's output channel dict."""
     return self.spec.outputs
 

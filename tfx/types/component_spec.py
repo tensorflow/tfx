@@ -20,7 +20,6 @@ from typing import Any, Dict, List, Optional, Type
 
 from tfx.types.artifact import Artifact
 from tfx.types.channel import Channel
-from tfx.types.node_common import _PropertyDictWrapper
 from tfx.utils import abc_utils
 from tfx.utils import json_utils
 from tfx.utils import proto_utils
@@ -228,21 +227,8 @@ class ComponentSpec(json_utils.Jsonable):
         value = self._raw_args[arg_name]
         param_dict[arg_name] = value
 
-    # Note: for forwards compatibility, ComponentSpec objects may provide an
-    # attribute mapping virtual keys to physical keys in the outputs dictionary,
-    # and when the value for a virtual key is accessed, the value for the
-    # physical key will be returned instead. This is intended to provide
-    # forwards compatibility. This feature will be removed once attribute
-    # renaming is completed and *should not* be used by ComponentSpec authors
-    # outside the TFX package.
-    #
-    # TODO(b/139281215): remove this functionality.
-    self.inputs = _PropertyDictWrapper(
-        inputs,
-        compat_aliases=getattr(self, '_INPUT_COMPATIBILITY_ALIASES', None))
-    self.outputs = _PropertyDictWrapper(
-        outputs,
-        compat_aliases=getattr(self, '_OUTPUT_COMPATIBILITY_ALIASES', None))
+    self.inputs = inputs
+    self.outputs = outputs
 
   def to_json_dict(self) -> Dict[str, Any]:
     """Convert from an object to a JSON serializable dictionary."""

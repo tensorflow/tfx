@@ -14,14 +14,13 @@
 """TFX Resolver definition."""
 
 import abc
-from typing import Any, Dict, List, Optional, Type
+from typing import Any, Dict, List, Optional, Text, Type
 
 from tfx import types
 from tfx.dsl.components.base import base_driver
 from tfx.dsl.components.base import base_node
 from tfx.orchestration import data_types
 from tfx.orchestration import metadata
-from tfx.types import node_common
 from tfx.utils import deprecation_utils
 from tfx.utils import doc_controls
 from tfx.utils import json_utils
@@ -243,13 +242,13 @@ class Resolver(base_node.BaseNode):
 
   @property
   @doc_controls.do_not_generate_docs
-  def inputs(self) -> node_common._PropertyDictWrapper:  # pylint: disable=protected-access
-    return node_common._PropertyDictWrapper(self._input_dict)  # pylint: disable=protected-access
+  def inputs(self) -> Dict[Text, Any]:
+    return self._input_dict
 
   @property
-  def outputs(self) -> node_common._PropertyDictWrapper:  # pylint: disable=protected-access
+  def outputs(self) -> Dict[Text, Any]:
     """Output Channel dict that contains resolved artifacts."""
-    return node_common._PropertyDictWrapper(self._output_dict)  # pylint: disable=protected-access
+    return self._output_dict
 
   @property
   @doc_controls.do_not_generate_docs

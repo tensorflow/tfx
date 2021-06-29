@@ -47,6 +47,12 @@
 ## Breaking Changes
 
 *  Removed unneccessary default values for required component input Channels.
+*  The `_PropertyDictWrapper` internal wrapper for `component.inputs` and
+   `component.outputs` was removed: `component.inputs` and `component.outputs`
+   are now unwrapped dictionaries, and the attribute accessor syntax (e.g.
+   `components.outputs.output_name`) is no longer supported. Please use the
+   dictionary indexing syntax (e.g. `components.outputs['output_name']`)
+   instead.
 
 ### For Pipeline Authors
 

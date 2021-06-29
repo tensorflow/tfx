@@ -13,7 +13,7 @@
 # limitations under the License.
 """TFX Importer definition."""
 
-from typing import Any, Dict, List, Optional, Type, Union
+from typing import Any, Dict, List, Optional, Text, Type, Union
 
 import absl
 from tfx import types
@@ -22,7 +22,6 @@ from tfx.dsl.components.base import base_node
 from tfx.orchestration import data_types
 from tfx.orchestration import metadata
 from tfx.types import channel_utils
-from tfx.types import node_common
 from tfx.utils import doc_controls
 
 from ml_metadata.proto import metadata_store_pb2
@@ -284,13 +283,13 @@ class Importer(base_node.BaseNode):
 
   @property
   @doc_controls.do_not_generate_docs
-  def inputs(self) -> node_common._PropertyDictWrapper:  # pylint: disable=protected-access
-    return node_common._PropertyDictWrapper({})  # pylint: disable=protected-access
+  def inputs(self) -> Dict[Text, Any]:
+    return {}
 
   @property
-  def outputs(self) -> node_common._PropertyDictWrapper:  # pylint: disable=protected-access
+  def outputs(self) -> Dict[Text, Any]:
     """Output Channel dict that contains imported artifacts."""
-    return node_common._PropertyDictWrapper(self._output_dict)  # pylint: disable=protected-access
+    return self._output_dict
 
   @property
   @doc_controls.do_not_generate_docs

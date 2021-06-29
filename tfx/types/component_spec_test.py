@@ -57,12 +57,6 @@ class _BasicComponentSpec(ComponentSpec):
   OUTPUTS = {
       'output': ChannelParameter(type=_OutputArtifact),
   }
-  _INPUT_COMPATIBILITY_ALIASES = {
-      'future_input_name': 'input',
-  }
-  _OUTPUT_COMPATIBILITY_ALIASES = {
-      'future_output_name': 'output',
-  }
 
 
 class ComponentSpecTest(tf.test.TestCase):
@@ -101,10 +95,6 @@ class ComponentSpecTest(tf.test.TestCase):
     self.assertEqual(10, spec.exec_properties['folds'])
     self.assertIs(spec.inputs['input'], input_channel)
     self.assertIs(spec.outputs['output'], output_channel)
-
-    # Verify compatibility aliasing behavior.
-    self.assertIs(spec.inputs['future_input_name'], spec.inputs['input'])
-    self.assertIs(spec.outputs['future_output_name'], spec.outputs['output'])
 
     with self.assertRaisesRegex(
         TypeError,

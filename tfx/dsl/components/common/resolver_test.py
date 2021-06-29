@@ -40,9 +40,8 @@ class ResolverTest(tf.test.TestCase):
                 'desired_num_of_artifacts': 5
             }
         })
-    self.assertEqual(rnode.inputs.get_all()['channel_to_resolve'],
-                     channel_to_resolve)
-    self.assertEqual(rnode.outputs.get_all()['channel_to_resolve'].type_name,
+    self.assertEqual(rnode.inputs['channel_to_resolve'], channel_to_resolve)
+    self.assertEqual(rnode.outputs['channel_to_resolve'].type_name,
                      channel_to_resolve.type_name)
 
   def testResolverDefinition_BadChannel(self):

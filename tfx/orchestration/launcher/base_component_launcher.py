@@ -76,8 +76,8 @@ class BaseComponentLauncher(abc.ABC):
     self._driver_class = component.driver_class
     self._component_executor_spec = component.executor_spec
 
-    self._input_dict = component.inputs.get_all()
-    self._output_dict = component.outputs.get_all()
+    self._input_dict = component.inputs
+    self._output_dict = component.outputs
     self._exec_properties = component.exec_properties
 
     self._metadata_connection = metadata_connection

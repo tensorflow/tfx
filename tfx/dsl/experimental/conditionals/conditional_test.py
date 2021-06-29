@@ -13,27 +13,26 @@
 # limitations under the License.
 """Tests for tfx.dsl.experimental.conditionals.conditional."""
 
-from typing import Any, Dict
+from typing import Any, Dict, Text
 
 import tensorflow as tf
 from tfx.dsl.components.base import base_node
 from tfx.dsl.experimental.conditionals import conditional
 from tfx.dsl.placeholder import placeholder
-from tfx.types import node_common
 
 
 class _FakeNode(base_node.BaseNode):
 
   @property
-  def inputs(self) -> node_common._PropertyDictWrapper:  # pylint: disable=protected-access
-    return node_common._PropertyDictWrapper({})  # pylint: disable=protected-access
+  def inputs(self) -> Dict[Text, Any]:
+    return {}
 
   @property
-  def outputs(self) -> node_common._PropertyDictWrapper:  # pylint: disable=protected-access
-    return node_common._PropertyDictWrapper({})  # pylint: disable=protected-access
+  def outputs(self) -> Dict[Text, Any]:
+    return {}
 
   @property
-  def exec_properties(self) -> Dict[str, Any]:
+  def exec_properties(self) -> Dict[Text, Any]:
     return {}
 
 

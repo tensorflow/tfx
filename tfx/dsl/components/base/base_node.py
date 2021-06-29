@@ -14,13 +14,12 @@
 """Base class for TFX nodes."""
 
 import abc
-from typing import Any, Dict, Optional, Type
+from typing import Any, Dict, Optional, Text, Type
 
 from tfx.dsl.components.base import base_driver
 from tfx.dsl.components.base import base_executor
 from tfx.dsl.components.base import executor_spec as executor_spec_module
 from tfx.dsl.components.base import node_registry
-from tfx.types import node_common
 from tfx.utils import deprecation_utils
 from tfx.utils import doc_controls
 from tfx.utils import json_utils
@@ -123,12 +122,12 @@ class BaseNode(json_utils.Jsonable, abc.ABC):
 
   @property
   @abc.abstractmethod
-  def inputs(self) -> node_common._PropertyDictWrapper:  # pylint: disable=protected-access
+  def inputs(self) -> Dict[Text, Any]:
     pass
 
   @property
   @abc.abstractmethod
-  def outputs(self) -> node_common._PropertyDictWrapper:  # pylint: disable=protected-access
+  def outputs(self) -> Dict[Text, Any]:
     pass
 
   @property
