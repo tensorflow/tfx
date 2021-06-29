@@ -313,18 +313,12 @@ class TaskManagerE2ETest(test_utils.TfxTest):
           m, pipeline_state, self._task_queue.contains_task_id,
           service_jobs.DummyServiceJobManager()).generate()
     self.assertLen(tasks, 1)
-    task = tasks[0]
-    self.assertEqual('my_transform', task.node_uid.node_id)
-
-    # Task generator should produce a task to run transform.
-    with self._mlmd_connection as m:
-      pipeline_state = pstate.PipelineState(m, self._pipeline, 0)
-      tasks = asptg.AsyncPipelineTaskGenerator(
-          m, pipeline_state, self._task_queue.contains_task_id,
-          service_jobs.DummyServiceJobManager()).generate()
-    self.assertLen(tasks, 1)
     self._task = tasks[0]
     self.assertEqual('my_transform', self._task.node_uid.node_id)
+    self.assertTrue(os.path.exists(self._task.stateful_working_dir))
+    self._output_artifact_uri = self._task.output_artifacts['transform_graph'][
+        0].uri
+    self.assertTrue(os.path.exists(self._output_artifact_uri))
     self._task_queue.enqueue(self._task)
 
     # There should be 1 active execution in MLMD.
@@ -380,6 +374,11 @@ class TaskManagerE2ETest(test_utils.TfxTest):
     self.assertEqual(metadata_store_pb2.Execution.COMPLETE,
                      execution.last_known_state)
 
+    # Check that stateful working dir is removed.
+    self.assertFalse(os.path.exists(self._task.stateful_working_dir))
+    # Output artifact URI remains as execution was successful.
+    self.assertTrue(os.path.exists(self._output_artifact_uri))
+
   def test_successful_execution_resulting_in_output_artifacts(self):
     # Register a fake task scheduler that returns a successful execution result
     # and `OK` task scheduler status.
@@ -396,6 +395,11 @@ class TaskManagerE2ETest(test_utils.TfxTest):
     execution = self._get_execution()
     self.assertEqual(metadata_store_pb2.Execution.COMPLETE,
                      execution.last_known_state)
+
+    # Check that stateful working dir is removed.
+    self.assertFalse(os.path.exists(self._task.stateful_working_dir))
+    # Output artifact URI remains as execution was successful.
+    self.assertTrue(os.path.exists(self._output_artifact_uri))
 
   def test_scheduler_failure(self):
     # Register a fake task scheduler that returns a failure status.
@@ -417,6 +421,10 @@ class TaskManagerE2ETest(test_utils.TfxTest):
         'foobar error',
         data_types_utils.get_metadata_value(
             execution.custom_properties[constants.EXECUTION_ERROR_MSG_KEY]))
+
+    # Check that stateful working dir and output artifact URI are removed.
+    self.assertFalse(os.path.exists(self._task.stateful_working_dir))
+    self.assertFalse(os.path.exists(self._output_artifact_uri))
 
   def test_executor_failure(self):
     # Register a fake task scheduler that returns success but the executor
@@ -442,6 +450,10 @@ class TaskManagerE2ETest(test_utils.TfxTest):
         data_types_utils.get_metadata_value(
             execution.custom_properties[constants.EXECUTION_ERROR_MSG_KEY]))
 
+    # Check that stateful working dir and output artifact URI are removed.
+    self.assertFalse(os.path.exists(self._task.stateful_working_dir))
+    self.assertFalse(os.path.exists(self._output_artifact_uri))
+
   def test_scheduler_raises_exception(self):
     # Register a fake task scheduler that raises an exception in `schedule`.
     self._register_task_scheduler(None, exception=ValueError('test exception'))
@@ -454,6 +466,10 @@ class TaskManagerE2ETest(test_utils.TfxTest):
     execution = self._get_execution()
     self.assertEqual(metadata_store_pb2.Execution.FAILED,
                      execution.last_known_state)
+
+    # Check that stateful working dir and output artifact URI are removed.
+    self.assertFalse(os.path.exists(self._task.stateful_working_dir))
+    self.assertFalse(os.path.exists(self._output_artifact_uri))
 
 
 if __name__ == '__main__':

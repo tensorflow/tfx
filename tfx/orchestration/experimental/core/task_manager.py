@@ -19,6 +19,7 @@ import typing
 from typing import Optional
 
 from absl import logging
+from tfx.dsl.io import fileio
 from tfx.orchestration import data_types_utils
 from tfx.orchestration import metadata
 from tfx.orchestration.experimental.core import constants
@@ -226,8 +227,11 @@ class TaskManager:
     if exceptions:
       logging.error('Exception(s) occurred during the pipeline run.')
       for i, e in enumerate(exceptions, start=1):
-        logging.error('Exception %d (out of %d):', i, len(exceptions),
-                      exc_info=(type(e), e, e.__traceback__))
+        logging.error(
+            'Exception %d (out of %d):',
+            i,
+            len(exceptions),
+            exc_info=(type(e), e, e.__traceback__))
       raise TasksProcessingError(exceptions)
 
 
@@ -250,6 +254,8 @@ def _publish_execution_results(mlmd_handle: metadata.Metadata,
 
   def _update_state(status: status_lib.Status) -> None:
     assert status.code != status_lib.Code.OK
+    _remove_output_dirs(task, result)
+    _remove_task_dirs(task)
     if status.code == status_lib.Code.CANCELLED:
       logging.info('Cancelling execution (id: %s); task id: %s; status: %s',
                    task.execution_id, task.task_id, status)
@@ -288,8 +294,27 @@ def _publish_execution_results(mlmd_handle: metadata.Metadata,
     outputs_utils.tag_executor_output_with_version(result.executor_output)
     publish_params['executor_output'] = result.executor_output
 
+  _remove_task_dirs(task)
   execution_publish_utils.publish_succeeded_execution(mlmd_handle,
                                                       task.execution_id,
                                                       task.contexts,
                                                       **publish_params)
   pipeline_state.record_state_change_time()
+
+
+def _remove_output_dirs(task: task_lib.ExecNodeTask,
+                        ts_result: ts.TaskSchedulerResult) -> None:
+  outputs_utils.remove_output_dirs(task.output_artifacts)
+  if ts_result.output_artifacts is not None:
+    outputs_utils.remove_output_dirs(ts_result.output_artifacts)
+
+
+def _remove_task_dirs(task: task_lib.ExecNodeTask) -> None:
+  if task.stateful_working_dir:
+    outputs_utils.remove_stateful_working_dir(task.stateful_working_dir)
+  if task.executor_output_uri:
+    try:
+      fileio.remove(task.executor_output_uri)
+    except fileio.NotFoundError:
+      logging.exception('executor_output_uri not found: %s',
+                        task.executor_output_uri)
