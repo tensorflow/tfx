@@ -156,6 +156,32 @@ def create_node_uid(pipeline_id, node_id):
       node_id=node_id)
 
 
+def run_generator(mlmd_connection,
+                  generator_class,
+                  pipeline,
+                  task_queue,
+                  use_task_queue,
+                  service_job_manager,
+                  ignore_node_ids=None):
+  """Generates tasks for testing."""
+  with mlmd_connection as m:
+    pipeline_state = pstate.PipelineState(m, pipeline, 0)
+    generator_params = dict(
+        mlmd_handle=m,
+        pipeline_state=pipeline_state,
+        is_task_id_tracked_fn=task_queue.contains_task_id,
+        service_job_manager=service_job_manager)
+    if generator_class == asptg.AsyncPipelineTaskGenerator:
+      generator_params['ignore_node_ids'] = ignore_node_ids
+    task_gen = generator_class(**generator_params)
+    tasks = task_gen.generate()
+    if use_task_queue:
+      for task in tasks:
+        if task_lib.is_exec_node_task(task):
+          task_queue.enqueue(task)
+  return tasks
+
+
 def run_generator_and_test(test_case,
                            mlmd_connection,
                            generator_class,
@@ -177,16 +203,15 @@ def run_generator_and_test(test_case,
     test_case.assertLen(
         executions, num_initial_executions,
         f'Expected {num_initial_executions} execution(s) in MLMD.')
-    pipeline_state = pstate.PipelineState(m, pipeline, 0)
-    generator_params = dict(
-        mlmd_handle=m,
-        pipeline_state=pipeline_state,
-        is_task_id_tracked_fn=task_queue.contains_task_id,
-        service_job_manager=service_job_manager)
-    if generator_class == asptg.AsyncPipelineTaskGenerator:
-      generator_params['ignore_node_ids'] = ignore_node_ids
-    task_gen = generator_class(**generator_params)
-    tasks = task_gen.generate()
+  tasks = run_generator(
+      mlmd_connection,
+      generator_class,
+      pipeline,
+      task_queue,
+      use_task_queue,
+      service_job_manager,
+      ignore_node_ids=ignore_node_ids)
+  with mlmd_connection as m:
     test_case.assertLen(
         tasks, num_tasks_generated,
         f'Expected {num_tasks_generated} task(s) to be generated.')
@@ -205,10 +230,6 @@ def run_generator_and_test(test_case,
       for i, task in enumerate(tasks):
         _verify_exec_node_task(test_case, pipeline, expected_exec_nodes[i],
                                active_executions[i].id, task)
-    if use_task_queue:
-      for task in tasks:
-        if task_lib.is_exec_node_task(task):
-          task_queue.enqueue(task)
     return tasks
 
 

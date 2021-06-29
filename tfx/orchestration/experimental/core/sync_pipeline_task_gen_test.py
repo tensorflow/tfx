@@ -102,13 +102,26 @@ class SyncPipelineTaskGeneratorTest(otu.TfxTest, parameterized.TestCase):
         })
     return pipeline
 
-  def _finish_node_execution(self, use_task_queue, exec_node_task):
-    """Simulates successful execution of a node."""
-    otu.fake_execute_node(self._mlmd_connection, exec_node_task)
+  def _start_processing(self, use_task_queue, exec_node_task):
     if use_task_queue:
       dequeued_task = self._task_queue.dequeue()
-      self._task_queue.task_done(dequeued_task)
       self.assertEqual(exec_node_task.task_id, dequeued_task.task_id)
+
+  def _finish_processing(self, use_task_queue, dequeued_task):
+    if use_task_queue:
+      self._task_queue.task_done(dequeued_task)
+
+  def _finish_node_execution(self, use_task_queue, exec_node_task):
+    """Simulates successful execution of a node."""
+    self._start_processing(use_task_queue, exec_node_task)
+    otu.fake_execute_node(self._mlmd_connection, exec_node_task)
+    self._finish_processing(use_task_queue, exec_node_task)
+
+  def _generate(self, use_task_queue):
+    return otu.run_generator(self._mlmd_connection,
+                             sptg.SyncPipelineTaskGenerator, self._pipeline,
+                             self._task_queue, use_task_queue,
+                             self._mock_service_job_manager)
 
   def _generate_and_test(self,
                          use_task_queue,
@@ -247,6 +260,107 @@ class SyncPipelineTaskGeneratorTest(otu.TfxTest, parameterized.TestCase):
     self.assertEqual(status_lib.Code.OK, finalize_task.status.code)
     if use_task_queue:
       self.assertTrue(self._task_queue.is_empty())
+
+  @parameterized.parameters(False, True)
+  def test_finalize_pipeline_after_terminal_nodes_success(self, use_task_queue):
+    """Tests that pipeline is finalized only after terminal nodes are successful.
+
+    Args:
+      use_task_queue: If task queue is enabled, new tasks are only generated if
+        a task with the same task_id does not already exist in the queue.
+        `use_task_queue=False` is useful to test the case of task generation
+        when task queue is empty (for eg: due to orchestrator restart).
+    """
+    # Check that there are two terminal nodes at different layers.
+    layers = sptg._topsorted_layers(self._pipeline)
+    self.assertIn(self._example_validator.node_info.id,
+                  [n.node_info.id for n in layers[3]])
+    self.assertIn(self._chore_b.node_info.id,
+                  [n.node_info.id for n in layers[6]])
+    self.assertEqual(
+        {self._example_validator.node_info.id, self._chore_b.node_info.id},
+        sptg._terminal_node_ids(layers))
+
+    # Start executing the pipeline:
+
+    otu.fake_example_gen_run(self._mlmd_connection, self._example_gen, 1, 1)
+
+    [stats_gen_task] = self._generate(use_task_queue)
+    self.assertEqual(self._stats_gen.node_info.id,
+                     stats_gen_task.node_uid.node_id)
+    self._finish_node_execution(use_task_queue, stats_gen_task)
+
+    [schema_gen_task] = self._generate(use_task_queue)
+    self.assertEqual(self._schema_gen.node_info.id,
+                     schema_gen_task.node_uid.node_id)
+    self._finish_node_execution(use_task_queue, schema_gen_task)
+
+    # Both example-validator and transform are ready to execute.
+    [example_validator_task, transform_task] = self._generate(use_task_queue)
+    self.assertEqual(self._example_validator.node_info.id,
+                     example_validator_task.node_uid.node_id)
+    self.assertEqual(self._transform.node_info.id,
+                     transform_task.node_uid.node_id)
+    # Start processing (but do not finish) example-validator.
+    self._start_processing(use_task_queue, example_validator_task)
+    # But finish transform which is in the same layer.
+    self._finish_node_execution(use_task_queue, transform_task)
+
+    # Readability note: below, example-validator task should continue to be
+    # generated when not using task queue because the execution is active.
+
+    # Trainer can execute as transform is finished.
+    tasks = self._generate(use_task_queue)
+    if use_task_queue:
+      self.assertLen(tasks, 1)
+      trainer_task = tasks[0]
+    else:
+      self.assertLen(tasks, 2)
+      [example_validator_task, trainer_task] = tasks
+      self.assertEqual(self._example_validator.node_info.id,
+                       example_validator_task.node_uid.node_id)
+    self.assertEqual(self._trainer.node_info.id, trainer_task.node_uid.node_id)
+    self._finish_node_execution(use_task_queue, trainer_task)
+
+    tasks = self._generate(use_task_queue)
+    if use_task_queue:
+      self.assertLen(tasks, 1)
+      chore_a_task = tasks[0]
+    else:
+      self.assertLen(tasks, 2)
+      [example_validator_task, chore_a_task] = tasks
+      self.assertEqual(self._example_validator.node_info.id,
+                       example_validator_task.node_uid.node_id)
+    self.assertEqual(self._chore_a.node_info.id, chore_a_task.node_uid.node_id)
+    self._finish_node_execution(use_task_queue, chore_a_task)
+
+    tasks = self._generate(use_task_queue)
+    if use_task_queue:
+      self.assertLen(tasks, 1)
+      chore_b_task = tasks[0]
+    else:
+      self.assertLen(tasks, 2)
+      [example_validator_task, chore_b_task] = tasks
+      self.assertEqual(self._example_validator.node_info.id,
+                       example_validator_task.node_uid.node_id)
+    self.assertEqual(self._chore_b.node_info.id, chore_b_task.node_uid.node_id)
+    self._finish_node_execution(use_task_queue, chore_b_task)
+
+    # No new tasks are generated as example-validator is still incomplete.
+    tasks = self._generate(use_task_queue)
+    if use_task_queue:
+      self.assertEmpty(tasks)
+    else:
+      self.assertLen(tasks, 1)
+      example_validator_task = tasks[0]
+      self.assertEqual(self._example_validator.node_info.id,
+                       example_validator_task.node_uid.node_id)
+
+    # FinalizePipelineTask is generated only after example-validator finishes.
+    otu.fake_execute_node(self._mlmd_connection, example_validator_task)
+    self._finish_processing(use_task_queue, example_validator_task)
+    [finalize_task] = self._generate(use_task_queue)
+    self.assertTrue(task_lib.is_finalize_pipeline_task(finalize_task))
 
   def test_service_job_running(self):
     """Tests task generation when example-gen service job is still running."""

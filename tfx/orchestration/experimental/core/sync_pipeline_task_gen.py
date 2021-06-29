@@ -82,10 +82,6 @@ class SyncPipelineTaskGenerator(task_gen.TaskGenerator):
     self._pipeline_run_id = (
         pipeline.runtime_spec.pipeline_run_id.field_value.string_value)
     self._is_task_id_tracked_fn = is_task_id_tracked_fn
-    self._node_map = {
-        node.pipeline_node.node_info.id: node.pipeline_node
-        for node in pipeline.nodes
-    }
     self._service_job_manager = service_job_manager
 
   def generate(self) -> List[task_lib.Task]:
@@ -97,16 +93,11 @@ class SyncPipelineTaskGenerator(task_gen.TaskGenerator):
     Returns:
       A `list` of tasks to execute.
     """
-    layers = topsort.topsorted_layers(
-        [node.pipeline_node for node in self._pipeline.nodes],
-        get_node_id_fn=lambda node: node.node_info.id,
-        get_parent_nodes=(
-            lambda node: [self._node_map[n] for n in node.upstream_nodes]),
-        get_child_nodes=(
-            lambda node: [self._node_map[n] for n in node.downstream_nodes]))
+    layers = _topsorted_layers(self._pipeline)
+    terminal_node_ids = _terminal_node_ids(layers)
     result = []
     successful_node_ids = set()
-    for layer_num, layer_nodes in enumerate(layers):
+    for layer_nodes in layers:
       for node in layer_nodes:
         node_uid = task_lib.NodeUid.from_pipeline_node(self._pipeline, node)
         node_id = node.node_info.id
@@ -180,18 +171,13 @@ class SyncPipelineTaskGenerator(task_gen.TaskGenerator):
       successful_layer_node_ids = layer_node_ids & successful_node_ids
       self._update_successful_nodes_cache(successful_layer_node_ids)
 
-      # If all nodes in the final layer are completed successfully , the
-      # pipeline can be finalized.
-      # TODO(goutham): If there are conditional eval nodes, not all nodes may be
-      # executed in the final layer. Handle this case when conditionals are
-      # supported.
-      if (layer_num == len(layers) - 1 and
-          successful_layer_node_ids == layer_node_ids):
-        return [
-            task_lib.FinalizePipelineTask(
-                pipeline_uid=self._pipeline_uid,
-                status=status_lib.Status(code=status_lib.Code.OK))
-        ]
+    # If all terminal nodes are successful, the pipeline can be finalized.
+    if terminal_node_ids <= successful_node_ids:
+      return [
+          task_lib.FinalizePipelineTask(
+              pipeline_uid=self._pipeline_uid,
+              status=status_lib.Status(code=status_lib.Code.OK))
+      ]
     return result
 
   def _maybe_generate_task(
@@ -348,3 +334,30 @@ def _get_executor_spec(pipeline: pipeline_pb2.Pipeline,
   depl_config = pipeline_pb2.IntermediateDeploymentConfig()
   pipeline.deployment_config.Unpack(depl_config)
   return depl_config.executor_specs.get(node_id)
+
+
+def _topsorted_layers(
+    pipeline: pipeline_pb2.Pipeline) -> List[List[pipeline_pb2.PipelineNode]]:
+  """Returns pipeline nodes in topologically sorted layers."""
+  node_by_id = {
+      node.pipeline_node.node_info.id: node.pipeline_node
+      for node in pipeline.nodes
+  }
+  return topsort.topsorted_layers(
+      [node.pipeline_node for node in pipeline.nodes],
+      get_node_id_fn=lambda node: node.node_info.id,
+      get_parent_nodes=(
+          lambda node: [node_by_id[n] for n in node.upstream_nodes]),
+      get_child_nodes=(
+          lambda node: [node_by_id[n] for n in node.downstream_nodes]))
+
+
+def _terminal_node_ids(
+    layers: List[List[pipeline_pb2.PipelineNode]]) -> Set[str]:
+  """Returns nodes across all layers that have no downstream nodes."""
+  terminal_node_ids: Set[str] = set()
+  for layer_nodes in layers:
+    for node in layer_nodes:
+      if not node.downstream_nodes:
+        terminal_node_ids.add(node.node_info.id)
+  return terminal_node_ids
