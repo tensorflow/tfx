@@ -2,7 +2,7 @@
 
 ## TensorFlow Extended
 
-*   [TensorFlow Extended](https://www.tensorflow.org/tfx/model_analysis/api_docs/python/tfma)
+*   [TensorFlow Extended](https://www.tensorflow.org/tfx/api_docs/python/tfx)
 
 ## Data Validation
 
