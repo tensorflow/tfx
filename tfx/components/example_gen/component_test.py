@@ -70,7 +70,7 @@ class ComponentTest(tf.test.TestCase):
         input_config=example_gen_pb2.Input(splits=[
             example_gen_pb2.Input.Split(name='single', pattern='query'),
         ]))
-    self.assertEqual({}, example_gen.inputs.get_all())
+    self.assertEqual({}, example_gen.inputs)
     self.assertEqual(driver.QueryBasedDriver, example_gen.driver_class)
     self.assertEqual(
         standard_artifacts.Examples.TYPE_NAME,

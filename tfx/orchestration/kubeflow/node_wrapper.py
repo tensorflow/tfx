@@ -21,7 +21,6 @@ from __future__ import print_function
 from typing import Any, Dict, Text
 
 from tfx.dsl.components.base import base_node
-from tfx.types import node_common
 
 
 class NodeWrapper(base_node.BaseNode):
@@ -51,11 +50,11 @@ class NodeWrapper(base_node.BaseNode):
     return self._id
 
   @property
-  def inputs(self) -> node_common._PropertyDictWrapper:  # pylint: disable=protected-access
+  def inputs(self) -> Dict[Text, Any]:
     return self._inputs
 
   @property
-  def outputs(self) -> node_common._PropertyDictWrapper:  # pylint: disable=protected-access
+  def outputs(self) -> Dict[Text, Any]:
     return self._outputs
 
   @property

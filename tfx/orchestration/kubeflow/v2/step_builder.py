@@ -179,8 +179,8 @@ class StepBuilder(object):
     self._node = node
     self._deployment_config = deployment_config
     self._component_defs = component_defs
-    self._inputs = node.inputs.get_all()
-    self._outputs = node.outputs.get_all()
+    self._inputs = node.inputs
+    self._outputs = node.outputs
     self._enable_cache = enable_cache
     if channel_redirect_map is None:
       self._channel_redirect_map = {}
