@@ -109,7 +109,6 @@ class CliKubeflowEndToEndTest(test_case_utils.TfxTest):
     self._delete_experiment(pipeline_name)
     self._delete_pipeline(pipeline_name)
     self._delete_pipeline_output(pipeline_name)
-    self._delete_pipeline_metadata(pipeline_name)
 
   @retry.retry(ignore_eventual_failure=True)
   def _delete_pipeline(self, pipeline_name: Text):
@@ -152,52 +151,6 @@ class CliKubeflowEndToEndTest(test_case_utils.TfxTest):
         'Deleting output under GCS bucket prefix: {}'.format(prefix))
     blobs = list(bucket.list_blobs(prefix=prefix))
     bucket.delete_blobs(blobs)
-
-  def _get_mysql_pod_name(self) -> Text:
-    """Returns MySQL pod name in the cluster."""
-    pod_name = subprocess.check_output([
-        'kubectl',
-        '-n',
-        'kubeflow',
-        'get',
-        'pods',
-        '-l',
-        'app=mysql',
-        '--no-headers',
-        '-o',
-        'custom-columns=:metadata.name',
-    ]).decode('utf-8').strip('\n')
-    absl.logging.info('MySQL pod name is: {}'.format(pod_name))
-    return pod_name
-
-  @retry.retry(ignore_eventual_failure=True)
-  def _delete_pipeline_metadata(self, pipeline_name: Text) -> None:
-    """Drops the database containing metadata produced by the pipeline.
-
-    Args:
-      pipeline_name: The name of the pipeline owning the database.
-    """
-    pod_name = self._get_mysql_pod_name()
-    valid_mysql_name = pipeline_name.replace('-', '_')
-    # MySQL database name cannot exceed 64 characters.
-    db_name = 'mlmd_{}'.format(valid_mysql_name[-59:])
-
-    command = [
-        'kubectl',
-        '-n',
-        'kubeflow',
-        'exec',
-        '-it',
-        pod_name,
-        '--',
-        'mysql',
-        '--user',
-        'root',
-        '--execute',
-        'drop database if exists {};'.format(db_name),
-    ]
-    absl.logging.info('Dropping MLMD DB with name: {}'.format(db_name))
-    subprocess.run(command, check=True)
 
   def _delete_all_runs(self, experiment_id: Text):
     try:
