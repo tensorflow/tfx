@@ -2,30 +2,30 @@
 
 ## TensorFlow Extended
 
-*   [TensorFlow Extended](api_docs/python/tfx)
+*   [TensorFlow Extended](https://www.tensorflow.org/tfx/api_docs/python/tfx)
 
 ## Data Validation
 
-*   [Data Validation](data_validation/api_docs/python/tfdv)
+*   [Data Validation](https://www.tensorflow.org/tfx/data_validation/api_docs/python/tfdv)
 
 ## Transform
 
-*   [Transform](transform/api_docs/python/tft)
-*   [Transform.beam](transform/api_docs/python/tft_beam)
+*   [Transform](https://www.tensorflow.org/tfx/transform/api_docs/python/tft)
+*   [Transform.beam](https://www.tensorflow.org/tfx/transform/api_docs/python/tft_beam)
 
 ## Model Analysis
 
-*   [Model Analysis](model_analysis/api_docs/python/tfma/)
+*   [Model Analysis](https://www.tensorflow.org/tfx/model_analysis/api_docs/python/tfma)
 
 ## Serving
 
-*   [Client API (REST)](serving/api_rest/)
-*   [Server API (C++)](serving/api_docs/cc/)
+*   [Client API (REST)](https://www.tensorflow.org/tfx/serving/api_rest)
+*   [Server API (C++)](https://www.tensorflow.org/tfx/serving/api_docs/cc)
 
 ## ML Metadata
 
-*   [ML Metadata](ml_metadata/api_docs/python/mlmd)
+*   [ML Metadata](https://www.tensorflow.org/tfx/ml_metadata/api_docs/python/mlmd)
 
 ## TFX Basic Shared Libraries (`tfx_bsl`)
 
-*   [tfx_bsl](tfx_bsl/api_docs/python/tfx_bsl/public)
+*   [tfx_bsl](https://www.tensorflow.org/tfx/tfx_bsl/api_docs/python/tfx_bsl/public)
