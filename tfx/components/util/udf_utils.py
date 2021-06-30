@@ -51,7 +51,7 @@ _EPHEMERAL_SETUP_PY_FILE_NAME = '_tfx_generated_setup.py'
 def get_fn(exec_properties: Dict[Text, Any],
            fn_name: Text) -> Callable[..., Any]:
   """Loads and returns user-defined function."""
-  logging.error('udf_utils.get_fn %r %r', exec_properties, fn_name)
+  logging.info('udf_utils.get_fn %r %r', exec_properties, fn_name)
 
   has_module_file = bool(exec_properties.get(_MODULE_FILE_KEY))
   has_module_path = bool(exec_properties.get(_MODULE_PATH_KEY))
