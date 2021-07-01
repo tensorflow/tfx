@@ -316,5 +316,6 @@ def _remove_task_dirs(task: task_lib.ExecNodeTask) -> None:
     try:
       fileio.remove(task.executor_output_uri)
     except fileio.NotFoundError:
-      logging.exception('executor_output_uri not found: %s',
-                        task.executor_output_uri)
+      logging.warning(
+          'Skipping deletion of executor_output_uri (file not found): %s',
+          task.executor_output_uri)
