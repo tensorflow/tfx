@@ -136,14 +136,14 @@ def create_pipeline(
     A TFX pipeline object.
   """
   # Number of epochs in training.
-  train_steps = tfx.dsl.RuntimeParameter(
+  train_steps = tfx.dsl.experimental.RuntimeParameter(
       name='train_steps',
       default=100,
       ptype=int,
   )
 
   # Number of epochs in evaluation.
-  eval_steps = tfx.dsl.RuntimeParameter(
+  eval_steps = tfx.dsl.experimental.RuntimeParameter(
       name='eval_steps',
       default=50,
       ptype=int,
