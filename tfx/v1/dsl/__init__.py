@@ -15,8 +15,6 @@
 
 from tfx.dsl.components.common.importer import Importer
 from tfx.dsl.components.common.resolver import Resolver
-# TODO(b/185911128): move RuntimeParameter implementation to tfx/dsl.
-from tfx.orchestration.data_types import RuntimeParameter
 # TODO(b/184980265): move Pipeline implementation to tfx/dsl.
 from tfx.orchestration.pipeline import ExecutionMode
 from tfx.orchestration.pipeline import Pipeline

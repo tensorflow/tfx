@@ -17,3 +17,6 @@ from tfx.dsl.components.common.resolver import ResolverStrategy
 from tfx.dsl.input_resolution.strategies.latest_artifact_strategy import LatestArtifactStrategy
 from tfx.dsl.input_resolution.strategies.latest_blessed_model_strategy import LatestBlessedModelStrategy
 from tfx.dsl.input_resolution.strategies.span_range_strategy import SpanRangeStrategy
+
+# TODO(b/185911128): move RuntimeParameter implementation to tfx/dsl.
+from tfx.orchestration.data_types import RuntimeParameter
