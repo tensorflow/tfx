@@ -246,6 +246,53 @@ class PipelineTest(test_case_utils.TfxTest):
           components=[component_c, component_d, component_b, component_a],
           metadata_connection_config=self._metadata_connection_config)
 
+  def testPipelineWithOldReferences(self):
+    component_a = _make_fake_component_instance(
+        name='component_a', output_type=_OutputTypeA, inputs={}, outputs={})
+    component_b_v1 = _make_fake_component_instance(
+        name='component_b',
+        output_type=_OutputTypeB,
+        inputs={
+            'a': component_a.outputs['output'],
+        },
+        outputs={})
+    component_c_v1 = _make_fake_component_instance(
+        name='component_c',
+        output_type=_OutputTypeC,
+        inputs={
+            'b': component_b_v1.outputs['output'],
+        },
+        outputs={})
+    my_pipeline_v1 = pipeline.Pipeline(
+        pipeline_name='a',
+        pipeline_root='b',
+        components=[component_a, component_b_v1, component_c_v1],
+        metadata_connection_config=self._metadata_connection_config)
+    self.assertEqual(3, len(my_pipeline_v1.components))
+
+    component_b_v2 = _make_fake_component_instance(
+        name='component_b',
+        output_type=_OutputTypeB,
+        inputs={
+            'a': component_a.outputs['output'],  # reuses component_a
+        },
+        outputs={})
+    component_c_v2 = _make_fake_component_instance(
+        name='component_c',
+        output_type=_OutputTypeC,
+        inputs={
+            # no dependency on component_b_v1, only depends on component_b_v2
+            'b': component_b_v2.outputs['output'],
+        },
+        outputs={})
+
+    my_pipeline_v2 = pipeline.Pipeline(
+        pipeline_name='a',
+        pipeline_root='b',
+        components=[component_a, component_b_v2, component_c_v2],
+        metadata_connection_config=self._metadata_connection_config)
+    self.assertEqual(3, len(my_pipeline_v2.components))
+
   def testPipelineWithDuplicatedNodeId(self):
     component_a = _make_fake_node_instance('').with_id('component_a')
     component_b = _make_fake_component_instance('', _OutputTypeA, {},
