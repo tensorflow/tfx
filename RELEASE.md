@@ -1,10 +1,10 @@
 # Current Version (Still in Development)
 
 ## Major Features and Improvements
-* Transform component now supports passing `stats_options_updater_fn` directly
-  as well as through the module file.
 
-* Placeholders support accessing artifact property and custom property.
+*  Transform component now supports passing `stats_options_updater_fn` directly
+   as well as through the module file.
+*  Placeholders support accessing artifact property and custom property.
 
 ## Breaking Changes
 
@@ -42,6 +42,7 @@
    collected. All other executors will be recorded as `third_party_executor`.
    For labels longer than 63, keep first 63 characters (instead of last 63
    characters before).
+*  Supports text type (use proto json string format) RuntimeParam for protos.
 
 
 ## Breaking Changes
@@ -67,7 +68,8 @@
 
 ## Deprecations
 
-*   N/A
+*   Deprecated nested RuntimeParam for Proto, Please use text type (proto json
+    string) RuntimeParam instead of Proto dict with nested RuntimeParam in it.
 
 ## Bug Fixes and Other Changes
 

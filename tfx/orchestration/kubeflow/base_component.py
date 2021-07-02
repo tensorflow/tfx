@@ -81,8 +81,8 @@ class BaseComponent(object):
         GKE pod.
     """
 
-    serialized_component = utils.replace_placeholder(
-        json_utils.dumps(node_wrapper.NodeWrapper(component)))
+    utils.replace_placeholder(component)
+    serialized_component = json_utils.dumps(node_wrapper.NodeWrapper(component))
 
     arguments = [
         '--pipeline_root',

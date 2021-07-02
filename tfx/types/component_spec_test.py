@@ -25,6 +25,7 @@ from tfx.types.component_spec import ChannelParameter
 from tfx.types.component_spec import ComponentSpec
 from tfx.types.component_spec import ExecutionParameter
 from tfx.types.standard_artifacts import Examples
+from tfx.utils import proto_utils
 
 from google.protobuf import json_format
 
@@ -114,6 +115,16 @@ class ComponentSpecTest(tf.test.TestCase):
         '.*should be a Channel of .*OutputArtifact.*got (.|\\s)*Examples.*'):
       spec = _BasicComponentSpec(
           folds=10, input=input_channel, output=Channel(type=Examples))
+
+  def testComponentSpecJsonProto(self):
+    proto_str = '{"splits": [{"name": "name1", "pattern": "pattern1"}]}'
+    spec = _BasicComponentSpec(
+        folds=10,
+        proto=proto_str,
+        input=Channel(type=_InputArtifact),
+        output=Channel(type=_OutputArtifact))
+    self.assertIsInstance(spec.exec_properties['proto'], str)
+    self.assertEqual(spec.exec_properties['proto'], proto_str)
 
   def testInvalidComponentspecMissingProperties(self):
 
@@ -317,6 +328,8 @@ class ComponentSpecTest(tf.test.TestCase):
 
     proto_parameter = ExecutionParameter(type=example_gen_pb2.Input)
     proto_parameter.type_check('proto_parameter', example_gen_pb2.Input())
+    proto_parameter.type_check(
+        'proto_parameter', proto_utils.proto_to_json(example_gen_pb2.Input()))
     proto_parameter.type_check('proto_parameter',
                                {'splits': [{
                                    'name': 'hello'

@@ -18,34 +18,24 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import re
 from typing import Text
 # utils.py should not be used in container_entrypoint.py because of its
 # dependency on KFP.
 from kfp import dsl
 
+from tfx.dsl.components.base import base_node
 from tfx.orchestration import data_types
-from tfx.utils import json_utils
 
 
-def replace_placeholder(serialized_component: Text) -> Text:
+def replace_placeholder(component: base_node.BaseNode) -> None:
   """Replaces the RuntimeParameter placeholders with kfp.dsl.PipelineParam."""
-  placeholders = re.findall(data_types.RUNTIME_PARAMETER_PATTERN,
-                            serialized_component)
-
-  for placeholder in placeholders:
-    # We need to keep the level of escaping of original RuntimeParameter
-    # placeholder. This can be done by probing the pair of quotes around
-    # literal 'RuntimeParameter'.
-    placeholder = fix_brackets(placeholder)
-    cleaned_placeholder = placeholder.replace('\\', '')  # Clean escapes.
-    parameter = json_utils.loads(cleaned_placeholder)
-    dsl_parameter_str = str(dsl.PipelineParam(name=parameter.name))
-
-    serialized_component = serialized_component.replace(placeholder,
-                                                        dsl_parameter_str)
-
-  return serialized_component
+  keys = list(component.exec_properties.keys())
+  for key in keys:
+    exec_property = component.exec_properties[key]
+    if not isinstance(exec_property, data_types.RuntimeParameter):
+      continue
+    component.exec_properties[key] = str(
+        dsl.PipelineParam(name=exec_property.name))
 
 
 def fix_brackets(placeholder: Text) -> Text:

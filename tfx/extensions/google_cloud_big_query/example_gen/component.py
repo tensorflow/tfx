@@ -18,12 +18,13 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from typing import Optional
+from typing import Optional, Union
 
 from tfx.components.example_gen import component
 from tfx.components.example_gen import utils
 from tfx.dsl.components.base import executor_spec
 from tfx.extensions.google_cloud_big_query.example_gen import executor
+from tfx.orchestration import data_types
 from tfx.proto import example_gen_pb2
 
 
@@ -40,10 +41,13 @@ class BigQueryExampleGen(component.QueryBasedExampleGen):
 
   EXECUTOR_SPEC = executor_spec.BeamExecutorSpec(executor.Executor)
 
-  def __init__(self,
-               query: Optional[str] = None,
-               input_config: Optional[example_gen_pb2.Input] = None,
-               output_config: Optional[example_gen_pb2.Output] = None):
+  def __init__(
+      self,
+      query: Optional[str] = None,
+      input_config: Optional[Union[example_gen_pb2.Input,
+                                   data_types.RuntimeParameter]] = None,
+      output_config: Optional[Union[example_gen_pb2.Output,
+                                    data_types.RuntimeParameter]] = None):
     """Constructs a BigQueryExampleGen component.
 
     Args:

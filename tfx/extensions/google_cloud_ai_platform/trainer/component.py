@@ -40,9 +40,9 @@ class Trainer(trainer_component.Trainer):
                trainer_fn: Optional[Union[str,
                                           data_types.RuntimeParameter]] = None,
                train_args: Optional[Union[trainer_pb2.TrainArgs,
-                                          Dict[str, Any]]] = None,
+                                          data_types.RuntimeParameter]] = None,
                eval_args: Optional[Union[trainer_pb2.EvalArgs,
-                                         Dict[str, Any]]] = None,
+                                         data_types.RuntimeParameter]] = None,
                custom_config: Optional[Dict[str, Any]] = None):
     """Construct a Trainer component.
 
@@ -85,15 +85,12 @@ class Trainer(trainer_component.Trainer):
         based trainer. See 'module_file' for the required signature of the UDF.
         Exactly one of 'module_file' or 'trainer_fn' must be supplied if Trainer
         uses Estimator based Executor
-      train_args: A `trainer_pb2.TrainArgs` instance or a dict, containing args
-        used for training. Currently only splits and num_steps are available. If
-        it's provided as a dict and any field is a RuntimeParameter, it should
-        have the same field names as a `proto.TrainArgs` proto message.
-      eval_args: A `trainer_pb2.EvalArgs` instance or a dict, containing args
-        used for evaluation. Currently only splits and num_steps are available.
-        If it's provided as a dict and any field is a RuntimeParameter, it
-        should have the same field names as a `proto.EvalArgs` proto message.
-        Default behavior (when splits is empty) is evaluate on `eval` split.
+      train_args: A proto.TrainArgs instance, containing args used for training
+        Currently only splits and num_steps are available. Default behavior
+        (when splits is empty) is train on `train` split.
+      eval_args: A proto.EvalArgs instance, containing args used for evaluation.
+        Currently only splits and num_steps are available. Default behavior
+        (when splits is empty) is evaluate on `eval` split.
       custom_config: A dict which contains addtional training job parameters
         that will be passed into user module.
     """

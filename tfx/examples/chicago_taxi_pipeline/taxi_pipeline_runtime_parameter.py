@@ -95,17 +95,17 @@ def _create_parameterized_pipeline(
   )
 
   # Number of epochs in training.
-  train_steps = data_types.RuntimeParameter(
-      name='train-steps',
-      default=10,
-      ptype=int,
+  train_args = data_types.RuntimeParameter(
+      name='train-args',
+      default='{"num_steps": 10}',
+      ptype=Text,
   )
 
   # Number of epochs in evaluation.
-  eval_steps = data_types.RuntimeParameter(
-      name='eval-steps',
-      default=5,
-      ptype=int,
+  eval_args = data_types.RuntimeParameter(
+      name='eval-args',
+      default='{"num_steps": 5}',
+      ptype=Text,
   )
 
   # The input data location is parameterized by data_root
@@ -134,8 +134,8 @@ def _create_parameterized_pipeline(
       transformed_examples=transform.outputs['transformed_examples'],
       schema=schema_gen.outputs['schema'],
       transform_graph=transform.outputs['transform_graph'],
-      train_args={'num_steps': train_steps},
-      eval_args={'num_steps': eval_steps})
+      train_args=train_args,
+      eval_args=eval_args)
 
   # Get the latest blessed model for model validation.
   model_resolver = resolver.Resolver(

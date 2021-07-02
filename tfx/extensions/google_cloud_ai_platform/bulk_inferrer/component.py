@@ -24,6 +24,7 @@ from tfx import types
 from tfx.components.base import base_component
 from tfx.dsl.components.base import executor_spec
 from tfx.extensions.google_cloud_ai_platform.bulk_inferrer import executor
+from tfx.orchestration import data_types
 from tfx.proto import bulk_inferrer_pb2
 from tfx.types import standard_artifacts
 from tfx.types.component_spec import ChannelParameter
@@ -41,7 +42,7 @@ class CloudAIBulkInferrerComponentSpec(types.ComponentSpec):
           ExecutionParameter(
               type=bulk_inferrer_pb2.OutputExampleSpec, optional=True),
       'custom_config':
-          ExecutionParameter(type=(str, Text)),
+          ExecutionParameter(type=str),
   }
   INPUTS = {
       'examples':
@@ -87,10 +88,10 @@ class CloudAIBulkInferrerComponent(base_component.BaseComponent):
       examples: types.Channel,
       model: Optional[types.Channel] = None,
       model_blessing: Optional[types.Channel] = None,
-      data_spec: Optional[Union[bulk_inferrer_pb2.DataSpec, Dict[Text,
-                                                                 Any]]] = None,
+      data_spec: Optional[Union[bulk_inferrer_pb2.DataSpec,
+                                data_types.RuntimeParameter]] = None,
       output_example_spec: Optional[Union[bulk_inferrer_pb2.OutputExampleSpec,
-                                          Dict[Text, Any]]] = None,
+                                          data_types.RuntimeParameter]] = None,
       custom_config: Optional[Dict[Text, Any]] = None):
     """Construct an BulkInferrer component.
 
@@ -102,14 +103,9 @@ class CloudAIBulkInferrerComponent(base_component.BaseComponent):
       model_blessing: A Channel of type `standard_artifacts.ModelBlessing`,
         usually produced by a ModelValidator component.
       data_spec: bulk_inferrer_pb2.DataSpec instance that describes data
-        selection. If any field is provided as a RuntimeParameter, data_spec
-        should be constructed as a dict with the same field names as DataSpec
-        proto message.
+        selection.
       output_example_spec: bulk_inferrer_pb2.OutputExampleSpec instance, specify
         if you want BulkInferrer to output examples instead of inference result.
-        If any field is provided as a RuntimeParameter, output_example_spec
-        should be constructed as a dict with the same field names as
-        OutputExampleSpec proto message.
       custom_config: A dict which contains the deployment job parameters to be
         passed to Google Cloud AI Platform.
         custom_config.ai_platform_serving_args need to contain the serving job

@@ -18,7 +18,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from typing import Any, Dict, Optional, Text, Union
+from typing import Optional, Text, Union
 
 from tfx import types
 from tfx.components.example_gen import driver
@@ -26,6 +26,7 @@ from tfx.components.example_gen import utils
 from tfx.dsl.components.base import base_beam_component
 from tfx.dsl.components.base import base_beam_executor
 from tfx.dsl.components.base import executor_spec
+from tfx.orchestration import data_types
 from tfx.proto import example_gen_pb2
 from tfx.proto import range_config_pb2
 from tfx.types import standard_artifacts
@@ -62,32 +63,25 @@ class QueryBasedExampleGen(base_beam_component.BaseBeamComponent):
 
   def __init__(
       self,
-      input_config: Union[example_gen_pb2.Input, Dict[Text, Any]],
-      output_config: Optional[Union[example_gen_pb2.Output, Dict[Text,
-                                                                 Any]]] = None,
+      input_config: Union[example_gen_pb2.Input, data_types.RuntimeParameter],
+      output_config: Optional[Union[example_gen_pb2.Output,
+                                    data_types.RuntimeParameter]] = None,
       custom_config: Optional[Union[example_gen_pb2.CustomConfig,
-                                    Dict[Text, Any]]] = None,
+                                    data_types.RuntimeParameter]] = None,
       output_data_format: Optional[int] = example_gen_pb2.FORMAT_TF_EXAMPLE):
     """Construct a QueryBasedExampleGen component.
 
     Args:
       input_config: An
         [example_gen_pb2.Input](https://github.com/tensorflow/tfx/blob/master/tfx/proto/example_gen.proto)
-          instance, providing input configuration. If any field is provided as a
-          RuntimeParameter, input_config should be constructed as a dict with
-          the same field names as Input proto message. _required_
+        instance, providing input configuration. _required_
       output_config: An
         [example_gen_pb2.Output](https://github.com/tensorflow/tfx/blob/master/tfx/proto/example_gen.proto)
-          instance, providing output configuration. If unset, the default splits
+        instance, providing output configuration. If unset, the default splits
         will be labeled as 'train' and 'eval' with a distribution ratio of 2:1.
-          If any field is provided as a RuntimeParameter, output_config should
-          be constructed as a dict with the same field names as Output proto
-          message.
       custom_config: An
         [example_gen_pb2.CustomConfig](https://github.com/tensorflow/tfx/blob/master/tfx/proto/example_gen.proto)
-          instance, providing custom configuration for ExampleGen. If any field
-          is provided as a RuntimeParameter, output_config should be constructed
-          as a dict.
+        instance, providing custom configuration for ExampleGen.
       output_data_format: Payload format of generated data in output artifact,
         one of example_gen_pb2.PayloadFormat enum.
 
@@ -144,14 +138,14 @@ class FileBasedExampleGen(base_beam_component.BaseBeamComponent):
   def __init__(
       self,
       input_base: Optional[Text] = None,
-      input_config: Optional[Union[example_gen_pb2.Input, Dict[Text,
-                                                               Any]]] = None,
-      output_config: Optional[Union[example_gen_pb2.Output, Dict[Text,
-                                                                 Any]]] = None,
+      input_config: Optional[Union[example_gen_pb2.Input,
+                                   data_types.RuntimeParameter]] = None,
+      output_config: Optional[Union[example_gen_pb2.Output,
+                                    data_types.RuntimeParameter]] = None,
       custom_config: Optional[Union[example_gen_pb2.CustomConfig,
-                                    Dict[Text, Any]]] = None,
+                                    data_types.RuntimeParameter]] = None,
       range_config: Optional[Union[range_config_pb2.RangeConfig,
-                                   Dict[Text, Any]]] = None,
+                                   data_types.RuntimeParameter]] = None,
       output_data_format: Optional[int] = example_gen_pb2.FORMAT_TF_EXAMPLE,
       custom_executor_spec: Optional[executor_spec.ExecutorSpec] = None):
     """Construct a FileBasedExampleGen component.

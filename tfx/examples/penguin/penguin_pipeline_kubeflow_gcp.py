@@ -135,17 +135,17 @@ def create_pipeline(
     A TFX pipeline object.
   """
   # Number of epochs in training.
-  train_steps = tfx.dsl.experimental.RuntimeParameter(
-      name='train_steps',
-      default=100,
-      ptype=int,
+  train_args = tfx.dsl.experimental.RuntimeParameter(
+      name='train-args',
+      default='{"num_steps": 100}',
+      ptype=Text,
   )
 
   # Number of epochs in evaluation.
-  eval_steps = tfx.dsl.experimental.RuntimeParameter(
-      name='eval_steps',
-      default=50,
-      ptype=int,
+  eval_args = tfx.dsl.experimental.RuntimeParameter(
+      name='eval-args',
+      default='{"num_steps": 50}',
+      ptype=Text,
   )
 
   # Brings data into the pipeline or otherwise joins/converts training data.
@@ -197,8 +197,8 @@ def create_pipeline(
         module_file=module_file,
         examples=transform.outputs['transformed_examples'],
         transform_graph=transform.outputs['transform_graph'],
-        train_args={'num_steps': train_steps},
-        eval_args={'num_steps': eval_steps},
+        train_args=tfx.proto.TrainArgs(num_steps=20),
+        eval_args=tfx.proto.EvalArgs(num_steps=10),
         tune_args=tfx.proto.TuneArgs(
             # num_parallel_trials=3 means that 3 search loops are
             # running in parallel.
@@ -243,8 +243,8 @@ def create_pipeline(
       #   hyperparameters = hparams_importer.outputs['result'],
       hyperparameters=(tuner.outputs['best_hyperparameters']
                        if enable_tuning else None),
-      train_args={'num_steps': train_steps},
-      eval_args={'num_steps': eval_steps},
+      train_args=train_args,
+      eval_args=eval_args,
       custom_config={
           tfx.extensions.google_cloud_ai_platform.TRAINING_ARGS_KEY:
               ai_platform_training_args

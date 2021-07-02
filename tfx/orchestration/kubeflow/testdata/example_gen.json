@@ -6,7 +6,7 @@
     "custom_config": null,
     "input_base": "data_root",
     "input_config": "{\n  \"splits\": [\n    {\n      \"name\": \"single_split\",\n      \"pattern\": \"*\"\n    }\n  ]\n}",
-    "output_config": "{\"split_config\": {\"splits\": [{\"hash_buckets\": {{pipelineparam:op=;name=example-gen-buckets}}, \"name\": \"examples\"}]}}",
+    "output_config": "{{pipelineparam:op=;name=example-gen-output-config}}",
     "output_data_format": 6,
     "range_config": null
   },
