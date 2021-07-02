@@ -18,7 +18,6 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import json
 from typing import Dict, List, Text
 
 import tensorflow as tf
@@ -64,27 +63,22 @@ class _BasicComponentSpec(ComponentSpec):
 class DataTypesTest(tf.test.TestCase):
 
   def testComponentSpecWithRuntimeParam(self):
-    param = data_types.RuntimeParameter(name='split-1', ptype=Text)
-    serialized_param = str(param)
-    # Dict representation of a example_gen_pb2.Input proto message.
-    proto = dict(splits=[
-        dict(name=param, pattern='pattern1'),
-        dict(name='name2', pattern='pattern2'),
-        dict(name='name3', pattern='pattern3'),
-    ])
+    proto_str = '{"splits": [{"name": "name1", "pattern": "pattern1"}]}'
+    param_proto = data_types.RuntimeParameter(
+        name='proto', ptype=Text, default=proto_str)
+    param_int = data_types.RuntimeParameter(name='int', ptype=int)
     input_channel = Channel(type=_InputArtifact)
     output_channel = Channel(type=_OutputArtifact)
     spec = _BasicComponentSpec(
-        folds=10, proto=proto, input=input_channel, output=output_channel)
-    # Verify proto property.
-    self.assertIsInstance(spec.exec_properties['proto'], str)
-    decoded_proto = json.loads(spec.exec_properties['proto'])
-    self.assertCountEqual(['splits'], decoded_proto.keys())
-    self.assertEqual(3, len(decoded_proto['splits']))
-    self.assertCountEqual([serialized_param, 'name2', 'name3'],
-                          list(s['name'] for s in decoded_proto['splits']))
-    self.assertCountEqual(['pattern1', 'pattern2', 'pattern3'],
-                          list(s['pattern'] for s in decoded_proto['splits']))
+        folds=param_int,
+        proto=param_proto,
+        input=input_channel,
+        output=output_channel)
+    self.assertIsInstance(spec.exec_properties['folds'],
+                          data_types.RuntimeParameter)
+    self.assertIsInstance(spec.exec_properties['proto'],
+                          data_types.RuntimeParameter)
+    self.assertEqual(spec.exec_properties['proto'].default, proto_str)
 
   def testProtoTypeCheck(self):
     param = data_types.RuntimeParameter(name='split-1', ptype=Text)

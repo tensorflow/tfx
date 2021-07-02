@@ -18,7 +18,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from typing import Any, Dict, List, Optional, Text, Union
+from typing import List, Optional, Text, Union
 
 from absl import logging
 import tensorflow_model_analysis as tfma
@@ -57,7 +57,7 @@ class Evaluator(base_beam_component.BaseBeamComponent):
       baseline_model: Optional[types.Channel] = None,
       # TODO(b/148618405): deprecate feature_slicing_spec.
       feature_slicing_spec: Optional[Union[evaluator_pb2.FeatureSlicingSpec,
-                                           Dict[Text, Any]]] = None,
+                                           data_types.RuntimeParameter]] = None,
       fairness_indicator_thresholds: Optional[List[Union[
           float, data_types.RuntimeParameter]]] = None,
       example_splits: Optional[List[Text]] = None,
@@ -77,10 +77,7 @@ class Evaluator(base_beam_component.BaseBeamComponent):
       feature_slicing_spec:
         Deprecated, please use eval_config instead. Only support estimator.
         [evaluator_pb2.FeatureSlicingSpec](https://github.com/tensorflow/tfx/blob/master/tfx/proto/evaluator.proto)
-          instance that describes how Evaluator should slice the data. If any
-          field is provided as a RuntimeParameter, feature_slicing_spec should
-          be constructed as a dict with the same field names as
-          FeatureSlicingSpec proto message.
+        instance that describes how Evaluator should slice the data.
       fairness_indicator_thresholds: Optional list of float (or
         RuntimeParameter) threshold values for use with TFMA fairness
           indicators. Experimental functionality: this interface and

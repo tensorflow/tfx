@@ -18,7 +18,6 @@ from __future__ import division
 from __future__ import print_function
 
 import os
-import re
 from typing import Callable, Dict, List, Optional, Text, Type, cast
 
 from absl import logging
@@ -35,13 +34,11 @@ from tfx.orchestration import tfx_runner
 from tfx.orchestration.config import config_utils
 from tfx.orchestration.config import pipeline_config
 from tfx.orchestration.kubeflow import base_component
-from tfx.orchestration.kubeflow import utils
 from tfx.orchestration.kubeflow.proto import kubeflow_pb2
 from tfx.orchestration.launcher import base_component_launcher
 from tfx.orchestration.launcher import in_process_component_launcher
 from tfx.orchestration.launcher import kubernetes_component_launcher
 from tfx.proto.orchestration import pipeline_pb2
-from tfx.utils import json_utils
 from tfx.utils import telemetry_utils
 
 
@@ -270,7 +267,7 @@ class KubeflowDagRunner(tfx_runner.TfxRunner):
       self._pod_labels_to_attach = pod_labels_to_attach
 
   def _parse_parameter_from_component(
-      self, component: base_component.BaseComponent) -> None:
+      self, component: tfx_base_component.BaseComponent) -> None:
     """Extract embedded RuntimeParameter placeholders from a component.
 
     Extract embedded RuntimeParameter placeholders from a component, then append
@@ -280,16 +277,13 @@ class KubeflowDagRunner(tfx_runner.TfxRunner):
       component: a TFX component.
     """
 
-    serialized_component = json_utils.dumps(component)
-    placeholders = re.findall(data_types.RUNTIME_PARAMETER_PATTERN,
-                              serialized_component)
-    for placeholder in placeholders:
-      placeholder = placeholder.replace('\\', '')  # Clean escapes.
-      placeholder = utils.fix_brackets(placeholder)  # Fix brackets if needed.
-      parameter = json_utils.loads(placeholder)
-      # Escape pipeline root because it will be added later.
+    for parameter in component.exec_properties.values():
+      if not isinstance(parameter, data_types.RuntimeParameter):
+        continue
+      # Ignore pipeline root because it will be added later.
       if parameter.name == tfx_pipeline.ROOT_PARAMETER.name:
         continue
+
       if parameter.name not in self._deduped_parameter_names:
         self._deduped_parameter_names.add(parameter.name)
         # TODO(b/178436919): Create a test to cover default value rendering
@@ -298,7 +292,10 @@ class KubeflowDagRunner(tfx_runner.TfxRunner):
         # See
         # https://github.com/kubeflow/pipelines/blob/f65391309650fdc967586529e79af178241b4c2c/sdk/python/kfp/dsl/_pipeline_param.py#L154
         dsl_parameter = dsl.PipelineParam(
-            name=parameter.name, value=str(parameter.default))
+            name=parameter.name,
+            # TODO(b/186566348): remove the quote replacement.
+            value=str(parameter.default).replace('\\',
+                                                 '\\\\').replace('"', '\\"'))
         self._params.append(dsl_parameter)
 
   def _parse_parameter_from_pipeline(self,

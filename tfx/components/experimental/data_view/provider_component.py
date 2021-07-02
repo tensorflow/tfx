@@ -28,8 +28,8 @@ class _TfGraphDataViewProviderSpec(ComponentSpec):
   """DataViewProvider component spec."""
 
   PARAMETERS = {
-      'module_file': ExecutionParameter(type=(str, Text), optional=True),
-      'create_decoder_func': ExecutionParameter(type=(str, Text))
+      'module_file': ExecutionParameter(type=str, optional=True),
+      'create_decoder_func': ExecutionParameter(type=str)
   }
   INPUTS = {}
   OUTPUTS = {

@@ -18,11 +18,12 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from typing import Any, Dict, Optional, Text, Union
+from typing import Optional, Text, Union
 
 from tfx.components.example_gen import component
 from tfx.components.example_gen.csv_example_gen import executor
 from tfx.dsl.components.base import executor_spec
+from tfx.orchestration import data_types
 from tfx.proto import example_gen_pb2
 from tfx.proto import range_config_pb2
 
@@ -65,28 +66,25 @@ class CsvExampleGen(component.FileBasedExampleGen):  # pylint: disable=protected
 
   EXECUTOR_SPEC = executor_spec.BeamExecutorSpec(executor.Executor)
 
-  def __init__(self,
-               input_base: Optional[Text] = None,
-               input_config: Optional[Union[example_gen_pb2.Input,
-                                            Dict[Text, Any]]] = None,
-               output_config: Optional[Union[example_gen_pb2.Output,
-                                             Dict[Text, Any]]] = None,
-               range_config: Optional[Union[range_config_pb2.RangeConfig,
-                                            Dict[Text, Any]]] = None):
+  def __init__(
+      self,
+      input_base: Optional[Text] = None,
+      input_config: Optional[Union[example_gen_pb2.Input,
+                                   data_types.RuntimeParameter]] = None,
+      output_config: Optional[Union[example_gen_pb2.Output,
+                                    data_types.RuntimeParameter]] = None,
+      range_config: Optional[Union[range_config_pb2.RangeConfig,
+                                   data_types.RuntimeParameter]] = None):
     """Construct a CsvExampleGen component.
 
     Args:
       input_base: an external directory containing the CSV files.
       input_config: An example_gen_pb2.Input instance, providing input
         configuration. If unset, the files under input_base will be treated as a
-        single split. If any field is provided as a RuntimeParameter,
-        input_config should be constructed as a dict with the same field names
-        as Input proto message.
+        single split.
       output_config: An example_gen_pb2.Output instance, providing output
         configuration. If unset, default splits will be 'train' and 'eval' with
-        size 2:1. If any field is provided as a RuntimeParameter, output_config
-        should be constructed as a dict with the same field names as Output
-        proto message.
+        size 2:1.
       range_config: An optional range_config_pb2.RangeConfig instance,
         specifying the range of span values to consider. If unset, driver will
         default to searching for latest span with no restrictions.

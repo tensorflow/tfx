@@ -174,6 +174,9 @@ class RuntimeParameter(json_utils.Jsonable):
 
   Currently only supported on KubeflowDagRunner.
 
+  For protos, use text type RuntimeParameter, which holds the proto json
+  string, e.g., `'{"num_steps": 5}'` for TrainArgs proto.
+
   Attributes:
     name: The name of the runtime parameter.
     default: Default value for runtime params when it's not explicitly

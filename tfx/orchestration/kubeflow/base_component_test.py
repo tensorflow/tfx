@@ -15,6 +15,7 @@
 
 import json
 import os
+from typing import Text
 
 from absl import logging
 from kfp import dsl
@@ -126,20 +127,11 @@ class BaseComponentWithPipelineParamTest(tf.test.TestCase):
   def setUp(self):
     super(BaseComponentWithPipelineParamTest, self).setUp()
 
-    test_pipeline_root = dsl.PipelineParam(name='pipeline-root-param')
-    example_gen_buckets = data_types.RuntimeParameter(
-        name='example-gen-buckets', ptype=int, default=10)
+    example_gen_output_config = data_types.RuntimeParameter(
+        name='example-gen-output-config', ptype=Text)
 
     example_gen = csv_example_gen_component.CsvExampleGen(
-        input_base='data_root',
-        output_config={
-            'split_config': {
-                'splits': [{
-                    'name': 'examples',
-                    'hash_buckets': example_gen_buckets
-                }]
-            }
-        })
+        input_base='data_root', output_config=example_gen_output_config)
     statistics_gen = statistics_gen_component.StatisticsGen(
         examples=example_gen.outputs['examples']).with_id('foo')
 

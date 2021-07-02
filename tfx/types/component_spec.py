@@ -27,6 +27,10 @@ from tfx.utils import proto_utils
 from google.protobuf import message
 
 
+def _is_runtime_param(data: Any) -> bool:
+  return data.__class__.__name__ == 'RuntimeParameter'
+
+
 def _make_default(data: Any) -> Any:
   """Replaces RuntimeParameter by its ptype's default.
 
@@ -45,7 +49,7 @@ def _make_default(data: Any) -> Any:
     copy_data = copy.deepcopy(data)
     _put_default_list(copy_data)
     return copy_data
-  if data.__class__.__name__ == 'RuntimeParameter':
+  if _is_runtime_param(data):
     ptype = data.ptype
     return ptype.__new__(ptype)
 
@@ -209,7 +213,8 @@ class ComponentSpec(json_utils.Jsonable):
       value = self._raw_args[arg_name]
 
       if (inspect.isclass(arg.type) and
-          issubclass(arg.type, message.Message) and value):
+          issubclass(arg.type, message.Message) and value and
+          not isinstance(value, str) and not _is_runtime_param(value)):
         # Create deterministic json string as it will be stored in metadata for
         # cache check.
         if isinstance(value, dict):
@@ -285,6 +290,8 @@ class ExecutionParameter(_ComponentParameter):
     # Dict[Text, Any] <------ Okay.
     def _type_check_helper(value: Any, declared: Type):  # pylint: disable=g-bare-generic
       """Helper type-checking function."""
+      is_runtime_param = _is_runtime_param(value)
+      value = _make_default(value)
       if declared == Any:
         return
       if declared.__class__.__name__ in ('_GenericAlias', 'GenericMeta'):
@@ -320,16 +327,21 @@ class ExecutionParameter(_ComponentParameter):
       elif isinstance(value, dict) and issubclass(declared, message.Message):
         # If a dict is passed in and is compared against a pb message,
         # do the type-check by converting it to pb message.
-        dict_with_default = _make_default(value)
-        proto_utils.dict_to_proto(dict_with_default, declared())
+        proto_utils.dict_to_proto(value, declared())
+      elif (isinstance(value, str) and not isinstance(declared, tuple) and
+            issubclass(declared, message.Message)):
+        # Skip check for runtime param string proto.
+        if not is_runtime_param:
+          # If a text is passed in and is compared against a pb message,
+          # do the type-check by converting text (as json) to pb message.
+          proto_utils.json_to_proto(value, declared())
       else:
         if not isinstance(value, declared):
           raise TypeError('Expected type %s for parameter %r '
                           'but got %s instead.' % (
                               str(declared), arg_name, value))
 
-    value_with_default = _make_default(value)
-    _type_check_helper(value_with_default, self.type)
+    _type_check_helper(value, self.type)
 
 
 class ChannelParameter(_ComponentParameter):

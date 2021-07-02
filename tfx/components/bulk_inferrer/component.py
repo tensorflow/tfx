@@ -13,12 +13,13 @@
 # limitations under the License.
 """TFX BulkInferrer component definition."""
 
-from typing import Any, Dict, Optional, Text, Union
+from typing import Optional, Union
 
 from tfx import types
 from tfx.components.bulk_inferrer import executor
 from tfx.dsl.components.base import base_beam_component
 from tfx.dsl.components.base import executor_spec
+from tfx.orchestration import data_types
 from tfx.proto import bulk_inferrer_pb2
 from tfx.types import standard_artifacts
 from tfx.types.standard_component_specs import BulkInferrerSpec
@@ -59,34 +60,27 @@ class BulkInferrer(base_beam_component.BaseBeamComponent):
       examples: types.Channel,
       model: Optional[types.Channel] = None,
       model_blessing: Optional[types.Channel] = None,
-      data_spec: Optional[Union[bulk_inferrer_pb2.DataSpec, Dict[Text,
-                                                                 Any]]] = None,
+      data_spec: Optional[Union[bulk_inferrer_pb2.DataSpec,
+                                data_types.RuntimeParameter]] = None,
       model_spec: Optional[Union[bulk_inferrer_pb2.ModelSpec,
-                                 Dict[Text, Any]]] = None,
+                                 data_types.RuntimeParameter]] = None,
       output_example_spec: Optional[Union[bulk_inferrer_pb2.OutputExampleSpec,
-                                          Dict[Text, Any]]] = None):
+                                          data_types.RuntimeParameter]] = None):
     """Construct an BulkInferrer component.
 
     Args:
       examples: A Channel of type `standard_artifacts.Examples`, usually
         produced by an ExampleGen component. _required_
-      model: A Channel of type `standard_artifacts.Model`, usually produced by
-        a Trainer component.
+      model: A Channel of type `standard_artifacts.Model`, usually produced by a
+        Trainer component.
       model_blessing: A Channel of type `standard_artifacts.ModelBlessing`,
         usually produced by a ModelValidator component.
       data_spec: bulk_inferrer_pb2.DataSpec instance that describes data
-        selection. If any field is provided as a RuntimeParameter, data_spec
-        should be constructed as a dict with the same field names as DataSpec
-        proto message.
+        selection.
       model_spec: bulk_inferrer_pb2.ModelSpec instance that describes model
-        specification. If any field is provided as a RuntimeParameter,
-        model_spec should be constructed as a dict with the same field names as
-        ModelSpec proto message.
+        specification.
       output_example_spec: bulk_inferrer_pb2.OutputExampleSpec instance, specify
         if you want BulkInferrer to output examples instead of inference result.
-        If any field is provided as a RuntimeParameter, output_example_spec
-        should be constructed as a dict with the same field names as
-        OutputExampleSpec proto message.
     """
     if output_example_spec:
       output_examples = types.Channel(type=standard_artifacts.Examples)

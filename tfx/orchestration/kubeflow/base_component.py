@@ -95,8 +95,8 @@ class BaseComponent(object):
         component_launcher_class.__module__, component_launcher_class.__name__
     ])
 
-    serialized_component = utils.replace_placeholder(
-        json_utils.dumps(node_wrapper.NodeWrapper(component)))
+    utils.replace_placeholder(component)
+    serialized_component = json_utils.dumps(node_wrapper.NodeWrapper(component))
 
     arguments = [
         '--pipeline_name',
