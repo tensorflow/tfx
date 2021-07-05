@@ -24,7 +24,6 @@ from typing import Any, Dict, Optional, Text, Type
 from tfx.dsl.components.base import base_driver
 from tfx.dsl.components.base import base_executor
 from tfx.dsl.components.base import executor_spec as executor_spec_module
-from tfx.dsl.components.base import node_registry
 from tfx.utils import deprecation_utils
 from tfx.utils import doc_controls
 from tfx.utils import json_utils
