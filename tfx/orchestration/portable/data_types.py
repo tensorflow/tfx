@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Data types shared for orchestration."""
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 import attr
 from tfx import types
@@ -24,38 +24,37 @@ from tfx.proto.orchestration import pipeline_pb2
 # TODO(b/150979622): We should introduce an id that is not changed across
 # retires of the same component run and pass it to executor operators for
 # human-readability purpose.
-# TODO(b/165359991): Restore 'auto_attribs=True' once we drop Python3.5 support.
-@attr.s
+@attr.s(auto_attribs=True)
 class ExecutionInfo:
   """A struct to store information for an execution."""
   # LINT.IfChange
   # The Execution id that is registered in MLMD.
-  execution_id = attr.ib(type=int, default=None)
+  execution_id: Optional[int] = None
   # The input map to feed to execution
-  input_dict = attr.ib(type=Dict[str, List[types.Artifact]], default=None)
+  input_dict: Dict[str, List[types.Artifact]] = attr.Factory(dict)
   # The output map to feed to execution
-  output_dict = attr.ib(type=Dict[str, List[types.Artifact]], default=None)
+  output_dict: Dict[str, List[types.Artifact]] = attr.Factory(dict)
   # The exec_properties to feed to execution
-  exec_properties = attr.ib(type=Dict[str, Any], default=None)
+  exec_properties: Dict[str, Any] = attr.Factory(dict)
   # The uri to execution result, note that the drivers or executors and
   # Launchers may not run in the same process, so they should use this uri to
   # "return" execution result to the launcher.
-  execution_output_uri = attr.ib(type=str, default=None)
+  execution_output_uri: Optional[str] = None
   # Stateful working dir will be deterministic given pipeline, node and run_id.
   # The typical usecase is to restore long running executor's state after
   # eviction. For examples, a Trainer can use this directory to store
   # checkpoints. This dir is undefined when Launcher.launch() is done.
-  stateful_working_dir = attr.ib(type=str, default=None)
+  stateful_working_dir: Optional[str] = None
   # A tempory dir for executions and it is expected to be cleared up at the end
   # of executions in both success and failure cases. This dir is undefined when
   # Launcher.launch() is done.
-  tmp_dir = attr.ib(type=str, default=None)
+  tmp_dir: Optional[str] = None
   # The config of this Node.
-  pipeline_node = attr.ib(type=pipeline_pb2.PipelineNode, default=None)
+  pipeline_node: Optional[pipeline_pb2.PipelineNode] = None
   # The config of the pipeline that this node is running in.
-  pipeline_info = attr.ib(type=pipeline_pb2.PipelineInfo, default=None)
+  pipeline_info: Optional[pipeline_pb2.PipelineInfo] = None
   # The id of the pipeline run that this execution is in.
-  pipeline_run_id = attr.ib(type=str, default=None)
+  pipeline_run_id: Optional[str] = None
   # LINT.ThenChange(../../proto/orchestration/execution_invocation.proto)
 
   def to_proto(self) -> execution_invocation_pb2.ExecutionInvocation:

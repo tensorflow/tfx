@@ -78,24 +78,23 @@ _SYSTEM_NODE_HANDLERS = {
 # LINT.ThenChange(Internal system node list)
 
 
-# TODO(b/165359991): Restore 'auto_attribs=True' once we drop Python3.5 support.
-@attr.s
+@attr.s(auto_attribs=True)
 class _ExecutionPreparationResult:
   """A wrapper class using as the return value of _prepare_execution()."""
 
   # The information used by executor operators.
-  execution_info = attr.ib(type=data_types.ExecutionInfo, default=None)
+  execution_info: data_types.ExecutionInfo
   # The Execution registered in MLMD.
-  execution_metadata = attr.ib(type=metadata_store_pb2.Execution, default=None)
+  execution_metadata: Optional[metadata_store_pb2.Execution] = None
   # Contexts of the execution, usually used by Publisher.
-  contexts = attr.ib(type=List[metadata_store_pb2.Context], default=None)
+  contexts: List[metadata_store_pb2.Context] = attr.Factory(list)
   # TODO(b/156126088): Update the following documentation when this bug is
   # closed.
   # Whether an execution is needed. An execution is not needed when:
   # 1) Not all the required input are ready.
   # 2) The input value doesn't meet the driver's requirement.
   # 3) Cache result is used.
-  is_execution_needed = attr.ib(type=bool, default=False)
+  is_execution_needed: bool = False
 
 
 class _ExecutionFailedError(Exception):
