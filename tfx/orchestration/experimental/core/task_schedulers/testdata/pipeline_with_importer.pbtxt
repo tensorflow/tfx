@@ -2,7 +2,7 @@
 # proto-message: Pipeline
 
 pipeline_info: {
-  id: 'my_pipeline'
+  id: "my_pipeline"
 }
 execution_mode: SYNC
 nodes {
@@ -40,7 +40,7 @@ nodes {
         }
         name {
           runtime_parameter {
-            name: "pipeline_run_id"
+            name: "pipeline-run-id"
             type: STRING
           }
         }
@@ -97,13 +97,13 @@ nodes {
 runtime_spec {
   pipeline_root {
     runtime_parameter {
-      name: "pipeline_root"
+      name: "pipeline-root"
       type: STRING
     }
   }
   pipeline_run_id {
     runtime_parameter {
-      name: "pipeline_run_id"
+      name: "pipeline-run-id"
       type: STRING
     }
   }

@@ -18,6 +18,7 @@ from typing import Optional
 from absl import app
 from absl import flags
 
+from tfx.dsl.compiler import constants
 from tfx.orchestration import metadata
 from tfx.orchestration.experimental.core import pipeline_ops
 from tfx.orchestration.experimental.core import test_utils
@@ -53,7 +54,7 @@ def _test_pipeline(ir_path: str, pipeline_id: str, run_id: str,
   io_utils.parse_pbtxt_file(ir_path, pipeline)
   pipeline.pipeline_info.id = pipeline_id
   runtime_parameter_utils.substitute_runtime_parameter(pipeline, {
-      'pipeline_run_id': run_id,
+      constants.PIPELINE_RUN_ID_PARAMETER_NAME: run_id,
   })
   if deployment_config:
     pipeline.deployment_config.Pack(deployment_config)

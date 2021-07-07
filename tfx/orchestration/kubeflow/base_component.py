@@ -22,12 +22,13 @@ compatible.
 Note: This requires Kubeflow Pipelines SDK to be installed.
 """
 
-from typing import Dict, Optional, Set, Text
+from typing import Dict, List, Set, Text
 
 from absl import logging
 from kfp import dsl
 from kubernetes import client as k8s_client
 from tfx.dsl.components.base import base_node as tfx_base_node
+from tfx.orchestration import data_types
 from tfx.orchestration import pipeline as tfx_pipeline
 from tfx.orchestration.kubeflow import node_wrapper
 from tfx.orchestration.kubeflow import utils
@@ -41,6 +42,18 @@ from google.protobuf import json_format
 _COMMAND = ['python', '-m', 'tfx.orchestration.kubeflow.container_entrypoint']
 
 _WORKFLOW_ID_KEY = 'WORKFLOW_ID'
+
+
+def _encode_runtime_parameter(param: data_types.RuntimeParameter) -> str:
+  """Encode a runtime parameter into a placeholder for value substitution."""
+  if param.ptype is int:
+    type_enum = pipeline_pb2.RuntimeParameter.INT
+  elif param.ptype is float:
+    type_enum = pipeline_pb2.RuntimeParameter.DOUBLE
+  else:
+    type_enum = pipeline_pb2.RuntimeParameter.STRING
+  type_str = pipeline_pb2.RuntimeParameter.Type.Name(type_enum)
+  return f'{param.name}={type_str}:{str(dsl.PipelineParam(name=param.name))}'
 
 
 # TODO(hongyes): renaming the name to KubeflowComponent.
@@ -59,9 +72,10 @@ class BaseComponent(object):
       pipeline: tfx_pipeline.Pipeline,
       pipeline_root: dsl.PipelineParam,
       tfx_image: Text,
-      kubeflow_metadata_config: Optional[kubeflow_pb2.KubeflowMetadataConfig],
-      tfx_ir: Optional[pipeline_pb2.Pipeline] = None,
-      pod_labels_to_attach: Optional[Dict[Text, Text]] = None):
+      kubeflow_metadata_config: kubeflow_pb2.KubeflowMetadataConfig,
+      tfx_ir: pipeline_pb2.Pipeline,
+      pod_labels_to_attach: Dict[Text, Text],
+      runtime_parameters: List[data_types.RuntimeParameter]):
     """Creates a new Kubeflow-based component.
 
     This class essentially wraps a dsl.ContainerOp construct in Kubeflow
@@ -77,8 +91,8 @@ class BaseComponent(object):
       kubeflow_metadata_config: Configuration settings for connecting to the
         MLMD store in a Kubeflow cluster.
       tfx_ir: The TFX intermedia representation of the pipeline.
-      pod_labels_to_attach: Optional dict of pod labels to attach to the
-        GKE pod.
+      pod_labels_to_attach: Dict of pod labels to attach to the GKE pod.
+      runtime_parameters: Runtime parameters of the pipeline.
     """
 
     utils.replace_placeholder(component)
@@ -100,6 +114,10 @@ class BaseComponent(object):
         '--tfx_ir',
         json_format.MessageToJson(tfx_ir),
     ]
+
+    for param in runtime_parameters:
+      arguments.append('--runtime_parameter')
+      arguments.append(_encode_runtime_parameter(param))
 
     self.container_op = dsl.ContainerOp(
         name=component.id,

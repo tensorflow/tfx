@@ -19,6 +19,7 @@ import uuid
 from absl.testing.absltest import mock
 import tensorflow as tf
 from tfx import version as tfx_version
+from tfx.dsl.compiler import constants
 from tfx.orchestration import metadata
 from tfx.orchestration.experimental.core import sync_pipeline_task_gen as sptg
 from tfx.orchestration.experimental.core import task_manager as tm
@@ -81,8 +82,8 @@ class ImporterTaskSchedulerTest(test_utils.TfxTest):
             'pipeline_with_importer.pbtxt'), pipeline)
     runtime_parameter_utils.substitute_runtime_parameter(
         pipeline, {
-            'pipeline_root': pipeline_root,
-            'pipeline_run_id': pipeline_run_id,
+            constants.PIPELINE_ROOT_PARAMETER_NAME: pipeline_root,
+            constants.PIPELINE_RUN_ID_PARAMETER_NAME: pipeline_run_id,
         })
     return pipeline
 

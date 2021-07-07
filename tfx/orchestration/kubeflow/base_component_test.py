@@ -15,6 +15,7 @@
 
 import json
 import os
+
 from typing import Text
 
 from absl import logging
@@ -63,6 +64,8 @@ class BaseComponentTest(tf.test.TestCase):
           tfx_image='container_image',
           kubeflow_metadata_config=self._metadata_config,
           tfx_ir=self._tfx_ir,
+          pod_labels_to_attach={},
+          runtime_parameters=[]
       )
     self.tfx_component = statistics_gen
 
@@ -139,7 +142,9 @@ class BaseComponentWithPipelineParamTest(tf.test.TestCase):
           pipeline_root=test_pipeline_root,
           tfx_image='container_image',
           kubeflow_metadata_config=self._metadata_config,
-          tfx_ir=self._tfx_ir)
+          tfx_ir=self._tfx_ir,
+          pod_labels_to_attach={},
+          runtime_parameters=[example_gen_output_config])
       self.statistics_gen = base_component.BaseComponent(
           component=statistics_gen,
           depends_on=set(),
@@ -147,7 +152,9 @@ class BaseComponentWithPipelineParamTest(tf.test.TestCase):
           pipeline_root=test_pipeline_root,
           tfx_image='container_image',
           kubeflow_metadata_config=self._metadata_config,
-          tfx_ir=self._tfx_ir
+          tfx_ir=self._tfx_ir,
+          pod_labels_to_attach={},
+          runtime_parameters=[]
       )
 
     self.tfx_example_gen = example_gen
@@ -196,15 +203,16 @@ class BaseComponentWithPipelineParamTest(tf.test.TestCase):
         formatted_example_gen,
         '--tfx_ir',
         '{}',
+        '--runtime_parameter',
+        'example-gen-output-config=STRING:{{pipelineparam:op=;name=example-gen-output-config}}',
     ]
     try:
       self.assertEqual(
           self.statistics_gen.container_op
-          .arguments[:len(statistics_gen_expected_args)],
+          .arguments,
           statistics_gen_expected_args)
       self.assertEqual(
-          self.example_gen.container_op.arguments[:len(example_gen_expected_args
-                                                      )],
+          self.example_gen.container_op.arguments,
           example_gen_expected_args)
     except AssertionError:
       # Print out full arguments for debugging.

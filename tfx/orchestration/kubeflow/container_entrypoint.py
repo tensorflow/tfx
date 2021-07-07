@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,10 +13,6 @@
 # limitations under the License.
 """Main entrypoint for containers with Kubeflow TFX component executors."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import argparse
 import copy
 import json
@@ -25,7 +20,7 @@ import logging
 import os
 import sys
 import textwrap
-from typing import cast, Dict, List, Mapping, MutableMapping, Optional, Sequence, Text, Union
+from typing import cast, Dict, List, Mapping, MutableMapping, Optional, Sequence, Text, Tuple, Union
 
 from tfx import types
 from tfx.dsl.compiler import constants
@@ -374,6 +369,37 @@ def _get_pipeline_node(pipeline: pipeline_pb2.Pipeline, node_id: str):
   return result
 
 
+def _parse_runtime_parameter_str(param: str) -> Tuple[str, types.Property]:
+  """Parses runtime paramter string in command line argument."""
+  # Runtime paramter format: "{name}=(INT|DOUBLE|STRING):{value}"
+  name, value_and_type = param.split('=', 1)
+  value_type, value = value_and_type.split(':', 1)
+  if value_type == pipeline_pb2.RuntimeParameter.Type.Name(
+      pipeline_pb2.RuntimeParameter.INT):
+    value = int(value)
+  elif value_type == pipeline_pb2.RuntimeParameter.Type.Name(
+      pipeline_pb2.RuntimeParameter.DOUBLE):
+    value = float(value)
+  return (name, value)
+
+
+def _resolve_runtime_parameters(tfx_ir: pipeline_pb2.Pipeline,
+                                parameters: List[str]) -> None:
+  """Resolve runtime paramters in the pipeline proto inplace."""
+  parameter_bindings = {
+      # Substitute the runtime parameter to be a concrete run_id
+      constants.PIPELINE_RUN_ID_PARAMETER_NAME:
+          os.environ['WORKFLOW_ID'],
+  }
+  # ARGO will fill runtime parameter values in the parameters.
+  for param in parameters:
+    name, value = _parse_runtime_parameter_str(param)
+    parameter_bindings[name] = value
+
+  runtime_parameter_utils.substitute_runtime_parameter(tfx_ir,
+                                                       parameter_bindings)
+
+
 def main():
   # Log to the container's stdout so Kubeflow Pipelines UI can display logs to
   # the user.
@@ -386,17 +412,16 @@ def main():
   parser.add_argument('--serialized_component', type=str, required=True)
   parser.add_argument('--tfx_ir', type=str, required=True)
   parser.add_argument('--node_id', type=str, required=True)
+  parser.add_argument('--runtime_parameter', type=str, action='append')
+
   launcher._register_execution = _register_execution  # pylint: disable=protected-access
 
   args = parser.parse_args()
 
   tfx_ir = pipeline_pb2.Pipeline()
   json_format.Parse(args.tfx_ir, tfx_ir)
-  # Substitute the runtime parameter to be a concrete run_id
-  runtime_parameter_utils.substitute_runtime_parameter(
-      tfx_ir, {
-          constants.PIPELINE_RUN_ID_PARAMETER_NAME: os.environ['WORKFLOW_ID'],
-      })
+
+  _resolve_runtime_parameters(tfx_ir, args.runtime_parameter)
 
   deployment_config = runner_utils.extract_local_deployment_config(tfx_ir)
 

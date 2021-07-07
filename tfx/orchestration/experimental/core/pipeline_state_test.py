@@ -16,6 +16,7 @@
 import os
 
 import tensorflow as tf
+from tfx.dsl.compiler import constants
 from tfx.orchestration import metadata
 from tfx.orchestration.experimental.core import pipeline_state as pstate
 from tfx.orchestration.experimental.core import task as task_lib
@@ -259,12 +260,13 @@ class PipelineStateTest(test_utils.TfxTest):
 
     def _create_sync_pipeline(pipeline_id: str, run_id: str):
       pipeline = _test_pipeline(pipeline_id, pipeline_pb2.Pipeline.SYNC)
-      pipeline.runtime_spec.pipeline_run_id.runtime_parameter.name = 'pipeline_run_id'
+      pipeline.runtime_spec.pipeline_run_id.runtime_parameter.name = (
+          constants.PIPELINE_RUN_ID_PARAMETER_NAME)
       pipeline.runtime_spec.pipeline_run_id.runtime_parameter.type = (
           pipeline_pb2.RuntimeParameter.STRING)
       runtime_parameter_utils.substitute_runtime_parameter(
           pipeline, {
-              'pipeline_run_id': run_id,
+              constants.PIPELINE_RUN_ID_PARAMETER_NAME: run_id,
           })
       return pipeline
 

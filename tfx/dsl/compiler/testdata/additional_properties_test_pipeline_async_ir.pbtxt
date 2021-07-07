@@ -172,7 +172,7 @@ nodes {
 runtime_spec {
   pipeline_root {
     runtime_parameter {
-      name: "pipeline_root"
+      name: "pipeline-root"
       type: STRING
       default_value {
         string_value: "tfx_root/pipelines/custom1"

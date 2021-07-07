@@ -13,6 +13,7 @@
 # limitations under the License.
 """Tests for tfx.orchestration.kubeflow.kubeflow_dag_runner."""
 
+import json
 import os
 import tarfile
 from typing import Text
@@ -27,6 +28,7 @@ from tfx.extensions.google_cloud_big_query.example_gen import component as big_q
 from tfx.orchestration import data_types
 from tfx.orchestration import pipeline as tfx_pipeline
 from tfx.orchestration.kubeflow import kubeflow_dag_runner
+from tfx.proto import example_gen_pb2
 from tfx.types import component_spec
 from tfx.utils import telemetry_utils
 from tfx.utils import test_case_utils
@@ -37,10 +39,16 @@ from ml_metadata.proto import metadata_store_pb2
 
 # 2-step pipeline under test.
 def _two_step_pipeline() -> tfx_pipeline.Pipeline:
-  input_config = data_types.RuntimeParameter(name='input-config', ptype=Text)
-  output_config = data_types.RuntimeParameter(name='output-config', ptype=Text)
+  default_input_config = json.dumps({
+      'splits': [{
+          'name': 'single_split',
+          'pattern': 'SELECT * FROM default-table'
+      }]
+  })
+  input_config = data_types.RuntimeParameter(
+      name='input_config', ptype=Text, default=default_input_config)
   example_gen = big_query_example_gen_component.BigQueryExampleGen(
-      input_config=input_config, output_config=output_config)
+      input_config=input_config, output_config=example_gen_pb2.Output())
   statistics_gen = statistics_gen_component.StatisticsGen(
       examples=example_gen.outputs['examples'])
   return tfx_pipeline.Pipeline(
@@ -132,11 +140,8 @@ class KubeflowDagRunnerTest(test_case_utils.TfxTest):
                   'template': 'bigqueryexamplegen',
                   'arguments': {
                       'parameters': [{
-                          'name': 'input-config',
-                          'value': '{{inputs.parameters.input-config}}'
-                      }, {
-                          'name': 'output-config',
-                          'value': '{{inputs.parameters.output-config}}'
+                          'name': 'input_config',
+                          'value': '{{inputs.parameters.input_config}}'
                       }, {
                           'name': 'pipeline-root',
                           'value': '{{inputs.parameters.pipeline-root}}'
