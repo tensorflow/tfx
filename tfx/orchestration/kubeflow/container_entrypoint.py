@@ -259,12 +259,12 @@ def _dump_ui_metadata(
 
   src_str_inputs = '# Inputs:\n{}'.format(''.join(
       _dump_populated_artifacts(
-          name_to_channel=component.inputs.get_all(),
+          name_to_channel=component.inputs,
           name_to_artifacts=execution_info.input_dict)) or 'No input.')
 
   src_str_outputs = '# Outputs:\n{}'.format(''.join(
       _dump_populated_artifacts(
-          name_to_channel=component.outputs.get_all(),
+          name_to_channel=component.outputs,
           name_to_artifacts=execution_info.output_dict)) or 'No output.')
 
   outputs = [{
