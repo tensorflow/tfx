@@ -24,6 +24,7 @@ from tfx import types
 from tfx.components.pusher import executor
 from tfx.dsl.components.base import base_component
 from tfx.dsl.components.base import executor_spec
+from tfx.orchestration import data_types
 from tfx.proto import pusher_pb2
 from tfx.types import standard_artifacts
 from tfx.types.standard_component_specs import PusherSpec
@@ -78,7 +79,7 @@ class Pusher(base_component.BaseComponent):
       model_blessing: Optional[types.Channel] = None,
       infra_blessing: Optional[types.Channel] = None,
       push_destination: Optional[Union[pusher_pb2.PushDestination,
-                                       Dict[Text, Any]]] = None,
+                                       data_types.RuntimeParameter]] = None,
       custom_config: Optional[Dict[Text, Any]] = None,
       custom_executor_spec: Optional[executor_spec.ExecutorSpec] = None):
     """Construct a Pusher component.
@@ -94,9 +95,7 @@ class Pusher(base_component.BaseComponent):
         InfraValidator component.
       push_destination: A pusher_pb2.PushDestination instance, providing info
         for tensorflow serving to load models. Optional if executor_class
-        doesn't require push_destination. If any field is provided as a
-        RuntimeParameter, push_destination should be constructed as a dict with
-        the same field names as PushDestination proto message.
+        doesn't require push_destination.
       custom_config: A dict which contains the deployment job parameters to be
         passed to Cloud platforms.
       custom_executor_spec: Optional custom executor spec. Deprecated (no

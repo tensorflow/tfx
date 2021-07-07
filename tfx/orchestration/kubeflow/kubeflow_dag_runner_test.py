@@ -37,10 +37,10 @@ from ml_metadata.proto import metadata_store_pb2
 
 # 2-step pipeline under test.
 def _two_step_pipeline() -> tfx_pipeline.Pipeline:
-  table_name = data_types.RuntimeParameter(
-      name='table-name', ptype=Text, default='default-table')
+  input_config = data_types.RuntimeParameter(name='input-config', ptype=Text)
+  output_config = data_types.RuntimeParameter(name='output-config', ptype=Text)
   example_gen = big_query_example_gen_component.BigQueryExampleGen(
-      query='SELECT * FROM %s' % str(table_name))
+      input_config=input_config, output_config=output_config)
   statistics_gen = statistics_gen_component.StatisticsGen(
       examples=example_gen.outputs['examples'])
   return tfx_pipeline.Pipeline(
@@ -132,11 +132,14 @@ class KubeflowDagRunnerTest(test_case_utils.TfxTest):
                   'template': 'bigqueryexamplegen',
                   'arguments': {
                       'parameters': [{
+                          'name': 'input-config',
+                          'value': '{{inputs.parameters.input-config}}'
+                      }, {
+                          'name': 'output-config',
+                          'value': '{{inputs.parameters.output-config}}'
+                      }, {
                           'name': 'pipeline-root',
                           'value': '{{inputs.parameters.pipeline-root}}'
-                      }, {
-                          'name': 'table-name',
-                          'value': '{{inputs.parameters.table-name}}'
                       }]
                   }
               }, {

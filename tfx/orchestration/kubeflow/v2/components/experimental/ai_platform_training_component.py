@@ -231,7 +231,7 @@ def create_ai_platform_training(
   output_channels = {}
   execution_parameters = {
       ai_platform_training_executor.CONFIG_KEY:
-          component_spec.ExecutionParameter(type=(str, Text))
+          component_spec.ExecutionParameter(type=str)
   }
 
   for input_name, single_channel in inputs.items():
