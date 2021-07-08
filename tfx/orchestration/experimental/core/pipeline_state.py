@@ -443,6 +443,12 @@ class PipelineView:
       return self.execution.custom_properties[_PIPELINE_RUN_ID].string_value
     return self.pipeline.runtime_spec.pipeline_run_id.field_value.string_value
 
+  @property
+  def pipeline_status_message(self) -> str:
+    if _PIPELINE_STATUS_MSG in self.execution.custom_properties:
+      return self.execution.custom_properties[_PIPELINE_STATUS_MSG].string_value
+    return ''
+
 
 def get_orchestrator_contexts(
     mlmd_handle: metadata.Metadata) -> List[metadata_store_pb2.Context]:

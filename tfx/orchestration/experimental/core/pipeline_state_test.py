@@ -273,11 +273,13 @@ class PipelineStateTest(test_utils.TfxTest):
       with pstate.PipelineState.new(m, pipeline) as pipeline_state:
         pipeline_state.set_pipeline_execution_state(
             metadata_store_pb2.Execution.COMPLETE)
+        pipeline_state.save_property(pstate._PIPELINE_STATUS_MSG, 'msg')
 
       views = pstate.PipelineView.load_all(
           m, task_lib.PipelineUid.from_pipeline(pipeline))
       self.assertLen(views, 1)
       self.assertEqual(views[0].pipeline_run_id, '001')
+      self.assertEqual(views[0].pipeline_status_message, 'msg')
       self.assertProtoEquals(pipeline, views[0].pipeline)
 
       pipeline2 = _create_sync_pipeline('pipeline', '002')
@@ -290,6 +292,8 @@ class PipelineStateTest(test_utils.TfxTest):
       self.assertCountEqual(['001', '002'], views_dict.keys())
       self.assertProtoEquals(pipeline, views_dict['001'].pipeline)
       self.assertProtoEquals(pipeline2, views_dict['002'].pipeline)
+      views_status_messages = {view.pipeline_status_message for view in views}
+      self.assertEqual(views_status_messages, {'', 'msg'})
 
       view1 = pstate.PipelineView.load(
           m, task_lib.PipelineUid.from_pipeline(pipeline), '001')
