@@ -57,7 +57,7 @@
           "resolver": {
             "outputArtifactQueries": {
               "model": {
-                "filter": "schema_title=\"tfx.Model\" AND state=LIVE AND name={$.inputs.artifacts[\"input\"].metadata.current_model_id.number_value}"
+                "filter": "schema_title=\"tfx.Model\" AND state=LIVE AND name=\"{{$.inputs.artifacts['input'].metadata['current_model_id']}}\""
               }
             }
           }
