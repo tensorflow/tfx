@@ -19,6 +19,10 @@
 *   Fixed issue where passing `analyzer_cache` to `tfx.components.Transform`
     before there are any Transform cache artifacts published would fail.
 *   Depends on `protobuf>=3.13,<4`.
+*   Included type information according to PEP-561. However, protobuf generated
+    files don't have type information, and you might need to ignore errors from
+    them. For example, if you are using `mypy`, see
+    [the related doc](https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-type-hints-for-third-party-library).
 
 ## Documentation Updates
 
