@@ -598,8 +598,9 @@ class StepBuilder(object):
     artifact_queries = {}
     query_filter = (
         'schema_title="{type}" AND '
-        'state={state} AND name={{$.inputs.artifacts["{input_key}"]'
-        '.metadata.{property_key}.number_value}}').format(
+        'state={state} AND '
+        'name="{{{{$.inputs.artifacts[\'{input_key}\']'
+        '.metadata[\'{property_key}\']}}}}"').format(
             type=compiler_utils.get_artifact_title(standard_artifacts.Model),
             state=metadata_store_pb2.Artifact.State.Name(
                 metadata_store_pb2.Artifact.LIVE),
