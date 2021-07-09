@@ -387,5 +387,11 @@ pipelines. See the
 [MLMD API documentation](https://www.tensorflow.org/tfx/ml_metadata/api_docs/python/mlmd)
 for more details.
 
-Also check out the [MLMD tutorial](../tutorials/mlmd/mlmd_tutorial) to learn how
-to use MLMD to trace the lineage of your pipeline components.
+Also check out the
+[MLMD tutorial](https://www.tensorflow.org/tfx/tutorials/mlmd/mlmd_tutorial) to
+learn how to use MLMD to trace the lineage of your pipeline components.
+
+MLMD provides utilities to handle schema and data migrations across releases.
+See the MLMD
+[Guide](https://github.com/google/ml-metadata/blob/master/g3doc/get_started.md#upgrade-the-mlmd-library)
+for more details.
