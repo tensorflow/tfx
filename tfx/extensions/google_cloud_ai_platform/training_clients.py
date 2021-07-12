@@ -17,6 +17,7 @@ import abc
 import datetime
 import json
 from typing import Any, Dict, List, Optional, Text, Union
+import uuid
 
 from absl import logging
 from google.cloud.aiplatform import gapic
@@ -423,10 +424,11 @@ class UCAIPJobClient(AbstractJobClient):
         {telemetry_utils.LABEL_TFX_EXECUTOR: executor_class_path}):
       job_labels = telemetry_utils.make_labels_dict()
 
-    # 'tfx_YYYYmmddHHMMSS' is the default job display name if not explicitly
-    # specified.
-    job_id = job_id or 'tfx_{}'.format(
-        datetime.datetime.now().strftime('%Y%m%d%H%M%S'))
+    # 'tfx_YYYYmmddHHMMSS_xxxxxxxx' is the default job display name if not
+    # explicitly specified.
+    job_id = job_id or 'tfx_{}_{}'.format(
+        datetime.datetime.now().strftime('%Y%m%d%H%M%S'),
+        str(uuid.uuid4())[:8])
 
     training_args = {
         'job_id': job_id,
