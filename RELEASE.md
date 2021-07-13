@@ -1,6 +1,8 @@
 # Current Version (Still in Development)
 
 ## Major Features and Improvements
+*  Combined/moved taxi's runtime_parameter, kubeflow_local and kubleflow_gcp
+   example pipelines into one penguin_pipeline_kubeflow example
 
 *  Transform component now supports passing `stats_options_updater_fn` directly
    as well as through the module file.

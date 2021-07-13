@@ -420,6 +420,12 @@ class BaseKubeflowTest(test_case_utils.TfxTest):
       os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
       'components/testdata/module_file')
 
+  # The location of the user module for penguin. Will be packaged and copied to
+  # under the pipeline root before pipeline execution.
+  _PENGUIN_MODULE_ROOT = os.path.join(
+      os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
+      'examples/penguin')
+
   @classmethod
   def setUpClass(cls):
     super(BaseKubeflowTest, cls).setUpClass()
@@ -473,10 +479,13 @@ class BaseKubeflowTest(test_case_utils.TfxTest):
     )
 
     self._data_root = os.path.join(self._testdata_root, 'external', 'csv')
-    self._penguin_data_root = os.path.join(self._testdata_root, 'labelled')
+    self._penguin_data_root = os.path.join(self._testdata_root, 'data')
     self._transform_module = os.path.join(self._MODULE_ROOT,
                                           'transform_module.py')
     self._trainer_module = os.path.join(self._MODULE_ROOT, 'trainer_module.py')
+    self._serving_model_dir = os.path.join(self._testdata_root, 'output')
+    self._penguin_dependency_file = os.path.join(
+        self._PENGUIN_MODULE_ROOT, 'penguin_utils_cloud_tuner.py')
 
     self.addCleanup(self._delete_test_dir, test_id)
 
