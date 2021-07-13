@@ -74,7 +74,6 @@ def _create_pipeline(
     serving_model_dir: Text,
     metadata_path: Text,
     enable_tuning: bool,
-    enable_bulk_inferrer: bool,
     examplegen_input_config: Optional[tfx.proto.Input],
     examplegen_range_config: Optional[tfx.proto.RangeConfig],
     resolver_range_config: Optional[tfx.proto.RangeConfig],
@@ -92,8 +91,6 @@ def _create_pipeline(
     metadata_path: path to local pipeline ML Metadata store.
     enable_tuning: If True, the hyperparameter tuning through KerasTuner is
       enabled.
-    enable_bulk_inferrer: If True, the generated model will be used for a
-      batch inference.
     examplegen_input_config: ExampleGen's input_config.
     examplegen_range_config: ExampleGen's range_config.
     resolver_range_config: SpansResolver's range_config. Specify this will
@@ -108,7 +105,7 @@ def _create_pipeline(
 
   # Brings data into the pipeline or otherwise joins/converts training data.
   example_gen = tfx.components.CsvExampleGen(
-      input_base=os.path.join(data_root, 'labelled'),
+      input_base=data_root,
       input_config=examplegen_input_config,
       range_config=examplegen_range_config)
 
@@ -222,21 +219,6 @@ def _create_pipeline(
           filesystem=tfx.proto.PushDestination.Filesystem(
               base_directory=serving_model_dir)))
 
-  # Showcase for BulkInferrer component.
-  if enable_bulk_inferrer:
-    # Generates unlabelled examples.
-    example_gen_unlabelled = tfx.components.CsvExampleGen(
-        input_base=os.path.join(data_root, 'unlabelled')).with_id(
-            'CsvExampleGen_Unlabelled')
-
-    # Performs offline batch inference.
-    bulk_inferrer = tfx.components.BulkInferrer(
-        examples=example_gen_unlabelled.outputs['examples'],
-        model=trainer.outputs['model'],
-        # Empty data_spec.example_splits will result in using all splits.
-        data_spec=tfx.proto.DataSpec(),
-        model_spec=tfx.proto.ModelSpec())
-
   components_list = [
       example_gen,
       statistics_gen,
@@ -252,9 +234,6 @@ def _create_pipeline(
     components_list.append(examples_resolver)
   if enable_tuning:
     components_list.append(tuner)
-  if enable_bulk_inferrer:
-    components_list.append(example_gen_unlabelled)
-    components_list.append(bulk_inferrer)
 
   return tfx.dsl.Pipeline(
       pipeline_name=pipeline_name,
@@ -298,7 +277,6 @@ if __name__ == '__main__':
           metadata_path=_metadata_path,
           # TODO(b/180723394): support tuning for Flax.
           enable_tuning=(flags.FLAGS.model_framework == 'keras'),
-          enable_bulk_inferrer=True,
           examplegen_input_config=_examplegen_input_config,
           examplegen_range_config=_examplegen_range_config,
           resolver_range_config=_resolver_range_config,
