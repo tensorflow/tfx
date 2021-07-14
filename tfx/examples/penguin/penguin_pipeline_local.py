@@ -23,6 +23,7 @@ from absl import flags
 
 import tensorflow_model_analysis as tfma
 from tfx import v1 as tfx
+from tfx.dsl.experimental.conditionals import conditional
 
 flags.DEFINE_enum(
     'runner', 'DirectRunner', ['DirectRunner', 'FlinkRunner', 'SparkRunner'],
@@ -287,14 +288,35 @@ def _create_pipeline(
       baseline_model=model_resolver.outputs['model'],
       eval_config=eval_config)
 
-  # Checks whether the model passed the validation steps and pushes the model
-  # to a file destination if check passed.
-  pusher = tfx.components.Pusher(
-      model=trainer.outputs['model'],
-      model_blessing=evaluator.outputs['blessing'],
-      push_destination=tfx.proto.PushDestination(
-          filesystem=tfx.proto.PushDestination.Filesystem(
-              base_directory=serving_model_dir)))
+  # Components declared within the conditional block will only be triggered
+  # if the Predicate evaluates to True.
+  #
+  # In the example below,
+  # evaluator.outputs['blessing'].future()[0].custom_property('blessed') == 1
+  # is a Predicate, which will be evaluated during runtime.
+  #
+  # - evaluator.outputs['blessing'] is the output Channel 'blessing'.
+  # - .future() turns the Channel into a Placeholder.
+  # - [0] gets the first artifact from the 'blessing' Channel.
+  # - .custom_property('blessed') gets a custom property called 'blessed' from
+  #   that artifact.
+  # - == 1 compares that property with 1. (An explicit comparison is needed.
+  #   There's no automatic boolean conversion based on truthiness.)
+  #
+  # Note these operations are just placeholder, something like Mocks. They are
+  # not evaluated until runtime. For more details, see tfx/dsl/placeholder/.
+  with conditional.Cond(evaluator.outputs['blessing'].future()
+                        [0].custom_property('blessed') == 1):
+    # Checks whether the model passed the validation steps and pushes the model
+    # to a file destination if check passed.
+    pusher = tfx.components.Pusher(
+        model=trainer.outputs['model'],
+        # No need to pass model_blessing any more, since Pusher is already
+        # guarded by a Conditional.
+        # model_blessing=evaluator.outputs['blessing'],
+        push_destination=tfx.proto.PushDestination(
+            filesystem=tfx.proto.PushDestination.Filesystem(
+                base_directory=serving_model_dir)))
 
   # Showcase for BulkInferrer component.
   if enable_bulk_inferrer:
