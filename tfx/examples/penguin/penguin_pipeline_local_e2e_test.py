@@ -26,8 +26,8 @@ from tfx.v1.dsl.io import fileio
 from tfx.v1.orchestration import LocalDagRunner
 from tfx.v1.orchestration import metadata
 
-import google3.third_party.ml_metadata as mlmd
-from google3.third_party.ml_metadata.proto import metadata_store_pb2
+import ml_metadata as mlmd
+from ml_metadata.proto import metadata_store_pb2
 
 _SPAN_PROPERTY_NAME = 'span'
 
