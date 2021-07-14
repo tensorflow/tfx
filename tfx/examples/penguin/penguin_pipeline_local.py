@@ -23,7 +23,6 @@ from absl import flags
 
 import tensorflow_model_analysis as tfma
 from tfx import v1 as tfx
-from tfx.dsl.experimental.conditionals import conditional
 
 flags.DEFINE_enum(
     'runner', 'DirectRunner', ['DirectRunner', 'FlinkRunner', 'SparkRunner'],
@@ -130,8 +129,6 @@ def _create_pipeline(
     examplegen_range_config: Optional[tfx.proto.RangeConfig],
     resolver_range_config: Optional[tfx.proto.RangeConfig],
     beam_pipeline_args: List[Text],
-    # TODO(b/191634100): Always enable transform cache.
-    enable_transform_input_cache: bool
 ) -> tfx.dsl.Pipeline:
   """Implements the penguin pipeline with TFX.
 
@@ -155,8 +152,6 @@ def _create_pipeline(
       transform and training.
     beam_pipeline_args: list of beam pipeline options for LocalDAGRunner. Please
       refer to https://beam.apache.org/documentation/runners/direct/.
-    enable_transform_input_cache: Indicates whether input cache should be used
-      in Transform if available.
 
   Returns:
     A TFX pipeline object.
@@ -202,21 +197,11 @@ def _create_pipeline(
             producer_component_id=example_gen.id)).with_id('span_resolver')
 
   # Performs transformations and feature engineering in training and serving.
-  if enable_transform_input_cache:
-    transform_cache_resolver = tfx.dsl.Resolver(
-        strategy_class=tfx.dsl.experimental.LatestArtifactStrategy,
-        cache=tfx.dsl.Channel(type=tfx.types.standard_artifacts.TransformCache)
-    ).with_id('transform_cache_resolver')
-    tft_resolved_cache = transform_cache_resolver.outputs['cache']
-  else:
-    tft_resolved_cache = None
-
   transform = tfx.components.Transform(
       examples=(examples_resolver.outputs['examples']
                 if resolver_range_config else example_gen.outputs['examples']),
       schema=schema,
-      module_file=module_file,
-      analyzer_cache=tft_resolved_cache)
+      module_file=module_file)
 
   # Tunes the hyperparameters for model training based on user-provided Python
   # function. Note that once the hyperparameters are tuned, you can drop the
@@ -288,35 +273,14 @@ def _create_pipeline(
       baseline_model=model_resolver.outputs['model'],
       eval_config=eval_config)
 
-  # Components declared within the conditional block will only be triggered
-  # if the Predicate evaluates to True.
-  #
-  # In the example below,
-  # evaluator.outputs['blessing'].future()[0].custom_property('blessed') == 1
-  # is a Predicate, which will be evaluated during runtime.
-  #
-  # - evaluator.outputs['blessing'] is the output Channel 'blessing'.
-  # - .future() turns the Channel into a Placeholder.
-  # - [0] gets the first artifact from the 'blessing' Channel.
-  # - .custom_property('blessed') gets a custom property called 'blessed' from
-  #   that artifact.
-  # - == 1 compares that property with 1. (An explicit comparison is needed.
-  #   There's no automatic boolean conversion based on truthiness.)
-  #
-  # Note these operations are just placeholder, something like Mocks. They are
-  # not evaluated until runtime. For more details, see tfx/dsl/placeholder/.
-  with conditional.Cond(evaluator.outputs['blessing'].future()
-                        [0].custom_property('blessed') == 1):
-    # Checks whether the model passed the validation steps and pushes the model
-    # to a file destination if check passed.
-    pusher = tfx.components.Pusher(
-        model=trainer.outputs['model'],
-        # No need to pass model_blessing any more, since Pusher is already
-        # guarded by a Conditional.
-        # model_blessing=evaluator.outputs['blessing'],
-        push_destination=tfx.proto.PushDestination(
-            filesystem=tfx.proto.PushDestination.Filesystem(
-                base_directory=serving_model_dir)))
+  # Checks whether the model passed the validation steps and pushes the model
+  # to a file destination if check passed.
+  pusher = tfx.components.Pusher(
+      model=trainer.outputs['model'],
+      model_blessing=evaluator.outputs['blessing'],
+      push_destination=tfx.proto.PushDestination(
+          filesystem=tfx.proto.PushDestination.Filesystem(
+              base_directory=serving_model_dir)))
 
   # Showcase for BulkInferrer component.
   if enable_bulk_inferrer:
@@ -349,8 +313,6 @@ def _create_pipeline(
     components_list.append(schema_gen)
   if resolver_range_config:
     components_list.append(examples_resolver)
-  if enable_transform_input_cache:
-    components_list.append(transform_cache_resolver)
   if enable_tuning:
     components_list.append(tuner)
   if enable_bulk_inferrer:
@@ -405,5 +367,4 @@ if __name__ == '__main__':
           examplegen_input_config=_examplegen_input_config,
           examplegen_range_config=_examplegen_range_config,
           resolver_range_config=_resolver_range_config,
-          beam_pipeline_args=_beam_pipeline_args_by_runner[flags.FLAGS.runner],
-          enable_transform_input_cache=True))
+          beam_pipeline_args=_beam_pipeline_args_by_runner[flags.FLAGS.runner]))
