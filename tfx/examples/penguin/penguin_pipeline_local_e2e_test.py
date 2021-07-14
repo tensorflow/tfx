@@ -56,15 +56,12 @@ class PenguinPipelineLocalEndToEndTest(tf.test.TestCase,
     #   - day3
     #     - penguins_processed.csv
     self._data_root_span = os.path.join(self._test_dir, 'data')
-    io_utils.copy_dir(
-        os.path.join(self._data_root, 'labelled'),
-        os.path.join(self._data_root_span, 'labelled', 'day1'))
-    io_utils.copy_dir(
-        os.path.join(self._data_root, 'labelled'),
-        os.path.join(self._data_root_span, 'labelled', 'day2'))
-    io_utils.copy_dir(
-        os.path.join(self._data_root, 'labelled'),
-        os.path.join(self._data_root_span, 'labelled', 'day3'))
+    for day in ['day1', 'day2', 'day3']:
+      dst_path = os.path.join(self._data_root_span, 'labelled', day)
+      fileio.makedirs(dst_path)
+      fileio.copy(
+          os.path.join(self._data_root, 'labelled', 'penguins_processed.csv'),
+          os.path.join(dst_path, 'penguins_processed.csv'))
 
     self._serving_model_dir = os.path.join(self._test_dir, 'serving_model')
     self._pipeline_root = os.path.join(self._test_dir, 'tfx', 'pipelines',
@@ -212,13 +209,46 @@ class PenguinPipelineLocalEndToEndTest(tf.test.TestCase,
     expected_execution_count = 11  # 11 components + 1 resolver
     metadata_config = metadata.sqlite_metadata_connection_config(
         self._metadata_path)
-    with metadata.Metadata(metadata_config) as m:
-      artifact_count = len(m.store.get_artifacts())
-      execution_count = len(m.store.get_executions())
-      self.assertGreaterEqual(artifact_count, execution_count)
-      self.assertEqual(expected_execution_count, execution_count)
+    store = mlmd.MetadataStore(metadata_config)
+    artifact_count = len(store.get_artifacts())
+    execution_count = len(store.get_executions())
+    self.assertGreaterEqual(artifact_count, execution_count)
+    self.assertEqual(expected_execution_count, execution_count)
 
     self._assertPipelineExecution(has_bulk_inferrer=True)
+
+  @parameterized.parameters(('keras',), ('flax_experimental',))
+  def testPenguinPipelineLocalWithImporter(self, model_framework):
+    module_file = self._module_file_name(model_framework)
+    LocalDagRunner().run(
+        penguin_pipeline_local._create_pipeline(
+            pipeline_name=self._pipeline_name,
+            data_root=self._data_root,
+            module_file=module_file,
+            accuracy_threshold=0.1,
+            serving_model_dir=self._serving_model_dir,
+            pipeline_root=self._pipeline_root,
+            metadata_path=self._metadata_path,
+            user_provided_schema_path=self._schema_path,
+            enable_tuning=False,
+            enable_bulk_inferrer=False,
+            examplegen_input_config=None,
+            examplegen_range_config=None,
+            resolver_range_config=None,
+            beam_pipeline_args=[]))
+
+    self.assertTrue(fileio.exists(self._serving_model_dir))
+    self.assertTrue(fileio.exists(self._metadata_path))
+    expected_execution_count = 9  # 7 components + 1 resolver + 1 importer
+    metadata_config = metadata.sqlite_metadata_connection_config(
+        self._metadata_path)
+    store = mlmd.MetadataStore(metadata_config)
+    artifact_count = len(store.get_artifacts())
+    execution_count = len(store.get_executions())
+    self.assertGreaterEqual(artifact_count, execution_count)
+    self.assertEqual(expected_execution_count, execution_count)
+
+    self._assertPipelineExecution(has_schema_gen=False)
 
   def _get_input_examples_artifacts(
       self, store: mlmd.MetadataStore,
