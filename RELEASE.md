@@ -83,6 +83,7 @@
     Apache Airflow 2.1.0 and later.
 *   Removed `six` dependency.
 *   Depends on `apache-beam[gcp]>=2.29,<3`.
+*   Depends on `google-cloud-bigquery>=1.28.0,<2.21`
 *   Depends on `ml-metadata>=1.0.0,<1.1.0`.
 *   Depends on `struct2tensor>=0.31.0,<0.32.0`.
 *   Depends on `tensorflow>=1.15.2,!=2.0.*,!=2.1.*,!=2.2.*,!=2.3.*,!=2.4.*,<3`.
