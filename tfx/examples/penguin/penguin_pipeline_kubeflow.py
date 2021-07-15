@@ -157,20 +157,19 @@ def create_pipeline(
   Returns:
     A TFX pipeline object.
   """
-  # TODO(b/190231146): add runtime parameters.
   # Number of epochs in training.
-  # train_args = data_types.RuntimeParameter(
-  #     name='train-args',
-  #     default='{"num_steps": 100}',
-  #     ptype=Text,
-  # )
+  train_args = tfx.dsl.experimental.RuntimeParameter(
+      name='train-args',
+      default='__SOME_PLACEHOLDER_TO_MAKE_TEST_FAIL_IF_NOT_REPLACED',
+      ptype=Text,
+  )
 
   # Number of epochs in evaluation.
-  # eval_args = data_types.RuntimeParameter(
-  #     name='eval-args',
-  #     default='{"num_steps": 50}',
-  #     ptype=Text,
-  # )
+  eval_args = tfx.dsl.experimental.RuntimeParameter(
+      name='eval-args',
+      default='{"num_steps": 50}',
+      ptype=Text,
+  )
 
   # Brings data into the pipeline or otherwise joins/converts training data.
   example_gen = tfx.components.CsvExampleGen(
@@ -292,8 +291,8 @@ def create_pipeline(
         schema=schema_gen.outputs['schema'],
         hyperparameters=(tuner.outputs['best_hyperparameters']
                          if enable_tuning else None),
-        train_args=tfx.proto.TrainArgs(num_steps=100),
-        eval_args=tfx.proto.EvalArgs(num_steps=50),
+        train_args=train_args,
+        eval_args=eval_args,
         )
 
   # Get the latest blessed model for model validation.

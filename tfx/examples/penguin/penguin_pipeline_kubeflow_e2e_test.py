@@ -46,13 +46,12 @@ class PenguinPipelineKubeflowTest(kubeflow_test_utils.BaseKubeflowTest):
         use_aip_component=False,
         serving_model_dir=self._serving_model_dir)
 
-    # TODO(b/190231146): test run parameters after relevant support available.
-    # parameters = {
-    #     'train-steps': 100,
-    #     'eval-steps': 50,
-    # }
+    parameters = {
+        'train-args': '{"num_steps": 100}',
+        'eval-args': '{"num_steps": 50}',
+    }
     self._compile_and_run_pipeline(
-        pipeline=kubeflow_pipeline)
+        pipeline=kubeflow_pipeline, parameters=parameters)
     self.assertTrue(fileio.exists(self._serving_model_dir))
 
 

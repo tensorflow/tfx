@@ -166,8 +166,6 @@ class ComponentInfo(object):
                             self.component_id)
 
 
-# TODO(b/146361011): Implement a checking mechanism preventing users from using
-# RuntimeParameter in DAG runner other than Kubeflow Pipelines.
 class RuntimeParameter(json_utils.Jsonable):
   """Runtime parameter.
 

@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,10 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """TFX runner for Kubeflow."""
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
 
+import collections
 import os
 from typing import Callable, Dict, List, Optional, Text, Type, cast
 
@@ -259,6 +256,7 @@ class KubeflowDagRunner(tfx_runner.TfxRunner):
     self._compiler = compiler.Compiler()
     self._tfx_compiler = tfx_compiler.Compiler()
     self._params = []  # List of dsl.PipelineParam used in this pipeline.
+    self._params_by_component_id = collections.defaultdict(list)
     self._deduped_parameter_names = set()  # Set of unique param names used.
     if pod_labels_to_attach is None:
       self._pod_labels_to_attach = get_default_pod_labels()
@@ -276,13 +274,18 @@ class KubeflowDagRunner(tfx_runner.TfxRunner):
       component: a TFX component.
     """
 
+    deduped_parameter_names_for_component = set()
     for parameter in component.exec_properties.values():
       if not isinstance(parameter, data_types.RuntimeParameter):
         continue
       # Ignore pipeline root because it will be added later.
       if parameter.name == tfx_pipeline.ROOT_PARAMETER.name:
         continue
+      if parameter.name in deduped_parameter_names_for_component:
+        continue
 
+      deduped_parameter_names_for_component.add(parameter.name)
+      self._params_by_component_id[component.id].append(parameter)
       if parameter.name not in self._deduped_parameter_names:
         self._deduped_parameter_names.add(parameter.name)
         # TODO(b/178436919): Create a test to cover default value rendering
@@ -291,10 +294,7 @@ class KubeflowDagRunner(tfx_runner.TfxRunner):
         # See
         # https://github.com/kubeflow/pipelines/blob/f65391309650fdc967586529e79af178241b4c2c/sdk/python/kfp/dsl/_pipeline_param.py#L154
         dsl_parameter = dsl.PipelineParam(
-            name=parameter.name,
-            # TODO(b/186566348): remove the quote replacement.
-            value=str(parameter.default).replace('\\',
-                                                 '\\\\').replace('"', '\\"'))
+            name=parameter.name, value=str(parameter.default))
         self._params.append(dsl_parameter)
 
   def _parse_parameter_from_pipeline(self,
@@ -333,7 +333,9 @@ class KubeflowDagRunner(tfx_runner.TfxRunner):
           tfx_image=self._config.tfx_image,
           kubeflow_metadata_config=self._config.kubeflow_metadata_config,
           pod_labels_to_attach=self._pod_labels_to_attach,
-          tfx_ir=tfx_ir)
+          tfx_ir=tfx_ir,
+          runtime_parameters=(self._params_by_component_id[component.id] +
+                              [tfx_pipeline.ROOT_PARAMETER]))
 
       for operator in self._config.pipeline_operator_funcs:
         kfp_component.container_op.apply(operator)
