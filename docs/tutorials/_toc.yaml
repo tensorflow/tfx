@@ -50,8 +50,7 @@ toc:
 - title: "Get started with TFMA"
   path: /tfx/tutorials/model_analysis/tfma_basic
 - title: "Fairness Indicators tutorial"
-  path: https://github.com/tensorflow/fairness-indicators
-  status: external
+  path: /responsible_ai/fairness_indicators/tutorials/Fairness_Indicators_Example_Colab
 
 - heading: "Deploy a trained model"
 - title: "Servers: TFX for TensorFlow Serving"
