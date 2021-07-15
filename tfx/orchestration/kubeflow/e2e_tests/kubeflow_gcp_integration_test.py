@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,20 +13,16 @@
 # limitations under the License.
 """Integration tests for Kubeflow-based orchestrator and GCP backend."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import os
 
 import absl
 from googleapiclient import discovery
 from googleapiclient import errors as googleapiclient_errors
 import tensorflow as tf
-from tfx.components.common_nodes.importer_node import ImporterNode
 from tfx.components.pusher.component import Pusher
 from tfx.components.trainer.component import Trainer
 from tfx.dsl.components.base import executor_spec
+from tfx.dsl.components.common import importer
 from tfx.dsl.io import fileio
 from tfx.extensions.google_cloud_ai_platform import runner
 from tfx.extensions.google_cloud_ai_platform.pusher import executor as ai_platform_pusher_executor
@@ -49,7 +44,7 @@ class KubeflowGCPIntegrationTest(kubeflow_test_utils.BaseKubeflowTest):
     super(KubeflowGCPIntegrationTest, self).setUp()
 
     # Transformed Example artifacts for testing.
-    self.transformed_examples_importer = ImporterNode(
+    self.transformed_examples_importer = importer.Importer(
         source_uri=os.path.join(self._testdata_root, 'transform',
                                 'transformed_examples'),
         artifact_type=standard_artifacts.Examples,
@@ -59,50 +54,59 @@ class KubeflowGCPIntegrationTest(kubeflow_test_utils.BaseKubeflowTest):
         }).with_id('transformed_examples')
 
     # Schema artifact for testing.
-    self.schema_importer = ImporterNode(
+    self.schema_importer = importer.Importer(
         source_uri=os.path.join(self._testdata_root, 'schema_gen'),
         artifact_type=standard_artifacts.Schema,
         reimport=True).with_id('schema')
 
     # TransformGraph artifact for testing.
-    self.transform_graph_importer = ImporterNode(
+    self.transform_graph_importer = importer.Importer(
         source_uri=os.path.join(self._testdata_root, 'transform',
                                 'transform_graph'),
         artifact_type=standard_artifacts.TransformGraph,
         reimport=True).with_id('transform_graph')
 
     # Model artifact for testing.
-    self.model_1_importer = ImporterNode(
+    self.model_1_importer = importer.Importer(
         source_uri=os.path.join(self._testdata_root, 'trainer', 'previous'),
         artifact_type=standard_artifacts.Model,
         reimport=True).with_id('model_1')
 
-    self.model_2_importer = ImporterNode(
+    self.model_2_importer = importer.Importer(
         source_uri=os.path.join(self._testdata_root, 'trainer', 'current'),
         artifact_type=standard_artifacts.Model,
         reimport=True).with_id('model_2')
 
     # ModelBlessing artifact for testing.
-    self.model_blessing_importer = ImporterNode(
+    self.model_blessing_1_importer = importer.Importer(
         source_uri=os.path.join(self._testdata_root, 'model_validator',
                                 'blessed'),
         artifact_type=standard_artifacts.ModelBlessing,
         reimport=True,
         custom_properties={
             'blessed': 1
-        }).with_id('model_blessing')
+        }).with_id('model_blessing_1')
+
+    self.model_blessing_2_importer = importer.Importer(
+        source_uri=os.path.join(self._testdata_root, 'model_validator',
+                                'blessed'),
+        artifact_type=standard_artifacts.ModelBlessing,
+        reimport=True,
+        custom_properties={
+            'blessed': 1
+        }).with_id('model_blessing_2')
 
     ### Test data and modules for native Keras trainer and tuner.
     self._penguin_tuner_module = os.path.join(self._MODULE_ROOT,
                                               'tuner_module.py')
-    self.penguin_examples_importer = ImporterNode(
+    self.penguin_examples_importer = importer.Importer(
         source_uri=os.path.join(self._testdata_root, 'penguin', 'data'),
         artifact_type=standard_artifacts.Examples,
         reimport=True,
         properties={
             'split_names': '["train", "eval"]'
         }).with_id('penguin_examples')
-    self.penguin_schema_importer = ImporterNode(
+    self.penguin_schema_importer = importer.Importer(
         source_uri=os.path.join(self._testdata_root, 'penguin', 'schema'),
         artifact_type=standard_artifacts.Schema,
         reimport=True).with_id('penguin_schema')
@@ -289,8 +293,8 @@ class KubeflowGCPIntegrationTest(kubeflow_test_utils.BaseKubeflowTest):
     # Test creation of multiple versions under the same model_name.
     pipeline = self._create_pipeline(pipeline_name, [
         self.model_1_importer,
-        self.model_blessing_importer,
-        _pusher(self.model_1_importer, self.model_blessing_importer,
+        self.model_blessing_1_importer,
+        _pusher(self.model_1_importer, self.model_blessing_1_importer,
                 dataset_name),
     ])
     self._compile_and_run_pipeline(pipeline)
@@ -349,8 +353,8 @@ class KubeflowGCPIntegrationTest(kubeflow_test_utils.BaseKubeflowTest):
     pipeline_name_1 = '%s-1' % pipeline_name_base
     pipeline_1 = self._create_pipeline(pipeline_name_1, [
         self.model_1_importer,
-        self.model_blessing_importer,
-        _pusher(self.model_1_importer, self.model_blessing_importer),
+        self.model_blessing_1_importer,
+        _pusher(self.model_1_importer, self.model_blessing_1_importer),
     ])
     self._compile_and_run_pipeline(pipeline_1)
     self.assertEqual(
@@ -362,8 +366,8 @@ class KubeflowGCPIntegrationTest(kubeflow_test_utils.BaseKubeflowTest):
     pipeline_name_2 = '%s-2' % pipeline_name_base
     pipeline_2 = self._create_pipeline(pipeline_name_2, [
         self.model_2_importer,
-        self.model_blessing_importer,
-        _pusher(self.model_2_importer, self.model_blessing_importer),
+        self.model_blessing_2_importer,
+        _pusher(self.model_2_importer, self.model_blessing_2_importer),
     ])
     self._compile_and_run_pipeline(pipeline_2)
     self.assertEqual(
