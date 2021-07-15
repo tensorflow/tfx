@@ -16,6 +16,7 @@
 import enum
 from typing import List, Optional, Text, cast
 
+from tfx.dsl.compiler import constants
 from tfx.dsl.components.base import base_node
 from tfx.dsl.components.base import executor_spec
 from tfx.orchestration import data_types
@@ -30,9 +31,6 @@ from google.protobuf import message
 # https://dev.mysql.com/doc/refman/5.6/en/identifiers.html
 _MAX_PIPELINE_NAME_LENGTH = 63
 
-# Name of pipeline_root parameter.
-_PIPELINE_ROOT = 'pipeline-root'
-
 # Pipeline root is by default specified as a RuntimeParameter when runnning on
 # KubeflowDagRunner. This constant offers users an easy access to the pipeline
 # root placeholder when defining a pipeline. For example,
@@ -44,7 +42,8 @@ _PIPELINE_ROOT = 'pipeline-root'
 #         filesystem=pusher_pb2.PushDestination.Filesystem(
 #             base_directory=os.path.join(
 #                 str(pipeline.ROOT_PARAMETER), 'model_serving'))))
-ROOT_PARAMETER = data_types.RuntimeParameter(name=_PIPELINE_ROOT, ptype=Text)
+ROOT_PARAMETER = data_types.RuntimeParameter(
+    name=constants.PIPELINE_ROOT_PARAMETER_NAME, ptype=Text)
 
 
 class ExecutionMode(enum.Enum):

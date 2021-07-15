@@ -32,7 +32,7 @@ nodes {
         }
         name {
           runtime_parameter {
-            name: "pipeline_run_id"
+            name: "pipeline-run-id"
             type: STRING
           }
         }
@@ -141,7 +141,7 @@ nodes {
         }
         name {
           runtime_parameter {
-            name: "pipeline_run_id"
+            name: "pipeline-run-id"
             type: STRING
           }
         }
@@ -257,7 +257,7 @@ nodes {
         }
         name {
           runtime_parameter {
-            name: "pipeline_run_id"
+            name: "pipeline-run-id"
             type: STRING
           }
         }
@@ -372,7 +372,7 @@ nodes {
         }
         name {
           runtime_parameter {
-            name: "pipeline_run_id"
+            name: "pipeline-run-id"
             type: STRING
           }
         }
@@ -412,7 +412,7 @@ nodes {
               }
               name {
                 runtime_parameter {
-                  name: "pipeline_run_id"
+                  name: "pipeline-run-id"
                   type: STRING
                 }
               }
@@ -502,7 +502,7 @@ nodes {
         }
         name {
           runtime_parameter {
-            name: "pipeline_run_id"
+            name: "pipeline-run-id"
             type: STRING
           }
         }
@@ -542,7 +542,7 @@ nodes {
               }
               name {
                 runtime_parameter {
-                  name: "pipeline_run_id"
+                  name: "pipeline-run-id"
                   type: STRING
                 }
               }
@@ -630,7 +630,7 @@ nodes {
         }
         name {
           runtime_parameter {
-            name: "pipeline_run_id"
+            name: "pipeline-run-id"
             type: STRING
           }
         }
@@ -670,7 +670,7 @@ nodes {
               }
               name {
                 runtime_parameter {
-                  name: "pipeline_run_id"
+                  name: "pipeline-run-id"
                   type: STRING
                 }
               }
@@ -760,7 +760,7 @@ nodes {
         }
         name {
           runtime_parameter {
-            name: "pipeline_run_id"
+            name: "pipeline-run-id"
             type: STRING
           }
         }
@@ -800,7 +800,7 @@ nodes {
               }
               name {
                 runtime_parameter {
-                  name: "pipeline_run_id"
+                  name: "pipeline-run-id"
                   type: STRING
                 }
               }
@@ -847,7 +847,7 @@ nodes {
               }
               name {
                 runtime_parameter {
-                  name: "pipeline_run_id"
+                  name: "pipeline-run-id"
                   type: STRING
                 }
               }
@@ -936,7 +936,7 @@ nodes {
         }
         name {
           runtime_parameter {
-            name: "pipeline_run_id"
+            name: "pipeline-run-id"
             type: STRING
           }
         }
@@ -976,7 +976,7 @@ nodes {
               }
               name {
                 runtime_parameter {
-                  name: "pipeline_run_id"
+                  name: "pipeline-run-id"
                   type: STRING
                 }
               }
@@ -1023,7 +1023,7 @@ nodes {
               }
               name {
                 runtime_parameter {
-                  name: "pipeline_run_id"
+                  name: "pipeline-run-id"
                   type: STRING
                 }
               }
@@ -1144,7 +1144,7 @@ nodes {
         }
         name {
           runtime_parameter {
-            name: "pipeline_run_id"
+            name: "pipeline-run-id"
             type: STRING
           }
         }
@@ -1184,7 +1184,7 @@ nodes {
               }
               name {
                 runtime_parameter {
-                  name: "pipeline_run_id"
+                  name: "pipeline-run-id"
                   type: STRING
                 }
               }
@@ -1231,7 +1231,7 @@ nodes {
               }
               name {
                 runtime_parameter {
-                  name: "pipeline_run_id"
+                  name: "pipeline-run-id"
                   type: STRING
                 }
               }
@@ -1278,7 +1278,7 @@ nodes {
               }
               name {
                 runtime_parameter {
-                  name: "pipeline_run_id"
+                  name: "pipeline-run-id"
                   type: STRING
                 }
               }
@@ -1379,7 +1379,7 @@ nodes {
         }
         name {
           runtime_parameter {
-            name: "pipeline_run_id"
+            name: "pipeline-run-id"
             type: STRING
           }
         }
@@ -1419,7 +1419,7 @@ nodes {
               }
               name {
                 runtime_parameter {
-                  name: "pipeline_run_id"
+                  name: "pipeline-run-id"
                   type: STRING
                 }
               }
@@ -1466,7 +1466,7 @@ nodes {
               }
               name {
                 runtime_parameter {
-                  name: "pipeline_run_id"
+                  name: "pipeline-run-id"
                   type: STRING
                 }
               }
@@ -1533,7 +1533,7 @@ nodes {
 runtime_spec {
   pipeline_root {
     runtime_parameter {
-      name: "pipeline_root"
+      name: "pipeline-root"
       type: STRING
       default_value {
         string_value: "tfx_root/pipelines/iris"
@@ -1542,7 +1542,7 @@ runtime_spec {
   }
   pipeline_run_id {
     runtime_parameter {
-      name: "pipeline_run_id"
+      name: "pipeline-run-id"
       type: STRING
     }
   }

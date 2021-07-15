@@ -36,7 +36,7 @@ nodes {
         }
         name {
           runtime_parameter {
-            name: "pipeline_run_id"
+            name: "pipeline-run-id"
             type: STRING
           }
         }
@@ -93,7 +93,7 @@ nodes {
         }
         name {
           runtime_parameter {
-            name: "pipeline_run_id"
+            name: "pipeline-run-id"
             type: STRING
           }
         }
@@ -189,7 +189,7 @@ nodes {
         }
         name {
           runtime_parameter {
-            name: "pipeline_run_id"
+            name: "pipeline-run-id"
             type: STRING
           }
         }
@@ -327,7 +327,7 @@ nodes {
         }
         name {
           runtime_parameter {
-            name: "pipeline_run_id"
+            name: "pipeline-run-id"
             type: STRING
           }
         }
@@ -416,7 +416,7 @@ nodes {
         }
         name {
           runtime_parameter {
-            name: "pipeline_run_id"
+            name: "pipeline-run-id"
             type: STRING
           }
         }

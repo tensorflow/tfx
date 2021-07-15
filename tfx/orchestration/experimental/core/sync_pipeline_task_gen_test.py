@@ -19,6 +19,7 @@ import uuid
 from absl.testing import parameterized
 from absl.testing.absltest import mock
 import tensorflow as tf
+from tfx.dsl.compiler import constants as compiler_constants
 from tfx.orchestration import data_types_utils
 from tfx.orchestration import metadata
 from tfx.orchestration.experimental.core import constants
@@ -97,8 +98,8 @@ class SyncPipelineTaskGeneratorTest(otu.TfxTest, parameterized.TestCase):
         pipeline)
     runtime_parameter_utils.substitute_runtime_parameter(
         pipeline, {
-            'pipeline_root': pipeline_root,
-            'pipeline_run_id': pipeline_run_id,
+            compiler_constants.PIPELINE_ROOT_PARAMETER_NAME: pipeline_root,
+            compiler_constants.PIPELINE_RUN_ID_PARAMETER_NAME: pipeline_run_id,
         })
     return pipeline
 

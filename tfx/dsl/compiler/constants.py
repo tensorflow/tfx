@@ -14,10 +14,10 @@
 """Constant values for DSL Compiler."""
 
 # The parameter name for pipeline root in PipelineRuntimeSpec.
-PIPELINE_ROOT_PARAMETER_NAME = "pipeline_root"
+PIPELINE_ROOT_PARAMETER_NAME = "pipeline-root"
 
 # The parameter name for pipeline run id in PipelineRuntimeSpec.
-PIPELINE_RUN_ID_PARAMETER_NAME = "pipeline_run_id"
+PIPELINE_RUN_ID_PARAMETER_NAME = "pipeline-run-id"
 
 # The type name for the contexts representing different pipelines.
 PIPELINE_CONTEXT_TYPE_NAME = "pipeline"
