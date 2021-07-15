@@ -19,6 +19,7 @@ from typing import Any, Dict, List, Optional, Text, Type
 from tfx import types
 from tfx.dsl.components.base import base_driver
 from tfx.dsl.components.base import base_node
+from tfx.dsl.input_resolution import resolver_op
 from tfx.orchestration import data_types
 from tfx.orchestration import metadata
 from tfx.utils import deprecation_utils
@@ -64,6 +65,15 @@ class ResolverStrategy(abc.ABC):
   the resolved dict.
   """
 
+  @doc_controls.do_not_generate_docs
+  @classmethod
+  def as_resolver_op(cls, input_node: resolver_op.OpNode, **kwargs):
+    """ResolverOp-like usage inside resolver_function."""
+    return resolver_op.OpNode(
+        op_type=cls,
+        arg=input_node,
+        kwargs=kwargs)
+
   @deprecation_utils.deprecated(
       date='2020-09-24',
       instructions='Please switch to the `resolve_artifacts`.')
@@ -89,7 +99,7 @@ class ResolverStrategy(abc.ABC):
     Raises:
       DeprecationWarning: when it is called.
     """
-    raise DeprecationWarning
+    raise NotImplementedError()
 
   @abc.abstractmethod
   def resolve_artifacts(
@@ -117,6 +127,9 @@ class ResolverStrategy(abc.ABC):
       If all entries has enough data after the resolving, returns the resolved
       input_dict. Otherise, return None.
     """
+
+# Lazily register valid op_type for OpNode to avoid circular import.
+resolver_op.OpNode.register_valid_op_type(ResolverStrategy)
 
 
 class _ResolverDriver(base_driver.BaseDriver):

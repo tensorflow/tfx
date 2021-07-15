@@ -14,23 +14,31 @@
 """Tests for tfx.dsl.input_resolution.resolver_function."""
 import tensorflow as tf
 
+from tfx.dsl.components.common import resolver
 from tfx.dsl.input_resolution import resolver_function
 from tfx.dsl.input_resolution import resolver_op
-
-ArtifactMultimap = resolver_op.ArtifactMultimap
 
 
 class Foo(resolver_op.ResolverOp):
   foo = resolver_op.ResolverOpProperty(type=int)
 
-  def apply(self, input_dict: ArtifactMultimap) -> ArtifactMultimap:
+  def apply(self, input_dict):
     return input_dict
 
 
 class Bar(resolver_op.ResolverOp):
   bar = resolver_op.ResolverOpProperty(type=str, default='bar')
 
-  def apply(self, input_dict: ArtifactMultimap) -> ArtifactMultimap:
+  def apply(self, input_dict):
+    return input_dict
+
+
+class FooStrategy(resolver.ResolverStrategy):
+
+  def __init__(self, foo: int):
+    self._foo = foo
+
+  def resolve_artifacts(self, store, input_dict):
     return input_dict
 
 
@@ -47,6 +55,20 @@ class ResolverFunctionTest(tf.test.TestCase):
     output_node = rf.trace(resolver_op.OpNode.INPUT_NODE)
     self.assertEqual(repr(output_node),
                      "Bar(Foo(INPUT_NODE, foo=1), bar='x')")
+
+  def testTrace_ResolverOpAndResolverStrategyInterop(self):
+
+    def resolve(input_dict):
+      result = Foo(input_dict, foo=1)
+      result = FooStrategy.as_resolver_op(result, foo=2)
+      result = Bar(result, bar='x')
+      return result
+
+    rf = resolver_function.ResolverFunction(resolve)
+    output_node = rf.trace(resolver_op.OpNode.INPUT_NODE)
+    self.assertEqual(
+        repr(output_node),
+        "Bar(FooStrategy(Foo(INPUT_NODE, foo=1), foo=2), bar='x')")
 
   def testTrace_BadReturnValue(self):
 

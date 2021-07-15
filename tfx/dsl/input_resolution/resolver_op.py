@@ -216,6 +216,7 @@ _TOut = TypeVar('_TOut')
 @attr.s(kw_only=True, repr=False)
 class OpNode(Generic[_TOut]):
   """OpNode represents a ResolverOp invocation."""
+  _VALID_OP_TYPES = (ResolverOp,)
   # Singleton OpNode instance representing the input node.
   INPUT_NODE: ClassVar['OpNode']
 
@@ -226,10 +227,16 @@ class OpNode(Generic[_TOut]):
   # ResolverOpProperty for the ResolverOp, given as keyword arguments.
   kwargs = attr.ib(factory=dict)
 
+  @classmethod
+  def register_valid_op_type(cls, op_type: Type[Any]):
+    if op_type not in cls._VALID_OP_TYPES:
+      cls._VALID_OP_TYPES += (op_type,)
+
   @op_type.validator
   def validate_op_type(self, attribute, value):
-    if not issubclass(value, ResolverOp):
-      raise TypeError(f'op_type {value} is not a ResolverOp.')
+    if not issubclass(value, self._VALID_OP_TYPES):
+      raise TypeError(f'op_type should be subclass of {self._VALID_OP_TYPES} '
+                      f'but got {value!r}.')
 
   @arg.validator
   def validate_arg(self, attribute, value):
