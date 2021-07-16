@@ -235,21 +235,23 @@ class Executor(base_beam_executor.BaseBeamExecutor):
         # pylint: disable=expression-not-assigned
         if tfma.is_batched_input(eval_shared_model, eval_config):
           tfxio_factory = tfxio_utils.get_tfxio_factory_from_artifact(
-              examples=[
-                  artifact_utils.get_single_instance(input_dict[EXAMPLES_KEY])
-              ],
+              examples=input_dict[EXAMPLES_KEY],
               telemetry_descriptors=_TELEMETRY_DESCRIPTORS,
               schema=schema,
               raw_record_column_name=tfma_constants.ARROW_INPUT_COLUMN)
           # TODO(b/161935932): refactor after TFXIO supports multiple patterns.
           for split in example_splits:
-            file_pattern = io_utils.all_files_pattern(
-                artifact_utils.get_split_uri(input_dict[EXAMPLES_KEY], split))
-            tfxio = tfxio_factory(file_pattern)
-            data = (
-                pipeline
-                | 'ReadFromTFRecordToArrow[%s]' % split >> tfxio.BeamSource())
-            examples_list.append(data)
+            split_uris = artifact_utils.get_split_uris(input_dict[EXAMPLES_KEY],
+                                                       split)
+            for index in range(len(split_uris)):
+              split_uri = split_uris[index]
+              file_pattern = io_utils.all_files_pattern(split_uri)
+              tfxio = tfxio_factory(file_pattern)
+              data = (
+                  pipeline
+                  | f'ReadFromTFRecordToArrow[{split}][{index}]' >>
+                  tfxio.BeamSource())
+              examples_list.append(data)
           if schema is not None:
             # Use last tfxio as TensorRepresentations and ArrowSchema are fixed.
             tensor_adapter_config = tensor_adapter.TensorAdapterConfig(
@@ -257,13 +259,16 @@ class Executor(base_beam_executor.BaseBeamExecutor):
                 tensor_representations=tfxio.TensorRepresentations())
         else:
           for split in example_splits:
-            file_pattern = io_utils.all_files_pattern(
-                artifact_utils.get_split_uri(input_dict[EXAMPLES_KEY], split))
-            data = (
-                pipeline
-                | 'ReadFromTFRecord[%s]' % split >>
-                beam.io.ReadFromTFRecord(file_pattern=file_pattern))
-            examples_list.append(data)
+            split_uris = artifact_utils.get_split_uris(input_dict[EXAMPLES_KEY],
+                                                       split)
+            for index in range(len(split_uris)):
+              split_uri = split_uris[index]
+              file_pattern = io_utils.all_files_pattern(split_uri)
+              data = (
+                  pipeline
+                  | f'ReadFromTFRecord[{split}][{index}]' >>
+                  beam.io.ReadFromTFRecord(file_pattern=file_pattern))
+              examples_list.append(data)
 
         custom_extractors = udf_utils.try_get_fn(
             exec_properties=exec_properties, fn_name='custom_extractors')

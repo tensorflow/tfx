@@ -108,7 +108,7 @@ class ExecutorTest(tf.test.TestCase, parameterized.TestCase):
     schema = standard_artifacts.Schema()
     schema.uri = os.path.join(source_data_dir, 'schema_gen')
     input_dict = {
-        EXAMPLES_KEY: [examples],
+        EXAMPLES_KEY: [examples, examples],
         SCHEMA_KEY: [schema],
     }
     if not model_agnostic:
@@ -326,7 +326,7 @@ class ExecutorTest(tf.test.TestCase, parameterized.TestCase):
     schema = standard_artifacts.Schema()
     schema.uri = os.path.join(source_data_dir, 'schema_gen')
     input_dict = {
-        EXAMPLES_KEY: [examples],
+        EXAMPLES_KEY: [examples, examples],
         MODEL_KEY: [model],
         SCHEMA_KEY: [schema],
     }
