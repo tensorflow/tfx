@@ -62,6 +62,8 @@ def make_pipeline_sdk_required_install_packages():
       'portpicker>=1.3.1,<2',
       'protobuf>=3.13,<4',
       'docker>=4.1,<5',
+      'google-apitools>=0.5,<1',
+      'google-api-python-client>=1.8,<2',
       # TODO(b/176812386): Deprecate usage of jinja2 for placeholders.
       'jinja2>=2.7.3,<3',
   ]
@@ -74,7 +76,6 @@ def make_required_install_packages():
       'apache-beam[gcp]>=2.29,<3',
       'attrs>=19.3.0,<21',
       'click>=7,<8',
-      'google-api-python-client>=1.7.8,<2',
       'google-cloud-aiplatform>=0.5.0,<0.8',
       # TODO(b/193571051): remove 2.21 cap after TF 2.6 becomes available.
       'google-cloud-bigquery>=1.28.0,<2.21',

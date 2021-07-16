@@ -36,6 +36,7 @@ from tfx.proto import trainer_pb2
 from tfx.proto import tuner_pb2
 from tfx.types import standard_artifacts
 from tfx.utils import path_utils
+from tfx.utils import telemetry_utils
 
 
 class KubeflowGCPIntegrationTest(kubeflow_test_utils.BaseKubeflowTest):
@@ -342,7 +343,11 @@ class KubeflowGCPIntegrationTest(kubeflow_test_utils.BaseKubeflowTest):
 
     # Use default service_name / api_version.
     service_name, api_version = runner.get_service_name_and_api_version({})
-    api = discovery.build(service_name, api_version)
+    api = discovery.build(
+        service_name,
+        api_version,
+        requestBuilder=telemetry_utils.TFXHttpRequest,
+    )
 
     # The model should be NotFound yet.
     with self.assertRaisesRegex(googleapiclient_errors.HttpError,

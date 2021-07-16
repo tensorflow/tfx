@@ -20,6 +20,7 @@ import threading
 from typing import Dict, List
 
 from absl import logging
+from googleapiclient import http
 from tfx import version
 
 # Common label names used.
@@ -101,3 +102,28 @@ def make_beam_labels_args() -> List[str]:
   for k in sorted(labels):
     result.extend(['--labels', '%s=%s' % (k, labels[k])])
   return result
+
+
+class TFXHttpRequest(http.HttpRequest):
+  """HttpRequest builder that sets a customized useragent header for TFX.
+
+  This is used to track the usage of the TFX on Cloud AI.
+  """
+
+  def __init__(self, *args, **kwargs):
+    """Construct a HttpRequest.
+
+    Args:
+        *args: Positional arguments to pass to the base class constructor.
+        **kwargs: Keyword arguments to pass to the base class constructor.
+    """
+    headers = kwargs.setdefault('headers', {})
+    # See Mozilla standard User Agent header Syntax:
+    # https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/User-Agent
+    # TODO(b/193915978): Stop relying on '-tfxpipeline-' suffix and use
+    # tfx/version instead. More labels set to scoped_labels can also be added
+    # the comments variable below, upon needed.
+    comments = '(client_context:tfxpipeline;)'
+    user_agent = f'tfx/{version.__version__} {comments}'
+    headers['user-agent'] = user_agent
+    super().__init__(*args, **kwargs)

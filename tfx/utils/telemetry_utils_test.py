@@ -14,6 +14,7 @@
 """Tests for tfx.utils.telemetry_utils."""
 
 import sys
+from googleapiclient import http
 import tensorflow as tf
 
 from tfx import version
@@ -87,6 +88,15 @@ class TelemetryUtilsTest(tf.test.TestCase):
                         'tfx-extensions-google_cloud_big_query-example_gen-executor-exec'
                 },
                 **orig_labels))
+
+  def testTFXHttpRequest(self):
+    req = telemetry_utils.TFXHttpRequest(
+        http=http.build_http(),
+        postproc=None,
+        uri='http://example.com',
+    )
+    self.assertContainsInOrder(['tfx/', 'client_context:tfxpipeline;'],
+                               req.headers['user-agent'])
 
 
 if __name__ == '__main__':
