@@ -276,37 +276,55 @@ def _publish_execution_results(mlmd_handle: metadata.Metadata,
   # TODO(b/182316162): Unify publisher handing so that post-execution artifact
   # logic is more cleanly handled.
   outputs_utils.tag_output_artifacts_with_version(task.output_artifacts)
-  publish_params = dict(output_artifacts=task.output_artifacts)
-  if result.output_artifacts is not None:
+  if isinstance(result.output, ts.ExecutorNodeOutput):
+    executor_output = result.output.executor_output
+    if executor_output is not None:
+      if executor_output.execution_result.code != status_lib.Code.OK:
+        _update_state(
+            status_lib.Status(
+                code=executor_output.execution_result.code,
+                message=executor_output.execution_result.result_message))
+        return
+      # TODO(b/182316162): Unify publisher handing so that post-execution
+      # artifact logic is more cleanly handled.
+      outputs_utils.tag_executor_output_with_version(executor_output)
+    _remove_task_dirs(task)
+    execution_publish_utils.publish_succeeded_execution(
+        mlmd_handle,
+        execution_id=task.execution_id,
+        contexts=task.contexts,
+        output_artifacts=task.output_artifacts,
+        executor_output=executor_output)
+  elif isinstance(result.output, ts.ImporterNodeOutput):
+    output_artifacts = result.output.output_artifacts
     # TODO(b/182316162): Unify publisher handing so that post-execution artifact
     # logic is more cleanly handled.
-    outputs_utils.tag_output_artifacts_with_version(result.output_artifacts)
-    publish_params['output_artifacts'] = result.output_artifacts
-  elif result.executor_output is not None:
-    if result.executor_output.execution_result.code != status_lib.Code.OK:
-      _update_state(
-          status_lib.Status(
-              code=result.executor_output.execution_result.code,
-              message=result.executor_output.execution_result.result_message))
-      return
-    # TODO(b/182316162): Unify publisher handing so that post-execution artifact
-    # logic is more cleanly handled.
-    outputs_utils.tag_executor_output_with_version(result.executor_output)
-    publish_params['executor_output'] = result.executor_output
+    outputs_utils.tag_output_artifacts_with_version(output_artifacts)
+    _remove_task_dirs(task)
+    execution_publish_utils.publish_succeeded_execution(
+        mlmd_handle,
+        execution_id=task.execution_id,
+        contexts=task.contexts,
+        output_artifacts=output_artifacts)
+  elif isinstance(result.output, ts.ResolverNodeOutput):
+    resolved_input_artifacts = result.output.resolved_input_artifacts
+    execution_publish_utils.publish_internal_execution(
+        mlmd_handle,
+        execution_id=task.execution_id,
+        contexts=task.contexts,
+        output_artifacts=resolved_input_artifacts)
+  else:
+    raise TypeError(f'Unable to process task scheduler result: {result}')
 
-  _remove_task_dirs(task)
-  execution_publish_utils.publish_succeeded_execution(mlmd_handle,
-                                                      task.execution_id,
-                                                      task.contexts,
-                                                      **publish_params)
   pipeline_state.record_state_change_time()
 
 
 def _remove_output_dirs(task: task_lib.ExecNodeTask,
                         ts_result: ts.TaskSchedulerResult) -> None:
   outputs_utils.remove_output_dirs(task.output_artifacts)
-  if ts_result.output_artifacts is not None:
-    outputs_utils.remove_output_dirs(ts_result.output_artifacts)
+  if isinstance(ts_result.output, ts.ImporterNodeOutput):
+    if ts_result.output.output_artifacts is not None:
+      outputs_utils.remove_output_dirs(ts_result.output.output_artifacts)
 
 
 def _remove_task_dirs(task: task_lib.ExecNodeTask) -> None:

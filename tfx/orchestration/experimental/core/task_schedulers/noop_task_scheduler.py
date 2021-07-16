@@ -36,7 +36,7 @@ class NoOpTaskScheduler(ts.TaskScheduler):
             artifact.mlmd_artifact)
     result = ts.TaskSchedulerResult(
         status=status_lib.Status(code=status_lib.Code.OK),
-        executor_output=executor_output)
+        output=ts.ExecutorNodeOutput(executor_output=executor_output))
     logging.info('Result: %s', result)
     return result
 

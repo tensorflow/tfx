@@ -28,7 +28,8 @@ class _FakeTaskScheduler(ts.TaskScheduler):
 
   def schedule(self):
     return ts.TaskSchedulerResult(
-        executor_output=execution_result_pb2.ExecutorOutput())
+        output=ts.ExecutorNodeOutput(
+            executor_output=execution_result_pb2.ExecutorOutput()))
 
   def cancel(self):
     pass

@@ -363,7 +363,8 @@ class TaskManagerE2ETest(test_utils.TfxTest):
     self._register_task_scheduler(
         ts.TaskSchedulerResult(
             status=status_lib.Status(code=status_lib.Code.OK),
-            executor_output=_make_executor_output(self._task, code=0)))
+            output=ts.ExecutorNodeOutput(
+                executor_output=_make_executor_output(self._task, code=0))))
     task_manager = self._run_task_manager()
     self.assertTrue(task_manager.done())
     self.assertIsNone(task_manager.exception())
@@ -385,7 +386,8 @@ class TaskManagerE2ETest(test_utils.TfxTest):
     self._register_task_scheduler(
         ts.TaskSchedulerResult(
             status=status_lib.Status(code=status_lib.Code.OK),
-            output_artifacts=self._task.output_artifacts))
+            output=ts.ImporterNodeOutput(
+                output_artifacts=self._task.output_artifacts)))
     task_manager = self._run_task_manager()
     self.assertTrue(task_manager.done())
     self.assertIsNone(task_manager.exception())
@@ -406,8 +408,7 @@ class TaskManagerE2ETest(test_utils.TfxTest):
     self._register_task_scheduler(
         ts.TaskSchedulerResult(
             status=status_lib.Status(
-                code=status_lib.Code.ABORTED, message='foobar error'),
-            executor_output=None))
+                code=status_lib.Code.ABORTED, message='foobar error')))
     task_manager = self._run_task_manager()
     self.assertTrue(task_manager.done())
     self.assertIsNone(task_manager.exception())
@@ -432,10 +433,11 @@ class TaskManagerE2ETest(test_utils.TfxTest):
     self._register_task_scheduler(
         ts.TaskSchedulerResult(
             status=status_lib.Status(code=status_lib.Code.OK),
-            executor_output=_make_executor_output(
-                self._task,
-                code=status_lib.Code.FAILED_PRECONDITION,
-                msg='foobar error')))
+            output=ts.ExecutorNodeOutput(
+                executor_output=_make_executor_output(
+                    self._task,
+                    code=status_lib.Code.FAILED_PRECONDITION,
+                    msg='foobar error'))))
     task_manager = self._run_task_manager()
     self.assertTrue(task_manager.done())
     self.assertIsNone(task_manager.exception())

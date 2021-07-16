@@ -15,7 +15,7 @@
 
 import abc
 import typing
-from typing import Dict, List, Optional, Type, TypeVar
+from typing import Dict, List, Optional, Type, TypeVar, Union
 
 import attr
 from tfx import types
@@ -27,29 +27,47 @@ from tfx.utils import status as status_lib
 
 
 @attr.s(auto_attribs=True, frozen=True)
+class ExecutorNodeOutput:
+  """Output of a node containing an executor.
+
+  Attributes:
+    executor_output: Output of node execution (if any).
+  """
+  executor_output: Optional[execution_result_pb2.ExecutorOutput] = None
+
+
+@attr.s(auto_attribs=True, frozen=True)
+class ImporterNodeOutput:
+  """Importer system node output.
+
+  Attributes:
+    output_artifacts: Output artifacts resulting from importer node execution.
+  """
+  output_artifacts: Dict[str, List[types.Artifact]]
+
+
+@attr.s(auto_attribs=True, frozen=True)
+class ResolverNodeOutput:
+  """Resolver system node output.
+
+  Attributes:
+    resolved_input_artifacts: Artifacts resolved by resolver system node.
+  """
+  resolved_input_artifacts: Dict[str, List[types.Artifact]]
+
+
+@attr.s(auto_attribs=True, frozen=True)
 class TaskSchedulerResult:
   """Response from the task scheduler.
 
   Attributes:
     status: Scheduler status that reflects scheduler level issues, such as task
-      cancellation, failure to start the executor, etc. Executor status set in
-      `executor_output` matters if the scheduler status is `OK`. Otherwise,
-      `executor_output` may be `None` and is ignored.
-    executor_output: An instance of `ExecutorOutput` containing the results of
-      task execution. Neither or one of `executor_output` or `output_artifacts`
-      but not both should be returned in the response.
-    output_artifacts: Output artifacts dict containing the results of task
-      execution. Neither or one of `executor_output` or `output_artifacts` but
-      not both should be returned in the response.
+      cancellation, failure to start the executor, etc.
+    output: Output of task scheduler execution.
   """
   status: status_lib.Status
-  executor_output: Optional[execution_result_pb2.ExecutorOutput] = None
-  output_artifacts: Optional[Dict[str, List[types.Artifact]]] = None
-
-  def __attrs_post_init__(self):
-    if self.executor_output is not None and self.output_artifacts is not None:
-      raise ValueError(
-          'Only one of output_artifacts or executor_output must be set.')
+  output: Union[ExecutorNodeOutput, ImporterNodeOutput,
+                ResolverNodeOutput] = ExecutorNodeOutput()
 
 
 class TaskScheduler(abc.ABC):

@@ -51,7 +51,8 @@ class ImporterTaskScheduler(task_scheduler.TaskScheduler):
 
     return task_scheduler.TaskSchedulerResult(
         status=status_lib.Status(code=status_lib.Code.OK),
-        output_artifacts=output_artifacts)
+        output=task_scheduler.ImporterNodeOutput(
+            output_artifacts=output_artifacts))
 
   def cancel(self) -> None:
     pass

@@ -24,6 +24,7 @@ from tfx.orchestration import metadata
 from tfx.orchestration.experimental.core import sync_pipeline_task_gen as sptg
 from tfx.orchestration.experimental.core import task_manager as tm
 from tfx.orchestration.experimental.core import task_queue as tq
+from tfx.orchestration.experimental.core import task_scheduler
 from tfx.orchestration.experimental.core import test_utils
 from tfx.orchestration.experimental.core.task_schedulers import importer_task_scheduler
 from tfx.orchestration.portable import runtime_parameter_utils
@@ -47,7 +48,6 @@ class ImporterTaskSchedulerTest(test_utils.TfxTest):
         self.id())
 
     metadata_path = os.path.join(pipeline_root, 'metadata', 'metadata.db')
-    self._metadata_path = metadata_path
     connection_config = metadata.sqlite_metadata_connection_config(
         metadata_path)
     connection_config.sqlite.SetInParent()
@@ -93,7 +93,7 @@ class ImporterTaskSchedulerTest(test_utils.TfxTest):
           mlmd_handle=m, pipeline=self._pipeline,
           task=self._importer_task).schedule()
       self.assertEqual(status_lib.Code.OK, ts_result.status.code)
-      self.assertIsNone(ts_result.executor_output)
+      self.assertIsInstance(ts_result.output, task_scheduler.ImporterNodeOutput)
       tm._publish_execution_results(m, self._importer_task, ts_result)
       [artifact] = m.store.get_artifacts_by_type('Schema')
       self.assertProtoPartiallyEquals(
