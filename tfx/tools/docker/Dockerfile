@@ -74,12 +74,6 @@ LABEL maintainer="tensorflow-extended-dev@googlegroups.com"
 
 RUN python -m pip install --upgrade pip
 
-# TODO(b/151392812): Remove `google-api-python-client` and `google-apitools`
-#                    when patching is not needed any more.
-RUN python -m pip install \
-  "google-api-python-client==1.8.0" \
-  "google-apitools==0.5.30"
-
 COPY --from=wheel-builder /tfx/src/dist/*.whl /tfx/src/dist/
 WORKDIR /tfx/src
 
@@ -93,12 +87,3 @@ RUN MLSDK_WHEEL=$(find dist -name "ml_pipelines_sdk-*.whl"); \
       python -m pip install ${MLSDK_WHEEL} ${TFX_WHEEL}[docker-image] ; \
     fi && \
     echo "Installed python packages:\n" && python -m pip list
-
-# Patch http.py in googleapiclient and base_api.py in apitools
-# to use our own UserAgent.
-# TODO(b/151392812): Remove this when other telemetries become available.
-COPY --from=wheel-builder /tfx/src/tfx/tools/docker/patches /tfx/src/tfx/tools/docker/patches
-RUN patch `python -c 'import googleapiclient; print(googleapiclient.__path__[0])'`/http.py \
-  /tfx/src/tfx/tools/docker/patches/http.patch && \
- patch `python -c 'import apitools; print(apitools.__path__[0])'`/base/py/base_api.py \
-  /tfx/src/tfx/tools/docker/patches/base_api.patch

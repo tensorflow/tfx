@@ -167,7 +167,11 @@ class CAIPJobClient(AbstractJobClient):
     only be used for one job, as each instance stores variables (e.g. job_id)
     specific to each job.
     """
-    self._client = discovery.build('ml', 'v1')
+    self._client = discovery.build(
+        'ml',
+        'v1',
+        requestBuilder=telemetry_utils.TFXHttpRequest,
+    )
 
   def create_training_args(self, input_dict: Dict[Text, List[types.Artifact]],
                            output_dict: Dict[Text, List[types.Artifact]],

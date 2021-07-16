@@ -14,7 +14,7 @@
 """Custom executor to push TFX model to AI Platform."""
 
 import time
-from typing import Any, Dict, List, Text
+from typing import Any, Dict, List
 
 from google.api_core import client_options  # pylint: disable=unused-import
 from googleapiclient import discovery
@@ -51,9 +51,9 @@ _CUSTOM_CONFIG_KEY = 'custom_config'
 class Executor(tfx_pusher_executor.Executor):
   """Deploy a model to Google Cloud AI Platform serving."""
 
-  def Do(self, input_dict: Dict[Text, List[types.Artifact]],
-         output_dict: Dict[Text, List[types.Artifact]],
-         exec_properties: Dict[Text, Any]):
+  def Do(self, input_dict: Dict[str, List[types.Artifact]],
+         output_dict: Dict[str, List[types.Artifact]],
+         exec_properties: Dict[str, Any]):
     """Overrides the tfx_pusher_executor.
 
     Args:
@@ -125,6 +125,7 @@ class Executor(tfx_pusher_executor.Executor):
     api = discovery.build(
         service_name,
         api_version,
+        requestBuilder=telemetry_utils.TFXHttpRequest,
         client_options=client_options.ClientOptions(api_endpoint=endpoint),
     )
     runner.deploy_model_for_aip_prediction(

@@ -151,7 +151,11 @@ class Executor(bulk_inferrer_executor.Executor):
     if exec_properties.get('output_example_spec'):
       proto_utils.json_to_proto(exec_properties['output_example_spec'],
                                 output_example_spec)
-    api = discovery.build(service_name, api_version)
+    api = discovery.build(
+        service_name,
+        api_version,
+        requestBuilder=telemetry_utils.TFXHttpRequest,
+    )
     new_model_created = False
     try:
       new_model_created = runner.create_model_for_aip_prediction_if_not_exist(
