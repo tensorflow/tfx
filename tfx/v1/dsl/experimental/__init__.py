@@ -13,6 +13,7 @@
 # limitations under the License.
 """TFX dsl.experimental module."""
 
+from tfx.dsl.component.experimental.container_component import create_container_component
 from tfx.dsl.components.common.resolver import ResolverStrategy
 from tfx.dsl.input_resolution.strategies.latest_artifact_strategy import LatestArtifactStrategy
 from tfx.dsl.input_resolution.strategies.latest_blessed_model_strategy import LatestBlessedModelStrategy

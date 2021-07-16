@@ -18,5 +18,4 @@ from tfx.dsl.component.experimental.annotations import InputArtifact
 from tfx.dsl.component.experimental.annotations import OutputArtifact
 from tfx.dsl.component.experimental.annotations import OutputDict
 from tfx.dsl.component.experimental.annotations import Parameter
-from tfx.dsl.component.experimental.container_component import create_container_component
 from tfx.dsl.component.experimental.decorators import component
