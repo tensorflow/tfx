@@ -1,6 +1,9 @@
 # Current Version (Still in Development)
 
 ## Major Features and Improvements
+*  Removed the extra node information in IR for KubeflowDagRunner, to reduce
+   size of generated IR.
+
 *  Combined/moved taxi's runtime_parameter, kubeflow_local and kubleflow_gcp
    example pipelines into one penguin_pipeline_kubeflow example
 

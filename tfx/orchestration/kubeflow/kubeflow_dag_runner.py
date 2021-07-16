@@ -14,8 +14,9 @@
 """TFX runner for Kubeflow."""
 
 import collections
+import copy
 import os
-from typing import Callable, Dict, List, Optional, Text, Type, cast
+from typing import Any, Callable, Dict, List, Optional, Text, Type, cast, MutableMapping
 
 from absl import logging
 from kfp import compiler
@@ -325,6 +326,9 @@ class KubeflowDagRunner(tfx_runner.TfxRunner):
       for upstream_component in component.upstream_nodes:
         depends_on.add(component_to_kfp_op[upstream_component])
 
+      # remove the extra pipeline node information
+      tfx_node_ir = self._dehydrate_tfx_ir(tfx_ir, component.id)
+
       kfp_component = base_component.BaseComponent(
           component=component,
           depends_on=depends_on,
@@ -333,7 +337,7 @@ class KubeflowDagRunner(tfx_runner.TfxRunner):
           tfx_image=self._config.tfx_image,
           kubeflow_metadata_config=self._config.kubeflow_metadata_config,
           pod_labels_to_attach=self._pod_labels_to_attach,
-          tfx_ir=tfx_ir,
+          tfx_ir=tfx_node_ir,
           runtime_parameters=(self._params_by_component_id[component.id] +
                               [tfx_pipeline.ROOT_PARAMETER]))
 
@@ -341,6 +345,31 @@ class KubeflowDagRunner(tfx_runner.TfxRunner):
         kfp_component.container_op.apply(operator)
 
       component_to_kfp_op[component] = kfp_component.container_op
+
+  def _del_unused_field(self, node_id: str, message_dict: MutableMapping[str,
+                                                                         Any]):
+    for item in list(message_dict.keys()):
+      if item != node_id:
+        del message_dict[item]
+
+  def _dehydrate_tfx_ir(self, original_pipeline: pipeline_pb2.Pipeline,
+                        node_id: str) -> pipeline_pb2.Pipeline:
+    pipeline = copy.deepcopy(original_pipeline)
+    for node in pipeline.nodes:
+      if (node.WhichOneof('node') == 'pipeline_node' and
+          node.pipeline_node.node_info.id == node_id):
+        del pipeline.nodes[:]
+        pipeline.nodes.extend([node])
+        break
+
+    deployment_config = pipeline_pb2.IntermediateDeploymentConfig()
+    pipeline.deployment_config.Unpack(deployment_config)
+    self._del_unused_field(node_id, deployment_config.executor_specs)
+    self._del_unused_field(node_id, deployment_config.custom_driver_specs)
+    self._del_unused_field(node_id,
+                           deployment_config.node_level_platform_configs)
+    pipeline.deployment_config.Pack(deployment_config)
+    return pipeline
 
   def _generate_tfx_ir(
       self, pipeline: tfx_pipeline.Pipeline) -> Optional[pipeline_pb2.Pipeline]:

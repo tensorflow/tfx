@@ -16,7 +16,7 @@
 import json
 import os
 import tarfile
-from typing import Text
+from typing import Text, List
 
 from kfp import onprem
 import tensorflow as tf
@@ -87,7 +87,19 @@ class KubeflowDagRunnerTest(test_case_utils.TfxTest):
 
   def setUp(self):
     super().setUp()
+    self._source_data_dir = os.path.join(
+        os.path.dirname(os.path.abspath(__file__)), 'testdata')
     self.enter_context(test_case_utils.change_working_dir(self.tmp_dir))
+
+  def _compare_tfx_ir_against_testdata(self, args: List[str], golden_file: str):
+    index_of_tfx_ir_flag = args.index('--tfx_ir')
+    self.assertAllGreater(len(args), index_of_tfx_ir_flag)
+    real_tfx_ir = json.loads(args[index_of_tfx_ir_flag + 1])
+    real_tfx_ir_str = json.dumps(real_tfx_ir, sort_keys=True)
+    with open(os.path.join(self._source_data_dir,
+                           golden_file)) as tfx_ir_json_file:
+      formatted_tfx_ir = json.dumps(json.load(tfx_ir_json_file), sort_keys=True)
+      self.assertEqual(real_tfx_ir_str, formatted_tfx_ir)
 
   def testTwoStepPipeline(self):
     """Sanity-checks the construction and dependencies for a 2-step pipeline."""
@@ -116,6 +128,9 @@ class KubeflowDagRunnerTest(test_case_utils.TfxTest):
       ], big_query_container[0]['container']['command'])
       self.assertIn('--tfx_ir', big_query_container[0]['container']['args'])
       self.assertIn('--node_id', big_query_container[0]['container']['args'])
+      self._compare_tfx_ir_against_testdata(
+          big_query_container[0]['container']['args'],
+          'two_step_pipeline_post_dehydrate_ir.json')
 
       statistics_gen_container = [
           c for c in containers if c['name'] == 'statisticsgen'
