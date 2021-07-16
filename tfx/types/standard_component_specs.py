@@ -381,6 +381,8 @@ class TunerSpec(ComponentSpec):
       TRANSFORM_GRAPH_KEY:
           ChannelParameter(
               type=standard_artifacts.TransformGraph, optional=True),
+      BASE_MODEL_KEY:
+          ChannelParameter(type=standard_artifacts.Model, optional=True),
   }
   OUTPUTS = {
       BEST_HYPERPARAMETERS_KEY:

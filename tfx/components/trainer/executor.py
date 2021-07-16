@@ -95,16 +95,6 @@ class GenericExecutor(base_executor.BaseExecutor):
   def _GetFnArgs(self, input_dict: Dict[Text, List[types.Artifact]],
                  output_dict: Dict[Text, List[types.Artifact]],
                  exec_properties: Dict[Text, Any]) -> fn_args_utils.FnArgs:
-    # TODO(ruoyu): Make this a dict of tag -> uri instead of list.
-    if input_dict.get(standard_component_specs.BASE_MODEL_KEY):
-      base_model_artifact = artifact_utils.get_single_instance(
-          input_dict[standard_component_specs.BASE_MODEL_KEY])
-      base_model = path_utils.serving_model_path(
-          base_model_artifact.uri,
-          path_utils.is_old_model_artifact(base_model_artifact))
-    else:
-      base_model = None
-
     if input_dict.get(standard_component_specs.HYPERPARAMETERS_KEY):
       hyperparameters_file = io_utils.get_only_uri_in_dir(
           artifact_utils.get_single_uri(
@@ -132,7 +122,6 @@ class GenericExecutor(base_executor.BaseExecutor):
     result.eval_model_dir = eval_model_dir
     result.model_run_dir = model_run_dir
     result.schema_file = result.schema_path
-    result.base_model = base_model
     result.hyperparameters = hyperparameters_config
     return result
 

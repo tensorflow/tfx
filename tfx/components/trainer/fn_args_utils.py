@@ -31,6 +31,7 @@ from tfx.types import artifact_utils
 from tfx.types import standard_component_specs
 from tfx.utils import io_utils
 from tfx.utils import json_utils
+from tfx.utils import path_utils
 from tfx.utils import proto_utils
 from tfx_bsl.tfxio import dataset_options
 
@@ -185,6 +186,16 @@ def get_common_fn_args(input_dict: Dict[Text, List[types.Artifact]],
   custom_config = json_utils.loads(
       exec_properties.get(standard_component_specs.CUSTOM_CONFIG_KEY, 'null'))
 
+  # TODO(ruoyu): Make this a dict of tag -> uri instead of list.
+  if input_dict.get(standard_component_specs.BASE_MODEL_KEY):
+    base_model_artifact = artifact_utils.get_single_instance(
+        input_dict[standard_component_specs.BASE_MODEL_KEY])
+    base_model = path_utils.serving_model_path(
+        base_model_artifact.uri,
+        path_utils.is_old_model_artifact(base_model_artifact))
+  else:
+    base_model = None
+
   return FnArgs(
       working_dir=working_dir,
       train_files=train_files,
@@ -194,5 +205,6 @@ def get_common_fn_args(input_dict: Dict[Text, List[types.Artifact]],
       schema_path=schema_path,
       transform_graph_path=transform_graph_path,
       data_accessor=data_accessor,
+      base_model=base_model,
       custom_config=custom_config,
   )

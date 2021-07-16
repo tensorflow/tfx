@@ -68,6 +68,7 @@ class Tuner(base_component.BaseComponent):
                examples: types.Channel,
                schema: Optional[types.Channel] = None,
                transform_graph: Optional[types.Channel] = None,
+               base_model: Optional[types.Channel] = None,
                module_file: Optional[Text] = None,
                tuner_fn: Optional[Text] = None,
                train_args: Optional[trainer_pb2.TrainArgs] = None,
@@ -85,6 +86,9 @@ class Tuner(base_component.BaseComponent):
       transform_graph: An optional Channel of type
         `standard_artifacts.TransformGraph`, serving as the input transform
         graph if present. This is used when transformed examples are provided.
+      base_model: A Channel of type `Model`, containing model that will be used
+        for training. This can be used for warmstart, transfer learning or
+        model ensembling.
       module_file: A path to python module file containing UDF tuner definition.
         The module_file must implement a function named `tuner_fn` at its top
         level. The function must have the following signature.
@@ -114,6 +118,7 @@ class Tuner(base_component.BaseComponent):
         examples=examples,
         schema=schema,
         transform_graph=transform_graph,
+        base_model=base_model,
         module_file=module_file,
         tuner_fn=tuner_fn,
         train_args=train_args or trainer_pb2.TrainArgs(),

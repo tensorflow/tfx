@@ -62,9 +62,13 @@ class ExecutorTest(tf.test.TestCase):
     schema = standard_artifacts.Schema()
     schema.uri = os.path.join(self._testdata_dir, 'penguin', 'schema')
 
+    base_model = standard_artifacts.Model()
+    base_model.uri = os.path.join(self._testdata_dir, 'trainer/previous')
+
     self._input_dict = {
         standard_component_specs.EXAMPLES_KEY: self._single_artifact,
         standard_component_specs.SCHEMA_KEY: [schema],
+        standard_component_specs.BASE_MODEL_KEY: [base_model]
     }
 
     # Create output dict.
