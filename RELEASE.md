@@ -11,7 +11,8 @@
 ## Deprecations
 
 ## Bug Fixes and Other Changes
-
+*   Fixed issue when InputValuePlaceholder is used as component parameter in
+    container based component.
 ## Documentation Updates
 
 # Version 1.0.0
