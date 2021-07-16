@@ -1,15 +1,6 @@
 # Current Version (Still in Development)
 
 ## Major Features and Improvements
-*  Removed the extra node information in IR for KubeflowDagRunner, to reduce
-   size of generated IR.
-
-*  Combined/moved taxi's runtime_parameter, kubeflow_local and kubleflow_gcp
-   example pipelines into one penguin_pipeline_kubeflow example
-
-*  Transform component now supports passing `stats_options_updater_fn` directly
-   as well as through the module file.
-*  Placeholders support accessing artifact property and custom property.
 
 ## Breaking Changes
 
@@ -20,14 +11,6 @@
 ## Deprecations
 
 ## Bug Fixes and Other Changes
-
-*   Fixed issue where passing `analyzer_cache` to `tfx.components.Transform`
-    before there are any Transform cache artifacts published would fail.
-*   Depends on `protobuf>=3.13,<4`.
-*   Included type information according to PEP-561. However, protobuf generated
-    files don't have type information, and you might need to ignore errors from
-    them. For example, if you are using `mypy`, see
-    [the related doc](https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-type-hints-for-third-party-library).
 
 ## Documentation Updates
 
@@ -52,6 +35,13 @@
    For labels longer than 63, keep first 63 characters (instead of last 63
    characters before).
 *  Supports text type (use proto json string format) RuntimeParam for protos.
+*  Combined/moved taxi's runtime_parameter, kubeflow_local and kubleflow_gcp
+   example pipelines into one penguin_pipeline_kubeflow example
+*  Transform component now supports passing `stats_options_updater_fn` directly
+   as well as through the module file.
+*  Placeholders support accessing artifact property and custom property.
+*  Removed the extra node information in IR for KubeflowDagRunner, to reduce
+   size of generated IR.
 
 
 ## Breaking Changes
@@ -84,19 +74,26 @@
 
 *   Forces keyword arguments for AirflowComponent to make it compatible with
     Apache Airflow 2.1.0 and later.
+*   Fixed issue where passing `analyzer_cache` to `tfx.components.Transform`
+    before there are any Transform cache artifacts published would fail.
+*   Included type information according to PEP-561. However, protobuf generated
+    files don't have type information, and you might need to ignore errors from
+    them. For example, if you are using `mypy`, see
+    [the related doc](https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-type-hints-for-third-party-library).
 *   Removed `six` dependency.
 *   Depends on `apache-beam[gcp]>=2.29,<3`.
 *   Depends on `google-cloud-bigquery>=1.28.0,<2.21`
 *   Depends on `ml-metadata>=1.0.0,<1.1.0`.
+*   Depends on `protobuf>=3.13,<4`.
 *   Depends on `struct2tensor>=0.31.0,<0.32.0`.
 *   Depends on `tensorflow>=1.15.2,!=2.0.*,!=2.1.*,!=2.2.*,!=2.3.*,!=2.4.*,<3`.
 *   Depends on `tensorflow-data-validation>=1.0.0,<1.1.0`.
+*   Depends on `tensorflow-hub>=0.9.0,<0.13`.
 *   Depends on `tensorflowjs>=3.6.0,<4`.
 *   Depends on `tensorflow-model-analysis>=0.31.0,<0.32.0`.
 *   Depends on `tensorflow-serving-api>=1.15,!=2.0.*,!=2.1.*,!=2.2.*,!=2.3.*,!=2.4.*,<3`.
 *   Depends on `tensorflow-transform>=1.0.0,<1.1.0`.
 *   Depends on `tfx-bsl>=1.0.0,<1.1.0`.
-*   Depends on `tensorflow-hub>=0.9.0,<0.13`
 
 ## Documentation Updates
 
