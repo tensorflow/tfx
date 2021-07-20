@@ -16,8 +16,8 @@
 import abc
 import datetime
 import json
+import random
 from typing import Any, Dict, List, Optional, Text, Union
-import uuid
 
 from absl import logging
 from google.cloud.aiplatform import gapic
@@ -428,7 +428,7 @@ class UCAIPJobClient(AbstractJobClient):
     # explicitly specified.
     job_id = job_id or 'tfx_{}_{}'.format(
         datetime.datetime.now().strftime('%Y%m%d%H%M%S'),
-        str(uuid.uuid4())[:8])
+        '%08x' % random.getrandbits(32))
 
     training_args = {
         'job_id': job_id,
