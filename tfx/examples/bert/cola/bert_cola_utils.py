@@ -146,11 +146,16 @@ def stats_options_updater_fn(
                min_fraction_of_sequences: 0
                max_fraction_of_sequences: 1
              }}
+             sequence_length_constraints {{
+               excluded_string_value: ["[PAD]"]
+               min_sequence_length: 3
+               max_sequence_length: {max_seq_len}
+             }}
             """.format(
                 vocab=_BERT_VOCAB,
                 max_pad_per_seq=_MAX_LEN - 3,  # [CLS], [SEP], Token
-                max_unk_per_seq=_MAX_LEN - 2  # [CLS], [SEP]
-            ),
+                max_unk_per_seq=_MAX_LEN - 2,  # [CLS], [SEP]
+                max_seq_len=_MAX_LEN),
             f.natural_language_domain)
   return stats_options
 
