@@ -98,11 +98,10 @@ def _PartitionFn(
 @beam.ptransform_fn
 @beam.typehints.with_input_types(Union[tf.train.Example,
                                        tf.train.SequenceExample, bytes])
-@beam.typehints.with_output_types(beam.pvalue.PDone)
-def _WriteSplit(
-    example_split: beam.pvalue.PCollection,
-    output_split_path: Text,
-) -> beam.pvalue.PDone:
+@beam.typehints.with_output_types(bytes)
+def _Split(
+    example_split: beam.pvalue.PCollection
+) -> beam.pvalue.PCollection:
   """Shuffles and writes output split as serialized records in TFRecord."""
 
   class _MaybeSerialize(beam.DoFn):
@@ -122,11 +121,18 @@ def _WriteSplit(
   return (example_split
           # TODO(jyzhao): make shuffle optional.
           | 'MaybeSerialize' >> beam.ParDo(_MaybeSerialize())
-          | 'Shuffle' >> beam.transforms.Reshuffle()
-          # TODO(jyzhao): multiple output format.
-          | 'Write' >> beam.io.WriteToTFRecord(
-              os.path.join(output_split_path, DEFAULT_FILE_NAME),
-              file_name_suffix='.gz'))
+          | 'Shuffle' >> beam.transforms.Reshuffle())
+
+
+@beam.ptransform_fn
+@beam.typehints.with_input_types(bytes)
+@beam.typehints.with_output_types(beam.pvalue.PDone)
+def _Write(pcol: beam.pvalue.PCollection, output_split_path: Text,
+           exec_properties: Dict[Text, Any]) -> beam.pvalue.PDone:
+  del exec_properties
+  return (pcol | 'Write' >> beam.io.WriteToTFRecord(
+      os.path.join(output_split_path, DEFAULT_FILE_NAME),
+      file_name_suffix='.gz'))
 
 
 class BaseExampleGenExecutor(base_beam_executor.BaseBeamExecutor, abc.ABC):
@@ -315,11 +321,13 @@ class BaseExampleGenExecutor(base_beam_executor.BaseBeamExecutor, abc.ABC):
 
       # pylint: disable=expression-not-assigned, no-value-for-parameter
       for split_name, example_split in example_splits.items():
+        write_ptransform = self._GetOutputSourcePTranform()
         (example_split
-         | 'WriteSplit[{}]'.format(split_name) >> _WriteSplit(
+         | 'Split[{}]'.format(split_name) >> _Split()
+         | 'Write[{}]'.format(split_name) >> write_ptransform(
              artifact_utils.get_split_uri(
                  output_dict[standard_component_specs.EXAMPLES_KEY],
-                 split_name)))
+                 split_name), exec_properties))
       # pylint: enable=expression-not-assigned, no-value-for-parameter
 
     output_payload_format = exec_properties.get(
@@ -330,3 +338,6 @@ class BaseExampleGenExecutor(base_beam_executor.BaseBeamExecutor, abc.ABC):
         examples_utils.set_payload_format(output_examples_artifact,
                                           output_payload_format)
     logging.info('Examples generated.')
+
+  def _GetOutputSourcePTranform(self):
+    return _Write

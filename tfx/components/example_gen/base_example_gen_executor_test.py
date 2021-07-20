@@ -253,7 +253,8 @@ class BaseExampleGenExecutorTest(tf.test.TestCase):
       _ = (
           root
           | beam.Create(data)
-          | base_example_gen_executor._WriteSplit(self._output_data_dir))
+          | base_example_gen_executor._Split()
+          | base_example_gen_executor._Write(self._output_data_dir, {}))
 
     run_result = direct_runner.DirectRunner().run(Pipeline)
     run_result.wait_until_finish()
