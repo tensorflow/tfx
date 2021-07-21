@@ -233,7 +233,7 @@ Now set your KFP cluster endpoint.
 
 This can be found from the URL of the Pipelines dashboard. Go to the Kubeflow
 Pipeline dashboard and look at the URL. The endpoint is everything in the URL
-*after* the `https://`, *up to, and including*, `googleusercontent.com`.
+*starting with* the `https://`, *up to, and including*, `googleusercontent.com`.
 
 ```python
 ENDPOINT='' # Enter YOUR ENDPOINT here.
