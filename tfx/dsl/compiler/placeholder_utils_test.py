@@ -188,8 +188,7 @@ class PlaceholderUtilsTest(tf.test.TestCase):
             },
             output_dict={"blessing": [standard_artifacts.ModelBlessing()]},
             exec_properties={
-                "proto_property":
-                    proto_utils.proto_to_json(self._serving_spec)
+                "proto_property": proto_utils.proto_to_json(self._serving_spec)
             },
             execution_output_uri="test_executor_output_uri",
             stateful_working_dir="test_stateful_working_dir",
@@ -660,6 +659,25 @@ class PlaceholderUtilsTest(tf.test.TestCase):
     want_exec_invocation = text_format.Parse(
         _WANT_EXEC_INVOCATION, execution_invocation_pb2.ExecutionInvocation())
     self.assertProtoEquals(want_exec_invocation, got_exec_invocation)
+
+  def testExecutionInvocationPlaceholderAccessProtoField(self):
+    placeholder_expression = """
+      operator {
+        proto_op {
+          expression {
+            placeholder {
+              type: EXEC_INVOCATION
+            }
+          }
+          proto_field_path: ".stateful_working_dir"
+        }
+      }
+    """
+    pb = text_format.Parse(placeholder_expression,
+                           placeholder_pb2.PlaceholderExpression())
+    resolved = placeholder_utils.resolve_placeholder_expression(
+        pb, self._resolution_context)
+    self.assertEqual(resolved, "test_stateful_working_dir")
 
   def testExecutionInvocationDescriptor(self):
     # Test if ExecutionInvocation proto is in the default descriptor pool

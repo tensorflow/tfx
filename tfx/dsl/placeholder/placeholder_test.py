@@ -378,9 +378,16 @@ class PlaceholderTest(tf.test.TestCase):
 
   def testExecInvocation(self):
     self._assert_placeholder_pb_equal_and_deepcopyable(
-        ph.execution_invocation(), """
-        placeholder {
-          type: EXEC_INVOCATION
+        ph.execution_invocation().stateful_working_dir, """
+        operator {
+          proto_op {
+            expression {
+              placeholder {
+                type: EXEC_INVOCATION
+              }
+            }
+            proto_field_path: ".stateful_working_dir"
+          }
         }
     """)
 
