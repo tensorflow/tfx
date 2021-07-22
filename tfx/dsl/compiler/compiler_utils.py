@@ -130,6 +130,11 @@ def has_task_dependency(tfx_pipeline: pipeline.Pipeline):
   return False
 
 
+def node_context_name(pipeline_context_name: str, node_id: str):
+  """Defines the name used to reference a node context in MLMD."""
+  return f"{pipeline_context_name}.{node_id}"
+
+
 def implicit_channel_key(channel: types.Channel):
   """Key of a channel to the node that consumes the channel as input."""
   return f"_{channel.producer_component_id}.{channel.output_key}"

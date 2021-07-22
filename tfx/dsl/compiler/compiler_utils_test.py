@@ -72,12 +72,10 @@ class CompilerUtilsTest(tf.test.TestCase):
 
   def testIsImporter(self):
     impt = importer.Importer(
-        source_uri="uri/to/schema",
-        artifact_type=standard_artifacts.Schema)
+        source_uri="uri/to/schema", artifact_type=standard_artifacts.Schema)
     self.assertTrue(compiler_utils.is_importer(impt))
     impt = legacy_importer_node.ImporterNode(
-        source_uri="uri/to/schema",
-        artifact_type=standard_artifacts.Schema)
+        source_uri="uri/to/schema", artifact_type=standard_artifacts.Schema)
     self.assertTrue(compiler_utils.is_importer(impt))
 
     example_gen = CsvExampleGen(input_base="data_path")
@@ -122,6 +120,11 @@ class CompilerUtilsTest(tf.test.TestCase):
         pipeline_root="fake_root",
         components=[example_gen, statistics_gen, a])
     self.assertTrue(compiler_utils.has_task_dependency(p2))
+
+  def testNodeContextName(self):
+    self.assertEqual(
+        "pipeline_context_name.node_id",
+        compiler_utils.node_context_name("pipeline_context_name", "node_id"))
 
   def testImplicitChannelKey(self):
     model = types.Channel(type=standard_artifacts.Model)

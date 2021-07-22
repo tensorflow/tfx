@@ -103,7 +103,9 @@ class Compiler:
                   tfx_node.id, property_name, type(property_value)))
 
   def _compile_node(
-      self, tfx_node: base_node.BaseNode, compile_context: _CompilerContext,
+      self,
+      tfx_node: base_node.BaseNode,
+      compile_context: _CompilerContext,
       deployment_config: pipeline_pb2.IntermediateDeploymentConfig,
       enable_cache: bool,
   ) -> pipeline_pb2.PipelineNode:
@@ -145,13 +147,15 @@ class Compiler:
     # Context for the node, across pipeline runs.
     node_context_pb = node.contexts.contexts.add()
     node_context_pb.type.name = constants.NODE_CONTEXT_TYPE_NAME
-    node_context_pb.name.field_value.string_value = "{}.{}".format(
-        compile_context.pipeline_info.pipeline_context_name, node.node_info.id)
+    node_context_pb.name.field_value.string_value = (
+        compiler_utils.node_context_name(
+            compile_context.pipeline_info.pipeline_context_name,
+            node.node_info.id))
 
     # Pre Step 3: Alter graph topology if needed.
     if compile_context.is_async_mode:
-      tfx_node_inputs = self._compile_resolver_config(
-          compile_context, tfx_node, node)
+      tfx_node_inputs = self._compile_resolver_config(compile_context, tfx_node,
+                                                      node)
     else:
       tfx_node_inputs = tfx_node.inputs
 
@@ -419,8 +423,7 @@ class Compiler:
           input_channels[parent_input_key] = channel
       # Step 3.
       # Convert resolver node into corresponding resolver steps.
-      resolver_steps.extend(
-          reversed(_convert_to_resolver_steps(resolver_node)))
+      resolver_steps.extend(reversed(_convert_to_resolver_steps(resolver_node)))
 
     if resolver_steps:
       node.inputs.resolver_config.resolver_steps.extend(
@@ -499,8 +502,7 @@ def _convert_to_resolver_steps(resolver_node: base_node.BaseNode):
   for strategy_cls, config in resolver_node.strategy_class_and_configs:
     strategy_cls = deprecation_utils.get_first_nondeprecated_class(strategy_cls)
     step = pipeline_pb2.ResolverConfig.ResolverStep()
-    step.class_path = (
-        f"{strategy_cls.__module__}.{strategy_cls.__name__}")
+    step.class_path = f"{strategy_cls.__module__}.{strategy_cls.__name__}"
     step.config_json = json_utils.dumps(config)
     step.input_keys.extend(resolver_node.inputs.keys())
     result.append(step)
