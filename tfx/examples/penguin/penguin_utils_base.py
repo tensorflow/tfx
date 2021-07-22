@@ -18,6 +18,8 @@ Flax.
 """
 
 from typing import List, Text
+from absl import logging
+
 import tensorflow as tf
 import tensorflow_transform as tft
 
@@ -39,38 +41,57 @@ def transformed_name(key):
 
 
 def make_serving_signatures(model,
-                            tf_transform_features: tft.TFTransformOutput):
+                            tf_transform_output: tft.TFTransformOutput):
   """Returns the serving signatures.
 
   Args:
     model: the model function to apply to the transformed features.
-    tf_transform_features: The transformation to apply to the serialized
+    tf_transform_output: The transformation to apply to the serialized
       tf.Example.
 
   Returns:
     The signatures to use for saving the mode. The 'serving_default' signature
     will be a concrete function that takes a batch of unspecified length of
     serialized tf.Example, parses them, transformes the features and
-    then applies the model.
+    then applies the model. The 'transform_features' signature will parses the
+    example and transforms the features.
   """
 
-  model.tft_layer = tf_transform_features.transform_features_layer()
+  # We need to track the layers in the model in order to save it.
+  # TODO(b/162357359): Revise once the bug is resolved.
+  model.tft_layer = tf_transform_output.transform_features_layer()
 
-  @tf.function
-  def serve_tf_examples_fn(serialized_tf_examples):
+  @tf.function(input_signature=[
+      tf.TensorSpec(shape=[None], dtype=tf.string, name='examples')
+  ])
+  def serve_tf_examples_fn(serialized_tf_example):
     """Returns the output to be used in the serving signature."""
-    feature_spec = tf_transform_features.raw_feature_spec()
-    feature_spec.pop(_LABEL_KEY)
-    parsed_features = tf.io.parse_example(serialized_tf_examples, feature_spec)
+    raw_feature_spec = tf_transform_output.raw_feature_spec()
+    # Remove label feature since these will not be present at serving time.
+    raw_feature_spec.pop(_LABEL_KEY)
+    raw_features = tf.io.parse_example(serialized_tf_example, raw_feature_spec)
+    transformed_features = model.tft_layer(raw_features)
+    logging.info('serve_transformed_features = %s', transformed_features)
 
-    transformed_features = model.tft_layer(parsed_features)
+    outputs = model(transformed_features)
+    # TODO(b/154085620): Convert the predicted labels from the model using a
+    # reverse-lookup (opposite of transform.py).
+    return {'outputs': outputs}
 
-    return model(transformed_features)
+  @tf.function(input_signature=[
+      tf.TensorSpec(shape=[None], dtype=tf.string, name='examples')
+  ])
+  def transform_features_fn(serialized_tf_example):
+    """Returns the transformed_features to be fed as input to evaluator."""
+    raw_feature_spec = tf_transform_output.raw_feature_spec()
+    raw_features = tf.io.parse_example(serialized_tf_example, raw_feature_spec)
+    transformed_features = model.tft_layer(raw_features)
+    logging.info('eval_transformed_features = %s', transformed_features)
+    return transformed_features
 
   return {
-      'serving_default':
-          serve_tf_examples_fn.get_concrete_function(
-              tf.TensorSpec(shape=[None], dtype=tf.string, name='examples'))
+      'serving_default': serve_tf_examples_fn,
+      'transform_features': transform_features_fn
   }
 
 
