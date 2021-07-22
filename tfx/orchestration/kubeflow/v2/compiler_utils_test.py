@@ -68,6 +68,14 @@ class CompilerUtilsTest(tf.test.TestCase):
     self._schema_base_dir = os.path.join(
         os.path.dirname(__file__), 'artifact_types')
 
+  def testTitleToClassMapping(self):
+    self.assertEqual(compiler_utils.TITLE_TO_CLASS_PATH['tfx.Examples'],
+                     'tfx.types.standard_artifacts.Examples')
+    self.assertEqual(compiler_utils.TITLE_TO_CLASS_PATH['tfx.String'],
+                     'tfx.types.standard_artifacts.String')
+    self.assertEqual(compiler_utils.TITLE_TO_CLASS_PATH['tfx.Metrics'],
+                     'tfx.types.experimental.simple_artifacts.Metrics')
+
   def testArtifactSchemaMapping(self):
     # Test first party standard artifact.
     example_artifact = standard_artifacts.Examples()

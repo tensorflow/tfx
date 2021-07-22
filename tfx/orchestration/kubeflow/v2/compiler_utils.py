@@ -53,30 +53,14 @@ _SUPPORTED_STANDARD_ARTIFACT_TYPES = frozenset(
      simple_artifacts.Statistics, simple_artifacts.Dataset,
      simple_artifacts.File))
 
-# TODO(b/156746891): Use IFTTT to sync import path with the definition in
-# tfx.types.
+
+def _get_full_class_path(klass: Type[types.Artifact]) -> str:
+  return klass.__module__ + '.' + klass.__qualname__
+
+
 TITLE_TO_CLASS_PATH = {
-    'tfx.ExampleAnomalies': 'tfx.types.standard_artifacts.ExampleAnomalies',
-    'tfx.ExampleStatistics': 'tfx.types.standard_artifacts.ExampleStatistics',
-    'tfx.Examples': 'tfx.types.standard_artifacts.Examples',
-    'tfx.HyperParameters': 'tfx.types.standard_artifacts.HyperParameters',
-    'tfx.InferenceResult': 'tfx.types.standard_artifacts.InferenceResult',
-    'tfx.InfraBlessing': 'tfx.types.standard_artifacts.InfraBlessing',
-    'tfx.Model': 'tfx.types.standard_artifacts.Model',
-    'tfx.ModelBlessing': 'tfx.types.standard_artifacts.ModelBlessing',
-    'tfx.ModelEvaluation': 'tfx.types.standard_artifacts.ModelEvaluation',
-    'tfx.ModelRun': 'tfx.types.standard_artifacts.ModelRun',
-    'tfx.PushedModel': 'tfx.types.standard_artifacts.PushedModel',
-    'tfx.Schema': 'tfx.types.standard_artifacts.Schema',
-    'tfx.TransformGraph': 'tfx.types.standard_artifacts.TransformGraph',
-    'tfx.TransformCache': 'tfx.types.standard_artifacts.TransformCache',
-    'tfx.Float': 'tfx.types.standard_artifacts.Float',
-    'tfx.Integer': 'tfx.types.standard_artifacts.Integer',
-    'tfx.String': 'tfx.types.standard_artifacts.String',
-    'tfx.Metrics': 'tfx.types.experimental.simple_artifacts.Metrics',
-    'tfx.Statistics': 'tfx.types.experimental.simple_artifacts.Statistics',
-    'tfx.Dataset': 'tfx.types.experimental.simple_artifacts.Dataset',
-    'tfx.File': 'tfx.types.experimental.simple_artifacts.File'
+    f'tfx.{klass.__qualname__}': _get_full_class_path(klass)
+    for klass in _SUPPORTED_STANDARD_ARTIFACT_TYPES
 }
 
 # Keywords used in artifact type YAML specs.
