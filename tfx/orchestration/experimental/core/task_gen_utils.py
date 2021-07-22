@@ -210,6 +210,5 @@ def get_latest_execution(
     executions: Iterable[metadata_store_pb2.Execution]
 ) -> Optional[metadata_store_pb2.Execution]:
   """Returns latest execution or `None` if iterable is empty."""
-  sorted_executions = sorted(
-      executions, key=lambda e: e.create_time_since_epoch, reverse=True)
+  sorted_executions = execution_lib.sort_executions_newest_to_oldest(executions)
   return sorted_executions[0] if sorted_executions else None

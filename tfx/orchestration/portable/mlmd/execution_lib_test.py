@@ -325,6 +325,22 @@ class ExecutionLibTest(test_case_utils.TfxTest):
           }
           """, execution)
 
+  def test_sort_executions_newest_to_oldest(self):
+    executions = [
+        metadata_store_pb2.Execution(create_time_since_epoch=2),
+        metadata_store_pb2.Execution(create_time_since_epoch=5),
+        metadata_store_pb2.Execution(create_time_since_epoch=3),
+        metadata_store_pb2.Execution(create_time_since_epoch=1),
+        metadata_store_pb2.Execution(create_time_since_epoch=4)
+    ]
+    self.assertEqual([
+        metadata_store_pb2.Execution(create_time_since_epoch=5),
+        metadata_store_pb2.Execution(create_time_since_epoch=4),
+        metadata_store_pb2.Execution(create_time_since_epoch=3),
+        metadata_store_pb2.Execution(create_time_since_epoch=2),
+        metadata_store_pb2.Execution(create_time_since_epoch=1)
+    ], execution_lib.sort_executions_newest_to_oldest(executions))
+
 
 if __name__ == '__main__':
   tf.test.main()

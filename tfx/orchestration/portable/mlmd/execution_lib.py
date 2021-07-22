@@ -63,6 +63,21 @@ def is_execution_active(execution: metadata_store_pb2.Execution) -> bool:
           execution.last_known_state == metadata_store_pb2.Execution.RUNNING)
 
 
+def sort_executions_newest_to_oldest(
+    executions: Iterable[metadata_store_pb2.Execution]
+) -> List[metadata_store_pb2.Execution]:
+  """Returns MLMD executions in sorted order, newest to oldest.
+
+  Args:
+    executions: An iterable of MLMD executions.
+
+  Returns:
+    Executions sorted newest to oldest (based on MLMD execution creation time).
+  """
+  return sorted(
+      executions, key=lambda e: e.create_time_since_epoch, reverse=True)
+
+
 def prepare_execution(
     metadata_handler: metadata.Metadata,
     execution_type: metadata_store_pb2.ExecutionType,
