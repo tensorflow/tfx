@@ -35,8 +35,8 @@ def topsorted_layers(
     get_parent_nodes: Callable that returns a list of parent nodes for a node.
       If a parent node's id is not found in the list of node ids, that parent
       node will be omitted.
-    get_child_nodes: Callable that returns a list of chlid nodes for a node.
-      If a parent node's id is not found in the list of node ids, that parent
+    get_child_nodes: Callable that returns a list of child nodes for a node.
+      If a child node's id is not found in the list of node ids, that child
       node will be omitted.
 
   Returns:
