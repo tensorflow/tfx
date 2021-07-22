@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2020 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -16,10 +15,6 @@
 
 Handles operations for templates in tfx/experimental/templates/ directory.
 """
-
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
 
 import collections
 import os
@@ -42,7 +37,7 @@ _TemplateFilePath = collections.namedtuple('_TemplateFilePath', ['src', 'dst'])
 _ADDITIONAL_FILE_PATHS = {
     'taxi': [  # template name
         _TemplateFilePath(
-            'examples/chicago_taxi_pipeline/data/big_tipper_label/data.csv',
+            'examples/chicago_taxi_pipeline/data/simple/data.csv',
             'data/data.csv'),
     ],
     'penguin': [

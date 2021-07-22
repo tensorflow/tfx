@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2020 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -17,10 +16,6 @@
 Define constants here that are common across all models
 including features names, label and size of vocabulary.
 """
-
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
 
 from typing import Text, List
 
@@ -76,7 +71,8 @@ VOCAB_SIZE = 1000
 OOV_SIZE = 10
 
 # Keys
-LABEL_KEY = 'big_tipper'
+LABEL_KEY = 'tips'
+FARE_KEY = 'fare'
 
 
 def transformed_name(key: Text) -> Text:

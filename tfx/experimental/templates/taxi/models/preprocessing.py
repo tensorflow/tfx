@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2020 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -16,9 +15,6 @@
 
 This file defines a template for TFX Transform component.
 """
-
-from __future__ import division
-from __future__ import print_function
 
 import tensorflow as tf
 import tensorflow_transform as tft
@@ -80,9 +76,14 @@ def preprocessing_fn(inputs):
   for key in features.CATEGORICAL_FEATURE_KEYS:
     outputs[features.transformed_name(key)] = _fill_in_missing(inputs[key])
 
-  # TODO(b/157064428): Support label transformation for Keras.
-  # Do not apply label transformation as it will result in wrong evaluation.
-  outputs[features.transformed_name(
-      features.LABEL_KEY)] = inputs[features.LABEL_KEY]
+  # Was this passenger a big tipper?
+  taxi_fare = _fill_in_missing(inputs[features.FARE_KEY])
+  tips = _fill_in_missing(inputs[features.LABEL_KEY])
+  outputs[features.transformed_name(features.LABEL_KEY)] = tf.where(
+      tf.math.is_nan(taxi_fare),
+      tf.cast(tf.zeros_like(taxi_fare), tf.int64),
+      # Test if the tip was > 20% of the fare.
+      tf.cast(
+          tf.greater(tips, tf.multiply(taxi_fare, tf.constant(0.2))), tf.int64))
 
   return outputs

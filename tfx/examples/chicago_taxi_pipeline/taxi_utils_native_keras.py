@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,13 +17,9 @@ The utilities in this file are used to build a model with native Keras.
 This module file will be used in Transform and generic Trainer.
 """
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
+from typing import List
 
-from typing import List, Text
-
-import absl
+from absl import logging
 import tensorflow as tf
 import tensorflow_transform as tft
 
@@ -98,32 +93,55 @@ def _fill_in_missing(x):
       axis=1)
 
 
-def _get_serve_tf_examples_fn(model, tf_transform_output):
-  """Returns a function that parses a serialized tf.Example and applies TFT."""
+def _get_tf_examples_serving_signature(model, tf_transform_output):
+  """Returns a serving signature that accepts `tensorflow.Example`."""
 
-  model.tft_layer = tf_transform_output.transform_features_layer()
+  # We need to track the layers in the model in order to save it.
+  # TODO(b/162357359): Revise once the bug is resolved.
+  model.tft_layer_inference = tf_transform_output.transform_features_layer()
 
-  @tf.function
-  def serve_tf_examples_fn(serialized_tf_examples):
+  @tf.function(input_signature=[
+      tf.TensorSpec(shape=[None], dtype=tf.string, name='examples')
+  ])
+  def serve_tf_examples_fn(serialized_tf_example):
     """Returns the output to be used in the serving signature."""
-    feature_spec = tf_transform_output.raw_feature_spec()
-    if not model.tft_layer.built:
-      # TODO(b/175357313): We need to call the tft_layer with the label so that
-      # it will be included in the layer's input_spec. This is needed so that
-      # TFMA can call tft_layer with labels. However, the actual call for
-      # inference is done without the label.
-      parsed_features_with_label = tf.io.parse_example(
-          serialized_tf_examples, feature_spec)
-      _ = model.tft_layer(parsed_features_with_label)
-    feature_spec.pop(_LABEL_KEY)
-    parsed_features = tf.io.parse_example(serialized_tf_examples, feature_spec)
-    transformed_features = model.tft_layer(parsed_features)
-    return model(transformed_features)
+    raw_feature_spec = tf_transform_output.raw_feature_spec()
+    # Remove label feature since these will not be present at serving time.
+    raw_feature_spec.pop(_LABEL_KEY)
+    raw_features = tf.io.parse_example(serialized_tf_example, raw_feature_spec)
+    transformed_features = model.tft_layer_inference(raw_features)
+    logging.info('serve_transformed_features = %s', transformed_features)
+
+    outputs = model(transformed_features)
+    # TODO(b/154085620): Convert the predicted labels from the model using a
+    # reverse-lookup (opposite of transform.py).
+    return {'outputs': outputs}
 
   return serve_tf_examples_fn
 
 
-def _input_fn(file_pattern: List[Text],
+def _get_transform_features_signature(model, tf_transform_output):
+  """Returns a serving signature that applies tf.Transform to features."""
+
+  # We need to track the layers in the model in order to save it.
+  # TODO(b/162357359): Revise once the bug is resolved.
+  model.tft_layer_eval = tf_transform_output.transform_features_layer()
+
+  @tf.function(input_signature=[
+      tf.TensorSpec(shape=[None], dtype=tf.string, name='examples')
+  ])
+  def transform_features_fn(serialized_tf_example):
+    """Returns the transformed_features to be fed as input to evaluator."""
+    raw_feature_spec = tf_transform_output.raw_feature_spec()
+    raw_features = tf.io.parse_example(serialized_tf_example, raw_feature_spec)
+    transformed_features = model.tft_layer_eval(raw_features)
+    logging.info('eval_transformed_features = %s', transformed_features)
+    return transformed_features
+
+  return transform_features_fn
+
+
+def _input_fn(file_pattern: List[str],
               data_accessor: DataAccessor,
               tf_transform_output: tft.TFTransformOutput,
               batch_size: int = 200) -> tf.data.Dataset:
@@ -242,7 +260,7 @@ def _wide_and_deep_classifier(wide_columns, deep_columns, dnn_hidden_units):
       loss='binary_crossentropy',
       optimizer=tf.keras.optimizers.Adam(lr=0.001),
       metrics=[tf.keras.metrics.BinaryAccuracy()])
-  model.summary(print_fn=absl.logging.info)
+  model.summary(print_fn=logging.info)
   return model
 
 
@@ -331,11 +349,8 @@ def run_fn(fn_args: FnArgs):
 
   signatures = {
       'serving_default':
-          _get_serve_tf_examples_fn(model,
-                                    tf_transform_output).get_concrete_function(
-                                        tf.TensorSpec(
-                                            shape=[None],
-                                            dtype=tf.string,
-                                            name='examples')),
+          _get_tf_examples_serving_signature(model, tf_transform_output),
+      'transform_features':
+          _get_transform_features_signature(model, tf_transform_output),
   }
   model.save(fn_args.serving_model_dir, save_format='tf', signatures=signatures)
