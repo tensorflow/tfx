@@ -14,11 +14,12 @@
 """TFX Resolver definition."""
 
 import abc
-from typing import Any, Dict, List, Optional, Text, Type
+from typing import Any, Dict, List, Optional, Text, Type, Sequence, Mapping
 
 from tfx import types
 from tfx.dsl.components.base import base_driver
 from tfx.dsl.components.base import base_node
+from tfx.dsl.input_resolution import resolver_function
 from tfx.dsl.input_resolution import resolver_op
 from tfx.orchestration import data_types
 from tfx.orchestration import metadata
@@ -32,9 +33,6 @@ import ml_metadata as mlmd
 RESOLVER_STRATEGY_CLASS = 'resolver_class'
 # Constant to access resolver config from resolver exec_properties.
 RESOLVER_CONFIG = 'source_uri'
-
-RESOLVER_STRATEGY_CLASS_LIST = 'resolver_class_list'
-RESOLVER_CONFIG_LIST = 'resolver_config_list'
 
 
 class ResolveResult:
@@ -219,23 +217,42 @@ class Resolver(base_node.BaseNode):
   """
 
   def __init__(self,
-               strategy_class: Type[ResolverStrategy],
+               strategy_class: Optional[Type[ResolverStrategy]] = None,
                config: Optional[Dict[str, json_utils.JsonableType]] = None,
+               function: Optional[resolver_function.ResolverFunction] = None,
                **channels: types.Channel):
     """Init function for Resolver.
 
     Args:
-      strategy_class: a ResolverStrategy subclass which contains the artifact
-        resolution logic.
-      config: a dict of key to Jsonable type representing configuration that
-        will be used to construct the resolver strategy.
+      strategy_class: Optional `ResolverStrategy` which contains the artifact
+          resolution logic. One of `strategy_class` or `function`
+          argument should be set.
+      config: Optional dict of key to Jsonable type for constructing
+          resolver_strategy.
+      function: Optional `ResolverFunction` which contains the artifact
+          resolution logic. User should not use this parameter directly but use
+          `@resolver_stem` decorated function instead. One of `strategy_class`
+          or `function` argument should be set.
       **channels: Input channels to the Resolver node as keyword arguments.
     """
-    if not issubclass(strategy_class, ResolverStrategy):
+    if (strategy_class is not None) + (function is not None) != 1:
+      raise ValueError('Exactly one of strategy_class= or function= argument '
+                       'should be given.')
+    if (strategy_class is not None and
+        not issubclass(strategy_class, ResolverStrategy)):
       raise TypeError('strategy_class should be ResolverStrategy, but got '
                       f'{strategy_class} instead.')
+    if (function is not None and
+        not isinstance(function, resolver_function.ResolverFunction)):
+      raise TypeError(f'function should be ResolverFunction, but got '
+                      f'{function} instead.')
     self._strategy_class = strategy_class
     self._config = config or {}
+    if function is not None:
+      self._resolver_function = function
+    else:
+      self._resolver_function = convert_strategy_to_resolver_function(
+          [self._strategy_class], [self._config])
     self._input_dict = channels
     self._output_dict = {}
     for k, c in self._input_dict.items():
@@ -248,10 +265,11 @@ class Resolver(base_node.BaseNode):
           types.Channel(type=c.type).set_artifacts([c.type()]))
     super().__init__(driver_class=_ResolverDriver)
 
-  @property
   @doc_controls.do_not_generate_docs
-  def strategy_class_and_configs(self):
-    return [(self._strategy_class, self._config)]
+  def trace(
+      self, input_node: resolver_op.OpNode) -> resolver_op.OpNode:
+    """Get ResolverFunction's output OpNode."""
+    return self._resolver_function.trace(input_node)
 
   @property
   @doc_controls.do_not_generate_docs
@@ -266,7 +284,26 @@ class Resolver(base_node.BaseNode):
   @property
   @doc_controls.do_not_generate_docs
   def exec_properties(self) -> Dict[str, Any]:
+    if self._strategy_class is None:
+      return {}
     return {
         RESOLVER_STRATEGY_CLASS: self._strategy_class,
         RESOLVER_CONFIG: self._config
     }
+
+
+@doc_controls.do_not_generate_docs
+def convert_strategy_to_resolver_function(
+    strategy_class_list: Sequence[Type[ResolverStrategy]],
+    config_list: Sequence[Mapping[str, json_utils.JsonableType]],
+) -> resolver_function.ResolverFunction:
+  """Creates ResolverFunction that runs a list of ResolverStrategy."""
+
+  @resolver_function.resolver_function
+  def impl(input_node):
+    result = input_node
+    for strategy_cls, config in zip(strategy_class_list, config_list):
+      result = strategy_cls.as_resolver_op(input_node, **config)
+    return result
+
+  return impl

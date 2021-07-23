@@ -16,6 +16,7 @@
 import tensorflow as tf
 from tfx import types
 from tfx.dsl.components.common import resolver
+from tfx.dsl.input_resolution import resolver_function
 from tfx.dsl.input_resolution.strategies import latest_artifact_strategy
 from tfx.orchestration import data_types
 from tfx.orchestration import metadata
@@ -60,6 +61,24 @@ class ResolverTest(tf.test.TestCase):
     with self.assertRaisesRegex(
         TypeError, 'strategy_class should be ResolverStrategy'):
       resolver.Resolver(strategy_class=NotAStrategy)
+
+  def testResolverDefinition_BadFunction(self):
+    with self.assertRaisesRegex(
+        TypeError, 'function should be ResolverFunction'):
+      resolver.Resolver(function=42)
+
+  def testResolverDefinition_ExactlyOneOfStrategyClassOrFunction(self):
+    with self.assertRaisesRegex(
+        ValueError, 'Exactly one of strategy_class= or function= argument '
+        'should be given.'):
+      resolver.Resolver()
+
+    with self.assertRaisesRegex(
+        ValueError, 'Exactly one of strategy_class= or function= argument '
+        'should be given.'):
+      resolver.Resolver(
+          strategy_class=latest_artifact_strategy.LatestArtifactStrategy,
+          function=resolver_function.ResolverFunction(lambda x: x))
 
 
 class ResolverDriverTest(tf.test.TestCase):
