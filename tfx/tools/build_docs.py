@@ -35,23 +35,16 @@ Note:
 """
 from absl import app
 from absl import flags
-
 import tensorflow_docs.api_generator as api_generator
-from tensorflow_docs.api_generator import doc_controls
 from tensorflow_docs.api_generator import generate_lib
+from tfx import v1
+from tfx import version
+from tfx.utils import doc_controls
 
-
-import tfx
-# pylint: disable=unused-import
-from tfx import components
-from tfx import extensions
-from tfx import orchestration
-
-import tfx.version
-# pylint: enable=unused-import
+from google.protobuf.reflection import GeneratedProtocolMessageType
 
 GITHUB_URL_PREFIX = ("https://github.com/tensorflow/tfx/blob/{}/tfx".format(
-    tfx.__version__))
+    version.__version__))
 
 flags.DEFINE_string("output_dir", "/tmp/tfx_api", "Where to output the docs")
 flags.DEFINE_string(
@@ -96,24 +89,36 @@ def ignore_test_objects(path, parent, children):
   return new_children
 
 
+def ignore_proto_methods(path, parent, children):
+  """Remove all the proto inherited methods.
+
+  Args:
+    path: A tuple of name parts forming the attribute-lookup path to this
+      object. For `tf.keras.layers.Dense` path is:
+        ("tf","keras","layers","Dense")
+    parent: The parent object.
+    children: A list of (name, value) pairs. The attributes of the parent.
+
+  Returns:
+    A filtered list of children `(name, value)` pairs. With all proto methods
+    removed.
+  """
+  del path
+  if not isinstance(parent, GeneratedProtocolMessageType):
+    return children
+  new_children = []
+  for (name, obj) in children:
+    if callable(obj):
+      continue
+    new_children.append((name, obj))
+  return new_children
+
+
 def main(_):
-  # These make up for the empty __init__.py files.
-  api_generator.utils.recursive_import(tfx.orchestration)
-  api_generator.utils.recursive_import(tfx.components)
-  api_generator.utils.recursive_import(tfx.extensions)
-
-  do_not_generate_docs_for = []
-  for name in ["utils", "proto", "dependencies", "version", "examples"]:
-    submodule = getattr(tfx, name, None)
-    if submodule is not None:
-      do_not_generate_docs_for.append(submodule)
-
-  for obj in do_not_generate_docs_for:
-    doc_controls.do_not_generate_docs(obj)
 
   doc_generator = generate_lib.DocGenerator(
       root_title="TFX",
-      py_modules=[("tfx", tfx)],
+      py_modules=[("tfx.v1", v1)],
       code_url_prefix=FLAGS.code_url_prefix,
       search_hints=FLAGS.search_hints,
       site_path=FLAGS.site_path,
@@ -123,8 +128,10 @@ def main(_):
       # documented in the location that defines them, instead of every location
       # that imports them.
       callbacks=[
-          api_generator.public_api.local_definitions_filter, ignore_test_objects
-      ])
+          api_generator.public_api.explicit_package_contents_filter,
+          ignore_test_objects, ignore_proto_methods
+      ],
+      extra_docs=doc_controls.EXTRA_DOCS)
   doc_generator.build(output_dir=FLAGS.output_dir)
 
 
