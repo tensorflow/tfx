@@ -25,6 +25,7 @@ import time
 import apache_beam as beam
 import tensorflow as tf
 import tensorflow_model_analysis as tfma
+from tensorflow_model_analysis import config
 from tensorflow_model_analysis import constants
 from tensorflow_model_analysis import model_util
 from tensorflow_model_analysis.evaluators import metrics_plots_and_validations_evaluator
@@ -34,7 +35,7 @@ from tensorflow_model_analysis.extractors import labels_extractor
 from tensorflow_model_analysis.extractors import legacy_input_extractor
 from tensorflow_model_analysis.extractors import predictions_extractor
 from tensorflow_model_analysis.extractors import unbatch_extractor
-from tensorflow_model_analysis.metrics import metric_specs
+from tensorflow_model_analysis.metrics import metric_specs as metric_specs_util
 from tensorflow_model_analysis.metrics import metric_types
 import tfx
 from tfx.benchmarks import benchmark_utils
@@ -61,24 +62,32 @@ class TFMAV2BenchmarkBase(benchmark_base.BenchmarkBase):
     super(TFMAV2BenchmarkBase, self).__init__()
     self._dataset = dataset
 
-  def _init_model(self, multi_model):
+  def _init_model(self, multi_model, validation):
     # The benchmark runner will instantiate this class twice - once to determine
     # the benchmarks to run, and once to actually to run them. However, Keras
     # freezes if we try to load the same model twice. As such, we have to pull
     # the model loading out of the constructor into a separate method which we
     # call before each benchmark.
     if multi_model:
+      metric_specs = metric_specs_util.specs_from_metrics(
+          [tf.keras.metrics.AUC(name="auc", num_thresholds=10000)],
+          model_names=["candidate", "baseline"])
+      if validation:
+        # Only one metric, adding a threshold for all slices.
+        metric_specs[0].metrics[0].threshold.CopyFrom(
+            config.MetricThreshold(
+                value_threshold=config.GenericValueThreshold(
+                    lower_bound={"value": 0.5}, upper_bound={"value": 0.5}),
+                change_threshold=config.GenericChangeThreshold(
+                    absolute={"value": -0.001},
+                    direction=config.MetricDirection.HIGHER_IS_BETTER)))
       self._eval_config = tfma.EvalConfig(
           model_specs=[
               tfma.ModelSpec(name="candidate", label_key="tips"),
               tfma.ModelSpec(
                   name="baseline", label_key="tips", is_baseline=True)
           ],
-          metrics_specs=metric_specs.specs_from_metrics(
-              [
-                  tf.keras.metrics.AUC(name="auc", num_thresholds=10000),
-              ],
-              model_names=["candidate", "baseline"]))
+          metrics_specs=metric_specs)
       self._eval_shared_models = {
           "candidate":
               tfma.default_eval_shared_model(
@@ -92,11 +101,17 @@ class TFMAV2BenchmarkBase(benchmark_base.BenchmarkBase):
                   model_name="baseline")
       }
     else:
+      metric_specs = metric_specs_util.specs_from_metrics(
+          [tf.keras.metrics.AUC(name="auc", num_thresholds=10000)])
+      if validation:
+        # Only one metric, adding a threshold for all slices.
+        metric_specs[0].metrics[0].threshold.CopyFrom(
+            config.MetricThreshold(
+                value_threshold=config.GenericValueThreshold(
+                    lower_bound={"value": 0.5}, upper_bound={"value": 0.5})))
       self._eval_config = tfma.EvalConfig(
           model_specs=[tfma.ModelSpec(label_key="tips")],
-          metrics_specs=metric_specs.specs_from_metrics([
-              tf.keras.metrics.AUC(name="auc", num_thresholds=10000),
-          ]))
+          metrics_specs=metric_specs)
       self._eval_shared_models = {
           "":
               tfma.default_eval_shared_model(
@@ -138,7 +153,7 @@ class TFMAV2BenchmarkBase(benchmark_base.BenchmarkBase):
     Args:
       multi_model: True if multiple models should be used in the benchmark.
     """
-    self._init_model(multi_model)
+    self._init_model(multi_model, validation=False)
     pipeline = self._create_beam_pipeline()
     tfx_io = test_util.InMemoryTFExampleRecord(
         schema=benchmark_utils.read_schema(
@@ -264,7 +279,7 @@ class TFMAV2BenchmarkBase(benchmark_base.BenchmarkBase):
 
   def _runInputExtractorManualActuation(self, multi_model):
     """Benchmark InputExtractor "manually"."""
-    self._init_model(multi_model)
+    self._init_model(multi_model, validation=False)
     records = self._readDatasetIntoExtracts()
     extracts = []
 
@@ -288,7 +303,7 @@ class TFMAV2BenchmarkBase(benchmark_base.BenchmarkBase):
 
   def _runFeaturesExtractorManualActuation(self, multi_model):
     """Benchmark FeaturesExtractor "manually"."""
-    self._init_model(multi_model)
+    self._init_model(multi_model, validation=False)
     extracts = self._readDatasetIntoBatchedExtracts()
     num_examples = sum(
         [e[constants.ARROW_RECORD_BATCH_KEY].num_rows for e in extracts])
@@ -312,7 +327,7 @@ class TFMAV2BenchmarkBase(benchmark_base.BenchmarkBase):
 
   def _runPredictionsExtractorManualActuation(self, multi_model):
     """Benchmark PredictionsExtractor "manually"."""
-    self._init_model(multi_model)
+    self._init_model(multi_model, validation=False)
     extracts = self._readDatasetIntoBatchedExtracts()
     num_examples = sum(
         [e[constants.ARROW_RECORD_BATCH_KEY].num_rows for e in extracts])
@@ -348,9 +363,13 @@ class TFMAV2BenchmarkBase(benchmark_base.BenchmarkBase):
     self._runPredictionsExtractorManualActuation(True)
 
   def _runMetricsPlotsAndValidationsEvaluatorManualActuation(
-      self, with_confidence_intervals, multi_model, metrics_specs=None):
+      self,
+      with_confidence_intervals,
+      multi_model,
+      metrics_specs=None,
+      validation=False):
     """Benchmark MetricsPlotsAndValidationsEvaluator "manually"."""
-    self._init_model(multi_model)
+    self._init_model(multi_model, validation)
     if not metrics_specs:
       metrics_specs = self._eval_config.metrics_specs
 
@@ -392,7 +411,7 @@ class TFMAV2BenchmarkBase(benchmark_base.BenchmarkBase):
           # pylint: disable=protected-access
           metrics_plots_and_validations_evaluator
           ._filter_and_separate_computations(
-              metric_specs.to_computations(
+              metric_specs_util.to_computations(
                   metrics_specs, eval_config=self._eval_config)))
       # pylint: enable=protected-access
 
@@ -462,52 +481,54 @@ class TFMAV2BenchmarkBase(benchmark_base.BenchmarkBase):
   def benchmarkMetricsPlotsAndValidationsEvaluatorManualActuationNoConfidenceIntervals(
       self):
     self._runMetricsPlotsAndValidationsEvaluatorManualActuation(
-        with_confidence_intervals=False, multi_model=False)
+        with_confidence_intervals=False, multi_model=False, validation=True)
 
   # "Manual" micro-benchmarks
   def benchmarkMetricsPlotsAndValidationsEvaluatorManualActuationNoConfidenceIntervalsMultiModel(
       self):
     self._runMetricsPlotsAndValidationsEvaluatorManualActuation(
-        with_confidence_intervals=False, multi_model=True)
+        with_confidence_intervals=False, multi_model=True, validation=True)
 
   # "Manual" micro-benchmarks
   def benchmarkMetricsPlotsAndValidationsEvaluatorManualActuationWithConfidenceIntervals(
       self):
     self._runMetricsPlotsAndValidationsEvaluatorManualActuation(
-        with_confidence_intervals=True, multi_model=False)
+        with_confidence_intervals=True, multi_model=False, validation=True)
 
   # "Manual" micro-benchmarks
   def benchmarkMetricsPlotsAndValidationsEvaluatorManualActuationWithConfidenceIntervalsMultiModel(
       self):
     self._runMetricsPlotsAndValidationsEvaluatorManualActuation(
-        with_confidence_intervals=True, multi_model=True)
+        with_confidence_intervals=True, multi_model=True, validation=True)
 
   # "Manual" micro-benchmarks
   def benchmarkMetricsPlotsAndValidationsEvaluatorAUC10k(self):
     self._runMetricsPlotsAndValidationsEvaluatorManualActuation(
         with_confidence_intervals=False,
         multi_model=False,
-        metrics_specs=metric_specs.specs_from_metrics([
+        metrics_specs=metric_specs_util.specs_from_metrics([
             tf.keras.metrics.AUC(name="auc", num_thresholds=10000),
-        ]))
+        ]),
+        validation=True)
 
   # "Manual" micro-benchmarks
   def benchmarkMetricsPlotsAndValidationsEvaluatorAUC10kMultiModel(self):
     self._runMetricsPlotsAndValidationsEvaluatorManualActuation(
         with_confidence_intervals=False,
         multi_model=True,
-        metrics_specs=metric_specs.specs_from_metrics(
+        metrics_specs=metric_specs_util.specs_from_metrics(
             [
                 tf.keras.metrics.AUC(name="auc", num_thresholds=10000),
             ],
-            model_names=["candidate", "baseline"]))
+            model_names=["candidate", "baseline"]),
+        validation=True)
 
   # "Manual" micro-benchmarks
   def benchmarkMetricsPlotsAndValidationsEvaluatorBinaryClassification(self):
     self._runMetricsPlotsAndValidationsEvaluatorManualActuation(
         with_confidence_intervals=False,
         multi_model=False,
-        metrics_specs=metric_specs.specs_from_metrics([
+        metrics_specs=metric_specs_util.specs_from_metrics([
             tf.keras.metrics.BinaryAccuracy(name="accuracy"),
             tf.keras.metrics.AUC(name="auc", num_thresholds=10000),
             tf.keras.metrics.AUC(
@@ -519,7 +540,8 @@ class TFMAV2BenchmarkBase(benchmark_base.BenchmarkBase):
             tfma.metrics.Calibration(name="calibration"),
             tfma.metrics.ConfusionMatrixPlot(name="confusion_matrix_plot"),
             tfma.metrics.CalibrationPlot(name="calibration_plot"),
-        ]))
+        ]),
+        validation=True)
 
   # "Manual" micro-benchmarks
   def benchmarkMetricsPlotsAndValidationsEvaluatorBinaryClassificationMultiModel(
@@ -527,7 +549,7 @@ class TFMAV2BenchmarkBase(benchmark_base.BenchmarkBase):
     self._runMetricsPlotsAndValidationsEvaluatorManualActuation(
         with_confidence_intervals=False,
         multi_model=True,
-        metrics_specs=metric_specs.specs_from_metrics([
+        metrics_specs=metric_specs_util.specs_from_metrics([
             tf.keras.metrics.BinaryAccuracy(name="accuracy"),
             tf.keras.metrics.AUC(name="auc", num_thresholds=10000),
             tf.keras.metrics.AUC(
@@ -540,7 +562,8 @@ class TFMAV2BenchmarkBase(benchmark_base.BenchmarkBase):
             tfma.metrics.ConfusionMatrixPlot(name="confusion_matrix_plot"),
             tfma.metrics.CalibrationPlot(name="calibration_plot"),
         ],
-                                                      model_names=[
-                                                          "candidate",
-                                                          "baseline"
-                                                      ]))
+                                                           model_names=[
+                                                               "candidate",
+                                                               "baseline"
+                                                           ]),
+        validation=True)
