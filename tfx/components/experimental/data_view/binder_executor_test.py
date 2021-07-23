@@ -55,8 +55,8 @@ class BinderExecutorTest(tf.test.TestCase):
         oe.get_string_custom_property(
             constants.DATA_VIEW_URI_PROPERTY_KEY), '/old/data_view')
     self.assertEqual(
-        oe.get_int_custom_property(
-            constants.DATA_VIEW_CREATE_TIME_KEY), 123)
+        oe.get_string_custom_property(
+            constants.DATA_VIEW_CREATE_TIME_KEY), '123')
 
     # output should share the URI with the input.
     self.assertEqual(oe.uri, input_examples.uri)

@@ -353,8 +353,12 @@ def _get_data_view_info(
     data_view_uri = examples.get_string_custom_property(
         constants.DATA_VIEW_URI_PROPERTY_KEY)
     if data_view_uri:
-      data_view_create_time = examples.get_int_custom_property(
+      assert examples.has_custom_property(constants.DATA_VIEW_CREATE_TIME_KEY)
+      # The creation time could be an int or str. Legacy artifacts will contain
+      # an int custom property.
+      data_view_create_time = examples.get_custom_property(
           constants.DATA_VIEW_CREATE_TIME_KEY)
+      data_view_create_time = int(data_view_create_time)
       return data_view_uri, data_view_create_time
 
   return None

@@ -46,8 +46,8 @@ class DataViewBinderExecutor(base_executor.BaseExecutor):
     # The output artifact shares the URI and all other properties with the
     # input, with the following additional custom properties added.
     output_examples_artifact.copy_from(input_examples_artifact)
-    output_examples_artifact.set_int_custom_property(
+    output_examples_artifact.set_string_custom_property(
         constants.DATA_VIEW_CREATE_TIME_KEY,
-        data_view_artifact.mlmd_artifact.create_time_since_epoch)
+        str(data_view_artifact.mlmd_artifact.create_time_since_epoch))
     output_examples_artifact.set_string_custom_property(
         constants.DATA_VIEW_URI_PROPERTY_KEY, data_view_artifact.uri)
