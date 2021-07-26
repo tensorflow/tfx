@@ -28,7 +28,7 @@ pip install tfx
 #   pip install --pre tfx
 ```
 
-Note: See the [TensorFlow Serving](https://www.tensorflow.org/serving/),
+Note: See the [TensorFlow Serving](https://www.tensorflow.org/tfx/guide/serving),
 [TensorFlow JS](https://js.tensorflow.org/), and/or
 [TensorFlow Lite](https://www.tensorflow.org/lite) documentation for
 installing those optional components.
@@ -63,7 +63,7 @@ environment. TFX provides the following:
     ML workflow on several platforms, such as: Apache Airflow, Apache Beam, and
     Kubeflow Pipelines.
 
-    [Learn more about TFX pipelines](understanding_tfx_pipelines).
+    [Learn more about TFX pipelines](#understanding_tfx_pipelines).
 
 *   A set of standard components that you can use as a part of a pipeline, or as
     a part of your ML training script. TFX standard components provide proven
