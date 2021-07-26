@@ -18,7 +18,15 @@ import enum
 
 from typing import Any, Callable, Collection, List, Mapping, MutableMapping, Optional, Set, Tuple, Union
 
+from absl import logging
+from tfx.dsl.compiler import compiler_utils
+from tfx.dsl.compiler import constants
+from tfx.orchestration import metadata
+from tfx.orchestration.portable import execution_publish_utils
+from tfx.orchestration.portable.mlmd import context_lib
+from tfx.orchestration.portable.mlmd import execution_lib
 from tfx.proto.orchestration import pipeline_pb2
+from ml_metadata.proto import metadata_store_pb2
 from google.protobuf import any_pb2
 
 
@@ -66,11 +74,11 @@ def filter_pipeline(
   from_node_ids = [node_id for node_id in node_map if from_nodes(node_id)]
   to_node_ids = [node_id for node_id in node_map if to_nodes(node_id)]
   node_map = _filter_node_map(node_map, from_node_ids, to_node_ids)
-  node_map, input_channel_map = _fix_nodes(node_map)
+  node_map, excluded_direct_dependencies = _fix_nodes(node_map)
   fixed_deployment_config = _fix_deployment_config(input_pipeline, node_map)
   filtered_pipeline = _make_filtered_pipeline(input_pipeline, node_map,
                                               fixed_deployment_config)
-  return filtered_pipeline, input_channel_map
+  return filtered_pipeline, excluded_direct_dependencies
 
 
 class _Direction(enum.Enum):
@@ -89,7 +97,7 @@ def _ensure_no_subpipeline_nodes(pipeline: pipeline_pb2.Pipeline):
   """Raises ValueError if the pipeline contains a sub-pipeline.
 
   If the pipeline comes from the compiler, it should already be
-  flattened. This is just in case the IR proto was created in other way.
+  flattened. This is just in case the IR proto was created in another way.
 
   Args:
     pipeline: The input pipeline.
@@ -109,7 +117,7 @@ def _ensure_topologically_sorted(pipeline: pipeline_pb2.Pipeline):
 
   If the pipeline comes from the compiler, it should already be
   topologically sorted. This is just in case the IR proto was modified or
-  created in other way.
+  created in another way.
 
   Args:
     pipeline: The input pipeline.
@@ -151,7 +159,7 @@ def _make_ordered_node_map(
       sorted.
 
   Returns:
-    An OrderedDict that map node_ids to PipelineNodes.
+    An OrderedDict that maps node_ids to PipelineNodes.
   """
   result = collections.OrderedDict()
   for pipeline_or_node in pipeline.nodes:
@@ -251,15 +259,15 @@ def _handle_missing_inputs(
   if not upstream_nodes_removed:
     return node, {}  # No parent missing, no need to change anything.
 
-  input_channel_dict = collections.defaultdict(list)
+  excluded_direct_deps = collections.defaultdict(list)
   new_node = pipeline_pb2.PipelineNode()
   new_node.CopyFrom(node)
   for input_spec in new_node.inputs.inputs.values():
     for channel in input_spec.channels:
       if channel.producer_node_query.id in upstream_nodes_removed:
-        input_channel_dict[channel.producer_node_query.id].append(channel)
+        excluded_direct_deps[channel.producer_node_query.id].append(channel)
   new_node.upstream_nodes[:] = upstream_nodes_to_keep
-  return new_node, input_channel_dict
+  return new_node, excluded_direct_deps
 
 
 def _fix_nodes(
@@ -268,16 +276,16 @@ def _fix_nodes(
     str, List[pipeline_pb2.InputSpec.Channel]]]:
   """Removes dangling references and handle missing inputs."""
   fixed_nodes = collections.OrderedDict()
-  merged_input_channel_map = collections.defaultdict(list)
+  merged_excluded_direct_deps = collections.defaultdict(list)
   for node_id in node_map:
     new_node = _remove_dangling_downstream_nodes(
         node=node_map[node_id], node_ids_to_keep=node_map.keys())
-    new_node, input_channel_map = _handle_missing_inputs(
+    new_node, excluded_direct_deps = _handle_missing_inputs(
         node=new_node, node_ids_to_keep=node_map.keys())
     fixed_nodes[node_id] = new_node
-    for inner_node_id, channel_list in input_channel_map.items():
-      merged_input_channel_map[inner_node_id] += channel_list
-  return fixed_nodes, merged_input_channel_map
+    for inner_node_id, channel_list in excluded_direct_deps.items():
+      merged_excluded_direct_deps[inner_node_id] += channel_list
+  return fixed_nodes, merged_excluded_direct_deps
 
 
 def _fix_deployment_config(
@@ -335,3 +343,177 @@ def _make_filtered_pipeline(
   if fixed_deployment_config:
     result.deployment_config.CopyFrom(fixed_deployment_config)
   return result
+
+
+def reuse_node_outputs(metadata_handler: metadata.Metadata, pipeline_name: str,
+                       node_id: str, old_run_id: str, new_run_id: str):
+  """Reuse the output Artifacts of a pipeline node from a previous pipeline run.
+
+  This copies the latest successful execution associated with the pipeline,
+  the old pipeline run id, and node_id, and publishes it as a new cache
+  execution, but associated with the new pipeline run id. This makes the output
+  artifacts from that execution available for the new pipeline run, which is
+  necessary to make partial run work.
+
+  Args:
+    metadata_handler: A handler to access MLMD store.
+    pipeline_name: The name of the pipeline.
+    node_id: The node id.
+    old_run_id: The pipeline_run_id where the output artifacts were produced.
+    new_run_id: The pipeline_run_id to make the output artifacts available in.
+  """
+  artifact_recycler = _ArtifactRecycler(metadata_handler, pipeline_name,
+                                        old_run_id)
+  artifact_recycler.reuse_node_outputs(node_id, new_run_id)
+
+
+class _ArtifactRecycler:
+  """Allows previously-generated Artifacts to be used in a new pipeline run.
+
+  By implementing this in a class (instead of a function), we reduce the
+  number of MLMD reads when reusing the outputs of multiple nodes in the same
+  pipeline run.
+  """
+
+  def __init__(self, metadata_handler: metadata.Metadata, pipeline_name: str,
+               old_run_id: str):
+    self._mlmd = metadata_handler
+    self._pipeline_name = pipeline_name
+    self._pipeline_context = self._get_pipeline_context()
+    self._old_pipeline_run_context = self._get_pipeline_run_context(old_run_id)
+    self._pipeline_run_type_id = self._old_pipeline_run_context.type_id
+
+  def _get_pipeline_context(self) -> metadata_store_pb2.Context:
+    result = self._mlmd.store.get_context_by_type_and_name(
+        type_name=constants.PIPELINE_CONTEXT_TYPE_NAME,
+        context_name=self._pipeline_name)
+    if result is None:
+      raise LookupError(f'pipeline {self._pipeline_name} not found in MLMD.')
+    return result
+
+  def _get_pipeline_run_context(
+      self, pipeline_run_id: str) -> metadata_store_pb2.Context:
+    result = self._mlmd.store.get_context_by_type_and_name(
+        type_name=constants.PIPELINE_RUN_CONTEXT_TYPE_NAME,
+        context_name=pipeline_run_id)
+    if result is None:
+      raise LookupError(f'pipeline_run_id {pipeline_run_id} not found in MLMD.')
+    return result
+
+  def _get_node_context(self, node_id: str) -> metadata_store_pb2.Context:
+    node_context_name = compiler_utils.node_context_name(
+        self._pipeline_name, node_id)
+    result = self._mlmd.store.get_context_by_type_and_name(
+        type_name=constants.NODE_CONTEXT_TYPE_NAME,
+        context_name=node_context_name)
+    if result is None:
+      raise LookupError(f'node context {node_context_name} not found in MLMD.')
+    return result
+
+  def _get_previous_execution(
+      self, node_id: str) -> List[metadata_store_pb2.Execution]:
+    """Gets all successful Executions of a given node.
+
+    Args:
+      node_id: The node whose Executions to query.
+
+    Returns:
+      The latest successful execution for that node.
+
+    Raises:
+      LookupError: If no successful Execution was found.
+    """
+    node_context = self._get_node_context(node_id)
+    all_associated_executions = (
+        execution_lib.get_executions_associated_with_all_contexts(
+            self._mlmd,
+            contexts=[
+                node_context, self._old_pipeline_run_context,
+                self._pipeline_context
+            ]))
+    prev_successful_executions = [
+        e for e in all_associated_executions
+        if execution_lib.is_execution_successful(e)
+    ]
+    if not prev_successful_executions:
+      raise LookupError(
+          f'No previous successful executions found for node_id {node_id} in '
+          f'pipeline_run {self._old_pipeline_run_context.name}')
+
+    return execution_lib.sort_executions_newest_to_oldest(
+        prev_successful_executions)
+
+  def _get_cached_execution_contexts(
+      self,
+      existing_execution: metadata_store_pb2.Execution,
+      new_pipeline_run_id: str,
+  ) -> List[metadata_store_pb2.Context]:
+    """Gets the list of Contexts to be associated with the new cached Execution.
+
+    Copies all the Contexts associated with the existing execution, except for
+    the pipeline run context, which is updated with new pipeline run id.
+
+    Args:
+      existing_execution: The existing execution to copy from.
+      new_pipeline_run_id: The pipeline run id to associate the new cached
+        execution with.
+
+    Returns:
+      The list of Contexts to be associated with the new cached Execution.
+    """
+    result = []
+    for old_context in self._mlmd.store.get_contexts_by_execution(
+        existing_execution.id):
+      if old_context.type_id == self._pipeline_run_type_id:
+        new_pipeline_run_context = context_lib.register_context_if_not_exists(
+            self._mlmd,
+            context_type_name=constants.PIPELINE_RUN_CONTEXT_TYPE_NAME,
+            context_name=new_pipeline_run_id)
+        result.append(new_pipeline_run_context)
+      else:
+        result.append(old_context)
+    return result
+
+  def _cache_and_publish(self, existing_execution: metadata_store_pb2.Execution,
+                         new_pipeline_run_id: str):
+    """Updates MLMD."""
+    cached_execution_contexts = self._get_cached_execution_contexts(
+        existing_execution, new_pipeline_run_id)
+    # Check if there are any previous attempts to cache and publish.
+    prev_cache_executions = (
+        execution_lib.get_executions_associated_with_all_contexts(
+            self._mlmd, contexts=cached_execution_contexts))
+    if not prev_cache_executions:
+      new_execution = execution_publish_utils.register_execution(
+          self._mlmd,
+          execution_type=metadata_store_pb2.ExecutionType(
+              id=existing_execution.type_id),
+          contexts=cached_execution_contexts)
+    else:
+      if len(prev_cache_executions) > 1:
+        logging.warning(
+            'More than one previous cache executions seen when attempting '
+            'reuse_node_outputs: %s', prev_cache_executions)
+
+      if (prev_cache_executions[-1].last_known_state ==
+          metadata_store_pb2.Execution.CACHED):
+        return
+      else:
+        new_execution = prev_cache_executions[-1]
+
+    output_artifacts = execution_lib.get_artifacts_dict(
+        self._mlmd,
+        existing_execution.id,
+        event_type=metadata_store_pb2.Event.OUTPUT)
+
+    execution_publish_utils.publish_cached_execution(
+        self._mlmd,
+        contexts=cached_execution_contexts,
+        execution_id=new_execution.id,
+        output_artifacts=output_artifacts)
+
+  def reuse_node_outputs(self, node_id: str, new_pipeline_run_id: str):
+    """Makes the outputs of `node_id` available to new_pipeline_run_id."""
+    previous_executions = self._get_previous_execution(node_id)
+    for previous_execution in previous_executions:
+      self._cache_and_publish(previous_execution, new_pipeline_run_id)
