@@ -68,7 +68,9 @@ class QueryBasedExampleGen(base_beam_component.BaseBeamComponent):
                                     data_types.RuntimeParameter]] = None,
       custom_config: Optional[Union[example_gen_pb2.CustomConfig,
                                     data_types.RuntimeParameter]] = None,
-      output_data_format: Optional[int] = example_gen_pb2.FORMAT_TF_EXAMPLE):
+      output_data_format: Optional[int] = example_gen_pb2.FORMAT_TF_EXAMPLE,
+      output_file_format: Optional[int] = example_gen_pb2.FORMAT_TFRECORDS_GZIP,
+      ):
     """Construct a QueryBasedExampleGen component.
 
     Args:
@@ -84,10 +86,12 @@ class QueryBasedExampleGen(base_beam_component.BaseBeamComponent):
         instance, providing custom configuration for ExampleGen.
       output_data_format: Payload format of generated data in output artifact,
         one of example_gen_pb2.PayloadFormat enum.
+      output_file_format: File format of generated data in output artifact,
+          one of example_gen_pb2.FileFormat enum.
 
     Raises:
-      ValueError: The output_data_format value must be defined in the
-        example_gen_pb2.PayloadFormat proto.
+      ValueError: The output_data_format, output_file_format value
+        must be defined in the example_gen_pb2.PayloadFormat proto.
     """
     # Configure outputs.
     output_config = output_config or utils.make_default_output_config(
@@ -96,11 +100,15 @@ class QueryBasedExampleGen(base_beam_component.BaseBeamComponent):
     if output_data_format not in example_gen_pb2.PayloadFormat.values():
       raise ValueError('The value of output_data_format must be defined in'
                        'the example_gen_pb2.PayloadFormat proto.')
+    if output_file_format not in example_gen_pb2.FileFormat.values():
+      raise ValueError('The value of output_file_format must be defined in'
+                       'the example_gen_pb2.FileFormat proto.')
 
     spec = QueryBasedExampleGenSpec(
         input_config=input_config,
         output_config=output_config,
         output_data_format=output_data_format,
+        output_file_format=output_file_format,
         custom_config=custom_config,
         examples=example_artifacts)
     super(QueryBasedExampleGen, self).__init__(spec=spec)
@@ -147,6 +155,7 @@ class FileBasedExampleGen(base_beam_component.BaseBeamComponent):
       range_config: Optional[Union[range_config_pb2.RangeConfig,
                                    data_types.RuntimeParameter]] = None,
       output_data_format: Optional[int] = example_gen_pb2.FORMAT_TF_EXAMPLE,
+      output_file_format: Optional[int] = example_gen_pb2.FORMAT_TFRECORDS_GZIP,
       custom_executor_spec: Optional[executor_spec.ExecutorSpec] = None):
     """Construct a FileBasedExampleGen component.
 
@@ -166,6 +175,8 @@ class FileBasedExampleGen(base_beam_component.BaseBeamComponent):
         default to searching for latest span with no restrictions.
       output_data_format: Payload format of generated data in output artifact,
         one of example_gen_pb2.PayloadFormat enum.
+      output_file_format: File format of generated data in output artifact,
+        one of example_gen_pb2.FileFormat enum.
       custom_executor_spec: Optional custom executor spec overriding the default
         executor spec specified in the component attribute.
     """
@@ -181,6 +192,7 @@ class FileBasedExampleGen(base_beam_component.BaseBeamComponent):
         custom_config=custom_config,
         range_config=range_config,
         output_data_format=output_data_format,
+        output_file_format=output_file_format,
         examples=example_artifacts)
     super(FileBasedExampleGen, self).__init__(
         spec=spec, custom_executor_spec=custom_executor_spec)

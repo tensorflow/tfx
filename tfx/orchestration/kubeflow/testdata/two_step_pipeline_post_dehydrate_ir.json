@@ -108,6 +108,11 @@
                      "fieldValue":{
                         "intValue":"6"
                      }
+                  },
+                 "output_file_format":{
+                     "fieldValue":{
+                        "intValue":"5"
+                     }
                   }
                }
             }

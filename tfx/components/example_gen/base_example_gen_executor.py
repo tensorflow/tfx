@@ -21,7 +21,6 @@ from __future__ import print_function
 import abc
 import bisect
 import hashlib
-import os
 from typing import Any, Dict, List, Text, Union
 
 from absl import logging
@@ -29,19 +28,13 @@ import apache_beam as beam
 import tensorflow as tf
 from tfx import types
 from tfx.components.example_gen import utils
+from tfx.components.example_gen import write_split
 from tfx.components.util import examples_utils
 from tfx.dsl.components.base import base_beam_executor
 from tfx.proto import example_gen_pb2
 from tfx.types import artifact_utils
 from tfx.types import standard_component_specs
 from tfx.utils import proto_utils
-from tfx_bsl.telemetry import util
-
-# Default file name for TFRecord output file prefix.
-DEFAULT_FILE_NAME = 'data_tfrecord'
-
-# Metrics namespace for ExampleGen.
-_METRICS_NAMESPACE = util.MakeTfxNamespace(['ExampleGen'])
 
 
 def _GeneratePartitionKey(record: Union[tf.train.Example,
@@ -93,40 +86,6 @@ def _PartitionFn(
   #   bucket >=10 && < 50, returns 1
   #   bucket >=50 && < 80, returns 2
   return bisect.bisect(buckets, bucket)
-
-
-@beam.ptransform_fn
-@beam.typehints.with_input_types(Union[tf.train.Example,
-                                       tf.train.SequenceExample, bytes])
-@beam.typehints.with_output_types(beam.pvalue.PDone)
-def _WriteSplit(
-    example_split: beam.pvalue.PCollection,
-    output_split_path: Text,
-) -> beam.pvalue.PDone:
-  """Shuffles and writes output split as serialized records in TFRecord."""
-
-  class _MaybeSerialize(beam.DoFn):
-    """Serializes the proto if needed."""
-
-    def __init__(self):
-      self._num_instances = beam.metrics.Metrics.counter(
-          _METRICS_NAMESPACE, 'num_instances')
-
-    def process(self, e):
-      self._num_instances.inc(1)
-      if isinstance(e, (tf.train.Example, tf.train.SequenceExample)):
-        yield e.SerializeToString()
-      else:
-        yield e
-
-  return (example_split
-          # TODO(jyzhao): make shuffle optional.
-          | 'MaybeSerialize' >> beam.ParDo(_MaybeSerialize())
-          | 'Shuffle' >> beam.transforms.Reshuffle()
-          # TODO(jyzhao): multiple output format.
-          | 'Write' >> beam.io.WriteToTFRecord(
-              os.path.join(output_split_path, DEFAULT_FILE_NAME),
-              file_name_suffix='.gz'))
 
 
 class BaseExampleGenExecutor(base_beam_executor.BaseBeamExecutor, abc.ABC):
@@ -283,12 +242,14 @@ class BaseExampleGenExecutor(base_beam_executor.BaseBeamExecutor, abc.ABC):
       exec_properties: A dict of execution properties. Depends on detailed
         example gen implementation.
         - input_base: an external directory containing the data files.
-        - input_config: JSON string of example_gen_pb2.Input instance,
-          providing input configuration.
+        - input_config: JSON string of example_gen_pb2.Input instance, providing
+          input configuration.
         - output_config: JSON string of example_gen_pb2.Output instance,
           providing output configuration.
         - output_data_format: Payload format of generated data in output
           artifact, one of example_gen_pb2.PayloadFormat enum.
+        - output_file_format: File format of generated data in output artifact,
+          one of example_gen_pb2.FileFormat enum.
 
     Returns:
       None
@@ -309,6 +270,10 @@ class BaseExampleGenExecutor(base_beam_executor.BaseBeamExecutor, abc.ABC):
     examples_artifact.split_names = artifact_utils.encode_split_names(
         utils.generate_output_split_names(input_config, output_config))
 
+    output_file_format = exec_properties.get(
+        standard_component_specs.OUTPUT_FILE_FORMAT_KEY,
+        example_gen_pb2.FILE_FORMAT_UNSPECIFIED)
+
     logging.info('Generating examples.')
     with self._make_beam_pipeline() as pipeline:
       example_splits = self.GenerateExamplesByBeam(pipeline, exec_properties)
@@ -316,10 +281,10 @@ class BaseExampleGenExecutor(base_beam_executor.BaseBeamExecutor, abc.ABC):
       # pylint: disable=expression-not-assigned, no-value-for-parameter
       for split_name, example_split in example_splits.items():
         (example_split
-         | 'WriteSplit[{}]'.format(split_name) >> _WriteSplit(
+         | 'WriteSplit[{}]'.format(split_name) >> write_split.WriteSplit(
              artifact_utils.get_split_uri(
                  output_dict[standard_component_specs.EXAMPLES_KEY],
-                 split_name)))
+                 split_name), output_file_format))
       # pylint: enable=expression-not-assigned, no-value-for-parameter
 
     output_payload_format = exec_properties.get(
@@ -329,4 +294,12 @@ class BaseExampleGenExecutor(base_beam_executor.BaseBeamExecutor, abc.ABC):
           standard_component_specs.EXAMPLES_KEY]:
         examples_utils.set_payload_format(output_examples_artifact,
                                           output_payload_format)
+
+    if output_file_format:
+      for output_examples_artifact in output_dict[
+          standard_component_specs.EXAMPLES_KEY]:
+        examples_utils.set_file_format(
+            output_examples_artifact,
+            write_split.to_file_format_str(output_file_format))
+
     logging.info('Examples generated.')

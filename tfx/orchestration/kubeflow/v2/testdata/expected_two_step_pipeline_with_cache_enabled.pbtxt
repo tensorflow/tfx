@@ -122,6 +122,12 @@ components {
           type: INT
         }
       }
+      parameters {
+        key: "output_file_format"
+        value {
+          type: INT
+        }
+      }
     }
     output_definitions {
       artifacts {
@@ -203,6 +209,16 @@ root {
               runtime_value {
                 constant_value {
                   int_value: 6
+                }
+              }
+            }
+          }
+          parameters {
+            key: "output_file_format"
+            value {
+              runtime_value {
+                constant_value {
+                  int_value: 5
                 }
               }
             }

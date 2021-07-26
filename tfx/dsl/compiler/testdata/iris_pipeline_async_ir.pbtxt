@@ -94,6 +94,14 @@ nodes {
           }
         }
       }
+      parameters {
+        key: "output_file_format"
+        value {
+          field_value {
+            int_value: 5
+          }
+        }
+      }
     }
     execution_options {
       caching_options {
