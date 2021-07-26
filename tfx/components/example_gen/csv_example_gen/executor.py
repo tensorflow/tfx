@@ -98,57 +98,120 @@ class _ParsedCsvToTfExample(beam.DoFn):
     yield tf.train.Example(features=tf.train.Features(feature=feature))
 
 
-@beam.ptransform_fn
+class _CsvLineBuffer:
+  """Accumulates CSV lines in case of multiline strings."""
+
+  def __init__(self):
+    self._accumulator = []
+    self._quotes_count = 0
+
+  def _reset(self):
+    del self._accumulator[:]
+    self._quotes_count = 0
+
+  def _read_internal(self) -> Text:
+    if not self._accumulator:
+      return ''
+    if len(self._accumulator) == 1:
+      return self._accumulator[0]
+    return ''.join(self._accumulator)
+
+  def is_empty(self) -> bool:
+    return not self._accumulator
+
+  def write(self, csv_line: Text):
+    self._accumulator.append(csv_line)
+    self._quotes_count += csv_line.count('"')
+
+  def is_complete_line(self) -> bool:
+    return self._quotes_count % 2 == 0
+
+  def read(self) -> Text:
+    result = self._read_internal()
+    self._reset()
+    return result
+
+
+@beam.typehints.with_input_types(Text)
+@beam.typehints.with_output_types(Text)
+class _ReadCsvRecordsFromTextFile(beam.DoFn):
+  """A beam.DoFn to read a text file and yield CSV records."""
+
+  def __init__(self):
+    pass
+
+  def process(self, csv_filepath: Text) -> Iterable[Text]:
+    with beam.io.filesystems.FileSystems.open(csv_filepath) as file:
+      # Skip header row.
+      _ = file.readline()
+
+      buffer = _CsvLineBuffer()
+      for line in file:
+        buffer.write(line.decode('utf-8'))
+        if buffer.is_complete_line():
+          yield buffer.read()
+      if not buffer.is_empty():
+        raise ValueError(
+            'Csv record had unbalanced quotes. File: {}'.format(csv_filepath))
+
+
+# TODO(b/193864521): Consider allowing users to configure parsing parameters.
 @beam.typehints.with_input_types(beam.Pipeline)
 @beam.typehints.with_output_types(tf.train.Example)
-def _CsvToExample(  # pylint: disable=invalid-name
-    pipeline: beam.Pipeline, exec_properties: Dict[Text, Any],
-    split_pattern: Text) -> beam.pvalue.PCollection:
+class _CsvToExample(beam.PTransform):
   """Read CSV files and transform to TF examples.
 
   Note that each input split will be transformed by this function separately.
-
-  Args:
-    pipeline: beam pipeline.
-    exec_properties: A dict of execution properties.
-      - input_base: input dir that contains CSV data. CSV must have header line.
-    split_pattern: Split.pattern in Input config, glob relative file pattern
-      that maps to input files with root directory given by input_base.
-
-  Returns:
-    PCollection of TF examples.
-
-  Raises:
-    RuntimeError: if split is empty or csv headers are not equal.
   """
-  input_base_uri = exec_properties[standard_component_specs.INPUT_BASE_KEY]
-  csv_pattern = os.path.join(input_base_uri, split_pattern)
-  logging.info('Processing input csv data %s to TFExample.', csv_pattern)
 
-  csv_files = fileio.glob(csv_pattern)
-  if not csv_files:
-    raise RuntimeError(
-        'Split pattern {} does not match any files.'.format(csv_pattern))
+  def __init__(self, exec_properties: Dict[Text, Any], split_pattern: Text):
+    """Init method for _CsvToExample.
 
-  column_names = io_utils.load_csv_column_names(csv_files[0])
-  for csv_file in csv_files[1:]:
-    if io_utils.load_csv_column_names(csv_file) != column_names:
-      raise RuntimeError(
-          'Files in same split {} have different header.'.format(csv_pattern))
+    Args:
+      exec_properties: A dict of execution properties.
+        - input_base: input dir that contains CSV data. CSV must have header
+          line.
+      split_pattern: Split.pattern in Input config, glob relative file pattern
+        that maps to input files with root directory given by input_base.
+    """
+    input_base_uri = exec_properties[standard_component_specs.INPUT_BASE_KEY]
+    self._csv_pattern = os.path.join(input_base_uri, split_pattern)
 
-  parsed_csv_lines = (
-      pipeline
-      | 'ReadFromText' >> beam.io.ReadFromText(
-          file_pattern=csv_pattern, skip_header_lines=1)
-      | 'ParseCSVLine' >> beam.ParDo(csv_decoder.ParseCSVLine(delimiter=','))
-      | 'ExtractParsedCSVLines' >> beam.Keys())
-  column_infos = beam.pvalue.AsSingleton(
-      parsed_csv_lines
-      | 'InferColumnTypes' >> beam.CombineGlobally(
-          csv_decoder.ColumnTypeInferrer(column_names, skip_blank_lines=True)))
+  def expand(
+      self,
+      pipeline: beam.Pipeline) -> beam.pvalue.PCollection[tf.train.Example]:
+    logging.info('Processing input csv data %s to TFExample.',
+                 self._csv_pattern)
 
-  return (parsed_csv_lines
-          | 'ToTFExample' >> beam.ParDo(_ParsedCsvToTfExample(), column_infos))
+    csv_files = fileio.glob(self._csv_pattern)
+    if not csv_files:
+      raise RuntimeError('Split pattern {} does not match any files.'.format(
+          self._csv_pattern))
+
+    column_names = io_utils.load_csv_column_names(csv_files[0])
+    for csv_file in csv_files[1:]:
+      if io_utils.load_csv_column_names(csv_file) != column_names:
+        raise RuntimeError(
+            'Files in same split {} have different header.'.format(
+                self._csv_pattern))
+
+    # Read each CSV file while maintaining order. This is done in order to group
+    # together multi-line string fields.
+    parsed_csv_lines = (
+        pipeline
+        | 'CreateFilenames' >> beam.Create(csv_files)
+        | 'ReadFromText' >> beam.ParDo(_ReadCsvRecordsFromTextFile())
+        | 'ParseCSVLine' >> beam.ParDo(csv_decoder.ParseCSVLine(delimiter=','))
+        | 'ExtractParsedCSVLines' >> beam.Keys())
+    column_infos = beam.pvalue.AsSingleton(
+        parsed_csv_lines
+        | 'InferColumnTypes' >> beam.CombineGlobally(
+            csv_decoder.ColumnTypeInferrer(column_names, skip_blank_lines=True))
+    )
+
+    return (parsed_csv_lines
+            |
+            'ToTFExample' >> beam.ParDo(_ParsedCsvToTfExample(), column_infos))
 
 
 class Executor(BaseExampleGenExecutor):
