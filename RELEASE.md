@@ -13,6 +13,7 @@
 ## Bug Fixes and Other Changes
 *   Fixed issue when InputValuePlaceholder is used as component parameter in
     container based component.
+*   Depends on `kubernetes>=10.0.1,<13`
 ## Documentation Updates
 
 # Version 1.0.0
