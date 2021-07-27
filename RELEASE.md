@@ -1,6 +1,7 @@
 # Current Version (Still in Development)
 
 ## Major Features and Improvements
+*   Added RuntimeParam support for Trainer's custom_config.
 
 ## Breaking Changes
 

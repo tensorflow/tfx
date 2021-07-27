@@ -59,11 +59,15 @@ class ComponentTest(tf.test.TestCase):
         module_file=module_file,
         examples=self.examples,
         transform_graph=self.transform_graph,
-        schema=self.schema)
+        schema=self.schema,
+        custom_config={'test': 10})
     self._verify_outputs(trainer)
     self.assertEqual(
         module_file,
         trainer.spec.exec_properties[standard_component_specs.MODULE_FILE_KEY])
+    self.assertEqual(
+        '{"test": 10}', trainer.spec.exec_properties[
+            standard_component_specs.CUSTOM_CONFIG_KEY])
 
   def testConstructWithParameter(self):
     module_file = data_types.RuntimeParameter(name='module-file', ptype=Text)
@@ -183,6 +187,32 @@ class ComponentTest(tf.test.TestCase):
     self.assertEqual(
         standard_artifacts.HyperParameters.TYPE_NAME,
         trainer.inputs[standard_component_specs.HYPERPARAMETERS_KEY].type_name)
+
+  def testConstructWithRuntimeParam(self):
+    eval_args = data_types.RuntimeParameter(
+        name='eval-args',
+        default='{"num_steps": 50}',
+        ptype=Text,
+    )
+    custom_config = data_types.RuntimeParameter(
+        name='custom-config',
+        default='{"test": 10}',
+        ptype=Text,
+    )
+    trainer = component.Trainer(
+        trainer_fn='path.to.my_trainer_fn',
+        examples=self.examples,
+        train_args=self.train_args,
+        eval_args=eval_args,
+        custom_config=custom_config)
+    self._verify_outputs(trainer)
+    self.assertIsInstance(
+        trainer.spec.exec_properties[standard_component_specs.EVAL_ARGS_KEY],
+        data_types.RuntimeParameter)
+    self.assertIsInstance(
+        trainer.spec.exec_properties[
+            standard_component_specs.CUSTOM_CONFIG_KEY],
+        data_types.RuntimeParameter)
 
 
 if __name__ == '__main__':
