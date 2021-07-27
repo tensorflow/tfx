@@ -1,9 +1,10 @@
 # Using the TFX Command-line Interface
 
 The TFX command-line interface (CLI) performs a full range of pipeline actions
-using pipeline orchestrators, such as Apache Airflow, Apache Beam, and Kubeflow
-Pipelines. Local orchestrator can be also used for faster development or
-debugging. For example, you can use the CLI to:
+using pipeline orchestrators, such as Kubeflow Pipelines, Vertex Pipelines.
+Local orchestrator can be also used for faster development or debugging. Apache
+Beam and Apache airflow is supported as experimental features. For example, you
+can use the CLI to:
 
 *   Create, update, and delete pipelines.
 *   Run a pipeline and monitor the run on various orchestrators.
@@ -99,10 +100,11 @@ tfx pipeline create --pipeline_path=<var>pipeline-path</var> [--endpoint=<var>en
       engine must match on of the following values:
     </p>
     <ul>
-      <li><strong>airflow</strong>: sets engine to Apache Airflow</li>
-      <li><strong>beam</strong>: sets engine to Apache Beam</li>
       <li><strong>kubeflow</strong>: sets engine to Kubeflow</li>
       <li><strong>local</strong>: sets engine to local orchestrator</li>
+      <li><strong>vertex</strong>: sets engine to Vertex Pipelines</li>
+      <li><strong>airflow</strong>: (experimental) sets engine to Apache Airflow</li>
+      <li><strong>beam</strong>: (experimental) sets engine to Apache Beam</li>
     </ul>
     <p>
       If the engine is not set, the engine is auto-detected based on the
@@ -118,7 +120,7 @@ tfx pipeline create --pipeline_path=<var>pipeline-path</var> [--endpoint=<var>en
   </dd>
   <dt>--iap_client_id=<var>iap-client-id</var></dt>
   <dd>
-    (Optional.) Client ID for IAP protected endpoint.
+    (Optional.) Client ID for IAP protected endpoint when using Kubeflow Pipelines.
   </dd>
 
   <dt>--namespace=<var>namespace</var>
@@ -131,14 +133,14 @@ tfx pipeline create --pipeline_path=<var>pipeline-path</var> [--endpoint=<var>en
   <dt>--build_image</dt>
   <dd>
     <p>
-      (Optional.) When the <var>engine</var> is <strong>kubeflow</strong>, TFX
+      (Optional.) When the <var>engine</var> is <strong>kubeflow</strong> or <strong>vertex</strong>, TFX
       creates a container image for your pipeline if specified. `Dockerfile` in
       the current directory will be used, and TFX will automatically generate
       one if not exists.
     </p>
     <p>
       The built image will be pushed to the remote registry which is specified
-      in `KubeflowDagRunnerConfig`.
+      in `KubeflowDagRunnerConfig` or `KubeflowV2DagRunnerConfig`.
     </p>
   </dd>
   <dt>--build_base_image=<var>build-base-image</var></dt>
@@ -154,12 +156,6 @@ tfx pipeline create --pipeline_path=<var>pipeline-path</var> [--endpoint=<var>en
 
 #### Examples:
 
-Apache Airflow:
-
-<pre class="devsite-terminal">
-tfx pipeline create --engine=airflow --pipeline_path=<var>pipeline-path</var>
-</pre>
-
 Kubeflow:
 
 <pre class="devsite-terminal">
@@ -172,6 +168,13 @@ Local:
 
 <pre class="devsite-terminal">
 tfx pipeline create --engine=local --pipeline_path=<var>pipeline-path</var>
+</pre>
+
+Vertex:
+
+<pre class="devsite-terminal">
+tfx pipeline create --engine=vertex --pipeline_path=<var>pipeline-path</var> \
+--build_image
 </pre>
 
 To autodetect engine from user environment, simply avoid using the engine flag
@@ -225,10 +228,11 @@ tfx pipeline update --pipeline_path=<var>pipeline-path</var> [--endpoint=<var>en
       engine must match on of the following values:
     </p>
     <ul>
-      <li><strong>airflow</strong>: sets engine to Apache Airflow</li>
-      <li><strong>beam</strong>: sets engine to Apache Beam</li>
       <li><strong>kubeflow</strong>: sets engine to Kubeflow</li>
       <li><strong>local</strong>: sets engine to local orchestrator</li>
+      <li><strong>vertex</strong>: sets engine to Vertex Pipelines</li>
+      <li><strong>airflow</strong>: (experimental) sets engine to Apache Airflow</li>
+      <li><strong>beam</strong>: (experimental) sets engine to Apache Beam</li>
     </ul>
     <p>
       If the engine is not set, the engine is auto-detected based on the
@@ -256,24 +260,18 @@ tfx pipeline update --pipeline_path=<var>pipeline-path</var> [--endpoint=<var>en
   <dt>--build_image</dt>
   <dd>
     <p>
-      (Optional.) When the <var>engine</var> is <strong>kubeflow</strong>, TFX
+      (Optional.) When the <var>engine</var> is <strong>kubeflow</strong> or <strong>vertex</strong>, TFX
       creates a container image for your pipeline if specified. `Dockerfile` in
       the current directory will be used.
     </p>
     <p>
       The built image will be pushed to the remote registry which is specified
-      in `KubeflowDagRunnerConfig`.
+      in `KubeflowDagRunnerConfig` or `KubeflowV2DagRunnerConfig`.
     </p>
   </dd>
 </dl>
 
 #### Examples:
-
-Apache Airflow:
-
-<pre class="devsite-terminal">
-tfx pipeline update --engine=airflow --pipeline_path=<var>pipeline-path</var>
-</pre>
 
 Kubeflow:
 
@@ -287,6 +285,13 @@ Local:
 
 <pre class="devsite-terminal">
 tfx pipeline update --engine=local --pipeline_path=<var>pipeline-path</var>
+</pre>
+
+Vertex:
+
+<pre class="devsite-terminal">
+tfx pipeline update --engine=vertex --pipeline_path=<var>pipeline-path</var> \
+--build_image
 </pre>
 
 ### compile
@@ -319,10 +324,11 @@ tfx pipeline compile --pipeline_path=<var>pipeline-path</var> [--engine=<var>eng
       engine must match on of the following values:
     </p>
     <ul>
-      <li><strong>airflow</strong>: sets engine to Apache Airflow</li>
-      <li><strong>beam</strong>: sets engine to Apache Beam</li>
       <li><strong>kubeflow</strong>: sets engine to Kubeflow</li>
       <li><strong>local</strong>: sets engine to local orchestrator</li>
+      <li><strong>vertex</strong>: sets engine to Vertex Pipelines</li>
+      <li><strong>airflow</strong>: (experimental) sets engine to Apache Airflow</li>
+      <li><strong>beam</strong>: (experimental) sets engine to Apache Beam</li>
     </ul>
     <p>
       If the engine is not set, the engine is auto-detected based on the
@@ -340,12 +346,6 @@ tfx pipeline compile --pipeline_path=<var>pipeline-path</var> [--engine=<var>eng
 
 #### Examples:
 
-Apache Airflow:
-
-<pre class="devsite-terminal">
-tfx pipeline compile --engine=airflow --pipeline_path=<var>pipeline-path</var>
-</pre>
-
 Kubeflow:
 
 <pre class="devsite-terminal">
@@ -356,6 +356,12 @@ Local:
 
 <pre class="devsite-terminal">
 tfx pipeline compile --engine=local --pipeline_path=<var>pipeline-path</var>
+</pre>
+
+Vertex:
+
+<pre class="devsite-terminal">
+tfx pipeline compile --engine=vertex --pipeline_path=<var>pipeline-path</var>
 </pre>
 
 ### delete
@@ -402,10 +408,11 @@ tfx pipeline delete --pipeline_path=<var>pipeline-path</var> [--endpoint=<var>en
       engine must match on of the following values:
     </p>
     <ul>
-      <li><strong>airflow</strong>: sets engine to Apache Airflow</li>
-      <li><strong>beam</strong>: sets engine to Apache Beam</li>
       <li><strong>kubeflow</strong>: sets engine to Kubeflow</li>
       <li><strong>local</strong>: sets engine to local orchestrator</li>
+      <li><strong>vertex</strong>: sets engine to Vertex Pipelines</li>
+      <li><strong>airflow</strong>: (experimental) sets engine to Apache Airflow</li>
+      <li><strong>beam</strong>: (experimental) sets engine to Apache Beam</li>
     </ul>
     <p>
       If the engine is not set, the engine is auto-detected based on the
@@ -434,12 +441,6 @@ tfx pipeline delete --pipeline_path=<var>pipeline-path</var> [--endpoint=<var>en
 
 #### Examples:
 
-Apache Airflow:
-
-<pre class="devsite-terminal">
-tfx pipeline delete --engine=airflow --pipeline_name=<var>pipeline-name</var>
-</pre>
-
 Kubeflow:
 
 <pre class="devsite-terminal">
@@ -451,6 +452,12 @@ Local:
 
 <pre class="devsite-terminal">
 tfx pipeline delete --engine=local --pipeline_name=<var>pipeline-name</var>
+</pre>
+
+Vertex:
+
+<pre class="devsite-terminal">
+tfx pipeline delete --engine=vertex --pipeline_name=<var>pipeline-name</var>
 </pre>
 
 ### list
@@ -495,10 +502,11 @@ tfx pipeline list [--endpoint=<var>endpoint</var> --engine=<var>engine</var> \
       engine must match on of the following values:
     </p>
     <ul>
-      <li><strong>airflow</strong>: sets engine to Apache Airflow</li>
-      <li><strong>beam</strong>: sets engine to Apache Beam</li>
       <li><strong>kubeflow</strong>: sets engine to Kubeflow</li>
       <li><strong>local</strong>: sets engine to local orchestrator</li>
+      <li><strong>vertex</strong>: sets engine to Vertex Pipelines</li>
+      <li><strong>airflow</strong>: (experimental) sets engine to Apache Airflow</li>
+      <li><strong>beam</strong>: (experimental) sets engine to Apache Beam</li>
     </ul>
     <p>
       If the engine is not set, the engine is auto-detected based on the
@@ -527,12 +535,6 @@ tfx pipeline list [--endpoint=<var>endpoint</var> --engine=<var>engine</var> \
 
 #### Examples:
 
-Apache Airflow:
-
-<pre class="devsite-terminal">
-tfx pipeline list --engine=airflow
-</pre>
-
 Kubeflow:
 
 <pre class="devsite-terminal">
@@ -544,6 +546,12 @@ Local:
 
 <pre class="devsite-terminal">
 tfx pipeline list --engine=local
+</pre>
+
+Vertex:
+
+<pre class="devsite-terminal">
+tfx pipeline list --engine=vertex
 </pre>
 
 ## tfx run
@@ -602,10 +610,11 @@ tfx run create --pipeline_name=<var>pipeline-name</var> [--endpoint=<var>endpoin
       engine must match on of the following values:
     </p>
     <ul>
-      <li><strong>airflow</strong>: sets engine to Apache Airflow</li>
-      <li><strong>beam</strong>: sets engine to Apache Beam</li>
       <li><strong>kubeflow</strong>: sets engine to Kubeflow</li>
       <li><strong>local</strong>: sets engine to local orchestrator</li>
+      <li><strong>vertex</strong>: sets engine to Vertex Pipelines</li>
+      <li><strong>airflow</strong>: (experimental) sets engine to Apache Airflow</li>
+      <li><strong>beam</strong>: (experimental) sets engine to Apache Beam</li>
     </ul>
     <p>
       If the engine is not set, the engine is auto-detected based on the
@@ -624,21 +633,27 @@ tfx run create --pipeline_name=<var>pipeline-name</var> [--endpoint=<var>endpoin
     (Optional.) Client ID for IAP protected endpoint.
   </dd>
 
-  <dt>--namespace=<var>namespace</var>
+  <dt>--namespace=<var>namespace</var></dt>
   <dd>
     (Optional.) Kubernetes namespace to connect to the Kubeflow Pipelines API.
     If the namespace is not specified, the value defaults to
     <code>kubeflow</code>.
   </dd>
+
+  <dt>--project=<var>GCP-project-id</var></dt>
+  <dd>
+    (Required for Vertex.) GCP project id for the vertex pipeline.
+  </dd>
+
+  <dt>--region=<var>GCP-region</var></dt>
+  <dd>
+    (Required for Vertex.) GCP region name like us-central1. See [Vertex documentation](https://cloud.google.com/vertex-ai/docs/general/locations) for available regions.
+  </dd>
+
+  --project=some_project --region=us-central1
 </dl>
 
 #### Examples:
-
-Apache Airflow:
-
-<pre class="devsite-terminal">
-tfx run create --engine=airflow --pipeline_name=<var>pipeline-name</var>
-</pre>
 
 Kubeflow:
 
@@ -651,6 +666,12 @@ Local:
 
 <pre class="devsite-terminal">
 tfx run create --engine=local --pipeline_name=<var>pipeline-name</var>
+</pre>
+
+Vertex:
+
+<pre class="devsite-terminal">
+tfx run create --engine=vertex --pipeline_name=<var>pipeline-name</var> --project=<var>gcp-project-id</var> --region=<var>gcp-region</var>
 </pre>
 
 ### terminate
@@ -781,8 +802,8 @@ tfx run list --pipeline_name=<var>pipeline-name</var> [--endpoint=<var>endpoint<
       engine must match on of the following values:
     </p>
     <ul>
-      <li><strong>airflow</strong>: sets engine to Apache Airflow</li>
       <li><strong>kubeflow</strong>: sets engine to Kubeflow</li>
+      <li><strong>airflow</strong>: (experimental) sets engine to Apache Airflow</li>
     </ul>
     <p>
       If the engine is not set, the engine is auto-detected based on the
@@ -810,12 +831,6 @@ tfx run list --pipeline_name=<var>pipeline-name</var> [--endpoint=<var>endpoint<
 </dl>
 
 #### Examples:
-
-Apache Airflow:
-
-<pre class="devsite-terminal">
-tfx run list --engine=airflow --pipeline_name=<var>pipeline-name</var>
-</pre>
 
 Kubeflow:
 
@@ -872,8 +887,8 @@ tfx run status --pipeline_name=<var>pipeline-name</var> --run_id=<var>run-id</va
       engine must match on of the following values:
     </p>
     <ul>
-      <li><strong>airflow</strong>: sets engine to Apache Airflow</li>
       <li><strong>kubeflow</strong>: sets engine to Kubeflow</li>
+      <li><strong>airflow</strong>: (experimental) sets engine to Apache Airflow</li>
     </ul>
     <p>
       If the engine is not set, the engine is auto-detected based on the
@@ -901,12 +916,6 @@ tfx run status --pipeline_name=<var>pipeline-name</var> --run_id=<var>run-id</va
 </dl>
 
 #### Examples:
-
-Apache Airflow:
-
-<pre class="devsite-terminal">
-tfx run status --engine=airflow --run_id=<var>run-id</var> --pipeline_name=<var>pipeline-name</var>
-</pre>
 
 Kubeflow:
 
@@ -1051,10 +1060,11 @@ tfx template copy --model=<var>model</var> --pipeline_name=<var>pipeline-name</v
       match on of the following values:
     </p>
     <ul>
-      <li><strong>airflow</strong>: sets engine to Apache Airflow</li>
-      <li><strong>beam</strong>: sets engine to Apache Beam</li>
       <li><strong>kubeflow</strong>: sets engine to Kubeflow</li>
       <li><strong>local</strong>: sets engine to local orchestrator</li>
+      <li><strong>vertex</strong>: sets engine to Vertex Pipelines</li>
+      <li><strong>airflow</strong>: (experimental) sets engine to Apache Airflow</li>
+      <li><strong>beam</strong>: (experimental) sets engine to Apache Beam</li>
     </ul>
     <p>
       If the engine is not set, the engine is auto-detected based on the
@@ -1125,7 +1135,7 @@ tfx template copy --model=<var>model</var> --pipeline_name=<var>pipeline-name</v
 When pipelines are created and run, several files are generated for pipeline
 management.
 
--   ${HOME}/tfx/local, beam, airflow
+-   ${HOME}/tfx/local, beam, airflow, vertex
     -   Pipeline metadata read from the configuration is stored under
         `${HOME}/tfx/${ORCHESTRATION_ENGINE}/${PIPELINE_NAME}`. This location
         can be customized by setting environment varaible like `AIRFLOW_HOME` or
