@@ -47,6 +47,23 @@ Execute the pipeline python file and output can be found at `~/tfx`:
 python ~/penguin/penguin_pipeline_local.py
 </pre>
 
+## Instructions for using Kubeflow V1
+
+NOTE: This example requires TFX 1.0.0 or later.
+
+To compile the pipeline:
+
+<pre class="devsite-terminal devsite-click-to-copy">
+python penguin_pipeline_kubeflow.py --use_gcp=True
+<pre>
+
+KubeflowDagRunner supports the pipeline with normal components(usually running
+on prem) and with Cloud extended components(usually running on GCP).
+
+Validate the output [pipeline-name].tar.gz under the same folder.
+Upload file to Kubeflow and run the pipeline.
+
+
 ## Instructions for using Flax
 
 **The Flax support in TFX is experimental.**

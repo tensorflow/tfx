@@ -29,7 +29,7 @@ landing_page:
     - description: >
         <p>
         We are happy to announce the availability of the
-        <a href="https://github.com/tensorflow/tfx/releases">TFX 1.0.0 Release Candidate</a>.
+        <a href="https://github.com/tensorflow/tfx/releases">TFX 1.0.0</a>.
         This is the initial post-beta release of TFX, which provides stable public APIs and
         artifacts. You can be assured that your future TFX pipelines will keep working after an
         upgrade within the compatibility scope defined in this

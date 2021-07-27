@@ -26,6 +26,12 @@ input_definitions {
       type: INT
     }
   }
+  parameters {
+    key: "output_file_format"
+    value {
+      type: INT
+    }
+  }
 }
 output_definitions {
   artifacts {

@@ -78,6 +78,7 @@ INPUT_BASE_KEY = 'input_base'
 INPUT_CONFIG_KEY = 'input_config'
 OUTPUT_CONFIG_KEY = 'output_config'
 OUTPUT_DATA_FORMAT_KEY = 'output_data_format'
+OUTPUT_FILE_FORMAT_KEY = 'output_file_format'
 RANGE_CONFIG_KEY = 'range_config'
 # Key for pusher
 PUSH_DESTINATION_KEY = 'push_destination'
@@ -200,7 +201,9 @@ class FileBasedExampleGenSpec(ComponentSpec):
       OUTPUT_CONFIG_KEY:
           ExecutionParameter(type=example_gen_pb2.Output),
       OUTPUT_DATA_FORMAT_KEY:
-          ExecutionParameter(type=int),  # example_gen_pb2.PayloadType enum.
+          ExecutionParameter(type=int),  # example_gen_pb2.PayloadFormat enum.
+      OUTPUT_FILE_FORMAT_KEY:
+          ExecutionParameter(type=int),  # example_gen_pb2.FileFormat enum.
       CUSTOM_CONFIG_KEY:
           ExecutionParameter(type=example_gen_pb2.CustomConfig, optional=True),
       RANGE_CONFIG_KEY:
@@ -221,7 +224,9 @@ class QueryBasedExampleGenSpec(ComponentSpec):
       OUTPUT_CONFIG_KEY:
           ExecutionParameter(type=example_gen_pb2.Output),
       OUTPUT_DATA_FORMAT_KEY:
-          ExecutionParameter(type=int),  # example_gen_pb2.PayloadType enum.
+          ExecutionParameter(type=int),  # example_gen_pb2.PayloadFormat enum.
+      OUTPUT_FILE_FORMAT_KEY:
+          ExecutionParameter(type=int),  # example_gen_pb2.FileFormat enum.
       CUSTOM_CONFIG_KEY:
           ExecutionParameter(type=example_gen_pb2.CustomConfig, optional=True),
   }

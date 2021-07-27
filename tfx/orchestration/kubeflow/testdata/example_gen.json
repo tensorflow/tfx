@@ -8,6 +8,7 @@
     "input_config": "{\n  \"splits\": [\n    {\n      \"name\": \"single_split\",\n      \"pattern\": \"*\"\n    }\n  ]\n}",
     "output_config": "{{pipelineparam:op=;name=example-gen-output-config}}",
     "output_data_format": 6,
+    "output_file_format": 5,
     "range_config": null
   },
   "_id": "CsvExampleGen",

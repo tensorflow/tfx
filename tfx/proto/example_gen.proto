@@ -114,6 +114,17 @@ enum PayloadFormat {
   reserved 1 to 5, 8 to 10, 12 to max;
 }
 
+// Enum to indicate file format that ExampleGen produces.
+enum FileFormat {
+  // Unspecified format.
+  FILE_FORMAT_UNSPECIFIED = 0;
+
+  // Indicates TFRecords format files with gzip compression.
+  FORMAT_TFRECORDS_GZIP = 5;
+
+  reserved 1 to 4, 6 to max;
+}
+
 // Specification of the output of the example gen.
 message Output {
   // Specifies how the output should be split. If not specified, the output

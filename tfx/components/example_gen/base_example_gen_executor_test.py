@@ -21,8 +21,6 @@ from __future__ import print_function
 import os
 
 import apache_beam as beam
-from apache_beam.metrics.metric import MetricsFilter
-from apache_beam.runners.direct import direct_runner
 import tensorflow as tf
 from tfx.components.example_gen import base_example_gen_executor
 from tfx.dsl.io import fileio
@@ -244,25 +242,6 @@ class BaseExampleGenExecutorTest(tf.test.TestCase):
         RuntimeError, 'Split by `partition_feature_name` is only supported '
         'for FORMAT_TF_EXAMPLE and FORMAT_TF_SEQUENCE_EXAMPLE payload format.'):
       example_gen.Do({}, self._output_dict, self._exec_properties)
-
-  def testWriteSplitCounter(self):
-    count = 10
-
-    def Pipeline(root):
-      data = [tf.train.Example()] * count
-      _ = (
-          root
-          | beam.Create(data)
-          | base_example_gen_executor._WriteSplit(self._output_data_dir))
-
-    run_result = direct_runner.DirectRunner().run(Pipeline)
-    run_result.wait_until_finish()
-
-    num_instances = run_result.metrics().query(
-        MetricsFilter().with_name('num_instances'))
-    self.assertTrue(num_instances['counters'])
-    self.assertEqual(len(num_instances['counters']), 1)
-    self.assertEqual(num_instances['counters'][0].result, count)
 
 
 if __name__ == '__main__':

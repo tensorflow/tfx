@@ -45,11 +45,15 @@ class TestQueryBasedExampleGenComponent(component.QueryBasedExampleGen):
   def __init__(self,
                input_config,
                output_config=None,
-               output_data_format=example_gen_pb2.FORMAT_TF_EXAMPLE):
+               output_data_format=example_gen_pb2.FORMAT_TF_EXAMPLE,
+               output_file_format=example_gen_pb2.FORMAT_TFRECORDS_GZIP,
+               ):
     super(TestQueryBasedExampleGenComponent, self).__init__(
         input_config=input_config,
         output_config=output_config,
-        output_data_format=output_data_format)
+        output_data_format=output_data_format,
+        output_file_format=output_file_format,
+    )
 
 
 class TestFileBasedExampleGenComponent(component.FileBasedExampleGen):
@@ -79,6 +83,10 @@ class ComponentTest(tf.test.TestCase):
         example_gen.exec_properties[
             standard_component_specs.OUTPUT_DATA_FORMAT_KEY],
         example_gen_pb2.FORMAT_TF_EXAMPLE)
+    self.assertEqual(
+        example_gen.exec_properties[
+            standard_component_specs.OUTPUT_FILE_FORMAT_KEY],
+        example_gen_pb2.FORMAT_TFRECORDS_GZIP)
     self.assertIsNone(
         example_gen.exec_properties.get(
             standard_component_specs.CUSTOM_CONFIG_KEY))
@@ -91,6 +99,16 @@ class ComponentTest(tf.test.TestCase):
             example_gen_pb2.Input.Split(name='single', pattern='query'),
         ]),
         output_data_format=-1  # not exists
+    )
+
+  def testConstructSubclassQueryBasedWithInvalidOutputFileFormat(self):
+    self.assertRaises(
+        ValueError,
+        TestQueryBasedExampleGenComponent,
+        input_config=example_gen_pb2.Input(splits=[
+            example_gen_pb2.Input.Split(name='single', pattern='query'),
+        ]),
+        output_file_format=-1  # not exists
     )
 
   def testConstructSubclassFileBased(self):

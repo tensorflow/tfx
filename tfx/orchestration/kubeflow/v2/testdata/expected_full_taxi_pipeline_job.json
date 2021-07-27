@@ -499,6 +499,9 @@
             },
             "output_data_format": {
               "type": "INT"
+            },
+            "output_file_format": {
+              "type": "INT"
             }
           }
         }
@@ -904,6 +907,13 @@
                   "runtimeValue": {
                     "constantValue": {
                       "intValue": "6"
+                    }
+                  }
+                },
+                "output_file_format": {
+                  "runtimeValue": {
+                    "constantValue": {
+                      "intValue": "5"
                     }
                   }
                 }

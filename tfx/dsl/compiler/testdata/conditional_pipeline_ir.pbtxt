@@ -105,6 +105,14 @@ nodes {
           }
         }
       }
+      parameters {
+        key: "output_file_format"
+        value {
+          field_value {
+            int_value: 5
+          }
+        }
+      }
     }
     downstream_nodes: "Evaluator"
     downstream_nodes: "InfraValidator"

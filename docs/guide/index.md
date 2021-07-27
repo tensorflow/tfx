@@ -10,7 +10,7 @@ learning system.
 ## TFX 1.0
 
 We are happy to announce the availability of the
-[TFX 1.0.0 Release Candidate](https://github.com/tensorflow/tfx/releases). This
+[TFX 1.0.0](https://github.com/tensorflow/tfx/releases). This
 is the initial post-beta release of TFX, which provides stable public APIs and
 artifacts. You can be assured that your future TFX pipelines will keep working
 after an upgrade within the compatibility scope defined in this
@@ -24,8 +24,6 @@ https://github.com/tensorflow/tfx)
 
 ```bash
 pip install tfx
-# If you want to try TFX 1.0.0 RC, Use --pre flag like following:
-#   pip install --pre tfx
 ```
 
 Note: See the [TensorFlow Serving](https://www.tensorflow.org/serving/),
