@@ -165,13 +165,9 @@ class _GenProtoCommand(setuptools.Command):
       # remote repository with the local path. This is required to use the
       # local developmental version of MLMD during tests.
       # https://docs.bazel.build/versions/master/command-line-reference.html
-      bazel_args.append(
-          '--override_repository={}={}'.format(
-              'com_github_google_ml_metadata',
-              self.local_mlmd_repo))
-    cmd = [self._bazel_cmd, 'run',
-           *bazel_args,
-           '//build:gen_proto']
+      bazel_args.append('--override_repository={}={}'.format(
+          'com_github_google_ml_metadata', self.local_mlmd_repo))
+    cmd = [self._bazel_cmd, 'run', *bazel_args, '//build:gen_proto']
     print('Running Bazel command', cmd, file=sys.stderr)
     subprocess.check_call(
         cmd,
@@ -247,6 +243,11 @@ ML_PIPELINES_SDK_PACKAGES = [
     'tfx.types.*',
 ]
 
+EXCLUDED_PACKAGES = [
+    'tfx.benchmarks',
+    'tfx.benchmarks.*',
+]
+
 # Below console_scripts, each line identifies one console script. The first
 # part before the equals sign (=) which is 'tfx', is the name of the script
 # that should be generated, the second part is the import path followed by a
@@ -273,7 +274,8 @@ if package_config.PACKAGE_NAME == 'tfx-dev':
   extras_require = tfx_extras_requires
   description = _TFX_DESCRIPTION
   long_description = _TFX_LONG_DESCRIPTION
-  packages = find_namespace_packages(include=TFX_NAMESPACE_PACKAGES)
+  packages = find_namespace_packages(
+      include=TFX_NAMESPACE_PACKAGES, exclude=EXCLUDED_PACKAGES)
   # Do not support wheel builds for "tfx-dev".
   build_wheel_command = _UnsupportedDevBuildWheelCommand  # pylint: disable=invalid-name
   # Include TFX entrypoints.
@@ -285,7 +287,8 @@ elif package_config.PACKAGE_NAME == 'ml-pipelines-sdk':
   extras_require = {}
   description = _PIPELINES_SDK_DESCRIPTION
   long_description = _PIPELINES_SDK_LONG_DESCRIPTION
-  packages = find_namespace_packages(include=ML_PIPELINES_SDK_PACKAGES)
+  packages = find_namespace_packages(
+      include=ML_PIPELINES_SDK_PACKAGES, exclude=EXCLUDED_PACKAGES)
   # Use the default pip wheel building command.
   build_wheel_command = bdist_wheel.bdist_wheel  # pylint: disable=invalid-name
   # Include ML Pipelines SDK entrypoints.
@@ -294,14 +297,14 @@ elif package_config.PACKAGE_NAME == 'tfx':
   # Recommended installation package for TFX. This package builds on top of
   # the "ml-pipelines-sdk" pipeline authoring SDK package and adds first-party
   # TFX components and additional functionality.
-  install_requires = (
-      ['ml-pipelines-sdk==%s' % version.__version__] +
-      dependencies.make_required_install_packages())
+  install_requires = (['ml-pipelines-sdk==%s' % version.__version__] +
+                      dependencies.make_required_install_packages())
   extras_require = tfx_extras_requires
   description = _TFX_DESCRIPTION
   long_description = _TFX_LONG_DESCRIPTION
   packages = find_namespace_packages(
-      include=TFX_NAMESPACE_PACKAGES, exclude=ML_PIPELINES_SDK_PACKAGES)
+      include=TFX_NAMESPACE_PACKAGES,
+      exclude=ML_PIPELINES_SDK_PACKAGES + EXCLUDED_PACKAGES)
   # Use the pip wheel building command that includes proto generation.
   build_wheel_command = _BdistWheelCommand  # pylint: disable=invalid-name
   # Include TFX entrypoints.
