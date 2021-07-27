@@ -51,6 +51,17 @@ EXECUTION_STATE_COMPLETE = 'complete'
 EXECUTION_STATE_NEW = 'new'
 FINAL_EXECUTION_STATES = frozenset(
     (EXECUTION_STATE_CACHED, EXECUTION_STATE_COMPLETE))
+
+
+def _is_execution_final(execution: metadata_store_pb2.Execution) -> bool:
+  return (execution.properties[_EXECUTION_TYPE_KEY_STATE].string_value
+          in FINAL_EXECUTION_STATES)
+
+
+def _is_artifact_live(artifact: metadata_store_pb2.Artifact) -> bool:
+  return artifact.mlmd_artifact.state == metadata_store_pb2.Artifact.LIVE
+
+
 # Context type, the following three types of contexts are supported:
 #  - pipeline level context is shared within one pipeline, across multiple
 #    pipeline runs.
@@ -98,8 +109,7 @@ def sqlite_metadata_connection_config(
   fileio.makedirs(os.path.dirname(metadata_db_uri))
   connection_config = metadata_store_pb2.ConnectionConfig()
   connection_config.sqlite.filename_uri = metadata_db_uri
-  connection_config.sqlite.connection_mode = \
-    metadata_store_pb2.SqliteMetadataSourceConfig.READWRITE_OPENCREATE
+  connection_config.sqlite.connection_mode = metadata_store_pb2.SqliteMetadataSourceConfig.READWRITE_OPENCREATE
   return connection_config
 
 
@@ -739,8 +749,7 @@ class Metadata(object):
     ]
     contexts = [ctx for ctx in contexts if ctx is not None]
     # If execution state is already in final state, skips publishing.
-    if execution.properties[
-        _EXECUTION_TYPE_KEY_STATE].string_value in FINAL_EXECUTION_STATES:
+    if _is_execution_final(execution):
       return
     self.update_execution(
         execution=execution,
@@ -945,6 +954,12 @@ class Metadata(object):
     if context is None:
       raise RuntimeError('Pipeline run context for %s does not exist' %
                          pipeline_info)
+    exec_by_context = self.store.get_executions_by_context(context.id)
+    exec_in_final_state = list(filter(_is_execution_final))
+    if len(exec_in_final_state) < exec_by_context:
+      absl.logging.info(
+          'Skipped some non final executions in given context %d: %s',
+          context.id, exec_by_context)
     for execution in self.store.get_executions_by_context(context.id):
       if execution.properties[
           'component_id'].string_value == producer_component_id:
@@ -974,6 +989,9 @@ class Metadata(object):
     for a in artifacts_by_id:
       tfx_artifact = artifact_utils.deserialize_artifact(
           artifact_types[a.type_id], a)
+      if not _is_artifact_live(tfx_artifact):
+        absl.logging.warn('Skipping non live artifact %s in context (id=%d)',
+                          tfx_artifact, context.id)
       result_artifacts.append(tfx_artifact)
     return result_artifacts
 

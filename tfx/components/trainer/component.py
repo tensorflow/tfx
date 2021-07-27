@@ -87,8 +87,7 @@ class Trainer(base_component.BaseComponent):
                                  data_types.RuntimeParameter]] = None,
       eval_args: Optional[Union[trainer_pb2.EvalArgs,
                                 data_types.RuntimeParameter]] = None,
-      custom_config: Optional[Union[Dict[Text, Any],
-                                    data_types.RuntimeParameter]] = None,
+      custom_config: Optional[Dict[Text, Any]] = None,
       custom_executor_spec: Optional[executor_spec.ExecutorSpec] = None):
     """Construct a Trainer component.
 
@@ -196,9 +195,7 @@ class Trainer(base_component.BaseComponent):
         module_file=module_file,
         run_fn=run_fn,
         trainer_fn=trainer_fn,
-        custom_config=(custom_config
-                       if isinstance(custom_config, data_types.RuntimeParameter)
-                       else json_utils.dumps(custom_config)),
+        custom_config=json_utils.dumps(custom_config),
         model=model,
         model_run=model_run)
     super(Trainer, self).__init__(
