@@ -199,6 +199,7 @@ class ChicagoTaxiDataset(benchmark_dataset.BenchmarkDataset):
     shutil.copytree(transform_model_dir, tft_saved_model_path)
 
 
+# pylint: disable=protected-access
 class WideChicagoTaxiDataset(ChicagoTaxiDataset):
   """Chicago taxi dataset with a TFT preprocessing_fn containing specified number of analyzers.
 
@@ -211,11 +212,21 @@ class WideChicagoTaxiDataset(ChicagoTaxiDataset):
   _VOCABS_SHARE = 0.5
   _BUCKETIZE_SHARE = 0.25
 
+  _VOCABULARY_KEYS = taxi_utils._VOCAB_FEATURE_KEYS
+  _BUCKETIZE_KEYS = taxi_utils._BUCKET_FEATURE_KEYS
+  _SCALE_KEYS = taxi_utils._DENSE_FLOAT_FEATURE_KEYS
+
   def __init__(self, base_dir: Optional[Text] = None, num_analyzers: int = 10):
     super(WideChicagoTaxiDataset, self).__init__(base_dir)
-    self._num_vocabs = math.ceil(num_analyzers * self._VOCABS_SHARE)
-    self._num_bucketize = math.ceil(num_analyzers * self._BUCKETIZE_SHARE)
-    self._num_scale = num_analyzers - self._num_vocabs - self._num_bucketize
+    self._num_vocabs = max(
+        len(self._VOCABULARY_KEYS),
+        math.ceil(num_analyzers * self._VOCABS_SHARE))
+    self._num_bucketize = max(
+        len(self._BUCKETIZE_KEYS),
+        math.ceil(num_analyzers * self._BUCKETIZE_SHARE))
+    self._num_scale = max(
+        len(self._SCALE_KEYS),
+        num_analyzers - self._num_vocabs - self._num_bucketize)
 
   def tft_preprocessing_fn(self):
 
@@ -229,26 +240,23 @@ class WideChicagoTaxiDataset(ChicagoTaxiDataset):
         Map from string feature key to transformed feature operations.
       """
       outputs = {}
-      # pylint: disable=protected-access
       for idx, key in enumerate(
           itertools.islice(
-              itertools.cycle(taxi_utils._BUCKET_FEATURE_KEYS),
+              itertools.cycle(self._BUCKETIZE_KEYS),
               self._num_bucketize)):
         outputs["bucketized" + str(idx)] = tft.bucketize(
             taxi_utils._fill_in_missing(inputs[key]),
             taxi_utils._FEATURE_BUCKET_COUNT)
 
       for idx, key in enumerate(
-          itertools.islice(
-              itertools.cycle(taxi_utils._DENSE_FLOAT_FEATURE_KEYS),
-              self._num_scale)):
+          itertools.islice(itertools.cycle(self._SCALE_KEYS), self._num_scale)):
         # Preserve this feature as a dense float, setting nan's to the mean.
         outputs["scaled" + str(idx)] = tft.scale_to_z_score(
             taxi_utils._fill_in_missing(inputs[key]))
 
       for idx, key in enumerate(
           itertools.islice(
-              itertools.cycle(taxi_utils._VOCAB_FEATURE_KEYS),
+              itertools.cycle(self._VOCABULARY_KEYS),
               self._num_vocabs)):
         outputs["vocab" + str(idx)] = tft.compute_and_apply_vocabulary(
             taxi_utils._fill_in_missing(inputs[key]),
@@ -262,6 +270,7 @@ class WideChicagoTaxiDataset(ChicagoTaxiDataset):
       return outputs
 
     return wide_preprocessing_fn
+# pylint: enable=protected-access
 
 
 def get_dataset(base_dir=None):
