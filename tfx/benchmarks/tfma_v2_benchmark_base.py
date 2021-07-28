@@ -29,6 +29,7 @@ from tensorflow_model_analysis import config
 from tensorflow_model_analysis import constants
 from tensorflow_model_analysis import model_util
 from tensorflow_model_analysis.evaluators import metrics_plots_and_validations_evaluator
+from tensorflow_model_analysis.evaluators import poisson_bootstrap
 from tensorflow_model_analysis.extractors import example_weights_extractor
 from tensorflow_model_analysis.extractors import features_extractor
 from tensorflow_model_analysis.extractors import labels_extractor
@@ -423,8 +424,9 @@ class TFMAV2BenchmarkBase(benchmark_base.BenchmarkBase):
                     computations).process(elem)))
 
       combiner = metrics_plots_and_validations_evaluator._ComputationsCombineFn(  # pylint: disable=protected-access
-          computations=computations,
-          compute_with_sampling=with_confidence_intervals)
+          computations=computations)
+      if with_confidence_intervals:
+        combiner = poisson_bootstrap._BootstrapCombineFn(combiner)  # pylint: disable=protected-access
       combiner.setup()
 
       accumulators = []
@@ -443,15 +445,12 @@ class TFMAV2BenchmarkBase(benchmark_base.BenchmarkBase):
     # Sanity check the example count. This is not timed.
     example_count_key = metric_types.MetricKey(
         name="example_count", model_name="candidate" if multi_model else "")
-    example_count = None
-    for x in final_output:
-      if example_count_key in x:
-        example_count = x[example_count_key]
-        break
-
-    if example_count is None:
-      raise ValueError("example_count was not in the final list of metrics. "
-                       "metrics were: %s" % str(final_output))
+    if example_count_key in final_output:
+      example_count = final_output[example_count_key]
+    else:
+      raise ValueError("example_count_key ({}) was not in the final list of "
+                       "metrics. metrics were: {}".format(
+                           example_count_key, final_output))
 
     if with_confidence_intervals:
       # If we're computing using confidence intervals, the example count will
