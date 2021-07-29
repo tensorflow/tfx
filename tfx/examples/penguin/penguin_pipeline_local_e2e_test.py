@@ -232,9 +232,8 @@ class PenguinPipelineLocalEndToEndTest(tf.test.TestCase,
 
     self._assertPipelineExecution(has_bulk_inferrer=True)
 
-  @parameterized.parameters(('keras',), ('flax_experimental',))
-  def testPenguinPipelineLocalWithImporter(self, model_framework):
-    module_file = self._module_file_name(model_framework)
+  def testPenguinPipelineLocalWithImporter(self):
+    module_file = self._module_file_name('keras')
     LocalDagRunner().run(
         penguin_pipeline_local._create_pipeline(
             pipeline_name=self._pipeline_name,
@@ -281,10 +280,7 @@ class PenguinPipelineLocalEndToEndTest(tf.test.TestCase,
           break
     return store.get_artifacts_by_id(artifact_ids)
 
-  @parameterized.parameters(
-      ('keras',),
-      ('flax_experimental',))
-  def testPenguinPipelineLocalWithRollingWindow(self, model_framework):
+  def testPenguinPipelineLocalWithRollingWindow(self):
     module_file = self._module_file_name('keras')
     examplegen_input_config = proto.Input(splits=[
         proto.Input.Split(name='test', pattern='day{SPAN}/*'),
@@ -396,11 +392,8 @@ class PenguinPipelineLocalEndToEndTest(tf.test.TestCase,
         self._get_input_examples_artifacts(store, trainer_execution_type),
         2)
 
-  @parameterized.parameters(
-      ('keras',),
-      ('flax_experimental',))
-  def testPenguinPipelineLocalConditionalWithoutPusher(self, model_framework):
-    module_file = self._module_file_name(model_framework)
+  def testPenguinPipelineLocalConditionalWithoutPusher(self):
+    module_file = self._module_file_name('keras')
     pipeline = penguin_pipeline_local._create_pipeline(
         pipeline_name=self._pipeline_name,
         data_root=self._data_root,
