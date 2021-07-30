@@ -18,9 +18,10 @@ import functools
 import threading
 import time
 import typing
-from typing import List
+from typing import List, Mapping, Optional
 
 from absl import logging
+from tfx import types
 from tfx.orchestration import metadata
 from tfx.orchestration.experimental.core import async_pipeline_task_gen
 from tfx.orchestration.experimental.core import pipeline_state as pstate
@@ -73,7 +74,9 @@ def _to_status_not_ok_error(fn):
 @_pipeline_ops_lock
 def initiate_pipeline_start(
     mlmd_handle: metadata.Metadata,
-    pipeline: pipeline_pb2.Pipeline) -> pstate.PipelineState:
+    pipeline: pipeline_pb2.Pipeline,
+    pipeline_run_metadata: Optional[Mapping[str, types.Property]] = None
+) -> pstate.PipelineState:
   """Initiates a pipeline start operation.
 
   Upon success, MLMD is updated to signal that the pipeline must be started.
@@ -81,6 +84,7 @@ def initiate_pipeline_start(
   Args:
     mlmd_handle: A handle to the MLMD db.
     pipeline: IR of the pipeline to start.
+    pipeline_run_metadata: Pipeline run metadata.
 
   Returns:
     The `PipelineState` object upon success.
@@ -98,7 +102,7 @@ def initiate_pipeline_start(
         code=status_lib.Code.INVALID_ARGUMENT,
         message='Sync pipeline IR must specify pipeline_run_id.')
 
-  return pstate.PipelineState.new(mlmd_handle, pipeline)
+  return pstate.PipelineState.new(mlmd_handle, pipeline, pipeline_run_metadata)
 
 
 DEFAULT_WAIT_FOR_INACTIVATION_TIMEOUT_SECS = 120.0

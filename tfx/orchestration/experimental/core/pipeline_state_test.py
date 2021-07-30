@@ -240,7 +240,10 @@ class PipelineStateTest(test_utils.TfxTest):
   def test_async_pipeline_views(self):
     with self._mlmd_connection as m:
       pipeline = _test_pipeline('pipeline1')
-      with pstate.PipelineState.new(m, pipeline) as pipeline_state:
+      with pstate.PipelineState.new(m, pipeline, {
+          'foo': 1,
+          'bar': 'baz'
+      }) as pipeline_state:
         pipeline_state.set_pipeline_execution_state(
             metadata_store_pb2.Execution.COMPLETE)
 
@@ -248,6 +251,7 @@ class PipelineStateTest(test_utils.TfxTest):
           m, task_lib.PipelineUid.from_pipeline(pipeline))
       self.assertLen(views, 1)
       self.assertProtoEquals(pipeline, views[0].pipeline)
+      self.assertEqual({'foo': 1, 'bar': 'baz'}, views[0].pipeline_run_metadata)
 
       pstate.PipelineState.new(m, pipeline)
       views = pstate.PipelineView.load_all(
@@ -272,7 +276,10 @@ class PipelineStateTest(test_utils.TfxTest):
 
     with self._mlmd_connection as m:
       pipeline = _create_sync_pipeline('pipeline', '001')
-      with pstate.PipelineState.new(m, pipeline) as pipeline_state:
+      with pstate.PipelineState.new(m, pipeline, {
+          'foo': 1,
+          'bar': 'baz'
+      }) as pipeline_state:
         pipeline_state.set_pipeline_execution_state(
             metadata_store_pb2.Execution.COMPLETE)
         pipeline_state.save_property(pstate._PIPELINE_STATUS_MSG, 'msg')
@@ -282,6 +289,7 @@ class PipelineStateTest(test_utils.TfxTest):
       self.assertLen(views, 1)
       self.assertEqual(views[0].pipeline_run_id, '001')
       self.assertEqual(views[0].pipeline_status_message, 'msg')
+      self.assertEqual({'foo': 1, 'bar': 'baz'}, views[0].pipeline_run_metadata)
       self.assertProtoEquals(pipeline, views[0].pipeline)
 
       pipeline2 = _create_sync_pipeline('pipeline', '002')

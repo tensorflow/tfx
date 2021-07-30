@@ -16,7 +16,7 @@
 import base64
 import threading
 import time
-from typing import List, Optional
+from typing import Dict, List, Mapping, Optional
 
 from tfx import types
 from tfx.orchestration import data_types_utils
@@ -39,6 +39,7 @@ _PIPELINE_STATUS_MSG = 'pipeline_status_msg'
 _NODE_STOP_INITIATED_PREFIX = 'node_stop_initiated_'
 _NODE_STATUS_CODE_PREFIX = 'node_status_code_'
 _NODE_STATUS_MSG_PREFIX = 'node_status_msg_'
+_PIPELINE_RUN_METADATA_PREFIX = 'pipeline_run_metadata_'
 _ORCHESTRATOR_EXECUTION_TYPE = metadata_store_pb2.ExecutionType(
     name=_ORCHESTRATOR_RESERVED_ID,
     properties={_PIPELINE_IR: metadata_store_pb2.STRING})
@@ -96,8 +97,12 @@ class PipelineState:
     self._execution = None
 
   @classmethod
-  def new(cls, mlmd_handle: metadata.Metadata,
-          pipeline: pipeline_pb2.Pipeline) -> 'PipelineState':
+  def new(
+      cls,
+      mlmd_handle: metadata.Metadata,
+      pipeline: pipeline_pb2.Pipeline,
+      pipeline_run_metadata: Optional[Mapping[str, types.Property]] = None,
+  ) -> 'PipelineState':
     """Creates a `PipelineState` object for a new pipeline.
 
     No active pipeline with the same pipeline uid should exist for the call to
@@ -106,6 +111,7 @@ class PipelineState:
     Args:
       mlmd_handle: A handle to the MLMD db.
       pipeline: IR of the pipeline.
+      pipeline_run_metadata: Pipeline run metadata.
 
     Returns:
       A `PipelineState` object.
@@ -125,15 +131,19 @@ class PipelineState:
           code=status_lib.Code.ALREADY_EXISTS,
           message=f'Pipeline with uid {pipeline_uid} already active.')
 
+    exec_properties = {
+        _PIPELINE_IR:
+            base64.b64encode(pipeline.SerializeToString()).decode('utf-8')
+    }
+    if pipeline_run_metadata:
+      for key, value in pipeline_run_metadata.items():
+        exec_properties[f'{_PIPELINE_RUN_METADATA_PREFIX}{key}'] = value
+
     execution = execution_lib.prepare_execution(
         mlmd_handle,
         _ORCHESTRATOR_EXECUTION_TYPE,
         metadata_store_pb2.Execution.NEW,
-        exec_properties={
-            _PIPELINE_IR:
-                base64.b64encode(pipeline.SerializeToString()).decode('utf-8')
-        },
-    )
+        exec_properties=exec_properties)
     if pipeline.execution_mode == pipeline_pb2.Pipeline.SYNC:
       data_types_utils.set_metadata_value(
           execution.custom_properties[_PIPELINE_RUN_ID],
@@ -448,6 +458,14 @@ class PipelineView:
     if _PIPELINE_STATUS_MSG in self.execution.custom_properties:
       return self.execution.custom_properties[_PIPELINE_STATUS_MSG].string_value
     return ''
+
+  @property
+  def pipeline_run_metadata(self) -> Dict[str, types.Property]:
+    return data_types_utils.build_value_dict({
+        k.split(_PIPELINE_RUN_METADATA_PREFIX)[1]: v
+        for k, v in self.execution.custom_properties.items()
+        if k.startswith(_PIPELINE_RUN_METADATA_PREFIX)
+    })
 
 
 def get_orchestrator_contexts(
