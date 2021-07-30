@@ -83,7 +83,7 @@ def make_required_install_packages():
       # TODO(b/173976603): remove pinned keras-tuner upperbound when its
       # dependency expecatation with TensorFlow is sorted out.
       'keras-tuner>=1,<1.0.2',
-      'kubernetes>=10.0.1,<12',
+      'kubernetes>=10.0.1,<13',
       # TODO(b/179195488): remove numpy dependency after 1.20 migration.
       # This dependency was added only to limit numpy 1.20 installation.
       'numpy>=1.16,<1.20',

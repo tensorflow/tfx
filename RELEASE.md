@@ -12,11 +12,14 @@
 ## Deprecations
 
 ## Bug Fixes and Other Changes
+
 *   Fixed issue when InputValuePlaceholder is used as component parameter in
     container based component.
+*   Depends on `kubernetes>=10.0.1,<13`
 *   `CsvToExample` now supports multi-line strings.
 *   `tfx.benchmarks` package was removed from the Python TFX wheel. This package
     is used only for benchmarking and not useful for end users.
+
 ## Documentation Updates
 
 # Version 1.0.0
