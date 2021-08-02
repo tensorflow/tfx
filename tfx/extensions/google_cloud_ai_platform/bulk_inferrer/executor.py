@@ -156,18 +156,18 @@ class Executor(bulk_inferrer_executor.Executor):
         api_version,
         requestBuilder=telemetry_utils.TFXHttpRequest,
     )
-    new_model_created = False
+    new_model_endpoint_created = False
     try:
-      new_model_created = runner.create_model_for_aip_prediction_if_not_exist(
-          api, job_labels, ai_platform_serving_args)
+      new_model_endpoint_created = runner.create_model_for_aip_prediction_if_not_exist(
+          job_labels, ai_platform_serving_args, api)
       runner.deploy_model_for_aip_prediction(
-          api,
-          model_path,
-          model_version,
-          ai_platform_serving_args,
-          job_labels,
-          skip_model_creation=True,
-          set_default_version=False,
+          serving_path=model_path,
+          model_version_name=model_version,
+          ai_platform_serving_args=ai_platform_serving_args,
+          api=api,
+          labels=job_labels,
+          skip_model_endpoint_creation=True,
+          set_default=False,
       )
       self._run_model_inference(data_spec, output_example_spec,
                                 input_dict['examples'], output_examples,
@@ -177,14 +177,15 @@ class Executor(bulk_inferrer_executor.Executor):
                     str(e))
       raise
     finally:
-      # Guarantee newly created resources are cleaned up even if theinference
+      # Guarantee newly created resources are cleaned up even if the inference
       # job failed.
 
       # Clean up the newly deployed model.
-      runner.delete_model_version_from_aip_if_exists(api, model_version,
-                                                     ai_platform_serving_args)
-      if new_model_created:
-        runner.delete_model_from_aip_if_exists(api, ai_platform_serving_args)
+      runner.delete_model_from_aip_if_exists(
+          model_version_name=model_version,
+          ai_platform_serving_args=ai_platform_serving_args,
+          api=api,
+          delete_model_endpoint=new_model_endpoint_created)
 
   def _get_inference_spec(
       self, model_path: Text, model_version: Text,

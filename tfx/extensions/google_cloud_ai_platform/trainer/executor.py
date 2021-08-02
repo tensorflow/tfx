@@ -24,6 +24,8 @@ from tfx import types
 from tfx.components.trainer import executor as tfx_trainer_executor
 from tfx.dsl.components.base import base_executor
 from tfx.extensions.google_cloud_ai_platform import runner
+from tfx.extensions.google_cloud_ai_platform.constants import ENABLE_VERTEX_KEY
+from tfx.extensions.google_cloud_ai_platform.constants import VERTEX_REGION_KEY
 from tfx.types import standard_component_specs
 from tfx.utils import doc_controls
 from tfx.utils import json_utils
@@ -39,13 +41,13 @@ JOB_ID_KEY = doc_controls.documented(
 
 ENABLE_UCAIP_KEY = doc_controls.documented(
     obj='ai_platform_training_enable_ucaip',
-    doc='Keys to the items in custom_config of Trainer for enabling uCAIP '
-    'Training.')
+    doc='Deprecated. Please use ENABLE_VERTEX_KEY instead. Keys to the items in'
+    ' custom_config of Trainer for enabling uCAIP Training. ')
 
 UCAIP_REGION_KEY = doc_controls.documented(
     obj='ai_platform_training_ucaip_region',
-    doc='Keys to the items in custom_config of Trainer for specify the region '
-    'of uCAIP.')
+    doc='Deprecated. Please use VERTEX_REGION_KEY instead. Keys to the items in'
+    ' custom_config of Trainer for specifying the region of uCAIP.')
 
 
 class GenericExecutor(base_executor.BaseExecutor):
@@ -91,8 +93,11 @@ class GenericExecutor(base_executor.BaseExecutor):
       raise ValueError(err_msg)
 
     job_id = custom_config.get(JOB_ID_KEY)
-    enable_ucaip = custom_config.get(ENABLE_UCAIP_KEY, False)
-    ucaip_region = custom_config.get(UCAIP_REGION_KEY)
+
+    enable_vertex = custom_config.get(
+        ENABLE_VERTEX_KEY, custom_config.get(ENABLE_UCAIP_KEY, False))
+    vertex_region = custom_config.get(
+        VERTEX_REGION_KEY, custom_config.get(UCAIP_REGION_KEY))
 
     executor_class = self._GetExecutorClass()
     executor_class_path = '%s.%s' % (executor_class.__module__,
@@ -100,7 +105,7 @@ class GenericExecutor(base_executor.BaseExecutor):
     # Note: exec_properties['custom_config'] here is a dict.
     return runner.start_aip_training(input_dict, output_dict, exec_properties,
                                      executor_class_path, training_inputs,
-                                     job_id, enable_ucaip, ucaip_region)
+                                     job_id, enable_vertex, vertex_region)
 
 
 class Executor(GenericExecutor):

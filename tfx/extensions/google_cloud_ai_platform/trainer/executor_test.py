@@ -109,14 +109,14 @@ class ExecutorTest(tf.test.TestCase):
             'jobDir': self._job_dir,
         }, None, False, None)
 
-  def testDoWithEnableUCaipOverride(self):
+  def testDoWithEnableVertexOverride(self):
     executor = ai_platform_trainer_executor.Executor()
-    enable_ucaip = True
-    ucaip_region = 'us-central2'
+    enable_vertex = True
+    vertex_region = 'us-central2'
     self._exec_properties[standard_component_specs.CUSTOM_CONFIG_KEY][
-        ai_platform_trainer_executor.ENABLE_UCAIP_KEY] = enable_ucaip
+        ai_platform_trainer_executor.ENABLE_VERTEX_KEY] = enable_vertex
     self._exec_properties[standard_component_specs.CUSTOM_CONFIG_KEY][
-        ai_platform_trainer_executor.UCAIP_REGION_KEY] = ucaip_region
+        ai_platform_trainer_executor.VERTEX_REGION_KEY] = vertex_region
     executor.Do(self._inputs, self._outputs,
                 self._serialize_custom_config_under_test())
     self.mock_runner.start_aip_training.assert_called_with(
@@ -124,7 +124,7 @@ class ExecutorTest(tf.test.TestCase):
         self._executor_class_path, {
             'project': self._project_id,
             'jobDir': self._job_dir,
-        }, None, enable_ucaip, ucaip_region)
+        }, None, enable_vertex, vertex_region)
 
 
 if __name__ == '__main__':

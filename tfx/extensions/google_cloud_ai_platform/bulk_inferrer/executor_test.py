@@ -124,17 +124,18 @@ class ExecutorTest(tf.test.TestCase):
         {telemetry_utils.LABEL_TFX_EXECUTOR: executor_class_path}):
       job_labels = telemetry_utils.make_labels_dict()
     mock_runner.deploy_model_for_aip_prediction.assert_called_once_with(
-        mock.ANY,
-        path_utils.serving_model_path(self._model.uri),
-        mock.ANY,
-        ai_platform_serving_args,
-        job_labels,
-        skip_model_creation=True,
-        set_default_version=False,)
-    mock_runner.delete_model_version_from_aip_if_exists.assert_called_once_with(
-        mock.ANY, mock.ANY, ai_platform_serving_args)
+        serving_path=path_utils.serving_model_path(self._model.uri),
+        model_version_name=mock.ANY,
+        ai_platform_serving_args=ai_platform_serving_args,
+        labels=job_labels,
+        api=mock.ANY,
+        skip_model_endpoint_creation=True,
+        set_default=False)
     mock_runner.delete_model_from_aip_if_exists.assert_called_once_with(
-        mock.ANY, ai_platform_serving_args)
+        model_version_name=mock.ANY,
+        ai_platform_serving_args=ai_platform_serving_args,
+        api=mock.ANY,
+        delete_model_endpoint=True)
 
   @mock.patch(
       'tfx.extensions.google_cloud_ai_platform.bulk_inferrer.executor.discovery'
@@ -189,17 +190,18 @@ class ExecutorTest(tf.test.TestCase):
         {telemetry_utils.LABEL_TFX_EXECUTOR: executor_class_path}):
       job_labels = telemetry_utils.make_labels_dict()
     mock_runner.deploy_model_for_aip_prediction.assert_called_once_with(
-        mock.ANY,
-        path_utils.serving_model_path(self._model.uri),
-        mock.ANY,
-        ai_platform_serving_args,
-        job_labels,
-        skip_model_creation=True,
-        set_default_version=False,
-    )
-    mock_runner.delete_model_version_from_aip_if_exists.assert_called_once_with(
-        mock.ANY, mock.ANY, ai_platform_serving_args)
-    mock_runner.delete_model_from_aip_if_exists.assert_not_called()
+        serving_path=path_utils.serving_model_path(self._model.uri),
+        model_version_name=mock.ANY,
+        ai_platform_serving_args=ai_platform_serving_args,
+        labels=job_labels,
+        api=mock.ANY,
+        skip_model_endpoint_creation=True,
+        set_default=False)
+    mock_runner.delete_model_from_aip_if_exists.assert_called_once_with(
+        model_version_name=mock.ANY,
+        ai_platform_serving_args=ai_platform_serving_args,
+        api=mock.ANY,
+        delete_model_endpoint=False)
 
   @mock.patch(
       'tfx.extensions.google_cloud_ai_platform.bulk_inferrer.executor.discovery'
@@ -237,10 +239,11 @@ class ExecutorTest(tf.test.TestCase):
     with self.assertRaises(Exception):
       bulk_inferrer.Do(input_dict, output_dict, exec_properties)
 
-    mock_runner.delete_model_version_from_aip_if_exists.assert_called_once_with(
-        mock.ANY, mock.ANY, ai_platform_serving_args)
     mock_runner.delete_model_from_aip_if_exists.assert_called_once_with(
-        mock.ANY, ai_platform_serving_args)
+        model_version_name=mock.ANY,
+        ai_platform_serving_args=ai_platform_serving_args,
+        api=mock.ANY,
+        delete_model_endpoint=True)
 
 
 if __name__ == '__main__':

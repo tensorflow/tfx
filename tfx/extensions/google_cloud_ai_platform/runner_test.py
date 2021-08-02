@@ -18,12 +18,20 @@ from __future__ import division
 from __future__ import print_function
 
 import copy
+import importlib
 import os
 from typing import Any, Dict, Text
 from unittest import mock
 
 # Standard Imports
 
+from google.auth import credentials as auth_credentials
+from google.cloud import aiplatform
+from google.cloud.aiplatform import initializer
+from google.cloud.aiplatform.compat.types import endpoint
+from google.cloud.aiplatform_v1.services.endpoint_service import (
+    client as endpoint_service_client,
+)
 from google.cloud.aiplatform_v1beta1.types.custom_job import CustomJob
 from google.cloud.aiplatform_v1beta1.types.job_state import JobState
 from googleapiclient import errors
@@ -80,10 +88,10 @@ class RunnerTest(tf.test.TestCase):
         'state': 'SUCCEEDED',
     }
 
-  def _setUpUcaipTrainingMocks(self):
+  def _setUpVertexTrainingMocks(self):
     self._mock_create = mock.Mock()
     self._mock_api_client.create_custom_job = self._mock_create
-    self._mock_create.return_value = CustomJob(name='ucaip_job_study_id')
+    self._mock_create.return_value = CustomJob(name='vertex_job_study_id')
     self._mock_get = mock.Mock()
     self._mock_api_client.get_custom_job = self._mock_get
     self._mock_get.return_value = CustomJob(state=JobState.JOB_STATE_SUCCEEDED)
@@ -175,9 +183,9 @@ class RunnerTest(tf.test.TestCase):
 
   @mock.patch(
       'tfx.extensions.google_cloud_ai_platform.training_clients.gapic')
-  def testStartAIPTraining_uCAIP(self, mock_gapic):
+  def testStartAIPTraining_Vertex(self, mock_gapic):
     mock_gapic.JobServiceClient.return_value = self._mock_api_client
-    self._setUpUcaipTrainingMocks()
+    self._setUpVertexTrainingMocks()
 
     class_path = 'foo.bar.class'
     region = 'us-central1'
@@ -216,13 +224,13 @@ class RunnerTest(tf.test.TestCase):
             ],
         }, body['job_spec'])
     self.assertStartsWith(body['display_name'], 'tfx_')
-    self._mock_get.assert_called_with(name='ucaip_job_study_id')
+    self._mock_get.assert_called_with(name='vertex_job_study_id')
 
   @mock.patch(
       'tfx.extensions.google_cloud_ai_platform.training_clients.gapic')
-  def testStartAIPTrainingWithUserContainer_uCAIP(self, mock_gapic):
+  def testStartAIPTrainingWithUserContainer_Vertex(self, mock_gapic):
     mock_gapic.JobServiceClient.return_value = self._mock_api_client
-    self._setUpUcaipTrainingMocks()
+    self._setUpVertexTrainingMocks()
 
     class_path = 'foo.bar.class'
 
@@ -269,7 +277,7 @@ class RunnerTest(tf.test.TestCase):
             ],
         }, body['job_spec'])
     self.assertEqual(body['display_name'], 'my_jobid')
-    self._mock_get.assert_called_with(name='ucaip_job_study_id')
+    self._mock_get.assert_called_with(name='vertex_job_study_id')
 
   def _setUpPredictionMocks(self):
     self._serving_path = os.path.join(self._output_data_dir, 'serving_path')
@@ -301,6 +309,55 @@ class RunnerTest(tf.test.TestCase):
         'response': {
             'name': self._model_version,
         },
+    }
+
+  def _setUpVertexPredictionMocks(self):
+    importlib.reload(initializer)
+    importlib.reload(aiplatform)
+
+    self._serving_container_image_uri = 'gcr.io/path/to/container'
+    self._serving_path = os.path.join(self._output_data_dir, 'serving_path')
+    self._endpoint_name = 'endpoint-name'
+    self._endpoint_region = 'us-central1'
+    self._deployed_model_id = 'model_id'
+
+    self._mock_create_client = mock.Mock()
+    initializer.global_config.create_client = self._mock_create_client
+    self._mock_create_client.return_value = mock.Mock(
+        spec=endpoint_service_client.EndpointServiceClient
+    )
+
+    self._mock_get_endpoint = mock.Mock()
+    endpoint_service_client.EndpointServiceClient.get_endpoint = self._mock_get_endpoint
+    self._mock_get_endpoint.return_value = endpoint.Endpoint(
+        display_name=self._endpoint_name,
+    )
+
+    aiplatform.init(project=self._project_id, location=None,
+                    credentials=mock.Mock(
+                        spec=auth_credentials.AnonymousCredentials()))
+
+    self._mock_endpoint = aiplatform.Endpoint(
+        endpoint_name='projects/{}/locations/us-central1/endpoints/1234'.format(
+            self._project_id))
+
+    self._mock_endpoint_create = mock.Mock()
+    aiplatform.Endpoint.create = self._mock_endpoint_create
+    self._mock_endpoint_create.return_value = self._mock_endpoint
+
+    self._mock_endpoint_list = mock.Mock()
+    aiplatform.Endpoint.list = self._mock_endpoint_list
+    self._mock_endpoint_list.return_value = [self._mock_endpoint]
+
+    self._mock_model_upload = mock.Mock()
+    aiplatform.Model.upload = self._mock_model_upload
+
+    self._mock_model_deploy = mock.Mock()
+    self._mock_model_upload.return_value.deploy = self._mock_model_deploy
+
+    self._ai_platform_serving_args_vertex = {
+        'endpoint_name': self._endpoint_name,
+        'project_id': self._project_id,
     }
 
   def _assertDeployModelMockCalls(self,
@@ -352,14 +409,52 @@ class RunnerTest(tf.test.TestCase):
             self._project_id, self._model_name, self._model_version))
     self._mock_set_default_execute.assert_called_with()
 
+  def _assertDeployModelMockCallsVertex(self,
+                                        expected_endpoint_create_body=None,
+                                        expected_model_upload_body=None,
+                                        expected_model_deploy_body=None):
+    if not expected_endpoint_create_body:
+      expected_endpoint_create_body = {
+          'display_name': self._endpoint_name,
+          'labels': self._job_labels,
+      }
+
+    if not expected_model_upload_body:
+      expected_model_upload_body = {
+          'display_name': self._model_name,
+          'artifact_uri': self._serving_path,
+          'serving_container_image_uri': self._serving_container_image_uri,
+      }
+
+    if not expected_model_deploy_body:
+      expected_model_deploy_body = {
+          'endpoint': self._mock_endpoint,
+          'traffic_percentage': 100,
+      }
+
+    self._mock_endpoint_create.assert_called_with(
+        **expected_endpoint_create_body)
+
+    self._mock_model_upload.assert_called_with(
+        **expected_model_upload_body
+    )
+
+    self._mock_model_deploy.assert_called_with(
+        **expected_model_deploy_body
+    )
+
+    self._mock_endpoint_list.assert_called_with(
+        filter='display_name="{}"'.format(self._endpoint_name))
+
   def testDeployModelForAIPPrediction(self):
     self._setUpPredictionMocks()
 
-    runner.deploy_model_for_aip_prediction(self._mock_api_client,
-                                           self._serving_path,
-                                           self._model_version,
-                                           self._ai_platform_serving_args,
-                                           self._job_labels)
+    runner.deploy_model_for_aip_prediction(
+        serving_path=self._serving_path,
+        model_version_name=self._model_version,
+        ai_platform_serving_args=self._ai_platform_serving_args,
+        labels=self._job_labels,
+        api=self._mock_api_client)
 
     expected_models_create_body = {
         'name': self._model_name,
@@ -381,11 +476,12 @@ class RunnerTest(tf.test.TestCase):
     }
 
     with self.assertRaises(RuntimeError):
-      runner.deploy_model_for_aip_prediction(self._mock_api_client,
-                                             self._serving_path,
-                                             self._model_version,
-                                             self._ai_platform_serving_args,
-                                             self._job_labels)
+      runner.deploy_model_for_aip_prediction(
+          serving_path=self._serving_path,
+          model_version_name=self._model_version,
+          ai_platform_serving_args=self._ai_platform_serving_args,
+          labels=self._job_labels,
+          api=self._mock_api_client)
 
     expected_models_create_body = {
         'name': self._model_name,
@@ -399,10 +495,11 @@ class RunnerTest(tf.test.TestCase):
   def testCreateModel(self):
     self._setUpPredictionMocks()
 
-    self.assertTrue(runner.create_model_for_aip_prediction_if_not_exist(
-        self._mock_api_client,
-        self._job_labels,
-        self._ai_platform_serving_args))
+    self.assertTrue(
+        runner.create_model_for_aip_prediction_if_not_exist(
+            labels=self._job_labels,
+            ai_platform_serving_args=self._ai_platform_serving_args,
+            api=self._mock_api_client))
 
   def testCreateModelCreateError(self):
     self._setUpPredictionMocks()
@@ -412,18 +509,20 @@ class RunnerTest(tf.test.TestCase):
 
     self.assertFalse(
         runner.create_model_for_aip_prediction_if_not_exist(
-            self._mock_api_client, self._job_labels,
-            self._ai_platform_serving_args))
+            labels=self._job_labels,
+            ai_platform_serving_args=self._ai_platform_serving_args,
+            api=self._mock_api_client))
 
   def testDeployModelForAIPPredictionWithCustomRegion(self):
     self._setUpPredictionMocks()
 
     self._ai_platform_serving_args['regions'] = ['custom-region']
-    runner.deploy_model_for_aip_prediction(self._mock_api_client,
-                                           self._serving_path,
-                                           self._model_version,
-                                           self._ai_platform_serving_args,
-                                           self._job_labels)
+    runner.deploy_model_for_aip_prediction(
+        serving_path=self._serving_path,
+        model_version_name=self._model_version,
+        ai_platform_serving_args=self._ai_platform_serving_args,
+        labels=self._job_labels,
+        api=self._mock_api_client)
 
     expected_models_create_body = {
         'name': self._model_name,
@@ -437,11 +536,12 @@ class RunnerTest(tf.test.TestCase):
     self._setUpPredictionMocks()
 
     self._ai_platform_serving_args['runtime_version'] = '1.23.45'
-    runner.deploy_model_for_aip_prediction(self._mock_api_client,
-                                           self._serving_path,
-                                           self._model_version,
-                                           self._ai_platform_serving_args,
-                                           self._job_labels)
+    runner.deploy_model_for_aip_prediction(
+        serving_path=self._serving_path,
+        model_version_name=self._model_version,
+        ai_platform_serving_args=self._ai_platform_serving_args,
+        labels=self._job_labels,
+        api=self._mock_api_client)
 
     expected_versions_create_body = {
         'name': self._model_version,
@@ -457,11 +557,12 @@ class RunnerTest(tf.test.TestCase):
     self._setUpPredictionMocks()
 
     self._ai_platform_serving_args['machine_type'] = 'custom_machine_type'
-    runner.deploy_model_for_aip_prediction(self._mock_api_client,
-                                           self._serving_path,
-                                           self._model_version,
-                                           self._ai_platform_serving_args,
-                                           self._job_labels)
+    runner.deploy_model_for_aip_prediction(
+        serving_path=self._serving_path,
+        model_version_name=self._model_version,
+        ai_platform_serving_args=self._ai_platform_serving_args,
+        labels=self._job_labels,
+        api=self._mock_api_client)
 
     expected_versions_create_body = {
         'name':
@@ -507,9 +608,10 @@ class RunnerTest(tf.test.TestCase):
   def testDeleteModelVersionForAIPPrediction(self, mock_discovery):
     self._setUpDeleteModelVersionMocks()
 
-    runner.delete_model_version_from_aip_if_exists(
-        self._mock_api_client, self._model_version,
-        self._ai_platform_serving_args)
+    runner.delete_model_from_aip_if_exists(
+        ai_platform_serving_args=self._ai_platform_serving_args,
+        api=self._mock_api_client,
+        model_version_name=self._model_version)
 
     self._assertDeleteModelVersionMockCalls()
 
@@ -537,10 +639,253 @@ class RunnerTest(tf.test.TestCase):
   def testDeleteModelForAIPPrediction(self, mock_discovery):
     self._setUpDeleteModelMocks()
 
-    runner.delete_model_from_aip_if_exists(self._mock_api_client,
-                                           self._ai_platform_serving_args)
+    runner.delete_model_from_aip_if_exists(
+        ai_platform_serving_args=self._ai_platform_serving_args,
+        api=self._mock_api_client,
+        delete_model_endpoint=True)
 
     self._assertDeleteModelMockCalls()
+
+  def testDeployModelForVertexPrediction(self):
+    self._setUpVertexPredictionMocks()
+
+    runner.deploy_model_for_aip_prediction(
+        serving_path=self._serving_path,
+        model_version_name=self._model_name,
+        ai_platform_serving_args=self._ai_platform_serving_args_vertex,
+        labels=self._job_labels,
+        serving_container_image_uri=self._serving_container_image_uri,
+        endpoint_region=self._endpoint_region,
+        enable_vertex=True)
+
+    expected_endpoint_create_body = {
+        'display_name': self._endpoint_name,
+        'labels': self._job_labels,
+    }
+    expected_model_upload_body = {
+        'display_name': self._model_name,
+        'artifact_uri': self._serving_path,
+        'serving_container_image_uri': self._serving_container_image_uri,
+    }
+    expected_model_deploy_body = {
+        'endpoint': self._mock_endpoint,
+        'traffic_percentage': 100,
+    }
+
+    self._assertDeployModelMockCallsVertex(
+        expected_endpoint_create_body=expected_endpoint_create_body,
+        expected_model_upload_body=expected_model_upload_body,
+        expected_model_deploy_body=expected_model_deploy_body)
+
+  def testDeployModelForVertexPredictionError(self):
+    self._setUpVertexPredictionMocks()
+
+    self._mock_model_deploy.side_effect = errors.HttpError(
+        httplib2.Response(info={'status': 429}), b'')
+
+    with self.assertRaises(RuntimeError):
+      runner.deploy_model_for_aip_prediction(
+          serving_path=self._serving_path,
+          model_version_name=self._model_name,
+          ai_platform_serving_args=self._ai_platform_serving_args_vertex,
+          labels=self._job_labels,
+          serving_container_image_uri=self._serving_container_image_uri,
+          endpoint_region=self._endpoint_region,
+          enable_vertex=True)
+
+    expected_endpoint_create_body = {
+        'display_name': self._endpoint_name,
+        'labels': self._job_labels,
+    }
+    expected_model_upload_body = {
+        'display_name': self._model_name,
+        'artifact_uri': self._serving_path,
+        'serving_container_image_uri': self._serving_container_image_uri,
+    }
+    expected_model_deploy_body = {
+        'endpoint': self._mock_endpoint,
+        'traffic_percentage': 100,
+    }
+
+    self._assertDeployModelMockCallsVertex(
+        expected_endpoint_create_body=expected_endpoint_create_body,
+        expected_model_upload_body=expected_model_upload_body,
+        expected_model_deploy_body=expected_model_deploy_body)
+
+  def testCreateVertexModel(self):
+    self._setUpVertexPredictionMocks()
+
+    self.assertTrue(
+        runner.create_model_for_aip_prediction_if_not_exist(
+            labels=self._job_labels,
+            ai_platform_serving_args=self._ai_platform_serving_args_vertex,
+            enable_vertex=True))
+
+  def testCreateVertexEndpointCreateError(self):
+    self._setUpVertexPredictionMocks()
+
+    self._mock_endpoint_create.side_effect = (
+        errors.HttpError(httplib2.Response(info={'status': 409}), b''))
+
+    self.assertFalse(
+        runner.create_model_for_aip_prediction_if_not_exist(
+            labels=self._job_labels,
+            ai_platform_serving_args=self._ai_platform_serving_args_vertex,
+            enable_vertex=True))
+
+  def testDeployModelForVertexPredictionWithCustomRegion(self):
+    self._setUpVertexPredictionMocks()
+
+    self._mock_init = mock.Mock()
+    aiplatform.init = self._mock_init
+
+    self._endpoint_region = 'custom-region'
+    runner.deploy_model_for_aip_prediction(
+        serving_path=self._serving_path,
+        model_version_name=self._model_name,
+        ai_platform_serving_args=self._ai_platform_serving_args_vertex,
+        labels=self._job_labels,
+        serving_container_image_uri=self._serving_container_image_uri,
+        endpoint_region=self._endpoint_region,
+        enable_vertex=True)
+
+    expected_init_body = {
+        'project': self._project_id,
+        'location': 'custom-region',
+    }
+    self._mock_init.assert_called_with(**expected_init_body)
+
+  def testDeployModelForVertexPredictionWithCustomMachineType(self):
+    self._setUpVertexPredictionMocks()
+
+    self._ai_platform_serving_args_vertex[
+        'machine_type'] = 'custom_machine_type'
+    runner.deploy_model_for_aip_prediction(
+        serving_path=self._serving_path,
+        model_version_name=self._model_name,
+        ai_platform_serving_args=self._ai_platform_serving_args_vertex,
+        labels=self._job_labels,
+        serving_container_image_uri=self._serving_container_image_uri,
+        endpoint_region=self._endpoint_region,
+        enable_vertex=True)
+
+    expected_model_deploy_body = {
+        'endpoint': self._mock_endpoint,
+        'traffic_percentage': 100,
+        'machine_type': 'custom_machine_type',
+    }
+    self._assertDeployModelMockCallsVertex(
+        expected_model_deploy_body=expected_model_deploy_body)
+
+  def _setUpDeleteVertexModelMocks(self):
+    importlib.reload(initializer)
+    importlib.reload(aiplatform)
+
+    self._endpoint_name = 'endpoint_name'
+    self._deployed_model_id = 'model_id'
+
+    self._mock_create_client = mock.Mock()
+    initializer.global_config.create_client = self._mock_create_client
+    self._mock_create_client.return_value = mock.Mock(
+        spec=endpoint_service_client.EndpointServiceClient
+    )
+
+    self._mock_get_endpoint = mock.Mock()
+    endpoint_service_client.EndpointServiceClient.get_endpoint = self._mock_get_endpoint
+    self._mock_get_endpoint.return_value = endpoint.Endpoint(
+        display_name=self._endpoint_name)
+
+    aiplatform.init(
+        project=self._project_id,
+        location=None,
+        credentials=mock.Mock(spec=auth_credentials.AnonymousCredentials()))
+
+    self._mock_endpoint = mock.Mock(aiplatform.Endpoint(
+        endpoint_name='projects/{}/locations/us-central1/endpoints/1234'.format(
+            self._project_id)))
+
+    self._mock_endpoint_list = mock.Mock()
+    aiplatform.Endpoint.list = self._mock_endpoint_list
+    self._mock_endpoint_list.return_value = [self._mock_endpoint]
+
+    self._mock_model_delete = mock.Mock()
+    self._mock_endpoint.undeploy = self._mock_model_delete
+
+    self._mock_endpoint.list_models.return_value = [
+        endpoint.DeployedModel(
+            display_name=self._model_name, id=self._deployed_model_id)]
+
+    self._ai_platform_serving_args_vertex = {
+        'endpoint_name': self._endpoint_name,
+        'project_id': self._project_id,
+    }
+
+  def _assertDeleteVertexModelMockCalls(self):
+    self._mock_model_delete.assert_called_with(
+        deployed_model_id=self._deployed_model_id, sync=True)
+
+  def testDeleteModelForVertexPrediction(self):
+    self._setUpDeleteVertexModelMocks()
+
+    runner.delete_model_from_aip_if_exists(
+        ai_platform_serving_args=self._ai_platform_serving_args_vertex,
+        model_version_name=self._model_name,
+        enable_vertex=True)
+
+    self._assertDeleteVertexModelMockCalls()
+
+  def _setUpDeleteVertexEndpointMocks(self):
+    importlib.reload(initializer)
+    importlib.reload(aiplatform)
+
+    self._endpoint_name = 'endpoint_name'
+
+    self._mock_create_client = mock.Mock()
+    initializer.global_config.create_client = self._mock_create_client
+    self._mock_create_client.return_value = mock.Mock(
+        spec=endpoint_service_client.EndpointServiceClient
+    )
+
+    self._mock_get_endpoint = mock.Mock()
+    endpoint_service_client.EndpointServiceClient.get_endpoint = (
+        self._mock_get_endpoint)
+    self._mock_get_endpoint.return_value = endpoint.Endpoint(
+        display_name=self._endpoint_name,
+    )
+
+    aiplatform.init(project=self._project_id, location=None,
+                    credentials=mock.Mock(
+                        spec=auth_credentials.AnonymousCredentials()))
+
+    self._mock_endpoint = aiplatform.Endpoint(
+        endpoint_name='projects/{}/locations/us-central1/endpoints/1234'.format(
+            self._project_id))
+
+    self._mock_endpoint_list = mock.Mock()
+    aiplatform.Endpoint.list = self._mock_endpoint_list
+    self._mock_endpoint_list.return_value = [self._mock_endpoint]
+
+    self._mock_endpoint_delete = mock.Mock()
+    self._mock_endpoint.delete = self._mock_endpoint_delete
+
+    self._ai_platform_serving_args_vertex = {
+        'endpoint_name': self._endpoint_name,
+        'project_id': self._project_id,
+    }
+
+  def _assertDeleteVertexEndpointMockCalls(self):
+    self._mock_endpoint_delete.assert_called_with(force=True, sync=True)
+
+  def testDeleteEndpointForVertexPrediction(self):
+    self._setUpDeleteVertexEndpointMocks()
+
+    runner.delete_model_from_aip_if_exists(
+        ai_platform_serving_args=self._ai_platform_serving_args_vertex,
+        model_version_name=self._model_name,
+        delete_model_endpoint=True,
+        enable_vertex=True)
+
+    self._assertDeleteVertexEndpointMockCalls()
 
 
 if __name__ == '__main__':

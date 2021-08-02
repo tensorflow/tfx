@@ -21,23 +21,18 @@ from googleapiclient import discovery
 from tfx import types
 from tfx.components.pusher import executor as tfx_pusher_executor
 from tfx.extensions.google_cloud_ai_platform import runner
+from tfx.extensions.google_cloud_ai_platform.constants import ENABLE_VERTEX_KEY
+from tfx.extensions.google_cloud_ai_platform.constants import SERVING_ARGS_KEY
+from tfx.extensions.google_cloud_ai_platform.constants import VERTEX_CONTAINER_IMAGE_URI_KEY
+from tfx.extensions.google_cloud_ai_platform.constants import VERTEX_REGION_KEY
 from tfx.types import artifact_utils
 from tfx.types import standard_component_specs
+from tfx.utils import deprecation_utils
 from tfx.utils import doc_controls
 from tfx.utils import io_utils
 from tfx.utils import json_utils
 from tfx.utils import telemetry_utils
 
-# Google Cloud AI Platform's ModelVersion resource path format.
-# https://cloud.google.com/ai-platform/prediction/docs/reference/rest/v1/projects.models.versions/get
-_CAIP_MODEL_VERSION_PATH_FORMAT = (
-    'projects/{project_id}/models/{model}/versions/{version}')
-
-# Keys to the items in custom_config passed as a part of exec_properties.
-SERVING_ARGS_KEY = doc_controls.documented(
-    obj='ai_platform_serving_args',
-    doc='Keys to the items in custom_config of Pusher for passing serving args '
-    'to AI Platform.')
 
 ENDPOINT_ARGS_KEY = doc_controls.documented(
     obj='endpoint',
@@ -67,20 +62,27 @@ class Executor(tfx_pusher_executor.Executor):
         tfx.components.Pusher.executor.  The following keys in `custom_config`
         are consumed by this class:
         - ai_platform_serving_args: For the full set of parameters supported
-          by Google Cloud AI Platform, refer to
+          by
+          - Google Cloud AI Platform, refer to
           https://cloud.google.com/ml-engine/reference/rest/v1/projects.models.versions#Version.
-        - endpoint: Optional endpoint override. Should be in format of
-          `https://[region]-ml.googleapis.com`. Default to global endpoint if
-          not set. Using regional endpoint is recommended by Cloud AI Platform.
-          When set, 'regions' key in ai_platform_serving_args cannot be set.
-          For more details, please see
-          https://cloud.google.com/ai-platform/prediction/docs/regional-endpoints#using_regional_endpoints
+          - Google Cloud Vertex AI, refer to
+          https://googleapis.dev/python/aiplatform/latest/aiplatform.html?highlight=deploy#google.cloud.aiplatform.Model.deploy
+        - endpoint: Optional endpoint override.
+          - For Google Cloud AI Platform, this should be in format of
+            `https://[region]-ml.googleapis.com`. Default to global endpoint if
+            not set. Using regional endpoint is recommended by Cloud AI
+            Platform. When set, 'regions' key in ai_platform_serving_args cannot
+            be set. For more details, please see
+            https://cloud.google.com/ai-platform/prediction/docs/regional-endpoints#using_regional_endpoints
+          - For Google Cloud Vertex AI, this should be just be `region` (e.g.
+            'us-central1'). For available regions, please see
+            https://cloud.google.com/vertex-ai/docs/general/locations
 
     Raises:
       ValueError:
         If ai_platform_serving_args is not in exec_properties.custom_config.
         If Serving model path does not start with gs://.
-        If 'endpoint' and 'regions' are set simultanuously.
+        If 'endpoint' and 'regions' are set simultaneously.
       RuntimeError: if the Google Cloud AI Platform training job failed.
     """
     self._log_startup(input_dict, output_dict, exec_properties)
@@ -94,52 +96,85 @@ class Executor(tfx_pusher_executor.Executor):
     if not ai_platform_serving_args:
       raise ValueError(
           '\'ai_platform_serving_args\' is missing in \'custom_config\'')
-    endpoint = custom_config.get(ENDPOINT_ARGS_KEY)
-    if endpoint and 'regions' in ai_platform_serving_args:
-      raise ValueError(
-          '\'endpoint\' and \'ai_platform_serving_args.regions\' cannot be set simultanuously'
-      )
-
     model_push = artifact_utils.get_single_instance(
         output_dict[standard_component_specs.PUSHED_MODEL_KEY])
     if not self.CheckBlessing(input_dict):
       self._MarkNotPushed(model_push)
       return
 
-    service_name, api_version = runner.get_service_name_and_api_version(
-        ai_platform_serving_args)
     # Deploy the model.
     io_utils.copy_dir(src=self.GetModelPath(input_dict), dst=model_push.uri)
     model_path = model_push.uri
-    # TODO(jjong): Introduce Versioning.
-    # Note that we're adding "v" prefix as Cloud AI Prediction only allows the
-    # version name that starts with letters, and contains letters, digits,
-    # underscore only.
-    model_version = 'v{}'.format(int(time.time()))
+
     executor_class_path = '%s.%s' % (self.__class__.__module__,
                                      self.__class__.__name__)
     with telemetry_utils.scoped_labels(
         {telemetry_utils.LABEL_TFX_EXECUTOR: executor_class_path}):
       job_labels = telemetry_utils.make_labels_dict()
-    endpoint = endpoint or runner.DEFAULT_ENDPOINT
-    api = discovery.build(
-        service_name,
-        api_version,
-        requestBuilder=telemetry_utils.TFXHttpRequest,
-        client_options=client_options.ClientOptions(api_endpoint=endpoint),
-    )
-    runner.deploy_model_for_aip_prediction(
-        api,
-        model_path,
-        model_version,
-        ai_platform_serving_args,
-        job_labels,
-    )
 
-    self._MarkPushed(
-        model_push,
-        pushed_destination=_CAIP_MODEL_VERSION_PATH_FORMAT.format(
-            project_id=ai_platform_serving_args['project_id'],
-            model=ai_platform_serving_args['model_name'],
-            version=model_version),
-        pushed_version=model_version)
+    enable_vertex = custom_config.get(ENABLE_VERTEX_KEY)
+    if enable_vertex:
+      if custom_config.get(ENDPOINT_ARGS_KEY):
+        deprecation_utils.warn_deprecated(
+            '\'endpoint\' is deprecated. Please use'
+            '\'ai_platform_vertex_region\' instead.'
+        )
+      if 'regions' in ai_platform_serving_args:
+        deprecation_utils.warn_deprecated(
+            '\'ai_platform_serving_args.regions\' is deprecated. Please use'
+            '\'ai_platform_vertex_region\' instead.'
+        )
+      endpoint_region = custom_config.get(VERTEX_REGION_KEY)
+      # TODO(jjong): Introduce Versioning.
+      # Note that we're adding "v" prefix as Cloud AI Prediction only allows the
+      # version name that starts with letters, and contains letters, digits,
+      # underscore only.
+      model_name = 'v{}'.format(int(time.time()))
+      container_image_uri = custom_config.get(VERTEX_CONTAINER_IMAGE_URI_KEY)
+
+      pushed_model_path = runner.deploy_model_for_aip_prediction(
+          serving_container_image_uri=container_image_uri,
+          model_version_name=model_name,
+          ai_platform_serving_args=ai_platform_serving_args,
+          endpoint_region=endpoint_region,
+          labels=job_labels,
+          serving_path=model_path,
+      )
+
+      self._MarkPushed(
+          model_push,
+          pushed_destination=pushed_model_path)
+
+    else:
+      endpoint = custom_config.get(ENDPOINT_ARGS_KEY)
+      if endpoint and 'regions' in ai_platform_serving_args:
+        raise ValueError(
+            '\'endpoint\' and \'ai_platform_serving_args.regions\' cannot be set simultaneously'
+        )
+      # TODO(jjong): Introduce Versioning.
+      # Note that we're adding "v" prefix as Cloud AI Prediction only allows the
+      # version name that starts with letters, and contains letters, digits,
+      # underscore only.
+      model_version = 'v{}'.format(int(time.time()))
+      endpoint = endpoint or runner.DEFAULT_ENDPOINT
+      service_name, api_version = runner.get_service_name_and_api_version(
+          ai_platform_serving_args)
+      api = discovery.build(
+          service_name,
+          api_version,
+          requestBuilder=telemetry_utils.TFXHttpRequest,
+          # TODO(b/163417407): remove after googleapiclient>=1.8 vendored.
+          # client_options=client_options.ClientOptions(api_endpoint=endpoint),
+      )
+      pushed_model_version_path = runner.deploy_model_for_aip_prediction(
+          serving_path=model_path,
+          model_version_name=model_version,
+          ai_platform_serving_args=ai_platform_serving_args,
+          api=api,
+          labels=job_labels,
+      )
+
+      self._MarkPushed(
+          model_push,
+          pushed_destination=pushed_model_version_path,
+          pushed_version=model_version)

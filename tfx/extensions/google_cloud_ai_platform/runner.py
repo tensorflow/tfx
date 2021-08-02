@@ -55,8 +55,8 @@ def _launch_aip_training(
     project: Text,
     training_input: Dict[Text, Any],
     job_labels: Optional[Dict[Text, Text]] = None,
-    enable_ucaip: Optional[bool] = False,
-    ucaip_region: Optional[Text] = None) -> None:
+    enable_vertex: Optional[bool] = False,
+    vertex_region: Optional[Text] = None) -> None:
   """Launches and monitors a AIP custom training job.
 
   Args:
@@ -66,17 +66,17 @@ def _launch_aip_training(
       https://cloud.google.com/ml-engine/reference/rest/v1/projects.jobs#TrainingInput
       for the detailed schema.
     job_labels: The dict of labels that will be attached to this job.
-    enable_ucaip: Whether to enable uCAIP or not.
-    ucaip_region: Region for endpoint in uCAIP training.
+    enable_vertex: Whether to enable Vertex or not.
+    vertex_region: Region for endpoint in Vertex training.
 
   Raises:
     RuntimeError: if the Google Cloud AI Platform training job failed/cancelled.
     ConnectionError: if the status polling of the training job failed due to
       connection issue.
   """
-  # TODO(b/185159702): Migrate all training jobs to uCAIP and remove the
-  #                    enable_ucaip switch.
-  client = training_clients.get_job_client(enable_ucaip, ucaip_region)
+  # TODO(b/185159702): Migrate all training jobs to Vertex and remove the
+  #                    enable_vertex switch.
+  client = training_clients.get_job_client(enable_vertex, vertex_region)
   # Configure and launch AI Platform training job
   client.launch_job(job_id, project, training_input, job_labels)
 
@@ -164,8 +164,8 @@ def start_aip_training(input_dict: Dict[Text, List[types.Artifact]],
                                              Any], executor_class_path: Text,
                        training_inputs: Dict[Text,
                                              Any], job_id: Optional[Text],
-                       enable_ucaip: Optional[bool] = False,
-                       ucaip_region: Optional[Text] = None):
+                       enable_vertex: Optional[bool] = False,
+                       vertex_region: Optional[Text] = None):
   """Start a trainer job on AI Platform (AIP).
 
   This is done by forwarding the inputs/outputs/exec_properties to the
@@ -183,13 +183,13 @@ def start_aip_training(input_dict: Dict[Text, List[types.Artifact]],
     job_id: Job ID for AI Platform Training job. If not supplied,
       system-determined unique ID is given. Refer to
     https://cloud.google.com/ml-engine/reference/rest/v1/projects.jobs#resource-job
-    enable_ucaip: Whether to enable uCAIP or not.
-    ucaip_region: Region for endpoint in uCAIP training.
+    enable_vertex: Whether to enable Vertex or not.
+    vertex_region: Region for endpoint in Vertex training.
 
   Returns:
     None
   """
-  client = training_clients.get_job_client(enable_ucaip, ucaip_region)
+  client = training_clients.get_job_client(enable_vertex, vertex_region)
   training_args = client.create_training_args(input_dict, output_dict,
                                               exec_properties,
                                               executor_class_path,
@@ -200,8 +200,8 @@ def start_aip_training(input_dict: Dict[Text, List[types.Artifact]],
       project=training_args['project'],
       training_input=training_args['training_input'],
       job_labels=training_args['job_labels'],
-      enable_ucaip=enable_ucaip,
-      ucaip_region=ucaip_region)
+      enable_vertex=enable_vertex,
+      vertex_region=vertex_region)
 
 
 # TODO(zhitaoli): remove this function since we are not going to support
@@ -222,48 +222,60 @@ def get_service_name_and_api_version(
 
 
 def create_model_for_aip_prediction_if_not_exist(
-    api: discovery.Resource,
-    job_labels: Dict[Text, Text],
+    labels: Dict[Text, Text],
     ai_platform_serving_args: Dict[Text, Any],
+    api: Optional[discovery.Resource] = None,
+    enable_vertex: Optional[bool] = False
 ) -> bool:
-  """Creates a new model for serving with AI Platform if not exists.
+  """Creates a new CAIP model or Vertex endpoint for serving with AI Platform if not exists.
 
   Args:
-    api: Google API client resource.
-    job_labels: The dict of labels that will be attached to this job.
+    labels: The dict of labels that will be attached to this CAIP job or Vertex
+      endpoint.
     ai_platform_serving_args: Dictionary containing arguments for pushing to AI
       Platform.
+    api: (CAIP only, required) Google API client resource.
+    enable_vertex: Whether to enable Vertex or not.
 
   Returns:
-    Whether a new model is created.
+    Whether a new CAIP model or Vertex endpoint is created.
 
   Raises:
-    RuntimeError if model creation failed.
+    RuntimeError if creation failed.
   """
 
-  client = prediction_clients.get_prediction_client(api)
+  client = prediction_clients.get_prediction_client(
+      api=api, enable_vertex=enable_vertex)
   return client.create_model_for_aip_prediction_if_not_exist(
-      job_labels, ai_platform_serving_args)
+      labels=labels, ai_platform_serving_args=ai_platform_serving_args)
 
 
-def deploy_model_for_aip_prediction(api: discovery.Resource,
-                                    serving_path: Text,
-                                    model_version: Text,
-                                    ai_platform_serving_args: Dict[Text, Any],
-                                    job_labels: Dict[Text, Text],
-                                    skip_model_creation: bool = False,
-                                    set_default_version: bool = True) -> None:
+def deploy_model_for_aip_prediction(
+    serving_path: Text,
+    model_version_name: Text,
+    ai_platform_serving_args: Dict[Text, Any],
+    labels: Dict[Text, Text],
+    api: Optional[discovery.Resource] = None,
+    serving_container_image_uri: Optional[Text] = None,
+    endpoint_region: Optional[Text] = None,
+    skip_model_endpoint_creation: Optional[bool] = False,
+    set_default: Optional[bool] = True,
+    enable_vertex: Optional[bool] = False) -> Text:
   """Deploys a model for serving with AI Platform.
 
   Args:
-    api: Google API client resource.
     serving_path: The path to the model. Must be a GCS URI.
-    model_version: Version of the model being deployed. Must be different from
-      what is currently being served.
+    model_version_name: Model version for CAIP model being deployed, or model
+      name for the Vertex model being deployed. Must be different from what is
+      currently being served.
     ai_platform_serving_args: Dictionary containing arguments for pushing to AI
-      Platform. The full set of parameters supported can be found at
+      Platform. The full set of parameters supported can be found at,
+      for CAIP:
       https://cloud.google.com/ml-engine/reference/rest/v1/projects.models.versions#Version.
-      Most keys are forwarded as-is, but following keys are handled specially:
+      for Vertex:
+      https://googleapis.dev/python/aiplatform/latest/aiplatform.html?highlight=deploy#google.cloud.aiplatform.Model.deploy
+      Most keys are forwarded as-is, but following keys are handled specially.
+      For CAIP:
         - name: this must be empty (and will be filled by pusher).
         - deployment_uri: this must be empty (and will be filled by pusher).
         - python_version: when left empty, this will be filled by python version
@@ -271,63 +283,84 @@ def deploy_model_for_aip_prediction(api: discovery.Resource,
         - runtime_version: when left empty, this will be filled by TensorFlow
             version from the environment.
         - labels: a list of job labels will be merged with user's input.
-    job_labels: The dict of labels that will be attached to this job. They are
-      merged with optional labels from `ai_platform_serving_args`.
-    skip_model_creation: If true, the method assuem model already exist in
-      AI platform, therefore skipping model creation.
-    set_default_version: Whether set the newly deployed model version as the
-      default version.
+      For Vertex:
+        - endpoint_name: Name of the endpoint.
+        - traffic_percentage: Desired traffic to newly deployed model.
+            Forwarded as-is if specified. If not specified, it is set to 100
+            if set_default_version is True, or set to 0 otherwise.
+        - labels: a list of job labels will be merged with user's input.
+    labels: The dict of labels that will be attached to this CAIP job or Vertex
+      endpoint. They are merged with optional labels from
+      `ai_platform_serving_args`.
+    api: (CAIP only, required) Google API client resource.
+    serving_container_image_uri: (Vertex only, required) The path to the serving
+      container image URI. Container registry for prediction is available at:
+      https://gcr.io/cloud-aiplatform/prediction.
+    endpoint_region: (Vertex only, required) Region for Vertex endpoint.
+      For available regions, please see
+      https://cloud.google.com/vertex-ai/docs/general/locations
+    skip_model_endpoint_creation: If true, the method assumes CAIP model or
+      Vertex endpoint already exists in AI platform, therefore skipping its
+      creation.
+    set_default: Whether set the newly deployed CAIP model version or Vertex
+      model as the default.
+    enable_vertex: Whether to enable Vertex or not.
+
+  Returns:
+    For Vertex, the resource name of the deployed model.
 
   Raises:
     RuntimeError: if an error is encountered when trying to push.
   """
-  client = prediction_clients.get_prediction_client(api)
-  client.deploy_model(serving_path,
-                      model_version,
-                      ai_platform_serving_args,
-                      job_labels,
-                      skip_model_creation,
-                      set_default_version)
+  client = prediction_clients.get_prediction_client(
+      api=api, enable_vertex=enable_vertex)
+  if enable_vertex:
+    return client.deploy_model(
+        serving_path=serving_path,
+        model_version_name=model_version_name,
+        ai_platform_serving_args=ai_platform_serving_args,
+        labels=labels,
+        serving_container_image_uri=serving_container_image_uri,
+        endpoint_region=endpoint_region,
+        skip_model_endpoint_creation=skip_model_endpoint_creation,
+        set_default=set_default)
+  else:
+    return client.deploy_model(
+        serving_path=serving_path,
+        model_version_name=model_version_name,
+        ai_platform_serving_args=ai_platform_serving_args,
+        labels=labels,
+        skip_model_endpoint_creation=skip_model_endpoint_creation,
+        set_default=set_default)
 
 
-def delete_model_version_from_aip_if_exists(
-    api: discovery.Resource,
-    model_version: Text,
+def delete_model_from_aip_if_exists(
     ai_platform_serving_args: Dict[Text, Any],
+    api: Optional[discovery.Resource] = None,
+    model_version_name: Optional[Text] = None,
+    delete_model_endpoint: Optional[bool] = False,
+    enable_vertex: Optional[bool] = False,
 ) -> None:
   """Deletes a model version from Google Cloud AI Platform if version exists.
 
   Args:
-    api: Google API client resource.
-    model_version: Version of the model being deleted.
     ai_platform_serving_args: Dictionary containing arguments for pushing to AI
       Platform. For the full set of parameters supported, refer to
       https://cloud.google.com/ml-engine/reference/rest/v1/projects.models
+    api: (CAIP only, required) Google API client resource.
+    model_version_name: Model version for CAIP model being deployed, or model
+      name for the Vertex model to be deleted. Required if delete_model_endpoint
+      is False, otherwise not needed.
+    delete_model_endpoint: Whether CAIP model or Vertex endpoint should be
+      deleted.
+    enable_vertex: Whether to enable Vertex or not.
 
   Raises:
     RuntimeError: if an error is encountered when trying to delete.
   """
-  client = prediction_clients.get_prediction_client(api)
-  client.delete_model_version_from_aip_if_exists(
-      model_version,
-      ai_platform_serving_args)
-
-
-def delete_model_from_aip_if_exists(
-    api: discovery.Resource,
-    ai_platform_serving_args: Dict[Text, Any],
-) -> None:
-  """Deletes a model from Google Cloud AI Platform if exists.
-
-  Args:
-    api: Google API client resource.
-    ai_platform_serving_args: Dictionary containing arguments for pushing to AI
-      Platform. For the full set of parameters supported, refer to
-      https://cloud.google.com/ml-engine/reference/rest/v1/projects.models
-
-  Raises:
-    RuntimeError: if an error is encountered when trying to delete.
-  """
-  client = prediction_clients.get_prediction_client(api)
+  client = prediction_clients.get_prediction_client(
+      api=api, enable_vertex=enable_vertex)
   client.delete_model_from_aip_if_exists(
-      ai_platform_serving_args)
+      ai_platform_serving_args=ai_platform_serving_args,
+      model_version_name=model_version_name,
+      delete_model_endpoint=delete_model_endpoint)

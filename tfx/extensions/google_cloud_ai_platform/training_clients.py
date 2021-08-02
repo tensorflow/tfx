@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""An abstract class for the Trainer for both CAIP and uCAIP."""
+"""An abstract class for the Trainer for both CAIP and Vertex."""
 
 import abc
 import datetime
@@ -37,15 +37,15 @@ _TFX_IMAGE = 'gcr.io/tfx-oss-public/tfx:{}'.format(
 # package installation into a default location of 'python'.
 _CONTAINER_COMMAND = ['python', '-m', 'tfx.scripts.run_executor']
 
-_UCAIP_ENDPOINT_SUFFIX = '-aiplatform.googleapis.com'
+_VERTEX_ENDPOINT_SUFFIX = '-aiplatform.googleapis.com'
 
-_UCAIP_JOB_STATE_SUCCEEDED = JobState.JOB_STATE_SUCCEEDED
-_UCAIP_JOB_STATE_FAILED = JobState.JOB_STATE_FAILED
-_UCAIP_JOB_STATE_CANCELLED = JobState.JOB_STATE_CANCELLED
+_VERTEX_JOB_STATE_SUCCEEDED = JobState.JOB_STATE_SUCCEEDED
+_VERTEX_JOB_STATE_FAILED = JobState.JOB_STATE_FAILED
+_VERTEX_JOB_STATE_CANCELLED = JobState.JOB_STATE_CANCELLED
 
 
 class AbstractJobClient(abc.ABC):
-  """Abstract class interacting with CAIP CMLE job or uCAIP CustomJob."""
+  """Abstract class interacting with CAIP CMLE job or Vertex CustomJob."""
   JOB_STATES_COMPLETED = ()  # Job states for success, failure or cancellation
   JOB_STATES_FAILED = ()  # Job states for failure or cancellation
 
@@ -326,17 +326,17 @@ class CAIPJobClient(AbstractJobClient):
     return response['state']
 
 
-class UCAIPJobClient(AbstractJobClient):
-  """Class for interacting with uCAIP CustomJob."""
+class VertexJobClient(AbstractJobClient):
+  """Class for interacting with Vertex CustomJob."""
 
-  JOB_STATES_COMPLETED = (_UCAIP_JOB_STATE_SUCCEEDED, _UCAIP_JOB_STATE_FAILED,
-                          _UCAIP_JOB_STATE_CANCELLED)
-  JOB_STATES_FAILED = (_UCAIP_JOB_STATE_FAILED, _UCAIP_JOB_STATE_CANCELLED)
+  JOB_STATES_COMPLETED = (_VERTEX_JOB_STATE_SUCCEEDED, _VERTEX_JOB_STATE_FAILED,
+                          _VERTEX_JOB_STATE_CANCELLED)
+  JOB_STATES_FAILED = (_VERTEX_JOB_STATE_FAILED, _VERTEX_JOB_STATE_CANCELLED)
 
-  def __init__(self, ucaip_region: Text):
-    if ucaip_region is None:
-      raise ValueError('Please specify a region for uCAIP training.')
-    self._region = ucaip_region
+  def __init__(self, vertex_region: Text):
+    if vertex_region is None:
+      raise ValueError('Please specify a region for Vertex training.')
+    self._region = vertex_region
     super().__init__()
 
   def create_client(self) -> None:
@@ -351,7 +351,8 @@ class UCAIPJobClient(AbstractJobClient):
     specific to each job.
     """
     self._client = gapic.JobServiceClient(
-        client_options=dict(api_endpoint=self._region + _UCAIP_ENDPOINT_SUFFIX))
+        client_options=dict(
+            api_endpoint=self._region + _VERTEX_ENDPOINT_SUFFIX))
 
   def create_training_args(self, input_dict: Dict[Text, List[types.Artifact]],
                            output_dict: Dict[Text, List[types.Artifact]],
@@ -514,19 +515,19 @@ class UCAIPJobClient(AbstractJobClient):
 
 
 def get_job_client(
-    enable_ucaip: Optional[bool] = False,
-    ucaip_region: Optional[Text] = None
-) -> Union[CAIPJobClient, UCAIPJobClient]:
+    enable_vertex: Optional[bool] = False,
+    vertex_region: Optional[Text] = None
+) -> Union[CAIPJobClient, VertexJobClient]:
   """Gets the job client.
 
   Args:
-    enable_ucaip: Whether to enable uCAIP
-    ucaip_region: Region for training endpoint in uCAIP.
+    enable_vertex: Whether to enable Vertex
+    vertex_region: Region for training endpoint in Vertex.
       Defaults to 'us-central1'.
 
   Returns:
     The corresponding job client.
   """
-  if enable_ucaip:
-    return UCAIPJobClient(ucaip_region)
+  if enable_vertex:
+    return VertexJobClient(vertex_region)
   return CAIPJobClient()

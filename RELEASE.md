@@ -50,6 +50,8 @@
 *  Placeholders support accessing artifact property and custom property.
 *  Removed the extra node information in IR for KubeflowDagRunner, to reduce
    size of generated IR.
+*  TFX Trainer and Pusher now support Vertex, which can be enabled with
+   `ENABLE_VERTEX_KEY` key in `custom_config`.
 
 
 ## Breaking Changes
