@@ -20,10 +20,15 @@ from __future__ import print_function
 
 import hashlib
 import os
-
 from unittest import mock
+from absl.testing import parameterized
+
 import tensorflow as tf
 from tfx.extensions.google_cloud_ai_platform.bulk_inferrer import executor
+from tfx.extensions.google_cloud_ai_platform.constants import ENABLE_VERTEX_KEY
+from tfx.extensions.google_cloud_ai_platform.constants import SERVING_ARGS_KEY
+from tfx.extensions.google_cloud_ai_platform.constants import VERTEX_CONTAINER_IMAGE_URI_KEY
+from tfx.extensions.google_cloud_ai_platform.constants import VERTEX_REGION_KEY
 from tfx.proto import bulk_inferrer_pb2
 from tfx.types import artifact_utils
 from tfx.types import standard_artifacts
@@ -34,7 +39,7 @@ from tfx.utils import telemetry_utils
 from tfx_bsl.public.proto import model_spec_pb2
 
 
-class ExecutorTest(tf.test.TestCase):
+class ExecutorTest(tf.test.TestCase, parameterized.TestCase):
 
   def setUp(self):
     super(ExecutorTest, self).setUp()
@@ -72,12 +77,16 @@ class ExecutorTest(tf.test.TestCase):
     self._context = executor.Executor.Context(
         tmp_dir=self._tmp_dir, unique_id='2')
 
+  @parameterized.parameters(True, False)
   @mock.patch(
       'tfx.extensions.google_cloud_ai_platform.bulk_inferrer.executor.discovery'
   )
   @mock.patch.object(executor.Executor, '_run_model_inference')
   @mock.patch.object(executor, 'runner', autospec=True)
-  def testDoWithBlessedModel(self, mock_runner, mock_run_model_inference, _):
+  def testDoWithBlessedModel(self, enable_vertex, mock_runner,
+                             mock_run_model_inference, _):
+    vertex_region = 'region' if enable_vertex else None
+    vertex_container = 'uri' if enable_vertex else None
     input_dict = {
         'examples': [self._examples],
         'model': [self._model],
@@ -95,8 +104,12 @@ class ExecutorTest(tf.test.TestCase):
         'data_spec':
             proto_utils.proto_to_json(bulk_inferrer_pb2.DataSpec()),
         'custom_config':
-            json_utils.dumps(
-                {executor.SERVING_ARGS_KEY: ai_platform_serving_args}),
+            json_utils.dumps({
+                SERVING_ARGS_KEY: ai_platform_serving_args,
+                ENABLE_VERTEX_KEY: enable_vertex,
+                VERTEX_REGION_KEY: vertex_region,
+                VERTEX_CONTAINER_IMAGE_URI_KEY: vertex_container
+            }),
     }
     mock_runner.get_service_name_and_api_version.return_value = ('ml', 'v1')
     mock_runner.create_model_for_aip_prediction_if_not_exist.return_value = True
@@ -129,21 +142,28 @@ class ExecutorTest(tf.test.TestCase):
         ai_platform_serving_args=ai_platform_serving_args,
         labels=job_labels,
         api=mock.ANY,
+        serving_container_image_uri=vertex_container,
+        endpoint_region=vertex_region,
         skip_model_endpoint_creation=True,
-        set_default=False)
+        set_default=False,
+        enable_vertex=enable_vertex)
     mock_runner.delete_model_from_aip_if_exists.assert_called_once_with(
-        model_version_name=mock.ANY,
         ai_platform_serving_args=ai_platform_serving_args,
         api=mock.ANY,
-        delete_model_endpoint=True)
+        model_version_name=mock.ANY,
+        delete_model_endpoint=True,
+        enable_vertex=enable_vertex)
 
+  @parameterized.parameters(True, False)
   @mock.patch(
       'tfx.extensions.google_cloud_ai_platform.bulk_inferrer.executor.discovery'
   )
   @mock.patch.object(executor.Executor, '_run_model_inference')
   @mock.patch.object(executor, 'runner', autospec=True)
-  def testDoSkippedModelCreation(self, mock_runner, mock_run_model_inference,
-                                 _):
+  def testDoSkippedModelCreation(self, enable_vertex, mock_runner,
+                                 mock_run_model_inference, _):
+    vertex_region = 'region' if enable_vertex else None
+    vertex_container = 'uri' if enable_vertex else None
     input_dict = {
         'examples': [self._examples],
         'model': [self._model],
@@ -161,8 +181,12 @@ class ExecutorTest(tf.test.TestCase):
         'data_spec':
             proto_utils.proto_to_json(bulk_inferrer_pb2.DataSpec()),
         'custom_config':
-            json_utils.dumps(
-                {executor.SERVING_ARGS_KEY: ai_platform_serving_args}),
+            json_utils.dumps({
+                SERVING_ARGS_KEY: ai_platform_serving_args,
+                ENABLE_VERTEX_KEY: enable_vertex,
+                VERTEX_REGION_KEY: vertex_region,
+                VERTEX_CONTAINER_IMAGE_URI_KEY: vertex_container
+            }),
     }
     mock_runner.get_service_name_and_api_version.return_value = ('ml', 'v1')
     mock_runner.create_model_for_aip_prediction_if_not_exist.return_value = False
@@ -195,21 +219,26 @@ class ExecutorTest(tf.test.TestCase):
         ai_platform_serving_args=ai_platform_serving_args,
         labels=job_labels,
         api=mock.ANY,
+        serving_container_image_uri=vertex_container,
+        endpoint_region=vertex_region,
         skip_model_endpoint_creation=True,
-        set_default=False)
+        set_default=False,
+        enable_vertex=enable_vertex)
     mock_runner.delete_model_from_aip_if_exists.assert_called_once_with(
-        model_version_name=mock.ANY,
         ai_platform_serving_args=ai_platform_serving_args,
         api=mock.ANY,
-        delete_model_endpoint=False)
+        model_version_name=mock.ANY,
+        delete_model_endpoint=False,
+        enable_vertex=enable_vertex)
 
+  @parameterized.parameters(True, False)
   @mock.patch(
       'tfx.extensions.google_cloud_ai_platform.bulk_inferrer.executor.discovery'
   )
   @mock.patch.object(executor.Executor, '_run_model_inference')
   @mock.patch.object(executor, 'runner', autospec=True)
-  def testDoFailedModelDeployment(self, mock_runner, mock_run_model_inference,
-                                  _):
+  def testDoFailedModelDeployment(self, enable_vertex, mock_runner,
+                                  mock_run_model_inference, _):
     input_dict = {
         'examples': [self._examples],
         'model': [self._model],
@@ -227,8 +256,10 @@ class ExecutorTest(tf.test.TestCase):
         'data_spec':
             proto_utils.proto_to_json(bulk_inferrer_pb2.DataSpec()),
         'custom_config':
-            json_utils.dumps(
-                {executor.SERVING_ARGS_KEY: ai_platform_serving_args}),
+            json_utils.dumps({
+                SERVING_ARGS_KEY: ai_platform_serving_args,
+                ENABLE_VERTEX_KEY: enable_vertex
+            }),
     }
     mock_runner.deploy_model_for_aip_prediction.side_effect = (
         Exception('Deployment failed'))
@@ -240,10 +271,11 @@ class ExecutorTest(tf.test.TestCase):
       bulk_inferrer.Do(input_dict, output_dict, exec_properties)
 
     mock_runner.delete_model_from_aip_if_exists.assert_called_once_with(
-        model_version_name=mock.ANY,
         ai_platform_serving_args=ai_platform_serving_args,
         api=mock.ANY,
-        delete_model_endpoint=True)
+        model_version_name=mock.ANY,
+        delete_model_endpoint=True,
+        enable_vertex=enable_vertex)
 
 
 if __name__ == '__main__':

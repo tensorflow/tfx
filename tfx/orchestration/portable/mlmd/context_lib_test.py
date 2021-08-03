@@ -96,24 +96,6 @@ class ContextLibTest(test_case_utils.TfxTest):
           context,
           m.store.get_context_by_type_and_name('my_context_type', 'my_context'))
 
-  def testPutParentContextIfNotExists(self):
-    with metadata.Metadata(connection_config=self._connection_config) as m:
-      parent_context = context_lib.register_context_if_not_exists(
-          metadata_handler=m,
-          context_type_name='my_context_type',
-          context_name='parent_context_name')
-      child_context = context_lib.register_context_if_not_exists(
-          metadata_handler=m,
-          context_type_name='my_context_type',
-          context_name='child_context_name')
-      context_lib.put_parent_context_if_not_exists(m,
-                                                   parent_id=parent_context.id,
-                                                   child_id=child_context.id)
-      # Duplicated call should succeed.
-      context_lib.put_parent_context_if_not_exists(m,
-                                                   parent_id=parent_context.id,
-                                                   child_id=child_context.id)
-
 
 if __name__ == '__main__':
   tf.test.main()

@@ -29,9 +29,13 @@ from tfx import types
 from tfx.components.bulk_inferrer import executor as bulk_inferrer_executor
 from tfx.components.util import model_utils
 from tfx.extensions.google_cloud_ai_platform import runner
+from tfx.extensions.google_cloud_ai_platform.constants import ENABLE_VERTEX_KEY
+from tfx.extensions.google_cloud_ai_platform.constants import SERVING_ARGS_KEY
+from tfx.extensions.google_cloud_ai_platform.constants import VERTEX_CONTAINER_IMAGE_URI_KEY
+from tfx.extensions.google_cloud_ai_platform.constants import VERTEX_REGION_KEY
 from tfx.proto import bulk_inferrer_pb2
 from tfx.types import artifact_utils
-from tfx.utils import doc_controls
+from tfx.utils import deprecation_utils
 from tfx.utils import json_utils
 from tfx.utils import path_utils
 from tfx.utils import proto_utils
@@ -50,11 +54,6 @@ _CLOUD_PUSH_DESTINATION_RE_DEFAULT_VERSION = re.compile(
 # public.
 _SignatureDef = Any
 
-# Keys to the items in custom_config passed as a part of exec_properties.
-SERVING_ARGS_KEY = doc_controls.documented(
-    obj='ai_platform_serving_args',
-    doc='Keys to the items in custom_config of Bulk Inferrer for passing bulk'
-    'inferrer args to AI Platform.')
 # Keys for custom_config.
 _CUSTOM_CONFIG_KEY = 'custom_config'
 
@@ -125,10 +124,21 @@ class Executor(bulk_inferrer_executor.Executor):
     if custom_config is not None and not isinstance(custom_config, Dict):
       raise ValueError('custom_config in execution properties needs to be a '
                        'dict.')
+
     ai_platform_serving_args = custom_config.get(SERVING_ARGS_KEY)
     if not ai_platform_serving_args:
       raise ValueError(
           '\'ai_platform_serving_args\' is missing in \'custom_config\'')
+
+    enable_vertex = custom_config.get(ENABLE_VERTEX_KEY, False)
+    if enable_vertex:
+      if 'regions' in ai_platform_serving_args:
+        deprecation_utils.warn_deprecated(
+            '\'ai_platform_serving_args.regions\' is deprecated. Please use'
+            '\'ai_platform_vertex_region\' instead.')
+    region = custom_config.get(VERTEX_REGION_KEY)
+    container_image_uri = custom_config.get(VERTEX_CONTAINER_IMAGE_URI_KEY)
+
     service_name, api_version = runner.get_service_name_and_api_version(
         ai_platform_serving_args)
     executor_class_path = '%s.%s' % (self.__class__.__module__,
@@ -159,15 +169,18 @@ class Executor(bulk_inferrer_executor.Executor):
     new_model_endpoint_created = False
     try:
       new_model_endpoint_created = runner.create_model_for_aip_prediction_if_not_exist(
-          job_labels, ai_platform_serving_args, api)
+          job_labels, ai_platform_serving_args, api, enable_vertex)
       runner.deploy_model_for_aip_prediction(
           serving_path=model_path,
           model_version_name=model_version,
           ai_platform_serving_args=ai_platform_serving_args,
-          api=api,
           labels=job_labels,
+          api=api,
+          serving_container_image_uri=container_image_uri,
+          endpoint_region=region,
           skip_model_endpoint_creation=True,
           set_default=False,
+          enable_vertex=enable_vertex,
       )
       self._run_model_inference(data_spec, output_example_spec,
                                 input_dict['examples'], output_examples,
@@ -182,10 +195,11 @@ class Executor(bulk_inferrer_executor.Executor):
 
       # Clean up the newly deployed model.
       runner.delete_model_from_aip_if_exists(
-          model_version_name=model_version,
           ai_platform_serving_args=ai_platform_serving_args,
           api=api,
-          delete_model_endpoint=new_model_endpoint_created)
+          model_version_name=model_version,
+          delete_model_endpoint=new_model_endpoint_created,
+          enable_vertex=enable_vertex)
 
   def _get_inference_spec(
       self, model_path: Text, model_version: Text,

@@ -346,8 +346,8 @@ def _make_filtered_pipeline(
 
 
 def reuse_node_outputs(metadata_handler: metadata.Metadata, pipeline_name: str,
-                       node_id: str, base_run_id: str, new_run_id: str):
-  """Reuses the output Artifacts of a pipeline node from a previous pipeline run.
+                       node_id: str, old_run_id: str, new_run_id: str):
+  """Reuse the output Artifacts of a pipeline node from a previous pipeline run.
 
   This copies the latest successful execution associated with the pipeline,
   the old pipeline run id, and node_id, and publishes it as a new cache
@@ -359,128 +359,12 @@ def reuse_node_outputs(metadata_handler: metadata.Metadata, pipeline_name: str,
     metadata_handler: A handler to access MLMD store.
     pipeline_name: The name of the pipeline.
     node_id: The node id.
-    base_run_id: The pipeline_run_id where the output artifacts were produced.
+    old_run_id: The pipeline_run_id where the output artifacts were produced.
     new_run_id: The pipeline_run_id to make the output artifacts available in.
   """
   artifact_recycler = _ArtifactRecycler(metadata_handler, pipeline_name,
-                                        base_run_id)
+                                        old_run_id)
   artifact_recycler.reuse_node_outputs(node_id, new_run_id)
-
-
-def _get_validated_new_run_id(full_pipeline: pipeline_pb2.Pipeline,
-                              new_run_id: Optional[str] = None) -> str:
-  """Attempts to obtain a unique new_run_id.
-
-  Args:
-    full_pipeline: The unfiltered pipeline IR. Its runtime parameters should
-      already be resolved.
-    new_run_id: The pipeline_run_id to associate those output artifacts with.
-      This function will always attempt to infer the new run id from
-      `full_pipeline`'s IR. If not found, it would use the provided
-      `new_run_id`. If found, and `new_run_id` is provided, it would verify that
-      it is the same as the inferred run id, and raise an error if they are not
-      the same.
-
-  Returns:
-    The validated pipeline_run_id.
-
-  Raises:
-    ValueError: If `full_pipeline` does not contain a pipeline run id, and
-      `new_run_id` is not provided.
-    ValueError: If `full_pipeline` does contain a pipeline run id, and
-      `new_run_id` is provided, but they are not the same.
-  """
-  inferred_new_run_id = None
-  run_id_value = full_pipeline.runtime_spec.pipeline_run_id
-  if run_id_value.HasField('field_value'):
-    inferred_new_run_id = run_id_value.field_value.string_value
-
-  if not (inferred_new_run_id or new_run_id):
-    raise ValueError(
-        'Unable to infer new pipeline run id. Either resolve the '
-        'pipeline_run_id RuntimeParameter in `filtered_pipeline` first, or '
-        'provide a `new_run_id` explicitly.')
-
-  if new_run_id and inferred_new_run_id and new_run_id != inferred_new_run_id:
-    raise ValueError(
-        'Conflicting new pipeline run ids found. pipeline_run_id='
-        f'{inferred_new_run_id} was inferred from `full_pipeline`, while '
-        f'new_run_id={new_run_id} was explicitly provided. '
-        'Consider omitting `new_run_id`, and simply use the pipeline_run_id '
-        'inferred from `full_pipeline` as the new_run_id.')
-
-  # The following OR expression will never evaluate to None, because we have
-  # already checked above. However, pytype doesn't know that, so we need to cast
-  # to the expression to str so that the return type is str.
-  return str(inferred_new_run_id or new_run_id)
-
-
-def reuse_pipeline_run_artifacts(
-    metadata_handler: metadata.Metadata, full_pipeline: pipeline_pb2.Pipeline,
-    filtered_pipeline: pipeline_pb2.Pipeline,
-    excluded_direct_dependencies: Mapping[str,
-                                          List[pipeline_pb2.InputSpec.Channel]],
-    base_run_id: str,
-    new_run_id: Optional[str] = None):
-  """Reuses the output Artifacts from a previous pipeline run.
-
-  This computes the maximal set of nodes whose outputs can be associated with
-  the new pipeline_run without creating any inconsistencies, and reuses their
-  node outputs (similar to repeatedly calling `reuse_node_outputs`). It also
-  puts a ParentContext into MLMD, with the `base_run_id` being the parent
-  context, and the new run_id (provided by the user, or inferred from
-  `full_pipeline`) as the child context.
-
-  Args:
-    metadata_handler: A handler to access MLMD store.
-    full_pipeline: The unfiltered pipeline IR. Its runtime parameters should
-      already be resolved.
-    filtered_pipeline: The filtered pipeline IR -- the first output from calling
-      `filter_pipeline` on full_pipeline.
-    excluded_direct_dependencies: The second output from calling
-      `filter_pipeline` on full_pipeline. A Mapping, with:
-      - keys: node_ids of nodes that are the direct dependencies of some node(s)
-        in the filtered_pipeline, but were filtered out,
-      - values: Lists of input channels that use those nodes as producer nodes.
-    base_run_id: The pipeline_run_id where the output artifacts were produced.
-    new_run_id: The pipeline_run_id to associate those output artifacts with.
-      This function will always attempt to infer the new run id from
-      `full_pipeline`'s IR. If not found, it would use the provided
-      `new_run_id`. If found, and `new_run_id` is provided, it would verify that
-      it is the same as the inferred run id, and raise an error if they are not
-      the same.
-
-  Raises:
-    ValueError: If `full_pipeline` does not contain a pipeline run id, and
-      `new_run_id` is not provided.
-    ValueError: If `full_pipeline` does contain a pipeline run id, and
-      `new_run_id` is provided, but they are not the same.
-  """
-  validated_new_run_id = _get_validated_new_run_id(full_pipeline, new_run_id)
-
-  node_map = _make_ordered_node_map(full_pipeline)
-  exclusion_set = _traverse(
-      node_map,
-      _Direction.DOWNSTREAM,
-      start_nodes=[
-          node.pipeline_node.node_info.id for node in filtered_pipeline.nodes
-      ])
-  inclusion_set = _traverse(
-      node_map,
-      _Direction.UPSTREAM,
-      start_nodes=excluded_direct_dependencies.keys())
-  if not exclusion_set.isdisjoint(inclusion_set):
-    raise ValueError('This should never happen. '
-                     'Did you modify the outputs of filter_pipeline?')
-  # This is the maximal set of node executions that can be reused.
-  nodes_to_reuse = set(node_map.keys()) - exclusion_set
-  artifact_recycler = _ArtifactRecycler(
-      metadata_handler,
-      pipeline_name=full_pipeline.pipeline_info.id,
-      base_run_id=base_run_id)
-  for node_id in nodes_to_reuse:
-    artifact_recycler.reuse_node_outputs(node_id, validated_new_run_id)
-  artifact_recycler.put_parent_context(validated_new_run_id)
 
 
 class _ArtifactRecycler:
@@ -492,14 +376,12 @@ class _ArtifactRecycler:
   """
 
   def __init__(self, metadata_handler: metadata.Metadata, pipeline_name: str,
-               base_run_id: str):
+               old_run_id: str):
     self._mlmd = metadata_handler
     self._pipeline_name = pipeline_name
     self._pipeline_context = self._get_pipeline_context()
-    self._base_run_id = base_run_id
-    self._pipeline_run_contexts = {}
-    self._pipeline_run_type_id = self._get_pipeline_run_context(
-        base_run_id).type_id
+    self._old_pipeline_run_context = self._get_pipeline_run_context(old_run_id)
+    self._pipeline_run_type_id = self._old_pipeline_run_context.type_id
 
   def _get_pipeline_context(self) -> metadata_store_pb2.Context:
     result = self._mlmd.store.get_context_by_type_and_name(
@@ -510,45 +392,13 @@ class _ArtifactRecycler:
     return result
 
   def _get_pipeline_run_context(
-      self,
-      run_id: str,
-      register_if_not_found: bool = False) -> metadata_store_pb2.Context:
-    """Gets the pipeline_run_context for a given pipeline run id.
-
-    When called, it will first attempt to get the pipeline run context from an
-    in-memory cache. If not found, it will then attempt to find it in MLMD.
-    If not found there, it will raise LookupError unless `register_if_not_found`
-    is set to True. If `register_if_not_found` is set to True, this method will
-    register the pipeline_run_context in MLMD, add it to the in-memory cache,
-    and return the pipeline_run_context.
-
-    Args:
-      run_id: The pipeline_run_id whose Context to query.
-      register_if_not_found: If set to True, it will register the
-        pipeline_run_id in MLMD if the pipeline_run_id cannot be found in MLMD.
-        If set to False, it will raise LookupError.  Defaults to False.
-
-    Returns:
-      The requested pipeline run Context.
-
-    Raises:
-      LookupError: If register_if_not_found is not set to True, and the
-        pipeline_run_id cannot be found in MLMD.
-    """
-    if run_id not in self._pipeline_run_contexts:
-      pipeline_run_context = self._mlmd.store.get_context_by_type_and_name(
-          type_name=constants.PIPELINE_RUN_CONTEXT_TYPE_NAME,
-          context_name=run_id)
-      if pipeline_run_context is None:
-        if register_if_not_found:
-          pipeline_run_context = context_lib.register_context_if_not_exists(
-              self._mlmd,
-              context_type_name=constants.PIPELINE_RUN_CONTEXT_TYPE_NAME,
-              context_name=run_id)
-        else:
-          raise LookupError(f'pipeline_run_id {run_id} not found in MLMD.')
-      self._pipeline_run_contexts[run_id] = pipeline_run_context
-    return self._pipeline_run_contexts[run_id]
+      self, pipeline_run_id: str) -> metadata_store_pb2.Context:
+    result = self._mlmd.store.get_context_by_type_and_name(
+        type_name=constants.PIPELINE_RUN_CONTEXT_TYPE_NAME,
+        context_name=pipeline_run_id)
+    if result is None:
+      raise LookupError(f'pipeline_run_id {pipeline_run_id} not found in MLMD.')
+    return result
 
   def _get_node_context(self, node_id: str) -> metadata_store_pb2.Context:
     node_context_name = compiler_utils.node_context_name(
@@ -578,7 +428,7 @@ class _ArtifactRecycler:
         execution_lib.get_executions_associated_with_all_contexts(
             self._mlmd,
             contexts=[
-                node_context, self._pipeline_run_contexts[self._base_run_id],
+                node_context, self._old_pipeline_run_context,
                 self._pipeline_context
             ]))
     prev_successful_executions = [
@@ -588,7 +438,7 @@ class _ArtifactRecycler:
     if not prev_successful_executions:
       raise LookupError(
           f'No previous successful executions found for node_id {node_id} in '
-          f'pipeline_run {self._pipeline_run_contexts[self._base_run_id].name}')
+          f'pipeline_run {self._old_pipeline_run_context.name}')
 
     return execution_lib.sort_executions_newest_to_oldest(
         prev_successful_executions)
@@ -612,13 +462,16 @@ class _ArtifactRecycler:
       The list of Contexts to be associated with the new cached Execution.
     """
     result = []
-    for context in self._mlmd.store.get_contexts_by_execution(
+    for old_context in self._mlmd.store.get_contexts_by_execution(
         existing_execution.id):
-      if context.type_id == self._pipeline_run_type_id:
-        # Replace with new pipeline run context.
-        context = self._get_pipeline_run_context(
-            new_pipeline_run_id, register_if_not_found=True)
-      result.append(context)
+      if old_context.type_id == self._pipeline_run_type_id:
+        new_pipeline_run_context = context_lib.register_context_if_not_exists(
+            self._mlmd,
+            context_type_name=constants.PIPELINE_RUN_CONTEXT_TYPE_NAME,
+            context_name=new_pipeline_run_id)
+        result.append(new_pipeline_run_context)
+      else:
+        result.append(old_context)
     return result
 
   def _cache_and_publish(self, existing_execution: metadata_store_pb2.Execution,
@@ -658,20 +511,6 @@ class _ArtifactRecycler:
         contexts=cached_execution_contexts,
         execution_id=new_execution.id,
         output_artifacts=output_artifacts)
-
-  def put_parent_context(self, new_pipeline_run_id: str):
-    """Puts a ParentContext edge in MLMD.
-
-    Args:
-      new_pipeline_run_id: The new pipeline_run_id to be set as the child
-        context. The parent context is the old pipeline_run_id that this
-        _ArtifactRecycler instance was created with.
-    """
-    base_run_context = self._get_pipeline_run_context(self._base_run_id)
-    new_run_context = self._get_pipeline_run_context(
-        new_pipeline_run_id, register_if_not_found=True)
-    context_lib.put_parent_context_if_not_exists(
-        self._mlmd, parent_id=base_run_context.id, child_id=new_run_context.id)
 
   def reuse_node_outputs(self, node_id: str, new_pipeline_run_id: str):
     """Makes the outputs of `node_id` available to new_pipeline_run_id."""
