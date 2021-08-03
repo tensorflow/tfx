@@ -61,8 +61,8 @@ class BeamExecutorOperator(base_executor_operator.BaseExecutorOperator):
         beam_executor_spec.python_executor_spec.class_path)
     self.extra_flags = []
     self.extra_flags.extend(beam_executor_spec.python_executor_spec.extra_flags)
-    self.beam_pipline_args = []
-    self.beam_pipline_args.extend(beam_executor_spec.beam_pipeline_args)
+    self.beam_pipeline_args = []
+    self.beam_pipeline_args.extend(beam_executor_spec.beam_pipeline_args)
 
   def run_executor(
       self, execution_info: data_types.ExecutionInfo
@@ -76,7 +76,7 @@ class BeamExecutorOperator(base_executor_operator.BaseExecutorOperator):
       The output from executor.
     """
     context = base_beam_executor.BaseBeamExecutor.Context(
-        beam_pipeline_args=self.beam_pipline_args,
+        beam_pipeline_args=self.beam_pipeline_args,
         extra_flags=self.extra_flags,
         tmp_dir=execution_info.tmp_dir,
         unique_id=str(execution_info.execution_id),
