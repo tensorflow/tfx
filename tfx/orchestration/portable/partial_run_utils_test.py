@@ -13,7 +13,7 @@
 # limitations under the License.
 """Tests for tfx.orchestration.portable.partial_run_utils."""
 
-from typing import Mapping
+from typing import List, Mapping, Optional, Tuple, Union
 from unittest import mock
 
 from absl import logging
@@ -564,6 +564,15 @@ def AddNum(to_add: Parameter[int],
 
 
 @component
+def SubtractNums(num_1: InputArtifact[standard_artifacts.Integer],
+                 num_2: InputArtifact[standard_artifacts.Integer],
+                 diff: OutputArtifact[standard_artifacts.Integer]):
+  num_1, num_2 = num_1.value, num_2.value
+  diff.value = num_1 - num_2
+  logging.info('SubtractNums with num_1=%s, num_2=%s', num_1, num_2)
+
+
+@component
 def Result(result: InputArtifact[standard_artifacts.Integer]):
   result_value = result.value
   logging.info('Result with result=%s', result_value)
@@ -598,26 +607,44 @@ class PartialRunTest(absltest.TestCase):
         pipeline_root_dir.create_file('mlmd.sqlite').full_path)
     self.result_node_id = Result.__name__
 
-  def make_pipeline(self, components, run_id: str) -> pipeline_pb2.Pipeline:
+  def make_pipeline(self, components,
+                    run_id: Optional[str] = None) -> pipeline_pb2.Pipeline:
+    """Make compiled pipeline from components.
+
+    Args:
+      components: List of components.
+      run_id: Optional.If provided, will be used to substitute the
+        pipeline_run_id RuntimeParameted.
+
+    Returns:
+      The compiled Pipeline IR.
+    """
     pipeline = pipeline_lib.Pipeline(self.pipeline_name, self.pipeline_root,
                                      self.metadata_config, components)
     result = compiler.Compiler().compile(pipeline)
-    runtime_parameter_utils.substitute_runtime_parameter(
-        result, {constants.PIPELINE_RUN_ID_PARAMETER_NAME: run_id})
+    if run_id:
+      runtime_parameter_utils.substitute_runtime_parameter(
+          result, {constants.PIPELINE_RUN_ID_PARAMETER_NAME: run_id})
     return result
 
-  def assertResultEquals(self, pipeline_pb: pipeline_pb2.Pipeline,
-                         expected_result: int):
-    result_node_inputs = _node_inputs_by_id(
-        pipeline_pb, node_id=self.result_node_id)
-    with metadata.Metadata(self.metadata_config) as m:
-      result_artifact = inputs_utils.resolve_input_artifacts(
-          m, result_node_inputs)['result'][0]
-    result_artifact.read()
-    self.assertEqual(result_artifact.value, expected_result)
+  def assertResultEqual(self, pipeline_pb: pipeline_pb2.Pipeline,
+                        expected_result: Union[int, List[Tuple[str, int]]]):
+    node_id_exp_result_tups = []
+    if isinstance(expected_result, int):
+      node_id_exp_result_tups.append((self.result_node_id, expected_result))
+    else:
+      node_id_exp_result_tups = expected_result
 
-  def testRemoveFirstNode(self):
-    """Test that partial run with the first node removed works."""
+    with metadata.Metadata(self.metadata_config) as m:
+      for node_id, exp_result in node_id_exp_result_tups:
+        result_node_inputs = _node_inputs_by_id(pipeline_pb, node_id=node_id)
+        result_artifact = inputs_utils.resolve_input_artifacts(
+            m, result_node_inputs)['result'][0]
+        result_artifact.read()
+        self.assertEqual(result_artifact.value, exp_result)
+
+  def testReuseNodeOuputs_removeFirstNode(self):
+    """Tests that partial run with the first node removed works."""
     ############################################################################
     # PART 1a: Full run -- Author pipeline.
     #
@@ -658,7 +685,7 @@ class PartialRunTest(absltest.TestCase):
     #          -------        ---------        ---------
     #
     ############################################################################
-    self.assertResultEquals(pipeline_pb_run_1, 2)
+    self.assertResultEqual(pipeline_pb_run_1, 2)
 
     ############################################################################
     # PART 2: Modify the `AddNum` component.
@@ -713,7 +740,7 @@ class PartialRunTest(absltest.TestCase):
           m,
           pipeline_name=self.pipeline_name,
           node_id=load.id,
-          old_run_id='run_1',
+          base_run_id='run_1',
           new_run_id='run_2')
     ############################################################################
     # PART 3c: Partial run -- Run pipeline.
@@ -736,7 +763,558 @@ class PartialRunTest(absltest.TestCase):
     #                         ---------        ---------
     #
     ############################################################################
-    self.assertResultEquals(pipeline_pb_run_2, 6)
+    self.assertResultEqual(pipeline_pb_run_2, 6)
+
+  def testReusePipelineArtifacts_twoIndependentSubgraphs(self):
+    """Tests a sequence of partial runs with independent sub-graphs."""
+    ############################################################################
+    # PART 1a: Full run -- Author pipeline.
+    #
+    # This pipeline consists of *two* independent sub-graphs.
+    #
+    #              (1)               (1)
+    #               v                 v
+    #           ---------        -----------        -----------
+    #          | Load 1 | ----> | AddNum 1 | ----> | Result 1 |
+    #          ---------        -----------        -----------
+    #  run_1:
+    #           ---------        -----------        -----------
+    #          | Load 2 | ----> | AddNum 2 | ----> | Result 2 |
+    #          ---------        -----------        -----------
+    #              ^                 ^
+    #            (10)              (10)
+    #
+    ############################################################################
+    # pylint: disable=no-value-for-parameter
+    load_1 = Load(start_num=1).with_id('load_1')
+    add_num_1 = AddNum(to_add=1, num=load_1.outputs['num']).with_id('add_num_1')
+    result_1 = Result(result=add_num_1.outputs['added_num']).with_id('result_1')
+    load_2 = Load(start_num=10).with_id('load_2')
+    add_num_2 = AddNum(
+        to_add=10, num=load_2.outputs['num']).with_id('add_num_2')
+    result_2 = Result(result=add_num_2.outputs['added_num']).with_id('result_2')
+    # pylint: enable=no-value-for-parameter
+    pipeline_pb_run_1 = self.make_pipeline(
+        components=[load_1, add_num_1, result_1, load_2, add_num_2, result_2],
+        run_id='run_1')
+    ############################################################################
+    # PART 1b: Full run -- Run and verify (1 + 1 == 2 and 10 + 10 == 20).
+    #
+    #              (1)               (1)
+    #               v                 v
+    #           ---------   1    -----------   2    -----------
+    #          | Load 1 | ----> | AddNum 1 | ----> | Result 1 |
+    #          ---------        -----------        -----------
+    #  run_1:
+    #           ---------  10    -----------  20    -----------
+    #          | Load 2 | ----> | AddNum 2 | ----> | Result 2 |
+    #          ---------        -----------        -----------
+    #              ^                 ^
+    #            (10)              (10)
+    #
+    ############################################################################
+    beam_dag_runner.BeamDagRunner().run(pipeline_pb_run_1)
+    self.assertResultEqual(pipeline_pb_run_1, [(result_1.id, 2),
+                                               (result_2.id, 20)])
+
+    ############################################################################
+    # PART 2: Modify the `AddNum` component in the first "sub-pipeline".
+    #
+    #              (1)               (5)
+    #               v                 v
+    #           ---------        -----------        -----------
+    #          | Load 1 | ----> | AddNum 1 | ----> | Result 1 |
+    #          ---------        -----------        -----------
+    #
+    ############################################################################
+    # pylint: disable=no-value-for-parameter
+    add_num_1_v2 = AddNum(
+        to_add=5, num=load_1.outputs['num']).with_id('add_num_1')
+    load_1.remove_downstream_node(add_num_1)  # This line is important.
+    result_1_v2 = Result(
+        result=add_num_1_v2.outputs['added_num']).with_id('result_1')
+    # pylint: enable=no-value-for-parameter
+    pipeline_pb_run_2 = self.make_pipeline(
+        components=[
+            load_1,
+            add_num_1_v2,
+            result_1_v2,
+            load_2,
+            add_num_2,
+            result_2,
+        ],
+        run_id='run_2')
+
+    ############################################################################
+    # PART 3a: Partial run -- DAG filtering.
+    #
+    # Only run the first sub-graph from `AddNum 1` onwards.
+    #
+    #                              (5)
+    #                               v
+    #                          -----------        -----------
+    #  run_2:          --/--> | AddNum 1 | ----> | Result 1 |
+    #                         -----------        -----------
+    #
+    ############################################################################
+    filtered_pipeline_pb_run_2, excluded_direct_deps_run_2 = (
+        partial_run_utils.filter_pipeline(
+            pipeline_pb_run_2,
+            from_nodes=lambda node_id: (node_id == add_num_1_v2.id)))
+    ############################################################################
+    # PART 3b: Partial run -- Reuse pipeline run artifacts.
+    #
+    # Reuses artifacts from `run_1` to resolve inputs in `run_2`.
+    #
+    #                              (5)
+    #                               v
+    #                     ?    -----------        -----------
+    #  run_2:           ----> | AddNum 1 | ----> | Result 1 |
+    #                         -----------        -----------
+    #
+    ############################################################################
+    with metadata.Metadata(self.metadata_config) as m:
+      partial_run_utils.reuse_pipeline_run_artifacts(
+          m,
+          full_pipeline=pipeline_pb_run_2,
+          filtered_pipeline=filtered_pipeline_pb_run_2,
+          excluded_direct_dependencies=excluded_direct_deps_run_2,
+          base_run_id='run_1')
+
+    ############################################################################
+    # PART 3c: Partial run -- Run and verify result (1 + 5 == 6).
+    #
+    #                              (5)
+    #                               v
+    #                     1    -----------   6    -----------
+    #  run_2:           ----> | AddNum 1 | ----> | Result 1 |
+    #                         -----------        -----------
+    #
+    ############################################################################
+    beam_dag_runner.BeamDagRunner().run(filtered_pipeline_pb_run_2)
+    self.assertResultEqual(filtered_pipeline_pb_run_2, [(result_1_v2.id, 6)])
+
+    ############################################################################
+    # PART 4: Now in the second sub-graph, modify `AddNum 2`.
+    #
+    #              (10)              (50)
+    #               v                 v
+    #           ---------        -----------        -----------
+    #          | Load 2 | ----> | AddNum 2 | ----> | Result 2 |
+    #          ---------        -----------        -----------
+    #
+    ############################################################################
+    # pylint: disable=no-value-for-parameter
+    add_num_2_v2 = AddNum(
+        to_add=50, num=load_2.outputs['num']).with_id('add_num_2')
+    load_2.remove_downstream_node(add_num_2)  # This line is important.
+    result_2_v2 = Result(
+        result=add_num_2_v2.outputs['added_num']).with_id('result_2')
+    # pylint: enable=no-value-for-parameter
+    pipeline_pb_run_3 = self.make_pipeline(
+        components=[
+            load_1,
+            add_num_1_v2,
+            result_1_v2,
+            load_2,
+            add_num_2_v2,
+            result_2_v2,
+        ],
+        run_id='run_3')
+
+    ############################################################################
+    # PART 5a: Partial run -- DAG filtering.
+    #
+    # Only run the second sub-graph from `AddNum 2` onwards.
+    #
+    #                              (50)
+    #                               v
+    #                          -----------        -----------
+    #  run_3:          --/--> | AddNum 2 | ----> | Result 2 |
+    #                         -----------        -----------
+    #
+    ############################################################################
+    filtered_pipeline_pb_run_3, excluded_direct_deps_run_3 = (
+        partial_run_utils.filter_pipeline(
+            pipeline_pb_run_3,
+            from_nodes=lambda node_id: (node_id == add_num_2_v2.id)))
+    ############################################################################
+    # PART 5b: Partial run -- Reuse pipeline run artifacts.
+    #
+    # Reuses artifacts from `run_2` to resolve inputs in `run_3`.
+    #
+    # Observe that even though `run_2` does not need to be associated `Load 2`,
+    # `run_3` is able to obtain the outputs of `Load 2` from `run_2`.
+    # This is done on purpose to make partial runs more user-friendly.
+    #
+    #                              (50)
+    #                               v
+    #                     ?    -----------        -----------
+    #  run_3:           ----> | AddNum 2 | ----> | Result 2 |
+    #                         -----------        -----------
+    #
+    ############################################################################
+    with metadata.Metadata(self.metadata_config) as m:
+      partial_run_utils.reuse_pipeline_run_artifacts(
+          m,
+          full_pipeline=pipeline_pb_run_3,
+          filtered_pipeline=filtered_pipeline_pb_run_3,
+          excluded_direct_dependencies=excluded_direct_deps_run_3,
+          base_run_id='run_2')
+
+    ############################################################################
+    # PART 5c: Partial run -- Run and verify result (10 + 50 == 60).
+    #
+    #                              (50)
+    #                               v
+    #                     10   -----------   60   -----------
+    #  run_3:           ----> | AddNum 2 | ----> | Result 2 |
+    #                         -----------        -----------
+    #
+    ############################################################################
+    beam_dag_runner.BeamDagRunner().run(filtered_pipeline_pb_run_3)
+    self.assertResultEqual(filtered_pipeline_pb_run_3, [(result_2_v2.id, 60)])
+
+    ############################################################################
+    # PART 6a: Partial run -- Two sub-graphs at the same time.
+    #
+    #                              (5)
+    #                               v
+    #                          -----------        -----------
+    #                  --/--> | AddNum 1 | ----> | Result 1 |
+    #                         -----------        -----------
+    #  run_4:
+    #                          -----------        -----------
+    #                  --/--> | AddNum 2 | ----> | Result 2 |
+    #                         -----------        -----------
+    #                              ^
+    #                            (50)
+    #
+    ############################################################################
+    pipeline_pb_run_4 = self.make_pipeline(
+        components=[
+            load_1,
+            add_num_1_v2,
+            result_1_v2,
+            load_2,
+            add_num_2_v2,
+            result_2_v2,
+        ],
+        run_id='run_4')
+    filtered_pipeline_pb_run_4, excluded_direct_deps_run_4 = (
+        partial_run_utils.filter_pipeline(
+            pipeline_pb_run_4,
+            from_nodes=lambda node_id: ('add_num' in node_id)))
+
+    ############################################################################
+    # PART 6b: Partial run -- Reuse pipeline run artifacts.
+    #
+    # Again, observe that even though `run_3` does not need to be associated
+    # `Load 1`, `run_3` is able to obtain the outputs of `Load 2` from `run_3`.
+    #
+    #                              (5)
+    #                               v
+    #                     1    -----------        -----------
+    #                   ----> | AddNum 1 | ----> | Result 1 |
+    #                         -----------        -----------
+    #  run_4:
+    #                    10    -----------        -----------
+    #                   ----> | AddNum 2 | ----> | Result 2 |
+    #                         -----------        -----------
+    #                              ^
+    #                            (50)
+    #
+    ############################################################################
+    with metadata.Metadata(self.metadata_config) as m:
+      partial_run_utils.reuse_pipeline_run_artifacts(
+          m,
+          full_pipeline=pipeline_pb_run_4,
+          filtered_pipeline=filtered_pipeline_pb_run_4,
+          excluded_direct_dependencies=excluded_direct_deps_run_4,
+          base_run_id='run_3')
+    ############################################################################
+    # PART 6c: Partial run -- run and verify.
+    #
+    #                              (5)
+    #                               v
+    #                     1    -----------   6    -----------
+    #                   ----> | AddNum 1 | ----> | Result 1 |
+    #                         -----------        -----------
+    #  run_4:
+    #                    10    -----------  60    -----------
+    #                   ----> | AddNum 2 | ----> | Result 2 |
+    #                         -----------        -----------
+    #                              ^
+    #                            (50)
+    #
+    ############################################################################
+    beam_dag_runner.BeamDagRunner().run(filtered_pipeline_pb_run_4)
+    self.assertResultEqual(filtered_pipeline_pb_run_4, [(result_1_v2.id, 6),
+                                                        (result_2_v2.id, 60)])
+    # Also verify that parent contexts are added.
+    with metadata.Metadata(self.metadata_config) as m:
+      pipeline_run_contexts = {
+          run_context.name: run_context for run_context in
+          m.store.get_contexts_by_type(constants.PIPELINE_RUN_CONTEXT_TYPE_NAME)
+      }
+      self.assertEqual(
+          m.store.get_parent_contexts_by_context(
+              pipeline_run_contexts['run_4'].id),
+          [pipeline_run_contexts['run_3']])
+      self.assertEqual(
+          m.store.get_parent_contexts_by_context(
+              pipeline_run_contexts['run_3'].id),
+          [pipeline_run_contexts['run_2']])
+      self.assertEqual(
+          m.store.get_parent_contexts_by_context(
+              pipeline_run_contexts['run_2'].id),
+          [pipeline_run_contexts['run_1']])
+
+  def testReusePipelineArtifacts_preventInconsistency(self):
+    """Tests that a tricky sequence of partial runs raises an error."""
+    ############################################################################
+    # PART 1a: Full run -- Author pipeline.
+    #
+    # This pipeline contains `SubtractNums`, which has two input channels.
+    # It substract the output of `Load` from the value of `AddNum` -- i.e.,
+    # it should recover `AddNum`'s exec_param.
+    #
+    #             (1)            (1)
+    #              v              v
+    #           -------       ---------        ---------------        ---------
+    #  run_1:  | Load |---.> | AddNum | ----> | SubtractNums | ----> | Result |
+    #          -------   |   ---------        ---------------        ---------
+    #                    \                        ^
+    #                     \______________________/
+    #
+    ############################################################################
+    # pylint: disable=no-value-for-parameter
+    load = Load(start_num=1)
+    add_num = AddNum(to_add=1, num=load.outputs['num'])
+    subtract_nums = SubtractNums(
+        num_1=add_num.outputs['added_num'], num_2=load.outputs['num'])
+    result = Result(result=subtract_nums.outputs['diff'])
+    # pylint: enable=no-value-for-parameter
+    pipeline_pb_run_1 = self.make_pipeline(
+        components=[load, add_num, subtract_nums, result], run_id='run_1')
+    ############################################################################
+    # PART 1b: Full run -- Run and verify ((1 + 1) - 1 == 1).
+    #
+    #             (1)            (1)
+    #              v              v
+    #           -------  1    ---------   2    ---------------   1    ---------
+    #  run_1:  | Load |---.> | AddNum | ----> | SubtractNums | ----> | Result |
+    #          -------   |   ---------        ---------------        ---------
+    #                    \                        ^
+    #                     \______________________/
+    #
+    ############################################################################
+    beam_dag_runner.BeamDagRunner().run(pipeline_pb_run_1)
+    self.assertResultEqual(pipeline_pb_run_1, 1)
+
+    ############################################################################
+    # PART 2: Modify the `AddNum` component in the first "sub-pipeline".
+    #
+    #             (1)            (5)
+    #              v              v
+    #           -------       ---------        ---------------        ---------
+    #          | Load |---.> | AddNum | ----> | SubtractNums | ----> | Result |
+    #          -------   |   ---------        ---------------        ---------
+    #                    \                        ^
+    #                     \______________________/
+    #
+    ############################################################################
+    # pylint: disable=no-value-for-parameter
+    add_num_v2 = AddNum(to_add=5, num=load.outputs['num'])
+    load.remove_downstream_node(add_num)  # This line is important.
+    subtract_nums_v2 = SubtractNums(
+        num_1=add_num_v2.outputs['added_num'], num_2=load.outputs['num'])
+    load.remove_downstream_node(subtract_nums)  # This line is important.
+    result_v2 = Result(result=subtract_nums_v2.outputs['diff'])
+    # pylint: enable=no-value-for-parameter
+    pipeline_pb_run_2 = self.make_pipeline(
+        components=[load, add_num_v2, subtract_nums_v2, result_v2],
+        run_id='run_2')
+
+    ############################################################################
+    # PART 3a: Partial run -- DAG filtering.
+    #
+    # Only run from `AddNum` onwards.
+    #
+    #                            (5)
+    #                             v
+    #                         ---------        ---------------        ---------
+    #                 -/--.> | AddNum | ----> | SubtractNums | ----> | Result |
+    #                    |   ---------        ---------------        ---------
+    #                    \                        ^
+    #                     \______________________/
+    #
+    ############################################################################
+    filtered_pipeline_pb_run_2, excluded_direct_deps_run_2 = (
+        partial_run_utils.filter_pipeline(
+            pipeline_pb_run_2,
+            from_nodes=lambda node_id: (node_id == add_num_v2.id)))
+    ############################################################################
+    # PART 3b: Partial run -- Reuse pipeline run artifacts.
+    #
+    # Reuses artifacts from `run_1` to resolve inputs in `run_2`.
+    #
+    #                            (5)
+    #                             v
+    #                    1    ---------        ---------------        ---------
+    #  run_2:          ---.> | AddNum | ----> | SubtractNums | ----> | Result |
+    #                    |   ---------        ---------------        ---------
+    #                    \                        ^
+    #                     \______________________/
+    #
+    ############################################################################
+    with metadata.Metadata(self.metadata_config) as m:
+      partial_run_utils.reuse_pipeline_run_artifacts(
+          m,
+          full_pipeline=pipeline_pb_run_2,
+          filtered_pipeline=filtered_pipeline_pb_run_2,
+          excluded_direct_dependencies=excluded_direct_deps_run_2,
+          base_run_id='run_1')
+
+    ############################################################################
+    # PART 3c: Partial run -- Run and verify result ((1 + 5) - 1 == 5).
+    #
+    #                            (5)
+    #                             v
+    #                    1    ---------   6    ---------------   5    ---------
+    #  run_2:          ---.> | AddNum | ----> | SubtractNums | ----> | Result |
+    #                    |   ---------        ---------------        ---------
+    #                    \                        ^
+    #                     \______________________/
+    #
+    ############################################################################
+    beam_dag_runner.BeamDagRunner().run(filtered_pipeline_pb_run_2)
+    self.assertResultEqual(filtered_pipeline_pb_run_2, 5)
+
+    ############################################################################
+    # PART 4: Now modify `Load`.
+    #
+    #             (5)            (5)
+    #              v              v
+    #           -------       ---------        ---------------        ---------
+    #          | Load |---.> | AddNum | ----> | SubtractNums | ----> | Result |
+    #          -------   |   ---------        ---------------        ---------
+    #                    \                        ^
+    #                     \______________________/
+    #
+    ############################################################################
+    # pylint: disable=no-value-for-parameter
+    load_v2 = Load(start_num=5)
+    add_num_v3 = AddNum(to_add=5, num=load_v2.outputs['num'])
+    subtract_nums_v3 = SubtractNums(
+        num_1=add_num_v3.outputs['added_num'], num_2=load_v2.outputs['num'])
+    result_v3 = Result(result=subtract_nums_v3.outputs['diff'])
+    # pylint: enable=no-value-for-parameter
+    pipeline_pb_run_3 = self.make_pipeline(
+        components=[load_v2, add_num_v3, subtract_nums_v3, result_v3],
+        run_id='run_3')
+
+    ############################################################################
+    # PART 5: Partial run. Only run `Load`.
+    #
+    #             (5)
+    #              v
+    #           -------
+    #  run_3:  | Load |---.>
+    #          -------   |
+    #                    \                        ^
+    #                     \______________________/
+    #
+    ############################################################################
+    filtered_pipeline_pb_run_3, excluded_direct_deps_run_3 = (
+        partial_run_utils.filter_pipeline(
+            pipeline_pb_run_3,
+            from_nodes=lambda node_id: (node_id == load_v2.id),
+            to_nodes=lambda node_id: (node_id == load_v2.id)))
+    with metadata.Metadata(self.metadata_config) as m:
+      partial_run_utils.reuse_pipeline_run_artifacts(
+          m,
+          full_pipeline=pipeline_pb_run_3,
+          filtered_pipeline=filtered_pipeline_pb_run_3,
+          excluded_direct_dependencies=excluded_direct_deps_run_3,
+          base_run_id='run_2')
+    beam_dag_runner.BeamDagRunner().run(filtered_pipeline_pb_run_3)
+
+    ############################################################################
+    # PART 6a: Partial run -- Only `SubtractNum` onwards, using `run_3` as base.
+    #
+    #                                          ---------------        ---------
+    #  run_4:                          --/--> | SubtractNums | ----> | Result |
+    #                                         ---------------        ---------
+    #                                             ^
+    #                                             x
+    #
+    ############################################################################
+    pipeline_pb_run_4 = self.make_pipeline(
+        components=[load_v2, add_num_v3, subtract_nums_v3, result_v3],
+        run_id='run_4')
+    filtered_pipeline_pb_run_4, excluded_direct_deps_run_4 = (
+        partial_run_utils.filter_pipeline(
+            pipeline_pb_run_4,
+            from_nodes=lambda node_id: (node_id == subtract_nums_v3.id)))
+
+    ############################################################################
+    # PART 6b: Partial run -- Reuse pipeline run artifacts.
+    #
+    # Reusing artifacts with run_3 as base fails. This is by design, because
+    # in run_3, we only execute `Load` but not `AddNum`. We do not want to reuse
+    # the output of `AddNum` in run_2, because it was made using an old version
+    # of `Load`. The reason we want to prevent this is that if you allowed this,
+    # you could associate a ModelEvaluation with the wrong Model, and that would
+    # be very bad, because you might deploy a bad Model while thinking it was a
+    # good Model.
+    #
+    #                                          ---------------        ---------
+    #                          (!!)    --/--> | SubtractNums | ----> | Result |
+    #                                         ---------------        ---------
+    #                                             ^
+    #                                             x
+    #
+    ############################################################################
+    with metadata.Metadata(self.metadata_config) as m:
+      with self.assertRaisesRegex(
+          LookupError,
+          'No previous successful executions found for node_id AddNum in '
+          'pipeline_run run_3'):
+        partial_run_utils.reuse_pipeline_run_artifacts(
+            m,
+            full_pipeline=pipeline_pb_run_4,
+            filtered_pipeline=filtered_pipeline_pb_run_4,
+            excluded_direct_dependencies=excluded_direct_deps_run_4,
+            base_run_id='run_3')
+    ############################################################################
+    # PART 6b: Partial run -- Reuse pipeline run artifacts.
+    #
+    # But you can retry with base_run_id='run_2', and it should work fine.
+    #
+    #                                     6    ---------------   5    ---------
+    #  run_5:                   OK      ----> | SubtractNums | ----> | Result |
+    #                                         ---------------        ---------
+    #                                             ^
+    #                                        1 --/
+    #
+    ############################################################################
+    pipeline_pb_run_5 = self.make_pipeline(
+        components=[load_v2, add_num_v3, subtract_nums_v3, result_v3],
+        run_id='run_5')
+    filtered_pipeline_pb_run_5, excluded_direct_deps_run_5 = (
+        partial_run_utils.filter_pipeline(
+            pipeline_pb_run_5,
+            from_nodes=lambda node_id: (node_id == subtract_nums_v3.id)))
+    with metadata.Metadata(self.metadata_config) as m:
+      partial_run_utils.reuse_pipeline_run_artifacts(
+          m,
+          full_pipeline=pipeline_pb_run_5,
+          filtered_pipeline=filtered_pipeline_pb_run_4,
+          excluded_direct_dependencies=excluded_direct_deps_run_5,
+          base_run_id='run_2')
+    beam_dag_runner.BeamDagRunner().run(filtered_pipeline_pb_run_5)
+    self.assertResultEqual(filtered_pipeline_pb_run_5, 5)
 
   def testNonExistentContext_lookupError(self):
     """Raise error if user provides non-existent pipeline_run_id or node_id."""
@@ -753,7 +1331,7 @@ class PartialRunTest(absltest.TestCase):
             m,
             pipeline_name=self.pipeline_name,
             node_id=load.id,
-            old_run_id='non_existent_run_id',
+            base_run_id='non_existent_run_id',
             new_run_id='run_2')
       with self.assertRaisesRegex(LookupError,
                                   'node context .* not found in MLMD.'):
@@ -761,7 +1339,7 @@ class PartialRunTest(absltest.TestCase):
             m,
             pipeline_name=self.pipeline_name,
             node_id='non_existent_node_id',
-            old_run_id='run_1',
+            base_run_id='run_1',
             new_run_id='run_2')
 
   def testNoPreviousSuccessfulExecution_lookupError(self):
@@ -784,7 +1362,7 @@ class PartialRunTest(absltest.TestCase):
             m,
             pipeline_name=self.pipeline_name,
             node_id=load_fail.id,
-            old_run_id='run_1',
+            base_run_id='run_1',
             new_run_id='run_2')
 
   def testIdempotence_retryReusesRegisteredCacheExecution(self):
@@ -809,7 +1387,7 @@ class PartialRunTest(absltest.TestCase):
     pipeline_pb_run_1 = self.make_pipeline(
         components=[load, add_num, result], run_id='run_1')
     beam_dag_runner.BeamDagRunner().run(pipeline_pb_run_1)
-    self.assertResultEquals(pipeline_pb_run_1, 2)
+    self.assertResultEqual(pipeline_pb_run_1, 2)
 
     add_num_v2 = AddNum(to_add=5, num=load.outputs['num'])  # pylint: disable=no-value-for-parameter
     load.remove_downstream_node(add_num)  # This line is important.
@@ -833,7 +1411,7 @@ class PartialRunTest(absltest.TestCase):
               m,
               pipeline_name=self.pipeline_name,
               node_id=load.id,
-              old_run_id='run_1',
+              base_run_id='run_1',
               new_run_id='run_2')
         except ConnectionResetError:
           pass
@@ -842,7 +1420,7 @@ class PartialRunTest(absltest.TestCase):
           m,
           pipeline_name=self.pipeline_name,
           node_id=load.id,
-          old_run_id='run_1',
+          base_run_id='run_1',
           new_run_id='run_2')
 
       # Make sure that only one new cache execution is created,
@@ -865,7 +1443,7 @@ class PartialRunTest(absltest.TestCase):
 
     # Make sure it still works!
     beam_dag_runner.BeamDagRunner().run(pipeline_pb_run_2)
-    self.assertResultEquals(pipeline_pb_run_2, 6)
+    self.assertResultEqual(pipeline_pb_run_2, 6)
 
   def testIdempotence_retryReusesPreviousSuccessfulCacheExecution(self):
     """Ensures idempotence.
@@ -879,7 +1457,7 @@ class PartialRunTest(absltest.TestCase):
     pipeline_pb_run_1 = self.make_pipeline(
         components=[load, add_num, result], run_id='run_1')
     beam_dag_runner.BeamDagRunner().run(pipeline_pb_run_1)
-    self.assertResultEquals(pipeline_pb_run_1, 2)
+    self.assertResultEqual(pipeline_pb_run_1, 2)
 
     add_num_v2 = AddNum(to_add=5, num=load.outputs['num'])  # pylint: disable=no-value-for-parameter
     load.remove_downstream_node(add_num)  # This line is important.
@@ -898,7 +1476,7 @@ class PartialRunTest(absltest.TestCase):
             m,
             pipeline_name=self.pipeline_name,
             node_id=load.id,
-            old_run_id='run_1',
+            base_run_id='run_1',
             new_run_id='run_2')
 
       # Make sure that only one new cache execution is created,
@@ -921,7 +1499,163 @@ class PartialRunTest(absltest.TestCase):
 
     # Make sure it still works!
     beam_dag_runner.BeamDagRunner().run(pipeline_pb_run_2)
-    self.assertResultEquals(pipeline_pb_run_2, 6)
+    self.assertResultEqual(pipeline_pb_run_2, 6)
+
+  def testReusePipelineArtifacts_missingNewRunId_error(self):
+    """If pipeline IR has no run id, and user does not provide it, fail."""
+    ############################################################################
+    # PART 1: Full run.
+    #
+    #             (1)             (1)
+    #              v               v
+    #           -------   1    ---------   2    ---------
+    #  run_1:  | Load | ----> | AddNum | ----> | Result |
+    #          -------        ---------        ---------
+    #
+    ############################################################################
+    # pylint: disable=no-value-for-parameter
+    load = Load(start_num=1)
+    add_num = AddNum(to_add=1, num=load.outputs['num'])
+    result = Result(result=add_num.outputs['added_num'])
+    # pylint: enable=no-value-for-parameter
+    pipeline_pb_run_1 = self.make_pipeline(
+        components=[load, add_num, result], run_id='run_1')
+    beam_dag_runner.BeamDagRunner().run(pipeline_pb_run_1)
+    self.assertResultEqual(pipeline_pb_run_1, 2)
+
+    ############################################################################
+    # PART 2: Modify the `AddNum` component in the first "sub-pipeline".
+    #
+    #             (1)             (5)
+    #              v               v
+    #           -------        ---------        ---------
+    #          | Load | ----> | AddNum | ----> | Result |
+    #          -------        ---------        ---------
+    #
+    ############################################################################
+    # pylint: disable=no-value-for-parameter
+    add_num_v2 = AddNum(to_add=5, num=load.outputs['num'])
+    load.remove_downstream_node(add_num)  # This line is important.
+    result_v2 = Result(result=add_num_v2.outputs['added_num'])
+    # pylint: enable=no-value-for-parameter
+    # NOTE: pipeline_pb_run_2's pipeline_run_id RuntimeParameter is still
+    # unresolved.
+    pipeline_pb_run_2 = self.make_pipeline(
+        components=[load, add_num_v2, result_v2])
+
+    ############################################################################
+    # PART 3a: Partial run -- DAG filtering.
+    #
+    # Only run the first sub-graph from `AddNum` onwards.
+    #
+    #                             (5)
+    #                              v
+    #                          ---------        ---------
+    #  ???             --/--> | AddNum | ----> | Result |
+    #                         ---------        ---------
+    #
+    ############################################################################
+    filtered_pipeline_pb_run_2, excluded_direct_deps_run_2 = (
+        partial_run_utils.filter_pipeline(
+            pipeline_pb_run_2,
+            from_nodes=lambda node_id: (node_id == add_num_v2.id)))
+
+    # We simulate a *user-error* here: The full_pipeline's pipeline_run_id was
+    # not resolved, and the user does not provide a value for new_run_id.
+    with metadata.Metadata(self.metadata_config) as m:
+      with self.assertRaisesRegex(ValueError,
+                                  'Unable to infer new pipeline run id.'):
+        partial_run_utils.reuse_pipeline_run_artifacts(
+            m,
+            full_pipeline=pipeline_pb_run_2,
+            filtered_pipeline=filtered_pipeline_pb_run_2,
+            excluded_direct_dependencies=excluded_direct_deps_run_2,
+            base_run_id='run_1')
+
+    # Check that once the user provides the new_run_id, it still works.
+    with metadata.Metadata(self.metadata_config) as m:
+      partial_run_utils.reuse_pipeline_run_artifacts(
+          m,
+          full_pipeline=pipeline_pb_run_2,
+          filtered_pipeline=filtered_pipeline_pb_run_2,
+          excluded_direct_dependencies=excluded_direct_deps_run_2,
+          base_run_id='run_1',
+          new_run_id='run_2')
+    runtime_parameter_utils.substitute_runtime_parameter(
+        filtered_pipeline_pb_run_2,
+        {constants.PIPELINE_RUN_ID_PARAMETER_NAME: 'run_2'})
+    beam_dag_runner.BeamDagRunner().run(filtered_pipeline_pb_run_2)
+    self.assertResultEqual(filtered_pipeline_pb_run_2, 6)
+
+  def testReusePipelineArtifacts_inconsistentNewRunId_error(self):
+    """If pipeline IR's run_id differs from user-provided run_id, fail."""
+    ############################################################################
+    # PART 1: Full run.
+    #
+    #             (1)             (1)
+    #              v               v
+    #           -------   1    ---------   2    ---------
+    #  run_1:  | Load | ----> | AddNum | ----> | Result |
+    #          -------        ---------        ---------
+    #
+    ############################################################################
+    # pylint: disable=no-value-for-parameter
+    load = Load(start_num=1)
+    add_num = AddNum(to_add=1, num=load.outputs['num'])
+    result = Result(result=add_num.outputs['added_num'])
+    # pylint: enable=no-value-for-parameter
+    pipeline_pb_run_1 = self.make_pipeline(
+        components=[load, add_num, result], run_id='run_1')
+    beam_dag_runner.BeamDagRunner().run(pipeline_pb_run_1)
+    self.assertResultEqual(pipeline_pb_run_1, 2)
+
+    ############################################################################
+    # PART 2: Modify the `AddNum` component in the first "sub-pipeline".
+    #
+    #             (1)             (5)
+    #              v               v
+    #           -------        ---------        ---------
+    #          | Load | ----> | AddNum | ----> | Result |
+    #          -------        ---------        ---------
+    #
+    ############################################################################
+    # pylint: disable=no-value-for-parameter
+    add_num_v2 = AddNum(to_add=5, num=load.outputs['num'])
+    load.remove_downstream_node(add_num)  # This line is important.
+    result_v2 = Result(result=add_num_v2.outputs['added_num'])
+    # pylint: enable=no-value-for-parameter
+    pipeline_pb_run_2 = self.make_pipeline(
+        components=[load, add_num_v2, result_v2], run_id='run_2')
+
+    ############################################################################
+    # PART 3a: Partial run -- DAG filtering.
+    #
+    # Only run the first sub-graph from `AddNum` onwards.
+    #
+    #                             (5)
+    #                              v
+    #                          ---------        ---------
+    #  run_2           --/--> | AddNum | ----> | Result |
+    #  (or run_3?!)           ---------        ---------
+    #
+    ############################################################################
+    filtered_pipeline_pb_run_2, excluded_direct_deps_run_2 = (
+        partial_run_utils.filter_pipeline(
+            pipeline_pb_run_2,
+            from_nodes=lambda node_id: (node_id == add_num_v2.id)))
+
+    # We simulate a *user-error* here: The full_pipeline was resolved with
+    # pipeline_run_id='run_2', but the user provides 'run_3'.
+    with metadata.Metadata(self.metadata_config) as m:
+      with self.assertRaisesRegex(ValueError,
+                                  'Conflicting new pipeline run ids found.'):
+        partial_run_utils.reuse_pipeline_run_artifacts(
+            m,
+            full_pipeline=pipeline_pb_run_2,
+            filtered_pipeline=filtered_pipeline_pb_run_2,
+            excluded_direct_dependencies=excluded_direct_deps_run_2,
+            base_run_id='run_1',
+            new_run_id='run_3')  # <-- user error here
 
 
 if __name__ == '__main__':
