@@ -23,11 +23,13 @@ import re
 from typing import Any, Dict, List, Text
 
 from absl import logging
+from google.api_core import client_options  # pylint: disable=unused-import
 from googleapiclient import discovery
 import tensorflow as tf
 from tfx import types
 from tfx.components.bulk_inferrer import executor as bulk_inferrer_executor
 from tfx.components.util import model_utils
+from tfx.extensions.google_cloud_ai_platform import constants
 from tfx.extensions.google_cloud_ai_platform import runner
 from tfx.proto import bulk_inferrer_pb2
 from tfx.types import artifact_utils
@@ -151,10 +153,17 @@ class Executor(bulk_inferrer_executor.Executor):
     if exec_properties.get('output_example_spec'):
       proto_utils.json_to_proto(exec_properties['output_example_spec'],
                                 output_example_spec)
+    endpoint = custom_config.get(constants.ENDPOINT_ARGS_KEY)
+    if endpoint and 'regions' in ai_platform_serving_args:
+      raise ValueError(
+          '\'endpoint\' and \'ai_platform_serving_args.regions\' cannot be set simultaneously'
+      )
     api = discovery.build(
         service_name,
         api_version,
         requestBuilder=telemetry_utils.TFXHttpRequest,
+        # TODO(b/163417407): remove copybara rules.
+        client_options=client_options.ClientOptions(api_endpoint=endpoint),
     )
     new_model_endpoint_created = False
     try:

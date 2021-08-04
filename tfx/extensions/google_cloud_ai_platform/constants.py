@@ -36,3 +36,7 @@ SERVING_ARGS_KEY = doc_controls.documented(
     doc='Keys to the items in custom_config of Pusher/BulkInferrer for passing '
     'serving args to AI Platform.')
 
+ENDPOINT_ARGS_KEY = doc_controls.documented(
+    obj='endpoint',
+    doc='Keys to the items in custom_config of Pusher/BulkInferrer for optional'
+    ' endpoint override (CAIP).')
