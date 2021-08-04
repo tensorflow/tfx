@@ -13,14 +13,26 @@
 # limitations under the License.
 """Module for ResolverOp and its related definitions."""
 import abc
-from typing import Any, Mapping, Sequence, Generic, TypeVar, Type, Union, ClassVar
+from typing import Any, ClassVar, Generic, Mapping, Sequence, Type, TypeVar, Union
 
 import attr
-
 import tfx.types
 from tfx.utils import json_utils
 
+import ml_metadata as mlmd
+
 ArtifactMultimap = Mapping[str, Sequence[tfx.types.Artifact]]
+
+
+# Mark frozen as context instance may be used across multiple operator
+# invocations.
+@attr.s(auto_attribs=True, frozen=True, kw_only=True)
+class Context:
+  """Context for running ResolverOp."""
+  # MetadataStore for MLMD read access.
+  store: mlmd.MetadataStore
+  # TODO(jjong): Add more context such as current pipeline, current pipeline
+  # run, and current running node information.
 
 
 class _ResolverOpMeta(abc.ABCMeta):
@@ -173,6 +185,9 @@ class ResolverOpProperty(Generic[_T]):
       return isinstance(value, typ)
 
   def __set_name__(self, owner, name):
+    if name == 'context':
+      raise NameError(
+          'Property name "context" is reserved. Please use other name.')
     self._name = name
     self._private_name = f'_prop_{name}'
 
@@ -207,6 +222,10 @@ class ResolverOp(metaclass=_ResolverOpMeta):
   @abc.abstractmethod
   def apply(self, input_dict: ArtifactMultimap) -> ArtifactMultimap:
     """Implementation of the operator."""
+
+  def set_context(self, context: Context):
+    """Set Context to be used when applying the operator."""
+    self.context = context
 
 
 # Output type of an OpNode.
