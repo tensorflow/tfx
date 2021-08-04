@@ -59,19 +59,19 @@ evaluator = Evaluator(
     model=trainer.outputs['model'],
     examples=example_gen.outputs['examples'],
     baseline_model=model_resolver.outputs['model'],
-    eval_config=tfx.proto.EvalConfig(...)
+    eval_config=EvalConfig(...)
 )
 
 infra_validator = InfraValidator(
     model=trainer.outputs['model'],
-    serving_spec=tfx.proto.ServingSpec(...)
+    serving_spec=ServingSpec(...)
 )
 
 pusher = Pusher(
     model=trainer.outputs['model'],
     model_blessing=evaluator.outputs['blessing'],
     infra_blessing=infra_validator.outputs['blessing'],
-    push_destination=tfx.proto.PushDestination(...)
+    push_destination=PushDestination(...)
 )
 ```
 
@@ -111,11 +111,11 @@ set.
 ```python {highlight="lines:4:9-4:26,7:9-7:18"}
 infra_validator=InfraValidator(
     model=trainer.outputs['model'],
-    serving_spec=tfx.proto.ServingSpec(
-        tensorflow_serving=tfx.proto.TensorFlowServing(
+    serving_spec=ServingSpec(
+        tensorflow_serving=TensorFlowServing(
             tags=['latest']
         ),
-        kubernetes=tfx.proto.KubernetesConfig()
+        kubernetes=KubernetesConfig()
     )
 )
 ```
@@ -130,8 +130,8 @@ Optional configuration to adjust the infra validation criteria or workflow.
 ```python {highlight="lines:4-10"}
 infra_validator=InfraValidator(
     model=trainer.outputs['model'],
-    serving_spec=tfx.proto.ServingSpec(...),
-    validation_spec=tfx.proto.ValidationSpec(
+    serving_spec=ServingSpec(...),
+    validation_spec=ValidationSpec(
         # How much time to wait for model to load before automatically making
         # validation fail.
         max_loading_time_seconds=60,
@@ -156,43 +156,23 @@ infra_validator = InfraValidator(
     model=trainer.outputs['model'],
     # This is the source for the data that will be used to build a request.
     examples=example_gen.outputs['examples'],
-    serving_spec=tfx.proto.ServingSpec(
+    serving_spec=ServingSpec(
         # Depending on what kind of model server you're using, RequestSpec
         # should specify the compatible one.
-        tensorflow_serving=tfx.proto.TensorFlowServing(tags=['latest']),
-        local_docker=tfx.proto.LocalDockerConfig(),
+        tensorflow_serving=TensorFlowServing(tags=['latest']),
+        local_docker=LocalDockerConfig(),
     ),
-    request_spec=tfx.proto.RequestSpec(
+    request_spec=RequestSpec(
         # InfraValidator will look at how "classification" signature is defined
         # in the model, and automatically convert some samples from `examples`
         # artifact to prediction RPC requests.
-        tensorflow_serving=tfx.proto.TensorFlowServingRequestSpec(
+        tensorflow_serving=TensorFlowServingRequestSpec(
             signature_names=['classification']
         ),
         num_examples=10  # How many requests to make.
     )
 )
 ```
-
-### Producing a SavedModel with warmup
-
-(From version 0.30.0)
-
-Since InfraValidator validates model with real requests, it can easily reuse
-these validation requests as
-[warmup requests](https://www.tensorflow.org/tfx/serving/saved_model_warmup) of
-a SavedModel. InfraValidator provides an option (`RequestSpec.make_warmup`) to
-export a SavedModel with warmup.
-
-```python
-infra_validator = InfraValidator(
-    ...,
-    request_spec=tfx.proto.RequestSpec(..., make_warmup=True)
-)
-```
-
-Then the output `InfraBlessing` artifact will contain a SavedModel with warmup,
-and can also be pushed by the [Pusher](pusher.md), just like `Model` artifact.
 
 ## Limitations
 

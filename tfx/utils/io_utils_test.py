@@ -45,7 +45,7 @@ class IoUtilsTest(tf.test.TestCase):
     file_path = 'gs://path/to/testdata/test_fn.py'
     local_file_path = io_utils.ensure_local(file_path)
     self.assertEndsWith(local_file_path, '/test_fn.py')
-    self.assertFalse(
+    self.assertTrue(
         any([
             local_file_path.startswith(prefix)
             for prefix in io_utils._REMOTE_FS_PREFIX

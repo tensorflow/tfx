@@ -73,7 +73,7 @@ class PathUtilsTest(tf.test.TestCase, parameterized.TestCase):
 
   def testWarmupFilePath(self):
     self.assertEqual(
-        path_utils.warmup_file_path('/my-model'),
+        path_utils.warmup_file_path('/my-model1123'),
         '/my-model/assets.extra/tf_serving_warmup_requests')
 
 
