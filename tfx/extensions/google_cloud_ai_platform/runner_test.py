@@ -800,9 +800,9 @@ class RunnerTest(tf.test.TestCase):
         location=None,
         credentials=mock.Mock(spec=auth_credentials.AnonymousCredentials()))
 
-    self._mock_endpoint = mock.Mock(aiplatform.Endpoint(
+    self._mock_endpoint = aiplatform.Endpoint(
         endpoint_name='projects/{}/locations/us-central1/endpoints/1234'.format(
-            self._project_id)))
+            self._project_id))
 
     self._mock_endpoint_list = mock.Mock()
     aiplatform.Endpoint.list = self._mock_endpoint_list
@@ -811,9 +811,11 @@ class RunnerTest(tf.test.TestCase):
     self._mock_model_delete = mock.Mock()
     self._mock_endpoint.undeploy = self._mock_model_delete
 
-    self._mock_endpoint.list_models.return_value = [
+    self._mock_list_models = mock.Mock()
+    self._mock_list_models.return_value = [
         endpoint.DeployedModel(
             display_name=self._model_name, id=self._deployed_model_id)]
+    self._mock_endpoint.list_models = self._mock_list_models
 
     self._ai_platform_serving_args_vertex = {
         'endpoint_name': self._endpoint_name,
