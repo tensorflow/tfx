@@ -764,6 +764,14 @@ nodes {
           }
         }
       }
+      parameters {
+        key: "fairness_indicator_thresholds"
+        value {
+          field_value {
+            string_value: "null"
+          }
+        }
+      }
     }
     upstream_nodes: "CsvExampleGen"
     upstream_nodes: "Trainer"

@@ -937,6 +937,14 @@ nodes {
           }
         }
       }
+      parameters {
+        key: "fairness_indicator_thresholds"
+        value {
+          field_value {
+            string_value: "null"
+          }
+        }
+      }
     }
     execution_options {
       caching_options {

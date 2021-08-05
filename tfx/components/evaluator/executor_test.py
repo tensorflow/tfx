@@ -32,6 +32,7 @@ from tfx.types.standard_component_specs import EVAL_CONFIG_KEY
 from tfx.types.standard_component_specs import EVALUATION_KEY
 from tfx.types.standard_component_specs import EXAMPLE_SPLITS_KEY
 from tfx.types.standard_component_specs import EXAMPLES_KEY
+from tfx.types.standard_component_specs import FAIRNESS_INDICATOR_THRESHOLDS_KEY
 from tfx.types.standard_component_specs import FEATURE_SLICING_SPEC_KEY
 from tfx.types.standard_component_specs import MODEL_KEY
 from tfx.types.standard_component_specs import MODULE_FILE_KEY
@@ -191,9 +192,8 @@ class ExecutorTest(tf.test.TestCase, parameterized.TestCase):
       # currently-installed version of TFMA does not support fairness
       # indicators.
       import tensorflow_model_analysis.addons.fairness.post_export_metrics.fairness_indicators  # pylint: disable=g-import-not-at-top, unused-variable
-      exec_properties['fairness_indicator_thresholds'] = [
-          0.1, 0.3, 0.5, 0.7, 0.9
-      ]
+      exec_properties[
+          FAIRNESS_INDICATOR_THRESHOLDS_KEY] = '[0.1, 0.3, 0.5, 0.7, 0.9]'
     except ImportError:
       logging.warning(
           'Not testing fairness indicators because a compatible TFMA version '

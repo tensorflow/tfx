@@ -83,6 +83,8 @@ class ComponentTest(tf.test.TestCase):
         fairness_indicator_thresholds=[0.1, 0.3, 0.5, 0.9])
     self.assertEqual(standard_artifacts.ModelEvaluation.TYPE_NAME,
                      evaluator.outputs['evaluation'].type_name)
+    self.assertEqual('[0.1, 0.3, 0.5, 0.9]',
+                     evaluator.exec_properties['fairness_indicator_thresholds'])
 
   def testConstructWithParameter(self):
     column_name = data_types.RuntimeParameter(name='column-name', ptype=Text)

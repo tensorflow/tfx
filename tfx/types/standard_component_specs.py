@@ -13,8 +13,6 @@
 # limitations under the License.
 """Component specifications for the standard set of TFX Components."""
 
-from typing import List
-
 import tensorflow_model_analysis as tfma
 from tfx.proto import bulk_inferrer_pb2
 from tfx.proto import evaluator_pb2
@@ -149,7 +147,7 @@ class EvaluatorSpec(ComponentSpec):
       # This parameter is experimental: its interface and functionality may
       # change at any time.
       FAIRNESS_INDICATOR_THRESHOLDS_KEY:
-          ExecutionParameter(type=List[float], optional=True),
+          ExecutionParameter(type=str, optional=True),
       EXAMPLE_SPLITS_KEY:
           ExecutionParameter(type=str, optional=True),
       MODULE_FILE_KEY:

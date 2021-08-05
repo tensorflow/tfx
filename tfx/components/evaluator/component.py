@@ -58,8 +58,8 @@ class Evaluator(base_beam_component.BaseBeamComponent):
       # TODO(b/148618405): deprecate feature_slicing_spec.
       feature_slicing_spec: Optional[Union[evaluator_pb2.FeatureSlicingSpec,
                                            data_types.RuntimeParameter]] = None,
-      fairness_indicator_thresholds: Optional[List[Union[
-          float, data_types.RuntimeParameter]]] = None,
+      fairness_indicator_thresholds: Optional[Union[
+          List[float], data_types.RuntimeParameter]] = None,
       example_splits: Optional[List[Text]] = None,
       eval_config: Optional[tfma.EvalConfig] = None,
       schema: Optional[types.Channel] = None,
@@ -128,7 +128,10 @@ class Evaluator(base_beam_component.BaseBeamComponent):
         model=model,
         baseline_model=baseline_model,
         feature_slicing_spec=feature_slicing_spec,
-        fairness_indicator_thresholds=fairness_indicator_thresholds,
+        fairness_indicator_thresholds=(
+            fairness_indicator_thresholds if isinstance(
+                fairness_indicator_thresholds, data_types.RuntimeParameter) else
+            json_utils.dumps(fairness_indicator_thresholds)),
         example_splits=json_utils.dumps(example_splits),
         evaluation=evaluation,
         eval_config=eval_config,
