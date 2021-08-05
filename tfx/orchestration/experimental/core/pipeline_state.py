@@ -26,6 +26,7 @@ from tfx.orchestration.experimental.core import task as task_lib
 from tfx.orchestration.portable.mlmd import context_lib
 from tfx.orchestration.portable.mlmd import execution_lib
 from tfx.proto.orchestration import pipeline_pb2
+from tfx.utils import json_utils
 from tfx.utils import status as status_lib
 
 from ml_metadata.proto import metadata_store_pb2
@@ -39,7 +40,7 @@ _PIPELINE_STATUS_MSG = 'pipeline_status_msg'
 _NODE_STOP_INITIATED_PREFIX = 'node_stop_initiated_'
 _NODE_STATUS_CODE_PREFIX = 'node_status_code_'
 _NODE_STATUS_MSG_PREFIX = 'node_status_msg_'
-_PIPELINE_RUN_METADATA_PREFIX = 'pipeline_run_metadata_'
+_PIPELINE_RUN_METADATA = 'pipeline_run_metadata'
 _ORCHESTRATOR_EXECUTION_TYPE = metadata_store_pb2.ExecutionType(
     name=_ORCHESTRATOR_RESERVED_ID,
     properties={_PIPELINE_IR: metadata_store_pb2.STRING})
@@ -136,8 +137,8 @@ class PipelineState:
             base64.b64encode(pipeline.SerializeToString()).decode('utf-8')
     }
     if pipeline_run_metadata:
-      for key, value in pipeline_run_metadata.items():
-        exec_properties[f'{_PIPELINE_RUN_METADATA_PREFIX}{key}'] = value
+      exec_properties[_PIPELINE_RUN_METADATA] = json_utils.dumps(
+          pipeline_run_metadata)
 
     execution = execution_lib.prepare_execution(
         mlmd_handle,
@@ -461,11 +462,10 @@ class PipelineView:
 
   @property
   def pipeline_run_metadata(self) -> Dict[str, types.Property]:
-    return data_types_utils.build_value_dict({
-        k.split(_PIPELINE_RUN_METADATA_PREFIX)[1]: v
-        for k, v in self.execution.custom_properties.items()
-        if k.startswith(_PIPELINE_RUN_METADATA_PREFIX)
-    })
+    pipeline_run_metadata = _get_metadata_value(
+        self.execution.custom_properties.get(_PIPELINE_RUN_METADATA))
+    return json_utils.loads(
+        pipeline_run_metadata) if pipeline_run_metadata else {}
 
 
 def get_orchestrator_contexts(
