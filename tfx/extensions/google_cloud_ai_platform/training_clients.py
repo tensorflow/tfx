@@ -149,7 +149,8 @@ class AbstractJobClient(abc.ABC):
     """Gets the job name."""
     return self._job_name
 
-  def generate_container_command(self, input_dict: Dict[Text, List[types.Artifact]],
+  def generate_container_command(self, 
+                           input_dict: Dict[Text, List[types.Artifact]],
                            output_dict: Dict[Text, List[types.Artifact]],
                            exec_properties: Dict[Text, Any],
                            executor_class_path: Text) -> Text:
