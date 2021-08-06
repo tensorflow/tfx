@@ -46,6 +46,16 @@ jobs:
       run: |
         python -m pip install --upgrade pip wheel
         pip install -e .[all]
+    - name: Cache pip
+      uses: actions/cache@v2
+      with:
+        # This path is specific to Ubuntu
+        path: ~/.cache/pip
+        # Look to see if there is a cache hit for the corresponding setup.py + TFX version 
+        key: ${{ runner.os }}-pip-${{ hashFiles('tfx/dependencies.py') }}-
+        restore-keys: |
+          ${{ runner.os }}-pip-${{ hashFiles('tfx/dependencies.py') }}-
+          ${{ runner.os }}-pip-
 
     - name: Run unit tests
       shell: bash
