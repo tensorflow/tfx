@@ -112,14 +112,14 @@ class AbstractJobClient(abc.ABC):
   @abc.abstractmethod
   def launch_job(self,
                  job_id: Text,
-                 parent: Text,
+                 project: Text,
                  training_input: Dict[Text, Any],
                  job_labels: Optional[Dict[Text, Text]] = None) -> None:
     """Launches a long-running job.
 
     Args:
       job_id: The job ID of the AI Platform training job.
-      parent: The project name in the form of 'projects/{project_id}'
+      project: The project name in the form of 'projects/{project_id}'
       training_input: Training input argument for AI Platform training job. See
         https://cloud.google.com/ml-engine/reference/rest/v1/projects.jobs#TrainingInput
           for the detailed schema.
