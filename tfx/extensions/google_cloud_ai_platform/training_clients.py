@@ -149,6 +149,34 @@ class AbstractJobClient(abc.ABC):
     """Gets the job name."""
     return self._job_name
 
+  def generate_container_command(self, input_dict: Dict[Text, List[types.Artifact]],
+                           output_dict: Dict[Text, List[types.Artifact]],
+                           exec_properties: Dict[Text, Any],
+                           executor_class_path: Text) -> Text:
+    """Generate container command to run executor"""
+    json_inputs = artifact_utils.jsonify_artifact_dict(input_dict)
+    logging.info('json_inputs=\'%s\'.', json_inputs)
+    json_outputs = artifact_utils.jsonify_artifact_dict(output_dict)
+    logging.info('json_outputs=\'%s\'.', json_outputs)
+    json_exec_properties = json.dumps(exec_properties, sort_keys=True)
+    logging.info('json_exec_properties=\'%s\'.', json_exec_properties)
+
+    # We use custom containers to launch training on AI Platform, which invokes
+    # the specified image using the container's entrypoint. The default
+    # entrypoint for TFX containers is to call scripts/run_executor.py. The
+    # arguments below are passed to this run_executor entry to run the executor
+    # specified in `executor_class_path`.
+    return _CONTAINER_COMMAND + [
+        '--executor_class_path',
+        executor_class_path,
+        '--inputs',
+        json_inputs,
+        '--outputs',
+        json_outputs,
+        '--exec-properties',
+        json_exec_properties,
+    ]
+
 
 class CAIPJobClient(AbstractJobClient):
   """Class for interacting with CAIP CMLE job."""
@@ -203,28 +231,9 @@ class CAIPJobClient(AbstractJobClient):
     """
     training_inputs = training_inputs.copy()
 
-    json_inputs = artifact_utils.jsonify_artifact_dict(input_dict)
-    logging.info('json_inputs=\'%s\'.', json_inputs)
-    json_outputs = artifact_utils.jsonify_artifact_dict(output_dict)
-    logging.info('json_outputs=\'%s\'.', json_outputs)
-    json_exec_properties = json.dumps(exec_properties, sort_keys=True)
-    logging.info('json_exec_properties=\'%s\'.', json_exec_properties)
-
-    # We use custom containers to launch training on AI Platform, which invokes
-    # the specified image using the container's entrypoint. The default
-    # entrypoint for TFX containers is to call scripts/run_executor.py. The
-    # arguments below are passed to this run_executor entry to run the executor
-    # specified in `executor_class_path`.
-    container_command = _CONTAINER_COMMAND + [
-        '--executor_class_path',
-        executor_class_path,
-        '--inputs',
-        json_inputs,
-        '--outputs',
-        json_outputs,
-        '--exec-properties',
-        json_exec_properties,
-    ]
+    container_command = self.generate_container_command(
+        input_dict, output_dict, exec_properties, executor_class_path
+    )
 
     if not training_inputs.get('masterConfig'):
       training_inputs['masterConfig'] = {
@@ -384,28 +393,9 @@ class VertexJobClient(AbstractJobClient):
     """
     training_inputs = training_inputs.copy()
 
-    json_inputs = artifact_utils.jsonify_artifact_dict(input_dict)
-    logging.info('json_inputs=\'%s\'.', json_inputs)
-    json_outputs = artifact_utils.jsonify_artifact_dict(output_dict)
-    logging.info('json_outputs=\'%s\'.', json_outputs)
-    json_exec_properties = json.dumps(exec_properties, sort_keys=True)
-    logging.info('json_exec_properties=\'%s\'.', json_exec_properties)
-
-    # We use custom containers to launch training on AI Platform (unified),
-    # which invokes the specified image using the container's entrypoint. The
-    # default entrypoint for TFX containers is to call scripts/run_executor.py.
-    # The arguments below are passed to this run_executor entry to run the
-    # executor specified in `executor_class_path`.
-    container_command = _CONTAINER_COMMAND + [
-        '--executor_class_path',
-        executor_class_path,
-        '--inputs',
-        json_inputs,
-        '--outputs',
-        json_outputs,
-        '--exec-properties',
-        json_exec_properties,
-    ]
+    container_command = self.generate_container_command(
+        input_dict, output_dict, exec_properties, executor_class_path
+    )
 
     if not training_inputs.get('worker_pool_specs'):
       training_inputs['worker_pool_specs'] = [{}]
