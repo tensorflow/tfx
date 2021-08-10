@@ -54,9 +54,9 @@ def make_pipeline_sdk_required_install_packages():
       'absl-py>=0.9,<0.13',
       'ml-metadata' + select_constraint(
           # LINT.IfChange
-          default='>=1.0.0,<1.1.0',
+          default='>=1.2.0,<1.3.0',
           # LINT.ThenChange(tfx/workspace.bzl)
-          nightly='>=1.1.0.dev',
+          nightly='>=1.3.0.dev',
           git_master='@git+https://github.com/google/ml-metadata@master'),
       'packaging>=20,<21',
       'portpicker>=1.3.1,<2',
@@ -73,7 +73,7 @@ def make_required_install_packages():
   # Make sure to sync the versions of common dependencies (absl-py, numpy,
   # and protobuf) with TF.
   return make_pipeline_sdk_required_install_packages() + [
-      'apache-beam[gcp]>=2.29,<3',
+      'apache-beam[gcp]>=2.31,<3',
       'attrs>=19.3.0,<21',
       'click>=7,<8',
       'google-cloud-aiplatform>=0.5.0,<0.8',
@@ -92,22 +92,22 @@ def make_required_install_packages():
       'tensorflow>=1.15.2,!=2.0.*,!=2.1.*,!=2.2.*,!=2.3.*,!=2.4.*,<3',
       'tensorflow-hub>=0.9.0,<0.13',
       'tensorflow-data-validation' + select_constraint(
-          default='>=1.0.0,<1.1.0',
-          nightly='>=1.1.0.dev',
+          default='>=1.2.0,<1.3.0',
+          nightly='>=1.3.0.dev',
           git_master='@git+https://github.com/tensorflow/data-validation@master'
       ),
       'tensorflow-model-analysis' + select_constraint(
-          default='>=0.31,<0.32',
-          nightly='>=0.32.0.dev',
+          default='>=0.33,<0.34',
+          nightly='>=0.34.0.dev',
           git_master='@git+https://github.com/tensorflow/model-analysis@master'),
       'tensorflow-serving-api>=1.15,!=2.0.*,!=2.1.*,!=2.2.*,!=2.3.*,!=2.4.*,<3',
       'tensorflow-transform' + select_constraint(
-          default='>=1.0.0,<1.1.0',
-          nightly='>=1.1.0.dev',
+          default='>=1.2.0,<1.3.0',
+          nightly='>=1.3.0.dev',
           git_master='@git+https://github.com/tensorflow/transform@master'),
       'tfx-bsl' + select_constraint(
-          default='>=1.0.0,<1.1.0',
-          nightly='>=1.1.0.dev',
+          default='>=1.2.0,<1.3.0',
+          nightly='>=1.3.0.dev',
           git_master='@git+https://github.com/tensorflow/tfx-bsl@master'),
   ]
 
@@ -127,7 +127,7 @@ def make_extra_packages_kfp():
   """Prepare extra packages needed for Kubeflow Pipelines orchestrator."""
   return [
       'kfp>=1.6.1,<2',
-      'kfp-pipeline-spec>=0.1.7,<0.2',
+      'kfp-pipeline-spec>=0.1.8,<0.2',
   ]
 
 
@@ -143,7 +143,7 @@ def make_extra_packages_test():
 def make_extra_packages_docker_image():
   # Packages needed for tfx docker image.
   return [
-      'kfp-pipeline-spec>=0.1.7,<0.2',
+      'kfp-pipeline-spec>=0.1.8,<0.2',
       'mmh>=2.2,<3',
       'python-snappy>=0.5,<0.6',
       # Required for tfx/examples/penguin/penguin_utils_cloud_tuner.py
@@ -163,8 +163,8 @@ def make_extra_packages_tf_ranking():
   return [
       'tensorflow-ranking>=0.3.3,<0.4',
       'struct2tensor' + select_constraint(
-          default='>=0.31,<0.32',
-          nightly='>=0.32.0.dev',
+          default='>=0.33,<0.34',
+          nightly='>=0.34.0.dev',
           git_master='@git+https://github.com/google/struct2tensor@master'),
   ]
 
