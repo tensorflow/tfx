@@ -13,15 +13,13 @@
 # limitations under the License.
 """Module for ResolverOp and its related definitions."""
 import abc
-from typing import Any, ClassVar, Generic, Mapping, Sequence, Type, TypeVar, Union
+from typing import Any, ClassVar, Generic, Mapping, Type, TypeVar, Union
 
 import attr
-import tfx.types
 from tfx.utils import json_utils
+from tfx.utils import typing_utils
 
 import ml_metadata as mlmd
-
-ArtifactMultimap = Mapping[str, Sequence[tfx.types.Artifact]]
 
 
 # Mark frozen as context instance may be used across multiple operator
@@ -220,7 +218,10 @@ class ResolverOp(metaclass=_ResolverOpMeta):
   """
 
   @abc.abstractmethod
-  def apply(self, input_dict: ArtifactMultimap) -> ArtifactMultimap:
+  def apply(
+      self,
+      input_dict: typing_utils.ArtifactMultiMap,
+  ) -> typing_utils.ArtifactMultiMap:
     """Implementation of the operator."""
 
   def set_context(self, context: Context):

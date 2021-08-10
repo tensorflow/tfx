@@ -16,7 +16,6 @@ from typing import Dict, Iterable, List, Optional, Mapping, Sequence, Union
 
 from absl import logging
 from tfx import types
-from tfx.dsl.input_resolution import resolver_op
 from tfx.orchestration import data_types_utils
 from tfx.orchestration import metadata
 from tfx.orchestration.portable.input_resolution import exceptions
@@ -30,8 +29,6 @@ from tfx.utils import typing_utils
 
 import ml_metadata as mlmd
 from ml_metadata.proto import metadata_store_pb2
-
-_ArtifactMultimap = resolver_op.ArtifactMultimap
 
 
 def get_qualified_artifacts(
@@ -123,7 +120,7 @@ def _resolve_single_channel(
 
 def _resolve_initial_dict(
     metadata_handler: metadata.Metadata,
-    node_inputs: pipeline_pb2.NodeInputs) -> _ArtifactMultimap:
+    node_inputs: pipeline_pb2.NodeInputs) -> typing_utils.ArtifactMultiMap:
   """Resolves initial input dict from input channel definition."""
   result = {}
   for key, input_spec in node_inputs.inputs.items():
