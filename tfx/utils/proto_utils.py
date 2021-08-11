@@ -14,11 +14,14 @@
 """Utilities for proto related manipulations."""
 
 import itertools
-from typing import Any, Dict, Iterator, TypeVar
+from typing import Any, Dict, Iterator, TypeVar, Optional
 
+from google.protobuf import descriptor_pb2
 from google.protobuf import descriptor as descriptor_lib
+from google.protobuf import descriptor_pool
 from google.protobuf import json_format
 from google.protobuf import message
+from google.protobuf import message_factory
 
 
 def gather_file_descriptors(
@@ -94,3 +97,30 @@ def dict_to_proto(json_dict: Dict[Any, Any],
                   proto: ProtoMessage) -> ProtoMessage:
   """Simple JSON Parser wrapper for consistent parsing."""
   return json_format.ParseDict(json_dict, proto, ignore_unknown_fields=True)
+
+
+def build_file_descriptor_set(
+    pb_message: message.Message, fd_set: descriptor_pb2.FileDescriptorSet
+) -> descriptor_pb2.FileDescriptorSet:
+  """Builds file descriptor set for input pb message."""
+  for fd in gather_file_descriptors(pb_message.DESCRIPTOR):
+    fd.CopyToProto(fd_set.file.add())
+  return fd_set
+
+
+def deserialize_proto_message(
+    serialized_message: str,
+    message_name: str,
+    file_descriptors: Optional[descriptor_pb2.FileDescriptorSet] = None
+) -> ProtoMessage:
+  """Converts serialized pb message string to its original message."""
+  pool = descriptor_pool.Default()
+  if file_descriptors:
+    for file_descriptor in file_descriptors.file:
+      pool.Add(file_descriptor)
+
+  message_descriptor = pool.FindMessageTypeByName(message_name)
+  factory = message_factory.MessageFactory(pool)
+  message_type = factory.GetPrototype(message_descriptor)
+  return json_format.Parse(
+      serialized_message, message_type(), descriptor_pool=pool)
