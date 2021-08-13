@@ -135,7 +135,7 @@ _executed_components = []
 _component_executors = {}
 _component_drivers = {}
 _component_platform_configs = {}
-_conponent_to_pipeline_run = {}
+_component_to_pipeline_run = {}
 
 
 # TODO(b/162980675): When PythonExecutorOperator is implemented. We don't
@@ -161,7 +161,7 @@ class _FakeComponentAsDoFn(beam_dag_runner.PipelineNodeAsDoFn):
     for context in pipeline_node.contexts.contexts:
       if context.type.name == constants.PIPELINE_RUN_CONTEXT_TYPE_NAME:
         pipeline_run = context.name.field_value.string_value
-    _conponent_to_pipeline_run[self._node_id] = pipeline_run
+    _component_to_pipeline_run[self._node_id] = pipeline_run
 
   def _run_node(self):
     _executed_components.append(self._node_id)
@@ -181,7 +181,7 @@ class BeamDagRunnerTest(test_case_utils.TfxTest):
     _component_executors.clear()
     _component_drivers.clear()
     _component_platform_configs.clear()
-    _conponent_to_pipeline_run.clear()
+    _component_to_pipeline_run.clear()
 
   @mock.patch.multiple(
       beam_dag_runner.BeamDagRunner,
@@ -189,7 +189,7 @@ class BeamDagRunnerTest(test_case_utils.TfxTest):
   )
   def testRunWithLocalDeploymentConfig(self):
     self._pipeline.deployment_config.Pack(_LOCAL_DEPLOYMENT_CONFIG)
-    beam_dag_runner.BeamDagRunner().run(self._pipeline)
+    beam_dag_runner.BeamDagRunner().run(self._pipeline, {'a': 1, 'b': 2.0})
     self.assertEqual(
         _component_executors, {
             'my_example_gen':
@@ -237,7 +237,7 @@ class BeamDagRunnerTest(test_case_utils.TfxTest):
     self.assertEqual(_executed_components,
                      ['my_example_gen', 'my_transform', 'my_trainer'])
     # Verifies that every component gets a not-None pipeline_run.
-    self.assertTrue(all(_conponent_to_pipeline_run.values()))
+    self.assertTrue(all(_component_to_pipeline_run.values()))
 
   @mock.patch.multiple(
       beam_dag_runner.BeamDagRunner,
@@ -245,7 +245,7 @@ class BeamDagRunnerTest(test_case_utils.TfxTest):
   )
   def testRunWithIntermediateDeploymentConfig(self):
     self._pipeline.deployment_config.Pack(_INTERMEDIATE_DEPLOYMENT_CONFIG)
-    beam_dag_runner.BeamDagRunner().run(self._pipeline)
+    beam_dag_runner.BeamDagRunner().run(self._pipeline, {'a': 1, 'b': 2.0})
     self.assertEqual(
         _component_executors, {
             'my_example_gen':
@@ -293,7 +293,7 @@ class BeamDagRunnerTest(test_case_utils.TfxTest):
     self.assertEqual(_executed_components,
                      ['my_example_gen', 'my_transform', 'my_trainer'])
     # Verifies that every component gets a not-None pipeline_run.
-    self.assertTrue(all(_conponent_to_pipeline_run.values()))
+    self.assertTrue(all(_component_to_pipeline_run.values()))
 
   def testLegacyBeamDagRunnerConstruction(self):
     self.assertIsInstance(beam_dag_runner.BeamDagRunner(),

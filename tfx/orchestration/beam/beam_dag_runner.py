@@ -13,11 +13,11 @@
 # limitations under the License.
 """Definition of Beam TFX runner."""
 
-import datetime
-from typing import Any, Iterable, List, Optional, Text, Union
+from typing import Any, Iterable, List, Optional, Text, Union, Dict
 
 from absl import logging
 import apache_beam as beam
+from tfx import types
 from tfx.dsl.compiler import compiler
 from tfx.dsl.compiler import constants
 from tfx.dsl.components.base import base_component
@@ -193,12 +193,13 @@ class BeamDagRunner(tfx_runner.TfxRunner):
                                                 deployment_config: Any) -> Any:
     return deployment_config.metadata_connection_config
 
-  def run(self, pipeline: Union[pipeline_pb2.Pipeline,
-                                pipeline_py.Pipeline]) -> None:
+  def run(self, pipeline: Union[pipeline_pb2.Pipeline, pipeline_py.Pipeline],
+          runtime_parameter: Dict[str, types.Property]) -> None:
     """Deploys given logical pipeline on Beam.
 
     Args:
       pipeline: Logical pipeline in IR format.
+      runtime_parameter: A dict containing runtime parameter names and values.
     """
     if isinstance(pipeline, pipeline_py.Pipeline):
       for component in pipeline.components:
@@ -212,12 +213,11 @@ class BeamDagRunner(tfx_runner.TfxRunner):
       c = compiler.Compiler()
       pipeline = c.compile(pipeline)
 
-    run_id = datetime.datetime.now().strftime('%Y%m%d-%H%M%S.%f')
     # Substitute the runtime parameter to be a concrete run_id
+    run_id = 'random str/int/float value'
+    runtime_parameter[constants.PIPELINE_RUN_ID_PARAMETER_NAME] = run_id
     runtime_parameter_utils.substitute_runtime_parameter(
-        pipeline, {
-            constants.PIPELINE_RUN_ID_PARAMETER_NAME: run_id,
-        })
+        pipeline, runtime_parameter)
 
     deployment_config = self._extract_deployment_config(pipeline)
     connection_config = self._connection_config_from_deployment_config(

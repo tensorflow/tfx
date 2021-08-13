@@ -13,9 +13,10 @@
 # limitations under the License.
 """Definition of Beam TFX runner."""
 
-import datetime
+from typing import Dict
 
 from absl import logging
+from tfx import types
 from tfx.dsl.compiler import compiler
 from tfx.dsl.compiler import constants
 from tfx.dsl.components.base import base_component
@@ -35,11 +36,13 @@ class LocalDagRunner(tfx_runner.TfxRunner):
     """Initializes LocalDagRunner as a TFX orchestrator."""
     pass
 
-  def run(self, pipeline: pipeline_py.Pipeline) -> None:
+  def run(self, pipeline: pipeline_py.Pipeline,
+          runtime_parameter: Dict[str, types.Property]) -> None:
     """Runs given logical pipeline locally.
 
     Args:
       pipeline: Logical pipeline containing pipeline args and components.
+      runtime_parameter: A dict containing runtime parameter names and values.
     """
     for component in pipeline.components:
       # TODO(b/187122662): Pass through pip dependencies as a first-class
@@ -52,11 +55,11 @@ class LocalDagRunner(tfx_runner.TfxRunner):
     pipeline = c.compile(pipeline)
 
     # Substitute the runtime parameter to be a concrete run_id
+    # add runtime_parameter
+    run_id = 'str, int, float'
+    runtime_parameter[constants.PIPELINE_RUN_ID_PARAMETER_NAME] = run_id
     runtime_parameter_utils.substitute_runtime_parameter(
-        pipeline, {
-            constants.PIPELINE_RUN_ID_PARAMETER_NAME:
-                datetime.datetime.now().isoformat(),
-        })
+        pipeline, runtime_parameter)
 
     deployment_config = runner_utils.extract_local_deployment_config(pipeline)
     connection_config = deployment_config.metadata_connection_config
