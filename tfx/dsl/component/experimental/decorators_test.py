@@ -27,7 +27,6 @@ from tfx.dsl.component.experimental.decorators import _SimpleComponent
 from tfx.dsl.component.experimental.decorators import component
 from tfx.dsl.components.base import base_executor
 from tfx.dsl.components.base import executor_spec
-from tfx.dsl.io import fileio
 from tfx.orchestration import metadata
 from tfx.orchestration import pipeline
 from tfx.orchestration.beam import beam_dag_runner
@@ -82,6 +81,8 @@ def _injector_2(
     examples: OutputArtifact[standard_artifacts.Examples]
 ) -> OutputDict(
     a=int, b=float, c=str, d=bytes, e=str):
+  from tfx.dsl.io import fileio
+
   fileio.makedirs(examples.uri)
   return {'a': 1, 'b': 2.0, 'c': '3', 'd': b'4', 'e': 'passed'}
 
@@ -97,12 +98,13 @@ def _optionalarg_component(
     d: bytes,
     e1: str = 'default',
     e2: Optional[str] = 'default',
-    f: bytes = b'default',
+    f: str = 'default',
     g: Parameter[float] = 1000.0,
     h: Parameter[str] = '2000',
     optional_examples_1: InputArtifact[standard_artifacts.Examples] = None,
     optional_examples_2: InputArtifact[standard_artifacts.Examples] = None):
   # Test non-optional parameters.
+  from tfx.types import standard_artifacts
   assert foo == 9
   assert bar == 'secret'
   assert isinstance(examples, standard_artifacts.Examples)
@@ -116,7 +118,7 @@ def _optionalarg_component(
   assert e1 == 'passed'
   assert e2 == 'passed'
   # Test that non-passed optional argument becomes the argument default.
-  assert f == b'default'
+  assert f == 'default'
   # Test passed optional parameter.
   assert g == 999.0
   # Test non-passed optional parameter.

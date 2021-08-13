@@ -60,6 +60,7 @@ def make_pipeline_sdk_required_install_packages():
           git_master='@git+https://github.com/google/ml-metadata@master'),
       'packaging>=20,<21',
       'portpicker>=1.3.1,<2',
+      'strip-hints>=0.1.0<1'
       'protobuf>=3.13,<4',
       'docker>=4.1,<5',
       'google-apitools>=0.5,<1',
