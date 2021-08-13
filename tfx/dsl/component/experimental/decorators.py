@@ -16,8 +16,8 @@
 Experimental: no backwards compatibility guarantees.
 """
 
+import functools
 import inspect
-import sys
 import types
 from typing import Any, Callable, Dict, List
 
@@ -59,46 +59,6 @@ def _get_function_code(callable: Callable) -> str:
   return _remove_decorators(_strip_hints(_dedent(inspect.getsource(callable))))
 
 
-class _SimpleComponent(base_component.BaseComponent):
-  """Component whose constructor generates spec instance from arguments."""
-
-  EXTRA_EXEC_PARAMS = {}
-
-  def __init__(self, *unused_args, **kwargs):
-    if unused_args:
-      raise ValueError(('%s expects arguments to be passed as keyword '
-                        'arguments') % (self.__class__.__name__,))
-    spec_kwargs = {}
-    unseen_args = set(kwargs.keys())
-    for key, channel_parameter in self.SPEC_CLASS.INPUTS.items():
-      if key not in kwargs and not channel_parameter.optional:
-        raise ValueError('%s expects input %r to be a Channel of type %s.' %
-                         (self.__class__.__name__, key, channel_parameter.type))
-      if key in kwargs:
-        spec_kwargs[key] = kwargs[key]
-        unseen_args.remove(key)
-    for key, parameter in self.SPEC_CLASS.PARAMETERS.items():
-      if key in self.EXTRA_EXEC_PARAMS:
-        spec_kwargs[key] = self.EXTRA_EXEC_PARAMS[key]
-        continue
-      if key not in kwargs and not parameter.optional:
-        raise ValueError('%s expects parameter %r of type %s.' %
-                         (self.__class__.__name__, key, parameter.type))
-      if key in kwargs:
-        spec_kwargs[key] = kwargs[key]
-        unseen_args.remove(key)
-    if unseen_args:
-      raise ValueError(
-          'Unknown arguments to %r: %s.' %
-          (self.__class__.__name__, ', '.join(sorted(unseen_args))))
-    for key, channel_parameter in self.SPEC_CLASS.OUTPUTS.items():
-      spec_kwargs[key] = channel_utils.as_channel([channel_parameter.type()])
-    
-    spec = self.SPEC_CLASS(**spec_kwargs)
-    super().__init__(spec)
-    # Set class name, which is the decorated function name, as the default id.
-    # It can be overwritten by the user.
-    self._id = self.__class__.__name__
 
 
 class _FunctionExecutor(base_executor.BaseExecutor):
@@ -202,6 +162,53 @@ class _FunctionExecutor(base_executor.BaseExecutor):
         raise TypeError(
             ('Return value %r for output %r is incompatible with output type '
              '%r.') % (outputs[name], name, output_dict[name][0].__class__))
+
+
+class _SimpleComponent(base_component.BaseComponent):
+  """Component whose constructor generates spec instance from arguments."""
+
+  EXECUTOR_SPEC = executor_spec.ExecutorClassSpec(executor_class=_FunctionExecutor)
+  SPEC_CLASS = None
+
+  def __init__(self, *unused_args, extra_exec_parameters: Dict[str, str] = None, spec_class=None, **kwargs):
+    if spec_class:
+      self.__class__.SPEC_CLASS = spec_class 
+    if extra_exec_parameters is None:
+      extra_exec_parameters = {}
+    comp_name = extra_exec_parameters.get(_FUNCTION_NAME_KEY, self.__class__.__name__)
+    if unused_args:
+      raise ValueError(('%s expects arguments to be passed as keyword '
+                        'arguments') % (comp_name,))
+    spec_kwargs = {}
+    unseen_args = set(kwargs.keys())
+    for key, channel_parameter in self.SPEC_CLASS.INPUTS.items():
+      if key not in kwargs and not channel_parameter.optional:
+        raise ValueError('%s expects input %r to be a Channel of type %s.' %
+                         (self.__class__.__name__, key, channel_parameter.type))
+      if key in kwargs:
+        spec_kwargs[key] = kwargs[key]
+        unseen_args.remove(key)
+    for key, parameter in self.SPEC_CLASS.PARAMETERS.items():
+      if key in extra_exec_parameters:
+        spec_kwargs[key] = extra_exec_parameters[key]
+        continue
+      if key not in kwargs and not parameter.optional:
+        raise ValueError('%s expects parameter %r of type %s.' %
+                         (self.__class__.__name__, key, parameter.type))
+      if key in kwargs:
+        spec_kwargs[key] = kwargs[key]
+        unseen_args.remove(key)
+    if unseen_args:
+      raise ValueError(
+          'Unknown arguments to %r: %s.' %
+          (self.__class__.__name__, ', '.join(sorted(unseen_args))))
+    for key, channel_parameter in self.SPEC_CLASS.OUTPUTS.items():
+      spec_kwargs[key] = channel_utils.as_channel([channel_parameter.type()])
+    
+    spec = self.SPEC_CLASS(**spec_kwargs)
+    super().__init__(spec)
+    if spec_class:
+      self.__class__.SPEC_CLASS = None 
 
 
 def component(func: types.FunctionType) -> Callable[..., Any]:
@@ -337,11 +344,7 @@ def component(func: types.FunctionType) -> Callable[..., Any]:
           'PARAMETERS': spec_parameters,
       })
 
-  executor_spec_instance = executor_spec.ExecutorClassSpec(
-      executor_class=_FunctionExecutor)
-
-
-  extra_exec_params = {
+  extra_exec_parameters = {
       _FUNCTION_BODY_KEY: _get_function_code(func),
       _FUNCTION_NAME_KEY: func.__name__,
       _ARG_FORMATS_KEY: json_utils.dumps({k: v.value for k,v in arg_formats.items()}),
@@ -349,11 +352,11 @@ def component(func: types.FunctionType) -> Callable[..., Any]:
       _RETURNED_VALUES_KEY: json_utils.dumps(list(returned_values)),
   }
 
-  return type(
-      func.__name__, (_SimpleComponent,), {
-          'SPEC_CLASS': component_spec_class,
-          'EXECUTOR_SPEC': executor_spec_instance,
-          'EXTRA_EXEC_PARAMS': extra_exec_params,
-          '__module__': func.__module__,
-      })
-  
+  @functools.wraps(func)
+  def _wrapper(*args, **kwargs):
+    return _SimpleComponent(
+        extra_exec_parameters=extra_exec_parameters,
+        spec_class=component_spec_class,
+        *args,
+        **kwargs).with_id(func.__name__)
+  return _wrapper
