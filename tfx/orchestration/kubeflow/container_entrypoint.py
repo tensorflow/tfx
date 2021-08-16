@@ -341,7 +341,8 @@ def _dump_ui_metadata(
   # Add Tensorboard view for ModelRun outpus.
   for name, spec in node.outputs.outputs.items():
     if spec.artifact_spec.type.name.lower() == 'modelrun':
-       output_model = execution_info.output_dict[name][0]
+      output_model = execution_info.output_dict[name][0]
+      
       # Add Tensorboard view.
       tensorboard_output = {'type': 'tensorboard', 'source': output_model.uri}
       outputs.append(tensorboard_output)
