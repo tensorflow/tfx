@@ -338,16 +338,13 @@ def _dump_ui_metadata(
       'type':
           'markdown',
   }]
-  # Add Tensorboard view for Trainer.
-  # TODO(b/142804764): Visualization based on component type seems a bit of
-  # arbitrary and fragile. We need a better way to improve this. See also
-  # b/146594754
-  if node.node_info.type.name == 'tfx.components.trainer.component.Trainer':
-    output_model = execution_info.output_dict['model_run'][0]
-
-    # Add Tensorboard view.
-    tensorboard_output = {'type': 'tensorboard', 'source': output_model.uri}
-    outputs.append(tensorboard_output)
+  # Add Tensorboard view for ModelRun outpus.
+  for name, spec in node.outputs.outputs.items():
+    if spec.artifact_spec.type.name.lower() == 'modelrun':
+       output_model = execution_info.output_dict[name][0]
+      # Add Tensorboard view.
+      tensorboard_output = {'type': 'tensorboard', 'source': output_model.uri}
+      outputs.append(tensorboard_output)
 
   metadata_dict = {'outputs': outputs}
 
