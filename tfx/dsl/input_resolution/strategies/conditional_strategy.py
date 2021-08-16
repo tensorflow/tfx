@@ -20,6 +20,7 @@ from tfx.dsl.compiler import placeholder_utils
 from tfx.dsl.components.common import resolver
 from tfx.orchestration import metadata
 from tfx.orchestration.portable import data_types as portable_data_types
+from tfx.orchestration.portable.input_resolution import exceptions
 from tfx.proto.orchestration import placeholder_pb2
 
 
@@ -45,7 +46,6 @@ class ConditionalStrategy(resolver.ResolverStrategy):
       if not isinstance(predicate_result, bool):
         raise ValueError("Predicate evaluates to a non-boolean result.")
 
-      # TODO(b/192025557): Use Signals, instead of None, to represent skipping.
       if not predicate_result:
-        return None
+        raise exceptions.SkipSignal("Predicate evaluates to False.")
     return input_dict
