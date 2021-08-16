@@ -17,6 +17,7 @@ import tensorflow as tf
 from tfx.dsl.input_resolution.strategies import conditional_strategy
 from tfx.orchestration import data_types
 from tfx.orchestration import metadata
+from tfx.orchestration.portable.input_resolution import exceptions
 from tfx.proto.orchestration import placeholder_pb2
 from tfx.types import standard_artifacts
 from tfx.utils import test_case_utils
@@ -135,9 +136,8 @@ class ConditionalStrategyTest(test_case_utils.TfxTest):
                           placeholder_pb2.PlaceholderExpression())
     ])
     input_dict = {'channel_1_key': [artifact_1], 'channel_2_key': [artifact_2]}
-    result = strategy.resolve_artifacts(self._store, input_dict)
-    self.assertIsNone(result)
-
+    with self.assertRaises(exceptions.SkipSignal):
+      strategy.resolve_artifacts(self._store, input_dict)
 
 if __name__ == '__main__':
   tf.test.main()
