@@ -232,12 +232,8 @@ class Launcher(object):
             '%s. Output artifacts may be overwritten.',
             execution.last_known_state)
       return execution
-    return execution_publish_utils.register_execution(
-        metadata_handler=metadata_handler,
-        execution_type=execution_type,
-        contexts=contexts,
-        input_artifacts=input_artifacts,
-        exec_properties=exec_properties)
+    return _register_execution(metadata_handler, execution_type, contexts,
+                               input_artifacts, exec_properties)
 
   def _prepare_execution(self) -> _ExecutionPreparationResult:
     """Prepares inputs, outputs and execution properties for actual execution."""
