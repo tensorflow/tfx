@@ -33,6 +33,7 @@
 *   Depends on `kfp-pipeline-spec>=0.1.8,<0.2`.
 *   Depends on `ml-metadata>=1.2.0,<1.3.0`.
 *   Depends on `struct2tensor>=0.33.0,<0.34.0`.
+*   Depends on `tensorflow>=1.15.2,!=2.0.*,!=2.1.*,!=2.2.*,!=2.3.*,!=2.4.*,<2.6`.
 *   Depends on `tensorflow-data-validation>=1.2.0,<1.3.0`.
 *   Depends on `tensorflow-model-analysis>=0.33.0,<0.34.0`.
 *   Depends on `tensorflow-transform>=1.2.0,<1.3.0`.
