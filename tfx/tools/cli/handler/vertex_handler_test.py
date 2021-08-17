@@ -61,8 +61,12 @@ class VertexHandlerTest(test_case_utils.TfxTest):
     self.pipeline_root = os.path.join(self._home, 'tfx', 'pipelines',
                                       self.pipeline_name)
     self.run_id = 'dummyID'
+    self.project = 'gcp_project_1'
+    self.region = 'us-central1'
 
-    # Setting up Mock for API client, so that this Python test is hermatic.
+    self.runtime_parameter = {'a': '1', 'b': '2'}
+
+    # Setting up Mock for API client, so that this Python test is hermetic.
     # subprocess Mock will be setup per-test.
     self.addCleanup(mock.patch.stopall)
 
@@ -210,6 +214,28 @@ class VertexHandlerTest(test_case_utils.TfxTest):
         str(err.exception), 'Pipeline "{}" does not exist.'.format(
             flags_dict[labels.PIPELINE_NAME]))
 
+  def testCreateRun(self):
+    flags_dict = {
+        labels.ENGINE_FLAG: self.engine,
+        labels.PIPELINE_NAME: self.pipeline_name,
+        labels.RUNTIME_PARAMETER: self.runtime_parameter
+    }
+
+    handler = vertex_handler.VertexHandler(flags_dict)
+
+    with mock.patch.object(
+        handler, '_create_vertex_client') as client_factory_mock:
+      with mock.patch.object(handler, '_print_run'):
+        client_mock = client_factory_mock.return_value
+        handler.create_run()
+
+    client_mock.create_run_from_job_spec.assert_called_with(
+        job_spec_path=handler._get_pipeline_definition_path(
+            'chicago-taxi-kubeflow'),
+        parameter_values={
+            'a': '1',
+            'b': '2'
+        })
 
 if __name__ == '__main__':
   tf.test.main()
