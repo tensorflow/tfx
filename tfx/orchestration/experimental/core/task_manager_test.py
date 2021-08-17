@@ -76,21 +76,24 @@ class _FakeTaskScheduler(ts.TaskScheduler):
     # For these nodes, `schedule` will block until `cancel` is called.
     self._block_nodes = block_nodes
     self._collector = collector
-    self._stop_event = threading.Event()
+    self._cancel = threading.Event()
 
   def schedule(self):
     logging.info('_FakeTaskScheduler: scheduling task: %s', self.task)
     self._collector.add_scheduled_task(self.task)
     if self.task.node_uid.node_id in self._block_nodes:
-      self._stop_event.wait()
+      self._cancel.wait()
+      code = status_lib.Code.CANCELLED
+    else:
+      code = status_lib.Code.OK
     return ts.TaskSchedulerResult(
-        status=status_lib.Status(code=status_lib.Code.OK),
-        executor_output=execution_result_pb2.ExecutorOutput())
+        status=status_lib.Status(
+            code=code, message='_FakeTaskScheduler result'))
 
   def cancel(self):
     logging.info('_FakeTaskScheduler: cancelling task: %s', self.task)
     self._collector.add_cancelled_task(self.task)
-    self._stop_event.set()
+    self._cancel.set()
 
 
 class TaskManagerTest(test_utils.TfxTest):
@@ -167,15 +170,28 @@ class TaskManagerTest(test_utils.TfxTest):
         collector.scheduled_tasks)
     self.assertCountEqual([trainer_exec_task, transform_exec_task],
                           collector.cancelled_tasks)
+
+    result_ok = ts.TaskSchedulerResult(
+        status=status_lib.Status(
+            code=status_lib.Code.OK, message='_FakeTaskScheduler result'))
+    result_cancelled = ts.TaskSchedulerResult(
+        status=status_lib.Status(
+            code=status_lib.Code.CANCELLED,
+            message='_FakeTaskScheduler result'))
     mock_publish.assert_has_calls([
         mock.call(
-            mlmd_handle=mock.ANY, task=trainer_exec_task, result=mock.ANY),
+            mlmd_handle=mock.ANY,
+            task=trainer_exec_task,
+            result=result_cancelled),
         mock.call(
-            mlmd_handle=mock.ANY, task=transform_exec_task, result=mock.ANY),
+            mlmd_handle=mock.ANY,
+            task=transform_exec_task,
+            result=result_cancelled),
         mock.call(
-            mlmd_handle=mock.ANY, task=evaluator_exec_task, result=mock.ANY),
+            mlmd_handle=mock.ANY, task=evaluator_exec_task, result=result_ok),
     ],
                                   any_order=True)
+    self.assertLen(mock_publish.mock_calls, 3)
 
   @mock.patch.object(tm, '_publish_execution_results')
   def test_exceptions_are_surfaced(self, mock_publish):
@@ -216,9 +232,12 @@ class TaskManagerTest(test_utils.TfxTest):
 
     self.assertCountEqual([transform_task, trainer_task],
                           collector.scheduled_tasks)
+    result_ok = ts.TaskSchedulerResult(
+        status=status_lib.Status(
+            code=status_lib.Code.OK, message='_FakeTaskScheduler result'))
     mock_publish.assert_has_calls([
-        mock.call(mlmd_handle=mock.ANY, task=transform_task, result=mock.ANY),
-        mock.call(mlmd_handle=mock.ANY, task=trainer_task, result=mock.ANY),
+        mock.call(mlmd_handle=mock.ANY, task=transform_task, result=result_ok),
+        mock.call(mlmd_handle=mock.ANY, task=trainer_task, result=result_ok),
     ],
                                   any_order=True)
 
