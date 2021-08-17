@@ -154,10 +154,13 @@ class KubeflowHandler(base_handler.BaseHandler):
     pipeline_version_id = self._get_pipeline_version_id(pipeline_id)
     experiment_id = self._get_experiment_id(experiment_name)
 
+    runtime_parameters_dict = self.flags_dict[labels.RUNTIME_PARAMETER]
+
     # Run pipeline.
     run = self._client.run_pipeline(
         experiment_id=experiment_id,
         job_name=self._get_run_job_name(pipeline_name),
+        params=runtime_parameters_dict,
         version_id=pipeline_version_id)
 
     click.echo('Run created for pipeline: ' + pipeline_name)

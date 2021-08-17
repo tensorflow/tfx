@@ -18,7 +18,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from typing import Text
+from typing import Text, Iterable, Dict
 
 import click
 
@@ -72,9 +72,18 @@ def run_group() -> None:
     type=str,
     help='GCP region that will be used to invoke Vertex Pipelines.'
 )
+@click.option(
+    '--runtime_parameter',
+    '--runtime-parameter',
+    default=[],
+    type=str,
+    multiple=True,
+    help='Runtime parameter for the next pipeline run.'
+    ' Format: <parameter_name>=<parameter_value>'
+)
 def create_run(ctx: Context, engine: str, pipeline_name: str, endpoint: str,
                iap_client_id: str, namespace: str, project: str,
-               region: str) -> None:
+               region: str, runtime_parameter: Iterable[str]) -> None:
   """Command definition to create a pipeline run."""
   click.echo('Creating a run for pipeline: ' + pipeline_name)
   ctx.flags_dict[labels.ENGINE_FLAG] = engine
@@ -84,7 +93,27 @@ def create_run(ctx: Context, engine: str, pipeline_name: str, endpoint: str,
   ctx.flags_dict[labels.NAMESPACE] = namespace
   ctx.flags_dict[labels.GCP_PROJECT_ID] = project
   ctx.flags_dict[labels.GCP_REGION] = region
-  handler_factory.create_handler(ctx.flags_dict).create_run()
+  ctx.flags_dict[labels.RUNTIME_PARAMETER] = _parse_runtime_parameters(
+      runtime_parameter)
+
+  handler = handler_factory.create_handler(ctx.flags_dict)
+  if ctx.flags_dict[
+      labels.ENGINE_FLAG] != labels.KUBEFLOW_ENGINE and runtime_parameter:
+    raise NotImplementedError(
+        'Currently runtime parameter is only supported in kubeflow.')
+  handler.create_run()
+
+
+def _parse_runtime_parameters(
+    runtime_parameters: Iterable[str]) -> Dict[str, str]:
+  """Turns runtime parameter into dictionary."""
+  result = {}
+  for name_value_pair in runtime_parameters:
+    if '=' not in name_value_pair:
+      raise ValueError('Runtime parameter should be <name>=<value> format.')
+    name, value = name_value_pair.split('=', maxsplit=1)
+    result[name] = value
+  return result
 
 
 @run_group.command('terminate', help='Stop a run')
