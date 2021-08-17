@@ -148,8 +148,13 @@ class VertexHandler(base_handler.BaseHandler):
     vertex_client = self._create_vertex_client()
     pipeline_name = self.flags_dict[labels.PIPELINE_NAME]
 
+    # In Vertex AI, runtime parameter string value is parsed from the server,
+    # so client directly sends Dict[str, str] value.
+    unparsed_runtime_parameters = self.flags_dict[labels.RUNTIME_PARAMETER]
+
     run = vertex_client.create_run_from_job_spec(
-        job_spec_path=self._get_pipeline_definition_path(pipeline_name))
+        job_spec_path=self._get_pipeline_definition_path(pipeline_name),
+        parameter_values=unparsed_runtime_parameters)
 
     click.echo('Run created for pipeline: ' + pipeline_name)
     self._print_run(run)

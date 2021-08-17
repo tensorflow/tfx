@@ -97,10 +97,11 @@ def create_run(ctx: Context, engine: str, pipeline_name: str, endpoint: str,
       runtime_parameter)
 
   handler = handler_factory.create_handler(ctx.flags_dict)
-  if ctx.flags_dict[
-      labels.ENGINE_FLAG] != labels.KUBEFLOW_ENGINE and runtime_parameter:
+  if (ctx.flags_dict[labels.ENGINE_FLAG]
+      not in (labels.KUBEFLOW_ENGINE,
+              labels.VERTEX_ENGINE)) and runtime_parameter:
     raise NotImplementedError(
-        'Currently runtime parameter is only supported in kubeflow.')
+        'Currently runtime parameter is only supported in kubeflow and vertex.')
   handler.create_run()
 
 
