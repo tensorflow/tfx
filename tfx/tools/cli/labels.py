@@ -52,6 +52,8 @@ BUILD_IMAGE = 'build_image'
 GCP_PROJECT_ID = 'gcp_project_id'
 # GCP Region for GCP API call.
 GCP_REGION = 'gcp_region'
+# Runtime parameter for next pipeline run.
+RUNTIME_PARAMETER = 'runtime_parameter'
 
 # Template specific labels.
 # Destination directory path to copy files
