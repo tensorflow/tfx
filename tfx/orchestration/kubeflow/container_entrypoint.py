@@ -414,6 +414,7 @@ def main():
   # `args.runtime_parameter` should become List[str] by using "append".
   parser.add_argument('--runtime_parameter', type=str, action='append')
 
+  # TODO(b/196892362): Replace hooking with a more straightforward mechanism.
   launcher._register_execution = _register_execution  # pylint: disable=protected-access
 
   args = parser.parse_args()
