@@ -38,6 +38,8 @@
 
 ## Bug Fixes and Other Changes
 
+*   Fixed ths issue that kfp_pod_name is not generated as an execution property
+    for Kubeflow Pipelines.
 *   Fixed issue when InputValuePlaceholder is used as component parameter in
     container based component.
 *   Depends on `kubernetes>=10.0.1,<13`
