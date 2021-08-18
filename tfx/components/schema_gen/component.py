@@ -26,7 +26,7 @@ from tfx.dsl.components.base import base_component
 from tfx.dsl.components.base import executor_spec
 from tfx.orchestration import data_types
 from tfx.types import standard_artifacts
-from tfx.types.standard_component_specs import SchemaGenSpec
+from tfx.types import standard_component_specs
 from tfx.utils import json_utils
 
 
@@ -58,7 +58,7 @@ class SchemaGen(base_component.BaseComponent):
   """
   # TODO(b/123941608): Update pydoc about how to use a user provided schema
 
-  SPEC_CLASS = SchemaGenSpec
+  SPEC_CLASS = standard_component_specs.SchemaGenSpec
   EXECUTOR_SPEC = executor_spec.ExecutorClassSpec(executor.Executor)
 
   def __init__(
@@ -87,7 +87,7 @@ class SchemaGen(base_component.BaseComponent):
     schema = types.Channel(type=standard_artifacts.Schema)
     if isinstance(infer_feature_shape, bool):
       infer_feature_shape = int(infer_feature_shape)
-    spec = SchemaGenSpec(
+    spec = standard_component_specs.SchemaGenSpec(
         statistics=statistics,
         infer_feature_shape=infer_feature_shape,
         exclude_splits=json_utils.dumps(exclude_splits),

@@ -30,8 +30,7 @@ from tfx.orchestration import data_types
 from tfx.proto import example_gen_pb2
 from tfx.proto import range_config_pb2
 from tfx.types import standard_artifacts
-from tfx.types.standard_component_specs import FileBasedExampleGenSpec
-from tfx.types.standard_component_specs import QueryBasedExampleGenSpec
+from tfx.types import standard_component_specs
 
 
 class QueryBasedExampleGen(base_beam_component.BaseBeamComponent):
@@ -55,7 +54,7 @@ class QueryBasedExampleGen(base_beam_component.BaseBeamComponent):
                  and eval examples.
   """
 
-  SPEC_CLASS = QueryBasedExampleGenSpec
+  SPEC_CLASS = standard_component_specs.QueryBasedExampleGenSpec
   # EXECUTOR_SPEC should be overridden by subclasses.
   EXECUTOR_SPEC = executor_spec.BeamExecutorSpec(
       base_beam_executor.BaseBeamExecutor)
@@ -104,7 +103,7 @@ class QueryBasedExampleGen(base_beam_component.BaseBeamComponent):
       raise ValueError('The value of output_file_format must be defined in'
                        'the example_gen_pb2.FileFormat proto.')
 
-    spec = QueryBasedExampleGenSpec(
+    spec = standard_component_specs.QueryBasedExampleGenSpec(
         input_config=input_config,
         output_config=output_config,
         output_data_format=output_data_format,
@@ -137,7 +136,7 @@ class FileBasedExampleGen(base_beam_component.BaseBeamComponent):
                  and eval examples.
   """
 
-  SPEC_CLASS = FileBasedExampleGenSpec
+  SPEC_CLASS = standard_component_specs.FileBasedExampleGenSpec
   # EXECUTOR_SPEC should be overridden by subclasses.
   EXECUTOR_SPEC = executor_spec.BeamExecutorSpec(
       base_beam_executor.BaseBeamExecutor)
@@ -185,7 +184,7 @@ class FileBasedExampleGen(base_beam_component.BaseBeamComponent):
     output_config = output_config or utils.make_default_output_config(
         input_config)
     example_artifacts = types.Channel(type=standard_artifacts.Examples)
-    spec = FileBasedExampleGenSpec(
+    spec = standard_component_specs.FileBasedExampleGenSpec(
         input_base=input_base,
         input_config=input_config,
         output_config=output_config,
