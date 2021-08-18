@@ -327,7 +327,7 @@ class TaskManagerE2ETest(test_utils.TfxTest):
 
     # Task generator should produce a task to run transform.
     with self._mlmd_connection as m:
-      pipeline_state = pstate.PipelineState(m, self._pipeline, 0)
+      pipeline_state = pstate.PipelineState.new(m, self._pipeline)
       tasks = asptg.AsyncPipelineTaskGenerator(
           m, pipeline_state, self._task_queue.contains_task_id,
           service_jobs.DummyServiceJobManager()).generate()

@@ -14,9 +14,10 @@
 """Pipeline state management functionality."""
 
 import base64
+import contextlib
 import threading
 import time
-from typing import Dict, List, Mapping, Optional
+from typing import Dict, Iterator, List, Mapping, Optional
 
 import attr
 from tfx import types
@@ -49,17 +50,51 @@ _state_change_time_lock = threading.Lock()
 
 
 @attr.s(auto_attribs=True, kw_only=True)
-class _NodeState(json_utils.Jsonable):
+class NodeState(json_utils.Jsonable):
   """Records node state.
 
   Attributes:
-    stop_initiated: Whether node stop has been initiated.
-    status_code: Status code for a stop initiated node.
-    status_msg: Status message for a stop initiated node.
+    state: Current state of the node.
+    status: Status of the node in state STOPPING or STOPPED.
   """
-  stop_initiated: bool = False
+
+  # This state indicates that the node is pending some internal work before its
+  # state can be changed to STARTED.
+  STARTING = 'starting'
+
+  # This state indicates that the node is started and can run when triggering
+  # events occur.
+  STARTED = 'started'
+
+  # This state indicates that the node is pending some internal work before its
+  # state can be changed to STOPPED.
+  STOPPING = 'stopping'
+
+  # This state indicates that the node is stopped.
+  STOPPED = 'stopped'
+
+  state: str = attr.ib(
+      default=STARTED,
+      validator=attr.validators.in_([STARTING, STARTED, STOPPING, STOPPED]))
   status_code: Optional[int] = None
   status_msg: str = ''
+
+  @property
+  def status(self) -> Optional[status_lib.Status]:
+    if self.status_code is not None:
+      return status_lib.Status(code=self.status_code, message=self.status_msg)
+    return None
+
+  def update(self,
+             state: str,
+             status: Optional[status_lib.Status] = None) -> None:
+    self.state = state
+    if status is not None:
+      self.status_code = status.code
+      self.status_msg = status.message
+    else:
+      self.status_code = None
+      self.status_msg = ''
 
 
 def record_state_change_time() -> None:
@@ -255,64 +290,31 @@ class PipelineState:
     else:
       return None
 
-  def initiate_node_start(self, node_uid: task_lib.NodeUid) -> None:
-    """Updates pipeline state to signal that a node should be started."""
+  @contextlib.contextmanager
+  def node_state_update_context(
+      self, node_uid: task_lib.NodeUid) -> Iterator[NodeState]:
+    """Context manager for updating the node state."""
     self._check_context()
-    if self.pipeline.execution_mode != pipeline_pb2.Pipeline.ASYNC:
-      raise status_lib.StatusNotOkError(
-          code=status_lib.Code.UNIMPLEMENTED,
-          message='Node can be started only for async pipelines.')
     if not _is_node_uid_in_pipeline(node_uid, self.pipeline):
       raise status_lib.StatusNotOkError(
           code=status_lib.Code.INVALID_ARGUMENT,
-          message=(f'Node given by uid {node_uid} does not belong to pipeline '
-                   f'given by uid {self.pipeline_uid}'))
+          message=(f'Node {node_uid} does not belong to the pipeline '
+                   f'{self.pipeline_uid}'))
     node_states_dict = self._get_node_states_dict()
-    node_state = node_states_dict.get(node_uid.node_id)
-    if node_state and node_state.stop_initiated:
-      node_state.status_code = None
-      node_state.status_msg = ''
-      node_state.stop_initiated = False
-      self._save_node_states_dict(node_states_dict)
-      record_state_change_time()
-
-  def initiate_node_stop(self, node_uid: task_lib.NodeUid,
-                         status: status_lib.Status) -> None:
-    """Updates pipeline state to signal that a node should be stopped."""
-    self._check_context()
-    if self.pipeline.execution_mode != pipeline_pb2.Pipeline.ASYNC:
-      raise status_lib.StatusNotOkError(
-          code=status_lib.Code.UNIMPLEMENTED,
-          message='Node can be stopped only for async pipelines.')
-    if not _is_node_uid_in_pipeline(node_uid, self.pipeline):
-      raise status_lib.StatusNotOkError(
-          code=status_lib.Code.INVALID_ARGUMENT,
-          message=(f'Node given by uid {node_uid} does not belong to pipeline '
-                   f'given by uid {self.pipeline_uid}'))
-    node_states_dict = self._get_node_states_dict()
-    node_state = node_states_dict.get(node_uid.node_id, _NodeState())
-    node_state.stop_initiated = True
-    node_state.status_code = status.code
-    node_state.status_msg = status.message
-    node_states_dict[node_uid.node_id] = node_state
+    node_state = node_states_dict.setdefault(node_uid.node_id, NodeState())
+    yield node_state
     self._save_node_states_dict(node_states_dict)
     record_state_change_time()
 
-  def node_stop_initiated_reason(
-      self, node_uid: task_lib.NodeUid) -> Optional[status_lib.Status]:
-    """Returns status object if node stop initiated, `None` otherwise."""
+  def get_node_state(self, node_uid: task_lib.NodeUid) -> NodeState:
     self._check_context()
-    if node_uid.pipeline_uid != self.pipeline_uid:
-      raise RuntimeError(
-          f'Node given by uid {node_uid} does not belong to pipeline given '
-          f'by uid {self.pipeline_uid}')
+    if not _is_node_uid_in_pipeline(node_uid, self.pipeline):
+      raise status_lib.StatusNotOkError(
+          code=status_lib.Code.INVALID_ARGUMENT,
+          message=(f'Node {node_uid} does not belong to the pipeline '
+                   f'{self.pipeline_uid}'))
     node_states_dict = self._get_node_states_dict()
-    node_state = node_states_dict.get(node_uid.node_id)
-    if node_state and node_state.stop_initiated:
-      return status_lib.Status(
-          code=node_state.status_code or status_lib.Code.UNKNOWN,
-          message=node_state.status_msg)
-    return None
+    return node_states_dict.get(node_uid.node_id, NodeState())
 
   def get_pipeline_execution_state(self) -> metadata_store_pb2.Execution.State:
     """Returns state of underlying pipeline execution."""
@@ -348,12 +350,12 @@ class PipelineState:
     if self._execution.custom_properties.get(property_key):
       del self._execution.custom_properties[property_key]
 
-  def _get_node_states_dict(self) -> Dict[str, _NodeState]:
+  def _get_node_states_dict(self) -> Dict[str, NodeState]:
     node_states_json = _get_metadata_value(
         self._execution.custom_properties.get(_NODE_STATES))
     return json_utils.loads(node_states_json) if node_states_json else {}
 
-  def _save_node_states_dict(self, node_states: Dict[str, _NodeState]) -> None:
+  def _save_node_states_dict(self, node_states: Dict[str, NodeState]) -> None:
     data_types_utils.set_metadata_value(
         self._execution.custom_properties[_NODE_STATES],
         json_utils.dumps(node_states))
