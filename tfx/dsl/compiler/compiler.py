@@ -268,8 +268,7 @@ class Compiler:
               value.default)
         else:
           try:
-            data_types_utils.set_metadata_value(parameter_value.field_value,
-                                                value)
+            data_types_utils.set_parameter_value(parameter_value, value)
           except ValueError:
             raise ValueError(
                 "Component {} got unsupported parameter {} with type {}."
