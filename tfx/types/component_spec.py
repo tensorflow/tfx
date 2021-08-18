@@ -214,13 +214,19 @@ class ComponentSpec(json_utils.Jsonable):
 
       if (inspect.isclass(arg.type) and
           issubclass(arg.type, message.Message) and value and
-          not isinstance(value, str) and not _is_runtime_param(value)):
-        # Create deterministic json string as it will be stored in metadata for
-        # cache check.
-        if isinstance(value, dict):
-          value = json_utils.dumps(value)
+          not _is_runtime_param(value)):
+        if arg.use_proto:
+          if isinstance(value, dict):
+            value = proto_utils.dict_to_proto(value, arg.type())
+          elif isinstance(value, str):
+            value = proto_utils.json_to_proto(value, arg.type())
         else:
-          value = proto_utils.proto_to_json(value)
+          # Create deterministic json string as it will be stored in metadata
+          # for cache check.
+          if isinstance(value, dict):
+            value = json_utils.dumps(value)
+          elif not isinstance(value, str):
+            value = proto_utils.proto_to_json(value)
 
       self.exec_properties[arg_name] = value
 
@@ -265,19 +271,30 @@ class ExecutionParameter(_ComponentParameter):
         'internal_option': ExecutionParameter(type=str),
     }
     # ...
+
+  Attributes:
+    type: Type of the execution parameter.
+    optional: Boolean value indicating whether the parameter is optional.
+    use_proto: Boolean value indicating whether pb message (and other
+      non-primitive types like lists) should be stored in its original form.
   """
 
-  def __init__(self, type=None, optional=False):  # pylint: disable=redefined-builtin
+  def __init__(self, type=None, optional=False, use_proto=False):  # pylint: disable=redefined-builtin
     self.type = type
     self.optional = optional
+    self.use_proto = use_proto
+
+    if self.type in [int, float, str] and self.use_proto:
+      raise ValueError('use_proto set for primitive type %s' % self.type)
 
   def __repr__(self):
-    return 'ExecutionParameter(type: %s, optional: %s)' % (self.type,
-                                                           self.optional)
+    return 'ExecutionParameter(type: %s, optional: %s, use_proto: %s)' % (
+        self.type, self.optional, self.use_proto)
 
   def __eq__(self, other):
     return (isinstance(other.__class__, self.__class__) and
-            other.type == self.type and other.optional == self.optional)
+            other.type == self.type and other.optional == self.optional and
+            other.use_proto == self.use_proto)
 
   def type_check(self, arg_name: str, value: Any):
     """Perform type check to the parameter passed in."""

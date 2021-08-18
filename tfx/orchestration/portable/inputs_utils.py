@@ -277,3 +277,26 @@ def resolve_parameters(
                           value.field_value.WhichOneof('value'))
 
   return result
+
+
+def resolve_parameters_with_schema(
+    node_parameters: pipeline_pb2.NodeParameters
+) -> Dict[str, pipeline_pb2.Value]:
+  """Resolves parameter schemas given parameter spec.
+
+  Args:
+    node_parameters: The spec to get parameters.
+
+  Returns:
+    A Dict of parameters with schema.
+
+  Raises:
+    RuntimeError: When there is no field_value available.
+  """
+  result = {}
+  for key, value in node_parameters.parameters.items():
+    if not value.HasField('field_value'):
+      raise RuntimeError('Parameter value not ready for %s' % key)
+    result[key] = value
+
+  return result

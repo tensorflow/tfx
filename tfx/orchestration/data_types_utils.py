@@ -12,14 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Data types util shared for orchestration."""
-from typing import Dict, Iterable, List, Mapping, Optional, Union
+from typing import Dict, Iterable, List, Mapping, Optional, Union, Any
 
 from tfx import types
 from tfx.proto.orchestration import pipeline_pb2
 from tfx.types import artifact_utils
+from tfx.utils import json_utils
+from tfx.utils import proto_utils
 
 from ml_metadata.proto import metadata_store_pb2
 from ml_metadata.proto import metadata_store_service_pb2
+
+from google.protobuf import message
 
 
 def build_artifact_dict(
@@ -84,6 +88,41 @@ def build_metadata_value_dict(
       value.double_value = v
     else:
       raise RuntimeError('Unsupported type {} for key {}'.format(type(v), k))
+    result[k] = value
+  return result
+
+
+def build_parsed_value_dict(
+    value_dict: Mapping[str, pipeline_pb2.Value]) -> Dict[str, Any]:
+  """Converts MLMD value into parsed (non-)primitive value dict."""
+
+  def parse_value(
+      value: str, value_type: pipeline_pb2.Value.Schema.ValueType
+  ) -> Union[List[Any], message.Message, types.Property, bool]:
+    if value_type.HasField('list_type'):
+      list_value = json_utils.loads(value)
+      return [parse_value(val, value_type.list_type) for val in list_value]
+    elif value_type.HasField('proto_type'):
+      return proto_utils.deserialize_proto_message(
+          value, value_type.proto_type.message_type,
+          value_type.proto_type.file_descriptors)
+    else:
+      return value
+
+  result = {}
+  if not value_dict:
+    return result
+  for k, v in value_dict.items():
+    if not v.HasField('field_value'):
+      raise RuntimeError('Field value missing for %s' % k)
+    field_value = v.field_value
+    if field_value.HasField('string_value') and v.HasField('schema'):
+      if v.schema.value_type.HasField('boolean_type'):
+        value = json_utils.loads(field_value.string_value)
+      else:
+        value = parse_value(field_value.string_value, v.schema.value_type)
+    else:
+      value = getattr(field_value, field_value.WhichOneof('value'))
     result[k] = value
   return result
 
@@ -195,3 +234,64 @@ def set_metadata_value(
   else:
     raise ValueError('Unexpected type %s' % type(value))
   return metadata_value
+
+
+def set_parameter_value(
+    parameter_value: pipeline_pb2.Value,
+    value: Union[types.Property, bool, message.Message, List[Any]]
+) -> pipeline_pb2.Value:
+  """Sets field value and schema based on tfx value.
+
+  Args:
+    parameter_value: A pipeline_pb2.Value message to be set.
+    value: The value of the property.
+
+  Returns:
+    A pipeline_pb2.Value proto with field_value and schema filled based on input
+    property.
+
+  Raises:
+    ValueError: If value type is not supported.
+  """
+
+  def get_value_and_set_type(
+      value: Union[types.Property, bool, message.Message, List[Any]],
+      value_type: pipeline_pb2.Value.Schema.ValueType) -> types.Property:
+    """Returns serialized value and sets value_type."""
+    if isinstance(value, bool):
+      value_type.boolean_type.SetInParent()
+      return value
+    elif isinstance(value, message.Message):
+      # TODO(b/171794016): Investigate if file descripter set is needed for
+      # tfx-owned proto already build in the launcher binary.
+      proto_type = value_type.proto_type
+      proto_type.message_type = type(value).DESCRIPTOR.full_name
+      proto_utils.build_file_descriptor_set(value, proto_type.file_descriptors)
+      return proto_utils.proto_to_json(value)
+    elif isinstance(value, list) and len(value):
+      value_type.list_type.SetInParent()
+      value = [
+          get_value_and_set_type(val, value_type.list_type) for val in value
+      ]
+      return json_utils.dumps(value)
+    elif isinstance(value, (int, float, str)):
+      return value
+    else:
+      raise ValueError('Unexpected type %s' % type(value))
+
+  if isinstance(value, int) and not isinstance(value, bool):
+    parameter_value.field_value.int_value = value
+  elif isinstance(value, float):
+    parameter_value.field_value.double_value = value
+  elif isinstance(value, str):
+    parameter_value.field_value.string_value = value
+  elif isinstance(value, bool):
+    parameter_value.schema.value_type.boolean_type.SetInParent()
+    parameter_value.field_value.string_value = json_utils.dumps(value)
+  elif isinstance(value, (list, message.Message)):
+    parameter_value.field_value.string_value = get_value_and_set_type(
+        value, parameter_value.schema.value_type)
+  else:
+    raise ValueError('Unexpected type %s' % type(value))
+
+  return parameter_value
