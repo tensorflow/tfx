@@ -186,17 +186,18 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
       pipeline_ops.stop_node(m, node_uid)
       pipeline_state = pstate.PipelineState.load(m, pipeline_uid)
 
-      # The node should be stop-initiated even when node is inactive to prevent
+      # The node state should be STOPPING even when node is inactive to prevent
       # future triggers.
       with pipeline_state:
-        self.assertEqual(
-            status_lib.Code.CANCELLED,
-            pipeline_state.node_stop_initiated_reason(node_uid).code)
+        node_state = pipeline_state.get_node_state(node_uid)
+        self.assertEqual(status_lib.Code.CANCELLED, node_state.status.code)
+        self.assertEqual(pstate.NodeState.STOPPING, node_state.state)
 
       # Restart node.
       pipeline_state = pipeline_ops.initiate_node_start(m, node_uid)
       with pipeline_state:
-        self.assertIsNone(pipeline_state.node_stop_initiated_reason(node_uid))
+        node_state = pipeline_state.get_node_state(node_uid)
+        self.assertEqual(pstate.NodeState.STARTING, node_state.state)
 
   def test_stop_node_wait_for_inactivation(self):
     pipeline = pipeline_pb2.Pipeline()
@@ -226,13 +227,13 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
       thread.join()
 
       with pstate.PipelineState.load(m, pipeline_uid) as pipeline_state:
-        self.assertEqual(
-            status_lib.Code.CANCELLED,
-            pipeline_state.node_stop_initiated_reason(node_uid).code)
+        node_state = pipeline_state.get_node_state(node_uid)
+        self.assertEqual(pstate.NodeState.STOPPING, node_state.state)
 
       # Restart node.
       with pipeline_ops.initiate_node_start(m, node_uid) as pipeline_state:
-        self.assertIsNone(pipeline_state.node_stop_initiated_reason(node_uid))
+        node_state = pipeline_state.get_node_state(node_uid)
+        self.assertEqual(pstate.NodeState.STARTING, node_state.state)
 
   def test_stop_node_wait_for_inactivation_timeout(self):
     pipeline = pipeline_pb2.Pipeline()
@@ -255,12 +256,12 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
       self.assertEqual(status_lib.Code.DEADLINE_EXCEEDED,
                        exception_context.exception.code)
 
-      # Even if `wait_for_inactivation` times out, the node should be stop
-      # initiated to prevent future triggers.
+      # Even if `wait_for_inactivation` times out, the node should be in state
+      # STOPPING or STOPPED to prevent future triggers.
       with pstate.PipelineState.load(m, pipeline_uid) as pipeline_state:
-        self.assertEqual(
-            status_lib.Code.CANCELLED,
-            pipeline_state.node_stop_initiated_reason(node_uid).code)
+        node_state = pipeline_state.get_node_state(node_uid)
+        self.assertIn(node_state.state,
+                      (pstate.NodeState.STOPPING, pstate.NodeState.STOPPED))
 
   @mock.patch.object(sync_pipeline_task_gen, 'SyncPipelineTaskGenerator')
   @mock.patch.object(async_pipeline_task_gen, 'AsyncPipelineTaskGenerator')
@@ -458,13 +459,22 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
            mock.call(mock.ANY, 'Transform')],
           any_order=True)
 
+  @parameterized.parameters(
+      _test_pipeline('pipeline1'),
+      _test_pipeline('pipeline1', pipeline_pb2.Pipeline.SYNC))
+  @mock.patch.object(sync_pipeline_task_gen, 'SyncPipelineTaskGenerator')
   @mock.patch.object(async_pipeline_task_gen, 'AsyncPipelineTaskGenerator')
   @mock.patch.object(task_gen_utils, 'generate_task_from_active_execution')
-  def test_active_pipelines_with_stop_initiated_nodes(self,
-                                                      mock_gen_task_from_active,
-                                                      mock_async_task_gen):
+  def test_active_pipelines_with_stopped_nodes(self, pipeline,
+                                               mock_gen_task_from_active,
+                                               mock_async_task_gen,
+                                               mock_sync_task_gen):
+    if pipeline.execution_mode == pipeline_pb2.Pipeline.SYNC:
+      mock_task_gen = mock_sync_task_gen
+    else:
+      mock_task_gen = mock_async_task_gen
+
     with self._mlmd_connection as m:
-      pipeline = _test_pipeline('pipeline')
       pipeline.nodes.add().pipeline_node.node_info.id = 'ExampleGen'
       pipeline.nodes.add().pipeline_node.node_info.id = 'Transform'
       pipeline.nodes.add().pipeline_node.node_info.id = 'Trainer'
@@ -497,25 +507,30 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
       with pstate.PipelineState.load(
           m, task_lib.PipelineUid.from_pipeline(pipeline)) as pipeline_state:
         # Stop example-gen, trainer and evaluator.
-        pipeline_state.initiate_node_stop(
-            example_gen_node_uid,
-            status_lib.Status(code=status_lib.Code.CANCELLED))
-        pipeline_state.initiate_node_stop(
-            trainer_node_uid, status_lib.Status(code=status_lib.Code.CANCELLED))
-        pipeline_state.initiate_node_stop(
-            evaluator_node_uid, status_lib.Status(code=status_lib.Code.ABORTED))
+        with pipeline_state.node_state_update_context(
+            example_gen_node_uid) as node_state:
+          node_state.update(pstate.NodeState.STOPPING,
+                            status_lib.Status(code=status_lib.Code.CANCELLED))
+        with pipeline_state.node_state_update_context(
+            trainer_node_uid) as node_state:
+          node_state.update(pstate.NodeState.STOPPING,
+                            status_lib.Status(code=status_lib.Code.CANCELLED))
+        with pipeline_state.node_state_update_context(
+            evaluator_node_uid) as node_state:
+          node_state.update(pstate.NodeState.STOPPING,
+                            status_lib.Status(code=status_lib.Code.ABORTED))
 
       task_queue = tq.TaskQueue()
 
       # Simulate a new transform execution being triggered.
-      mock_async_task_gen.return_value.generate.return_value = [transform_task]
+      mock_task_gen.return_value.generate.return_value = [transform_task]
       # Simulate ExecNodeTask for trainer already present in the task queue.
       task_queue.enqueue(trainer_task)
       # Simulate Evaluator having an active execution in MLMD.
       mock_gen_task_from_active.side_effect = [evaluator_task]
 
       pipeline_ops.orchestrate(m, task_queue, mock_service_job_manager)
-      self.assertEqual(1, mock_async_task_gen.return_value.generate.call_count)
+      self.assertEqual(1, mock_task_gen.return_value.generate.call_count)
 
       # stop_node_services should be called on example-gen which is a pure
       # service node.
@@ -584,15 +599,15 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
       pipeline_uid = task_lib.PipelineUid.from_pipeline(pipeline)
       finalize_reason = status_lib.Status(
           code=status_lib.Code.ABORTED, message='foo bar')
+      transform_node_uid = task_lib.NodeUid(
+          pipeline_uid=pipeline_uid, node_id='Transform')
+      trainer_node_uid = task_lib.NodeUid(
+          pipeline_uid=pipeline_uid, node_id='Trainer')
       task_gen.return_value.generate.side_effect = [
           [
-              test_utils.create_exec_node_task(
-                  task_lib.NodeUid(
-                      pipeline_uid=pipeline_uid, node_id='Transform')),
+              test_utils.create_exec_node_task(transform_node_uid),
               task_lib.FinalizeNodeTask(
-                  node_uid=task_lib.NodeUid(
-                      pipeline_uid=pipeline_uid, node_id='Trainer'),
-                  status=finalize_reason)
+                  node_uid=trainer_node_uid, status=finalize_reason)
           ],
       ]
 
@@ -603,15 +618,13 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
       task = task_queue.dequeue()
       task_queue.task_done(task)
       self.assertTrue(task_lib.is_exec_node_task(task))
-      self.assertEqual(
-          test_utils.create_node_uid('pipeline1', 'Transform'), task.node_uid)
+      self.assertEqual(transform_node_uid, task.node_uid)
 
-      # Load pipeline state and verify node stop initiation.
+      # Load pipeline state and verify trainer node state.
       with pstate.PipelineState.load(m, pipeline_uid) as pipeline_state:
-        self.assertEqual(
-            finalize_reason,
-            pipeline_state.node_stop_initiated_reason(
-                task_lib.NodeUid(pipeline_uid=pipeline_uid, node_id='Trainer')))
+        node_state = pipeline_state.get_node_state(trainer_node_uid)
+        self.assertEqual(pstate.NodeState.STOPPING, node_state.state)
+        self.assertEqual(finalize_reason, node_state.status)
 
   def test_to_status_not_ok_error_decorator(self):
 
@@ -633,6 +646,193 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
                                 'test error 2') as ctxt:
       fn2()
     self.assertEqual(status_lib.Code.ALREADY_EXISTS, ctxt.exception.code)
+
+  @parameterized.parameters(
+      _test_pipeline('pipeline1'),
+      _test_pipeline('pipeline1', pipeline_pb2.Pipeline.SYNC))
+  @mock.patch.object(sync_pipeline_task_gen, 'SyncPipelineTaskGenerator')
+  @mock.patch.object(async_pipeline_task_gen, 'AsyncPipelineTaskGenerator')
+  def test_executor_node_stop_then_start_flow(self, pipeline,
+                                              mock_async_task_gen,
+                                              mock_sync_task_gen):
+    service_job_manager = service_jobs.DummyServiceJobManager()
+    with self._mlmd_connection as m:
+      pipeline_uid = task_lib.PipelineUid.from_pipeline(pipeline)
+      pipeline.nodes.add().pipeline_node.node_info.id = 'Trainer'
+      trainer_node_uid = task_lib.NodeUid.from_pipeline_node(
+          pipeline, pipeline.nodes[0].pipeline_node)
+
+      # Start pipeline and stop trainer.
+      pipeline_ops.initiate_pipeline_start(m, pipeline)
+      with pstate.PipelineState.load(m, pipeline_uid) as pipeline_state:
+        with pipeline_state.node_state_update_context(
+            trainer_node_uid) as node_state:
+          node_state.update(pstate.NodeState.STOPPING,
+                            status_lib.Status(code=status_lib.Code.CANCELLED))
+
+      task_queue = tq.TaskQueue()
+
+      # Simulate ExecNodeTask for trainer already present in the task queue.
+      trainer_task = test_utils.create_exec_node_task(node_uid=trainer_node_uid)
+      task_queue.enqueue(trainer_task)
+
+      pipeline_ops.orchestrate(m, task_queue, service_job_manager)
+
+      # Dequeue pre-existing trainer task.
+      task = task_queue.dequeue()
+      task_queue.task_done(task)
+      self.assertEqual(trainer_task, task)
+
+      # Dequeue CancelNodeTask for trainer.
+      task = task_queue.dequeue()
+      task_queue.task_done(task)
+      self.assertTrue(task_lib.is_cancel_node_task(task))
+      self.assertEqual(trainer_node_uid, task.node_uid)
+
+      self.assertTrue(task_queue.is_empty())
+
+      with pstate.PipelineState.load(m, pipeline_uid) as pipeline_state:
+        node_state = pipeline_state.get_node_state(trainer_node_uid)
+        self.assertEqual(pstate.NodeState.STOPPING, node_state.state)
+        self.assertEqual(status_lib.Code.CANCELLED, node_state.status.code)
+
+      pipeline_ops.orchestrate(m, task_queue, service_job_manager)
+
+      with pstate.PipelineState.load(m, pipeline_uid) as pipeline_state:
+        node_state = pipeline_state.get_node_state(trainer_node_uid)
+        self.assertEqual(pstate.NodeState.STOPPED, node_state.state)
+        self.assertEqual(status_lib.Code.CANCELLED, node_state.status.code)
+
+      pipeline_ops.initiate_node_start(m, trainer_node_uid)
+      pipeline_ops.orchestrate(m, task_queue, service_job_manager)
+
+      with pstate.PipelineState.load(m, pipeline_uid) as pipeline_state:
+        node_state = pipeline_state.get_node_state(trainer_node_uid)
+        self.assertEqual(pstate.NodeState.STARTED, node_state.state)
+
+  @parameterized.parameters(
+      _test_pipeline('pipeline1'),
+      _test_pipeline('pipeline1', pipeline_pb2.Pipeline.SYNC))
+  @mock.patch.object(sync_pipeline_task_gen, 'SyncPipelineTaskGenerator')
+  @mock.patch.object(async_pipeline_task_gen, 'AsyncPipelineTaskGenerator')
+  def test_pure_service_node_stop_then_start_flow(self, pipeline,
+                                                  mock_async_task_gen,
+                                                  mock_sync_task_gen):
+    with self._mlmd_connection as m:
+      pipeline_uid = task_lib.PipelineUid.from_pipeline(pipeline)
+      pipeline.nodes.add().pipeline_node.node_info.id = 'ExampleGen'
+
+      mock_service_job_manager = mock.create_autospec(
+          service_jobs.ServiceJobManager, instance=True)
+      mock_service_job_manager.is_pure_service_node.return_value = True
+      example_gen_node_uid = task_lib.NodeUid.from_pipeline_node(
+          pipeline, pipeline.nodes[0].pipeline_node)
+
+      pipeline_ops.initiate_pipeline_start(m, pipeline)
+      with pstate.PipelineState.load(
+          m, task_lib.PipelineUid.from_pipeline(pipeline)) as pipeline_state:
+        with pipeline_state.node_state_update_context(
+            example_gen_node_uid) as node_state:
+          node_state.update(pstate.NodeState.STOPPING,
+                            status_lib.Status(code=status_lib.Code.CANCELLED))
+
+      task_queue = tq.TaskQueue()
+
+      pipeline_ops.orchestrate(m, task_queue, mock_service_job_manager)
+
+      # stop_node_services should be called for ExampleGen which is a pure
+      # service node.
+      mock_service_job_manager.stop_node_services.assert_called_once_with(
+          mock.ANY, 'ExampleGen')
+
+      with pstate.PipelineState.load(m, pipeline_uid) as pipeline_state:
+        node_state = pipeline_state.get_node_state(example_gen_node_uid)
+        self.assertEqual(pstate.NodeState.STOPPED, node_state.state)
+        self.assertEqual(status_lib.Code.CANCELLED, node_state.status.code)
+
+      pipeline_ops.initiate_node_start(m, example_gen_node_uid)
+      pipeline_ops.orchestrate(m, task_queue, mock_service_job_manager)
+
+      with pstate.PipelineState.load(m, pipeline_uid) as pipeline_state:
+        node_state = pipeline_state.get_node_state(example_gen_node_uid)
+        self.assertEqual(pstate.NodeState.STARTED, node_state.state)
+
+  @parameterized.parameters(
+      _test_pipeline('pipeline1'),
+      _test_pipeline('pipeline1', pipeline_pb2.Pipeline.SYNC))
+  @mock.patch.object(sync_pipeline_task_gen, 'SyncPipelineTaskGenerator')
+  @mock.patch.object(async_pipeline_task_gen, 'AsyncPipelineTaskGenerator')
+  def test_mixed_service_node_stop_then_start_flow(self, pipeline,
+                                                   mock_async_task_gen,
+                                                   mock_sync_task_gen):
+    with self._mlmd_connection as m:
+      pipeline_uid = task_lib.PipelineUid.from_pipeline(pipeline)
+      pipeline.nodes.add().pipeline_node.node_info.id = 'Transform'
+
+      mock_service_job_manager = mock.create_autospec(
+          service_jobs.ServiceJobManager, instance=True)
+      mock_service_job_manager.is_pure_service_node.return_value = False
+      mock_service_job_manager.is_mixed_service_node.return_value = True
+
+      transform_node_uid = task_lib.NodeUid.from_pipeline_node(
+          pipeline, pipeline.nodes[0].pipeline_node)
+
+      pipeline_ops.initiate_pipeline_start(m, pipeline)
+      with pstate.PipelineState.load(
+          m, task_lib.PipelineUid.from_pipeline(pipeline)) as pipeline_state:
+        # Stop Transform.
+        with pipeline_state.node_state_update_context(
+            transform_node_uid) as node_state:
+          node_state.update(pstate.NodeState.STOPPING,
+                            status_lib.Status(code=status_lib.Code.CANCELLED))
+
+      task_queue = tq.TaskQueue()
+
+      # Simulate ExecNodeTask for Transform already present in the task queue.
+      transform_task = test_utils.create_exec_node_task(
+          node_uid=transform_node_uid)
+      task_queue.enqueue(transform_task)
+
+      pipeline_ops.orchestrate(m, task_queue, mock_service_job_manager)
+
+      # stop_node_services should not be called as there was an active
+      # ExecNodeTask for Transform which is a mixed service node.
+      mock_service_job_manager.stop_node_services.assert_not_called()
+
+      # Dequeue pre-existing transform task.
+      task = task_queue.dequeue()
+      task_queue.task_done(task)
+      self.assertEqual(transform_task, task)
+
+      # Dequeue CancelNodeTask for transform.
+      task = task_queue.dequeue()
+      task_queue.task_done(task)
+      self.assertTrue(task_lib.is_cancel_node_task(task))
+      self.assertEqual(transform_node_uid, task.node_uid)
+
+      with pstate.PipelineState.load(m, pipeline_uid) as pipeline_state:
+        node_state = pipeline_state.get_node_state(transform_node_uid)
+        self.assertEqual(pstate.NodeState.STOPPING, node_state.state)
+        self.assertEqual(status_lib.Code.CANCELLED, node_state.status.code)
+
+      pipeline_ops.orchestrate(m, task_queue, mock_service_job_manager)
+
+      # stop_node_services should be called for Transform which is a mixed
+      # service node and corresponding ExecNodeTask has been dequeued.
+      mock_service_job_manager.stop_node_services.assert_called_once_with(
+          mock.ANY, 'Transform')
+
+      with pstate.PipelineState.load(m, pipeline_uid) as pipeline_state:
+        node_state = pipeline_state.get_node_state(transform_node_uid)
+        self.assertEqual(pstate.NodeState.STOPPED, node_state.state)
+        self.assertEqual(status_lib.Code.CANCELLED, node_state.status.code)
+
+      pipeline_ops.initiate_node_start(m, transform_node_uid)
+      pipeline_ops.orchestrate(m, task_queue, mock_service_job_manager)
+
+      with pstate.PipelineState.load(m, pipeline_uid) as pipeline_state:
+        node_state = pipeline_state.get_node_state(transform_node_uid)
+        self.assertEqual(pstate.NodeState.STARTED, node_state.state)
 
 
 if __name__ == '__main__':

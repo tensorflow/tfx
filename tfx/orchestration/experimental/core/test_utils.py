@@ -18,7 +18,6 @@ import uuid
 
 from absl.testing.absltest import mock
 from tfx import types
-from tfx.orchestration.experimental.core import async_pipeline_task_gen as asptg
 from tfx.orchestration.experimental.core import mlmd_state
 from tfx.orchestration.experimental.core import pipeline_state as pstate
 from tfx.orchestration.experimental.core import service_jobs
@@ -28,6 +27,7 @@ from tfx.orchestration.portable import execution_publish_utils
 from tfx.orchestration.portable.mlmd import context_lib
 from tfx.orchestration.portable.mlmd import execution_lib
 from tfx.proto.orchestration import pipeline_pb2
+from tfx.utils import status as status_lib
 from tfx.utils import test_case_utils
 
 
@@ -156,23 +156,16 @@ def create_node_uid(pipeline_id, node_id):
       node_id=node_id)
 
 
-def run_generator(mlmd_connection,
-                  generator_class,
-                  pipeline,
-                  task_queue,
-                  use_task_queue,
-                  service_job_manager,
-                  ignore_node_ids=None):
+def run_generator(mlmd_connection, generator_class, pipeline, task_queue,
+                  use_task_queue, service_job_manager):
   """Generates tasks for testing."""
   with mlmd_connection as m:
-    pipeline_state = pstate.PipelineState(m, pipeline, 0)
+    pipeline_state = get_or_create_pipeline_state(m, pipeline)
     generator_params = dict(
         mlmd_handle=m,
         pipeline_state=pipeline_state,
         is_task_id_tracked_fn=task_queue.contains_task_id,
         service_job_manager=service_job_manager)
-    if generator_class == asptg.AsyncPipelineTaskGenerator:
-      generator_params['ignore_node_ids'] = ignore_node_ids
     task_gen = generator_class(**generator_params)
     tasks = task_gen.generate()
     if use_task_queue:
@@ -180,6 +173,29 @@ def run_generator(mlmd_connection,
         if task_lib.is_exec_node_task(task):
           task_queue.enqueue(task)
   return tasks
+
+
+def get_non_orchestrator_executions(mlmd_handle):
+  """Returns all the executions other than those of '__ORCHESTRATOR__' execution type."""
+  executions = mlmd_handle.store.get_executions()
+  result = []
+  for e in executions:
+    [execution_type] = mlmd_handle.store.get_execution_types_by_id([e.type_id])
+    if execution_type.name != pstate._ORCHESTRATOR_RESERVED_ID:  # pylint: disable=protected-access
+      result.append(e)
+  return result
+
+
+def get_or_create_pipeline_state(mlmd_handle, pipeline):
+  """Gets or creates pipeline state for the given pipeline."""
+  try:
+    return pstate.PipelineState.load(
+        mlmd_handle, task_lib.PipelineUid.from_pipeline(pipeline))
+  except status_lib.StatusNotOkError as e:
+    if e.status().code == status_lib.Code.NOT_FOUND:
+      return pstate.PipelineState.new(mlmd_handle, pipeline)
+    else:
+      raise
 
 
 def run_generator_and_test(test_case,
@@ -193,29 +209,22 @@ def run_generator_and_test(test_case,
                            num_tasks_generated,
                            num_new_executions,
                            num_active_executions,
-                           expected_exec_nodes=None,
-                           ignore_node_ids=None):
+                           expected_exec_nodes=None):
   """Runs generator.generate() and tests the effects."""
   if service_job_manager is None:
     service_job_manager = service_jobs.DummyServiceJobManager()
   with mlmd_connection as m:
-    executions = m.store.get_executions()
+    executions = get_non_orchestrator_executions(m)
     test_case.assertLen(
         executions, num_initial_executions,
         f'Expected {num_initial_executions} execution(s) in MLMD.')
-  tasks = run_generator(
-      mlmd_connection,
-      generator_class,
-      pipeline,
-      task_queue,
-      use_task_queue,
-      service_job_manager,
-      ignore_node_ids=ignore_node_ids)
+  tasks = run_generator(mlmd_connection, generator_class, pipeline, task_queue,
+                        use_task_queue, service_job_manager)
   with mlmd_connection as m:
     test_case.assertLen(
         tasks, num_tasks_generated,
         f'Expected {num_tasks_generated} task(s) to be generated.')
-    executions = m.store.get_executions()
+    executions = get_non_orchestrator_executions(m)
     num_total_executions = num_initial_executions + num_new_executions
     test_case.assertLen(
         executions, num_total_executions,
