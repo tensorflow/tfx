@@ -32,19 +32,6 @@ from tfx.proto import range_config_pb2
 from tfx.utils import io_utils
 from google.protobuf import json_format
 
-# Key for `input_base` in executor exec_properties.
-INPUT_BASE_KEY = 'input_base'
-# Key for `input_config` in executor exec_properties.
-INPUT_CONFIG_KEY = 'input_config'
-# Key for `output_config` in executor exec_properties.
-OUTPUT_CONFIG_KEY = 'output_config'
-# Key for `range_config` in executor exec_properties.
-RANGE_CONFIG_KEY = 'range_config'
-# Key for the `output_data_format` in executor exec_properties.
-OUTPUT_DATA_FORMAT_KEY = 'output_data_format'
-
-# Key for output examples in executor output_dict.
-EXAMPLES_KEY = 'examples'
 
 # Key for the `payload_format` custom property of output examples artifact.
 PAYLOAD_FORMAT_PROPERTY_NAME = 'payload_format'
