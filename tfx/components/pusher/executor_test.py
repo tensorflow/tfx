@@ -20,11 +20,7 @@ import tensorflow as tf
 from tfx.components.pusher import executor
 from tfx.dsl.io import fileio
 from tfx.types import standard_artifacts
-from tfx.types.standard_component_specs import INFRA_BLESSING_KEY
-from tfx.types.standard_component_specs import MODEL_BLESSING_KEY
-from tfx.types.standard_component_specs import MODEL_KEY
-from tfx.types.standard_component_specs import PUSH_DESTINATION_KEY
-from tfx.types.standard_component_specs import PUSHED_MODEL_KEY
+from tfx.types import standard_component_specs
 from tfx.utils import io_utils
 from tfx.utils import path_utils
 
@@ -44,15 +40,15 @@ class ExecutorTest(tf.test.TestCase):
                                           'trainer/current')
     self._model_blessing = standard_artifacts.ModelBlessing()
     self._input_dict = {
-        MODEL_KEY: [self._model_export],
-        MODEL_BLESSING_KEY: [self._model_blessing],
+        standard_component_specs.MODEL_KEY: [self._model_export],
+        standard_component_specs.MODEL_BLESSING_KEY: [self._model_blessing],
     }
 
     self._model_push = standard_artifacts.PushedModel()
     self._model_push.uri = os.path.join(self._output_data_dir, 'model_push')
     fileio.makedirs(self._model_push.uri)
     self._output_dict = {
-        PUSHED_MODEL_KEY: [self._model_push],
+        standard_component_specs.PUSHED_MODEL_KEY: [self._model_push],
     }
     self._serving_model_dir = os.path.join(self._output_data_dir,
                                            'serving_model_dir')
@@ -62,7 +58,7 @@ class ExecutorTest(tf.test.TestCase):
 
   def _MakeExecProperties(self, versioning='AUTO'):
     return {
-        PUSH_DESTINATION_KEY: json.dumps({
+        standard_component_specs.PUSH_DESTINATION_KEY: json.dumps({
             'filesystem': {
                 'base_directory': self._serving_model_dir,
                 'versioning': versioning
@@ -122,7 +118,7 @@ class ExecutorTest(tf.test.TestCase):
     self._model_blessing.set_int_custom_property('blessed', 1)  # Blessed.
     infra_blessing = standard_artifacts.InfraBlessing()
     infra_blessing.set_int_custom_property('blessed', 1)  # Blessed.
-    input_dict = {INFRA_BLESSING_KEY: [infra_blessing]}
+    input_dict = {standard_component_specs.INFRA_BLESSING_KEY: [infra_blessing]}
     input_dict.update(self._input_dict)
 
     # Run executor
@@ -136,7 +132,7 @@ class ExecutorTest(tf.test.TestCase):
     self._model_blessing.set_int_custom_property('blessed', 1)  # Blessed.
     infra_blessing = standard_artifacts.InfraBlessing()
     infra_blessing.set_int_custom_property('blessed', 0)  # Not blessed.
-    input_dict = {INFRA_BLESSING_KEY: [infra_blessing]}
+    input_dict = {standard_component_specs.INFRA_BLESSING_KEY: [infra_blessing]}
     input_dict.update(self._input_dict)
 
     # Run executor
@@ -150,9 +146,9 @@ class ExecutorTest(tf.test.TestCase):
     infra_blessing = standard_artifacts.InfraBlessing()
     infra_blessing.set_int_custom_property('blessed', 1)  # Blessed.
     input_dict = {
-        MODEL_KEY:
-            self._input_dict[MODEL_KEY],
-        INFRA_BLESSING_KEY: [infra_blessing],
+        standard_component_specs.MODEL_KEY:
+            self._input_dict[standard_component_specs.MODEL_KEY],
+        standard_component_specs.INFRA_BLESSING_KEY: [infra_blessing],
     }
 
     # Run executor
@@ -166,9 +162,9 @@ class ExecutorTest(tf.test.TestCase):
     infra_blessing = standard_artifacts.InfraBlessing()
     infra_blessing.set_int_custom_property('blessed', 0)  # Not blessed.
     input_dict = {
-        MODEL_KEY:
-            self._input_dict[MODEL_KEY],
-        INFRA_BLESSING_KEY: [infra_blessing],
+        standard_component_specs.MODEL_KEY:
+            self._input_dict[standard_component_specs.MODEL_KEY],
+        standard_component_specs.INFRA_BLESSING_KEY: [infra_blessing],
     }
 
     # Run executor
@@ -194,7 +190,7 @@ class ExecutorTest(tf.test.TestCase):
 
   def testDo_NoBlessing(self):
     # Input without any blessing.
-    input_dict = {MODEL_KEY: [self._model_export]}
+    input_dict = {standard_component_specs.MODEL_KEY: [self._model_export]}
 
     # Run executor
     self._executor.Do(input_dict, self._output_dict, self._exec_properties)
@@ -221,7 +217,7 @@ class ExecutorTest(tf.test.TestCase):
         os.path.join(blessed_model_path, 'my-model'), '')
 
     self._executor.Do(
-        {INFRA_BLESSING_KEY: [infra_blessing]},
+        {standard_component_specs.INFRA_BLESSING_KEY: [infra_blessing]},
         self._output_dict,
         self._exec_properties)
 
@@ -238,7 +234,7 @@ class ExecutorTest(tf.test.TestCase):
     with self.assertRaisesRegex(
         RuntimeError, 'InfraBlessing does not contain a model'):
       self._executor.Do(
-          {INFRA_BLESSING_KEY: [infra_blessing]},
+          {standard_component_specs.INFRA_BLESSING_KEY: [infra_blessing]},
           self._output_dict,
           self._exec_properties)
 

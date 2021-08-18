@@ -26,18 +26,7 @@ from tfx.dsl.io import fileio
 from tfx.proto import evaluator_pb2
 from tfx.types import artifact_utils
 from tfx.types import standard_artifacts
-from tfx.types.standard_component_specs import BASELINE_MODEL_KEY
-from tfx.types.standard_component_specs import BLESSING_KEY
-from tfx.types.standard_component_specs import EVAL_CONFIG_KEY
-from tfx.types.standard_component_specs import EVALUATION_KEY
-from tfx.types.standard_component_specs import EXAMPLE_SPLITS_KEY
-from tfx.types.standard_component_specs import EXAMPLES_KEY
-from tfx.types.standard_component_specs import FAIRNESS_INDICATOR_THRESHOLDS_KEY
-from tfx.types.standard_component_specs import FEATURE_SLICING_SPEC_KEY
-from tfx.types.standard_component_specs import MODEL_KEY
-from tfx.types.standard_component_specs import MODULE_FILE_KEY
-from tfx.types.standard_component_specs import MODULE_PATH_KEY
-from tfx.types.standard_component_specs import SCHEMA_KEY
+from tfx.types import standard_component_specs
 from tfx.utils import json_utils
 from tfx.utils import proto_utils
 
@@ -48,7 +37,7 @@ class ExecutorTest(tf.test.TestCase, parameterized.TestCase):
 
   @parameterized.named_parameters(
       ('evaluation_w_eval_config', {
-          EVAL_CONFIG_KEY:
+          standard_component_specs.EVAL_CONFIG_KEY:
               proto_utils.proto_to_json(
                   tfma.EvalConfig(slicing_specs=[
                       tfma.SlicingSpec(feature_keys=['trip_start_hour']),
@@ -57,29 +46,29 @@ class ExecutorTest(tf.test.TestCase, parameterized.TestCase):
                   ]))
       }),
       ('evaluation_w_module_file', {
-          EVAL_CONFIG_KEY:
+          standard_component_specs.EVAL_CONFIG_KEY:
               proto_utils.proto_to_json(
                   tfma.EvalConfig(slicing_specs=[
                       tfma.SlicingSpec(feature_keys=['trip_start_hour']),
                       tfma.SlicingSpec(
                           feature_keys=['trip_start_day', 'trip_miles']),
                   ])),
-          MODULE_FILE_KEY:
+          standard_component_specs.MODULE_FILE_KEY:
               None
       }),
       ('evaluation_w_module_path', {
-          EVAL_CONFIG_KEY:
+          standard_component_specs.EVAL_CONFIG_KEY:
               proto_utils.proto_to_json(
                   tfma.EvalConfig(slicing_specs=[
                       tfma.SlicingSpec(feature_keys=['trip_start_hour']),
                       tfma.SlicingSpec(
                           feature_keys=['trip_start_day', 'trip_miles']),
                   ])),
-          MODULE_PATH_KEY:
+          standard_component_specs.MODULE_PATH_KEY:
               evaluator_module.__name__,
       }),
       ('model_agnostic_evaluation', {
-          EVAL_CONFIG_KEY:
+          standard_component_specs.EVAL_CONFIG_KEY:
               proto_utils.proto_to_json(
                   tfma.EvalConfig(
                       model_specs=[
@@ -109,13 +98,13 @@ class ExecutorTest(tf.test.TestCase, parameterized.TestCase):
     schema = standard_artifacts.Schema()
     schema.uri = os.path.join(source_data_dir, 'schema_gen')
     input_dict = {
-        EXAMPLES_KEY: [examples, examples],
-        SCHEMA_KEY: [schema],
+        standard_component_specs.EXAMPLES_KEY: [examples, examples],
+        standard_component_specs.SCHEMA_KEY: [schema],
     }
     if not model_agnostic:
       model = standard_artifacts.Model()
       model.uri = os.path.join(source_data_dir, 'trainer/current')
-      input_dict[MODEL_KEY] = [model]
+      input_dict[standard_component_specs.MODEL_KEY] = [model]
 
     # Create output dict.
     eval_output = standard_artifacts.ModelEvaluation()
@@ -123,18 +112,18 @@ class ExecutorTest(tf.test.TestCase, parameterized.TestCase):
     blessing_output = standard_artifacts.ModelBlessing()
     blessing_output.uri = os.path.join(output_data_dir, 'blessing_output')
     output_dict = {
-        EVALUATION_KEY: [eval_output],
-        BLESSING_KEY: [blessing_output],
+        standard_component_specs.EVALUATION_KEY: [eval_output],
+        standard_component_specs.BLESSING_KEY: [blessing_output],
     }
 
     # Test multiple splits.
-    exec_properties[EXAMPLE_SPLITS_KEY] = json_utils.dumps(
-        ['train', 'eval'])
+    exec_properties[
+        standard_component_specs.EXAMPLE_SPLITS_KEY] = json_utils.dumps(
+            ['train', 'eval'])
 
-    if MODULE_FILE_KEY in exec_properties:
-      exec_properties[MODULE_FILE_KEY] = os.path.join(source_data_dir,
-                                                      'module_file',
-                                                      'evaluator_module.py')
+    if standard_component_specs.MODULE_FILE_KEY in exec_properties:
+      exec_properties[standard_component_specs.MODULE_FILE_KEY] = os.path.join(
+          source_data_dir, 'module_file', 'evaluator_module.py')
 
     # Run executor.
     evaluator = executor.Executor()
@@ -149,7 +138,7 @@ class ExecutorTest(tf.test.TestCase, parameterized.TestCase):
         fileio.exists(os.path.join(blessing_output.uri, 'BLESSED')))
 
   @parameterized.named_parameters(('legacy_feature_slicing', {
-      FEATURE_SLICING_SPEC_KEY:
+      standard_component_specs.FEATURE_SLICING_SPEC_KEY:
           proto_utils.proto_to_json(
               evaluator_pb2.FeatureSlicingSpec(specs=[
                   evaluator_pb2.SingleSlicingSpec(
@@ -172,8 +161,8 @@ class ExecutorTest(tf.test.TestCase, parameterized.TestCase):
     model = standard_artifacts.Model()
     model.uri = os.path.join(source_data_dir, 'trainer/current')
     input_dict = {
-        EXAMPLES_KEY: [examples],
-        MODEL_KEY: [model],
+        standard_component_specs.EXAMPLES_KEY: [examples],
+        standard_component_specs.MODEL_KEY: [model],
     }
 
     # Create output dict.
@@ -182,8 +171,8 @@ class ExecutorTest(tf.test.TestCase, parameterized.TestCase):
     blessing_output = standard_artifacts.ModelBlessing()
     blessing_output.uri = os.path.join(output_data_dir, 'blessing_output')
     output_dict = {
-        EVALUATION_KEY: [eval_output],
-        BLESSING_KEY: [blessing_output],
+        standard_component_specs.EVALUATION_KEY: [eval_output],
+        standard_component_specs.BLESSING_KEY: [blessing_output],
     }
 
     try:
@@ -193,14 +182,16 @@ class ExecutorTest(tf.test.TestCase, parameterized.TestCase):
       # indicators.
       import tensorflow_model_analysis.addons.fairness.post_export_metrics.fairness_indicators  # pylint: disable=g-import-not-at-top, unused-variable
       exec_properties[
-          FAIRNESS_INDICATOR_THRESHOLDS_KEY] = '[0.1, 0.3, 0.5, 0.7, 0.9]'
+          standard_component_specs
+          .FAIRNESS_INDICATOR_THRESHOLDS_KEY] = '[0.1, 0.3, 0.5, 0.7, 0.9]'
     except ImportError:
       logging.warning(
           'Not testing fairness indicators because a compatible TFMA version '
           'is not installed.')
 
     # List needs to be serialized before being passed into Do function.
-    exec_properties[EXAMPLE_SPLITS_KEY] = json_utils.dumps(None)
+    exec_properties[
+        standard_component_specs.EXAMPLE_SPLITS_KEY] = json_utils.dumps(None)
 
     # Run executor.
     evaluator = executor.Executor()
@@ -218,7 +209,7 @@ class ExecutorTest(tf.test.TestCase, parameterized.TestCase):
       (
           'eval_config_w_validation',
           {
-              EVAL_CONFIG_KEY:
+              standard_component_specs.EVAL_CONFIG_KEY:
                   proto_utils.proto_to_json(
                       tfma.EvalConfig(
                           model_specs=[
@@ -242,7 +233,7 @@ class ExecutorTest(tf.test.TestCase, parameterized.TestCase):
       (
           'eval_config_w_validation_fail',
           {
-              EVAL_CONFIG_KEY:
+              standard_component_specs.EVAL_CONFIG_KEY:
                   proto_utils.proto_to_json(
                       tfma.EvalConfig(
                           model_specs=[
@@ -271,7 +262,7 @@ class ExecutorTest(tf.test.TestCase, parameterized.TestCase):
       (
           'no_baseline_model_ignore_change_threshold_validation_pass',
           {
-              EVAL_CONFIG_KEY:
+              standard_component_specs.EVAL_CONFIG_KEY:
                   proto_utils.proto_to_json(
                       tfma.EvalConfig(
                           model_specs=[
@@ -326,12 +317,12 @@ class ExecutorTest(tf.test.TestCase, parameterized.TestCase):
     schema = standard_artifacts.Schema()
     schema.uri = os.path.join(source_data_dir, 'schema_gen')
     input_dict = {
-        EXAMPLES_KEY: [examples, examples],
-        MODEL_KEY: [model],
-        SCHEMA_KEY: [schema],
+        standard_component_specs.EXAMPLES_KEY: [examples, examples],
+        standard_component_specs.MODEL_KEY: [model],
+        standard_component_specs.SCHEMA_KEY: [schema],
     }
     if has_baseline:
-      input_dict[BASELINE_MODEL_KEY] = [baseline_model]
+      input_dict[standard_component_specs.BASELINE_MODEL_KEY] = [baseline_model]
 
     # Create output dict.
     eval_output = standard_artifacts.ModelEvaluation()
@@ -339,12 +330,13 @@ class ExecutorTest(tf.test.TestCase, parameterized.TestCase):
     blessing_output = standard_artifacts.ModelBlessing()
     blessing_output.uri = os.path.join(output_data_dir, 'blessing_output')
     output_dict = {
-        EVALUATION_KEY: [eval_output],
-        BLESSING_KEY: [blessing_output],
+        standard_component_specs.EVALUATION_KEY: [eval_output],
+        standard_component_specs.BLESSING_KEY: [blessing_output],
     }
 
     # List needs to be serialized before being passed into Do function.
-    exec_properties[EXAMPLE_SPLITS_KEY] = json_utils.dumps(None)
+    exec_properties[
+        standard_component_specs.EXAMPLE_SPLITS_KEY] = json_utils.dumps(None)
 
     # Run executor.
     evaluator = executor.Executor()

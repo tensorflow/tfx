@@ -23,8 +23,7 @@ from tfx.components.example_validator import component
 from tfx.types import artifact_utils
 from tfx.types import channel_utils
 from tfx.types import standard_artifacts
-from tfx.types.standard_component_specs import ANOMALIES_KEY
-from tfx.types.standard_component_specs import EXCLUDE_SPLITS_KEY
+from tfx.types import standard_component_specs
 
 
 class ExampleValidatorTest(tf.test.TestCase):
@@ -40,9 +39,11 @@ class ExampleValidatorTest(tf.test.TestCase):
         exclude_splits=exclude_splits)
     self.assertEqual(
         standard_artifacts.ExampleAnomalies.TYPE_NAME,
-        example_validator.outputs[ANOMALIES_KEY].type_name)
+        example_validator.outputs[
+            standard_component_specs.ANOMALIES_KEY].type_name)
     self.assertEqual(
-        example_validator.spec.exec_properties[EXCLUDE_SPLITS_KEY], '["eval"]')
+        example_validator.spec.exec_properties[
+            standard_component_specs.EXCLUDE_SPLITS_KEY], '["eval"]')
 
 
 if __name__ == '__main__':

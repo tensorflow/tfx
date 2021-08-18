@@ -28,7 +28,7 @@ from tfx.dsl.io import fileio
 from tfx.orchestration.kubeflow.v2.container import kubeflow_v2_entrypoint_utils
 from tfx.orchestration.portable import outputs_utils
 from tfx.types import artifact_utils
-from tfx.types.standard_component_specs import BLESSING_KEY
+from tfx.types import standard_component_specs
 from tfx.utils import import_utils
 
 from google.protobuf import json_format
@@ -93,11 +93,11 @@ def _run_executor(args: argparse.Namespace, beam_args: List[str]) -> None:
   # id/name to identify artifacts.
   # Convert ModelBlessing artifact to use managed MLMD resource name.
   if (issubclass(executor_cls, evaluator_executor.Executor) and
-      BLESSING_KEY in outputs):
+      standard_component_specs.BLESSING_KEY in outputs):
     # Parse the parent prefix for managed MLMD resource name.
     kubeflow_v2_entrypoint_utils.refactor_model_blessing(
-        artifact_utils.get_single_instance(outputs[BLESSING_KEY]),
-        name_from_id)
+        artifact_utils.get_single_instance(
+            outputs[standard_component_specs.BLESSING_KEY]), name_from_id)
 
   # Log the output metadata to a file. So that it can be picked up by MP.
   metadata_uri = executor_input.outputs.output_file

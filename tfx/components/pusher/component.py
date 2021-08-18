@@ -27,7 +27,7 @@ from tfx.dsl.components.base import executor_spec
 from tfx.orchestration import data_types
 from tfx.proto import pusher_pb2
 from tfx.types import standard_artifacts
-from tfx.types.standard_component_specs import PusherSpec
+from tfx.types import standard_component_specs
 from tfx.utils import json_utils
 
 
@@ -70,7 +70,7 @@ class Pusher(base_component.BaseComponent):
   details.
   """
 
-  SPEC_CLASS = PusherSpec
+  SPEC_CLASS = standard_component_specs.PusherSpec
   EXECUTOR_SPEC = executor_spec.ExecutorClassSpec(executor.Executor)
 
   def __init__(
@@ -118,7 +118,7 @@ class Pusher(base_component.BaseComponent):
           'created with InfraValidator with RequestSpec.make_warmup = True. '
           'This cannot be checked during pipeline construction time but will '
           'raise runtime error if infra_blessing does not contain a model.')
-    spec = PusherSpec(
+    spec = standard_component_specs.PusherSpec(
         model=model,
         model_blessing=model_blessing,
         infra_blessing=infra_blessing,

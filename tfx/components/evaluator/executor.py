@@ -35,17 +35,7 @@ from tfx.components.util import tfxio_utils
 from tfx.dsl.components.base import base_beam_executor
 from tfx.proto import evaluator_pb2
 from tfx.types import artifact_utils
-from tfx.types.standard_component_specs import BASELINE_MODEL_KEY
-from tfx.types.standard_component_specs import BLESSING_KEY
-from tfx.types.standard_component_specs import EVAL_CONFIG_KEY
-from tfx.types.standard_component_specs import EVALUATION_KEY
-from tfx.types.standard_component_specs import EXAMPLE_SPLITS_KEY
-from tfx.types.standard_component_specs import EXAMPLES_KEY
-from tfx.types.standard_component_specs import FAIRNESS_INDICATOR_THRESHOLDS_KEY
-from tfx.types.standard_component_specs import FEATURE_SLICING_SPEC_KEY
-from tfx.types.standard_component_specs import MODEL_KEY
-from tfx.types.standard_component_specs import MODULE_PATH_KEY
-from tfx.types.standard_component_specs import SCHEMA_KEY
+from tfx.types import standard_component_specs
 from tfx.utils import io_utils
 from tfx.utils import json_utils
 from tfx.utils import path_utils
@@ -102,23 +92,26 @@ class Executor(base_beam_executor.BaseBeamExecutor):
     Returns:
       None
     """
-    if EXAMPLES_KEY not in input_dict:
+    if standard_component_specs.EXAMPLES_KEY not in input_dict:
       raise ValueError('EXAMPLES_KEY is missing from input dict.')
-    if EVALUATION_KEY not in output_dict:
+    if standard_component_specs.EVALUATION_KEY not in output_dict:
       raise ValueError('EVALUATION_KEY is missing from output dict.')
-    if MODEL_KEY in input_dict and len(input_dict[MODEL_KEY]) > 1:
+    if standard_component_specs.MODEL_KEY in input_dict and len(
+        input_dict[standard_component_specs.MODEL_KEY]) > 1:
       raise ValueError('There can be only one candidate model, there are %d.' %
-                       (len(input_dict[MODEL_KEY])))
-    if BASELINE_MODEL_KEY in input_dict and len(
-        input_dict[BASELINE_MODEL_KEY]) > 1:
-      raise ValueError('There can be only one baseline model, there are %d.' %
-                       (len(input_dict[BASELINE_MODEL_KEY])))
+                       (len(input_dict[standard_component_specs.MODEL_KEY])))
+    if standard_component_specs.BASELINE_MODEL_KEY in input_dict and len(
+        input_dict[standard_component_specs.BASELINE_MODEL_KEY]) > 1:
+      raise ValueError(
+          'There can be only one baseline model, there are %d.' %
+          (len(input_dict[standard_component_specs.BASELINE_MODEL_KEY])))
 
     self._log_startup(input_dict, output_dict, exec_properties)
 
     # Add fairness indicator metric callback if necessary.
     fairness_indicator_thresholds = json_utils.loads(
-        exec_properties.get(FAIRNESS_INDICATOR_THRESHOLDS_KEY, 'null'))
+        exec_properties.get(
+            standard_component_specs.FAIRNESS_INDICATOR_THRESHOLDS_KEY, 'null'))
     add_metrics_callbacks = None
     if fairness_indicator_thresholds:
       add_metrics_callbacks = [
@@ -131,7 +124,7 @@ class Executor(base_beam_executor.BaseBeamExecutor):
 
     # Make sure user packages get propagated to the remote Beam worker.
     unused_module_path, extra_pip_packages = udf_utils.decode_user_module_key(
-        exec_properties.get(MODULE_PATH_KEY, None))
+        exec_properties.get(standard_component_specs.MODULE_PATH_KEY, None))
     for pip_package_path in extra_pip_packages:
       local_pip_package_path = io_utils.ensure_local(pip_package_path)
       self._beam_pipeline_args.append('--extra_package=%s' %
@@ -143,11 +136,15 @@ class Executor(base_beam_executor.BaseBeamExecutor):
 
     run_validation = False
     models = []
-    if EVAL_CONFIG_KEY in exec_properties and exec_properties[EVAL_CONFIG_KEY]:
+    if (standard_component_specs.EVAL_CONFIG_KEY in exec_properties
+        and exec_properties[standard_component_specs.EVAL_CONFIG_KEY]):
       slice_spec = None
-      has_baseline = bool(input_dict.get(BASELINE_MODEL_KEY))
+      has_baseline = bool(
+          input_dict.get(standard_component_specs.BASELINE_MODEL_KEY))
       eval_config = tfma.EvalConfig()
-      proto_utils.json_to_proto(exec_properties[EVAL_CONFIG_KEY], eval_config)
+      proto_utils.json_to_proto(
+          exec_properties[standard_component_specs.EVAL_CONFIG_KEY],
+          eval_config)
       eval_config = tfma.update_eval_config_with_defaults(
           eval_config, has_baseline=has_baseline)
       tfma.verify_eval_config(eval_config)
@@ -162,17 +159,17 @@ class Executor(base_beam_executor.BaseBeamExecutor):
              eval_config.""" % (len(eval_config.model_specs)))
       # Extract model artifacts.
       for model_spec in eval_config.model_specs:
-        if MODEL_KEY not in input_dict:
+        if standard_component_specs.MODEL_KEY not in input_dict:
           if not model_spec.prediction_key:
             raise ValueError(
                 'model_spec.prediction_key required if model not provided')
           continue
         if model_spec.is_baseline:
           model_artifact = artifact_utils.get_single_instance(
-              input_dict[BASELINE_MODEL_KEY])
+              input_dict[standard_component_specs.BASELINE_MODEL_KEY])
         else:
           model_artifact = artifact_utils.get_single_instance(
-              input_dict[MODEL_KEY])
+              input_dict[standard_component_specs.MODEL_KEY])
         if tfma.get_model_type(model_spec) == tfma.TF_ESTIMATOR:
           model_path = path_utils.eval_model_path(
               model_artifact.uri,
@@ -190,15 +187,18 @@ class Executor(base_beam_executor.BaseBeamExecutor):
                 add_metrics_callbacks=add_metrics_callbacks))
     else:
       eval_config = None
-      assert (FEATURE_SLICING_SPEC_KEY in exec_properties and
-              exec_properties[FEATURE_SLICING_SPEC_KEY]
+      assert (standard_component_specs.FEATURE_SLICING_SPEC_KEY
+              in exec_properties and
+              exec_properties[standard_component_specs.FEATURE_SLICING_SPEC_KEY]
              ), 'both eval_config and feature_slicing_spec are unset.'
       feature_slicing_spec = evaluator_pb2.FeatureSlicingSpec()
-      proto_utils.json_to_proto(exec_properties[FEATURE_SLICING_SPEC_KEY],
-                                feature_slicing_spec)
+      proto_utils.json_to_proto(
+          exec_properties[standard_component_specs.FEATURE_SLICING_SPEC_KEY],
+          feature_slicing_spec)
       slice_spec = self._get_slice_spec_from_feature_slicing_spec(
           feature_slicing_spec)
-      model_artifact = artifact_utils.get_single_instance(input_dict[MODEL_KEY])
+      model_artifact = artifact_utils.get_single_instance(
+          input_dict[standard_component_specs.MODEL_KEY])
       model_path = path_utils.eval_model_path(
           model_artifact.uri, path_utils.is_old_model_artifact(model_artifact))
       logging.info('Using %s for model eval.', model_path)
@@ -211,14 +211,16 @@ class Executor(base_beam_executor.BaseBeamExecutor):
 
     eval_shared_model = models[0] if len(models) == 1 else models
     schema = None
-    if SCHEMA_KEY in input_dict:
+    if standard_component_specs.SCHEMA_KEY in input_dict:
       schema = io_utils.SchemaReader().read(
           io_utils.get_only_uri_in_dir(
-              artifact_utils.get_single_uri(input_dict[SCHEMA_KEY])))
+              artifact_utils.get_single_uri(
+                  input_dict[standard_component_specs.SCHEMA_KEY])))
 
     # Load and deserialize example splits from execution properties.
     example_splits = json_utils.loads(
-        exec_properties.get(EXAMPLE_SPLITS_KEY, 'null'))
+        exec_properties.get(standard_component_specs.EXAMPLE_SPLITS_KEY,
+                            'null'))
     if not example_splits:
       example_splits = ['eval']
       logging.info("The 'example_splits' parameter is not set, using 'eval' "
@@ -236,14 +238,14 @@ class Executor(base_beam_executor.BaseBeamExecutor):
         # pylint: disable=expression-not-assigned
         if tfma.is_batched_input(eval_shared_model, eval_config):
           tfxio_factory = tfxio_utils.get_tfxio_factory_from_artifact(
-              examples=input_dict[EXAMPLES_KEY],
+              examples=input_dict[standard_component_specs.EXAMPLES_KEY],
               telemetry_descriptors=_TELEMETRY_DESCRIPTORS,
               schema=schema,
               raw_record_column_name=tfma_constants.ARROW_INPUT_COLUMN)
           # TODO(b/161935932): refactor after TFXIO supports multiple patterns.
           for split in example_splits:
-            split_uris = artifact_utils.get_split_uris(input_dict[EXAMPLES_KEY],
-                                                       split)
+            split_uris = artifact_utils.get_split_uris(
+                input_dict[standard_component_specs.EXAMPLES_KEY], split)
             for index in range(len(split_uris)):
               split_uri = split_uris[index]
               file_pattern = io_utils.all_files_pattern(split_uri)
@@ -260,8 +262,8 @@ class Executor(base_beam_executor.BaseBeamExecutor):
                 tensor_representations=tfxio.TensorRepresentations())
         else:
           for split in example_splits:
-            split_uris = artifact_utils.get_split_uris(input_dict[EXAMPLES_KEY],
-                                                       split)
+            split_uris = artifact_utils.get_split_uris(
+                input_dict[standard_component_specs.EXAMPLES_KEY], split)
             for index in range(len(split_uris)):
               split_uri = split_uris[index]
               file_pattern = io_utils.all_files_pattern(split_uri)
@@ -296,15 +298,18 @@ class Executor(base_beam_executor.BaseBeamExecutor):
       logging.info('No threshold configured, will not validate model.')
       return
     # Set up blessing artifact
-    blessing = artifact_utils.get_single_instance(output_dict[BLESSING_KEY])
+    blessing = artifact_utils.get_single_instance(
+        output_dict[standard_component_specs.BLESSING_KEY])
     blessing.set_string_custom_property(
         constants.ARTIFACT_PROPERTY_CURRENT_MODEL_URI_KEY,
-        artifact_utils.get_single_uri(input_dict[MODEL_KEY]))
+        artifact_utils.get_single_uri(
+            input_dict[standard_component_specs.MODEL_KEY]))
     blessing.set_int_custom_property(
         constants.ARTIFACT_PROPERTY_CURRENT_MODEL_ID_KEY,
-        input_dict[MODEL_KEY][0].id)
-    if input_dict.get(BASELINE_MODEL_KEY):
-      baseline_model = input_dict[BASELINE_MODEL_KEY][0]
+        input_dict[standard_component_specs.MODEL_KEY][0].id)
+    if input_dict.get(standard_component_specs.BASELINE_MODEL_KEY):
+      baseline_model = input_dict[
+          standard_component_specs.BASELINE_MODEL_KEY][0]
       blessing.set_string_custom_property(
           constants.ARTIFACT_PROPERTY_BASELINE_MODEL_URI_KEY,
           baseline_model.uri)

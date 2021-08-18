@@ -22,7 +22,7 @@ from tfx.dsl.components.base import executor_spec
 from tfx.orchestration import data_types
 from tfx.proto import bulk_inferrer_pb2
 from tfx.types import standard_artifacts
-from tfx.types.standard_component_specs import BulkInferrerSpec
+from tfx.types import standard_component_specs
 
 
 class BulkInferrer(base_beam_component.BaseBeamComponent):
@@ -52,7 +52,7 @@ class BulkInferrer(base_beam_component.BaseBeamComponent):
   guide](https://www.tensorflow.org/tfx/guide/bulkinferrer) for more details.
   """
 
-  SPEC_CLASS = BulkInferrerSpec
+  SPEC_CLASS = standard_component_specs.BulkInferrerSpec
   EXECUTOR_SPEC = executor_spec.BeamExecutorSpec(executor.Executor)
 
   def __init__(
@@ -89,7 +89,7 @@ class BulkInferrer(base_beam_component.BaseBeamComponent):
       inference_result = types.Channel(type=standard_artifacts.InferenceResult)
       output_examples = None
 
-    spec = BulkInferrerSpec(
+    spec = standard_component_specs.BulkInferrerSpec(
         examples=examples,
         model=model,
         model_blessing=model_blessing,
