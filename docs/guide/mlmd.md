@@ -159,6 +159,10 @@ following list provides a non-exhaustive overview of some of the major benefits.
 *   **Record and query context of workflow runs.** Examples: track the owner and
     changelist used for a workflow run; group the lineage by experiments; manage
     artifacts by projects.
+*   **Declarative nodes filtering capabilities on properties and 1-hop
+    neighborhood nodes.** Examples: look for artifacts of a type and under some
+    pipeline context; return typed artifacts where a given property’s value is
+    within a range; find previous executions in a context with the same inputs.
 
 See the
 [MLMD tutorial](https://www.tensorflow.org/tfx/tutorials/mlmd/mlmd_tutorial) for
@@ -224,6 +228,9 @@ artifacts = store.get_artifacts()
 # Plus, there are many ways to query the same Artifact
 [stored_data_artifact] = store.get_artifacts_by_id([data_artifact_id])
 artifacts_with_uri = store.get_artifacts_by_uri(data_artifact.uri)
+artifacts_with_conditions = store.get_artifacts(
+      list_options=mlmd.ListOptions(
+          filter_query='uri LIKE "%/data" AND properties.day.int_value > 0'))
 ```
 
 4) Create an execution of the Trainer run
@@ -237,6 +244,10 @@ trainer_run.properties["state"].string_value = "RUNNING"
 
 # Query all registered Execution
 executions = store.get_executions_by_id([run_id])
+# Similarly, the same execution can be queried with conditions.
+executions_with_conditions = store.get_executions(
+    list_options = mlmd.ListOptions(
+        filter_query='type = "Trainer" AND properties.state.string_value IS NOT NULL'))
 ```
 
 5) Define the input event and read data
@@ -316,6 +327,15 @@ store.put_attributions_and_associations([attribution], [association])
 # Query the Artifacts and Executions that are linked to the Context.
 experiment_artifacts = store.get_artifacts_by_context(experiment_id)
 experiment_executions = store.get_executions_by_context(experiment_id)
+
+# You can also use neighborhood queries to fetch these artifacts and executions
+# with conditions.
+experiment_artifacts_with_conditions = store.get_artifacts(
+    list_options = mlmd.ListOptions(
+        filter_query=('contexts_a.type = "Experiment" AND contexts_a.name = "exp1"')))
+experiment_executions_with_conditions = store.get_executions(
+    list_options = mlmd.ListOptions(
+        filter_query=('contexts_a.id = {}'.format(experiment_id))))
 ```
 
 ## Use MLMD with a remote gRPC server
@@ -386,6 +406,11 @@ The MLMD library has a high-level API that you can readily use with your ML
 pipelines. See the
 [MLMD API documentation](https://www.tensorflow.org/tfx/ml_metadata/api_docs/python/mlmd)
 for more details.
+
+Check out
+[MLMD Declarative Nodes Filtering](https://github.com/google/ml-metadata/blob/v1.2.0/ml_metadata/proto/metadata_store.proto#L708-L786)
+to learn how to use MLMD declarative nodes filtering capabilities on properties
+and 1-hop neighborhood nodes.
 
 Also check out the
 [MLMD tutorial](https://www.tensorflow.org/tfx/tutorials/mlmd/mlmd_tutorial) to
