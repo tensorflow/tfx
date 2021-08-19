@@ -409,7 +409,6 @@ def main():
   parser = argparse.ArgumentParser()
   parser.add_argument('--pipeline_root', type=str, required=True)
   parser.add_argument('--kubeflow_metadata_config', type=str, required=True)
-  parser.add_argument('--serialized_component', type=str, required=True)
   parser.add_argument('--tfx_ir', type=str, required=True)
   parser.add_argument('--node_id', type=str, required=True)
   # There might be multiple runtime parameters.
