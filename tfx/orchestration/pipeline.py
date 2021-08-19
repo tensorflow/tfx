@@ -14,7 +14,7 @@
 """Definition and related classes for TFX pipeline."""
 
 import enum
-from typing import List, Optional, Text, cast
+from typing import List, Optional, Text, cast, Dict
 
 from tfx.dsl.compiler import constants
 from tfx.dsl.components.base import base_node
@@ -68,6 +68,19 @@ def add_beam_pipeline_args_to_component(component, beam_pipeline_args):
             component.executor_spec).beam_pipeline_args
 
 
+def add_beam_pipeline_args_from_env_to_component(component, beam_pipeline_args_from_env: Dict[str, str]):
+  if isinstance(component.executor_spec, executor_spec.BeamExecutorSpec):
+    # Update pipeline-level beam_pipeline_args_from_env with component specific
+    # ones to make component-level override pipeline-level args.
+    beam_pipeline_args_from_env_copy = beam_pipeline_args_from_env.copy()
+    beam_pipeline_args_from_env_copy.update(cast(
+            executor_spec.BeamExecutorSpec,
+            component.executor_spec).beam_pipeline_args_from_env)
+    cast(
+        executor_spec.BeamExecutorSpec,
+        component.executor_spec).beam_pipeline_args_from_env = beam_pipeline_args_from_env_copy
+
+
 class Pipeline(object):
   """Logical TFX pipeline object.
 
@@ -97,6 +110,7 @@ class Pipeline(object):
       components: Optional[List[base_node.BaseNode]] = None,
       enable_cache: Optional[bool] = False,
       beam_pipeline_args: Optional[List[Text]] = None,
+      beam_pipeline_args_from_env: Optional[Dict[Text, Text]] = None,
       platform_config: Optional[message.Message] = None,
       execution_mode: Optional[ExecutionMode] = ExecutionMode.SYNC,
       **kwargs):
@@ -109,6 +123,8 @@ class Pipeline(object):
       components: Optional list of components to construct the pipeline.
       enable_cache: Whether or not cache is enabled for this run.
       beam_pipeline_args: Pipeline arguments for Beam powered Components.
+      beam_pipeline_args_from_env: Pipeline arguments to be replace with
+        environment variables for Beam powered Components.
       platform_config: Pipeline level platform config, in proto form.
       execution_mode: The execution mode of the pipeline, can be SYNC or ASYNC.
       **kwargs: Additional kwargs forwarded as pipeline args.
@@ -127,6 +143,7 @@ class Pipeline(object):
     self.execution_mode = execution_mode
 
     self.beam_pipeline_args = beam_pipeline_args or []
+    self.beam_pipeline_args_from_env = beam_pipeline_args_from_env or {}
 
     self.platform_config = platform_config
 
@@ -139,6 +156,10 @@ class Pipeline(object):
     if self.beam_pipeline_args:
       for component in components:
         add_beam_pipeline_args_to_component(component, beam_pipeline_args)
+
+    if self.beam_pipeline_args_from_env:
+      for component in components:
+        add_beam_pipeline_args_from_env_to_component(component, beam_pipeline_args_from_env)
 
   @property
   def components(self):

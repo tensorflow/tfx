@@ -432,15 +432,6 @@ class _ProtoAccessiblePlaceholder(Placeholder, abc.ABC):
     return self
 
 
-class EnvironmentVariablePlaceholder(Placeholder):
-  """ExecProperty Placeholder represents an execution property.
-
-  Prefer to use exec_property(...) to create exec property placeholders.
-  """
-
-  def __init__(self, key: str):
-    super().__init__(placeholder_pb2.Placeholder.Type.ENVIRONMENT_VARIABLE, key)
-
 class ExecPropertyPlaceholder(_ProtoAccessiblePlaceholder):
   """ExecProperty Placeholder represents an execution property.
 
@@ -871,22 +862,6 @@ def exec_property(key: str) -> ExecPropertyPlaceholder:
          Example: output('model').uri + '/model/' + exec_property('version')
   """
   return ExecPropertyPlaceholder(key)
-
-
-def environment_variable(key: str) -> EnvironmentVariablePlaceholder:
-  """Returns a Placeholder that represents an environment variable.
-
-  Args:
-    key: The name of the environment variable.
-
-  Returns:
-    A Placeholder that supports
-      1. Rendering the value of an environment variable for a given name.
-         Example: environment_variable('MY_ENV_VAR')
-      2. Concatenating with other placeholders or strings.
-         Example: output('model').uri + '/model/' + exec_property('version')
-  """
-  return EnvironmentVariablePlaceholder(key)
 
 
 class RuntimeInfoKey(enum.Enum):

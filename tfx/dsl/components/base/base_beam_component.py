@@ -13,7 +13,7 @@
 # limitations under the License.
 """Base class for TFX Beam components."""
 
-from typing import Iterable, cast
+from typing import Iterable, cast, Dict
 
 from tfx.dsl.components.base import base_component
 from tfx.dsl.components.base import executor_spec
@@ -44,6 +44,22 @@ class BaseBeamComponent(base_component.BaseComponent):
     """
     cast(executor_spec.BeamExecutorSpec,
          self.executor_spec).add_beam_pipeline_args(beam_pipeline_args)
+    return self
+
+  def with_beam_pipeline_args_from_env(
+      self, beam_pipeline_args_from_env: Dict[str, str]) -> 'BaseBeamComponent':
+    """Add per component Beam pipeline args to be populated from environment
+        variables at runtime.
+
+    Args:
+      beam_pipeline_args_from_env: Dict of Beam pipeline args and environment
+        variable names to be added to the Beam executor spec.
+
+    Returns:
+      the same component itself.
+    """
+    cast(executor_spec.BeamExecutorSpec,
+         self.executor_spec).add_beam_pipeline_args_from_env(beam_pipeline_args_from_env)
     return self
 
   @classmethod

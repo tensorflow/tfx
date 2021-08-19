@@ -21,6 +21,7 @@ from tfx.dsl.components.base import base_executor
 from tfx.dsl.components.base import executor_spec
 
 _TestBeamPipelineArgs = ["--my_testing_beam_pipeline_args=foo"]
+_TestBeamPipelineArgsFromEnv = ["--my_testing_beam_pipeline_args_from_env=FOO"]
 
 
 class _EmptyComponentSpec(types.ComponentSpec):
@@ -42,6 +43,18 @@ class ComponentTest(tf.test.TestCase):
     )).with_beam_pipeline_args(_TestBeamPipelineArgs)
     self.assertEqual(beam_component.executor_spec.beam_pipeline_args,
                      _TestBeamPipelineArgs)
+
+  def testWithBeamPipelineArgsFromEnv(self):
+
+    class BeamComponent(base_beam_component.BaseBeamComponent):
+      EXECUTOR_SPEC = executor_spec.BeamExecutorSpec(
+          base_beam_executor.BaseBeamExecutor)
+      SPEC_CLASS = _EmptyComponentSpec
+
+    beam_component = BeamComponent(spec=_EmptyComponentSpec(
+    )).with_beam_pipeline_args_from_env(_TestBeamPipelineArgsFromEnv)
+    self.assertEqual(beam_component.executor_spec.beam_pipeline_args_from_env,
+                     _TestBeamPipelineArgsFromEnv)
 
   def testComponentExecutorClass(self):
 

@@ -14,7 +14,7 @@
 """Executor specifications for defining what to to execute."""
 
 import copy
-from typing import cast, Iterable, List, Optional, Type
+from typing import cast, Iterable, List, Optional, Type, Dict
 
 from tfx import types
 from tfx.dsl.components.base import base_executor
@@ -148,6 +148,7 @@ class BeamExecutorSpec(ExecutorClassSpec):
   def __init__(self, executor_class: Type[base_executor.BaseExecutor]):
     super().__init__(executor_class=executor_class)
     self.beam_pipeline_args = []
+    self.beam_pipeline_args_from_env = {}
 
   def encode(
       self,
@@ -156,10 +157,16 @@ class BeamExecutorSpec(ExecutorClassSpec):
     result.python_executor_spec.CopyFrom(
         super().encode(component_spec=component_spec))
     result.beam_pipeline_args.extend(self.beam_pipeline_args)
+    for beam_pipeline_arg_from_env, env_var in self.beam_pipeline_args_from_env.items():
+      result.beam_pipeline_args_from_env[beam_pipeline_arg_from_env] = env_var
     return result
 
   def add_beam_pipeline_args(self, beam_pipeline_args: Iterable[str]) -> None:
     self.beam_pipeline_args.extend(beam_pipeline_args)
+
+  def add_beam_pipeline_args_from_env(self, beam_pipeline_args_from_env: Dict[str, str]) -> None:
+    for beam_pipeline_arg_from_env, env_var in beam_pipeline_args_from_env.items():
+      self.beam_pipeline_args_from_env[beam_pipeline_arg_from_env] = env_var
 
   def copy(self) -> 'BeamExecutorSpec':
     return cast(self.__class__, super().copy())

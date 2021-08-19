@@ -31,6 +31,11 @@ message BeamExecutableSpec {
   PythonClassExecutableSpec python_executor_spec = 1;
   // Args for Apache Beam pipeline.
   repeated string beam_pipeline_args = 2;
+  // Args for Apache Beam pipeline to be populated by
+  // environment variables at runtime.
+  // Map consists of:
+  // {beam_arg: environment_variable}
+  map<string, string> beam_pipeline_args_from_env = 3;
 }
 
 // Specification for Container based executables.

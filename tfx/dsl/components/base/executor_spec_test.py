@@ -55,6 +55,7 @@ class ExecutorSpecTest(tf.test.TestCase):
     spec = executor_spec.BeamExecutorSpec(_NestedExecutor)
     spec.add_extra_flags('a')
     spec.add_beam_pipeline_args('b')
+    spec.add_beam_pipeline_args_from_env({'c': 'd'})
     spec_copy = spec.copy()
     del spec
     self.assertProtoEquals(
@@ -64,6 +65,9 @@ class ExecutorSpecTest(tf.test.TestCase):
             extra_flags: "a"
         }
         beam_pipeline_args: "b"
+        beam_pipeline_args_from_env: {
+             c: "d"
+        }
         """, spec_copy.encode())
 
   def testExecutorContainerSpecCopy(self):
