@@ -30,11 +30,9 @@ from kubernetes import client as k8s_client
 from tfx.dsl.components.base import base_node as tfx_base_node
 from tfx.orchestration import data_types
 from tfx.orchestration import pipeline as tfx_pipeline
-from tfx.orchestration.kubeflow import node_wrapper
 from tfx.orchestration.kubeflow import utils
 from tfx.orchestration.kubeflow.proto import kubeflow_pb2
 from tfx.proto.orchestration import pipeline_pb2
-from tfx.utils import json_utils
 
 from google.protobuf import json_format
 
@@ -96,7 +94,6 @@ class BaseComponent(object):
     """
 
     utils.replace_placeholder(component)
-    serialized_component = json_utils.dumps(node_wrapper.NodeWrapper(component))
 
     arguments = [
         '--pipeline_root',
@@ -106,8 +103,6 @@ class BaseComponent(object):
             message=kubeflow_metadata_config, preserving_proto_field_name=True),
         '--node_id',
         component.id,
-        '--serialized_component',
-        serialized_component,
         # TODO(b/182220464): write IR to pipeline_root and let
         # container_entrypoint.py read it back to avoid future issue that IR
         # exeeds the flag size limit.

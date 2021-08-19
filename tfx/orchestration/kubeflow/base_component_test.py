@@ -164,14 +164,6 @@ class BaseComponentWithPipelineParamTest(tf.test.TestCase):
     # TODO(hongyes): make the whole args list in one golden file to keep
     # source of truth in same file.
     source_data_dir = os.path.join(os.path.dirname(__file__), 'testdata')
-    with open(os.path.join(source_data_dir,
-                           'statistics_gen.json')) as component_json_file:
-      formatted_statistics_gen = json.dumps(
-          json.load(component_json_file), sort_keys=True)
-    with open(os.path.join(source_data_dir,
-                           'example_gen.json')) as component_json_file:
-      formatted_example_gen = json.dumps(
-          json.load(component_json_file), sort_keys=True)
     statistics_gen_expected_args = [
         '--pipeline_root',
         '{{pipelineparam:op=;name=pipeline-root-param}}',
@@ -183,8 +175,6 @@ class BaseComponentWithPipelineParamTest(tf.test.TestCase):
         '}',
         '--node_id',
         'foo',
-        '--serialized_component',
-        formatted_statistics_gen,
         '--tfx_ir',
         '{}',
     ]
@@ -199,8 +189,6 @@ class BaseComponentWithPipelineParamTest(tf.test.TestCase):
         '}',
         '--node_id',
         'CsvExampleGen',
-        '--serialized_component',
-        formatted_example_gen,
         '--tfx_ir',
         '{}',
         '--runtime_parameter',

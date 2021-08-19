@@ -18,7 +18,6 @@ import copy
 import os
 from typing import Any, Callable, Dict, List, Optional, Text, Type, cast, MutableMapping
 
-from absl import logging
 from kfp import compiler
 from kfp import dsl
 from kfp import gcp
@@ -374,7 +373,6 @@ class KubeflowDagRunner(tfx_runner.TfxRunner):
   def _generate_tfx_ir(
       self, pipeline: tfx_pipeline.Pipeline) -> Optional[pipeline_pb2.Pipeline]:
     result = self._tfx_compiler.compile(pipeline)
-    logging.info('Generated pipeline:\n %s', result)
     return result
 
   def run(self, pipeline: tfx_pipeline.Pipeline):
