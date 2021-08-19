@@ -285,6 +285,11 @@ def set_parameter_value(
     parameter_value.field_value.double_value = value
   elif isinstance(value, str):
     parameter_value.field_value.string_value = value
+  elif isinstance(value, pipeline_pb2.Value):
+    which = value.WhichOneof('value')
+    if which != 'field_value':
+      raise ValueError('Expecting field_value but got %s.' % value)
+    parameter_value.field_value.CopyFrom(value.field_value)
   elif isinstance(value, bool):
     parameter_value.schema.value_type.boolean_type.SetInParent()
     parameter_value.field_value.string_value = json_utils.dumps(value)
