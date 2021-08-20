@@ -142,10 +142,11 @@ class CliKubeflowEndToEndTest(test_case_utils.TfxTest):
     Args:
       pipeline_name: The name of the pipeline.
     """
-    gcp_project_id = 'tfx-oss-testing'
-    bucket_name = 'tfx-oss-testing-bucket'
-    client = storage.Client(project=gcp_project_id)
-    bucket = client.get_bucket(bucket_name)
+    if ('KFP_E2E_GCP_PROJECT_ID' not in os.environ) or ('KFP_E2E_BUCKET_NAME'
+                                                        not in os.environ):
+      return
+    client = storage.Client(project=os.environ['KFP_E2E_GCP_PROJECT_ID'])
+    bucket = client.get_bucket(os.environ['KFP_E2E_BUCKET_NAME'])
     prefix = 'test_output/{}'.format(pipeline_name)
     absl.logging.info(
         'Deleting output under GCS bucket prefix: {}'.format(prefix))
