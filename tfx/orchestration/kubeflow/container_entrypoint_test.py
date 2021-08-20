@@ -32,14 +32,13 @@ from tfx.types import standard_artifacts
 from ml_metadata.proto import metadata_store_pb2
 
 
-def set_required_env_vars(env_vars):
-    for k, v in env_vars.items():
-        os.environ[k] = v
-
 class MLMDConfigTest(tf.test.TestCase):
+  def _set_required_env_vars(self, env_vars):
+    for k, v in env_vars.items():
+      os.environ[k] = v
 
   def testDeprecatedMysqlMetadataConnectionConfig(self):
-    set_required_env_vars({
+    self._set_required_env_vars({
         'mysql_host': 'mysql',
         'mysql_port': '3306',
         'mysql_database': 'metadb',
@@ -65,7 +64,7 @@ class MLMDConfigTest(tf.test.TestCase):
     self.assertEqual(ml_metadata_config.mysql.password, 'test')
 
   def testGrpcMetadataConnectionConfig(self):
-    set_required_env_vars({
+    self._set_required_env_vars({
         'METADATA_GRPC_SERVICE_HOST': 'metadata-grpc',
         'METADATA_GRPC_SERVICE_PORT': '8080',
     })
@@ -103,35 +102,6 @@ class MLMDConfigTest(tf.test.TestCase):
       ui_metadata = json.load(f)
       self.assertEqual('tensorboard', ui_metadata['outputs'][-1]['type'])
       self.assertEqual('model_run_uri', ui_metadata['outputs'][-1]['source'])
-          
-
-class BeamArgsTest(tf.test.TestCase):
-
-  def testResolveBeamArgsFromEnv(self):
-    set_required_env_vars({
-      'FOO': 'BAR',
-      'S3_SECRET_ACCESS_KEY': 'minio123',
-      'S3_VERIFY': '1',
-    })
-
-    beam_pipeline_args = ['--s3_endpoint_url=s3_endpoint_url',
-                          '--s3_access_key_id=minio',
-                          '--s3_verify=0'
-                          ]
-    beam_pipeline_args_from_env = {'--FOO': 'BAR',
-        's3_secret_access_key': 'S3_SECRET_ACCESS_KEY',
-        's3_verify': 'S3_VERIFY'}
-
-    beam_pipeline_args_from_env = container_entrypoint._resolve_beam_args_from_env(
-        beam_pipeline_args=beam_pipeline_args,
-        beam_pipeline_args_from_env=beam_pipeline_args_from_env)
-    self.assertEqual(set(beam_pipeline_args + beam_pipeline_args_from_env),
-                     {'--s3_endpoint_url=s3_endpoint_url',
-                      '--s3_access_key_id=minio',
-                      '--s3_secret_access_key=minio123',
-                      '--s3_verify=0',
-                      '--FOO=BAR'
-                      })
 
 
 if __name__ == '__main__':
