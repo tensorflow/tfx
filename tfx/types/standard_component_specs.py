@@ -33,7 +33,6 @@ from tfx.types.component_spec import ExecutionParameter
 SCHEMA_KEY = 'schema'
 EXAMPLES_KEY = 'examples'
 MODEL_KEY = 'model'
-CUSTOM_CONFIG_KEY = 'custom_config'
 BLESSING_KEY = 'blessing'
 TRAIN_ARGS_KEY = 'train_args'
 CUSTOM_CONFIG_KEY = 'custom_config'
