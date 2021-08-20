@@ -87,7 +87,7 @@ def make_required_install_packages():
       # TODO(b/179195488): remove numpy dependency after 1.20 migration.
       # This dependency was added only to limit numpy 1.20 installation.
       'numpy>=1.16,<1.20',
-      'pyarrow>=1,<3',
+      'pyarrow>=1,<6',
       'pyyaml>=3.12,<6',
       'tensorflow>=1.15.2,!=2.0.*,!=2.1.*,!=2.2.*,!=2.3.*,!=2.4.*,<3',
       'tensorflow-hub>=0.9.0,<0.13',
