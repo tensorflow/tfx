@@ -33,6 +33,7 @@ from ml_metadata.proto import metadata_store_pb2
 
 
 class MLMDConfigTest(tf.test.TestCase):
+
   def _set_required_env_vars(self, env_vars):
     for k, v in env_vars.items():
       os.environ[k] = v

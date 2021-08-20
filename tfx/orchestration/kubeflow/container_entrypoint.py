@@ -446,7 +446,6 @@ def main():
 
     executor_spec = runner_utils.extract_executor_spec(deployment_config,
                                                        node_id)
-
     custom_driver_spec = runner_utils.extract_custom_driver_spec(
         deployment_config, node_id)
 
@@ -469,5 +468,3 @@ def main():
 
 if __name__ == '__main__':
   main()
-
-

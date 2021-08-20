@@ -220,15 +220,6 @@ class PlaceholderTest(tf.test.TestCase):
         }
     """)
 
-  def testEnvironmentVariableSimple(self):
-    self._assert_placeholder_pb_equal_and_deepcopyable(
-        ph.environment_variable('MY_ENV_VAR'), """
-        placeholder {
-          type: ENVIRONMENT_VARIABLE
-          key: "MY_ENV_VAR"
-        }
-     """)
-
   def testExecPropertySimple(self):
     self._assert_placeholder_pb_equal_and_deepcopyable(
         ph.exec_property('num_train_steps'), """
