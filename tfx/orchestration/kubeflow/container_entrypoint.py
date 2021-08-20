@@ -384,8 +384,11 @@ def _parse_runtime_parameter_str(param: str) -> Tuple[str, types.Property]:
 
 
 def _resolve_runtime_parameters(tfx_ir: pipeline_pb2.Pipeline,
-                                parameters: List[str]) -> None:
+                                parameters: Optional[List[str]]) -> None:
   """Resolve runtime parameters in the pipeline proto inplace."""
+  if parameters is None:
+    return
+
   parameter_bindings = {
       # Substitute the runtime parameter to be a concrete run_id
       constants.PIPELINE_RUN_ID_PARAMETER_NAME:
@@ -400,7 +403,7 @@ def _resolve_runtime_parameters(tfx_ir: pipeline_pb2.Pipeline,
                                                        parameter_bindings)
 
 
-def main():
+def main(argv):
   # Log to the container's stdout so Kubeflow Pipelines UI can display logs to
   # the user.
   logging.basicConfig(stream=sys.stdout, level=logging.INFO)
@@ -418,7 +421,7 @@ def main():
   # TODO(b/196892362): Replace hooking with a more straightforward mechanism.
   launcher._register_execution = _register_execution  # pylint: disable=protected-access
 
-  args = parser.parse_args()
+  args = parser.parse_args(argv)
 
   tfx_ir = pipeline_pb2.Pipeline()
   json_format.Parse(args.tfx_ir, tfx_ir)
@@ -467,4 +470,4 @@ def main():
 
 
 if __name__ == '__main__':
-  main()
+  main(sys.argv[1:])
