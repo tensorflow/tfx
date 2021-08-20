@@ -66,7 +66,8 @@ class ExecutorSpecTest(tf.test.TestCase):
         }
         beam_pipeline_args: "b"
         beam_pipeline_args_from_env: {
-             "c": "d"
+             key: "c"
+             value: "d"
         }
         """, spec_copy.encode())
 
