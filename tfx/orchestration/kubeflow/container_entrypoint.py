@@ -23,7 +23,6 @@ import textwrap
 from typing import cast, Dict, List, Mapping, MutableMapping, Optional, Sequence, Text, Tuple, Union
 
 from tfx import types
-from tfx.dsl.components.base import executor_spec as tfx_executor_spec
 from tfx.dsl.compiler import constants
 from tfx.orchestration import metadata
 from tfx.orchestration.kubeflow import kubeflow_metadata_adapter
@@ -401,29 +400,6 @@ def _resolve_runtime_parameters(tfx_ir: pipeline_pb2.Pipeline,
                                                        parameter_bindings)
 
 
-def _resolve_beam_args_from_env2(beam_pipeline_args, beam_pipeline_args_from_env) -> list:
-  beam_pipeline_args_from_env_set = set()
-  supplied_beam_pipeline_args = {arg.split('=')[0].strip('--') for arg in
-                                       beam_pipeline_args}
-
-  for beam_pipeline_arg, env_var in beam_pipeline_args_from_env.items():
-    # If an arg is present in beam_pipeline_args, it should take precedence
-    # over env vars.
-    if beam_pipeline_arg in supplied_beam_pipeline_args:
-      logging.info('Arg %s already present in '
-        'beam_pipeline_args and will not be fetched from env.',
-         beam_pipeline_arg)
-    else:
-      env_var_value = os.environ.get(env_var, None)
-      if env_var_value:
-        beam_pipeline_args_from_env_set.add('--{}={}'
-                  .format(beam_pipeline_arg, env_var_value))
-      else:
-        logging.info('Env var %s not present. Skipping corresponding beam arg'
-                       ': %s.', env_var, beam_pipeline_arg)
-  return list(beam_pipeline_args_from_env_set)
-
-
 def _resolve_beam_args_from_env(beam_pipeline_args, beam_pipeline_args_from_env) -> list:
   resolved_beam_pipeline_args_from_env = []
 
@@ -438,8 +414,12 @@ def _resolve_beam_args_from_env(beam_pipeline_args, beam_pipeline_args_from_env)
 
     env_var_value = os.environ.get(env_var, None)
     if env_var_value:
-      resolved_beam_pipeline_args_from_env.append('--{}={}'
+      if beam_pipeline_arg_from_env.startswith('--'):
+        resolved_beam_pipeline_args_from_env.append('{}={}'
                   .format(beam_pipeline_arg_from_env, env_var_value))
+      else:
+        resolved_beam_pipeline_args_from_env.append('--{}={}'
+                                                      .format(beam_pipeline_arg_from_env, env_var_value))
     else:
       # TODO: Raise value error instead?
       logging.warning('Env var %s not present. Skipping corresponding beam arg'
@@ -494,21 +474,14 @@ def main():
     executor_spec = runner_utils.extract_executor_spec(deployment_config,
                                                        node_id)
 
-    logging.info(f'executor_spec')
-    logging.info(executor_spec)
-
-    if isinstance(executor_spec, tfx_executor_spec.BeamExecutorSpec):
-      logging.info('beam executor')
+    if isinstance(executor_spec, executable_spec_pb2.BeamExecutableSpec):
       resolved_beam_pipeline_args_from_env = _resolve_beam_args_from_env(
-          cast(tfx_executor_spec.BeamExecutorSpec, executor_spec)
-              .beam_pipeline_args,
-          cast(tfx_executor_spec.BeamExecutorSpec, executor_spec)
-              .beam_pipeline_args_from_env)
+          executor_spec.beam_pipeline_args,
+          executor_spec.beam_pipeline_args_from_env)
 
-      cast(tfx_executor_spec.BeamExecutorSpec, executor_spec)\
-          .beam_pipeline_args = cast(tfx_executor_spec.BeamExecutorSpec,
-                                     executor_spec).beam_pipeline_args\
-                                + resolved_beam_pipeline_args_from_env
+      executor_spec.beam_pipeline_args.extend(resolved_beam_pipeline_args_from_env)
+      logging.info(f'new beam_pipeline_args')
+      logging.info(executor_spec.beam_pipeline_args)
 
     custom_driver_spec = runner_utils.extract_custom_driver_spec(
         deployment_config, node_id)

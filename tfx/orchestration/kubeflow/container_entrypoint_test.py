@@ -109,6 +109,7 @@ class BeamArgsTest(tf.test.TestCase):
 
   def testResolveBeamArgsFromEnv(self):
     set_required_env_vars({
+      'FOO': 'BAR',
       'S3_SECRET_ACCESS_KEY': 'minio123',
       'S3_VERIFY': '1',
     })
@@ -117,8 +118,9 @@ class BeamArgsTest(tf.test.TestCase):
                           '--s3_access_key_id=minio',
                           '--s3_verify=0'
                           ]
-    beam_pipeline_args_from_env = {'s3_secret_access_key': 'S3_SECRET_ACCESS_KEY',
-                                 's3_verify': 'S3_VERIFY'}
+    beam_pipeline_args_from_env = {'--FOO': 'BAR',
+        's3_secret_access_key': 'S3_SECRET_ACCESS_KEY',
+        's3_verify': 'S3_VERIFY'}
 
     beam_pipeline_args_from_env = container_entrypoint._resolve_beam_args_from_env(
         beam_pipeline_args=beam_pipeline_args,
@@ -127,7 +129,9 @@ class BeamArgsTest(tf.test.TestCase):
                      {'--s3_endpoint_url=s3_endpoint_url',
                       '--s3_access_key_id=minio',
                       '--s3_secret_access_key=minio123',
-                      '--s3_verify=0'})
+                      '--s3_verify=0',
+                      '--FOO=BAR'
+                      })
 
 
 if __name__ == '__main__':
