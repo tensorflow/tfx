@@ -1038,7 +1038,8 @@ class Metadata(object):
 
   def _register_context_if_not_exist(
       self, context_type_name: Text, context_name: Text,
-      properties: Dict[Text, Union[int, float, Text]]
+      properties: Dict[Text, Union[int, float, Text]],
+      parent_context_id: Optional[int] = None
   ) -> metadata_store_pb2.Context:
     """Registers a context if not exist, otherwise returns the existing one.
 
@@ -1066,6 +1067,12 @@ class Metadata(object):
                                                         context_name)
       assert context is not None, 'Run context is missing for %s.' % (
           context_name)
+    if parent_context_id:
+      parent_context = metadata_store_pb2.ParentContext(parent_id=metadata_store_pb2, child_id=context.id)
+      try:
+        self.store.put_parent_contexts([parent_context])
+      except mlmd.errors.AlreadyExistsError:
+        pass
 
     absl.logging.debug('ID of run context %s is %s.', context_name, context.id)
     return context
@@ -1151,7 +1158,8 @@ class Metadata(object):
           properties={
               _CONTEXT_TYPE_KEY_PIPELINE_NAME: pipeline_info.pipeline_name,
               _CONTEXT_TYPE_KEY_RUN_ID: pipeline_info.run_id
-          })
+          },
+          parent_context_id=pipeline_context.id)
       result.append(pipeline_run_context)
       absl.logging.debug('Pipeline run context [%s : %s]',
                          pipeline_info.pipeline_run_context_name,
