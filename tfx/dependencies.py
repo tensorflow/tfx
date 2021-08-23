@@ -183,7 +183,7 @@ def make_extra_packages_examples():
       'tensorflow-text>=1.15.1,<3',
       # Required for tfx/examples/cifar10
       'flatbuffers>=1.12,<3',
-      'tflite-support>=0.1.0a1,<0.1.1',
+      'tflite-support>=0.1.0a1,<0.2.1',
       # Required for tfx/examples/penguin/experimental
       # LINT.IfChange
       'scikit-learn>=0.23,<0.24',
