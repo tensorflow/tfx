@@ -220,8 +220,6 @@ class Launcher(object):
                 executor_spec.beam_pipeline_args_from_env)
 
         executor_spec.beam_pipeline_args.extend(resolved_beam_pipeline_args_from_env)
-        logging.info(f'new beam_pipeline_args')
-        logging.info(executor_spec.beam_pipeline_args)
 
       self._executor_operator = self._executor_operators[type(executor_spec)](
           executor_spec, platform_config)
