@@ -22,7 +22,7 @@ from absl import flags
 import tensorflow_model_analysis as tfma
 from tfx import v1 as tfx
 
-# TODO(b/190231146): test a persistent volume (PV) mounted scenario.
+# TODO(b/197359030): test a persistent volume (PV) mounted scenario.
 flags.DEFINE_bool(
     'use_gcp', False, 'whether to use GCP resources, including AI \n'
     'Platform components and dataflow')
