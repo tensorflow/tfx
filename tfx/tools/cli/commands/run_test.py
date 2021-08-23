@@ -59,14 +59,12 @@ class RunTest(test_case_utils.TfxTest):
         ['create', '--pipeline-name', 'chicago', '--engine', 'airflow'])
     self.assertIn('Creating a run for pipeline', result.output)
     self.assertSucceeded(result)
-    # The following test has assert"Not"Equal since it is expected to fail.
-    # Currently, only kfp supports cli runtime parameter.
     result = self.runner.invoke(run_group, [
         'create', '--pipeline_name', 'chicago', '--engine', 'airflow',
         '--runtime_parameter', 'a=1'
     ])
     self.assertIn('Creating a run for pipeline', result.output)
-    self.assertFailed(result)
+    self.assertSucceeded(result)
 
   def testRunCreateKubeflow(self):
     result = self.runner.invoke(run_group, [

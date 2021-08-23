@@ -1,6 +1,11 @@
 # Current Version (Still in Development)
 
 ## Major Features and Improvements
+*   TFX CLI now supports runtime parameter on Kubeflow, Vertex, and Airflow.
+    Use it with '--runtime_parameter=<parameter_name>=<parameter_value>' flag.
+    In the case of multiple runtime parameters, format is as follows:
+    '--runtime_parameter=<parameter_name>=<parameter_value> --runtime_parameter
+    =<parameter_name>=<parameter_value>'
 
 ## Breaking Changes
 
