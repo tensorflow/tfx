@@ -55,9 +55,6 @@ flags.DEFINE_bool("search_hints", True,
                   "Include metadata search hints in the generated files")
 flags.DEFINE_string("site_path", "tfx/api_docs/python",
                     "Path prefix in the _toc.yaml")
-flags.DEFINE_bool("gen_report", False,
-                  ("Generate an API report containing the health of the"
-                   "docstrings of the public API."))
 
 FLAGS = flags.FLAGS
 
@@ -122,8 +119,6 @@ def main(_):
       code_url_prefix=FLAGS.code_url_prefix,
       search_hints=FLAGS.search_hints,
       site_path=FLAGS.site_path,
-      gen_report=FLAGS.gen_report,
-      private_map={},
       # local_definitions_filter ensures that shared modules are only
       # documented in the location that defines them, instead of every location
       # that imports them.
