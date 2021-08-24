@@ -408,7 +408,7 @@ class TFMAV2BenchmarkBase(benchmark_base.BenchmarkBase):
     inputs_per_accumulator = 1000
     start = time.time()
     for _ in range(_ITERS):
-      computations, _, _ = (
+      computations, _, _, _ = (
           # pylint: disable=protected-access
           metrics_plots_and_validations_evaluator
           ._filter_and_separate_computations(
