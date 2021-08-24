@@ -18,8 +18,7 @@ core task generation loop based on the state of MLMD db.
 """
 
 import abc
-import typing
-from typing import Dict, List, Type, TypeVar
+from typing import Dict, Hashable, List, Type, TypeVar
 
 import attr
 from tfx import types
@@ -68,7 +67,7 @@ class NodeUid:
 
 
 # Task id can be any hashable type.
-TaskId = typing.Hashable
+TaskId = TypeVar('TaskId', bound=Hashable)
 
 _TaskT = TypeVar('_TaskT', bound='Task')
 
@@ -134,8 +133,15 @@ class ExecNodeTask(Task):
 
 @attr.s(auto_attribs=True, frozen=True)
 class CancelNodeTask(Task):
-  """Task to instruct cancellation of an ongoing node execution."""
+  """Task to instruct cancellation of an ongoing node execution.
+
+  Attributes:
+    node_uid: Uid of the node to be cancelled.
+    pause: The node is being paused with the intention of resuming the same
+      execution after restart.
+  """
   node_uid: NodeUid
+  pause: bool = False
 
   @property
   def task_id(self) -> TaskId:

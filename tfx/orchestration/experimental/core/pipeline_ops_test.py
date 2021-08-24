@@ -353,8 +353,10 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
   @mock.patch.object(sync_pipeline_task_gen, 'SyncPipelineTaskGenerator')
   @mock.patch.object(async_pipeline_task_gen, 'AsyncPipelineTaskGenerator')
   @mock.patch.object(task_gen_utils, 'generate_task_from_active_execution')
-  def test_stop_initiated_pipelines(self, pipeline, mock_gen_task_from_active,
-                                    mock_async_task_gen, mock_sync_task_gen):
+  def test_orchestrate_stop_initiated_pipelines(self, pipeline,
+                                                mock_gen_task_from_active,
+                                                mock_async_task_gen,
+                                                mock_sync_task_gen):
     with self._mlmd_connection as m:
       pipeline.nodes.add().pipeline_node.node_info.id = 'ExampleGen'
       pipeline.nodes.add().pipeline_node.node_info.id = 'Transform'
@@ -458,6 +460,83 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
           [mock.call(mock.ANY, 'ExampleGen'),
            mock.call(mock.ANY, 'Transform')],
           any_order=True)
+
+  @parameterized.parameters(
+      _test_pipeline('pipeline1'),
+      _test_pipeline('pipeline1', pipeline_pb2.Pipeline.SYNC))
+  def test_orchestrate_update_initiated_pipelines(self, pipeline):
+    with self._mlmd_connection as m:
+      pipeline.nodes.add().pipeline_node.node_info.id = 'ExampleGen'
+      pipeline.nodes.add().pipeline_node.node_info.id = 'Transform'
+      pipeline.nodes.add().pipeline_node.node_info.id = 'Trainer'
+      pipeline.nodes.add().pipeline_node.node_info.id = 'Evaluator'
+
+      mock_service_job_manager = mock.create_autospec(
+          service_jobs.ServiceJobManager, instance=True)
+      mock_service_job_manager.is_pure_service_node.side_effect = (
+          lambda _, node_id: node_id == 'ExampleGen')
+      mock_service_job_manager.is_mixed_service_node.side_effect = (
+          lambda _, node_id: node_id == 'Transform')
+
+      pipeline_ops.initiate_pipeline_start(m, pipeline)
+
+      task_queue = tq.TaskQueue()
+
+      for node_id in ('Transform', 'Trainer', 'Evaluator'):
+        task_queue.enqueue(
+            test_utils.create_exec_node_task(
+                task_lib.NodeUid(
+                    pipeline_uid=task_lib.PipelineUid.from_pipeline(pipeline),
+                    node_id=node_id)))
+
+      pipeline_state = pipeline_ops.initiate_pipeline_update(m, pipeline)
+      with pipeline_state:
+        self.assertTrue(pipeline_state.is_update_initiated())
+
+      pipeline_ops.orchestrate(m, task_queue, mock_service_job_manager)
+
+      # stop_node_services should be called for ExampleGen which is a pure
+      # service node.
+      mock_service_job_manager.stop_node_services.assert_called_once_with(
+          mock.ANY, 'ExampleGen')
+      mock_service_job_manager.reset_mock()
+
+      # Simulate completion of all the exec node tasks.
+      for node_id in ('Transform', 'Trainer', 'Evaluator'):
+        task = task_queue.dequeue()
+        task_queue.task_done(task)
+        self.assertTrue(task_lib.is_exec_node_task(task))
+        self.assertEqual(node_id, task.node_uid.node_id)
+
+      # Verify that cancellation tasks were enqueued in the last `orchestrate`
+      # call, and dequeue them.
+      for node_id in ('Transform', 'Trainer', 'Evaluator'):
+        task = task_queue.dequeue()
+        task_queue.task_done(task)
+        self.assertTrue(task_lib.is_cancel_node_task(task))
+        self.assertEqual(node_id, task.node_uid.node_id)
+        self.assertTrue(task.pause)
+
+      self.assertTrue(task_queue.is_empty())
+
+      # Pipeline continues to be in update initiated state until all
+      # ExecNodeTasks have been dequeued (which was not the case when last
+      # `orchestrate` call was made).
+      with pipeline_state:
+        self.assertTrue(pipeline_state.is_update_initiated())
+
+      pipeline_ops.orchestrate(m, task_queue, mock_service_job_manager)
+
+      # stop_node_services should be called for Transform (mixed service node)
+      # too since corresponding ExecNodeTask has been processed.
+      mock_service_job_manager.stop_node_services.assert_has_calls(
+          [mock.call(mock.ANY, 'ExampleGen'),
+           mock.call(mock.ANY, 'Transform')])
+
+      # Pipeline should no longer be in update-initiated state but be active.
+      with pipeline_state:
+        self.assertFalse(pipeline_state.is_update_initiated())
+        self.assertTrue(pipeline_state.is_active())
 
   @parameterized.parameters(
       _test_pipeline('pipeline1'),

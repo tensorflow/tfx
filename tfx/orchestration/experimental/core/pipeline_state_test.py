@@ -30,11 +30,14 @@ from ml_metadata.proto import metadata_store_pb2
 
 def _test_pipeline(pipeline_id,
                    execution_mode: pipeline_pb2.Pipeline.ExecutionMode = (
-                       pipeline_pb2.Pipeline.ASYNC)):
+                       pipeline_pb2.Pipeline.ASYNC),
+                   param=1):
   pipeline = pipeline_pb2.Pipeline()
   pipeline.pipeline_info.id = pipeline_id
   pipeline.execution_mode = execution_mode
   pipeline.nodes.add().pipeline_node.node_info.id = 'Trainer'
+  pipeline.nodes[0].pipeline_node.parameters.parameters[
+      'param'].field_value.int_value = param
   return pipeline
 
 
@@ -192,7 +195,45 @@ class PipelineStateTest(test_utils.TfxTest):
           m, task_lib.PipelineUid.from_pipeline(pipeline)) as pipeline_state:
         self.assertEqual(status, pipeline_state.stop_initiated_reason())
 
-  def test_node_start_and_stop(self):
+  def test_update_initiation_and_apply(self):
+    with self._mlmd_connection as m:
+      pipeline = _test_pipeline('pipeline1', param=1)
+      updated_pipeline = _test_pipeline('pipeline1', param=2)
+      with pstate.PipelineState.new(m, pipeline) as pipeline_state:
+        self.assertFalse(pipeline_state.is_update_initiated())
+        pipeline_state.initiate_update(updated_pipeline)
+        self.assertTrue(pipeline_state.is_update_initiated())
+
+      # Reload from MLMD and verify.
+      with pstate.PipelineState.load(
+          m, task_lib.PipelineUid.from_pipeline(pipeline)) as pipeline_state:
+        self.assertTrue(pipeline_state.is_update_initiated())
+        self.assertEqual(pipeline, pipeline_state.pipeline)
+        pipeline_state.apply_pipeline_update()
+        self.assertFalse(pipeline_state.is_update_initiated())
+        self.assertTrue(pipeline_state.is_active())
+        self.assertEqual(updated_pipeline, pipeline_state.pipeline)
+
+      # Update should fail if execution mode is different.
+      updated_pipeline = _test_pipeline(
+          'pipeline1', execution_mode=pipeline_pb2.Pipeline.SYNC)
+      with pstate.PipelineState.load(
+          m, task_lib.PipelineUid.from_pipeline(pipeline)) as pipeline_state:
+        with self.assertRaisesRegex(status_lib.StatusNotOkError,
+                                    'Updating execution_mode.*not supported'):
+          pipeline_state.initiate_update(updated_pipeline)
+
+      # Update should fail if pipeline structure changed.
+      updated_pipeline = _test_pipeline(
+          'pipeline1', execution_mode=pipeline_pb2.Pipeline.SYNC)
+      updated_pipeline.nodes.add().pipeline_node.node_info.id = 'Evaluator'
+      with pstate.PipelineState.load(
+          m, task_lib.PipelineUid.from_pipeline(pipeline)) as pipeline_state:
+        with self.assertRaisesRegex(status_lib.StatusNotOkError,
+                                    'Updating execution_mode.*not supported'):
+          pipeline_state.initiate_update(updated_pipeline)
+
+  def test_initiate_node_start_stop(self):
     with self._mlmd_connection as m:
       pipeline = _test_pipeline('pipeline1')
       node_uid = task_lib.NodeUid(

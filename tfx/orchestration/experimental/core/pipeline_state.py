@@ -17,7 +17,7 @@ import base64
 import contextlib
 import threading
 import time
-from typing import Dict, Iterator, List, Mapping, Optional
+from typing import Dict, Iterator, List, Mapping, Optional, Tuple
 
 import attr
 from tfx import types
@@ -41,6 +41,7 @@ _PIPELINE_STATUS_CODE = 'pipeline_status_code'
 _PIPELINE_STATUS_MSG = 'pipeline_status_msg'
 _NODE_STATES = 'node_states'
 _PIPELINE_RUN_METADATA = 'pipeline_run_metadata'
+_UPDATED_PIPELINE_IR = 'updated_pipeline_ir'
 _ORCHESTRATOR_EXECUTION_TYPE = metadata_store_pb2.ExecutionType(
     name=_ORCHESTRATOR_RESERVED_ID,
     properties={_PIPELINE_IR: metadata_store_pb2.STRING})
@@ -139,7 +140,6 @@ class PipelineState:
     self.mlmd_handle = mlmd_handle
     self.pipeline = pipeline
     self.execution_id = execution_id
-    self.pipeline_uid = task_lib.PipelineUid.from_pipeline(pipeline)
 
     # Only set within the pipeline state context.
     self._mlmd_execution_atomic_op_context = None
@@ -181,8 +181,7 @@ class PipelineState:
           message=f'Pipeline with uid {pipeline_uid} already active.')
 
     exec_properties = {
-        _PIPELINE_IR:
-            base64.b64encode(pipeline.SerializeToString()).decode('utf-8')
+        _PIPELINE_IR: _base64_encode_pipeline(pipeline)
     }
     if pipeline_run_metadata:
       exec_properties[_PIPELINE_RUN_METADATA] = json_utils.dumps(
@@ -258,6 +257,10 @@ class PipelineState:
         pipeline=pipeline,
         execution_id=active_execution.id)
 
+  @property
+  def pipeline_uid(self) -> task_lib.PipelineUid:
+    return task_lib.PipelineUid.from_pipeline(self.pipeline)
+
   def is_active(self) -> bool:
     """Returns `True` if pipeline is active."""
     self._check_context()
@@ -276,6 +279,60 @@ class PipelineState:
           self._execution.custom_properties[_PIPELINE_STATUS_MSG],
           status.message)
     record_state_change_time()
+
+  def initiate_update(self, updated_pipeline: pipeline_pb2.Pipeline) -> None:
+    """Initiates pipeline update process."""
+    self._check_context()
+
+    if self.pipeline.execution_mode != updated_pipeline.execution_mode:
+      raise status_lib.StatusNotOkError(
+          code=status_lib.Code.INVALID_ARGUMENT,
+          message=('Updating execution_mode of an active pipeline is not '
+                   'supported'))
+
+    # TODO(b/194311197): We require that structure of the updated pipeline
+    # exactly matches the original. There is scope to relax this restriction.
+
+    def _structure(
+        pipeline: pipeline_pb2.Pipeline
+    ) -> List[Tuple[str, List[str], List[str]]]:
+      return [(node.node_info.id, list(node.upstream_nodes),
+               list(node.downstream_nodes))
+              for node in get_all_pipeline_nodes(pipeline)]
+
+    if _structure(self.pipeline) != _structure(updated_pipeline):
+      raise status_lib.StatusNotOkError(
+          code=status_lib.Code.INVALID_ARGUMENT,
+          message=('Updated pipeline should have the same structure as the '
+                   'original.'))
+
+    data_types_utils.set_metadata_value(
+        self._execution.custom_properties[_UPDATED_PIPELINE_IR],
+        _base64_encode_pipeline(updated_pipeline))
+    record_state_change_time()
+
+  def is_update_initiated(self) -> bool:
+    self._check_context()
+    return self.is_active() and self._execution.custom_properties.get(
+        _UPDATED_PIPELINE_IR) is not None
+
+  def apply_pipeline_update(self) -> None:
+    """Applies pipeline update that was previously initiated."""
+    self._check_context()
+    updated_pipeline_ir = _get_metadata_value(
+        self._execution.custom_properties.get(_UPDATED_PIPELINE_IR))
+    if not updated_pipeline_ir:
+      raise status_lib.StatusNotOkError(
+          code=status_lib.Code.INVALID_ARGUMENT,
+          message='No updated pipeline IR to apply')
+    data_types_utils.set_metadata_value(
+        self._execution.custom_properties[_PIPELINE_IR], updated_pipeline_ir)
+    del self._execution.custom_properties[_UPDATED_PIPELINE_IR]
+    self.pipeline = _base64_decode_pipeline(updated_pipeline_ir)
+
+  def is_stop_initiated(self) -> bool:
+    self._check_context()
+    return self.stop_initiated_reason() is not None
 
   def stop_initiated_reason(self) -> Optional[status_lib.Status]:
     """Returns status object if stop initiated, `None` otherwise."""
@@ -552,9 +609,7 @@ def _get_pipeline_from_orchestrator_execution(
     execution: metadata_store_pb2.Execution) -> pipeline_pb2.Pipeline:
   pipeline_ir_b64 = data_types_utils.get_metadata_value(
       execution.properties[_PIPELINE_IR])
-  pipeline = pipeline_pb2.Pipeline()
-  pipeline.ParseFromString(base64.b64decode(pipeline_ir_b64))
-  return pipeline
+  return _base64_decode_pipeline(pipeline_ir_b64)
 
 
 def _get_active_execution(
@@ -587,3 +642,13 @@ def _get_latest_execution(
     return execution.create_time_since_epoch
 
   return max(executions, key=_get_creation_time)
+
+
+def _base64_encode_pipeline(pipeline: pipeline_pb2.Pipeline) -> str:
+  return base64.b64encode(pipeline.SerializeToString()).decode('utf-8')
+
+
+def _base64_decode_pipeline(pipeline_encoded: str) -> pipeline_pb2.Pipeline:
+  result = pipeline_pb2.Pipeline()
+  result.ParseFromString(base64.b64decode(pipeline_encoded))
+  return result

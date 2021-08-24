@@ -218,6 +218,17 @@ def stop_node(
 
 
 @_to_status_not_ok_error
+def initiate_pipeline_update(
+    mlmd_handle: metadata.Metadata,
+    pipeline: pipeline_pb2.Pipeline) -> pstate.PipelineState:
+  """Initiates pipeline update."""
+  pipeline_uid = task_lib.PipelineUid.from_pipeline(pipeline)
+  with pstate.PipelineState.load(mlmd_handle, pipeline_uid) as pipeline_state:
+    pipeline_state.initiate_update(pipeline)
+  return pipeline_state
+
+
+@_to_status_not_ok_error
 def _wait_for_inactivation(
     mlmd_handle: metadata.Metadata,
     execution_id: metadata_store_pb2.Execution,
@@ -271,10 +282,13 @@ def orchestrate(mlmd_handle: metadata.Metadata, task_queue: tq.TaskQueue,
 
   active_pipeline_states = []
   stop_initiated_pipeline_states = []
+  update_initiated_pipeline_states = []
   for pipeline_state in pipeline_states:
     with pipeline_state:
-      if pipeline_state.stop_initiated_reason() is not None:
+      if pipeline_state.is_stop_initiated():
         stop_initiated_pipeline_states.append(pipeline_state)
+      elif pipeline_state.is_update_initiated():
+        update_initiated_pipeline_states.append(pipeline_state)
       elif pipeline_state.is_active():
         active_pipeline_states.append(pipeline_state)
       else:
@@ -288,6 +302,12 @@ def orchestrate(mlmd_handle: metadata.Metadata, task_queue: tq.TaskQueue,
                  pipeline_state.pipeline_uid)
     _orchestrate_stop_initiated_pipeline(mlmd_handle, task_queue,
                                          service_job_manager, pipeline_state)
+
+  for pipeline_state in update_initiated_pipeline_states:
+    logging.info('Orchestrating update-initiated pipeline: %s',
+                 pipeline_state.pipeline_uid)
+    _orchestrate_update_initiated_pipeline(mlmd_handle, task_queue,
+                                           service_job_manager, pipeline_state)
 
   for pipeline_state in active_pipeline_states:
     logging.info('Orchestrating pipeline: %s', pipeline_state.pipeline_uid)
@@ -315,6 +335,25 @@ def _get_pipeline_states(
   return result
 
 
+def _cancel_nodes(mlmd_handle: metadata.Metadata, task_queue: tq.TaskQueue,
+                  service_job_manager: service_jobs.ServiceJobManager,
+                  pipeline_state: pstate.PipelineState, pause: bool) -> bool:
+  """Cancels pipeline nodes and returns `True` if any node is currently active."""
+  pipeline = pipeline_state.pipeline
+  is_active = False
+  for node in pstate.get_all_pipeline_nodes(pipeline):
+    if service_job_manager.is_pure_service_node(pipeline_state,
+                                                node.node_info.id):
+      service_job_manager.stop_node_services(pipeline_state, node.node_info.id)
+    elif _maybe_enqueue_cancellation_task(
+        mlmd_handle, pipeline, node, task_queue, pause=pause):
+      is_active = True
+    elif service_job_manager.is_mixed_service_node(pipeline_state,
+                                                   node.node_info.id):
+      service_job_manager.stop_node_services(pipeline_state, node.node_info.id)
+  return is_active
+
+
 def _orchestrate_stop_initiated_pipeline(
     mlmd_handle: metadata.Metadata, task_queue: tq.TaskQueue,
     service_job_manager: service_jobs.ServiceJobManager,
@@ -323,22 +362,24 @@ def _orchestrate_stop_initiated_pipeline(
   with pipeline_state:
     stop_reason = pipeline_state.stop_initiated_reason()
   assert stop_reason is not None
-  pipeline = pipeline_state.pipeline
-  has_active_executions = False
-  for node in pstate.get_all_pipeline_nodes(pipeline):
-    if service_job_manager.is_pure_service_node(pipeline_state,
-                                                node.node_info.id):
-      service_job_manager.stop_node_services(pipeline_state, node.node_info.id)
-    elif _maybe_enqueue_cancellation_task(mlmd_handle, pipeline, node,
-                                          task_queue):
-      has_active_executions = True
-    elif service_job_manager.is_mixed_service_node(pipeline_state,
-                                                   node.node_info.id):
-      service_job_manager.stop_node_services(pipeline_state, node.node_info.id)
-  if not has_active_executions:
+  is_active = _cancel_nodes(
+      mlmd_handle, task_queue, service_job_manager, pipeline_state, pause=False)
+  if not is_active:
     with pipeline_state:
       # Update pipeline execution state in MLMD.
       pipeline_state.set_pipeline_execution_state_from_status(stop_reason)
+
+
+def _orchestrate_update_initiated_pipeline(
+    mlmd_handle: metadata.Metadata, task_queue: tq.TaskQueue,
+    service_job_manager: service_jobs.ServiceJobManager,
+    pipeline_state: pstate.PipelineState) -> None:
+  """Orchestrates an update-initiated pipeline."""
+  is_active = _cancel_nodes(
+      mlmd_handle, task_queue, service_job_manager, pipeline_state, pause=True)
+  if not is_active:
+    with pipeline_state:
+      pipeline_state.apply_pipeline_update()
 
 
 @attr.s(auto_attribs=True, kw_only=True)
@@ -464,14 +505,16 @@ def _get_node_infos(pipeline_state: pstate.PipelineState) -> List[_NodeInfo]:
 def _maybe_enqueue_cancellation_task(mlmd_handle: metadata.Metadata,
                                      pipeline: pipeline_pb2.Pipeline,
                                      node: pipeline_pb2.PipelineNode,
-                                     task_queue: tq.TaskQueue) -> bool:
+                                     task_queue: tq.TaskQueue,
+                                     pause: bool = False) -> bool:
   """Enqueues a node cancellation task if not already stopped.
 
   If the node has an ExecNodeTask in the task queue, issue a cancellation.
-  Otherwise, if the node has an active execution in MLMD but no ExecNodeTask
-  enqueued, it may be due to orchestrator restart after stopping was initiated
-  but before the schedulers could finish. So, enqueue an ExecNodeTask with
-  is_cancelled set to give a chance for the scheduler to finish gracefully.
+  Otherwise, when pause=False, if the node has an active execution in MLMD but
+  no ExecNodeTask enqueued, it may be due to orchestrator restart after stopping
+  was initiated but before the schedulers could finish. So, enqueue an
+  ExecNodeTask with is_cancelled set to give a chance for the scheduler to
+  finish gracefully.
 
   Args:
     mlmd_handle: A handle to the MLMD db.
@@ -479,6 +522,8 @@ def _maybe_enqueue_cancellation_task(mlmd_handle: metadata.Metadata,
     node: The node to cancel.
     task_queue: A `TaskQueue` instance into which any cancellation tasks will be
       enqueued.
+    pause: Whether the cancellation is to pause the node rather than cancelling
+      the execution.
 
   Returns:
     `True` if a cancellation task was enqueued. `False` if node is already
@@ -489,9 +534,10 @@ def _maybe_enqueue_cancellation_task(mlmd_handle: metadata.Metadata,
   if task_queue.contains_task_id(exec_node_task_id):
     task_queue.enqueue(
         task_lib.CancelNodeTask(
-            node_uid=task_lib.NodeUid.from_pipeline_node(pipeline, node)))
+            node_uid=task_lib.NodeUid.from_pipeline_node(pipeline, node),
+            pause=pause))
     return True
-  else:
+  if not pause:
     executions = task_gen_utils.get_executions(mlmd_handle, node)
     exec_node_task = task_gen_utils.generate_task_from_active_execution(
         mlmd_handle, pipeline, node, executions, is_cancelled=True)
