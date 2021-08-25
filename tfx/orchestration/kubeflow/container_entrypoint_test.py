@@ -95,6 +95,11 @@ class MLMDConfigTest(test_case_utils.TfxTest):
   def testDumpUiMetadata(self):
     trainer = pipeline_pb2.PipelineNode()
     trainer.node_info.type.name = 'tfx.components.trainer.component.Trainer'
+    model_run_out_spec = pipeline_pb2.OutputSpec(
+      artifact_spec=pipeline_pb2.OutputSpec.ArtifactSpec(
+          type=metadata_store_pb2.ArtifactType(name=standard_artifacts.ModelRun.TYPE_NAME)))
+    trainer.outputs.outputs['model_run'].CopyFrom(model_run_out_spec)
+
     model_run = standard_artifacts.ModelRun()
     model_run.uri = 'model_run_uri'
     exec_info = data_types.ExecutionInfo(
