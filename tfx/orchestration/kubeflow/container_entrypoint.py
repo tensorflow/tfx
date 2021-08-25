@@ -35,7 +35,7 @@ from tfx.orchestration.portable import launcher
 from tfx.orchestration.portable import runtime_parameter_utils
 from tfx.proto.orchestration import executable_spec_pb2
 from tfx.proto.orchestration import pipeline_pb2
-from tfx.types import artifact
+from tfx.types import artifact, standard_artifacts
 from tfx.types import channel
 from tfx.utils import telemetry_utils
 
@@ -340,9 +340,9 @@ def _dump_ui_metadata(
   }]
   # Add Tensorboard view for ModelRun outpus.
   for name, spec in node.outputs.outputs.items():
-    if spec.artifact_spec.type.name.lower() == 'modelrun':
+    if spec.artifact_spec.type.name == standard_artifacts.ModelRun.TYPE_NAME:
       output_model = execution_info.output_dict[name][0]
-      
+
       # Add Tensorboard view.
       tensorboard_output = {'type': 'tensorboard', 'source': output_model.uri}
       outputs.append(tensorboard_output)
