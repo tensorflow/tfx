@@ -16,6 +16,7 @@
 import abc
 import datetime
 import json
+import random
 from typing import Any, Dict, List, Optional, Text, Union
 
 from absl import logging
@@ -428,10 +429,11 @@ class VertexJobClient(AbstractJobClient):
         {telemetry_utils.LABEL_TFX_EXECUTOR: executor_class_path}):
       job_labels = telemetry_utils.make_labels_dict()
 
-    # 'tfx_YYYYmmddHHMMSS' is the default job display name if not explicitly
-    # specified.
-    job_id = job_id or 'tfx_{}'.format(
-        datetime.datetime.now().strftime('%Y%m%d%H%M%S'))
+    # 'tfx_YYYYmmddHHMMSS_xxxxxxxx' is the default job display name if not
+    # explicitly specified.
+    job_id = job_id or 'tfx_{}_{}'.format(
+        datetime.datetime.now().strftime('%Y%m%d%H%M%S'),
+        '%08x' % random.getrandbits(32))
 
     training_args = {
         'job_id': job_id,

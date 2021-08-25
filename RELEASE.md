@@ -17,6 +17,10 @@
 
 ## Bug Fixes and Other Changes
 
+*   The default job name for Google Cloud AI Training jobs was changed from
+    'tfx_YYYYmmddHHMMSS' to 'tfx_YYYYmmddHHMMSS_xxxxxxxx', where 'xxxxxxxx' is
+    a random 8 digit hexadecimal string.
+
 ## Documentation Updates
 
 # Version 1.2.0
