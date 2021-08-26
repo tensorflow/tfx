@@ -16,6 +16,7 @@
 import itertools
 from typing import Dict, Iterable, List, Optional, Sequence
 
+from absl import logging
 import attr
 from tfx import types
 from tfx.orchestration import data_types_utils
@@ -23,9 +24,11 @@ from tfx.orchestration import metadata
 from tfx.orchestration.experimental.core import task as task_lib
 from tfx.orchestration.portable import inputs_utils
 from tfx.orchestration.portable import outputs_utils
+from tfx.orchestration.portable.input_resolution import exceptions
 from tfx.orchestration.portable.mlmd import context_lib
 from tfx.orchestration.portable.mlmd import execution_lib
 from tfx.proto.orchestration import pipeline_pb2
+from tfx.utils import typing_utils
 
 from ml_metadata.proto import metadata_store_pb2
 
@@ -34,7 +37,7 @@ from ml_metadata.proto import metadata_store_pb2
 class ResolvedInfo:
   contexts: List[metadata_store_pb2.Context]
   exec_properties: Dict[str, types.Property]
-  input_artifacts: Optional[Dict[str, List[types.Artifact]]]
+  input_artifacts: Optional[typing_utils.ArtifactMultiMap]
 
 
 def _generate_task_from_execution(metadata_handler: metadata.Metadata,
@@ -130,6 +133,10 @@ def generate_resolved_info(metadata_handler: metadata.Metadata,
 
   Returns:
     A `ResolvedInfo` with input resolutions.
+
+  Raises:
+    NotImplementedError: Multiple dicts returned by inputs_utils
+      resolve_input_artifacts_v2, which is currently not supported.
   """
   # Register node contexts.
   contexts = context_lib.prepare_contexts(
@@ -140,8 +147,24 @@ def generate_resolved_info(metadata_handler: metadata.Metadata,
       node_parameters=node.parameters)
 
   # Resolve inputs.
-  input_artifacts = inputs_utils.resolve_input_artifacts(
-      metadata_handler=metadata_handler, node_inputs=node.inputs)
+  try:
+    resolved_input_artifacts = inputs_utils.resolve_input_artifacts_v2(
+        metadata_handler=metadata_handler, pipeline_node=node)
+  except exceptions.InputResolutionError as e:
+    logging.warning('Input resolution error raised for node: %s; error: %s',
+                    node.node_info.id, e)
+    input_artifacts = None
+  else:
+    if isinstance(resolved_input_artifacts, inputs_utils.Skip):
+      input_artifacts = None
+    else:
+      assert isinstance(resolved_input_artifacts, inputs_utils.Trigger)
+      assert resolved_input_artifacts
+      # TODO(b/197741942): Support multiple dicts.
+      if len(resolved_input_artifacts) > 1:
+        raise NotImplementedError(
+            'Handling more than one input dicts not implemented.')
+      input_artifacts = resolved_input_artifacts[0]
 
   return ResolvedInfo(
       contexts=contexts,
