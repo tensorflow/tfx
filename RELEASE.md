@@ -1,6 +1,7 @@
 # Current Version (Still in Development)
 
 ## Major Features and Improvements
+
 *   TFX CLI now supports runtime parameter on Kubeflow, Vertex, and Airflow.
     Use it with '--runtime_parameter=<parameter_name>=<parameter_value>' flag.
     In the case of multiple runtime parameters, format is as follows:
@@ -25,6 +26,7 @@
 *   The default job name for Google Cloud AI Training jobs was changed from
     'tfx_YYYYmmddHHMMSS' to 'tfx_YYYYmmddHHMMSS_xxxxxxxx', where 'xxxxxxxx' is
     a random 8 digit hexadecimal string.
+*   Depends on `apache-beam[gcp]>=2.31,<2.32`.
 *   Depends on `keras-tuner>=1.0.4,<2`.
 
 ## Documentation Updates
