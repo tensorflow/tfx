@@ -261,6 +261,13 @@ class PipelineState:
   def pipeline_uid(self) -> task_lib.PipelineUid:
     return task_lib.PipelineUid.from_pipeline(self.pipeline)
 
+  @property
+  def pipeline_run_id(self) -> Optional[str]:
+    """Returns pipeline_run_id in case of sync pipeline, `None` otherwise."""
+    if self.pipeline.execution_mode == pipeline_pb2.Pipeline.SYNC:
+      return self.pipeline.runtime_spec.pipeline_run_id.field_value.string_value
+    return None
+
   def is_active(self) -> bool:
     """Returns `True` if pipeline is active."""
     self._check_context()
@@ -289,6 +296,17 @@ class PipelineState:
           code=status_lib.Code.INVALID_ARGUMENT,
           message=('Updating execution_mode of an active pipeline is not '
                    'supported'))
+
+    if self.pipeline.execution_mode == pipeline_pb2.Pipeline.SYNC:
+      updated_pipeline_run_id = (
+          updated_pipeline.runtime_spec.pipeline_run_id.field_value.string_value
+      )
+      if self.pipeline_run_id != updated_pipeline_run_id:
+        raise status_lib.StatusNotOkError(
+            code=status_lib.Code.INVALID_ARGUMENT,
+            message=(f'For sync pipeline, pipeline_run_id should match; found '
+                     f'mismatch: {self.pipeline_run_id} (existing) vs. '
+                     f'{updated_pipeline_run_id} (updated)'))
 
     # TODO(b/194311197): We require that structure of the updated pipeline
     # exactly matches the original. There is scope to relax this restriction.

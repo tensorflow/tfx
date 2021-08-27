@@ -218,6 +218,7 @@ def stop_node(
 
 
 @_to_status_not_ok_error
+@_pipeline_ops_lock
 def initiate_pipeline_update(
     mlmd_handle: metadata.Metadata,
     pipeline: pipeline_pb2.Pipeline) -> pstate.PipelineState:
