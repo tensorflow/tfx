@@ -14,13 +14,9 @@
 # limitations under the License.
 """Portable libraries for execution related APIs."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import collections
 import itertools
-from typing import Dict, Iterable, List, Mapping, MutableMapping, Optional, Sequence, Set, Text, Tuple
+from typing import Dict, Iterable, List, Mapping, Optional, Sequence, Set, Tuple
 
 from absl import logging
 from tfx import types
@@ -30,6 +26,7 @@ from tfx.orchestration.portable.mlmd import common_utils
 from tfx.orchestration.portable.mlmd import event_lib
 from tfx.proto.orchestration import execution_result_pb2
 from tfx.types import artifact_utils
+from tfx.utils import typing_utils
 
 from google.protobuf import json_format
 from ml_metadata.proto import metadata_store_pb2
@@ -82,7 +79,7 @@ def prepare_execution(
     metadata_handler: metadata.Metadata,
     execution_type: metadata_store_pb2.ExecutionType,
     state: metadata_store_pb2.Execution.State,
-    exec_properties: Optional[Mapping[Text, types.Property]] = None,
+    exec_properties: Optional[Mapping[str, types.Property]] = None,
 ) -> metadata_store_pb2.Execution:
   """Creates an execution proto based on the information provided.
 
@@ -116,7 +113,7 @@ def prepare_execution(
 
 def _create_artifact_and_event_pairs(
     metadata_handler: metadata.Metadata,
-    artifact_dict: MutableMapping[Text, Sequence[types.Artifact]],
+    artifact_dict: typing_utils.ArtifactMultiMap,
     event_type: metadata_store_pb2.Event.Type,
 ) -> List[Tuple[metadata_store_pb2.Artifact, metadata_store_pb2.Event]]:
   """Creates a list of [Artifact, Event] tuples.
@@ -157,10 +154,8 @@ def put_execution(
     metadata_handler: metadata.Metadata,
     execution: metadata_store_pb2.Execution,
     contexts: Sequence[metadata_store_pb2.Context],
-    input_artifacts: Optional[MutableMapping[Text,
-                                             Sequence[types.Artifact]]] = None,
-    output_artifacts: Optional[MutableMapping[Text,
-                                              Sequence[types.Artifact]]] = None,
+    input_artifacts: Optional[typing_utils.ArtifactMultiMap] = None,
+    output_artifacts: Optional[typing_utils.ArtifactMultiMap] = None,
     input_event_type: metadata_store_pb2.Event.Type = metadata_store_pb2.Event
     .INPUT,
     output_event_type: metadata_store_pb2.Event.Type = metadata_store_pb2.Event
@@ -263,7 +258,7 @@ def get_artifact_ids_by_event_type_for_execution_id(
 def get_artifacts_dict(
     metadata_handler: metadata.Metadata, execution_id: int,
     event_type: 'metadata_store_pb2.Event.Type'
-) -> Dict[Text, List[types.Artifact]]:
+) -> typing_utils.ArtifactMultiDict:
   """Returns a map from key to an ordered list of artifacts for the given execution id.
 
   The dict is constructed purely from information stored in MLMD for the

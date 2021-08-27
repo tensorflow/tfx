@@ -13,7 +13,7 @@
 # limitations under the License.
 """This module defines a generic Launcher for all TFleX nodes."""
 
-from typing import Any, Dict, List, Mapping, MutableMapping, Optional, Sequence, Text, Type, TypeVar
+from typing import Any, Dict, List, Mapping, Optional, Type, TypeVar
 
 from absl import logging
 import attr
@@ -42,6 +42,7 @@ from tfx.proto.orchestration import driver_output_pb2
 from tfx.proto.orchestration import executable_spec_pb2
 from tfx.proto.orchestration import execution_result_pb2
 from tfx.proto.orchestration import pipeline_pb2
+from tfx.utils import typing_utils
 
 from google.protobuf import message
 from ml_metadata.proto import metadata_store_pb2
@@ -114,7 +115,7 @@ def _register_execution(
     metadata_handler: metadata.Metadata,
     execution_type: metadata_store_pb2.ExecutionType,
     contexts: List[metadata_store_pb2.Context],
-    input_artifacts: MutableMapping[str, Sequence[types.Artifact]],
+    input_artifacts: typing_utils.ArtifactMultiMap,
     exec_properties: Mapping[str, types.Property]
 ) -> metadata_store_pb2.Execution:
   """Registers an execution in MLMD."""
@@ -212,7 +213,7 @@ class Launcher(object):
       self, metadata_handler: metadata.Metadata,
       execution_type: metadata_store_pb2.ExecutionType,
       contexts: List[metadata_store_pb2.Context],
-      input_artifacts: MutableMapping[str, Sequence[types.Artifact]],
+      input_artifacts: typing_utils.ArtifactMultiMap,
       exec_properties: Mapping[str, types.Property]
   ) -> metadata_store_pb2.Execution:
     """Registers or reuses an execution in MLMD."""
@@ -246,7 +247,7 @@ class Launcher(object):
       contexts = context_lib.prepare_contexts(
           metadata_handler=m, node_contexts=self._pipeline_node.contexts)
 
-      # 2. Resolves inputs an execution properties.
+      # 2. Resolves inputs and execution properties.
       exec_properties = inputs_utils.resolve_parameters(
           node_parameters=self._pipeline_node.parameters)
       input_artifacts = inputs_utils.resolve_input_artifacts(
@@ -371,7 +372,7 @@ class Launcher(object):
 
   def _publish_successful_execution(
       self, execution_id: int, contexts: List[metadata_store_pb2.Context],
-      output_dict: Dict[Text, List[types.Artifact]],
+      output_dict: typing_utils.ArtifactMultiMap,
       executor_output: execution_result_pb2.ExecutorOutput) -> None:
     """Publishes succeeded execution result to ml metadata."""
     with self._mlmd_connection as m:
@@ -416,10 +417,11 @@ class Launcher(object):
     outputs_utils.remove_stateful_working_dir(
         execution_info.stateful_working_dir)
 
-  def _update_with_driver_output(self,
-                                 driver_output: driver_output_pb2.DriverOutput,
-                                 exec_properties: Dict[Text, Any],
-                                 output_dict: Dict[Text, List[types.Artifact]]):
+  def _update_with_driver_output(
+      self,
+      driver_output: driver_output_pb2.DriverOutput,
+      exec_properties: Dict[str, Any],
+      output_dict: typing_utils.ArtifactMutableMultiMap):
     """Updates output_dict with driver output."""
     for key, artifact_list in driver_output.output_artifacts.items():
       python_artifact_list = []
