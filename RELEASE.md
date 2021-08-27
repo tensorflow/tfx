@@ -15,11 +15,17 @@
 
 ## Deprecations
 
+*   The import name of KerasTuner has been changed from `kerastuner`
+    to `keras_tuner`. The import name of `kerastuner` is still supported.
+    A warning will occur when import from `kerastuner`, but does not affect
+    the usage.
+
 ## Bug Fixes and Other Changes
 
 *   The default job name for Google Cloud AI Training jobs was changed from
     'tfx_YYYYmmddHHMMSS' to 'tfx_YYYYmmddHHMMSS_xxxxxxxx', where 'xxxxxxxx' is
     a random 8 digit hexadecimal string.
+*   Depends on `keras-tuner>=1.0.4,<2`.
 
 ## Documentation Updates
 

@@ -18,7 +18,7 @@ import json
 import os
 import unittest
 
-from kerastuner import HyperParameters
+from keras_tuner import HyperParameters
 import tensorflow as tf
 from tfx.components.testdata.module_file import tuner_module
 from tfx.components.tuner import executor
