@@ -16,7 +16,7 @@
 import inspect
 import json
 import textwrap
-from typing import Any, Dict, Iterable, Optional, Type, Union
+from typing import Any, Dict, Iterable, List, Optional, Type, Union
 from absl import logging
 
 from tfx.dsl.placeholder import placeholder
@@ -26,11 +26,12 @@ from tfx.utils import deprecation_utils
 from tfx.utils import doc_controls
 from tfx.utils import json_utils
 from google.protobuf import json_format
+from google.protobuf import message
 from ml_metadata.proto import metadata_store_pb2
-
 
 # Property type for artifacts, executions and contexts.
 Property = Union[int, float, str]
+ExecPropertyTypes = Union[int, float, str, bool, message.Message, List[Any]]
 
 
 class Channel(json_utils.Jsonable):

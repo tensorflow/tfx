@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Data types util shared for orchestration."""
-from typing import Dict, Iterable, List, Mapping, Optional, Union, Any
+from typing import Dict, Iterable, List, Mapping, Optional
 
 from tfx import types
 from tfx.proto.orchestration import pipeline_pb2
@@ -72,33 +72,43 @@ def build_value_dict(
 
 
 def build_metadata_value_dict(
-    value_dict: Mapping[str, types.Property]
+    value_dict: Mapping[str, types.ExecPropertyTypes]
 ) -> Dict[str, metadata_store_pb2.Value]:
   """Converts plain value dict into MLMD value dict."""
   result = {}
   if not value_dict:
     return result
   for k, v in value_dict.items():
+    if not v:
+      continue
     value = metadata_store_pb2.Value()
-    if isinstance(v, str):
-      value.string_value = v
-    elif isinstance(v, int):
-      value.int_value = v
-    elif isinstance(v, float):
-      value.double_value = v
-    else:
-      raise RuntimeError('Unsupported type {} for key {}'.format(type(v), k))
-    result[k] = value
+    result[k] = set_metadata_value(value, v)
+  return result
+
+
+def build_pipeline_value_dict(
+    value_dict: Dict[str, types.ExecPropertyTypes]
+) -> Dict[str, pipeline_pb2.Value]:
+  """Converts plain value dict into pipeline_pb2.Value dict."""
+  result = {}
+  if not value_dict:
+    return result
+  for k, v in value_dict.items():
+    if not v:
+      continue
+    value = pipeline_pb2.Value()
+    result[k] = set_parameter_value(value, v)
   return result
 
 
 def build_parsed_value_dict(
-    value_dict: Mapping[str, pipeline_pb2.Value]) -> Dict[str, Any]:
+    value_dict: Mapping[str, pipeline_pb2.Value]
+) -> Dict[str, types.ExecPropertyTypes]:
   """Converts MLMD value into parsed (non-)primitive value dict."""
 
   def parse_value(
       value: str, value_type: pipeline_pb2.Value.Schema.ValueType
-  ) -> Union[List[Any], message.Message, types.Property, bool]:
+  ) -> types.ExecPropertyTypes:
     if value_type.HasField('list_type'):
       list_value = json_utils.loads(value)
       return [parse_value(val, value_type.list_type) for val in list_value]
@@ -128,8 +138,7 @@ def build_parsed_value_dict(
 
 
 def get_metadata_value_type(
-    value: Union[pipeline_pb2.Value, types.Property]
-) -> metadata_store_pb2.PropertyType:
+    value: types.ExecPropertyTypes) -> metadata_store_pb2.PropertyType:
   """Gets the metadata property type of a property value from a value.
 
   Args:
@@ -147,8 +156,6 @@ def get_metadata_value_type(
     return metadata_store_pb2.INT
   elif isinstance(value, float):
     return metadata_store_pb2.DOUBLE
-  elif isinstance(value, str):
-    return metadata_store_pb2.STRING
   elif isinstance(value, pipeline_pb2.Value):
     which = value.WhichOneof('value')
     if which != 'field_value':
@@ -163,6 +170,8 @@ def get_metadata_value_type(
       return metadata_store_pb2.STRING
     else:
       raise ValueError('Unexpected value type %s' % value_type)
+  elif isinstance(value, (str, bool, message.Message, list)):
+    return metadata_store_pb2.STRING
   else:
     raise ValueError('Unexpected value type %s' % type(value))
 
@@ -204,8 +213,7 @@ def get_metadata_value(
 
 def set_metadata_value(
     metadata_value: metadata_store_pb2.Value,
-    value: Union[pipeline_pb2.Value,
-                 types.Property]) -> metadata_store_pb2.Value:
+    value: types.ExecPropertyTypes) -> metadata_store_pb2.Value:
   """Sets metadata property based on tfx value.
 
   Args:
@@ -218,58 +226,52 @@ def set_metadata_value(
   Raises:
     ValueError: If value type is not supported or is still RuntimeParameter.
   """
-  # bool is a subclass of int...
-  if isinstance(value, int) and not isinstance(value, bool):
-    metadata_value.int_value = value
-  elif isinstance(value, float):
-    metadata_value.double_value = value
-  elif isinstance(value, str):
-    metadata_value.string_value = value
-  elif isinstance(value, pipeline_pb2.Value):
-    which = value.WhichOneof('value')
-    if which != 'field_value':
-      raise ValueError('Expecting field_value but got %s.' % value)
-
-    metadata_value.CopyFrom(value.field_value)
-  else:
-    raise ValueError('Unexpected type %s' % type(value))
+  parameter_value = pipeline_pb2.Value()
+  set_parameter_value(parameter_value, value, set_schema=False)
+  metadata_value.CopyFrom(parameter_value.field_value)
   return metadata_value
 
 
 def set_parameter_value(
     parameter_value: pipeline_pb2.Value,
-    value: Union[types.Property, bool, message.Message, List[Any]]
-) -> pipeline_pb2.Value:
+    value: types.ExecPropertyTypes,
+    set_schema: Optional[bool] = True) -> pipeline_pb2.Value:
   """Sets field value and schema based on tfx value.
 
   Args:
     parameter_value: A pipeline_pb2.Value message to be set.
     value: The value of the property.
+    set_schema: Boolean value indicating whether to set schema in
+      pipeline_pb2.Value.
 
   Returns:
-    A pipeline_pb2.Value proto with field_value and schema filled based on input
-    property.
+    A pipeline_pb2.Value proto with field_value and optionally schema filled
+    based on input property.
 
   Raises:
     ValueError: If value type is not supported.
   """
 
   def get_value_and_set_type(
-      value: Union[types.Property, bool, message.Message, List[Any]],
+      value: types.ExecPropertyTypes,
       value_type: pipeline_pb2.Value.Schema.ValueType) -> types.Property:
     """Returns serialized value and sets value_type."""
     if isinstance(value, bool):
-      value_type.boolean_type.SetInParent()
+      if set_schema:
+        value_type.boolean_type.SetInParent()
       return value
     elif isinstance(value, message.Message):
       # TODO(b/171794016): Investigate if file descripter set is needed for
       # tfx-owned proto already build in the launcher binary.
-      proto_type = value_type.proto_type
-      proto_type.message_type = type(value).DESCRIPTOR.full_name
-      proto_utils.build_file_descriptor_set(value, proto_type.file_descriptors)
+      if set_schema:
+        proto_type = value_type.proto_type
+        proto_type.message_type = type(value).DESCRIPTOR.full_name
+        proto_utils.build_file_descriptor_set(value,
+                                              proto_type.file_descriptors)
       return proto_utils.proto_to_json(value)
     elif isinstance(value, list) and len(value):
-      value_type.list_type.SetInParent()
+      if set_schema:
+        value_type.list_type.SetInParent()
       value = [
           get_value_and_set_type(val, value_type.list_type) for val in value
       ]
@@ -285,6 +287,11 @@ def set_parameter_value(
     parameter_value.field_value.double_value = value
   elif isinstance(value, str):
     parameter_value.field_value.string_value = value
+  elif isinstance(value, pipeline_pb2.Value):
+    which = value.WhichOneof('value')
+    if which != 'field_value':
+      raise ValueError('Expecting field_value but got %s.' % value)
+    parameter_value.field_value.CopyFrom(value.field_value)
   elif isinstance(value, bool):
     parameter_value.schema.value_type.boolean_type.SetInParent()
     parameter_value.field_value.string_value = json_utils.dumps(value)

@@ -111,7 +111,7 @@ class ExecNodeTask(Task):
   node_uid: NodeUid
   execution_id: int
   contexts: List[metadata_store_pb2.Context]
-  exec_properties: Dict[str, types.Property]
+  exec_properties: Dict[str, types.ExecPropertyTypes]
   input_artifacts: Dict[str, List[types.Artifact]]
   output_artifacts: Dict[str, List[types.Artifact]]
   executor_output_uri: str

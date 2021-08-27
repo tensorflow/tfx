@@ -22,6 +22,7 @@ from tfx import types
 from tfx import version as tfx_version
 from tfx.dsl.compiler import constants
 from tfx.dsl.io import fileio
+from tfx.orchestration import data_types_utils
 from tfx.orchestration import metadata
 from tfx.orchestration.portable import base_driver
 from tfx.orchestration.portable import base_executor_operator
@@ -683,8 +684,9 @@ class LauncherTest(test_case_utils.TfxTest):
       contexts = context_lib.prepare_contexts(
           metadata_handler=m,
           node_contexts=test_launcher._pipeline_node.contexts)
-      exec_properties = inputs_utils.resolve_parameters(
-          node_parameters=test_launcher._pipeline_node.parameters)
+      exec_properties = data_types_utils.build_parsed_value_dict(
+          inputs_utils.resolve_parameters_with_schema(
+              node_parameters=test_launcher._pipeline_node.parameters))
       input_artifacts = inputs_utils.resolve_input_artifacts(
           metadata_handler=m, node_inputs=test_launcher._pipeline_node.inputs)
       first_execution = test_launcher._register_or_reuse_execution(

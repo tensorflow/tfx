@@ -36,8 +36,6 @@ class ExecutionInfo:
   output_dict: Dict[str, List[types.Artifact]] = attr.Factory(dict)
   # The exec_properties to feed to execution
   exec_properties: Dict[str, Any] = attr.Factory(dict)
-  # The exec_properties and schema to parse serialized non-primitive types.
-  execution_properties_with_schema: Dict[str, pipeline_pb2.Value] = None
   # The uri to execution result, note that the drivers or executors and
   # Launchers may not run in the same process, so they should use this uri to
   # "return" execution result to the launcher.
@@ -70,7 +68,8 @@ class ExecutionInfo:
         # properties.
         execution_properties=data_types_utils.build_metadata_value_dict(
             self.exec_properties),
-        execution_properties_with_schema=self.execution_properties_with_schema,
+        execution_properties_with_schema=data_types_utils
+        .build_pipeline_value_dict(self.exec_properties),
         output_metadata_uri=self.execution_output_uri,
         stateful_working_dir=self.stateful_working_dir,
         tmp_dir=self.tmp_dir,
@@ -82,18 +81,20 @@ class ExecutionInfo:
   def from_proto(
       cls, execution_invocation: execution_invocation_pb2.ExecutionInvocation
   ) -> 'ExecutionInfo':
+    """Constructs ExecutionInfo from proto."""
+    if execution_invocation.execution_properties_with_schema:
+      parsed_exec_properties = data_types_utils.build_parsed_value_dict(
+          execution_invocation.execution_properties_with_schema)
+    else:
+      parsed_exec_properties = data_types_utils.build_value_dict(
+          execution_invocation.execution_properties)
     return cls(
         execution_id=execution_invocation.execution_id,
         input_dict=data_types_utils.build_artifact_dict(
             execution_invocation.input_dict),
         output_dict=data_types_utils.build_artifact_dict(
             execution_invocation.output_dict),
-        # TODO(b/171794016): Switch exec_properties to store parsed value based
-        # on execution_properties_with_schema.
-        exec_properties=data_types_utils.build_value_dict(
-            execution_invocation.execution_properties),
-        execution_properties_with_schema=dict(
-            execution_invocation.execution_properties_with_schema),
+        exec_properties=parsed_exec_properties,
         execution_output_uri=execution_invocation.output_metadata_uri,
         stateful_working_dir=execution_invocation.stateful_working_dir,
         tmp_dir=execution_invocation.tmp_dir,

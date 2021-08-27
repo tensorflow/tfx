@@ -254,7 +254,9 @@ class DataTypesUtilsTest(test_case_utils.TfxTest, parameterized.TestCase):
   @parameterized.named_parameters(
       ('IntValue', 42, metadata_store_pb2.Value(int_value=42)),
       ('FloatValue', 42.0, metadata_store_pb2.Value(double_value=42.0)),
-      ('StrValue', '42', metadata_store_pb2.Value(string_value='42')))
+      ('StrValue', '42', metadata_store_pb2.Value(string_value='42')),
+      ('BooleanValue', True, metadata_store_pb2.Value(string_value='true')),
+      ('ListValue', [1, 2], metadata_store_pb2.Value(string_value='[1, 2]')))
   def testSetMetadataValueWithPrimitiveValue(self, value, expected_pb):
     pb = metadata_store_pb2.Value()
     data_types_utils.set_metadata_value(pb, value)
@@ -263,7 +265,7 @@ class DataTypesUtilsTest(test_case_utils.TfxTest, parameterized.TestCase):
   def testSetMetadataValueUnsupportedType(self):
     pb = metadata_store_pb2.Value()
     with self.assertRaises(ValueError):
-      data_types_utils.set_metadata_value(pb, True)
+      data_types_utils.set_metadata_value(pb, {'a': 1})
 
   def testSetParameterValue(self):
     actual_int = pipeline_pb2.Value()

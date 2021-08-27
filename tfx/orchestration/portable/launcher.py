@@ -21,6 +21,7 @@ import grpc
 import portpicker
 from tfx import types
 from tfx.dsl.io import fileio
+from tfx.orchestration import data_types_utils
 from tfx.orchestration import metadata
 from tfx.orchestration.portable import base_driver_operator
 from tfx.orchestration.portable import base_executor_operator
@@ -248,8 +249,10 @@ class Launcher(object):
           metadata_handler=m, node_contexts=self._pipeline_node.contexts)
 
       # 2. Resolves inputs and execution properties.
-      exec_properties = inputs_utils.resolve_parameters(
-          node_parameters=self._pipeline_node.parameters)
+      exec_properties = data_types_utils.build_parsed_value_dict(
+          inputs_utils.resolve_parameters_with_schema(
+              node_parameters=self._pipeline_node.parameters))
+
       input_artifacts = inputs_utils.resolve_input_artifacts(
           metadata_handler=m, node_inputs=self._pipeline_node.inputs)
       # 3. If not all required inputs are met. Return ExecutionInfo with
