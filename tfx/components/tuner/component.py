@@ -20,7 +20,7 @@ from __future__ import print_function
 
 from typing import Any, Dict, NamedTuple, Optional, Text
 
-from keras_tuner.engine import base_tuner
+from kerastuner.engine import base_tuner
 from tfx import types
 from tfx.components.tuner import executor
 from tfx.components.util import udf_utils

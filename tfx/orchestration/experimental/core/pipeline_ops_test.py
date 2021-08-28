@@ -31,6 +31,7 @@ from tfx.orchestration.experimental.core import task as task_lib
 from tfx.orchestration.experimental.core import task_gen_utils
 from tfx.orchestration.experimental.core import task_queue as tq
 from tfx.orchestration.experimental.core import test_utils
+from tfx.orchestration.experimental.core.testing import test_async_pipeline
 from tfx.orchestration.portable.mlmd import execution_lib
 from tfx.proto.orchestration import pipeline_pb2
 from tfx.utils import status as status_lib
@@ -174,11 +175,7 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
                        exception_context.exception.code)
 
   def test_stop_node_no_active_executions(self):
-    pipeline = pipeline_pb2.Pipeline()
-    self.load_proto_from_text(
-        os.path.join(
-            os.path.dirname(__file__), 'testdata', 'async_pipeline.pbtxt'),
-        pipeline)
+    pipeline = test_async_pipeline.create_pipeline()
     pipeline_uid = task_lib.PipelineUid.from_pipeline(pipeline)
     node_uid = task_lib.NodeUid(node_id='my_trainer', pipeline_uid=pipeline_uid)
     with self._mlmd_connection as m:
@@ -200,11 +197,7 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
         self.assertEqual(pstate.NodeState.STARTING, node_state.state)
 
   def test_stop_node_wait_for_inactivation(self):
-    pipeline = pipeline_pb2.Pipeline()
-    self.load_proto_from_text(
-        os.path.join(
-            os.path.dirname(__file__), 'testdata', 'async_pipeline.pbtxt'),
-        pipeline)
+    pipeline = test_async_pipeline.create_pipeline()
     trainer = pipeline.nodes[2].pipeline_node
     test_utils.fake_component_output(
         self._mlmd_connection, trainer, active=True)
@@ -236,11 +229,7 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
         self.assertEqual(pstate.NodeState.STARTING, node_state.state)
 
   def test_stop_node_wait_for_inactivation_timeout(self):
-    pipeline = pipeline_pb2.Pipeline()
-    self.load_proto_from_text(
-        os.path.join(
-            os.path.dirname(__file__), 'testdata', 'async_pipeline.pbtxt'),
-        pipeline)
+    pipeline = test_async_pipeline.create_pipeline()
     trainer = pipeline.nodes[2].pipeline_node
     test_utils.fake_component_output(
         self._mlmd_connection, trainer, active=True)

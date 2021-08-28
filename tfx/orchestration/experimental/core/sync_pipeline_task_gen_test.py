@@ -31,9 +31,9 @@ from tfx.orchestration.experimental.core import task as task_lib
 from tfx.orchestration.experimental.core import task_gen_utils
 from tfx.orchestration.experimental.core import task_queue as tq
 from tfx.orchestration.experimental.core import test_utils
+from tfx.orchestration.experimental.core.testing import test_sync_pipeline
 from tfx.orchestration.portable import runtime_parameter_utils
 from tfx.orchestration.portable.mlmd import execution_lib
-from tfx.proto.orchestration import pipeline_pb2
 from tfx.utils import status as status_lib
 
 from ml_metadata.proto import metadata_store_pb2
@@ -93,11 +93,7 @@ class SyncPipelineTaskGeneratorTest(test_utils.TfxTest, parameterized.TestCase):
         _default_ensure_node_services)
 
   def _make_pipeline(self, pipeline_root, pipeline_run_id):
-    pipeline = pipeline_pb2.Pipeline()
-    self.load_proto_from_text(
-        os.path.join(
-            os.path.dirname(__file__), 'testdata', 'sync_pipeline.pbtxt'),
-        pipeline)
+    pipeline = test_sync_pipeline.create_pipeline()
     runtime_parameter_utils.substitute_runtime_parameter(
         pipeline, {
             compiler_constants.PIPELINE_ROOT_PARAMETER_NAME: pipeline_root,
@@ -476,7 +472,9 @@ class SyncPipelineTaskGeneratorTest(test_utils.TfxTest, parameterized.TestCase):
     with self._mlmd_connection as m:
       contexts = m.store.get_contexts_by_execution(example_gen_exec.id)
       # We use node context as cache context for ease of testing.
-      cache_context = [c for c in contexts if c.name == 'my_example_gen'][0]
+      cache_context = [
+          c for c in contexts if c.name == 'my_pipeline.my_example_gen'
+      ][0]
     # Fake example_gen cached execution.
     test_utils.fake_cached_execution(
         self._mlmd_connection, cache_context,

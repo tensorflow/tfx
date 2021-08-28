@@ -73,14 +73,16 @@ def make_required_install_packages():
   # Make sure to sync the versions of common dependencies (absl-py, numpy,
   # and protobuf) with TF.
   return make_pipeline_sdk_required_install_packages() + [
-      'apache-beam[gcp]>=2.31,<2.32',
+      'apache-beam[gcp]>=2.31,<3',
       'attrs>=19.3.0,<21',
       'click>=7,<8',
       'google-cloud-aiplatform>=0.5.0,<0.8',
       # TODO(b/193571051): remove 2.21 cap after TF 2.6 becomes available.
       'google-cloud-bigquery>=1.28.0,<2.21',
       'grpcio>=1.28.1,<2',
-      'keras-tuner>=1.0.4,<2',
+      # TODO(b/173976603): remove pinned keras-tuner upperbound when its
+      # dependency expecatation with TensorFlow is sorted out.
+      'keras-tuner>=1,<1.0.2',
       'kubernetes>=10.0.1,<13',
       # TODO(b/179195488): remove numpy dependency after 1.20 migration.
       # This dependency was added only to limit numpy 1.20 installation.

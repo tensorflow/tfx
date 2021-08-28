@@ -32,6 +32,7 @@ from tfx.orchestration.experimental.core import task_manager as tm
 from tfx.orchestration.experimental.core import task_queue as tq
 from tfx.orchestration.experimental.core import task_scheduler as ts
 from tfx.orchestration.experimental.core import test_utils
+from tfx.orchestration.experimental.core.testing import test_async_pipeline
 from tfx.proto.orchestration import execution_result_pb2
 from tfx.proto.orchestration import pipeline_pb2
 from tfx.utils import status as status_lib
@@ -305,11 +306,7 @@ class TaskManagerE2ETest(test_utils.TfxTest):
         connection_config=connection_config)
 
     # Sets up the pipeline.
-    pipeline = pipeline_pb2.Pipeline()
-    self.load_proto_from_text(
-        os.path.join(
-            os.path.dirname(__file__), 'testdata', 'async_pipeline.pbtxt'),
-        pipeline)
+    pipeline = test_async_pipeline.create_pipeline()
 
     # Extracts components.
     self._example_gen = pipeline.nodes[0].pipeline_node

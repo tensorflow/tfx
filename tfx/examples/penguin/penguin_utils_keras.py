@@ -18,7 +18,7 @@ components.
 """
 
 import absl
-import keras_tuner
+import kerastuner
 import tensorflow as tf
 from tensorflow import keras
 import tensorflow_transform as tft
@@ -31,16 +31,16 @@ from tfx.examples.penguin import penguin_utils_base as base
 preprocessing_fn = base.preprocessing_fn
 
 
-def _get_hyperparameters() -> keras_tuner.HyperParameters:
+def _get_hyperparameters() -> kerastuner.HyperParameters:
   """Returns hyperparameters for building Keras model."""
-  hp = keras_tuner.HyperParameters()
+  hp = kerastuner.HyperParameters()
   # Defines search space.
   hp.Choice('learning_rate', [1e-2, 1e-3], default=1e-2)
   hp.Int('num_layers', 1, 3, default=2)
   return hp
 
 
-def _make_keras_model(hparams: keras_tuner.HyperParameters) -> tf.keras.Model:
+def _make_keras_model(hparams: kerastuner.HyperParameters) -> tf.keras.Model:
   """Creates a DNN Keras model for classifying penguin data.
 
   Args:
@@ -91,14 +91,14 @@ def tuner_fn(fn_args: tfx.components.FnArgs) -> tfx.components.TunerFnResult:
                     model , e.g., the training and validation dataset. Required
                     args depend on the above tuner's implementation.
   """
-  # RandomSearch is a subclass of keras_tuner.Tuner which inherits from
+  # RandomSearch is a subclass of kerastuner.Tuner which inherits from
   # BaseTuner.
-  tuner = keras_tuner.RandomSearch(
+  tuner = kerastuner.RandomSearch(
       _make_keras_model,
       max_trials=6,
       hyperparameters=_get_hyperparameters(),
       allow_new_entries=False,
-      objective=keras_tuner.Objective('val_sparse_categorical_accuracy', 'max'),
+      objective=kerastuner.Objective('val_sparse_categorical_accuracy', 'max'),
       directory=fn_args.working_dir,
       project_name='penguin_tuning')
 
@@ -148,7 +148,7 @@ def run_fn(fn_args: tfx.components.FnArgs):
       base.EVAL_BATCH_SIZE)
 
   if fn_args.hyperparameters:
-    hparams = keras_tuner.HyperParameters.from_config(fn_args.hyperparameters)
+    hparams = kerastuner.HyperParameters.from_config(fn_args.hyperparameters)
   else:
     # This is a shown case when hyperparameters is decided and Tuner is removed
     # from the pipeline. User can also inline the hyperparameters directly in

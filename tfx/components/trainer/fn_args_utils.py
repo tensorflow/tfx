@@ -87,7 +87,7 @@ class FnArgs:
     model_run_dir: A single uri for the output directory of model training
       related files.
     base_model: An optional base model path that will be used for this training.
-    hyperparameters: An optional keras_tuner.HyperParameters config.
+    hyperparameters: An optional kerastuner.HyperParameters config.
     custom_config: An optional dictionary passed to the component.
   """
   working_dir = attr.ib(type=Text, default=None)
