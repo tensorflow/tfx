@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,14 +13,9 @@
 # limitations under the License.
 """TFX notebook visualizations."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import abc
-from typing import Text, Type
+from typing import Type
 
-# Standard Imports
 
 from tfx import types
 from tfx.utils import abc_utils
@@ -35,12 +29,12 @@ class ArtifactVisualization(abc.ABC):
   ARTIFACT_TYPE = abc_utils.abstract_property()
 
   @abc.abstractmethod
-  def display(self, artifact: types.Artifact) -> Text:
+  def display(self, artifact: types.Artifact) -> str:
     """Returns HTML string rendering artifact, in a notebook environment."""
     raise NotImplementedError()
 
 
-class ArtifactVisualizationRegistry(object):
+class ArtifactVisualizationRegistry:
   """Registry of artifact visualizations."""
 
   def __init__(self):

@@ -13,10 +13,6 @@
 # limitations under the License.
 """E2E Tests for tfx.orchestration.launcher.docker_component_launcher."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import os
 import tensorflow as tf
 
@@ -47,7 +43,7 @@ class _HelloWorldComponent(base_component.BaseComponent):
       args=['hello {{exec_properties.name}}'])
 
   def __init__(self, name):
-    super(_HelloWorldComponent, self).__init__(_HelloWorldSpec(name=name))
+    super().__init__(_HelloWorldSpec(name=name))
 
 
 # TODO(hongyes): Add more complicated samples to pass inputs/outputs between
@@ -74,7 +70,7 @@ def _create_pipeline(
 class DockerComponentLauncherE2eTest(tf.test.TestCase):
 
   def setUp(self):
-    super(DockerComponentLauncherE2eTest, self).setUp()
+    super().setUp()
     self._test_dir = os.path.join(
         os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR', self.get_temp_dir()),
         self._testMethodName)

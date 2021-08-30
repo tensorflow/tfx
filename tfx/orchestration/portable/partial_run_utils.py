@@ -15,7 +15,6 @@
 
 import collections
 import enum
-
 from typing import Any, Callable, Collection, List, Mapping, MutableMapping, Optional, Set, Tuple, Union
 
 from absl import logging
@@ -26,8 +25,9 @@ from tfx.orchestration.portable import execution_publish_utils
 from tfx.orchestration.portable.mlmd import context_lib
 from tfx.orchestration.portable.mlmd import execution_lib
 from tfx.proto.orchestration import pipeline_pb2
-from ml_metadata.proto import metadata_store_pb2
+
 from google.protobuf import any_pb2
+from ml_metadata.proto import metadata_store_pb2
 
 
 def filter_pipeline(

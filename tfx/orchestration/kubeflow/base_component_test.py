@@ -16,7 +16,6 @@
 import json
 import os
 
-from typing import Text
 
 from absl import logging
 from kfp import dsl
@@ -37,7 +36,7 @@ class BaseComponentTest(tf.test.TestCase):
   _test_pipeline_name = 'test_pipeline'
 
   def setUp(self):
-    super(BaseComponentTest, self).setUp()
+    super().setUp()
     example_gen = csv_example_gen_component.CsvExampleGen(
         input_base='data_input')
     statistics_gen = statistics_gen_component.StatisticsGen(
@@ -113,10 +112,10 @@ class BaseComponentWithPipelineParamTest(tf.test.TestCase):
   _test_pipeline_name = 'test_pipeline'
 
   def setUp(self):
-    super(BaseComponentWithPipelineParamTest, self).setUp()
+    super().setUp()
 
     example_gen_output_config = data_types.RuntimeParameter(
-        name='example-gen-output-config', ptype=Text)
+        name='example-gen-output-config', ptype=str)
 
     example_gen = csv_example_gen_component.CsvExampleGen(
         input_base='data_root', output_config=example_gen_output_config)

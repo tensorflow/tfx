@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,14 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Tests for tfx.orchestration.metadata."""
-
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
-from typing import Text
-
-# Standard Imports
 
 import tensorflow as tf
 from tfx import types
@@ -41,7 +32,7 @@ class MetadataTest(tf.test.TestCase):
   """
 
   def setUp(self):
-    super(MetadataTest, self).setUp()
+    super().setUp()
     self._pipeline_info = data_types.PipelineInfo(
         pipeline_name='my_pipeline', pipeline_root='/tmp', run_id='my_run_id')
     self._pipeline_info2 = data_types.PipelineInfo(
@@ -70,7 +61,7 @@ class MetadataTest(tf.test.TestCase):
         pipeline_info=self._pipeline_info5)
 
   def _check_artifact_state(self, metadata_handler: metadata.Metadata,
-                            target: types.Artifact, state: Text):
+                            target: types.Artifact, state: str):
     [artifact] = metadata_handler.store.get_artifacts_by_id([target.id])
     if 'state' in artifact.properties:
       current_artifact_state = artifact.properties['state'].string_value
@@ -80,7 +71,7 @@ class MetadataTest(tf.test.TestCase):
     self.assertEqual(current_artifact_state, state)
 
   def _get_all_runs(self, metadata_handler: metadata.Metadata,
-                    pipeline_name: Text):
+                    pipeline_name: str):
     result = []
     for context in metadata_handler.store.get_contexts_by_type(
         metadata._CONTEXT_TYPE_PIPELINE_RUN):  # pylint: disable=protected-access

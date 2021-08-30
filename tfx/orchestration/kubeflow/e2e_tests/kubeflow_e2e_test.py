@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,14 +13,10 @@
 # limitations under the License.
 """End to end tests for Kubeflow-based orchestrator."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import os
 import subprocess
 import time
-from typing import List, Text
+from typing import List
 
 from absl import logging
 from grpc import insecure_channel
@@ -66,7 +61,7 @@ class KubeflowEndToEndTest(kubeflow_test_utils.BaseKubeflowTest):
     cls._port_forwarding_process.kill()
 
   @classmethod
-  def _get_grpc_port(cls) -> Text:
+  def _get_grpc_port(cls) -> str:
     """Get the port number used by MLMD gRPC server."""
     get_grpc_port_command = [
         'kubectl', '-n', 'kubeflow', 'get', 'configmap',
@@ -133,8 +128,8 @@ class KubeflowEndToEndTest(kubeflow_test_utils.BaseKubeflowTest):
     return proc
 
   def _get_artifacts_with_type_and_pipeline(
-      self, type_name: Text,
-      pipeline_name: Text) -> List[metadata_store_pb2.Artifact]:
+      self, type_name: str,
+      pipeline_name: str) -> List[metadata_store_pb2.Artifact]:
     """Helper function returns artifacts of specified pipeline and type."""
     # 1. Find the pipeline context according to its name.
     request = metadata_store_service_pb2.GetContextByTypeAndNameRequest(
@@ -156,7 +151,7 @@ class KubeflowEndToEndTest(kubeflow_test_utils.BaseKubeflowTest):
     ]
 
   def _get_value_of_string_artifact(
-      self, string_artifact: metadata_store_pb2.Artifact) -> Text:
+      self, string_artifact: metadata_store_pb2.Artifact) -> str:
     """Helper function returns the actual value of a ValueArtifact."""
 
     string_artifact_obj = standard_artifacts.String()
@@ -165,7 +160,7 @@ class KubeflowEndToEndTest(kubeflow_test_utils.BaseKubeflowTest):
     return string_artifact_obj.value
 
   def _get_executions_by_pipeline_name(
-      self, pipeline_name: Text) -> List[metadata_store_pb2.Execution]:
+      self, pipeline_name: str) -> List[metadata_store_pb2.Execution]:
     """Helper function returns executions under a given pipeline name."""
     # step 1: get context id by context name
     request = metadata_store_service_pb2.GetContextByTypeAndNameRequest(
@@ -177,7 +172,7 @@ class KubeflowEndToEndTest(kubeflow_test_utils.BaseKubeflowTest):
     return self._stub.GetExecutionsByContext(request).executions
 
   def _get_executions_by_pipeline_name_and_state(
-      self, pipeline_name: Text, state: metadata_store_pb2.Execution.State
+      self, pipeline_name: str, state: metadata_store_pb2.Execution.State
   ) -> List[metadata_store_pb2.Execution]:
     """Helper function returns executions for a given state."""
     executions = self._get_executions_by_pipeline_name(pipeline_name)
@@ -188,7 +183,7 @@ class KubeflowEndToEndTest(kubeflow_test_utils.BaseKubeflowTest):
 
     return result
 
-  def _assert_infra_validator_passed(self, pipeline_name: Text):
+  def _assert_infra_validator_passed(self, pipeline_name: str):
     artifacts = self._get_artifacts_with_type_and_pipeline(
         type_name='InfraBlessing', pipeline_name=pipeline_name)
     self.assertGreaterEqual(len(artifacts), 1)

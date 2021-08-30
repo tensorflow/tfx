@@ -22,7 +22,7 @@ compatible.
 Note: This requires Kubeflow Pipelines SDK to be installed.
 """
 
-from typing import Dict, List, Set, Text
+from typing import Dict, List, Set
 
 from absl import logging
 from kfp import dsl
@@ -55,7 +55,7 @@ def _encode_runtime_parameter(param: data_types.RuntimeParameter) -> str:
 
 
 # TODO(hongyes): renaming the name to KubeflowComponent.
-class BaseComponent(object):
+class BaseComponent:
   """Base component for all Kubeflow pipelines TFX components.
 
   Returns a wrapper around a KFP DSL ContainerOp class, and adds named output
@@ -69,10 +69,9 @@ class BaseComponent(object):
       depends_on: Set[dsl.ContainerOp],
       pipeline: tfx_pipeline.Pipeline,
       pipeline_root: dsl.PipelineParam,
-      tfx_image: Text,
+      tfx_image: str,
       kubeflow_metadata_config: kubeflow_pb2.KubeflowMetadataConfig,
-      tfx_ir: pipeline_pb2.Pipeline,
-      pod_labels_to_attach: Dict[Text, Text],
+      tfx_ir: pipeline_pb2.Pipeline, pod_labels_to_attach: Dict[str, str],
       runtime_parameters: List[data_types.RuntimeParameter]):
     """Creates a new Kubeflow-based component.
 

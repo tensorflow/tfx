@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2020 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -34,7 +33,7 @@ class AsyncPipelineTaskGeneratorTest(test_utils.TfxTest,
                                      parameterized.TestCase):
 
   def setUp(self):
-    super(AsyncPipelineTaskGeneratorTest, self).setUp()
+    super().setUp()
     pipeline_root = os.path.join(
         os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR', self.get_temp_dir()),
         self.id())

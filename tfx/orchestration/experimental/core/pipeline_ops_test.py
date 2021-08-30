@@ -52,7 +52,7 @@ def _test_pipeline(pipeline_id,
 class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
 
   def setUp(self):
-    super(PipelineOpsTest, self).setUp()
+    super().setUp()
     pipeline_root = os.path.join(
         os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR', self.get_temp_dir()),
         self.id())

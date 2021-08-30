@@ -20,10 +20,9 @@ from tfx.types import artifact_utils
 from tfx.utils import json_utils
 from tfx.utils import proto_utils
 
+from google.protobuf import message
 from ml_metadata.proto import metadata_store_pb2
 from ml_metadata.proto import metadata_store_service_pb2
-
-from google.protobuf import message
 
 
 def build_artifact_dict(

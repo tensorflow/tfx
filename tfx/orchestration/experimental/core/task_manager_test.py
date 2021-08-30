@@ -72,7 +72,7 @@ class _Collector:
 class _FakeTaskScheduler(ts.TaskScheduler):
 
   def __init__(self, block_nodes, collector, **kwargs):
-    super(_FakeTaskScheduler, self).__init__(**kwargs)
+    super().__init__(**kwargs)
     # For these nodes, `schedule` will block until `cancel` is called.
     self._block_nodes = block_nodes
     self._collector = collector
@@ -99,7 +99,7 @@ class _FakeTaskScheduler(ts.TaskScheduler):
 class TaskManagerTest(test_utils.TfxTest):
 
   def setUp(self):
-    super(TaskManagerTest, self).setUp()
+    super().setUp()
 
     # Create a pipeline IR containing deployment config for testing.
     deployment_config = pipeline_pb2.IntermediateDeploymentConfig()
@@ -260,7 +260,7 @@ class TaskManagerTest(test_utils.TfxTest):
 class _FakeComponentScheduler(ts.TaskScheduler):
 
   def __init__(self, return_result, exception, **kwargs):
-    super(_FakeComponentScheduler, self).__init__(**kwargs)
+    super().__init__(**kwargs)
     self.exception = exception
     self.return_result = return_result
 
@@ -289,7 +289,7 @@ class TaskManagerE2ETest(test_utils.TfxTest):
   """Test end-to-end from task generation to publication of results to MLMD."""
 
   def setUp(self):
-    super(TaskManagerE2ETest, self).setUp()
+    super().setUp()
     pipeline_root = os.path.join(
         os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR', self.get_temp_dir()),
         self.id())

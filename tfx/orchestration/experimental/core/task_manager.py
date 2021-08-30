@@ -46,7 +46,7 @@ class TasksProcessingError(Error):
 
   def __init__(self, errors):
     err_msg = '\n'.join(str(e) for e in errors)
-    super(TasksProcessingError, self).__init__(err_msg)
+    super().__init__(err_msg)
     self.errors = errors
 
 

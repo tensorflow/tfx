@@ -20,7 +20,7 @@ import logging
 import os
 import sys
 import textwrap
-from typing import cast, Dict, List, Mapping, MutableMapping, Optional, Sequence, Text, Tuple, Union
+from typing import cast, Dict, List, Mapping, MutableMapping, Optional, Sequence, Tuple, Union
 
 from tfx import types
 from tfx.dsl.compiler import constants
@@ -69,7 +69,7 @@ def _register_execution(
       exec_properties=execution_properties_copy)
 
 
-def _get_config_value(config_value: kubeflow_pb2.ConfigValue) -> Optional[Text]:
+def _get_config_value(config_value: kubeflow_pb2.ConfigValue) -> Optional[str]:
   value_from = config_value.WhichOneof('value_from')
 
   if value_from is None:
@@ -142,7 +142,7 @@ def _get_grpc_metadata_connection_config(
   return connection_config
 
 
-def _sanitize_underscore(name: Text) -> Optional[Text]:
+def _sanitize_underscore(name: str) -> Optional[str]:
   """Sanitize the underscore in pythonic name for markdown visualization."""
   if name:
     return str(name).replace('_', '\\_')
@@ -150,7 +150,7 @@ def _sanitize_underscore(name: Text) -> Optional[Text]:
     return None
 
 
-def _render_channel_as_mdstr(input_channel: channel.Channel) -> Text:
+def _render_channel_as_mdstr(input_channel: channel.Channel) -> str:
   """Render a Channel as markdown string with the following format.
 
   **Type**: input_channel.type_name
@@ -178,7 +178,7 @@ def _render_channel_as_mdstr(input_channel: channel.Channel) -> Text:
 
 
 # TODO(b/147097443): clean up and consolidate rendering code.
-def _render_artifact_as_mdstr(single_artifact: artifact.Artifact) -> Text:
+def _render_artifact_as_mdstr(single_artifact: artifact.Artifact) -> str:
   """Render an artifact as markdown string with the following format.
 
   **Artifact: artifact1**
@@ -258,8 +258,8 @@ def _dump_ui_metadata(
       '\n\n'.join(exec_properties_list) or 'No execution property.')
 
   def _dump_input_populated_artifacts(
-      node_inputs: MutableMapping[Text, pipeline_pb2.InputSpec],
-      name_to_artifacts: Dict[Text, List[artifact.Artifact]]) -> List[Text]:
+      node_inputs: MutableMapping[str, pipeline_pb2.InputSpec],
+      name_to_artifacts: Dict[str, List[artifact.Artifact]]) -> List[str]:
     """Dump artifacts markdown string for inputs.
 
     Args:
@@ -288,8 +288,8 @@ def _dump_ui_metadata(
     return rendered_list
 
   def _dump_output_populated_artifacts(
-      node_outputs: MutableMapping[Text, pipeline_pb2.OutputSpec],
-      name_to_artifacts: Dict[Text, List[artifact.Artifact]]) -> List[Text]:
+      node_outputs: MutableMapping[str, pipeline_pb2.OutputSpec],
+      name_to_artifacts: Dict[str, List[artifact.Artifact]]) -> List[str]:
     """Dump artifacts markdown string for outputs.
 
     Args:

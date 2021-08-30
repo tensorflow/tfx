@@ -16,7 +16,7 @@
 import collections
 import copy
 import os
-from typing import Any, Callable, Dict, List, Optional, Text, Type, cast, MutableMapping
+from typing import Any, Callable, Dict, List, Optional, Type, cast, MutableMapping
 
 from kfp import compiler
 from kfp import dsl
@@ -54,7 +54,7 @@ _KUBEFLOW_GCP_SECRET_NAME = 'user-gcp-sa'
 DEFAULT_KUBEFLOW_TFX_IMAGE = 'tensorflow/tfx:%s' % (version.__version__,)
 
 
-def _mount_config_map_op(config_map_name: Text) -> OpFunc:
+def _mount_config_map_op(config_map_name: str) -> OpFunc:
   """Mounts all key-value pairs found in the named Kubernetes ConfigMap.
 
   All key-value pairs in the ConfigMap are mounted as environment variables.
@@ -75,7 +75,7 @@ def _mount_config_map_op(config_map_name: Text) -> OpFunc:
   return mount_config_map
 
 
-def _mount_secret_op(secret_name: Text) -> OpFunc:
+def _mount_secret_op(secret_name: str) -> OpFunc:
   """Mounts all key-value pairs found in the named Kubernetes Secret.
 
   All key-value pairs in the Secret are mounted as environment variables.
@@ -144,7 +144,7 @@ def get_default_kubeflow_metadata_config(
   return config
 
 
-def get_default_pod_labels() -> Dict[Text, Text]:
+def get_default_pod_labels() -> Dict[str, str]:
   """Returns the default pod label dict for Kubeflow."""
   # KFP default transformers add pod env:
   # https://github.com/kubeflow/pipelines/blob/0.1.32/sdk/python/kfp/compiler/_default_transformers.py
@@ -165,7 +165,7 @@ class KubeflowDagRunnerConfig(pipeline_config.PipelineConfig):
   def __init__(
       self,
       pipeline_operator_funcs: Optional[List[OpFunc]] = None,
-      tfx_image: Optional[Text] = None,
+      tfx_image: Optional[str] = None,
       kubeflow_metadata_config: Optional[
           kubeflow_pb2.KubeflowMetadataConfig] = None,
       # TODO(b/143883035): Figure out the best practice to put the
@@ -206,7 +206,7 @@ class KubeflowDagRunnerConfig(pipeline_config.PipelineConfig):
         in_process_component_launcher.InProcessComponentLauncher,
         kubernetes_component_launcher.KubernetesComponentLauncher,
     ]
-    super(KubeflowDagRunnerConfig, self).__init__(
+    super().__init__(
         supported_launcher_classes=supported_launcher_classes, **kwargs)
     self.pipeline_operator_funcs = (
         pipeline_operator_funcs or get_default_pipeline_operator_funcs())
@@ -221,13 +221,11 @@ class KubeflowDagRunner(tfx_runner.TfxRunner):
   Constructs a pipeline definition YAML file based on the TFX logical pipeline.
   """
 
-  def __init__(
-      self,
-      output_dir: Optional[Text] = None,
-      output_filename: Optional[Text] = None,
-      config: Optional[KubeflowDagRunnerConfig] = None,
-      pod_labels_to_attach: Optional[Dict[Text, Text]] = None
-  ):
+  def __init__(self,
+               output_dir: Optional[str] = None,
+               output_filename: Optional[str] = None,
+               config: Optional[KubeflowDagRunnerConfig] = None,
+               pod_labels_to_attach: Optional[Dict[str, str]] = None):
     """Initializes KubeflowDagRunner for compiling a Kubeflow Pipeline.
 
     Args:
@@ -249,7 +247,7 @@ class KubeflowDagRunner(tfx_runner.TfxRunner):
     """
     if config and not isinstance(config, KubeflowDagRunnerConfig):
       raise TypeError('config must be type of KubeflowDagRunnerConfig.')
-    super(KubeflowDagRunner, self).__init__(config or KubeflowDagRunnerConfig())
+    super().__init__(config or KubeflowDagRunnerConfig())
     self._config = cast(KubeflowDagRunnerConfig, self._config)
     self._output_dir = output_dir or os.getcwd()
     self._output_filename = output_filename

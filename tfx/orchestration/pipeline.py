@@ -14,7 +14,7 @@
 """Definition and related classes for TFX pipeline."""
 
 import enum
-from typing import List, Optional, Text, cast
+from typing import List, Optional, cast
 
 from tfx.dsl.compiler import constants
 from tfx.dsl.components.base import base_node
@@ -43,7 +43,7 @@ _MAX_PIPELINE_NAME_LENGTH = 63
 #             base_directory=os.path.join(
 #                 str(pipeline.ROOT_PARAMETER), 'model_serving'))))
 ROOT_PARAMETER = data_types.RuntimeParameter(
-    name=constants.PIPELINE_ROOT_PARAMETER_NAME, ptype=Text)
+    name=constants.PIPELINE_ROOT_PARAMETER_NAME, ptype=str)
 
 
 class ExecutionMode(enum.Enum):
@@ -68,7 +68,7 @@ def add_beam_pipeline_args_to_component(component, beam_pipeline_args):
             component.executor_spec).beam_pipeline_args
 
 
-class Pipeline(object):
+class Pipeline:
   """Logical TFX pipeline object.
 
   Pipeline object represents the DAG of TFX components, which can be run using
@@ -88,18 +88,17 @@ class Pipeline(object):
     platform_config: Pipeline level platform config, in proto form.
   """
 
-  def __init__(
-      self,
-      pipeline_name: Text,
-      pipeline_root: Text,
-      metadata_connection_config: Optional[
-          metadata.ConnectionConfigType] = None,
-      components: Optional[List[base_node.BaseNode]] = None,
-      enable_cache: Optional[bool] = False,
-      beam_pipeline_args: Optional[List[Text]] = None,
-      platform_config: Optional[message.Message] = None,
-      execution_mode: Optional[ExecutionMode] = ExecutionMode.SYNC,
-      **kwargs):
+  def __init__(self,
+               pipeline_name: str,
+               pipeline_root: str,
+               metadata_connection_config: Optional[
+                   metadata.ConnectionConfigType] = None,
+               components: Optional[List[base_node.BaseNode]] = None,
+               enable_cache: Optional[bool] = False,
+               beam_pipeline_args: Optional[List[str]] = None,
+               platform_config: Optional[message.Message] = None,
+               execution_mode: Optional[ExecutionMode] = ExecutionMode.SYNC,
+               **kwargs):
     """Initialize pipeline.
 
     Args:

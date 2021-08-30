@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,12 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """A Metadata adapter class used to add Kubeflow-specific context."""
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
 
 import os
-from typing import Any, Dict, Text
+from typing import Any, Dict
 
 import absl
 from tfx.orchestration import data_types
@@ -42,14 +38,13 @@ class KubeflowMetadataAdapter(metadata.Metadata):
       target_execution: metadata_store_pb2.Execution) -> bool:
     current_execution.properties[_KFP_POD_NAME_PROPERTY_KEY].string_value = ''
     target_execution.properties[_KFP_POD_NAME_PROPERTY_KEY].string_value = ''
-    return super(KubeflowMetadataAdapter,
-                 self)._is_eligible_previous_execution(current_execution,
-                                                       target_execution)
+    return super()._is_eligible_previous_execution(current_execution,
+                                                   target_execution)
 
   def _prepare_execution(
       self,
-      state: Text,
-      exec_properties: Dict[Text, Any],
+      state: str,
+      exec_properties: Dict[str, Any],
       pipeline_info: data_types.PipelineInfo,
       component_info: data_types.ComponentInfo,
   ) -> metadata_store_pb2.Execution:
@@ -57,6 +52,5 @@ class KubeflowMetadataAdapter(metadata.Metadata):
       kfp_pod_name = os.environ[_KFP_POD_NAME_ENV_KEY]
       absl.logging.info('Adding KFP pod name %s to execution' % kfp_pod_name)
       exec_properties[_KFP_POD_NAME_PROPERTY_KEY] = kfp_pod_name
-    return super(KubeflowMetadataAdapter,
-                 self)._prepare_execution(state, exec_properties, pipeline_info,
-                                          component_info)
+    return super()._prepare_execution(state, exec_properties, pipeline_info,
+                                      component_info)

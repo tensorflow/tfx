@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,11 +13,7 @@
 # limitations under the License.
 """Component config for docker run."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
-from typing import Dict, List, Optional, Text, Union
+from typing import Dict, List, Optional, Union
 
 from tfx.orchestration.config import base_component_config
 
@@ -49,14 +44,13 @@ class DockerComponentConfig(base_component_config.BaseComponentConfig):
   """
 
   def __init__(self,
-               docker_server_url: Optional[Text] = None,
-               environment: Optional[Union[Dict[Text, Text],
-                                           List[Text]]] = None,
-               name: Optional[Text] = None,
+               docker_server_url: Optional[str] = None,
+               environment: Optional[Union[Dict[str, str], List[str]]] = None,
+               name: Optional[str] = None,
                privileged: bool = False,
-               user: Optional[Union[Text, int]] = None,
-               volumes: Optional[Union[Dict[Text, Dict[Text, Text]],
-                                       List[Text]]] = None,
+               user: Optional[Union[str, int]] = None,
+               volumes: Optional[Union[Dict[str, Dict[str, str]],
+                                       List[str]]] = None,
                **kwargs):
     self.docker_server_url = docker_server_url
     self.environment = environment

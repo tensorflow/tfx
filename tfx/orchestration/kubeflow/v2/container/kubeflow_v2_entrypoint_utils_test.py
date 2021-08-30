@@ -68,7 +68,7 @@ _TEST_NAME_FROM_ID = {
 class KubeflowV2EntrypointUtilsTest(tf.test.TestCase):
 
   def setUp(self):
-    super(KubeflowV2EntrypointUtilsTest, self).setUp()
+    super().setUp()
     _ARTIFACT_1.uri = 'gs://root/string/'
     # Hash value of
     # 'projects/123456789/locations/us-central1/metadataStores/default/artifacts/11111'

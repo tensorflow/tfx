@@ -127,7 +127,7 @@ class RunDriverTest(test_case_utils.TfxTest):
         '--json_serialized_invocation_args',
         json_format.MessageToJson(message=self._executor_invocation)
     ]
-    with self.assertRaisesRegexp(
+    with self.assertRaisesRegex(
         ValueError, 'Latest span should be the same for each split'):
       driver.main(driver._parse_flags(serialized_args))
 

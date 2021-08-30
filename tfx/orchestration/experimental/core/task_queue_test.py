@@ -66,7 +66,7 @@ class TaskQueueTest(tu.TfxTest):
 
     # Enqueue t1, but calling `task_done` raises error since t1 is not dequeued.
     self.assertTrue(tq.enqueue(t1))
-    with self.assertRaisesRegexp(RuntimeError, 'Must call `dequeue`'):
+    with self.assertRaisesRegex(RuntimeError, 'Must call `dequeue`'):
       tq.task_done(t1)
 
     # `task_done` succeeds after dequeueing.
@@ -74,7 +74,7 @@ class TaskQueueTest(tu.TfxTest):
     tq.task_done(t1)
 
     # Error since t2 is not in the queue.
-    with self.assertRaisesRegexp(RuntimeError, 'Task not present'):
+    with self.assertRaisesRegex(RuntimeError, 'Task not present'):
       tq.task_done(t2)
 
 

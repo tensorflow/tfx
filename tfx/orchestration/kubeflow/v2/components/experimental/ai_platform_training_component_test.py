@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2020 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -130,7 +129,7 @@ class AiPlatformTrainingComponentTest(tf.test.TestCase):
         'region':
             'us-central1',
     }
-    with self.assertRaisesRegexp(ValueError, 'image_uri is required'):
+    with self.assertRaisesRegex(ValueError, 'image_uri is required'):
       _ = ai_platform_training_component.create_ai_platform_training(
           name='my_training_step',
           project_id='my-project',
@@ -147,7 +146,7 @@ class AiPlatformTrainingComponentTest(tf.test.TestCase):
             '--my-flag'
         ]
     }
-    with self.assertRaisesRegexp(ValueError, 'region is required'):
+    with self.assertRaisesRegex(ValueError, 'region is required'):
       _ = ai_platform_training_component.create_ai_platform_training(
           name='my_training_step',
           project_id='my-project',

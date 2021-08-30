@@ -104,7 +104,7 @@ class _ExecutionFailedError(Exception):
 
   def __init__(self, err_msg: str,
                executor_output: execution_result_pb2.ExecutorOutput):
-    super(_ExecutionFailedError, self).__init__(err_msg)
+    super().__init__(err_msg)
     self._executor_output = executor_output
 
   @property
@@ -128,7 +128,7 @@ def _register_execution(
       exec_properties=exec_properties)
 
 
-class Launcher(object):
+class Launcher:
   """Launcher is the main entrance of nodes in TFleX.
 
      It handles TFX internal details like artifact resolving, execution

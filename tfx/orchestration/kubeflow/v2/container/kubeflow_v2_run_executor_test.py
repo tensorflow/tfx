@@ -38,7 +38,7 @@ _TEST_OUTPUT_PROPERTY_KEY = "my_property"
 _TEST_OUTPUT_PROPERTY_VALUE = "my_value"
 
 
-class _ArgsCapture(object):
+class _ArgsCapture:
   instance = None
 
   def __enter__(self):

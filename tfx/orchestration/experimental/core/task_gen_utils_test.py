@@ -28,7 +28,7 @@ from ml_metadata.proto import metadata_store_pb2
 class TaskGenUtilsTest(tu.TfxTest):
 
   def setUp(self):
-    super(TaskGenUtilsTest, self).setUp()
+    super().setUp()
     pipeline_root = os.path.join(
         os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR', self.get_temp_dir()),
         self.id())

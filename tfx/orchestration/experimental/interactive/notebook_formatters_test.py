@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,10 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Tests for tfx.orchestration.experimental.interactive.notebook_formatters."""
-
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
 
 import re
 
@@ -53,7 +48,7 @@ class NotebookFormattersTest(tf.test.TestCase):
 
   def testFormatterTypeCheck(self):
     formatter = notebook_formatters.FORMATTER_REGISTRY[types.Artifact]
-    with self.assertRaisesRegexp(
+    with self.assertRaisesRegex(
         ValueError,
         'Expected object of type .*Artifact.* but got .*object object'):
       formatter.render(object())

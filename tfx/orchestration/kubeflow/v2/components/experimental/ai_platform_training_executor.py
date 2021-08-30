@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2020 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,7 +14,7 @@
 """Executor for AI Platform Training component."""
 
 import datetime
-from typing import Any, Dict, List, Text
+from typing import Any, Dict, List
 
 from tfx import types
 from tfx.dsl.components.base import base_executor
@@ -37,9 +36,9 @@ CONFIG_KEY = 'aip_training_config'
 class AiPlatformTrainingExecutor(base_executor.BaseExecutor):
   """AI Platform Training executor."""
 
-  def Do(self, input_dict: Dict[Text, List[types.Artifact]],
-         output_dict: Dict[Text, List[types.Artifact]],
-         exec_properties: Dict[Text, Any]) -> None:
+  def Do(self, input_dict: Dict[str, List[types.Artifact]],
+         output_dict: Dict[str, List[types.Artifact]],
+         exec_properties: Dict[str, Any]) -> None:
 
     self._log_startup(input_dict, output_dict, exec_properties)
 

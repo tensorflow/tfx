@@ -15,8 +15,8 @@
 import contextlib
 import copy
 import os
-
 from unittest import mock
+
 import tensorflow as tf
 from tfx import types
 from tfx import version as tfx_version
@@ -39,8 +39,8 @@ from tfx.proto.orchestration import execution_result_pb2
 from tfx.proto.orchestration import pipeline_pb2
 from tfx.utils import test_case_utils
 
-from ml_metadata.proto import metadata_store_pb2
 from google.protobuf import text_format
+from ml_metadata.proto import metadata_store_pb2
 
 _PYTHON_CLASS_EXECUTABLE_SPEC = executable_spec_pb2.PythonClassExecutableSpec
 
@@ -136,7 +136,7 @@ class _FakeCleanUpExecutorOperator(base_executor_operator.BaseExecutorOperator):
 class _FakeExampleGenLikeDriver(base_driver.BaseDriver):
 
   def __init__(self, mlmd_connection: metadata.Metadata):
-    super(_FakeExampleGenLikeDriver, self).__init__(mlmd_connection)
+    super().__init__(mlmd_connection)
     self._self_output = text_format.Parse(
         """
       inputs {
@@ -210,7 +210,7 @@ class _FakeExampleGenLikeDriver(base_driver.BaseDriver):
 class LauncherTest(test_case_utils.TfxTest):
 
   def setUp(self):
-    super(LauncherTest, self).setUp()
+    super().setUp()
     pipeline_root = os.path.join(
         os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR', self.get_temp_dir()),
         self.id())

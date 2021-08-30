@@ -13,7 +13,7 @@
 # limitations under the License.
 """Builder for Kubeflow pipelines StepSpec proto."""
 
-from typing import Any, Dict, List, Optional, Text, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 from kfp.pipeline_spec import pipeline_spec_pb2 as pipeline_pb2
 from tfx import components
@@ -60,8 +60,8 @@ _DRIVER_COMMANDS = (
 
 def _resolve_command_line(
     container_spec: executor_specs.TemplatedExecutorContainerSpec,
-    exec_properties: Dict[Text, Any],
-) -> List[Text]:
+    exec_properties: Dict[str, Any],
+) -> List[str]:
   """Resolves placeholders in the command line of a container.
 
   Args:
@@ -77,7 +77,7 @@ def _resolve_command_line(
   """
 
   def expand_command_line_arg(
-      cmd_arg: placeholders.CommandlineArgumentType) -> Text:
+      cmd_arg: placeholders.CommandlineArgumentType) -> str:
     """Resolves a single argument."""
     if isinstance(cmd_arg, str):
       return cmd_arg
@@ -93,7 +93,7 @@ def _resolve_command_line(
     elif isinstance(cmd_arg, placeholders.ConcatPlaceholder):
       resolved_items = [expand_command_line_arg(item) for item in cmd_arg.items]
       for item in resolved_items:
-        if not isinstance(item, (str, Text)):
+        if not isinstance(item, str):
           raise TypeError('Expanded item "{}" has incorrect type "{}"'.format(
               item, type(item)))
       return ''.join(resolved_items)
@@ -106,7 +106,7 @@ def _resolve_command_line(
   resolved_command_line = []
   for cmd_arg in (container_spec.command or []):
     resolved_cmd_arg = expand_command_line_arg(cmd_arg)
-    if not isinstance(resolved_cmd_arg, (str, Text)):
+    if not isinstance(resolved_cmd_arg, str):
       raise TypeError(
           'Resolved argument "{}" (type="{}") is not a string.'.format(
               resolved_cmd_arg, type(resolved_cmd_arg)))
@@ -115,7 +115,7 @@ def _resolve_command_line(
   return resolved_command_line
 
 
-class StepBuilder(object):
+class StepBuilder:
   """Kubeflow pipelines task builder.
 
   Constructs a pipeline task spec based on the TFX node information. Meanwhile,
@@ -126,13 +126,13 @@ class StepBuilder(object):
                node: base_node.BaseNode,
                deployment_config: pipeline_pb2.PipelineDeploymentConfig,
                component_defs: Dict[str, pipeline_pb2.ComponentSpec],
-               image: Optional[Text] = None,
-               image_cmds: Optional[List[Text]] = None,
-               beam_pipeline_args: Optional[List[Text]] = None,
+               image: Optional[str] = None,
+               image_cmds: Optional[List[str]] = None,
+               beam_pipeline_args: Optional[List[str]] = None,
                enable_cache: bool = False,
                pipeline_info: Optional[data_types.PipelineInfo] = None,
-               channel_redirect_map: Optional[Dict[Tuple[Text, Text],
-                                                   Text]] = None):
+               channel_redirect_map: Optional[Dict[Tuple[str, str],
+                                                   str]] = None):
     """Creates a StepBuilder object.
 
     A StepBuilder takes in a TFX node object (usually it's a component/resolver/

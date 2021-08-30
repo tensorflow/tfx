@@ -61,7 +61,7 @@ class NodeStateTest(test_utils.TfxTest):
 class PipelineStateTest(test_utils.TfxTest):
 
   def setUp(self):
-    super(PipelineStateTest, self).setUp()
+    super().setUp()
     pipeline_root = os.path.join(
         os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR', self.get_temp_dir()),
         self.id())

@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,11 +13,7 @@
 # limitations under the License.
 """Tests for tfx.orchestration.data_types."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
-from typing import Dict, List, Text
+from typing import Dict, List
 
 import tensorflow as tf
 from tfx.orchestration import data_types
@@ -65,7 +60,7 @@ class DataTypesTest(tf.test.TestCase):
   def testComponentSpecWithRuntimeParam(self):
     proto_str = '{"splits": [{"name": "name1", "pattern": "pattern1"}]}'
     param_proto = data_types.RuntimeParameter(
-        name='proto', ptype=Text, default=proto_str)
+        name='proto', ptype=str, default=proto_str)
     param_int = data_types.RuntimeParameter(name='int', ptype=int)
     input_channel = Channel(type=_InputArtifact)
     output_channel = Channel(type=_OutputArtifact)
@@ -81,7 +76,7 @@ class DataTypesTest(tf.test.TestCase):
     self.assertEqual(spec.exec_properties['proto'].default, proto_str)
 
   def testProtoTypeCheck(self):
-    param = data_types.RuntimeParameter(name='split-1', ptype=Text)
+    param = data_types.RuntimeParameter(name='split-1', ptype=str)
     # Dict representation of a example_gen_pb2.Input proto message.
     # The second split has int-typed pattern, which is wrong.
     proto = dict(splits=[
@@ -92,7 +87,7 @@ class DataTypesTest(tf.test.TestCase):
     input_channel = Channel(type=_InputArtifact)
     output_channel = Channel(type=_OutputArtifact)
 
-    with self.assertRaisesRegexp(
+    with self.assertRaisesRegex(
         ParseError, 'Failed to parse .* field: expected string or '
         '(bytes-like object|buffer)'):
       _ = _BasicComponentSpec(
@@ -109,22 +104,22 @@ class DataTypesTest(tf.test.TestCase):
       }
 
     parameter_int = data_types.RuntimeParameter(name='int', ptype=int)
-    parameter_str = data_types.RuntimeParameter(name='str', ptype=Text)
+    parameter_str = data_types.RuntimeParameter(name='str', ptype=str)
 
     _ = SimpleComponentSpec(x=parameter_int)
-    with self.assertRaisesRegexp(TypeError, 'Expected type'):
+    with self.assertRaisesRegex(TypeError, 'Expected type'):
       _ = SimpleComponentSpec(x=42, y=parameter_str)
 
     class ComponentSpecWithContainer(ComponentSpec):
       INPUTS = {}
       OUTPUTS = {}
       PARAMETERS = {
-          'x': ExecutionParameter(type=Dict[Text, Text]),
+          'x': ExecutionParameter(type=Dict[str, str]),
           'y': ExecutionParameter(type=List[int]),
       }
 
     _ = ComponentSpecWithContainer(x={u'key': parameter_str}, y=[parameter_int])
-    with self.assertRaisesRegexp(TypeError, 'Expecting value type'):
+    with self.assertRaisesRegex(TypeError, 'Expecting value type'):
       _ = ComponentSpecWithContainer(x={u'key': parameter_int}, y=[])
 
 

@@ -14,7 +14,7 @@
 """Chicago taxi example using TFX Kubernetes Orchestrator."""
 
 import os
-from typing import List, Text
+from typing import List
 
 import absl
 import tensorflow_model_analysis as tfma
@@ -66,9 +66,9 @@ _beam_pipeline_args = [
 ]
 
 
-def create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
-                    module_file: Text, serving_model_dir: Text,
-                    beam_pipeline_args: List[Text]) -> pipeline.Pipeline:
+def create_pipeline(pipeline_name: str, pipeline_root: str, data_root: str,
+                    module_file: str, serving_model_dir: str,
+                    beam_pipeline_args: List[str]) -> pipeline.Pipeline:
   """Implements the chicago taxi pipeline with TFX."""
 
   # Brings data into the pipeline or otherwise joins/converts training data.

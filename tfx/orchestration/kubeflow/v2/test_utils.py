@@ -17,7 +17,7 @@ import datetime
 import os
 import subprocess
 import time
-from typing import List, Optional, Text
+from typing import List, Optional
 
 from absl import logging
 from kfp.pipeline_spec import pipeline_spec_pb2 as pipeline_pb2
@@ -130,11 +130,11 @@ def two_step_pipeline() -> tfx_pipeline.Pipeline:
 
 
 def create_pipeline_components(
-    pipeline_root: Text,
-    transform_module: Text,
-    trainer_module: Text,
-    bigquery_query: Text = '',
-    csv_input_location: Text = '',
+    pipeline_root: str,
+    transform_module: str,
+    trainer_module: str,
+    bigquery_query: str = '',
+    csv_input_location: str = '',
 ) -> List[base_node.BaseNode]:
   """Creates components for a simple Chicago Taxi TFX pipeline for testing.
 
@@ -255,7 +255,7 @@ class TransformerSpec(types.ComponentSpec):
       'output1': component_spec.ChannelParameter(type=standard_artifacts.Model),
   }
   PARAMETERS = {
-      'param1': component_spec.ExecutionParameter(type=Text),
+      'param1': component_spec.ExecutionParameter(type=str),
   }
 
 
@@ -265,7 +265,7 @@ class ProducerSpec(types.ComponentSpec):
       'output1': component_spec.ChannelParameter(type=standard_artifacts.Model),
   }
   PARAMETERS = {
-      'param1': component_spec.ExecutionParameter(type=Text),
+      'param1': component_spec.ExecutionParameter(type=str),
   }
 
 
@@ -291,7 +291,7 @@ class DummyContainerSpecComponent(base_component.BaseComponent):
         output1=output1,
         param1=param1,
     )
-    super(DummyContainerSpecComponent, self).__init__(spec=spec)
+    super().__init__(spec=spec)
     if instance_name:
       self._id = '{}.{}'.format(self.__class__.__name__, instance_name)
     else:
@@ -323,7 +323,7 @@ class DummyProducerComponent(base_component.BaseComponent):
         output1=output1,
         param1=param1,
     )
-    super(DummyProducerComponent, self).__init__(spec=spec)
+    super().__init__(spec=spec)
     if instance_name:
       self._id = '{}.{}'.format(self.__class__.__name__, instance_name)
     else:
@@ -441,14 +441,14 @@ def pipeline_with_two_container_spec_components_2() -> tfx_pipeline.Pipeline:
   )
 
 
-def get_proto_from_test_data(filename: Text,
+def get_proto_from_test_data(filename: str,
                              pb_message: message.Message) -> message.Message:
   """Helper function that gets proto from testdata."""
   filepath = os.path.join(os.path.dirname(__file__), 'testdata', filename)
   return io_utils.parse_pbtxt_file(filepath, pb_message)
 
 
-def get_text_from_test_data(filename: Text) -> Text:
+def get_text_from_test_data(filename: str) -> str:
   """Helper function that gets raw string from testdata."""
   filepath = os.path.join(os.path.dirname(__file__), 'testdata', filename)
   return fileio.open(filepath, 'rb').read().decode('utf-8')
@@ -493,7 +493,7 @@ class ProducerComponent(base_component.BaseComponent):
   def __init__(self):
     examples_channel = channel_utils.as_channel([simple_artifacts.Dataset()])
     external_data_channel = channel_utils.as_channel([simple_artifacts.File()])
-    super(ProducerComponent, self).__init__(
+    super().__init__(
         _ProducerComponentSpec(
             examples=examples_channel, external_data=external_data_channel))
 
@@ -509,7 +509,7 @@ class ConsumerComponent(base_component.BaseComponent):
         [simple_artifacts.Statistics()])
     metrics_output_channel = channel_utils.as_channel(
         [simple_artifacts.Metrics()])
-    super(ConsumerComponent, self).__init__(
+    super().__init__(
         _ConsumerComponentSpec(
             examples=examples,
             external_data=external_data,
@@ -631,7 +631,7 @@ def pipeline_with_runtime_parameter() -> tfx_pipeline.Pipeline:
       input_int=producer_task.outputs['output_int'],
       input_float=producer_task.outputs['output_float'],
       param_string=data_types.RuntimeParameter(
-          ptype=Text, name='string_param', default='string value'),
+          ptype=str, name='string_param', default='string value'),
       param_int=42,
       param_float=3.14,
   )
@@ -740,16 +740,16 @@ class BaseKubeflowV2Test(test_case_utils.TfxTest):
           check=True)
 
   def setUp(self):
-    super(BaseKubeflowV2Test, self).setUp()
+    super().setUp()
     self.enter_context(test_case_utils.change_working_dir(self.tmp_dir))
 
     self._test_dir = self.tmp_dir
     self._test_output_dir = 'gs://{}/test_output'.format(self._BUCKET_NAME)
 
-  def _pipeline_root(self, pipeline_name: Text):
+  def _pipeline_root(self, pipeline_name: str):
     return os.path.join(self._test_output_dir, pipeline_name)
 
-  def _delete_pipeline_output(self, pipeline_name: Text):
+  def _delete_pipeline_output(self, pipeline_name: str):
     """Deletes output produced by the named pipeline.
 
     Args:
@@ -760,9 +760,9 @@ class BaseKubeflowV2Test(test_case_utils.TfxTest):
 
   def _create_pipeline(
       self,
-      pipeline_name: Text,
+      pipeline_name: str,
       pipeline_components: List[base_node.BaseNode],
-      beam_pipeline_args: Optional[List[Text]] = None) -> tfx_pipeline.Pipeline:
+      beam_pipeline_args: Optional[List[str]] = None) -> tfx_pipeline.Pipeline:
     """Creates a pipeline given name and list of components."""
     return tfx_pipeline.Pipeline(
         pipeline_name=pipeline_name,
