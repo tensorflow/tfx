@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -19,12 +18,8 @@ and inserting TFLite metadata with TFX.
 The trained model can be pluged into MLKit for object detection.
 """
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import os
-from typing import List, Text
+from typing import List
 
 import absl
 import tensorflow_model_analysis as tfma
@@ -84,11 +79,10 @@ _beam_pipeline_args = [
 ]
 
 
-def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
-                     module_file: Text, serving_model_dir_lite: Text,
-                     metadata_path: Text,
-                     labels_path: Text,
-                     beam_pipeline_args: List[Text]) -> pipeline.Pipeline:
+def _create_pipeline(pipeline_name: str, pipeline_root: str, data_root: str,
+                     module_file: str, serving_model_dir_lite: str,
+                     metadata_path: str, labels_path: str,
+                     beam_pipeline_args: List[str]) -> pipeline.Pipeline:
   """Implements the CIFAR10 image classification pipeline using TFX."""
   # This is needed for datasets with pre-defined splits
   # Change the pattern argument to train_whole/* and test_whole/* to train

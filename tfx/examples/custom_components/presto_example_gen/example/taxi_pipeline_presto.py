@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,7 +14,6 @@
 """Chicago taxi example using TFX."""
 
 import os
-from typing import Text
 
 import absl
 from tfx.components import Evaluator
@@ -63,11 +61,10 @@ _metadata_path = os.path.join(_tfx_root, 'metadata', _pipeline_name,
                               'metadata.db')
 
 
-def _create_pipeline(pipeline_name: Text, pipeline_root: Text,
-                     module_file: Text,
+def _create_pipeline(pipeline_name: str, pipeline_root: str, module_file: str,
                      presto_config: presto_config_pb2.PrestoConnConfig,
-                     query: Text, serving_model_dir: Text,
-                     metadata_path: Text) -> pipeline.Pipeline:
+                     query: str, serving_model_dir: str,
+                     metadata_path: str) -> pipeline.Pipeline:
   """Implements the chicago taxi pipeline with TFX."""
   # Brings data into the pipeline or otherwise joins/converts training data
   example_gen = PrestoExampleGen(presto_config, query=query)

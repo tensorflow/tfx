@@ -19,7 +19,7 @@ This module file will be used in Transform and generic Trainer.
 
 import os
 import pickle
-from typing import Text, Tuple
+from typing import Tuple
 
 import absl
 import numpy as np
@@ -47,7 +47,7 @@ _TRAIN_BATCH_SIZE = 20
 
 
 def _input_fn(
-    file_pattern: Text,
+    file_pattern: str,
     data_accessor: DataAccessor,
     schema: schema_pb2.Schema,
     batch_size: int = 20,

@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -26,7 +25,7 @@ from tfx.utils import proto_utils
 class ComponentTest(tf.test.TestCase):
 
   def setUp(self):
-    super(ComponentTest, self).setUp()
+    super().setUp()
     self.conn_config = presto_config_pb2.PrestoConnConfig(
         host='localhost', port=8080)
 

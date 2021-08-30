@@ -14,7 +14,7 @@
 """Penguin example using TFX on GCP."""
 
 import os
-from typing import Dict, List, Optional, Text
+from typing import Dict, List, Optional
 
 import absl
 import tensorflow_model_analysis as tfma
@@ -110,14 +110,14 @@ _beam_pipeline_args = [
 
 
 def _create_pipeline(
-    pipeline_name: Text,
-    pipeline_root: Text,
-    data_root: Text,
-    trainer_module_file: Text,
-    evaluator_module_file: Text,
-    ai_platform_training_args: Optional[Dict[Text, Text]],
-    ai_platform_serving_args: Optional[Dict[Text, Text]],
-    beam_pipeline_args: List[Text],
+    pipeline_name: str,
+    pipeline_root: str,
+    data_root: str,
+    trainer_module_file: str,
+    evaluator_module_file: str,
+    ai_platform_training_args: Optional[Dict[str, str]],
+    ai_platform_serving_args: Optional[Dict[str, str]],
+    beam_pipeline_args: List[str],
 ) -> tfx.dsl.Pipeline:
   """Implements the Penguin pipeline with TFX."""
   # Brings data into the pipeline or otherwise joins/converts training data.

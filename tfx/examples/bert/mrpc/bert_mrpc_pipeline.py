@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2020 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,12 +13,8 @@
 # limitations under the License.
 """BERT Sentence Pair Classification example on MRPC using TFX."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import os
-from typing import List, Text
+from typing import List
 
 import absl
 import tensorflow_model_analysis as tfma
@@ -72,10 +67,10 @@ _metadata_path = os.path.join(_tfx_root, 'metadata', _pipeline_name,
 _beam_pipeline_args = ['--direct_num_workers=1']
 
 
-def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
-                     module_file: Text, serving_model_dir: Text,
-                     metadata_path: Text,
-                     beam_pipeline_args: List[Text]) -> pipeline.Pipeline:
+def _create_pipeline(pipeline_name: str, pipeline_root: str, data_root: str,
+                     module_file: str, serving_model_dir: str,
+                     metadata_path: str,
+                     beam_pipeline_args: List[str]) -> pipeline.Pipeline:
   """Implements the Bert classication on mrpc dataset pipline with TFX."""
   input_config = example_gen_pb2.Input(splits=[
       example_gen_pb2.Input.Split(name='train', pattern='train/*'),

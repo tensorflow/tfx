@@ -12,24 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Beam pipeline for converting Google Analytics into training Examples."""
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
 
-from typing import Any, Dict, List, Union, Text
+from typing import Any, Dict, List, Union
 
 import apache_beam as beam
 from apache_beam.io.gcp.internal.clients import bigquery
 import tensorflow as tf
 
 
-def _sanitize_page_path(page_path: Text):
+def _sanitize_page_path(page_path: str):
   """Remove everything after the query."""
   return page_path.split('?')[0]
 
 
-def create_tensorflow_example(features: Dict[Text, List[Union[int, float,
-                                                              Text]]]):
+def create_tensorflow_example(
+    features: Dict[str, List[Union[int, float, str]]]):
   """Populate a Tensorflow Example with the given features."""
   result = tf.train.Example()
   for name, value in features.items():
@@ -59,8 +56,8 @@ def ga_session_to_tensorflow_examples(session: List[Any]):
   return examples
 
 
-def is_duplicate_event(first_event: Dict[Text, Any], second_event: Dict[Text,
-                                                                        Any]):
+def is_duplicate_event(first_event: Dict[str, Any],
+                       second_event: Dict[str, Any]):
   return (first_event['time'] == second_event['time'] or
           first_event['page']['pagePath'] == second_event['page']['pagePath'])
 
@@ -68,7 +65,7 @@ def is_duplicate_event(first_event: Dict[Text, Any], second_event: Dict[Text,
 class ExampleGeneratingDoFn(beam.DoFn):
   """Creates Tensorflow Examples from the provided Google Analytics session."""
 
-  def process(self, entry: Dict[Text, Any]):
+  def process(self, entry: Dict[str, Any]):
     session = entry['hits']
     session.sort(key=lambda s: s['hitNumber'])
     filtered_session = []

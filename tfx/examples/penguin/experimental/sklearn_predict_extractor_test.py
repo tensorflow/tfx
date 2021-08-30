@@ -35,7 +35,7 @@ from tensorflow_metadata.proto.v0 import schema_pb2
 class SklearnPredictExtractorTest(testutil.TensorflowModelAnalysisTest):
 
   def setUp(self):
-    super(SklearnPredictExtractorTest, self).setUp()
+    super().setUp()
     self._eval_export_dir = os.path.join(self._getTempDir(), 'eval_export')
     self._create_sklearn_model(self._eval_export_dir)
     self._eval_config = config.EvalConfig(model_specs=[config.ModelSpec()])

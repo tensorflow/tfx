@@ -16,7 +16,7 @@
 import copy
 import os
 import pickle
-from typing import Dict, Iterable, List, Text
+from typing import Dict, Iterable, List
 
 import apache_beam as beam
 import numpy as np
@@ -60,12 +60,11 @@ def _make_sklearn_predict_extractor(
 class _TFMAPredictionDoFn(model_util.DoFnWithModels):
   """A DoFn that loads the models and predicts."""
 
-  def __init__(self, eval_shared_models: Dict[Text, types.EvalSharedModel]):
-    super(_TFMAPredictionDoFn, self).__init__(
-        {k: v.model_loader for k, v in eval_shared_models.items()})
+  def __init__(self, eval_shared_models: Dict[str, types.EvalSharedModel]):
+    super().__init__({k: v.model_loader for k, v in eval_shared_models.items()})
 
   def setup(self):
-    super(_TFMAPredictionDoFn, self).setup()
+    super().setup()
     self._feature_keys = None
     self._label_key = None
     for loaded_model in self._loaded_models.values():
@@ -122,7 +121,7 @@ class _TFMAPredictionDoFn(model_util.DoFnWithModels):
 @beam.typehints.with_output_types(types.Extracts)
 def _ExtractPredictions(  # pylint: disable=invalid-name
     extracts: beam.pvalue.PCollection,
-    eval_shared_models: Dict[Text, types.EvalSharedModel],
+    eval_shared_models: Dict[str, types.EvalSharedModel],
 ) -> beam.pvalue.PCollection:
   """A PTransform that adds predictions and possibly other tensors to extracts.
 
@@ -137,7 +136,7 @@ def _ExtractPredictions(  # pylint: disable=invalid-name
       _TFMAPredictionDoFn(eval_shared_models))
 
 
-def _custom_model_loader_fn(model_path: Text):
+def _custom_model_loader_fn(model_path: str):
   """Returns a function that loads a scikit-learn model."""
   return lambda: pickle.load(tf.io.gfile.GFile(model_path, 'rb'))
 

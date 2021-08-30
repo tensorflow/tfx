@@ -14,7 +14,7 @@
 """Penguin example using TFX."""
 
 import os
-from typing import List, Text
+from typing import List
 
 import absl
 import tensorflow_model_analysis as tfma
@@ -53,10 +53,10 @@ _beam_pipeline_args = [
 ]
 
 
-def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
-                     module_file: Text, accuracy_threshold: float,
-                     serving_model_dir: Text, metadata_path: Text,
-                     beam_pipeline_args: List[Text],
+def _create_pipeline(pipeline_name: str, pipeline_root: str, data_root: str,
+                     module_file: str, accuracy_threshold: float,
+                     serving_model_dir: str, metadata_path: str,
+                     beam_pipeline_args: List[str],
                      make_warmup: bool) -> tfx.dsl.Pipeline:
   """Implements the penguin pipeline with TFX."""
   # Brings data into the pipeline or otherwise joins/converts training data.

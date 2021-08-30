@@ -26,7 +26,7 @@ https://github.com/tensorflow/cloud/blob/master/src/python/tensorflow_cloud/tune
 
 import datetime
 import os
-from typing import List, Text
+from typing import List
 
 from absl import logging
 import keras_tuner
@@ -109,7 +109,7 @@ def _get_transform_features_signature(model, tf_transform_output):
   return transform_features_fn
 
 
-def _input_fn(file_pattern: List[Text],
+def _input_fn(file_pattern: List[str],
               data_accessor: tfx.components.DataAccessor,
               tf_transform_output: tft.TFTransformOutput,
               batch_size: int = 200) -> tf.data.Dataset:

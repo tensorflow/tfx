@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,11 +20,7 @@ The utilities in this file are used to build a model with native Keras.
 This module file will be used in Transform and generic Trainer.
 """
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
-from typing import List, Text
+from typing import List
 
 import absl
 import tensorflow as tf
