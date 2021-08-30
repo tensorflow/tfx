@@ -179,7 +179,7 @@ def _create_pipeline(
       schema=schema_gen.outputs['schema'],
       module_file=module_file)
 
-  # Uses user-provided Python function that implements a model using TF-Learn
+  # Uses user-provided Python function that implements a model.
   # to train a model on Google Cloud AI Platform.
   trainer = Trainer(
       custom_executor_spec=executor_spec.ExecutorClassSpec(

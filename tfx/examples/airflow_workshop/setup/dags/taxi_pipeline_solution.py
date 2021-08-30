@@ -105,7 +105,7 @@ def _create_pipeline(pipeline_name: str, pipeline_root: str, data_root: str,
       schema=infer_schema.outputs['schema'],
       module_file=module_file)
 
-  # Uses user-provided Python function that implements a model using TF-Learn.
+  # Uses user-provided Python function that implements a model.
   trainer = Trainer(
       module_file=module_file,
       custom_executor_spec=executor_spec.ExecutorClassSpec(GenericExecutor),

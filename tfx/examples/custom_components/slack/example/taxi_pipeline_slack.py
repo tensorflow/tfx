@@ -93,7 +93,7 @@ def _create_pipeline():
       schema=schema_gen.outputs['schema'],
       module_file=_taxi_module_file)
 
-  # Uses user-provided Python function that implements a model using TF-Learn.
+  # Uses user-provided Python function that implements a model.
   trainer = Trainer(
       module_file=_taxi_module_file,
       examples=transform.outputs['transformed_examples'],
