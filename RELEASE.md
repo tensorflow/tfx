@@ -26,6 +26,8 @@
 *   The default job name for Google Cloud AI Training jobs was changed from
     'tfx_YYYYmmddHHMMSS' to 'tfx_YYYYmmddHHMMSS_xxxxxxxx', where 'xxxxxxxx' is
     a random 8 digit hexadecimal string.
+*   Fixed an issue where ClientOptions with regional endpoint was
+    incorrectly left out in Vertex AI pusher.
 *   Depends on `apache-beam[gcp]>=2.31,<2.32`.
 *   Depends on `keras-tuner>=1.0.4,<2`.
 

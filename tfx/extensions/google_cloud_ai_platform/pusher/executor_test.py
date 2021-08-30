@@ -16,7 +16,6 @@
 import copy
 import os
 from typing import Any, Dict
-import unittest
 from unittest import mock
 
 import tensorflow as tf
@@ -26,16 +25,6 @@ from tfx.types import standard_artifacts
 from tfx.types import standard_component_specs
 from tfx.utils import json_utils
 from tfx.utils import telemetry_utils
-
-
-# TODO(b/163417407): remove when we can safely depend on
-def _stale_googleapiclient_version_():
-  import googleapiclient  # pylint: disable=g-import-not-at-top
-  try:
-    return googleapiclient.__version__ < '1.8'
-  except AttributeError:
-    # Later version of googleapiclient has no __version__
-    return False
 
 
 class ExecutorTest(tf.test.TestCase):
@@ -188,10 +177,6 @@ class ExecutorTest(tf.test.TestCase):
       self._executor.Do(self._input_dict, self._output_dict,
                         self._serialize_custom_config_under_test())
 
-  # TODO(b/163417407): template and run this test when we can safely depend on
-  # googleapiclient>=1.8.
-  @unittest.skipIf(_stale_googleapiclient_version_(),
-                   'googleapiclient is too stale')
   @mock.patch(
       'tfx.extensions.google_cloud_ai_platform.pusher.executor.discovery')
   @mock.patch.object(executor, 'runner', autospec=True)
