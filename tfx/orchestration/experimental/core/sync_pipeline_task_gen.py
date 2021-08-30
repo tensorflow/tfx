@@ -36,8 +36,7 @@ from tfx.utils import topsort
 from google.protobuf import any_pb2
 from ml_metadata.proto import metadata_store_pb2
 
-# Caches nodes that completed successfully so that we don't have to query MLMD
-# for the status of those nodes repeatedly.
+# Caches successful and skipped nodes so we don't have to query MLMD repeatedly.
 _successful_nodes_cache = cachetools.LRUCache(maxsize=1024)
 
 
@@ -227,6 +226,14 @@ class SyncPipelineTaskGenerator(task_gen.TaskGenerator):
     node_uid = task_lib.NodeUid.from_pipeline_node(self._pipeline, node)
     resolved_info = task_gen_utils.generate_resolved_info(
         self._mlmd_handle, node)
+    if resolved_info is None:
+      # Node is intentionally skipped so we proceed without execution.
+      # TODO(b/): Note that we do not persist the decision to skip execution
+      # anywhere so backsliding is possible where an initially skipped node
+      # may be executed if there's an intervening update operation. We should
+      # persist the skip decision to rectify.
+      successful_node_ids.add(node.node_info.id)
+      return None
     if resolved_info.input_artifacts is None:
       return self._abort_task(f'failure to resolve inputs; node uid {node_uid}')
 
