@@ -98,4 +98,4 @@ class BulkInferrer(base_beam_component.BaseBeamComponent):
         output_example_spec=output_example_spec,
         inference_result=inference_result,
         output_examples=output_examples)
-    super(BulkInferrer, self).__init__(spec=spec)
+    super().__init__(spec=spec)

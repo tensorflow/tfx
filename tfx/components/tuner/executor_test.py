@@ -39,7 +39,7 @@ from tensorflow.python.lib.io import file_io  # pylint: disable=g-direct-tensorf
 class ExecutorTest(tf.test.TestCase):
 
   def setUp(self):
-    super(ExecutorTest, self).setUp()
+    super().setUp()
     self._testdata_dir = os.path.join(
         os.path.dirname(os.path.dirname(__file__)), 'testdata')
     self._output_data_dir = os.path.join(

@@ -13,10 +13,6 @@
 # limitations under the License.
 """Tests for tfx.components.infra_validator.component."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import tensorflow as tf
 from tfx.components.infra_validator import component
 from tfx.proto import infra_validator_pb2

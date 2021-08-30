@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,10 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Tests for tfx.components.example_gen.base_example_gen_executor."""
-
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
 
 import os
 
@@ -84,7 +79,7 @@ class TestExampleGenExecutor(base_example_gen_executor.BaseExampleGenExecutor):
 class BaseExampleGenExecutorTest(tf.test.TestCase):
 
   def setUp(self):
-    super(BaseExampleGenExecutorTest, self).setUp()
+    super().setUp()
     self._output_data_dir = os.path.join(
         os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR', self.get_temp_dir()),
         self._testMethodName)
@@ -203,8 +198,8 @@ class BaseExampleGenExecutorTest(tf.test.TestCase):
 
     # Run executor.
     example_gen = TestExampleGenExecutor()
-    with self.assertRaisesRegexp(RuntimeError,
-                                 'Feature name `.*` does not exist.'):
+    with self.assertRaisesRegex(RuntimeError,
+                                'Feature name `.*` does not exist.'):
       example_gen.Do({}, self._output_dict, self._exec_properties)
 
   def testEmptyFeature(self):
@@ -213,7 +208,7 @@ class BaseExampleGenExecutorTest(tf.test.TestCase):
 
     # Run executor.
     example_gen = TestExampleGenExecutor()
-    with self.assertRaisesRegexp(
+    with self.assertRaisesRegex(
         RuntimeError, 'Partition feature does not contain any value.'):
       example_gen.Do({}, self._output_dict, self._exec_properties)
 
@@ -224,7 +219,7 @@ class BaseExampleGenExecutorTest(tf.test.TestCase):
 
     # Run executor.
     example_gen = TestExampleGenExecutor()
-    with self.assertRaisesRegexp(
+    with self.assertRaisesRegex(
         RuntimeError,
         'Only `bytes_list` and `int64_list` features are supported for partition.'
     ):
@@ -238,7 +233,7 @@ class BaseExampleGenExecutorTest(tf.test.TestCase):
 
     # Run executor.
     example_gen = TestExampleGenExecutor()
-    with self.assertRaisesRegexp(
+    with self.assertRaisesRegex(
         RuntimeError, 'Split by `partition_feature_name` is only supported '
         'for FORMAT_TF_EXAMPLE and FORMAT_TF_SEQUENCE_EXAMPLE payload format.'):
       example_gen.Do({}, self._output_dict, self._exec_properties)

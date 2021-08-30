@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,14 +13,10 @@
 # limitations under the License.
 """Utilities for ExampleGen components."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import datetime
 import os
 import re
-from typing import Any, Dict, Iterable, List, Optional, Text, Tuple, Union
+from typing import Any, Dict, Iterable, List, Optional, Tuple, Union
 
 from absl import logging
 import tensorflow as tf
@@ -86,7 +81,7 @@ UNIX_EPOCH_DATE_UTC = datetime.datetime(  # pylint: disable=g-tzinfo-datetime
 _DEFAULT_ENCODING = 'utf-8'
 
 
-def dict_to_example(instance: Dict[Text, Any]) -> tf.train.Example:
+def dict_to_example(instance: Dict[str, Any]) -> tf.train.Example:
   """Converts dict to tf example."""
   feature = {}
   for key, value in instance.items():
@@ -125,9 +120,8 @@ def dict_to_example(instance: Dict[Text, Any]) -> tf.train.Example:
 
 
 def generate_output_split_names(
-    input_config: Union[example_gen_pb2.Input, Dict[Text, Any]],
-    output_config: Union[example_gen_pb2.Output, Dict[Text,
-                                                      Any]]) -> List[Text]:
+    input_config: Union[example_gen_pb2.Input, Dict[str, Any]],
+    output_config: Union[example_gen_pb2.Output, Dict[str, Any]]) -> List[str]:
   """Return output split name based on input and output config.
 
   Return output split name if it's specified and input only contains one split,
@@ -200,7 +194,7 @@ def generate_output_split_names(
 
 
 def make_default_input_config(
-    split_pattern: Text = '*') -> example_gen_pb2.Input:
+    split_pattern: str = '*') -> example_gen_pb2.Input:
   """Returns default input config."""
   # Treats input base dir as a single split.
   return example_gen_pb2.Input(splits=[
@@ -209,7 +203,7 @@ def make_default_input_config(
 
 
 def make_default_output_config(
-    input_config: Union[example_gen_pb2.Input, Dict[Text, Any]]
+    input_config: Union[example_gen_pb2.Input, Dict[str, Any]]
 ) -> example_gen_pb2.Output:
   """Returns default output config based on input config."""
   if isinstance(input_config, example_gen_pb2.Input):
@@ -230,7 +224,7 @@ def make_default_output_config(
         ]))
 
 
-def _glob_to_regex(glob_pattern: Text) -> Text:
+def _glob_to_regex(glob_pattern: str) -> str:
   """Changes glob pattern to regex pattern."""
   regex_pattern = glob_pattern
   regex_pattern = regex_pattern.replace('.', '\\.')
@@ -253,8 +247,8 @@ def span_number_to_date(span: int) -> Tuple[int, int, int]:
   return date.year, date.month, date.day
 
 
-def _make_zero_padding_spec_value(spec_full_regex: Text, pattern: Text,
-                                  spec_value: int) -> Text:
+def _make_zero_padding_spec_value(spec_full_regex: str, pattern: str,
+                                  spec_value: int) -> str:
   """Returns spec value, applies zero padding if needed."""
   match_result = re.search(spec_full_regex, pattern)
   assert match_result, 'No %s found in split %s' % (spec_full_regex, pattern)
@@ -317,9 +311,9 @@ def verify_split_pattern_specs(
   return is_match_span, is_match_date, is_match_version
 
 
-def get_pattern_for_span_version(pattern: Text, is_match_span: bool,
+def get_pattern_for_span_version(pattern: str, is_match_span: bool,
                                  is_match_date: bool, is_match_version: bool,
-                                 span: int, version: Optional[int]) -> Text:
+                                 span: int, version: Optional[int]) -> str:
   """Return pattern with Span and Version spec filled."""
   if is_match_span:
     span_token = _make_zero_padding_spec_value(SPAN_FULL_REGEX, pattern, span)
@@ -337,7 +331,7 @@ def get_pattern_for_span_version(pattern: Text, is_match_span: bool,
   return pattern
 
 
-def get_query_for_span(pattern: Text, span: int) -> Text:
+def get_query_for_span(pattern: str, span: int) -> str:
   """Return query with timestamp placeholders filled."""
   # TODO(b/179853017): make UNIX_EPOCH_DATE_UTC timezone configurable.
   begin = UNIX_EPOCH_DATE_UTC + datetime.timedelta(days=span)
@@ -351,9 +345,9 @@ def get_query_for_span(pattern: Text, span: int) -> Text:
 
 
 def _find_matched_span_version_from_path(
-    file_path: Text, split_regex_pattern: Text, is_match_span: bool,
+    file_path: str, split_regex_pattern: str, is_match_span: bool,
     is_match_date: bool, is_match_version: bool
-) -> Tuple[Optional[List[Text]], Optional[int], Optional[Text], Optional[int]]:
+) -> Tuple[Optional[List[str]], Optional[int], Optional[str], Optional[int]]:
   """Finds the span tokens and number given a file path and split regex."""
 
   result = re.search(split_regex_pattern, file_path)
@@ -398,8 +392,8 @@ def _find_matched_span_version_from_path(
           matched_version_int)
 
 
-def _get_spec_width(spec_full_regex: Text, spec_name: Text,
-                    split: example_gen_pb2.Input.Split) -> Optional[Text]:
+def _get_spec_width(spec_full_regex: str, spec_name: str,
+                    split: example_gen_pb2.Input.Split) -> Optional[str]:
   """Returns width modifier of a spec, if it exists."""
   result = re.search(spec_full_regex, split.pattern)
   assert result, 'No %s found in split %s' % (spec_name, split.pattern)
@@ -419,7 +413,7 @@ def _get_spec_width(spec_full_regex: Text, spec_name: Text,
 def _get_span_replace_glob_and_regex(
     range_config: range_config_pb2.RangeConfig, is_match_span: bool,
     is_match_date: bool,
-    span_width_str: Optional[Text]) -> Union[Text, List[Text]]:
+    span_width_str: Optional[str]) -> Union[str, List[str]]:
   """Replace span or date spec if static range RangeConfig is provided."""
   if range_config.HasField('static_range'):
     if is_match_span:
@@ -450,9 +444,9 @@ def _get_span_replace_glob_and_regex(
 
 
 def _create_matching_glob_and_regex(
-    uri: Text, split: example_gen_pb2.Input.Split, is_match_span: bool,
+    uri: str, split: example_gen_pb2.Input.Split, is_match_span: bool,
     is_match_date: bool, is_match_version: bool,
-    range_config: Optional[range_config_pb2.RangeConfig]) -> Tuple[Text, Text]:
+    range_config: Optional[range_config_pb2.RangeConfig]) -> Tuple[str, str]:
   """Constructs glob and regex patterns for matching span and version.
 
   Construct a glob and regex pattern for matching files and capturing span and
@@ -555,7 +549,7 @@ def _create_matching_glob_and_regex(
 
 
 def _get_target_span_version(
-    uri: Text,
+    uri: str,
     split: example_gen_pb2.Input.Split,
     range_config: Optional[range_config_pb2.RangeConfig] = None
 ) -> Tuple[Optional[int], Optional[int]]:
@@ -652,10 +646,10 @@ def _get_target_span_version(
 
 
 def calculate_splits_fingerprint_span_and_version(
-    input_base_uri: Text,
+    input_base_uri: str,
     splits: Iterable[example_gen_pb2.Input.Split],
     range_config: Optional[range_config_pb2.RangeConfig] = None
-) -> Tuple[Text, int, Optional[int]]:
+) -> Tuple[str, int, Optional[int]]:
   """Calculates the fingerprint of files in a URI matching split patterns.
 
   If a pattern has the {SPAN} placeholder or the Date spec placeholders, {YYYY},

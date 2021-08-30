@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,14 +13,10 @@
 # limitations under the License.
 """Generic TFX example gen base executor."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import abc
 import bisect
 import hashlib
-from typing import Any, Dict, List, Text, Union
+from typing import Any, Dict, List, Union
 
 from absl import logging
 import apache_beam as beam
@@ -143,8 +138,8 @@ class BaseExampleGenExecutor(base_beam_executor.BaseBeamExecutor, abc.ABC):
   def GenerateExamplesByBeam(
       self,
       pipeline: beam.Pipeline,
-      exec_properties: Dict[Text, Any],
-  ) -> Dict[Text, beam.pvalue.PCollection]:
+      exec_properties: Dict[str, Any],
+  ) -> Dict[str, beam.pvalue.PCollection]:
     """Converts input source to serialized record splits based on configs.
 
     Custom ExampleGen executor should provide GetInputSourceToExamplePTransform
@@ -221,9 +216,9 @@ class BaseExampleGenExecutor(base_beam_executor.BaseBeamExecutor, abc.ABC):
 
   def Do(
       self,
-      input_dict: Dict[Text, List[types.Artifact]],
-      output_dict: Dict[Text, List[types.Artifact]],
-      exec_properties: Dict[Text, Any],
+      input_dict: Dict[str, List[types.Artifact]],
+      output_dict: Dict[str, List[types.Artifact]],
+      exec_properties: Dict[str, Any],
   ) -> None:
     """Take input data source and generates serialized data splits.
 

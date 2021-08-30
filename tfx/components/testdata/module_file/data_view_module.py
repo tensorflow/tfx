@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """A module file used by tests that exercise DataView related components."""
-from typing import Any, Dict, Text
+from typing import Any, Dict
 
 import tensorflow as tf
 from tfx_bsl.coders import tf_graph_record_decoder
@@ -21,7 +21,7 @@ from tfx_bsl.coders import tf_graph_record_decoder
 class SimpleDecoder(tf_graph_record_decoder.TFGraphRecordDecoder):
   """Simply converts the input records (1-D dense tensor) to a sparse tensor."""
 
-  def decode_record(self, record: tf.Tensor) -> Dict[Text, Any]:
+  def decode_record(self, record: tf.Tensor) -> Dict[str, Any]:
     indices = tf.transpose(
         tf.stack([
             tf.range(tf.size(record), dtype=tf.int64),

@@ -13,12 +13,7 @@
 # limitations under the License.
 """Module for shared interface of every model server runners."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import abc
-from typing import Text
 
 
 class BaseModelServerRunner(abc.ABC):
@@ -71,11 +66,11 @@ class BaseModelServerRunner(abc.ABC):
   """
 
   @abc.abstractmethod
-  def __repr__(self) -> Text:
+  def __repr__(self) -> str:
     pass
 
   @abc.abstractmethod
-  def GetEndpoint(self) -> Text:
+  def GetEndpoint(self) -> str:
     """Get an endpoint to the model server to connect to.
 
     Endpoint will be available after the model server job has reached the

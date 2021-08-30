@@ -16,7 +16,7 @@
 import os
 import signal
 import threading
-from typing import Any, Dict, Text
+from typing import Any, Dict
 from unittest import mock
 
 import tensorflow as tf
@@ -36,21 +36,21 @@ from google.protobuf import json_format
 
 
 def _make_serving_spec(
-    payload: Dict[Text, Any]) -> infra_validator_pb2.ServingSpec:
+    payload: Dict[str, Any]) -> infra_validator_pb2.ServingSpec:
   result = infra_validator_pb2.ServingSpec()
   json_format.ParseDict(payload, result)
   return result
 
 
 def _make_validation_spec(
-    payload: Dict[Text, Any]) -> infra_validator_pb2.ValidationSpec:
+    payload: Dict[str, Any]) -> infra_validator_pb2.ValidationSpec:
   result = infra_validator_pb2.ValidationSpec()
   json_format.ParseDict(payload, result)
   return result
 
 
 def _make_request_spec(
-    payload: Dict[Text, Any]) -> infra_validator_pb2.RequestSpec:
+    payload: Dict[str, Any]) -> infra_validator_pb2.RequestSpec:
   result = infra_validator_pb2.RequestSpec()
   json_format.ParseDict(payload, result)
   return result
@@ -59,7 +59,7 @@ def _make_request_spec(
 class ExecutorTest(tf.test.TestCase):
 
   def setUp(self):
-    super(ExecutorTest, self).setUp()
+    super().setUp()
 
     # Setup Mocks
 
@@ -312,10 +312,10 @@ class ExecutorTest(tf.test.TestCase):
     self.assertFileExists(os.path.join(self._blessing.uri, 'INFRA_NOT_BLESSED'))
     self.assertEqual(0, self._blessing.get_int_custom_property('blessed'))
 
-  def assertFileExists(self, path: Text):
+  def assertFileExists(self, path: str):
     self.assertTrue(fileio.exists(path))
 
-  def assertFileDoesNotExist(self, path: Text):
+  def assertFileDoesNotExist(self, path: str):
     self.assertFalse(fileio.exists(path))
 
 if __name__ == '__main__':

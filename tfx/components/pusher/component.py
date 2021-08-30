@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,11 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """TFX Pusher component definition."""
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
 
-from typing import Any, Dict, Optional, Text, Union
+from typing import Any, Dict, Optional, Union
 
 from absl import logging
 from tfx import types
@@ -80,7 +76,7 @@ class Pusher(base_component.BaseComponent):
       infra_blessing: Optional[types.Channel] = None,
       push_destination: Optional[Union[pusher_pb2.PushDestination,
                                        data_types.RuntimeParameter]] = None,
-      custom_config: Optional[Dict[Text, Any]] = None,
+      custom_config: Optional[Dict[str, Any]] = None,
       custom_executor_spec: Optional[executor_spec.ExecutorSpec] = None):
     """Construct a Pusher component.
 
@@ -125,5 +121,4 @@ class Pusher(base_component.BaseComponent):
         push_destination=push_destination,
         custom_config=json_utils.dumps(custom_config),
         pushed_model=pushed_model)
-    super(Pusher, self).__init__(
-        spec=spec, custom_executor_spec=custom_executor_spec)
+    super().__init__(spec=spec, custom_executor_spec=custom_executor_spec)

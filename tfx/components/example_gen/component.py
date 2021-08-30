@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,11 +13,7 @@
 # limitations under the License.
 """TFX ExampleGen component definition."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
-from typing import Optional, Text, Union
+from typing import Optional, Union
 
 from tfx import types
 from tfx.components.example_gen import driver
@@ -110,7 +105,7 @@ class QueryBasedExampleGen(base_beam_component.BaseBeamComponent):
         output_file_format=output_file_format,
         custom_config=custom_config,
         examples=example_artifacts)
-    super(QueryBasedExampleGen, self).__init__(spec=spec)
+    super().__init__(spec=spec)
 
 
 class FileBasedExampleGen(base_beam_component.BaseBeamComponent):
@@ -144,7 +139,7 @@ class FileBasedExampleGen(base_beam_component.BaseBeamComponent):
 
   def __init__(
       self,
-      input_base: Optional[Text] = None,
+      input_base: Optional[str] = None,
       input_config: Optional[Union[example_gen_pb2.Input,
                                    data_types.RuntimeParameter]] = None,
       output_config: Optional[Union[example_gen_pb2.Output,
@@ -193,5 +188,4 @@ class FileBasedExampleGen(base_beam_component.BaseBeamComponent):
         output_data_format=output_data_format,
         output_file_format=output_file_format,
         examples=example_artifacts)
-    super(FileBasedExampleGen, self).__init__(
-        spec=spec, custom_executor_spec=custom_executor_spec)
+    super().__init__(spec=spec, custom_executor_spec=custom_executor_spec)

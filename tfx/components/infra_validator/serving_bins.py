@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2020 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,13 +13,9 @@
 # limitations under the License.
 """Modules for organizing various model server binaries."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import abc
 import os
-from typing import Any, Dict, List, Optional, Text
+from typing import Any, Dict, List, Optional
 
 from docker import types as docker_types
 
@@ -64,7 +59,7 @@ class ServingBinary(abc.ABC):
         type(self).__name__))
 
   @abc.abstractproperty
-  def image(self) -> Text:
+  def image(self) -> str:
     """Container image of the model server.
 
     Only applies to docker compatible serving binaries.
@@ -73,7 +68,7 @@ class ServingBinary(abc.ABC):
         type(self).__name__))
 
   @abc.abstractmethod
-  def MakeEnvVars(self, *args: Any) -> Dict[Text, Text]:
+  def MakeEnvVars(self, *args: Any) -> Dict[str, str]:
     """Construct environment variables to be used in container image.
 
     Only applies to docker compatible serving binaries.
@@ -88,7 +83,7 @@ class ServingBinary(abc.ABC):
         type(self).__name__))
 
   @abc.abstractmethod
-  def MakeDockerRunParams(self, *args: Any) -> Dict[Text, Text]:
+  def MakeDockerRunParams(self, *args: Any) -> Dict[str, str]:
     """Make parameters for docker `client.containers.run`.
 
     Only applies to docker compatible serving binaries.
@@ -103,7 +98,7 @@ class ServingBinary(abc.ABC):
         type(self).__name__))
 
   @abc.abstractmethod
-  def MakeClient(self, endpoint: Text) -> base_client.BaseModelServerClient:
+  def MakeClient(self, endpoint: str) -> base_client.BaseModelServerClient:
     """Create a model server client of this serving binary."""
     raise NotImplementedError('{} does not implement MakeClient.'.format(
         type(self).__name__))
@@ -127,12 +122,12 @@ class TensorFlowServing(ServingBinary):
 
   def __init__(
       self,
-      model_name: Text,
-      image_name: Optional[Text] = None,
-      tag: Optional[Text] = None,
-      digest: Optional[Text] = None,
+      model_name: str,
+      image_name: Optional[str] = None,
+      tag: Optional[str] = None,
+      digest: Optional[str] = None,
   ):
-    super(TensorFlowServing, self).__init__()
+    super().__init__()
     self._model_name = model_name
     if (tag is None) == (digest is None):
       raise ValueError('Exactly one of `tag` or `digest` should be used.')
@@ -147,11 +142,10 @@ class TensorFlowServing(ServingBinary):
     return self._DEFAULT_GRPC_PORT
 
   @property
-  def image(self) -> Text:
+  def image(self) -> str:
     return self._image
 
-  def MakeEnvVars(
-      self, model_path: Optional[Text] = None) -> Dict[Text, Text]:
+  def MakeEnvVars(self, model_path: Optional[str] = None) -> Dict[str, str]:
     if model_path is None:
       model_base_path = self._DEFAULT_MODEL_BASE_PATH
     else:
@@ -161,10 +155,8 @@ class TensorFlowServing(ServingBinary):
         'MODEL_BASE_PATH': model_base_path
     }
 
-  def MakeDockerRunParams(
-      self,
-      model_path: Text,
-      needs_mount: bool) -> Dict[Text, Any]:
+  def MakeDockerRunParams(self, model_path: str,
+                          needs_mount: bool) -> Dict[str, Any]:
     """Make parameters for docker `client.containers.run`.
 
     Args:
@@ -205,6 +197,6 @@ class TensorFlowServing(ServingBinary):
 
     return result
 
-  def MakeClient(self, endpoint: Text) -> base_client.BaseModelServerClient:
+  def MakeClient(self, endpoint: str) -> base_client.BaseModelServerClient:
     return tensorflow_serving_client.TensorFlowServingClient(
         endpoint=endpoint, model_name=self._model_name)

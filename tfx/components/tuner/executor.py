@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,13 +13,9 @@
 # limitations under the License.
 """Generic TFX tuner executor."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import json
 import os
-from typing import Any, Callable, Dict, List, Optional, Text
+from typing import Any, Callable, Dict, List, Optional
 
 from absl import logging
 from keras_tuner.engine import base_tuner
@@ -41,13 +36,13 @@ _DEFAULT_FILE_NAME = 'best_hyperparameters.txt'
 
 # TODO(b/160253334): Establish a separation of practice between this 'default'
 #                    module and the ones in 'extensions'.
-def _get_tuner_fn(exec_properties: Dict[Text, Any]) -> Callable[..., Any]:
+def _get_tuner_fn(exec_properties: Dict[str, Any]) -> Callable[..., Any]:
   """Returns tuner_fn from execution properties."""
   return udf_utils.get_fn(exec_properties, 'tuner_fn')
 
 
 def get_tune_args(
-    exec_properties: Dict[Text, Any]) -> Optional[tuner_pb2.TuneArgs]:
+    exec_properties: Dict[str, Any]) -> Optional[tuner_pb2.TuneArgs]:
   """Returns TuneArgs protos from execution properties, if present."""
   tune_args = exec_properties.get(standard_component_specs.TUNE_ARGS_KEY)
   if not tune_args:
@@ -61,7 +56,7 @@ def get_tune_args(
 
 def write_best_hyperparameters(
     tuner: base_tuner.BaseTuner,
-    output_dict: Dict[Text, List[types.Artifact]]) -> None:
+    output_dict: Dict[str, List[types.Artifact]]) -> None:
   """Write out best hyperpeameters known to the given Tuner instance."""
   best_hparams_config = tuner.get_best_hyperparameters()[0].get_config()
   logging.info('Best HyperParameters: %s', best_hparams_config)
@@ -73,9 +68,9 @@ def write_best_hyperparameters(
   logging.info('Best Hyperparameters are written to %s.', best_hparams_path)
 
 
-def search(input_dict: Dict[Text, List[types.Artifact]],
-           exec_properties: Dict[Text, Any],
-           working_dir: Text) -> base_tuner.BaseTuner:
+def search(input_dict: Dict[str, List[types.Artifact]],
+           exec_properties: Dict[str, Any],
+           working_dir: str) -> base_tuner.BaseTuner:
   """Conduct a single hyperparameter search loop, and return the Tuner."""
   tuner_fn = _get_tuner_fn(exec_properties)
 
@@ -98,9 +93,9 @@ def search(input_dict: Dict[Text, List[types.Artifact]],
 class Executor(base_executor.BaseExecutor):
   """TFX Tuner component executor."""
 
-  def Do(self, input_dict: Dict[Text, List[types.Artifact]],
-         output_dict: Dict[Text, List[types.Artifact]],
-         exec_properties: Dict[Text, Any]) -> None:
+  def Do(self, input_dict: Dict[str, List[types.Artifact]],
+         output_dict: Dict[str, List[types.Artifact]],
+         exec_properties: Dict[str, Any]) -> None:
     if get_tune_args(exec_properties):
       raise ValueError("TuneArgs is not supported by this Tuner's Executor.")
 

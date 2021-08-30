@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """TFX StatisticsGen component definition."""
-from typing import List, Optional, Text
+from typing import List, Optional
 
 from absl import logging
 import tensorflow_data_validation as tfdv
@@ -54,7 +54,7 @@ class StatisticsGen(base_beam_component.BaseBeamComponent):
                examples: types.Channel,
                schema: Optional[types.Channel] = None,
                stats_options: Optional[tfdv.StatsOptions] = None,
-               exclude_splits: Optional[List[Text]] = None):
+               exclude_splits: Optional[List[str]] = None):
     """Construct a StatisticsGen component.
 
     Args:
@@ -84,4 +84,4 @@ class StatisticsGen(base_beam_component.BaseBeamComponent):
         stats_options_json=stats_options_json,
         exclude_splits=json_utils.dumps(exclude_splits),
         statistics=statistics)
-    super(StatisticsGen, self).__init__(spec=spec)
+    super().__init__(spec=spec)

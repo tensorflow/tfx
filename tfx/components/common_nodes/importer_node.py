@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -16,9 +15,6 @@
 
 The new location is `tfx.dsl.components.common.importer.Importer`.
 """
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
 
 from tfx.dsl.components.common import importer
 from tfx.utils import deprecation_utils

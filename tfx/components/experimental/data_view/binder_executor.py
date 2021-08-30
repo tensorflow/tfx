@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """TFX DataViewBinder component executor."""
-from typing import Any, Dict, List, Text
+from typing import Any, Dict, List
 
 from tfx import types
 from tfx.components.experimental.data_view import constants
@@ -31,9 +31,9 @@ _OUTPUT_EXAMPLES_KEY = 'output_examples'
 class DataViewBinderExecutor(base_executor.BaseExecutor):
   """Executor for DataViewBinder."""
 
-  def Do(self, input_dict: Dict[Text, List[types.Artifact]],
-         output_dict: Dict[Text, List[types.Artifact]],
-         exec_properties: Dict[Text, Any]) -> None:
+  def Do(self, input_dict: Dict[str, List[types.Artifact]],
+         output_dict: Dict[str, List[types.Artifact]],
+         exec_properties: Dict[str, Any]) -> None:
     self._log_startup(input_dict, output_dict, exec_properties)
 
     data_view_artifact = artifact_utils.get_single_instance(

@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,11 +13,7 @@
 # limitations under the License.
 """Python source file include Penguin pipeline functions and necessary utils."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
-from typing import List, Text
+from typing import List
 
 import absl
 import keras_tuner
@@ -38,7 +33,7 @@ _FEATURE_KEYS = [
 _LABEL_KEY = 'species'
 
 
-def _input_fn(file_pattern: List[Text],
+def _input_fn(file_pattern: List[str],
               data_accessor: DataAccessor,
               schema: schema_pb2.Schema,
               batch_size: int = 20) -> tf.data.Dataset:

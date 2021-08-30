@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,11 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """TFX ExampleValidator component definition."""
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
 
-from typing import List, Optional, Text
+from typing import List, Optional
 
 from absl import logging
 from tfx import types
@@ -69,7 +65,7 @@ class ExampleValidator(base_component.BaseComponent):
   def __init__(self,
                statistics: types.Channel,
                schema: types.Channel,
-               exclude_splits: Optional[List[Text]] = None):
+               exclude_splits: Optional[List[str]] = None):
     """Construct an ExampleValidator component.
 
     Args:
@@ -88,4 +84,4 @@ class ExampleValidator(base_component.BaseComponent):
         schema=schema,
         exclude_splits=json_utils.dumps(exclude_splits),
         anomalies=anomalies)
-    super(ExampleValidator, self).__init__(spec=spec)
+    super().__init__(spec=spec)

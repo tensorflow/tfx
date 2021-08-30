@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,10 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Tests for tfx.components.trainer.fn_args_utils."""
-
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
 
 import os
 
@@ -81,7 +76,7 @@ class FnArgsUtilsTest(tf.test.TestCase):
                      os.path.join(schema.uri, 'schema.pbtxt'))
     # Depending on execution environment, the base model may have been stored
     # at .../Format-Servo/... or .../Format-Serving/... directory patterns.
-    self.assertRegexpMatches(
+    self.assertRegex(
         fn_args.base_model,
         os.path.join(base_model.uri,
                      r'Format-(Servo|Serving)/export/chicago-taxi/\d+'))

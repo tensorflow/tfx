@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2020 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -16,19 +15,14 @@
 # TODO(zhuo): this file should be moved to tfx/components/util once DataView is
 # no longer experimental.
 
-# TODO(b/149535307): Remove __future__ imports
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
-from typing import Optional, Text
+from typing import Optional
 
 from tfx import types
 from tfx.components.experimental.data_view import constants
 from tfx.types import standard_artifacts
 
 
-def get_data_view_uri(examples: types.Artifact) -> Optional[Text]:
+def get_data_view_uri(examples: types.Artifact) -> Optional[str]:
   """Returns the URI to the DataView attached to an Examples artifact.
 
   Or None, if not attached.

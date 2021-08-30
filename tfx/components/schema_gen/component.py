@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,11 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """TFX ExampleValidator component definition."""
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
 
-from typing import List, Optional, Text, Union
+from typing import List, Optional, Union
 
 from absl import logging
 from tfx import types
@@ -66,7 +62,7 @@ class SchemaGen(base_component.BaseComponent):
       statistics: types.Channel,
       infer_feature_shape: Optional[Union[bool,
                                           data_types.RuntimeParameter]] = True,
-      exclude_splits: Optional[List[Text]] = None):
+      exclude_splits: Optional[List[str]] = None):
     """Constructs a SchemaGen component.
 
     Args:
@@ -92,4 +88,4 @@ class SchemaGen(base_component.BaseComponent):
         infer_feature_shape=infer_feature_shape,
         exclude_splits=json_utils.dumps(exclude_splits),
         schema=schema)
-    super(SchemaGen, self).__init__(spec=spec)
+    super().__init__(spec=spec)

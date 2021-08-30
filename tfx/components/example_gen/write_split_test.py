@@ -26,7 +26,7 @@ from tfx.proto import example_gen_pb2
 class WriteSplitTest(tf.test.TestCase):
 
   def setUp(self):
-    super(WriteSplitTest, self).setUp()
+    super().setUp()
     self._output_data_dir = os.path.join(
         os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR', self.get_temp_dir()),
         self._testMethodName)

@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2020 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,12 +13,8 @@
 # limitations under the License.
 """Tests for tfx.components.infra_validator.model_server_runners.kubernetes_runner."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import os
-from typing import Any, Dict, Text
+from typing import Any, Dict
 from unittest import mock
 
 from kubernetes import client as k8s_client
@@ -36,7 +31,7 @@ from tfx.utils import path_utils
 from google.protobuf import json_format
 
 
-def _create_serving_spec(payload: Dict[Text, Any]):
+def _create_serving_spec(payload: Dict[str, Any]):
   result = infra_validator_pb2.ServingSpec()
   json_format.ParseDict(payload, result)
   return result
@@ -45,7 +40,7 @@ def _create_serving_spec(payload: Dict[Text, Any]):
 class KubernetesRunnerTest(tf.test.TestCase):
 
   def setUp(self):
-    super(KubernetesRunnerTest, self).setUp()
+    super().setUp()
     self.addCleanup(mock.patch.stopall)
 
     self._base_dir = os.path.join(

@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,12 +13,8 @@
 # limitations under the License.
 """Generic TFX example_validator executor."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import os
-from typing import Any, Dict, List, Text
+from typing import Any, Dict, List
 
 from absl import logging
 import tensorflow_data_validation as tfdv
@@ -40,9 +35,9 @@ DEFAULT_FILE_NAME = 'SchemaDiff.pb'
 class Executor(base_executor.BaseExecutor):
   """TensorFlow ExampleValidator component executor."""
 
-  def Do(self, input_dict: Dict[Text, List[types.Artifact]],
-         output_dict: Dict[Text, List[types.Artifact]],
-         exec_properties: Dict[Text, Any]) -> None:
+  def Do(self, input_dict: Dict[str, List[types.Artifact]],
+         output_dict: Dict[str, List[types.Artifact]],
+         exec_properties: Dict[str, Any]) -> None:
     """TensorFlow ExampleValidator executor entrypoint.
 
     This validates statistics against the schema.
@@ -117,8 +112,7 @@ class Executor(base_executor.BaseExecutor):
           'Validation complete for split %s. Anomalies written to '
           '%s.', split, output_uri)
 
-  def _Validate(self, inputs: Dict[Text, Any], outputs: Dict[Text,
-                                                             Any]) -> None:
+  def _Validate(self, inputs: Dict[str, Any], outputs: Dict[str, Any]) -> None:
     """Validate the inputs and put validate result into outputs.
 
       This is the implementation part of example validator executor. This is

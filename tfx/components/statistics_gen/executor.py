@@ -13,7 +13,7 @@
 # limitations under the License.
 """TFX statistics_gen executor."""
 import os
-from typing import Any, Dict, List, Text
+from typing import Any, Dict, List
 
 from absl import logging
 from tensorflow_data_validation.api import stats_api
@@ -44,9 +44,9 @@ class Executor(base_beam_executor.BaseBeamExecutor):
   https://github.com/tensorflow/tfx/blob/master/tfx/examples/chicago_taxi_pipeline/taxi_pipeline_simple.py#L75.
   """
 
-  def Do(self, input_dict: Dict[Text, List[types.Artifact]],
-         output_dict: Dict[Text, List[types.Artifact]],
-         exec_properties: Dict[Text, Any]) -> None:
+  def Do(self, input_dict: Dict[str, List[types.Artifact]],
+         output_dict: Dict[str, List[types.Artifact]],
+         exec_properties: Dict[str, Any]) -> None:
     """Computes stats for each split of input using tensorflow_data_validation.
 
     Args:

@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2020 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,21 +13,16 @@
 # limitations under the License.
 """Converters rewrite models using the provided rewriters."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import os
 import time
 
-from typing import Text
 
 import tensorflow as tf
 from tfx.components.trainer.rewriting import rewriter
 from tfx.dsl.io import fileio
 
 
-def _invoke_rewriter(src: Text, dst: Text, rewriter_inst: rewriter.BaseRewriter,
+def _invoke_rewriter(src: str, dst: str, rewriter_inst: rewriter.BaseRewriter,
                      src_model_type: rewriter.ModelType,
                      dst_model_type: rewriter.ModelType):
   """Converts the provided model by invoking the specified rewriters.
@@ -120,8 +114,8 @@ class RewritingExporter(tf.estimator.Exporter):
 
 
 def rewrite_saved_model(
-    src: Text,
-    dst: Text,
+    src: str,
+    dst: str,
     rewriter_inst: rewriter.BaseRewriter,
     dst_model_type: rewriter.ModelType = rewriter.ModelType.SAVED_MODEL):
   """Rewrites the provided SavedModel.

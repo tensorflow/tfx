@@ -13,7 +13,7 @@
 # limitations under the License.
 """Utils for converting prediction_log to example."""
 
-from typing import Any, List, Tuple, Text, Union
+from typing import Any, List, Tuple, Union
 
 import numpy as np
 import tensorflow as tf
@@ -23,7 +23,7 @@ from tensorflow_serving.apis import classification_pb2
 from tensorflow_serving.apis import prediction_log_pb2
 
 INPUT_KEY = 'examples'
-FEATURE_LIST_TYPE = List[Tuple[Text, List[Union[Text, bytes, float]]]]
+FEATURE_LIST_TYPE = List[Tuple[str, List[Union[str, bytes, float]]]]  # pylint: disable=invalid-name
 
 # Typehint Any is for compatibility reason.
 _OutputExampleSpecType = Union[bulk_inferrer_pb2.OutputExampleSpec, Any]

@@ -130,7 +130,7 @@ class Executor(base_executor.BaseExecutor):
 
   def __init__(self,
                context: Optional[base_executor.BaseExecutor.Context] = None):
-    super(Executor, self).__init__(context)
+    super().__init__(context)
     self._cleanups = []
 
   def _AddCleanup(self, function, *args, **kwargs):

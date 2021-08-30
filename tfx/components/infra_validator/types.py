@@ -13,10 +13,6 @@
 # limitations under the License.
 """Common types that are used across infra_validator implementation."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import enum
 from typing import Union
 

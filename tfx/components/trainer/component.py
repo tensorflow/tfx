@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,11 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """TFX Trainer component definition."""
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
 
-from typing import Any, Dict, Optional, Text, Union
+from typing import Any, Dict, Optional, Union
 
 from absl import logging
 from tfx import types
@@ -79,15 +75,15 @@ class Trainer(base_component.BaseComponent):
       schema: Optional[types.Channel] = None,
       base_model: Optional[types.Channel] = None,
       hyperparameters: Optional[types.Channel] = None,
-      module_file: Optional[Union[Text, data_types.RuntimeParameter]] = None,
-      run_fn: Optional[Union[Text, data_types.RuntimeParameter]] = None,
+      module_file: Optional[Union[str, data_types.RuntimeParameter]] = None,
+      run_fn: Optional[Union[str, data_types.RuntimeParameter]] = None,
       # TODO(b/147702778): deprecate trainer_fn.
-      trainer_fn: Optional[Union[Text, data_types.RuntimeParameter]] = None,
+      trainer_fn: Optional[Union[str, data_types.RuntimeParameter]] = None,
       train_args: Optional[Union[trainer_pb2.TrainArgs,
                                  data_types.RuntimeParameter]] = None,
       eval_args: Optional[Union[trainer_pb2.EvalArgs,
                                 data_types.RuntimeParameter]] = None,
-      custom_config: Optional[Union[Dict[Text, Any],
+      custom_config: Optional[Union[Dict[str, Any],
                                     data_types.RuntimeParameter]] = None,
       custom_executor_spec: Optional[executor_spec.ExecutorSpec] = None):
     """Construct a Trainer component.
@@ -201,9 +197,7 @@ class Trainer(base_component.BaseComponent):
                        else json_utils.dumps(custom_config)),
         model=model,
         model_run=model_run)
-    super(Trainer, self).__init__(
-        spec=spec,
-        custom_executor_spec=custom_executor_spec)
+    super().__init__(spec=spec, custom_executor_spec=custom_executor_spec)
 
     if udf_utils.should_package_user_modules():
       # In this case, the `MODULE_PATH_KEY` execution property will be injected

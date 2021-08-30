@@ -13,10 +13,6 @@
 # limitations under the License.
 """Tests for tfx.components.example_gen.driver."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import os
 
 import tensorflow as tf
@@ -44,7 +40,7 @@ class _OutputArtifact(artifact.Artifact):
 class DriverTest(tf.test.TestCase):
 
   def setUp(self):
-    super(DriverTest, self).setUp()
+    super().setUp()
 
     self._test_dir = os.path.join(
         os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR', self.get_temp_dir()),
@@ -89,7 +85,7 @@ class DriverTest(tf.test.TestCase):
     io_utils.write_string_file(span2_v1_split1, 'testing21')
 
     # Check that error raised when span does not match.
-    with self.assertRaisesRegexp(
+    with self.assertRaisesRegex(
         ValueError, 'Latest span should be the same for each split'):
       self._file_based_driver.resolve_exec_properties(self._exec_properties,
                                                       None, None)
@@ -102,7 +98,7 @@ class DriverTest(tf.test.TestCase):
     io_utils.write_string_file(span2_v2_split1, 'testing21')
 
     # Check that error raised when span matches, but version does not match.
-    with self.assertRaisesRegexp(
+    with self.assertRaisesRegex(
         ValueError, 'Latest version should be the same for each split'):
       self._file_based_driver.resolve_exec_properties(self._exec_properties,
                                                       None, None)
@@ -155,8 +151,8 @@ class DriverTest(tf.test.TestCase):
             range_config_pb2.RangeConfig(
                 static_range=range_config_pb2.StaticRange(
                     start_span_number=1, end_span_number=2)))
-    with self.assertRaisesRegexp(ValueError,
-                                 'For ExampleGen, start and end span numbers'):
+    with self.assertRaisesRegex(ValueError,
+                                'For ExampleGen, start and end span numbers'):
       self._file_based_driver.resolve_exec_properties(self._exec_properties,
                                                       None, None)
 
