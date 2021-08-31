@@ -23,7 +23,7 @@ from tensorflow_serving.apis import classification_pb2
 from tensorflow_serving.apis import prediction_log_pb2
 
 INPUT_KEY = 'examples'
-FEATURE_LIST_TYPE = List[Tuple[str, List[Union[str, bytes, float]]]]  # pylint: disable=invalid-name
+_FeatureListType = List[Tuple[str, List[Union[str, bytes, float]]]]
 
 # Typehint Any is for compatibility reason.
 _OutputExampleSpecType = Union[bulk_inferrer_pb2.OutputExampleSpec, Any]
@@ -115,7 +115,7 @@ def _parse_multi_inference_log(
 def _parse_classify_log(
     classify_log: prediction_log_pb2.ClassifyLog,
     classify_output_spec: _ClassifyOutputType
-) -> Tuple[tf.train.Example, FEATURE_LIST_TYPE]:
+) -> Tuple[tf.train.Example, _FeatureListType]:
   """Parses ClassiyLog."""
   example = tf.train.Example()
   example.CopyFrom(classify_log.request.input.example_list.examples[0])
@@ -125,7 +125,7 @@ def _parse_classify_log(
 
 def _parse_classification_result(
     classification_result: classification_pb2.ClassificationResult,
-    classify_output_spec: _ClassifyOutputType) -> FEATURE_LIST_TYPE:
+    classify_output_spec: _ClassifyOutputType) -> _FeatureListType:
   """Parses ClassificationResult."""
   output_features = []
   classes = classification_result.classifications[0].classes
@@ -141,7 +141,7 @@ def _parse_classification_result(
 def _parse_predict_log(
     predict_log: prediction_log_pb2.PredictLog,
     predict_output_spec: _PredictOutputType
-) -> Tuple[tf.train.Example, FEATURE_LIST_TYPE]:
+) -> Tuple[tf.train.Example, _FeatureListType]:
   """Parses PredictLog."""
   input_tensor_proto = predict_log.request.inputs[INPUT_KEY]
   example = tf.train.Example.FromString(input_tensor_proto.string_val[0])
@@ -165,7 +165,7 @@ def _parse_predict_log(
 
 
 def _add_columns(example: tf.train.Example,
-                 features: FEATURE_LIST_TYPE) -> tf.train.Example:
+                 features: _FeatureListType) -> tf.train.Example:
   """Add given features to `example`."""
   feature_map = example.features.feature
   for col, value in features:
