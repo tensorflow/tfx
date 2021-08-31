@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2020 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,8 +17,6 @@ Define constants here that are common across all models
 including features names, label and size of vocabulary.
 """
 
-from typing import Text
-
 
 # TODO(step 3, 4): Define constants for features of the model.
 FEATURE_KEYS = [
@@ -28,6 +25,6 @@ FEATURE_KEYS = [
 LABEL_KEY = 'species'
 
 
-def transformed_name(key: Text) -> Text:
+def transformed_name(key: str) -> str:
   """Generate the name of the transformed feature from original name."""
   return key + '_xf'

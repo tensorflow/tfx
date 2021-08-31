@@ -16,7 +16,7 @@
 This file defines TFX pipeline and various components in the pipeline.
 """
 
-from typing import Any, Dict, List, Optional, Text
+from typing import Any, Dict, List, Optional
 
 import tensorflow_model_analysis as tfma
 from tfx import v1 as tfx
@@ -25,22 +25,22 @@ from ml_metadata.proto import metadata_store_pb2
 
 
 def create_pipeline(
-    pipeline_name: Text,
-    pipeline_root: Text,
-    data_path: Text,
+    pipeline_name: str,
+    pipeline_root: str,
+    data_path: str,
     # TODO(step 7): (Optional) Uncomment here to use BigQuery as a data source.
     # query: Text,
-    preprocessing_fn: Text,
-    run_fn: Text,
+    preprocessing_fn: str,
+    run_fn: str,
     train_args: tfx.proto.TrainArgs,
     eval_args: tfx.proto.EvalArgs,
     eval_accuracy_threshold: float,
-    serving_model_dir: Text,
+    serving_model_dir: str,
     metadata_connection_config: Optional[
         metadata_store_pb2.ConnectionConfig] = None,
-    beam_pipeline_args: Optional[List[Text]] = None,
-    ai_platform_training_args: Optional[Dict[Text, Text]] = None,
-    ai_platform_serving_args: Optional[Dict[Text, Any]] = None,
+    beam_pipeline_args: Optional[List[str]] = None,
+    ai_platform_training_args: Optional[Dict[str, str]] = None,
+    ai_platform_serving_args: Optional[Dict[str, Any]] = None,
 ) -> tfx.dsl.Pipeline:
   """Implements the chicago taxi pipeline with TFX."""
 

@@ -45,15 +45,15 @@ The current implementation has some key limitations:
 """
 
 import collections
-from typing import Dict, List, Mapping, Set, Text
+from typing import Dict, List, Mapping, Set
 import tensorflow as tf
 from tfx.dsl.io import fileio
 from tfx.experimental.distributed_inference.graphdef_experiments.subgraph_partitioning import execution_spec
 
 
 def get_graph_name_to_graph_def(
-    graph_name_to_filepath: Mapping[Text, Text]
-) -> Dict[Text, tf.compat.v1.GraphDef]:
+    graph_name_to_filepath: Mapping[str, str]
+) -> Dict[str, tf.compat.v1.GraphDef]:
   """Gets the `GraphDef` protos from files.
 
   Args:
@@ -70,7 +70,7 @@ def get_graph_name_to_graph_def(
   return graph_name_to_graph_def
 
 
-def _get_graph_def(filepath: Text) -> tf.compat.v1.GraphDef:
+def _get_graph_def(filepath: str) -> tf.compat.v1.GraphDef:
   graph_def = tf.compat.v1.GraphDef()
   with fileio.open(filepath, 'rb') as f:
     graph_def.ParseFromString(f.read())
@@ -78,9 +78,9 @@ def _get_graph_def(filepath: Text) -> tf.compat.v1.GraphDef:
 
 
 def partition_all_graphs(
-    graph_name_to_graph_def: Mapping[Text, tf.compat.v1.GraphDef],
-    graph_name_to_output_names: Mapping[Text, List[Text]]
-) -> Dict[Text, List[execution_spec.ExecutionSpec]]:
+    graph_name_to_graph_def: Mapping[str, tf.compat.v1.GraphDef],
+    graph_name_to_output_names: Mapping[str, List[str]]
+) -> Dict[str, List[execution_spec.ExecutionSpec]]:
   """Partitions all the graphs.
 
   For each graph, the partitioning algorithm takes in the graph's `GraphDef`
@@ -107,7 +107,7 @@ def partition_all_graphs(
 
 def _partition_one_graph(
     graph_def: tf.compat.v1.GraphDef,
-    output_names: List[Text]) -> List[execution_spec.ExecutionSpec]:
+    output_names: List[str]) -> List[execution_spec.ExecutionSpec]:
   """Partitions one graph.
 
   Args:
@@ -139,13 +139,13 @@ def _get_graph(graph_def: tf.compat.v1.GraphDef) -> tf.Graph:
 
 
 def _get_node_name_to_node_def(
-    graph_def: tf.compat.v1.GraphDef) -> Dict[Text, tf.compat.v1.NodeDef]:
+    graph_def: tf.compat.v1.GraphDef) -> Dict[str, tf.compat.v1.NodeDef]:
   return {node.name: node for node in graph_def.node}
 
 
 def _get_remote_op_to_immediate_dep(
-    node_name_to_node_def: Mapping[Text, tf.compat.v1.NodeDef]
-) -> Dict[Text, List[Text]]:
+    node_name_to_node_def: Mapping[str, tf.compat.v1.NodeDef]
+) -> Dict[str, List[str]]:
   """Gets the execution dependencies between remote ops.
 
   The remote op immediate dependencies must be executed before executing
@@ -169,8 +169,8 @@ def _get_remote_op_to_immediate_dep(
 
 
 def _get_remote_op_immediate_dep(
-    remote_op_name: Text,
-    node_name_to_node_def: Mapping[Text, tf.compat.v1.NodeDef]) -> List[Text]:
+    remote_op_name: str,
+    node_name_to_node_def: Mapping[str, tf.compat.v1.NodeDef]) -> List[str]:
   """Finds the remote op immediate dependencies for a remote op.
 
   Args:
@@ -210,9 +210,9 @@ def _is_remote_op(node: tf.compat.v1.NodeDef) -> bool:
 
 
 def _get_execution_specs(
-    graph_def: tf.compat.v1.GraphDef, graph_output_names: List[Text],
-    graph: tf.Graph, node_name_to_node_def: Mapping[Text, tf.compat.v1.NodeDef],
-    remote_op_to_immediate_dep: Mapping[Text, List[Text]]
+    graph_def: tf.compat.v1.GraphDef, graph_output_names: List[str],
+    graph: tf.Graph, node_name_to_node_def: Mapping[str, tf.compat.v1.NodeDef],
+    remote_op_to_immediate_dep: Mapping[str, List[str]]
 ) -> List[execution_spec.ExecutionSpec]:
   """Generates the ExecutionSpecs for a graph.
 
@@ -246,7 +246,7 @@ def _get_execution_specs(
     order of execution.
   """
   execution_specs = []  # type: List[execution_spec.ExecutionSpec]
-  previously_visited = set()  # type: Set[Text]
+  previously_visited = set()  # type: Set[str]
 
   for remote_op_layer in _RemoteOpLayers(remote_op_to_immediate_dep):
     # Get one subgraph layer
@@ -278,8 +278,8 @@ def _get_execution_specs(
 
 
 def _get_previous_subgraph_layer_output_node_names(
-    remote_op_layer: Set[Text],
-    node_name_to_node_def: Mapping[Text, tf.compat.v1.NodeDef]) -> Set[Text]:
+    remote_op_layer: Set[str],
+    node_name_to_node_def: Mapping[str, tf.compat.v1.NodeDef]) -> Set[str]:
   """Gets the output node names of the previous subgraph layer.
 
   Given a remote op layer, we derive the output node names of the previous
@@ -310,9 +310,9 @@ def _get_previous_subgraph_layer_output_node_names(
 
 def _get_execution_spec_for_subgraph_layer(
     graph_def: tf.compat.v1.GraphDef, graph: tf.Graph,
-    node_name_to_node_def: Mapping[Text, tf.compat.v1.NodeDef],
-    previously_visited: Set[Text],
-    output_node_names: Set[Text]) -> execution_spec.ExecutionSpec:
+    node_name_to_node_def: Mapping[str, tf.compat.v1.NodeDef],
+    previously_visited: Set[str],
+    output_node_names: Set[str]) -> execution_spec.ExecutionSpec:
   """Constructs one subgraph layer.
 
   As discussed in _get_execution_specs(), a subgraph layer contains one or
@@ -395,14 +395,14 @@ def _create_placeholder_node_from_existing_node(
     return sess.graph_def.node[0]
 
 
-def _get_input_names(subgraph: tf.compat.v1.GraphDef) -> Set[Text]:
+def _get_input_names(subgraph: tf.compat.v1.GraphDef) -> Set[str]:
   input_names = {
       node.name for node in subgraph.node if _is_placeholder_op(node)
   }
   return input_names
 
 
-def _get_non_input_names(subgraph: tf.compat.v1.GraphDef) -> Set[Text]:
+def _get_non_input_names(subgraph: tf.compat.v1.GraphDef) -> Set[str]:
   non_input_names = {
       node.name for node in subgraph.node if not _is_placeholder_op(node)
   }
@@ -410,8 +410,8 @@ def _get_non_input_names(subgraph: tf.compat.v1.GraphDef) -> Set[Text]:
 
 
 def _get_execution_specs_for_remote_op_layer(
-    remote_op_layer: Set[Text],
-    node_name_to_node_def: Mapping[Text, tf.compat.v1.NodeDef]
+    remote_op_layer: Set[str],
+    node_name_to_node_def: Mapping[str, tf.compat.v1.NodeDef]
 ) -> List[execution_spec.ExecutionSpec]:
   """Constructs ExecutionSpecs for a remote op layer.
 
@@ -478,7 +478,7 @@ class _RemoteOpLayers:
   earlier.
   """
 
-  def __init__(self, remote_op_to_immediate_dep: Mapping[Text, List[Text]]):
+  def __init__(self, remote_op_to_immediate_dep: Mapping[str, List[str]]):
     """Initializes the class.
 
     Args:
@@ -491,7 +491,7 @@ class _RemoteOpLayers:
     self._not_processed = set(self.remote_op_to_immediate_dep.keys())
     return self
 
-  def __next__(self) -> Set[Text]:
+  def __next__(self) -> Set[str]:
     """Gets the remote op names for the next remote op layer.
 
     Returns:

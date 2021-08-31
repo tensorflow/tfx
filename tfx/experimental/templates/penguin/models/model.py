@@ -17,7 +17,7 @@ A DNN keras model which uses features defined in features.py and network
 parameters defined in constants.py.
 """
 
-from typing import List, Text
+from typing import List
 from absl import logging
 import tensorflow as tf
 from tensorflow import keras
@@ -116,10 +116,10 @@ def _get_transform_features_signature(model, schema, tf_transform_output):
   return transform_features_fn
 
 
-def _input_fn(file_pattern: List[Text],
+def _input_fn(file_pattern: List[str],
               data_accessor: tfx.components.DataAccessor,
               schema: schema_pb2.Schema,
-              label: Text,
+              label: str,
               batch_size: int = 200) -> tf.data.Dataset:
   """Generates features and label for tuning/training.
 
@@ -141,7 +141,7 @@ def _input_fn(file_pattern: List[Text],
       schema).repeat()
 
 
-def _build_keras_model(feature_list: List[Text]) -> tf.keras.Model:
+def _build_keras_model(feature_list: List[str]) -> tf.keras.Model:
   """Creates a DNN Keras model for classifying penguin data.
 
   Args:
