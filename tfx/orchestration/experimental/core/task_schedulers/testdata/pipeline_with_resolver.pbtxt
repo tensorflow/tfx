@@ -41,7 +41,7 @@ nodes {
         }
         name {
           field_value {
-            string_value: "my_trainer"
+            string_value: "my_pipeline.my_trainer"
           }
         }
       }
@@ -81,7 +81,7 @@ nodes {
               }
               name {
                 field_value {
-                  string_value: "my_example_gen"
+                  string_value: "my_pipeline.my_example_gen"
                 }
               }
             }
@@ -129,7 +129,7 @@ nodes {
               }
               name {
                 field_value {
-                  string_value: "my_transform"
+                  string_value: "my_pipeline.my_transform"
                 }
               }
             }
@@ -200,7 +200,7 @@ nodes {
         }
         name {
           field_value {
-            string_value: "my_resolver"
+            string_value: "my_pipeline.my_resolver"
           }
         }
       }
@@ -240,7 +240,7 @@ nodes {
               }
               name {
                 field_value {
-                  string_value: "my_trainer"
+                  string_value: "my_pipeline.my_trainer"
                 }
               }
             }
@@ -301,7 +301,7 @@ nodes {
         }
         name {
           field_value {
-            string_value: "my_consumer"
+            string_value: "my_pipeline.my_consumer"
           }
         }
       }
@@ -341,7 +341,7 @@ nodes {
               }
               name {
                 field_value {
-                  string_value: "my_resolver"
+                  string_value: "my_pipeline.my_resolver"
                 }
               }
             }

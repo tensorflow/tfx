@@ -40,7 +40,7 @@ class TfxTest(test_case_utils.TfxTest):
 def fake_example_gen_run_with_handle(mlmd_handle, example_gen, span, version):
   """Writes fake example_gen output and successful execution to MLMD."""
   output_example = types.Artifact(
-      example_gen.outputs.outputs['output_examples'].artifact_spec.type)
+      example_gen.outputs.outputs['examples'].artifact_spec.type)
   output_example.set_int_custom_property('span', span)
   output_example.set_int_custom_property('version', version)
   output_example.uri = 'my_examples_uri'
@@ -49,7 +49,7 @@ def fake_example_gen_run_with_handle(mlmd_handle, example_gen, span, version):
       mlmd_handle, example_gen.node_info.type, contexts)
   execution_publish_utils.publish_succeeded_execution(
       mlmd_handle, execution.id, contexts, {
-          'output_examples': [output_example],
+          'examples': [output_example],
       })
   return execution
 
@@ -247,7 +247,7 @@ def _verify_exec_node_task(test_case, pipeline, node, execution_id, task):
   test_case.assertEqual(
       task_lib.NodeUid.from_pipeline_node(pipeline, node), task.node_uid)
   test_case.assertEqual(execution_id, task.execution_id)
-  expected_context_names = ['my_pipeline', node.node_info.id]
+  expected_context_names = ['my_pipeline', f'my_pipeline.{node.node_info.id}']
   if pipeline.execution_mode == pipeline_pb2.Pipeline.SYNC:
     expected_context_names.append(
         pipeline.runtime_spec.pipeline_run_id.field_value.string_value)
