@@ -1,3 +1,4 @@
+# Lint as: python2, python3
 # Copyright 2020 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,6 +14,10 @@
 # limitations under the License.
 """Tests for bulk_inferrer component of Cloud AI platform."""
 
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+
 import tensorflow as tf
 
 from tfx.extensions.google_cloud_ai_platform.bulk_inferrer import component
@@ -24,7 +29,7 @@ from tfx.types import standard_artifacts
 class ComponentTest(tf.test.TestCase):
 
   def setUp(self):
-    super().setUp()
+    super(ComponentTest, self).setUp()
     self._examples = channel_utils.as_channel([standard_artifacts.Examples()])
     self._model = channel_utils.as_channel([standard_artifacts.Model()])
     self._model_blessing = channel_utils.as_channel(

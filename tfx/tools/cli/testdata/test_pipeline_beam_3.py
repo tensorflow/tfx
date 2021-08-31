@@ -1,3 +1,4 @@
+# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,7 +14,12 @@
 # limitations under the License.
 """Chicago taxi example using TFX."""
 
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+
 import os
+from typing import Text
 
 import absl
 
@@ -48,8 +54,8 @@ _metadata_path = os.path.join(_tfx_root, 'metadata', _pipeline_name,
                               'metadata.db')
 
 
-def _create_pipeline(pipeline_name: str, pipeline_root: str, data_root: str,
-                     metadata_path: str) -> pipeline.Pipeline:
+def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
+                     metadata_path: Text) -> pipeline.Pipeline:
   """Implements the chicago taxi pipeline with TFX."""
 
   # Brings data into the pipeline or otherwise joins/converts training data.

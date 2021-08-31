@@ -13,7 +13,11 @@
 # limitations under the License.
 """Functions for creating container components from kubeflow components."""
 
-from typing import Any, Callable, Dict
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+
+from typing import Any, Callable, Dict, Text
 
 from tfx.dsl.component.experimental import container_component
 from tfx.dsl.component.experimental import placeholders
@@ -26,7 +30,7 @@ from google.protobuf import json_format
 
 
 def load_kfp_yaml_container_component(
-    path: str) -> Callable[..., base_component.BaseComponent]:
+    path: Text) -> Callable[..., base_component.BaseComponent]:
   """Creates a container-based component from a Kubeflow component spec.
 
   See
@@ -70,7 +74,7 @@ def load_kfp_yaml_container_component(
   )
 
 
-def _convert_target_fields_to_kv_pair(parsed_dict: Dict[str, Any]) -> None:
+def _convert_target_fields_to_kv_pair(parsed_dict: Dict[Text, Any]) -> None:
   """Converts in place specific string fields to key value pairs of {constantValue: [Text]} for proto3 compatibility.
 
   Args:

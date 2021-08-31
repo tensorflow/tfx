@@ -40,7 +40,7 @@ class TfxTest(test_case_utils.TfxTest):
 def fake_example_gen_run_with_handle(mlmd_handle, example_gen, span, version):
   """Writes fake example_gen output and successful execution to MLMD."""
   output_example = types.Artifact(
-      example_gen.outputs.outputs['output_examples'].artifact_spec.type)
+      example_gen.outputs.outputs['examples'].artifact_spec.type)
   output_example.set_int_custom_property('span', span)
   output_example.set_int_custom_property('version', version)
   output_example.uri = 'my_examples_uri'
@@ -49,7 +49,7 @@ def fake_example_gen_run_with_handle(mlmd_handle, example_gen, span, version):
       mlmd_handle, example_gen.node_info.type, contexts)
   execution_publish_utils.publish_succeeded_execution(
       mlmd_handle, execution.id, contexts, {
-          'output_examples': [output_example],
+          'examples': [output_example],
       })
   return execution
 
@@ -109,13 +109,21 @@ def get_node(pipeline, node_id):
   raise ValueError(f'could not find {node_id}')
 
 
-def fake_execute_node(mlmd_connection, task):
+def fake_execute_node(mlmd_connection, task, artifact_custom_properties=None):
   """Simulates node execution given ExecNodeTask."""
   node = task.get_pipeline_node()
   with mlmd_connection as m:
     if node.HasField('outputs'):
       output_key, output_value = next(iter(node.outputs.outputs.items()))
       output = types.Artifact(output_value.artifact_spec.type)
+      if artifact_custom_properties:
+        for key, val in artifact_custom_properties.items():
+          if isinstance(val, int):
+            output.set_int_custom_property(key, val)
+          elif isinstance(val, str):
+            output.set_string_custom_property(key, val)
+          else:
+            raise ValueError(f'unsupported type: {type(val)}')
       output.uri = str(uuid.uuid4())
       output_artifacts = {output_key: [output]}
     else:
@@ -247,7 +255,7 @@ def _verify_exec_node_task(test_case, pipeline, node, execution_id, task):
   test_case.assertEqual(
       task_lib.NodeUid.from_pipeline_node(pipeline, node), task.node_uid)
   test_case.assertEqual(execution_id, task.execution_id)
-  expected_context_names = ['my_pipeline', node.node_info.id]
+  expected_context_names = ['my_pipeline', f'my_pipeline.{node.node_info.id}']
   if pipeline.execution_mode == pipeline_pb2.Pipeline.SYNC:
     expected_context_names.append(
         pipeline.runtime_spec.pipeline_run_id.field_value.string_value)

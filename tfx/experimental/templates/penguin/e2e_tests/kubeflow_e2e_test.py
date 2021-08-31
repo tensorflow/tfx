@@ -79,7 +79,7 @@ class PenguinTemplateKubeflowE2ETest(test_utils.BaseEndToEndTest):
         self._GCP_PROJECT_ID, self._pipeline_name)
 
   def tearDown(self):
-    super().tearDown()
+    super(PenguinTemplateKubeflowE2ETest, self).tearDown()
     self._cleanup_kfp()
 
   def _cleanup_with_retry(self, method):

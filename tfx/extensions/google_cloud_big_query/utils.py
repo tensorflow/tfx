@@ -1,3 +1,4 @@
+# Lint as: python3
 # Copyright 2020 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -17,7 +18,7 @@
 Internal utilities, no backwards compatibility guarantees.
 """
 
-from typing import Any, Dict
+from typing import Any, Dict, Text
 
 import apache_beam as beam
 from apache_beam.io.gcp import bigquery
@@ -27,9 +28,9 @@ from tfx.utils import telemetry_utils
 
 @beam.ptransform_fn
 @beam.typehints.with_input_types(beam.Pipeline)
-@beam.typehints.with_output_types(beam.typehints.Dict[str, Any])
-def ReadFromBigQuery(pipeline: beam.Pipeline,
-                     query: str) -> beam.pvalue.PCollection:
+@beam.typehints.with_output_types(beam.typehints.Dict[Text, Any])
+def ReadFromBigQuery(
+    pipeline: beam.Pipeline, query: Text) -> beam.pvalue.PCollection:
   """Read data from BigQuery.
 
   Args:
@@ -47,8 +48,8 @@ def ReadFromBigQuery(pipeline: beam.Pipeline,
 
 
 def row_to_example(  # pylint: disable=invalid-name
-    field_to_type: Dict[str, str],
-    field_name_to_data: Dict[str, Any]) -> tf.train.Example:
+    field_to_type: Dict[Text, Text],
+    field_name_to_data: Dict[Text, Any]) -> tf.train.Example:
   """Convert bigquery result row to tf example.
 
   Args:

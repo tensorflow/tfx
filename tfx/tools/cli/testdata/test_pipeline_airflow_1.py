@@ -1,3 +1,4 @@
+# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,6 +14,10 @@
 # limitations under the License.
 """Pipeline for testing CLI."""
 
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+
 import datetime
 import os
 
@@ -23,6 +28,7 @@ from tfx.orchestration import metadata
 from tfx.orchestration import pipeline
 from tfx.orchestration.airflow.airflow_dag_runner import AirflowPipelineConfig
 from tfx.tools.cli.e2e import test_utils
+
 
 _pipeline_name = 'chicago_taxi_simple'
 

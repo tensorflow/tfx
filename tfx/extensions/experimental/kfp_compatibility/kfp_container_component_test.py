@@ -25,7 +25,7 @@ from tfx.types import standard_artifacts
 class KubeflowContainerComponentTest(tf.test.TestCase):
 
   def setUp(self):
-    super().setUp()
+    super(KubeflowContainerComponentTest, self).setUp()
     self._testdata_path = os.path.join(
         os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
         'experimental/kfp_compatibility/testdata')

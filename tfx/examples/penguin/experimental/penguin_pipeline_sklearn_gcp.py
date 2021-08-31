@@ -139,7 +139,7 @@ def _create_pipeline(
 
   # TODO(humichael): Handle applying transformation component in Milestone 3.
 
-  # Uses user-provided Python function that trains a model.
+  # Uses user-provided Python function that trains a model using TF-Learn.
   # Num_steps is not provided during evaluation because the scikit-learn model
   # loads and evaluates the entire test set at once.
   trainer = tfx.extensions.google_cloud_ai_platform.Trainer(

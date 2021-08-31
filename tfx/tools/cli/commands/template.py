@@ -1,3 +1,4 @@
+# Lint as: python2, python3
 # Copyright 2020 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,6 +13,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Commands for copy_template."""
+
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+
+from typing import Text
 
 import click
 
@@ -56,8 +63,8 @@ def list_templates() -> None:
     type=str,
     help='Name of the template to copy. Currently, `taxi` is the only template provided.'
 )
-def copy(ctx: Context, pipeline_name: str, destination_path: str,
-         model: str) -> None:
+def copy(ctx: Context, pipeline_name: Text, destination_path: Text,
+         model: Text) -> None:
   """Command definition to copy template to specified directory."""
   click.echo('Copying {} pipeline template'.format(model))
   ctx.flags_dict[labels.PIPELINE_NAME] = pipeline_name

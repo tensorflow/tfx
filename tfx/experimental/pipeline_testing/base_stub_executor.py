@@ -1,3 +1,4 @@
+# Lint as: python3
 # Copyright 2020 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,8 +14,12 @@
 # limitations under the License.
 """Base Stub Executor."""
 
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+
 import os
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Text
 
 from absl import logging
 from tfx import types
@@ -30,8 +35,8 @@ class BaseStubExecutor(base_executor.BaseExecutor):
   """TFX base stub executor."""
 
   def __init__(self,
-               component_id: Optional[str] = None,
-               test_data_dir: Optional[str] = None,
+               component_id: Optional[Text] = None,
+               test_data_dir: Optional[Text] = None,
                context: Optional[base_executor.BaseExecutor.Context] = None):
     """Initializes a BaseStubExecutor.
 
@@ -54,16 +59,16 @@ class BaseStubExecutor(base_executor.BaseExecutor):
         elif extra_flag.startswith(COMPONENT_ID_FLAG) and component_id is None:
           component_id = extra_flag[len(COMPONENT_ID_FLAG)+1:]  # skip '='.
 
-    super().__init__(context)
+    super(BaseStubExecutor, self).__init__(context)
     logging.info("Running StubExecutor, component_id %s", component_id)
     self._component_id = component_id
     self._test_data_dir = test_data_dir
     if not fileio.exists(self._test_data_dir):
       raise ValueError("Must record pipeline in {}".format(self._test_data_dir))
 
-  def Do(self, input_dict: Dict[str, List[types.Artifact]],
-         output_dict: Dict[str, List[types.Artifact]],
-         exec_properties: Dict[str, Any]) -> None:
+  def Do(self, input_dict: Dict[Text, List[types.Artifact]],
+         output_dict: Dict[Text, List[types.Artifact]],
+         exec_properties: Dict[Text, Any]) -> None:
     """Copies over recorded data to pipeline output uri.
 
     Args:

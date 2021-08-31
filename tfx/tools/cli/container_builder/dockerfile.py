@@ -1,3 +1,4 @@
+# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,8 +14,12 @@
 # limitations under the License.
 """Dockerfile helper."""
 
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+
 import os
-from typing import Optional
+from typing import Text, Optional
 
 import click
 
@@ -33,7 +38,7 @@ COPY ./ ./
 ENV PYTHONPATH="/pipeline:${PYTHONPATH}"'''
 
 
-class Dockerfile:
+class Dockerfile(object):
   """Dockerfile class.
 
   Dockerfile generates a default dockerfile if it does not exist.
@@ -44,9 +49,9 @@ class Dockerfile:
   """
 
   def __init__(self,
-               filename: str,
-               setup_py_filename: Optional[str] = None,
-               base_image: Optional[str] = None):
+               filename: Text,
+               setup_py_filename: Optional[Text] = None,
+               base_image: Optional[Text] = None):
     self.filename = filename
     if os.path.exists(self.filename):
       return

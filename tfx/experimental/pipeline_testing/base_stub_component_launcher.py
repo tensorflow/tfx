@@ -13,8 +13,12 @@
 # limitations under the License.
 """Base stub component launcher for launching component executors and stub executors in process."""
 
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+
 import os
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Text
 
 from tfx import types
 from tfx.dsl.components.base import base_executor
@@ -34,11 +38,11 @@ class BaseStubComponentLauncher(
   component, i.e. its driver and publisher.
   """
 
-  test_component_ids = ...  # type: List[str]
-  test_data_dir = ...  # type: str
+  test_component_ids = ...  # type: List[Text]
+  test_data_dir = ...  # type: Text
 
   @classmethod
-  def initialize(cls, test_data_dir: str, test_component_ids: List[str]):
+  def initialize(cls, test_data_dir: Text, test_component_ids: List[Text]):
     """Initializes variables in the stub launcher class.
 
     For beam pipeline, stub launcher class inheriting this class is defined in
@@ -77,14 +81,15 @@ class BaseStubComponentLauncher(
     cls.test_data_dir = test_data_dir
 
   def _run_executor(self, execution_id: int,
-                    input_dict: Dict[str, List[types.Artifact]],
-                    output_dict: Dict[str, List[types.Artifact]],
-                    exec_properties: Dict[str, Any]) -> None:
+                    input_dict: Dict[Text, List[types.Artifact]],
+                    output_dict: Dict[Text, List[types.Artifact]],
+                    exec_properties: Dict[Text, Any]) -> None:
     """Execute underlying component implementation."""
     component_id = self._component_info.component_id
     if component_id in self.test_component_ids:
-      super()._run_executor(execution_id, input_dict, output_dict,
-                            exec_properties)
+      super(BaseStubComponentLauncher,
+            self)._run_executor(execution_id, input_dict, output_dict,
+                                exec_properties)
     else:
       executor_context = base_executor.BaseExecutor.Context(
           extra_flags=self._beam_pipeline_args,

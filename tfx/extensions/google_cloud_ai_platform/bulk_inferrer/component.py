@@ -1,3 +1,4 @@
+# Lint as: python2, python3
 # Copyright 2020 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,7 +14,11 @@
 # limitations under the License.
 """BulkInferrer component for Cloud AI platform."""
 
-from typing import Any, Dict, Optional, Union
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+
+from typing import Any, Dict, Optional, Text, Union
 
 from tfx import types
 from tfx.components.base import base_component
@@ -87,7 +92,7 @@ class CloudAIBulkInferrerComponent(base_component.BaseComponent):
                                 data_types.RuntimeParameter]] = None,
       output_example_spec: Optional[Union[bulk_inferrer_pb2.OutputExampleSpec,
                                           data_types.RuntimeParameter]] = None,
-      custom_config: Optional[Dict[str, Any]] = None):
+      custom_config: Optional[Dict[Text, Any]] = None):
     """Construct an BulkInferrer component.
 
     Args:
@@ -127,4 +132,4 @@ class CloudAIBulkInferrerComponent(base_component.BaseComponent):
         custom_config=json_utils.dumps(custom_config),
         inference_result=inference_result,
         output_examples=output_examples)
-    super().__init__(spec=spec)
+    super(CloudAIBulkInferrerComponent, self).__init__(spec=spec)

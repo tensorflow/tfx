@@ -13,7 +13,12 @@
 # limitations under the License.
 """E2E Tests for IMDB Sentiment Analysis example with stub executors."""
 
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+
 import os
+from typing import Text
 
 from absl import logging
 import tensorflow as tf
@@ -32,7 +37,7 @@ from ml_metadata.proto import metadata_store_pb2
 class ImdbStubPipelineRegressionEndToEndTest(tf.test.TestCase):
 
   def setUp(self):
-    super().setUp()
+    super(ImdbStubPipelineRegressionEndToEndTest, self).setUp()
     self._test_dir = os.path.join(
         os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR', self.get_temp_dir()),
         self._testMethodName)
@@ -79,38 +84,38 @@ class ImdbStubPipelineRegressionEndToEndTest(tf.test.TestCase):
         metadata_path=self._metadata_path,
         beam_pipeline_args=[])
 
-  def _verify_file_path(self, output_uri: str, artifact_uri: str):
+  def _verify_file_path(self, output_uri: Text, artifact_uri: Text):
     self.assertTrue(
         executor_verifier_utils.verify_file_dir(output_uri, artifact_uri))
 
   def _veryify_root_dir(self, output_uri: str, unused_artifact_uri: str):
     self.assertTrue(fileio.exists(output_uri))
 
-  def _verify_evaluation(self, output_uri: str, expected_uri: str):
+  def _verify_evaluation(self, output_uri: Text, expected_uri: Text):
     self.assertTrue(
         executor_verifier_utils.compare_eval_results(output_uri, expected_uri,
                                                      1.0, ['accuracy']))
 
-  def _verify_schema(self, output_uri: str, expected_uri: str):
+  def _verify_schema(self, output_uri: Text, expected_uri: Text):
     self.assertTrue(
         executor_verifier_utils.compare_file_sizes(output_uri, expected_uri,
                                                    .5))
 
-  def _verify_examples(self, output_uri: str, expected_uri: str):
+  def _verify_examples(self, output_uri: Text, expected_uri: Text):
     self.assertTrue(
         executor_verifier_utils.compare_file_sizes(output_uri, expected_uri,
                                                    .5))
 
-  def _verify_model(self, output_uri: str, expected_uri: str):
+  def _verify_model(self, output_uri: Text, expected_uri: Text):
     self.assertTrue(
         executor_verifier_utils.compare_model_file_sizes(
             output_uri, expected_uri, .5))
 
-  def _verify_anomalies(self, output_uri: str, expected_uri: str):
+  def _verify_anomalies(self, output_uri: Text, expected_uri: Text):
     self.assertTrue(
         executor_verifier_utils.compare_anomalies(output_uri, expected_uri))
 
-  def assertDirectoryEqual(self, dir1: str, dir2: str):
+  def assertDirectoryEqual(self, dir1: Text, dir2: Text):
     self.assertTrue(executor_verifier_utils.compare_dirs(dir1, dir2))
 
   def testStubbedImdbPipelineBeam(self):

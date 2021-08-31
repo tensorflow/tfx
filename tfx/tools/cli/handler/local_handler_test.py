@@ -30,7 +30,7 @@ from tfx.utils import test_case_utils
 class LocalHandlerTest(test_case_utils.TfxTest):
 
   def setUp(self):
-    super().setUp()
+    super(LocalHandlerTest, self).setUp()
     self.chicago_taxi_pipeline_dir = os.path.join(
         os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'testdata')
     self._home = self.tmp_dir

@@ -1,3 +1,4 @@
+# Lint as: python2, python3
 # Copyright 2020 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,6 +13,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Tests for tfx.tools.cli.commands.copy_template."""
+
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
 
 import codecs
 import locale
@@ -28,7 +33,7 @@ from tfx.tools.cli.handler import template_handler
 class TemplateTest(tf.test.TestCase):
 
   def setUp(self):
-    super().setUp()
+    super(TemplateTest, self).setUp()
     # Change the encoding for Click since Python 3 is configured to use ASCII as
     # encoding for the environment.
     if codecs.lookup(locale.getpreferredencoding()).name == 'ascii':

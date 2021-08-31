@@ -18,7 +18,7 @@ import locale
 import os
 import subprocess
 import sys
-from typing import Optional
+from typing import Optional, Text
 
 import absl
 from google.cloud import storage
@@ -35,14 +35,14 @@ from tfx.utils import test_case_utils
 
 class CliKubeflowEndToEndTest(test_case_utils.TfxTest):
 
-  def _get_endpoint(self, config: str) -> str:
+  def _get_endpoint(self, config: Text) -> Text:
     lines = config.decode('utf-8').split('\n')
     for line in lines:
       if line.endswith('googleusercontent.com'):
         return line
 
   def setUp(self):
-    super().setUp()
+    super(CliKubeflowEndToEndTest, self).setUp()
 
     # List of packages installed.
     self._pip_list = pip_utils.get_package_names()
@@ -102,7 +102,7 @@ class CliKubeflowEndToEndTest(test_case_utils.TfxTest):
       absl.logging.info(err)
 
   def tearDown(self):
-    super().tearDown()
+    super(CliKubeflowEndToEndTest, self).tearDown()
     self._cleanup_kfp_server(self._pipeline_name)
 
   def _cleanup_kfp_server(self, pipeline_name):
@@ -111,24 +111,24 @@ class CliKubeflowEndToEndTest(test_case_utils.TfxTest):
     self._delete_pipeline_output(pipeline_name)
 
   @retry.retry(ignore_eventual_failure=True)
-  def _delete_pipeline(self, pipeline_name: str):
+  def _delete_pipeline(self, pipeline_name: Text):
     pipeline_id = self._get_kfp_pipeline_id(pipeline_name)
     if pipeline_id is not None:
       self._client.delete_pipeline(pipeline_id)
       absl.logging.info('Deleted pipeline : {}'.format(pipeline_name))
 
   @retry.retry(ignore_eventual_failure=True)
-  def _delete_experiment(self, pipeline_name: str):
+  def _delete_experiment(self, pipeline_name: Text):
     experiment_id = self._get_kfp_experiment_id(pipeline_name)
     if experiment_id is not None:
       self._delete_all_runs(experiment_id)
       self._client._experiment_api.delete_experiment(experiment_id)
       absl.logging.info('Deleted experiment : {}'.format(pipeline_name))
 
-  def _get_kfp_pipeline_id(self, pipeline_name: str) -> Optional[str]:
+  def _get_kfp_pipeline_id(self, pipeline_name: Text) -> Optional[Text]:
     return self._client.get_pipeline_id(pipeline_name)
 
-  def _get_kfp_experiment_id(self, pipeline_name: str) -> Optional[str]:
+  def _get_kfp_experiment_id(self, pipeline_name: Text) -> Optional[Text]:
     try:
       experiment = self._client.get_experiment(experiment_name=pipeline_name)
     except ValueError:
@@ -136,7 +136,7 @@ class CliKubeflowEndToEndTest(test_case_utils.TfxTest):
     return experiment.id
 
   @retry.retry(ignore_eventual_failure=True)
-  def _delete_pipeline_output(self, pipeline_name: str) -> None:
+  def _delete_pipeline_output(self, pipeline_name: Text) -> None:
     """Deletes output produced by the named pipeline.
 
     Args:
@@ -153,7 +153,7 @@ class CliKubeflowEndToEndTest(test_case_utils.TfxTest):
     blobs = list(bucket.list_blobs(prefix=prefix))
     bucket.delete_blobs(blobs)
 
-  def _delete_all_runs(self, experiment_id: str):
+  def _delete_all_runs(self, experiment_id: Text):
     try:
       # Get all runs related to the experiment_id.
       response = self._client.list_runs(experiment_id=experiment_id)
@@ -163,8 +163,8 @@ class CliKubeflowEndToEndTest(test_case_utils.TfxTest):
     except kfp_server_api.rest.ApiException as err:
       absl.logging.info(err)
 
-  def _valid_create_and_check(self, pipeline_path: str,
-                              pipeline_name: str) -> None:
+  def _valid_create_and_check(self, pipeline_path: Text,
+                              pipeline_name: Text) -> None:
     result = test_utils.run_cli([
         'pipeline', 'create', '--engine', 'kubeflow', '--pipeline_path',
         pipeline_path, '--endpoint', self._endpoint
@@ -174,7 +174,7 @@ class CliKubeflowEndToEndTest(test_case_utils.TfxTest):
     self.assertIn('Pipeline "{}" created successfully.'.format(pipeline_name),
                   result)
 
-  def _run_pipeline_using_kfp_client(self, pipeline_name: str):
+  def _run_pipeline_using_kfp_client(self, pipeline_name: Text):
     pipeline_id = self._get_kfp_pipeline_id(pipeline_name)
     experiment_id = self._get_kfp_experiment_id(pipeline_name)
     absl.logging.info(

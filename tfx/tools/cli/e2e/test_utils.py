@@ -17,7 +17,7 @@ import datetime
 import random
 import string
 import subprocess
-from typing import Any, List
+from typing import Any, List, Text
 
 from absl import logging
 from tfx import components
@@ -25,7 +25,7 @@ from tfx.dsl.components.base.base_component import BaseComponent
 from tfx.utils import io_utils
 
 
-def create_e2e_components(csv_input_location: str,) -> List[BaseComponent]:
+def create_e2e_components(csv_input_location: Text,) -> List[BaseComponent]:
   """Creates components for a simple Chicago Taxi TFX pipeline for testing.
 
      Because we don't need to run whole pipeline, we will make a very short
@@ -57,9 +57,9 @@ def generate_random_id(seed: Any = None):
   ])
 
 
-def copy_and_change_pipeline_name(orig_path: str, new_path: str,
-                                  origin_pipeline_name: str,
-                                  new_pipeline_name: str) -> None:
+def copy_and_change_pipeline_name(orig_path: Text, new_path: Text,
+                                  origin_pipeline_name: Text,
+                                  new_pipeline_name: Text) -> None:
   """Copy pipeline file to new path with pipeline name changed."""
   contents = io_utils.read_string_file(orig_path)
   assert contents.count(

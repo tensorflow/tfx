@@ -16,7 +16,7 @@
 This file defines TFX pipeline and various components in the pipeline.
 """
 
-from typing import List, Optional
+from typing import List, Optional, Text
 
 import tensorflow_model_analysis as tfma
 from tfx import v1 as tfx
@@ -26,18 +26,18 @@ from ml_metadata.proto import metadata_store_pb2
 
 
 def create_pipeline(
-    pipeline_name: str,
-    pipeline_root: str,
-    data_path: str,
-    preprocessing_fn: str,
-    run_fn: str,
+    pipeline_name: Text,
+    pipeline_root: Text,
+    data_path: Text,
+    preprocessing_fn: Text,
+    run_fn: Text,
     train_args: tfx.proto.TrainArgs,
     eval_args: tfx.proto.EvalArgs,
     eval_accuracy_threshold: float,
-    serving_model_dir: str,
+    serving_model_dir: Text,
     metadata_connection_config: Optional[
         metadata_store_pb2.ConnectionConfig] = None,
-    beam_pipeline_args: Optional[List[str]] = None,
+    beam_pipeline_args: Optional[List[Text]] = None,
 ) -> tfx.dsl.Pipeline:
   """Implements the penguin pipeline with TFX."""
 

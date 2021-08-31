@@ -29,7 +29,7 @@ from tfx.tools.cli.handler import kubeflow_handler
 from tfx.utils import test_case_utils
 
 
-class _MockRunResponse:
+class _MockRunResponse(object):
 
   def __init__(self, pipeline_name, run_id, status, created_at):
     self.pipeline_spec = mock.MagicMock()
@@ -42,7 +42,7 @@ class _MockRunResponse:
 class KubeflowHandlerTest(test_case_utils.TfxTest):
 
   def setUp(self):
-    super().setUp()
+    super(KubeflowHandlerTest, self).setUp()
 
     # Flags for handler.
     self.engine = 'kubeflow'

@@ -14,6 +14,7 @@
 """Chicago taxi example using TFX on Kubeflow pipelines V2 runner."""
 
 import os
+from typing import Text
 
 import absl
 from absl import app
@@ -31,8 +32,8 @@ _tfx_root = os.path.join(os.environ['HOME'], 'tfx')
 _pipeline_root = os.path.join(_tfx_root, 'pipelines', _pipeline_name)
 
 
-def _create_pipeline(pipeline_name: str, pipeline_root: str,
-                     data_root: str) -> pipeline.Pipeline:
+def _create_pipeline(pipeline_name: Text, pipeline_root: Text,
+                     data_root: Text) -> pipeline.Pipeline:
   """Implements the chicago taxi pipeline with TFX."""
 
   # Brings data into the pipeline or otherwise joins/converts training data.

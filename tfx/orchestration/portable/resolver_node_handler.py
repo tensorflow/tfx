@@ -12,24 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """This module defines the handler for resolver node."""
-import sys
-import traceback
-from typing import Any, Dict, Optional
+
+from typing import Any, Dict
 
 from absl import logging
-import grpc
 from tfx.orchestration import data_types_utils
 from tfx.orchestration import metadata
 from tfx.orchestration.portable import data_types
 from tfx.orchestration.portable import execution_publish_utils
 from tfx.orchestration.portable import inputs_utils
 from tfx.orchestration.portable import system_node_handler
-from tfx.orchestration.portable.input_resolution import exceptions
 from tfx.orchestration.portable.mlmd import context_lib
-from tfx.proto.orchestration import execution_result_pb2
 from tfx.proto.orchestration import pipeline_pb2
-
-_ERROR_CODE_UNIMPLEMENTED: int = grpc.StatusCode.UNIMPLEMENTED.value[0]
 
 
 class ResolverNodeHandler(system_node_handler.SystemNodeHandler):
@@ -66,35 +60,12 @@ class ResolverNodeHandler(system_node_handler.SystemNodeHandler):
       contexts = context_lib.prepare_contexts(
           metadata_handler=m, node_contexts=pipeline_node.contexts)
 
-      # 2. Resolves inputs and execution properties.
+      # 2. Resolves inputs an execution properties.
       exec_properties = data_types_utils.build_parsed_value_dict(
           inputs_utils.resolve_parameters_with_schema(
               node_parameters=pipeline_node.parameters))
-      try:
-        resolved_inputs = inputs_utils.resolve_input_artifacts_v2(
-            pipeline_node=pipeline_node,
-            metadata_handler=m)
-      except exceptions.InputResolutionError as e:
-        execution = execution_publish_utils.register_execution(
-            metadata_handler=m,
-            execution_type=pipeline_node.node_info.type,
-            contexts=contexts,
-            exec_properties=exec_properties)
-        execution_publish_utils.publish_failed_execution(
-            metadata_handler=m,
-            contexts=contexts,
-            execution_id=execution.id,
-            executor_output=self._build_error_output(code=e.grpc_code_value))
-        return data_types.ExecutionInfo(
-            execution_id=execution.id,
-            exec_properties=exec_properties,
-            pipeline_node=pipeline_node,
-            pipeline_info=pipeline_info)
-
-      # 2a. If Skip (i.e. inside conditional), no execution should be made.
-      # TODO(b/197907821): Publish special execution for Skip?
-      if isinstance(resolved_inputs, inputs_utils.Skip):
-        return data_types.ExecutionInfo()
+      input_artifacts = inputs_utils.resolve_input_artifacts(
+          metadata_handler=m, node_inputs=pipeline_node.inputs)
 
       # 3. Registers execution in metadata.
       execution = execution_publish_utils.register_execution(
@@ -102,23 +73,6 @@ class ResolverNodeHandler(system_node_handler.SystemNodeHandler):
           execution_type=pipeline_node.node_info.type,
           contexts=contexts,
           exec_properties=exec_properties)
-
-      # TODO(b/197741942): Support len > 1.
-      if len(resolved_inputs) > 1:
-        execution_publish_utils.publish_failed_execution(
-            metadata_handler=m,
-            contexts=contexts,
-            execution_id=execution.id,
-            executor_output=self._build_error_output(
-                _ERROR_CODE_UNIMPLEMENTED,
-                'Handling more than one input dicts not implemented yet.'))
-        return data_types.ExecutionInfo(
-            execution_id=execution.id,
-            exec_properties=exec_properties,
-            pipeline_node=pipeline_node,
-            pipeline_info=pipeline_info)
-
-      input_artifacts = resolved_inputs[0]
 
       # 4. Publish the execution as a cached execution with
       # resolved input artifact as the output artifacts.
@@ -135,12 +89,3 @@ class ResolverNodeHandler(system_node_handler.SystemNodeHandler):
           exec_properties=exec_properties,
           pipeline_node=pipeline_node,
           pipeline_info=pipeline_info)
-
-  def _build_error_output(
-      self, code: int, msg: Optional[str] = None
-  ) -> execution_result_pb2.ExecutorOutput:
-    if msg is None:
-      msg = '\n'.join(traceback.format_exception(*sys.exc_info()))
-    return execution_result_pb2.ExecutorOutput(
-        execution_result=execution_result_pb2.ExecutionResult(
-            code=code, result_message=msg))

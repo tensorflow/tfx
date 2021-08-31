@@ -30,7 +30,7 @@ from tfx.utils import telemetry_utils
 class ExecutorTest(tf.test.TestCase):
 
   def setUp(self):
-    super().setUp()
+    super(ExecutorTest, self).setUp()
     self._source_data_dir = os.path.join(
         os.path.dirname(
             os.path.dirname(os.path.dirname(os.path.dirname(__file__)))),

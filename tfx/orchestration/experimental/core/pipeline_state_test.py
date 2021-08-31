@@ -57,6 +57,16 @@ class NodeStateTest(test_utils.TfxTest):
     self.assertEqual(pstate.NodeState.STARTING, node_state.state)
     self.assertIsNone(node_state.status)
 
+  def test_add_tag(self):
+    node_state = pstate.NodeState()
+    self.assertFalse(
+        node_state.is_tagged_with(pstate.NodeState.Tag.NODE_EXEC_SKIPPED))
+    node_state.add_tag(pstate.NodeState.Tag.NODE_EXEC_SKIPPED)
+    self.assertTrue(
+        node_state.is_tagged_with(pstate.NodeState.Tag.NODE_EXEC_SKIPPED))
+    self.assertCountEqual(['NODE_EXEC_SKIPPED'],
+                          node_state.to_json_dict()['_tags'])
+
 
 class PipelineStateTest(test_utils.TfxTest):
 

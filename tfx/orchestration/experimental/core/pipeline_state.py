@@ -15,6 +15,7 @@
 
 import base64
 import contextlib
+import enum
 import threading
 import time
 from typing import Dict, Iterator, List, Mapping, Optional, Tuple
@@ -74,11 +75,17 @@ class NodeState(json_utils.Jsonable):
   # This state indicates that the node is stopped.
   STOPPED = 'stopped'
 
+  @enum.unique
+  class Tag(enum.Enum):
+    # Indicates that the node execution is skipped.
+    NODE_EXEC_SKIPPED = 1
+
   state: str = attr.ib(
       default=STARTED,
       validator=attr.validators.in_([STARTING, STARTED, STOPPING, STOPPED]))
   status_code: Optional[int] = None
   status_msg: str = ''
+  _tags: List[str] = attr.ib(init=False, factory=list)
 
   @property
   def status(self) -> Optional[status_lib.Status]:
@@ -96,6 +103,15 @@ class NodeState(json_utils.Jsonable):
     else:
       self.status_code = None
       self.status_msg = ''
+
+  def add_tag(self, tag: Tag) -> None:
+    """Adds the given tag to the node state."""
+    if tag.name not in self._tags:
+      self._tags.append(tag.name)
+
+  def is_tagged_with(self, tag: Tag) -> bool:
+    """Returns True if the node state has the given tag."""
+    return tag.name in self._tags
 
 
 def record_state_change_time() -> None:
@@ -180,9 +196,7 @@ class PipelineState:
           code=status_lib.Code.ALREADY_EXISTS,
           message=f'Pipeline with uid {pipeline_uid} already active.')
 
-    exec_properties = {
-        _PIPELINE_IR: _base64_encode_pipeline(pipeline)
-    }
+    exec_properties = {_PIPELINE_IR: _base64_encode_pipeline(pipeline)}
     if pipeline_run_metadata:
       exec_properties[_PIPELINE_RUN_METADATA] = json_utils.dumps(
           pipeline_run_metadata)

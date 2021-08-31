@@ -80,7 +80,7 @@ class TaxiTemplateKubeflowE2ETest(test_utils.BaseEndToEndTest):
         self._GCP_PROJECT_ID, self._pipeline_name)
 
   def tearDown(self):
-    super().tearDown()
+    super(TaxiTemplateKubeflowE2ETest, self).tearDown()
     self._cleanup_kfp()
 
   def _cleanup_kfp(self):

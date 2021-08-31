@@ -93,7 +93,7 @@ def create_pipeline(pipeline_name: str, pipeline_root: str, data_root: str,
       schema=schema_gen.outputs['schema'],
       module_file=module_file)
 
-  # Uses user-provided Python function that implements a model.
+  # Uses user-provided Python function that implements a model using TF-Learn.
   trainer = Trainer(
       module_file=module_file,
       transformed_examples=transform.outputs['transformed_examples'],

@@ -36,8 +36,7 @@ from tfx.utils import topsort
 from google.protobuf import any_pb2
 from ml_metadata.proto import metadata_store_pb2
 
-# Caches nodes that completed successfully so that we don't have to query MLMD
-# for the status of those nodes repeatedly.
+# Caches successful and skipped nodes so we don't have to query MLMD repeatedly.
 _successful_nodes_cache = cachetools.LRUCache(maxsize=1024)
 
 
@@ -111,6 +110,9 @@ class SyncPipelineTaskGenerator(task_gen.TaskGenerator):
 
         with self._pipeline_state:
           node_state = self._pipeline_state.get_node_state(node_uid)
+          if node_state.is_tagged_with(pstate.NodeState.Tag.NODE_EXEC_SKIPPED):
+            successful_node_ids.add(node_id)
+            continue
           if node_state.state in (pstate.NodeState.STOPPING,
                                   pstate.NodeState.STOPPED):
             logging.info(
@@ -227,6 +229,13 @@ class SyncPipelineTaskGenerator(task_gen.TaskGenerator):
     node_uid = task_lib.NodeUid.from_pipeline_node(self._pipeline, node)
     resolved_info = task_gen_utils.generate_resolved_info(
         self._mlmd_handle, node)
+    if resolved_info is None:
+      with self._pipeline_state:
+        with self._pipeline_state.node_state_update_context(
+            node_uid) as node_state:
+          node_state.add_tag(pstate.NodeState.Tag.NODE_EXEC_SKIPPED)
+      successful_node_ids.add(node.node_info.id)
+      return None
     if resolved_info.input_artifacts is None:
       return self._abort_task(f'failure to resolve inputs; node uid {node_uid}')
 

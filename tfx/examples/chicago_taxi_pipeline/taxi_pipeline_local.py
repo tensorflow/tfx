@@ -105,7 +105,7 @@ def _create_pipeline(pipeline_name: str, pipeline_root: str, data_root: str,
       strategy_class=latest_artifacts_resolver.LatestArtifactsResolver,
       latest_model=Channel(type=Model)).with_id('latest_model_resolver')
 
-  # Uses user-provided Python function that implements a model.
+  # Uses user-provided Python function that implements a model using TF-Learn.
   trainer = Trainer(
       module_file=module_file,
       custom_executor_spec=executor_spec.ExecutorClassSpec(Executor),

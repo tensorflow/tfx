@@ -89,7 +89,6 @@ nodes {
         }
       }
     }
-    downstream_nodes: "CustomConsumer"
     execution_options {
       caching_options {
       }
@@ -164,7 +163,6 @@ nodes {
         }
       }
     }
-    upstream_nodes: "CustomProducer"
     execution_options {
       caching_options {
       }

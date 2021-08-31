@@ -102,7 +102,7 @@ def _create_pipeline():
       schema=schema_gen.outputs['schema'],
       preprocessing_fn=_taxi_transformer_func)
 
-  # Uses user-provided Python function that implements a model.
+  # Uses user-provided Python function that implements a model using TF-Learn.
   trainer = Trainer(
       trainer_fn=_taxi_trainer_func,
       examples=transform.outputs['transformed_examples'],

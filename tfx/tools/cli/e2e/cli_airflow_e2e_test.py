@@ -37,7 +37,7 @@ from tfx.utils import test_case_utils
 class CliAirflowEndToEndTest(test_case_utils.TfxTest):
 
   def setUp(self):
-    super().setUp()
+    super(CliAirflowEndToEndTest, self).setUp()
 
     # List of packages installed.
     self._pip_list = pip_utils.get_package_names()
@@ -87,6 +87,21 @@ class CliAirflowEndToEndTest(test_case_utils.TfxTest):
         os.path.join(chicago_taxi_pipeline_dir, 'taxi_utils.py'),
         os.path.join(self._airflow_home, 'taxi', 'taxi_utils.py'))
 
+    self._mysql_container_name = 'airflow_' + test_utils.generate_random_id()
+    db_port = airflow_test_utils.create_mysql_container(
+        self._mysql_container_name)
+    self.addCleanup(self._cleanup_mysql_container)
+    self.enter_context(
+        test_case_utils.override_env_var(
+            'AIRFLOW__CORE__SQL_ALCHEMY_CONN',
+            'mysql://tfx@127.0.0.1:%d/airflow' % db_port))
+    # Do not load examples to make this a bit faster.
+    self.enter_context(
+        test_case_utils.override_env_var('AIRFLOW__CORE__LOAD_EXAMPLES',
+                                         'False'))
+
+    self._airflow_initdb()
+
     # Initialize CLI runner.
     self.runner = click_testing.CliRunner()
 
@@ -109,22 +124,6 @@ class CliAirflowEndToEndTest(test_case_utils.TfxTest):
                                          pipeline_name)
     return fileio.exists(
         os.path.join(handler_pipeline_path, 'pipeline_args.json'))
-
-  def _prepare_airflow_with_mysql(self):
-    self._mysql_container_name = 'airflow_' + test_utils.generate_random_id()
-    db_port = airflow_test_utils.create_mysql_container(
-        self._mysql_container_name)
-    self.addCleanup(self._cleanup_mysql_container)
-    self.enter_context(
-        test_case_utils.override_env_var(
-            'AIRFLOW__CORE__SQL_ALCHEMY_CONN',
-            'mysql://tfx@127.0.0.1:%d/airflow' % db_port))
-    # Do not load examples to make this a bit faster.
-    self.enter_context(
-        test_case_utils.override_env_var('AIRFLOW__CORE__LOAD_EXAMPLES',
-                                         'False'))
-
-    self._airflow_initdb()
 
   def _valid_create_and_check(self, pipeline_path, pipeline_name):
     # Create a pipeline.
@@ -195,7 +194,7 @@ class CliAirflowEndToEndTest(test_case_utils.TfxTest):
 
   def testPipelineCompile(self):
     # Invalid DSL path
-    pipeline_path = os.path.join(self._testdata_dir, 'non_existing.py')
+    pipeline_path = os.path.join(self._testdata_dir, 'test_pipeline_flink.py')
     result = self.runner.invoke(cli_group, [
         'pipeline', 'compile', '--engine', 'airflow', '--pipeline_path',
         pipeline_path
@@ -297,7 +296,6 @@ class CliAirflowEndToEndTest(test_case_utils.TfxTest):
     #       actually. This e2e test covers CLI side of the execution only.
 
   def testRunCreate(self):
-    self._prepare_airflow_with_mysql()
     # Try running a non-existent pipeline.
     result = self.runner.invoke(cli_group, [
         'run', 'create', '--engine', 'airflow', '--pipeline_name',
@@ -315,7 +313,6 @@ class CliAirflowEndToEndTest(test_case_utils.TfxTest):
     self._valid_run_and_check(self._pipeline_name)
 
   def testRunList(self):
-    self._prepare_airflow_with_mysql()
     # Now create a pipeline.
     self._valid_create_and_check(self._pipeline_path, self._pipeline_name)
 

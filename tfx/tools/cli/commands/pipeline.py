@@ -14,7 +14,7 @@
 """Commands for pipeline group."""
 
 import sys
-from typing import Optional
+from typing import Optional, Text
 
 import click
 
@@ -242,8 +242,9 @@ def update_pipeline(ctx: Context, engine: str, pipeline_path: str,
     default='kubeflow',
     type=str,
     help='Kubernetes namespace to connect to the KFP API.')
-def delete_pipeline(ctx: Context, engine: str, pipeline_name: str,
-                    endpoint: str, iap_client_id: str, namespace: str) -> None:
+def delete_pipeline(ctx: Context, engine: Text, pipeline_name: Text,
+                    endpoint: Text, iap_client_id: Text,
+                    namespace: Text) -> None:
   """Command definition to delete a pipeline."""
   click.echo('Deleting pipeline')
   ctx.flags_dict[labels.ENGINE_FLAG] = engine
@@ -275,8 +276,8 @@ def delete_pipeline(ctx: Context, engine: str, pipeline_name: str,
     default='kubeflow',
     type=str,
     help='Kubernetes namespace to connect to the KFP API.')
-def list_pipelines(ctx: Context, engine: str, endpoint: str, iap_client_id: str,
-                   namespace: str) -> None:
+def list_pipelines(ctx: Context, engine: Text, endpoint: Text,
+                   iap_client_id: Text, namespace: Text) -> None:
   """Command definition to list pipelines."""
   click.echo('Listing all pipelines')
   ctx.flags_dict[labels.ENGINE_FLAG] = engine
@@ -303,8 +304,8 @@ def list_pipelines(ctx: Context, engine: str, endpoint: str, iap_client_id: str,
     type=str,
     help='[DEPRECATED] Package path specified in a KubeflowDagRunner instace '
     'will be used.')
-def compile_pipeline(ctx: Context, engine: str, pipeline_path: str,
-                     package_path: str) -> None:
+def compile_pipeline(ctx: Context, engine: Text, pipeline_path: Text,
+                     package_path: Text) -> None:
   """Command definition to compile a pipeline."""
   # TODO(b/179847638): Delete checks for deprecated flags.
   _check_deprecated_image_build_flags(pipeline_package_path=package_path)
@@ -325,7 +326,7 @@ def compile_pipeline(ctx: Context, engine: str, pipeline_path: str,
     required=True,
     type=str,
     help='Name of the pipeline')
-def get_schema(ctx: Context, engine: str, pipeline_name: str) -> None:
+def get_schema(ctx: Context, engine: Text, pipeline_name: Text) -> None:
   """Command definition to infer latest schema."""
   click.echo('Getting latest schema.')
   ctx.flags_dict[labels.ENGINE_FLAG] = engine
