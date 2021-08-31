@@ -775,6 +775,8 @@ nodes {
     }
     upstream_nodes: "CsvExampleGen"
     upstream_nodes: "Trainer"
+    downstream_nodes: "InfraValidator"
+    downstream_nodes: "Pusher"
     execution_options {
       caching_options {
         enable_cache: true
@@ -1005,6 +1007,7 @@ nodes {
     upstream_nodes: "CsvExampleGen"
     upstream_nodes: "Evaluator"
     upstream_nodes: "Trainer"
+    downstream_nodes: "Pusher"
     execution_options {
       caching_options {
         enable_cache: true

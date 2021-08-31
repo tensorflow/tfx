@@ -12,8 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Compiles a TFX pipeline into a TFX DSL IR proto."""
+import collections
 import itertools
-from typing import Iterable, List, Mapping, cast, Type, Any
+from typing import Iterable, List, cast, Type, Any
 
 from tfx import types
 from tfx.dsl.compiler import compiler_utils
@@ -38,24 +39,29 @@ from ml_metadata.proto import metadata_store_pb2
 class _CompilerContext:
   """Encapsulates resources needed to compile a pipeline."""
 
-  def __init__(self, pipeline_info: data_types.PipelineInfo,
-               execution_mode: pipeline_pb2.Pipeline.ExecutionMode,
-               topological_order: Mapping[str, int]):
-    self.pipeline_info = pipeline_info
-    self.execution_mode = execution_mode
+  def __init__(self, tfx_pipeline: pipeline.Pipeline):
+    self.pipeline_info = tfx_pipeline.pipeline_info
+    self.execution_mode = compiler_utils.resolve_execution_mode(tfx_pipeline)
     self.node_pbs = {}
     self.node_outputs = set()
-    self._topological_order = topological_order
-
-  @classmethod
-  def from_tfx_pipeline(cls, tfx_pipeline: pipeline.Pipeline):
-    topological_order = {}
+    self._pipeline_nodes_by_id = {}
+    self._topological_order = {}
+    self._implicit_upstream_nodes = collections.defaultdict(set)
+    self._implicit_downstream_nodes = collections.defaultdict(set)
     for i, node in enumerate(tfx_pipeline.components, start=1):
-      topological_order[node.id] = i
-    return cls(
-        pipeline_info=tfx_pipeline.pipeline_info,
-        execution_mode=compiler_utils.resolve_execution_mode(tfx_pipeline),
-        topological_order=topological_order)
+      self._pipeline_nodes_by_id[node.id] = node
+      self._topological_order[node.id] = i
+      self._collect_conditional_dependency(node)
+
+  def _add_implicit_dependency(self, parent_id: str, child_id: str) -> None:
+    self._implicit_upstream_nodes[child_id].add(parent_id)
+    self._implicit_downstream_nodes[parent_id].add(child_id)
+
+  def _collect_conditional_dependency(self, here: base_node.BaseNode) -> None:
+    predicates = conditional.get_predicates(here)
+    for predicate in predicates:
+      for channel in predicate.dependent_channels():
+        self._add_implicit_dependency(channel.producer_component_id, here.id)
 
   def topologically_sorted(self, tfx_nodes: Iterable[base_node.BaseNode]):
     return sorted(tfx_nodes, key=lambda node: self._topological_order[node.id])
@@ -67,6 +73,16 @@ class _CompilerContext:
   @property
   def is_async_mode(self):
     return self.execution_mode == pipeline_pb2.Pipeline.ASYNC
+
+  def implicit_upstream_nodes(
+      self, here: base_node.BaseNode) -> List[base_node.BaseNode]:
+    return [self._pipeline_nodes_by_id[node_id]
+            for node_id in self._implicit_upstream_nodes[here.id]]
+
+  def implicit_downstream_nodes(
+      self, here: base_node.BaseNode) -> List[base_node.BaseNode]:
+    return [self._pipeline_nodes_by_id[node_id]
+            for node_id in self._implicit_downstream_nodes[here.id]]
 
 
 class Compiler:
@@ -155,8 +171,8 @@ class Compiler:
 
     # Pre Step 3: Alter graph topology if needed.
     if compile_context.is_async_mode:
-      tfx_node_inputs = self._compile_resolver_config(compile_context, tfx_node,
-                                                      node)
+      tfx_node_inputs = self._embed_upstream_resolver_nodes(
+          compile_context, tfx_node, node)
     else:
       tfx_node_inputs = tfx_node.inputs
 
@@ -164,7 +180,6 @@ class Compiler:
 
     # Step 3.1: Conditionals
     implicit_input_channels = {}
-    implicit_upstream_node_ids = set()
     predicates = conditional.get_predicates(tfx_node)
     if predicates:
       implicit_keys_map = {
@@ -178,8 +193,6 @@ class Compiler:
           if implicit_key not in implicit_keys_map:
             # Store this channel and add it to the node inputs later.
             implicit_input_channels[implicit_key] = channel
-            # Store the producer node and add it to the upstream nodes later.
-            implicit_upstream_node_ids.add(channel.producer_component_id)
         encoded_predicates.append(
             predicate.encode_with_keys(
                 compiler_utils.build_channel_to_key_fn(implicit_keys_map)))
@@ -289,22 +302,10 @@ class Compiler:
         deployment_config.custom_driver_specs[tfx_node.id].Pack(driver_spec)
 
     # Step 7: Upstream/Downstream nodes
-    # Note: the order of tfx_node.upstream_nodes is inconsistent from
-    # run to run. We sort them so that compiler generates consistent results.
-    # For ASYNC mode upstream/downstream node information is not set as
-    # compiled IR graph topology can be different from that on pipeline
-    # authoring time; for example Resolver nodes are removed.
-    if compile_context.is_sync_mode:
-      node.upstream_nodes.extend(
-          sorted({node.id for node in tfx_node.upstream_nodes}
-                 | implicit_upstream_node_ids))
-      # Add current node's id to its implicit upstream nodes' downstreams.
-      for upstream_node_id in implicit_upstream_node_ids:
-        upstream_pb = compile_context.node_pbs[upstream_node_id]
-        upstream_pb.downstream_nodes[:] = list(
-            set(upstream_pb.downstream_nodes) | {tfx_node.id})
-      node.downstream_nodes.extend(
-          sorted(node.id for node in tfx_node.downstream_nodes))
+    node.upstream_nodes.extend(
+        self._find_runtime_upstream_node_ids(compile_context, tfx_node))
+    node.downstream_nodes.extend(
+        self._find_runtime_downstream_node_ids(compile_context, tfx_node))
 
     # Step 8: Node execution options
     node.execution_options.caching_options.enable_cache = enable_cache
@@ -318,10 +319,42 @@ class Compiler:
 
     return node
 
-  def _compile_resolver_config(self, context: _CompilerContext,
-                               tfx_node: base_node.BaseNode,
-                               node: pipeline_pb2.PipelineNode):
-    """Compiles upstream Resolver nodes as a ResolverConfig.
+  def _find_runtime_upstream_node_ids(
+      self,
+      context: _CompilerContext,
+      here: base_node.BaseNode) -> List[str]:
+    """Finds all upstream nodes that the current node depends on."""
+    result = set()
+    for up in itertools.chain(here.upstream_nodes,
+                              context.implicit_upstream_nodes(here)):
+      if context.is_async_mode and compiler_utils.is_resolver(up):
+        result.update(self._find_runtime_upstream_node_ids(context, up))
+      else:
+        result.add(up.id)
+    # Sort result so that compiler generates consistent results.
+    return sorted(result)
+
+  def _find_runtime_downstream_node_ids(
+      self,
+      context: _CompilerContext,
+      here: base_node.BaseNode) -> List[str]:
+    """Finds all downstream nodes that depend on the current node."""
+    result = set()
+    for down in itertools.chain(here.downstream_nodes,
+                                context.implicit_downstream_nodes(here)):
+      if context.is_async_mode and compiler_utils.is_resolver(down):
+        result.update(self._find_runtime_downstream_node_ids(context, down))
+      else:
+        result.add(down.id)
+    # Sort result so that compiler generates consistent results.
+    return sorted(result)
+
+  def _embed_upstream_resolver_nodes(
+      self,
+      context: _CompilerContext,
+      tfx_node: base_node.BaseNode,
+      node: pipeline_pb2.PipelineNode):
+    """Embeds upstream Resolver nodes as a ResolverConfig.
 
     Iteratively reduces upstream resolver nodes into a resolver config of the
     current node until no upstream resolver node remains.
@@ -456,7 +489,7 @@ class Compiler:
       A Pipeline proto that encodes all necessary information of the pipeline.
     """
     _validate_pipeline(tfx_pipeline)
-    context = _CompilerContext.from_tfx_pipeline(tfx_pipeline)
+    context = _CompilerContext(tfx_pipeline)
     pipeline_pb = pipeline_pb2.Pipeline()
     pipeline_pb.pipeline_info.id = context.pipeline_info.pipeline_name
     pipeline_pb.execution_mode = context.execution_mode
