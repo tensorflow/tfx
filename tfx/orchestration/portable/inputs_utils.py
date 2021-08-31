@@ -247,11 +247,11 @@ def resolve_input_artifacts_v2(
   if typing_utils.is_artifact_multimap(resolved):
     result = [resolved]
   else:
-    raise exceptions.InputResolutionError(
+    raise exceptions.FailedPreconditionError(
         f'Invalid input resolution result: {resolved}.')
   result = [d for d in result if _is_sufficient(d, node_inputs)]
   if not result:
-    raise exceptions.InputResolutionError('No valid inputs.')
+    raise exceptions.FailedPreconditionError('No valid inputs.')
   return Trigger(result)
 
 

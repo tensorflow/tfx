@@ -13,6 +13,8 @@
 # limitations under the License.
 """This module defines a generic Launcher for all TFleX nodes."""
 
+import sys
+import traceback
 from typing import Any, Dict, List, Mapping, Optional, Type, TypeVar
 
 from absl import logging
@@ -37,6 +39,7 @@ from tfx.orchestration.portable import outputs_utils
 from tfx.orchestration.portable import python_driver_operator
 from tfx.orchestration.portable import python_executor_operator
 from tfx.orchestration.portable import resolver_node_handler
+from tfx.orchestration.portable.input_resolution import exceptions
 from tfx.orchestration.portable.mlmd import context_lib
 from tfx.orchestration.portable.mlmd import execution_lib
 from tfx.proto.orchestration import driver_output_pb2
@@ -79,6 +82,8 @@ _SYSTEM_NODE_HANDLERS = {
 }
 # LINT.ThenChange(Internal system node list)
 
+_ERROR_CODE_UNIMPLEMENTED: int = grpc.StatusCode.UNIMPLEMENTED.value[0]
+
 
 @attr.s(auto_attribs=True)
 class _ExecutionPreparationResult:
@@ -116,8 +121,8 @@ def _register_execution(
     metadata_handler: metadata.Metadata,
     execution_type: metadata_store_pb2.ExecutionType,
     contexts: List[metadata_store_pb2.Context],
-    input_artifacts: typing_utils.ArtifactMultiMap,
-    exec_properties: Mapping[str, types.Property]
+    input_artifacts: Optional[typing_utils.ArtifactMultiMap] = None,
+    exec_properties: Optional[Mapping[str, types.Property]] = None,
 ) -> metadata_store_pb2.Execution:
   """Registers an execution in MLMD."""
   return execution_publish_utils.register_execution(
@@ -212,10 +217,9 @@ class Launcher:
 
   def _register_or_reuse_execution(
       self, metadata_handler: metadata.Metadata,
-      execution_type: metadata_store_pb2.ExecutionType,
       contexts: List[metadata_store_pb2.Context],
-      input_artifacts: typing_utils.ArtifactMultiMap,
-      exec_properties: Mapping[str, types.Property]
+      input_artifacts: Optional[typing_utils.ArtifactMultiMap] = None,
+      exec_properties: Optional[Mapping[str, types.Property]] = None,
   ) -> metadata_store_pb2.Execution:
     """Registers or reuses an execution in MLMD."""
     executions = execution_lib.get_executions_associated_with_all_contexts(
@@ -234,8 +238,12 @@ class Launcher:
             '%s. Output artifacts may be overwritten.',
             execution.last_known_state)
       return execution
-    return _register_execution(metadata_handler, execution_type, contexts,
-                               input_artifacts, exec_properties)
+    return _register_execution(
+        metadata_handler=metadata_handler,
+        execution_type=self._pipeline_node.node_info.type,
+        contexts=contexts,
+        input_artifacts=input_artifacts,
+        exec_properties=exec_properties)
 
   def _prepare_execution(self) -> _ExecutionPreparationResult:
     """Prepares inputs, outputs and execution properties for actual execution."""
@@ -253,22 +261,61 @@ class Launcher:
           inputs_utils.resolve_parameters_with_schema(
               node_parameters=self._pipeline_node.parameters))
 
-      input_artifacts = inputs_utils.resolve_input_artifacts(
-          metadata_handler=m, node_inputs=self._pipeline_node.inputs)
+      try:
+        resolved_inputs = inputs_utils.resolve_input_artifacts_v2(
+            pipeline_node=self._pipeline_node,
+            metadata_handler=m)
+      except exceptions.InputResolutionError as e:
+        execution = self._register_or_reuse_execution(
+            metadata_handler=m,
+            contexts=contexts,
+            exec_properties=exec_properties)
+        self._publish_failed_execution(
+            execution_id=execution.id,
+            contexts=contexts,
+            executor_output=self._build_error_output(code=e.grpc_code_value))
+        return _ExecutionPreparationResult(
+            execution_info=self._build_execution_info(
+                execution_id=execution.id),
+            contexts=contexts,
+            is_execution_needed=False)
+
       # 3. If not all required inputs are met. Return ExecutionInfo with
       # is_execution_needed being false. No publish will happen so down stream
       # nodes won't be triggered.
-      if input_artifacts is None:
-        logging.info('No all required input are ready, abandoning execution.')
+      # TODO(b/197907821): Publish special execution for Skip?
+      if isinstance(resolved_inputs, inputs_utils.Skip):
+        logging.info('Skipping execution for %s',
+                     self._pipeline_node.node_info.id)
         return _ExecutionPreparationResult(
-            execution_info=data_types.ExecutionInfo(),
+            execution_info=self._build_execution_info(),
             contexts=contexts,
             is_execution_needed=False)
+
+      # TODO(b/197741942): Support len > 1.
+      if len(resolved_inputs) > 1:
+        executor_output = self._build_error_output(
+            _ERROR_CODE_UNIMPLEMENTED,
+            'Handling more than one input dicts not implemented yet.')
+        execution = self._register_or_reuse_execution(
+            metadata_handler=m,
+            contexts=contexts,
+            exec_properties=exec_properties)
+        self._publish_failed_execution(
+            execution_id=execution.id,
+            contexts=contexts,
+            executor_output=executor_output)
+        return _ExecutionPreparationResult(
+            execution_info=self._build_execution_info(
+                execution_id=execution.id),
+            contexts=contexts,
+            is_execution_needed=False)
+
+      input_artifacts = resolved_inputs[0]
 
       # 4. Registers execution in metadata.
       execution = self._register_or_reuse_execution(
           metadata_handler=m,
-          execution_type=self._pipeline_node.node_info.type,
           contexts=contexts,
           input_artifacts=input_artifacts,
           exec_properties=exec_properties)
@@ -280,17 +327,15 @@ class Launcher:
     # If there is a custom driver, runs it.
     if self._driver_operator:
       driver_output = self._driver_operator.run_driver(
-          data_types.ExecutionInfo(
+          self._build_execution_info(
               input_dict=input_artifacts,
               output_dict=output_artifacts,
               exec_properties=exec_properties,
-              execution_output_uri=self._output_resolver.get_driver_output_uri(
-              )))
+              execution_output_uri=(
+                  self._output_resolver.get_driver_output_uri())))
       self._update_with_driver_output(driver_output, exec_properties,
                                       output_artifacts)
 
-    pipeline_run_id = (
-        self._pipeline_runtime_spec.pipeline_run_id.field_value.string_value)
     # We reconnect to MLMD here because the custom driver closes MLMD connection
     # on returning.
     with self._mlmd_connection as m:
@@ -318,14 +363,11 @@ class Launcher:
               output_artifacts=cached_outputs)
           logging.info('An cached execusion %d is used.', execution.id)
           return _ExecutionPreparationResult(
-              execution_info=data_types.ExecutionInfo(
+              execution_info=self._build_execution_info(
                   execution_id=execution.id,
                   input_dict=input_artifacts,
                   output_dict=output_artifacts,
-                  exec_properties=exec_properties,
-                  pipeline_node=self._pipeline_node,
-                  pipeline_info=self._pipeline_info,
-                  pipeline_run_id=pipeline_run_id),
+                  exec_properties=exec_properties),
               execution_metadata=execution,
               contexts=contexts,
               is_execution_needed=False)
@@ -333,22 +375,38 @@ class Launcher:
       # 8. Going to trigger executor.
       logging.info('Going to run a new execution %d', execution.id)
       return _ExecutionPreparationResult(
-          execution_info=data_types.ExecutionInfo(
+          execution_info=self._build_execution_info(
               execution_id=execution.id,
               input_dict=input_artifacts,
               output_dict=output_artifacts,
               exec_properties=exec_properties,
-              execution_output_uri=self._output_resolver
-              .get_executor_output_uri(execution.id),
+              execution_output_uri=(
+                  self._output_resolver.get_executor_output_uri(execution.id)),
               stateful_working_dir=(
                   self._output_resolver.get_stateful_working_directory()),
-              tmp_dir=self._output_resolver.make_tmp_dir(execution.id),
-              pipeline_node=self._pipeline_node,
-              pipeline_info=self._pipeline_info,
-              pipeline_run_id=pipeline_run_id),
+              tmp_dir=self._output_resolver.make_tmp_dir(execution.id)),
           execution_metadata=execution,
           contexts=contexts,
           is_execution_needed=True)
+
+  def _build_execution_info(self, **kwargs: Any) -> data_types.ExecutionInfo:
+    # pytype: disable=wrong-arg-types
+    kwargs.update(
+        pipeline_node=self._pipeline_node,
+        pipeline_info=self._pipeline_info,
+        pipeline_run_id=(self._pipeline_runtime_spec.pipeline_run_id
+                         .field_value.string_value))
+    # pytype: enable=wrong-arg-types
+    return data_types.ExecutionInfo(**kwargs)
+
+  def _build_error_output(
+      self, code: int, msg: Optional[str] = None
+  ) -> execution_result_pb2.ExecutorOutput:
+    if msg is None:
+      msg = '\n'.join(traceback.format_exception(*sys.exc_info()))
+    return execution_result_pb2.ExecutorOutput(
+        execution_result=execution_result_pb2.ExecutionResult(
+            code=code, result_message=msg))
 
   def _run_executor(
       self, execution_info: data_types.ExecutionInfo
