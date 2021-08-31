@@ -53,7 +53,7 @@ class KubeflowHandler(base_handler.BaseHandler):
     Args:
       flags_dict: A dictionary with flags provided in a command.
     """
-    super(KubeflowHandler, self).__init__(flags_dict)
+    super().__init__(flags_dict)
     # TODO(b/132286477): Change to setup config instead of flags if needed.
     if labels.NAMESPACE in self.flags_dict:
       self._client = kfp.Client(

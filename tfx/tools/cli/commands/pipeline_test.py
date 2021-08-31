@@ -31,7 +31,7 @@ class PipelineTest(test_case_utils.TfxTest):
   def setUp(self):
     # Change the encoding for Click since Python 3 is configured to use ASCII as
     # encoding for the environment.
-    super(PipelineTest, self).setUp()
+    super().setUp()
     if codecs.lookup(locale.getpreferredencoding()).name == 'ascii':
       os.environ['LANG'] = 'en_US.utf-8'
     self.runner = click_testing.CliRunner()

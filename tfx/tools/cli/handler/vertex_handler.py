@@ -17,7 +17,6 @@ import functools
 import os
 import re
 import sys
-from typing import Text
 
 import click
 
@@ -63,7 +62,7 @@ def _get_job_id(full_name: str) -> str:
   return match_result.group(3)
 
 
-def _get_job_link(project_id: str, region: str, job_id: str) -> Text:
+def _get_job_link(project_id: str, region: str, job_id: str) -> str:
   """Gets the link to the pipeline job UI according to job name and project."""
   return _RUN_DETAIL_FORMAT.format(
       region=region, job_id=job_id, project_id=project_id)

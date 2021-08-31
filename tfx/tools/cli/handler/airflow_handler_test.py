@@ -81,7 +81,7 @@ _TEST_DATA_LIST_DAGS_JSON = """[{
 class AirflowHandlerTest(test_case_utils.TfxTest):
 
   def setUp(self):
-    super(AirflowHandlerTest, self).setUp()
+    super().setUp()
     self._home = self.tmp_dir
     self.enter_context(test_case_utils.override_env_var('HOME', self._home))
     self.enter_context(

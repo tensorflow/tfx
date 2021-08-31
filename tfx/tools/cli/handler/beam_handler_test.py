@@ -30,7 +30,7 @@ from tfx.utils import test_case_utils
 class BeamHandlerTest(test_case_utils.TfxTest):
 
   def setUp(self):
-    super(BeamHandlerTest, self).setUp()
+    super().setUp()
     self.chicago_taxi_pipeline_dir = os.path.join(
         os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'testdata')
     self._home = self.tmp_dir

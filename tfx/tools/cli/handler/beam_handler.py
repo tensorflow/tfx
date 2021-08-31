@@ -15,7 +15,7 @@
 
 import json
 import sys
-from typing import Any, Dict, Text
+from typing import Any, Dict
 
 import click
 
@@ -125,7 +125,7 @@ class BeamHandler(base_handler.BaseHandler):
     click.echo('Not supported for {} orchestrator.'.format(
         self.flags_dict[labels.ENGINE_FLAG]))
 
-  def _save_pipeline(self, pipeline_args: Dict[Text, Any]) -> None:
+  def _save_pipeline(self, pipeline_args: Dict[str, Any]) -> None:
     """Creates/updates pipeline folder in the handler directory."""
     # Add pipeline dsl path to pipeline args.
     pipeline_args[labels.PIPELINE_DSL_PATH] = self.flags_dict[

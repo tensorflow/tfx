@@ -37,7 +37,7 @@ from tfx.utils import test_case_utils
 class CliAirflowEndToEndTest(test_case_utils.TfxTest):
 
   def setUp(self):
-    super(CliAirflowEndToEndTest, self).setUp()
+    super().setUp()
 
     # List of packages installed.
     self._pip_list = pip_utils.get_package_names()

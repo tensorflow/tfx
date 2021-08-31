@@ -32,7 +32,7 @@ class AirflowHandler(base_handler.BaseHandler):
 
   def __init__(self, flags_dict):
     self._check_airflow_version()
-    super(AirflowHandler, self).__init__(flags_dict)
+    super().__init__(flags_dict)
     self._handler_home_dir = os.path.join(self._handler_home_dir, 'dags', '')
 
   def _get_airflow_version(self):

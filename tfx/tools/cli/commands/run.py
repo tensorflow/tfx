@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,11 +13,7 @@
 # limitations under the License.
 """Commands for run group."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
-from typing import Text, Iterable, Dict
+from typing import Iterable, Dict
 
 import click
 
@@ -145,8 +140,8 @@ def _parse_runtime_parameters(
     default='kubeflow',
     type=str,
     help='Kubernetes namespace to connect to the KFP API.')
-def terminate_run(ctx: Context, engine: Text, run_id: Text, endpoint: Text,
-                  iap_client_id: Text, namespace: Text) -> None:
+def terminate_run(ctx: Context, engine: str, run_id: str, endpoint: str,
+                  iap_client_id: str, namespace: str) -> None:
   """Command definition to stop a run."""
   click.echo('Terminating run.')
   ctx.flags_dict[labels.ENGINE_FLAG] = engine
@@ -184,8 +179,8 @@ def terminate_run(ctx: Context, engine: Text, run_id: Text, endpoint: Text,
     default='kubeflow',
     type=str,
     help='Kubernetes namespace to connect to the KFP API.')
-def list_runs(ctx: Context, engine: Text, pipeline_name: Text, endpoint: Text,
-              iap_client_id: Text, namespace: Text) -> None:
+def list_runs(ctx: Context, engine: str, pipeline_name: str, endpoint: str,
+              iap_client_id: str, namespace: str) -> None:
   """Command definition to list all runs of a pipeline."""
   click.echo('Listing all runs of pipeline: ' + pipeline_name)
   ctx.flags_dict[labels.ENGINE_FLAG] = engine
@@ -284,8 +279,8 @@ def get_run(ctx: Context, engine: str, pipeline_name: str, run_id: str,
     default='kubeflow',
     type=str,
     help='Kubernetes namespace to connect to the KFP API.')
-def delete_run(ctx: Context, engine: Text, run_id: Text, endpoint: Text,
-               iap_client_id: Text, namespace: Text) -> None:
+def delete_run(ctx: Context, engine: str, run_id: str, endpoint: str,
+               iap_client_id: str, namespace: str) -> None:
   """Command definition to delete a run."""
   click.echo('Deleting run.')
   ctx.flags_dict[labels.ENGINE_FLAG] = engine
