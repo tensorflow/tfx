@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,12 +14,9 @@
 """Helper class to start TFX training jobs on AI Platform."""
 # TODO(b/168926785): Consider to move some methods to a utility file.
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
 
 import time
-from typing import Any, Dict, List, Optional, Text
+from typing import Any, Dict, List, Optional
 
 from absl import logging
 from googleapiclient import discovery
@@ -51,20 +47,20 @@ _DEFAULT_API_VERSION = 'v1'
 
 
 def _launch_aip_training(
-    job_id: Text,
-    project: Text,
-    training_input: Dict[Text, Any],
-    job_labels: Optional[Dict[Text, Text]] = None,
+    job_id: str,
+    project: str,
+    training_input: Dict[str, Any],
+    job_labels: Optional[Dict[str, str]] = None,
     enable_vertex: Optional[bool] = False,
-    vertex_region: Optional[Text] = None) -> None:
+    vertex_region: Optional[str] = None) -> None:
   """Launches and monitors a AIP custom training job.
 
   Args:
     job_id: The job ID of the AI Platform training job.
     project: The GCP project under which the training job will be executed.
     training_input: Training input argument for AI Platform training job. See
-      https://cloud.google.com/ml-engine/reference/rest/v1/projects.jobs#TrainingInput
-      for the detailed schema.
+        https://cloud.google.com/ml-engine/reference/rest/v1/projects.jobs#TrainingInput
+        for the detailed schema.
     job_labels: The dict of labels that will be attached to this job.
     enable_vertex: Whether to enable Vertex or not.
     vertex_region: Region for endpoint in Vertex training.
@@ -130,8 +126,8 @@ def _launch_aip_training(
   logging.info('Job \'%s\' successful.', client.get_job_name())
 
 
-def _wait_for_operation(api: discovery.Resource, operation: Dict[Text, Any],
-                        method_name: Text) -> Dict[Text, Any]:
+def _wait_for_operation(api: discovery.Resource, operation: Dict[str, Any],
+                        method_name: str) -> Dict[str, Any]:
   """Wait for a long running operation.
 
   Args:
@@ -158,14 +154,14 @@ def _wait_for_operation(api: discovery.Resource, operation: Dict[Text, Any],
 
 
 # TODO(b/168926785): Consider to change executor_class_path to job_labels.
-def start_aip_training(input_dict: Dict[Text, List[types.Artifact]],
-                       output_dict: Dict[Text, List[types.Artifact]],
-                       exec_properties: Dict[Text,
-                                             Any], executor_class_path: Text,
-                       training_inputs: Dict[Text,
-                                             Any], job_id: Optional[Text],
+def start_aip_training(input_dict: Dict[str, List[types.Artifact]],
+                       output_dict: Dict[str, List[types.Artifact]],
+                       exec_properties: Dict[str, Any],
+                       executor_class_path: str,
+                       training_inputs: Dict[str, Any],
+                       job_id: Optional[str],
                        enable_vertex: Optional[bool] = False,
-                       vertex_region: Optional[Text] = None):
+                       vertex_region: Optional[str] = None):
   """Start a trainer job on AI Platform (AIP).
 
   This is done by forwarding the inputs/outputs/exec_properties to the
@@ -207,7 +203,7 @@ def start_aip_training(input_dict: Dict[Text, List[types.Artifact]],
 # TODO(zhitaoli): remove this function since we are not going to support
 # more API versions on existing Cloud AI Platform.
 def get_service_name_and_api_version(
-    ai_platform_serving_args: Dict[Text, Any]):  # -> Tuple[Text, Text]
+    ai_platform_serving_args: Dict[str, Any]):  # -> Tuple[Text, Text]
   """Gets service name and api version from ai_platform_serving_args.
 
   Args:
@@ -222,11 +218,10 @@ def get_service_name_and_api_version(
 
 
 def create_model_for_aip_prediction_if_not_exist(
-    labels: Dict[Text, Text],
-    ai_platform_serving_args: Dict[Text, Any],
+    labels: Dict[str, str],
+    ai_platform_serving_args: Dict[str, Any],
     api: Optional[discovery.Resource] = None,
-    enable_vertex: Optional[bool] = False
-) -> bool:
+    enable_vertex: Optional[bool] = False) -> bool:
   """Creates a new CAIP model or Vertex endpoint for serving with AI Platform if not exists.
 
   Args:
@@ -251,16 +246,16 @@ def create_model_for_aip_prediction_if_not_exist(
 
 
 def deploy_model_for_aip_prediction(
-    serving_path: Text,
-    model_version_name: Text,
-    ai_platform_serving_args: Dict[Text, Any],
-    labels: Dict[Text, Text],
+    serving_path: str,
+    model_version_name: str,
+    ai_platform_serving_args: Dict[str, Any],
+    labels: Dict[str, str],
     api: Optional[discovery.Resource] = None,
-    serving_container_image_uri: Optional[Text] = None,
-    endpoint_region: Optional[Text] = None,
+    serving_container_image_uri: Optional[str] = None,
+    endpoint_region: Optional[str] = None,
     skip_model_endpoint_creation: Optional[bool] = False,
     set_default: Optional[bool] = True,
-    enable_vertex: Optional[bool] = False) -> Text:
+    enable_vertex: Optional[bool] = False) -> str:
   """Deploys a model for serving with AI Platform.
 
   Args:
@@ -335,9 +330,9 @@ def deploy_model_for_aip_prediction(
 
 
 def delete_model_from_aip_if_exists(
-    ai_platform_serving_args: Dict[Text, Any],
+    ai_platform_serving_args: Dict[str, Any],
     api: Optional[discovery.Resource] = None,
-    model_version_name: Optional[Text] = None,
+    model_version_name: Optional[str] = None,
     delete_model_endpoint: Optional[bool] = False,
     enable_vertex: Optional[bool] = False,
 ) -> None:

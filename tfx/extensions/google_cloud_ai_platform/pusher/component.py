@@ -46,7 +46,7 @@ class Pusher(pusher_component.Pusher):
       custom_config: A dict which contains the deployment job parameters to be
         passed to Cloud platforms.
     """
-    super(Pusher, self).__init__(
+    super().__init__(
         model=model,
         model_blessing=model_blessing,
         infra_blessing=infra_blessing,

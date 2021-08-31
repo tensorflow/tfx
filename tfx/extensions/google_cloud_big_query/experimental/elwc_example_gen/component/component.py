@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2020 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,7 +13,7 @@
 # limitations under the License.
 """TFX BigQueryToElwcExampleGen component definition."""
 
-from typing import Optional, Text
+from typing import Optional
 
 from tfx.components.example_gen import component
 from tfx.components.example_gen import utils
@@ -34,7 +33,7 @@ class BigQueryToElwcExampleGen(component.QueryBasedExampleGen):
   EXECUTOR_SPEC = executor_spec.BeamExecutorSpec(executor.Executor)
 
   def __init__(self,
-               query: Optional[Text] = None,
+               query: Optional[str] = None,
                elwc_config: Optional[elwc_config_pb2.ElwcConfig] = None,
                input_config: Optional[example_gen_pb2.Input] = None,
                output_config: Optional[example_gen_pb2.Output] = None):
@@ -72,7 +71,7 @@ class BigQueryToElwcExampleGen(component.QueryBasedExampleGen):
     input_config = input_config or utils.make_default_input_config(query)
     packed_custom_config = example_gen_pb2.CustomConfig()
     packed_custom_config.custom_config.Pack(elwc_config)
-    super(BigQueryToElwcExampleGen, self).__init__(
+    super().__init__(
         input_config=input_config,
         output_config=output_config,
         output_data_format=example_gen_pb2.FORMAT_PROTO,

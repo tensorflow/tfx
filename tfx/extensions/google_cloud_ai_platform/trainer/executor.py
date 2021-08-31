@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,11 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Helper class to start TFX training jobs on AI Platform."""
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
 
-from typing import Any, Dict, List, Text
+from typing import Any, Dict, List
 
 import absl
 from tfx import types
@@ -56,9 +52,9 @@ class GenericExecutor(base_executor.BaseExecutor):
   def _GetExecutorClass(self):
     return tfx_trainer_executor.GenericExecutor
 
-  def Do(self, input_dict: Dict[Text, List[types.Artifact]],
-         output_dict: Dict[Text, List[types.Artifact]],
-         exec_properties: Dict[Text, Any]):
+  def Do(self, input_dict: Dict[str, List[types.Artifact]],
+         output_dict: Dict[str, List[types.Artifact]],
+         exec_properties: Dict[str, Any]):
     """Starts a trainer job on Google Cloud AI Platform.
 
     Args:
