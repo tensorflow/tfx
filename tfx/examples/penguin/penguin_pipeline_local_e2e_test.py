@@ -14,7 +14,7 @@
 """E2E Tests for tfx.examples.penguin.penguin_pipeline_local."""
 
 import os
-from typing import List, Text
+from typing import List
 import unittest
 
 from absl import logging
@@ -75,7 +75,7 @@ class PenguinPipelineLocalEndToEndTest(tf.test.TestCase,
     return os.path.join(
         os.path.dirname(__file__), f'penguin_utils_{model_framework}.py')
 
-  def _assertExecutedOnce(self, component: Text) -> None:
+  def _assertExecutedOnce(self, component: str) -> None:
     """Check the component is executed exactly once."""
     component_path = os.path.join(self._pipeline_root, component)
     self.assertTrue(fileio.exists(component_path))
@@ -267,7 +267,7 @@ class PenguinPipelineLocalEndToEndTest(tf.test.TestCase,
 
   def _get_input_examples_artifacts(
       self, store: mlmd.MetadataStore,
-      execution_type: Text) -> List[metadata_store_pb2.Artifact]:
+      execution_type: str) -> List[metadata_store_pb2.Artifact]:
     executions = store.get_executions_by_type(execution_type)
     # Get latest execution.
     execution = max(executions, key=lambda a: a.id)

@@ -13,7 +13,6 @@
 # limitations under the License.
 """Common variables."""
 
-
 from tfx import version
 
 # Default values

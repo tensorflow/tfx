@@ -14,7 +14,7 @@
 """Definition for Airflow component for TFX."""
 
 import functools
-from typing import Any, Dict, List, Text, Type
+from typing import Any, Dict, List, Type
 
 from airflow import models
 from airflow.operators import python_operator
@@ -33,10 +33,9 @@ def _airflow_component_launcher(
         base_component_launcher.BaseComponentLauncher],
     pipeline_info: data_types.PipelineInfo, driver_args: data_types.DriverArgs,
     metadata_connection_config: metadata_store_pb2.ConnectionConfig,
-    beam_pipeline_args: List[Text], additional_pipeline_args: Dict[Text, Any],
+    beam_pipeline_args: List[str], additional_pipeline_args: Dict[str, Any],
     component_config: base_component_config.BaseComponentConfig,
-    exec_properties: Dict[Text, Any],
-    **kwargs) -> None:
+    exec_properties: Dict[str, Any], **kwargs) -> None:
   """Helper function to launch TFX component execution.
 
   This helper function will be called with Airflow env objects which contains
@@ -88,8 +87,8 @@ class AirflowComponent(python_operator.PythonOperator):
                    base_component_launcher.BaseComponentLauncher],
                pipeline_info: data_types.PipelineInfo, enable_cache: bool,
                metadata_connection_config: metadata_store_pb2.ConnectionConfig,
-               beam_pipeline_args: List[Text],
-               additional_pipeline_args: Dict[Text, Any],
+               beam_pipeline_args: List[str],
+               additional_pipeline_args: Dict[str, Any],
                component_config: base_component_config.BaseComponentConfig):
     """Constructs an Airflow implementation of TFX component.
 
@@ -112,7 +111,7 @@ class AirflowComponent(python_operator.PythonOperator):
 
     exec_properties = component.exec_properties
 
-    super(AirflowComponent, self).__init__(
+    super().__init__(
         task_id=component.id,
         # TODO(b/183172663): Delete `provide_context` when we drop support of
         # airflow 1.x.

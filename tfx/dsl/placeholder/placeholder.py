@@ -263,12 +263,10 @@ class _ProtoOperator(_PlaceholderOperator):
         raise ValueError(
             "Can't apply placeholder proto operator on non-proto type "
             f"exec property. Got {execution_param.type}.")
-      result.operator.proto_op.proto_schema.message_type = (
-          execution_param.type.DESCRIPTOR.full_name)
-      fd_set = result.operator.proto_op.proto_schema.file_descriptors
-      for fd in proto_utils.gather_file_descriptors(
-          execution_param.type.DESCRIPTOR):
-        fd.CopyToProto(fd_set.file.add())
+      proto_schema = result.operator.proto_op.proto_schema
+      proto_schema.message_type = execution_param.type.DESCRIPTOR.full_name
+      proto_utils.build_file_descriptor_set(execution_param.type,
+                                            proto_schema.file_descriptors)
 
     return result
 

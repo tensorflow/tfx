@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2020 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -17,14 +16,9 @@
 No backwards compatibility guarantees.
 """
 
-# TODO(b/149535307): Remove __future__ imports
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import os
 import sys
-from typing import List, Optional, Text
+from typing import List, Optional
 
 from tfx.dsl.components.base import base_beam_executor
 from tfx.dsl.components.base import base_executor
@@ -35,12 +29,10 @@ from tfx.utils import proto_utils
 from google.protobuf import message
 
 
-def run_component(
-    full_component_class_name: Text,
-    temp_directory_path: Optional[Text] = None,
-    beam_pipeline_args: Optional[List[Text]] = None,
-    **arguments
-):
+def run_component(full_component_class_name: str,
+                  temp_directory_path: Optional[str] = None,
+                  beam_pipeline_args: Optional[List[str]] = None,
+                  **arguments):
   r"""Loads a component, instantiates it with arguments and runs its executor.
 
   The component class is instantiated, so the component code is executed,

@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,16 +17,10 @@ Note: these APIs are **experimental** and major changes to interface and
 functionality are expected.
 """
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
-# Standard Imports
-
 from tfx.dsl.components.base import base_node
 
 
-class ExecutionResult(object):
+class ExecutionResult:
   """Execution result from a component launch."""
 
   def __init__(self, component: base_node.BaseNode, execution_id: int):

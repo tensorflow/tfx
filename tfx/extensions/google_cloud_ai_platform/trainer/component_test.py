@@ -13,10 +13,6 @@
 # limitations under the License.
 """Tests for tfx.extensions.google_cloud_ai_platform.trainer.component."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import tensorflow as tf
 from tfx.extensions.google_cloud_ai_platform.trainer import component
 from tfx.proto import trainer_pb2
@@ -31,7 +27,7 @@ class ComponentTest(tf.test.TestCase):
     examples = channel_utils.as_channel([standard_artifacts.Examples()])
     transform_graph = channel_utils.as_channel(
         [standard_artifacts.TransformGraph()])
-    super(ComponentTest, self).setUp()
+    super().setUp()
     schema = channel_utils.as_channel([standard_artifacts.Schema()])
     train_args = trainer_pb2.TrainArgs(splits=['train'], num_steps=100)
     eval_args = trainer_pb2.EvalArgs(splits=['eval'], num_steps=50)

@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,13 +13,9 @@
 # limitations under the License.
 """TFX local trainer executor."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import json
 import os
-from typing import Any, Dict, List, Text
+from typing import Any, Dict, List
 
 import absl
 import tensorflow as tf
@@ -47,7 +42,7 @@ TrainerFnArgs = deprecation_utils.deprecated_alias(  # pylint: disable=invalid-n
     func_or_class=fn_args_utils.FnArgs)
 
 
-def _all_files_pattern(file_pattern: Text) -> Text:
+def _all_files_pattern(file_pattern: str) -> str:
   return os.path.join(file_pattern, '*')
 
 
@@ -92,9 +87,9 @@ class GenericExecutor(base_executor.BaseExecutor):
   # Name of subdirectory which contains checkpoints from prior runs
   _CHECKPOINT_FILE_NAME = 'checkpoint'
 
-  def _GetFnArgs(self, input_dict: Dict[Text, List[types.Artifact]],
-                 output_dict: Dict[Text, List[types.Artifact]],
-                 exec_properties: Dict[Text, Any]) -> fn_args_utils.FnArgs:
+  def _GetFnArgs(self, input_dict: Dict[str, List[types.Artifact]],
+                 output_dict: Dict[str, List[types.Artifact]],
+                 exec_properties: Dict[str, Any]) -> fn_args_utils.FnArgs:
     if input_dict.get(standard_component_specs.HYPERPARAMETERS_KEY):
       hyperparameters_file = io_utils.get_only_uri_in_dir(
           artifact_utils.get_single_uri(
@@ -125,9 +120,9 @@ class GenericExecutor(base_executor.BaseExecutor):
     result.hyperparameters = hyperparameters_config
     return result
 
-  def Do(self, input_dict: Dict[Text, List[types.Artifact]],
-         output_dict: Dict[Text, List[types.Artifact]],
-         exec_properties: Dict[Text, Any]) -> None:
+  def Do(self, input_dict: Dict[str, List[types.Artifact]],
+         output_dict: Dict[str, List[types.Artifact]],
+         exec_properties: Dict[str, Any]) -> None:
     """Uses a user-supplied run_fn to train a TensorFlow model locally.
 
     The Trainer Executor invokes a run_fn callback function provided by
@@ -204,9 +199,9 @@ class Executor(GenericExecutor):
   tf.estimator.train_and_evaluate API to train locally.
   """
 
-  def Do(self, input_dict: Dict[Text, List[types.Artifact]],
-         output_dict: Dict[Text, List[types.Artifact]],
-         exec_properties: Dict[Text, Any]) -> None:
+  def Do(self, input_dict: Dict[str, List[types.Artifact]],
+         output_dict: Dict[str, List[types.Artifact]],
+         exec_properties: Dict[str, Any]) -> None:
     """Uses a user-supplied tf.estimator to train a TensorFlow model locally.
 
     The Trainer Executor invokes a training_fn callback function provided by

@@ -14,7 +14,7 @@
 """Base class for TFX nodes."""
 
 import abc
-from typing import Any, Dict, Optional, Text, Type
+from typing import Any, Dict, Optional, Type
 
 from tfx.dsl.components.base import base_driver
 from tfx.dsl.components.base import base_executor
@@ -122,12 +122,12 @@ class BaseNode(json_utils.Jsonable, abc.ABC):
 
   @property
   @abc.abstractmethod
-  def inputs(self) -> Dict[Text, Any]:
+  def inputs(self) -> Dict[str, Any]:
     pass
 
   @property
   @abc.abstractmethod
-  def outputs(self) -> Dict[Text, Any]:
+  def outputs(self) -> Dict[str, Any]:
     pass
 
   @property

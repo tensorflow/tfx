@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,7 +22,7 @@ from tfx.types import standard_artifacts
 class ComponentTest(tf.test.TestCase):
 
   def setUp(self):
-    super(ComponentTest, self).setUp()
+    super().setUp()
     self._model_export = channel_utils.as_channel([standard_artifacts.Model()])
     self._model_blessing = channel_utils.as_channel(
         [standard_artifacts.ModelBlessing()])

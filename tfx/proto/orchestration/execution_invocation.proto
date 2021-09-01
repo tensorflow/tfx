@@ -22,12 +22,15 @@ import "tfx/proto/orchestration/pipeline.proto";
 
 // All the information needed for a TFX component execution.
 // TODO(b/172391062): Make this `ExecutionInvocation` for broader usages.
-// Next ID: 13
+// Next ID: 14
 message ExecutionInvocation {
   reserved 1, 2;
 
   // The exec_properties to feed to execution.
   map<string, ml_metadata.Value> execution_properties = 3;
+
+  // The execution_properties and schema to parse non-primitive types.
+  map<string, tfx.orchestration.Value> execution_properties_with_schema = 13;
 
   // The uri to execution result. This is used to "return" the output to the
   // caller if they are not running in the same process.

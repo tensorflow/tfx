@@ -17,7 +17,7 @@ import os
 import platform
 import subprocess
 import time
-from typing import Sequence, Set, Text
+from typing import Sequence, Set
 import unittest
 
 import absl
@@ -30,7 +30,7 @@ from tfx.utils import io_utils
 from tfx.utils import test_case_utils
 
 
-class AirflowSubprocess(object):
+class AirflowSubprocess:
   """Launch an Airflow command."""
 
   def __init__(self, airflow_args):
@@ -64,7 +64,7 @@ _PENDING_TASK_STATES = set(['queued', 'scheduled', 'running', 'none'])
 class AirflowEndToEndTest(test_case_utils.TfxTest):
   """An end to end test using fully orchestrated Airflow."""
 
-  def _GetState(self, task_name: Text) -> Text:
+  def _GetState(self, task_name: str) -> str:
     """Get a task state as a string."""
     try:
       output = subprocess.check_output([
@@ -80,7 +80,7 @@ class AirflowEndToEndTest(test_case_utils.TfxTest):
       return 'none'
 
   # TODO(b/130882241): Add validation on output artifact type and content.
-  def _CheckOutputArtifacts(self, task: Text) -> None:
+  def _CheckOutputArtifacts(self, task: str) -> None:
     pass
 
   def _PrintTaskLogsOnError(self, task):
@@ -94,7 +94,7 @@ class AirflowEndToEndTest(test_case_utils.TfxTest):
           for line in lines:
             absl.logging.error(line)
 
-  def _CheckPendingTasks(self, pending_task_names: Sequence[Text]) -> Set[Text]:
+  def _CheckPendingTasks(self, pending_task_names: Sequence[str]) -> Set[str]:
     unknown_tasks = set(pending_task_names) - set(self._all_tasks)
     assert not unknown_tasks, 'Unknown task name {}'.format(unknown_tasks)
     still_pending = set()
@@ -115,7 +115,7 @@ class AirflowEndToEndTest(test_case_utils.TfxTest):
     return still_pending
 
   def setUp(self):
-    super(AirflowEndToEndTest, self).setUp()
+    super().setUp()
     # setup airflow_home in a temp directory, config and init db.
     self._airflow_home = self.tmp_dir
     self.enter_context(

@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2020 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,10 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Tests for third_party.components.trainer.rewriting.rewriter."""
-
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
 
 from absl.testing import absltest
 from tfx.components.trainer.rewriting import rewriter
@@ -78,7 +73,7 @@ class PerformRewriteTest(absltest.TestCase):
         raise ValueError('post-rewrite-validate-error')
 
   def setUp(self):
-    super(PerformRewriteTest, self).setUp()
+    super().setUp()
     src_model_path = '/path/to/src/model'
     dst_model_path = '/path/to/dst/model'
     self._source_model = rewriter.ModelDescription(

@@ -14,7 +14,7 @@
 """Builder for Kubeflow pipelines level proto spec."""
 
 import re
-from typing import Any, Dict, List, Optional, Text
+from typing import Any, Dict, List, Optional
 
 from kfp.pipeline_spec import pipeline_spec_pb2 as pipeline_pb2
 from tfx.orchestration import data_types
@@ -28,18 +28,18 @@ from google.protobuf import json_format
 _LEGAL_NAME_PATTERN = re.compile(r'[a-z0-9][a-z0-9-]{0,127}')
 
 
-def _check_name(name: Text) -> None:
+def _check_name(name: str) -> None:
   """Checks the user-provided pipeline name."""
   if not _LEGAL_NAME_PATTERN.fullmatch(name):
     raise ValueError('User provided pipeline name % is illegal, please follow '
                      'the pattern of [a-z0-9][a-z0-9-]{0,127}.')
 
 
-class RuntimeConfigBuilder(object):
+class RuntimeConfigBuilder:
   """Kubeflow pipelines RuntimeConfig builder."""
 
   def __init__(self, pipeline_info: data_types.PipelineInfo,
-               parameter_values: Dict[Text, Any]):
+               parameter_values: Dict[str, Any]):
     """Creates a RuntimeConfigBuilder object.
 
     Args:
@@ -59,7 +59,7 @@ class RuntimeConfigBuilder(object):
         })
 
 
-class PipelineBuilder(object):
+class PipelineBuilder:
   """Kubeflow pipelines spec builder.
 
   Constructs a pipeline spec based on the TFX pipeline object.
@@ -67,8 +67,8 @@ class PipelineBuilder(object):
 
   def __init__(self,
                tfx_pipeline: pipeline.Pipeline,
-               default_image: Text,
-               default_commands: Optional[List[Text]] = None):
+               default_image: str,
+               default_commands: Optional[List[str]] = None):
     """Creates a PipelineBuilder object.
 
     A PipelineBuilder takes in a TFX pipeline object. Then

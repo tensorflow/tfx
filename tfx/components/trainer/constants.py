@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2020 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,9 +13,6 @@
 # limitations under the License.
 """Constant values for Trainer."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
 
 # The name of environment variable to indicate distributed training cluster.
 TF_CONFIG_ENV = 'TF_CONFIG'

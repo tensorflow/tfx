@@ -17,7 +17,7 @@ import multiprocessing
 import os
 import socket
 import sys
-from typing import List, Optional, Text
+from typing import List, Optional
 import absl
 from absl import flags
 
@@ -116,20 +116,20 @@ _resolver_range_config = None
 
 
 def _create_pipeline(
-    pipeline_name: Text,
-    pipeline_root: Text,
-    data_root: Text,
-    module_file: Text,
+    pipeline_name: str,
+    pipeline_root: str,
+    data_root: str,
+    module_file: str,
     accuracy_threshold: float,
-    serving_model_dir: Text,
-    metadata_path: Text,
-    user_provided_schema_path: Optional[Text],
+    serving_model_dir: str,
+    metadata_path: str,
+    user_provided_schema_path: Optional[str],
     enable_tuning: bool,
     enable_bulk_inferrer: bool,
     examplegen_input_config: Optional[tfx.proto.Input],
     examplegen_range_config: Optional[tfx.proto.RangeConfig],
     resolver_range_config: Optional[tfx.proto.RangeConfig],
-    beam_pipeline_args: List[Text],
+    beam_pipeline_args: List[str],
     # TODO(b/191634100): Always enable transform cache.
     enable_transform_input_cache: bool
 ) -> tfx.dsl.Pipeline:

@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,7 +17,7 @@ This component along with other custom component related code will only serve as
 an example and will not be supported by TFX team.
 """
 
-from typing import Optional, Text
+from typing import Optional
 
 from tfx import types
 from tfx.dsl.components.base import base_component
@@ -33,8 +32,8 @@ class SlackComponentSpec(types.ComponentSpec):
   """ComponentSpec for Custom TFX Slack Component."""
 
   PARAMETERS = {
-      'slack_token': ExecutionParameter(type=Text),
-      'slack_channel_id': ExecutionParameter(type=Text),
+      'slack_token': ExecutionParameter(type=str),
+      'slack_channel_id': ExecutionParameter(type=str),
       'timeout_sec': ExecutionParameter(type=int),
   }
   INPUTS = {
@@ -82,8 +81,8 @@ class SlackComponent(base_component.BaseComponent):
   def __init__(self,
                model: types.Channel,
                model_blessing: types.Channel,
-               slack_token: Text,
-               slack_channel_id: Text,
+               slack_token: str,
+               slack_channel_id: str,
                timeout_sec: int,
                slack_blessing: Optional[types.Channel] = None):
     """Construct a SlackComponent.
@@ -109,4 +108,4 @@ class SlackComponent(base_component.BaseComponent):
         model=model,
         model_blessing=model_blessing,
         slack_blessing=slack_blessing)
-    super(SlackComponent, self).__init__(spec=spec)
+    super().__init__(spec=spec)

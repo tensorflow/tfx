@@ -14,7 +14,6 @@
 """E2E Tests for tfx.examples.mnist.mnist_pipeline_native_keras."""
 
 import os
-from typing import Text
 import unittest
 
 import tensorflow as tf
@@ -30,7 +29,7 @@ from tfx.orchestration.beam.beam_dag_runner import BeamDagRunner
 class MNISTPipelineNativeKerasEndToEndTest(tf.test.TestCase):
 
   def setUp(self):
-    super(MNISTPipelineNativeKerasEndToEndTest, self).setUp()
+    super().setUp()
     self._test_dir = os.path.join(
         os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR', self.get_temp_dir()),
         self._testMethodName)
@@ -49,7 +48,7 @@ class MNISTPipelineNativeKerasEndToEndTest(tf.test.TestCase):
     self._metadata_path = os.path.join(self._test_dir, 'tfx', 'metadata',
                                        self._pipeline_name, 'metadata.db')
 
-  def assertExecutedOnce(self, component: Text) -> None:
+  def assertExecutedOnce(self, component: str) -> None:
     """Check the component is executed exactly once."""
     component_path = os.path.join(self._pipeline_root, component)
     self.assertTrue(fileio.exists(component_path))

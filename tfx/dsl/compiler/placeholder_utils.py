@@ -26,11 +26,10 @@ from tfx.proto.orchestration import placeholder_pb2
 from tfx.types import artifact
 from tfx.types import artifact_utils
 from tfx.types import value_artifact
+from tfx.utils import proto_utils
 
-from google.protobuf import descriptor_pool
 from google.protobuf import json_format
 from google.protobuf import message
-from google.protobuf import message_factory
 from google.protobuf import text_format
 
 
@@ -335,16 +334,10 @@ class _ExpressionResolver:
       raise NullDereferenceError(op.expression)
 
     if isinstance(raw_message, str):
-      # We need descriptor pool to parse encoded raw messages.
-      pool = descriptor_pool.Default()
-      for file_descriptor in op.proto_schema.file_descriptors.file:
-        pool.Add(file_descriptor)
-      message_descriptor = pool.FindMessageTypeByName(
-          op.proto_schema.message_type)
-      factory = message_factory.MessageFactory(pool)
-      message_type = factory.GetPrototype(message_descriptor)
-      value = message_type()
-      json_format.Parse(raw_message, value, descriptor_pool=pool)
+      value = proto_utils.deserialize_proto_message(
+          raw_message,
+          op.proto_schema.message_type,
+          file_descriptors=op.proto_schema.file_descriptors)
     elif isinstance(raw_message, message.Message):
       # Message such as platform config should not be encoded.
       value = raw_message

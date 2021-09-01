@@ -16,7 +16,7 @@
 import os
 import signal
 import threading
-from typing import Any, Dict, Text
+from typing import Any, Dict
 from unittest import mock
 
 import tensorflow as tf
@@ -28,12 +28,7 @@ from tfx.dsl.io import fileio
 from tfx.proto import infra_validator_pb2
 from tfx.types import artifact_utils
 from tfx.types import standard_artifacts
-from tfx.types.standard_component_specs import BLESSING_KEY
-from tfx.types.standard_component_specs import EXAMPLES_KEY
-from tfx.types.standard_component_specs import MODEL_KEY
-from tfx.types.standard_component_specs import REQUEST_SPEC_KEY
-from tfx.types.standard_component_specs import SERVING_SPEC_KEY
-from tfx.types.standard_component_specs import VALIDATION_SPEC_KEY
+from tfx.types import standard_component_specs
 from tfx.utils import path_utils
 from tfx.utils import proto_utils
 
@@ -41,21 +36,21 @@ from google.protobuf import json_format
 
 
 def _make_serving_spec(
-    payload: Dict[Text, Any]) -> infra_validator_pb2.ServingSpec:
+    payload: Dict[str, Any]) -> infra_validator_pb2.ServingSpec:
   result = infra_validator_pb2.ServingSpec()
   json_format.ParseDict(payload, result)
   return result
 
 
 def _make_validation_spec(
-    payload: Dict[Text, Any]) -> infra_validator_pb2.ValidationSpec:
+    payload: Dict[str, Any]) -> infra_validator_pb2.ValidationSpec:
   result = infra_validator_pb2.ValidationSpec()
   json_format.ParseDict(payload, result)
   return result
 
 
 def _make_request_spec(
-    payload: Dict[Text, Any]) -> infra_validator_pb2.RequestSpec:
+    payload: Dict[str, Any]) -> infra_validator_pb2.RequestSpec:
   result = infra_validator_pb2.RequestSpec()
   json_format.ParseDict(payload, result)
   return result
@@ -64,7 +59,7 @@ def _make_request_spec(
 class ExecutorTest(tf.test.TestCase):
 
   def setUp(self):
-    super(ExecutorTest, self).setUp()
+    super().setUp()
 
     # Setup Mocks
 
@@ -91,12 +86,14 @@ class ExecutorTest(tf.test.TestCase):
     examples.split_names = artifact_utils.encode_split_names(['eval'])
 
     self._input_dict = {
-        MODEL_KEY: [self._model],
-        EXAMPLES_KEY: [examples],
+        standard_component_specs.MODEL_KEY: [self._model],
+        standard_component_specs.EXAMPLES_KEY: [examples],
     }
     self._blessing = standard_artifacts.InfraBlessing()
     self._blessing.uri = os.path.join(output_data_dir, 'blessing')
-    self._output_dict = {BLESSING_KEY: [self._blessing]}
+    self._output_dict = {
+        standard_component_specs.BLESSING_KEY: [self._blessing]
+    }
     temp_dir = os.path.join(output_data_dir, '.temp')
     self._context = executor.Executor.Context(tmp_dir=temp_dir, unique_id='1')
     self._serving_spec = _make_serving_spec({
@@ -119,9 +116,12 @@ class ExecutorTest(tf.test.TestCase):
         'num_examples': 1
     })
     self._exec_properties = {
-        SERVING_SPEC_KEY: proto_utils.proto_to_json(self._serving_spec),
-        VALIDATION_SPEC_KEY: proto_utils.proto_to_json(self._validation_spec),
-        REQUEST_SPEC_KEY: proto_utils.proto_to_json(self._request_spec),
+        standard_component_specs.SERVING_SPEC_KEY:
+            proto_utils.proto_to_json(self._serving_spec),
+        standard_component_specs.VALIDATION_SPEC_KEY:
+            proto_utils.proto_to_json(self._validation_spec),
+        standard_component_specs.REQUEST_SPEC_KEY:
+            proto_utils.proto_to_json(self._request_spec),
     }
 
   def testDo_BlessedIfNoError(self):
@@ -174,7 +174,7 @@ class ExecutorTest(tf.test.TestCase):
   def testDo_MakeSavedModelWarmup(self):
     infra_validator = executor.Executor(self._context)
     self._request_spec.make_warmup = True
-    self._exec_properties[REQUEST_SPEC_KEY] = (
+    self._exec_properties[standard_component_specs.REQUEST_SPEC_KEY] = (
         proto_utils.proto_to_json(self._request_spec))
 
     with mock.patch.object(infra_validator, '_ValidateOnce'):
@@ -188,7 +188,8 @@ class ExecutorTest(tf.test.TestCase):
 
   def testDo_WarmupNotCreatedWithoutRequests(self):
     infra_validator = executor.Executor(self._context)
-    del self._exec_properties[REQUEST_SPEC_KEY]  # No request
+    del self._exec_properties[
+        standard_component_specs.REQUEST_SPEC_KEY]  # No request
 
     with mock.patch.object(infra_validator, '_ValidateOnce'):
       infra_validator.Do(self._input_dict, self._output_dict,
@@ -311,10 +312,10 @@ class ExecutorTest(tf.test.TestCase):
     self.assertFileExists(os.path.join(self._blessing.uri, 'INFRA_NOT_BLESSED'))
     self.assertEqual(0, self._blessing.get_int_custom_property('blessed'))
 
-  def assertFileExists(self, path: Text):
+  def assertFileExists(self, path: str):
     self.assertTrue(fileio.exists(path))
 
-  def assertFileDoesNotExist(self, path: Text):
+  def assertFileDoesNotExist(self, path: str):
     self.assertFalse(fileio.exists(path))
 
 if __name__ == '__main__':

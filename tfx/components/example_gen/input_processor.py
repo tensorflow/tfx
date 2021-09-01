@@ -15,7 +15,7 @@
 
 import abc
 import copy
-from typing import Iterable, Optional, Text, Tuple
+from typing import Iterable, Optional, Tuple
 
 from tfx.components.example_gen import utils
 from tfx.proto import example_gen_pb2
@@ -90,8 +90,8 @@ class InputProcessor(abc.ABC):
     return target_span, target_version
 
   @abc.abstractmethod
-  def get_pattern_for_span_version(self, pattern: Text, span: int,
-                                   version: Optional[int]) -> Text:
+  def get_pattern_for_span_version(self, pattern: str, span: int,
+                                   version: Optional[int]) -> str:
     """Return pattern with Span and Version spec filled."""
     # TODO(b/181275944): refactor as not all type of ExampleGen has pattern.
     raise NotImplementedError
@@ -109,7 +109,7 @@ class InputProcessor(abc.ABC):
       self,
       span: int,  # pylint: disable=unused-argument
       version: Optional[int],  # pylint: disable=unused-argument
-  ) -> Optional[Text]:
+  ) -> Optional[str]:
     """Returns the fingerprint for a certain Version of a certain Span."""
     return None
 
@@ -118,7 +118,7 @@ class FileBasedInputProcessor(InputProcessor):
   """Custom InputProcessor for file based ExampleGen driver."""
 
   def __init__(self,
-               input_base_uri: Text,
+               input_base_uri: str,
                splits: Iterable[example_gen_pb2.Input.Split],
                range_config: Optional[range_config_pb2.RangeConfig] = None):
     """Initialize FileBasedInputProcessor.
@@ -129,8 +129,7 @@ class FileBasedInputProcessor(InputProcessor):
       range_config: An instance of range_config_pb2.RangeConfig, defines the
         rules for span resolving.
     """
-    super(FileBasedInputProcessor, self).__init__(
-        splits=splits, range_config=range_config)
+    super().__init__(splits=splits, range_config=range_config)
 
     self._is_match_span = None
     self._is_match_date = None
@@ -168,8 +167,8 @@ class FileBasedInputProcessor(InputProcessor):
         self._input_base_uri, splits, self._range_config)
     return span, version
 
-  def get_pattern_for_span_version(self, pattern: Text, span: int,
-                                   version: Optional[int]) -> Text:
+  def get_pattern_for_span_version(self, pattern: str, span: int,
+                                   version: Optional[int]) -> str:
     """Return pattern with Span and Version spec filled."""
     return utils.get_pattern_for_span_version(
         pattern=pattern,
@@ -188,7 +187,7 @@ class FileBasedInputProcessor(InputProcessor):
     raise NotImplementedError
 
   def get_input_fingerprint(self, span: int,
-                            version: Optional[int]) -> Optional[Text]:
+                            version: Optional[int]) -> Optional[str]:
     """Returns the fingerprint for a certain Version of a certain Span."""
     assert self._fingerprint, 'Call resolve_span_and_version first.'
     return self._fingerprint
@@ -197,8 +196,8 @@ class FileBasedInputProcessor(InputProcessor):
 class QueryBasedInputProcessor(InputProcessor):
   """Custom InputProcessor for query based ExampleGen driver."""
 
-  def get_pattern_for_span_version(self, pattern: Text, span: int,
-                                   version: Optional[int]) -> Text:
+  def get_pattern_for_span_version(self, pattern: str, span: int,
+                                   version: Optional[int]) -> str:
     """Return pattern with Span and Version spec filled."""
     return utils.get_query_for_span(pattern, span)
 
@@ -215,7 +214,7 @@ class QueryBasedInputProcessor(InputProcessor):
     return None
 
   def get_input_fingerprint(self, span: int,
-                            version: Optional[int]) -> Optional[Text]:
+                            version: Optional[int]) -> Optional[str]:
     """Returns the fingerprint for a certain Version of a certain Span."""
     # TODO(b/179853017): support fingerprint of table.
     return None

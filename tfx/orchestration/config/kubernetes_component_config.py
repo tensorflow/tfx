@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,11 +13,7 @@
 # limitations under the License.
 """Component config for Kubernets Pod execution."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
-from typing import Any, Dict, Text, Union
+from typing import Any, Dict, Union
 
 from kubernetes import client
 
@@ -35,7 +30,7 @@ class KubernetesComponentConfig(base_component_config.BaseComponentConfig):
       https://github.com/kubernetes-client/python/blob/master/kubernetes/docs/V1Pod.md
   """
 
-  def __init__(self, pod: Union[client.V1Pod, Dict[Text, Any]]):
+  def __init__(self, pod: Union[client.V1Pod, Dict[str, Any]]):
     if not pod:
       raise ValueError('pod must have a value.')
     self.pod = container_common.to_swagger_dict(pod)

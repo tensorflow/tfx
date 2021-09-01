@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,13 +13,9 @@
 # limitations under the License.
 """BulkInferrer executor for Cloud AI platform."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import hashlib
 import re
-from typing import Any, Dict, List, Text
+from typing import Any, Dict, List
 
 from absl import logging
 from googleapiclient import discovery
@@ -62,9 +57,9 @@ _CUSTOM_CONFIG_KEY = 'custom_config'
 class Executor(bulk_inferrer_executor.Executor):
   """Bulk inferer executor for inference on AI Platform."""
 
-  def Do(self, input_dict: Dict[Text, List[types.Artifact]],
-         output_dict: Dict[Text, List[types.Artifact]],
-         exec_properties: Dict[Text, Any]) -> None:
+  def Do(self, input_dict: Dict[str, List[types.Artifact]],
+         output_dict: Dict[str, List[types.Artifact]],
+         exec_properties: Dict[str, Any]) -> None:
     """Runs batch inference on a given model with given input examples.
 
     This function creates a new model (if necessary) and a new model version
@@ -188,8 +183,8 @@ class Executor(bulk_inferrer_executor.Executor):
           delete_model_endpoint=new_model_endpoint_created)
 
   def _get_inference_spec(
-      self, model_path: Text, model_version: Text,
-      ai_platform_serving_args: Dict[Text, Any]
+      self, model_path: str, model_version: str,
+      ai_platform_serving_args: Dict[str, Any]
   ) -> model_spec_pb2.InferenceSpecType:
     if 'project_id' not in ai_platform_serving_args:
       raise ValueError(
@@ -217,7 +212,7 @@ class Executor(bulk_inferrer_executor.Executor):
         ai_platform_prediction_model_spec)
     return result
 
-  def _get_model_signature(self, model_path: Text) -> _SignatureDef:
+  def _get_model_signature(self, model_path: str) -> _SignatureDef:
     """Returns a model signature."""
 
     saved_model_pb = loader_impl.parse_saved_model(model_path)

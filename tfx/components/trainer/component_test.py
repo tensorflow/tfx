@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,12 +13,6 @@
 # limitations under the License.
 """Tests for tfx.components.trainer.component."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
-from typing import Text
-
 import tensorflow as tf
 from tfx.components.trainer import component
 from tfx.components.trainer import executor
@@ -34,7 +27,7 @@ from tfx.types import standard_component_specs
 class ComponentTest(tf.test.TestCase):
 
   def setUp(self):
-    super(ComponentTest, self).setUp()
+    super().setUp()
 
     self.examples = channel_utils.as_channel([standard_artifacts.Examples()])
     self.transform_graph = channel_utils.as_channel(
@@ -70,7 +63,7 @@ class ComponentTest(tf.test.TestCase):
             standard_component_specs.CUSTOM_CONFIG_KEY])
 
   def testConstructWithParameter(self):
-    module_file = data_types.RuntimeParameter(name='module-file', ptype=Text)
+    module_file = data_types.RuntimeParameter(name='module-file', ptype=str)
     n_steps = data_types.RuntimeParameter(name='n-steps', ptype=int)
     trainer = component.Trainer(
         module_file=module_file,
@@ -192,12 +185,12 @@ class ComponentTest(tf.test.TestCase):
     eval_args = data_types.RuntimeParameter(
         name='eval-args',
         default='{"num_steps": 50}',
-        ptype=Text,
+        ptype=str,
     )
     custom_config = data_types.RuntimeParameter(
         name='custom-config',
         default='{"test": 10}',
-        ptype=Text,
+        ptype=str,
     )
     trainer = component.Trainer(
         trainer_fn='path.to.my_trainer_fn',

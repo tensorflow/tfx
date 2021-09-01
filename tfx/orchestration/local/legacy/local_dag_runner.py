@@ -50,7 +50,7 @@ class LocalDagRunner(tfx_runner.TfxRunner):
               docker_component_launcher.DockerComponentLauncher,
           ],
       )
-    super(LocalDagRunner, self).__init__(config)
+    super().__init__(config)
 
   def run(self, tfx_pipeline: pipeline.Pipeline) -> None:
     """Runs given logical pipeline locally.

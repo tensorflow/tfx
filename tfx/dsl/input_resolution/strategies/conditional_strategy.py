@@ -13,13 +13,14 @@
 # limitations under the License.
 """Experimental Resolver for evaluating the condition."""
 
-from typing import Dict, List, Optional, Text
+from typing import Dict, List, Optional
 
 from tfx import types
 from tfx.dsl.compiler import placeholder_utils
 from tfx.dsl.components.common import resolver
 from tfx.orchestration import metadata
 from tfx.orchestration.portable import data_types as portable_data_types
+from tfx.orchestration.portable.input_resolution import exceptions
 from tfx.proto.orchestration import placeholder_pb2
 
 
@@ -35,8 +36,8 @@ class ConditionalStrategy(resolver.ResolverStrategy):
 
   def resolve_artifacts(
       self, metadata_handler: metadata.Metadata,
-      input_dict: Dict[Text, List[types.Artifact]]
-  ) -> Optional[Dict[Text, List[types.Artifact]]]:
+      input_dict: Dict[str, List[types.Artifact]]
+  ) -> Optional[Dict[str, List[types.Artifact]]]:
     for placeholder_pb in self._predicates:
       context = placeholder_utils.ResolutionContext(
           exec_info=portable_data_types.ExecutionInfo(input_dict=input_dict))
@@ -45,7 +46,6 @@ class ConditionalStrategy(resolver.ResolverStrategy):
       if not isinstance(predicate_result, bool):
         raise ValueError("Predicate evaluates to a non-boolean result.")
 
-      # TODO(b/192025557): Use Signals, instead of None, to represent skipping.
       if not predicate_result:
-        return None
+        raise exceptions.SkipSignal("Predicate evaluates to False.")
     return input_dict

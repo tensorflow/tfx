@@ -42,7 +42,7 @@ from tfx.utils import telemetry_utils
 class KubeflowGCPIntegrationTest(kubeflow_test_utils.BaseKubeflowTest):
 
   def setUp(self):
-    super(KubeflowGCPIntegrationTest, self).setUp()
+    super().setUp()
 
     # Transformed Example artifacts for testing.
     self.transformed_examples_importer = importer.Importer(

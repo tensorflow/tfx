@@ -15,7 +15,7 @@
 
 import abc
 import inspect
-from typing import Any, Dict, Optional, Text, Union
+from typing import Any, Dict, Optional, Union
 
 from tfx import types
 from tfx.dsl.components.base import base_driver
@@ -161,11 +161,11 @@ class BaseComponent(base_node.BaseNode, abc.ABC):
 
   @property
   @doc_controls.do_not_doc_in_subclasses
-  def inputs(self) -> Dict[Text, Any]:
+  def inputs(self) -> Dict[str, Any]:
     return self.spec.inputs
 
   @property
-  def outputs(self) -> Dict[Text, Any]:
+  def outputs(self) -> Dict[str, Any]:
     """Component's output channel dict."""
     return self.spec.outputs
 

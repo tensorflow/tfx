@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,11 +13,7 @@
 # limitations under the License.
 """TFX ExampleGen component definition."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
-from typing import Optional, Text, Union
+from typing import Optional, Union
 
 from tfx import types
 from tfx.components.example_gen import driver
@@ -30,8 +25,7 @@ from tfx.orchestration import data_types
 from tfx.proto import example_gen_pb2
 from tfx.proto import range_config_pb2
 from tfx.types import standard_artifacts
-from tfx.types.standard_component_specs import FileBasedExampleGenSpec
-from tfx.types.standard_component_specs import QueryBasedExampleGenSpec
+from tfx.types import standard_component_specs
 
 
 class QueryBasedExampleGen(base_beam_component.BaseBeamComponent):
@@ -55,7 +49,7 @@ class QueryBasedExampleGen(base_beam_component.BaseBeamComponent):
                  and eval examples.
   """
 
-  SPEC_CLASS = QueryBasedExampleGenSpec
+  SPEC_CLASS = standard_component_specs.QueryBasedExampleGenSpec
   # EXECUTOR_SPEC should be overridden by subclasses.
   EXECUTOR_SPEC = executor_spec.BeamExecutorSpec(
       base_beam_executor.BaseBeamExecutor)
@@ -104,14 +98,14 @@ class QueryBasedExampleGen(base_beam_component.BaseBeamComponent):
       raise ValueError('The value of output_file_format must be defined in'
                        'the example_gen_pb2.FileFormat proto.')
 
-    spec = QueryBasedExampleGenSpec(
+    spec = standard_component_specs.QueryBasedExampleGenSpec(
         input_config=input_config,
         output_config=output_config,
         output_data_format=output_data_format,
         output_file_format=output_file_format,
         custom_config=custom_config,
         examples=example_artifacts)
-    super(QueryBasedExampleGen, self).__init__(spec=spec)
+    super().__init__(spec=spec)
 
 
 class FileBasedExampleGen(base_beam_component.BaseBeamComponent):
@@ -137,7 +131,7 @@ class FileBasedExampleGen(base_beam_component.BaseBeamComponent):
                  and eval examples.
   """
 
-  SPEC_CLASS = FileBasedExampleGenSpec
+  SPEC_CLASS = standard_component_specs.FileBasedExampleGenSpec
   # EXECUTOR_SPEC should be overridden by subclasses.
   EXECUTOR_SPEC = executor_spec.BeamExecutorSpec(
       base_beam_executor.BaseBeamExecutor)
@@ -145,7 +139,7 @@ class FileBasedExampleGen(base_beam_component.BaseBeamComponent):
 
   def __init__(
       self,
-      input_base: Optional[Text] = None,
+      input_base: Optional[str] = None,
       input_config: Optional[Union[example_gen_pb2.Input,
                                    data_types.RuntimeParameter]] = None,
       output_config: Optional[Union[example_gen_pb2.Output,
@@ -185,7 +179,7 @@ class FileBasedExampleGen(base_beam_component.BaseBeamComponent):
     output_config = output_config or utils.make_default_output_config(
         input_config)
     example_artifacts = types.Channel(type=standard_artifacts.Examples)
-    spec = FileBasedExampleGenSpec(
+    spec = standard_component_specs.FileBasedExampleGenSpec(
         input_base=input_base,
         input_config=input_config,
         output_config=output_config,
@@ -194,5 +188,4 @@ class FileBasedExampleGen(base_beam_component.BaseBeamComponent):
         output_data_format=output_data_format,
         output_file_format=output_file_format,
         examples=example_artifacts)
-    super(FileBasedExampleGen, self).__init__(
-        spec=spec, custom_executor_spec=custom_executor_spec)
+    super().__init__(spec=spec, custom_executor_spec=custom_executor_spec)

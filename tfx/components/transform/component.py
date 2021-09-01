@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,11 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """TFX Transform component definition."""
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
 
-from typing import Any, Dict, Optional, Text, Union
+from typing import Any, Dict, Optional, Union
 
 from tfx import types
 from tfx.components.transform import executor
@@ -93,17 +89,17 @@ class Transform(base_beam_component.BaseBeamComponent):
       self,
       examples: types.Channel,
       schema: types.Channel,
-      module_file: Optional[Union[Text, data_types.RuntimeParameter]] = None,
-      preprocessing_fn: Optional[Union[Text,
+      module_file: Optional[Union[str, data_types.RuntimeParameter]] = None,
+      preprocessing_fn: Optional[Union[str,
                                        data_types.RuntimeParameter]] = None,
       splits_config: Optional[transform_pb2.SplitsConfig] = None,
       analyzer_cache: Optional[types.Channel] = None,
       materialize: bool = True,
       disable_analyzer_cache: bool = False,
       force_tf_compat_v1: bool = False,
-      custom_config: Optional[Dict[Text, Any]] = None,
+      custom_config: Optional[Dict[str, Any]] = None,
       disable_statistics: bool = False,
-      stats_options_updater_fn: Optional[Text] = None):
+      stats_options_updater_fn: Optional[str] = None):
     """Construct a Transform component.
 
     Args:
@@ -235,7 +231,7 @@ class Transform(base_beam_component.BaseBeamComponent):
         post_transform_schema=post_transform_schema,
         post_transform_stats=post_transform_stats,
         post_transform_anomalies=post_transform_anomalies)
-    super(Transform, self).__init__(spec=spec)
+    super().__init__(spec=spec)
 
     if udf_utils.should_package_user_modules():
       # In this case, the `MODULE_PATH_KEY` execution property will be injected

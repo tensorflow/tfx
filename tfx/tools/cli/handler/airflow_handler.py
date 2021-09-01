@@ -32,7 +32,7 @@ class AirflowHandler(base_handler.BaseHandler):
 
   def __init__(self, flags_dict):
     self._check_airflow_version()
-    super(AirflowHandler, self).__init__(flags_dict)
+    super().__init__(flags_dict)
     self._handler_home_dir = os.path.join(self._handler_home_dir, 'dags', '')
 
   def _get_airflow_version(self):
@@ -103,6 +103,8 @@ class AirflowHandler(base_handler.BaseHandler):
   def create_run(self) -> None:
     """Trigger DAG in Airflow."""
     pipeline_name = self.flags_dict[labels.PIPELINE_NAME]
+    runtime_parameter_json = json.dumps(
+        self.flags_dict[labels.RUNTIME_PARAMETER])
 
     # Check if pipeline exists.
     self._check_pipeline_existence(pipeline_name)
@@ -111,7 +113,10 @@ class AirflowHandler(base_handler.BaseHandler):
     self._subprocess_call(['airflow', 'dags', 'unpause', pipeline_name])
 
     # Trigger DAG.
-    self._subprocess_call(['airflow', 'dags', 'trigger', pipeline_name])
+    self._subprocess_call([
+        'airflow', 'dags', 'trigger', '--conf', runtime_parameter_json,
+        pipeline_name
+    ])
 
     click.echo('Run created for pipeline: ' + pipeline_name)
 

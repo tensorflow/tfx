@@ -14,7 +14,7 @@
 """Tests for tfx.orchestration.portable.beam_executor_operator."""
 
 import os
-from typing import Any, Dict, List, Text
+from typing import Any, Dict, List
 
 import tensorflow as tf
 from tfx import types
@@ -32,9 +32,9 @@ from google.protobuf import text_format
 class ValidateBeamPipelineArgsExecutor(base_beam_executor.BaseBeamExecutor):
   """A Fake executor for validating beam pipeline args passing."""
 
-  def Do(self, input_dict: Dict[Text, List[types.Artifact]],
-         output_dict: Dict[Text, List[types.Artifact]],
-         exec_properties: Dict[Text, Any]) -> None:
+  def Do(self, input_dict: Dict[str, List[types.Artifact]],
+         output_dict: Dict[str, List[types.Artifact]],
+         exec_properties: Dict[str, Any]) -> None:
     assert '--runner=DirectRunner' in self._beam_pipeline_args
     model = output_dict['output_key'][0]
     model.name = '{0}.{1}.my_model'.format(

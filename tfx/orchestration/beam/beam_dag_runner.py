@@ -14,7 +14,7 @@
 """Definition of Beam TFX runner."""
 
 import datetime
-from typing import Any, Iterable, List, Optional, Text, Union
+from typing import Any, Iterable, List, Optional, Union
 
 from absl import logging
 import apache_beam as beam
@@ -115,10 +115,9 @@ class BeamDagRunner(tfx_runner.TfxRunner):
 
   _PIPELINE_NODE_DO_FN_CLS = PipelineNodeAsDoFn
 
-  def __new__(
-      cls,
-      beam_orchestrator_args: Optional[List[Text]] = None,
-      config: Optional[pipeline_config.PipelineConfig] = None):
+  def __new__(cls,
+              beam_orchestrator_args: Optional[List[str]] = None,
+              config: Optional[pipeline_config.PipelineConfig] = None):
     """Initializes BeamDagRunner as a TFX orchestrator.
 
     Create the legacy BeamDagRunner object if any of the legacy

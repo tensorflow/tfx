@@ -28,7 +28,7 @@ from tfx.utils import test_case_utils
 class TaxiPipelineSimpleTest(test_case_utils.TfxTest):
 
   def setUp(self):
-    super(TaxiPipelineSimpleTest, self).setUp()
+    super().setUp()
     self._test_dir = self.tmp_dir
 
   def testTaxiPipelineCheckDagConstruction(self):

@@ -170,7 +170,7 @@ class _FakeComponentAsDoFn(beam_dag_runner.PipelineNodeAsDoFn):
 class BeamDagRunnerTest(test_case_utils.TfxTest):
 
   def setUp(self):
-    super(BeamDagRunnerTest, self).setUp()
+    super().setUp()
     # Setup pipelines
     self._pipeline = pipeline_pb2.Pipeline()
     self.load_proto_from_text(

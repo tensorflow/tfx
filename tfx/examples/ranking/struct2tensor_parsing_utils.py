@@ -14,7 +14,7 @@
 """Utils using struct2tensor to parse ELWC."""
 
 import itertools
-from typing import Dict, List, Optional, Text, Union
+from typing import Dict, List, Optional, Union
 
 from struct2tensor import calculate
 from struct2tensor import calculate_options
@@ -37,11 +37,13 @@ _TYPE_LIST_MAP = {
 
 
 # Parsing config for a feature in ELWCs.
-class Feature(object):
+class Feature:
   """Parsing config for a feature in ELWCs."""
 
-  def __init__(self, name: Text, dtype: tf.DType,
-               default_value: Optional[Union[int, float, Text]] = None,
+  def __init__(self,
+               name: str,
+               dtype: tf.DType,
+               default_value: Optional[Union[int, float, str]] = None,
                length: Optional[int] = None):
     """Initializer.
 
@@ -81,10 +83,11 @@ class Feature(object):
 class ELWCDecoder(tfxio.TFGraphRecordDecoder):
   """A TFGraphRecordDecoder that decodes ExampleListWithContext proto."""
 
-  def __init__(self, name: Text,
+  def __init__(self,
+               name: str,
                context_features: List[Feature],
                example_features: List[Feature],
-               size_feature_name: Optional[Text] = None,
+               size_feature_name: Optional[str] = None,
                label_feature: Optional[Feature] = None):
     self._context_features = context_features
     self._example_features = example_features
@@ -147,7 +150,7 @@ def parse_elwc_with_struct2tensor(
     records: tf.Tensor,
     context_features: List[Feature],
     example_features: List[Feature],
-    size_feature_name: Optional[Text] = None) -> Dict[Text, tf.RaggedTensor]:
+    size_feature_name: Optional[str] = None) -> Dict[str, tf.RaggedTensor]:
   """Parses a batch of ELWC records into RaggedTensors using struct2tensor.
 
   Args:
@@ -164,7 +167,7 @@ def parse_elwc_with_struct2tensor(
 
   """
 
-  def get_step_name(feature_name: Text):
+  def get_step_name(feature_name: str):
     """Gets the name of the step (a component in a prensor Path) for a feature.
 
     A prensor step cannot contain dots ("."), but a feature name can.
@@ -176,7 +179,7 @@ def parse_elwc_with_struct2tensor(
     """
     return feature_name.replace('.', '_dot_')
 
-  def get_default_filled_step_name(feature_name: Text):
+  def get_default_filled_step_name(feature_name: str):
     return get_step_name(feature_name) + _DEFAULT_VALUE_SUFFIX
 
   def get_context_feature_path(feature: Feature):

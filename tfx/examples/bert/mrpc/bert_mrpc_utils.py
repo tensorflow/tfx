@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2020 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,11 +13,7 @@
 # limitations under the License.
 """Python source file include mrpc pipeline functions and necessary utils."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
-from typing import List, Text
+from typing import List
 
 import tensorflow as tf
 import tensorflow_data_validation as tfdv
@@ -159,7 +154,7 @@ def stats_options_updater_fn(
   return stats_options
 
 
-def _input_fn(file_pattern: List[Text],
+def _input_fn(file_pattern: List[str],
               data_accessor: tfx.components.DataAccessor,
               tf_transform_output: tft.TFTransformOutput,
               batch_size: int = 200) -> tf.data.Dataset:

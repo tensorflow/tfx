@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,10 +20,7 @@ This file is equivalent to examples/chicago_taxi/trainer/model.py and
 examples/chicago_taxi/preprocess.py.
 """
 
-from __future__ import division
-from __future__ import print_function
-
-from typing import List, Text
+from typing import List
 
 import tensorflow as tf
 import tensorflow_model_analysis as tfma
@@ -263,7 +259,7 @@ def _eval_input_receiver_fn(tf_transform_output, schema):
       labels=transformed_features[_transformed_name(_LABEL_KEY)])
 
 
-def _input_fn(file_pattern: List[Text],
+def _input_fn(file_pattern: List[str],
               data_accessor: DataAccessor,
               tf_transform_output: tft.TFTransformOutput,
               batch_size: int = 200) -> tf.data.Dataset:

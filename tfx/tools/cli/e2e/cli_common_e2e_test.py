@@ -26,7 +26,7 @@ from tfx.tools.cli.cli_main import cli_group
 class CliCommonEndToEndTest(tf.test.TestCase):
 
   def setUp(self):
-    super(CliCommonEndToEndTest, self).setUp()
+    super().setUp()
 
     # Change the encoding for Click since Python 3 is configured to use ASCII as
     # encoding for the environment.

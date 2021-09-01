@@ -16,7 +16,7 @@
 import datetime
 import json
 import os
-from typing import Any, Dict, List, Optional, Text
+from typing import Any, Dict, List, Optional
 
 from kfp.pipeline_spec import pipeline_spec_pb2
 from tfx import version
@@ -52,9 +52,9 @@ class KubeflowV2DagRunnerConfig(pipeline_config.PipelineConfig):
   """Runtime configuration specific to execution on Kubeflow V2 pipelines."""
 
   def __init__(self,
-               display_name: Optional[Text] = None,
-               default_image: Optional[Text] = None,
-               default_commands: Optional[List[Text]] = None,
+               display_name: Optional[str] = None,
+               default_image: Optional[str] = None,
+               default_commands: Optional[List[str]] = None,
                **kwargs):
     """Constructs a Kubeflow V2 runner config.
 
@@ -74,7 +74,7 @@ class KubeflowV2DagRunnerConfig(pipeline_config.PipelineConfig):
         https://kubernetes.io/docs/tasks/inject-data-application/define-command-argument-container/#notes
       **kwargs: Additional args passed to base PipelineConfig.
     """
-    super(KubeflowV2DagRunnerConfig, self).__init__(**kwargs)
+    super().__init__(**kwargs)
     self.display_name = display_name
     self.default_image = default_image or _KUBEFLOW_TFX_IMAGE
     if default_commands is None:
@@ -91,8 +91,8 @@ class KubeflowV2DagRunner(tfx_runner.TfxRunner):
 
   def __init__(self,
                config: KubeflowV2DagRunnerConfig,
-               output_dir: Optional[Text] = None,
-               output_filename: Optional[Text] = None):
+               output_dir: Optional[str] = None,
+               output_filename: Optional[str] = None):
     """Constructs an KubeflowV2DagRunner for compiling pipelines.
 
     Args:
@@ -106,15 +106,15 @@ class KubeflowV2DagRunner(tfx_runner.TfxRunner):
     """
     if not isinstance(config, KubeflowV2DagRunnerConfig):
       raise TypeError('config must be type of KubeflowV2DagRunnerConfig.')
-    super(KubeflowV2DagRunner, self).__init__()
+    super().__init__()
     self._config = config
     self._output_dir = output_dir or os.getcwd()
     self._output_filename = output_filename or 'pipeline.json'
 
   def run(self,
           pipeline: tfx_pipeline.Pipeline,
-          parameter_values: Optional[Dict[Text, Any]] = None,
-          write_out: Optional[bool] = True) -> Dict[Text, Any]:
+          parameter_values: Optional[Dict[str, Any]] = None,
+          write_out: Optional[bool] = True) -> Dict[str, Any]:
     """Compiles a pipeline DSL object into pipeline file.
 
     Args:

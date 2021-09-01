@@ -16,7 +16,7 @@
 from concurrent import futures
 import threading
 import typing
-from typing import Optional
+from typing import Dict, Optional
 
 from absl import logging
 from tfx.dsl.io import fileio
@@ -46,8 +46,23 @@ class TasksProcessingError(Error):
 
   def __init__(self, errors):
     err_msg = '\n'.join(str(e) for e in errors)
-    super(TasksProcessingError, self).__init__(err_msg)
+    super().__init__(err_msg)
     self.errors = errors
+
+
+class _SchedulerWrapper:
+  """Wraps a TaskScheduler to store additional details."""
+
+  def __init__(self, task_scheduler: ts.TaskScheduler):
+    self._task_scheduler = task_scheduler
+    self.pause = False
+
+  def schedule(self) -> ts.TaskSchedulerResult:
+    return self._task_scheduler.schedule()
+
+  def cancel(self, pause: bool = False) -> None:
+    self.pause = pause
+    self._task_scheduler.cancel()
 
 
 class TaskManager:
@@ -83,7 +98,7 @@ class TaskManager:
 
     self._tm_lock = threading.Lock()
     self._stop_event = threading.Event()
-    self._scheduler_by_node_uid = {}
+    self._scheduler_by_node_uid: Dict[task_lib.NodeUid, _SchedulerWrapper] = {}
 
     # Async executor for the main task management thread.
     self._main_executor = futures.ThreadPoolExecutor(max_workers=1)
@@ -171,8 +186,9 @@ class TaskManager:
         raise RuntimeError(
             'Cannot create multiple task schedulers for the same task; '
             'task_id: {}'.format(task.task_id))
-      scheduler = ts.TaskSchedulerRegistry.create_task_scheduler(
-          self._mlmd_handle, task.pipeline, task)
+      scheduler = _SchedulerWrapper(
+          ts.TaskSchedulerRegistry.create_task_scheduler(
+              self._mlmd_handle, task.pipeline, task))
       self._scheduler_by_node_uid[node_uid] = scheduler
       self._ts_futures.add(
           self._ts_executor.submit(self._process_exec_node_task, scheduler,
@@ -189,10 +205,10 @@ class TaskManager:
             'No task scheduled for node uid: %s. The task might have already '
             'completed before it could be cancelled.', task.node_uid)
       else:
-        scheduler.cancel()
+        scheduler.cancel(task.pause)
       self._task_queue.task_done(task)
 
-  def _process_exec_node_task(self, scheduler: ts.TaskScheduler,
+  def _process_exec_node_task(self, scheduler: _SchedulerWrapper,
                               task: task_lib.ExecNodeTask) -> None:
     """Processes an `ExecNodeTask` using the given task scheduler."""
     # This is a blocking call to the scheduler which can take a long time to
@@ -210,8 +226,12 @@ class TaskManager:
               code=status_lib.Code.ABORTED, message=str(e)))
     logging.info('For ExecNodeTask id: %s, task-scheduler result status: %s',
                  task.task_id, result.status)
-    _publish_execution_results(
-        mlmd_handle=self._mlmd_handle, task=task, result=result)
+    # If the node was paused, we do not complete the execution as it is expected
+    # that a new ExecNodeTask would be issued for resuming the execution.
+    if not (scheduler.pause and
+            result.status.code == status_lib.Code.CANCELLED):
+      _publish_execution_results(
+          mlmd_handle=self._mlmd_handle, task=task, result=result)
     with self._tm_lock:
       del self._scheduler_by_node_uid[task.node_uid]
       self._task_queue.task_done(task)

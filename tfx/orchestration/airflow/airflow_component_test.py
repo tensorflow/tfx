@@ -54,13 +54,13 @@ class _FakeComponent(base_component.BaseComponent):
   EXECUTOR_SPEC = executor_spec.ExecutorClassSpec(base_executor.BaseExecutor)
 
   def __init__(self, spec: types.ComponentSpec):
-    super(_FakeComponent, self).__init__(spec=spec)
+    super().__init__(spec=spec)
 
 
 class AirflowComponentTest(tf.test.TestCase):
 
   def setUp(self):
-    super(AirflowComponentTest, self).setUp()
+    super().setUp()
     self._component = _FakeComponent(
         _FakeComponentSpec(
             input=types.Channel(type=_ArtifactTypeA),

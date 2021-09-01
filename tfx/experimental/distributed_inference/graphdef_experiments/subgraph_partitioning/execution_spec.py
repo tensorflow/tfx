@@ -13,8 +13,9 @@
 # limitations under the License.
 """Definition of execution_spec."""
 
-from typing import Optional, Set, Text
 import dataclasses
+from typing import Optional, Set
+
 import tensorflow as tf
 
 
@@ -33,6 +34,6 @@ class ExecutionSpec:
                   (two types: subgraph layer or remote op layer).
   """
   subgraph: Optional[tf.compat.v1.GraphDef]
-  input_names: Set[Text]
-  output_names: Set[Text]
+  input_names: Set[str]
+  output_names: Set[str]
   is_remote_op: bool

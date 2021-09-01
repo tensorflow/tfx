@@ -80,6 +80,14 @@ execution_properties {
     string_value: "{\\n  \\"tensorflow_serving\\": {\\n    \\"tags\\": [\\n      \\"latest\\",\\n      \\"1.15.0-gpu\\"\\n    ]\\n  }\\n}"
   }
 }
+execution_properties_with_schema {
+  key: "proto_property"
+  value {
+    field_value {
+      string_value: "{\\n  \\"tensorflow_serving\\": {\\n    \\"tags\\": [\\n      \\"latest\\",\\n      \\"1.15.0-gpu\\"\\n    ]\\n  }\\n}"
+    }
+  }
+}
 output_metadata_uri: "test_executor_output_uri"
 input_dict {
   key: "examples"

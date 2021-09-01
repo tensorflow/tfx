@@ -20,7 +20,7 @@ import logging
 import os
 import sys
 import textwrap
-from typing import cast, Dict, List, Mapping, MutableMapping, Optional, Sequence, Text, Tuple, Union
+from typing import cast, Dict, List, Mapping, MutableMapping, Optional, Sequence, Tuple, Union
 
 from tfx import types
 from tfx.dsl.compiler import constants
@@ -69,7 +69,7 @@ def _register_execution(
       exec_properties=execution_properties_copy)
 
 
-def _get_config_value(config_value: kubeflow_pb2.ConfigValue) -> Optional[Text]:
+def _get_config_value(config_value: kubeflow_pb2.ConfigValue) -> Optional[str]:
   value_from = config_value.WhichOneof('value_from')
 
   if value_from is None:
@@ -142,7 +142,7 @@ def _get_grpc_metadata_connection_config(
   return connection_config
 
 
-def _sanitize_underscore(name: Text) -> Optional[Text]:
+def _sanitize_underscore(name: str) -> Optional[str]:
   """Sanitize the underscore in pythonic name for markdown visualization."""
   if name:
     return str(name).replace('_', '\\_')
@@ -150,7 +150,7 @@ def _sanitize_underscore(name: Text) -> Optional[Text]:
     return None
 
 
-def _render_channel_as_mdstr(input_channel: channel.Channel) -> Text:
+def _render_channel_as_mdstr(input_channel: channel.Channel) -> str:
   """Render a Channel as markdown string with the following format.
 
   **Type**: input_channel.type_name
@@ -178,7 +178,7 @@ def _render_channel_as_mdstr(input_channel: channel.Channel) -> Text:
 
 
 # TODO(b/147097443): clean up and consolidate rendering code.
-def _render_artifact_as_mdstr(single_artifact: artifact.Artifact) -> Text:
+def _render_artifact_as_mdstr(single_artifact: artifact.Artifact) -> str:
   """Render an artifact as markdown string with the following format.
 
   **Artifact: artifact1**
@@ -258,8 +258,8 @@ def _dump_ui_metadata(
       '\n\n'.join(exec_properties_list) or 'No execution property.')
 
   def _dump_input_populated_artifacts(
-      node_inputs: MutableMapping[Text, pipeline_pb2.InputSpec],
-      name_to_artifacts: Dict[Text, List[artifact.Artifact]]) -> List[Text]:
+      node_inputs: MutableMapping[str, pipeline_pb2.InputSpec],
+      name_to_artifacts: Dict[str, List[artifact.Artifact]]) -> List[str]:
     """Dump artifacts markdown string for inputs.
 
     Args:
@@ -288,8 +288,8 @@ def _dump_ui_metadata(
     return rendered_list
 
   def _dump_output_populated_artifacts(
-      node_outputs: MutableMapping[Text, pipeline_pb2.OutputSpec],
-      name_to_artifacts: Dict[Text, List[artifact.Artifact]]) -> List[Text]:
+      node_outputs: MutableMapping[str, pipeline_pb2.OutputSpec],
+      name_to_artifacts: Dict[str, List[artifact.Artifact]]) -> List[str]:
     """Dump artifacts markdown string for outputs.
 
     Args:
@@ -384,8 +384,11 @@ def _parse_runtime_parameter_str(param: str) -> Tuple[str, types.Property]:
 
 
 def _resolve_runtime_parameters(tfx_ir: pipeline_pb2.Pipeline,
-                                parameters: List[str]) -> None:
+                                parameters: Optional[List[str]]) -> None:
   """Resolve runtime parameters in the pipeline proto inplace."""
+  if parameters is None:
+    return
+
   parameter_bindings = {
       # Substitute the runtime parameter to be a concrete run_id
       constants.PIPELINE_RUN_ID_PARAMETER_NAME:
@@ -400,7 +403,7 @@ def _resolve_runtime_parameters(tfx_ir: pipeline_pb2.Pipeline,
                                                        parameter_bindings)
 
 
-def main():
+def main(argv):
   # Log to the container's stdout so Kubeflow Pipelines UI can display logs to
   # the user.
   logging.basicConfig(stream=sys.stdout, level=logging.INFO)
@@ -409,16 +412,16 @@ def main():
   parser = argparse.ArgumentParser()
   parser.add_argument('--pipeline_root', type=str, required=True)
   parser.add_argument('--kubeflow_metadata_config', type=str, required=True)
-  parser.add_argument('--serialized_component', type=str, required=True)
   parser.add_argument('--tfx_ir', type=str, required=True)
   parser.add_argument('--node_id', type=str, required=True)
   # There might be multiple runtime parameters.
   # `args.runtime_parameter` should become List[str] by using "append".
   parser.add_argument('--runtime_parameter', type=str, action='append')
 
+  # TODO(b/196892362): Replace hooking with a more straightforward mechanism.
   launcher._register_execution = _register_execution  # pylint: disable=protected-access
 
-  args = parser.parse_args()
+  args = parser.parse_args(argv)
 
   tfx_ir = pipeline_pb2.Pipeline()
   json_format.Parse(args.tfx_ir, tfx_ir)
@@ -467,4 +470,4 @@ def main():
 
 
 if __name__ == '__main__':
-  main()
+  main(sys.argv[1:])

@@ -30,7 +30,7 @@ nodes {
         }
         name {
           field_value {
-            string_value: "my_importer"
+            string_value: "my_pipeline.my_importer"
           }
         }
       }

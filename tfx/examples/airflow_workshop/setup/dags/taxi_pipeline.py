@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -17,13 +16,9 @@
 # pylint: disable=unused-argument
 """Chicago taxi example using TFX."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import datetime
 import os
-from typing import List, Text
+from typing import List
 
 from tfx.components import CsvExampleGen
 from tfx.components.trainer.executor import GenericExecutor
@@ -93,10 +88,10 @@ _airflow_config = {
 
 
 # TODO(b/137289334): rename this as simple after DAG visualization is done.
-def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
-                     module_file: Text, serving_model_dir: Text,
-                     metadata_path: Text,
-                     beam_pipeline_args: List[Text]) -> pipeline.Pipeline:
+def _create_pipeline(pipeline_name: str, pipeline_root: str, data_root: str,
+                     module_file: str, serving_model_dir: str,
+                     metadata_path: str,
+                     beam_pipeline_args: List[str]) -> pipeline.Pipeline:
   """Implements the chicago taxi pipeline with TFX."""
   # Brings data into the pipeline or otherwise joins/converts training data.
   example_gen = CsvExampleGen(input_base=data_root)
@@ -120,7 +115,7 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
   #     schema=infer_schema.outputs['schema'], # Step 4
   #     module_file=module_file) # Step 4
 
-  # Uses user-provided Python function that implements a model using TF-Learn.
+  # Uses user-provided Python function that implements a model.
   # trainer = Trainer( # Step 5
   #     module_file=module_file, # Step 5
   #     custom_executor_spec=executor_spec.ExecutorClassSpec(GenericExecutor), # Step 5

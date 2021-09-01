@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """TFX DataViewProvider component definition."""
-from typing import Optional, Text
+from typing import Optional
 
 from tfx import types
 from tfx.components.experimental.data_view import provider_executor
@@ -59,8 +59,8 @@ class TfGraphDataViewProvider(base_component.BaseComponent):
       provider_executor.TfGraphDataViewProviderExecutor)
 
   def __init__(self,
-               create_decoder_func: Text,
-               module_file: Optional[Text] = None,
+               create_decoder_func: str,
+               module_file: Optional[str] = None,
                data_view: Optional[types.Channel] = None):
     """Construct a StatisticsGen component.
 

@@ -2,9 +2,11 @@
 
 ## Major Features and Improvements
 
-*  Added RuntimeParam support for Trainer's custom_config.
-*  TFX Trainer and Pusher now support Vertex, which can be enabled with
-   `ENABLE_VERTEX_KEY` key in `custom_config`.
+*   TFX CLI now supports runtime parameter on Kubeflow, Vertex, and Airflow.
+    Use it with '--runtime_parameter=<parameter_name>=<parameter_value>' flag.
+    In the case of multiple runtime parameters, format is as follows:
+    '--runtime_parameter=<parameter_name>=<parameter_value> --runtime_parameter
+    =<parameter_name>=<parameter_value>'
 
 ## Breaking Changes
 
@@ -14,8 +16,49 @@
 
 ## Deprecations
 
+*   The import name of KerasTuner has been changed from `kerastuner`
+    to `keras_tuner`. The import name of `kerastuner` is still supported.
+    A warning will occur when import from `kerastuner`, but does not affect
+    the usage.
+
 ## Bug Fixes and Other Changes
 
+*   The default job name for Google Cloud AI Training jobs was changed from
+    'tfx_YYYYmmddHHMMSS' to 'tfx_YYYYmmddHHMMSS_xxxxxxxx', where 'xxxxxxxx' is
+    a random 8 digit hexadecimal string.
+*   Fixed an issue where ClientOptions with regional endpoint was
+    incorrectly left out in Vertex AI pusher.
+*   Depends on `apache-beam[gcp]>=2.31,<2.32`.
+*   Depends on `keras-tuner>=1.0.4,<2`.
+
+## Documentation Updates
+
+# Version 1.2.0
+
+## Major Features and Improvements
+
+*  Added RuntimeParam support for Trainer's custom_config.
+*  TFX Trainer and Pusher now support Vertex, which can be enabled with
+   `ENABLE_VERTEX_KEY` key in `custom_config`.
+
+## Breaking Changes
+
+### For Pipeline Authors
+
+*   N/A
+
+### For Component Authors
+
+*   N/A
+
+## Deprecations
+
+*   N/A
+
+## Bug Fixes and Other Changes
+
+*   Fixed the issue that kfp_pod_name is not generated as an execution property
+    for Kubeflow Pipelines.
 *   Fixed issue when InputValuePlaceholder is used as component parameter in
     container based component.
 *   Depends on `kubernetes>=10.0.1,<13`
@@ -23,8 +66,23 @@
 *   `tfx.benchmarks` package was removed from the Python TFX wheel. This package
     is used only for benchmarking and not useful for end users.
 *   Fixed the issue for fairness_indicator_thresholds support of Evaluator.
+*   Depends on `apache-beam[gcp]>=2.31,<3`.
+*   Depends on `kfp-pipeline-spec>=0.1.8,<0.2`.
+*   Depends on `ml-metadata>=1.2.0,<1.3.0`.
+*   Depends on `struct2tensor>=0.33.0,<0.34.0`.
+*   Depends on `tensorflow-data-validation>=1.2.0,<1.3.0`.
+*   Depends on `tensorflow-model-analysis>=0.33.0,<0.34.0`.
+*   Depends on `tensorflow-transform>=1.2.0,<1.3.0`.
+*   Depends on `tfx-bsl>=1.2.0,<1.3.0`.
 
 ## Documentation Updates
+
+*   N/A
+
+# Version 1.1.x (skipped)
+
+To maintain version consistency among TFX Family libraries we skipped
+the 1.1.x release for TFX library.
 
 # Version 1.0.0
 
@@ -54,7 +112,6 @@
 *  Placeholders support accessing artifact property and custom property.
 *  Removed the extra node information in IR for KubeflowDagRunner, to reduce
    size of generated IR.
-
 
 ## Breaking Changes
 

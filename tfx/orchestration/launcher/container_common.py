@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,11 +13,7 @@
 # limitations under the License.
 """Common code shared by container based launchers."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
-from typing import Any, Dict, List, Optional, Text, Union
+from typing import Any, Dict, List, Optional, Union
 
 # TODO(b/176812386): Deprecate usage of jinja2 for placeholders.
 import jinja2
@@ -32,9 +27,9 @@ from tfx.dsl.components.base import executor_spec
 def resolve_container_template(
     container_spec_tmpl: Union[executor_spec.ExecutorContainerSpec,
                                executor_specs.TemplatedExecutorContainerSpec],
-    input_dict: Dict[Text, List[types.Artifact]],
-    output_dict: Dict[Text, List[types.Artifact]],
-    exec_properties: Dict[Text, Any]) -> executor_spec.ExecutorContainerSpec:
+    input_dict: Dict[str, List[types.Artifact]],
+    output_dict: Dict[str, List[types.Artifact]],
+    exec_properties: Dict[str, Any]) -> executor_spec.ExecutorContainerSpec:
   """Resolves Jinja2 template languages from an executor container spec.
 
   Args:
@@ -68,24 +63,23 @@ def resolve_container_template(
       args=_render_items(container_spec_tmpl.args, context))
 
 
-def _render_items(items: List[Text], context: Dict[Text, Any]) -> List[Text]:
+def _render_items(items: List[str], context: Dict[str, Any]) -> List[str]:
   if not items:
     return items
 
   return [_render_text(item, context) for item in items]
 
 
-def _render_text(text: Text, context: Dict[Text, Any]) -> Text:
+def _render_text(text: str, context: Dict[str, Any]) -> str:
   return jinja2.Template(text).render(context)
 
 
 def _resolve_container_command_line(
-    cmd_args: Optional[List[
-        placeholders.CommandlineArgumentType]],
-    input_dict: Dict[Text, List[types.Artifact]],
-    output_dict: Dict[Text, List[types.Artifact]],
-    exec_properties: Dict[Text, Any],
-) -> List[Text]:
+    cmd_args: Optional[List[placeholders.CommandlineArgumentType]],
+    input_dict: Dict[str, List[types.Artifact]],
+    output_dict: Dict[str, List[types.Artifact]],
+    exec_properties: Dict[str, Any],
+) -> List[str]:
   """Resolves placeholders in the command line of a container.
 
   Args:
@@ -99,8 +93,7 @@ def _resolve_container_command_line(
   """
 
   def expand_command_line_arg(
-      cmd_arg: placeholders.CommandlineArgumentType,
-  ) -> Text:
+      cmd_arg: placeholders.CommandlineArgumentType,) -> str:
     """Resolves a single argument."""
     if isinstance(cmd_arg, str):
       return cmd_arg
@@ -117,7 +110,7 @@ def _resolve_container_command_line(
     elif isinstance(cmd_arg, placeholders.ConcatPlaceholder):
       resolved_items = [expand_command_line_arg(item) for item in cmd_arg.items]
       for item in resolved_items:
-        if not isinstance(item, (str, Text)):
+        if not isinstance(item, str):
           raise TypeError('Expanded item "{}" has incorrect type "{}"'.format(
               item, type(item)))
       return ''.join(resolved_items)
@@ -130,7 +123,7 @@ def _resolve_container_command_line(
   resolved_command_line = []
   for cmd_arg in (cmd_args or []):
     resolved_cmd_arg = expand_command_line_arg(cmd_arg)
-    if not isinstance(resolved_cmd_arg, (str, Text)):
+    if not isinstance(resolved_cmd_arg, str):
       raise TypeError(
           'Resolved argument "{}" (type="{}") is not a string.'.format(
               resolved_cmd_arg, type(resolved_cmd_arg)))

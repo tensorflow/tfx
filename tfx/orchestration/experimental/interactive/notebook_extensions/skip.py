@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Custom magic for marking cells to be skipped during pipeline export."""
-
-from __future__ import print_function
 
 from IPython.core.magic import cell_magic
 from IPython.core.magic import Magics

@@ -20,7 +20,7 @@ import json
 import os
 import subprocess
 import sys
-from typing import Any, Collection, Dict, List, Optional, Text
+from typing import Any, Collection, Dict, List, Optional
 
 import click
 
@@ -38,7 +38,7 @@ class BaseHandler(abc.ABC):
     flags_dict: A dictionary with flags provided in a command.
   """
 
-  def __init__(self, flags_dict: Dict[Text, Any]):
+  def __init__(self, flags_dict: Dict[str, Any]):
     self.flags_dict = flags_dict
     self._handler_home_dir = self._get_handler_home()
 
@@ -126,7 +126,7 @@ class BaseHandler(abc.ABC):
                  '.run() in ' + dsl_path)
       return context
 
-  def _get_handler_home(self) -> Text:
+  def _get_handler_home(self) -> str:
     """Sets handler home.
 
     Returns:
@@ -138,7 +138,7 @@ class BaseHandler(abc.ABC):
       return os.environ[handler_home_dir]
     return os.path.join(os.environ['HOME'], 'tfx', engine_flag, '')
 
-  def _get_deprecated_handler_home(self) -> Text:
+  def _get_deprecated_handler_home(self) -> str:
     """Sets old handler home for compatibility.
 
     Returns:
@@ -151,8 +151,8 @@ class BaseHandler(abc.ABC):
     return os.path.join(os.environ['HOME'], engine_flag, '')
 
   def _subprocess_call(self,
-                       command: List[Text],
-                       env: Optional[Dict[Text, Any]] = None) -> None:
+                       command: List[str],
+                       env: Optional[Dict[str, Any]] = None) -> None:
     return_code = subprocess.call(command, env=env)
     if return_code != 0:
       sys.exit('Error while running "{}" '.format(' '.join(command)))
@@ -192,7 +192,7 @@ class BaseHandler(abc.ABC):
     return result
 
   def _check_pipeline_existence(self,
-                                pipeline_name: Text,
+                                pipeline_name: str,
                                 required: bool = True) -> None:
     """Check if pipeline folder exists and if not, exit system.
 

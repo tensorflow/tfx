@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -52,6 +51,8 @@ BUILD_IMAGE = 'build_image'
 GCP_PROJECT_ID = 'gcp_project_id'
 # GCP Region for GCP API call.
 GCP_REGION = 'gcp_region'
+# Runtime parameter for next pipeline run.
+RUNTIME_PARAMETER = 'runtime_parameter'
 
 # Template specific labels.
 # Destination directory path to copy files
