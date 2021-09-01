@@ -112,8 +112,8 @@ class AbstractJobClient(abc.ABC):
 
   @abc.abstractmethod
   def launch_job(self,
-                 job_id: Text,
-                 project: Text,
+                 job_id: str,
+                 project: str,
                  training_input: Dict[str, Any],
                  job_labels: Optional[Dict[str, str]] = None) -> None:
     """Launches a long-running job.
