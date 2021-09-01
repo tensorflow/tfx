@@ -13,10 +13,6 @@
 # limitations under the License.
 """Base class for benchmarks."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 from absl import flags
 import apache_beam as beam
 from tensorflow.python.platform import test  # pylint: disable=g-direct-tensorflow-import

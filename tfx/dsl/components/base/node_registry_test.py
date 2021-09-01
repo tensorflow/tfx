@@ -14,7 +14,7 @@
 """Tests for tfx.dsl.components.base.node_registry."""
 
 import threading
-from typing import Any, Dict, Text
+from typing import Any, Dict
 
 import tensorflow as tf
 from tfx.dsl.components.base import base_node
@@ -24,11 +24,11 @@ from tfx.dsl.components.base import node_registry
 class _FakeNode(base_node.BaseNode):
 
   @property
-  def inputs(self) -> Dict[Text, Any]:
+  def inputs(self) -> Dict[str, Any]:
     return {}
 
   @property
-  def outputs(self) -> Dict[Text, Any]:
+  def outputs(self) -> Dict[str, Any]:
     return {}
 
   @property

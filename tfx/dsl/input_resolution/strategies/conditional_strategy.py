@@ -13,7 +13,7 @@
 # limitations under the License.
 """Experimental Resolver for evaluating the condition."""
 
-from typing import Dict, List, Optional, Text
+from typing import Dict, List, Optional
 
 from tfx import types
 from tfx.dsl.compiler import placeholder_utils
@@ -36,8 +36,8 @@ class ConditionalStrategy(resolver.ResolverStrategy):
 
   def resolve_artifacts(
       self, metadata_handler: metadata.Metadata,
-      input_dict: Dict[Text, List[types.Artifact]]
-  ) -> Optional[Dict[Text, List[types.Artifact]]]:
+      input_dict: Dict[str, List[types.Artifact]]
+  ) -> Optional[Dict[str, List[types.Artifact]]]:
     for placeholder_pb in self._predicates:
       context = placeholder_utils.ResolutionContext(
           exec_info=portable_data_types.ExecutionInfo(input_dict=input_dict))

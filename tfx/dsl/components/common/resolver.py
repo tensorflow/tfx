@@ -14,7 +14,7 @@
 """TFX Resolver definition."""
 
 import abc
-from typing import Any, Dict, List, Optional, Text, Type, Sequence, Mapping
+from typing import Any, Dict, List, Optional, Type, Sequence, Mapping
 
 from tfx import types
 from tfx.dsl.components.base import base_driver
@@ -273,11 +273,11 @@ class Resolver(base_node.BaseNode):
 
   @property
   @doc_controls.do_not_generate_docs
-  def inputs(self) -> Dict[Text, Any]:
+  def inputs(self) -> Dict[str, Any]:
     return self._input_dict
 
   @property
-  def outputs(self) -> Dict[Text, Any]:
+  def outputs(self) -> Dict[str, Any]:
     """Output Channel dict that contains resolved artifacts."""
     return self._output_dict
 

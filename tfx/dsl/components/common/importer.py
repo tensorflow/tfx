@@ -13,7 +13,7 @@
 # limitations under the License.
 """TFX Importer definition."""
 
-from typing import Any, Dict, List, Optional, Text, Type, Union
+from typing import Any, Dict, List, Optional, Type, Union
 
 import absl
 from tfx import types
@@ -283,11 +283,11 @@ class Importer(base_node.BaseNode):
 
   @property
   @doc_controls.do_not_generate_docs
-  def inputs(self) -> Dict[Text, Any]:
+  def inputs(self) -> Dict[str, Any]:
     return {}
 
   @property
-  def outputs(self) -> Dict[Text, Any]:
+  def outputs(self) -> Dict[str, Any]:
     """Output Channel dict that contains imported artifacts."""
     return self._output_dict
 
