@@ -13,5 +13,6 @@
 # limitations under the License.
 """Contains the version string of TFX."""
 
+
 # Note that setup.py uses this version.
 __version__ = '1.3.0.dev'
