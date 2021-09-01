@@ -30,6 +30,7 @@
     incorrectly left out in Vertex AI pusher.
 *   Depends on `apache-beam[gcp]>=2.31,<2.32`.
 *   Depends on `keras-tuner>=1.0.4,<2`.
+*   Depends on `kfp>=1.6.1,!=1.7.2,<2` in \[kfp\] extra.
 
 ## Documentation Updates
 
