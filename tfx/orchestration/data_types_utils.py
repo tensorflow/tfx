@@ -78,7 +78,7 @@ def build_metadata_value_dict(
   if not value_dict:
     return result
   for k, v in value_dict.items():
-    if not v:
+    if v is None:
       continue
     value = metadata_store_pb2.Value()
     result[k] = set_metadata_value(value, v)
@@ -93,7 +93,7 @@ def build_pipeline_value_dict(
   if not value_dict:
     return result
   for k, v in value_dict.items():
-    if not v:
+    if v is None:
       continue
     value = pipeline_pb2.Value()
     result[k] = set_parameter_value(value, v)
