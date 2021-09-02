@@ -29,7 +29,7 @@ def create_pipeline(
     pipeline_root: str,
     data_path: str,
     # TODO(step 7): (Optional) Uncomment here to use BigQuery as a data source.
-    # query: Text,
+    # query: str,
     preprocessing_fn: str,
     run_fn: str,
     train_args: tfx.proto.TrainArgs,
