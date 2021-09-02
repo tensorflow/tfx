@@ -75,10 +75,12 @@ class DataTypesUtilsTest(test_case_utils.TfxTest, parameterized.TestCase):
     }
 
     self.metadata_value_dict = {
+        'p0': metadata_store_pb2.Value(int_value=0),
         'p1': metadata_store_pb2.Value(int_value=1),
-        'p2': metadata_store_pb2.Value(string_value='hello')
+        'p2': metadata_store_pb2.Value(string_value='hello'),
+        'p3': metadata_store_pb2.Value(string_value='')
     }
-    self.value_dict = {'p1': 1, 'p2': 'hello'}
+    self.value_dict = {'p0': 0, 'p1': 1, 'p2': 'hello', 'p3': ''}
 
   def testBuildArtifactDict(self):
     actual_artifact_dict = data_types_utils.build_artifact_dict(
