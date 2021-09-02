@@ -77,8 +77,7 @@ def make_required_install_packages():
       'attrs>=19.3.0,<21',
       'click>=7,<8',
       'google-cloud-aiplatform>=0.5.0,<0.8',
-      # TODO(b/193571051): remove 2.21 cap after TF 2.6 becomes available.
-      'google-cloud-bigquery>=1.28.0,<2.21',
+      'google-cloud-bigquery>=1.28.0,<3',
       'grpcio>=1.28.1,<2',
       'keras-tuner>=1.0.4,<2',
       'kubernetes>=10.0.1,<13',
