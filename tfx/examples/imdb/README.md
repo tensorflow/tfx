@@ -21,7 +21,8 @@
 #    _TRAIN_BATCH_SIZE=64
 #    _EVAL_BATCH_SIZE=64
 
-import os import pandas as pd
+import os
+import pandas as pd
 import tensorflow_datasets as tfds
 
 if __name__ == '__main__':
