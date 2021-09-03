@@ -13,9 +13,11 @@
 # limitations under the License.
 """Module for ResolverOp and its related definitions."""
 import abc
-from typing import Any, ClassVar, Generic, Mapping, Type, TypeVar, Union
+import enum
+from typing import Any, ClassVar, Generic, Mapping, Type, TypeVar, Union, Sequence
 
 import attr
+import tfx.types
 from tfx.utils import json_utils
 from tfx.utils import typing_utils
 
@@ -31,6 +33,23 @@ class Context:
   store: mlmd.MetadataStore
   # TODO(jjong): Add more context such as current pipeline, current pipeline
   # run, and current running node information.
+
+
+class DataTypes(enum.Enum):
+  """Supported data types for ResolverOps input/outputs."""
+  ARTIFACT_LIST = Sequence[tfx.types.Artifact]
+  ARTIFACT_MULTIMAP = typing_utils.ArtifactMultiMap
+  ARTIFACT_MULTIMAP_LIST = Sequence[typing_utils.ArtifactMultiMap]
+
+  def is_acceptable(self, value: Any) -> bool:
+    """Check the value is instance of the data type."""
+    if self == self.ARTIFACT_LIST:
+      return typing_utils.is_homogeneous_artifact_list(value)
+    elif self == self.ARTIFACT_MULTIMAP:
+      return typing_utils.is_artifact_multimap(value)
+    elif self == self.ARTIFACT_MULTIMAP_LIST:
+      return typing_utils.is_list_of_artifact_multimap(value)
+    raise NotImplementedError(f'Cannot check type for {self}.')
 
 
 class _ResolverOpMeta(abc.ABCMeta):
@@ -49,12 +68,23 @@ class _ResolverOpMeta(abc.ABCMeta):
   # method (cls).
   # pylint: disable=no-value-for-parameter
 
-  def __init__(cls, name, bases, attrs):
+  def __new__(cls, name, bases, attrs, **kwargs):
+    # pylint: disable=too-many-function-args
+    return super().__new__(cls, name, bases, attrs)
+
+  def __init__(
+      cls, name, bases, attrs,
+      arg_data_types: Sequence[DataTypes] = (DataTypes.ARTIFACT_MULTIMAP,),
+      return_data_type: DataTypes = DataTypes.ARTIFACT_MULTIMAP):
     cls._props_by_name = {
         prop.name: prop
         for prop in attrs.values()
         if isinstance(prop, ResolverOpProperty)
     }
+    if len(arg_data_types) != 1:
+      raise NotImplementedError('len(arg_data_types) should be 1.')
+    cls._arg_data_type = arg_data_types[0]
+    cls._return_data_type = return_data_type
     super().__init__(name, bases, attrs)
 
   def __call__(cls, arg: 'OpNode', **kwargs: Any):
@@ -77,14 +107,19 @@ class _ResolverOpMeta(abc.ABCMeta):
     """
     cls._check_arg(arg)
     cls._check_kwargs(kwargs)
-    return OpNode(op_type=cls, arg=arg, kwargs=kwargs)
+    return OpNode(
+        op_type=cls,
+        arg=arg,
+        output_data_type=cls._return_data_type,
+        kwargs=kwargs)
 
   def _check_arg(cls, arg: 'OpNode'):
-    # TODO(b/188020544): Type checking for arg operator's return type and
-    # current op's argument type.
     if not isinstance(arg, OpNode):
       raise ValueError('Cannot directly call ResolverOp with real values. Use '
                        'output of another operator as an argument.')
+    if arg.output_data_type != cls._arg_data_type:
+      raise TypeError(f'{cls.__name__} takes {cls._arg_data_type.name} type '
+                      f'but got {arg.output_data_type.name} instead.')
 
   def _check_kwargs(cls, kwargs: Mapping[str, Any]):
     for name, prop in cls._props_by_name.items():
@@ -242,6 +277,9 @@ class OpNode(Generic[_TOut]):
 
   # ResolverOp class that is used for the Node.
   op_type = attr.ib()
+  # Output data type of ResolverOp.
+  output_data_type = attr.ib(default=DataTypes.ARTIFACT_MULTIMAP,
+                             validator=attr.validators.instance_of(DataTypes))
   # A single argument to the ResolverOp.
   arg = attr.ib()
   # ResolverOpProperty for the ResolverOp, given as keyword arguments.
@@ -276,5 +314,8 @@ class OpNode(Generic[_TOut]):
     return self is OpNode.INPUT_NODE
 
 attr.set_run_validators(False)
-OpNode.INPUT_NODE = OpNode(op_type=None, arg=None)
+OpNode.INPUT_NODE = OpNode(
+    op_type=None,
+    output_data_type=DataTypes.ARTIFACT_MULTIMAP,
+    arg=None)
 attr.set_run_validators(True)

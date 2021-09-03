@@ -67,9 +67,13 @@ class ResolverStrategy(abc.ABC):
   @classmethod
   def as_resolver_op(cls, input_node: resolver_op.OpNode, **kwargs):
     """ResolverOp-like usage inside resolver_function."""
+    if input_node.output_data_type != resolver_op.DataTypes.ARTIFACT_MULTIMAP:
+      raise TypeError(f'{cls.__name__} takes ARTIFACT_MULTIMAP but got '
+                      f'{input_node.output_data_type.name} instead.')
     return resolver_op.OpNode(
         op_type=cls,
         arg=input_node,
+        output_data_type=resolver_op.DataTypes.ARTIFACT_MULTIMAP,
         kwargs=kwargs)
 
   @deprecation_utils.deprecated(
