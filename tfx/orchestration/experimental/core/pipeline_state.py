@@ -344,7 +344,7 @@ class PipelineState:
           code=status_lib.Code.INVALID_ARGUMENT,
           message='No updated pipeline IR to apply')
     data_types_utils.set_metadata_value(
-        self._execution.custom_properties[_PIPELINE_IR], updated_pipeline_ir)
+        self._execution.properties[_PIPELINE_IR], updated_pipeline_ir)
     del self._execution.custom_properties[_UPDATED_PIPELINE_IR]
     self.pipeline = _base64_decode_pipeline(updated_pipeline_ir)
 

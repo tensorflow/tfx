@@ -199,17 +199,28 @@ class PipelineStateTest(test_utils.TfxTest):
     with self._mlmd_connection as m:
       pipeline = _test_pipeline('pipeline1', param=1)
       updated_pipeline = _test_pipeline('pipeline1', param=2)
+
+      # Initiate pipeline update.
       with pstate.PipelineState.new(m, pipeline) as pipeline_state:
         self.assertFalse(pipeline_state.is_update_initiated())
         pipeline_state.initiate_update(updated_pipeline)
         self.assertTrue(pipeline_state.is_update_initiated())
 
-      # Reload from MLMD and verify.
+      # Reload from MLMD and verify update initiation followed by applying the
+      # pipeline update.
       with pstate.PipelineState.load(
           m, task_lib.PipelineUid.from_pipeline(pipeline)) as pipeline_state:
         self.assertTrue(pipeline_state.is_update_initiated())
         self.assertEqual(pipeline, pipeline_state.pipeline)
         pipeline_state.apply_pipeline_update()
+        # Verify in-memory state after update application.
+        self.assertFalse(pipeline_state.is_update_initiated())
+        self.assertTrue(pipeline_state.is_active())
+        self.assertEqual(updated_pipeline, pipeline_state.pipeline)
+
+      # Reload from MLMD and verify update application was correctly persisted.
+      with pstate.PipelineState.load(
+          m, task_lib.PipelineUid.from_pipeline(pipeline)) as pipeline_state:
         self.assertFalse(pipeline_state.is_update_initiated())
         self.assertTrue(pipeline_state.is_active())
         self.assertEqual(updated_pipeline, pipeline_state.pipeline)
