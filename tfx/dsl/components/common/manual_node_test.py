@@ -11,10 +11,21 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Constants shared across modules."""
+"""Tests for tfx.dsl.components.common.manual_node."""
+import tensorflow as tf
+from tfx.dsl.components.common import manual_node
 
-EXECUTION_ERROR_MSG_KEY = '__execution_error_msg__'
 
-IMPORTER_NODE_TYPE = 'tfx.dsl.components.common.importer.Importer'
-RESOLVER_NODE_TYPE = 'tfx.dsl.components.common.resolver.Resolver'
-MANUAL_NODE_TYPE = 'tfx.dsl.components.common.manual_node.ManualNode'
+class ManualNodeTest(tf.test.TestCase):
+
+  def testManualNodeConstruction(self):
+    node = manual_node.ManualNode(description='test_description')
+    self.assertDictEqual(
+        node.exec_properties, {
+            manual_node.DESCRIPTION_KEY: 'test_description',
+        })
+    self.assertEmpty(node.inputs)
+    self.assertEmpty(node.outputs)
+
+if __name__ == '__main__':
+  tf.test.main()

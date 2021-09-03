@@ -25,12 +25,15 @@ import attr
 from tfx import types
 from tfx.orchestration import metadata
 from tfx.orchestration.experimental.core import async_pipeline_task_gen
+from tfx.orchestration.experimental.core import constants
+from tfx.orchestration.experimental.core import mlmd_state
 from tfx.orchestration.experimental.core import pipeline_state as pstate
 from tfx.orchestration.experimental.core import service_jobs
 from tfx.orchestration.experimental.core import sync_pipeline_task_gen
 from tfx.orchestration.experimental.core import task as task_lib
 from tfx.orchestration.experimental.core import task_gen_utils
 from tfx.orchestration.experimental.core import task_queue as tq
+from tfx.orchestration.experimental.core.task_schedulers import manual_task_scheduler
 from tfx.orchestration.portable.mlmd import execution_lib
 from tfx.proto.orchestration import pipeline_pb2
 from tfx.utils import status as status_lib
@@ -215,6 +218,58 @@ def stop_node(
               f'Unexpected multiple active executions for node: {node_uid}'))
   _wait_for_inactivation(
       mlmd_handle, active_executions[0].id, timeout_secs=timeout_secs)
+
+
+@_to_status_not_ok_error
+@_pipeline_ops_lock
+def resume_manual_node(mlmd_handle: metadata.Metadata,
+                       node_uid: task_lib.NodeUid) -> None:
+  """Resumes a manual node.
+
+  Args:
+    mlmd_handle: A handle to the MLMD db.
+    node_uid: Uid of the manual node to be resumed.
+
+  Raises:
+    status_lib.StatusNotOkError: Failure to resume a manual node.
+  """
+  with pstate.PipelineState.load(mlmd_handle,
+                                 node_uid.pipeline_uid) as pipeline_state:
+    nodes = pstate.get_all_pipeline_nodes(pipeline_state.pipeline)
+    filtered_nodes = [n for n in nodes if n.node_info.id == node_uid.node_id]
+    if len(filtered_nodes) != 1:
+      raise status_lib.StatusNotOkError(
+          code=status_lib.Code.NOT_FOUND,
+          message=(f'Unable to find manual node to resume: {node_uid}'))
+    node = filtered_nodes[0]
+    node_type = node.node_info.type.name
+    if node_type != constants.MANUAL_NODE_TYPE:
+      raise status_lib.StatusNotOkError(
+          code=status_lib.Code.INVALID_ARGUMENT,
+          message=('Unable to resume a non-manual node. '
+                   f'Got non-manual node id: {node_uid}'))
+
+  executions = task_gen_utils.get_executions(mlmd_handle, node)
+  active_executions = [
+      e for e in executions if execution_lib.is_execution_active(e)
+  ]
+  if not active_executions:
+    raise status_lib.StatusNotOkError(
+        code=status_lib.Code.NOT_FOUND,
+        message=(f'Unable to find active manual node to resume: {node_uid}'))
+  if len(active_executions) > 1:
+    raise status_lib.StatusNotOkError(
+        code=status_lib.Code.INTERNAL,
+        message=(f'Unexpected multiple active executions for manual node: '
+                 f'{node_uid}'))
+  with mlmd_state.mlmd_execution_atomic_op(
+      mlmd_handle=mlmd_handle,
+      execution_id=active_executions[0].id) as execution:
+    completed_state = manual_task_scheduler.ManualNodeState(
+        state=manual_task_scheduler.ManualNodeState.COMPLETED)
+    completed_state.set_mlmd_value(
+        execution.custom_properties.get_or_create(
+            manual_task_scheduler.NODE_STATE_PROPERTY_KEY))
 
 
 @_to_status_not_ok_error

@@ -7,6 +7,7 @@
     In the case of multiple runtime parameters, format is as follows:
     '--runtime_parameter=<parameter_name>=<parameter_value> --runtime_parameter
     =<parameter_name>=<parameter_value>'
+*   Added Manual node in the experimental orchestrator.
 
 ## Breaking Changes
 
