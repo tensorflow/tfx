@@ -18,7 +18,7 @@ import functools
 import threading
 import time
 import typing
-from typing import List, Mapping, Optional
+from typing import Callable, List, Mapping, Optional
 
 from absl import logging
 import attr
@@ -109,14 +109,10 @@ def initiate_pipeline_start(
   return pstate.PipelineState.new(mlmd_handle, pipeline, pipeline_run_metadata)
 
 
-DEFAULT_WAIT_FOR_INACTIVATION_TIMEOUT_SECS = 120.0
-
-
 @_to_status_not_ok_error
-def stop_pipeline(
-    mlmd_handle: metadata.Metadata,
-    pipeline_uid: task_lib.PipelineUid,
-    timeout_secs: float = DEFAULT_WAIT_FOR_INACTIVATION_TIMEOUT_SECS) -> None:
+def stop_pipeline(mlmd_handle: metadata.Metadata,
+                  pipeline_uid: task_lib.PipelineUid,
+                  timeout_secs: Optional[float] = None) -> None:
   """Stops a pipeline.
 
   Initiates a pipeline stop operation and waits for the pipeline execution to be
@@ -125,7 +121,8 @@ def stop_pipeline(
   Args:
     mlmd_handle: A handle to the MLMD db.
     pipeline_uid: Uid of the pipeline to be stopped.
-    timeout_secs: Amount of time in seconds to wait for pipeline to stop.
+    timeout_secs: Amount of time in seconds to wait for pipeline to stop. If
+      `None`, waits indefinitely.
 
   Raises:
     status_lib.StatusNotOkError: Failure to initiate pipeline stop.
@@ -166,10 +163,9 @@ def initiate_node_start(mlmd_handle: metadata.Metadata,
 
 
 @_to_status_not_ok_error
-def stop_node(
-    mlmd_handle: metadata.Metadata,
-    node_uid: task_lib.NodeUid,
-    timeout_secs: float = DEFAULT_WAIT_FOR_INACTIVATION_TIMEOUT_SECS) -> None:
+def stop_node(mlmd_handle: metadata.Metadata,
+              node_uid: task_lib.NodeUid,
+              timeout_secs: Optional[float] = None) -> None:
   """Stops a node.
 
   Initiates a node stop operation and waits for the node execution to become
@@ -178,7 +174,8 @@ def stop_node(
   Args:
     mlmd_handle: A handle to the MLMD db.
     node_uid: Uid of the node to be stopped.
-    timeout_secs: Amount of time in seconds to wait for node to stop.
+    timeout_secs: Amount of time in seconds to wait for node to stop. If `None`,
+      waits indefinitely.
 
   Raises:
     status_lib.StatusNotOkError: Failure to stop the node.
@@ -274,7 +271,7 @@ def resume_manual_node(mlmd_handle: metadata.Metadata,
 
 @_to_status_not_ok_error
 @_pipeline_ops_lock
-def initiate_pipeline_update(
+def _initiate_pipeline_update(
     mlmd_handle: metadata.Metadata,
     pipeline: pipeline_pb2.Pipeline) -> pstate.PipelineState:
   """Initiates pipeline update."""
@@ -285,32 +282,79 @@ def initiate_pipeline_update(
 
 
 @_to_status_not_ok_error
-def _wait_for_inactivation(
-    mlmd_handle: metadata.Metadata,
-    execution_id: metadata_store_pb2.Execution,
-    timeout_secs: float = DEFAULT_WAIT_FOR_INACTIVATION_TIMEOUT_SECS) -> None:
+def update_pipeline(mlmd_handle: metadata.Metadata,
+                    pipeline: pipeline_pb2.Pipeline,
+                    timeout_secs: Optional[float] = None) -> None:
+  """Updates an active pipeline with a new pipeline IR.
+
+  Initiates a pipeline update operation and waits for it to finish.
+
+  Args:
+    mlmd_handle: A handle to the MLMD db.
+    pipeline: New pipeline IR to be applied.
+    timeout_secs: Timeout in seconds to wait for the update to finish. If
+      `None`, waits indefinitely.
+
+  Raises:
+    status_lib.StatusNotOkError: Failure to update the pipeline.
+  """
+  pipeline_state = _initiate_pipeline_update(mlmd_handle, pipeline)
+
+  def _is_update_applied() -> bool:
+    with pipeline_state:
+      if pipeline_state.is_active():
+        return not pipeline_state.is_update_initiated()
+      # If the pipeline is no longer active, whether or not the update is
+      # applied is irrelevant.
+      return True
+
+  _wait_for_predicate(_is_update_applied, 'pipeline update', timeout_secs)
+
+
+def _wait_for_inactivation(mlmd_handle: metadata.Metadata,
+                           execution_id: metadata_store_pb2.Execution,
+                           timeout_secs: Optional[float]) -> None:
   """Waits for the given execution to become inactive.
 
   Args:
     mlmd_handle: A handle to the MLMD db.
     execution_id: Id of the execution whose inactivation is awaited.
-    timeout_secs: Amount of time in seconds to wait.
+    timeout_secs: Amount of time in seconds to wait. If `None`, waits
+      indefinitely.
 
   Raises:
     StatusNotOkError: With error code `DEADLINE_EXCEEDED` if execution is not
       inactive after waiting approx. `timeout_secs`.
   """
-  polling_interval_secs = min(10.0, timeout_secs / 4)
+
+  def _is_inactivated() -> bool:
+    [execution] = mlmd_handle.store.get_executions_by_id([execution_id])
+    return not execution_lib.is_execution_active(execution)
+
+  return _wait_for_predicate(_is_inactivated, 'execution inactivation',
+                             timeout_secs)
+
+
+_POLLING_INTERVAL_SECS = 10.0
+
+
+def _wait_for_predicate(predicate_fn: Callable[[], bool], waiting_for_desc: str,
+                        timeout_secs: Optional[float]) -> None:
+  """Waits for `predicate_fn` to return `True` or until timeout seconds elapse."""
+  if timeout_secs is None:
+    while not predicate_fn():
+      time.sleep(_POLLING_INTERVAL_SECS)
+    return
+  polling_interval_secs = min(_POLLING_INTERVAL_SECS, timeout_secs / 4)
   end_time = time.time() + timeout_secs
   while end_time - time.time() > 0:
-    updated_executions = mlmd_handle.store.get_executions_by_id([execution_id])
-    if not execution_lib.is_execution_active(updated_executions[0]):
+    if predicate_fn():
       return
     time.sleep(max(0, min(polling_interval_secs, end_time - time.time())))
   raise status_lib.StatusNotOkError(
       code=status_lib.Code.DEADLINE_EXCEEDED,
-      message=(f'Timed out ({timeout_secs} secs) waiting for execution '
-               f'inactivation.'))
+      message=(
+          f'Timed out ({timeout_secs} secs) waiting for {waiting_for_desc}.'))
 
 
 @_to_status_not_ok_error

@@ -485,7 +485,7 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
                     pipeline_uid=task_lib.PipelineUid.from_pipeline(pipeline),
                     node_id=node_id)))
 
-      pipeline_state = pipeline_ops.initiate_pipeline_update(m, pipeline)
+      pipeline_state = pipeline_ops._initiate_pipeline_update(m, pipeline)
       with pipeline_state:
         self.assertTrue(pipeline_state.is_update_initiated())
 
@@ -533,6 +533,36 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
       with pipeline_state:
         self.assertFalse(pipeline_state.is_update_initiated())
         self.assertTrue(pipeline_state.is_active())
+
+  def test_update_pipeline_waits_for_update_application(self):
+    with self._mlmd_connection as m:
+      pipeline = _test_pipeline('pipeline1')
+      pipeline_state = pipeline_ops.initiate_pipeline_start(m, pipeline)
+
+      def _apply_update(pipeline_state):
+        # Wait for the pipeline to be in update initiated state.
+        while True:
+          with pipeline_state:
+            if pipeline_state.is_update_initiated():
+              break
+          time.sleep(0.5)
+        # Now apply the update.
+        with pipeline_ops._PIPELINE_OPS_LOCK:
+          with pipeline_state:
+            pipeline_state.apply_pipeline_update()
+
+      thread = threading.Thread(target=_apply_update, args=(pipeline_state,))
+      thread.start()
+      pipeline_ops.update_pipeline(m, pipeline, timeout_secs=10.0)
+      thread.join()
+
+  def test_update_pipeline_wait_for_update_timeout(self):
+    with self._mlmd_connection as m:
+      pipeline = _test_pipeline('pipeline1')
+      pipeline_ops.initiate_pipeline_start(m, pipeline)
+      with self.assertRaisesRegex(status_lib.StatusNotOkError,
+                                  'Timed out.*waiting for pipeline update'):
+        pipeline_ops.update_pipeline(m, pipeline, timeout_secs=3.0)
 
   @parameterized.parameters(
       _test_pipeline('pipeline1'),
@@ -908,6 +938,22 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
       with pstate.PipelineState.load(m, pipeline_uid) as pipeline_state:
         node_state = pipeline_state.get_node_state(transform_node_uid)
         self.assertEqual(pstate.NodeState.STARTED, node_state.state)
+
+  @mock.patch.object(time, 'sleep')
+  def test_wait_for_predicate_timeout_secs_None(self, mock_sleep):
+    predicate_fn = mock.Mock()
+    predicate_fn.side_effect = [False, False, False, True]
+    pipeline_ops._wait_for_predicate(predicate_fn, 'testing', None)
+    self.assertEqual(predicate_fn.call_count, 4)
+    self.assertEqual(mock_sleep.call_count, 3)
+    predicate_fn.reset_mock()
+    mock_sleep.reset_mock()
+
+    predicate_fn.side_effect = [False, False, ValueError('test error')]
+    with self.assertRaisesRegex(ValueError, 'test error'):
+      pipeline_ops._wait_for_predicate(predicate_fn, 'testing', None)
+    self.assertEqual(predicate_fn.call_count, 3)
+    self.assertEqual(mock_sleep.call_count, 2)
 
   def test_resume_manual_node(self):
     pipeline = test_manual_node.create_pipeline()
