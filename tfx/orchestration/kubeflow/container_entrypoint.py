@@ -37,6 +37,7 @@ from tfx.proto.orchestration import executable_spec_pb2
 from tfx.proto.orchestration import pipeline_pb2
 from tfx.types import artifact
 from tfx.types import channel
+from tfx.types import standard_artifacts
 from tfx.utils import telemetry_utils
 
 from google.protobuf import json_format
@@ -338,16 +339,14 @@ def _dump_ui_metadata(
       'type':
           'markdown',
   }]
-  # Add Tensorboard view for Trainer.
-  # TODO(b/142804764): Visualization based on component type seems a bit of
-  # arbitrary and fragile. We need a better way to improve this. See also
-  # b/146594754
-  if node.node_info.type.name == 'tfx.components.trainer.component.Trainer':
-    output_model = execution_info.output_dict['model_run'][0]
+  # Add Tensorboard view for ModelRun outpus.
+  for name, spec in node.outputs.outputs.items():
+    if spec.artifact_spec.type.name == standard_artifacts.ModelRun.TYPE_NAME:
+      output_model = execution_info.output_dict[name][0]
 
-    # Add Tensorboard view.
-    tensorboard_output = {'type': 'tensorboard', 'source': output_model.uri}
-    outputs.append(tensorboard_output)
+      # Add Tensorboard view.
+      tensorboard_output = {'type': 'tensorboard', 'source': output_model.uri}
+      outputs.append(tensorboard_output)
 
   metadata_dict = {'outputs': outputs}
 
