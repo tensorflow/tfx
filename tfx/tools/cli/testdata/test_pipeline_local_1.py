@@ -14,7 +14,9 @@
 """Chicago taxi example using TFX on Local orchestrator."""
 
 import os
+import sys
 
+from absl import flags
 from absl import logging
 
 from tfx.components.example_gen.csv_example_gen.component import CsvExampleGen
@@ -57,9 +59,15 @@ def _create_pipeline(pipeline_name: str, pipeline_root: str, data_root: str,
       additional_pipeline_args={},
   )
 
+# We need to guard this in this conditional because this file is loaded multiple
+# times in a single test run of local_handler_test.py.
+if 'dummy' not in flags.FLAGS:
+  flags.DEFINE_bool('dummy', False,
+                    'dummy flag to test absl flag parsing interference.')
 
 if __name__ == '__main__':
   logging.set_verbosity(logging.INFO)
+  flags.FLAGS(sys.argv)
   local_dag_runner.LocalDagRunner().run(
       _create_pipeline(
           pipeline_name=_pipeline_name,

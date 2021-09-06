@@ -108,9 +108,12 @@ class BaseHandler(abc.ABC):
       # Simluate python script execution.
       # - Need to add the script directory as a first entry of sys.path.
       # - Load the script as if we are in __main__ module.
+      # - Hide argv given to CLI from the executed script.
       dir_path = os.path.dirname(os.path.realpath(dsl_path))
       sys.path.insert(0, dir_path)
       loader = machinery.SourceFileLoader('__main__', dsl_path)
+      old_argv = sys.argv
+      sys.argv = [dsl_path]  # As if the script is invoked directly with no arg.
       try:
         loader.exec_module(
             import_util.module_from_spec(
@@ -118,8 +121,9 @@ class BaseHandler(abc.ABC):
       except SystemExit as system_exit:  # Swallow normal exit in absl.app.run()
         if system_exit.code != 0 and system_exit.code is not None:
           raise
-
-      sys.path.pop(0)
+      finally:
+        sys.argv = old_argv
+        sys.path.pop(0)
 
       if not patcher.run_called:
         sys.exit('Cannot find ' + patcher.get_runner_class().__name__ +
