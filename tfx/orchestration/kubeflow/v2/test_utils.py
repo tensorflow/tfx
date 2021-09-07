@@ -21,7 +21,6 @@ from typing import List, Optional
 
 from absl import logging
 from kfp.pipeline_spec import pipeline_spec_pb2 as pipeline_pb2
-from kfp.v2.google import client as kfp_client
 import tensorflow_model_analysis as tfma
 from tfx import components
 from tfx import types
@@ -81,7 +80,8 @@ _VERTEX_RUNNING_STATES = frozenset(
      'PIPELINE_STATE_RUNNING'))
 
 
-def poll_job_status(vertex_client: kfp_client.AIPlatformClient, job_id: str,
+# TODO(b/182792980): Add type annotation for the client.
+def poll_job_status(vertex_client, job_id: str,
                     timeout: datetime.timedelta, polling_interval_secs: int):
   """Checks the status of the job.
 
@@ -99,12 +99,7 @@ def poll_job_status(vertex_client: kfp_client.AIPlatformClient, job_id: str,
   while datetime.datetime.now() < deadline:
     time.sleep(polling_interval_secs)
 
-    try:
-      response = vertex_client.get_job(job_id)
-    except ConnectionError as e:
-      logging.warning('Failed get job status of : %s; error: %s. Will retry.',
-                      job_id, e)
-      continue
+    response = vertex_client.get_job(job_id)
     if not response or not response.get('state'):
       raise RuntimeError('Unexpected response received: %s' % response)
     state = response.get('state')

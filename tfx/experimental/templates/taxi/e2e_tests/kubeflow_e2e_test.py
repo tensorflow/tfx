@@ -19,6 +19,7 @@ import subprocess
 import tarfile
 
 from absl import logging
+import docker
 from google.cloud import storage
 import kfp
 import tensorflow as tf
@@ -26,7 +27,6 @@ from tfx.dsl.io import fileio
 from tfx.experimental.templates import test_utils
 from tfx.orchestration import test_utils as orchestration_test_utils
 from tfx.orchestration.kubeflow import test_utils as kubeflow_test_utils
-from tfx.utils import docker_utils
 from tfx.utils import retry
 from tfx.utils import telemetry_utils
 import yaml
@@ -84,8 +84,8 @@ class TaxiTemplateKubeflowE2ETest(test_utils.BaseEndToEndTest):
     self._cleanup_kfp()
 
   def _cleanup_kfp(self):
-    self._delete_target_container_image()
     self._delete_base_container_image()
+    self._delete_target_container_image()
     self._delete_caip_model()
     self._delete_runs()
     self._delete_pipeline()
@@ -125,14 +125,18 @@ class TaxiTemplateKubeflowE2ETest(test_utils.BaseEndToEndTest):
                                               self._BUCKET_NAME, path)
 
   @retry.retry(ignore_eventual_failure=True)
+  def _delete_docker_image(self, image):
+    subprocess.check_output(['gcloud', 'container', 'images', 'delete', image])
+    client = docker.from_env()
+    client.images.remove(image=image)
+
   def _delete_base_container_image(self):
     if self._base_container_image == self._BASE_CONTAINER_IMAGE:
       return  # Didn't generate a base image for the test.
-    docker_utils.delete_image(self._base_container_image)
+    self._delete_docker_image(self._base_container_image)
 
-  @retry.retry(ignore_eventual_failure=True)
   def _delete_target_container_image(self):
-    docker_utils.delete_image(self._target_container_image)
+    self._delete_docker_image(self._target_container_image)
 
   def _get_endpoint(self, namespace):
     cmd = 'kubectl describe configmap inverse-proxy-config -n {}'.format(

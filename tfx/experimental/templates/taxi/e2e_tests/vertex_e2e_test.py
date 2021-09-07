@@ -15,15 +15,16 @@
 
 import datetime
 import os
+import subprocess
 
 from absl import logging
+import docker
 from google.cloud import storage
 from kfp.v2.google import client
 import tensorflow as tf
 from tfx.experimental.templates import test_utils
 from tfx.orchestration import test_utils as orchestration_test_utils
 from tfx.orchestration.kubeflow.v2 import test_utils as kubeflow_v2_test_utils
-from tfx.utils import docker_utils
 from tfx.utils import retry
 
 
@@ -56,15 +57,16 @@ class TaxiTemplateKubeflowV2E2ETest(test_utils.BaseEndToEndTest):
       self._prepare_base_container_image()
     else:
       self._base_container_image = self._BASE_CONTAINER_IMAGE
+    self._target_container_image = 'gcr.io/{}/{}:{}'.format(
+        self._GCP_PROJECT_ID, 'taxi-template-vertex-e2e-test', random_id)
     # Overriding the pipeline name to
-    self._pipeline_name = 'taxi-template-vertex-e2e-{}'.format(random_id)
-    self._target_container_image = 'gcr.io/{}/{}'.format(
-        self._GCP_PROJECT_ID, self._pipeline_name)
+    self._pipeline_name = 'taxi-template-vertex-e2e-{}'.format(
+        random_id)
 
   def tearDown(self):
     super().tearDown()
-    self._delete_target_container_image()
     self._delete_base_container_image()
+    self._delete_target_container_image()
     self._delete_pipeline_data()
 
   # TODO(b/174289068): Refactor duplicated cleanup routines.
@@ -78,14 +80,17 @@ class TaxiTemplateKubeflowV2E2ETest(test_utils.BaseEndToEndTest):
                                               self._BUCKET_NAME, path)
 
   @retry.retry(ignore_eventual_failure=True)
+  def _delete_docker_image(self, image):
+    subprocess.check_output(['gcloud', 'container', 'images', 'delete', image])
+    docker.from_env().images.remove(image=image)
+
   def _delete_base_container_image(self):
     if self._base_container_image == self._BASE_CONTAINER_IMAGE:
       return  # Didn't generate a base image for the test.
-    docker_utils.delete_image(self._base_container_image)
+    self._delete_docker_image(self._base_container_image)
 
-  @retry.retry(ignore_eventual_failure=True)
   def _delete_target_container_image(self):
-    docker_utils.delete_image(self._target_container_image)
+    self._delete_docker_image(self._target_container_image)
 
   def _prepare_base_container_image(self):
     orchestration_test_utils.build_docker_image(self._base_container_image,
@@ -171,7 +176,8 @@ class TaxiTemplateKubeflowV2E2ETest(test_utils.BaseEndToEndTest):
     # Prepare data.
     self._prepare_data()
     self._replaceFileContent('kubeflow_v2_runner.py', [
-        ('_DATA_PATH = \'gs://{}/tfx-template/data/taxi/\'.format(configs.GCS_BUCKET_NAME)',
+        ('_DATA_PATH = \'gs://{}/tfx-template/data/taxi/\'.'
+         'format(configs.GCS_BUCKET_NAME)',
          '_DATA_PATH = \'gs://{{}}/{}/{}\'.format(configs.GCS_BUCKET_NAME)'
          .format(self._DATA_DIRECTORY_NAME, self._pipeline_name)),
     ])

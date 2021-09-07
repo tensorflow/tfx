@@ -53,7 +53,6 @@ from tfx.types import channel_utils
 from tfx.types import component_spec
 from tfx.types import standard_artifacts
 from tfx.types.standard_artifacts import Model
-from tfx.utils import docker_utils
 from tfx.utils import kube_utils
 from tfx.utils import retry
 from tfx.utils import test_case_utils
@@ -442,7 +441,9 @@ class BaseKubeflowTest(test_case_utils.TfxTest):
     if cls.container_image != cls._BASE_CONTAINER_IMAGE:
       # Delete container image used in tests.
       logging.info('Deleting image %s', cls.container_image)
-      docker_utils.delete_image(cls.container_image)
+      subprocess.run(
+          ['gcloud', 'container', 'images', 'delete', cls.container_image],
+          check=True)
 
   def setUp(self):
     super().setUp()

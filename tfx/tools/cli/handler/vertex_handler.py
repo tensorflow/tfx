@@ -20,14 +20,18 @@ import sys
 
 import click
 
-from kfp.v2.google import client as kfp_client
-
 from tfx.dsl.io import fileio
 from tfx.tools.cli import labels
 from tfx.tools.cli.handler import base_handler
 from tfx.tools.cli.handler import kubeflow_handler
 from tfx.tools.cli.handler import kubeflow_v2_dag_runner_patcher
 from tfx.utils import io_utils
+
+# TODO(b/182792980): Move to regular import.
+try:
+  from kfp.v2.google import client as kfp_client  # pylint: disable=g-import-not-at-top # pytype: disable=import-error
+except ImportError:
+  kfp_client = None
 
 
 _PIPELINE_ARG_FILE = 'pipeline_args.json'
@@ -128,7 +132,7 @@ class VertexHandler(base_handler.BaseHandler):
     click.echo(f'Pipeline {context[patcher.PIPELINE_NAME]} compiled '
                'successfully.')
 
-  def _create_vertex_client(self) -> kfp_client.AIPlatformClient:
+  def _create_vertex_client(self):  #-> kfp_client.AIPlatformClient:
     if not self.flags_dict[labels.GCP_PROJECT_ID]:
       sys.exit('Please set GCP project id with --project flag.')
     if not self.flags_dict[labels.GCP_REGION]:
