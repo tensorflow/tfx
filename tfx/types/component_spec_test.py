@@ -17,6 +17,7 @@ import json
 from typing import Dict, List
 
 import tensorflow as tf
+from tfx.dsl.placeholder import placeholder
 from tfx.proto import example_gen_pb2
 from tfx.types import component_spec
 from tfx.types.artifact import Artifact
@@ -342,7 +343,18 @@ class ComponentSpecTest(tf.test.TestCase):
     with self.assertRaises(json_format.ParseError):
       proto_parameter.type_check('proto_parameter', {'splits': 42})
 
-  def testExecutionParameteerUseProto(self):
+    placeholder_parameter = ExecutionParameter(type=str)
+    placeholder_parameter.type_check(
+        'placeholder_parameter',
+        placeholder.runtime_info('platform_config').base_dir)
+    with self.assertRaisesRegex(
+        TypeError, 'Only simple RuntimeInfoPlaceholders are supported'):
+      placeholder_parameter.type_check(
+          'placeholder_parameter',
+          placeholder.runtime_info('platform_config').base_dir +
+          placeholder.exec_property('version'))
+
+  def testExecutionParameterUseProto(self):
 
     class SpecWithNonPrimitiveTypes(ComponentSpec):
       PARAMETERS = {

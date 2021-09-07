@@ -18,6 +18,7 @@ import inspect
 import itertools
 from typing import Any, Dict, List, Optional, Type
 
+from tfx.dsl.placeholder import placeholder
 from tfx.types.artifact import Artifact
 from tfx.types.channel import Channel
 from tfx.utils import abc_utils
@@ -307,6 +308,23 @@ class ExecutionParameter(_ComponentParameter):
     # Dict[Text, Any] <------ Okay.
     def _type_check_helper(value: Any, declared: Type):  # pylint: disable=g-bare-generic
       """Helper type-checking function."""
+      if isinstance(value, placeholder.Placeholder):
+        placeholders_involved = value.placeholders_involved()
+        if (len(placeholders_involved) != 1 or not isinstance(
+            placeholders_involved[0], placeholder.RuntimeInfoPlaceholder)):
+          placeholders_involved_str = [
+              x.__class__.__name__ for x in placeholders_involved
+          ]
+          raise TypeError(
+              'Only simple RuntimeInfoPlaceholders are supported, but while '
+              'checking parameter %r, the following placeholders were '
+              'involved: %s' % (arg_name, placeholders_involved_str))
+        if not issubclass(declared, str):
+          raise TypeError(
+              'Cannot use Placeholders except for str parameter, but parameter '
+              '%r was of type %s' % (arg_name, declared))
+        return
+
       is_runtime_param = _is_runtime_param(value)
       value = _make_default(value)
       if declared == Any:

@@ -25,6 +25,7 @@ from tfx.dsl.components.base import base_node
 from tfx.dsl.components.common import resolver
 from tfx.dsl.experimental.conditionals import conditional
 from tfx.dsl.input_resolution import resolver_op
+from tfx.dsl.placeholder import placeholder
 from tfx.orchestration import data_types
 from tfx.orchestration import data_types_utils
 from tfx.orchestration import pipeline
@@ -279,6 +280,8 @@ class Compiler:
           compiler_utils.set_runtime_parameter_pb(
               parameter_value.runtime_parameter, value.name, value.ptype,
               value.default)
+        elif isinstance(value, placeholder.Placeholder):
+          parameter_value.placeholder.CopyFrom(value.encode())
         else:
           try:
             data_types_utils.set_parameter_value(parameter_value, value)
@@ -493,10 +496,14 @@ class Compiler:
     pipeline_pb = pipeline_pb2.Pipeline()
     pipeline_pb.pipeline_info.id = context.pipeline_info.pipeline_name
     pipeline_pb.execution_mode = context.execution_mode
-    compiler_utils.set_runtime_parameter_pb(
-        pipeline_pb.runtime_spec.pipeline_root.runtime_parameter,
-        constants.PIPELINE_ROOT_PARAMETER_NAME, str,
-        context.pipeline_info.pipeline_root)
+    if isinstance(context.pipeline_info.pipeline_root, placeholder.Placeholder):
+      pipeline_pb.runtime_spec.pipeline_root.placeholder.CopyFrom(
+          context.pipeline_info.pipeline_root.encode())
+    else:
+      compiler_utils.set_runtime_parameter_pb(
+          pipeline_pb.runtime_spec.pipeline_root.runtime_parameter,
+          constants.PIPELINE_ROOT_PARAMETER_NAME, str,
+          context.pipeline_info.pipeline_root)
     if pipeline_pb.execution_mode == pipeline_pb2.Pipeline.ExecutionMode.SYNC:
       compiler_utils.set_runtime_parameter_pb(
           pipeline_pb.runtime_spec.pipeline_run_id.runtime_parameter,

@@ -1111,6 +1111,18 @@ class PredicateTest(parameterized.TestCase, tf.test.TestCase):
     self.assertEqual(set(pred3.dependent_channels()), {int1})
     self.assertEqual(set(pred4.dependent_channels()), {int1, int2})
 
+  def testPlaceholdersInvolved(self):
+    p = ('google/' + ph.runtime_info('platform_config').user + '/' +
+         ph.output('model').uri + '/model/' + '0/' +
+         ph.exec_property('version'))
+    got = p.placeholders_involved()
+    got_dict = {type(x): x for x in got}
+    self.assertCountEqual(
+        {
+            ph.ArtifactPlaceholder, ph.ExecPropertyPlaceholder,
+            ph.RuntimeInfoPlaceholder
+        }, got_dict.keys())
+
 
 if __name__ == '__main__':
   tf.test.main()

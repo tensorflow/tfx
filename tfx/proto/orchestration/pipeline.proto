@@ -18,6 +18,7 @@ package tfx.orchestration;
 import "google/protobuf/any.proto";
 import "google/protobuf/descriptor.proto";
 import "ml_metadata/proto/metadata_store.proto";
+import "tfx/proto/orchestration/placeholder.proto";
 
 // ResolverConfig is subject to change. We plan to introduce a flexible
 // config to enable more sophisticated policies in the future.
@@ -92,14 +93,16 @@ message StructuralRuntimeParameter {
   repeated StringOrRuntimeParameter parts = 1;
 }
 
-// Definition for Value in uDSL IR. A Value instance can be either a field value
-// that is determined during compilation time, or a runtime parameter which will
-// be determined during runtime.
+// Definition for Value in uDSL IR. A Value instance can be one of: a field
+// value that is determined during compilation time, a runtime parameter
+// which will be determined during runtime, or a placeholder which will be
+// determined during runtime / before / at execution time.
 message Value {
   oneof value {
     ml_metadata.Value field_value = 1;
     RuntimeParameter runtime_parameter = 2;
     StructuralRuntimeParameter structural_runtime_parameter = 3;
+    PlaceholderExpression placeholder = 5;
   }
 
   // If non-primitive types get JSON serialized and stored as string value in

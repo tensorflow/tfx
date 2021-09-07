@@ -16,7 +16,7 @@
 import abc
 import copy
 import enum
-from typing import Any, Callable, Iterator, Optional, Type, TypeVar, Union, cast
+from typing import Any, Callable, Iterator, List, Optional, Type, TypeVar, Union, cast
 
 import attr
 from tfx.proto.orchestration import placeholder_pb2
@@ -49,6 +49,9 @@ class _PlaceholderOperator(json_utils.Jsonable):
       component_spec: Optional[Type['types.ComponentSpec']] = None
   ) -> placeholder_pb2.PlaceholderExpression:
     pass
+
+  def placeholders_involved(self) -> List['Placeholder']:
+    return []
 
 
 class _ArtifactUriOperator(_PlaceholderOperator):
@@ -206,6 +209,11 @@ class _ConcatOperator(_PlaceholderOperator):
     raise RuntimeError(
         'ConcatOperator does not have the other expression to concat.')
 
+  def placeholders_involved(self) -> List['Placeholder']:
+    if self._right and isinstance(self._right, Placeholder):
+      return self._right.placeholders_involved()
+    return []
+
 
 class ProtoSerializationFormat(enum.Enum):
   TEXT_FORMAT = placeholder_pb2.ProtoOperator.TEXT_FORMAT
@@ -344,6 +352,13 @@ class Placeholder(json_utils.Jsonable):
       result.placeholder.key = self._key
     for op in self._operators:
       result = op.encode(result, component_spec)
+    return result
+
+  def placeholders_involved(self) -> List['Placeholder']:
+    """Returns a list of all Placeholder involved in this expression."""
+    result = [self]
+    for op in self._operators:
+      result.extend(op.placeholders_involved())
     return result
 
 
