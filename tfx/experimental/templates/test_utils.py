@@ -13,8 +13,6 @@
 # limitations under the License.
 """E2E test utilities for templates."""
 
-import codecs
-import locale
 import os
 import re
 
@@ -30,13 +28,6 @@ class BaseEndToEndTest(test_case_utils.TfxTest):
 
   def setUp(self):
     super().setUp()
-
-    # Change the encoding for Click since Python 3 is configured to use ASCII as
-    # encoding for the environment.
-    # TODO(b/150100590) Delete this block after Python >=3.7
-    if codecs.lookup(locale.getpreferredencoding()).name == 'ascii':
-      os.environ['LANG'] = 'en_US.utf-8'
-
     self._pipeline_name = 'TEMPLATE_E2E_TEST'
     self._project_dir = self.tmp_dir
     self.enter_context(test_case_utils.change_working_dir(self.tmp_dir))

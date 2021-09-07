@@ -13,8 +13,6 @@
 # limitations under the License.
 """E2E Tests for tfx.tools.cli."""
 
-import codecs
-import locale
 import os
 
 from click import testing as click_testing
@@ -27,12 +25,6 @@ class CliCommonEndToEndTest(tf.test.TestCase):
 
   def setUp(self):
     super().setUp()
-
-    # Change the encoding for Click since Python 3 is configured to use ASCII as
-    # encoding for the environment.
-    if codecs.lookup(locale.getpreferredencoding()).name == 'ascii':
-      os.environ['LANG'] = 'en_US.utf-8'
-
     self.chicago_taxi_pipeline_dir = os.path.join(
         os.path.dirname(os.path.dirname(__file__)), 'testdata')
     self.runner = click_testing.CliRunner()

@@ -13,12 +13,8 @@
 # limitations under the License.
 """Tests for tfx.tools.cli.commands.copy_template."""
 
-import codecs
-import locale
-import os
 from unittest import mock
 
-from absl import logging
 from click import testing as click_testing
 import tensorflow as tf
 from tfx.tools.cli.commands.template import template_group
@@ -29,12 +25,6 @@ class TemplateTest(tf.test.TestCase):
 
   def setUp(self):
     super().setUp()
-    # Change the encoding for Click since Python 3 is configured to use ASCII as
-    # encoding for the environment.
-    if codecs.lookup(locale.getpreferredencoding()).name == 'ascii':
-      os.environ['LANG'] = 'en_US.utf-8'
-      logging.info('Changing locale to %s to ensure UTF-8 environment.',
-                   os.environ['LANG'])
     self.runner = click_testing.CliRunner()
     self.addCleanup(mock.patch.stopall)
     mock.patch.object(template_handler, 'list_template').start()

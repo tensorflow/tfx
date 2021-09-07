@@ -13,8 +13,6 @@
 # limitations under the License.
 """E2E Kubeflow tests for CLI."""
 
-import codecs
-import locale
 import os
 import subprocess
 import sys
@@ -50,11 +48,6 @@ class CliKubeflowEndToEndTest(test_case_utils.TfxTest):
     # Check if Kubeflow is installed before running E2E tests.
     if labels.KUBEFLOW_PACKAGE_NAME not in self._pip_list:
       sys.exit('Kubeflow not installed.')
-
-    # Change the encoding for Click since Python 3 is configured to use ASCII as
-    # encoding for the environment.
-    if codecs.lookup(locale.getpreferredencoding()).name == 'ascii':
-      os.environ['LANG'] = 'en_US.utf-8'
 
     # Testdata path.
     self._testdata_dir = os.path.join(

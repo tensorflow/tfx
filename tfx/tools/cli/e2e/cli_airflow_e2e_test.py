@@ -13,8 +13,6 @@
 # limitations under the License.
 """E2E Airflow tests for CLI."""
 
-import codecs
-import locale
 import os
 import subprocess
 import sys
@@ -45,11 +43,6 @@ class CliAirflowEndToEndTest(test_case_utils.TfxTest):
     # Check if Apache Airflow is installed before running E2E tests.
     if labels.AIRFLOW_PACKAGE_NAME not in self._pip_list:
       sys.exit('Apache Airflow not installed.')
-
-    # Change the encoding for Click since Python 3 is configured to use ASCII as
-    # encoding for the environment.
-    if codecs.lookup(locale.getpreferredencoding()).name == 'ascii':
-      os.environ['LANG'] = 'en_US.utf-8'
 
     # Setup airflow_home in a temp directory
     self._airflow_home = os.path.join(self.tmp_dir, 'airflow')

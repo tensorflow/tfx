@@ -13,9 +13,6 @@
 # limitations under the License.
 """Tests for tfx.tools.cli.cmd.pipeline_commands."""
 
-import codecs
-import locale
-import os
 from unittest import mock
 
 from click import testing as click_testing
@@ -29,11 +26,7 @@ from tfx.utils import test_case_utils
 class PipelineTest(test_case_utils.TfxTest):
 
   def setUp(self):
-    # Change the encoding for Click since Python 3 is configured to use ASCII as
-    # encoding for the environment.
     super().setUp()
-    if codecs.lookup(locale.getpreferredencoding()).name == 'ascii':
-      os.environ['LANG'] = 'en_US.utf-8'
     self.runner = click_testing.CliRunner()
     self.mock_create_handler = self.enter_context(
         mock.patch.object(handler_factory, 'create_handler', autospec=True))

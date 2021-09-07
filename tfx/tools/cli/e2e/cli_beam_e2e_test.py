@@ -13,8 +13,6 @@
 # limitations under the License.
 """E2E Beam tests for CLI."""
 
-import codecs
-import locale
 import os
 
 from click import testing as click_testing
@@ -30,12 +28,6 @@ class CliBeamEndToEndTest(test_case_utils.TfxTest):
 
   def setUp(self):
     super().setUp()
-
-    # Change the encoding for Click since Python 3 is configured to use ASCII as
-    # encoding for the environment.
-    if codecs.lookup(locale.getpreferredencoding()).name == 'ascii':
-      os.environ['LANG'] = 'en_US.utf-8'
-
     # Setup beam_home in a temp directory
     self._home = self.tmp_dir
     self._beam_home = os.path.join(self._home, 'beam')

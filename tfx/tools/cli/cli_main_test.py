@@ -13,10 +13,6 @@
 # limitations under the License.
 """Tests for tfx.tools.cli.cli_main."""
 
-import codecs
-import locale
-import os
-
 from click import testing as click_testing
 import tensorflow as tf
 from tfx.tools.cli.cli_main import cli_group
@@ -25,11 +21,7 @@ from tfx.tools.cli.cli_main import cli_group
 class CliTest(tf.test.TestCase):
 
   def setUp(self):
-    # Change the encoding for Click since Python 3 is configured to use ASCII as
-    # encoding for the environment.
     super().setUp()
-    if codecs.lookup(locale.getpreferredencoding()).name == 'ascii':
-      os.environ['LANG'] = 'en_US.utf-8'
     self.runner = click_testing.CliRunner()
 
   def testCliPipeline(self):
