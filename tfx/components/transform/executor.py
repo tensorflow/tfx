@@ -633,9 +633,8 @@ class Executor(base_beam_executor.BaseBeamExecutor):
   @staticmethod
   @beam.ptransform_fn
   @beam.typehints.with_input_types(pa.RecordBatch)
-  @beam.typehints.with_output_types(Tuple[beam.pvalue.PDone,
-                                          Optional[beam.pvalue.PDone],
-                                          Optional[beam.pvalue.PDone]])
+  # Typehints are not supported for ptransform_fns/PTransfroms which return
+  # multiple PCollections.
   def _GenerateAndMaybeValidateStats(
       pcoll: beam.pvalue.PCollection, stats_output_loc: Union[str, Dict[str,
                                                                         str]],

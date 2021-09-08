@@ -240,10 +240,9 @@ def _MakeParseFn(
 
 
 @beam.ptransform_fn
-@beam.typehints.with_input_types(beam.Pipeline)
 @beam.typehints.with_output_types(prediction_log_pb2.PredictionLog)
 def _RunInference(
-    pipeline: beam.Pipeline,
+    pipeline: beam.pvalue.PCollection,
     payload_format: int,
     inference_endpoint: model_spec_pb2.InferenceSpecType
 ) -> beam.pvalue.PCollection:
