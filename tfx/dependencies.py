@@ -73,7 +73,7 @@ def make_required_install_packages():
   # Make sure to sync the versions of common dependencies (absl-py, numpy,
   # and protobuf) with TF.
   return make_pipeline_sdk_required_install_packages() + [
-      'apache-beam[gcp]>=2.31,<2.32',
+      'apache-beam[gcp]>=2.31,<3',
       'attrs>=19.3.0,<21',
       'click>=7,<8',
       'google-cloud-aiplatform>=0.5.0,<0.8',
