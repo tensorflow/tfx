@@ -80,11 +80,34 @@ execution_properties {
     string_value: "{\\n  \\"tensorflow_serving\\": {\\n    \\"tags\\": [\\n      \\"latest\\",\\n      \\"1.15.0-gpu\\"\\n    ]\\n  }\\n}"
   }
 }
+execution_properties {
+  key: "list_proto_property"
+  value {
+    string_value: "[\\"{\\\\n  \\\\\\"tensorflow_serving\\\\\\": {\\\\n    \\\\\\"tags\\\\\\": [\\\\n      \\\\\\"latest\\\\\\",\\\\n      \\\\\\"1.15.0-gpu\\\\\\"\\\\n    ]\\\\n  }\\\\n}\\"]"
+  }
+}
 execution_properties_with_schema {
   key: "proto_property"
   value {
     field_value {
       string_value: "{\\n  \\"tensorflow_serving\\": {\\n    \\"tags\\": [\\n      \\"latest\\",\\n      \\"1.15.0-gpu\\"\\n    ]\\n  }\\n}"
+    }
+  }
+}
+execution_properties_with_schema {
+  key: "list_proto_property"
+  value {
+    field_value {
+      string_value: "[\\"{\\\\n  \\\\\\"tensorflow_serving\\\\\\": {\\\\n    \\\\\\"tags\\\\\\": [\\\\n      \\\\\\"latest\\\\\\",\\\\n      \\\\\\"1.15.0-gpu\\\\\\"\\\\n    ]\\\\n  }\\\\n}\\"]"
+    }
+    schema {
+      value_type {
+        list_type {
+          proto_type {
+            message_type: "tfx.components.infra_validator.ServingSpec"
+          }
+        }
+      }
     }
   }
 }
@@ -196,7 +219,8 @@ class PlaceholderUtilsTest(tf.test.TestCase):
             },
             output_dict={"blessing": [standard_artifacts.ModelBlessing()]},
             exec_properties={
-                "proto_property": proto_utils.proto_to_json(self._serving_spec)
+                "proto_property": proto_utils.proto_to_json(self._serving_spec),
+                "list_proto_property": [self._serving_spec],
             },
             execution_output_uri="test_executor_output_uri",
             stateful_working_dir="test_stateful_working_dir",
@@ -361,19 +385,25 @@ class PlaceholderUtilsTest(tf.test.TestCase):
     # Access a non-message type proto field
     placeholder_expression = """
       operator {
-        proto_op {
+        index_op {
           expression {
-            placeholder {
-              type: EXEC_PROPERTY
-              key: "proto_property"
+            operator {
+              proto_op {
+                expression {
+                  placeholder {
+                    type: EXEC_PROPERTY
+                    key: "proto_property"
+                  }
+                }
+                proto_schema {
+                  message_type: "tfx.components.infra_validator.ServingSpec"
+                }
+                proto_field_path: ".tensorflow_serving"
+                proto_field_path: ".tags"
+              }
             }
           }
-          proto_schema {
-            message_type: "tfx.components.infra_validator.ServingSpec"
-          }
-          proto_field_path: ".tensorflow_serving"
-          proto_field_path: ".tags"
-          proto_field_path: "[1]"
+          index: 1
         }
       }
     """
@@ -383,11 +413,113 @@ class PlaceholderUtilsTest(tf.test.TestCase):
     # Prepare FileDescriptorSet
     fd = descriptor_pb2.FileDescriptorProto()
     infra_validator_pb2.ServingSpec().DESCRIPTOR.file.CopyToProto(fd)
-    pb.operator.proto_op.proto_schema.file_descriptors.file.append(fd)
+    pb.operator.index_op.expression.operator.proto_op.proto_schema.file_descriptors.file.append(
+        fd)
 
     self.assertEqual(
         placeholder_utils.resolve_placeholder_expression(
             pb, self._resolution_context), "1.15.0-gpu")
+
+  def testListProtoExecPropertyIndex(self):
+    placeholder_expression = """
+      operator {
+          proto_op {
+            expression {
+              operator {
+                index_op {
+                  expression {
+                    placeholder {
+                      type: EXEC_PROPERTY
+                      key: "list_proto_property"
+                    }
+                  }
+                  index: 0
+                }
+              }
+            }
+            serialization_format: JSON
+          }
+        }
+    """
+    pb = text_format.Parse(placeholder_expression,
+                           placeholder_pb2.PlaceholderExpression())
+    expected_json_serialization = """\
+{
+  "tensorflow_serving": {
+    "tags": [
+      "latest",
+      "1.15.0-gpu"
+    ]
+  }
+}"""
+
+    self.assertEqual(
+        placeholder_utils.resolve_placeholder_expression(
+            pb, self._resolution_context), expected_json_serialization)
+
+  def testListExecPropertySerializationJson(self):
+    placeholder_expression = """
+      operator {
+        list_serialization_op {
+          expression {
+            operator {
+              proto_op {
+                expression {
+                  placeholder {
+                    type: EXEC_PROPERTY
+                    key: "proto_property"
+                  }
+                }
+                proto_schema {
+                  message_type: "tfx.components.infra_validator.ServingSpec"
+                }
+                proto_field_path: ".tensorflow_serving"
+                proto_field_path: ".tags"
+              }
+            }
+          }
+          serialization_format: JSON
+        }
+      }
+    """
+    pb = text_format.Parse(placeholder_expression,
+                           placeholder_pb2.PlaceholderExpression())
+    expected_json_serialization = '["latest", "1.15.0-gpu"]'
+    self.assertEqual(
+        placeholder_utils.resolve_placeholder_expression(
+            pb, self._resolution_context), expected_json_serialization)
+
+  def testListExecPropertySerializationCommaSeparatedString(self):
+    placeholder_expression = """
+      operator {
+        list_serialization_op {
+          expression {
+            operator {
+              proto_op {
+                expression {
+                  placeholder {
+                    type: EXEC_PROPERTY
+                    key: "proto_property"
+                  }
+                }
+                proto_schema {
+                  message_type: "tfx.components.infra_validator.ServingSpec"
+                }
+                proto_field_path: ".tensorflow_serving"
+                proto_field_path: ".tags"
+              }
+            }
+          }
+          serialization_format: COMMA_SEPARATED_STR
+        }
+      }
+    """
+    pb = text_format.Parse(placeholder_expression,
+                           placeholder_pb2.PlaceholderExpression())
+    expected_serialization = '"latest","1.15.0-gpu"'
+    self.assertEqual(
+        placeholder_utils.resolve_placeholder_expression(
+            pb, self._resolution_context), expected_serialization)
 
   def testProtoExecPropertyMessageFieldTextFormat(self):
     # Access a message type proto field
@@ -449,9 +581,9 @@ class PlaceholderUtilsTest(tf.test.TestCase):
     infra_validator_pb2.ServingSpec().DESCRIPTOR.file.CopyToProto(fd)
     pb.operator.proto_op.proto_schema.file_descriptors.file.append(fd)
 
-    with self.assertRaises(ValueError):
-      placeholder_utils.resolve_placeholder_expression(pb,
-                                                       self._resolution_context)
+    self.assertEqual(
+        placeholder_utils.resolve_placeholder_expression(
+            pb, self._resolution_context), ["latest", "1.15.0-gpu"])
 
   def testProtoExecPropertyInvalidField(self):
     # Access a repeated field.
@@ -666,6 +798,11 @@ class PlaceholderUtilsTest(tf.test.TestCase):
         resolved, execution_invocation_pb2.ExecutionInvocation())
     want_exec_invocation = text_format.Parse(
         _WANT_EXEC_INVOCATION, execution_invocation_pb2.ExecutionInvocation())
+    fd = descriptor_pb2.FileDescriptorProto()
+    infra_validator_pb2.ServingSpec().DESCRIPTOR.file.CopyToProto(fd)
+    want_exec_invocation.execution_properties_with_schema[
+        "list_proto_property"].schema.value_type.list_type.proto_type.file_descriptors.file.append(
+            fd)
     self.assertProtoEquals(want_exec_invocation, got_exec_invocation)
 
   def testExecutionInvocationPlaceholderAccessProtoField(self):
@@ -701,19 +838,25 @@ class PlaceholderUtilsTest(tf.test.TestCase):
         base64_encode_op {
           expression {
             operator {
-              proto_op {
+              index_op {
                 expression {
-                  placeholder {
-                    type: EXEC_PROPERTY
-                    key: "proto_property"
+                  operator {
+                    proto_op {
+                      expression {
+                        placeholder {
+                          type: EXEC_PROPERTY
+                          key: "proto_property"
+                        }
+                      }
+                      proto_schema {
+                        message_type: "tfx.components.infra_validator.ServingSpec"
+                      }
+                      proto_field_path: ".tensorflow_serving"
+                      proto_field_path: ".tags"
+                    }
                   }
                 }
-                proto_schema {
-                  message_type: "tfx.components.infra_validator.ServingSpec"
-                }
-                proto_field_path: ".tensorflow_serving"
-                proto_field_path: ".tags"
-                proto_field_path: "[0]"
+                index: 0
               }
             }
           }

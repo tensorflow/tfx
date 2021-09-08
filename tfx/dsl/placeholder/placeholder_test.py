@@ -235,15 +235,85 @@ class PlaceholderTest(tf.test.TestCase):
         operator {
           proto_op {
             expression {
-              placeholder {
-                type: EXEC_PROPERTY
-                key: "proto"
+              operator {
+                index_op {
+                  expression {
+                    placeholder {
+                      type: EXEC_PROPERTY
+                      key: "proto"
+                    }
+                  }
+                  index: 0
+                }
               }
             }
-            proto_field_path: "[0]"
             proto_field_path: ".a"
             proto_field_path: ".b"
             proto_field_path: "['c']"
+          }
+        }
+    """)
+    self._assert_placeholder_pb_equal_and_deepcopyable(
+        ph.exec_property('proto').a['b'].c[1], """
+        operator {
+          index_op {
+            expression {
+              operator {
+                proto_op {
+                  expression {
+                    placeholder {
+                      type: EXEC_PROPERTY
+                      key: "proto"
+                    }
+                  }
+                  proto_field_path: ".a"
+                  proto_field_path: "['b']"
+                  proto_field_path: ".c"
+                }
+              }
+            }
+            index: 1
+          }
+        }
+    """)
+
+  def testExecPropertyListProtoSerialize(self):
+    self._assert_placeholder_pb_equal_and_deepcopyable(
+        ph.exec_property('list_proto').serialize_list(
+            ph.ListSerializationFormat.JSON), """
+        operator {
+          list_serialization_op {
+            expression {
+              placeholder {
+                type: EXEC_PROPERTY
+                key: "list_proto"
+              }
+            }
+            serialization_format: JSON
+          }
+        }
+    """)
+
+  def testExecPropertyListProtoIndex(self):
+    self._assert_placeholder_pb_equal_and_deepcopyable(
+        ph.exec_property('list_proto')[0].serialize(
+            ph.ProtoSerializationFormat.JSON), """
+        operator {
+          proto_op {
+            expression {
+              operator {
+                index_op {
+                  expression {
+                    placeholder {
+                      type: EXEC_PROPERTY
+                      key: "list_proto"
+                    }
+                  }
+                  index: 0
+                }
+              }
+            }
+            serialization_format: JSON
           }
         }
     """)

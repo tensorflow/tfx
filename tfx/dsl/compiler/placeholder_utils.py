@@ -26,8 +26,11 @@ from tfx.proto.orchestration import placeholder_pb2
 from tfx.types import artifact
 from tfx.types import artifact_utils
 from tfx.types import value_artifact
+from tfx.utils import json_utils
 from tfx.utils import proto_utils
 
+from google.protobuf.internal import containers
+from google.protobuf.pyext import _message
 from google.protobuf import json_format
 from google.protobuf import message
 from google.protobuf import text_format
@@ -61,7 +64,7 @@ class ResolutionContext:
 # Note: Pytype's int includes long from Python3
 # We does not support bytes, which may result from proto field access. Must use
 # base64 encode operator to explicitly convert it into str.
-_PlaceholderResolvedTypes = (int, float, str, bool, type(None))
+_PlaceholderResolvedTypes = (int, float, str, bool, type(None), list)
 _PlaceholderResolvedTypeHints = Union[_PlaceholderResolvedTypes]
 
 
@@ -324,10 +327,30 @@ class _ExpressionResolver:
       raise ValueError(
           f"Failed to Base64 encode {value} of type {type(value)}.")
 
+  @_register(placeholder_pb2.ListSerializationOperator)
+  def _resolve_list_serialization_operator(
+      self, op: placeholder_pb2.ListSerializationOperator) -> str:
+    """Evaluates the list operator."""
+    value = self.resolve(op.expression)
+    if value is None:
+      raise NullDereferenceError(op.expression)
+    elif not all(isinstance(val, (str, int, float, bool)) for val in value):
+      raise ValueError(
+          "Only list of bool, int, float or str is supported for list serialization."
+      )
+
+    if op.serialization_format == placeholder_pb2.ListSerializationOperator.JSON:
+      return json_utils.dumps(value)
+    elif op.serialization_format == placeholder_pb2.ListSerializationOperator.COMMA_SEPARATED_STR:
+      return ",".join(
+          f'"{val}"' if isinstance(val, str) else str(val) for val in value)
+
+    raise ValueError(
+        "List serialization operator failed to resolve. A serialization format is needed."
+    )
+
   @_register(placeholder_pb2.ProtoOperator)
-  def _resolve_proto_operator(
-      self,
-      op: placeholder_pb2.ProtoOperator) -> Union[int, float, str, bool, bytes]:
+  def _resolve_proto_operator(self, op: placeholder_pb2.ProtoOperator) -> Any:
     """Evaluates the proto operator."""
     raw_message = self.resolve(op.expression)
     if raw_message is None:
@@ -363,6 +386,9 @@ class _ExpressionResolver:
             raise ValueError("While evaluting placeholder proto operator, "
                              f"got unknown map field {field}.")
           continue
+        # Going forward, index access for proto fields should be handled by
+        # index op. This code here is kept to avoid breaking existing executor
+        # specs.
         index = re.findall(r"\[(\d+)\]", field)
         if index and str.isdecimal(index[0]):
           try:
@@ -376,6 +402,14 @@ class _ExpressionResolver:
     # Non-message primitive values are returned directly.
     if isinstance(value, (int, float, str, bool, bytes)):
       return value
+
+    # Return repeated fields as list.
+    if isinstance(
+        value,
+        (_message.RepeatedCompositeContainer, _message.RepeatedScalarContainer,
+         containers.RepeatedCompositeFieldContainer,
+         containers.RepeatedScalarFieldContainer)):
+      return list(value)
 
     if not isinstance(value, message.Message):
       raise ValueError(f"Got unsupported value type {type(value)} "
@@ -544,6 +578,14 @@ def debug_str(expression: placeholder_pb2.PlaceholderExpression) -> str:
       else:
         return f"Unknown Binary Logical Operation {operator_pb.op}"
       return f"({lhs_str} {op_str} {rhs_str})"
+
+    if operator_name == "list_serialization_op":
+      expression_str = debug_str(operator_pb.expression)
+      if operator_pb.serialization_format:
+        format_str = placeholder_pb2.ProtoOperator.SerializationFormat.Name(
+            operator_pb.serialization_format)
+        return f"{expression_str}.serialize_list({format_str})"
+      return expression_str
 
     return "Unknown placeholder operator"
 

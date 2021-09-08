@@ -8,6 +8,7 @@
     '--runtime_parameter=<parameter_name>=<parameter_value> --runtime_parameter
     =<parameter_name>=<parameter_value>'
 *   Added Manual node in the experimental orchestrator.
+*   Placeholders support index access and JSON serialization for list type execution properties.
 
 ## Breaking Changes
 
