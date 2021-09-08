@@ -30,7 +30,7 @@ from tfx.utils import retry
 class TaxiTemplateKubeflowV2E2ETest(test_utils.BaseEndToEndTest):
 
   _POLLING_INTERVAL_IN_SECONDS = 30
-  _TIME_OUT = datetime.timedelta(hours=1)
+  _TIME_OUT = datetime.timedelta(hours=2)
 
   _DATA_DIRECTORY_NAME = 'template_data'
 
