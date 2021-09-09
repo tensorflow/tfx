@@ -15,6 +15,7 @@
 
 import collections
 import itertools
+import re
 from typing import Dict, Iterable, List, Mapping, Optional, Sequence, Set, Tuple
 
 from absl import logging
@@ -24,13 +25,17 @@ from tfx.orchestration import metadata
 from tfx.orchestration.portable.mlmd import common_utils
 from tfx.orchestration.portable.mlmd import event_lib
 from tfx.proto.orchestration import execution_result_pb2
+from tfx.proto.orchestration import pipeline_pb2
 from tfx.types import artifact_utils
+from tfx.utils import proto_utils
 from tfx.utils import typing_utils
 
 from google.protobuf import json_format
 from ml_metadata.proto import metadata_store_pb2
 
 _EXECUTION_RESULT = '__execution_result__'
+_PROPERTY_SCHEMA_PREFIX = '__schema__'
+_PROPERTY_SCHEMA_SUFFIX = '__'
 
 
 def is_execution_successful(execution: metadata_store_pb2.Execution) -> bool:
@@ -59,6 +64,16 @@ def is_execution_active(execution: metadata_store_pb2.Execution) -> bool:
           execution.last_known_state == metadata_store_pb2.Execution.RUNNING)
 
 
+def is_schema_key(key: str) -> bool:
+  """Returns `True` if the input key corresponds to a schema stored in execution property."""
+  return re.fullmatch(r'^__schema__.*__$', key) is not None
+
+
+def get_schema_key(key: str) -> str:
+  """Returns key for storing execution property schema."""
+  return _PROPERTY_SCHEMA_PREFIX + key + _PROPERTY_SCHEMA_SUFFIX
+
+
 def sort_executions_newest_to_oldest(
     executions: Iterable[metadata_store_pb2.Execution]
 ) -> List[metadata_store_pb2.Execution]:
@@ -78,7 +93,7 @@ def prepare_execution(
     metadata_handler: metadata.Metadata,
     execution_type: metadata_store_pb2.ExecutionType,
     state: metadata_store_pb2.Execution.State,
-    exec_properties: Optional[Mapping[str, types.Property]] = None,
+    exec_properties: Optional[Mapping[str, types.ExecPropertyTypes]] = None,
 ) -> metadata_store_pb2.Execution:
   """Creates an execution proto based on the information provided.
 
@@ -101,11 +116,21 @@ def prepare_execution(
   # For every execution property, put it in execution.properties if its key is
   # in execution type schema. Otherwise, put it in execution.custom_properties.
   for k, v in exec_properties.items():
+    value = pipeline_pb2.Value()
+    value = data_types_utils.set_parameter_value(value, v)
+
+    if value.HasField('schema'):
+      # Stores schema in custom_properties for non-primitive types to allow
+      # parsing in later stages.
+      data_types_utils.set_metadata_value(
+          execution.custom_properties[get_schema_key(k)],
+          proto_utils.proto_to_json(value.schema))
+
     if (execution_type.properties.get(k) ==
         data_types_utils.get_metadata_value_type(v)):
-      data_types_utils.set_metadata_value(execution.properties[k], v)
+      execution.properties[k].CopyFrom(value.field_value)
     else:
-      data_types_utils.set_metadata_value(execution.custom_properties[k], v)
+      execution.custom_properties[k].CopyFrom(value.field_value)
   logging.debug('Prepared EXECUTION:\n %s', execution)
   return execution
 

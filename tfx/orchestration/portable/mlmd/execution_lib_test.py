@@ -71,7 +71,9 @@ class ExecutionLibTest(test_case_utils.TfxTest):
           execution_type,
           exec_properties={
               'p1': 1,
-              'p2': '2'
+              'p2': '2',
+              'p3': True,
+              'p4': ['24', '56']
           },
           state=metadata_store_pb2.Execution.COMPLETE)
       result.ClearField('type_id')
@@ -88,6 +90,30 @@ class ExecutionLibTest(test_case_utils.TfxTest):
             key: 'p1'
             value {
               int_value: 1
+            }
+          }
+          custom_properties {
+            key: 'p3'
+            value {
+              string_value: 'true'
+            }
+          }
+          custom_properties {
+            key: '__schema__p3__'
+            value {
+              string_value: '{\\n  \\"value_type\\": {\\n    \\"boolean_type\\": {}\\n  }\\n}'
+            }
+          }
+          custom_properties {
+            key: 'p4'
+            value {
+              string_value: '["24", "56"]'
+            }
+          }
+          custom_properties {
+            key: '__schema__p4__'
+            value {
+              string_value: '{\\n  \\"value_type\\": {\\n    \\"list_type\\": {}\\n  }\\n}'
             }
           }
           """, result)

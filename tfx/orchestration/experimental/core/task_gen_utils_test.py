@@ -154,7 +154,9 @@ class TaskGenUtilsTest(tu.TfxTest):
               m, self._pipeline, self._trainer, executions))
 
     # Next, ensure an active execution for trainer.
-    otu.fake_component_output(self._mlmd_connection, self._trainer)
+    exec_properties = {'int_arg': 24, 'list_bool_arg': [True, False]}
+    otu.fake_component_output(
+        self._mlmd_connection, self._trainer, exec_properties=exec_properties)
     with self._mlmd_connection as m:
       execution = m.store.get_executions()[0]
       execution.last_known_state = metadata_store_pb2.Execution.RUNNING
@@ -165,6 +167,7 @@ class TaskGenUtilsTest(tu.TfxTest):
       task = task_gen_utils.generate_task_from_active_execution(
           m, self._pipeline, self._trainer, executions)
       self.assertEqual(execution.id, task.execution_id)
+      self.assertEqual(exec_properties, task.exec_properties)
 
       # Mark execution complete. No tasks should be generated.
       execution = m.store.get_executions()[0]

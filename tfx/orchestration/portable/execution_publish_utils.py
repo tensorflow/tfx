@@ -233,7 +233,7 @@ def register_execution(
     execution_type: metadata_store_pb2.ExecutionType,
     contexts: Sequence[metadata_store_pb2.Context],
     input_artifacts: Optional[typing_utils.ArtifactMultiMap] = None,
-    exec_properties: Optional[Mapping[str, types.Property]] = None,
+    exec_properties: Optional[Mapping[str, types.ExecPropertyTypes]] = None,
 ) -> metadata_store_pb2.Execution:
   """Registers a new execution in MLMD.
 

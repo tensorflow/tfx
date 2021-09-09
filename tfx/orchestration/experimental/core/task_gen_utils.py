@@ -28,6 +28,7 @@ from tfx.orchestration.portable.input_resolution import exceptions
 from tfx.orchestration.portable.mlmd import context_lib
 from tfx.orchestration.portable.mlmd import execution_lib
 from tfx.proto.orchestration import pipeline_pb2
+from tfx.utils import proto_utils
 from tfx.utils import typing_utils
 
 from ml_metadata.proto import metadata_store_pb2
@@ -111,14 +112,25 @@ def generate_task_from_active_execution(
       is_cancelled=is_cancelled)
 
 
-# TODO(b/171794016): schema should be registered in the Execution proto so that
-# non-primitive type exec properties can be properly parsed from Execution.
 def _extract_properties(
-    execution: metadata_store_pb2.Execution) -> Dict[str, types.Property]:
+    execution: metadata_store_pb2.Execution
+) -> Dict[str, types.ExecPropertyTypes]:
+  """Extracts execution properties from mlmd Execution."""
   result = {}
   for key, prop in itertools.chain(execution.properties.items(),
                                    execution.custom_properties.items()):
-    value = data_types_utils.get_metadata_value(prop)
+    if execution_lib.is_schema_key(key):
+      continue
+
+    schema_key = execution_lib.get_schema_key(key)
+    schema = None
+    if schema_key in execution.custom_properties:
+      schema = proto_utils.json_to_proto(
+          data_types_utils.get_metadata_value(
+              execution.custom_properties[schema_key]),
+          pipeline_pb2.Value.Schema())
+    value = data_types_utils.get_parsed_value(prop, schema)
+
     if value is None:
       raise ValueError(f'Unexpected property with empty value; key: {key}')
     result[key] = value

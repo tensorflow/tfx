@@ -100,10 +100,10 @@ def build_pipeline_value_dict(
   return result
 
 
-def build_parsed_value_dict(
-    value_dict: Mapping[str, pipeline_pb2.Value]
-) -> Dict[str, types.ExecPropertyTypes]:
-  """Converts MLMD value into parsed (non-)primitive value dict."""
+def get_parsed_value(
+    value: metadata_store_pb2.Value,
+    schema: Optional[pipeline_pb2.Value.Schema]) -> types.ExecPropertyTypes:
+  """Converts MLMD value into parsed (non-)primitive value."""
 
   def parse_value(
       value: str, value_type: pipeline_pb2.Value.Schema.ValueType
@@ -118,21 +118,27 @@ def build_parsed_value_dict(
     else:
       return value
 
+  if schema and value.HasField('string_value'):
+    if schema.value_type.HasField('boolean_type'):
+      return json_utils.loads(value.string_value)
+    else:
+      return parse_value(value.string_value, schema.value_type)
+  else:
+    return getattr(value, value.WhichOneof('value'))
+
+
+def build_parsed_value_dict(
+    value_dict: Mapping[str, pipeline_pb2.Value]
+) -> Dict[str, types.ExecPropertyTypes]:
+  """Converts MLMD value into parsed (non-)primitive value dict."""
   result = {}
   if not value_dict:
     return result
   for k, v in value_dict.items():
     if not v.HasField('field_value'):
       raise RuntimeError('Field value missing for %s' % k)
-    field_value = v.field_value
-    if field_value.HasField('string_value') and v.HasField('schema'):
-      if v.schema.value_type.HasField('boolean_type'):
-        value = json_utils.loads(field_value.string_value)
-      else:
-        value = parse_value(field_value.string_value, v.schema.value_type)
-    else:
-      value = getattr(field_value, field_value.WhichOneof('value'))
-    result[k] = value
+    result[k] = get_parsed_value(v.field_value,
+                                 v.schema if v.HasField('schema') else None)
   return result
 
 

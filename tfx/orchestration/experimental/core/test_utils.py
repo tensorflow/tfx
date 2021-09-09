@@ -63,7 +63,8 @@ def fake_example_gen_run(mlmd_connection, example_gen, span, version):
 def fake_component_output_with_handle(mlmd_handle,
                                       component,
                                       execution=None,
-                                      active=False):
+                                      active=False,
+                                      exec_properties=None):
   """Writes fake component output and execution to MLMD."""
   output_key, output_value = next(iter(component.outputs.outputs.items()))
   output = types.Artifact(output_value.artifact_spec.type)
@@ -71,7 +72,10 @@ def fake_component_output_with_handle(mlmd_handle,
   contexts = context_lib.prepare_contexts(mlmd_handle, component.contexts)
   if not execution:
     execution = execution_publish_utils.register_execution(
-        mlmd_handle, component.node_info.type, contexts)
+        mlmd_handle,
+        component.node_info.type,
+        contexts,
+        exec_properties=exec_properties)
   if not active:
     execution_publish_utils.publish_succeeded_execution(mlmd_handle,
                                                         execution.id, contexts,
@@ -81,10 +85,12 @@ def fake_component_output_with_handle(mlmd_handle,
 def fake_component_output(mlmd_connection,
                           component,
                           execution=None,
-                          active=False):
+                          active=False,
+                          exec_properties=None):
   """Writes fake component output and execution to MLMD."""
   with mlmd_connection as m:
-    fake_component_output_with_handle(m, component, execution, active)
+    fake_component_output_with_handle(m, component, execution, active,
+                                      exec_properties)
 
 
 def fake_cached_execution(mlmd_connection, cache_context, component):
