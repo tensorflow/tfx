@@ -15,41 +15,23 @@
 
 import datetime
 import os
-import subprocess
 import time
 from typing import List, Optional, Text
 
 from absl import logging
 from kfp.pipeline_spec import pipeline_spec_pb2 as pipeline_pb2
 import tensorflow_model_analysis as tfma
-from tfx import components
-from tfx import types
+from tfx import v1 as tfx
 from tfx.components.trainer.executor import Executor
-from tfx.dsl.component.experimental import container_component
 from tfx.dsl.component.experimental import executor_specs
 from tfx.dsl.component.experimental import placeholders
 from tfx.dsl.components.base import base_component
 from tfx.dsl.components.base import base_executor
 from tfx.dsl.components.base import base_node
 from tfx.dsl.components.base import executor_spec
-from tfx.dsl.components.common import importer
-from tfx.dsl.components.common import resolver
-from tfx.dsl.input_resolution.strategies import latest_artifact_strategy
-from tfx.dsl.input_resolution.strategies import latest_blessed_model_strategy
-from tfx.dsl.io import fileio
-from tfx.extensions.google_cloud_big_query.example_gen import component as big_query_example_gen_component
-from tfx.orchestration import data_types
-from tfx.orchestration import pipeline as tfx_pipeline
-from tfx.orchestration import test_utils
-from tfx.proto import pusher_pb2
-from tfx.proto import trainer_pb2
-from tfx.types import channel
 from tfx.types import channel_utils
 from tfx.types import component_spec
-from tfx.types import standard_artifacts
 from tfx.types.experimental import simple_artifacts
-from tfx.utils import io_utils
-from tfx.utils import test_case_utils
 
 from google.protobuf import message
 
@@ -113,13 +95,13 @@ def poll_job_status(vertex_client, job_id: str,
 
 
 # TODO(b/158245564): Reevaluate whether to keep this test helper function
-def two_step_pipeline() -> tfx_pipeline.Pipeline:
+def two_step_pipeline() -> tfx.dsl.Pipeline:
   """Returns a simple 2-step pipeline under test."""
-  example_gen = big_query_example_gen_component.BigQueryExampleGen(
+  example_gen = tfx.extensions.google_cloud_big_query.BigQueryExampleGen(
       query='SELECT * FROM TABLE')
-  statistics_gen = components.StatisticsGen(
+  statistics_gen = tfx.components.StatisticsGen(
       examples=example_gen.outputs['examples'])
-  return tfx_pipeline.Pipeline(
+  return tfx.dsl.Pipeline(
       pipeline_name=_TEST_TWO_STEP_PIPELINE_NAME,
       pipeline_root=_TEST_PIPELINE_ROOT,
       components=[example_gen, statistics_gen],
@@ -156,43 +138,44 @@ def create_pipeline_components(
         'Please provide either bigquery_query or csv_input_location.')
 
   if bigquery_query:
-    example_gen = big_query_example_gen_component.BigQueryExampleGen(
+    example_gen = tfx.extensions.google_cloud_big_query.BigQueryExampleGen(
         query=bigquery_query)
   else:
-    example_gen = components.CsvExampleGen(input_base=csv_input_location)
+    example_gen = tfx.components.CsvExampleGen(input_base=csv_input_location)
 
-  statistics_gen = components.StatisticsGen(
+  statistics_gen = tfx.components.StatisticsGen(
       examples=example_gen.outputs['examples'])
-  schema_gen = components.SchemaGen(
+  schema_gen = tfx.components.SchemaGen(
       statistics=statistics_gen.outputs['statistics'],
       infer_feature_shape=False)
-  example_validator = components.ExampleValidator(
+  example_validator = tfx.components.ExampleValidator(
       statistics=statistics_gen.outputs['statistics'],
       schema=schema_gen.outputs['schema'])
-  transform = components.Transform(
+  transform = tfx.components.Transform(
       examples=example_gen.outputs['examples'],
       schema=schema_gen.outputs['schema'],
       module_file=transform_module)
-  latest_model_resolver = resolver.Resolver(
-      strategy_class=latest_artifact_strategy.LatestArtifactStrategy,
-      model=channel.Channel(type=standard_artifacts.Model)).with_id(
+  latest_model_resolver = tfx.dsl.Resolver(
+      strategy_class=tfx.dsl.experimental.LatestArtifactStrategy,
+      model=tfx.dsl.Channel(type=tfx.types.standard_artifacts.Model)).with_id(
           'Resolver.latest_model_resolver')
-  trainer = components.Trainer(
+  trainer = tfx.components.Trainer(
       custom_executor_spec=executor_spec.ExecutorClassSpec(Executor),
-      transformed_examples=transform.outputs['transformed_examples'],
+      examples=transform.outputs['transformed_examples'],
       schema=schema_gen.outputs['schema'],
       base_model=latest_model_resolver.outputs['model'],
       transform_graph=transform.outputs['transform_graph'],
-      train_args=trainer_pb2.TrainArgs(num_steps=10),
-      eval_args=trainer_pb2.EvalArgs(num_steps=5),
+      train_args=tfx.proto.TrainArgs(num_steps=10),
+      eval_args=tfx.proto.EvalArgs(num_steps=5),
       module_file=trainer_module,
   )
   # Get the latest blessed model for model validation.
-  model_resolver = resolver.Resolver(
-      strategy_class=latest_blessed_model_strategy.LatestBlessedModelStrategy,
-      model=channel.Channel(type=standard_artifacts.Model),
-      model_blessing=channel.Channel(type=standard_artifacts.ModelBlessing)
-  ).with_id('Resolver.latest_blessed_model_resolver')
+  model_resolver = tfx.dsl.Resolver(
+      strategy_class=tfx.dsl.experimental.LatestBlessedModelStrategy,
+      model=tfx.dsl.Channel(type=tfx.types.standard_artifacts.Model),
+      model_blessing=tfx.dsl.Channel(
+          type=tfx.types.standard_artifacts.ModelBlessing)).with_id(
+              'Resolver.latest_blessed_model_resolver')
   # Set the TFMA config for Model Evaluation and Validation.
   eval_config = tfma.EvalConfig(
       model_specs=[tfma.ModelSpec(signature_name='eval')],
@@ -213,17 +196,17 @@ def create_pipeline_components(
           tfma.SlicingSpec(),
           tfma.SlicingSpec(feature_keys=['trip_start_hour'])
       ])
-  evaluator = components.Evaluator(
+  evaluator = tfx.components.Evaluator(
       examples=example_gen.outputs['examples'],
       model=trainer.outputs['model'],
       baseline_model=model_resolver.outputs['model'],
       eval_config=eval_config)
 
-  pusher = components.Pusher(
+  pusher = tfx.components.Pusher(
       model=trainer.outputs['model'],
       model_blessing=evaluator.outputs['blessing'],
-      push_destination=pusher_pb2.PushDestination(
-          filesystem=pusher_pb2.PushDestination.Filesystem(
+      push_destination=tfx.proto.PushDestination(
+          filesystem=tfx.proto.PushDestination.Filesystem(
               base_directory=os.path.join(pipeline_root, 'model_serving'))))
 
   return [
@@ -233,7 +216,7 @@ def create_pipeline_components(
 
 
 # TODO(b/158245564): Reevaluate whether to keep this test helper function
-def full_taxi_pipeline() -> tfx_pipeline.Pipeline:
+def full_taxi_pipeline() -> tfx.dsl.Pipeline:
   """Returns a full taxi pipeline under test."""
   pipeline_components = create_pipeline_components(
       pipeline_root=_TEST_PIPELINE_ROOT,
@@ -241,28 +224,35 @@ def full_taxi_pipeline() -> tfx_pipeline.Pipeline:
       trainer_module=_TEST_MODULE_FILE_LOCATION,
       csv_input_location=_TEST_INPUT_DATA)
 
-  return tfx_pipeline.Pipeline(
+  return tfx.dsl.Pipeline(
       pipeline_name=_TEST_FULL_PIPELINE_NAME,
       pipeline_root=_TEST_PIPELINE_ROOT,
       components=pipeline_components)
 
 
-class TransformerSpec(types.ComponentSpec):
+class TransformerSpec(component_spec.ComponentSpec):
+  """ComponentSpec for a dummy container component."""
   INPUTS = {
-      'input1': component_spec.ChannelParameter(type=standard_artifacts.Model),
+      'input1':
+          component_spec.ChannelParameter(
+              type=tfx.types.standard_artifacts.Model),
   }
   OUTPUTS = {
-      'output1': component_spec.ChannelParameter(type=standard_artifacts.Model),
+      'output1':
+          component_spec.ChannelParameter(
+              type=tfx.types.standard_artifacts.Model),
   }
   PARAMETERS = {
       'param1': component_spec.ExecutionParameter(type=Text),
   }
 
 
-class ProducerSpec(types.ComponentSpec):
+class ProducerSpec(component_spec.ComponentSpec):
   INPUTS = {}
   OUTPUTS = {
-      'output1': component_spec.ChannelParameter(type=standard_artifacts.Model),
+      'output1':
+          component_spec.ChannelParameter(
+              type=tfx.types.standard_artifacts.Model),
   }
   PARAMETERS = {
       'param1': component_spec.ExecutionParameter(type=Text),
@@ -330,13 +320,13 @@ class DummyProducerComponent(base_component.BaseComponent):
       self._id = self.__class__.__name__
 
 
-dummy_transformer_component = container_component.create_container_component(
+dummy_transformer_component = tfx.dsl.experimental.create_container_component(
     name='DummyContainerSpecComponent',
     inputs={
-        'input1': standard_artifacts.Model,
+        'input1': tfx.types.standard_artifacts.Model,
     },
     outputs={
-        'output1': standard_artifacts.Model,
+        'output1': tfx.types.standard_artifacts.Model,
     },
     parameters={
         'param1': str,
@@ -353,10 +343,10 @@ dummy_transformer_component = container_component.create_container_component(
     ],
 )
 
-dummy_producer_component = container_component.create_container_component(
+dummy_producer_component = tfx.dsl.experimental.create_container_component(
     name='DummyProducerComponent',
     outputs={
-        'output1': standard_artifacts.Model,
+        'output1': tfx.types.standard_artifacts.Model,
     },
     parameters={
         'param1': str,
@@ -378,63 +368,63 @@ dummy_producer_component = container_component.create_container_component(
 )
 
 
-def pipeline_with_one_container_spec_component() -> tfx_pipeline.Pipeline:
+def pipeline_with_one_container_spec_component() -> tfx.dsl.Pipeline:
   """Pipeline with container."""
 
-  importer_task = importer.Importer(
+  importer_task = tfx.dsl.Importer(
       source_uri='some-uri',
-      artifact_type=standard_artifacts.Model,
+      artifact_type=tfx.types.standard_artifacts.Model,
   ).with_id('my_importer')
 
   container_task = DummyContainerSpecComponent(
       input1=importer_task.outputs['result'],
-      output1=channel_utils.as_channel([standard_artifacts.Model()]),
+      output1=channel_utils.as_channel([tfx.types.standard_artifacts.Model()]),
       param1='value1',
   )
 
-  return tfx_pipeline.Pipeline(
+  return tfx.dsl.Pipeline(
       pipeline_name='pipeline-with-container',
       pipeline_root=_TEST_PIPELINE_ROOT,
       components=[importer_task, container_task],
   )
 
 
-def pipeline_with_two_container_spec_components() -> tfx_pipeline.Pipeline:
+def pipeline_with_two_container_spec_components() -> tfx.dsl.Pipeline:
   """Pipeline with container."""
 
   container1_task = DummyProducerComponent(
-      output1=channel_utils.as_channel([standard_artifacts.Model()]),
+      output1=channel_utils.as_channel([tfx.types.standard_artifacts.Model()]),
       param1='value1',
   )
 
   container2_task = DummyContainerSpecComponent(
       input1=container1_task.outputs['output1'],
-      output1=channel_utils.as_channel([standard_artifacts.Model()]),
+      output1=channel_utils.as_channel([tfx.types.standard_artifacts.Model()]),
       param1='value2',
   )
 
-  return tfx_pipeline.Pipeline(
+  return tfx.dsl.Pipeline(
       pipeline_name='pipeline-with-container',
       pipeline_root=_TEST_PIPELINE_ROOT,
       components=[container1_task, container2_task],
   )
 
 
-def pipeline_with_two_container_spec_components_2() -> tfx_pipeline.Pipeline:
+def pipeline_with_two_container_spec_components_2() -> tfx.dsl.Pipeline:
   """Pipeline with container."""
 
   container1_task = dummy_producer_component(
-      output1=channel_utils.as_channel([standard_artifacts.Model()]),
+      output1=channel_utils.as_channel([tfx.types.standard_artifacts.Model()]),
       param1='value1',
   )
 
   container2_task = dummy_transformer_component(
       input1=container1_task.outputs['output1'],
-      output1=channel_utils.as_channel([standard_artifacts.Model()]),
+      output1=channel_utils.as_channel([tfx.types.standard_artifacts.Model()]),
       param1='value2',
   )
 
-  return tfx_pipeline.Pipeline(
+  return tfx.dsl.Pipeline(
       pipeline_name='pipeline-with-container',
       pipeline_root=_TEST_PIPELINE_ROOT,
       components=[container1_task, container2_task],
@@ -445,13 +435,13 @@ def get_proto_from_test_data(filename: Text,
                              pb_message: message.Message) -> message.Message:
   """Helper function that gets proto from testdata."""
   filepath = os.path.join(os.path.dirname(__file__), 'testdata', filename)
-  return io_utils.parse_pbtxt_file(filepath, pb_message)
+  return tfx.utils.parse_pbtxt_file(filepath, pb_message)
 
 
 def get_text_from_test_data(filename: Text) -> Text:
   """Helper function that gets raw string from testdata."""
   filepath = os.path.join(os.path.dirname(__file__), 'testdata', filename)
-  return fileio.open(filepath, 'rb').read().decode('utf-8')
+  return tfx.dsl.io.fileio.open(filepath, 'rb').read().decode('utf-8')
 
 
 class _ProducerComponentSpec(component_spec.ComponentSpec):
@@ -504,7 +494,7 @@ class ConsumerComponent(base_component.BaseComponent):
   EXECUTOR_SPEC = executor_spec.ExecutorClassSpec(
       executor_class=base_executor.EmptyExecutor)
 
-  def __init__(self, examples: channel.Channel, external_data: channel.Channel):
+  def __init__(self, examples: tfx.dsl.Channel, external_data: tfx.dsl.Channel):
     stats_output_channel = channel_utils.as_channel(
         [simple_artifacts.Statistics()])
     metrics_output_channel = channel_utils.as_channel(
@@ -517,13 +507,13 @@ class ConsumerComponent(base_component.BaseComponent):
             metrics=metrics_output_channel))
 
 
-def two_step_kubeflow_artifacts_pipeline() -> tfx_pipeline.Pipeline:
+def two_step_kubeflow_artifacts_pipeline() -> tfx.dsl.Pipeline:
   """Builds 2-Step pipeline to test AI Platform simple artifact types."""
   step1 = ProducerComponent()
   step2 = ConsumerComponent(
       examples=step1.outputs['examples'],
       external_data=step1.outputs['external_data'])
-  return tfx_pipeline.Pipeline(
+  return tfx.dsl.Pipeline(
       pipeline_name='two-step-kubeflow-artifacts-pipeline',
       pipeline_root=_TEST_PIPELINE_ROOT,
       components=[step1, step2],
@@ -532,10 +522,10 @@ def two_step_kubeflow_artifacts_pipeline() -> tfx_pipeline.Pipeline:
       ])
 
 
-def two_step_pipeline_with_task_only_dependency() -> tfx_pipeline.Pipeline:
+def two_step_pipeline_with_task_only_dependency() -> tfx.dsl.Pipeline:
   """Returns a simple 2-step pipeline with task only dependency between them."""
 
-  step_1 = container_component.create_container_component(
+  step_1 = tfx.dsl.experimental.create_container_component(
       name='Step 1',
       inputs={},
       outputs={},
@@ -543,7 +533,7 @@ def two_step_pipeline_with_task_only_dependency() -> tfx_pipeline.Pipeline:
       image='step-1-image',
       command=['run', 'step-1'])()
 
-  step_2 = container_component.create_container_component(
+  step_2 = tfx.dsl.experimental.create_container_component(
       name='Step 2',
       inputs={},
       outputs={},
@@ -552,19 +542,19 @@ def two_step_pipeline_with_task_only_dependency() -> tfx_pipeline.Pipeline:
       command=['run', 'step-2'])()
   step_2.add_upstream_node(step_1)
 
-  return tfx_pipeline.Pipeline(
+  return tfx.dsl.Pipeline(
       pipeline_name='two-step-task-only-dependency-pipeline',
       pipeline_root=_TEST_PIPELINE_ROOT,
       components=[step_1, step_2],
   )
 
 
-primitive_producer_component = container_component.create_container_component(
+primitive_producer_component = tfx.dsl.experimental.create_container_component(
     name='ProducePrimitives',
     outputs={
-        'output_string': standard_artifacts.String,
-        'output_int': standard_artifacts.Integer,
-        'output_float': standard_artifacts.Float,
+        'output_string': tfx.types.standard_artifacts.String,
+        'output_int': tfx.types.standard_artifacts.Integer,
+        'output_float': tfx.types.standard_artifacts.Float,
     },
     image='busybox',
     command=[
@@ -575,12 +565,12 @@ primitive_producer_component = container_component.create_container_component(
     ],
 )
 
-primitive_consumer_component = container_component.create_container_component(
+primitive_consumer_component = tfx.dsl.experimental.create_container_component(
     name='ConsumeByValue',
     inputs={
-        'input_string': standard_artifacts.String,
-        'input_int': standard_artifacts.Integer,
-        'input_float': standard_artifacts.Float,
+        'input_string': tfx.types.standard_artifacts.String,
+        'input_int': tfx.types.standard_artifacts.Integer,
+        'input_float': tfx.types.standard_artifacts.Float,
     },
     parameters={
         'param_string': str,
@@ -600,7 +590,7 @@ primitive_consumer_component = container_component.create_container_component(
 )
 
 
-def consume_primitive_artifacts_by_value_pipeline() -> tfx_pipeline.Pipeline:
+def consume_primitive_artifacts_by_value_pipeline() -> tfx.dsl.Pipeline:
   """Pipeline which features consuming artifacts by value."""
 
   producer_task = primitive_producer_component()
@@ -614,14 +604,14 @@ def consume_primitive_artifacts_by_value_pipeline() -> tfx_pipeline.Pipeline:
       param_float=3.14,
   )
 
-  return tfx_pipeline.Pipeline(
+  return tfx.dsl.Pipeline(
       pipeline_name='consume-primitive-artifacts-by-value-pipeline',
       pipeline_root=_TEST_PIPELINE_ROOT,
       components=[producer_task, consumer_task],
   )
 
 
-def pipeline_with_runtime_parameter() -> tfx_pipeline.Pipeline:
+def pipeline_with_runtime_parameter() -> tfx.dsl.Pipeline:
   """Pipeline which contains a runtime parameter."""
 
   producer_task = primitive_producer_component()
@@ -630,142 +620,14 @@ def pipeline_with_runtime_parameter() -> tfx_pipeline.Pipeline:
       input_string=producer_task.outputs['output_string'],
       input_int=producer_task.outputs['output_int'],
       input_float=producer_task.outputs['output_float'],
-      param_string=data_types.RuntimeParameter(
-          ptype=Text, name='string_param', default='string value'),
+      param_string=tfx.dsl.experimental.RuntimeParameter(
+          ptype=str, name='string_param', default='string value'),
       param_int=42,
       param_float=3.14,
   )
 
-  return tfx_pipeline.Pipeline(
+  return tfx.dsl.Pipeline(
       pipeline_name='pipeline-with-runtime-parameter',
       pipeline_root=_TEST_PIPELINE_ROOT,
       components=[producer_task, consumer_task],
   )
-
-
-def tasks_for_pipeline_with_artifact_value_passing():
-  """A simple pipeline with artifact consumed as value."""
-  producer_component = container_component.create_container_component(
-      name='Produce',
-      outputs={
-          'data': simple_artifacts.File,
-      },
-      parameters={
-          'message': str,
-      },
-      image='gcr.io/ml-pipeline/mirrors/cloud-sdk',
-      command=[
-          'sh',
-          '-exc',
-          """
-            message="$0"
-            output_data_uri="$1"
-            output_data_path=$(mktemp)
-
-            # Running the main code
-            echo "Hello $message" >"$output_data_path"
-
-            # Getting data out of the container
-            gsutil cp -r "$output_data_path" "$output_data_uri"
-          """,
-          placeholders.InputValuePlaceholder('message'),
-          placeholders.OutputUriPlaceholder('data'),
-      ],
-  )
-
-  print_value_component = container_component.create_container_component(
-      name='Print',
-      inputs={
-          'text': simple_artifacts.File,
-      },
-      image='gcr.io/ml-pipeline/mirrors/cloud-sdk',
-      command=[
-          'echo',
-          placeholders.InputValuePlaceholder('text'),
-      ],
-  )
-
-  producer_task = producer_component(message='World!')
-  print_task = print_value_component(text=producer_task.outputs['data'],)
-  return [producer_task, print_task]
-
-
-class BaseKubeflowV2Test(test_case_utils.TfxTest):
-  """Defines testing harness for pipeline on KubeflowV2DagRunner."""
-
-  # The following environment variables need to be set prior to calling the test
-  # in this file. All variables are required and do not have a default.
-
-  # The src path to use to build docker image
-  _REPO_BASE = os.environ.get('KFP_E2E_SRC')
-
-  # The base container image name to use when building the image used in tests.
-  _BASE_CONTAINER_IMAGE = os.environ.get('KFP_E2E_BASE_CONTAINER_IMAGE')
-
-  # The project id to use to run tests.
-  _GCP_PROJECT_ID = os.environ.get('KFP_E2E_GCP_PROJECT_ID')
-
-  # The GCP bucket to use to write output artifacts.
-  _BUCKET_NAME = os.environ.get('KFP_E2E_BUCKET_NAME')
-
-  # The location of test user module file.
-  # It is retrieved from inside the container subject to testing.
-  # This location depends on install path of TFX in the docker image.
-  _MODULE_FILE = '/opt/conda/lib/python3.7/site-packages/tfx/examples/chicago_taxi_pipeline/taxi_utils.py'
-
-  @classmethod
-  def setUpClass(cls):
-    super(BaseKubeflowV2Test, cls).setUpClass()
-
-    if ':' not in cls._BASE_CONTAINER_IMAGE:
-      # Generate base container image for the test if tag is not specified.
-      cls.container_image = '{}:{}'.format(cls._BASE_CONTAINER_IMAGE,
-                                           test_utils.random_id())
-
-      # Create a container image for use by test pipelines.
-      test_utils.build_and_push_docker_image(cls.container_image,
-                                             cls._REPO_BASE)
-    else:  # Use the given image as a base image.
-      cls.container_image = cls._BASE_CONTAINER_IMAGE
-
-  @classmethod
-  def tearDownClass(cls):
-    super(BaseKubeflowV2Test, cls).tearDownClass()
-
-    if cls.container_image != cls._BASE_CONTAINER_IMAGE:
-      # Delete container image used in tests.
-      logging.info('Deleting image %s', cls.container_image)
-      subprocess.run(
-          ['gcloud', 'container', 'images', 'delete', cls.container_image],
-          check=True)
-
-  def setUp(self):
-    super(BaseKubeflowV2Test, self).setUp()
-    self.enter_context(test_case_utils.change_working_dir(self.tmp_dir))
-
-    self._test_dir = self.tmp_dir
-    self._test_output_dir = 'gs://{}/test_output'.format(self._BUCKET_NAME)
-
-  def _pipeline_root(self, pipeline_name: Text):
-    return os.path.join(self._test_output_dir, pipeline_name)
-
-  def _delete_pipeline_output(self, pipeline_name: Text):
-    """Deletes output produced by the named pipeline.
-
-    Args:
-      pipeline_name: The name of the pipeline.
-    """
-    test_utils.delete_gcs_files(self._GCP_PROJECT_ID, self._BUCKET_NAME,
-                                'test_output/{}'.format(pipeline_name))
-
-  def _create_pipeline(
-      self,
-      pipeline_name: Text,
-      pipeline_components: List[base_node.BaseNode],
-      beam_pipeline_args: Optional[List[Text]] = None) -> tfx_pipeline.Pipeline:
-    """Creates a pipeline given name and list of components."""
-    return tfx_pipeline.Pipeline(
-        pipeline_name=pipeline_name,
-        pipeline_root=self._pipeline_root(pipeline_name),
-        components=pipeline_components,
-        beam_pipeline_args=beam_pipeline_args)
