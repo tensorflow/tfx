@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,11 +13,7 @@
 # limitations under the License.
 """TFX publisher."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
-from typing import Any, Dict, List, Optional, Text
+from typing import Any, Dict, List, Optional
 
 from absl import logging
 
@@ -28,7 +23,7 @@ from tfx.orchestration import metadata
 from tfx.orchestration.portable import outputs_utils
 
 
-class Publisher(object):
+class Publisher:
   """Publish execution to metadata.
 
   Attributes:
@@ -41,8 +36,8 @@ class Publisher(object):
   def publish_execution(
       self,
       component_info: data_types.ComponentInfo,
-      output_artifacts: Optional[Dict[Text, List[types.Artifact]]] = None,
-      exec_properties: Optional[Dict[Text, Any]] = None):
+      output_artifacts: Optional[Dict[str, List[types.Artifact]]] = None,
+      exec_properties: Optional[Dict[str, Any]] = None):
     """Publishes a component execution to metadata.
 
     This function will do two things:

@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,12 +13,7 @@
 # limitations under the License.
 """Tests for tfx.components.transform.component."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import json
-from typing import Text
 
 import tensorflow as tf
 from tfx.components.transform import component
@@ -35,7 +29,7 @@ from tfx.utils import proto_utils
 class ComponentTest(tf.test.TestCase):
 
   def setUp(self):
-    super(ComponentTest, self).setUp()
+    super().setUp()
     examples_artifact = standard_artifacts.Examples()
     examples_artifact.split_names = artifact_utils.encode_split_names(
         ['train', 'eval'])
@@ -101,7 +95,7 @@ class ComponentTest(tf.test.TestCase):
         transform.exec_properties[standard_component_specs.MODULE_FILE_KEY])
 
   def test_construct_with_parameter(self):
-    module_file = data_types.RuntimeParameter(name='module-file', ptype=Text)
+    module_file = data_types.RuntimeParameter(name='module-file', ptype=str)
     transform = component.Transform(
         examples=self.examples,
         schema=self.schema,

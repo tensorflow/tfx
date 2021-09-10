@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,11 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """TFX Pusher component definition."""
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
 
-from typing import Any, Dict, Optional, Text, Union
+from typing import Any, Dict, Optional, Union
 
 from absl import logging
 from tfx import types
@@ -27,7 +23,7 @@ from tfx.dsl.components.base import executor_spec
 from tfx.orchestration import data_types
 from tfx.proto import pusher_pb2
 from tfx.types import standard_artifacts
-from tfx.types.standard_component_specs import PusherSpec
+from tfx.types import standard_component_specs
 from tfx.utils import json_utils
 
 
@@ -70,7 +66,7 @@ class Pusher(base_component.BaseComponent):
   details.
   """
 
-  SPEC_CLASS = PusherSpec
+  SPEC_CLASS = standard_component_specs.PusherSpec
   EXECUTOR_SPEC = executor_spec.ExecutorClassSpec(executor.Executor)
 
   def __init__(
@@ -80,7 +76,7 @@ class Pusher(base_component.BaseComponent):
       infra_blessing: Optional[types.Channel] = None,
       push_destination: Optional[Union[pusher_pb2.PushDestination,
                                        data_types.RuntimeParameter]] = None,
-      custom_config: Optional[Dict[Text, Any]] = None,
+      custom_config: Optional[Dict[str, Any]] = None,
       custom_executor_spec: Optional[executor_spec.ExecutorSpec] = None):
     """Construct a Pusher component.
 
@@ -118,12 +114,11 @@ class Pusher(base_component.BaseComponent):
           'created with InfraValidator with RequestSpec.make_warmup = True. '
           'This cannot be checked during pipeline construction time but will '
           'raise runtime error if infra_blessing does not contain a model.')
-    spec = PusherSpec(
+    spec = standard_component_specs.PusherSpec(
         model=model,
         model_blessing=model_blessing,
         infra_blessing=infra_blessing,
         push_destination=push_destination,
         custom_config=json_utils.dumps(custom_config),
         pushed_model=pushed_model)
-    super(Pusher, self).__init__(
-        spec=spec, custom_executor_spec=custom_executor_spec)
+    super().__init__(spec=spec, custom_executor_spec=custom_executor_spec)

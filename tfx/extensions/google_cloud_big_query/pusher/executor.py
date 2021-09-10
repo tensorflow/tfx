@@ -13,7 +13,7 @@
 # limitations under the License.
 """Custom executor to push TFX model to Big Query."""
 
-from typing import Any, Dict, List, Text
+from typing import Any, Dict, List
 
 from absl import logging
 from google.cloud import bigquery
@@ -59,9 +59,9 @@ OPTIONS (model_type='tensorflow',
 class Executor(tfx_pusher_executor.Executor):
   """Deploy a model to BigQuery ML for serving."""
 
-  def Do(self, input_dict: Dict[Text, List[types.Artifact]],
-         output_dict: Dict[Text, List[types.Artifact]],
-         exec_properties: Dict[Text, Any]):
+  def Do(self, input_dict: Dict[str, List[types.Artifact]],
+         output_dict: Dict[str, List[types.Artifact]],
+         exec_properties: Dict[str, Any]):
     """Overrides the tfx_pusher_executor.
 
     Args:

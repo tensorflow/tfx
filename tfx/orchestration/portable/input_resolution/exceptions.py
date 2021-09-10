@@ -18,12 +18,34 @@ implementation, and each exception is specially handled in input resolution
 process. Other errors raised during the input resolution will not be catched
 and be propagated to the input resolution caller.
 """
+import grpc
+
 # Disable lint errors that enforces all exception name to end with -Error.
 # pylint: disable=g-bad-exception-name
 
 
 class InputResolutionError(Exception):
   """Base exception class for input resolution related errors."""
+  grpc_code = grpc.StatusCode.UNKNOWN
+
+  @property
+  def grpc_code_value(self) -> int:
+    return self.grpc_code.value[0]
+
+
+class InvalidArgument(InputResolutionError):
+  """When user provided value is invalid."""
+  grpc_code = grpc.StatusCode.INVALID_ARGUMENT
+
+
+class FailedPreconditionError(InputResolutionError):
+  """When the precondition is not met."""
+  grpc_code = grpc.StatusCode.FAILED_PRECONDITION
+
+
+class InternalError(InputResolutionError):
+  """For TFX internal errors."""
+  grpc_code = grpc.StatusCode.INTERNAL
 
 
 class InputResolutionSignal(Exception):

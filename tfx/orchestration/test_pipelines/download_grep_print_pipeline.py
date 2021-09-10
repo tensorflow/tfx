@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2020 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,12 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Container-based pipeline sample."""
-
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
-from typing import Text
 
 from tfx.dsl.component.experimental import container_component
 from tfx.dsl.placeholder import placeholder as ph
@@ -122,7 +115,7 @@ print_component = container_component.create_container_component(
 )
 
 
-def create_pipeline_component_instances(text_url: Text, pattern: Text):
+def create_pipeline_component_instances(text_url: str, pattern: str):
   """Creates tasks for the download_grep_print pipeline."""
 
   downloader_task = downloader_component(url=text_url)

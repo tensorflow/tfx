@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,14 +13,8 @@
 # limitations under the License.
 """Tests for tfx.components.example_gen.utils."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import os
 import re
-from typing import Text
-# Standard Imports
 
 import tensorflow as tf
 
@@ -37,7 +30,7 @@ from tfx.utils import json_utils
 class UtilsTest(tf.test.TestCase):
 
   def setUp(self):
-    super(UtilsTest, self).setUp()
+    super().setUp()
     # Create input splits.
     test_dir = os.path.join(
         os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR', self.get_temp_dir()),
@@ -157,7 +150,7 @@ class UtilsTest(tf.test.TestCase):
 
   def testMakeOutputSplitNamesWithParameter(self):
     split_name_param = data_types.RuntimeParameter(
-        name='split-name', ptype=Text, default=u'train')
+        name='split-name', ptype=str, default=u'train')
     split_names = utils.generate_output_split_names(
         input_config={
             'splits': [{
@@ -198,7 +191,7 @@ class UtilsTest(tf.test.TestCase):
 
   def testMakeDefaultOutputConfigWithParameter(self):
     split_name_param = data_types.RuntimeParameter(
-        name='split-name', ptype=Text, default=u'train')
+        name='split-name', ptype=str, default=u'train')
     output_config = utils.make_default_output_config({
         'splits': [{
             'name': split_name_param,
@@ -244,7 +237,7 @@ class UtilsTest(tf.test.TestCase):
         example_gen_pb2.Input.Split(name='s1', pattern='span{SPAN}/split1/*'),
         example_gen_pb2.Input.Split(name='s2', pattern='span{SPAN}/split2/*')
     ]
-    with self.assertRaisesRegexp(ValueError, 'Cannot find matching for split'):
+    with self.assertRaisesRegex(ValueError, 'Cannot find matching for split'):
       utils.calculate_splits_fingerprint_span_and_version(
           self._input_base_path, splits)
 
@@ -256,7 +249,7 @@ class UtilsTest(tf.test.TestCase):
         example_gen_pb2.Input.Split(
             name='s1', pattern='span{SPAN}/version{VERSION}/split1/*')
     ]
-    with self.assertRaisesRegexp(ValueError, 'Cannot find matching for split'):
+    with self.assertRaisesRegex(ValueError, 'Cannot find matching for split'):
       utils.calculate_splits_fingerprint_span_and_version(
           self._input_base_path, splits)
 
@@ -267,7 +260,7 @@ class UtilsTest(tf.test.TestCase):
     splits = [
         example_gen_pb2.Input.Split(name='s1', pattern='span{SPAN}/split1/*')
     ]
-    with self.assertRaisesRegexp(ValueError, 'Cannot find span number'):
+    with self.assertRaisesRegex(ValueError, 'Cannot find span number'):
       utils.calculate_splits_fingerprint_span_and_version(
           self._input_base_path, splits)
 
@@ -280,7 +273,7 @@ class UtilsTest(tf.test.TestCase):
         example_gen_pb2.Input.Split(
             name='s1', pattern='span{SPAN}/version{VERSION}/split1/*')
     ]
-    with self.assertRaisesRegexp(ValueError, 'Cannot find version number'):
+    with self.assertRaisesRegex(ValueError, 'Cannot find version number'):
       utils.calculate_splits_fingerprint_span_and_version(
           self._input_base_path, splits)
 
@@ -289,7 +282,7 @@ class UtilsTest(tf.test.TestCase):
         example_gen_pb2.Input.Split(
             name='s1', pattern='span1{SPAN}/span2{SPAN}/split1/*')
     ]
-    with self.assertRaisesRegexp(ValueError, 'Only one {SPAN} is allowed'):
+    with self.assertRaisesRegex(ValueError, 'Only one {SPAN} is allowed'):
       utils.calculate_splits_fingerprint_span_and_version(
           self._input_base_path, splits1)
 
@@ -298,7 +291,7 @@ class UtilsTest(tf.test.TestCase):
             name='s1',
             pattern='span{SPAN}/ver1{VERSION}/ver2{VERSION}/split1/*')
     ]
-    with self.assertRaisesRegexp(ValueError, 'Only one {VERSION} is allowed'):
+    with self.assertRaisesRegex(ValueError, 'Only one {VERSION} is allowed'):
       utils.calculate_splits_fingerprint_span_and_version(
           self._input_base_path, splits2)
 
@@ -306,7 +299,7 @@ class UtilsTest(tf.test.TestCase):
         example_gen_pb2.Input.Split(
             name='s1', pattern='{YYYY}-{MM}-{DD}-{MM}/split1/*')
     ]
-    with self.assertRaisesRegexp(ValueError, 'Exactly one of each date spec'):
+    with self.assertRaisesRegex(ValueError, 'Exactly one of each date spec'):
       utils.calculate_splits_fingerprint_span_and_version(
           self._input_base_path, splits3)
 
@@ -346,7 +339,7 @@ class UtilsTest(tf.test.TestCase):
         example_gen_pb2.Input.Split(
             name='s1', pattern='version{VERSION}/split1/*')
     ]
-    with self.assertRaisesRegexp(
+    with self.assertRaisesRegex(
         ValueError,
         'Version spec provided, but Span or Date spec is not present'):
       utils.calculate_splits_fingerprint_span_and_version(
@@ -387,7 +380,7 @@ class UtilsTest(tf.test.TestCase):
     splits1 = [
         example_gen_pb2.Input.Split(name='s1', pattern='{YYYY}-{MM}/split1/*')
     ]
-    with self.assertRaisesRegexp(ValueError, 'Exactly one of each date spec'):
+    with self.assertRaisesRegex(ValueError, 'Exactly one of each date spec'):
       utils.calculate_splits_fingerprint_span_and_version(
           self._input_base_path, splits1)
 
@@ -397,7 +390,7 @@ class UtilsTest(tf.test.TestCase):
             name='s1', pattern='{YYYY}-{MM}-{DD}/{SPAN}/split1/*')
     ]
 
-    with self.assertRaisesRegexp(
+    with self.assertRaisesRegex(
         ValueError,
         'Either span spec or date specs must be specified exclusively'):
       utils.calculate_splits_fingerprint_span_and_version(
@@ -413,8 +406,8 @@ class UtilsTest(tf.test.TestCase):
             name='s1', pattern='{YYYY}{MM}{DD}/split1/*')
     ]
 
-    with self.assertRaisesRegexp(ValueError,
-                                 'Cannot find span number using date'):
+    with self.assertRaisesRegex(ValueError,
+                                'Cannot find span number using date'):
       utils.calculate_splits_fingerprint_span_and_version(
           self._input_base_path, splits)
 
@@ -427,7 +420,7 @@ class UtilsTest(tf.test.TestCase):
             name='s1', pattern='{YYYY}{MM}{DD}/split1/*')
     ]
 
-    with self.assertRaisesRegexp(ValueError, 'Retrieved date is invalid'):
+    with self.assertRaisesRegex(ValueError, 'Retrieved date is invalid'):
       utils.calculate_splits_fingerprint_span_and_version(
           self._input_base_path, splits)
 
@@ -467,7 +460,7 @@ class UtilsTest(tf.test.TestCase):
         example_gen_pb2.Input.Split(name='s1', pattern='{SPAN:x}/split1/*')
     ]
 
-    with self.assertRaisesRegexp(
+    with self.assertRaisesRegex(
         ValueError, 'Width modifier in span spec is not a positive integer'):
       utils.calculate_splits_fingerprint_span_and_version(
           self._input_base_path, splits)
@@ -478,7 +471,7 @@ class UtilsTest(tf.test.TestCase):
             name='s1', pattern='{SPAN}/{VERSION:x}/split1/*')
     ]
 
-    with self.assertRaisesRegexp(
+    with self.assertRaisesRegex(
         ValueError, 'Width modifier in version spec is not a positive integer'):
       utils.calculate_splits_fingerprint_span_and_version(
           self._input_base_path, splits)
@@ -492,8 +485,8 @@ class UtilsTest(tf.test.TestCase):
     ]
 
     # TODO(jjma): find a better way of describing this error to user.
-    with self.assertRaisesRegexp(ValueError,
-                                 'Glob pattern does not match regex pattern'):
+    with self.assertRaisesRegex(ValueError,
+                                'Glob pattern does not match regex pattern'):
       utils.calculate_splits_fingerprint_span_and_version(
           self._input_base_path, splits)
 
@@ -517,8 +510,8 @@ class UtilsTest(tf.test.TestCase):
     ]
 
     # TODO(jjma): find a better way of describing this error to user.
-    with self.assertRaisesRegexp(ValueError,
-                                 'Glob pattern does not match regex pattern'):
+    with self.assertRaisesRegex(ValueError,
+                                'Glob pattern does not match regex pattern'):
       utils.calculate_splits_fingerprint_span_and_version(
           self._input_base_path, splits)
 
@@ -565,7 +558,7 @@ class UtilsTest(tf.test.TestCase):
         example_gen_pb2.Input.Split(
             name='s2', pattern='span{SPAN}/ver{VERSION}/split2/*')
     ]
-    with self.assertRaisesRegexp(
+    with self.assertRaisesRegex(
         ValueError, 'Latest span should be the same for each split'):
       utils.calculate_splits_fingerprint_span_and_version(
           self._input_base_path, splits)
@@ -584,7 +577,7 @@ class UtilsTest(tf.test.TestCase):
         example_gen_pb2.Input.Split(
             name='s2', pattern='span{SPAN}/ver{VERSION}/split2/*')
     ]
-    with self.assertRaisesRegexp(
+    with self.assertRaisesRegex(
         ValueError, 'Latest version should be the same for each split'):
       utils.calculate_splits_fingerprint_span_and_version(
           self._input_base_path, splits)
@@ -626,7 +619,7 @@ class UtilsTest(tf.test.TestCase):
         example_gen_pb2.Input.Split(
             name='s2', pattern='{YYYY}{MM}{DD}/ver{VERSION}/split2/*')
     ]
-    with self.assertRaisesRegexp(
+    with self.assertRaisesRegex(
         ValueError, 'Latest span should be the same for each split'):
       utils.calculate_splits_fingerprint_span_and_version(
           self._input_base_path, splits)
@@ -645,7 +638,7 @@ class UtilsTest(tf.test.TestCase):
         example_gen_pb2.Input.Split(
             name='s2', pattern='{YYYY}{MM}{DD}/ver{VERSION}/split2/*')
     ]
-    with self.assertRaisesRegexp(
+    with self.assertRaisesRegex(
         ValueError, 'Latest version should be the same for each split'):
       utils.calculate_splits_fingerprint_span_and_version(
           self._input_base_path, splits)
@@ -680,7 +673,7 @@ class UtilsTest(tf.test.TestCase):
         example_gen_pb2.Input.Split(name='s1', pattern='span{SPAN:2}/split1/*')
     ]
 
-    with self.assertRaisesRegexp(ValueError, 'Cannot find matching for split'):
+    with self.assertRaisesRegex(ValueError, 'Cannot find matching for split'):
       utils.calculate_splits_fingerprint_span_and_version(
           self._input_base_path, splits, range_config=range_config)
 
@@ -720,7 +713,7 @@ class UtilsTest(tf.test.TestCase):
     ]
 
     # RangeConfig cannot find zero padding span without width modifier.
-    with self.assertRaisesRegexp(ValueError, 'Cannot find matching for split'):
+    with self.assertRaisesRegex(ValueError, 'Cannot find matching for split'):
       utils.calculate_splits_fingerprint_span_and_version(
           self._input_base_path, splits1, range_config=range_config)
 

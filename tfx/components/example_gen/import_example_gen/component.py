@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,11 +13,7 @@
 # limitations under the License.
 """TFX ImportExampleGen component definition."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
-from typing import Optional, Text, Union
+from typing import Optional, Union
 
 from tfx.components.example_gen import component
 from tfx.components.example_gen.import_example_gen import executor
@@ -45,7 +40,7 @@ class ImportExampleGen(component.FileBasedExampleGen):  # pylint: disable=protec
 
   def __init__(
       self,
-      input_base: Optional[Text] = None,
+      input_base: Optional[str] = None,
       input_config: Optional[Union[example_gen_pb2.Input,
                                    data_types.RuntimeParameter]] = None,
       output_config: Optional[Union[example_gen_pb2.Output,
@@ -70,7 +65,7 @@ class ImportExampleGen(component.FileBasedExampleGen):  # pylint: disable=protec
         example_gen_pb2.PayloadFormat enum. Note that payload format of output
         data is the same as input.
     """
-    super(ImportExampleGen, self).__init__(
+    super().__init__(
         input_base=input_base,
         input_config=input_config,
         output_config=output_config,

@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -22,15 +21,12 @@ recommended pipeline topology.
 """
 # pylint: disable=invalid-name,no-value-for-parameter
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
 
 import collections
 import json
 import os
 import tempfile
-from typing import Any, List, Text
+from typing import Any, List
 
 import absl.testing.absltest
 
@@ -74,19 +70,19 @@ def LoadDummyDatasetComponent(dataset: OutputArtifact[DummyDataset]):
   LocalDagRunnerTest.RAN_COMPONENTS.append('Load')
 
 
-class SimpleModel(object):
+class SimpleModel:
   """Simple model that always predicts a set prediction."""
 
   def __init__(self, always_predict: Any):
     self.always_predict = always_predict
 
   @classmethod
-  def read_from(cls, model_uri: Text) -> 'SimpleModel':
+  def read_from(cls, model_uri: str) -> 'SimpleModel':
     with fileio.open(os.path.join(model_uri, 'model_data.json')) as f:
       data = json.load(f)
     return cls(data['prediction'])
 
-  def write_to(self, model_uri: Text) -> None:
+  def write_to(self, model_uri: str) -> None:
     data = {'prediction': self.always_predict}
     with fileio.open(os.path.join(model_uri, 'model_data.json'), 'w+') as f:
       json.dump(data, f)

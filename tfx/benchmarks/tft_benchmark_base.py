@@ -13,16 +13,11 @@
 # limitations under the License.
 """TFT benchmark base."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import collections
 import shutil
 import tempfile
 import time
 
-# Standard Imports
 
 from absl import logging
 import apache_beam as beam
@@ -219,7 +214,7 @@ class TFTBenchmarkBase(benchmark_base.BenchmarkBase):
   def __init__(self, dataset, **kwargs):
     # Benchmark runners may pass extraneous arguments we don't care about.
     del kwargs
-    super(TFTBenchmarkBase, self).__init__()
+    super().__init__()
     self._dataset = dataset
 
   def report_benchmark(self, **kwargs):
@@ -231,7 +226,7 @@ class TFTBenchmarkBase(benchmark_base.BenchmarkBase):
                                       getattr(tfx, "__version__", None))
     kwargs["extras"]["commit_tft"] = (getattr(tft, "GIT_COMMIT_ID", None) or
                                       getattr(tft, "__version__", None))
-    super(TFTBenchmarkBase, self).report_benchmark(**kwargs)
+    super().report_benchmark(**kwargs)
 
   def _benchmarkAnalyzeAndTransformDatasetCommon(self, force_tf_compat_v1):
     """Common implementation to benchmark AnalyzeAndTransformDataset."""

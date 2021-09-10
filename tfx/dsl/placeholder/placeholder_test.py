@@ -235,15 +235,85 @@ class PlaceholderTest(tf.test.TestCase):
         operator {
           proto_op {
             expression {
-              placeholder {
-                type: EXEC_PROPERTY
-                key: "proto"
+              operator {
+                index_op {
+                  expression {
+                    placeholder {
+                      type: EXEC_PROPERTY
+                      key: "proto"
+                    }
+                  }
+                  index: 0
+                }
               }
             }
-            proto_field_path: "[0]"
             proto_field_path: ".a"
             proto_field_path: ".b"
             proto_field_path: "['c']"
+          }
+        }
+    """)
+    self._assert_placeholder_pb_equal_and_deepcopyable(
+        ph.exec_property('proto').a['b'].c[1], """
+        operator {
+          index_op {
+            expression {
+              operator {
+                proto_op {
+                  expression {
+                    placeholder {
+                      type: EXEC_PROPERTY
+                      key: "proto"
+                    }
+                  }
+                  proto_field_path: ".a"
+                  proto_field_path: "['b']"
+                  proto_field_path: ".c"
+                }
+              }
+            }
+            index: 1
+          }
+        }
+    """)
+
+  def testExecPropertyListProtoSerialize(self):
+    self._assert_placeholder_pb_equal_and_deepcopyable(
+        ph.exec_property('list_proto').serialize_list(
+            ph.ListSerializationFormat.JSON), """
+        operator {
+          list_serialization_op {
+            expression {
+              placeholder {
+                type: EXEC_PROPERTY
+                key: "list_proto"
+              }
+            }
+            serialization_format: JSON
+          }
+        }
+    """)
+
+  def testExecPropertyListProtoIndex(self):
+    self._assert_placeholder_pb_equal_and_deepcopyable(
+        ph.exec_property('list_proto')[0].serialize(
+            ph.ProtoSerializationFormat.JSON), """
+        operator {
+          proto_op {
+            expression {
+              operator {
+                index_op {
+                  expression {
+                    placeholder {
+                      type: EXEC_PROPERTY
+                      key: "list_proto"
+                    }
+                  }
+                  index: 0
+                }
+              }
+            }
+            serialization_format: JSON
           }
         }
     """)
@@ -1110,6 +1180,18 @@ class PredicateTest(parameterized.TestCase, tf.test.TestCase):
     self.assertEqual(set(pred2.dependent_channels()), {int1, int2})
     self.assertEqual(set(pred3.dependent_channels()), {int1})
     self.assertEqual(set(pred4.dependent_channels()), {int1, int2})
+
+  def testPlaceholdersInvolved(self):
+    p = ('google/' + ph.runtime_info('platform_config').user + '/' +
+         ph.output('model').uri + '/model/' + '0/' +
+         ph.exec_property('version'))
+    got = p.placeholders_involved()
+    got_dict = {type(x): x for x in got}
+    self.assertCountEqual(
+        {
+            ph.ArtifactPlaceholder, ph.ExecPropertyPlaceholder,
+            ph.RuntimeInfoPlaceholder
+        }, got_dict.keys())
 
 
 if __name__ == '__main__':

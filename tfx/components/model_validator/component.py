@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,10 +13,6 @@
 # limitations under the License.
 """TFX ModelValidator component definition."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 from typing import Optional
 
 from tfx import types
@@ -26,7 +21,7 @@ from tfx.components.model_validator import executor
 from tfx.dsl.components.base import base_beam_component
 from tfx.dsl.components.base import executor_spec
 from tfx.types import standard_artifacts
-from tfx.types.standard_component_specs import ModelValidatorSpec
+from tfx.types import standard_component_specs
 from tfx.utils import deprecation_utils
 
 
@@ -64,7 +59,7 @@ class ModelValidator(base_beam_component.BaseBeamComponent):
   ```
   """
 
-  SPEC_CLASS = ModelValidatorSpec
+  SPEC_CLASS = standard_component_specs.ModelValidatorSpec
   EXECUTOR_SPEC = executor_spec.BeamExecutorSpec(executor.Executor)
   DRIVER_CLASS = driver.Driver
 
@@ -88,5 +83,6 @@ class ModelValidator(base_beam_component.BaseBeamComponent):
         that contains the validation result.
     """
     blessing = blessing or types.Channel(type=standard_artifacts.ModelBlessing)
-    spec = ModelValidatorSpec(examples=examples, model=model, blessing=blessing)
-    super(ModelValidator, self).__init__(spec=spec)
+    spec = standard_component_specs.ModelValidatorSpec(
+        examples=examples, model=model, blessing=blessing)
+    super().__init__(spec=spec)

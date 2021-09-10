@@ -36,7 +36,7 @@ Tuner:
 
 ```python
 ...
-from kerastuner.engine import base_tuner
+from keras_tuner.engine import base_tuner
 
 TunerFnResult = NamedTuple('TunerFnResult', [('tuner', base_tuner.BaseTuner),
                                              ('fit_kwargs', Dict[Text, Any])])
@@ -99,7 +99,7 @@ artifact from a previous training run to feed to Trainer.
 hparams_importer = ImporterNode(
     instance_name='import_hparams',
     # This can be Tuner's output file or manually edited file. The file contains
-    # text format of hyperparameters (kerastuner.HyperParameters.get_config())
+    # text format of hyperparameters (keras_tuner.HyperParameters.get_config())
     source_uri='path/to/best_hyperparameters.txt',
     artifact_type=HyperParameters)
 
@@ -131,7 +131,7 @@ technology.
 is an implementation of
 [KerasTuner](https://www.tensorflow.org/tutorials/keras/keras_tuner) which talks
 to the AI Platform Vizier service as the study backend. Since CloudTuner is a
-subclass of `kerastuner.Tuner`, it can be used as a drop-in replacement in the
+subclass of `keras_tuner.Tuner`, it can be used as a drop-in replacement in the
 `tuner_fn` module, and execute as a part of the TFX Tuner component.
 
 Below is a code snippet which shows how to use `CloudTuner`. Notice that

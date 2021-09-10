@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,10 +13,6 @@
 # limitations under the License.
 """TFX ml metadata library."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import collections
 import copy
 import hashlib
@@ -26,7 +21,7 @@ import os
 import random
 import time
 import types
-from typing import Any, Dict, List, Optional, Set, Text, Tuple, Type, Union
+from typing import Any, Dict, List, Optional, Set, Tuple, Type, Union
 
 import absl
 from tfx.dsl.io import fileio
@@ -86,7 +81,7 @@ ConnectionConfigType = Union[
 
 
 def sqlite_metadata_connection_config(
-    metadata_db_uri: Text) -> metadata_store_pb2.ConnectionConfig:
+    metadata_db_uri: str) -> metadata_store_pb2.ConnectionConfig:
   """Convenience function to create file based metadata connection config.
 
   Args:
@@ -98,14 +93,14 @@ def sqlite_metadata_connection_config(
   fileio.makedirs(os.path.dirname(metadata_db_uri))
   connection_config = metadata_store_pb2.ConnectionConfig()
   connection_config.sqlite.filename_uri = metadata_db_uri
-  connection_config.sqlite.connection_mode = \
-    metadata_store_pb2.SqliteMetadataSourceConfig.READWRITE_OPENCREATE
+  connection_config.sqlite.connection_mode = (
+      metadata_store_pb2.SqliteMetadataSourceConfig.READWRITE_OPENCREATE)
   return connection_config
 
 
 def mysql_metadata_connection_config(
-    host: Text, port: int, database: Text, username: Text,
-    password: Text) -> metadata_store_pb2.ConnectionConfig:
+    host: str, port: int, database: str, username: str,
+    password: str) -> metadata_store_pb2.ConnectionConfig:
   """Convenience function to create mysql-based metadata connection config.
 
   Args:
@@ -129,7 +124,7 @@ def mysql_metadata_connection_config(
 
 # TODO(ruoyu): Figure out the story mutable UDFs. We should not reuse previous
 # run when having different UDFs.
-class Metadata(object):
+class Metadata:
   """Helper class to handle metadata I/O."""
 
   def __init__(self, connection_config: ConnectionConfigType) -> None:
@@ -192,7 +187,7 @@ class Metadata(object):
     return artifact_type
 
   def update_artifact_state(self, artifact: metadata_store_pb2.Artifact,
-                            new_state: Text) -> None:
+                            new_state: str) -> None:
     """Update the state of a given artifact."""
     if not artifact.id:
       raise ValueError('Artifact id missing for %s' % artifact)
@@ -206,7 +201,7 @@ class Metadata(object):
     self.store.put_artifacts([artifact])
 
   def _upsert_artifacts(self, tfx_artifact_list: List[Artifact],
-                        state: Text) -> None:
+                        state: str) -> None:
     """Updates or inserts a list of artifacts.
 
     This call will also update original tfx artifact list to contain the
@@ -240,19 +235,18 @@ class Metadata(object):
     """
     self._upsert_artifacts(tfx_artifact_list, ArtifactState.PUBLISHED)
 
-  def get_artifacts_by_uri(self,
-                           uri: Text) -> List[metadata_store_pb2.Artifact]:
+  def get_artifacts_by_uri(self, uri: str) -> List[metadata_store_pb2.Artifact]:
     """Fetches artifacts given uri."""
     return self.store.get_artifacts_by_uri(uri)
 
   def get_artifacts_by_type(
-      self, type_name: Text) -> List[metadata_store_pb2.Artifact]:
+      self, type_name: str) -> List[metadata_store_pb2.Artifact]:
     """Fetches artifacts given artifact type name."""
     return self.store.get_artifacts_by_type(type_name)
 
   # TODO(b/145751019): Remove this once migrated to use MLMD built-in states.
   def _get_artifact_state(
-      self, artifact: metadata_store_pb2.Artifact) -> Optional[Text]:
+      self, artifact: metadata_store_pb2.Artifact) -> Optional[str]:
     """Gets artifact state string if available."""
     if _ARTIFACT_TYPE_KEY_STATE in artifact.properties:
       return artifact.properties[_ARTIFACT_TYPE_KEY_STATE].string_value
@@ -262,8 +256,8 @@ class Metadata(object):
       return None
 
   def get_published_artifacts_by_type_within_context(
-      self, type_names: List[Text],
-      context_id: int) -> Dict[Text, List[metadata_store_pb2.Artifact]]:
+      self, type_names: List[str],
+      context_id: int) -> Dict[str, List[metadata_store_pb2.Artifact]]:
     """Fetches artifacts given artifact type name and context id."""
     result = dict((type_name, []) for type_name in type_names)
     all_artifacts_in_context = self.store.get_artifacts_by_context(context_id)
@@ -286,9 +280,9 @@ class Metadata(object):
   def get_qualified_artifacts(
       self,
       contexts: List[metadata_store_pb2.Context],
-      type_name: Text,
-      producer_component_id: Optional[Text] = None,
-      output_key: Optional[Text] = None,
+      type_name: str,
+      producer_component_id: Optional[str] = None,
+      output_key: Optional[str] = None,
   ) -> List[metadata_store_service_pb2.ArtifactAndType]:
     """Gets qualified artifacts that have the right producer info.
 
@@ -363,7 +357,7 @@ class Metadata(object):
                      event_type: metadata_store_pb2.Event.Type,
                      execution_id: Optional[int] = None,
                      artifact_id: Optional[int] = None,
-                     key: Optional[Text] = None,
+                     key: Optional[str] = None,
                      index: Optional[int] = None) -> metadata_store_pb2.Event:
     """Commits a single event to the repository."""
     event = metadata_store_pb2.Event()
@@ -381,8 +375,8 @@ class Metadata(object):
     return event
 
   # TODO(b/143081379): We might need to revisit schema evolution story.
-  def _prepare_execution_type(self, type_name: Text,
-                              exec_properties: Dict[Text, Any]) -> int:
+  def _prepare_execution_type(self, type_name: str,
+                              exec_properties: Dict[str, Any]) -> int:
     """Gets execution type given execution type name and properties.
 
     Uses existing type if schema is superset of what is needed. Otherwise tries
@@ -462,8 +456,8 @@ class Metadata(object):
       execution: metadata_store_pb2.Execution,
       pipeline_info: Optional[data_types.PipelineInfo] = None,
       component_info: Optional[data_types.ComponentInfo] = None,
-      state: Optional[Text] = None,
-      exec_properties: Optional[Dict[Text, Any]] = None,
+      state: Optional[str] = None,
+      exec_properties: Optional[Dict[str, Any]] = None,
   ) -> metadata_store_pb2.Execution:
     """Updates the execution proto with given type and state."""
     if state is not None:
@@ -511,8 +505,8 @@ class Metadata(object):
 
   def _prepare_execution(
       self,
-      state: Text,
-      exec_properties: Dict[Text, Any],
+      state: str,
+      exec_properties: Dict[str, Any],
       pipeline_info: data_types.PipelineInfo,
       component_info: data_types.ComponentInfo,
   ) -> metadata_store_pb2.Execution:
@@ -531,9 +525,9 @@ class Metadata(object):
 
   def _artifact_and_event_pairs(
       self,
-      artifact_dict: Dict[Text, List[Artifact]],
+      artifact_dict: Dict[str, List[Artifact]],
       event_type: metadata_store_pb2.Event.Type,
-      new_state: Optional[Text] = None,
+      new_state: Optional[str] = None,
       registered_artifacts_ids: Optional[Set[int]] = None
   ) -> List[Tuple[metadata_store_pb2.Artifact,
                   Optional[metadata_store_pb2.Event]]]:
@@ -583,11 +577,11 @@ class Metadata(object):
       self,
       execution: metadata_store_pb2.Execution,
       component_info: data_types.ComponentInfo,
-      input_artifacts: Optional[Dict[Text, List[Artifact]]] = None,
-      output_artifacts: Optional[Dict[Text, List[Artifact]]] = None,
-      exec_properties: Optional[Dict[Text, Any]] = None,
-      execution_state: Optional[Text] = None,
-      artifact_state: Optional[Text] = None,
+      input_artifacts: Optional[Dict[str, List[Artifact]]] = None,
+      output_artifacts: Optional[Dict[str, List[Artifact]]] = None,
+      exec_properties: Optional[Dict[str, Any]] = None,
+      execution_state: Optional[str] = None,
+      artifact_state: Optional[str] = None,
       contexts: Optional[List[metadata_store_pb2.Context]] = None) -> None:
     """Updates the given execution in MLMD based on given information.
 
@@ -656,8 +650,8 @@ class Metadata(object):
       pipeline_info: data_types.PipelineInfo,
       component_info: data_types.ComponentInfo,
       contexts: List[metadata_store_pb2.Context],
-      exec_properties: Optional[Dict[Text, Any]] = None,
-      input_artifacts: Optional[Dict[Text, List[Artifact]]] = None
+      exec_properties: Optional[Dict[str, Any]] = None,
+      input_artifacts: Optional[Dict[str, List[Artifact]]] = None
   ) -> metadata_store_pb2.Execution:
     """Registers a new execution in metadata.
 
@@ -718,8 +712,8 @@ class Metadata(object):
   def publish_execution(
       self,
       component_info: data_types.ComponentInfo,
-      output_artifacts: Optional[Dict[Text, List[Artifact]]] = None,
-      exec_properties: Optional[Dict[Text, Any]] = None) -> None:
+      output_artifacts: Optional[Dict[str, List[Artifact]]] = None,
+      exec_properties: Optional[Dict[str, Any]] = None) -> None:
     """Publishes an execution with input and output artifacts info.
 
     This method will publish any execution with non-final states. It will
@@ -783,10 +777,10 @@ class Metadata(object):
     return current_execution == target_execution
 
   def get_cached_outputs(
-      self, input_artifacts: Dict[Text, List[Artifact]],
-      exec_properties: Dict[Text, Any], pipeline_info: data_types.PipelineInfo,
+      self, input_artifacts: Dict[str, List[Artifact]],
+      exec_properties: Dict[str, Any], pipeline_info: data_types.PipelineInfo,
       component_info: data_types.ComponentInfo
-  ) -> Optional[Dict[Text, List[Artifact]]]:
+  ) -> Optional[Dict[str, List[Artifact]]]:
     """Fetches cached output artifacts if any.
 
     Returns the output artifacts of a cached execution if any. An eligible
@@ -885,7 +879,7 @@ class Metadata(object):
 
   def _get_outputs_of_execution(
       self, execution_id: int, events: List[metadata_store_pb2.Event]
-  ) -> Optional[Dict[Text, List[Artifact]]]:
+  ) -> Optional[Dict[str, List[Artifact]]]:
     """Fetches outputs produced by a historical execution.
 
     Args:
@@ -919,9 +913,9 @@ class Metadata(object):
 
     return result
 
-  def search_artifacts(self, artifact_name: Text,
+  def search_artifacts(self, artifact_name: str,
                        pipeline_info: data_types.PipelineInfo,
-                       producer_component_id: Text) -> List[Artifact]:
+                       producer_component_id: str) -> List[Artifact]:
     """Search artifacts that matches given info.
 
     Args:
@@ -978,8 +972,8 @@ class Metadata(object):
     return result_artifacts
 
   def _register_context_type_if_not_exist(
-      self, context_type_name: Text,
-      properties: Dict[Text, 'metadata_store_pb2.PropertyType']) -> int:
+      self, context_type_name: str,
+      properties: Dict[str, 'metadata_store_pb2.PropertyType']) -> int:
     """Registers a context type if not exist, otherwise returns existing one.
 
     Args:
@@ -1005,9 +999,9 @@ class Metadata(object):
 
   def _prepare_context(
       self,
-      context_type_name: Text,
-      context_name: Text,
-      properties: Optional[Dict[Text, Union[int, float, Text]]] = None
+      context_type_name: str,
+      context_name: str,
+      properties: Optional[Dict[str, Union[int, float, str]]] = None
   ) -> metadata_store_pb2.Context:
     """Prepares a context proto."""
     # TODO(ruoyu): Centralize the type definition / mapping along with Artifact
@@ -1037,8 +1031,8 @@ class Metadata(object):
     return context
 
   def _register_context_if_not_exist(
-      self, context_type_name: Text, context_name: Text,
-      properties: Dict[Text, Union[int, float, Text]]
+      self, context_type_name: str, context_name: str,
+      properties: Dict[str, Union[int, float, str]]
   ) -> metadata_store_pb2.Context:
     """Registers a context if not exist, otherwise returns the existing one.
 

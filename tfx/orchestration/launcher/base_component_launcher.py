@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,13 +13,9 @@
 # limitations under the License.
 """For component execution, includes driver, executor and publisher."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import abc
 import copy
-from typing import Any, Dict, List, Optional, Text
+from typing import Any, Dict, List, Optional
 
 import absl
 
@@ -42,8 +37,8 @@ class BaseComponentLauncher(abc.ABC):
       pipeline_info: data_types.PipelineInfo,
       driver_args: data_types.DriverArgs,
       metadata_connection: metadata.Metadata,
-      beam_pipeline_args: List[Text],
-      additional_pipeline_args: Dict[Text, Any],
+      beam_pipeline_args: List[str],
+      additional_pipeline_args: Dict[str, Any],
       component_config: Optional[
           base_component_config.BaseComponentConfig] = None,
   ):
@@ -103,8 +98,8 @@ class BaseComponentLauncher(abc.ABC):
       pipeline_info: data_types.PipelineInfo,
       driver_args: data_types.DriverArgs,
       metadata_connection: metadata.Metadata,
-      beam_pipeline_args: List[Text],
-      additional_pipeline_args: Dict[Text, Any],
+      beam_pipeline_args: List[str],
+      additional_pipeline_args: Dict[str, Any],
       component_config: Optional[
           base_component_config.BaseComponentConfig] = None,
   ) -> 'BaseComponentLauncher':
@@ -148,10 +143,10 @@ class BaseComponentLauncher(abc.ABC):
     raise NotImplementedError
 
   def _run_driver(
-      self, input_dict: Dict[Text,
-                             types.Channel], output_dict: Dict[Text,
-                                                               types.Channel],
-      exec_properties: Dict[Text, Any]) -> data_types.ExecutionDecision:
+      self,
+      input_dict: Dict[str, types.Channel],
+      output_dict: Dict[str, types.Channel],
+      exec_properties: Dict[str, Any]) -> data_types.ExecutionDecision:
     """Prepare inputs, outputs and execution properties for actual execution."""
 
     with self._metadata_connection as m:
@@ -170,13 +165,13 @@ class BaseComponentLauncher(abc.ABC):
   @abc.abstractmethod
   # TODO(jyzhao): consider returning an execution result.
   def _run_executor(self, execution_id: int,
-                    input_dict: Dict[Text, List[types.Artifact]],
-                    output_dict: Dict[Text, List[types.Artifact]],
-                    exec_properties: Dict[Text, Any]) -> None:
+                    input_dict: Dict[str, List[types.Artifact]],
+                    output_dict: Dict[str, List[types.Artifact]],
+                    exec_properties: Dict[str, Any]) -> None:
     """Execute underlying component implementation."""
     raise NotImplementedError
 
-  def _run_publisher(self, output_dict: Dict[Text,
+  def _run_publisher(self, output_dict: Dict[str,
                                              List[types.Artifact]]) -> None:
     """Publish execution result to ml metadata."""
 

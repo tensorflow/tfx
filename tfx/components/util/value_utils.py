@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,17 +13,12 @@
 # limitations under the License.
 """Common functionalities used in transform executor."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import inspect
 import sys
-from typing import Any, Callable, Text, Sequence, Mapping
+from typing import Any, Callable, Sequence, Mapping
 
 
-def GetValues(inputs: Mapping[Text, Sequence[Any]],
-              label: Text) -> Sequence[Any]:
+def GetValues(inputs: Mapping[str, Sequence[Any]], label: str) -> Sequence[Any]:
   """Retrieves the value of the given labeled input.
 
   Args:
@@ -45,7 +39,8 @@ def GetValues(inputs: Mapping[Text, Sequence[Any]],
   return values
 
 
-def GetSoleValue(inputs: Mapping[Text, Sequence[Any]], label: Text,
+def GetSoleValue(inputs: Mapping[str, Sequence[Any]],
+                 label: str,
                  strict=True) -> Any:
   """Helper method for retrieving a sole labeled input.
 
@@ -74,7 +69,7 @@ def GetSoleValue(inputs: Mapping[Text, Sequence[Any]], label: Text,
   return values[0]
 
 
-def FunctionHasArg(fn: Callable, arg_name: Text) -> bool:  # pylint: disable=g-bare-generic
+def FunctionHasArg(fn: Callable, arg_name: str) -> bool:  # pylint: disable=g-bare-generic
   """Test at runtime if a function's signature contains a certain argument.
 
   Args:

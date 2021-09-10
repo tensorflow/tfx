@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,12 +13,8 @@
 # limitations under the License.
 """Docker component launcher which launches a container in docker environment ."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import collections
-from typing import Any, Dict, List, Optional, Text, cast
+from typing import Any, Dict, List, Optional, cast
 
 from absl import logging
 from kubernetes import client
@@ -165,9 +160,9 @@ class KubernetesExecutorOperator(base_executor_operator.BaseExecutorOperator):
     return execution_result_pb2.ExecutorOutput()
 
   def _build_pod_manifest(
-      self, pod_name: Text,
+      self, pod_name: str,
       container_spec: executor_specs.TemplatedExecutorContainerSpec
-  ) -> Dict[Text, Any]:
+  ) -> Dict[str, Any]:
     """Build a pod spec.
 
     The function builds a pod spec by patching executor container spec into
@@ -192,9 +187,8 @@ class KubernetesExecutorOperator(base_executor_operator.BaseExecutorOperator):
     metadata.update({'name': pod_name})
     spec = pod_manifest['spec']
     spec.update({'restartPolicy': 'Never'})
-    containers = spec.setdefault('containers',
-                                 [])  # type: List[Dict[Text, Any]]
-    container = None  # type: Optional[Dict[Text, Any]]
+    containers = spec.setdefault('containers', [])  # type: List[Dict[str, Any]]
+    container = None  # type: Optional[Dict[str, Any]]
     for c in containers:
       if c['name'] == kube_utils.ARGO_MAIN_CONTAINER_NAME:
         container = c
@@ -209,7 +203,7 @@ class KubernetesExecutorOperator(base_executor_operator.BaseExecutorOperator):
     })
     return pod_manifest
 
-  def _build_pod_name(self, execution_info: data_types.ExecutionInfo) -> Text:
+  def _build_pod_name(self, execution_info: data_types.ExecutionInfo) -> str:
     pipeline_name = (
         execution_info.pipeline_info.id[:50] + '-' +
         execution_info.pipeline_run_id[:50])

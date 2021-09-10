@@ -12,12 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """TFX/TFJS Page Prediction Pipeline."""
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
 
 import os
-from typing import List, Text
+from typing import List
 
 import absl
 import tensorflow_model_analysis as tfma
@@ -71,10 +68,10 @@ _beam_pipeline_args = [
 ]
 
 
-def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
-                     module_file: Text, serving_model_dir: Text,
-                     metadata_path: Text,
-                     beam_pipeline_args: List[Text]) -> dsl.Pipeline:
+def _create_pipeline(pipeline_name: str, pipeline_root: str, data_root: str,
+                     module_file: str, serving_model_dir: str,
+                     metadata_path: str,
+                     beam_pipeline_args: List[str]) -> dsl.Pipeline:
   """Implements the page prediction pipline with TFX."""
   input_config = proto.Input(
       splits=[proto.Input.Split(name='input', pattern='*.tfrecord.gz')])

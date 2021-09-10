@@ -19,7 +19,6 @@ import subprocess
 import tarfile
 
 from absl import logging
-import docker
 from google.cloud import storage
 import kfp
 import tensorflow as tf
@@ -27,6 +26,7 @@ from tfx.dsl.io import fileio
 from tfx.experimental.templates import test_utils
 from tfx.orchestration import test_utils as orchestration_test_utils
 from tfx.orchestration.kubeflow import test_utils as kubeflow_test_utils
+from tfx.utils import docker_utils
 from tfx.utils import telemetry_utils
 import yaml
 
@@ -79,7 +79,7 @@ class PenguinTemplateKubeflowE2ETest(test_utils.BaseEndToEndTest):
         self._GCP_PROJECT_ID, self._pipeline_name)
 
   def tearDown(self):
-    super(PenguinTemplateKubeflowE2ETest, self).tearDown()
+    super().tearDown()
     self._cleanup_kfp()
 
   def _cleanup_with_retry(self, method):
@@ -93,8 +93,8 @@ class PenguinTemplateKubeflowE2ETest(test_utils.BaseEndToEndTest):
         break
 
   def _cleanup_kfp(self):
-    self._cleanup_with_retry(self._delete_base_container_image)
     self._cleanup_with_retry(self._delete_target_container_image)
+    self._cleanup_with_retry(self._delete_base_container_image)
     self._cleanup_with_retry(self._delete_runs)
     self._cleanup_with_retry(self._delete_pipeline)
     self._cleanup_with_retry(self._delete_pipeline_data)
@@ -124,18 +124,13 @@ class PenguinTemplateKubeflowE2ETest(test_utils.BaseEndToEndTest):
     orchestration_test_utils.delete_gcs_files(self._GCP_PROJECT_ID,
                                               self._BUCKET_NAME, path)
 
-  def _delete_docker_image(self, image):
-    subprocess.check_output(['gcloud', 'container', 'images', 'delete', image])
-    client = docker.from_env()
-    client.images.remove(image=image)
-
   def _delete_base_container_image(self):
     if self._base_container_image == self._BASE_CONTAINER_IMAGE:
       return  # Didn't generate a base image for the test.
-    self._delete_docker_image(self._base_container_image)
+    docker_utils.delete_image(self._base_container_image)
 
   def _delete_target_container_image(self):
-    self._delete_docker_image(self._target_container_image)
+    docker_utils.delete_image(self._target_container_image)
 
   def _get_endpoint(self, namespace):
     cmd = 'kubectl describe configmap inverse-proxy-config -n {}'.format(

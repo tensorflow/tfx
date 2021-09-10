@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Tests for tfx.dsl.input_resolution.resolver_op."""
+import copy
 from typing import Optional, Mapping
 
 import tensorflow as tf
@@ -31,6 +32,23 @@ class Bar(resolver_op.ResolverOp):
 
   def apply(self, input_dict):
     return input_dict
+
+
+class Repeat(
+    resolver_op.ResolverOp,
+    return_data_type=resolver_op.DataTypes.ARTIFACT_MULTIMAP_LIST):
+  n = resolver_op.ResolverOpProperty(type=int)
+
+  def apply(self, input_dict):
+    return [copy.deepcopy(input_dict) for _ in range(self.n)]
+
+
+class TakeLast(
+    resolver_op.ResolverOp,
+    arg_data_types=(resolver_op.DataTypes.ARTIFACT_MULTIMAP_LIST,)):
+
+  def apply(self, input_dicts):
+    return input_dicts[-1]
 
 
 class ResolverOpTest(tf.test.TestCase):
@@ -90,6 +108,18 @@ class ResolverOpTest(tf.test.TestCase):
     with self.assertRaisesRegex(
         TypeError, "foo should be <class 'int'> but got '42'."):
       Foo.create(foo='42')
+
+  def testOpCreate_ArgumentTypeCheck(self):
+    input_node = resolver_op.OpNode.INPUT_NODE
+
+    with self.subTest('Need List[Dict] but got Dict.'):
+      with self.assertRaisesRegex(
+          TypeError, 'TakeLast takes ARTIFACT_MULTIMAP_LIST type but got '
+          'ARTIFACT_MULTIMAP instead.'):
+        TakeLast(input_node)
+
+    with self.subTest('No Error'):
+      TakeLast(Repeat(input_node, n=2))
 
   def testOpProperty_DefaultValue(self):
     result = Bar.create()

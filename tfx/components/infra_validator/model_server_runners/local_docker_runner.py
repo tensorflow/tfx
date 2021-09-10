@@ -13,13 +13,9 @@
 # limitations under the License.
 """Module for LocalDockerModelServerRunner."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import os
 import time
-from typing import Any, Dict, Text
+from typing import Any, Dict
 
 from absl import logging
 import docker
@@ -43,7 +39,7 @@ def _make_docker_client(config: infra_validator_pb2.LocalDockerConfig):
   return docker.DockerClient(**params)
 
 
-def _find_host_port(ports: Dict[Text, Any], container_port: int) -> Text:
+def _find_host_port(ports: Dict[str, Any], container_port: int) -> str:
   """Find host port from container port mappings.
 
   `ports` is a nested dictionary of the following structure:
@@ -78,8 +74,7 @@ class LocalDockerRunner(base_runner.BaseModelServerRunner):
   testing purpose.
   """
 
-  def __init__(self,
-               model_path: Text,
+  def __init__(self, model_path: str,
                serving_binary: serving_bins.ServingBinary,
                serving_spec: infra_validator_pb2.ServingSpec):
     """Make a local docker runner.

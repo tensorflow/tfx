@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,17 +20,13 @@ Note: these APIs are **experimental** and major changes to interface and
 functionality are expected.
 """
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import builtins
 import datetime
 import functools
 import html
 import os
 import tempfile
-from typing import List, Optional, Text
+from typing import List, Optional
 
 import absl
 import jinja2
@@ -74,7 +69,7 @@ def requires_ipython(fn):
   return run_if_ipython
 
 
-class InteractiveContext(object):
+class InteractiveContext:
   """TFX interactive context for interactive TFX notebook development.
 
   Note: these APIs are **experimental** and major changes to interface and
@@ -84,11 +79,11 @@ class InteractiveContext(object):
   _DEFAULT_SQLITE_FILENAME = 'metadata.sqlite'
 
   def __init__(self,
-               pipeline_name: Optional[Text] = None,
-               pipeline_root: Optional[Text] = None,
+               pipeline_name: Optional[str] = None,
+               pipeline_root: Optional[str] = None,
                metadata_connection_config: Optional[
                    metadata_store_pb2.ConnectionConfig] = None,
-               beam_pipeline_args: Optional[List[Text]] = None):
+               beam_pipeline_args: Optional[List[str]] = None):
     """Initialize an InteractiveContext.
 
     Args:
@@ -138,7 +133,7 @@ class InteractiveContext(object):
       self,
       component: base_node.BaseNode,
       enable_cache: bool = True,
-      beam_pipeline_args: Optional[List[Text]] = None
+      beam_pipeline_args: Optional[List[str]] = None
   ) -> execution_result.ExecutionResult:
     """Run a given TFX component in the interactive context.
 
@@ -191,8 +186,8 @@ class InteractiveContext(object):
         component=component, execution_id=execution_id)
 
   @requires_ipython
-  def export_to_pipeline(self, notebook_filepath: Text, export_filepath: Text,
-                         runner_type: Text):
+  def export_to_pipeline(self, notebook_filepath: str, export_filepath: str,
+                         runner_type: str):
     """Exports a notebook to a .py file as a runnable pipeline.
 
     Args:

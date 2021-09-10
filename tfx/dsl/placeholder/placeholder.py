@@ -16,7 +16,7 @@
 import abc
 import copy
 import enum
-from typing import Any, Callable, Iterator, Optional, Type, TypeVar, Union, cast
+from typing import Any, Callable, Iterator, List, Optional, Type, TypeVar, Union, cast
 
 import attr
 from tfx.proto.orchestration import placeholder_pb2
@@ -49,6 +49,9 @@ class _PlaceholderOperator(json_utils.Jsonable):
       component_spec: Optional[Type['types.ComponentSpec']] = None
   ) -> placeholder_pb2.PlaceholderExpression:
     pass
+
+  def placeholders_involved(self) -> List['Placeholder']:
+    return []
 
 
 class _ArtifactUriOperator(_PlaceholderOperator):
@@ -206,11 +209,21 @@ class _ConcatOperator(_PlaceholderOperator):
     raise RuntimeError(
         'ConcatOperator does not have the other expression to concat.')
 
+  def placeholders_involved(self) -> List['Placeholder']:
+    if self._right and isinstance(self._right, Placeholder):
+      return self._right.placeholders_involved()
+    return []
+
 
 class ProtoSerializationFormat(enum.Enum):
   TEXT_FORMAT = placeholder_pb2.ProtoOperator.TEXT_FORMAT
   JSON = placeholder_pb2.ProtoOperator.JSON
   BINARY = placeholder_pb2.ProtoOperator.BINARY
+
+
+class ListSerializationFormat(enum.Enum):
+  JSON = placeholder_pb2.ListSerializationOperator.JSON
+  COMMA_SEPARATED_STR = placeholder_pb2.ListSerializationOperator.COMMA_SEPARATED_STR
 
 
 class _ProtoOperator(_PlaceholderOperator):
@@ -268,6 +281,29 @@ class _ProtoOperator(_PlaceholderOperator):
       proto_utils.build_file_descriptor_set(execution_param.type,
                                             proto_schema.file_descriptors)
 
+    return result
+
+
+class _ListSerializationOperator(_PlaceholderOperator):
+  """ListSerializationOperator serializes list type placeholder.
+
+  Prefer to use the .serialize_list property of ExecPropertyPlaceholder.
+  """
+
+  def __init__(self, serialization_format: ListSerializationFormat):
+    super().__init__()
+    self._serialization_format = serialization_format
+
+  def encode(
+      self,
+      sub_expression_pb: placeholder_pb2.PlaceholderExpression,
+      component_spec: Optional[Type['types.ComponentSpec']] = None
+  ) -> placeholder_pb2.PlaceholderExpression:
+    del component_spec
+
+    result = placeholder_pb2.PlaceholderExpression()
+    result.operator.list_serialization_op.expression.CopyFrom(sub_expression_pb)
+    result.operator.list_serialization_op.serialization_format = self._serialization_format.value
     return result
 
 
@@ -346,6 +382,13 @@ class Placeholder(json_utils.Jsonable):
       result = op.encode(result, component_spec)
     return result
 
+  def placeholders_involved(self) -> List['Placeholder']:
+    """Returns a list of all Placeholder involved in this expression."""
+    result = [self]
+    for op in self._operators:
+      result.extend(op.placeholders_involved())
+    return result
+
 
 # To ensure that ArtifactPlaceholder operations on a ChannelWrappedPlaceholder
 # still returns a ChannelWrappedPlaceholder.
@@ -408,14 +451,17 @@ class _ProtoAccessiblePlaceholder(Placeholder, abc.ABC):
     return self
 
   def __getitem__(self, key: Union[int, str]):
-    proto_access_field = f'[{key!r}]'
-    if self._operators and isinstance(
-        self._operators[-1],
-        _ProtoOperator) and self._operators[-1].can_append_field_path():
-      self._operators[-1].append_field_path(proto_access_field)
+    if isinstance(key, int):
+      self._operators.append(_IndexOperator(key))
     else:
-      self._operators.append(
-          _ProtoOperator(proto_field_path=proto_access_field))
+      proto_access_field = f'[{key!r}]'
+      if self._operators and isinstance(
+          self._operators[-1],
+          _ProtoOperator) and self._operators[-1].can_append_field_path():
+        self._operators[-1].append_field_path(proto_access_field)
+      else:
+        self._operators.append(
+            _ProtoOperator(proto_field_path=proto_access_field))
     return self
 
   def serialize(self, serialization_format: ProtoSerializationFormat):
@@ -440,6 +486,22 @@ class ExecPropertyPlaceholder(_ProtoAccessiblePlaceholder):
 
   def __init__(self, key: str):
     super().__init__(placeholder_pb2.Placeholder.Type.EXEC_PROPERTY, key)
+
+  def serialize_list(self, serialization_format: ListSerializationFormat):
+    """Serializes list-value placeholder to JSON or comma-separated string.
+
+    Here list value includes repeated proto field. This function only
+    supports primitive type list element (a.k.a bool, int, float or str) at the
+    moment; throws runtime error otherwise.
+
+    Args:
+       serialization_format: The format of how the proto is serialized.
+
+    Returns:
+      A placeholder.
+    """
+    self._operators.append(_ListSerializationOperator(serialization_format))
+    return self
 
 
 class RuntimeInfoPlaceholder(_ProtoAccessiblePlaceholder):

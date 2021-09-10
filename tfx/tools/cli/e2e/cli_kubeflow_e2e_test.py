@@ -18,7 +18,7 @@ import locale
 import os
 import subprocess
 import sys
-from typing import Optional, Text
+from typing import Optional
 
 import absl
 from google.cloud import storage
@@ -35,14 +35,14 @@ from tfx.utils import test_case_utils
 
 class CliKubeflowEndToEndTest(test_case_utils.TfxTest):
 
-  def _get_endpoint(self, config: Text) -> Text:
+  def _get_endpoint(self, config: str) -> str:
     lines = config.decode('utf-8').split('\n')
     for line in lines:
       if line.endswith('googleusercontent.com'):
         return line
 
   def setUp(self):
-    super(CliKubeflowEndToEndTest, self).setUp()
+    super().setUp()
 
     # List of packages installed.
     self._pip_list = pip_utils.get_package_names()
@@ -102,7 +102,7 @@ class CliKubeflowEndToEndTest(test_case_utils.TfxTest):
       absl.logging.info(err)
 
   def tearDown(self):
-    super(CliKubeflowEndToEndTest, self).tearDown()
+    super().tearDown()
     self._cleanup_kfp_server(self._pipeline_name)
 
   def _cleanup_kfp_server(self, pipeline_name):
@@ -111,24 +111,24 @@ class CliKubeflowEndToEndTest(test_case_utils.TfxTest):
     self._delete_pipeline_output(pipeline_name)
 
   @retry.retry(ignore_eventual_failure=True)
-  def _delete_pipeline(self, pipeline_name: Text):
+  def _delete_pipeline(self, pipeline_name: str):
     pipeline_id = self._get_kfp_pipeline_id(pipeline_name)
     if pipeline_id is not None:
       self._client.delete_pipeline(pipeline_id)
       absl.logging.info('Deleted pipeline : {}'.format(pipeline_name))
 
   @retry.retry(ignore_eventual_failure=True)
-  def _delete_experiment(self, pipeline_name: Text):
+  def _delete_experiment(self, pipeline_name: str):
     experiment_id = self._get_kfp_experiment_id(pipeline_name)
     if experiment_id is not None:
       self._delete_all_runs(experiment_id)
       self._client._experiment_api.delete_experiment(experiment_id)
       absl.logging.info('Deleted experiment : {}'.format(pipeline_name))
 
-  def _get_kfp_pipeline_id(self, pipeline_name: Text) -> Optional[Text]:
+  def _get_kfp_pipeline_id(self, pipeline_name: str) -> Optional[str]:
     return self._client.get_pipeline_id(pipeline_name)
 
-  def _get_kfp_experiment_id(self, pipeline_name: Text) -> Optional[Text]:
+  def _get_kfp_experiment_id(self, pipeline_name: str) -> Optional[str]:
     try:
       experiment = self._client.get_experiment(experiment_name=pipeline_name)
     except ValueError:
@@ -136,23 +136,24 @@ class CliKubeflowEndToEndTest(test_case_utils.TfxTest):
     return experiment.id
 
   @retry.retry(ignore_eventual_failure=True)
-  def _delete_pipeline_output(self, pipeline_name: Text) -> None:
+  def _delete_pipeline_output(self, pipeline_name: str) -> None:
     """Deletes output produced by the named pipeline.
 
     Args:
       pipeline_name: The name of the pipeline.
     """
-    gcp_project_id = 'tfx-oss-testing'
-    bucket_name = 'tfx-oss-testing-bucket'
-    client = storage.Client(project=gcp_project_id)
-    bucket = client.get_bucket(bucket_name)
+    if ('KFP_E2E_GCP_PROJECT_ID' not in os.environ) or ('KFP_E2E_BUCKET_NAME'
+                                                        not in os.environ):
+      return
+    client = storage.Client(project=os.environ['KFP_E2E_GCP_PROJECT_ID'])
+    bucket = client.get_bucket(os.environ['KFP_E2E_BUCKET_NAME'])
     prefix = 'test_output/{}'.format(pipeline_name)
     absl.logging.info(
         'Deleting output under GCS bucket prefix: {}'.format(prefix))
     blobs = list(bucket.list_blobs(prefix=prefix))
     bucket.delete_blobs(blobs)
 
-  def _delete_all_runs(self, experiment_id: Text):
+  def _delete_all_runs(self, experiment_id: str):
     try:
       # Get all runs related to the experiment_id.
       response = self._client.list_runs(experiment_id=experiment_id)
@@ -162,8 +163,8 @@ class CliKubeflowEndToEndTest(test_case_utils.TfxTest):
     except kfp_server_api.rest.ApiException as err:
       absl.logging.info(err)
 
-  def _valid_create_and_check(self, pipeline_path: Text,
-                              pipeline_name: Text) -> None:
+  def _valid_create_and_check(self, pipeline_path: str,
+                              pipeline_name: str) -> None:
     result = test_utils.run_cli([
         'pipeline', 'create', '--engine', 'kubeflow', '--pipeline_path',
         pipeline_path, '--endpoint', self._endpoint
@@ -173,7 +174,7 @@ class CliKubeflowEndToEndTest(test_case_utils.TfxTest):
     self.assertIn('Pipeline "{}" created successfully.'.format(pipeline_name),
                   result)
 
-  def _run_pipeline_using_kfp_client(self, pipeline_name: Text):
+  def _run_pipeline_using_kfp_client(self, pipeline_name: str):
     pipeline_id = self._get_kfp_pipeline_id(pipeline_name)
     experiment_id = self._get_kfp_experiment_id(pipeline_name)
     absl.logging.info(

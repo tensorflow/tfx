@@ -13,19 +13,12 @@
 # limitations under the License.
 """Tests for tfx.components.infra_validator.component."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import tensorflow as tf
 from tfx.components.infra_validator import component
 from tfx.proto import infra_validator_pb2
 from tfx.types import channel_utils
 from tfx.types import standard_artifacts
-from tfx.types.standard_component_specs import BLESSING_KEY
-from tfx.types.standard_component_specs import MODEL_KEY
-from tfx.types.standard_component_specs import SERVING_SPEC_KEY
-from tfx.types.standard_component_specs import VALIDATION_SPEC_KEY
+from tfx.types import standard_component_specs
 
 
 class ComponentTest(tf.test.TestCase):
@@ -40,14 +33,18 @@ class ComponentTest(tf.test.TestCase):
         validation_spec=validation_spec)
 
     # Check channels have been created with proper type.
-    self.assertEqual(standard_artifacts.Model,
-                     infra_validator.inputs[MODEL_KEY].type)
-    self.assertEqual(standard_artifacts.InfraBlessing,
-                     infra_validator.outputs[BLESSING_KEY].type)
+    self.assertEqual(
+        standard_artifacts.Model,
+        infra_validator.inputs[standard_component_specs.MODEL_KEY].type)
+    self.assertEqual(
+        standard_artifacts.InfraBlessing,
+        infra_validator.outputs[standard_component_specs.BLESSING_KEY].type)
 
     # Check exec_properties have been populated.
-    self.assertIn(SERVING_SPEC_KEY, infra_validator.exec_properties)
-    self.assertIn(VALIDATION_SPEC_KEY, infra_validator.exec_properties)
+    self.assertIn(standard_component_specs.SERVING_SPEC_KEY,
+                  infra_validator.exec_properties)
+    self.assertIn(standard_component_specs.VALIDATION_SPEC_KEY,
+                  infra_validator.exec_properties)
 
 
 if __name__ == '__main__':

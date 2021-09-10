@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -74,7 +73,7 @@ class ExecutorTest(tf.test.TestCase):
         bigquery.SchemaField('s', 'STRING', mode='REQUIRED'),
         bigquery.SchemaField('s2', 'STRING', mode='REPEATED'),
     ]
-    super(ExecutorTest, self).setUp()
+    super().setUp()
 
   @mock.patch.multiple(
       utils,

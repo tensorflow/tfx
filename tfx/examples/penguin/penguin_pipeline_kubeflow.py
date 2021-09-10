@@ -15,14 +15,14 @@
 
 import os
 import sys
-from typing import Dict, List, Text, Optional
+from typing import Dict, List, Optional
 
 import absl
 from absl import flags
 import tensorflow_model_analysis as tfma
 from tfx import v1 as tfx
 
-# TODO(b/190231146): test a persistent volume (PV) mounted scenario.
+# TODO(b/197359030): test a persistent volume (PV) mounted scenario.
 flags.DEFINE_bool(
     'use_gcp', False, 'whether to use GCP resources, including AI \n'
     'Platform components and dataflow')
@@ -116,23 +116,22 @@ _beam_pipeline_args_by_runner = {
     ]
 }
 
-  # Path which can be listened to by the model server.  Pusher will output the
-  # trained model here.
+# Path which can be listened to by the model server.  Pusher will output the
+# trained model here.
 _serving_model_dir = os.path.join(_output_root, 'serving_model', _pipeline_name)
 
 
 def create_pipeline(
-    pipeline_name: Text,
-    pipeline_root: Text,
-    data_root: Text,
-    module_file: Text,
-    ai_platform_training_args: Dict[Text, Text],
-    ai_platform_serving_args: Dict[Text, Text],
+    pipeline_name: str,
+    pipeline_root: str,
+    data_root: str,
+    module_file: str,
+    ai_platform_training_args: Dict[str, str],
+    ai_platform_serving_args: Dict[str, str],
     enable_tuning: bool,
-    beam_pipeline_args: List[Text],
+    beam_pipeline_args: List[str],
     use_aip_component: bool,
-    serving_model_dir: Optional[Text] = None
-) -> tfx.dsl.Pipeline:
+    serving_model_dir: Optional[str] = None) -> tfx.dsl.Pipeline:
   """Implements the penguin pipeline with TFX and Kubeflow Pipeline.
 
   Args:
@@ -161,14 +160,14 @@ def create_pipeline(
   train_args = tfx.dsl.experimental.RuntimeParameter(
       name='train-args',
       default='__SOME_PLACEHOLDER_TO_MAKE_TEST_FAIL_IF_NOT_REPLACED',
-      ptype=Text,
+      ptype=str,
   )
 
   # Number of epochs in evaluation.
   eval_args = tfx.dsl.experimental.RuntimeParameter(
       name='eval-args',
       default='{"num_steps": 50}',
-      ptype=Text,
+      ptype=str,
   )
 
   # Brings data into the pipeline or otherwise joins/converts training data.

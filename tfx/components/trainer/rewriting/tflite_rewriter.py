@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2020 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,14 +13,10 @@
 # limitations under the License.
 """Rewriter that invokes the TFLite converter."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import os
 import time
 
-from typing import Iterable, Optional, Sequence, Text
+from typing import Iterable, Optional, Sequence
 
 import numpy as np
 
@@ -34,7 +29,7 @@ from tfx.utils import io_utils
 EXTRA_ASSETS_DIRECTORY = 'assets.extra'
 
 
-def _create_tflite_compatible_saved_model(src: Text, dst: Text):
+def _create_tflite_compatible_saved_model(src: str, dst: str):
   io_utils.copy_dir(src, dst)
   assets_path = os.path.join(dst, tf.saved_model.ASSETS_DIRECTORY)
   if fileio.exists(assets_path):
@@ -67,14 +62,14 @@ class TFLiteRewriter(rewriter.BaseRewriter):
 
   def __init__(
       self,
-      name: Text,
-      filename: Text = 'tflite',
+      name: str,
+      filename: str = 'tflite',
       copy_assets: bool = True,
       copy_assets_extra: bool = True,
       quantization_optimizations: Optional[Sequence[tf.lite.Optimize]] = None,
       quantization_supported_types: Optional[Sequence[tf.DType]] = None,
       quantization_enable_full_integer: bool = False,
-      signature_key: Optional[Text] = None,
+      signature_key: Optional[str] = None,
       representative_dataset: Optional[Iterable[Sequence[np.ndarray]]] = None,
       **kwargs):
     """Create an instance of the TFLiteRewriter.
@@ -125,7 +120,7 @@ class TFLiteRewriter(rewriter.BaseRewriter):
     self._kwargs = kwargs
 
   @property
-  def name(self) -> Text:
+  def name(self) -> str:
     """The user-specified name of the rewriter."""
     return self._name
 
@@ -223,12 +218,12 @@ class TFLiteRewriter(rewriter.BaseRewriter):
     pass
 
   def _create_tflite_converter(self,
-                               saved_model_path: Text,
+                               saved_model_path: str,
                                quantization_optimizations: Sequence[
                                    tf.lite.Optimize],
                                quantization_supported_types: Sequence[tf.DType],
                                representative_dataset=None,
-                               signature_key: Optional[Text] = None,
+                               signature_key: Optional[str] = None,
                                **kwargs) -> tf.lite.TFLiteConverter:
     """Creates a TFLite converter with proper quantization options.
 

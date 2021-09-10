@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,13 +13,9 @@
 # limitations under the License.
 """In process component launcher which launches python executors in process."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import copy
 import os
-from typing import Any, Dict, List, Text, cast
+from typing import Any, Dict, List, cast
 
 from tfx import types
 from tfx.dsl.components.base import base_beam_executor
@@ -48,9 +43,9 @@ class InProcessComponentLauncher(base_component_launcher.BaseComponentLauncher):
     return isinstance(component_executor_spec, executor_spec.ExecutorClassSpec)
 
   def _run_executor(self, execution_id: int,
-                    input_dict: Dict[Text, List[types.Artifact]],
-                    output_dict: Dict[Text, List[types.Artifact]],
-                    exec_properties: Dict[Text, Any]) -> None:
+                    input_dict: Dict[str, List[types.Artifact]],
+                    output_dict: Dict[str, List[types.Artifact]],
+                    exec_properties: Dict[str, Any]) -> None:
     """Execute underlying component implementation."""
     executor_class_spec = cast(executor_spec.ExecutorClassSpec,
                                self._component_executor_spec)

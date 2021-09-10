@@ -106,12 +106,12 @@ class CompilerUtilsTest(tf.test.TestCase):
         yaml.safe_load(_EXPECTED_MY_BAD_ARTIFACT_SCHEMA))
 
     my_bad_artifact.int1 = 42
-    with self.assertRaisesRegexp(KeyError, 'Actual property:'):
+    with self.assertRaisesRegex(KeyError, 'Actual property:'):
       _ = compiler_utils.build_output_artifact_spec(
           channel_utils.as_channel([my_bad_artifact]))
 
   def testCustomArtifactSchemaMismatchFails(self):
-    with self.assertRaisesRegexp(TypeError, 'Property type mismatched at'):
+    with self.assertRaisesRegex(TypeError, 'Property type mismatched at'):
       compiler_utils._validate_properties_schema(
           _MY_BAD_ARTIFACT_SCHEMA_WITH_PROPERTIES, _MyBadArtifact.PROPERTIES)
 

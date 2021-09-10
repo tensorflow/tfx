@@ -26,7 +26,7 @@ from tfx.tools.cli.handler import handler_factory
 from tfx.tools.cli.handler import local_handler
 
 
-class _MockClientClass(object):
+class _MockClientClass:
 
   def __init__(self, host, client_id, namespace):
     config = {'host': host, 'client_id': client_id, 'namespace': namespace}  # pylint: disable=invalid-name, unused-variable
@@ -36,7 +36,7 @@ class _MockClientClass(object):
 class HandlerFactoryTest(tf.test.TestCase):
 
   def setUp(self):
-    super(HandlerFactoryTest, self).setUp()
+    super().setUp()
     self.flags_dict = {}
     sys.modules['kfp'] = mock.Mock()
     sys.modules['kfp_server_api'] = mock.Mock()

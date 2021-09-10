@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,10 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Tests for tfx.components.example_gen.component."""
-
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
 
 import tensorflow as tf
 from tfx.components.example_gen import base_example_gen_executor
@@ -48,7 +43,7 @@ class TestQueryBasedExampleGenComponent(component.QueryBasedExampleGen):
                output_data_format=example_gen_pb2.FORMAT_TF_EXAMPLE,
                output_file_format=example_gen_pb2.FORMAT_TFRECORDS_GZIP,
                ):
-    super(TestQueryBasedExampleGenComponent, self).__init__(
+    super().__init__(
         input_config=input_config,
         output_config=output_config,
         output_data_format=output_data_format,
@@ -61,7 +56,7 @@ class TestFileBasedExampleGenComponent(component.FileBasedExampleGen):
   EXECUTOR_SPEC = executor_spec.BeamExecutorSpec(TestExampleGenExecutor)
 
   def __init__(self, input_base, input_config=None, output_config=None):
-    super(TestFileBasedExampleGenComponent, self).__init__(
+    super().__init__(
         input_base=input_base,
         input_config=input_config,
         output_config=output_config)

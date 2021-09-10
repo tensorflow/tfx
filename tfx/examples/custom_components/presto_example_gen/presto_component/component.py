@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,7 +13,7 @@
 # limitations under the License.
 """TFX PrestoExampleGen component definition."""
 
-from typing import Optional, Text
+from typing import Optional
 
 from tfx.components.example_gen import component
 from tfx.components.example_gen import utils
@@ -39,7 +38,7 @@ class PrestoExampleGen(component.QueryBasedExampleGen):  # pylint: disable=prote
 
   def __init__(self,
                conn_config: presto_config_pb2.PrestoConnConfig,
-               query: Optional[Text] = None,
+               query: Optional[str] = None,
                input_config: Optional[example_gen_pb2.Input] = None,
                output_config: Optional[example_gen_pb2.Output] = None):
     """Constructs a PrestoExampleGen component.
@@ -73,7 +72,7 @@ class PrestoExampleGen(component.QueryBasedExampleGen):  # pylint: disable=prote
     output_config = output_config or utils.make_default_output_config(
         input_config)
 
-    super(PrestoExampleGen, self).__init__(
+    super().__init__(
         input_config=input_config,
         output_config=output_config,
         custom_config=packed_custom_config)

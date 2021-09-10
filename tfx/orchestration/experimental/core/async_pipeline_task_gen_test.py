@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2020 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -25,16 +24,16 @@ from tfx.orchestration.experimental.core import pipeline_state as pstate
 from tfx.orchestration.experimental.core import service_jobs
 from tfx.orchestration.experimental.core import task as task_lib
 from tfx.orchestration.experimental.core import task_queue as tq
-from tfx.orchestration.experimental.core import test_utils as otu
-from tfx.proto.orchestration import pipeline_pb2
+from tfx.orchestration.experimental.core import test_utils
+from tfx.orchestration.experimental.core.testing import test_async_pipeline
 from tfx.utils import status as status_lib
-from tfx.utils import test_case_utils as tu
 
 
-class AsyncPipelineTaskGeneratorTest(tu.TfxTest, parameterized.TestCase):
+class AsyncPipelineTaskGeneratorTest(test_utils.TfxTest,
+                                     parameterized.TestCase):
 
   def setUp(self):
-    super(AsyncPipelineTaskGeneratorTest, self).setUp()
+    super().setUp()
     pipeline_root = os.path.join(
         os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR', self.get_temp_dir()),
         self.id())
@@ -51,11 +50,7 @@ class AsyncPipelineTaskGeneratorTest(tu.TfxTest, parameterized.TestCase):
         connection_config=connection_config)
 
     # Sets up the pipeline.
-    pipeline = pipeline_pb2.Pipeline()
-    self.load_proto_from_text(
-        os.path.join(
-            os.path.dirname(__file__), 'testdata', 'async_pipeline.pbtxt'),
-        pipeline)
+    pipeline = test_async_pipeline.create_pipeline()
     self._pipeline = pipeline
     self._pipeline_info = pipeline.pipeline_info
     self._pipeline_runtime_spec = pipeline.runtime_spec
@@ -94,7 +89,7 @@ class AsyncPipelineTaskGeneratorTest(tu.TfxTest, parameterized.TestCase):
 
   def _finish_node_execution(self, use_task_queue, exec_node_task):
     """Simulates successful execution of a node."""
-    otu.fake_execute_node(self._mlmd_connection, exec_node_task)
+    test_utils.fake_execute_node(self._mlmd_connection, exec_node_task)
     if use_task_queue:
       dequeued_task = self._task_queue.dequeue()
       self._task_queue.task_done(dequeued_task)
@@ -106,10 +101,9 @@ class AsyncPipelineTaskGeneratorTest(tu.TfxTest, parameterized.TestCase):
                          num_tasks_generated,
                          num_new_executions,
                          num_active_executions,
-                         expected_exec_nodes=None,
-                         ignore_node_ids=None):
+                         expected_exec_nodes=None):
     """Generates tasks and tests the effects."""
-    return otu.run_generator_and_test(
+    return test_utils.run_generator_and_test(
         self,
         self._mlmd_connection,
         asptg.AsyncPipelineTaskGenerator,
@@ -121,8 +115,7 @@ class AsyncPipelineTaskGeneratorTest(tu.TfxTest, parameterized.TestCase):
         num_tasks_generated=num_tasks_generated,
         num_new_executions=num_new_executions,
         num_active_executions=num_active_executions,
-        expected_exec_nodes=expected_exec_nodes,
-        ignore_node_ids=ignore_node_ids)
+        expected_exec_nodes=expected_exec_nodes)
 
   @parameterized.parameters(0, 1)
   def test_no_tasks_generated_when_no_inputs(self, min_count):
@@ -132,17 +125,15 @@ class AsyncPipelineTaskGeneratorTest(tu.TfxTest, parameterized.TestCase):
         v.min_count = min_count
 
     with self._mlmd_connection as m:
-      pipeline_state = pstate.PipelineState(m, self._pipeline, 0)
+      pipeline_state = test_utils.get_or_create_pipeline_state(
+          m, self._pipeline)
       task_gen = asptg.AsyncPipelineTaskGenerator(
-          m,
-          pipeline_state,
-          lambda _: False,
-          service_jobs.DummyServiceJobManager(),
-          ignore_node_ids=set([self._example_gen.node_info.id]))
+          m, pipeline_state, lambda _: False,
+          service_jobs.DummyServiceJobManager())
       tasks = task_gen.generate()
       self.assertEmpty(tasks, 'Expected no task generation when no inputs.')
       self.assertEmpty(
-          m.store.get_executions(),
+          test_utils.get_non_orchestrator_executions(m),
           'There must not be any registered executions since no tasks were '
           'generated.')
 
@@ -157,7 +148,8 @@ class AsyncPipelineTaskGeneratorTest(tu.TfxTest, parameterized.TestCase):
         when task queue is empty (for eg: due to orchestrator restart).
     """
     # Simulate that ExampleGen has already completed successfully.
-    otu.fake_example_gen_run(self._mlmd_connection, self._example_gen, 1, 1)
+    test_utils.fake_example_gen_run(self._mlmd_connection, self._example_gen, 1,
+                                    1)
 
     # Generate once.
     [transform_task] = self._generate_and_test(
@@ -208,7 +200,8 @@ class AsyncPipelineTaskGeneratorTest(tu.TfxTest, parameterized.TestCase):
         num_active_executions=0)
 
     # Fake another ExampleGen run.
-    otu.fake_example_gen_run(self._mlmd_connection, self._example_gen, 1, 1)
+    test_utils.fake_example_gen_run(self._mlmd_connection, self._example_gen, 1,
+                                    1)
 
     # Both transform and trainer tasks should be generated as they both find
     # new inputs.
@@ -260,32 +253,38 @@ class AsyncPipelineTaskGeneratorTest(tu.TfxTest, parameterized.TestCase):
       self.assertTrue(self._task_queue.is_empty())
 
   @parameterized.parameters(False, True)
-  def test_task_generation_ignore_nodes(self, ignore_transform):
-    """Tests nodes can be ignored while generating tasks."""
+  def test_task_generation_when_node_stopped(self, stop_transform):
+    """Tests stopped nodes are ignored when generating tasks."""
     # Simulate that ExampleGen has already completed successfully.
-    otu.fake_example_gen_run(self._mlmd_connection, self._example_gen, 1, 1)
+    test_utils.fake_example_gen_run(self._mlmd_connection, self._example_gen, 1,
+                                    1)
 
     # Generate once.
     num_initial_executions = 1
-    if ignore_transform:
+    if stop_transform:
       num_tasks_generated = 0
       num_new_executions = 0
       num_active_executions = 0
-      ignore_node_ids = set([self._transform.node_info.id])
+      with self._mlmd_connection as m:
+        pipeline_state = test_utils.get_or_create_pipeline_state(
+            m, self._pipeline)
+        with pipeline_state:
+          with pipeline_state.node_state_update_context(
+              task_lib.NodeUid.from_pipeline_node(
+                  self._pipeline, self._transform)) as node_state:
+            node_state.update(pstate.NodeState.STOPPING,
+                              status_lib.Status(code=status_lib.Code.CANCELLED))
     else:
       num_tasks_generated = 1
       num_new_executions = 1
       num_active_executions = 1
-      ignore_node_ids = None
     tasks = self._generate_and_test(
         True,
         num_initial_executions=num_initial_executions,
         num_tasks_generated=num_tasks_generated,
         num_new_executions=num_new_executions,
-        num_active_executions=num_active_executions,
-        ignore_node_ids=ignore_node_ids)
-    if ignore_transform:
-      self.assertEmpty(tasks)
+        num_active_executions=num_active_executions)
+    self.assertLen(tasks, num_tasks_generated)
 
   def test_service_job_failed(self):
     """Tests task generation when example-gen service job fails."""

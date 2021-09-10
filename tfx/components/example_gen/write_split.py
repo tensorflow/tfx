@@ -13,7 +13,7 @@
 # limitations under the License.
 """PTransform for write split."""
 import os
-from typing import Text, Union
+from typing import Union
 
 import apache_beam as beam
 import tensorflow as tf
@@ -52,8 +52,8 @@ class MaybeSerialize(beam.DoFn):
 @beam.typehints.with_output_types(beam.pvalue.PDone)
 def WriteSplit(
     example_split: beam.pvalue.PCollection,
-    output_split_path: Text,
-    output_format: Text,
+    output_split_path: str,
+    output_format: str,
 ) -> beam.pvalue.PDone:
   """Shuffles and writes output split as serialized records in TFRecord."""
   del output_format

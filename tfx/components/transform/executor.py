@@ -16,7 +16,7 @@
 import functools
 import hashlib
 import os
-from typing import Any, Callable, Dict, Generator, Iterable, List, Mapping, Optional, Sequence, Set, Text, Tuple, Union
+from typing import Any, Callable, Dict, Generator, Iterable, List, Mapping, Optional, Sequence, Set, Tuple, Union
 
 from absl import logging
 import apache_beam as beam
@@ -96,7 +96,7 @@ _STATS_KEY = 'stats'
 
 
 # TODO(b/122478841): Move it to a common place that is shared across components.
-class _Status(object):
+class _Status:
   """Status that reports success or error status of an execution."""
 
   def __init__(self, is_error, error_message=None):
@@ -120,7 +120,7 @@ class _Status(object):
     return self._error_message
 
 
-class _Dataset(object):
+class _Dataset:
   """Dataset to be analyzed and/or transformed.
 
   It also contains bundle of stages of a single dataset through the transform
@@ -128,12 +128,13 @@ class _Dataset(object):
   """
   _FILE_PATTERN_SUFFIX_LENGTH = 6
 
-  def __init__(self, file_pattern: Text,
-               file_format: Union[Text, int],
+  def __init__(self,
+               file_pattern: str,
+               file_format: Union[str, int],
                data_format: int,
-               data_view_uri: Optional[Text],
-               stats_output_path: Optional[Text] = None,
-               materialize_output_path: Optional[Text] = None):
+               data_view_uri: Optional[str],
+               stats_output_path: Optional[str] = None,
+               materialize_output_path: Optional[str] = None):
     """Initialize a Dataset.
 
     Args:
@@ -247,8 +248,8 @@ def _InvokeStatsOptionsUpdaterFn(
         [stats_options_util.StatsType, tfdv.StatsOptions], tfdv.StatsOptions],
     stats_type: stats_options_util.StatsType,
     schema: Optional[schema_pb2.Schema] = None,
-    asset_map: Optional[Dict[Text, Text]] = None,
-    transform_output_path: Optional[Text] = None) -> tfdv.StatsOptions:
+    asset_map: Optional[Dict[str, str]] = None,
+    transform_output_path: Optional[str] = None) -> tfdv.StatsOptions:
   """Invokes the provided stats_options_updater_fn.
 
   Args:
@@ -279,12 +280,12 @@ class Executor(base_beam_executor.BaseBeamExecutor):
 
   def __init__(
       self, context: Optional[base_executor.BaseExecutor.Context] = None):
-    super(Executor, self).__init__(context)
+    super().__init__(context)
     self._pip_dependencies = []
 
-  def Do(self, input_dict: Dict[Text, List[types.Artifact]],
-         output_dict: Dict[Text, List[types.Artifact]],
-         exec_properties: Dict[Text, Any]) -> None:
+  def Do(self, input_dict: Dict[str, List[types.Artifact]],
+         output_dict: Dict[str, List[types.Artifact]],
+         exec_properties: Dict[str, Any]) -> None:
     """TensorFlow Transform executor entrypoint.
 
     This implements BaseExecutor.Do() and is invoked by orchestration systems.
@@ -576,8 +577,8 @@ class Executor(base_beam_executor.BaseBeamExecutor):
   @beam.ptransform_fn
   @beam.typehints.with_input_types(Tuple[Optional[bytes], bytes])
   @beam.typehints.with_output_types(beam.pvalue.PDone)
-  def _WriteExamples(pcoll: beam.pvalue.PCollection, file_format: Text,
-                     transformed_example_path: Text) -> beam.pvalue.PDone:
+  def _WriteExamples(pcoll: beam.pvalue.PCollection, file_format: str,
+                     transformed_example_path: str) -> beam.pvalue.PDone:
     """Writes transformed examples compressed in gzip format.
 
     Args:
@@ -597,7 +598,7 @@ class Executor(base_beam_executor.BaseBeamExecutor):
         | 'Write' >> beam.io.WriteToTFRecord(
             transformed_example_path, file_name_suffix='.gz'))
 
-  def _GetSchema(self, schema_path: Text) -> schema_pb2.Schema:
+  def _GetSchema(self, schema_path: str) -> schema_pb2.Schema:
     """Gets a tf.metadata schema.
 
     Args:
@@ -610,7 +611,7 @@ class Executor(base_beam_executor.BaseBeamExecutor):
     return schema_reader.read(schema_path)
 
   def _ReadMetadata(self, data_format: int,
-                    schema_path: Text) -> dataset_metadata.DatasetMetadata:
+                    schema_path: str) -> dataset_metadata.DatasetMetadata:
     """Returns a dataset_metadata.DatasetMetadata for the input data.
 
     Args:
@@ -632,12 +633,11 @@ class Executor(base_beam_executor.BaseBeamExecutor):
   @staticmethod
   @beam.ptransform_fn
   @beam.typehints.with_input_types(pa.RecordBatch)
-  @beam.typehints.with_output_types(Tuple[beam.pvalue.PDone,
-                                          Optional[beam.pvalue.PDone],
-                                          Optional[beam.pvalue.PDone]])
+  # Typehints are not supported for ptransform_fns/PTransfroms which return
+  # multiple PCollections.
   def _GenerateAndMaybeValidateStats(
-      pcoll: beam.pvalue.PCollection, stats_output_loc: Union[Text, Dict[Text,
-                                                                         Text]],
+      pcoll: beam.pvalue.PCollection, stats_output_loc: Union[str, Dict[str,
+                                                                        str]],
       stats_options: tfdv.StatsOptions, enable_validation: bool
   ) -> Tuple[beam.pvalue.PDone, Optional[beam.pvalue.PDone],
              Optional[beam.pvalue.PDone]]:
@@ -734,10 +734,10 @@ class Executor(base_beam_executor.BaseBeamExecutor):
 
     # pyformat: disable
     def __init__(self,
-                 input_cache_dir: Text,
-                 output_cache_dir: Text,
+                 input_cache_dir: str,
+                 output_cache_dir: str,
                  analyze_data_list: List[_Dataset],
-                 typespecs: Mapping[Text, tf.TypeSpec],
+                 typespecs: Mapping[str, tf.TypeSpec],
                  preprocessing_fn: Any,
                  cache_source: beam.PTransform,
                  force_tf_compat_v1: bool):
@@ -761,8 +761,8 @@ class Executor(base_beam_executor.BaseBeamExecutor):
 
     def expand(
         self, pipeline
-    ) -> Tuple[Dict[Text, Optional[_Dataset]], Optional[Dict[Text, Dict[
-        Text, beam.pvalue.PCollection]]]]:
+    ) -> Tuple[Dict[str, Optional[_Dataset]], Optional[Dict[str, Dict[
+        str, beam.pvalue.PCollection]]]]:
       # TODO(b/170304777): Remove this Create once the issue is fixed in beam.
       # Forcing beam to treat this PTransform as non-primitive.
       _ = pipeline | 'WorkaroundForBug170304777' >> beam.Create([None])
@@ -824,7 +824,7 @@ class Executor(base_beam_executor.BaseBeamExecutor):
 
       return (new_analyze_data_dict, input_cache)
 
-  def _MaybeBindCustomConfig(self, inputs: Mapping[Text, Any],
+  def _MaybeBindCustomConfig(self, inputs: Mapping[str, Any],
                              fn: Any) -> Callable[..., Any]:
     # For compatibility, only bind custom config if it's in the signature.
     if value_utils.FunctionHasArg(fn, labels.CUSTOM_CONFIG):
@@ -836,8 +836,8 @@ class Executor(base_beam_executor.BaseBeamExecutor):
     return fn
 
   def _GetPreprocessingFn(
-      self, inputs: Mapping[Text, Any],
-      unused_outputs: Mapping[Text, Any]) -> Callable[..., Any]:
+      self, inputs: Mapping[str, Any],
+      unused_outputs: Mapping[str, Any]) -> Callable[..., Any]:
     """Returns a user defined preprocessing_fn.
 
     If a custom config is provided in inputs, and also needed in
@@ -883,7 +883,7 @@ class Executor(base_beam_executor.BaseBeamExecutor):
     return self._MaybeBindCustomConfig(inputs, fn)
 
   def _GetStatsOptionsUpdaterFn(
-      self, inputs: Mapping[Text, Any]
+      self, inputs: Mapping[str, Any]
   ) -> Optional[Callable[[stats_options_util.StatsType, tfdv.StatsOptions],
                          tfdv.StatsOptions]]:
     """Returns the user-defined stats_options_updater_fn.
@@ -934,8 +934,8 @@ class Executor(base_beam_executor.BaseBeamExecutor):
 
   # TODO(b/122478841): Refine this API in following cls.
   # Note: This API is up to change.
-  def Transform(self, inputs: Mapping[Text, Any], outputs: Mapping[Text, Any],
-                status_file: Text) -> None:
+  def Transform(self, inputs: Mapping[str, Any], outputs: Mapping[str, Any],
+                status_file: str) -> None:
     """Executes on request.
 
     This is the implementation part of transform executor. This is intended for
@@ -1134,13 +1134,13 @@ class Executor(base_beam_executor.BaseBeamExecutor):
                        [stats_options_util.StatsType, tfdv.StatsOptions],
                        tfdv.StatsOptions], force_tf_compat_v1: bool,
                    input_dataset_metadata: dataset_metadata.DatasetMetadata,
-                   transform_output_path: Text, raw_examples_data_format: int,
-                   temp_path: Text, input_cache_dir: Optional[Text],
-                   output_cache_dir: Optional[Text], disable_statistics: bool,
-                   per_set_stats_output_paths: Sequence[Text],
-                   materialization_format: Optional[Text],
+                   transform_output_path: str, raw_examples_data_format: int,
+                   temp_path: str, input_cache_dir: Optional[str],
+                   output_cache_dir: Optional[str], disable_statistics: bool,
+                   per_set_stats_output_paths: Sequence[str],
+                   materialization_format: Optional[str],
                    analyze_paths_count: int,
-                   stats_output_paths: Dict[Text, Text]) -> _Status:
+                   stats_output_paths: Dict[str, str]) -> _Status:
     """Perform data preprocessing with TFT.
 
     Args:
@@ -1489,8 +1489,8 @@ class Executor(base_beam_executor.BaseBeamExecutor):
 
   def _RunInPlaceImpl(self, preprocessing_fn: Any, force_tf_compat_v1: bool,
                       metadata: dataset_metadata.DatasetMetadata,
-                      typespecs: Dict[Text, tf.TypeSpec],
-                      transform_output_path: Text) -> _Status:
+                      typespecs: Dict[str, tf.TypeSpec],
+                      transform_output_path: str) -> _Status:
     """Runs a transformation iteration in-place without looking at the data.
 
     Args:
@@ -1519,8 +1519,7 @@ class Executor(base_beam_executor.BaseBeamExecutor):
 
     return _Status.OK()
 
-  def _CreatePipeline(
-      self, unused_transform_output_path: Text) -> beam.Pipeline:
+  def _CreatePipeline(self, unused_transform_output_path: str) -> beam.Pipeline:
     """Creates beam pipeline.
 
     Args:
@@ -1534,13 +1533,13 @@ class Executor(base_beam_executor.BaseBeamExecutor):
   # TODO(b/114444977): Remove the unused can_process_jointly argument.
   def _MakeDatasetList(
       self,
-      file_patterns: Sequence[Union[Text, int]],
-      file_formats: Sequence[Union[Text, int]],
+      file_patterns: Sequence[Union[str, int]],
+      file_formats: Sequence[Union[str, int]],
       data_format: int,
-      data_view_uri: Optional[Text],
+      data_view_uri: Optional[str],
       can_process_jointly: bool,
-      stats_output_paths: Optional[Sequence[Text]] = None,
-      materialize_output_paths: Optional[Sequence[Text]] = None,
+      stats_output_paths: Optional[Sequence[str]] = None,
+      materialize_output_paths: Optional[Sequence[str]] = None,
   ) -> List[_Dataset]:
     """Makes a list of Dataset from the given `file_patterns`.
 
@@ -1580,7 +1579,7 @@ class Executor(base_beam_executor.BaseBeamExecutor):
     return result
 
   def _ShouldDecodeAsRawExample(self, data_format: int,
-                                data_view_uri: Optional[Text]) -> bool:
+                                data_view_uri: Optional[str]) -> bool:
     """Returns true if data format should be decoded as raw example.
 
     Args:
@@ -1665,7 +1664,7 @@ class Executor(base_beam_executor.BaseBeamExecutor):
           dataset.tfxio.ArrowSchema()))
 
   @staticmethod
-  def _GetTFXIOPassthroughKeys() -> Optional[Set[Text]]:
+  def _GetTFXIOPassthroughKeys() -> Optional[Set[str]]:
     """Always returns None."""
     return None
 

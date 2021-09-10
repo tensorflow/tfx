@@ -14,7 +14,6 @@
 """E2E Tests for tfx.examples.chicago_taxi_pipeline.taxi_pipeline_native_keras."""
 
 import os
-from typing import Text
 import unittest
 
 from absl.testing import parameterized
@@ -31,7 +30,7 @@ class TaxiPipelineNativeKerasEndToEndTest(
     tf.test.TestCase, parameterized.TestCase):
 
   def setUp(self):
-    super(TaxiPipelineNativeKerasEndToEndTest, self).setUp()
+    super().setUp()
     self._test_dir = os.path.join(
         os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR', self.get_temp_dir()),
         self._testMethodName)
@@ -47,7 +46,7 @@ class TaxiPipelineNativeKerasEndToEndTest(
     self._metadata_path = os.path.join(self._test_dir, 'tfx', 'metadata',
                                        self._pipeline_name, 'metadata.db')
 
-  def assertExecutedOnce(self, component: Text) -> None:
+  def assertExecutedOnce(self, component: str) -> None:
     """Check the component is executed exactly once."""
     component_path = os.path.join(self._pipeline_root, component)
     self.assertTrue(fileio.exists(component_path))

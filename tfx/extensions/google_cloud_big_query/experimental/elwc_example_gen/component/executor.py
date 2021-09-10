@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2020 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,7 +13,7 @@
 # limitations under the License.
 """Generic TFX BigQueryToElwcExampleGen executor."""
 
-from typing import Any, Dict, Iterable, List, Set, Text, Tuple
+from typing import Any, Dict, Iterable, List, Set, Tuple
 
 import apache_beam as beam
 from google.cloud import bigquery
@@ -29,19 +28,19 @@ from tensorflow_serving.apis import input_pb2
 
 
 # TODO(b/158514307): Revisit when PGBKCVOperation can hold serialized keys.
-@beam.typehints.with_input_types(Dict[Text, Any])
+@beam.typehints.with_input_types(Dict[str, Any])
 @beam.typehints.with_output_types(Tuple[bytes, tf.train.Example])
 class _RowToContextFeatureAndExample(beam.DoFn):
   """Convert bigquery result to context feature and example feature pair."""
 
-  def __init__(self, type_map: Dict[Text, Text],
-               context_feature_fields: Set[Text]):
+  def __init__(self, type_map: Dict[str, str],
+               context_feature_fields: Set[str]):
     self._type_map = type_map
     self._context_feature_fields = context_feature_fields
 
   def process(
-      self, instance: Dict[Text,
-                           Any]) -> Iterable[Tuple[bytes, tf.train.Example]]:
+      self, instance: Dict[str, Any]
+  ) -> Iterable[Tuple[bytes, tf.train.Example]]:
     context_feature = dict((k, instance[k])
                            for k in instance.keys()
                            if k in self._context_feature_fields)
@@ -71,8 +70,8 @@ def _ConvertContextAndExamplesToElwc(
 @beam.ptransform_fn
 @beam.typehints.with_input_types(beam.Pipeline)
 @beam.typehints.with_output_types(input_pb2.ExampleListWithContext)
-def _BigQueryToElwc(pipeline: beam.Pipeline, exec_properties: Dict[Text, Any],
-                    split_pattern: Text) -> beam.pvalue.PCollection:
+def _BigQueryToElwc(pipeline: beam.Pipeline, exec_properties: Dict[str, Any],
+                    split_pattern: str) -> beam.pvalue.PCollection:
   """Read from BigQuery and transform to ExampleListWithContext.
 
   When a field has no value in BigQuery, a feature with no value will be

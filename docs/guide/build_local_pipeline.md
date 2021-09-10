@@ -221,7 +221,8 @@ without using a template.
       pipeline_root:Text,
       enable_cache: bool,
       metadata_connection_config: Optional[
-        metadata_store_pb2.ConnectionConfig] = None
+        metadata_store_pb2.ConnectionConfig] = None,
+      beam_pipeline_args: Optional[List[Text]] = None
     ):
       components = []
 
@@ -304,16 +305,16 @@ without using a template.
             beam_pipeline_args=beam_pipeline_args, <!-- needed? -->
         )
 
-      def run_pipeline():
-        my_pipeline = create_pipeline(
-          pipeline_name=PIPELINE_NAME,
-          pipeline_root=PIPELINE_ROOT,
-          data_path=DATA_PATH,
-          enable_cache=ENABLE_CACHE,
-          metadata_connection_config=metadata.sqlite_metadata_connection_config(METADATA_PATH)
-          )
+    def run_pipeline():
+      my_pipeline = create_pipeline(
+        pipeline_name=PIPELINE_NAME,
+        pipeline_root=PIPELINE_ROOT,
+        data_path=DATA_PATH,
+        enable_cache=ENABLE_CACHE,
+        metadata_connection_config=tfx.orchestration.metadata.sqlite_metadata_connection_config(METADATA_PATH)
+        )
 
-      LocalDagRunner().run(my_pipeline)
+      tfx.orchestration.LocalDagRunner().run(my_pipeline)
     </pre>
 
     `CsvExampleGen` creates serialized example records using the data in the CSV

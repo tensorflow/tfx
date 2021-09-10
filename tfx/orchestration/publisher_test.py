@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,10 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Tests for tfx.orchestration.publisher."""
-
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
 
 import tensorflow as tf
 from tfx import types
@@ -36,7 +31,7 @@ class _OutputType(types.Artifact):
 class PublisherTest(tf.test.TestCase):
 
   def setUp(self):
-    super(PublisherTest, self).setUp()
+    super().setUp()
     self._mock_metadata = tf.compat.v1.test.mock.Mock()
     self._mock_metadata.publish_execution = tf.compat.v1.test.mock.Mock()
     self._output_dict = {

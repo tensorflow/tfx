@@ -81,7 +81,7 @@ _TEST_DATA_LIST_DAGS_JSON = """[{
 class AirflowHandlerTest(test_case_utils.TfxTest):
 
   def setUp(self):
-    super(AirflowHandlerTest, self).setUp()
+    super().setUp()
     self._home = self.tmp_dir
     self.enter_context(test_case_utils.override_env_var('HOME', self._home))
     self.enter_context(
@@ -95,6 +95,8 @@ class AirflowHandlerTest(test_case_utils.TfxTest):
     self.pipeline_root = os.path.join(self._home, 'tfx', 'pipelines')
     self.pipeline_name = 'chicago_taxi_simple'
     self.run_id = 'manual__2019-07-19T19:56:02+00:00'
+    self.runtime_parameter = {'a': '1', 'b': '2'}
+    self.runtime_parameter_json = json.dumps(self.runtime_parameter)
 
     self.enter_context(test_case_utils.change_working_dir(self.tmp_dir))
 
@@ -326,7 +328,8 @@ class AirflowHandlerTest(test_case_utils.TfxTest):
 
     # Now run the pipeline
     flags_dict = {labels.ENGINE_FLAG: self.engine,
-                  labels.PIPELINE_NAME: self.pipeline_name}
+                  labels.PIPELINE_NAME: self.pipeline_name,
+                  labels.RUNTIME_PARAMETER: self.runtime_parameter}
     handler = airflow_handler.AirflowHandler(flags_dict)
     handler.create_run()
 
@@ -334,14 +337,16 @@ class AirflowHandlerTest(test_case_utils.TfxTest):
     self.assertEqual(
         ['airflow', 'dags', 'unpause', self.pipeline_name],
         mock_call.call_args_list[0][0][0])
-    self.assertEqual(
-        ['airflow', 'dags', 'trigger', self.pipeline_name],
-        mock_call.call_args_list[1][0][0])
+    self.assertEqual([
+        'airflow', 'dags', 'trigger', '--conf', self.runtime_parameter_json,
+        self.pipeline_name
+    ], mock_call.call_args_list[1][0][0])
 
   def testCreateRunNoPipeline(self):
     # Run pipeline without creating one.
     flags_dict = {labels.ENGINE_FLAG: self.engine,
-                  labels.PIPELINE_NAME: self.pipeline_name}
+                  labels.PIPELINE_NAME: self.pipeline_name,
+                  labels.RUNTIME_PARAMETER: self.runtime_parameter}
     handler = airflow_handler.AirflowHandler(flags_dict)
     with self.assertRaises(SystemExit) as err:
       handler.create_run()

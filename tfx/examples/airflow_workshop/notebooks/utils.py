@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,10 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Utils to query ml-metadata store in a notebook."""
-
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
 
 import re
 
@@ -50,7 +45,7 @@ def _get_value_str(p):
   return ''
 
 
-class _LineageGraphHelper(object):
+class _LineageGraphHelper:
   """A helper class to compute and plot lineage of ml-metadata artifacts."""
 
   def __init__(self, store):
@@ -243,7 +238,7 @@ class _LineageGraphHelper(object):
     plt.show()
 
 
-class ReadonlyMetadataStore(object):
+class ReadonlyMetadataStore:
   """An ml-metadata store that provides read-only methods for notebooks."""
 
   def __init__(self, store):

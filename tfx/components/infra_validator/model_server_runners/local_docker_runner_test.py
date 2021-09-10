@@ -13,12 +13,8 @@
 # limitations under the License.
 """Tests for tfx.components.infra_validator.model_server_runners.local_docker_runner."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import os
-from typing import Any, Dict, Text
+from typing import Any, Dict
 from unittest import mock
 
 from docker import errors as docker_errors
@@ -33,7 +29,7 @@ from tfx.utils import path_utils
 from google.protobuf import json_format
 
 
-def _create_serving_spec(payload: Dict[Text, Any]):
+def _create_serving_spec(payload: Dict[str, Any]):
   result = infra_validator_pb2.ServingSpec()
   json_format.ParseDict(payload, result)
   return result
@@ -42,7 +38,7 @@ def _create_serving_spec(payload: Dict[Text, Any]):
 class LocalDockerRunnerTest(tf.test.TestCase):
 
   def setUp(self):
-    super(LocalDockerRunnerTest, self).setUp()
+    super().setUp()
 
     base_dir = os.path.join(
         os.path.dirname(  # components/

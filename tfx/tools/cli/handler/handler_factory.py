@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,13 +13,9 @@
 # limitations under the License.
 """Helper functions to choose engine."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import subprocess
 import sys
-from typing import Any, Dict, Text
+from typing import Any, Dict
 
 import click
 
@@ -29,7 +24,7 @@ from tfx.tools.cli import pip_utils
 from tfx.tools.cli.handler import base_handler
 
 
-def detect_handler(flags_dict: Dict[Text, Any]) -> base_handler.BaseHandler:
+def detect_handler(flags_dict: Dict[str, Any]) -> base_handler.BaseHandler:
   """Detect handler from the environment.
 
   Details:
@@ -72,7 +67,7 @@ def detect_handler(flags_dict: Dict[Text, Any]) -> base_handler.BaseHandler:
     return local_handler.LocalHandler(flags_dict)
 
 
-def create_handler(flags_dict: Dict[Text, Any]) -> base_handler.BaseHandler:
+def create_handler(flags_dict: Dict[str, Any]) -> base_handler.BaseHandler:
   """Retrieve handler from the environment using the --engine flag.
 
   Args:

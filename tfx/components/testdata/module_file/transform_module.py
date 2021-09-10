@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -20,11 +19,6 @@ _build_estimator function needs to be provided.  This file contains both.
 This file is equivalent to examples/chicago_taxi/trainer/model.py and
 examples/chicago_taxi/preprocess.py.
 """
-
-from __future__ import division
-from __future__ import print_function
-
-# Standard Imports
 
 import tensorflow as tf
 import tensorflow_transform as tft

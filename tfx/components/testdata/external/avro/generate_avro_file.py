@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,12 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Generate avro file from Chicago taxi csv data."""
-
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
-from typing import Text
 
 import fastavro
 import pandas as pd
@@ -54,7 +47,7 @@ def get_schema():
   return {'name': 'Chicago Taxi dataset', 'type': 'record', 'fields': fields}
 
 
-def generate_avro(src_file: Text, output_file: Text):
+def generate_avro(src_file: str, output_file: str):
   """Generates avro file based on src file.
 
   Args:

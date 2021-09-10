@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2020 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,10 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Tests for third_party.tfx.components.trainer.rewriting.tflite_rewriter."""
-
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
 
 import os
 import tempfile
@@ -35,9 +30,9 @@ EXTRA_ASSETS_DIRECTORY = 'assets.extra'
 
 class TFLiteRewriterTest(tf.test.TestCase):
 
-  class ConverterMock(object):
+  class ConverterMock:
 
-    class TargetSpec(object):
+    class TargetSpec:
       pass
 
     target_spec = TargetSpec()
@@ -190,7 +185,7 @@ class TFLiteRewriterTest(tf.test.TestCase):
   def testInvokeTFLiteRewriterQuantizationFullIntegerFailsNoData(
       self, converter, model):
 
-    class ModelMock(object):
+    class ModelMock:
       pass
 
     m = ModelMock()

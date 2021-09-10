@@ -94,7 +94,7 @@ class Trainer(trainer_component.Trainer):
       custom_config: A dict which contains addtional training job parameters
         that will be passed into user module.
     """
-    super(Trainer, self).__init__(
+    super().__init__(
         examples=examples,
         transformed_examples=transformed_examples,
         transform_graph=transform_graph,

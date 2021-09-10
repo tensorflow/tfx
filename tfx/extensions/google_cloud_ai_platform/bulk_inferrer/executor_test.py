@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,10 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Tests for bulk_inferrer executor."""
-
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
 
 import hashlib
 import os
@@ -37,7 +32,7 @@ from tfx_bsl.public.proto import model_spec_pb2
 class ExecutorTest(tf.test.TestCase):
 
   def setUp(self):
-    super(ExecutorTest, self).setUp()
+    super().setUp()
     self._source_data_dir = os.path.join(
         os.path.dirname(
             os.path.dirname(os.path.dirname(os.path.dirname(__file__)))),

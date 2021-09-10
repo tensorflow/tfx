@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2020 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,11 +17,7 @@ This file is used by both mnist_utils_native_keras and
 mnist_util_native_keras_lite to build Keras and TFLite models, respectively.
 """
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
-from typing import List, Text
+from typing import List
 
 import absl
 import tensorflow as tf
@@ -40,7 +35,7 @@ def transformed_name(key):
   return key + '_xf'
 
 
-def input_fn(file_pattern: List[Text],
+def input_fn(file_pattern: List[str],
              data_accessor: DataAccessor,
              tf_transform_output: tft.TFTransformOutput,
              batch_size: int = 200) -> tf.data.Dataset:

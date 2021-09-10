@@ -17,7 +17,7 @@ The utilities in this file are used to build a model with native Keras or with
 Flax.
 """
 
-from typing import List, Text
+from typing import List
 from absl import logging
 
 import tensorflow as tf
@@ -95,7 +95,7 @@ def make_serving_signatures(model,
   }
 
 
-def input_fn(file_pattern: List[Text],
+def input_fn(file_pattern: List[str],
              data_accessor: tfx.components.DataAccessor,
              tf_transform_output: tft.TFTransformOutput,
              batch_size: int) -> tf.data.Dataset:

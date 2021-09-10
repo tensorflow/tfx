@@ -30,7 +30,7 @@ from tfx.utils import test_case_utils
 class LocalHandlerTest(test_case_utils.TfxTest):
 
   def setUp(self):
-    super(LocalHandlerTest, self).setUp()
+    super().setUp()
     self.chicago_taxi_pipeline_dir = os.path.join(
         os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'testdata')
     self._home = self.tmp_dir
@@ -72,6 +72,18 @@ class LocalHandlerTest(test_case_utils.TfxTest):
     }
     handler = local_handler.LocalHandler(flags_dict)
     handler.create_pipeline()
+    self.assertTrue(
+        fileio.exists(handler._get_pipeline_args_path(self.pipeline_name)))
+
+  def testCreatePipelineWithFlags(self):
+    flags_dict = {
+        labels.ENGINE_FLAG: self.engine,
+        labels.PIPELINE_DSL_PATH: self.pipeline_path
+    }
+    handler = local_handler.LocalHandler(flags_dict)
+    # Pipeline creation should not be affected by additional flags.
+    with mock.patch.object(sys, 'argv', new=(sys.argv + ['--unexpected_flag'])):
+      handler.create_pipeline()
     self.assertTrue(
         fileio.exists(handler._get_pipeline_args_path(self.pipeline_name)))
 

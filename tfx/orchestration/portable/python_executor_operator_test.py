@@ -14,7 +14,7 @@
 """Tests for tfx.orchestration.portable.python_executor_operator."""
 
 import os
-from typing import Any, Dict, List, Text
+from typing import Any, Dict, List
 
 import tensorflow as tf
 from tfx import types
@@ -36,9 +36,9 @@ class InprocessExecutor(base_executor.BaseExecutor):
   """A Fake in-process executor what returns execution result."""
 
   def Do(
-      self, input_dict: Dict[Text, List[types.Artifact]],
-      output_dict: Dict[Text, List[types.Artifact]],
-      exec_properties: Dict[Text, Any]) -> execution_result_pb2.ExecutorOutput:
+      self, input_dict: Dict[str, List[types.Artifact]],
+      output_dict: Dict[str, List[types.Artifact]],
+      exec_properties: Dict[str, Any]) -> execution_result_pb2.ExecutorOutput:
     executor_output = execution_result_pb2.ExecutorOutput()
     outputs_utils.populate_output_artifact(executor_output, output_dict)
     return executor_output
@@ -47,9 +47,9 @@ class InprocessExecutor(base_executor.BaseExecutor):
 class NotInprocessExecutor(base_executor.BaseExecutor):
   """A Fake not-in-process executor what writes execution result to executor_output_uri."""
 
-  def Do(self, input_dict: Dict[Text, List[types.Artifact]],
-         output_dict: Dict[Text, List[types.Artifact]],
-         exec_properties: Dict[Text, Any]) -> None:
+  def Do(self, input_dict: Dict[str, List[types.Artifact]],
+         output_dict: Dict[str, List[types.Artifact]],
+         exec_properties: Dict[str, Any]) -> None:
     executor_output = execution_result_pb2.ExecutorOutput()
     outputs_utils.populate_output_artifact(executor_output, output_dict)
     with fileio.open(self._context.executor_output_uri, 'wb') as f:
@@ -59,9 +59,9 @@ class NotInprocessExecutor(base_executor.BaseExecutor):
 class InplaceUpdateExecutor(base_executor.BaseExecutor):
   """A Fake executor that uses the executor Context to compute its output."""
 
-  def Do(self, input_dict: Dict[Text, List[types.Artifact]],
-         output_dict: Dict[Text, List[types.Artifact]],
-         exec_properties: Dict[Text, Any]) -> None:
+  def Do(self, input_dict: Dict[str, List[types.Artifact]],
+         output_dict: Dict[str, List[types.Artifact]],
+         exec_properties: Dict[str, Any]) -> None:
     model = output_dict['output_key'][0]
     model.name = '{0}.{1}.my_model'.format(
         self._context.pipeline_info.id,

@@ -13,8 +13,6 @@
 # limitations under the License.
 """Tests for tfx.components.pusher.component."""
 
-from typing import Text
-
 import tensorflow as tf
 from tfx.components.pusher import component
 from tfx.components.pusher import executor
@@ -33,7 +31,7 @@ class ComponentTest(tf.test.TestCase):
     pass
 
   def setUp(self):
-    super(ComponentTest, self).setUp()
+    super().setUp()
     self._model = channel_utils.as_channel([standard_artifacts.Model()])
     self._model_blessing = channel_utils.as_channel(
         [standard_artifacts.ModelBlessing()])
@@ -53,7 +51,7 @@ class ComponentTest(tf.test.TestCase):
         pusher.outputs[standard_component_specs.PUSHED_MODEL_KEY].type_name)
 
   def testConstructWithParameter(self):
-    push_dir = data_types.RuntimeParameter(name='push-dir', ptype=Text)
+    push_dir = data_types.RuntimeParameter(name='push-dir', ptype=str)
     pusher = component.Pusher(
         model=self._model,
         model_blessing=self._model_blessing,

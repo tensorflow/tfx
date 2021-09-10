@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2020 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -19,7 +18,6 @@ a constant for ease of invoking the new rewriter.
 """
 
 import importlib
-from typing import Text
 
 from tfx.components.trainer.rewriting import rewriter
 
@@ -51,14 +49,14 @@ class _RewriterFactory:
   _loaded = set()
 
   @classmethod
-  def _maybe_load_public_rewriter(cls, lower_rewriter_type: Text):
+  def _maybe_load_public_rewriter(cls, lower_rewriter_type: str):
     if (lower_rewriter_type in cls._LOADERS
         and lower_rewriter_type not in cls._loaded):
       cls._LOADERS[lower_rewriter_type]()
       cls._loaded.add(lower_rewriter_type)
 
   @classmethod
-  def get_rewriter_cls(cls, rewriter_type: Text):
+  def get_rewriter_cls(cls, rewriter_type: str):
     rewriter_type = rewriter_type.lower()
     cls._maybe_load_public_rewriter(rewriter_type)
     for subcls in rewriter.BaseRewriter.__subclasses__():
@@ -67,7 +65,7 @@ class _RewriterFactory:
     raise ValueError('Failed to find rewriter: {}'.format(rewriter_type))
 
 
-def create_rewriter(rewriter_type: Text, *args,
+def create_rewriter(rewriter_type: str, *args,
                     **kwargs) -> rewriter.BaseRewriter:
   """Instantiates a new rewriter with the given type and constructor arguments.
 

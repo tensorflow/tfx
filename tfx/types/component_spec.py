@@ -18,6 +18,7 @@ import inspect
 import itertools
 from typing import Any, Dict, List, Optional, Type
 
+from tfx.dsl.placeholder import placeholder
 from tfx.types.artifact import Artifact
 from tfx.types.channel import Channel
 from tfx.utils import abc_utils
@@ -214,13 +215,19 @@ class ComponentSpec(json_utils.Jsonable):
 
       if (inspect.isclass(arg.type) and
           issubclass(arg.type, message.Message) and value and
-          not isinstance(value, str) and not _is_runtime_param(value)):
-        # Create deterministic json string as it will be stored in metadata for
-        # cache check.
-        if isinstance(value, dict):
-          value = json_utils.dumps(value)
+          not _is_runtime_param(value)):
+        if arg.use_proto:
+          if isinstance(value, dict):
+            value = proto_utils.dict_to_proto(value, arg.type())
+          elif isinstance(value, str):
+            value = proto_utils.json_to_proto(value, arg.type())
         else:
-          value = proto_utils.proto_to_json(value)
+          # Create deterministic json string as it will be stored in metadata
+          # for cache check.
+          if isinstance(value, dict):
+            value = json_utils.dumps(value)
+          elif not isinstance(value, str):
+            value = proto_utils.proto_to_json(value)
 
       self.exec_properties[arg_name] = value
 
@@ -265,19 +272,30 @@ class ExecutionParameter(_ComponentParameter):
         'internal_option': ExecutionParameter(type=str),
     }
     # ...
+
+  Attributes:
+    type: Type of the execution parameter.
+    optional: Boolean value indicating whether the parameter is optional.
+    use_proto: Boolean value indicating whether pb message (and other
+      non-primitive types like lists) should be stored in its original form.
   """
 
-  def __init__(self, type=None, optional=False):  # pylint: disable=redefined-builtin
+  def __init__(self, type=None, optional=False, use_proto=False):  # pylint: disable=redefined-builtin
     self.type = type
     self.optional = optional
+    self.use_proto = use_proto
+
+    if self.type in [int, float, str] and self.use_proto:
+      raise ValueError('use_proto set for primitive type %s' % self.type)
 
   def __repr__(self):
-    return 'ExecutionParameter(type: %s, optional: %s)' % (self.type,
-                                                           self.optional)
+    return 'ExecutionParameter(type: %s, optional: %s, use_proto: %s)' % (
+        self.type, self.optional, self.use_proto)
 
   def __eq__(self, other):
     return (isinstance(other.__class__, self.__class__) and
-            other.type == self.type and other.optional == self.optional)
+            other.type == self.type and other.optional == self.optional and
+            other.use_proto == self.use_proto)
 
   def type_check(self, arg_name: str, value: Any):
     """Perform type check to the parameter passed in."""
@@ -290,6 +308,23 @@ class ExecutionParameter(_ComponentParameter):
     # Dict[Text, Any] <------ Okay.
     def _type_check_helper(value: Any, declared: Type):  # pylint: disable=g-bare-generic
       """Helper type-checking function."""
+      if isinstance(value, placeholder.Placeholder):
+        placeholders_involved = value.placeholders_involved()
+        if (len(placeholders_involved) != 1 or not isinstance(
+            placeholders_involved[0], placeholder.RuntimeInfoPlaceholder)):
+          placeholders_involved_str = [
+              x.__class__.__name__ for x in placeholders_involved
+          ]
+          raise TypeError(
+              'Only simple RuntimeInfoPlaceholders are supported, but while '
+              'checking parameter %r, the following placeholders were '
+              'involved: %s' % (arg_name, placeholders_involved_str))
+        if not issubclass(declared, str):
+          raise TypeError(
+              'Cannot use Placeholders except for str parameter, but parameter '
+              '%r was of type %s' % (arg_name, declared))
+        return
+
       is_runtime_param = _is_runtime_param(value)
       value = _make_default(value)
       if declared == Any:

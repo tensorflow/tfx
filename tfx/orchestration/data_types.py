@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,11 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Common data types for orchestration."""
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
 
-from typing import Any, Dict, List, Optional, Text, Type, Union
+from typing import Any, Dict, List, Optional, Type, Union
 
 from tfx import types
 from tfx.utils import json_utils
@@ -30,7 +26,7 @@ RUNTIME_PARAMETER_PATTERN = (r'({\\*"__class__\\*": \\*"RuntimeParameter\\*", '
 PARAMETER_NAME_LITERAL = r'(\\*"RuntimeParameter\\*")'
 
 
-class ExecutionDecision(object):
+class ExecutionDecision:
   """ExecutionDecision records how executor should perform next execution.
 
   Attributes:
@@ -45,9 +41,9 @@ class ExecutionDecision(object):
   """
 
   def __init__(self,
-               input_dict: Dict[Text, List[types.Artifact]],
-               output_dict: Dict[Text, List[types.Artifact]],
-               exec_properties: Dict[Text, Any],
+               input_dict: Dict[str, List[types.Artifact]],
+               output_dict: Dict[str, List[types.Artifact]],
+               exec_properties: Dict[str, Any],
                execution_id: Optional[int] = None,
                use_cached_results: Optional[bool] = False):
     self.input_dict = input_dict
@@ -57,7 +53,7 @@ class ExecutionDecision(object):
     self.use_cached_results = use_cached_results
 
 
-class ExecutionInfo(object):
+class ExecutionInfo:
   """ExecutionInfo contains information populated during execution phase.
 
   Attributes:
@@ -69,16 +65,16 @@ class ExecutionInfo(object):
     execution_id: Registered execution_id for the execution.
   """
 
-  def __init__(self, input_dict: Dict[Text, List[types.Artifact]],
-               output_dict: Dict[Text, List[types.Artifact]],
-               exec_properties: Dict[Text, Any], execution_id: int):
+  def __init__(self, input_dict: Dict[str, List[types.Artifact]],
+               output_dict: Dict[str, List[types.Artifact]],
+               exec_properties: Dict[str, Any], execution_id: int):
     self.input_dict = input_dict
     self.output_dict = output_dict
     self.exec_properties = exec_properties
     self.execution_id = execution_id
 
 
-class DriverArgs(object):
+class DriverArgs:
   """Args to driver from orchestration system.
 
   Attributes:
@@ -95,7 +91,7 @@ class DriverArgs(object):
     self.interactive_resolution = interactive_resolution
 
 
-class PipelineInfo(object):
+class PipelineInfo:
   """Pipeline info from orchestration system.
 
   Attributes:
@@ -107,9 +103,9 @@ class PipelineInfo(object):
   """
 
   def __init__(self,
-               pipeline_name: Text,
-               pipeline_root: Text,
-               run_id: Optional[Text] = None):
+               pipeline_name: str,
+               pipeline_root: str,
+               run_id: Optional[str] = None):
     self.pipeline_name = pipeline_name
     self.pipeline_root = pipeline_root
     self.run_id = run_id
@@ -122,17 +118,17 @@ class PipelineInfo(object):
                               self.run_id)
 
   @property
-  def pipeline_run_context_name(self) -> Text:
+  def pipeline_run_context_name(self) -> str:
     """Context name for the current pipeline run."""
     return '{}.{}'.format(self.pipeline_name, self.run_id)
 
   @property
-  def pipeline_context_name(self) -> Text:
+  def pipeline_context_name(self) -> str:
     """Context name for the pipeline."""
     return self.pipeline_name
 
 
-class ComponentInfo(object):
+class ComponentInfo:
   """Component info.
 
   Attributes:
@@ -142,7 +138,7 @@ class ComponentInfo(object):
     pipeline_info: the pipeline info of the current pipeline run.
   """
 
-  def __init__(self, component_type: Text, component_id: Text,
+  def __init__(self, component_type: str, component_id: str,
                pipeline_info: PipelineInfo):
     self.component_type = component_type
     self.component_id = component_id
@@ -156,7 +152,7 @@ class ComponentInfo(object):
                                      self.pipeline_info)
 
   @property
-  def component_run_context_name(self) -> Text:
+  def component_run_context_name(self) -> str:
     """"Context name for current component run."""
     if self.pipeline_info.run_id:
       return '{}.{}'.format(self.pipeline_info.pipeline_run_context_name,
@@ -184,11 +180,11 @@ class RuntimeParameter(json_utils.Jsonable):
 
   def __init__(
       self,
-      name: Text,
+      name: str,
       ptype: Optional[Type] = None,  # pylint: disable=g-bare-generic
-      default: Optional[Union[int, float, Text]] = None,
-      description: Optional[Text] = None):
-    if ptype and ptype not in [int, float, Text]:
+      default: Optional[Union[int, float, str]] = None,
+      description: Optional[str] = None):
+    if ptype and ptype not in [int, float, str]:
       raise RuntimeError('Only str and scalar runtime parameters are supported')
     if (default and ptype) and not isinstance(default, ptype):
       raise TypeError('Default value must be consistent with specified ptype')

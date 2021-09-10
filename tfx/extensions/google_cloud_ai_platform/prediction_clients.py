@@ -16,7 +16,7 @@
 import abc
 import sys
 import time
-from typing import Any, Dict, Optional, Text, Union
+from typing import Any, Dict, Optional, Union
 
 from absl import logging
 from google.cloud import aiplatform
@@ -33,9 +33,8 @@ _TF_COMPATIBILITY_OVERRIDE = {
     # CAIP pusher. See:
     # https://cloud.google.com/ai-platform/prediction/docs/runtime-version-list
     '2.0': '1.15',
-    # TODO(b/168249383) Update this once CAIP model support TF 2.4 runtime.
-    '2.4': '2.3',
-    '2.5': '2.3',
+    # TODO(b/168249383) Update this once CAIP model support TF 2.6 runtime.
+    '2.6': '2.5',
 }
 
 # Google Cloud AI Platform's ModelVersion resource path format.
@@ -46,7 +45,7 @@ _CAIP_MODEL_VERSION_PATH_FORMAT = (
 _VERTEX_ENDPOINT_SUFFIX = '-aiplatform.googleapis.com'
 
 
-def _get_tf_runtime_version(tf_version: Text) -> Text:
+def _get_tf_runtime_version(tf_version: str) -> str:
   """Returns the tensorflow runtime version used in Cloud AI Platform.
 
   This is only used for prediction service.
@@ -65,13 +64,13 @@ class AbstractPredictionClient(abc.ABC):
 
   @abc.abstractmethod
   def deploy_model(self,
-                   serving_path: Text,
-                   model_version_name: Text,
-                   ai_platform_serving_args: Dict[Text, Any],
-                   labels: Dict[Text, Text],
+                   serving_path: str,
+                   model_version_name: str,
+                   ai_platform_serving_args: Dict[str, Any],
+                   labels: Dict[str, str],
                    skip_model_endpoint_creation: Optional[bool] = False,
                    set_default: Optional[bool] = True,
-                   **kwargs) -> Text:
+                   **kwargs) -> str:
     """Deploys a model for serving with AI Platform.
 
     Args:
@@ -101,10 +100,8 @@ class AbstractPredictionClient(abc.ABC):
 
   @abc.abstractmethod
   def create_model_for_aip_prediction_if_not_exist(
-      self,
-      labels: Dict[Text, Text],
-      ai_platform_serving_args: Dict[Text, Any]
-  ) -> bool:
+      self, labels: Dict[str, str],
+      ai_platform_serving_args: Dict[str, Any]) -> bool:
     """Creates a new CAIP model or Vertex endpoint for serving with AI Platform if not exists.
 
     Args:
@@ -124,8 +121,8 @@ class AbstractPredictionClient(abc.ABC):
   @abc.abstractmethod
   def delete_model_from_aip_if_exists(
       self,
-      ai_platform_serving_args: Dict[Text, Any],
-      model_version_name: Text,
+      ai_platform_serving_args: Dict[str, Any],
+      model_version_name: str,
       delete_model_endpoint: Optional[bool] = False,
   ) -> None:
     """Deletes a CAIP model and model version or Vertex endpoint and model if exists.
@@ -152,14 +149,13 @@ class CAIPTfxPredictionClient(AbstractPredictionClient):
     super().__init__()
 
   def deploy_model(self,
-                   serving_path: Text,
-                   model_version_name: Text,
-                   ai_platform_serving_args: Dict[Text, Any],
-                   labels: Dict[Text, Text],
+                   serving_path: str,
+                   model_version_name: str,
+                   ai_platform_serving_args: Dict[str, Any],
+                   labels: Dict[str, str],
                    skip_model_endpoint_creation: Optional[bool] = False,
                    set_default: Optional[bool] = True,
-                   **kwargs
-                   ) -> Text:
+                   **kwargs) -> str:
     """Deploys a model for serving with AI Platform.
 
     Args:
@@ -253,10 +249,8 @@ class CAIPTfxPredictionClient(AbstractPredictionClient):
         project_id=project_id, model=model_name, version=model_version_name)
 
   def create_model_for_aip_prediction_if_not_exist(
-      self,
-      labels: Dict[Text, Text],
-      ai_platform_serving_args: Dict[Text, Any]
-  ) -> bool:
+      self, labels: Dict[str, str],
+      ai_platform_serving_args: Dict[str, Any]) -> bool:
     """Creates a new model for serving with AI Platform if not exists.
 
     Args:
@@ -288,10 +282,8 @@ class CAIPTfxPredictionClient(AbstractPredictionClient):
         raise RuntimeError('Creating model to AI Platform failed: {}'.format(e))
     return result
 
-  def _wait_for_operation(self,
-                          operation: Dict[Text, Any],
-                          method_name: Text
-                          ) -> Dict[Text, Any]:
+  def _wait_for_operation(self, operation: Dict[str, Any],
+                          method_name: str) -> Dict[str, Any]:
     """Wait for a long running operation.
 
     Args:
@@ -318,8 +310,8 @@ class CAIPTfxPredictionClient(AbstractPredictionClient):
 
   def delete_model_from_aip_if_exists(
       self,
-      ai_platform_serving_args: Dict[Text, Any],
-      model_version_name: Optional[Text] = None,
+      ai_platform_serving_args: Dict[str, Any],
+      model_version_name: Optional[str] = None,
       delete_model_endpoint: Optional[bool] = False,
   ) -> None:
     """Deletes a model from Google Cloud AI Platform if exists.
@@ -386,16 +378,15 @@ class VertexPredictionClient(AbstractPredictionClient):
   """Class for interacting with Vertex Prediction service."""
 
   def deploy_model(self,
-                   serving_path: Text,
-                   model_version_name: Text,
-                   ai_platform_serving_args: Dict[Text, Any],
-                   labels: Dict[Text, Text],
-                   serving_container_image_uri: Text,
-                   endpoint_region: Text,
+                   serving_path: str,
+                   model_version_name: str,
+                   ai_platform_serving_args: Dict[str, Any],
+                   labels: Dict[str, str],
+                   serving_container_image_uri: str,
+                   endpoint_region: str,
                    skip_model_endpoint_creation: Optional[bool] = False,
                    set_default: Optional[bool] = True,
-                   **kwargs
-                   ) -> Text:
+                   **kwargs) -> str:
     """Deploys a model for serving with AI Platform.
 
     Args:
@@ -411,12 +402,11 @@ class VertexPredictionClient(AbstractPredictionClient):
         Most keys are forwarded as-is, but following keys are handled specially:
           - endpoint_name: Name of the endpoint.
           - traffic_percentage: Desired traffic to newly deployed model.
-              Forwarded as-is if specified. If not specified, it is set to 100
-              if set_default_version is True, or set to 0 otherwise.
+            Forwarded as-is if specified. If not specified, it is set to 100 if
+            set_default_version is True, or set to 0 otherwise.
           - labels: a list of job labels will be merged with user's input.
-      labels: The dict of labels that will be attached to this
-        endpoint. They are merged with optional labels from
-        `ai_platform_serving_args`.
+      labels: The dict of labels that will be attached to this endpoint. They
+        are merged with optional labels from `ai_platform_serving_args`.
       serving_container_image_uri: The path to the serving container image URI.
         Container registry for prediction is available at:
         https://gcr.io/cloud-aiplatform/prediction.
@@ -485,10 +475,8 @@ class VertexPredictionClient(AbstractPredictionClient):
     return model.resource_name
 
   def create_model_for_aip_prediction_if_not_exist(
-      self,
-      labels: Dict[Text, Text],
-      ai_platform_serving_args: Dict[Text, Any]
-  ) -> bool:
+      self, labels: Dict[str, str],
+      ai_platform_serving_args: Dict[str, Any]) -> bool:
     """Creates a new endpoint for serving with AI Platform if not exists.
 
     Args:
@@ -521,8 +509,8 @@ class VertexPredictionClient(AbstractPredictionClient):
 
   def delete_model_from_aip_if_exists(
       self,
-      ai_platform_serving_args: Dict[Text, Any],
-      model_version_name: Optional[Text] = None,
+      ai_platform_serving_args: Dict[str, Any],
+      model_version_name: Optional[str] = None,
       delete_model_endpoint: Optional[bool] = False,
   ) -> None:
     """Deletes a model from Google Cloud AI Platform if model exists.
@@ -593,7 +581,7 @@ class VertexPredictionClient(AbstractPredictionClient):
                   model_version_name)) from e
 
   def _get_endpoint(
-      self, ai_platform_serving_args: Dict[Text, Any]) -> aiplatform.Endpoint:
+      self, ai_platform_serving_args: Dict[str, Any]) -> aiplatform.Endpoint:
     """Gets an endpoint from Google Cloud AI Platform if endpoint exists.
 
     Args:

@@ -16,7 +16,8 @@
 import abc
 import datetime
 import json
-from typing import Any, Dict, List, Optional, Text, Union
+import random
+from typing import Any, Dict, List, Optional, Union
 
 from absl import logging
 from google.cloud.aiplatform import gapic
@@ -70,7 +71,7 @@ class AbstractJobClient(abc.ABC):
   @abc.abstractmethod
   def create_training_args(self, input_dict, output_dict, exec_properties,
                            executor_class_path, training_inputs,
-                           job_id) -> Dict[Text, Any]:
+                           job_id) -> Dict[str, Any]:
     """Get training args for runner._launch_aip_training.
 
     The training args contain the inputs/outputs/exec_properties to the
@@ -94,9 +95,9 @@ class AbstractJobClient(abc.ABC):
   @abc.abstractmethod
   def _create_job_spec(
       self,
-      job_id: Text,
-      training_input: Dict[Text, Any],
-      job_labels: Optional[Dict[Text, Text]] = None) -> Dict[Text, Any]:
+      job_id: str,
+      training_input: Dict[str, Any],
+      job_labels: Optional[Dict[str, str]] = None) -> Dict[str, Any]:
     """Creates the job spec.
 
     Args:
@@ -111,15 +112,15 @@ class AbstractJobClient(abc.ABC):
 
   @abc.abstractmethod
   def launch_job(self,
-                 job_id: Text,
-                 parent: Text,
-                 training_input: Dict[Text, Any],
-                 job_labels: Optional[Dict[Text, Text]] = None) -> None:
+                 job_id: str,
+                 project: str,
+                 training_input: Dict[str, Any],
+                 job_labels: Optional[Dict[str, str]] = None) -> None:
     """Launches a long-running job.
 
     Args:
       job_id: The job ID of the AI Platform training job.
-      parent: The project name in the form of 'projects/{project_id}'
+      project: The project name in the form of 'projects/{project_id}'
       training_input: Training input argument for AI Platform training job. See
         https://cloud.google.com/ml-engine/reference/rest/v1/projects.jobs#TrainingInput
           for the detailed schema.
@@ -128,26 +129,55 @@ class AbstractJobClient(abc.ABC):
     pass
 
   @abc.abstractmethod
-  def get_job(self) -> Union[Dict[Text, Text], CustomJob]:
+  def get_job(self) -> Union[Dict[str, str], CustomJob]:
     """Gets the the long-running job."""
     pass
 
   @abc.abstractmethod
   def get_job_state(
-      self,
-      response: Union[Dict[Text, Text], CustomJob]) -> Union[Text, JobState]:
+      self, response: Union[Dict[str, str], CustomJob]) -> Union[str, JobState]:
     """Gets the state of the long-running job.
 
     Args:
       response: The response from get_job
+
     Returns:
       The job state.
     """
     pass
 
-  def get_job_name(self) -> Text:
+  def get_job_name(self) -> str:
     """Gets the job name."""
     return self._job_name
+
+  def generate_container_command(self, input_dict: Dict[str,
+                                                        List[types.Artifact]],
+                                 output_dict: Dict[str, List[types.Artifact]],
+                                 exec_properties: Dict[str, Any],
+                                 executor_class_path: str) -> List[str]:
+    """Generate container command to run executor."""
+    json_inputs = artifact_utils.jsonify_artifact_dict(input_dict)
+    logging.info('json_inputs=\'%s\'.', json_inputs)
+    json_outputs = artifact_utils.jsonify_artifact_dict(output_dict)
+    logging.info('json_outputs=\'%s\'.', json_outputs)
+    json_exec_properties = json.dumps(exec_properties, sort_keys=True)
+    logging.info('json_exec_properties=\'%s\'.', json_exec_properties)
+
+    # We use custom containers to launch training on AI Platform, which invokes
+    # the specified image using the container's entrypoint. The default
+    # entrypoint for TFX containers is to call scripts/run_executor.py. The
+    # arguments below are passed to this run_executor entry to run the executor
+    # specified in `executor_class_path`.
+    return _CONTAINER_COMMAND + [
+        '--executor_class_path',
+        executor_class_path,
+        '--inputs',
+        json_inputs,
+        '--outputs',
+        json_outputs,
+        '--exec-properties',
+        json_exec_properties,
+    ]
 
 
 class CAIPJobClient(AbstractJobClient):
@@ -173,12 +203,12 @@ class CAIPJobClient(AbstractJobClient):
         requestBuilder=telemetry_utils.TFXHttpRequest,
     )
 
-  def create_training_args(self, input_dict: Dict[Text, List[types.Artifact]],
-                           output_dict: Dict[Text, List[types.Artifact]],
-                           exec_properties: Dict[Text, Any],
-                           executor_class_path: Text,
-                           training_inputs: Dict[Text, Any],
-                           job_id: Optional[Text]) -> Dict[Text, Any]:
+  def create_training_args(self, input_dict: Dict[str, List[types.Artifact]],
+                           output_dict: Dict[str, List[types.Artifact]],
+                           exec_properties: Dict[str, Any],
+                           executor_class_path: str,
+                           training_inputs: Dict[str, Any],
+                           job_id: Optional[str]) -> Dict[str, Any]:
     """Get training args for runner._launch_aip_training.
 
     The training args contain the inputs/outputs/exec_properties to the
@@ -203,28 +233,9 @@ class CAIPJobClient(AbstractJobClient):
     """
     training_inputs = training_inputs.copy()
 
-    json_inputs = artifact_utils.jsonify_artifact_dict(input_dict)
-    logging.info('json_inputs=\'%s\'.', json_inputs)
-    json_outputs = artifact_utils.jsonify_artifact_dict(output_dict)
-    logging.info('json_outputs=\'%s\'.', json_outputs)
-    json_exec_properties = json.dumps(exec_properties, sort_keys=True)
-    logging.info('json_exec_properties=\'%s\'.', json_exec_properties)
-
-    # We use custom containers to launch training on AI Platform, which invokes
-    # the specified image using the container's entrypoint. The default
-    # entrypoint for TFX containers is to call scripts/run_executor.py. The
-    # arguments below are passed to this run_executor entry to run the executor
-    # specified in `executor_class_path`.
-    container_command = _CONTAINER_COMMAND + [
-        '--executor_class_path',
-        executor_class_path,
-        '--inputs',
-        json_inputs,
-        '--outputs',
-        json_outputs,
-        '--exec-properties',
-        json_exec_properties,
-    ]
+    container_command = self.generate_container_command(input_dict, output_dict,
+                                                        exec_properties,
+                                                        executor_class_path)
 
     if not training_inputs.get('masterConfig'):
       training_inputs['masterConfig'] = {
@@ -258,9 +269,9 @@ class CAIPJobClient(AbstractJobClient):
 
   def _create_job_spec(
       self,
-      job_id: Text,
-      training_input: Dict[Text, Any],
-      job_labels: Optional[Dict[Text, Text]] = None) -> Dict[Text, Any]:
+      job_id: str,
+      training_input: Dict[str, Any],
+      job_labels: Optional[Dict[str, str]] = None) -> Dict[str, Any]:
     """Creates the job spec.
 
     Args:
@@ -283,10 +294,10 @@ class CAIPJobClient(AbstractJobClient):
     return job_spec
 
   def launch_job(self,
-                 job_id: Text,
-                 project: Text,
-                 training_input: Dict[Text, Any],
-                 job_labels: Optional[Dict[Text, Text]] = None) -> None:
+                 job_id: str,
+                 project: str,
+                 training_input: Dict[str, Any],
+                 job_labels: Optional[Dict[str, str]] = None) -> None:
     """Launches a long-running job.
 
     Args:
@@ -310,16 +321,17 @@ class CAIPJobClient(AbstractJobClient):
     self._job_name = '{}/jobs/{}'.format(parent, job_id)
     request.execute()
 
-  def get_job(self) -> Dict[Text, Text]:
+  def get_job(self) -> Dict[str, str]:
     """Gets the long-running job."""
     request = self._client.projects().jobs().get(name=self._job_name)
     return request.execute()
 
-  def get_job_state(self, response) -> Text:
+  def get_job_state(self, response) -> str:
     """Gets the state of the long-running job.
 
     Args:
       response: The response from get_job
+
     Returns:
       The job state.
     """
@@ -333,7 +345,7 @@ class VertexJobClient(AbstractJobClient):
                           _VERTEX_JOB_STATE_CANCELLED)
   JOB_STATES_FAILED = (_VERTEX_JOB_STATE_FAILED, _VERTEX_JOB_STATE_CANCELLED)
 
-  def __init__(self, vertex_region: Text):
+  def __init__(self, vertex_region: str):
     if vertex_region is None:
       raise ValueError('Please specify a region for Vertex training.')
     self._region = vertex_region
@@ -354,12 +366,12 @@ class VertexJobClient(AbstractJobClient):
         client_options=dict(
             api_endpoint=self._region + _VERTEX_ENDPOINT_SUFFIX))
 
-  def create_training_args(self, input_dict: Dict[Text, List[types.Artifact]],
-                           output_dict: Dict[Text, List[types.Artifact]],
-                           exec_properties: Dict[Text, Any],
-                           executor_class_path: Text,
-                           training_inputs: Dict[Text, Any],
-                           job_id: Optional[Text]) -> Dict[Text, Any]:
+  def create_training_args(self, input_dict: Dict[str, List[types.Artifact]],
+                           output_dict: Dict[str, List[types.Artifact]],
+                           exec_properties: Dict[str, Any],
+                           executor_class_path: str,
+                           training_inputs: Dict[str, Any],
+                           job_id: Optional[str]) -> Dict[str, Any]:
     """Get training args for runner._launch_aip_training.
 
     The training args contain the inputs/outputs/exec_properties to the
@@ -384,28 +396,9 @@ class VertexJobClient(AbstractJobClient):
     """
     training_inputs = training_inputs.copy()
 
-    json_inputs = artifact_utils.jsonify_artifact_dict(input_dict)
-    logging.info('json_inputs=\'%s\'.', json_inputs)
-    json_outputs = artifact_utils.jsonify_artifact_dict(output_dict)
-    logging.info('json_outputs=\'%s\'.', json_outputs)
-    json_exec_properties = json.dumps(exec_properties, sort_keys=True)
-    logging.info('json_exec_properties=\'%s\'.', json_exec_properties)
-
-    # We use custom containers to launch training on AI Platform (unified),
-    # which invokes the specified image using the container's entrypoint. The
-    # default entrypoint for TFX containers is to call scripts/run_executor.py.
-    # The arguments below are passed to this run_executor entry to run the
-    # executor specified in `executor_class_path`.
-    container_command = _CONTAINER_COMMAND + [
-        '--executor_class_path',
-        executor_class_path,
-        '--inputs',
-        json_inputs,
-        '--outputs',
-        json_outputs,
-        '--exec-properties',
-        json_exec_properties,
-    ]
+    container_command = self.generate_container_command(input_dict, output_dict,
+                                                        exec_properties,
+                                                        executor_class_path)
 
     if not training_inputs.get('worker_pool_specs'):
       training_inputs['worker_pool_specs'] = [{}]
@@ -428,10 +421,11 @@ class VertexJobClient(AbstractJobClient):
         {telemetry_utils.LABEL_TFX_EXECUTOR: executor_class_path}):
       job_labels = telemetry_utils.make_labels_dict()
 
-    # 'tfx_YYYYmmddHHMMSS' is the default job display name if not explicitly
-    # specified.
-    job_id = job_id or 'tfx_{}'.format(
-        datetime.datetime.now().strftime('%Y%m%d%H%M%S'))
+    # 'tfx_YYYYmmddHHMMSS_xxxxxxxx' is the default job display name if not
+    # explicitly specified.
+    job_id = job_id or 'tfx_{}_{}'.format(
+        datetime.datetime.now().strftime('%Y%m%d%H%M%S'),
+        '%08x' % random.getrandbits(32))
 
     training_args = {
         'job_id': job_id,
@@ -444,9 +438,9 @@ class VertexJobClient(AbstractJobClient):
 
   def _create_job_spec(
       self,
-      job_id: Text,
-      training_input: Dict[Text, Any],
-      job_labels: Optional[Dict[Text, Text]] = None) -> Dict[Text, Any]:
+      job_id: str,
+      training_input: Dict[str, Any],
+      job_labels: Optional[Dict[str, str]] = None) -> Dict[str, Any]:
     """Creates the job spec.
 
     Args:
@@ -470,10 +464,10 @@ class VertexJobClient(AbstractJobClient):
     return job_spec
 
   def launch_job(self,
-                 job_id: Text,
-                 project: Text,
-                 training_input: Dict[Text, Any],
-                 job_labels: Optional[Dict[Text, Text]] = None) -> None:
+                 job_id: str,
+                 project: str,
+                 training_input: Dict[str, Any],
+                 job_labels: Optional[Dict[str, str]] = None) -> None:
     """Launches a long-running job.
 
     Args:
@@ -516,7 +510,7 @@ class VertexJobClient(AbstractJobClient):
 
 def get_job_client(
     enable_vertex: Optional[bool] = False,
-    vertex_region: Optional[Text] = None
+    vertex_region: Optional[str] = None
 ) -> Union[CAIPJobClient, VertexJobClient]:
   """Gets the job client.
 

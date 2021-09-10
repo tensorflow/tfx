@@ -13,7 +13,7 @@
 # limitations under the License.
 """Tests for tfx.components.example_gen.input_processor."""
 
-from typing import Optional, Text
+from typing import Optional
 import tensorflow as tf
 from tfx.components.example_gen import input_processor
 from tfx.proto import example_gen_pb2
@@ -25,8 +25,8 @@ class TestInputProcessor(input_processor.InputProcessor):
   def get_latest_span(self) -> int:
     return 0
 
-  def get_pattern_for_span_version(self, pattern: Text, span: int,
-                                   version: Optional[int]) -> Text:
+  def get_pattern_for_span_version(self, pattern: str, span: int,
+                                   version: Optional[int]) -> str:
     return ''
 
 
@@ -45,18 +45,18 @@ class InputProcessorTest(tf.test.TestCase):
         rolling_range=range_config_pb2.RollingRange(
             num_spans=1, start_span_number=1))
 
-    with self.assertRaisesRegexp(
+    with self.assertRaisesRegex(
         ValueError,
         'For ExampleGen, start and end span numbers for RangeConfig.StaticRange must be equal'
     ):
       TestInputProcessor(input_config.splits, static_range_config)
 
-    with self.assertRaisesRegexp(
+    with self.assertRaisesRegex(
         ValueError,
         'ExampleGen only support single span for RangeConfig.RollingRange'):
       TestInputProcessor(input_config.splits, rolling_range_config)
 
-    with self.assertRaisesRegexp(
+    with self.assertRaisesRegex(
         ValueError,
         'RangeConfig.rolling_range.start_span_number is not supported'):
       TestInputProcessor(input_config.splits, rolling_range_config2)
@@ -76,13 +76,13 @@ class InputProcessorTest(tf.test.TestCase):
         static_range=range_config_pb2.StaticRange(
             start_span_number=2, end_span_number=2))
 
-    with self.assertRaisesRegexp(ValueError,
-                                 'Spec setup should the same for all splits'):
+    with self.assertRaisesRegex(ValueError,
+                                'Spec setup should the same for all splits'):
       input_processor.FileBasedInputProcessor('input_base_uri',
                                               input_config.splits, None)
 
-    with self.assertRaisesRegexp(ValueError,
-                                 'Span or Date spec should be specified'):
+    with self.assertRaisesRegex(ValueError,
+                                'Span or Date spec should be specified'):
       input_processor.FileBasedInputProcessor('input_base_uri',
                                               input_config2.splits,
                                               static_range_config)
@@ -106,7 +106,7 @@ class InputProcessorTest(tf.test.TestCase):
     rolling_range_config = range_config_pb2.RangeConfig(
         rolling_range=range_config_pb2.RollingRange(num_spans=1))
 
-    with self.assertRaisesRegexp(
+    with self.assertRaisesRegex(
         NotImplementedError,
         'For QueryBasedExampleGen, latest Span is not supported'):
       processor = input_processor.QueryBasedInputProcessor(

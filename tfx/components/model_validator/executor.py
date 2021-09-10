@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,12 +13,8 @@
 # limitations under the License.
 """Generic TFX model validator executor."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import os
-from typing import Any, Dict, List, Text
+from typing import Any, Dict, List
 
 import absl
 import apache_beam as beam
@@ -89,10 +84,10 @@ class Executor(base_beam_executor.BaseBeamExecutor):
         return False
     return True
 
-  def _generate_blessing_result(self, eval_examples_uri: Text,
+  def _generate_blessing_result(self, eval_examples_uri: str,
                                 slice_spec: List[tfma.slicer.SingleSliceSpec],
-                                current_model_dir: Text,
-                                blessed_model_dir: Text) -> bool:
+                                current_model_dir: str,
+                                blessed_model_dir: str) -> bool:
     current_model_eval_result_path = os.path.join(
         self._temp_path, constants.CURRENT_MODEL_EVAL_RESULT_PATH)
     blessed_model_eval_result_path = os.path.join(
@@ -144,9 +139,9 @@ class Executor(base_beam_executor.BaseBeamExecutor):
       absl.logging.info('Current model worse than blessed model.')
       return False
 
-  def Do(self, input_dict: Dict[Text, List[types.Artifact]],
-         output_dict: Dict[Text, List[types.Artifact]],
-         exec_properties: Dict[Text, Any]) -> None:
+  def Do(self, input_dict: Dict[str, List[types.Artifact]],
+         output_dict: Dict[str, List[types.Artifact]],
+         exec_properties: Dict[str, Any]) -> None:
     """Validate current model against last blessed model.
 
     Args:

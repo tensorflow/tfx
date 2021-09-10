@@ -25,7 +25,7 @@ from tfx.utils import test_case_utils
 class PenguinPipelineSklearnGcpTest(test_case_utils.TfxTest):
 
   def setUp(self):
-    super(PenguinPipelineSklearnGcpTest, self).setUp()
+    super().setUp()
     self.enter_context(test_case_utils.change_working_dir(self.tmp_dir))
 
     self._experimental_root = os.path.dirname(__file__)

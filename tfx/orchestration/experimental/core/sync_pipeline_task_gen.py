@@ -109,6 +109,15 @@ class SyncPipelineTaskGenerator(task_gen.TaskGenerator):
         if not self._upstream_nodes_successful(node, successful_node_ids):
           continue
 
+        with self._pipeline_state:
+          node_state = self._pipeline_state.get_node_state(node_uid)
+          if node_state.state in (pstate.NodeState.STOPPING,
+                                  pstate.NodeState.STOPPED):
+            logging.info(
+                'Ignoring node in state \'%s\' for task generation: %s',
+                node_state.state, node_uid)
+            continue
+
         # If this is a pure service node, there is no ExecNodeTask to generate
         # but we ensure node services and check service status.
         service_status = self._ensure_node_services_if_pure(node_id)
@@ -146,9 +155,12 @@ class SyncPipelineTaskGenerator(task_gen.TaskGenerator):
           successful_node_ids.add(node_id)
           continue
 
-        # If the latest execution failed, the pipeline should be aborted.
-        if latest_execution and not execution_lib.is_execution_active(
-            latest_execution):
+        # If the latest execution failed or cancelled, the pipeline should be
+        # aborted if the node is not in state STARTING. For nodes that are
+        # in state STARTING, a new execution is created.
+        if (latest_execution and
+            not execution_lib.is_execution_active(latest_execution) and
+            node_state.state != pstate.NodeState.STARTING):
           error_msg_value = latest_execution.custom_properties.get(
               constants.EXECUTION_ERROR_MSG_KEY)
           error_msg = data_types_utils.get_metadata_value(

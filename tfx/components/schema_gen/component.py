@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,11 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """TFX ExampleValidator component definition."""
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
 
-from typing import List, Optional, Text, Union
+from typing import List, Optional, Union
 
 from absl import logging
 from tfx import types
@@ -26,7 +22,7 @@ from tfx.dsl.components.base import base_component
 from tfx.dsl.components.base import executor_spec
 from tfx.orchestration import data_types
 from tfx.types import standard_artifacts
-from tfx.types.standard_component_specs import SchemaGenSpec
+from tfx.types import standard_component_specs
 from tfx.utils import json_utils
 
 
@@ -58,7 +54,7 @@ class SchemaGen(base_component.BaseComponent):
   """
   # TODO(b/123941608): Update pydoc about how to use a user provided schema
 
-  SPEC_CLASS = SchemaGenSpec
+  SPEC_CLASS = standard_component_specs.SchemaGenSpec
   EXECUTOR_SPEC = executor_spec.ExecutorClassSpec(executor.Executor)
 
   def __init__(
@@ -66,7 +62,7 @@ class SchemaGen(base_component.BaseComponent):
       statistics: types.Channel,
       infer_feature_shape: Optional[Union[bool,
                                           data_types.RuntimeParameter]] = True,
-      exclude_splits: Optional[List[Text]] = None):
+      exclude_splits: Optional[List[str]] = None):
     """Constructs a SchemaGen component.
 
     Args:
@@ -87,9 +83,9 @@ class SchemaGen(base_component.BaseComponent):
     schema = types.Channel(type=standard_artifacts.Schema)
     if isinstance(infer_feature_shape, bool):
       infer_feature_shape = int(infer_feature_shape)
-    spec = SchemaGenSpec(
+    spec = standard_component_specs.SchemaGenSpec(
         statistics=statistics,
         infer_feature_shape=infer_feature_shape,
         exclude_splits=json_utils.dumps(exclude_splits),
         schema=schema)
-    super(SchemaGen, self).__init__(spec=spec)
+    super().__init__(spec=spec)

@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,18 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Tests for tfx.orchestration.airflow.airflow_dag_runner."""
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
 
 import datetime
 from unittest import mock
 
-import tensorflow as tf
-
 # TODO(b/158143615): importing airflow after kerastuner causes issue.
 from tfx.orchestration.airflow import airflow_dag_runner  # pylint: disable=g-bad-import-order
 
+import tensorflow as tf
 from tfx import types
 from tfx.dsl.components.base import base_component
 from tfx.dsl.components.base import base_executor
@@ -112,7 +107,7 @@ class _FakeComponent(base_component.BaseComponent):
   EXECUTOR_SPEC = executor_spec.ExecutorClassSpec(base_executor.BaseExecutor)
 
   def __init__(self, spec: types.ComponentSpec):
-    super(_FakeComponent, self).__init__(spec=spec)
+    super().__init__(spec=spec)
     self._id = spec.__class__.__name__.replace('_FakeComponentSpec', '')
 
 

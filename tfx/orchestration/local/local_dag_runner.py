@@ -61,7 +61,6 @@ class LocalDagRunner(tfx_runner.TfxRunner):
     deployment_config = runner_utils.extract_local_deployment_config(pipeline)
     connection_config = deployment_config.metadata_connection_config
 
-    logging.info('Running pipeline:\n %s', pipeline)
     logging.info('Using deployment config:\n %s', deployment_config)
     logging.info('Using connection config:\n %s', connection_config)
 

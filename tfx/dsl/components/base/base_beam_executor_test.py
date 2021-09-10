@@ -15,6 +15,7 @@
 
 import sys
 from typing import Any, Dict, List
+from unittest import mock
 
 from apache_beam.options.pipeline_options import DirectOptions
 from apache_beam.options.pipeline_options import GoogleCloudOptions
@@ -67,6 +68,13 @@ class BaseBeamExecutorTest(tf.test.TestCase):
     ],
                          options.view_as(GoogleCloudOptions).labels)
 
+  def testCustomBeamMakePipelineFn(self):
+    mock_fn = mock.MagicMock()
+    executor_context = base_beam_executor.BaseBeamExecutor.Context(
+        make_beam_pipeline_fn=mock_fn)
+    executor = _TestExecutor(executor_context)
+    executor._make_beam_pipeline()
+    mock_fn.assert_called_once_with()
 
 if __name__ == '__main__':
   tf.test.main()

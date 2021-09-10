@@ -247,11 +247,11 @@ def resolve_input_artifacts_v2(
   if typing_utils.is_artifact_multimap(resolved):
     result = [resolved]
   else:
-    raise exceptions.InputResolutionError(
+    raise exceptions.FailedPreconditionError(
         f'Invalid input resolution result: {resolved}.')
   result = [d for d in result if _is_sufficient(d, node_inputs)]
   if not result:
-    raise exceptions.InputResolutionError('No valid inputs.')
+    raise exceptions.FailedPreconditionError('No valid inputs.')
   return Trigger(result)
 
 
@@ -275,5 +275,28 @@ def resolve_parameters(
       raise RuntimeError('Parameter value not ready for %s' % key)
     result[key] = getattr(value.field_value,
                           value.field_value.WhichOneof('value'))
+
+  return result
+
+
+def resolve_parameters_with_schema(
+    node_parameters: pipeline_pb2.NodeParameters
+) -> Dict[str, pipeline_pb2.Value]:
+  """Resolves parameter schemas given parameter spec.
+
+  Args:
+    node_parameters: The spec to get parameters.
+
+  Returns:
+    A Dict of parameters with schema.
+
+  Raises:
+    RuntimeError: When there is no field_value available.
+  """
+  result = {}
+  for key, value in node_parameters.parameters.items():
+    if not value.HasField('field_value'):
+      raise RuntimeError('Parameter value not ready for %s' % key)
+    result[key] = value
 
   return result

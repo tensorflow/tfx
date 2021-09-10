@@ -2,6 +2,14 @@
 
 ## Major Features and Improvements
 
+*   TFX CLI now supports runtime parameter on Kubeflow, Vertex, and Airflow.
+    Use it with '--runtime_parameter=<parameter_name>=<parameter_value>' flag.
+    In the case of multiple runtime parameters, format is as follows:
+    '--runtime_parameter=<parameter_name>=<parameter_value> --runtime_parameter
+    =<parameter_name>=<parameter_value>'
+*   Added Manual node in the experimental orchestrator.
+*   Placeholders support index access and JSON serialization for list type execution properties.
+
 ## Breaking Changes
 
 ### For Pipeline Authors
@@ -10,7 +18,23 @@
 
 ## Deprecations
 
+*   The import name of KerasTuner has been changed from `kerastuner`
+    to `keras_tuner`. The import name of `kerastuner` is still supported.
+    A warning will occur when import from `kerastuner`, but does not affect
+    the usage.
+
 ## Bug Fixes and Other Changes
+
+*   The default job name for Google Cloud AI Training jobs was changed from
+    'tfx_YYYYmmddHHMMSS' to 'tfx_YYYYmmddHHMMSS_xxxxxxxx', where 'xxxxxxxx' is
+    a random 8 digit hexadecimal string.
+*   Fixed an issue where ClientOptions with regional endpoint was
+    incorrectly left out in Vertex AI pusher.
+*   CLI now hides passed flags from user python files in "--pipeline-path". This
+    will prevent errors when user python file tries reading and parsing flags.
+*   Depends on `google-cloud-bigquery>=1.28.0,<3`.
+*   Depends on `keras-tuner>=1.0.4,<2`.
+*   Depends on `kfp>=1.6.1,!=1.7.2,<2` in \[kfp\] extra.
 
 ## Documentation Updates
 
@@ -38,6 +62,8 @@
 
 ## Bug Fixes and Other Changes
 
+*   Fixed the issue that kfp_pod_name is not generated as an execution property
+    for Kubeflow Pipelines.
 *   Fixed issue when InputValuePlaceholder is used as component parameter in
     container based component.
 *   Depends on `kubernetes>=10.0.1,<13`

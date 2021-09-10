@@ -15,7 +15,7 @@
 
 import os
 import time
-from typing import Any, Dict, List, Optional, Text
+from typing import Any, Dict, List, Optional
 
 from absl import logging
 from tfx import types
@@ -60,7 +60,7 @@ class Executor(base_executor.BaseExecutor):
   please refer to https://www.tensorflow.org/tfx/guide/serving.
   """
 
-  def CheckBlessing(self, input_dict: Dict[Text, List[types.Artifact]]) -> bool:
+  def CheckBlessing(self, input_dict: Dict[str, List[types.Artifact]]) -> bool:
     """Check that model is blessed by upstream validators.
 
     Args:
@@ -100,7 +100,7 @@ class Executor(base_executor.BaseExecutor):
                       'pipeline.')
     return True
 
-  def GetModelPath(self, input_dict: Dict[Text, List[types.Artifact]]) -> str:
+  def GetModelPath(self, input_dict: Dict[str, List[types.Artifact]]) -> str:
     """Get input model path to push.
 
     Pusher can push various types of artifacts if it contains the model. This
@@ -135,9 +135,9 @@ class Executor(base_executor.BaseExecutor):
                          'request_spec.make_warmup is set to True.')
     return path_utils.stamped_model_path(model.uri)
 
-  def Do(self, input_dict: Dict[Text, List[types.Artifact]],
-         output_dict: Dict[Text, List[types.Artifact]],
-         exec_properties: Dict[Text, Any]) -> None:
+  def Do(self, input_dict: Dict[str, List[types.Artifact]],
+         output_dict: Dict[str, List[types.Artifact]],
+         exec_properties: Dict[str, Any]) -> None:
     """Push model to target directory if blessed.
 
     Args:
@@ -209,8 +209,10 @@ class Executor(base_executor.BaseExecutor):
                      pushed_version=model_version)
     logging.info('Model pushed to %s.', model_push.uri)
 
-  def _MarkPushed(self, model_push: types.Artifact, pushed_destination: Text,
-                  pushed_version: Optional[Text] = None) -> None:
+  def _MarkPushed(self,
+                  model_push: types.Artifact,
+                  pushed_destination: str,
+                  pushed_version: Optional[str] = None) -> None:
     model_push.set_int_custom_property('pushed', 1)
     model_push.set_string_custom_property(
         _PUSHED_DESTINATION_KEY, pushed_destination)

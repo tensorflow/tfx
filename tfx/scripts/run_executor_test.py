@@ -14,7 +14,7 @@
 """Tests for tfx.scripts.run_executor."""
 
 import json
-from typing import Any, Dict, List, Text
+from typing import Any, Dict, List
 
 import tensorflow as tf
 
@@ -25,7 +25,7 @@ from tfx.types import artifact_utils
 from tfx.types import standard_artifacts
 
 
-class ArgsCapture(object):
+class ArgsCapture:
   instance = None
 
   def __enter__(self):
@@ -38,9 +38,9 @@ class ArgsCapture(object):
 
 class FakeExecutor(base_executor.BaseExecutor):
 
-  def Do(self, input_dict: Dict[Text, List[types.Artifact]],
-         output_dict: Dict[Text, List[types.Artifact]],
-         exec_properties: Dict[Text, Any]) -> None:
+  def Do(self, input_dict: Dict[str, List[types.Artifact]],
+         output_dict: Dict[str, List[types.Artifact]],
+         exec_properties: Dict[str, Any]) -> None:
     """Overrides BaseExecutor.Do()."""
     args_capture = ArgsCapture.instance
     args_capture.input_dict = input_dict

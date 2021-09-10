@@ -25,7 +25,7 @@ from tfx.types import standard_component_specs
 class ComponentTest(tf.test.TestCase):
 
   def setUp(self):
-    super(ComponentTest, self).setUp()
+    super().setUp()
     self._examples = channel_utils.as_channel([standard_artifacts.Examples()])
     self._model = channel_utils.as_channel([standard_artifacts.Model()])
     self._model_blessing = channel_utils.as_channel(

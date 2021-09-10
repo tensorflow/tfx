@@ -22,7 +22,7 @@ compatible.
 Note: This requires Kubeflow Pipelines SDK to be installed.
 """
 
-from typing import Dict, List, Set, Text
+from typing import Dict, List, Set
 
 from absl import logging
 from kfp import dsl
@@ -30,11 +30,9 @@ from kubernetes import client as k8s_client
 from tfx.dsl.components.base import base_node as tfx_base_node
 from tfx.orchestration import data_types
 from tfx.orchestration import pipeline as tfx_pipeline
-from tfx.orchestration.kubeflow import node_wrapper
 from tfx.orchestration.kubeflow import utils
 from tfx.orchestration.kubeflow.proto import kubeflow_pb2
 from tfx.proto.orchestration import pipeline_pb2
-from tfx.utils import json_utils
 
 from google.protobuf import json_format
 
@@ -57,7 +55,7 @@ def _encode_runtime_parameter(param: data_types.RuntimeParameter) -> str:
 
 
 # TODO(hongyes): renaming the name to KubeflowComponent.
-class BaseComponent(object):
+class BaseComponent:
   """Base component for all Kubeflow pipelines TFX components.
 
   Returns a wrapper around a KFP DSL ContainerOp class, and adds named output
@@ -71,10 +69,9 @@ class BaseComponent(object):
       depends_on: Set[dsl.ContainerOp],
       pipeline: tfx_pipeline.Pipeline,
       pipeline_root: dsl.PipelineParam,
-      tfx_image: Text,
+      tfx_image: str,
       kubeflow_metadata_config: kubeflow_pb2.KubeflowMetadataConfig,
-      tfx_ir: pipeline_pb2.Pipeline,
-      pod_labels_to_attach: Dict[Text, Text],
+      tfx_ir: pipeline_pb2.Pipeline, pod_labels_to_attach: Dict[str, str],
       runtime_parameters: List[data_types.RuntimeParameter]):
     """Creates a new Kubeflow-based component.
 
@@ -96,7 +93,6 @@ class BaseComponent(object):
     """
 
     utils.replace_placeholder(component)
-    serialized_component = json_utils.dumps(node_wrapper.NodeWrapper(component))
 
     arguments = [
         '--pipeline_root',
@@ -106,8 +102,6 @@ class BaseComponent(object):
             message=kubeflow_metadata_config, preserving_proto_field_name=True),
         '--node_id',
         component.id,
-        '--serialized_component',
-        serialized_component,
         # TODO(b/182220464): write IR to pipeline_root and let
         # container_entrypoint.py read it back to avoid future issue that IR
         # exeeds the flag size limit.
