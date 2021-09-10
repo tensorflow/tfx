@@ -1,0 +1,51 @@
+// Copyright 2021 Google LLC. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+
+package tfx.orchestration;
+
+// Indicates the run state of a TFleX pipeline or a node.
+message RunState {
+  enum State {
+    UNKNOWN = 0;
+
+    // Ready to run but execution has not started.
+    READY = 1;
+
+    // Currently running.
+    RUNNING = 2;
+
+    // Run successfully completed.
+    COMPLETE = 3;
+
+    // Only applicable to nodes. Indicates that the node run was skipped
+    // (e.g. due to condition not satisfied when pipeline has conditionals).
+    SKIPPED = 4;
+
+    // Indicates that any active run is temporarily paused and may be resumed.
+    PAUSED = 5;
+
+    // Indicates that the pipeline or node was stopped by an external agent.
+    // When stopped, any associated active MLMD executions are cancelled.
+    STOPPED = 6;
+
+    // Indicates failure to run to completion due to internal errors.
+    FAILED = 7;
+  }
+
+  State state = 1;
+
+  string status_msg = 2;
+}
