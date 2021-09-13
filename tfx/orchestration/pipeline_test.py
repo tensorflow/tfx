@@ -320,6 +320,22 @@ class PipelineTest(test_case_utils.TfxTest):
     self.assertEqual(expected_args,
                      p.components[0].executor_spec.beam_pipeline_args)
 
+  def testPipelineWithPartialRunOptions(self):
+    partial_run_options = pipeline.PartialRunOptions(
+        from_nodes=(lambda node_id: node_id == 'component_a'),
+        to_nodes=(lambda node_id: node_id == 'component_a'),
+        strategy=pipeline.STRATEGY_BASE_PIPELINE_RUN,
+        base_pipeline_run_id='dummy_run_id')
+    component_a = _make_fake_node_instance('').with_id('component_a')
+    p = pipeline.Pipeline(
+        pipeline_name='a',
+        pipeline_root='b',
+        log_root='c',
+        components=[component_a],
+        metadata_connection_config=self._metadata_connection_config,
+        partial_run_options=partial_run_options)
+    self.assertEqual(partial_run_options, p.partial_run_options)
+
 
 if __name__ == '__main__':
   tf.test.main()

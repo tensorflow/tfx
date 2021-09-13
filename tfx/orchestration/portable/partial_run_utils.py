@@ -29,23 +29,32 @@ from tfx.proto.orchestration import pipeline_pb2
 from google.protobuf import any_pb2
 from ml_metadata.proto import metadata_store_pb2
 
+_default_chief_root_settings = (
+    pipeline_pb2.NodeExecutionOptions.ChiefRootSettings())
+_default_chief_root_settings.latest_pipeline_run_strategy.SetInParent()
 
-def filter_pipeline(
-    input_pipeline: pipeline_pb2.Pipeline,
+
+def mark_pipeline(
+    pipeline: pipeline_pb2.Pipeline,
     from_nodes: Callable[[str], bool] = lambda _: True,
     to_nodes: Callable[[str], bool] = lambda _: True,
-) -> Tuple[pipeline_pb2.Pipeline, Mapping[
-    str, List[pipeline_pb2.InputSpec.Channel]]]:
-  """Filters the Pipeline IR proto, thus enabling partial runs.
+    chief_root_settings: pipeline_pb2.NodeExecutionOptions
+    .ChiefRootSettings = _default_chief_root_settings,
+):
+  """Modifies the Pipeline IR in place, in preparation for partial run.
+
+  This function modifies the node-level execution_options to annotate them with
+  additional information needed for partial runs, such as which nodes to run,
+  which nodes to skip, which node is responsible for additional bookkeeping
+  (the "ChiefRoot" node), and settings for that bookkeeping entails.
 
   The set of nodes included in the filtered pipeline is the set of nodes between
   from_nodes and to_nodes -- i.e., the set of nodes that are reachable by
   traversing downstream from `from_nodes` AND also reachable by traversing
-  upstream from `to_nodes`. Also, if the input_pipeline contains per-node
-  DeploymentConfigs, they will be filtered as well.
+  upstream from `to_nodes`.
 
   Args:
-    input_pipeline: A valid compiled Pipeline IR proto to be filtered.
+    pipeline: A valid compiled Pipeline IR proto to be marked.
     from_nodes: A predicate function that selects nodes by their ids. The set of
       nodes whose node_ids return True determine where the "sweep" starts from
       (see detailed description).
@@ -54,31 +63,48 @@ def filter_pipeline(
       nodes whose node_ids return True determine where the "sweep" ends (see
       detailed description).
       Defaults to lambda _: True (i.e., select all nodes).
-
-  Returns:
-    A Tuple consisting of two elements:
-    - The filtered Pipeline IR proto, with the order of nodes preserved.
-    - A Mapping from node_ids of nodes that were filtered out, to the input
-      channels that depend on them as producer nodes.
+    chief_root_settings: Settings needed by the ChiefRoot node to perform the
+      additional bookkeeping. Defaults to using LATEST_PIPELINE_RUN strategy.
 
   Raises:
-    ValueError: If input_pipeline's execution_mode is not SYNC.
-    ValueError: If input_pipeline contains a sub-pipeline.
-    ValueError: If input_pipeline is not topologically sorted.
+    ValueError: If pipeline's execution_mode is not SYNC.
+    ValueError: If pipeline contains a sub-pipeline.
+    ValueError: If pipeline is not topologically sorted.
   """
-  _ensure_sync_pipeline(input_pipeline)
-  _ensure_no_subpipeline_nodes(input_pipeline)
-  _ensure_topologically_sorted(input_pipeline)
+  _ensure_sync_pipeline(pipeline)
+  _ensure_no_subpipeline_nodes(pipeline)
+  _ensure_topologically_sorted(pipeline)
 
-  node_map = _make_ordered_node_map(input_pipeline)
+  node_map = _make_ordered_node_map(pipeline)
   from_node_ids = [node_id for node_id in node_map if from_nodes(node_id)]
   to_node_ids = [node_id for node_id in node_map if to_nodes(node_id)]
   node_map = _filter_node_map(node_map, from_node_ids, to_node_ids)
   node_map, excluded_direct_dependencies = _fix_nodes(node_map)
-  fixed_deployment_config = _fix_deployment_config(input_pipeline, node_map)
-  filtered_pipeline = _make_filtered_pipeline(input_pipeline, node_map,
-                                              fixed_deployment_config)
-  return filtered_pipeline, excluded_direct_dependencies
+  _mark_nodes_and_nominate_chief_root(
+      pipeline,
+      node_ids_to_include=set(node_map.keys()),
+      excluded_direct_dependencies=excluded_direct_dependencies,
+      chief_root_settings=chief_root_settings)
+
+
+def _mark_nodes_and_nominate_chief_root(
+    pipeline: pipeline_pb2.Pipeline, node_ids_to_include: Set[str],
+    excluded_direct_dependencies: Set[str],
+    chief_root_settings: pipeline_pb2.NodeExecutionOptions.ChiefRootSettings):
+  """Mark nodes and nominate ChiefRoot."""
+  chief_root_already_nominated = False
+  for node in pipeline.nodes:  # assumes topological order
+    node_id = node.pipeline_node.node_info.id
+    node_exec_opts = node.pipeline_node.execution_options
+    if node_id in node_ids_to_include:
+      if chief_root_already_nominated:
+        node_exec_opts.run.SetInParent()
+      else:
+        node_exec_opts.run.chief_root_settings.CopyFrom(chief_root_settings)
+        chief_root_already_nominated = True
+    else:
+      node_exec_opts.skip.child_in_partial_run = (
+          node_id in excluded_direct_dependencies)
 
 
 class _Direction(enum.Enum):
@@ -234,8 +260,7 @@ def _remove_dangling_downstream_nodes(
 def _handle_missing_inputs(
     node: pipeline_pb2.PipelineNode,
     node_ids_to_keep: Collection[str],
-) -> Tuple[pipeline_pb2.PipelineNode, Mapping[
-    str, List[pipeline_pb2.InputSpec.Channel]]]:
+) -> Tuple[pipeline_pb2.PipelineNode, Set[str]]:
   """Handles missing inputs.
 
   Args:
@@ -244,9 +269,8 @@ def _handle_missing_inputs(
 
   Returns:
     A Tuple containing two elements:
-    - A copy of the Pipeline node with some nodes removed,
-    - A Mapping from removed node_ids to a list of input channels that use it as
-      the producer node.
+    - A copy of the Pipeline node with some upstream_nodes removed,
+    - The set of excluded node_ids that are producer nodes of the nodes to keep.
   """
   upstream_nodes_removed = set()
   upstream_nodes_to_keep = []
@@ -257,34 +281,32 @@ def _handle_missing_inputs(
       upstream_nodes_removed.add(upstream_node)
 
   if not upstream_nodes_removed:
-    return node, {}  # No parent missing, no need to change anything.
+    return node, set()  # No parent missing, no need to change anything.
 
-  excluded_direct_deps = collections.defaultdict(list)
+  excluded_direct_deps = set()
   new_node = pipeline_pb2.PipelineNode()
   new_node.CopyFrom(node)
   for input_spec in new_node.inputs.inputs.values():
     for channel in input_spec.channels:
       if channel.producer_node_query.id in upstream_nodes_removed:
-        excluded_direct_deps[channel.producer_node_query.id].append(channel)
+        excluded_direct_deps.add(channel.producer_node_query.id)
   new_node.upstream_nodes[:] = upstream_nodes_to_keep
   return new_node, excluded_direct_deps
 
 
 def _fix_nodes(
     node_map: 'collections.OrderedDict[str, pipeline_pb2.PipelineNode]',
-) -> Tuple['collections.OrderedDict[str, pipeline_pb2.PipelineNode]', Mapping[
-    str, List[pipeline_pb2.InputSpec.Channel]]]:
+) -> Tuple['collections.OrderedDict[str, pipeline_pb2.PipelineNode]', Set[str]]:
   """Removes dangling references and handle missing inputs."""
   fixed_nodes = collections.OrderedDict()
-  merged_excluded_direct_deps = collections.defaultdict(list)
+  merged_excluded_direct_deps = set()
   for node_id in node_map:
     new_node = _remove_dangling_downstream_nodes(
         node=node_map[node_id], node_ids_to_keep=node_map.keys())
     new_node, excluded_direct_deps = _handle_missing_inputs(
         node=new_node, node_ids_to_keep=node_map.keys())
     fixed_nodes[node_id] = new_node
-    for inner_node_id, channel_list in excluded_direct_deps.items():
-      merged_excluded_direct_deps[inner_node_id] += channel_list
+    merged_excluded_direct_deps |= excluded_direct_deps
   return fixed_nodes, merged_excluded_direct_deps
 
 
@@ -328,21 +350,45 @@ def _fix_deployment_config(
   return result
 
 
-def _make_filtered_pipeline(
-    input_pipeline: pipeline_pb2.Pipeline,
-    node_map: 'collections.OrderedDict[str, pipeline_pb2.PipelineNode]',
-    fixed_deployment_config: Optional[any_pb2.Any] = None
-) -> pipeline_pb2.Pipeline:
-  """Pieces different parts of the Pipeline proto together."""
-  result = pipeline_pb2.Pipeline()
-  result.CopyFrom(input_pipeline)
-  del result.nodes[:]
-  result.nodes.extend(
-      pipeline_pb2.Pipeline.PipelineOrNode(pipeline_node=node_map[node_id])
-      for node_id in node_map)
-  if fixed_deployment_config:
-    result.deployment_config.CopyFrom(fixed_deployment_config)
-  return result
+def snapshot(pipeline_node: pipeline_pb2.PipelineNode,
+             mlmd_connection_config: metadata.ConnectionConfigType,
+             pipeline: pipeline_pb2.Pipeline):
+  """Performs a snapshot if pipeline_node is chief, else no-op.
+
+  Args:
+    pipeline_node: If this is the chief node, performs the snapshot. Otherwise,
+      does nothing.
+    mlmd_connection_config: Used for connecting to the MLMD where the snapshot
+      is to be performed.
+    pipeline: The full pipeline.
+
+  Raises:
+    ValueError: If pipeline_node has a chief_root_settings field set, but
+      artifact_reuse_strategy field is not set in it.
+  """
+  if not pipeline_node.execution_options.run.HasField('chief_root_settings'):
+    logging.info(
+        'Node %s is not ChiefRoot. '
+        'Assuming that ChiefRoot node has prepared the necessary dependencies.',
+        pipeline_node.node_info.id)
+    return
+
+  logging.info('Node %s is chief.', pipeline_node.node_info.id)
+  chief_root_settings = pipeline_node.execution_options.run.chief_root_settings
+  logging.info('chief_root_settings: %s', chief_root_settings)
+  if chief_root_settings.HasField('base_pipeline_run_strategy'):
+    base_run_id = chief_root_settings.base_pipeline_run_strategy.base_run_id
+    logging.info('Using base_pipeline_run_strategy with base_run_id=%s',
+                 base_run_id)
+  elif chief_root_settings.HasField('latest_pipeline_run_strategy'):
+    base_run_id = None
+    logging.info('Using latest_pipeline_run_strategy.')
+  else:
+    raise ValueError('artifact_reuse_strategy not set in ChiefSettings.')
+  with metadata.Metadata(connection_config=mlmd_connection_config) as m:
+    logging.info('Preparing to reuse artifacts.')
+    reuse_pipeline_run_artifacts(m, pipeline, base_run_id=base_run_id)
+    logging.info('Artifact reuse complete.')
 
 
 def reuse_node_outputs(metadata_handler: metadata.Metadata, pipeline_name: str,
@@ -367,31 +413,29 @@ def reuse_node_outputs(metadata_handler: metadata.Metadata, pipeline_name: str,
   artifact_recycler.reuse_node_outputs(node_id, base_run_id)
 
 
-def _get_validated_new_run_id(full_pipeline: pipeline_pb2.Pipeline,
+def _get_validated_new_run_id(pipeline: pipeline_pb2.Pipeline,
                               new_run_id: Optional[str] = None) -> str:
   """Attempts to obtain a unique new_run_id.
 
   Args:
-    full_pipeline: The unfiltered pipeline IR. Its runtime parameters should
-      already be resolved.
+    pipeline: The pipeline IR, whose runtime parameters are already resolved.
     new_run_id: The pipeline_run_id to associate those output artifacts with.
-      This function will always attempt to infer the new run id from
-      `full_pipeline`'s IR. If not found, it would use the provided
-      `new_run_id`. If found, and `new_run_id` is provided, it would verify that
-      it is the same as the inferred run id, and raise an error if they are not
-      the same.
+      This function will always attempt to infer the new run id from `pipeline`.
+      If not found, it would use the provided `new_run_id`. If found, and
+      `new_run_id` is provided, it would verify that it equals the inferred run
+      id, and raise an error if they are not equal.
 
   Returns:
     The validated pipeline_run_id.
 
   Raises:
-    ValueError: If `full_pipeline` does not contain a pipeline run id, and
+    ValueError: If `pipeline` does not contain a pipeline run id, and
       `new_run_id` is not provided.
-    ValueError: If `full_pipeline` does contain a pipeline run id, and
-      `new_run_id` is provided, but they are not the same.
+    ValueError: If `pipeline` does contain a pipeline run id, and
+      `new_run_id` is provided, but they are not equal.
   """
   inferred_new_run_id = None
-  run_id_value = full_pipeline.runtime_spec.pipeline_run_id
+  run_id_value = pipeline.runtime_spec.pipeline_run_id
   if run_id_value.HasField('field_value'):
     inferred_new_run_id = run_id_value.field_value.string_value
 
@@ -415,20 +459,11 @@ def _get_validated_new_run_id(full_pipeline: pipeline_pb2.Pipeline,
   return str(inferred_new_run_id or new_run_id)
 
 
-def _compute_nodes_to_reuse(full_pipeline, filtered_pipeline,
-                            excluded_direct_dependencies) -> Set[str]:
+def _compute_nodes_to_reuse(marked_pipeline: pipeline_pb2.Pipeline) -> Set[str]:
   """Computes which nodes' outputs to reuse.
 
   Args:
-    full_pipeline: The unfiltered pipeline IR. Its runtime parameters should
-      already be resolved.
-    filtered_pipeline: The filtered pipeline IR -- the first output from calling
-      `filter_pipeline` on full_pipeline.
-    excluded_direct_dependencies: The second output from calling
-      `filter_pipeline` on full_pipeline. A Mapping, with:
-      - keys: node_ids of nodes that are the direct dependencies of some node(s)
-        in the filtered_pipeline, but were filtered out,
-      - values: Lists of input channels that use those nodes as producer nodes.
+    marked_pipeline: The output of the mark_pipeline function.
 
   Returns:
     The set of node_ids corresponding to the nodes whose outputs are to be
@@ -438,19 +473,25 @@ def _compute_nodes_to_reuse(full_pipeline, filtered_pipeline,
     ValueError: If the filtered_nodes are such that if they are the only nodes
       that are run in a partial run, will inevitably lead to an inconsistent
       MLMD state. Most likely, this means that the user did not directly use the
-      outputs of `filter_pipeline` as the inputs to this function.
+      outputs of `mark_pipeline` as the inputs to this function.
   """
-  node_map = _make_ordered_node_map(full_pipeline)
+  node_map = _make_ordered_node_map(marked_pipeline)
+  nodes_to_run = []
+  skipped_nodes_w_included_children = []
+  for node in marked_pipeline.nodes:
+    node_id = node.pipeline_node.node_info.id
+    node_exec_opts = node.pipeline_node.execution_options
+    if node_exec_opts.HasField('run'):
+      nodes_to_run.append(node_id)
+    elif node_exec_opts.HasField('skip'):
+      if node_exec_opts.skip.child_in_partial_run:
+        skipped_nodes_w_included_children.append(node_id)
   exclusion_set = _traverse(
-      node_map,
-      _Direction.DOWNSTREAM,
-      start_nodes=[
-          node.pipeline_node.node_info.id for node in filtered_pipeline.nodes
-      ])
+      node_map, _Direction.DOWNSTREAM, start_nodes=nodes_to_run)
   inclusion_set = _traverse(
       node_map,
       _Direction.UPSTREAM,
-      start_nodes=excluded_direct_dependencies.keys())
+      start_nodes=skipped_nodes_w_included_children)
   if not exclusion_set.isdisjoint(inclusion_set):
     raise ValueError('This should never happen. '
                      'Did you modify the outputs of filter_pipeline?')
@@ -458,14 +499,10 @@ def _compute_nodes_to_reuse(full_pipeline, filtered_pipeline,
   return set(node_map.keys()) - exclusion_set
 
 
-def reuse_pipeline_run_artifacts(
-    metadata_handler: metadata.Metadata,
-    full_pipeline: pipeline_pb2.Pipeline,
-    filtered_pipeline: pipeline_pb2.Pipeline,
-    excluded_direct_dependencies: Mapping[str,
-                                          List[pipeline_pb2.InputSpec.Channel]],
-    base_run_id: Optional[str] = None,
-    new_run_id: Optional[str] = None):
+def reuse_pipeline_run_artifacts(metadata_handler: metadata.Metadata,
+                                 marked_pipeline: pipeline_pb2.Pipeline,
+                                 base_run_id: Optional[str] = None,
+                                 new_run_id: Optional[str] = None):
   """Reuses the output Artifacts from a previous pipeline run.
 
   This computes the maximal set of nodes whose outputs can be associated with
@@ -473,19 +510,11 @@ def reuse_pipeline_run_artifacts(
   node outputs (similar to repeatedly calling `reuse_node_outputs`). It also
   puts a ParentContext into MLMD, with the `base_run_id` being the parent
   context, and the new run_id (provided by the user, or inferred from
-  `full_pipeline`) as the child context.
+  `pipeline`) as the child context.
 
   Args:
     metadata_handler: A handler to access MLMD store.
-    full_pipeline: The unfiltered pipeline IR. Its runtime parameters should
-      already be resolved.
-    filtered_pipeline: The filtered pipeline IR -- the first output from calling
-      `filter_pipeline` on full_pipeline.
-    excluded_direct_dependencies: The second output from calling
-      `filter_pipeline` on full_pipeline. A Mapping, with:
-      - keys: node_ids of nodes that are the direct dependencies of some node(s)
-        in the filtered_pipeline, but were filtered out,
-      - values: Lists of input channels that use those nodes as producer nodes.
+    marked_pipeline: The output of mark_pipeline function.
     base_run_id: The pipeline_run_id where the output artifacts were produced.
       Defaults to the latest previous pipeline run to use as base_run_id.
     new_run_id: The pipeline_run_id to associate those output artifacts with.
@@ -505,12 +534,11 @@ def reuse_pipeline_run_artifacts(
       MLMD state. Most likely, this means that the user did not directly use the
       outputs of `filter_pipeline` as the inputs to this function.
   """
-  validated_new_run_id = _get_validated_new_run_id(full_pipeline, new_run_id)
-  nodes_to_reuse = _compute_nodes_to_reuse(full_pipeline, filtered_pipeline,
-                                           excluded_direct_dependencies)
+  validated_new_run_id = _get_validated_new_run_id(marked_pipeline, new_run_id)
+  nodes_to_reuse = _compute_nodes_to_reuse(marked_pipeline)
   artifact_recycler = _ArtifactRecycler(
       metadata_handler,
-      pipeline_name=full_pipeline.pipeline_info.id,
+      pipeline_name=marked_pipeline.pipeline_info.id,
       new_run_id=validated_new_run_id)
   if not base_run_id:
     base_run_id = artifact_recycler.get_latest_pipeline_run_id()

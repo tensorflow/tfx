@@ -14,7 +14,7 @@
 """Definition and related classes for TFX pipeline."""
 
 import enum
-from typing import List, Optional, cast
+from typing import Callable, List, Optional, cast
 
 from tfx.dsl.compiler import constants
 from tfx.dsl.components.base import base_node
@@ -57,6 +57,39 @@ class ExecutionMode(enum.Enum):
   ASYNC = 2
 
 
+class ArtifactReuseStrategy(enum.Enum):
+  """For partial run."""
+  LATEST_PIPELINE_RUN = 1
+  BASE_PIPELINE_RUN = 2
+
+
+# Aliases.
+STRATEGY_LATEST_PIPELINE_RUN = ArtifactReuseStrategy.LATEST_PIPELINE_RUN
+STRATEGY_BASE_PIPELINE_RUN = ArtifactReuseStrategy.BASE_PIPELINE_RUN
+
+
+class PartialRunOptions:
+  """Config for Partial Run."""
+
+  def __init__(self,
+               from_nodes: Callable[[str], bool] = (lambda _: True),
+               to_nodes: Callable[[str], bool] = (lambda _: True),
+               strategy: ArtifactReuseStrategy = STRATEGY_LATEST_PIPELINE_RUN,
+               base_pipeline_run_id: Optional[str] = None):
+    if strategy == STRATEGY_LATEST_PIPELINE_RUN and base_pipeline_run_id:
+      raise ValueError('If using STRATEGY_LATEST_PIPELINE_RUN strategy, '
+                       'base_pipeline_run_id must be None.')
+
+    if strategy == STRATEGY_BASE_PIPELINE_RUN and not base_pipeline_run_id:
+      raise ValueError('If using STRATEGY_BASE_PIPELINE_RUN strategy, '
+                       'base_pipeline_run_id cannot be None.')
+
+    self.from_nodes = from_nodes
+    self.to_nodes = to_nodes
+    self.strategy = strategy
+    self.base_pipeline_run_id = base_pipeline_run_id
+
+
 def add_beam_pipeline_args_to_component(component, beam_pipeline_args):
   if isinstance(component.executor_spec, executor_spec.BeamExecutorSpec):
     # Prepend pipeline-level beam_pipeline_args in front of component specific
@@ -86,6 +119,8 @@ class Pipeline:
     beam_pipeline_args: Pipeline arguments for Beam powered Components. Use
       `with_beam_pipeline_args` to set component level Beam args.
     platform_config: Pipeline level platform config, in proto form.
+    partial_run_options: PartialRunConfigs, used to specify that only a
+      sub-graph of the pipeline is to be run.
   """
 
   def __init__(self,
@@ -98,6 +133,7 @@ class Pipeline:
                beam_pipeline_args: Optional[List[str]] = None,
                platform_config: Optional[message.Message] = None,
                execution_mode: Optional[ExecutionMode] = ExecutionMode.SYNC,
+               partial_run_options: Optional[PartialRunOptions] = None,
                **kwargs):
     """Initialize pipeline.
 
@@ -110,6 +146,9 @@ class Pipeline:
       beam_pipeline_args: Pipeline arguments for Beam powered Components.
       platform_config: Pipeline level platform config, in proto form.
       execution_mode: The execution mode of the pipeline, can be SYNC or ASYNC.
+      partial_run_options: Optional PartialRunConfigs, used to specify that only
+        a sub-graph of the pipeline is to be run. If not set, will run the full
+        graph.
       **kwargs: Additional kwargs forwarded as pipeline args.
     """
     if len(pipeline_name) > _MAX_PIPELINE_NAME_LENGTH:
@@ -138,6 +177,8 @@ class Pipeline:
     if self.beam_pipeline_args:
       for component in components:
         add_beam_pipeline_args_to_component(component, beam_pipeline_args)
+
+    self.partial_run_options = partial_run_options
 
   @property
   def components(self):
