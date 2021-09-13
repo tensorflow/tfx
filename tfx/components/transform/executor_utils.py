@@ -33,13 +33,18 @@ from tfx.utils import proto_utils
 _DEFAULT_TRANSFORMED_EXAMPLES_PREFIX = 'transformed_examples'
 
 
-def MaybeBindCustomConfig(inputs: Mapping[str, Any],
+def MaybeBindCustomConfig(exec_properties: Mapping[str, Any],
                           fn: Any) -> Callable[..., Any]:
+  """Binds `custom_config` parameter of user defined function."""
   # For compatibility, only bind custom config if it's in the signature.
   if value_utils.FunctionHasArg(fn, labels.CUSTOM_CONFIG):
-    custom_config_json = value_utils.GetSoleValue(inputs, labels.CUSTOM_CONFIG)
-    custom_config = (json_utils.loads(custom_config_json)
-                     if custom_config_json else {}) or {}
+    if standard_component_specs.CUSTOM_CONFIG_KEY not in exec_properties:
+      custom_config = {}
+    else:
+      custom_config_json = exec_properties[
+          standard_component_specs.CUSTOM_CONFIG_KEY]
+      custom_config = (json_utils.loads(custom_config_json)
+                       if custom_config_json else {}) or {}
     fn = functools.partial(fn, custom_config=custom_config)
   return fn
 

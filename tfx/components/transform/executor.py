@@ -301,16 +301,18 @@ class Executor(base_beam_executor.BaseBeamExecutor):
     self._pip_dependencies = []
 
   def _GetPreprocessingFn(
-      self, inputs: Mapping[str, Any],
-      unused_outputs: Mapping[str, Any]) -> Callable[..., Any]:
+      self, input_dict: Dict[str, List[types.Artifact]],
+      output_dict: Dict[str, List[types.Artifact]],
+      exec_properties: Dict[str, Any]) -> Callable[..., Any]:
     """Returns a user defined preprocessing_fn.
 
     If a custom config is provided in inputs, and also needed in
     preprocessing_fn, bind it to preprocessing_fn.
 
     Args:
-      inputs: A dictionary of labelled input values.
-      unused_outputs: A dictionary of labelled output values.
+      input_dict: Same as Do().
+      output_dict: Same as Do().
+      exec_properties: Same as Do().
 
     Returns:
       User defined function, optionally bound with a custom config.
@@ -319,27 +321,21 @@ class Executor(base_beam_executor.BaseBeamExecutor):
       ValueError: When neither or both of MODULE_FILE and PREPROCESSING_FN
         are present in inputs.
     """
+    # Following arguments might be used in child classes.
+    del input_dict, output_dict
+
     executor_utils.ValidateOnlyOneSpecified(
-        inputs,
-        (labels.MODULE_FILE, labels.MODULE_PATH, labels.PREPROCESSING_FN))
+        exec_properties, (standard_component_specs.MODULE_FILE_KEY,
+                          standard_component_specs.MODULE_PATH_KEY,
+                          standard_component_specs.PREPROCESSING_FN_KEY))
 
-    fn = udf_utils.get_fn(
-        {
-            standard_component_specs.MODULE_FILE_KEY:
-                value_utils.GetSoleValue(
-                    inputs, labels.MODULE_FILE, strict=False),
-            standard_component_specs.MODULE_PATH_KEY:
-                value_utils.GetSoleValue(
-                    inputs, labels.MODULE_PATH, strict=False),
-            standard_component_specs.PREPROCESSING_FN_KEY:
-                value_utils.GetSoleValue(
-                    inputs, labels.PREPROCESSING_FN, strict=False),
-        }, standard_component_specs.PREPROCESSING_FN_KEY)
+    fn = udf_utils.get_fn(exec_properties,
+                          standard_component_specs.PREPROCESSING_FN_KEY)
 
-    return executor_utils.MaybeBindCustomConfig(inputs, fn)
+    return executor_utils.MaybeBindCustomConfig(exec_properties, fn)
 
   def _GetStatsOptionsUpdaterFn(
-      self, inputs: Mapping[str, Any]
+      self, exec_properties: Dict[str, Any]
   ) -> Optional[Callable[[stats_options_util.StatsType, tfdv.StatsOptions],
                          tfdv.StatsOptions]]:
     """Returns the user-defined stats_options_updater_fn.
@@ -348,33 +344,25 @@ class Executor(base_beam_executor.BaseBeamExecutor):
     stats_options_updater_fn, bind it to stats_options_updater_fn.
 
     Args:
-      inputs: A dictionary of labelled input values.
+      exec_properties: Same as Do().
 
     Returns:
       User defined function, optionally bound with a custom config.
     """
     has_fn = executor_utils.ValidateOnlyOneSpecified(
-        inputs, (labels.MODULE_FILE, labels.MODULE_PATH,
-                 labels.STATS_OPTIONS_UPDATER_FN),
+        exec_properties,
+        (standard_component_specs.MODULE_FILE_KEY,
+         standard_component_specs.MODULE_PATH_KEY,
+         standard_component_specs.STATS_OPTIONS_UPDATER_FN_KEY),
         allow_missing=True)
     if not has_fn:
       return None
 
     fn = udf_utils.try_get_fn(
-        {
-            standard_component_specs.MODULE_FILE_KEY:
-                value_utils.GetSoleValue(
-                    inputs, labels.MODULE_FILE, strict=False),
-            standard_component_specs.MODULE_PATH_KEY:
-                value_utils.GetSoleValue(
-                    inputs, labels.MODULE_PATH, strict=False),
-            standard_component_specs.STATS_OPTIONS_UPDATER_FN_KEY:
-                value_utils.GetSoleValue(
-                    inputs, labels.STATS_OPTIONS_UPDATER_FN, strict=False)
-        }, standard_component_specs.STATS_OPTIONS_UPDATER_FN_KEY)
+        exec_properties, standard_component_specs.STATS_OPTIONS_UPDATER_FN_KEY)
     if fn is None:
       return fn
-    return executor_utils.MaybeBindCustomConfig(inputs, fn)
+    return executor_utils.MaybeBindCustomConfig(exec_properties, fn)
 
   def Do(self, input_dict: Dict[str, List[types.Artifact]],
          output_dict: Dict[str, List[types.Artifact]],
@@ -501,34 +489,9 @@ class Executor(base_beam_executor.BaseBeamExecutor):
                                       local_pip_package_path)
       self._pip_dependencies.append(local_pip_package_path)
 
-    inputs_for_fn_resolution = {
-        labels.MODULE_FILE:
-            exec_properties.get(standard_component_specs.MODULE_FILE_KEY, None),
-        labels.MODULE_PATH:
-            user_module_key,
-        labels.PREPROCESSING_FN:
-            exec_properties.get(standard_component_specs.PREPROCESSING_FN_KEY,
-                                None),
-        labels.STATS_OPTIONS_UPDATER_FN:
-            exec_properties.get(
-                standard_component_specs.STATS_OPTIONS_UPDATER_FN_KEY, None),
-        labels.CUSTOM_CONFIG:
-            exec_properties.get(standard_component_specs.CUSTOM_CONFIG_KEY,
-                                None),
-        # Used in nitroml/automl/autodata/transform/executor.py
-        labels.SCHEMA_PATH_LABEL:
-            schema_file,
-    }
-    # Used in nitroml/automl/autodata/transform/executor.py
-    outputs_for_fn_resolution = {
-        labels.TRANSFORM_METADATA_OUTPUT_PATH_LABEL: transform_output,
-    }
-    # TODO(b/178065215): Refactor to pass exec_properties directly.
-    #                    We need to change usages in nitroml, too.
-    preprocessing_fn = self._GetPreprocessingFn(inputs_for_fn_resolution,
-                                                outputs_for_fn_resolution)
-    stats_options_updater_fn = self._GetStatsOptionsUpdaterFn(
-        inputs_for_fn_resolution)
+    preprocessing_fn = self._GetPreprocessingFn(input_dict, output_dict,
+                                                exec_properties)
+    stats_options_updater_fn = self._GetStatsOptionsUpdaterFn(exec_properties)
 
     label_inputs = {
         labels.DISABLE_STATISTICS_LABEL:
