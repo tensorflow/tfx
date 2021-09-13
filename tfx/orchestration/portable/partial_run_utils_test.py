@@ -13,7 +13,7 @@
 # limitations under the License.
 """Tests for tfx.orchestration.portable.partial_run_utils."""
 
-from typing import List, Mapping, Optional, Tuple, Union
+from typing import List, Mapping, Optional, Set, Tuple, Union
 from unittest import mock
 
 from absl import logging
@@ -79,6 +79,31 @@ def _to_input_channel(
 
 class PipelineFilteringTest(parameterized.TestCase, test_case_utils.TfxTest):
 
+  def checkNodeExecutionOptions(self, pipeline: pipeline_pb2.Pipeline,
+                                chief_root_node_id: str, nodes_to_run: Set[str],
+                                nodes_to_skip: Set[str],
+                                nodes_with_running_child: Set[str]):
+    for node in pipeline.nodes:
+      node_id = node.pipeline_node.node_info.id
+      run_or_skip = node.pipeline_node.execution_options.WhichOneof(
+          'partial_run_option')
+      self.assertIsNotNone(run_or_skip)
+      self.assertTrue((node_id in nodes_to_run) or (node_id in nodes_to_skip))
+      # assert partial_run_option == 'run' iff node_id in nodes_to_run
+      self.assertEqual(run_or_skip == 'run', node_id in nodes_to_run)
+      if node_id in nodes_to_run:
+        # assert chief_settings is set iff node_id == chief_node_id
+        self.assertEqual(
+            node.pipeline_node.execution_options.run.HasField(
+                'chief_root_settings'), node_id == chief_root_node_id)
+      # assert partial_run_option == 'skip' iff node_id in nodes_to_skip
+      self.assertEqual(run_or_skip == 'skip', node_id in nodes_to_skip)
+      if node_id in nodes_to_skip:
+        # assert child_in_partial_run iff node_id in nodes_with_running_child
+        self.assertEqual(
+            node.pipeline_node.execution_options.skip.child_in_partial_run,
+            node_id in nodes_with_running_child)
+
   def testAsyncPipeline_error(self):
     """If Pipeline has execution_mode ASYNC, raise ValueError."""
     input_pipeline = pipeline_pb2.Pipeline()
@@ -87,7 +112,7 @@ class PipelineFilteringTest(parameterized.TestCase, test_case_utils.TfxTest):
 
     with self.assertRaisesRegex(
         ValueError, 'Pipeline filtering is only supported for SYNC pipelines.'):
-      _ = partial_run_utils.filter_pipeline(input_pipeline)
+      partial_run_utils.mark_pipeline(input_pipeline)
 
   def testSubpipeline_error(self):
     """If Pipeline contains sub-pipeline, raise ValueError."""
@@ -102,7 +127,7 @@ class PipelineFilteringTest(parameterized.TestCase, test_case_utils.TfxTest):
     with self.assertRaisesRegex(
         ValueError,
         'Pipeline filtering not supported for pipelines with sub-pipelines.'):
-      _ = partial_run_utils.filter_pipeline(input_pipeline)
+      partial_run_utils.mark_pipeline(input_pipeline)
 
   def testNotTopologicallySorted_upstream_error(self):
     """If Pipeline is not topologically sorted, raise ValueError."""
@@ -118,7 +143,7 @@ class PipelineFilteringTest(parameterized.TestCase, test_case_utils.TfxTest):
 
     with self.assertRaisesRegex(ValueError,
                                 'Input pipeline is not topologically sorted.'):
-      _ = partial_run_utils.filter_pipeline(input_pipeline)
+      partial_run_utils.mark_pipeline(input_pipeline)
 
   def testNotTopologicallySorted_downstream_error(self):
     """If Pipeline is not topologically sorted, raise ValueError."""
@@ -133,12 +158,12 @@ class PipelineFilteringTest(parameterized.TestCase, test_case_utils.TfxTest):
 
     with self.assertRaisesRegex(ValueError,
                                 'Input pipeline is not topologically sorted.'):
-      _ = partial_run_utils.filter_pipeline(input_pipeline)
+      partial_run_utils.mark_pipeline(input_pipeline)
 
   def testNoFilter(self):
     """Basic case where there are no filters applied.
 
-    input_pipeline: node_a -> node_b -> node_c
+    pipeline: node_a -> node_b -> node_c
     from_node: all nodes
     to_node: all nodes
     expected output_pipeline: node_a -> node_b -> node_c
@@ -196,15 +221,14 @@ class PipelineFilteringTest(parameterized.TestCase, test_case_utils.TfxTest):
     node_c.pipeline_node.inputs.inputs['in'].min_count = 1
     node_c.pipeline_node.upstream_nodes.extend(['b'])
 
-    expected_pipeline = pipeline_pb2.Pipeline()
-    expected_pipeline.CopyFrom(input_pipeline)  # no changes expected
-    expected_excluded_direct_deps = {}
+    partial_run_utils.mark_pipeline(input_pipeline)
 
-    filtered_pipeline, excluded_direct_deps = partial_run_utils.filter_pipeline(
-        input_pipeline)
-
-    self.assertProtoEquals(expected_pipeline, filtered_pipeline)
-    self.assertEqual(expected_excluded_direct_deps, excluded_direct_deps)
+    self.checkNodeExecutionOptions(
+        input_pipeline,
+        chief_root_node_id='a',
+        nodes_to_run=set(['a', 'b', 'c']),
+        nodes_to_skip=set(),
+        nodes_with_running_child=set())
 
   def testFilterOutNothing(self):
     """Basic case where no nodes are filtered out.
@@ -268,17 +292,17 @@ class PipelineFilteringTest(parameterized.TestCase, test_case_utils.TfxTest):
     node_c.pipeline_node.inputs.inputs['in'].min_count = 1
     node_c.pipeline_node.upstream_nodes.extend(['b'])
 
-    expected_pipeline = pipeline_pb2.Pipeline()
-    expected_pipeline.CopyFrom(input_pipeline)  # no changes expected
-    expected_excluded_direct_deps = {}
-
-    filtered_pipeline, excluded_direct_deps = partial_run_utils.filter_pipeline(
+    partial_run_utils.mark_pipeline(
         input_pipeline,
         from_nodes=lambda node_id: (node_id == 'a'),
         to_nodes=lambda node_id: (node_id == 'c'))
 
-    self.assertProtoEquals(expected_pipeline, filtered_pipeline)
-    self.assertEqual(expected_excluded_direct_deps, excluded_direct_deps)
+    self.checkNodeExecutionOptions(
+        input_pipeline,
+        chief_root_node_id='a',
+        nodes_to_run=set(['a', 'b', 'c']),
+        nodes_to_skip=set(),
+        nodes_with_running_child=set())
 
   def testFilterOutSinkNode(self):
     """Filter out a node that has upstream nodes but no downstream nodes.
@@ -341,21 +365,17 @@ class PipelineFilteringTest(parameterized.TestCase, test_case_utils.TfxTest):
     node_c.pipeline_node.inputs.inputs['in'].min_count = 1
     node_c.pipeline_node.upstream_nodes.extend(['b'])
 
-    expected_pipeline = pipeline_pb2.Pipeline()
-    expected_pipeline.pipeline_info.id = 'my_pipeline'
-    expected_pipeline.execution_mode = pipeline_pb2.Pipeline.SYNC
-    expected_pipeline.nodes.append(node_a)
-    expected_pipeline.nodes.append(node_b)
-    del expected_pipeline.nodes[-1].pipeline_node.downstream_nodes[:]
-    expected_excluded_direct_deps = {}
-
-    filtered_pipeline, excluded_direct_deps = partial_run_utils.filter_pipeline(
+    partial_run_utils.mark_pipeline(
         input_pipeline,
         from_nodes=lambda node_id: (node_id == 'a'),
         to_nodes=lambda node_id: (node_id == 'b'))
 
-    self.assertProtoEquals(expected_pipeline, filtered_pipeline)
-    self.assertEqual(expected_excluded_direct_deps, excluded_direct_deps)
+    self.checkNodeExecutionOptions(
+        input_pipeline,
+        chief_root_node_id='a',
+        nodes_to_run=set(['a', 'b']),
+        nodes_to_skip=set(['c']),
+        nodes_with_running_child=set())
 
   def testFilterOutSourceNode(self):
     """Filter out a node that has no upstream nodes but has downstream nodes.
@@ -419,23 +439,17 @@ class PipelineFilteringTest(parameterized.TestCase, test_case_utils.TfxTest):
     node_c.pipeline_node.inputs.inputs['in'].min_count = 1
     node_c.pipeline_node.upstream_nodes.extend(['b'])
 
-    expected_pipeline = pipeline_pb2.Pipeline()
-    expected_pipeline.pipeline_info.id = 'my_pipeline'
-    expected_pipeline.execution_mode = pipeline_pb2.Pipeline.SYNC
-    expected_pipeline.nodes.append(node_b)
-    del expected_pipeline.nodes[-1].pipeline_node.upstream_nodes[:]
-    expected_pipeline.nodes.append(node_c)
-    expected_excluded_direct_deps = {
-        'a': node_b.pipeline_node.inputs.inputs['in'].channels[:],
-    }
-
-    filtered_pipeline, excluded_direct_deps = partial_run_utils.filter_pipeline(
+    partial_run_utils.mark_pipeline(
         input_pipeline,
         from_nodes=lambda node_id: (node_id == 'b'),
         to_nodes=lambda node_id: (node_id == 'c'))
 
-    self.assertProtoEquals(expected_pipeline, filtered_pipeline)
-    self.assertEqual(expected_excluded_direct_deps, excluded_direct_deps)
+    self.checkNodeExecutionOptions(
+        input_pipeline,
+        chief_root_node_id='b',
+        nodes_to_run=set(['b', 'c']),
+        nodes_to_skip=set(['a']),
+        nodes_with_running_child=set(['a']))
 
   def testFilterOutSourceNode_triangle(self):
     """Filter out a source node in a triangle.
@@ -515,26 +529,18 @@ class PipelineFilteringTest(parameterized.TestCase, test_case_utils.TfxTest):
     node_c.pipeline_node.inputs.inputs['in_b'].min_count = 1
     node_c.pipeline_node.upstream_nodes.extend(['a', 'b'])
 
-    expected_pipeline = pipeline_pb2.Pipeline()
-    expected_pipeline.pipeline_info.id = 'my_pipeline'
-    expected_pipeline.execution_mode = pipeline_pb2.Pipeline.SYNC
-    expected_pipeline.nodes.append(node_b)
-    del expected_pipeline.nodes[-1].pipeline_node.upstream_nodes[:]
-    expected_pipeline.nodes.append(node_c)
-    expected_pipeline.nodes[-1].pipeline_node.upstream_nodes[:] = ['b']
-    expected_excluded_direct_deps = {
-        'a': (node_b.pipeline_node.inputs.inputs['in'].channels[:] +
-              node_c.pipeline_node.inputs.inputs['in_a'].channels[:]),
-    }
-
-    filtered_pipeline, excluded_direct_deps = partial_run_utils.filter_pipeline(
+    partial_run_utils.mark_pipeline(
         input_pipeline,
         from_nodes=lambda node_id: (node_id == 'b'),
         to_nodes=lambda node_id: (node_id == 'c'),
     )
 
-    self.assertProtoEquals(expected_pipeline, filtered_pipeline)
-    self.assertEqual(expected_excluded_direct_deps, excluded_direct_deps)
+    self.checkNodeExecutionOptions(
+        input_pipeline,
+        chief_root_node_id='b',
+        nodes_to_run=set(['b', 'c']),
+        nodes_to_skip=set(['a']),
+        nodes_with_running_child=set(['a']))
 
 
 # pylint: disable=invalid-name
@@ -722,7 +728,7 @@ class PartialRunTest(absltest.TestCase):
     #                         ---------        ---------
     #
     ############################################################################
-    pipeline_pb_run_2, _ = partial_run_utils.filter_pipeline(
+    partial_run_utils.mark_pipeline(
         pipeline_pb_run_2,
         from_nodes=lambda node_id: (node_id == add_num_v2.id))
     ############################################################################
@@ -820,10 +826,9 @@ class PartialRunTest(absltest.TestCase):
     #                         ---------        ---------
     #
     ############################################################################
-    filtered_pipeline_pb_run_2, excluded_direct_deps_run_2 = (
-        partial_run_utils.filter_pipeline(
-            pipeline_pb_run_2,
-            from_nodes=lambda node_id: (node_id == add_num_v2.id)))
+    partial_run_utils.mark_pipeline(
+        pipeline_pb_run_2,
+        from_nodes=lambda node_id: (node_id == add_num_v2.id))
     ############################################################################
     # PART 3a: Partial run -- Reuse node outputs.
     #
@@ -839,11 +844,7 @@ class PartialRunTest(absltest.TestCase):
     #
     ############################################################################
     with metadata.Metadata(self.metadata_config) as m:
-      partial_run_utils.reuse_pipeline_run_artifacts(
-          m,
-          full_pipeline=pipeline_pb_run_2,
-          filtered_pipeline=filtered_pipeline_pb_run_2,
-          excluded_direct_dependencies=excluded_direct_deps_run_2)
+      partial_run_utils.reuse_pipeline_run_artifacts(m, pipeline_pb_run_2)
     ############################################################################
     # PART 3b: Partial run -- Verify result (1 + 5 == 6).
     #
@@ -854,8 +855,8 @@ class PartialRunTest(absltest.TestCase):
     #                         ---------        ---------
     #
     ############################################################################
-    beam_dag_runner.BeamDagRunner().run(filtered_pipeline_pb_run_2)
-    self.assertResultEqual(filtered_pipeline_pb_run_2, 6)
+    beam_dag_runner.BeamDagRunner().run(pipeline_pb_run_2)
+    self.assertResultEqual(pipeline_pb_run_2, 6)
 
   def testReusePipelineArtifacts_twoIndependentSubgraphs(self):
     """Tests a sequence of partial runs with independent sub-graphs."""
@@ -949,10 +950,9 @@ class PartialRunTest(absltest.TestCase):
     #                         -----------        -----------
     #
     ############################################################################
-    filtered_pipeline_pb_run_2, excluded_direct_deps_run_2 = (
-        partial_run_utils.filter_pipeline(
-            pipeline_pb_run_2,
-            from_nodes=lambda node_id: (node_id == add_num_1_v2.id)))
+    partial_run_utils.mark_pipeline(
+        pipeline_pb_run_2,
+        from_nodes=lambda node_id: (node_id == add_num_1_v2.id))
     ############################################################################
     # PART 3b: Partial run -- Reuse pipeline run artifacts.
     #
@@ -967,11 +967,7 @@ class PartialRunTest(absltest.TestCase):
     ############################################################################
     with metadata.Metadata(self.metadata_config) as m:
       partial_run_utils.reuse_pipeline_run_artifacts(
-          m,
-          full_pipeline=pipeline_pb_run_2,
-          filtered_pipeline=filtered_pipeline_pb_run_2,
-          excluded_direct_dependencies=excluded_direct_deps_run_2,
-          base_run_id='run_1')
+          m, pipeline_pb_run_2, base_run_id='run_1')
 
     ############################################################################
     # PART 3c: Partial run -- Run and verify result (1 + 5 == 6).
@@ -983,8 +979,8 @@ class PartialRunTest(absltest.TestCase):
     #                         -----------        -----------
     #
     ############################################################################
-    beam_dag_runner.BeamDagRunner().run(filtered_pipeline_pb_run_2)
-    self.assertResultEqual(filtered_pipeline_pb_run_2, [(result_1_v2.id, 6)])
+    beam_dag_runner.BeamDagRunner().run(pipeline_pb_run_2)
+    self.assertResultEqual(pipeline_pb_run_2, [(result_1_v2.id, 6)])
 
     ############################################################################
     # PART 4: Now in the second sub-graph, modify `AddNum 2`.
@@ -1026,10 +1022,9 @@ class PartialRunTest(absltest.TestCase):
     #                         -----------        -----------
     #
     ############################################################################
-    filtered_pipeline_pb_run_3, excluded_direct_deps_run_3 = (
-        partial_run_utils.filter_pipeline(
-            pipeline_pb_run_3,
-            from_nodes=lambda node_id: (node_id == add_num_2_v2.id)))
+    partial_run_utils.mark_pipeline(
+        pipeline_pb_run_3,
+        from_nodes=lambda node_id: (node_id == add_num_2_v2.id))
     ############################################################################
     # PART 5b: Partial run -- Reuse pipeline run artifacts.
     #
@@ -1048,11 +1043,7 @@ class PartialRunTest(absltest.TestCase):
     ############################################################################
     with metadata.Metadata(self.metadata_config) as m:
       partial_run_utils.reuse_pipeline_run_artifacts(
-          m,
-          full_pipeline=pipeline_pb_run_3,
-          filtered_pipeline=filtered_pipeline_pb_run_3,
-          excluded_direct_dependencies=excluded_direct_deps_run_3,
-          base_run_id='run_2')
+          m, pipeline_pb_run_3, base_run_id='run_2')
 
     ############################################################################
     # PART 5c: Partial run -- Run and verify result (10 + 50 == 60).
@@ -1064,8 +1055,8 @@ class PartialRunTest(absltest.TestCase):
     #                         -----------        -----------
     #
     ############################################################################
-    beam_dag_runner.BeamDagRunner().run(filtered_pipeline_pb_run_3)
-    self.assertResultEqual(filtered_pipeline_pb_run_3, [(result_2_v2.id, 60)])
+    beam_dag_runner.BeamDagRunner().run(pipeline_pb_run_3)
+    self.assertResultEqual(pipeline_pb_run_3, [(result_2_v2.id, 60)])
 
     ############################################################################
     # PART 6a: Partial run -- Two sub-graphs at the same time.
@@ -1093,10 +1084,8 @@ class PartialRunTest(absltest.TestCase):
             result_2_v2,
         ],
         run_id='run_4')
-    filtered_pipeline_pb_run_4, excluded_direct_deps_run_4 = (
-        partial_run_utils.filter_pipeline(
-            pipeline_pb_run_4,
-            from_nodes=lambda node_id: ('add_num' in node_id)))
+    partial_run_utils.mark_pipeline(
+        pipeline_pb_run_4, from_nodes=lambda node_id: ('add_num' in node_id))
 
     ############################################################################
     # PART 6b: Partial run -- Reuse pipeline run artifacts.
@@ -1119,11 +1108,7 @@ class PartialRunTest(absltest.TestCase):
     ############################################################################
     with metadata.Metadata(self.metadata_config) as m:
       partial_run_utils.reuse_pipeline_run_artifacts(
-          m,
-          full_pipeline=pipeline_pb_run_4,
-          filtered_pipeline=filtered_pipeline_pb_run_4,
-          excluded_direct_dependencies=excluded_direct_deps_run_4,
-          base_run_id='run_3')
+          m, pipeline_pb_run_4, base_run_id='run_3')
     ############################################################################
     # PART 6c: Partial run -- run and verify.
     #
@@ -1140,9 +1125,9 @@ class PartialRunTest(absltest.TestCase):
     #                            (50)
     #
     ############################################################################
-    beam_dag_runner.BeamDagRunner().run(filtered_pipeline_pb_run_4)
-    self.assertResultEqual(filtered_pipeline_pb_run_4, [(result_1_v2.id, 6),
-                                                        (result_2_v2.id, 60)])
+    beam_dag_runner.BeamDagRunner().run(pipeline_pb_run_4)
+    self.assertResultEqual(pipeline_pb_run_4, [(result_1_v2.id, 6),
+                                               (result_2_v2.id, 60)])
     # Also verify that parent contexts are added.
     with metadata.Metadata(self.metadata_config) as m:
       pipeline_run_contexts = {
@@ -1242,10 +1227,9 @@ class PartialRunTest(absltest.TestCase):
     #                     \______________________/
     #
     ############################################################################
-    filtered_pipeline_pb_run_2, excluded_direct_deps_run_2 = (
-        partial_run_utils.filter_pipeline(
-            pipeline_pb_run_2,
-            from_nodes=lambda node_id: (node_id == add_num_v2.id)))
+    partial_run_utils.mark_pipeline(
+        pipeline_pb_run_2,
+        from_nodes=lambda node_id: (node_id == add_num_v2.id))
     ############################################################################
     # PART 3b: Partial run -- Reuse pipeline run artifacts.
     #
@@ -1262,11 +1246,7 @@ class PartialRunTest(absltest.TestCase):
     ############################################################################
     with metadata.Metadata(self.metadata_config) as m:
       partial_run_utils.reuse_pipeline_run_artifacts(
-          m,
-          full_pipeline=pipeline_pb_run_2,
-          filtered_pipeline=filtered_pipeline_pb_run_2,
-          excluded_direct_dependencies=excluded_direct_deps_run_2,
-          base_run_id='run_1')
+          m, pipeline_pb_run_2, base_run_id='run_1')
 
     ############################################################################
     # PART 3c: Partial run -- Run and verify result ((1 + 5) - 1 == 5).
@@ -1280,8 +1260,8 @@ class PartialRunTest(absltest.TestCase):
     #                     \______________________/
     #
     ############################################################################
-    beam_dag_runner.BeamDagRunner().run(filtered_pipeline_pb_run_2)
-    self.assertResultEqual(filtered_pipeline_pb_run_2, 5)
+    beam_dag_runner.BeamDagRunner().run(pipeline_pb_run_2)
+    self.assertResultEqual(pipeline_pb_run_2, 5)
 
     ############################################################################
     # PART 4: Now modify `Load`.
@@ -1318,19 +1298,14 @@ class PartialRunTest(absltest.TestCase):
     #                     \______________________/
     #
     ############################################################################
-    filtered_pipeline_pb_run_3, excluded_direct_deps_run_3 = (
-        partial_run_utils.filter_pipeline(
-            pipeline_pb_run_3,
-            from_nodes=lambda node_id: (node_id == load_v2.id),
-            to_nodes=lambda node_id: (node_id == load_v2.id)))
+    partial_run_utils.mark_pipeline(
+        pipeline_pb_run_3,
+        from_nodes=lambda node_id: (node_id == load_v2.id),
+        to_nodes=lambda node_id: (node_id == load_v2.id))
     with metadata.Metadata(self.metadata_config) as m:
       partial_run_utils.reuse_pipeline_run_artifacts(
-          m,
-          full_pipeline=pipeline_pb_run_3,
-          filtered_pipeline=filtered_pipeline_pb_run_3,
-          excluded_direct_dependencies=excluded_direct_deps_run_3,
-          base_run_id='run_2')
-    beam_dag_runner.BeamDagRunner().run(filtered_pipeline_pb_run_3)
+          m, pipeline_pb_run_3, base_run_id='run_2')
+    beam_dag_runner.BeamDagRunner().run(pipeline_pb_run_3)
 
     ############################################################################
     # PART 6a: Partial run -- Only `SubtractNum` onwards, using `run_3` as base.
@@ -1345,10 +1320,9 @@ class PartialRunTest(absltest.TestCase):
     pipeline_pb_run_4 = self.make_pipeline(
         components=[load_v2, add_num_v3, subtract_nums_v3, result_v3],
         run_id='run_4')
-    filtered_pipeline_pb_run_4, excluded_direct_deps_run_4 = (
-        partial_run_utils.filter_pipeline(
-            pipeline_pb_run_4,
-            from_nodes=lambda node_id: (node_id == subtract_nums_v3.id)))
+    partial_run_utils.mark_pipeline(
+        pipeline_pb_run_4,
+        from_nodes=lambda node_id: (node_id == subtract_nums_v3.id))
 
     ############################################################################
     # PART 6b: Partial run -- Reuse pipeline run artifacts.
@@ -1374,11 +1348,7 @@ class PartialRunTest(absltest.TestCase):
           'No previous successful executions found for node_id AddNum in '
           'pipeline_run run_3'):
         partial_run_utils.reuse_pipeline_run_artifacts(
-            m,
-            full_pipeline=pipeline_pb_run_4,
-            filtered_pipeline=filtered_pipeline_pb_run_4,
-            excluded_direct_dependencies=excluded_direct_deps_run_4,
-            base_run_id='run_3')
+            m, pipeline_pb_run_4, base_run_id='run_3')
     ############################################################################
     # PART 6b: Partial run -- Reuse pipeline run artifacts.
     #
@@ -1394,19 +1364,14 @@ class PartialRunTest(absltest.TestCase):
     pipeline_pb_run_5 = self.make_pipeline(
         components=[load_v2, add_num_v3, subtract_nums_v3, result_v3],
         run_id='run_5')
-    filtered_pipeline_pb_run_5, excluded_direct_deps_run_5 = (
-        partial_run_utils.filter_pipeline(
-            pipeline_pb_run_5,
-            from_nodes=lambda node_id: (node_id == subtract_nums_v3.id)))
+    partial_run_utils.mark_pipeline(
+        pipeline_pb_run_5,
+        from_nodes=lambda node_id: (node_id == subtract_nums_v3.id))
     with metadata.Metadata(self.metadata_config) as m:
       partial_run_utils.reuse_pipeline_run_artifacts(
-          m,
-          full_pipeline=pipeline_pb_run_5,
-          filtered_pipeline=filtered_pipeline_pb_run_4,
-          excluded_direct_dependencies=excluded_direct_deps_run_5,
-          base_run_id='run_2')
-    beam_dag_runner.BeamDagRunner().run(filtered_pipeline_pb_run_5)
-    self.assertResultEqual(filtered_pipeline_pb_run_5, 5)
+          m, pipeline_pb_run_5, base_run_id='run_2')
+    beam_dag_runner.BeamDagRunner().run(pipeline_pb_run_5)
+    self.assertResultEqual(pipeline_pb_run_5, 5)
 
   def testNonExistentContext_lookupError(self):
     """Raise error if user provides non-existent pipeline_run_id or node_id."""
@@ -1487,7 +1452,7 @@ class PartialRunTest(absltest.TestCase):
     pipeline_pb_run_2 = self.make_pipeline(
         components=[load, add_num_v2, result_v2], run_id='run_2')
 
-    pipeline_pb_run_2, _ = partial_run_utils.filter_pipeline(
+    partial_run_utils.mark_pipeline(
         pipeline_pb_run_2,
         from_nodes=lambda node_id: (node_id == add_num_v2.id))
 
@@ -1557,7 +1522,7 @@ class PartialRunTest(absltest.TestCase):
     pipeline_pb_run_2 = self.make_pipeline(
         components=[load, add_num_v2, result_v2], run_id='run_2')
 
-    pipeline_pb_run_2, _ = partial_run_utils.filter_pipeline(
+    partial_run_utils.mark_pipeline(
         pipeline_pb_run_2,
         from_nodes=lambda node_id: (node_id == add_num_v2.id))
 
@@ -1647,10 +1612,9 @@ class PartialRunTest(absltest.TestCase):
     #                         ---------        ---------
     #
     ############################################################################
-    filtered_pipeline_pb_run_2, excluded_direct_deps_run_2 = (
-        partial_run_utils.filter_pipeline(
-            pipeline_pb_run_2,
-            from_nodes=lambda node_id: (node_id == add_num_v2.id)))
+    partial_run_utils.mark_pipeline(
+        pipeline_pb_run_2,
+        from_nodes=lambda node_id: (node_id == add_num_v2.id))
 
     # We simulate a *user-error* here: The full_pipeline's pipeline_run_id was
     # not resolved, and the user does not provide a value for new_run_id.
@@ -1658,26 +1622,16 @@ class PartialRunTest(absltest.TestCase):
       with self.assertRaisesRegex(ValueError,
                                   'Unable to infer new pipeline run id.'):
         partial_run_utils.reuse_pipeline_run_artifacts(
-            m,
-            full_pipeline=pipeline_pb_run_2,
-            filtered_pipeline=filtered_pipeline_pb_run_2,
-            excluded_direct_dependencies=excluded_direct_deps_run_2,
-            base_run_id='run_1')
+            m, pipeline_pb_run_2, base_run_id='run_1')
 
     # Check that once the user provides the new_run_id, it still works.
     with metadata.Metadata(self.metadata_config) as m:
       partial_run_utils.reuse_pipeline_run_artifacts(
-          m,
-          full_pipeline=pipeline_pb_run_2,
-          filtered_pipeline=filtered_pipeline_pb_run_2,
-          excluded_direct_dependencies=excluded_direct_deps_run_2,
-          base_run_id='run_1',
-          new_run_id='run_2')
+          m, pipeline_pb_run_2, base_run_id='run_1', new_run_id='run_2')
     runtime_parameter_utils.substitute_runtime_parameter(
-        filtered_pipeline_pb_run_2,
-        {constants.PIPELINE_RUN_ID_PARAMETER_NAME: 'run_2'})
-    beam_dag_runner.BeamDagRunner().run(filtered_pipeline_pb_run_2)
-    self.assertResultEqual(filtered_pipeline_pb_run_2, 6)
+        pipeline_pb_run_2, {constants.PIPELINE_RUN_ID_PARAMETER_NAME: 'run_2'})
+    beam_dag_runner.BeamDagRunner().run(pipeline_pb_run_2)
+    self.assertResultEqual(pipeline_pb_run_2, 6)
 
   def testReusePipelineArtifacts_inconsistentNewRunId_error(self):
     """If pipeline IR's run_id differs from user-provided run_id, fail."""
@@ -1731,10 +1685,9 @@ class PartialRunTest(absltest.TestCase):
     #  (or run_3?!)           ---------        ---------
     #
     ############################################################################
-    filtered_pipeline_pb_run_2, excluded_direct_deps_run_2 = (
-        partial_run_utils.filter_pipeline(
-            pipeline_pb_run_2,
-            from_nodes=lambda node_id: (node_id == add_num_v2.id)))
+    partial_run_utils.mark_pipeline(
+        pipeline_pb_run_2,
+        from_nodes=lambda node_id: (node_id == add_num_v2.id))
 
     # We simulate a *user-error* here: The full_pipeline was resolved with
     # pipeline_run_id='run_2', but the user provides 'run_3'.
@@ -1742,11 +1695,7 @@ class PartialRunTest(absltest.TestCase):
       with self.assertRaisesRegex(ValueError,
                                   'Conflicting new pipeline run ids found.'):
         partial_run_utils.reuse_pipeline_run_artifacts(
-            m,
-            full_pipeline=pipeline_pb_run_2,
-            filtered_pipeline=filtered_pipeline_pb_run_2,
-            excluded_direct_dependencies=excluded_direct_deps_run_2,
-            base_run_id='run_1',
+            m, pipeline_pb_run_2, base_run_id='run_1',
             new_run_id='run_3')  # <-- user error here
 
 

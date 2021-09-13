@@ -316,7 +316,39 @@ message NodeExecutionOptions {
     // Whether or not to enable cache for this node.
     bool enable_cache = 1;
   }
+  // Settings used by the ChiefRoot node. This is set by the compiler.
+  // The ChiefRoot is one of the root nodes of the sub-graph that would be
+  // run during a partial run. There is only one ChiefRoot node in a partial
+  // run. It is responsible for calling `partial_run_utils.snapshot(...)`,
+  // which would allow the partial run to reuse artifacts from previous pipeline
+  // runs.
+  message ChiefRootSettings {
+    message LatestPipelineRunStrategy {}
+    message BasePipelineRunStrategy {
+      string base_run_id = 1;
+    }
+    oneof artifact_reuse_strategy {
+      LatestPipelineRunStrategy latest_pipeline_run_strategy = 1;
+      BasePipelineRunStrategy base_pipeline_run_strategy = 2;
+    }
+  }
+  message Run {
+    // If set, this Node is the ChiefRoot.
+    ChiefRootSettings chief_root_settings = 1;
+  }
+  message Skip {
+    // This is set by the compiler to provide additional information needed to
+    // reuse artifacts from previous pipeline runs.
+    bool child_in_partial_run = 1;
+  }
   CachingOptions caching_options = 1;
+  // Attached by compiler or platform-level tooling.
+  oneof partial_run_option {
+    // If set, this node will be run as part of the partial run.
+    Run run = 2;
+    // If set, this node will be skipped in the partial run.
+    Skip skip = 3;
+  }
 }
 // Pipeline node definition.
 message PipelineNode {

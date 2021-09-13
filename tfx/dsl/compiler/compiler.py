@@ -29,6 +29,7 @@ from tfx.dsl.placeholder import placeholder
 from tfx.orchestration import data_types
 from tfx.orchestration import data_types_utils
 from tfx.orchestration import pipeline
+from tfx.orchestration.portable import partial_run_utils
 from tfx.proto.orchestration import executable_spec_pb2
 from tfx.proto.orchestration import pipeline_pb2
 from tfx.utils import deprecation_utils
@@ -47,6 +48,8 @@ class _CompilerContext:
     self.node_outputs = set()
     self._pipeline_nodes_by_id = {}
     self._topological_order = {}
+    self.partial_run_options = tfx_pipeline.partial_run_options
+
     self._implicit_upstream_nodes = collections.defaultdict(set)
     self._implicit_downstream_nodes = collections.defaultdict(set)
     for i, node in enumerate(tfx_pipeline.components, start=1):
@@ -77,13 +80,17 @@ class _CompilerContext:
 
   def implicit_upstream_nodes(
       self, here: base_node.BaseNode) -> List[base_node.BaseNode]:
-    return [self._pipeline_nodes_by_id[node_id]
-            for node_id in self._implicit_upstream_nodes[here.id]]
+    return [
+        self._pipeline_nodes_by_id[node_id]
+        for node_id in self._implicit_upstream_nodes[here.id]
+    ]
 
   def implicit_downstream_nodes(
       self, here: base_node.BaseNode) -> List[base_node.BaseNode]:
-    return [self._pipeline_nodes_by_id[node_id]
-            for node_id in self._implicit_downstream_nodes[here.id]]
+    return [
+        self._pipeline_nodes_by_id[node_id]
+        for node_id in self._implicit_downstream_nodes[here.id]
+    ]
 
 
 class Compiler:
@@ -322,10 +329,8 @@ class Compiler:
 
     return node
 
-  def _find_runtime_upstream_node_ids(
-      self,
-      context: _CompilerContext,
-      here: base_node.BaseNode) -> List[str]:
+  def _find_runtime_upstream_node_ids(self, context: _CompilerContext,
+                                      here: base_node.BaseNode) -> List[str]:
     """Finds all upstream nodes that the current node depends on."""
     result = set()
     for up in itertools.chain(here.upstream_nodes,
@@ -337,10 +342,8 @@ class Compiler:
     # Sort result so that compiler generates consistent results.
     return sorted(result)
 
-  def _find_runtime_downstream_node_ids(
-      self,
-      context: _CompilerContext,
-      here: base_node.BaseNode) -> List[str]:
+  def _find_runtime_downstream_node_ids(self, context: _CompilerContext,
+                                        here: base_node.BaseNode) -> List[str]:
     """Finds all downstream nodes that depend on the current node."""
     result = set()
     for down in itertools.chain(here.downstream_nodes,
@@ -352,11 +355,9 @@ class Compiler:
     # Sort result so that compiler generates consistent results.
     return sorted(result)
 
-  def _embed_upstream_resolver_nodes(
-      self,
-      context: _CompilerContext,
-      tfx_node: base_node.BaseNode,
-      node: pipeline_pb2.PipelineNode):
+  def _embed_upstream_resolver_nodes(self, context: _CompilerContext,
+                                     tfx_node: base_node.BaseNode,
+                                     node: pipeline_pb2.PipelineNode):
     """Embeds upstream Resolver nodes as a ResolverConfig.
 
     Iteratively reduces upstream resolver nodes into a resolver config of the
@@ -482,6 +483,19 @@ class Compiler:
           visit_queue.append(upstream_node)
     return result
 
+  def _chief_root_settings(
+      self,
+      partial_run_options: pipeline.PartialRunOptions,
+  ) -> pipeline_pb2.NodeExecutionOptions.ChiefRootSettings:
+    """Returns ChiefSettings. Defaults to LATEST_PIPELINE_RUN."""
+    result = pipeline_pb2.NodeExecutionOptions.ChiefRootSettings()
+    if partial_run_options.strategy == pipeline.BASE_PIPELINE_RUN_STRATEGY:
+      result.base_pipeline_run_strategy.base_run_id = (
+          partial_run_options.base_pipeline_run_id)
+    else:
+      result.latest_pipeline_run_strategy.SetInParent()
+    return result
+
   def compile(self, tfx_pipeline: pipeline.Pipeline) -> pipeline_pb2.Pipeline:
     """Compiles a tfx pipeline into uDSL proto.
 
@@ -530,6 +544,15 @@ class Compiler:
       deployment_config.pipeline_level_platform_config.Pack(
           tfx_pipeline.platform_config)
     pipeline_pb.deployment_config.Pack(deployment_config)
+
+    if context.partial_run_options:
+      partial_run_utils.mark_pipeline(
+          pipeline_pb,
+          from_nodes=context.partial_run_options.from_nodes,
+          to_nodes=context.partial_run_options.to_nodes,
+          chief_root_settings=self._chief_root_settings(
+              context.partial_run_options))
+
     return pipeline_pb
 
 
@@ -539,8 +562,7 @@ def _fully_qualified_name(cls: Type[Any]):
 
 
 def _compile_resolver_op(
-    op_node: resolver_op.OpNode,
-) -> pipeline_pb2.ResolverConfig.ResolverStep:
+    op_node: resolver_op.OpNode,) -> pipeline_pb2.ResolverConfig.ResolverStep:
   result = pipeline_pb2.ResolverConfig.ResolverStep()
   result.class_path = _fully_qualified_name(op_node.op_type)
   result.config_json = json_utils.dumps(op_node.kwargs)
