@@ -580,12 +580,14 @@ def _orchestrate_active_pipeline(
   if pipeline.execution_mode == pipeline_pb2.Pipeline.SYNC:
     generator = sync_pipeline_task_gen.SyncPipelineTaskGenerator(
         mlmd_handle,
+        pipeline_state,
         task_queue.contains_task_id,
         service_job_manager,
         fail_fast=orchestration_options.fail_fast)
   elif pipeline.execution_mode == pipeline_pb2.Pipeline.ASYNC:
     generator = async_pipeline_task_gen.AsyncPipelineTaskGenerator(
-        mlmd_handle, task_queue.contains_task_id, service_job_manager)
+        mlmd_handle, pipeline_state, task_queue.contains_task_id,
+        service_job_manager)
   else:
     raise status_lib.StatusNotOkError(
         code=status_lib.Code.FAILED_PRECONDITION,
@@ -593,7 +595,7 @@ def _orchestrate_active_pipeline(
             f'Only SYNC and ASYNC pipeline execution modes supported; '
             f'found pipeline with execution mode: {pipeline.execution_mode}'))
 
-  tasks = generator.generate(pipeline_state)
+  tasks = generator.generate()
 
   with pipeline_state:
     # Handle all the UpdateNodeStateTasks by updating node states.

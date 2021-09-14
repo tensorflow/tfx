@@ -342,8 +342,8 @@ class TaskManagerE2ETest(test_utils.TfxTest):
     with self._mlmd_connection as m:
       pipeline_state = pstate.PipelineState.new(m, self._pipeline)
       tasks = asptg.AsyncPipelineTaskGenerator(
-          m, self._task_queue.contains_task_id,
-          service_jobs.DummyServiceJobManager()).generate(pipeline_state)
+          m, pipeline_state, self._task_queue.contains_task_id,
+          service_jobs.DummyServiceJobManager()).generate()
     self.assertLen(tasks, 2)
     self.assertTrue(task_lib.is_update_node_state_task(tasks[0]))
     self.assertEqual(pstate.NodeState.RUNNING, tasks[0].state)

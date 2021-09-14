@@ -42,45 +42,18 @@ class AsyncPipelineTaskGenerator(task_gen.TaskGenerator):
   """
 
   def __init__(self, mlmd_handle: metadata.Metadata,
+               pipeline_state: pstate.PipelineState,
                is_task_id_tracked_fn: Callable[[task_lib.TaskId], bool],
                service_job_manager: service_jobs.ServiceJobManager):
     """Constructs `AsyncPipelineTaskGenerator`.
 
     Args:
       mlmd_handle: A handle to MLMD db.
+      pipeline_state: Pipeline state.
       is_task_id_tracked_fn: A callable that returns `True` if a task_id is
         tracked by the task queue.
       service_job_manager: Used for handling service nodes in the pipeline.
     """
-    self._mlmd_handle = mlmd_handle
-    self._is_task_id_tracked_fn = is_task_id_tracked_fn
-    self._service_job_manager = service_job_manager
-
-  def generate(self,
-               pipeline_state: pstate.PipelineState) -> List[task_lib.Task]:
-    """Generates tasks for all executable nodes in the async pipeline.
-
-    The returned tasks must have `exec_task` populated. List may be empty if no
-    nodes are ready for execution.
-
-    Args:
-      pipeline_state: The `PipelineState` object associated with the pipeline
-        for which to generate tasks.
-
-    Returns:
-      A `list` of tasks to execute.
-    """
-    return _Generator(self._mlmd_handle, pipeline_state,
-                      self._is_task_id_tracked_fn, self._service_job_manager)()
-
-
-class _Generator:
-  """Generator implementation class for AsyncPipelineTaskGenerator."""
-
-  def __init__(self, mlmd_handle: metadata.Metadata,
-               pipeline_state: pstate.PipelineState,
-               is_task_id_tracked_fn: Callable[[task_lib.TaskId], bool],
-               service_job_manager: service_jobs.ServiceJobManager):
     self._mlmd_handle = mlmd_handle
     pipeline = pipeline_state.pipeline
     if pipeline.execution_mode != pipeline_pb2.Pipeline.ExecutionMode.ASYNC:
@@ -98,8 +71,28 @@ class _Generator:
     self._pipeline = pipeline
     self._is_task_id_tracked_fn = is_task_id_tracked_fn
     self._service_job_manager = service_job_manager
+    # TODO(b/201294315): Remove once the underlying issue is fixed.
+    self._generate_invoked = False
 
-  def __call__(self) -> List[task_lib.Task]:
+  def generate(self) -> List[task_lib.Task]:
+    """Generates tasks for all executable nodes in the async pipeline.
+
+    The returned tasks must have `exec_task` populated. List may be empty if no
+    nodes are ready for execution.
+
+    Returns:
+      A `list` of tasks to execute.
+
+    Raises:
+      RuntimeError: If `generate` invoked more than once on the same instance.
+    """
+    # TODO(b/201294315): Remove this artificial restriction once the underlying
+    # issue is fixed.
+    if self._generate_invoked:
+      raise RuntimeError(
+          'Invoking `generate` more than once on the same instance of '
+          'AsyncPipelineTaskGenerator is restricted due to a bug.')
+    self._generate_invoked = True
     result = []
     for node in [n.pipeline_node for n in self._pipeline.nodes]:
       node_uid = task_lib.NodeUid.from_pipeline_node(self._pipeline, node)
