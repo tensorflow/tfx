@@ -28,7 +28,7 @@ import abc
 import collections
 import threading
 import types
-from typing import Any, Optional, List, Iterable, Type
+from typing import Any, Optional, List, Iterable, Type, TypeVar, ContextManager
 
 import attr
 
@@ -73,6 +73,9 @@ class DslContext:
 
   def validate(self):
     """Hook method to validate the context."""
+
+  def will_add_node(self, node: _BaseNode):
+    """Hook method before adding a node to the context."""
 
   @property
   def is_background(self):
@@ -153,6 +156,8 @@ class _DslContextRegistry(threading.local):
   def put_node(self, node: _BaseNode) -> None:
     """Associates the node to all active contexts."""
     for context in self._active:
+      context.will_add_node(node)
+    for context in self._active:
       self._nodes_by_context_ids[context.id].append(node)
 
   def get_nodes(self, context: Optional[DslContext] = None) -> List[_BaseNode]:
@@ -193,7 +198,10 @@ def get_nodes(context: Optional[DslContext] = None) -> List[_BaseNode]:
   return _registry.get_nodes(context)
 
 
-class DslContextManager(abc.ABC):
+_Handle = TypeVar('_Handle')
+
+
+class DslContextManager(ContextManager[_Handle], abc.ABC):
   """Base class for all context managers for pipeline DSL."""
 
   @abc.abstractmethod
@@ -211,7 +219,7 @@ class DslContextManager(abc.ABC):
     """
 
   @abc.abstractmethod
-  def enter(self, context: DslContext) -> Any:  # pylint: disable=unused-argument
+  def enter(self, context: DslContext) -> _Handle:  # pylint: disable=unused-argument
     """Subclass hook method for __enter__.
 
     Returned value is captured at "with..as" clause. It can be any helper object
@@ -222,7 +230,7 @@ class DslContextManager(abc.ABC):
           the __enter__().
     """
 
-  def __enter__(self):
+  def __enter__(self) -> _Handle:
     context = self.create_context()
     context.validate()
     _registry.push(context)

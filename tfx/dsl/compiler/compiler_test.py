@@ -20,6 +20,7 @@ import tensorflow as tf
 from tfx.dsl.compiler import compiler
 from tfx.dsl.compiler.testdata import additional_properties_test_pipeline_async
 from tfx.dsl.compiler.testdata import conditional_pipeline
+from tfx.dsl.compiler.testdata import foreach_pipeline
 from tfx.dsl.compiler.testdata import iris_pipeline_async
 from tfx.dsl.compiler.testdata import iris_pipeline_sync
 from tfx.orchestration import pipeline
@@ -67,8 +68,10 @@ class CompilerTest(tf.test.TestCase, parameterized.TestCase):
        "additional_properties_test_pipeline_async_ir.pbtxt"),
       ("sync_pipeline", iris_pipeline_sync, "iris_pipeline_sync_ir.pbtxt"),
       ("async_pipeline", iris_pipeline_async, "iris_pipeline_async_ir.pbtxt"),
-      ("conditional_pipeline", conditional_pipeline,
-       "conditional_pipeline_ir.pbtxt"))
+      ("feature_conditional", conditional_pipeline,
+       "conditional_pipeline_ir.pbtxt"),
+      ("feature_foreach", foreach_pipeline, "foreach_pipeline_ir.pbtxt"),
+  )
   def testCompile(self, pipeline_module, expected_result_path):
     """Tests compiling the whole pipeline."""
     dsl_compiler = compiler.Compiler()

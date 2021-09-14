@@ -85,8 +85,10 @@ class Channel(json_utils.Jsonable):
     self.additional_custom_properties = additional_custom_properties or {}
 
     # The following fields will be populated during compilation time.
+    # LINT.IfChange
     self.producer_component_id = producer_component_id
     self.output_key = output_key
+    # LINT.ThenChange(../dsl/context_managers/for_each.py)
 
     if artifacts:
       logging.warning(
