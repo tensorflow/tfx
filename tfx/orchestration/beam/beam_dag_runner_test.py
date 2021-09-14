@@ -22,6 +22,7 @@ from tfx.orchestration import metadata
 from tfx.orchestration.beam import beam_dag_runner
 from tfx.orchestration.beam.legacy import beam_dag_runner as legacy_beam_dag_runner
 from tfx.orchestration.config import pipeline_config
+from tfx.orchestration.portable import partial_run_utils
 from tfx.proto.orchestration import executable_spec_pb2
 from tfx.proto.orchestration import local_deployment_config_pb2
 from tfx.proto.orchestration import pipeline_pb2
@@ -135,7 +136,7 @@ _executed_components = []
 _component_executors = {}
 _component_drivers = {}
 _component_platform_configs = {}
-_conponent_to_pipeline_run = {}
+_component_to_pipeline_run = {}
 
 
 # TODO(b/162980675): When PythonExecutorOperator is implemented. We don't
@@ -149,10 +150,11 @@ class _FakeComponentAsDoFn(beam_dag_runner.PipelineNodeAsDoFn):
                pipeline_runtime_spec: pipeline_pb2.PipelineRuntimeSpec,
                executor_spec: Optional[message.Message],
                custom_driver_spec: Optional[message.Message],
-               deployment_config: Optional[message.Message]):
+               deployment_config: Optional[message.Message],
+               pipeline: Optional[pipeline_pb2.Pipeline]):
     super().__init__(pipeline_node, mlmd_connection_config, pipeline_info,
                      pipeline_runtime_spec, executor_spec, custom_driver_spec,
-                     deployment_config)
+                     deployment_config, pipeline)
     _component_executors[self._node_id] = executor_spec
     _component_drivers[self._node_id] = custom_driver_spec
     _component_platform_configs[self._node_id] = self._extract_platform_config(
@@ -161,7 +163,7 @@ class _FakeComponentAsDoFn(beam_dag_runner.PipelineNodeAsDoFn):
     for context in pipeline_node.contexts.contexts:
       if context.type.name == constants.PIPELINE_RUN_CONTEXT_TYPE_NAME:
         pipeline_run = context.name.field_value.string_value
-    _conponent_to_pipeline_run[self._node_id] = pipeline_run
+    _component_to_pipeline_run[self._node_id] = pipeline_run
 
   def _run_node(self):
     _executed_components.append(self._node_id)
@@ -181,7 +183,7 @@ class BeamDagRunnerTest(test_case_utils.TfxTest):
     _component_executors.clear()
     _component_drivers.clear()
     _component_platform_configs.clear()
-    _conponent_to_pipeline_run.clear()
+    _component_to_pipeline_run.clear()
 
   @mock.patch.multiple(
       beam_dag_runner.BeamDagRunner,
@@ -237,7 +239,7 @@ class BeamDagRunnerTest(test_case_utils.TfxTest):
     self.assertEqual(_executed_components,
                      ['my_example_gen', 'my_transform', 'my_trainer'])
     # Verifies that every component gets a not-None pipeline_run.
-    self.assertTrue(all(_conponent_to_pipeline_run.values()))
+    self.assertTrue(all(_component_to_pipeline_run.values()))
 
   @mock.patch.multiple(
       beam_dag_runner.BeamDagRunner,
@@ -293,7 +295,33 @@ class BeamDagRunnerTest(test_case_utils.TfxTest):
     self.assertEqual(_executed_components,
                      ['my_example_gen', 'my_transform', 'my_trainer'])
     # Verifies that every component gets a not-None pipeline_run.
-    self.assertTrue(all(_conponent_to_pipeline_run.values()))
+    self.assertTrue(all(_component_to_pipeline_run.values()))
+
+  @mock.patch.multiple(
+      beam_dag_runner.BeamDagRunner,
+      _PIPELINE_NODE_DO_FN_CLS=_FakeComponentAsDoFn,
+  )
+  def testPartialRunWithLocalDeploymentConfig(self):
+    self._pipeline.deployment_config.Pack(_LOCAL_DEPLOYMENT_CONFIG)
+    partial_run_utils.mark_pipeline(
+        self._pipeline,
+        from_nodes=(lambda node_id: 'trainer' in node_id),
+        to_nodes=(lambda node_id: 'trainer' in node_id))
+    beam_dag_runner.BeamDagRunner().run(self._pipeline)
+    self.assertEqual(_executed_components, ['my_trainer'])
+
+  @mock.patch.multiple(
+      beam_dag_runner.BeamDagRunner,
+      _PIPELINE_NODE_DO_FN_CLS=_FakeComponentAsDoFn,
+  )
+  def testPartialRunWithIntermediateDeploymentConfig(self):
+    self._pipeline.deployment_config.Pack(_INTERMEDIATE_DEPLOYMENT_CONFIG)
+    partial_run_utils.mark_pipeline(
+        self._pipeline,
+        from_nodes=(lambda node_id: 'trainer' in node_id),
+        to_nodes=(lambda node_id: 'trainer' in node_id))
+    beam_dag_runner.BeamDagRunner().run(self._pipeline)
+    self.assertEqual(_executed_components, ['my_trainer'])
 
   def testLegacyBeamDagRunnerConstruction(self):
     self.assertIsInstance(beam_dag_runner.BeamDagRunner(),
