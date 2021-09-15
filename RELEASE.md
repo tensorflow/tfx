@@ -35,6 +35,7 @@
 *   Depends on `google-cloud-bigquery>=1.28.0,<3`.
 *   Depends on `keras-tuner>=1.0.4,<2`.
 *   Depends on `kfp>=1.6.1,!=1.7.2,<2` in \[kfp\] extra.
+*   Depends on `jinja2>=2.7.3,<4`, i.e. now supports Jinja 3.x.
 
 ## Documentation Updates
 

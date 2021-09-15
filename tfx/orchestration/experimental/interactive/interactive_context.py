@@ -227,7 +227,7 @@ class InteractiveContext:
 
       jinja_env = jinja2.Environment(
           loader=jinja2.PackageLoader(
-              __name__, package_path=_EXPORT_TEMPLATES_DIR))
+              __package__, package_path=_EXPORT_TEMPLATES_DIR))
       template_name = 'export_%s.tmpl' % runner_type
       # TODO(b/142326292): Consider parameterizing the other variables names
       # present in the export templates.
