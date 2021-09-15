@@ -6,7 +6,7 @@ TFX.
 
 The Penguin classification example demonstrates the end-to-end workflow
 and steps of how to classify penguin species.
-The [Palmer Penguins](https://allisonhorst.github.io/palmerpenguins/articles/intro.html) dataset can be found on [Github](https://github.com/allisonhorst/palmerpenguins).
+The [Palmer Penguins](https://allisonhorst.github.io/palmerpenguins/articles/intro.html) dataset can be found on [Tensorflow Datasets](https://www.tensorflow.org/datasets/catalog/penguins) or [Github](https://github.com/allisonhorst/palmerpenguins).
 
 The raw data contains some categorical data and has incomplete data rows.
 
