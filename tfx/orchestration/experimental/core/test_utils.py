@@ -162,8 +162,13 @@ def create_node_uid(pipeline_id, node_id):
       node_id=node_id)
 
 
-def run_generator(mlmd_connection, generator_class, pipeline, task_queue,
-                  use_task_queue, service_job_manager):
+def run_generator(mlmd_connection,
+                  generator_class,
+                  pipeline,
+                  task_queue,
+                  use_task_queue,
+                  service_job_manager,
+                  ignore_update_node_state_tasks=False):
   """Generates tasks for testing."""
   with mlmd_connection as m:
     pipeline_state = get_or_create_pipeline_state(m, pipeline)
@@ -178,6 +183,8 @@ def run_generator(mlmd_connection, generator_class, pipeline, task_queue,
       for task in tasks:
         if task_lib.is_exec_node_task(task):
           task_queue.enqueue(task)
+  if ignore_update_node_state_tasks:
+    tasks = [t for t in tasks if not task_lib.is_update_node_state_task(t)]
   return tasks
 
 
@@ -215,7 +222,8 @@ def run_generator_and_test(test_case,
                            num_tasks_generated,
                            num_new_executions,
                            num_active_executions,
-                           expected_exec_nodes=None):
+                           expected_exec_nodes=None,
+                           ignore_update_node_state_tasks=False):
   """Runs generator.generate() and tests the effects."""
   if service_job_manager is None:
     service_job_manager = service_jobs.DummyServiceJobManager()
@@ -224,8 +232,14 @@ def run_generator_and_test(test_case,
     test_case.assertLen(
         executions, num_initial_executions,
         f'Expected {num_initial_executions} execution(s) in MLMD.')
-  tasks = run_generator(mlmd_connection, generator_class, pipeline, task_queue,
-                        use_task_queue, service_job_manager)
+  tasks = run_generator(
+      mlmd_connection,
+      generator_class,
+      pipeline,
+      task_queue,
+      use_task_queue,
+      service_job_manager,
+      ignore_update_node_state_tasks=ignore_update_node_state_tasks)
   with mlmd_connection as m:
     test_case.assertLen(
         tasks, num_tasks_generated,
@@ -242,7 +256,8 @@ def run_generator_and_test(test_case,
         active_executions, num_active_executions,
         f'Expected {num_active_executions} active execution(s) in MLMD.')
     if expected_exec_nodes:
-      for i, task in enumerate(tasks):
+      for i, task in enumerate(
+          t for t in tasks if task_lib.is_exec_node_task(t)):
         _verify_exec_node_task(test_case, pipeline, expected_exec_nodes[i],
                                active_executions[i].id, task)
     return tasks

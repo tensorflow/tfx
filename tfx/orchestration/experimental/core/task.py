@@ -18,7 +18,7 @@ core task generation loop based on the state of MLMD db.
 """
 
 import abc
-from typing import Dict, Hashable, List, Type, TypeVar
+from typing import Dict, Hashable, List, Optional, Type, TypeVar
 
 import attr
 from tfx import types
@@ -170,6 +170,24 @@ class FinalizeNodeTask(Task):
     return (self.task_type_id(), self.node_uid)
 
 
+@attr.s(auto_attribs=True, frozen=True)
+class UpdateNodeStateTask(Task):
+  """Task to instruct updating node states.
+
+  This is useful for task generators to defer actually updating node states in
+  MLMD to the caller, where node state updates can be bundled together with
+  other pipeline state changes and committed to MLMD in a single transaciton for
+  efficiency.
+  """
+  node_uid: NodeUid
+  state: str
+  status: Optional[status_lib.Status] = None
+
+  @property
+  def task_id(self) -> TaskId:
+    return (self.task_type_id(), self.node_uid)
+
+
 def is_exec_node_task(task: Task) -> bool:
   return task.task_type_id() == ExecNodeTask.task_type_id()
 
@@ -184,6 +202,10 @@ def is_finalize_pipeline_task(task: Task) -> bool:
 
 def is_finalize_node_task(task: Task) -> bool:
   return task.task_type_id() == FinalizeNodeTask.task_type_id()
+
+
+def is_update_node_state_task(task: Task) -> bool:
+  return task.task_type_id() == UpdateNodeStateTask.task_type_id()
 
 
 def exec_node_task_id_from_pipeline_node(

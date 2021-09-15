@@ -82,7 +82,8 @@ class ManualTaskSchedulerTest(test_utils.TfxTest):
         num_tasks_generated=1,
         num_new_executions=1,
         num_active_executions=1,
-        expected_exec_nodes=[self._manual_node])
+        expected_exec_nodes=[self._manual_node],
+        ignore_update_node_state_tasks=True)
 
     ts_result = []
 

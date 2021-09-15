@@ -992,6 +992,71 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
       self.assertEqual(node_state.state,
                        manual_task_scheduler.ManualNodeState.COMPLETED)
 
+  @mock.patch.object(sync_pipeline_task_gen, 'SyncPipelineTaskGenerator')
+  def test_update_node_state_tasks_handling(self, mock_sync_task_gen):
+    with self._mlmd_connection as m:
+      pipeline = _test_pipeline(
+          'pipeline1', execution_mode=pipeline_pb2.Pipeline.SYNC)
+      pipeline.nodes.add().pipeline_node.node_info.id = 'ExampleGen'
+      pipeline.nodes.add().pipeline_node.node_info.id = 'Transform'
+      pipeline.nodes.add().pipeline_node.node_info.id = 'Trainer'
+      pipeline.nodes.add().pipeline_node.node_info.id = 'Evaluator'
+      pipeline_uid = task_lib.PipelineUid.from_pipeline(pipeline)
+      eg_node_uid = task_lib.NodeUid(pipeline_uid, 'ExampleGen')
+      transform_node_uid = task_lib.NodeUid(pipeline_uid, 'Transform')
+      trainer_node_uid = task_lib.NodeUid(pipeline_uid, 'Trainer')
+      evaluator_node_uid = task_lib.NodeUid(pipeline_uid, 'Evaluator')
+
+      with pipeline_ops.initiate_pipeline_start(m, pipeline) as pipeline_state:
+        # Set initial states for the nodes.
+        with pipeline_state.node_state_update_context(
+            eg_node_uid) as node_state:
+          node_state.update(pstate.NodeState.RUNNING)
+        with pipeline_state.node_state_update_context(
+            transform_node_uid) as node_state:
+          node_state.update(pstate.NodeState.STARTING)
+        with pipeline_state.node_state_update_context(
+            trainer_node_uid) as node_state:
+          node_state.update(pstate.NodeState.STARTED)
+        with pipeline_state.node_state_update_context(
+            evaluator_node_uid) as node_state:
+          node_state.update(pstate.NodeState.RUNNING)
+
+      mock_sync_task_gen.return_value.generate.side_effect = [
+          [
+              task_lib.UpdateNodeStateTask(
+                  node_uid=eg_node_uid, state=pstate.NodeState.COMPLETE),
+              task_lib.UpdateNodeStateTask(
+                  node_uid=trainer_node_uid, state=pstate.NodeState.RUNNING),
+              task_lib.UpdateNodeStateTask(
+                  node_uid=evaluator_node_uid,
+                  state=pstate.NodeState.FAILED,
+                  status=status_lib.Status(
+                      code=status_lib.Code.ABORTED, message='foobar error'))
+          ],
+      ]
+
+      task_queue = tq.TaskQueue()
+      pipeline_ops.orchestrate(m, task_queue,
+                               service_jobs.DummyServiceJobManager())
+      self.assertEqual(1, mock_sync_task_gen.return_value.generate.call_count)
+
+      with pstate.PipelineState.load(m, pipeline_uid) as pipeline_state:
+        self.assertEqual(pstate.NodeState.COMPLETE,
+                         pipeline_state.get_node_state(eg_node_uid).state)
+        self.assertEqual(
+            pstate.NodeState.STARTED,
+            pipeline_state.get_node_state(transform_node_uid).state)
+        self.assertEqual(pstate.NodeState.RUNNING,
+                         pipeline_state.get_node_state(trainer_node_uid).state)
+        self.assertEqual(
+            pstate.NodeState.FAILED,
+            pipeline_state.get_node_state(evaluator_node_uid).state)
+        self.assertEqual(
+            status_lib.Status(
+                code=status_lib.Code.ABORTED, message='foobar error'),
+            pipeline_state.get_node_state(evaluator_node_uid).status)
+
 
 if __name__ == '__main__':
   tf.test.main()

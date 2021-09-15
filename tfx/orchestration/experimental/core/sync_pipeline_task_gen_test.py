@@ -116,12 +116,15 @@ class SyncPipelineTaskGeneratorTest(test_utils.TfxTest, parameterized.TestCase):
     test_utils.fake_execute_node(self._mlmd_connection, exec_node_task)
     self._finish_processing(use_task_queue, exec_node_task)
 
-  def _generate(self, use_task_queue):
-    return test_utils.run_generator(self._mlmd_connection,
-                                    sptg.SyncPipelineTaskGenerator,
-                                    self._pipeline, self._task_queue,
-                                    use_task_queue,
-                                    self._mock_service_job_manager)
+  def _generate(self, use_task_queue, ignore_update_node_state_tasks=False):
+    return test_utils.run_generator(
+        self._mlmd_connection,
+        sptg.SyncPipelineTaskGenerator,
+        self._pipeline,
+        self._task_queue,
+        use_task_queue,
+        self._mock_service_job_manager,
+        ignore_update_node_state_tasks=ignore_update_node_state_tasks)
 
   def _generate_and_test(self,
                          use_task_queue,
@@ -130,7 +133,8 @@ class SyncPipelineTaskGeneratorTest(test_utils.TfxTest, parameterized.TestCase):
                          num_new_executions,
                          num_active_executions,
                          pipeline=None,
-                         expected_exec_nodes=None):
+                         expected_exec_nodes=None,
+                         ignore_update_node_state_tasks=False):
     """Generates tasks and tests the effects."""
     return test_utils.run_generator_and_test(
         self,
@@ -144,7 +148,8 @@ class SyncPipelineTaskGeneratorTest(test_utils.TfxTest, parameterized.TestCase):
         num_tasks_generated=num_tasks_generated,
         num_new_executions=num_new_executions,
         num_active_executions=num_active_executions,
-        expected_exec_nodes=expected_exec_nodes)
+        expected_exec_nodes=expected_exec_nodes,
+        ignore_update_node_state_tasks=ignore_update_node_state_tasks)
 
   @parameterized.parameters(False, True)
   def test_tasks_generated_when_upstream_done(self, use_task_queue):
@@ -167,7 +172,8 @@ class SyncPipelineTaskGeneratorTest(test_utils.TfxTest, parameterized.TestCase):
         num_tasks_generated=1,
         num_new_executions=1,
         num_active_executions=1,
-        expected_exec_nodes=[self._stats_gen])
+        expected_exec_nodes=[self._stats_gen],
+        ignore_update_node_state_tasks=True)
 
     self._mock_service_job_manager.ensure_node_services.assert_called_with(
         mock.ANY, self._example_gen.node_info.id)
@@ -183,7 +189,8 @@ class SyncPipelineTaskGeneratorTest(test_utils.TfxTest, parameterized.TestCase):
         num_tasks_generated=1,
         num_new_executions=1,
         num_active_executions=1,
-        expected_exec_nodes=[self._schema_gen])
+        expected_exec_nodes=[self._schema_gen],
+        ignore_update_node_state_tasks=True)
 
     # Finish schema-gen execution.
     self._finish_node_execution(use_task_queue, schema_gen_task)
@@ -195,7 +202,8 @@ class SyncPipelineTaskGeneratorTest(test_utils.TfxTest, parameterized.TestCase):
         num_tasks_generated=2,
         num_new_executions=2,
         num_active_executions=2,
-        expected_exec_nodes=[self._example_validator, self._transform])
+        expected_exec_nodes=[self._example_validator, self._transform],
+        ignore_update_node_state_tasks=True)
 
     # Transform is a "mixed service node".
     self._mock_service_job_manager.ensure_node_services.assert_called_once_with(
@@ -212,7 +220,8 @@ class SyncPipelineTaskGeneratorTest(test_utils.TfxTest, parameterized.TestCase):
         num_tasks_generated=0 if use_task_queue else 1,
         num_new_executions=0,
         num_active_executions=1,
-        expected_exec_nodes=[] if use_task_queue else [self._transform])
+        expected_exec_nodes=[] if use_task_queue else [self._transform],
+        ignore_update_node_state_tasks=True)
     if not use_task_queue:
       transform_task = tasks[0]
 
@@ -226,7 +235,8 @@ class SyncPipelineTaskGeneratorTest(test_utils.TfxTest, parameterized.TestCase):
         num_tasks_generated=1,
         num_new_executions=1,
         num_active_executions=1,
-        expected_exec_nodes=[self._trainer])
+        expected_exec_nodes=[self._trainer],
+        ignore_update_node_state_tasks=True)
 
     # Finish trainer execution.
     self._finish_node_execution(use_task_queue, trainer_task)
@@ -239,7 +249,8 @@ class SyncPipelineTaskGeneratorTest(test_utils.TfxTest, parameterized.TestCase):
         num_tasks_generated=1,
         num_new_executions=1,
         num_active_executions=1,
-        expected_exec_nodes=[self._chore_a])
+        expected_exec_nodes=[self._chore_a],
+        ignore_update_node_state_tasks=True)
     self._finish_node_execution(use_task_queue, chore_a_task)
     [chore_b_task] = self._generate_and_test(
         use_task_queue,
@@ -247,7 +258,8 @@ class SyncPipelineTaskGeneratorTest(test_utils.TfxTest, parameterized.TestCase):
         num_tasks_generated=1,
         num_new_executions=1,
         num_active_executions=1,
-        expected_exec_nodes=[self._chore_b])
+        expected_exec_nodes=[self._chore_b],
+        ignore_update_node_state_tasks=True)
     self._finish_node_execution(use_task_queue, chore_b_task)
 
     # No more components to execute, FinalizePipelineTask should be generated.
@@ -256,7 +268,8 @@ class SyncPipelineTaskGeneratorTest(test_utils.TfxTest, parameterized.TestCase):
         num_initial_executions=8,
         num_tasks_generated=1,
         num_new_executions=0,
-        num_active_executions=0)
+        num_active_executions=0,
+        ignore_update_node_state_tasks=True)
     self.assertTrue(task_lib.is_finalize_pipeline_task(finalize_task))
     self.assertEqual(status_lib.Code.OK, finalize_task.status.code)
     if use_task_queue:
@@ -287,18 +300,19 @@ class SyncPipelineTaskGeneratorTest(test_utils.TfxTest, parameterized.TestCase):
     test_utils.fake_example_gen_run(self._mlmd_connection, self._example_gen, 1,
                                     1)
 
-    [stats_gen_task] = self._generate(use_task_queue)
+    [stats_gen_task] = self._generate(use_task_queue, True)
     self.assertEqual(self._stats_gen.node_info.id,
                      stats_gen_task.node_uid.node_id)
     self._finish_node_execution(use_task_queue, stats_gen_task)
 
-    [schema_gen_task] = self._generate(use_task_queue)
+    [schema_gen_task] = self._generate(use_task_queue, True)
     self.assertEqual(self._schema_gen.node_info.id,
                      schema_gen_task.node_uid.node_id)
     self._finish_node_execution(use_task_queue, schema_gen_task)
 
     # Both example-validator and transform are ready to execute.
-    [example_validator_task, transform_task] = self._generate(use_task_queue)
+    [example_validator_task,
+     transform_task] = self._generate(use_task_queue, True)
     self.assertEqual(self._example_validator.node_info.id,
                      example_validator_task.node_uid.node_id)
     self.assertEqual(self._transform.node_info.id,
@@ -312,7 +326,7 @@ class SyncPipelineTaskGeneratorTest(test_utils.TfxTest, parameterized.TestCase):
     # generated when not using task queue because the execution is active.
 
     # Trainer can execute as transform is finished.
-    tasks = self._generate(use_task_queue)
+    tasks = self._generate(use_task_queue, True)
     if use_task_queue:
       self.assertLen(tasks, 1)
       trainer_task = tasks[0]
@@ -324,7 +338,7 @@ class SyncPipelineTaskGeneratorTest(test_utils.TfxTest, parameterized.TestCase):
     self.assertEqual(self._trainer.node_info.id, trainer_task.node_uid.node_id)
     self._finish_node_execution(use_task_queue, trainer_task)
 
-    tasks = self._generate(use_task_queue)
+    tasks = self._generate(use_task_queue, True)
     if use_task_queue:
       self.assertLen(tasks, 1)
       chore_a_task = tasks[0]
@@ -336,7 +350,7 @@ class SyncPipelineTaskGeneratorTest(test_utils.TfxTest, parameterized.TestCase):
     self.assertEqual(self._chore_a.node_info.id, chore_a_task.node_uid.node_id)
     self._finish_node_execution(use_task_queue, chore_a_task)
 
-    tasks = self._generate(use_task_queue)
+    tasks = self._generate(use_task_queue, True)
     if use_task_queue:
       self.assertLen(tasks, 1)
       chore_b_task = tasks[0]
@@ -349,7 +363,7 @@ class SyncPipelineTaskGeneratorTest(test_utils.TfxTest, parameterized.TestCase):
     self._finish_node_execution(use_task_queue, chore_b_task)
 
     # No new tasks are generated as example-validator is still incomplete.
-    tasks = self._generate(use_task_queue)
+    tasks = self._generate(use_task_queue, True)
     if use_task_queue:
       self.assertEmpty(tasks)
     else:
@@ -361,7 +375,7 @@ class SyncPipelineTaskGeneratorTest(test_utils.TfxTest, parameterized.TestCase):
     # FinalizePipelineTask is generated only after example-validator finishes.
     test_utils.fake_execute_node(self._mlmd_connection, example_validator_task)
     self._finish_processing(use_task_queue, example_validator_task)
-    [finalize_task] = self._generate(use_task_queue)
+    [finalize_task] = self._generate(use_task_queue, True)
     self.assertTrue(task_lib.is_finalize_pipeline_task(finalize_task))
 
   def test_service_job_running(self):
@@ -373,13 +387,40 @@ class SyncPipelineTaskGeneratorTest(test_utils.TfxTest, parameterized.TestCase):
 
     self._mock_service_job_manager.ensure_node_services.side_effect = (
         _ensure_node_services)
-    tasks = self._generate_and_test(
+    [task] = self._generate_and_test(
         True,
         num_initial_executions=0,
-        num_tasks_generated=0,
+        num_tasks_generated=1,
         num_new_executions=0,
         num_active_executions=0)
-    self.assertEmpty(tasks)
+    self.assertTrue(task_lib.is_update_node_state_task(task))
+    self.assertEqual('my_example_gen', task.node_uid.node_id)
+    self.assertEqual(pstate.NodeState.RUNNING, task.state)
+
+  def test_service_job_success(self):
+    """Tests task generation when example-gen service job succeeds."""
+    test_utils.fake_example_gen_run(self._mlmd_connection, self._example_gen, 1,
+                                    1)
+
+    [eg_update_node_state_task, sg_update_node_state_task,
+     sg_exec_node_task] = self._generate_and_test(
+         True,
+         num_initial_executions=1,
+         num_tasks_generated=3,
+         num_new_executions=1,
+         num_active_executions=1,
+         expected_exec_nodes=[self._stats_gen])
+    self.assertTrue(
+        task_lib.is_update_node_state_task(eg_update_node_state_task))
+    self.assertEqual('my_example_gen',
+                     eg_update_node_state_task.node_uid.node_id)
+    self.assertEqual(pstate.NodeState.COMPLETE, eg_update_node_state_task.state)
+    self.assertTrue(
+        task_lib.is_update_node_state_task(sg_update_node_state_task))
+    self.assertEqual('my_statistics_gen',
+                     sg_update_node_state_task.node_uid.node_id)
+    self.assertEqual(pstate.NodeState.RUNNING, sg_update_node_state_task.state)
+    self.assertTrue(task_lib.is_exec_node_task(sg_exec_node_task))
 
   def test_service_job_failed(self):
     """Tests task generation when example-gen service job fails."""
@@ -390,28 +431,71 @@ class SyncPipelineTaskGeneratorTest(test_utils.TfxTest, parameterized.TestCase):
 
     self._mock_service_job_manager.ensure_node_services.side_effect = (
         _ensure_node_services)
-    [finalize_task] = self._generate_and_test(
+    [update_node_state_task, finalize_task] = self._generate_and_test(
         True,
         num_initial_executions=0,
-        num_tasks_generated=1,
+        num_tasks_generated=2,
         num_new_executions=0,
         num_active_executions=0)
+    self.assertTrue(task_lib.is_update_node_state_task(update_node_state_task))
+    self.assertEqual('my_example_gen', update_node_state_task.node_uid.node_id)
+    self.assertEqual(pstate.NodeState.FAILED, update_node_state_task.state)
     self.assertTrue(task_lib.is_finalize_pipeline_task(finalize_task))
     self.assertEqual(status_lib.Code.ABORTED, finalize_task.status.code)
     self.assertRegexMatch(finalize_task.status.message, ['service job failed'])
 
-  @parameterized.parameters(False, True)
-  def test_node_failed(self, use_task_queue):
+  def test_node_success(self):
+    """Tests task generation when a node execution succeeds."""
+    test_utils.fake_example_gen_run(self._mlmd_connection, self._example_gen, 1,
+                                    1)
+
+    [stats_gen_task] = self._generate_and_test(
+        False,
+        num_initial_executions=1,
+        num_tasks_generated=1,
+        num_new_executions=1,
+        num_active_executions=1,
+        ignore_update_node_state_tasks=True)
+
+    # Finish stats-gen execution.
+    self._finish_node_execution(False, stats_gen_task)
+
+    [
+        stats_gen_update_node_state_task, schema_gen_update_node_state_task,
+        schema_gen_exec_node_task
+    ] = self._generate_and_test(
+        False,
+        num_initial_executions=2,
+        num_tasks_generated=3,
+        num_new_executions=1,
+        num_active_executions=1,
+        expected_exec_nodes=[self._schema_gen])
+    self.assertTrue(
+        task_lib.is_update_node_state_task(stats_gen_update_node_state_task))
+    self.assertEqual('my_statistics_gen',
+                     stats_gen_update_node_state_task.node_uid.node_id)
+    self.assertEqual(pstate.NodeState.COMPLETE,
+                     stats_gen_update_node_state_task.state)
+    self.assertTrue(
+        task_lib.is_update_node_state_task(schema_gen_update_node_state_task))
+    self.assertEqual('my_schema_gen',
+                     schema_gen_update_node_state_task.node_uid.node_id)
+    self.assertEqual(pstate.NodeState.RUNNING,
+                     schema_gen_update_node_state_task.state)
+    self.assertTrue(task_lib.is_exec_node_task(schema_gen_exec_node_task))
+
+  def test_node_failed(self):
     """Tests task generation when a node registers a failed execution."""
     test_utils.fake_example_gen_run(self._mlmd_connection, self._example_gen, 1,
                                     1)
 
     [stats_gen_task] = self._generate_and_test(
-        use_task_queue,
+        False,
         num_initial_executions=1,
         num_tasks_generated=1,
         num_new_executions=1,
-        num_active_executions=1)
+        num_active_executions=1,
+        ignore_update_node_state_tasks=True)
     self.assertEqual(
         task_lib.NodeUid.from_pipeline_node(self._pipeline, self._stats_gen),
         stats_gen_task.node_uid)
@@ -423,17 +507,20 @@ class SyncPipelineTaskGeneratorTest(test_utils.TfxTest, parameterized.TestCase):
         data_types_utils.set_metadata_value(
             stats_gen_exec.custom_properties[constants.EXECUTION_ERROR_MSG_KEY],
             'foobar error')
-    if use_task_queue:
-      task = self._task_queue.dequeue()
-      self._task_queue.task_done(task)
 
     # Test generation of FinalizePipelineTask.
-    [finalize_task] = self._generate_and_test(
+    [update_node_state_task, finalize_task] = self._generate_and_test(
         True,
         num_initial_executions=2,
-        num_tasks_generated=1,
+        num_tasks_generated=2,
         num_new_executions=0,
         num_active_executions=0)
+    self.assertTrue(task_lib.is_update_node_state_task(update_node_state_task))
+    self.assertEqual('my_statistics_gen',
+                     update_node_state_task.node_uid.node_id)
+    self.assertEqual(pstate.NodeState.FAILED, update_node_state_task.state)
+    self.assertRegexMatch(update_node_state_task.status.message,
+                          ['foobar error'])
     self.assertTrue(task_lib.is_finalize_pipeline_task(finalize_task))
     self.assertEqual(status_lib.Code.ABORTED, finalize_task.status.code)
     self.assertRegexMatch(finalize_task.status.message, ['foobar error'])
@@ -451,7 +538,8 @@ class SyncPipelineTaskGeneratorTest(test_utils.TfxTest, parameterized.TestCase):
         num_initial_executions=1,
         num_tasks_generated=1,
         num_new_executions=1,
-        num_active_executions=1)
+        num_active_executions=1,
+        ignore_update_node_state_tasks=True)
     self.assertEqual('my_statistics_gen', stats_gen_task.node_uid.node_id)
 
     # Finish StatsGen execution.
@@ -483,17 +571,39 @@ class SyncPipelineTaskGeneratorTest(test_utils.TfxTest, parameterized.TestCase):
     stats_gen = test_utils.get_node(new_pipeline, 'my_statistics_gen')
 
     # Invoking generator for the new pipeline should result in:
-    # 1. StatsGen execution succeeds with state "CACHED" but no ExecNodeTask
+    # 1. An UpdateNodeStateTask each for ExampleGen, StatsGen and SchemaGen
+    #    signaling execution completion.
+    # 2. StatsGen execution succeeds with state "CACHED" but no ExecNodeTask
     #    generated.
     # 2. An ExecNodeTask is generated for SchemaGen (component downstream of
     #    StatsGen) with an active execution in MLMD.
-    [schema_gen_task] = self._generate_and_test(
+    tasks = self._generate_and_test(
         False,
         pipeline=new_pipeline,
         num_initial_executions=3,
-        num_tasks_generated=1,
+        num_tasks_generated=4,
         num_new_executions=2,
         num_active_executions=1)
+    self.assertLen(tasks, 4)
+    update_node_state_tasks = [
+        t for t in tasks if task_lib.is_update_node_state_task(t)
+    ]
+    self.assertLen(update_node_state_tasks, 3)
+    update_node_state_task_by_node_id = {
+        t.node_uid.node_id: t for t in update_node_state_tasks
+    }
+    self.assertCountEqual(
+        ['my_example_gen', 'my_statistics_gen', 'my_schema_gen'],
+        list(update_node_state_task_by_node_id.keys()))
+    self.assertEqual(pstate.NodeState.COMPLETE,
+                     update_node_state_task_by_node_id['my_example_gen'].state)
+    self.assertEqual(
+        pstate.NodeState.COMPLETE,
+        update_node_state_task_by_node_id['my_statistics_gen'].state)
+    self.assertEqual(pstate.NodeState.RUNNING,
+                     update_node_state_task_by_node_id['my_schema_gen'].state)
+
+    [schema_gen_task] = [t for t in tasks if task_lib.is_exec_node_task(t)]
     self.assertEqual('my_schema_gen', schema_gen_task.node_uid.node_id)
 
     # Check that StatsGen execution is successful in state "CACHED".
@@ -534,7 +644,8 @@ class SyncPipelineTaskGeneratorTest(test_utils.TfxTest, parameterized.TestCase):
         num_initial_executions=num_initial_executions,
         num_tasks_generated=num_tasks_generated,
         num_new_executions=num_new_executions,
-        num_active_executions=num_active_executions)
+        num_active_executions=num_active_executions,
+        ignore_update_node_state_tasks=True)
     self.assertLen(tasks, num_tasks_generated)
 
   def test_restart_node_cancelled_due_to_stopping(self):
@@ -547,7 +658,8 @@ class SyncPipelineTaskGeneratorTest(test_utils.TfxTest, parameterized.TestCase):
         num_initial_executions=1,
         num_tasks_generated=1,
         num_new_executions=1,
-        num_active_executions=1)
+        num_active_executions=1,
+        ignore_update_node_state_tasks=True)
     node_uid = task_lib.NodeUid.from_pipeline_node(self._pipeline,
                                                    self._stats_gen)
     self.assertEqual(node_uid, stats_gen_task.node_uid)
@@ -572,12 +684,16 @@ class SyncPipelineTaskGeneratorTest(test_utils.TfxTest, parameterized.TestCase):
 
     # New execution should be created for any previously canceled node when the
     # node state is STARTING.
-    [stats_gen_task] = self._generate_and_test(
+    [update_node_state_task, stats_gen_task] = self._generate_and_test(
         False,
         num_initial_executions=2,
-        num_tasks_generated=1,
+        num_tasks_generated=2,
         num_new_executions=1,
         num_active_executions=1)
+    self.assertTrue(task_lib.is_update_node_state_task(update_node_state_task))
+    self.assertEqual(node_uid, update_node_state_task.node_uid)
+    self.assertEqual(pstate.NodeState.RUNNING, update_node_state_task.state)
+    self.assertEqual(node_uid, stats_gen_task.node_uid)
 
 
 if __name__ == '__main__':

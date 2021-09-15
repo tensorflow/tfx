@@ -71,7 +71,8 @@ class ImporterTaskSchedulerTest(test_utils.TfxTest):
         num_tasks_generated=1,
         num_new_executions=1,
         num_active_executions=1,
-        expected_exec_nodes=[self._importer_node])
+        expected_exec_nodes=[self._importer_node],
+        ignore_update_node_state_tasks=True)
     self._importer_task = importer_task
 
   def _make_pipeline(self, pipeline_root, pipeline_run_id):

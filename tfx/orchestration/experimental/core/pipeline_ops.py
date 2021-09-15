@@ -156,8 +156,7 @@ def initiate_node_start(mlmd_handle: metadata.Metadata,
   with pstate.PipelineState.load(mlmd_handle,
                                  node_uid.pipeline_uid) as pipeline_state:
     with pipeline_state.node_state_update_context(node_uid) as node_state:
-      if node_state.state not in (pstate.NodeState.STARTING,
-                                  pstate.NodeState.STARTED):
+      if node_state.is_startable():
         node_state.update(pstate.NodeState.STARTING)
   return pipeline_state
 
@@ -193,8 +192,7 @@ def stop_node(mlmd_handle: metadata.Metadata,
                 f'{node_uid}'))
       node = filtered_nodes[0]
       with pipeline_state.node_state_update_context(node_uid) as node_state:
-        if node_state.state not in (pstate.NodeState.STOPPING,
-                                    pstate.NodeState.STOPPED):
+        if node_state.is_stoppable():
           node_state.update(
               pstate.NodeState.STOPPING,
               status_lib.Status(
@@ -556,15 +554,25 @@ def _orchestrate_active_pipeline(
 
   tasks = generator.generate()
 
-  # Change the state of all nodes in state STARTING to STARTED.
-  starting_node_infos = _filter_by_state(node_infos, pstate.NodeState.STARTING)
   with pipeline_state:
-    for node_info in starting_node_infos:
-      node_uid = task_lib.NodeUid.from_pipeline_node(pipeline, node_info.node)
-      with pipeline_state.node_state_update_context(node_uid) as node_state:
-        node_state.update(pstate.NodeState.STARTED)
+    # Handle all the UpdateNodeStateTasks by updating node states.
+    for task in tasks:
+      if task_lib.is_update_node_state_task(task):
+        task = typing.cast(task_lib.UpdateNodeStateTask, task)
+        with pipeline_state.node_state_update_context(
+            task.node_uid) as node_state:
+          node_state.update(task.state, task.status)
 
-  with pipeline_state:
+    tasks = [t for t in tasks if not task_lib.is_update_node_state_task(t)]
+
+    # If there are still nodes in state STARTING, change them to STARTED.
+    for node in pstate.get_all_pipeline_nodes(pipeline_state.pipeline):
+      node_uid = task_lib.NodeUid.from_pipeline_node(pipeline_state.pipeline,
+                                                     node)
+      with pipeline_state.node_state_update_context(node_uid) as node_state:
+        if node_state.state == pstate.NodeState.STARTING:
+          node_state.update(pstate.NodeState.STARTED)
+
     for task in tasks:
       if task_lib.is_exec_node_task(task):
         task = typing.cast(task_lib.ExecNodeTask, task)
@@ -574,7 +582,8 @@ def _orchestrate_active_pipeline(
         task = typing.cast(task_lib.FinalizeNodeTask, task)
         with pipeline_state.node_state_update_context(
             task.node_uid) as node_state:
-          node_state.update(pstate.NodeState.STOPPING, task.status)
+          if node_state.is_stoppable():
+            node_state.update(pstate.NodeState.STOPPING, task.status)
       else:
         assert task_lib.is_finalize_pipeline_task(task)
         assert pipeline.execution_mode == pipeline_pb2.Pipeline.SYNC

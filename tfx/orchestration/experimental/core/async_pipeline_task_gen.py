@@ -32,6 +32,8 @@ from tfx.utils import status as status_lib
 from ml_metadata.proto import metadata_store_pb2
 
 
+# TODO(b/199908896): Surface granular node states similar to sync pipeline task
+# generator.
 class AsyncPipelineTaskGenerator(task_gen.TaskGenerator):
   """Task generator for executing an async pipeline.
 

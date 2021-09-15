@@ -13,7 +13,7 @@
 # limitations under the License.
 """TaskGenerator implementation for sync pipelines."""
 
-from typing import Callable, Hashable, List, MutableSet, Optional, Sequence, Set
+from typing import Callable, Hashable, List, Optional, Sequence, Set
 
 from absl import logging
 import cachetools
@@ -95,140 +95,178 @@ class SyncPipelineTaskGenerator(task_gen.TaskGenerator):
     """
     layers = _topsorted_layers(self._pipeline)
     terminal_node_ids = _terminal_node_ids(layers)
-    result = []
+    exec_node_tasks = []
+    update_node_state_tasks = []
     successful_node_ids = set()
+    finalize_pipeline_task = None
     for layer_nodes in layers:
       for node in layer_nodes:
-        node_uid = task_lib.NodeUid.from_pipeline_node(self._pipeline, node)
-        node_id = node.node_info.id
-
-        if self._in_successful_nodes_cache(node_uid):
-          successful_node_ids.add(node_id)
-          continue
-
-        if not self._upstream_nodes_successful(node, successful_node_ids):
-          continue
-
-        with self._pipeline_state:
-          node_state = self._pipeline_state.get_node_state(node_uid)
-          if node_state.state in (pstate.NodeState.STOPPING,
-                                  pstate.NodeState.STOPPED):
-            logging.info(
-                'Ignoring node in state \'%s\' for task generation: %s',
-                node_state.state, node_uid)
-            continue
-
-        # If this is a pure service node, there is no ExecNodeTask to generate
-        # but we ensure node services and check service status.
-        service_status = self._ensure_node_services_if_pure(node_id)
-        if service_status is not None:
-          if service_status == service_jobs.ServiceStatus.FAILED:
-            return [
-                self._abort_task(f'service job failed; node uid: {node_uid}')
-            ]
-          if service_status == service_jobs.ServiceStatus.SUCCESS:
-            logging.info('Service node successful: %s', node_uid)
-            successful_node_ids.add(node_id)
-          continue
-
-        # If a task for the node is already tracked by the task queue, it need
-        # not be considered for generation again but we ensure node services
-        # in case of a mixed service node.
-        if self._is_task_id_tracked_fn(
-            task_lib.exec_node_task_id_from_pipeline_node(self._pipeline,
-                                                          node)):
-          service_status = self._ensure_node_services_if_mixed(node_id)
-          if service_status == service_jobs.ServiceStatus.FAILED:
-            return [
-                self._abort_task(
-                    f'associated service job failed; node uid: {node_uid}')
-            ]
-          continue
-
-        node_executions = task_gen_utils.get_executions(self._mlmd_handle, node)
-        latest_execution = task_gen_utils.get_latest_execution(node_executions)
-
-        # If the latest execution is successful, we're done.
-        if latest_execution and execution_lib.is_execution_successful(
-            latest_execution):
-          logging.info('Node successful: %s', node_uid)
-          successful_node_ids.add(node_id)
-          continue
-
-        # If the latest execution failed or cancelled, the pipeline should be
-        # aborted if the node is not in state STARTING. For nodes that are
-        # in state STARTING, a new execution is created.
-        if (latest_execution and
-            not execution_lib.is_execution_active(latest_execution) and
-            node_state.state != pstate.NodeState.STARTING):
-          error_msg_value = latest_execution.custom_properties.get(
-              constants.EXECUTION_ERROR_MSG_KEY)
-          error_msg = data_types_utils.get_metadata_value(
-              error_msg_value) if error_msg_value else ''
-          return [
-              self._abort_task(
-                  f'node failed; node uid: {node_uid}; error: {error_msg}')
-          ]
-
-        # Finally, we are ready to generate an ExecNodeTask for the node.
-        task = self._maybe_generate_task(node, node_executions,
-                                         successful_node_ids)
-        if task:
-          if task_lib.is_finalize_pipeline_task(task):
-            return [task]
+        tasks = self._generate_tasks_for_node(node, successful_node_ids)
+        for task in tasks:
+          if task_lib.is_update_node_state_task(task):
+            update_node_state_tasks.append(task)
+          elif task_lib.is_exec_node_task(task):
+            exec_node_tasks.append(task)
           else:
-            result.append(task)
+            assert task_lib.is_finalize_pipeline_task(task)
+            finalize_pipeline_task = task
+
+        if finalize_pipeline_task:
+          break
+
+      if finalize_pipeline_task:
+        break
 
       layer_node_ids = set(node.node_info.id for node in layer_nodes)
       successful_layer_node_ids = layer_node_ids & successful_node_ids
       self._update_successful_nodes_cache(successful_layer_node_ids)
 
-    # If all terminal nodes are successful, the pipeline can be finalized.
-    if terminal_node_ids <= successful_node_ids:
-      return [
+    result = update_node_state_tasks
+    if finalize_pipeline_task:
+      result.append(finalize_pipeline_task)
+    elif terminal_node_ids <= successful_node_ids:
+      # If all terminal nodes are successful, the pipeline can be finalized.
+      result.append(
           task_lib.FinalizePipelineTask(
               pipeline_uid=self._pipeline_uid,
-              status=status_lib.Status(code=status_lib.Code.OK))
-      ]
+              status=status_lib.Status(code=status_lib.Code.OK)))
+    else:
+      result.extend(exec_node_tasks)
     return result
 
-  def _maybe_generate_task(
-      self,
-      node: pipeline_pb2.PipelineNode,
-      node_executions: Sequence[metadata_store_pb2.Execution],
-      successful_node_ids: MutableSet[str],
-  ) -> Optional[task_lib.Task]:
-    """Generates a task to execute or `None` if no action is required.
+  def _generate_tasks_for_node(
+      self, node: pipeline_pb2.PipelineNode,
+      successful_node_ids: Set[str]) -> List[task_lib.Task]:
+    """Generates list of tasks for the given node."""
+    node_uid = task_lib.NodeUid.from_pipeline_node(self._pipeline, node)
+    node_id = node.node_info.id
+    result = []
 
-    If node is executable, `ExecNodeTask` is returned.
-
-    If node execution is infeasible due to unsatisfied preconditions such as
-    missing inputs or service job failure, task to abort the pipeline is
-    returned.
-
-    If cache is enabled and previously computed outputs are found, those outputs
-    are used to finish the execution. Since node execution can be elided, `None`
-    is returned after adding the node_id to `successful_node_ids` set.
-
-    Args:
-      node: The pipeline node for which to generate a task.
-      node_executions: Node executions fetched from MLMD.
-      successful_node_ids: Set that tracks successful node ids.
-
-    Returns:
-      Returns an `ExecNodeTask` if node can be executed. If an error occurs,
-      a `FinalizePipelineTask` is returned to abort the pipeline execution.
-    """
-    result = task_gen_utils.generate_task_from_active_execution(
-        self._mlmd_handle, self._pipeline, node, node_executions)
-    if result:
+    if self._in_successful_nodes_cache(node_uid):
+      successful_node_ids.add(node_id)
       return result
 
+    if not self._upstream_nodes_successful(node, successful_node_ids):
+      return result
+
+    with self._pipeline_state:
+      node_state = self._pipeline_state.get_node_state(node_uid)
+      if node_state.state in (pstate.NodeState.STOPPING,
+                              pstate.NodeState.STOPPED):
+        logging.info('Ignoring node in state \'%s\' for task generation: %s',
+                     node_state.state, node_uid)
+        return result
+
+    # If this is a pure service node, there is no ExecNodeTask to generate
+    # but we ensure node services and check service status.
+    service_status = self._ensure_node_services_if_pure(node_id)
+    if service_status is not None:
+      if service_status == service_jobs.ServiceStatus.FAILED:
+        error_msg = f'service job failed; node uid: {node_uid}'
+        result.append(
+            task_lib.UpdateNodeStateTask(
+                node_uid=node_uid,
+                state=pstate.NodeState.FAILED,
+                status=status_lib.Status(
+                    code=status_lib.Code.ABORTED, message=error_msg)))
+        result.append(self._abort_task(error_msg))
+      elif service_status == service_jobs.ServiceStatus.SUCCESS:
+        logging.info('Service node successful: %s', node_uid)
+        result.append(
+            task_lib.UpdateNodeStateTask(
+                node_uid=node_uid, state=pstate.NodeState.COMPLETE))
+        successful_node_ids.add(node_id)
+      elif service_status == service_jobs.ServiceStatus.RUNNING:
+        result.append(
+            task_lib.UpdateNodeStateTask(
+                node_uid=node_uid, state=pstate.NodeState.RUNNING))
+      return result
+
+    # If a task for the node is already tracked by the task queue, it need
+    # not be considered for generation again but we ensure node services
+    # in case of a mixed service node.
+    if self._is_task_id_tracked_fn(
+        task_lib.exec_node_task_id_from_pipeline_node(self._pipeline, node)):
+      service_status = self._ensure_node_services_if_mixed(node_id)
+      if service_status == service_jobs.ServiceStatus.FAILED:
+        error_msg = f'associated service job failed; node uid: {node_uid}'
+        result.append(
+            task_lib.UpdateNodeStateTask(
+                node_uid=node_uid,
+                state=pstate.NodeState.FAILED,
+                status=status_lib.Status(
+                    code=status_lib.Code.ABORTED, message=error_msg)))
+        result.append(self._abort_task(error_msg))
+      return result
+
+    node_executions = task_gen_utils.get_executions(self._mlmd_handle, node)
+    latest_execution = task_gen_utils.get_latest_execution(node_executions)
+
+    # If the latest execution is successful, we're done.
+    if latest_execution and execution_lib.is_execution_successful(
+        latest_execution):
+      logging.info('Node successful: %s', node_uid)
+      result.append(
+          task_lib.UpdateNodeStateTask(
+              node_uid=node_uid, state=pstate.NodeState.COMPLETE))
+      successful_node_ids.add(node_id)
+      return result
+
+    # If the latest execution failed or cancelled, the pipeline should be
+    # aborted if the node is not in state STARTING. For nodes that are
+    # in state STARTING, a new execution is created.
+    if (latest_execution and
+        not execution_lib.is_execution_active(latest_execution) and
+        node_state.state != pstate.NodeState.STARTING):
+      error_msg_value = latest_execution.custom_properties.get(
+          constants.EXECUTION_ERROR_MSG_KEY)
+      error_msg = data_types_utils.get_metadata_value(
+          error_msg_value) if error_msg_value else ''
+      result.append(
+          task_lib.UpdateNodeStateTask(
+              node_uid=node_uid,
+              state=pstate.NodeState.FAILED,
+              status=status_lib.Status(
+                  code=status_lib.Code.ABORTED, message=error_msg)))
+      result.append(
+          self._abort_task(
+              f'node failed; node uid: {node_uid}; error: {error_msg}'))
+      return result
+
+    exec_node_task = task_gen_utils.generate_task_from_active_execution(
+        self._mlmd_handle, self._pipeline, node, node_executions)
+    if exec_node_task:
+      result.append(
+          task_lib.UpdateNodeStateTask(
+              node_uid=node_uid, state=pstate.NodeState.RUNNING))
+      result.append(exec_node_task)
+      return result
+
+    # Finally, we are ready to generate tasks for the node by resolving inputs.
+    result.extend(
+        self._resolve_inputs_and_generate_tasks_for_node(
+            node, node_executions, successful_node_ids))
+    return result
+
+  def _resolve_inputs_and_generate_tasks_for_node(
+      self, node: pipeline_pb2.PipelineNode,
+      node_executions: Sequence[metadata_store_pb2.Execution],
+      successful_node_ids: Set[str]) -> List[task_lib.Task]:
+    """Generates tasks for a node by freshly resolving inputs."""
+    result = []
     node_uid = task_lib.NodeUid.from_pipeline_node(self._pipeline, node)
     resolved_info = task_gen_utils.generate_resolved_info(
         self._mlmd_handle, node)
     if resolved_info.input_artifacts is None:
-      return self._abort_task(f'failure to resolve inputs; node uid {node_uid}')
+      error_msg = f'failure to resolve inputs; node uid: {node_uid}'
+      result.append(
+          task_lib.UpdateNodeStateTask(
+              node_uid=node_uid,
+              state=pstate.NodeState.FAILED,
+              status=status_lib.Status(
+                  code=status_lib.Code.ABORTED, message=error_msg)))
+      result.append(self._abort_task(error_msg))
+      return result
 
     execution = execution_publish_utils.register_execution(
         metadata_handler=self._mlmd_handle,
@@ -266,28 +304,43 @@ class SyncPipelineTaskGenerator(task_gen.TaskGenerator):
             output_artifacts=cached_outputs)
         successful_node_ids.add(node.node_info.id)
         pstate.record_state_change_time()
-        return None
+        result.append(
+            task_lib.UpdateNodeStateTask(
+                node_uid=node_uid, state=pstate.NodeState.COMPLETE))
+        return result
 
     # For mixed service nodes, we ensure node services and check service
     # status; pipeline is aborted if the service jobs have failed.
     service_status = self._ensure_node_services_if_mixed(node.node_info.id)
     if service_status == service_jobs.ServiceStatus.FAILED:
-      return self._abort_task(
-          f'associated service job failed; node uid: {node_uid}')
+      error_msg = f'associated service job failed; node uid: {node_uid}'
+      result.append(
+          task_lib.UpdateNodeStateTask(
+              node_uid=node_uid,
+              state=pstate.NodeState.FAILED,
+              status=status_lib.Status(
+                  code=status_lib.Code.ABORTED, message=error_msg)))
+      result.append(self._abort_task(error_msg))
+      return result
 
     outputs_utils.make_output_dirs(output_artifacts)
-    return task_lib.ExecNodeTask(
-        node_uid=node_uid,
-        execution_id=execution.id,
-        contexts=contexts,
-        input_artifacts=resolved_info.input_artifacts,
-        exec_properties=resolved_info.exec_properties,
-        output_artifacts=output_artifacts,
-        executor_output_uri=outputs_resolver.get_executor_output_uri(
-            execution.id),
-        stateful_working_dir=outputs_resolver.get_stateful_working_directory(
-            execution.id),
-        pipeline=self._pipeline)
+    result.append(
+        task_lib.UpdateNodeStateTask(
+            node_uid=node_uid, state=pstate.NodeState.RUNNING))
+    result.append(
+        task_lib.ExecNodeTask(
+            node_uid=node_uid,
+            execution_id=execution.id,
+            contexts=contexts,
+            input_artifacts=resolved_info.input_artifacts,
+            exec_properties=resolved_info.exec_properties,
+            output_artifacts=output_artifacts,
+            executor_output_uri=outputs_resolver.get_executor_output_uri(
+                execution.id),
+            stateful_working_dir=outputs_resolver
+            .get_stateful_working_directory(execution.id),
+            pipeline=self._pipeline))
+    return result
 
   def _ensure_node_services_if_pure(
       self, node_id: str) -> Optional[service_jobs.ServiceStatus]:

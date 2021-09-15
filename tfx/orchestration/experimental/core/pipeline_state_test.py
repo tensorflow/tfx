@@ -23,6 +23,7 @@ from tfx.orchestration.experimental.core import task as task_lib
 from tfx.orchestration.experimental.core import test_utils
 from tfx.orchestration.portable import runtime_parameter_utils
 from tfx.proto.orchestration import pipeline_pb2
+from tfx.proto.orchestration import run_state_pb2
 from tfx.utils import status as status_lib
 
 from ml_metadata.proto import metadata_store_pb2
@@ -392,6 +393,56 @@ class PipelineStateTest(test_utils.TfxTest):
       self.assertProtoEquals(pipeline, view1.pipeline)
       self.assertProtoEquals(pipeline2, view2.pipeline)
       self.assertProtoEquals(pipeline2, latest_view.pipeline)
+
+  def test_pipeline_view_get_node_run_states(self):
+    with self._mlmd_connection as m:
+      pipeline = _test_pipeline('pipeline1', pipeline_pb2.Pipeline.SYNC)
+      pipeline_uid = task_lib.PipelineUid.from_pipeline(pipeline)
+      pipeline.nodes.add().pipeline_node.node_info.id = 'ExampleGen'
+      pipeline.nodes.add().pipeline_node.node_info.id = 'Transform'
+      pipeline.nodes.add().pipeline_node.node_info.id = 'Trainer'
+      pipeline.nodes.add().pipeline_node.node_info.id = 'Evaluator'
+      pipeline.nodes.add().pipeline_node.node_info.id = 'Pusher'
+      eg_node_uid = task_lib.NodeUid(pipeline_uid, 'ExampleGen')
+      transform_node_uid = task_lib.NodeUid(pipeline_uid, 'Transform')
+      trainer_node_uid = task_lib.NodeUid(pipeline_uid, 'Trainer')
+      evaluator_node_uid = task_lib.NodeUid(pipeline_uid, 'Evaluator')
+      with pstate.PipelineState.new(m, pipeline) as pipeline_state:
+        with pipeline_state.node_state_update_context(
+            eg_node_uid) as node_state:
+          node_state.update(pstate.NodeState.RUNNING)
+        with pipeline_state.node_state_update_context(
+            transform_node_uid) as node_state:
+          node_state.update(pstate.NodeState.STARTING)
+        with pipeline_state.node_state_update_context(
+            trainer_node_uid) as node_state:
+          node_state.update(pstate.NodeState.STARTED)
+        with pipeline_state.node_state_update_context(
+            evaluator_node_uid) as node_state:
+          node_state.update(
+              pstate.NodeState.FAILED,
+              status_lib.Status(
+                  code=status_lib.Code.ABORTED, message='foobar error'))
+
+      [view] = pstate.PipelineView.load_all(
+          m, task_lib.PipelineUid.from_pipeline(pipeline))
+      run_states_dict = view.get_node_run_states()
+      self.assertEqual(
+          run_state_pb2.RunState(state=run_state_pb2.RunState.RUNNING),
+          run_states_dict['ExampleGen'])
+      self.assertEqual(
+          run_state_pb2.RunState(state=run_state_pb2.RunState.UNKNOWN),
+          run_states_dict['Transform'])
+      self.assertEqual(
+          run_state_pb2.RunState(state=run_state_pb2.RunState.READY),
+          run_states_dict['Trainer'])
+      self.assertEqual(
+          run_state_pb2.RunState(
+              state=run_state_pb2.RunState.FAILED, status_msg='foobar error'),
+          run_states_dict['Evaluator'])
+      self.assertEqual(
+          run_state_pb2.RunState(state=run_state_pb2.RunState.READY),
+          run_states_dict['Pusher'])
 
 
 if __name__ == '__main__':

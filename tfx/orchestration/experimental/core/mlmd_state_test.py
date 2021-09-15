@@ -90,13 +90,15 @@ class MlmdStateTest(test_utils.TfxTest):
         connection_config=connection_config)
 
   def test_mlmd_execution_update(self):
+    event_on_commit = threading.Event()
     with self._mlmd_connection as m:
       expected_execution = _write_test_execution(m)
       # Mutate execution.
       with mlmd_state.mlmd_execution_atomic_op(
-          m, expected_execution.id) as execution:
+          m, expected_execution.id, on_commit=event_on_commit.set) as execution:
         self.assertEqual(expected_execution, execution)
         execution.last_known_state = metadata_store_pb2.Execution.CANCELED
+        self.assertFalse(event_on_commit.is_set())  # not yet invoked.
       # Test that updated execution is committed to MLMD.
       [execution] = m.store.get_executions_by_id([execution.id])
       self.assertEqual(metadata_store_pb2.Execution.CANCELED,
@@ -104,6 +106,9 @@ class MlmdStateTest(test_utils.TfxTest):
       # Test that in-memory state is also in sync.
       self.assertEqual(execution,
                        mlmd_state._execution_cache._cache[execution.id])
+      # Test that on_commit callback was invoked.
+      self.assertTrue(event_on_commit.is_set())
+      # Sanity checks that the updated execution is yielded in the next call.
       with mlmd_state.mlmd_execution_atomic_op(
           m, expected_execution.id) as execution2:
         self.assertEqual(execution, execution2)

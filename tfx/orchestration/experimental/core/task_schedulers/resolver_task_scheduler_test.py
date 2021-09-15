@@ -101,7 +101,8 @@ class ResolverTaskSchedulerTest(test_utils.TfxTest):
         num_tasks_generated=1,
         num_new_executions=1,
         num_active_executions=1,
-        expected_exec_nodes=[self._resolver_node])
+        expected_exec_nodes=[self._resolver_node],
+        ignore_update_node_state_tasks=True)
 
     with self._mlmd_connection as m:
       # Run resolver task scheduler and publish results.
@@ -130,7 +131,8 @@ class ResolverTaskSchedulerTest(test_utils.TfxTest):
         num_tasks_generated=1,
         num_new_executions=1,
         num_active_executions=1,
-        expected_exec_nodes=[self._consumer_node])
+        expected_exec_nodes=[self._consumer_node],
+        ignore_update_node_state_tasks=True)
     self.assertCountEqual(['input_models'],
                           consumer_task.input_artifacts.keys())
     input_models = consumer_task.input_artifacts['input_models']
