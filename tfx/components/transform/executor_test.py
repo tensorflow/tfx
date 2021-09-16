@@ -59,10 +59,6 @@ class ExecutorTest(tft_unit.TransformTestCase):
   _ARTIFACT1_URI = os.path.join(_TEMP_EXAMPLE_DIR, 'csv_example_gen1')
   _ARTIFACT2_URI = os.path.join(_TEMP_EXAMPLE_DIR, 'csv_example_gen2')
 
-  # executor_v2_test.py overrides this to False.
-  def _use_force_tf_compat_v1(self):
-    return True
-
   @classmethod
   def setUpClass(cls):
     super(ExecutorTest, cls).setUpClass()
@@ -187,8 +183,7 @@ class ExecutorTest(tft_unit.TransformTestCase):
         transform_module.stats_options_updater_fn.__name__)
     self._exec_properties[standard_component_specs.SPLITS_CONFIG_KEY] = None
     self._exec_properties[
-        standard_component_specs.FORCE_TF_COMPAT_V1_KEY] = int(
-            self._use_force_tf_compat_v1())
+        standard_component_specs.FORCE_TF_COMPAT_V1_KEY] = int(False)
 
     # Executor for test.
     self._transform_executor = executor.Executor()

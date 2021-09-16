@@ -68,7 +68,6 @@ INFERENCE_RESULT_KEY = 'inference_result'
 OUTPUT_EXAMPLES_KEY = 'output_examples'
 # Key for schema_gen
 INFER_FEATURE_SHAPE_KEY = 'infer_feature_shape'
-SCHEMA_FILE_KEY = 'schema_file'
 # Key for statistics_gen
 STATS_OPTIONS_JSON_KEY = 'stats_options_json'
 # Key for example_gen
@@ -301,27 +300,14 @@ class SchemaGenSpec(ComponentSpec):
   """SchemaGen component spec."""
 
   PARAMETERS = {
-      INFER_FEATURE_SHAPE_KEY: ExecutionParameter(type=int, optional=True),
-      EXCLUDE_SPLITS_KEY: ExecutionParameter(type=str, optional=True),
+      'infer_feature_shape': ExecutionParameter(type=int, optional=True),
+      'exclude_splits': ExecutionParameter(type=str, optional=True),
   }
   INPUTS = {
-      STATISTICS_KEY:
-          ChannelParameter(type=standard_artifacts.ExampleStatistics),
+      'statistics': ChannelParameter(type=standard_artifacts.ExampleStatistics),
   }
   OUTPUTS = {
-      SCHEMA_KEY: ChannelParameter(type=standard_artifacts.Schema),
-  }
-
-
-class ImportSchemaGenSpec(ComponentSpec):
-  """ImportSchemaGen component spec."""
-
-  PARAMETERS = {
-      SCHEMA_FILE_KEY: ExecutionParameter(type=str),
-  }
-  INPUTS = {}
-  OUTPUTS = {
-      SCHEMA_KEY: ChannelParameter(type=standard_artifacts.Schema),
+      'schema': ChannelParameter(type=standard_artifacts.Schema),
   }
 
 

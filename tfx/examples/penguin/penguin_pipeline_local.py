@@ -174,19 +174,21 @@ def _create_pipeline(
 
   if user_provided_schema_path:
     # Import user-provided schema.
-    schema_gen = tfx.components.ImportSchemaGen(
-        schema_file=user_provided_schema_path)
+    schema_importer = tfx.dsl.Importer(
+        source_uri=user_provided_schema_path,
+        artifact_type=tfx.types.standard_artifacts.Schema).with_id(
+            'schema_importer')
+    schema = schema_importer.outputs['result']
   else:
     # Generates schema based on statistics files.
     schema_gen = tfx.components.SchemaGen(
         statistics=statistics_gen.outputs['statistics'],
         infer_feature_shape=True)
+    schema = schema_gen.outputs['schema']
 
   # Performs anomaly detection based on statistics and data schema.
-  # TODO(b/199338233): Use ExampleValidator only for ImportSchemaGen path.
   example_validator = tfx.components.ExampleValidator(
-      statistics=statistics_gen.outputs['statistics'],
-      schema=schema_gen.outputs['schema'])
+      statistics=statistics_gen.outputs['statistics'], schema=schema)
 
   # Gets multiple Spans for transform and training.
   if resolver_range_config:
@@ -212,7 +214,7 @@ def _create_pipeline(
   transform = tfx.components.Transform(
       examples=(examples_resolver.outputs['examples']
                 if resolver_range_config else example_gen.outputs['examples']),
-      schema=schema_gen.outputs['schema'],
+      schema=schema,
       module_file=module_file,
       analyzer_cache=tft_resolved_cache)
 
@@ -232,7 +234,7 @@ def _create_pipeline(
       module_file=module_file,
       examples=transform.outputs['transformed_examples'],
       transform_graph=transform.outputs['transform_graph'],
-      schema=schema_gen.outputs['schema'],
+      schema=schema,
       # If Tuner is in the pipeline, Trainer can take Tuner's output
       # best_hyperparameters artifact as input and utilize it in the user module
       # code.
@@ -339,7 +341,6 @@ def _create_pipeline(
   components_list = [
       example_gen,
       statistics_gen,
-      schema_gen,
       example_validator,
       transform,
       trainer,
@@ -347,6 +348,10 @@ def _create_pipeline(
       evaluator,
       pusher,
   ]
+  if user_provided_schema_path:
+    components_list.append(schema_importer)
+  else:
+    components_list.append(schema_gen)
   if resolver_range_config:
     components_list.append(examples_resolver)
   if enable_transform_input_cache:

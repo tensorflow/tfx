@@ -16,7 +16,7 @@
 import copy
 import inspect
 import itertools
-from typing import Any, Dict, List, Optional, Type, cast
+from typing import Any, Dict, List, Optional, Type
 
 from tfx.dsl.placeholder import placeholder
 from tfx.types.artifact import Artifact
@@ -242,21 +242,6 @@ class ComponentSpec(json_utils.Jsonable):
     self.inputs = inputs
     self.outputs = outputs
 
-  def is_optional_input(self, key: str) -> bool:
-    """Whether the input channel of the key is optional."""
-    try:
-      return cast(ChannelParameter, self.INPUTS[key]).optional
-    except KeyError as e:
-      raise KeyError(f'self.INPUTS = {self.INPUTS}') from e
-
-  def is_optional_output(self, key: str) -> bool:
-    """Whether the output channel of the key is optional."""
-    return cast(ChannelParameter, self.OUTPUTS[key]).optional
-
-  def is_optional_exec_property(self, key: str) -> bool:
-    """Whether the exec_properties of the key is optional."""
-    return cast(ExecutionParameter, self.PARAMETERS[key]).optional
-
   def to_json_dict(self) -> Dict[str, Any]:
     """Convert from an object to a JSON serializable dictionary."""
     return {
@@ -417,7 +402,7 @@ class ChannelParameter(_ComponentParameter):
   def __init__(
       self,
       type: Optional[Type[Artifact]] = None,  # pylint: disable=redefined-builtin
-      optional: bool = False):
+      optional: Optional[bool] = False):
     if not (inspect.isclass(type) and issubclass(type, Artifact)):  # pytype: disable=wrong-arg-types
       raise ValueError(
           'Argument "type" of Channel constructor must be a subclass of '

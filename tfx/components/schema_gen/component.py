@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""TFX SchemaGen component definition."""
+"""TFX ExampleValidator component definition."""
 
 from typing import List, Optional, Union
 
@@ -52,6 +52,8 @@ class SchemaGen(base_component.BaseComponent):
   See [the SchemaGen guide](https://www.tensorflow.org/tfx/guide/schemagen)
   for more details.
   """
+  # TODO(b/123941608): Update pydoc about how to use a user provided schema
+
   SPEC_CLASS = standard_component_specs.SchemaGenSpec
   EXECUTOR_SPEC = executor_spec.ExecutorClassSpec(executor.Executor)
 

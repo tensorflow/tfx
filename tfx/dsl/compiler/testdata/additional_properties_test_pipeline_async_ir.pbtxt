@@ -161,7 +161,6 @@ nodes {
             }
             output_key: "stats"
           }
-          min_count: 1
         }
       }
     }

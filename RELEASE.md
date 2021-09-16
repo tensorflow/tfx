@@ -9,10 +9,6 @@
     =<parameter_name>=<parameter_value>'
 *   Added Manual node in the experimental orchestrator.
 *   Placeholders support index access and JSON serialization for list type execution properties.
-*   Added `ImportSchemaGen` which is a dedicated component to import a
-    pre-defined schema file. ImportSchemaGen will replace `Importer` with
-    simpler syntax and less constraints. You have to pass the file path to the
-    schema file instead of the parent directory unlike `Importer`.
 
 ## Breaking Changes
 
@@ -32,15 +28,13 @@
 *   The default job name for Google Cloud AI Training jobs was changed from
     'tfx_YYYYmmddHHMMSS' to 'tfx_YYYYmmddHHMMSS_xxxxxxxx', where 'xxxxxxxx' is
     a random 8 digit hexadecimal string.
-*   Fix component to raise error if its input required channel (specified from
-    ComponentSpec) has no artifacts in it.
 *   Fixed an issue where ClientOptions with regional endpoint was
     incorrectly left out in Vertex AI pusher.
 *   CLI now hides passed flags from user python files in "--pipeline-path". This
     will prevent errors when user python file tries reading and parsing flags.
 *   Depends on `google-cloud-bigquery>=1.28.0,<3`.
 *   Depends on `keras-tuner>=1.0.4,<2`.
-*   Depends on `kfp>=1.6.1,!=1.7.2,<1.8.2` in \[kfp\] extra.
+*   Depends on `kfp>=1.6.1,!=1.7.2,<2` in \[kfp\] extra.
 *   Depends on `jinja2>=2.7.3,<4`, i.e. now supports Jinja 3.x.
 
 ## Documentation Updates
