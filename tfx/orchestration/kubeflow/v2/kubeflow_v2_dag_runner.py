@@ -20,6 +20,7 @@ from typing import Any, Dict, List, Optional
 
 from kfp.pipeline_spec import pipeline_spec_pb2
 from tfx import version
+from tfx.dsl.components.base import base_component as tfx_base_component
 from tfx.dsl.io import fileio
 from tfx.orchestration import pipeline as tfx_pipeline
 from tfx.orchestration import tfx_runner
@@ -131,6 +132,13 @@ class KubeflowV2DagRunner(tfx_runner.TfxRunner):
       RuntimeError: if trying to write out to a place occupied by an existing
       file.
     """
+    for component in pipeline.components:
+      # TODO(b/187122662): Pass through pip dependencies as a first-class
+      # component flag.
+      if isinstance(component, tfx_base_component.BaseComponent):
+        component._resolve_pip_dependencies(  # pylint: disable=protected-access
+            pipeline.pipeline_info.pipeline_root)
+
     # TODO(b/166343606): Support user-provided labels.
     # TODO(b/169095387): Deprecate .run() method in favor of the unified API
     # client.

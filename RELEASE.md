@@ -36,6 +36,8 @@
 *   Depends on `keras-tuner>=1.0.4,<2`.
 *   Depends on `kfp>=1.6.1,!=1.7.2,<2` in \[kfp\] extra.
 *   Depends on `jinja2>=2.7.3,<4`, i.e. now supports Jinja 3.x.
+*   Pip packaging is used for user module files when running on Kubeflow V2 DAG
+    Runner.
 
 ## Documentation Updates
 
