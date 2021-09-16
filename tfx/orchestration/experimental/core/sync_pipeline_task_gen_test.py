@@ -70,6 +70,7 @@ class SyncPipelineTaskGeneratorTest(test_utils.TfxTest, parameterized.TestCase):
     self._example_validator = test_utils.get_node(pipeline,
                                                   'my_example_validator')
     self._trainer = test_utils.get_node(pipeline, 'my_trainer')
+    self._evaluator = test_utils.get_node(pipeline, 'my_evaluator')
     self._chore_a = test_utils.get_node(pipeline, 'chore_a')
     self._chore_b = test_utils.get_node(pipeline, 'chore_b')
 
@@ -110,10 +111,16 @@ class SyncPipelineTaskGeneratorTest(test_utils.TfxTest, parameterized.TestCase):
     if use_task_queue:
       self._task_queue.task_done(dequeued_task)
 
-  def _finish_node_execution(self, use_task_queue, exec_node_task):
+  def _finish_node_execution(self,
+                             use_task_queue,
+                             exec_node_task,
+                             artifact_custom_properties=None):
     """Simulates successful execution of a node."""
     self._start_processing(use_task_queue, exec_node_task)
-    test_utils.fake_execute_node(self._mlmd_connection, exec_node_task)
+    test_utils.fake_execute_node(
+        self._mlmd_connection,
+        exec_node_task,
+        artifact_custom_properties=artifact_custom_properties)
     self._finish_processing(use_task_queue, exec_node_task)
 
   def _generate(self, use_task_queue, ignore_update_node_state_tasks=False):
@@ -125,6 +132,36 @@ class SyncPipelineTaskGeneratorTest(test_utils.TfxTest, parameterized.TestCase):
         use_task_queue,
         self._mock_service_job_manager,
         ignore_update_node_state_tasks=ignore_update_node_state_tasks)
+
+  def _run_next(self,
+                use_task_queue,
+                expect_nodes,
+                finish_nodes=None,
+                artifact_custom_properties=None):
+    """Runs a complete cycle of task generation and simulating their completion.
+
+    Args:
+      use_task_queue: Whether to use task queue.
+      expect_nodes: List of nodes whose task generation is expected.
+      finish_nodes: List of nodes whose completion should be simulated. If
+        `None` (default), all of `expect_nodes` will be finished.
+      artifact_custom_properties: A dict of custom properties to attach to the
+        output artifacts.
+    """
+    tasks = self._generate(use_task_queue, True)
+    for task in tasks:
+      self.assertTrue(task_lib.is_exec_node_task(task))
+    expected_node_ids = [n.node_info.id for n in expect_nodes]
+    task_node_ids = [task.node_uid.node_id for task in tasks]
+    self.assertCountEqual(expected_node_ids, task_node_ids)
+    finish_node_ids = set([n.node_info.id for n in finish_nodes]
+                          if finish_nodes is not None else expected_node_ids)
+    for task in tasks:
+      if task.node_uid.node_id in finish_node_ids:
+        self._finish_node_execution(
+            use_task_queue,
+            task,
+            artifact_custom_properties=artifact_custom_properties)
 
   def _generate_and_test(self,
                          use_task_queue,
@@ -285,14 +322,16 @@ class SyncPipelineTaskGeneratorTest(test_utils.TfxTest, parameterized.TestCase):
         `use_task_queue=False` is useful to test the case of task generation
         when task queue is empty (for eg: due to orchestrator restart).
     """
-    # Check that there are two terminal nodes at different layers.
+    # Check the expected terminal nodes.
     layers = sptg._topsorted_layers(self._pipeline)
-    self.assertIn(self._example_validator.node_info.id,
-                  [n.node_info.id for n in layers[3]])
-    self.assertIn(self._chore_b.node_info.id,
-                  [n.node_info.id for n in layers[6]])
     self.assertEqual(
-        {self._example_validator.node_info.id, self._chore_b.node_info.id},
+        {
+            self._example_validator.node_info.id,
+            self._chore_b.node_info.id,
+            # evaluator execution will be skipped as it is run conditionally and
+            # the condition always evaluates to False in the current test.
+            self._evaluator.node_info.id,
+        },
         sptg._terminal_node_ids(layers))
 
     # Start executing the pipeline:
@@ -300,15 +339,8 @@ class SyncPipelineTaskGeneratorTest(test_utils.TfxTest, parameterized.TestCase):
     test_utils.fake_example_gen_run(self._mlmd_connection, self._example_gen, 1,
                                     1)
 
-    [stats_gen_task] = self._generate(use_task_queue, True)
-    self.assertEqual(self._stats_gen.node_info.id,
-                     stats_gen_task.node_uid.node_id)
-    self._finish_node_execution(use_task_queue, stats_gen_task)
-
-    [schema_gen_task] = self._generate(use_task_queue, True)
-    self.assertEqual(self._schema_gen.node_info.id,
-                     schema_gen_task.node_uid.node_id)
-    self._finish_node_execution(use_task_queue, schema_gen_task)
+    self._run_next(use_task_queue, expect_nodes=[self._stats_gen])
+    self._run_next(use_task_queue, expect_nodes=[self._schema_gen])
 
     # Both example-validator and transform are ready to execute.
     [example_validator_task,
@@ -325,52 +357,26 @@ class SyncPipelineTaskGeneratorTest(test_utils.TfxTest, parameterized.TestCase):
     # Readability note: below, example-validator task should continue to be
     # generated when not using task queue because the execution is active.
 
-    # Trainer can execute as transform is finished.
-    tasks = self._generate(use_task_queue, True)
-    if use_task_queue:
-      self.assertLen(tasks, 1)
-      trainer_task = tasks[0]
-    else:
-      self.assertLen(tasks, 2)
-      [example_validator_task, trainer_task] = tasks
-      self.assertEqual(self._example_validator.node_info.id,
-                       example_validator_task.node_uid.node_id)
-    self.assertEqual(self._trainer.node_info.id, trainer_task.node_uid.node_id)
-    self._finish_node_execution(use_task_queue, trainer_task)
-
-    tasks = self._generate(use_task_queue, True)
-    if use_task_queue:
-      self.assertLen(tasks, 1)
-      chore_a_task = tasks[0]
-    else:
-      self.assertLen(tasks, 2)
-      [example_validator_task, chore_a_task] = tasks
-      self.assertEqual(self._example_validator.node_info.id,
-                       example_validator_task.node_uid.node_id)
-    self.assertEqual(self._chore_a.node_info.id, chore_a_task.node_uid.node_id)
-    self._finish_node_execution(use_task_queue, chore_a_task)
-
-    tasks = self._generate(use_task_queue, True)
-    if use_task_queue:
-      self.assertLen(tasks, 1)
-      chore_b_task = tasks[0]
-    else:
-      self.assertLen(tasks, 2)
-      [example_validator_task, chore_b_task] = tasks
-      self.assertEqual(self._example_validator.node_info.id,
-                       example_validator_task.node_uid.node_id)
-    self.assertEqual(self._chore_b.node_info.id, chore_b_task.node_uid.node_id)
-    self._finish_node_execution(use_task_queue, chore_b_task)
-
-    # No new tasks are generated as example-validator is still incomplete.
-    tasks = self._generate(use_task_queue, True)
-    if use_task_queue:
-      self.assertEmpty(tasks)
-    else:
-      self.assertLen(tasks, 1)
-      example_validator_task = tasks[0]
-      self.assertEqual(self._example_validator.node_info.id,
-                       example_validator_task.node_uid.node_id)
+    # Trainer and downstream nodes can execute as transform is finished.
+    self._run_next(
+        use_task_queue,
+        expect_nodes=[self._trainer]
+        if use_task_queue else [self._example_validator, self._trainer],
+        finish_nodes=[self._trainer])
+    self._run_next(
+        use_task_queue,
+        expect_nodes=[self._chore_a]
+        if use_task_queue else [self._example_validator, self._chore_a],
+        finish_nodes=[self._chore_a])
+    self._run_next(
+        use_task_queue,
+        expect_nodes=[self._chore_b]
+        if use_task_queue else [self._example_validator, self._chore_b],
+        finish_nodes=[self._chore_b])
+    self._run_next(
+        use_task_queue,
+        expect_nodes=[] if use_task_queue else [self._example_validator],
+        finish_nodes=[])
 
     # FinalizePipelineTask is generated only after example-validator finishes.
     test_utils.fake_execute_node(self._mlmd_connection, example_validator_task)
@@ -694,6 +700,67 @@ class SyncPipelineTaskGeneratorTest(test_utils.TfxTest, parameterized.TestCase):
     self.assertEqual(node_uid, update_node_state_task.node_uid)
     self.assertEqual(pstate.NodeState.RUNNING, update_node_state_task.state)
     self.assertEqual(node_uid, stats_gen_task.node_uid)
+
+  @parameterized.parameters(False, True)
+  def test_conditional_execution(self, evaluate):
+    """Tests conditionals in the pipeline.
+
+    Args:
+      evaluate: Whether to run the conditional evaluator.
+    """
+    # Check the expected terminal nodes.
+    layers = sptg._topsorted_layers(self._pipeline)
+    self.assertEqual(
+        {
+            self._example_validator.node_info.id,
+            self._chore_b.node_info.id,
+            self._evaluator.node_info.id,
+        }, sptg._terminal_node_ids(layers))
+
+    # Start executing the pipeline:
+
+    test_utils.fake_example_gen_run(self._mlmd_connection, self._example_gen, 1,
+                                    1)
+
+    self._run_next(False, expect_nodes=[self._stats_gen])
+    self._run_next(False, expect_nodes=[self._schema_gen])
+    self._run_next(
+        False, expect_nodes=[self._example_validator, self._transform])
+
+    # Evaluator is run conditionally based on whether the Model artifact
+    # produced by the trainer has a custom property evaluate=1.
+    self._run_next(
+        False,
+        expect_nodes=[self._trainer],
+        artifact_custom_properties={'evaluate': 1} if evaluate else None)
+
+    tasks = self._generate(False)
+    [evaluator_update_node_state_task] = [
+        t for t in tasks if task_lib.is_update_node_state_task(t) and
+        t.node_uid.node_id == 'my_evaluator'
+    ]
+    self.assertEqual(
+        pstate.NodeState.RUNNING if evaluate else pstate.NodeState.SKIPPED,
+        evaluator_update_node_state_task.state)
+
+    exec_node_tasks = [t for t in tasks if task_lib.is_exec_node_task(t)]
+    if evaluate:
+      [chore_a_exec_node_task, evaluator_exec_node_task] = exec_node_tasks
+      self.assertEqual('chore_a', chore_a_exec_node_task.node_uid.node_id)
+      self.assertEqual('my_evaluator',
+                       evaluator_exec_node_task.node_uid.node_id)
+      self._finish_node_execution(False, chore_a_exec_node_task)
+      self._finish_node_execution(False, evaluator_exec_node_task)
+    else:
+      [chore_a_exec_node_task] = exec_node_tasks
+      self.assertEqual('chore_a', chore_a_exec_node_task.node_uid.node_id)
+      self._finish_node_execution(False, chore_a_exec_node_task)
+
+    self._run_next(False, expect_nodes=[self._chore_b])
+
+    # All nodes executed, finalization task should be produced.
+    [finalize_task] = self._generate(False, True)
+    self.assertTrue(task_lib.is_finalize_pipeline_task(finalize_task))
 
 
 if __name__ == '__main__':

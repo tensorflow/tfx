@@ -115,13 +115,21 @@ def get_node(pipeline, node_id):
   raise ValueError(f'could not find {node_id}')
 
 
-def fake_execute_node(mlmd_connection, task):
+def fake_execute_node(mlmd_connection, task, artifact_custom_properties=None):
   """Simulates node execution given ExecNodeTask."""
   node = task.get_pipeline_node()
   with mlmd_connection as m:
     if node.HasField('outputs'):
       output_key, output_value = next(iter(node.outputs.outputs.items()))
       output = types.Artifact(output_value.artifact_spec.type)
+      if artifact_custom_properties:
+        for key, val in artifact_custom_properties.items():
+          if isinstance(val, int):
+            output.set_int_custom_property(key, val)
+          elif isinstance(val, str):
+            output.set_string_custom_property(key, val)
+          else:
+            raise ValueError(f'unsupported type: {type(val)}')
       output.uri = str(uuid.uuid4())
       output_artifacts = {output_key: [output]}
     else:

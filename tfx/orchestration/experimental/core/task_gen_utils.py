@@ -137,16 +137,18 @@ def _extract_properties(
   return result
 
 
-def generate_resolved_info(metadata_handler: metadata.Metadata,
-                           node: pipeline_pb2.PipelineNode) -> ResolvedInfo:
-  """Returns a `ResolvedInfo` object for executing the node.
+def generate_resolved_info(
+    metadata_handler: metadata.Metadata,
+    node: pipeline_pb2.PipelineNode) -> Optional[ResolvedInfo]:
+  """Returns a `ResolvedInfo` object for executing the node or `None` to skip.
 
   Args:
     metadata_handler: A handler to access MLMD db.
     node: The pipeline node for which to generate.
 
   Returns:
-    A `ResolvedInfo` with input resolutions.
+    A `ResolvedInfo` with input resolutions or `None` if execution should be
+    skipped.
 
   Raises:
     NotImplementedError: Multiple dicts returned by inputs_utils
@@ -171,15 +173,14 @@ def generate_resolved_info(metadata_handler: metadata.Metadata,
     input_artifacts = None
   else:
     if isinstance(resolved_input_artifacts, inputs_utils.Skip):
-      input_artifacts = None
-    else:
-      assert isinstance(resolved_input_artifacts, inputs_utils.Trigger)
-      assert resolved_input_artifacts
-      # TODO(b/197741942): Support multiple dicts.
-      if len(resolved_input_artifacts) > 1:
-        raise NotImplementedError(
-            'Handling more than one input dicts not implemented.')
-      input_artifacts = resolved_input_artifacts[0]
+      return None
+    assert isinstance(resolved_input_artifacts, inputs_utils.Trigger)
+    assert resolved_input_artifacts
+    # TODO(b/197741942): Support multiple dicts.
+    if len(resolved_input_artifacts) > 1:
+      raise NotImplementedError(
+          'Handling more than one input dicts not implemented.')
+    input_artifacts = resolved_input_artifacts[0]
 
   return ResolvedInfo(
       contexts=contexts,

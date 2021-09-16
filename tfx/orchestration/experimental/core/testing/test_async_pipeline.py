@@ -23,33 +23,34 @@ from tfx.types import standard_artifacts
 
 
 @component
-def my_example_gen(examples: OutputArtifact[standard_artifacts.Examples]):
+def _example_gen(examples: OutputArtifact[standard_artifacts.Examples]):
   del examples
 
 
 @component
-def my_transform(
+def _transform(
     examples: InputArtifact[standard_artifacts.Examples],
     transform_graph: OutputArtifact[standard_artifacts.TransformGraph]):
   del examples, transform_graph
 
 
 @component
-def my_trainer(
-    examples: InputArtifact[standard_artifacts.Examples],
-    transform_graph: InputArtifact[standard_artifacts.TransformGraph],
-    model: OutputArtifact[standard_artifacts.Model]):
+def _trainer(examples: InputArtifact[standard_artifacts.Examples],
+             transform_graph: InputArtifact[standard_artifacts.TransformGraph],
+             model: OutputArtifact[standard_artifacts.Model]):
   del examples, transform_graph, model
 
 
 def create_pipeline() -> pipeline_pb2.Pipeline:
   """Creates an async pipeline for testing."""
   # pylint: disable=no-value-for-parameter
-  example_gen = my_example_gen()
-  transform = my_transform(examples=example_gen.outputs['examples'])
-  trainer = my_trainer(
+  example_gen = _example_gen().with_id('my_example_gen')
+  transform = _transform(
+      examples=example_gen.outputs['examples']).with_id('my_transform')
+  trainer = _trainer(
       examples=example_gen.outputs['examples'],
-      transform_graph=transform.outputs['transform_graph'])
+      transform_graph=transform.outputs['transform_graph']).with_id(
+          'my_trainer')
   # pylint: enable=no-value-for-parameter
 
   pipeline = pipeline_lib.Pipeline(
