@@ -98,7 +98,7 @@ def create_test_pipeline():
           tfma.MetricsSpec(
               thresholds={
                   "sparse_categorical_accuracy":
-                      tfma.config.MetricThreshold(
+                      tfma.MetricThreshold(
                           value_threshold=tfma.GenericValueThreshold(
                               lower_bound={"value": 0.6}),
                           change_threshold=tfma.GenericChangeThreshold(

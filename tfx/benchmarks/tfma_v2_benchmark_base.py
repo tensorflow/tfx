@@ -20,9 +20,7 @@ import time
 import apache_beam as beam
 import tensorflow as tf
 import tensorflow_model_analysis as tfma
-from tensorflow_model_analysis import config
 from tensorflow_model_analysis import constants
-from tensorflow_model_analysis import model_util
 from tensorflow_model_analysis.evaluators import metrics_plots_and_validations_evaluator
 from tensorflow_model_analysis.evaluators import poisson_bootstrap
 from tensorflow_model_analysis.extractors import example_weights_extractor
@@ -33,6 +31,7 @@ from tensorflow_model_analysis.extractors import predictions_extractor
 from tensorflow_model_analysis.extractors import unbatch_extractor
 from tensorflow_model_analysis.metrics import metric_specs as metric_specs_util
 from tensorflow_model_analysis.metrics import metric_types
+from tensorflow_model_analysis.utils import model_util
 import tfx
 from tfx.benchmarks import benchmark_utils
 from tfx.benchmarks import benchmark_base
@@ -71,12 +70,12 @@ class TFMAV2BenchmarkBase(benchmark_base.BenchmarkBase):
       if validation:
         # Only one metric, adding a threshold for all slices.
         metric_specs[0].metrics[0].threshold.CopyFrom(
-            config.MetricThreshold(
-                value_threshold=config.GenericValueThreshold(
+            tfma.MetricThreshold(
+                value_threshold=tfma.GenericValueThreshold(
                     lower_bound={"value": 0.5}, upper_bound={"value": 0.5}),
-                change_threshold=config.GenericChangeThreshold(
+                change_threshold=tfma.GenericChangeThreshold(
                     absolute={"value": -0.001},
-                    direction=config.MetricDirection.HIGHER_IS_BETTER)))
+                    direction=tfma.MetricDirection.HIGHER_IS_BETTER)))
       self._eval_config = tfma.EvalConfig(
           model_specs=[
               tfma.ModelSpec(name="candidate", label_key="tips"),
@@ -102,8 +101,8 @@ class TFMAV2BenchmarkBase(benchmark_base.BenchmarkBase):
       if validation:
         # Only one metric, adding a threshold for all slices.
         metric_specs[0].metrics[0].threshold.CopyFrom(
-            config.MetricThreshold(
-                value_threshold=config.GenericValueThreshold(
+            tfma.MetricThreshold(
+                value_threshold=tfma.GenericValueThreshold(
                     lower_bound={"value": 0.5}, upper_bound={"value": 0.5})))
       self._eval_config = tfma.EvalConfig(
           model_specs=[tfma.ModelSpec(label_key="tips")],

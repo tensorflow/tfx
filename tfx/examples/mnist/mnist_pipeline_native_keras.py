@@ -121,7 +121,7 @@ def _create_pipeline(pipeline_name: str, pipeline_root: str, data_root: str,
           tfma.MetricsSpec(metrics=[
               tfma.MetricConfig(
                   class_name='SparseCategoricalAccuracy',
-                  threshold=tfma.config.MetricThreshold(
+                  threshold=tfma.MetricThreshold(
                       value_threshold=tfma.GenericValueThreshold(
                           lower_bound={'value': 0.8})))
           ])
