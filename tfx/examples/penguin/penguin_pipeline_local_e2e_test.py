@@ -46,7 +46,7 @@ class PenguinPipelineLocalEndToEndTest(tf.test.TestCase,
 
     self._pipeline_name = 'penguin_test'
     self._schema_path = os.path.join(
-        os.path.dirname(__file__), 'schema', 'user_provided')
+        os.path.dirname(__file__), 'schema', 'user_provided', 'schema.pbtxt')
     self._data_root = os.path.join(os.path.dirname(__file__), 'data')
 
     # Create a data root for rolling window test
@@ -97,6 +97,8 @@ class PenguinPipelineLocalEndToEndTest(tf.test.TestCase,
     self._assertExecutedOnce('Transform')
     if has_schema_gen:
       self._assertExecutedOnce('SchemaGen')
+    else:
+      self._assertExecutedOnce('ImportSchemaGen')
     if has_tuner:
       self._assertExecutedOnce('Tuner')
     if has_bulk_inferrer:

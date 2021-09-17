@@ -9,6 +9,10 @@
     =<parameter_name>=<parameter_value>'
 *   Added Manual node in the experimental orchestrator.
 *   Placeholders support index access and JSON serialization for list type execution properties.
+*   Added `ImportSchemaGen` which is a dedicated component to import a
+    pre-defined schema file. ImportSchemaGen will replace `Importer` with
+    simpler syntax and less constraints. You have to pass the file path to the
+    schema file instead of the parent directory unlike `Importer`.
 
 ## Breaking Changes
 

@@ -27,7 +27,7 @@ from tfx.utils import json_utils
 
 
 # Default file name for generated schema file.
-_DEFAULT_FILE_NAME = 'schema.pbtxt'
+DEFAULT_FILE_NAME = 'schema.pbtxt'
 
 
 class Executor(base_executor.BaseExecutor):
@@ -55,8 +55,6 @@ class Executor(base_executor.BaseExecutor):
     Returns:
       None
     """
-    # TODO(zhitaoli): Move constants between this file and component.py to a
-    # constants.py.
     infer_feature_shape = bool(
         exec_properties.get(standard_component_specs.INFER_FEATURE_SHAPE_KEY,
                             True))
@@ -93,6 +91,6 @@ class Executor(base_executor.BaseExecutor):
     output_uri = os.path.join(
         artifact_utils.get_single_uri(
             output_dict[standard_component_specs.SCHEMA_KEY]),
-        _DEFAULT_FILE_NAME)
+        DEFAULT_FILE_NAME)
     io_utils.write_pbtxt_file(output_uri, schema)
     logging.info('Schema written to %s.', output_uri)
