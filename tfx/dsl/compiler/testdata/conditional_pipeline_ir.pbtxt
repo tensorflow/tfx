@@ -212,6 +212,7 @@ nodes {
             }
             output_key: "examples"
           }
+          min_count: 1
         }
       }
     }
@@ -341,6 +342,7 @@ nodes {
             }
             output_key: "statistics"
           }
+          min_count: 1
         }
       }
     }
@@ -470,6 +472,7 @@ nodes {
             }
             output_key: "examples"
           }
+          min_count: 1
         }
       }
       inputs {
@@ -675,6 +678,7 @@ nodes {
             }
             output_key: "examples"
           }
+          min_count: 1
         }
       }
       inputs {
@@ -965,6 +969,7 @@ nodes {
             }
             output_key: "model"
           }
+          min_count: 1
         }
       }
       resolver_config {

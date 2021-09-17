@@ -250,8 +250,28 @@ class Compiler:
       if value.output_key:
         channel.output_key = value.output_key
 
-      # TODO(b/158712886): Calculate min_count based on if inputs are optional.
-      # min_count = 0 stands for optional input and 1 stands for required input.
+      # Set NodeInputs.min_count.
+      if isinstance(tfx_node, base_component.BaseComponent):
+        if key in implicit_input_channels:
+          # Mark all input channel as optional for implicit inputs
+          # (e.g. conditionals). This is suboptimal, but still a safe guess to
+          # avoid breaking the pipeline run.
+          input_spec.min_count = 0
+        else:
+          try:
+            # Calculating min_count from ComponentSpec.INPUTS.
+            if tfx_node.spec.is_optional_input(key):
+              input_spec.min_count = 0
+            else:
+              input_spec.min_count = 1
+          except KeyError:
+            # Currently we can fall here if the upstream resolver node inputs
+            # are embedded into the current node (in async mode). We always
+            # regard resolver's inputs as optional.
+            if compile_context.is_async_mode:
+              input_spec.min_count = 0
+            else:
+              raise
 
     # TODO(b/170694459): Refactor special nodes as plugins.
     # Step 3.3: Special treatment for Resolver node.

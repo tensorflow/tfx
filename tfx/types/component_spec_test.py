@@ -264,6 +264,7 @@ class ComponentSpecTest(tf.test.TestCase):
 
     optional_not_specified = SpecWithOptionalInput()
     self.assertNotIn('x', optional_not_specified.inputs.keys())
+    self.assertTrue(optional_not_specified.is_optional_input('x'))
     optional_specified = SpecWithOptionalInput(x=Channel(type=_Z))
     self.assertIn('x', optional_specified.inputs.keys())
 
@@ -276,6 +277,7 @@ class ComponentSpecTest(tf.test.TestCase):
 
     optional_not_specified = SpecWithOptionalOutput()
     self.assertNotIn('x', optional_not_specified.outputs.keys())
+    self.assertTrue(optional_not_specified.is_optional_output('x'))
     optional_specified = SpecWithOptionalOutput(x=Channel(type=_Z))
     self.assertIn('x', optional_specified.outputs.keys())
 
