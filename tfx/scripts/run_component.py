@@ -16,6 +16,7 @@
 No backwards compatibility guarantees.
 """
 
+import json
 import os
 import sys
 from typing import List, Optional
@@ -115,6 +116,8 @@ def run_component(full_component_class_name: str,
       for artifact in artifacts:
         artifact.uri = uri
 
+  if isinstance(beam_pipeline_args, str):
+    beam_pipeline_args = json.loads(beam_pipeline_args)
   if issubclass(component_instance.executor_spec.executor_class,
                 base_beam_executor.BaseBeamExecutor):
     executor_context = base_beam_executor.BaseBeamExecutor.Context(
