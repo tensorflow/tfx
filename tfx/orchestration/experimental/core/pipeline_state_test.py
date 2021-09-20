@@ -394,6 +394,27 @@ class PipelineStateTest(test_utils.TfxTest):
       self.assertProtoEquals(pipeline2, view2.pipeline)
       self.assertProtoEquals(pipeline2, latest_view.pipeline)
 
+  def test_pipeline_view_get_pipeline_run_state(self):
+    with self._mlmd_connection as m:
+      pipeline = _test_pipeline('pipeline1', pipeline_pb2.Pipeline.SYNC)
+      pipeline_uid = task_lib.PipelineUid.from_pipeline(pipeline)
+
+      with pstate.PipelineState.new(m, pipeline) as pipeline_state:
+        pipeline_state.set_pipeline_execution_state(
+            metadata_store_pb2.Execution.RUNNING)
+      [view] = pstate.PipelineView.load_all(m, pipeline_uid)
+      self.assertProtoEquals(
+          run_state_pb2.RunState(state=run_state_pb2.RunState.RUNNING),
+          view.get_pipeline_run_state())
+
+      with pstate.PipelineState.load(m, pipeline_uid) as pipeline_state:
+        pipeline_state.set_pipeline_execution_state(
+            metadata_store_pb2.Execution.COMPLETE)
+      [view] = pstate.PipelineView.load_all(m, pipeline_uid)
+      self.assertProtoEquals(
+          run_state_pb2.RunState(state=run_state_pb2.RunState.COMPLETE),
+          view.get_pipeline_run_state())
+
   def test_pipeline_view_get_node_run_states(self):
     with self._mlmd_connection as m:
       pipeline = _test_pipeline('pipeline1', pipeline_pb2.Pipeline.SYNC)

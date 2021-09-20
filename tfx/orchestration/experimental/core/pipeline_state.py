@@ -50,6 +50,19 @@ _ORCHESTRATOR_EXECUTION_TYPE = metadata_store_pb2.ExecutionType(
 _last_state_change_time_secs = -1.0
 _state_change_time_lock = threading.Lock()
 
+_EXECUTION_STATE_TO_RUN_STATE_MAP = {
+    metadata_store_pb2.Execution.State.RUNNING:
+        run_state_pb2.RunState.RUNNING,
+    metadata_store_pb2.Execution.State.FAILED:
+        run_state_pb2.RunState.FAILED,
+    metadata_store_pb2.Execution.State.COMPLETE:
+        run_state_pb2.RunState.COMPLETE,
+    metadata_store_pb2.Execution.State.CACHED:
+        run_state_pb2.RunState.COMPLETE,
+    metadata_store_pb2.Execution.State.CANCELED:
+        run_state_pb2.RunState.STOPPED,
+}
+
 
 @attr.s(auto_attribs=True, kw_only=True)
 class NodeState(json_utils.Jsonable):
@@ -572,6 +585,17 @@ class PipelineView:
         self.execution.custom_properties.get(_PIPELINE_RUN_METADATA))
     return json_utils.loads(
         pipeline_run_metadata) if pipeline_run_metadata else {}
+
+  def get_pipeline_run_state(self) -> run_state_pb2.RunState:
+    """Returns current pipeline run state."""
+    if self.execution.last_known_state in _EXECUTION_STATE_TO_RUN_STATE_MAP:
+      return run_state_pb2.RunState(
+          state=_EXECUTION_STATE_TO_RUN_STATE_MAP[
+              self.execution.last_known_state],
+          status_msg=self.pipeline_status_message)
+    return run_state_pb2.RunState(
+        state=run_state_pb2.RunState.UNKNOWN,
+        status_msg=self.pipeline_status_message)
 
   def get_node_run_states(self) -> Dict[str, run_state_pb2.RunState]:
     """Returns a dict mapping node id to current run state."""
