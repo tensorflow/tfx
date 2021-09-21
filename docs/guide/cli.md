@@ -876,7 +876,7 @@ tfx run status --pipeline_name=<var>pipeline-name</var> --run_id=<var>run-id</va
       If the <code>--endpoint</code> is not specified, the in-cluster service
       DNS name is used as the default value. This name works only if the
       CLI command executes in a pod on the Kubeflow Pipelines cluster, such as a
-      <a href="https://www.kubeflow.org/docs/notebooks/why-use-jupyter-notebook/"
+      <a href="https://www.kubeflow.org/docs/components/notebooks/why-use-jupyter-notebook/"
            class="external">Kubeflow Jupyter notebooks</a> instance.
     </p>
   </dd>
