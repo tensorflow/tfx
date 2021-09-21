@@ -140,14 +140,16 @@ class Executor(base_beam_executor.BaseBeamExecutor):
       proto_utils.json_to_proto(
           exec_properties[standard_component_specs.EVAL_CONFIG_KEY],
           eval_config)
+      # rubber_stamp is always assumed true, i.e., change threshold will always
+      # be ignored when a baseline model is missing.
       if hasattr(tfma, 'utils'):
         eval_config = tfma.utils.update_eval_config_with_defaults(
-            eval_config, has_baseline=has_baseline)
+            eval_config, has_baseline=has_baseline, rubber_stamp=True)
         tfma.utils.verify_eval_config(eval_config)
       else:
         # TODO(b/171992041): Replaced by tfma.utils.
         eval_config = tfma.update_eval_config_with_defaults(
-            eval_config, has_baseline=has_baseline)
+            eval_config, has_baseline=has_baseline, rubber_stamp=True)
         tfma.verify_eval_config(eval_config)
       # Do not validate model when there is no thresholds configured. This is to
       # avoid accidentally blessing models when users forget to set thresholds.
