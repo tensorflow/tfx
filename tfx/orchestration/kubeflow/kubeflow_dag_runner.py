@@ -25,6 +25,7 @@ from kubernetes import client as k8s_client
 from tfx import version
 from tfx.dsl.compiler import compiler as tfx_compiler
 from tfx.dsl.components.base import base_component as tfx_base_component
+from tfx.dsl.io import fileio
 from tfx.orchestration import data_types
 from tfx.orchestration import pipeline as tfx_pipeline
 from tfx.orchestration import tfx_runner
@@ -52,6 +53,8 @@ _KUBEFLOW_GCP_SECRET_NAME = 'user-gcp-sa'
 
 # Default TFX container image to use in KubeflowDagRunner.
 DEFAULT_KUBEFLOW_TFX_IMAGE = 'tensorflow/tfx:%s' % (version.__version__,)
+
+TFX_IR = 'pipeline.pb'
 
 
 def _mount_config_map_op(config_map_name: str) -> OpFunc:
@@ -311,7 +314,7 @@ class KubeflowDagRunner(tfx_runner.TfxRunner):
       pipeline_root: dsl.PipelineParam representing the pipeline root.
     """
     component_to_kfp_op = {}
-    tfx_ir = self._generate_tfx_ir(pipeline)
+    tfx_ir_path = self._generate_and_persist_tfx_ir(pipeline)
 
     # Assumption: There is a partial ordering of components in the list, i.e.,
     # if component A depends on component B and C, then A appears after B and C
@@ -323,8 +326,9 @@ class KubeflowDagRunner(tfx_runner.TfxRunner):
       for upstream_component in component.upstream_nodes:
         depends_on.add(component_to_kfp_op[upstream_component])
 
+      # TODO: address this -- is dehydrating tfx_ir still necessary?
       # remove the extra pipeline node information
-      tfx_node_ir = self._dehydrate_tfx_ir(tfx_ir, component.id)
+      # tfx_node_ir = self._dehydrate_tfx_ir(tfx_ir, component.id)
 
       kfp_component = base_component.BaseComponent(
           component=component,
@@ -334,7 +338,7 @@ class KubeflowDagRunner(tfx_runner.TfxRunner):
           tfx_image=self._config.tfx_image,
           kubeflow_metadata_config=self._config.kubeflow_metadata_config,
           pod_labels_to_attach=self._pod_labels_to_attach,
-          tfx_ir=tfx_node_ir,
+          tfx_ir_path=tfx_ir_path,
           runtime_parameters=(self._params_by_component_id[component.id] +
                               [tfx_pipeline.ROOT_PARAMETER]))
 
@@ -368,10 +372,18 @@ class KubeflowDagRunner(tfx_runner.TfxRunner):
     pipeline.deployment_config.Pack(deployment_config)
     return pipeline
 
-  def _generate_tfx_ir(
-      self, pipeline: tfx_pipeline.Pipeline) -> Optional[pipeline_pb2.Pipeline]:
-    result = self._tfx_compiler.compile(pipeline)
-    return result
+  def _generate_and_persist_tfx_ir(
+      self, pipeline: tfx_pipeline.Pipeline) -> str:
+    tfx_ir = self._tfx_compiler.compile(pipeline)
+    # Writes TFX IR to pipeline_root. Note that TFX IR can be so large that
+    # exceeds flag size limit, so we don't put it into the argument list of
+    # BaseComponent.
+    pipeline_root = pipeline.pipeline_info.pipeline_root
+    fileio.makedirs(pipeline_root)
+    tfx_ir_path = os.path.join(pipeline_root, TFX_IR)
+    with fileio.open(tfx_ir_path, 'wb') as f:
+      f.write(tfx_ir.SerializeToString())
+    return tfx_ir_path
 
   def run(self, pipeline: tfx_pipeline.Pipeline):
     """Compiles and outputs a Kubeflow Pipeline YAML definition file.

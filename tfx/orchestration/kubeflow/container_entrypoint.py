@@ -24,6 +24,7 @@ from typing import cast, Dict, List, Mapping, MutableMapping, Optional, Sequence
 
 from tfx import types
 from tfx.dsl.compiler import constants
+from tfx.dsl.io import fileio
 from tfx.orchestration import metadata
 from tfx.orchestration.kubeflow import kubeflow_metadata_adapter
 from tfx.orchestration.kubeflow.proto import kubeflow_pb2
@@ -411,7 +412,7 @@ def main(argv):
   parser = argparse.ArgumentParser()
   parser.add_argument('--pipeline_root', type=str, required=True)
   parser.add_argument('--kubeflow_metadata_config', type=str, required=True)
-  parser.add_argument('--tfx_ir', type=str, required=True)
+  parser.add_argument('--tfx_ir_path', type=str, required=True)
   parser.add_argument('--node_id', type=str, required=True)
   # There might be multiple runtime parameters.
   # `args.runtime_parameter` should become List[str] by using "append".
@@ -423,7 +424,8 @@ def main(argv):
   args = parser.parse_args(argv)
 
   tfx_ir = pipeline_pb2.Pipeline()
-  json_format.Parse(args.tfx_ir, tfx_ir)
+  with fileio.open(args.tfx_ir_path, 'rb') as f:
+    tfx_ir.ParseFromString(f.read())
 
   _resolve_runtime_parameters(tfx_ir, args.runtime_parameter)
 

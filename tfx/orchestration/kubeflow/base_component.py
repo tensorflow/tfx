@@ -71,7 +71,8 @@ class BaseComponent:
       pipeline_root: dsl.PipelineParam,
       tfx_image: str,
       kubeflow_metadata_config: kubeflow_pb2.KubeflowMetadataConfig,
-      tfx_ir: pipeline_pb2.Pipeline, pod_labels_to_attach: Dict[str, str],
+      tfx_ir_path: str, 
+      pod_labels_to_attach: Dict[str, str],
       runtime_parameters: List[data_types.RuntimeParameter]):
     """Creates a new Kubeflow-based component.
 
@@ -87,7 +88,8 @@ class BaseComponent:
       tfx_image: The container image to use for this component.
       kubeflow_metadata_config: Configuration settings for connecting to the
         MLMD store in a Kubeflow cluster.
-      tfx_ir: The TFX intermedia representation of the pipeline.
+      tfx_ir_path: The path where TFX intermedia representation of the
+        pipeline persists.
       pod_labels_to_attach: Dict of pod labels to attach to the GKE pod.
       runtime_parameters: Runtime parameters of the pipeline.
     """
@@ -102,11 +104,8 @@ class BaseComponent:
             message=kubeflow_metadata_config, preserving_proto_field_name=True),
         '--node_id',
         component.id,
-        # TODO(b/182220464): write IR to pipeline_root and let
-        # container_entrypoint.py read it back to avoid future issue that IR
-        # exeeds the flag size limit.
         '--tfx_ir',
-        json_format.MessageToJson(tfx_ir),
+        tfx_ir_path,
     ]
 
     for param in runtime_parameters:
