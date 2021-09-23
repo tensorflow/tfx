@@ -40,6 +40,7 @@
     incorrectly left out in Vertex AI pusher.
 *   CLI now hides passed flags from user python files in "--pipeline-path". This
     will prevent errors when user python file tries reading and parsing flags.
+*   Fixed missing type information marker file 'py.typed'.
 *   Depends on `google-cloud-bigquery>=1.28.0,<3`.
 *   Depends on `keras-tuner>=1.0.4,<2`.
 *   Depends on `kfp>=1.6.1,!=1.7.2,<1.8.2` in \[kfp\] extra.
