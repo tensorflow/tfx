@@ -223,7 +223,7 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
       thread = threading.Thread(
           target=_inactivate, args=(copy.deepcopy(execution),))
       thread.start()
-      pipeline_ops.stop_node(m, node_uid, timeout_secs=5.0)
+      pipeline_ops.stop_node(m, node_uid, timeout_secs=20.0)
       thread.join()
 
       with pstate.PipelineState.load(m, pipeline_uid) as pipeline_state:
