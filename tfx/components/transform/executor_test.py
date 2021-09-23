@@ -19,6 +19,7 @@ import os
 import tempfile
 from absl.testing import parameterized
 
+import apache_beam as beam
 import tensorflow as tf
 import tensorflow_transform as tft
 from tensorflow_transform.beam import tft_unit
@@ -535,6 +536,13 @@ class ExecutorTest(tft_unit.TransformTestCase):
 
     # Output materialization is enabled.
     self.assertMetricsCounterEqual(metrics, 'materialize', 1)
+
+    # Estimated stage count is 90 because there are 9 analyzers in the
+    # preprocessing_fn and a single span input.
+    metric = metrics.query(beam.metrics.MetricsFilter().with_name(
+        'estimated_stage_count_with_cache'))['distributions']
+    self.assertLen(metric, 1)
+    self.assertEqual(metric[0].committed.sum, 90)
 
   @parameterized.named_parameters([('no_1st_input_cache', False),
                                    ('empty_1st_input_cache', True)])

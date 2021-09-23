@@ -557,7 +557,8 @@ class Executor(base_beam_executor.BaseBeamExecutor):
       pipeline: beam.Pipeline, total_columns_count: int,
       analyze_columns_count: int, transform_columns_count: int,
       analyze_paths_count: int, analyzer_cache_enabled: bool,
-      disable_statistics: bool, materialize: bool):
+      disable_statistics: bool, materialize: bool,
+      estimated_stage_count_with_cache: int):
     """A beam PTransform to increment counters of column usage."""
 
     def _MakeAndIncrementCounters(unused_element):
@@ -584,6 +585,10 @@ class Executor(base_beam_executor.BaseBeamExecutor):
       beam.metrics.Metrics.counter(
           tft_beam_common.METRICS_NAMESPACE,
           'materialize').inc(int(materialize))
+      beam.metrics.Metrics.distribution(
+          tft_beam_common.METRICS_NAMESPACE,
+          'estimated_stage_count_with_cache').update(
+              estimated_stage_count_with_cache)
       return beam.pvalue.PDone(pipeline)
 
     return (
@@ -814,9 +819,9 @@ class Executor(base_beam_executor.BaseBeamExecutor):
       return self.to_runner_api_parameter(context)
 
     def expand(
-        self, pipeline
+        self, pipeline: beam.Pipeline
     ) -> Tuple[Dict[str, Optional[_Dataset]], Optional[Dict[str, Dict[
-        str, beam.pvalue.PCollection]]]]:
+        str, beam.pvalue.PCollection]]], int]:
       # TODO(b/170304777): Remove this Create once the issue is fixed in beam.
       # Forcing beam to treat this PTransform as non-primitive.
       _ = pipeline | 'WorkaroundForBug170304777' >> beam.Create([None])
@@ -824,23 +829,25 @@ class Executor(base_beam_executor.BaseBeamExecutor):
       dataset_keys_list = [
           dataset.dataset_key for dataset in self._analyze_data_list
       ]
-      # TODO(b/37788560): Remove this restriction when a greater number of
-      # stages can be handled efficiently.
       cache_entry_keys = (
           tft_beam.analysis_graph_builder.get_analysis_cache_entry_keys(
               self._preprocessing_fn, self._feature_spec_or_typespec,
               dataset_keys_list, self._force_tf_compat_v1))
       # We estimate the number of stages in the pipeline to be roughly:
       # analyzers * analysis_paths * 10.
-      if (len(cache_entry_keys) * len(dataset_keys_list) * 10 >
-          _MAX_ESTIMATED_STAGES_COUNT):
+      # TODO(b/37788560): Remove this restriction when a greater number of
+      # stages can be handled efficiently.
+      estimated_stage_count = (
+          len(cache_entry_keys) * len(dataset_keys_list) * 10)
+      if estimated_stage_count > _MAX_ESTIMATED_STAGES_COUNT:
         logging.warning(
             'Disabling cache because otherwise the number of stages might be '
             'too high (%d analyzers, %d analysis paths)', len(cache_entry_keys),
             len(dataset_keys_list))
         # Returning None as the input cache here disables both input and output
         # cache.
-        return ({d.dataset_key: d for d in self._analyze_data_list}, None)
+        return ({d.dataset_key: d for d in self._analyze_data_list}, None,
+                estimated_stage_count)
 
       if self._input_cache_dir is not None:
         logging.info('Reading the following analysis cache entry keys: %s',
@@ -876,7 +883,7 @@ class Executor(base_beam_executor.BaseBeamExecutor):
         else:
           new_analyze_data_dict[dataset.dataset_key] = None
 
-      return (new_analyze_data_dict, input_cache)
+      return (new_analyze_data_dict, input_cache, estimated_stage_count)
 
   def _MaybeBindCustomConfig(self, inputs: Mapping[str, Any],
                              fn: Any) -> Callable[..., Any]:
@@ -1273,12 +1280,13 @@ class Executor(base_beam_executor.BaseBeamExecutor):
             passthrough_keys=self._GetTFXIOPassthroughKeys(),
             use_deep_copy_optimization=True,
             force_tf_compat_v1=force_tf_compat_v1):
-          (new_analyze_data_dict, input_cache) = (
-              pipeline
-              | 'OptimizeRun' >> self._OptimizeRun(
-                  input_cache_dir, output_cache_dir,
-                  analyze_data_list, unprojected_typespecs, preprocessing_fn,
-                  self._GetCacheSource(), force_tf_compat_v1))
+          (new_analyze_data_dict, input_cache,
+           estimated_stage_count_with_cache) = (
+               pipeline
+               | 'OptimizeRun' >> self._OptimizeRun(
+                   input_cache_dir, output_cache_dir, analyze_data_list,
+                   unprojected_typespecs, preprocessing_fn,
+                   self._GetCacheSource(), force_tf_compat_v1))
 
           _ = (
               pipeline
@@ -1289,7 +1297,9 @@ class Executor(base_beam_executor.BaseBeamExecutor):
                   analyze_paths_count=analyze_paths_count,
                   analyzer_cache_enabled=input_cache is not None,
                   disable_statistics=disable_statistics,
-                  materialize=materialization_format is not None))
+                  materialize=materialization_format is not None,
+                  estimated_stage_count_with_cache=(
+                      estimated_stage_count_with_cache)))
 
           if input_cache:
             logging.debug('Analyzing data with cache.')
