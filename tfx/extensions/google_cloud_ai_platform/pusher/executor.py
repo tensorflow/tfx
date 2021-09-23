@@ -20,24 +20,14 @@ from google.api_core import client_options
 from googleapiclient import discovery
 from tfx import types
 from tfx.components.pusher import executor as tfx_pusher_executor
+from tfx.extensions.google_cloud_ai_platform import constants
 from tfx.extensions.google_cloud_ai_platform import runner
-from tfx.extensions.google_cloud_ai_platform.constants import ENABLE_VERTEX_KEY
-from tfx.extensions.google_cloud_ai_platform.constants import SERVING_ARGS_KEY
-from tfx.extensions.google_cloud_ai_platform.constants import VERTEX_CONTAINER_IMAGE_URI_KEY
-from tfx.extensions.google_cloud_ai_platform.constants import VERTEX_REGION_KEY
 from tfx.types import artifact_utils
 from tfx.types import standard_component_specs
 from tfx.utils import deprecation_utils
-from tfx.utils import doc_controls
 from tfx.utils import io_utils
 from tfx.utils import json_utils
 from tfx.utils import telemetry_utils
-
-
-ENDPOINT_ARGS_KEY = doc_controls.documented(
-    obj='endpoint',
-    doc='Keys to the items in custom_config of Pusher for optional endpoint '
-    'override.')
 
 # Keys for custom_config.
 _CUSTOM_CONFIG_KEY = 'custom_config'
@@ -92,7 +82,7 @@ class Executor(tfx_pusher_executor.Executor):
     if custom_config is not None and not isinstance(custom_config, Dict):
       raise ValueError('custom_config in execution properties needs to be a '
                        'dict.')
-    ai_platform_serving_args = custom_config.get(SERVING_ARGS_KEY)
+    ai_platform_serving_args = custom_config.get(constants.SERVING_ARGS_KEY)
     if not ai_platform_serving_args:
       raise ValueError(
           '\'ai_platform_serving_args\' is missing in \'custom_config\'')
@@ -112,9 +102,9 @@ class Executor(tfx_pusher_executor.Executor):
         {telemetry_utils.LABEL_TFX_EXECUTOR: executor_class_path}):
       job_labels = telemetry_utils.make_labels_dict()
 
-    enable_vertex = custom_config.get(ENABLE_VERTEX_KEY)
+    enable_vertex = custom_config.get(constants.ENABLE_VERTEX_KEY)
     if enable_vertex:
-      if custom_config.get(ENDPOINT_ARGS_KEY):
+      if custom_config.get(constants.ENDPOINT_ARGS_KEY):
         deprecation_utils.warn_deprecated(
             '\'endpoint\' is deprecated. Please use'
             '\'ai_platform_vertex_region\' instead.'
@@ -124,13 +114,14 @@ class Executor(tfx_pusher_executor.Executor):
             '\'ai_platform_serving_args.regions\' is deprecated. Please use'
             '\'ai_platform_vertex_region\' instead.'
         )
-      endpoint_region = custom_config.get(VERTEX_REGION_KEY)
+      endpoint_region = custom_config.get(constants.VERTEX_REGION_KEY)
       # TODO(jjong): Introduce Versioning.
       # Note that we're adding "v" prefix as Cloud AI Prediction only allows the
       # version name that starts with letters, and contains letters, digits,
       # underscore only.
       model_name = 'v{}'.format(int(time.time()))
-      container_image_uri = custom_config.get(VERTEX_CONTAINER_IMAGE_URI_KEY)
+      container_image_uri = custom_config.get(
+          constants.VERTEX_CONTAINER_IMAGE_URI_KEY)
 
       pushed_model_path = runner.deploy_model_for_aip_prediction(
           serving_container_image_uri=container_image_uri,
@@ -146,7 +137,7 @@ class Executor(tfx_pusher_executor.Executor):
           pushed_destination=pushed_model_path)
 
     else:
-      endpoint = custom_config.get(ENDPOINT_ARGS_KEY)
+      endpoint = custom_config.get(constants.ENDPOINT_ARGS_KEY)
       if endpoint and 'regions' in ai_platform_serving_args:
         raise ValueError(
             '\'endpoint\' and \'ai_platform_serving_args.regions\' cannot be set simultaneously'

@@ -2,6 +2,8 @@
 
 ## Major Features and Improvements
 
+*  Supported endpoint overwrite for CAIP BulkInferrer.
+
 ## Breaking Changes
 
 ### For Pipeline Authors
