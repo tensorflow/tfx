@@ -105,7 +105,9 @@ class TaxiTemplateKubeflowE2ETest(test_utils.BaseEndToEndTest):
 
   @retry.retry(ignore_eventual_failure=True)
   def _delete_runs(self):
+    logging.info('delete_run')
     for run in self._get_kfp_runs():
+      logging.info('run_id:%s', run.id)
       self._kfp_client._run_api.delete_run(id=run.id)
 
   @retry.retry(ignore_eventual_failure=True)
