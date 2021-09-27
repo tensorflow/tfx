@@ -2,7 +2,9 @@
 
 ## Major Features and Improvements
 
-*  Supported endpoint overwrite for CAIP BulkInferrer.
+*   Supported endpoint overwrite for CAIP BulkInferrer.
+*   Added support for outputting and encoding `tf.RaggedTensor`s in TFX
+    Transform component.
 
 ## Breaking Changes
 
@@ -31,8 +33,6 @@
     pre-defined schema file. ImportSchemaGen will replace `Importer` with
     simpler syntax and less constraints. You have to pass the file path to the
     schema file instead of the parent directory unlike `Importer`.
-*   Added support for outputting and encoding `tf.RaggedTensor`s in TFX
-    Transform component.
 
 ## Breaking Changes
 
