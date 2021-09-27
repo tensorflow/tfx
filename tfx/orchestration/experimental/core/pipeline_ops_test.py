@@ -13,6 +13,7 @@
 # limitations under the License.
 """Tests for tfx.orchestration.experimental.core.pipeline_ops."""
 
+import copy
 import os
 import threading
 import time
@@ -180,31 +181,54 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
       self.assertEqual(status_lib.Code.DEADLINE_EXCEEDED,
                        exception_context.exception.code)
 
-  def test_stop_node_wait_for_inactivation(self):
+  def test_stop_node_no_active_executions(self):
     pipeline = test_async_pipeline.create_pipeline()
     pipeline_uid = task_lib.PipelineUid.from_pipeline(pipeline)
     node_uid = task_lib.NodeUid(node_id='my_trainer', pipeline_uid=pipeline_uid)
     with self._mlmd_connection as m:
       pstate.PipelineState.new(m, pipeline)
+      pipeline_ops.stop_node(m, node_uid)
+      pipeline_state = pstate.PipelineState.load(m, pipeline_uid)
 
-      def _inactivate():
+      # The node state should be STOPPING even when node is inactive to prevent
+      # future triggers.
+      with pipeline_state:
+        node_state = pipeline_state.get_node_state(node_uid)
+        self.assertEqual(status_lib.Code.CANCELLED, node_state.status.code)
+        self.assertEqual(pstate.NodeState.STOPPING, node_state.state)
+
+      # Restart node.
+      pipeline_state = pipeline_ops.initiate_node_start(m, node_uid)
+      with pipeline_state:
+        node_state = pipeline_state.get_node_state(node_uid)
+        self.assertEqual(pstate.NodeState.STARTING, node_state.state)
+
+  def test_stop_node_wait_for_inactivation(self):
+    pipeline = test_async_pipeline.create_pipeline()
+    trainer = pipeline.nodes[2].pipeline_node
+    test_utils.fake_component_output(
+        self._mlmd_connection, trainer, active=True)
+    pipeline_uid = task_lib.PipelineUid.from_pipeline(pipeline)
+    node_uid = task_lib.NodeUid(node_id='my_trainer', pipeline_uid=pipeline_uid)
+    with self._mlmd_connection as m:
+      pstate.PipelineState.new(m, pipeline)
+
+      def _inactivate(execution):
         time.sleep(2.0)
         with pipeline_ops._PIPELINE_OPS_LOCK:
-          with pstate.PipelineState.load(m, pipeline_uid) as pipeline_state:
-            with pipeline_state.node_state_update_context(
-                node_uid) as node_state:
-              node_state.update(
-                  pstate.NodeState.STOPPED,
-                  status_lib.Status(code=status_lib.Code.CANCELLED))
+          execution.last_known_state = metadata_store_pb2.Execution.COMPLETE
+          m.store.put_executions([execution])
 
-      thread = threading.Thread(target=_inactivate, args=())
+      execution = task_gen_utils.get_executions(m, trainer)[0]
+      thread = threading.Thread(
+          target=_inactivate, args=(copy.deepcopy(execution),))
       thread.start()
       pipeline_ops.stop_node(m, node_uid, timeout_secs=20.0)
       thread.join()
 
       with pstate.PipelineState.load(m, pipeline_uid) as pipeline_state:
         node_state = pipeline_state.get_node_state(node_uid)
-        self.assertEqual(pstate.NodeState.STOPPED, node_state.state)
+        self.assertEqual(pstate.NodeState.STOPPING, node_state.state)
 
       # Restart node.
       with pipeline_ops.initiate_node_start(m, node_uid) as pipeline_state:
@@ -213,13 +237,16 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
 
   def test_stop_node_wait_for_inactivation_timeout(self):
     pipeline = test_async_pipeline.create_pipeline()
+    trainer = pipeline.nodes[2].pipeline_node
+    test_utils.fake_component_output(
+        self._mlmd_connection, trainer, active=True)
     pipeline_uid = task_lib.PipelineUid.from_pipeline(pipeline)
     node_uid = task_lib.NodeUid(node_id='my_trainer', pipeline_uid=pipeline_uid)
     with self._mlmd_connection as m:
       pstate.PipelineState.new(m, pipeline)
       with self.assertRaisesRegex(
           status_lib.StatusNotOkError,
-          'Timed out.*waiting for node inactivation.'
+          'Timed out.*waiting for execution inactivation.'
       ) as exception_context:
         pipeline_ops.stop_node(m, node_uid, timeout_secs=1.0)
       self.assertEqual(status_lib.Code.DEADLINE_EXCEEDED,

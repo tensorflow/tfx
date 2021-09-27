@@ -76,7 +76,7 @@ def make_required_install_packages():
       'apache-beam[gcp]>=2.32,<3',
       'attrs>=19.3.0,<21',
       'click>=7,<8',
-      'google-cloud-aiplatform>=0.5.0,<=1.4.3',
+      'google-cloud-aiplatform>=0.5.0,<0.8',
       'google-cloud-bigquery>=2.26.0,<3',
       'grpcio>=1.28.1,<2',
       'keras-tuner>=1.0.4,<2',
