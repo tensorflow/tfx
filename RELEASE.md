@@ -63,6 +63,7 @@
 *   CLI now hides passed flags from user python files in "--pipeline-path". This
     will prevent errors when user python file tries reading and parsing flags.
 *   Fixed missing type information marker file 'py.typed'.
+*   Fixed handling of artifacts with no PROPERTIES in scripts/run_component.py
 *   Depends on `apache-beam[gcp]>=2.32,<3`.
 *   Depends on `google-cloud-bigquery>=1.28.0,<3`.
 *   Depends on `jinja2>=2.7.3,<4`, i.e. now supports Jinja 3.x.

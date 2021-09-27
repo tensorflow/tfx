@@ -91,7 +91,7 @@ def run_component(full_component_class_name: str,
       artifact = channel_param.type()
       artifact.uri = uri
       # Setting the artifact properties
-      for property_name in channel_param.type.PROPERTIES:
+      for property_name in channel_param.type.PROPERTIES or []:
         property_arg_name = input_name + '_' + property_name
         if property_arg_name in arguments:
           setattr(artifact, property_name, arguments[property_arg_name])
@@ -137,7 +137,7 @@ def run_component(full_component_class_name: str,
 
   # Writing out the output artifact properties
   for output_name, channel_param in component_class.SPEC_CLASS.OUTPUTS.items():
-    for property_name in channel_param.type.PROPERTIES:
+    for property_name in channel_param.type.PROPERTIES or []:
       property_path_arg_name = output_name + '_' + property_name + '_path'
       property_path = arguments.get(property_path_arg_name)
       if property_path:
