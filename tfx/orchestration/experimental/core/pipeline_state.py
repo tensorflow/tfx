@@ -19,6 +19,7 @@ import threading
 import time
 from typing import Dict, Iterator, List, Mapping, Optional, Tuple
 
+from absl import logging
 import attr
 from tfx import types
 from tfx.orchestration import data_types_utils
@@ -154,18 +155,26 @@ def last_state_change_time_secs() -> float:
 
 
 class PipelineState:
-  """Class for dealing with pipeline state.
+  """Context manager class for dealing with pipeline state.
 
-  Can be used as a context manager.
+  The state of a pipeline is stored as an MLMD execution and this class provides
+  methods for creating, accessing and mutating it. Methods must be invoked
+  inside the pipeline state context for thread safety and keeping in-memory
+  state in sync with the corresponding state in MLMD. If the underlying pipeline
+  execution is mutated, it is automatically committed when exiting the context
+  so no separate commit operation is needed.
 
-  Methods must be invoked inside the pipeline state context for thread safety
-  and ensuring that in-memory state is kept in sync with corresponding state in
-  MLMD. If the underlying pipeline execution is mutated, it is automatically
-  committed when exiting the context so no separate commit operation is needed.
+  Note that `mlmd_state.mlmd_execution_atomic_op` is used under the hood and
+  hence any updates made to the pipeline state within the context of one
+  PipelineState instance are also reflected inside the context of all other
+  PipelineState instances (for the same pipeline) that may be alive within the
+  process.
 
   Attributes:
     mlmd_handle: Handle to MLMD db.
     pipeline: The pipeline proto associated with this `PipelineState` object.
+      TODO(b/201294315): Fix self.pipeline going out of sync with the actual
+      pipeline proto stored in the underlying MLMD execution in some cases.
     execution_id: Id of the underlying execution in MLMD.
     pipeline_uid: Unique id of the pipeline.
   """
@@ -174,6 +183,8 @@ class PipelineState:
                pipeline: pipeline_pb2.Pipeline, execution_id: int):
     """Constructor. Use one of the factory methods to initialize."""
     self.mlmd_handle = mlmd_handle
+    # TODO(b/201294315): Fix self.pipeline going out of sync with the actual
+    # pipeline proto stored in the underlying MLMD execution in some cases.
     self.pipeline = pipeline
     self.execution_id = execution_id
 
@@ -409,7 +420,11 @@ class PipelineState:
                    f'{self.pipeline_uid}'))
     node_states_dict = _get_node_states_dict(self._execution)
     node_state = node_states_dict.setdefault(node_uid.node_id, NodeState())
+    old_state = node_state.state
     yield node_state
+    if old_state != node_state.state:
+      logging.info('Changing node state: %s -> %s; node uid: %s', old_state,
+                   node_state.state, node_uid)
     self._save_node_states_dict(node_states_dict)
 
   def get_node_state(self, node_uid: task_lib.NodeUid) -> NodeState:
@@ -431,13 +446,13 @@ class PipelineState:
       self, state: metadata_store_pb2.Execution.State) -> None:
     """Sets state of underlying pipeline execution."""
     self._check_context()
-    self._execution.last_known_state = state
-
-  def set_pipeline_execution_state_from_status(
-      self, status: status_lib.Status) -> None:
-    """Sets state of underlying pipeline execution derived from input status."""
-    self._check_context()
-    self._execution.last_known_state = _mlmd_execution_code(status)
+    if self._execution.last_known_state != state:
+      logging.info(
+          'Changing pipeline execution state: %s -> %s; pipeline uid: %s',
+          metadata_store_pb2.Execution.State.Name(
+              self._execution.last_known_state),
+          metadata_store_pb2.Execution.State.Name(state), self.pipeline_uid)
+      self._execution.last_known_state = state
 
   def get_property(self, property_key: str) -> Optional[types.Property]:
     """Returns custom property value from the pipeline execution."""
@@ -660,15 +675,6 @@ def _get_metadata_value(
   if value is None:
     return None
   return data_types_utils.get_metadata_value(value)
-
-
-def _mlmd_execution_code(
-    status: status_lib.Status) -> metadata_store_pb2.Execution.State:
-  if status.code == status_lib.Code.OK:
-    return metadata_store_pb2.Execution.COMPLETE
-  elif status.code == status_lib.Code.CANCELLED:
-    return metadata_store_pb2.Execution.CANCELED
-  return metadata_store_pb2.Execution.FAILED
 
 
 def _get_pipeline_from_orchestrator_execution(
