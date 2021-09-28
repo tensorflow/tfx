@@ -15,6 +15,7 @@
 
 import abc
 import enum
+from absl import logging
 
 from tfx.orchestration.experimental.core import pipeline_state as pstate
 
@@ -119,3 +120,35 @@ class DummyServiceJobManager(ServiceJobManager):
                             node_id: str) -> bool:
     del pipeline_state, node_id
     return False
+
+
+# TODO(b/201346378): Also handle exceptions in stop_node_services.
+class ExceptionHandlingServiceJobManagerWrapper(ServiceJobManager):
+  """Wraps a ServiceJobManager instance and does some basic exception handling."""
+
+  def __init__(self, service_job_manager: ServiceJobManager):
+    self._service_job_manager = service_job_manager
+
+  def ensure_node_services(self, pipeline_state: pstate.PipelineState,
+                           node_id: str) -> ServiceStatus:
+    try:
+      return self._service_job_manager.ensure_node_services(
+          pipeline_state, node_id)
+    except Exception:  # pylint: disable=broad-except
+      logging.exception(
+          'Exception raised by underlying `ServiceJobManager` instance.')
+      return ServiceStatus.FAILED
+
+  def stop_node_services(self, pipeline_state: pstate.PipelineState,
+                         node_id: str) -> None:
+    self._service_job_manager.stop_node_services(pipeline_state, node_id)
+
+  def is_pure_service_node(self, pipeline_state: pstate.PipelineState,
+                           node_id: str) -> bool:
+    return self._service_job_manager.is_pure_service_node(
+        pipeline_state, node_id)
+
+  def is_mixed_service_node(self, pipeline_state: pstate.PipelineState,
+                            node_id: str) -> bool:
+    return self._service_job_manager.is_mixed_service_node(
+        pipeline_state, node_id)
