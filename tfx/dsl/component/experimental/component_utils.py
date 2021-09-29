@@ -37,16 +37,16 @@ def create_tfx_component_class(
       str(name) + 'Spec',
       (component_spec.ComponentSpec,),
       dict(
-          PARAMETERS=execution_parameters,
-          INPUTS=input_channel_parameters,
-          OUTPUTS=output_channel_parameters,
+          PARAMETERS=execution_parameters or {},
+          INPUTS=input_channel_parameters or {},
+          OUTPUTS=output_channel_parameters or {},
       ),
   )
 
   def tfx_component_class_init(self, **kwargs):
     arguments = {}
     arguments.update(kwargs)
-    arguments.update(default_init_args)
+    arguments.update(default_init_args or {})
 
     # Provide default values for output channels.
     output_channel_params = output_channel_parameters or {}
