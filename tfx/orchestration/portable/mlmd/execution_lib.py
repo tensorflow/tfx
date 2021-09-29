@@ -340,9 +340,8 @@ def get_artifacts_dict(
 
   # Create a map from artifact id to `types.Artifact` instances.
   artifacts_by_id = {
-      aid: artifact_utils.deserialize_artifact(artifact_types_by_id[a.type_id],
-                                               a)
-      for aid, a in zip(all_artifact_ids, mlmd_artifacts)
+      a.id: artifact_utils.deserialize_artifact(artifact_types_by_id[a.type_id],
+                                                a) for a in mlmd_artifacts
   }
 
   # Create a map from "key" to ordered list of `types.Artifact` to be returned.
