@@ -463,7 +463,8 @@ class TaskManagerE2ETest(test_utils.TfxTest):
     # was cancelled.
     self._register_task_scheduler(
         ts.TaskSchedulerResult(
-            status=status_lib.Status(code=status_lib.Code.OK),
+            status=status_lib.Status(code=status_lib.Code.OK,
+                                     message='msg from task scheduler'),
             output=ts.ExecutorNodeOutput(
                 executor_output=_make_executor_output(
                     self._task,
@@ -479,7 +480,7 @@ class TaskManagerE2ETest(test_utils.TfxTest):
     self.assertEqual(metadata_store_pb2.Execution.FAILED,
                      execution.last_known_state)
     self.assertEqual(
-        'foobar error',
+        'msg from task scheduler foobar error',
         data_types_utils.get_metadata_value(
             execution.custom_properties[constants.EXECUTION_ERROR_MSG_KEY]))
 

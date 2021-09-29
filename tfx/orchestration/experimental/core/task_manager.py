@@ -303,7 +303,8 @@ def _publish_execution_results(mlmd_handle: metadata.Metadata,
         _update_state(
             status_lib.Status(
                 code=executor_output.execution_result.code,
-                message=executor_output.execution_result.result_message))
+                message=f'{result.status.message} {executor_output.execution_result.result_message}'
+            ))
         return
       # TODO(b/182316162): Unify publisher handing so that post-execution
       # artifact logic is more cleanly handled.

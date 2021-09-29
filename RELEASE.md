@@ -79,7 +79,7 @@
 *   Depends on `tensorflow-serving-api>=1.15,!=2.0.*,!=2.1.*,!=2.2.*,!=2.3.*,!=2.4.*,!=2.5.*,<3`.
 *   Depends on `tensorflow-transform>=1.3.0,<1.4.0`.
 *   Depends on `tfx-bsl>=1.3.0,<1.4.0`.
-*   Depends on 'google-cloud-aiplatform>=0.5.0,<2'.
+*   Depends on 'google-cloud-aiplatform>=0.5.0,<=1.4.3'.
 
 ## Documentation Updates
 
