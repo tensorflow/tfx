@@ -554,7 +554,7 @@ def debug_str(expression: placeholder_pb2.PlaceholderExpression) -> str:
         op_str = "=="
       elif operator_pb.op == _Operation.LESS_THAN.value:
         op_str = "<"
-      elif operator_pb.op == _Operation.LESS_THAN.value:
+      elif operator_pb.op == _Operation.GREATER_THAN.value:
         op_str = ">"
       else:
         return f"Unknown Comparison Operation {operator_pb.op}"
