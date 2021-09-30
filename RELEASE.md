@@ -50,6 +50,8 @@
     to `keras_tuner`. The import name of `kerastuner` is still supported.
     A warning will occur when import from `kerastuner`, but does not affect
     the usage.
+*   **Upcoming deprecation** - TFX 1.3.0 will be the last release to support
+    Python 3.6. Starting with TFX 1.4.0 Python 3.6 will no longer be supported.
 
 ## Bug Fixes and Other Changes
 
