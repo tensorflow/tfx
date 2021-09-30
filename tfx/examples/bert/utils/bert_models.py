@@ -59,7 +59,7 @@ def build_bert_classifier(bert_layer: tf.keras.layers.Layer,
 
 def compile_bert_classifier(
     model: tf.keras.Model,
-    loss: tf.keras.losses = tf.keras.losses.SparseCategoricalCrossentropy(
+    loss: tf.keras.losses.Loss = tf.keras.losses.SparseCategoricalCrossentropy(
         from_logits=True),
     learning_rate: float = 2e-5,
     metrics: Optional[List[Union[str, tf.keras.metrics.Metric]]] = None):
