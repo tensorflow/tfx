@@ -14,6 +14,8 @@
 
 ## Deprecations
 
+*   Deprecated python3.6 support.
+
 ## Bug Fixes and Other Changes
 
 ## Documentation Updates
