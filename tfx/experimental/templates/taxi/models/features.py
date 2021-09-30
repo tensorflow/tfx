@@ -17,8 +17,6 @@ Define constants here that are common across all models
 including features names, label and size of vocabulary.
 """
 
-from typing import List
-
 # At least one feature is needed.
 
 # Name of features which have continuous float values. These features will be
@@ -75,16 +73,6 @@ LABEL_KEY = 'tips'
 FARE_KEY = 'fare'
 
 
-def transformed_name(key: str) -> str:
-  """Generate the name of the transformed feature from original name."""
-  return key + '_xf'
-
-
 def vocabulary_name(key: str) -> str:
   """Generate the name of the vocabulary feature from original name."""
   return key + '_vocab'
-
-
-def transformed_names(keys: List[str]) -> List[str]:
-  """Transform multiple feature names at once."""
-  return [transformed_name(key) for key in keys]

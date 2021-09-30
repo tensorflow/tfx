@@ -102,8 +102,6 @@ def create_pipeline(
           tfma.ModelSpec(
               signature_name='serving_default',
               label_key=features.LABEL_KEY,
-              # Use transformed label key if Transform is used.
-              # label_key=features.transformed_name(features.LABEL_KEY),
               preprocessing_function_names=['transform_features'])
       ],
       slicing_specs=[tfma.SlicingSpec()],

@@ -66,33 +66,22 @@ _LABEL_KEY = 'tips'
 _FARE_KEY = 'fare'
 
 
-def _transformed_name(key):
-  return key + '_xf'
-
-
-def _transformed_names(keys):
-  return [_transformed_name(key) for key in keys]
-
-
-def _fill_in_missing(x):
-  """Replace missing values in a SparseTensor.
-
-  Fills in missing values of `x` with '' or 0, and converts to a dense tensor.
+def _make_dense(x):
+  """Converts to a dense tensor.
 
   Args:
     x: A `SparseTensor` of rank 2.  Its dense shape should have size at most 1
       in the second dimension.
 
   Returns:
-    A rank 1 tensor where missing values of `x` have been filled in.
+    A rank 1 tensor.
   """
   if not isinstance(x, tf.sparse.SparseTensor):
     return x
-  default_value = '' if x.dtype == tf.string else 0
+
   return tf.squeeze(
       tf.sparse.to_dense(
-          tf.SparseTensor(x.indices, x.values, [x.dense_shape[0], 1]),
-          default_value),
+          tf.SparseTensor(x.indices, x.values, [x.dense_shape[0], 1])),
       axis=1)
 
 
@@ -134,7 +123,7 @@ def _input_fn(file_pattern: List[str], data_accessor: DataAccessor,
   return data_accessor.tf_dataset_factory(
       file_pattern,
       dataset_options.TensorFlowDatasetOptions(
-          batch_size=batch_size, label_key=_transformed_name(_LABEL_KEY)),
+          batch_size=batch_size, label_key=_LABEL_KEY),
       tf_transform_output.transformed_metadata.schema).repeat()
 
 
@@ -149,24 +138,24 @@ def _build_keras_model(hidden_units: List[int] = None) -> tf.keras.Model:
   """
   real_valued_columns = [
       tf.feature_column.numeric_column(key, shape=())
-      for key in _transformed_names(_DENSE_FLOAT_FEATURE_KEYS)
+      for key in _DENSE_FLOAT_FEATURE_KEYS
   ]
   categorical_columns = [
       tf.feature_column.categorical_column_with_identity(
           key, num_buckets=_VOCAB_SIZE + _OOV_SIZE, default_value=0)
-      for key in _transformed_names(_VOCAB_FEATURE_KEYS)
+      for key in _VOCAB_FEATURE_KEYS
   ]
   categorical_columns += [
       tf.feature_column.categorical_column_with_identity(
           key, num_buckets=_FEATURE_BUCKET_COUNT, default_value=0)
-      for key in _transformed_names(_BUCKET_FEATURE_KEYS)
+      for key in _BUCKET_FEATURE_KEYS
   ]
   categorical_columns += [
       tf.feature_column.categorical_column_with_identity(  # pylint: disable=g-complex-comprehension
           key,
           num_buckets=num_buckets,
           default_value=0) for key, num_buckets in zip(
-              _transformed_names(_CATEGORICAL_FEATURE_KEYS),
+              _CATEGORICAL_FEATURE_KEYS,
               _MAX_CATEGORICAL_FEATURE_VALUES)
   ]
   indicator_column = [
@@ -201,19 +190,19 @@ def _wide_and_deep_classifier(wide_columns, deep_columns, dnn_hidden_units):
   # TODO(b/139081439): Automate generation of input layers from FeatureColumn.
   input_layers = {
       colname: tf.keras.layers.Input(name=colname, shape=(), dtype=tf.float32)
-      for colname in _transformed_names(_DENSE_FLOAT_FEATURE_KEYS)
+      for colname in _DENSE_FLOAT_FEATURE_KEYS
   }
   input_layers.update({
       colname: tf.keras.layers.Input(name=colname, shape=(), dtype='int32')
-      for colname in _transformed_names(_VOCAB_FEATURE_KEYS)
+      for colname in _VOCAB_FEATURE_KEYS
   })
   input_layers.update({
       colname: tf.keras.layers.Input(name=colname, shape=(), dtype='int32')
-      for colname in _transformed_names(_BUCKET_FEATURE_KEYS)
+      for colname in _BUCKET_FEATURE_KEYS
   })
   input_layers.update({
       colname: tf.keras.layers.Input(name=colname, shape=(), dtype='int32')
-      for colname in _transformed_names(_CATEGORICAL_FEATURE_KEYS)
+      for colname in _CATEGORICAL_FEATURE_KEYS
   })
 
   # TODO(b/161952382): Replace with Keras premade models and
@@ -248,34 +237,32 @@ def preprocessing_fn(inputs):
   """
   outputs = {}
   for key in _DENSE_FLOAT_FEATURE_KEYS:
-    # Preserve this feature as a dense float, setting nan's to the mean.
-    outputs[_transformed_name(key)] = tft.scale_to_z_score(
-        _fill_in_missing(inputs[key]))
+    # Preserve this feature as a dense float, setting nan's to zero
+    # and scaling.  Make sure to consider what missing values should
+    # be set to, since zero may not be what you want.
+    outputs[key] = tft.scale_to_z_score(_make_dense(inputs[key]))
 
   for key in _VOCAB_FEATURE_KEYS:
     # Build a vocabulary for this feature.
-    outputs[_transformed_name(key)] = tft.compute_and_apply_vocabulary(
-        _fill_in_missing(inputs[key]),
+    outputs[key] = tft.compute_and_apply_vocabulary(
+        inputs[key],
         top_k=_VOCAB_SIZE,
         num_oov_buckets=_OOV_SIZE)
 
   for key in _BUCKET_FEATURE_KEYS:
-    outputs[_transformed_name(key)] = tft.bucketize(
-        _fill_in_missing(inputs[key]),
+    outputs[key] = tft.bucketize(
+        inputs[key],
         _FEATURE_BUCKET_COUNT)
 
   for key in _CATEGORICAL_FEATURE_KEYS:
-    outputs[_transformed_name(key)] = _fill_in_missing(inputs[key])
+    outputs[key] = inputs[key]
 
   # Was this passenger a big tipper?
-  taxi_fare = _fill_in_missing(inputs[_FARE_KEY])
-  tips = _fill_in_missing(inputs[_LABEL_KEY])
-  outputs[_transformed_name(_LABEL_KEY)] = tf.where(
-      tf.math.is_nan(taxi_fare),
-      tf.cast(tf.zeros_like(taxi_fare), tf.int64),
-      # Test if the tip was > 20% of the fare.
-      tf.cast(
-          tf.greater(tips, tf.multiply(taxi_fare, tf.constant(0.2))), tf.int64))
+  taxi_fare = outputs[_FARE_KEY]
+  tips = _make_dense(inputs[_LABEL_KEY])
+  # Test if the tip was > 20% of the fare.
+  outputs[_LABEL_KEY] = tf.cast(
+      tf.greater(tips, tf.multiply(taxi_fare, tf.constant(0.2))), tf.int64)
 
   return outputs
 

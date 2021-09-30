@@ -67,14 +67,6 @@ _LABEL_KEY = 'tips'
 _FARE_KEY = 'fare'
 
 
-def _transformed_name(key):
-  return key + '_xf'
-
-
-def _transformed_names(keys):
-  return [_transformed_name(key) for key in keys]
-
-
 # Tf.Transform considers these features as "raw"
 def _get_raw_feature_spec(schema):
   return schema_utils.schema_as_feature_spec(schema).feature_spec
@@ -103,24 +95,24 @@ def _build_estimator(config, hidden_units=None, warm_start_from=None):
   """
   real_valued_columns = [
       tf.feature_column.numeric_column(key, shape=())
-      for key in _transformed_names(_DENSE_FLOAT_FEATURE_KEYS)
+      for key in _DENSE_FLOAT_FEATURE_KEYS
   ]
   categorical_columns = [
       tf.feature_column.categorical_column_with_identity(
           key, num_buckets=_VOCAB_SIZE + _OOV_SIZE, default_value=0)
-      for key in _transformed_names(_VOCAB_FEATURE_KEYS)
+      for key in _VOCAB_FEATURE_KEYS
   ]
   categorical_columns += [
       tf.feature_column.categorical_column_with_identity(
           key, num_buckets=_FEATURE_BUCKET_COUNT, default_value=0)
-      for key in _transformed_names(_BUCKET_FEATURE_KEYS)
+      for key in _BUCKET_FEATURE_KEYS
   ]
   categorical_columns += [
       tf.feature_column.categorical_column_with_identity(  # pylint: disable=g-complex-comprehension
           key,
           num_buckets=num_buckets,
           default_value=0) for key, num_buckets in zip(
-              _transformed_names(_CATEGORICAL_FEATURE_KEYS),
+              _CATEGORICAL_FEATURE_KEYS,
               _MAX_CATEGORICAL_FEATURE_VALUES)
   ]
   return tf.estimator.DNNLinearCombinedClassifier(
@@ -195,7 +187,7 @@ def _eval_input_receiver_fn(tf_transform_output, schema):
   return tfma.export.EvalInputReceiver(
       features=features,
       receiver_tensors=receiver_tensors,
-      labels=transformed_features[_transformed_name(_LABEL_KEY)])
+      labels=transformed_features[_LABEL_KEY])
 
 
 def _input_fn(
@@ -216,7 +208,7 @@ def _input_fn(
       filenames,
       TensorFlowDatasetOptions(
           batch_size=batch_size,
-          label_key=_transformed_name(_LABEL_KEY)),
+          label_key=_LABEL_KEY),
       tf_transform_output.transformed_metadata.schema)
 
   return tf.compat.v1.data.make_one_shot_iterator(

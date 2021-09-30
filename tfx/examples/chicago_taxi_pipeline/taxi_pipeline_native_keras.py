@@ -117,7 +117,7 @@ def _create_pipeline(pipeline_name: str, pipeline_root: str, data_root: str,
   eval_config = tfma.EvalConfig(
       model_specs=[
           tfma.ModelSpec(
-              signature_name='serving_default', label_key='tips_xf',
+              signature_name='serving_default', label_key='tips',
               preprocessing_function_names=['transform_features'])
       ],
       slicing_specs=[tfma.SlicingSpec()],

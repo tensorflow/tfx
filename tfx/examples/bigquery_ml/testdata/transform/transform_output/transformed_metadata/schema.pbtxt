@@ -1,5 +1,5 @@
 feature {
-  name: "company_xf"
+  name: "company"
   type: INT
   int_domain {
     min: 0
@@ -16,7 +16,7 @@ feature {
   }
 }
 feature {
-  name: "dropoff_census_tract_xf"
+  name: "dropoff_census_tract"
   type: INT
   presence {
     min_fraction: 1.0
@@ -28,7 +28,7 @@ feature {
   }
 }
 feature {
-  name: "dropoff_community_area_xf"
+  name: "dropoff_community_area"
   type: INT
   presence {
     min_fraction: 1.0
@@ -40,24 +40,7 @@ feature {
   }
 }
 feature {
-  name: "dropoff_latitude_xf"
-  type: INT
-  int_domain {
-    min: 0
-    max: 9
-    is_categorical: true
-  }
-  presence {
-    min_fraction: 1.0
-  }
-  shape {
-    dim {
-      size: 1
-    }
-  }
-}
-feature {
-  name: "dropoff_longitude_xf"
+  name: "dropoff_latitude"
   type: INT
   int_domain {
     min: 0
@@ -74,7 +57,24 @@ feature {
   }
 }
 feature {
-  name: "fare_xf"
+  name: "dropoff_longitude"
+  type: INT
+  int_domain {
+    min: 0
+    max: 9
+    is_categorical: true
+  }
+  presence {
+    min_fraction: 1.0
+  }
+  shape {
+    dim {
+      size: 1
+    }
+  }
+}
+feature {
+  name: "fare"
   type: FLOAT
   presence {
     min_fraction: 1.0
@@ -86,7 +86,7 @@ feature {
   }
 }
 feature {
-  name: "payment_type_xf"
+  name: "payment_type"
   type: INT
   int_domain {
     min: 0
@@ -103,7 +103,7 @@ feature {
   }
 }
 feature {
-  name: "pickup_census_tract_xf"
+  name: "pickup_census_tract"
   type: INT
   presence {
     min_fraction: 1.0
@@ -115,7 +115,7 @@ feature {
   }
 }
 feature {
-  name: "pickup_community_area_xf"
+  name: "pickup_community_area"
   type: INT
   presence {
     min_fraction: 1.0
@@ -127,24 +127,7 @@ feature {
   }
 }
 feature {
-  name: "pickup_latitude_xf"
-  type: INT
-  int_domain {
-    min: 0
-    max: 9
-    is_categorical: true
-  }
-  presence {
-    min_fraction: 1.0
-  }
-  shape {
-    dim {
-      size: 1
-    }
-  }
-}
-feature {
-  name: "pickup_longitude_xf"
+  name: "pickup_latitude"
   type: INT
   int_domain {
     min: 0
@@ -161,7 +144,24 @@ feature {
   }
 }
 feature {
-  name: "tips_xf"
+  name: "pickup_longitude"
+  type: INT
+  int_domain {
+    min: 0
+    max: 9
+    is_categorical: true
+  }
+  presence {
+    min_fraction: 1.0
+  }
+  shape {
+    dim {
+      size: 1
+    }
+  }
+}
+feature {
+  name: "tips"
   type: INT
   presence {
     min_fraction: 1.0
@@ -173,7 +173,7 @@ feature {
   }
 }
 feature {
-  name: "trip_miles_xf"
+  name: "trip_miles"
   type: FLOAT
   presence {
     min_fraction: 1.0
@@ -185,7 +185,7 @@ feature {
   }
 }
 feature {
-  name: "trip_seconds_xf"
+  name: "trip_seconds"
   type: FLOAT
   presence {
     min_fraction: 1.0
@@ -197,7 +197,7 @@ feature {
   }
 }
 feature {
-  name: "trip_start_day_xf"
+  name: "trip_start_day"
   type: INT
   presence {
     min_fraction: 1.0
@@ -209,7 +209,7 @@ feature {
   }
 }
 feature {
-  name: "trip_start_hour_xf"
+  name: "trip_start_hour"
   type: INT
   presence {
     min_fraction: 1.0
@@ -221,7 +221,7 @@ feature {
   }
 }
 feature {
-  name: "trip_start_month_xf"
+  name: "trip_start_month"
   type: INT
   presence {
     min_fraction: 1.0

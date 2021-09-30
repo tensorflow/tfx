@@ -59,11 +59,11 @@ def _build_estimator(config, hidden_units=None, warm_start_from=None):
   """
   real_valued_columns = [
       tf.feature_column.numeric_column(key, shape=())
-      for key in features.transformed_names(features.DENSE_FLOAT_FEATURE_KEYS)
+      for key in features.DENSE_FLOAT_FEATURE_KEYS
   ]
 
   categorical_columns = []
-  for key in features.transformed_names(features.VOCAB_FEATURE_KEYS):
+  for key in features.VOCAB_FEATURE_KEYS:
     categorical_columns.append(
         tf.feature_column.categorical_column_with_identity(
             key,
@@ -71,14 +71,14 @@ def _build_estimator(config, hidden_units=None, warm_start_from=None):
             default_value=0))
 
   for key, num_buckets in zip(
-      features.transformed_names(features.BUCKET_FEATURE_KEYS),
+      features.BUCKET_FEATURE_KEYS,
       features.BUCKET_FEATURE_BUCKET_COUNT):
     categorical_columns.append(
         tf.feature_column.categorical_column_with_identity(
             key, num_buckets=num_buckets, default_value=0))
 
   for key, num_buckets in zip(
-      features.transformed_names(features.CATEGORICAL_FEATURE_KEYS),
+      features.CATEGORICAL_FEATURE_KEYS,
       features.CATEGORICAL_FEATURE_MAX_VALUES):
     categorical_columns.append(
         tf.feature_column.categorical_column_with_identity(
@@ -156,8 +156,7 @@ def _eval_input_receiver_fn(tf_transform_output, schema):
   return tfma.export.EvalInputReceiver(
       features=raw_features,
       receiver_tensors=receiver_tensors,
-      labels=transformed_features[features.transformed_name(
-          features.LABEL_KEY)])
+      labels=transformed_features[features.LABEL_KEY])
 
 
 def _input_fn(file_pattern, data_accessor, tf_transform_output, batch_size=200):
@@ -178,7 +177,7 @@ def _input_fn(file_pattern, data_accessor, tf_transform_output, batch_size=200):
       file_pattern,
       tfxio.TensorFlowDatasetOptions(
           batch_size=batch_size,
-          label_key=features.transformed_name(features.LABEL_KEY)),
+          label_key=features.LABEL_KEY),
       tf_transform_output.transformed_metadata.schema)
 
 

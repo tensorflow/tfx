@@ -116,7 +116,7 @@ def create_pipeline(
       model_specs=[
           tfma.ModelSpec(
               signature_name='serving_default',
-              label_key='tips_xf',
+              label_key='tips',
               preprocessing_function_names=['transform_features'])
       ],
       slicing_specs=[tfma.SlicingSpec()],

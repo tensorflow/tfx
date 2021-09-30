@@ -36,10 +36,6 @@ TRAIN_BATCH_SIZE = 20
 EVAL_BATCH_SIZE = 10
 
 
-def transformed_name(key):
-  return key + '_xf'
-
-
 def make_serving_signatures(model,
                             tf_transform_output: tft.TFTransformOutput):
   """Returns the serving signatures.
@@ -115,7 +111,7 @@ def input_fn(file_pattern: List[str],
   return data_accessor.tf_dataset_factory(
       file_pattern,
       tfxio.TensorFlowDatasetOptions(
-          batch_size=batch_size, label_key=transformed_name(_LABEL_KEY)),
+          batch_size=batch_size, label_key=_LABEL_KEY),
       tf_transform_output.transformed_metadata.schema).repeat()
 
 
@@ -134,9 +130,9 @@ def preprocessing_fn(inputs):
   for key in FEATURE_KEYS:
     # tft.scale_to_z_score computes the mean and variance of the given feature
     # and scales the output based on the result.
-    outputs[transformed_name(key)] = tft.scale_to_z_score(inputs[key])
+    outputs[key] = tft.scale_to_z_score(inputs[key])
   # TODO(b/157064428): Support label transformation for Keras.
   # Do not apply label transformation as it will result in wrong evaluation.
-  outputs[transformed_name(_LABEL_KEY)] = inputs[_LABEL_KEY]
+  outputs[_LABEL_KEY] = inputs[_LABEL_KEY]
 
   return outputs

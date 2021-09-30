@@ -42,11 +42,6 @@ class TaxiUtilsTest(tf.test.TestCase):
     super().setUp()
     self._testdata_path = os.path.join(os.path.dirname(__file__), 'testdata')
 
-  def testUtils(self):
-    key = 'fare'
-    xfm_key = taxi_utils_bqml._transformed_name(key)
-    self.assertEqual(xfm_key, 'fare_xf')
-
   def testPreprocessingFn(self):
     schema_file = os.path.join(self._testdata_path, 'schema_gen/schema.pbtxt')
     schema = io_utils.parse_pbtxt_file(schema_file, schema_pb2.Schema())

@@ -62,27 +62,27 @@ def _build_estimator(tf_transform_dir,
   transformed_metadata = metadata_io.read_metadata(metadata_dir)
   transformed_feature_spec = transformed_metadata.schema.as_feature_spec()
 
-  transformed_feature_spec.pop(_transformed_name(_LABEL_KEY))
+  transformed_feature_spec.pop(_LABEL_KEY)
 
   real_valued_columns = [
       tf.feature_column.numeric_column(key, shape=())
-      for key in _transformed_names(_DENSE_FLOAT_FEATURE_KEYS)
+      for key in _DENSE_FLOAT_FEATURE_KEYS
   ]
   categorical_columns = [
       tf.feature_column.categorical_column_with_identity(
           key, num_buckets=_VOCAB_SIZE + _OOV_SIZE, default_value=0)
-      for key in _transformed_names(_VOCAB_FEATURE_KEYS)
+      for key in _VOCAB_FEATURE_KEYS
   ]
   categorical_columns += [
       tf.feature_column.categorical_column_with_identity(
           key, num_buckets=_FEATURE_BUCKET_COUNT, default_value=0)
-      for key in _transformed_names(_BUCKET_FEATURE_KEYS)
+      for key in _BUCKET_FEATURE_KEYS
   ]
   categorical_columns += [
       tf.feature_column.categorical_column_with_identity(
           key, num_buckets=num_buckets, default_value=0)
       for key, num_buckets in zip(
-          _transformed_names(_CATEGORICAL_FEATURE_KEYS),  #
+          _CATEGORICAL_FEATURE_KEYS,
           _MAX_CATEGORICAL_FEATURE_VALUES)
   ]
   return tf.estimator.DNNLinearCombinedClassifier(

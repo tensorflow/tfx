@@ -92,7 +92,7 @@ def _input_fn(file_pattern, data_accessor, tf_transform_output, batch_size=200):
       file_pattern,
       tfxio.TensorFlowDatasetOptions(
           batch_size=batch_size,
-          label_key=features.transformed_name(features.LABEL_KEY)),
+          label_key=features.LABEL_KEY),
       tf_transform_output.transformed_metadata.schema).repeat()
 
 
@@ -108,21 +108,21 @@ def _build_keras_model(hidden_units, learning_rate):
   """
   real_valued_columns = [
       tf.feature_column.numeric_column(key, shape=())
-      for key in features.transformed_names(features.DENSE_FLOAT_FEATURE_KEYS)
+      for key in features.DENSE_FLOAT_FEATURE_KEYS
   ]
   categorical_columns = [
       tf.feature_column.categorical_column_with_identity(  # pylint: disable=g-complex-comprehension
           key,
           num_buckets=features.VOCAB_SIZE + features.OOV_SIZE,
           default_value=0)
-      for key in features.transformed_names(features.VOCAB_FEATURE_KEYS)
+      for key in features.VOCAB_FEATURE_KEYS
   ]
   categorical_columns += [
       tf.feature_column.categorical_column_with_identity(  # pylint: disable=g-complex-comprehension
           key,
           num_buckets=num_buckets,
           default_value=0) for key, num_buckets in zip(
-              features.transformed_names(features.BUCKET_FEATURE_KEYS),
+              features.BUCKET_FEATURE_KEYS,
               features.BUCKET_FEATURE_BUCKET_COUNT)
   ]
   categorical_columns += [
@@ -130,7 +130,7 @@ def _build_keras_model(hidden_units, learning_rate):
           key,
           num_buckets=num_buckets,
           default_value=0) for key, num_buckets in zip(
-              features.transformed_names(features.CATEGORICAL_FEATURE_KEYS),
+              features.CATEGORICAL_FEATURE_KEYS,
               features.CATEGORICAL_FEATURE_MAX_VALUES)
   ]
   indicator_column = [
@@ -165,20 +165,19 @@ def _wide_and_deep_classifier(wide_columns, deep_columns, dnn_hidden_units,
   # TODO(b/139081439): Automate generation of input layers from FeatureColumn.
   input_layers = {
       colname: tf.keras.layers.Input(name=colname, shape=(), dtype=tf.float32)
-      for colname in features.transformed_names(
-          features.DENSE_FLOAT_FEATURE_KEYS)
+      for colname in features.DENSE_FLOAT_FEATURE_KEYS
   }
   input_layers.update({
       colname: tf.keras.layers.Input(name=colname, shape=(), dtype='int32')
-      for colname in features.transformed_names(features.VOCAB_FEATURE_KEYS)
+      for colname in features.VOCAB_FEATURE_KEYS
   })
   input_layers.update({
       colname: tf.keras.layers.Input(name=colname, shape=(), dtype='int32')
-      for colname in features.transformed_names(features.BUCKET_FEATURE_KEYS)
+      for colname in features.BUCKET_FEATURE_KEYS
   })
   input_layers.update({
       colname: tf.keras.layers.Input(name=colname, shape=(), dtype='int32') for
-      colname in features.transformed_names(features.CATEGORICAL_FEATURE_KEYS)
+      colname in features.CATEGORICAL_FEATURE_KEYS
   })
 
   # TODO(b/161952382): Replace with Keras premade models and

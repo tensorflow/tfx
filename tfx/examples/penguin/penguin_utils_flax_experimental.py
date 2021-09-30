@@ -49,12 +49,12 @@ from tfx.examples.penguin import penguin_utils_base as base
 
 
 # The transformed feature names
-_FEATURE_KEYS_XF = list(map(base.transformed_name, base.FEATURE_KEYS))
+_FEATURE_KEYS = base.FEATURE_KEYS
 
 # Type abbreviations: (B is the batch size)
 _Array = np.ndarray
 _InputBatch = Dict[str,
-                   _Array]  # keys are _FEATURE_KEYS_XF and values f32[B, 1]
+                   _Array]  # keys are _FEATURE_KEYS and values f32[B, 1]
 _LogitBatch = _Array  # of shape f32[B, 3]
 _LabelBatch = _Array  # of shape int64[B, 1]
 _Params = Dict[str, _Array]
@@ -99,7 +99,7 @@ def _make_trained_model(train_data: tf.data.Dataset,
   rng, init_rng = jax.random.split(rng)
   # Initialize with some fake data of the proper shape.
   init_val = dict((feature, jnp.array([[1.]], dtype=jnp.float32))
-                  for feature in _FEATURE_KEYS_XF)
+                  for feature in _FEATURE_KEYS)
   model = _FlaxPenguinModel()
   params = model.init(init_rng, init_val)['params']
 
@@ -159,7 +159,7 @@ class _FlaxPenguinModel(nn.Module):
   @nn.compact
   def __call__(self, x_dict: _InputBatch) -> _LogitBatch:
     # Each feature is of shape f32[B, 1]
-    x_tuple = tuple(x_dict[feature] for feature in _FEATURE_KEYS_XF)
+    x_tuple = tuple(x_dict[feature] for feature in _FEATURE_KEYS)
     x_array = jnp.concatenate(x_tuple, axis=-1)  # shape: f32[B, 4]
     assert x_array.ndim == 2
     assert x_array.shape[1] == 4

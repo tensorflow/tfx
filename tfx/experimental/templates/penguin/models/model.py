@@ -182,14 +182,12 @@ def run_fn(fn_args: tfx.components.FnArgs):
     tf_transform_output = None
     schema = tfx.utils.parse_pbtxt_file(fn_args.schema_file,
                                         schema_pb2.Schema())
-    feature_list = features.FEATURE_KEYS
-    label_key = features.LABEL_KEY
   else:
     tf_transform_output = tft.TFTransformOutput(fn_args.transform_output)
     schema = tf_transform_output.transformed_metadata.schema
-    feature_list = [features.transformed_name(f) for f in features.FEATURE_KEYS]
-    label_key = features.transformed_name(features.LABEL_KEY)
 
+  label_key = features.LABEL_KEY
+  feature_list = features.FEATURE_KEYS
   mirrored_strategy = tf.distribute.MirroredStrategy()
   train_batch_size = (
       constants.TRAIN_BATCH_SIZE * mirrored_strategy.num_replicas_in_sync)

@@ -59,10 +59,6 @@ _LABEL_KEY = 'label'
 _TFLITE_MODEL_NAME = 'tflite'
 
 
-def _transformed_name(key):
-  return key + '_xf'
-
-
 def _get_serve_image_fn(model):
   """Returns a function that feeds the input tensor into the model."""
 
@@ -108,9 +104,9 @@ def _data_augmentation(feature_dict):
   Returns:
     The feature dict with augmented features
   """
-  image_features = feature_dict[_transformed_name(_IMAGE_KEY)]
+  image_features = feature_dict[_IMAGE_KEY]
   image_features = _image_augmentation(image_features)
-  feature_dict[_transformed_name(_IMAGE_KEY)] = image_features
+  feature_dict[_IMAGE_KEY] = image_features
   return feature_dict
 
 
@@ -136,7 +132,7 @@ def _input_fn(file_pattern: List[str],
   dataset = data_accessor.tf_dataset_factory(
       file_pattern,
       dataset_options.TensorFlowDatasetOptions(
-          batch_size=batch_size, label_key=_transformed_name(_LABEL_KEY)),
+          batch_size=batch_size, label_key=_LABEL_KEY),
       tf_transform_output.transformed_metadata.schema)
   # Apply data augmentation. We have to do data augmentation here because
   # we need to apply data agumentation on-the-fly during training. If we put
@@ -197,7 +193,7 @@ def _build_keras_model() -> tf.keras.Model:
   # prevent overfiting, and then a Dense layer to classifying CIFAR10 objects
   model = tf.keras.Sequential([
       tf.keras.layers.InputLayer(
-          input_shape=(224, 224, 3), name=_transformed_name(_IMAGE_KEY)),
+          input_shape=(224, 224, 3), name=_IMAGE_KEY),
       base_model,
       tf.keras.layers.Dropout(0.1),
       tf.keras.layers.Dense(10, activation='softmax')
@@ -238,10 +234,10 @@ def preprocessing_fn(inputs):
   image_features = tf.keras.applications.mobilenet.preprocess_input(
       image_features)
 
-  outputs[_transformed_name(_IMAGE_KEY)] = image_features
+  outputs[_IMAGE_KEY] = image_features
   # TODO(b/157064428): Support label transformation for Keras.
   # Do not apply label transformation as it will result in wrong evaluation.
-  outputs[_transformed_name(_LABEL_KEY)] = inputs[_LABEL_KEY]
+  outputs[_LABEL_KEY] = inputs[_LABEL_KEY]
 
   return outputs
 
@@ -376,7 +372,7 @@ def run_fn(fn_args: FnArgs):
               tf.TensorSpec(
                   shape=[None, 224, 224, 3],
                   dtype=tf.float32,
-                  name=_transformed_name(_IMAGE_KEY)))
+                  name=_IMAGE_KEY))
   }
 
   temp_saving_model_dir = os.path.join(fn_args.serving_model_dir, 'temp')

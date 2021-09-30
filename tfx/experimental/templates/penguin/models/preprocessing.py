@@ -38,10 +38,9 @@ def preprocessing_fn(inputs):
   # TensorFlow Transform, using the TFX Transform component.  In this example
   # the feature engineering is very simple, only applying z-score scaling.
   for key in features.FEATURE_KEYS:
-    outputs[features.transformed_name(key)] = tft.scale_to_z_score(inputs[key])
+    outputs[key] = tft.scale_to_z_score(inputs[key])
 
   # Do not apply label transformation as it will result in wrong evaluation.
-  outputs[features.transformed_name(
-      features.LABEL_KEY)] = inputs[features.LABEL_KEY]
+  outputs[features.LABEL_KEY] = inputs[features.LABEL_KEY]
 
   return outputs

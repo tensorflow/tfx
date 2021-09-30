@@ -241,21 +241,21 @@ class WideChicagoTaxiDataset(ChicagoTaxiDataset):
               itertools.cycle(self._BUCKETIZE_KEYS),
               self._num_bucketize)):
         outputs["bucketized" + str(idx)] = tft.bucketize(
-            taxi_utils._fill_in_missing(inputs[key]),
+            inputs[key],
             taxi_utils._FEATURE_BUCKET_COUNT)
 
       for idx, key in enumerate(
           itertools.islice(itertools.cycle(self._SCALE_KEYS), self._num_scale)):
         # Preserve this feature as a dense float, setting nan's to the mean.
         outputs["scaled" + str(idx)] = tft.scale_to_z_score(
-            taxi_utils._fill_in_missing(inputs[key]))
+            inputs[key])
 
       for idx, key in enumerate(
           itertools.islice(
               itertools.cycle(self._VOCABULARY_KEYS),
               self._num_vocabs)):
         outputs["vocab" + str(idx)] = tft.compute_and_apply_vocabulary(
-            taxi_utils._fill_in_missing(inputs[key]),
+            inputs[key],
             top_k=taxi_utils._VOCAB_SIZE,
             num_oov_buckets=taxi_utils._OOV_SIZE)
 

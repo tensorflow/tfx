@@ -31,10 +31,6 @@ IMAGE_KEY = 'image_floats'
 LABEL_KEY = 'image_class'
 
 
-def transformed_name(key):
-  return key + '_xf'
-
-
 def input_fn(file_pattern: List[str],
              data_accessor: DataAccessor,
              tf_transform_output: tft.TFTransformOutput,
@@ -55,7 +51,7 @@ def input_fn(file_pattern: List[str],
   return data_accessor.tf_dataset_factory(
       file_pattern,
       dataset_options.TensorFlowDatasetOptions(
-          batch_size=batch_size, label_key=transformed_name(LABEL_KEY)),
+          batch_size=batch_size, label_key=LABEL_KEY),
       tf_transform_output.transformed_metadata.schema).repeat()
 
 
@@ -70,7 +66,7 @@ def build_keras_model() -> tf.keras.Model:
   model = tf.keras.Sequential()
   model.add(
       tf.keras.layers.InputLayer(
-          input_shape=(784,), name=transformed_name(IMAGE_KEY)))
+          input_shape=(784,), name=IMAGE_KEY))
   model.add(tf.keras.layers.Dense(64, activation='relu'))
   model.add(tf.keras.layers.Dropout(0.2))
   model.add(tf.keras.layers.Dense(64, activation='relu'))
@@ -98,10 +94,10 @@ def preprocessing_fn(inputs):
 
   # The input float values for the image encoding are in the range [-0.5, 0.5].
   # So scale_by_min_max is a identity operation, since the range is preserved.
-  outputs[transformed_name(IMAGE_KEY)] = (
+  outputs[IMAGE_KEY] = (
       tft.scale_by_min_max(inputs[IMAGE_KEY], -0.5, 0.5))
   # TODO(b/157064428): Support label transformation for Keras.
   # Do not apply label transformation as it will result in wrong evaluation.
-  outputs[transformed_name(LABEL_KEY)] = inputs[LABEL_KEY]
+  outputs[LABEL_KEY] = inputs[LABEL_KEY]
 
   return outputs

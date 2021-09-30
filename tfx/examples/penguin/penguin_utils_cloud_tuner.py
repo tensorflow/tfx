@@ -57,10 +57,6 @@ _EVAL_BATCH_SIZE = 10
 _CLOUD_FIT_IMAGE = 'gcr.io/my-project-id/cloud_fit'
 
 
-def _transformed_name(key):
-  return key + '_xf'
-
-
 def _get_tf_examples_serving_signature(model, tf_transform_output):
   """Returns a serving signature that accepts `tensorflow.Example`."""
 
@@ -130,7 +126,7 @@ def _input_fn(file_pattern: List[str],
   return data_accessor.tf_dataset_factory(
       file_pattern,
       tfxio.TensorFlowDatasetOptions(
-          batch_size=batch_size, label_key=_transformed_name(_LABEL_KEY)),
+          batch_size=batch_size, label_key=_LABEL_KEY),
       tf_transform_output.transformed_metadata.schema).repeat()
 
 
@@ -150,10 +146,11 @@ def preprocessing_fn(inputs):
     # Nothing to transform for the penguin dataset. This code is just to
     # show how the preprocessing function for Transform should be defined.
     # We just assign original values to the transformed feature.
-    outputs[_transformed_name(key)] = inputs[key]
+    outputs[key] = inputs[key]
+
   # TODO(b/157064428): Support label transformation for Keras.
   # Do not apply label transformation as it will result in wrong evaluation.
-  outputs[_transformed_name(_LABEL_KEY)] = inputs[_LABEL_KEY]
+  outputs[_LABEL_KEY] = inputs[_LABEL_KEY]
 
   return outputs
 
@@ -179,7 +176,7 @@ def _build_keras_model(hparams: keras_tuner.HyperParameters) -> tf.keras.Model:
   # The model below is built with Functional API, please refer to
   # https://www.tensorflow.org/guide/keras/overview for all API options.
   inputs = [
-      keras.layers.Input(shape=(1,), name=_transformed_name(f))
+      keras.layers.Input(shape=(1,), name=f)
       for f in _FEATURE_KEYS
   ]
   d = keras.layers.concatenate(inputs)

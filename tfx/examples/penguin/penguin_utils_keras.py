@@ -52,7 +52,7 @@ def _make_keras_model(hparams: keras_tuner.HyperParameters) -> tf.keras.Model:
   # The model below is built with Functional API, please refer to
   # https://www.tensorflow.org/guide/keras/overview for all API options.
   inputs = [
-      keras.layers.Input(shape=(1,), name=base.transformed_name(f))
+      keras.layers.Input(shape=(1,), name=f)
       for f in base.FEATURE_KEYS
   ]
   d = keras.layers.concatenate(inputs)
