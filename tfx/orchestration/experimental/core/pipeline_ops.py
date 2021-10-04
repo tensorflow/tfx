@@ -611,13 +611,6 @@ def _orchestrate_active_pipeline(
       if task_lib.is_exec_node_task(task):
         task = typing.cast(task_lib.ExecNodeTask, task)
         task_queue.enqueue(task)
-      elif task_lib.is_finalize_node_task(task):
-        assert pipeline.execution_mode == pipeline_pb2.Pipeline.ASYNC
-        task = typing.cast(task_lib.FinalizeNodeTask, task)
-        with pipeline_state.node_state_update_context(
-            task.node_uid) as node_state:
-          if node_state.is_stoppable():
-            node_state.update(pstate.NodeState.STOPPING, task.status)
       else:
         assert task_lib.is_finalize_pipeline_task(task)
         assert pipeline.execution_mode == pipeline_pb2.Pipeline.SYNC

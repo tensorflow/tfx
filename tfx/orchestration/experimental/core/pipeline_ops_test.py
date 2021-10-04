@@ -675,8 +675,6 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
       pipeline.nodes.add().pipeline_node.node_info.id = 'Trainer'
       pipeline_ops.initiate_pipeline_start(m, pipeline)
       pipeline_uid = task_lib.PipelineUid.from_pipeline(pipeline)
-      finalize_reason = status_lib.Status(
-          code=status_lib.Code.ABORTED, message='foo bar')
       transform_node_uid = task_lib.NodeUid(
           pipeline_uid=pipeline_uid, node_id='Transform')
       trainer_node_uid = task_lib.NodeUid(
@@ -684,8 +682,8 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
       task_gen.return_value.generate.side_effect = [
           [
               test_utils.create_exec_node_task(transform_node_uid),
-              task_lib.FinalizeNodeTask(
-                  node_uid=trainer_node_uid, status=finalize_reason)
+              task_lib.UpdateNodeStateTask(
+                  node_uid=trainer_node_uid, state=pstate.NodeState.FAILED),
           ],
       ]
 
@@ -701,8 +699,7 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
       # Load pipeline state and verify trainer node state.
       with pstate.PipelineState.load(m, pipeline_uid) as pipeline_state:
         node_state = pipeline_state.get_node_state(trainer_node_uid)
-        self.assertEqual(pstate.NodeState.STOPPING, node_state.state)
-        self.assertEqual(finalize_reason, node_state.status)
+        self.assertEqual(pstate.NodeState.FAILED, node_state.state)
 
   def test_to_status_not_ok_error_decorator(self):
 

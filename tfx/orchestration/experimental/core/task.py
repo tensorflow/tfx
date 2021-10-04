@@ -160,17 +160,6 @@ class FinalizePipelineTask(Task):
 
 
 @attr.s(auto_attribs=True, frozen=True)
-class FinalizeNodeTask(Task):
-  """Task to instruct finalizing a node execution."""
-  node_uid: NodeUid
-  status: status_lib.Status
-
-  @property
-  def task_id(self) -> TaskId:
-    return (self.task_type_id(), self.node_uid)
-
-
-@attr.s(auto_attribs=True, frozen=True)
 class UpdateNodeStateTask(Task):
   """Task to instruct updating node states.
 
@@ -198,10 +187,6 @@ def is_cancel_node_task(task: Task) -> bool:
 
 def is_finalize_pipeline_task(task: Task) -> bool:
   return task.task_type_id() == FinalizePipelineTask.task_type_id()
-
-
-def is_finalize_node_task(task: Task) -> bool:
-  return task.task_type_id() == FinalizeNodeTask.task_type_id()
 
 
 def is_update_node_state_task(task: Task) -> bool:
