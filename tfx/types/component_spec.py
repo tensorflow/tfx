@@ -19,8 +19,8 @@ import itertools
 from typing import Any, Dict, List, Optional, Type, cast
 
 from tfx.dsl.placeholder import placeholder
-from tfx.types.artifact import Artifact
-from tfx.types.channel import Channel
+from tfx.types import artifact
+from tfx.types import channel
 from tfx.utils import abc_utils
 from tfx.utils import json_utils
 from tfx.utils import proto_utils
@@ -416,9 +416,9 @@ class ChannelParameter(_ComponentParameter):
 
   def __init__(
       self,
-      type: Optional[Type[Artifact]] = None,  # pylint: disable=redefined-builtin
+      type: Optional[Type[artifact.Artifact]] = None,  # pylint: disable=redefined-builtin
       optional: bool = False):
-    if not (inspect.isclass(type) and issubclass(type, Artifact)):  # pytype: disable=wrong-arg-types
+    if not (inspect.isclass(type) and issubclass(type, artifact.Artifact)):  # pytype: disable=wrong-arg-types
       raise ValueError(
           'Argument "type" of Channel constructor must be a subclass of '
           'tfx.types.Artifact.')
@@ -426,14 +426,14 @@ class ChannelParameter(_ComponentParameter):
     self.optional = optional
 
   def __repr__(self):
-    return 'ChannelParameter(type: %s)' % (self.type,)
+    return 'ChannelParameter(type: %s)' % self.type
 
   def __eq__(self, other):
     return (isinstance(other.__class__, self.__class__) and
             other.type == self.type and other.optional == self.optional)
 
-  def type_check(self, arg_name: str, value: Channel):
-    if ((not isinstance(value, Channel)) or
+  def type_check(self, arg_name: str, value: channel.BaseChannel):
+    if ((not isinstance(value, channel.BaseChannel)) or
         not (value.type is self.type or
              value.type in getattr(self.type, COMPATIBLE_TYPES_KEY, ()))):
       raise TypeError('Argument %s should be a Channel of type %r (got %s).' %

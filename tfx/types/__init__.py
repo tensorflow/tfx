@@ -14,6 +14,7 @@
 """Subpackage for TFX pipeline types."""
 
 from tfx.types.artifact import Artifact
+from tfx.types.channel import BaseChannel
 from tfx.types.channel import Channel
 from tfx.types.channel import ExecPropertyTypes
 from tfx.types.channel import Property  # Type alias.
