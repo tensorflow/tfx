@@ -457,16 +457,16 @@
         },
         "inputDefinitions": {
           "artifacts": {
-            "model": {
-              "artifactType": {
-                "instanceSchema": "title: tfx.Model\ntype: object\n"
+              "_Evaluator.blessing": {
+                  "artifactType": {
+                      "instanceSchema": "title: tfx.ModelBlessing\ntype: object\n"
+                  }
+              },
+              "model": {
+                  "artifactType": {
+                      "instanceSchema": "title: tfx.Model\ntype: object\n"
+                  }
               }
-            },
-            "model_blessing": {
-              "artifactType": {
-                "instanceSchema": "title: tfx.ModelBlessing\ntype: object\n"
-              }
-            }
           },
           "parameters": {
             "push_destination": {
@@ -858,18 +858,18 @@
             },
             "inputs": {
               "artifacts": {
-                "model_blessing": {
-                  "taskOutputArtifact": {
-                    "producerTask": "Evaluator",
-                    "outputArtifactKey": "blessing"
+                  "_Evaluator.blessing": {
+                      "taskOutputArtifact": {
+                          "outputArtifactKey": "blessing",
+                          "producerTask": "Evaluator"
+                      }
+                  },
+                  "model": {
+                      "taskOutputArtifact": {
+                          "outputArtifactKey": "model",
+                          "producerTask": "Trainer"
+                      }
                   }
-                },
-                "model": {
-                  "taskOutputArtifact": {
-                    "producerTask": "Trainer",
-                    "outputArtifactKey": "model"
-                  }
-                }
               },
               "parameters": {
                 "custom_config": {
@@ -887,6 +887,9 @@
                   }
                 }
               }
+            },
+            "triggerPolicy": {
+                "condition": "(inputs.artifacts['_Evaluator.blessing'].artifacts[0].metadata['blessed'] == 1.0)"
             }
           },
           "CsvExampleGen": {

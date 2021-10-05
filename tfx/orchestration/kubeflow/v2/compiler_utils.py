@@ -24,6 +24,7 @@ from tfx import types
 from tfx.dsl.io import fileio
 from tfx.orchestration import data_types
 from tfx.orchestration.kubeflow.v2 import parameter_utils
+from tfx.proto.orchestration import placeholder_pb2
 from tfx.types import artifact
 from tfx.types import channel
 from tfx.types import standard_artifacts
@@ -309,3 +310,109 @@ def get_artifact_title(artifact_type: Type[artifact.Artifact]) -> str:
   if artifact_type in _SUPPORTED_STANDARD_ARTIFACT_TYPES:
     return 'tfx.{}'.format(artifact_type.__name__)
   return 'tfx.Artifact'
+
+
+def placeholder_to_cel(
+    expression: placeholder_pb2.PlaceholderExpression) -> str:
+  """Encodes a Predicate into a CEL string expression.
+
+  The CEL specification is at:
+  https://github.com/google/cel-spec/blob/master/doc/langdef.md
+
+  Args:
+    expression: A PlaceholderExpression proto descrbing a Predicate.
+
+  Returns:
+    A CEL expression in string format.
+  """
+  if expression.HasField('value'):
+    value_field_name = expression.value.WhichOneof('value')
+    if value_field_name == 'int_value':
+      # In KFP IR, all values are defined as google.protobuf.Value,
+      # which does not differentiate between int and float. CEL's treats
+      # comparison between different types as an error. Hence we need to convert
+      # ints to floats for comparison in CEL.
+      return f'{float(expression.value.int_value)}'
+    if value_field_name == 'double_value':
+      return f'{expression.value.double_value}'
+    if value_field_name == 'string_value':
+      return f'\'{expression.value.string_value}\''
+    raise NotImplementedError(
+        'Only supports predicate with primitive type values.')
+
+  if expression.HasField('placeholder'):
+    placeholder_pb = expression.placeholder
+    # Predicates are always built from ChannelWrappedPlaceholder, which means
+    # a component can only write a predicate about its inputs. It doesn't make
+    # sense for a component to say "run only if my output is something."
+    if placeholder_pb.type != placeholder_pb2.Placeholder.INPUT_ARTIFACT:
+      raise NotImplementedError(
+          'Only supports accessing input artifact through placeholders on KFPv2.'
+          f'Got {placeholder_pb.type}.')
+    if not placeholder_pb.key:
+      raise ValueError(
+          'Only supports accessing placeholders with a key on KFPv2.')
+    # Note that because CEL automatically performs dynamic value conversion,
+    # we don't need type info for the oneof fields in google.protobuf.Value.
+    return f"inputs.artifacts['{placeholder_pb.key}'].artifacts"
+
+  if expression.HasField('operator'):
+    operator_name = expression.operator.WhichOneof('operator_type')
+    operator_pb = getattr(expression.operator, operator_name)
+
+    if operator_name == 'index_op':
+      sub_expression_str = placeholder_to_cel(operator_pb.expression)
+      return f'{sub_expression_str}[{operator_pb.index}]'
+
+    if operator_name == 'artifact_property_op':
+      sub_expression_str = placeholder_to_cel(operator_pb.expression)
+      # CEL's dynamic value conversion applies to here as well.
+      return f"{sub_expression_str}.metadata['{operator_pb.key}']"
+
+    if operator_name == 'artifact_uri_op':
+      sub_expression_str = placeholder_to_cel(operator_pb.expression)
+      if operator_pb.split:
+        raise NotImplementedError(
+            'Accessing artifact\'s split uri is unsupported.')
+      return f'{sub_expression_str}.uri'
+
+    if operator_name == 'concat_op':
+      expression_str = ' + '.join(
+          placeholder_to_cel(e) for e in operator_pb.expressions)
+      return f'({expression_str})'
+
+    if operator_name == 'compare_op':
+      lhs_str = placeholder_to_cel(operator_pb.lhs)
+      rhs_str = placeholder_to_cel(operator_pb.rhs)
+      if operator_pb.op == placeholder_pb2.ComparisonOperator.Operation.EQUAL:
+        op_str = '=='
+      elif operator_pb.op == placeholder_pb2.ComparisonOperator.Operation.LESS_THAN:
+        op_str = '<'
+      elif operator_pb.op == placeholder_pb2.ComparisonOperator.Operation.GREATER_THAN:
+        op_str = '>'
+      else:
+        return f'Unknown Comparison Operation {operator_pb.op}'
+      return f'({lhs_str} {op_str} {rhs_str})'
+
+    if operator_name == 'unary_logical_op':
+      expression_str = placeholder_to_cel(operator_pb.expression)
+      if operator_pb.op == placeholder_pb2.UnaryLogicalOperator.Operation.NOT:
+        op_str = '!'
+      else:
+        return f'Unknown Unary Logical Operation {operator_pb.op}'
+      return f'{op_str}({expression_str})'
+
+    if operator_name == 'binary_logical_op':
+      lhs_str = placeholder_to_cel(operator_pb.lhs)
+      rhs_str = placeholder_to_cel(operator_pb.rhs)
+      if operator_pb.op == placeholder_pb2.BinaryLogicalOperator.Operation.AND:
+        op_str = '&&'
+      elif operator_pb.op == placeholder_pb2.BinaryLogicalOperator.Operation.OR:
+        op_str = '||'
+      else:
+        return f'Unknown Binary Logical Operation {operator_pb.op}'
+      return f'({lhs_str} {op_str} {rhs_str})'
+
+    raise ValueError(f'Got unsupported placeholder operator {operator_name}.')
+
+  raise ValueError('Unknown placeholder expression.')

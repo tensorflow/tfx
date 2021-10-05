@@ -15,6 +15,7 @@
 
 import os
 
+from absl.testing import parameterized
 from kfp.pipeline_spec import pipeline_spec_pb2 as pipeline_pb2
 import tensorflow as tf
 from tfx.dsl.io import fileio
@@ -35,12 +36,12 @@ type: object
 """
 
 _EXPECTED_MY_BAD_ARTIFACT_SCHEMA = """
-title: __main__._MyBadArtifact
+title: __main__._MyArtifactWithProperty
 type: object
 """
 
 _MY_BAD_ARTIFACT_SCHEMA_WITH_PROPERTIES = """
-title: __main__._MyBadArtifact
+title: __main__._MyArtifactWithProperty
 type: object
 properties:
   int1:
@@ -52,13 +53,16 @@ class _MyArtifact(artifact.Artifact):
   TYPE_NAME = 'TestType'
 
 
-# _MyBadArtifact should fail the compilation by specifying custom property
-# schema, which is not supported yet.
-class _MyBadArtifact(artifact.Artifact):
+# _MyArtifactWithProperty should fail the compilation by specifying
+# custom property schema, which is not supported yet.
+class _MyArtifactWithProperty(artifact.Artifact):
   TYPE_NAME = 'TestBadType'
   PROPERTIES = {
       'int1': artifact.Property(type=artifact.PropertyType.INT),
   }
+
+
+_TEST_CHANNEL = channel.Channel(type=_MyArtifactWithProperty)
 
 
 class CompilerUtilsTest(tf.test.TestCase):
@@ -99,21 +103,23 @@ class CompilerUtilsTest(tf.test.TestCase):
         yaml.safe_load(_EXPECTED_MY_ARTIFACT_SCHEMA))
 
   def testCustomArtifactMappingFails(self):
-    my_bad_artifact = _MyBadArtifact()
-    my_bad_artifact_schema = compiler_utils.get_artifact_schema(my_bad_artifact)
+    my_artifact_with_property = _MyArtifactWithProperty()
+    my_artifact_with_property_schema = compiler_utils.get_artifact_schema(
+        my_artifact_with_property)
     self.assertDictEqual(
-        yaml.safe_load(my_bad_artifact_schema),
+        yaml.safe_load(my_artifact_with_property_schema),
         yaml.safe_load(_EXPECTED_MY_BAD_ARTIFACT_SCHEMA))
 
-    my_bad_artifact.int1 = 42
+    my_artifact_with_property.int1 = 42
     with self.assertRaisesRegex(KeyError, 'Actual property:'):
       _ = compiler_utils.build_output_artifact_spec(
-          channel_utils.as_channel([my_bad_artifact]))
+          channel_utils.as_channel([my_artifact_with_property]))
 
   def testCustomArtifactSchemaMismatchFails(self):
     with self.assertRaisesRegex(TypeError, 'Property type mismatched at'):
       compiler_utils._validate_properties_schema(
-          _MY_BAD_ARTIFACT_SCHEMA_WITH_PROPERTIES, _MyBadArtifact.PROPERTIES)
+          _MY_BAD_ARTIFACT_SCHEMA_WITH_PROPERTIES,
+          _MyArtifactWithProperty.PROPERTIES)
 
   def testBuildParameterTypeSpec(self):
     type_enum = pipeline_pb2.PrimitiveType.PrimitiveTypeEnum
@@ -195,6 +201,109 @@ class CompilerUtilsTest(tf.test.TestCase):
         }
         """, pipeline_pb2.ComponentOutputsSpec.ArtifactSpec())
     self.assertProtoEquals(spec, expected_spec)
+
+
+class PlaceholderToCELTest(parameterized.TestCase, tf.test.TestCase):
+
+  def setUp(self):
+    super().setUp()
+    self._test_channel = channel.Channel(type=_MyArtifactWithProperty)
+
+  @parameterized.named_parameters(
+      {
+          'testcase_name':
+              'two_sides_placeholder',
+          'predicate':
+              _TEST_CHANNEL.future()[0].property('int1') <
+              _TEST_CHANNEL.future()[0].property('int2'),
+          'expected_cel':
+              '(inputs.artifacts[\'key\'].artifacts[0].metadata[\'int1\'] < '
+              'inputs.artifacts[\'key\'].artifacts[0].metadata[\'int2\'])',
+      },
+      {
+          'testcase_name':
+              'left_side_placeholder_right_side_int',
+          'predicate':
+              _TEST_CHANNEL.future()[0].property('int') < 1,
+          'expected_cel':
+              '(inputs.artifacts[\'key\'].artifacts[0].metadata[\'int\'] < 1.0)',
+      },
+      {
+          'testcase_name':
+              'left_side_placeholder_right_side_float',
+          'predicate':
+              _TEST_CHANNEL.future()[0].property('float') < 1.1,
+          'expected_cel':
+              '(inputs.artifacts[\'key\'].artifacts[0].metadata[\'float\'] < '
+              '1.1)',
+      },
+      {
+          'testcase_name': 'left_side_placeholder_right_side_string',
+          'predicate': _TEST_CHANNEL.future()[0].property('str') == 'test_str',
+          'expected_cel':
+              '(inputs.artifacts[\'key\'].artifacts[0].metadata[\'str\'] == '
+              '\'test_str\')',
+      },
+  )
+  def testComparison(self, predicate, expected_cel):
+    channel_to_key_map = {
+        _TEST_CHANNEL: 'key',
+    }
+    placeholder_pb = predicate.encode_with_keys(lambda c: channel_to_key_map[c])
+    self.assertEqual(
+        compiler_utils.placeholder_to_cel(placeholder_pb), expected_cel)
+
+  def testArtifactUri(self):
+    predicate = _TEST_CHANNEL.future()[0].uri == 'test_str'
+    expected_cel = ('(inputs.artifacts[\'key\'].artifacts[0].uri == '
+                    '\'test_str\')')
+    channel_to_key_map = {
+        _TEST_CHANNEL: 'key',
+    }
+    placeholder_pb = predicate.encode_with_keys(lambda c: channel_to_key_map[c])
+    self.assertEqual(
+        compiler_utils.placeholder_to_cel(placeholder_pb), expected_cel)
+
+  def testNegation(self):
+    predicate = _TEST_CHANNEL.future()[0].property('int') != 1
+    expected_cel = ('!((inputs.artifacts[\'key\'].artifacts[0]'
+                    '.metadata[\'int\'] == 1.0))')
+    channel_to_key_map = {
+        _TEST_CHANNEL: 'key',
+    }
+    placeholder_pb = predicate.encode_with_keys(lambda c: channel_to_key_map[c])
+    self.assertEqual(
+        compiler_utils.placeholder_to_cel(placeholder_pb), expected_cel)
+
+  def testConcat(self):
+    predicate = _TEST_CHANNEL.future()[0].uri + 'something' == 'test_str'
+    expected_cel = (
+        '((inputs.artifacts[\'key\'].artifacts[0].uri + \'something\') == '
+        '\'test_str\')')
+    channel_to_key_map = {
+        _TEST_CHANNEL: 'key',
+    }
+    placeholder_pb = predicate.encode_with_keys(lambda c: channel_to_key_map[c])
+    self.assertEqual(
+        compiler_utils.placeholder_to_cel(placeholder_pb), expected_cel)
+
+  def testUnsupportedOperator(self):
+    predicate = _TEST_CHANNEL.future()[0].b64encode() == 'test_str'
+    channel_to_key_map = {
+        _TEST_CHANNEL: 'key',
+    }
+    placeholder_pb = predicate.encode_with_keys(lambda c: channel_to_key_map[c])
+    with self.assertRaisesRegex(
+        ValueError, 'Got unsupported placeholder operator base64_encode_op.'):
+      compiler_utils.placeholder_to_cel(placeholder_pb)
+
+  def testPlaceholderWithoutKey(self):
+    predicate = _TEST_CHANNEL.future()[0].uri == 'test_str'
+    placeholder_pb = predicate.encode()
+    with self.assertRaisesRegex(
+        ValueError,
+        'Only supports accessing placeholders with a key on KFPv2.'):
+      compiler_utils.placeholder_to_cel(placeholder_pb)
 
 
 if __name__ == '__main__':

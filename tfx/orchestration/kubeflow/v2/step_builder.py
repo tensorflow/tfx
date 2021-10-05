@@ -13,11 +13,13 @@
 # limitations under the License.
 """Builder for Kubeflow pipelines StepSpec proto."""
 
+import itertools
 from typing import Any, Dict, List, Optional, Tuple
 
 from kfp.pipeline_spec import pipeline_spec_pb2 as pipeline_pb2
 from tfx import components
 from tfx.components.evaluator import constants
+from tfx.dsl.compiler import compiler_utils as tfx_compiler_utils
 from tfx.dsl.component.experimental import executor_specs
 from tfx.dsl.component.experimental import placeholders
 from tfx.dsl.components.base import base_component
@@ -25,6 +27,7 @@ from tfx.dsl.components.base import base_node
 from tfx.dsl.components.base import executor_spec
 from tfx.dsl.components.common import importer
 from tfx.dsl.components.common import resolver
+from tfx.dsl.experimental.conditionals import conditional
 from tfx.dsl.input_resolution.strategies import latest_artifact_strategy
 from tfx.dsl.input_resolution.strategies import latest_blessed_model_strategy
 from tfx.orchestration import data_types
@@ -237,10 +240,36 @@ class StepBuilder:
 
     # 2. Build component spec.
     component_def = pipeline_pb2.ComponentSpec()
+    task_spec = pipeline_pb2.PipelineTaskSpec()
     executor_label = _EXECUTOR_LABEL_PATTERN.format(self._name)
     component_def.executor_label = executor_label
+
+    # Conditionals
+    implicit_input_channels = {}
+    implicit_upstream_node_ids = set()
+    predicates = conditional.get_predicates(self._node)
+    if predicates:
+      implicit_keys_map = {
+          tfx_compiler_utils.implicit_channel_key(channel): key
+          for key, channel in self._inputs.items()
+      }
+      cel_predicates = []
+      for predicate in predicates:
+        for channel in predicate.dependent_channels():
+          implicit_key = tfx_compiler_utils.implicit_channel_key(channel)
+          if implicit_key not in implicit_keys_map:
+            # Store this channel and add it to the node inputs later.
+            implicit_input_channels[implicit_key] = channel
+            # Store the producer node and add it to the upstream nodes later.
+            implicit_upstream_node_ids.add(channel.producer_component_id)
+        placeholder_pb = predicate.encode_with_keys(
+            tfx_compiler_utils.build_channel_to_key_fn(implicit_keys_map))
+        cel_predicates.append(compiler_utils.placeholder_to_cel(placeholder_pb))
+      task_spec.trigger_policy.condition = ' && '.join(cel_predicates)
+
     # Inputs
-    for name, input_channel in self._inputs.items():
+    for name, input_channel in itertools.chain(self._inputs.items(),
+                                               implicit_input_channels.items()):
       input_artifact_spec = compiler_utils.build_input_artifact_spec(
           input_channel)
       component_def.input_definitions.artifacts[name].CopyFrom(
@@ -269,10 +298,12 @@ class StepBuilder:
                        'building component definitions.')
 
     # 3. Build task spec.
-    task_spec = pipeline_pb2.PipelineTaskSpec()
     task_spec.task_info.name = self._name
-    dependency_ids = [node.id for node in self._node.upstream_nodes]
-    for name, input_channel in self._inputs.items():
+    dependency_ids = sorted({node.id for node in self._node.upstream_nodes}
+                            | implicit_upstream_node_ids)
+
+    for name, input_channel in itertools.chain(self._inputs.items(),
+                                               implicit_input_channels.items()):
       # If the redirecting map is provided (usually for latest blessed model
       # resolver, we'll need to redirect accordingly. Also, the upstream node
       # list will be updated and replaced by the new producer id.

@@ -18,8 +18,10 @@ from typing import Any, Dict
 from kfp.pipeline_spec import pipeline_spec_pb2 as pipeline_pb2
 import tensorflow as tf
 from tfx import components
+from tfx import v1 as tfx
 from tfx.dsl.components.common import importer
 from tfx.dsl.components.common import resolver
+from tfx.dsl.experimental.conditionals import conditional
 from tfx.dsl.input_resolution.strategies import latest_artifact_strategy
 from tfx.dsl.input_resolution.strategies import latest_blessed_model_strategy
 from tfx.extensions.google_cloud_big_query.example_gen import component as big_query_example_gen_component
@@ -327,6 +329,59 @@ class StepBuilderTest(tf.test.TestCase):
     self.assertProtoEquals(
         test_utils.get_proto_from_test_data(
             'expected_latest_artifact_resolver_executor.pbtxt',
+            pipeline_pb2.PipelineDeploymentConfig()), deployment_config)
+
+  def testBuildDummyConsumerWithCondition(self):
+    producer_task_1 = test_utils.dummy_producer_component(
+        output1=channel_utils.as_channel([standard_artifacts.Model()]),
+        param1='value1',
+    ).with_id('producer_task_1')
+    producer_task_2 = test_utils.dummy_producer_component_2(
+        output1=channel_utils.as_channel([standard_artifacts.Model()]),
+        param1='value2',
+    ).with_id('producer_task_2')
+    # This test tests two things:
+    # 1. Nested conditions. The condition string of consumer_task should contain
+    #    both predicates.
+    # 2. Implicit channels. consumer_task only takes producer_task_1's output.
+    #    But producer_task_2 is used in condition, hence producer_task_2 should
+    #    be added to the dependency of consumer_task.
+    # See testdata for detail.
+    with conditional.Cond(
+        producer_task_1.outputs['output1'].future()[0].uri != 'uri'):
+      with conditional.Cond(producer_task_2.outputs['output1'].future()
+                            [0].property('property') == 'value1'):
+        consumer_task = test_utils.dummy_consumer_component(
+            input1=producer_task_1.outputs['output1'],
+            param1=1,
+        )
+    # Need to construct a pipeline to set producer_component_id.
+    unused_pipeline = tfx.dsl.Pipeline(
+        pipeline_name='pipeline-with-condition',
+        pipeline_root='',
+        components=[producer_task_1, producer_task_2, consumer_task],
+    )
+    deployment_config = pipeline_pb2.PipelineDeploymentConfig()
+    component_defs = {}
+    my_builder = step_builder.StepBuilder(
+        node=consumer_task,
+        image='gcr.io/tensorflow/tfx:latest',
+        deployment_config=deployment_config,
+        component_defs=component_defs)
+    actual_step_spec = self._sole(my_builder.build())
+    actual_component_def = self._sole(component_defs)
+
+    self.assertProtoEquals(
+        test_utils.get_proto_from_test_data(
+            'expected_dummy_consumer_with_condition_component.pbtxt',
+            pipeline_pb2.ComponentSpec()), actual_component_def)
+    self.assertProtoEquals(
+        test_utils.get_proto_from_test_data(
+            'expected_dummy_consumer_with_condition_task.pbtxt',
+            pipeline_pb2.PipelineTaskSpec()), actual_step_spec)
+    self.assertProtoEquals(
+        test_utils.get_proto_from_test_data(
+            'expected_dummy_consumer_with_condition_executor.pbtxt',
             pipeline_pb2.PipelineDeploymentConfig()), deployment_config)
 
 

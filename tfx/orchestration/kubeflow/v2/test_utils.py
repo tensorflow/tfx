@@ -30,6 +30,7 @@ from tfx.dsl.components.base import base_component
 from tfx.dsl.components.base import base_executor
 from tfx.dsl.components.base import base_node
 from tfx.dsl.components.base import executor_spec
+from tfx.dsl.experimental.conditionals import conditional
 from tfx.types import channel_utils
 from tfx.types import component_spec
 from tfx.types.experimental import simple_artifacts
@@ -207,12 +208,13 @@ def create_pipeline_components(
       baseline_model=model_resolver.outputs['model'],
       eval_config=eval_config)
 
-  pusher = tfx.components.Pusher(
-      model=trainer.outputs['model'],
-      model_blessing=evaluator.outputs['blessing'],
-      push_destination=tfx.proto.PushDestination(
-          filesystem=tfx.proto.PushDestination.Filesystem(
-              base_directory=os.path.join(pipeline_root, 'model_serving'))))
+  with conditional.Cond(evaluator.outputs['blessing'].future()
+                        [0].custom_property('blessed') == 1):
+    pusher = tfx.components.Pusher(
+        model=trainer.outputs['model'],
+        push_destination=tfx.proto.PushDestination(
+            filesystem=tfx.proto.PushDestination.Filesystem(
+                base_directory=os.path.join(pipeline_root, 'model_serving'))))
 
   return [
       example_gen, statistics_gen, schema_gen, example_validator, transform,
@@ -369,6 +371,37 @@ dummy_producer_component = tfx.dsl.experimental.create_container_component(
             placeholders.InputValuePlaceholder('param1'),
             '-suffix',
         ]),
+    ],
+)
+
+dummy_producer_component_2 = tfx.dsl.experimental.create_container_component(
+    name='DummyProducerComponent2',
+    outputs={
+        'output1': tfx.types.standard_artifacts.Model,
+    },
+    parameters={
+        'param1': str,
+    },
+    image='dummy/producer',
+    command=[
+        'producer',
+    ],
+)
+
+dummy_consumer_component = tfx.dsl.experimental.create_container_component(
+    name='DummyConsumerComponent',
+    inputs={
+        'input1': tfx.types.standard_artifacts.Model,
+    },
+    outputs={
+        'output1': tfx.types.standard_artifacts.Model,
+    },
+    parameters={
+        'param1': int,
+    },
+    image='dummy/consumer',
+    command=[
+        'consumer',
     ],
 )
 

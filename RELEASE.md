@@ -5,6 +5,7 @@
 *   Supported endpoint overwrite for CAIP BulkInferrer.
 *   Added support for outputting and encoding `tf.RaggedTensor`s in TFX
     Transform component.
+*   Added conditional for TFX running on KFPv2 (Vertex).
 
 ## Breaking Changes
 
