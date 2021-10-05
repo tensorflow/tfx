@@ -475,13 +475,17 @@ def _cancel_nodes(mlmd_handle: metadata.Metadata, task_queue: tq.TaskQueue,
   for node in pstate.get_all_pipeline_nodes(pipeline):
     if service_job_manager.is_pure_service_node(pipeline_state,
                                                 node.node_info.id):
-      service_job_manager.stop_node_services(pipeline_state, node.node_info.id)
+      if not service_job_manager.stop_node_services(pipeline_state,
+                                                    node.node_info.id):
+        is_active = True
     elif _maybe_enqueue_cancellation_task(
         mlmd_handle, pipeline, node, task_queue, pause=pause):
       is_active = True
     elif service_job_manager.is_mixed_service_node(pipeline_state,
                                                    node.node_info.id):
-      service_job_manager.stop_node_services(pipeline_state, node.node_info.id)
+      if not service_job_manager.stop_node_services(pipeline_state,
+                                                    node.node_info.id):
+        is_active = True
   return is_active
 
 
@@ -548,17 +552,17 @@ def _orchestrate_active_pipeline(
   for node_info in stopping_node_infos:
     if service_job_manager.is_pure_service_node(pipeline_state,
                                                 node_info.node.node_info.id):
-      service_job_manager.stop_node_services(pipeline_state,
-                                             node_info.node.node_info.id)
-      stopped_node_infos.append(node_info)
+      if service_job_manager.stop_node_services(pipeline_state,
+                                                node_info.node.node_info.id):
+        stopped_node_infos.append(node_info)
     elif _maybe_enqueue_cancellation_task(mlmd_handle, pipeline, node_info.node,
                                           task_queue):
       pass
     elif service_job_manager.is_mixed_service_node(pipeline_state,
                                                    node_info.node.node_info.id):
-      service_job_manager.stop_node_services(pipeline_state,
-                                             node_info.node.node_info.id)
-      stopped_node_infos.append(node_info)
+      if service_job_manager.stop_node_services(pipeline_state,
+                                                node_info.node.node_info.id):
+        stopped_node_infos.append(node_info)
     else:
       stopped_node_infos.append(node_info)
 

@@ -60,7 +60,7 @@ class ServiceJobManager(abc.ABC):
 
   @abc.abstractmethod
   def stop_node_services(self, pipeline_state: pstate.PipelineState,
-                         node_id: str) -> None:
+                         node_id: str) -> bool:
     """Stops service jobs (if any) associated with the node.
 
     Note that this method will only be called if either `is_pure_service_node`
@@ -69,6 +69,9 @@ class ServiceJobManager(abc.ABC):
     Args:
       pipeline_state: A `PipelineState` object for an active pipeline.
       node_id: Id of the node to stop services.
+
+    Returns:
+      `True` if the operation was successful, `False` otherwise.
     """
 
   @abc.abstractmethod
@@ -107,7 +110,7 @@ class DummyServiceJobManager(ServiceJobManager):
     raise NotImplementedError('Service jobs not supported.')
 
   def stop_node_services(self, pipeline_state: pstate.PipelineState,
-                         node_id: str) -> None:
+                         node_id: str) -> bool:
     del pipeline_state, node_id
     raise NotImplementedError('Service jobs not supported.')
 
@@ -122,7 +125,6 @@ class DummyServiceJobManager(ServiceJobManager):
     return False
 
 
-# TODO(b/201346378): Also handle exceptions in stop_node_services.
 class ExceptionHandlingServiceJobManagerWrapper(ServiceJobManager):
   """Wraps a ServiceJobManager instance and does some basic exception handling."""
 
@@ -140,8 +142,14 @@ class ExceptionHandlingServiceJobManagerWrapper(ServiceJobManager):
       return ServiceStatus.FAILED
 
   def stop_node_services(self, pipeline_state: pstate.PipelineState,
-                         node_id: str) -> None:
-    self._service_job_manager.stop_node_services(pipeline_state, node_id)
+                         node_id: str) -> bool:
+    try:
+      return self._service_job_manager.stop_node_services(
+          pipeline_state, node_id)
+    except Exception:  # pylint: disable=broad-except
+      logging.exception(
+          'Exception raised by underlying `ServiceJobManager` instance.')
+      return False
 
   def is_pure_service_node(self, pipeline_state: pstate.PipelineState,
                            node_id: str) -> bool:
