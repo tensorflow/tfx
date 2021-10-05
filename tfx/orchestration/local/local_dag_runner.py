@@ -23,6 +23,7 @@ from tfx.orchestration import metadata
 from tfx.orchestration import pipeline as pipeline_py
 from tfx.orchestration.local import runner_utils
 from tfx.orchestration.portable import launcher
+from tfx.orchestration.portable import partial_run_utils
 from tfx.orchestration.portable import runtime_parameter_utils
 from tfx.orchestration.portable import tfx_runner
 from tfx.utils import telemetry_utils
@@ -74,6 +75,9 @@ class LocalDagRunner(tfx_runner.TfxRunner):
       for node in pipeline.nodes:
         pipeline_node = node.pipeline_node
         node_id = pipeline_node.node_info.id
+        if pipeline_node.execution_options.HasField('skip'):
+          logging.info('Skipping component %s.', node_id)
+          continue
         executor_spec = runner_utils.extract_executor_spec(
             deployment_config, node_id)
         custom_driver_spec = runner_utils.extract_custom_driver_spec(
@@ -87,5 +91,7 @@ class LocalDagRunner(tfx_runner.TfxRunner):
             executor_spec=executor_spec,
             custom_driver_spec=custom_driver_spec)
         logging.info('Component %s is running.', node_id)
+        if pipeline_node.execution_options.run.perform_snapshot:
+          partial_run_utils.snapshot(connection_config, pipeline)
         component_launcher.launch()
         logging.info('Component %s is finished.', node_id)

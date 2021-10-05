@@ -316,7 +316,29 @@ message NodeExecutionOptions {
     // Whether or not to enable cache for this node.
     bool enable_cache = 1;
   }
+  message Run {
+    // If perform_snapshot is true, this node will perform the snapshot step.
+    bool perform_snapshot = 1;
+    // If depends_on_snapshot is true, the snapshot step must be complete before
+    // this node's executor can run.
+    // Note that it is possible for the node that performs the snapshot to
+    // also have an executor that depends on the snapshot step.
+    bool depends_on_snapshot = 2;
+  }
+  message Skip {
+    // If reuse_artifacts is true, the snapshot operation will make sure that
+    // output artifacts produced by this node in a previous pipeline run will
+    // be made available in this partial run.
+    bool reuse_artifacts = 1;
+  }
   CachingOptions caching_options = 1;
+  // Attached by compiler or platform-level tooling.
+  oneof partial_run_option {
+    // If set, this node will be run as part of the partial run.
+    Run run = 2;
+    // If set, this node will be skipped in the partial run.
+    Skip skip = 3;
+  }
 }
 // Pipeline node definition.
 message PipelineNode {
@@ -340,6 +362,20 @@ message PipelineNode {
   NodeExecutionOptions execution_options = 9;
 }
 
+// Settings used for snapshot during partial run. This is set by the compiler.
+// One of the nodes will call `partial_run_utils.snapshot(...)`, allowing this
+// partial run to reuse artifacts from a previous pipeline run.
+message SnapshotSettings {
+  message LatestPipelineRunStrategy {}
+  message BasePipelineRunStrategy {
+    string base_run_id = 1;
+  }
+  oneof artifact_reuse_strategy {
+    LatestPipelineRunStrategy latest_pipeline_run_strategy = 1;
+    BasePipelineRunStrategy base_pipeline_run_strategy = 2;
+  }
+}
+
 // Message struct that contains pipeline runtime specifications.
 message PipelineRuntimeSpec {
   // Required field. Base directory of the pipeline. If not specified in DSL,
@@ -349,6 +385,8 @@ message PipelineRuntimeSpec {
   // A unique id to identify a pipeline run. This will not be set during
   // compilation time but is required for synchronous pipeline execution.
   Value pipeline_run_id = 2;
+  // Used for partial runs.
+  SnapshotSettings snapshot_settings = 8;
 }
 
 // Basic info of a pipeline.
