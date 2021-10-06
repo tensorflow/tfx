@@ -203,7 +203,7 @@ class HelloWorldComponent(BaseComponent):
   EXECUTOR_SPEC = executor_specs.TemplatedExecutorContainerSpec(
       # TODO(b/143965964): move the image to private repo if the test is flaky
       # due to docker hub.
-      image='google/cloud-sdk:latest',
+      image='gcr.io/google.com/cloudsdktool/cloud-sdk:latest',
       command=['sh', '-c'],
       args=[
           'echo "hello ' +
