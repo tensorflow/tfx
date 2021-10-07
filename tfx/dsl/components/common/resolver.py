@@ -23,7 +23,7 @@ from tfx.dsl.input_resolution import resolver_function
 from tfx.dsl.input_resolution import resolver_op
 from tfx.orchestration import data_types
 from tfx.orchestration import metadata
-from tfx.utils import deprecation_utils
+from tfx.types import artifact_utils
 from tfx.utils import doc_controls
 from tfx.utils import json_utils
 
@@ -33,25 +33,6 @@ import ml_metadata as mlmd
 RESOLVER_STRATEGY_CLASS = 'resolver_class'
 # Constant to access resolver config from resolver exec_properties.
 RESOLVER_CONFIG = 'source_uri'
-
-
-class ResolveResult:
-  """The data structure to hold results from Resolver.
-
-  Attributes:
-    per_key_resolve_result: a key -> List[Artifact] dict containing the resolved
-      artifacts for each source channel with the key as tag.
-    per_key_resolve_state: a key -> bool dict containing whether or not the
-      resolved artifacts for the channel are considered complete.
-    has_complete_result: bool value indicating whether all desired artifacts
-      have been resolved.
-  """
-
-  def __init__(self, per_key_resolve_result: Dict[str, List[types.Artifact]],
-               per_key_resolve_state: Dict[str, bool]):
-    self.per_key_resolve_result = per_key_resolve_result
-    self.per_key_resolve_state = per_key_resolve_state
-    self.has_complete_result = all(s for s in per_key_resolve_state.values())
 
 
 class ResolverStrategy(abc.ABC):
@@ -75,33 +56,6 @@ class ResolverStrategy(abc.ABC):
         arg=input_node,
         output_data_type=resolver_op.DataTypes.ARTIFACT_MULTIMAP,
         kwargs=kwargs)
-
-  @deprecation_utils.deprecated(
-      date='2020-09-24',
-      instructions='Please switch to the `resolve_artifacts`.')
-  @doc_controls.do_not_generate_docs
-  def resolve(
-      self,
-      pipeline_info: data_types.PipelineInfo,
-      metadata_handler: metadata.Metadata,
-      source_channels: Dict[str, types.Channel],
-  ) -> ResolveResult:
-    """Resolves artifacts from channels by querying MLMD.
-
-    Args:
-      pipeline_info: PipelineInfo of the current pipeline. We do not want to
-        query artifacts across pipeline boundary.
-      metadata_handler: a read-only handler to query MLMD.
-      source_channels: a key -> channel dict which contains the info of the
-        source channels.
-
-    Returns:
-      a ResolveResult instance.
-
-    Raises:
-      DeprecationWarning: when it is called.
-    """
-    raise NotImplementedError()
 
   @abc.abstractmethod
   def resolve_artifacts(
@@ -142,6 +96,29 @@ class _ResolverDriver(base_driver.BaseDriver):
   Resolver.
   """
 
+  def _build_input_dict(
+      self,
+      pipeline_info: data_types.PipelineInfo,
+      input_channels: Mapping[str, types.Channel],
+  ) -> Dict[str, List[types.Artifact]]:
+    pipeline_context = self._metadata_handler.get_pipeline_context(
+        pipeline_info)
+    if pipeline_context is None:
+      raise RuntimeError(f'Pipeline context absent for {pipeline_info}.')
+
+    result = {}
+    for key, channel in input_channels.items():
+      artifact_and_types = self._metadata_handler.get_qualified_artifacts(
+          contexts=[pipeline_context],
+          type_name=channel.type_name,
+          producer_component_id=channel.producer_component_id,
+          output_key=channel.output_key)
+      result[key] = [
+          artifact_utils.deserialize_artifact(a.type, a.artifact)
+          for a in artifact_and_types
+      ]
+    return result
+
   # TODO(ruoyu): We need a better approach to let the Resolver fail on
   # incomplete data.
   def pre_execution(
@@ -167,26 +144,32 @@ class _ResolverDriver(base_driver.BaseDriver):
       resolver = resolver_class(**exec_properties[RESOLVER_CONFIG])
     else:
       resolver = resolver_class()
-    resolve_result = resolver.resolve(
-        pipeline_info=pipeline_info,
-        metadata_handler=self._metadata_handler,
-        source_channels=input_dict.copy())
+    input_artifacts = self._build_input_dict(pipeline_info, input_dict)
+    output_artifacts = resolver.resolve_artifacts(
+        store=self._metadata_handler.store,
+        input_dict=input_artifacts,
+    )
+    if output_artifacts is None:
+      # No inputs available. Still driver needs an ExecutionDecision, so use a
+      # dummy dict with no artifacts.
+      output_artifacts = {key: [] for key in input_artifacts}
+
     # TODO(b/148828122): This is a temporary workaround for interactive mode.
     for k, c in output_dict.items():
       output_dict[k] = types.Channel(type=c.type).set_artifacts(
-          resolve_result.per_key_resolve_result[k])
+          output_artifacts[k])
     # Updates execution to reflect artifact resolution results and mark
     # as cached.
     self._metadata_handler.update_execution(
         execution=execution,
         component_info=component_info,
-        output_artifacts=resolve_result.per_key_resolve_result,
+        output_artifacts=output_artifacts,
         execution_state=metadata.EXECUTION_STATE_CACHED,
         contexts=contexts)
 
     return data_types.ExecutionDecision(
         input_dict={},
-        output_dict=resolve_result.per_key_resolve_result,
+        output_dict=output_artifacts,
         exec_properties=exec_properties,
         execution_id=execution.id,
         use_cached_results=True)

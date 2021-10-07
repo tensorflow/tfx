@@ -18,10 +18,7 @@ from typing import Dict, List, Optional
 from tfx import types
 from tfx.components.example_gen import utils
 from tfx.dsl.components.common import resolver
-from tfx.orchestration import data_types
-from tfx.orchestration import metadata
 from tfx.proto import range_config_pb2
-from tfx.types import artifact_utils
 from tfx.utils import doc_controls
 
 import ml_metadata as mlmd
@@ -104,38 +101,6 @@ class SpanRangeStrategy(resolver.ResolverStrategy):
           reverse=True)
 
     return result
-
-  @doc_controls.do_not_generate_docs
-  def resolve(
-      self,
-      pipeline_info: data_types.PipelineInfo,
-      metadata_handler: metadata.Metadata,
-      source_channels: Dict[str, types.Channel],
-  ) -> resolver.ResolveResult:
-    pipeline_context = metadata_handler.get_pipeline_context(pipeline_info)
-    if pipeline_context is None:
-      raise RuntimeError(f'Pipeline context absent for {pipeline_context}')
-
-    candidate_dict = {}
-    for k, c in source_channels.items():
-      candidate_artifacts = metadata_handler.get_qualified_artifacts(
-          contexts=[pipeline_context],
-          type_name=c.type_name,
-          producer_component_id=c.producer_component_id,
-          output_key=c.output_key)
-      candidate_dict[k] = [
-          artifact_utils.deserialize_artifact(a.type, a.artifact)
-          for a in candidate_artifacts
-      ]
-
-    resolved_dict = self._resolve(candidate_dict)
-    resolve_state_dict = {
-        k: bool(artifact_list) for k, artifact_list in resolved_dict.items()
-    }
-
-    return resolver.ResolveResult(
-        per_key_resolve_result=resolved_dict,
-        per_key_resolve_state=resolve_state_dict)
 
   @doc_controls.do_not_generate_docs
   def resolve_artifacts(

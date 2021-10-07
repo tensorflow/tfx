@@ -17,9 +17,6 @@ from typing import Dict, List, Optional
 
 from tfx import types
 from tfx.dsl.components.common import resolver
-from tfx.orchestration import data_types
-from tfx.orchestration import metadata
-from tfx.types import artifact_utils
 from tfx.utils import doc_controls
 
 import ml_metadata as mlmd
@@ -52,39 +49,6 @@ class LatestArtifactStrategy(resolver.ResolverStrategy):
       result[k] = sorted_artifact_list[:min(
           len(sorted_artifact_list), self._desired_num_of_artifact)]
     return result
-
-  @doc_controls.do_not_generate_docs
-  def resolve(
-      self,
-      pipeline_info: data_types.PipelineInfo,
-      metadata_handler: metadata.Metadata,
-      source_channels: Dict[str, types.Channel],
-  ) -> resolver.ResolveResult:
-    pipeline_context = metadata_handler.get_pipeline_context(pipeline_info)
-    if pipeline_context is None:
-      raise RuntimeError('Pipeline context absent for %s' % pipeline_context)
-
-    candidate_dict = {}
-    for k, c in source_channels.items():
-      candidate_artifacts = metadata_handler.get_qualified_artifacts(
-          contexts=[pipeline_context],
-          type_name=c.type_name,
-          producer_component_id=c.producer_component_id,
-          output_key=c.output_key)
-      candidate_dict[k] = [
-          artifact_utils.deserialize_artifact(a.type, a.artifact)
-          for a in candidate_artifacts
-      ]
-
-    resolved_dict = self._resolve(candidate_dict)
-    resolve_state_dict = {
-        k: len(artifact_list) >= self._desired_num_of_artifact
-        for k, artifact_list in resolved_dict.items()
-    }
-
-    return resolver.ResolveResult(
-        per_key_resolve_result=resolved_dict,
-        per_key_resolve_state=resolve_state_dict)
 
   @doc_controls.do_not_generate_docs
   def resolve_artifacts(
