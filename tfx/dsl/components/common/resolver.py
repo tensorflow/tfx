@@ -24,6 +24,7 @@ from tfx.dsl.input_resolution import resolver_op
 from tfx.orchestration import data_types
 from tfx.orchestration import metadata
 from tfx.types import artifact_utils
+from tfx.types import channel_utils
 from tfx.utils import doc_controls
 from tfx.utils import json_utils
 
@@ -99,7 +100,7 @@ class _ResolverDriver(base_driver.BaseDriver):
   def _build_input_dict(
       self,
       pipeline_info: data_types.PipelineInfo,
-      input_channels: Mapping[str, types.Channel],
+      input_channels: Mapping[str, types.BaseChannel],
   ) -> Dict[str, List[types.Artifact]]:
     pipeline_context = self._metadata_handler.get_pipeline_context(
         pipeline_info)
@@ -107,23 +108,27 @@ class _ResolverDriver(base_driver.BaseDriver):
       raise RuntimeError(f'Pipeline context absent for {pipeline_info}.')
 
     result = {}
-    for key, channel in input_channels.items():
-      artifact_and_types = self._metadata_handler.get_qualified_artifacts(
-          contexts=[pipeline_context],
-          type_name=channel.type_name,
-          producer_component_id=channel.producer_component_id,
-          output_key=channel.output_key)
-      result[key] = [
-          artifact_utils.deserialize_artifact(a.type, a.artifact)
-          for a in artifact_and_types
-      ]
+    for key, c in input_channels.items():
+      artifacts_by_id = {}  # Deduplicate by ID.
+      for channel in channel_utils.get_individual_channels(c):
+        artifact_and_types = self._metadata_handler.get_qualified_artifacts(
+            contexts=[pipeline_context],
+            type_name=channel.type_name,
+            producer_component_id=channel.producer_component_id,
+            output_key=channel.output_key)
+        artifacts = [
+            artifact_utils.deserialize_artifact(a.type, a.artifact)
+            for a in artifact_and_types
+        ]
+        artifacts_by_id.update({a.id: a for a in artifacts})
+      result[key] = list(artifacts_by_id.values())
     return result
 
   # TODO(ruoyu): We need a better approach to let the Resolver fail on
   # incomplete data.
   def pre_execution(
       self,
-      input_dict: Dict[str, types.Channel],
+      input_dict: Dict[str, types.BaseChannel],
       output_dict: Dict[str, types.Channel],
       exec_properties: Dict[str, Any],
       driver_args: data_types.DriverArgs,
@@ -207,7 +212,7 @@ class Resolver(base_node.BaseNode):
                strategy_class: Optional[Type[ResolverStrategy]] = None,
                config: Optional[Dict[str, json_utils.JsonableType]] = None,
                function: Optional[resolver_function.ResolverFunction] = None,
-               **channels: types.Channel):
+               **channels: types.BaseChannel):
     """Init function for Resolver.
 
     Args:
@@ -243,9 +248,9 @@ class Resolver(base_node.BaseNode):
     self._input_dict = channels
     self._output_dict = {}
     for k, c in self._input_dict.items():
-      if not isinstance(c, types.Channel):
+      if not isinstance(c, types.BaseChannel):
         raise ValueError(
-            f'Expected extra kwarg {k!r} to be of type `tfx.types.Channel` '
+            f'Expected extra kwarg {k!r} to be of type `tfx.types.BaseChannel` '
             f'but got {c!r} instead.')
       # TODO(b/161490287): remove static artifacts.
       self._output_dict[k] = (

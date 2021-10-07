@@ -21,6 +21,7 @@ from tfx.dsl.components.base import base_node
 from tfx.dsl.components.base import executor_spec
 from tfx.orchestration import data_types
 from tfx.orchestration import metadata
+from tfx.types import channel_utils
 from tfx.utils import topsort
 
 from google.protobuf import message
@@ -166,10 +167,11 @@ class Pipeline:
 
     # Connects nodes based on producer map.
     for component in deduped_components:
-      for i in component.inputs.values():
-        if producer_map.get(i):
-          component.add_upstream_node(producer_map[i])
-          producer_map[i].add_downstream_node(component)
+      for value in component.inputs.values():
+        for i in channel_utils.get_individual_channels(value):
+          if producer_map.get(i):
+            component.add_upstream_node(producer_map[i])
+            producer_map[i].add_downstream_node(component)
 
     layers = topsort.topsorted_layers(
         list(deduped_components),

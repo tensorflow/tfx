@@ -35,6 +35,7 @@ from tfx.orchestration.kubeflow.v2 import compiler_utils
 from tfx.orchestration.kubeflow.v2 import parameter_utils
 from tfx.types import artifact_utils
 from tfx.types import standard_artifacts
+from tfx.types.channel import Channel
 from tfx.utils import deprecation_utils
 
 from ml_metadata.proto import metadata_store_pb2
@@ -304,6 +305,9 @@ class StepBuilder:
 
     for name, input_channel in itertools.chain(self._inputs.items(),
                                                implicit_input_channels.items()):
+      # TODO(b/169573945): Add support for vertex if requested.
+      if not isinstance(input_channel, Channel):
+        raise TypeError('Only single Channel is supported.')
       # If the redirecting map is provided (usually for latest blessed model
       # resolver, we'll need to redirect accordingly. Also, the upstream node
       # list will be updated and replaced by the new producer id.

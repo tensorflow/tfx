@@ -181,7 +181,7 @@ class ImporterDriver(base_driver.BaseDriver):
 
   def pre_execution(
       self,
-      input_dict: Dict[str, types.Channel],
+      input_dict: Dict[str, types.BaseChannel],
       output_dict: Dict[str, types.Channel],
       exec_properties: Dict[str, Any],
       driver_args: data_types.DriverArgs,

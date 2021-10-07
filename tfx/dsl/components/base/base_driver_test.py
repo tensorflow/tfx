@@ -20,6 +20,7 @@ from tfx import types
 from tfx.dsl.components.base import base_driver
 from tfx.dsl.io import fileio
 from tfx.orchestration import data_types
+from tfx.types import channel
 from tfx.types import channel_utils
 from tfx.types import standard_artifacts
 from ml_metadata.proto import metadata_store_pb2
@@ -138,6 +139,41 @@ class BaseDriverTest(tf.test.TestCase):
                        str(self._execution_id), str(i)))
     self.assertEqual(execution_decision.input_dict['input_string'][0].value,
                      _STRING_VALUE)
+
+  @mock.patch.object(types.ValueArtifact, 'read', fake_read)
+  def testResolveInputArtifacts(self):
+    artifact_1 = standard_artifacts.String()
+    artifact_1.id = 1
+    channel_1 = types.Channel(
+        type=standard_artifacts.String,
+        producer_component_id='c1').set_artifacts([artifact_1])
+    artifact_2 = standard_artifacts.String()
+    artifact_2.id = 2
+    channel_2 = types.Channel(
+        type=standard_artifacts.String,
+        producer_component_id='c2').set_artifacts([artifact_2])
+    channel_3 = types.Channel(
+        type=standard_artifacts.String,
+        producer_component_id='c3').set_artifacts([standard_artifacts.String()])
+    input_dict = {
+        'input_union': channel.union([channel_1, channel_2]),
+        'input_string': channel_3,
+    }
+    self._mock_metadata.search_artifacts.side_effect = [
+        channel_3.get(), channel_1.get(),
+        channel_2.get()
+    ]
+
+    driver = base_driver.BaseDriver(metadata_handler=self._mock_metadata)
+    resolved_artifacts = driver.resolve_input_artifacts(
+        input_dict=input_dict,
+        exec_properties=self._exec_properties,
+        driver_args=self._driver_args,
+        pipeline_info=self._pipeline_info)
+    self.assertEqual(len(resolved_artifacts['input_union']), 2)
+    self.assertEqual(resolved_artifacts['input_union'][0].value, _STRING_VALUE)
+    self.assertEqual(len(resolved_artifacts['input_string']), 1)
+    self.assertEqual(resolved_artifacts['input_string'][0].value, _STRING_VALUE)
 
   @mock.patch(
       'tfx.dsl.components.base.base_driver.BaseDriver.verify_input_artifacts')

@@ -37,6 +37,9 @@ ExecPropertyTypes = Union[int, float, str, bool, message.Message, List[Any]]
 class BaseChannel:
   """An abstract type for Channels that connects pipeline nodes.
 
+  This class should be used by components that wish to handle more than one
+  type of this BaseChannel's child classes.
+
   Attributes:
     type: The artifact type class that the Channel takes.
   """
@@ -212,6 +215,9 @@ class UnionChannel(BaseChannel):
   """Union of multiple Channels with the same type.
 
   Prefer to use union() to create UnionChannel.
+
+  Currently future() method is only support for Channel class, so conditional
+  does not yet work with channel union.
   """
 
   def __init__(self, type: Type[Artifact], input_channels: List[BaseChannel]):  # pylint: disable=redefined-builtin

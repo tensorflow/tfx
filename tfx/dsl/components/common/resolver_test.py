@@ -20,6 +20,7 @@ from tfx.dsl.input_resolution import resolver_function
 from tfx.dsl.input_resolution.strategies import latest_artifact_strategy
 from tfx.orchestration import data_types
 from tfx.orchestration import metadata
+from tfx.types import channel
 from tfx.types import standard_artifacts
 
 from ml_metadata.proto import metadata_store_pb2
@@ -45,10 +46,30 @@ class ResolverTest(tf.test.TestCase):
     self.assertEqual(rnode.outputs['channel_to_resolve'].type_name,
                      channel_to_resolve.type_name)
 
+  def testResolverUnionChannel(self):
+    one_channel = types.Channel(type=standard_artifacts.Examples)
+    another_channel = types.Channel(type=standard_artifacts.Examples)
+    unioned_channel = channel.union([one_channel, another_channel])
+    rnode = resolver.Resolver(
+        strategy_class=latest_artifact_strategy.LatestArtifactStrategy,
+        config={'desired_num_of_artifacts': 5},
+        unioned_channel=unioned_channel)
+    self.assertDictEqual(
+        rnode.exec_properties, {
+            resolver.RESOLVER_STRATEGY_CLASS:
+                latest_artifact_strategy.LatestArtifactStrategy,
+            resolver.RESOLVER_CONFIG: {
+                'desired_num_of_artifacts': 5
+            }
+        })
+    self.assertEqual(rnode.inputs['unioned_channel'], unioned_channel)
+    self.assertEqual(rnode.outputs['unioned_channel'].type_name,
+                     unioned_channel.type_name)
+
   def testResolverDefinition_BadChannel(self):
     with self.assertRaisesRegex(
         ValueError,
-        'Expected extra kwarg .* to be of type .*tfx.types.Channel'):
+        'Expected extra kwarg .* to be of type .*tfx.types.BaseChannel'):
       resolver.Resolver(
           strategy_class=latest_artifact_strategy.LatestArtifactStrategy,
           config={'desired_num_of_artifacts': 5},

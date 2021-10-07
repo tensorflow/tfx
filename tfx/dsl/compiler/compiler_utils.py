@@ -21,6 +21,7 @@ from tfx.dsl.components.common import importer
 from tfx.dsl.components.common import resolver
 from tfx.orchestration import pipeline
 from tfx.proto.orchestration import pipeline_pb2
+from tfx.types import channel_utils
 
 
 def set_runtime_parameter_pb(
@@ -113,13 +114,15 @@ def has_task_dependency(tfx_pipeline: pipeline.Pipeline):
       producer_map[output_channel] = component.id
 
   for component in tfx_pipeline.components:
-    # Resolver node is a special case. It sets producer_component_id, but not
-    # upstream_nodes. Excludes the case by filtering using producer_map.
-    upstream_data_dep_ids = {
-        input_channel.producer_component_id
-        for input_channel in component.inputs.values()
-        if input_channel in producer_map
-    }
+    upstream_data_dep_ids = set()
+    for value in component.inputs.values():
+      # Resolver node is a special case. It sets producer_component_id, but not
+      # upstream_nodes. Excludes the case by filtering using producer_map.
+      upstream_data_dep_ids.update([
+          input_channel.producer_component_id
+          for input_channel in channel_utils.get_individual_channels(value)
+          if input_channel in producer_map
+      ])
     upstream_deps_ids = {node.id for node in component._upstream_nodes}  # pylint: disable=protected-access
 
     # Compares a node's all upstream nodes and all upstream data dependencies.
