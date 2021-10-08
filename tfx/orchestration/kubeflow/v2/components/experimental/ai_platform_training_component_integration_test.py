@@ -67,9 +67,7 @@ class AiPlatformTrainingComponentIntegrationTest(
         components=[example_importer, train],
     )
 
-    self._run_pipeline(pipeline=aip_training_pipeline, job_id=pipeline_name)
-
-    self._check_job_status(pipeline_name)
+    self._run_pipeline(aip_training_pipeline)
 
 
 if __name__ == '__main__':

@@ -24,7 +24,7 @@ from tfx.components.statistics_gen.component import StatisticsGen
 from tfx.orchestration import pipeline
 from tfx.orchestration.kubeflow.v2 import kubeflow_v2_dag_runner
 
-_pipeline_name = 'chicago-taxi-kubeflow'
+_pipeline_name = 'chicago-taxi-vertex'
 _taxi_root = os.path.join(os.environ['HOME'], 'taxi')
 _data_root = os.path.join(_taxi_root, 'data', 'simple')
 _tfx_root = os.path.join(os.environ['HOME'], 'tfx')

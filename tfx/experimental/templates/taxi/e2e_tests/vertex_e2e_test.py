@@ -18,11 +18,12 @@ import os
 
 from absl import logging
 from google.cloud import storage
-from kfp.v2.google import client
+from google.cloud import aiplatform
+
 import tensorflow as tf
 from tfx.experimental.templates import test_utils
 from tfx.orchestration import test_utils as orchestration_test_utils
-from tfx.orchestration.kubeflow.v2 import test_utils as kubeflow_v2_test_utils
+from tfx.orchestration.kubeflow.v2 import vertex_client_utils
 from tfx.utils import docker_utils
 from tfx.utils import retry
 
@@ -140,12 +141,12 @@ class TaxiTemplateKubeflowV2E2ETest(test_utils.BaseEndToEndTest):
     return run_id_lines[0].split('|')[1].strip()
 
   def _wait_until_completed(self, run_id: str):
-    vertex_client = client.AIPlatformClient(
-        project_id=self._GCP_PROJECT_ID,
-        region=self._GCP_REGION)
-    kubeflow_v2_test_utils.poll_job_status(vertex_client, run_id,
-                                           self._TIME_OUT,
-                                           self._POLLING_INTERVAL_IN_SECONDS)
+    aiplatform.init(
+        project=self._GCP_PROJECT_ID,
+        location=self._GCP_REGION,
+    )
+    vertex_client_utils.poll_job_status(run_id, self._TIME_OUT,
+                                        self._POLLING_INTERVAL_IN_SECONDS)
 
   def _prepare_data(self):
     """Uploads the csv data from local to GCS location."""

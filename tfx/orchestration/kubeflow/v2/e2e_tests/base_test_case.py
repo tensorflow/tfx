@@ -20,13 +20,14 @@ from typing import List, Optional
 
 from absl import logging
 
-from kfp.v2.google import client
+from google.cloud import aiplatform
+from google.cloud.aiplatform import pipeline_jobs
 
 from tfx.dsl.components.base import base_node
 from tfx.orchestration import pipeline as tfx_pipeline
 from tfx.orchestration import test_utils
 from tfx.orchestration.kubeflow.v2 import kubeflow_v2_dag_runner
-from tfx.orchestration.kubeflow.v2 import test_utils as kubeflow_v2_test_utils
+from tfx.orchestration.kubeflow.v2 import vertex_client_utils
 from tfx.utils import test_case_utils
 
 
@@ -93,8 +94,10 @@ class BaseKubeflowV2Test(test_case_utils.TfxTest):
     self._test_dir = self.tmp_dir
     self._test_output_dir = 'gs://{}/test_output'.format(self._BUCKET_NAME)
 
-    self._client = client.AIPlatformClient(
-        project_id=self._GCP_PROJECT_ID, region=self._GCP_REGION)
+    aiplatform.init(
+        project=self._GCP_PROJECT_ID,
+        location=self._GCP_REGION,
+    )
 
   def _pipeline_root(self, pipeline_name: str):
     return os.path.join(self._test_output_dir, pipeline_name)
@@ -120,7 +123,7 @@ class BaseKubeflowV2Test(test_case_utils.TfxTest):
         components=pipeline_components,
         beam_pipeline_args=beam_pipeline_args)
 
-  def _run_pipeline(self, pipeline: tfx_pipeline.Pipeline, job_id: str) -> None:
+  def _run_pipeline(self, pipeline: tfx_pipeline.Pipeline) -> None:
     """Trigger the pipeline execution with a specific job ID."""
     # Ensure cleanup regardless of whether pipeline succeeds or fails.
     self.addCleanup(self._delete_pipeline_output,
@@ -133,11 +136,13 @@ class BaseKubeflowV2Test(test_case_utils.TfxTest):
         config=config, output_filename='pipeline.json').run(
             pipeline, write_out=True)
 
-    self._client.create_run_from_job_spec(
-        job_spec_path='pipeline.json', job_id=job_id)
+    job_id = pipeline.pipeline_info.pipeline_name
+    job = pipeline_jobs.PipelineJob(
+        template_path='pipeline.json',
+        job_id=job_id,
+        display_name=pipeline.pipeline_info.pipeline_name)
+    job.run(sync=False)
+    job.wait_for_resource_creation()
 
-  def _check_job_status(self, job_id: str) -> None:
-    kubeflow_v2_test_utils.poll_job_status(self._client, job_id,
-                                           _MAX_JOB_EXECUTION_TIME,
-                                           _POLLING_INTERVAL_IN_SECONDS)
-
+    vertex_client_utils.poll_job_status(job_id, _MAX_JOB_EXECUTION_TIME,
+                                        _POLLING_INTERVAL_IN_SECONDS)
