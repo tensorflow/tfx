@@ -202,6 +202,8 @@ class StepBuilder:
     self._tfx_image = image
     self._image_cmds = image_cmds
     self._beam_pipeline_args = beam_pipeline_args or []
+    if isinstance(self._node.executor_spec, executor_spec.BeamExecutorSpec):
+      self._beam_pipeline_args = self._node.executor_spec.beam_pipeline_args
     self._pipeline_info = pipeline_info
 
   def build(self) -> Dict[str, pipeline_pb2.PipelineTaskSpec]:

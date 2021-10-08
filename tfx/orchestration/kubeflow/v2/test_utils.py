@@ -57,7 +57,9 @@ TEST_RUNTIME_CONFIG = pipeline_pb2.PipelineJob.RuntimeConfig(
 def two_step_pipeline() -> tfx.dsl.Pipeline:
   """Returns a simple 2-step pipeline under test."""
   example_gen = tfx.extensions.google_cloud_big_query.BigQueryExampleGen(
-      query='SELECT * FROM TABLE')
+      query='SELECT * FROM TABLE').with_beam_pipeline_args([
+          '--runner=DataflowRunner',
+      ])
   statistics_gen = tfx.components.StatisticsGen(
       examples=example_gen.outputs['examples'])
   return tfx.dsl.Pipeline(

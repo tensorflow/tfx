@@ -6,6 +6,7 @@
 *   Added support for outputting and encoding `tf.RaggedTensor`s in TFX
     Transform component.
 *   Added conditional for TFX running on KFPv2 (Vertex).
+*   Supported component level beam pipeline args for Vertex (KFPV2DagRunner).
 
 ## Breaking Changes
 

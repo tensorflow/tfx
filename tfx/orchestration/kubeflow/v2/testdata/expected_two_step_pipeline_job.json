@@ -95,7 +95,8 @@
               "tfx.extensions.google_cloud_big_query.example_gen.executor.Executor",
               "--json_serialized_invocation_args",
               "{{$}}",
-              "--project=my-gcp-project"
+              "--project=my-gcp-project",
+              "--runner=DataflowRunner"
             ]
           }
         },

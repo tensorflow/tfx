@@ -130,15 +130,15 @@ class StepBuilderTest(tf.test.TestCase):
             pipeline_pb2.PipelineDeploymentConfig()), deployment_config)
 
   def testBuildFileBasedExampleGen(self):
-    beam_pipeline_args = ['runner=DataflowRunner']
-    example_gen = components.CsvExampleGen(input_base='path/to/data/root')
+    example_gen = components.CsvExampleGen(
+        input_base='path/to/data/root').with_beam_pipeline_args(
+            ['--runner=DataflowRunner'])
     deployment_config = pipeline_pb2.PipelineDeploymentConfig()
     component_defs = {}
     my_builder = step_builder.StepBuilder(
         node=example_gen,
         image='gcr.io/tensorflow/tfx:latest',
         image_cmds=_TEST_CMDS,
-        beam_pipeline_args=beam_pipeline_args,
         deployment_config=deployment_config,
         component_defs=component_defs)
     actual_step_spec = self._sole(my_builder.build())
