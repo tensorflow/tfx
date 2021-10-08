@@ -108,7 +108,6 @@ _query_sample_rate = 0.0001  # Generate a 0.01% random sample.
 
 # Beam args to run data processing on DataflowRunner.
 #
-# TODO(b/151114974): Remove `disk_size_gb` flag after default is increased.
 # TODO(b/156874687): Remove `machine_type` after IP addresses are no longer a
 #                    scaling bottleneck.
 # TODO(b/171733562): Remove `use_runner_v2` once it is the default for Dataflow.
@@ -118,9 +117,9 @@ _query_sample_rate = 0.0001  # Generate a 0.01% random sample.
 #    '--runner=DataflowRunner',
 #    '--temp_location=' + os.path.join('gs://', GCS_BUCKET_NAME, 'tmp'),
 #    '--region=' + GOOGLE_CLOUD_REGION,
+#    '--worker_harness_container_image=' + PIPELINE_IMAGE,
 #
 #    # Temporary overrides of defaults.
-#    '--disk_size_gb=50',
 #    '--machine_type=e2-standard-8',
 #    '--experiments=use_runner_v2',
 # ]

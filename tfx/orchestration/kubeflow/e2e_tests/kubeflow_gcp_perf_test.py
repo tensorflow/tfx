@@ -21,6 +21,7 @@ from absl import logging
 import kfp
 import tensorflow as tf
 
+from tfx import v1 as tfx
 from tfx.dsl.io import fileio
 from tfx.examples.penguin import penguin_kubeflow_gcp
 from tfx.orchestration import data_types
@@ -105,7 +106,6 @@ class KubeflowGcpPerfTest(kubeflow_test_utils.BaseKubeflowTest):
       'regions': [_GCP_REGION],
   }
 
-  # TODO(b/151114974): Remove `disk_size_gb` flag after default is increased.
   # TODO(b/156874687): Remove `machine_type` after IP addresses are no longer a
   #                    scaling bottleneck.
   # TODO(b/171733562): Remove `use_runner_v2` once it is the default for
@@ -115,6 +115,8 @@ class KubeflowGcpPerfTest(kubeflow_test_utils.BaseKubeflowTest):
       '--project=' + _GCP_PROJECT_ID,
       '--temp_location=gs://' + os.path.join(_BUCKET_NAME, 'dataflow', 'tmp'),
       '--region=' + _GCP_REGION,
+      '--worker_harness_container_image=' +
+      'tensorflow/tfx:%s' % tfx.__version__,
 
       # In order not to consume in-use global IP addresses by Dataflow workers,
       # configure workers to not use public IPs. If workers needs access to
@@ -123,7 +125,6 @@ class KubeflowGcpPerfTest(kubeflow_test_utils.BaseKubeflowTest):
       '--no_use_public_ips',
 
       # Temporary overrides of defaults.
-      '--disk_size_gb=50',
       '--machine_type=e2-standard-8',
       '--experiments=use_runner_v2',
   ]

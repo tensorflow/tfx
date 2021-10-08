@@ -53,6 +53,9 @@ _project_id = 'my-gcp-project'
 #   AI Platform: https://cloud.google.com/ml-engine/docs/tensorflow/regions
 _gcp_region = 'us-central1'
 
+# Container image to run Dataflow. Default to TFX container image.
+_pipeline_image = 'tensorflow/tfx:%s' % tfx.__version__
+
 # A dict which contains the training job parameters to be passed to Google
 # Cloud AI Platform. For the full set of parameters supported by Google Cloud AI
 # Platform, refer to
@@ -92,7 +95,6 @@ _ai_platform_serving_args = {
 # Arguments differ according to runner. DataflowRunner is only selected in gcp
 # environment.
 _beam_pipeline_args_by_runner = {
-    # TODO(b/151114974): Remove `disk_size_gb` flag after default is increased.
     # TODO(b/156874687): Remove `machine_type` after IP addresses are no longer
     #                    a scaling bottleneck.
     # TODO(b/171733562): Remove `use_runner_v2` once it is the default for
@@ -102,9 +104,9 @@ _beam_pipeline_args_by_runner = {
         '--project=' + _project_id,
         '--temp_location=' + os.path.join(_pipeline_root, 'tmp'),
         '--region=' + _gcp_region,
+        '--worker_harness_container_image=' + _pipeline_image,
 
         # Temporary overrides of defaults.
-        '--disk_size_gb=50',
         '--machine_type=e2-standard-8',
         '--experiments=use_runner_v2',
     ],

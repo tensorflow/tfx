@@ -20,7 +20,7 @@ import re
 import subprocess
 import tarfile
 import time
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 from absl import logging
 import kfp
@@ -556,14 +556,17 @@ class BaseKubeflowTest(test_case_utils.TfxTest):
   def _pipeline_root(self, pipeline_name: str):
     return os.path.join(self._test_output_dir, pipeline_name)
 
-  def _create_pipeline(self, pipeline_name: str,
-                       components: List[BaseComponent]):
+  def _create_pipeline(self,
+                       pipeline_name: str,
+                       components: List[BaseComponent],
+                       beam_pipeline_args: Optional[List[str]] = None):
     """Creates a pipeline given name and list of components."""
     return tfx_pipeline.Pipeline(
         pipeline_name=pipeline_name,
         pipeline_root=self._pipeline_root(pipeline_name),
         components=components,
         enable_cache=True,
+        beam_pipeline_args=beam_pipeline_args,
     )
 
   def _create_dataflow_pipeline(self,
@@ -571,20 +574,21 @@ class BaseKubeflowTest(test_case_utils.TfxTest):
                                 components: List[BaseComponent],
                                 wait_until_finish_ms: int = 1000 * 60 * 20):
     """Creates a pipeline with Beam DataflowRunner."""
-    pipeline = self._create_pipeline(pipeline_name, components)
-    pipeline.beam_pipeline_args = [
+    beam_pipeline_args = [
         '--runner=TestDataflowRunner',
         '--wait_until_finish_duration=%d' % wait_until_finish_ms,
         '--project=' + self._GCP_PROJECT_ID,
         '--temp_location=' +
         os.path.join(self._pipeline_root(pipeline_name), 'tmp'),
         '--region=' + self._GCP_REGION,
+        '--worker_harness_container_image=' + self.container_image,
 
         # TODO(b/171733562): Remove `use_runner_v2` once it is the default for
         # Dataflow.
         '--experiments=use_runner_v2',
     ]
-    return pipeline
+    return self._create_pipeline(
+        pipeline_name, components, beam_pipeline_args=beam_pipeline_args)
 
   def _get_kubeflow_metadata_config(
       self) -> kubeflow_pb2.KubeflowMetadataConfig:
