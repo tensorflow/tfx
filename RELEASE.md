@@ -41,6 +41,7 @@
     pre-defined schema file. ImportSchemaGen will replace `Importer` with
     simpler syntax and less constraints. You have to pass the file path to the
     schema file instead of the parent directory unlike `Importer`.
+*   Vertex is now enabled in Pusher.
 
 ## Breaking Changes
 
