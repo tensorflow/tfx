@@ -213,3 +213,7 @@ class RuntimeParameter(json_utils.Jsonable):
   def __hash__(self):
     """RuntimeParameter is uniquely identified by its name."""
     return self.name.__hash__()
+
+
+class FinalStatusStr(str):
+  pass

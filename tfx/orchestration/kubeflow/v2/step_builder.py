@@ -15,6 +15,7 @@
 
 import itertools
 from typing import Any, Dict, List, Optional, Tuple
+from absl import logging
 
 from kfp.pipeline_spec import pipeline_spec_pb2 as pipeline_pb2
 from tfx import components
@@ -136,7 +137,8 @@ class StepBuilder:
                enable_cache: bool = False,
                pipeline_info: Optional[data_types.PipelineInfo] = None,
                channel_redirect_map: Optional[Dict[Tuple[str, str],
-                                                   str]] = None):
+                                                   str]] = None,
+               is_exit_handler: bool = False):
     """Creates a StepBuilder object.
 
     A StepBuilder takes in a TFX node object (usually it's a component/resolver/
@@ -171,6 +173,7 @@ class StepBuilder:
         producer component id, output key). This is needed for cases where one
         DSL node is splitted into multiple tasks in pipeline API proto. For
         example, latest blessed model resolver.
+      is_exit_handler: Marking whether the task is for exit handler.
 
     Raises:
       ValueError: On the following two cases:
@@ -186,6 +189,7 @@ class StepBuilder:
     self._inputs = node.inputs
     self._outputs = node.outputs
     self._enable_cache = enable_cache
+    self._is_exit_handler = is_exit_handler
     if channel_redirect_map is None:
       self._channel_redirect_map = {}
     else:
@@ -333,6 +337,16 @@ class StepBuilder:
       if isinstance(value, data_types.RuntimeParameter):
         parameter_utils.attach_parameter(value)
         task_spec.inputs.parameters[name].component_input_parameter = value.name
+      elif isinstance(value, data_types.FinalStatusStr):
+        if not self._is_exit_handler:
+          logging.warning('FinalStatusStr type is only allowed to use in exit'
+                          ' handler. The parameter is ignored.')
+        else:
+          task_final_status = (
+              pipeline_pb2.TaskInputsSpec.InputParameterSpec.TaskFinalStatus())
+          task_final_status.producer_task = 'tfx_dag'
+          (task_spec.inputs.parameters[name].task_final_status.
+           CopyFrom(task_final_status))
       else:
         task_spec.inputs.parameters[name].CopyFrom(
             pipeline_pb2.TaskInputsSpec.InputParameterSpec(

@@ -384,6 +384,33 @@ class StepBuilderTest(tf.test.TestCase):
             'expected_dummy_consumer_with_condition_executor.pbtxt',
             pipeline_pb2.PipelineDeploymentConfig()), deployment_config)
 
+  def testBuildExitHandler(self):
+    task = test_utils.dummy_producer_component(
+        param1=data_types.FinalStatusStr('value1'),
+    )
+    deployment_config = pipeline_pb2.PipelineDeploymentConfig()
+    component_defs = {}
+    my_builder = step_builder.StepBuilder(
+        node=task,
+        image='gcr.io/tensorflow/tfx:latest',
+        deployment_config=deployment_config,
+        component_defs=component_defs,
+        is_exit_handler=True)
+    actual_step_spec = self._sole(my_builder.build())
+    actual_component_def = self._sole(component_defs)
+
+    self.assertProtoEquals(
+        test_utils.get_proto_from_test_data(
+            'expected_dummy_exit_handler_component.pbtxt',
+            pipeline_pb2.ComponentSpec()), actual_component_def)
+    self.assertProtoEquals(
+        test_utils.get_proto_from_test_data(
+            'expected_dummy_exit_handler_task.pbtxt',
+            pipeline_pb2.PipelineTaskSpec()), actual_step_spec)
+    self.assertProtoEquals(
+        test_utils.get_proto_from_test_data(
+            'expected_dummy_exit_handler_executor.pbtxt',
+            pipeline_pb2.PipelineDeploymentConfig()), deployment_config)
 
 if __name__ == '__main__':
   tf.test.main()

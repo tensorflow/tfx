@@ -19,3 +19,4 @@ from tfx.dsl.component.experimental.annotations import OutputArtifact
 from tfx.dsl.component.experimental.annotations import OutputDict
 from tfx.dsl.component.experimental.annotations import Parameter
 from tfx.dsl.component.experimental.decorators import component
+from tfx.dsl.component.experimental.decorators import exit_handler

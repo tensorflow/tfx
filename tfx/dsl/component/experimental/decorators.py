@@ -313,3 +313,7 @@ def component(func: types.FunctionType) -> Callable[..., Any]:
           'EXECUTOR_SPEC': executor_spec_instance,
           '__module__': func.__module__,
       })
+
+
+def exit_handler(func: types.FunctionType) -> Callable[..., Any]:
+  return component(func)

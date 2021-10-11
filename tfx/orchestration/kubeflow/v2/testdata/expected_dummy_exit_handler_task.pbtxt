@@ -1,0 +1,20 @@
+# proto-file: kfp/pipeline_spec/pipeline_spec.proto
+# proto-message: PipelineTaskSpec
+
+task_info {
+  name: "DummyProducerComponent"
+}
+inputs {
+  parameters {
+    key: "param1"
+    value {
+      task_final_status {
+        producer_task: "tfx_dag"
+      }
+    }
+  }
+}
+component_ref {
+  name: "DummyProducerComponent"
+}
+

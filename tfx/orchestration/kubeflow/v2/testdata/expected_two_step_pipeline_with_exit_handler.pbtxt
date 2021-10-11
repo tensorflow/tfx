@@ -55,6 +55,54 @@ deployment_spec {
           }
         }
         fields {
+          key: "DummyProducerComponent_executor"
+          value {
+            struct_value {
+              fields {
+                key: "container"
+                value {
+                  struct_value {
+                    fields {
+                      key: "command"
+                      value {
+                        list_value {
+                          values {
+                            string_value: "producer"
+                          }
+                          values {
+                            string_value: "--output1"
+                          }
+                          values {
+                            string_value: "{{$.outputs.artifacts[\'output1\'].uri}}"
+                          }
+                          values {
+                            string_value: "--param1"
+                          }
+                          values {
+                            string_value: "{{$.inputs.parameters[\'param1\']}}"
+                          }
+                          values {
+                            string_value: "--wrapped-param"
+                          }
+                          values {
+                            string_value: "prefix-{{$.inputs.parameters[\'param1\']}}-suffix"
+                          }
+                        }
+                      }
+                    }
+                    fields {
+                      key: "image"
+                      value {
+                        string_value: "dummy/producer"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+        fields {
           key: "StatisticsGen_executor"
           value {
             struct_value {
@@ -143,6 +191,30 @@ components {
   }
 }
 components {
+  key: "DummyProducerComponent"
+  value {
+    input_definitions {
+      parameters {
+        key: "param1"
+        value {
+          type: STRING
+        }
+      }
+    }
+    output_definitions {
+      artifacts {
+        key: "output1"
+        value {
+          artifact_type {
+            instance_schema: "title: tfx.Model\ntype: object\n"
+          }
+        }
+      }
+    }
+    executor_label: "DummyProducerComponent_executor"
+  }
+}
+components {
   key: "StatisticsGen"
   value {
     input_definitions {
@@ -174,97 +246,134 @@ components {
     executor_label: "StatisticsGen_executor"
   }
 }
+components {
+  key: "tfx_dag"
+  value {
+    dag {
+      tasks {
+        key: "BigQueryExampleGen"
+        value {
+          task_info {
+            name: "BigQueryExampleGen"
+          }
+          inputs {
+            parameters {
+              key: "input_config"
+              value {
+                runtime_value {
+                  constant_value {
+                    string_value: "{\n  \"splits\": [\n    {\n      \"name\": \"single_split\",\n      \"pattern\": \"SELECT * FROM TABLE\"\n    }\n  ]\n}"
+                  }
+                }
+              }
+            }
+            parameters {
+              key: "output_config"
+              value {
+                runtime_value {
+                  constant_value {
+                    string_value: "{\n  \"split_config\": {\n    \"splits\": [\n      {\n        \"hash_buckets\": 2,\n        \"name\": \"train\"\n      },\n      {\n        \"hash_buckets\": 1,\n        \"name\": \"eval\"\n      }\n    ]\n  }\n}"
+                  }
+                }
+              }
+            }
+            parameters {
+              key: "output_data_format"
+              value {
+                runtime_value {
+                  constant_value {
+                    int_value: 6
+                  }
+                }
+              }
+            }
+            parameters {
+              key: "output_file_format"
+              value {
+                runtime_value {
+                  constant_value {
+                    int_value: 5
+                  }
+                }
+              }
+            }
+          }
+          component_ref {
+            name: "BigQueryExampleGen"
+          }
+        }
+      }
+      tasks {
+        key: "StatisticsGen"
+        value {
+          task_info {
+            name: "StatisticsGen"
+          }
+          inputs {
+            parameters {
+              key: "exclude_splits"
+              value {
+                runtime_value {
+                  constant_value {
+                    string_value: "[]"
+                  }
+                }
+              }
+            }
+            artifacts {
+              key: "examples"
+              value {
+                task_output_artifact {
+                  producer_task: "BigQueryExampleGen"
+                  output_artifact_key: "examples"
+                }
+              }
+            }
+          }
+          dependent_tasks: "BigQueryExampleGen"
+          component_ref {
+            name: "StatisticsGen"
+          }
+        }
+      }
+    }
+  }
+}
 root {
   dag {
     tasks {
-      key: "BigQueryExampleGen"
+      key: "DummyProducerComponent"
       value {
         task_info {
-          name: "BigQueryExampleGen"
+          name: "DummyProducerComponent"
         }
         inputs {
           parameters {
-            key: "input_config"
+            key: "param1"
             value {
-              runtime_value {
-                constant_value {
-                  string_value: "{\n  \"splits\": [\n    {\n      \"name\": \"single_split\",\n      \"pattern\": \"SELECT * FROM TABLE\"\n    }\n  ]\n}"
-                }
-              }
-            }
-          }
-          parameters {
-            key: "output_config"
-            value {
-              runtime_value {
-                constant_value {
-                  string_value: "{\n  \"split_config\": {\n    \"splits\": [\n      {\n        \"hash_buckets\": 2,\n        \"name\": \"train\"\n      },\n      {\n        \"hash_buckets\": 1,\n        \"name\": \"eval\"\n      }\n    ]\n  }\n}"
-                }
-              }
-            }
-          }
-          parameters {
-            key: "output_data_format"
-            value {
-              runtime_value {
-                constant_value {
-                  int_value: 6
-                }
-              }
-            }
-          }
-          parameters {
-            key: "output_file_format"
-            value {
-              runtime_value {
-                constant_value {
-                  int_value: 5
-                }
+              task_final_status {
+                producer_task: "tfx_dag"
               }
             }
           }
         }
-        caching_options {
-          enable_cache: true
-        }
+        dependent_tasks: "tfx_dag"
         component_ref {
-          name: "BigQueryExampleGen"
+          name: "DummyProducerComponent"
+        }
+        trigger_policy {
+          strategy: ALL_UPSTREAM_TASKS_COMPLETED
         }
       }
     }
     tasks {
-      key: "StatisticsGen"
+      key: "tfx_dag"
       value {
         task_info {
-          name: "StatisticsGen"
-        }
-        inputs {
-          parameters {
-            key: "exclude_splits"
-            value {
-              runtime_value {
-                constant_value {
-                  string_value: "[]"
-                }
-              }
-            }
-          }
-          artifacts {
-            key: "examples"
-            value {
-              task_output_artifact {
-                producer_task: "BigQueryExampleGen"
-                output_artifact_key: "examples"
-              }
-            }
-          }
-        }
-        dependent_tasks: "BigQueryExampleGen"
-        caching_options {
-          enable_cache: true
+          name: "tfx_dag"
         }
         component_ref {
-          name: "StatisticsGen"
+          name: "tfx_dag"
         }
       }
     }
