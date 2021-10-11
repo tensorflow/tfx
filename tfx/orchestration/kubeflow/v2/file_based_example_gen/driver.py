@@ -15,7 +15,7 @@
 
 import argparse
 import os
-from typing import Any, Dict, List, Optional
+from typing import List
 
 from absl import app
 from absl import logging
@@ -28,7 +28,6 @@ from tfx.dsl.io import fileio
 from tfx.orchestration.kubeflow.v2.container import kubeflow_v2_entrypoint_utils
 from tfx.proto import example_gen_pb2
 from tfx.proto import range_config_pb2
-from tfx.types import artifact
 from tfx.types import artifact_utils
 from tfx.types import standard_component_specs
 from tfx.utils import proto_utils
@@ -36,10 +35,7 @@ from tfx.utils import proto_utils
 from google.protobuf import json_format
 
 
-def _run_driver(exec_properties: Dict[str, Any],
-                outputs_dict: Dict[str, List[artifact.Artifact]],
-                output_metadata_uri: str,
-                name_from_id: Optional[Dict[int, str]] = None) -> None:
+def _run_driver(executor_input: pipeline_spec_pb2.ExecutorInput) -> None:
   """Runs the driver, writing its output as a ExecutorOutput proto.
 
   The main goal of this driver is to calculate the span and fingerprint of input
@@ -50,28 +46,21 @@ def _run_driver(exec_properties: Dict[str, Any],
   pipelines system reads this file and updates MLMD with the new execution
   properties.
 
-
   Args:
-    exec_properties:
-      These are required to contain the following properties:
-      'input_base_uri': A path from which files will be read and their
-        span/fingerprint calculated.
-      'input_config': A json-serialized tfx.proto.example_gen_pb2.InputConfig
-        proto message.
-        See https://www.tensorflow.org/tfx/guide/examplegen for more details.
-      'output_config': A json-serialized tfx.proto.example_gen_pb2.OutputConfig
-        proto message.
-        See https://www.tensorflow.org/tfx/guide/examplegen for more details.
-    outputs_dict: The mapping of the output artifacts.
-    output_metadata_uri: A path at which an ExecutorOutput message will be
-      written with updated execution properties and output artifacts. The CAIP
-      Pipelines service will update the task's properties and artifacts prior to
-      running the executor.
-    name_from_id: Optional. Mapping from the converted int-typed id to str-typed
-      runtime artifact name, which should be unique.
+    executor_input: pipeline_spec_pb2.ExecutorInput that contains TFX artifacts
+      and exec_properties information.
   """
-  if name_from_id is None:
-    name_from_id = {}
+
+  exec_properties = kubeflow_v2_entrypoint_utils.parse_execution_properties(
+      executor_input.inputs.parameters)
+  name_from_id = {}
+  outputs_dict = kubeflow_v2_entrypoint_utils.parse_raw_artifact_dict(
+      executor_input.outputs.artifacts, name_from_id)
+  # A path at which an ExecutorOutput message will be
+  # written with updated execution properties and output artifacts. The CAIP
+  # Pipelines service will update the task's properties and artifacts prior to
+  # running the executor.
+  output_metadata_uri = executor_input.outputs.output_file
 
   logging.set_verbosity(logging.INFO)
   logging.info('exec_properties = %s\noutput_metadata_uri = %s',
@@ -121,12 +110,14 @@ def _run_driver(exec_properties: Dict[str, Any],
 
   # Log the output metadata file
   output_metadata = pipeline_spec_pb2.ExecutorOutput()
+  output_metadata.parameters[utils.SPAN_PROPERTY_NAME].int_value = span
   output_metadata.parameters[
       utils.FINGERPRINT_PROPERTY_NAME].string_value = fingerprint
-  output_metadata.parameters[utils.SPAN_PROPERTY_NAME].string_value = str(span)
+  if version is not None:
+    output_metadata.parameters[utils.VERSION_PROPERTY_NAME].int_value = version
   output_metadata.parameters[
       standard_component_specs
-      .INPUT_CONFIG_KEY].string_value = json_format.MessageToJson(input_config)
+      .INPUT_CONFIG_KEY].string_value = proto_utils.proto_to_json(input_config)
   output_metadata.artifacts[
       standard_component_specs.EXAMPLES_KEY].artifacts.add().CopyFrom(
           kubeflow_v2_entrypoint_utils.to_runtime_artifact(
@@ -159,15 +150,7 @@ def main(args):
       executor_input,
       ignore_unknown_fields=True)
 
-  name_from_id = {}
-
-  exec_properties = kubeflow_v2_entrypoint_utils.parse_execution_properties(
-      executor_input.inputs.parameters)
-  outputs_dict = kubeflow_v2_entrypoint_utils.parse_raw_artifact_dict(
-      executor_input.outputs.artifacts, name_from_id)
-
-  _run_driver(exec_properties, outputs_dict, executor_input.outputs.output_file,
-              name_from_id)
+  _run_driver(executor_input)
 
 
 if __name__ == '__main__':

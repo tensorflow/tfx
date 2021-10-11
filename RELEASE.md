@@ -21,6 +21,9 @@
 ## Bug Fixes and Other Changes
 *   Depends on `google-cloud-aiplatform>=1.5.0,<2`.
 
+*   Fixed FileBasedExampleGen driver for Kubeflow v2 (Vertex). Driver can
+    update exec_properties for its executor now, which enables {SPAN} feature.
+
 ## Documentation Updates
 
 # Version 1.3.0
