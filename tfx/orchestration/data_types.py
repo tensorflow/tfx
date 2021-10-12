@@ -16,6 +16,7 @@
 from typing import Any, Dict, List, Optional, Type, Union
 
 from tfx import types
+from tfx.dsl.placeholder import placeholder as ph
 from tfx.utils import json_utils
 
 # Regex pattern of RuntimeParameter.
@@ -104,7 +105,7 @@ class PipelineInfo:
 
   def __init__(self,
                pipeline_name: str,
-               pipeline_root: str,
+               pipeline_root: Union[str, ph.Placeholder],
                run_id: Optional[str] = None):
     self.pipeline_name = pipeline_name
     self.pipeline_root = pipeline_root

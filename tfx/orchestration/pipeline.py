@@ -14,11 +14,12 @@
 """Definition and related classes for TFX pipeline."""
 
 import enum
-from typing import List, Optional, cast
+from typing import List, Optional, Union, cast
 
 from tfx.dsl.compiler import constants
 from tfx.dsl.components.base import base_node
 from tfx.dsl.components.base import executor_spec
+from tfx.dsl.placeholder import placeholder as ph
 from tfx.orchestration import data_types
 from tfx.orchestration import metadata
 from tfx.types import channel_utils
@@ -91,7 +92,7 @@ class Pipeline:
 
   def __init__(self,
                pipeline_name: str,
-               pipeline_root: str,
+               pipeline_root: Union[str, ph.Placeholder],
                metadata_connection_config: Optional[
                    metadata.ConnectionConfigType] = None,
                components: Optional[List[base_node.BaseNode]] = None,
@@ -104,7 +105,10 @@ class Pipeline:
 
     Args:
       pipeline_name: Name of the pipeline;
-      pipeline_root: Path to root directory of the pipeline;
+      pipeline_root: Path to root directory of the pipeline. This will most
+        often be just a string. Some orchestrators may have limited support for
+        constructing this from a Placeholder, e.g. a RuntimeInfoPlaceholder that
+        refers to fields from the platform config.
       metadata_connection_config: The config to connect to ML metadata.
       components: Optional list of components to construct the pipeline.
       enable_cache: Whether or not cache is enabled for this run.

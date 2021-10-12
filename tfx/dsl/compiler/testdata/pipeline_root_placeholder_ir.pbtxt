@@ -1,0 +1,163 @@
+pipeline_info {
+  id: "pipeline_root_placeholder"
+}
+nodes {
+  pipeline_node {
+    node_info {
+      type {
+        name: "tfx.components.example_gen.csv_example_gen.component.CsvExampleGen"
+      }
+      id: "CsvExampleGen"
+    }
+    contexts {
+      contexts {
+        type {
+          name: "pipeline"
+        }
+        name {
+          field_value {
+            string_value: "pipeline_root_placeholder"
+          }
+        }
+      }
+      contexts {
+        type {
+          name: "pipeline_run"
+        }
+        name {
+          runtime_parameter {
+            name: "pipeline-run-id"
+            type: STRING
+          }
+        }
+      }
+      contexts {
+        type {
+          name: "node"
+        }
+        name {
+          field_value {
+            string_value: "pipeline_root_placeholder.CsvExampleGen"
+          }
+        }
+      }
+    }
+    outputs {
+      outputs {
+        key: "examples"
+        value {
+          artifact_spec {
+            type {
+              name: "Examples"
+              properties {
+                key: "span"
+                value: INT
+              }
+              properties {
+                key: "split_names"
+                value: STRING
+              }
+              properties {
+                key: "version"
+                value: INT
+              }
+            }
+          }
+        }
+      }
+    }
+    parameters {
+      parameters {
+        key: "input_base"
+        value {
+          field_value {
+            string_value: "tfx_root/data_path"
+          }
+        }
+      }
+      parameters {
+        key: "input_config"
+        value {
+          field_value {
+            string_value: "{\n  \"splits\": [\n    {\n      \"name\": \"single_split\",\n      \"pattern\": \"*\"\n    }\n  ]\n}"
+          }
+        }
+      }
+      parameters {
+        key: "output_config"
+        value {
+          field_value {
+            string_value: "{\n  \"split_config\": {\n    \"splits\": [\n      {\n        \"hash_buckets\": 2,\n        \"name\": \"train\"\n      },\n      {\n        \"hash_buckets\": 1,\n        \"name\": \"eval\"\n      }\n    ]\n  }\n}"
+          }
+        }
+      }
+      parameters {
+        key: "output_data_format"
+        value {
+          field_value {
+            int_value: 6
+          }
+        }
+      }
+      parameters {
+        key: "output_file_format"
+        value {
+          field_value {
+            int_value: 5
+          }
+        }
+      }
+    }
+    execution_options {
+      caching_options {
+        enable_cache: true
+      }
+    }
+  }
+}
+runtime_spec {
+  pipeline_root {
+    placeholder {
+      operator {
+        proto_op {
+          expression {
+            placeholder {
+              type: RUNTIME_INFO
+              key: "platform_config"
+            }
+          }
+          proto_field_path: ".base_dir"
+        }
+      }
+    }
+  }
+  pipeline_run_id {
+    runtime_parameter {
+      name: "pipeline-run-id"
+      type: STRING
+    }
+  }
+}
+execution_mode: SYNC
+deployment_config {
+  [type.googleapis.com/tfx.orchestration.IntermediateDeploymentConfig] {
+    executor_specs {
+      key: "CsvExampleGen"
+      value {
+        [type.googleapis.com/tfx.orchestration.executable_spec.BeamExecutableSpec] {
+          python_executor_spec {
+            class_path: "tfx.components.example_gen.csv_example_gen.executor.Executor"
+          }
+        }
+      }
+    }
+    custom_driver_specs {
+      key: "CsvExampleGen"
+      value {
+        [type.googleapis.com/tfx.orchestration.executable_spec.PythonClassExecutableSpec] {
+          class_path: "tfx.components.example_gen.driver.FileBasedDriver"
+        }
+      }
+    }
+  }
+}
