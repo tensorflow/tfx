@@ -332,7 +332,7 @@ message NodeExecutionOptions {
     bool reuse_artifacts = 1;
   }
   CachingOptions caching_options = 1;
-  // Attached by compiler or platform-level tooling.
+  // Attached by platform-level tooling.
   oneof partial_run_option {
     // If set, this node will be run as part of the partial run.
     Run run = 2;
@@ -362,7 +362,7 @@ message PipelineNode {
   NodeExecutionOptions execution_options = 9;
 }
 
-// Settings used for snapshot during partial run. This is set by the compiler.
+// Settings used for snapshot during partial run.
 // One of the nodes will call `partial_run_utils.snapshot(...)`, allowing this
 // partial run to reuse artifacts from a previous pipeline run.
 message SnapshotSettings {
@@ -459,4 +459,23 @@ message IntermediateDeploymentConfig {
   google.protobuf.Any pipeline_level_platform_config = 4;
   // Connection config to ML-metadata.
   google.protobuf.Any metadata_connection_config = 5;
+}
+
+// Pipeline-level specifications for partial run that are exposed to users.
+message PartialRun {
+  // Source node ids.
+  // Only run nodes that are reachable downstream from from_nodes (inclusive).
+  repeated string from_nodes = 1;
+  // Sink node ids.
+  // Only run nodes that are reachable upstream from to_nodes (inclusive).
+  repeated string to_nodes = 2;
+  // Settings used for snapshot during partial run.
+  SnapshotSettings snapshot_settings = 3;
+}
+
+// This is passed to the DAG runner when the pipeline is run.
+// It is not part of the Pipeline IR.
+message RunnerOptions {
+  // Pipeline-level specifications for partial run.
+  PartialRun partial_run = 1;
 }
