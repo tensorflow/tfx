@@ -27,7 +27,7 @@ _CONNECTION_ERROR_RETRY_LIMIT = 5
 
 # Keys for AIP training config.
 PROJECT_CONFIG_KEY = 'project_id'
-TRAINING_INPUT_CONFIG_KEY = 'training_input'
+TRAINING_JOB_CONFIG_KEY = 'training_job'
 JOB_ID_CONFIG_KEY = 'job_id'
 LABELS_CONFIG_KEY = 'labels'
 CONFIG_KEY = 'aip_training_config'
@@ -46,23 +46,21 @@ class AiPlatformTrainingExecutor(base_executor.BaseExecutor):
 
     assert aip_config, 'AIP training config is not found.'
 
-    training_input = aip_config.pop(TRAINING_INPUT_CONFIG_KEY)
+    training_job = aip_config.pop(TRAINING_JOB_CONFIG_KEY)
     job_id = aip_config.pop(JOB_ID_CONFIG_KEY)
-    labels = aip_config.pop(LABELS_CONFIG_KEY)
     project = aip_config.pop(PROJECT_CONFIG_KEY)
 
     # Resolve parameters.
-    training_input['args'] = container_common._resolve_container_command_line(  # pylint: disable=protected-access
-        cmd_args=training_input['args'],
-        input_dict=input_dict,
-        output_dict=output_dict,
-        exec_properties=exec_properties)
+    training_job['training_input'][
+        'args'] = container_common._resolve_container_command_line(  # pylint: disable=protected-access
+            cmd_args=training_job['training_input']['args'],
+            input_dict=input_dict,
+            output_dict=output_dict,
+            exec_properties=exec_properties)
 
     job_id = job_id or 'tfx_{}'.format(
         datetime.datetime.now().strftime('%Y%m%d%H%M%S'))
     # Invoke CMLE job
-    runner._launch_aip_training(  # pylint: disable=protected-access
-        job_id=job_id,
+    runner._launch_cloud_training(  # pylint: disable=protected-access
         project=project,
-        training_input=training_input,
-        job_labels=labels)
+        training_job=training_job)

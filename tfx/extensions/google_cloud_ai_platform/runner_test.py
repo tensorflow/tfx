@@ -19,14 +19,12 @@ import os
 from typing import Any, Dict
 from unittest import mock
 
-
 from google.auth import credentials as auth_credentials
 from google.cloud import aiplatform
 from google.cloud.aiplatform import initializer
 from google.cloud.aiplatform.compat.types import endpoint
 from google.cloud.aiplatform_v1.services.endpoint_service import (
-    client as endpoint_service_client,
-)
+    client as endpoint_service_client)
 from google.cloud.aiplatform_v1beta1.types.custom_job import CustomJob
 from google.cloud.aiplatform_v1beta1.types.job_state import JobState
 from googleapiclient import errors
@@ -56,7 +54,7 @@ class RunnerTest(tf.test.TestCase):
     }
     self._job_id = 'my_jobid'
     # Dict format of exec_properties. custom_config needs to be serialized
-    # before being passed into start_aip_training function.
+    # before being passed into start_cloud_training function.
     self._exec_properties = {
         'custom_config': {
             executor.TRAINING_ARGS_KEY: self._training_inputs,
@@ -99,16 +97,15 @@ class RunnerTest(tf.test.TestCase):
 
   @mock.patch(
       'tfx.extensions.google_cloud_ai_platform.training_clients.discovery')
-  def testStartAIPTraining(self, mock_discovery):
+  def testStartCloudTraining(self, mock_discovery):
     mock_discovery.build.return_value = self._mock_api_client
     self._setUpTrainingMocks()
 
     class_path = 'foo.bar.class'
 
-    runner.start_aip_training(self._inputs, self._outputs,
-                              self._serialize_custom_config_under_test(),
-                              class_path,
-                              self._training_inputs, None)
+    runner.start_cloud_training(self._inputs, self._outputs,
+                                self._serialize_custom_config_under_test(),
+                                class_path, self._training_inputs, None)
 
     self._mock_create.assert_called_with(
         body=mock.ANY, parent='projects/{}'.format(self._project_id))
@@ -126,19 +123,19 @@ class RunnerTest(tf.test.TestCase):
                     runner._CONTAINER_COMMAND + [
                         '--executor_class_path', class_path, '--inputs', '{}',
                         '--outputs', '{}', '--exec-properties',
-                        '{"custom_config": '
-                        '"{\\"ai_platform_training_args\\": {\\"project\\": \\"12345\\"'
-                        '}}"}'
+                        ('{"custom_config": '
+                         '"{\\"ai_platform_training_args\\": {\\"project\\": \\"12345\\"'
+                         '}}"}')
                     ],
             },
-        }, body['trainingInput'])
-    self.assertStartsWith(body['jobId'], 'tfx_')
+        }, body['training_input'])
+    self.assertStartsWith(body['job_id'], 'tfx_')
     self._mock_get.execute.assert_called_with()
     self._mock_create_request.execute.assert_called_with()
 
   @mock.patch(
       'tfx.extensions.google_cloud_ai_platform.training_clients.discovery')
-  def testStartAIPTrainingWithUserContainer(self, mock_discovery):
+  def testStartCloudTrainingWithUserContainer(self, mock_discovery):
     mock_discovery.build.return_value = self._mock_api_client
     self._setUpTrainingMocks()
 
@@ -146,10 +143,9 @@ class RunnerTest(tf.test.TestCase):
 
     self._training_inputs['masterConfig'] = {'imageUri': 'my-custom-image'}
     self._exec_properties['custom_config'][executor.JOB_ID_KEY] = self._job_id
-    runner.start_aip_training(self._inputs, self._outputs,
-                              self._serialize_custom_config_under_test(),
-                              class_path,
-                              self._training_inputs, self._job_id)
+    runner.start_cloud_training(self._inputs, self._outputs,
+                                self._serialize_custom_config_under_test(),
+                                class_path, self._training_inputs, self._job_id)
 
     self._mock_create.assert_called_with(
         body=mock.ANY, parent='projects/{}'.format(self._project_id))
@@ -164,31 +160,30 @@ class RunnerTest(tf.test.TestCase):
                     runner._CONTAINER_COMMAND + [
                         '--executor_class_path', class_path, '--inputs', '{}',
                         '--outputs', '{}', '--exec-properties',
-                        '{"custom_config": '
-                        '"{\\"ai_platform_training_args\\": '
-                        '{\\"masterConfig\\": {\\"imageUri\\": \\"my-custom-image\\"}, '
-                        '\\"project\\": \\"12345\\"}, '
-                        '\\"ai_platform_training_job_id\\": \\"my_jobid\\"}"}'
+                        ('{"custom_config": '
+                         '"{\\"ai_platform_training_args\\": '
+                         '{\\"masterConfig\\": {\\"imageUri\\": \\"my-custom-image\\"}, '
+                         '\\"project\\": \\"12345\\"}, '
+                         '\\"ai_platform_training_job_id\\": \\"my_jobid\\"}"}')
                     ],
             }
-        }, body['trainingInput'])
-    self.assertEqual(body['jobId'], 'my_jobid')
+        }, body['training_input'])
+    self.assertEqual(body['job_id'], 'my_jobid')
     self._mock_get.execute.assert_called_with()
     self._mock_create_request.execute.assert_called_with()
 
-  @mock.patch(
-      'tfx.extensions.google_cloud_ai_platform.training_clients.gapic')
-  def testStartAIPTraining_Vertex(self, mock_gapic):
+  @mock.patch('tfx.extensions.google_cloud_ai_platform.training_clients.gapic')
+  def testStartCloudTraining_Vertex(self, mock_gapic):
     mock_gapic.JobServiceClient.return_value = self._mock_api_client
     self._setUpVertexTrainingMocks()
 
     class_path = 'foo.bar.class'
     region = 'us-central1'
 
-    runner.start_aip_training(self._inputs, self._outputs,
-                              self._serialize_custom_config_under_test(),
-                              class_path,
-                              self._training_inputs, None, True, region)
+    runner.start_cloud_training(self._inputs, self._outputs,
+                                self._serialize_custom_config_under_test(),
+                                class_path, self._training_inputs, None, True,
+                                region)
 
     self._mock_create.assert_called_with(
         parent='projects/{}/locations/{}'.format(self._project_id, region),
@@ -200,46 +195,43 @@ class RunnerTest(tf.test.TestCase):
         version_utils.get_image_version())
     self.assertDictContainsSubset(
         {
-            'worker_pool_specs': [
-                {
-                    'container_spec': {
-                        'image_uri':
-                            default_image,
-                        'command':
-                            runner._CONTAINER_COMMAND + [
-                                '--executor_class_path', class_path, '--inputs',
-                                '{}', '--outputs', '{}', '--exec-properties',
-                                '{"custom_config": '
-                                '"{\\"ai_platform_training_args\\": '
-                                '{\\"project\\": \\"12345\\"'
-                                '}}"}'
-                            ],
-                    },
+            'worker_pool_specs': [{
+                'container_spec': {
+                    'image_uri':
+                        default_image,
+                    'command':
+                        runner._CONTAINER_COMMAND + [
+                            '--executor_class_path', class_path, '--inputs',
+                            '{}', '--outputs', '{}', '--exec-properties',
+                            ('{"custom_config": '
+                             '"{\\"ai_platform_training_args\\": '
+                             '{\\"project\\": \\"12345\\"'
+                             '}}"}')
+                        ],
                 },
-            ],
+            },],
         }, body['job_spec'])
     self.assertStartsWith(body['display_name'], 'tfx_')
     self._mock_get.assert_called_with(name='vertex_job_study_id')
 
-  @mock.patch(
-      'tfx.extensions.google_cloud_ai_platform.training_clients.gapic')
-  def testStartAIPTrainingWithUserContainer_Vertex(self, mock_gapic):
+  @mock.patch('tfx.extensions.google_cloud_ai_platform.training_clients.gapic')
+  def testStartCloudTrainingWithUserContainer_Vertex(self, mock_gapic):
     mock_gapic.JobServiceClient.return_value = self._mock_api_client
     self._setUpVertexTrainingMocks()
 
     class_path = 'foo.bar.class'
 
-    self._training_inputs['worker_pool_specs'] = [
-        {
-            'container_spec': {'image_uri': 'my-custom-image'}
+    self._training_inputs['worker_pool_specs'] = [{
+        'container_spec': {
+            'image_uri': 'my-custom-image'
         }
-    ]
+    }]
     self._exec_properties['custom_config'][executor.JOB_ID_KEY] = self._job_id
     region = 'us-central2'
-    runner.start_aip_training(self._inputs, self._outputs,
-                              self._serialize_custom_config_under_test(),
-                              class_path,
-                              self._training_inputs, self._job_id, True, region)
+    runner.start_cloud_training(self._inputs, self._outputs,
+                                self._serialize_custom_config_under_test(),
+                                class_path, self._training_inputs, self._job_id,
+                                True, region)
 
     self._mock_create.assert_called_with(
         parent='projects/{}/locations/{}'.format(self._project_id, region),
@@ -248,30 +240,95 @@ class RunnerTest(tf.test.TestCase):
     body = kwargs['custom_job']
     self.assertDictContainsSubset(
         {
-            'worker_pool_specs': [
-                {
-                    'container_spec': {
-                        'image_uri':
-                            'my-custom-image',
-                        'command':
-                            runner._CONTAINER_COMMAND + [
-                                '--executor_class_path', class_path,
-                                '--inputs', '{}',
-                                '--outputs', '{}', '--exec-properties',
-                                '{"custom_config": '
-                                '"{\\"ai_platform_training_args\\": '
-                                '{\\"project\\": \\"12345\\", '
-                                '\\"worker_pool_specs\\": '
-                                '[{\\"container_spec\\": '
-                                '{\\"image_uri\\": \\"my-custom-image\\"}}]}, '
-                                '\\"ai_platform_training_job_id\\": '
-                                '\\"my_jobid\\"}"}'
-                            ],
-                    },
+            'worker_pool_specs': [{
+                'container_spec': {
+                    'image_uri':
+                        'my-custom-image',
+                    'command':
+                        runner._CONTAINER_COMMAND + [
+                            '--executor_class_path', class_path, '--inputs',
+                            '{}', '--outputs', '{}', '--exec-properties',
+                            ('{"custom_config": '
+                             '"{\\"ai_platform_training_args\\": '
+                             '{\\"project\\": \\"12345\\", '
+                             '\\"worker_pool_specs\\": '
+                             '[{\\"container_spec\\": '
+                             '{\\"image_uri\\": \\"my-custom-image\\"}}]}, '
+                             '\\"ai_platform_training_job_id\\": '
+                             '\\"my_jobid\\"}"}')
+                        ],
                 },
-            ],
+            },],
         }, body['job_spec'])
     self.assertEqual(body['display_name'], 'my_jobid')
+    self._mock_get.assert_called_with(name='vertex_job_study_id')
+
+  @mock.patch('tfx.extensions.google_cloud_ai_platform.training_clients.gapic')
+  def testStartCloudTrainingWithVertexCustomJob(self, mock_gapic):
+    mock_gapic.JobServiceClient.return_value = self._mock_api_client
+    self._setUpVertexTrainingMocks()
+
+    class_path = 'foo.bar.class'
+    expected_encryption_spec = {
+        'kms_key_name': 'my_kmskey',
+    }
+    user_provided_labels = {
+        'l1': 'v1',
+        'l2': 'v2',
+    }
+
+    self._training_inputs['display_name'] = 'valid_name'
+    self._training_inputs['job_spec'] = {
+        'worker_pool_specs': [{
+            'container_spec': {
+                'image_uri': 'my-custom-image'
+            }
+        }]
+    }
+    self._training_inputs['labels'] = user_provided_labels
+    self._training_inputs['encryption_spec'] = expected_encryption_spec
+    self._exec_properties['custom_config'][executor.JOB_ID_KEY] = self._job_id
+    region = 'us-central2'
+    runner.start_cloud_training(self._inputs, self._outputs,
+                                self._serialize_custom_config_under_test(),
+                                class_path, self._training_inputs, self._job_id,
+                                True, region)
+
+    self._mock_create.assert_called_with(
+        parent='projects/{}/locations/{}'.format(self._project_id, region),
+        custom_job=mock.ANY)
+    kwargs = self._mock_create.call_args[1]
+    body = kwargs['custom_job']
+    self.assertDictContainsSubset(
+        {
+            'worker_pool_specs': [{
+                'container_spec': {
+                    'image_uri':
+                        'my-custom-image',
+                    'command':
+                        runner._CONTAINER_COMMAND + [
+                            '--executor_class_path', class_path, '--inputs',
+                            '{}', '--outputs', '{}', '--exec-properties',
+                            ('{"custom_config": '
+                             '"{\\"ai_platform_training_args\\": '
+                             '{\\"display_name\\": \\"valid_name\\", '
+                             '\\"encryption_spec\\": {\\"kms_key_name\\": '
+                             '\\"my_kmskey\\"}, \\"job_spec\\": '
+                             '{\\"worker_pool_specs\\": '
+                             '[{\\"container_spec\\": '
+                             '{\\"image_uri\\": \\"my-custom-image\\"}}]}, '
+                             '\\"labels\\": {\\"l1\\": \\"v1\\", '
+                             '\\"l2\\": \\"v2\\"}, '
+                             '\\"project\\": \\"12345\\"}, '
+                             '\\"ai_platform_training_job_id\\": '
+                             '\\"my_jobid\\"}"}')
+                        ],
+                },
+            },],
+        }, body['job_spec'])
+    self.assertEqual(body['display_name'], 'valid_name')
+    self.assertDictEqual(body['encryption_spec'], expected_encryption_spec)
+    self.assertDictContainsSubset(user_provided_labels, body['labels'])
     self._mock_get.assert_called_with(name='vertex_job_study_id')
 
   def _setUpPredictionMocks(self):
@@ -319,18 +376,17 @@ class RunnerTest(tf.test.TestCase):
     self._mock_create_client = mock.Mock()
     initializer.global_config.create_client = self._mock_create_client
     self._mock_create_client.return_value = mock.Mock(
-        spec=endpoint_service_client.EndpointServiceClient
-    )
+        spec=endpoint_service_client.EndpointServiceClient)
 
     self._mock_get_endpoint = mock.Mock()
     endpoint_service_client.EndpointServiceClient.get_endpoint = self._mock_get_endpoint
     self._mock_get_endpoint.return_value = endpoint.Endpoint(
-        display_name=self._endpoint_name,
-    )
+        display_name=self._endpoint_name,)
 
-    aiplatform.init(project=self._project_id, location=None,
-                    credentials=mock.Mock(
-                        spec=auth_credentials.AnonymousCredentials()))
+    aiplatform.init(
+        project=self._project_id,
+        location=None,
+        credentials=mock.Mock(spec=auth_credentials.AnonymousCredentials()))
 
     self._mock_endpoint = aiplatform.Endpoint(
         endpoint_name='projects/{}/locations/us-central1/endpoints/1234'.format(
@@ -374,7 +430,8 @@ class RunnerTest(tf.test.TestCase):
               self._serving_path,
           'runtime_version':
               prediction_clients._get_tf_runtime_version(tf.__version__),
-          'python_version': '3.7',
+          'python_version':
+              '3.7',
           'labels':
               self._job_labels
       }
@@ -430,13 +487,9 @@ class RunnerTest(tf.test.TestCase):
     self._mock_endpoint_create.assert_called_with(
         **expected_endpoint_create_body)
 
-    self._mock_model_upload.assert_called_with(
-        **expected_model_upload_body
-    )
+    self._mock_model_upload.assert_called_with(**expected_model_upload_body)
 
-    self._mock_model_deploy.assert_called_with(
-        **expected_model_deploy_body
-    )
+    self._mock_model_deploy.assert_called_with(**expected_model_deploy_body)
 
     self._mock_endpoint_list.assert_called_with(
         filter='display_name="{}"'.format(self._endpoint_name))
@@ -568,7 +621,8 @@ class RunnerTest(tf.test.TestCase):
             'custom_machine_type',
         'runtime_version':
             prediction_clients._get_tf_runtime_version(tf.__version__),
-        'python_version': '3.7',
+        'python_version':
+            '3.7',
         'labels':
             self._job_labels,
     }
@@ -782,8 +836,7 @@ class RunnerTest(tf.test.TestCase):
     self._mock_create_client = mock.Mock()
     initializer.global_config.create_client = self._mock_create_client
     self._mock_create_client.return_value = mock.Mock(
-        spec=endpoint_service_client.EndpointServiceClient
-    )
+        spec=endpoint_service_client.EndpointServiceClient)
 
     self._mock_get_endpoint = mock.Mock()
     endpoint_service_client.EndpointServiceClient.get_endpoint = self._mock_get_endpoint
@@ -809,7 +862,8 @@ class RunnerTest(tf.test.TestCase):
     self._mock_list_models = mock.Mock()
     self._mock_list_models.return_value = [
         endpoint.DeployedModel(
-            display_name=self._model_name, id=self._deployed_model_id)]
+            display_name=self._model_name, id=self._deployed_model_id)
+    ]
     self._mock_endpoint.list_models = self._mock_list_models
 
     self._ai_platform_serving_args_vertex = {
@@ -840,19 +894,18 @@ class RunnerTest(tf.test.TestCase):
     self._mock_create_client = mock.Mock()
     initializer.global_config.create_client = self._mock_create_client
     self._mock_create_client.return_value = mock.Mock(
-        spec=endpoint_service_client.EndpointServiceClient
-    )
+        spec=endpoint_service_client.EndpointServiceClient)
 
     self._mock_get_endpoint = mock.Mock()
     endpoint_service_client.EndpointServiceClient.get_endpoint = (
         self._mock_get_endpoint)
     self._mock_get_endpoint.return_value = endpoint.Endpoint(
-        display_name=self._endpoint_name,
-    )
+        display_name=self._endpoint_name,)
 
-    aiplatform.init(project=self._project_id, location=None,
-                    credentials=mock.Mock(
-                        spec=auth_credentials.AnonymousCredentials()))
+    aiplatform.init(
+        project=self._project_id,
+        location=None,
+        credentials=mock.Mock(spec=auth_credentials.AnonymousCredentials()))
 
     self._mock_endpoint = aiplatform.Endpoint(
         endpoint_name='projects/{}/locations/us-central1/endpoints/1234'.format(

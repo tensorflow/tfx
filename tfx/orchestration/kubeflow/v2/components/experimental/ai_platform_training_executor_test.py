@@ -44,31 +44,38 @@ class AiPlatformTrainingExecutorTest(tf.test.TestCase):
     model_artifact.uri = _MODEL_LOCATION
     self._outputs = {'model': [model_artifact]}
 
-    training_input = {
-        'scaleTier':
-            'CUSTOM',
-        'region':
-            'us-central1',
-        'masterType': 'n1-standard-8',
-        'masterConfig': {
-            'imageUri': 'gcr.io/my-project/caip-training-test:latest'
+    training_job = {
+        'job_id': self._job_id,
+        'training_input': {
+            'scaleTier':
+                'CUSTOM',
+            'region':
+                'us-central1',
+            'masterType':
+                'n1-standard-8',
+            'masterConfig': {
+                'imageUri': 'gcr.io/my-project/caip-training-test:latest'
+            },
+            'workerType':
+                'n1-standard-8',
+            'workerCount':
+                8,
+            'workerConfig': {
+                'imageUri': 'gcr.io/my-project/caip-training-test:latest'
+            },
+            'args': [
+                '--examples',
+                placeholders.InputUriPlaceholder('examples'), '--n-steps',
+                placeholders.InputValuePlaceholder('n_step'), '--model-dir',
+                placeholders.OutputUriPlaceholder('model')
+            ]
         },
-        'workerType': 'n1-standard-8',
-        'workerCount': 8,
-        'workerConfig': {
-            'imageUri': 'gcr.io/my-project/caip-training-test:latest'
-        },
-        'args': [
-            '--examples',
-            placeholders.InputUriPlaceholder('examples'), '--n-steps',
-            placeholders.InputValuePlaceholder('n_step'), '--model-dir',
-            placeholders.OutputUriPlaceholder('model')
-        ]
+        'labels': self._labels,
     }
 
     aip_training_config = {
         ai_platform_training_executor.PROJECT_CONFIG_KEY: self._project_id,
-        ai_platform_training_executor.TRAINING_INPUT_CONFIG_KEY: training_input,
+        ai_platform_training_executor.TRAINING_JOB_CONFIG_KEY: training_job,
         ai_platform_training_executor.JOB_ID_CONFIG_KEY: self._job_id,
         ai_platform_training_executor.LABELS_CONFIG_KEY: self._labels,
     }
@@ -80,15 +87,15 @@ class AiPlatformTrainingExecutorTest(tf.test.TestCase):
             100
     }
 
-    resolved_training_input = copy.deepcopy(training_input)
+    resolved_training_input = copy.deepcopy(training_job['training_input'])
     resolved_training_input['args'] = [
         '--examples', _EXAMPLE_LOCATION, '--n-steps', '100', '--model-dir',
         _MODEL_LOCATION
     ]
 
     self._expected_job_spec = {
-        'jobId': self._job_id,
-        'trainingInput': resolved_training_input,
+        'job_id': self._job_id,
+        'training_input': resolved_training_input,
         'labels': self._labels,
     }
 

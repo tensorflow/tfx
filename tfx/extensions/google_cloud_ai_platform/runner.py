@@ -14,7 +14,6 @@
 """Helper class to start TFX training jobs on AI Platform."""
 # TODO(b/168926785): Consider to move some methods to a utility file.
 
-
 import time
 from typing import Any, Dict, List, Optional
 
@@ -46,22 +45,19 @@ DEFAULT_ENDPOINT = 'https://ml.googleapis.com'
 _DEFAULT_API_VERSION = 'v1'
 
 
-def _launch_aip_training(
-    job_id: str,
-    project: str,
-    training_input: Dict[str, Any],
-    job_labels: Optional[Dict[str, str]] = None,
-    enable_vertex: Optional[bool] = False,
-    vertex_region: Optional[str] = None) -> None:
-  """Launches and monitors a AIP custom training job.
+def _launch_cloud_training(project: str,
+                           training_job: Dict[str, Any],
+                           enable_vertex: Optional[bool] = False,
+                           vertex_region: Optional[str] = None) -> None:
+  """Launches and monitors a Cloud custom training job.
 
   Args:
-    job_id: The job ID of the AI Platform training job.
     project: The GCP project under which the training job will be executed.
-    training_input: Training input argument for AI Platform training job. See
-        https://cloud.google.com/ml-engine/reference/rest/v1/projects.jobs#TrainingInput
-        for the detailed schema.
-    job_labels: The dict of labels that will be attached to this job.
+    training_job: Training job argument for AI Platform training job. See
+      https://cloud.google.com/vertex-ai/docs/reference/rest/v1/projects.locations.customJobs#CustomJob
+        for detailed schema for the Vertex CustomJob. See
+      https://cloud.google.com/ml-engine/reference/rest/v1/projects.jobs for the
+        detailed schema for CAIP Job.
     enable_vertex: Whether to enable Vertex or not.
     vertex_region: Region for endpoint in Vertex training.
 
@@ -73,13 +69,14 @@ def _launch_aip_training(
   # TODO(b/185159702): Migrate all training jobs to Vertex and remove the
   #                    enable_vertex switch.
   client = training_clients.get_job_client(enable_vertex, vertex_region)
-  # Configure and launch AI Platform training job
-  client.launch_job(job_id, project, training_input, job_labels)
+  # Configure and launch AI Platform training job.
+  client.launch_job(project, training_job)
 
-  # Wait for AIP Training job to finish
+  # Wait for Cloud Training job to finish
   response = client.get_job()
   retry_count = 0
 
+  job_id = client.get_job_name()
   # Monitors the long-running operation by polling the job state periodically,
   # and retries the polling when a transient connectivity issue is encountered.
   #
@@ -122,7 +119,7 @@ def _launch_aip_training(
     logging.error(err_msg)
     raise RuntimeError(err_msg)
 
-  # AIP training complete
+  # Cloud training complete
   logging.info('Job \'%s\' successful.', client.get_job_name())
 
 
@@ -154,14 +151,14 @@ def _wait_for_operation(api: discovery.Resource, operation: Dict[str, Any],
 
 
 # TODO(b/168926785): Consider to change executor_class_path to job_labels.
-def start_aip_training(input_dict: Dict[str, List[types.Artifact]],
-                       output_dict: Dict[str, List[types.Artifact]],
-                       exec_properties: Dict[str, Any],
-                       executor_class_path: str,
-                       training_inputs: Dict[str, Any],
-                       job_id: Optional[str],
-                       enable_vertex: Optional[bool] = False,
-                       vertex_region: Optional[str] = None):
+def start_cloud_training(input_dict: Dict[str, List[types.Artifact]],
+                         output_dict: Dict[str, List[types.Artifact]],
+                         exec_properties: Dict[str, Any],
+                         executor_class_path: str,
+                         job_args: Dict[str, Any],
+                         job_id: Optional[str],
+                         enable_vertex: Optional[bool] = False,
+                         vertex_region: Optional[str] = None):
   """Start a trainer job on AI Platform (AIP).
 
   This is done by forwarding the inputs/outputs/exec_properties to the
@@ -172,13 +169,18 @@ def start_aip_training(input_dict: Dict[str, List[types.Artifact]],
     output_dict: Passthrough input dict for tfx.components.Trainer.executor.
     exec_properties: Passthrough input dict for tfx.components.Trainer.executor.
     executor_class_path: class path for TFX core default trainer.
-    training_inputs: Training input argument for AI Platform training job.
-      'pythonModule', 'pythonVersion' and 'runtimeVersion' will be inferred. For
-      the full set of parameters, refer to
-      https://cloud.google.com/ml-engine/reference/rest/v1/projects.jobs#TrainingInput
+    job_args: Training argument for AI Platform training job. 'pythonModule',
+      'pythonVersion' and 'runtimeVersion' will be inferred. For the full set of
+      parameters supported by Vertex AI CustomJob, refer to
+       https://cloud.google.com/vertex-ai/docs/reference/rest/v1/projects.locations.customJobs#CustomJob
+         For the full set of parameters supported by Google Cloud AI Platform
+         (CAIP) TrainingInput, refer to
+       https://cloud.google.com/ml-engine/docs/tensorflow/training-jobs#configuring_the_job
     job_id: Job ID for AI Platform Training job. If not supplied,
       system-determined unique ID is given. Refer to
-    https://cloud.google.com/ml-engine/reference/rest/v1/projects.jobs#resource-job
+      https://cloud.google.com/ml-engine/reference/rest/v1/projects.jobs#resource-job.
+        In Vertex AI, the job_id corresponds to the display name, a unique ID is
+        always given to the created job.
     enable_vertex: Whether to enable Vertex or not.
     vertex_region: Region for endpoint in Vertex training.
 
@@ -186,16 +188,17 @@ def start_aip_training(input_dict: Dict[str, List[types.Artifact]],
     None
   """
   client = training_clients.get_job_client(enable_vertex, vertex_region)
-  training_args = client.create_training_args(input_dict, output_dict,
-                                              exec_properties,
-                                              executor_class_path,
-                                              training_inputs, job_id)
+  training_job = client.create_training_job(input_dict, output_dict,
+                                            exec_properties,
+                                            executor_class_path, job_args,
+                                            job_id)
 
-  _launch_aip_training(
-      job_id=training_args['job_id'],
-      project=training_args['project'],
-      training_input=training_args['training_input'],
-      job_labels=training_args['job_labels'],
+  # Project was stowaway in job_args and has finally reached its destination.
+  project = job_args.pop('project')
+
+  _launch_cloud_training(
+      project=project,
+      training_job=training_job,
       enable_vertex=enable_vertex,
       vertex_region=vertex_region)
 
@@ -269,20 +272,20 @@ def deploy_model_for_aip_prediction(
       https://cloud.google.com/ml-engine/reference/rest/v1/projects.models.versions#Version.
       for Vertex:
       https://googleapis.dev/python/aiplatform/latest/aiplatform.html?highlight=deploy#google.cloud.aiplatform.Model.deploy
-      Most keys are forwarded as-is, but following keys are handled specially.
+        Most keys are forwarded as-is, but following keys are handled specially.
       For CAIP:
         - name: this must be empty (and will be filled by pusher).
         - deployment_uri: this must be empty (and will be filled by pusher).
         - python_version: when left empty, this will be filled by python version
-            of the environment being used.
+          of the environment being used.
         - runtime_version: when left empty, this will be filled by TensorFlow
-            version from the environment.
+          version from the environment.
         - labels: a list of job labels will be merged with user's input.
       For Vertex:
         - endpoint_name: Name of the endpoint.
-        - traffic_percentage: Desired traffic to newly deployed model.
-            Forwarded as-is if specified. If not specified, it is set to 100
-            if set_default_version is True, or set to 0 otherwise.
+        - traffic_percentage: Desired traffic to newly deployed model. Forwarded
+          as-is if specified. If not specified, it is set to 100 if
+          set_default_version is True, or set to 0 otherwise.
         - labels: a list of job labels will be merged with user's input.
     labels: The dict of labels that will be attached to this CAIP job or Vertex
       endpoint. They are merged with optional labels from
@@ -291,8 +294,8 @@ def deploy_model_for_aip_prediction(
     serving_container_image_uri: (Vertex only, required) The path to the serving
       container image URI. Container registry for prediction is available at:
       https://gcr.io/cloud-aiplatform/prediction.
-    endpoint_region: (Vertex only, required) Region for Vertex endpoint.
-      For available regions, please see
+    endpoint_region: (Vertex only, required) Region for Vertex endpoint. For
+      available regions, please see
       https://cloud.google.com/vertex-ai/docs/general/locations
     skip_model_endpoint_creation: If true, the method assumes CAIP model or
       Vertex endpoint already exists in AI platform, therefore skipping its

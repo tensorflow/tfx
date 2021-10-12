@@ -69,9 +69,9 @@ class AbstractJobClient(abc.ABC):
     pass
 
   @abc.abstractmethod
-  def create_training_args(self, input_dict, output_dict, exec_properties,
-                           executor_class_path, training_inputs,
-                           job_id) -> Dict[str, Any]:
+  def create_training_job(self, input_dict, output_dict, exec_properties,
+                          executor_class_path, job_args,
+                          job_id) -> Dict[str, Any]:
     """Get training args for runner._launch_aip_training.
 
     The training args contain the inputs/outputs/exec_properties to the
@@ -83,7 +83,7 @@ class AbstractJobClient(abc.ABC):
       exec_properties: Passthrough input dict for
         tfx.components.Trainer.executor.
       executor_class_path: class path for TFX core default trainer.
-      training_inputs: Training input argument for AI Platform training job.
+      job_args: Training input argument for AI Platform training job.
       job_id: Job ID for AI Platform Training job. If not supplied,
         system-determined unique ID is given.
 
@@ -93,38 +93,16 @@ class AbstractJobClient(abc.ABC):
     pass
 
   @abc.abstractmethod
-  def _create_job_spec(
-      self,
-      job_id: str,
-      training_input: Dict[str, Any],
-      job_labels: Optional[Dict[str, str]] = None) -> Dict[str, Any]:
-    """Creates the job spec.
-
-    Args:
-      job_id: The job ID of the AI Platform training job.
-      training_input: Training input argument for AI Platform training job.
-      job_labels: The dict of labels that will be attached to this job.
-
-    Returns:
-      The job specification.
-    """
-    pass
-
-  @abc.abstractmethod
-  def launch_job(self,
-                 job_id: str,
-                 project: str,
-                 training_input: Dict[str, Any],
-                 job_labels: Optional[Dict[str, str]] = None) -> None:
+  def launch_job(self, project: str, training_job: Dict[str, Any]) -> None:
     """Launches a long-running job.
 
     Args:
-      job_id: The job ID of the AI Platform training job.
       project: The project name in the form of 'projects/{project_id}'
-      training_input: Training input argument for AI Platform training job. See
-        https://cloud.google.com/ml-engine/reference/rest/v1/projects.jobs#TrainingInput
-          for the detailed schema.
-      job_labels: The dict of labels that will be attached to this job.
+      training_job: A Cloud training job. For CAIP, See
+        https://cloud.google.com/ml-engine/reference/rest/v1/projects.jobs for
+          the detailed schema. for Vertex AI Training, see
+        https://cloud.google.com/vertex-ai/docs/reference/rest/v1/projects.locations.customJobs#CustomJob
+          the detailed schema.
     """
     pass
 
@@ -203,12 +181,11 @@ class CAIPJobClient(AbstractJobClient):
         requestBuilder=telemetry_utils.TFXHttpRequest,
     )
 
-  def create_training_args(self, input_dict: Dict[str, List[types.Artifact]],
-                           output_dict: Dict[str, List[types.Artifact]],
-                           exec_properties: Dict[str, Any],
-                           executor_class_path: str,
-                           training_inputs: Dict[str, Any],
-                           job_id: Optional[str]) -> Dict[str, Any]:
+  def create_training_job(self, input_dict: Dict[str, List[types.Artifact]],
+                          output_dict: Dict[str, List[types.Artifact]],
+                          exec_properties: Dict[str, Any],
+                          executor_class_path: str, job_args: Dict[str, Any],
+                          job_id: Optional[str]) -> Dict[str, Any]:
     """Get training args for runner._launch_aip_training.
 
     The training args contain the inputs/outputs/exec_properties to the
@@ -220,7 +197,7 @@ class CAIPJobClient(AbstractJobClient):
       exec_properties: Passthrough input dict for
         tfx.components.Trainer.executor.
       executor_class_path: class path for TFX core default trainer.
-      training_inputs: Training input argument for AI Platform training job.
+      job_args: Training input argument for AI Platform training job.
         'pythonModule', 'pythonVersion' and 'runtimeVersion' will be inferred.
         For the full set of parameters, refer to
         https://cloud.google.com/ml-engine/reference/rest/v1/projects.jobs#TrainingInput
@@ -231,7 +208,7 @@ class CAIPJobClient(AbstractJobClient):
     Returns:
       A dict containing the training arguments
     """
-    training_inputs = training_inputs.copy()
+    training_inputs = job_args.copy()
 
     container_command = self.generate_container_command(input_dict, output_dict,
                                                         exec_properties,
@@ -247,9 +224,6 @@ class CAIPJobClient(AbstractJobClient):
       logging.warn('Overriding custom value of containerCommand')
     training_inputs['masterConfig']['containerCommand'] = container_command
 
-    # Pop project_id so AIP doesn't complain about an unexpected parameter.
-    # It's been a stowaway in aip_args and has finally reached its destination.
-    project = training_inputs.pop('project')
     with telemetry_utils.scoped_labels(
         {telemetry_utils.LABEL_TFX_EXECUTOR: executor_class_path}):
       job_labels = telemetry_utils.make_labels_dict()
@@ -258,67 +232,33 @@ class CAIPJobClient(AbstractJobClient):
     job_id = job_id or 'tfx_{}'.format(
         datetime.datetime.now().strftime('%Y%m%d%H%M%S'))
 
-    training_args = {
+    caip_job = {
         'job_id': job_id,
-        'project': project,
         'training_input': training_inputs,
-        'job_labels': job_labels
+        'labels': job_labels
     }
 
-    return training_args
+    return caip_job
 
-  def _create_job_spec(
-      self,
-      job_id: str,
-      training_input: Dict[str, Any],
-      job_labels: Optional[Dict[str, str]] = None) -> Dict[str, Any]:
-    """Creates the job spec.
-
-    Args:
-      job_id: The job ID of the AI Platform training job.
-      training_input: Training input argument for AI Platform training job. See
-        https://cloud.google.com/ml-engine/reference/rest/v1/projects.jobs#TrainingInput
-          for the detailed schema.
-      job_labels: The dict of labels that will be attached to this job.
-
-    Returns:
-      The job specification. See
-      https://cloud.google.com/ai-platform/training/docs/reference/rest/v1/projects.jobs
-    """
-
-    job_spec = {
-        'jobId': job_id,
-        'trainingInput': training_input,
-        'labels': job_labels,
-    }
-    return job_spec
-
-  def launch_job(self,
-                 job_id: str,
-                 project: str,
-                 training_input: Dict[str, Any],
-                 job_labels: Optional[Dict[str, str]] = None) -> None:
+  def launch_job(self, project: str, training_job: Dict[str, Any]) -> None:
     """Launches a long-running job.
 
     Args:
-      job_id: The job ID of the AI Platform training job.
       project: The GCP project under which the training job will be executed.
-      training_input: Training input argument for AI Platform training job. See
-        https://cloud.google.com/ml-engine/reference/rest/v1/projects.jobs#TrainingInput
-          for the detailed schema.
-      job_labels: The dict of labels that will be attached to this job.
+      training_job: A Cloud AI Platform training job. See
+        https://cloud.google.com/ml-engine/reference/rest/v1/projects.jobs for
+          the detailed schema.
     """
 
     parent = 'projects/{}'.format(project)
-    job_spec = self._create_job_spec(job_id, training_input, job_labels)
 
     # Submit job to AIP Training
-    logging.info('TrainingInput=%s', training_input)
+    logging.info('TrainingJob=%s', training_job)
     logging.info('Submitting job=\'%s\', project=\'%s\' to AI Platform.',
-                 job_id, parent)
+                 training_job['job_id'], parent)
     request = self._client.projects().jobs().create(
-        body=job_spec, parent=parent)
-    self._job_name = '{}/jobs/{}'.format(parent, job_id)
+        body=training_job, parent=parent)
+    self._job_name = '{}/jobs/{}'.format(parent, training_job['job_id'])
     request.execute()
 
   def get_job(self) -> Dict[str, str]:
@@ -363,15 +303,14 @@ class VertexJobClient(AbstractJobClient):
     specific to each job.
     """
     self._client = gapic.JobServiceClient(
-        client_options=dict(
-            api_endpoint=self._region + _VERTEX_ENDPOINT_SUFFIX))
+        client_options=dict(api_endpoint=self._region +
+                            _VERTEX_ENDPOINT_SUFFIX))
 
-  def create_training_args(self, input_dict: Dict[str, List[types.Artifact]],
-                           output_dict: Dict[str, List[types.Artifact]],
-                           exec_properties: Dict[str, Any],
-                           executor_class_path: str,
-                           training_inputs: Dict[str, Any],
-                           job_id: Optional[str]) -> Dict[str, Any]:
+  def create_training_job(self, input_dict: Dict[str, List[types.Artifact]],
+                          output_dict: Dict[str, List[types.Artifact]],
+                          exec_properties: Dict[str, Any],
+                          executor_class_path: str, job_args: Dict[str, Any],
+                          job_id: Optional[str]) -> Dict[str, Any]:
     """Get training args for runner._launch_aip_training.
 
     The training args contain the inputs/outputs/exec_properties to the
@@ -383,27 +322,35 @@ class VertexJobClient(AbstractJobClient):
       exec_properties: Passthrough input dict for
         tfx.components.Trainer.executor.
       executor_class_path: class path for TFX core default trainer.
-      training_inputs: Spec for CustomJob for AI Platform (Unified) custom
-        training job. See
-        https://cloud.google.com/ai-platform-unified/docs/reference/rest/v1/CustomJobSpec
+      job_args: CustomJob for Vertex AI custom training. See
+        https://cloud.google.com/vertex-ai/docs/reference/rest/v1/projects.locations.customJobs#CustomJob
           for the detailed schema.
+        [Deprecated]: job_args also support specifying only the CustomJobSpec
+          instead of CustomJob. However, this functionality is deprecated.
       job_id: Display name for AI Platform (Unified) custom training job. If not
         supplied, system-determined unique ID is given. Refer to
-        https://cloud.google.com/ai-platform-unified/docs/reference/rest/v1/projects.locations.customJobs
+        https://cloud.google.com/vertex-ai/docs/reference/rest/v1/projects.locations.customJobs#CustomJob
 
     Returns:
-      A dict containing the training arguments
+      A dict containing the Vertex AI CustomJob
     """
-    training_inputs = training_inputs.copy()
+    job_args = job_args.copy()
+    if job_args.get('job_spec'):
+      custom_job_spec = job_args['job_spec']
+    else:
+      logging.warn(
+          'job_spec key was not found. Parsing job_args as CustomJobSpec instead'
+      )
+      custom_job_spec = job_args
 
     container_command = self.generate_container_command(input_dict, output_dict,
                                                         exec_properties,
                                                         executor_class_path)
 
-    if not training_inputs.get('worker_pool_specs'):
-      training_inputs['worker_pool_specs'] = [{}]
+    if not custom_job_spec.get('worker_pool_specs'):
+      custom_job_spec['worker_pool_specs'] = [{}]
 
-    for worker_pool_spec in training_inputs['worker_pool_specs']:
+    for worker_pool_spec in custom_job_spec['worker_pool_specs']:
       if not worker_pool_spec.get('container_spec'):
         worker_pool_spec['container_spec'] = {
             'image_uri': _TFX_IMAGE,
@@ -414,83 +361,48 @@ class VertexJobClient(AbstractJobClient):
         logging.warn('Overriding custom value of container_spec.command')
       worker_pool_spec['container_spec']['command'] = container_command
 
-    # Pop project_id so AIP doesn't complain about an unexpected parameter.
-    # It's been a stowaway in aip_args and has finally reached its destination.
-    project = training_inputs.pop('project')
-    with telemetry_utils.scoped_labels(
-        {telemetry_utils.LABEL_TFX_EXECUTOR: executor_class_path}):
-      job_labels = telemetry_utils.make_labels_dict()
-
     # 'tfx_YYYYmmddHHMMSS_xxxxxxxx' is the default job display name if not
     # explicitly specified.
+    job_id = job_args.get('display_name', job_id)
     job_id = job_id or 'tfx_{}_{}'.format(
         datetime.datetime.now().strftime('%Y%m%d%H%M%S'),
         '%08x' % random.getrandbits(32))
 
-    training_args = {
-        'job_id': job_id,
-        'project': project,
-        'training_input': training_inputs,
-        'job_labels': job_labels
-    }
+    with telemetry_utils.scoped_labels(
+        {telemetry_utils.LABEL_TFX_EXECUTOR: executor_class_path}):
+      job_labels = telemetry_utils.make_labels_dict()
+    job_labels.update(job_args.get('labels', {}))
 
-    return training_args
+    encryption_spec = job_args.get('encryption_spec', {})
 
-  def _create_job_spec(
-      self,
-      job_id: str,
-      training_input: Dict[str, Any],
-      job_labels: Optional[Dict[str, str]] = None) -> Dict[str, Any]:
-    """Creates the job spec.
-
-    Args:
-      job_id: The display name of the AI Platform (Unified) custom training job.
-      training_input: Spec for CustomJob for AI Platform (Unified) custom
-        training job. See
-        https://cloud.google.com/ai-platform-unified/docs/reference/rest/v1/CustomJobSpec
-          for the detailed schema.
-      job_labels: The dict of labels that will be attached to this job.
-
-    Returns:
-      The CustomJob. See
-        https://cloud.google.com/ai-platform-unified/docs/reference/rest/v1/projects.locations.customJobs
-    """
-
-    job_spec = {
+    custom_job = {
         'display_name': job_id,
-        'job_spec': training_input,
+        'job_spec': custom_job_spec,
         'labels': job_labels,
+        'encryption_spec': encryption_spec,
     }
-    return job_spec
 
-  def launch_job(self,
-                 job_id: str,
-                 project: str,
-                 training_input: Dict[str, Any],
-                 job_labels: Optional[Dict[str, str]] = None) -> None:
+    return custom_job
+
+  def launch_job(self, project: str, training_job: Dict[str, Any]) -> None:
     """Launches a long-running job.
 
     Args:
-      job_id: The display name of the AI Platform (Unified) custom training job.
       project: The GCP project under which the training job will be executed.
-      training_input: Spec for CustomJob for AI Platform (Unified) custom
-        training job. See
-        https://cloud.google.com/ai-platform-unified/docs/reference/rest/v1/CustomJobSpec
-          for the detailed schema.
-      job_labels: The dict of labels that will be attached to this job.
+      training_job: A CustomJob for AI Platform (Unified). See
+        https://cloud.google.com/vertex-ai/docs/reference/rest/v1/projects.locations.customJobs#CustomJob
+          the detailed schema.
     """
 
     parent = 'projects/{project}/locations/{location}'.format(
         project=project, location=self._region)
 
-    job_spec = self._create_job_spec(job_id, training_input, job_labels)
-
-    # Submit job to AIP Training
-    logging.info('TrainingInput=%s', training_input)
-    logging.info('Submitting custom job=\'%s\', project=\'%s\''
-                 ' to AI Platform (Unified).', job_id, parent)
-    response = self._client.create_custom_job(parent=parent,
-                                              custom_job=job_spec)
+    logging.info('TrainingJob=%s', training_job)
+    logging.info(
+        'Submitting custom job=\'%s\', parent=\'%s\' to Vertex AI Training.',
+        training_job['display_name'], parent)
+    response = self._client.create_custom_job(
+        parent=parent, custom_job=training_job)
     self._job_name = response.name
 
   def get_job(self) -> CustomJob:
@@ -502,6 +414,7 @@ class VertexJobClient(AbstractJobClient):
 
     Args:
       response: The response from get_job
+
     Returns:
       The job state.
     """
@@ -516,8 +429,8 @@ def get_job_client(
 
   Args:
     enable_vertex: Whether to enable Vertex
-    vertex_region: Region for training endpoint in Vertex.
-      Defaults to 'us-central1'.
+    vertex_region: Region for training endpoint in Vertex. Defaults to
+      'us-central1'.
 
   Returns:
     The corresponding job client.

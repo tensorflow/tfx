@@ -53,20 +53,24 @@ class AiPlatformTrainingComponentTest(tf.test.TestCase):
 
     expected_aip_config = {
         ai_platform_training_executor.PROJECT_CONFIG_KEY: 'my-project',
-        ai_platform_training_executor.TRAINING_INPUT_CONFIG_KEY: {
-            'scaleTier':
-                'BASIC_GPU',
-            'region':
-                'us-central1',
-            'masterConfig': {
-                'imageUri': 'gcr.io/my-project/caip-training-test:latest'
+        ai_platform_training_executor.TRAINING_JOB_CONFIG_KEY: {
+            'training_input': {
+                'scaleTier':
+                    'BASIC_GPU',
+                'region':
+                    'us-central1',
+                'masterConfig': {
+                    'imageUri': 'gcr.io/my-project/caip-training-test:latest'
+                },
+                'args': [
+                    '--examples',
+                    placeholders.InputUriPlaceholder('examples'), '--n-steps',
+                    placeholders.InputValuePlaceholder('n_step'), '--model-dir',
+                    placeholders.OutputUriPlaceholder('model')
+                ]
             },
-            'args': [
-                '--examples',
-                placeholders.InputUriPlaceholder('examples'), '--n-steps',
-                placeholders.InputValuePlaceholder('n_step'), '--model-dir',
-                placeholders.OutputUriPlaceholder('model')
-            ]
+            ai_platform_training_executor.JOB_ID_CONFIG_KEY: None,
+            ai_platform_training_executor.LABELS_CONFIG_KEY: None,
         },
         ai_platform_training_executor.JOB_ID_CONFIG_KEY: None,
         ai_platform_training_executor.LABELS_CONFIG_KEY: None,
@@ -112,7 +116,11 @@ class AiPlatformTrainingComponentTest(tf.test.TestCase):
 
     expected_aip_config = {
         ai_platform_training_executor.PROJECT_CONFIG_KEY: 'my-project',
-        ai_platform_training_executor.TRAINING_INPUT_CONFIG_KEY: training_input,
+        ai_platform_training_executor.TRAINING_JOB_CONFIG_KEY: {
+            'training_input': training_input,
+            ai_platform_training_executor.JOB_ID_CONFIG_KEY: None,
+            ai_platform_training_executor.LABELS_CONFIG_KEY: None,
+        },
         ai_platform_training_executor.JOB_ID_CONFIG_KEY: None,
         ai_platform_training_executor.LABELS_CONFIG_KEY: None,
     }

@@ -206,11 +206,17 @@ def create_ai_platform_training(
                        'training_input.')
     training_input['region'] = region
 
+  training_job = {
+      ai_platform_training_executor.JOB_ID_CONFIG_KEY: job_id,
+      'training_input': training_input,
+      ai_platform_training_executor.LABELS_CONFIG_KEY: labels,
+  }
+
   # Squash training_input, project, job_id, and labels into an exec property
   # namely 'aip_training_config'.
   aip_training_config = {
       ai_platform_training_executor.PROJECT_CONFIG_KEY: project_id,
-      ai_platform_training_executor.TRAINING_INPUT_CONFIG_KEY: training_input,
+      ai_platform_training_executor.TRAINING_JOB_CONFIG_KEY: training_job,
       ai_platform_training_executor.JOB_ID_CONFIG_KEY: job_id,
       ai_platform_training_executor.LABELS_CONFIG_KEY: labels,
   }
