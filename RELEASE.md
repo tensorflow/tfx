@@ -20,7 +20,7 @@
 
 ## Bug Fixes and Other Changes
 *   Depends on `google-cloud-aiplatform>=1.5.0,<2`.
-
+*   Depends on `pyarrow>=1,<6`.
 *   Fixed FileBasedExampleGen driver for Kubeflow v2 (Vertex). Driver can
     update exec_properties for its executor now, which enables {SPAN} feature.
 
@@ -62,7 +62,6 @@
     Python 3.6. Starting with TFX 1.4.0 Python 3.6 will no longer be supported.
 
 ## Bug Fixes and Other Changes
-
 *   The default job name for Google Cloud AI Training jobs was changed from
     'tfx_YYYYmmddHHMMSS' to 'tfx_YYYYmmddHHMMSS_xxxxxxxx', where 'xxxxxxxx' is
     a random 8 digit hexadecimal string.
