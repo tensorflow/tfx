@@ -71,6 +71,8 @@ class AsyncPipelineTaskGenerator(task_gen.TaskGenerator):
     self._pipeline = pipeline
     self._is_task_id_tracked_fn = is_task_id_tracked_fn
     self._service_job_manager = service_job_manager
+    # TODO(b/201294315): Remove once the underlying issue is fixed.
+    self._generate_invoked = False
 
   def generate(self) -> List[task_lib.Task]:
     """Generates tasks for all executable nodes in the async pipeline.
@@ -80,7 +82,17 @@ class AsyncPipelineTaskGenerator(task_gen.TaskGenerator):
 
     Returns:
       A `list` of tasks to execute.
+
+    Raises:
+      RuntimeError: If `generate` invoked more than once on the same instance.
     """
+    # TODO(b/201294315): Remove this artificial restriction once the underlying
+    # issue is fixed.
+    if self._generate_invoked:
+      raise RuntimeError(
+          'Invoking `generate` more than once on the same instance of '
+          'AsyncPipelineTaskGenerator is restricted due to a bug.')
+    self._generate_invoked = True
     result = []
     for node in [n.pipeline_node for n in self._pipeline.nodes]:
       node_uid = task_lib.NodeUid.from_pipeline_node(self._pipeline, node)

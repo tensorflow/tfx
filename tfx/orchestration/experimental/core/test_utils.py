@@ -176,7 +176,8 @@ def run_generator(mlmd_connection,
                   task_queue,
                   use_task_queue,
                   service_job_manager,
-                  ignore_update_node_state_tasks=False):
+                  ignore_update_node_state_tasks=False,
+                  fail_fast=None):
   """Generates tasks for testing."""
   with mlmd_connection as m:
     pipeline_state = get_or_create_pipeline_state(m, pipeline)
@@ -185,12 +186,20 @@ def run_generator(mlmd_connection,
         pipeline_state=pipeline_state,
         is_task_id_tracked_fn=task_queue.contains_task_id,
         service_job_manager=service_job_manager)
+    if fail_fast is not None:
+      generator_params['fail_fast'] = fail_fast
     task_gen = generator_class(**generator_params)
     tasks = task_gen.generate()
     if use_task_queue:
       for task in tasks:
         if task_lib.is_exec_node_task(task):
           task_queue.enqueue(task)
+    for task in tasks:
+      if task_lib.is_update_node_state_task(task):
+        with pipeline_state:
+          with pipeline_state.node_state_update_context(
+              task.node_uid) as node_state:
+            node_state.update(task.state, task.status)
   if ignore_update_node_state_tasks:
     tasks = [t for t in tasks if not task_lib.is_update_node_state_task(t)]
   return tasks
@@ -231,7 +240,8 @@ def run_generator_and_test(test_case,
                            num_new_executions,
                            num_active_executions,
                            expected_exec_nodes=None,
-                           ignore_update_node_state_tasks=False):
+                           ignore_update_node_state_tasks=False,
+                           fail_fast=None):
   """Runs generator.generate() and tests the effects."""
   if service_job_manager is None:
     service_job_manager = service_jobs.DummyServiceJobManager()
@@ -247,7 +257,8 @@ def run_generator_and_test(test_case,
       task_queue,
       use_task_queue,
       service_job_manager,
-      ignore_update_node_state_tasks=ignore_update_node_state_tasks)
+      ignore_update_node_state_tasks=ignore_update_node_state_tasks,
+      fail_fast=fail_fast)
   with mlmd_connection as m:
     test_case.assertLen(
         tasks, num_tasks_generated,

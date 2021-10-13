@@ -291,6 +291,43 @@ class PipelineStateTest(test_utils.TfxTest):
         node_state = pipeline_state.get_node_state(node_uid)
         self.assertEqual(pstate.NodeState.STARTED, node_state.state)
 
+  def test_get_node_states_dict(self):
+    with self._mlmd_connection as m:
+      pipeline = pipeline_pb2.Pipeline()
+      pipeline.pipeline_info.id = 'pipeline1'
+      pipeline.execution_mode = pipeline_pb2.Pipeline.SYNC
+      pipeline_uid = task_lib.PipelineUid.from_pipeline(pipeline)
+      pipeline.nodes.add().pipeline_node.node_info.id = 'ExampleGen'
+      pipeline.nodes.add().pipeline_node.node_info.id = 'Transform'
+      pipeline.nodes.add().pipeline_node.node_info.id = 'Trainer'
+      pipeline.nodes.add().pipeline_node.node_info.id = 'Evaluator'
+      eg_node_uid = task_lib.NodeUid(pipeline_uid, 'ExampleGen')
+      transform_node_uid = task_lib.NodeUid(pipeline_uid, 'Transform')
+      trainer_node_uid = task_lib.NodeUid(pipeline_uid, 'Trainer')
+      evaluator_node_uid = task_lib.NodeUid(pipeline_uid, 'Evaluator')
+      with pstate.PipelineState.new(m, pipeline) as pipeline_state:
+        with pipeline_state.node_state_update_context(
+            eg_node_uid) as node_state:
+          node_state.update(pstate.NodeState.COMPLETE)
+        with pipeline_state.node_state_update_context(
+            transform_node_uid) as node_state:
+          node_state.update(pstate.NodeState.RUNNING)
+        with pipeline_state.node_state_update_context(
+            trainer_node_uid) as node_state:
+          node_state.update(pstate.NodeState.STARTING)
+      with pstate.PipelineState.load(m, pipeline_uid) as pipeline_state:
+        self.assertEqual(
+            {
+                eg_node_uid:
+                    pstate.NodeState(state=pstate.NodeState.COMPLETE),
+                transform_node_uid:
+                    pstate.NodeState(state=pstate.NodeState.RUNNING),
+                trainer_node_uid:
+                    pstate.NodeState(state=pstate.NodeState.STARTING),
+                evaluator_node_uid:
+                    pstate.NodeState(state=pstate.NodeState.STARTED),
+            }, pipeline_state.get_node_states_dict())
+
   def test_save_and_remove_property(self):
     property_key = 'key'
     property_value = 'value'

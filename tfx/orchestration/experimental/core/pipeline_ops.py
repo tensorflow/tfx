@@ -576,9 +576,10 @@ def _orchestrate_active_pipeline(
 
   # Initialize task generator for the pipeline.
   if pipeline.execution_mode == pipeline_pb2.Pipeline.SYNC:
+    # TODO(b/200618482): Remove fail_fast=True.
     generator = sync_pipeline_task_gen.SyncPipelineTaskGenerator(
         mlmd_handle, pipeline_state, task_queue.contains_task_id,
-        service_job_manager)
+        service_job_manager, fail_fast=True)
   elif pipeline.execution_mode == pipeline_pb2.Pipeline.ASYNC:
     generator = async_pipeline_task_gen.AsyncPipelineTaskGenerator(
         mlmd_handle, pipeline_state, task_queue.contains_task_id,

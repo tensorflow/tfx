@@ -77,7 +77,7 @@ class NodeState(json_utils.Jsonable):
   STARTING = 'starting'  # Pending work before state can change to STARTED.
   STARTED = 'started'  # Node is ready for execution.
   STOPPING = 'stopping'  # Pending work before state can change to STOPPED.
-  STOPPED = 'stopped'  # Node execution is stoped.
+  STOPPED = 'stopped'  # Node execution is stopped.
   RUNNING = 'running'  # Node is under active execution (i.e. triggered).
   COMPLETE = 'complete'  # Node execution completed successfully.
   SKIPPED = 'skipped'  # Node execution skipped due to conditional.
@@ -120,6 +120,20 @@ class NodeState(json_utils.Jsonable):
     """Returns True if the node can be stopped."""
     return self.state in set(
         [self.STARTING, self.STARTED, self.RUNNING, self.PAUSED])
+
+  def is_success(self) -> bool:
+    return is_node_state_success(self.state)
+
+  def is_failure(self) -> bool:
+    return is_node_state_failure(self.state)
+
+
+def is_node_state_success(state: str) -> bool:
+  return state in (NodeState.COMPLETE, NodeState.SKIPPED)
+
+
+def is_node_state_failure(state: str) -> bool:
+  return state == NodeState.FAILED
 
 
 _NODE_STATE_TO_RUN_STATE_MAP = {
@@ -174,7 +188,7 @@ class PipelineState:
     mlmd_handle: Handle to MLMD db.
     pipeline: The pipeline proto associated with this `PipelineState` object.
       TODO(b/201294315): Fix self.pipeline going out of sync with the actual
-      pipeline proto stored in the underlying MLMD execution in some cases.
+        pipeline proto stored in the underlying MLMD execution in some cases.
     execution_id: Id of the underlying execution in MLMD.
     pipeline_uid: Unique id of the pipeline.
   """
@@ -436,6 +450,14 @@ class PipelineState:
                    f'{self.pipeline_uid}'))
     node_states_dict = _get_node_states_dict(self._execution)
     return node_states_dict.get(node_uid.node_id, NodeState())
+
+  def get_node_states_dict(self) -> Dict[task_lib.NodeUid, NodeState]:
+    self._check_context()
+    result = {}
+    for node in get_all_pipeline_nodes(self.pipeline):
+      node_uid = task_lib.NodeUid.from_pipeline_node(self.pipeline, node)
+      result[node_uid] = self.get_node_state(node_uid)
+    return result
 
   def get_pipeline_execution_state(self) -> metadata_store_pb2.Execution.State:
     """Returns state of underlying pipeline execution."""
