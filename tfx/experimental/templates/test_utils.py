@@ -140,3 +140,65 @@ class BaseEndToEndTest(test_case_utils.TfxTest):
         model,
     ])
     self.assertIn('Copying {} pipeline template'.format(model), result)
+
+
+class BaseLocalEndToEndTest(BaseEndToEndTest):
+  """Common tests for local engine."""
+
+  def _getAllUnitTests(self):
+    for root, _, files in os.walk(self._project_dir):
+      base_dir = os.path.relpath(root, self._project_dir)
+      if base_dir == '.':  # project_dir == root
+        base_module = ''
+      else:
+        base_module = base_dir.replace(os.path.sep, '.') + '.'
+
+      for filename in files:
+        if filename.endswith('_test.py'):
+          yield base_module + filename[:-3]
+
+  def _create_pipeline(self):
+    result = self._runCli([
+        'pipeline',
+        'create',
+        '--engine',
+        'local',
+        '--pipeline_path',
+        'local_runner.py',
+    ])
+    self.assertIn(
+        'Pipeline "{}" created successfully.'.format(self._pipeline_name),
+        result)
+
+  def _update_pipeline(self):
+    result = self._runCli([
+        'pipeline',
+        'update',
+        '--engine',
+        'local',
+        '--pipeline_path',
+        'local_runner.py',
+    ])
+    self.assertIn(
+        'Pipeline "{}" updated successfully.'.format(self._pipeline_name),
+        result)
+
+  def _run_pipeline(self):
+    self._runCli([
+        'run',
+        'create',
+        '--engine',
+        'local',
+        '--pipeline_name',
+        self._pipeline_name,
+    ])
+
+  def _copy_schema(self):
+    self._runCli([
+        'pipeline',
+        'schema',
+        '--engine',
+        'local',
+        '--pipeline_name',
+        self._pipeline_name,
+    ])
