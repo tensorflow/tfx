@@ -207,7 +207,6 @@ def create_ai_platform_training(
     training_input['region'] = region
 
   training_job = {
-      ai_platform_training_executor.JOB_ID_CONFIG_KEY: job_id,
       'training_input': training_input,
       ai_platform_training_executor.LABELS_CONFIG_KEY: labels,
   }

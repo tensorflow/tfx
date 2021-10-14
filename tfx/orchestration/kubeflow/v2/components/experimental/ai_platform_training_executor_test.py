@@ -16,25 +16,29 @@
 import copy
 
 from unittest import mock
+
+from googleapiclient import discovery
 import tensorflow as tf  # pylint: disable=g-explicit-tensorflow-version-import
 from tfx.dsl.component.experimental import placeholders
 from tfx.orchestration.kubeflow.v2.components.experimental import ai_platform_training_executor
 from tfx.types import artifact_utils
 from tfx.types import standard_artifacts
 from tfx.utils import json_utils
+from tfx.utils import test_case_utils
+
 
 _EXAMPLE_LOCATION = 'root/ExampleGen/1/examples/'
 _MODEL_LOCATION = 'root/Training/2/model/'
 
 
-class AiPlatformTrainingExecutorTest(tf.test.TestCase):
+class AiPlatformTrainingExecutorTest(test_case_utils.TfxTest):
 
   def setUp(self):
     super().setUp()
     self._project_id = 'my-project'
     self._job_id = 'my-job-123'
     self._labels = ['label1', 'label2']
-    self._mock_api_client = mock.Mock()
+
     examples_artifact = standard_artifacts.Examples()
     examples_artifact.split_names = artifact_utils.encode_split_names(
         ['train', 'eval'])
@@ -45,7 +49,6 @@ class AiPlatformTrainingExecutorTest(tf.test.TestCase):
     self._outputs = {'model': [model_artifact]}
 
     training_job = {
-        'job_id': self._job_id,
         'training_input': {
             'scaleTier':
                 'CUSTOM',
@@ -99,6 +102,15 @@ class AiPlatformTrainingExecutorTest(tf.test.TestCase):
         'labels': self._labels,
     }
 
+    self._mock_api_client = mock.Mock()
+    mock_discovery = self.enter_context(
+        mock.patch.object(
+            discovery,
+            'build',
+            autospec=True))
+    mock_discovery.return_value = self._mock_api_client
+    self._setUpTrainingMocks()
+
   def _setUpTrainingMocks(self):
     self._mock_create = mock.Mock()
     self._mock_api_client.projects().jobs().create = self._mock_create
@@ -108,11 +120,7 @@ class AiPlatformTrainingExecutorTest(tf.test.TestCase):
         'state': 'SUCCEEDED',
     }
 
-  @mock.patch(
-      'tfx.extensions.google_cloud_ai_platform.training_clients.discovery')
-  def testRunAipTraining(self, mock_discovery):
-    mock_discovery.build.return_value = self._mock_api_client
-    self._setUpTrainingMocks()
+  def testRunAipTraining(self):
     aip_executor = ai_platform_training_executor.AiPlatformTrainingExecutor()
 
     aip_executor.Do(
@@ -120,10 +128,30 @@ class AiPlatformTrainingExecutorTest(tf.test.TestCase):
         output_dict=self._outputs,
         exec_properties=self._exec_properties)
 
-    self._mock_create.assert_called_with(
+    self._mock_create.assert_called_once_with(
         body=self._expected_job_spec,
         parent='projects/{}'.format(self._project_id))
 
+  def testRunAipTrainingWithDefaultJobId(self):
+    aip_executor = ai_platform_training_executor.AiPlatformTrainingExecutor()
+
+    # Delete job_id in the exec_properties.
+    training_config = json_utils.loads(
+        self._exec_properties[ai_platform_training_executor.CONFIG_KEY])
+    training_config[ai_platform_training_executor.JOB_ID_CONFIG_KEY] = None
+    self._exec_properties[ai_platform_training_executor.CONFIG_KEY] = (
+        json_utils.dumps(training_config))
+
+    aip_executor.Do(
+        input_dict=self._inputs,
+        output_dict=self._outputs,
+        exec_properties=self._exec_properties)
+
+    self._mock_create.assert_called_once()
+    print(self._mock_create.call_args[1])
+    print(self._mock_create.call_args[1]['body'])
+    self.assertEqual('tfx_',
+                     self._mock_create.call_args[1]['body']['job_id'][:4])
 
 if __name__ == '__main__':
   tf.test.main()

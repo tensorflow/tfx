@@ -69,7 +69,6 @@ class AiPlatformTrainingComponentTest(tf.test.TestCase):
                     placeholders.OutputUriPlaceholder('model')
                 ]
             },
-            ai_platform_training_executor.JOB_ID_CONFIG_KEY: None,
             ai_platform_training_executor.LABELS_CONFIG_KEY: None,
         },
         ai_platform_training_executor.JOB_ID_CONFIG_KEY: None,
@@ -118,7 +117,6 @@ class AiPlatformTrainingComponentTest(tf.test.TestCase):
         ai_platform_training_executor.PROJECT_CONFIG_KEY: 'my-project',
         ai_platform_training_executor.TRAINING_JOB_CONFIG_KEY: {
             'training_input': training_input,
-            ai_platform_training_executor.JOB_ID_CONFIG_KEY: None,
             ai_platform_training_executor.LABELS_CONFIG_KEY: None,
         },
         ai_platform_training_executor.JOB_ID_CONFIG_KEY: None,

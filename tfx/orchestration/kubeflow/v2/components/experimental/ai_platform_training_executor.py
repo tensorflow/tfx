@@ -58,7 +58,7 @@ class AiPlatformTrainingExecutor(base_executor.BaseExecutor):
             output_dict=output_dict,
             exec_properties=exec_properties)
 
-    job_id = job_id or 'tfx_{}'.format(
+    training_job['job_id'] = job_id or 'tfx_{}'.format(
         datetime.datetime.now().strftime('%Y%m%d%H%M%S'))
     # Invoke CMLE job
     runner._launch_cloud_training(  # pylint: disable=protected-access
