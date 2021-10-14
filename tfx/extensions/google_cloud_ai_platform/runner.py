@@ -187,14 +187,14 @@ def start_cloud_training(input_dict: Dict[str, List[types.Artifact]],
   Returns:
     None
   """
+  # Project was stowaway in job_args and has finally reached its destination.
+  project = job_args.pop('project')
+
   client = training_clients.get_job_client(enable_vertex, vertex_region)
   training_job = client.create_training_job(input_dict, output_dict,
                                             exec_properties,
                                             executor_class_path, job_args,
                                             job_id)
-
-  # Project was stowaway in job_args and has finally reached its destination.
-  project = job_args.pop('project')
 
   _launch_cloud_training(
       project=project,

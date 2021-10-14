@@ -129,6 +129,7 @@ class RunnerTest(tf.test.TestCase):
                     ],
             },
         }, body['training_input'])
+    self.assertNotIn('project', body['training_input'])
     self.assertStartsWith(body['job_id'], 'tfx_')
     self._mock_get.execute.assert_called_with()
     self._mock_create_request.execute.assert_called_with()
