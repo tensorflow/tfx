@@ -331,13 +331,13 @@ class ExecutionLibTest(test_case_utils.TfxTest):
 
       # Verify that the same artifacts are returned in the correct order.
       artifacts_dict = execution_lib.get_artifacts_dict(
-          m, execution.id, metadata_store_pb2.Event.INPUT)
+          m, execution.id, [metadata_store_pb2.Event.INPUT])
       self.assertEqual(set(input_artifact_keys), set(artifacts_dict.keys()))
       for key in artifacts_dict:
         self.assertEqual([ex.uri for ex in input_artifacts_dict[key]],
                          [a.uri for a in artifacts_dict[key]], f'for key={key}')
       artifacts_dict = execution_lib.get_artifacts_dict(
-          m, execution.id, metadata_store_pb2.Event.OUTPUT)
+          m, execution.id, [metadata_store_pb2.Event.OUTPUT])
       self.assertEqual({'model'}, set(artifacts_dict.keys()))
       self.assertEqual([model.uri for model in output_models],
                        [a.uri for a in artifacts_dict['model']])

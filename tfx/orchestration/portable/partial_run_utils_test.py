@@ -13,7 +13,8 @@
 # limitations under the License.
 """Tests for tfx.orchestration.portable.partial_run_utils."""
 
-from typing import List, Mapping, Optional, Set, Tuple, Union
+import collections
+from typing import Dict, List, Mapping, Optional, Set, Tuple, Union
 from unittest import mock
 
 from absl import logging
@@ -77,14 +78,14 @@ def _to_input_channel(
           type=metadata_store_pb2.ArtifactType(name=artifact_type)))
 
 
-class PipelineFilteringTest(parameterized.TestCase, test_case_utils.TfxTest):
+class MarkPipelineFnTest(parameterized.TestCase, test_case_utils.TfxTest):
 
-  def checkNodeExecutionOptions(self, pipeline: pipeline_pb2.Pipeline,
-                                snapshot_node: Optional[str],
-                                nodes_to_run: Set[str],
-                                nodes_requiring_snapshot: Set[str],
-                                nodes_to_skip: Set[str],
-                                nodes_to_reuse: Set[str]):
+  def _checkNodeExecutionOptions(self, pipeline: pipeline_pb2.Pipeline,
+                                 snapshot_node: Optional[str],
+                                 nodes_to_run: Set[str],
+                                 nodes_requiring_snapshot: Set[str],
+                                 nodes_to_skip: Set[str],
+                                 nodes_to_reuse: Set[str]):
     for node in pipeline.nodes:
       try:
         node_id = node.pipeline_node.node_info.id
@@ -122,9 +123,56 @@ class PipelineFilteringTest(parameterized.TestCase, test_case_utils.TfxTest):
           raise ValueError(f'node_id {node_id} appears in neither nodes_to_run '
                            'nor nodes_to_skip.')
       except AssertionError:
-        logging.exception(
-            'checkNodeExecutionOptions failed in node: %s', node.pipeline_node)
+        logging.exception('_checkNodeExecutionOptions failed in node: %s',
+                          node.pipeline_node)
         raise
+
+  def _createInputPipeline(self, node_to_downstream_nodes: Dict[str,
+                                                                List[str]]):
+    pipeline_name = 'test_pipeline'
+    input_pipeline = pipeline_pb2.Pipeline()
+    input_pipeline.pipeline_info.id = pipeline_name
+    input_pipeline.execution_mode = pipeline_pb2.Pipeline.SYNC
+
+    node_to_upstream_nodes = collections.defaultdict(list)
+    for node, downstream_nodes in node_to_downstream_nodes.items():
+      for downstream_node in downstream_nodes:
+        node_to_upstream_nodes[downstream_node].append(node)
+
+    for node, downstream_nodes in node_to_downstream_nodes.items():
+      # Use upper case of node name as its type.
+      node_type = node.upper()
+      n = input_pipeline.nodes.add()
+      n.pipeline_node.node_info.id = node
+      n.pipeline_node.node_info.type.name = node_type
+      n.pipeline_node.contexts.contexts.extend([
+          _to_context_spec('pipeline', pipeline_name),
+          _to_context_spec('component', node),
+      ])
+
+      if node in node_to_upstream_nodes:
+        for upstream_node in node_to_upstream_nodes[node]:
+          upstream_node_type = upstream_node.upper()
+          n.pipeline_node.inputs.inputs['in'].channels.extend([
+              _to_input_channel(
+                  producer_node_id=upstream_node,
+                  producer_output_key='out',
+                  artifact_type=upstream_node_type + node_type,
+                  context_names={
+                      'pipeline': pipeline_name,
+                      'component': node,
+                  }),
+          ])
+          n.pipeline_node.inputs.inputs['in'].min_count = 1
+          n.pipeline_node.upstream_nodes.extend([upstream_node])
+
+      for downstream_node in downstream_nodes:
+        downstream_node_type = downstream_node.upper()
+        n.pipeline_node.outputs.outputs['out'].CopyFrom(
+            _to_output_spec(node_type + downstream_node_type))
+        n.pipeline_node.downstream_nodes.extend([downstream_node])
+
+    return input_pipeline
 
   def testAsyncPipeline_error(self):
     """If Pipeline has execution_mode ASYNC, raise ValueError."""
@@ -193,62 +241,14 @@ class PipelineFilteringTest(parameterized.TestCase, test_case_utils.TfxTest):
     expected nodes_to_skip: []
     expected nodes_to_reuse: []
     """
-    input_pipeline = pipeline_pb2.Pipeline()
-    input_pipeline.pipeline_info.id = 'my_pipeline'
-    input_pipeline.execution_mode = pipeline_pb2.Pipeline.SYNC
-    node_a = input_pipeline.nodes.add()
-    node_a.pipeline_node.node_info.id = 'a'
-    node_a.pipeline_node.node_info.type.name = 'A'
-    node_a.pipeline_node.contexts.contexts.extend([
-        _to_context_spec('pipeline', 'my_pipeline'),
-        _to_context_spec('component', 'a'),
-    ])
-    node_a.pipeline_node.outputs.outputs['out'].CopyFrom(_to_output_spec('AB'))
-    node_a.pipeline_node.downstream_nodes.extend(['b'])
-    node_b = input_pipeline.nodes.add()
-    node_b.pipeline_node.node_info.id = 'b'
-    node_b.pipeline_node.node_info.type.name = 'B'
-    node_b.pipeline_node.contexts.contexts.extend([
-        _to_context_spec('pipeline', 'my_pipeline'),
-        _to_context_spec('component', 'b'),
-    ])
-    node_b.pipeline_node.inputs.inputs['in'].channels.extend([
-        _to_input_channel(
-            producer_node_id='a',
-            producer_output_key='out',
-            artifact_type='AB',
-            context_names={
-                'pipeline': 'my_pipeline',
-                'component': 'a',
-            }),
-    ])
-    node_b.pipeline_node.inputs.inputs['in'].min_count = 1
-    node_b.pipeline_node.outputs.outputs['out'].CopyFrom(_to_output_spec('BC'))
-    node_b.pipeline_node.upstream_nodes.extend(['a'])
-    node_b.pipeline_node.downstream_nodes.extend(['c'])
-    node_c = input_pipeline.nodes.add()
-    node_c.pipeline_node.node_info.id = 'c'
-    node_c.pipeline_node.node_info.type.name = 'C'
-    node_c.pipeline_node.contexts.contexts.extend([
-        _to_context_spec('pipeline', 'my_pipeline'),
-        _to_context_spec('component', 'c')
-    ])
-    node_c.pipeline_node.inputs.inputs['in'].channels.extend([
-        _to_input_channel(
-            producer_node_id='b',
-            producer_output_key='out',
-            artifact_type='BC',
-            context_names={
-                'pipeline': 'my_pipeline',
-                'component': 'b',
-            }),
-    ])
-    node_c.pipeline_node.inputs.inputs['in'].min_count = 1
-    node_c.pipeline_node.upstream_nodes.extend(['b'])
-
+    input_pipeline = self._createInputPipeline({
+        'a': ['b'],
+        'b': ['c'],
+        'c': []
+    })
     partial_run_utils.mark_pipeline(input_pipeline)
 
-    self.checkNodeExecutionOptions(
+    self._checkNodeExecutionOptions(
         input_pipeline,
         snapshot_node=None,
         nodes_to_run=set(['a', 'b', 'c']),
@@ -269,65 +269,17 @@ class PipelineFilteringTest(parameterized.TestCase, test_case_utils.TfxTest):
     expected nodes_to_skip: []
     expected nodes_to_reuse: []
     """
-    input_pipeline = pipeline_pb2.Pipeline()
-    input_pipeline.pipeline_info.id = 'my_pipeline'
-    input_pipeline.execution_mode = pipeline_pb2.Pipeline.SYNC
-    node_a = input_pipeline.nodes.add()
-    node_a.pipeline_node.node_info.id = 'a'
-    node_a.pipeline_node.node_info.type.name = 'A'
-    node_a.pipeline_node.contexts.contexts.extend([
-        _to_context_spec('pipeline', 'my_pipeline'),
-        _to_context_spec('component', 'a'),
-    ])
-    node_a.pipeline_node.outputs.outputs['out'].CopyFrom(_to_output_spec('AB'))
-    node_a.pipeline_node.downstream_nodes.extend(['b'])
-    node_b = input_pipeline.nodes.add()
-    node_b.pipeline_node.node_info.id = 'b'
-    node_b.pipeline_node.node_info.type.name = 'B'
-    node_b.pipeline_node.contexts.contexts.extend([
-        _to_context_spec('pipeline', 'my_pipeline'),
-        _to_context_spec('component', 'b'),
-    ])
-    node_b.pipeline_node.inputs.inputs['in'].channels.extend([
-        _to_input_channel(
-            producer_node_id='a',
-            producer_output_key='out',
-            artifact_type='AB',
-            context_names={
-                'pipeline': 'my_pipeline',
-                'component': 'a',
-            }),
-    ])
-    node_b.pipeline_node.inputs.inputs['in'].min_count = 1
-    node_b.pipeline_node.outputs.outputs['out'].CopyFrom(_to_output_spec('BC'))
-    node_b.pipeline_node.upstream_nodes.extend(['a'])
-    node_b.pipeline_node.downstream_nodes.extend(['c'])
-    node_c = input_pipeline.nodes.add()
-    node_c.pipeline_node.node_info.id = 'c'
-    node_c.pipeline_node.node_info.type.name = 'C'
-    node_c.pipeline_node.contexts.contexts.extend([
-        _to_context_spec('pipeline', 'my_pipeline'),
-        _to_context_spec('component', 'c'),
-    ])
-    node_c.pipeline_node.inputs.inputs['in'].channels.extend([
-        _to_input_channel(
-            producer_node_id='b',
-            producer_output_key='out',
-            artifact_type='BC',
-            context_names={
-                'pipeline': 'my_pipeline',
-                'component': 'b',
-            }),
-    ])
-    node_c.pipeline_node.inputs.inputs['in'].min_count = 1
-    node_c.pipeline_node.upstream_nodes.extend(['b'])
-
+    input_pipeline = self._createInputPipeline({
+        'a': ['b'],
+        'b': ['c'],
+        'c': []
+    })
     partial_run_utils.mark_pipeline(
         input_pipeline,
         from_nodes=lambda node_id: (node_id == 'a'),
         to_nodes=lambda node_id: (node_id == 'c'))
 
-    self.checkNodeExecutionOptions(
+    self._checkNodeExecutionOptions(
         input_pipeline,
         snapshot_node=None,
         nodes_to_run=set(['a', 'b', 'c']),
@@ -347,65 +299,17 @@ class PipelineFilteringTest(parameterized.TestCase, test_case_utils.TfxTest):
     expected nodes_to_skip: [node_c]
     expected nodes_to_reuse: []
     """
-    input_pipeline = pipeline_pb2.Pipeline()
-    input_pipeline.pipeline_info.id = 'my_pipeline'
-    input_pipeline.execution_mode = pipeline_pb2.Pipeline.SYNC
-    node_a = input_pipeline.nodes.add()
-    node_a.pipeline_node.node_info.id = 'a'
-    node_a.pipeline_node.node_info.type.name = 'A'
-    node_a.pipeline_node.contexts.contexts.extend([
-        _to_context_spec('pipeline', 'my_pipeline'),
-        _to_context_spec('component', 'a'),
-    ])
-    node_a.pipeline_node.outputs.outputs['out'].CopyFrom(_to_output_spec('AB'))
-    node_a.pipeline_node.downstream_nodes.extend(['b'])
-    node_b = input_pipeline.nodes.add()
-    node_b.pipeline_node.node_info.id = 'b'
-    node_b.pipeline_node.node_info.type.name = 'B'
-    node_b.pipeline_node.contexts.contexts.extend([
-        _to_context_spec('pipeline', 'my_pipeline'),
-        _to_context_spec('component', 'b'),
-    ])
-    node_b.pipeline_node.inputs.inputs['in'].channels.extend([
-        _to_input_channel(
-            producer_node_id='a',
-            producer_output_key='out',
-            artifact_type='AB',
-            context_names={
-                'pipeline': 'my_pipeline',
-                'component': 'a',
-            }),
-    ])
-    node_b.pipeline_node.inputs.inputs['in'].min_count = 1
-    node_b.pipeline_node.outputs.outputs['out'].CopyFrom(_to_output_spec('BC'))
-    node_b.pipeline_node.upstream_nodes.extend(['a'])
-    node_b.pipeline_node.downstream_nodes.extend(['c'])
-    node_c = input_pipeline.nodes.add()
-    node_c.pipeline_node.node_info.id = 'c'
-    node_c.pipeline_node.node_info.type.name = 'C'
-    node_c.pipeline_node.contexts.contexts.extend([
-        _to_context_spec('pipeline', 'my_pipeline'),
-        _to_context_spec('component', 'c')
-    ])
-    node_c.pipeline_node.inputs.inputs['in'].channels.extend([
-        _to_input_channel(
-            producer_node_id='b',
-            producer_output_key='out',
-            artifact_type='BC',
-            context_names={
-                'pipeline': 'my_pipeline',
-                'component': 'b',
-            }),
-    ])
-    node_c.pipeline_node.inputs.inputs['in'].min_count = 1
-    node_c.pipeline_node.upstream_nodes.extend(['b'])
-
+    input_pipeline = self._createInputPipeline({
+        'a': ['b'],
+        'b': ['c'],
+        'c': []
+    })
     partial_run_utils.mark_pipeline(
         input_pipeline,
         from_nodes=lambda node_id: (node_id == 'a'),
         to_nodes=lambda node_id: (node_id == 'b'))
 
-    self.checkNodeExecutionOptions(
+    self._checkNodeExecutionOptions(
         input_pipeline,
         snapshot_node=None,
         nodes_to_run=set(['a', 'b']),
@@ -426,65 +330,17 @@ class PipelineFilteringTest(parameterized.TestCase, test_case_utils.TfxTest):
     expected nodes_to_skip: [node_a]
     expected nodes_to_reuse: [node_a]
     """
-    input_pipeline = pipeline_pb2.Pipeline()
-    input_pipeline.pipeline_info.id = 'my_pipeline'
-    input_pipeline.execution_mode = pipeline_pb2.Pipeline.SYNC
-    node_a = input_pipeline.nodes.add()
-    node_a.pipeline_node.node_info.id = 'a'
-    node_a.pipeline_node.node_info.type.name = 'A'
-    node_a.pipeline_node.contexts.contexts.extend([
-        _to_context_spec('pipeline', 'my_pipeline'),
-        _to_context_spec('component', 'a'),
-    ])
-    node_a.pipeline_node.outputs.outputs['out'].CopyFrom(_to_output_spec('AB'))
-    node_a.pipeline_node.downstream_nodes.extend(['b'])
-    node_b = input_pipeline.nodes.add()
-    node_b.pipeline_node.node_info.id = 'b'
-    node_b.pipeline_node.node_info.type.name = 'B'
-    node_b.pipeline_node.contexts.contexts.extend([
-        _to_context_spec('pipeline', 'my_pipeline'),
-        _to_context_spec('component', 'b'),
-    ])
-    node_b.pipeline_node.inputs.inputs['in'].channels.extend([
-        _to_input_channel(
-            producer_node_id='a',
-            producer_output_key='out',
-            artifact_type='AB',
-            context_names={
-                'pipeline': 'my_pipeline',
-                'component': 'a',
-            }),
-    ])
-    node_b.pipeline_node.inputs.inputs['in'].min_count = 1
-    node_b.pipeline_node.outputs.outputs['out'].CopyFrom(_to_output_spec('BC'))
-    node_b.pipeline_node.upstream_nodes.extend(['a'])
-    node_b.pipeline_node.downstream_nodes.extend(['c'])
-    node_c = input_pipeline.nodes.add()
-    node_c.pipeline_node.node_info.id = 'c'
-    node_c.pipeline_node.node_info.type.name = 'C'
-    node_c.pipeline_node.contexts.contexts.extend([
-        _to_context_spec('pipeline', 'my_pipeline'),
-        _to_context_spec('component', 'c'),
-    ])
-    node_c.pipeline_node.inputs.inputs['in'].channels.extend([
-        _to_input_channel(
-            producer_node_id='b',
-            producer_output_key='out',
-            artifact_type='BC',
-            context_names={
-                'pipeline': 'my_pipeline',
-                'component': 'b',
-            }),
-    ])
-    node_c.pipeline_node.inputs.inputs['in'].min_count = 1
-    node_c.pipeline_node.upstream_nodes.extend(['b'])
-
+    input_pipeline = self._createInputPipeline({
+        'a': ['b'],
+        'b': ['c'],
+        'c': []
+    })
     partial_run_utils.mark_pipeline(
         input_pipeline,
         from_nodes=lambda node_id: (node_id == 'b'),
         to_nodes=lambda node_id: (node_id == 'c'))
 
-    self.checkNodeExecutionOptions(
+    self._checkNodeExecutionOptions(
         input_pipeline,
         snapshot_node='b',
         nodes_to_run=set(['b', 'c']),
@@ -507,80 +363,18 @@ class PipelineFilteringTest(parameterized.TestCase, test_case_utils.TfxTest):
     expected nodes_to_skip: [node_a]
     expected nodes_to_reuse: [node_a]
     """
-    input_pipeline = pipeline_pb2.Pipeline()
-    input_pipeline.pipeline_info.id = 'my_pipeline'
-    input_pipeline.execution_mode = pipeline_pb2.Pipeline.SYNC
-    node_a = input_pipeline.nodes.add()
-    node_a.pipeline_node.node_info.id = 'a'
-    node_a.pipeline_node.node_info.type.name = 'A'
-    node_a.pipeline_node.contexts.contexts.extend([
-        _to_context_spec('pipeline', 'my_pipeline'),
-        _to_context_spec('component', 'a'),
-    ])
-    node_a.pipeline_node.outputs.outputs['out_b'].CopyFrom(
-        _to_output_spec('AB'))
-    node_a.pipeline_node.outputs.outputs['out_c'].CopyFrom(
-        _to_output_spec('AC'))
-    node_a.pipeline_node.downstream_nodes.extend(['b', 'c'])
-    node_b = input_pipeline.nodes.add()
-    node_b.pipeline_node.node_info.id = 'b'
-    node_b.pipeline_node.node_info.type.name = 'B'
-    node_b.pipeline_node.contexts.contexts.extend([
-        _to_context_spec('pipeline', 'my_pipeline'),
-        _to_context_spec('component', 'b'),
-    ])
-    node_b.pipeline_node.inputs.inputs['in'].channels.extend([
-        _to_input_channel(
-            producer_node_id='a',
-            producer_output_key='out_b',
-            artifact_type='AB',
-            context_names={
-                'pipeline': 'my_pipeline',
-                'component': 'a',
-            }),
-    ])
-    node_b.pipeline_node.inputs.inputs['in'].min_count = 1
-    node_b.pipeline_node.outputs.outputs['out'].CopyFrom(_to_output_spec('BC'))
-    node_b.pipeline_node.upstream_nodes.extend(['a'])
-    node_b.pipeline_node.downstream_nodes.extend(['c'])
-    node_c = input_pipeline.nodes.add()
-    node_c.pipeline_node.node_info.id = 'c'
-    node_c.pipeline_node.node_info.type.name = 'C'
-    node_c.pipeline_node.contexts.contexts.extend([
-        _to_context_spec('pipeline', 'my_pipeline'),
-        _to_context_spec('component', 'c'),
-    ])
-    node_c.pipeline_node.inputs.inputs['in_a'].channels.extend([
-        _to_input_channel(
-            producer_node_id='a',
-            producer_output_key='out_c',
-            artifact_type='AC',
-            context_names={
-                'pipeline': 'my_pipeline',
-                'component': 'a',
-            }),
-    ])
-    node_c.pipeline_node.inputs.inputs['in_a'].min_count = 1
-    node_c.pipeline_node.inputs.inputs['in_b'].channels.extend([
-        _to_input_channel(
-            producer_node_id='b',
-            producer_output_key='out',
-            artifact_type='BC',
-            context_names={
-                'pipeline': 'my_pipeline',
-                'component': 'b',
-            }),
-    ])
-    node_c.pipeline_node.inputs.inputs['in_b'].min_count = 1
-    node_c.pipeline_node.upstream_nodes.extend(['a', 'b'])
-
+    input_pipeline = self._createInputPipeline({
+        'a': ['b', 'c'],
+        'b': ['c'],
+        'c': []
+    })
     partial_run_utils.mark_pipeline(
         input_pipeline,
         from_nodes=lambda node_id: (node_id == 'b'),
         to_nodes=lambda node_id: (node_id == 'c'),
     )
 
-    self.checkNodeExecutionOptions(
+    self._checkNodeExecutionOptions(
         input_pipeline,
         snapshot_node='b',
         nodes_to_run=set(['b', 'c']),
@@ -602,87 +396,19 @@ class PipelineFilteringTest(parameterized.TestCase, test_case_utils.TfxTest):
     expected nodes_to_skip: [node_a, node_b, node_d]
     expected nodes_to_reuse: [node_a, node_b]
     """
-    input_pipeline = pipeline_pb2.Pipeline()
-    input_pipeline.pipeline_info.id = 'my_pipeline'
-    input_pipeline.execution_mode = pipeline_pb2.Pipeline.SYNC
-    node_a = input_pipeline.nodes.add()
-    node_a.pipeline_node.node_info.id = 'a'
-    node_a.pipeline_node.node_info.type.name = 'A'
-    node_a.pipeline_node.contexts.contexts.extend([
-        _to_context_spec('pipeline', 'my_pipeline'),
-        _to_context_spec('component', 'a'),
-    ])
-    node_a.pipeline_node.outputs.outputs['out'].CopyFrom(_to_output_spec('AB'))
-    node_a.pipeline_node.downstream_nodes.extend(['b'])
-    node_b = input_pipeline.nodes.add()
-    node_b.pipeline_node.node_info.id = 'b'
-    node_b.pipeline_node.node_info.type.name = 'B'
-    node_b.pipeline_node.contexts.contexts.extend([
-        _to_context_spec('pipeline', 'my_pipeline'),
-        _to_context_spec('component', 'b'),
-    ])
-    node_b.pipeline_node.inputs.inputs['in'].channels.extend([
-        _to_input_channel(
-            producer_node_id='a',
-            producer_output_key='out',
-            artifact_type='AB',
-            context_names={
-                'pipeline': 'my_pipeline',
-                'component': 'a',
-            }),
-    ])
-    node_b.pipeline_node.inputs.inputs['in'].min_count = 1
-    node_b.pipeline_node.outputs.outputs['out'].CopyFrom(_to_output_spec('BC'))
-    node_b.pipeline_node.upstream_nodes.extend(['a'])
-    node_b.pipeline_node.downstream_nodes.extend(['c'])
-    node_c = input_pipeline.nodes.add()
-    node_c.pipeline_node.node_info.id = 'c'
-    node_c.pipeline_node.node_info.type.name = 'C'
-    node_c.pipeline_node.contexts.contexts.extend([
-        _to_context_spec('pipeline', 'my_pipeline'),
-        _to_context_spec('component', 'c'),
-    ])
-    node_c.pipeline_node.inputs.inputs['in'].channels.extend([
-        _to_input_channel(
-            producer_node_id='b',
-            producer_output_key='out',
-            artifact_type='BC',
-            context_names={
-                'pipeline': 'my_pipeline',
-                'component': 'b',
-            }),
-    ])
-    node_c.pipeline_node.inputs.inputs['in'].min_count = 1
-    node_c.pipeline_node.outputs.outputs['out'].CopyFrom(_to_output_spec('CD'))
-    node_c.pipeline_node.upstream_nodes.extend(['b'])
-    node_c.pipeline_node.downstream_nodes.extend(['d'])
-    node_d = input_pipeline.nodes.add()
-    node_d.pipeline_node.node_info.id = 'd'
-    node_d.pipeline_node.node_info.type.name = 'D'
-    node_d.pipeline_node.contexts.contexts.extend([
-        _to_context_spec('pipeline', 'my_pipeline'),
-        _to_context_spec('component', 'd'),
-    ])
-    node_d.pipeline_node.inputs.inputs['in'].channels.extend([
-        _to_input_channel(
-            producer_node_id='c',
-            producer_output_key='out',
-            artifact_type='CD',
-            context_names={
-                'pipeline': 'my_pipeline',
-                'component': 'c',
-            }),
-    ])
-    node_d.pipeline_node.inputs.inputs['in'].min_count = 1
-    node_d.pipeline_node.upstream_nodes.extend(['c'])
-
+    input_pipeline = self._createInputPipeline({
+        'a': ['b'],
+        'b': ['c'],
+        'c': ['d'],
+        'd': []
+    })
     partial_run_utils.mark_pipeline(
         input_pipeline,
         from_nodes=lambda node_id: (node_id == 'c'),
         to_nodes=lambda node_id: (node_id == 'c'),
     )
 
-    self.checkNodeExecutionOptions(
+    self._checkNodeExecutionOptions(
         input_pipeline,
         snapshot_node='c',
         nodes_to_run=set(['c']),
@@ -708,65 +434,17 @@ class PipelineFilteringTest(parameterized.TestCase, test_case_utils.TfxTest):
     expected nodes_to_skip: [node_a, node_b]
     expected nodes_to_reuse: [node_a, node_b]
     """
-    input_pipeline = pipeline_pb2.Pipeline()
-    input_pipeline.pipeline_info.id = 'my_pipeline'
-    input_pipeline.execution_mode = pipeline_pb2.Pipeline.SYNC
-    node_a = input_pipeline.nodes.add()
-    node_a.pipeline_node.node_info.id = 'a'
-    node_a.pipeline_node.node_info.type.name = 'A'
-    node_a.pipeline_node.contexts.contexts.extend([
-        _to_context_spec('pipeline', 'my_pipeline'),
-        _to_context_spec('component', 'a'),
-    ])
-    node_a.pipeline_node.outputs.outputs['out'].CopyFrom(_to_output_spec('AB'))
-    node_a.pipeline_node.downstream_nodes.extend(['b'])
-    node_b = input_pipeline.nodes.add()
-    node_b.pipeline_node.node_info.id = 'b'
-    node_b.pipeline_node.node_info.type.name = 'B'
-    node_b.pipeline_node.contexts.contexts.extend([
-        _to_context_spec('pipeline', 'my_pipeline'),
-        _to_context_spec('component', 'b'),
-    ])
-    node_b.pipeline_node.inputs.inputs['in'].channels.extend([
-        _to_input_channel(
-            producer_node_id='a',
-            producer_output_key='out',
-            artifact_type='AB',
-            context_names={
-                'pipeline': 'my_pipeline',
-                'component': 'a',
-            }),
-    ])
-    node_b.pipeline_node.inputs.inputs['in'].min_count = 1
-    node_b.pipeline_node.outputs.outputs['out'].CopyFrom(_to_output_spec('BC'))
-    node_b.pipeline_node.upstream_nodes.extend(['a'])
-    node_b.pipeline_node.downstream_nodes.extend(['c'])
-    node_c = input_pipeline.nodes.add()
-    node_c.pipeline_node.node_info.id = 'c'
-    node_c.pipeline_node.node_info.type.name = 'C'
-    node_c.pipeline_node.contexts.contexts.extend([
-        _to_context_spec('pipeline', 'my_pipeline'),
-        _to_context_spec('component', 'c'),
-    ])
-    node_c.pipeline_node.inputs.inputs['in'].channels.extend([
-        _to_input_channel(
-            producer_node_id='b',
-            producer_output_key='out',
-            artifact_type='BC',
-            context_names={
-                'pipeline': 'my_pipeline',
-                'component': 'b',
-            }),
-    ])
-    node_c.pipeline_node.inputs.inputs['in'].min_count = 1
-    node_c.pipeline_node.upstream_nodes.extend(['b'])
-
+    input_pipeline = self._createInputPipeline({
+        'a': ['b'],
+        'b': ['c'],
+        'c': []
+    })
     partial_run_utils.mark_pipeline(
         input_pipeline,
         from_nodes=lambda node_id: (node_id == 'c'),
     )
 
-    self.checkNodeExecutionOptions(
+    self._checkNodeExecutionOptions(
         input_pipeline,
         snapshot_node='c',
         nodes_to_run=set(['c']),
@@ -788,79 +466,17 @@ class PipelineFilteringTest(parameterized.TestCase, test_case_utils.TfxTest):
     expected nodes_to_skip: [node_a, node_b]
     expected nodes_to_reuse: [node_a, node_b]
     """
-    input_pipeline = pipeline_pb2.Pipeline()
-    input_pipeline.pipeline_info.id = 'my_pipeline'
-    input_pipeline.execution_mode = pipeline_pb2.Pipeline.SYNC
-    node_a = input_pipeline.nodes.add()
-    node_a.pipeline_node.node_info.id = 'a'
-    node_a.pipeline_node.node_info.type.name = 'A'
-    node_a.pipeline_node.contexts.contexts.extend([
-        _to_context_spec('pipeline', 'my_pipeline'),
-        _to_context_spec('component', 'a'),
-    ])
-    node_a.pipeline_node.outputs.outputs['out_b'].CopyFrom(
-        _to_output_spec('AB'))
-    node_a.pipeline_node.outputs.outputs['out_c'].CopyFrom(
-        _to_output_spec('AC'))
-    node_a.pipeline_node.downstream_nodes.extend(['b', 'c'])
-    node_b = input_pipeline.nodes.add()
-    node_b.pipeline_node.node_info.id = 'b'
-    node_b.pipeline_node.node_info.type.name = 'B'
-    node_b.pipeline_node.contexts.contexts.extend([
-        _to_context_spec('pipeline', 'my_pipeline'),
-        _to_context_spec('component', 'b'),
-    ])
-    node_b.pipeline_node.inputs.inputs['in'].channels.extend([
-        _to_input_channel(
-            producer_node_id='a',
-            producer_output_key='out_b',
-            artifact_type='AB',
-            context_names={
-                'pipeline': 'my_pipeline',
-                'component': 'a',
-            }),
-    ])
-    node_b.pipeline_node.inputs.inputs['in'].min_count = 1
-    node_b.pipeline_node.outputs.outputs['out'].CopyFrom(_to_output_spec('BC'))
-    node_b.pipeline_node.upstream_nodes.extend(['a'])
-    node_b.pipeline_node.downstream_nodes.extend(['c'])
-    node_c = input_pipeline.nodes.add()
-    node_c.pipeline_node.node_info.id = 'c'
-    node_c.pipeline_node.node_info.type.name = 'C'
-    node_c.pipeline_node.contexts.contexts.extend([
-        _to_context_spec('pipeline', 'my_pipeline'),
-        _to_context_spec('component', 'c'),
-    ])
-    node_c.pipeline_node.inputs.inputs['in_a'].channels.extend([
-        _to_input_channel(
-            producer_node_id='a',
-            producer_output_key='out_c',
-            artifact_type='AC',
-            context_names={
-                'pipeline': 'my_pipeline',
-                'component': 'a',
-            }),
-    ])
-    node_c.pipeline_node.inputs.inputs['in_a'].min_count = 1
-    node_c.pipeline_node.inputs.inputs['in_b'].channels.extend([
-        _to_input_channel(
-            producer_node_id='b',
-            producer_output_key='out',
-            artifact_type='BC',
-            context_names={
-                'pipeline': 'my_pipeline',
-                'component': 'b',
-            }),
-    ])
-    node_c.pipeline_node.inputs.inputs['in_b'].min_count = 1
-    node_c.pipeline_node.upstream_nodes.extend(['a', 'b'])
-
+    input_pipeline = self._createInputPipeline({
+        'a': ['b', 'c'],
+        'b': ['c'],
+        'c': []
+    })
     partial_run_utils.mark_pipeline(
         input_pipeline,
         from_nodes=lambda node_id: (node_id == 'c'),
     )
 
-    self.checkNodeExecutionOptions(
+    self._checkNodeExecutionOptions(
         input_pipeline,
         snapshot_node='c',
         nodes_to_run=set(['c']),
@@ -891,121 +507,79 @@ class PipelineFilteringTest(parameterized.TestCase, test_case_utils.TfxTest):
     expected nodes_to_skip: [node_a1, node_b1, node_c1, node_a2, node_c2]
     expected nodes_to_reuse: [node_a1, node_b1, node_c1, node_a2]
     """
-    input_pipeline = pipeline_pb2.Pipeline()
-    input_pipeline.pipeline_info.id = 'my_pipeline'
-    input_pipeline.execution_mode = pipeline_pb2.Pipeline.SYNC
-    node_a1 = input_pipeline.nodes.add()
-    node_a1.pipeline_node.node_info.id = 'a1'
-    node_a1.pipeline_node.node_info.type.name = 'A'
-    node_a1.pipeline_node.contexts.contexts.extend([
-        _to_context_spec('pipeline', 'my_pipeline'),
-        _to_context_spec('component', 'a1'),
-    ])
-    node_a1.pipeline_node.outputs.outputs['out'].CopyFrom(_to_output_spec('AB'))
-    node_a1.pipeline_node.downstream_nodes.extend(['b1'])
-    node_b1 = input_pipeline.nodes.add()
-    node_b1.pipeline_node.node_info.id = 'b1'
-    node_b1.pipeline_node.node_info.type.name = 'B'
-    node_b1.pipeline_node.contexts.contexts.extend([
-        _to_context_spec('pipeline', 'my_pipeline'),
-        _to_context_spec('component', 'b1'),
-    ])
-    node_b1.pipeline_node.inputs.inputs['in'].channels.extend([
-        _to_input_channel(
-            producer_node_id='a1',
-            producer_output_key='out',
-            artifact_type='AB',
-            context_names={
-                'pipeline': 'my_pipeline',
-                'component': 'a1',
-            }),
-    ])
-    node_b1.pipeline_node.inputs.inputs['in'].min_count = 1
-    node_b1.pipeline_node.outputs.outputs['out'].CopyFrom(_to_output_spec('BC'))
-    node_b1.pipeline_node.upstream_nodes.extend(['a1'])
-    node_b1.pipeline_node.downstream_nodes.extend(['c1'])
-    node_c1 = input_pipeline.nodes.add()
-    node_c1.pipeline_node.node_info.id = 'c1'
-    node_c1.pipeline_node.node_info.type.name = 'C'
-    node_c1.pipeline_node.contexts.contexts.extend([
-        _to_context_spec('pipeline', 'my_pipeline'),
-        _to_context_spec('component', 'c1'),
-    ])
-    node_c1.pipeline_node.inputs.inputs['in'].channels.extend([
-        _to_input_channel(
-            producer_node_id='b1',
-            producer_output_key='out',
-            artifact_type='BC',
-            context_names={
-                'pipeline': 'my_pipeline',
-                'component': 'b1',
-            }),
-    ])
-    node_c1.pipeline_node.inputs.inputs['in'].min_count = 1
-    node_c1.pipeline_node.upstream_nodes.extend(['b1'])
-    node_a2 = input_pipeline.nodes.add()
-    node_a2.pipeline_node.node_info.id = 'a2'
-    node_a2.pipeline_node.node_info.type.name = 'A'
-    node_a2.pipeline_node.contexts.contexts.extend([
-        _to_context_spec('pipeline', 'my_pipeline'),
-        _to_context_spec('component', 'a2'),
-    ])
-    node_a2.pipeline_node.outputs.outputs['out'].CopyFrom(_to_output_spec('AB'))
-    node_a2.pipeline_node.downstream_nodes.extend(['b2'])
-    node_b2 = input_pipeline.nodes.add()
-    node_b2.pipeline_node.node_info.id = 'b2'
-    node_b2.pipeline_node.node_info.type.name = 'B'
-    node_b2.pipeline_node.contexts.contexts.extend([
-        _to_context_spec('pipeline', 'my_pipeline'),
-        _to_context_spec('component', 'b2'),
-    ])
-    node_b2.pipeline_node.inputs.inputs['in'].channels.extend([
-        _to_input_channel(
-            producer_node_id='a2',
-            producer_output_key='out',
-            artifact_type='AB',
-            context_names={
-                'pipeline': 'my_pipeline',
-                'component': 'a2',
-            }),
-    ])
-    node_b2.pipeline_node.inputs.inputs['in'].min_count = 1
-    node_b2.pipeline_node.outputs.outputs['out'].CopyFrom(_to_output_spec('BC'))
-    node_b2.pipeline_node.upstream_nodes.extend(['a2'])
-    node_b2.pipeline_node.downstream_nodes.extend(['c2'])
-    node_c2 = input_pipeline.nodes.add()
-    node_c2.pipeline_node.node_info.id = 'c2'
-    node_c2.pipeline_node.node_info.type.name = 'C'
-    node_c2.pipeline_node.contexts.contexts.extend([
-        _to_context_spec('pipeline', 'my_pipeline'),
-        _to_context_spec('component', 'c2'),
-    ])
-    node_c2.pipeline_node.inputs.inputs['in'].channels.extend([
-        _to_input_channel(
-            producer_node_id='b2',
-            producer_output_key='out',
-            artifact_type='BC',
-            context_names={
-                'pipeline': 'my_pipeline',
-                'component': 'b2',
-            }),
-    ])
-    node_c2.pipeline_node.inputs.inputs['in'].min_count = 1
-    node_c2.pipeline_node.upstream_nodes.extend(['b2'])
-
+    input_pipeline = self._createInputPipeline({
+        'a1': ['b1'],
+        'b1': ['c1'],
+        'c1': [],
+        'a2': ['b2'],
+        'b2': ['c2'],
+        'c2': []
+    })
     partial_run_utils.mark_pipeline(
         input_pipeline,
         from_nodes=lambda node_id: (node_id == 'b2'),
         to_nodes=lambda node_id: (node_id == 'b2'),
     )
 
-    self.checkNodeExecutionOptions(
+    self._checkNodeExecutionOptions(
         input_pipeline,
         snapshot_node='b2',
         nodes_to_run=set(['b2']),
         nodes_requiring_snapshot=set(['b2']),
         nodes_to_skip=set(['a1', 'b1', 'c1', 'a2', 'c2']),
         nodes_to_reuse=set(['a1', 'b1', 'c1', 'a2']))
+
+  def testReuseableNodes(self):
+    """Node excluded will not be run.
+
+    input_pipeline:
+        node_a -> node_b -> node_c -> node_d
+    from_node: node_b
+    to_node: node_d
+
+    expected snapshot_node: node_c
+    expected nodes_to_run: [node_c]
+    expected nodes_requiring_snapshot: [node_c]
+    expected nodes_to_skip: [node_a, node_b, node_d]
+    expected nodes_to_reuse: [node_a, node_b]
+    """
+    input_pipeline = self._createInputPipeline({
+        'a': ['b'],
+        'b': ['c'],
+        'c': ['d'],
+        'd': []
+    })
+    partial_run_utils.mark_pipeline(
+        input_pipeline,
+        from_nodes=lambda node_id: (node_id == 'b'),
+        to_nodes=lambda node_id: (node_id == 'd'),
+        skip_nodes=lambda node_id: (node_id == 'c'))
+    self._checkNodeExecutionOptions(
+        input_pipeline,
+        snapshot_node='b',
+        nodes_to_run=set(['b', 'c', 'd']),
+        nodes_requiring_snapshot=set(['b']),
+        nodes_to_skip=set(['a']),
+        nodes_to_reuse=set(['a']))
+
+    input_pipeline = self._createInputPipeline({
+        'a': ['b'],
+        'b': ['c'],
+        'c': ['d'],
+        'd': []
+    })
+    partial_run_utils.mark_pipeline(
+        input_pipeline,
+        from_nodes=lambda node_id: (node_id == 'b'),
+        to_nodes=lambda node_id: (node_id == 'd'),
+        skip_nodes=lambda node_id: (node_id == 'a' or node_id == 'b'))
+    self._checkNodeExecutionOptions(
+        input_pipeline,
+        snapshot_node='c',
+        nodes_to_run=set(['c', 'd']),
+        nodes_requiring_snapshot=set(['c']),
+        nodes_to_skip=set(['a', 'b']),
+        nodes_to_reuse=set(['a', 'b']))
 
 
 # pylint: disable=invalid-name
@@ -1795,11 +1369,8 @@ class PartialRunTest(absltest.TestCase):
         autospec=True) as mock_publish_cached_execution:
       mock_publish_cached_execution.side_effect = ConnectionResetError()
       try:
-        partial_run_utils.snapshot(self.metadata_config, pipeline_pb_run_2)
-        # pipeline_name=self.pipeline_name,
-        # node_id=load.id,
-        # base_run_id='run_1',
-        # new_run_id='run_2')
+        with metadata.Metadata(self.metadata_config) as m:
+          partial_run_utils.snapshot(m, pipeline_pb_run_2)
       except ConnectionResetError:
         pass
     # A retry attempt that succeeds.
@@ -1855,7 +1426,8 @@ class PartialRunTest(absltest.TestCase):
 
     # Simulate two successful attempts.
     for _ in [1, 2]:
-      partial_run_utils.snapshot(self.metadata_config, pipeline_pb_run_2)
+      with metadata.Metadata(self.metadata_config) as m:
+        partial_run_utils.snapshot(m, pipeline_pb_run_2)
     # Make sure that only one new cache execution is created,
     # despite the multiple attempts.
     with metadata.Metadata(self.metadata_config) as m:

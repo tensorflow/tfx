@@ -97,7 +97,8 @@ class PipelineNodeAsDoFn(beam.DoFn):
     platform_config = self._extract_platform_config(self._deployment_config,
                                                     self._node_id)
     if self._pipeline_node.execution_options.run.perform_snapshot:
-      partial_run_utils.snapshot(self._mlmd_connection_config, self._pipeline)
+      with metadata.Metadata(self._mlmd_connection_config) as mlmd_handle:
+        partial_run_utils.snapshot(mlmd_handle, self._pipeline)
     launcher.Launcher(
         pipeline_node=self._pipeline_node,
         mlmd_connection=metadata.Metadata(self._mlmd_connection_config),

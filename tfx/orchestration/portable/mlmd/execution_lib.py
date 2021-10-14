@@ -281,7 +281,7 @@ def get_artifact_ids_by_event_type_for_execution_id(
 
 def get_artifacts_dict(
     metadata_handler: metadata.Metadata, execution_id: int,
-    event_type: 'metadata_store_pb2.Event.Type'
+    event_types: 'List[metadata_store_pb2.Event.Type]'
 ) -> typing_utils.ArtifactMultiDict:
   """Returns a map from key to an ordered list of artifacts for the given execution id.
 
@@ -292,7 +292,7 @@ def get_artifacts_dict(
   Args:
     metadata_handler: A handler to access MLMD.
     execution_id: Id of the execution for which to get artifacts.
-    event_type: Event type to filter by.
+    event_types: Event types to filter by.
 
   Returns:
     A dict mapping key to an ordered list of artifacts.
@@ -307,7 +307,7 @@ def get_artifacts_dict(
   # Create a map from "key" to list of (index, artifact_id)s.
   indexed_artifact_ids_dict = collections.defaultdict(list)
   for event in events:
-    if event.type != event_type:
+    if event.type not in event_types:
       continue
     key, index = event_lib.get_artifact_path(event)
     artifact_id = event.artifact_id

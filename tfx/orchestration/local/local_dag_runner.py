@@ -92,6 +92,7 @@ class LocalDagRunner(tfx_runner.TfxRunner):
             custom_driver_spec=custom_driver_spec)
         logging.info('Component %s is running.', node_id)
         if pipeline_node.execution_options.run.perform_snapshot:
-          partial_run_utils.snapshot(connection_config, pipeline)
+          with metadata.Metadata(connection_config) as mlmd_handle:
+            partial_run_utils.snapshot(mlmd_handle, pipeline)
         component_launcher.launch()
         logging.info('Component %s is finished.', node_id)

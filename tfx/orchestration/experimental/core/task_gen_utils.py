@@ -50,7 +50,7 @@ def _generate_task_from_execution(metadata_handler: metadata.Metadata,
   contexts = metadata_handler.store.get_contexts_by_execution(execution.id)
   exec_properties = _extract_properties(execution)
   input_artifacts = execution_lib.get_artifacts_dict(
-      metadata_handler, execution.id, metadata_store_pb2.Event.INPUT)
+      metadata_handler, execution.id, [metadata_store_pb2.Event.INPUT])
   outputs_resolver = outputs_utils.OutputsResolver(node, pipeline.pipeline_info,
                                                    pipeline.runtime_spec,
                                                    pipeline.execution_mode)
