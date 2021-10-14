@@ -28,6 +28,7 @@ from tfx.proto import evaluator_pb2
 from tfx.types import standard_artifacts
 
 
+# TODO(b/202799145): Check whether dataflow jobs have actually been launched.
 class KubeflowDataflowIntegrationTest(kubeflow_test_utils.BaseKubeflowTest):
 
   def setUp(self):

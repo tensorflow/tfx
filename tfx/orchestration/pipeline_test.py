@@ -320,6 +320,25 @@ class PipelineTest(test_case_utils.TfxTest):
     self.assertEqual(expected_args,
                      p.components[0].executor_spec.beam_pipeline_args)
 
+  def testComponentsSetAfterCreationWithBeamPipelineArgs(self):
+    expected_args = [
+        '--my_first_beam_pipeline_args=foo',
+        '--my_second_beam_pipeline_args=bar'
+    ]
+    p = pipeline.Pipeline(
+        pipeline_name='a',
+        pipeline_root='b',
+        log_root='c',
+        beam_pipeline_args=[expected_args[0]],
+        metadata_connection_config=self._metadata_connection_config)
+    p.components = [
+        _make_fake_component_instance(
+            'component_a', _OutputTypeA, {}, {},
+            with_beam=True).with_beam_pipeline_args([expected_args[1]])
+    ]
+    self.assertEqual(expected_args,
+                     p.components[0].executor_spec.beam_pipeline_args)
+
 
 if __name__ == '__main__':
   tf.test.main()
