@@ -48,7 +48,6 @@ class ImportSchemaGen(base_component.BaseComponent):
   - `schema_file` is copied to the output artifact. This is different from
     `Importer` that loads an "Artifact" by setting its URI to the given path.
   """
-  # TODO(b/199098240): Update guide and examples about ImportSchemaGen.
 
   SPEC_CLASS = standard_component_specs.ImportSchemaGenSpec
   EXECUTOR_SPEC = executor_spec.ExecutorClassSpec(executor.Executor)

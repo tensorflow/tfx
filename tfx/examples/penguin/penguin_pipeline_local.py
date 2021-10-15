@@ -176,17 +176,15 @@ def _create_pipeline(
     # Import user-provided schema.
     schema_gen = tfx.components.ImportSchemaGen(
         schema_file=user_provided_schema_path)
+    # Performs anomaly detection based on statistics and data schema.
+    example_validator = tfx.components.ExampleValidator(
+        statistics=statistics_gen.outputs['statistics'],
+        schema=schema_gen.outputs['schema'])
   else:
     # Generates schema based on statistics files.
     schema_gen = tfx.components.SchemaGen(
         statistics=statistics_gen.outputs['statistics'],
         infer_feature_shape=True)
-
-  # Performs anomaly detection based on statistics and data schema.
-  # TODO(b/199338233): Use ExampleValidator only for ImportSchemaGen path.
-  example_validator = tfx.components.ExampleValidator(
-      statistics=statistics_gen.outputs['statistics'],
-      schema=schema_gen.outputs['schema'])
 
   # Gets multiple Spans for transform and training.
   if resolver_range_config:
@@ -340,7 +338,6 @@ def _create_pipeline(
       example_gen,
       statistics_gen,
       schema_gen,
-      example_validator,
       transform,
       trainer,
       model_resolver,
@@ -356,6 +353,8 @@ def _create_pipeline(
   if enable_bulk_inferrer:
     components_list.append(example_gen_unlabelled)
     components_list.append(bulk_inferrer)
+  if user_provided_schema_path:
+    components_list.append(example_validator)
 
   return tfx.dsl.Pipeline(
       pipeline_name=pipeline_name,

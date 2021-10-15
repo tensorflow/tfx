@@ -43,6 +43,8 @@ class PenguinPipelineKubeflowTest(test_case_utils.TfxTest):
         data_root=penguin_pipeline_kubeflow._data_root,
         module_file=penguin_pipeline_kubeflow._module_file,
         enable_tuning=False,
+        user_provided_schema_path=penguin_pipeline_kubeflow
+        ._user_provided_schema,
         ai_platform_training_args=penguin_pipeline_kubeflow
         ._ai_platform_training_args,
         ai_platform_serving_args=penguin_pipeline_kubeflow

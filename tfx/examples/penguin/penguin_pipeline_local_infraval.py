@@ -26,6 +26,9 @@ _pipeline_name = 'penguin_local_infraval'
 # utility function is in ~/penguin. Feel free to customize as needed.
 _penguin_root = os.path.join(os.environ['HOME'], 'penguin')
 _data_root = os.path.join(_penguin_root, 'data')
+# User provided schema of the input data.
+_user_provided_schema = os.path.join(_penguin_root, 'schema', 'user_provided',
+                                     'schema.pbtxt')
 # Python module file to inject customized logic into the TFX components. The
 # Transform and Trainer both require user-defined functions to run
 # successfully.
@@ -56,6 +59,7 @@ _beam_pipeline_args = [
 def _create_pipeline(pipeline_name: str, pipeline_root: str, data_root: str,
                      module_file: str, accuracy_threshold: float,
                      serving_model_dir: str, metadata_path: str,
+                     user_provided_schema_path: str,
                      beam_pipeline_args: List[str],
                      make_warmup: bool) -> tfx.dsl.Pipeline:
   """Implements the penguin pipeline with TFX."""
@@ -67,9 +71,9 @@ def _create_pipeline(pipeline_name: str, pipeline_root: str, data_root: str,
   statistics_gen = tfx.components.StatisticsGen(
       examples=example_gen.outputs['examples'])
 
-  # Generates schema based on statistics files.
-  schema_gen = tfx.components.SchemaGen(
-      statistics=statistics_gen.outputs['statistics'], infer_feature_shape=True)
+  # Import user-provided schema.
+  schema_gen = tfx.components.ImportSchemaGen(
+      schema_file=user_provided_schema_path)
 
   # Performs anomaly detection based on statistics and data schema.
   example_validator = tfx.components.ExampleValidator(
@@ -202,5 +206,6 @@ if __name__ == '__main__':
           accuracy_threshold=0.6,
           serving_model_dir=_serving_model_dir,
           metadata_path=_metadata_path,
+          user_provided_schema_path=_user_provided_schema,
           beam_pipeline_args=_beam_pipeline_args,
           make_warmup=True))
