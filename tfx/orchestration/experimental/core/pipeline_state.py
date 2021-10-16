@@ -24,7 +24,9 @@ import attr
 from tfx import types
 from tfx.orchestration import data_types_utils
 from tfx.orchestration import metadata
+from tfx.orchestration.experimental.core import env
 from tfx.orchestration.experimental.core import mlmd_state
+from tfx.orchestration.experimental.core import orchestration_options
 from tfx.orchestration.experimental.core import task as task_lib
 from tfx.orchestration.portable.mlmd import context_lib
 from tfx.orchestration.portable.mlmd import execution_lib
@@ -492,6 +494,11 @@ class PipelineState:
     self._check_context()
     if self._execution.custom_properties.get(property_key):
       del self._execution.custom_properties[property_key]
+
+  def get_orchestration_options(
+      self) -> orchestration_options.OrchestrationOptions:
+    self._check_context()
+    return env.get_env().get_orchestration_options(self.pipeline)
 
   def _save_node_states_dict(self, node_states: Dict[str, NodeState]) -> None:
     data_types_utils.set_metadata_value(

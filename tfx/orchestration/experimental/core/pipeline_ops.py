@@ -537,6 +537,8 @@ def _orchestrate_active_pipeline(
         metadata_store_pb2.Execution.RUNNING):
       pipeline_state.set_pipeline_execution_state(
           metadata_store_pb2.Execution.RUNNING)
+    orchestration_options = pipeline_state.get_orchestration_options()
+    logging.info('Orchestration options: %s', orchestration_options)
 
   def _filter_by_state(node_infos: List[_NodeInfo],
                        state_str: str) -> List[_NodeInfo]:
@@ -576,10 +578,12 @@ def _orchestrate_active_pipeline(
 
   # Initialize task generator for the pipeline.
   if pipeline.execution_mode == pipeline_pb2.Pipeline.SYNC:
-    # TODO(b/200618482): Remove fail_fast=True.
     generator = sync_pipeline_task_gen.SyncPipelineTaskGenerator(
-        mlmd_handle, pipeline_state, task_queue.contains_task_id,
-        service_job_manager, fail_fast=True)
+        mlmd_handle,
+        pipeline_state,
+        task_queue.contains_task_id,
+        service_job_manager,
+        fail_fast=orchestration_options.fail_fast)
   elif pipeline.execution_mode == pipeline_pb2.Pipeline.ASYNC:
     generator = async_pipeline_task_gen.AsyncPipelineTaskGenerator(
         mlmd_handle, pipeline_state, task_queue.contains_task_id,

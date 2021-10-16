@@ -353,6 +353,13 @@ class PipelineStateTest(test_utils.TfxTest):
       self.assertLen(mlmd_executions, 1)
       self.assertIsNone(mlmd_executions[0].custom_properties.get(property_key))
 
+  def test_get_orchestration_options(self):
+    with self._mlmd_connection as m:
+      pipeline = _test_pipeline('pipeline')
+      with pstate.PipelineState.new(m, pipeline) as pipeline_state:
+        options = pipeline_state.get_orchestration_options()
+        self.assertFalse(options.fail_fast)
+
   def test_async_pipeline_views(self):
     with self._mlmd_connection as m:
       pipeline = _test_pipeline('pipeline1')
