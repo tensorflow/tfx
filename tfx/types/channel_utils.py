@@ -62,6 +62,9 @@ def get_individual_channels(
     return [input_channel]
   elif isinstance(input_channel, channel.UnionChannel):
     return list(cast(channel.UnionChannel, input_channel).channels)
+  elif isinstance(input_channel, channel.LoopVarChannel):
+    return get_individual_channels(
+        cast(channel.LoopVarChannel, input_channel).wrapped)
   else:
     raise RuntimeError(f'Unexpected Channel type: {type(input_channel)}')
 

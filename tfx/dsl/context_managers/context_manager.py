@@ -74,6 +74,9 @@ class DslContext:
   def validate(self):
     """Hook method to validate the context."""
 
+  def will_add_node(self, node: _BaseNode):
+    """Hook method before adding a node to the context."""
+
   @property
   def is_background(self):
     return False
@@ -153,6 +156,8 @@ class _DslContextRegistry(threading.local):
   def put_node(self, node: _BaseNode) -> None:
     """Associates the node to all active contexts."""
     for context in self._active:
+      context.will_add_node(node)
+    for context in self._active:
       self._nodes_by_context_ids[context.id].append(node)
 
   def get_nodes(self, context: Optional[DslContext] = None) -> List[_BaseNode]:
@@ -209,6 +214,7 @@ class DslContextManager(abc.ABC):
     Returns:
       Newly created DslContext object.
     """
+    raise NotImplementedError()
 
   @abc.abstractmethod
   def enter(self, context: DslContext) -> Any:  # pylint: disable=unused-argument

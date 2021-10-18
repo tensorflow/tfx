@@ -250,3 +250,32 @@ def union(input_channels: Iterable[BaseChannel]) -> UnionChannel:
   input_channels = list(input_channels)
   assert input_channels, 'Not expecting empty input channels list.'
   return UnionChannel(input_channels[0].type, input_channels)
+
+
+@doc_controls.do_not_generate_docs
+class LoopVarChannel(BaseChannel):
+  """LoopVarChannel is a channel that is marked as a ForEach loop variable.
+
+  There is no special functionality for this channel itself; it just marks the
+  channel as a loop variable, and holds the context ID for the corresponding
+  ForEachContext.
+  """
+
+  def __init__(self, wrapped: BaseChannel, context_id: str):
+    """LoopVarChannel constructor.
+
+    Arguments:
+      wrapped: A wrapped BaseChannel.
+      context_id: An ID for the corresponding ForEachContext.
+    """
+    super().__init__(wrapped.type)
+    self._wrapped = wrapped
+    self._context_id = context_id
+
+  @property
+  def wrapped(self) -> BaseChannel:
+    return self._wrapped
+
+  @property
+  def context_id(self) -> str:
+    return self._context_id
