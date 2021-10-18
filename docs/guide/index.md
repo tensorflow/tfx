@@ -401,7 +401,7 @@ of these components, and then use the visualization support API in TFDV to
 create
 the visualizations in your notebook.  This includes [tfdv.load_statistics()](
 `tfdv.load_statistics`)
-and [tfdv.visualize_statistics()](`tfdv.visualize_statistics`)
+and [tfdv.visualize_statistics()](`https://www.tensorflow.org/tfx/data_validation/api_docs/python/tfdv/visualize_statistics`)
 Using this visualization you can better understand the characteristics of your
 dataset, and if necessary modify as required.
 
