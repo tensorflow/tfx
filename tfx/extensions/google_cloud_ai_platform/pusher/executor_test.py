@@ -240,7 +240,8 @@ class ExecutorTest(tf.test.TestCase):
         ai_platform_serving_args=mock.ANY,
         labels=job_labels,
         serving_path=self._model_push.uri,
-        endpoint_region='us-central1'
+        endpoint_region='us-central1',
+        enable_vertex=True,
     )
     self.assertPushed()
     self.assertEqual(
@@ -291,7 +292,8 @@ class ExecutorTest(tf.test.TestCase):
         ai_platform_serving_args=mock.ANY,
         labels=job_labels,
         serving_container_image_uri=self._container_image_uri_vertex,
-        endpoint_region='us-west1'
+        endpoint_region='us-west1',
+        enable_vertex=True,
     )
     self.assertPushed()
     self.assertEqual(

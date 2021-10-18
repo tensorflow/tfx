@@ -19,10 +19,12 @@
 *   Deprecated python3.6 support.
 
 ## Bug Fixes and Other Changes
+
 *   Depends on `google-cloud-aiplatform>=1.5.0,<2`.
 *   Depends on `pyarrow>=1,<6`.
 *   Fixed FileBasedExampleGen driver for Kubeflow v2 (Vertex). Driver can
     update exec_properties for its executor now, which enables {SPAN} feature.
+*   Fixed Vertex Pusher by passing enable_vertex flag for deploying model.
 
 ## Documentation Updates
 
