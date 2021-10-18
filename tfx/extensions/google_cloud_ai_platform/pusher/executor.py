@@ -139,6 +139,7 @@ class Executor(tfx_pusher_executor.Executor):
           endpoint_region=endpoint_region,
           labels=job_labels,
           serving_path=model_path,
+          enable_vertex=True,
       )
 
       self._MarkPushed(
