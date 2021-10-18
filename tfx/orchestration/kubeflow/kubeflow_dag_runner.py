@@ -338,7 +338,7 @@ class KubeflowDagRunner(tfx_runner.TfxRunner):
           kubeflow_metadata_config=self._config.kubeflow_metadata_config,
           pod_labels_to_attach=self._pod_labels_to_attach,
           tfx_ir=tfx_node_ir,
-          metadata_ui_path=metadata_ui_path,
+          metadata_ui_path=self._config.metadata_ui_path,
           runtime_parameters=(self._params_by_component_id[component.id] +
                               [tfx_pipeline.ROOT_PARAMETER]))
 
