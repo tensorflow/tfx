@@ -183,13 +183,12 @@ def run_generator(mlmd_connection,
     pipeline_state = get_or_create_pipeline_state(m, pipeline)
     generator_params = dict(
         mlmd_handle=m,
-        pipeline_state=pipeline_state,
         is_task_id_tracked_fn=task_queue.contains_task_id,
         service_job_manager=service_job_manager)
     if fail_fast is not None:
       generator_params['fail_fast'] = fail_fast
     task_gen = generator_class(**generator_params)
-    tasks = task_gen.generate()
+    tasks = task_gen.generate(pipeline_state)
     if use_task_queue:
       for task in tasks:
         if task_lib.is_exec_node_task(task):

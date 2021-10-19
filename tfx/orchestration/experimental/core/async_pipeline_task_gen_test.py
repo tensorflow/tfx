@@ -128,9 +128,8 @@ class AsyncPipelineTaskGeneratorTest(test_utils.TfxTest,
       pipeline_state = test_utils.get_or_create_pipeline_state(
           m, self._pipeline)
       task_gen = asptg.AsyncPipelineTaskGenerator(
-          m, pipeline_state, lambda _: False,
-          service_jobs.DummyServiceJobManager())
-      tasks = task_gen.generate()
+          m, lambda _: False, service_jobs.DummyServiceJobManager())
+      tasks = task_gen.generate(pipeline_state)
       self.assertEmpty(tasks, 'Expected no task generation when no inputs.')
       self.assertEmpty(
           test_utils.get_non_orchestrator_executions(m),
