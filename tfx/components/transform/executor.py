@@ -1419,7 +1419,7 @@ class Executor(base_beam_executor.BaseBeamExecutor):
                   stats_options_updater_fn,
                   stats_options_util.StatsType.PRE_TRANSFORM, schema_proto)
               pre_transform_stats_options.experimental_use_sketch_based_topk_uniques = (
-                  self._TfdvUseSketchBasedTopKUniques())
+                  self._RunSketchBasedTopKUniques())
 
               if stats_output_paths:
                 pre_transform_feature_stats_loc = {
@@ -1483,7 +1483,7 @@ class Executor(base_beam_executor.BaseBeamExecutor):
                   transform_output_path)
 
               post_transform_stats_options.experimental_use_sketch_based_topk_uniques = (
-                  self._TfdvUseSketchBasedTopKUniques())
+                  self._RunSketchBasedTopKUniques())
 
               if stats_output_paths:
                 post_transform_feature_stats_loc = {
@@ -1735,5 +1735,5 @@ class Executor(base_beam_executor.BaseBeamExecutor):
   # TODO(b/130885503): clean this up once the sketch-based generator is the
   # default.
   @staticmethod
-  def _TfdvUseSketchBasedTopKUniques():
+  def _RunSketchBasedTopKUniques():
     return False
