@@ -31,15 +31,17 @@ from typing import Any, List
 import absl.testing.absltest
 
 from tfx import types
+from tfx.dsl.compiler import compiler
 from tfx.dsl.component.experimental.annotations import InputArtifact
 from tfx.dsl.component.experimental.annotations import OutputArtifact
 from tfx.dsl.component.experimental.annotations import OutputDict
 from tfx.dsl.component.experimental.annotations import Parameter
 from tfx.dsl.component.experimental.decorators import component
 from tfx.dsl.io import fileio
-from tfx.orchestration import pipeline
+from tfx.orchestration import pipeline as pipeline_py
 from tfx.orchestration.local import local_dag_runner
 from tfx.orchestration.metadata import sqlite_metadata_connection_config
+from tfx.proto.orchestration import pipeline_pb2
 
 
 class DummyDataset(types.Artifact):
@@ -149,9 +151,7 @@ class LocalDagRunnerTest(absl.testing.absltest.TestCase):
     super().setUp()
     self.__class__.RAN_COMPONENTS = []
 
-  def testSimplePipelineRun(self):
-    self.assertEqual(self.RAN_COMPONENTS, [])
-
+  def _getTestPipeline(self) -> pipeline_py.Pipeline:
     # Construct component instances.
     dummy_load_component = LoadDummyDatasetComponent()
     dummy_train_component = DummyTrainComponent(
@@ -165,7 +165,7 @@ class LocalDagRunnerTest(absl.testing.absltest.TestCase):
     temp_path = tempfile.mkdtemp()
     pipeline_root_path = os.path.join(temp_path, 'pipeline_root')
     metadata_path = os.path.join(temp_path, 'metadata.db')
-    test_pipeline = pipeline.Pipeline(
+    return pipeline_py.Pipeline(
         pipeline_name='test_pipeline',
         pipeline_root=pipeline_root_path,
         metadata_connection_config=sqlite_metadata_connection_config(
@@ -175,7 +175,23 @@ class LocalDagRunnerTest(absl.testing.absltest.TestCase):
             dummy_train_component,
             dummy_validate_component,
         ])
-    local_dag_runner.LocalDagRunner().run(test_pipeline)
+
+  def _getTestPipelineIR(self) -> pipeline_pb2.Pipeline:
+    test_pipeline = self._getTestPipeline()
+    c = compiler.Compiler()
+    return c.compile(test_pipeline)
+
+  def testSimplePipelineRun(self):
+    self.assertEqual(self.RAN_COMPONENTS, [])
+
+    local_dag_runner.LocalDagRunner().run(self._getTestPipeline())
+
+    self.assertEqual(self.RAN_COMPONENTS, ['Load', 'Train', 'Validate'])
+
+  def testSimplePipelineRunWithIR(self):
+    self.assertEqual(self.RAN_COMPONENTS, [])
+
+    local_dag_runner.LocalDagRunner().run_with_ir(self._getTestPipelineIR())
 
     self.assertEqual(self.RAN_COMPONENTS, ['Load', 'Train', 'Validate'])
 

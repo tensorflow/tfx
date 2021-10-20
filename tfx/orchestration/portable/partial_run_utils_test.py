@@ -722,7 +722,7 @@ class PartialRunTest(absltest.TestCase):
     #          -------        ---------        ---------
     #
     ############################################################################
-    beam_dag_runner.BeamDagRunner().run(pipeline_pb_run_1)
+    beam_dag_runner.BeamDagRunner().run_with_ir(pipeline_pb_run_1)
     ############################################################################
     # PART 1c: Full run -- Verify result (1 + 1 == 2).
     #
@@ -783,7 +783,7 @@ class PartialRunTest(absltest.TestCase):
     #                         ---------        ---------
     #
     ############################################################################
-    beam_dag_runner.BeamDagRunner().run(pipeline_pb_run_2)
+    beam_dag_runner.BeamDagRunner().run_with_ir(pipeline_pb_run_2)
     ############################################################################
     # PART 3c: Partial run -- Verify result (1 + 5 == 6).
     #
@@ -844,7 +844,7 @@ class PartialRunTest(absltest.TestCase):
     #            (10)              (10)
     #
     ############################################################################
-    beam_dag_runner.BeamDagRunner().run(pipeline_pb_run_1)
+    beam_dag_runner.BeamDagRunner().run_with_ir(pipeline_pb_run_1)
     self.assertResultEqual(pipeline_pb_run_1, [(result_1.id, 2),
                                                (result_2.id, 20)])
 
@@ -904,7 +904,7 @@ class PartialRunTest(absltest.TestCase):
     #                         -----------        -----------
     #
     ############################################################################
-    beam_dag_runner.BeamDagRunner().run(pipeline_pb_run_2)
+    beam_dag_runner.BeamDagRunner().run_with_ir(pipeline_pb_run_2)
     self.assertResultEqual(pipeline_pb_run_2, [(result_1_v2.id, 6)])
 
     ############################################################################
@@ -967,7 +967,7 @@ class PartialRunTest(absltest.TestCase):
     #                         -----------        -----------
     #
     ############################################################################
-    beam_dag_runner.BeamDagRunner().run(pipeline_pb_run_3)
+    beam_dag_runner.BeamDagRunner().run_with_ir(pipeline_pb_run_3)
     self.assertResultEqual(pipeline_pb_run_3, [(result_2_v2.id, 60)])
 
     ############################################################################
@@ -1020,7 +1020,7 @@ class PartialRunTest(absltest.TestCase):
     #                            (50)
     #
     ############################################################################
-    beam_dag_runner.BeamDagRunner().run(pipeline_pb_run_4)
+    beam_dag_runner.BeamDagRunner().run_with_ir(pipeline_pb_run_4)
     self.assertResultEqual(pipeline_pb_run_4, [(result_1_v2.id, 6),
                                                (result_2_v2.id, 60)])
     # Also verify that parent contexts are added.
@@ -1081,7 +1081,7 @@ class PartialRunTest(absltest.TestCase):
     #                     \______________________/
     #
     ############################################################################
-    beam_dag_runner.BeamDagRunner().run(pipeline_pb_run_1)
+    beam_dag_runner.BeamDagRunner().run_with_ir(pipeline_pb_run_1)
     self.assertResultEqual(pipeline_pb_run_1, 1)
 
     ############################################################################
@@ -1140,7 +1140,7 @@ class PartialRunTest(absltest.TestCase):
     #                     \______________________/
     #
     ############################################################################
-    beam_dag_runner.BeamDagRunner().run(pipeline_pb_run_2)
+    beam_dag_runner.BeamDagRunner().run_with_ir(pipeline_pb_run_2)
     self.assertResultEqual(pipeline_pb_run_2, 5)
 
     ############################################################################
@@ -1182,7 +1182,7 @@ class PartialRunTest(absltest.TestCase):
         pipeline_pb_run_3,
         from_nodes=lambda node_id: (node_id == load_v2.id),
         to_nodes=lambda node_id: (node_id == load_v2.id))
-    beam_dag_runner.BeamDagRunner().run(pipeline_pb_run_3)
+    beam_dag_runner.BeamDagRunner().run_with_ir(pipeline_pb_run_3)
 
     ############################################################################
     # PART 6a: Partial run -- Only `SubtractNum` onwards, using `run_3` as base.
@@ -1223,7 +1223,7 @@ class PartialRunTest(absltest.TestCase):
         LookupError,
         'No previous successful executions found for node_id AddNum in '
         'pipeline_run run_3'):
-      beam_dag_runner.BeamDagRunner().run(pipeline_pb_run_4)
+      beam_dag_runner.BeamDagRunner().run_with_ir(pipeline_pb_run_4)
     ############################################################################
     # PART 6b: Partial run -- Reuse pipeline run artifacts.
     #
@@ -1245,7 +1245,7 @@ class PartialRunTest(absltest.TestCase):
         pipeline_pb_run_5,
         from_nodes=lambda node_id: (node_id == subtract_nums_v3.id),
         snapshot_settings=snapshot_settings)
-    beam_dag_runner.BeamDagRunner().run(pipeline_pb_run_5)
+    beam_dag_runner.BeamDagRunner().run_with_ir(pipeline_pb_run_5)
     self.assertResultEqual(pipeline_pb_run_5, 5)
 
   def testNonExistentBaseRunId_lookupError(self):
@@ -1257,7 +1257,7 @@ class PartialRunTest(absltest.TestCase):
     # pylint: enable=no-value-for-parameter
     pipeline_pb_run_1 = self.make_pipeline(
         components=[load, add_num, result], run_id='run_1')
-    beam_dag_runner.BeamDagRunner().run(pipeline_pb_run_1)
+    beam_dag_runner.BeamDagRunner().run_with_ir(pipeline_pb_run_1)
 
     pipeline_pb_run_2 = self.make_pipeline(
         components=[load, add_num, result], run_id='run_2')
@@ -1269,7 +1269,7 @@ class PartialRunTest(absltest.TestCase):
         snapshot_settings=snapshot_settings)
     with self.assertRaisesRegex(LookupError,
                                 'pipeline_run_id .* not found in MLMD.'):
-      beam_dag_runner.BeamDagRunner().run(pipeline_pb_run_2)
+      beam_dag_runner.BeamDagRunner().run_with_ir(pipeline_pb_run_2)
 
   def testNonExistentNodeId_lookupError(self):
     """Raise error if user provides non-existent pipeline_run_id or node_id."""
@@ -1280,7 +1280,7 @@ class PartialRunTest(absltest.TestCase):
     # pylint: enable=no-value-for-parameter
     pipeline_pb_run_1 = self.make_pipeline(
         components=[load, add_num, result], run_id='run_1')
-    beam_dag_runner.BeamDagRunner().run(pipeline_pb_run_1)
+    beam_dag_runner.BeamDagRunner().run_with_ir(pipeline_pb_run_1)
 
     # pylint: disable=no-value-for-parameter
     load_v2 = Load(start_num=2).with_id('non_existent_id')
@@ -1297,7 +1297,7 @@ class PartialRunTest(absltest.TestCase):
         snapshot_settings=snapshot_settings)
     with self.assertRaisesRegex(LookupError,
                                 'node context .* not found in MLMD.'):
-      beam_dag_runner.BeamDagRunner().run(pipeline_pb_run_2)
+      beam_dag_runner.BeamDagRunner().run_with_ir(pipeline_pb_run_2)
 
   def testNoPreviousSuccessfulExecution_lookupError(self):
     """Raise error if user tries to reuse node w/o any successful Executions."""
@@ -1310,7 +1310,7 @@ class PartialRunTest(absltest.TestCase):
         components=[load_fail, add_num, result], run_id='run_1')
     try:
       # Suppress exception here, since we expect this pipeline run to fail.
-      beam_dag_runner.BeamDagRunner().run(pipeline_pb_run_1)
+      beam_dag_runner.BeamDagRunner().run_with_ir(pipeline_pb_run_1)
     except Exception:  # pylint: disable=broad-except
       pass
 
@@ -1326,7 +1326,7 @@ class PartialRunTest(absltest.TestCase):
         from_nodes=lambda node_id: (node_id == add_num_v2.id))
     with self.assertRaisesRegex(LookupError,
                                 'No previous successful executions found'):
-      beam_dag_runner.BeamDagRunner().run(pipeline_pb_run_2)
+      beam_dag_runner.BeamDagRunner().run_with_ir(pipeline_pb_run_2)
 
   def testIdempotence_retryReusesRegisteredCacheExecution(self):
     """Ensures that there is only one registered cache execution.
@@ -1349,7 +1349,7 @@ class PartialRunTest(absltest.TestCase):
     result = Result(result=add_num.outputs['added_num'])
     pipeline_pb_run_1 = self.make_pipeline(
         components=[load, add_num, result], run_id='run_1')
-    beam_dag_runner.BeamDagRunner().run(pipeline_pb_run_1)
+    beam_dag_runner.BeamDagRunner().run_with_ir(pipeline_pb_run_1)
     self.assertResultEqual(pipeline_pb_run_1, 2)
 
     add_num_v2 = AddNum(to_add=5, num=load.outputs['num'])  # pylint: disable=no-value-for-parameter
@@ -1374,7 +1374,7 @@ class PartialRunTest(absltest.TestCase):
       except ConnectionResetError:
         pass
     # A retry attempt that succeeds.
-    beam_dag_runner.BeamDagRunner().run(pipeline_pb_run_2)
+    beam_dag_runner.BeamDagRunner().run_with_ir(pipeline_pb_run_2)
     self.assertResultEqual(pipeline_pb_run_2, 6)
 
     # Make sure that only one new cache execution is created,
@@ -1409,7 +1409,7 @@ class PartialRunTest(absltest.TestCase):
     # pylint: enable=no-value-for-parameter
     pipeline_pb_run_1 = self.make_pipeline(
         components=[load, add_num, result], run_id='run_1')
-    beam_dag_runner.BeamDagRunner().run(pipeline_pb_run_1)
+    beam_dag_runner.BeamDagRunner().run_with_ir(pipeline_pb_run_1)
     self.assertResultEqual(pipeline_pb_run_1, 2)
 
     # pylint: disable=no-value-for-parameter
@@ -1448,7 +1448,7 @@ class PartialRunTest(absltest.TestCase):
     self.assertLen(new_cache_executions, 1)
 
     # Make sure it still works!
-    beam_dag_runner.BeamDagRunner().run(pipeline_pb_run_2)
+    beam_dag_runner.BeamDagRunner().run_with_ir(pipeline_pb_run_2)
     self.assertResultEqual(pipeline_pb_run_2, 6)
 
   def testReusePipelineArtifacts_missingNewRunId_error(self):
@@ -1470,7 +1470,7 @@ class PartialRunTest(absltest.TestCase):
     # pylint: enable=no-value-for-parameter
     pipeline_pb_run_1 = self.make_pipeline(
         components=[load, add_num, result], run_id='run_1')
-    beam_dag_runner.BeamDagRunner().run(pipeline_pb_run_1)
+    beam_dag_runner.BeamDagRunner().run_with_ir(pipeline_pb_run_1)
     self.assertResultEqual(pipeline_pb_run_1, 2)
 
     ############################################################################
@@ -1523,7 +1523,7 @@ class PartialRunTest(absltest.TestCase):
           m, pipeline_pb_run_2, base_run_id='run_1', new_run_id='run_2')
     runtime_parameter_utils.substitute_runtime_parameter(
         pipeline_pb_run_2, {constants.PIPELINE_RUN_ID_PARAMETER_NAME: 'run_2'})
-    beam_dag_runner.BeamDagRunner().run(pipeline_pb_run_2)
+    beam_dag_runner.BeamDagRunner().run_with_ir(pipeline_pb_run_2)
     self.assertResultEqual(pipeline_pb_run_2, 6)
 
   def testReusePipelineArtifacts_inconsistentNewRunId_error(self):
@@ -1545,7 +1545,7 @@ class PartialRunTest(absltest.TestCase):
     # pylint: enable=no-value-for-parameter
     pipeline_pb_run_1 = self.make_pipeline(
         components=[load, add_num, result], run_id='run_1')
-    beam_dag_runner.BeamDagRunner().run(pipeline_pb_run_1)
+    beam_dag_runner.BeamDagRunner().run_with_ir(pipeline_pb_run_1)
     self.assertResultEqual(pipeline_pb_run_1, 2)
 
     ############################################################################

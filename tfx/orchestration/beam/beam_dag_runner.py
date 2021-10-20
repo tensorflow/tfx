@@ -14,15 +14,12 @@
 """Definition of Beam TFX runner."""
 
 import datetime
-from typing import Any, Iterable, List, Optional, Union
+from typing import Any, Iterable, List, Optional
 
 from absl import logging
 import apache_beam as beam
-from tfx.dsl.compiler import compiler
 from tfx.dsl.compiler import constants
-from tfx.dsl.components.base import base_component
 from tfx.orchestration import metadata
-from tfx.orchestration import pipeline as pipeline_py
 from tfx.orchestration.beam.legacy import beam_dag_runner as legacy_beam_dag_runner
 from tfx.orchestration.config import pipeline_config
 from tfx.orchestration.local import runner_utils
@@ -117,7 +114,7 @@ class PipelineNodeAsDoFn(beam.DoFn):
             if platform_config else None)
 
 
-class BeamDagRunner(tfx_runner.TfxRunner):
+class BeamDagRunner(tfx_runner.IrBasedRunner):
   """Tfx runner on Beam."""
 
   _PIPELINE_NODE_DO_FN_CLS = PipelineNodeAsDoFn
@@ -198,32 +195,20 @@ class BeamDagRunner(tfx_runner.TfxRunner):
                                                 deployment_config: Any) -> Any:
     return deployment_config.metadata_connection_config
 
-  def run(self, pipeline: Union[pipeline_pb2.Pipeline,
-                                pipeline_py.Pipeline]) -> None:
+  def run_with_ir(self, pipeline: pipeline_pb2.Pipeline) -> None:
     """Deploys given logical pipeline on Beam.
 
     Args:
       pipeline: Logical pipeline in IR format.
     """
-    if isinstance(pipeline, pipeline_py.Pipeline):
-      for component in pipeline.components:
-        # TODO(b/187122662): Pass through pip dependencies as a first-class
-        # component flag.
-        if isinstance(component, base_component.BaseComponent):
-          component._resolve_pip_dependencies(  # pylint: disable=protected-access
-              pipeline.pipeline_info.pipeline_root)
-      c = compiler.Compiler()
-      pipeline = c.compile(pipeline)
-    pipeline_pb = pipeline  # type: pipeline_pb2.Pipeline
-
     run_id = datetime.datetime.now().strftime('%Y%m%d-%H%M%S.%f')
     # Substitute the runtime parameter to be a concrete run_id
     runtime_parameter_utils.substitute_runtime_parameter(
-        pipeline_pb, {
+        pipeline, {
             constants.PIPELINE_RUN_ID_PARAMETER_NAME: run_id,
         })
 
-    deployment_config = self._extract_deployment_config(pipeline_pb)
+    deployment_config = self._extract_deployment_config(pipeline)
     connection_config = self._connection_config_from_deployment_config(
         deployment_config)
 
@@ -240,7 +225,7 @@ class BeamDagRunner(tfx_runner.TfxRunner):
         signal_map = {}
         snapshot_node_id = None
         # pipeline.nodes are in topological order.
-        for node in pipeline_pb.nodes:
+        for node in pipeline.nodes:
           # TODO(b/160882349): Support subpipeline
           pipeline_node = node.pipeline_node
           node_id = pipeline_node.node_info.id
@@ -281,11 +266,11 @@ class BeamDagRunner(tfx_runner.TfxRunner):
                   self._PIPELINE_NODE_DO_FN_CLS(
                       pipeline_node=pipeline_node,
                       mlmd_connection_config=connection_config,
-                      pipeline_info=pipeline_pb.pipeline_info,
-                      pipeline_runtime_spec=pipeline_pb.runtime_spec,
+                      pipeline_info=pipeline.pipeline_info,
+                      pipeline_runtime_spec=pipeline.runtime_spec,
                       executor_spec=executor_spec,
                       custom_driver_spec=custom_driver_spec,
                       deployment_config=deployment_config,
-                      pipeline=pipeline_pb),
+                      pipeline=pipeline),
                   (*[beam.pvalue.AsIter(s) for s in signals_to_wait])))
           logging.info('Node %s is scheduled.', node_id)

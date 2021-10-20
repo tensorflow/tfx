@@ -19,12 +19,14 @@ from typing import Any, Dict, List
 
 import absl.testing.absltest
 from tfx import types
+from tfx.dsl.compiler import compiler
 from tfx.dsl.components.base import base_component
 from tfx.dsl.components.base import base_executor
 from tfx.dsl.components.base import executor_spec
-from tfx.orchestration import pipeline
+from tfx.orchestration import pipeline as pipeline_py
 from tfx.orchestration.local import local_dag_runner
 from tfx.orchestration.metadata import sqlite_metadata_connection_config
+from tfx.proto.orchestration import pipeline_pb2
 from tfx.types.component_spec import ChannelParameter
 from tfx.types.component_spec import ExecutionParameter
 
@@ -115,7 +117,7 @@ class LocalDagRunnerTest(absl.testing.absltest.TestCase):
     super().setUp()
     _executed_components.clear()
 
-  def _getTestPipeline(self):  # pylint: disable=invalid-name
+  def _getTestPipeline(self) -> pipeline_py.Pipeline:  # pylint: disable=invalid-name
     component_a = _get_fake_component(
         _FakeComponentSpecA(
             output=types.Channel(type=_ArtifactTypeA),
@@ -148,7 +150,7 @@ class LocalDagRunnerTest(absl.testing.absltest.TestCase):
     temp_path = tempfile.mkdtemp()
     pipeline_root_path = os.path.join(temp_path, 'pipeline_root')
     metadata_path = os.path.join(temp_path, 'metadata.db')
-    test_pipeline = pipeline.Pipeline(
+    return pipeline_py.Pipeline(
         pipeline_name='test_pipeline',
         pipeline_root=pipeline_root_path,
         metadata_connection_config=sqlite_metadata_connection_config(
@@ -156,10 +158,21 @@ class LocalDagRunnerTest(absl.testing.absltest.TestCase):
         components=[
             component_d, component_c, component_a, component_b, component_e
         ])
-    return test_pipeline
+
+  def _getTestPipelineIR(self) -> pipeline_pb2.Pipeline:  # pylint: disable=invalid-name
+    test_pipeline = self._getTestPipeline()
+    c = compiler.Compiler()
+    return c.compile(test_pipeline)
 
   def testRun(self):
     local_dag_runner.LocalDagRunner().run(self._getTestPipeline())
+    self.assertEqual(_executed_components, [
+        '_FakeComponent.a', '_FakeComponent.b', '_FakeComponent.c',
+        '_FakeComponent.d', '_FakeComponent.e'
+    ])
+
+  def testRunWithIR(self):
+    local_dag_runner.LocalDagRunner().run_with_ir(self._getTestPipelineIR())
     self.assertEqual(_executed_components, [
         '_FakeComponent.a', '_FakeComponent.b', '_FakeComponent.c',
         '_FakeComponent.d', '_FakeComponent.e'

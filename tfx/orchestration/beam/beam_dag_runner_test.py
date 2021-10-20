@@ -191,7 +191,7 @@ class BeamDagRunnerTest(test_case_utils.TfxTest):
   )
   def testRunWithLocalDeploymentConfig(self):
     self._pipeline.deployment_config.Pack(_LOCAL_DEPLOYMENT_CONFIG)
-    beam_dag_runner.BeamDagRunner().run(self._pipeline)
+    beam_dag_runner.BeamDagRunner().run_with_ir(self._pipeline)
     self.assertEqual(
         _component_executors, {
             'my_example_gen':
@@ -247,7 +247,7 @@ class BeamDagRunnerTest(test_case_utils.TfxTest):
   )
   def testRunWithIntermediateDeploymentConfig(self):
     self._pipeline.deployment_config.Pack(_INTERMEDIATE_DEPLOYMENT_CONFIG)
-    beam_dag_runner.BeamDagRunner().run(self._pipeline)
+    beam_dag_runner.BeamDagRunner().run_with_ir(self._pipeline)
     self.assertEqual(
         _component_executors, {
             'my_example_gen':
@@ -307,7 +307,7 @@ class BeamDagRunnerTest(test_case_utils.TfxTest):
         self._pipeline,
         from_nodes=(lambda node_id: 'trainer' in node_id),
         to_nodes=(lambda node_id: 'trainer' in node_id))
-    beam_dag_runner.BeamDagRunner().run(self._pipeline)
+    beam_dag_runner.BeamDagRunner().run_with_ir(self._pipeline)
     self.assertEqual(_executed_components, ['my_trainer'])
 
   @mock.patch.multiple(
@@ -320,7 +320,7 @@ class BeamDagRunnerTest(test_case_utils.TfxTest):
         self._pipeline,
         from_nodes=(lambda node_id: 'trainer' in node_id),
         to_nodes=(lambda node_id: 'trainer' in node_id))
-    beam_dag_runner.BeamDagRunner().run(self._pipeline)
+    beam_dag_runner.BeamDagRunner().run_with_ir(self._pipeline)
     self.assertEqual(_executed_components, ['my_trainer'])
 
   def testLegacyBeamDagRunnerConstruction(self):

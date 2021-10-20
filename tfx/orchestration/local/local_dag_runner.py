@@ -16,42 +16,32 @@
 import datetime
 
 from absl import logging
-from tfx.dsl.compiler import compiler
 from tfx.dsl.compiler import constants
-from tfx.dsl.components.base import base_component
 from tfx.orchestration import metadata
-from tfx.orchestration import pipeline as pipeline_py
 from tfx.orchestration.local import runner_utils
 from tfx.orchestration.portable import launcher
 from tfx.orchestration.portable import partial_run_utils
 from tfx.orchestration.portable import runtime_parameter_utils
 from tfx.orchestration.portable import tfx_runner
+from tfx.proto.orchestration import pipeline_pb2
+from tfx.utils import doc_controls
 from tfx.utils import telemetry_utils
 
 
-class LocalDagRunner(tfx_runner.TfxRunner):
+class LocalDagRunner(tfx_runner.IrBasedRunner):
   """Local TFX DAG runner."""
 
   def __init__(self):
     """Initializes LocalDagRunner as a TFX orchestrator."""
     pass
 
-  def run(self, pipeline: pipeline_py.Pipeline) -> None:
-    """Runs given logical pipeline locally.
+  @doc_controls.do_not_generate_docs
+  def run_with_ir(self, pipeline: pipeline_pb2.Pipeline) -> None:
+    """Runs given pipeline locally.
 
     Args:
-      pipeline: Logical pipeline containing pipeline args and components.
+      pipeline: Pipeline IR containing pipeline args and components.
     """
-    for component in pipeline.components:
-      # TODO(b/187122662): Pass through pip dependencies as a first-class
-      # component flag.
-      if isinstance(component, base_component.BaseComponent):
-        component._resolve_pip_dependencies(  # pylint: disable=protected-access
-            pipeline.pipeline_info.pipeline_root)
-
-    c = compiler.Compiler()
-    pipeline = c.compile(pipeline)
-
     # Substitute the runtime parameter to be a concrete run_id
     runtime_parameter_utils.substitute_runtime_parameter(
         pipeline, {

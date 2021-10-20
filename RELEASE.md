@@ -10,6 +10,11 @@
 
 ## Breaking Changes
 
+*   Calling `TfxRunner.run(pipeline)` with the Pipeline IR proto will no longer
+    be supported. Please switch to `TfxRunner.run_with_ir(pipeline)` instead.
+    If you are calling `TfxRunner.run(pipeline)` with the Pipeline object, this
+    change should not affect you.
+
 ### For Pipeline Authors
 
 ### For Component Authors
