@@ -28,7 +28,7 @@ import abc
 import collections
 import threading
 import types
-from typing import Any, Optional, List, Iterable, Type
+from typing import Any, Optional, List, Iterable, Type, TypeVar, Generic
 
 import attr
 
@@ -198,7 +198,10 @@ def get_nodes(context: Optional[DslContext] = None) -> List[_BaseNode]:
   return _registry.get_nodes(context)
 
 
-class DslContextManager(abc.ABC):
+_Handle = TypeVar('_Handle')
+
+
+class DslContextManager(Generic[_Handle], abc.ABC):
   """Base class for all context managers for pipeline DSL."""
 
   @abc.abstractmethod
@@ -217,7 +220,7 @@ class DslContextManager(abc.ABC):
     raise NotImplementedError()
 
   @abc.abstractmethod
-  def enter(self, context: DslContext) -> Any:  # pylint: disable=unused-argument
+  def enter(self, context: DslContext) -> _Handle:  # pylint: disable=unused-argument
     """Subclass hook method for __enter__.
 
     Returned value is captured at "with..as" clause. It can be any helper object
@@ -228,7 +231,7 @@ class DslContextManager(abc.ABC):
           the __enter__().
     """
 
-  def __enter__(self):
+  def __enter__(self) -> _Handle:
     context = self.create_context()
     context.validate()
     _registry.push(context)

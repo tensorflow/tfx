@@ -56,7 +56,7 @@ class ForEachContext(context_manager.DslContext):
           'outside the ForEach block.')
 
 
-class ForEach(context_manager.DslContextManager):
+class ForEach(context_manager.DslContextManager[types.LoopVarChannel]):
   """ForEach context manager.
 
   ForEach context manager is a declarative version of For loop in a pipeline
