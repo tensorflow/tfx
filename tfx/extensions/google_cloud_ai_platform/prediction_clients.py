@@ -427,11 +427,21 @@ class VertexPredictionClient(AbstractPredictionClient):
     if sys.version_info[:2] != (3, 7):
       logging.warn('Current python version is not the same as default of 3.7.')
 
-    project_id = ai_platform_serving_args['project_id']
+    if ai_platform_serving_args.get('project_id'):
+      assert 'project' not in ai_platform_serving_args, ('`project` and '
+                                                         '`project_id` should '
+                                                         'not be set at the '
+                                                         'same time in serving '
+                                                         'args')
+      logging.warn('Replacing `project_id` with `project` in serving args.')
+      ai_platform_serving_args['project'] = ai_platform_serving_args[
+          'project_id']
+      ai_platform_serving_args.pop('project_id')
+    project = ai_platform_serving_args['project']
 
     # Initialize the AI Platform client
     # location defaults to 'us-central-1' if not specified
-    aiplatform.init(project=project_id, location=endpoint_region)
+    aiplatform.init(project=project, location=endpoint_region)
 
     endpoint_name = ai_platform_serving_args['endpoint_name']
     if not skip_model_endpoint_creation:
@@ -440,13 +450,13 @@ class VertexPredictionClient(AbstractPredictionClient):
     endpoint = self._get_endpoint(ai_platform_serving_args)
 
     deploy_body = dict(ai_platform_serving_args)
-    for unneeded_key in ['endpoint_name', 'project_id', 'regions', 'labels']:
+    for unneeded_key in ['endpoint_name', 'project', 'regions', 'labels']:
       deploy_body.pop(unneeded_key, None)
     deploy_body['traffic_percentage'] = deploy_body.get(
         'traffic_percentage', 100 if set_default else 0)
     logging.info(
         'Creating model_name %s in project %s at endpoint %s, request body: %s',
-        model_version_name, project_id, endpoint_name, deploy_body)
+        model_version_name, project, endpoint_name, deploy_body)
 
     model = aiplatform.Model.upload(
         display_name=model_version_name,
