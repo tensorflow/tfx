@@ -395,6 +395,12 @@ message PipelineRuntimeSpec {
 message PipelineInfo {
   // Required field. A pipeline must have an id.
   string id = 1;
+
+  // Keys are to distigush different pipelines in a project. If a project has
+  // several pipelines, each pipeline should have a unique key.
+  // This field can be empty, but we can not have more than one pipeline having
+  // empty key in a project.
+  string pipe_name = 2;
 }
 
 // Definition for a uDSL pipeline. This is also the definition of a
