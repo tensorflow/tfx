@@ -29,9 +29,34 @@
 *   Depends on `pyarrow>=1,<6`.
 *   Fixed FileBasedExampleGen driver for Kubeflow v2 (Vertex). Driver can
     update exec_properties for its executor now, which enables {SPAN} feature.
-*   Fixed Vertex Pusher by passing enable_vertex flag for deploying model.
 
 ## Documentation Updates
+
+# Version 1.3.1
+
+## Major Features and Improvements
+
+*   N/A
+
+### For Pipeline Authors
+
+*   N/A
+
+### For Component Authors
+
+*   N/A
+
+## Deprecations
+
+*   N/A
+
+## Bug Fixes and Other Changes
+
+*  Fixed Vertex Pusher by passing enable_vertex flag for deploying model.
+
+## Documentation Updates
+
+*   N/A
 
 # Version 1.3.0
 
