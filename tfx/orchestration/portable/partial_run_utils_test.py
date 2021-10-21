@@ -583,7 +583,6 @@ class MarkPipelineFnTest(parameterized.TestCase, test_case_utils.TfxTest):
 
 
 # pylint: disable=invalid-name
-# pytype: disable=wrong-arg-types
 @component
 def Load(start_num: Parameter[int],
          num: OutputArtifact[standard_artifacts.Integer]):
