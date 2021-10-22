@@ -246,7 +246,7 @@ class WideChicagoTaxiDataset(ChicagoTaxiDataset):
 
       for idx, key in enumerate(
           itertools.islice(itertools.cycle(self._SCALE_KEYS), self._num_scale)):
-        # Preserve this feature as a dense float, setting nan's to the mean.
+        # If sparse make it dense, setting nan's to 0 or '', and apply zscore.
         outputs["scaled" + str(idx)] = tft.scale_to_z_score(
             taxi_utils._fill_in_missing(inputs[key]))
 

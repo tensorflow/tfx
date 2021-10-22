@@ -101,7 +101,7 @@ def preprocessing_fn(inputs, custom_config):
   """
   outputs = {}
   for key in _DENSE_FLOAT_FEATURE_KEYS:
-    # Preserve this feature as a dense float, setting nan's to the mean.
+    # If sparse make it dense, setting nan's to 0 or '', and apply zscore.
     outputs[_transformed_name(key)] = tft.scale_to_z_score(
         _fill_in_missing(_identity(inputs[key])))
 
