@@ -23,7 +23,9 @@ import tensorflow as tf
 from tfx.dsl.compiler import constants
 from tfx.orchestration import metadata
 from tfx.orchestration.experimental.core import async_pipeline_task_gen
+from tfx.orchestration.experimental.core import env
 from tfx.orchestration.experimental.core import mlmd_state
+from tfx.orchestration.experimental.core import orchestration_options
 from tfx.orchestration.experimental.core import pipeline_ops
 from tfx.orchestration.experimental.core import pipeline_state as pstate
 from tfx.orchestration.experimental.core import service_jobs
@@ -1057,6 +1059,30 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
         self.assertEqual(pstate.NodeState.STOPPING, node_state.state)
         node_state = pipeline_state.get_node_state(transform_node_uid)
         self.assertEqual(pstate.NodeState.STOPPING, node_state.state)
+
+  def test_pipeline_run_deadline_exceeded(self):
+
+    class _TestEnv(env.Env):
+      """TestEnv returns orchestration_options with 1 sec deadline."""
+
+      def get_orchestration_options(self, pipeline):
+        return orchestration_options.OrchestrationOptions(deadline_secs=1)
+
+    with _TestEnv():
+      with self._mlmd_connection as m:
+        pipeline = _test_pipeline('pipeline', pipeline_pb2.Pipeline.SYNC)
+        pipeline_uid = task_lib.PipelineUid.from_pipeline(pipeline)
+        pipeline_ops.initiate_pipeline_start(m, pipeline)
+        time.sleep(3)  # To trigger the deadline.
+        pipeline_ops.orchestrate(m, tq.TaskQueue(),
+                                 self._mock_service_job_manager)
+        with pstate.PipelineState.load(m, pipeline_uid) as pipeline_state:
+          self.assertTrue(pipeline_state.is_stop_initiated())
+          status = pipeline_state.stop_initiated_reason()
+          self.assertEqual(status_lib.Code.DEADLINE_EXCEEDED, status.code)
+          self.assertEqual(
+              'Pipeline aborted due to exceeding deadline (1 secs)',
+              status.message)
 
 
 if __name__ == '__main__':

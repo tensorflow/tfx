@@ -539,6 +539,20 @@ def _orchestrate_active_pipeline(
           metadata_store_pb2.Execution.RUNNING)
     orchestration_options = pipeline_state.get_orchestration_options()
     logging.info('Orchestration options: %s', orchestration_options)
+    deadline_secs = orchestration_options.deadline_secs
+    if (pipeline.execution_mode == pipeline_pb2.Pipeline.SYNC and
+        deadline_secs > 0 and
+        time.time() - pipeline_state.pipeline_creation_time_secs_since_epoch() >
+        deadline_secs):
+      logging.error(
+          'Aborting pipeline due to exceeding deadline (%s secs); '
+          'pipeline uid: %s', deadline_secs, pipeline_state.pipeline_uid)
+      pipeline_state.initiate_stop(
+          status_lib.Status(
+              code=status_lib.Code.DEADLINE_EXCEEDED,
+              message=('Pipeline aborted due to exceeding deadline '
+                       f'({deadline_secs} secs)')))
+      return
 
   def _filter_by_state(node_infos: List[_NodeInfo],
                        state_str: str) -> List[_NodeInfo]:

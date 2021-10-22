@@ -25,5 +25,8 @@ class OrchestrationOptions:
       pipeline run is aborted immediately if any node fails. Otherwise, pipeline
       run is aborted only when no further progress can be made due to node
       failures.
+    deadline_secs: Only applicable to sync pipelines. If non-zero, a pipeline
+      run is aborted if the execution duration exceeds deadline_secs seconds.
   """
   fail_fast: bool = False
+  deadline_secs: int = 0

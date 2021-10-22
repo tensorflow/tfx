@@ -207,7 +207,7 @@ class PipelineState:
 
     # Only set within the pipeline state context.
     self._mlmd_execution_atomic_op_context = None
-    self._execution = None
+    self._execution: Optional[metadata_store_pb2.Execution] = None
 
   @classmethod
   def new(
@@ -495,6 +495,12 @@ class PipelineState:
     self._check_context()
     if self._execution.custom_properties.get(property_key):
       del self._execution.custom_properties[property_key]
+
+  def pipeline_creation_time_secs_since_epoch(self) -> int:
+    """Returns the pipeline creation time as seconds since epoch."""
+    self._check_context()
+    # Convert from milliseconds to seconds.
+    return self._execution.create_time_since_epoch // 1000
 
   def get_orchestration_options(
       self) -> orchestration_options.OrchestrationOptions:
