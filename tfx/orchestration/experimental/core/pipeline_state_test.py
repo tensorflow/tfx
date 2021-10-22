@@ -14,12 +14,14 @@
 """Tests for tfx.orchestration.experimental.core.pipeline_state."""
 
 import os
+from unittest import mock
 
 import tensorflow as tf
 from tfx.dsl.compiler import constants
 from tfx.orchestration import metadata
 from tfx.orchestration.experimental.core import pipeline_state as pstate
 from tfx.orchestration.experimental.core import task as task_lib
+from tfx.orchestration.experimental.core import task_gen_utils
 from tfx.orchestration.experimental.core import test_utils
 from tfx.orchestration.portable import runtime_parameter_utils
 from tfx.proto.orchestration import pipeline_pb2
@@ -142,6 +144,16 @@ class PipelineStateTest(test_utils.TfxTest):
       self.assertEqual(
           task_lib.PipelineUid.from_pipeline(pipeline),
           pipeline_state.pipeline_uid)
+
+  @mock.patch.object(task_gen_utils, 'get_executions')
+  def test_get_all_node_executions(self, mock_get_executions):
+    execution = metadata_store_pb2.Execution(name='test_execution')
+    mock_get_executions.return_value = [execution]
+    with self._mlmd_connection as m:
+      pipeline = _test_pipeline('pipeline1')
+      self.assertEqual(
+          {pipeline.nodes[0].pipeline_node.node_info.id: [execution]},
+          pstate.get_all_node_executions(pipeline, m))
 
   def test_new_pipeline_state_when_pipeline_already_exists(self):
     with self._mlmd_connection as m:

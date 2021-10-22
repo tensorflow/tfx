@@ -28,6 +28,7 @@ from tfx.orchestration.experimental.core import env
 from tfx.orchestration.experimental.core import mlmd_state
 from tfx.orchestration.experimental.core import orchestration_options
 from tfx.orchestration.experimental.core import task as task_lib
+from tfx.orchestration.experimental.core import task_gen_utils
 from tfx.orchestration.portable.mlmd import context_lib
 from tfx.orchestration.portable.mlmd import execution_lib
 from tfx.proto.orchestration import pipeline_pb2
@@ -688,6 +689,16 @@ def get_all_pipeline_nodes(
     else:
       raise NotImplementedError('Only pipeline nodes supported.')
   return result
+
+
+def get_all_node_executions(
+    pipeline: pipeline_pb2.Pipeline, mlmd_handle: metadata.Metadata
+) -> Dict[str, List[metadata_store_pb2.Execution]]:
+  """Returns the latest execution states of all pipeline nodes if present."""
+  return {
+      node.node_info.id: task_gen_utils.get_executions(mlmd_handle, node)
+      for node in get_all_pipeline_nodes(pipeline)
+  }
 
 
 def _is_node_uid_in_pipeline(node_uid: task_lib.NodeUid,
