@@ -123,7 +123,8 @@ class BaseKubeflowV2Test(test_case_utils.TfxTest):
         components=pipeline_components,
         beam_pipeline_args=beam_pipeline_args)
 
-  def _run_pipeline(self, pipeline: tfx_pipeline.Pipeline) -> None:
+  def _run_pipeline(self, pipeline: tfx_pipeline.Pipeline,
+                    exit_handler: Optional[base_node.BaseNode] = None) -> None:
     """Trigger the pipeline execution with a specific job ID."""
     # Ensure cleanup regardless of whether pipeline succeeds or fails.
     self.addCleanup(self._delete_pipeline_output,
@@ -132,9 +133,12 @@ class BaseKubeflowV2Test(test_case_utils.TfxTest):
     config = kubeflow_v2_dag_runner.KubeflowV2DagRunnerConfig(
         default_image=self.container_image)
 
-    _ = kubeflow_v2_dag_runner.KubeflowV2DagRunner(
-        config=config, output_filename='pipeline.json').run(
-            pipeline, write_out=True)
+    executing_kubeflow_v2_dag_runner = kubeflow_v2_dag_runner.KubeflowV2DagRunner(
+        config=config, output_filename='pipeline.json')
+    if exit_handler:
+      executing_kubeflow_v2_dag_runner.set_exit_handler(exit_handler)
+
+    _ = executing_kubeflow_v2_dag_runner.run(pipeline, write_out=True)
 
     job_id = pipeline.pipeline_info.pipeline_name
     job = pipeline_jobs.PipelineJob(

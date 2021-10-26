@@ -15,6 +15,7 @@
 
 from kfp.pipeline_spec import pipeline_spec_pb2 as pipeline_pb2
 import tensorflow as tf
+from tfx.orchestration.kubeflow.v2 import decorators
 from tfx.orchestration.kubeflow.v2 import pipeline_builder
 from tfx.orchestration.kubeflow.v2 import test_utils
 
@@ -139,6 +140,22 @@ class PipelineBuilderTest(tf.test.TestCase):
     self.assertProtoEquals(
         test_utils.get_proto_from_test_data(
             'expected_two_step_pipeline_with_cache_enabled.pbtxt',
+            pipeline_pb2.PipelineSpec()), pipeline_spec)
+
+  def testPipelineWithExitHandler(self):
+    pipeline = test_utils.two_step_pipeline()
+    # define exit handler
+    exit_handler = test_utils.dummy_exit_handler(
+        param1=decorators.FinalStatusStr())
+
+    builder = pipeline_builder.PipelineBuilder(
+        tfx_pipeline=pipeline,
+        default_image='gcr.io/my-tfx:latest',
+        exit_handler=exit_handler)
+    pipeline_spec = builder.build()
+    self.assertProtoEquals(
+        test_utils.get_proto_from_test_data(
+            'expected_two_step_pipeline_with_exit_handler.pbtxt',
             pipeline_pb2.PipelineSpec()), pipeline_spec)
 
 

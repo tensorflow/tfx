@@ -1,0 +1,23 @@
+# proto-file: kfp/pipeline_spec/pipeline_spec.proto
+# proto-message: PipelineTaskSpec
+
+task_info {
+  name: "DummyProducerComponent"
+}
+inputs {
+  parameters {
+    key: "param1"
+    value {
+      task_final_status {
+        producer_task: "_tfx_dag"
+      }
+    }
+  }
+}
+dependent_tasks: "_tfx_dag"
+component_ref {
+  name: "DummyProducerComponent"
+}
+trigger_policy {
+   strategy: ALL_UPSTREAM_TASKS_COMPLETED
+}

@@ -305,6 +305,26 @@ dummy_transformer_component = tfx.dsl.experimental.create_container_component(
     ],
 )
 
+
+dummy_exit_handler = tfx.dsl.experimental.create_container_component(
+    name='ExitHandlerComponent',
+    parameters={
+        'param1': str,
+    },
+    image='dummy/producer',
+    command=[
+        'producer',
+        '--param1',
+        placeholders.InputValuePlaceholder('param1'),
+        '--wrapped-param',
+        placeholders.ConcatPlaceholder([
+            'prefix-',
+            placeholders.InputValuePlaceholder('param1'),
+            '-suffix',
+        ]),
+    ],
+)
+
 dummy_producer_component = tfx.dsl.experimental.create_container_component(
     name='DummyProducerComponent',
     outputs={

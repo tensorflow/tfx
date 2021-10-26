@@ -37,6 +37,9 @@ from google.protobuf import json_format
 from google.protobuf import message
 from ml_metadata.proto import metadata_store_pb2
 
+# Key of dag for all TFX components when compiling pipeline with exit handler.
+TFX_DAG_NAME = '_tfx_dag'
+
 # Key of TFX type path and name in artifact custom properties.
 TFX_TYPE_KEY = 'tfx_type'
 TYPE_NAME_KEY = 'type_name'
