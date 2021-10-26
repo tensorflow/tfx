@@ -25,10 +25,9 @@ from google.cloud import aiplatform
 from google.cloud.aiplatform import initializer
 from google.cloud.aiplatform.compat.types import endpoint
 from google.cloud.aiplatform_v1.services.endpoint_service import (
-    client as endpoint_service_client,
-)
-from google.cloud.aiplatform_v1beta1.types.custom_job import CustomJob
-from google.cloud.aiplatform_v1beta1.types.job_state import JobState
+    client as endpoint_service_client)
+from google.cloud.aiplatform_v1.types.custom_job import CustomJob
+from google.cloud.aiplatform_v1.types.job_state import JobState
 from googleapiclient import errors
 import httplib2
 import tensorflow as tf
