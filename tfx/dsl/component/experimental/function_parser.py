@@ -22,7 +22,8 @@ Internal use only. No backwards compatibility guarantees.
 import enum
 import inspect
 import types
-from typing import Any, Dict, Optional, Set, Tuple, Type, Union
+import re
+from typing import Any, Callable, Dict, Optional, Set, Tuple, Type, Union
 
 from tfx.dsl.component.experimental import annotations
 from tfx.types import artifact
@@ -262,3 +263,36 @@ def parse_typehint_component_function(
 
   return (inputs, outputs, parameters, arg_formats, arg_defaults,
           returned_outputs)
+
+def _strip_hints(py_code:str)-> str:  
+  from strip_hints import strip_string_to_string
+  if py_code[-1] != '\n':
+    py_code += '\n'
+  return strip_string_to_string(py_code, to_empty=True)
+
+def _dedent(py_code: str) -> str:
+  import textwrap
+  return textwrap.dedent(py_code)
+
+def _remove_decorators(py_code:str)-> str:
+  func_code_lines = py_code.split('\n')
+  # Removing possible decorators (can be multiline) until the function definition is found
+  while func_code_lines and not func_code_lines[0].startswith('def '):
+      del func_code_lines[0]
+  return '\n'.join(func_code_lines)
+
+def _remove_comments(py_code:str)-> str:
+  func_code_lines = py_code.split('\n')
+  regex = re.compile(r'^\s*#.*$')
+  return '\n'.join( [line for line in func_code_lines if not regex.match(line)])
+
+def get_function_code(callable: Callable) -> str:
+  """Given a python function, return its code as a string without indentation, hints or decorators.
+
+  Args:
+    callable: A python function.
+  
+  Returns:
+    A string containing the code of the given function.
+  """
+  return _remove_comments(_remove_decorators(_strip_hints(_dedent(inspect.getsource(callable)))))

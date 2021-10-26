@@ -13,6 +13,7 @@
 # limitations under the License.
 """Tests for tfx.dsl.components.base.function_parser."""
 
+import textwrap
 from typing import Dict, Optional
 
 import tensorflow as tf
@@ -23,6 +24,7 @@ from tfx.dsl.component.experimental.annotations import OutputDict
 from tfx.dsl.component.experimental.annotations import Parameter
 from tfx.dsl.component.experimental.function_parser import ArgFormats
 from tfx.dsl.component.experimental.function_parser import parse_typehint_component_function
+from tfx.dsl.component.experimental.function_parser import get_function_code
 from tfx.types import standard_artifacts
 
 
@@ -373,6 +375,23 @@ class FunctionParserTest(tf.test.TestCase):
         return {'c': float(a + b)}
 
       parse_typehint_component_function(func_m)
+    
+  def testGetFunctionCode(self):
+    def some_decorator(func):
+      return func
+
+    @some_decorator
+    def func_a(a: int, b: int) -> OutputDict(c=float):
+      return {'c': float(a + b)}
+
+
+    code = get_function_code(func_a)
+    self.assertNotIn('some_decorator', code)
+    self.assertNotIn('OutputDict', code)
+    self.assertNotIn('int', code)
+    out = {}
+    exec(code, out)
+    self.assertEqual(out['func_a'](1, 2), {'c': 3.0})
 
 
 if __name__ == '__main__':

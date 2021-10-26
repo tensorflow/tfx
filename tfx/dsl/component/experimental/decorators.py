@@ -18,7 +18,8 @@ Experimental: no backwards compatibility guarantees.
 
 import sys
 import types
-from typing import Any, Callable, Dict, List
+from typing import Any, Callable, Dict, List, Optional
+import functools
 
 from tfx import types as tfx_types
 from tfx.dsl.component.experimental import function_parser
@@ -27,15 +28,25 @@ from tfx.dsl.components.base import base_executor
 from tfx.dsl.components.base import executor_spec
 from tfx.types import channel_utils
 from tfx.types import component_spec
+from tfx.utils import json_utils
 
+# Execution parameters for remote mode
+_ARG_FORMATS_KEY = '_arg_format'
+_ARG_DEFAULTS_KEY = '_arg_defaults'
+_FUNCTION_BODY_KEY = '_function_body'
+_FUNCTION_NAME_KEY = '_function_name'
+_RETURNED_VALUES_KEY = '_returned_values'
 
 class _SimpleComponent(base_component.BaseComponent):
   """Component whose constructor generates spec instance from arguments."""
 
+  def _get_name(self):
+    return self.__class__.__name__
+
   def __init__(self, *unused_args, **kwargs):
     if unused_args:
       raise ValueError(('%s expects arguments to be passed as keyword '
-                        'arguments') % (self.__class__.__name__,))
+                        'arguments') % (self._get_name(),))
     spec_kwargs = {}
     unseen_args = set(kwargs.keys())
     for key, channel_parameter in self.SPEC_CLASS.INPUTS.items():
@@ -62,7 +73,7 @@ class _SimpleComponent(base_component.BaseComponent):
     super().__init__(spec)
     # Set class name, which is the decorated function name, as the default id.
     # It can be overwritten by the user.
-    self._id = self.__class__.__name__
+    self._id = self._get_name()
 
 
 class _FunctionExecutor(base_executor.BaseExecutor):
@@ -80,9 +91,14 @@ class _FunctionExecutor(base_executor.BaseExecutor):
   # avoid being interpreted as a bound method (i.e. one taking `self` as its
   # first argument.
   _FUNCTION = staticmethod(lambda: None)
+  _FUNCTION_NAME = ''
   # Set of output names that are primitive type values returned from the user
   # function.
   _RETURNED_VALUES = set()
+
+  def _execute_function(self, **kwargs):
+    """Executes the user function with the given arguments."""
+    return self._FUNCTION(**kwargs)
 
   def Do(self, input_dict: Dict[str, List[tfx_types.Artifact]],
          output_dict: Dict[str, List[tfx_types.Artifact]],
@@ -133,19 +149,19 @@ class _FunctionExecutor(base_executor.BaseExecutor):
         raise ValueError('Unknown argument format: %r' % (arg_format,))
 
     # Call function and check returned values.
-    outputs = self._FUNCTION(**function_args)
+    outputs = self._execute_function(**function_args)
     outputs = outputs or {}
     if not isinstance(outputs, dict):
       raise ValueError(
           ('Expected component executor function %s to return a dict of '
-           'outputs (got %r instead).') % (self._FUNCTION, outputs))
+           'outputs (got %r instead).') % (self._FUNCTION_NAME, outputs))
 
     # Assign returned ValueArtifact values.
     for name in self._RETURNED_VALUES:
       if name not in outputs:
         raise ValueError(
             'Did not receive expected output %r as return value from '
-            'component executor function %s.' % (name, self._FUNCTION))
+            'component executor function %s.' % (name, self._FUNCTION_NAME))
       try:
         output_dict[name][0].value = outputs[name]
       except TypeError:
@@ -153,8 +169,52 @@ class _FunctionExecutor(base_executor.BaseExecutor):
             ('Return value %r for output %r is incompatible with output type '
              '%r.') % (outputs[name], name, output_dict[name][0].__class__))
 
+class _RemoteFunctionExecutor(_FunctionExecutor):
+  """Base class for function-based executors."""
 
-def component(func: types.FunctionType) -> Callable[..., Any]:
+  # Function data used by the remote executor.
+  _FUNCTION_BODY = ''
+  
+
+
+  def _execute_function(self, **kwargs):
+    """Executes the user function with the given arguments."""
+    code = self._FUNCTION_BODY
+    out = {}
+    exec(code, out)
+    return out[self._FUNCTION_NAME](**kwargs)
+
+  def Do(self, input_dict: Dict[str, List[tfx_types.Artifact]],
+         output_dict: Dict[str, List[tfx_types.Artifact]],
+         exec_properties: Dict[str, Any]) -> None:
+    
+    self._ARG_FORMATS = {k: function_parser.ArgFormats(v) for k,v in json_utils.loads(exec_properties.pop(_ARG_FORMATS_KEY)).items()}
+    self._ARG_DEFAULTS = json_utils.loads(exec_properties.pop(_ARG_DEFAULTS_KEY))
+    self._FUNCTION_BODY = exec_properties.pop(_FUNCTION_BODY_KEY)
+    self._FUNCTION_NAME = exec_properties.pop(_FUNCTION_NAME_KEY)
+    self._RETURNED_VALUES = set(json_utils.loads(exec_properties.pop(_RETURNED_VALUES_KEY)))
+    super().Do(input_dict, output_dict, exec_properties)
+
+class _SimpleRemoteComponent(_SimpleComponent):
+  """Component whose constructor generates spec instance from arguments."""
+
+  EXECUTOR_SPEC = executor_spec.ExecutorClassSpec(executor_class=_RemoteFunctionExecutor)
+  SPEC_CLASS = None
+
+  def _get_name(self):
+      return  self._internal_name
+
+  def __init__(self, *unused_args, spec_class=None, **kwargs):
+    if spec_class:
+      self.__class__.SPEC_CLASS = spec_class 
+    self._internal_name = kwargs.get(_FUNCTION_NAME_KEY, self.__class__.__name__)
+    super().__init__(*unused_args, **kwargs)
+   
+    if spec_class:
+      self.__class__.SPEC_CLASS = None 
+
+
+def component(func: Optional[types.FunctionType] = None, remote: bool = False) -> Callable[..., Any]:
   """Decorator: creates a component from a typehint-annotated Python function.
 
   This decorator creates a component based on typehint annotations specified for
@@ -241,6 +301,8 @@ def component(func: types.FunctionType) -> Callable[..., Any]:
 
   Args:
     func: Typehint-annotated component executor function.
+    remote: Experimental remote mode. This serializes the function to be run on a remote
+      environment without requiring the environment image to be rebuilt. Defaults to False.
 
   Returns:
     `base_component.BaseComponent` subclass for the given component executor
@@ -249,6 +311,10 @@ def component(func: types.FunctionType) -> Callable[..., Any]:
   Raises:
     EnvironmentError: if the current Python interpreter is not Python 3.
   """
+  # Used so that we can set remote in the decorator like @component(remote=True)
+  if not func:
+    return functools.partial(component, remote=remote)
+
   # Defining a component within a nested class or function closure causes
   # problems because in this case, the generated component classes can't be
   # referenced via their qualified module path.
@@ -276,12 +342,33 @@ def component(func: types.FunctionType) -> Callable[..., Any]:
   for key, primitive_type in parameters.items():
     spec_parameters[key] = component_spec.ExecutionParameter(
         type=primitive_type, optional=(key in arg_defaults))
+  if remote:
+    for key in [_RETURNED_VALUES_KEY, _FUNCTION_BODY_KEY, _FUNCTION_NAME_KEY, _ARG_FORMATS_KEY, _ARG_DEFAULTS_KEY]:
+      spec_parameters[key] = component_spec.ExecutionParameter(type=str)
   component_spec_class = type(
       '%s_Spec' % func.__name__, (tfx_types.ComponentSpec,), {
           'INPUTS': spec_inputs,
           'OUTPUTS': spec_outputs,
           'PARAMETERS': spec_parameters,
       })
+
+  if remote:
+    extra_exec_parameters = {
+      _FUNCTION_BODY_KEY: function_parser.get_function_code(func),
+      _FUNCTION_NAME_KEY: func.__name__,
+      _ARG_FORMATS_KEY: json_utils.dumps({k: v.value for k,v in arg_formats.items()}),
+      _ARG_DEFAULTS_KEY: json_utils.dumps(arg_defaults),
+      _RETURNED_VALUES_KEY: json_utils.dumps(list(returned_values)),
+    }
+
+    @functools.wraps(func)
+    def _wrapper(*args, **kwargs):
+      kwargs.update(extra_exec_parameters)
+      return _SimpleRemoteComponent(
+          spec_class=component_spec_class,
+          *args,
+          **kwargs).with_id(func.__name__)
+    return _wrapper
 
   executor_class = type(
       '%s_Executor' % func.__name__,
@@ -293,6 +380,7 @@ def component(func: types.FunctionType) -> Callable[..., Any]:
           # references of `self._FUNCTION` do not result in a bound method (i.e.
           # one with `self` as its first parameter).
           '_FUNCTION': staticmethod(func),
+          '_FUNCTION_NAME': func.__name__,
           '_RETURNED_VALUES': returned_values,
           '__module__': func.__module__,
       })
@@ -313,3 +401,4 @@ def component(func: types.FunctionType) -> Callable[..., Any]:
           'EXECUTOR_SPEC': executor_spec_instance,
           '__module__': func.__module__,
       })
+

@@ -56,26 +56,30 @@ class _BasicComponentSpec(component_spec.ComponentSpec):
   }
 
 
-@component
-def _injector_1(
+def _injector_1_func(
     foo: Parameter[int], bar: Parameter[str]) -> OutputDict(
         a=int, b=int, c=str, d=bytes):
   assert foo == 9
   assert bar == 'secret'
   return {'a': 10, 'b': 22, 'c': 'unicode', 'd': b'bytes'}
 
+_injector_1 = component(_injector_1_func)
+_injector_1_remote = component(_injector_1_func, remote=True)
 
-@component
-def _simple_component(a: int, b: int, c: str, d: bytes) -> OutputDict(
+
+def _simple_component_func(a: int, b: int, c: str, d: bytes) -> OutputDict(
     e=float, f=float):
   del c, d
   return {'e': float(a + b), 'f': float(a * b)}
 
+_simple_component = component(_simple_component_func)
+_simple_component_remote = component(_simple_component_func, remote=True)
 
-@component
-def _verify(e: float, f: float):
+def _verify_func(e: float, f: float):
   assert (e, f) == (32.0, 220.0), (e, f)
 
+_verify = component(_verify_func)
+_verify_remote = component(_verify_func, remote=True)
 
 @component
 def _injector_2(
@@ -84,7 +88,6 @@ def _injector_2(
     a=int, b=float, c=str, d=bytes, e=str):
   fileio.makedirs(examples.uri)
   return {'a': 1, 'b': 2.0, 'c': '3', 'd': b'4', 'e': 'passed'}
-
 
 @component
 def _optionalarg_component(
@@ -117,6 +120,57 @@ def _optionalarg_component(
   assert e2 == 'passed'
   # Test that non-passed optional argument becomes the argument default.
   assert f == b'default'
+  # Test passed optional parameter.
+  assert g == 999.0
+  # Test non-passed optional parameter.
+  assert h == '2000'
+  # Test passed optional input artifact.
+  assert optional_examples_1 and optional_examples_1.uri
+  # Test non-passed optional input artifact.
+  assert optional_examples_2 is None
+
+@component(remote=True)
+def _injector_2_remote(
+    examples: OutputArtifact[standard_artifacts.Examples]
+) -> OutputDict(
+    a=int, b=float, c=str, d=bytes, e=str):
+  from tfx.dsl.io import fileio
+  fileio.makedirs(examples.uri)
+  return {'a': 1, 'b': 2.0, 'c': '3', 'd': b'4', 'e': 'passed'}
+
+
+@component(remote=True)
+def _optionalarg_component_remote(
+    foo: Parameter[int],
+    bar: Parameter[str],
+    examples: InputArtifact[standard_artifacts.Examples],
+    a: int,
+    b: float,
+    c: str,
+    d: bytes,
+    e1: str = 'default',
+    e2: Optional[str] = 'default',
+    f: str = 'default',
+    g: Parameter[float] = 1000.0,
+    h: Parameter[str] = '2000',
+    optional_examples_1: InputArtifact[standard_artifacts.Examples] = None,
+    optional_examples_2: InputArtifact[standard_artifacts.Examples] = None):
+  from tfx.types import standard_artifacts
+  # Test non-optional parameters.
+  assert foo == 9
+  assert bar == 'secret'
+  assert isinstance(examples, standard_artifacts.Examples)
+  # Test non-optional `int`, `float`, `Text` and `bytes` input values.
+  assert a == 1
+  assert b == 2.0
+  assert c == '3'
+  assert d == b'4'
+  # Test passed optional arguments (with and without the `Optional` typehint
+  # specifier).
+  assert e1 == 'passed'
+  assert e2 == 'passed'
+  # Test that non-passed optional argument becomes the argument default.
+  assert f == 'default'
   # Test passed optional parameter.
   assert g == 999.0
   # Test non-passed optional parameter.
@@ -186,6 +240,26 @@ class ComponentDecoratorTest(tf.test.TestCase):
 
     beam_dag_runner.BeamDagRunner().run(test_pipeline)
 
+  def testBeamExecutionRemoteSuccess(self):
+    """Test execution with return values; success case."""
+    instance_1 = _injector_1_remote(foo=9, bar='secret')
+    instance_2 = _simple_component_remote(
+        a=instance_1.outputs['a'],
+        b=instance_1.outputs['b'],
+        c=instance_1.outputs['c'],
+        d=instance_1.outputs['d'])
+    instance_3 = _verify_remote(e=instance_2.outputs['e'], f=instance_2.outputs['f'])  # pylint: disable=assignment-from-no-return
+
+    metadata_config = metadata.sqlite_metadata_connection_config(
+        self._metadata_path)
+    test_pipeline = pipeline.Pipeline(
+        pipeline_name='test_pipeline_1',
+        pipeline_root=self._test_dir,
+        metadata_connection_config=metadata_config,
+        components=[instance_1, instance_2, instance_3])
+
+    beam_dag_runner.BeamDagRunner().run(test_pipeline)
+
   def testBeamExecutionFailure(self):
     """Test execution with return values; failure case."""
     instance_1 = _injector_1(foo=9, bar='secret')
@@ -209,11 +283,61 @@ class ComponentDecoratorTest(tf.test.TestCase):
                                 r'AssertionError: \(220.0, 32.0\)'):
       beam_dag_runner.BeamDagRunner().run(test_pipeline)
 
+  def testBeamExecutionRemoteFailure(self):
+    """Test execution with return values; failure case."""
+    instance_1 = _injector_1_remote(foo=9, bar='secret')
+    instance_2 = _simple_component_remote(
+        a=instance_1.outputs['a'],
+        b=instance_1.outputs['b'],
+        c=instance_1.outputs['c'],
+        d=instance_1.outputs['d'])
+    # Swapped 'e' and 'f'.
+    instance_3 = _verify_remote(e=instance_2.outputs['f'], f=instance_2.outputs['e'])  # pylint: disable=assignment-from-no-return
+
+    metadata_config = metadata.sqlite_metadata_connection_config(
+        self._metadata_path)
+    test_pipeline = pipeline.Pipeline(
+        pipeline_name='test_pipeline_1',
+        pipeline_root=self._test_dir,
+        metadata_connection_config=metadata_config,
+        components=[instance_1, instance_2, instance_3])
+
+    with self.assertRaisesRegex(RuntimeError,
+                                r'AssertionError: \(220.0, 32.0\)'):
+      beam_dag_runner.BeamDagRunner().run(test_pipeline)
+
   def testBeamExecutionOptionalInputsAndParameters(self):
     """Test execution with optional inputs and parameters."""
     instance_1 = _injector_2()  # pylint: disable=no-value-for-parameter
     self.assertEqual(1, len(instance_1.outputs['examples'].get()))
     instance_2 = _optionalarg_component(  # pylint: disable=assignment-from-no-return
+        foo=9,
+        bar='secret',
+        examples=instance_1.outputs['examples'],
+        a=instance_1.outputs['a'],
+        b=instance_1.outputs['b'],
+        c=instance_1.outputs['c'],
+        d=instance_1.outputs['d'],
+        e1=instance_1.outputs['e'],
+        e2=instance_1.outputs['e'],
+        g=999.0,
+        optional_examples_1=instance_1.outputs['examples'])
+
+    metadata_config = metadata.sqlite_metadata_connection_config(
+        self._metadata_path)
+    test_pipeline = pipeline.Pipeline(
+        pipeline_name='test_pipeline_1',
+        pipeline_root=self._test_dir,
+        metadata_connection_config=metadata_config,
+        components=[instance_1, instance_2])
+
+    beam_dag_runner.BeamDagRunner().run(test_pipeline)
+  
+  def testBeamExecutionRemoteOptionalInputsAndParameters(self):
+    """Test execution with optional inputs and parameters."""
+    instance_1 = _injector_2_remote()  # pylint: disable=no-value-for-parameter
+    self.assertEqual(1, len(instance_1.outputs['examples'].get()))
+    instance_2 = _optionalarg_component_remote(  # pylint: disable=assignment-from-no-return
         foo=9,
         bar='secret',
         examples=instance_1.outputs['examples'],
