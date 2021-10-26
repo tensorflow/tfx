@@ -21,8 +21,8 @@ from typing import Any, Dict, List, Optional, Union
 
 from absl import logging
 from google.cloud.aiplatform import gapic
-from google.cloud.aiplatform_v1beta1.types.custom_job import CustomJob
-from google.cloud.aiplatform_v1beta1.types.job_state import JobState
+from google.cloud.aiplatform_v1.types.custom_job import CustomJob
+from google.cloud.aiplatform_v1.types.job_state import JobState
 from googleapiclient import discovery
 
 from tfx import types
