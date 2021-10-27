@@ -110,7 +110,7 @@ class BaseComponent:
         '--tfx_ir',
         json_format.MessageToJson(tfx_ir),
         '--metadata_ui_path',
-        metadata_ui_path
+        metadata_ui_path,
     ]
 
     for param in runtime_parameters:
