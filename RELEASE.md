@@ -30,6 +30,7 @@
 *   Depends on `pyarrow>=1,<6`.
 *   Fixed FileBasedExampleGen driver for Kubeflow v2 (Vertex). Driver can
     update exec_properties for its executor now, which enables {SPAN} feature.
+*   example_gen.utils.dict_to_example now accepts Numpy types
 
 ## Documentation Updates
 

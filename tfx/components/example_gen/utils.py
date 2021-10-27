@@ -19,6 +19,7 @@ import re
 from typing import Any, Dict, Iterable, List, Optional, Tuple, Union
 
 from absl import logging
+import numpy as np
 import tensorflow as tf
 
 from tfx.dsl.io import fileio
@@ -86,31 +87,44 @@ def dict_to_example(instance: Dict[str, Any]) -> tf.train.Example:
   feature = {}
   for key, value in instance.items():
     # TODO(jyzhao): support more types.
-    if value is None:
+    # Convert to Python Scalars
+    if isinstance(value, np.ndarray):
+      pyval = value.tolist()
+    else:
+      try:
+        pyval = value.item()
+      except AttributeError:
+        pyval = value
+
+    # Convert bytes to str
+    if isinstance(pyval, bytes):
+      pyval = pyval.decode(_DEFAULT_ENCODING)
+
+    if pyval is None:
       feature[key] = tf.train.Feature()
-    elif isinstance(value, int):
+    elif isinstance(pyval, int):
       feature[key] = tf.train.Feature(
-          int64_list=tf.train.Int64List(value=[value]))
-    elif isinstance(value, float):
+          int64_list=tf.train.Int64List(value=[pyval]))
+    elif isinstance(pyval, float):
       feature[key] = tf.train.Feature(
-          float_list=tf.train.FloatList(value=[value]))
-    elif isinstance(value, str):
+          float_list=tf.train.FloatList(value=[pyval]))
+    elif isinstance(pyval, str):
       feature[key] = tf.train.Feature(
           bytes_list=tf.train.BytesList(
-              value=[value.encode(_DEFAULT_ENCODING)]))
-    elif isinstance(value, list):
-      if not value:
+              value=[pyval.encode(_DEFAULT_ENCODING)]))
+    elif isinstance(pyval, list):
+      if not pyval:
         feature[key] = tf.train.Feature()
-      elif isinstance(value[0], int):
+      elif isinstance(pyval[0], int):
         feature[key] = tf.train.Feature(
-            int64_list=tf.train.Int64List(value=value))
-      elif isinstance(value[0], float):
+            int64_list=tf.train.Int64List(value=pyval))
+      elif isinstance(pyval[0], float):
         feature[key] = tf.train.Feature(
-            float_list=tf.train.FloatList(value=value))
-      elif isinstance(value[0], str):
+            float_list=tf.train.FloatList(value=pyval))
+      elif isinstance(pyval[0], str):
         feature[key] = tf.train.Feature(
             bytes_list=tf.train.BytesList(
-                value=[v.encode(_DEFAULT_ENCODING) for v in value]))
+                value=[v.encode(_DEFAULT_ENCODING) for v in pyval]))
       else:
         raise RuntimeError('Column type `list of {}` is not supported.'.format(
             type(value[0])))
