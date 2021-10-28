@@ -659,6 +659,15 @@ class PipelineView:
           status_msg=node_state.status_msg)
     return result
 
+  def get_node_states_dict(self) -> Dict[str, NodeState]:
+    """Returns a dict mapping node id to node state."""
+    result = {}
+    node_states_dict = _get_node_states_dict(self.execution)
+    for node in get_all_pipeline_nodes(self.pipeline):
+      result[node.node_info.id] = node_states_dict.get(node.node_info.id,
+                                                       NodeState())
+    return result
+
 
 def get_orchestrator_contexts(
     mlmd_handle: metadata.Metadata) -> List[metadata_store_pb2.Context]:

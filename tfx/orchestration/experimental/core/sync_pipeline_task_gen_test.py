@@ -642,6 +642,21 @@ class SyncPipelineTaskGeneratorTest(test_utils.TfxTest, parameterized.TestCase):
       self.assertEqual(metadata_store_pb2.Execution.CACHED,
                        execution.last_known_state)
 
+  def test_partial_run_skipped_execution(self):
+    """Tests that skipped execution is marked as complete without running."""
+    for node in self._pipeline.nodes:
+      node.pipeline_node.execution_options.caching_options.enable_cache = False
+    self._pipeline.nodes[1].pipeline_node.execution_options.skip.SetInParent()
+
+    test_utils.fake_example_gen_run(self._mlmd_connection, self._example_gen, 1,
+                                    1)
+    tasks = self._generate(False, False)
+    [stats_gen] = [
+        t for t in tasks if task_lib.is_update_node_state_task(t) and
+        t.node_uid.node_id == 'my_statistics_gen'
+    ]
+    self.assertEqual(pstate.NodeState.COMPLETE, stats_gen.state)
+
   @parameterized.parameters(False, True)
   def test_task_generation_when_node_stopped(self, stop_stats_gen):
     """Tests stopped nodes are ignored when generating tasks."""

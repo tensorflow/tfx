@@ -196,6 +196,14 @@ class _Generator:
     node_id = node.node_info.id
     result = []
 
+    if node.execution_options.HasField('skip'):
+      logging.info('Node %s is skipped in this partial run.', node.node_info.id)
+      pstate.record_state_change_time()
+      result.append(
+          task_lib.UpdateNodeStateTask(
+              node_uid=node_uid, state=pstate.NodeState.COMPLETE))
+      return result
+
     node_state = self._node_states_dict[node_uid]
     if node_state.state in (pstate.NodeState.STOPPING,
                             pstate.NodeState.STOPPED):

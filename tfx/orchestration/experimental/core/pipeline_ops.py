@@ -34,6 +34,7 @@ from tfx.orchestration.experimental.core import task as task_lib
 from tfx.orchestration.experimental.core import task_gen_utils
 from tfx.orchestration.experimental.core import task_queue as tq
 from tfx.orchestration.experimental.core.task_schedulers import manual_task_scheduler
+from tfx.orchestration.portable import partial_run_utils
 from tfx.orchestration.portable.mlmd import execution_lib
 from tfx.proto.orchestration import pipeline_pb2
 from tfx.utils import status as status_lib
@@ -79,7 +80,8 @@ def _to_status_not_ok_error(fn):
 def initiate_pipeline_start(
     mlmd_handle: metadata.Metadata,
     pipeline: pipeline_pb2.Pipeline,
-    pipeline_run_metadata: Optional[Mapping[str, types.Property]] = None
+    pipeline_run_metadata: Optional[Mapping[str, types.Property]] = None,
+    partial_run_option: Optional[pipeline_pb2.PartialRun] = None
 ) -> pstate.PipelineState:
   """Initiates a pipeline start operation.
 
@@ -89,6 +91,7 @@ def initiate_pipeline_start(
     mlmd_handle: A handle to the MLMD db.
     pipeline: IR of the pipeline to start.
     pipeline_run_metadata: Pipeline run metadata.
+    partial_run_option: Options for partial pipeline run.
 
   Returns:
     The `PipelineState` object upon success.
@@ -101,12 +104,34 @@ def initiate_pipeline_start(
   logging.info('Received request to start pipeline; pipeline uid: %s',
                task_lib.PipelineUid.from_pipeline(pipeline))
   pipeline = copy.deepcopy(pipeline)
+
   if pipeline.execution_mode == pipeline_pb2.Pipeline.SYNC and not (
       pipeline.runtime_spec.pipeline_run_id.HasField('field_value') and
       pipeline.runtime_spec.pipeline_run_id.field_value.string_value):
     raise status_lib.StatusNotOkError(
         code=status_lib.Code.INVALID_ARGUMENT,
         message='Sync pipeline IR must specify pipeline_run_id.')
+
+  if partial_run_option:
+    if pipeline.execution_mode != pipeline_pb2.Pipeline.SYNC:
+      raise status_lib.StatusNotOkError(
+          code=status_lib.Code.FAILED_PRECONDITION,
+          message=(
+              f'Partial run is only supported for SYNC pipeline execution modes; '
+              f'found pipeline with execution mode: {pipeline.execution_mode}'))
+
+    def node_fn(nodes):
+      return lambda node: node in nodes
+
+    # Mark nodes using partial pipeline run lib.
+    pipeline = partial_run_utils.mark_pipeline(
+        pipeline,
+        from_nodes=node_fn(partial_run_option.from_nodes),
+        to_nodes=node_fn(partial_run_option.to_nodes),
+        skip_nodes=node_fn(partial_run_option.skip_nodes),
+        snapshot_settings=partial_run_option.snapshot_settings)
+    if pipeline.runtime_spec.HasField('snapshot_settings'):
+      partial_run_utils.snapshot(mlmd_handle, pipeline)
 
   return pstate.PipelineState.new(mlmd_handle, pipeline, pipeline_run_metadata)
 
@@ -364,6 +389,84 @@ def _wait_for_node_inactivation(pipeline_state: pstate.PipelineState,
                                   pstate.NodeState.STOPPED)
 
   return _wait_for_predicate(_is_inactivated, 'node inactivation', timeout_secs)
+
+
+@_to_status_not_ok_error
+@_pipeline_ops_lock
+def resume_pipeline(mlmd_handle: metadata.Metadata,
+                    pipeline: pipeline_pb2.Pipeline) -> pstate.PipelineState:
+  """Resumes a pipeline run from previously failed nodes.
+
+  Upon success, MLMD is updated to signal that the pipeline must be started.
+
+  Args:
+    mlmd_handle: A handle to the MLMD db.
+    pipeline: IR of the pipeline to resume.
+
+  Returns:
+    The `PipelineState` object upon success.
+
+  Raises:
+    status_lib.StatusNotOkError: Failure to resume pipeline. With code
+      `ALREADY_EXISTS` if a pipeline is already running. With code
+      `status_lib.Code.FAILED_PRECONDITION` if a previous pipeline run
+      is not found for resuming.
+  """
+
+  logging.info('Received request to resume pipeline; pipeline uid: %s',
+               task_lib.PipelineUid.from_pipeline(pipeline))
+  if pipeline.execution_mode != pipeline_pb2.Pipeline.SYNC:
+    raise status_lib.StatusNotOkError(
+        code=status_lib.Code.FAILED_PRECONDITION,
+        message=(
+            f'Only SYNC pipeline execution modes supported; '
+            f'found pipeline with execution mode: {pipeline.execution_mode}'))
+
+  latest_pipeline_view = None
+  pipeline_uid = task_lib.PipelineUid.from_pipeline(pipeline)
+  views = pstate.PipelineView.load_all(mlmd_handle, pipeline_uid)
+  for view in views:
+    execution = view.execution
+    if execution_lib.is_execution_active(execution):
+      raise status_lib.StatusNotOkError(
+          code=status_lib.Code.ALREADY_EXISTS,
+          message=(f'Can not resume pipeline. An active pipeline is already '
+                   f'running with uid {pipeline_uid}.'))
+    if (not latest_pipeline_view or execution.create_time_since_epoch >
+        latest_pipeline_view.execution.create_time_since_epoch):
+      latest_pipeline_view = view
+
+  if not latest_pipeline_view:
+    raise status_lib.StatusNotOkError(
+        code=status_lib.Code.NOT_FOUND,
+        message='Pipeline failed to resume. No previous pipeline run found.')
+  if latest_pipeline_view.pipeline.execution_mode != pipeline_pb2.Pipeline.SYNC:
+    raise status_lib.StatusNotOkError(
+        code=status_lib.Code.FAILED_PRECONDITION,
+        message=(
+            f'Only SYNC pipeline execution modes supported; previous pipeline '
+            f'run has execution mode: '
+            f'{latest_pipeline_view.pipeline.execution_mode}'))
+
+  # Get succeeded nodes in latest pipeline run.
+  latest_pipeline_node_states = latest_pipeline_view.get_node_states_dict()
+  previously_succeeded_nodes = []
+  for node, node_state in latest_pipeline_node_states.items():
+    if node_state.is_success():
+      previously_succeeded_nodes.append(node)
+  pipeline_nodes = [
+      node.node_info.id for node in pstate.get_all_pipeline_nodes(pipeline)
+  ]
+  latest_pipeline_snapshot_settings = pipeline_pb2.SnapshotSettings()
+  latest_pipeline_snapshot_settings.latest_pipeline_run_strategy.SetInParent()
+  partial_run_option = pipeline_pb2.PartialRun(
+      from_nodes=pipeline_nodes,
+      to_nodes=pipeline_nodes,
+      skip_nodes=previously_succeeded_nodes,
+      snapshot_settings=latest_pipeline_snapshot_settings)
+
+  return initiate_pipeline_start(
+      mlmd_handle, pipeline, partial_run_option=partial_run_option)
 
 
 _POLLING_INTERVAL_SECS = 10.0

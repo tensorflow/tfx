@@ -13,6 +13,7 @@
 # limitations under the License.
 """Tests for tfx.orchestration.experimental.core.pipeline_ops."""
 
+import copy
 import os
 import threading
 import time
@@ -38,6 +39,7 @@ from tfx.orchestration.experimental.core.task_schedulers import manual_task_sche
 from tfx.orchestration.experimental.core.testing import test_async_pipeline
 from tfx.orchestration.experimental.core.testing import test_manual_node
 from tfx.orchestration.portable import execution_publish_utils
+from tfx.orchestration.portable import partial_run_utils
 from tfx.orchestration.portable import runtime_parameter_utils
 from tfx.orchestration.portable.mlmd import context_lib
 from tfx.orchestration.portable.mlmd import execution_lib
@@ -120,6 +122,95 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
       with pipeline_ops.initiate_pipeline_start(m, pipeline) as pipeline_state3:
         self.assertEqual(metadata_store_pb2.Execution.NEW,
                          pipeline_state3.get_pipeline_execution_state())
+
+  @mock.patch.object(partial_run_utils, 'snapshot')
+  def test_resume_pipeline(self, mock_snapshot):
+    with self._mlmd_connection as m:
+      pipeline = _test_pipeline('test_pipeline', pipeline_pb2.Pipeline.SYNC)
+      pipeline_uid = task_lib.PipelineUid.from_pipeline(pipeline)
+      pipeline.nodes.add().pipeline_node.node_info.id = 'ExampleGen'
+      pipeline.nodes.add().pipeline_node.node_info.id = 'Trainer'
+
+      # Error if attempt to resume the pipeline when there is no previous run.
+      with self.assertRaises(status_lib.StatusNotOkError) as exception_context:
+        pipeline_ops.resume_pipeline(m, pipeline)
+      self.assertEqual(status_lib.Code.NOT_FOUND,
+                       exception_context.exception.code)
+
+      # Initiate a pipeline start.
+      pipeline_state_run1 = pipeline_ops.initiate_pipeline_start(m, pipeline)
+
+      # Error if attempt to resume the pipeline when the previous one is active.
+      pipeline.runtime_spec.pipeline_run_id.field_value.string_value = 'run1'
+      with self.assertRaises(status_lib.StatusNotOkError) as exception_context:
+        pipeline_ops.resume_pipeline(m, pipeline)
+      self.assertEqual(status_lib.Code.ALREADY_EXISTS,
+                       exception_context.exception.code)
+
+      with pipeline_state_run1:
+        example_gen_node_uid = task_lib.NodeUid(pipeline_uid, 'ExampleGen')
+        trainer_node_uid = task_lib.NodeUid(pipeline_uid, 'Trainer')
+        with pipeline_state_run1.node_state_update_context(
+            example_gen_node_uid) as node_state:
+          node_state.update(pstate.NodeState.COMPLETE)
+        with pipeline_state_run1.node_state_update_context(
+            trainer_node_uid) as node_state:
+          node_state.update(pstate.NodeState.FAILED)
+        pipeline_state_run1.set_pipeline_execution_state(
+            metadata_store_pb2.Execution.COMPLETE)
+        pipeline_state_run1.initiate_stop(
+            status_lib.Status(code=status_lib.Code.ABORTED))
+
+      # Only Trainer is marked to run since ExampleGen succeeded in previous
+      # run.
+      expected_pipeline = copy.deepcopy(pipeline)
+      expected_pipeline.runtime_spec.snapshot_settings.latest_pipeline_run_strategy.SetInParent(
+      )
+      expected_pipeline.nodes[
+          0].pipeline_node.execution_options.skip.reuse_artifacts = True
+      expected_pipeline.nodes[
+          1].pipeline_node.execution_options.run.perform_snapshot = True
+      with pipeline_ops.resume_pipeline(m, pipeline) as pipeline_state_run2:
+        self.assertEqual(expected_pipeline, pipeline_state_run2.pipeline)
+        pipeline_state_run2.is_active()
+
+  @mock.patch.object(partial_run_utils, 'snapshot')
+  def test_initiate_pipeline_start_with_partial_run(self, mock_snapshot):
+    with self._mlmd_connection as m:
+      pipeline = _test_pipeline('test_pipeline', pipeline_pb2.Pipeline.SYNC)
+      node_example_gen = pipeline.nodes.add().pipeline_node
+      node_example_gen.node_info.id = 'ExampleGen'
+      node_example_gen.downstream_nodes.extend(['Transform'])
+      node_transform = pipeline.nodes.add().pipeline_node
+      node_transform.node_info.id = 'Transform'
+      node_transform.upstream_nodes.extend(['ExampleGen'])
+      node_transform.downstream_nodes.extend(['Trainer'])
+      node_trainer = pipeline.nodes.add().pipeline_node
+      node_trainer.node_info.id = 'Trainer'
+      node_trainer.upstream_nodes.extend(['Transform'])
+
+      expected_pipeline = copy.deepcopy(pipeline)
+      expected_pipeline.runtime_spec.snapshot_settings.latest_pipeline_run_strategy.SetInParent(
+      )
+      expected_pipeline.nodes[
+          0].pipeline_node.execution_options.skip.reuse_artifacts = True
+      expected_pipeline.nodes[
+          1].pipeline_node.execution_options.run.perform_snapshot = True
+      expected_pipeline.nodes[
+          1].pipeline_node.execution_options.run.depends_on_snapshot = True
+      expected_pipeline.nodes[
+          2].pipeline_node.execution_options.run.SetInParent()
+
+      latest_pipeline_snapshot_settings = pipeline_pb2.SnapshotSettings()
+      latest_pipeline_snapshot_settings.latest_pipeline_run_strategy.SetInParent(
+      )
+      partial_run_option = pipeline_pb2.PartialRun(
+          from_nodes=['Transform'],
+          to_nodes=['Trainer'],
+          snapshot_settings=latest_pipeline_snapshot_settings)
+      with pipeline_ops.initiate_pipeline_start(
+          m, pipeline, partial_run_option=partial_run_option) as pipeline_state:
+        self.assertEqual(expected_pipeline, pipeline_state.pipeline)
 
   @parameterized.named_parameters(
       dict(testcase_name='async', pipeline=_test_pipeline('pipeline1')),
