@@ -31,6 +31,7 @@ from tfx.proto.orchestration import pipeline_pb2
 from tfx.utils import proto_utils
 from tfx.utils import typing_utils
 
+import ml_metadata as mlmd
 from ml_metadata.proto import metadata_store_pb2
 
 
@@ -203,18 +204,19 @@ def get_executions(
   Returns:
     List of executions for the given node in MLMD db.
   """
+  if not node.contexts.contexts:
+    return []
   # Get all the contexts associated with the node.
   contexts = []
-  for context_spec in node.contexts.contexts:
-    context = metadata_handler.store.get_context_by_type_and_name(
-        context_spec.type.name, data_types_utils.get_value(context_spec.name))
-    if context is None:
-      # If no context is registered, it's certain that there is no
-      # associated execution for the node.
-      return []
-    contexts.append(context)
-  return execution_lib.get_executions_associated_with_all_contexts(
-      metadata_handler, contexts)
+  for i, context_spec in enumerate(node.contexts.contexts):
+    context_type = context_spec.type.name
+    context_name = data_types_utils.get_value(context_spec.name)
+    contexts.append(
+        f"(contexts_{i}.type = '{context_type}' AND contexts_{i}.name = '{context_name}')"
+    )
+  filter_query = ' AND '.join(contexts)
+  return metadata_handler.store.get_executions(
+      list_options=mlmd.ListOptions(filter_query=filter_query))
 
 
 def is_latest_execution_successful(
