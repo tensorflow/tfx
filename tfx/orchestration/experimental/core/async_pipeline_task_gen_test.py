@@ -20,13 +20,18 @@ from absl.testing.absltest import mock
 import tensorflow as tf
 from tfx.orchestration import metadata
 from tfx.orchestration.experimental.core import async_pipeline_task_gen as asptg
+from tfx.orchestration.experimental.core import mlmd_state
 from tfx.orchestration.experimental.core import pipeline_state as pstate
 from tfx.orchestration.experimental.core import service_jobs
 from tfx.orchestration.experimental.core import task as task_lib
+from tfx.orchestration.experimental.core import task_gen_utils
 from tfx.orchestration.experimental.core import task_queue as tq
 from tfx.orchestration.experimental.core import test_utils
 from tfx.orchestration.experimental.core.testing import test_async_pipeline
 from tfx.utils import status as status_lib
+
+from google.protobuf import any_pb2
+from ml_metadata.proto import metadata_store_pb2
 
 
 class AsyncPipelineTaskGeneratorTest(test_utils.TfxTest,
@@ -101,7 +106,8 @@ class AsyncPipelineTaskGeneratorTest(test_utils.TfxTest,
                          num_tasks_generated,
                          num_new_executions,
                          num_active_executions,
-                         expected_exec_nodes=None):
+                         expected_exec_nodes=None,
+                         ignore_update_node_state_tasks=False):
     """Generates tasks and tests the effects."""
     return test_utils.run_generator_and_test(
         self,
@@ -115,7 +121,8 @@ class AsyncPipelineTaskGeneratorTest(test_utils.TfxTest,
         num_tasks_generated=num_tasks_generated,
         num_new_executions=num_new_executions,
         num_active_executions=num_active_executions,
-        expected_exec_nodes=expected_exec_nodes)
+        expected_exec_nodes=expected_exec_nodes,
+        ignore_update_node_state_tasks=ignore_update_node_state_tasks)
 
   @parameterized.parameters(0, 1)
   def test_no_tasks_generated_when_no_inputs(self, min_count):
@@ -371,6 +378,110 @@ class AsyncPipelineTaskGeneratorTest(test_utils.TfxTest,
         num_active_executions=0)
     self.assertTrue(task_lib.is_update_node_state_task(update_task))
     self.assertEqual(status_lib.Code.ABORTED, update_task.status.code)
+
+  def test_triggering_upon_exec_properties_change(self):
+    test_utils.fake_example_gen_run(self._mlmd_connection, self._example_gen, 1,
+                                    1)
+
+    [exec_transform_task] = self._generate_and_test(
+        False,
+        num_initial_executions=1,
+        num_tasks_generated=1,
+        num_new_executions=1,
+        num_active_executions=1,
+        expected_exec_nodes=[self._transform],
+        ignore_update_node_state_tasks=True)
+
+    # Fail the registered execution.
+    with self._mlmd_connection as m:
+      with mlmd_state.mlmd_execution_atomic_op(
+          m, exec_transform_task.execution_id) as execution:
+        execution.last_known_state = metadata_store_pb2.Execution.FAILED
+
+    # Try to generate with same execution properties. This should not trigger
+    # as there are no changes since last run.
+    self._generate_and_test(
+        False,
+        num_initial_executions=2,
+        num_tasks_generated=0,
+        num_new_executions=0,
+        num_active_executions=0,
+        ignore_update_node_state_tasks=True)
+
+    # Change execution properties of last run.
+    with self._mlmd_connection as m:
+      with mlmd_state.mlmd_execution_atomic_op(
+          m, exec_transform_task.execution_id) as execution:
+        execution.custom_properties['a_param'].int_value = 20
+
+    # Generating with different execution properties should trigger.
+    self._generate_and_test(
+        False,
+        num_initial_executions=2,
+        num_tasks_generated=1,
+        num_new_executions=1,
+        num_active_executions=1,
+        expected_exec_nodes=[self._transform],
+        ignore_update_node_state_tasks=True)
+
+  def test_triggering_upon_executor_spec_change(self):
+    test_utils.fake_example_gen_run(self._mlmd_connection, self._example_gen, 1,
+                                    1)
+
+    with mock.patch.object(task_gen_utils,
+                           'get_executor_spec') as mock_get_executor_spec:
+      mock_get_executor_spec.side_effect = _fake_executor_spec(1)
+      [exec_transform_task] = self._generate_and_test(
+          False,
+          num_initial_executions=1,
+          num_tasks_generated=1,
+          num_new_executions=1,
+          num_active_executions=1,
+          expected_exec_nodes=[self._transform],
+          ignore_update_node_state_tasks=True)
+
+    # Fail the registered execution.
+    with self._mlmd_connection as m:
+      with mlmd_state.mlmd_execution_atomic_op(
+          m, exec_transform_task.execution_id) as execution:
+        execution.last_known_state = metadata_store_pb2.Execution.FAILED
+
+    # Try to generate with same executor spec. This should not trigger as
+    # there are no changes since last run.
+    with mock.patch.object(task_gen_utils,
+                           'get_executor_spec') as mock_get_executor_spec:
+      mock_get_executor_spec.side_effect = _fake_executor_spec(1)
+      self._generate_and_test(
+          False,
+          num_initial_executions=2,
+          num_tasks_generated=0,
+          num_new_executions=0,
+          num_active_executions=0,
+          ignore_update_node_state_tasks=True)
+
+    # Generating with a different executor spec should trigger.
+    with mock.patch.object(task_gen_utils,
+                           'get_executor_spec') as mock_get_executor_spec:
+      mock_get_executor_spec.side_effect = _fake_executor_spec(2)
+      self._generate_and_test(
+          False,
+          num_initial_executions=2,
+          num_tasks_generated=1,
+          num_new_executions=1,
+          num_active_executions=1,
+          expected_exec_nodes=[self._transform],
+          ignore_update_node_state_tasks=True)
+
+
+def _fake_executor_spec(val):
+
+  def _get_executor_spec(*unused_args, **unused_kwargs):
+    value = metadata_store_pb2.Value(int_value=val)
+    any_proto = any_pb2.Any()
+    any_proto.Pack(value)
+    return any_proto
+
+  return _get_executor_spec
 
 
 if __name__ == '__main__':

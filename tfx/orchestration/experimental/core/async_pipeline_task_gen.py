@@ -13,11 +13,14 @@
 # limitations under the License.
 """TaskGenerator implementation for async pipelines."""
 
+import hashlib
 import itertools
-from typing import Callable, List, Optional
+from typing import Callable, Dict, List, Optional
 
 from absl import logging
+from tfx import types
 from tfx.orchestration import metadata
+from tfx.orchestration.experimental.core import constants
 from tfx.orchestration.experimental.core import pipeline_state as pstate
 from tfx.orchestration.experimental.core import service_jobs
 from tfx.orchestration.experimental.core import task as task_lib
@@ -187,13 +190,19 @@ class _Generator:
           'are resolved.', node.node_info.id)
       return result
 
-    # If the latest successful execution had the same resolved input artifacts,
-    # the component should not be triggered, so task is not generated.
-    # TODO(b/170231077): This logic should be handled by the resolver when it's
-    # implemented. Also, currently only the artifact ids of previous execution
-    # are checked to decide if a new execution is warranted but it may also be
-    # necessary to factor in the difference of execution properties.
-    latest_exec = task_gen_utils.get_latest_successful_execution(executions)
+    executor_spec_fingerprint = hashlib.sha256()
+    executor_spec = task_gen_utils.get_executor_spec(
+        self._pipeline_state.pipeline, node.node_info.id)
+    if executor_spec is not None:
+      executor_spec_fingerprint.update(
+          executor_spec.SerializeToString(deterministic=True))
+    resolved_info.exec_properties[
+        constants
+        .EXECUTOR_SPEC_FINGERPRINT_KEY] = executor_spec_fingerprint.hexdigest()
+
+    # If the latest execution had the same resolved input artifacts, execution
+    # properties and executor specs, we should not trigger a new execution.
+    latest_exec = task_gen_utils.get_latest_execution(executions)
     if latest_exec:
       artifact_ids_by_event_type = (
           execution_lib.get_artifact_ids_by_event_type_for_execution_id(
@@ -203,7 +212,16 @@ class _Generator:
       current_exec_input_artifact_ids = set(
           a.id
           for a in itertools.chain(*resolved_info.input_artifacts.values()))
-      if latest_exec_input_artifact_ids == current_exec_input_artifact_ids:
+      latest_exec_properties = task_gen_utils.extract_properties(latest_exec)
+      current_exec_properties = resolved_info.exec_properties
+      latest_exec_executor_spec_fp = latest_exec_properties[
+          constants.EXECUTOR_SPEC_FINGERPRINT_KEY]
+      current_exec_executor_spec_fp = resolved_info.exec_properties[
+          constants.EXECUTOR_SPEC_FINGERPRINT_KEY]
+      if (latest_exec_input_artifact_ids == current_exec_input_artifact_ids and
+          _exec_properties_match(latest_exec_properties,
+                                 current_exec_properties) and
+          latest_exec_executor_spec_fp == current_exec_executor_spec_fp):
         result.append(
             task_lib.UpdateNodeStateTask(
                 node_uid=node_uid, state=pstate.NodeState.STARTED))
@@ -270,3 +288,20 @@ class _Generator:
       return self._service_job_manager.ensure_node_services(
           self._pipeline_state, node_id)
     return None
+
+
+def _exec_properties_match(
+    exec_props1: Dict[str, types.ExecPropertyTypes],
+    exec_props2: Dict[str, types.ExecPropertyTypes]) -> bool:
+  """Returns True if exec properties match."""
+
+  def _filter_out_internal_keys(
+      props: Dict[str, types.ExecPropertyTypes]
+  ) -> Dict[str, types.ExecPropertyTypes]:
+    return {
+        key: value for key, value in props.items() if not key.startswith('__')
+    }
+
+  exec_props1 = _filter_out_internal_keys(exec_props1)
+  exec_props2 = _filter_out_internal_keys(exec_props2)
+  return exec_props1 == exec_props2
