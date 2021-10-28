@@ -81,10 +81,7 @@ def make_required_install_packages():
       'grpcio>=1.28.1,<2',
       'keras-tuner>=1.0.4,<2',
       'kubernetes>=10.0.1,<13',
-      # TODO(b/179195488): remove numpy dependency after 1.20 migration.
-      # This dependency was added only to limit numpy 1.20 installation.
-      'numpy>=1.16,<1.20',
-      'pyarrow>=1,<6',
+      'pyarrow>=1,<7',
       'pyyaml>=3.12,<6',
       'tensorflow>=1.15.2,!=2.0.*,!=2.1.*,!=2.2.*,!=2.3.*,!=2.4.*,!=2.5.*,<3',
       'tensorflow-hub>=0.9.0,<0.13',
