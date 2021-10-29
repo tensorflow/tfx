@@ -410,6 +410,11 @@ def main(argv):
 
   parser = argparse.ArgumentParser()
   parser.add_argument('--pipeline_root', type=str, required=True)
+  parser.add_argument(
+      '--metadata_ui_path',
+      type=str,
+      required=False,
+      default='/mlpipeline-ui-metadata.json')
   parser.add_argument('--kubeflow_metadata_config', type=str, required=True)
   parser.add_argument('--tfx_ir', type=str, required=True)
   parser.add_argument('--node_id', type=str, required=True)
@@ -465,7 +470,7 @@ def main(argv):
     logging.info('Component %s is finished.', node_id)
 
   # Dump the UI metadata.
-  _dump_ui_metadata(pipeline_node, execution_info)
+  _dump_ui_metadata(pipeline_node, execution_info, args.metadata_ui_path)
 
 
 if __name__ == '__main__':
