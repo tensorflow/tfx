@@ -1,4 +1,4 @@
-# Version 1.3.1
+# Version 1.3.2
 
 ## Major Features and Improvements
 
@@ -18,7 +18,7 @@
 
 ## Bug Fixes and Other Changes
 
-*  Fixed Vertex Pusher by passing enable_vertex flag for deploying model.
+*  Fixed endless waiting for Vertex Trainer.
 
 ## Documentation Updates
 
