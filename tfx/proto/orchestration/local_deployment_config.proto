@@ -47,8 +47,11 @@ message LocalDeploymentConfig {
   // set custom driver logic.
   map<string, ExecutableSpec> custom_driver_specs = 2;
   // Connection config for ML-metadata.
-  google.protobuf.Any metadata_connection_config = 3;
+  optional ml_metadata.ConnectionConfig metadata_connection_config = 3;
   // A key from `node_id` to platform configs. Specifies platform settings to
   // pass to individual node operators.
   map<string, LocalPlatformConfig> node_level_platform_configs = 4;
+  // Server Connection config
+  optional ml_metadata.MetadataStoreClientConfig mlmd_store_client_config = 5;
+
 }

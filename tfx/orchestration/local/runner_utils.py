@@ -89,9 +89,10 @@ def _to_local_deployment(
         _build_local_platform_config(k, v))
 
   if not input_config.metadata_connection_config.Unpack(
-      result.metadata_connection_config):
+      result.metadata_connection_config) or not input_config.mlmd_store_client_config.Unpack(
+        result.metadata_connection_config):
     raise ValueError('metadata_connection_config is expected to be in type '
-                     'ml_metadata.ConnectionConfig, but got type {}'.format(
+                     'ml_metadata.ConnectionConfig or ml_metadata.MetadataStoreClientConfig, but got type {}'.format(
                          input_config.metadata_connection_config.type_url))
   return result
 
