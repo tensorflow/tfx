@@ -162,6 +162,9 @@ def make_extra_packages_tf_ranking():
   # Packages needed for tf-ranking which is used in tfx/examples/ranking.
   return [
       'tensorflow-ranking>=0.3.3,<0.4',
+      # TODO(b/203793924): Remove temporarily pinned version of
+      # opencv-python-headless to avoid a build issue.
+      'opencv-python-headless<4.5.4; platform_system=="Darwin"',
       'struct2tensor' + select_constraint(
           default='>=0.34,<0.35',
           nightly='>=0.35.0.dev',
