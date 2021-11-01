@@ -14,31 +14,31 @@
 """Base handler class."""
 
 import abc
+from importlib import machinery
+from importlib import util as import_util
 import json
 import os
 import subprocess
 import sys
-import tempfile
-from typing import Any, Collection, Dict, List, Text
+from typing import Any, Collection, Dict, List, Optional
 
 import click
-from six import with_metaclass
-
 
 from tfx.dsl.components.base import base_driver
 from tfx.dsl.io import fileio
 from tfx.tools.cli import labels
+from tfx.tools.cli.handler import dag_runner_patcher
 from tfx.utils import io_utils
 
 
-class BaseHandler(with_metaclass(abc.ABCMeta, object)):
+class BaseHandler(abc.ABC):
   """Base Handler for CLI.
 
   Attributes:
     flags_dict: A dictionary with flags provided in a command.
   """
 
-  def __init__(self, flags_dict: Dict[Text, Any]):
+  def __init__(self, flags_dict: Dict[str, Any]):
     self.flags_dict = flags_dict
     self._handler_home_dir = self._get_handler_home()
 
@@ -98,66 +98,39 @@ class BaseHandler(with_metaclass(abc.ABCMeta, object)):
     if not fileio.exists(pipeline_dsl_path):
       sys.exit('Invalid pipeline path: {}'.format(pipeline_dsl_path))
 
-  def _check_dsl_runner(self) -> None:
-    """Check if runner in dsl is same as engine flag."""
-    engine_flag = self.flags_dict[labels.ENGINE_FLAG]
-    with open(self.flags_dict[labels.PIPELINE_DSL_PATH], 'r') as f:
-      dsl_contents = f.read()
-      runner_names = {
-          labels.AIRFLOW_ENGINE: 'AirflowDagRunner',
-          labels.KUBEFLOW_ENGINE: 'KubeflowDagRunner',
-          labels.BEAM_ENGINE: 'BeamDagRunner',
-          labels.LOCAL_ENGINE: 'LocalDagRunner',
-      }
-      if runner_names[engine_flag] not in dsl_contents:
-        sys.exit('{} runner not found in dsl.'.format(engine_flag))
+  def execute_dsl(
+      self, patcher: dag_runner_patcher.DagRunnerPatcher) -> Dict[str, Any]:
+    """Execute DSL file with given patcher applied to the DSL Runner."""
+    self._check_pipeline_dsl_path()
+    dsl_path = self.flags_dict[labels.PIPELINE_DSL_PATH]
 
-  def _extract_pipeline_args(self) -> Dict[Text, Any]:
-    """Get pipeline args from the DSL.
+    with patcher.patch() as context:
+      # Simluate python script execution.
+      # - Need to add the script directory as a first entry of sys.path.
+      # - Load the script as if we are in __main__ module.
+      # - Hide argv given to CLI from the executed script.
+      dir_path = os.path.dirname(os.path.realpath(dsl_path))
+      sys.path.insert(0, dir_path)
+      loader = machinery.SourceFileLoader('__main__', dsl_path)
+      old_argv = sys.argv
+      sys.argv = [dsl_path]  # As if the script is invoked directly with no arg.
+      try:
+        loader.exec_module(
+            import_util.module_from_spec(
+                import_util.spec_from_loader(loader.name, loader)))
+      except SystemExit as system_exit:  # Swallow normal exit in absl.app.run()
+        if system_exit.code != 0 and system_exit.code is not None:
+          raise
+      finally:
+        sys.argv = old_argv
+        sys.path.pop(0)
 
-    Returns:
-      Python dictionary with pipeline details extracted from DSL.
-    """
-    # TODO(b/157599419): Consider using a better way to extract pipeline info:
-    # e.g. pipeline name/root. Currently we relies on consulting a env var when
-    # creating Pipeline object, which is brittle.
-    pipeline_dsl_path = self.flags_dict[labels.PIPELINE_DSL_PATH]
-    if os.path.isdir(pipeline_dsl_path):
-      sys.exit('Provide dsl file path.')
+      if not patcher.run_called:
+        sys.exit('Cannot find ' + patcher.get_runner_class().__name__ +
+                 '.run() in ' + dsl_path)
+      return context
 
-    # Create an environment for subprocess.
-    temp_env = os.environ.copy()
-
-    # Create temp file to store pipeline_args from pipeline dsl.
-    temp_file = tempfile.mkstemp(prefix='cli_tmp_', suffix='_pipeline_args')[1]
-
-    # Store temp_file path in temp_env.
-    # LINT.IfChange
-    temp_env[labels.TFX_JSON_EXPORT_PIPELINE_ARGS_PATH] = temp_file
-    # LINT.ThenChange(
-    #     ../../../orchestration/beam/beam_dag_runner.py,
-    #     ../../../orchestration/local/local_dag_runner.py,
-    # )
-
-    # Run dsl with mock environment to store pipeline args in temp_file.
-    self._subprocess_call([sys.executable, pipeline_dsl_path], env=temp_env)
-    if os.stat(temp_file).st_size != 0:
-      # Load pipeline_args from temp_file for TFX pipelines
-      with open(temp_file, 'r') as f:
-        pipeline_args = json.load(f)
-    else:
-      # For non-TFX pipelines, extract pipeline name from the dsl filename.
-      pipeline_args = {
-          labels.PIPELINE_NAME:
-              os.path.basename(pipeline_dsl_path).split('.')[0]
-      }
-
-    # Delete temp file
-    io_utils.delete_dir(temp_file)
-
-    return pipeline_args
-
-  def _get_handler_home(self) -> Text:
+  def _get_handler_home(self) -> str:
     """Sets handler home.
 
     Returns:
@@ -169,7 +142,7 @@ class BaseHandler(with_metaclass(abc.ABCMeta, object)):
       return os.environ[handler_home_dir]
     return os.path.join(os.environ['HOME'], 'tfx', engine_flag, '')
 
-  def _get_deprecated_handler_home(self) -> Text:
+  def _get_deprecated_handler_home(self) -> str:
     """Sets old handler home for compatibility.
 
     Returns:
@@ -182,14 +155,15 @@ class BaseHandler(with_metaclass(abc.ABCMeta, object)):
     return os.path.join(os.environ['HOME'], engine_flag, '')
 
   def _subprocess_call(self,
-                       command: List[Text],
-                       env: Dict[Text, Any] = None) -> None:
+                       command: List[str],
+                       env: Optional[Dict[str, Any]] = None) -> None:
     return_code = subprocess.call(command, env=env)
     if return_code != 0:
       sys.exit('Error while running "{}" '.format(' '.join(command)))
 
   def _format_table(self, header: Collection[Any],
                     data: Collection[Collection[Any]]):
+    """Pretty-print the table (like tabluate library does)."""
 
     def _format_as_strings(items):
       return [f' {item} ' for item in items]
@@ -222,7 +196,7 @@ class BaseHandler(with_metaclass(abc.ABCMeta, object)):
     return result
 
   def _check_pipeline_existence(self,
-                                pipeline_name: Text,
+                                pipeline_name: str,
                                 required: bool = True) -> None:
     """Check if pipeline folder exists and if not, exit system.
 
@@ -263,16 +237,22 @@ class BaseHandler(with_metaclass(abc.ABCMeta, object)):
     elif not required and exists:
       sys.exit('Pipeline "{}" already exists.'.format(pipeline_name))
 
+  def _get_pipeline_info_path(self, pipeline_name):
+    return os.path.join(self._handler_home_dir, pipeline_name)
+
+  def _get_pipeline_args_path(self, pipeline_name):
+    return os.path.join(
+        self._get_pipeline_info_path(pipeline_name), 'pipeline_args.json')
+
   def get_schema(self):
+    """Get the schema of the pipeline."""
     pipeline_name = self.flags_dict[labels.PIPELINE_NAME]
 
     # Check if pipeline exists.
     self._check_pipeline_existence(pipeline_name)
 
     # Path to pipeline args.
-    pipeline_args_path = os.path.join(self._handler_home_dir,
-                                      self.flags_dict[labels.PIPELINE_NAME],
-                                      'pipeline_args.json')
+    pipeline_args_path = self._get_pipeline_args_path(pipeline_name)
 
     # Get pipeline_root.
     with open(pipeline_args_path, 'r') as f:
@@ -282,6 +262,7 @@ class BaseHandler(with_metaclass(abc.ABCMeta, object)):
                                          pipeline_args[labels.PIPELINE_ROOT])
 
   def _read_schema_from_pipeline_root(self, pipeline_name, pipeline_root):
+    """Read Schema from the latest SchemaGen output of the pipeline."""
     # Check if pipeline root created. If not, it means that the user has not
     # created a run yet or the pipeline is still running for the first time.
 

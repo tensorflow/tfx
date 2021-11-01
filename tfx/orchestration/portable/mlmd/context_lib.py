@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Portable libraries for context related APIs."""
-from typing import List, Text
+from typing import List
 
 from absl import logging
 
@@ -21,6 +21,7 @@ from tfx.orchestration import metadata
 from tfx.orchestration.portable.mlmd import common_utils
 from tfx.proto.orchestration import pipeline_pb2
 import ml_metadata as mlmd
+from ml_metadata import errors as mlmd_errors
 from ml_metadata.proto import metadata_store_pb2
 
 CONTEXT_TYPE_EXECUTION_CACHE = 'execution_cache'
@@ -46,7 +47,7 @@ def _generate_context_proto(
   context_type = common_utils.register_type_if_not_exist(
       metadata_handler, context_spec.type)
   context_name = data_types_utils.get_value(context_spec.name)
-  assert isinstance(context_name, Text), 'context name should be string.'
+  assert isinstance(context_name, str), 'context name should be string.'
   result = metadata_store_pb2.Context(
       type_id=context_type.id, name=context_name)
   for k, v in context_spec.properties.items():
@@ -107,8 +108,8 @@ def _register_context_if_not_exist(
 
 def register_context_if_not_exists(
     metadata_handler: metadata.Metadata,
-    context_type_name: Text,
-    context_name: Text,
+    context_type_name: str,
+    context_name: str,
 ) -> metadata_store_pb2.Context:
   """Registers a context if not exist, otherwise returns the existing one.
 
@@ -147,9 +148,26 @@ def prepare_contexts(
   Returns:
     A list of metadata_store_pb2.Context messages.
   """
-
   return [
-      _generate_context_proto(
+      _register_context_if_not_exist(
           metadata_handler=metadata_handler, context_spec=context_spec)
       for context_spec in node_contexts.contexts
   ]
+
+
+def put_parent_context_if_not_exists(metadata_handler: metadata.Metadata,
+                                     parent_id: int, child_id: int) -> None:
+  """Puts a ParentContext edge in MLMD if it doesn't already exist.
+
+  Args:
+    metadata_handler: A handler to access MLMD store.
+    parent_id: The id of the parent metadata_store_pb2.Context.
+    child_id: The id of the child metadata_store_pb2.Context.
+  """
+  parent_context = metadata_store_pb2.ParentContext(
+      parent_id=parent_id, child_id=child_id)
+  try:
+    metadata_handler.store.put_parent_contexts([parent_context])
+  except mlmd_errors.AlreadyExistsError:
+    # Ensure idempotence.
+    pass

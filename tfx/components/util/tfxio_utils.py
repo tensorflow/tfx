@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2020 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,12 +13,7 @@
 # limitations under the License.
 """TFXIO (standardized TFX inputs) related utilities."""
 
-# TODO(b/149535307): Remove __future__ imports
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
-from typing import Any, Callable, Dict, List, Iterator, Optional, Text, Tuple, Union
+from typing import Any, Callable, Dict, List, Iterator, Optional, Tuple, Union
 
 import pyarrow as pa
 import tensorflow as tf
@@ -36,13 +30,13 @@ from tfx_bsl.tfxio import tf_sequence_example_record
 from tfx_bsl.tfxio import tfxio
 from tensorflow_metadata.proto.v0 import schema_pb2
 
-# TODO(b/162532479): switch to support List[Text] exclusively, once tfx-bsl
+# TODO(b/162532479): switch to support List[str] exclusively, once tfx-bsl
 # post-0.22 is released.
-OneOrMorePatterns = Union[Text, List[Text]]
+OneOrMorePatterns = Union[str, List[str]]
 
 
 def resolve_payload_format_and_data_view_uri(
-    examples: List[artifact.Artifact]) -> Tuple[int, Optional[Text]]:
+    examples: List[artifact.Artifact]) -> Tuple[int, Optional[str]]:
   """Resolves the payload format and a DataView URI for given artifacts.
 
   This routine make sure that the provided list of Examples artifacts are of
@@ -99,10 +93,10 @@ def resolve_payload_format_and_data_view_uri(
 
 def get_tfxio_factory_from_artifact(
     examples: List[artifact.Artifact],
-    telemetry_descriptors: List[Text],
+    telemetry_descriptors: List[str],
     schema: Optional[schema_pb2.Schema] = None,
     read_as_raw_records: bool = False,
-    raw_record_column_name: Optional[Text] = None
+    raw_record_column_name: Optional[str] = None
 ) -> Callable[[OneOrMorePatterns], tfxio.TFXIO]:
   """Returns a factory function that creates a proper TFXIO.
 
@@ -145,9 +139,9 @@ def get_tfxio_factory_from_artifact(
 
 def get_tf_dataset_factory_from_artifact(
     examples: List[artifact.Artifact],
-    telemetry_descriptors: List[Text],
+    telemetry_descriptors: List[str],
 ) -> Callable[[
-    List[Text],
+    List[str],
     dataset_options.TensorFlowDatasetOptions,
     Optional[schema_pb2.Schema],
 ], tf.data.Dataset]:
@@ -165,10 +159,10 @@ def get_tf_dataset_factory_from_artifact(
   payload_format, data_view_uri = resolve_payload_format_and_data_view_uri(
       examples)
 
-  def dataset_factory(file_pattern: List[Text],
+  def dataset_factory(file_pattern: List[str],
                       options: dataset_options.TensorFlowDatasetOptions,
                       schema: Optional[schema_pb2.Schema]) -> tf.data.Dataset:
-    return make_tfxio(  # pylint:disable=g-long-lambda
+    return make_tfxio(
         file_pattern=file_pattern,
         telemetry_descriptors=telemetry_descriptors,
         payload_format=payload_format,
@@ -181,9 +175,9 @@ def get_tf_dataset_factory_from_artifact(
 
 def get_record_batch_factory_from_artifact(
     examples: List[artifact.Artifact],
-    telemetry_descriptors: List[Text],
+    telemetry_descriptors: List[str],
 ) -> Callable[[
-    List[Text],
+    List[str],
     dataset_options.RecordBatchesOptions,
     Optional[schema_pb2.Schema],
 ], Iterator[pa.RecordBatch]]:
@@ -202,7 +196,7 @@ def get_record_batch_factory_from_artifact(
       examples)
 
   def record_batch_factory(
-      file_pattern: List[Text], options: dataset_options.RecordBatchesOptions,
+      file_pattern: List[str], options: dataset_options.RecordBatchesOptions,
       schema: Optional[schema_pb2.Schema]) -> Iterator[pa.RecordBatch]:
     return make_tfxio(
         file_pattern=file_pattern,
@@ -216,8 +210,8 @@ def get_record_batch_factory_from_artifact(
 
 def get_data_view_decode_fn_from_artifact(
     examples: List[artifact.Artifact],
-    telemetry_descriptors: List[Text],
-) -> Optional[Callable[[tf.Tensor], Dict[Text, Any]]]:
+    telemetry_descriptors: List[str],
+) -> Optional[Callable[[tf.Tensor], Dict[str, Any]]]:
   """Returns the decode function wrapped in the examples' Data View.
 
   Args:
@@ -245,42 +239,63 @@ def get_data_view_decode_fn_from_artifact(
       raw_record_column_name=None).DecodeFunction()
 
 
-def make_tfxio(file_pattern: OneOrMorePatterns,
-               telemetry_descriptors: List[Text],
-               payload_format: Union[Text, int],
-               data_view_uri: Optional[Text] = None,
-               schema: Optional[schema_pb2.Schema] = None,
-               read_as_raw_records: bool = False,
-               raw_record_column_name: Optional[Text] = None) -> tfxio.TFXIO:
+def make_tfxio(
+    file_pattern: OneOrMorePatterns,
+    telemetry_descriptors: List[str],
+    payload_format: Union[str, int],
+    data_view_uri: Optional[str] = None,
+    schema: Optional[schema_pb2.Schema] = None,
+    read_as_raw_records: bool = False,
+    raw_record_column_name: Optional[str] = None,
+    file_format: Optional[Union[str, List[str]]] = None) -> tfxio.TFXIO:
   """Creates a TFXIO instance that reads `file_pattern`.
 
   Args:
     file_pattern: the file pattern for the TFXIO to access.
-    telemetry_descriptors: A set of descriptors that identify the component
-      that is instantiating the TFXIO. These will be used to construct the
-      namespace to contain metrics for profiling and are therefore expected to
-      be identifiers of the component itself and not individual instances of
-      source use.
-    payload_format: one of the enums from example_gen_pb2.PayloadFormat (may
-      be in string or int form). If None, default to FORMAT_TF_EXAMPLE.
-    data_view_uri: uri to a DataView artifact. A DataView is needed in order
-      to create a TFXIO for certain payload formats.
+    telemetry_descriptors: A set of descriptors that identify the component that
+      is instantiating the TFXIO. These will be used to construct the namespace
+      to contain metrics for profiling and are therefore expected to be
+      identifiers of the component itself and not individual instances of source
+      use.
+    payload_format: one of the enums from example_gen_pb2.PayloadFormat (may be
+      in string or int form). If None, default to FORMAT_TF_EXAMPLE.
+    data_view_uri: uri to a DataView artifact. A DataView is needed in order to
+      create a TFXIO for certain payload formats.
     schema: TFMD schema. Note: although optional, some payload formats need a
       schema in order for all TFXIO interfaces (e.g. TensorAdapter()) to work.
       Unless you know what you are doing, always supply a schema.
     read_as_raw_records: If True, ignore the payload type of `examples`. Always
       use RawTfRecord TFXIO.
-    raw_record_column_name: If provided, the arrow RecordBatch produced by
-      the TFXIO will contain a string column of the given name, and the contents
-      of that column will be the raw records. Note that not all TFXIO supports
-      this option, and an error will be raised in that case. Required if
+    raw_record_column_name: If provided, the arrow RecordBatch produced by the
+      TFXIO will contain a string column of the given name, and the contents of
+      that column will be the raw records. Note that not all TFXIO supports this
+      option, and an error will be raised in that case. Required if
       read_as_raw_records == True.
+    file_format: file format string for each file_pattern. Only 'tfrecords_gzip'
+      is supported for now.
 
   Returns:
     a TFXIO instance.
   """
   if not isinstance(payload_format, int):
     payload_format = example_gen_pb2.PayloadFormat.Value(payload_format)
+
+  if file_format is not None:
+    if type(file_format) is not type(file_pattern):
+      raise ValueError(
+          f'The type of file_pattern and file_formats should be the same.'
+          f'Given: file_pattern={file_pattern}, file_format={file_format}')
+    if isinstance(file_format, list):
+      if len(file_format) != len(file_pattern):
+        raise ValueError(
+            f'The length of file_pattern and file_formats should be the same.'
+            f'Given: file_pattern={file_pattern}, file_format={file_format}')
+      else:
+        if any(item != 'tfrecords_gzip' for item in file_format):
+          raise NotImplementedError(f'{file_format} is not supported yet.')
+    else:  # file_format is str type.
+      if file_format != 'tfrecords_gzip':
+        raise NotImplementedError(f'{file_format} is not supported yet.')
 
   if read_as_raw_records:
     assert raw_record_column_name is not None, (
@@ -329,7 +344,7 @@ def _get_payload_format(examples: List[artifact.Artifact]) -> int:
 
 
 def _get_data_view_info(
-    examples: artifact.Artifact) -> Optional[Tuple[Text, int]]:
+    examples: artifact.Artifact) -> Optional[Tuple[str, int]]:
   """Returns the payload format and data view URI and ID from examples."""
   assert examples.type is standard_artifacts.Examples, (
       'examples must be of type standard_artifacts.Examples')
@@ -338,8 +353,12 @@ def _get_data_view_info(
     data_view_uri = examples.get_string_custom_property(
         constants.DATA_VIEW_URI_PROPERTY_KEY)
     if data_view_uri:
-      data_view_create_time = examples.get_int_custom_property(
+      assert examples.has_custom_property(constants.DATA_VIEW_CREATE_TIME_KEY)
+      # The creation time could be an int or str. Legacy artifacts will contain
+      # an int custom property.
+      data_view_create_time = examples.get_custom_property(
           constants.DATA_VIEW_CREATE_TIME_KEY)
+      data_view_create_time = int(data_view_create_time)
       return data_view_uri, data_view_create_time
 
   return None

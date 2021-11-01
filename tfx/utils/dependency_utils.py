@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,16 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Utilities for Python dependency and package management."""
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
 
 import os
 import shutil
 import subprocess
 import sys
 import tempfile
-from typing import List, Text
+from typing import List
 
 import absl
 
@@ -33,7 +29,7 @@ from tfx.dsl.io import fileio
 from tfx.utils import io_utils
 
 
-def make_beam_dependency_flags(beam_pipeline_args: List[Text]) -> List[Text]:
+def make_beam_dependency_flags(beam_pipeline_args: List[str]) -> List[str]:
   """Make beam arguments for TFX python dependencies, if latter was not set.
 
   When TFX executors are used with non-local beam runners (Dataflow, Flink, etc)
@@ -58,8 +54,11 @@ def make_beam_dependency_flags(beam_pipeline_args: List[Text]) -> List[Text]:
       flags=beam_pipeline_args)
   all_options = pipeline_options.get_all_options()
   for flag_name in [
-      'extra_packages', 'setup_file', 'requirements_file',
-      'worker_harness_container_image'
+      'extra_packages',
+      'setup_file',
+      'requirements_file',
+      'worker_harness_container_image',
+      'sdk_container_image',
   ]:
     if all_options.get(flag_name):
       absl.logging.info('Nonempty beam arg %s already includes dependency',
@@ -86,7 +85,7 @@ if __name__ == '__main__':
 """
 
 
-def build_ephemeral_package() -> Text:
+def build_ephemeral_package() -> str:
   """Repackage current installation of TFX into a tfx_ephemeral sdist.
 
   Returns:

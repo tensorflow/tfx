@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2020 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,13 +14,12 @@
 """E2E Tests for taxi pipeline beam with stub executors."""
 
 import os
-from typing import Text
 
 from absl import logging
 import tensorflow as tf
 from tfx.dsl.compiler import compiler
 from tfx.dsl.io import fileio
-from tfx.examples.chicago_taxi_pipeline import taxi_pipeline_beam
+from tfx.examples.chicago_taxi_pipeline import taxi_pipeline_local
 from tfx.experimental.pipeline_testing import executor_verifier_utils
 from tfx.experimental.pipeline_testing import pipeline_mock
 from tfx.experimental.pipeline_testing import pipeline_recorder_utils
@@ -34,7 +32,7 @@ from ml_metadata.proto import metadata_store_pb2
 class TaxiPipelineRegressionEndToEndTest(tf.test.TestCase):
 
   def setUp(self):
-    super(TaxiPipelineRegressionEndToEndTest, self).setUp()
+    super().setUp()
     self._test_dir = os.path.join(
         os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR', self.get_temp_dir()),
         self._testMethodName)
@@ -42,7 +40,7 @@ class TaxiPipelineRegressionEndToEndTest(tf.test.TestCase):
     # This example assumes that the taxi data and taxi utility function are
     # stored in tfx/examples/chicago_taxi_pipeline. Feel free to customize this
     # as needed.
-    taxi_root = os.path.dirname(taxi_pipeline_beam.__file__)
+    taxi_root = os.path.dirname(taxi_pipeline_local.__file__)
     self._data_root = os.path.join(taxi_root, 'data', 'simple')
     self._module_file = os.path.join(taxi_root, 'taxi_utils.py')
     self._serving_model_dir = os.path.join(self._test_dir, 'serving_model')
@@ -57,7 +55,7 @@ class TaxiPipelineRegressionEndToEndTest(tf.test.TestCase):
     self._recorded_output_dir = os.path.join(self._test_dir, 'testdata')
 
     # Runs the pipeline and record to self._recorded_output_dir
-    record_taxi_pipeline = taxi_pipeline_beam._create_pipeline(  # pylint:disable=protected-access
+    record_taxi_pipeline = taxi_pipeline_local._create_pipeline(  # pylint:disable=protected-access
         pipeline_name=self._pipeline_name,
         data_root=self._data_root,
         module_file=self._module_file,
@@ -73,7 +71,7 @@ class TaxiPipelineRegressionEndToEndTest(tf.test.TestCase):
         metadata_db_uri=self._recorded_mlmd_path,
         pipeline_name=self._pipeline_name)
 
-    self.taxi_pipeline = taxi_pipeline_beam._create_pipeline(  # pylint:disable=protected-access
+    self.taxi_pipeline = taxi_pipeline_local._create_pipeline(  # pylint:disable=protected-access
         pipeline_name=self._pipeline_name,
         data_root=self._data_root,
         module_file=self._module_file,
@@ -82,37 +80,37 @@ class TaxiPipelineRegressionEndToEndTest(tf.test.TestCase):
         metadata_path=self._metadata_path,
         beam_pipeline_args=[])
 
-  def assertDirectoryEqual(self, dir1: Text, dir2: Text):
+  def assertDirectoryEqual(self, dir1: str, dir2: str):
     self.assertTrue(executor_verifier_utils.compare_dirs(dir1, dir2))
 
-  def _verify_file_path(self, output_uri: Text, artifact_uri: Text):
+  def _verify_file_path(self, output_uri: str, artifact_uri: str):
     self.assertTrue(
         executor_verifier_utils.verify_file_dir(output_uri, artifact_uri))
 
   def _veryify_root_dir(self, output_uri: str, unused_artifact_uri: str):
     self.assertTrue(fileio.exists(output_uri))
 
-  def _verify_evaluation(self, output_uri: Text, expected_uri: Text):
+  def _verify_evaluation(self, output_uri: str, expected_uri: str):
     self.assertTrue(
         executor_verifier_utils.compare_eval_results(output_uri, expected_uri,
                                                      1.0, ['accuracy']))
 
-  def _verify_schema(self, output_uri: Text, expected_uri: Text):
+  def _verify_schema(self, output_uri: str, expected_uri: str):
     self.assertTrue(
         executor_verifier_utils.compare_file_sizes(output_uri, expected_uri,
                                                    .5))
 
-  def _verify_examples(self, output_uri: Text, expected_uri: Text):
+  def _verify_examples(self, output_uri: str, expected_uri: str):
     self.assertTrue(
         executor_verifier_utils.compare_file_sizes(output_uri, expected_uri,
                                                    .5))
 
-  def _verify_model(self, output_uri: Text, expected_uri: Text):
+  def _verify_model(self, output_uri: str, expected_uri: str):
     self.assertTrue(
         executor_verifier_utils.compare_model_file_sizes(
             output_uri, expected_uri, .5))
 
-  def _verify_anomalies(self, output_uri: Text, expected_uri: Text):
+  def _verify_anomalies(self, output_uri: str, expected_uri: str):
     self.assertTrue(
         executor_verifier_utils.compare_anomalies(output_uri, expected_uri))
 
@@ -123,7 +121,7 @@ class TaxiPipelineRegressionEndToEndTest(tf.test.TestCase):
     pipeline_mock.replace_executor_with_stub(pipeline_ir,
                                              self._recorded_output_dir, [])
 
-    BeamDagRunner().run(pipeline_ir)
+    BeamDagRunner().run_with_ir(pipeline_ir)
 
     self.assertTrue(fileio.exists(self._metadata_path))
 
@@ -136,17 +134,19 @@ class TaxiPipelineRegressionEndToEndTest(tf.test.TestCase):
       artifact_count = len(artifacts)
       executions = m.store.get_executions()
       execution_count = len(executions)
-      # Artifact count is greater by 3 due to extra artifacts produced by
+      # Artifact count is greater by 7 due to extra artifacts produced by
       # Evaluator(blessing and evaluation), Trainer(model and model_run) and
-      # Transform(example, graph, cache) minus Resolver which doesn't generate
+      # Transform(example, graph, cache, pre_transform_statistics,
+      # pre_transform_schema, post_transform_statistics, post_transform_schema,
+      # post_transform_anomalies) minus Resolver which doesn't generate
       # new artifact.
-      self.assertEqual(artifact_count, execution_count + 3)
+      self.assertEqual(artifact_count, execution_count + 7)
       self.assertLen(self.taxi_pipeline.components, execution_count)
 
       for execution in executions:
         component_id = pipeline_recorder_utils.get_component_id_from_execution(
             m, execution)
-        if component_id.startswith('ResolverNode'):
+        if component_id.startswith('Resolver'):
           continue
         eid = [execution.id]
         events = m.store.get_events_by_execution_ids(eid)
@@ -180,12 +180,12 @@ class TaxiPipelineRegressionEndToEndTest(tf.test.TestCase):
         'updated_analyzer_cache': self._veryify_root_dir,
     }
 
-    # List of components to verify. ResolverNode is ignored because it
+    # List of components to verify. Resolver is ignored because it
     # doesn't have an executor.
     verify_component_ids = [
         component.id
         for component in self.taxi_pipeline.components
-        if not component.id.startswith('ResolverNode')
+        if not component.id.startswith('Resolver')
     ]
 
     for component_id in verify_component_ids:

@@ -13,9 +13,8 @@
 # limitations under the License.
 """tf.ranking example pipeline."""
 
-
 import os
-from typing import List, Text
+from typing import List
 
 import absl
 import tensorflow_model_analysis as tfma
@@ -28,15 +27,13 @@ from tfx.components import Trainer
 from tfx.components import Transform
 from tfx.components.experimental.data_view import binder_component
 from tfx.components.experimental.data_view import provider_component
-from tfx.components.trainer.executor import GenericExecutor
-from tfx.dsl.components.base import executor_spec
 from tfx.orchestration import metadata
 from tfx.orchestration import pipeline
 from tfx.orchestration.beam.beam_dag_runner import BeamDagRunner
 from tfx.proto import example_gen_pb2
 from tfx.proto import pusher_pb2
 from tfx.proto import trainer_pb2
-from tfx.utils.dsl_utils import external_input
+from tfx.proto import transform_pb2
 
 _pipeline_name = 'tf_ranking_antique'
 
@@ -48,7 +45,7 @@ _ranking_root = os.path.join(os.environ['HOME'], 'tf_ranking_antique')
 _data_root = os.path.join(_ranking_root, 'data')
 # Python module file to inject customized logic into the TFX components. The
 # Transform and Trainer both require user-defined functions to run successfully.
-_module_file = os.path.join(_ranking_root, 'taxi_utils_native_keras.py')
+_module_file = os.path.join(_ranking_root, 'ranking_utils.py')
 # Path which can be listened to by the model server.  Pusher will output the
 # trained model here.
 _serving_model_dir = os.path.join(
@@ -72,15 +69,14 @@ _beam_pipeline_args = [
 ]
 
 
-def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
-                     module_file: Text, serving_model_dir: Text,
-                     metadata_path: Text, beam_pipeline_args: List[Text]):
+def _create_pipeline(pipeline_name: str, pipeline_root: str, data_root: str,
+                     module_file: str, serving_model_dir: str,
+                     metadata_path: str, beam_pipeline_args: List[str]):
   """Creates pipeline."""
   pipeline_root = os.path.join(pipeline_root, 'pipelines', pipeline_name)
-  examples = external_input(data_root)
 
   example_gen = ImportExampleGen(
-      input=examples,
+      input_base=data_root,
       # IMPORTANT: must set FORMAT_PROTO
       payload_format=example_gen_pb2.FORMAT_PROTO)
 
@@ -101,12 +97,13 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
       examples=data_view_binder.outputs['output_examples'],
       schema=schema_gen.outputs['schema'],
       module_file=module_file,
-      # important: must disable Transform materialization.
+      # important: must disable Transform materialization and ensure the
+      # transform field of the splits config is empty.
+      splits_config=transform_pb2.SplitsConfig(analyze=['train']),
       materialize=False)
 
   trainer = Trainer(
       examples=data_view_binder.outputs['output_examples'],
-      custom_executor_spec=executor_spec.ExecutorClassSpec(GenericExecutor),
       transform_graph=transform.outputs['transform_graph'],
       module_file=module_file,
       train_args=trainer_pb2.TrainArgs(num_steps=1000),
@@ -118,7 +115,7 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
           tfma.ModelSpec(
               signature_name='',
               label_key='relevance',
-              padding_options=tfma.config.PaddingOptions(
+              padding_options=tfma.PaddingOptions(
                   label_float_padding=-1.0, prediction_float_padding=-1.0))
       ],
       slicing_specs=[
@@ -129,7 +126,7 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
           tfma.MetricsSpec(
               per_slice_thresholds={
                   'metric/ndcg_10':
-                      tfma.config.PerSliceMetricThresholds(thresholds=[
+                      tfma.PerSliceMetricThresholds(thresholds=[
                           tfma.PerSliceMetricThreshold(
                               # The overall slice.
                               slicing_specs=[tfma.SlicingSpec()],

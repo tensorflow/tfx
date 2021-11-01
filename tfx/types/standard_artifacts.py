@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -17,13 +16,8 @@
 Note: the artifact definitions here are expected to change.
 """
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import decimal
 import math
-from typing import Text
 
 import absl
 
@@ -44,9 +38,16 @@ STRING_VALUE_PROPERTY = Property(type=PropertyType.STRING)
 
 
 class _TfxArtifact(Artifact):
-  """TFX first-party component artifact definition."""
+  """TFX first-party component artifact definition.
+
+  Do not construct directly, used for creating Channel, e.g.,
+  ```
+    Channel(type=standard_artifacts.Model)
+  ```
+  """
 
   def __init__(self, *args, **kwargs):
+    """Construct TFX first-party component artifact."""
     # TODO(b/176795331): Refactor directory structure to make it clearer that
     # TFX-specific artifacts require the full "tfx" package be installed.
     #
@@ -60,7 +61,7 @@ class _TfxArtifact(Artifact):
     except ModuleNotFoundError:
       pass
     try:
-      import tfx.components as _  # pytype: disable=module-attr  # pylint: disable=g-import-not-at-top
+      import tfx.components as _  # type: ignore  # pylint: disable=g-import-not-at-top
       can_import_components = True
     except ModuleNotFoundError:
       pass
@@ -69,7 +70,7 @@ class _TfxArtifact(Artifact):
     if can_import_setuptools and not can_import_components:
       raise Exception('The full "tfx" package must be installed to use this '
                       'functionality.')
-    super(_TfxArtifact, self).__init__(*args, **kwargs)
+    super().__init__(*args, **kwargs)
 
 
 class Examples(_TfxArtifact):
@@ -157,13 +158,13 @@ class String(ValueArtifact):
   TYPE_NAME = 'String'
 
   # Note, currently we enforce unicode-encoded string.
-  def encode(self, value: Text) -> bytes:
-    if not isinstance(value, Text):
+  def encode(self, value: str) -> bytes:
+    if not isinstance(value, str):
       raise TypeError('Expecting Text but got value %s of type %s' %
                       (str(value), type(value)))
     return value.encode('utf-8')
 
-  def decode(self, serialized_value: bytes) -> Text:
+  def decode(self, serialized_value: bytes) -> str:
     return serialized_value.decode('utf-8')
 
 

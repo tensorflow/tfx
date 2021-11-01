@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,10 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Tests for tfx.components.example_gen.component."""
-
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
 
 import tensorflow as tf
 from tfx.components.example_gen import base_example_gen_executor
@@ -40,38 +35,31 @@ class TestExampleGenExecutor(base_example_gen_executor.BaseExampleGenExecutor):
 
 class TestQueryBasedExampleGenComponent(component.QueryBasedExampleGen):
 
-  EXECUTOR_SPEC = executor_spec.ExecutorClassSpec(TestExampleGenExecutor)
+  EXECUTOR_SPEC = executor_spec.BeamExecutorSpec(TestExampleGenExecutor)
 
   def __init__(self,
                input_config,
                output_config=None,
                output_data_format=example_gen_pb2.FORMAT_TF_EXAMPLE,
-               example_artifacts=None,
-               instance_name=None):
-    super(TestQueryBasedExampleGenComponent, self).__init__(
+               output_file_format=example_gen_pb2.FORMAT_TFRECORDS_GZIP,
+               ):
+    super().__init__(
         input_config=input_config,
         output_config=output_config,
         output_data_format=output_data_format,
-        example_artifacts=example_artifacts,
-        instance_name=instance_name)
+        output_file_format=output_file_format,
+    )
 
 
 class TestFileBasedExampleGenComponent(component.FileBasedExampleGen):
 
-  EXECUTOR_SPEC = executor_spec.ExecutorClassSpec(TestExampleGenExecutor)
+  EXECUTOR_SPEC = executor_spec.BeamExecutorSpec(TestExampleGenExecutor)
 
-  def __init__(self,
-               input_base,
-               input_config=None,
-               output_config=None,
-               example_artifacts=None,
-               instance_name=None):
-    super(TestFileBasedExampleGenComponent, self).__init__(
+  def __init__(self, input_base, input_config=None, output_config=None):
+    super().__init__(
         input_base=input_base,
         input_config=input_config,
-        output_config=output_config,
-        example_artifacts=example_artifacts,
-        instance_name=instance_name)
+        output_config=output_config)
 
 
 class ComponentTest(tf.test.TestCase):
@@ -81,7 +69,7 @@ class ComponentTest(tf.test.TestCase):
         input_config=example_gen_pb2.Input(splits=[
             example_gen_pb2.Input.Split(name='single', pattern='query'),
         ]))
-    self.assertEqual({}, example_gen.inputs.get_all())
+    self.assertEqual({}, example_gen.inputs)
     self.assertEqual(driver.QueryBasedDriver, example_gen.driver_class)
     self.assertEqual(
         standard_artifacts.Examples.TYPE_NAME,
@@ -90,6 +78,10 @@ class ComponentTest(tf.test.TestCase):
         example_gen.exec_properties[
             standard_component_specs.OUTPUT_DATA_FORMAT_KEY],
         example_gen_pb2.FORMAT_TF_EXAMPLE)
+    self.assertEqual(
+        example_gen.exec_properties[
+            standard_component_specs.OUTPUT_FILE_FORMAT_KEY],
+        example_gen_pb2.FORMAT_TFRECORDS_GZIP)
     self.assertIsNone(
         example_gen.exec_properties.get(
             standard_component_specs.CUSTOM_CONFIG_KEY))
@@ -102,6 +94,16 @@ class ComponentTest(tf.test.TestCase):
             example_gen_pb2.Input.Split(name='single', pattern='query'),
         ]),
         output_data_format=-1  # not exists
+    )
+
+  def testConstructSubclassQueryBasedWithInvalidOutputFileFormat(self):
+    self.assertRaises(
+        ValueError,
+        TestQueryBasedExampleGenComponent,
+        input_config=example_gen_pb2.Input(splits=[
+            example_gen_pb2.Input.Split(name='single', pattern='query'),
+        ]),
+        output_file_format=-1  # not exists
     )
 
   def testConstructSubclassFileBased(self):
@@ -119,7 +121,7 @@ class ComponentTest(tf.test.TestCase):
   def testConstructCustomExecutor(self):
     example_gen = component.FileBasedExampleGen(
         input_base='path',
-        custom_executor_spec=executor_spec.ExecutorClassSpec(
+        custom_executor_spec=executor_spec.BeamExecutorSpec(
             TestExampleGenExecutor))
     self.assertEqual(driver.FileBasedDriver, example_gen.driver_class)
     self.assertEqual(
@@ -168,7 +170,7 @@ class ComponentTest(tf.test.TestCase):
     example_gen = component.FileBasedExampleGen(
         input_base='path',
         custom_config=custom_config,
-        custom_executor_spec=executor_spec.ExecutorClassSpec(
+        custom_executor_spec=executor_spec.BeamExecutorSpec(
             TestExampleGenExecutor))
 
     stored_custom_config = example_gen_pb2.CustomConfig()
@@ -184,7 +186,7 @@ class ComponentTest(tf.test.TestCase):
     example_gen = component.FileBasedExampleGen(
         input_base='path',
         range_config=range_config,
-        custom_executor_spec=executor_spec.ExecutorClassSpec(
+        custom_executor_spec=executor_spec.BeamExecutorSpec(
             TestExampleGenExecutor))
     stored_range_config = range_config_pb2.RangeConfig()
     proto_utils.json_to_proto(

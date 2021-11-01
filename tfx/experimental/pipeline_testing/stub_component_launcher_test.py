@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2020 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,13 +13,9 @@
 # limitations under the License.
 """Tests for tfx.experimental.pipeline_testing.stub_component_launcher."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import os
 
-import mock
+from unittest import mock
 import tensorflow as tf
 
 from tfx.dsl.io import fileio
@@ -38,7 +33,7 @@ from ml_metadata.proto import metadata_store_pb2
 class StubComponentLauncherTest(tf.test.TestCase):
 
   def setUp(self):
-    super(StubComponentLauncherTest, self).setUp()
+    super().setUp()
     test_dir = os.path.join(
         os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR', self.get_temp_dir()),
         self._testMethodName)

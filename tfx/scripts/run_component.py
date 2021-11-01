@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2020 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -17,29 +16,24 @@
 No backwards compatibility guarantees.
 """
 
-# TODO(b/149535307): Remove __future__ imports
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import os
 import sys
-from typing import List, Text
+from typing import List, Optional
 
+from tfx.dsl.components.base import base_beam_executor
 from tfx.dsl.components.base import base_executor
 from tfx.types import channel_utils
+from tfx.types.artifact import PropertyType
 from tfx.utils import import_utils
 from tfx.utils import proto_utils
 
 from google.protobuf import message
 
 
-def run_component(
-    full_component_class_name: Text,
-    temp_directory_path: Text = None,
-    beam_pipeline_args: List[Text] = None,
-    **arguments
-):
+def run_component(full_component_class_name: str,
+                  temp_directory_path: Optional[str] = None,
+                  beam_pipeline_args: Optional[List[str]] = None,
+                  **arguments):
   r"""Loads a component, instantiates it with arguments and runs its executor.
 
   The component class is instantiated, so the component code is executed,
@@ -87,6 +81,10 @@ def run_component(
         issubclass(param_type, message.Message)):
       argument_value_obj = param_type()
       proto_utils.json_to_proto(argument_value, argument_value_obj)
+    elif param_type is int:
+      argument_value_obj = int(argument_value)
+    elif param_type is float:
+      argument_value_obj = float(argument_value)
     else:
       argument_value_obj = argument_value
     component_arguments[name] = argument_value_obj
@@ -98,18 +96,22 @@ def run_component(
       artifact = channel_param.type()
       artifact.uri = uri
       # Setting the artifact properties
-      for property_name in channel_param.type.PROPERTIES:
+      for property_name, property_spec in (channel_param.type.PROPERTIES or
+                                           {}).items():
         property_arg_name = input_name + '_' + property_name
         if property_arg_name in arguments:
-          setattr(artifact, property_name, arguments[property_arg_name])
+          property_value = arguments[property_arg_name]
+          if property_spec.type == PropertyType.INT:
+            property_value = int(property_value)
+          if property_spec.type == PropertyType.FLOAT:
+            property_value = float(property_value)
+          setattr(artifact, property_name, property_value)
       component_arguments[input_name] = channel_utils.as_channel([artifact])
 
   component_instance = component_class(**component_arguments)
 
-  input_dict = channel_utils.unwrap_channel_dict(
-      component_instance.inputs.get_all())
-  output_dict = channel_utils.unwrap_channel_dict(
-      component_instance.outputs.get_all())
+  input_dict = channel_utils.unwrap_channel_dict(component_instance.inputs)
+  output_dict = channel_utils.unwrap_channel_dict(component_instance.outputs)
   exec_properties = component_instance.exec_properties
 
   # Generating paths for output artifacts
@@ -124,11 +126,19 @@ def run_component(
       for artifact in artifacts:
         artifact.uri = uri
 
-  executor_context = base_executor.BaseExecutor.Context(
-      beam_pipeline_args=beam_pipeline_args,
-      tmp_dir=temp_directory_path,
-      unique_id='',
-  )
+  if issubclass(component_instance.executor_spec.executor_class,
+                base_beam_executor.BaseBeamExecutor):
+    executor_context = base_beam_executor.BaseBeamExecutor.Context(
+        beam_pipeline_args=beam_pipeline_args,
+        tmp_dir=temp_directory_path,
+        unique_id='',
+    )
+  else:
+    executor_context = base_executor.BaseExecutor.Context(
+        extra_flags=beam_pipeline_args,
+        tmp_dir=temp_directory_path,
+        unique_id='',
+    )
   executor = component_instance.executor_spec.executor_class(executor_context)
   executor.Do(
       input_dict=input_dict,
@@ -138,7 +148,7 @@ def run_component(
 
   # Writing out the output artifact properties
   for output_name, channel_param in component_class.SPEC_CLASS.OUTPUTS.items():
-    for property_name in channel_param.type.PROPERTIES:
+    for property_name in channel_param.type.PROPERTIES or []:
       property_path_arg_name = output_name + '_' + property_name + '_path'
       property_path = arguments.get(property_path_arg_name)
       if property_path:

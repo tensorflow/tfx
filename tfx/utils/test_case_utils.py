@@ -17,7 +17,7 @@ import contextlib
 import copy
 import os
 
-from typing import Iterable, Optional, Text, Union
+from typing import Iterable, Optional, Union
 
 import tensorflow as tf
 from tfx.dsl.io import fileio
@@ -71,7 +71,7 @@ class TfxTest(tf.test.TestCase):
       self._exit_stack = contextlib.ExitStack()
       self.addCleanup(self._exit_stack.close)
 
-  def load_proto_from_text(self, path: Text,
+  def load_proto_from_text(self, path: str,
                            proto_message: message.Message) -> message.Message:
     """Loads proto message from serialized text."""
     return io_utils.parse_pbtxt_file(path, proto_message)

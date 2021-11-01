@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2020 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,10 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Tests for tfx.orchestration.portable.mlmd.common_utils."""
-
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
 
 from absl.testing import parameterized
 import tensorflow as tf
@@ -59,9 +54,9 @@ class CommonUtilsTest(tf.test.TestCase, parameterized.TestCase):
       type_with_two_properties = _create_type(metadata_type_class)
       result_one = common_utils.register_type_if_not_exist(
           m, type_with_two_properties)
+      result_one.ClearField('id')
       self.assertProtoEquals(
           """
-          id: 1
           name: 'my_type'
           properties {
             key: 'p1'

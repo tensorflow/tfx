@@ -13,20 +13,22 @@
 # limitations under the License.
 """Tests for tfx.orchestration.kubeflow.kubeflow_dag_runner."""
 
+import json
 import os
 import tarfile
-from typing import Text
+from typing import List
 
 from kfp import onprem
 import tensorflow as tf
 from tfx.components.statistics_gen import component as statistics_gen_component
+from tfx.dsl.component.experimental import executor_specs
 from tfx.dsl.components.base import base_component
-from tfx.dsl.components.base import executor_spec
 from tfx.dsl.io import fileio
 from tfx.extensions.google_cloud_big_query.example_gen import component as big_query_example_gen_component
 from tfx.orchestration import data_types
 from tfx.orchestration import pipeline as tfx_pipeline
 from tfx.orchestration.kubeflow import kubeflow_dag_runner
+from tfx.proto import example_gen_pb2
 from tfx.types import component_spec
 from tfx.utils import telemetry_utils
 from tfx.utils import test_case_utils
@@ -37,10 +39,16 @@ from ml_metadata.proto import metadata_store_pb2
 
 # 2-step pipeline under test.
 def _two_step_pipeline() -> tfx_pipeline.Pipeline:
-  table_name = data_types.RuntimeParameter(
-      name='table-name', ptype=Text, default='default-table')
+  default_input_config = json.dumps({
+      'splits': [{
+          'name': 'single_split',
+          'pattern': 'SELECT * FROM default-table'
+      }]
+  })
+  input_config = data_types.RuntimeParameter(
+      name='input_config', ptype=str, default=default_input_config)
   example_gen = big_query_example_gen_component.BigQueryExampleGen(
-      query='SELECT * FROM %s' % str(table_name))
+      input_config=input_config, output_config=example_gen_pb2.Output())
   statistics_gen = statistics_gen_component.StatisticsGen(
       examples=example_gen.outputs['examples'])
   return tfx_pipeline.Pipeline(
@@ -59,7 +67,7 @@ class _DummySpec(component_spec.ComponentSpec):
 
 class _DummyComponent(base_component.BaseComponent):
   SPEC_CLASS = _DummySpec
-  EXECUTOR_SPEC = executor_spec.ExecutorContainerSpec(
+  EXECUTOR_SPEC = executor_specs.TemplatedExecutorContainerSpec(
       image='dummy:latest', command=['ls'])
 
   def __init__(self):
@@ -79,7 +87,19 @@ class KubeflowDagRunnerTest(test_case_utils.TfxTest):
 
   def setUp(self):
     super().setUp()
+    self._source_data_dir = os.path.join(
+        os.path.dirname(os.path.abspath(__file__)), 'testdata')
     self.enter_context(test_case_utils.change_working_dir(self.tmp_dir))
+
+  def _compare_tfx_ir_against_testdata(self, args: List[str], golden_file: str):
+    index_of_tfx_ir_flag = args.index('--tfx_ir')
+    self.assertAllGreater(len(args), index_of_tfx_ir_flag)
+    real_tfx_ir = json.loads(args[index_of_tfx_ir_flag + 1])
+    real_tfx_ir_str = json.dumps(real_tfx_ir, sort_keys=True)
+    with open(os.path.join(self._source_data_dir,
+                           golden_file)) as tfx_ir_json_file:
+      formatted_tfx_ir = json.dumps(json.load(tfx_ir_json_file), sort_keys=True)
+      self.assertEqual(real_tfx_ir_str, formatted_tfx_ir)
 
   def testTwoStepPipeline(self):
     """Sanity-checks the construction and dependencies for a 2-step pipeline."""
@@ -108,6 +128,9 @@ class KubeflowDagRunnerTest(test_case_utils.TfxTest):
       ], big_query_container[0]['container']['command'])
       self.assertIn('--tfx_ir', big_query_container[0]['container']['args'])
       self.assertIn('--node_id', big_query_container[0]['container']['args'])
+      self._compare_tfx_ir_against_testdata(
+          big_query_container[0]['container']['args'],
+          'two_step_pipeline_post_dehydrate_ir.json')
 
       statistics_gen_container = [
           c for c in containers if c['name'] == 'statisticsgen'
@@ -132,11 +155,11 @@ class KubeflowDagRunnerTest(test_case_utils.TfxTest):
                   'template': 'bigqueryexamplegen',
                   'arguments': {
                       'parameters': [{
+                          'name': 'input_config',
+                          'value': '{{inputs.parameters.input_config}}'
+                      }, {
                           'name': 'pipeline-root',
                           'value': '{{inputs.parameters.pipeline-root}}'
-                      }, {
-                          'name': 'table-name',
-                          'value': '{{inputs.parameters.table-name}}'
                       }]
                   }
               }, {
@@ -265,7 +288,6 @@ class KubeflowDagRunnerTest(test_case_utils.TfxTest):
       ]
       self.assertLen(containers, 1)
       component_args = containers[0]['container']['args']
-      self.assertNotIn('--tfx_ir', component_args)
       self.assertIn('--node_id', component_args)
 
 if __name__ == '__main__':

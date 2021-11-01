@@ -32,7 +32,7 @@ nodes {
         }
         name {
           runtime_parameter {
-            name: "pipeline_run_id"
+            name: "pipeline-run-id"
             type: STRING
           }
         }
@@ -105,24 +105,32 @@ nodes {
           }
         }
       }
-    }
-    execution_options {
-      caching_options {
-        enable_cache: true
+      parameters {
+        key: "output_file_format"
+        value {
+          field_value {
+            int_value: 5
+          }
+        }
       }
     }
     downstream_nodes: "Evaluator"
     downstream_nodes: "StatisticsGen"
     downstream_nodes: "Trainer"
+    execution_options {
+      caching_options {
+        enable_cache: true
+      }
+    }
   }
 }
 nodes {
   pipeline_node {
     node_info {
       type {
-        name: "tfx.dsl.components.common.importer.Importer"
+        name: "tfx.dsl.components.common.resolver.Resolver"
       }
-      id: "Importer.my_importer"
+      id: "latest_blessed_model_resolver"
     }
     contexts {
       contexts {
@@ -141,7 +149,7 @@ nodes {
         }
         name {
           runtime_parameter {
-            name: "pipeline_run_id"
+            name: "pipeline-run-id"
             type: STRING
           }
         }
@@ -152,7 +160,123 @@ nodes {
         }
         name {
           field_value {
-            string_value: "iris.Importer.my_importer"
+            string_value: "iris.latest_blessed_model_resolver"
+          }
+        }
+      }
+    }
+    inputs {
+      inputs {
+        key: "model"
+        value {
+          channels {
+            producer_node_query {
+              id: "Trainer"
+            }
+            context_queries {
+              type {
+                name: "pipeline"
+              }
+              name {
+                field_value {
+                  string_value: "iris"
+                }
+              }
+            }
+            context_queries {
+              type {
+                name: "node"
+              }
+              name {
+                field_value {
+                  string_value: "iris.Trainer"
+                }
+              }
+            }
+            artifact_query {
+              type {
+                name: "Model"
+              }
+            }
+          }
+        }
+      }
+      inputs {
+        key: "model_blessing"
+        value {
+          channels {
+            context_queries {
+              type {
+                name: "pipeline"
+              }
+              name {
+                field_value {
+                  string_value: "iris"
+                }
+              }
+            }
+            artifact_query {
+              type {
+                name: "ModelBlessing"
+              }
+            }
+          }
+        }
+      }
+      resolver_config {
+        resolver_steps {
+          class_path: "tfx.dsl.input_resolution.strategies.latest_blessed_model_strategy.LatestBlessedModelStrategy"
+          config_json: "{}"
+          input_keys: "model"
+          input_keys: "model_blessing"
+        }
+      }
+    }
+    downstream_nodes: "Evaluator"
+    execution_options {
+      caching_options {
+        enable_cache: true
+      }
+    }
+  }
+}
+nodes {
+  pipeline_node {
+    node_info {
+      type {
+        name: "tfx.dsl.components.common.importer.Importer"
+      }
+      id: "my_importer"
+    }
+    contexts {
+      contexts {
+        type {
+          name: "pipeline"
+        }
+        name {
+          field_value {
+            string_value: "iris"
+          }
+        }
+      }
+      contexts {
+        type {
+          name: "pipeline_run"
+        }
+        name {
+          runtime_parameter {
+            name: "pipeline-run-id"
+            type: STRING
+          }
+        }
+      }
+      contexts {
+        type {
+          name: "node"
+        }
+        name {
+          field_value {
+            string_value: "iris.my_importer"
           }
         }
       }
@@ -223,128 +347,12 @@ nodes {
         }
       }
     }
+    downstream_nodes: "another_statistics_gen"
     execution_options {
       caching_options {
         enable_cache: true
       }
     }
-    downstream_nodes: "StatisticsGen.another_statistics_gen"
-  }
-}
-nodes {
-  pipeline_node {
-    node_info {
-      type {
-        name: "tfx.dsl.components.common.resolver.Resolver"
-      }
-      id: "Resolver.latest_blessed_model_resolver"
-    }
-    contexts {
-      contexts {
-        type {
-          name: "pipeline"
-        }
-        name {
-          field_value {
-            string_value: "iris"
-          }
-        }
-      }
-      contexts {
-        type {
-          name: "pipeline_run"
-        }
-        name {
-          runtime_parameter {
-            name: "pipeline_run_id"
-            type: STRING
-          }
-        }
-      }
-      contexts {
-        type {
-          name: "node"
-        }
-        name {
-          field_value {
-            string_value: "iris.Resolver.latest_blessed_model_resolver"
-          }
-        }
-      }
-    }
-    inputs {
-      inputs {
-        key: "model"
-        value {
-          channels {
-            producer_node_query {
-              id: "Trainer"
-            }
-            context_queries {
-              type {
-                name: "pipeline"
-              }
-              name {
-                field_value {
-                  string_value: "iris"
-                }
-              }
-            }
-            context_queries {
-              type {
-                name: "node"
-              }
-              name {
-                field_value {
-                  string_value: "iris.Trainer"
-                }
-              }
-            }
-            artifact_query {
-              type {
-                name: "Model"
-              }
-            }
-          }
-        }
-      }
-      inputs {
-        key: "model_blessing"
-        value {
-          channels {
-            context_queries {
-              type {
-                name: "pipeline"
-              }
-              name {
-                field_value {
-                  string_value: "iris"
-                }
-              }
-            }
-            artifact_query {
-              type {
-                name: "ModelBlessing"
-              }
-            }
-          }
-        }
-      }
-      resolver_config {
-        resolver_steps {
-          class_path: "tfx.dsl.experimental.latest_blessed_model_resolver.LatestBlessedModelResolver"
-          config_json: "{}"
-          input_keys: "model"
-          input_keys: "model_blessing"
-        }
-      }
-    }
-    execution_options {
-      caching_options {
-        enable_cache: true
-      }
-    }
-    downstream_nodes: "Evaluator"
   }
 }
 nodes {
@@ -372,7 +380,7 @@ nodes {
         }
         name {
           runtime_parameter {
-            name: "pipeline_run_id"
+            name: "pipeline-run-id"
             type: STRING
           }
         }
@@ -412,7 +420,7 @@ nodes {
               }
               name {
                 runtime_parameter {
-                  name: "pipeline_run_id"
+                  name: "pipeline-run-id"
                   type: STRING
                 }
               }
@@ -434,6 +442,7 @@ nodes {
             }
             output_key: "examples"
           }
+          min_count: 1
         }
       }
     }
@@ -467,14 +476,14 @@ nodes {
         }
       }
     }
+    upstream_nodes: "CsvExampleGen"
+    downstream_nodes: "ExampleValidator"
+    downstream_nodes: "SchemaGen"
     execution_options {
       caching_options {
         enable_cache: true
       }
     }
-    upstream_nodes: "CsvExampleGen"
-    downstream_nodes: "ExampleValidator"
-    downstream_nodes: "SchemaGen"
   }
 }
 nodes {
@@ -483,7 +492,7 @@ nodes {
       type {
         name: "tfx.components.statistics_gen.component.StatisticsGen"
       }
-      id: "StatisticsGen.another_statistics_gen"
+      id: "another_statistics_gen"
     }
     contexts {
       contexts {
@@ -502,7 +511,7 @@ nodes {
         }
         name {
           runtime_parameter {
-            name: "pipeline_run_id"
+            name: "pipeline-run-id"
             type: STRING
           }
         }
@@ -513,7 +522,7 @@ nodes {
         }
         name {
           field_value {
-            string_value: "iris.StatisticsGen.another_statistics_gen"
+            string_value: "iris.another_statistics_gen"
           }
         }
       }
@@ -524,7 +533,7 @@ nodes {
         value {
           channels {
             producer_node_query {
-              id: "Importer.my_importer"
+              id: "my_importer"
             }
             context_queries {
               type {
@@ -542,7 +551,7 @@ nodes {
               }
               name {
                 runtime_parameter {
-                  name: "pipeline_run_id"
+                  name: "pipeline-run-id"
                   type: STRING
                 }
               }
@@ -553,7 +562,7 @@ nodes {
               }
               name {
                 field_value {
-                  string_value: "iris.Importer.my_importer"
+                  string_value: "iris.my_importer"
                 }
               }
             }
@@ -564,6 +573,7 @@ nodes {
             }
             output_key: "result"
           }
+          min_count: 1
         }
       }
     }
@@ -597,7 +607,7 @@ nodes {
         }
       }
     }
-    upstream_nodes: "Importer.my_importer"
+    upstream_nodes: "my_importer"
     execution_options {
       caching_options {
         enable_cache: true
@@ -630,7 +640,7 @@ nodes {
         }
         name {
           runtime_parameter {
-            name: "pipeline_run_id"
+            name: "pipeline-run-id"
             type: STRING
           }
         }
@@ -670,7 +680,7 @@ nodes {
               }
               name {
                 runtime_parameter {
-                  name: "pipeline_run_id"
+                  name: "pipeline-run-id"
                   type: STRING
                 }
               }
@@ -692,6 +702,7 @@ nodes {
             }
             output_key: "statistics"
           }
+          min_count: 1
         }
       }
     }
@@ -725,14 +736,14 @@ nodes {
         }
       }
     }
+    upstream_nodes: "StatisticsGen"
+    downstream_nodes: "ExampleValidator"
+    downstream_nodes: "Trainer"
     execution_options {
       caching_options {
         enable_cache: true
       }
     }
-    upstream_nodes: "StatisticsGen"
-    downstream_nodes: "ExampleValidator"
-    downstream_nodes: "Trainer"
   }
 }
 nodes {
@@ -760,7 +771,7 @@ nodes {
         }
         name {
           runtime_parameter {
-            name: "pipeline_run_id"
+            name: "pipeline-run-id"
             type: STRING
           }
         }
@@ -800,7 +811,7 @@ nodes {
               }
               name {
                 runtime_parameter {
-                  name: "pipeline_run_id"
+                  name: "pipeline-run-id"
                   type: STRING
                 }
               }
@@ -822,6 +833,7 @@ nodes {
             }
             output_key: "schema"
           }
+          min_count: 1
         }
       }
       inputs {
@@ -847,7 +859,7 @@ nodes {
               }
               name {
                 runtime_parameter {
-                  name: "pipeline_run_id"
+                  name: "pipeline-run-id"
                   type: STRING
                 }
               }
@@ -869,6 +881,7 @@ nodes {
             }
             output_key: "statistics"
           }
+          min_count: 1
         }
       }
     }
@@ -902,13 +915,13 @@ nodes {
         }
       }
     }
+    upstream_nodes: "SchemaGen"
+    upstream_nodes: "StatisticsGen"
     execution_options {
       caching_options {
         enable_cache: true
       }
     }
-    upstream_nodes: "SchemaGen"
-    upstream_nodes: "StatisticsGen"
   }
 }
 nodes {
@@ -936,7 +949,7 @@ nodes {
         }
         name {
           runtime_parameter {
-            name: "pipeline_run_id"
+            name: "pipeline-run-id"
             type: STRING
           }
         }
@@ -976,7 +989,7 @@ nodes {
               }
               name {
                 runtime_parameter {
-                  name: "pipeline_run_id"
+                  name: "pipeline-run-id"
                   type: STRING
                 }
               }
@@ -998,6 +1011,7 @@ nodes {
             }
             output_key: "examples"
           }
+          min_count: 1
         }
       }
       inputs {
@@ -1023,7 +1037,7 @@ nodes {
               }
               name {
                 runtime_parameter {
-                  name: "pipeline_run_id"
+                  name: "pipeline-run-id"
                   type: STRING
                 }
               }
@@ -1108,15 +1122,15 @@ nodes {
         }
       }
     }
+    upstream_nodes: "CsvExampleGen"
+    upstream_nodes: "SchemaGen"
+    downstream_nodes: "Evaluator"
+    downstream_nodes: "Pusher"
     execution_options {
       caching_options {
         enable_cache: true
       }
     }
-    upstream_nodes: "CsvExampleGen"
-    upstream_nodes: "SchemaGen"
-    downstream_nodes: "Evaluator"
-    downstream_nodes: "Pusher"
   }
 }
 nodes {
@@ -1144,7 +1158,7 @@ nodes {
         }
         name {
           runtime_parameter {
-            name: "pipeline_run_id"
+            name: "pipeline-run-id"
             type: STRING
           }
         }
@@ -1166,7 +1180,7 @@ nodes {
         value {
           channels {
             producer_node_query {
-              id: "Resolver.latest_blessed_model_resolver"
+              id: "latest_blessed_model_resolver"
             }
             context_queries {
               type {
@@ -1184,7 +1198,7 @@ nodes {
               }
               name {
                 runtime_parameter {
-                  name: "pipeline_run_id"
+                  name: "pipeline-run-id"
                   type: STRING
                 }
               }
@@ -1195,7 +1209,7 @@ nodes {
               }
               name {
                 field_value {
-                  string_value: "iris.Resolver.latest_blessed_model_resolver"
+                  string_value: "iris.latest_blessed_model_resolver"
                 }
               }
             }
@@ -1231,7 +1245,7 @@ nodes {
               }
               name {
                 runtime_parameter {
-                  name: "pipeline_run_id"
+                  name: "pipeline-run-id"
                   type: STRING
                 }
               }
@@ -1253,6 +1267,7 @@ nodes {
             }
             output_key: "examples"
           }
+          min_count: 1
         }
       }
       inputs {
@@ -1278,7 +1293,7 @@ nodes {
               }
               name {
                 runtime_parameter {
-                  name: "pipeline_run_id"
+                  name: "pipeline-run-id"
                   type: STRING
                 }
               }
@@ -1342,16 +1357,24 @@ nodes {
           }
         }
       }
+      parameters {
+        key: "fairness_indicator_thresholds"
+        value {
+          field_value {
+            string_value: "null"
+          }
+        }
+      }
     }
+    upstream_nodes: "CsvExampleGen"
+    upstream_nodes: "Trainer"
+    upstream_nodes: "latest_blessed_model_resolver"
+    downstream_nodes: "Pusher"
     execution_options {
       caching_options {
         enable_cache: true
       }
     }
-    upstream_nodes: "CsvExampleGen"
-    upstream_nodes: "Resolver.latest_blessed_model_resolver"
-    upstream_nodes: "Trainer"
-    downstream_nodes: "Pusher"
   }
 }
 nodes {
@@ -1379,7 +1402,7 @@ nodes {
         }
         name {
           runtime_parameter {
-            name: "pipeline_run_id"
+            name: "pipeline-run-id"
             type: STRING
           }
         }
@@ -1419,7 +1442,7 @@ nodes {
               }
               name {
                 runtime_parameter {
-                  name: "pipeline_run_id"
+                  name: "pipeline-run-id"
                   type: STRING
                 }
               }
@@ -1466,7 +1489,7 @@ nodes {
               }
               name {
                 runtime_parameter {
-                  name: "pipeline_run_id"
+                  name: "pipeline-run-id"
                   type: STRING
                 }
               }
@@ -1521,19 +1544,19 @@ nodes {
         }
       }
     }
+    upstream_nodes: "Evaluator"
+    upstream_nodes: "Trainer"
     execution_options {
       caching_options {
         enable_cache: true
       }
     }
-    upstream_nodes: "Evaluator"
-    upstream_nodes: "Trainer"
   }
 }
 runtime_spec {
   pipeline_root {
     runtime_parameter {
-      name: "pipeline_root"
+      name: "pipeline-root"
       type: STRING
       default_value {
         string_value: "tfx_root/pipelines/iris"
@@ -1542,7 +1565,7 @@ runtime_spec {
   }
   pipeline_run_id {
     runtime_parameter {
-      name: "pipeline_run_id"
+      name: "pipeline-run-id"
       type: STRING
     }
   }
@@ -1553,18 +1576,22 @@ deployment_config {
     executor_specs {
       key: "CsvExampleGen"
       value {
-        [type.googleapis.com/tfx.orchestration.executable_spec.PythonClassExecutableSpec] {
-          class_path: "tfx.components.example_gen.csv_example_gen.executor.Executor"
-          extra_flags: "--my_testing_beam_pipeline_args=foo"
+        [type.googleapis.com/tfx.orchestration.executable_spec.BeamExecutableSpec] {
+          python_executor_spec {
+            class_path: "tfx.components.example_gen.csv_example_gen.executor.Executor"
+          }
+          beam_pipeline_args: "--my_testing_beam_pipeline_args=foo"
         }
       }
     }
     executor_specs {
       key: "Evaluator"
       value {
-        [type.googleapis.com/tfx.orchestration.executable_spec.PythonClassExecutableSpec] {
-          class_path: "tfx.components.evaluator.executor.Executor"
-          extra_flags: "--my_testing_beam_pipeline_args=foo"
+        [type.googleapis.com/tfx.orchestration.executable_spec.BeamExecutableSpec] {
+          python_executor_spec {
+            class_path: "tfx.components.evaluator.executor.Executor"
+          }
+          beam_pipeline_args: "--my_testing_beam_pipeline_args=foo"
         }
       }
     }
@@ -1573,7 +1600,6 @@ deployment_config {
       value {
         [type.googleapis.com/tfx.orchestration.executable_spec.PythonClassExecutableSpec] {
           class_path: "tfx.components.example_validator.executor.Executor"
-          extra_flags: "--my_testing_beam_pipeline_args=foo"
         }
       }
     }
@@ -1582,7 +1608,6 @@ deployment_config {
       value {
         [type.googleapis.com/tfx.orchestration.executable_spec.PythonClassExecutableSpec] {
           class_path: "tfx.components.pusher.executor.Executor"
-          extra_flags: "--my_testing_beam_pipeline_args=foo"
         }
       }
     }
@@ -1591,25 +1616,17 @@ deployment_config {
       value {
         [type.googleapis.com/tfx.orchestration.executable_spec.PythonClassExecutableSpec] {
           class_path: "tfx.components.schema_gen.executor.Executor"
-          extra_flags: "--my_testing_beam_pipeline_args=foo"
         }
       }
     }
     executor_specs {
       key: "StatisticsGen"
       value {
-        [type.googleapis.com/tfx.orchestration.executable_spec.PythonClassExecutableSpec] {
-          class_path: "tfx.components.statistics_gen.executor.Executor"
-          extra_flags: "--my_testing_beam_pipeline_args=foo"
-        }
-      }
-    }
-    executor_specs {
-      key: "StatisticsGen.another_statistics_gen"
-      value {
-        [type.googleapis.com/tfx.orchestration.executable_spec.PythonClassExecutableSpec] {
-          class_path: "tfx.components.statistics_gen.executor.Executor"
-          extra_flags: "--my_testing_beam_pipeline_args=foo"
+        [type.googleapis.com/tfx.orchestration.executable_spec.BeamExecutableSpec] {
+          python_executor_spec {
+            class_path: "tfx.components.statistics_gen.executor.Executor"
+          }
+          beam_pipeline_args: "--my_testing_beam_pipeline_args=foo"
         }
       }
     }
@@ -1618,7 +1635,17 @@ deployment_config {
       value {
         [type.googleapis.com/tfx.orchestration.executable_spec.PythonClassExecutableSpec] {
           class_path: "tfx.components.trainer.executor.GenericExecutor"
-          extra_flags: "--my_testing_beam_pipeline_args=foo"
+        }
+      }
+    }
+    executor_specs {
+      key: "another_statistics_gen"
+      value {
+        [type.googleapis.com/tfx.orchestration.executable_spec.BeamExecutableSpec] {
+          python_executor_spec {
+            class_path: "tfx.components.statistics_gen.executor.Executor"
+          }
+          beam_pipeline_args: "--my_testing_beam_pipeline_args=foo"
         }
       }
     }

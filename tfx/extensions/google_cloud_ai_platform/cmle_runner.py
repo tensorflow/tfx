@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,17 +13,13 @@
 # limitations under the License.
 """Deprecated definition of runner to start TFX training jobs on CMLE."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 from tfx.extensions.google_cloud_ai_platform import runner
 from tfx.utils import deprecation_utils
 
 start_cmle_training = deprecation_utils.deprecated_alias(
     deprecated_name='cmle_runner.start_cmle_training',
-    name='runner.start_aip_training',
-    func_or_class=runner.start_aip_training)
+    name='runner.start_cloud_training',
+    func_or_class=runner.start_cloud_training)
 deploy_model_for_cmle_serving = deprecation_utils.deprecated_alias(
     deprecated_name='cmle_runner.deploy_model_for_cmle_serving',
     name='runner.deploy_model_for_aip_prediction',

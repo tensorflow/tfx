@@ -1,0 +1,1347 @@
+# proto-file: tfx/proto/orchestration/pipeline.proto
+# proto-message: Pipeline
+#
+# This file contains the IR of an adapted Iris example pipeline
+# tfx/examples/iris/iris_pipeline_beam.py
+
+pipeline_info {
+  id: "cond"
+}
+nodes {
+  pipeline_node {
+    node_info {
+      type {
+        name: "tfx.components.example_gen.csv_example_gen.component.CsvExampleGen"
+      }
+      id: "CsvExampleGen"
+    }
+    contexts {
+      contexts {
+        type {
+          name: "pipeline"
+        }
+        name {
+          field_value {
+            string_value: "cond"
+          }
+        }
+      }
+      contexts {
+        type {
+          name: "pipeline_run"
+        }
+        name {
+          runtime_parameter {
+            name: "pipeline-run-id"
+            type: STRING
+          }
+        }
+      }
+      contexts {
+        type {
+          name: "node"
+        }
+        name {
+          field_value {
+            string_value: "cond.CsvExampleGen"
+          }
+        }
+      }
+    }
+    outputs {
+      outputs {
+        key: "examples"
+        value {
+          artifact_spec {
+            type {
+              name: "Examples"
+              properties {
+                key: "span"
+                value: INT
+              }
+              properties {
+                key: "split_names"
+                value: STRING
+              }
+              properties {
+                key: "version"
+                value: INT
+              }
+            }
+          }
+        }
+      }
+    }
+    parameters {
+      parameters {
+        key: "input_base"
+        value {
+          field_value {
+            string_value: "tfx_root/data_path"
+          }
+        }
+      }
+      parameters {
+        key: "input_config"
+        value {
+          field_value {
+            string_value: "{\n  \"splits\": [\n    {\n      \"name\": \"single_split\",\n      \"pattern\": \"*\"\n    }\n  ]\n}"
+          }
+        }
+      }
+      parameters {
+        key: "output_config"
+        value {
+          field_value {
+            string_value: "{\n  \"split_config\": {\n    \"splits\": [\n      {\n        \"hash_buckets\": 2,\n        \"name\": \"train\"\n      },\n      {\n        \"hash_buckets\": 1,\n        \"name\": \"eval\"\n      }\n    ]\n  }\n}"
+          }
+        }
+      }
+      parameters {
+        key: "output_data_format"
+        value {
+          field_value {
+            int_value: 6
+          }
+        }
+      }
+      parameters {
+        key: "output_file_format"
+        value {
+          field_value {
+            int_value: 5
+          }
+        }
+      }
+    }
+    downstream_nodes: "Evaluator"
+    downstream_nodes: "InfraValidator"
+    downstream_nodes: "StatisticsGen"
+    downstream_nodes: "Trainer"
+    execution_options {
+      caching_options {
+        enable_cache: true
+      }
+    }
+  }
+}
+nodes {
+  pipeline_node {
+    node_info {
+      type {
+        name: "tfx.components.statistics_gen.component.StatisticsGen"
+      }
+      id: "StatisticsGen"
+    }
+    contexts {
+      contexts {
+        type {
+          name: "pipeline"
+        }
+        name {
+          field_value {
+            string_value: "cond"
+          }
+        }
+      }
+      contexts {
+        type {
+          name: "pipeline_run"
+        }
+        name {
+          runtime_parameter {
+            name: "pipeline-run-id"
+            type: STRING
+          }
+        }
+      }
+      contexts {
+        type {
+          name: "node"
+        }
+        name {
+          field_value {
+            string_value: "cond.StatisticsGen"
+          }
+        }
+      }
+    }
+    inputs {
+      inputs {
+        key: "examples"
+        value {
+          channels {
+            producer_node_query {
+              id: "CsvExampleGen"
+            }
+            context_queries {
+              type {
+                name: "pipeline"
+              }
+              name {
+                field_value {
+                  string_value: "cond"
+                }
+              }
+            }
+            context_queries {
+              type {
+                name: "pipeline_run"
+              }
+              name {
+                runtime_parameter {
+                  name: "pipeline-run-id"
+                  type: STRING
+                }
+              }
+            }
+            context_queries {
+              type {
+                name: "node"
+              }
+              name {
+                field_value {
+                  string_value: "cond.CsvExampleGen"
+                }
+              }
+            }
+            artifact_query {
+              type {
+                name: "Examples"
+              }
+            }
+            output_key: "examples"
+          }
+          min_count: 1
+        }
+      }
+    }
+    outputs {
+      outputs {
+        key: "statistics"
+        value {
+          artifact_spec {
+            type {
+              name: "ExampleStatistics"
+              properties {
+                key: "span"
+                value: INT
+              }
+              properties {
+                key: "split_names"
+                value: STRING
+              }
+            }
+          }
+        }
+      }
+    }
+    parameters {
+      parameters {
+        key: "exclude_splits"
+        value {
+          field_value {
+            string_value: "[]"
+          }
+        }
+      }
+    }
+    upstream_nodes: "CsvExampleGen"
+    downstream_nodes: "SchemaGen"
+    execution_options {
+      caching_options {
+        enable_cache: true
+      }
+    }
+  }
+}
+nodes {
+  pipeline_node {
+    node_info {
+      type {
+        name: "tfx.components.schema_gen.component.SchemaGen"
+      }
+      id: "SchemaGen"
+    }
+    contexts {
+      contexts {
+        type {
+          name: "pipeline"
+        }
+        name {
+          field_value {
+            string_value: "cond"
+          }
+        }
+      }
+      contexts {
+        type {
+          name: "pipeline_run"
+        }
+        name {
+          runtime_parameter {
+            name: "pipeline-run-id"
+            type: STRING
+          }
+        }
+      }
+      contexts {
+        type {
+          name: "node"
+        }
+        name {
+          field_value {
+            string_value: "cond.SchemaGen"
+          }
+        }
+      }
+    }
+    inputs {
+      inputs {
+        key: "statistics"
+        value {
+          channels {
+            producer_node_query {
+              id: "StatisticsGen"
+            }
+            context_queries {
+              type {
+                name: "pipeline"
+              }
+              name {
+                field_value {
+                  string_value: "cond"
+                }
+              }
+            }
+            context_queries {
+              type {
+                name: "pipeline_run"
+              }
+              name {
+                runtime_parameter {
+                  name: "pipeline-run-id"
+                  type: STRING
+                }
+              }
+            }
+            context_queries {
+              type {
+                name: "node"
+              }
+              name {
+                field_value {
+                  string_value: "cond.StatisticsGen"
+                }
+              }
+            }
+            artifact_query {
+              type {
+                name: "ExampleStatistics"
+              }
+            }
+            output_key: "statistics"
+          }
+          min_count: 1
+        }
+      }
+    }
+    outputs {
+      outputs {
+        key: "schema"
+        value {
+          artifact_spec {
+            type {
+              name: "Schema"
+            }
+          }
+        }
+      }
+    }
+    parameters {
+      parameters {
+        key: "exclude_splits"
+        value {
+          field_value {
+            string_value: "[]"
+          }
+        }
+      }
+      parameters {
+        key: "infer_feature_shape"
+        value {
+          field_value {
+            int_value: 1
+          }
+        }
+      }
+    }
+    upstream_nodes: "StatisticsGen"
+    downstream_nodes: "Trainer"
+    execution_options {
+      caching_options {
+        enable_cache: true
+      }
+    }
+  }
+}
+nodes {
+  pipeline_node {
+    node_info {
+      type {
+        name: "tfx.components.trainer.component.Trainer"
+      }
+      id: "Trainer"
+    }
+    contexts {
+      contexts {
+        type {
+          name: "pipeline"
+        }
+        name {
+          field_value {
+            string_value: "cond"
+          }
+        }
+      }
+      contexts {
+        type {
+          name: "pipeline_run"
+        }
+        name {
+          runtime_parameter {
+            name: "pipeline-run-id"
+            type: STRING
+          }
+        }
+      }
+      contexts {
+        type {
+          name: "node"
+        }
+        name {
+          field_value {
+            string_value: "cond.Trainer"
+          }
+        }
+      }
+    }
+    inputs {
+      inputs {
+        key: "examples"
+        value {
+          channels {
+            producer_node_query {
+              id: "CsvExampleGen"
+            }
+            context_queries {
+              type {
+                name: "pipeline"
+              }
+              name {
+                field_value {
+                  string_value: "cond"
+                }
+              }
+            }
+            context_queries {
+              type {
+                name: "pipeline_run"
+              }
+              name {
+                runtime_parameter {
+                  name: "pipeline-run-id"
+                  type: STRING
+                }
+              }
+            }
+            context_queries {
+              type {
+                name: "node"
+              }
+              name {
+                field_value {
+                  string_value: "cond.CsvExampleGen"
+                }
+              }
+            }
+            artifact_query {
+              type {
+                name: "Examples"
+              }
+            }
+            output_key: "examples"
+          }
+          min_count: 1
+        }
+      }
+      inputs {
+        key: "schema"
+        value {
+          channels {
+            producer_node_query {
+              id: "SchemaGen"
+            }
+            context_queries {
+              type {
+                name: "pipeline"
+              }
+              name {
+                field_value {
+                  string_value: "cond"
+                }
+              }
+            }
+            context_queries {
+              type {
+                name: "pipeline_run"
+              }
+              name {
+                runtime_parameter {
+                  name: "pipeline-run-id"
+                  type: STRING
+                }
+              }
+            }
+            context_queries {
+              type {
+                name: "node"
+              }
+              name {
+                field_value {
+                  string_value: "cond.SchemaGen"
+                }
+              }
+            }
+            artifact_query {
+              type {
+                name: "Schema"
+              }
+            }
+            output_key: "schema"
+          }
+        }
+      }
+    }
+    outputs {
+      outputs {
+        key: "model"
+        value {
+          artifact_spec {
+            type {
+              name: "Model"
+            }
+          }
+        }
+      }
+      outputs {
+        key: "model_run"
+        value {
+          artifact_spec {
+            type {
+              name: "ModelRun"
+            }
+          }
+        }
+      }
+    }
+    parameters {
+      parameters {
+        key: "custom_config"
+        value {
+          field_value {
+            string_value: "null"
+          }
+        }
+      }
+      parameters {
+        key: "eval_args"
+        value {
+          field_value {
+            string_value: "{\n  \"num_steps\": 5\n}"
+          }
+        }
+      }
+      parameters {
+        key: "module_file"
+        value {
+          field_value {
+            string_value: "module_file"
+          }
+        }
+      }
+      parameters {
+        key: "train_args"
+        value {
+          field_value {
+            string_value: "{\n  \"num_steps\": 2000\n}"
+          }
+        }
+      }
+    }
+    upstream_nodes: "CsvExampleGen"
+    upstream_nodes: "SchemaGen"
+    downstream_nodes: "Evaluator"
+    downstream_nodes: "InfraValidator"
+    downstream_nodes: "Pusher"
+    execution_options {
+      caching_options {
+        enable_cache: true
+      }
+    }
+  }
+}
+nodes {
+  pipeline_node {
+    node_info {
+      type {
+        name: "tfx.components.evaluator.component.Evaluator"
+      }
+      id: "Evaluator"
+    }
+    contexts {
+      contexts {
+        type {
+          name: "pipeline"
+        }
+        name {
+          field_value {
+            string_value: "cond"
+          }
+        }
+      }
+      contexts {
+        type {
+          name: "pipeline_run"
+        }
+        name {
+          runtime_parameter {
+            name: "pipeline-run-id"
+            type: STRING
+          }
+        }
+      }
+      contexts {
+        type {
+          name: "node"
+        }
+        name {
+          field_value {
+            string_value: "cond.Evaluator"
+          }
+        }
+      }
+    }
+    inputs {
+      inputs {
+        key: "examples"
+        value {
+          channels {
+            producer_node_query {
+              id: "CsvExampleGen"
+            }
+            context_queries {
+              type {
+                name: "pipeline"
+              }
+              name {
+                field_value {
+                  string_value: "cond"
+                }
+              }
+            }
+            context_queries {
+              type {
+                name: "pipeline_run"
+              }
+              name {
+                runtime_parameter {
+                  name: "pipeline-run-id"
+                  type: STRING
+                }
+              }
+            }
+            context_queries {
+              type {
+                name: "node"
+              }
+              name {
+                field_value {
+                  string_value: "cond.CsvExampleGen"
+                }
+              }
+            }
+            artifact_query {
+              type {
+                name: "Examples"
+              }
+            }
+            output_key: "examples"
+          }
+          min_count: 1
+        }
+      }
+      inputs {
+        key: "model"
+        value {
+          channels {
+            producer_node_query {
+              id: "Trainer"
+            }
+            context_queries {
+              type {
+                name: "pipeline"
+              }
+              name {
+                field_value {
+                  string_value: "cond"
+                }
+              }
+            }
+            context_queries {
+              type {
+                name: "pipeline_run"
+              }
+              name {
+                runtime_parameter {
+                  name: "pipeline-run-id"
+                  type: STRING
+                }
+              }
+            }
+            context_queries {
+              type {
+                name: "node"
+              }
+              name {
+                field_value {
+                  string_value: "cond.Trainer"
+                }
+              }
+            }
+            artifact_query {
+              type {
+                name: "Model"
+              }
+            }
+            output_key: "model"
+          }
+        }
+      }
+    }
+    outputs {
+      outputs {
+        key: "blessing"
+        value {
+          artifact_spec {
+            type {
+              name: "ModelBlessing"
+            }
+          }
+        }
+      }
+      outputs {
+        key: "evaluation"
+        value {
+          artifact_spec {
+            type {
+              name: "ModelEvaluation"
+            }
+          }
+        }
+      }
+    }
+    parameters {
+      parameters {
+        key: "eval_config"
+        value {
+          field_value {
+            string_value: "{\n  \"metrics_specs\": [\n    {\n      \"thresholds\": {\n        \"sparse_categorical_accuracy\": {\n          \"change_threshold\": {\n            \"absolute\": -1e-10,\n            \"direction\": \"HIGHER_IS_BETTER\"\n          },\n          \"value_threshold\": {\n            \"lower_bound\": 0.6\n          }\n        }\n      }\n    }\n  ],\n  \"model_specs\": [\n    {\n      \"signature_name\": \"eval\"\n    }\n  ],\n  \"slicing_specs\": [\n    {}\n  ]\n}"
+          }
+        }
+      }
+      parameters {
+        key: "example_splits"
+        value {
+          field_value {
+            string_value: "null"
+          }
+        }
+      }
+      parameters {
+        key: "fairness_indicator_thresholds"
+        value {
+          field_value {
+            string_value: "null"
+          }
+        }
+      }
+    }
+    upstream_nodes: "CsvExampleGen"
+    upstream_nodes: "Trainer"
+    downstream_nodes: "InfraValidator"
+    downstream_nodes: "Pusher"
+    execution_options {
+      caching_options {
+        enable_cache: true
+      }
+    }
+  }
+}
+nodes {
+  pipeline_node {
+    node_info {
+      type {
+        name: "tfx.components.infra_validator.component.InfraValidator"
+      }
+      id: "InfraValidator"
+    }
+    contexts {
+      contexts {
+        type {
+          name: "pipeline"
+        }
+        name {
+          field_value {
+            string_value: "cond"
+          }
+        }
+      }
+      contexts {
+        type {
+          name: "pipeline_run"
+        }
+        name {
+          runtime_parameter {
+            name: "pipeline-run-id"
+            type: STRING
+          }
+        }
+      }
+      contexts {
+        type {
+          name: "node"
+        }
+        name {
+          field_value {
+            string_value: "cond.InfraValidator"
+          }
+        }
+      }
+    }
+    inputs {
+      inputs {
+        key: "_Evaluator.blessing"
+        value {
+          channels {
+            producer_node_query {
+              id: "Evaluator"
+            }
+            context_queries {
+              type {
+                name: "pipeline"
+              }
+              name {
+                field_value {
+                  string_value: "cond"
+                }
+              }
+            }
+            context_queries {
+              type {
+                name: "pipeline_run"
+              }
+              name {
+                runtime_parameter {
+                  name: "pipeline-run-id"
+                  type: STRING
+                }
+              }
+            }
+            context_queries {
+              type {
+                name: "node"
+              }
+              name {
+                field_value {
+                  string_value: "cond.Evaluator"
+                }
+              }
+            }
+            artifact_query {
+              type {
+                name: "ModelBlessing"
+              }
+            }
+            output_key: "blessing"
+          }
+        }
+      }
+      inputs {
+        key: "examples"
+        value {
+          channels {
+            producer_node_query {
+              id: "CsvExampleGen"
+            }
+            context_queries {
+              type {
+                name: "pipeline"
+              }
+              name {
+                field_value {
+                  string_value: "cond"
+                }
+              }
+            }
+            context_queries {
+              type {
+                name: "pipeline_run"
+              }
+              name {
+                runtime_parameter {
+                  name: "pipeline-run-id"
+                  type: STRING
+                }
+              }
+            }
+            context_queries {
+              type {
+                name: "node"
+              }
+              name {
+                field_value {
+                  string_value: "cond.CsvExampleGen"
+                }
+              }
+            }
+            artifact_query {
+              type {
+                name: "Examples"
+              }
+            }
+            output_key: "examples"
+          }
+        }
+      }
+      inputs {
+        key: "model"
+        value {
+          channels {
+            producer_node_query {
+              id: "Trainer"
+            }
+            context_queries {
+              type {
+                name: "pipeline"
+              }
+              name {
+                field_value {
+                  string_value: "cond"
+                }
+              }
+            }
+            context_queries {
+              type {
+                name: "pipeline_run"
+              }
+              name {
+                runtime_parameter {
+                  name: "pipeline-run-id"
+                  type: STRING
+                }
+              }
+            }
+            context_queries {
+              type {
+                name: "node"
+              }
+              name {
+                field_value {
+                  string_value: "cond.Trainer"
+                }
+              }
+            }
+            artifact_query {
+              type {
+                name: "Model"
+              }
+            }
+            output_key: "model"
+          }
+          min_count: 1
+        }
+      }
+      resolver_config {
+        resolver_steps {
+          class_path: "tfx.dsl.input_resolution.strategies.conditional_strategy.ConditionalStrategy"
+          config_json: "{\"predicates\": [{\"__class__\": \"PlaceholderExpression\", \"__module__\": \"tfx.proto.orchestration.placeholder_pb2\", \"__proto_value__\": \"{\\n  \\\"operator\\\": {\\n    \\\"compare_op\\\": {\\n      \\\"lhs\\\": {\\n        \\\"operator\\\": {\\n          \\\"artifact_value_op\\\": {\\n            \\\"expression\\\": {\\n              \\\"operator\\\": {\\n                \\\"index_op\\\": {\\n                  \\\"expression\\\": {\\n                    \\\"placeholder\\\": {\\n                      \\\"key\\\": \\\"_Evaluator.blessing\\\"\\n                    }\\n                  }\\n                }\\n              }\\n            }\\n          }\\n        }\\n      },\\n      \\\"op\\\": \\\"EQUAL\\\",\\n      \\\"rhs\\\": {\\n        \\\"value\\\": {\\n          \\\"int_value\\\": \\\"1\\\"\\n        }\\n      }\\n    }\\n  }\\n}\", \"__tfx_object_type__\": \"proto\"}]}"
+        }
+      }
+    }
+    outputs {
+      outputs {
+        key: "blessing"
+        value {
+          artifact_spec {
+            type {
+              name: "InfraBlessing"
+            }
+          }
+        }
+      }
+    }
+    parameters {
+      parameters {
+        key: "request_spec"
+        value {
+          field_value {
+            string_value: "{\n  \"tensorflow_serving\": {}\n}"
+          }
+        }
+      }
+      parameters {
+        key: "serving_spec"
+        value {
+          field_value {
+            string_value: "{\n  \"local_docker\": {},\n  \"tensorflow_serving\": {\n    \"tags\": [\n      \"latest\"\n    ]\n  }\n}"
+          }
+        }
+      }
+    }
+    upstream_nodes: "CsvExampleGen"
+    upstream_nodes: "Evaluator"
+    upstream_nodes: "Trainer"
+    downstream_nodes: "Pusher"
+    execution_options {
+      caching_options {
+        enable_cache: true
+      }
+    }
+  }
+}
+nodes {
+  pipeline_node {
+    node_info {
+      type {
+        name: "tfx.components.pusher.component.Pusher"
+      }
+      id: "Pusher"
+    }
+    contexts {
+      contexts {
+        type {
+          name: "pipeline"
+        }
+        name {
+          field_value {
+            string_value: "cond"
+          }
+        }
+      }
+      contexts {
+        type {
+          name: "pipeline_run"
+        }
+        name {
+          runtime_parameter {
+            name: "pipeline-run-id"
+            type: STRING
+          }
+        }
+      }
+      contexts {
+        type {
+          name: "node"
+        }
+        name {
+          field_value {
+            string_value: "cond.Pusher"
+          }
+        }
+      }
+    }
+    inputs {
+      inputs {
+        key: "_Evaluator.blessing"
+        value {
+          channels {
+            producer_node_query {
+              id: "Evaluator"
+            }
+            context_queries {
+              type {
+                name: "pipeline"
+              }
+              name {
+                field_value {
+                  string_value: "cond"
+                }
+              }
+            }
+            context_queries {
+              type {
+                name: "pipeline_run"
+              }
+              name {
+                runtime_parameter {
+                  name: "pipeline-run-id"
+                  type: STRING
+                }
+              }
+            }
+            context_queries {
+              type {
+                name: "node"
+              }
+              name {
+                field_value {
+                  string_value: "cond.Evaluator"
+                }
+              }
+            }
+            artifact_query {
+              type {
+                name: "ModelBlessing"
+              }
+            }
+            output_key: "blessing"
+          }
+        }
+      }
+      inputs {
+        key: "_InfraValidator.blessing"
+        value {
+          channels {
+            producer_node_query {
+              id: "InfraValidator"
+            }
+            context_queries {
+              type {
+                name: "pipeline"
+              }
+              name {
+                field_value {
+                  string_value: "cond"
+                }
+              }
+            }
+            context_queries {
+              type {
+                name: "pipeline_run"
+              }
+              name {
+                runtime_parameter {
+                  name: "pipeline-run-id"
+                  type: STRING
+                }
+              }
+            }
+            context_queries {
+              type {
+                name: "node"
+              }
+              name {
+                field_value {
+                  string_value: "cond.InfraValidator"
+                }
+              }
+            }
+            artifact_query {
+              type {
+                name: "InfraBlessing"
+              }
+            }
+            output_key: "blessing"
+          }
+        }
+      }
+      inputs {
+        key: "model"
+        value {
+          channels {
+            producer_node_query {
+              id: "Trainer"
+            }
+            context_queries {
+              type {
+                name: "pipeline"
+              }
+              name {
+                field_value {
+                  string_value: "cond"
+                }
+              }
+            }
+            context_queries {
+              type {
+                name: "pipeline_run"
+              }
+              name {
+                runtime_parameter {
+                  name: "pipeline-run-id"
+                  type: STRING
+                }
+              }
+            }
+            context_queries {
+              type {
+                name: "node"
+              }
+              name {
+                field_value {
+                  string_value: "cond.Trainer"
+                }
+              }
+            }
+            artifact_query {
+              type {
+                name: "Model"
+              }
+            }
+            output_key: "model"
+          }
+        }
+      }
+      resolver_config {
+        resolver_steps {
+          class_path: "tfx.dsl.input_resolution.strategies.conditional_strategy.ConditionalStrategy"
+          config_json: "{\"predicates\": [{\"__class__\": \"PlaceholderExpression\", \"__module__\": \"tfx.proto.orchestration.placeholder_pb2\", \"__proto_value__\": \"{\\n  \\\"operator\\\": {\\n    \\\"compare_op\\\": {\\n      \\\"lhs\\\": {\\n        \\\"operator\\\": {\\n          \\\"artifact_value_op\\\": {\\n            \\\"expression\\\": {\\n              \\\"operator\\\": {\\n                \\\"index_op\\\": {\\n                  \\\"expression\\\": {\\n                    \\\"placeholder\\\": {\\n                      \\\"key\\\": \\\"_Evaluator.blessing\\\"\\n                    }\\n                  }\\n                }\\n              }\\n            }\\n          }\\n        }\\n      },\\n      \\\"op\\\": \\\"EQUAL\\\",\\n      \\\"rhs\\\": {\\n        \\\"value\\\": {\\n          \\\"int_value\\\": \\\"1\\\"\\n        }\\n      }\\n    }\\n  }\\n}\", \"__tfx_object_type__\": \"proto\"}, {\"__class__\": \"PlaceholderExpression\", \"__module__\": \"tfx.proto.orchestration.placeholder_pb2\", \"__proto_value__\": \"{\\n  \\\"operator\\\": {\\n    \\\"binary_logical_op\\\": {\\n      \\\"lhs\\\": {\\n        \\\"operator\\\": {\\n          \\\"compare_op\\\": {\\n            \\\"lhs\\\": {\\n              \\\"operator\\\": {\\n                \\\"artifact_value_op\\\": {\\n                  \\\"expression\\\": {\\n                    \\\"operator\\\": {\\n                      \\\"index_op\\\": {\\n                        \\\"expression\\\": {\\n                          \\\"placeholder\\\": {\\n                            \\\"key\\\": \\\"_InfraValidator.blessing\\\"\\n                          }\\n                        }\\n                      }\\n                    }\\n                  }\\n                }\\n              }\\n            },\\n            \\\"op\\\": \\\"EQUAL\\\",\\n            \\\"rhs\\\": {\\n              \\\"value\\\": {\\n                \\\"int_value\\\": \\\"1\\\"\\n              }\\n            }\\n          }\\n        }\\n      },\\n      \\\"op\\\": \\\"AND\\\",\\n      \\\"rhs\\\": {\\n        \\\"operator\\\": {\\n          \\\"unary_logical_op\\\": {\\n            \\\"expression\\\": {\\n              \\\"operator\\\": {\\n                \\\"compare_op\\\": {\\n                  \\\"lhs\\\": {\\n                    \\\"operator\\\": {\\n                      \\\"artifact_uri_op\\\": {\\n                        \\\"expression\\\": {\\n                          \\\"operator\\\": {\\n                            \\\"index_op\\\": {\\n                              \\\"expression\\\": {\\n                                \\\"placeholder\\\": {\\n                                  \\\"key\\\": \\\"model\\\"\\n                                }\\n                              }\\n                            }\\n                          }\\n                        }\\n                      }\\n                    }\\n                  },\\n                  \\\"op\\\": \\\"EQUAL\\\",\\n                  \\\"rhs\\\": {\\n                    \\\"value\\\": {\\n                      \\\"string_value\\\": \\\"\\\"\\n                    }\\n                  }\\n                }\\n              }\\n            },\\n            \\\"op\\\": \\\"NOT\\\"\\n          }\\n        }\\n      }\\n    }\\n  }\\n}\", \"__tfx_object_type__\": \"proto\"}]}"
+        }
+      }
+    }
+    outputs {
+      outputs {
+        key: "pushed_model"
+        value {
+          artifact_spec {
+            type {
+              name: "PushedModel"
+            }
+          }
+        }
+      }
+    }
+    parameters {
+      parameters {
+        key: "custom_config"
+        value {
+          field_value {
+            string_value: "null"
+          }
+        }
+      }
+      parameters {
+        key: "push_destination"
+        value {
+          field_value {
+            string_value: "{\n  \"filesystem\": {\n    \"base_directory\": \"cond_root/serving_model/cond\"\n  }\n}"
+          }
+        }
+      }
+    }
+    upstream_nodes: "Evaluator"
+    upstream_nodes: "InfraValidator"
+    upstream_nodes: "Trainer"
+    execution_options {
+      caching_options {
+        enable_cache: true
+      }
+    }
+  }
+}
+runtime_spec {
+  pipeline_root {
+    runtime_parameter {
+      name: "pipeline-root"
+      type: STRING
+      default_value {
+        string_value: "tfx_root/pipelines/cond"
+      }
+    }
+  }
+  pipeline_run_id {
+    runtime_parameter {
+      name: "pipeline-run-id"
+      type: STRING
+    }
+  }
+}
+execution_mode: SYNC
+deployment_config {
+  [type.googleapis.com/tfx.orchestration.IntermediateDeploymentConfig] {
+    executor_specs {
+      key: "CsvExampleGen"
+      value {
+        [type.googleapis.com/tfx.orchestration.executable_spec.BeamExecutableSpec] {
+          python_executor_spec {
+            class_path: "tfx.components.example_gen.csv_example_gen.executor.Executor"
+          }
+          beam_pipeline_args: "--my_testing_beam_pipeline_args=foo"
+        }
+      }
+    }
+    executor_specs {
+      key: "Evaluator"
+      value {
+        [type.googleapis.com/tfx.orchestration.executable_spec.BeamExecutableSpec] {
+          python_executor_spec {
+            class_path: "tfx.components.evaluator.executor.Executor"
+          }
+          beam_pipeline_args: "--my_testing_beam_pipeline_args=foo"
+        }
+      }
+    }
+    executor_specs {
+      key: "InfraValidator"
+      value {
+        [type.googleapis.com/tfx.orchestration.executable_spec.PythonClassExecutableSpec] {
+          class_path: "tfx.components.infra_validator.executor.Executor"
+        }
+      }
+    }
+    executor_specs {
+      key: "Pusher"
+      value {
+        [type.googleapis.com/tfx.orchestration.executable_spec.PythonClassExecutableSpec] {
+          class_path: "tfx.components.pusher.executor.Executor"
+        }
+      }
+    }
+    executor_specs {
+      key: "SchemaGen"
+      value {
+        [type.googleapis.com/tfx.orchestration.executable_spec.PythonClassExecutableSpec] {
+          class_path: "tfx.components.schema_gen.executor.Executor"
+        }
+      }
+    }
+    executor_specs {
+      key: "StatisticsGen"
+      value {
+        [type.googleapis.com/tfx.orchestration.executable_spec.BeamExecutableSpec] {
+          python_executor_spec {
+            class_path: "tfx.components.statistics_gen.executor.Executor"
+          }
+          beam_pipeline_args: "--my_testing_beam_pipeline_args=foo"
+        }
+      }
+    }
+    executor_specs {
+      key: "Trainer"
+      value {
+        [type.googleapis.com/tfx.orchestration.executable_spec.PythonClassExecutableSpec] {
+          class_path: "tfx.components.trainer.executor.GenericExecutor"
+        }
+      }
+    }
+    custom_driver_specs {
+      key: "CsvExampleGen"
+      value {
+        [type.googleapis.com/tfx.orchestration.executable_spec.PythonClassExecutableSpec] {
+          class_path: "tfx.components.example_gen.driver.FileBasedDriver"
+        }
+      }
+    }
+  }
+}

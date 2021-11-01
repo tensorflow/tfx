@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -17,7 +16,6 @@
 ENGINE_FLAG = 'engine'
 PIPELINE_DSL_PATH = 'pipeline_dsl_path'
 PIPELINE_NAME = 'pipeline_name'
-TFX_JSON_EXPORT_PIPELINE_ARGS_PATH = 'TFX_JSON_EXPORT_PIPELINE_ARGS_PATH'
 AIRFLOW_PACKAGE_NAME = 'apache-airflow'
 KUBEFLOW_PACKAGE_NAME = 'kfp'
 RUN_ID = 'run_id'
@@ -25,20 +23,16 @@ AIRFLOW_ENGINE = 'airflow'
 BEAM_ENGINE = 'beam'
 KUBEFLOW_ENGINE = 'kubeflow'
 LOCAL_ENGINE = 'local'
+VERTEX_ENGINE = 'vertex'
+
 # Path to root directory of the pipeline.
 PIPELINE_ROOT = 'pipeline_root'
 # List of components in the pipeline.
 PIPELINE_COMPONENTS = 'pipeline_components'
 
 # Kubeflow specific labels.
-# Path to the output workflow file for Kubeflow pipelines.
-PIPELINE_PACKAGE_PATH = 'pipeline_package_path'
-# Target container image path.
-TARGET_IMAGE = 'build_target_image'
 # Base container image path.
 BASE_IMAGE = 'build_base_image'
-# Skaffold command
-SKAFFOLD_CMD = 'skaffold_cmd'
 # Client ID for IAP protected endpoint.
 IAP_CLIENT_ID = 'iap_client_id'
 # Endpoint of the KFP API service to connect.
@@ -51,8 +45,14 @@ PIPELINE_ID = 'pipeline_id'
 PIPELINE_VERSION_ID = 'pipeline_version_id'
 # Experiment id generated when a new experiment is created on KFP server.
 EXPERIMENT_ID = 'experiment_id'
-# Environment variable for the default Kubeflow TFX image.
-KUBEFLOW_TFX_IMAGE_ENV = 'KUBEFLOW_TFX_IMAGE'
+# Flag to decide whether an image build is needed
+BUILD_IMAGE = 'build_image'
+# GCP Project ID for GCP API call.
+GCP_PROJECT_ID = 'gcp_project_id'
+# GCP Region for GCP API call.
+GCP_REGION = 'gcp_region'
+# Runtime parameter for next pipeline run.
+RUNTIME_PARAMETER = 'runtime_parameter'
 
 # Template specific labels.
 # Destination directory path to copy files

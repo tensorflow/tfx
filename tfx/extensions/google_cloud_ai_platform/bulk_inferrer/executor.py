@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,23 +13,22 @@
 # limitations under the License.
 """BulkInferrer executor for Cloud AI platform."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import hashlib
 import re
-from typing import Any, Dict, List, Text
+from typing import Any, Dict, List
 
 from absl import logging
+from google.api_core import client_options
 from googleapiclient import discovery
 import tensorflow as tf
 from tfx import types
 from tfx.components.bulk_inferrer import executor as bulk_inferrer_executor
 from tfx.components.util import model_utils
+from tfx.extensions.google_cloud_ai_platform import constants
 from tfx.extensions.google_cloud_ai_platform import runner
 from tfx.proto import bulk_inferrer_pb2
 from tfx.types import artifact_utils
+from tfx.utils import doc_controls
 from tfx.utils import json_utils
 from tfx.utils import path_utils
 from tfx.utils import proto_utils
@@ -50,7 +48,10 @@ _CLOUD_PUSH_DESTINATION_RE_DEFAULT_VERSION = re.compile(
 _SignatureDef = Any
 
 # Keys to the items in custom_config passed as a part of exec_properties.
-SERVING_ARGS_KEY = 'ai_platform_serving_args'
+SERVING_ARGS_KEY = doc_controls.documented(
+    obj='ai_platform_serving_args',
+    doc='Keys to the items in custom_config of Bulk Inferrer for passing bulk'
+    'inferrer args to AI Platform.')
 # Keys for custom_config.
 _CUSTOM_CONFIG_KEY = 'custom_config'
 
@@ -58,9 +59,9 @@ _CUSTOM_CONFIG_KEY = 'custom_config'
 class Executor(bulk_inferrer_executor.Executor):
   """Bulk inferer executor for inference on AI Platform."""
 
-  def Do(self, input_dict: Dict[Text, List[types.Artifact]],
-         output_dict: Dict[Text, List[types.Artifact]],
-         exec_properties: Dict[Text, Any]) -> None:
+  def Do(self, input_dict: Dict[str, List[types.Artifact]],
+         output_dict: Dict[str, List[types.Artifact]],
+         exec_properties: Dict[str, Any]) -> None:
     """Runs batch inference on a given model with given input examples.
 
     This function creates a new model (if necessary) and a new model version
@@ -99,7 +100,7 @@ class Executor(bulk_inferrer_executor.Executor):
       output_examples = None
 
     if 'examples' not in input_dict:
-      raise ValueError('\'examples\' is missing in input dict.')
+      raise ValueError('`examples` is missing in input dict.')
     if 'model' not in input_dict:
       raise ValueError('Input models are not valid, model '
                        'need to be specified.')
@@ -124,14 +125,14 @@ class Executor(bulk_inferrer_executor.Executor):
     ai_platform_serving_args = custom_config.get(SERVING_ARGS_KEY)
     if not ai_platform_serving_args:
       raise ValueError(
-          '\'ai_platform_serving_args\' is missing in \'custom_config\'')
+          '`ai_platform_serving_args` is missing in `custom_config`')
     service_name, api_version = runner.get_service_name_and_api_version(
         ai_platform_serving_args)
     executor_class_path = '%s.%s' % (self.__class__.__module__,
                                      self.__class__.__name__)
     with telemetry_utils.scoped_labels(
         {telemetry_utils.LABEL_TFX_EXECUTOR: executor_class_path}):
-      job_labels = telemetry_utils.get_labels_dict()
+      job_labels = telemetry_utils.make_labels_dict()
     model = artifact_utils.get_single_instance(input_dict['model'])
     model_path = path_utils.serving_model_path(
         model.uri, path_utils.is_old_model_artifact(model))
@@ -147,19 +148,29 @@ class Executor(bulk_inferrer_executor.Executor):
     if exec_properties.get('output_example_spec'):
       proto_utils.json_to_proto(exec_properties['output_example_spec'],
                                 output_example_spec)
-    api = discovery.build(service_name, api_version)
-    new_model_created = False
+    endpoint = custom_config.get(constants.ENDPOINT_ARGS_KEY)
+    if endpoint and 'regions' in ai_platform_serving_args:
+      raise ValueError(
+          '`endpoint` and `ai_platform_serving_args.regions` cannot be set simultaneously'
+      )
+    api = discovery.build(
+        service_name,
+        api_version,
+        requestBuilder=telemetry_utils.TFXHttpRequest,
+        client_options=client_options.ClientOptions(api_endpoint=endpoint),
+    )
+    new_model_endpoint_created = False
     try:
-      new_model_created = runner.create_model_for_aip_prediction_if_not_exist(
-          api, job_labels, ai_platform_serving_args)
+      new_model_endpoint_created = runner.create_model_for_aip_prediction_if_not_exist(
+          job_labels, ai_platform_serving_args, api)
       runner.deploy_model_for_aip_prediction(
-          api,
-          model_path,
-          model_version,
-          ai_platform_serving_args,
-          job_labels,
-          skip_model_creation=True,
-          set_default_version=False,
+          serving_path=model_path,
+          model_version_name=model_version,
+          ai_platform_serving_args=ai_platform_serving_args,
+          api=api,
+          labels=job_labels,
+          skip_model_endpoint_creation=True,
+          set_default=False,
       )
       self._run_model_inference(data_spec, output_example_spec,
                                 input_dict['examples'], output_examples,
@@ -169,26 +180,25 @@ class Executor(bulk_inferrer_executor.Executor):
                     str(e))
       raise
     finally:
-      # Guarantee newly created resources are cleaned up even if theinference
+      # Guarantee newly created resources are cleaned up even if the inference
       # job failed.
 
       # Clean up the newly deployed model.
-      runner.delete_model_version_from_aip_if_exists(api, model_version,
-                                                     ai_platform_serving_args)
-      if new_model_created:
-        runner.delete_model_from_aip_if_exists(api, ai_platform_serving_args)
+      runner.delete_model_from_aip_if_exists(
+          model_version_name=model_version,
+          ai_platform_serving_args=ai_platform_serving_args,
+          api=api,
+          delete_model_endpoint=new_model_endpoint_created)
 
   def _get_inference_spec(
-      self, model_path: Text, model_version: Text,
-      ai_platform_serving_args: Dict[Text, Any]
+      self, model_path: str, model_version: str,
+      ai_platform_serving_args: Dict[str, Any]
   ) -> model_spec_pb2.InferenceSpecType:
     if 'project_id' not in ai_platform_serving_args:
-      raise ValueError(
-          '\'project_id\' is missing in \'ai_platform_serving_args\'')
+      raise ValueError('`project_id` is missing in `ai_platform_serving_args`')
     project_id = ai_platform_serving_args['project_id']
     if 'model_name' not in ai_platform_serving_args:
-      raise ValueError(
-          '\'model_name\' is missing in \'ai_platform_serving_args\'')
+      raise ValueError('`model_name` is missing in `ai_platform_serving_args`')
     model_name = ai_platform_serving_args['model_name']
     ai_platform_prediction_model_spec = (
         model_spec_pb2.AIPlatformPredictionModelSpec(
@@ -208,7 +218,7 @@ class Executor(bulk_inferrer_executor.Executor):
         ai_platform_prediction_model_spec)
     return result
 
-  def _get_model_signature(self, model_path: Text) -> _SignatureDef:
+  def _get_model_signature(self, model_path: str) -> _SignatureDef:
     """Returns a model signature."""
 
     saved_model_pb = loader_impl.parse_saved_model(model_path)

@@ -18,7 +18,7 @@ import json
 import os
 import unittest
 
-from kerastuner import HyperParameters
+from keras_tuner import HyperParameters
 import tensorflow as tf
 from tfx.components.testdata.module_file import tuner_module
 from tfx.components.tuner import executor
@@ -39,7 +39,7 @@ from tensorflow.python.lib.io import file_io  # pylint: disable=g-direct-tensorf
 class ExecutorTest(tf.test.TestCase):
 
   def setUp(self):
-    super(ExecutorTest, self).setUp()
+    super().setUp()
     self._testdata_dir = os.path.join(
         os.path.dirname(os.path.dirname(__file__)), 'testdata')
     self._output_data_dir = os.path.join(
@@ -62,9 +62,13 @@ class ExecutorTest(tf.test.TestCase):
     schema = standard_artifacts.Schema()
     schema.uri = os.path.join(self._testdata_dir, 'penguin', 'schema')
 
+    base_model = standard_artifacts.Model()
+    base_model.uri = os.path.join(self._testdata_dir, 'trainer/previous')
+
     self._input_dict = {
         standard_component_specs.EXAMPLES_KEY: self._single_artifact,
         standard_component_specs.SCHEMA_KEY: [schema],
+        standard_component_specs.BASE_MODEL_KEY: [base_model]
     }
 
     # Create output dict.

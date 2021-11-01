@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,12 +13,6 @@
 # limitations under the License.
 """Tests for tfx.components.trainer.component."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
-from typing import Text
-
 import tensorflow as tf
 from tfx.components.trainer import component
 from tfx.components.trainer import executor
@@ -34,7 +27,7 @@ from tfx.types import standard_component_specs
 class ComponentTest(tf.test.TestCase):
 
   def setUp(self):
-    super(ComponentTest, self).setUp()
+    super().setUp()
 
     self.examples = channel_utils.as_channel([standard_artifacts.Examples()])
     self.transform_graph = channel_utils.as_channel(
@@ -57,22 +50,24 @@ class ComponentTest(tf.test.TestCase):
     module_file = '/path/to/module/file'
     trainer = component.Trainer(
         module_file=module_file,
-        transformed_examples=self.examples,
+        examples=self.examples,
         transform_graph=self.transform_graph,
         schema=self.schema,
-        train_args=self.train_args,
-        eval_args=self.eval_args)
+        custom_config={'test': 10})
     self._verify_outputs(trainer)
     self.assertEqual(
         module_file,
         trainer.spec.exec_properties[standard_component_specs.MODULE_FILE_KEY])
+    self.assertEqual(
+        '{"test": 10}', trainer.spec.exec_properties[
+            standard_component_specs.CUSTOM_CONFIG_KEY])
 
   def testConstructWithParameter(self):
-    module_file = data_types.RuntimeParameter(name='module-file', ptype=Text)
+    module_file = data_types.RuntimeParameter(name='module-file', ptype=str)
     n_steps = data_types.RuntimeParameter(name='n-steps', ptype=int)
     trainer = component.Trainer(
         module_file=module_file,
-        transformed_examples=self.examples,
+        examples=self.examples,
         transform_graph=self.transform_graph,
         schema=self.schema,
         train_args=dict(splits=['train'], num_steps=n_steps),
@@ -87,7 +82,7 @@ class ComponentTest(tf.test.TestCase):
     trainer_fn = 'path.to.my_trainer_fn'
     trainer = component.Trainer(
         trainer_fn=trainer_fn,
-        transformed_examples=self.examples,
+        examples=self.examples,
         transform_graph=self.transform_graph,
         train_args=self.train_args,
         eval_args=self.eval_args)
@@ -102,7 +97,7 @@ class ComponentTest(tf.test.TestCase):
         run_fn=run_fn,
         custom_executor_spec=executor_spec.ExecutorClassSpec(
             executor.GenericExecutor),
-        transformed_examples=self.examples,
+        examples=self.examples,
         transform_graph=self.transform_graph,
         train_args=self.train_args,
         eval_args=self.eval_args)
@@ -175,7 +170,7 @@ class ComponentTest(tf.test.TestCase):
   def testConstructWithHParams(self):
     trainer = component.Trainer(
         trainer_fn='path.to.my_trainer_fn',
-        transformed_examples=self.examples,
+        examples=self.examples,
         transform_graph=self.transform_graph,
         schema=self.schema,
         hyperparameters=self.hyperparameters,
@@ -185,6 +180,32 @@ class ComponentTest(tf.test.TestCase):
     self.assertEqual(
         standard_artifacts.HyperParameters.TYPE_NAME,
         trainer.inputs[standard_component_specs.HYPERPARAMETERS_KEY].type_name)
+
+  def testConstructWithRuntimeParam(self):
+    eval_args = data_types.RuntimeParameter(
+        name='eval-args',
+        default='{"num_steps": 50}',
+        ptype=str,
+    )
+    custom_config = data_types.RuntimeParameter(
+        name='custom-config',
+        default='{"test": 10}',
+        ptype=str,
+    )
+    trainer = component.Trainer(
+        trainer_fn='path.to.my_trainer_fn',
+        examples=self.examples,
+        train_args=self.train_args,
+        eval_args=eval_args,
+        custom_config=custom_config)
+    self._verify_outputs(trainer)
+    self.assertIsInstance(
+        trainer.spec.exec_properties[standard_component_specs.EVAL_ARGS_KEY],
+        data_types.RuntimeParameter)
+    self.assertIsInstance(
+        trainer.spec.exec_properties[
+            standard_component_specs.CUSTOM_CONFIG_KEY],
+        data_types.RuntimeParameter)
 
 
 if __name__ == '__main__':

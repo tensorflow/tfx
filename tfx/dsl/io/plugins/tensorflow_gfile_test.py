@@ -13,10 +13,6 @@
 # limitations under the License.
 """Tests for tfx.dsl.io.plugins.tensorflow_gfile."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import os
 import tempfile
 

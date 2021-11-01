@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,23 +17,15 @@ Note: these APIs are **experimental** and major changes to interface and
 functionality are expected.
 """
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import abc
+import builtins
 import html
-from typing import Callable, List, Optional, Text, Tuple, Type, Union
-
-# Standard Imports
-
-from six.moves import builtins
+from typing import Any, Callable, Dict, List, Optional, Set, Tuple, Type, Union
 
 from tfx.dsl.components.base.base_component import BaseComponent
 from tfx.orchestration.experimental.interactive.execution_result import ExecutionResult
 from tfx.types.artifact import Artifact
 from tfx.types.channel import Channel
-from tfx.types.node_common import _PropertyDictWrapper
 
 STATIC_HTML_CONTENTS = u"""<style>
 .tfx-object.expanded {
@@ -97,17 +88,19 @@ function toggleTfxObject(element) {
 """
 
 
-class NotebookFormatter(object):
+class NotebookFormatter:
   """Formats a TFX component in the context of an interactive notebook."""
 
   _DEFAULT_TITLE_FORMAT = ('<span class="class-name">%s</span>',
                            ['__class__.__name__'])
 
-  def __init__(self,
-               cls: Type[object],
-               attributes: List[Text] = None,
-               title_format: Tuple[Text, List[Union[Text, Callable]]] = None,  # pylint: disable=g-bare-generic
-               _show_artifact_attributes: Optional[bool] = False):
+  def __init__(
+      self,
+      cls: Type[Any],
+      attributes: Optional[List[str]] = None,
+      title_format: Optional[
+          Tuple[str, List[Union[str, Callable[..., Any]]]]] = None,
+      _show_artifact_attributes: Optional[bool] = False):
     """Constructs a NotebookFormatter.
 
     Args:
@@ -129,7 +122,7 @@ class NotebookFormatter(object):
     self.title_format = title_format or NotebookFormatter._DEFAULT_TITLE_FORMAT
     self._show_artifact_attributes = _show_artifact_attributes
 
-  def _extended_getattr(self, obj: object, property_name: Text) -> object:
+  def _extended_getattr(self, obj: object, property_name: str) -> object:
     """Get a possibly nested attribute of a given object."""
     if callable(property_name):
       return property_name(obj)
@@ -139,10 +132,11 @@ class NotebookFormatter(object):
       current = getattr(current, part)
     return current
 
-  def render(self,
-             obj: object,
-             expanded: bool = True,
-             seen_elements: Optional[set] = None) -> Text:  # pylint: disable=g-bare-generic
+  def render(
+      self,
+      obj: Any,
+      expanded: bool = True,
+      seen_elements: Optional[Set[Any]] = None) -> str:
     """Render a given object as an HTML string.
 
     Args:
@@ -171,7 +165,7 @@ class NotebookFormatter(object):
                      self.render_title(obj), id(obj),
                      self.render_attributes(obj, seen_elements))
 
-  def render_title(self, obj: object) -> Text:
+  def render_title(self, obj: object) -> str:
     """Render the title section of an object."""
     title_format = self.title_format
     values = []
@@ -179,13 +173,9 @@ class NotebookFormatter(object):
       values.append(self._extended_getattr(obj, property_name))
     return title_format[0] % tuple(values)
 
-  def render_value(self,
-                   value: object,
-                   seen_elements: set) -> object:  # pylint: disable=g-bare-generic
+  def render_value(self, value: Any, seen_elements: Set[Any]) -> str:
     """Render the value section of an object."""
-    if isinstance(value, _PropertyDictWrapper):
-      value = value.get_all()
-    formatted_value = html.escape(Text(value))
+    formatted_value = html.escape(str(value))
     if isinstance(value, dict):
       formatted_value = self.render_dict(value, seen_elements)
     if isinstance(value, list):
@@ -199,9 +189,7 @@ class NotebookFormatter(object):
           break
     return formatted_value
 
-  def render_attributes(self,
-                        obj: object,
-                        seen_elements: set) -> Text:  # pylint: disable=g-bare-generic
+  def render_attributes(self, obj: Any, seen_elements: Set[Any]) -> str:
     """Render the attributes section of an object."""
     if self._show_artifact_attributes and isinstance(obj, Artifact):
       artifact_attributes = sorted((obj.PROPERTIES or {}).keys())
@@ -217,24 +205,19 @@ class NotebookFormatter(object):
            '<td class = "attrvalue">%s</td></tr>') % (property_name, value))
     return '<table class="attr-table">%s</table>' % ''.join(attr_trs)
 
-  def render_dict(self,
-                  obj: dict,  # pylint: disable=g-bare-generic
-                  seen_elements: set) -> Text:  # pylint: disable=g-bare-generic
+  def render_dict(self, obj: Dict[Any, Any], seen_elements: Set[Any]) -> str:
     """Render a dictionary table."""
     if not obj:
       return '{}'
     attr_trs = []
     for key, value in obj.items():
       value = self.render_value(value, seen_elements)
-      attr_trs.append(
-          ('<tr><td class="attr-name">[%r]</td>'
-           '<td class = "attrvalue">%s</td></tr>') % (html.escape(Text(key)),
-                                                      value))
+      attr_trs.append(('<tr><td class="attr-name">[%r]</td>'
+                       '<td class = "attrvalue">%s</td></tr>') %
+                      (html.escape(str(key)), value))
     return '<table class="attr-table">%s</table>' % ''.join(attr_trs)
 
-  def render_list(self,
-                  obj: list,  # pylint: disable=g-bare-generic
-                  seen_elements: set) -> Text:  # pylint: disable=g-bare-generic
+  def render_list(self, obj: List[Any], seen_elements: Set[Any]) -> str:
     """Render a list table."""
     if not obj:
       return '[]'

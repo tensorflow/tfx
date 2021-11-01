@@ -12,18 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Portable library for input artifacts resolution."""
-import collections
-from typing import Dict, Iterable, List, Optional
+from typing import Dict, Iterable, List, Optional, Mapping, Sequence, Union
 
 from absl import logging
 from tfx import types
 from tfx.orchestration import data_types_utils
 from tfx.orchestration import metadata
-from tfx.orchestration.portable import resolver_processor
+from tfx.orchestration.portable.input_resolution import exceptions
+from tfx.orchestration.portable.input_resolution import processor
 from tfx.orchestration.portable.mlmd import event_lib
 from tfx.orchestration.portable.mlmd import execution_lib
 from tfx.proto.orchestration import pipeline_pb2
 from tfx.types import artifact_utils
+from tfx.utils import deprecation_utils
+from tfx.utils import typing_utils
 
 import ml_metadata as mlmd
 from ml_metadata.proto import metadata_store_pb2
@@ -107,6 +109,8 @@ def _resolve_single_channel(
         context_query.type.name, data_types_utils.get_value(context_query.name))
     if context:
       contexts.append(context)
+    else:
+      return []
   return get_qualified_artifacts(
       metadata_handler=metadata_handler,
       contexts=contexts,
@@ -114,9 +118,34 @@ def _resolve_single_channel(
       output_key=output_key)
 
 
+def _resolve_initial_dict(
+    metadata_handler: metadata.Metadata,
+    node_inputs: pipeline_pb2.NodeInputs) -> typing_utils.ArtifactMultiMap:
+  """Resolves initial input dict from input channel definition."""
+  result = {}
+  for key, input_spec in node_inputs.inputs.items():
+    artifacts_by_id = {}  # Deduplicate by ID.
+    for channel in input_spec.channels:
+      artifacts = _resolve_single_channel(metadata_handler, channel)
+      artifacts_by_id.update({a.id: a for a in artifacts})
+    result[key] = list(artifacts_by_id.values())
+  return result
+
+
+def _is_sufficient(artifact_multimap: Mapping[str, Sequence[types.Artifact]],
+                   node_inputs: pipeline_pb2.NodeInputs) -> bool:
+  """Checks given artifact multimap has enough artifacts per channel."""
+  return all(
+      len(artifacts) >= node_inputs.inputs[key].min_count
+      for key, artifacts in artifact_multimap.items()
+      if key in node_inputs.inputs)
+
+
+@deprecation_utils.deprecated(
+    '2021-06-01', 'Use resolve_input_artifacts_v2() instead.')
 def resolve_input_artifacts(
     metadata_handler: metadata.Metadata, node_inputs: pipeline_pb2.NodeInputs
-) -> Optional[Dict[str, List[types.Artifact]]]:
+) -> Optional[typing_utils.ArtifactMultiMap]:
   """Resolves input artifacts of a pipeline node.
 
   Args:
@@ -128,27 +157,102 @@ def resolve_input_artifacts(
     If `min_count` for every input is met, returns a Dict[str, List[Artifact]].
     Otherwise, return None.
   """
-  result = collections.defaultdict(set)
-  for key, input_spec in node_inputs.inputs.items():
-    for channel in input_spec.channels:
-      artifacts = _resolve_single_channel(
-          metadata_handler=metadata_handler, channel=channel)
-      result[key].update(artifacts)
+  initial_dict = _resolve_initial_dict(metadata_handler, node_inputs)
+  if not _is_sufficient(initial_dict, node_inputs):
+    min_counts = {key: input_spec.min_count
+                  for key, input_spec in node_inputs.inputs.items()}
+    logging.warning('Resolved inputs should have %r artifacts, but got %r.',
+                    min_counts, initial_dict)
+    return None
 
-    # If `min_count` is not satisfied, return None for the whole result.
-    if input_spec.min_count > len(result[key]):
-      logging.warning(
-          "Input %s doesn't have enough data to resolve, required number %d, "
-          'got %d', key, input_spec.min_count, len(result[key]))
-      return None
+  try:
+    result = processor.run_resolver_steps(
+        initial_dict,
+        resolver_steps=node_inputs.resolver_config.resolver_steps,
+        store=metadata_handler.store)
+  except exceptions.InputResolutionError:
+    # If ResolverStrategy has returned None in the middle, InputResolutionError
+    # is raised. Legacy input resolution has returned None in this case.
+    return None
+  except exceptions.SkipSignal:
+    # SkipSignal is not fully representable return value in legacy input
+    # resolution, but None is the best effort.
+    return None
 
-  result = {k: list(v) for k, v in result.items()}
-  for processor in (resolver_processor
-                    .make_resolver_processors(node_inputs.resolver_config)):
-    result = processor(metadata_handler, result)
-    if result is None:
-      return None
+  if not typing_utils.is_artifact_multimap(result):
+    raise TypeError(f'Invalid input resolution result: {result}. Should be '
+                    'Mapping[str, Sequence[Artifact]].')
   return result
+
+
+class Trigger(tuple, Sequence[typing_utils.ArtifactMultiMap]):
+  """Input resolution result of list of dict."""
+
+  def __new__(cls, resolved_inputs: Sequence[typing_utils.ArtifactMultiMap]):
+    assert resolved_inputs, 'resolved inputs should be non-empty.'
+    return super().__new__(cls, resolved_inputs)
+
+
+class Skip(tuple, Sequence[typing_utils.ArtifactMultiMap]):
+  """Input resolution result of empty list."""
+
+  def __new__(cls):
+    return super().__new__(cls)
+
+
+def resolve_input_artifacts_v2(
+    *,
+    pipeline_node: pipeline_pb2.PipelineNode,
+    metadata_handler: metadata.Metadata,
+) -> Union[Trigger, Skip]:
+  """Resolve input artifacts according to a pipeline node IR definition.
+
+  Input artifacts are resolved in the following steps:
+
+  1. An initial input dict (Mapping[str, Sequence[Artifact]]) is fetched from
+     the input channel definitions (in NodeInputs.inputs.channels).
+  2. Optionally input resolution logic is performed if specified (in
+     NodeInputs.resolver_config).
+  3. Filters input map with enough number of artifacts as specified in
+     NodeInputs.inputs.min_count.
+
+  Args:
+    pipeline_node: Current PipelineNode on which input resolution is running.
+    metadata_handler: MetadataHandler instance for MLMD access.
+
+  Raises:
+    InputInputResolutionError: If input resolution went wrong.
+
+  Returns:
+    Trigger: a non-empty list of input dicts. All resolved input dicts should be
+        executed.
+    Skip: an empty list. Should effectively skip the current component
+        execution.
+  """
+  node_inputs = pipeline_node.inputs
+  initial_dict = _resolve_initial_dict(metadata_handler, node_inputs)
+  try:
+    resolved = processor.run_resolver_steps(
+        initial_dict,
+        resolver_steps=node_inputs.resolver_config.resolver_steps,
+        store=metadata_handler.store)
+  except exceptions.SkipSignal:
+    return Skip()
+  except exceptions.InputResolutionError:
+    raise
+  except Exception as e:
+    raise exceptions.InputResolutionError(
+        f'Error occurred during input resolution: {str(e)}.') from e
+
+  if typing_utils.is_artifact_multimap(resolved):
+    result = [resolved]
+  else:
+    raise exceptions.FailedPreconditionError(
+        f'Invalid input resolution result: {resolved}.')
+  result = [d for d in result if _is_sufficient(d, node_inputs)]
+  if not result:
+    raise exceptions.FailedPreconditionError('No valid inputs.')
+  return Trigger(result)
 
 
 def resolve_parameters(
@@ -171,5 +275,28 @@ def resolve_parameters(
       raise RuntimeError('Parameter value not ready for %s' % key)
     result[key] = getattr(value.field_value,
                           value.field_value.WhichOneof('value'))
+
+  return result
+
+
+def resolve_parameters_with_schema(
+    node_parameters: pipeline_pb2.NodeParameters
+) -> Dict[str, pipeline_pb2.Value]:
+  """Resolves parameter schemas given parameter spec.
+
+  Args:
+    node_parameters: The spec to get parameters.
+
+  Returns:
+    A Dict of parameters with schema.
+
+  Raises:
+    RuntimeError: When there is no field_value available.
+  """
+  result = {}
+  for key, value in node_parameters.parameters.items():
+    if not value.HasField('field_value'):
+      raise RuntimeError('Parameter value not ready for %s' % key)
+    result[key] = value
 
   return result

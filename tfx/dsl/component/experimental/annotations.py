@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2020 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -17,13 +16,8 @@
 Experimental. No backwards compatibility guarantees.
 """
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import inspect
-from typing import Text, Type, Union
-from six import with_metaclass
+from typing import Type, Union
 
 from tfx.types import artifact
 
@@ -37,7 +31,7 @@ class _ArtifactGenericMeta(type):
     return cls._generic_getitem(params)  # pytype: disable=attribute-error
 
 
-class _ArtifactGeneric(with_metaclass(_ArtifactGenericMeta, object)):
+class _ArtifactGeneric(metaclass=_ArtifactGenericMeta):
   """A generic that takes a Type[tfx.types.Artifact] as its single argument."""
 
   def __init__(  # pylint: disable=invalid-name
@@ -73,18 +67,18 @@ class _ArtifactGeneric(with_metaclass(_ArtifactGenericMeta, object)):
 class _PrimitiveTypeGenericMeta(type):
   """Metaclass for _PrimitiveTypeGeneric, to enable primitive type indexing."""
 
-  def __getitem__(cls: Type[Union[int, float, Text, bytes]],
-                  params: Type[artifact.Artifact]):
+  def __getitem__(cls: Type['_PrimitiveTypeGeneric'],
+                  params: Type[Union[int, float, str, bytes]]):
     """Metaclass method allowing indexing class (`_PrimitiveTypeGeneric[T]`)."""
     return cls._generic_getitem(params)  # pytype: disable=attribute-error
 
 
-class _PrimitiveTypeGeneric(with_metaclass(_PrimitiveTypeGenericMeta, object)):
+class _PrimitiveTypeGeneric(metaclass=_PrimitiveTypeGenericMeta):
   """A generic that takes a primitive type as its single argument."""
 
   def __init__(  # pylint: disable=invalid-name
       self,
-      artifact_type: Type[Union[int, float, Text, bytes]],
+      artifact_type: Type[Union[int, float, str, bytes]],
       _init_via_getitem=False):
     if not _init_via_getitem:
       class_name = self.__class__.__name__
@@ -97,7 +91,7 @@ class _PrimitiveTypeGeneric(with_metaclass(_PrimitiveTypeGenericMeta, object)):
   def _generic_getitem(cls, params):
     """Return the result of `_PrimitiveTypeGeneric[T]` for a given type T."""
     # Check that the given parameter is a primitive type.
-    if inspect.isclass(params) and params in (int, float, Text, bytes):
+    if inspect.isclass(params) and params in (int, float, str, bytes):
       return cls(params, _init_via_getitem=True)
     else:
       class_name = cls.__name__
@@ -129,7 +123,7 @@ class Parameter(_PrimitiveTypeGeneric):
 
 # TODO(ccy): potentially make this compatible `typing.TypedDict` in
 # Python 3.8, to allow for component return value type checking.
-class OutputDict(object):
+class OutputDict:
   """Decorator declaring component executor function outputs."""
 
   def __init__(self, **kwargs):

@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,15 +13,13 @@
 # limitations under the License.
 """Tests for tfx.components.transform.executor."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import copy
 import json
 import os
 import tempfile
+from absl.testing import parameterized
 
+import apache_beam as beam
 import tensorflow as tf
 import tensorflow_transform as tft
 from tensorflow_transform.beam import tft_unit
@@ -128,6 +125,22 @@ class ExecutorTest(tft_unit.TransformTestCase):
     self._updated_analyzer_cache_artifact.uri = os.path.join(
         self._output_data_dir, 'CACHE')
 
+    self._pre_transform_schema = standard_artifacts.Schema()
+    self._pre_transform_schema.uri = os.path.join(output_data_dir,
+                                                  'pre_transform_schema', '0')
+    self._pre_transform_stats = standard_artifacts.ExampleStatistics()
+    self._pre_transform_stats.uri = os.path.join(output_data_dir,
+                                                 'pre_transform_stats', '0')
+    self._post_transform_schema = standard_artifacts.Schema()
+    self._post_transform_schema.uri = os.path.join(output_data_dir,
+                                                   'post_transform_schema', '0')
+    self._post_transform_stats = standard_artifacts.ExampleStatistics()
+    self._post_transform_stats.uri = os.path.join(output_data_dir,
+                                                  'post_transform_stats', '0')
+    self._post_transform_anomalies = standard_artifacts.ExampleAnomalies()
+    self._post_transform_anomalies.uri = os.path.join(
+        output_data_dir, 'post_transform_anomalies', '0')
+
     self._output_dict = {
         standard_component_specs.TRANSFORM_GRAPH_KEY: [
             self._transformed_output
@@ -138,13 +151,28 @@ class ExecutorTest(tft_unit.TransformTestCase):
         standard_component_specs.UPDATED_ANALYZER_CACHE_KEY: [
             self._updated_analyzer_cache_artifact
         ],
+        standard_component_specs.PRE_TRANSFORM_STATS_KEY: [
+            self._pre_transform_stats
+        ],
+        standard_component_specs.PRE_TRANSFORM_SCHEMA_KEY: [
+            self._pre_transform_schema
+        ],
+        standard_component_specs.POST_TRANSFORM_ANOMALIES_KEY: [
+            self._post_transform_anomalies
+        ],
+        standard_component_specs.POST_TRANSFORM_STATS_KEY: [
+            self._post_transform_stats
+        ],
+        standard_component_specs.POST_TRANSFORM_SCHEMA_KEY: [
+            self._post_transform_schema
+        ],
     }
 
     # Create exec properties skeleton.
     self._exec_properties = {}
 
   def setUp(self):
-    super(ExecutorTest, self).setUp()
+    super().setUp()
 
     self._output_data_dir = self._get_output_data_dir()
     self._make_base_do_params(self._SOURCE_DATA_DIR, self._output_data_dir)
@@ -155,6 +183,9 @@ class ExecutorTest(tft_unit.TransformTestCase):
     self._preprocessing_fn = '%s.%s' % (
         transform_module.preprocessing_fn.__module__,
         transform_module.preprocessing_fn.__name__)
+    self._stats_options_updater_fn = '%s.%s' % (
+        transform_module.stats_options_updater_fn.__module__,
+        transform_module.stats_options_updater_fn.__name__)
     self._exec_properties[standard_component_specs.SPLITS_CONFIG_KEY] = None
     self._exec_properties[
         standard_component_specs.FORCE_TF_COMPAT_V1_KEY] = int(
@@ -166,7 +197,8 @@ class ExecutorTest(tft_unit.TransformTestCase):
   def _verify_transform_outputs(self,
                                 materialize=True,
                                 store_cache=True,
-                                multiple_example_inputs=False):
+                                multiple_example_inputs=False,
+                                disable_statistics=False):
     expected_outputs = ['transformed_graph']
 
     if store_cache:
@@ -211,6 +243,47 @@ class ExecutorTest(tft_unit.TransformTestCase):
         self.assertEqual(examples_eval_count, transformed_eval_count)
         self.assertGreater(transformed_train_count, transformed_eval_count)
 
+    if disable_statistics:
+      self.assertFalse(
+          fileio.exists(
+              os.path.join(self._pre_transform_schema.uri, 'schema.pbtxt')))
+      self.assertFalse(
+          fileio.exists(
+              os.path.join(self._post_transform_schema.uri, 'schema.pbtxt')))
+      self.assertFalse(
+          fileio.exists(
+              os.path.join(self._pre_transform_stats.uri, 'FeatureStats.pb')))
+      self.assertFalse(
+          fileio.exists(
+              os.path.join(self._post_transform_stats.uri, 'FeatureStats.pb')))
+      self.assertFalse(
+          fileio.exists(
+              os.path.join(self._post_transform_anomalies.uri,
+                           'SchemaDiff.pb')))
+
+    else:
+      expected_outputs.extend([
+          'pre_transform_schema', 'pre_transform_stats',
+          'post_transform_schema', 'post_transform_stats',
+          'post_transform_anomalies'
+      ])
+      self.assertTrue(
+          fileio.exists(
+              os.path.join(self._pre_transform_schema.uri, 'schema.pbtxt')))
+      self.assertTrue(
+          fileio.exists(
+              os.path.join(self._post_transform_schema.uri, 'schema.pbtxt')))
+      self.assertTrue(
+          fileio.exists(
+              os.path.join(self._pre_transform_stats.uri, 'FeatureStats.pb')))
+      self.assertTrue(
+          fileio.exists(
+              os.path.join(self._post_transform_stats.uri, 'FeatureStats.pb')))
+      self.assertTrue(
+          fileio.exists(
+              os.path.join(self._post_transform_anomalies.uri,
+                           'SchemaDiff.pb')))
+
     # Depending on `materialize` and `store_cache`, check that
     # expected outputs are exactly correct. If either flag is False, its
     # respective output should not be present.
@@ -246,6 +319,9 @@ class ExecutorTest(tft_unit.TransformTestCase):
         standard_component_specs.MODULE_FILE_KEY] = self._module_file
     self._transform_executor.Do(self._input_dict, self._output_dict,
                                 self._exec_properties)
+    self.assertIsNotNone(
+        self._transform_executor._GetStatsOptionsUpdaterFn(
+            self._exec_properties))
     self._verify_transform_outputs()
 
   def test_do_with_preprocessing_fn(self):
@@ -253,6 +329,22 @@ class ExecutorTest(tft_unit.TransformTestCase):
         standard_component_specs.PREPROCESSING_FN_KEY] = self._preprocessing_fn
     self._transform_executor.Do(self._input_dict, self._output_dict,
                                 self._exec_properties)
+    self.assertIsNone(
+        self._transform_executor._GetStatsOptionsUpdaterFn(
+            self._exec_properties))
+    self._verify_transform_outputs()
+
+  def test_do_with_preprocessing_fn_and_stats_updater_fn(self):
+    self._exec_properties[
+        standard_component_specs.PREPROCESSING_FN_KEY] = self._preprocessing_fn
+    self._exec_properties[
+        standard_component_specs.STATS_OPTIONS_UPDATER_FN_KEY] = (
+            self._stats_options_updater_fn)
+    self._transform_executor.Do(self._input_dict, self._output_dict,
+                                self._exec_properties)
+    self.assertIsNotNone(
+        self._transform_executor._GetStatsOptionsUpdaterFn(
+            self._exec_properties))
     self._verify_transform_outputs()
 
   def test_do_with_materialization_disabled(self):
@@ -270,6 +362,23 @@ class ExecutorTest(tft_unit.TransformTestCase):
     self._transform_executor.Do(self._input_dict, self._output_dict,
                                 self._exec_properties)
     self._verify_transform_outputs(store_cache=False)
+
+  def test_do_with_statistics_disabled(self):
+    self._exec_properties[
+        standard_component_specs.MODULE_FILE_KEY] = self._module_file
+    self._exec_properties[
+        standard_component_specs.DISABLE_STATISTICS_KEY] = True
+    for key in [
+        standard_component_specs.PRE_TRANSFORM_STATS_KEY,
+        standard_component_specs.PRE_TRANSFORM_SCHEMA_KEY,
+        standard_component_specs.POST_TRANSFORM_ANOMALIES_KEY,
+        standard_component_specs.POST_TRANSFORM_STATS_KEY,
+        standard_component_specs.POST_TRANSFORM_SCHEMA_KEY
+    ]:
+      self._output_dict.pop(key)
+    self._transform_executor.Do(self._input_dict, self._output_dict,
+                                self._exec_properties)
+    self._verify_transform_outputs(disable_statistics=True)
 
   def test_do_with_preprocessing_fn_custom_config(self):
     self._exec_properties[
@@ -380,17 +489,24 @@ class ExecutorTest(tft_unit.TransformTestCase):
   def test_counters(self):
     self._exec_properties[
         standard_component_specs.PREPROCESSING_FN_KEY] = self._preprocessing_fn
+    self._exec_properties[
+        standard_component_specs.DISABLE_STATISTICS_KEY] = True
     metrics = self._run_pipeline_get_metrics()
 
-    # The test data has 10036 instances in the train dataset, and 4964 instances
+    # The test data has 9909 instances in the train dataset, and 5091 instances
     # in the eval dataset (obtained by running:
-    # gqui third_party/py/tfx/components/testdata/csv_example_gen/train/data* \
-    #     'select count(*)'
+    # gqui third_party/py/tfx/components/testdata/csv_example_gen/Split-train/ \
+    # data* \ 'select count(*)'
     # )
     # Since the analysis dataset (train) is read twice (once for analysis and
     # once for transform), the expected value of the num_instances counter is:
-    # 10036 * 2 + 4964 = 25036.
-    self.assertMetricsCounterEqual(metrics, 'num_instances', 24909)
+    # 9909 * 2 + 5091 = 24909.
+    self.assertMetricsCounterEqual(metrics, 'num_instances', 24909,
+                                   ['tfx.Transform'])
+
+    # Since disable_statistics is True, TFDV should see 0 instances.
+    self.assertMetricsCounterEqual(metrics, 'num_instances', 0,
+                                   ['tfx.DataValidation'])
 
     # We expect 2 saved_models to be created because this is a 1 phase analysis
     # preprocessing_fn.
@@ -412,17 +528,42 @@ class ExecutorTest(tft_unit.TransformTestCase):
     # specifies.
     self.assertMetricsCounterEqual(metrics, 'analyze_paths_count', 1)
 
-  def test_do_with_cache(self):
+    # Analysis cache optimization is enabled (cache writing).
+    self.assertMetricsCounterEqual(metrics, 'analyzer_cache_enabled', 1)
+
+    # StatsGen is disabled for the test.
+    self.assertMetricsCounterEqual(metrics, 'disable_statistics', 1)
+
+    # Output materialization is enabled.
+    self.assertMetricsCounterEqual(metrics, 'materialize', 1)
+
+    # Estimated stage count is 90 because there are 9 analyzers in the
+    # preprocessing_fn and a single span input.
+    metric = metrics.query(beam.metrics.MetricsFilter().with_name(
+        'estimated_stage_count_with_cache'))['distributions']
+    self.assertLen(metric, 1)
+    self.assertEqual(metric[0].committed.sum, 90)
+
+  @parameterized.named_parameters([('no_1st_input_cache', False),
+                                   ('empty_1st_input_cache', True)])
+  def test_do_with_cache(self, provide_first_input_cache):
     # First run that creates cache.
     self._exec_properties[
         standard_component_specs.MODULE_FILE_KEY] = self._module_file
+    if provide_first_input_cache:
+      self._input_dict[standard_component_specs.ANALYZER_CACHE_KEY] = []
     metrics = self._run_pipeline_get_metrics()
 
-    # The test data has 10036 instances in the train dataset, and 4964 instances
+    # The test data has 9909 instances in the train dataset, and 5091 instances
     # in the eval dataset. Since the analysis dataset (train) is read twice when
     # no input cache is present (once for analysis and once for transform), the
-    # expected value of the num_instances counter is: 10036 * 2 + 4964 = 25036.
-    self.assertMetricsCounterEqual(metrics, 'num_instances', 24909)
+    # expected value of the num_instances counter is: 9909 * 2 + 5091 = 24909.
+    self.assertMetricsCounterEqual(metrics, 'num_instances', 24909,
+                                   ['tfx.Transform'])
+
+    # Additionally we have 24909 instances due to generating statistics.
+    self.assertMetricsCounterEqual(metrics, 'num_instances', 24909,
+                                   ['tfx.DataValidation'])
     self._verify_transform_outputs(store_cache=True)
 
     # Second run from cache.
@@ -442,8 +583,13 @@ class ExecutorTest(tft_unit.TransformTestCase):
 
     # Since input cache should now cover all analysis (train) paths, the train
     # and eval sets are each read exactly once for transform. Thus, the
-    # expected value of the num_instances counter is: 10036 + 4964 = 15000.
-    self.assertMetricsCounterEqual(metrics, 'num_instances', 15000)
+    # expected value of the num_instances counter is: 9909 + 5091 = 15000.
+    self.assertMetricsCounterEqual(metrics, 'num_instances', 15000,
+                                   ['tfx.Transform'])
+
+    # Additionally we have 24909 instances due to generating statistics.
+    self.assertMetricsCounterEqual(metrics, 'num_instances', 24909,
+                                   ['tfx.DataValidation'])
     self._verify_transform_outputs(store_cache=True)
 
   @tft_unit.mock.patch.object(executor, '_MAX_ESTIMATED_STAGES_COUNT', 21)

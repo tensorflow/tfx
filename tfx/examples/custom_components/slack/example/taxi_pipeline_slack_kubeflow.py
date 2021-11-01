@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -103,7 +102,7 @@ def _create_pipeline():
       schema=schema_gen.outputs['schema'],
       preprocessing_fn=_taxi_transformer_func)
 
-  # Uses user-provided Python function that implements a model using TF-Learn.
+  # Uses user-provided Python function that implements a model.
   trainer = Trainer(
       trainer_fn=_taxi_trainer_func,
       examples=transform.outputs['transformed_examples'],
@@ -166,15 +165,8 @@ if __name__ == '__main__':
   # lightweight deployment option, you may need to override the defaults.
   metadata_config = kubeflow_dag_runner.get_default_kubeflow_metadata_config()
 
-  # This pipeline automatically injects the Kubeflow TFX image if the
-  # environment variable 'KUBEFLOW_TFX_IMAGE' is defined. Currently, the tfx
-  # cli tool exports the environment variable to pass to the pipelines.
-  tfx_image = os.environ.get('KUBEFLOW_TFX_IMAGE', None)
-
   runner_config = kubeflow_dag_runner.KubeflowDagRunnerConfig(
       kubeflow_metadata_config=metadata_config,
-      # Specify custom docker image to use.
-      tfx_image=tfx_image
   )
 
   kubeflow_dag_runner.KubeflowDagRunner(config=runner_config).run(

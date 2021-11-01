@@ -13,17 +13,10 @@
 # limitations under the License.
 """Module for shared interface of every model server runners."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import abc
-from typing import Text
-
-import six
 
 
-class BaseModelServerRunner(six.with_metaclass(abc.ABCMeta, object)):
+class BaseModelServerRunner(abc.ABC):
   """Shared interface of all model server runners.
 
   Model server runner is responsible for managing the model server job and
@@ -73,11 +66,11 @@ class BaseModelServerRunner(six.with_metaclass(abc.ABCMeta, object)):
   """
 
   @abc.abstractmethod
-  def __repr__(self) -> Text:
+  def __repr__(self) -> str:
     pass
 
   @abc.abstractmethod
-  def GetEndpoint(self) -> Text:
+  def GetEndpoint(self) -> str:
     """Get an endpoint to the model server to connect to.
 
     Endpoint will be available after the model server job has reached the

@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,13 +13,9 @@
 # limitations under the License.
 """Tests for tfx.orchestration.experimental.interactive.visualizations."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
+import builtins
+from unittest import mock
 
-import mock
-
-from six.moves import builtins
 import tensorflow as tf
 
 from tfx.orchestration.experimental.interactive import visualizations
@@ -30,12 +25,12 @@ from tfx.types import standard_artifacts
 class VisualizationsTest(tf.test.TestCase):
 
   def setUp(self):
-    super(VisualizationsTest, self).setUp()
+    super().setUp()
     builtins.__dict__['__IPYTHON__'] = True
 
   def tearDown(self):
     del builtins.__dict__['__IPYTHON__']
-    super(VisualizationsTest, self).tearDown()
+    super().tearDown()
 
   @mock.patch('tfx.orchestration.experimental.interactive.'
               'visualizations.get_registry')

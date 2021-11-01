@@ -13,15 +13,9 @@
 # limitations under the License.
 """Tests for tfx.utils.import_utils."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
-
 import importlib
 import os
 import sys
-# Standard Imports
 
 import tensorflow as tf
 from tfx.utils import import_utils

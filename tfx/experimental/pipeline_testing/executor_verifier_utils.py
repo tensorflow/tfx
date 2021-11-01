@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2020 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -16,7 +15,7 @@
 
 import filecmp
 import os
-from typing import Dict, List, Text, Optional
+from typing import Dict, List, Optional
 
 from absl import logging
 
@@ -34,7 +33,7 @@ from ml_metadata.proto import metadata_store_pb2
 from tensorflow_metadata.proto.v0 import anomalies_pb2
 
 
-def compare_dirs(dir1: Text, dir2: Text):
+def compare_dirs(dir1: str, dir2: str):
   """Recursively compares contents of the two directories.
 
   Args:
@@ -87,7 +86,7 @@ def _compare_relative_difference(value: float, expected_value: float,
 
 def get_pipeline_outputs(
     metadata_connection_config: Optional[metadata_store_pb2.ConnectionConfig],
-    pipeline_name: str) -> Dict[Text, Dict[Text, Dict[int, types.Artifact]]]:
+    pipeline_name: str) -> Dict[str, Dict[str, Dict[int, types.Artifact]]]:
   """Returns a dictionary of pipeline output artifacts for every component.
 
   Args:
@@ -129,8 +128,8 @@ def get_pipeline_outputs(
   return output_map
 
 
-def verify_file_dir(output_uri: Text,
-                    expected_uri: Text,
+def verify_file_dir(output_uri: str,
+                    expected_uri: str,
                     check_file: bool = False):
   """Verify pipeline output artifact uri by comparing directory structure.
 
@@ -160,7 +159,7 @@ def verify_file_dir(output_uri: Text,
 
 
 def _group_metric_by_slice(
-    eval_result: tfma.EvalResult) -> Dict[Text, Dict[Text, float]]:
+    eval_result: tfma.EvalResult) -> Dict[str, Dict[str, float]]:
   """Returns a dictionary holding metric values for every slice.
 
   Args:
@@ -171,13 +170,13 @@ def _group_metric_by_slice(
   """
   slice_map = {}
   for metric in eval_result.slicing_metrics:
-    slice_map[metric[0]] = {k: v['doubleValue'] \
-                              for k, v in metric[1][''][''].items()}
+    slice_map[metric[0]] = {k: v['doubleValue']
+                            for k, v in metric[1][''][''].items()}
   return slice_map
 
 
-def compare_eval_results(output_uri: Text, expected_uri: Text,
-                         threshold: float, metrics: List[Text]) -> bool:
+def compare_eval_results(output_uri: str, expected_uri: str, threshold: float,
+                         metrics: List[str]) -> bool:
   """Compares accuracy on overall dataset using two EvalResult.
 
   Args:
@@ -203,7 +202,7 @@ def compare_eval_results(output_uri: Text, expected_uri: Text,
   return True
 
 
-def compare_file_sizes(output_uri: Text, expected_uri: Text,
+def compare_file_sizes(output_uri: str, expected_uri: str,
                        threshold: float) -> bool:
   """Compares pipeline output files sizes in output and recorded uri.
 
@@ -232,7 +231,7 @@ def compare_file_sizes(output_uri: Text, expected_uri: Text,
   return True
 
 
-def compare_model_file_sizes(output_uri: Text, expected_uri: Text,
+def compare_model_file_sizes(output_uri: str, expected_uri: str,
                              threshold: float) -> bool:
   """Compares pipeline output files sizes in output and recorded uri.
 
@@ -266,7 +265,7 @@ def compare_model_file_sizes(output_uri: Text, expected_uri: Text,
   return True
 
 
-def compare_anomalies(output_uri: Text, expected_uri: Text) -> bool:
+def compare_anomalies(output_uri: str, expected_uri: str) -> bool:
   """Compares anomalies files in output uri and recorded uri.
 
   Args:

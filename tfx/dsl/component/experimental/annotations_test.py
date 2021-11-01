@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2020 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,15 +13,6 @@
 # limitations under the License.
 """Tests for tfx.dsl.components.base.annotations."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
-
-from typing import Text
-
-# Standard Imports
-
 import tensorflow as tf
 from tfx.dsl.component.experimental import annotations
 from tfx.types import artifact
@@ -34,18 +24,18 @@ class AnnotationsTest(tf.test.TestCase):
 
   def testArtifactGenericAnnotation(self):
     # Error: type hint whose parameter is not an Artifact subclass.
-    with self.assertRaisesRegexp(ValueError,
-                                 'expects .* a concrete subclass of'):
+    with self.assertRaisesRegex(ValueError,
+                                'expects .* a concrete subclass of'):
       _ = annotations._ArtifactGeneric[int]
 
     # Error: type hint with abstract Artifact subclass.
-    with self.assertRaisesRegexp(ValueError,
-                                 'expects .* a concrete subclass of'):
+    with self.assertRaisesRegex(ValueError,
+                                'expects .* a concrete subclass of'):
       _ = annotations._ArtifactGeneric[artifact.Artifact]
 
     # Error: type hint with abstract Artifact subclass.
-    with self.assertRaisesRegexp(ValueError,
-                                 'expects .* a concrete subclass of'):
+    with self.assertRaisesRegex(ValueError,
+                                'expects .* a concrete subclass of'):
       _ = annotations._ArtifactGeneric[value_artifact.ValueArtifact]
 
     # OK.
@@ -57,29 +47,29 @@ class AnnotationsTest(tf.test.TestCase):
 
   def testPrimitiveTypeGenericAnnotation(self):
     # Error: type hint whose parameter is not a primitive type
-    with self.assertRaisesRegexp(ValueError,
-                                 'T to be `int`, `float`, `str` or `bytes`'):
+    with self.assertRaisesRegex(ValueError,
+                                'T to be `int`, `float`, `str` or `bytes`'):
       _ = annotations._PrimitiveTypeGeneric[artifact.Artifact]
-    with self.assertRaisesRegexp(ValueError,
-                                 'T to be `int`, `float`, `str` or `bytes`'):
+    with self.assertRaisesRegex(ValueError,
+                                'T to be `int`, `float`, `str` or `bytes`'):
       _ = annotations._PrimitiveTypeGeneric[object]
-    with self.assertRaisesRegexp(ValueError,
-                                 'T to be `int`, `float`, `str` or `bytes`'):
+    with self.assertRaisesRegex(ValueError,
+                                'T to be `int`, `float`, `str` or `bytes`'):
       _ = annotations._PrimitiveTypeGeneric[123]
-    with self.assertRaisesRegexp(ValueError,
-                                 'T to be `int`, `float`, `str` or `bytes`'):
+    with self.assertRaisesRegex(ValueError,
+                                'T to be `int`, `float`, `str` or `bytes`'):
       _ = annotations._PrimitiveTypeGeneric['string']
 
     # OK.
     _ = annotations._PrimitiveTypeGeneric[int]
     _ = annotations._PrimitiveTypeGeneric[float]
-    _ = annotations._PrimitiveTypeGeneric[Text]
+    _ = annotations._PrimitiveTypeGeneric[str]
     _ = annotations._PrimitiveTypeGeneric[bytes]
 
   def testParameterUsage(self):
     _ = annotations.Parameter[int]
     _ = annotations.Parameter[float]
-    _ = annotations.Parameter[Text]
+    _ = annotations.Parameter[str]
     _ = annotations.Parameter[bytes]
 
 

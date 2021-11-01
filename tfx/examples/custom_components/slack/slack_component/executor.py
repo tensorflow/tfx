@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -20,7 +19,7 @@ an example and will not be supported by TFX team.
 
 import os
 import signal
-from typing import Any, Dict, List, Text
+from typing import Any, Dict, List
 
 import absl
 import attr
@@ -39,7 +38,7 @@ _APPROVE_TEXT = ['lgtm', 'approve']
 _DECLINE_TEXT = ['decline', 'reject']
 
 
-class Timeout(object):
+class Timeout:
   """Helper class for handle function timeout."""
 
   def __init__(self, seconds):
@@ -64,20 +63,20 @@ class _SlackResponse:
   # Whether the model is approved.
   approved: bool
   # The user who made that decision.
-  user_id: Text
+  user_id: str
   # The decision message.
-  message: Text
+  message: str
   # The slack channel that the decision is made on.
-  slack_channel_id: Text
+  slack_channel_id: str
   # The slack thread that the decision is made on.
-  thread_ts: Text
+  thread_ts: str
 
 
 class Executor(base_executor.BaseExecutor):
   """Executor for Slack component."""
 
-  def _fetch_slack_blessing(self, slack_token: Text, slack_channel_id: Text,
-                            model_uri: Text) -> _SlackResponse:
+  def _fetch_slack_blessing(self, slack_token: str, slack_channel_id: str,
+                            model_uri: str) -> _SlackResponse:
     """Send message via Slack channel and wait for response.
 
     When the bot send message to the channel, user should reply in thread with
@@ -161,9 +160,9 @@ class Executor(base_executor.BaseExecutor):
     absl.logging.info('User reply: %s', result)
     return result
 
-  def Do(self, input_dict: Dict[Text, List[types.Artifact]],
-         output_dict: Dict[Text, List[types.Artifact]],
-         exec_properties: Dict[Text, Any]) -> None:
+  def Do(self, input_dict: Dict[str, List[types.Artifact]],
+         output_dict: Dict[str, List[types.Artifact]],
+         exec_properties: Dict[str, Any]) -> None:
     """Get human review result on a model through Slack channel.
 
     Args:

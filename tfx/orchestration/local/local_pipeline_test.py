@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -22,28 +21,27 @@ recommended pipeline topology.
 """
 # pylint: disable=invalid-name,no-value-for-parameter
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
 
 import collections
 import json
 import os
 import tempfile
-from typing import Any, List, Text
+from typing import Any, List
 
 import absl.testing.absltest
 
 from tfx import types
+from tfx.dsl.compiler import compiler
 from tfx.dsl.component.experimental.annotations import InputArtifact
 from tfx.dsl.component.experimental.annotations import OutputArtifact
 from tfx.dsl.component.experimental.annotations import OutputDict
 from tfx.dsl.component.experimental.annotations import Parameter
 from tfx.dsl.component.experimental.decorators import component
 from tfx.dsl.io import fileio
-from tfx.orchestration import pipeline
+from tfx.orchestration import pipeline as pipeline_py
 from tfx.orchestration.local import local_dag_runner
 from tfx.orchestration.metadata import sqlite_metadata_connection_config
+from tfx.proto.orchestration import pipeline_pb2
 
 
 class DummyDataset(types.Artifact):
@@ -54,7 +52,7 @@ class DummyDataset(types.Artifact):
       return json.load(f)
 
   def write(self, data: List[Any]):
-    with fileio.open(os.path.join(self.uri, 'dataset.json'), 'w') as f:
+    with fileio.open(os.path.join(self.uri, 'dataset.json'), 'w+') as f:
       json.dump(data, f)
 
 
@@ -74,21 +72,21 @@ def LoadDummyDatasetComponent(dataset: OutputArtifact[DummyDataset]):
   LocalDagRunnerTest.RAN_COMPONENTS.append('Load')
 
 
-class SimpleModel(object):
+class SimpleModel:
   """Simple model that always predicts a set prediction."""
 
   def __init__(self, always_predict: Any):
     self.always_predict = always_predict
 
   @classmethod
-  def read_from(cls, model_uri: Text) -> 'SimpleModel':
+  def read_from(cls, model_uri: str) -> 'SimpleModel':
     with fileio.open(os.path.join(model_uri, 'model_data.json')) as f:
       data = json.load(f)
     return cls(data['prediction'])
 
-  def write_to(self, model_uri: Text) -> None:
+  def write_to(self, model_uri: str) -> None:
     data = {'prediction': self.always_predict}
-    with fileio.open(os.path.join(model_uri, 'model_data.json'), 'w') as f:
+    with fileio.open(os.path.join(model_uri, 'model_data.json'), 'w+') as f:
       json.dump(data, f)
 
 
@@ -153,9 +151,7 @@ class LocalDagRunnerTest(absl.testing.absltest.TestCase):
     super().setUp()
     self.__class__.RAN_COMPONENTS = []
 
-  def testSimplePipelineRun(self):
-    self.assertEqual(self.RAN_COMPONENTS, [])
-
+  def _getTestPipeline(self) -> pipeline_py.Pipeline:
     # Construct component instances.
     dummy_load_component = LoadDummyDatasetComponent()
     dummy_train_component = DummyTrainComponent(
@@ -169,7 +165,7 @@ class LocalDagRunnerTest(absl.testing.absltest.TestCase):
     temp_path = tempfile.mkdtemp()
     pipeline_root_path = os.path.join(temp_path, 'pipeline_root')
     metadata_path = os.path.join(temp_path, 'metadata.db')
-    test_pipeline = pipeline.Pipeline(
+    return pipeline_py.Pipeline(
         pipeline_name='test_pipeline',
         pipeline_root=pipeline_root_path,
         metadata_connection_config=sqlite_metadata_connection_config(
@@ -179,7 +175,23 @@ class LocalDagRunnerTest(absl.testing.absltest.TestCase):
             dummy_train_component,
             dummy_validate_component,
         ])
-    local_dag_runner.LocalDagRunner().run(test_pipeline)
+
+  def _getTestPipelineIR(self) -> pipeline_pb2.Pipeline:
+    test_pipeline = self._getTestPipeline()
+    c = compiler.Compiler()
+    return c.compile(test_pipeline)
+
+  def testSimplePipelineRun(self):
+    self.assertEqual(self.RAN_COMPONENTS, [])
+
+    local_dag_runner.LocalDagRunner().run(self._getTestPipeline())
+
+    self.assertEqual(self.RAN_COMPONENTS, ['Load', 'Train', 'Validate'])
+
+  def testSimplePipelineRunWithIR(self):
+    self.assertEqual(self.RAN_COMPONENTS, [])
+
+    local_dag_runner.LocalDagRunner().run_with_ir(self._getTestPipelineIR())
 
     self.assertEqual(self.RAN_COMPONENTS, ['Load', 'Train', 'Validate'])
 

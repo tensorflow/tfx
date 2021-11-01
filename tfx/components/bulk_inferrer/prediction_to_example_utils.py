@@ -13,10 +13,9 @@
 # limitations under the License.
 """Utils for converting prediction_log to example."""
 
-from typing import Any, List, Tuple, Text, Union
+from typing import Any, List, Tuple, Union
 
 import numpy as np
-import six
 import tensorflow as tf
 
 from tfx.proto import bulk_inferrer_pb2
@@ -24,7 +23,7 @@ from tensorflow_serving.apis import classification_pb2
 from tensorflow_serving.apis import prediction_log_pb2
 
 INPUT_KEY = 'examples'
-FEATURE_LIST_TYPE = List[Tuple[Text, List[Union[Text, bytes, float]]]]
+_FeatureListType = List[Tuple[str, List[Union[str, bytes, float]]]]
 
 # Typehint Any is for compatibility reason.
 _OutputExampleSpecType = Union[bulk_inferrer_pb2.OutputExampleSpec, Any]
@@ -116,7 +115,7 @@ def _parse_multi_inference_log(
 def _parse_classify_log(
     classify_log: prediction_log_pb2.ClassifyLog,
     classify_output_spec: _ClassifyOutputType
-) -> Tuple[tf.train.Example, FEATURE_LIST_TYPE]:
+) -> Tuple[tf.train.Example, _FeatureListType]:
   """Parses ClassiyLog."""
   example = tf.train.Example()
   example.CopyFrom(classify_log.request.input.example_list.examples[0])
@@ -126,7 +125,7 @@ def _parse_classify_log(
 
 def _parse_classification_result(
     classification_result: classification_pb2.ClassificationResult,
-    classify_output_spec: _ClassifyOutputType) -> FEATURE_LIST_TYPE:
+    classify_output_spec: _ClassifyOutputType) -> _FeatureListType:
   """Parses ClassificationResult."""
   output_features = []
   classes = classification_result.classifications[0].classes
@@ -142,7 +141,7 @@ def _parse_classification_result(
 def _parse_predict_log(
     predict_log: prediction_log_pb2.PredictLog,
     predict_output_spec: _PredictOutputType
-) -> Tuple[tf.train.Example, FEATURE_LIST_TYPE]:
+) -> Tuple[tf.train.Example, _FeatureListType]:
   """Parses PredictLog."""
   input_tensor_proto = predict_log.request.inputs[INPUT_KEY]
   example = tf.train.Example.FromString(input_tensor_proto.string_val[0])
@@ -166,15 +165,15 @@ def _parse_predict_log(
 
 
 def _add_columns(example: tf.train.Example,
-                 features: FEATURE_LIST_TYPE) -> tf.train.Example:
+                 features: _FeatureListType) -> tf.train.Example:
   """Add given features to `example`."""
   feature_map = example.features.feature
   for col, value in features:
     assert col not in feature_map, ('column name %s already exists in example: '
                                     '%s') % (col, example)
     # Note: we only consider two types, bytes and float for now.
-    if isinstance(value[0], (six.text_type, six.binary_type)):
-      if isinstance(value[0], six.text_type):
+    if isinstance(value[0], (str, bytes)):
+      if isinstance(value[0], str):
         bytes_value = [v.encode('utf-8') for v in value]
       else:
         bytes_value = value

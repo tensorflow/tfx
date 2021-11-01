@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,12 +13,8 @@
 # limitations under the License.
 """Generic TFX schema_gen executor."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import os
-from typing import Any, Dict, List, Text
+from typing import Any, Dict, List
 
 from absl import logging
 import tensorflow_data_validation as tfdv
@@ -32,15 +27,15 @@ from tfx.utils import json_utils
 
 
 # Default file name for generated schema file.
-_DEFAULT_FILE_NAME = 'schema.pbtxt'
+DEFAULT_FILE_NAME = 'schema.pbtxt'
 
 
 class Executor(base_executor.BaseExecutor):
   """Generic TFX schema_gen executor."""
 
-  def Do(self, input_dict: Dict[Text, List[types.Artifact]],
-         output_dict: Dict[Text, List[types.Artifact]],
-         exec_properties: Dict[Text, Any]) -> None:
+  def Do(self, input_dict: Dict[str, List[types.Artifact]],
+         output_dict: Dict[str, List[types.Artifact]],
+         exec_properties: Dict[str, Any]) -> None:
     """TensorFlow SchemaGen executor entrypoint.
 
     This infers the schema using tensorflow_data_validation on the precomputed
@@ -60,8 +55,6 @@ class Executor(base_executor.BaseExecutor):
     Returns:
       None
     """
-    # TODO(zhitaoli): Move constants between this file and component.py to a
-    # constants.py.
     infer_feature_shape = bool(
         exec_properties.get(standard_component_specs.INFER_FEATURE_SHAPE_KEY,
                             True))
@@ -98,6 +91,6 @@ class Executor(base_executor.BaseExecutor):
     output_uri = os.path.join(
         artifact_utils.get_single_uri(
             output_dict[standard_component_specs.SCHEMA_KEY]),
-        _DEFAULT_FILE_NAME)
+        DEFAULT_FILE_NAME)
     io_utils.write_pbtxt_file(output_uri, schema)
     logging.info('Schema written to %s.', output_uri)

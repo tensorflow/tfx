@@ -31,15 +31,20 @@ class BaseBeamComponent(base_component.BaseComponent):
   specified in BaseComponent.
   """
 
-  def with_beam_pipeline_args(self, beam_pipeline_args: Iterable[str]) -> None:
+  def with_beam_pipeline_args(
+      self, beam_pipeline_args: Iterable[str]) -> 'BaseBeamComponent':
     """Add per component Beam pipeline args.
 
     Args:
       beam_pipeline_args: List of Beam pipeline args to be added to the Beam
         executor spec.
+
+    Returns:
+      the same component itself.
     """
     cast(executor_spec.BeamExecutorSpec,
          self.executor_spec).add_beam_pipeline_args(beam_pipeline_args)
+    return self
 
   @classmethod
   def _validate_component_class(cls):

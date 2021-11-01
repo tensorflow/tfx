@@ -50,11 +50,16 @@ The following TFX libraries use the schema:
 *   TensorFlow Model Analysis
 
 In a typical TFX pipeline SchemaGen generates a schema, which is consumed by the
-other pipeline components.
+other pipeline components. However, the auto-generated schema is best-effort and
+only tries to infer basic properties of the data. It is expected that developers
+review and modify it as needed.
 
-Note: The auto-generated schema is best-effort and only tries to infer basic
-properties of the data. It is expected that developers review and modify it as
-needed.
+The modified schema can be brought back into the pipeline using ImportSchemaGen
+component. The SchemaGen component for the initial schema generation can be
+removed and all downstream components can use the output of ImportSchemaGen. It
+is also recommended to add
+[ExampleValidator](https://www.tensorflow.org/tfx/guide/exampleval) using the
+imported schema to examine the training data continuously.
 
 ## SchemaGen and TensorFlow Data Validation
 
@@ -62,14 +67,30 @@ SchemaGen makes extensive use of [TensorFlow Data Validation](tfdv.md) for infer
 
 ## Using the SchemaGen Component
 
+### For the initial schema generation
+
 A SchemaGen pipeline component is typically very easy to deploy and requires little
 customization. Typical code looks like this:
 
 ```python
-from tfx import components
-
-...
-
-infer_schema = components.SchemaGen(
-    statistics=compute_training_stats.outputs['statistics'])
+schema_gen = tfx.components.SchemaGen(
+    statistics=stats_gen.outputs['statistics'])
 ```
+
+More details are available in the
+[SchemaGen API reference](https://www.tensorflow.org/tfx/api_docs/python/tfx/v1/components/SchemaGen).
+
+### For the reviewed schema import
+
+Add ImportSchemaGen component to the pipeline to bring the reviewed schema
+definition into the pipeline.
+
+```python
+schema_gen = tfx.components.ImportSchemaGen(
+    schema_file='/some/path/schema.pbtxt')
+```
+
+The `schema_file` should be a full path to the text protobuf file.
+
+More details are available in the
+[ImportSchemaGen API reference](https://www.tensorflow.org/tfx/api_docs/python/tfx/v1/components/ImportSchemaGen).

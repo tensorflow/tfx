@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,11 +14,11 @@
 """Definition of Beam TFX runner."""
 
 import datetime
-import os
 from typing import Optional
 
 from absl import logging
 
+from tfx.dsl.components.base import base_component
 from tfx.orchestration import data_types
 from tfx.orchestration import metadata
 from tfx.orchestration import pipeline
@@ -51,7 +50,7 @@ class LocalDagRunner(tfx_runner.TfxRunner):
               docker_component_launcher.DockerComponentLauncher,
           ],
       )
-    super(LocalDagRunner, self).__init__(config)
+    super().__init__(config)
 
   def run(self, tfx_pipeline: pipeline.Pipeline) -> None:
     """Runs given logical pipeline locally.
@@ -59,11 +58,6 @@ class LocalDagRunner(tfx_runner.TfxRunner):
     Args:
       tfx_pipeline: Logical pipeline containing pipeline args and components.
     """
-    # For CLI, while creating or updating pipeline, pipeline_args are extracted
-    # and hence we avoid executing the pipeline.
-    if 'TFX_JSON_EXPORT_PIPELINE_ARGS_PATH' in os.environ:
-      return
-
     tfx_pipeline.pipeline_info.run_id = datetime.datetime.now().isoformat()
 
     with telemetry_utils.scoped_labels(
@@ -74,6 +68,11 @@ class LocalDagRunner(tfx_runner.TfxRunner):
       # TODO(b/171319478): After IR-based execution is used, used multi-threaded
       # execution so that independent components can be run in parallel.
       for component in tfx_pipeline.components:
+        # TODO(b/187122662): Pass through pip dependencies as a first-class
+        # component flag.
+        if isinstance(component, base_component.BaseComponent):
+          component._resolve_pip_dependencies(  # pylint: disable=protected-access
+              tfx_pipeline.pipeline_info.pipeline_root)
         (component_launcher_class, component_config) = (
             config_utils.find_component_launch_info(self._config, component))
         driver_args = data_types.DriverArgs(

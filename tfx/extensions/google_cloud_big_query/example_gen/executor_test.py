@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -16,13 +15,13 @@
 
 import os
 import random
+from unittest import mock
 
 import apache_beam as beam
 from apache_beam.testing import util
 from google.cloud import bigquery
-import mock
 import tensorflow as tf
-from tfx.dsl.components.base import base_executor
+from tfx.dsl.components.base import base_beam_executor
 from tfx.dsl.io import fileio
 from tfx.extensions.google_cloud_big_query import utils
 from tfx.extensions.google_cloud_big_query.example_gen import executor
@@ -74,7 +73,7 @@ class ExecutorTest(tf.test.TestCase):
         bigquery.SchemaField('s', 'STRING', mode='REQUIRED'),
         bigquery.SchemaField('s2', 'STRING', mode='REPEATED'),
     ]
-    super(ExecutorTest, self).setUp()
+    super().setUp()
 
   @mock.patch.multiple(
       utils,
@@ -149,7 +148,7 @@ class ExecutorTest(tf.test.TestCase):
 
     # Run executor.
     big_query_example_gen = executor.Executor(
-        base_executor.BaseExecutor.Context(
+        base_beam_executor.BaseBeamExecutor.Context(
             beam_pipeline_args=['--project=test-project']))
     big_query_example_gen.Do({}, output_dict, exec_properties)
 

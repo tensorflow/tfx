@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,17 +13,12 @@
 # limitations under the License.
 """Tests for tfx.extensions.google_cloud_ai_platform.trainer.executor."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import copy
 import os
-from typing import Any, Dict, Text
+from typing import Any, Dict
+from unittest import mock
 
-# Standard Imports
 
-import mock
 import tensorflow as tf
 from tfx.components.trainer import executor as tfx_trainer_executor
 from tfx.extensions.google_cloud_ai_platform.trainer import executor as ai_platform_trainer_executor
@@ -35,7 +29,7 @@ from tfx.utils import json_utils
 class ExecutorTest(tf.test.TestCase):
 
   def setUp(self):
-    super(ExecutorTest, self).setUp()
+    super().setUp()
 
     self._output_data_dir = os.path.join(
         os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR', self.get_temp_dir()),
@@ -66,7 +60,7 @@ class ExecutorTest(tf.test.TestCase):
         'tfx.extensions.google_cloud_ai_platform.trainer.executor.runner'
     ).start()
 
-  def _serialize_custom_config_under_test(self) -> Dict[Text, Any]:
+  def _serialize_custom_config_under_test(self) -> Dict[str, Any]:
     """Converts self._exec_properties['custom_config'] to string."""
     result = copy.deepcopy(self._exec_properties)
     result[standard_component_specs.CUSTOM_CONFIG_KEY] = json_utils.dumps(
@@ -77,12 +71,12 @@ class ExecutorTest(tf.test.TestCase):
     executor = ai_platform_trainer_executor.Executor()
     executor.Do(self._inputs, self._outputs,
                 self._serialize_custom_config_under_test())
-    self.mock_runner.start_aip_training.assert_called_with(
+    self.mock_runner.start_cloud_training.assert_called_with(
         self._inputs, self._outputs, self._serialize_custom_config_under_test(),
         self._executor_class_path, {
             'project': self._project_id,
             'jobDir': self._job_dir,
-        }, None)
+        }, None, False, None)
 
   def testDoWithJobIdOverride(self):
     executor = ai_platform_trainer_executor.Executor()
@@ -91,23 +85,40 @@ class ExecutorTest(tf.test.TestCase):
         ai_platform_trainer_executor.JOB_ID_KEY] = job_id
     executor.Do(self._inputs, self._outputs,
                 self._serialize_custom_config_under_test())
-    self.mock_runner.start_aip_training.assert_called_with(
+    self.mock_runner.start_cloud_training.assert_called_with(
         self._inputs, self._outputs, self._serialize_custom_config_under_test(),
         self._executor_class_path, {
             'project': self._project_id,
             'jobDir': self._job_dir,
-        }, job_id)
+        }, job_id, False, None)
 
   def testDoWithGenericExecutorClass(self):
     executor = ai_platform_trainer_executor.GenericExecutor()
     executor.Do(self._inputs, self._outputs,
                 self._serialize_custom_config_under_test())
-    self.mock_runner.start_aip_training.assert_called_with(
+    self.mock_runner.start_cloud_training.assert_called_with(
         self._inputs, self._outputs, self._serialize_custom_config_under_test(),
         self._generic_executor_class_path, {
             'project': self._project_id,
             'jobDir': self._job_dir,
-        }, None)
+        }, None, False, None)
+
+  def testDoWithEnableVertexOverride(self):
+    executor = ai_platform_trainer_executor.Executor()
+    enable_vertex = True
+    vertex_region = 'us-central2'
+    self._exec_properties[standard_component_specs.CUSTOM_CONFIG_KEY][
+        ai_platform_trainer_executor.ENABLE_VERTEX_KEY] = enable_vertex
+    self._exec_properties[standard_component_specs.CUSTOM_CONFIG_KEY][
+        ai_platform_trainer_executor.VERTEX_REGION_KEY] = vertex_region
+    executor.Do(self._inputs, self._outputs,
+                self._serialize_custom_config_under_test())
+    self.mock_runner.start_cloud_training.assert_called_with(
+        self._inputs, self._outputs, self._serialize_custom_config_under_test(),
+        self._executor_class_path, {
+            'project': self._project_id,
+            'jobDir': self._job_dir,
+        }, None, enable_vertex, vertex_region)
 
 
 if __name__ == '__main__':

@@ -25,7 +25,7 @@ from tfx.types import standard_component_specs
 class ComponentTest(tf.test.TestCase):
 
   def setUp(self):
-    super(ComponentTest, self).setUp()
+    super().setUp()
     self._examples = channel_utils.as_channel([standard_artifacts.Examples()])
     self._model = channel_utils.as_channel([standard_artifacts.Model()])
     self._model_blessing = channel_utils.as_channel(
@@ -51,24 +51,6 @@ class ComponentTest(tf.test.TestCase):
         'Examples', bulk_inferrer.outputs[
             standard_component_specs.OUTPUT_EXAMPLES_KEY].type_name)
     self.assertNotIn('inference_result', bulk_inferrer.outputs.keys())
-
-  def testConstructInferenceResultAndOutputExample(self):
-    with self.assertRaises(ValueError):
-      component.BulkInferrer(
-          examples=self._examples,
-          model=self._model,
-          model_blessing=self._model_blessing,
-          output_examples=channel_utils.as_channel(
-              [standard_artifacts.Examples()]))
-
-    with self.assertRaises(ValueError):
-      component.BulkInferrer(
-          examples=self._examples,
-          model=self._model,
-          model_blessing=self._model_blessing,
-          output_example_spec=bulk_inferrer_pb2.OutputExampleSpec(),
-          inference_result=channel_utils.as_channel(
-              [standard_artifacts.InferenceResult()]))
 
 
 if __name__ == '__main__':

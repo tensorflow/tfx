@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,15 +13,11 @@
 # limitations under the License.
 """Tests for tfx.components.example_gen.csv_example_gen.executor."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import os
+from absl.testing import absltest
 
 import apache_beam as beam
 from apache_beam.testing import util
-import tensorflow as tf
 from tfx.components.example_gen.csv_example_gen import executor
 from tfx.dsl.io import fileio
 from tfx.proto import example_gen_pb2
@@ -32,10 +27,10 @@ from tfx.types import standard_component_specs
 from tfx.utils import proto_utils
 
 
-class ExecutorTest(tf.test.TestCase):
+class ExecutorTest(absltest.TestCase):
 
   def setUp(self):
-    super(ExecutorTest, self).setUp()
+    super().setUp()
     self._input_data_dir = os.path.join(
         os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'testdata',
         'external')
@@ -51,9 +46,9 @@ class ExecutorTest(tf.test.TestCase):
               split_pattern='csv/*'))
 
       def check_results(results):
-        # We use Python assertion here to avoid Beam serialization error in
-        # pickling tf.test.TestCase.
-        assert (15000 == len(results)), 'Unexpected example count.'
+        # We use Python assertion here to avoid Beam serialization error.
+        assert (15000 == len(results)), 'Unexpected example count {}.'.format(
+            len(results))
         assert (18 == len(results[0].features.feature)), 'Example not match.'
 
       util.assert_that(examples, check_results)
@@ -69,9 +64,9 @@ class ExecutorTest(tf.test.TestCase):
               split_pattern='csv_empty/*'))
 
       def check_results(results):
-        # We use Python assertion here to avoid Beam serialization error in
-        # pickling tf.test.TestCase.
-        assert (3 == len(results)), 'Unexpected example count.'
+        # We use Python assertion here to avoid Beam serialization error.
+        assert (3 == len(results)), 'Unexpected example count {}.'.format(
+            len(results))
         for example in results:
           assert (example.features.feature['A'].HasField('int64_list')
                  ), 'Column A should be int64 type.'
@@ -84,9 +79,32 @@ class ExecutorTest(tf.test.TestCase):
 
       util.assert_that(examples, check_results)
 
+  def testCsvToExampleMultiLineString(self):
+    with beam.Pipeline() as pipeline:
+      examples = (
+          pipeline
+          | 'ToTFExample' >> executor._CsvToExample(
+              exec_properties={
+                  standard_component_specs.INPUT_BASE_KEY: self._input_data_dir
+              },
+              split_pattern='csv_multi_line_string/*'))
+
+      def check_results(results):
+        # We use Python assertion here to avoid Beam serialization error.
+        assert (3 == len(results)), 'Unexpected example count: {}.'.format(
+            len(results))
+        instance = results[1]
+        assert (instance.features.feature['B'].HasField('bytes_list')
+               ), 'Column B should be bytes type. '
+        value = instance.features.feature['B'].bytes_list.value
+        assert (value ==
+                [b'"2,\n"3",\n4\n5"']), 'Unexpected value: {}.'.format(value)
+
+      util.assert_that(examples, check_results)
+
   def testDo(self):
     output_data_dir = os.path.join(
-        os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR', self.get_temp_dir()),
+        os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR', self.create_tempdir()),
         self._testMethodName)
 
     # Create output dict.
@@ -135,4 +153,4 @@ class ExecutorTest(tf.test.TestCase):
 
 
 if __name__ == '__main__':
-  tf.test.main()
+  absltest.main()

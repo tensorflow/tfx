@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,7 +14,10 @@
 """Subpackage for TFX pipeline types."""
 
 from tfx.types.artifact import Artifact
+from tfx.types.channel import BaseChannel
 from tfx.types.channel import Channel
+from tfx.types.channel import ExecPropertyTypes
+from tfx.types.channel import LoopVarChannel
 from tfx.types.channel import Property  # Type alias.
 from tfx.types.component_spec import ComponentSpec
 from tfx.types.value_artifact import ValueArtifact

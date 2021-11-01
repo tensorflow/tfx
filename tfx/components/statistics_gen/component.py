@@ -12,20 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """TFX StatisticsGen component definition."""
-from typing import List, Optional, Text
+from typing import List, Optional
 
 from absl import logging
 import tensorflow_data_validation as tfdv
 from tfx import types
 from tfx.components.statistics_gen import executor
-from tfx.dsl.components.base import base_component
+from tfx.dsl.components.base import base_beam_component
 from tfx.dsl.components.base import executor_spec
 from tfx.types import standard_artifacts
-from tfx.types.standard_component_specs import StatisticsGenSpec
+from tfx.types import standard_component_specs
 from tfx.utils import json_utils
 
 
-class StatisticsGen(base_component.BaseComponent):
+class StatisticsGen(base_beam_component.BaseBeamComponent):
   """Official TFX StatisticsGen component.
 
   The StatisticsGen component generates features statistics and random samples
@@ -33,25 +33,28 @@ class StatisticsGen(base_component.BaseComponent):
   StatisticsGen uses Apache Beam and approximate algorithms to scale to large
   datasets.
 
-  Please see https://www.tensorflow.org/tfx/data_validation for more details.
-
   ## Example
   ```
     # Computes statistics over data for visualization and example validation.
     statistics_gen = StatisticsGen(examples=example_gen.outputs['examples'])
   ```
+
+  Component `outputs` contains:
+   - `statistics`: Channel of type `standard_artifacts.ExampleStatistics` for
+                   statistics of each split provided in the input examples.
+
+  Please see [the StatisticsGen
+  guide](https://www.tensorflow.org/tfx/guide/statsgen) for more details.
   """
 
-  SPEC_CLASS = StatisticsGenSpec
-  EXECUTOR_SPEC = executor_spec.ExecutorClassSpec(executor.Executor)
+  SPEC_CLASS = standard_component_specs.StatisticsGenSpec
+  EXECUTOR_SPEC = executor_spec.BeamExecutorSpec(executor.Executor)
 
   def __init__(self,
-               examples: types.Channel = None,
+               examples: types.Channel,
                schema: Optional[types.Channel] = None,
                stats_options: Optional[tfdv.StatsOptions] = None,
-               exclude_splits: Optional[List[Text]] = None,
-               statistics: Optional[types.Channel] = None,
-               instance_name: Optional[Text] = None):
+               exclude_splits: Optional[List[str]] = None):
     """Construct a StatisticsGen component.
 
     Args:
@@ -68,23 +71,17 @@ class StatisticsGen(base_component.BaseComponent):
       exclude_splits: Names of splits where statistics and sample should not
         be generated. Default behavior (when exclude_splits is set to None)
         is excluding no splits.
-      statistics: `ExampleStatisticsPath` channel for statistics of each split
-        provided in the input examples.
-      instance_name: Optional name assigned to this specific instance of
-        StatisticsGen.  Required only if multiple StatisticsGen components are
-        declared in the same pipeline.
     """
     if exclude_splits is None:
       exclude_splits = []
       logging.info('Excluding no splits because exclude_splits is not set.')
-    statistics = statistics or types.Channel(
-        type=standard_artifacts.ExampleStatistics)
+    statistics = types.Channel(type=standard_artifacts.ExampleStatistics)
     # TODO(b/150802589): Move jsonable interface to tfx_bsl and use json_utils.
     stats_options_json = stats_options.to_json() if stats_options else None
-    spec = StatisticsGenSpec(
+    spec = standard_component_specs.StatisticsGenSpec(
         examples=examples,
         schema=schema,
         stats_options_json=stats_options_json,
         exclude_splits=json_utils.dumps(exclude_splits),
         statistics=statistics)
-    super(StatisticsGen, self).__init__(spec=spec, instance_name=instance_name)
+    super().__init__(spec=spec)

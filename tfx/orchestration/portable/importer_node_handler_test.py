@@ -15,6 +15,7 @@
 import os
 
 import tensorflow as tf
+from tfx import version as tfx_version
 from tfx.dsl.compiler import constants
 from tfx.orchestration import metadata
 from tfx.orchestration.portable import importer_node_handler
@@ -56,6 +57,8 @@ class ImporterNodeHandlerTest(test_case_utils.TfxTest):
 
     # Extracts components
     self._importer = pipeline.nodes[3].pipeline_node
+    # Fake tfx_version for tests.
+    tfx_version.__version__ = '0.123.4.dev'
 
   def testLauncher_importer_mode_reimport_enabled(self):
     handler = importer_node_handler.ImporterNodeHandler()
@@ -70,7 +73,6 @@ class ImporterNodeHandlerTest(test_case_utils.TfxTest):
       self.assertProtoPartiallyEquals(
           """
           id: 1
-          type_id: 5
           uri: "my_url"
           custom_properties {
             key: "int_custom_property"
@@ -84,16 +86,22 @@ class ImporterNodeHandlerTest(test_case_utils.TfxTest):
               string_value: "abc"
             }
           }
+          custom_properties {
+            key: "tfx_version"
+            value {
+              string_value: "0.123.4.dev"
+            }
+          }
           state: LIVE""",
           artifact,
           ignored_fields=[
-              'create_time_since_epoch', 'last_update_time_since_epoch'
+              'type_id', 'create_time_since_epoch',
+              'last_update_time_since_epoch'
           ])
       [execution] = m.store.get_executions_by_id([execution_info.execution_id])
       self.assertProtoPartiallyEquals(
           """
           id: 1
-          type_id: 4
           last_known_state: COMPLETE
           custom_properties {
             key: "artifact_uri"
@@ -110,7 +118,8 @@ class ImporterNodeHandlerTest(test_case_utils.TfxTest):
           """,
           execution,
           ignored_fields=[
-              'create_time_since_epoch', 'last_update_time_since_epoch'
+              'type_id', 'create_time_since_epoch',
+              'last_update_time_since_epoch'
           ])
 
     execution_info = handler.run(
@@ -123,7 +132,6 @@ class ImporterNodeHandlerTest(test_case_utils.TfxTest):
       self.assertProtoPartiallyEquals(
           """
           id: 2
-          type_id: 5
           uri: "my_url"
           custom_properties {
             key: "int_custom_property"
@@ -137,16 +145,22 @@ class ImporterNodeHandlerTest(test_case_utils.TfxTest):
               string_value: "abc"
             }
           }
+          custom_properties {
+            key: "tfx_version"
+            value {
+              string_value: "0.123.4.dev"
+            }
+          }
           state: LIVE""",
           new_artifact,
           ignored_fields=[
-              'create_time_since_epoch', 'last_update_time_since_epoch'
+              'type_id', 'create_time_since_epoch',
+              'last_update_time_since_epoch'
           ])
       [execution] = m.store.get_executions_by_id([execution_info.execution_id])
       self.assertProtoPartiallyEquals(
           """
           id: 2
-          type_id: 4
           last_known_state: COMPLETE
           custom_properties {
             key: "artifact_uri"
@@ -163,7 +177,8 @@ class ImporterNodeHandlerTest(test_case_utils.TfxTest):
           """,
           execution,
           ignored_fields=[
-              'create_time_since_epoch', 'last_update_time_since_epoch'
+              'type_id', 'create_time_since_epoch',
+              'last_update_time_since_epoch'
           ])
 
   def testLauncher_importer_mode_reimport_disabled(self):
@@ -180,7 +195,6 @@ class ImporterNodeHandlerTest(test_case_utils.TfxTest):
       self.assertProtoPartiallyEquals(
           """
           id: 1
-          type_id: 5
           uri: "my_url"
           custom_properties {
             key: "int_custom_property"
@@ -194,16 +208,22 @@ class ImporterNodeHandlerTest(test_case_utils.TfxTest):
               string_value: "abc"
             }
           }
+          custom_properties {
+            key: "tfx_version"
+            value {
+              string_value: "0.123.4.dev"
+            }
+          }
           state: LIVE""",
           artifact,
           ignored_fields=[
-              'create_time_since_epoch', 'last_update_time_since_epoch'
+              'type_id', 'create_time_since_epoch',
+              'last_update_time_since_epoch'
           ])
       [execution] = m.store.get_executions_by_id([execution_info.execution_id])
       self.assertProtoPartiallyEquals(
           """
           id: 1
-          type_id: 4
           last_known_state: COMPLETE
           custom_properties {
             key: "artifact_uri"
@@ -220,9 +240,12 @@ class ImporterNodeHandlerTest(test_case_utils.TfxTest):
           """,
           execution,
           ignored_fields=[
-              'create_time_since_epoch', 'last_update_time_since_epoch'
+              'type_id', 'create_time_since_epoch',
+              'last_update_time_since_epoch'
           ])
 
+    # Run the 2nd execution. Since the reimport is disabled, no new schema
+    # is imported and the corresponding execution is published as CACHED.
     execution_info = handler.run(
         mlmd_connection=self._mlmd_connection,
         pipeline_node=self._importer,
@@ -235,8 +258,7 @@ class ImporterNodeHandlerTest(test_case_utils.TfxTest):
       self.assertProtoPartiallyEquals(
           """
           id: 2
-          type_id: 4
-          last_known_state: COMPLETE
+          last_known_state: CACHED
           custom_properties {
             key: "artifact_uri"
             value {
@@ -252,10 +274,10 @@ class ImporterNodeHandlerTest(test_case_utils.TfxTest):
           """,
           execution,
           ignored_fields=[
-              'create_time_since_epoch', 'last_update_time_since_epoch'
+              'type_id', 'create_time_since_epoch',
+              'last_update_time_since_epoch'
           ])
 
 
 if __name__ == '__main__':
   tf.test.main()
-

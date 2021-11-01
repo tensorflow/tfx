@@ -16,11 +16,9 @@
 import datetime
 import json
 import os
-from typing import Text
+from unittest import mock
 
-# Standard Imports
 
-import mock
 import tensorflow as tf
 from tfx import version
 from tfx.orchestration import pipeline as tfx_pipeline
@@ -45,7 +43,7 @@ class KubeflowV2DagRunnerTest(test_case_utils.TfxTest):
 
   def _compare_against_testdata(
       self, runner: kubeflow_v2_dag_runner.KubeflowV2DagRunner,
-      pipeline: tfx_pipeline.Pipeline, golden_file: Text):
+      pipeline: tfx_pipeline.Pipeline, golden_file: str):
     """Compiles and compare the actual JSON output against a golden file."""
     actual_output = runner.run(pipeline=pipeline, write_out=True)
 
@@ -74,7 +72,6 @@ class KubeflowV2DagRunnerTest(test_case_utils.TfxTest):
         output_dir=_TEST_DIR,
         output_filename=_TEST_FILE_NAME,
         config=kubeflow_v2_dag_runner.KubeflowV2DagRunnerConfig(
-            project_id='my-project',
             display_name='my-pipeline',
             default_image='gcr.io/my-tfx:latest'))
 
@@ -94,7 +91,6 @@ class KubeflowV2DagRunnerTest(test_case_utils.TfxTest):
         output_dir=_TEST_DIR,
         output_filename=_TEST_FILE_NAME,
         config=kubeflow_v2_dag_runner.KubeflowV2DagRunnerConfig(
-            project_id='my-project',
             display_name='my-pipeline',
             default_image='tensorflow/tfx:latest'))
 

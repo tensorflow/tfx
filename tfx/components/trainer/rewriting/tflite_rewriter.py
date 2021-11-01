@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2020 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,18 +13,13 @@
 # limitations under the License.
 """Rewriter that invokes the TFLite converter."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import os
 import time
 
-from typing import Iterable, Optional, Sequence, Text
+from typing import Iterable, Optional, Sequence
 
 import numpy as np
 
-import six
 import tensorflow as tf
 
 from tfx.components.trainer.rewriting import rewriter
@@ -35,7 +29,7 @@ from tfx.utils import io_utils
 EXTRA_ASSETS_DIRECTORY = 'assets.extra'
 
 
-def _create_tflite_compatible_saved_model(src: Text, dst: Text):
+def _create_tflite_compatible_saved_model(src: str, dst: str):
   io_utils.copy_dir(src, dst)
   assets_path = os.path.join(dst, tf.saved_model.ASSETS_DIRECTORY)
   if fileio.exists(assets_path):
@@ -45,19 +39,37 @@ def _create_tflite_compatible_saved_model(src: Text, dst: Text):
     fileio.rmtree(assets_extra_path)
 
 
+def _ensure_str(value):
+  if isinstance(value, str):
+    return value
+  elif isinstance(value, bytes):
+    return value.decode('utf-8')
+  else:
+    raise TypeError(f'Unexpected type {type(value)}.')
+
+
+def _ensure_bytes(value):
+  if isinstance(value, bytes):
+    return value
+  elif isinstance(value, str):
+    return value.encode('utf-8')
+  else:
+    raise TypeError(f'Unexpected type {type(value)}.')
+
+
 class TFLiteRewriter(rewriter.BaseRewriter):
   """Performs TFLite conversion."""
 
   def __init__(
       self,
-      name: Text,
-      filename: Text = 'tflite',
+      name: str,
+      filename: str = 'tflite',
       copy_assets: bool = True,
       copy_assets_extra: bool = True,
       quantization_optimizations: Optional[Sequence[tf.lite.Optimize]] = None,
       quantization_supported_types: Optional[Sequence[tf.DType]] = None,
       quantization_enable_full_integer: bool = False,
-      signature_key: Text = None,
+      signature_key: Optional[str] = None,
       representative_dataset: Optional[Iterable[Sequence[np.ndarray]]] = None,
       **kwargs):
     """Create an instance of the TFLiteRewriter.
@@ -88,7 +100,7 @@ class TFLiteRewriter(rewriter.BaseRewriter):
       **kwargs: Additional keyword arguments to create TFlite converter.
     """
     self._name = name
-    self._filename = six.ensure_text(filename)
+    self._filename = _ensure_str(filename)
     self._copy_assets = copy_assets
     self._copy_assets_extra = copy_assets_extra
 
@@ -108,7 +120,7 @@ class TFLiteRewriter(rewriter.BaseRewriter):
     self._kwargs = kwargs
 
   @property
-  def name(self) -> Text:
+  def name(self) -> str:
     """The user-specified name of the rewriter."""
     return self._name
 
@@ -147,7 +159,7 @@ class TFLiteRewriter(rewriter.BaseRewriter):
     # not contain an assets or assets.extra directory. Remove this when the
     # TFLite converter can convert models having these directories.
     tmp_model_dir = os.path.join(
-        six.ensure_text(rewritten_model.path),
+        _ensure_str(rewritten_model.path),
         'tmp-rewrite-' + str(int(time.time())))
     if fileio.exists(tmp_model_dir):
       raise ValueError('TFLiteConverter is unable to create a unique path '
@@ -155,7 +167,7 @@ class TFLiteRewriter(rewriter.BaseRewriter):
 
     fileio.makedirs(tmp_model_dir)
     _create_tflite_compatible_saved_model(
-        six.ensure_text(original_model.path), tmp_model_dir)
+        _ensure_str(original_model.path), tmp_model_dir)
 
     converter = self._create_tflite_converter(
         saved_model_path=tmp_model_dir,
@@ -167,26 +179,25 @@ class TFLiteRewriter(rewriter.BaseRewriter):
     tflite_model = converter.convert()
 
     output_path = os.path.join(
-        six.ensure_text(rewritten_model.path), self._filename)
-    with fileio.open(six.ensure_text(output_path), 'wb') as f:
-      f.write(six.ensure_binary(tflite_model))
+        _ensure_str(rewritten_model.path), self._filename)
+    with fileio.open(_ensure_str(output_path), 'wb') as f:
+      f.write(_ensure_bytes(tflite_model))
     fileio.rmtree(tmp_model_dir)
 
     copy_pairs = []
     if self._copy_assets:
       src = os.path.join(
-          six.ensure_text(original_model.path), tf.saved_model.ASSETS_DIRECTORY)
+          _ensure_str(original_model.path), tf.saved_model.ASSETS_DIRECTORY)
       dst = os.path.join(
-          six.ensure_text(rewritten_model.path),
-          tf.saved_model.ASSETS_DIRECTORY)
+          _ensure_str(rewritten_model.path), tf.saved_model.ASSETS_DIRECTORY)
       if fileio.isdir(src):
         fileio.mkdir(dst)
         copy_pairs.append((src, dst))
     if self._copy_assets_extra:
       src = os.path.join(
-          six.ensure_text(original_model.path), EXTRA_ASSETS_DIRECTORY)
+          _ensure_str(original_model.path), EXTRA_ASSETS_DIRECTORY)
       dst = os.path.join(
-          six.ensure_text(rewritten_model.path), EXTRA_ASSETS_DIRECTORY)
+          _ensure_str(rewritten_model.path), EXTRA_ASSETS_DIRECTORY)
       if fileio.isdir(src):
         fileio.mkdir(dst)
         copy_pairs.append((src, dst))
@@ -207,12 +218,12 @@ class TFLiteRewriter(rewriter.BaseRewriter):
     pass
 
   def _create_tflite_converter(self,
-                               saved_model_path: Text,
+                               saved_model_path: str,
                                quantization_optimizations: Sequence[
                                    tf.lite.Optimize],
                                quantization_supported_types: Sequence[tf.DType],
                                representative_dataset=None,
-                               signature_key: Text = None,
+                               signature_key: Optional[str] = None,
                                **kwargs) -> tf.lite.TFLiteConverter:
     """Creates a TFLite converter with proper quantization options.
 

@@ -14,18 +14,18 @@
 """Tests for tfx.examples.experimental.penguin_pipeline_sklearn_gcp."""
 
 import os
+from unittest import mock
 
 import tensorflow as tf
-from tfx.dsl.io import fileio
+from tfx import v1 as tfx
 from tfx.examples.penguin.experimental import penguin_pipeline_sklearn_gcp
-from tfx.orchestration.kubeflow.kubeflow_dag_runner import KubeflowDagRunner
 from tfx.utils import test_case_utils
 
 
 class PenguinPipelineSklearnGcpTest(test_case_utils.TfxTest):
 
   def setUp(self):
-    super(PenguinPipelineSklearnGcpTest, self).setUp()
+    super().setUp()
     self.enter_context(test_case_utils.change_working_dir(self.tmp_dir))
 
     self._experimental_root = os.path.dirname(__file__)
@@ -49,7 +49,13 @@ class PenguinPipelineSklearnGcpTest(test_case_utils.TfxTest):
         'regions': ['us-central1'],
     }
 
-  def testPipelineConstruction(self):
+  @mock.patch('tfx.components.util.udf_utils.UserModuleFilePipDependency.'
+              'resolve')
+  def testPipelineConstruction(self, resolve_mock):
+    # Avoid actually performing user module packaging because relative path is
+    # not valid with respect to temporary directory.
+    resolve_mock.side_effect = lambda pipeline_root: None
+
     logical_pipeline = penguin_pipeline_sklearn_gcp._create_pipeline(
         pipeline_name=self._pipeline_name,
         pipeline_root=self._pipeline_root,
@@ -61,9 +67,9 @@ class PenguinPipelineSklearnGcpTest(test_case_utils.TfxTest):
         beam_pipeline_args=[])
     self.assertEqual(8, len(logical_pipeline.components))
 
-    KubeflowDagRunner().run(logical_pipeline)
+    tfx.orchestration.experimental.KubeflowDagRunner().run(logical_pipeline)
     file_path = os.path.join(self.tmp_dir, 'sklearn_test.tar.gz')
-    self.assertTrue(fileio.exists(file_path))
+    self.assertTrue(tfx.dsl.io.fileio.exists(file_path))
 
 
 if __name__ == '__main__':

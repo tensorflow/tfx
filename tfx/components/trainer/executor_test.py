@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,15 +13,11 @@
 # limitations under the License.
 """Tests for tfx.components.trainer.executor."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import copy
 import json
 import os
 
-import mock
+from unittest import mock
 import tensorflow as tf
 from tfx.components.testdata.module_file import trainer_module
 from tfx.components.trainer import executor
@@ -39,7 +34,7 @@ from tfx.utils import proto_utils
 class ExecutorTest(tf.test.TestCase):
 
   def setUp(self):
-    super(ExecutorTest, self).setUp()
+    super().setUp()
     self._source_data_dir = os.path.join(
         os.path.dirname(os.path.dirname(__file__)), 'testdata')
     self._output_data_dir = os.path.join(
@@ -171,7 +166,7 @@ class ExecutorTest(tf.test.TestCase):
     hp_artifact = standard_artifacts.HyperParameters()
     hp_artifact.uri = os.path.join(self._output_data_dir, 'hyperparameters/')
 
-    # TODO(jyzhao): use real kerastuner.HyperParameters instead of dict.
+    # TODO(jyzhao): use real keras_tuner.HyperParameters instead of dict.
     hyperparameters = {}
     hyperparameters['first_dnn_layer_size'] = 100
     hyperparameters['num_dnn_layers'] = 4
@@ -203,11 +198,11 @@ class ExecutorTest(tf.test.TestCase):
     # Update input dict.
     io_utils.copy_dir(
         os.path.join(self._source_data_dir,
-                     'transform/transformed_examples/data/Split-train'),
+                     'transform/transformed_examples/Split-train'),
         os.path.join(self._output_data_dir, 'data/Split-training'))
     io_utils.copy_dir(
         os.path.join(self._source_data_dir,
-                     'transform/transformed_examples/data/Split-eval'),
+                     'transform/transformed_examples/Split-eval'),
         os.path.join(self._output_data_dir, 'data/Split-evaluating'))
     examples = standard_artifacts.Examples()
     examples.uri = os.path.join(self._output_data_dir, 'data')

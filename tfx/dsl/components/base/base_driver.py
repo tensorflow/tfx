@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,12 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Abstract TFX driver class."""
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
 
 import os
-from typing import Any, Dict, List, Text
+from typing import Any, Dict, List
 
 import absl
 
@@ -26,13 +22,14 @@ from tfx import types
 from tfx.dsl.io import fileio
 from tfx.orchestration import data_types
 from tfx.orchestration import metadata
+from tfx.types import channel_utils
 
 
-def _generate_output_uri(base_output_dir: Text,
-                         name: Text,
+def _generate_output_uri(base_output_dir: str,
+                         name: str,
                          execution_id: int,
                          is_single_artifact: bool = True,
-                         index: int = 0) -> Text:
+                         index: int = 0) -> str:
   """Generate uri for output artifact."""
   if is_single_artifact:
     # TODO(b/145680633): Consider differentiating different types of uris.
@@ -65,7 +62,7 @@ def _prepare_output_paths(artifact: types.Artifact):
   fileio.makedirs(artifact_dir)
 
 
-class BaseDriver(object):
+class BaseDriver:
   """BaseDriver is the base class of all custom drivers.
 
   This can also be used as the default driver of a component if no custom logic
@@ -79,7 +76,7 @@ class BaseDriver(object):
     self._metadata_handler = metadata_handler
 
   def verify_input_artifacts(
-      self, artifacts_dict: Dict[Text, List[types.Artifact]]) -> None:
+      self, artifacts_dict: Dict[str, List[types.Artifact]]) -> None:
     """Verify that all artifacts have existing uri.
 
     Args:
@@ -95,9 +92,9 @@ class BaseDriver(object):
         if not fileio.exists(artifact.uri):
           raise RuntimeError('Artifact uri %s is missing' % artifact.uri)
 
-  def _log_properties(self, input_dict: Dict[Text, List[types.Artifact]],
-                      output_dict: Dict[Text, List[types.Artifact]],
-                      exec_properties: Dict[Text, Any]):
+  def _log_properties(self, input_dict: Dict[str, List[types.Artifact]],
+                      output_dict: Dict[str, List[types.Artifact]],
+                      exec_properties: Dict[str, Any]):
     """Log inputs, outputs, and executor properties in a standard format."""
     absl.logging.debug('Starting %s driver.', self.__class__.__name__)
     absl.logging.debug('Inputs for %s are: %s', self.__class__.__name__,
@@ -109,11 +106,11 @@ class BaseDriver(object):
 
   def resolve_input_artifacts(
       self,
-      input_dict: Dict[Text, types.Channel],
-      exec_properties: Dict[Text, Any],  # pylint: disable=unused-argument
+      input_dict: Dict[str, types.BaseChannel],
+      exec_properties: Dict[str, Any],  # pylint: disable=unused-argument
       driver_args: data_types.DriverArgs,
       pipeline_info: data_types.PipelineInfo,
-  ) -> Dict[Text, List[types.Artifact]]:
+  ) -> Dict[str, List[types.Artifact]]:
     """Resolve input artifacts from metadata.
 
     Subclasses might override this function for customized artifact properties
@@ -138,37 +135,43 @@ class BaseDriver(object):
         resolved.
     """
     result = {}
-    for name, input_channel in input_dict.items():
-      if driver_args.interactive_resolution:
-        artifacts = list(input_channel.get())
-        for artifact in artifacts:
-          # Note: when not initialized, artifact.uri is '' and artifact.id is 0.
-          if not artifact.uri or not artifact.id:
-            raise ValueError((
-                'Unresolved input channel %r for input %r was passed in '
-                'interactive mode. When running in interactive mode, upstream '
-                'components must first be run with '
-                '`interactive_context.run(component)` before their outputs can '
-                'be used in downstream components.') % (artifact, name))
-        result[name] = artifacts
-      else:
-        result[name] = self._metadata_handler.search_artifacts(
-            artifact_name=input_channel.output_key,
-            pipeline_info=pipeline_info,
-            producer_component_id=input_channel.producer_component_id)
-        # TODO(ccy): add this code path to interactive resolution.
-        for artifact in result[name]:
-          if isinstance(artifact, types.ValueArtifact):
-            # Resolve the content of file into value field for value artifacts.
-            _ = artifact.read()
+    for name, value in input_dict.items():
+      artifacts_by_id = {}  # Deduplicate by ID.
+      for input_channel in channel_utils.get_individual_channels(value):
+        if driver_args.interactive_resolution:
+          artifacts = list(input_channel.get())
+          for artifact in artifacts:
+            # Note: when not initialized, artifact.uri is '' and artifact.id is
+            # 0.
+            if not artifact.uri or not artifact.id:
+              raise ValueError((
+                  'Unresolved input channel %r for input %r was passed in '
+                  'interactive mode. When running in interactive mode, upstream '
+                  'components must first be run with '
+                  '`interactive_context.run(component)` before their outputs can '
+                  'be used in downstream components.') % (artifact, name))
+            artifacts_by_id.update({a.id: a for a in artifacts})
+        else:
+          artifacts = self._metadata_handler.search_artifacts(
+              artifact_name=input_channel.output_key,
+              pipeline_info=pipeline_info,
+              producer_component_id=input_channel.producer_component_id)
+          # TODO(ccy): add this code path to interactive resolution.
+          for artifact in artifacts:
+            if isinstance(artifact, types.ValueArtifact):
+              # Resolve the content of file into value field for value
+              # artifacts.
+              _ = artifact.read()
+          artifacts_by_id.update({a.id: a for a in artifacts})
+      result[name] = list(artifacts_by_id.values())
     return result
 
   def resolve_exec_properties(
       self,
-      exec_properties: Dict[Text, Any],
+      exec_properties: Dict[str, Any],
       pipeline_info: data_types.PipelineInfo,  # pylint: disable=unused-argument
       component_info: data_types.ComponentInfo,  # pylint: disable=unused-argument
-  ) -> Dict[Text, Any]:
+  ) -> Dict[str, Any]:
     """Resolve execution properties.
 
     Subclasses might override this function for customized execution properties
@@ -188,13 +191,13 @@ class BaseDriver(object):
 
   def _prepare_output_artifacts(
       self,
-      input_artifacts: Dict[Text, List[types.Artifact]],
-      output_dict: Dict[Text, types.Channel],
-      exec_properties: Dict[Text, Any],
+      input_artifacts: Dict[str, List[types.Artifact]],
+      output_dict: Dict[str, types.Channel],
+      exec_properties: Dict[str, Any],
       execution_id: int,
       pipeline_info: data_types.PipelineInfo,
       component_info: data_types.ComponentInfo,
-  ) -> Dict[Text, List[types.Artifact]]:
+  ) -> Dict[str, List[types.Artifact]]:
     """Prepare output artifacts by assigning uris to each artifact."""
     del exec_properties
 
@@ -229,9 +232,9 @@ class BaseDriver(object):
 
   def pre_execution(
       self,
-      input_dict: Dict[Text, types.Channel],
-      output_dict: Dict[Text, types.Channel],
-      exec_properties: Dict[Text, Any],
+      input_dict: Dict[str, types.BaseChannel],
+      output_dict: Dict[str, types.Channel],
+      exec_properties: Dict[str, Any],
       driver_args: data_types.DriverArgs,
       pipeline_info: data_types.PipelineInfo,
       component_info: data_types.ComponentInfo,

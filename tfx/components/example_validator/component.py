@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,11 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """TFX ExampleValidator component definition."""
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
 
-from typing import List, Optional, Text
+from typing import List, Optional
 
 from absl import logging
 from tfx import types
@@ -25,7 +21,7 @@ from tfx.components.example_validator import executor
 from tfx.dsl.components.base import base_component
 from tfx.dsl.components.base import executor_spec
 from tfx.types import standard_artifacts
-from tfx.types.standard_component_specs import ExampleValidatorSpec
+from tfx.types import standard_component_specs
 from tfx.utils import json_utils
 
 
@@ -33,8 +29,8 @@ class ExampleValidator(base_component.BaseComponent):
   """A TFX component to validate input examples.
 
   The ExampleValidator component uses [Tensorflow Data
-  Validation](https://www.tensorflow.org/tfx/data_validation) to
-  validate the statistics of some splits on input examples against a schema.
+  Validation](https://www.tensorflow.org/tfx/data_validation/api_docs/python/tfdv)
+  to validate the statistics of some splits on input examples against a schema.
 
   The ExampleValidator component identifies anomalies in training and serving
   data. The component can be configured to detect different classes of anomalies
@@ -48,8 +44,6 @@ class ExampleValidator(base_component.BaseComponent):
   schema. The schema codifies properties which the input data is expected to
   satisfy, and is provided and maintained by the user.
 
-  Please see https://www.tensorflow.org/tfx/data_validation for more details.
-
   ## Example
   ```
   # Performs anomaly detection based on statistics and data schema.
@@ -57,17 +51,21 @@ class ExampleValidator(base_component.BaseComponent):
       statistics=statistics_gen.outputs['statistics'],
       schema=infer_schema.outputs['schema'])
   ```
+
+  Component `outputs` contains:
+   - `anomalies`: Channel of type `standard_artifacts.ExampleAnomalies`.
+
+  See [the ExampleValidator
+  guide](https://www.tensorflow.org/tfx/guide/exampleval) for more details.
   """
 
-  SPEC_CLASS = ExampleValidatorSpec
+  SPEC_CLASS = standard_component_specs.ExampleValidatorSpec
   EXECUTOR_SPEC = executor_spec.ExecutorClassSpec(executor.Executor)
 
   def __init__(self,
-               statistics: types.Channel = None,
-               schema: types.Channel = None,
-               exclude_splits: Optional[List[Text]] = None,
-               anomalies: Optional[Text] = None,
-               instance_name: Optional[Text] = None):
+               statistics: types.Channel,
+               schema: types.Channel,
+               exclude_splits: Optional[List[str]] = None):
     """Construct an ExampleValidator component.
 
     Args:
@@ -76,21 +74,14 @@ class ExampleValidator(base_component.BaseComponent):
       exclude_splits: Names of splits that the example validator should not
         validate. Default behavior (when exclude_splits is set to None)
         is excluding no splits.
-      anomalies: Output channel of type `standard_artifacts.ExampleAnomalies`.
-      instance_name: Optional name assigned to this specific instance of
-        ExampleValidator. Required only if multiple ExampleValidator components
-        are declared in the same pipeline.  Either `stats` or `statistics` must
-        be present in the arguments.
     """
     if exclude_splits is None:
       exclude_splits = []
       logging.info('Excluding no splits because exclude_splits is not set.')
-    if not anomalies:
-      anomalies = types.Channel(type=standard_artifacts.ExampleAnomalies)
-    spec = ExampleValidatorSpec(
+    anomalies = types.Channel(type=standard_artifacts.ExampleAnomalies)
+    spec = standard_component_specs.ExampleValidatorSpec(
         statistics=statistics,
         schema=schema,
         exclude_splits=json_utils.dumps(exclude_splits),
         anomalies=anomalies)
-    super(ExampleValidator, self).__init__(
-        spec=spec, instance_name=instance_name)
+    super().__init__(spec=spec)

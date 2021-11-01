@@ -16,13 +16,13 @@
 import json
 import os
 import subprocess
-import sys
-from typing import Any, Dict, List, Text
+from typing import Any, Dict, List
 
 import click
 
 from tfx.dsl.io import fileio
 from tfx.tools.cli import labels
+from tfx.tools.cli.handler import airflow_dag_runner_patcher
 from tfx.tools.cli.handler import base_handler
 from tfx.utils import io_utils
 
@@ -32,7 +32,7 @@ class AirflowHandler(base_handler.BaseHandler):
 
   def __init__(self, flags_dict):
     self._check_airflow_version()
-    super(AirflowHandler, self).__init__(flags_dict)
+    super().__init__(flags_dict)
     self._handler_home_dir = os.path.join(self._handler_home_dir, 'dags', '')
 
   def _get_airflow_version(self):
@@ -50,14 +50,15 @@ class AirflowHandler(base_handler.BaseHandler):
     Args:
       overwrite: Set as True to update pipeline.
     """
-    # Compile pipeline to check if pipeline_args are extracted successfully.
-    pipeline_args = self.compile_pipeline()
-
-    pipeline_name = pipeline_args[labels.PIPELINE_NAME]
+    patcher = airflow_dag_runner_patcher.AirflowDagRunnerPatcher()
+    context = self.execute_dsl(patcher)
+    pipeline_name = context[patcher.PIPELINE_NAME]
 
     self._check_pipeline_existence(pipeline_name, required=overwrite)
-
-    self._save_pipeline(pipeline_args)
+    self._save_pipeline({
+        labels.PIPELINE_NAME: pipeline_name,
+        labels.PIPELINE_ROOT: context[patcher.PIPELINE_ROOT]
+    })
 
     if overwrite:
       click.echo('Pipeline "{}" updated successfully.'.format(pipeline_name))
@@ -86,34 +87,24 @@ class AirflowHandler(base_handler.BaseHandler):
     """Delete pipeline in Airflow."""
     pipeline_name = self.flags_dict[labels.PIPELINE_NAME]
 
-    # Path to pipeline folder.
-    handler_pipeline_path = os.path.join(self._handler_home_dir, pipeline_name,
-                                         '')
-
     # Check if pipeline exists.
     self._check_pipeline_existence(pipeline_name)
 
     # Delete pipeline folder.
-    io_utils.delete_dir(handler_pipeline_path)
+    io_utils.delete_dir(self._get_pipeline_info_path(pipeline_name))
     click.echo('Pipeline "{}" deleted successfully.'.format(pipeline_name))
 
-  def compile_pipeline(self) -> Dict[Text, Any]:
-    """Compiles pipeline in Airflow.
-
-    Returns:
-      A python dictionary with pipeline details extracted from DSL.
-    """
-    self._check_pipeline_dsl_path()
-    self._check_dsl_runner()
-    pipeline_args = self._extract_pipeline_args()
-    if not pipeline_args:
-      sys.exit('Unable to compile pipeline. Check your pipeline dsl.')
+  def compile_pipeline(self) -> None:
+    """Compiles pipeline in Airflow."""
+    patcher = airflow_dag_runner_patcher.AirflowDagRunnerPatcher()
+    self.execute_dsl(patcher)
     click.echo('Pipeline compiled successfully.')
-    return pipeline_args
 
   def create_run(self) -> None:
     """Trigger DAG in Airflow."""
     pipeline_name = self.flags_dict[labels.PIPELINE_NAME]
+    runtime_parameter_json = json.dumps(
+        self.flags_dict[labels.RUNTIME_PARAMETER])
 
     # Check if pipeline exists.
     self._check_pipeline_existence(pipeline_name)
@@ -122,7 +113,10 @@ class AirflowHandler(base_handler.BaseHandler):
     self._subprocess_call(['airflow', 'dags', 'unpause', pipeline_name])
 
     # Trigger DAG.
-    self._subprocess_call(['airflow', 'dags', 'trigger', pipeline_name])
+    self._subprocess_call([
+        'airflow', 'dags', 'trigger', '--conf', runtime_parameter_json,
+        pipeline_name
+    ])
 
     click.echo('Run created for pipeline: ' + pipeline_name)
 
@@ -171,16 +165,14 @@ class AirflowHandler(base_handler.BaseHandler):
       click.echo(
           f'Run "{run_id}" of pipeline "{pipeline_name}" does not exist.')
 
-  def _save_pipeline(self, pipeline_args: Dict[Text, Any]) -> None:
+  def _save_pipeline(self, pipeline_args: Dict[str, Any]) -> None:
     """Creates/updates pipeline folder in the handler directory.
 
     Args:
       pipeline_args: Pipeline details obtained from DSL.
     """
-    # Path to pipeline folder in Airflow.
-    handler_pipeline_path = os.path.join(self._handler_home_dir,
-                                         pipeline_args[labels.PIPELINE_NAME],
-                                         '')
+    pipeline_name = pipeline_args[labels.PIPELINE_NAME]
+    handler_pipeline_path = self._get_pipeline_info_path(pipeline_name)
 
     # If updating pipeline, first delete pipeline directory.
     if fileio.exists(handler_pipeline_path):

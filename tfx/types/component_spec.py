@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,26 +13,23 @@
 # limitations under the License.
 """ComponentSpec for defining inputs/outputs/properties of TFX components."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
-import abc
 import copy
 import inspect
 import itertools
-from typing import Any, Dict, List, Optional, Text, Type
+from typing import Any, Dict, List, Optional, Type, cast
 
-from six import with_metaclass
-
-from tfx.types.artifact import Artifact
-from tfx.types.channel import Channel
-from tfx.types.node_common import _PropertyDictWrapper
+from tfx.dsl.placeholder import placeholder
+from tfx.types import artifact
+from tfx.types import channel
 from tfx.utils import abc_utils
 from tfx.utils import json_utils
 from tfx.utils import proto_utils
 
 from google.protobuf import message
+
+
+def _is_runtime_param(data: Any) -> bool:
+  return data.__class__.__name__ == 'RuntimeParameter'
 
 
 def _make_default(data: Any) -> Any:
@@ -54,14 +50,14 @@ def _make_default(data: Any) -> Any:
     copy_data = copy.deepcopy(data)
     _put_default_list(copy_data)
     return copy_data
-  if data.__class__.__name__ == 'RuntimeParameter':
+  if _is_runtime_param(data):
     ptype = data.ptype
     return ptype.__new__(ptype)
 
   return data
 
 
-def _put_default_dict(dict_data: Dict[Text, Any]) -> None:
+def _put_default_dict(dict_data: Dict[str, Any]) -> None:
   """Helper function to replace RuntimeParameter with its default value."""
   for k, v in dict_data.items():
     if isinstance(v, dict):
@@ -87,7 +83,7 @@ def _put_default_list(list_data: List[Any]) -> None:
       list_data[index] = ptype.__new__(ptype)
 
 
-class ComponentSpec(with_metaclass(abc.ABCMeta, json_utils.Jsonable)):
+class ComponentSpec(json_utils.Jsonable):
   """A specification of the inputs, outputs and parameters for a component.
 
   Components should have a corresponding ComponentSpec inheriting from this
@@ -218,13 +214,20 @@ class ComponentSpec(with_metaclass(abc.ABCMeta, json_utils.Jsonable)):
       value = self._raw_args[arg_name]
 
       if (inspect.isclass(arg.type) and
-          issubclass(arg.type, message.Message) and value):
-        # Create deterministic json string as it will be stored in metadata for
-        # cache check.
-        if isinstance(value, dict):
-          value = json_utils.dumps(value)
+          issubclass(arg.type, message.Message) and value and
+          not _is_runtime_param(value)):
+        if arg.use_proto:
+          if isinstance(value, dict):
+            value = proto_utils.dict_to_proto(value, arg.type())
+          elif isinstance(value, str):
+            value = proto_utils.json_to_proto(value, arg.type())
         else:
-          value = proto_utils.proto_to_json(value)
+          # Create deterministic json string as it will be stored in metadata
+          # for cache check.
+          if isinstance(value, dict):
+            value = json_utils.dumps(value)
+          elif not isinstance(value, str):
+            value = proto_utils.proto_to_json(value)
 
       self.exec_properties[arg_name] = value
 
@@ -236,23 +239,25 @@ class ComponentSpec(with_metaclass(abc.ABCMeta, json_utils.Jsonable)):
         value = self._raw_args[arg_name]
         param_dict[arg_name] = value
 
-    # Note: for forwards compatibility, ComponentSpec objects may provide an
-    # attribute mapping virtual keys to physical keys in the outputs dictionary,
-    # and when the value for a virtual key is accessed, the value for the
-    # physical key will be returned instead. This is intended to provide
-    # forwards compatibility. This feature will be removed once attribute
-    # renaming is completed and *should not* be used by ComponentSpec authors
-    # outside the TFX package.
-    #
-    # TODO(b/139281215): remove this functionality.
-    self.inputs = _PropertyDictWrapper(
-        inputs,
-        compat_aliases=getattr(self, '_INPUT_COMPATIBILITY_ALIASES', None))
-    self.outputs = _PropertyDictWrapper(
-        outputs,
-        compat_aliases=getattr(self, '_OUTPUT_COMPATIBILITY_ALIASES', None))
+    self.inputs = inputs
+    self.outputs = outputs
 
-  def to_json_dict(self) -> Dict[Text, Any]:
+  def is_optional_input(self, key: str) -> bool:
+    """Whether the input channel of the key is optional."""
+    try:
+      return cast(ChannelParameter, self.INPUTS[key]).optional
+    except KeyError as e:
+      raise KeyError(f'self.INPUTS = {self.INPUTS}') from e
+
+  def is_optional_output(self, key: str) -> bool:
+    """Whether the output channel of the key is optional."""
+    return cast(ChannelParameter, self.OUTPUTS[key]).optional
+
+  def is_optional_exec_property(self, key: str) -> bool:
+    """Whether the exec_properties of the key is optional."""
+    return cast(ExecutionParameter, self.PARAMETERS[key]).optional
+
+  def to_json_dict(self) -> Dict[str, Any]:
     """Convert from an object to a JSON serializable dictionary."""
     return {
         'inputs': self.inputs,
@@ -261,7 +266,7 @@ class ComponentSpec(with_metaclass(abc.ABCMeta, json_utils.Jsonable)):
     }
 
 
-class _ComponentParameter(object):
+class _ComponentParameter:
   """An abstract parameter that forms a part of a ComponentSpec.
 
   Properties:
@@ -282,21 +287,32 @@ class ExecutionParameter(_ComponentParameter):
         'internal_option': ExecutionParameter(type=str),
     }
     # ...
+
+  Attributes:
+    type: Type of the execution parameter.
+    optional: Boolean value indicating whether the parameter is optional.
+    use_proto: Boolean value indicating whether pb message (and other
+      non-primitive types like lists) should be stored in its original form.
   """
 
-  def __init__(self, type=None, optional=False):  # pylint: disable=redefined-builtin
+  def __init__(self, type=None, optional=False, use_proto=False):  # pylint: disable=redefined-builtin
     self.type = type
     self.optional = optional
+    self.use_proto = use_proto
+
+    if self.type in [int, float, str] and self.use_proto:
+      raise ValueError('use_proto set for primitive type %s' % self.type)
 
   def __repr__(self):
-    return 'ExecutionParameter(type: %s, optional: %s)' % (self.type,
-                                                           self.optional)
+    return 'ExecutionParameter(type: %s, optional: %s, use_proto: %s)' % (
+        self.type, self.optional, self.use_proto)
 
   def __eq__(self, other):
     return (isinstance(other.__class__, self.__class__) and
-            other.type == self.type and other.optional == self.optional)
+            other.type == self.type and other.optional == self.optional and
+            other.use_proto == self.use_proto)
 
-  def type_check(self, arg_name: Text, value: Any):
+  def type_check(self, arg_name: str, value: Any):
     """Perform type check to the parameter passed in."""
 
     # Following helper function is needed due to the lack of subscripted
@@ -307,6 +323,25 @@ class ExecutionParameter(_ComponentParameter):
     # Dict[Text, Any] <------ Okay.
     def _type_check_helper(value: Any, declared: Type):  # pylint: disable=g-bare-generic
       """Helper type-checking function."""
+      if isinstance(value, placeholder.Placeholder):
+        placeholders_involved = value.placeholders_involved()
+        if (len(placeholders_involved) != 1 or not isinstance(
+            placeholders_involved[0], placeholder.RuntimeInfoPlaceholder)):
+          placeholders_involved_str = [
+              x.__class__.__name__ for x in placeholders_involved
+          ]
+          raise TypeError(
+              'Only simple RuntimeInfoPlaceholders are supported, but while '
+              'checking parameter %r, the following placeholders were '
+              'involved: %s' % (arg_name, placeholders_involved_str))
+        if not issubclass(declared, str):
+          raise TypeError(
+              'Cannot use Placeholders except for str parameter, but parameter '
+              '%r was of type %s' % (arg_name, declared))
+        return
+
+      is_runtime_param = _is_runtime_param(value)
+      value = _make_default(value)
       if declared == Any:
         return
       if declared.__class__.__name__ in ('_GenericAlias', 'GenericMeta'):
@@ -342,16 +377,24 @@ class ExecutionParameter(_ComponentParameter):
       elif isinstance(value, dict) and issubclass(declared, message.Message):
         # If a dict is passed in and is compared against a pb message,
         # do the type-check by converting it to pb message.
-        dict_with_default = _make_default(value)
-        proto_utils.dict_to_proto(dict_with_default, declared())
+        proto_utils.dict_to_proto(value, declared())
+      elif (isinstance(value, str) and not isinstance(declared, tuple) and
+            issubclass(declared, message.Message)):
+        # Skip check for runtime param string proto.
+        if not is_runtime_param:
+          # If a text is passed in and is compared against a pb message,
+          # do the type-check by converting text (as json) to pb message.
+          proto_utils.json_to_proto(value, declared())
       else:
         if not isinstance(value, declared):
           raise TypeError('Expected type %s for parameter %r '
                           'but got %s instead.' % (
                               str(declared), arg_name, value))
 
-    value_with_default = _make_default(value)
-    _type_check_helper(value_with_default, self.type)
+    _type_check_helper(value, self.type)
+
+
+COMPATIBLE_TYPES_KEY = '_compatible_types'
 
 
 class ChannelParameter(_ComponentParameter):
@@ -373,9 +416,9 @@ class ChannelParameter(_ComponentParameter):
 
   def __init__(
       self,
-      type: Optional[Type[Artifact]] = None,  # pylint: disable=redefined-builtin
-      optional: Optional[bool] = False):
-    if not (inspect.isclass(type) and issubclass(type, Artifact)):  # pytype: disable=wrong-arg-types
+      type: Optional[Type[artifact.Artifact]] = None,  # pylint: disable=redefined-builtin
+      optional: bool = False):
+    if not (inspect.isclass(type) and issubclass(type, artifact.Artifact)):  # pytype: disable=wrong-arg-types
       raise ValueError(
           'Argument "type" of Channel constructor must be a subclass of '
           'tfx.types.Artifact.')
@@ -383,13 +426,15 @@ class ChannelParameter(_ComponentParameter):
     self.optional = optional
 
   def __repr__(self):
-    return 'ChannelParameter(type: %s)' % (self.type,)
+    return 'ChannelParameter(type: %s)' % self.type
 
   def __eq__(self, other):
     return (isinstance(other.__class__, self.__class__) and
             other.type == self.type and other.optional == self.optional)
 
-  def type_check(self, arg_name: Text, value: Channel):
-    if not isinstance(value, Channel) or value.type != self.type:
+  def type_check(self, arg_name: str, value: channel.BaseChannel):
+    if ((not isinstance(value, channel.BaseChannel)) or
+        not (value.type is self.type or
+             value.type in getattr(self.type, COMPATIBLE_TYPES_KEY, ()))):
       raise TypeError('Argument %s should be a Channel of type %r (got %s).' %
                       (arg_name, self.type, value))

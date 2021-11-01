@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,12 +13,7 @@
 # limitations under the License.
 """Tests for tfx.components.transform.component."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import json
-from typing import Text
 
 import tensorflow as tf
 from tfx.components.transform import component
@@ -35,7 +29,7 @@ from tfx.utils import proto_utils
 class ComponentTest(tf.test.TestCase):
 
   def setUp(self):
-    super(ComponentTest, self).setUp()
+    super().setUp()
     examples_artifact = standard_artifacts.Examples()
     examples_artifact.split_names = artifact_utils.encode_split_names(
         ['train', 'eval'])
@@ -46,7 +40,8 @@ class ComponentTest(tf.test.TestCase):
   def _verify_outputs(self,
                       transform,
                       materialize=True,
-                      disable_analyzer_cache=False):
+                      disable_analyzer_cache=False,
+                      disable_statistics=False):
     self.assertEqual(
         standard_artifacts.TransformGraph.TYPE_NAME, transform.outputs[
             standard_component_specs.TRANSFORM_GRAPH_KEY].type_name)
@@ -65,6 +60,28 @@ class ComponentTest(tf.test.TestCase):
           standard_artifacts.TransformCache.TYPE_NAME, transform.outputs[
               standard_component_specs.UPDATED_ANALYZER_CACHE_KEY].type_name)
 
+    if disable_statistics:
+      for key in [
+          standard_component_specs.PRE_TRANSFORM_STATS_KEY,
+          standard_component_specs.PRE_TRANSFORM_SCHEMA_KEY,
+          standard_component_specs.POST_TRANSFORM_ANOMALIES_KEY,
+          standard_component_specs.POST_TRANSFORM_STATS_KEY,
+          standard_component_specs.POST_TRANSFORM_SCHEMA_KEY
+      ]:
+        self.assertNotIn(key, transform.outputs.keys())
+    else:
+      for key, name in [(standard_component_specs.PRE_TRANSFORM_STATS_KEY,
+                         standard_artifacts.ExampleStatistics.TYPE_NAME),
+                        (standard_component_specs.PRE_TRANSFORM_SCHEMA_KEY,
+                         standard_artifacts.Schema.TYPE_NAME),
+                        (standard_component_specs.POST_TRANSFORM_ANOMALIES_KEY,
+                         standard_artifacts.ExampleAnomalies.TYPE_NAME),
+                        (standard_component_specs.POST_TRANSFORM_STATS_KEY,
+                         standard_artifacts.ExampleStatistics.TYPE_NAME),
+                        (standard_component_specs.POST_TRANSFORM_SCHEMA_KEY,
+                         standard_artifacts.Schema.TYPE_NAME)]:
+        self.assertEqual(name, transform.outputs[key].type_name)
+
   def test_construct_from_module_file(self):
     module_file = '/path/to/preprocessing.py'
     transform = component.Transform(
@@ -78,7 +95,7 @@ class ComponentTest(tf.test.TestCase):
         transform.exec_properties[standard_component_specs.MODULE_FILE_KEY])
 
   def test_construct_with_parameter(self):
-    module_file = data_types.RuntimeParameter(name='module-file', ptype=Text)
+    module_file = data_types.RuntimeParameter(name='module-file', ptype=str)
     transform = component.Transform(
         examples=self.examples,
         schema=self.schema,
@@ -101,6 +118,24 @@ class ComponentTest(tf.test.TestCase):
     self.assertEqual(
         preprocessing_fn, transform.exec_properties[
             standard_component_specs.PREPROCESSING_FN_KEY])
+    self.assertIsNone(transform.exec_properties[
+        standard_component_specs.STATS_OPTIONS_UPDATER_FN_KEY])
+
+  def test_construct_from_preprocessing_fn_with_stats_options_updater_fn(self):
+    preprocessing_fn = 'path.to.my_preprocessing_fn'
+    stats_options_updater_fn = 'path.to.my.stats_options_updater_fn'
+    transform = component.Transform(
+        examples=self.examples,
+        schema=self.schema,
+        preprocessing_fn=preprocessing_fn,
+        stats_options_updater_fn=stats_options_updater_fn)
+    self._verify_outputs(transform)
+    self.assertEqual(
+        preprocessing_fn, transform.exec_properties[
+            standard_component_specs.PREPROCESSING_FN_KEY])
+    self.assertEqual(
+        stats_options_updater_fn, transform.exec_properties[
+            standard_component_specs.STATS_OPTIONS_UPDATER_FN_KEY])
 
   def test_construct_with_materialization_disabled(self):
     transform = component.Transform(
@@ -166,16 +201,6 @@ class ComponentTest(tf.test.TestCase):
         proto_utils.proto_to_json(splits_config),
         transform.exec_properties[standard_component_specs.SPLITS_CONFIG_KEY])
 
-  def test_construct_with_materialization_disabled_but_output_examples(self):
-    with self.assertRaises(ValueError):
-      _ = component.Transform(
-          examples=self.examples,
-          schema=self.schema,
-          preprocessing_fn='my_preprocessing_fn',
-          materialize=False,
-          transformed_examples=channel_utils.as_channel(
-              [standard_artifacts.Examples()]))
-
   def test_construct_with_cache_disabled_but_input_cache(self):
     with self.assertRaises(ValueError):
       _ = component.Transform(
@@ -186,18 +211,31 @@ class ComponentTest(tf.test.TestCase):
           analyzer_cache=channel_utils.as_channel(
               [standard_artifacts.TransformCache()]))
 
-  def test_construct_with_force_tf_compat_v1_false(self):
+  def test_construct_with_force_tf_compat_v1_override(self):
     transform = component.Transform(
         examples=self.examples,
         schema=self.schema,
         preprocessing_fn='my_preprocessing_fn',
-        force_tf_compat_v1=False,
+        force_tf_compat_v1=True,
     )
     self._verify_outputs(transform)
     self.assertEqual(
-        False,
+        True,
         bool(transform.spec.exec_properties[
             standard_component_specs.FORCE_TF_COMPAT_V1_KEY]))
+
+  def test_construct_with_stats_disabled(self):
+    transform = component.Transform(
+        examples=self.examples,
+        schema=self.schema,
+        preprocessing_fn='my_preprocessing_fn',
+        disable_statistics=True,
+    )
+    self._verify_outputs(transform, disable_statistics=True)
+    self.assertEqual(
+        True,
+        bool(transform.spec.exec_properties[
+            standard_component_specs.DISABLE_STATISTICS_KEY]))
 
 
 if __name__ == '__main__':

@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2020 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,10 +13,6 @@
 # limitations under the License.
 """Tests for bulk_inferrer component of Cloud AI platform."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import tensorflow as tf
 
 from tfx.extensions.google_cloud_ai_platform.bulk_inferrer import component
@@ -29,7 +24,7 @@ from tfx.types import standard_artifacts
 class ComponentTest(tf.test.TestCase):
 
   def setUp(self):
-    super(ComponentTest, self).setUp()
+    super().setUp()
     self._examples = channel_utils.as_channel([standard_artifacts.Examples()])
     self._model = channel_utils.as_channel([standard_artifacts.Model()])
     self._model_blessing = channel_utils.as_channel(
@@ -53,24 +48,6 @@ class ComponentTest(tf.test.TestCase):
     self.assertEqual('Examples',
                      bulk_inferrer.outputs['output_examples'].type_name)
     self.assertNotIn('inference_result', bulk_inferrer.outputs.keys())
-
-  def testConstructInferenceResultAndOutputExample(self):
-    with self.assertRaises(ValueError):
-      component.CloudAIBulkInferrerComponent(
-          examples=self._examples,
-          model=self._model,
-          model_blessing=self._model_blessing,
-          output_examples=channel_utils.as_channel(
-              [standard_artifacts.Examples()]))
-
-    with self.assertRaises(ValueError):
-      component.CloudAIBulkInferrerComponent(
-          examples=self._examples,
-          model=self._model,
-          model_blessing=self._model_blessing,
-          output_example_spec=bulk_inferrer_pb2.OutputExampleSpec(),
-          inference_result=channel_utils.as_channel(
-              [standard_artifacts.InferenceResult()]))
 
 
 if __name__ == '__main__':

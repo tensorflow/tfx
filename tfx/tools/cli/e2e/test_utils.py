@@ -16,18 +16,16 @@
 import datetime
 import random
 import string
-from typing import Any, List, Text
+import subprocess
+from typing import Any, List
 
-from tfx.components import CsvExampleGen
-from tfx.components import SchemaGen
-from tfx.components import StatisticsGen
+from absl import logging
+from tfx import components
 from tfx.dsl.components.base.base_component import BaseComponent
-from tfx.utils import dsl_utils
-
-from tensorflow.python.lib.io import file_io  # pylint: disable=g-direct-tensorflow-import
+from tfx.utils import io_utils
 
 
-def create_e2e_components(csv_input_location: Text,) -> List[BaseComponent]:
+def create_e2e_components(csv_input_location: str,) -> List[BaseComponent]:
   """Creates components for a simple Chicago Taxi TFX pipeline for testing.
 
      Because we don't need to run whole pipeline, we will make a very short
@@ -39,11 +37,11 @@ def create_e2e_components(csv_input_location: Text,) -> List[BaseComponent]:
   Returns:
     A list of TFX components that constitutes an end-to-end test pipeline.
   """
-  examples = dsl_utils.external_input(csv_input_location)
 
-  example_gen = CsvExampleGen(input=examples)
-  statistics_gen = StatisticsGen(examples=example_gen.outputs['examples'])
-  schema_gen = SchemaGen(
+  example_gen = components.CsvExampleGen(input_base=csv_input_location)
+  statistics_gen = components.StatisticsGen(
+      examples=example_gen.outputs['examples'])
+  schema_gen = components.SchemaGen(
       statistics=statistics_gen.outputs['statistics'],
       infer_feature_shape=False)
 
@@ -59,12 +57,30 @@ def generate_random_id(seed: Any = None):
   ])
 
 
-def copy_and_change_pipeline_name(orig_path: Text, new_path: Text,
-                                  origin_pipeline_name: Text,
-                                  new_pipeline_name: Text) -> None:
+def copy_and_change_pipeline_name(orig_path: str, new_path: str,
+                                  origin_pipeline_name: str,
+                                  new_pipeline_name: str) -> None:
   """Copy pipeline file to new path with pipeline name changed."""
-  contents = file_io.read_file_to_string(orig_path)
+  contents = io_utils.read_string_file(orig_path)
   assert contents.count(
       origin_pipeline_name) == 1, 'DSL file can only contain one pipeline name'
   contents = contents.replace(origin_pipeline_name, new_pipeline_name)
-  file_io.write_string_to_file(new_path, contents)
+  io_utils.write_string_file(new_path, contents)
+
+
+def run_cli(args: List[str]) -> str:
+  """Run CLI with given arguments. Raises CalledProcessError if failed."""
+  logging.info('Running cli: %s', args)
+  try:
+    result = subprocess.run(
+        ['tfx'] + args,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        encoding='utf-8',
+        check=True)
+  except subprocess.CalledProcessError as err:
+    logging.error('Command failed (exit code %d) with output: %s',
+                  err.returncode, err.output)
+    raise err
+  logging.info('[CLI] %s', result.stdout)
+  return result.stdout

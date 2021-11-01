@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2020 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -17,11 +16,9 @@
 import os
 from absl import logging
 
+from tfx import v1 as tfx
 from tfx.experimental.templates.penguin.pipeline import configs
 from tfx.experimental.templates.penguin.pipeline import pipeline
-from tfx.orchestration.kubeflow import kubeflow_dag_runner
-from tfx.proto import trainer_pb2
-from tfx.utils import telemetry_utils
 
 # TFX pipeline produces many output files and metadata. All output data will be
 # stored under this OUTPUT_DIR.
@@ -58,20 +55,17 @@ def run():
   # lightweight deployment option, you may need to override the defaults.
   # If you use Kubeflow, metadata will be written to MySQL database inside
   # Kubeflow cluster.
-  metadata_config = kubeflow_dag_runner.get_default_kubeflow_metadata_config()
+  metadata_config = tfx.orchestration.experimental.get_default_kubeflow_metadata_config(
+  )
 
-  # This pipeline automatically injects the Kubeflow TFX image if the
-  # environment variable 'KUBEFLOW_TFX_IMAGE' is defined. Currently, the tfx
-  # cli tool exports the environment variable to pass to the pipelines.
-  # TODO(b/157598477) Find a better way to pass parameters from CLI handler to
-  # pipeline DSL file, instead of using environment vars.
-  tfx_image = os.environ.get('KUBEFLOW_TFX_IMAGE', None)
-
-  runner_config = kubeflow_dag_runner.KubeflowDagRunnerConfig(
-      kubeflow_metadata_config=metadata_config, tfx_image=tfx_image)
-  pod_labels = kubeflow_dag_runner.get_default_pod_labels()
-  pod_labels.update({telemetry_utils.LABEL_KFP_SDK_ENV: 'tfx-template'})
-  kubeflow_dag_runner.KubeflowDagRunner(
+  runner_config = tfx.orchestration.experimental.KubeflowDagRunnerConfig(
+      kubeflow_metadata_config=metadata_config,
+      tfx_image=configs.PIPELINE_IMAGE)
+  pod_labels = {
+      'add-pod-env': 'true',
+      tfx.orchestration.experimental.LABEL_KFP_SDK_ENV: 'tfx-template'
+  }
+  tfx.orchestration.experimental.KubeflowDagRunner(
       config=runner_config, pod_labels_to_attach=pod_labels
   ).run(
       pipeline.create_pipeline(
@@ -80,10 +74,12 @@ def run():
           data_path=DATA_PATH,
           # NOTE: Use `query` instead of `data_path` to use BigQueryExampleGen.
           # query=configs.BIG_QUERY_QUERY,
+          # NOTE: Set the path of the customized schema if any.
+          # schema_path=generated_schema_path,
           preprocessing_fn=configs.PREPROCESSING_FN,
           run_fn=configs.RUN_FN,
-          train_args=trainer_pb2.TrainArgs(num_steps=configs.TRAIN_NUM_STEPS),
-          eval_args=trainer_pb2.EvalArgs(num_steps=configs.EVAL_NUM_STEPS),
+          train_args=tfx.proto.TrainArgs(num_steps=configs.TRAIN_NUM_STEPS),
+          eval_args=tfx.proto.EvalArgs(num_steps=configs.EVAL_NUM_STEPS),
           eval_accuracy_threshold=configs.EVAL_ACCURACY_THRESHOLD,
           serving_model_dir=SERVING_MODEL_DIR,
           # NOTE: Provide GCP configs to use BigQuery with Beam DirectRunner.

@@ -14,29 +14,11 @@
 """Penguin example using TFX on GCP."""
 
 import os
-from typing import Dict, List, Optional, Text
+from typing import Dict, List, Optional
 
 import absl
 import tensorflow_model_analysis as tfma
-from tfx.components import CsvExampleGen
-from tfx.components import Evaluator
-from tfx.components import ExampleValidator
-from tfx.components import Pusher
-from tfx.components import ResolverNode
-from tfx.components import SchemaGen
-from tfx.components import StatisticsGen
-from tfx.components import Trainer
-from tfx.dsl.components.base import executor_spec
-from tfx.dsl.experimental import latest_blessed_model_resolver
-from tfx.extensions.google_cloud_ai_platform.pusher import executor as ai_platform_pusher_executor
-from tfx.extensions.google_cloud_ai_platform.trainer import executor as ai_platform_trainer_executor
-from tfx.orchestration import pipeline
-from tfx.orchestration.kubeflow import kubeflow_dag_runner
-from tfx.proto import trainer_pb2
-from tfx.types import Channel
-from tfx.types.standard_artifacts import Model
-from tfx.types.standard_artifacts import ModelBlessing
-
+from tfx import v1 as tfx
 
 # Identifier for the pipeline. This will also be used as the model name on AI
 # Platform, so it should begin with a letter and only consist of letters,
@@ -127,51 +109,57 @@ _beam_pipeline_args = [
 ]
 
 
-def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
-                     trainer_module_file: Text, evaluator_module_file: Text,
-                     ai_platform_training_args: Optional[Dict[Text, Text]],
-                     ai_platform_serving_args: Optional[Dict[Text, Text]],
-                     beam_pipeline_args: List[Text]) -> pipeline.Pipeline:
+def _create_pipeline(
+    pipeline_name: str,
+    pipeline_root: str,
+    data_root: str,
+    trainer_module_file: str,
+    evaluator_module_file: str,
+    ai_platform_training_args: Optional[Dict[str, str]],
+    ai_platform_serving_args: Optional[Dict[str, str]],
+    beam_pipeline_args: List[str],
+) -> tfx.dsl.Pipeline:
   """Implements the Penguin pipeline with TFX."""
   # Brings data into the pipeline or otherwise joins/converts training data.
-  example_gen = CsvExampleGen(input_base=data_root)
+  example_gen = tfx.components.CsvExampleGen(
+      input_base=os.path.join(data_root, 'labelled'))
 
   # Computes statistics over data for visualization and example validation.
-  statistics_gen = StatisticsGen(examples=example_gen.outputs['examples'])
+  statistics_gen = tfx.components.StatisticsGen(
+      examples=example_gen.outputs['examples'])
 
   # Generates schema based on statistics files.
-  schema_gen = SchemaGen(
+  schema_gen = tfx.components.SchemaGen(
       statistics=statistics_gen.outputs['statistics'], infer_feature_shape=True)
 
   # Performs anomaly detection based on statistics and data schema.
-  example_validator = ExampleValidator(
+  example_validator = tfx.components.ExampleValidator(
       statistics=statistics_gen.outputs['statistics'],
       schema=schema_gen.outputs['schema'])
 
   # TODO(humichael): Handle applying transformation component in Milestone 3.
 
-  # Uses user-provided Python function that trains a model using TF-Learn.
+  # Uses user-provided Python function that trains a model.
   # Num_steps is not provided during evaluation because the scikit-learn model
   # loads and evaluates the entire test set at once.
-  trainer = Trainer(
+  trainer = tfx.extensions.google_cloud_ai_platform.Trainer(
       module_file=trainer_module_file,
-      custom_executor_spec=executor_spec.ExecutorClassSpec(
-          ai_platform_trainer_executor.GenericExecutor),
       examples=example_gen.outputs['examples'],
       schema=schema_gen.outputs['schema'],
-      train_args=trainer_pb2.TrainArgs(num_steps=2000),
-      eval_args=trainer_pb2.EvalArgs(),
+      train_args=tfx.proto.TrainArgs(num_steps=2000),
+      eval_args=tfx.proto.EvalArgs(),
       custom_config={
-          ai_platform_trainer_executor.TRAINING_ARGS_KEY:
+          tfx.extensions.google_cloud_ai_platform.TRAINING_ARGS_KEY:
           ai_platform_training_args,
       })
 
   # Get the latest blessed model for model validation.
-  model_resolver = ResolverNode(
-      instance_name='latest_blessed_model_resolver',
-      resolver_class=latest_blessed_model_resolver.LatestBlessedModelResolver,
-      model=Channel(type=Model),
-      model_blessing=Channel(type=ModelBlessing))
+  model_resolver = tfx.dsl.Resolver(
+      strategy_class=tfx.dsl.experimental.LatestBlessedModelStrategy,
+      model=tfx.dsl.Channel(type=tfx.types.standard_artifacts.Model),
+      model_blessing=tfx.dsl.Channel(
+          type=tfx.types.standard_artifacts.ModelBlessing)).with_id(
+              'latest_blessed_model_resolver')
 
   # Uses TFMA to compute evaluation statistics over features of a model and
   # perform quality validation of a candidate model (compared to a baseline).
@@ -190,24 +178,23 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
                           absolute={'value': -1e-10})))
           ])
       ])
-  evaluator = Evaluator(
+
+  evaluator = tfx.components.Evaluator(
       module_file=evaluator_module_file,
       examples=example_gen.outputs['examples'],
       model=trainer.outputs['model'],
       baseline_model=model_resolver.outputs['model'],
       eval_config=eval_config)
 
-  pusher = Pusher(
-      custom_executor_spec=executor_spec.ExecutorClassSpec(
-          ai_platform_pusher_executor.Executor),
+  pusher = tfx.extensions.google_cloud_ai_platform.Pusher(
       model=trainer.outputs['model'],
       model_blessing=evaluator.outputs['blessing'],
       custom_config={
-          ai_platform_pusher_executor.SERVING_ARGS_KEY:
-          ai_platform_serving_args,
+          tfx.extensions.google_cloud_ai_platform.experimental
+          .PUSHER_SERVING_ARGS_KEY: ai_platform_serving_args,
       })
 
-  return pipeline.Pipeline(
+  return tfx.dsl.Pipeline(
       pipeline_name=pipeline_name,
       pipeline_root=pipeline_root,
       components=[
@@ -236,10 +223,10 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
 # https://cloud.google.com/ai-platform/pipelines/docs/connecting-with-sdk
 if __name__ == '__main__':
   absl.logging.set_verbosity(absl.logging.INFO)
-  runner_config = kubeflow_dag_runner.KubeflowDagRunnerConfig(
+  runner_config = tfx.orchestration.experimental.KubeflowDagRunnerConfig(
       tfx_image=_tfx_image)
 
-  kubeflow_dag_runner.KubeflowDagRunner(config=runner_config).run(
+  tfx.orchestration.experimental.KubeflowDagRunner(config=runner_config).run(
       _create_pipeline(
           pipeline_name=_pipeline_name,
           pipeline_root=_pipeline_root,

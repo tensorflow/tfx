@@ -1,0 +1,110 @@
+# proto-file: tfx/proto/orchestration/pipeline.proto
+# proto-message: Pipeline
+
+pipeline_info: {
+  id: "my_pipeline"
+}
+execution_mode: SYNC
+nodes {
+  pipeline_node {
+    node_info {
+      type {
+        name: "tfx.dsl.components.common.importer.Importer"
+      }
+      id: "my_importer"
+    }
+    contexts {
+      contexts {
+        type {
+          name: "pipeline"
+        }
+        name {
+          field_value {
+            string_value: "my_pipeline"
+          }
+        }
+      }
+      contexts {
+        type {
+          name: "component"
+        }
+        name {
+          field_value {
+            string_value: "my_pipeline.my_importer"
+          }
+        }
+      }
+      contexts {
+        type {
+          name: "pipeline_run_id"
+        }
+        name {
+          runtime_parameter {
+            name: "pipeline-run-id"
+            type: STRING
+          }
+        }
+      }
+    }
+    outputs {
+      outputs {
+        key: "result"
+        value {
+          artifact_spec {
+            type {
+              name: "Schema"
+            }
+            additional_custom_properties {
+              key: "str_custom_property"
+              value {
+                field_value {
+                  string_value: "abc"
+                }
+              }
+            }
+            additional_custom_properties {
+              key: "int_custom_property"
+              value {
+                field_value {
+                  int_value: 123
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+    parameters {
+      parameters {
+        key: "artifact_uri"
+        value {
+          field_value {
+            string_value: "my_url"
+          }
+        }
+      }
+      parameters {
+        key: "reimport"
+        value {
+          field_value {
+            int_value: 1
+          }
+        }
+      }
+    }
+  }
+}
+runtime_spec {
+  pipeline_root {
+    runtime_parameter {
+      name: "pipeline-root"
+      type: STRING
+    }
+  }
+  pipeline_run_id {
+    runtime_parameter {
+      name: "pipeline-run-id"
+      type: STRING
+    }
+  }
+}

@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,20 +13,14 @@
 # limitations under the License.
 """Tests for tfx.extensions.google_cloud_ai_platform.pusher.executor."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import copy
 import os
-from typing import Any, Dict, Text
-import unittest
+from typing import Any, Dict
+from unittest import mock
 
-# Standard Imports
-
-import mock
 import tensorflow as tf
 from tfx.dsl.io import fileio
+from tfx.extensions.google_cloud_ai_platform import constants
 from tfx.extensions.google_cloud_ai_platform.pusher import executor
 from tfx.types import standard_artifacts
 from tfx.types import standard_component_specs
@@ -35,20 +28,10 @@ from tfx.utils import json_utils
 from tfx.utils import telemetry_utils
 
 
-# TODO(b/163417407): remove when we can safely depend on
-def _stale_googleapiclient_version_():
-  import googleapiclient  # pylint: disable=g-import-not-at-top
-  try:
-    return googleapiclient.__version__ < '1.8'
-  except AttributeError:
-    # Later version of googleapiclient has no __version__
-    return False
-
-
 class ExecutorTest(tf.test.TestCase):
 
   def setUp(self):
-    super(ExecutorTest, self).setUp()
+    super().setUp()
     self._source_data_dir = os.path.join(
         os.path.dirname(
             os.path.dirname(os.path.dirname(os.path.dirname(__file__)))),
@@ -76,18 +59,42 @@ class ExecutorTest(tf.test.TestCase):
     # before being passed into Do function.
     self._exec_properties = {
         'custom_config': {
-            executor.SERVING_ARGS_KEY: {
+            constants.SERVING_ARGS_KEY: {
                 'model_name': 'model_name',
                 'project_id': 'project_id'
             },
         },
         'push_destination': None,
     }
+    self._container_image_uri_vertex = 'gcr.io/path/to/container'
+    # Dict format of exec_properties for Vertex. custom_config needs to be
+    # serialized before being passed into Do function.
+    self._exec_properties_vertex = {
+        'custom_config': {
+            constants.SERVING_ARGS_KEY: {
+                'endpoint_name': 'endpoint_name',
+                'project_id': 'project_id',
+            },
+            constants.VERTEX_CONTAINER_IMAGE_URI_KEY:
+                self._container_image_uri_vertex,
+            constants.VERTEX_REGION_KEY:
+                'us-central1',
+            constants.ENABLE_VERTEX_KEY:
+                True,
+        },
+        'push_destination': None,
+    }
     self._executor = executor.Executor()
 
-  def _serialize_custom_config_under_test(self) -> Dict[Text, Any]:
+  def _serialize_custom_config_under_test(self) -> Dict[str, Any]:
     """Converts self._exec_properties['custom_config'] to string."""
     result = copy.deepcopy(self._exec_properties)
+    result['custom_config'] = json_utils.dumps(result['custom_config'])
+    return result
+
+  def _serialize_custom_config_under_test_vertex(self) -> Dict[str, Any]:
+    """Converts self._exec_properties_vertex['custom_config'] to string."""
+    result = copy.deepcopy(self._exec_properties_vertex)
     result['custom_config'] = json_utils.dumps(result['custom_config'])
     return result
 
@@ -113,22 +120,25 @@ class ExecutorTest(tf.test.TestCase):
                                             'model_validator/blessed')
     self._model_blessing.set_int_custom_property('blessed', 1)
     mock_runner.get_service_name_and_api_version.return_value = ('ml', 'v1')
+    version = self._model_push.get_string_custom_property('pushed_version')
+    mock_runner.deploy_model_for_aip_prediction.return_value = (
+        'projects/project_id/models/model_name/versions/{}'.format(version))
+
     self._executor.Do(self._input_dict, self._output_dict,
                       self._serialize_custom_config_under_test())
     executor_class_path = '%s.%s' % (self._executor.__class__.__module__,
                                      self._executor.__class__.__name__)
     with telemetry_utils.scoped_labels(
         {telemetry_utils.LABEL_TFX_EXECUTOR: executor_class_path}):
-      job_labels = telemetry_utils.get_labels_dict()
+      job_labels = telemetry_utils.make_labels_dict()
     mock_runner.deploy_model_for_aip_prediction.assert_called_once_with(
-        mock.ANY,
-        self._model_push.uri,
-        mock.ANY,
-        mock.ANY,
-        job_labels,
+        serving_path=self._model_push.uri,
+        model_version_name=mock.ANY,
+        ai_platform_serving_args=mock.ANY,
+        api=mock.ANY,
+        labels=job_labels,
     )
     self.assertPushed()
-    version = self._model_push.get_string_custom_property('pushed_version')
     self.assertEqual(
         self._model_push.get_string_custom_property('pushed_destination'),
         'projects/project_id/models/model_name/versions/{}'.format(version))
@@ -147,67 +157,148 @@ class ExecutorTest(tf.test.TestCase):
     mock_runner.deploy_model_for_aip_prediction.assert_not_called()
 
   def testRegionsAndEndpointCannotCoExist(self):
+    self._model_blessing.uri = os.path.join(self._source_data_dir,
+                                            'model_validator/blessed')
+    self._model_blessing.set_int_custom_property('blessed', 1)
     # Dict format of exec_properties. custom_config needs to be serialized
     # before being passed into Do function.
     self._exec_properties = {
         'custom_config': {
-            executor.SERVING_ARGS_KEY: {
+            constants.SERVING_ARGS_KEY: {
                 'model_name': 'model_name',
                 'project_id': 'project_id',
                 'regions': ['us-central1'],
             },
-            executor.ENDPOINT_ARGS_KEY: 'https://ml-us-west1.googleapis.com',
+            constants.ENDPOINT_ARGS_KEY: 'https://ml-us-west1.googleapis.com',
         },
         'push_destination': None,
     }
     with self.assertRaisesWithLiteralMatch(
         ValueError,
-        '\'endpoint\' and \'ai_platform_serving_args.regions\' cannot be set simultanuously'
+        '\'endpoint\' and \'ai_platform_serving_args.regions\' cannot be set simultaneously'
     ):
       self._executor.Do(self._input_dict, self._output_dict,
                         self._serialize_custom_config_under_test())
 
-  # TODO(b/163417407): template and run this test when we can safely depend on
-  # googleapiclient>=1.8.
-  @unittest.skipIf(_stale_googleapiclient_version_(),
-                   'googleapiclient is too stale')
   @mock.patch(
       'tfx.extensions.google_cloud_ai_platform.pusher.executor.discovery')
   @mock.patch.object(executor, 'runner', autospec=True)
   def testDoBlessedOnRegionalEndpoint(self, mock_runner, _):
     self._exec_properties = {
         'custom_config': {
-            executor.SERVING_ARGS_KEY: {
+            constants.SERVING_ARGS_KEY: {
                 'model_name': 'model_name',
                 'project_id': 'project_id'
             },
-            executor.ENDPOINT_ARGS_KEY: 'https://ml-us-west1.googleapis.com',
+            constants.ENDPOINT_ARGS_KEY: 'https://ml-us-west1.googleapis.com',
         },
     }
     self._model_blessing.uri = os.path.join(self._source_data_dir,
                                             'model_validator/blessed')
     self._model_blessing.set_int_custom_property('blessed', 1)
     mock_runner.get_service_name_and_api_version.return_value = ('ml', 'v1')
+    version = self._model_push.get_string_custom_property('pushed_version')
+    mock_runner.deploy_model_for_aip_prediction.return_value = (
+        'projects/project_id/models/model_name/versions/{}'.format(version))
+
     self._executor.Do(self._input_dict, self._output_dict,
                       self._serialize_custom_config_under_test())
     executor_class_path = '%s.%s' % (self._executor.__class__.__module__,
                                      self._executor.__class__.__name__)
     with telemetry_utils.scoped_labels(
         {telemetry_utils.LABEL_TFX_EXECUTOR: executor_class_path}):
-      job_labels = telemetry_utils.get_labels_dict()
+      job_labels = telemetry_utils.make_labels_dict()
     mock_runner.deploy_model_for_aip_prediction.assert_called_once_with(
-        mock.ANY,
-        self._model_push.uri,
-        mock.ANY,
-        mock.ANY,
-        job_labels,
+        serving_path=self._model_push.uri,
+        model_version_name=mock.ANY,
+        ai_platform_serving_args=mock.ANY,
+        api=mock.ANY,
+        labels=job_labels,
     )
     self.assertPushed()
-    version = self._model_push.get_string_custom_property('pushed_version')
     self.assertEqual(
         self._model_push.get_string_custom_property('pushed_destination'),
         'projects/project_id/models/model_name/versions/{}'.format(version))
 
+  @mock.patch.object(executor, 'runner', autospec=True)
+  def testDoBlessed_Vertex(self, mock_runner):
+    endpoint_uri = 'projects/project_id/locations/us-central1/endpoints/12345'
+    mock_runner.deploy_model_for_aip_prediction.return_value = endpoint_uri
+    self._model_blessing.uri = os.path.join(self._source_data_dir,
+                                            'model_validator/blessed')
+    self._model_blessing.set_int_custom_property('blessed', 1)
+    self._executor.Do(self._input_dict, self._output_dict,
+                      self._serialize_custom_config_under_test_vertex())
+    executor_class_path = '%s.%s' % (self._executor.__class__.__module__,
+                                     self._executor.__class__.__name__)
+    with telemetry_utils.scoped_labels(
+        {telemetry_utils.LABEL_TFX_EXECUTOR: executor_class_path}):
+      job_labels = telemetry_utils.make_labels_dict()
+    mock_runner.deploy_model_for_aip_prediction.assert_called_once_with(
+        serving_container_image_uri=self._container_image_uri_vertex,
+        model_version_name=mock.ANY,
+        ai_platform_serving_args=mock.ANY,
+        labels=job_labels,
+        serving_path=self._model_push.uri,
+        endpoint_region='us-central1',
+        enable_vertex=True,
+    )
+    self.assertPushed()
+    self.assertEqual(
+        self._model_push.get_string_custom_property('pushed_destination'),
+        endpoint_uri)
+
+  @mock.patch.object(executor, 'runner', autospec=True)
+  def testDoNotBlessed_Vertex(self, mock_runner):
+    self._model_blessing.uri = os.path.join(self._source_data_dir,
+                                            'model_validator/not_blessed')
+    self._model_blessing.set_int_custom_property('blessed', 0)
+    self._executor.Do(self._input_dict, self._output_dict,
+                      self._serialize_custom_config_under_test_vertex())
+    self.assertNotPushed()
+    mock_runner.deploy_model_for_aip_prediction.assert_not_called()
+
+  @mock.patch.object(executor, 'runner', autospec=True)
+  def testDoBlessedOnRegionalEndpoint_Vertex(self, mock_runner):
+    endpoint_uri = 'projects/project_id/locations/us-west1/endpoints/12345'
+    mock_runner.deploy_model_for_aip_prediction.return_value = endpoint_uri
+    self._exec_properties_vertex = {
+        'custom_config': {
+            constants.SERVING_ARGS_KEY: {
+                'model_name': 'model_name',
+                'project_id': 'project_id'
+            },
+            constants.VERTEX_CONTAINER_IMAGE_URI_KEY:
+                self._container_image_uri_vertex,
+            constants.ENABLE_VERTEX_KEY:
+                True,
+            constants.VERTEX_REGION_KEY:
+                'us-west1',
+        },
+    }
+    self._model_blessing.uri = os.path.join(self._source_data_dir,
+                                            'model_validator/blessed')
+    self._model_blessing.set_int_custom_property('blessed', 1)
+    self._executor.Do(self._input_dict, self._output_dict,
+                      self._serialize_custom_config_under_test_vertex())
+    executor_class_path = '%s.%s' % (self._executor.__class__.__module__,
+                                     self._executor.__class__.__name__)
+    with telemetry_utils.scoped_labels(
+        {telemetry_utils.LABEL_TFX_EXECUTOR: executor_class_path}):
+      job_labels = telemetry_utils.make_labels_dict()
+    mock_runner.deploy_model_for_aip_prediction.assert_called_once_with(
+        serving_path=self._model_push.uri,
+        model_version_name=mock.ANY,
+        ai_platform_serving_args=mock.ANY,
+        labels=job_labels,
+        serving_container_image_uri=self._container_image_uri_vertex,
+        endpoint_region='us-west1',
+        enable_vertex=True,
+    )
+    self.assertPushed()
+    self.assertEqual(
+        self._model_push.get_string_custom_property('pushed_destination'),
+        endpoint_uri)
 
 if __name__ == '__main__':
   tf.test.main()

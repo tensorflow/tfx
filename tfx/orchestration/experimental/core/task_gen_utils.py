@@ -16,6 +16,7 @@
 import itertools
 from typing import Dict, Iterable, List, Optional, Sequence
 
+from absl import logging
 import attr
 from tfx import types
 from tfx.orchestration import data_types_utils
@@ -23,18 +24,23 @@ from tfx.orchestration import metadata
 from tfx.orchestration.experimental.core import task as task_lib
 from tfx.orchestration.portable import inputs_utils
 from tfx.orchestration.portable import outputs_utils
+from tfx.orchestration.portable.input_resolution import exceptions
 from tfx.orchestration.portable.mlmd import context_lib
 from tfx.orchestration.portable.mlmd import execution_lib
 from tfx.proto.orchestration import pipeline_pb2
+from tfx.utils import proto_utils
+from tfx.utils import typing_utils
 
+import ml_metadata as mlmd
 from ml_metadata.proto import metadata_store_pb2
+from google.protobuf import any_pb2
 
 
 @attr.s(auto_attribs=True)
 class ResolvedInfo:
   contexts: List[metadata_store_pb2.Context]
-  exec_properties: Dict[str, types.Property]
-  input_artifacts: Optional[Dict[str, List[types.Artifact]]]
+  exec_properties: Dict[str, types.ExecPropertyTypes]
+  input_artifacts: Optional[typing_utils.ArtifactMultiMap]
 
 
 def _generate_task_from_execution(metadata_handler: metadata.Metadata,
@@ -44,19 +50,21 @@ def _generate_task_from_execution(metadata_handler: metadata.Metadata,
                                   is_cancelled: bool = False) -> task_lib.Task:
   """Generates `ExecNodeTask` given execution."""
   contexts = metadata_handler.store.get_contexts_by_execution(execution.id)
-  exec_properties = _extract_properties(execution)
+  exec_properties = extract_properties(execution)
   input_artifacts = execution_lib.get_artifacts_dict(
-      metadata_handler, execution.id, metadata_store_pb2.Event.INPUT)
+      metadata_handler, execution.id, [metadata_store_pb2.Event.INPUT])
   outputs_resolver = outputs_utils.OutputsResolver(node, pipeline.pipeline_info,
                                                    pipeline.runtime_spec,
                                                    pipeline.execution_mode)
+  output_artifacts = outputs_resolver.generate_output_artifacts(execution.id)
+  outputs_utils.make_output_dirs(output_artifacts)
   return task_lib.ExecNodeTask(
       node_uid=task_lib.NodeUid.from_pipeline_node(pipeline, node),
-      execution=execution,
+      execution_id=execution.id,
       contexts=contexts,
       exec_properties=exec_properties,
       input_artifacts=input_artifacts,
-      output_artifacts=outputs_resolver.generate_output_artifacts(execution.id),
+      output_artifacts=output_artifacts,
       executor_output_uri=outputs_resolver.get_executor_output_uri(
           execution.id),
       stateful_working_dir=outputs_resolver.get_stateful_working_directory(
@@ -106,40 +114,75 @@ def generate_task_from_active_execution(
       is_cancelled=is_cancelled)
 
 
-def _extract_properties(
-    execution: metadata_store_pb2.Execution) -> Dict[str, types.Property]:
+def extract_properties(
+    execution: metadata_store_pb2.Execution
+) -> Dict[str, types.ExecPropertyTypes]:
+  """Extracts execution properties from mlmd Execution."""
   result = {}
   for key, prop in itertools.chain(execution.properties.items(),
                                    execution.custom_properties.items()):
-    value = data_types_utils.get_metadata_value(prop)
+    if execution_lib.is_schema_key(key):
+      continue
+
+    schema_key = execution_lib.get_schema_key(key)
+    schema = None
+    if schema_key in execution.custom_properties:
+      schema = proto_utils.json_to_proto(
+          data_types_utils.get_metadata_value(
+              execution.custom_properties[schema_key]),
+          pipeline_pb2.Value.Schema())
+    value = data_types_utils.get_parsed_value(prop, schema)
+
     if value is None:
       raise ValueError(f'Unexpected property with empty value; key: {key}')
     result[key] = value
   return result
 
 
-def generate_resolved_info(metadata_handler: metadata.Metadata,
-                           node: pipeline_pb2.PipelineNode) -> ResolvedInfo:
-  """Returns a `ResolvedInfo` object for executing the node.
+def generate_resolved_info(
+    metadata_handler: metadata.Metadata,
+    node: pipeline_pb2.PipelineNode) -> Optional[ResolvedInfo]:
+  """Returns a `ResolvedInfo` object for executing the node or `None` to skip.
 
   Args:
     metadata_handler: A handler to access MLMD db.
     node: The pipeline node for which to generate.
 
   Returns:
-    A `ResolvedInfo` with input resolutions.
+    A `ResolvedInfo` with input resolutions or `None` if execution should be
+    skipped.
+
+  Raises:
+    NotImplementedError: Multiple dicts returned by inputs_utils
+      resolve_input_artifacts_v2, which is currently not supported.
   """
   # Register node contexts.
   contexts = context_lib.prepare_contexts(
       metadata_handler=metadata_handler, node_contexts=node.contexts)
 
   # Resolve execution properties.
-  exec_properties = inputs_utils.resolve_parameters(
-      node_parameters=node.parameters)
+  exec_properties = data_types_utils.build_parsed_value_dict(
+      inputs_utils.resolve_parameters_with_schema(
+          node_parameters=node.parameters))
 
   # Resolve inputs.
-  input_artifacts = inputs_utils.resolve_input_artifacts(
-      metadata_handler=metadata_handler, node_inputs=node.inputs)
+  try:
+    resolved_input_artifacts = inputs_utils.resolve_input_artifacts_v2(
+        metadata_handler=metadata_handler, pipeline_node=node)
+  except exceptions.InputResolutionError as e:
+    logging.warning('Input resolution error raised for node: %s; error: %s',
+                    node.node_info.id, e)
+    input_artifacts = None
+  else:
+    if isinstance(resolved_input_artifacts, inputs_utils.Skip):
+      return None
+    assert isinstance(resolved_input_artifacts, inputs_utils.Trigger)
+    assert resolved_input_artifacts
+    # TODO(b/197741942): Support multiple dicts.
+    if len(resolved_input_artifacts) > 1:
+      raise NotImplementedError(
+          'Handling more than one input dicts not implemented.')
+    input_artifacts = resolved_input_artifacts[0]
 
   return ResolvedInfo(
       contexts=contexts,
@@ -162,18 +205,19 @@ def get_executions(
   Returns:
     List of executions for the given node in MLMD db.
   """
+  if not node.contexts.contexts:
+    return []
   # Get all the contexts associated with the node.
   contexts = []
-  for context_spec in node.contexts.contexts:
-    context = metadata_handler.store.get_context_by_type_and_name(
-        context_spec.type.name, data_types_utils.get_value(context_spec.name))
-    if context is None:
-      # If no context is registered, it's certain that there is no
-      # associated execution for the node.
-      return []
-    contexts.append(context)
-  return execution_lib.get_executions_associated_with_all_contexts(
-      metadata_handler, contexts)
+  for i, context_spec in enumerate(node.contexts.contexts):
+    context_type = context_spec.type.name
+    context_name = data_types_utils.get_value(context_spec.name)
+    contexts.append(
+        f"(contexts_{i}.type = '{context_type}' AND contexts_{i}.name = '{context_name}')"
+    )
+  filter_query = ' AND '.join(contexts)
+  return metadata_handler.store.get_executions(
+      list_options=mlmd.ListOptions(filter_query=filter_query))
 
 
 def is_latest_execution_successful(
@@ -208,6 +252,18 @@ def get_latest_execution(
     executions: Iterable[metadata_store_pb2.Execution]
 ) -> Optional[metadata_store_pb2.Execution]:
   """Returns latest execution or `None` if iterable is empty."""
-  sorted_executions = sorted(
-      executions, key=lambda e: e.create_time_since_epoch, reverse=True)
+  sorted_executions = execution_lib.sort_executions_newest_to_oldest(executions)
   return sorted_executions[0] if sorted_executions else None
+
+
+# TODO(b/182944474): Raise error in _get_executor_spec if executor spec is
+# missing for a non-system node.
+def get_executor_spec(pipeline: pipeline_pb2.Pipeline,
+                      node_id: str) -> Optional[any_pb2.Any]:
+  """Returns executor spec for given node_id if it exists in pipeline IR, None otherwise."""
+  if not pipeline.deployment_config.Is(
+      pipeline_pb2.IntermediateDeploymentConfig.DESCRIPTOR):
+    return None
+  depl_config = pipeline_pb2.IntermediateDeploymentConfig()
+  pipeline.deployment_config.Unpack(depl_config)
+  return depl_config.executor_specs.get(node_id)

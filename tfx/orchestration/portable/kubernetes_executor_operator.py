@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,17 +13,13 @@
 # limitations under the License.
 """Docker component launcher which launches a container in docker environment ."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import collections
-from typing import Any, Dict, List, Optional, Text, cast
+from typing import Any, Dict, List, Optional, cast
 
 from absl import logging
 from kubernetes import client
 from tfx.dsl.compiler import placeholder_utils
-from tfx.dsl.components.base import executor_spec as executor_spec_lib
+from tfx.dsl.component.experimental import executor_specs
 from tfx.orchestration.launcher import container_common
 from tfx.orchestration.portable import base_executor_operator
 from tfx.orchestration.portable import data_types
@@ -73,7 +68,7 @@ class KubernetesExecutorOperator(base_executor_operator.BaseExecutorOperator):
         executor_spec=self._executor_spec,
         platform_config=self._platform_config)
 
-    container_spec = executor_spec_lib.ExecutorContainerSpec(
+    container_spec = executor_specs.TemplatedExecutorContainerSpec(
         image=self._container_executor_spec.image,
         command=[
             placeholder_utils.resolve_placeholder_expression(cmd, context)
@@ -85,12 +80,6 @@ class KubernetesExecutorOperator(base_executor_operator.BaseExecutorOperator):
         ] or None,
     )
 
-    # Replace container spec with jinja2 template.
-    input_dict = execution_info.input_dict
-    output_dict = execution_info.output_dict
-    exec_properties = execution_info.exec_properties
-    container_spec = container_common.resolve_container_template(
-        container_spec, input_dict, output_dict, exec_properties)
     pod_name = self._build_pod_name(execution_info)
     # TODO(hongyes): replace the default value from component config.
     try:
@@ -171,9 +160,9 @@ class KubernetesExecutorOperator(base_executor_operator.BaseExecutorOperator):
     return execution_result_pb2.ExecutorOutput()
 
   def _build_pod_manifest(
-      self, pod_name: Text,
-      container_spec: executor_spec_lib.ExecutorContainerSpec
-  ) -> Dict[Text, Any]:
+      self, pod_name: str,
+      container_spec: executor_specs.TemplatedExecutorContainerSpec
+  ) -> Dict[str, Any]:
     """Build a pod spec.
 
     The function builds a pod spec by patching executor container spec into
@@ -198,9 +187,8 @@ class KubernetesExecutorOperator(base_executor_operator.BaseExecutorOperator):
     metadata.update({'name': pod_name})
     spec = pod_manifest['spec']
     spec.update({'restartPolicy': 'Never'})
-    containers = spec.setdefault('containers',
-                                 [])  # type: List[Dict[Text, Any]]
-    container = None  # type: Optional[Dict[Text, Any]]
+    containers = spec.setdefault('containers', [])  # type: List[Dict[str, Any]]
+    container = None  # type: Optional[Dict[str, Any]]
     for c in containers:
       if c['name'] == kube_utils.ARGO_MAIN_CONTAINER_NAME:
         container = c
@@ -215,7 +203,7 @@ class KubernetesExecutorOperator(base_executor_operator.BaseExecutorOperator):
     })
     return pod_manifest
 
-  def _build_pod_name(self, execution_info: data_types.ExecutionInfo) -> Text:
+  def _build_pod_name(self, execution_info: data_types.ExecutionInfo) -> str:
     pipeline_name = (
         execution_info.pipeline_info.id[:50] + '-' +
         execution_info.pipeline_run_id[:50])

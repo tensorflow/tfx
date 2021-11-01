@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,12 +13,8 @@
 # limitations under the License.
 """MNIST handwritten digit classification example using TFX."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import os
-from typing import List, Text
+from typing import List
 
 import absl
 import tensorflow_model_analysis as tfma
@@ -31,8 +26,6 @@ from tfx.components import SchemaGen
 from tfx.components import StatisticsGen
 from tfx.components import Trainer
 from tfx.components import Transform
-from tfx.components.trainer.executor import GenericExecutor
-from tfx.dsl.components.base import executor_spec
 from tfx.orchestration import metadata
 from tfx.orchestration import pipeline
 from tfx.orchestration.beam.beam_dag_runner import BeamDagRunner
@@ -75,11 +68,11 @@ _beam_pipeline_args = [
 ]
 
 
-def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
-                     module_file: Text, module_file_lite: Text,
-                     serving_model_dir: Text, serving_model_dir_lite: Text,
-                     metadata_path: Text,
-                     beam_pipeline_args: List[Text]) -> pipeline.Pipeline:
+def _create_pipeline(pipeline_name: str, pipeline_root: str, data_root: str,
+                     module_file: str, module_file_lite: str,
+                     serving_model_dir: str, serving_model_dir_lite: str,
+                     metadata_path: str,
+                     beam_pipeline_args: List[str]) -> pipeline.Pipeline:
   """Implements the handwritten digit classification example using TFX."""
   # Brings data into the pipeline.
   example_gen = ImportExampleGen(input_base=data_root)
@@ -102,22 +95,20 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
       schema=schema_gen.outputs['schema'],
       module_file=module_file)
 
-  def _create_trainer(module_file, instance_name):
+  def _create_trainer(module_file, component_id):
     return Trainer(
         module_file=module_file,
-        custom_executor_spec=executor_spec.ExecutorClassSpec(GenericExecutor),
         examples=transform.outputs['transformed_examples'],
         transform_graph=transform.outputs['transform_graph'],
         schema=schema_gen.outputs['schema'],
         train_args=trainer_pb2.TrainArgs(num_steps=5000),
-        eval_args=trainer_pb2.EvalArgs(num_steps=100),
-        instance_name=instance_name)
+        eval_args=trainer_pb2.EvalArgs(num_steps=100)).with_id(component_id)
 
   # Uses user-provided Python function that trains a Keras model.
-  trainer = _create_trainer(module_file, 'mnist')
+  trainer = _create_trainer(module_file, 'Trainer.mnist')
 
   # Trains the same model as the one above, but converts it into a TFLite one.
-  trainer_lite = _create_trainer(module_file_lite, 'mnist_lite')
+  trainer_lite = _create_trainer(module_file_lite, 'Trainer.mnist_lite')
 
   # TODO(b/150949276): Add resolver back once it supports two trainers.
 
@@ -130,7 +121,7 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
           tfma.MetricsSpec(metrics=[
               tfma.MetricConfig(
                   class_name='SparseCategoricalAccuracy',
-                  threshold=tfma.config.MetricThreshold(
+                  threshold=tfma.MetricThreshold(
                       value_threshold=tfma.GenericValueThreshold(
                           lower_bound={'value': 0.8})))
           ])
@@ -145,16 +136,14 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
   evaluator = Evaluator(
       examples=example_gen.outputs['examples'],
       model=trainer.outputs['model'],
-      eval_config=eval_config,
-      instance_name='mnist')
+      eval_config=eval_config).with_id('Evaluator.mnist')
 
   # Uses TFMA to compute the evaluation statistics over features of a TFLite
   # model.
   evaluator_lite = Evaluator(
       examples=example_gen.outputs['examples'],
       model=trainer_lite.outputs['model'],
-      eval_config=eval_config_lite,
-      instance_name='mnist_lite')
+      eval_config=eval_config_lite).with_id('Evaluator.mnist_lite')
 
   # Checks whether the model passed the validation steps and pushes the model
   # to a file destination if check passed.
@@ -163,8 +152,7 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
       model_blessing=evaluator.outputs['blessing'],
       push_destination=pusher_pb2.PushDestination(
           filesystem=pusher_pb2.PushDestination.Filesystem(
-              base_directory=serving_model_dir)),
-      instance_name='mnist')
+              base_directory=serving_model_dir))).with_id('Pusher.mnist')
 
   # Checks whether the TFLite model passed the validation steps and pushes the
   # model to a file destination if check passed.
@@ -173,8 +161,8 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
       model_blessing=evaluator_lite.outputs['blessing'],
       push_destination=pusher_pb2.PushDestination(
           filesystem=pusher_pb2.PushDestination.Filesystem(
-              base_directory=serving_model_dir_lite)),
-      instance_name='mnist_lite')
+              base_directory=serving_model_dir_lite))).with_id(
+                  'Pusher.mnist_lite')
 
   return pipeline.Pipeline(
       pipeline_name=pipeline_name,

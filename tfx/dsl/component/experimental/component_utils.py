@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2020 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,7 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Utils for TFX component types. Intended for internal usage only."""
-from typing import Any, Callable, Dict, Optional, Text
+
+from typing import Any, Callable, Dict, Optional
 
 from tfx import types
 from tfx.dsl.components.base import base_component
@@ -22,31 +22,31 @@ from tfx.types import component_spec
 
 
 def create_tfx_component_class(
-    name: Text,
+    name: str,
     tfx_executor_spec: base_executor_spec.ExecutorSpec,
-    input_channel_parameters: Dict[Text,
-                                   component_spec.ChannelParameter] = None,
-    output_channel_parameters: Dict[Text,
-                                    component_spec.ChannelParameter] = None,
-    execution_parameters: Dict[Text, component_spec.ExecutionParameter] = None,
-    default_init_args: Optional[Dict[Text, Any]] = None
+    input_channel_parameters: Optional[Dict[
+        str, component_spec.ChannelParameter]] = None,
+    output_channel_parameters: Optional[Dict[
+        str, component_spec.ChannelParameter]] = None,
+    execution_parameters: Optional[Dict[
+        str, component_spec.ExecutionParameter]] = None,
+    default_init_args: Optional[Dict[str, Any]] = None
 ) -> Callable[..., base_component.BaseComponent]:
   """Creates a TFX component class dynamically."""
   tfx_component_spec_class = type(
       str(name) + 'Spec',
       (component_spec.ComponentSpec,),
       dict(
-          PARAMETERS=execution_parameters,
-          INPUTS=input_channel_parameters,
-          OUTPUTS=output_channel_parameters,
+          PARAMETERS=execution_parameters or {},
+          INPUTS=input_channel_parameters or {},
+          OUTPUTS=output_channel_parameters or {},
       ),
   )
 
   def tfx_component_class_init(self, **kwargs):
-    instance_name = kwargs.pop('instance_name', None)
     arguments = {}
     arguments.update(kwargs)
-    arguments.update(default_init_args)
+    arguments.update(default_init_args or {})
 
     # Provide default values for output channels.
     output_channel_params = output_channel_parameters or {}
@@ -57,9 +57,9 @@ def create_tfx_component_class(
     base_component.BaseComponent.__init__(
         self,
         # Generate spec by wiring up the input/output channel.
-        spec=self.__class__.SPEC_CLASS(**arguments),
-        instance_name=instance_name,
-    )
+        spec=self.__class__.SPEC_CLASS(**arguments))
+    # Set class name as the default id. It can be overwritten by the user.
+    base_component.BaseComponent.with_id(self, self.__class__.__name__)
 
   tfx_component_class = type(
       str(name),

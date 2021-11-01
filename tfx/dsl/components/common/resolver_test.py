@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,16 +13,14 @@
 # limitations under the License.
 """Tests for tfx.dsl.components.common.resolver."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import tensorflow as tf
 from tfx import types
 from tfx.dsl.components.common import resolver
-from tfx.dsl.experimental import latest_artifacts_resolver
+from tfx.dsl.input_resolution import resolver_function
+from tfx.dsl.input_resolution.strategies import latest_artifact_strategy
 from tfx.orchestration import data_types
 from tfx.orchestration import metadata
+from tfx.types import channel
 from tfx.types import standard_artifacts
 
 from ml_metadata.proto import metadata_store_pb2
@@ -34,38 +31,81 @@ class ResolverTest(tf.test.TestCase):
   def testResolverDefinition(self):
     channel_to_resolve = types.Channel(type=standard_artifacts.Examples)
     rnode = resolver.Resolver(
-        instance_name='my_resolver',
-        strategy_class=latest_artifacts_resolver.LatestArtifactsResolver,
+        strategy_class=latest_artifact_strategy.LatestArtifactStrategy,
         config={'desired_num_of_artifacts': 5},
         channel_to_resolve=channel_to_resolve)
     self.assertDictEqual(
         rnode.exec_properties, {
             resolver.RESOLVER_STRATEGY_CLASS:
-                latest_artifacts_resolver.LatestArtifactsResolver,
+                latest_artifact_strategy.LatestArtifactStrategy,
             resolver.RESOLVER_CONFIG: {
                 'desired_num_of_artifacts': 5
             }
         })
-    self.assertEqual(rnode.inputs.get_all()['channel_to_resolve'],
-                     channel_to_resolve)
-    self.assertEqual(rnode.outputs.get_all()['channel_to_resolve'].type_name,
+    self.assertEqual(rnode.inputs['channel_to_resolve'], channel_to_resolve)
+    self.assertEqual(rnode.outputs['channel_to_resolve'].type_name,
                      channel_to_resolve.type_name)
 
-  def testResolverDefinitionBadArgs(self):
-    with self.assertRaisesRegexp(
+  def testResolverUnionChannel(self):
+    one_channel = types.Channel(type=standard_artifacts.Examples)
+    another_channel = types.Channel(type=standard_artifacts.Examples)
+    unioned_channel = channel.union([one_channel, another_channel])
+    rnode = resolver.Resolver(
+        strategy_class=latest_artifact_strategy.LatestArtifactStrategy,
+        config={'desired_num_of_artifacts': 5},
+        unioned_channel=unioned_channel)
+    self.assertDictEqual(
+        rnode.exec_properties, {
+            resolver.RESOLVER_STRATEGY_CLASS:
+                latest_artifact_strategy.LatestArtifactStrategy,
+            resolver.RESOLVER_CONFIG: {
+                'desired_num_of_artifacts': 5
+            }
+        })
+    self.assertEqual(rnode.inputs['unioned_channel'], unioned_channel)
+    self.assertEqual(rnode.outputs['unioned_channel'].type_name,
+                     unioned_channel.type_name)
+
+  def testResolverDefinition_BadChannel(self):
+    with self.assertRaisesRegex(
         ValueError,
-        'Expected extra kwarg .* to be of type .*tfx.types.Channel'):
-      _ = resolver.Resolver(
-          instance_name='my_resolver',
-          strategy_class=latest_artifacts_resolver.LatestArtifactsResolver,
+        'Expected extra kwarg .* to be of type .*tfx.types.BaseChannel'):
+      resolver.Resolver(
+          strategy_class=latest_artifact_strategy.LatestArtifactStrategy,
           config={'desired_num_of_artifacts': 5},
-          blah=object())
+          not_a_channel=object())
+
+  def testResolverDefinition_BadStrategyClass(self):
+    class NotAStrategy:
+      pass
+
+    with self.assertRaisesRegex(
+        TypeError, 'strategy_class should be ResolverStrategy'):
+      resolver.Resolver(strategy_class=NotAStrategy)
+
+  def testResolverDefinition_BadFunction(self):
+    with self.assertRaisesRegex(
+        TypeError, 'function should be ResolverFunction'):
+      resolver.Resolver(function=42)
+
+  def testResolverDefinition_ExactlyOneOfStrategyClassOrFunction(self):
+    with self.assertRaisesRegex(
+        ValueError, 'Exactly one of strategy_class= or function= argument '
+        'should be given.'):
+      resolver.Resolver()
+
+    with self.assertRaisesRegex(
+        ValueError, 'Exactly one of strategy_class= or function= argument '
+        'should be given.'):
+      resolver.Resolver(
+          strategy_class=latest_artifact_strategy.LatestArtifactStrategy,
+          function=resolver_function.ResolverFunction(lambda x: x))
 
 
 class ResolverDriverTest(tf.test.TestCase):
 
   def setUp(self):
-    super(ResolverDriverTest, self).setUp()
+    super().setUp()
     self.connection_config = metadata_store_pb2.ConnectionConfig()
     self.connection_config.sqlite.SetInParent()
     self.pipeline_info = data_types.PipelineInfo(
@@ -104,7 +144,7 @@ class ResolverDriverTest(tf.test.TestCase):
           output_dict=output_dict,
           exec_properties={
               resolver.RESOLVER_STRATEGY_CLASS:
-                  latest_artifacts_resolver.LatestArtifactsResolver,
+                  latest_artifact_strategy.LatestArtifactStrategy,
               resolver.RESOLVER_CONFIG: {
                   'desired_num_of_artifacts': 1
               }
@@ -114,7 +154,7 @@ class ResolverDriverTest(tf.test.TestCase):
       self.assertDictEqual(
           execution_result.exec_properties, {
               resolver.RESOLVER_STRATEGY_CLASS:
-                  latest_artifacts_resolver.LatestArtifactsResolver,
+                  latest_artifact_strategy.LatestArtifactStrategy,
               resolver.RESOLVER_CONFIG: {
                   'desired_num_of_artifacts': 1
               }
@@ -137,7 +177,7 @@ class ResolverDriverTest(tf.test.TestCase):
           output_dict=self.source_channels.copy(),
           exec_properties={
               resolver.RESOLVER_STRATEGY_CLASS:
-                  latest_artifacts_resolver.LatestArtifactsResolver,
+                  latest_artifact_strategy.LatestArtifactStrategy,
               resolver.RESOLVER_CONFIG: {}
           })
 

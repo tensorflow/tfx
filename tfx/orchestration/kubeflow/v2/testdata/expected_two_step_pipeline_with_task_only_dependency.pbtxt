@@ -1,25 +1,8 @@
-# proto-file: tfx/orchestration/kubeflow/v2/proto/pipeline.proto
+# proto-file: kfp/pipeline_spec/pipeline_spec.proto
 # proto-message: PipelineSpec
 
 pipeline_info {
   name: "two-step-task-only-dependency-pipeline"
-}
-tasks {
-  task_info {
-    name: "Step 1"
-  }
-  executor_label: "Step 1_executor"
-  caching_options {
-  }
-}
-tasks {
-  task_info {
-    name: "Step 2"
-  }
-  executor_label: "Step 2_executor"
-  dependent_tasks: "Step 1"
-  caching_options {
-  }
 }
 deployment_spec {
   fields {
@@ -91,6 +74,45 @@ deployment_spec {
               }
             }
           }
+        }
+      }
+    }
+  }
+}
+components {
+  key: "Step 1"
+  value {
+    executor_label: "Step 1_executor"
+  }
+}
+components {
+  key: "Step 2"
+  value {
+    executor_label: "Step 2_executor"
+  }
+}
+root {
+  dag {
+    tasks {
+      key: "Step 1"
+      value {
+        task_info {
+          name: "Step 1"
+        }
+        component_ref {
+          name: "Step 1"
+        }
+      }
+    }
+    tasks {
+      key: "Step 2"
+      value {
+        task_info {
+          name: "Step 2"
+        }
+        dependent_tasks: "Step 1"
+        component_ref {
+          name: "Step 2"
         }
       }
     }

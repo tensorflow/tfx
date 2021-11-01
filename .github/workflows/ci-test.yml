@@ -42,10 +42,19 @@ jobs:
         chmod +x bazel_installer.sh
         sudo ./bazel_installer.sh
 
+    - name: Cache pip
+      uses: actions/cache@v2
+      with:
+        # This path is specific to Ubuntu
+        path: ~/.cache/pip
+        # Look to see if there is a cache hit for the corresponding setup.py + TFX version 
+        key: ${{ runner.os }}-pip-${{ hashFiles('tfx/dependencies.py') }}-
+        restore-keys: |
+          ${{ runner.os }}-pip-
+
     - name: Install dependencies
       run: |
-        # TODO(b/174469322): install the latest pip once resolved.
-        python -m pip install --upgrade 'pip<20.3' wheel
+        python -m pip install --upgrade pip wheel
         pip install -e .[all]
 
     - name: Run unit tests

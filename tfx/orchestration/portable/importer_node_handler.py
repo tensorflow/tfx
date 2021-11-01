@@ -13,18 +13,28 @@
 # limitations under the License.
 """This module defines the handler for importer node."""
 
-from typing import Any, Dict
+from typing import Any, Dict, List
 
 from absl import logging
 from tfx import types
 from tfx.dsl.components.common import importer
+from tfx.orchestration import data_types_utils
 from tfx.orchestration import metadata
 from tfx.orchestration.portable import data_types
 from tfx.orchestration.portable import execution_publish_utils
 from tfx.orchestration.portable import inputs_utils
+from tfx.orchestration.portable import outputs_utils
 from tfx.orchestration.portable import system_node_handler
 from tfx.orchestration.portable.mlmd import context_lib
 from tfx.proto.orchestration import pipeline_pb2
+
+
+def _is_artifact_reimported(
+    output_artifacts: Dict[str, List[types.Artifact]]) -> bool:
+  # The artifacts are reimported only when there are artifacts in the output
+  # dict and ids has been assign to them.
+  return (bool(output_artifacts[importer.IMPORT_RESULT_KEY]) and all(
+      (bool(a.id) for a in output_artifacts[importer.IMPORT_RESULT_KEY])))
 
 
 class ImporterNodeHandler(system_node_handler.SystemNodeHandler):
@@ -64,8 +74,9 @@ class ImporterNodeHandler(system_node_handler.SystemNodeHandler):
 
       # 2. Resolves execution properties, please note that importers has no
       # input.
-      exec_properties = inputs_utils.resolve_parameters(
-          node_parameters=pipeline_node.parameters)
+      exec_properties = data_types_utils.build_parsed_value_dict(
+          inputs_utils.resolve_parameters_with_schema(
+              node_parameters=pipeline_node.parameters))
 
       # 3. Registers execution in metadata.
       execution = execution_publish_utils.register_execution(
@@ -91,17 +102,33 @@ class ImporterNodeHandler(system_node_handler.SystemNodeHandler):
           output_artifact_class=output_artifact_class,
           mlmd_artifact_type=output_spec.artifact_spec.type)
 
-      # 5. Publish the output artifacts.
-      execution_publish_utils.publish_succeeded_execution(
-          metadata_handler=m,
-          execution_id=execution.id,
-          contexts=contexts,
-          output_artifacts=output_artifacts)
-
-      return data_types.ExecutionInfo(
+      result = data_types.ExecutionInfo(
           execution_id=execution.id,
           input_dict={},
           output_dict=output_artifacts,
           exec_properties=exec_properties,
           pipeline_node=pipeline_node,
           pipeline_info=pipeline_info)
+
+      # TODO(b/182316162): consider let the launcher level do the publish
+      # for system nodes. So that the version taging logic doesn't need to be
+      # handled per system node.
+      outputs_utils.tag_output_artifacts_with_version(result.output_dict)
+
+      # 5. Publish the output artifacts. If artifacts are reimported, the
+      # execution is published as CACHED. Otherwise it is published as COMPLETE.
+      if _is_artifact_reimported(output_artifacts):
+        execution_publish_utils.publish_cached_execution(
+            metadata_handler=m,
+            contexts=contexts,
+            execution_id=execution.id,
+            output_artifacts=output_artifacts)
+
+      else:
+        execution_publish_utils.publish_succeeded_execution(
+            metadata_handler=m,
+            execution_id=execution.id,
+            contexts=contexts,
+            output_artifacts=output_artifacts)
+
+      return result

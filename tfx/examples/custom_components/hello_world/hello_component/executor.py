@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,7 +22,7 @@ an example and will not be supported by TFX team.
 
 import json
 import os
-from typing import Any, Dict, List, Text
+from typing import Any, Dict, List
 
 
 from tfx import types
@@ -36,9 +35,9 @@ from tfx.utils import io_utils
 class Executor(base_executor.BaseExecutor):
   """Executor for HelloComponent."""
 
-  def Do(self, input_dict: Dict[Text, List[types.Artifact]],
-         output_dict: Dict[Text, List[types.Artifact]],
-         exec_properties: Dict[Text, Any]) -> None:
+  def Do(self, input_dict: Dict[str, List[types.Artifact]],
+         output_dict: Dict[str, List[types.Artifact]],
+         exec_properties: Dict[str, Any]) -> None:
     """Copy the input_data to the output_data.
 
     For this example that is all that the Executor does.  For a different

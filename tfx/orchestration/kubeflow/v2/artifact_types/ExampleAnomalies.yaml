@@ -2,7 +2,7 @@ title: tfx.ExampleAnomalies
 type: object
 properties:
   span:
-    type: int
+    type: integer
     description: Span for an artifact.
   split_names:
     type: string

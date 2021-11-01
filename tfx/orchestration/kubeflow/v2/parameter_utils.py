@@ -19,7 +19,7 @@ from tfx.orchestration import data_types
 _thread_local = threading.local()
 
 
-class ParameterContext(object):
+class ParameterContext:
   """A context that helps collecting runtime parameters during compilation.
 
   This context object should be only used by PipelineBuilder during compilation,

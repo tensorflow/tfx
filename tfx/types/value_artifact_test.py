@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,15 +13,9 @@
 # limitations under the License.
 """Tests for tfx.types.artifact."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
+from unittest import mock
 
-from typing import Text
 
-# Standard Imports
-
-import mock
 import tensorflow as tf
 from tfx.dsl.io import fileio
 from tfx.types import value_artifact
@@ -31,8 +24,8 @@ from tfx.types import value_artifact
 class _MyValueArtifact(value_artifact.ValueArtifact):
   TYPE_NAME = 'MyValueTypeName'
 
-  def encode(self, value: Text):
-    assert isinstance(value, Text), value
+  def encode(self, value: str):
+    assert isinstance(value, str), value
     return value.encode('utf-8')
 
   def decode(self, value: bytes):
@@ -51,17 +44,17 @@ _VALID_FILE_URI = _VALID_URI
 _BAD_URI = '/tmp/to/a/bad/dir'
 
 
-def fake_exist(path: Text) -> bool:
+def fake_exist(path: str) -> bool:
   """Mock behavior of fileio.exists."""
   return path in [_VALID_URI, _VALID_FILE_URI]
 
 
-def fake_isdir(path: Text) -> bool:
+def fake_isdir(path: str) -> bool:
   """Mock behavior of fileio.isdir."""
   return path in [_VALID_URI]
 
 
-def fake_open(unused_path: Text, unused_mode: Text = 'r') -> bool:
+def fake_open(unused_path: str, unused_mode: str = 'r') -> bool:
   """Mock behavior of fileio.open."""
   mock_open = mock.Mock()
   mock_open.read.side_effect = lambda: _BYTE_VALUE
@@ -72,7 +65,7 @@ class ValueArtifactTest(tf.test.TestCase):
   """Tests for ValueArtifact."""
 
   def setUp(self):
-    super(ValueArtifactTest, self).setUp()
+    super().setUp()
     self.addCleanup(mock.patch.stopall)
 
   @mock.patch.object(fileio, 'exists', fake_exist)
@@ -84,7 +77,7 @@ class ValueArtifactTest(tf.test.TestCase):
     instance.uri = _VALID_URI
     self.assertEqual(_VALID_URI, instance.uri)
 
-    with self.assertRaisesRegexp(
+    with self.assertRaisesRegex(
         ValueError, 'The artifact value has not yet been read from storage.'):
       instance.value  # pylint: disable=pointless-statement
 
@@ -98,7 +91,7 @@ class ValueArtifactTest(tf.test.TestCase):
     instance = _MyValueArtifact()
     instance.uri = _BAD_URI
 
-    with self.assertRaisesRegexp(
+    with self.assertRaisesRegex(
         RuntimeError, 'Given path does not exist or is not a valid file'):
       instance.read()
 

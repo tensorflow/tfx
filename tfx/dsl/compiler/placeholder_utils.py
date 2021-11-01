@@ -14,6 +14,7 @@
 """Utilities to evaluate and resolve Placeholders."""
 
 import base64
+import enum
 import re
 from typing import Any, Callable, Dict, Union
 
@@ -25,11 +26,13 @@ from tfx.proto.orchestration import placeholder_pb2
 from tfx.types import artifact
 from tfx.types import artifact_utils
 from tfx.types import value_artifact
+from tfx.utils import json_utils
+from tfx.utils import proto_utils
 
-from google.protobuf import descriptor_pool
+from google.protobuf.internal import containers
+from google.protobuf.pyext import _message
 from google.protobuf import json_format
 from google.protobuf import message
-from google.protobuf import message_factory
 from google.protobuf import text_format
 
 
@@ -61,7 +64,7 @@ class ResolutionContext:
 # Note: Pytype's int includes long from Python3
 # We does not support bytes, which may result from proto field access. Must use
 # base64 encode operator to explicitly convert it into str.
-_PlaceholderResolvedTypes = (int, float, str, bool, type(None))
+_PlaceholderResolvedTypes = (int, float, str, bool, type(None), list)
 _PlaceholderResolvedTypeHints = Union[_PlaceholderResolvedTypes]
 
 
@@ -85,10 +88,6 @@ def resolve_placeholder_expression(
   Returns:
     Resolved expression value.
   """
-  if not context.exec_info.pipeline_node or not context.exec_info.pipeline_info:
-    raise ValueError(
-        "Pipeline node or pipeline info is missing from the placeholder ResolutionContext."
-    )
   try:
     result = _ExpressionResolver(context).resolve(expression)
   except NullDereferenceError as err:
@@ -105,6 +104,52 @@ def resolve_placeholder_expression(
     raise ValueError(f"Placeholder {debug_str(expression)} evaluates to "
                      f"an unsupported type: {type(result)}.")
   return result
+
+
+class _Operation(enum.Enum):
+  """Alias for Operation enum types in placeholder.proto."""
+
+  EQUAL = placeholder_pb2.ComparisonOperator.Operation.EQUAL
+  LESS_THAN = placeholder_pb2.ComparisonOperator.Operation.LESS_THAN
+  GREATER_THAN = placeholder_pb2.ComparisonOperator.Operation.GREATER_THAN
+  NOT = placeholder_pb2.UnaryLogicalOperator.Operation.NOT
+  AND = placeholder_pb2.BinaryLogicalOperator.Operation.AND
+  OR = placeholder_pb2.BinaryLogicalOperator.Operation.OR
+
+
+def _resolve_and_ensure_boolean(
+    resolve_fn: Callable[[placeholder_pb2.PlaceholderExpression], Any],
+    expression: placeholder_pb2.PlaceholderExpression,
+    error_message: str,
+) -> bool:
+  # TODO(b/173529355): Block invalid placeholders during compilation time
+  """Ensures that expression resolves to boolean.
+
+  NOTE: This is currently used to ensure that the inputs to logical operators
+  are boolean. Since the DSL for creating Predicate expressions do not currently
+  perform implicit boolean conversions, the evaluator should not support it
+  either. If we support implicit boolean conversions in the DSL in the
+  future, this check can be removed.
+
+  Args:
+    resolve_fn: The function for resolving placeholder expressions.
+    expression: The placeholder expression to resolve.
+    error_message: The error message to display if the expression does not
+      resolve to a boolean type.
+
+  Returns:
+    The resolved boolean value.
+
+  Raises:
+    ValueError if expression does not resolve to boolean type.
+  """
+  value = resolve_fn(expression)
+  if isinstance(value, bool):
+    return value
+  raise ValueError(f"{error_message}\n"
+                   f"expression: {expression}\n"
+                   f"resolved value type: {type(value)}\n"
+                   f"resolved value: {value}")
 
 
 # Dictionary of registered placeholder operators,
@@ -249,6 +294,24 @@ class _ExpressionResolver:
       raise ValueError(
           f"IndexOperator failed to access the given index {op.index}.") from e
 
+  @_register(placeholder_pb2.ArtifactPropertyOperator)
+  def _resolve_property_operator(
+      self, op: placeholder_pb2.ArtifactPropertyOperator) -> Any:
+    """Evaluates the artifact property operator."""
+    value = self.resolve(op.expression)
+    if value is None or not value:
+      raise NullDereferenceError(op.expression)
+    if not isinstance(value, artifact.Artifact):
+      raise ValueError("ArtifactPropertyOperator failed to access property "
+                       f"{op.key}. Expected Artifact type. Got {type(value)}.")
+    try:
+      if op.is_custom_property:
+        return value.get_custom_property(op.key)
+      return value.__getattr__(op.key)
+    except:
+      raise ValueError("ArtifactPropertyOperator failed to find property with "
+                       f"key {op.key}.")
+
   @_register(placeholder_pb2.Base64EncodeOperator)
   def _resolve_base64_encode_operator(
       self, op: placeholder_pb2.Base64EncodeOperator) -> str:
@@ -264,26 +327,40 @@ class _ExpressionResolver:
       raise ValueError(
           f"Failed to Base64 encode {value} of type {type(value)}.")
 
+  @_register(placeholder_pb2.ListSerializationOperator)
+  def _resolve_list_serialization_operator(
+      self, op: placeholder_pb2.ListSerializationOperator) -> str:
+    """Evaluates the list operator."""
+    value = self.resolve(op.expression)
+    if value is None:
+      raise NullDereferenceError(op.expression)
+    elif not all(isinstance(val, (str, int, float, bool)) for val in value):
+      raise ValueError(
+          "Only list of bool, int, float or str is supported for list serialization."
+      )
+
+    if op.serialization_format == placeholder_pb2.ListSerializationOperator.JSON:
+      return json_utils.dumps(value)
+    elif op.serialization_format == placeholder_pb2.ListSerializationOperator.COMMA_SEPARATED_STR:
+      return ",".join(
+          f'"{val}"' if isinstance(val, str) else str(val) for val in value)
+
+    raise ValueError(
+        "List serialization operator failed to resolve. A serialization format is needed."
+    )
+
   @_register(placeholder_pb2.ProtoOperator)
-  def _resolve_proto_operator(
-      self,
-      op: placeholder_pb2.ProtoOperator) -> Union[int, float, str, bool, bytes]:
+  def _resolve_proto_operator(self, op: placeholder_pb2.ProtoOperator) -> Any:
     """Evaluates the proto operator."""
     raw_message = self.resolve(op.expression)
     if raw_message is None:
       raise NullDereferenceError(op.expression)
 
     if isinstance(raw_message, str):
-      # We need descriptor pool to parse encoded raw messages.
-      pool = descriptor_pool.Default()
-      for file_descriptor in op.proto_schema.file_descriptors.file:
-        pool.Add(file_descriptor)
-      message_descriptor = pool.FindMessageTypeByName(
-          op.proto_schema.message_type)
-      factory = message_factory.MessageFactory(pool)
-      message_type = factory.GetPrototype(message_descriptor)
-      value = message_type()
-      json_format.Parse(raw_message, value, descriptor_pool=pool)
+      value = proto_utils.deserialize_proto_message(
+          raw_message,
+          op.proto_schema.message_type,
+          file_descriptors=op.proto_schema.file_descriptors)
     elif isinstance(raw_message, message.Message):
       # Message such as platform config should not be encoded.
       value = raw_message
@@ -309,6 +386,9 @@ class _ExpressionResolver:
             raise ValueError("While evaluting placeholder proto operator, "
                              f"got unknown map field {field}.")
           continue
+        # Going forward, index access for proto fields should be handled by
+        # index op. This code here is kept to avoid breaking existing executor
+        # specs.
         index = re.findall(r"\[(\d+)\]", field)
         if index and str.isdecimal(index[0]):
           try:
@@ -322,6 +402,14 @@ class _ExpressionResolver:
     # Non-message primitive values are returned directly.
     if isinstance(value, (int, float, str, bool, bytes)):
       return value
+
+    # Return repeated fields as list.
+    if isinstance(
+        value,
+        (_message.RepeatedCompositeContainer, _message.RepeatedScalarContainer,
+         containers.RepeatedCompositeFieldContainer,
+         containers.RepeatedScalarFieldContainer)):
+      return list(value)
 
     if not isinstance(value, message.Message):
       raise ValueError(f"Got unsupported value type {type(value)} "
@@ -340,6 +428,52 @@ class _ExpressionResolver:
     raise ValueError(
         "Proto operator resolves to a proto message value. A serialization "
         "format is needed to render it.")
+
+  @_register(placeholder_pb2.ComparisonOperator)
+  def _resolve_comparison_operator(
+      self, op: placeholder_pb2.ComparisonOperator) -> bool:
+    """Evaluates the comparison operator."""
+    lhs_value = self.resolve(op.lhs)
+    rhs_value = self.resolve(op.rhs)
+    if op.op == _Operation.EQUAL.value:
+      return bool(lhs_value == rhs_value)
+    elif op.op == _Operation.LESS_THAN.value:
+      return bool(lhs_value < rhs_value)
+    elif op.op == _Operation.GREATER_THAN.value:
+      return bool(lhs_value > rhs_value)
+
+    raise ValueError(f"Unrecognized comparison operation {op.op}")
+
+  @_register(placeholder_pb2.UnaryLogicalOperator)
+  def _resolve_unary_logical_operator(
+      self, op: placeholder_pb2.UnaryLogicalOperator) -> bool:
+    """Evaluates the unary logical operator."""
+    error_message = (
+        "Unary logical operations' sub-expression must resolve to bool.")
+    value = _resolve_and_ensure_boolean(self.resolve, op.expression,
+                                        error_message)
+    if op.op == _Operation.NOT.value:
+      return not value
+
+    raise ValueError(f"Unrecognized unary logical operation {op.op}.")
+
+  @_register(placeholder_pb2.BinaryLogicalOperator)
+  def _resolve_binary_logical_operator(
+      self, op: placeholder_pb2.BinaryLogicalOperator) -> bool:
+    """Evaluates the binary logical operator."""
+    error_message = (
+        "Binary logical operations' sub-expression must resolve to bool. "
+        "{} is not bool.")
+    lhs_value = _resolve_and_ensure_boolean(self.resolve, op.lhs,
+                                            error_message.format("lhs"))
+    rhs_value = _resolve_and_ensure_boolean(self.resolve, op.rhs,
+                                            error_message.format("rhs"))
+    if op.op == _Operation.AND.value:
+      return lhs_value and rhs_value
+    elif op.op == _Operation.OR.value:
+      return lhs_value or rhs_value
+
+    raise ValueError(f"Unrecognized binary logical operation {op.op}.")
 
 
 def debug_str(expression: placeholder_pb2.PlaceholderExpression) -> str:
@@ -384,6 +518,13 @@ def debug_str(expression: placeholder_pb2.PlaceholderExpression) -> str:
       sub_expression_str = debug_str(operator_pb.expression)
       return f"{sub_expression_str}.value"
 
+    if operator_name == "artifact_property_op":
+      sub_expression_str = debug_str(operator_pb.expression)
+      if operator_pb.is_custom_property:
+        return f"{sub_expression_str}.custom_property(\"{operator_pb.key}\")"
+      else:
+        return f"{sub_expression_str}.property(\"{operator_pb.key}\")"
+
     if operator_name == "concat_op":
       expression_str = " + ".join(debug_str(e) for e in operator_pb.expressions)
       return f"({expression_str})"
@@ -405,6 +546,47 @@ def debug_str(expression: placeholder_pb2.PlaceholderExpression) -> str:
     if operator_name == "base64_encode_op":
       sub_expression_str = debug_str(operator_pb.expression)
       return f"{sub_expression_str}.b64encode()"
-    return "Unkown placeholder operator"
+
+    if operator_name == "compare_op":
+      lhs_str = debug_str(operator_pb.lhs)
+      rhs_str = debug_str(operator_pb.rhs)
+      if operator_pb.op == _Operation.EQUAL.value:
+        op_str = "=="
+      elif operator_pb.op == _Operation.LESS_THAN.value:
+        op_str = "<"
+      elif operator_pb.op == _Operation.GREATER_THAN.value:
+        op_str = ">"
+      else:
+        return f"Unknown Comparison Operation {operator_pb.op}"
+      return f"({lhs_str} {op_str} {rhs_str})"
+
+    if operator_name == "unary_logical_op":
+      expression_str = debug_str(operator_pb.expression)
+      if operator_pb.op == _Operation.NOT.value:
+        op_str = "not"
+      else:
+        return f"Unknown Unary Logical Operation {operator_pb.op}"
+      return f"{op_str}({expression_str})"
+
+    if operator_name == "binary_logical_op":
+      lhs_str = debug_str(operator_pb.lhs)
+      rhs_str = debug_str(operator_pb.rhs)
+      if operator_pb.op == _Operation.AND.value:
+        op_str = "and"
+      elif operator_pb.op == _Operation.OR.value:
+        op_str = "or"
+      else:
+        return f"Unknown Binary Logical Operation {operator_pb.op}"
+      return f"({lhs_str} {op_str} {rhs_str})"
+
+    if operator_name == "list_serialization_op":
+      expression_str = debug_str(operator_pb.expression)
+      if operator_pb.serialization_format:
+        format_str = placeholder_pb2.ProtoOperator.SerializationFormat.Name(
+            operator_pb.serialization_format)
+        return f"{expression_str}.serialize_list({format_str})"
+      return expression_str
+
+    return "Unknown placeholder operator"
 
   return "Unknown placeholder expression"

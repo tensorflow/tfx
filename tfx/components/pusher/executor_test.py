@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,10 +13,6 @@
 # limitations under the License.
 """Tests for tfx.components.pusher.executor."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import json
 import os
 import tensorflow as tf
@@ -26,12 +21,14 @@ from tfx.components.pusher import executor
 from tfx.dsl.io import fileio
 from tfx.types import standard_artifacts
 from tfx.types import standard_component_specs
+from tfx.utils import io_utils
+from tfx.utils import path_utils
 
 
 class ExecutorTest(tf.test.TestCase):
 
   def setUp(self):
-    super(ExecutorTest, self).setUp()
+    super().setUp()
     self._source_data_dir = os.path.join(
         os.path.dirname(os.path.dirname(__file__)), 'testdata')
     self._output_data_dir = os.path.join(
@@ -201,6 +198,45 @@ class ExecutorTest(tf.test.TestCase):
     # Check model is pushed.
     self.assertPushed()
 
+  def testDo_NoModel(self):
+    with self.assertRaisesRegex(RuntimeError, 'Pusher has no model input.'):
+      self._executor.Do(
+          {},  # No model and infra_blessing input.
+          self._output_dict,
+          self._exec_properties)
+
+  def testDo_InfraBlessingAsModel(self):
+    infra_blessing = standard_artifacts.InfraBlessing()
+    infra_blessing.uri = os.path.join(self._output_data_dir, 'infra_blessing')
+    infra_blessing.set_int_custom_property('blessed', True)
+    infra_blessing.set_int_custom_property('has_model', 1)
+    # Create dummy model
+    blessed_model_path = path_utils.stamped_model_path(infra_blessing.uri)
+    fileio.makedirs(blessed_model_path)
+    io_utils.write_string_file(
+        os.path.join(blessed_model_path, 'my-model'), '')
+
+    self._executor.Do(
+        {standard_component_specs.INFRA_BLESSING_KEY: [infra_blessing]},
+        self._output_dict,
+        self._exec_properties)
+
+    self.assertPushed()
+    self.assertTrue(
+        fileio.exists(
+            os.path.join(self._model_push.uri, 'my-model')))
+
+  def testDo_InfraBlessingAsModel_FailIfNoWarmup(self):
+    infra_blessing = standard_artifacts.InfraBlessing()
+    infra_blessing.set_int_custom_property('blessed', True)
+    infra_blessing.set_int_custom_property('has_model', 0)
+
+    with self.assertRaisesRegex(
+        RuntimeError, 'InfraBlessing does not contain a model'):
+      self._executor.Do(
+          {standard_component_specs.INFRA_BLESSING_KEY: [infra_blessing]},
+          self._output_dict,
+          self._exec_properties)
 
 if __name__ == '__main__':
   tf.test.main()

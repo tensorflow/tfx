@@ -44,7 +44,7 @@ be the same as the results from the original model.
 """
 
 import copy
-from typing import Any, Dict, Iterator, List, Mapping, Text
+from typing import Any, Dict, Iterator, List, Mapping
 import apache_beam as beam
 import tensorflow as tf
 
@@ -52,15 +52,14 @@ from tfx.experimental.distributed_inference.graphdef_experiments.subgraph_partit
 
 
 @beam.ptransform_fn
-@beam.typehints.with_input_types(Dict[Text, Dict[Text, Any]])
-@beam.typehints.with_output_types(Dict[Text, Dict[Text, Any]])
+@beam.typehints.with_input_types(Dict[str, Dict[str, Any]])
+@beam.typehints.with_output_types(Dict[str, Dict[str, Any]])
 def ExecuteGraph(  # pylint: disable=invalid-name
-    pcoll: beam.pvalue.PCollection, remote_op_name: Text,
-    remote_op_name_to_graph_name: Mapping[Text, Text],
-    graph_name_to_specs: Mapping[Text, List[execution_spec.ExecutionSpec]],
-    graph_to_remote_op_input_name_mapping: Mapping[Text, Mapping[Text,
-                                                                 Mapping[Text,
-                                                                         Text]]]
+    pcoll: beam.pvalue.PCollection, remote_op_name: str,
+    remote_op_name_to_graph_name: Mapping[str, str],
+    graph_name_to_specs: Mapping[str, List[execution_spec.ExecutionSpec]],
+    graph_to_remote_op_input_name_mapping:
+        Mapping[str, Mapping[str, Mapping[str, str]]]
 ) -> beam.pvalue.PCollection:
   """A PTransform that executes a graph.
 
@@ -141,9 +140,9 @@ class _SubgraphLayerDoFn(beam.DoFn):
   def process(
       self,
       # Not using mapping here because it doesn't support item assignment.
-      element: Dict[Text, Dict[Text, Any]],
+      element: Dict[str, Dict[str, Any]],
       spec: execution_spec.ExecutionSpec,
-      remote_op_name: Text) -> Iterator[Dict[Text, Dict[Text, Any]]]:
+      remote_op_name: str) -> Iterator[Dict[str, Dict[str, Any]]]:
     """Executes a subgraph layer.
 
     To execute a subgraph layer, we need to prepare a feed_dict by extracting
@@ -192,20 +191,19 @@ class _SubgraphLayerDoFn(beam.DoFn):
 
 
 def _import_tensor_name(  # pylint: disable=invalid-name
-    node_name: Text) -> Text:
+    node_name: str) -> str:
   return "import/%s:0" % node_name
 
 
 @beam.ptransform_fn
-@beam.typehints.with_input_types(Dict[Text, Dict[Text, Any]])
-@beam.typehints.with_output_types(Dict[Text, Dict[Text, Any]])
+@beam.typehints.with_input_types(Dict[str, Dict[str, Any]])
+@beam.typehints.with_output_types(Dict[str, Dict[str, Any]])
 def _LoadRemoteGraphInputs(  # pylint: disable=invalid-name
-    pcoll: beam.pvalue.PCollection, parent_remote_op_name: Text,
-    child_remote_op_name: Text, remote_op_name_to_graph_name: Mapping[Text,
-                                                                      Text],
-    graph_to_remote_op_input_name_mapping: Mapping[Text, Mapping[Text,
-                                                                 Mapping[Text,
-                                                                         Text]]]
+    pcoll: beam.pvalue.PCollection, parent_remote_op_name: str,
+    child_remote_op_name: str, remote_op_name_to_graph_name: Mapping[str, str],
+    graph_to_remote_op_input_name_mapping: Mapping[str, Mapping[str,
+                                                                Mapping[str,
+                                                                        str]]]
 ) -> beam.pvalue.PCollection:
   """A PTransform that prepares inputs for a remote graph.
 
@@ -251,9 +249,8 @@ def _LoadRemoteGraphInputs(  # pylint: disable=invalid-name
 
 
 def _copy_tensor_value(  # pylint: disable=invalid-name
-    element: Dict[Text, Dict[Text,
-                             Any]], old_graph: Text, old_tensor_name: Text,
-    new_graph: Text, new_tensor_name: Text) -> Dict[Text, Dict[Text, Any]]:
+    element: Dict[str, Dict[str, Any]], old_graph: str, old_tensor_name: str,
+    new_graph: str, new_tensor_name: str) -> Dict[str, Dict[str, Any]]:
   element = copy.deepcopy(element)
   if new_graph not in element:
     element[new_graph] = {}
@@ -262,14 +259,14 @@ def _copy_tensor_value(  # pylint: disable=invalid-name
 
 
 @beam.ptransform_fn
-@beam.typehints.with_input_types(Dict[Text, Dict[Text, Any]])
-@beam.typehints.with_output_types(Dict[Text, Dict[Text, Any]])
+@beam.typehints.with_input_types(Dict[str, Dict[str, Any]])
+@beam.typehints.with_output_types(Dict[str, Dict[str, Any]])
 def _ExtractRemoteGraphOutput(  # pylint: disable=invalid-name
     pcoll: beam.pvalue.PCollection,
-    parent_remote_op_name: Text,
-    child_remote_op_name: Text,
-    remote_op_name_to_graph_name: Mapping[Text, Text],
-    graph_name_to_specs: Mapping[Text, List[execution_spec.ExecutionSpec]],
+    parent_remote_op_name: str,
+    child_remote_op_name: str,
+    remote_op_name_to_graph_name: Mapping[str, str],
+    graph_name_to_specs: Mapping[str, List[execution_spec.ExecutionSpec]],
 ) -> beam.pvalue.PCollection:
   """A PTransform that extracts remote graph output.
 
@@ -316,8 +313,8 @@ def _ExtractRemoteGraphOutput(  # pylint: disable=invalid-name
 
 
 def _clear_outputs_for_finished_graph(  # pylint: disable=invalid-name
-    element: Dict[Text, Dict[Text, Any]],
-    finished_graph: Text) -> Dict[Text, Dict[Text, Any]]:
+    element: Dict[str, Dict[str, Any]],
+    finished_graph: str) -> Dict[str, Dict[str, Any]]:
   element = copy.deepcopy(element)
   del element[finished_graph]
   return element

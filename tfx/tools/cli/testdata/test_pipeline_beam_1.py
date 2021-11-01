@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,14 +13,9 @@
 # limitations under the License.
 """Chicago taxi example using TFX on Beam."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import os
-from typing import Text
 
-import absl
+from absl import logging
 
 from tfx.components.example_gen.csv_example_gen.component import CsvExampleGen
 from tfx.components.schema_gen.component import SchemaGen
@@ -29,7 +23,6 @@ from tfx.components.statistics_gen.component import StatisticsGen
 from tfx.orchestration import metadata
 from tfx.orchestration import pipeline
 from tfx.orchestration.beam.beam_dag_runner import BeamDagRunner
-from tfx.utils.dsl_utils import external_input
 
 _pipeline_name = 'chicago_taxi_beam'
 _taxi_root = os.path.join(os.environ['HOME'], 'taxi')
@@ -41,13 +34,12 @@ _metadata_path = os.path.join(_tfx_root, 'metadata', _pipeline_name,
                               'metadata.db')
 
 
-def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
-                     metadata_path: Text) -> pipeline.Pipeline:
+def _create_pipeline(pipeline_name: str, pipeline_root: str, data_root: str,
+                     metadata_path: str) -> pipeline.Pipeline:
   """Implements the chicago taxi pipeline with TFX."""
-  examples = external_input(data_root)
 
   # Brings data into the pipeline or otherwise joins/converts training data.
-  example_gen = CsvExampleGen(input=examples)
+  example_gen = CsvExampleGen(input_base=data_root)
 
   # Computes statistics over data for visualization and example validation.
   statistics_gen = StatisticsGen(examples=example_gen.outputs['examples'])
@@ -67,7 +59,7 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
 
 
 if __name__ == '__main__':
-  absl.logging.set_verbosity(absl.logging.INFO)
+  logging.set_verbosity(logging.INFO)
   BeamDagRunner().run(
       _create_pipeline(
           pipeline_name=_pipeline_name,

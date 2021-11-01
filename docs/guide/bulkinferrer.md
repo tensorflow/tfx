@@ -32,11 +32,7 @@ Remote inference requires the model to be hosted on Cloud AI Platform.
 Typical code looks like this:
 
 ```python
-from tfx import components
-
-...
-
-bulk_inferrer = components.BulkInferrer(
+bulk_inferrer = BulkInferrer(
     examples=examples_gen.outputs['examples'],
     model=trainer.outputs['model'],
     model_blessing=evaluator.outputs['blessing'],
@@ -46,4 +42,4 @@ bulk_inferrer = components.BulkInferrer(
 ```
 
 More details are available in the
-[BulkInferrer API reference](https://www.tensorflow.org/tfx/api_docs/python/tfx/components/BulkInferrer).
+[BulkInferrer API reference](https://www.tensorflow.org/tfx/api_docs/python/tfx/v1/components/BulkInferrer).

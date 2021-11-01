@@ -18,13 +18,12 @@ core task generation loop based on the state of MLMD db.
 """
 
 import abc
-import typing
-from typing import Dict, List, Type, TypeVar
+from typing import Dict, Hashable, List, Optional, Type, TypeVar
 
 import attr
 from tfx import types
-from tfx.orchestration.experimental.core import status as status_lib
 from tfx.proto.orchestration import pipeline_pb2
+from tfx.utils import status as status_lib
 
 from ml_metadata.proto import metadata_store_pb2
 
@@ -68,7 +67,7 @@ class NodeUid:
 
 
 # Task id can be any hashable type.
-TaskId = typing.Hashable
+TaskId = TypeVar('TaskId', bound=Hashable)
 
 _TaskT = TypeVar('_TaskT', bound='Task')
 
@@ -97,7 +96,7 @@ class ExecNodeTask(Task):
 
   Attributes:
     node_uid: Uid of the node to be executed.
-    execution: MLMD execution associated with current node.
+    execution_id: Id of the MLMD execution associated with the current node.
     contexts: List of contexts associated with the execution.
     exec_properties: Execution properties of the execution.
     input_artifacts: Input artifacts dict.
@@ -110,9 +109,9 @@ class ExecNodeTask(Task):
       cleanup.
   """
   node_uid: NodeUid
-  execution: metadata_store_pb2.Execution
+  execution_id: int
   contexts: List[metadata_store_pb2.Context]
-  exec_properties: Dict[str, types.Property]
+  exec_properties: Dict[str, types.ExecPropertyTypes]
   input_artifacts: Dict[str, List[types.Artifact]]
   output_artifacts: Dict[str, List[types.Artifact]]
   executor_output_uri: str
@@ -124,11 +123,25 @@ class ExecNodeTask(Task):
   def task_id(self) -> TaskId:
     return _exec_node_task_id(self.task_type_id(), self.node_uid)
 
+  def get_pipeline_node(self) -> pipeline_pb2.PipelineNode:
+    for node in self.pipeline.nodes:
+      if node.pipeline_node.node_info.id == self.node_uid.node_id:
+        return node.pipeline_node
+    raise ValueError(
+        f'Node not found in pipeline IR; node uid: {self.node_uid}')
+
 
 @attr.s(auto_attribs=True, frozen=True)
 class CancelNodeTask(Task):
-  """Task to instruct cancellation of an ongoing node execution."""
+  """Task to instruct cancellation of an ongoing node execution.
+
+  Attributes:
+    node_uid: Uid of the node to be cancelled.
+    pause: The node is being paused with the intention of resuming the same
+      execution after restart.
+  """
   node_uid: NodeUid
+  pause: bool = False
 
   @property
   def task_id(self) -> TaskId:
@@ -147,10 +160,17 @@ class FinalizePipelineTask(Task):
 
 
 @attr.s(auto_attribs=True, frozen=True)
-class FinalizeNodeTask(Task):
-  """Task to instruct finalizing a node execution."""
+class UpdateNodeStateTask(Task):
+  """Task to instruct updating node states.
+
+  This is useful for task generators to defer actually updating node states in
+  MLMD to the caller, where node state updates can be bundled together with
+  other pipeline state changes and committed to MLMD in a single transaciton for
+  efficiency.
+  """
   node_uid: NodeUid
-  status: status_lib.Status
+  state: str
+  status: Optional[status_lib.Status] = None
 
   @property
   def task_id(self) -> TaskId:
@@ -169,8 +189,8 @@ def is_finalize_pipeline_task(task: Task) -> bool:
   return task.task_type_id() == FinalizePipelineTask.task_type_id()
 
 
-def is_finalize_node_task(task: Task) -> bool:
-  return task.task_type_id() == FinalizeNodeTask.task_type_id()
+def is_update_node_state_task(task: Task) -> bool:
+  return task.task_type_id() == UpdateNodeStateTask.task_type_id()
 
 
 def exec_node_task_id_from_pipeline_node(

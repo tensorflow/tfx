@@ -13,11 +13,7 @@
 # limitations under the License.
 """TFX InfraValidator component definition."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
-from typing import Optional, Text
+from typing import Optional
 
 from tfx import types
 from tfx.components.infra_validator import executor
@@ -75,6 +71,14 @@ class InfraValidator(base_component.BaseComponent):
       ),
   )
   ```
+
+  Component `outputs` contains:
+   - `blessing`: Channel of type `standard_artifacts.InfraBlessing` that
+                 contains the validation result.
+
+  See [the InfraValidator
+  guide](https://www.tensorflow.org/tfx/guide/infra_validator) for more
+  details.
   """
 
   SPEC_CLASS = standard_component_specs.InfraValidatorSpec
@@ -86,10 +90,8 @@ class InfraValidator(base_component.BaseComponent):
       model: types.Channel,
       serving_spec: infra_validator_pb2.ServingSpec,
       examples: Optional[types.Channel] = None,
-      blessing: Optional[types.Channel] = None,
       request_spec: Optional[infra_validator_pb2.RequestSpec] = None,
-      validation_spec: Optional[infra_validator_pb2.ValidationSpec] = None,
-      instance_name: Optional[Text] = None):
+      validation_spec: Optional[infra_validator_pb2.ValidationSpec] = None):
     """Construct a InfraValidator component.
 
     Args:
@@ -101,17 +103,13 @@ class InfraValidator(base_component.BaseComponent):
       examples: A `Channel` of `ExamplesPath` type, usually produced by
         [ExampleGen](https://www.tensorflow.org/tfx/guide/examplegen) component.
         If not specified, InfraValidator does not issue requests for validation.
-      blessing: Output `Channel` of `InfraBlessingPath` that contains the
-        validation result.
+
       request_spec: Optional `RequestSpec` configuration about making requests
         from `examples` input. If not specified, InfraValidator does not issue
         requests for validation.
       validation_spec: Optional `ValidationSpec` configuration.
-      instance_name: Optional name assigned to this specific instance of
-        InfraValidator.  Required only if multiple InfraValidator components are
-        declared in the same pipeline.
     """
-    blessing = blessing or types.Channel(type=standard_artifacts.InfraBlessing)
+    blessing = types.Channel(type=standard_artifacts.InfraBlessing)
     spec = standard_component_specs.InfraValidatorSpec(
         model=model,
         examples=examples,
@@ -120,4 +118,4 @@ class InfraValidator(base_component.BaseComponent):
         validation_spec=validation_spec,
         request_spec=request_spec
     )
-    super(InfraValidator, self).__init__(spec=spec, instance_name=instance_name)
+    super().__init__(spec=spec)

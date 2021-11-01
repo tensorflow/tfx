@@ -14,6 +14,7 @@
 """Tests for tfx.orchestration.portable.resolver_node_handler."""
 
 import os
+from unittest import mock
 
 import tensorflow as tf
 from tfx import types
@@ -23,6 +24,7 @@ from tfx.orchestration.portable import execution_publish_utils
 from tfx.orchestration.portable import inputs_utils
 from tfx.orchestration.portable import resolver_node_handler
 from tfx.orchestration.portable import runtime_parameter_utils
+from tfx.orchestration.portable.input_resolution import exceptions
 from tfx.orchestration.portable.mlmd import context_lib
 from tfx.proto.orchestration import pipeline_pb2
 from tfx.utils import test_case_utils
@@ -63,18 +65,20 @@ class ResolverNodeHandlerTest(test_case_utils.TfxTest):
 
     # Extracts components
     self._my_trainer = pipeline.nodes[0].pipeline_node
-    self._resolver_node = pipeline.nodes[1].pipeline_node
+    self._my_resolver = pipeline.nodes[1].pipeline_node
+    self._model_type = (
+        self._my_trainer.outputs.outputs['model'].artifact_spec.type)
 
-  def testSuccess(self):
+  def _create_model_artifact(self, uri: str) -> types.Artifact:
+    result = types.Artifact(self._model_type)
+    result.uri = uri
+    return result
+
+  def testRun_ExecutionCompleted(self):
     with self._mlmd_connection as m:
       # Publishes two models which will be consumed by downstream resolver.
-      output_model_1 = types.Artifact(
-          self._my_trainer.outputs.outputs['model'].artifact_spec.type)
-      output_model_1.uri = 'my_model_uri_1'
-
-      output_model_2 = types.Artifact(
-          self._my_trainer.outputs.outputs['model'].artifact_spec.type)
-      output_model_2.uri = 'my_model_uri_2'
+      output_model_1 = self._create_model_artifact(uri='my_model_uri_1')
+      output_model_2 = self._create_model_artifact(uri='my_model_uri_2')
 
       contexts = context_lib.prepare_contexts(m, self._my_trainer.contexts)
       execution = execution_publish_utils.register_execution(
@@ -87,7 +91,7 @@ class ResolverNodeHandlerTest(test_case_utils.TfxTest):
     handler = resolver_node_handler.ResolverNodeHandler()
     execution_info = handler.run(
         mlmd_connection=self._mlmd_connection,
-        pipeline_node=self._resolver_node,
+        pipeline_node=self._my_resolver,
         pipeline_info=self._pipeline_info,
         pipeline_runtime_spec=self._pipeline_runtime_spec)
 
@@ -95,7 +99,8 @@ class ResolverNodeHandlerTest(test_case_utils.TfxTest):
       # There is no way to directly verify the output artifact of the resolver
       # So here a fake downstream component is created which listens to the
       # resolver's output and we verify its input.
-      down_stream_node = text_format.Parse("""
+      down_stream_node = text_format.Parse(
+          """
         inputs {
           inputs {
             key: "input_models"
@@ -144,25 +149,76 @@ class ResolverNodeHandlerTest(test_case_utils.TfxTest):
       self.assertProtoPartiallyEquals(
           """
           id: 2
-          type_id: 5
           uri: "my_model_uri_2"
           state: LIVE""",
           downstream_input_model[0].mlmd_artifact,
           ignored_fields=[
-              'create_time_since_epoch', 'last_update_time_since_epoch'
+              'type_id', 'create_time_since_epoch',
+              'last_update_time_since_epoch'
           ])
       [execution] = m.store.get_executions_by_id([execution_info.execution_id])
 
       self.assertProtoPartiallyEquals(
           """
           id: 2
-          type_id: 6
           last_known_state: COMPLETE
           """,
           execution,
           ignored_fields=[
-              'create_time_since_epoch', 'last_update_time_since_epoch'
+              'type_id', 'create_time_since_epoch',
+              'last_update_time_since_epoch'
           ])
+
+  @mock.patch.object(inputs_utils, 'resolve_input_artifacts_v2')
+  def testRun_InputResolutionError_ExecutionFailed(self, mock_resolve):
+    mock_resolve.side_effect = exceptions.InputResolutionError('Meh')
+    handler = resolver_node_handler.ResolverNodeHandler()
+
+    execution_info = handler.run(
+        mlmd_connection=self._mlmd_connection,
+        pipeline_node=self._my_resolver,
+        pipeline_info=self._pipeline_info,
+        pipeline_runtime_spec=self._pipeline_runtime_spec)
+
+    with self._mlmd_connection as m:
+      self.assertTrue(execution_info.execution_id)
+      [execution] = m.store.get_executions_by_id([execution_info.execution_id])
+      self.assertProtoPartiallyEquals(
+          """
+          id: 1
+          last_known_state: FAILED
+          """,
+          execution,
+          ignored_fields=['type_id', 'custom_properties',
+                          'create_time_since_epoch',
+                          'last_update_time_since_epoch'])
+
+  @mock.patch.object(inputs_utils, 'resolve_input_artifacts_v2')
+  def testRun_MultipleInputs_ExecutionFailed(self, mock_resolve):
+    mock_resolve.return_value = inputs_utils.Trigger([
+        {'model': [self._create_model_artifact(uri='/tmp/model/1')]},
+        {'model': [self._create_model_artifact(uri='/tmp/model/2')]},
+    ])
+    handler = resolver_node_handler.ResolverNodeHandler()
+
+    execution_info = handler.run(
+        mlmd_connection=self._mlmd_connection,
+        pipeline_node=self._my_resolver,
+        pipeline_info=self._pipeline_info,
+        pipeline_runtime_spec=self._pipeline_runtime_spec)
+
+    with self._mlmd_connection as m:
+      self.assertTrue(execution_info.execution_id)
+      [execution] = m.store.get_executions_by_id([execution_info.execution_id])
+      self.assertProtoPartiallyEquals(
+          """
+          id: 1
+          last_known_state: FAILED
+          """,
+          execution,
+          ignored_fields=['type_id', 'custom_properties',
+                          'create_time_since_epoch',
+                          'last_update_time_since_epoch'])
 
 
 if __name__ == '__main__':

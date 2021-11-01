@@ -12,3 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """TFX orchestration module."""
+
+from tfx.orchestration.local.local_dag_runner import LocalDagRunner
+from tfx.v1.orchestration import metadata
+
+try:
+  from tfx.v1.orchestration import experimental  # pylint: disable=g-import-not-at-top
+except ImportError:  # Import will fail without kfp package.
+  pass

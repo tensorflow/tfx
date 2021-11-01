@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,10 +13,6 @@
 # limitations under the License.
 """Tests for tfx.components.example_gen.driver."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import os
 
 import tensorflow as tf
@@ -29,6 +24,7 @@ from tfx.orchestration import data_types
 from tfx.orchestration.portable import data_types as portable_data_types
 from tfx.proto import example_gen_pb2
 from tfx.proto import range_config_pb2
+from tfx.types import artifact
 from tfx.types import artifact_utils
 from tfx.types import channel_utils
 from tfx.types import standard_artifacts
@@ -37,10 +33,14 @@ from tfx.utils import io_utils
 from tfx.utils import proto_utils
 
 
+class _OutputArtifact(artifact.Artifact):
+  TYPE_NAME = 'OutputArtifact'
+
+
 class DriverTest(tf.test.TestCase):
 
   def setUp(self):
-    super(DriverTest, self).setUp()
+    super().setUp()
 
     self._test_dir = os.path.join(
         os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR', self.get_temp_dir()),
@@ -85,7 +85,7 @@ class DriverTest(tf.test.TestCase):
     io_utils.write_string_file(span2_v1_split1, 'testing21')
 
     # Check that error raised when span does not match.
-    with self.assertRaisesRegexp(
+    with self.assertRaisesRegex(
         ValueError, 'Latest span should be the same for each split'):
       self._file_based_driver.resolve_exec_properties(self._exec_properties,
                                                       None, None)
@@ -98,7 +98,7 @@ class DriverTest(tf.test.TestCase):
     io_utils.write_string_file(span2_v2_split1, 'testing21')
 
     # Check that error raised when span matches, but version does not match.
-    with self.assertRaisesRegexp(
+    with self.assertRaisesRegex(
         ValueError, 'Latest version should be the same for each split'):
       self._file_based_driver.resolve_exec_properties(self._exec_properties,
                                                       None, None)
@@ -151,8 +151,8 @@ class DriverTest(tf.test.TestCase):
             range_config_pb2.RangeConfig(
                 static_range=range_config_pb2.StaticRange(
                     start_span_number=1, end_span_number=2)))
-    with self.assertRaisesRegexp(ValueError,
-                                 'For ExampleGen, start and end span numbers'):
+    with self.assertRaisesRegex(ValueError,
+                                'For ExampleGen, start and end span numbers'):
       self._file_based_driver.resolve_exec_properties(self._exec_properties,
                                                       None, None)
 
@@ -184,6 +184,38 @@ class DriverTest(tf.test.TestCase):
           name: "s2"
           pattern: "span01/version01/split2/*"
         }""", updated_input_config)
+
+  def testUpdateArtifactsMinimumExecProperties(self):
+    # Test updating the output artifact with the minimum set of input exec
+    # properties
+    out_artifact = _OutputArtifact()._artifact
+    exec_properties = {
+        utils.SPAN_PROPERTY_NAME: 2,
+        utils.VERSION_PROPERTY_NAME: None,
+        utils.FINGERPRINT_PROPERTY_NAME: None
+    }
+    driver.update_output_artifact(exec_properties, out_artifact)
+    self.assertEqual(
+        out_artifact.custom_properties[utils.SPAN_PROPERTY_NAME].int_value, 2)
+
+  def testUpdateArtifactsAllExecProperties(self):
+    # Test updating the output artifact with as many input exec properties as
+    # possible
+    out_artifact = _OutputArtifact()._artifact
+    exec_properties = {
+        utils.SPAN_PROPERTY_NAME: 2,
+        utils.VERSION_PROPERTY_NAME: 1,
+        utils.FINGERPRINT_PROPERTY_NAME: 'fp'
+    }
+    driver.update_output_artifact(exec_properties, out_artifact)
+    self.assertEqual(
+        out_artifact.custom_properties[utils.SPAN_PROPERTY_NAME].int_value, 2)
+    self.assertEqual(
+        out_artifact.custom_properties[utils.VERSION_PROPERTY_NAME].int_value,
+        1)
+    self.assertEqual(
+        out_artifact.custom_properties[
+            utils.FINGERPRINT_PROPERTY_NAME].string_value, 'fp')
 
   def testPrepareOutputArtifacts(self):
     examples = standard_artifacts.Examples()
@@ -217,9 +249,9 @@ class DriverTest(tf.test.TestCase):
         examples.get_string_custom_property(utils.FINGERPRINT_PROPERTY_NAME),
         'fp')
     self.assertEqual(
-        examples.get_string_custom_property(utils.SPAN_PROPERTY_NAME), '2')
+        examples.get_int_custom_property(utils.SPAN_PROPERTY_NAME), 2)
     self.assertEqual(
-        examples.get_string_custom_property(utils.VERSION_PROPERTY_NAME), '1')
+        examples.get_int_custom_property(utils.VERSION_PROPERTY_NAME), 1)
 
   def testDriverRunFn(self):
     # Create input dir.
@@ -286,8 +318,7 @@ class DriverTest(tf.test.TestCase):
         standard_component_specs.EXAMPLES_KEY].artifacts[0]
     self.assertEqual(output_example.uri, example.uri)
     self.assertEqual(
-        output_example.custom_properties[utils.SPAN_PROPERTY_NAME].string_value,
-        '1')
+        output_example.custom_properties[utils.SPAN_PROPERTY_NAME].int_value, 1)
     self.assertRegex(
         output_example.custom_properties[
             utils.FINGERPRINT_PROPERTY_NAME].string_value,
@@ -302,11 +333,11 @@ class DriverTest(tf.test.TestCase):
                 example_gen_pb2.Input(splits=[
                     example_gen_pb2.Input.Split(
                         name='s1',
-                        pattern="select * from table where span={SPAN} and split='s1'"
+                        pattern='select * from table where date=@span_yyyymmdd_utc'
                     ),
                     example_gen_pb2.Input.Split(
                         name='s2',
-                        pattern="select * from table where span={SPAN} and split='s2'"
+                        pattern='select * from table2 where date=@span_yyyymmdd_utc'
                     )
                 ])),
         standard_component_specs.RANGE_CONFIG_KEY:
@@ -336,11 +367,11 @@ class DriverTest(tf.test.TestCase):
         """
         splits {
           name: "s1"
-          pattern: "select * from table where span=2 and split='s1'"
+          pattern: "select * from table where date='19700103'"
         }
         splits {
           name: "s2"
-          pattern: "select * from table where span=2 and split='s2'"
+          pattern: "select * from table2 where date='19700103'"
         }""", updated_input_config)
     self.assertLen(
         result.output_artifacts[
@@ -349,8 +380,7 @@ class DriverTest(tf.test.TestCase):
         standard_component_specs.EXAMPLES_KEY].artifacts[0]
     self.assertEqual(output_example.uri, example.uri)
     self.assertEqual(
-        output_example.custom_properties[utils.SPAN_PROPERTY_NAME].string_value,
-        '2')
+        output_example.custom_properties[utils.SPAN_PROPERTY_NAME].int_value, 2)
 
 
 if __name__ == '__main__':

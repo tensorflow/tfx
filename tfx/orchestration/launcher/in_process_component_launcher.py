@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,16 +13,12 @@
 # limitations under the License.
 """In process component launcher which launches python executors in process."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import copy
 import os
-
-from typing import Any, Dict, List, Text, cast
+from typing import Any, Dict, List, cast
 
 from tfx import types
+from tfx.dsl.components.base import base_beam_executor
 from tfx.dsl.components.base import base_executor
 from tfx.dsl.components.base import executor_spec
 from tfx.orchestration.config import base_component_config
@@ -48,17 +43,24 @@ class InProcessComponentLauncher(base_component_launcher.BaseComponentLauncher):
     return isinstance(component_executor_spec, executor_spec.ExecutorClassSpec)
 
   def _run_executor(self, execution_id: int,
-                    input_dict: Dict[Text, List[types.Artifact]],
-                    output_dict: Dict[Text, List[types.Artifact]],
-                    exec_properties: Dict[Text, Any]) -> None:
+                    input_dict: Dict[str, List[types.Artifact]],
+                    output_dict: Dict[str, List[types.Artifact]],
+                    exec_properties: Dict[str, Any]) -> None:
     """Execute underlying component implementation."""
-    executor_context = base_executor.BaseExecutor.Context(
-        beam_pipeline_args=self._beam_pipeline_args,
-        tmp_dir=os.path.join(self._pipeline_info.pipeline_root, '.temp', ''),
-        unique_id=str(execution_id))
-
     executor_class_spec = cast(executor_spec.ExecutorClassSpec,
                                self._component_executor_spec)
+
+    if issubclass(executor_class_spec.executor_class,
+                  base_beam_executor.BaseBeamExecutor):
+      executor_context = base_beam_executor.BaseBeamExecutor.Context(
+          beam_pipeline_args=self._beam_pipeline_args,
+          tmp_dir=os.path.join(self._pipeline_info.pipeline_root, '.temp', ''),
+          unique_id=str(execution_id))
+    else:
+      executor_context = base_executor.BaseExecutor.Context(
+          extra_flags=self._beam_pipeline_args,
+          tmp_dir=os.path.join(self._pipeline_info.pipeline_root, '.temp', ''),
+          unique_id=str(execution_id))
 
     # Type hint of component will cause not-instantiable error as
     # component.executor is Type[BaseExecutor] which has an abstract function.

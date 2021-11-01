@@ -13,11 +13,11 @@
 # limitations under the License.
 """Tests for tfx.orchestration.managed.pipeline_builder."""
 
+from kfp.pipeline_spec import pipeline_spec_pb2 as pipeline_pb2
 import tensorflow as tf
-
+from tfx.orchestration.kubeflow.v2 import decorators
 from tfx.orchestration.kubeflow.v2 import pipeline_builder
 from tfx.orchestration.kubeflow.v2 import test_utils
-from tfx.orchestration.kubeflow.v2.proto import pipeline_pb2
 
 _VALID_NAME = 'this-name-is-good'
 _BAD_NAME = 'This  is  not  a GOOD name.'
@@ -29,7 +29,7 @@ class PipelineBuilderTest(tf.test.TestCase):
     # Should pass the check with the legal name.
     pipeline_builder._check_name(_VALID_NAME)
     # Should fail the check with the illegal name.
-    with self.assertRaisesRegexp(ValueError, 'User provided pipeline name'):
+    with self.assertRaisesRegex(ValueError, 'User provided pipeline name'):
       pipeline_builder._check_name(_BAD_NAME)
 
   def testBuildTwoStepPipeline(self):
@@ -140,6 +140,22 @@ class PipelineBuilderTest(tf.test.TestCase):
     self.assertProtoEquals(
         test_utils.get_proto_from_test_data(
             'expected_two_step_pipeline_with_cache_enabled.pbtxt',
+            pipeline_pb2.PipelineSpec()), pipeline_spec)
+
+  def testPipelineWithExitHandler(self):
+    pipeline = test_utils.two_step_pipeline()
+    # define exit handler
+    exit_handler = test_utils.dummy_exit_handler(
+        param1=decorators.FinalStatusStr())
+
+    builder = pipeline_builder.PipelineBuilder(
+        tfx_pipeline=pipeline,
+        default_image='gcr.io/my-tfx:latest',
+        exit_handler=exit_handler)
+    pipeline_spec = builder.build()
+    self.assertProtoEquals(
+        test_utils.get_proto_from_test_data(
+            'expected_two_step_pipeline_with_exit_handler.pbtxt',
             pipeline_pb2.PipelineSpec()), pipeline_spec)
 
 

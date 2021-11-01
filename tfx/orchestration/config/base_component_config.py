@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,16 +13,9 @@
 # limitations under the License.
 """Base class for TFX component configs."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
-import abc
-from six import with_metaclass
-
 from tfx.utils import json_utils
 
 
-class BaseComponentConfig(with_metaclass(abc.ABCMeta, json_utils.Jsonable)):
+class BaseComponentConfig(json_utils.Jsonable):
   """Base class for TFX component configs."""
   pass

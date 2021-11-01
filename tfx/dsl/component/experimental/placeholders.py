@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2020 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,11 +13,7 @@
 # limitations under the License.
 """Command-line placeholders for use in container component definitions."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
-from typing import List, Text, Union
+from typing import List, Union
 
 from tfx.utils import json_utils
 
@@ -30,7 +25,7 @@ class InputValuePlaceholder(json_utils.Jsonable):
   value of the input argument of an execution property.
   """
 
-  def __init__(self, input_name: Text):
+  def __init__(self, input_name: str):
     self.input_name = input_name
 
   def __eq__(self, other) -> bool:
@@ -48,7 +43,7 @@ class InputUriPlaceholder(json_utils.Jsonable):
   of the input artifact argument data.
   """
 
-  def __init__(self, input_name: Text):
+  def __init__(self, input_name: str):
     self.input_name = input_name
 
   def __eq__(self, other) -> bool:
@@ -66,7 +61,7 @@ class OutputUriPlaceholder(json_utils.Jsonable):
   for the output artifact data.
   """
 
-  def __init__(self, output_name: Text):
+  def __init__(self, output_name: str):
     self.output_name = output_name
 
   def __eq__(self, other) -> bool:
@@ -77,7 +72,7 @@ class OutputUriPlaceholder(json_utils.Jsonable):
     return not self.__eq__(other)
 
 
-class ConcatPlaceholder(object):
+class ConcatPlaceholder:
   """Represents a placeholder for result of concatenation of multiple parts.
 
   Represents a placeholder that will be replaced at runtime with a single string
@@ -95,7 +90,7 @@ class ConcatPlaceholder(object):
 
 
 CommandlineArgumentType = Union[
-    Text,
+    str,
     InputValuePlaceholder,
     InputUriPlaceholder,
     OutputUriPlaceholder,

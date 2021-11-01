@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,14 +13,10 @@
 # limitations under the License.
 """Tests for tfx.orchestration.launcher.docker_component_launcher."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import os
+from unittest import mock
 
 import docker
-import mock
 import tensorflow as tf
 from tfx.dsl.components.base import base_executor
 from tfx.dsl.components.base import executor_spec

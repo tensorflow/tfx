@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2020 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,7 +13,7 @@
 # limitations under the License.
 """Component that launches CAIP custom training job with flexible interface."""
 
-from typing import Any, Dict, List, Optional, Text
+from typing import Any, Dict, List, Optional
 
 from tfx.dsl.component.experimental import component_utils
 from tfx.dsl.component.experimental import placeholders
@@ -27,19 +26,19 @@ from tfx.utils import json_utils
 
 
 def create_ai_platform_training(
-    name: Text,
-    project_id: Text,
-    region: Optional[Text] = None,
-    job_id: Optional[Text] = None,
-    image_uri: Optional[Text] = None,
+    name: str,
+    project_id: str,
+    region: Optional[str] = None,
+    job_id: Optional[str] = None,
+    image_uri: Optional[str] = None,
     args: Optional[List[placeholders.CommandlineArgumentType]] = None,
     # TODO(jxzheng): support Python training spec
-    scale_tier: Optional[Text] = None,
-    training_input: Optional[Dict[Text, Any]] = None,
-    labels: Optional[Dict[Text, Text]] = None,
-    inputs: Dict[Text, Any] = None,
-    outputs: Dict[Text, Any] = None,
-    parameters: Dict[Text, Any] = None,
+    scale_tier: Optional[str] = None,
+    training_input: Optional[Dict[str, Any]] = None,
+    labels: Optional[Dict[str, str]] = None,
+    inputs: Optional[Dict[str, Any]] = None,
+    outputs: Optional[Dict[str, Any]] = None,
+    parameters: Optional[Dict[str, Any]] = None,
 ) -> base_component.BaseComponent:
   """Creates a pipeline step that launches a AIP training job.
 
@@ -207,11 +206,16 @@ def create_ai_platform_training(
                        'training_input.')
     training_input['region'] = region
 
+  training_job = {
+      'training_input': training_input,
+      ai_platform_training_executor.LABELS_CONFIG_KEY: labels,
+  }
+
   # Squash training_input, project, job_id, and labels into an exec property
   # namely 'aip_training_config'.
   aip_training_config = {
       ai_platform_training_executor.PROJECT_CONFIG_KEY: project_id,
-      ai_platform_training_executor.TRAINING_INPUT_CONFIG_KEY: training_input,
+      ai_platform_training_executor.TRAINING_JOB_CONFIG_KEY: training_job,
       ai_platform_training_executor.JOB_ID_CONFIG_KEY: job_id,
       ai_platform_training_executor.LABELS_CONFIG_KEY: labels,
   }
@@ -231,7 +235,7 @@ def create_ai_platform_training(
   output_channels = {}
   execution_parameters = {
       ai_platform_training_executor.CONFIG_KEY:
-          component_spec.ExecutionParameter(type=(str, Text))
+          component_spec.ExecutionParameter(type=str)
   }
 
   for input_name, single_channel in inputs.items():
@@ -252,7 +256,7 @@ def create_ai_platform_training(
   for param_name, single_parameter in parameters.items():
     # Infer the type of parameters based on the parameters passed in.
     # TODO(b/155804245) Sanitize the names so that they're valid python names
-    if not isinstance(single_parameter, (int, float, Text, bytes)):
+    if not isinstance(single_parameter, (int, float, str, bytes)):
       raise TypeError(
           'Parameter can only be int/float/str/bytes, got {}'.format(
               type(single_parameter)))

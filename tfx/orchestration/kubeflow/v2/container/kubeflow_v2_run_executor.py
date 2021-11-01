@@ -20,14 +20,15 @@ from typing import List, Tuple
 from absl import app
 from absl import logging
 from absl.flags import argparse_flags
+from kfp.pipeline_spec import pipeline_spec_pb2
 from tfx.components.evaluator import executor as evaluator_executor
+from tfx.dsl.components.base import base_beam_executor
 from tfx.dsl.components.base import base_executor
 from tfx.dsl.io import fileio
 from tfx.orchestration.kubeflow.v2.container import kubeflow_v2_entrypoint_utils
-from tfx.orchestration.kubeflow.v2.proto import pipeline_pb2
 from tfx.orchestration.portable import outputs_utils
 from tfx.types import artifact_utils
-from tfx.types.standard_component_specs import BLESSING_KEY
+from tfx.types import standard_component_specs
 from tfx.utils import import_utils
 
 from google.protobuf import json_format
@@ -53,7 +54,7 @@ def _run_executor(args: argparse.Namespace, beam_args: List[str]) -> None:
   logging.set_verbosity(logging.INFO)
 
   # Rehydrate inputs/outputs/exec_properties from the serialized metadata.
-  executor_input = pipeline_pb2.ExecutorInput()
+  executor_input = pipeline_spec_pb2.ExecutorInput()
   json_format.Parse(
       args.json_serialized_invocation_args,
       executor_input,
@@ -62,6 +63,17 @@ def _run_executor(args: argparse.Namespace, beam_args: List[str]) -> None:
   inputs_dict = executor_input.inputs.artifacts
   outputs_dict = executor_input.outputs.artifacts
   inputs_parameter = executor_input.inputs.parameters
+
+  if fileio.exists(executor_input.outputs.output_file):
+    # It has a driver that outputs the updated exec_properties in this file.
+    with fileio.open(executor_input.outputs.output_file,
+                     'rb') as output_meta_json:
+      output_metadata = pipeline_spec_pb2.ExecutorOutput()
+      json_format.Parse(
+          output_meta_json.read(), output_metadata, ignore_unknown_fields=True)
+      # Append/Overwrite exec_propertise.
+      for k, v in output_metadata.parameters.items():
+        inputs_parameter[k].CopyFrom(v)
 
   name_from_id = {}
 
@@ -74,8 +86,12 @@ def _run_executor(args: argparse.Namespace, beam_args: List[str]) -> None:
   logging.info('Executor %s do: inputs: %s, outputs: %s, exec_properties: %s',
                args.executor_class_path, inputs, outputs, exec_properties)
   executor_cls = import_utils.import_class_by_path(args.executor_class_path)
-  executor_context = base_executor.BaseExecutor.Context(
-      beam_pipeline_args=beam_args, unique_id='')
+  if issubclass(executor_cls, base_beam_executor.BaseBeamExecutor):
+    executor_context = base_beam_executor.BaseBeamExecutor.Context(
+        beam_pipeline_args=beam_args, unique_id='')
+  else:
+    executor_context = base_executor.BaseExecutor.Context(
+        extra_flags=beam_args, unique_id='')
   executor = executor_cls(executor_context)
   logging.info('Starting executor')
   executor.Do(inputs, outputs, exec_properties)
@@ -88,15 +104,15 @@ def _run_executor(args: argparse.Namespace, beam_args: List[str]) -> None:
   # id/name to identify artifacts.
   # Convert ModelBlessing artifact to use managed MLMD resource name.
   if (issubclass(executor_cls, evaluator_executor.Executor) and
-      BLESSING_KEY in outputs):
+      standard_component_specs.BLESSING_KEY in outputs):
     # Parse the parent prefix for managed MLMD resource name.
     kubeflow_v2_entrypoint_utils.refactor_model_blessing(
-        artifact_utils.get_single_instance(outputs[BLESSING_KEY]),
-        name_from_id)
+        artifact_utils.get_single_instance(
+            outputs[standard_component_specs.BLESSING_KEY]), name_from_id)
 
   # Log the output metadata to a file. So that it can be picked up by MP.
   metadata_uri = executor_input.outputs.output_file
-  executor_output = pipeline_pb2.ExecutorOutput()
+  executor_output = pipeline_spec_pb2.ExecutorOutput()
   for k, v in kubeflow_v2_entrypoint_utils.translate_executor_output(
       outputs, name_from_id).items():
     executor_output.artifacts[k].CopyFrom(v)

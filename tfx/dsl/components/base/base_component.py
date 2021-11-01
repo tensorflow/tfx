@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,27 +13,21 @@
 # limitations under the License.
 """Base class for TFX components."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import abc
 import inspect
-from typing import Any, Dict, Optional, Text
-
-from six import with_metaclass
+from typing import Any, Dict, Optional, Union
 
 from tfx import types
 from tfx.dsl.components.base import base_driver
 from tfx.dsl.components.base import base_node
 from tfx.dsl.components.base import executor_spec
-from tfx.types import node_common
 from tfx.utils import abc_utils
+from tfx.utils import doc_controls
 
 from google.protobuf import message
 
 
-class BaseComponent(with_metaclass(abc.ABCMeta, base_node.BaseNode)):
+class BaseComponent(base_node.BaseNode, abc.ABC):
   """Base class for a TFX pipeline component.
 
   An instance of a subclass of BaseComponent represents the parameters for a
@@ -59,31 +52,29 @@ class BaseComponent(with_metaclass(abc.ABCMeta, base_node.BaseNode)):
   # Subclasses must override this property (by specifying a types.ComponentSpec
   # class, e.g. "SPEC_CLASS = MyComponentSpec").
   SPEC_CLASS = abc_utils.abstract_property()
+  doc_controls.do_not_doc_in_subclasses(SPEC_CLASS)
   # Subclasses must also override the executor spec.
   #
   # Note: EXECUTOR_CLASS has been replaced with EXECUTOR_SPEC. A custom
   # component's existing executor class definition "EXECUTOR_CLASS = MyExecutor"
   # should be replaced with "EXECUTOR_SPEC = ExecutorClassSpec(MyExecutor).
   EXECUTOR_SPEC = abc_utils.abstract_property()
+  doc_controls.do_not_doc_in_subclasses(EXECUTOR_SPEC)
   # Subclasses will usually use the default driver class, but may override this
   # property as well.
   DRIVER_CLASS = base_driver.BaseDriver
+  doc_controls.do_not_doc_in_subclasses(DRIVER_CLASS)
 
   def __init__(
       self,
       spec: types.ComponentSpec,
-      custom_executor_spec: Optional[executor_spec.ExecutorSpec] = None,
-      instance_name: Optional[Text] = None):
+      custom_executor_spec: Optional[executor_spec.ExecutorSpec] = None):
     """Initialize a component.
 
     Args:
       spec: types.ComponentSpec object for this component instance.
       custom_executor_spec: Optional custom executor spec overriding the default
         executor specified in the component attribute.
-      instance_name: Deprecated. Please set `id` directly using `with_id()`
-        function or `.id` setter in the `BaseNode` class. The pipeline
-        assembling will fail if there are two nodes in the pipeline with the
-        same id.
     """
     if custom_executor_spec:
       if not isinstance(custom_executor_spec, executor_spec.ExecutorSpec):
@@ -103,8 +94,7 @@ class BaseComponent(with_metaclass(abc.ABCMeta, base_node.BaseNode)):
                        f'not copyable.') from e
 
     driver_class = self.__class__.DRIVER_CLASS
-    super(BaseComponent, self).__init__(
-        instance_name=instance_name,
+    super().__init__(
         executor_spec=executor_spec_obj,
         driver_class=driver_class,
     )
@@ -112,6 +102,7 @@ class BaseComponent(with_metaclass(abc.ABCMeta, base_node.BaseNode)):
     self._validate_component_class()
     self._validate_spec(spec)
     self.platform_config = None
+    self._pip_dependencies = []
 
   @classmethod
   def _validate_component_class(cls):
@@ -147,6 +138,7 @@ class BaseComponent(with_metaclass(abc.ABCMeta, base_node.BaseNode)):
 
   # TODO(b/170682320): This function is not widely available until we migrate
   # the entire stack to IR-based.
+  @doc_controls.do_not_doc_in_subclasses
   def with_platform_config(self, config: message.Message) -> 'BaseComponent':
     """Attaches a proto-form platform config to a component.
 
@@ -168,13 +160,47 @@ class BaseComponent(with_metaclass(abc.ABCMeta, base_node.BaseNode)):
                 self.driver_class, self.id, self.inputs, self.outputs)
 
   @property
-  def inputs(self) -> node_common._PropertyDictWrapper:  # pylint: disable=protected-access
+  @doc_controls.do_not_doc_in_subclasses
+  def inputs(self) -> Dict[str, Any]:
     return self.spec.inputs
 
   @property
-  def outputs(self) -> node_common._PropertyDictWrapper:  # pylint: disable=protected-access
+  def outputs(self) -> Dict[str, Any]:
+    """Component's output channel dict."""
     return self.spec.outputs
 
   @property
-  def exec_properties(self) -> Dict[Text, Any]:
+  @doc_controls.do_not_doc_in_subclasses
+  def exec_properties(self) -> Dict[str, Any]:  # pylint: disable=g-missing-from-attributes
     return self.spec.exec_properties
+
+  def _add_pip_dependency(
+      self, dependency: Union[str, '_PipDependencyFuture']) -> None:
+    """Internal use only: add pip dependency to current component."""
+    # TODO(b/187122662): Provide separate Python component hierarchy and remove
+    # logic from this class.
+    self._pip_dependencies.append(dependency)
+
+  def _resolve_pip_dependencies(self, pipeline_root: str) -> None:
+    """Experimental: resolve pip dependencies into specifiers."""
+    if not hasattr(self, '_pip_dependencies'):
+      return
+    new_pip_dependencies = []
+    for dependency in self._pip_dependencies:
+      if isinstance(dependency, str):
+        new_pip_dependencies.append(dependency)
+      elif isinstance(dependency, _PipDependencyFuture):
+        resolved_dependency = dependency.resolve(pipeline_root)
+        if resolved_dependency:
+          new_pip_dependencies.append(resolved_dependency)
+      else:
+        raise ValueError('Invalid pip dependency object: %s.' % dependency)
+    self._pip_dependencies = new_pip_dependencies
+
+
+class _PipDependencyFuture:
+  """Experimental: Represents a pip dependency resolved at pipeline runtime."""
+
+  def resolve(self, pipeline_root: str) -> str:
+    """Returns a pip installable target spec, as string, or None to ignore."""
+    raise NotImplementedError()

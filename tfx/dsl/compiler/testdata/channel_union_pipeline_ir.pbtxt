@@ -1,0 +1,764 @@
+# proto-file: tfx/proto/orchestration/pipeline.proto
+# proto-message: Pipeline
+
+pipeline_info {
+  id: "channel_union_pipeline"
+}
+nodes {
+  pipeline_node {
+    node_info {
+      type {
+        name: "tfx.components.example_gen.csv_example_gen.component.CsvExampleGen"
+      }
+      id: "example_gen_1"
+    }
+    contexts {
+      contexts {
+        type {
+          name: "pipeline"
+        }
+        name {
+          field_value {
+            string_value: "channel_union_pipeline"
+          }
+        }
+      }
+      contexts {
+        type {
+          name: "pipeline_run"
+        }
+        name {
+          runtime_parameter {
+            name: "pipeline-run-id"
+            type: STRING
+          }
+        }
+      }
+      contexts {
+        type {
+          name: "node"
+        }
+        name {
+          field_value {
+            string_value: "channel_union_pipeline.example_gen_1"
+          }
+        }
+      }
+    }
+    outputs {
+      outputs {
+        key: "examples"
+        value {
+          artifact_spec {
+            type {
+              name: "Examples"
+              properties {
+                key: "span"
+                value: INT
+              }
+              properties {
+                key: "split_names"
+                value: STRING
+              }
+              properties {
+                key: "version"
+                value: INT
+              }
+            }
+          }
+        }
+      }
+    }
+    parameters {
+      parameters {
+        key: "input_base"
+        value {
+          field_value {
+            string_value: "channel_union/data1"
+          }
+        }
+      }
+      parameters {
+        key: "input_config"
+        value {
+          field_value {
+            string_value: "{\n  \"splits\": [\n    {\n      \"name\": \"single_split\",\n      \"pattern\": \"*\"\n    }\n  ]\n}"
+          }
+        }
+      }
+      parameters {
+        key: "output_config"
+        value {
+          field_value {
+            string_value: "{\n  \"split_config\": {\n    \"splits\": [\n      {\n        \"hash_buckets\": 2,\n        \"name\": \"train\"\n      },\n      {\n        \"hash_buckets\": 1,\n        \"name\": \"eval\"\n      }\n    ]\n  }\n}"
+          }
+        }
+      }
+      parameters {
+        key: "output_data_format"
+        value {
+          field_value {
+            int_value: 6
+          }
+        }
+      }
+      parameters {
+        key: "output_file_format"
+        value {
+          field_value {
+            int_value: 5
+          }
+        }
+      }
+    }
+    downstream_nodes: "ChannelUnionComponent"
+    downstream_nodes: "latest_artifacts_resolver"
+    execution_options {
+      caching_options {
+      }
+    }
+  }
+}
+nodes {
+  pipeline_node {
+    node_info {
+      type {
+        name: "tfx.components.example_gen.csv_example_gen.component.CsvExampleGen"
+      }
+      id: "example_gen_2"
+    }
+    contexts {
+      contexts {
+        type {
+          name: "pipeline"
+        }
+        name {
+          field_value {
+            string_value: "channel_union_pipeline"
+          }
+        }
+      }
+      contexts {
+        type {
+          name: "pipeline_run"
+        }
+        name {
+          runtime_parameter {
+            name: "pipeline-run-id"
+            type: STRING
+          }
+        }
+      }
+      contexts {
+        type {
+          name: "node"
+        }
+        name {
+          field_value {
+            string_value: "channel_union_pipeline.example_gen_2"
+          }
+        }
+      }
+    }
+    outputs {
+      outputs {
+        key: "examples"
+        value {
+          artifact_spec {
+            type {
+              name: "Examples"
+              properties {
+                key: "span"
+                value: INT
+              }
+              properties {
+                key: "split_names"
+                value: STRING
+              }
+              properties {
+                key: "version"
+                value: INT
+              }
+            }
+          }
+        }
+      }
+    }
+    parameters {
+      parameters {
+        key: "input_base"
+        value {
+          field_value {
+            string_value: "channel_union/data2"
+          }
+        }
+      }
+      parameters {
+        key: "input_config"
+        value {
+          field_value {
+            string_value: "{\n  \"splits\": [\n    {\n      \"name\": \"single_split\",\n      \"pattern\": \"*\"\n    }\n  ]\n}"
+          }
+        }
+      }
+      parameters {
+        key: "output_config"
+        value {
+          field_value {
+            string_value: "{\n  \"split_config\": {\n    \"splits\": [\n      {\n        \"hash_buckets\": 2,\n        \"name\": \"train\"\n      },\n      {\n        \"hash_buckets\": 1,\n        \"name\": \"eval\"\n      }\n    ]\n  }\n}"
+          }
+        }
+      }
+      parameters {
+        key: "output_data_format"
+        value {
+          field_value {
+            int_value: 6
+          }
+        }
+      }
+      parameters {
+        key: "output_file_format"
+        value {
+          field_value {
+            int_value: 5
+          }
+        }
+      }
+    }
+    downstream_nodes: "ChannelUnionComponent"
+    execution_options {
+      caching_options {
+      }
+    }
+  }
+}
+nodes {
+  pipeline_node {
+    node_info {
+      type {
+        name: "tfx.dsl.compiler.testdata.channel_union_pipeline.ChannelUnionComponent"
+      }
+      id: "ChannelUnionComponent"
+    }
+    contexts {
+      contexts {
+        type {
+          name: "pipeline"
+        }
+        name {
+          field_value {
+            string_value: "channel_union_pipeline"
+          }
+        }
+      }
+      contexts {
+        type {
+          name: "pipeline_run"
+        }
+        name {
+          runtime_parameter {
+            name: "pipeline-run-id"
+            type: STRING
+          }
+        }
+      }
+      contexts {
+        type {
+          name: "node"
+        }
+        name {
+          field_value {
+            string_value: "channel_union_pipeline.ChannelUnionComponent"
+          }
+        }
+      }
+    }
+    inputs {
+      inputs {
+        key: "input_data"
+        value {
+          channels {
+            producer_node_query {
+              id: "example_gen_1"
+            }
+            context_queries {
+              type {
+                name: "pipeline"
+              }
+              name {
+                field_value {
+                  string_value: "channel_union_pipeline"
+                }
+              }
+            }
+            context_queries {
+              type {
+                name: "pipeline_run"
+              }
+              name {
+                runtime_parameter {
+                  name: "pipeline-run-id"
+                  type: STRING
+                }
+              }
+            }
+            context_queries {
+              type {
+                name: "node"
+              }
+              name {
+                field_value {
+                  string_value: "channel_union_pipeline.example_gen_1"
+                }
+              }
+            }
+            artifact_query {
+              type {
+                name: "Examples"
+              }
+            }
+            output_key: "examples"
+          }
+          channels {
+            producer_node_query {
+              id: "example_gen_2"
+            }
+            context_queries {
+              type {
+                name: "pipeline"
+              }
+              name {
+                field_value {
+                  string_value: "channel_union_pipeline"
+                }
+              }
+            }
+            context_queries {
+              type {
+                name: "pipeline_run"
+              }
+              name {
+                runtime_parameter {
+                  name: "pipeline-run-id"
+                  type: STRING
+                }
+              }
+            }
+            context_queries {
+              type {
+                name: "node"
+              }
+              name {
+                field_value {
+                  string_value: "channel_union_pipeline.example_gen_2"
+                }
+              }
+            }
+            artifact_query {
+              type {
+                name: "Examples"
+              }
+            }
+            output_key: "examples"
+          }
+          min_count: 1
+        }
+      }
+    }
+    outputs {
+      outputs {
+        key: "output_data"
+        value {
+          artifact_spec {
+            type {
+              name: "Examples"
+              properties {
+                key: "span"
+                value: INT
+              }
+              properties {
+                key: "split_names"
+                value: STRING
+              }
+              properties {
+                key: "version"
+                value: INT
+              }
+            }
+          }
+        }
+      }
+    }
+    parameters {
+      parameters {
+        key: "name"
+        value {
+          field_value {
+            string_value: "channel_union_input"
+          }
+        }
+      }
+    }
+    upstream_nodes: "example_gen_1"
+    upstream_nodes: "example_gen_2"
+    downstream_nodes: "latest_artifacts_resolver"
+    execution_options {
+      caching_options {
+      }
+    }
+  }
+}
+nodes {
+  pipeline_node {
+    node_info {
+      type {
+        name: "tfx.dsl.components.common.resolver.Resolver"
+      }
+      id: "latest_artifacts_resolver"
+    }
+    contexts {
+      contexts {
+        type {
+          name: "pipeline"
+        }
+        name {
+          field_value {
+            string_value: "channel_union_pipeline"
+          }
+        }
+      }
+      contexts {
+        type {
+          name: "pipeline_run"
+        }
+        name {
+          runtime_parameter {
+            name: "pipeline-run-id"
+            type: STRING
+          }
+        }
+      }
+      contexts {
+        type {
+          name: "node"
+        }
+        name {
+          field_value {
+            string_value: "channel_union_pipeline.latest_artifacts_resolver"
+          }
+        }
+      }
+    }
+    inputs {
+      inputs {
+        key: "resolved_channels"
+        value {
+          channels {
+            producer_node_query {
+              id: "example_gen_1"
+            }
+            context_queries {
+              type {
+                name: "pipeline"
+              }
+              name {
+                field_value {
+                  string_value: "channel_union_pipeline"
+                }
+              }
+            }
+            context_queries {
+              type {
+                name: "pipeline_run"
+              }
+              name {
+                runtime_parameter {
+                  name: "pipeline-run-id"
+                  type: STRING
+                }
+              }
+            }
+            context_queries {
+              type {
+                name: "node"
+              }
+              name {
+                field_value {
+                  string_value: "channel_union_pipeline.example_gen_1"
+                }
+              }
+            }
+            artifact_query {
+              type {
+                name: "Examples"
+              }
+            }
+            output_key: "examples"
+          }
+          channels {
+            producer_node_query {
+              id: "ChannelUnionComponent"
+            }
+            context_queries {
+              type {
+                name: "pipeline"
+              }
+              name {
+                field_value {
+                  string_value: "channel_union_pipeline"
+                }
+              }
+            }
+            context_queries {
+              type {
+                name: "pipeline_run"
+              }
+              name {
+                runtime_parameter {
+                  name: "pipeline-run-id"
+                  type: STRING
+                }
+              }
+            }
+            context_queries {
+              type {
+                name: "node"
+              }
+              name {
+                field_value {
+                  string_value: "channel_union_pipeline.ChannelUnionComponent"
+                }
+              }
+            }
+            artifact_query {
+              type {
+                name: "Examples"
+              }
+            }
+            output_key: "output_data"
+          }
+        }
+      }
+      resolver_config {
+        resolver_steps {
+          class_path: "tfx.dsl.input_resolution.strategies.latest_artifact_strategy.LatestArtifactStrategy"
+          config_json: "{}"
+          input_keys: "resolved_channels"
+        }
+      }
+    }
+    upstream_nodes: "ChannelUnionComponent"
+    upstream_nodes: "example_gen_1"
+    downstream_nodes: "StatisticsGen"
+    execution_options {
+      caching_options {
+      }
+    }
+  }
+}
+nodes {
+  pipeline_node {
+    node_info {
+      type {
+        name: "tfx.components.statistics_gen.component.StatisticsGen"
+      }
+      id: "StatisticsGen"
+    }
+    contexts {
+      contexts {
+        type {
+          name: "pipeline"
+        }
+        name {
+          field_value {
+            string_value: "channel_union_pipeline"
+          }
+        }
+      }
+      contexts {
+        type {
+          name: "pipeline_run"
+        }
+        name {
+          runtime_parameter {
+            name: "pipeline-run-id"
+            type: STRING
+          }
+        }
+      }
+      contexts {
+        type {
+          name: "node"
+        }
+        name {
+          field_value {
+            string_value: "channel_union_pipeline.StatisticsGen"
+          }
+        }
+      }
+    }
+    inputs {
+      inputs {
+        key: "examples"
+        value {
+          channels {
+            producer_node_query {
+              id: "latest_artifacts_resolver"
+            }
+            context_queries {
+              type {
+                name: "pipeline"
+              }
+              name {
+                field_value {
+                  string_value: "channel_union_pipeline"
+                }
+              }
+            }
+            context_queries {
+              type {
+                name: "pipeline_run"
+              }
+              name {
+                runtime_parameter {
+                  name: "pipeline-run-id"
+                  type: STRING
+                }
+              }
+            }
+            context_queries {
+              type {
+                name: "node"
+              }
+              name {
+                field_value {
+                  string_value: "channel_union_pipeline.latest_artifacts_resolver"
+                }
+              }
+            }
+            artifact_query {
+              type {
+                name: "Examples"
+              }
+            }
+            output_key: "resolved_channels"
+          }
+          min_count: 1
+        }
+      }
+    }
+    outputs {
+      outputs {
+        key: "statistics"
+        value {
+          artifact_spec {
+            type {
+              name: "ExampleStatistics"
+              properties {
+                key: "span"
+                value: INT
+              }
+              properties {
+                key: "split_names"
+                value: STRING
+              }
+            }
+          }
+        }
+      }
+    }
+    parameters {
+      parameters {
+        key: "exclude_splits"
+        value {
+          field_value {
+            string_value: "[]"
+          }
+        }
+      }
+    }
+    upstream_nodes: "latest_artifacts_resolver"
+    execution_options {
+      caching_options {
+      }
+    }
+  }
+}
+runtime_spec {
+  pipeline_root {
+    runtime_parameter {
+      name: "pipeline-root"
+      type: STRING
+      default_value {
+        string_value: "channel_union/tfx/pipelines/channel_union_pipeline"
+      }
+    }
+  }
+  pipeline_run_id {
+    runtime_parameter {
+      name: "pipeline-run-id"
+      type: STRING
+    }
+  }
+}
+execution_mode: SYNC
+deployment_config {
+  [type.googleapis.com/tfx.orchestration.IntermediateDeploymentConfig] {
+    executor_specs {
+      key: "ChannelUnionComponent"
+      value {
+        [type.googleapis.com/tfx.orchestration.executable_spec.PythonClassExecutableSpec] {
+          class_path: "tfx.dsl.compiler.testdata.channel_union_pipeline.Executor"
+        }
+      }
+    }
+    executor_specs {
+      key: "StatisticsGen"
+      value {
+        [type.googleapis.com/tfx.orchestration.executable_spec.BeamExecutableSpec] {
+          python_executor_spec {
+            class_path: "tfx.components.statistics_gen.executor.Executor"
+          }
+        }
+      }
+    }
+    executor_specs {
+      key: "example_gen_1"
+      value {
+        [type.googleapis.com/tfx.orchestration.executable_spec.BeamExecutableSpec] {
+          python_executor_spec {
+            class_path: "tfx.components.example_gen.csv_example_gen.executor.Executor"
+          }
+        }
+      }
+    }
+    executor_specs {
+      key: "example_gen_2"
+      value {
+        [type.googleapis.com/tfx.orchestration.executable_spec.BeamExecutableSpec] {
+          python_executor_spec {
+            class_path: "tfx.components.example_gen.csv_example_gen.executor.Executor"
+          }
+        }
+      }
+    }
+    custom_driver_specs {
+      key: "example_gen_1"
+      value {
+        [type.googleapis.com/tfx.orchestration.executable_spec.PythonClassExecutableSpec] {
+          class_path: "tfx.components.example_gen.driver.FileBasedDriver"
+        }
+      }
+    }
+    custom_driver_specs {
+      key: "example_gen_2"
+      value {
+        [type.googleapis.com/tfx.orchestration.executable_spec.PythonClassExecutableSpec] {
+          class_path: "tfx.components.example_gen.driver.FileBasedDriver"
+        }
+      }
+    }
+  }
+}
+

@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2020 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,16 +13,12 @@
 # limitations under the License.
 """Portable libraries for event related APIs."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
-from typing import Optional, Text, Tuple
+from typing import Optional, Tuple
 
 from ml_metadata.proto import metadata_store_pb2
 
 
-_VALID_OUTPUT_EVENT_TYPES = frozenset([
+VALID_OUTPUT_EVENT_TYPES = frozenset([
     metadata_store_pb2.Event.OUTPUT, metadata_store_pb2.Event.INTERNAL_OUTPUT,
     metadata_store_pb2.Event.DECLARED_OUTPUT
 ])
@@ -34,7 +29,7 @@ _VALID_INPUT_EVENT_TYPES = frozenset([
 
 
 def is_valid_output_event(event: metadata_store_pb2.Event,
-                          expected_output_key: Optional[Text] = None) -> bool:
+                          expected_output_key: Optional[str] = None) -> bool:
   """Evaluates whether an event is an output event with the right output key.
 
   Args:
@@ -46,14 +41,14 @@ def is_valid_output_event(event: metadata_store_pb2.Event,
   """
   if expected_output_key:
     return (len(event.path.steps) == 2 and  # Valid event should have 2 steps.
-            event.path.steps[0].key == expected_output_key and
-            event.type in _VALID_OUTPUT_EVENT_TYPES)
+            event.path.steps[0].key == expected_output_key
+            and event.type in VALID_OUTPUT_EVENT_TYPES)
   else:
-    return event.type in _VALID_OUTPUT_EVENT_TYPES
+    return event.type in VALID_OUTPUT_EVENT_TYPES
 
 
 def is_valid_input_event(event: metadata_store_pb2.Event,
-                         expected_input_key: Optional[Text] = None) -> bool:
+                         expected_input_key: Optional[str] = None) -> bool:
   """Evaluates whether an event is an input event with the right input key.
 
   Args:
@@ -73,7 +68,7 @@ def is_valid_input_event(event: metadata_store_pb2.Event,
 
 def generate_event(
     event_type: metadata_store_pb2.Event.Type,
-    key: Text,
+    key: str,
     index: int,
     artifact_id: Optional[int] = None,
     execution_id: Optional[int] = None) -> metadata_store_pb2.Event:
@@ -106,7 +101,7 @@ def generate_event(
   return event
 
 
-def get_artifact_path(event: metadata_store_pb2.Event) -> Tuple[Text, int]:
+def get_artifact_path(event: metadata_store_pb2.Event) -> Tuple[str, int]:
   """Gets the artifact path from the event.
 
   This is useful for reconstructing the artifact dict (mapping from key to an

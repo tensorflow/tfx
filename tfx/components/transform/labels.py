@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,9 +20,11 @@ ANALYZE_DATA_PATHS_LABEL = 'analyze_data_paths'
 ANALYZE_PATHS_FILE_FORMATS_LABEL = 'analyze_paths_file_formats'
 TRANSFORM_DATA_PATHS_LABEL = 'transform_data_paths'
 TRANSFORM_PATHS_FILE_FORMATS_LABEL = 'transform_paths_file_formats'
-COMPUTE_STATISTICS_LABEL = 'compute_statistics'
+DISABLE_STATISTICS_LABEL = 'disable_statistics'
 MODULE_FILE = 'module_file'
+MODULE_PATH = 'module_path'
 PREPROCESSING_FN = 'preprocessing_fn'
+STATS_OPTIONS_UPDATER_FN = 'stats_options_updater_fn'
 CUSTOM_CONFIG = 'custom_config'
 BEAM_PIPELINE_ARGS = 'pipeline_args'
 DATA_VIEW_LABEL = 'data_view_uri'
@@ -44,6 +45,12 @@ TRANSFORM_MATERIALIZE_OUTPUT_PATHS_LABEL = (
 TRANSFORM_METADATA_OUTPUT_PATH_LABEL = 'transform_output_path'
 CACHE_OUTPUT_PATH_LABEL = 'cache_output_path'
 TEMP_OUTPUT_LABEL = 'temp_path'
+PRE_TRANSFORM_OUTPUT_SCHEMA_PATH_LABEL = 'pre_transform_output_schema_path'
+PRE_TRANSFORM_OUTPUT_STATS_PATH_LABEL = 'pre_transform_output_stats_path'
+POST_TRANSFORM_OUTPUT_SCHEMA_PATH_LABEL = 'post_transform_output_schema_path'
+POST_TRANSFORM_OUTPUT_STATS_PATH_LABEL = 'post_transform_output_stats_path'
+POST_TRANSFORM_OUTPUT_ANOMALIES_PATH_LABEL = (
+    'post_transform_output_anomalies_path')
 
 # Examples File Format
-FORMAT_TFRECORD = 'FORMAT_TFRECORD'
+FORMAT_TFRECORD = 'tfrecords_gzip'

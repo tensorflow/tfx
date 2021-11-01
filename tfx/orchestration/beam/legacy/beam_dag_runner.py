@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,17 +13,13 @@
 # limitations under the License.
 """Definition of Beam TFX runner."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import datetime
-import os
-from typing import Any, Iterable, List, Optional, Text, Type
+from typing import Any, Iterable, List, Optional, Type
 
 import absl
 import apache_beam as beam
 
+from tfx.dsl.components.base import base_component
 from tfx.dsl.components.base import base_node
 from tfx.orchestration import data_types
 from tfx.orchestration import metadata
@@ -93,7 +88,7 @@ class BeamDagRunner(tfx_runner.TfxRunner):
   """Tfx runner on Beam."""
 
   def __init__(self,
-               beam_orchestrator_args: Optional[List[Text]] = None,
+               beam_orchestrator_args: Optional[List[str]] = None,
                config: Optional[pipeline_config.PipelineConfig] = None):
     """Initializes BeamDagRunner as a TFX orchestrator.
 
@@ -112,7 +107,7 @@ class BeamDagRunner(tfx_runner.TfxRunner):
               docker_component_launcher.DockerComponentLauncher,
           ],
       )
-    super(BeamDagRunner, self).__init__(config)
+    super().__init__(config)
     self._beam_orchestrator_args = beam_orchestrator_args
 
   def run(self, tfx_pipeline: pipeline.Pipeline) -> None:
@@ -121,11 +116,6 @@ class BeamDagRunner(tfx_runner.TfxRunner):
     Args:
       tfx_pipeline: Logical pipeline containing pipeline args and components.
     """
-    # For CLI, while creating or updating pipeline, pipeline_args are extracted
-    # and hence we avoid executing the pipeline.
-    if 'TFX_JSON_EXPORT_PIPELINE_ARGS_PATH' in os.environ:
-      return
-
     tfx_pipeline.pipeline_info.run_id = datetime.datetime.now().isoformat()
 
     with telemetry_utils.scoped_labels(
@@ -138,6 +128,11 @@ class BeamDagRunner(tfx_runner.TfxRunner):
         signal_map = {}
         # pipeline.components are in topological order.
         for component in tfx_pipeline.components:
+          # TODO(b/187122662): Pass through pip dependencies as a first-class
+          # component flag.
+          if isinstance(component, base_component.BaseComponent):
+            component._resolve_pip_dependencies(  # pylint: disable=protected-access
+                tfx_pipeline.pipeline_info.pipeline_root)
           component_id = component.id
 
           # Signals from upstream components.

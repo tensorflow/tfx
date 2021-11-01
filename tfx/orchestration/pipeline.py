@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,21 +13,16 @@
 # limitations under the License.
 """Definition and related classes for TFX pipeline."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
-
-import collections
 import enum
-import json
-import os
-from typing import List, Optional, Text, cast
+from typing import List, Optional, Union, cast
 
+from tfx.dsl.compiler import constants
 from tfx.dsl.components.base import base_node
 from tfx.dsl.components.base import executor_spec
+from tfx.dsl.placeholder import placeholder as ph
 from tfx.orchestration import data_types
 from tfx.orchestration import metadata
+from tfx.types import channel_utils
 from tfx.utils import topsort
 
 from google.protobuf import message
@@ -37,10 +31,7 @@ from google.protobuf import message
 # see https://github.com/argoproj/argo/issues/1324.
 # MySQL's database name cannot exceed 64 chars:
 # https://dev.mysql.com/doc/refman/5.6/en/identifiers.html
-MAX_PIPELINE_NAME_LENGTH = 63
-
-# Name of pipeline_root parameter.
-_PIPELINE_ROOT = 'pipeline-root'
+_MAX_PIPELINE_NAME_LENGTH = 63
 
 # Pipeline root is by default specified as a RuntimeParameter when runnning on
 # KubeflowDagRunner. This constant offers users an easy access to the pipeline
@@ -53,50 +44,60 @@ _PIPELINE_ROOT = 'pipeline-root'
 #         filesystem=pusher_pb2.PushDestination.Filesystem(
 #             base_directory=os.path.join(
 #                 str(pipeline.ROOT_PARAMETER), 'model_serving'))))
-ROOT_PARAMETER = data_types.RuntimeParameter(name=_PIPELINE_ROOT, ptype=Text)
+ROOT_PARAMETER = data_types.RuntimeParameter(
+    name=constants.PIPELINE_ROOT_PARAMETER_NAME, ptype=str)
 
 
 class ExecutionMode(enum.Enum):
   """Execution mode of a pipeline.
 
-  Please see `this RFC
-  <https://github.com/tensorflow/community/blob/master/rfcs/20200601-tfx-udsl-semantics.md>`
+  Please see this
+  [RFC](https://github.com/tensorflow/community/blob/master/rfcs/20200601-tfx-udsl-semantics.md)
   for more details.
   """
   SYNC = 1
   ASYNC = 2
 
 
-class Pipeline(object):
+def add_beam_pipeline_args_to_component(component, beam_pipeline_args):
+  if isinstance(component.executor_spec, executor_spec.BeamExecutorSpec):
+    # Prepend pipeline-level beam_pipeline_args in front of component specific
+    # ones to make component-level override pipeline-level args.
+    cast(
+        executor_spec.BeamExecutorSpec,
+        component.executor_spec).beam_pipeline_args = beam_pipeline_args + cast(
+            executor_spec.BeamExecutorSpec,
+            component.executor_spec).beam_pipeline_args
+
+
+class Pipeline:
   """Logical TFX pipeline object.
 
+  Pipeline object represents the DAG of TFX components, which can be run using
+  one of the pipeline orchestration systems that TFX supports. For details,
+  please refer to the
+  [guide](https://github.com/tensorflow/tfx/blob/master/docs/guide/build_tfx_pipeline.md).
+
   Attributes:
-    pipeline_args: Kwargs used to create real pipeline implementation. This is
-      forwarded to PipelineRunners instead of consumed in this class. This
-      should include:
-      - pipeline_name: Required. The unique name of this pipeline.
-      - pipeline_root: Required. The root of the pipeline outputs.
-    components: Logical components of this pipeline. When read, this is in
-      topologically sorted order.
-    pipeline_info: An instance of data_types.PipelineInfo that contains basic
-      properties of the pipeline.
+    components: A deterministic list of logical components of this pipeline,
+      which are deduped and topologically sorted.
     enable_cache: Whether or not cache is enabled for this run.
     metadata_connection_config: The config to connect to ML metadata.
     execution_mode: Execution mode of the pipeline. Currently only support
       synchronous execution mode.
-    beam_pipeline_args: Pipeline arguments for Beam powered Components.
+    beam_pipeline_args: Pipeline arguments for Beam powered Components. Use
+      `with_beam_pipeline_args` to set component level Beam args.
     platform_config: Pipeline level platform config, in proto form.
-    additional_pipeline_args: Other pipeline args.
   """
 
   def __init__(self,
-               pipeline_name: Text,
-               pipeline_root: Text,
+               pipeline_name: str,
+               pipeline_root: Union[str, ph.Placeholder],
                metadata_connection_config: Optional[
                    metadata.ConnectionConfigType] = None,
                components: Optional[List[base_node.BaseNode]] = None,
                enable_cache: Optional[bool] = False,
-               beam_pipeline_args: Optional[List[Text]] = None,
+               beam_pipeline_args: Optional[List[str]] = None,
                platform_config: Optional[message.Message] = None,
                execution_mode: Optional[ExecutionMode] = ExecutionMode.SYNC,
                **kwargs):
@@ -104,57 +105,45 @@ class Pipeline(object):
 
     Args:
       pipeline_name: Name of the pipeline;
-      pipeline_root: Path to root directory of the pipeline;
+      pipeline_root: Path to root directory of the pipeline. This will most
+        often be just a string. Some orchestrators may have limited support for
+        constructing this from a Placeholder, e.g. a RuntimeInfoPlaceholder that
+        refers to fields from the platform config.
       metadata_connection_config: The config to connect to ML metadata.
-      components: A list of components in the pipeline (optional only for
-        backward compatible purpose to be used with deprecated
-        PipelineDecorator).
+      components: Optional list of components to construct the pipeline.
       enable_cache: Whether or not cache is enabled for this run.
       beam_pipeline_args: Pipeline arguments for Beam powered Components.
       platform_config: Pipeline level platform config, in proto form.
       execution_mode: The execution mode of the pipeline, can be SYNC or ASYNC.
       **kwargs: Additional kwargs forwarded as pipeline args.
     """
-    if len(pipeline_name) > MAX_PIPELINE_NAME_LENGTH:
-      raise ValueError('pipeline name %s exceeds maximum allowed lenght' %
-                       pipeline_name)
-    pipeline_args = dict(kwargs)
+    if len(pipeline_name) > _MAX_PIPELINE_NAME_LENGTH:
+      raise ValueError(
+          f'pipeline {pipeline_name} exceeds maximum allowed length: {_MAX_PIPELINE_NAME_LENGTH}.'
+      )
 
-    self.pipeline_info = data_types.PipelineInfo(
-        pipeline_name=pipeline_name, pipeline_root=pipeline_root)
+    # TODO(b/183621450): deprecate PipelineInfo.
+    self.pipeline_info = data_types.PipelineInfo(  # pylint: disable=g-missing-from-attributes
+        pipeline_name=pipeline_name,
+        pipeline_root=pipeline_root)
     self.enable_cache = enable_cache
     self.metadata_connection_config = metadata_connection_config
     self.execution_mode = execution_mode
 
-    self.beam_pipeline_args = beam_pipeline_args or []
+    self._beam_pipeline_args = beam_pipeline_args or []
 
     self.platform_config = platform_config
 
-    self.additional_pipeline_args = pipeline_args.get(
+    self.additional_pipeline_args = kwargs.get(  # pylint: disable=g-missing-from-attributes
         'additional_pipeline_args', {})
-
-    # Store pipeline_args in a json file only when temp file exists.
-    pipeline_args.update({
-        'pipeline_name': pipeline_name,
-        'pipeline_root': pipeline_root,
-    })
-    if 'TFX_JSON_EXPORT_PIPELINE_ARGS_PATH' in os.environ:
-      pipeline_args_path = os.environ.get('TFX_JSON_EXPORT_PIPELINE_ARGS_PATH')
-      with open(pipeline_args_path, 'w') as f:
-        json.dump(pipeline_args, f)
 
     # Calls property setter.
     self.components = components or []
 
-    # TODO(b/156000550): Currently `beam_pipeline_args` is set at pipeline
-    # level in the SDK. However it is subject to change, to move to per-node
-    # configuration. We will need to change the following logic accordingly.
-    if not self.beam_pipeline_args:
-      return
-    for component in components:
-      if isinstance(component.executor_spec, executor_spec.ExecutorClassSpec):
-        cast(executor_spec.ExecutorClassSpec,
-             component.executor_spec).extra_flags.extend(beam_pipeline_args)
+  @property
+  def beam_pipeline_args(self):
+    """Beam pipeline args used for all components in the pipeline."""
+    return self._beam_pipeline_args
 
   @property
   def components(self):
@@ -164,29 +153,45 @@ class Pipeline(object):
   @components.setter
   def components(self, components: List[base_node.BaseNode]):
     deduped_components = set(components)
-    producer_map = {}
-    instances_per_component_type = collections.defaultdict(set)
+    node_by_id = {}
+    # TODO(b/202822834): Use better distinction for bound channels.
+    # bound_channels stores the exhaustive list of all nodes' output channels,
+    # which is implicitly *bound* to the single pipeline run, as opposed to
+    # manually constructed channels to fetch artifacts beyond the current
+    # pipeline run.
+    bound_channels = set()
 
     # Fills in producer map.
     for component in deduped_components:
-      # Guarantees every component of a component type has unique component_id.
-      if component.id in instances_per_component_type[component.type]:
-        raise RuntimeError('Duplicated component_id %s for component type %s' %
-                           (component.id, component.type))
-      instances_per_component_type[component.type].add(component.id)
+      # Checks every node has an unique id.
+      if component.id in node_by_id:
+        raise RuntimeError(
+            f'Duplicated node_id {component.id} for component type'
+            f'{component.type}.')
+      node_by_id[component.id] = component
       for key, output_channel in component.outputs.items():
-        assert not producer_map.get(
-            output_channel), '{} produced more than once'.format(output_channel)
-        producer_map[output_channel] = component
+        if (output_channel.producer_component_id is not None and
+            output_channel.producer_component_id != component.id and
+            output_channel.output_key != key):
+          raise AssertionError(
+              f'{output_channel} is produced more than once: '
+              f'{output_channel.producer_id}[{output_channel.output_key}], '
+              f'{component.id}[{key}]')
         output_channel.producer_component_id = component.id
         output_channel.output_key = key
+        bound_channels.add(output_channel)
 
     # Connects nodes based on producer map.
     for component in deduped_components:
-      for i in component.inputs.values():
-        if producer_map.get(i):
-          component.add_upstream_node(producer_map[i])
-          producer_map[i].add_downstream_node(component)
+      for input_channel in component.inputs.values():
+        for ch in (
+            channel_utils.get_individual_channels(input_channel)):
+          if ch not in bound_channels:
+            continue
+          upstream_node = node_by_id.get(ch.producer_component_id)
+          if upstream_node:
+            component.add_upstream_node(upstream_node)
+            upstream_node.add_downstream_node(component)
 
     layers = topsort.topsorted_layers(
         list(deduped_components),
@@ -197,3 +202,7 @@ class Pipeline(object):
     for layer in layers:
       for component in layer:
         self._components.append(component)
+
+    if self.beam_pipeline_args:
+      for component in self._components:
+        add_beam_pipeline_args_to_component(component, self.beam_pipeline_args)

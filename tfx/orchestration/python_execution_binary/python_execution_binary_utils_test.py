@@ -15,6 +15,7 @@
 import tensorflow as tf
 from tfx.orchestration.portable import data_types
 from tfx.orchestration.python_execution_binary import python_execution_binary_utils
+from tfx.proto.orchestration import executable_spec_pb2
 from tfx.proto.orchestration import pipeline_pb2
 from tfx.types import artifact
 
@@ -78,6 +79,32 @@ class PythonExecutorBinaryUtilsTest(tf.test.TestCase):
     self.assertEqual(rehydrated.stateful_working_dir, stateful_working_dir)
     self.assertProtoEquals(rehydrated.pipeline_info, original.pipeline_info)
     self.assertProtoEquals(rehydrated.pipeline_node, original.pipeline_node)
+
+  def testExecutableSpecSerialization(self):
+    python_executable_spec = text_format.Parse(
+        """
+        class_path: 'path_to_my_class'
+        extra_flags: '--flag=my_flag'
+        """, executable_spec_pb2.PythonClassExecutableSpec())
+    python_serialized = python_execution_binary_utils.serialize_executable_spec(
+        python_executable_spec)
+    python_rehydrated = python_execution_binary_utils.deserialize_executable_spec(
+        python_serialized)
+    self.assertProtoEquals(python_rehydrated, python_executable_spec)
+
+    beam_executable_spec = text_format.Parse(
+        """
+        python_executor_spec {
+          class_path: 'path_to_my_class'
+          extra_flags: '--flag1=1'
+        }
+        beam_pipeline_args: '--arg=my_beam_pipeline_arg'
+        """, executable_spec_pb2.BeamExecutableSpec())
+    beam_serialized = python_execution_binary_utils.serialize_executable_spec(
+        beam_executable_spec)
+    beam_rehydrated = python_execution_binary_utils.deserialize_executable_spec(
+        beam_serialized, with_beam=True)
+    self.assertProtoEquals(beam_rehydrated, beam_executable_spec)
 
   def testMlmdConnectionConfigSerialization(self):
     connection_config = text_format.Parse(

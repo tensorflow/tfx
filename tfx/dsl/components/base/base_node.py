@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,21 +13,15 @@
 # limitations under the License.
 """Base class for TFX nodes."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import abc
-from typing import Any, Dict, Optional, Text, Type
+from typing import Any, Dict, Optional, Type
 
-from absl import logging
-
-from six import with_metaclass
 from tfx.dsl.components.base import base_driver
 from tfx.dsl.components.base import base_executor
 from tfx.dsl.components.base import executor_spec as executor_spec_module
-from tfx.types import node_common
+from tfx.dsl.context_managers import context_manager
 from tfx.utils import deprecation_utils
+from tfx.utils import doc_controls
 from tfx.utils import json_utils
 
 
@@ -37,48 +30,17 @@ def _abstract_property() -> Any:
   return abc.abstractmethod(lambda: None)
 
 
-class BaseNode(with_metaclass(abc.ABCMeta, json_utils.Jsonable)):
+class BaseNode(json_utils.Jsonable, abc.ABC):
   """Base class for a node in TFX pipeline."""
-
-  @classmethod
-  @deprecation_utils.deprecated(
-      None, '`get_id` is deprecated as `instance_name is deprecated.`')
-  def get_id(cls, instance_name: Optional[Text] = None):
-    """Gets the id of a node.
-
-    This can be used during pipeline authoring time. For example:
-    from tfx.components import Trainer
-
-    resolver = ResolverNode(..., model=Channel(
-        type=Model, producer_component_id=Trainer.get_id('my_trainer')))
-
-    Args:
-      instance_name: (Optional) instance name of a node. If given, the instance
-        name will be taken into consideration when generating the id.
-
-    Returns:
-      an id for the node.
-    """
-    node_class = deprecation_utils.get_first_nondeprecated_class(cls)
-    node_class_name = node_class.__name__
-    if instance_name:
-      return '{}.{}'.format(node_class_name, instance_name)
-    else:
-      return node_class_name
 
   def __init__(
       self,
-      instance_name: Optional[Text] = None,
       executor_spec: Optional[executor_spec_module.ExecutorSpec] = None,
       driver_class: Optional[Type[base_driver.BaseDriver]] = None,
   ):
     """Initialize a node.
 
     Args:
-      instance_name: Deprecated. Please set `id` directly using `with_id()`
-        function or `.id` setter in the `BaseNode` class. The pipeline
-        assembling will fail if there are two nodes in the pipeline with the
-        same id.
       executor_spec: Optional instance of executor_spec.ExecutorSpec which
         describes how to execute this node (optional, defaults to an empty
         executor indicates no-op.
@@ -86,54 +48,52 @@ class BaseNode(with_metaclass(abc.ABCMeta, json_utils.Jsonable)):
         driver for this node (optional, defaults to base_driver.BaseDriver).
         Nodes usually use the default driver class, but may override it.
     """
-    if instance_name:
-      logging.warning(
-          '`instance_name` is deprecated, please set the node id directly '
-          'using `with_id()` or the `.id` setter.')
     if executor_spec is None:
       executor_spec = executor_spec_module.ExecutorClassSpec(
           base_executor.EmptyExecutor)
     if driver_class is None:
       driver_class = base_driver.BaseDriver
-    self._instance_name = instance_name
     self.executor_spec = executor_spec
     self.driver_class = driver_class
     self._upstream_nodes = set()
     self._downstream_nodes = set()
     self._id = None
+    context_manager.put_node(self)
 
-  def to_json_dict(self) -> Dict[Text, Any]:
+  @doc_controls.do_not_doc_in_subclasses
+  def to_json_dict(self) -> Dict[str, Any]:
     """Convert from an object to a JSON serializable dictionary."""
     return dict((k, v)
                 for k, v in self.__dict__.items()
                 if k not in ['_upstream_nodes', '_downstream_nodes'])
 
   @classmethod
-  def get_class_type(cls) -> Text:
+  @doc_controls.do_not_doc_in_subclasses
+  def get_class_type(cls) -> str:
     nondeprecated_class = deprecation_utils.get_first_nondeprecated_class(cls)
     return '.'.join(
         [nondeprecated_class.__module__, nondeprecated_class.__name__])
 
   @property
-  def type(self) -> Text:
+  @doc_controls.do_not_doc_in_subclasses
+  def type(self) -> str:
     return self.__class__.get_class_type()
 
   @property
   @deprecation_utils.deprecated(None,
                                 'component_type is deprecated, use type instead'
                                )
-  def component_type(self) -> Text:
+  @doc_controls.do_not_doc_in_subclasses
+  def component_type(self) -> str:
     return self.type
 
   @property
-  def id(self) -> Text:
+  @doc_controls.do_not_doc_in_subclasses
+  def id(self) -> str:
     """Node id, unique across all TFX nodes in a pipeline.
 
     If `id` is set by the user, return it directly.
-    otherwise, if instance name (deprecated) is available, node id will be:
-      <node_class_name>.<instance_name>
-    otherwise, node id will be:
-      <node_class_name>
+    Otherwise, return <node_class_name>.
 
     Returns:
       node id.
@@ -141,45 +101,46 @@ class BaseNode(with_metaclass(abc.ABCMeta, json_utils.Jsonable)):
     if self._id:
       return self._id
     node_class = deprecation_utils.get_first_nondeprecated_class(self.__class__)
-    node_class_name = node_class.__name__
-    if self._instance_name:
-      return '{}.{}'.format(node_class_name, self._instance_name)
-    else:
-      return node_class_name
+    return node_class.__name__
 
   @property
   @deprecation_utils.deprecated(None,
                                 'component_id is deprecated, use id instead')
-  def component_id(self) -> Text:
+  @doc_controls.do_not_doc_in_subclasses
+  def component_id(self) -> str:
     return self.id
 
   @id.setter
-  def id(self, id: Text) -> None:  # pylint: disable=redefined-builtin
+  @doc_controls.do_not_doc_in_subclasses
+  def id(self, id: str) -> None:  # pylint: disable=redefined-builtin
     self._id = id
 
-  def with_id(self, id: Text) -> 'BaseNode':  # pylint: disable=redefined-builtin
+  @doc_controls.do_not_doc_in_subclasses
+  def with_id(self, id: str) -> 'BaseNode':  # pylint: disable=redefined-builtin
     self._id = id
     return self
 
   @property
   @abc.abstractmethod
-  def inputs(self) -> node_common._PropertyDictWrapper:  # pylint: disable=protected-access
+  def inputs(self) -> Dict[str, Any]:
     pass
 
   @property
   @abc.abstractmethod
-  def outputs(self) -> node_common._PropertyDictWrapper:  # pylint: disable=protected-access
+  def outputs(self) -> Dict[str, Any]:
     pass
 
   @property
   @abc.abstractmethod
-  def exec_properties(self) -> Dict[Text, Any]:
+  def exec_properties(self) -> Dict[str, Any]:
     pass
 
   @property
+  @doc_controls.do_not_doc_in_subclasses
   def upstream_nodes(self):
     return self._upstream_nodes
 
+  @doc_controls.do_not_doc_in_subclasses
   def add_upstream_node(self, upstream_node):
     """Experimental: Add another component that must run before this one.
 
@@ -201,10 +162,18 @@ class BaseNode(with_metaclass(abc.ABCMeta, json_utils.Jsonable)):
     if self not in upstream_node.downstream_nodes:
       upstream_node.add_downstream_node(self)
 
+  @doc_controls.do_not_doc_in_subclasses
+  def remove_upstream_node(self, upstream_node):
+    self._upstream_nodes.remove(upstream_node)
+    if self in upstream_node.downstream_nodes:
+      upstream_node.remove_downstream_node(self)
+
   @property
+  @doc_controls.do_not_doc_in_subclasses
   def downstream_nodes(self):
     return self._downstream_nodes
 
+  @doc_controls.do_not_doc_in_subclasses
   def add_downstream_node(self, downstream_node):
     """Experimental: Add another component that must run after this one.
 
@@ -225,3 +194,9 @@ class BaseNode(with_metaclass(abc.ABCMeta, json_utils.Jsonable)):
     self._downstream_nodes.add(downstream_node)
     if self not in downstream_node.upstream_nodes:
       downstream_node.add_upstream_node(self)
+
+  @doc_controls.do_not_doc_in_subclasses
+  def remove_downstream_node(self, downstream_node):
+    self._downstream_nodes.remove(downstream_node)
+    if self in downstream_node.upstream_nodes:
+      downstream_node.remove_upstream_node(self)

@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,18 +13,14 @@
 # limitations under the License.
 """Utilities to dump and load Jsonable object to/from JSONs."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import abc
 import importlib
 import inspect
 import json
-from typing import Any, Dict, List, Text, Type, Union
+from typing import Any, Dict, List, Type, Union
 
-from six import with_metaclass
 from tfx.utils import deprecation_utils
+from tfx.utils import doc_controls
 from tfx.utils import proto_utils
 
 from google.protobuf import message
@@ -42,7 +37,7 @@ RUNTIME_PARAMETER_PATTERN = (r'({\\*"__class__\\*": \\*"RuntimeParameter\\*", '
                              r'.*?})')
 
 
-class _ObjectType(object):
+class _ObjectType:
   """Internal class to hold supported types."""
   # Indicates that the JSON dictionary is an instance of Jsonable type.
   # The dictionary has the states of the object and the object type info is
@@ -59,7 +54,7 @@ class _ObjectType(object):
   PROTO = 'proto'
 
 
-class Jsonable(with_metaclass(abc.ABCMeta, object)):
+class Jsonable(abc.ABC):
   """Base class for serializing and deserializing objects to/from JSON.
 
   The default implementation assumes that the subclass can be restored by
@@ -68,38 +63,40 @@ class Jsonable(with_metaclass(abc.ABCMeta, object)):
   override `to_json_dict` and `from_json_dict` to customize the implementation.
   """
 
-  def to_json_dict(self) -> Dict[Text, Any]:
+  @doc_controls.do_not_doc_in_subclasses
+  def to_json_dict(self) -> Dict[str, Any]:
     """Convert from an object to a JSON serializable dictionary."""
     return self.__dict__
 
   @classmethod
-  def from_json_dict(cls, dict_data: Dict[Text, Any]) -> Any:
+  @doc_controls.do_not_doc_in_subclasses
+  def from_json_dict(cls, dict_data: Dict[str, Any]) -> Any:
     """Convert from dictionary data to an object."""
     instance = cls.__new__(cls)
     instance.__dict__ = dict_data
     return instance
 
 
-JsonableValue = Union[bool, bytes, float, int, Jsonable, message.Message, Text,
+JsonableValue = Union[bool, bytes, float, int, Jsonable, message.Message, str,
                       Type]
 JsonableList = List[JsonableValue]
-JsonableDict = Dict[Union[bytes, Text], Union[JsonableValue, JsonableList]]
+JsonableDict = Dict[Union[bytes, str], Union[JsonableValue, JsonableList]]
 JsonableType = Union[JsonableValue, JsonableList, JsonableDict]
 
 
 class _DefaultEncoder(json.JSONEncoder):
   """Default JSON Encoder which encodes Jsonable object to JSON."""
 
-  def encode(self, obj: Any) -> Text:
+  def encode(self, obj: Any) -> str:
     """Override encode to prevent redundant dumping."""
-    if obj.__class__.__name__ == 'RuntimeParameter' and obj.ptype == Text:
+    if obj.__class__.__name__ == 'RuntimeParameter' and obj.ptype == str:
       return self.default(obj)
 
-    return super(_DefaultEncoder, self).encode(obj)
+    return super().encode(obj)
 
   def default(self, obj: Any) -> Any:
     # If obj is a str-typed RuntimeParameter, serialize it in place.
-    if obj.__class__.__name__ == 'RuntimeParameter' and obj.ptype == Text:
+    if obj.__class__.__name__ == 'RuntimeParameter' and obj.ptype == str:
       dict_data = {
           _TFX_OBJECT_TYPE_KEY: _ObjectType.JSONABLE,
           _MODULE_KEY: obj.__class__.__module__,
@@ -117,7 +114,7 @@ class _DefaultEncoder(json.JSONEncoder):
       # Need to first check the existence of str-typed runtime parameter.
       data_patch = obj.to_json_dict()
       for k, v in data_patch.items():
-        if v.__class__.__name__ == 'RuntimeParameter' and v.ptype == Text:
+        if v.__class__.__name__ == 'RuntimeParameter' and v.ptype == str:
           data_patch[k] = dumps(v)
       dict_data.update(data_patch)
       return dict_data
@@ -140,17 +137,17 @@ class _DefaultEncoder(json.JSONEncoder):
           _PROTO_VALUE_KEY: proto_utils.proto_to_json(obj)
       }
 
-    return super(_DefaultEncoder, self).default(obj)
+    return super().default(obj)
 
 
 class _DefaultDecoder(json.JSONDecoder):
   """Default JSON Decoder which decodes JSON to Jsonable object."""
 
   def __init__(self, *args, **kwargs):
-    super(_DefaultDecoder, self).__init__(
+    super().__init__(
         object_hook=self._dict_to_object, *args, **kwargs)
 
-  def _dict_to_object(self, dict_data: Dict[Text, Any]) -> Any:
+  def _dict_to_object(self, dict_data: Dict[str, Any]) -> Any:
     """Converts a dictionary to an object."""
     if _TFX_OBJECT_TYPE_KEY not in dict_data:
       return dict_data
@@ -183,11 +180,11 @@ class _DefaultDecoder(json.JSONDecoder):
                                        proto_class_type())
 
 
-def dumps(obj: Any) -> Text:
+def dumps(obj: Any) -> str:
   """Dumps an object to JSON with Jsonable encoding."""
   return json.dumps(obj, cls=_DefaultEncoder, sort_keys=True)
 
 
-def loads(s: Text) -> Any:
+def loads(s: str) -> Any:
   """Loads a JSON into an object with Jsonable decoding."""
   return json.loads(s, cls=_DefaultDecoder)

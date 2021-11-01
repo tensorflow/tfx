@@ -13,14 +13,10 @@
 # limitations under the License.
 """Tests for tfx.components.infra_validator.model_server_clients.tensorflow_serving_client."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
-from typing import Any, Dict, Text
+from typing import Any, Dict
+from unittest import mock
 
 import grpc
-import mock
 import tensorflow as tf
 from tfx.components.infra_validator import error_types
 from tfx.components.infra_validator import types
@@ -33,7 +29,7 @@ from tensorflow_serving.apis import regression_pb2
 
 
 def _make_response(
-    payload: Dict[Text, Any]) -> get_model_status_pb2.GetModelStatusResponse:
+    payload: Dict[str, Any]) -> get_model_status_pb2.GetModelStatusResponse:
   result = get_model_status_pb2.GetModelStatusResponse()
   json_format.ParseDict(payload, result)
   return result
@@ -42,7 +38,7 @@ def _make_response(
 class TensorflowServingClientTest(tf.test.TestCase):
 
   def setUp(self):
-    super(TensorflowServingClientTest, self).setUp()
+    super().setUp()
     self.model_stub_patcher = mock.patch('tensorflow_serving.apis.model_service_pb2_grpc.ModelServiceStub')  # pylint: disable=line-too-long
     self.model_stub_cls = self.model_stub_patcher.start()
     self.model_stub = self.model_stub_cls.return_value
@@ -51,7 +47,7 @@ class TensorflowServingClientTest(tf.test.TestCase):
     self.prediction_stub = self.prediction_stub_cls.return_value
 
   def tearDown(self):
-    super(TensorflowServingClientTest, self).tearDown()
+    super().tearDown()
     self.model_stub_patcher.stop()
     self.prediction_stub_patcher.stop()
 

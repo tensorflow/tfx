@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,34 +12,29 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """TFX runner for Kubeflow."""
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
 
+import collections
+import copy
 import os
-import re
-from typing import Callable, Dict, List, Optional, Text, Type, cast
+from typing import Any, Callable, Dict, List, Optional, Type, cast, MutableMapping
 
-from absl import logging
 from kfp import compiler
 from kfp import dsl
 from kfp import gcp
 from kubernetes import client as k8s_client
 from tfx import version
 from tfx.dsl.compiler import compiler as tfx_compiler
+from tfx.dsl.components.base import base_component as tfx_base_component
 from tfx.orchestration import data_types
 from tfx.orchestration import pipeline as tfx_pipeline
 from tfx.orchestration import tfx_runner
-from tfx.orchestration.config import config_utils
 from tfx.orchestration.config import pipeline_config
 from tfx.orchestration.kubeflow import base_component
-from tfx.orchestration.kubeflow import utils
 from tfx.orchestration.kubeflow.proto import kubeflow_pb2
 from tfx.orchestration.launcher import base_component_launcher
 from tfx.orchestration.launcher import in_process_component_launcher
 from tfx.orchestration.launcher import kubernetes_component_launcher
 from tfx.proto.orchestration import pipeline_pb2
-from tfx.utils import json_utils
 from tfx.utils import telemetry_utils
 
 
@@ -57,10 +51,10 @@ OpFunc = Callable[[dsl.ContainerOp], dsl.ContainerOp]
 _KUBEFLOW_GCP_SECRET_NAME = 'user-gcp-sa'
 
 # Default TFX container image to use in KubeflowDagRunner.
-_KUBEFLOW_TFX_IMAGE = 'tensorflow/tfx:%s' % (version.__version__)
+DEFAULT_KUBEFLOW_TFX_IMAGE = 'tensorflow/tfx:%s' % (version.__version__,)
 
 
-def _mount_config_map_op(config_map_name: Text) -> OpFunc:
+def _mount_config_map_op(config_map_name: str) -> OpFunc:
   """Mounts all key-value pairs found in the named Kubernetes ConfigMap.
 
   All key-value pairs in the ConfigMap are mounted as environment variables.
@@ -81,7 +75,7 @@ def _mount_config_map_op(config_map_name: Text) -> OpFunc:
   return mount_config_map
 
 
-def _mount_secret_op(secret_name: Text) -> OpFunc:
+def _mount_secret_op(secret_name: str) -> OpFunc:
   """Mounts all key-value pairs found in the named Kubernetes Secret.
 
   All key-value pairs in the Secret are mounted as environment variables.
@@ -150,7 +144,7 @@ def get_default_kubeflow_metadata_config(
   return config
 
 
-def get_default_pod_labels() -> Dict[Text, Text]:
+def get_default_pod_labels() -> Dict[str, str]:
   """Returns the default pod label dict for Kubeflow."""
   # KFP default transformers add pod env:
   # https://github.com/kubeflow/pipelines/blob/0.1.32/sdk/python/kfp/compiler/_default_transformers.py
@@ -161,19 +155,24 @@ def get_default_pod_labels() -> Dict[Text, Text]:
   return result
 
 
+def get_default_output_filename(pipeline_name: str) -> str:
+  return pipeline_name + '.tar.gz'
+
+
 class KubeflowDagRunnerConfig(pipeline_config.PipelineConfig):
   """Runtime configuration parameters specific to execution on Kubeflow."""
 
   def __init__(
       self,
       pipeline_operator_funcs: Optional[List[OpFunc]] = None,
-      tfx_image: Optional[Text] = None,
+      tfx_image: Optional[str] = None,
       kubeflow_metadata_config: Optional[
           kubeflow_pb2.KubeflowMetadataConfig] = None,
       # TODO(b/143883035): Figure out the best practice to put the
       # SUPPORTED_LAUNCHER_CLASSES
-      supported_launcher_classes: List[Type[
-          base_component_launcher.BaseComponentLauncher]] = None,
+      supported_launcher_classes: Optional[List[Type[
+          base_component_launcher.BaseComponentLauncher]]] = None,
+      metadata_ui_path: str = '/mlpipeline-ui-metadata.json',
       **kwargs):
     """Creates a KubeflowDagRunnerConfig object.
 
@@ -202,19 +201,21 @@ class KubeflowDagRunnerConfig(pipeline_config.PipelineConfig):
       supported_launcher_classes: A list of component launcher classes that are
         supported by the current pipeline. List sequence determines the order in
         which launchers are chosen for each component being run.
+      metadata_ui_path: File location for metadata-ui-metadata.json file.
       **kwargs: keyword args for PipelineConfig.
     """
     supported_launcher_classes = supported_launcher_classes or [
         in_process_component_launcher.InProcessComponentLauncher,
         kubernetes_component_launcher.KubernetesComponentLauncher,
     ]
-    super(KubeflowDagRunnerConfig, self).__init__(
+    super().__init__(
         supported_launcher_classes=supported_launcher_classes, **kwargs)
     self.pipeline_operator_funcs = (
         pipeline_operator_funcs or get_default_pipeline_operator_funcs())
-    self.tfx_image = tfx_image or _KUBEFLOW_TFX_IMAGE
+    self.tfx_image = tfx_image or DEFAULT_KUBEFLOW_TFX_IMAGE
     self.kubeflow_metadata_config = (
         kubeflow_metadata_config or get_default_kubeflow_metadata_config())
+    self.metadata_ui_path = metadata_ui_path
 
 
 class KubeflowDagRunner(tfx_runner.TfxRunner):
@@ -223,13 +224,11 @@ class KubeflowDagRunner(tfx_runner.TfxRunner):
   Constructs a pipeline definition YAML file based on the TFX logical pipeline.
   """
 
-  def __init__(
-      self,
-      output_dir: Optional[Text] = None,
-      output_filename: Optional[Text] = None,
-      config: Optional[KubeflowDagRunnerConfig] = None,
-      pod_labels_to_attach: Optional[Dict[Text, Text]] = None
-  ):
+  def __init__(self,
+               output_dir: Optional[str] = None,
+               output_filename: Optional[str] = None,
+               config: Optional[KubeflowDagRunnerConfig] = None,
+               pod_labels_to_attach: Optional[Dict[str, str]] = None):
     """Initializes KubeflowDagRunner for compiling a Kubeflow Pipeline.
 
     Args:
@@ -251,13 +250,14 @@ class KubeflowDagRunner(tfx_runner.TfxRunner):
     """
     if config and not isinstance(config, KubeflowDagRunnerConfig):
       raise TypeError('config must be type of KubeflowDagRunnerConfig.')
-    super(KubeflowDagRunner, self).__init__(config or KubeflowDagRunnerConfig())
+    super().__init__(config or KubeflowDagRunnerConfig())
     self._config = cast(KubeflowDagRunnerConfig, self._config)
     self._output_dir = output_dir or os.getcwd()
     self._output_filename = output_filename
     self._compiler = compiler.Compiler()
     self._tfx_compiler = tfx_compiler.Compiler()
     self._params = []  # List of dsl.PipelineParam used in this pipeline.
+    self._params_by_component_id = collections.defaultdict(list)
     self._deduped_parameter_names = set()  # Set of unique param names used.
     if pod_labels_to_attach is None:
       self._pod_labels_to_attach = get_default_pod_labels()
@@ -265,7 +265,7 @@ class KubeflowDagRunner(tfx_runner.TfxRunner):
       self._pod_labels_to_attach = pod_labels_to_attach
 
   def _parse_parameter_from_component(
-      self, component: base_component.BaseComponent) -> None:
+      self, component: tfx_base_component.BaseComponent) -> None:
     """Extract embedded RuntimeParameter placeholders from a component.
 
     Extract embedded RuntimeParameter placeholders from a component, then append
@@ -275,16 +275,18 @@ class KubeflowDagRunner(tfx_runner.TfxRunner):
       component: a TFX component.
     """
 
-    serialized_component = json_utils.dumps(component)
-    placeholders = re.findall(data_types.RUNTIME_PARAMETER_PATTERN,
-                              serialized_component)
-    for placeholder in placeholders:
-      placeholder = placeholder.replace('\\', '')  # Clean escapes.
-      placeholder = utils.fix_brackets(placeholder)  # Fix brackets if needed.
-      parameter = json_utils.loads(placeholder)
-      # Escape pipeline root because it will be added later.
+    deduped_parameter_names_for_component = set()
+    for parameter in component.exec_properties.values():
+      if not isinstance(parameter, data_types.RuntimeParameter):
+        continue
+      # Ignore pipeline root because it will be added later.
       if parameter.name == tfx_pipeline.ROOT_PARAMETER.name:
         continue
+      if parameter.name in deduped_parameter_names_for_component:
+        continue
+
+      deduped_parameter_names_for_component.add(parameter.name)
+      self._params_by_component_id[component.id].append(parameter)
       if parameter.name not in self._deduped_parameter_names:
         self._deduped_parameter_names.add(parameter.name)
         # TODO(b/178436919): Create a test to cover default value rendering
@@ -324,38 +326,55 @@ class KubeflowDagRunner(tfx_runner.TfxRunner):
       for upstream_component in component.upstream_nodes:
         depends_on.add(component_to_kfp_op[upstream_component])
 
-      (component_launcher_class,
-       component_config) = config_utils.find_component_launch_info(
-           self._config, component)
+      # remove the extra pipeline node information
+      tfx_node_ir = self._dehydrate_tfx_ir(tfx_ir, component.id)
 
       kfp_component = base_component.BaseComponent(
           component=component,
-          component_launcher_class=component_launcher_class,
           depends_on=depends_on,
           pipeline=pipeline,
-          pipeline_name=pipeline.pipeline_info.pipeline_name,
           pipeline_root=pipeline_root,
           tfx_image=self._config.tfx_image,
           kubeflow_metadata_config=self._config.kubeflow_metadata_config,
-          component_config=component_config,
           pod_labels_to_attach=self._pod_labels_to_attach,
-          tfx_ir=tfx_ir)
+          tfx_ir=tfx_node_ir,
+          metadata_ui_path=self._config.metadata_ui_path,
+          runtime_parameters=(self._params_by_component_id[component.id] +
+                              [tfx_pipeline.ROOT_PARAMETER]))
 
       for operator in self._config.pipeline_operator_funcs:
         kfp_component.container_op.apply(operator)
 
       component_to_kfp_op[component] = kfp_component.container_op
 
+  def _del_unused_field(self, node_id: str, message_dict: MutableMapping[str,
+                                                                         Any]):
+    for item in list(message_dict.keys()):
+      if item != node_id:
+        del message_dict[item]
+
+  def _dehydrate_tfx_ir(self, original_pipeline: pipeline_pb2.Pipeline,
+                        node_id: str) -> pipeline_pb2.Pipeline:
+    pipeline = copy.deepcopy(original_pipeline)
+    for node in pipeline.nodes:
+      if (node.WhichOneof('node') == 'pipeline_node' and
+          node.pipeline_node.node_info.id == node_id):
+        del pipeline.nodes[:]
+        pipeline.nodes.extend([node])
+        break
+
+    deployment_config = pipeline_pb2.IntermediateDeploymentConfig()
+    pipeline.deployment_config.Unpack(deployment_config)
+    self._del_unused_field(node_id, deployment_config.executor_specs)
+    self._del_unused_field(node_id, deployment_config.custom_driver_specs)
+    self._del_unused_field(node_id,
+                           deployment_config.node_level_platform_configs)
+    pipeline.deployment_config.Pack(deployment_config)
+    return pipeline
+
   def _generate_tfx_ir(
       self, pipeline: tfx_pipeline.Pipeline) -> Optional[pipeline_pb2.Pipeline]:
-    try:
-      result = self._tfx_compiler.compile(pipeline)
-      logging.info('Generated pipeline:\n %s', result)
-    except NotImplementedError:
-      # TODO(b/158712976): Delete NotImplementedError handling after
-      # ExecutorContainerSpec support is added.
-      logging.info('Failed to generate IR. Proceeding without IR')
-      result = None
+    result = self._tfx_compiler.compile(pipeline)
     return result
 
   def run(self, pipeline: tfx_pipeline.Pipeline):
@@ -365,10 +384,17 @@ class KubeflowDagRunner(tfx_runner.TfxRunner):
       pipeline: The logical TFX pipeline to use when building the Kubeflow
         pipeline.
     """
-    pipeline_root = tfx_pipeline.ROOT_PARAMETER
+    for component in pipeline.components:
+      # TODO(b/187122662): Pass through pip dependencies as a first-class
+      # component flag.
+      if isinstance(component, tfx_base_component.BaseComponent):
+        component._resolve_pip_dependencies(  # pylint: disable=protected-access
+            pipeline.pipeline_info.pipeline_root)
+
     # KFP DSL representation of pipeline root parameter.
     dsl_pipeline_root = dsl.PipelineParam(
-        name=pipeline_root.name, value=pipeline.pipeline_info.pipeline_root)
+        name=tfx_pipeline.ROOT_PARAMETER.name,
+        value=pipeline.pipeline_info.pipeline_root)
     self._params.append(dsl_pipeline_root)
 
     def _construct_pipeline():
@@ -383,7 +409,8 @@ class KubeflowDagRunner(tfx_runner.TfxRunner):
     # can correctly match default value with PipelineParam.
     self._parse_parameter_from_pipeline(pipeline)
 
-    file_name = self._output_filename or pipeline.pipeline_info.pipeline_name + '.tar.gz'
+    file_name = self._output_filename or get_default_output_filename(
+        pipeline.pipeline_info.pipeline_name)
     # Create workflow spec and write out to package.
     self._compiler._create_and_write_workflow(  # pylint: disable=protected-access
         pipeline_func=_construct_pipeline,

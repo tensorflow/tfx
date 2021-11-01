@@ -19,12 +19,13 @@ respective repo directly:
 
 **System information**
 
-- Have I specified the code to reproduce the issue(Yes/No):
+- Have I specified the code to reproduce the issue (Yes, No):
 - Environment in which the code is executed (e.g., Local(Linux/MacOS/Windows),
   Interactive Notebook, Google Cloud, etc):
-- TensorFlow version (you are using):
+- TensorFlow version:
 - TFX Version:
 - Python version:
+- Python dependencies (from `pip freeze` output):
 
 **Describe the current behavior**
 

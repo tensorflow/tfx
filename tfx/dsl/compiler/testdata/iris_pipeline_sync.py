@@ -20,20 +20,19 @@ from tfx.components import Evaluator
 from tfx.components import ExampleValidator
 from tfx.components import ImporterNode
 from tfx.components import Pusher
-from tfx.components import ResolverNode
 from tfx.components import SchemaGen
 from tfx.components import StatisticsGen
 from tfx.components import Trainer
 from tfx.components.trainer.executor import GenericExecutor
 from tfx.dsl.components.base import executor_spec
-from tfx.dsl.experimental import latest_blessed_model_resolver
+from tfx.dsl.components.common import resolver
+from tfx.dsl.input_resolution.strategies import latest_blessed_model_strategy
 from tfx.orchestration import data_types
 from tfx.orchestration import pipeline
 from tfx.proto import pusher_pb2
 from tfx.proto import trainer_pb2
 from tfx.types import Channel
 from tfx.types import standard_artifacts
-from tfx.utils.dsl_utils import external_input
 
 
 def create_test_pipeline():
@@ -45,12 +44,11 @@ def create_test_pipeline():
   data_path = os.path.join(tfx_root, "data_path")
   pipeline_root = os.path.join(tfx_root, "pipelines", pipeline_name)
 
-  example_gen = CsvExampleGen(input=external_input(data_path))
+  example_gen = CsvExampleGen(input_base=data_path)
 
   statistics_gen = StatisticsGen(examples=example_gen.outputs["examples"])
 
   importer = ImporterNode(
-      instance_name="my_importer",
       source_uri="m/y/u/r/i",
       properties={
           "split_names": "['train', 'eval']",
@@ -59,10 +57,9 @@ def create_test_pipeline():
           "int_custom_property": 42,
           "str_custom_property": "42",
       },
-      artifact_type=standard_artifacts.Examples)
+      artifact_type=standard_artifacts.Examples).with_id("my_importer")
   another_statistics_gen = StatisticsGen(
-      examples=importer.outputs["result"],
-      instance_name="another_statistics_gen")
+      examples=importer.outputs["result"]).with_id("another_statistics_gen")
 
   schema_gen = SchemaGen(statistics=statistics_gen.outputs["statistics"])
 
@@ -86,12 +83,12 @@ def create_test_pipeline():
       eval_args=trainer_pb2.EvalArgs(num_steps=5)).with_platform_config(
           config=trainer_pb2.TrainArgs(num_steps=2000))
 
-  model_resolver = ResolverNode(
-      instance_name="latest_blessed_model_resolver",
-      resolver_class=latest_blessed_model_resolver.LatestBlessedModelResolver,
+  model_resolver = resolver.Resolver(
+      strategy_class=latest_blessed_model_strategy.LatestBlessedModelStrategy,
       model=Channel(
           type=standard_artifacts.Model, producer_component_id=trainer.id),
-      model_blessing=Channel(type=standard_artifacts.ModelBlessing))
+      model_blessing=Channel(type=standard_artifacts.ModelBlessing)).with_id(
+          "latest_blessed_model_resolver")
 
   eval_config = tfma.EvalConfig(
       model_specs=[tfma.ModelSpec(signature_name="eval")],
@@ -100,7 +97,7 @@ def create_test_pipeline():
           tfma.MetricsSpec(
               thresholds={
                   "sparse_categorical_accuracy":
-                      tfma.config.MetricThreshold(
+                      tfma.MetricThreshold(
                           value_threshold=tfma.GenericValueThreshold(
                               lower_bound={"value": 0.6}),
                           change_threshold=tfma.GenericChangeThreshold(

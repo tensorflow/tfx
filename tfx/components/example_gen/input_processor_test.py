@@ -13,6 +13,7 @@
 # limitations under the License.
 """Tests for tfx.components.example_gen.input_processor."""
 
+from typing import Optional
 import tensorflow as tf
 from tfx.components.example_gen import input_processor
 from tfx.proto import example_gen_pb2
@@ -24,23 +25,16 @@ class TestInputProcessor(input_processor.InputProcessor):
   def get_latest_span(self) -> int:
     return 0
 
+  def get_pattern_for_span_version(self, pattern: str, span: int,
+                                   version: Optional[int]) -> str:
+    return ''
+
 
 class InputProcessorTest(tf.test.TestCase):
 
   def testInputProcessor(self):
     input_config = example_gen_pb2.Input(splits=[
-        example_gen_pb2.Input.Split(
-            name='s1',
-            pattern="select * from table where span={SPAN} and split='s1'"),
-        example_gen_pb2.Input.Split(
-            name='s2', pattern="select * from table where and split='s2'")
-    ])
-    input_config2 = example_gen_pb2.Input(splits=[
-        example_gen_pb2.Input.Split(name='s', pattern='select * from table'),
-    ])
-    input_config3 = example_gen_pb2.Input(splits=[
-        example_gen_pb2.Input.Split(
-            name='s', pattern='select * from table where span={SPAN}'),
+        example_gen_pb2.Input.Split(name='s', pattern='path/{SPAN}'),
     ])
     static_range_config = range_config_pb2.RangeConfig(
         static_range=range_config_pb2.StaticRange(
@@ -51,33 +45,47 @@ class InputProcessorTest(tf.test.TestCase):
         rolling_range=range_config_pb2.RollingRange(
             num_spans=1, start_span_number=1))
 
-    with self.assertRaisesRegexp(ValueError,
-                                 'Spec setup should the same for all splits'):
-      TestInputProcessor(input_config.splits, None)
-
-    with self.assertRaisesRegexp(ValueError,
-                                 'Span or Date spec should be specified'):
-      TestInputProcessor(input_config2.splits, static_range_config)
-
-    with self.assertRaisesRegexp(
+    with self.assertRaisesRegex(
         ValueError,
         'For ExampleGen, start and end span numbers for RangeConfig.StaticRange must be equal'
     ):
-      TestInputProcessor(input_config3.splits, static_range_config)
+      TestInputProcessor(input_config.splits, static_range_config)
 
-    with self.assertRaisesRegexp(
+    with self.assertRaisesRegex(
         ValueError,
         'ExampleGen only support single span for RangeConfig.RollingRange'):
-      TestInputProcessor(input_config3.splits, rolling_range_config)
+      TestInputProcessor(input_config.splits, rolling_range_config)
 
-    with self.assertRaisesRegexp(
+    with self.assertRaisesRegex(
         ValueError,
         'RangeConfig.rolling_range.start_span_number is not supported'):
-      TestInputProcessor(input_config3.splits, rolling_range_config2)
+      TestInputProcessor(input_config.splits, rolling_range_config2)
 
   def testFileBasedInputProcessor(self):
     # TODO(b/181275944): migrate test after refactoring FileBasedInputProcessor.
-    pass
+
+    input_config = example_gen_pb2.Input(splits=[
+        example_gen_pb2.Input.Split(name='s1', pattern='path/{SPAN}'),
+        example_gen_pb2.Input.Split(name='s2', pattern='path2')
+    ])
+    input_config2 = example_gen_pb2.Input(splits=[
+        example_gen_pb2.Input.Split(name='s', pattern='path'),
+    ])
+
+    static_range_config = range_config_pb2.RangeConfig(
+        static_range=range_config_pb2.StaticRange(
+            start_span_number=2, end_span_number=2))
+
+    with self.assertRaisesRegex(ValueError,
+                                'Spec setup should the same for all splits'):
+      input_processor.FileBasedInputProcessor('input_base_uri',
+                                              input_config.splits, None)
+
+    with self.assertRaisesRegex(ValueError,
+                                'Span or Date spec should be specified'):
+      input_processor.FileBasedInputProcessor('input_base_uri',
+                                              input_config2.splits,
+                                              static_range_config)
 
   def testQueryBasedInputProcessor(self):
     input_config = example_gen_pb2.Input(splits=[
@@ -86,40 +94,23 @@ class InputProcessorTest(tf.test.TestCase):
     input_config_span = example_gen_pb2.Input(splits=[
         example_gen_pb2.Input.Split(
             name='s1',
-            pattern="select * from table where span={SPAN} and split='s1'"),
+            pattern='select * from table where date=@span_yyyymmdd_utc'),
         example_gen_pb2.Input.Split(
             name='s2',
-            pattern="select * from table where span={SPAN} and split='s2'")
+            pattern='select * from table2 where date=@span_yyyymmdd_utc')
     ])
-    input_config_date = example_gen_pb2.Input(splits=[
-        example_gen_pb2.Input.Split(
-            name='s',
-            pattern="select * from table where date='{YYYY}-{MM}-{DD}'")
-    ])
-    input_config_version = example_gen_pb2.Input(splits=[
-        example_gen_pb2.Input.Split(
-            name='s',
-            pattern='select * from table where span={SPAN} and version={VERSION}'
-        )
-    ])
+
     static_range_config = range_config_pb2.RangeConfig(
         static_range=range_config_pb2.StaticRange(
             start_span_number=2, end_span_number=2))
     rolling_range_config = range_config_pb2.RangeConfig(
         rolling_range=range_config_pb2.RollingRange(num_spans=1))
 
-    with self.assertRaisesRegexp(
+    with self.assertRaisesRegex(
         NotImplementedError,
         'For QueryBasedExampleGen, latest Span is not supported'):
       processor = input_processor.QueryBasedInputProcessor(
-          input_config_date.splits, rolling_range_config)
-      processor.resolve_span_and_version()
-
-    with self.assertRaisesRegexp(
-        NotImplementedError,
-        'For QueryBasedExampleGen, Version spec is not supported.'):
-      processor = input_processor.QueryBasedInputProcessor(
-          input_config_version.splits, static_range_config)
+          input_config_span.splits, rolling_range_config)
       processor.resolve_span_and_version()
 
     processor = input_processor.QueryBasedInputProcessor(
@@ -139,18 +130,7 @@ class InputProcessorTest(tf.test.TestCase):
     self.assertIsNone(fp)
     pattern = processor.get_pattern_for_span_version(
         input_config_span.splits[0].pattern, span, version)
-    self.assertEqual(pattern, "select * from table where span=2 and split='s1'")
-
-    processor = input_processor.QueryBasedInputProcessor(
-        input_config_date.splits, static_range_config)
-    span, version = processor.resolve_span_and_version()
-    fp = processor.get_input_fingerprint(span, version)
-    self.assertEqual(span, 2)
-    self.assertIsNone(version)
-    self.assertIsNone(fp)
-    pattern = processor.get_pattern_for_span_version(
-        input_config_date.splits[0].pattern, span, version)
-    self.assertEqual(pattern, "select * from table where date='1970-01-03'")
+    self.assertEqual(pattern, "select * from table where date='19700103'")
 
 
 if __name__ == '__main__':

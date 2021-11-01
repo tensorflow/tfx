@@ -119,6 +119,64 @@ message KubernetesConfig {
   //
   // Should be a positive integer. Default to 24 hours (86400).
   int32 active_deadline_seconds = 2;
+
+  // Optional.
+  // Additional Kubernetes pod overrides to apply to the serving pod.
+  PodOverrides serving_pod_overrides = 3;
+}
+
+// Flattened collections of overridable variables for Pod and its submessages.
+message PodOverrides {
+  // Optional.
+  // Annotations to apply to the pod's ObjectMeta.
+  map<string, string> annotations = 1;
+
+  // Optional.
+  // Environment variables to apply to the pod's Container.
+  repeated EnvVar env = 2;
+}
+
+// https://github.com/kubernetes-client/python/blob/master/kubernetes/docs/V1EnvVar.md
+// EnvVar represents an environment variable present in a Container.
+message EnvVar {
+  // Required.
+  // Name of the environment variable.
+  string name = 1;
+
+  // Optional.
+  // Raw value for the environment variable. Interpolating other environment
+  // variables is allowed. See the link from the message for more information.
+  // Defaults to "".
+  string value = 2;
+
+  // Optional.
+  // Source for the environment variable's value. Cannot be used if value is
+  // not empty.
+  EnvVarSource value_from = 3;
+}
+
+// https://github.com/kubernetes-client/python/blob/master/kubernetes/docs/V1EnvVarSource.md
+// EnvVarSource represents a source for the value of an EnvVar.
+message EnvVarSource {
+  // Optional.
+  // Selects a key of a secret in the pod's namespace.
+  SecretKeySelector secret_key_ref = 4;
+
+  // Reserved fields:
+  //  1: field_ref
+  //  2: resource_field_ref
+  //  3: config_map_key_ref
+  reserved 1, 2, 3;
+}
+
+// https://github.com/kubernetes-client/python/blob/master/kubernetes/docs/V1SecretKeySelector.md
+// SecretKeySelector selects a key of a Secret.
+message SecretKeySelector {
+  // Name of the referent. More info:
+  // https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+  string name = 1;
+  // The key of the secret to select from.  Must be a valid secret key.
+  string key = 2;
 }
 
 // Specification for validation criteria and thresholds.
@@ -168,6 +226,20 @@ message RequestSpec {
   // will send total 6 requests (3 for each signature) to a model server.
   // Default to 1.
   int32 num_examples = 3;
+
+  // Optional.
+  // If True, requests built from the RequestSpec would be used as warmup
+  // requests of the model, and output InfraBlessing artifact would contain the
+  // model with warmup.
+  //
+  // WARNING: Examples data that is used to build the warmup request will be
+  // included to model assets without any encryption, so make sure the data
+  // does not contain any sensitive information. For example, personally
+  // identifiable information (PII) SHOULD NOT be included in the examples data.
+  //
+  // Currently only supports [TensorFlow SavedModel
+  // warmup](https://www.tensorflow.org/tfx/serving/saved_model_warmup) now.
+  bool make_warmup = 4;
 }
 
 // Request spec for building TF Serving requests.

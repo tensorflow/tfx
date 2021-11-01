@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,15 +13,11 @@
 # limitations under the License.
 """Tests for tfx.orchestration.launcher.kubernetes_component_launcher."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import os
+from unittest import mock
 
 from kubernetes import client
 from kubernetes import config
-import mock
 import tensorflow as tf
 from tfx.orchestration import publisher
 from tfx.orchestration.launcher import test_utils
@@ -136,7 +131,7 @@ class KubernetesComponentLauncherTest(tf.test.TestCase):
                 'containers': [{
                     'name': 'main',
                     'image': 'gcr://test',
-                    'command': None,
+                    'command': [],
                     'args': [context['input_artifact'].uri],
                 }],
                 'serviceAccount': 'sa-1',
@@ -196,7 +191,7 @@ class KubernetesComponentLauncherTest(tf.test.TestCase):
                 'containers': [{
                     'name': 'main',
                     'image': 'gcr://test',
-                    'command': None,
+                    'command': [],
                     'args': [context['input_artifact'].uri],
                 }],
             }

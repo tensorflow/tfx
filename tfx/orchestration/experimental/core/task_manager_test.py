@@ -27,15 +27,15 @@ from tfx.orchestration.experimental.core import async_pipeline_task_gen as asptg
 from tfx.orchestration.experimental.core import constants
 from tfx.orchestration.experimental.core import pipeline_state as pstate
 from tfx.orchestration.experimental.core import service_jobs
-from tfx.orchestration.experimental.core import status as status_lib
 from tfx.orchestration.experimental.core import task as task_lib
 from tfx.orchestration.experimental.core import task_manager as tm
 from tfx.orchestration.experimental.core import task_queue as tq
 from tfx.orchestration.experimental.core import task_scheduler as ts
 from tfx.orchestration.experimental.core import test_utils
+from tfx.orchestration.experimental.core.testing import test_async_pipeline
 from tfx.proto.orchestration import execution_result_pb2
 from tfx.proto.orchestration import pipeline_pb2
-from tfx.utils import test_case_utils as tu
+from tfx.utils import status as status_lib
 
 from ml_metadata.proto import metadata_store_pb2
 
@@ -47,11 +47,11 @@ def _test_exec_node_task(node_id, pipeline_id, pipeline=None):
   return test_utils.create_exec_node_task(node_uid, pipeline=pipeline)
 
 
-def _test_cancel_node_task(node_id, pipeline_id):
+def _test_cancel_node_task(node_id, pipeline_id, pause=False):
   node_uid = task_lib.NodeUid(
       pipeline_uid=task_lib.PipelineUid(pipeline_id=pipeline_id),
       node_id=node_id)
-  return task_lib.CancelNodeTask(node_uid=node_uid)
+  return task_lib.CancelNodeTask(node_uid=node_uid, pause=pause)
 
 
 class _Collector:
@@ -73,31 +73,34 @@ class _Collector:
 class _FakeTaskScheduler(ts.TaskScheduler):
 
   def __init__(self, block_nodes, collector, **kwargs):
-    super(_FakeTaskScheduler, self).__init__(**kwargs)
+    super().__init__(**kwargs)
     # For these nodes, `schedule` will block until `cancel` is called.
     self._block_nodes = block_nodes
     self._collector = collector
-    self._stop_event = threading.Event()
+    self._cancel = threading.Event()
 
   def schedule(self):
     logging.info('_FakeTaskScheduler: scheduling task: %s', self.task)
     self._collector.add_scheduled_task(self.task)
     if self.task.node_uid.node_id in self._block_nodes:
-      self._stop_event.wait()
+      self._cancel.wait()
+      code = status_lib.Code.CANCELLED
+    else:
+      code = status_lib.Code.OK
     return ts.TaskSchedulerResult(
-        status=status_lib.Status(code=status_lib.Code.OK),
-        executor_output=execution_result_pb2.ExecutorOutput())
+        status=status_lib.Status(
+            code=code, message='_FakeTaskScheduler result'))
 
   def cancel(self):
     logging.info('_FakeTaskScheduler: cancelling task: %s', self.task)
     self._collector.add_cancelled_task(self.task)
-    self._stop_event.set()
+    self._cancel.set()
 
 
-class TaskManagerTest(tu.TfxTest):
+class TaskManagerTest(test_utils.TfxTest):
 
   def setUp(self):
-    super(TaskManagerTest, self).setUp()
+    super().setUp()
 
     # Create a pipeline IR containing deployment config for testing.
     deployment_config = pipeline_pb2.IntermediateDeploymentConfig()
@@ -106,7 +109,12 @@ class TaskManagerTest(tu.TfxTest):
     deployment_config.executor_specs['Trainer'].Pack(executor_spec)
     deployment_config.executor_specs['Transform'].Pack(executor_spec)
     deployment_config.executor_specs['Evaluator'].Pack(executor_spec)
+    deployment_config.executor_specs['Pusher'].Pack(executor_spec)
     pipeline = pipeline_pb2.Pipeline()
+    pipeline.nodes.add().pipeline_node.node_info.id = 'Trainer'
+    pipeline.nodes.add().pipeline_node.node_info.id = 'Transform'
+    pipeline.nodes.add().pipeline_node.node_info.id = 'Evaluator'
+    pipeline.nodes.add().pipeline_node.node_info.id = 'Pusher'
     pipeline.pipeline_info.id = 'test-pipeline'
     pipeline.deployment_config.Pack(deployment_config)
 
@@ -135,7 +143,7 @@ class TaskManagerTest(tu.TfxTest):
         self._type_url,
         functools.partial(
             _FakeTaskScheduler,
-            block_nodes={'Trainer', 'Transform'},
+            block_nodes={'Trainer', 'Transform', 'Pusher'},
             collector=collector))
 
     task_queue = tq.TaskQueue()
@@ -155,25 +163,51 @@ class TaskManagerTest(tu.TfxTest):
           'Evaluator', 'test-pipeline', pipeline=self._pipeline)
       task_queue.enqueue(evaluator_exec_task)
       task_queue.enqueue(_test_cancel_node_task('Transform', 'test-pipeline'))
+      pusher_exec_task = _test_exec_node_task(
+          'Pusher', 'test-pipeline', pipeline=self._pipeline)
+      task_queue.enqueue(pusher_exec_task)
+      task_queue.enqueue(
+          _test_cancel_node_task('Pusher', 'test-pipeline', pause=True))
 
     self.assertTrue(task_manager.done())
     self.assertIsNone(task_manager.exception())
 
     # Ensure that all exec and cancellation tasks were processed correctly.
-    self.assertCountEqual(
-        [trainer_exec_task, transform_exec_task, evaluator_exec_task],
-        collector.scheduled_tasks)
-    self.assertCountEqual([trainer_exec_task, transform_exec_task],
-                          collector.cancelled_tasks)
+    self.assertCountEqual([
+        trainer_exec_task,
+        transform_exec_task,
+        evaluator_exec_task,
+        pusher_exec_task,
+    ], collector.scheduled_tasks)
+    self.assertCountEqual([
+        trainer_exec_task,
+        transform_exec_task,
+        pusher_exec_task,
+    ], collector.cancelled_tasks)
+
+    result_ok = ts.TaskSchedulerResult(
+        status=status_lib.Status(
+            code=status_lib.Code.OK, message='_FakeTaskScheduler result'))
+    result_cancelled = ts.TaskSchedulerResult(
+        status=status_lib.Status(
+            code=status_lib.Code.CANCELLED,
+            message='_FakeTaskScheduler result'))
     mock_publish.assert_has_calls([
         mock.call(
-            mlmd_handle=mock.ANY, task=trainer_exec_task, result=mock.ANY),
+            mlmd_handle=mock.ANY,
+            task=trainer_exec_task,
+            result=result_cancelled),
         mock.call(
-            mlmd_handle=mock.ANY, task=transform_exec_task, result=mock.ANY),
+            mlmd_handle=mock.ANY,
+            task=transform_exec_task,
+            result=result_cancelled),
         mock.call(
-            mlmd_handle=mock.ANY, task=evaluator_exec_task, result=mock.ANY),
+            mlmd_handle=mock.ANY, task=evaluator_exec_task, result=result_ok),
     ],
                                   any_order=True)
+    # It is expected that publish is not called for Pusher because it was
+    # cancelled with pause=True so there must be only 3 calls.
+    self.assertLen(mock_publish.mock_calls, 3)
 
   @mock.patch.object(tm, '_publish_execution_results')
   def test_exceptions_are_surfaced(self, mock_publish):
@@ -214,9 +248,12 @@ class TaskManagerTest(tu.TfxTest):
 
     self.assertCountEqual([transform_task, trainer_task],
                           collector.scheduled_tasks)
+    result_ok = ts.TaskSchedulerResult(
+        status=status_lib.Status(
+            code=status_lib.Code.OK, message='_FakeTaskScheduler result'))
     mock_publish.assert_has_calls([
-        mock.call(mlmd_handle=mock.ANY, task=transform_task, result=mock.ANY),
-        mock.call(mlmd_handle=mock.ANY, task=trainer_task, result=mock.ANY),
+        mock.call(mlmd_handle=mock.ANY, task=transform_task, result=result_ok),
+        mock.call(mlmd_handle=mock.ANY, task=trainer_task, result=result_ok),
     ],
                                   any_order=True)
 
@@ -224,7 +261,7 @@ class TaskManagerTest(tu.TfxTest):
 class _FakeComponentScheduler(ts.TaskScheduler):
 
   def __init__(self, return_result, exception, **kwargs):
-    super(_FakeComponentScheduler, self).__init__(**kwargs)
+    super().__init__(**kwargs)
     self.exception = exception
     self.return_result = return_result
 
@@ -249,11 +286,11 @@ def _make_executor_output(task, code=status_lib.Code.OK, msg=''):
   return executor_output
 
 
-class TaskManagerE2ETest(tu.TfxTest):
+class TaskManagerE2ETest(test_utils.TfxTest):
   """Test end-to-end from task generation to publication of results to MLMD."""
 
   def setUp(self):
-    super(TaskManagerE2ETest, self).setUp()
+    super().setUp()
     pipeline_root = os.path.join(
         os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR', self.get_temp_dir()),
         self.id())
@@ -269,11 +306,7 @@ class TaskManagerE2ETest(tu.TfxTest):
         connection_config=connection_config)
 
     # Sets up the pipeline.
-    pipeline = pipeline_pb2.Pipeline()
-    self.load_proto_from_text(
-        os.path.join(
-            os.path.dirname(__file__), 'testdata', 'async_pipeline.pbtxt'),
-        pipeline)
+    pipeline = test_async_pipeline.create_pipeline()
 
     # Extracts components.
     self._example_gen = pipeline.nodes[0].pipeline_node
@@ -304,25 +337,24 @@ class TaskManagerE2ETest(tu.TfxTest):
     test_utils.fake_example_gen_run(self._mlmd_connection, self._example_gen, 1,
                                     1)
 
-    # Task generator should produce a task to run transform.
+    # Task generator should produce two tasks for transform. The first one is
+    # UpdateNodeStateTask and the second one is ExecNodeTask.
     with self._mlmd_connection as m:
       pipeline_state = pstate.PipelineState.new(m, self._pipeline)
       tasks = asptg.AsyncPipelineTaskGenerator(
-          m, pipeline_state, self._task_queue.contains_task_id,
-          service_jobs.DummyServiceJobManager()).generate()
-    self.assertLen(tasks, 1)
-    task = tasks[0]
-    self.assertEqual('my_transform', task.node_uid.node_id)
-
-    # Task generator should produce a task to run transform.
-    with self._mlmd_connection as m:
-      pipeline_state = pstate.PipelineState.new(m, self._pipeline)
-      tasks = asptg.AsyncPipelineTaskGenerator(
-          m, pipeline_state, self._task_queue.contains_task_id,
-          service_jobs.DummyServiceJobManager()).generate()
-    self.assertLen(tasks, 1)
-    self._task = tasks[0]
-    self.assertEqual('my_transform', self._task.node_uid.node_id)
+          m, self._task_queue.contains_task_id,
+          service_jobs.DummyServiceJobManager()).generate(pipeline_state)
+    self.assertLen(tasks, 2)
+    self.assertTrue(task_lib.is_update_node_state_task(tasks[0]))
+    self.assertEqual(pstate.NodeState.RUNNING, tasks[0].state)
+    self.assertEqual('my_transform', tasks[0].node_uid.node_id)
+    self.assertTrue(task_lib.is_exec_node_task(tasks[1]))
+    self.assertEqual('my_transform', tasks[1].node_uid.node_id)
+    self.assertTrue(os.path.exists(tasks[1].stateful_working_dir))
+    self._task = tasks[1]
+    self._output_artifact_uri = self._task.output_artifacts['transform_graph'][
+        0].uri
+    self.assertTrue(os.path.exists(self._output_artifact_uri))
     self._task_queue.enqueue(self._task)
 
     # There should be 1 active execution in MLMD.
@@ -361,13 +393,14 @@ class TaskManagerE2ETest(tu.TfxTest):
       executions = m.store.get_executions_by_id([self._execution_id])
     return executions[0]
 
-  def test_successful_execution(self):
+  def test_successful_execution_resulting_in_executor_output(self):
     # Register a fake task scheduler that returns a successful execution result
     # and `OK` task scheduler status.
     self._register_task_scheduler(
         ts.TaskSchedulerResult(
             status=status_lib.Status(code=status_lib.Code.OK),
-            executor_output=_make_executor_output(self._task, code=0)))
+            output=ts.ExecutorNodeOutput(
+                executor_output=_make_executor_output(self._task, code=0))))
     task_manager = self._run_task_manager()
     self.assertTrue(task_manager.done())
     self.assertIsNone(task_manager.exception())
@@ -378,13 +411,40 @@ class TaskManagerE2ETest(tu.TfxTest):
     self.assertEqual(metadata_store_pb2.Execution.COMPLETE,
                      execution.last_known_state)
 
+    # Check that stateful working dir is removed.
+    self.assertFalse(os.path.exists(self._task.stateful_working_dir))
+    # Output artifact URI remains as execution was successful.
+    self.assertTrue(os.path.exists(self._output_artifact_uri))
+
+  def test_successful_execution_resulting_in_output_artifacts(self):
+    # Register a fake task scheduler that returns a successful execution result
+    # and `OK` task scheduler status.
+    self._register_task_scheduler(
+        ts.TaskSchedulerResult(
+            status=status_lib.Status(code=status_lib.Code.OK),
+            output=ts.ImporterNodeOutput(
+                output_artifacts=self._task.output_artifacts)))
+    task_manager = self._run_task_manager()
+    self.assertTrue(task_manager.done())
+    self.assertIsNone(task_manager.exception())
+
+    # Check that the task was processed and MLMD execution marked successful.
+    self.assertTrue(self._task_queue.is_empty())
+    execution = self._get_execution()
+    self.assertEqual(metadata_store_pb2.Execution.COMPLETE,
+                     execution.last_known_state)
+
+    # Check that stateful working dir is removed.
+    self.assertFalse(os.path.exists(self._task.stateful_working_dir))
+    # Output artifact URI remains as execution was successful.
+    self.assertTrue(os.path.exists(self._output_artifact_uri))
+
   def test_scheduler_failure(self):
     # Register a fake task scheduler that returns a failure status.
     self._register_task_scheduler(
         ts.TaskSchedulerResult(
             status=status_lib.Status(
-                code=status_lib.Code.ABORTED, message='foobar error'),
-            executor_output=None))
+                code=status_lib.Code.ABORTED, message='foobar error')))
     task_manager = self._run_task_manager()
     self.assertTrue(task_manager.done())
     self.assertIsNone(task_manager.exception())
@@ -398,6 +458,10 @@ class TaskManagerE2ETest(tu.TfxTest):
         'foobar error',
         data_types_utils.get_metadata_value(
             execution.custom_properties[constants.EXECUTION_ERROR_MSG_KEY]))
+
+    # Check that stateful working dir and output artifact URI are removed.
+    self.assertFalse(os.path.exists(self._task.stateful_working_dir))
+    self.assertFalse(os.path.exists(self._output_artifact_uri))
 
   def test_executor_failure(self):
     # Register a fake task scheduler that returns success but the executor
@@ -405,10 +469,11 @@ class TaskManagerE2ETest(tu.TfxTest):
     self._register_task_scheduler(
         ts.TaskSchedulerResult(
             status=status_lib.Status(code=status_lib.Code.OK),
-            executor_output=_make_executor_output(
-                self._task,
-                code=status_lib.Code.FAILED_PRECONDITION,
-                msg='foobar error')))
+            output=ts.ExecutorNodeOutput(
+                executor_output=_make_executor_output(
+                    self._task,
+                    code=status_lib.Code.FAILED_PRECONDITION,
+                    msg='foobar error'))))
     task_manager = self._run_task_manager()
     self.assertTrue(task_manager.done())
     self.assertIsNone(task_manager.exception())
@@ -422,6 +487,10 @@ class TaskManagerE2ETest(tu.TfxTest):
         'foobar error',
         data_types_utils.get_metadata_value(
             execution.custom_properties[constants.EXECUTION_ERROR_MSG_KEY]))
+
+    # Check that stateful working dir and output artifact URI are removed.
+    self.assertFalse(os.path.exists(self._task.stateful_working_dir))
+    self.assertFalse(os.path.exists(self._output_artifact_uri))
 
   def test_scheduler_raises_exception(self):
     # Register a fake task scheduler that raises an exception in `schedule`.
@@ -435,6 +504,10 @@ class TaskManagerE2ETest(tu.TfxTest):
     execution = self._get_execution()
     self.assertEqual(metadata_store_pb2.Execution.FAILED,
                      execution.last_known_state)
+
+    # Check that stateful working dir and output artifact URI are removed.
+    self.assertFalse(os.path.exists(self._task.stateful_working_dir))
+    self.assertFalse(os.path.exists(self._output_artifact_uri))
 
 
 if __name__ == '__main__':

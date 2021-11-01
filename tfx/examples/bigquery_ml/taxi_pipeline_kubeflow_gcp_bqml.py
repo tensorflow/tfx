@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,12 +13,8 @@
 # limitations under the License.
 """Chicago Taxi example using TFX DSL on Kubeflow with Google Cloud services."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import os
-from typing import Dict, List, Text
+from typing import Dict, List
 from tfx.components import Evaluator
 from tfx.components import ExampleValidator
 from tfx.components import ModelValidator
@@ -93,7 +88,6 @@ _bigquery_serving_args = {
 # Beam args to run data processing on DataflowRunner.
 #
 # TODO(b/151114974): Remove `disk_size_gb` flag after default is increased.
-# TODO(b/151116587): Remove `shuffle_mode` flag after default is changed.
 # TODO(b/156874687): Remove `machine_type` after IP addresses are no longer a
 #                    scaling bottleneck.
 # TODO(b/171733562): Remove `use_runner_v2` once it is the default for Dataflow.
@@ -105,7 +99,6 @@ _beam_pipeline_args = [
 
     # Temporary overrides of defaults.
     '--disk_size_gb=50',
-    '--experiments=shuffle_mode=auto',
     '--machine_type=e2-standard-8',
     '--experiments=use_runner_v2',
 ]
@@ -160,9 +153,9 @@ _query = """
 
 
 def _create_pipeline(
-    pipeline_name: Text, pipeline_root: Text, query: Text, module_file: Text,
-    beam_pipeline_args: List[Text], ai_platform_training_args: Dict[Text, Text],
-    bigquery_serving_args: Dict[Text, Text]) -> pipeline.Pipeline:
+    pipeline_name: str, pipeline_root: str, query: str, module_file: str,
+    beam_pipeline_args: List[str], ai_platform_training_args: Dict[str, str],
+    bigquery_serving_args: Dict[str, str]) -> pipeline.Pipeline:
   """Implements the chicago taxi pipeline with TFX and Kubeflow Pipelines."""
 
   # Brings data into the pipeline or otherwise joins/converts training data.
@@ -186,7 +179,7 @@ def _create_pipeline(
       schema=schema_gen.outputs['schema'],
       module_file=module_file)
 
-  # Uses user-provided Python function that implements a model using TF-Learn
+  # Uses user-provided Python function that implements a model.
   # to train a model on Google Cloud AI Platform.
   trainer = Trainer(
       custom_executor_spec=executor_spec.ExecutorClassSpec(
@@ -238,15 +231,8 @@ if __name__ == '__main__':
   # lightweight deployment option, you may need to override the defaults.
   metadata_config = kubeflow_dag_runner.get_default_kubeflow_metadata_config()
 
-  # This pipeline automatically injects the Kubeflow TFX image if the
-  # environment variable 'KUBEFLOW_TFX_IMAGE' is defined. Currently, the tfx
-  # cli tool exports the environment variable to pass to the pipelines.
-  tfx_image = os.environ.get('KUBEFLOW_TFX_IMAGE', None)
-
   runner_config = kubeflow_dag_runner.KubeflowDagRunnerConfig(
       kubeflow_metadata_config=metadata_config,
-      # Specify custom docker image to use.
-      tfx_image=tfx_image
   )
 
   kubeflow_dag_runner.KubeflowDagRunner(config=runner_config).run(

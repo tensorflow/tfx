@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2020 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,12 +13,7 @@
 # limitations under the License.
 """Utility functions for DSL Compiler."""
 
-# TODO(b/149535307): Remove __future__ imports
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
-from typing import List, Optional, Text, Type
+from typing import List, Optional, Type
 
 from tfx import types
 from tfx.dsl.components.base import base_node
@@ -27,11 +21,12 @@ from tfx.dsl.components.common import importer
 from tfx.dsl.components.common import resolver
 from tfx.orchestration import pipeline
 from tfx.proto.orchestration import pipeline_pb2
+from tfx.types import channel_utils
 
 
 def set_runtime_parameter_pb(
     pb: pipeline_pb2.RuntimeParameter,
-    name: Text,
+    name: str,
     ptype: Type[types.Property],
     default_value: Optional[types.Property] = None
 ) -> pipeline_pb2.RuntimeParameter:
@@ -119,13 +114,15 @@ def has_task_dependency(tfx_pipeline: pipeline.Pipeline):
       producer_map[output_channel] = component.id
 
   for component in tfx_pipeline.components:
-    # Resolver node is a special case. It sets producer_component_id, but not
-    # upstream_nodes. Excludes the case by filtering using producer_map.
-    upstream_data_dep_ids = {
-        input_channel.producer_component_id
-        for input_channel in component.inputs.values()
-        if input_channel in producer_map
-    }
+    upstream_data_dep_ids = set()
+    for value in component.inputs.values():
+      # Resolver node is a special case. It sets producer_component_id, but not
+      # upstream_nodes. Excludes the case by filtering using producer_map.
+      upstream_data_dep_ids.update([
+          input_channel.producer_component_id
+          for input_channel in channel_utils.get_individual_channels(value)
+          if input_channel in producer_map
+      ])
     upstream_deps_ids = {node.id for node in component._upstream_nodes}  # pylint: disable=protected-access
 
     # Compares a node's all upstream nodes and all upstream data dependencies.
@@ -134,3 +131,25 @@ def has_task_dependency(tfx_pipeline: pipeline.Pipeline):
     if upstream_data_dep_ids != upstream_deps_ids:
       return True
   return False
+
+
+def node_context_name(pipeline_context_name: str, node_id: str):
+  """Defines the name used to reference a node context in MLMD."""
+  return f"{pipeline_context_name}.{node_id}"
+
+
+def implicit_channel_key(channel: types.Channel):
+  """Key of a channel to the node that consumes the channel as input."""
+  return f"_{channel.producer_component_id}.{channel.output_key}"
+
+
+def build_channel_to_key_fn(implicit_keys_map):
+  """Builds a function that returns the key of a channel for consumer node."""
+
+  def channel_to_key_fn(channel: types.Channel) -> str:
+    implicit_key = implicit_channel_key(channel)
+    if implicit_key in implicit_keys_map:
+      return implicit_keys_map[implicit_key]
+    return implicit_key
+
+  return channel_to_key_fn

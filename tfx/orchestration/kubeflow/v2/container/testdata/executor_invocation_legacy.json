@@ -1,0 +1,64 @@
+{
+  "inputs": {
+    "artifacts": {
+      "input_1": {
+        "artifacts": [
+          {
+            "uri": "gs://root/input_1/",
+            "name": "projects/123456789/locations/us-central1/metadataStores/default/artifacts/1",
+            "customProperties": {
+              "custom_property_1": {
+                "stringValue": "string property"
+              },
+              "custom_property_2": {
+                "intValue": 42
+              }
+            },
+            "type": { "instanceSchema": "title: tfx.Examples\ntype: object\nproperties:\n  span:\n    type: int\n    description: Span for an artifact.\n  version:\n    type: int\n    description: Version for an artifact.\n  split_names:\n    type: string\n    description: JSON-encoded list of splits for an artifact. Empty string means artifact has no split.\n" },
+            "createTimeSinceEpoch":"1587611829506"
+          }
+        ]
+      },
+      "input_2": {
+        "artifacts": [
+          {
+            "uri": "gs://root/input_2/",
+            "name": "projects/123456789/locations/us-central1/metadataStores/default/artifacts/2",
+            "type": { "instanceSchema": "title: tfx.Examples\ntype: object\nproperties:\n  span:\n    type: int\n    description: Span for an artifact.\n  version:\n    type: int\n    description: Version for an artifact.\n  split_names:\n    type: string\n    description: JSON-encoded list of splits for an artifact. Empty string means artifact has no split.\n" }
+          }
+        ]
+      }
+    },
+    "parameters": {
+      "key_1": {
+        "stringValue": "value_1"
+      },
+      "key_2": {
+        "intValue": "536870911"
+      }
+    }
+  },
+  "outputs": {
+    "artifacts": {
+      "output": {
+        "artifacts": [
+          {
+            "uri": "gs://root/output/",
+            "name": "projects/123456789/locations/us-central1/metadataStores/default/artifacts/3",
+            "type": { "instanceSchema": "title: tfx.ExampleStatistics\ntype: object\nproperties:\n  span:\n    type: int\n    description: Span for an artifact.\n  split_names:\n    type: string\n    description: JSON-encoded list of splits for an artifact. Empty string means artifact has no split.\n" }
+          }
+        ]
+      },
+      "blessing": {
+        "artifacts": [
+          {
+            "uri": "gs://root/blessing/",
+            "name": "projects/123456789/locations/us-central1/metadataStores/default/artifacts/4",
+            "type": { "instanceSchema": "title: tfx.ModelBlessing\ntype: object\nproperties:\n" }
+          }
+        ]
+      }
+    },
+    "outputFile": "gs://root/output_metadata/"
+  }
+}

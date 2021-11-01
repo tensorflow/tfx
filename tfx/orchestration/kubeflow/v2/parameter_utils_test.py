@@ -14,7 +14,6 @@
 """Tests for tfx.orchestration.kubeflow.v2.parameter_utils."""
 
 from concurrent import futures
-from typing import Text
 
 import tensorflow as tf
 from tfx.orchestration import data_types
@@ -23,7 +22,7 @@ from tfx.orchestration.kubeflow.v2 import parameter_utils
 
 class ParameterUtilsTest(tf.test.TestCase):
 
-  def _testAttachParametersInSingleThread(self, suffix: Text):
+  def _testAttachParametersInSingleThread(self, suffix: str):
     with parameter_utils.ParameterContext() as pc:
       parameter_utils.attach_parameter(
           data_types.RuntimeParameter(
@@ -39,7 +38,7 @@ class ParameterUtilsTest(tf.test.TestCase):
     with parameter_utils.ParameterContext() as pc:
       param1 = data_types.RuntimeParameter(name='test_param_1', ptype=int)
       parameter_utils.attach_parameter(param1)
-      param2 = data_types.RuntimeParameter(name='test_param_2', ptype=Text)
+      param2 = data_types.RuntimeParameter(name='test_param_2', ptype=str)
       parameter_utils.attach_parameter(param2)
       param3 = data_types.RuntimeParameter(name='test_param_3', ptype=float)
       parameter_utils.attach_parameter(param3)
@@ -57,7 +56,7 @@ class ParameterUtilsTest(tf.test.TestCase):
 
   def testFailWhenNotRunningUnderContext(self):
     param = data_types.RuntimeParameter(name='test_param', ptype=int)
-    with self.assertRaisesRegexp(
+    with self.assertRaisesRegex(
         RuntimeError,
         r'attach_parameter\(\) must run under ParameterContext\.'):
       parameter_utils.attach_parameter(param)

@@ -67,15 +67,14 @@ class _FakeComponent(base_component.BaseComponent):
   EXECUTOR_SPEC = executor_spec.ExecutorClassSpec(base_executor.BaseExecutor)
 
   def __init__(self, spec: types.ComponentSpec):
-    instance_name = spec.__class__.__name__.replace('_FakeComponentSpec',
-                                                    '').lower()
-    super(_FakeComponent, self).__init__(spec=spec, instance_name=instance_name)
+    super().__init__(spec=spec)
+    self._id = spec.__class__.__name__.replace('_FakeComponentSpec', '').lower()
 
 
 class KubernetesRemoteRunnerTest(tf.test.TestCase):
 
   def setUp(self):
-    super(KubernetesRemoteRunnerTest, self).setUp()
+    super().setUp()
     self.component_a = _FakeComponent(
         _FakeComponentSpecA(output=types.Channel(type=_ArtifactTypeA)))
     self.component_b = _FakeComponent(
@@ -105,9 +104,9 @@ class KubernetesRemoteRunnerTest(tf.test.TestCase):
     json_format.Parse(pipeline['metadata_connection_config'],
                       metadata_connection_config)
     expected_downstream_ids = {
-        '_FakeComponent.a': ['_FakeComponent.b', '_FakeComponent.c'],
-        '_FakeComponent.b': ['_FakeComponent.c'],
-        '_FakeComponent.c': [],
+        'a': ['b', 'c'],
+        'b': ['c'],
+        'c': [],
     }
     self.assertEqual(self.test_pipeline.pipeline_info.pipeline_name,
                      pipeline['pipeline_name'])

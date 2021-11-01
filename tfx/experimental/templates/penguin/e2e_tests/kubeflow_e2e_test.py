@@ -17,10 +17,8 @@ import datetime
 import os
 import subprocess
 import tarfile
-import urllib.request
 
 from absl import logging
-import docker
 from google.cloud import storage
 import kfp
 import tensorflow as tf
@@ -28,6 +26,7 @@ from tfx.dsl.io import fileio
 from tfx.experimental.templates import test_utils
 from tfx.orchestration import test_utils as orchestration_test_utils
 from tfx.orchestration.kubeflow import test_utils as kubeflow_test_utils
+from tfx.utils import docker_utils
 from tfx.utils import telemetry_utils
 import yaml
 
@@ -76,13 +75,11 @@ class PenguinTemplateKubeflowE2ETest(test_utils.BaseEndToEndTest):
       self._prepare_base_container_image()
     else:
       self._base_container_image = self._BASE_CONTAINER_IMAGE
-    self._target_container_image = 'gcr.io/{}/{}:{}'.format(
-        self._GCP_PROJECT_ID, 'penguin-template-kubeflow-e2e-test', random_id)
-
-    self._prepare_skaffold()
+    self._target_container_image = 'gcr.io/{}/{}'.format(
+        self._GCP_PROJECT_ID, self._pipeline_name)
 
   def tearDown(self):
-    super(PenguinTemplateKubeflowE2ETest, self).tearDown()
+    super().tearDown()
     self._cleanup_kfp()
 
   def _cleanup_with_retry(self, method):
@@ -96,8 +93,8 @@ class PenguinTemplateKubeflowE2ETest(test_utils.BaseEndToEndTest):
         break
 
   def _cleanup_kfp(self):
-    self._cleanup_with_retry(self._delete_base_container_image)
     self._cleanup_with_retry(self._delete_target_container_image)
+    self._cleanup_with_retry(self._delete_base_container_image)
     self._cleanup_with_retry(self._delete_runs)
     self._cleanup_with_retry(self._delete_pipeline)
     self._cleanup_with_retry(self._delete_pipeline_data)
@@ -127,18 +124,13 @@ class PenguinTemplateKubeflowE2ETest(test_utils.BaseEndToEndTest):
     orchestration_test_utils.delete_gcs_files(self._GCP_PROJECT_ID,
                                               self._BUCKET_NAME, path)
 
-  def _delete_docker_image(self, image):
-    subprocess.check_output(['gcloud', 'container', 'images', 'delete', image])
-    client = docker.from_env()
-    client.images.remove(image=image)
-
   def _delete_base_container_image(self):
     if self._base_container_image == self._BASE_CONTAINER_IMAGE:
       return  # Didn't generate a base image for the test.
-    self._delete_docker_image(self._base_container_image)
+    docker_utils.delete_image(self._base_container_image)
 
   def _delete_target_container_image(self):
-    self._delete_docker_image(self._target_container_image)
+    docker_utils.delete_image(self._target_container_image)
 
   def _get_endpoint(self, namespace):
     cmd = 'kubectl describe configmap inverse-proxy-config -n {}'.format(
@@ -159,15 +151,8 @@ class PenguinTemplateKubeflowE2ETest(test_utils.BaseEndToEndTest):
     orchestration_test_utils.build_docker_image(self._base_container_image,
                                                 self._REPO_BASE)
 
-  def _prepare_skaffold(self):
-    self._skaffold = os.path.join(self._temp_dir, 'skaffold')
-    urllib.request.urlretrieve(
-        'https://storage.googleapis.com/skaffold/releases/latest/skaffold-linux-amd64',
-        self._skaffold)
-    os.chmod(self._skaffold, 0o775)
-
   def _create_pipeline(self):
-    result = self._runCli([
+    self._runCli([
         'pipeline',
         'create',
         '--engine',
@@ -176,17 +161,23 @@ class PenguinTemplateKubeflowE2ETest(test_utils.BaseEndToEndTest):
         'kubeflow_runner.py',
         '--endpoint',
         self._endpoint,
-        '--build-target-image',
-        self._target_container_image,
-        '--skaffold-cmd',
-        self._skaffold,
+        '--build-image',
         '--build-base-image',
         self._base_container_image,
     ])
-    self.assertEqual(0, result.exit_code)
+
+  def _compile_pipeline(self):
+    self._runCli([
+        'pipeline',
+        'compile',
+        '--engine',
+        'kubeflow',
+        '--pipeline_path',
+        'kubeflow_runner.py',
+    ])
 
   def _update_pipeline(self):
-    result = self._runCli([
+    self._runCli([
         'pipeline',
         'update',
         '--engine',
@@ -195,10 +186,8 @@ class PenguinTemplateKubeflowE2ETest(test_utils.BaseEndToEndTest):
         'kubeflow_runner.py',
         '--endpoint',
         self._endpoint,
-        '--skaffold-cmd',
-        self._skaffold,
+        '--build-image',
     ])
-    self.assertEqual(0, result.exit_code)
 
   def _run_pipeline(self):
     result = self._runCli([
@@ -211,8 +200,7 @@ class PenguinTemplateKubeflowE2ETest(test_utils.BaseEndToEndTest):
         '--endpoint',
         self._endpoint,
     ])
-    self.assertEqual(0, result.exit_code)
-    run_id = self._parse_run_id(result.output)
+    run_id = self._parse_run_id(result)
     self._wait_until_completed(run_id)
     kubeflow_test_utils.print_failure_log_for_run(self._endpoint, run_id,
                                                   self._namespace)
@@ -251,22 +239,6 @@ class PenguinTemplateKubeflowE2ETest(test_utils.BaseEndToEndTest):
     self._copyTemplate('penguin')
     os.environ['KUBEFLOW_HOME'] = os.path.join(self._temp_dir, 'kubeflow')
 
-    # Uncomment all variables in config.
-    self._uncommentMultiLineVariables(
-        os.path.join('pipeline', 'configs.py'), [
-            'GOOGLE_CLOUD_REGION',
-            'BIG_QUERY_WITH_DIRECT_RUNNER_BEAM_PIPELINE_ARGS',
-            'BIG_QUERY_QUERY', 'DATAFLOW_BEAM_PIPELINE_ARGS',
-            'GCP_AI_PLATFORM_TRAINING_ARGS', 'GCP_AI_PLATFORM_SERVING_ARGS'
-        ])
-    self._replaceFileContent(
-        os.path.join('pipeline', 'configs.py'), [
-            ('GOOGLE_CLOUD_REGION = \'\'',
-             'GOOGLE_CLOUD_REGION = \'{}\''.format(self._GCP_REGION)),
-            ('\'imageUri\': \'gcr.io/\' + GOOGLE_CLOUD_PROJECT + \'/tfx-pipeline\'',
-             '\'imageUri\': \'{}\''.format(self._target_container_image)),
-        ])
-
     # Prepare data
     self._prepare_data()
     self._replaceFileContent('kubeflow_runner.py', [
@@ -275,11 +247,12 @@ class PenguinTemplateKubeflowE2ETest(test_utils.BaseEndToEndTest):
          .format(self._DATA_DIRECTORY_NAME, self._pipeline_name)),
     ])
 
+    self._compile_pipeline()
+    self._check_telemetry_label()
+
     # Create a pipeline with only one component.
     self._create_pipeline()
     self._run_pipeline()
-
-    self._check_telemetry_label()
 
     # Update the pipeline to include all components.
     updated_pipeline_file = self._addAllComponents()

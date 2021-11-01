@@ -13,7 +13,7 @@
 # limitations under the License.
 """Tests for tfx.orchestration.portable.python_driver_operator."""
 
-from typing import Any, Dict, List, Text
+from typing import Any, Dict, List
 
 import tensorflow as tf
 from tfx import types
@@ -27,9 +27,9 @@ _DEFAULT_DRIVER_OUTPUT = driver_output_pb2.DriverOutput()
 
 class _FakeNoopDriver(base_driver.BaseDriver):
 
-  def run(self, input_dict: Dict[Text, List[types.Artifact]],
-          output_dict: Dict[Text, List[types.Artifact]],
-          exec_properties: Dict[Text, Any]) -> driver_output_pb2.DriverOutput:
+  def run(self, input_dict: Dict[str, List[types.Artifact]],
+          output_dict: Dict[str, List[types.Artifact]],
+          exec_properties: Dict[str, Any]) -> driver_output_pb2.DriverOutput:
     return _DEFAULT_DRIVER_OUTPUT
 
 

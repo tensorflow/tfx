@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2020 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,12 +13,11 @@
 # limitations under the License.
 """TFX BigQueryToElwcExampleGen component definition."""
 
-from typing import Optional, Text
+from typing import Optional
 
-from tfx import types
-from tfx.components.base import executor_spec
 from tfx.components.example_gen import component
 from tfx.components.example_gen import utils
+from tfx.dsl.components.base import executor_spec
 from tfx.extensions.google_cloud_big_query.experimental.elwc_example_gen.component import executor
 from tfx.extensions.google_cloud_big_query.experimental.elwc_example_gen.proto import elwc_config_pb2
 from tfx.proto import example_gen_pb2
@@ -32,15 +30,13 @@ class BigQueryToElwcExampleGen(component.QueryBasedExampleGen):
   and eval ExampleListWithContext(ELWC) for downstream components.
   """
 
-  EXECUTOR_SPEC = executor_spec.ExecutorClassSpec(executor.Executor)
+  EXECUTOR_SPEC = executor_spec.BeamExecutorSpec(executor.Executor)
 
   def __init__(self,
-               query: Optional[Text] = None,
+               query: Optional[str] = None,
                elwc_config: Optional[elwc_config_pb2.ElwcConfig] = None,
                input_config: Optional[example_gen_pb2.Input] = None,
-               output_config: Optional[example_gen_pb2.Output] = None,
-               example_artifacts: Optional[types.Channel] = None,
-               instance_name: Optional[Text] = None):
+               output_config: Optional[example_gen_pb2.Output] = None):
     """Constructs a BigQueryElwcExampleGen component.
 
     Args:
@@ -61,10 +57,6 @@ class BigQueryToElwcExampleGen(component.QueryBasedExampleGen):
         size 2:1. If any field is provided as a RuntimeParameter, input_config
           should be constructed as a dict with the same field names as Output
           proto message.
-      example_artifacts: Optional channel of 'ExamplesPath' for output train and
-        eval examples.
-      instance_name: Optional unique instance name. Necessary if multiple
-        BigQueryExampleGen components are declared in the same pipeline.
 
     Raises:
       RuntimeError: Only one of query and input_config should be set and
@@ -79,10 +71,8 @@ class BigQueryToElwcExampleGen(component.QueryBasedExampleGen):
     input_config = input_config or utils.make_default_input_config(query)
     packed_custom_config = example_gen_pb2.CustomConfig()
     packed_custom_config.custom_config.Pack(elwc_config)
-    super(BigQueryToElwcExampleGen, self).__init__(
+    super().__init__(
         input_config=input_config,
         output_config=output_config,
         output_data_format=example_gen_pb2.FORMAT_PROTO,
-        custom_config=packed_custom_config,
-        example_artifacts=example_artifacts,
-        instance_name=instance_name)
+        custom_config=packed_custom_config)

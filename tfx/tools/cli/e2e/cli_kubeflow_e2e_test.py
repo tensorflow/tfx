@@ -18,10 +18,9 @@ import locale
 import os
 import subprocess
 import sys
-from typing import Optional, Text
+from typing import Optional
 
 import absl
-from click import testing as click_testing
 from google.cloud import storage
 import kfp
 import kfp_server_api
@@ -29,7 +28,6 @@ import tensorflow as tf
 from tfx.dsl.io import fileio
 from tfx.tools.cli import labels
 from tfx.tools.cli import pip_utils
-from tfx.tools.cli.cli_main import cli_group
 from tfx.tools.cli.e2e import test_utils
 from tfx.utils import retry
 from tfx.utils import test_case_utils
@@ -37,14 +35,14 @@ from tfx.utils import test_case_utils
 
 class CliKubeflowEndToEndTest(test_case_utils.TfxTest):
 
-  def _get_endpoint(self, config: Text) -> Text:
+  def _get_endpoint(self, config: str) -> str:
     lines = config.decode('utf-8').split('\n')
     for line in lines:
       if line.endswith('googleusercontent.com'):
         return line
 
   def setUp(self):
-    super(CliKubeflowEndToEndTest, self).setUp()
+    super().setUp()
 
     # List of packages installed.
     self._pip_list = pip_utils.get_package_names()
@@ -57,9 +55,6 @@ class CliKubeflowEndToEndTest(test_case_utils.TfxTest):
     # encoding for the environment.
     if codecs.lookup(locale.getpreferredencoding()).name == 'ascii':
       os.environ['LANG'] = 'en_US.utf-8'
-
-    # Initialize CLI runner.
-    self.runner = click_testing.CliRunner()
 
     # Testdata path.
     self._testdata_dir = os.path.join(
@@ -97,10 +92,8 @@ class CliKubeflowEndToEndTest(test_case_utils.TfxTest):
     self._endpoint = self._get_endpoint(
         subprocess.check_output(
             'kubectl describe configmap inverse-proxy-config -n kubeflow'.split(
-                )))
+            )))
     absl.logging.info('ENDPOINT: ' + self._endpoint)
-
-    self._pipeline_package_path = '{}.tar.gz'.format(self._pipeline_name)
 
     try:
       # Create a kfp client for cleanup after running commands.
@@ -109,34 +102,33 @@ class CliKubeflowEndToEndTest(test_case_utils.TfxTest):
       absl.logging.info(err)
 
   def tearDown(self):
-    super(CliKubeflowEndToEndTest, self).tearDown()
+    super().tearDown()
     self._cleanup_kfp_server(self._pipeline_name)
 
   def _cleanup_kfp_server(self, pipeline_name):
     self._delete_experiment(pipeline_name)
     self._delete_pipeline(pipeline_name)
     self._delete_pipeline_output(pipeline_name)
-    self._delete_pipeline_metadata(pipeline_name)
 
   @retry.retry(ignore_eventual_failure=True)
-  def _delete_pipeline(self, pipeline_name: Text):
+  def _delete_pipeline(self, pipeline_name: str):
     pipeline_id = self._get_kfp_pipeline_id(pipeline_name)
     if pipeline_id is not None:
       self._client.delete_pipeline(pipeline_id)
       absl.logging.info('Deleted pipeline : {}'.format(pipeline_name))
 
   @retry.retry(ignore_eventual_failure=True)
-  def _delete_experiment(self, pipeline_name: Text):
+  def _delete_experiment(self, pipeline_name: str):
     experiment_id = self._get_kfp_experiment_id(pipeline_name)
     if experiment_id is not None:
       self._delete_all_runs(experiment_id)
       self._client._experiment_api.delete_experiment(experiment_id)
       absl.logging.info('Deleted experiment : {}'.format(pipeline_name))
 
-  def _get_kfp_pipeline_id(self, pipeline_name: Text) -> Optional[Text]:
+  def _get_kfp_pipeline_id(self, pipeline_name: str) -> Optional[str]:
     return self._client.get_pipeline_id(pipeline_name)
 
-  def _get_kfp_experiment_id(self, pipeline_name: Text) -> Optional[Text]:
+  def _get_kfp_experiment_id(self, pipeline_name: str) -> Optional[str]:
     try:
       experiment = self._client.get_experiment(experiment_name=pipeline_name)
     except ValueError:
@@ -144,69 +136,24 @@ class CliKubeflowEndToEndTest(test_case_utils.TfxTest):
     return experiment.id
 
   @retry.retry(ignore_eventual_failure=True)
-  def _delete_pipeline_output(self, pipeline_name: Text) -> None:
+  def _delete_pipeline_output(self, pipeline_name: str) -> None:
     """Deletes output produced by the named pipeline.
 
     Args:
       pipeline_name: The name of the pipeline.
     """
-    gcp_project_id = 'tfx-oss-testing'
-    bucket_name = 'tfx-oss-testing-bucket'
-    client = storage.Client(project=gcp_project_id)
-    bucket = client.get_bucket(bucket_name)
+    if ('KFP_E2E_GCP_PROJECT_ID' not in os.environ) or ('KFP_E2E_BUCKET_NAME'
+                                                        not in os.environ):
+      return
+    client = storage.Client(project=os.environ['KFP_E2E_GCP_PROJECT_ID'])
+    bucket = client.get_bucket(os.environ['KFP_E2E_BUCKET_NAME'])
     prefix = 'test_output/{}'.format(pipeline_name)
     absl.logging.info(
         'Deleting output under GCS bucket prefix: {}'.format(prefix))
     blobs = list(bucket.list_blobs(prefix=prefix))
     bucket.delete_blobs(blobs)
 
-  def _get_mysql_pod_name(self) -> Text:
-    """Returns MySQL pod name in the cluster."""
-    pod_name = subprocess.check_output([
-        'kubectl',
-        '-n',
-        'kubeflow',
-        'get',
-        'pods',
-        '-l',
-        'app=mysql',
-        '--no-headers',
-        '-o',
-        'custom-columns=:metadata.name',
-    ]).decode('utf-8').strip('\n')
-    absl.logging.info('MySQL pod name is: {}'.format(pod_name))
-    return pod_name
-
-  @retry.retry(ignore_eventual_failure=True)
-  def _delete_pipeline_metadata(self, pipeline_name: Text) -> None:
-    """Drops the database containing metadata produced by the pipeline.
-
-    Args:
-      pipeline_name: The name of the pipeline owning the database.
-    """
-    pod_name = self._get_mysql_pod_name()
-    valid_mysql_name = pipeline_name.replace('-', '_')
-    # MySQL database name cannot exceed 64 characters.
-    db_name = 'mlmd_{}'.format(valid_mysql_name[-59:])
-
-    command = [
-        'kubectl',
-        '-n',
-        'kubeflow',
-        'exec',
-        '-it',
-        pod_name,
-        '--',
-        'mysql',
-        '--user',
-        'root',
-        '--execute',
-        'drop database if exists {};'.format(db_name),
-    ]
-    absl.logging.info('Dropping MLMD DB with name: {}'.format(db_name))
-    subprocess.run(command, check=True)
-
-  def _delete_all_runs(self, experiment_id: Text):
+  def _delete_all_runs(self, experiment_id: str):
     try:
       # Get all runs related to the experiment_id.
       response = self._client.list_runs(experiment_id=experiment_id)
@@ -216,19 +163,18 @@ class CliKubeflowEndToEndTest(test_case_utils.TfxTest):
     except kfp_server_api.rest.ApiException as err:
       absl.logging.info(err)
 
-  def _valid_create_and_check(self, pipeline_path: Text,
-                              pipeline_name: Text) -> None:
-    result = self.runner.invoke(cli_group, [
+  def _valid_create_and_check(self, pipeline_path: str,
+                              pipeline_name: str) -> None:
+    result = test_utils.run_cli([
         'pipeline', 'create', '--engine', 'kubeflow', '--pipeline_path',
         pipeline_path, '--endpoint', self._endpoint
     ])
-    absl.logging.info('[CLI] %s', result.output)
-    self.assertIn('Creating pipeline', result.output)
-    self.assertTrue(fileio.exists(self._pipeline_package_path))
+    absl.logging.info('[CLI] %s', result)
+    self.assertIn('Creating pipeline', result)
     self.assertIn('Pipeline "{}" created successfully.'.format(pipeline_name),
-                  result.output)
+                  result)
 
-  def _run_pipeline_using_kfp_client(self, pipeline_name: Text):
+  def _run_pipeline_using_kfp_client(self, pipeline_name: str):
     pipeline_id = self._get_kfp_pipeline_id(pipeline_name)
     experiment_id = self._get_kfp_experiment_id(pipeline_name)
     absl.logging.info(
@@ -244,87 +190,86 @@ class CliKubeflowEndToEndTest(test_case_utils.TfxTest):
     self._valid_create_and_check(self._pipeline_path, self._pipeline_name)
 
     # Test pipeline create when pipeline already exists.
-    result = self.runner.invoke(cli_group, [
-        'pipeline', 'create', '--engine', 'kubeflow', '--pipeline_path',
-        self._pipeline_path, '--endpoint', self._endpoint
-    ])
-    self.assertIn('Creating pipeline', result.output)
-    self.assertTrue('Pipeline "{}" already exists.'.format(self._pipeline_name),
-                    result.output)
+    with self.assertRaises(subprocess.CalledProcessError) as cm:
+      test_utils.run_cli([
+          'pipeline', 'create', '--engine', 'kubeflow', '--pipeline_path',
+          self._pipeline_path, '--endpoint', self._endpoint
+      ])
+    self.assertIn('Pipeline "{}" already exists.'.format(self._pipeline_name),
+                  cm.exception.output)
 
   def testPipelineUpdate(self):
     # Try pipeline update when pipeline does not exist.
-    result = self.runner.invoke(cli_group, [
-        'pipeline', 'update', '--engine', 'kubeflow', '--pipeline_path',
-        self._pipeline_path, '--endpoint', self._endpoint
-    ])
-    self.assertIn('Updating pipeline', result.output)
+    with self.assertRaises(subprocess.CalledProcessError) as cm:
+      test_utils.run_cli([
+          'pipeline', 'update', '--engine', 'kubeflow', '--pipeline_path',
+          self._pipeline_path, '--endpoint', self._endpoint
+      ])
     self.assertIn('Cannot find pipeline "{}".'.format(self._pipeline_name),
-                  result.output)
+                  cm.exception.output)
 
     # Now update an existing pipeline.
     self._valid_create_and_check(self._pipeline_path, self._pipeline_name)
 
-    result = self.runner.invoke(cli_group, [
+    result = test_utils.run_cli([
         'pipeline', 'update', '--engine', 'kubeflow', '--pipeline_path',
         self._pipeline_path, '--endpoint', self._endpoint
     ])
-    self.assertIn('Updating pipeline', result.output)
+    self.assertIn('Updating pipeline', result)
     self.assertIn(
         'Pipeline "{}" updated successfully.'.format(self._pipeline_name),
-        result.output)
+        result)
 
   def testPipelineCompile(self):
     # Invalid DSL path
     pipeline_path = os.path.join(self._testdata_dir, 'test_pipeline_flink.py')
-    result = self.runner.invoke(cli_group, [
-        'pipeline', 'compile', '--engine', 'kubeflow', '--pipeline_path',
-        pipeline_path
-    ])
-    self.assertIn('Compiling pipeline', result.output)
+    with self.assertRaises(subprocess.CalledProcessError) as cm:
+      test_utils.run_cli([
+          'pipeline', 'compile', '--engine', 'kubeflow', '--pipeline_path',
+          pipeline_path
+      ])
     self.assertIn('Invalid pipeline path: {}'.format(pipeline_path),
-                  result.output)
+                  cm.exception.output)
 
     # Wrong Runner.
     pipeline_path = os.path.join(self._testdata_dir,
                                  'test_pipeline_airflow_1.py')
-    result = self.runner.invoke(cli_group, [
-        'pipeline', 'compile', '--engine', 'kubeflow', '--pipeline_path',
-        pipeline_path
-    ])
-    self.assertIn('Compiling pipeline', result.output)
-    self.assertIn('kubeflow runner not found in dsl.', result.output)
+    with self.assertRaises(subprocess.CalledProcessError) as cm:
+      test_utils.run_cli([
+          'pipeline', 'compile', '--engine', 'kubeflow', '--pipeline_path',
+          pipeline_path
+      ])
 
     # Successful compilation.
-    result = self.runner.invoke(cli_group, [
+    result = test_utils.run_cli([
         'pipeline', 'compile', '--engine', 'kubeflow', '--pipeline_path',
         self._pipeline_path
     ])
-    self.assertIn('Compiling pipeline', result.output)
-    self.assertIn('Pipeline compiled successfully', result.output)
+    absl.logging.info('pipeline compile result:%s', result)
+    self.assertIn('Compiling pipeline', result)
+    self.assertIn('Pipeline compiled successfully', result)
 
   def testPipelineDelete(self):
     # Try deleting a non existent pipeline.
-    result = self.runner.invoke(cli_group, [
-        'pipeline', 'delete', '--engine', 'kubeflow', '--pipeline_name',
-        self._pipeline_name, '--endpoint', self._endpoint
-    ])
-    self.assertIn('Deleting pipeline', result.output)
+    with self.assertRaises(subprocess.CalledProcessError) as cm:
+      test_utils.run_cli([
+          'pipeline', 'delete', '--engine', 'kubeflow', '--pipeline_name',
+          self._pipeline_name, '--endpoint', self._endpoint
+      ])
     self.assertIn('Cannot find pipeline "{}".'.format(self._pipeline_name),
-                  result.output)
+                  cm.exception.output)
 
     # Create a pipeline.
     self._valid_create_and_check(self._pipeline_path, self._pipeline_name)
 
     # Now delete the pipeline.
-    result = self.runner.invoke(cli_group, [
+    result = test_utils.run_cli([
         'pipeline', 'delete', '--engine', 'kubeflow', '--pipeline_name',
         self._pipeline_name, '--endpoint', self._endpoint
     ])
-    self.assertIn('Deleting pipeline', result.output)
+    self.assertIn('Deleting pipeline', result)
     self.assertIn(
-        'Pipeline {} deleted successfully.'.format(self._pipeline_name),
-        result.output)
+        'Pipeline {} deleted successfully.'.format(self._pipeline_name), result)
 
   def testPipelineList(self):
     # Create pipelines.
@@ -333,56 +278,62 @@ class CliKubeflowEndToEndTest(test_case_utils.TfxTest):
     self.addCleanup(self._cleanup_kfp_server, self._pipeline_name_v2)
 
     # List pipelines.
-    result = self.runner.invoke(cli_group, [
+    result = test_utils.run_cli([
         'pipeline', 'list', '--engine', 'kubeflow', '--endpoint', self._endpoint
     ])
-    self.assertIn('Listing all pipelines', result.output)
-    self.assertIn(self._pipeline_name, result.output)
-    self.assertIn(self._pipeline_name_v2, result.output)
+    self.assertIn('Listing all pipelines', result)
+    self.assertIn(self._pipeline_name, result)
+    self.assertIn(self._pipeline_name_v2, result)
 
-  def testPipelineCreateAutoDetect(self):
-    result = self.runner.invoke(cli_group, [
+  def testPipelineCreateAutoDetectFail(self):
+    if labels.AIRFLOW_PACKAGE_NAME not in self._pip_list:
+      self.skipTest(
+          'Airflow doesn\'t exist. Airflow needed to make auto detect fail.')
+    with self.assertRaises(subprocess.CalledProcessError) as cm:
+      test_utils.run_cli([
+          'pipeline', 'create', '--engine', 'auto', '--pipeline_path',
+          self._pipeline_path, '--endpoint', self._endpoint
+      ])
+    self.assertIn(
+        'Multiple orchestrators found. Choose one using --engine flag.',
+        cm.exception.output)
+
+  def testPipelineCreateAutoDetectSuccess(self):
+    if labels.AIRFLOW_PACKAGE_NAME in self._pip_list:
+      self.skipTest(
+          'Airflow exists. Airflow should not exist to make auto detect fail.')
+    result = test_utils.run_cli([
         'pipeline', 'create', '--engine', 'auto', '--pipeline_path',
         self._pipeline_path, '--endpoint', self._endpoint
     ])
-    self.assertIn('Creating pipeline', result.output)
-    if labels.AIRFLOW_PACKAGE_NAME in self._pip_list and labels.KUBEFLOW_PACKAGE_NAME in self._pip_list:
-      self.assertIn(
-          'Multiple orchestrators found. Choose one using --engine flag.',
-          result.output)
-    else:
-      self.assertTrue(fileio.exists(self._pipeline_package_path))
-      self.assertIn(
-          'Pipeline "{}" created successfully.'.format(self._pipeline_name),
-          result.output)
+    self.assertIn(
+        'Pipeline "{}" created successfully.'.format(self._pipeline_name),
+        result)
 
   def testRunCreate(self):
-    # Try running a non-existent pipeline.
-    result = self.runner.invoke(cli_group, [
-        'run', 'create', '--engine', 'kubeflow', '--pipeline_name',
-        self._pipeline_name, '--endpoint', self._endpoint
-    ])
-    self.assertIn('Creating a run for pipeline: {}'.format(self._pipeline_name),
-                  result.output)
+    with self.assertRaises(subprocess.CalledProcessError) as cm:
+      test_utils.run_cli([
+          'run', 'create', '--engine', 'kubeflow', '--pipeline_name',
+          self._pipeline_name, '--endpoint', self._endpoint
+      ])
     self.assertIn('Cannot find pipeline "{}".'.format(self._pipeline_name),
-                  result.output)
+                  cm.exception.output)
 
     # Now create a pipeline.
     self._valid_create_and_check(self._pipeline_path, self._pipeline_name)
 
     # Run pipeline.
-    result = self.runner.invoke(cli_group, [
+    result = test_utils.run_cli([
         'run', 'create', '--engine', 'kubeflow', '--pipeline_name',
         self._pipeline_name, '--endpoint', self._endpoint
     ])
 
     self.assertIn('Creating a run for pipeline: {}'.format(self._pipeline_name),
-                  result.output)
+                  result)
     self.assertNotIn(
-        'Pipeline "{}" does not exist.'.format(self._pipeline_name),
-        result.output)
+        'Pipeline "{}" does not exist.'.format(self._pipeline_name), result)
     self.assertIn('Run created for pipeline: {}'.format(self._pipeline_name),
-                  result.output)
+                  result)
 
   def testRunDelete(self):
     # Now create a pipeline.
@@ -392,12 +343,12 @@ class CliKubeflowEndToEndTest(test_case_utils.TfxTest):
     run = self._run_pipeline_using_kfp_client(self._pipeline_name)
 
     absl.logging.info('Deleting run: %s', run.id)
-    result = self.runner.invoke(cli_group, [
+    result = test_utils.run_cli([
         'run', 'delete', '--engine', 'kubeflow', '--endpoint', self._endpoint,
         '--run_id', run.id
     ])
-    self.assertIn('Deleting run.', result.output)
-    self.assertIn('Run deleted.', result.output)
+    self.assertIn('Deleting run.', result)
+    self.assertIn('Run deleted.', result)
 
   def testRunTerminate(self):
     # Now create a pipeline.
@@ -407,12 +358,12 @@ class CliKubeflowEndToEndTest(test_case_utils.TfxTest):
     run = self._run_pipeline_using_kfp_client(self._pipeline_name)
 
     absl.logging.info('Terminating run: %s', run.id)
-    result = self.runner.invoke(cli_group, [
+    result = test_utils.run_cli([
         'run', 'terminate', '--engine', 'kubeflow', '--endpoint',
         self._endpoint, '--run_id', run.id
     ])
-    self.assertIn('Terminating run.', result.output)
-    self.assertIn('Run terminated.', result.output)
+    self.assertIn('Terminating run.', result)
+    self.assertIn('Run terminated.', result)
 
   def testRunStatus(self):
     # Now create a pipeline.
@@ -423,13 +374,13 @@ class CliKubeflowEndToEndTest(test_case_utils.TfxTest):
 
     absl.logging.info('Retrieving run status: %s(%s)', run.id,
                       self._pipeline_name)
-    result = self.runner.invoke(cli_group, [
+    result = test_utils.run_cli([
         'run', 'status', '--engine', 'kubeflow', '--pipeline_name',
         self._pipeline_name, '--endpoint', self._endpoint, '--run_id', run.id
     ])
-    self.assertIn('Retrieving run status.', result.output)
-    self.assertIn(str(run.id), result.output)
-    self.assertIn(self._pipeline_name, result.output)
+    self.assertIn('Retrieving run status.', result)
+    self.assertIn(str(run.id), result)
+    self.assertIn(self._pipeline_name, result)
 
   def testRunList(self):
     # Now create a pipeline.
@@ -440,16 +391,15 @@ class CliKubeflowEndToEndTest(test_case_utils.TfxTest):
     run_2 = self._run_pipeline_using_kfp_client(self._pipeline_name)
 
     # List runs.
-    result = self.runner.invoke(cli_group, [
+    result = test_utils.run_cli([
         'run', 'list', '--engine', 'kubeflow', '--pipeline_name',
         self._pipeline_name, '--endpoint', self._endpoint
     ])
     self.assertIn(
-        'Listing all runs of pipeline: {}'.format(self._pipeline_name),
-        result.output)
-    self.assertIn(str(run_1.id), result.output)
-    self.assertIn(str(run_2.id), result.output)
-    self.assertIn(self._pipeline_name, result.output)
+        'Listing all runs of pipeline: {}'.format(self._pipeline_name), result)
+    self.assertIn(str(run_1.id), result)
+    self.assertIn(str(run_2.id), result)
+    self.assertIn(self._pipeline_name, result)
 
 
 if __name__ == '__main__':

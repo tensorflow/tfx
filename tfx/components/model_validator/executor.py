@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,12 +13,8 @@
 # limitations under the License.
 """Generic TFX model validator executor."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import os
-from typing import Any, Dict, List, Text
+from typing import Any, Dict, List
 
 import absl
 import apache_beam as beam
@@ -27,14 +22,14 @@ import apache_beam as beam
 import tensorflow_model_analysis as tfma
 from tfx import types
 from tfx.components.model_validator import constants
-from tfx.dsl.components.base import base_executor
+from tfx.dsl.components.base import base_beam_executor
 from tfx.dsl.io import fileio
 from tfx.types import artifact_utils
 from tfx.utils import io_utils
 from tfx.utils import path_utils
 
 
-class Executor(base_executor.BaseExecutor):
+class Executor(base_beam_executor.BaseBeamExecutor):
   """DEPRECATED: Please use `Evaluator` instead.
 
   The model validator helps prevent bad models from being pushed to production.
@@ -89,10 +84,10 @@ class Executor(base_executor.BaseExecutor):
         return False
     return True
 
-  def _generate_blessing_result(self, eval_examples_uri: Text,
+  def _generate_blessing_result(self, eval_examples_uri: str,
                                 slice_spec: List[tfma.slicer.SingleSliceSpec],
-                                current_model_dir: Text,
-                                blessed_model_dir: Text) -> bool:
+                                current_model_dir: str,
+                                blessed_model_dir: str) -> bool:
     current_model_eval_result_path = os.path.join(
         self._temp_path, constants.CURRENT_MODEL_EVAL_RESULT_PATH)
     blessed_model_eval_result_path = os.path.join(
@@ -144,9 +139,9 @@ class Executor(base_executor.BaseExecutor):
       absl.logging.info('Current model worse than blessed model.')
       return False
 
-  def Do(self, input_dict: Dict[Text, List[types.Artifact]],
-         output_dict: Dict[Text, List[types.Artifact]],
-         exec_properties: Dict[Text, Any]) -> None:
+  def Do(self, input_dict: Dict[str, List[types.Artifact]],
+         output_dict: Dict[str, List[types.Artifact]],
+         exec_properties: Dict[str, Any]) -> None:
     """Validate current model against last blessed model.
 
     Args:

@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,17 +20,16 @@ The utilities in this file are used to build a model with native Keras.
 This module file will be used in Transform and generic Trainer.
 """
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
-from typing import List, Text
+from typing import List
 
 import absl
 import tensorflow as tf
 import tensorflow_transform as tft
 
 from tfx.components.trainer.executor import TrainerFnArgs
+from tfx.components.trainer.fn_args_utils import DataAccessor
+
+from tfx_bsl.tfxio import dataset_options
 
 # Categorical features are assumed to each have a maximum value in the dataset.
 _MAX_CATEGORICAL_FEATURE_VALUES = [24, 31, 12]
@@ -76,13 +74,6 @@ def _transformed_names(keys):
   return [_transformed_name(key) for key in keys]
 
 
-def _gzip_reader_fn(filenames):
-  """Small utility returning a record reader that can read gzip'ed files."""
-  return tf.data.TFRecordDataset(
-      filenames,
-      compression_type='GZIP')
-
-
 def _fill_in_missing(x):
   """Replace missing values in a SparseTensor.
 
@@ -124,13 +115,14 @@ def _get_serve_tf_examples_fn(model, tf_transform_output):
   return serve_tf_examples_fn
 
 
-def _input_fn(file_pattern: List[Text],
+def _input_fn(file_pattern: List[str], data_accessor: DataAccessor,
               tf_transform_output: tft.TFTransformOutput,
-              batch_size: int = 200) -> tf.data.Dataset:
+              batch_size: int) -> tf.data.Dataset:
   """Generates features and label for tuning/training.
 
   Args:
     file_pattern: List of paths or patterns of input tfrecord files.
+    data_accessor: DataAccessor for converting input to RecordBatch.
     tf_transform_output: A TFTransformOutput.
     batch_size: representing the number of consecutive elements of returned
       dataset to combine in a single batch
@@ -139,17 +131,11 @@ def _input_fn(file_pattern: List[Text],
     A dataset that contains (features, indices) tuple where features is a
       dictionary of Tensors, and indices is a single Tensor of label indices.
   """
-  transformed_feature_spec = (
-      tf_transform_output.transformed_feature_spec().copy())
-
-  dataset = tf.data.experimental.make_batched_features_dataset(
-      file_pattern=file_pattern,
-      batch_size=batch_size,
-      features=transformed_feature_spec,
-      reader=_gzip_reader_fn,
-      label_key=_transformed_name(_LABEL_KEY))
-
-  return dataset
+  return data_accessor.tf_dataset_factory(
+      file_pattern,
+      dataset_options.TensorFlowDatasetOptions(
+          batch_size=batch_size, label_key=_transformed_name(_LABEL_KEY)),
+      tf_transform_output.transformed_metadata.schema).repeat()
 
 
 def _build_keras_model(hidden_units: List[int] = None) -> tf.keras.Model:
@@ -262,7 +248,7 @@ def preprocessing_fn(inputs):
   """
   outputs = {}
   for key in _DENSE_FLOAT_FEATURE_KEYS:
-    # Preserve this feature as a dense float, setting nan's to the mean.
+    # If sparse make it dense, setting nan's to 0 or '', and apply zscore.
     outputs[_transformed_name(key)] = tft.scale_to_z_score(
         _fill_in_missing(inputs[key]))
 
@@ -308,8 +294,10 @@ def run_fn(fn_args: TrainerFnArgs):
 
   tf_transform_output = tft.TFTransformOutput(fn_args.transform_output)
 
-  train_dataset = _input_fn(fn_args.train_files, tf_transform_output, 40)
-  eval_dataset = _input_fn(fn_args.eval_files, tf_transform_output, 40)
+  train_dataset = _input_fn(fn_args.train_files, fn_args.data_accessor,
+                            tf_transform_output, 40)
+  eval_dataset = _input_fn(fn_args.eval_files, fn_args.data_accessor,
+                           tf_transform_output, 40)
 
   # If no GPUs are found, CPU is used.
   mirrored_strategy = tf.distribute.MirroredStrategy()

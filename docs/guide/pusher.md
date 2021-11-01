@@ -20,17 +20,39 @@ customization, since all of the work is done by the Pusher TFX component.
 Typical code looks like this:
 
 ```python
-from tfx import components
-
-...
-
-pusher = components.Pusher(
+pusher = Pusher(
   model=trainer.outputs['model'],
   model_blessing=evaluator.outputs['blessing'],
   infra_blessing=infra_validator.outputs['blessing'],
-  push_destination=pusher_pb2.PushDestination(
-    filesystem=pusher_pb2.PushDestination.Filesystem(
+  push_destination=tfx.proto.PushDestination(
+    filesystem=tfx.proto.PushDestination.Filesystem(
         base_directory=serving_model_dir)
   )
 )
 ```
+
+### Pushing a model produced from InfraValidator.
+
+(From version 0.30.0)
+
+InfraValidator can also produce `InfraBlessing` artifact containing a
+[model with warmup](infra_validator#producing_a_savedmodel_with_warmup), and
+Pusher can push it just like a `Model` artifact.
+
+```python
+infra_validator = InfraValidator(
+    ...,
+    # make_warmup=True will produce a model with warmup requests in its
+    # 'blessing' output.
+    request_spec=tfx.proto.RequestSpec(..., make_warmup=True)
+)
+
+pusher = Pusher(
+    # Push model from 'infra_blessing' input.
+    infra_blessing=infra_validator.outputs['blessing'],
+    push_destination=tfx.proto.PushDestination(...)
+)
+```
+
+More details are available in the
+[Pusher API reference](https://www.tensorflow.org/tfx/api_docs/python/tfx/v1/components/Pusher).

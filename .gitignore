@@ -122,6 +122,9 @@ venv.bak/
 # Intellij project settings
 .idea
 
+# VSCode project settings
+.vscode
+
 # mkdocs documentation
 /site
 

@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,83 +11,82 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""ContainerBuilder builds the container image."""
-
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
+"""Builds the container image using files in the current directory."""
 
 import os
-from typing import Optional, Text
+from typing import Any, Dict, Iterable, Optional
 
 import click
+import docker
+from docker import utils as docker_utils
 
-from tfx.tools.cli.container_builder import buildspec
+from tfx.tools.cli.container_builder import dockerfile
 from tfx.tools.cli.container_builder import labels
-from tfx.tools.cli.container_builder.dockerfile import Dockerfile
-from tfx.tools.cli.container_builder.skaffold_cli import SkaffoldCli
 
 
-# TODO(b/142357382): add e2e tests.
-class ContainerBuilder(object):
+def _get_image_repo(image: str) -> str:
+  """Extracts image name before ':' which is REPO part of the image name."""
+  image_fields = image.split(':')
+  if len(image_fields) > 2:
+    raise ValueError(f'Too many ":" in the image name: {image}')
+  return image_fields[0]
+
+
+def _print_docker_log_stream(stream: Iterable[Dict[str, Any]],
+                             message_key: str,
+                             newline: bool = False):
+  last_message = None
+  for item in stream:
+    if message_key in item:
+      if item[message_key] != last_message:
+        click.echo('[Docker] ' + item[message_key], nl=newline)
+        last_message = item[message_key]
+
+
+def build(target_image: str,
+          base_image: Optional[str] = None,
+          dockerfile_name: Optional[str] = None,
+          setup_py_filename: Optional[str] = None) -> str:
   """Build containers.
 
-  ContainerBuilder prepares the build files and run Skaffold to build the
-  containers.
+  Generates a dockerfile if needed and build a container image using docker SDK.
 
-  Attributes:
-    _buildspec: BuildSpec instance.
-    _skaffold_cmd: Skaffold command.
+  Args:
+    target_image: the target image path to be built.
+    base_image: the image path to use as the base image.
+    dockerfile_name: the dockerfile name, which is stored in the workspace
+      directory. The default workspace directory is '.' and cannot be changed
+      for now.
+    setup_py_filename: the setup.py file name, which is used to build a python
+      package for the workspace directory. If not specified, the whole directory
+      is copied and PYTHONPATH is configured.
+
+  Returns:
+    Built image name with sha256 id.
   """
+  dockerfile_name = dockerfile_name or os.path.join(labels.BUILD_CONTEXT,
+                                                    labels.DOCKERFILE_NAME)
 
-  def __init__(self,
-               target_image: Optional[Text] = None,
-               base_image: Optional[Text] = None,
-               skaffold_cmd: Optional[Text] = None,
-               buildspec_filename: Optional[Text] = None,
-               dockerfile_name: Optional[Text] = None,
-               setup_py_filename: Optional[Text] = None):
-    """Initialization.
+  dockerfile.Dockerfile(
+      filename=dockerfile_name,
+      setup_py_filename=setup_py_filename,
+      base_image=base_image)
 
-    Args:
-      target_image: the target image path to be built.
-      base_image: the image path to use as the base image.
-      skaffold_cmd: skaffold command.
-      buildspec_filename: the buildspec file path that is accessible to the
-        current execution environment. It could be either absolute path or
-        relative path.
-      dockerfile_name: the dockerfile name, which is stored in the workspace
-        directory. The workspace directory is specified in the build spec and
-        the default workspace directory is '.'.
-      setup_py_filename: the setup.py file name, which is used to build a
-        python package for the workspace directory. If not specified, the
-        whole directory is copied and PYTHONPATH is configured.
-    """
-    self._skaffold_cmd = skaffold_cmd or labels.SKAFFOLD_COMMAND
-    buildspec_filename = buildspec_filename or labels.BUILD_SPEC_FILENAME
-    dockerfile_name = dockerfile_name or labels.DOCKERFILE_NAME
+  # Uses Low-level API for log streaming.
+  docker_low_client = docker.APIClient(**docker_utils.kwargs_from_env())
+  log_stream = docker_low_client.build(
+      path=labels.BUILD_CONTEXT,
+      dockerfile=dockerfile_name,
+      tag=target_image,
+      rm=True,
+      decode=True,
+  )
+  _print_docker_log_stream(log_stream, 'stream')
 
-    if os.path.exists(buildspec_filename):
-      self._buildspec = buildspec.BuildSpec(filename=buildspec_filename)
-      if target_image is not None:
-        click.echo(
-            'Target image %s is not used. If the build spec is '
-            'provided, update the target image in the build spec '
-            'file %s.' % (target_image, buildspec_filename))
-    else:
-      self._buildspec = buildspec.BuildSpec.load_default(
-          filename=buildspec_filename,
-          target_image=target_image,
-          dockerfile_name=dockerfile_name)
+  docker_client = docker.from_env()
+  log_stream = docker_client.images.push(
+      repository=target_image, stream=True, decode=True)
+  _print_docker_log_stream(log_stream, 'status', newline=True)
 
-    Dockerfile(
-        filename=os.path.join(self._buildspec.build_context, dockerfile_name),
-        setup_py_filename=setup_py_filename,
-        base_image=base_image)
-
-  def build(self):
-    """Build the container and return the built image path with SHA."""
-    skaffold_cli = SkaffoldCli(cmd=self._skaffold_cmd)
-    image_sha = skaffold_cli.build(self._buildspec)
-    target_image = self._buildspec.target_image
-    return target_image + '@' + image_sha
+  image_id = docker_client.images.get_registry_data(target_image).id
+  return f'{_get_image_repo(target_image)}@{image_id}'

@@ -11,4 +11,16 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""TFX dsl module."""
+"""TFX DSL module."""
+
+from tfx.dsl.components.common.importer import Importer
+from tfx.dsl.components.common.resolver import Resolver
+# TODO(b/184980265): move Pipeline implementation to tfx/dsl.
+from tfx.orchestration.pipeline import ExecutionMode
+from tfx.orchestration.pipeline import Pipeline
+from tfx.types.artifact import Artifact
+from tfx.types.channel import Channel
+from tfx.v1.dsl import components
+from tfx.v1.dsl import experimental
+from tfx.v1.dsl import io
+from tfx.v1.dsl import placeholders

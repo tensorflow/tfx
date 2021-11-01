@@ -12,13 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Tests for tfx.orchestration.portable.output_utils."""
+import os
+from unittest import mock
+
 from absl.testing import parameterized
-import mock
 import tensorflow as tf
 from tfx.dsl.io import fileio
 from tfx.orchestration.portable import outputs_utils
 from tfx.proto.orchestration import execution_result_pb2
 from tfx.proto.orchestration import pipeline_pb2
+from tfx.types import standard_artifacts
 from tfx.types.value_artifact import ValueArtifact
 from tfx.utils import test_case_utils
 
@@ -219,7 +222,7 @@ class OutputUtilsTest(test_case_utils.TfxTest, parameterized.TestCase):
         executor_output_uri,
         '.*/test_node/.system/executor_execution/1/executor_output.pb')
     # Verify that executor_output_uri is writable.
-    with fileio.open(executor_output_uri, mode='w') as f:
+    with fileio.open(executor_output_uri, mode='wb') as f:
       executor_output = execution_result_pb2.ExecutorOutput()
       f.write(executor_output.SerializeToString())
 
@@ -251,7 +254,7 @@ class OutputUtilsTest(test_case_utils.TfxTest, parameterized.TestCase):
     self.assertRegex(tmp_dir,
                      '.*/test_node/.system/executor_execution/1/.temp/')
 
-  def testMakeOutputDirsAndRemoveOutputDirs(self):
+  def testMakeClearAndRemoveOutputDirs(self):
     output_artifacts = self._output_resolver().generate_output_artifacts(1)
     outputs_utils.make_output_dirs(output_artifacts)
     for _, artifact_list in output_artifacts.items():
@@ -260,7 +263,15 @@ class OutputUtilsTest(test_case_utils.TfxTest, parameterized.TestCase):
           self.assertFalse(fileio.isdir(artifact.uri))
         else:
           self.assertTrue(fileio.isdir(artifact.uri))
+          with fileio.open(os.path.join(artifact.uri, 'output'), 'w') as f:
+            f.write('')
         self.assertTrue(fileio.exists(artifact.uri))
+
+    outputs_utils.clear_output_dirs(output_artifacts)
+    for _, artifact_list in output_artifacts.items():
+      for artifact in artifact_list:
+        if not isinstance(artifact, ValueArtifact):
+          self.assertEqual(fileio.listdir(artifact.uri), [])
 
     outputs_utils.remove_output_dirs(output_artifacts)
     for _, artifact_list in output_artifacts.items():
@@ -284,6 +295,21 @@ class OutputUtilsTest(test_case_utils.TfxTest, parameterized.TestCase):
     rmtree_fn.side_effect = ValueError('oops')
     with self.assertRaisesRegex(ValueError, 'oops'):
       outputs_utils.remove_stateful_working_dir('/a/fake/path')
+
+  def testPopulateOutputArtifact(self):
+    executor_output = execution_result_pb2.ExecutorOutput()
+    output_dict = {'output_key': [standard_artifacts.Model()]}
+    outputs_utils.populate_output_artifact(executor_output, output_dict)
+    self.assertProtoEquals(
+        """
+        output_artifacts {
+          key: "output_key"
+          value {
+            artifacts {
+            }
+          }
+        }
+        """, executor_output)
 
 
 if __name__ == '__main__':

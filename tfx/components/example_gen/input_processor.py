@@ -15,15 +15,14 @@
 
 import abc
 import copy
-from typing import Iterable, Optional, Text, Tuple
-import six
+from typing import Iterable, Optional, Tuple
 
 from tfx.components.example_gen import utils
 from tfx.proto import example_gen_pb2
 from tfx.proto import range_config_pb2
 
 
-class InputProcessor(six.with_metaclass(abc.ABCMeta, object)):
+class InputProcessor(abc.ABC):
   """Base InputProcessor class."""
 
   def __init__(self,
@@ -36,31 +35,7 @@ class InputProcessor(six.with_metaclass(abc.ABCMeta, object)):
       range_config: An instance of range_config_pb2.RangeConfig, defines the
         rules for span resolving.
     """
-    self._is_match_span = None
-    self._is_match_date = None
-    self._is_match_version = None
-    for split in splits:
-      is_match_span, is_match_date, is_match_version = utils.verify_split_pattern_specs(
-          split)
-      if self._is_match_span is None:
-        self._is_match_span = is_match_span
-        self._is_match_date = is_match_date
-        self._is_match_version = is_match_version
-      elif (self._is_match_span != is_match_span or
-            self._is_match_date != is_match_date or
-            self._is_match_version != is_match_version):
-        raise ValueError('Spec setup should the same for all splits: %s.' %
-                         split.pattern)
-
     self._splits = splits
-
-    if (self._is_match_span or self._is_match_date) and not range_config:
-      range_config = range_config_pb2.RangeConfig(
-          rolling_range=range_config_pb2.RollingRange(num_spans=1))
-    if not self._is_match_span and not self._is_match_date and range_config:
-      raise ValueError(
-          'Span or Date spec should be specified in split pattern if RangeConfig is specified.'
-      )
 
     if range_config:
       if range_config.HasField('static_range'):
@@ -110,33 +85,31 @@ class InputProcessor(six.with_metaclass(abc.ABCMeta, object)):
         target_span = self.get_latest_span()
 
     # TODO(b/162622803): add default behavior for when version spec not present.
-    if self._is_match_version:
-      target_version = self.get_latest_version(target_span)  # pylint: disable=assignment-from-none
+    target_version = self.get_latest_version(target_span)  # pylint: disable=assignment-from-none
 
     return target_span, target_version
 
-  def get_pattern_for_span_version(self, pattern: Text, span: int,
-                                   version: Optional[int]) -> Text:
+  @abc.abstractmethod
+  def get_pattern_for_span_version(self, pattern: str, span: int,
+                                   version: Optional[int]) -> str:
     """Return pattern with Span and Version spec filled."""
-    return utils.get_pattern_for_span_version(
-        pattern=pattern,
-        is_match_span=self._is_match_span,
-        is_match_date=self._is_match_date,
-        is_match_version=self._is_match_version,
-        span=span,
-        version=version)
+    # TODO(b/181275944): refactor as not all type of ExampleGen has pattern.
+    raise NotImplementedError
 
   @abc.abstractmethod
   def get_latest_span(self) -> int:
     """Resolves the latest Span information."""
     raise NotImplementedError
 
-  def get_latest_version(self, span: int) -> Optional[int]:
+  def get_latest_version(self, span: int) -> Optional[int]:  # pylint: disable=unused-argument
     """Resolves the latest Version of a Span."""
     return None
 
-  def get_input_fingerprint(self, span: int,
-                            version: Optional[int]) -> Optional[Text]:
+  def get_input_fingerprint(
+      self,
+      span: int,  # pylint: disable=unused-argument
+      version: Optional[int],  # pylint: disable=unused-argument
+  ) -> Optional[str]:
     """Returns the fingerprint for a certain Version of a certain Span."""
     return None
 
@@ -145,7 +118,7 @@ class FileBasedInputProcessor(InputProcessor):
   """Custom InputProcessor for file based ExampleGen driver."""
 
   def __init__(self,
-               input_base_uri: Text,
+               input_base_uri: str,
                splits: Iterable[example_gen_pb2.Input.Split],
                range_config: Optional[range_config_pb2.RangeConfig] = None):
     """Initialize FileBasedInputProcessor.
@@ -156,8 +129,32 @@ class FileBasedInputProcessor(InputProcessor):
       range_config: An instance of range_config_pb2.RangeConfig, defines the
         rules for span resolving.
     """
-    super(FileBasedInputProcessor, self).__init__(
-        splits=splits, range_config=range_config)
+    super().__init__(splits=splits, range_config=range_config)
+
+    self._is_match_span = None
+    self._is_match_date = None
+    self._is_match_version = None
+    for split in splits:
+      is_match_span, is_match_date, is_match_version = utils.verify_split_pattern_specs(
+          split)
+      if self._is_match_span is None:
+        self._is_match_span = is_match_span
+        self._is_match_date = is_match_date
+        self._is_match_version = is_match_version
+      elif (self._is_match_span != is_match_span or
+            self._is_match_date != is_match_date or
+            self._is_match_version != is_match_version):
+        raise ValueError('Spec setup should the same for all splits: %s.' %
+                         split.pattern)
+
+    if (self._is_match_span or self._is_match_date) and not range_config:
+      range_config = range_config_pb2.RangeConfig(
+          rolling_range=range_config_pb2.RollingRange(num_spans=1))
+    if not self._is_match_span and not self._is_match_date and range_config:
+      raise ValueError(
+          'Span or Date spec should be specified in split pattern if RangeConfig is specified.'
+      )
+
     self._input_base_uri = input_base_uri
     self._fingerprint = None
 
@@ -170,6 +167,17 @@ class FileBasedInputProcessor(InputProcessor):
         self._input_base_uri, splits, self._range_config)
     return span, version
 
+  def get_pattern_for_span_version(self, pattern: str, span: int,
+                                   version: Optional[int]) -> str:
+    """Return pattern with Span and Version spec filled."""
+    return utils.get_pattern_for_span_version(
+        pattern=pattern,
+        is_match_span=self._is_match_span,
+        is_match_date=self._is_match_date,
+        is_match_version=self._is_match_version,
+        span=span,
+        version=version)
+
   def get_latest_span(self) -> int:
     """Resolves the latest Span information."""
     raise NotImplementedError
@@ -179,7 +187,7 @@ class FileBasedInputProcessor(InputProcessor):
     raise NotImplementedError
 
   def get_input_fingerprint(self, span: int,
-                            version: Optional[int]) -> Optional[Text]:
+                            version: Optional[int]) -> Optional[str]:
     """Returns the fingerprint for a certain Version of a certain Span."""
     assert self._fingerprint, 'Call resolve_span_and_version first.'
     return self._fingerprint
@@ -187,6 +195,11 @@ class FileBasedInputProcessor(InputProcessor):
 
 class QueryBasedInputProcessor(InputProcessor):
   """Custom InputProcessor for query based ExampleGen driver."""
+
+  def get_pattern_for_span_version(self, pattern: str, span: int,
+                                   version: Optional[int]) -> str:
+    """Return pattern with Span and Version spec filled."""
+    return utils.get_query_for_span(pattern, span)
 
   def get_latest_span(self) -> int:
     """Resolves the latest Span information."""
@@ -197,12 +210,11 @@ class QueryBasedInputProcessor(InputProcessor):
 
   def get_latest_version(self, span: int) -> Optional[int]:
     """Resolves the latest Version of a Span."""
-    # TODO(b/179853017): support Version spec.
-    raise NotImplementedError(
-        'For QueryBasedExampleGen, Version spec is not supported.')
+    # TODO(b/179853017): support Version.
+    return None
 
   def get_input_fingerprint(self, span: int,
-                            version: Optional[int]) -> Optional[Text]:
+                            version: Optional[int]) -> Optional[str]:
     """Returns the fingerprint for a certain Version of a certain Span."""
     # TODO(b/179853017): support fingerprint of table.
     return None

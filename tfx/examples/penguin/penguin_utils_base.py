@@ -17,13 +17,15 @@ The utilities in this file are used to build a model with native Keras or with
 Flax.
 """
 
-from typing import List, Optional, Text
+from typing import List
+from absl import logging
+
 import tensorflow as tf
 import tensorflow_transform as tft
 
-from tfx.components.trainer.fn_args_utils import DataAccessor
+from tfx import v1 as tfx
 
-from tfx_bsl.tfxio import dataset_options
+from tfx_bsl.public import tfxio
 
 FEATURE_KEYS = [
     'culmen_length_mm', 'culmen_depth_mm', 'flipper_length_mm', 'body_mass_g'
@@ -39,45 +41,62 @@ def transformed_name(key):
 
 
 def make_serving_signatures(model,
-                            tf_transform_features: tft.TFTransformOutput,
-                            serving_batch_size: Optional[int] = None):
+                            tf_transform_output: tft.TFTransformOutput):
   """Returns the serving signatures.
 
   Args:
     model: the model function to apply to the transformed features.
-    tf_transform_features: The transformation to apply to the serialized
+    tf_transform_output: The transformation to apply to the serialized
       tf.Example.
-    serving_batch_size: an optional specification for a concrete serving batch
-      size.
 
   Returns:
     The signatures to use for saving the mode. The 'serving_default' signature
-    will be a concrete function that takes a serialized tf.Example, parses it,
-    transformes the features and then applies the model.
+    will be a concrete function that takes a batch of unspecified length of
+    serialized tf.Example, parses them, transformes the features and
+    then applies the model. The 'transform_features' signature will parses the
+    example and transforms the features.
   """
 
-  model.tft_layer = tf_transform_features.transform_features_layer()
+  # We need to track the layers in the model in order to save it.
+  # TODO(b/162357359): Revise once the bug is resolved.
+  model.tft_layer = tf_transform_output.transform_features_layer()
 
-  @tf.function
-  def serve_tf_examples_fn(serialized_tf_examples):
+  @tf.function(input_signature=[
+      tf.TensorSpec(shape=[None], dtype=tf.string, name='examples')
+  ])
+  def serve_tf_examples_fn(serialized_tf_example):
     """Returns the output to be used in the serving signature."""
-    feature_spec = tf_transform_features.raw_feature_spec()
-    feature_spec.pop(_LABEL_KEY)
-    parsed_features = tf.io.parse_example(serialized_tf_examples, feature_spec)
+    raw_feature_spec = tf_transform_output.raw_feature_spec()
+    # Remove label feature since these will not be present at serving time.
+    raw_feature_spec.pop(_LABEL_KEY)
+    raw_features = tf.io.parse_example(serialized_tf_example, raw_feature_spec)
+    transformed_features = model.tft_layer(raw_features)
+    logging.info('serve_transformed_features = %s', transformed_features)
 
-    transformed_features = model.tft_layer(parsed_features)
+    outputs = model(transformed_features)
+    # TODO(b/154085620): Convert the predicted labels from the model using a
+    # reverse-lookup (opposite of transform.py).
+    return {'outputs': outputs}
 
-    return model(transformed_features)
+  @tf.function(input_signature=[
+      tf.TensorSpec(shape=[None], dtype=tf.string, name='examples')
+  ])
+  def transform_features_fn(serialized_tf_example):
+    """Returns the transformed_features to be fed as input to evaluator."""
+    raw_feature_spec = tf_transform_output.raw_feature_spec()
+    raw_features = tf.io.parse_example(serialized_tf_example, raw_feature_spec)
+    transformed_features = model.tft_layer(raw_features)
+    logging.info('eval_transformed_features = %s', transformed_features)
+    return transformed_features
 
   return {
-      'serving_default':
-          serve_tf_examples_fn.get_concrete_function(
-              tf.TensorSpec(
-                  shape=[serving_batch_size], dtype=tf.string, name='examples'))
+      'serving_default': serve_tf_examples_fn,
+      'transform_features': transform_features_fn
   }
 
 
-def input_fn(file_pattern: List[Text], data_accessor: DataAccessor,
+def input_fn(file_pattern: List[str],
+             data_accessor: tfx.components.DataAccessor,
              tf_transform_output: tft.TFTransformOutput,
              batch_size: int) -> tf.data.Dataset:
   """Generates features and label for tuning/training.
@@ -95,7 +114,7 @@ def input_fn(file_pattern: List[Text], data_accessor: DataAccessor,
   """
   return data_accessor.tf_dataset_factory(
       file_pattern,
-      dataset_options.TensorFlowDatasetOptions(
+      tfxio.TensorFlowDatasetOptions(
           batch_size=batch_size, label_key=transformed_name(_LABEL_KEY)),
       tf_transform_output.transformed_metadata.schema).repeat()
 
@@ -113,10 +132,9 @@ def preprocessing_fn(inputs):
   outputs = {}
 
   for key in FEATURE_KEYS:
-    # Nothing to transform for the penguin dataset. This code is just to
-    # show how the preprocessing function for Transform should be defined.
-    # We just assign original values to the transformed feature.
-    outputs[transformed_name(key)] = inputs[key]
+    # tft.scale_to_z_score computes the mean and variance of the given feature
+    # and scales the output based on the result.
+    outputs[transformed_name(key)] = tft.scale_to_z_score(inputs[key])
   # TODO(b/157064428): Support label transformation for Keras.
   # Do not apply label transformation as it will result in wrong evaluation.
   outputs[transformed_name(_LABEL_KEY)] = inputs[_LABEL_KEY]

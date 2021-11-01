@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2020 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,7 +17,7 @@ import datetime
 import json
 import multiprocessing
 import os
-from typing import Any, Dict, List, Text
+from typing import Any, Dict, List
 
 from absl import logging
 from tfx import types
@@ -27,11 +26,19 @@ from tfx.dsl.components.base import base_executor
 from tfx.extensions.google_cloud_ai_platform import runner
 from tfx.extensions.google_cloud_ai_platform.trainer import executor as ai_platform_trainer_executor
 from tfx.types import standard_component_specs
+from tfx.utils import doc_controls
 from tfx.utils import json_utils
 
+TUNING_ARGS_KEY = doc_controls.documented(
+    obj='ai_platform_tuning_args',
+    doc='Keys to the items in custom_config of Tuner for passing tuning args '
+    'to AI Platform.')
 
-TUNING_ARGS_KEY = 'ai_platform_tuning_args'
-REMOTE_TRIALS_WORKING_DIR_KEY = 'remote_trials_working_dir'
+REMOTE_TRIALS_WORKING_DIR_KEY = doc_controls.documented(
+    obj='remote_trials_working_dir',
+    doc='Keys to the items in custom_config of Tuner for specifying a working '
+    'dir for remote trial.')
+
 # Directory to store intermediate hyperparamter search progress.
 # TODO(b/160188053): Use the same temp dir as the calling Executor.
 _WORKING_DIRECTORY = '/tmp'
@@ -66,9 +73,9 @@ class Executor(base_executor.BaseExecutor):
   """
 
   # TODO(b/160013376): Refactor common parts with Trainer Executor.
-  def Do(self, input_dict: Dict[Text, List[types.Artifact]],
-         output_dict: Dict[Text, List[types.Artifact]],
-         exec_properties: Dict[Text, Any]) -> None:
+  def Do(self, input_dict: Dict[str, List[types.Artifact]],
+         output_dict: Dict[str, List[types.Artifact]],
+         exec_properties: Dict[str, Any]) -> None:
     """Starts a Tuner component as a job on Google Cloud AI Platform."""
     self._log_startup(input_dict, output_dict, exec_properties)
 
@@ -118,12 +125,12 @@ class Executor(base_executor.BaseExecutor):
                                      executor_class.__name__)
 
     # Note: exec_properties['custom_config'] here is a dict.
-    return runner.start_aip_training(input_dict, output_dict, exec_properties,
-                                     executor_class_path, training_inputs,
-                                     job_id)
+    return runner.start_cloud_training(input_dict, output_dict, exec_properties,
+                                       executor_class_path, training_inputs,
+                                       job_id)
 
 
-def _need_chief_oracle(exec_properties: Dict[Text, Any]) -> bool:
+def _need_chief_oracle(exec_properties: Dict[str, Any]) -> bool:
   """Returns True if the Tuner instance requires a chief oracle."""
   # TODO(b/160902662): Skip chief oracle for CloudTuner that does not require
   #                    chief oracle for distributed tuning (it is a no-op,
@@ -137,8 +144,8 @@ class _WorkerExecutor(base_executor.BaseExecutor):
   """TFX Tuner executor impl as a worker in a Google Cloud AI Platform job."""
 
   def _start_chief_oracle_in_subprocess(
-      self, input_dict: Dict[Text, List[types.Artifact]],
-      exec_properties: Dict[Text, List[types.Artifact]]):
+      self, input_dict: Dict[str, List[types.Artifact]],
+      exec_properties: Dict[str, List[types.Artifact]]):
     """Starts a chief oracle in a subprocess."""
 
     def _run_chief_oracle() -> None:
@@ -171,8 +178,8 @@ class _WorkerExecutor(base_executor.BaseExecutor):
     logging.info('Chief oracle started at PID: %s', result.pid)
     return result
 
-  def _search(self, input_dict: Dict[Text, List[types.Artifact]],
-              exec_properties: Dict[Text, List[types.Artifact]]):
+  def _search(self, input_dict: Dict[str, List[types.Artifact]],
+              exec_properties: Dict[str, List[types.Artifact]]):
     """Conducts a single search loop, setting up chief oracle if necessary."""
 
     # If not distributed, simply conduct search and return.
@@ -216,7 +223,7 @@ class _WorkerExecutor(base_executor.BaseExecutor):
                                  _WORKING_DIRECTORY)
 
   def __init__(self, context):
-    super(_WorkerExecutor, self).__init__(context)
+    super().__init__(context)
 
     # Those fields are populated only when running in distribution.
     self._is_chief = False
@@ -263,9 +270,9 @@ class _WorkerExecutor(base_executor.BaseExecutor):
                    self._chief_process.pid)
       self._chief_process.terminate()
 
-  def Do(self, input_dict: Dict[Text, List[types.Artifact]],
-         output_dict: Dict[Text, List[types.Artifact]],
-         exec_properties: Dict[Text, Any]) -> None:
+  def Do(self, input_dict: Dict[str, List[types.Artifact]],
+         output_dict: Dict[str, List[types.Artifact]],
+         exec_properties: Dict[str, Any]) -> None:
 
     tuner = self._search(input_dict, exec_properties)
 

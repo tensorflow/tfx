@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,10 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Tests for tfx.dsl.components.base.base_component."""
-
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
 
 import tensorflow as tf
 
@@ -66,7 +61,7 @@ class _BasicComponent(base_component.BaseComponent):
     if not spec:
       output = types.Channel(type=_OutputArtifact)
       spec = _BasicComponentSpec(folds=folds, input=input, output=output)
-    super(_BasicComponent, self).__init__(spec=spec)
+    super().__init__(spec=spec)
 
 
 class ComponentTest(tf.test.TestCase):
@@ -86,7 +81,7 @@ class ComponentTest(tf.test.TestCase):
 
   def testComponentSpecType(self):
 
-    with self.assertRaisesRegexp(
+    with self.assertRaisesRegex(
         ValueError,
         'expects "spec" argument to be an instance of types.ComponentSpec'):
       _ = _BasicComponent(spec=object())  # pytype: disable=wrong-arg-types
@@ -98,10 +93,10 @@ class ComponentTest(tf.test.TestCase):
       EXECUTOR_SPEC = executor_spec.ExecutorClassSpec(
           base_executor.BaseExecutor)
 
-    with self.assertRaisesRegexp(TypeError, "Can't instantiate abstract class"):
+    with self.assertRaisesRegex(TypeError, "Can't instantiate abstract class"):
       MissingSpecComponent(spec=object())  # pytype: disable=wrong-arg-types
 
-    with self.assertRaisesRegexp(
+    with self.assertRaisesRegex(
         TypeError, "expects SPEC_CLASS property to be a subclass of "
         "types.ComponentSpec"):
       MissingSpecComponent._validate_component_class()
@@ -112,7 +107,7 @@ class ComponentTest(tf.test.TestCase):
       EXECUTOR_SPEC = executor_spec.ExecutorClassSpec(
           base_executor.BaseExecutor)
 
-    with self.assertRaisesRegexp(
+    with self.assertRaisesRegex(
         TypeError, "expects SPEC_CLASS property to be a subclass of "
         "types.ComponentSpec"):
       InvalidSpecComponent._validate_component_class()
@@ -123,10 +118,10 @@ class ComponentTest(tf.test.TestCase):
 
       SPEC_CLASS = _BasicComponentSpec
 
-    with self.assertRaisesRegexp(TypeError, "Can't instantiate abstract class"):
+    with self.assertRaisesRegex(TypeError, "Can't instantiate abstract class"):
       MissingExecutorComponent(spec=object())  # pytype: disable=wrong-arg-types
 
-    with self.assertRaisesRegexp(
+    with self.assertRaisesRegex(
         TypeError, "expects EXECUTOR_SPEC property to be an instance of "
         "ExecutorSpec"):
       MissingExecutorComponent._validate_component_class()
@@ -136,7 +131,7 @@ class ComponentTest(tf.test.TestCase):
       SPEC_CLASS = _BasicComponentSpec
       EXECUTOR_SPEC = object()
 
-    with self.assertRaisesRegexp(
+    with self.assertRaisesRegex(
         TypeError, "expects EXECUTOR_SPEC property to be an instance of "
         "ExecutorSpec"):
       InvalidExecutorComponent._validate_component_class()
@@ -163,8 +158,8 @@ class ComponentTest(tf.test.TestCase):
     self.assertEqual(custom_executor_component.executor_spec.executor_class,
                      MyCustomExecutor)
 
-    with self.assertRaisesRegexp(TypeError,
-                                 "should be an instance of ExecutorSpec"):
+    with self.assertRaisesRegex(TypeError,
+                                "should be an instance of ExecutorSpec"):
       MyComponent(spec=EmptyComponentSpec(), custom_executor_spec=object)
 
   def testComponentDriverClass(self):
@@ -176,14 +171,13 @@ class ComponentTest(tf.test.TestCase):
           base_executor.BaseExecutor)
       DRIVER_CLASS = object()
 
-    with self.assertRaisesRegexp(
+    with self.assertRaisesRegex(
         TypeError, "expects DRIVER_CLASS property to be a subclass of "
         "base_driver.BaseDriver"):
       InvalidDriverComponent._validate_component_class()
 
   def testJsonify(self):
-    input_channel = types.Channel(
-        type=_InputArtifact, artifacts=[_InputArtifact()])
+    input_channel = types.Channel(type=_InputArtifact)
     component = _BasicComponent(folds=10, input=input_channel)
     json_dict = json_utils.dumps(component)
     recovered_component = json_utils.loads(json_dict)
@@ -191,7 +185,6 @@ class ComponentTest(tf.test.TestCase):
     self.assertEqual(recovered_component.component_id, "_BasicComponent")
     self.assertEqual(input_channel.type,
                      recovered_component.inputs["input"].type)
-    self.assertEqual(len(recovered_component.inputs["input"].get()), 1)
     self.assertIsInstance(recovered_component.outputs["output"], types.Channel)
     self.assertEqual(recovered_component.outputs["output"].type,
                      _OutputArtifact)
@@ -201,12 +194,6 @@ class ComponentTest(tf.test.TestCase):
     # Test re-dump.
     new_json_dict = json_utils.dumps(recovered_component)
     self.assertEqual(new_json_dict, json_dict)
-
-  def testGetId(self):
-    self.assertEqual(_BasicComponent.get_id(), "_BasicComponent")
-    self.assertEqual(
-        _BasicComponent.get_id(instance_name="my_instance"),
-        "_BasicComponent.my_instance")
 
   def testTaskDependency(self):
     channel_1 = types.Channel(type=_InputArtifact)

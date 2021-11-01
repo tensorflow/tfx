@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,17 +13,11 @@
 # limitations under the License.
 """Tests for tfx.types.artifact_utils."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
-
 import copy
+from unittest import mock
 
-# Standard Imports
 
-import absl
-import mock
+from absl import logging
 import tensorflow as tf
 from tfx.types import artifact
 from tfx.types import artifact_utils
@@ -55,6 +48,17 @@ class ArtifactUtilsTest(tf.test.TestCase):
                      artifact_utils.get_split_uri(artifacts, 'eval'))
     with self.assertRaises(ValueError):
       artifact_utils.get_split_uri(artifacts, 'train')
+
+  def testReplicateArtifacts(self):
+    an_artifact = standard_artifacts.Examples()
+    an_artifact.uri = '/tmp/evaluri'
+    an_artifact.split_names = '["eval"]'
+    replicated = artifact_utils.replicate_artifacts(an_artifact, 4)
+    self.assertLen(replicated, 4)
+    self.assertEqual(replicated[0].uri, '/tmp/evaluri/0')
+    self.assertEqual(replicated[3].uri, '/tmp/evaluri/3')
+    self.assertEqual(replicated[0].split_names, an_artifact.split_names)
+    self.assertEqual(replicated[0].split_names, an_artifact.split_names)
 
   def testGetFromSplits(self):
     """Test various retrieval utilities on a list of split Artifact."""
@@ -125,8 +129,8 @@ class ArtifactUtilsTest(tf.test.TestCase):
     self.assertIs(_MyArtifact,
                   artifact_utils.get_artifact_type_class(mlmd_artifact_type))
 
-  @mock.patch('absl.logging.warning')
-  def testArtifactTypeRoundTripUnknownArtifactClass(self, *unused_mocks):
+  @mock.patch.object(logging, 'warning', autospec=True)
+  def testArtifactTypeRoundTripUnknownArtifactClass(self, mock_warning):
     mlmd_artifact_type = copy.deepcopy(
         standard_artifacts.Examples._get_artifact_type())
     self.assertIs(standard_artifacts.Examples,
@@ -135,7 +139,7 @@ class ArtifactUtilsTest(tf.test.TestCase):
 
     reconstructed_class = artifact_utils.get_artifact_type_class(
         mlmd_artifact_type)
-    absl.logging.warning.assert_called_once()
+    mock_warning.assert_called_once()
 
     self.assertIsNot(standard_artifacts.Examples, reconstructed_class)
     self.assertTrue(issubclass(reconstructed_class, artifact.Artifact))

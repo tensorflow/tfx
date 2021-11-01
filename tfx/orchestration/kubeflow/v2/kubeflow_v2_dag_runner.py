@@ -16,16 +16,17 @@
 import datetime
 import json
 import os
-from typing import Any, Dict, List, Optional, Text
+from typing import Any, Dict, List, Optional
+from absl import logging
 
+from kfp.pipeline_spec import pipeline_spec_pb2
 from tfx import version
+from tfx.dsl.components.base import base_node
 from tfx.dsl.io import fileio
 from tfx.orchestration import pipeline as tfx_pipeline
 from tfx.orchestration import tfx_runner
 from tfx.orchestration.config import pipeline_config
 from tfx.orchestration.kubeflow.v2 import pipeline_builder
-from tfx.orchestration.kubeflow.v2.proto import pipeline_pb2
-from tfx.utils import deprecation_utils
 from tfx.utils import telemetry_utils
 from tfx.utils import version_utils
 
@@ -36,7 +37,7 @@ _KUBEFLOW_TFX_CMD = (
     'tfx.orchestration.kubeflow.v2.container.kubeflow_v2_run_executor')
 
 # Current schema version for the API proto.
-_SCHEMA_VERSION = '1.0.0'
+_SCHEMA_VERSION = '2.0.0'
 
 
 # Default TFX container image/commands to use in KubeflowV2DagRunner.
@@ -50,18 +51,16 @@ def _get_current_time():
 
 
 class KubeflowV2DagRunnerConfig(pipeline_config.PipelineConfig):
-  """Runtime configuration specific to execution on Kubeflow pipelines."""
+  """Runtime configuration specific to execution on Kubeflow V2 pipelines."""
 
   def __init__(self,
-               project_id: Text,
-               display_name: Optional[Text] = None,
-               default_image: Optional[Text] = None,
-               default_commands: Optional[List[Text]] = None,
+               display_name: Optional[str] = None,
+               default_image: Optional[str] = None,
+               default_commands: Optional[List[str]] = None,
                **kwargs):
     """Constructs a Kubeflow V2 runner config.
 
     Args:
-      project_id: GCP project ID to be used.
       display_name: Optional human-readable pipeline name. Defaults to the
         pipeline name passed into `KubeflowV2DagRunner.run()`.
       default_image: The default TFX image to be used if not overriden by per
@@ -77,8 +76,7 @@ class KubeflowV2DagRunnerConfig(pipeline_config.PipelineConfig):
         https://kubernetes.io/docs/tasks/inject-data-application/define-command-argument-container/#notes
       **kwargs: Additional args passed to base PipelineConfig.
     """
-    super(KubeflowV2DagRunnerConfig, self).__init__(**kwargs)
-    self.project_id = project_id
+    super().__init__(**kwargs)
     self.display_name = display_name
     self.default_image = default_image or _KUBEFLOW_TFX_IMAGE
     if default_commands is None:
@@ -88,15 +86,15 @@ class KubeflowV2DagRunnerConfig(pipeline_config.PipelineConfig):
 
 
 class KubeflowV2DagRunner(tfx_runner.TfxRunner):
-  """Kubeflow V2 pipeline runner.
+  """Kubeflow V2 pipeline runner (currently for managed pipelines).
 
   Builds a pipeline job spec in json format based on TFX pipeline DSL object.
   """
 
   def __init__(self,
                config: KubeflowV2DagRunnerConfig,
-               output_dir: Optional[Text] = None,
-               output_filename: Optional[Text] = None):
+               output_dir: Optional[str] = None,
+               output_filename: Optional[str] = None):
     """Constructs an KubeflowV2DagRunner for compiling pipelines.
 
     Args:
@@ -110,15 +108,31 @@ class KubeflowV2DagRunner(tfx_runner.TfxRunner):
     """
     if not isinstance(config, KubeflowV2DagRunnerConfig):
       raise TypeError('config must be type of KubeflowV2DagRunnerConfig.')
-    super(KubeflowV2DagRunner, self).__init__()
+    super().__init__()
     self._config = config
     self._output_dir = output_dir or os.getcwd()
     self._output_filename = output_filename or 'pipeline.json'
+    self._exit_handler = None
+
+  def set_exit_handler(self,
+                       exit_handler: base_node.BaseNode):
+    """Set exit handler components for the Kuveflow V2(Vertex AI) dag runner.
+
+    This feature is currently experimental without backward compatibility
+    gaurantee.
+
+    Args:
+      exit_handler: exit handler component.
+    """
+    if not exit_handler:
+      logging.error('Setting empty exit handler is not allowed.')
+      return
+    self._exit_handler = exit_handler
 
   def run(self,
           pipeline: tfx_pipeline.Pipeline,
-          parameter_values: Optional[Dict[Text, Any]] = None,
-          write_out: Optional[bool] = True) -> Dict[Text, Any]:
+          parameter_values: Optional[Dict[str, Any]] = None,
+          write_out: Optional[bool] = True) -> Dict[str, Any]:
     """Compiles a pipeline DSL object into pipeline file.
 
     Args:
@@ -143,7 +157,8 @@ class KubeflowV2DagRunner(tfx_runner.TfxRunner):
     pipeline_spec = pipeline_builder.PipelineBuilder(
         tfx_pipeline=pipeline,
         default_image=self._config.default_image,
-        default_commands=self._config.default_commands).build()
+        default_commands=self._config.default_commands,
+        exit_handler=self._exit_handler).build()
     pipeline_spec.sdk_version = 'tfx-{}'.format(version.__version__)
     pipeline_spec.schema_version = _SCHEMA_VERSION
     runtime_config = pipeline_builder.RuntimeConfigBuilder(
@@ -151,9 +166,9 @@ class KubeflowV2DagRunner(tfx_runner.TfxRunner):
         parameter_values=parameter_values).build()
     with telemetry_utils.scoped_labels(
         {telemetry_utils.LABEL_TFX_RUNNER: 'kubeflow_v2'}):
-      result = pipeline_pb2.PipelineJob(
+      result = pipeline_spec_pb2.PipelineJob(
           display_name=display_name or pipeline.pipeline_info.pipeline_name,
-          labels=telemetry_utils.get_labels_dict(),
+          labels=telemetry_utils.make_labels_dict(),
           runtime_config=runtime_config)
     result.pipeline_spec.update(json_format.MessageToDict(pipeline_spec))
     pipeline_json_dict = json_format.MessageToDict(result)
@@ -169,6 +184,3 @@ class KubeflowV2DagRunner(tfx_runner.TfxRunner):
         f.write(json.dumps(pipeline_json_dict, sort_keys=True))
 
     return pipeline_json_dict
-
-  compile = deprecation_utils.deprecated_alias(
-      deprecated_name='compile', name='run', func_or_class=run)

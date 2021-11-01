@@ -16,7 +16,6 @@
 import codecs
 import locale
 import os
-import tempfile
 
 from absl import logging
 from click import testing as click_testing
@@ -25,12 +24,13 @@ import tensorflow as tf
 from tfx.dsl.io import fileio
 from tfx.tools.cli.cli_main import cli_group
 from tfx.utils import io_utils
+from tfx.utils import test_case_utils
 
 
-class CliLocalEndToEndTest(tf.test.TestCase):
+class CliLocalEndToEndTest(test_case_utils.TfxTest):
 
   def setUp(self):
-    super(CliLocalEndToEndTest, self).setUp()
+    super().setUp()
 
     # Change the encoding for Click since Python 3 is configured to use ASCII as
     # encoding for the environment.
@@ -38,14 +38,12 @@ class CliLocalEndToEndTest(tf.test.TestCase):
       os.environ['LANG'] = 'en_US.utf-8'
 
     # Setup local_home in a temp directory
-    self._home = os.path.join(
-        os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR', tempfile.mkdtemp()),
-        self._testMethodName)
-    self._old_home = os.environ.get('HOME')
-    os.environ['HOME'] = self._home
-    self._old_local_home = os.environ.get('LOCAL_HOME')
-    os.environ['LOCAL_HOME'] = os.path.join(self._home, 'local', '')
-    self._local_home = os.environ['LOCAL_HOME']
+    self._home = self.tmp_dir
+    self._local_home = os.path.join(self._home, 'local')
+    self.enter_context(
+        test_case_utils.override_env_var('LOCAL_HOME', self._local_home))
+    self.enter_context(
+        test_case_utils.override_env_var('HOME', self._home))
 
     # Testdata path.
     self._testdata_dir = os.path.join(
@@ -71,13 +69,6 @@ class CliLocalEndToEndTest(tf.test.TestCase):
 
     # Initialize CLI runner.
     self.runner = click_testing.CliRunner()
-
-  def tearDown(self):
-    super(CliLocalEndToEndTest, self).tearDown()
-    if self._old_local_home:
-      os.environ['LOCAL_HOME'] = self._old_local_home
-    if self._old_home:
-      os.environ['HOME'] = self._old_home
 
   def _valid_create_and_check(self, pipeline_path, pipeline_name):
     handler_pipeline_path = os.path.join(self._local_home, pipeline_name)
@@ -157,15 +148,15 @@ class CliLocalEndToEndTest(tf.test.TestCase):
                   result.output)
 
     # Wrong Runner.
-    pipeline_path = os.path.join(self._testdata_dir,
-                                 'test_pipeline_kubeflow_1.py')
+    pipeline_path = os.path.join(self.tmp_dir, 'empty_file.py')
+    io_utils.write_string_file(pipeline_path, '')
     result = self.runner.invoke(cli_group, [
         'pipeline', 'compile', '--engine', 'local', '--pipeline_path',
         pipeline_path
     ])
     self.assertIn('CLI', result.output)
     self.assertIn('Compiling pipeline', result.output)
-    self.assertIn('local runner not found in dsl.', result.output)
+    self.assertIn('Cannot find LocalDagRunner.run()', result.output)
 
     # Successful compilation.
     pipeline_path = os.path.join(self._testdata_dir, 'test_pipeline_local_2.py')

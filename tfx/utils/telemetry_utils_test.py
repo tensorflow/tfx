@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,12 +13,8 @@
 # limitations under the License.
 """Tests for tfx.utils.telemetry_utils."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import sys
-# Standard Imports
+from googleapiclient import http
 import tensorflow as tf
 
 from tfx import version
@@ -45,23 +40,63 @@ class TelemetryUtilsTest(tf.test.TestCase):
       beam_pipeline_args = telemetry_utils.make_beam_labels_args()
       expected_beam_pipeline_args = [
           '--labels',
-          'tfx_executor=testexecutor',  # Label is coverted to lowercase.
+          'tfx_executor=third_party_executor',
       ] + expected_beam_pipeline_args
       self.assertListEqual(expected_beam_pipeline_args, beam_pipeline_args)
 
   def testScopedLabels(self):
     """Test for scoped_labels."""
-    orig_labels = telemetry_utils.get_labels_dict()
+    orig_labels = telemetry_utils.make_labels_dict()
     with telemetry_utils.scoped_labels({'foo': 'bar'}):
-      self.assertDictEqual(telemetry_utils.get_labels_dict(),
+      self.assertDictEqual(telemetry_utils.make_labels_dict(),
                            dict({'foo': 'bar'}, **orig_labels))
-      with telemetry_utils.scoped_labels({'inner': 'baz'}):
+      with telemetry_utils.scoped_labels({
+          telemetry_utils.LABEL_TFX_EXECUTOR: 'custom_component.custom_executor'
+      }):
         self.assertDictEqual(
-            telemetry_utils.get_labels_dict(),
-            dict({
-                'foo': 'bar',
-                'inner': 'baz'
-            }, **orig_labels))
+            telemetry_utils.make_labels_dict(),
+            dict(
+                {
+                    'foo': 'bar',
+                    telemetry_utils.LABEL_TFX_EXECUTOR: 'third_party_executor'
+                }, **orig_labels))
+      with telemetry_utils.scoped_labels({
+          telemetry_utils.LABEL_TFX_EXECUTOR:
+              'tfx.components.example_gen.import_example_gen.executor.Executor'
+      }):
+        self.assertDictEqual(
+            telemetry_utils.make_labels_dict(),
+            dict(
+                {
+                    'foo':
+                        'bar',
+                    telemetry_utils.LABEL_TFX_EXECUTOR:  # Label is normalized.
+                        'tfx-components-example_gen-import_example_gen-executor-executor'
+                },
+                **orig_labels))
+      with telemetry_utils.scoped_labels({
+          telemetry_utils.LABEL_TFX_EXECUTOR:
+              'tfx.extensions.google_cloud_big_query.example_gen.executor.Executor'
+      }):
+        self.assertDictEqual(
+            telemetry_utils.make_labels_dict(),
+            dict(
+                {
+                    'foo':
+                        'bar',
+                    telemetry_utils.LABEL_TFX_EXECUTOR:  # Label is normalized.
+                        'tfx-extensions-google_cloud_big_query-example_gen-executor-exec'
+                },
+                **orig_labels))
+
+  def testTFXHttpRequest(self):
+    req = telemetry_utils.TFXHttpRequest(
+        http=http.build_http(),
+        postproc=None,
+        uri='http://example.com',
+    )
+    self.assertContainsInOrder(['tfx/', 'client_context:tfxpipeline;'],
+                               req.headers['user-agent'])
 
 
 if __name__ == '__main__':

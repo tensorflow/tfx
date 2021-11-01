@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,56 +13,51 @@
 # limitations under the License.
 """Tests for tfx.orchestration.pipeline."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
-
 import itertools
 import os
-import tempfile
-from typing import Any, Dict, Text, Type
+from typing import Any, Dict, Type
 
 import tensorflow as tf
-
 from tfx import types
+from tfx.dsl.components.base import base_beam_component
 from tfx.dsl.components.base import base_component
 from tfx.dsl.components.base import base_executor
 from tfx.dsl.components.base import base_node
 from tfx.dsl.components.base import executor_spec
-from tfx.dsl.io import fileio
 from tfx.orchestration import metadata
 from tfx.orchestration import pipeline
-from tfx.types import node_common
 from tfx.types.component_spec import ChannelParameter
+from tfx.utils import test_case_utils
 
 
 class _OutputArtifact(types.Artifact):
   TYPE_NAME = 'OutputArtifact'
 
 
-def _make_fake_node_instance(name: Text):
+def _make_fake_node_instance(name: str):
 
   class _FakeNode(base_node.BaseNode):
 
     @property
-    def inputs(self) -> node_common._PropertyDictWrapper:  # pylint: disable=protected-access
-      return node_common._PropertyDictWrapper({})  # pylint: disable=protected-access
-
-    @property
-    def outputs(self) -> node_common._PropertyDictWrapper:  # pylint: disable=protected-access
-      return node_common._PropertyDictWrapper({})  # pylint: disable=protected-access
-
-    @property
-    def exec_properties(self) -> Dict[Text, Any]:
+    def inputs(self) -> Dict[str, Any]:
       return {}
 
-  return _FakeNode(instance_name=name)
+    @property
+    def outputs(self) -> Dict[str, Any]:
+      return {}
+
+    @property
+    def exec_properties(self) -> Dict[str, Any]:
+      return {}
+
+  return _FakeNode().with_id(name)
 
 
-def _make_fake_component_instance(name: Text, output_type: Type[types.Artifact],
-                                  inputs: Dict[Text, types.Channel],
-                                  outputs: Dict[Text, types.Channel]):
+def _make_fake_component_instance(name: str,
+                                  output_type: Type[types.Artifact],
+                                  inputs: Dict[str, types.Channel],
+                                  outputs: Dict[str, types.Channel],
+                                  with_beam: bool = False):
 
   class _FakeComponentSpec(types.ComponentSpec):
     PARAMETERS = {}
@@ -81,12 +75,28 @@ def _make_fake_component_instance(name: Text, output_type: Type[types.Artifact],
     def __init__(
         self,
         type: Type[types.Artifact],  # pylint: disable=redefined-builtin
-        spec_kwargs: Dict[Text, Any]):
+        spec_kwargs: Dict[str, Any]):
       spec = _FakeComponentSpec(output=types.Channel(type=type), **spec_kwargs)
-      super(_FakeComponent, self).__init__(spec=spec, instance_name=name)
+      super().__init__(spec=spec)
+      self._id = name
+
+  class _FakeBeamComponent(base_beam_component.BaseBeamComponent):
+
+    SPEC_CLASS = _FakeComponentSpec
+    EXECUTOR_SPEC = executor_spec.BeamExecutorSpec(base_executor.BaseExecutor)
+
+    def __init__(
+        self,
+        type: Type[types.Artifact],  # pylint: disable=redefined-builtin
+        spec_kwargs: Dict[str, Any]):
+      spec = _FakeComponentSpec(output=types.Channel(type=type), **spec_kwargs)
+      super().__init__(spec=spec)
+      self._id = name
 
   spec_kwargs = dict(itertools.chain(inputs.items(), outputs.items()))
-  return _FakeComponent(output_type, spec_kwargs)
+  return _FakeBeamComponent(output_type,
+                            spec_kwargs) if with_beam else _FakeComponent(
+                                output_type, spec_kwargs)
 
 
 class _ArtifactTypeOne(types.Artifact):
@@ -121,30 +131,12 @@ class _OutputTypeE(types.Artifact):
   TYPE_NAME = 'OutputTypeE'
 
 
-class PipelineTest(tf.test.TestCase):
+class PipelineTest(test_case_utils.TfxTest):
 
   def setUp(self):
-    super(PipelineTest, self).setUp()
-    tmp_dir = os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR', self.get_temp_dir())
-    self._tmp_file = os.path.join(tmp_dir, self._testMethodName,
-                                  tempfile.mkstemp(prefix='cli_tmp_')[1])
-    self._tmp_dir = os.path.join(tmp_dir, self._testMethodName,
-                                 tempfile.mkdtemp(prefix='cli_tmp_')[1])
-    # Back up the environmental variable.
-    self._original_tmp_value = os.environ.get(
-        'TFX_JSON_EXPORT_PIPELINE_ARGS_PATH')
+    super().setUp()
     self._metadata_connection_config = metadata.sqlite_metadata_connection_config(
-        os.path.join(self._tmp_dir, 'metadata'))
-
-  def tearDown(self):
-    super(PipelineTest, self).tearDown()
-    # Restore the environmental variable. None means it was unset.
-    if self._original_tmp_value is None:
-      if 'TFX_JSON_EXPORT_PIPELINE_ARGS_PATH' in os.environ:
-        del os.environ['TFX_JSON_EXPORT_PIPELINE_ARGS_PATH']
-    else:
-      os.environ[
-          'TFX_JSON_EXPORT_PIPELINE_ARGS_PATH'] = self._original_tmp_value
+        os.path.join(self.tmp_dir, 'metadata'))
 
   def testPipeline(self):
     component_a = _make_fake_component_instance('component_a', _OutputTypeA, {},
@@ -158,11 +150,13 @@ class PipelineTest(tf.test.TestCase):
         'c': component_c.outputs['output']
     }, {})
     component_e = _make_fake_component_instance(
-        'component_e', _OutputTypeE, {
+        'component_e',
+        _OutputTypeE, {
             'a': component_a.outputs['output'],
             'b': component_b.outputs['output'],
             'd': component_d.outputs['output']
-        }, {})
+        }, {},
+        with_beam=True)
 
     my_pipeline = pipeline.Pipeline(
         pipeline_name='a',
@@ -186,6 +180,8 @@ class PipelineTest(tf.test.TestCase):
     self.assertEqual(my_pipeline.metadata_connection_config,
                      self._metadata_connection_config)
     self.assertTrue(my_pipeline.enable_cache)
+    self.assertEqual(component_e.executor_spec.beam_pipeline_args,
+                     ['--runner=PortableRunner'])
     self.assertCountEqual(my_pipeline.beam_pipeline_args,
                           ['--runner=PortableRunner'])
     self.assertDictEqual(my_pipeline.additional_pipeline_args, {})
@@ -193,7 +189,7 @@ class PipelineTest(tf.test.TestCase):
   def testPipelineWithLongname(self):
     with self.assertRaises(ValueError):
       pipeline.Pipeline(
-          pipeline_name='a' * (1 + pipeline.MAX_PIPELINE_NAME_LENGTH),
+          pipeline_name='a' * (1 + pipeline._MAX_PIPELINE_NAME_LENGTH),
           pipeline_root='root',
           components=[],
           metadata_connection_config=self._metadata_connection_config)
@@ -244,13 +240,59 @@ class PipelineTest(tf.test.TestCase):
           components=[component_c, component_d, component_b, component_a],
           metadata_connection_config=self._metadata_connection_config)
 
-  def testPipelineWithDuplicatedComponentId(self):
-    component_a = _make_fake_component_instance('component_a', _OutputTypeA, {},
-                                                {})
-    component_b = _make_fake_component_instance('component_a', _OutputTypeA, {},
-                                                {})
-    component_c = _make_fake_component_instance('component_a', _OutputTypeA, {},
-                                                {})
+  def testPipelineWithOldReferences(self):
+    component_a = _make_fake_component_instance(
+        name='component_a', output_type=_OutputTypeA, inputs={}, outputs={})
+    component_b_v1 = _make_fake_component_instance(
+        name='component_b',
+        output_type=_OutputTypeB,
+        inputs={
+            'a': component_a.outputs['output'],
+        },
+        outputs={})
+    component_c_v1 = _make_fake_component_instance(
+        name='component_c',
+        output_type=_OutputTypeC,
+        inputs={
+            'b': component_b_v1.outputs['output'],
+        },
+        outputs={})
+    my_pipeline_v1 = pipeline.Pipeline(
+        pipeline_name='a',
+        pipeline_root='b',
+        components=[component_a, component_b_v1, component_c_v1],
+        metadata_connection_config=self._metadata_connection_config)
+    self.assertEqual(3, len(my_pipeline_v1.components))
+
+    component_b_v2 = _make_fake_component_instance(
+        name='component_b',
+        output_type=_OutputTypeB,
+        inputs={
+            'a': component_a.outputs['output'],  # reuses component_a
+        },
+        outputs={})
+    component_c_v2 = _make_fake_component_instance(
+        name='component_c',
+        output_type=_OutputTypeC,
+        inputs={
+            # no dependency on component_b_v1, only depends on component_b_v2
+            'b': component_b_v2.outputs['output'],
+        },
+        outputs={})
+
+    my_pipeline_v2 = pipeline.Pipeline(
+        pipeline_name='a',
+        pipeline_root='b',
+        components=[component_a, component_b_v2, component_c_v2],
+        metadata_connection_config=self._metadata_connection_config)
+    self.assertEqual(3, len(my_pipeline_v2.components))
+
+  def testPipelineWithDuplicatedNodeId(self):
+    component_a = _make_fake_node_instance('').with_id('component_a')
+    component_b = _make_fake_component_instance('', _OutputTypeA, {},
+                                                {}).with_id('component_a')
+    component_c = _make_fake_component_instance('', _OutputTypeA, {},
+                                                {}).with_id('component_a')
 
     with self.assertRaises(RuntimeError):
       pipeline.Pipeline(
@@ -259,41 +301,43 @@ class PipelineTest(tf.test.TestCase):
           components=[component_c, component_b, component_a],
           metadata_connection_config=self._metadata_connection_config)
 
-  def testPipelineSavePipelineArgs(self):
-    os.environ['TFX_JSON_EXPORT_PIPELINE_ARGS_PATH'] = self._tmp_file
-    pipeline.Pipeline(
-        pipeline_name='a',
-        pipeline_root='b',
-        log_root='c',
-        components=[
-            _make_fake_component_instance('component_a', _OutputTypeA, {}, {})
-        ],
-        metadata_connection_config=self._metadata_connection_config)
-    self.assertTrue(fileio.exists(self._tmp_file))
-
-  def testPipelineNoTmpFolder(self):
-    pipeline.Pipeline(
-        pipeline_name='a',
-        pipeline_root='b',
-        log_root='c',
-        components=[
-            _make_fake_component_instance('component_a', _OutputTypeA, {}, {})
-        ],
-        metadata_connection_config=self._metadata_connection_config)
-    self.assertNotIn('TFX_JSON_EXPORT_PIPELINE_ARGS_PATH', os.environ)
-
   def testPipelineWithBeamPipelineArgs(self):
+    expected_args = [
+        '--my_first_beam_pipeline_args=foo',
+        '--my_second_beam_pipeline_args=bar'
+    ]
     p = pipeline.Pipeline(
         pipeline_name='a',
         pipeline_root='b',
         log_root='c',
         components=[
-            _make_fake_component_instance('component_a', _OutputTypeA, {}, {})
+            _make_fake_component_instance(
+                'component_a', _OutputTypeA, {}, {},
+                with_beam=True).with_beam_pipeline_args([expected_args[1]])
         ],
-        beam_pipeline_args=['--my_testing_beam_pipeline_args=foo'],
+        beam_pipeline_args=[expected_args[0]],
         metadata_connection_config=self._metadata_connection_config)
-    self.assertIn('--my_testing_beam_pipeline_args=foo',
-                  p.components[0].executor_spec.extra_flags)
+    self.assertEqual(expected_args,
+                     p.components[0].executor_spec.beam_pipeline_args)
+
+  def testComponentsSetAfterCreationWithBeamPipelineArgs(self):
+    expected_args = [
+        '--my_first_beam_pipeline_args=foo',
+        '--my_second_beam_pipeline_args=bar'
+    ]
+    p = pipeline.Pipeline(
+        pipeline_name='a',
+        pipeline_root='b',
+        log_root='c',
+        beam_pipeline_args=[expected_args[0]],
+        metadata_connection_config=self._metadata_connection_config)
+    p.components = [
+        _make_fake_component_instance(
+            'component_a', _OutputTypeA, {}, {},
+            with_beam=True).with_beam_pipeline_args([expected_args[1]])
+    ]
+    self.assertEqual(expected_args,
+                     p.components[0].executor_spec.beam_pipeline_args)
 
 
 if __name__ == '__main__':

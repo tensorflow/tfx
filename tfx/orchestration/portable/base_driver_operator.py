@@ -15,7 +15,6 @@
 
 import abc
 
-import six
 from tfx.orchestration import metadata
 from tfx.orchestration.portable import data_types
 from tfx.proto.orchestration import driver_output_pb2
@@ -24,7 +23,7 @@ from tfx.utils import abc_utils
 from google.protobuf import message
 
 
-class BaseDriverOperator(six.with_metaclass(abc.ABCMeta, object)):
+class BaseDriverOperator(abc.ABC):
   """The base class of all executor operators."""
 
   SUPPORTED_EXECUTABLE_SPEC_TYPE = abc_utils.abstract_property()

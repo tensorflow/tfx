@@ -1,0 +1,368 @@
+# proto-file: kfp/pipeline_spec/pipeline_spec.proto
+# proto-message: PipelineSpec
+
+# Note: Due to the inconsistent behavior of json_format under Py2 and Py3,
+# running test against this golden file under Py2 will fail.
+
+pipeline_info {
+  name: "two-step-pipeline"
+}
+deployment_spec {
+  fields {
+    key: "executors"
+    value {
+      struct_value {
+        fields {
+          key: "BigQueryExampleGen_executor"
+          value {
+            struct_value {
+              fields {
+                key: "container"
+                value {
+                  struct_value {
+                    fields {
+                      key: "args"
+                      value {
+                        list_value {
+                          values {
+                            string_value: "--executor_class_path"
+                          }
+                          values {
+                            string_value: "tfx.extensions.google_cloud_big_query.example_gen.executor.Executor"
+                          }
+                          values {
+                            string_value: "--json_serialized_invocation_args"
+                          }
+                          values {
+                            string_value: "{{$}}"
+                          }
+                          values {
+                            string_value: "--project=my-gcp-project"
+                          }
+                          values {
+                            string_value: "--runner=DataflowRunner"
+                          }
+                        }
+                      }
+                    }
+                    fields {
+                      key: "image"
+                      value {
+                        string_value: "gcr.io/my-tfx:latest"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+        fields {
+          key: "ExitHandlerComponent_executor"
+          value {
+            struct_value {
+              fields {
+                key: "container"
+                value {
+                  struct_value {
+                    fields {
+                      key: "command"
+                      value {
+                        list_value {
+                          values {
+                            string_value: "producer"
+                          }
+                          values {
+                            string_value: "--param1"
+                          }
+                          values {
+                            string_value: "{{$.inputs.parameters[\'param1\']}}"
+                          }
+                          values {
+                            string_value: "--wrapped-param"
+                          }
+                          values {
+                            string_value: "prefix-{{$.inputs.parameters[\'param1\']}}-suffix"
+                          }
+                        }
+                      }
+                    }
+                    fields {
+                      key: "image"
+                      value {
+                        string_value: "dummy/producer"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+        fields {
+          key: "StatisticsGen_executor"
+          value {
+            struct_value {
+              fields {
+                key: "container"
+                value {
+                  struct_value {
+                    fields {
+                      key: "args"
+                      value {
+                        list_value {
+                          values {
+                            string_value: "--executor_class_path"
+                          }
+                          values {
+                            string_value: "tfx.components.statistics_gen.executor.Executor"
+                          }
+                          values {
+                            string_value: "--json_serialized_invocation_args"
+                          }
+                          values {
+                            string_value: "{{$}}"
+                          }
+                          values {
+                            string_value: "--project=my-gcp-project"
+                          }
+                        }
+                      }
+                    }
+                    fields {
+                      key: "image"
+                      value {
+                        string_value: "gcr.io/my-tfx:latest"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+components {
+  key: "BigQueryExampleGen"
+  value {
+    input_definitions {
+      parameters {
+        key: "input_config"
+        value {
+          type: STRING
+        }
+      }
+      parameters {
+        key: "output_config"
+        value {
+          type: STRING
+        }
+      }
+      parameters {
+        key: "output_data_format"
+        value {
+          type: INT
+        }
+      }
+      parameters {
+        key: "output_file_format"
+        value {
+          type: INT
+        }
+      }
+    }
+    output_definitions {
+      artifacts {
+        key: "examples"
+        value {
+          artifact_type {
+            instance_schema: "title: tfx.Examples\ntype: object\nproperties:\n  span:\n    type: integer\n    description: Span for an artifact.\n  version:\n    type: integer\n    description: Version for an artifact.\n  split_names:\n    type: string\n    description: JSON-encoded list of splits for an artifact. Empty string means artifact has no split.\n"
+          }
+        }
+      }
+    }
+    executor_label: "BigQueryExampleGen_executor"
+  }
+}
+components {
+  key: "ExitHandlerComponent"
+  value {
+    input_definitions {
+      parameters {
+        key: "param1"
+        value {
+          type: STRING
+        }
+      }
+    }
+    executor_label: "ExitHandlerComponent_executor"
+  }
+}
+components {
+  key: "StatisticsGen"
+  value {
+    input_definitions {
+      artifacts {
+        key: "examples"
+        value {
+          artifact_type {
+            instance_schema: "title: tfx.Examples\ntype: object\nproperties:\n  span:\n    type: integer\n    description: Span for an artifact.\n  version:\n    type: integer\n    description: Version for an artifact.\n  split_names:\n    type: string\n    description: JSON-encoded list of splits for an artifact. Empty string means artifact has no split.\n"
+          }
+        }
+      }
+      parameters {
+        key: "exclude_splits"
+        value {
+          type: STRING
+        }
+      }
+    }
+    output_definitions {
+      artifacts {
+        key: "statistics"
+        value {
+          artifact_type {
+            instance_schema: "title: tfx.ExampleStatistics\ntype: object\nproperties:\n  span:\n    type: integer\n    description: Span for an artifact.\n  split_names:\n    type: string\n    description: JSON-encoded list of splits for an artifact. Empty string means artifact has no split.\n"
+          }
+        }
+      }
+    }
+    executor_label: "StatisticsGen_executor"
+  }
+}
+components {
+  key: "_tfx_dag"
+  value {
+    dag {
+      tasks {
+        key: "BigQueryExampleGen"
+        value {
+          task_info {
+            name: "BigQueryExampleGen"
+          }
+          inputs {
+            parameters {
+              key: "input_config"
+              value {
+                runtime_value {
+                  constant_value {
+                    string_value: "{\n  \"splits\": [\n    {\n      \"name\": \"single_split\",\n      \"pattern\": \"SELECT * FROM TABLE\"\n    }\n  ]\n}"
+                  }
+                }
+              }
+            }
+            parameters {
+              key: "output_config"
+              value {
+                runtime_value {
+                  constant_value {
+                    string_value: "{\n  \"split_config\": {\n    \"splits\": [\n      {\n        \"hash_buckets\": 2,\n        \"name\": \"train\"\n      },\n      {\n        \"hash_buckets\": 1,\n        \"name\": \"eval\"\n      }\n    ]\n  }\n}"
+                  }
+                }
+              }
+            }
+            parameters {
+              key: "output_data_format"
+              value {
+                runtime_value {
+                  constant_value {
+                    int_value: 6
+                  }
+                }
+              }
+            }
+            parameters {
+              key: "output_file_format"
+              value {
+                runtime_value {
+                  constant_value {
+                    int_value: 5
+                  }
+                }
+              }
+            }
+          }
+          component_ref {
+            name: "BigQueryExampleGen"
+          }
+        }
+      }
+      tasks {
+        key: "StatisticsGen"
+        value {
+          task_info {
+            name: "StatisticsGen"
+          }
+          inputs {
+            parameters {
+              key: "exclude_splits"
+              value {
+                runtime_value {
+                  constant_value {
+                    string_value: "[]"
+                  }
+                }
+              }
+            }
+            artifacts {
+              key: "examples"
+              value {
+                task_output_artifact {
+                  producer_task: "BigQueryExampleGen"
+                  output_artifact_key: "examples"
+                }
+              }
+            }
+          }
+          dependent_tasks: "BigQueryExampleGen"
+          component_ref {
+            name: "StatisticsGen"
+          }
+        }
+      }
+    }
+  }
+}
+root {
+  dag {
+    tasks {
+      key: "ExitHandlerComponent"
+      value {
+        task_info {
+          name: "ExitHandlerComponent"
+        }
+        inputs {
+          parameters {
+            key: "param1"
+            value {
+              task_final_status {
+                producer_task: "_tfx_dag"
+              }
+            }
+          }
+        }
+        dependent_tasks: "_tfx_dag"
+        component_ref {
+          name: "ExitHandlerComponent"
+        }
+        trigger_policy {
+          strategy: ALL_UPSTREAM_TASKS_COMPLETED
+        }
+      }
+    }
+    tasks {
+      key: "_tfx_dag"
+      value {
+        task_info {
+          name: "_tfx_dag"
+        }
+        component_ref {
+          name: "_tfx_dag"
+        }
+      }
+    }
+  }
+}

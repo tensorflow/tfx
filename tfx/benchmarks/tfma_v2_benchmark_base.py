@@ -13,29 +13,25 @@
 # limitations under the License.
 """TFMA v2 benchmark."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import copy
 import time
 
-# Standard Imports
 
 import apache_beam as beam
 import tensorflow as tf
 import tensorflow_model_analysis as tfma
 from tensorflow_model_analysis import constants
-from tensorflow_model_analysis import model_util
 from tensorflow_model_analysis.evaluators import metrics_plots_and_validations_evaluator
+from tensorflow_model_analysis.evaluators import poisson_bootstrap
 from tensorflow_model_analysis.extractors import example_weights_extractor
 from tensorflow_model_analysis.extractors import features_extractor
 from tensorflow_model_analysis.extractors import labels_extractor
 from tensorflow_model_analysis.extractors import legacy_input_extractor
 from tensorflow_model_analysis.extractors import predictions_extractor
 from tensorflow_model_analysis.extractors import unbatch_extractor
-from tensorflow_model_analysis.metrics import metric_specs
+from tensorflow_model_analysis.metrics import metric_specs as metric_specs_util
 from tensorflow_model_analysis.metrics import metric_types
+from tensorflow_model_analysis.utils import model_util
 import tfx
 from tfx.benchmarks import benchmark_utils
 from tfx.benchmarks import benchmark_base
@@ -58,27 +54,35 @@ class TFMAV2BenchmarkBase(benchmark_base.BenchmarkBase):
   def __init__(self, dataset, **kwargs):
     # Benchmark runners may pass extraneous arguments we don't care about.
     del kwargs
-    super(TFMAV2BenchmarkBase, self).__init__()
+    super().__init__()
     self._dataset = dataset
 
-  def _init_model(self, multi_model):
+  def _init_model(self, multi_model, validation):
     # The benchmark runner will instantiate this class twice - once to determine
     # the benchmarks to run, and once to actually to run them. However, Keras
     # freezes if we try to load the same model twice. As such, we have to pull
     # the model loading out of the constructor into a separate method which we
     # call before each benchmark.
     if multi_model:
+      metric_specs = metric_specs_util.specs_from_metrics(
+          [tf.keras.metrics.AUC(name="auc", num_thresholds=10000)],
+          model_names=["candidate", "baseline"])
+      if validation:
+        # Only one metric, adding a threshold for all slices.
+        metric_specs[0].metrics[0].threshold.CopyFrom(
+            tfma.MetricThreshold(
+                value_threshold=tfma.GenericValueThreshold(
+                    lower_bound={"value": 0.5}, upper_bound={"value": 0.5}),
+                change_threshold=tfma.GenericChangeThreshold(
+                    absolute={"value": -0.001},
+                    direction=tfma.MetricDirection.HIGHER_IS_BETTER)))
       self._eval_config = tfma.EvalConfig(
           model_specs=[
               tfma.ModelSpec(name="candidate", label_key="tips"),
               tfma.ModelSpec(
                   name="baseline", label_key="tips", is_baseline=True)
           ],
-          metrics_specs=metric_specs.specs_from_metrics(
-              [
-                  tf.keras.metrics.AUC(name="auc", num_thresholds=10000),
-              ],
-              model_names=["candidate", "baseline"]))
+          metrics_specs=metric_specs)
       self._eval_shared_models = {
           "candidate":
               tfma.default_eval_shared_model(
@@ -92,11 +96,17 @@ class TFMAV2BenchmarkBase(benchmark_base.BenchmarkBase):
                   model_name="baseline")
       }
     else:
+      metric_specs = metric_specs_util.specs_from_metrics(
+          [tf.keras.metrics.AUC(name="auc", num_thresholds=10000)])
+      if validation:
+        # Only one metric, adding a threshold for all slices.
+        metric_specs[0].metrics[0].threshold.CopyFrom(
+            tfma.MetricThreshold(
+                value_threshold=tfma.GenericValueThreshold(
+                    lower_bound={"value": 0.5}, upper_bound={"value": 0.5})))
       self._eval_config = tfma.EvalConfig(
           model_specs=[tfma.ModelSpec(label_key="tips")],
-          metrics_specs=metric_specs.specs_from_metrics([
-              tf.keras.metrics.AUC(name="auc", num_thresholds=10000),
-          ]))
+          metrics_specs=metric_specs)
       self._eval_shared_models = {
           "":
               tfma.default_eval_shared_model(
@@ -108,7 +118,7 @@ class TFMAV2BenchmarkBase(benchmark_base.BenchmarkBase):
     # TFMA is slower than TFT, so use a smaller number of examples from the
     # dataset.
     limit = 100000
-    parent_max = super(TFMAV2BenchmarkBase, self)._max_num_examples()
+    parent_max = super()._max_num_examples()
     if parent_max is None:
       return limit
     return min(parent_max, limit)
@@ -127,7 +137,7 @@ class TFMAV2BenchmarkBase(benchmark_base.BenchmarkBase):
     # Stdout for use in tools which read the benchmark results from stdout.
     print(self._get_name(), kwargs["wall_time"],
           "({}x)".format(kwargs["iters"]))
-    super(TFMAV2BenchmarkBase, self).report_benchmark(**kwargs)
+    super().report_benchmark(**kwargs)
 
   def _runMiniPipeline(self, multi_model):
     """Benchmark a "mini" TFMA - predict, slice and compute metrics.
@@ -138,7 +148,7 @@ class TFMAV2BenchmarkBase(benchmark_base.BenchmarkBase):
     Args:
       multi_model: True if multiple models should be used in the benchmark.
     """
-    self._init_model(multi_model)
+    self._init_model(multi_model, validation=False)
     pipeline = self._create_beam_pipeline()
     tfx_io = test_util.InMemoryTFExampleRecord(
         schema=benchmark_utils.read_schema(
@@ -264,7 +274,7 @@ class TFMAV2BenchmarkBase(benchmark_base.BenchmarkBase):
 
   def _runInputExtractorManualActuation(self, multi_model):
     """Benchmark InputExtractor "manually"."""
-    self._init_model(multi_model)
+    self._init_model(multi_model, validation=False)
     records = self._readDatasetIntoExtracts()
     extracts = []
 
@@ -288,7 +298,7 @@ class TFMAV2BenchmarkBase(benchmark_base.BenchmarkBase):
 
   def _runFeaturesExtractorManualActuation(self, multi_model):
     """Benchmark FeaturesExtractor "manually"."""
-    self._init_model(multi_model)
+    self._init_model(multi_model, validation=False)
     extracts = self._readDatasetIntoBatchedExtracts()
     num_examples = sum(
         [e[constants.ARROW_RECORD_BATCH_KEY].num_rows for e in extracts])
@@ -312,7 +322,7 @@ class TFMAV2BenchmarkBase(benchmark_base.BenchmarkBase):
 
   def _runPredictionsExtractorManualActuation(self, multi_model):
     """Benchmark PredictionsExtractor "manually"."""
-    self._init_model(multi_model)
+    self._init_model(multi_model, validation=False)
     extracts = self._readDatasetIntoBatchedExtracts()
     num_examples = sum(
         [e[constants.ARROW_RECORD_BATCH_KEY].num_rows for e in extracts])
@@ -348,9 +358,13 @@ class TFMAV2BenchmarkBase(benchmark_base.BenchmarkBase):
     self._runPredictionsExtractorManualActuation(True)
 
   def _runMetricsPlotsAndValidationsEvaluatorManualActuation(
-      self, with_confidence_intervals, multi_model, metrics_specs=None):
+      self,
+      with_confidence_intervals,
+      multi_model,
+      metrics_specs=None,
+      validation=False):
     """Benchmark MetricsPlotsAndValidationsEvaluator "manually"."""
-    self._init_model(multi_model)
+    self._init_model(multi_model, validation)
     if not metrics_specs:
       metrics_specs = self._eval_config.metrics_specs
 
@@ -388,11 +402,11 @@ class TFMAV2BenchmarkBase(benchmark_base.BenchmarkBase):
     inputs_per_accumulator = 1000
     start = time.time()
     for _ in range(_ITERS):
-      computations, _, _ = (
+      computations, _, _, _ = (
           # pylint: disable=protected-access
           metrics_plots_and_validations_evaluator
           ._filter_and_separate_computations(
-              metric_specs.to_computations(
+              metric_specs_util.to_computations(
                   metrics_specs, eval_config=self._eval_config)))
       # pylint: enable=protected-access
 
@@ -404,8 +418,9 @@ class TFMAV2BenchmarkBase(benchmark_base.BenchmarkBase):
                     computations).process(elem)))
 
       combiner = metrics_plots_and_validations_evaluator._ComputationsCombineFn(  # pylint: disable=protected-access
-          computations=computations,
-          compute_with_sampling=with_confidence_intervals)
+          computations=computations)
+      if with_confidence_intervals:
+        combiner = poisson_bootstrap._BootstrapCombineFn(combiner)  # pylint: disable=protected-access
       combiner.setup()
 
       accumulators = []
@@ -424,15 +439,12 @@ class TFMAV2BenchmarkBase(benchmark_base.BenchmarkBase):
     # Sanity check the example count. This is not timed.
     example_count_key = metric_types.MetricKey(
         name="example_count", model_name="candidate" if multi_model else "")
-    example_count = None
-    for x in final_output:
-      if example_count_key in x:
-        example_count = x[example_count_key]
-        break
-
-    if example_count is None:
-      raise ValueError("example_count was not in the final list of metrics. "
-                       "metrics were: %s" % str(final_output))
+    if example_count_key in final_output:
+      example_count = final_output[example_count_key]
+    else:
+      raise ValueError("example_count_key ({}) was not in the final list of "
+                       "metrics. metrics were: {}".format(
+                           example_count_key, final_output))
 
     if with_confidence_intervals:
       # If we're computing using confidence intervals, the example count will
@@ -462,52 +474,54 @@ class TFMAV2BenchmarkBase(benchmark_base.BenchmarkBase):
   def benchmarkMetricsPlotsAndValidationsEvaluatorManualActuationNoConfidenceIntervals(
       self):
     self._runMetricsPlotsAndValidationsEvaluatorManualActuation(
-        with_confidence_intervals=False, multi_model=False)
+        with_confidence_intervals=False, multi_model=False, validation=True)
 
   # "Manual" micro-benchmarks
   def benchmarkMetricsPlotsAndValidationsEvaluatorManualActuationNoConfidenceIntervalsMultiModel(
       self):
     self._runMetricsPlotsAndValidationsEvaluatorManualActuation(
-        with_confidence_intervals=False, multi_model=True)
+        with_confidence_intervals=False, multi_model=True, validation=True)
 
   # "Manual" micro-benchmarks
   def benchmarkMetricsPlotsAndValidationsEvaluatorManualActuationWithConfidenceIntervals(
       self):
     self._runMetricsPlotsAndValidationsEvaluatorManualActuation(
-        with_confidence_intervals=True, multi_model=False)
+        with_confidence_intervals=True, multi_model=False, validation=True)
 
   # "Manual" micro-benchmarks
   def benchmarkMetricsPlotsAndValidationsEvaluatorManualActuationWithConfidenceIntervalsMultiModel(
       self):
     self._runMetricsPlotsAndValidationsEvaluatorManualActuation(
-        with_confidence_intervals=True, multi_model=True)
+        with_confidence_intervals=True, multi_model=True, validation=True)
 
   # "Manual" micro-benchmarks
   def benchmarkMetricsPlotsAndValidationsEvaluatorAUC10k(self):
     self._runMetricsPlotsAndValidationsEvaluatorManualActuation(
         with_confidence_intervals=False,
         multi_model=False,
-        metrics_specs=metric_specs.specs_from_metrics([
+        metrics_specs=metric_specs_util.specs_from_metrics([
             tf.keras.metrics.AUC(name="auc", num_thresholds=10000),
-        ]))
+        ]),
+        validation=True)
 
   # "Manual" micro-benchmarks
   def benchmarkMetricsPlotsAndValidationsEvaluatorAUC10kMultiModel(self):
     self._runMetricsPlotsAndValidationsEvaluatorManualActuation(
         with_confidence_intervals=False,
         multi_model=True,
-        metrics_specs=metric_specs.specs_from_metrics(
+        metrics_specs=metric_specs_util.specs_from_metrics(
             [
                 tf.keras.metrics.AUC(name="auc", num_thresholds=10000),
             ],
-            model_names=["candidate", "baseline"]))
+            model_names=["candidate", "baseline"]),
+        validation=True)
 
   # "Manual" micro-benchmarks
   def benchmarkMetricsPlotsAndValidationsEvaluatorBinaryClassification(self):
     self._runMetricsPlotsAndValidationsEvaluatorManualActuation(
         with_confidence_intervals=False,
         multi_model=False,
-        metrics_specs=metric_specs.specs_from_metrics([
+        metrics_specs=metric_specs_util.specs_from_metrics([
             tf.keras.metrics.BinaryAccuracy(name="accuracy"),
             tf.keras.metrics.AUC(name="auc", num_thresholds=10000),
             tf.keras.metrics.AUC(
@@ -519,7 +533,8 @@ class TFMAV2BenchmarkBase(benchmark_base.BenchmarkBase):
             tfma.metrics.Calibration(name="calibration"),
             tfma.metrics.ConfusionMatrixPlot(name="confusion_matrix_plot"),
             tfma.metrics.CalibrationPlot(name="calibration_plot"),
-        ]))
+        ]),
+        validation=True)
 
   # "Manual" micro-benchmarks
   def benchmarkMetricsPlotsAndValidationsEvaluatorBinaryClassificationMultiModel(
@@ -527,7 +542,7 @@ class TFMAV2BenchmarkBase(benchmark_base.BenchmarkBase):
     self._runMetricsPlotsAndValidationsEvaluatorManualActuation(
         with_confidence_intervals=False,
         multi_model=True,
-        metrics_specs=metric_specs.specs_from_metrics([
+        metrics_specs=metric_specs_util.specs_from_metrics([
             tf.keras.metrics.BinaryAccuracy(name="accuracy"),
             tf.keras.metrics.AUC(name="auc", num_thresholds=10000),
             tf.keras.metrics.AUC(
@@ -540,7 +555,8 @@ class TFMAV2BenchmarkBase(benchmark_base.BenchmarkBase):
             tfma.metrics.ConfusionMatrixPlot(name="confusion_matrix_plot"),
             tfma.metrics.CalibrationPlot(name="calibration_plot"),
         ],
-                                                      model_names=[
-                                                          "candidate",
-                                                          "baseline"
-                                                      ]))
+                                                           model_names=[
+                                                               "candidate",
+                                                               "baseline"
+                                                           ]),
+        validation=True)

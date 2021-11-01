@@ -16,6 +16,7 @@
 import json
 import os
 
+
 from absl import logging
 from kfp import dsl
 import tensorflow as tf
@@ -25,10 +26,7 @@ from tfx.orchestration import data_types
 from tfx.orchestration import pipeline as tfx_pipeline
 from tfx.orchestration.kubeflow import base_component
 from tfx.orchestration.kubeflow.proto import kubeflow_pb2
-from tfx.orchestration.launcher import in_process_component_launcher
 from tfx.proto.orchestration import pipeline_pb2
-from tfx.types import channel_utils
-from tfx.types import standard_artifacts
 
 from ml_metadata.proto import metadata_store_pb2
 
@@ -38,12 +36,11 @@ class BaseComponentTest(tf.test.TestCase):
   _test_pipeline_name = 'test_pipeline'
 
   def setUp(self):
-    super(BaseComponentTest, self).setUp()
-    examples = standard_artifacts.ExternalArtifact()
+    super().setUp()
     example_gen = csv_example_gen_component.CsvExampleGen(
-        input=channel_utils.as_channel([examples]))
+        input_base='data_input')
     statistics_gen = statistics_gen_component.StatisticsGen(
-        examples=example_gen.outputs['examples'], instance_name='foo')
+        examples=example_gen.outputs['examples']).with_id('foo')
 
     pipeline = tfx_pipeline.Pipeline(
         pipeline_name=self._test_pipeline_name,
@@ -60,16 +57,14 @@ class BaseComponentTest(tf.test.TestCase):
     with dsl.Pipeline('test_pipeline'):
       self.component = base_component.BaseComponent(
           component=statistics_gen,
-          component_launcher_class=in_process_component_launcher
-          .InProcessComponentLauncher,
           depends_on=set(),
           pipeline=pipeline,
-          pipeline_name=self._test_pipeline_name,
           pipeline_root=test_pipeline_root,
           tfx_image='container_image',
           kubeflow_metadata_config=self._metadata_config,
-          component_config=None,
           tfx_ir=self._tfx_ir,
+          pod_labels_to_attach={},
+          runtime_parameters=[]
       )
     self.tfx_component = statistics_gen
 
@@ -83,8 +78,6 @@ class BaseComponentTest(tf.test.TestCase):
           json.load(component_json_file), sort_keys=True)
 
     expected_args = [
-        '--pipeline_name',
-        'test_pipeline',
         '--pipeline_root',
         '{{pipelineparam:op=;name=pipeline-root-param}}',
         '--kubeflow_metadata_config',
@@ -93,16 +86,8 @@ class BaseComponentTest(tf.test.TestCase):
         '    "environment_variable": "MYSQL_SERVICE_HOST"\n'
         '  }\n'
         '}',
-        '--beam_pipeline_args',
-        '[]',
-        '--additional_pipeline_args',
-        '{}',
-        '--component_launcher_class_path',
-        'tfx.orchestration.launcher.in_process_component_launcher.InProcessComponentLauncher',
-        '--serialized_component',
-        formatted_component_json,
-        '--component_config',
-        'null',
+        '--node_id',
+        'foo',
     ]
     try:
       self.assertEqual(
@@ -117,8 +102,8 @@ class BaseComponentTest(tf.test.TestCase):
       raise
 
   def testContainerOpName(self):
-    self.assertEqual('StatisticsGen.foo', self.tfx_component.id)
-    self.assertEqual('statisticsgen-foo', self.component.container_op.name)
+    self.assertEqual('foo', self.tfx_component.id)
+    self.assertEqual('foo', self.component.container_op.name)
 
 
 class BaseComponentWithPipelineParamTest(tf.test.TestCase):
@@ -127,26 +112,17 @@ class BaseComponentWithPipelineParamTest(tf.test.TestCase):
   _test_pipeline_name = 'test_pipeline'
 
   def setUp(self):
-    super(BaseComponentWithPipelineParamTest, self).setUp()
+    super().setUp()
+
+    example_gen_output_config = data_types.RuntimeParameter(
+        name='example-gen-output-config', ptype=str)
+
+    example_gen = csv_example_gen_component.CsvExampleGen(
+        input_base='data_root', output_config=example_gen_output_config)
+    statistics_gen = statistics_gen_component.StatisticsGen(
+        examples=example_gen.outputs['examples']).with_id('foo')
 
     test_pipeline_root = dsl.PipelineParam(name='pipeline-root-param')
-    example_gen_buckets = data_types.RuntimeParameter(
-        name='example-gen-buckets', ptype=int, default=10)
-
-    examples = standard_artifacts.ExternalArtifact()
-    example_gen = csv_example_gen_component.CsvExampleGen(
-        input=channel_utils.as_channel([examples]),
-        output_config={
-            'split_config': {
-                'splits': [{
-                    'name': 'examples',
-                    'hash_buckets': example_gen_buckets
-                }]
-            }
-        })
-    statistics_gen = statistics_gen_component.StatisticsGen(
-        examples=example_gen.outputs['examples'], instance_name='foo')
-
     pipeline = tfx_pipeline.Pipeline(
         pipeline_name=self._test_pipeline_name,
         pipeline_root='test_pipeline_root',
@@ -160,27 +136,24 @@ class BaseComponentWithPipelineParamTest(tf.test.TestCase):
     with dsl.Pipeline('test_pipeline'):
       self.example_gen = base_component.BaseComponent(
           component=example_gen,
-          component_launcher_class=in_process_component_launcher
-          .InProcessComponentLauncher,
           depends_on=set(),
           pipeline=pipeline,
-          pipeline_name=self._test_pipeline_name,
           pipeline_root=test_pipeline_root,
           tfx_image='container_image',
           kubeflow_metadata_config=self._metadata_config,
-          component_config=None,
-          tfx_ir=self._tfx_ir)
+          tfx_ir=self._tfx_ir,
+          pod_labels_to_attach={},
+          runtime_parameters=[example_gen_output_config])
       self.statistics_gen = base_component.BaseComponent(
           component=statistics_gen,
-          component_launcher_class=in_process_component_launcher
-          .InProcessComponentLauncher,
           depends_on=set(),
           pipeline=pipeline,
-          pipeline_name=self._test_pipeline_name,
           pipeline_root=test_pipeline_root,
           tfx_image='container_image',
           kubeflow_metadata_config=self._metadata_config,
-          component_config=None
+          tfx_ir=self._tfx_ir,
+          pod_labels_to_attach={},
+          runtime_parameters=[]
       )
 
     self.tfx_example_gen = example_gen
@@ -190,18 +163,7 @@ class BaseComponentWithPipelineParamTest(tf.test.TestCase):
     # TODO(hongyes): make the whole args list in one golden file to keep
     # source of truth in same file.
     source_data_dir = os.path.join(os.path.dirname(__file__), 'testdata')
-    with open(os.path.join(source_data_dir,
-                           'statistics_gen.json')) as component_json_file:
-      formatted_statistics_gen = json.dumps(
-          json.load(component_json_file), sort_keys=True)
-    with open(os.path.join(source_data_dir,
-                           'example_gen.json')) as component_json_file:
-      formatted_example_gen = json.dumps(
-          json.load(component_json_file), sort_keys=True)
-
     statistics_gen_expected_args = [
-        '--pipeline_name',
-        'test_pipeline',
         '--pipeline_root',
         '{{pipelineparam:op=;name=pipeline-root-param}}',
         '--kubeflow_metadata_config',
@@ -210,22 +172,14 @@ class BaseComponentWithPipelineParamTest(tf.test.TestCase):
         '    "environment_variable": "MYSQL_SERVICE_HOST"\n'
         '  }\n'
         '}',
-        '--beam_pipeline_args',
-        '[]',
-        '--additional_pipeline_args',
-        '{}',
-        '--component_launcher_class_path',
-        'tfx.orchestration.launcher.in_process_component_launcher.InProcessComponentLauncher',
-        '--serialized_component',
-        formatted_statistics_gen,
-        '--component_config',
-        'null',
         '--node_id',
-        'StatisticsGen.foo',
+        'foo',
+        '--tfx_ir',
+        '{}',
+        '--metadata_ui_path',
+        '/mlpipeline-ui-metadata.json',
     ]
     example_gen_expected_args = [
-        '--pipeline_name',
-        'test_pipeline',
         '--pipeline_root',
         '{{pipelineparam:op=;name=pipeline-root-param}}',
         '--kubeflow_metadata_config',
@@ -234,29 +188,22 @@ class BaseComponentWithPipelineParamTest(tf.test.TestCase):
         '    "environment_variable": "MYSQL_SERVICE_HOST"\n'
         '  }\n'
         '}',
-        '--beam_pipeline_args',
-        '[]',
-        '--additional_pipeline_args',
-        '{}',
-        '--component_launcher_class_path',
-        'tfx.orchestration.launcher.in_process_component_launcher.InProcessComponentLauncher',
-        '--serialized_component',
-        formatted_example_gen,
-        '--component_config',
-        'null',
         '--node_id',
         'CsvExampleGen',
         '--tfx_ir',
         '{}',
+        '--metadata_ui_path',
+        '/mlpipeline-ui-metadata.json',
+        '--runtime_parameter',
+        'example-gen-output-config=STRING:{{pipelineparam:op=;name=example-gen-output-config}}',
     ]
     try:
       self.assertEqual(
           self.statistics_gen.container_op
-          .arguments[:len(statistics_gen_expected_args)],
+          .arguments,
           statistics_gen_expected_args)
       self.assertEqual(
-          self.example_gen.container_op.arguments[:len(example_gen_expected_args
-                                                      )],
+          self.example_gen.container_op.arguments,
           example_gen_expected_args)
     except AssertionError:
       # Print out full arguments for debugging.
@@ -271,8 +218,8 @@ class BaseComponentWithPipelineParamTest(tf.test.TestCase):
       raise
 
   def testContainerOpName(self):
-    self.assertEqual('StatisticsGen.foo', self.tfx_statistics_gen.id)
-    self.assertEqual('statisticsgen-foo', self.statistics_gen.container_op.name)
+    self.assertEqual('foo', self.tfx_statistics_gen.id)
+    self.assertEqual('foo', self.statistics_gen.container_op.name)
 
 
 if __name__ == '__main__':

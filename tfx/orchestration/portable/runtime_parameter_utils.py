@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Utilities for TFX Runtime Parameters."""
-from typing import Mapping, Optional, cast
+from typing import Mapping, Optional, cast, Dict
 
 from tfx import types
 from tfx.orchestration import data_types_utils
@@ -80,7 +80,8 @@ def _get_runtime_parameter_value(
 
 def _get_structural_runtime_parameter_value(
     structural_runtime_parameter: pipeline_pb2.StructuralRuntimeParameter,
-    parameter_bindings: Mapping[str, types.Property]) -> Optional[str]:
+    parameter_bindings: Mapping[str, types.Property],
+    populated_values: Dict[str, Optional[types.Property]]) -> Optional[str]:
   """Populates the value for a StructuralRuntimeParameter when possible.
 
   Only populates the value when all parts in the structural runtime parameter
@@ -91,6 +92,8 @@ def _get_structural_runtime_parameter_value(
       template.
     parameter_bindings: Parameter bindings to substitute runtime parameter
       placeholders in the StructuralRuntimeParameter.
+    populated_values: A dict of all runtime parameters to their populated
+      values.
 
   Returns:
     A string if all parts are resolved. Returns None otherwise.
@@ -102,6 +105,7 @@ def _get_structural_runtime_parameter_value(
     else:
       part_value = _get_runtime_parameter_value(part.runtime_parameter,
                                                 parameter_bindings)
+      populated_values[part.runtime_parameter.name] = part_value
       if part_value is None:
         return None
       parts.append(part_value)
@@ -112,8 +116,9 @@ def _get_structural_runtime_parameter_value(
 
 
 def substitute_runtime_parameter(
-    msg: message.Message, parameter_bindings: Mapping[str,
-                                                      types.Property]) -> None:
+    msg: message.Message,
+    parameter_bindings: Mapping[str, types.Property]
+    ) -> Mapping[str, types.Property]:
   """Utility function to substitute runtime parameter placeholders with values.
 
   Args:
@@ -123,11 +128,12 @@ def substitute_runtime_parameter(
       be used to substitute the runtime parameter placeholder.
 
   Returns:
-    None
+    A dict of all runtime parameters to their populated values
   """
   if not isinstance(msg, message.Message):
-    return
+    return {}
 
+  parameters = {}
   # If the message is a pipeline_pb2.Value instance, try to find an substitute
   # with runtime parameter bindings.
   if isinstance(msg, pipeline_pb2.Value):
@@ -136,21 +142,22 @@ def substitute_runtime_parameter(
     if which == 'runtime_parameter':
       real_value = _get_runtime_parameter_value(value.runtime_parameter,
                                                 parameter_bindings)
+      parameters[value.runtime_parameter.name] = real_value
       if real_value is None:
-        return
+        return parameters
       value.Clear()
       data_types_utils.set_metadata_value(
           metadata_value=value.field_value, value=real_value)
     if which == 'structural_runtime_parameter':
       real_value = _get_structural_runtime_parameter_value(
-          value.structural_runtime_parameter, parameter_bindings)
+          value.structural_runtime_parameter, parameter_bindings, parameters)
       if real_value is None:
-        return
+        return parameters
       value.Clear()
       data_types_utils.set_metadata_value(
           metadata_value=value.field_value, value=real_value)
 
-    return
+    return parameters
 
   # For other cases, recursively call into sub-messages if any.
   for field, sub_message in msg.ListFields():
@@ -161,11 +168,15 @@ def substitute_runtime_parameter(
     elif (field.message_type.has_options and
           field.message_type.GetOptions().map_entry):
       for key in sub_message:
-        substitute_runtime_parameter(sub_message[key], parameter_bindings)
+        parameters.update(
+            substitute_runtime_parameter(sub_message[key], parameter_bindings))
     # Evaluates every entry in a list.
     elif field.label == descriptor.FieldDescriptor.LABEL_REPEATED:
       for element in sub_message:
-        substitute_runtime_parameter(element, parameter_bindings)
+        parameters.update(
+            substitute_runtime_parameter(element, parameter_bindings))
     # Evaluates sub-message.
     else:
-      substitute_runtime_parameter(sub_message, parameter_bindings)
+      parameters.update(
+          substitute_runtime_parameter(sub_message, parameter_bindings))
+  return parameters

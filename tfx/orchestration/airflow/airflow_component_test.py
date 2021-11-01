@@ -54,13 +54,13 @@ class _FakeComponent(base_component.BaseComponent):
   EXECUTOR_SPEC = executor_spec.ExecutorClassSpec(base_executor.BaseExecutor)
 
   def __init__(self, spec: types.ComponentSpec):
-    super(_FakeComponent, self).__init__(spec=spec)
+    super().__init__(spec=spec)
 
 
 class AirflowComponentTest(tf.test.TestCase):
 
   def setUp(self):
-    super(AirflowComponentTest, self).setUp()
+    super().setUp()
     self._component = _FakeComponent(
         _FakeComponentSpec(
             input=types.Channel(type=_ArtifactTypeA),
@@ -91,7 +91,8 @@ class AirflowComponentTest(tf.test.TestCase):
         beam_pipeline_args=[],
         additional_pipeline_args={},
         component_config=None,
-        ti=mock_ti)
+        ti=mock_ti,
+        exec_properties={})
     mock_component_launcher_class.create.assert_called_once()
     arg_list = mock_component_launcher_class.create.call_args_list
     self.assertEqual(arg_list[0][1]['pipeline_info'].run_id, 'run_id')
@@ -115,7 +116,8 @@ class AirflowComponentTest(tf.test.TestCase):
         task_id=self._component.id,
         provide_context=True,
         python_callable=mock.ANY,
-        dag=self._parent_dag)
+        dag=self._parent_dag,
+        op_kwargs={'exec_properties': {}})
 
     python_callable = mock_python_operator_init.call_args_list[0][1][
         'python_callable']

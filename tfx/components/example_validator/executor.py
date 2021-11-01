@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,12 +13,8 @@
 # limitations under the License.
 """Generic TFX example_validator executor."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import os
-from typing import Any, Dict, List, Text
+from typing import Any, Dict, List
 
 from absl import logging
 import tensorflow_data_validation as tfdv
@@ -28,10 +23,7 @@ from tfx.components.example_validator import labels
 from tfx.components.util import value_utils
 from tfx.dsl.components.base import base_executor
 from tfx.types import artifact_utils
-from tfx.types.standard_component_specs import ANOMALIES_KEY
-from tfx.types.standard_component_specs import EXCLUDE_SPLITS_KEY
-from tfx.types.standard_component_specs import SCHEMA_KEY
-from tfx.types.standard_component_specs import STATISTICS_KEY
+from tfx.types import standard_component_specs
 from tfx.utils import io_utils
 from tfx.utils import json_utils
 
@@ -43,9 +35,9 @@ DEFAULT_FILE_NAME = 'SchemaDiff.pb'
 class Executor(base_executor.BaseExecutor):
   """TensorFlow ExampleValidator component executor."""
 
-  def Do(self, input_dict: Dict[Text, List[types.Artifact]],
-         output_dict: Dict[Text, List[types.Artifact]],
-         exec_properties: Dict[Text, Any]) -> None:
+  def Do(self, input_dict: Dict[str, List[types.Artifact]],
+         output_dict: Dict[str, List[types.Artifact]],
+         exec_properties: Dict[str, Any]) -> None:
     """TensorFlow ExampleValidator executor entrypoint.
 
     This validates statistics against the schema.
@@ -71,27 +63,28 @@ class Executor(base_executor.BaseExecutor):
 
     # Load and deserialize exclude splits from execution properties.
     exclude_splits = json_utils.loads(
-        exec_properties.get(EXCLUDE_SPLITS_KEY, 'null')) or []
+        exec_properties.get(standard_component_specs.EXCLUDE_SPLITS_KEY,
+                            'null')) or []
     if not isinstance(exclude_splits, list):
       raise ValueError('exclude_splits in execution properties needs to be a '
                        'list. Got %s instead.' % type(exclude_splits))
     # Setup output splits.
     stats_artifact = artifact_utils.get_single_instance(
-        input_dict[STATISTICS_KEY])
+        input_dict[standard_component_specs.STATISTICS_KEY])
     stats_split_names = artifact_utils.decode_split_names(
         stats_artifact.split_names)
     split_names = [
         split for split in stats_split_names if split not in exclude_splits
     ]
     anomalies_artifact = artifact_utils.get_single_instance(
-        output_dict[ANOMALIES_KEY])
+        output_dict[standard_component_specs.ANOMALIES_KEY])
     anomalies_artifact.split_names = artifact_utils.encode_split_names(
         split_names)
 
     schema = io_utils.SchemaReader().read(
         io_utils.get_only_uri_in_dir(
             artifact_utils.get_single_uri(
-                input_dict[SCHEMA_KEY])))
+                input_dict[standard_component_specs.SCHEMA_KEY])))
 
     for split in artifact_utils.decode_split_names(stats_artifact.split_names):
       if split in exclude_splits:
@@ -107,17 +100,19 @@ class Executor(base_executor.BaseExecutor):
         stats = tfdv.load_statistics(stats_uri)
       else:
         stats = tfdv.load_stats_binary(stats_uri)
-      label_inputs = {STATISTICS_KEY: stats, SCHEMA_KEY: schema}
+      label_inputs = {
+          standard_component_specs.STATISTICS_KEY: stats,
+          standard_component_specs.SCHEMA_KEY: schema
+      }
       output_uri = artifact_utils.get_split_uri(
-          output_dict[ANOMALIES_KEY], split)
+          output_dict[standard_component_specs.ANOMALIES_KEY], split)
       label_outputs = {labels.SCHEMA_DIFF_PATH: output_uri}
       self._Validate(label_inputs, label_outputs)
       logging.info(
           'Validation complete for split %s. Anomalies written to '
           '%s.', split, output_uri)
 
-  def _Validate(self, inputs: Dict[Text, Any], outputs: Dict[Text,
-                                                             Any]) -> None:
+  def _Validate(self, inputs: Dict[str, Any], outputs: Dict[str, Any]) -> None:
     """Validate the inputs and put validate result into outputs.
 
       This is the implementation part of example validator executor. This is
@@ -143,8 +138,10 @@ class Executor(base_executor.BaseExecutor):
       outputs: A dictionary of labeled output values, including:
           - labels.SCHEMA_DIFF_PATH: the path to write the schema diff to
     """
-    schema = value_utils.GetSoleValue(inputs, SCHEMA_KEY)
-    stats = value_utils.GetSoleValue(inputs, STATISTICS_KEY)
+    schema = value_utils.GetSoleValue(inputs,
+                                      standard_component_specs.SCHEMA_KEY)
+    stats = value_utils.GetSoleValue(inputs,
+                                     standard_component_specs.STATISTICS_KEY)
     schema_diff_path = value_utils.GetSoleValue(
         outputs, labels.SCHEMA_DIFF_PATH)
     anomalies = tfdv.validate_statistics(stats, schema)

@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,20 +13,17 @@
 # limitations under the License.
 """Python source file include Penguin pipeline functions and necessary utils."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
-from typing import List, Text, Union
+from typing import List
 
 import absl
-import kerastuner
+import keras_tuner
 import tensorflow as tf
 from tensorflow import keras
-from tensorflow_transform.tf_metadata import schema_utils
+from tfx.components.trainer.fn_args_utils import DataAccessor
 from tfx.components.trainer.fn_args_utils import FnArgs
 from tfx.components.tuner.component import TunerFnResult
 from tfx.utils import io_utils
+from tfx_bsl.tfxio import dataset_options
 
 from tensorflow_metadata.proto.v0 import schema_pb2
 
@@ -37,40 +33,30 @@ _FEATURE_KEYS = [
 _LABEL_KEY = 'species'
 
 
-def _gzip_reader_fn(filenames):
-  """Small utility returning a record reader that can read gzip'ed files."""
-  return tf.data.TFRecordDataset(filenames, compression_type='GZIP')
-
-
-def _input_fn(file_pattern: Union[Text, List[Text]],
+def _input_fn(file_pattern: List[str],
+              data_accessor: DataAccessor,
               schema: schema_pb2.Schema,
               batch_size: int = 20) -> tf.data.Dataset:
   """Generates features and label for tuning/training.
 
   Args:
-    file_pattern: string or list of strings, contains pattern(s) of input
-      tfrecord files.
+    file_pattern: List of paths or patterns of input tfrecord files.
+    data_accessor: DataAccessor for converting input to RecordBatch.
     schema: Schema of the input data.
     batch_size: representing the number of consecutive elements of returned
-      dataset to combine in a single batch.
+      dataset to combine in a single batch
 
   Returns:
     A dataset that contains (features, indices) tuple where features is a
       dictionary of Tensors, and indices is a single Tensor of label indices.
   """
-  feature_spec = schema_utils.schema_as_feature_spec(schema).feature_spec
-
-  dataset = tf.data.experimental.make_batched_features_dataset(
-      file_pattern=file_pattern,
-      batch_size=batch_size,
-      features=feature_spec,
-      reader=_gzip_reader_fn,
-      label_key=_LABEL_KEY)
-
-  return dataset
+  return data_accessor.tf_dataset_factory(
+      file_pattern,
+      dataset_options.TensorFlowDatasetOptions(
+          batch_size=batch_size, label_key=_LABEL_KEY), schema).repeat()
 
 
-def _build_keras_model(hparams: kerastuner.HyperParameters) -> tf.keras.Model:
+def _build_keras_model(hparams: keras_tuner.HyperParameters) -> tf.keras.Model:
   """Creates a DNN Keras model for classifying penguin data.
 
   Args:
@@ -118,13 +104,13 @@ def tuner_fn(fn_args: FnArgs) -> TunerFnResult:
                     model , e.g., the training and validation dataset. Required
                     args depend on the above tuner's implementation.
   """
-  hp = kerastuner.HyperParameters()
+  hp = keras_tuner.HyperParameters()
   # Defines search space.
   hp.Choice('learning_rate', [1e-1, 1e-3])
   hp.Int('num_layers', 1, 5)
 
   # RandomSearch is a subclass of Keras model Tuner.
-  tuner = kerastuner.RandomSearch(
+  tuner = keras_tuner.RandomSearch(
       _build_keras_model,
       max_trials=5,
       hyperparameters=hp,
@@ -135,8 +121,8 @@ def tuner_fn(fn_args: FnArgs) -> TunerFnResult:
 
   schema = schema_pb2.Schema()
   io_utils.parse_pbtxt_file(fn_args.schema_path, schema)
-  train_dataset = _input_fn(fn_args.train_files, schema)
-  eval_dataset = _input_fn(fn_args.eval_files, schema)
+  train_dataset = _input_fn(fn_args.train_files, fn_args.data_accessor, schema)
+  eval_dataset = _input_fn(fn_args.eval_files, fn_args.data_accessor, schema)
 
   return TunerFnResult(
       tuner=tuner,

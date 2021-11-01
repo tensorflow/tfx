@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,12 +13,8 @@
 # limitations under the License.
 """Avro based TFX example gen executor."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import os
-from typing import Any, Dict, Text
+from typing import Any, Dict
 
 from absl import logging
 import apache_beam as beam
@@ -34,8 +29,8 @@ from tfx.types import standard_component_specs
 @beam.typehints.with_input_types(beam.Pipeline)
 @beam.typehints.with_output_types(tf.train.Example)
 def _AvroToExample(  # pylint: disable=invalid-name
-    pipeline: beam.Pipeline, exec_properties: Dict[Text, Any],
-    split_pattern: Text) -> beam.pvalue.PCollection:
+    pipeline: beam.Pipeline, exec_properties: Dict[str, Any],
+    split_pattern: str) -> beam.pvalue.PCollection:
   """Read Avro files and transform to TF examples.
 
   Note that each input split will be transformed by this function separately.
@@ -82,10 +77,9 @@ class Executor(BaseExampleGenExecutor):
     FileBasedExampleGen
     from tfx.components.example_gen.custom_executors import
     avro_executor
-    from tfx.utils.dsl_utils import external_input
 
     example_gen = FileBasedExampleGen(
-        input=external_input(avro_dir_path),
+        input_base=avro_dir_path,
         custom_executor_spec=executor_spec.ExecutorClassSpec(
             avro_executor.Executor))
   """

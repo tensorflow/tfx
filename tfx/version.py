@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,4 +14,4 @@
 """Contains the version string of TFX."""
 
 # Note that setup.py uses this version.
-__version__ = '0.30.0.dev'
+__version__ = '1.4.0.dev'

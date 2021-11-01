@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,14 +13,9 @@
 # limitations under the License.
 """A wrapper to pass a node without its type information."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
-from typing import Any, Dict, Text
+from typing import Any, Dict
 
 from tfx.dsl.components.base import base_node
-from tfx.types import node_common
 
 
 class NodeWrapper(base_node.BaseNode):
@@ -43,21 +37,21 @@ class NodeWrapper(base_node.BaseNode):
     self._exec_properties = node.exec_properties
 
   @property
-  def type(self) -> Text:
+  def type(self) -> str:
     return self._type
 
   @property
-  def id(self) -> Text:
+  def id(self) -> str:
     return self._id
 
   @property
-  def inputs(self) -> node_common._PropertyDictWrapper:  # pylint: disable=protected-access
+  def inputs(self) -> Dict[str, Any]:
     return self._inputs
 
   @property
-  def outputs(self) -> node_common._PropertyDictWrapper:  # pylint: disable=protected-access
+  def outputs(self) -> Dict[str, Any]:
     return self._outputs
 
   @property
-  def exec_properties(self) -> Dict[Text, Any]:
+  def exec_properties(self) -> Dict[str, Any]:
     return self._exec_properties

@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,54 +13,53 @@
 # limitations under the License.
 """TFX Evaluator component definition."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
-from typing import Any, Dict, List, Optional, Text, Union
+from typing import List, Optional, Union
 
 from absl import logging
 import tensorflow_model_analysis as tfma
 from tfx import types
 from tfx.components.evaluator import executor
-from tfx.dsl.components.base import base_component
+from tfx.components.util import udf_utils
+from tfx.dsl.components.base import base_beam_component
 from tfx.dsl.components.base import executor_spec
 from tfx.orchestration import data_types
 from tfx.proto import evaluator_pb2
 from tfx.types import standard_artifacts
-from tfx.types.standard_component_specs import EvaluatorSpec
+from tfx.types import standard_component_specs
 from tfx.utils import json_utils
 
 
-class Evaluator(base_component.BaseComponent):
+class Evaluator(base_beam_component.BaseBeamComponent):
   """A TFX component to evaluate models trained by a TFX Trainer component.
 
-  See [Evaluator](https://www.tensorflow.org/tfx/guide/evaluator) for more
-  information on what this component's required inputs are, how to configure it,
-  and what outputs it produces.
+  Component `outputs` contains:
+   - `evaluation`: Channel of type `standard_artifacts.ModelEvaluation` to store
+                   the evaluation results.
+   - `blessing`: Channel of type `standard_artifacts.ModelBlessing' that
+                 contains the blessing result.
+
+  See [the Evaluator guide](https://www.tensorflow.org/tfx/guide/evaluator) for
+  more details.
   """
 
-  SPEC_CLASS = EvaluatorSpec
-  EXECUTOR_SPEC = executor_spec.ExecutorClassSpec(executor.Executor)
+  SPEC_CLASS = standard_component_specs.EvaluatorSpec
+  EXECUTOR_SPEC = executor_spec.BeamExecutorSpec(executor.Executor)
 
   def __init__(
       self,
-      examples: types.Channel = None,
-      model: types.Channel = None,
+      examples: types.Channel,
+      model: Optional[types.Channel] = None,
       baseline_model: Optional[types.Channel] = None,
       # TODO(b/148618405): deprecate feature_slicing_spec.
       feature_slicing_spec: Optional[Union[evaluator_pb2.FeatureSlicingSpec,
-                                           Dict[Text, Any]]] = None,
-      fairness_indicator_thresholds: Optional[List[Union[
-          float, data_types.RuntimeParameter]]] = None,
-      example_splits: Optional[List[Text]] = None,
-      evaluation: Optional[types.Channel] = None,
-      instance_name: Optional[Text] = None,
+                                           data_types.RuntimeParameter]] = None,
+      fairness_indicator_thresholds: Optional[Union[
+          List[float], data_types.RuntimeParameter]] = None,
+      example_splits: Optional[List[str]] = None,
       eval_config: Optional[tfma.EvalConfig] = None,
-      blessing: Optional[types.Channel] = None,
       schema: Optional[types.Channel] = None,
-      module_file: Optional[Text] = None,
-      module_path: Optional[Text] = None):
+      module_file: Optional[str] = None,
+      module_path: Optional[str] = None):
     """Construct an Evaluator component.
 
     Args:
@@ -74,10 +72,7 @@ class Evaluator(base_component.BaseComponent):
       feature_slicing_spec:
         Deprecated, please use eval_config instead. Only support estimator.
         [evaluator_pb2.FeatureSlicingSpec](https://github.com/tensorflow/tfx/blob/master/tfx/proto/evaluator.proto)
-          instance that describes how Evaluator should slice the data. If any
-          field is provided as a RuntimeParameter, feature_slicing_spec should
-          be constructed as a dict with the same field names as
-          FeatureSlicingSpec proto message.
+        instance that describes how Evaluator should slice the data.
       fairness_indicator_thresholds: Optional list of float (or
         RuntimeParameter) threshold values for use with TFMA fairness
           indicators. Experimental functionality: this interface and
@@ -86,20 +81,14 @@ class Evaluator(base_component.BaseComponent):
       example_splits: Names of splits on which the metrics are computed.
         Default behavior (when example_splits is set to None or Empty) is using
         the 'eval' split.
-      evaluation: Channel of `ModelEvaluation` to store the evaluation results.
-      instance_name: Optional name assigned to this specific instance of
-        Evaluator. Required only if multiple Evaluator components are declared
-        in the same pipeline.  Either `model_exports` or `model` must be present
-        in the input arguments.
       eval_config: Instance of tfma.EvalConfig containg configuration settings
         for running the evaluation. This config has options for both estimator
         and Keras.
-      blessing: Output channel of 'ModelBlessing' that contains the
-        blessing result.
       schema: A `Schema` channel to use for TFXIO.
       module_file: A path to python module file containing UDFs for Evaluator
-        customization. The module_file can implement following functions at its
-        top level.
+        customization. This functionality is experimental and may change at any
+        time. The module_file can implement following functions at its top
+        level.
           def custom_eval_shared_model(
              eval_saved_model_path, model_name, eval_config, **kwargs,
           ) -> tfma.EvalSharedModel:
@@ -107,7 +96,8 @@ class Evaluator(base_component.BaseComponent):
             eval_shared_model, eval_config, tensor_adapter_config,
           ) -> List[tfma.extractors.Extractor]:
       module_path: A python path to the custom module that contains the UDFs.
-        See 'module_file' for the required signature of UDFs. Note this can
+        See 'module_file' for the required signature of UDFs. This functionality
+        is experimental and this API may change at any time. Note this can
         not be set together with module_file.
     """
     if bool(module_file) and bool(module_path):
@@ -126,14 +116,17 @@ class Evaluator(base_component.BaseComponent):
       logging.warning('feature_slicing_spec is deprecated, please use '
                       'eval_config instead.')
 
-    blessing = blessing or types.Channel(type=standard_artifacts.ModelBlessing)
+    blessing = types.Channel(type=standard_artifacts.ModelBlessing)
     evaluation = types.Channel(type=standard_artifacts.ModelEvaluation)
-    spec = EvaluatorSpec(
+    spec = standard_component_specs.EvaluatorSpec(
         examples=examples,
         model=model,
         baseline_model=baseline_model,
         feature_slicing_spec=feature_slicing_spec,
-        fairness_indicator_thresholds=fairness_indicator_thresholds,
+        fairness_indicator_thresholds=(
+            fairness_indicator_thresholds if isinstance(
+                fairness_indicator_thresholds, data_types.RuntimeParameter) else
+            json_utils.dumps(fairness_indicator_thresholds)),
         example_splits=json_utils.dumps(example_splits),
         evaluation=evaluation,
         eval_config=eval_config,
@@ -141,4 +134,12 @@ class Evaluator(base_component.BaseComponent):
         schema=schema,
         module_file=module_file,
         module_path=module_path)
-    super(Evaluator, self).__init__(spec=spec, instance_name=instance_name)
+    super().__init__(spec=spec)
+
+    if udf_utils.should_package_user_modules():
+      # In this case, the `MODULE_PATH_KEY` execution property will be injected
+      # as a reference to the given user module file after packaging, at which
+      # point the `MODULE_FILE_KEY` execution property will be removed.
+      udf_utils.add_user_module_dependency(
+          self, standard_component_specs.MODULE_FILE_KEY,
+          standard_component_specs.MODULE_PATH_KEY)

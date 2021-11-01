@@ -16,7 +16,7 @@
 The utilities in this file are used to build a model with native Keras.
 This module file will be used in the Transform, Tuner and generic Trainer
 components.
-CloudTuner (a subclass of kerastuner.Tuner) creates a seamless integration with
+CloudTuner (a subclass of keras_tuner.Tuner) creates a seamless integration with
 Cloud AI Platform Vizier as a backend to get suggestions of hyperparameters
 and run trials. DistributingCloudTuner is a subclass of CloudTuner which
 launches remote distributed training job for each trial on Cloud AI Platform
@@ -26,17 +26,15 @@ https://github.com/tensorflow/cloud/blob/master/src/python/tensorflow_cloud/tune
 
 import datetime
 import os
-from typing import List, Text
+from typing import List
 
-import absl
-import kerastuner
+from absl import logging
+import keras_tuner
 import tensorflow as tf
 from tensorflow import keras
 import tensorflow_transform as tft
-from tfx.components.trainer.fn_args_utils import DataAccessor
-from tfx.components.trainer.fn_args_utils import FnArgs
-from tfx.components.tuner.component import TunerFnResult
-from tfx_bsl.tfxio import dataset_options
+import tfx.v1 as tfx
+from tfx_bsl.public import tfxio
 
 from tensorflow_cloud.core import machine_config
 from tensorflow_cloud.tuner import tuner as cloud_tuner
@@ -63,32 +61,56 @@ def _transformed_name(key):
   return key + '_xf'
 
 
-def _gzip_reader_fn(filenames):
-  """Small utility returning a record reader that can read gzip'ed files."""
-  return tf.data.TFRecordDataset(filenames, compression_type='GZIP')
+def _get_tf_examples_serving_signature(model, tf_transform_output):
+  """Returns a serving signature that accepts `tensorflow.Example`."""
 
+  # We need to track the layers in the model in order to save it.
+  # TODO(b/162357359): Revise once the bug is resolved.
+  model.tft_layer_inference = tf_transform_output.transform_features_layer()
 
-def _get_serve_tf_examples_fn(model, tf_transform_output):
-  """Returns a function that parses a serialized tf.Example."""
-
-  model.tft_layer = tf_transform_output.transform_features_layer()
-
-  @tf.function
-  def serve_tf_examples_fn(serialized_tf_examples):
+  @tf.function(input_signature=[
+      tf.TensorSpec(shape=[None], dtype=tf.string, name='examples')
+  ])
+  def serve_tf_examples_fn(serialized_tf_example):
     """Returns the output to be used in the serving signature."""
-    feature_spec = tf_transform_output.raw_feature_spec()
-    feature_spec.pop(_LABEL_KEY)
-    parsed_features = tf.io.parse_example(serialized_tf_examples, feature_spec)
+    raw_feature_spec = tf_transform_output.raw_feature_spec()
+    # Remove label feature since these will not be present at serving time.
+    raw_feature_spec.pop(_LABEL_KEY)
+    raw_features = tf.io.parse_example(serialized_tf_example, raw_feature_spec)
+    transformed_features = model.tft_layer_inference(raw_features)
+    logging.info('serve_transformed_features = %s', transformed_features)
 
-    transformed_features = model.tft_layer(parsed_features)
-
-    return model(transformed_features)
+    outputs = model(transformed_features)
+    # TODO(b/154085620): Convert the predicted labels from the model using a
+    # reverse-lookup (opposite of transform.py).
+    return {'outputs': outputs}
 
   return serve_tf_examples_fn
 
 
-def _input_fn(file_pattern: List[Text],
-              data_accessor: DataAccessor,
+def _get_transform_features_signature(model, tf_transform_output):
+  """Returns a serving signature that applies tf.Transform to features."""
+
+  # We need to track the layers in the model in order to save it.
+  # TODO(b/162357359): Revise once the bug is resolved.
+  model.tft_layer_eval = tf_transform_output.transform_features_layer()
+
+  @tf.function(input_signature=[
+      tf.TensorSpec(shape=[None], dtype=tf.string, name='examples')
+  ])
+  def transform_features_fn(serialized_tf_example):
+    """Returns the transformed_features to be fed as input to evaluator."""
+    raw_feature_spec = tf_transform_output.raw_feature_spec()
+    raw_features = tf.io.parse_example(serialized_tf_example, raw_feature_spec)
+    transformed_features = model.tft_layer_eval(raw_features)
+    logging.info('eval_transformed_features = %s', transformed_features)
+    return transformed_features
+
+  return transform_features_fn
+
+
+def _input_fn(file_pattern: List[str],
+              data_accessor: tfx.components.DataAccessor,
               tf_transform_output: tft.TFTransformOutput,
               batch_size: int = 200) -> tf.data.Dataset:
   """Generates features and label for tuning/training.
@@ -107,7 +129,7 @@ def _input_fn(file_pattern: List[Text],
   """
   return data_accessor.tf_dataset_factory(
       file_pattern,
-      dataset_options.TensorFlowDatasetOptions(
+      tfxio.TensorFlowDatasetOptions(
           batch_size=batch_size, label_key=_transformed_name(_LABEL_KEY)),
       tf_transform_output.transformed_metadata.schema).repeat()
 
@@ -136,16 +158,16 @@ def preprocessing_fn(inputs):
   return outputs
 
 
-def _get_hyperparameters() -> kerastuner.HyperParameters:
+def _get_hyperparameters() -> keras_tuner.HyperParameters:
   """Returns hyperparameters for building Keras model."""
-  hp = kerastuner.HyperParameters()
+  hp = keras_tuner.HyperParameters()
   # Defines search space.
   hp.Choice('learning_rate', [1e-5, 1e-4, 1e-3, 1e-2], default=1e-2)
   hp.Int('num_layers', 1, 4, default=2)
   return hp
 
 
-def _build_keras_model(hparams: kerastuner.HyperParameters) -> tf.keras.Model:
+def _build_keras_model(hparams: keras_tuner.HyperParameters) -> tf.keras.Model:
   """Creates a DNN Keras model for classifying penguin data.
 
   Args:
@@ -171,12 +193,12 @@ def _build_keras_model(hparams: kerastuner.HyperParameters) -> tf.keras.Model:
       loss='sparse_categorical_crossentropy',
       metrics=[keras.metrics.SparseCategoricalAccuracy()])
 
-  model.summary(print_fn=absl.logging.info)
+  model.summary(print_fn=logging.info)
   return model
 
 
 # TFX Tuner will call this function.
-def tuner_fn(fn_args: FnArgs) -> TunerFnResult:
+def tuner_fn(fn_args: tfx.components.FnArgs) -> tfx.components.TunerFnResult:
   """Build the tuner using the CloudTuner API.
 
   Args:
@@ -219,7 +241,7 @@ def tuner_fn(fn_args: FnArgs) -> TunerFnResult:
       # also be configured separately.
       project_id=fn_args.custom_config['ai_platform_tuning_args']['project'],
       region=fn_args.custom_config['ai_platform_tuning_args']['region'],
-      objective=kerastuner.Objective('val_sparse_categorical_accuracy', 'max'),
+      objective=keras_tuner.Objective('val_sparse_categorical_accuracy', 'max'),
       hyperparameters=_get_hyperparameters(),
       max_trials=5,  # Optional.
       directory=os.path.join(fn_args.custom_config['remote_trials_working_dir'],
@@ -234,7 +256,7 @@ def tuner_fn(fn_args: FnArgs) -> TunerFnResult:
       # chief worker.
       replica_count=2)
 
-  return TunerFnResult(
+  return tfx.components.TunerFnResult(
       tuner=tuner,
       fit_kwargs={
           'steps_per_epoch': fn_args.train_steps,
@@ -249,7 +271,7 @@ def tuner_fn(fn_args: FnArgs) -> TunerFnResult:
 
 
 # TFX Trainer will call this function.
-def run_fn(fn_args: FnArgs):
+def run_fn(fn_args: tfx.components.FnArgs):
   """Train the model based on given args.
 
   Args:
@@ -258,16 +280,16 @@ def run_fn(fn_args: FnArgs):
       - train_files: List of file paths containing training tf.Example data.
       - eval_files: List of file paths containing eval tf.Example data.
       - data_accessor: Contains factories that can create tf.data.Datasets or
-        other means to access the train/eval data. They provide a uniform way
-        of accessing data, regardless of how the data is stored on disk.
+        other means to access the train/eval data. They provide a uniform way of
+        accessing data, regardless of how the data is stored on disk.
       - train_steps: number of train steps.
       - eval_steps: number of eval steps.
       - transform_output: A uri to a path containing statistics and metadata
-        from TFTransform component.
-        produced by TFT. Will be None if not specified.
+        from TFTransform component. produced by TFT. Will be None if not
+        specified.
       - model_run_dir: A single uri for the output directory of model training
         related files.
-      - hyperparameters: An optional kerastuner.HyperParameters config.
+      - hyperparameters: An optional keras_tuner.HyperParameters config.
   """
   tf_transform_output = tft.TFTransformOutput(fn_args.transform_output)
 
@@ -284,13 +306,13 @@ def run_fn(fn_args: FnArgs):
       batch_size=_EVAL_BATCH_SIZE)
 
   if fn_args.hyperparameters:
-    hparams = kerastuner.HyperParameters.from_config(fn_args.hyperparameters)
+    hparams = keras_tuner.HyperParameters.from_config(fn_args.hyperparameters)
   else:
     # This is a shown case when hyperparameters is decided and Tuner is removed
     # from the pipeline. User can also inline the hyperparameters directly in
     # _build_keras_model.
     hparams = _get_hyperparameters()
-  absl.logging.info('HyperParameters for training: %s' % hparams.get_config())
+  logging.info('HyperParameters for training: %s', hparams.get_config())
 
   mirrored_strategy = tf.distribute.MirroredStrategy()
   with mirrored_strategy.scope():
@@ -309,11 +331,8 @@ def run_fn(fn_args: FnArgs):
 
   signatures = {
       'serving_default':
-          _get_serve_tf_examples_fn(model,
-                                    tf_transform_output).get_concrete_function(
-                                        tf.TensorSpec(
-                                            shape=[None],
-                                            dtype=tf.string,
-                                            name='examples')),
+          _get_tf_examples_serving_signature(model, tf_transform_output),
+      'transform_features':
+          _get_transform_features_signature(model, tf_transform_output),
   }
   model.save(fn_args.serving_model_dir, save_format='tf', signatures=signatures)

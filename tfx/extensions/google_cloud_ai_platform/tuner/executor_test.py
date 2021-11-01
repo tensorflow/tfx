@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2020 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -17,8 +16,8 @@
 import copy
 import os
 
-from typing import Any, Dict, Text
-import mock
+from typing import Any, Dict
+from unittest import mock
 import tensorflow as tf
 
 from tfx.extensions.google_cloud_ai_platform.tuner import executor as ai_platform_tuner_executor
@@ -30,7 +29,7 @@ from tfx.utils import proto_utils
 class ExecutorTest(tf.test.TestCase):
 
   def setUp(self):
-    super(ExecutorTest, self).setUp()
+    super().setUp()
 
     self._output_data_dir = os.path.join(
         os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR', self.get_temp_dir()),
@@ -58,7 +57,7 @@ class ExecutorTest(tf.test.TestCase):
         'tfx.extensions.google_cloud_ai_platform.tuner.executor.runner').start(
         )
 
-  def _serialize_custom_config_under_test(self) -> Dict[Text, Any]:
+  def _serialize_custom_config_under_test(self) -> Dict[str, Any]:
     """Converts self._exec_properties['custom_config'] to string."""
     result = copy.deepcopy(self._exec_properties)
     result['custom_config'] = json_utils.dumps(result['custom_config'])
@@ -77,7 +76,7 @@ class ExecutorTest(tf.test.TestCase):
     executor.Do(self._inputs, self._outputs,
                 self._serialize_custom_config_under_test())
 
-    self.mock_runner.start_aip_training.assert_called_with(
+    self.mock_runner.start_cloud_training.assert_called_with(
         self._inputs, self._outputs, self._serialize_custom_config_under_test(),
         self._executor_class_path, {
             'project': self._project_id,
@@ -104,7 +103,7 @@ class ExecutorTest(tf.test.TestCase):
     executor.Do(self._inputs, self._outputs,
                 self._serialize_custom_config_under_test())
 
-    self.mock_runner.start_aip_training.assert_called_with(
+    self.mock_runner.start_cloud_training.assert_called_with(
         self._inputs,
         self._outputs,
         self._serialize_custom_config_under_test(),

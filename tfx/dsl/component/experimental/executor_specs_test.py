@@ -14,21 +14,41 @@
 """Tests for tfx.dsl.component.experimental.executor_specs."""
 
 import tensorflow as tf
-
+from tfx import types
 from tfx.dsl.component.experimental import executor_specs
 from tfx.dsl.component.experimental import placeholders
+from tfx.types import channel
+from tfx.types import component_spec
+from tfx.types import standard_artifacts
+
+
+class TestComponentSpec(types.ComponentSpec):
+  INPUTS = {
+      'input_artifact':
+          component_spec.ChannelParameter(type=standard_artifacts.Examples),
+  }
+  OUTPUTS = {
+      'output_artifact':
+          component_spec.ChannelParameter(type=standard_artifacts.Model),
+  }
+  PARAMETERS = {
+      'input_parameter': component_spec.ExecutionParameter(type=int),
+  }
 
 
 class ExecutorSpecsTest(tf.test.TestCase):
 
   def setUp(self):
-    super(ExecutorSpecsTest, self).setUp()
+    super().setUp()
     self._text = 'text'
     self._input_value_placeholder = placeholders.InputValuePlaceholder(
         'input_artifact')
-    self._input_uri_placeholder = placeholders.InputUriPlaceholder('input_uri')
+    self._another_input_value_placeholder = placeholders.InputValuePlaceholder(
+        'input_parameter')
+    self._input_uri_placeholder = placeholders.InputUriPlaceholder(
+        'input_artifact')
     self._output_uri_placeholder = placeholders.OutputUriPlaceholder(
-        'output_uri')
+        'output_artifact')
     self._concat_placeholder = placeholders.ConcatPlaceholder([
         self._text, self._input_value_placeholder, self._input_uri_placeholder,
         self._output_uri_placeholder,
@@ -41,11 +61,16 @@ class ExecutorSpecsTest(tf.test.TestCase):
         image='image',
         command=[
             self._text, self._input_value_placeholder,
-            self._input_uri_placeholder, self._output_uri_placeholder,
-            self._concat_placeholder
+            self._another_input_value_placeholder, self._input_uri_placeholder,
+            self._output_uri_placeholder, self._concat_placeholder
         ])
-    encode_result = specs.encode()
-    self.assertProtoEquals("""
+    encode_result = specs.encode(
+        component_spec=TestComponentSpec(
+            input_artifact=channel.Channel(type=standard_artifacts.Examples),
+            output_artifact=channel.Channel(type=standard_artifacts.Model),
+            input_parameter=42))
+    self.assertProtoEquals(
+        """
       image: "image"
       commands {
         value {
@@ -54,13 +79,25 @@ class ExecutorSpecsTest(tf.test.TestCase):
       }
       commands {
         operator {
-          index_op {
+          artifact_value_op {
             expression {
-              placeholder {
-                key: "input_artifact"
+              operator {
+                index_op {
+                  expression {
+                    placeholder {
+                      key: "input_artifact"
+                    }
+                  }
+                }
               }
             }
           }
+        }
+      }
+      commands {
+        placeholder {
+          type: EXEC_PROPERTY
+          key: "input_parameter"
         }
       }
       commands {
@@ -71,7 +108,7 @@ class ExecutorSpecsTest(tf.test.TestCase):
                 index_op {
                   expression {
                     placeholder {
-                      key: "input_uri"
+                      key: "input_artifact"
                     }
                   }
                   index: 0
@@ -90,7 +127,7 @@ class ExecutorSpecsTest(tf.test.TestCase):
                   expression {
                     placeholder {
                       type: OUTPUT_ARTIFACT
-                      key: "output_uri"
+                      key: "output_artifact"
                     }
                   }
                   index: 0
@@ -110,13 +147,19 @@ class ExecutorSpecsTest(tf.test.TestCase):
             }
             expressions {
               operator {
-                index_op {
+                artifact_value_op {
                   expression {
-                    placeholder {
-                      key: "input_artifact"
+                    operator {
+                      index_op {
+                        expression {
+                          placeholder {
+                            key: "input_artifact"
+                          }
+                        }
+                        index: 0
+                      }
                     }
                   }
-                  index: 0
                 }
               }
             }
@@ -128,7 +171,7 @@ class ExecutorSpecsTest(tf.test.TestCase):
                       index_op {
                         expression {
                           placeholder {
-                            key: "input_uri"
+                            key: "input_artifact"
                           }
                         }
                         index: 0
@@ -147,7 +190,7 @@ class ExecutorSpecsTest(tf.test.TestCase):
                         expression {
                           placeholder {
                             type: OUTPUT_ARTIFACT
-                            key: "output_uri"
+                            key: "output_artifact"
                           }
                         }
                         index: 0

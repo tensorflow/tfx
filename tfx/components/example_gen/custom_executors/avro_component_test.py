@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,13 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Tests for using avro_executor with example_gen component."""
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
 
 import os
 
-import mock
+from unittest import mock
 import tensorflow as tf
 from tfx.components.example_gen.component import FileBasedExampleGen
 from tfx.components.example_gen.custom_executors import avro_executor
@@ -37,7 +33,7 @@ from ml_metadata.proto import metadata_store_pb2
 class ExampleGenComponentWithAvroExecutorTest(tf.test.TestCase):
 
   def setUp(self):
-    super(ExampleGenComponentWithAvroExecutorTest, self).setUp()
+    super().setUp()
     # Create input_base.
     input_data_dir = os.path.join(
         os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'testdata')
@@ -64,8 +60,7 @@ class ExampleGenComponentWithAvroExecutorTest(tf.test.TestCase):
             avro_executor.Executor),
         input_base=self.avro_dir_path,
         input_config=self.input_config,
-        output_config=self.output_config,
-        instance_name='AvroExampleGen')
+        output_config=self.output_config).with_id('AvroExampleGen')
 
     output_data_dir = os.path.join(
         os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR', self.get_temp_dir()),

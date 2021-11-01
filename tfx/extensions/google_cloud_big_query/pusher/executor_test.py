@@ -13,29 +13,24 @@
 # limitations under the License.
 """Tests for tfx.extensions.google_cloud_big_query.ml.pusher.executor."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import copy
 import os
-from typing import Any, Dict, Text
+from typing import Any, Dict
+from unittest import mock
 
-import mock
+from google.cloud import bigquery
 import tensorflow as tf
 from tfx.dsl.io import fileio
-from tfx.extensions.google_cloud_big_query.pusher.executor import Executor
+from tfx.extensions.google_cloud_big_query.pusher import executor
 from tfx.types import standard_artifacts
 from tfx.utils import io_utils
 from tfx.utils import json_utils
-
-from google.cloud import bigquery
 
 
 class ExecutorTest(tf.test.TestCase):
 
   def setUp(self):
-    super(ExecutorTest, self).setUp()
+    super().setUp()
     self._source_data_dir = os.path.join(
         os.path.dirname(
             os.path.dirname(os.path.dirname(os.path.dirname(__file__)))),
@@ -64,21 +59,22 @@ class ExecutorTest(tf.test.TestCase):
                 'model_name': 'model_name',
                 'project_id': 'project_id',
                 'bq_dataset_id': 'bq_dataset_id',
+                'compute_project_id': 'compute_project_id',
             },
         },
         'push_destination': None,
     }
-    self._executor = Executor()
+    self._executor = executor.Executor()
 
     # Setting up Mock for external services
     self.addCleanup(mock.patch.stopall)
     self.mock_bq = mock.patch.object(bigquery, 'Client', autospec=True).start()
     self.mock_check_blessing = mock.patch.object(
-        Executor, 'CheckBlessing', autospec=True).start()
+        executor.Executor, 'CheckBlessing', autospec=True).start()
     self.mock_copy_dir = mock.patch.object(
         io_utils, 'copy_dir', autospec=True).start()
 
-  def _serialize_custom_config_under_test(self) -> Dict[Text, Any]:
+  def _serialize_custom_config_under_test(self) -> Dict[str, Any]:
     """Converts self._exec_properties['custom_config'] to string."""
     result = copy.deepcopy(self._exec_properties)
     result['custom_config'] = json_utils.dumps(result['custom_config'])
@@ -120,7 +116,6 @@ class ExecutorTest(tf.test.TestCase):
                       self._serialize_custom_config_under_test())
     self.mock_bq.assert_not_called()
     self.assertNotPushed()
-
 
 if __name__ == '__main__':
   tf.test.main()

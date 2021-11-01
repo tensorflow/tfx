@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,11 +13,7 @@
 # limitations under the License.
 """Docker component launcher which launches a container in docker environment ."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
-from typing import Any, Dict, List, Text, cast
+from typing import Any, Dict, List, cast
 
 import absl
 
@@ -50,9 +45,9 @@ class DockerComponentLauncher(base_component_launcher.BaseComponentLauncher):
                        executor_specs.TemplatedExecutorContainerSpec))
 
   def _run_executor(self, execution_id: int,
-                    input_dict: Dict[Text, List[types.Artifact]],
-                    output_dict: Dict[Text, List[types.Artifact]],
-                    exec_properties: Dict[Text, Any]) -> None:
+                    input_dict: Dict[str, List[types.Artifact]],
+                    output_dict: Dict[str, List[types.Artifact]],
+                    exec_properties: Dict[str, Any]) -> None:
     """Execute underlying component implementation."""
 
     executor_container_spec = cast(executor_spec.ExecutorContainerSpec,

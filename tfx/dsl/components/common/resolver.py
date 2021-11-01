@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,92 +12,57 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """TFX Resolver definition."""
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
 
 import abc
-from typing import Any, Dict, List, Optional, Text, Type
-
-from six import with_metaclass
+from typing import Any, Dict, List, Optional, Type, Sequence, Mapping
 
 from tfx import types
 from tfx.dsl.components.base import base_driver
 from tfx.dsl.components.base import base_node
+from tfx.dsl.input_resolution import resolver_function
+from tfx.dsl.input_resolution import resolver_op
 from tfx.orchestration import data_types
 from tfx.orchestration import metadata
-from tfx.types import node_common
-from tfx.utils import deprecation_utils
+from tfx.types import artifact_utils
+from tfx.types import channel_utils
+from tfx.utils import doc_controls
 from tfx.utils import json_utils
+
+import ml_metadata as mlmd
 
 # Constant to access resolver class from resolver exec_properties.
 RESOLVER_STRATEGY_CLASS = 'resolver_class'
 # Constant to access resolver config from resolver exec_properties.
 RESOLVER_CONFIG = 'source_uri'
 
-RESOLVER_STRATEGY_CLASS_LIST = 'resolver_class_list'
-RESOLVER_CONFIG_LIST = 'resolver_config_list'
 
-
-class ResolveResult(object):
-  """The data structure to hold results from Resolver.
-
-  Attributes:
-    per_key_resolve_result: a key -> List[Artifact] dict containing the resolved
-      artifacts for each source channel with the key as tag.
-    per_key_resolve_state: a key -> bool dict containing whether or not the
-      resolved artifacts for the channel are considered complete.
-    has_complete_result: bool value indicating whether all desired artifacts
-      have been resolved.
-  """
-
-  def __init__(self, per_key_resolve_result: Dict[Text, List[types.Artifact]],
-               per_key_resolve_state: Dict[Text, bool]):
-    self.per_key_resolve_result = per_key_resolve_result
-    self.per_key_resolve_state = per_key_resolve_state
-    self.has_complete_result = all(s for s in per_key_resolve_state.values())
-
-
-class ResolverStrategy(with_metaclass(abc.ABCMeta, object)):
+class ResolverStrategy(abc.ABC):
   """Base resolver strategy class.
 
   A resolver strategy defines a type behavior used for input selection. A
   resolver strategy subclass must override the resolve_artifacts() function
-  which takes a dict of <Text, List<types.Artifact>> as parameters and return
+  which takes a dict of <str, List<types.Artifact>> as parameters and return
   the resolved dict.
   """
 
-  @deprecation_utils.deprecated(
-      date='2020-09-24',
-      instructions='Please switch to the `resolve_artifacts`.')
-  def resolve(
-      self,
-      pipeline_info: data_types.PipelineInfo,
-      metadata_handler: metadata.Metadata,
-      source_channels: Dict[Text, types.Channel],
-  ) -> ResolveResult:
-    """Resolves artifacts from channels by querying MLMD.
-
-    Args:
-      pipeline_info: PipelineInfo of the current pipeline. We do not want to
-        query artifacts across pipeline boundary.
-      metadata_handler: a read-only handler to query MLMD.
-      source_channels: a key -> channel dict which contains the info of the
-        source channels.
-
-    Returns:
-      a ResolveResult instance.
-
-    Raises:
-      DeprecationWarning: when it is called.
-    """
-    raise DeprecationWarning
+  @doc_controls.do_not_generate_docs
+  @classmethod
+  def as_resolver_op(cls, input_node: resolver_op.OpNode, **kwargs):
+    """ResolverOp-like usage inside resolver_function."""
+    if input_node.output_data_type != resolver_op.DataTypes.ARTIFACT_MULTIMAP:
+      raise TypeError(f'{cls.__name__} takes ARTIFACT_MULTIMAP but got '
+                      f'{input_node.output_data_type.name} instead.')
+    return resolver_op.OpNode(
+        op_type=cls,
+        arg=input_node,
+        output_data_type=resolver_op.DataTypes.ARTIFACT_MULTIMAP,
+        kwargs=kwargs)
 
   @abc.abstractmethod
   def resolve_artifacts(
-      self, metadata_handler: metadata.Metadata,
-      input_dict: Dict[Text, List[types.Artifact]]
-  ) -> Optional[Dict[Text, List[types.Artifact]]]:
+      self, store: mlmd.MetadataStore,
+      input_dict: Dict[str, List[types.Artifact]]
+  ) -> Optional[Dict[str, List[types.Artifact]]]:
     """Resolves artifacts from channels, optionally querying MLMD if needed.
 
     In asynchronous execution mode, resolver classes may composed in sequence
@@ -113,14 +77,16 @@ class ResolverStrategy(with_metaclass(abc.ABCMeta, object)):
     is to preserve all keys in the input_dict unless you have specific reason.
 
     Args:
-      metadata_handler: A metadata handler to access MLMD store.
+      store: An MLMD MetadataStore.
       input_dict: The input_dict to resolve from.
 
     Returns:
       If all entries has enough data after the resolving, returns the resolved
       input_dict. Otherise, return None.
     """
-    raise NotImplementedError
+
+# Lazily register valid op_type for OpNode to avoid circular import.
+resolver_op.OpNode.register_valid_op_type(ResolverStrategy)
 
 
 class _ResolverDriver(base_driver.BaseDriver):
@@ -131,13 +97,40 @@ class _ResolverDriver(base_driver.BaseDriver):
   Resolver.
   """
 
+  def _build_input_dict(
+      self,
+      pipeline_info: data_types.PipelineInfo,
+      input_channels: Mapping[str, types.BaseChannel],
+  ) -> Dict[str, List[types.Artifact]]:
+    pipeline_context = self._metadata_handler.get_pipeline_context(
+        pipeline_info)
+    if pipeline_context is None:
+      raise RuntimeError(f'Pipeline context absent for {pipeline_info}.')
+
+    result = {}
+    for key, c in input_channels.items():
+      artifacts_by_id = {}  # Deduplicate by ID.
+      for channel in channel_utils.get_individual_channels(c):
+        artifact_and_types = self._metadata_handler.get_qualified_artifacts(
+            contexts=[pipeline_context],
+            type_name=channel.type_name,
+            producer_component_id=channel.producer_component_id,
+            output_key=channel.output_key)
+        artifacts = [
+            artifact_utils.deserialize_artifact(a.type, a.artifact)
+            for a in artifact_and_types
+        ]
+        artifacts_by_id.update({a.id: a for a in artifacts})
+      result[key] = list(artifacts_by_id.values())
+    return result
+
   # TODO(ruoyu): We need a better approach to let the Resolver fail on
   # incomplete data.
   def pre_execution(
       self,
-      input_dict: Dict[Text, types.Channel],
-      output_dict: Dict[Text, types.Channel],
-      exec_properties: Dict[Text, Any],
+      input_dict: Dict[str, types.BaseChannel],
+      output_dict: Dict[str, types.Channel],
+      exec_properties: Dict[str, Any],
       driver_args: data_types.DriverArgs,
       pipeline_info: data_types.PipelineInfo,
       component_info: data_types.ComponentInfo,
@@ -156,26 +149,32 @@ class _ResolverDriver(base_driver.BaseDriver):
       resolver = resolver_class(**exec_properties[RESOLVER_CONFIG])
     else:
       resolver = resolver_class()
-    resolve_result = resolver.resolve(
-        pipeline_info=pipeline_info,
-        metadata_handler=self._metadata_handler,
-        source_channels=input_dict.copy())
-    # TODO(b/148828122): This is a temporary walkaround for interactive mode.
+    input_artifacts = self._build_input_dict(pipeline_info, input_dict)
+    output_artifacts = resolver.resolve_artifacts(
+        store=self._metadata_handler.store,
+        input_dict=input_artifacts,
+    )
+    if output_artifacts is None:
+      # No inputs available. Still driver needs an ExecutionDecision, so use a
+      # dummy dict with no artifacts.
+      output_artifacts = {key: [] for key in input_artifacts}
+
+    # TODO(b/148828122): This is a temporary workaround for interactive mode.
     for k, c in output_dict.items():
-      output_dict[k] = types.Channel(
-          type=c.type, artifacts=resolve_result.per_key_resolve_result[k])
+      output_dict[k] = types.Channel(type=c.type).set_artifacts(
+          output_artifacts[k])
     # Updates execution to reflect artifact resolution results and mark
     # as cached.
     self._metadata_handler.update_execution(
         execution=execution,
         component_info=component_info,
-        output_artifacts=resolve_result.per_key_resolve_result,
+        output_artifacts=output_artifacts,
         execution_state=metadata.EXECUTION_STATE_CACHED,
         contexts=contexts)
 
     return data_types.ExecutionDecision(
         input_dict={},
-        output_dict=resolve_result.per_key_resolve_result,
+        output_dict=output_artifacts,
         exec_properties=exec_properties,
         execution_id=execution.id,
         use_cached_results=True)
@@ -188,72 +187,115 @@ class Resolver(base_node.BaseNode):
   logics that will be used as inputs for downstream nodes.
 
   To use Resolver, pass the followings to the Resolver constructor:
-    a. name of the Resolver instance
-    g. a subclass of ResolverStrategy
-    c. the configs that will be used to construct an instance of (a)
-    d. channels to resolve with their tag, in the form of kwargs
+
+  * Name of the Resolver instance
+  * A subclass of ResolverStrategy
+  * Configs that will be used to construct an instance of ResolverStrategy
+  * Channels to resolve with their tag, in the form of kwargs
+
   Here is an example:
 
-  ...
+  ```
   example_gen = ImportExampleGen(...)
-  latest_five_examples_resolver = Resolver(
-      instance_name='latest_five_examples_resolver',
-      strategy_class=latest_artifacts_strategy.LatestArtifactsStrategy,
-      resolver_config={'desired_num_of_artifacts' : 5},
-      examples=example_gen.outputs['examples'])
-  trainer = MyTrainer(
-      examples=latest_five_examples_resolver.outputs['examples'],
-      user_module=...)
-  ...
-
-  Attributes:
-    _strategy_class: the class of the ResolverStrategy.
-    _resolver_configs: the configs that will be used to construct an instance of
-      _strategy_class.
+  examples_resolver = Resolver(
+        strategy_class=SpanRangeStrategy,
+        config={'range_config': range_config},
+        examples=Channel(type=Examples, producer_component_id=example_gen.id)
+        ).with_id('Resolver.span_resolver')
+  trainer = Trainer(
+      examples=examples_resolver.outputs['examples'],
+      ...)
+  ```
   """
 
   def __init__(self,
-               instance_name: Text,
-               strategy_class: Type[ResolverStrategy],
-               config: Dict[Text, json_utils.JsonableType] = None,
-               **kwargs: types.Channel):
+               strategy_class: Optional[Type[ResolverStrategy]] = None,
+               config: Optional[Dict[str, json_utils.JsonableType]] = None,
+               function: Optional[resolver_function.ResolverFunction] = None,
+               **channels: types.BaseChannel):
     """Init function for Resolver.
 
     Args:
-      instance_name: the name of the Resolver instance.
-      strategy_class: a ResolverStrategy subclass which contains the artifact
-        resolution logic.
-      config: a dict of key to Jsonable type representing configuration that
-        will be used to construct the resolver strategy.
-      **kwargs: a key -> Channel dict, describing what are the Channels to be
-        resolved. This is set by user through keyword args.
+      strategy_class: Optional `ResolverStrategy` which contains the artifact
+          resolution logic. One of `strategy_class` or `function`
+          argument should be set.
+      config: Optional dict of key to Jsonable type for constructing
+          resolver_strategy.
+      function: Optional `ResolverFunction` which contains the artifact
+          resolution logic. User should not use this parameter directly but use
+          `@resolver_stem` decorated function instead. One of `strategy_class`
+          or `function` argument should be set.
+      **channels: Input channels to the Resolver node as keyword arguments.
     """
+    if (strategy_class is not None) + (function is not None) != 1:
+      raise ValueError('Exactly one of strategy_class= or function= argument '
+                       'should be given.')
+    if (strategy_class is not None and
+        not issubclass(strategy_class, ResolverStrategy)):
+      raise TypeError('strategy_class should be ResolverStrategy, but got '
+                      f'{strategy_class} instead.')
+    if (function is not None and
+        not isinstance(function, resolver_function.ResolverFunction)):
+      raise TypeError(f'function should be ResolverFunction, but got '
+                      f'{function} instead.')
     self._strategy_class = strategy_class
     self._config = config or {}
-    self._input_dict = kwargs
+    if function is not None:
+      self._resolver_function = function
+    else:
+      self._resolver_function = convert_strategy_to_resolver_function(
+          [self._strategy_class], [self._config])
+    self._input_dict = channels
     self._output_dict = {}
     for k, c in self._input_dict.items():
-      if not isinstance(c, types.Channel):
+      if not isinstance(c, types.BaseChannel):
         raise ValueError(
-            ('Expected extra kwarg %r to be of type `tfx.types.Channel` (but '
-             'got %r instead).') % (k, c))
-      self._output_dict[k] = types.Channel(type=c.type, artifacts=[c.type()])
-    super(Resolver, self).__init__(
-        instance_name=instance_name,
-        driver_class=_ResolverDriver,
-    )
+            f'Expected extra kwarg {k!r} to be of type `tfx.types.BaseChannel` '
+            f'but got {c!r} instead.')
+      # TODO(b/161490287): remove static artifacts.
+      self._output_dict[k] = (
+          types.Channel(type=c.type).set_artifacts([c.type()]))
+    super().__init__(driver_class=_ResolverDriver)
+
+  @doc_controls.do_not_generate_docs
+  def trace(
+      self, input_node: resolver_op.OpNode) -> resolver_op.OpNode:
+    """Get ResolverFunction's output OpNode."""
+    return self._resolver_function.trace(input_node)
 
   @property
-  def inputs(self) -> node_common._PropertyDictWrapper:  # pylint: disable=protected-access
-    return node_common._PropertyDictWrapper(self._input_dict)  # pylint: disable=protected-access
+  @doc_controls.do_not_generate_docs
+  def inputs(self) -> Dict[str, Any]:
+    return self._input_dict
 
   @property
-  def outputs(self) -> node_common._PropertyDictWrapper:  # pylint: disable=protected-access
-    return node_common._PropertyDictWrapper(self._output_dict)  # pylint: disable=protected-access
+  def outputs(self) -> Dict[str, Any]:
+    """Output Channel dict that contains resolved artifacts."""
+    return self._output_dict
 
   @property
-  def exec_properties(self) -> Dict[Text, Any]:
+  @doc_controls.do_not_generate_docs
+  def exec_properties(self) -> Dict[str, Any]:
+    if self._strategy_class is None:
+      return {}
     return {
         RESOLVER_STRATEGY_CLASS: self._strategy_class,
         RESOLVER_CONFIG: self._config
     }
+
+
+@doc_controls.do_not_generate_docs
+def convert_strategy_to_resolver_function(
+    strategy_class_list: Sequence[Type[ResolverStrategy]],
+    config_list: Sequence[Mapping[str, json_utils.JsonableType]],
+) -> resolver_function.ResolverFunction:
+  """Creates ResolverFunction that runs a list of ResolverStrategy."""
+
+  @resolver_function.resolver_function
+  def impl(input_node):
+    result = input_node
+    for strategy_cls, config in zip(strategy_class_list, config_list):
+      result = strategy_cls.as_resolver_op(input_node, **config)
+    return result
+
+  return impl

@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2020 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,13 +13,6 @@
 # limitations under the License.
 """Utility functions related to Examples artifact shared by components."""
 
-# TODO(b/149535307): Remove __future__ imports
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
-from typing import Text
-
 from absl import logging
 from tfx import types
 from tfx.components.example_gen import utils as example_gen_utils
@@ -28,6 +20,7 @@ from tfx.proto import example_gen_pb2
 from tfx.types import standard_artifacts
 
 _DEFAULT_PAYLOAD_FORMAT = example_gen_pb2.PayloadFormat.FORMAT_TF_EXAMPLE
+_DEFAULT_FILE_FORMAT = 'tfrecords_gzip'
 
 
 def get_payload_format(examples: types.Artifact) -> int:
@@ -58,7 +51,7 @@ def get_payload_format(examples: types.Artifact) -> int:
     return _DEFAULT_PAYLOAD_FORMAT
 
 
-def get_payload_format_string(examples: types.Artifact) -> Text:
+def get_payload_format_string(examples: types.Artifact) -> str:
   """Returns the payload format as a string."""
   return example_gen_pb2.PayloadFormat.Name(get_payload_format(examples))
 
@@ -75,3 +68,37 @@ def set_payload_format(examples: types.Artifact, payload_format: int):
   examples.set_string_custom_property(
       example_gen_utils.PAYLOAD_FORMAT_PROPERTY_NAME,
       example_gen_pb2.PayloadFormat.Name(payload_format))
+
+
+def get_file_format(examples: types.Artifact) -> str:
+  """Returns the file format of Examples artifact.
+
+  If Examples artifact does not contain the "file_format" custom property,
+  it is made by OSS ExampleGen and can be treated as 'tfrecords_gzip' format.
+
+  Args:
+    examples: A standard_artifacts.Examples artifact.
+
+  Returns:
+    One of the file format that tfx_bsl understands.
+  """
+  assert examples.type_name == standard_artifacts.Examples.TYPE_NAME, (
+      'examples must be of type standard_artifacts.Examples')
+  if examples.has_custom_property(example_gen_utils.FILE_FORMAT_PROPERTY_NAME):
+    return examples.get_string_custom_property(
+        example_gen_utils.FILE_FORMAT_PROPERTY_NAME)
+  else:
+    return _DEFAULT_FILE_FORMAT
+
+
+def set_file_format(examples: types.Artifact, file_format: str):
+  """Sets the file format custom property for `examples`.
+
+  Args:
+    examples: A standard_artifacts.Examples artifact.
+    file_format: One of the file format that tfx_bsl understands.
+  """
+  assert examples.type_name == standard_artifacts.Examples.TYPE_NAME, (
+      'examples must be of type standard_artifacts.Examples')
+  examples.set_string_custom_property(
+      example_gen_utils.FILE_FORMAT_PROPERTY_NAME, file_format)

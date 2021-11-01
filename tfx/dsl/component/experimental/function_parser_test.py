@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2020 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,16 +13,8 @@
 # limitations under the License.
 """Tests for tfx.dsl.components.base.function_parser."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
+from typing import Dict, Optional
 
-from typing import Dict, Optional, Text
-import unittest
-
-# Standard Imports
-
-import six
 import tensorflow as tf
 
 from tfx.dsl.component.experimental.annotations import InputArtifact
@@ -35,12 +26,11 @@ from tfx.dsl.component.experimental.function_parser import parse_typehint_compon
 from tfx.types import standard_artifacts
 
 
-@unittest.skipIf(six.PY2, 'Not compatible with Python 2.')
 class FunctionParserTest(tf.test.TestCase):
 
   def testSimpleFunctionParse(self):
 
-    def func_a(a: int, b: int, unused_c: Text, unused_d: bytes,
+    def func_a(a: int, b: int, unused_c: str, unused_d: bytes,
                unused_e: Parameter[float]) -> OutputDict(c=float):
       return {'c': float(a + b)}
 
@@ -79,7 +69,7 @@ class FunctionParserTest(tf.test.TestCase):
         statistics: OutputArtifact[standard_artifacts.ExampleStatistics],
         num_steps: Parameter[int]
     ) -> OutputDict(
-        precision=float, recall=float, message=Text, serialized_value=bytes):
+        precision=float, recall=float, message=str, serialized_value=bytes):
       del examples, model, schema, statistics, num_steps
       return {
           'precision': 0.9,
@@ -124,14 +114,14 @@ class FunctionParserTest(tf.test.TestCase):
     # No output typehint.
     def func_a(examples: InputArtifact[standard_artifacts.Examples],
                model: OutputArtifact[standard_artifacts.Model], a: int,
-               b: float, c: Parameter[int], d: Parameter[Text],
+               b: float, c: Parameter[int], d: Parameter[str],
                e: Parameter[bytes]):
       del examples, model, a, b, c, d, e
 
     # `None` output typehint.
     def func_b(examples: InputArtifact[standard_artifacts.Examples],
                model: OutputArtifact[standard_artifacts.Model], a: int,
-               b: float, c: Parameter[int], d: Parameter[Text],
+               b: float, c: Parameter[int], d: Parameter[str],
                e: Parameter[bytes]) -> None:
       del examples, model, a, b, c, d, e
 
@@ -150,7 +140,7 @@ class FunctionParserTest(tf.test.TestCase):
       })
       self.assertDictEqual(parameters, {
           'c': int,
-          'd': Text,
+          'd': str,
           'e': bytes,
       })
       self.assertDictEqual(
@@ -170,12 +160,12 @@ class FunctionParserTest(tf.test.TestCase):
     # Various optional argument schemes.
     def func_a(a: float,
                b: int,
-               c: Parameter[Text],
+               c: Parameter[str],
                d: int = 123,
                e: Optional[int] = 345,
-               f: Text = 'abc',
+               f: str = 'abc',
                g: bytes = b'xyz',
-               h: Parameter[Text] = 'default',
+               h: Parameter[str] = 'default',
                i: Parameter[int] = 999,
                examples: InputArtifact[standard_artifacts.Examples] = None):
       del a, b, c, d, e, f, g, h, i, examples
@@ -198,8 +188,8 @@ class FunctionParserTest(tf.test.TestCase):
         })
     self.assertDictEqual(outputs, {})
     self.assertDictEqual(parameters, {
-        'c': Text,
-        'h': Text,
+        'c': str,
+        'h': str,
         'i': int,
     })
     self.assertDictEqual(
@@ -229,20 +219,20 @@ class FunctionParserTest(tf.test.TestCase):
 
   def testFunctionParseErrors(self):
     # Non-function arguments.
-    with self.assertRaisesRegexp(
+    with self.assertRaisesRegex(
         ValueError, 'Expected a typehint-annotated Python function'):
       parse_typehint_component_function(object())
-    with self.assertRaisesRegexp(
+    with self.assertRaisesRegex(
         ValueError, 'Expected a typehint-annotated Python function'):
       parse_typehint_component_function('foo')
 
     # Unannotated lambda.
-    with self.assertRaisesRegexp(
+    with self.assertRaisesRegex(
         ValueError, 'must have all arguments annotated with typehints'):
       parse_typehint_component_function(lambda x: True)
 
     # Function with *args and **kwargs.
-    with self.assertRaisesRegexp(
+    with self.assertRaisesRegex(
         ValueError,
         'must have either an OutputDict instance or `None` as its return'):
 
@@ -253,14 +243,14 @@ class FunctionParserTest(tf.test.TestCase):
       parse_typehint_component_function(func_a)
 
     # Function with *args and **kwargs.
-    with self.assertRaisesRegexp(
+    with self.assertRaisesRegex(
         ValueError, r'does not support \*args or \*\*kwargs arguments'):
 
       def func_b(a: int, b: int, *unused_args) -> OutputDict(c=float):
         return {'c': float(a + b)}
 
       parse_typehint_component_function(func_b)
-    with self.assertRaisesRegexp(
+    with self.assertRaisesRegex(
         ValueError, r'does not support \*args or \*\*kwargs arguments'):
 
       def func_c(a: int, b: int, **unused_kwargs) -> OutputDict(c=float):
@@ -269,7 +259,7 @@ class FunctionParserTest(tf.test.TestCase):
       parse_typehint_component_function(func_c)
 
     # Not all arguments annotated with typehints.
-    with self.assertRaisesRegexp(
+    with self.assertRaisesRegex(
         ValueError, 'must have all arguments annotated with typehint'):
 
       def func_d(a: int, b) -> OutputDict(c=float):
@@ -279,7 +269,7 @@ class FunctionParserTest(tf.test.TestCase):
 
     # Artifact type used in annotation without `InputArtifact[ArtifactType]` or
     # `OutputArtifact[ArtifactType]` wrapper.
-    with self.assertRaisesRegexp(
+    with self.assertRaisesRegex(
         ValueError, 'Invalid type hint annotation.*'
         'should indicate whether it is used as an input or output artifact'):
 
@@ -290,7 +280,7 @@ class FunctionParserTest(tf.test.TestCase):
       parse_typehint_component_function(func_e)
 
     # Invalid input typehint.
-    with self.assertRaisesRegexp(ValueError, 'Unknown type hint annotation'):
+    with self.assertRaisesRegex(ValueError, 'Unknown type hint annotation'):
 
       def func_f(a: int, b: Dict[int, int]) -> OutputDict(c=float):
         return {'c': float(a + b)}
@@ -298,7 +288,7 @@ class FunctionParserTest(tf.test.TestCase):
       parse_typehint_component_function(func_f)
 
     # Invalid output typehint.
-    with self.assertRaisesRegexp(ValueError, 'Unknown type hint annotation'):
+    with self.assertRaisesRegex(ValueError, 'Unknown type hint annotation'):
 
       def func_g(a: int, b: int) -> OutputDict(c='whatever'):
         return {'c': float(a + b)}
@@ -306,7 +296,7 @@ class FunctionParserTest(tf.test.TestCase):
       parse_typehint_component_function(func_g)
 
     # Output artifact in the wrong place.
-    with self.assertRaisesRegexp(
+    with self.assertRaisesRegex(
         ValueError,
         'Output artifacts .* should be declared as function parameters'):
 
@@ -314,7 +304,7 @@ class FunctionParserTest(tf.test.TestCase):
         return {'c': float(a + b)}
 
       parse_typehint_component_function(func_h)
-    with self.assertRaisesRegexp(
+    with self.assertRaisesRegex(
         ValueError,
         'Output artifacts .* should be declared as function parameters'):
 
@@ -326,7 +316,7 @@ class FunctionParserTest(tf.test.TestCase):
       parse_typehint_component_function(func_i)
 
     # Input artifact declared optional with non-`None` default value.
-    with self.assertRaisesRegexp(
+    with self.assertRaisesRegex(
         ValueError,
         'If an input artifact is declared as an optional argument, its default '
         'value must be `None`'):
@@ -342,7 +332,7 @@ class FunctionParserTest(tf.test.TestCase):
       parse_typehint_component_function(func_j)
 
     # Output artifact declared optional.
-    with self.assertRaisesRegexp(
+    with self.assertRaisesRegex(
         ValueError,
         'Output artifact of component function cannot be declared as optional'):
 
@@ -357,7 +347,7 @@ class FunctionParserTest(tf.test.TestCase):
       parse_typehint_component_function(func_k)
 
     # Optional parameter's default value does not match declared type.
-    with self.assertRaisesRegexp(
+    with self.assertRaisesRegex(
         ValueError,
         'The default value for optional input value .* on function .* must be '
         'an instance of its declared type .* or `None`'):
@@ -371,7 +361,7 @@ class FunctionParserTest(tf.test.TestCase):
       parse_typehint_component_function(func_l)
 
     # Optional parameter's default value does not match declared type.
-    with self.assertRaisesRegexp(
+    with self.assertRaisesRegex(
         ValueError,
         'The default value for optional parameter .* on function .* must be an '
         'instance of its declared type .* or `None`'):

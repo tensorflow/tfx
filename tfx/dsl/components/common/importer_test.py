@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,12 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Tests for tfx.dsl.components.common.importer."""
-
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
-from typing import Text
 
 import tensorflow as tf
 from tfx import types
@@ -36,7 +29,6 @@ class ImporterTest(tf.test.TestCase):
 
   def testImporterDefinitionWithSingleUri(self):
     impt = importer.Importer(
-        instance_name='my_importer',
         source_uri='m/y/u/r/i',
         properties={
             'split_names': '["train", "eval"]',
@@ -45,13 +37,13 @@ class ImporterTest(tf.test.TestCase):
             'str_custom_property': 'abc',
             'int_custom_property': 123,
         },
-        artifact_type=standard_artifacts.Examples)
+        artifact_type=standard_artifacts.Examples).with_id('my_importer')
     self.assertDictEqual(
         impt.exec_properties, {
             importer.SOURCE_URI_KEY: 'm/y/u/r/i',
             importer.REIMPORT_OPTION_KEY: 0,
         })
-    self.assertEmpty(impt.inputs.get_all())
+    self.assertEmpty(impt.inputs)
     output_channel = impt.outputs[importer.IMPORT_RESULT_KEY]
     self.assertEqual(output_channel.type, standard_artifacts.Examples)
     # Tests properties in channel.
@@ -72,25 +64,24 @@ class ImporterTest(tf.test.TestCase):
         output_artifact.get_int_custom_property('int_custom_property'), 123)
 
   def testImporterDumpsJsonRoundtrip(self):
-    instance_name = 'my_importer'
+    component_id = 'my_importer'
     source_uris = ['m/y/u/r/i']
     impt = importer.Importer(
-        instance_name=instance_name,
         source_uri=source_uris,
-        artifact_type=standard_artifacts.Examples)
+        artifact_type=standard_artifacts.Examples).with_id(component_id)
 
     # The following line will raise an assertion if object not JSONable.
     json_text = json_utils.dumps(impt)
 
     actual_obj = json_utils.loads(json_text)
-    self.assertEqual(actual_obj._instance_name, instance_name)
+    self.assertEqual(actual_obj.id, component_id)
     self.assertEqual(actual_obj._source_uri, source_uris)
 
 
 class ImporterDriverTest(tf.test.TestCase):
 
   def setUp(self):
-    super(ImporterDriverTest, self).setUp()
+    super().setUp()
     self.connection_config = metadata_store_pb2.ConnectionConfig()
     self.connection_config.sqlite.SetInParent()
     self.properties = {
@@ -156,7 +147,7 @@ class ImporterDriverTest(tf.test.TestCase):
       for key, value in self.custom_properties.items():
         if isinstance(value, int):
           self.assertEqual(value, result.get_int_custom_property(key))
-        elif isinstance(value, (Text, bytes)):
+        elif isinstance(value, (str, bytes)):
           self.assertEqual(value, result.get_string_custom_property(key))
         else:
           raise ValueError('Invalid custom property value: %r.' % value)

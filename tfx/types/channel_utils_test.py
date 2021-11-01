@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,20 +13,13 @@
 # limitations under the License.
 """Tests for tfx.utils.channel."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
-
-# Standard Imports
-
 import tensorflow as tf
+from tfx.types import artifact
+from tfx.types import channel
 from tfx.types import channel_utils
-from tfx.types.artifact import Artifact
-from tfx.types.channel import Channel
 
 
-class _MyArtifact(Artifact):
+class _MyArtifact(artifact.Artifact):
   TYPE_NAME = 'MyTypeName'
 
 
@@ -53,10 +45,24 @@ class ChannelUtilsTest(tf.test.TestCase):
     instance_a = _MyArtifact()
     instance_b = _MyArtifact()
     channel_dict = {
-        'id': Channel(_MyArtifact, artifacts=[instance_a, instance_b])
+        'id':
+            channel.Channel(_MyArtifact).set_artifacts([instance_a, instance_b])
     }
     result = channel_utils.unwrap_channel_dict(channel_dict)
     self.assertDictEqual(result, {'id': [instance_a, instance_b]})
+
+  def testGetInidividualChannels(self):
+    instance_a = _MyArtifact()
+    instance_b = _MyArtifact()
+    one_channel = channel.Channel(_MyArtifact).set_artifacts([instance_a])
+    another_channel = channel.Channel(_MyArtifact).set_artifacts([instance_b])
+
+    result = channel_utils.get_individual_channels(one_channel)
+    self.assertEqual(result, [one_channel])
+
+    result = channel_utils.get_individual_channels(
+        channel.union([one_channel, another_channel]))
+    self.assertEqual(result, [one_channel, another_channel])
 
 
 if __name__ == '__main__':

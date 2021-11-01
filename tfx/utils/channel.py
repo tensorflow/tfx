@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -17,11 +16,8 @@
 Deprecated: please see the new location of this module at `tfx.types.channel`
 and `tfx.types.channel_utils`.
 """
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
 
-from typing import Dict, Iterable, List, Text, Union
+from typing import Dict, Iterable, List, Union
 
 from tfx import types
 from tfx.types import channel_utils
@@ -47,5 +43,5 @@ def as_channel(source: Union[Channel, Iterable[types.Artifact]]) -> Channel:
     None, 'tfx.utils.channel.unwrap_channel_dict has been renamed to '
     'tfx.types.channel_utils.unwrap_channel_dict as of TFX 0.14.0.')
 def unwrap_channel_dict(
-    channel_dict: Dict[Text, Channel]) -> Dict[Text, List[types.Artifact]]:
+    channel_dict: Dict[str, Channel]) -> Dict[str, List[types.Artifact]]:
   return channel_utils.unwrap_channel_dict(channel_dict)

@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2020 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,10 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Stub component launcher for launching stub executors."""
-
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
 
 from tfx.experimental.pipeline_testing import base_stub_component_launcher
 

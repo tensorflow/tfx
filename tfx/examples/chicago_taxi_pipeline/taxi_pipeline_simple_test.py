@@ -14,11 +14,12 @@
 """Tests for tfx.examples.chicago_taxi_pipeline.taxi_pipeline_simple."""
 
 import datetime
+import os
+
 from airflow import models
 
 import tensorflow as tf
 
-from tfx.examples.chicago_taxi_pipeline import taxi_pipeline_simple
 from tfx.orchestration.airflow.airflow_dag_runner import AirflowDagRunner
 from tfx.orchestration.airflow.airflow_dag_runner import AirflowPipelineConfig
 from tfx.utils import test_case_utils
@@ -27,7 +28,7 @@ from tfx.utils import test_case_utils
 class TaxiPipelineSimpleTest(test_case_utils.TfxTest):
 
   def setUp(self):
-    super(TaxiPipelineSimpleTest, self).setUp()
+    super().setUp()
     self._test_dir = self.tmp_dir
 
   def testTaxiPipelineCheckDagConstruction(self):
@@ -35,11 +36,24 @@ class TaxiPipelineSimpleTest(test_case_utils.TfxTest):
         'schedule_interval': None,
         'start_date': datetime.datetime(2019, 1, 1),
     }
+
+    # Create directory structure and write expected user module file.
+    os.makedirs(os.path.join(self._test_dir, 'taxi'))
+    module_file = os.path.join(self._test_dir, 'taxi/taxi_utils.py')
+    with open(module_file, 'w') as f:
+      f.write('# Placeholder user module file.')
+
+    # Patch $HOME directory for pipeline DAG construction.
+    original_home = os.environ['HOME']
+    os.environ['HOME'] = self._test_dir
+    from tfx.examples.chicago_taxi_pipeline import taxi_pipeline_simple  # pylint: disable=g-import-not-at-top
+    os.environ['HOME'] = original_home
+
     logical_pipeline = taxi_pipeline_simple._create_pipeline(
         pipeline_name='Test',
         pipeline_root=self._test_dir,
         data_root=self._test_dir,
-        module_file=self._test_dir,
+        module_file=module_file,
         serving_model_dir=self._test_dir,
         metadata_path=self._test_dir,
         beam_pipeline_args=[])

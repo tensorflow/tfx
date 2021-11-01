@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2020 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,13 +13,9 @@
 # limitations under the License.
 """Executor specifications for components."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import functools
 import operator
-from typing import List, Optional, Text, Union
+from typing import cast, List, Optional, Union
 
 from tfx import types
 from tfx.dsl.component.experimental import placeholders
@@ -48,7 +43,7 @@ class TemplatedExecutorContainerSpec(executor_spec.ExecutorSpec):
     class MyTrainerSpec(types.ComponentSpec):
       INPUTS = {
           'training_data':
-              component_spec.ChannelParameter(type=standard_artifacts.Dataset),
+              component_spec.ChannelParameter(type=standard_artifacts.Examples),
       }
       OUTPUTS = {
           'model':
@@ -79,14 +74,14 @@ class TemplatedExecutorContainerSpec(executor_spec.ExecutorSpec):
 
   def __init__(
       self,
-      image: Text,
+      image: str,
       command: Optional[List[placeholders.CommandlineArgumentType]] = None,
       args: Optional[List[placeholders.CommandlineArgumentType]] = None,
   ):
     self.image = image
     self.command = command or []
     self.args = args or []
-    super(TemplatedExecutorContainerSpec, self).__init__()
+    super().__init__()
 
   def __eq__(self, other) -> bool:
     return (isinstance(other, self.__class__) and self.image == other.image and
@@ -96,22 +91,58 @@ class TemplatedExecutorContainerSpec(executor_spec.ExecutorSpec):
     return not self.__eq__(other)
 
   def _recursively_encode(
-      self, ph: placeholders.CommandlineArgumentType
+      self,
+      ph: Union[placeholders.CommandlineArgumentType, placeholder.Placeholder,
+                str],
+      component_spec: Optional[types.ComponentSpec] = None
   ) -> Union[str, placeholder.Placeholder]:
-    if isinstance(ph, str):
-      return ph
+    """This method recursively encodes placeholders.CommandlineArgumentType.
+
+       The recursion ending condision is that the input ph is alerady a string
+       or placeholder.Placeholder.
+
+    Args:
+      ph: The placeholder to encode.
+      component_spec: Optional. The ComponentSpec to help with the encoding.
+
+    Returns:
+      The encoded placeholder in the type of string or placeholder.Placeholder.
+    """
+    if isinstance(ph, str) or isinstance(ph, placeholder.Placeholder):
+      # If there is no place holder. Or if the placeholder is already a
+      # new style placeholder.
+      # No further encoding is needed.
+      return cast(Union[str, placeholder.Placeholder], ph)
     elif isinstance(ph, placeholders.InputValuePlaceholder):
-      return placeholder.input(ph.input_name)[0]
+      if not component_spec:
+        raise ValueError(
+            'Requires component spec to encode InputValuePlaceholder.')
+      if ph.input_name in component_spec.INPUTS:
+        return placeholder.input(ph.input_name)[0].value
+      elif ph.input_name in component_spec.PARAMETERS:
+        return placeholder.exec_property(ph.input_name)
+      else:
+        raise ValueError(
+            'For InputValuePlaceholder, input name must be in component\'s INPUTS or PARAMETERS.'
+        )
     elif isinstance(ph, placeholders.InputUriPlaceholder):
+      if component_spec and ph.input_name not in component_spec.INPUTS:
+        raise ValueError(
+            'For InputUriPlaceholder, input name must be in component\'s INPUTS.'
+        )
       return placeholder.input(ph.input_name)[0].uri
     elif isinstance(ph, placeholders.OutputUriPlaceholder):
+      if component_spec and ph.output_name not in component_spec.OUTPUTS:
+        raise ValueError(
+            'For OutputUriPlaceholder, output name must be in component\'s OUTPUTS.'
+        )
       return placeholder.output(ph.output_name)[0].uri
     elif isinstance(ph, placeholders.ConcatPlaceholder):
       # operator.add wil use the overloaded __add__ operator for Placeholder
       # instances.
       return functools.reduce(
           operator.add,
-          [self._recursively_encode(item) for item in ph.items])
+          [self._recursively_encode(item, component_spec) for item in ph.items])
     else:
       raise TypeError(
           ('Unsupported type of placeholder arguments: "{}".'
@@ -135,21 +166,21 @@ class TemplatedExecutorContainerSpec(executor_spec.ExecutorSpec):
     result.image = self.image
     for command in self.command:
       cmd = result.commands.add()
-      str_or_placeholder = self._recursively_encode(command)
+      str_or_placeholder = self._recursively_encode(command, component_spec)
       if isinstance(str_or_placeholder, str):
         expression = placeholder_pb2.PlaceholderExpression()
         expression.value.string_value = str_or_placeholder
         cmd.CopyFrom(expression)
       else:
-        cmd.CopyFrom(self._recursively_encode(command).encode())
+        cmd.CopyFrom(str_or_placeholder.encode())
 
     for arg in self.args:
       cmd = result.args.add()
-      str_or_placeholder = self._recursively_encode(arg)
+      str_or_placeholder = self._recursively_encode(arg, component_spec)
       if isinstance(str_or_placeholder, str):
         expression = placeholder_pb2.PlaceholderExpression()
         expression.value.string_value = str_or_placeholder
         cmd.CopyFrom(expression)
       else:
-        cmd.CopyFrom(self._recursively_encode(arg).encode())
+        cmd.CopyFrom(str_or_placeholder.encode())
     return result

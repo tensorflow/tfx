@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,10 +13,9 @@
 # limitations under the License.
 """Package Setup script for TFX."""
 
-from __future__ import print_function
-
 import logging
 import os
+import shutil
 import subprocess
 import sys
 
@@ -29,13 +27,11 @@ from setuptools.command import develop
 # It is recommended to import setuptools prior to importing distutils to avoid
 # using legacy behavior from distutils.
 # https://setuptools.readthedocs.io/en/latest/history.html#v48-0-0
-from distutils import spawn
 from distutils.command import build
 # pylint: enable=g-bad-import-order
 
 from tfx import dependencies
 from tfx import version
-from tfx.tools import resolve_deps
 from wheel import bdist_wheel
 
 # Prefer to import `package_config` from the setup.py script's directory. The
@@ -85,7 +81,7 @@ class _UnsupportedDevBuildWheelCommand(_BdistWheelCommand):
           'https://github.com/tensorflow/tfx/blob/master/package_build/'
           'README.md.\n\nEditable pip installation for development is still '
           'supported through `pip install -e`.')
-    super(_UnsupportedDevBuildWheelCommand, self).finalize_options()
+    super().finalize_options()
 
 
 class _BuildCommand(build.build):
@@ -155,7 +151,7 @@ class _GenProtoCommand(setuptools.Command):
     self.local_mlmd_repo = None
 
   def finalize_options(self):
-    self._bazel_cmd = spawn.find_executable('bazel')
+    self._bazel_cmd = shutil.which('bazel')
     if not self._bazel_cmd:
       raise RuntimeError(
           'Could not find "bazel" binary. Please visit '
@@ -169,13 +165,9 @@ class _GenProtoCommand(setuptools.Command):
       # remote repository with the local path. This is required to use the
       # local developmental version of MLMD during tests.
       # https://docs.bazel.build/versions/master/command-line-reference.html
-      bazel_args.append(
-          '--override_repository={}={}'.format(
-              'com_github_google_ml_metadata',
-              self.local_mlmd_repo))
-    cmd = [self._bazel_cmd, 'run',
-           *bazel_args,
-           '//build:gen_proto']
+      bazel_args.append('--override_repository={}={}'.format(
+          'com_github_google_ml_metadata', self.local_mlmd_repo))
+    cmd = [self._bazel_cmd, 'run', *bazel_args, '//build:gen_proto']
     print('Running Bazel command', cmd, file=sys.stderr)
     subprocess.check_call(
         cmd,
@@ -203,7 +195,10 @@ tfx_extras_requires = {
     # In order to use 'docker-image' or 'all', system libraries specified
     # under 'tfx/tools/docker/Dockerfile' are required
     'docker-image': dependencies.make_extra_packages_docker_image(),
+    'airflow': dependencies.make_extra_packages_airflow(),
+    'kfp': dependencies.make_extra_packages_kfp(),
     'tfjs': dependencies.make_extra_packages_tfjs(),
+    'tf-ranking': dependencies.make_extra_packages_tf_ranking(),
     'examples': dependencies.make_extra_packages_examples(),
     'test': dependencies.make_extra_packages_test(),
     'all': dependencies.make_extra_packages_all(),
@@ -248,6 +243,11 @@ ML_PIPELINES_SDK_PACKAGES = [
     'tfx.types.*',
 ]
 
+EXCLUDED_PACKAGES = [
+    'tfx.benchmarks',
+    'tfx.benchmarks.*',
+]
+
 # Below console_scripts, each line identifies one console script. The first
 # part before the equals sign (=) which is 'tfx', is the name of the script
 # that should be generated, the second part is the import path followed by a
@@ -274,7 +274,8 @@ if package_config.PACKAGE_NAME == 'tfx-dev':
   extras_require = tfx_extras_requires
   description = _TFX_DESCRIPTION
   long_description = _TFX_LONG_DESCRIPTION
-  packages = find_namespace_packages(include=TFX_NAMESPACE_PACKAGES)
+  packages = find_namespace_packages(
+      include=TFX_NAMESPACE_PACKAGES, exclude=EXCLUDED_PACKAGES)
   # Do not support wheel builds for "tfx-dev".
   build_wheel_command = _UnsupportedDevBuildWheelCommand  # pylint: disable=invalid-name
   # Include TFX entrypoints.
@@ -286,7 +287,8 @@ elif package_config.PACKAGE_NAME == 'ml-pipelines-sdk':
   extras_require = {}
   description = _PIPELINES_SDK_DESCRIPTION
   long_description = _PIPELINES_SDK_LONG_DESCRIPTION
-  packages = find_namespace_packages(include=ML_PIPELINES_SDK_PACKAGES)
+  packages = find_namespace_packages(
+      include=ML_PIPELINES_SDK_PACKAGES, exclude=EXCLUDED_PACKAGES)
   # Use the default pip wheel building command.
   build_wheel_command = bdist_wheel.bdist_wheel  # pylint: disable=invalid-name
   # Include ML Pipelines SDK entrypoints.
@@ -295,14 +297,14 @@ elif package_config.PACKAGE_NAME == 'tfx':
   # Recommended installation package for TFX. This package builds on top of
   # the "ml-pipelines-sdk" pipeline authoring SDK package and adds first-party
   # TFX components and additional functionality.
-  install_requires = (
-      ['ml-pipelines-sdk==%s' % version.__version__] +
-      dependencies.make_required_install_packages())
+  install_requires = (['ml-pipelines-sdk==%s' % version.__version__] +
+                      dependencies.make_required_install_packages())
   extras_require = tfx_extras_requires
   description = _TFX_DESCRIPTION
   long_description = _TFX_LONG_DESCRIPTION
   packages = find_namespace_packages(
-      include=TFX_NAMESPACE_PACKAGES, exclude=ML_PIPELINES_SDK_PACKAGES)
+      include=TFX_NAMESPACE_PACKAGES,
+      exclude=ML_PIPELINES_SDK_PACKAGES + EXCLUDED_PACKAGES)
   # Use the pip wheel building command that includes proto generation.
   build_wheel_command = _BdistWheelCommand  # pylint: disable=invalid-name
   # Include TFX entrypoints.
@@ -319,7 +321,7 @@ setup(
     author_email='tensorflow-extended-dev@googlegroups.com',
     license='Apache 2.0',
     classifiers=[
-        'Development Status :: 4 - Beta',
+        'Development Status :: 5 - Production/Stable',
         'Intended Audience :: Developers',
         'Intended Audience :: Education',
         'Intended Audience :: Science/Research',
@@ -327,7 +329,6 @@ setup(
         'Operating System :: OS Independent',
         'Programming Language :: Python',
         'Programming Language :: Python :: 3',
-        'Programming Language :: Python :: 3.6',
         'Programming Language :: Python :: 3.7',
         'Programming Language :: Python :: 3.8',
         'Programming Language :: Python :: 3 :: Only',
@@ -344,20 +345,14 @@ setup(
     # TODO(b/158761800): Move to [build-system] requires in pyproject.toml.
     setup_requires=[
         'pytest-runner',
-        # Required for ResolveDeps command.
-        # Poetry API is not officially documented and subject
-        # to change in the future. Thus fix the version.
-        'poetry==1.0.9',
-        'clikit>=0.4.3,<0.5',  # Required for ResolveDeps command.
     ],
     cmdclass={
         'bdist_wheel': build_wheel_command,
         'build': _BuildCommand,
         'develop': _DevelopCommand,
         'gen_proto': _GenProtoCommand,
-        'resolve_deps': resolve_deps.ResolveDepsCommand,
     },
-    python_requires='>=3.6,<3.9',
+    python_requires='>=3.7,<3.9',
     packages=packages,
     include_package_data=True,
     description=description,

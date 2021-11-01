@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,10 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Utils to query ml-metadata store in a notebook."""
-
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
 
 import re
 
@@ -50,7 +45,7 @@ def _get_value_str(p):
   return ''
 
 
-class _LineageGraphHelper(object):
+class _LineageGraphHelper:
   """A helper class to compute and plot lineage of ml-metadata artifacts."""
 
   def __init__(self, store):
@@ -153,25 +148,25 @@ class _LineageGraphHelper(object):
         dag.add_node(node_id - label_anchor_id)
 
     # assign node color and label
-    node_color = ''
+    node_color = []
     node_labels = {}
     for node_id in dag.nodes:
       if node_id > 0 and node_id < label_anchor_id:
-        node_color += 'c'
+        node_color.append('c')
         node_labels[node_id] = abs(node_id)
       elif node_id > 0 and node_id >= label_anchor_id:
         # artifact label
-        node_color += 'w'
+        node_color.append('w')
         type_name = dag.nodes[node_id - label_anchor_id]['_label_']
         type_segments = re.split('([A-Z][a-z]+)', type_name)
         node_txt = ('\n').join([s for s in type_segments if s])
         node_labels[node_id] = node_txt
       elif node_id < 0 and node_id > -1 * label_anchor_id:
-        node_color += 'm'
+        node_color.append('m')
         node_labels[node_id] = abs(node_id)
       else:
         # execution label
-        node_color += 'w'
+        node_color.append('w')
         type_name = dag.nodes[node_id + label_anchor_id]['_label_']
         node_txt = type_name.split('.')[-1]
         node_labels[node_id] = node_txt
@@ -243,7 +238,7 @@ class _LineageGraphHelper(object):
     plt.show()
 
 
-class ReadonlyMetadataStore(object):
+class ReadonlyMetadataStore:
   """An ml-metadata store that provides read-only methods for notebooks."""
 
   def __init__(self, store):

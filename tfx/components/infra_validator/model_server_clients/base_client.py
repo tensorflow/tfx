@@ -13,21 +13,16 @@
 # limitations under the License.
 """Module for shared interface of every model server clients."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import abc
 import time
 from typing import List
 
 from absl import logging
-import six
 from tfx.components.infra_validator import error_types
 from tfx.components.infra_validator import types
 
 
-class BaseModelServerClient(six.with_metaclass(abc.ABCMeta, object)):
+class BaseModelServerClient(abc.ABC):
   """Common interface for all model server clients."""
 
   @abc.abstractmethod
@@ -91,8 +86,6 @@ class BaseModelServerClient(six.with_metaclass(abc.ABCMeta, object)):
     for r in requests:
       try:
         self._SendRequest(r)
-      except Exception as original_error:  # pylint: disable=broad-except
-        six.raise_from(
-            error_types.ValidationFailed(
-                'Model server failed to respond to the request {}'.format(r)),
-            original_error)
+      except Exception as e:  # pylint: disable=broad-except
+        raise error_types.ValidationFailed(
+            f'Model server failed to respond to the request {r}') from e

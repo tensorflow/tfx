@@ -18,13 +18,12 @@ components.
 """
 
 import absl
-import kerastuner
+import keras_tuner
 import tensorflow as tf
 from tensorflow import keras
 import tensorflow_transform as tft
 
-from tfx.components.trainer.fn_args_utils import FnArgs
-from tfx.components.tuner.component import TunerFnResult
+from tfx import v1 as tfx
 from tfx.examples.penguin import penguin_utils_base as base
 
 
@@ -32,16 +31,16 @@ from tfx.examples.penguin import penguin_utils_base as base
 preprocessing_fn = base.preprocessing_fn
 
 
-def _get_hyperparameters() -> kerastuner.HyperParameters:
+def _get_hyperparameters() -> keras_tuner.HyperParameters:
   """Returns hyperparameters for building Keras model."""
-  hp = kerastuner.HyperParameters()
+  hp = keras_tuner.HyperParameters()
   # Defines search space.
   hp.Choice('learning_rate', [1e-2, 1e-3], default=1e-2)
   hp.Int('num_layers', 1, 3, default=2)
   return hp
 
 
-def _make_keras_model(hparams: kerastuner.HyperParameters) -> tf.keras.Model:
+def _make_keras_model(hparams: keras_tuner.HyperParameters) -> tf.keras.Model:
   """Creates a DNN Keras model for classifying penguin data.
 
   Args:
@@ -72,7 +71,7 @@ def _make_keras_model(hparams: kerastuner.HyperParameters) -> tf.keras.Model:
 
 
 # TFX Tuner will call this function.
-def tuner_fn(fn_args: FnArgs) -> TunerFnResult:
+def tuner_fn(fn_args: tfx.components.FnArgs) -> tfx.components.TunerFnResult:
   """Build the tuner using the KerasTuner API.
 
   Args:
@@ -92,14 +91,14 @@ def tuner_fn(fn_args: FnArgs) -> TunerFnResult:
                     model , e.g., the training and validation dataset. Required
                     args depend on the above tuner's implementation.
   """
-  # RandomSearch is a subclass of kerastuner.Tuner which inherits from
+  # RandomSearch is a subclass of keras_tuner.Tuner which inherits from
   # BaseTuner.
-  tuner = kerastuner.RandomSearch(
+  tuner = keras_tuner.RandomSearch(
       _make_keras_model,
       max_trials=6,
       hyperparameters=_get_hyperparameters(),
       allow_new_entries=False,
-      objective=kerastuner.Objective('val_sparse_categorical_accuracy', 'max'),
+      objective=keras_tuner.Objective('val_sparse_categorical_accuracy', 'max'),
       directory=fn_args.working_dir,
       project_name='penguin_tuning')
 
@@ -117,7 +116,7 @@ def tuner_fn(fn_args: FnArgs) -> TunerFnResult:
       transform_graph,
       base.EVAL_BATCH_SIZE)
 
-  return TunerFnResult(
+  return tfx.components.TunerFnResult(
       tuner=tuner,
       fit_kwargs={
           'x': train_dataset,
@@ -128,7 +127,7 @@ def tuner_fn(fn_args: FnArgs) -> TunerFnResult:
 
 
 # TFX Trainer will call this function.
-def run_fn(fn_args: FnArgs):
+def run_fn(fn_args: tfx.components.FnArgs):
   """Train the model based on given args.
 
   Args:
@@ -149,7 +148,7 @@ def run_fn(fn_args: FnArgs):
       base.EVAL_BATCH_SIZE)
 
   if fn_args.hyperparameters:
-    hparams = kerastuner.HyperParameters.from_config(fn_args.hyperparameters)
+    hparams = keras_tuner.HyperParameters.from_config(fn_args.hyperparameters)
   else:
     # This is a shown case when hyperparameters is decided and Tuner is removed
     # from the pipeline. User can also inline the hyperparameters directly in

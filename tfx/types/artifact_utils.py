@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,17 +13,12 @@
 # limitations under the License.
 """TFX Artifact utilities."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
-
 import itertools
 import json
 import os
 import re
-from typing import Dict, List, Optional, Text, Type
-import absl
+from typing import Dict, List, Optional, Type
+from absl import logging
 from packaging import version
 
 from tfx.types.artifact import _ArtifactType
@@ -47,7 +41,7 @@ _ARTIFACT_VERSION_FOR_ANOMALIES_UPDATE = '0.29.0.dev'
 
 
 # TODO(ruoyu): Deprecate this function since it is no longer needed.
-def parse_artifact_dict(json_str: Text) -> Dict[Text, List[Artifact]]:
+def parse_artifact_dict(json_str: str) -> Dict[str, List[Artifact]]:
   """Parse a dict from key to list of Artifact from its json format."""
   tfx_artifacts = {}
   for k, l in json.loads(json_str).items():
@@ -56,7 +50,7 @@ def parse_artifact_dict(json_str: Text) -> Dict[Text, List[Artifact]]:
 
 
 # TODO(ruoyu): Deprecate this function since it is no longer needed.
-def jsonify_artifact_dict(artifact_dict: Dict[Text, List[Artifact]]) -> Text:
+def jsonify_artifact_dict(artifact_dict: Dict[str, List[Artifact]]) -> str:
   """Serialize a dict from key to list of Artifact into json format."""
   d = {}
   for k, l in artifact_dict.items():
@@ -82,7 +76,7 @@ def get_single_instance(artifact_list: List[Artifact]) -> Artifact:
   return artifact_list[0]
 
 
-def get_single_uri(artifact_list: List[Artifact]) -> Text:
+def get_single_uri(artifact_list: List[Artifact]) -> str:
   """Get the uri of Artifact from a list of length one.
 
   Args:
@@ -97,8 +91,22 @@ def get_single_uri(artifact_list: List[Artifact]) -> Text:
   return get_single_instance(artifact_list).uri
 
 
+def replicate_artifacts(source: Artifact, count: int) -> List[Artifact]:
+  """Replicate given artifact and return a list with `count` artifacts."""
+  result = []
+  artifact_cls = source.type
+  for i in range(count):
+    new_instance = artifact_cls()
+    new_instance.copy_from(source)
+    # New uris should be sub directories of the original uri. See
+    # https://github.com/tensorflow/tfx/blob/1a1a53e17626d636f403b6dd16f8635e80755682/tfx/orchestration/portable/execution_publish_utils.py#L35
+    new_instance.uri = os.path.join(source.uri, str(i))
+    result.append(new_instance)
+  return result
+
+
 def is_artifact_version_older_than(artifact: Artifact,
-                                   artifact_version: Text) -> bool:
+                                   artifact_version: str) -> bool:
   """Check if artifact belongs to old version."""
   if artifact.mlmd_artifact.state == metadata_store_pb2.Artifact.UNKNOWN:
     # Newly generated artifact should use the latest artifact payload format.
@@ -119,7 +127,7 @@ def is_artifact_version_older_than(artifact: Artifact,
     return False
 
 
-def get_split_uris(artifact_list: List[Artifact], split: Text) -> List[Text]:
+def get_split_uris(artifact_list: List[Artifact], split: str) -> List[str]:
   """Get the uris of Artifacts with matching split from given list.
 
   Args:
@@ -149,7 +157,7 @@ def get_split_uris(artifact_list: List[Artifact], split: Text) -> List[Text]:
   return result
 
 
-def get_split_uri(artifact_list: List[Artifact], split: Text) -> Text:
+def get_split_uri(artifact_list: List[Artifact], split: str) -> str:
   """Get the uri of Artifact with matching split from given list.
 
   Args:
@@ -170,14 +178,14 @@ def get_split_uri(artifact_list: List[Artifact], split: Text) -> Text:
   return artifact_split_uris[0]
 
 
-def encode_split_names(splits: List[Text]) -> Text:
+def encode_split_names(splits: List[str]) -> str:
   """Get the encoded representation of a list of split names."""
   rewritten_splits = []
   for split in splits:
     # TODO(b/146759051): Remove workaround for RuntimeParameter object once
     # this bug is clarified.
     if split.__class__.__name__ == 'RuntimeParameter':
-      absl.logging.warning(
+      logging.warning(
           'RuntimeParameter provided for split name: this functionality may '
           'not be supported in the future.')
       split = str(split)
@@ -195,7 +203,7 @@ def encode_split_names(splits: List[Text]) -> Text:
   return json.dumps(rewritten_splits)
 
 
-def decode_split_names(split_names: Text) -> List[Text]:
+def decode_split_names(split_names: str) -> List[str]:
   """Decode an encoded list of split names."""
   if not split_names:
     return []
@@ -248,13 +256,13 @@ def get_artifact_type_class(
       return cls
 
   # Generate a class for the artifact type on the fly.
-  absl.logging.warning(
-      ('Could not find matching artifact class for type %r (proto: %r); '
-       'generating an ephemeral artifact class on-the-fly. If this is not '
-       'intended, please make sure that the artifact class for this type can '
-       'be imported within your container or environment where a component '
-       'is executed to consume this type.') %
-      (artifact_type.name, str(artifact_type)))
+  logging.warning(
+      'Could not find matching artifact class for type %r (proto: %r); '
+      'generating an ephemeral artifact class on-the-fly. If this is not '
+      'intended, please make sure that the artifact class for this type can '
+      'be imported within your container or environment where a component '
+      'is executed to consume this type.', artifact_type.name,
+      str(artifact_type))
   new_artifact_class = _ArtifactType(mlmd_artifact_type=artifact_type)
   setattr(new_artifact_class, '_AUTOGENERATED', True)
   return new_artifact_class

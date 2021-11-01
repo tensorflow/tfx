@@ -7,21 +7,30 @@ TensorFlow. It provides a configuration framework and shared libraries to
 integrate common components needed to define, launch, and monitor your machine
 learning system.
 
-## Installation
+## TFX 1.0
 
+We are happy to announce the availability of the
+[TFX 1.0.0](https://github.com/tensorflow/tfx/releases). This
+is the initial post-beta release of TFX, which provides stable public APIs and
+artifacts. You can be assured that your future TFX pipelines will keep working
+after an upgrade within the compatibility scope defined in this
+[RFC](https://github.com/tensorflow/community/blob/master/rfcs/20210307-tfx-api-artifact-compat.md).
+
+## Installation
 
 [![Python](https://img.shields.io/pypi/pyversions/tfx.svg?style=plastic)](
 https://github.com/tensorflow/tfx)
 [![PyPI](https://badge.fury.io/py/tfx.svg)](https://badge.fury.io/py/tfx)
 
-```
+```bash
 pip install tfx
 ```
 
-Note: See the [TensorFlow Serving](https://www.tensorflow.org/serving/),
+Note: See the
+[TensorFlow Serving](https://www.tensorflow.org/tfx/guide/serving),
 [TensorFlow JS](https://js.tensorflow.org/), and/or
-[TensorFlow Lite](https://www.tensorflow.org/lite) documentation for
-installing those optional components.
+[TensorFlow Lite](https://www.tensorflow.org/lite) documentation for installing
+those optional components.
 
 Note: This installs [Apache Beam](beam.md) with the DirectRunner.  You can also
 separately install runners that perform distributed computation, such as
@@ -34,7 +43,7 @@ TFX also hosts nightly packages at https://pypi-nightly.tensorflow.org on Google
 Cloud. To install the latest nightly package, please use the following command:
 
 ```
-pip install -i https://pypi-nightly.tensorflow.org/simple tfx
+pip install -i https://pypi-nightly.tensorflow.org/simple --pre tfx
 ```
 
 This will install the nightly packages for the major dependencies of TFX such as
@@ -53,7 +62,7 @@ environment. TFX provides the following:
     ML workflow on several platforms, such as: Apache Airflow, Apache Beam, and
     Kubeflow Pipelines.
 
-    [Learn more about TFX pipelines](understanding_tfx_pipelines).
+    [Learn more about TFX pipelines](#understanding_tfx_pipelines).
 
 *   A set of standard components that you can use as a part of a pipeline, or as
     a part of your ML training script. TFX standard components provide proven
@@ -568,7 +577,7 @@ for details
 
 Kubeflow requires a Kubernetes cluster to run the pipelines at scale. See the
 Kubeflow deployment guideline that guide through the options for
-[deploying the Kubeflow cluster.](https://www.kubeflow.org/docs/started/getting-started-gke/)
+[deploying the Kubeflow cluster.](https://www.kubeflow.org/docs/started/installing-kubeflow/)
 
 ### Configure and run TFX pipeline
 

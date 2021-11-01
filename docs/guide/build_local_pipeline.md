@@ -97,14 +97,18 @@ This section provides an overview of the scaffolding created by a template.
     *   Some templates also include Python Notebooks so that you can explore
         your data and artifacts with Machine Learning MetaData.
 
-1.  Run the following command in your pipeline directory:
+1.  Run the following commands in your pipeline directory:
 
     <pre class="devsite-click-to-copy devsite-terminal">
-    python run create --pipeline_name <var>pipeline_name</var>
+    tfx pipeline create --pipeline_path local_runner.py
     </pre>
 
-    The command creates a pipeline run using `LocalDagRunner`, which adds
-    the following directories to your pipeline:
+    <pre class="devsite-click-to-copy devsite-terminal">
+    tfx run create --pipeline_name <var>pipeline_name</var>
+    </pre>
+
+    The command creates a pipeline run using `LocalDagRunner`, which adds the
+    following directories to your pipeline:
 
     *   A **tfx_metadata** directory which contains the ML Metadata store used
         locally.
@@ -136,9 +140,9 @@ This section provides an overview of the scaffolding created by a template.
     -   Follow the instructions in the **TODO** comments in `pipeline.py` to add
         more steps to the pipeline.
 
-1.  Open `local_runner.py` (or `beam_dag_runner.py` for `taxi` template) file
-    and review the contents. This script creates a pipeline run and specifies
-    the run's _parameters_, such as the `data_path` and `preprocessing_fn`.
+1.  Open `local_runner.py` file and review the contents. This script creates a
+    pipeline run and specifies the run's _parameters_, such as the `data_path`
+    and `preprocessing_fn`.
 
 1.  You have reviewed the scaffolding created by the template and created a
     pipeline run using `LocalDagRunner`. Next, customize the template to fit
@@ -205,9 +209,7 @@ without using a template.
     from typing import Optional, Text, List
     from absl import logging
     from ml_metadata.proto import metadata_store_pb2
-    from tfx.orchestration import metadata
-    from tfx.orchestration import pipeline
-    from tfx.orchestration.local.local_dag_runner import LocalDagRunner
+    import tfx.v1 as tfx
 
     PIPELINE_NAME = 'my_pipeline'
     PIPELINE_ROOT = os.path.join('.', 'my_pipeline_output')
@@ -219,11 +221,12 @@ without using a template.
       pipeline_root:Text,
       enable_cache: bool,
       metadata_connection_config: Optional[
-        metadata_store_pb2.ConnectionConfig] = None
+        metadata_store_pb2.ConnectionConfig] = None,
+      beam_pipeline_args: Optional[List[Text]] = None
     ):
       components = []
 
-      return pipeline.Pipeline(
+      return tfx.dsl.Pipeline(
             pipeline_name=pipeline_name,
             pipeline_root=pipeline_root,
             components=components,
@@ -237,10 +240,10 @@ without using a template.
           pipeline_name=PIPELINE_NAME,
           pipeline_root=PIPELINE_ROOT,
           enable_cache=ENABLE_CACHE,
-          metadata_connection_config=metadata.sqlite_metadata_connection_config(METADATA_PATH)
+          metadata_connection_config=tfx.orchestration.metadata.sqlite_metadata_connection_config(METADATA_PATH)
           )
 
-      LocalDagRunner().run(my_pipeline)
+      tfx.orchestration.LocalDagRunner().run(my_pipeline)
 
     if __name__ == '__main__':
       logging.set_verbosity(logging.INFO)
@@ -276,7 +279,6 @@ without using a template.
 
     <pre class="devsite-click-to-copy prettyprint">
     from tfx.components import CsvExampleGen
-    from tfx.utils.dsl_utils import external_input
 
     DATA_PATH = os.path.join('.', 'data')
 
@@ -291,10 +293,10 @@ without using a template.
     ):
       components = []
 
-      example_gen = CsvExampleGen(input=external_input(data_path))
+      example_gen = tfx.components.CsvExampleGen(input_base=data_path)
       components.append(example_gen)
 
-      return pipeline.Pipeline(
+      return tfx.dsl.Pipeline(
             pipeline_name=pipeline_name,
             pipeline_root=pipeline_root,
             components=components,
@@ -303,24 +305,21 @@ without using a template.
             beam_pipeline_args=beam_pipeline_args, <!-- needed? -->
         )
 
-      def run_pipeline():
-        my_pipeline = create_pipeline(
-          pipeline_name=PIPELINE_NAME,
-          pipeline_root=PIPELINE_ROOT,
-          data_path=DATA_PATH,
-          enable_cache=ENABLE_CACHE,
-          metadata_connection_config=metadata.sqlite_metadata_connection_config(METADATA_PATH)
-          )
+    def run_pipeline():
+      my_pipeline = create_pipeline(
+        pipeline_name=PIPELINE_NAME,
+        pipeline_root=PIPELINE_ROOT,
+        data_path=DATA_PATH,
+        enable_cache=ENABLE_CACHE,
+        metadata_connection_config=tfx.orchestration.metadata.sqlite_metadata_connection_config(METADATA_PATH)
+        )
 
-      LocalDagRunner().run(my_pipeline)
+      tfx.orchestration.LocalDagRunner().run(my_pipeline)
     </pre>
 
     `CsvExampleGen` creates serialized example records using the data in the CSV
     at the specified data path. By setting the `CsvExampleGen` component's
-    `input` parameter with
-    [`external_input`](https://github.com/tensorflow/tfx/blob/master/tfx/utils/dsl_utils.py){: .external },
-    you specify that the data path is passed into the pipeline and that the path
-    should be stored as an artifact.
+    `input_base` parameter with the data root.
 
 1.  Create a `data` directory in the same directory as `my_pipeline.py`. Add a
     small CSV file to the `data` directory.

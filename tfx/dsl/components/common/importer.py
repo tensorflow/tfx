@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,11 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """TFX Importer definition."""
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
 
-from typing import Any, Dict, List, Optional, Text, Type, Union
+from typing import Any, Dict, List, Optional, Type, Union
 
 import absl
 from tfx import types
@@ -26,7 +22,7 @@ from tfx.dsl.components.base import base_node
 from tfx.orchestration import data_types
 from tfx.orchestration import metadata
 from tfx.types import channel_utils
-from tfx.types import node_common
+from tfx.utils import doc_controls
 
 from ml_metadata.proto import metadata_store_pb2
 
@@ -58,9 +54,9 @@ def _set_artifact_properties(artifact: types.Artifact,
 
 def _prepare_artifact(
     metadata_handler: metadata.Metadata,
-    uri: Text,
-    properties: Dict[Text, Any],
-    custom_properties: Dict[Text, Any],
+    uri: str,
+    properties: Dict[str, Any],
+    custom_properties: Dict[str, Any],
     reimport: bool, output_artifact_class: Type[types.Artifact],
     mlmd_artifact_type: Optional[metadata_store_pb2.ArtifactType]
 ) -> types.Artifact:
@@ -92,7 +88,7 @@ def _prepare_artifact(
 
   # Check types of custom properties.
   for key, value in custom_properties.items():
-    if not isinstance(value, (int, Text, bytes)):
+    if not isinstance(value, (int, str, bytes)):
       raise ValueError(
           ('Custom property value for key %r must be a string or integer '
            '(got %r instead)') % (key, value))
@@ -115,7 +111,7 @@ def _prepare_artifact(
         if candidate_artifact.get_int_custom_property(key) != value:
           is_candidate = False
           break
-      elif isinstance(value, (Text, bytes)):
+      elif isinstance(value, (str, bytes)):
         if candidate_artifact.get_string_custom_property(key) != value:
           is_candidate = False
           break
@@ -137,13 +133,13 @@ def _prepare_artifact(
 
 def generate_output_dict(
     metadata_handler: metadata.Metadata,
-    uri: Text,
-    properties: Dict[Text, Any],
-    custom_properties: Dict[Text, Any],
+    uri: str,
+    properties: Dict[str, Any],
+    custom_properties: Dict[str, Any],
     reimport: bool,
     output_artifact_class: Type[types.Artifact],
     mlmd_artifact_type: Optional[metadata_store_pb2.ArtifactType] = None
-) -> Dict[Text, List[types.Artifact]]:
+) -> Dict[str, List[types.Artifact]]:
   """Generates importer's output dict.
 
   If there is already an artifact in MLMD with the same URI and properties /
@@ -185,9 +181,9 @@ class ImporterDriver(base_driver.BaseDriver):
 
   def pre_execution(
       self,
-      input_dict: Dict[Text, types.Channel],
-      output_dict: Dict[Text, types.Channel],
-      exec_properties: Dict[Text, Any],
+      input_dict: Dict[str, types.BaseChannel],
+      output_dict: Dict[str, types.Channel],
+      exec_properties: Dict[str, Any],
       driver_args: data_types.DriverArgs,
       pipeline_info: data_types.PipelineInfo,
       component_info: data_types.ComponentInfo,
@@ -237,35 +233,26 @@ class Importer(base_node.BaseNode):
 
   Here is an example to use the Importer:
 
-  ...
+  ```
   importer = Importer(
-      instance_name='import_schema',
       source_uri='uri/to/schema',
       artifact_type=standard_artifacts.Schema,
-      reimport=False)
+      reimport=False).with_id('import_schema')
   schema_gen = SchemaGen(
       fixed_schema=importer.outputs['result'],
       examples=...)
-  ...
-
-  Attributes:
-    _source_uri: the source uri to import.
-    _reimport: whether or not to re-import the URI even if it already exists in
-      MLMD.
+  ```
   """
 
   def __init__(self,
-               instance_name: Text,
-               source_uri: Text,
+               source_uri: str,
                artifact_type: Type[types.Artifact],
                reimport: Optional[bool] = False,
-               properties: Optional[Dict[Text, Union[Text, int]]] = None,
-               custom_properties: Optional[Dict[Text, Union[Text,
-                                                            int]]] = None):
+               properties: Optional[Dict[str, Union[str, int]]] = None,
+               custom_properties: Optional[Dict[str, Union[str, int]]] = None):
     """Init function for the Importer.
 
     Args:
-      instance_name: the name of the Importer instance.
       source_uri: the URI of the resource that needs to be registered.
       artifact_type: the type of the artifact to import.
       reimport: whether or not to re-import as a new artifact if the URI has
@@ -282,30 +269,31 @@ class Importer(base_node.BaseNode):
     artifact = artifact_type()
     _set_artifact_properties(artifact, properties, custom_properties)
 
+    # TODO(b/161490287): remove static artifacts.
     self._output_dict = {
         IMPORT_RESULT_KEY:
             types.Channel(
                 type=artifact_type,
-                artifacts=[artifact],
                 additional_properties=properties,
-                additional_custom_properties=custom_properties)
+                additional_custom_properties=custom_properties).set_artifacts(
+                    [artifact])
     }
 
-    super(Importer, self).__init__(
-        instance_name=instance_name,
-        driver_class=ImporterDriver,
-    )
+    super().__init__(driver_class=ImporterDriver)
 
   @property
-  def inputs(self) -> node_common._PropertyDictWrapper:  # pylint: disable=protected-access
-    return node_common._PropertyDictWrapper({})  # pylint: disable=protected-access
+  @doc_controls.do_not_generate_docs
+  def inputs(self) -> Dict[str, Any]:
+    return {}
 
   @property
-  def outputs(self) -> node_common._PropertyDictWrapper:  # pylint: disable=protected-access
-    return node_common._PropertyDictWrapper(self._output_dict)  # pylint: disable=protected-access
+  def outputs(self) -> Dict[str, Any]:
+    """Output Channel dict that contains imported artifacts."""
+    return self._output_dict
 
   @property
-  def exec_properties(self) -> Dict[Text, Any]:
+  @doc_controls.do_not_generate_docs
+  def exec_properties(self) -> Dict[str, Any]:
     return {
         SOURCE_URI_KEY: self._source_uri,
         REIMPORT_OPTION_KEY: int(self._reimport),

@@ -14,7 +14,7 @@
 """Definition for Airflow component for TFX."""
 
 import functools
-from typing import Any, Dict, List, Text, Type
+from typing import Any, Dict, List, Type
 
 from airflow import models
 from airflow.operators import python_operator
@@ -33,9 +33,9 @@ def _airflow_component_launcher(
         base_component_launcher.BaseComponentLauncher],
     pipeline_info: data_types.PipelineInfo, driver_args: data_types.DriverArgs,
     metadata_connection_config: metadata_store_pb2.ConnectionConfig,
-    beam_pipeline_args: List[Text], additional_pipeline_args: Dict[Text, Any],
+    beam_pipeline_args: List[str], additional_pipeline_args: Dict[str, Any],
     component_config: base_component_config.BaseComponentConfig,
-    **kwargs) -> None:
+    exec_properties: Dict[str, Any], **kwargs) -> None:
   """Helper function to launch TFX component execution.
 
   This helper function will be called with Airflow env objects which contains
@@ -52,12 +52,15 @@ def _airflow_component_launcher(
     beam_pipeline_args: Pipeline arguments for Beam powered Components.
     additional_pipeline_args: A dict of additional pipeline args.
     component_config: Component config to launch the component.
+    exec_properties: Execution properties from the ComponentSpec.
     **kwargs: Context arguments that will be passed in by Airflow, including:
       - ti: TaskInstance object from which we can get run_id of the running
         pipeline.
       For more details, please refer to the code:
       https://github.com/apache/airflow/blob/master/airflow/operators/python_operator.py
   """
+  component.exec_properties.update(exec_properties)
+
   # Populate run id from Airflow task instance.
   pipeline_info.run_id = kwargs['ti'].get_dagrun().run_id
   launcher = component_launcher_class.create(
@@ -79,13 +82,13 @@ class AirflowComponent(python_operator.PythonOperator):
   This class wrap a component run into its own PythonOperator in Airflow.
   """
 
-  def __init__(self, parent_dag: models.DAG, component: base_node.BaseNode,
+  def __init__(self, *, parent_dag: models.DAG, component: base_node.BaseNode,
                component_launcher_class: Type[
                    base_component_launcher.BaseComponentLauncher],
                pipeline_info: data_types.PipelineInfo, enable_cache: bool,
                metadata_connection_config: metadata_store_pb2.ConnectionConfig,
-               beam_pipeline_args: List[Text],
-               additional_pipeline_args: Dict[Text, Any],
+               beam_pipeline_args: List[str],
+               additional_pipeline_args: Dict[str, Any],
                component_config: base_component_config.BaseComponentConfig):
     """Constructs an Airflow implementation of TFX component.
 
@@ -106,7 +109,9 @@ class AirflowComponent(python_operator.PythonOperator):
     # Prepare parameters to create TFX worker.
     driver_args = data_types.DriverArgs(enable_cache=enable_cache)
 
-    super(AirflowComponent, self).__init__(
+    exec_properties = component.exec_properties
+
+    super().__init__(
         task_id=component.id,
         # TODO(b/183172663): Delete `provide_context` when we drop support of
         # airflow 1.x.
@@ -121,4 +126,7 @@ class AirflowComponent(python_operator.PythonOperator):
             beam_pipeline_args=beam_pipeline_args,
             additional_pipeline_args=additional_pipeline_args,
             component_config=component_config),
+        # op_kwargs is a templated field for PythonOperator, which means Airflow
+        # will inspect the dictionary and resolve any templated fields.
+        op_kwargs={'exec_properties': exec_properties},
         dag=parent_dag)

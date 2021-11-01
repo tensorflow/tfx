@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,27 +11,22 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""E2E Tests for tfx.examples.chicago_taxi_pipeline.taxi_pipeline_beam."""
-
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
+"""E2E Tests for tfx.examples.chicago_taxi_pipeline.taxi_pipeline_local."""
 
 import os
-from typing import Text
 
 from absl.testing import parameterized
 import tensorflow as tf
 from tfx.dsl.io import fileio
-from tfx.examples.chicago_taxi_pipeline import taxi_pipeline_beam
+from tfx.examples.chicago_taxi_pipeline import taxi_pipeline_local
 from tfx.orchestration import metadata
 from tfx.orchestration.local.local_dag_runner import LocalDagRunner
 
 
-class TaxiPipelineBeamEndToEndTest(tf.test.TestCase, parameterized.TestCase):
+class TaxiPipelineLocalEndToEndTest(tf.test.TestCase, parameterized.TestCase):
 
   def setUp(self):
-    super(TaxiPipelineBeamEndToEndTest, self).setUp()
+    super().setUp()
     self._test_dir = os.path.join(
         os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR', self.get_temp_dir()),
         self._testMethodName)
@@ -46,7 +40,7 @@ class TaxiPipelineBeamEndToEndTest(tf.test.TestCase, parameterized.TestCase):
     self._metadata_path = os.path.join(self._test_dir, 'tfx', 'metadata',
                                        self._pipeline_name, 'metadata.db')
 
-  def assertExecutedOnce(self, component: Text) -> None:
+  def assertExecutedOnce(self, component: str) -> None:
     """Check the component is executed exactly once."""
     component_path = os.path.join(self._pipeline_root, component)
     self.assertTrue(fileio.exists(component_path))
@@ -78,7 +72,7 @@ class TaxiPipelineBeamEndToEndTest(tf.test.TestCase, parameterized.TestCase):
 
   def testTaxiPipelineBeam(self):
     LocalDagRunner().run(
-        taxi_pipeline_beam._create_pipeline(
+        taxi_pipeline_local._create_pipeline(
             pipeline_name=self._pipeline_name,
             data_root=self._data_root,
             module_file=self._module_file,
@@ -95,45 +89,9 @@ class TaxiPipelineBeamEndToEndTest(tf.test.TestCase, parameterized.TestCase):
       artifact_count = len(m.store.get_artifacts())
       execution_count = len(m.store.get_executions())
       self.assertGreaterEqual(artifact_count, execution_count)
-      self.assertEqual(9, execution_count)
+      self.assertEqual(10, execution_count)
 
     self.assertPipelineExecution()
-
-    # Runs pipeline the second time.
-    LocalDagRunner().run(
-        taxi_pipeline_beam._create_pipeline(
-            pipeline_name=self._pipeline_name,
-            data_root=self._data_root,
-            module_file=self._module_file,
-            serving_model_dir=self._serving_model_dir,
-            pipeline_root=self._pipeline_root,
-            metadata_path=self._metadata_path,
-            beam_pipeline_args=[]))
-
-    # All executions but Evaluator and Pusher are cached.
-    # Note that Resolver will always execute.
-    with metadata.Metadata(metadata_config) as m:
-      # Artifact count is increased by 3 caused by Evaluator and Pusher.
-      self.assertLen(m.store.get_artifacts(), artifact_count + 3)
-      artifact_count = len(m.store.get_artifacts())
-      self.assertLen(m.store.get_executions(), 18)
-
-    # Runs pipeline the third time.
-    LocalDagRunner().run(
-        taxi_pipeline_beam._create_pipeline(
-            pipeline_name=self._pipeline_name,
-            data_root=self._data_root,
-            module_file=self._module_file,
-            serving_model_dir=self._serving_model_dir,
-            pipeline_root=self._pipeline_root,
-            metadata_path=self._metadata_path,
-            beam_pipeline_args=[]))
-
-    # Asserts cache execution.
-    with metadata.Metadata(metadata_config) as m:
-      # Artifact count is unchanged.
-      self.assertLen(m.store.get_artifacts(), artifact_count)
-      self.assertLen(m.store.get_executions(), 27)
 
 
 if __name__ == '__main__':

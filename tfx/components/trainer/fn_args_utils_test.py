@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,10 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Tests for tfx.components.trainer.fn_args_utils."""
-
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
 
 import os
 
@@ -48,10 +43,14 @@ class FnArgsUtilsTest(tf.test.TestCase):
     schema = standard_artifacts.Schema()
     schema.uri = os.path.join(source_data_dir, 'schema_gen')
 
+    base_model = standard_artifacts.Model()
+    base_model.uri = os.path.join(source_data_dir, 'trainer/previous')
+
     input_dict = {
         standard_component_specs.EXAMPLES_KEY: [examples],
         standard_component_specs.TRANSFORM_GRAPH_KEY: [transform_output],
         standard_component_specs.SCHEMA_KEY: [schema],
+        standard_component_specs.BASE_MODEL_KEY: [base_model],
     }
 
     # Create exec properties skeleton.
@@ -75,6 +74,12 @@ class FnArgsUtilsTest(tf.test.TestCase):
                      os.path.join(examples.uri, 'Split-eval', '*'))
     self.assertEqual(fn_args.schema_path,
                      os.path.join(schema.uri, 'schema.pbtxt'))
+    # Depending on execution environment, the base model may have been stored
+    # at .../Format-Servo/... or .../Format-Serving/... directory patterns.
+    self.assertRegex(
+        fn_args.base_model,
+        os.path.join(base_model.uri,
+                     r'Format-(Servo|Serving)/export/chicago-taxi/\d+'))
     self.assertEqual(fn_args.transform_graph_path, transform_output.uri)
     self.assertIsInstance(fn_args.data_accessor, fn_args_utils.DataAccessor)
 

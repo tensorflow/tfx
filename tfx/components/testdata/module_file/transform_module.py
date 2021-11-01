@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -20,11 +19,6 @@ _build_estimator function needs to be provided.  This file contains both.
 This file is equivalent to examples/chicago_taxi/trainer/model.py and
 examples/chicago_taxi/preprocess.py.
 """
-
-from __future__ import division
-from __future__ import print_function
-
-# Standard Imports
 
 import tensorflow as tf
 import tensorflow_transform as tft
@@ -107,7 +101,7 @@ def preprocessing_fn(inputs, custom_config):
   """
   outputs = {}
   for key in _DENSE_FLOAT_FEATURE_KEYS:
-    # Preserve this feature as a dense float, setting nan's to the mean.
+    # If sparse make it dense, setting nan's to 0 or '', and apply zscore.
     outputs[_transformed_name(key)] = tft.scale_to_z_score(
         _fill_in_missing(_identity(inputs[key])))
 

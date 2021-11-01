@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2020 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,55 +17,109 @@ A DNN keras model which uses features defined in features.py and network
 parameters defined in constants.py.
 """
 
-from typing import List, Text
+from typing import List
 from absl import logging
 import tensorflow as tf
 from tensorflow import keras
 import tensorflow_transform as tft
 from tensorflow_transform.tf_metadata import schema_utils
 
-from tfx.components.trainer.executor import TrainerFnArgs
-from tfx.components.trainer.fn_args_utils import DataAccessor
+from tfx import v1 as tfx
 from tfx.experimental.templates.penguin.models import constants
 from tfx.experimental.templates.penguin.models import features
-from tfx.utils import io_utils
-from tfx_bsl.tfxio import dataset_options
+from tfx_bsl.public import tfxio
 
 from tensorflow_metadata.proto.v0 import schema_pb2
 
 
-def _get_serve_tf_examples_fn(model, schema, tf_transform_output):
-  """Returns a function that parses a serialized tf.Example."""
+def _get_tf_examples_serving_signature(model, schema, tf_transform_output):
+  """Returns a serving signature that accepts `tensorflow.Example`."""
+
   if tf_transform_output is None:  # Transform component is not used.
-    @tf.function
-    def serve_tf_examples_fn(serialized_tf_examples):
+
+    @tf.function(input_signature=[
+        tf.TensorSpec(shape=[None], dtype=tf.string, name='examples')
+    ])
+    def serve_tf_examples_fn(serialized_tf_example):
       """Returns the output to be used in the serving signature."""
-      feature_spec = schema_utils.schema_as_feature_spec(schema).feature_spec
-      feature_spec.pop(features.LABEL_KEY)
-      parsed_features = tf.io.parse_example(serialized_tf_examples,
-                                            feature_spec)
-      return model(parsed_features)
+      raw_feature_spec = schema_utils.schema_as_feature_spec(
+          schema).feature_spec
+      # Remove label feature since these will not be present at serving time.
+      raw_feature_spec.pop(features.LABEL_KEY)
+      raw_features = tf.io.parse_example(serialized_tf_example,
+                                         raw_feature_spec)
+      logging.info('serve_features = %s', raw_features)
+
+      outputs = model(raw_features)
+      # TODO(b/154085620): Convert the predicted labels from the model using a
+      # reverse-lookup (opposite of transform.py).
+      return {'outputs': outputs}
 
   else:  # Transform component exists.
-    model.tft_layer = tf_transform_output.transform_features_layer()
+    # We need to track the layers in the model in order to save it.
+    # TODO(b/162357359): Revise once the bug is resolved.
+    model.tft_layer_inference = tf_transform_output.transform_features_layer()
 
-    @tf.function
-    def serve_tf_examples_fn(serialized_tf_examples):
+    @tf.function(input_signature=[
+        tf.TensorSpec(shape=[None], dtype=tf.string, name='examples')
+    ])
+    def serve_tf_examples_fn(serialized_tf_example):
       """Returns the output to be used in the serving signature."""
-      feature_spec = tf_transform_output.raw_feature_spec()
-      feature_spec.pop(features.LABEL_KEY)
-      parsed_features = tf.io.parse_example(serialized_tf_examples,
-                                            feature_spec)
-      transformed_features = model.tft_layer(parsed_features)
-      return model(transformed_features)
+      raw_feature_spec = tf_transform_output.raw_feature_spec()
+      # Remove label feature since these will not be present at serving time.
+      raw_feature_spec.pop(features.LABEL_KEY)
+      raw_features = tf.io.parse_example(serialized_tf_example,
+                                         raw_feature_spec)
+      transformed_features = model.tft_layer_inference(raw_features)
+      logging.info('serve_transformed_features = %s', transformed_features)
+
+      outputs = model(transformed_features)
+      # TODO(b/154085620): Convert the predicted labels from the model using a
+      # reverse-lookup (opposite of transform.py).
+      return {'outputs': outputs}
 
   return serve_tf_examples_fn
 
 
-def _input_fn(file_pattern: List[Text],
-              data_accessor: DataAccessor,
+def _get_transform_features_signature(model, schema, tf_transform_output):
+  """Returns a serving signature that applies tf.Transform to features."""
+
+  if tf_transform_output is None:  # Transform component is not used.
+    @tf.function(input_signature=[
+        tf.TensorSpec(shape=[None], dtype=tf.string, name='examples')
+    ])
+    def transform_features_fn(serialized_tf_example):
+      """Returns the transformed_features to be fed as input to evaluator."""
+      raw_feature_spec = schema_utils.schema_as_feature_spec(
+          schema).feature_spec
+      raw_features = tf.io.parse_example(serialized_tf_example,
+                                         raw_feature_spec)
+      logging.info('eval_features = %s', raw_features)
+      return raw_features
+  else:  # Transform component exists.
+    # We need to track the layers in the model in order to save it.
+    # TODO(b/162357359): Revise once the bug is resolved.
+    model.tft_layer_eval = tf_transform_output.transform_features_layer()
+
+    @tf.function(input_signature=[
+        tf.TensorSpec(shape=[None], dtype=tf.string, name='examples')
+    ])
+    def transform_features_fn(serialized_tf_example):
+      """Returns the transformed_features to be fed as input to evaluator."""
+      raw_feature_spec = tf_transform_output.raw_feature_spec()
+      raw_features = tf.io.parse_example(serialized_tf_example,
+                                         raw_feature_spec)
+      transformed_features = model.tft_layer_eval(raw_features)
+      logging.info('eval_transformed_features = %s', transformed_features)
+      return transformed_features
+
+  return transform_features_fn
+
+
+def _input_fn(file_pattern: List[str],
+              data_accessor: tfx.components.DataAccessor,
               schema: schema_pb2.Schema,
-              label: Text,
+              label: str,
               batch_size: int = 200) -> tf.data.Dataset:
   """Generates features and label for tuning/training.
 
@@ -84,11 +137,11 @@ def _input_fn(file_pattern: List[Text],
   """
   return data_accessor.tf_dataset_factory(
       file_pattern,
-      dataset_options.TensorFlowDatasetOptions(
-          batch_size=batch_size, label_key=label), schema).repeat()
+      tfxio.TensorFlowDatasetOptions(batch_size=batch_size, label_key=label),
+      schema).repeat()
 
 
-def _build_keras_model(feature_list: List[Text]) -> tf.keras.Model:
+def _build_keras_model(feature_list: List[str]) -> tf.keras.Model:
   """Creates a DNN Keras model for classifying penguin data.
 
   Args:
@@ -119,7 +172,7 @@ def _build_keras_model(feature_list: List[Text]) -> tf.keras.Model:
 
 # TFX Trainer will call this function.
 # TODO(step 4): Construct, train and save your model in this function.
-def run_fn(fn_args: TrainerFnArgs):
+def run_fn(fn_args: tfx.components.FnArgs):
   """Train the model based on given args.
 
   Args:
@@ -127,7 +180,8 @@ def run_fn(fn_args: TrainerFnArgs):
   """
   if fn_args.transform_output is None:  # Transform is not used.
     tf_transform_output = None
-    schema = io_utils.parse_pbtxt_file(fn_args.schema_file, schema_pb2.Schema())
+    schema = tfx.utils.parse_pbtxt_file(fn_args.schema_file,
+                                        schema_pb2.Schema())
     feature_list = features.FEATURE_KEYS
     label_key = features.LABEL_KEY
   else:
@@ -171,11 +225,9 @@ def run_fn(fn_args: TrainerFnArgs):
 
   signatures = {
       'serving_default':
-          _get_serve_tf_examples_fn(model, schema,
-                                    tf_transform_output).get_concrete_function(
-                                        tf.TensorSpec(
-                                            shape=[None],
-                                            dtype=tf.string,
-                                            name='examples')),
+          _get_tf_examples_serving_signature(model, schema,
+                                             tf_transform_output),
+      'transform_features':
+          _get_transform_features_signature(model, schema, tf_transform_output),
   }
   model.save(fn_args.serving_model_dir, save_format='tf', signatures=signatures)

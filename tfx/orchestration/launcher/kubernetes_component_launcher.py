@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,11 +13,7 @@
 # limitations under the License.
 """Docker component launcher which launches a container in docker environment ."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
-from typing import Any, Dict, List, Optional, Text, cast
+from typing import Any, Dict, List, Optional, cast
 
 from absl import logging
 from kubernetes import client
@@ -41,7 +36,8 @@ class KubernetesComponentLauncher(base_component_launcher.BaseComponentLauncher
   def can_launch(
       cls,
       component_executor_spec: executor_spec.ExecutorSpec,
-      component_config: base_component_config.BaseComponentConfig = None
+      component_config: Optional[
+          base_component_config.BaseComponentConfig] = None
   ) -> bool:
     """Checks if the launcher can launch the executor spec."""
     if component_config and not isinstance(
@@ -54,9 +50,9 @@ class KubernetesComponentLauncher(base_component_launcher.BaseComponentLauncher
                        executor_specs.TemplatedExecutorContainerSpec))
 
   def _run_executor(self, execution_id: int,
-                    input_dict: Dict[Text, List[types.Artifact]],
-                    output_dict: Dict[Text, List[types.Artifact]],
-                    exec_properties: Dict[Text, Any]) -> None:
+                    input_dict: Dict[str, List[types.Artifact]],
+                    output_dict: Dict[str, List[types.Artifact]],
+                    exec_properties: Dict[str, Any]) -> None:
     """Execute underlying component implementation.
 
     Runs executor container in a Kubernetes Pod and wait until it goes into
@@ -165,8 +161,8 @@ class KubernetesComponentLauncher(base_component_launcher.BaseComponentLauncher
     logging.info('Pod "%s:%s" is done.', namespace, pod_name)
 
   def _build_pod_manifest(
-      self, pod_name: Text,
-      container_spec: executor_spec.ExecutorContainerSpec) -> Dict[Text, Any]:
+      self, pod_name: str,
+      container_spec: executor_spec.ExecutorContainerSpec) -> Dict[str, Any]:
     """Build a pod spec.
 
     The function builds a pod spec by patching executor container spec into
@@ -193,13 +189,12 @@ class KubernetesComponentLauncher(base_component_launcher.BaseComponentLauncher
     })
     # TODO(hongyes): figure out a better way to figure out type hints for nested
     # dict.
-    metadata = pod_manifest.setdefault('metadata', {})  # type: Dict[Text, Any]
+    metadata = pod_manifest.setdefault('metadata', {})  # type: Dict[str, Any]  # pytype: disable=annotation-type-mismatch
     metadata.update({'name': pod_name})
-    spec = pod_manifest.setdefault('spec', {})  # type: Dict[Text, Any]
+    spec = pod_manifest.setdefault('spec', {})  # type: Dict[str, Any]  # pytype: disable=annotation-type-mismatch
     spec.update({'restartPolicy': 'Never'})
-    containers = spec.setdefault('containers',
-                                 [])  # type: List[Dict[Text, Any]]
-    container = None  # type: Optional[Dict[Text, Any]]
+    containers = spec.setdefault('containers', [])  # type: List[Dict[str, Any]]
+    container = None  # type: Optional[Dict[str, Any]]
     for c in containers:
       if c['name'] == kube_utils.ARGO_MAIN_CONTAINER_NAME:
         container = c
@@ -214,7 +209,7 @@ class KubernetesComponentLauncher(base_component_launcher.BaseComponentLauncher
     })
     return pod_manifest
 
-  def _build_pod_name(self, execution_id: int) -> Text:
+  def _build_pod_name(self, execution_id: int) -> str:
     if self._pipeline_info.run_id:
       pipeline_name = (
           self._pipeline_info.pipeline_name[:50] + '-' +

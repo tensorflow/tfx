@@ -13,17 +13,13 @@
 # limitations under the License.
 """Tests for tfx.utils.dependency_utils."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import os
 import sys
-# Standard Imports
+from unittest import mock
+
 
 from absl import logging
 from absl.testing import parameterized
-import mock
 import tensorflow as tf
 from tfx.dsl.io import fileio
 from tfx.utils import dependency_utils
@@ -32,7 +28,7 @@ from tfx.utils import dependency_utils
 class DependencyUtilsTest(tf.test.TestCase, parameterized.TestCase):
 
   def setUp(self):
-    super(tf.test.TestCase, self).setUp()
+    super().setUp()
     self._tmp_dir = os.path.join(
         os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR', self.get_temp_dir()),
         self._testMethodName)
@@ -45,11 +41,12 @@ class DependencyUtilsTest(tf.test.TestCase, parameterized.TestCase):
     self.assertListEqual(['--extra_package=mock_file'], beam_flags)
     mock_build_ephemeral_package.assert_called_with()
 
+  # TODO(zhitaoli): Add check on 'sdk_container_image' once supported version of
+  #                 Beam converges.
   @parameterized.named_parameters(
       ('ExtraPackages', '--extra_packages=foo'),
       ('SetupFile', '--setup_file=foo'),
       ('RequirementsFile', '--requirements_file=foo'),
-      ('WorkerHarnessContainerImage', '--worker_harness_container_image=foo'),
   )
   def testNoActionOnFlag(self, flag_value):
     beam_pipeline_args = [flag_value]

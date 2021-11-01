@@ -14,24 +14,40 @@
 """Tests for tfx.dsl.compiler.compiler."""
 import os
 
+from absl import flags
 from absl.testing import parameterized
-
 import tensorflow as tf
 from tfx.dsl.compiler import compiler
 from tfx.dsl.compiler.testdata import additional_properties_test_pipeline_async
+from tfx.dsl.compiler.testdata import channel_union_pipeline
+from tfx.dsl.compiler.testdata import conditional_pipeline
 from tfx.dsl.compiler.testdata import iris_pipeline_async
 from tfx.dsl.compiler.testdata import iris_pipeline_sync
+from tfx.dsl.compiler.testdata import pipeline_root_placeholder
 from tfx.orchestration import pipeline
 from tfx.proto.orchestration import pipeline_pb2
 from tfx.utils import import_utils
 
 from google.protobuf import text_format
 
+FLAGS = flags.FLAGS
+flags.DEFINE_bool(
+    "persist_test_protos", False, "Use for regenerating test data. With "
+    "test_strategy=local, proto pbtxt files are persisted to "
+    "/tmp/<test_name>.pbtxt")
+
+
+def _maybe_persist_pipeline_proto(pipeline_proto: pipeline_pb2.Pipeline,
+                                  to_path: str) -> None:
+  if FLAGS.persist_test_protos:
+    with open(to_path, mode="w+") as f:
+      f.write(text_format.MessageToString(pipeline_proto))
+
 
 class CompilerTest(tf.test.TestCase, parameterized.TestCase):
 
   def setUp(self):
-    super(CompilerTest, self).setUp()
+    super().setUp()
     # pylint: disable=g-bad-name
     self.maxDiff = 80 * 1000  # Let's hear what assertEqual has to say.
 
@@ -52,13 +68,20 @@ class CompilerTest(tf.test.TestCase, parameterized.TestCase):
        additional_properties_test_pipeline_async,
        "additional_properties_test_pipeline_async_ir.pbtxt"),
       ("sync_pipeline", iris_pipeline_sync, "iris_pipeline_sync_ir.pbtxt"),
-      ("async_pipeline", iris_pipeline_async, "iris_pipeline_async_ir.pbtxt"))
+      ("async_pipeline", iris_pipeline_async, "iris_pipeline_async_ir.pbtxt"),
+      ("conditional_pipeline", conditional_pipeline,
+       "conditional_pipeline_ir.pbtxt"),
+      ("channel_union_pipeline", channel_union_pipeline,
+       "channel_union_pipeline_ir.pbtxt"),
+      ("pipeline_root_placeholder", pipeline_root_placeholder,
+       "pipeline_root_placeholder_ir.pbtxt"))
   def testCompile(self, pipeline_module, expected_result_path):
     """Tests compiling the whole pipeline."""
     dsl_compiler = compiler.Compiler()
     compiled_pb = dsl_compiler.compile(
         self._get_test_pipeline_definition(pipeline_module))
     expected_pb = self._get_test_pipeline_pb(expected_result_path)
+    _maybe_persist_pipeline_proto(compiled_pb, f"/tmp/{expected_result_path}")
     self.assertProtoEquals(expected_pb, compiled_pb)
 
   def testCompileAdditionalPropertyTypeError(self):

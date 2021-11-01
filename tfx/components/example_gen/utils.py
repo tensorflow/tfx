@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,17 +13,13 @@
 # limitations under the License.
 """Utilities for ExampleGen components."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import datetime
 import os
 import re
-from typing import Any, Dict, Iterable, List, Optional, Text, Tuple, Union
+from typing import Any, Dict, Iterable, List, Optional, Tuple, Union
 
 from absl import logging
-import six
+import numpy as np
 import tensorflow as tf
 
 from tfx.dsl.io import fileio
@@ -33,22 +28,11 @@ from tfx.proto import range_config_pb2
 from tfx.utils import io_utils
 from google.protobuf import json_format
 
-# Key for `input_base` in executor exec_properties.
-INPUT_BASE_KEY = 'input_base'
-# Key for `input_config` in executor exec_properties.
-INPUT_CONFIG_KEY = 'input_config'
-# Key for `output_config` in executor exec_properties.
-OUTPUT_CONFIG_KEY = 'output_config'
-# Key for `range_config` in executor exec_properties.
-RANGE_CONFIG_KEY = 'range_config'
-# Key for the `output_data_format` in executor exec_properties.
-OUTPUT_DATA_FORMAT_KEY = 'output_data_format'
-
-# Key for output examples in executor output_dict.
-EXAMPLES_KEY = 'examples'
 
 # Key for the `payload_format` custom property of output examples artifact.
 PAYLOAD_FORMAT_PROPERTY_NAME = 'payload_format'
+# Key for the `file_format` custom property of output examples artifact.
+FILE_FORMAT_PROPERTY_NAME = 'file_format'
 # Key for the `input_fingerprint` custom property of output examples artifact.
 FINGERPRINT_PROPERTY_NAME = 'input_fingerprint'
 # Key for the `span` custom property of output examples artifact.
@@ -75,42 +59,72 @@ MONTH_SPEC = '{MM}'
 DAY_SPEC = '{DD}'
 # Order of importance for Date specs.
 DATE_SPECS = [YEAR_SPEC, MONTH_SPEC, DAY_SPEC]
+# Specs for query:
+#   @span_begin_timestamp: Start of span interval, Timestamp in seconds.
+#   @span_end_timestamp: End of span interval, Timestamp in seconds.
+#   @span_yyyymmdd_utc: STRING with format, e.g., '20180114', corresponding to
+#                       the span interval begin in UTC.
+#   Query examples,
+#     1. SELECT * FROM table WHERE date = @span_yyyymmdd_utc
+#     2. SELECT * FROM table WHERE timestamp
+#        BETWEEN @span_begin_timestamp AND @span_end_timestamp
+SPAN_BEGIN_TIMESTAMP = '@span_begin_timestamp'
+SPAN_END_TIMESTMAP = '@span_end_timestamp'
+SPAN_YYYYMMDD_UTC = '@span_yyyymmdd_utc'
 # Unix epoch date to calculate span number from.
 UNIX_EPOCH_DATE = datetime.datetime(1970, 1, 1)
+UNIX_EPOCH_DATE_UTC = datetime.datetime(  # pylint: disable=g-tzinfo-datetime
+    1970,
+    1,
+    1,
+    tzinfo=datetime.timezone.utc)
 
 _DEFAULT_ENCODING = 'utf-8'
 
 
-def dict_to_example(instance: Dict[Text, Any]) -> tf.train.Example:
+def dict_to_example(instance: Dict[str, Any]) -> tf.train.Example:
   """Converts dict to tf example."""
   feature = {}
   for key, value in instance.items():
     # TODO(jyzhao): support more types.
-    if value is None:
+    # Convert to Python Scalars
+    if isinstance(value, np.ndarray):
+      pyval = value.tolist()
+    else:
+      try:
+        pyval = value.item()
+      except AttributeError:
+        pyval = value
+
+    # Convert bytes to str
+    if isinstance(pyval, bytes):
+      pyval = pyval.decode(_DEFAULT_ENCODING)
+
+    if pyval is None:
       feature[key] = tf.train.Feature()
-    elif isinstance(value, six.integer_types):
+    elif isinstance(pyval, int):
       feature[key] = tf.train.Feature(
-          int64_list=tf.train.Int64List(value=[value]))
-    elif isinstance(value, float):
+          int64_list=tf.train.Int64List(value=[pyval]))
+    elif isinstance(pyval, float):
       feature[key] = tf.train.Feature(
-          float_list=tf.train.FloatList(value=[value]))
-    elif isinstance(value, six.text_type) or isinstance(value, str):
+          float_list=tf.train.FloatList(value=[pyval]))
+    elif isinstance(pyval, str):
       feature[key] = tf.train.Feature(
           bytes_list=tf.train.BytesList(
-              value=[value.encode(_DEFAULT_ENCODING)]))
-    elif isinstance(value, list):
-      if not value:
+              value=[pyval.encode(_DEFAULT_ENCODING)]))
+    elif isinstance(pyval, list):
+      if not pyval:
         feature[key] = tf.train.Feature()
-      elif isinstance(value[0], six.integer_types):
+      elif isinstance(pyval[0], int):
         feature[key] = tf.train.Feature(
-            int64_list=tf.train.Int64List(value=value))
-      elif isinstance(value[0], float):
+            int64_list=tf.train.Int64List(value=pyval))
+      elif isinstance(pyval[0], float):
         feature[key] = tf.train.Feature(
-            float_list=tf.train.FloatList(value=value))
-      elif isinstance(value[0], six.text_type) or isinstance(value[0], str):
+            float_list=tf.train.FloatList(value=pyval))
+      elif isinstance(pyval[0], str):
         feature[key] = tf.train.Feature(
             bytes_list=tf.train.BytesList(
-                value=[v.encode(_DEFAULT_ENCODING) for v in value]))
+                value=[v.encode(_DEFAULT_ENCODING) for v in pyval]))
       else:
         raise RuntimeError('Column type `list of {}` is not supported.'.format(
             type(value[0])))
@@ -120,9 +134,8 @@ def dict_to_example(instance: Dict[Text, Any]) -> tf.train.Example:
 
 
 def generate_output_split_names(
-    input_config: Union[example_gen_pb2.Input, Dict[Text, Any]],
-    output_config: Union[example_gen_pb2.Output, Dict[Text,
-                                                      Any]]) -> List[Text]:
+    input_config: Union[example_gen_pb2.Input, Dict[str, Any]],
+    output_config: Union[example_gen_pb2.Output, Dict[str, Any]]) -> List[str]:
   """Return output split name based on input and output config.
 
   Return output split name if it's specified and input only contains one split,
@@ -195,7 +208,7 @@ def generate_output_split_names(
 
 
 def make_default_input_config(
-    split_pattern: Text = '*') -> example_gen_pb2.Input:
+    split_pattern: str = '*') -> example_gen_pb2.Input:
   """Returns default input config."""
   # Treats input base dir as a single split.
   return example_gen_pb2.Input(splits=[
@@ -204,7 +217,7 @@ def make_default_input_config(
 
 
 def make_default_output_config(
-    input_config: Union[example_gen_pb2.Input, Dict[Text, Any]]
+    input_config: Union[example_gen_pb2.Input, Dict[str, Any]]
 ) -> example_gen_pb2.Output:
   """Returns default output config based on input config."""
   if isinstance(input_config, example_gen_pb2.Input):
@@ -225,7 +238,7 @@ def make_default_output_config(
         ]))
 
 
-def _glob_to_regex(glob_pattern: Text) -> Text:
+def _glob_to_regex(glob_pattern: str) -> str:
   """Changes glob pattern to regex pattern."""
   regex_pattern = glob_pattern
   regex_pattern = regex_pattern.replace('.', '\\.')
@@ -248,8 +261,8 @@ def span_number_to_date(span: int) -> Tuple[int, int, int]:
   return date.year, date.month, date.day
 
 
-def _make_zero_padding_spec_value(spec_full_regex: Text, pattern: Text,
-                                  spec_value: int) -> Text:
+def _make_zero_padding_spec_value(spec_full_regex: str, pattern: str,
+                                  spec_value: int) -> str:
   """Returns spec value, applies zero padding if needed."""
   match_result = re.search(spec_full_regex, pattern)
   assert match_result, 'No %s found in split %s' % (spec_full_regex, pattern)
@@ -312,9 +325,9 @@ def verify_split_pattern_specs(
   return is_match_span, is_match_date, is_match_version
 
 
-def get_pattern_for_span_version(pattern: Text, is_match_span: bool,
+def get_pattern_for_span_version(pattern: str, is_match_span: bool,
                                  is_match_date: bool, is_match_version: bool,
-                                 span: int, version: Optional[int]) -> Text:
+                                 span: int, version: Optional[int]) -> str:
   """Return pattern with Span and Version spec filled."""
   if is_match_span:
     span_token = _make_zero_padding_spec_value(SPAN_FULL_REGEX, pattern, span)
@@ -332,10 +345,23 @@ def get_pattern_for_span_version(pattern: Text, is_match_span: bool,
   return pattern
 
 
+def get_query_for_span(pattern: str, span: int) -> str:
+  """Return query with timestamp placeholders filled."""
+  # TODO(b/179853017): make UNIX_EPOCH_DATE_UTC timezone configurable.
+  begin = UNIX_EPOCH_DATE_UTC + datetime.timedelta(days=span)
+  end = begin + datetime.timedelta(days=1)
+  pattern = pattern.replace(SPAN_BEGIN_TIMESTAMP, str(int(begin.timestamp())))
+  pattern = pattern.replace(SPAN_END_TIMESTMAP, str(int(end.timestamp())))
+  pattern = pattern.replace(
+      SPAN_YYYYMMDD_UTC,
+      begin.astimezone(datetime.timezone.utc).strftime("'%Y%m%d'"))
+  return pattern
+
+
 def _find_matched_span_version_from_path(
-    file_path: Text, split_regex_pattern: Text, is_match_span: bool,
+    file_path: str, split_regex_pattern: str, is_match_span: bool,
     is_match_date: bool, is_match_version: bool
-) -> Tuple[Optional[List[Text]], Optional[int], Optional[Text], Optional[int]]:
+) -> Tuple[Optional[List[str]], Optional[int], Optional[str], Optional[int]]:
   """Finds the span tokens and number given a file path and split regex."""
 
   result = re.search(split_regex_pattern, file_path)
@@ -380,8 +406,8 @@ def _find_matched_span_version_from_path(
           matched_version_int)
 
 
-def _get_spec_width(spec_full_regex: Text, spec_name: Text,
-                    split: example_gen_pb2.Input.Split) -> Optional[Text]:
+def _get_spec_width(spec_full_regex: str, spec_name: str,
+                    split: example_gen_pb2.Input.Split) -> Optional[str]:
   """Returns width modifier of a spec, if it exists."""
   result = re.search(spec_full_regex, split.pattern)
   assert result, 'No %s found in split %s' % (spec_name, split.pattern)
@@ -401,7 +427,7 @@ def _get_spec_width(spec_full_regex: Text, spec_name: Text,
 def _get_span_replace_glob_and_regex(
     range_config: range_config_pb2.RangeConfig, is_match_span: bool,
     is_match_date: bool,
-    span_width_str: Optional[Text]) -> Union[Text, List[Text]]:
+    span_width_str: Optional[str]) -> Union[str, List[str]]:
   """Replace span or date spec if static range RangeConfig is provided."""
   if range_config.HasField('static_range'):
     if is_match_span:
@@ -432,9 +458,9 @@ def _get_span_replace_glob_and_regex(
 
 
 def _create_matching_glob_and_regex(
-    uri: Text, split: example_gen_pb2.Input.Split, is_match_span: bool,
+    uri: str, split: example_gen_pb2.Input.Split, is_match_span: bool,
     is_match_date: bool, is_match_version: bool,
-    range_config: Optional[range_config_pb2.RangeConfig]) -> Tuple[Text, Text]:
+    range_config: Optional[range_config_pb2.RangeConfig]) -> Tuple[str, str]:
   """Constructs glob and regex patterns for matching span and version.
 
   Construct a glob and regex pattern for matching files and capturing span and
@@ -537,7 +563,7 @@ def _create_matching_glob_and_regex(
 
 
 def _get_target_span_version(
-    uri: Text,
+    uri: str,
     split: example_gen_pb2.Input.Split,
     range_config: Optional[range_config_pb2.RangeConfig] = None
 ) -> Tuple[Optional[int], Optional[int]]:
@@ -634,10 +660,10 @@ def _get_target_span_version(
 
 
 def calculate_splits_fingerprint_span_and_version(
-    input_base_uri: Text,
+    input_base_uri: str,
     splits: Iterable[example_gen_pb2.Input.Split],
     range_config: Optional[range_config_pb2.RangeConfig] = None
-) -> Tuple[Text, int, Optional[int]]:
+) -> Tuple[str, int, Optional[int]]:
   """Calculates the fingerprint of files in a URI matching split patterns.
 
   If a pattern has the {SPAN} placeholder or the Date spec placeholders, {YYYY},

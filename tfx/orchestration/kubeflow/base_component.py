@@ -22,21 +22,17 @@ compatible.
 Note: This requires Kubeflow Pipelines SDK to be installed.
 """
 
-import json
-from typing import Dict, Optional, Set, Text, Type
+from typing import Dict, List, Set
 
 from absl import logging
 from kfp import dsl
 from kubernetes import client as k8s_client
 from tfx.dsl.components.base import base_node as tfx_base_node
+from tfx.orchestration import data_types
 from tfx.orchestration import pipeline as tfx_pipeline
-from tfx.orchestration.config import base_component_config
-from tfx.orchestration.kubeflow import node_wrapper
 from tfx.orchestration.kubeflow import utils
 from tfx.orchestration.kubeflow.proto import kubeflow_pb2
-from tfx.orchestration.launcher import base_component_launcher
 from tfx.proto.orchestration import pipeline_pb2
-from tfx.utils import json_utils
 
 from google.protobuf import json_format
 
@@ -46,8 +42,20 @@ _COMMAND = ['python', '-m', 'tfx.orchestration.kubeflow.container_entrypoint']
 _WORKFLOW_ID_KEY = 'WORKFLOW_ID'
 
 
+def _encode_runtime_parameter(param: data_types.RuntimeParameter) -> str:
+  """Encode a runtime parameter into a placeholder for value substitution."""
+  if param.ptype is int:
+    type_enum = pipeline_pb2.RuntimeParameter.INT
+  elif param.ptype is float:
+    type_enum = pipeline_pb2.RuntimeParameter.DOUBLE
+  else:
+    type_enum = pipeline_pb2.RuntimeParameter.STRING
+  type_str = pipeline_pb2.RuntimeParameter.Type.Name(type_enum)
+  return f'{param.name}={type_str}:{str(dsl.PipelineParam(name=param.name))}'
+
+
 # TODO(hongyes): renaming the name to KubeflowComponent.
-class BaseComponent(object):
+class BaseComponent:
   """Base component for all Kubeflow pipelines TFX components.
 
   Returns a wrapper around a KFP DSL ContainerOp class, and adds named output
@@ -55,20 +63,17 @@ class BaseComponent(object):
   components.
   """
 
-  def __init__(
-      self,
-      component: tfx_base_node.BaseNode,
-      component_launcher_class: Type[
-          base_component_launcher.BaseComponentLauncher],
-      depends_on: Set[dsl.ContainerOp],
-      pipeline: tfx_pipeline.Pipeline,
-      pipeline_name: Text,
-      pipeline_root: dsl.PipelineParam,
-      tfx_image: Text,
-      kubeflow_metadata_config: Optional[kubeflow_pb2.KubeflowMetadataConfig],
-      component_config: base_component_config.BaseComponentConfig,
-      tfx_ir: Optional[pipeline_pb2.Pipeline] = None,
-      pod_labels_to_attach: Optional[Dict[Text, Text]] = None):
+  def __init__(self,
+               component: tfx_base_node.BaseNode,
+               depends_on: Set[dsl.ContainerOp],
+               pipeline: tfx_pipeline.Pipeline,
+               pipeline_root: dsl.PipelineParam,
+               tfx_image: str,
+               kubeflow_metadata_config: kubeflow_pb2.KubeflowMetadataConfig,
+               tfx_ir: pipeline_pb2.Pipeline,
+               pod_labels_to_attach: Dict[str, str],
+               runtime_parameters: List[data_types.RuntimeParameter],
+               metadata_ui_path: str = '/mlpipeline-ui-metadata.json'):
     """Creates a new Kubeflow-based component.
 
     This class essentially wraps a dsl.ContainerOp construct in Kubeflow
@@ -76,65 +81,49 @@ class BaseComponent(object):
 
     Args:
       component: The logical TFX component to wrap.
-      component_launcher_class: the class of the launcher to launch the
-        component.
       depends_on: The set of upstream KFP ContainerOp components that this
         component will depend on.
       pipeline: The logical TFX pipeline to which this component belongs.
-      pipeline_name: The name of the TFX pipeline.
       pipeline_root: The pipeline root specified, as a dsl.PipelineParam
       tfx_image: The container image to use for this component.
       kubeflow_metadata_config: Configuration settings for connecting to the
         MLMD store in a Kubeflow cluster.
-      component_config: Component config to launch the component.
       tfx_ir: The TFX intermedia representation of the pipeline.
-      pod_labels_to_attach: Optional dict of pod labels to attach to the
-        GKE pod.
+      pod_labels_to_attach: Dict of pod labels to attach to the GKE pod.
+      runtime_parameters: Runtime parameters of the pipeline.
+      metadata_ui_path: File location for metadata-ui-metadata.json file.
     """
-    component_launcher_class_path = '.'.join([
-        component_launcher_class.__module__, component_launcher_class.__name__
-    ])
 
-    serialized_component = utils.replace_placeholder(
-        json_utils.dumps(node_wrapper.NodeWrapper(component)))
+    utils.replace_placeholder(component)
 
     arguments = [
-        '--pipeline_name',
-        pipeline_name,
         '--pipeline_root',
         pipeline_root,
         '--kubeflow_metadata_config',
         json_format.MessageToJson(
             message=kubeflow_metadata_config, preserving_proto_field_name=True),
-        '--beam_pipeline_args',
-        json.dumps(pipeline.beam_pipeline_args),
-        '--additional_pipeline_args',
-        json.dumps(pipeline.additional_pipeline_args),
-        '--component_launcher_class_path',
-        component_launcher_class_path,
-        '--serialized_component',
-        serialized_component,
-        '--component_config',
-        json_utils.dumps(component_config),
         '--node_id',
         component.id,
+        # TODO(b/182220464): write IR to pipeline_root and let
+        # container_entrypoint.py read it back to avoid future issue that IR
+        # exeeds the flag size limit.
+        '--tfx_ir',
+        json_format.MessageToJson(tfx_ir),
+        '--metadata_ui_path',
+        metadata_ui_path,
     ]
 
-    if tfx_ir is not None:
-      arguments += ['--tfx_ir', json_format.MessageToJson(tfx_ir)]
-    else:
-      logging.info('No tfx_ir is given. Proceeding without tfx_ir.')
-
-    if pipeline.enable_cache:
-      arguments.append('--enable_cache')
+    for param in runtime_parameters:
+      arguments.append('--runtime_parameter')
+      arguments.append(_encode_runtime_parameter(param))
 
     self.container_op = dsl.ContainerOp(
-        name=component.id.replace('.', '_'),
+        name=component.id,
         command=_COMMAND,
         image=tfx_image,
         arguments=arguments,
         output_artifact_paths={
-            'mlpipeline-ui-metadata': '/mlpipeline-ui-metadata.json',
+            'mlpipeline-ui-metadata': metadata_ui_path,
         },
     )
 

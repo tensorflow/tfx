@@ -94,7 +94,18 @@ nodes {
           }
         }
       }
+      parameters {
+        key: "output_file_format"
+        value {
+          field_value {
+            int_value: 5
+          }
+        }
+      }
     }
+    downstream_nodes: "Evaluator"
+    downstream_nodes: "StatisticsGen"
+    downstream_nodes: "Trainer"
     execution_options {
       caching_options {
       }
@@ -107,7 +118,7 @@ nodes {
       type {
         name: "tfx.dsl.components.common.importer.Importer"
       }
-      id: "Importer.my_importer"
+      id: "my_importer"
     }
     contexts {
       contexts {
@@ -126,7 +137,7 @@ nodes {
         }
         name {
           field_value {
-            string_value: "iris.Importer.my_importer"
+            string_value: "iris.my_importer"
           }
         }
       }
@@ -268,6 +279,7 @@ nodes {
             }
             output_key: "examples"
           }
+          min_count: 1
         }
       }
     }
@@ -301,6 +313,9 @@ nodes {
         }
       }
     }
+    upstream_nodes: "CsvExampleGen"
+    downstream_nodes: "ExampleValidator"
+    downstream_nodes: "SchemaGen"
     execution_options {
       caching_options {
       }
@@ -372,6 +387,7 @@ nodes {
             }
             output_key: "statistics"
           }
+          min_count: 1
         }
       }
     }
@@ -405,6 +421,9 @@ nodes {
         }
       }
     }
+    upstream_nodes: "StatisticsGen"
+    downstream_nodes: "ExampleValidator"
+    downstream_nodes: "Trainer"
     execution_options {
       caching_options {
       }
@@ -476,6 +495,7 @@ nodes {
             }
             output_key: "schema"
           }
+          min_count: 1
         }
       }
       inputs {
@@ -512,6 +532,7 @@ nodes {
             }
             output_key: "statistics"
           }
+          min_count: 1
         }
       }
     }
@@ -545,6 +566,8 @@ nodes {
         }
       }
     }
+    upstream_nodes: "SchemaGen"
+    upstream_nodes: "StatisticsGen"
     execution_options {
       caching_options {
       }
@@ -616,6 +639,7 @@ nodes {
             }
             output_key: "examples"
           }
+          min_count: 1
         }
       }
       inputs {
@@ -715,6 +739,10 @@ nodes {
         }
       }
     }
+    upstream_nodes: "CsvExampleGen"
+    upstream_nodes: "SchemaGen"
+    downstream_nodes: "Evaluator"
+    downstream_nodes: "Pusher"
     execution_options {
       caching_options {
       }
@@ -821,6 +849,7 @@ nodes {
             }
             output_key: "examples"
           }
+          min_count: 1
         }
       }
       inputs {
@@ -883,7 +912,7 @@ nodes {
       }
       resolver_config {
         resolver_steps {
-          class_path: "tfx.dsl.experimental.latest_blessed_model_resolver.LatestBlessedModelResolver"
+          class_path: "tfx.dsl.input_resolution.strategies.latest_blessed_model_strategy.LatestBlessedModelStrategy"
           config_json: "{}"
           input_keys: "baseline_model"
           input_keys: "model_blessing"
@@ -929,7 +958,18 @@ nodes {
           }
         }
       }
+      parameters {
+        key: "fairness_indicator_thresholds"
+        value {
+          field_value {
+            string_value: "null"
+          }
+        }
+      }
     }
+    upstream_nodes: "CsvExampleGen"
+    upstream_nodes: "Trainer"
+    downstream_nodes: "Pusher"
     execution_options {
       caching_options {
       }
@@ -1070,6 +1110,8 @@ nodes {
         }
       }
     }
+    upstream_nodes: "Evaluator"
+    upstream_nodes: "Trainer"
     execution_options {
       caching_options {
       }
@@ -1079,7 +1121,7 @@ nodes {
 runtime_spec {
   pipeline_root {
     runtime_parameter {
-      name: "pipeline_root"
+      name: "pipeline-root"
       type: STRING
       default_value {
         string_value: "tfx_root/pipelines/iris"
@@ -1093,18 +1135,22 @@ deployment_config {
     executor_specs {
       key: "CsvExampleGen"
       value {
-        [type.googleapis.com/tfx.orchestration.executable_spec.PythonClassExecutableSpec] {
-          class_path: "tfx.components.example_gen.csv_example_gen.executor.Executor"
-          extra_flags: "--my_testing_beam_pipeline_args=bar"
+        [type.googleapis.com/tfx.orchestration.executable_spec.BeamExecutableSpec] {
+          python_executor_spec {
+            class_path: "tfx.components.example_gen.csv_example_gen.executor.Executor"
+          }
+          beam_pipeline_args: "--my_testing_beam_pipeline_args=bar"
         }
       }
     }
     executor_specs {
       key: "Evaluator"
       value {
-        [type.googleapis.com/tfx.orchestration.executable_spec.PythonClassExecutableSpec] {
-          class_path: "tfx.components.evaluator.executor.Executor"
-          extra_flags: "--my_testing_beam_pipeline_args=bar"
+        [type.googleapis.com/tfx.orchestration.executable_spec.BeamExecutableSpec] {
+          python_executor_spec {
+            class_path: "tfx.components.evaluator.executor.Executor"
+          }
+          beam_pipeline_args: "--my_testing_beam_pipeline_args=bar"
         }
       }
     }
@@ -1113,7 +1159,6 @@ deployment_config {
       value {
         [type.googleapis.com/tfx.orchestration.executable_spec.PythonClassExecutableSpec] {
           class_path: "tfx.components.example_validator.executor.Executor"
-          extra_flags: "--my_testing_beam_pipeline_args=bar"
         }
       }
     }
@@ -1122,7 +1167,6 @@ deployment_config {
       value {
         [type.googleapis.com/tfx.orchestration.executable_spec.PythonClassExecutableSpec] {
           class_path: "tfx.components.pusher.executor.Executor"
-          extra_flags: "--my_testing_beam_pipeline_args=bar"
         }
       }
     }
@@ -1131,16 +1175,17 @@ deployment_config {
       value {
         [type.googleapis.com/tfx.orchestration.executable_spec.PythonClassExecutableSpec] {
           class_path: "tfx.components.schema_gen.executor.Executor"
-          extra_flags: "--my_testing_beam_pipeline_args=bar"
         }
       }
     }
     executor_specs {
       key: "StatisticsGen"
       value {
-        [type.googleapis.com/tfx.orchestration.executable_spec.PythonClassExecutableSpec] {
-          class_path: "tfx.components.statistics_gen.executor.Executor"
-          extra_flags: "--my_testing_beam_pipeline_args=bar"
+        [type.googleapis.com/tfx.orchestration.executable_spec.BeamExecutableSpec] {
+          python_executor_spec {
+            class_path: "tfx.components.statistics_gen.executor.Executor"
+          }
+          beam_pipeline_args: "--my_testing_beam_pipeline_args=bar"
         }
       }
     }
@@ -1149,7 +1194,6 @@ deployment_config {
       value {
         [type.googleapis.com/tfx.orchestration.executable_spec.PythonClassExecutableSpec] {
           class_path: "tfx.components.trainer.executor.GenericExecutor"
-          extra_flags: "--my_testing_beam_pipeline_args=bar"
         }
       }
     }

@@ -14,15 +14,12 @@
 """E2E Tests for tfx.examples.experimental.penguin_pipeline_sklearn_local."""
 
 import os
-from typing import Text
 import unittest
 
 import tensorflow as tf
-
-from tfx.dsl.io import fileio
+from tfx import v1 as tfx
 from tfx.examples.penguin.experimental import penguin_pipeline_sklearn_local
 from tfx.orchestration import metadata
-from tfx.orchestration.local.local_dag_runner import LocalDagRunner
 
 
 @unittest.skipIf(tf.__version__ < '2',
@@ -30,7 +27,7 @@ from tfx.orchestration.local.local_dag_runner import LocalDagRunner
 class PenguinPipelineSklearnLocalEndToEndTest(tf.test.TestCase):
 
   def setUp(self):
-    super(PenguinPipelineSklearnLocalEndToEndTest, self).setUp()
+    super().setUp()
     self._test_dir = os.path.join(
         os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR', self.get_temp_dir()),
         self._testMethodName)
@@ -49,13 +46,13 @@ class PenguinPipelineSklearnLocalEndToEndTest(tf.test.TestCase):
     self._metadata_path = os.path.join(self._test_dir, 'tfx', 'metadata',
                                        self._pipeline_name, 'metadata.db')
 
-  def assertExecutedOnce(self, component: Text) -> None:
+  def assertExecutedOnce(self, component: str) -> None:
     """Check the component is executed exactly once."""
     component_path = os.path.join(self._pipeline_root, component)
-    self.assertTrue(fileio.exists(component_path))
+    self.assertTrue(tfx.dsl.io.fileio.exists(component_path))
     execution_path = os.path.join(
         component_path, '.system', 'executor_execution')
-    execution = fileio.listdir(execution_path)
+    execution = tfx.dsl.io.fileio.listdir(execution_path)
     self.assertLen(execution, 1)
 
   def assertPipelineExecution(self) -> None:
@@ -68,7 +65,7 @@ class PenguinPipelineSklearnLocalEndToEndTest(tf.test.TestCase):
     self.assertExecutedOnce('Trainer')
 
   def testPenguinPipelineSklearnLocal(self):
-    LocalDagRunner().run(
+    tfx.orchestration.LocalDagRunner().run(
         penguin_pipeline_sklearn_local._create_pipeline(
             pipeline_name=self._pipeline_name,
             pipeline_root=self._pipeline_root,
@@ -79,11 +76,12 @@ class PenguinPipelineSklearnLocalEndToEndTest(tf.test.TestCase):
             metadata_path=self._metadata_path,
             beam_pipeline_args=[]))
 
-    self.assertTrue(fileio.exists(self._serving_model_dir))
-    self.assertTrue(fileio.exists(self._metadata_path))
+    self.assertTrue(tfx.dsl.io.fileio.exists(self._serving_model_dir))
+    self.assertTrue(tfx.dsl.io.fileio.exists(self._metadata_path))
     expected_execution_count = 8  # 7 components + 1 resolver
-    metadata_config = metadata.sqlite_metadata_connection_config(
-        self._metadata_path)
+    metadata_config = (
+        tfx.orchestration.metadata.sqlite_metadata_connection_config(
+            self._metadata_path))
     with metadata.Metadata(metadata_config) as m:
       artifact_count = len(m.store.get_artifacts())
       execution_count = len(m.store.get_executions())

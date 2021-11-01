@@ -17,7 +17,8 @@ import json
 import os
 from typing import Any, Mapping, Sequence
 
-import mock
+from unittest import mock
+from kfp.pipeline_spec import pipeline_spec_pb2
 import tensorflow as tf
 
 from tfx import version
@@ -27,8 +28,10 @@ from tfx.dsl.io import fileio
 from tfx.orchestration.kubeflow.v2.container import kubeflow_v2_run_executor
 from tfx.types import artifact
 from tfx.types import artifact_utils
-from tfx.types.standard_component_specs import BLESSING_KEY
+from tfx.types import standard_component_specs
 from tfx.utils import test_case_utils
+
+from google.protobuf import json_format
 
 
 _TEST_OUTPUT_METADATA_JSON = "testdir/outputmetadata.json"
@@ -38,7 +41,7 @@ _TEST_OUTPUT_PROPERTY_KEY = "my_property"
 _TEST_OUTPUT_PROPERTY_VALUE = "my_value"
 
 
-class _ArgsCapture(object):
+class _ArgsCapture:
   instance = None
 
   def __enter__(self):
@@ -98,18 +101,66 @@ class KubeflowV2RunExecutorTest(test_case_utils.TfxTest):
     metadata_json["outputs"]["outputFile"] = _TEST_OUTPUT_METADATA_JSON
     self._serialized_metadata = json.dumps(metadata_json)
 
-    self._expected_output = json.loads(
-        self._get_text_from_test_data("expected_output_metadata.json"))
+    # Prepare executor input using legacy properties and custom properties.
+    serialized_metadata_legacy = self._get_text_from_test_data(
+        "executor_invocation_legacy.json")
+    metadata_json_legacy = json.loads(serialized_metadata_legacy)
+    # Mutate the outputFile field.
+    metadata_json_legacy["outputs"]["outputFile"] = _TEST_OUTPUT_METADATA_JSON
+    self._serialized_metadata_legacy = json.dumps(metadata_json_legacy)
+
+    self._expected_output = (
+        self._get_text_from_test_data("expected_output_metadata.json").strip())
 
     # Change working directory after the testdata files have been read.
     self.enter_context(test_case_utils.change_working_dir(self.tmp_dir))
 
   def _get_text_from_test_data(self, filename: str) -> str:
     filepath = os.path.join(os.path.dirname(__file__), "testdata", filename)
-    return fileio.open(filepath, "rb").read().decode("utf-8")
+    return fileio.open(filepath, "r").read()
 
   def testEntryPoint(self):
     """Test the entrypoint with toy inputs."""
+    # Test both current version metadata and legacy property/custom property
+    # metadata styles.
+    for serialized_metadata in [
+        self._serialized_metadata, self._serialized_metadata_legacy
+    ]:
+      with _ArgsCapture() as args_capture:
+        args = [
+            "--executor_class_path",
+            "%s.%s" % (_FakeExecutor.__module__, _FakeExecutor.__name__),
+            "--json_serialized_invocation_args", serialized_metadata
+        ]
+        kubeflow_v2_run_executor.main(
+            kubeflow_v2_run_executor._parse_flags(args))
+        # TODO(b/131417512): Add equal comparison to types.Artifact class so we
+        # can use asserters.
+        self.assertEqual(
+            set(args_capture.input_dict.keys()), set(["input_1", "input_2"]))
+        self.assertEqual(
+            set(args_capture.output_dict.keys()),
+            set(["output", standard_component_specs.BLESSING_KEY]))
+        self.assertEqual(args_capture.exec_properties, _EXEC_PROPERTIES)
+
+      # Test what's been output.
+      with open(_TEST_OUTPUT_METADATA_JSON) as output_meta_json:
+        actual_output = json.dumps(
+            json.load(output_meta_json), indent=2, sort_keys=True)
+
+      self.assertEqual(actual_output, self._expected_output)
+      os.remove(_TEST_OUTPUT_METADATA_JSON)
+
+  def testEntryPointWithDriver(self):
+    """Test the entrypoint with Driver's output metadata."""
+    # Mock the driver's output metadata.
+    output_metadata = pipeline_spec_pb2.ExecutorOutput()
+    output_metadata.parameters["key_1"].string_value = "driver"
+    output_metadata.parameters["key_3"].string_value = "driver3"
+    fileio.makedirs(os.path.dirname(_TEST_OUTPUT_METADATA_JSON))
+    with fileio.open(_TEST_OUTPUT_METADATA_JSON, "wb") as f:
+      f.write(json_format.MessageToJson(output_metadata, sort_keys=True))
+
     with _ArgsCapture() as args_capture:
       args = [
           "--executor_class_path",
@@ -123,14 +174,23 @@ class KubeflowV2RunExecutorTest(test_case_utils.TfxTest):
           set(args_capture.input_dict.keys()), set(["input_1", "input_2"]))
       self.assertEqual(
           set(args_capture.output_dict.keys()),
-          set(["output", BLESSING_KEY]))
-      self.assertEqual(args_capture.exec_properties, _EXEC_PROPERTIES)
+          set(["output", standard_component_specs.BLESSING_KEY]))
+      # Verify that exec_properties use driver's output metadata.
+      self.assertEqual(
+          args_capture.exec_properties,
+          {
+              "key_1": "driver",  # Overwrite.
+              "key_2": 536870911,
+              "key_3": "driver3"  # Append.
+          })
 
     # Test what's been output.
     with open(_TEST_OUTPUT_METADATA_JSON) as output_meta_json:
-      actual_output = json.load(output_meta_json)
+      actual_output = json.dumps(
+          json.load(output_meta_json), indent=2, sort_keys=True)
 
-    self.assertDictEqual(actual_output, self._expected_output)
+    self.assertEqual(actual_output, self._expected_output)
+    os.remove(_TEST_OUTPUT_METADATA_JSON)
 
 
 if __name__ == "__main__":

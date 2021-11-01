@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,11 +17,7 @@ For a TFX pipeline to successfully run, a preprocessing_fn and a
 trainer_fn function needs to be provided. This file contains both.
 """
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
-from typing import List, Text
+from typing import List
 
 import tensorflow as tf
 import tensorflow_model_analysis as tfma
@@ -113,7 +108,7 @@ def preprocessing_fn(inputs):
   """
   outputs = {}
   for key in _DENSE_FLOAT_FEATURE_KEYS:
-    # Preserve this feature as a dense float, setting nan's to the mean.
+    # If sparse make it dense, setting nan's to 0 or '', and apply zscore.
     outputs[_transformed_name(key)] = tft.scale_to_z_score(
         _fill_in_missing(inputs[key]))
 
@@ -257,7 +252,7 @@ def _eval_input_receiver_fn(tf_transform_output, schema):
       labels=transformed_features[_transformed_name(_LABEL_KEY)])
 
 
-def _input_fn(file_pattern: List[Text],
+def _input_fn(file_pattern: List[str],
               data_accessor: DataAccessor,
               tf_transform_output: tft.TFTransformOutput,
               batch_size: int = 200) -> tf.data.Dataset:

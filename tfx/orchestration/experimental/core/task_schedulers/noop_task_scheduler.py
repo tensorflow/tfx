@@ -16,10 +16,10 @@
 import typing
 from absl import logging
 
-from tfx.orchestration.experimental.core import status as status_lib
 from tfx.orchestration.experimental.core import task as task_lib
 from tfx.orchestration.experimental.core import task_scheduler as ts
 from tfx.proto.orchestration import execution_result_pb2
+from tfx.utils import status as status_lib
 
 
 class NoOpTaskScheduler(ts.TaskScheduler):
@@ -36,7 +36,7 @@ class NoOpTaskScheduler(ts.TaskScheduler):
             artifact.mlmd_artifact)
     result = ts.TaskSchedulerResult(
         status=status_lib.Status(code=status_lib.Code.OK),
-        executor_output=executor_output)
+        output=ts.ExecutorNodeOutput(executor_output=executor_output))
     logging.info('Result: %s', result)
     return result
 

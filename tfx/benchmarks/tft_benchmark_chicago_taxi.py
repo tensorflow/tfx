@@ -13,10 +13,6 @@
 # limitations under the License.
 """TFT benchmark for Chicago Taxi dataset."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 from absl import flags
 from tfx.benchmarks import tft_benchmark_base
 from tfx.benchmarks.datasets.chicago_taxi import dataset
@@ -32,14 +28,13 @@ flags.DEFINE_integer("num_analyzers_wide", 10,
 class TFTBenchmarkChicagoTaxi(tft_benchmark_base.TFTBenchmarkBase):
 
   def __init__(self, **kwargs):
-    super(TFTBenchmarkChicagoTaxi, self).__init__(
-        dataset=dataset.get_dataset(), **kwargs)
+    super().__init__(dataset=dataset.get_dataset(), **kwargs)
 
 
 class TFTBenchmarkChicagoTaxiWide(tft_benchmark_base.TFTBenchmarkBase):
 
   def __init__(self, **kwargs):
-    super(TFTBenchmarkChicagoTaxiWide, self).__init__(
+    super().__init__(
         dataset=dataset.get_wide_dataset(num_analyzers=self._num_analyzers()),
         **kwargs)
 

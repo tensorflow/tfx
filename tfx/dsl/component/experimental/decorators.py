@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2020 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -17,17 +16,10 @@
 Experimental: no backwards compatibility guarantees.
 """
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import sys
 import types
-from typing import Any, Callable, Dict, List, Text
+from typing import Any, Callable, Dict, List
 
-# Standard Imports
-
-import six
 from tfx import types as tfx_types
 from tfx.dsl.component.experimental import function_parser
 from tfx.dsl.components.base import base_component
@@ -60,8 +52,6 @@ class _SimpleComponent(base_component.BaseComponent):
       if key in kwargs:
         spec_kwargs[key] = kwargs[key]
         unseen_args.remove(key)
-    instance_name = kwargs.get('instance_name', None)
-    unseen_args.discard('instance_name')
     if unseen_args:
       raise ValueError(
           'Unknown arguments to %r: %s.' %
@@ -69,7 +59,10 @@ class _SimpleComponent(base_component.BaseComponent):
     for key, channel_parameter in self.SPEC_CLASS.OUTPUTS.items():
       spec_kwargs[key] = channel_utils.as_channel([channel_parameter.type()])
     spec = self.SPEC_CLASS(**spec_kwargs)
-    super(_SimpleComponent, self).__init__(spec, instance_name=instance_name)
+    super().__init__(spec)
+    # Set class name, which is the decorated function name, as the default id.
+    # It can be overwritten by the user.
+    self._id = self.__class__.__name__
 
 
 class _FunctionExecutor(base_executor.BaseExecutor):
@@ -91,9 +84,9 @@ class _FunctionExecutor(base_executor.BaseExecutor):
   # function.
   _RETURNED_VALUES = set()
 
-  def Do(self, input_dict: Dict[Text, List[tfx_types.Artifact]],
-         output_dict: Dict[Text, List[tfx_types.Artifact]],
-         exec_properties: Dict[Text, Any]) -> None:
+  def Do(self, input_dict: Dict[str, List[tfx_types.Artifact]],
+         output_dict: Dict[str, List[tfx_types.Artifact]],
+         exec_properties: Dict[str, Any]) -> None:
     function_args = {}
     for name, arg_format in self._ARG_FORMATS.items():
       if arg_format == function_parser.ArgFormats.INPUT_ARTIFACT:
@@ -256,9 +249,6 @@ def component(func: types.FunctionType) -> Callable[..., Any]:
   Raises:
     EnvironmentError: if the current Python interpreter is not Python 3.
   """
-  if six.PY2:
-    raise EnvironmentError('`@component` is only supported in Python 3.')
-
   # Defining a component within a nested class or function closure causes
   # problems because in this case, the generated component classes can't be
   # referenced via their qualified module path.

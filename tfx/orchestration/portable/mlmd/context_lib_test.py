@@ -43,55 +43,31 @@ class ContextLibTest(test_case_utils.TfxTest):
       contexts = context_lib.prepare_contexts(
           metadata_handler=m, node_contexts=node_contexts)
 
+      got_context_type_one = m.store.get_context_type('my_context_type_one')
+      got_context_type_one.ClearField('id')
       self.assertProtoEquals(
           """
-          id: 1
           name: 'my_context_type_one'
-          """, m.store.get_context_type('my_context_type_one'))
+          """, got_context_type_one)
+      got_context_type_two = m.store.get_context_type('my_context_type_two')
+      got_context_type_two.ClearField('id')
+
       self.assertProtoEquals(
           """
-          id: 2
           name: 'my_context_type_two'
-          """, m.store.get_context_type('my_context_type_two'))
-      self.assertProtoEquals(
-          """
-          type_id: 1
-          name: "my_context_one"
-          custom_properties {
-            key: "property_a"
-            value {
-              int_value: 1
-            }
-          }
-          """, contexts[0])
-      self.assertProtoEquals(
-          """
-          type_id: 1
-          name: "my_context_two"
-          custom_properties {
-            key: "property_a"
-            value {
-              int_value: 2
-            }
-          }
-          """, contexts[1])
-      self.assertProtoEquals(
-          """
-          type_id: 2
-          name: "my_context_three"
-          custom_properties {
-            key: "property_a"
-            value {
-              int_value: 3
-            }
-          }
-          custom_properties {
-            key: "property_b"
-            value {
-              string_value: '4'
-            }
-          }
-          """, contexts[2])
+          """, got_context_type_two)
+      self.assertEqual(
+          contexts[0],
+          m.store.get_context_by_type_and_name('my_context_type_one',
+                                               'my_context_one'))
+      self.assertEqual(
+          contexts[1],
+          m.store.get_context_by_type_and_name('my_context_type_one',
+                                               'my_context_two'))
+      self.assertEqual(
+          contexts[2],
+          m.store.get_context_by_type_and_name('my_context_type_two',
+                                               'my_context_three'))
       self.assertEqual(contexts[0].custom_properties['property_a'].int_value, 1)
       self.assertEqual(contexts[1].custom_properties['property_a'].int_value, 2)
       self.assertEqual(contexts[2].custom_properties['property_a'].int_value, 3)
@@ -110,14 +86,33 @@ class ContextLibTest(test_case_utils.TfxTest):
           context_type_name='my_context_type',
           context_name='my_context')
 
+      got_context_type = m.store.get_context_type('my_context_type')
+      got_context_type.ClearField('id')
       self.assertProtoEquals(
           """
-          id: 1
           name: 'my_context_type'
-          """, m.store.get_context_type('my_context_type'))
+          """, got_context_type)
       self.assertEqual(
           context,
           m.store.get_context_by_type_and_name('my_context_type', 'my_context'))
+
+  def testPutParentContextIfNotExists(self):
+    with metadata.Metadata(connection_config=self._connection_config) as m:
+      parent_context = context_lib.register_context_if_not_exists(
+          metadata_handler=m,
+          context_type_name='my_context_type',
+          context_name='parent_context_name')
+      child_context = context_lib.register_context_if_not_exists(
+          metadata_handler=m,
+          context_type_name='my_context_type',
+          context_name='child_context_name')
+      context_lib.put_parent_context_if_not_exists(m,
+                                                   parent_id=parent_context.id,
+                                                   child_id=child_context.id)
+      # Duplicated call should succeed.
+      context_lib.put_parent_context_if_not_exists(m,
+                                                   parent_id=parent_context.id,
+                                                   child_id=child_context.id)
 
 
 if __name__ == '__main__':

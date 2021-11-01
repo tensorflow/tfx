@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2020 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,11 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Tests for tfx.utils.tfxio_utils."""
-
-# TODO(b/149535307): Remove __future__ imports
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
 
 import inspect
 import tempfile
@@ -87,6 +81,22 @@ _RESOLVE_TEST_CASES = [
     ),
     dict(
         testcase_name='proto_with_data_view',
+        payload_formats=[example_gen_pb2.PayloadFormat.FORMAT_PROTO] * 3,
+        data_view_uris=['dataview1', 'dataview3', 'dataview2'],
+        data_view_create_times=['1', '3', '2'],
+        expected_payload_format=example_gen_pb2.PayloadFormat.FORMAT_PROTO,
+        expected_data_view_uri='dataview3',
+    ),
+    dict(
+        testcase_name='proto_with_data_view_big_create_time',
+        payload_formats=[example_gen_pb2.PayloadFormat.FORMAT_PROTO] * 3,
+        data_view_uris=['dataview1', 'dataview3', 'dataview2'],
+        data_view_create_times=['1', '9', '1000000000009'],
+        expected_payload_format=example_gen_pb2.PayloadFormat.FORMAT_PROTO,
+        expected_data_view_uri='dataview2',
+    ),
+    dict(
+        testcase_name='proto_with_data_view_int_create_time',
         payload_formats=[example_gen_pb2.PayloadFormat.FORMAT_PROTO] * 3,
         data_view_uris=['dataview1', 'dataview3', 'dataview2'],
         data_view_create_times=[1, 3, 2],
@@ -197,8 +207,10 @@ class TfxioUtilsTest(tf.test.TestCase, parameterized.TestCase):
       tf_graph_record_decoder.save_decoder(_SimpleTfGraphRecordDecoder(),
                                            data_view_uri)
     if data_view_uri is not None:
-      examples.set_string_custom_property(
-          constants.DATA_VIEW_URI_PROPERTY_KEY, data_view_uri)
+      examples.set_string_custom_property(constants.DATA_VIEW_URI_PROPERTY_KEY,
+                                          data_view_uri)
+      examples.set_string_custom_property(constants.DATA_VIEW_CREATE_TIME_KEY,
+                                          '1')
     tfxio_factory = tfxio_utils.get_tfxio_factory_from_artifact(
         [examples],
         _TELEMETRY_DESCRIPTORS,
@@ -212,6 +224,37 @@ class TfxioUtilsTest(tf.test.TestCase, parameterized.TestCase):
     self.assertIsInstance(tfxio, record_based_tfxio.RecordBasedTFXIO)
     self.assertEqual(tfxio.telemetry_descriptors, _TELEMETRY_DESCRIPTORS)
     self.assertEqual(tfxio.raw_record_column_name, raw_record_column_name)
+    # Since we provide a schema, ArrowSchema() should not raise.
+    _ = tfxio.ArrowSchema()
+
+  def test_get_tfxio_factory_from_artifact_data_view_legacy(self):
+    # This tests FORMAT_PROTO with data view where the DATA_VIEW_CREATE_TIME_KEY
+    # is an int value. This is a legacy property type and should be string type
+    # in the future.
+    if tf.__version__ < '2':
+      self.skipTest('DataView is not supported under TF 1.x.')
+
+    examples = standard_artifacts.Examples()
+    examples_utils.set_payload_format(
+        examples, example_gen_pb2.PayloadFormat.FORMAT_PROTO)
+    data_view_uri = tempfile.mkdtemp(dir=self.get_temp_dir())
+    tf_graph_record_decoder.save_decoder(_SimpleTfGraphRecordDecoder(),
+                                         data_view_uri)
+    examples.set_string_custom_property(constants.DATA_VIEW_URI_PROPERTY_KEY,
+                                        data_view_uri)
+    examples.set_int_custom_property(constants.DATA_VIEW_CREATE_TIME_KEY, '1')
+    tfxio_factory = tfxio_utils.get_tfxio_factory_from_artifact(
+        [examples],
+        _TELEMETRY_DESCRIPTORS,
+        _SCHEMA,
+        read_as_raw_records=False,
+        raw_record_column_name=None)
+    tfxio = tfxio_factory(_FAKE_FILE_PATTERN)
+    self.assertIsInstance(tfxio, record_to_tensor_tfxio.TFRecordToTensorTFXIO)
+    # We currently only create RecordBasedTFXIO and the check below relies on
+    # that.
+    self.assertIsInstance(tfxio, record_based_tfxio.RecordBasedTFXIO)
+    self.assertEqual(tfxio.telemetry_descriptors, _TELEMETRY_DESCRIPTORS)
     # Since we provide a schema, ArrowSchema() should not raise.
     _ = tfxio.ArrowSchema()
 
@@ -238,8 +281,12 @@ class TfxioUtilsTest(tf.test.TestCase, parameterized.TestCase):
         artifact.set_string_custom_property(
             constants.DATA_VIEW_URI_PROPERTY_KEY, data_view_uri)
       if data_view_create_time is not None:
-        artifact.set_int_custom_property(
-            constants.DATA_VIEW_CREATE_TIME_KEY, data_view_create_time)
+        if isinstance(data_view_create_time, int):
+          artifact_setter_fn = artifact.set_int_custom_property
+        else:
+          artifact_setter_fn = artifact.set_string_custom_property
+        artifact_setter_fn(constants.DATA_VIEW_CREATE_TIME_KEY,
+                           data_view_create_time)
       examples.append(artifact)
     if expected_error_type is None:
       payload_format, data_view_uri = (

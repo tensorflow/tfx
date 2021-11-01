@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2020 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,26 +13,22 @@
 # limitations under the License.
 """Interface for filesystem plugins."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
+from typing import Any, Callable, Iterable, List, Optional, Tuple, Union
 
-from typing import Any, Callable, Iterable, List, Text, Tuple, Union
-
-PathType = Union[bytes, Text]
+PathType = Union[bytes, str]
 
 
 class NotFoundError(IOError):
   pass
 
 
-class Filesystem(object):
+class Filesystem:
   """Abstract Filesystem class."""
 
   SUPPORTED_SCHEMES = []
 
   @staticmethod
-  def open(name: PathType, mode: Text = 'r') -> Any:
+  def open(name: PathType, mode: str = 'r') -> Any:
     raise NotImplementedError()
 
   @staticmethod
@@ -84,6 +79,6 @@ class Filesystem(object):
   def walk(
       top: PathType,
       topdown: bool = True,
-      onerror: Callable[..., None] = None
+      onerror: Optional[Callable[..., None]] = None
   ) -> Iterable[Tuple[PathType, List[PathType], List[PathType]]]:
     raise NotImplementedError()

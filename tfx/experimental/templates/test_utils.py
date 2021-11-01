@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2020 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,21 +13,14 @@
 # limitations under the License.
 """E2E test utilities for templates."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import codecs
 import locale
 import os
 import re
 
-from typing import Text, List, Iterable, Tuple
+from typing import List, Iterable, Tuple
 
-from absl import logging
-from click import testing as click_testing
-
-from tfx.tools.cli.cli_main import cli_group
+from tfx.tools.cli.e2e import test_utils as cli_test_utils
 from tfx.utils import io_utils
 from tfx.utils import test_case_utils
 
@@ -37,7 +29,7 @@ class BaseEndToEndTest(test_case_utils.TfxTest):
   """Base class for end-to-end testing of TFX templates."""
 
   def setUp(self):
-    super(BaseEndToEndTest, self).setUp()
+    super().setUp()
 
     # Change the encoding for Click since Python 3 is configured to use ASCII as
     # encoding for the environment.
@@ -51,37 +43,26 @@ class BaseEndToEndTest(test_case_utils.TfxTest):
     self._temp_dir = os.path.join(self._project_dir, 'tmp')
     os.makedirs(self._temp_dir)
 
-    # Initialize CLI runner.
-    self._cli_runner = click_testing.CliRunner()
+  def _runCli(self, args: List[str]) -> str:
+    return cli_test_utils.run_cli(args)
 
-  def _runCli(self, args: List[Text]) -> click_testing.Result:
-    logging.info('Running cli: %s', args)
-    result = self._cli_runner.invoke(cli_group, args)
-    logging.info('%s', result.output)
-    if result.exit_code != 0:
-      logging.error('Exit code from cli: %d, exception:%s', result.exit_code,
-                    result.exception)
-      logging.error('Traceback: %s', result.exc_info)
-
-    return result
-
-  def _addAllComponents(self) -> Text:
+  def _addAllComponents(self) -> str:
     """Change 'pipeline.py' file to put all components into the pipeline."""
     return self._uncomment(
         os.path.join('pipeline', 'pipeline.py'), ['components.append('])
 
-  def _uncomment(self, filepath: Text, expressions: Iterable[Text]) -> Text:
+  def _uncomment(self, filepath: str, expressions: Iterable[str]) -> str:
     """Update given file by uncommenting the `expression`."""
     replacements = [('# ' + s, s) for s in expressions]
     return self._replaceFileContent(filepath, replacements)
 
-  def _comment(self, filepath: Text, expressions: Iterable[Text]) -> Text:
+  def _comment(self, filepath: str, expressions: Iterable[str]) -> str:
     """Update given file by commenting out the `expression`."""
     replacements = [(s, '# ' + s) for s in expressions]
     return self._replaceFileContent(filepath, replacements)
 
-  def _replaceFileContent(self, filepath: Text,
-                          replacements: Iterable[Tuple[Text, Text]]) -> Text:
+  def _replaceFileContent(self, filepath: str,
+                          replacements: Iterable[Tuple[str, str]]) -> str:
     """Update given file using `replacements`."""
     path = os.path.join(self._project_dir, filepath)
     with open(path) as fp:
@@ -91,8 +72,8 @@ class BaseEndToEndTest(test_case_utils.TfxTest):
     io_utils.write_string_file(path, content)
     return path
 
-  def _uncommentMultiLineVariables(self, filepath: Text,
-                                   variables: Iterable[Text]) -> Text:
+  def _uncommentMultiLineVariables(self, filepath: str,
+                                   variables: Iterable[str]) -> str:
     """Update given file by uncommenting a variable.
 
     The variable should be defined in following form.
@@ -158,5 +139,66 @@ class BaseEndToEndTest(test_case_utils.TfxTest):
         '--model',
         model,
     ])
-    self.assertEqual(0, result.exit_code)
-    self.assertIn('Copying {} pipeline template'.format(model), result.output)
+    self.assertIn('Copying {} pipeline template'.format(model), result)
+
+
+class BaseLocalEndToEndTest(BaseEndToEndTest):
+  """Common tests for local engine."""
+
+  def _getAllUnitTests(self):
+    for root, _, files in os.walk(self._project_dir):
+      base_dir = os.path.relpath(root, self._project_dir)
+      if base_dir == '.':  # project_dir == root
+        base_module = ''
+      else:
+        base_module = base_dir.replace(os.path.sep, '.') + '.'
+
+      for filename in files:
+        if filename.endswith('_test.py'):
+          yield base_module + filename[:-3]
+
+  def _create_pipeline(self):
+    result = self._runCli([
+        'pipeline',
+        'create',
+        '--engine',
+        'local',
+        '--pipeline_path',
+        'local_runner.py',
+    ])
+    self.assertIn(
+        'Pipeline "{}" created successfully.'.format(self._pipeline_name),
+        result)
+
+  def _update_pipeline(self):
+    result = self._runCli([
+        'pipeline',
+        'update',
+        '--engine',
+        'local',
+        '--pipeline_path',
+        'local_runner.py',
+    ])
+    self.assertIn(
+        'Pipeline "{}" updated successfully.'.format(self._pipeline_name),
+        result)
+
+  def _run_pipeline(self):
+    self._runCli([
+        'run',
+        'create',
+        '--engine',
+        'local',
+        '--pipeline_name',
+        self._pipeline_name,
+    ])
+
+  def _copy_schema(self):
+    self._runCli([
+        'pipeline',
+        'schema',
+        '--engine',
+        'local',
+        '--pipeline_name',
+        self._pipeline_name,
+    ])

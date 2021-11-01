@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,26 +13,18 @@
 # limitations under the License.
 """Abstract TFX executor class."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import abc
 import json
 import os
-import sys
-from typing import Any, Dict, List, Optional, Text
+from typing import Any, Dict, List, Optional
 
-import absl
-from absl import flags
-from six import with_metaclass
-
+from absl import logging
 from tfx import types
 from tfx.dsl.io import fileio
+from tfx.orchestration import data_types_utils
 from tfx.proto.orchestration import execution_result_pb2
+from tfx.proto.orchestration import pipeline_pb2
 from tfx.types import artifact_utils
-from tfx.utils import telemetry_utils
-from tfx.utils import dependency_utils
 
 try:
   import apache_beam as beam  # pylint: disable=g-import-not-at-top
@@ -43,19 +34,22 @@ except ModuleNotFoundError:
   _BeamPipeline = Any
 
 
-class BaseExecutor(with_metaclass(abc.ABCMeta, object)):
+class BaseExecutor(abc.ABC):
   """Abstract TFX executor class."""
 
-  class Context(object):
+  class Context:
     """A context class for all excecutors."""
 
     def __init__(self,
-                 beam_pipeline_args: Optional[List[Text]] = None,
-                 tmp_dir: Optional[Text] = None,
-                 unique_id: Optional[Text] = None,
-                 executor_output_uri: Optional[Text] = None,
-                 stateful_working_dir: Optional[Text] = None):
-      self.beam_pipeline_args = beam_pipeline_args
+                 extra_flags: Optional[List[str]] = None,
+                 tmp_dir: Optional[str] = None,
+                 unique_id: Optional[str] = None,
+                 executor_output_uri: Optional[str] = None,
+                 stateful_working_dir: Optional[str] = None,
+                 pipeline_node: Optional[pipeline_pb2.PipelineNode] = None,
+                 pipeline_info: Optional[pipeline_pb2.PipelineInfo] = None,
+                 pipeline_run_id: Optional[str] = None):
+      self.extra_flags = extra_flags
       # Base temp directory for the pipeline
       self._tmp_dir = tmp_dir
       # A unique id to distinguish every execution run
@@ -65,25 +59,43 @@ class BaseExecutor(with_metaclass(abc.ABCMeta, object)):
       # A path to store information for stateful run, e.g. checkpoints for
       # tensorflow trainers.
       self._stateful_working_dir = stateful_working_dir
+      # The config of this Node.
+      self._pipeline_node = pipeline_node
+      # The config of the pipeline that this node is running in.
+      self._pipeline_info = pipeline_info
+      # The id of the pipeline run that this execution is in.
+      self._pipeline_run_id = pipeline_run_id
 
-    def get_tmp_path(self) -> Text:
+    def get_tmp_path(self) -> str:
       if not self._tmp_dir or not self._unique_id:
         raise RuntimeError('Temp path not available')
       return os.path.join(self._tmp_dir, str(self._unique_id), '')
 
     @property
-    def executor_output_uri(self) -> Text:
+    def executor_output_uri(self) -> str:
       return self._executor_output_uri
 
     @property
-    def stateful_working_dir(self) -> Text:
+    def stateful_working_dir(self) -> str:
       return self._stateful_working_dir
 
+    @property
+    def pipeline_node(self) -> pipeline_pb2.PipelineNode:
+      return self._pipeline_node
+
+    @property
+    def pipeline_info(self) -> pipeline_pb2.PipelineInfo:
+      return self._pipeline_info
+
+    @property
+    def pipeline_run_id(self) -> str:
+      return self._pipeline_run_id
+
   @abc.abstractmethod
-  def Do(
-      self, input_dict: Dict[Text, List[types.Artifact]],
-      output_dict: Dict[Text, List[types.Artifact]], exec_properties: Dict[Text,
-                                                                           Any]
+  def Do(  # pylint: disable=invalid-name
+      self, input_dict: Dict[str, List[types.Artifact]],
+      output_dict: Dict[str, List[types.Artifact]],
+      exec_properties: Dict[str, Any],
   ) -> Optional[execution_result_pb2.ExecutorOutput]:
     """Execute underlying component implementation.
 
@@ -105,88 +117,40 @@ class BaseExecutor(with_metaclass(abc.ABCMeta, object)):
     pass
 
   def __init__(self, context: Optional[Context] = None):
-    """Constructs a beam based executor."""
+    """Constructs a base executor."""
     self._context = context
-    self._beam_pipeline_args = context.beam_pipeline_args if context else None
+    self._extra_flags = context.extra_flags if context else None
 
-    if self._beam_pipeline_args:
-      if beam:
-        self._beam_pipeline_args = dependency_utils.make_beam_dependency_flags(
-            self._beam_pipeline_args)
-        executor_class_path = '%s.%s' % (self.__class__.__module__,
-                                         self.__class__.__name__)
-        # TODO(zhitaoli): Rethink how we can add labels and only normalize them
-        # if the job is submitted against GCP.
-        with telemetry_utils.scoped_labels(
-            {telemetry_utils.LABEL_TFX_EXECUTOR: executor_class_path}):
-          self._beam_pipeline_args.extend(
-              telemetry_utils.make_beam_labels_args())
-
-        # TODO(b/174174381): Don't use beam_pipeline_args to set ABSL flags.
-        flags.FLAGS(sys.argv + self._beam_pipeline_args, known_only=True)
-      else:
-        # TODO(b/156000550): We should not specialize `Context` to embed beam
-        # pipeline args. Instead, the `Context` should consists of generic
-        # purpose `extra_flags` which can be interpreted differently by
-        # different implementations of executors.
-        absl.logging.warning(
-            'Executor context\'s beam_pipeline_args is being ignored because '
-            'Apache Beam is not installed.')
-
-  # TODO(b/126182711): Look into how to support fusion of multiple executors
-  # into same pipeline.
-  # TODO(b/158811104): Extract this logic into a Beam-specific subclass.
-  def _make_beam_pipeline(self) -> _BeamPipeline:
-    """Makes beam pipeline."""
-    if not beam:
-      raise Exception(
-          'Apache Beam must be installed to use this functionality.')
-
-    result = beam.Pipeline(argv=self._beam_pipeline_args)
-
-    # TODO(b/159468583): Obivate this code block by moving the warning to Beam.
-    #
-    # pylint: disable=g-import-not-at-top
-    from apache_beam.options.pipeline_options import DirectOptions
-    from apache_beam.options.pipeline_options import PipelineOptions
-    options = PipelineOptions(self._beam_pipeline_args)
-    direct_running_mode = options.view_as(DirectOptions).direct_running_mode
-    direct_num_workers = options.view_as(DirectOptions).direct_num_workers
-    if direct_running_mode == 'in_memory' and direct_num_workers != 1:
-      absl.logging.warning(
-          'If direct_num_workers is not equal to 1, direct_running_mode should '
-          'be `multi_processing` or `multi_threading` instead of `in_memory` '
-          'in order for it to have the desired worker parallelism effect.')
-
-    return result
-
-  def _get_tmp_dir(self) -> Text:
+  def _get_tmp_dir(self) -> str:
     """Get the temporary directory path."""
     if not self._context:
       raise RuntimeError('No context for the executor')
     tmp_path = self._context.get_tmp_path()
     if not fileio.exists(tmp_path):
-      absl.logging.info('Creating temp directory at %s', tmp_path)
+      logging.info('Creating temp directory at %s', tmp_path)
       fileio.makedirs(tmp_path)
     return tmp_path
 
-  def _log_startup(self, inputs: Dict[Text, List[types.Artifact]],
-                   outputs: Dict[Text, List[types.Artifact]],
-                   exec_properties: Dict[Text, Any]) -> None:
+  def _log_startup(self, inputs: Dict[str, List[types.Artifact]],
+                   outputs: Dict[str, List[types.Artifact]],
+                   exec_properties: Dict[str, Any]) -> None:
     """Log inputs, outputs, and executor properties in a standard format."""
-    absl.logging.debug('Starting %s execution.', self.__class__.__name__)
-    absl.logging.debug('Inputs for %s are: %s', self.__class__.__name__,
-                       artifact_utils.jsonify_artifact_dict(inputs))
-    absl.logging.debug('Outputs for %s are: %s', self.__class__.__name__,
-                       artifact_utils.jsonify_artifact_dict(outputs))
-    absl.logging.debug('Execution properties for %s are: %s',
-                       self.__class__.__name__, json.dumps(exec_properties))
+    logging.debug('Starting %s execution.', self.__class__.__name__)
+    logging.debug('Inputs for %s are: %s', self.__class__.__name__,
+                  artifact_utils.jsonify_artifact_dict(inputs))
+    logging.debug('Outputs for %s are: %s', self.__class__.__name__,
+                  artifact_utils.jsonify_artifact_dict(outputs))
+    logging.debug(
+        'Execution properties for %s are: %s', self.__class__.__name__,
+        json.dumps(
+            data_types_utils.build_value_dict(
+                data_types_utils.build_metadata_value_dict(exec_properties))))
 
 
 class EmptyExecutor(BaseExecutor):
   """An empty executor that does nothing."""
 
-  def Do(self, input_dict: Dict[Text, List[types.Artifact]],
-         output_dict: Dict[Text, List[types.Artifact]],
-         exec_properties: Dict[Text, Any]) -> None:
+  def Do(self, input_dict: Dict[str, List[types.Artifact]],
+         output_dict: Dict[str, List[types.Artifact]],
+         exec_properties: Dict[str, Any]) -> None:
     pass

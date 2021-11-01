@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,23 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Tests for tfx.orchestration.airflow.airflow_dag_runner."""
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
 
 import datetime
-
-import mock
-import tensorflow as tf
+from unittest import mock
 
 # TODO(b/158143615): importing airflow after kerastuner causes issue.
 from tfx.orchestration.airflow import airflow_dag_runner  # pylint: disable=g-bad-import-order
 
+import tensorflow as tf
 from tfx import types
 from tfx.dsl.components.base import base_component
 from tfx.dsl.components.base import base_executor
 from tfx.dsl.components.base import executor_spec
 from tfx.orchestration import pipeline
+from tfx.orchestration.data_types import RuntimeParameter
 from tfx.types import component_spec
 
 
@@ -93,16 +89,26 @@ class _FakeComponentSpecE(types.ComponentSpec):
   OUTPUTS = {'output': component_spec.ChannelParameter(type=_ArtifactTypeE)}
 
 
+class _FakeComponentSpecF(types.ComponentSpec):
+  PARAMETERS = {'a': component_spec.ExecutionParameter(type=str)}
+  INPUTS = {}
+  OUTPUTS = {}
+
+
+class _FakeComponentSpecG(types.ComponentSpec):
+  PARAMETERS = {'a': component_spec.ExecutionParameter(type=int)}
+  INPUTS = {}
+  OUTPUTS = {}
+
+
 class _FakeComponent(base_component.BaseComponent):
 
   SPEC_CLASS = types.ComponentSpec
   EXECUTOR_SPEC = executor_spec.ExecutorClassSpec(base_executor.BaseExecutor)
 
   def __init__(self, spec: types.ComponentSpec):
-    instance_name = spec.__class__.__name__.replace(
-        '_FakeComponentSpec', '')
-    super(_FakeComponent, self).__init__(
-        spec=spec, instance_name=instance_name)
+    super().__init__(spec=spec)
+    self._id = spec.__class__.__name__.replace('_FakeComponentSpec', '')
 
 
 class AirflowDagRunnerTest(tf.test.TestCase):
@@ -191,6 +197,71 @@ class AirflowDagRunnerTest(tf.test.TestCase):
     runner = airflow_dag_runner.AirflowDagRunner(airflow_config)
 
     self.assertEqual(airflow_config, runner._config.airflow_dag_config)
+
+  def testRuntimeParam(self):
+    param = RuntimeParameter('name', str, 'tf"x')
+    component_f = _FakeComponent(_FakeComponentSpecF(a=param))
+    airflow_config = {
+        'schedule_interval': '* * * * *',
+        'start_date': datetime.datetime(2019, 1, 1)
+    }
+    test_pipeline = pipeline.Pipeline(
+        pipeline_name='x',
+        pipeline_root='y',
+        metadata_connection_config=None,
+        components=[component_f])
+
+    runner = airflow_dag_runner.AirflowDagRunner(
+        airflow_dag_runner.AirflowPipelineConfig(
+            airflow_dag_config=airflow_config))
+    dag = runner.run(test_pipeline)
+    task = dag.tasks[0]
+    self.assertDictEqual(
+        {'exec_properties': {
+            'a': '{{ dag_run.conf.get("name", "tf\\"x") }}'
+        }}, task.op_kwargs)
+
+  def testRuntimeParamTemplated(self):
+    param = RuntimeParameter('a', str, '{{execution_date}}')
+    component_f = _FakeComponent(_FakeComponentSpecF(a=param))
+    airflow_config = {
+        'schedule_interval': '* * * * *',
+        'start_date': datetime.datetime(2019, 1, 1)
+    }
+    test_pipeline = pipeline.Pipeline(
+        pipeline_name='x',
+        pipeline_root='y',
+        metadata_connection_config=None,
+        components=[component_f])
+
+    runner = airflow_dag_runner.AirflowDagRunner(
+        airflow_dag_runner.AirflowPipelineConfig(
+            airflow_dag_config=airflow_config))
+    dag = runner.run(test_pipeline)
+    task = dag.tasks[0]
+    self.assertDictEqual(
+        {
+            'exec_properties': {
+                'a': '{{ dag_run.conf.get("a", execution_date) }}'
+            }
+        }, task.op_kwargs)
+
+  def testRuntimeParamIntError(self):
+    param = RuntimeParameter('name', int, 1)
+    component_f = _FakeComponent(_FakeComponentSpecG(a=param))
+    airflow_config = {
+        'schedule_interval': '* * * * *',
+        'start_date': datetime.datetime(2019, 1, 1)
+    }
+    test_pipeline = pipeline.Pipeline(
+        pipeline_name='x',
+        pipeline_root='y',
+        metadata_connection_config=None,
+        components=[component_f])
+    with self.assertRaises(RuntimeError):
+      airflow_dag_runner.AirflowDagRunner(
+          airflow_dag_runner.AirflowPipelineConfig(
+              airflow_dag_config=airflow_config)).run(test_pipeline)
 
 
 if __name__ == '__main__':

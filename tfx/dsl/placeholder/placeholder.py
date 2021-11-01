@@ -16,15 +16,24 @@
 import abc
 import copy
 import enum
-from typing import Optional, Type, Union, cast
-from tfx import types
+from typing import Any, Callable, Iterator, List, Optional, Type, TypeVar, Union, cast
+
+import attr
 from tfx.proto.orchestration import placeholder_pb2
+from tfx.utils import json_utils
 from tfx.utils import proto_utils
 
 from google.protobuf import message
 
+# To resolve circular dependency caused by type annotations.
+# TODO(b/191610358): Reduce the number of circular type-dependencies.
+types = Any  # tfx.types imports channel.py, which in turn imports this module.
 
-class _PlaceholderOperator(abc.ABC):
+# TODO(b/190409099): Support RuntimeParameter.
+_ValueLikeType = Union[int, float, str, 'ChannelWrappedPlaceholder']
+
+
+class _PlaceholderOperator(json_utils.Jsonable):
   """An Operator performs an operation on a Placeholder.
 
   It knows how to encode itself into a proto.
@@ -37,9 +46,12 @@ class _PlaceholderOperator(abc.ABC):
   def encode(
       self,
       sub_expression_pb: placeholder_pb2.PlaceholderExpression,
-      component_spec: Type[types.ComponentSpec] = None
+      component_spec: Optional[Type['types.ComponentSpec']] = None
   ) -> placeholder_pb2.PlaceholderExpression:
     pass
+
+  def placeholders_involved(self) -> List['Placeholder']:
+    return []
 
 
 class _ArtifactUriOperator(_PlaceholderOperator):
@@ -55,7 +67,7 @@ class _ArtifactUriOperator(_PlaceholderOperator):
   def encode(
       self,
       sub_expression_pb: placeholder_pb2.PlaceholderExpression,
-      component_spec: Optional[Type[types.ComponentSpec]] = None
+      component_spec: Optional[Type['types.ComponentSpec']] = None
   ) -> placeholder_pb2.PlaceholderExpression:
     del component_spec  # Unused by ArtifactUriOperator
 
@@ -75,7 +87,7 @@ class _ArtifactValueOperator(_PlaceholderOperator):
   def encode(
       self,
       sub_expression_pb: placeholder_pb2.PlaceholderExpression,
-      component_spec: Optional[Type[types.ComponentSpec]] = None
+      component_spec: Optional[Type['types.ComponentSpec']] = None
   ) -> placeholder_pb2.PlaceholderExpression:
     del component_spec  # Unused by ArtifactValueOperator
 
@@ -97,7 +109,7 @@ class _IndexOperator(_PlaceholderOperator):
   def encode(
       self,
       sub_expression_pb: placeholder_pb2.PlaceholderExpression,
-      component_spec: Optional[Type[types.ComponentSpec]] = None
+      component_spec: Optional[Type['types.ComponentSpec']] = None
   ) -> placeholder_pb2.PlaceholderExpression:
     del component_spec  # Unused by IndexOperator
 
@@ -107,13 +119,41 @@ class _IndexOperator(_PlaceholderOperator):
     return result
 
 
+class _PropertyOperator(_PlaceholderOperator):
+  """Property Operator gets the property of an artifact Placeholder.
+
+  Prefer to use .property(key) method of Artifact Placeholder.
+  """
+
+  def __init__(self, key: str, is_custom_property: bool = False):
+    super().__init__()
+    self._key = key
+    self._is_custom_property = is_custom_property
+
+  def encode(
+      self,
+      sub_expression_pb: placeholder_pb2.PlaceholderExpression,
+      component_spec: Optional[Type['types.ComponentSpec']] = None
+  ) -> placeholder_pb2.PlaceholderExpression:
+    del component_spec  # Unused by PropertyOperator
+
+    result = placeholder_pb2.PlaceholderExpression()
+    result.operator.artifact_property_op.expression.CopyFrom(sub_expression_pb)
+    result.operator.artifact_property_op.key = self._key
+    result.operator.artifact_property_op.is_custom_property = (
+        self._is_custom_property)
+    return result
+
+
 class _ConcatOperator(_PlaceholderOperator):
   """Concat Operator concatenates multiple Placeholders.
 
   Prefer to use + operator overloading of Placeholder.
   """
 
-  def __init__(self, right: Union[str, 'Placeholder'] = None, left: str = None):
+  def __init__(self,
+               right: Optional[Union[str, 'Placeholder']] = None,
+               left: Optional[str] = None):
     super().__init__()
     self._left = left
     self._right = right
@@ -121,7 +161,7 @@ class _ConcatOperator(_PlaceholderOperator):
   def encode(
       self,
       sub_expression_pb: placeholder_pb2.PlaceholderExpression,
-      component_spec: Optional[Type[types.ComponentSpec]] = None
+      component_spec: Optional[Type['types.ComponentSpec']] = None
   ) -> placeholder_pb2.PlaceholderExpression:
     del component_spec  # Unused by ConcatOperator
 
@@ -169,11 +209,21 @@ class _ConcatOperator(_PlaceholderOperator):
     raise RuntimeError(
         'ConcatOperator does not have the other expression to concat.')
 
+  def placeholders_involved(self) -> List['Placeholder']:
+    if self._right and isinstance(self._right, Placeholder):
+      return self._right.placeholders_involved()
+    return []
+
 
 class ProtoSerializationFormat(enum.Enum):
   TEXT_FORMAT = placeholder_pb2.ProtoOperator.TEXT_FORMAT
   JSON = placeholder_pb2.ProtoOperator.JSON
   BINARY = placeholder_pb2.ProtoOperator.BINARY
+
+
+class ListSerializationFormat(enum.Enum):
+  JSON = placeholder_pb2.ListSerializationOperator.JSON
+  COMMA_SEPARATED_STR = placeholder_pb2.ListSerializationOperator.COMMA_SEPARATED_STR
 
 
 class _ProtoOperator(_PlaceholderOperator):
@@ -200,7 +250,7 @@ class _ProtoOperator(_PlaceholderOperator):
   def encode(
       self,
       sub_expression_pb: placeholder_pb2.PlaceholderExpression,
-      component_spec: Optional[Type[types.ComponentSpec]] = None
+      component_spec: Optional[Type['types.ComponentSpec']] = None
   ) -> placeholder_pb2.PlaceholderExpression:
     result = placeholder_pb2.PlaceholderExpression()
     result.operator.proto_op.expression.CopyFrom(sub_expression_pb)
@@ -226,13 +276,34 @@ class _ProtoOperator(_PlaceholderOperator):
         raise ValueError(
             "Can't apply placeholder proto operator on non-proto type "
             f"exec property. Got {execution_param.type}.")
-      result.operator.proto_op.proto_schema.message_type = (
-          execution_param.type.DESCRIPTOR.full_name)
-      fd_set = result.operator.proto_op.proto_schema.file_descriptors
-      for fd in proto_utils.gather_file_descriptors(
-          execution_param.type.DESCRIPTOR):
-        fd.CopyToProto(fd_set.file.add())
+      proto_schema = result.operator.proto_op.proto_schema
+      proto_schema.message_type = execution_param.type.DESCRIPTOR.full_name
+      proto_utils.build_file_descriptor_set(execution_param.type,
+                                            proto_schema.file_descriptors)
 
+    return result
+
+
+class _ListSerializationOperator(_PlaceholderOperator):
+  """ListSerializationOperator serializes list type placeholder.
+
+  Prefer to use the .serialize_list property of ExecPropertyPlaceholder.
+  """
+
+  def __init__(self, serialization_format: ListSerializationFormat):
+    super().__init__()
+    self._serialization_format = serialization_format
+
+  def encode(
+      self,
+      sub_expression_pb: placeholder_pb2.PlaceholderExpression,
+      component_spec: Optional[Type['types.ComponentSpec']] = None
+  ) -> placeholder_pb2.PlaceholderExpression:
+    del component_spec
+
+    result = placeholder_pb2.PlaceholderExpression()
+    result.operator.list_serialization_op.expression.CopyFrom(sub_expression_pb)
+    result.operator.list_serialization_op.serialization_format = self._serialization_format.value
     return result
 
 
@@ -245,7 +316,7 @@ class _Base64EncodeOperator(_PlaceholderOperator):
   def encode(
       self,
       sub_expression_pb: placeholder_pb2.PlaceholderExpression,
-      component_spec: Optional[Type[types.ComponentSpec]] = None
+      component_spec: Optional[Type['types.ComponentSpec']] = None
   ) -> placeholder_pb2.PlaceholderExpression:
     del component_spec  # Unused by B64EncodeOperator
 
@@ -254,7 +325,7 @@ class _Base64EncodeOperator(_PlaceholderOperator):
     return result
 
 
-class Placeholder(abc.ABC):
+class Placeholder(json_utils.Jsonable):
   """A Placeholder represents not-yet-available values at the component authoring time."""
 
   def __init__(self, placeholder_type: placeholder_pb2.Placeholder.Type,
@@ -292,7 +363,7 @@ class Placeholder(abc.ABC):
 
   def encode(
       self,
-      component_spec: Optional[Type[types.ComponentSpec]] = None
+      component_spec: Optional[Type['types.ComponentSpec']] = None
   ) -> placeholder_pb2.PlaceholderExpression:
     """Encodes a placeholder as PlaceholderExpression proto.
 
@@ -311,6 +382,18 @@ class Placeholder(abc.ABC):
       result = op.encode(result, component_spec)
     return result
 
+  def placeholders_involved(self) -> List['Placeholder']:
+    """Returns a list of all Placeholder involved in this expression."""
+    result = [self]
+    for op in self._operators:
+      result.extend(op.placeholders_involved())
+    return result
+
+
+# To ensure that ArtifactPlaceholder operations on a ChannelWrappedPlaceholder
+# still returns a ChannelWrappedPlaceholder.
+_T = TypeVar('_T')
+
 
 class ArtifactPlaceholder(Placeholder):
   """Artifact Placeholder represents an input or an output artifact.
@@ -319,30 +402,38 @@ class ArtifactPlaceholder(Placeholder):
   """
 
   @property
-  def uri(self):
+  def uri(self: _T) -> _T:
     self._try_inject_index_operator()
     self._operators.append(_ArtifactUriOperator())
     return self
 
-  def split_uri(self, split: str):
+  def split_uri(self: _T, split: str) -> _T:
     self._try_inject_index_operator()
     self._operators.append(_ArtifactUriOperator(split))
     return self
 
   @property
-  def value(self):
+  def value(self: _T) -> _T:
     self._try_inject_index_operator()
     self._operators.append(_ArtifactValueOperator())
     return self
 
-  def __getitem__(self, key: int):
+  def __getitem__(self: _T, key: int) -> _T:
     self._operators.append(_IndexOperator(key))
     return self
 
   def _try_inject_index_operator(self):
-    if not self._operators or not isinstance(self._operators[-1],
-                                             _IndexOperator):
+    if not self._operators or not any(
+        isinstance(op, _IndexOperator) for op in self._operators):
       self._operators.append(_IndexOperator(0))
+
+  def property(self, key: str):
+    self._operators.append(_PropertyOperator(key))
+    return self
+
+  def custom_property(self, key: str):
+    self._operators.append(_PropertyOperator(key, is_custom_property=True))
+    return self
 
 
 class _ProtoAccessiblePlaceholder(Placeholder, abc.ABC):
@@ -360,14 +451,17 @@ class _ProtoAccessiblePlaceholder(Placeholder, abc.ABC):
     return self
 
   def __getitem__(self, key: Union[int, str]):
-    proto_access_field = f'[{key!r}]'
-    if self._operators and isinstance(
-        self._operators[-1],
-        _ProtoOperator) and self._operators[-1].can_append_field_path():
-      self._operators[-1].append_field_path(proto_access_field)
+    if isinstance(key, int):
+      self._operators.append(_IndexOperator(key))
     else:
-      self._operators.append(
-          _ProtoOperator(proto_field_path=proto_access_field))
+      proto_access_field = f'[{key!r}]'
+      if self._operators and isinstance(
+          self._operators[-1],
+          _ProtoOperator) and self._operators[-1].can_append_field_path():
+        self._operators[-1].append_field_path(proto_access_field)
+      else:
+        self._operators.append(
+            _ProtoOperator(proto_field_path=proto_access_field))
     return self
 
   def serialize(self, serialization_format: ProtoSerializationFormat):
@@ -393,6 +487,22 @@ class ExecPropertyPlaceholder(_ProtoAccessiblePlaceholder):
   def __init__(self, key: str):
     super().__init__(placeholder_pb2.Placeholder.Type.EXEC_PROPERTY, key)
 
+  def serialize_list(self, serialization_format: ListSerializationFormat):
+    """Serializes list-value placeholder to JSON or comma-separated string.
+
+    Here list value includes repeated proto field. This function only
+    supports primitive type list element (a.k.a bool, int, float or str) at the
+    moment; throws runtime error otherwise.
+
+    Args:
+       serialization_format: The format of how the proto is serialized.
+
+    Returns:
+      A placeholder.
+    """
+    self._operators.append(_ListSerializationOperator(serialization_format))
+    return self
+
 
 class RuntimeInfoPlaceholder(_ProtoAccessiblePlaceholder):
   """RuntimeInfo Placeholder represents runtime information for a component.
@@ -415,6 +525,326 @@ class ExecInvocationPlaceholder(_ProtoAccessiblePlaceholder):
 
   def __init__(self):
     super().__init__(placeholder_pb2.Placeholder.Type.EXEC_INVOCATION)
+
+
+class _CompareOp(enum.Enum):
+  """An alias for placeholder_pb2.ComparisonOperator.Operation."""
+
+  EQUAL = placeholder_pb2.ComparisonOperator.Operation.EQUAL
+  LESS_THAN = placeholder_pb2.ComparisonOperator.Operation.LESS_THAN
+  GREATER_THAN = placeholder_pb2.ComparisonOperator.Operation.GREATER_THAN
+
+
+class ChannelWrappedPlaceholder(ArtifactPlaceholder):
+  """Wraps a Channel in a Placeholder.
+
+  This allows it to make Predicates using syntax like:
+    channel.future().value > 5
+  """
+
+  def __init__(self, channel: 'types.Channel'):
+    super().__init__(placeholder_pb2.Placeholder.Type.INPUT_ARTIFACT)
+    self.channel = channel
+
+  def __eq__(self, other: _ValueLikeType) -> 'Predicate':
+    return Predicate.from_comparison(_CompareOp.EQUAL, left=self, right=other)
+
+  def __ne__(self, other: _ValueLikeType) -> 'Predicate':
+    return logical_not(self == other)
+
+  def __lt__(self, other: _ValueLikeType) -> 'Predicate':
+    return Predicate.from_comparison(
+        _CompareOp.LESS_THAN, left=self, right=other)
+
+  def __le__(self, other: _ValueLikeType) -> 'Predicate':
+    return logical_not(self > other)
+
+  def __gt__(self, other: _ValueLikeType) -> 'Predicate':
+    return Predicate.from_comparison(
+        _CompareOp.GREATER_THAN, left=self, right=other)
+
+  def __ge__(self, other: _ValueLikeType) -> 'Predicate':
+    return logical_not(self < other)
+
+
+def _encode_value_like(
+    x: _ValueLikeType,
+    channel_to_key_fn: Optional[Callable[['types.Channel'], str]] = None
+) -> placeholder_pb2.PlaceholderExpression:
+  """Encodes x to a placeholder expression proto."""
+
+  if isinstance(x, ChannelWrappedPlaceholder):
+    if channel_to_key_fn:
+      # pylint: disable=protected-access
+      old_key = x._key
+      x._key = channel_to_key_fn(x.channel)
+      result = x.encode()
+      x._key = old_key
+      # pylint: enable=protected-access
+    else:
+      result = x.encode()
+    return result
+  result = placeholder_pb2.PlaceholderExpression()
+  if isinstance(x, int):
+    result.value.int_value = x
+  elif isinstance(x, float):
+    result.value.double_value = x
+  elif isinstance(x, str):
+    result.value.string_value = x
+  else:
+    raise ValueError(
+        f'x must be an int, float, str, or ChannelWrappedPlaceholder. x: {x}')
+  return result
+
+
+_PredicateSubtype = Union['_Comparison', '_NotExpression',
+                          '_BinaryLogicalExpression']
+
+
+@attr.s
+class _Comparison:
+  """Represents a comparison between two placeholders."""
+
+  compare_op = attr.ib(type=_CompareOp)
+  left = attr.ib(type=_ValueLikeType)
+  right = attr.ib(type=_ValueLikeType)
+
+  def encode_with_keys(
+      self,
+      channel_to_key_fn: Optional[Callable[['types.Channel'], str]] = None
+  ) -> placeholder_pb2.PlaceholderExpression:
+    """Encode as a PlaceholderExpression proto."""
+
+    result = placeholder_pb2.PlaceholderExpression()
+    result.operator.compare_op.op = self.compare_op.value
+    left_pb = _encode_value_like(self.left, channel_to_key_fn)
+    result.operator.compare_op.lhs.CopyFrom(left_pb)
+    right_pb = _encode_value_like(self.right, channel_to_key_fn)
+    result.operator.compare_op.rhs.CopyFrom(right_pb)
+    return result
+
+  def dependent_channels(self) -> Iterator['types.Channel']:
+    if isinstance(self.left, ChannelWrappedPlaceholder):
+      yield self.left.channel
+    if isinstance(self.right, ChannelWrappedPlaceholder):
+      yield self.right.channel
+
+
+class _LogicalOp(enum.Enum):
+  """An alias for logical operation enums in placeholder.proto."""
+
+  NOT = placeholder_pb2.UnaryLogicalOperator.Operation.NOT
+  AND = placeholder_pb2.BinaryLogicalOperator.Operation.AND
+  OR = placeholder_pb2.BinaryLogicalOperator.Operation.OR
+
+
+@attr.s
+class _NotExpression:
+  """Represents a logical negation."""
+
+  pred_dataclass = attr.ib(type=_PredicateSubtype)
+
+  def encode_with_keys(
+      self,
+      channel_to_key_fn: Optional[Callable[['types.Channel'], str]] = None
+  ) -> placeholder_pb2.PlaceholderExpression:
+    """Encode as a PlaceholderExpression proto."""
+
+    pred_pb = self.pred_dataclass.encode_with_keys(channel_to_key_fn)
+    # not(not(a)) becomes a
+    if isinstance(self.pred_dataclass, _NotExpression):
+      return pred_pb.operator.unary_logical_op.expression
+    result = placeholder_pb2.PlaceholderExpression()
+    result.operator.unary_logical_op.op = _LogicalOp.NOT.value
+    pred_pb = self.pred_dataclass.encode_with_keys(channel_to_key_fn)
+    result.operator.unary_logical_op.expression.CopyFrom(pred_pb)
+    return result
+
+  def dependent_channels(self) -> Iterator['types.Channel']:
+    yield from self.pred_dataclass.dependent_channels()
+
+
+@attr.s
+class _BinaryLogicalExpression:
+  """Represents a boolean logical expression with exactly two arguments."""
+
+  logical_op = attr.ib(type=_LogicalOp)
+  left = attr.ib(type=_PredicateSubtype)
+  right = attr.ib(type=_PredicateSubtype)
+
+  def encode_with_keys(
+      self,
+      channel_to_key_fn: Optional[Callable[['types.Channel'], str]] = None
+  ) -> placeholder_pb2.PlaceholderExpression:
+    """Encode as a PlaceholderExpression proto."""
+
+    result = placeholder_pb2.PlaceholderExpression()
+    result.operator.binary_logical_op.op = self.logical_op.value
+    left_pb = self.left.encode_with_keys(channel_to_key_fn)
+    result.operator.binary_logical_op.lhs.CopyFrom(left_pb)
+    right_pb = self.right.encode_with_keys(channel_to_key_fn)
+    result.operator.binary_logical_op.rhs.CopyFrom(right_pb)
+    return result
+
+  def dependent_channels(self) -> Iterator['types.Channel']:
+    yield from self.left.dependent_channels()
+    yield from self.right.dependent_channels()
+
+
+class Predicate(Placeholder):
+  """A boolean-valued Placeholder.
+
+  Pipeline authors obtain an instance of Predicate by comparing a
+  ChannelWrappedPlaceholder with a primitive (int, float, or str), or by
+  comparing two ChannelWrappedPlaceholders with each other.
+  The Predicate can then be used to define conditional statements using the
+  pipeline-authoring DSL.
+
+  Prefer to use syntax like `<channel>.future() > 5` to create a Predicate.
+  """
+
+  def __init__(self, pred_dataclass: _PredicateSubtype):
+    """NOT INTENDED TO BE USED DIRECTLY BY PIPELINE AUTHORS."""
+
+    super().__init__(placeholder_pb2.Placeholder.Type.INPUT_ARTIFACT)
+    self.pred_dataclass = pred_dataclass
+
+  @classmethod
+  def from_comparison(cls, compare_op: _CompareOp,
+                      left: ChannelWrappedPlaceholder,
+                      right: _ValueLikeType) -> 'Predicate':
+    """Creates a Predicate instance.
+
+    Note that even though the `left` argument is assumed to be a
+    ChannelWrappedPlaceholder, we can still compare placeholders like
+    this:
+
+      `5 > channel.future()[0].value()`
+
+    This is because python's comparison operations will automatically flip
+    the arguments if only the right side has overloaded comparision
+    operations. e.g.,
+
+      `5 > channel.future()[0].value()` becomes
+      `(5).__gt__(pred)` which becomes
+      `pred.__lt__(5)`.
+
+    Thus, the left argument can always be assumed to be an
+    ChannelWrappedPlaceholder.
+
+    Args:
+      compare_op: A _CompareOp (EQUAL, LESS_THAN, GREATER_THAN)
+      left: The left side of the comparison.
+      right: The right side of the comparison. Might also be an int, float, or
+        str.
+
+    Returns:
+      A Predicate.
+    """
+    return cls(_Comparison(compare_op, left, right))
+
+  def __add__(self, right):
+    # Unlike Placeholders, Predicates cannot be added.
+    raise NotImplementedError
+
+  def __radd__(self, left):
+    # Unlike Placeholders, Predicates cannot be added.
+    raise NotImplementedError
+
+  def b64encode(self):
+    # Unlike Placeholders, Predicates cannot be b64encoded.
+    raise NotImplementedError
+
+  def dependent_channels(self) -> Iterator['types.Channel']:
+    yield from self.pred_dataclass.dependent_channels()
+
+  def encode(
+      self,
+      component_spec: Optional[Type['types.ComponentSpec']] = None
+  ) -> placeholder_pb2.PlaceholderExpression:
+    """This just calls `encode_with_keys` without arguments."""
+    del component_spec  # not used for encoding Predicates
+    return self.encode_with_keys()
+
+  def encode_with_keys(
+      self,
+      channel_to_key_fn: Optional[Callable[['types.Channel'], str]] = None
+  ) -> placeholder_pb2.PlaceholderExpression:
+    """Encodes a Predicate as a PlaceholderExpression proto.
+
+    When a ChannelWrappedPlaceholder is initially constructed, it does not have
+    a key. This means that Predicates, which comprise of
+    ChannelWrappedPlaceholders, do not contain sufficient information to be
+    evaluated at run time. Thus, after the Pipeline is fully defined, the
+    compiler will use this method to fill in the keys.
+
+    Within the context of each node, each Channel corresponds to a key in the
+    input_dict (see `ResolverStrategy.resolve_artifacts`).
+    The Predicate has an internal tree data structure to keep track of
+    all the placeholders and operations. As we traverse this tree to create
+    this proto, `channel_to_key_fn` is called each time a
+    ChannelWrappedPlaceholder is encountered, and its output is used as the
+    placeholder key in the Placeholder proto produced during encoding.
+
+    Note that the ChannelWrappedPlaceholder itself remains unchanged.
+
+    Args:
+      channel_to_key_fn: The function used to determine the placeholder key for
+        each ChannelWrappedPlaceholder. If None, no attempt to fill in the
+        placeholder keys will be made.
+
+    Returns:
+      PlaceholderExpression proto containing all information of this Predicate,
+      with the placeholder keys filled in. Note that the Predicate instance
+      is unchanged.
+    """
+
+    return self.pred_dataclass.encode_with_keys(channel_to_key_fn)
+
+
+def logical_not(pred: Predicate) -> Predicate:
+  """Applies a NOT boolean operation on a Predicate.
+
+  Args:
+    pred: The Predicate to apply the NOT operation to.
+
+  Returns:
+    The negated Predicate.
+  """
+
+  return Predicate(_NotExpression(pred.pred_dataclass))
+
+
+def logical_and(left: Predicate, right: Predicate) -> Predicate:
+  """Applies the AND boolean operation on two Predicates.
+
+  Args:
+    left: The first argument of the AND operation.
+    right: The second argument of the AND operation.
+
+  Returns:
+    The Predicate resulting from the AND operation.
+  """
+
+  return Predicate(
+      _BinaryLogicalExpression(_LogicalOp.AND, left.pred_dataclass,
+                               right.pred_dataclass))
+
+
+def logical_or(left: Predicate, right: Predicate) -> Predicate:
+  """Applies the OR boolean operation on two Predicates.
+
+  Args:
+    left: The first argument of the OR operation.
+    right: The second argument of the OR operation.
+
+  Returns:
+    The Predicate resulting from the OR operation.
+  """
+
+  return Predicate(
+      _BinaryLogicalExpression(_LogicalOp.OR, left.pred_dataclass,
+                               right.pred_dataclass))
 
 
 def input(key: str) -> ArtifactPlaceholder:  # pylint: disable=redefined-builtin

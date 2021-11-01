@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2020 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,10 +13,11 @@
 # limitations under the License.
 """Tests for tfx.extensions.google_cloud_big_query.elwc_example_gen.component.executor."""
 
+from unittest import mock
+
 import apache_beam as beam
 from apache_beam.testing import util
 from google.cloud import bigquery
-import mock
 import tensorflow as tf
 from tfx.extensions.google_cloud_big_query import utils
 from tfx.extensions.google_cloud_big_query.experimental.elwc_example_gen.component import executor
@@ -364,7 +364,7 @@ class ExecutorTest(tf.test.TestCase):
         bigquery.SchemaField('feature_id_2', 'FLOAT', mode='NULLABLE'),
         bigquery.SchemaField('feature_id_3', 'STRING', mode='NULLABLE'),
     ]
-    super(ExecutorTest, self).setUp()
+    super().setUp()
 
   @mock.patch.multiple(
       utils,

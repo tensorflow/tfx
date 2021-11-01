@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,29 +13,26 @@
 # limitations under the License.
 """TFX interactive context for iterative development.
 
-See `examples/chicago_taxi_pipeline/taxi_pipeline_interactive.ipynb` for an
+See `https://www.tensorflow.org/tfx/tutorials/tfx/components_keras` for an
 example of how to run TFX in a Jupyter notebook for iterative development.
 
 Note: these APIs are **experimental** and major changes to interface and
 functionality are expected.
 """
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
+import builtins
 import datetime
 import functools
 import html
 import os
 import tempfile
-from typing import List, Optional, Text
+from typing import List, Optional
 
 import absl
 import jinja2
 import nbformat
-from six.moves import builtins
 from tfx import types
+from tfx.dsl.components.base import base_component
 from tfx.dsl.components.base import base_node
 from tfx.orchestration import data_types
 from tfx.orchestration import metadata
@@ -73,7 +69,7 @@ def requires_ipython(fn):
   return run_if_ipython
 
 
-class InteractiveContext(object):
+class InteractiveContext:
   """TFX interactive context for interactive TFX notebook development.
 
   Note: these APIs are **experimental** and major changes to interface and
@@ -82,12 +78,12 @@ class InteractiveContext(object):
 
   _DEFAULT_SQLITE_FILENAME = 'metadata.sqlite'
 
-  def __init__(
-      self,
-      pipeline_name: Text = None,
-      pipeline_root: Text = None,
-      metadata_connection_config: metadata_store_pb2.ConnectionConfig = None,
-      beam_pipeline_args: Optional[List[Text]] = None):
+  def __init__(self,
+               pipeline_name: Optional[str] = None,
+               pipeline_root: Optional[str] = None,
+               metadata_connection_config: Optional[
+                   metadata_store_pb2.ConnectionConfig] = None,
+               beam_pipeline_args: Optional[List[str]] = None):
     """Initialize an InteractiveContext.
 
     Args:
@@ -137,7 +133,7 @@ class InteractiveContext(object):
       self,
       component: base_node.BaseNode,
       enable_cache: bool = True,
-      beam_pipeline_args: Optional[List[Text]] = None
+      beam_pipeline_args: Optional[List[str]] = None
   ) -> execution_result.ExecutionResult:
     """Run a given TFX component in the interactive context.
 
@@ -166,6 +162,11 @@ class InteractiveContext(object):
         artifact.pipeline_name = self.pipeline_name
         artifact.producer_component = component.id
         artifact.name = name
+    # Special treatment for pip dependencies.
+    # TODO(b/187122662): Pass through pip dependencies as a first-class
+    # component flag.
+    if isinstance(component, base_component.BaseComponent):
+      component._resolve_pip_dependencies(self.pipeline_root)  # pylint: disable=protected-access
     # TODO(hongyes): figure out how to resolve launcher class in the interactive
     # context.
     launcher = in_process_component_launcher.InProcessComponentLauncher.create(
@@ -185,8 +186,8 @@ class InteractiveContext(object):
         component=component, execution_id=execution_id)
 
   @requires_ipython
-  def export_to_pipeline(self, notebook_filepath: Text, export_filepath: Text,
-                         runner_type: Text):
+  def export_to_pipeline(self, notebook_filepath: str, export_filepath: str,
+                         runner_type: str):
     """Exports a notebook to a .py file as a runnable pipeline.
 
     Args:
@@ -226,7 +227,7 @@ class InteractiveContext(object):
 
       jinja_env = jinja2.Environment(
           loader=jinja2.PackageLoader(
-              __name__, package_path=_EXPORT_TEMPLATES_DIR))
+              __package__, package_path=_EXPORT_TEMPLATES_DIR))
       template_name = 'export_%s.tmpl' % runner_type
       # TODO(b/142326292): Consider parameterizing the other variables names
       # present in the export templates.

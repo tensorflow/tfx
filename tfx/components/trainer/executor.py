@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,13 +13,9 @@
 # limitations under the License.
 """TFX local trainer executor."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import json
 import os
-from typing import Any, Dict, List, Text
+from typing import Any, Dict, List
 
 import absl
 import tensorflow as tf
@@ -47,7 +42,7 @@ TrainerFnArgs = deprecation_utils.deprecated_alias(  # pylint: disable=invalid-n
     func_or_class=fn_args_utils.FnArgs)
 
 
-def _all_files_pattern(file_pattern: Text) -> Text:
+def _all_files_pattern(file_pattern: str) -> str:
   return os.path.join(file_pattern, '*')
 
 
@@ -92,19 +87,9 @@ class GenericExecutor(base_executor.BaseExecutor):
   # Name of subdirectory which contains checkpoints from prior runs
   _CHECKPOINT_FILE_NAME = 'checkpoint'
 
-  def _GetFnArgs(self, input_dict: Dict[Text, List[types.Artifact]],
-                 output_dict: Dict[Text, List[types.Artifact]],
-                 exec_properties: Dict[Text, Any]) -> fn_args_utils.FnArgs:
-    # TODO(ruoyu): Make this a dict of tag -> uri instead of list.
-    if input_dict.get(standard_component_specs.BASE_MODEL_KEY):
-      base_model_artifact = artifact_utils.get_single_instance(
-          input_dict[standard_component_specs.BASE_MODEL_KEY])
-      base_model = path_utils.serving_model_path(
-          base_model_artifact.uri,
-          path_utils.is_old_model_artifact(base_model_artifact))
-    else:
-      base_model = None
-
+  def _GetFnArgs(self, input_dict: Dict[str, List[types.Artifact]],
+                 output_dict: Dict[str, List[types.Artifact]],
+                 exec_properties: Dict[str, Any]) -> fn_args_utils.FnArgs:
     if input_dict.get(standard_component_specs.HYPERPARAMETERS_KEY):
       hyperparameters_file = io_utils.get_only_uri_in_dir(
           artifact_utils.get_single_uri(
@@ -132,13 +117,12 @@ class GenericExecutor(base_executor.BaseExecutor):
     result.eval_model_dir = eval_model_dir
     result.model_run_dir = model_run_dir
     result.schema_file = result.schema_path
-    result.base_model = base_model
     result.hyperparameters = hyperparameters_config
     return result
 
-  def Do(self, input_dict: Dict[Text, List[types.Artifact]],
-         output_dict: Dict[Text, List[types.Artifact]],
-         exec_properties: Dict[Text, Any]) -> None:
+  def Do(self, input_dict: Dict[str, List[types.Artifact]],
+         output_dict: Dict[str, List[types.Artifact]],
+         exec_properties: Dict[str, Any]) -> None:
     """Uses a user-supplied run_fn to train a TensorFlow model locally.
 
     The Trainer Executor invokes a run_fn callback function provided by
@@ -162,6 +146,14 @@ class GenericExecutor(base_executor.BaseExecutor):
         - eval_args: JSON string of trainer_pb2.EvalArgs instance, providing
           args for eval.
         - module_file: Python module file containing UDF model definition.
+          Exactly one of `module_file`, `module_path` and `run_fn` should
+          be passed.
+        - module_path: Python module path containing UDF model definition.
+          Exactly one of `module_file`, `module_path` and `run_fn` should
+          be passed.
+        - run_fn: Python module path to the run function.
+          Exactly one of `module_file`, `module_path` and `run_fn` should
+          be passed.
         - warm_starting: Whether or not we need to do warm starting.
         - warm_start_from: Optional. If warm_starting is True, this is the
           directory to find previous model to warm start on.
@@ -172,8 +164,8 @@ class GenericExecutor(base_executor.BaseExecutor):
       None
 
     Raises:
-      ValueError: When neither or both of 'module_file' and 'run_fn'
-        are present in 'exec_properties'.
+      ValueError: When not exactly one of `module_file`, `module_path` and
+        `run_fn` are present in 'exec_properties'.
       RuntimeError: If run_fn failed to generate model in desired location.
     """
     self._log_startup(input_dict, output_dict, exec_properties)
@@ -207,9 +199,9 @@ class Executor(GenericExecutor):
   tf.estimator.train_and_evaluate API to train locally.
   """
 
-  def Do(self, input_dict: Dict[Text, List[types.Artifact]],
-         output_dict: Dict[Text, List[types.Artifact]],
-         exec_properties: Dict[Text, Any]) -> None:
+  def Do(self, input_dict: Dict[str, List[types.Artifact]],
+         output_dict: Dict[str, List[types.Artifact]],
+         exec_properties: Dict[str, Any]) -> None:
     """Uses a user-supplied tf.estimator to train a TensorFlow model locally.
 
     The Trainer Executor invokes a training_fn callback function provided by
@@ -232,6 +224,14 @@ class Executor(GenericExecutor):
         - eval_args: JSON string of trainer_pb2.EvalArgs instance, providing
           args for eval.
         - module_file: Python module file containing UDF model definition.
+          Exactly one of `module_file`, `module_path` and `trainer_fn` should
+          be passed.
+        - module_path: Python module path containing UDF model definition.
+          Exactly one of `module_file`, `module_path` and `trainer_fn` should
+          be passed.
+        - trainer_fn: Python module path to the trainer function.
+          Exactly one of `module_file`, `module_path` and `trainer_fn` should
+          be passed.
         - warm_starting: Whether or not we need to do warm starting.
         - warm_start_from: Optional. If warm_starting is True, this is the
           directory to find previous model to warm start on.
@@ -242,8 +242,8 @@ class Executor(GenericExecutor):
       None
 
     Raises:
-      ValueError: When neither or both of 'module_file' and 'trainer_fn'
-        are present in 'exec_properties'.
+      ValueError: When not exactly one of `module_file`, `module_path` and
+        `trainer_fn` are present in `exec_properties`.
     """
     self._log_startup(input_dict, output_dict, exec_properties)
 

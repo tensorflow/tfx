@@ -13,10 +13,14 @@
 # limitations under the License.
 """Builder for Kubeflow pipelines StepSpec proto."""
 
-from typing import Any, Dict, List, Optional, Text, Tuple
+import itertools
+from typing import Any, Dict, List, Optional, Tuple
 
+from absl import logging
+from kfp.pipeline_spec import pipeline_spec_pb2 as pipeline_pb2
 from tfx import components
 from tfx.components.evaluator import constants
+from tfx.dsl.compiler import compiler_utils as tfx_compiler_utils
 from tfx.dsl.component.experimental import executor_specs
 from tfx.dsl.component.experimental import placeholders
 from tfx.dsl.components.base import base_component
@@ -24,14 +28,17 @@ from tfx.dsl.components.base import base_node
 from tfx.dsl.components.base import executor_spec
 from tfx.dsl.components.common import importer
 from tfx.dsl.components.common import resolver
-from tfx.dsl.experimental import latest_artifacts_resolver
-from tfx.dsl.experimental import latest_blessed_model_resolver
+from tfx.dsl.experimental.conditionals import conditional
+from tfx.dsl.input_resolution.strategies import latest_artifact_strategy
+from tfx.dsl.input_resolution.strategies import latest_blessed_model_strategy
 from tfx.orchestration import data_types
 from tfx.orchestration.kubeflow.v2 import compiler_utils
-from tfx.orchestration.kubeflow.v2.proto import pipeline_pb2
+from tfx.orchestration.kubeflow.v2 import decorators
+from tfx.orchestration.kubeflow.v2 import parameter_utils
 from tfx.types import artifact_utils
-from tfx.types import channel
 from tfx.types import standard_artifacts
+from tfx.types.channel import Channel
+from tfx.utils import deprecation_utils
 
 from ml_metadata.proto import metadata_store_pb2
 
@@ -59,8 +66,8 @@ _DRIVER_COMMANDS = (
 
 def _resolve_command_line(
     container_spec: executor_specs.TemplatedExecutorContainerSpec,
-    exec_properties: Dict[Text, Any],
-) -> List[Text]:
+    exec_properties: Dict[str, Any],
+) -> List[str]:
   """Resolves placeholders in the command line of a container.
 
   Args:
@@ -76,7 +83,7 @@ def _resolve_command_line(
   """
 
   def expand_command_line_arg(
-      cmd_arg: placeholders.CommandlineArgumentType) -> Text:
+      cmd_arg: placeholders.CommandlineArgumentType) -> str:
     """Resolves a single argument."""
     if isinstance(cmd_arg, str):
       return cmd_arg
@@ -92,7 +99,7 @@ def _resolve_command_line(
     elif isinstance(cmd_arg, placeholders.ConcatPlaceholder):
       resolved_items = [expand_command_line_arg(item) for item in cmd_arg.items]
       for item in resolved_items:
-        if not isinstance(item, (str, Text)):
+        if not isinstance(item, str):
           raise TypeError('Expanded item "{}" has incorrect type "{}"'.format(
               item, type(item)))
       return ''.join(resolved_items)
@@ -105,7 +112,7 @@ def _resolve_command_line(
   resolved_command_line = []
   for cmd_arg in (container_spec.command or []):
     resolved_cmd_arg = expand_command_line_arg(cmd_arg)
-    if not isinstance(resolved_cmd_arg, (str, Text)):
+    if not isinstance(resolved_cmd_arg, str):
       raise TypeError(
           'Resolved argument "{}" (type="{}") is not a string.'.format(
               resolved_cmd_arg, type(resolved_cmd_arg)))
@@ -114,7 +121,7 @@ def _resolve_command_line(
   return resolved_command_line
 
 
-class StepBuilder(object):
+class StepBuilder:
   """Kubeflow pipelines task builder.
 
   Constructs a pipeline task spec based on the TFX node information. Meanwhile,
@@ -124,13 +131,15 @@ class StepBuilder(object):
   def __init__(self,
                node: base_node.BaseNode,
                deployment_config: pipeline_pb2.PipelineDeploymentConfig,
-               image: Optional[Text] = None,
-               image_cmds: Optional[List[Text]] = None,
-               beam_pipeline_args: Optional[List[Text]] = None,
+               component_defs: Dict[str, pipeline_pb2.ComponentSpec],
+               image: Optional[str] = None,
+               image_cmds: Optional[List[str]] = None,
+               beam_pipeline_args: Optional[List[str]] = None,
                enable_cache: bool = False,
                pipeline_info: Optional[data_types.PipelineInfo] = None,
-               channel_redirect_map: Optional[Dict[Tuple[Text, Text],
-                                                   Text]] = None):
+               channel_redirect_map: Optional[Dict[Tuple[str, str],
+                                                   str]] = None,
+               is_exit_handler: bool = False):
     """Creates a StepBuilder object.
 
     A StepBuilder takes in a TFX node object (usually it's a component/resolver/
@@ -143,6 +152,8 @@ class StepBuilder(object):
         policies, including: 1) latest blessed model, and 2) latest model
           artifact.
       deployment_config: The deployment config in Kubeflow IR to be populated.
+      component_defs: Dict mapping from node id to compiled ComponetSpec proto.
+        Items in the dict will get updated as the pipeline is built.
       image: TFX image used in the underlying container spec. Required if node
         is a TFX component.
       image_cmds: Optional. If not specified the default `ENTRYPOINT` defined
@@ -163,6 +174,7 @@ class StepBuilder(object):
         producer component id, output key). This is needed for cases where one
         DSL node is splitted into multiple tasks in pipeline API proto. For
         example, latest blessed model resolver.
+      is_exit_handler: Marking whether the task is for exit handler.
 
     Raises:
       ValueError: On the following two cases:
@@ -174,9 +186,11 @@ class StepBuilder(object):
     self._name = node.id
     self._node = node
     self._deployment_config = deployment_config
-    self._inputs = node.inputs.get_all()  # type: Dict[Text, channel.Channel]
-    self._outputs = node.outputs.get_all()  # type: Dict[Text, channel.Channel]
+    self._component_defs = component_defs
+    self._inputs = node.inputs
+    self._outputs = node.outputs
     self._enable_cache = enable_cache
+    self._is_exit_handler = is_exit_handler
     if channel_redirect_map is None:
       self._channel_redirect_map = {}
     else:
@@ -193,36 +207,118 @@ class StepBuilder(object):
     self._tfx_image = image
     self._image_cmds = image_cmds
     self._beam_pipeline_args = beam_pipeline_args or []
+    if isinstance(self._node.executor_spec, executor_spec.BeamExecutorSpec):
+      self._beam_pipeline_args = self._node.executor_spec.beam_pipeline_args
     self._pipeline_info = pipeline_info
 
-  def build(self) -> List[pipeline_pb2.PipelineTaskSpec]:
-    """Builds a pipeline StepSpec given the node information.
+  def build(self) -> Dict[str, pipeline_pb2.PipelineTaskSpec]:
+    """Builds a pipeline PipelineTaskSpec given the node information.
+
+    Each TFX node maps one task spec and usually one component definition and
+    one executor spec. (with resolver node as an exception. See explaination
+    in the Returns section).
+
+     - Component definition includes interfaces of a node. For example, name
+    and type information of inputs/outputs/execution_properties.
+     - Task spec contains the topologies around the node. For example, the
+    dependency nodes, where to read the inputs and exec_properties (from another
+    task, from parent component or from a constant value). The task spec has the
+    name of the component definition it references. It is possible that a task
+    spec references an existing component definition that's built previously.
+     - Executor spec encodes how the node is actually executed. For example,
+    args to start a container, or query strings for resolvers. All executor spec
+    will be packed into deployment config proto.
+
+    During the build, all three parts mentioned above will be updated.
 
     Returns:
-      A list of PipelineTaskSpec messages corresponding to the node. For most of
-      the cases, the list contains a single element. The only exception is when
-      compiling latest blessed model resolver. One DSL node will be
-      split to two resolver specs to reflect the two-phased query execution.
+      A Dict mapping from node id to PipelineTaskSpec messages corresponding to
+      the node. For most of the cases, the dict contains a single element.
+      The only exception is when compiling latest blessed model resolver.
+      One DSL node will be split to two resolver specs to reflect the
+      two-phased query execution.
+
     Raises:
       NotImplementedError: When the node being built is an InfraValidator.
     """
-    task_spec = pipeline_pb2.PipelineTaskSpec()
-    task_spec.task_info.CopyFrom(pipeline_pb2.PipelineTaskInfo(name=self._name))
-    executor_label = _EXECUTOR_LABEL_PATTERN.format(self._name)
-    task_spec.executor_label = executor_label
-    executor = pipeline_pb2.PipelineDeploymentConfig.ExecutorSpec()
-
     # 1. Resolver tasks won't have input artifacts in the API proto. First we
     #    specialcase two resolver types we support.
     if isinstance(self._node, resolver.Resolver):
       return self._build_resolver_spec()
 
-    # 2. Build the node spec.
-    # TODO(b/157641727): Tests comparing dictionaries are brittle when comparing
-    # lists as ordering matters.
-    dependency_ids = [node.id for node in self._node.upstream_nodes]
-    # Specify the inputs of the task.
-    for name, input_channel in self._inputs.items():
+    # 2. Build component spec.
+    component_def = pipeline_pb2.ComponentSpec()
+    task_spec = pipeline_pb2.PipelineTaskSpec()
+    executor_label = _EXECUTOR_LABEL_PATTERN.format(self._name)
+    component_def.executor_label = executor_label
+
+    # Conditionals
+    implicit_input_channels = {}
+    implicit_upstream_node_ids = set()
+    predicates = conditional.get_predicates(self._node)
+    if predicates:
+      implicit_keys_map = {
+          tfx_compiler_utils.implicit_channel_key(channel): key
+          for key, channel in self._inputs.items()
+      }
+      cel_predicates = []
+      for predicate in predicates:
+        for channel in predicate.dependent_channels():
+          implicit_key = tfx_compiler_utils.implicit_channel_key(channel)
+          if implicit_key not in implicit_keys_map:
+            # Store this channel and add it to the node inputs later.
+            implicit_input_channels[implicit_key] = channel
+            # Store the producer node and add it to the upstream nodes later.
+            implicit_upstream_node_ids.add(channel.producer_component_id)
+        placeholder_pb = predicate.encode_with_keys(
+            tfx_compiler_utils.build_channel_to_key_fn(implicit_keys_map))
+        cel_predicates.append(compiler_utils.placeholder_to_cel(placeholder_pb))
+      task_spec.trigger_policy.condition = ' && '.join(cel_predicates)
+
+    # Inputs
+    for name, input_channel in itertools.chain(self._inputs.items(),
+                                               implicit_input_channels.items()):
+      input_artifact_spec = compiler_utils.build_input_artifact_spec(
+          input_channel)
+      component_def.input_definitions.artifacts[name].CopyFrom(
+          input_artifact_spec)
+    # Outputs
+    for name, output_channel in self._outputs.items():
+      # Currently, we're working under the assumption that for tasks
+      # (those generated by BaseComponent), each channel contains a single
+      # artifact.
+      output_artifact_spec = compiler_utils.build_output_artifact_spec(
+          output_channel)
+      component_def.output_definitions.artifacts[name].CopyFrom(
+          output_artifact_spec)
+    # Exec properties
+    for name, value in self._exec_properties.items():
+      # value can be None for unprovided optional exec properties.
+      if value is None:
+        continue
+      parameter_type_spec = compiler_utils.build_parameter_type_spec(value)
+      component_def.input_definitions.parameters[name].CopyFrom(
+          parameter_type_spec)
+    if self._name not in self._component_defs:
+      self._component_defs[self._name] = component_def
+    else:
+      raise ValueError(f'Found duplicate component ids {self._name} while '
+                       'building component definitions.')
+
+    # 3. Build task spec.
+    task_spec.task_info.name = self._name
+    dependency_ids = sorted({node.id for node in self._node.upstream_nodes}
+                            | implicit_upstream_node_ids)
+
+    for name, input_channel in itertools.chain(self._inputs.items(),
+                                               implicit_input_channels.items()):
+      # TODO(b/169573945): Add support for vertex if requested.
+      if not isinstance(input_channel, Channel):
+        raise TypeError('Only single Channel is supported.')
+      if self._is_exit_handler:
+        logging.error('exit handler component doesn\'t take input artifact, '
+                      'the input will be ignored.')
+        continue
       # If the redirecting map is provided (usually for latest blessed model
       # resolver, we'll need to redirect accordingly. Also, the upstream node
       # list will be updated and replaced by the new producer id.
@@ -236,26 +332,47 @@ class StepBuilder(object):
                                                    (producer_id, output_key))[0]
       output_key = self._channel_redirect_map.get((producer_id, output_key),
                                                   (producer_id, output_key))[1]
-
-      input_artifact_spec = pipeline_pb2.TaskInputsSpec.InputArtifactSpec(
-          producer_task=producer_id, output_artifact_key=output_key)
+      input_artifact_spec = pipeline_pb2.TaskInputsSpec.InputArtifactSpec()
+      input_artifact_spec.task_output_artifact.producer_task = producer_id
+      input_artifact_spec.task_output_artifact.output_artifact_key = output_key
       task_spec.inputs.artifacts[name].CopyFrom(input_artifact_spec)
+    for name, value in self._exec_properties.items():
+      if value is None:
+        continue
+      if isinstance(value, data_types.RuntimeParameter):
+        parameter_utils.attach_parameter(value)
+        task_spec.inputs.parameters[name].component_input_parameter = value.name
+      elif isinstance(value, decorators.FinalStatusStr):
+        if not self._is_exit_handler:
+          logging.error('FinalStatusStr type is only allowed to use in exit'
+                        ' handler. The parameter is ignored.')
+        else:
+          task_spec.inputs.parameters[name].task_final_status.producer_task = (
+              compiler_utils.TFX_DAG_NAME)
+      else:
+        task_spec.inputs.parameters[name].CopyFrom(
+            pipeline_pb2.TaskInputsSpec.InputParameterSpec(
+                runtime_value=compiler_utils.value_converter(value)))
 
-    # Specify the outputs of the task.
-    for name, output_channel in self._outputs.items():
-      # Currently, we're working under the assumption that for tasks
-      # (those generated by BaseComponent), each channel contains a single
-      # artifact.
-      output_artifact_spec = compiler_utils.build_output_artifact_spec(
-          output_channel)
-      task_spec.outputs.artifacts[name].CopyFrom(output_artifact_spec)
+    task_spec.component_ref.name = self._name
 
-    # Specify the input parameters of the task.
-    for k, v in compiler_utils.build_input_parameter_spec(
-        self._exec_properties).items():
-      task_spec.inputs.parameters[k].CopyFrom(v)
+    dependency_ids = sorted(dependency_ids)
+    for dependency in dependency_ids:
+      task_spec.dependent_tasks.append(dependency)
 
-    # 3. Build the executor body for other common tasks.
+    if self._enable_cache:
+      task_spec.caching_options.CopyFrom(
+          pipeline_pb2.PipelineTaskSpec.CachingOptions(
+              enable_cache=self._enable_cache))
+
+    if self._is_exit_handler:
+      task_spec.trigger_policy.strategy = (
+          pipeline_pb2.PipelineTaskSpec.TriggerPolicy
+          .ALL_UPSTREAM_TASKS_COMPLETED)
+      task_spec.dependent_tasks.append(compiler_utils.TFX_DAG_NAME)
+
+    # 4. Build the executor body for other common tasks.
+    executor = pipeline_pb2.PipelineDeploymentConfig.ExecutorSpec()
     if isinstance(self._node, importer.Importer):
       executor.importer.CopyFrom(self._build_importer_spec())
     elif isinstance(self._node, components.FileBasedExampleGen):
@@ -265,19 +382,9 @@ class StepBuilder(object):
           'The componet type "{}" is not supported'.format(type(self._node)))
     else:
       executor.container.CopyFrom(self._build_container_spec())
-
-    dependency_ids = sorted(dependency_ids)
-    for dependency in dependency_ids:
-      task_spec.dependent_tasks.append(dependency)
-
-    task_spec.caching_options.CopyFrom(
-        pipeline_pb2.PipelineTaskSpec.CachingOptions(
-            enable_cache=self._enable_cache))
-
-    # 4. Attach the built executor spec to the deployment config.
     self._deployment_config.executors[executor_label].CopyFrom(executor)
 
-    return [task_spec]
+    return {self._name: task_spec}
 
   def _build_container_spec(self) -> ContainerSpec:
     """Builds the container spec for a component.
@@ -377,15 +484,31 @@ class StepBuilder(object):
     """Builds ImporterSpec."""
     assert isinstance(self._node, importer.Importer)
     output_channel = self._node.outputs[importer.IMPORT_RESULT_KEY]
-    result = ImporterSpec(
-        properties=compiler_utils.convert_from_tfx_properties(
-            output_channel.additional_properties),
-        custom_properties=compiler_utils.convert_from_tfx_properties(
-            output_channel.additional_custom_properties))
+    result = ImporterSpec()
+
+    # Importer's output channel contains one artifact instance with
+    # additional properties.
+    artifact_instance = list(output_channel.get())[0]
+    struct_proto = compiler_utils.pack_artifact_properties(artifact_instance)
+    if struct_proto:
+      result.metadata.CopyFrom(struct_proto)
+
     result.reimport = bool(self._exec_properties[importer.REIMPORT_OPTION_KEY])
-    result.artifact_uri.CopyFrom(
-        compiler_utils.value_converter(
-            self._exec_properties[importer.SOURCE_URI_KEY]))
+
+    # 'artifact_uri' property of Importer node should be string, but the type
+    # is not checked (except the pytype hint) in Importer node.
+    # It is possible to escape the type constraint and pass a RuntimeParameter.
+    # If that happens, we need to overwrite the runtime parameter name to
+    # 'artifact_uri', instead of using the name of user-provided runtime
+    # parameter.
+    if isinstance(self._exec_properties[importer.SOURCE_URI_KEY],
+                  data_types.RuntimeParameter):
+      result.artifact_uri.runtime_parameter = importer.SOURCE_URI_KEY
+    else:
+      result.artifact_uri.CopyFrom(
+          compiler_utils.value_converter(
+              self._exec_properties[importer.SOURCE_URI_KEY]))
+
     single_artifact = artifact_utils.get_single_instance(
         list(output_channel.get()))
     result.type_schema.CopyFrom(
@@ -396,7 +519,7 @@ class StepBuilder(object):
     return result
 
   def _build_latest_artifact_resolver(
-      self) -> List[pipeline_pb2.PipelineTaskSpec]:
+      self) -> Dict[str, pipeline_pb2.PipelineTaskSpec]:
     """Builds a resolver spec for a latest artifact resolver.
 
     Returns:
@@ -407,12 +530,6 @@ class StepBuilder(object):
       ValueError: when desired_num_of_artifacts != 1. 1 is the only supported
         value currently.
     """
-
-    task_spec = pipeline_pb2.PipelineTaskSpec()
-    task_spec.task_info.CopyFrom(pipeline_pb2.PipelineTaskInfo(name=self._name))
-    executor_label = _EXECUTOR_LABEL_PATTERN.format(self._name)
-    task_spec.executor_label = executor_label
-
     # Fetch the init kwargs for the resolver.
     resolver_config = self._exec_properties[resolver.RESOLVER_CONFIG]
     if (isinstance(resolver_config, dict) and
@@ -421,27 +538,41 @@ class StepBuilder(object):
                        ' Got {}'.format(
                            resolver_config.get('desired_num_of_artifacts')))
 
-    # Specify the outputs of the task.
+    component_def = pipeline_pb2.ComponentSpec()
+    executor_label = _EXECUTOR_LABEL_PATTERN.format(self._name)
+    component_def.executor_label = executor_label
+    task_spec = pipeline_pb2.PipelineTaskSpec()
+    task_spec.task_info.name = self._name
+
     for name, output_channel in self._outputs.items():
-      # Currently, we're working under the assumption that for tasks
-      # (those generated by BaseComponent), each channel contains a single
-      # artifact.
       output_artifact_spec = compiler_utils.build_output_artifact_spec(
           output_channel)
-      task_spec.outputs.artifacts[name].CopyFrom(output_artifact_spec)
-
-    # Specify the input parameters of the task.
-    for k, v in compiler_utils.build_input_parameter_spec(
-        self._exec_properties).items():
-      task_spec.inputs.parameters[k].CopyFrom(v)
+      component_def.output_definitions.artifacts[name].CopyFrom(
+          output_artifact_spec)
+    for name, value in self._exec_properties.items():
+      if value is None:
+        continue
+      parameter_type_spec = compiler_utils.build_parameter_type_spec(value)
+      component_def.input_definitions.parameters[name].CopyFrom(
+          parameter_type_spec)
+      if isinstance(value, data_types.RuntimeParameter):
+        parameter_utils.attach_parameter(value)
+        task_spec.inputs.parameters[name].component_input_parameter = value.name
+      else:
+        task_spec.inputs.parameters[name].CopyFrom(
+            pipeline_pb2.TaskInputsSpec.InputParameterSpec(
+                runtime_value=compiler_utils.value_converter(value)))
+    self._component_defs[self._name] = component_def
+    task_spec.component_ref.name = self._name
 
     artifact_queries = {}
     # Buid the artifact query for each channel in the input dict.
     for name, c in self._inputs.items():
-      query_filter = ("artifact_type='{type}' and state={state}").format(
+      query_filter = ('schema_title="{type}" AND state={state}').format(
           type=compiler_utils.get_artifact_title(c.type),
           state=metadata_store_pb2.Artifact.State.Name(
               metadata_store_pb2.Artifact.LIVE))
+      # Resolver's output dict has the same set of keys as its input dict.
       artifact_queries[name] = ResolverSpec.ArtifactQuerySpec(
           filter=query_filter)
 
@@ -449,28 +580,33 @@ class StepBuilder(object):
     executor = pipeline_pb2.PipelineDeploymentConfig.ExecutorSpec()
     executor.resolver.CopyFrom(resolver_spec)
     self._deployment_config.executors[executor_label].CopyFrom(executor)
-    return [task_spec]
+    return {self._name: task_spec}
 
   def _build_resolver_for_latest_model_blessing(
       self, model_blessing_channel_key: str) -> pipeline_pb2.PipelineTaskSpec:
     """Builds the resolver spec for latest valid ModelBlessing artifact."""
-    # 1. Build the task info.
-    result = pipeline_pb2.PipelineTaskSpec()
     name = '{}{}'.format(self._name, _MODEL_BLESSING_RESOLVER_SUFFIX)
-    result.task_info.CopyFrom(pipeline_pb2.PipelineTaskInfo(name=name))
+
+    # Component def.
+    component_def = pipeline_pb2.ComponentSpec()
     executor_label = _EXECUTOR_LABEL_PATTERN.format(name)
-    result.executor_label = executor_label
+    component_def.executor_label = executor_label
+    output_artifact_spec = compiler_utils.build_output_artifact_spec(
+        self._outputs[model_blessing_channel_key])
+    component_def.output_definitions.artifacts[
+        model_blessing_channel_key].CopyFrom(output_artifact_spec)
+    self._component_defs[name] = component_def
 
-    # 2. Specify the outputs of the task.
-    result.outputs.artifacts[model_blessing_channel_key].CopyFrom(
-        compiler_utils.build_output_artifact_spec(
-            self._outputs[model_blessing_channel_key]))
+    # Task spec.
+    task_spec = pipeline_pb2.PipelineTaskSpec()
+    task_spec.task_info.name = name
+    task_spec.component_ref.name = name
 
-    # 3. Build the resolver executor spec for latest valid ModelBlessing.
+    # Builds the resolver executor spec for latest valid ModelBlessing.
     executor = pipeline_pb2.PipelineDeploymentConfig.ExecutorSpec()
     artifact_queries = {}
-    query_filter = ("artifact_type='{type}' and state={state}"
-                    " and custom_properties['{key}']='{value}'").format(
+    query_filter = ('schema_title="{type}" AND state={state}'
+                    ' AND metadata.{key}.number_value={value}').format(
                         type=compiler_utils.get_artifact_title(
                             standard_artifacts.ModelBlessing),
                         state=metadata_store_pb2.Artifact.State.Name(
@@ -482,42 +618,48 @@ class StepBuilder(object):
             filter=query_filter)
     executor.resolver.CopyFrom(
         ResolverSpec(output_artifact_queries=artifact_queries))
-
     self._deployment_config.executors[executor_label].CopyFrom(executor)
-    return result
+
+    return task_spec
 
   def _build_resolver_for_latest_blessed_model(
       self, model_channel_key: str, model_blessing_resolver_name: str,
       model_blessing_channel_key: str) -> pipeline_pb2.PipelineTaskSpec:
     """Builds the resolver spec for latest blessed Model artifact."""
-    # 1. Build the task info.
-    result = pipeline_pb2.PipelineTaskSpec()
     name = '{}{}'.format(self._name, _MODEL_RESOLVER_SUFFIX)
-    result.task_info.CopyFrom(pipeline_pb2.PipelineTaskInfo(name=name))
-    executor_label = _EXECUTOR_LABEL_PATTERN.format(name)
-    result.executor_label = executor_label
 
-    # 2. Specify the input of the task. The output from model_blessing_resolver
-    # will be used as the input.
-    input_artifact_spec = pipeline_pb2.TaskInputsSpec.InputArtifactSpec(
-        producer_task=model_blessing_resolver_name,
-        output_artifact_key=model_blessing_channel_key)
-    result.inputs.artifacts[_MODEL_RESOLVER_INPUT_KEY].CopyFrom(
+    # Component def.
+    component_def = pipeline_pb2.ComponentSpec()
+    executor_label = _EXECUTOR_LABEL_PATTERN.format(name)
+    component_def.executor_label = executor_label
+    input_artifact_spec = compiler_utils.build_input_artifact_spec(
+        self._outputs[model_blessing_channel_key])
+    component_def.input_definitions.artifacts[
+        _MODEL_RESOLVER_INPUT_KEY].CopyFrom(input_artifact_spec)
+    output_artifact_spec = compiler_utils.build_output_artifact_spec(
+        self._outputs[model_channel_key])
+    component_def.output_definitions.artifacts[model_channel_key].CopyFrom(
+        output_artifact_spec)
+    self._component_defs[name] = component_def
+
+    # Task spec.
+    task_spec = pipeline_pb2.PipelineTaskSpec()
+    task_spec.task_info.name = name
+    task_spec.component_ref.name = name
+    input_artifact_spec = pipeline_pb2.TaskInputsSpec.InputArtifactSpec()
+    input_artifact_spec.task_output_artifact.producer_task = model_blessing_resolver_name
+    input_artifact_spec.task_output_artifact.output_artifact_key = model_blessing_channel_key
+    task_spec.inputs.artifacts[_MODEL_RESOLVER_INPUT_KEY].CopyFrom(
         input_artifact_spec)
 
-    # 3. Specify the outputs of the task. model_resolver has one output for
-    # the latest blessed model.
-    result.outputs.artifacts[model_channel_key].CopyFrom(
-        compiler_utils.build_output_artifact_spec(
-            self._outputs[model_channel_key]))
-
-    # 4. Build the resolver executor spec for latest blessed Model.
+    # Resolver executor spec.
     executor = pipeline_pb2.PipelineDeploymentConfig.ExecutorSpec()
     artifact_queries = {}
     query_filter = (
-        "artifact_type='{type}' and "
-        "state={state} and name={{$.inputs.artifacts['{input_key}']"
-        ".custom_properties['{property_key}']}}").format(
+        'schema_title="{type}" AND '
+        'state={state} AND '
+        'name="{{{{$.inputs.artifacts[\'{input_key}\']'
+        '.metadata[\'{property_key}\']}}}}"').format(
             type=compiler_utils.get_artifact_title(standard_artifacts.Model),
             state=metadata_store_pb2.Artifact.State.Name(
                 metadata_store_pb2.Artifact.LIVE),
@@ -529,10 +671,10 @@ class StepBuilder(object):
         ResolverSpec(output_artifact_queries=artifact_queries))
     self._deployment_config.executors[executor_label].CopyFrom(executor)
 
-    return result
+    return task_spec
 
   def _build_latest_blessed_model_resolver(
-      self) -> List[pipeline_pb2.PipelineTaskSpec]:
+      self) -> Dict[str, pipeline_pb2.PipelineTaskSpec]:
     """Builds two resolver specs to resolve the latest blessed model."""
     # The two phased resolution logic will be mapped to the following:
     # 1. A ResolverSpec to get the latest ModelBlessing artifact under the
@@ -580,9 +722,12 @@ class StepBuilder(object):
     self._channel_redirect_map[(self._node.id, model_blessing_channel_key)] = (
         model_blessing_resolver.task_info.name, model_blessing_channel_key)
 
-    return [model_blessing_resolver, model_resolver]
+    return {
+        model_blessing_resolver.task_info.name: model_blessing_resolver,
+        model_resolver.task_info.name: model_resolver
+    }
 
-  def _build_resolver_spec(self) -> List[pipeline_pb2.PipelineTaskSpec]:
+  def _build_resolver_spec(self) -> Dict[str, pipeline_pb2.PipelineTaskSpec]:
     """Validates and builds ResolverSpec for this node.
 
     Returns:
@@ -590,21 +735,18 @@ class StepBuilder(object):
       task(s).
     Raises:
       TypeError: When get unsupported resolver policy. Currently only support
-        LatestBlessedModelResolver and LatestArtifactsResolver.
+        LatestBlessedModelStrategy and LatestArtifactsStrategy.
     """
     assert isinstance(self._node, resolver.Resolver)
 
-    if (self._exec_properties[resolver.RESOLVER_STRATEGY_CLASS] !=
-        latest_blessed_model_resolver.LatestBlessedModelResolver and
-        self._exec_properties[resolver.RESOLVER_STRATEGY_CLASS] !=
-        latest_artifacts_resolver.LatestArtifactsResolver):
-      raise TypeError(
-          ('Unexpected resolver policy encountered. Currently '
-           'only support latest artifact and latest blessed model '
-           'resolver. Got: {}').format(
-               self._exec_properties[resolver.RESOLVER_STRATEGY_CLASS]))
-    if (self._exec_properties[resolver.RESOLVER_STRATEGY_CLASS] ==
-        latest_blessed_model_resolver.LatestBlessedModelResolver):
+    strategy_cls = self._exec_properties[resolver.RESOLVER_STRATEGY_CLASS]
+    strategy_cls = deprecation_utils.get_first_nondeprecated_class(strategy_cls)
+    if strategy_cls == latest_blessed_model_strategy.LatestBlessedModelStrategy:
       return self._build_latest_blessed_model_resolver()
-    # Otherwise, this will be a LatestArtifactsResolver.
-    return self._build_latest_artifact_resolver()
+    elif strategy_cls == latest_artifact_strategy.LatestArtifactStrategy:
+      return self._build_latest_artifact_resolver()
+    else:
+      raise TypeError(
+          'Unexpected resolver policy encountered. Currently '
+          'only support LatestArtifactStrategy and LatestBlessedModelStrategy '
+          f'but got: {strategy_cls}.')

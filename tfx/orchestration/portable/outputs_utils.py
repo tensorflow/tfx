@@ -16,7 +16,7 @@
 import collections
 import datetime
 import os
-from typing import Dict, List, Optional, Text
+from typing import Dict, List, Optional
 
 from absl import logging
 from tfx import types
@@ -37,7 +37,7 @@ _EXECUTOR_OUTPUT_FILE = 'executor_output.pb'
 _VALUE_ARTIFACT_FILE_NAME = 'value'
 
 
-def make_output_dirs(output_dict: Dict[Text, List[types.Artifact]]) -> None:
+def make_output_dirs(output_dict: Dict[str, List[types.Artifact]]) -> None:
   """Make dirs for output artifacts' URI."""
   for _, artifact_list in output_dict.items():
     for artifact in artifact_list:
@@ -54,7 +54,7 @@ def make_output_dirs(output_dict: Dict[Text, List[types.Artifact]]) -> None:
         fileio.makedirs(artifact.uri)
 
 
-def remove_output_dirs(output_dict: Dict[Text, List[types.Artifact]]) -> None:
+def remove_output_dirs(output_dict: Dict[str, List[types.Artifact]]) -> None:
   """Remove dirs of output artifacts' URI."""
   for _, artifact_list in output_dict.items():
     for artifact in artifact_list:
@@ -64,7 +64,16 @@ def remove_output_dirs(output_dict: Dict[Text, List[types.Artifact]]) -> None:
         fileio.remove(artifact.uri)
 
 
-def remove_stateful_working_dir(stateful_working_dir: Text) -> None:
+def clear_output_dirs(output_dict: Dict[str, List[types.Artifact]]) -> None:
+  """Clear dirs of output artifacts' URI."""
+  for _, artifact_list in output_dict.items():
+    for artifact in artifact_list:
+      if fileio.isdir(artifact.uri) and fileio.listdir(artifact.uri):
+        fileio.rmtree(artifact.uri)
+        fileio.mkdir(artifact.uri)
+
+
+def remove_stateful_working_dir(stateful_working_dir: str) -> None:
   """Remove stateful_working_dir."""
   # Clean up stateful working dir
   # Note that:
@@ -126,7 +135,7 @@ class OutputsResolver:
                                   pipeline_node.node_info.id)
 
   def generate_output_artifacts(
-      self, execution_id: int) -> Dict[Text, List[types.Artifact]]:
+      self, execution_id: int) -> Dict[str, List[types.Artifact]]:
     """Generates output artifacts given execution_id."""
     output_artifacts = collections.defaultdict(list)
     for key, output_spec in self._pipeline_node.outputs.outputs.items():
@@ -153,22 +162,22 @@ class OutputsResolver:
 
     return output_artifacts
 
-  def get_executor_output_uri(self, execution_id: int) -> Text:
+  def get_executor_output_uri(self, execution_id: int) -> str:
     """Generates executor output uri given execution_id."""
     execution_dir = os.path.join(self._node_dir, _SYSTEM, _EXECUTOR_EXECUTION,
                                  str(execution_id))
     fileio.makedirs(execution_dir)
     return os.path.join(execution_dir, _EXECUTOR_OUTPUT_FILE)
 
-  def get_driver_output_uri(self) -> Text:
+  def get_driver_output_uri(self) -> str:
     driver_output_dir = os.path.join(
         self._node_dir, _SYSTEM, _DRIVER_EXECUTION,
         str(int(datetime.datetime.now().timestamp() * 1000000)))
     fileio.makedirs(driver_output_dir)
     return os.path.join(driver_output_dir, _DRIVER_OUTPUT_FILE)
 
-  def get_stateful_working_directory(
-      self, execution_id: Optional[int] = None) -> Text:
+  def get_stateful_working_directory(self,
+                                     execution_id: Optional[int] = None) -> str:
     """Generates stateful working directory given (optional) execution id.
 
     Args:
@@ -215,7 +224,7 @@ class OutputsResolver:
       raise
     return stateful_working_dir
 
-  def make_tmp_dir(self, execution_id: int) -> Text:
+  def make_tmp_dir(self, execution_id: int) -> str:
     """Generates a temporary directory."""
     result = os.path.join(self._node_dir, _SYSTEM, _EXECUTOR_EXECUTION,
                           str(execution_id), '.temp', '')
@@ -224,7 +233,7 @@ class OutputsResolver:
 
 
 def tag_output_artifacts_with_version(
-    output_artifacts: Optional[Dict[Text, List[types.Artifact]]] = None):
+    output_artifacts: Optional[Dict[str, List[types.Artifact]]] = None):
   """Tag output artifacts with the current TFX version."""
   if not output_artifacts:
     return
@@ -248,3 +257,14 @@ def tag_executor_output_with_version(
             artifact_utils
             .ARTIFACT_TFX_VERSION_CUSTOM_PROPERTY_KEY].string_value = (
                 version.__version__)
+
+
+def populate_output_artifact(
+    executor_output: execution_result_pb2.ExecutorOutput,
+    output_dict: Dict[str, List[types.Artifact]]):
+  """Populate output_dict to executor_output."""
+  for key, artifact_list in output_dict.items():
+    artifacts = execution_result_pb2.ExecutorOutput.ArtifactList()
+    for artifact in artifact_list:
+      artifacts.artifacts.append(artifact.mlmd_artifact)
+    executor_output.output_artifacts[key].CopyFrom(artifacts)

@@ -16,7 +16,6 @@
 import abc
 from typing import Optional
 
-import six
 from tfx.orchestration.portable import data_types
 from tfx.proto.orchestration import execution_result_pb2
 from tfx.utils import abc_utils
@@ -24,7 +23,7 @@ from tfx.utils import abc_utils
 from google.protobuf import message
 
 
-class BaseExecutorOperator(six.with_metaclass(abc.ABCMeta, object)):
+class BaseExecutorOperator(abc.ABC):
   """The base class of all executor operators."""
 
   SUPPORTED_EXECUTOR_SPEC_TYPE = abc_utils.abstract_property()
@@ -51,6 +50,7 @@ class BaseExecutorOperator(six.with_metaclass(abc.ABCMeta, object)):
       raise RuntimeError('Platform spec not supported: %s' % platform_config)
     self._executor_spec = executor_spec
     self._platform_config = platform_config
+    self._execution_watcher_address = None
 
   @abc.abstractmethod
   def run_executor(
@@ -66,3 +66,17 @@ class BaseExecutorOperator(six.with_metaclass(abc.ABCMeta, object)):
       The output from executor.
     """
     pass
+
+  def with_execution_watcher(
+      self, execution_watcher_address: str) -> 'BaseExecutorOperator':
+    """Attatch an execution watcher to the executor operator.
+
+    Args:
+      execution_watcher_address: The address to an executor watcher gRPC service
+        which can be used to update execution properties.
+
+    Returns:
+      The executor operator itself.
+    """
+    self._execution_watcher_address = execution_watcher_address
+    return self

@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,7 +14,7 @@
 """Generic TFX PrestoExampleGen executor."""
 
 import datetime
-from typing import Any, Dict, Iterable, Text, Tuple
+from typing import Any, Dict, Iterable, Tuple
 
 import apache_beam as beam
 import prestodb
@@ -26,9 +25,8 @@ from tfx.proto import example_gen_pb2
 from tfx.utils import proto_utils
 
 
-@beam.typehints.with_input_types(Text)
-@beam.typehints.with_output_types(beam.typehints.Iterable[Tuple[Text, Text,
-                                                                Any]])
+@beam.typehints.with_input_types(str)
+@beam.typehints.with_output_types(beam.typehints.Iterable[Tuple[str, str, Any]])
 class _ReadPrestoDoFn(beam.DoFn):
   """Beam DoFn class that reads from Presto.
 
@@ -39,7 +37,7 @@ class _ReadPrestoDoFn(beam.DoFn):
   def __init__(self, client: prestodb.dbapi.Connection):
     self.cursor = client.cursor()
 
-  def process(self, query: Text) -> Iterable[Tuple[Text, Text, Any]]:
+  def process(self, query: str) -> Iterable[Tuple[str, str, Any]]:
     """Yields rows from query results.
 
     Args:
@@ -128,7 +126,7 @@ def _deserialize_auth_config(
 
 
 def _row_to_example(
-    instance: Iterable[Tuple[Text, Text, Any]]) -> tf.train.Example:
+    instance: Iterable[Tuple[str, str, Any]]) -> tf.train.Example:
   """Convert presto result row to tf example."""
   feature = {}
   for key, data_type, value in instance:
@@ -159,9 +157,8 @@ def _row_to_example(
 @beam.typehints.with_input_types(beam.Pipeline)
 @beam.typehints.with_output_types(tf.train.Example)
 def _PrestoToExample(  # pylint: disable=invalid-name
-    pipeline: beam.Pipeline,
-    exec_properties: Dict[Text, Any],
-    split_pattern: Text) -> beam.pvalue.PCollection:
+    pipeline: beam.Pipeline, exec_properties: Dict[str, Any],
+    split_pattern: str) -> beam.pvalue.PCollection:
   """Read from Presto and transform to TF examples.
 
   Args:

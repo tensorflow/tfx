@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,13 +13,9 @@
 # limitations under the License.
 """Tests for tfx.utils.io_utils."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import os
-# Standard Imports
-import mock
+from unittest import mock
+
 
 import tensorflow as tf
 from tfx.dsl.io import fileio
@@ -34,11 +29,11 @@ class IoUtilsTest(tf.test.TestCase):
   def setUp(self):
     self._base_dir = os.path.join(self.get_temp_dir(), 'base_dir')
     file_io.create_dir(self._base_dir)
-    super(IoUtilsTest, self).setUp()
+    super().setUp()
 
   def tearDown(self):
     file_io.delete_recursively(self._base_dir)
-    super(IoUtilsTest, self).tearDown()
+    super().tearDown()
 
   def testEnsureLocal(self):
     file_path = os.path.join(
@@ -48,8 +43,14 @@ class IoUtilsTest(tf.test.TestCase):
   @mock.patch.object(io_utils, 'copy_file')
   def testEnsureLocalFromGCS(self, mock_copy_file):
     file_path = 'gs://path/to/testdata/test_fn.py'
-    self.assertEqual('test_fn.py', io_utils.ensure_local(file_path))
-    mock_copy_file.assert_called_once_with(file_path, 'test_fn.py', True)
+    local_file_path = io_utils.ensure_local(file_path)
+    self.assertEndsWith(local_file_path, '/test_fn.py')
+    self.assertFalse(
+        any([
+            local_file_path.startswith(prefix)
+            for prefix in io_utils._REMOTE_FS_PREFIX
+        ]))
+    mock_copy_file.assert_called_once_with(file_path, local_file_path, True)
 
   def testCopyFile(self):
     file_path = os.path.join(self._base_dir, 'temp_file')

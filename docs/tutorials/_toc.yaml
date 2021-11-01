@@ -18,11 +18,19 @@ toc:
 - title: "Interactive tutorial (Estimator)"
   path: /tfx/tutorials/tfx/components
 
+- heading: "TFX on Google Cloud"
+- title: "Running on Vertex Pipelines"
+  path: /tfx/tutorials/tfx/gcp/vertex_pipelines_simple
+- title: "Read data from BigQuery"
+  path: /tfx/tutorials/tfx/gcp/vertex_pipelines_bq
+- title: "Vertex AI Training"
+  path: /tfx/tutorials/tfx/gcp/vertex_pipelines_vertex_training
+- title: "Cloud AI Platform Pipelines tutorial"
+  path: /tfx/tutorials/tfx/cloud-ai-platform-pipelines
+
 - heading: "TFX: Advanced tutorials"
 - title: "Custom component tutorial"
   path: /tfx/tutorials/tfx/python_function_component
-- title: "Cloud AI Platform Pipelines tutorial"
-  path: /tfx/tutorials/tfx/cloud-ai-platform-pipelines
 - title: "Airflow tutorial"
   path: /tfx/tutorials/tfx/airflow_workshop
 - title: "Neural Structured Learning in TFX"
@@ -42,8 +50,7 @@ toc:
 - title: "Get started with TFMA"
   path: /tfx/tutorials/model_analysis/tfma_basic
 - title: "Fairness Indicators tutorial"
-  path: https://github.com/tensorflow/fairness-indicators
-  status: external
+  path: /responsible_ai/fairness_indicators/tutorials/Fairness_Indicators_Example_Colab
 
 - heading: "Deploy a trained model"
 - title: "Servers: TFX for TensorFlow Serving"

@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2020 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,11 +13,7 @@
 # limitations under the License.
 """FnArgs for passing information to UDF."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
-from typing import Any, Callable, Dict, Iterator, List, NamedTuple, Optional, Text
+from typing import Any, Callable, Dict, Iterator, List, NamedTuple, Optional
 
 import absl
 import attr
@@ -31,6 +26,7 @@ from tfx.types import artifact_utils
 from tfx.types import standard_component_specs
 from tfx.utils import io_utils
 from tfx.utils import json_utils
+from tfx.utils import path_utils
 from tfx.utils import proto_utils
 from tfx_bsl.tfxio import dataset_options
 
@@ -42,16 +38,23 @@ _TELEMETRY_DESCRIPTORS = ['Trainer']
 DataAccessor = NamedTuple(
     'DataAccessor',
     [('tf_dataset_factory', Callable[[
-        List[Text],
+        List[str],
         dataset_options.TensorFlowDatasetOptions,
         Optional[schema_pb2.Schema],
     ], tf.data.Dataset]),
      ('record_batch_factory', Callable[[
-         List[Text],
+         List[str],
          dataset_options.RecordBatchesOptions,
          Optional[schema_pb2.Schema],
      ], Iterator[pa.RecordBatch]]),
-     ('data_view_decode_fn', Optional[Callable[[tf.Tensor], Dict[Text, Any]]])])
+     ('data_view_decode_fn', Optional[Callable[[tf.Tensor], Dict[str, Any]]])])
+DataAccessor.__doc__ = """
+For accessing the data on disk.
+
+Contains factories that can create tf.data.Datasets or other means to access
+the train/eval data. They provide a uniform way of accessing data, regardless
+of how the data is stored on disk.
+"""
 
 
 @attr.s
@@ -68,7 +71,7 @@ class FnArgs:
     schema_file: Deprecated, use `schema_path` instead.
     transform_graph_path: An optional single uri for transform graph produced by
       TFT. Will be None if not specified.
-    transform_output: Deprecated, use `transform_graph_path` instead.'
+    transform_output: Deprecated, use `transform_graph_path` instead.
     data_accessor: Contains factories that can create tf.data.Datasets or other
       means to access the train/eval data. They provide a uniform way of
       accessing data, regardless of how the data is stored on disk.
@@ -79,30 +82,30 @@ class FnArgs:
     model_run_dir: A single uri for the output directory of model training
       related files.
     base_model: An optional base model path that will be used for this training.
-    hyperparameters: An optional kerastuner.HyperParameters config.
+    hyperparameters: An optional keras_tuner.HyperParameters config.
     custom_config: An optional dictionary passed to the component.
   """
-  working_dir = attr.ib(type=Text, default=None)
-  train_files = attr.ib(type=List[Text], default=None)
-  eval_files = attr.ib(type=List[Text], default=None)
+  working_dir = attr.ib(type=str, default=None)
+  train_files = attr.ib(type=List[str], default=None)
+  eval_files = attr.ib(type=List[str], default=None)
   train_steps = attr.ib(type=int, default=None)
   eval_steps = attr.ib(type=int, default=None)
-  schema_path = attr.ib(type=Text, default=None)
-  schema_file = attr.ib(type=Text, default=None)
-  transform_graph_path = attr.ib(type=Text, default=None)
-  transform_output = attr.ib(type=Text, default=None)
+  schema_path = attr.ib(type=str, default=None)
+  schema_file = attr.ib(type=str, default=None)
+  transform_graph_path = attr.ib(type=str, default=None)
+  transform_output = attr.ib(type=str, default=None)
   data_accessor = attr.ib(type=DataAccessor, default=None)
-  serving_model_dir = attr.ib(type=Text, default=None)
-  eval_model_dir = attr.ib(type=Text, default=None)
-  model_run_dir = attr.ib(type=Text, default=None)
-  base_model = attr.ib(type=Text, default=None)
-  hyperparameters = attr.ib(type=Text, default=None)
-  custom_config = attr.ib(type=Dict[Text, Any], default=None)
+  serving_model_dir = attr.ib(type=str, default=None)
+  eval_model_dir = attr.ib(type=str, default=None)
+  model_run_dir = attr.ib(type=str, default=None)
+  base_model = attr.ib(type=str, default=None)
+  hyperparameters = attr.ib(type=str, default=None)
+  custom_config = attr.ib(type=Dict[str, Any], default=None)
 
 
-def get_common_fn_args(input_dict: Dict[Text, List[types.Artifact]],
-                       exec_properties: Dict[Text, Any],
-                       working_dir: Text = None) -> FnArgs:
+def get_common_fn_args(input_dict: Dict[str, List[types.Artifact]],
+                       exec_properties: Dict[str, Any],
+                       working_dir: Optional[str] = None) -> FnArgs:
   """Get common args of training and tuning."""
   if input_dict.get(standard_component_specs.TRANSFORM_GRAPH_KEY):
     transform_graph_path = artifact_utils.get_single_uri(
@@ -178,6 +181,16 @@ def get_common_fn_args(input_dict: Dict[Text, List[types.Artifact]],
   custom_config = json_utils.loads(
       exec_properties.get(standard_component_specs.CUSTOM_CONFIG_KEY, 'null'))
 
+  # TODO(ruoyu): Make this a dict of tag -> uri instead of list.
+  if input_dict.get(standard_component_specs.BASE_MODEL_KEY):
+    base_model_artifact = artifact_utils.get_single_instance(
+        input_dict[standard_component_specs.BASE_MODEL_KEY])
+    base_model = path_utils.serving_model_path(
+        base_model_artifact.uri,
+        path_utils.is_old_model_artifact(base_model_artifact))
+  else:
+    base_model = None
+
   return FnArgs(
       working_dir=working_dir,
       train_files=train_files,
@@ -187,5 +200,6 @@ def get_common_fn_args(input_dict: Dict[Text, List[types.Artifact]],
       schema_path=schema_path,
       transform_graph_path=transform_graph_path,
       data_accessor=data_accessor,
+      base_model=base_model,
       custom_config=custom_config,
   )

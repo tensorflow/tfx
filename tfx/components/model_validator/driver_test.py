@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,12 +13,6 @@
 # limitations under the License.
 """Tests for tfx.components.model_validator.driver."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
-from typing import Text
-
 import tensorflow as tf
 
 from tfx.components.model_validator import driver
@@ -29,7 +22,7 @@ from tfx.types import standard_artifacts
 class DriverTest(tf.test.TestCase):
 
   def _create_mock_artifact(self, aid: int, is_blessed: bool,
-                            pipeline_name: Text, component_id: Text):
+                            pipeline_name: str, component_id: str):
     model_blessing = standard_artifacts.ModelBlessing()
     model_blessing.id = aid
     model_blessing.pipeline_name = pipeline_name

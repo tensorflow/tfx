@@ -1,0 +1,375 @@
+# proto-file: tfx/proto/orchestration/pipeline.proto
+# proto-message: Pipeline
+
+pipeline_info: {
+  id: "my_pipeline"
+}
+execution_mode: SYNC
+nodes {
+  pipeline_node {
+    node_info {
+      type {
+        name: "Trainer"
+      }
+      id: "my_trainer"
+    }
+    contexts {
+      contexts {
+        type {
+          name: "pipeline"
+        }
+        name {
+          field_value {
+            string_value: "my_pipeline"
+          }
+        }
+      }
+      contexts {
+        type {
+          name: "pipeline_run_id"
+        }
+        name {
+          runtime_parameter {
+            name: "pipeline_run_id"
+            type: STRING
+          }
+        }
+      }
+      contexts {
+        type {
+          name: "component"
+        }
+        name {
+          field_value {
+            string_value: "my_pipeline.my_trainer"
+          }
+        }
+      }
+    }
+    inputs {
+      inputs {
+        key: "examples"
+        value {
+          channels {
+            producer_node_query {
+              id: "my_example_gen"
+            }
+            context_queries {
+              type {
+                name: "pipeline"
+              }
+              name {
+                field_value {
+                  string_value: "my_pipeline"
+                }
+              }
+            }
+            context_queries {
+              type {
+                name: "pipeline_run_id"
+              }
+              name {
+                runtime_parameter {
+                  name: "pipeline_run_id"
+                  type: STRING
+                }
+              }
+            }
+            context_queries {
+              type {
+                name: "component"
+              }
+              name {
+                field_value {
+                  string_value: "my_pipeline.my_example_gen"
+                }
+              }
+            }
+            artifact_query {
+              type {
+                name: "Examples"
+              }
+            }
+            output_key: "output_examples"
+          }
+          min_count: 1
+        }
+      }
+      inputs {
+        key: "transform_graph"
+        value {
+          channels {
+            producer_node_query {
+              id: "my_transform"
+            }
+            context_queries {
+              type {
+                name: "pipeline"
+              }
+              name {
+                field_value {
+                  string_value: "my_pipeline"
+                }
+              }
+            }
+            context_queries {
+              type {
+                name: "pipeline_run_id"
+              }
+              name {
+                runtime_parameter {
+                  name: "pipeline_run_id"
+                  type: STRING
+                }
+              }
+            }
+            context_queries {
+              type {
+                name: "component"
+              }
+              name {
+                field_value {
+                  string_value: "my_pipeline.my_transform"
+                }
+              }
+            }
+            artifact_query {
+              type {
+                name: "TransformGraph"
+              }
+            }
+            output_key: "transform_graph"
+          }
+          min_count: 1
+        }
+      }
+    }
+    outputs {
+      outputs {
+        key: "model"
+        value {
+          artifact_spec {
+            type {
+              name: "Model"
+            }
+          }
+        }
+      }
+    }
+    execution_options {
+      caching_options {
+        enable_cache: true
+      }
+    }
+    downstream_nodes: "my_resolver"
+  }
+}
+nodes {
+  pipeline_node {
+    node_info {
+      type {
+        name: "tfx.dsl.components.common.resolver.Resolver"
+      }
+      id: "my_resolver"
+    }
+    contexts {
+      contexts {
+        type {
+          name: "pipeline"
+        }
+        name {
+          field_value {
+            string_value: "my_pipeline"
+          }
+        }
+      }
+      contexts {
+        type {
+          name: "pipeline_run_id"
+        }
+        name {
+          runtime_parameter {
+            name: "pipeline_run_id"
+            type: STRING
+          }
+        }
+      }
+      contexts {
+        type {
+          name: "component"
+        }
+        name {
+          field_value {
+            string_value: "my_pipeline.my_resolver"
+          }
+        }
+      }
+    }
+    inputs {
+      inputs {
+        key: "models"
+        value {
+          channels {
+            producer_node_query {
+              id: "my_trainer"
+            }
+            context_queries {
+              type {
+                name: "pipeline"
+              }
+              name {
+                field_value {
+                  string_value: "my_pipeline"
+                }
+              }
+            }
+            context_queries {
+              type {
+                name: "pipeline_run_id"
+              }
+              name {
+                runtime_parameter {
+                  name: "pipeline_run_id"
+                  type: STRING
+                }
+              }
+            }
+            context_queries {
+              type {
+                name: "component"
+              }
+              name {
+                field_value {
+                  string_value: "my_pipeline.my_trainer"
+                }
+              }
+            }
+            artifact_query {
+              type {
+                name: "Model"
+              }
+            }
+            output_key: "model"
+          }
+          min_count: 1
+        }
+      }
+      resolver_config {
+        resolver_steps {
+          class_path: "tfx.dsl.input_resolution.strategies.latest_artifact_strategy.LatestArtifactStrategy"
+          config_json: "{}"
+        }
+      }
+    }
+    upstream_nodes: "my_trainer"
+    downstream_nodes: "my_consumer"
+  }
+}
+nodes {
+  pipeline_node {
+    node_info {
+      type {
+        name: "Consumer"
+      }
+      id: "my_consumer"
+    }
+    contexts {
+      contexts {
+        type {
+          name: "pipeline"
+        }
+        name {
+          field_value {
+            string_value: "my_pipeline"
+          }
+        }
+      }
+      contexts {
+        type {
+          name: "pipeline_run_id"
+        }
+        name {
+          runtime_parameter {
+            name: "pipeline_run_id"
+            type: STRING
+          }
+        }
+      }
+      contexts {
+        type {
+          name: "component"
+        }
+        name {
+          field_value {
+            string_value: "my_pipeline.my_consumer"
+          }
+        }
+      }
+    }
+    inputs {
+      inputs {
+        key: "input_models"
+        value {
+          channels {
+            producer_node_query {
+              id: "my_resolver"
+            }
+            context_queries {
+              type {
+                name: "pipeline"
+              }
+              name {
+                field_value {
+                  string_value: "my_pipeline"
+                }
+              }
+            }
+            context_queries {
+              type {
+                name: "pipeline_run_id"
+              }
+              name {
+                runtime_parameter {
+                  name: "pipeline_run_id"
+                  type: STRING
+                }
+              }
+            }
+            context_queries {
+              type {
+                name: "component"
+              }
+              name {
+                field_value {
+                  string_value: "my_pipeline.my_resolver"
+                }
+              }
+            }
+            artifact_query {
+              type {
+                name: "Model"
+              }
+            }
+            output_key: "models"
+          }
+          min_count: 1
+        }
+      }
+    }
+    upstream_nodes: "my_resolver"
+  }
+}
+runtime_spec {
+  pipeline_root {
+    runtime_parameter {
+      name: "pipeline_root"
+      type: STRING
+    }
+  }
+  pipeline_run_id {
+    runtime_parameter {
+      name: "pipeline_run_id"
+      type: STRING
+    }
+  }
+}

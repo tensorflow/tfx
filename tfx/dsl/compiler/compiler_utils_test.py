@@ -19,18 +19,16 @@ from tfx import types
 from tfx.components import CsvExampleGen
 from tfx.components import StatisticsGen
 from tfx.components.common_nodes import importer_node as legacy_importer_node
-from tfx.components.common_nodes import resolver_node as legacy_resolver_node
 from tfx.dsl.compiler import compiler_utils
 from tfx.dsl.components.base import base_component
 from tfx.dsl.components.base import base_executor
 from tfx.dsl.components.base import executor_spec
 from tfx.dsl.components.common import importer
 from tfx.dsl.components.common import resolver
-from tfx.dsl.experimental import latest_blessed_model_resolver
+from tfx.dsl.input_resolution.strategies import latest_blessed_model_strategy
 from tfx.orchestration import pipeline
 from tfx.proto.orchestration import pipeline_pb2
 from tfx.types import standard_artifacts
-from tfx.utils.dsl_utils import external_input
 
 from ml_metadata.proto import metadata_store_pb2
 
@@ -47,8 +45,8 @@ class EmptyComponent(base_component.BaseComponent):
   EXECUTOR_SPEC = executor_spec.ExecutorClassSpec(base_executor.BaseExecutor)
 
   def __init__(self, name):
-    super(EmptyComponent, self).__init__(
-        spec=EmptyComponentSpec(), instance_name=name)
+    super().__init__(spec=EmptyComponentSpec())
+    self._id = name
 
 
 class CompilerUtilsTest(tf.test.TestCase):
@@ -66,30 +64,21 @@ class CompilerUtilsTest(tf.test.TestCase):
 
   def testIsResolver(self):
     resv = resolver.Resolver(
-        instance_name="test_resolver_name",
-        strategy_class=latest_blessed_model_resolver.LatestBlessedModelResolver)
-    self.assertTrue(compiler_utils.is_resolver(resv))
-    resv = legacy_resolver_node.ResolverNode(
-        instance_name="test_resolver_name",
-        resolver_class=latest_blessed_model_resolver.LatestBlessedModelResolver)
+        strategy_class=latest_blessed_model_strategy.LatestBlessedModelStrategy)
     self.assertTrue(compiler_utils.is_resolver(resv))
 
-    example_gen = CsvExampleGen(input=external_input("data_path"))
+    example_gen = CsvExampleGen(input_base="data_path")
     self.assertFalse(compiler_utils.is_resolver(example_gen))
 
   def testIsImporter(self):
     impt = importer.Importer(
-        instance_name="import_schema",
-        source_uri="uri/to/schema",
-        artifact_type=standard_artifacts.Schema)
+        source_uri="uri/to/schema", artifact_type=standard_artifacts.Schema)
     self.assertTrue(compiler_utils.is_importer(impt))
     impt = legacy_importer_node.ImporterNode(
-        instance_name="import_schema",
-        source_uri="uri/to/schema",
-        artifact_type=standard_artifacts.Schema)
+        source_uri="uri/to/schema", artifact_type=standard_artifacts.Schema)
     self.assertTrue(compiler_utils.is_importer(impt))
 
-    example_gen = CsvExampleGen(input=external_input("data_path"))
+    example_gen = CsvExampleGen(input_base="data_path")
     self.assertFalse(compiler_utils.is_importer(example_gen))
 
   def testEnsureTopologicalOrder(self):
@@ -100,7 +89,7 @@ class CompilerUtilsTest(tf.test.TestCase):
     a.add_downstream_node(c)
     valid_orders = {"abc", "acb"}
     for order in itertools.permutations([a, b, c]):
-      if "".join([c._instance_name for c in order]) in valid_orders:
+      if "".join([c.id for c in order]) in valid_orders:
         self.assertTrue(compiler_utils.ensure_topological_order(order))
       else:
         self.assertFalse(compiler_utils.ensure_topological_order(order))
@@ -116,7 +105,7 @@ class CompilerUtilsTest(tf.test.TestCase):
       compiler_utils.resolve_execution_mode(p)
 
   def testHasTaskDependency(self):
-    example_gen = CsvExampleGen(input=external_input("data_path"))
+    example_gen = CsvExampleGen(input_base="data_path")
     statistics_gen = StatisticsGen(examples=example_gen.outputs["examples"])
     p1 = pipeline.Pipeline(
         pipeline_name="fake_name",
@@ -131,6 +120,30 @@ class CompilerUtilsTest(tf.test.TestCase):
         pipeline_root="fake_root",
         components=[example_gen, statistics_gen, a])
     self.assertTrue(compiler_utils.has_task_dependency(p2))
+
+  def testNodeContextName(self):
+    self.assertEqual(
+        "pipeline_context_name.node_id",
+        compiler_utils.node_context_name("pipeline_context_name", "node_id"))
+
+  def testImplicitChannelKey(self):
+    model = types.Channel(type=standard_artifacts.Model)
+    model.producer_component_id = "trainer"
+    model.output_key = "model"
+    self.assertEqual("_trainer.model",
+                     compiler_utils.implicit_channel_key(model))
+
+  def testBuildChannelToKeyFn(self):
+    model = types.Channel(type=standard_artifacts.Model)
+    model.producer_component_id = "trainer"
+    model.output_key = "model"
+    examples = types.Channel(type=standard_artifacts.Examples)
+    examples.producer_component_id = "example_gen"
+    examples.output_key = "examples"
+
+    fn = compiler_utils.build_channel_to_key_fn({"_trainer.model": "real_key"})
+    self.assertEqual(fn(model), "real_key")
+    self.assertEqual(fn(examples), "_example_gen.examples")
 
 
 if __name__ == "__main__":

@@ -16,7 +16,7 @@
 import datetime
 import json
 import time
-from typing import Dict, List, Text
+from typing import Dict, List
 
 import absl
 from kubernetes import client
@@ -41,7 +41,7 @@ JOB_CREATION_TIMEOUT = 300
 
 
 def run_as_kubernetes_job(pipeline: tfx_pipeline.Pipeline,
-                          tfx_image: Text) -> None:
+                          tfx_image: str) -> None:
   """Submits and runs a TFX pipeline from outside the cluster.
 
   Args:
@@ -144,7 +144,7 @@ def run_as_kubernetes_job(pipeline: tfx_pipeline.Pipeline,
 
 
 def _extract_downstream_ids(
-    components: List[base_node.BaseNode]) -> Dict[Text, List[Text]]:
+    components: List[base_node.BaseNode]) -> Dict[str, List[str]]:
   """Extract downstream component ids from a list of components.
 
   Args:
@@ -163,7 +163,7 @@ def _extract_downstream_ids(
   return downstream_ids
 
 
-def _serialize_pipeline(pipeline: tfx_pipeline.Pipeline) -> Text:
+def _serialize_pipeline(pipeline: tfx_pipeline.Pipeline) -> str:
   """Serializes a TFX pipeline.
 
   To be replaced with the the TFX Intermediate Representation:
@@ -208,7 +208,7 @@ def _serialize_pipeline(pipeline: tfx_pipeline.Pipeline) -> Text:
   })
 
 
-def deserialize_pipeline(serialized_pipeline: Text) -> tfx_pipeline.Pipeline:
+def deserialize_pipeline(serialized_pipeline: str) -> tfx_pipeline.Pipeline:
   """Deserializes a TFX pipeline.
 
   To be replaced with the the TFX Intermediate Representation:
@@ -246,8 +246,6 @@ def deserialize_pipeline(serialized_pipeline: Text) -> tfx_pipeline.Pipeline:
     # serialization process, we initialize them here.
     component._upstream_nodes = set()  # pylint: disable=protected-access
     component._downstream_nodes = set()  # pylint: disable=protected-access
-    # Restore dropped instance name from component id.
-    component._instance_name = component.id.split(',')[-1]  # pylint: disable=protected-access
 
   for upstream_id, downstream_id_list in downstream_ids.items():
     upstream_component = id_to_component[upstream_id]

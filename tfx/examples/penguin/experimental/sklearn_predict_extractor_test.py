@@ -19,11 +19,7 @@ import pickle
 import apache_beam as beam
 from apache_beam.testing import util
 from sklearn import neural_network as nn
-from tensorflow_model_analysis import config
-from tensorflow_model_analysis import constants
-from tensorflow_model_analysis.api import model_eval_lib
-from tensorflow_model_analysis.eval_saved_model import testutil
-from tensorflow_model_analysis.extractors import features_extractor
+import tensorflow_model_analysis as tfma
 from tfx.examples.penguin.experimental import sklearn_predict_extractor
 from tfx_bsl.tfxio import tensor_adapter
 from tfx_bsl.tfxio import test_util
@@ -32,13 +28,13 @@ from google.protobuf import text_format
 from tensorflow_metadata.proto.v0 import schema_pb2
 
 
-class SklearnPredictExtractorTest(testutil.TensorflowModelAnalysisTest):
+class SklearnPredictExtractorTest(tfma.test.TestCase):
 
   def setUp(self):
-    super(SklearnPredictExtractorTest, self).setUp()
+    super().setUp()
     self._eval_export_dir = os.path.join(self._getTempDir(), 'eval_export')
     self._create_sklearn_model(self._eval_export_dir)
-    self._eval_config = config.EvalConfig(model_specs=[config.ModelSpec()])
+    self._eval_config = tfma.EvalConfig(model_specs=[tfma.ModelSpec()])
     self._eval_shared_model = (
         sklearn_predict_extractor.custom_eval_shared_model(
             eval_saved_model_path=self._eval_export_dir,
@@ -61,7 +57,7 @@ class SklearnPredictExtractorTest(testutil.TensorflowModelAnalysisTest):
         """, schema_pb2.Schema())
     self._tfx_io = test_util.InMemoryTFExampleRecord(
         schema=self._schema,
-        raw_record_column_name=constants.ARROW_INPUT_COLUMN)
+        raw_record_column_name=tfma.ARROW_INPUT_COLUMN)
     self._tensor_adapter_config = tensor_adapter.TensorAdapterConfig(
         arrow_schema=self._tfx_io.ArrowSchema(),
         tensor_representations=self._tfx_io.TensorRepresentations())
@@ -74,7 +70,7 @@ class SklearnPredictExtractorTest(testutil.TensorflowModelAnalysisTest):
 
   def testMakeSklearnPredictExtractor(self):
     """Tests that predictions are made from extracts for a single model."""
-    feature_extractor = features_extractor.FeaturesExtractor(self._eval_config)
+    feature_extractor = tfma.extractors.FeaturesExtractor(self._eval_config)
     prediction_extractor = (
         sklearn_predict_extractor._make_sklearn_predict_extractor(
             self._eval_shared_model))
@@ -84,7 +80,7 @@ class SklearnPredictExtractorTest(testutil.TensorflowModelAnalysisTest):
           | 'Create' >> beam.Create(
               [e.SerializeToString() for e in self._examples])
           | 'BatchExamples' >> self._tfx_io.BeamSource()
-          | 'InputsToExtracts' >> model_eval_lib.BatchedInputsToExtracts()  # pylint: disable=no-value-for-parameter
+          | 'InputsToExtracts' >> tfma.BatchedInputsToExtracts()  # pylint: disable=no-value-for-parameter
           | feature_extractor.stage_name >> feature_extractor.ptransform
           | prediction_extractor.stage_name >> prediction_extractor.ptransform
       )
@@ -101,9 +97,9 @@ class SklearnPredictExtractorTest(testutil.TensorflowModelAnalysisTest):
 
   def testMakeSklearnPredictExtractorWithMultiModels(self):
     """Tests that predictions are made from extracts for multiple models."""
-    eval_config = config.EvalConfig(model_specs=[
-        config.ModelSpec(name='model1'),
-        config.ModelSpec(name='model2'),
+    eval_config = tfma.EvalConfig(model_specs=[
+        tfma.ModelSpec(name='model1'),
+        tfma.ModelSpec(name='model2'),
     ])
     eval_export_dir_1 = os.path.join(self._eval_export_dir, '1')
     self._create_sklearn_model(eval_export_dir_1)
@@ -118,7 +114,7 @@ class SklearnPredictExtractorTest(testutil.TensorflowModelAnalysisTest):
         model_name='model2',
         eval_config=eval_config)
 
-    feature_extractor = features_extractor.FeaturesExtractor(self._eval_config)
+    feature_extractor = tfma.extractors.FeaturesExtractor(self._eval_config)
     prediction_extractor = (
         sklearn_predict_extractor._make_sklearn_predict_extractor(
             eval_shared_model={
@@ -131,7 +127,7 @@ class SklearnPredictExtractorTest(testutil.TensorflowModelAnalysisTest):
           | 'Create' >> beam.Create(
               [e.SerializeToString() for e in self._examples])
           | 'BatchExamples' >> self._tfx_io.BeamSource()
-          | 'InputsToExtracts' >> model_eval_lib.BatchedInputsToExtracts()  # pylint: disable=no-value-for-parameter
+          | 'InputsToExtracts' >> tfma.BatchedInputsToExtracts()  # pylint: disable=no-value-for-parameter
           | feature_extractor.stage_name >> feature_extractor.ptransform
           | prediction_extractor.stage_name >> prediction_extractor.ptransform
       )

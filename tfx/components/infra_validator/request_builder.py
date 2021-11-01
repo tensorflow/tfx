@@ -13,16 +13,11 @@
 # limitations under the License.
 """Utility functions for building requests."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import abc
 import os
-from typing import Any, Iterable, List, Mapping, Optional, Text
+from typing import Any, Iterable, List, Mapping, Optional
 
 from absl import logging
-import six
 import tensorflow as tf
 from tfx import types
 from tfx.components.infra_validator import types as iv_types
@@ -56,11 +51,8 @@ _SignatureDef = Any
 
 
 def build_requests(  # pylint: disable=invalid-name
-    model_name: Text,
-    model: types.Artifact,
-    examples: types.Artifact,
-    request_spec: infra_validator_pb2.RequestSpec
-) -> List[iv_types.Request]:
+    model_name: str, model: types.Artifact, examples: types.Artifact,
+    request_spec: infra_validator_pb2.RequestSpec) -> List[iv_types.Request]:
   """Build model server requests.
 
   Examples artifact will be used as a data source to build requests. Caller
@@ -102,10 +94,9 @@ def build_requests(  # pylint: disable=invalid-name
 
 
 # TODO(b/151790176): Move to tfx_bsl, or keep it if TF adds a proper public API.
-def _parse_saved_model_signatures(
-    model_path: Text,
-    tag_set: Iterable[Text],
-    signature_names: Iterable[Text]) -> Mapping[Text, _SignatureDef]:
+def _parse_saved_model_signatures(  # pylint: disable=invalid-name
+    model_path: str, tag_set: Iterable[str],
+    signature_names: Iterable[str]) -> Mapping[str, _SignatureDef]:
   """Parse SignatureDefs of given signature names from SavedModel.
 
   Among one or more MetaGraphDefs in SavedModel, the first one that has all the
@@ -138,7 +129,7 @@ def _parse_saved_model_signatures(
   return result
 
 
-class _BaseRequestBuilder(six.with_metaclass(abc.ABCMeta, object)):
+class _BaseRequestBuilder(abc.ABC):
   """Base class for all RequestBuilders."""
 
   def __init__(self):
@@ -148,8 +139,10 @@ class _BaseRequestBuilder(six.with_metaclass(abc.ABCMeta, object)):
   # TODO(jjong): The method strongly assumes that the output of ExampleGen is
   # a gzipped TFRecords of tf.Example. We need a better abstraction (e.g. TFXIO)
   # to accept arbitrary file format and convert it to appropriate request types.
-  def ReadExamplesArtifact(self, examples: types.Artifact, num_examples: int,
-                           split_name: Optional[Text] = None):
+  def ReadExamplesArtifact(self,
+                           examples: types.Artifact,
+                           num_examples: int,
+                           split_name: Optional[str] = None):
     """Read records from Examples artifact.
 
     Currently it assumes Examples artifact contains serialized tf.Example in
@@ -202,6 +195,7 @@ class _BaseRequestBuilder(six.with_metaclass(abc.ABCMeta, object)):
             dataset_options.TensorFlowDatasetOptions(batch_size=num_examples)))
 
   def _ReadFromDataset(self, dataset: tf.data.Dataset):
+    """Fill self._records from TF Dataset."""
     dataset = dataset.take(1)
     if tf.executing_eagerly():
       for d in dataset:
@@ -209,7 +203,7 @@ class _BaseRequestBuilder(six.with_metaclass(abc.ABCMeta, object)):
     else:
       it = tf.compat.v1.data.make_one_shot_iterator(dataset)
       next_el = it.get_next()
-      with tf.Session() as sess:
+      with tf.compat.v1.Session() as sess:
         while True:
           try:
             d = sess.run(next_el)
@@ -241,16 +235,15 @@ class _TFServingRpcRequestBuilder(_BaseRequestBuilder):
   not matter as long as user have a correct parsing logic.
   """
 
-  def __init__(self,
-               model_name: Text,
-               signatures: Mapping[Text, _SignatureDef]):
-    super(_TFServingRpcRequestBuilder, self).__init__()
+  def __init__(self, model_name: str, signatures: Mapping[str, _SignatureDef]):
+    super().__init__()
     self._model_name = model_name
     self._signatures = signatures
     self._examples = []
 
   @property
   def examples(self) -> List[tf.train.Example]:
+    """Get parsed TF.Examples that the builder has built."""
     if not self._examples:
       if (self._payload_format !=
           example_gen_pb2.PayloadFormat.FORMAT_TF_EXAMPLE):
@@ -307,7 +300,7 @@ class _TFServingRpcRequestBuilder(_BaseRequestBuilder):
         'record inputs, i.e. signature with single input whose dtype=DT_STRING '
         'and shape=TensorShape([None]).')
 
-  def _BuildClassificationRequests(self, signature_name: Text):
+  def _BuildClassificationRequests(self, signature_name: str):
     for example in self.examples:
       request = classification_pb2.ClassificationRequest()
       request.model_spec.name = self._model_name
@@ -315,7 +308,7 @@ class _TFServingRpcRequestBuilder(_BaseRequestBuilder):
       request.input.example_list.examples.append(example)
       yield request
 
-  def _BuildRegressionRequests(self, signature_name: Text):
+  def _BuildRegressionRequests(self, signature_name: str):
     for example in self.examples:
       request = regression_pb2.RegressionRequest()
       request.model_spec.name = self._model_name
@@ -323,8 +316,8 @@ class _TFServingRpcRequestBuilder(_BaseRequestBuilder):
       request.input.example_list.examples.append(example)
       yield request
 
-  def _BuildPredictRequests(self, signature_name: Text,
-                            serialized_input_key: Text):
+  def _BuildPredictRequests(self, signature_name: str,
+                            serialized_input_key: str):
     for record in self._records:
       request = predict_pb2.PredictRequest()
       request.model_spec.name = self._model_name

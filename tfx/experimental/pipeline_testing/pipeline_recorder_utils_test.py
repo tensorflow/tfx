@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2020 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,12 +13,8 @@
 # limitations under the License.
 """Tests for tfx.experimental.pipeline_testing.pipeline_recorder_utils."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import os
-import mock
+from unittest import mock
 import tensorflow as tf
 
 from tfx.dsl.io import fileio
@@ -30,7 +25,7 @@ from tfx.utils import io_utils
 class PipelineRecorderUtilsTest(tf.test.TestCase):
 
   def setUp(self):
-    super(PipelineRecorderUtilsTest, self).setUp()
+    super().setUp()
     self._base_dir = os.path.join(self.get_temp_dir(), 'base_dir')
     self.src_uri = os.path.join(self._base_dir, 'input')
     self.dest_uri = os.path.join(self._base_dir, 'output')

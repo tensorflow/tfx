@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,10 +13,6 @@
 # limitations under the License.
 """Common utility for testing Kubeflow-based orchestrator."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import datetime
 import json
 import os
@@ -25,27 +20,27 @@ import re
 import subprocess
 import tarfile
 import time
-from typing import Any, Dict, List, Text
+from typing import Any, Dict, List, Optional
 
 from absl import logging
 import kfp
 from kfp_server_api import rest
 import tensorflow_model_analysis as tfma
-
 from tfx.components import CsvExampleGen
 from tfx.components import Evaluator
 from tfx.components import ExampleValidator
 from tfx.components import InfraValidator
 from tfx.components import Pusher
-from tfx.components import ResolverNode
 from tfx.components import SchemaGen
 from tfx.components import StatisticsGen
 from tfx.components import Trainer
 from tfx.components import Transform
-from tfx.dsl.components.base import executor_spec
+from tfx.dsl.component.experimental import executor_specs
 from tfx.dsl.components.base.base_component import BaseComponent
-from tfx.dsl.experimental import latest_artifacts_resolver
+from tfx.dsl.components.common import resolver
+from tfx.dsl.input_resolution.strategies import latest_artifact_strategy
 from tfx.dsl.io import fileio
+from tfx.dsl.placeholder import placeholder as ph
 from tfx.orchestration import pipeline as tfx_pipeline
 from tfx.orchestration import test_utils
 from tfx.orchestration.kubeflow import kubeflow_dag_runner
@@ -58,6 +53,7 @@ from tfx.types import channel_utils
 from tfx.types import component_spec
 from tfx.types import standard_artifacts
 from tfx.types.standard_artifacts import Model
+from tfx.utils import docker_utils
 from tfx.utils import kube_utils
 from tfx.utils import retry
 from tfx.utils import test_case_utils
@@ -75,9 +71,9 @@ KFP_FINAL_STATUS = frozenset(
     (KFP_SUCCESS_STATUS, KFP_FAIL_STATUS, KFP_SKIPPED_STATUS, KFP_ERROR_STATUS))
 
 
-def poll_kfp_with_retry(host: Text, run_id: Text, retry_limit: int,
+def poll_kfp_with_retry(host: str, run_id: str, retry_limit: int,
                         timeout: datetime.timedelta,
-                        polling_interval: int) -> Text:
+                        polling_interval: int) -> str:
   """Gets the pipeline execution status by polling KFP at the specified host.
 
   Args:
@@ -147,7 +143,7 @@ def poll_kfp_with_retry(host: Text, run_id: Text, retry_limit: int,
     time.sleep(polling_interval)
 
 
-def print_failure_log_for_run(host: Text, run_id: Text, namespace: Text):
+def print_failure_log_for_run(host: str, run_id: str, namespace: str):
   """Prints logs of failed components of a run.
 
   Prints execution logs for failed componentsusing `logging.info`.
@@ -204,38 +200,39 @@ class HelloWorldComponent(BaseComponent):
   """Producer component."""
 
   SPEC_CLASS = _HelloWorldSpec
-  EXECUTOR_SPEC = executor_spec.ExecutorContainerSpec(
+  EXECUTOR_SPEC = executor_specs.TemplatedExecutorContainerSpec(
       # TODO(b/143965964): move the image to private repo if the test is flaky
       # due to docker hub.
-      image='google/cloud-sdk:latest',
+      image='gcr.io/google.com/cloudsdktool/cloud-sdk:latest',
       command=['sh', '-c'],
       args=[
-          'echo "hello {{exec_properties.word}}" | gsutil cp - {{output_dict["greeting"][0].uri}}'
+          'echo "hello ' +
+          ph.exec_property('word') +
+          '" | gsutil cp - ' +
+          ph.output('greeting')[0].uri
       ])
 
   def __init__(self, word, greeting=None):
     if not greeting:
       artifact = standard_artifacts.String()
       greeting = channel_utils.as_channel([artifact])
-    super(HelloWorldComponent,
-          self).__init__(_HelloWorldSpec(word=word, greeting=greeting))
+    super().__init__(_HelloWorldSpec(word=word, greeting=greeting))
 
 
 class ByeWorldComponent(BaseComponent):
   """Consumer component."""
 
   SPEC_CLASS = _ByeWorldSpec
-  EXECUTOR_SPEC = executor_spec.ExecutorContainerSpec(
+  EXECUTOR_SPEC = executor_specs.TemplatedExecutorContainerSpec(
       image='bash:latest',
       command=['echo'],
-      args=['received {{input_dict["hearing"][0].value}}'])
+      args=['received ' + ph.input('hearing')[0].value])
 
   def __init__(self, hearing):
-    super(ByeWorldComponent, self).__init__(_ByeWorldSpec(hearing=hearing))
+    super().__init__(_ByeWorldSpec(hearing=hearing))
 
 
-def create_primitive_type_components(
-    pipeline_name: Text) -> List[BaseComponent]:
+def create_primitive_type_components(pipeline_name: str) -> List[BaseComponent]:
   """Creates components for testing primitive type artifact passing.
 
   Args:
@@ -251,10 +248,10 @@ def create_primitive_type_components(
 
 
 def create_e2e_components(
-    pipeline_root: Text,
-    csv_input_location: Text,
-    transform_module: Text,
-    trainer_module: Text,
+    pipeline_root: str,
+    csv_input_location: str,
+    transform_module: str,
+    trainer_module: str,
 ) -> List[BaseComponent]:
   """Creates components for a simple Chicago Taxi TFX pipeline for testing.
 
@@ -277,10 +274,9 @@ def create_e2e_components(
       examples=example_gen.outputs['examples'],
       schema=schema_gen.outputs['schema'],
       module_file=transform_module)
-  latest_model_resolver = ResolverNode(
-      instance_name='latest_model_resolver',
-      resolver_class=latest_artifacts_resolver.LatestArtifactsResolver,
-      latest_model=Channel(type=Model))
+  latest_model_resolver = resolver.Resolver(
+      strategy_class=latest_artifact_strategy.LatestArtifactStrategy,
+      latest_model=Channel(type=Model)).with_id('latest_model_resolver')
   trainer = Trainer(
       transformed_examples=transform.outputs['transformed_examples'],
       schema=schema_gen.outputs['schema'],
@@ -408,10 +404,11 @@ class BaseKubeflowTest(test_case_utils.TfxTest):
   # location for each invocation, and cleaned up at the end of test.
   _TEST_DATA_ROOT = os.environ['KFP_E2E_TEST_DATA_ROOT']
 
-  # The location of test user module
-  # It is retrieved from inside the container subject to testing.
-  # This location depends on install path of TFX in the docker image.
-  _MODULE_ROOT = '/opt/conda/lib/python3.7/site-packages/tfx/components/testdata/module_file'
+  # The location of test user module. Will be packaged and copied to under the
+  # pipeline root before pipeline execution.
+  _MODULE_ROOT = os.path.join(
+      os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
+      'components/testdata/module_file')
 
   @classmethod
   def setUpClass(cls):
@@ -435,38 +432,10 @@ class BaseKubeflowTest(test_case_utils.TfxTest):
     if cls.container_image != cls._BASE_CONTAINER_IMAGE:
       # Delete container image used in tests.
       logging.info('Deleting image %s', cls.container_image)
-      subprocess.run(
-          ['gcloud', 'container', 'images', 'delete', cls.container_image],
-          check=True)
-
-  @classmethod
-  def _get_mysql_pod_name(cls):
-    """Returns MySQL pod name in the cluster."""
-    pod_name = subprocess.check_output([
-        'kubectl',
-        '-n',
-        'kubeflow',
-        'get',
-        'pods',
-        '-l',
-        'app=mysql',
-        '--no-headers',
-        '-o',
-        'custom-columns=:metadata.name',
-    ]).decode('utf-8').strip('\n')
-    logging.info('MySQL pod name is: %s', pod_name)
-    return pod_name
-
-  @classmethod
-  def _get_mlmd_db_name(cls, pipeline_name: Text):
-    # MySQL DB names must not contain '-' while k8s names must not contain '_'.
-    # So we replace the dashes here for the DB name.
-    valid_mysql_name = pipeline_name.replace('-', '_')
-    # MySQL database name cannot exceed 64 characters.
-    return 'mlmd_{}'.format(valid_mysql_name[-59:])
+      docker_utils.delete_image(cls.container_image)
 
   def setUp(self):
-    super(BaseKubeflowTest, self).setUp()
+    super().setUp()
     self._test_dir = self.tmp_dir
     self.enter_context(test_case_utils.change_working_dir(self.tmp_dir))
 
@@ -484,13 +453,15 @@ class BaseKubeflowTest(test_case_utils.TfxTest):
     )
 
     self._data_root = os.path.join(self._testdata_root, 'external', 'csv')
+
     self._transform_module = os.path.join(self._MODULE_ROOT,
                                           'transform_module.py')
     self._trainer_module = os.path.join(self._MODULE_ROOT, 'trainer_module.py')
+    self._serving_model_dir = os.path.join(self._testdata_root, 'output')
 
     self.addCleanup(self._delete_test_dir, test_id)
 
-  def _delete_test_dir(self, test_id: Text):
+  def _delete_test_dir(self, test_id: str):
     """Deletes files for this test including the module file and data files.
 
     Args:
@@ -499,16 +470,16 @@ class BaseKubeflowTest(test_case_utils.TfxTest):
     test_utils.delete_gcs_files(self._GCP_PROJECT_ID, self._BUCKET_NAME,
                                 'test_data/{}'.format(test_id))
 
-  def _delete_workflow(self, workflow_name: Text):
+  def _delete_workflow(self, workflow_name: str):
     """Deletes the specified Argo workflow."""
     logging.info('Deleting workflow %s', workflow_name)
     subprocess.run(['argo', '--namespace', 'kubeflow', 'delete', workflow_name],
                    check=True)
 
   def _run_workflow(self,
-                    workflow_file: Text,
-                    workflow_name: Text,
-                    parameter: Dict[Text, Text] = None):
+                    workflow_file: str,
+                    workflow_name: str,
+                    parameter: Dict[str, str] = None):
     """Runs the specified workflow with Argo.
 
     Blocks until the workflow has run (successfully or not) to completion.
@@ -520,7 +491,7 @@ class BaseKubeflowTest(test_case_utils.TfxTest):
     """
 
     # TODO(ajaygopinathan): Consider using KFP cli instead.
-    def _format_parameter(parameter: Dict[Text, Any]) -> List[Text]:
+    def _format_parameter(parameter: Dict[str, Any]) -> List[str]:
       """Format the pipeline parameter section of argo workflow."""
       if parameter:
         result = []
@@ -553,7 +524,7 @@ class BaseKubeflowTest(test_case_utils.TfxTest):
         time.sleep(self._POLLING_INTERVAL_IN_SECONDS)
         status = self._get_argo_pipeline_status(workflow_name)
 
-  def _delete_pipeline_output(self, pipeline_name: Text):
+  def _delete_pipeline_output(self, pipeline_name: str):
     """Deletes output produced by the named pipeline.
 
     Args:
@@ -562,54 +533,27 @@ class BaseKubeflowTest(test_case_utils.TfxTest):
     test_utils.delete_gcs_files(self._GCP_PROJECT_ID, self._BUCKET_NAME,
                                 'test_output/{}'.format(pipeline_name))
 
-  def _delete_pipeline_metadata(self, pipeline_name: Text):
-    """Drops the database containing metadata produced by the pipeline.
-
-    Args:
-      pipeline_name: The name of the pipeline owning the database.
-    """
-    pod_name = self._get_mysql_pod_name()
-    db_name = self._get_mlmd_db_name(pipeline_name)
-
-    command = [
-        'kubectl',
-        '-n',
-        'kubeflow',
-        'exec',
-        '-it',
-        pod_name,
-        '--',
-        'mysql',
-        '--user',
-        'root',
-        '--execute',
-        'drop database if exists {};'.format(db_name),
-    ]
-    logging.info('Dropping MLMD DB with name: %s', db_name)
-
-    with test_utils.Timer('DeletingMLMDDatabase'):
-      subprocess.run(command, check=True)
-
-  def _pipeline_root(self, pipeline_name: Text):
+  def _pipeline_root(self, pipeline_name: str):
     return os.path.join(self._test_output_dir, pipeline_name)
 
-  def _create_pipeline(self, pipeline_name: Text,
-                       components: List[BaseComponent]):
+  def _create_pipeline(self, pipeline_name: str,
+                       components: List[BaseComponent],
+                       beam_pipeline_args: Optional[List[str]] = None):
     """Creates a pipeline given name and list of components."""
     return tfx_pipeline.Pipeline(
         pipeline_name=pipeline_name,
         pipeline_root=self._pipeline_root(pipeline_name),
         components=components,
         enable_cache=True,
+        beam_pipeline_args=beam_pipeline_args,
     )
 
   def _create_dataflow_pipeline(self,
-                                pipeline_name: Text,
+                                pipeline_name: str,
                                 components: List[BaseComponent],
                                 wait_until_finish_ms: int = 1000 * 60 * 20):
     """Creates a pipeline with Beam DataflowRunner."""
-    pipeline = self._create_pipeline(pipeline_name, components)
-    pipeline.beam_pipeline_args = [
+    beam_pipeline_args = [
         '--runner=TestDataflowRunner',
         '--wait_until_finish_duration=%d' % wait_until_finish_ms,
         '--project=' + self._GCP_PROJECT_ID,
@@ -621,14 +565,15 @@ class BaseKubeflowTest(test_case_utils.TfxTest):
         # Dataflow.
         '--experiments=use_runner_v2',
     ]
-    return pipeline
+    return self._create_pipeline(
+        pipeline_name, components, beam_pipeline_args=beam_pipeline_args)
 
   def _get_kubeflow_metadata_config(
       self) -> kubeflow_pb2.KubeflowMetadataConfig:
     config = kubeflow_dag_runner.get_default_kubeflow_metadata_config()
     return config
 
-  def _get_argo_pipeline_status(self, workflow_name: Text) -> Text:
+  def _get_argo_pipeline_status(self, workflow_name: str) -> str:
     """Get Pipeline status.
 
     Args:
@@ -648,8 +593,8 @@ class BaseKubeflowTest(test_case_utils.TfxTest):
 
   def _compile_and_run_pipeline(self,
                                 pipeline: tfx_pipeline.Pipeline,
-                                workflow_name: Text = None,
-                                parameters: Dict[Text, Any] = None):
+                                workflow_name: str = None,
+                                parameters: Dict[str, Any] = None):
     """Compiles and runs a KFP pipeline.
 
     Args:
@@ -672,7 +617,6 @@ class BaseKubeflowTest(test_case_utils.TfxTest):
     workflow_name = workflow_name or pipeline_name
     # Ensure cleanup regardless of whether pipeline succeeds or fails.
     self.addCleanup(self._delete_workflow, workflow_name)
-    self.addCleanup(self._delete_pipeline_metadata, pipeline_name)
     self.addCleanup(self._delete_pipeline_output, pipeline_name)
 
     # Run the pipeline to completion.

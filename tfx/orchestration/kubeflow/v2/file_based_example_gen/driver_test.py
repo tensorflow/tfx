@@ -14,15 +14,14 @@
 
 import json
 import os
-import re
 
 from absl import logging
 
+from kfp.pipeline_spec import pipeline_spec_pb2 as pipeline_pb2
 import tensorflow as tf
 from tfx.dsl.io import fileio
 from tfx.orchestration.kubeflow.v2 import compiler_utils
 from tfx.orchestration.kubeflow.v2.file_based_example_gen import driver
-from tfx.orchestration.kubeflow.v2.proto import pipeline_pb2
 from tfx.proto import example_gen_pb2
 from tfx.types import standard_artifacts
 from tfx.utils import io_utils
@@ -42,7 +41,9 @@ class RunDriverTest(test_case_utils.TfxTest):
     self._executor_invocation = pipeline_pb2.ExecutorInput()
     self._executor_invocation.outputs.output_file = _TEST_OUTPUT_METADATA_JSON
     self._executor_invocation.inputs.parameters[
-        'input_base_uri'].string_value = _TEST_INPUT_DIR
+        'input_base'].string_value = _TEST_INPUT_DIR
+    self._executor_invocation.inputs.parameters[
+        'output_config'].string_value = '{}'
     self._executor_invocation.inputs.parameters[
         'input_config'].string_value = json_format.MessageToJson(
             example_gen_pb2.Input(splits=[
@@ -98,11 +99,11 @@ class RunDriverTest(test_case_utils.TfxTest):
     driver.main(driver._parse_flags(serialized_args))
 
     # Check the output metadata file for the expected outputs
-    with open(_TEST_OUTPUT_METADATA_JSON) as output_meta_json:
+    with fileio.open(_TEST_OUTPUT_METADATA_JSON, 'rb') as output_meta_json:
       output_metadata = pipeline_pb2.ExecutorOutput()
       json_format.Parse(
           output_meta_json.read(), output_metadata, ignore_unknown_fields=True)
-      self.assertEqual(output_metadata.parameters['span'].string_value, '0')
+      self.assertEqual(output_metadata.parameters['span'].int_value, 0)
       self.assertEqual(
           output_metadata.parameters['input_fingerprint'].string_value,
           'split:s1,num_files:1,total_bytes:7,xor_checksum:1,sum_checksum:1\n'
@@ -128,7 +129,7 @@ class RunDriverTest(test_case_utils.TfxTest):
         '--json_serialized_invocation_args',
         json_format.MessageToJson(message=self._executor_invocation)
     ]
-    with self.assertRaisesRegexp(
+    with self.assertRaisesRegex(
         ValueError, 'Latest span should be the same for each split'):
       driver.main(driver._parse_flags(serialized_args))
 
@@ -139,11 +140,11 @@ class RunDriverTest(test_case_utils.TfxTest):
     driver.main(driver._parse_flags(serialized_args))
 
     # Check the output metadata file for the expected outputs
-    with open(_TEST_OUTPUT_METADATA_JSON) as output_meta_json:
+    with fileio.open(_TEST_OUTPUT_METADATA_JSON, 'rb') as output_meta_json:
       output_metadata = pipeline_pb2.ExecutorOutput()
       json_format.Parse(
           output_meta_json.read(), output_metadata, ignore_unknown_fields=True)
-      self.assertEqual(output_metadata.parameters['span'].string_value, '2')
+      self.assertEqual(output_metadata.parameters['span'].int_value, 2)
       self.assertEqual(
           output_metadata.parameters['input_config'].string_value,
           json_format.MessageToJson(
@@ -173,10 +174,14 @@ class RunDriverTest(test_case_utils.TfxTest):
     driver.main(driver._parse_flags(serialized_args))
 
     # Check the output metadata file for the expected outputs
-    with open(_TEST_OUTPUT_METADATA_JSON) as output_meta_json:
-      self.assertDictEqual(
-          json.loads(re.sub(r'\s+', '', output_meta_json.read())),
-          json.loads(re.sub(r'\s+', '', self._expected_result_from_file)))
+    with fileio.open(_TEST_OUTPUT_METADATA_JSON, 'rb') as output_meta_json:
+      self.assertEqual(
+          json.dumps(
+              json.loads(output_meta_json.read()), indent=2, sort_keys=True),
+          json.dumps(
+              json.loads(self._expected_result_from_file),
+              indent=2,
+              sort_keys=True))
 
 
 if __name__ == '__main__':

@@ -14,7 +14,7 @@
 """TFX bulk_inferrer executor."""
 
 import os
-from typing import Any, Callable, Dict, List, Optional, Text, Union
+from typing import Any, Callable, Dict, List, Optional, Union
 
 from absl import logging
 import apache_beam as beam
@@ -23,7 +23,7 @@ from tfx import types
 from tfx.components.bulk_inferrer import prediction_to_example_utils
 from tfx.components.util import model_utils
 from tfx.components.util import tfxio_utils
-from tfx.dsl.components.base import base_executor
+from tfx.dsl.components.base import base_beam_executor
 from tfx.proto import bulk_inferrer_pb2
 from tfx.proto import example_gen_pb2
 from tfx.types import artifact_utils
@@ -48,12 +48,12 @@ _EXAMPLES_FILE_NAME = 'examples'
 _TELEMETRY_DESCRIPTORS = ['BulkInferrer']
 
 
-class Executor(base_executor.BaseExecutor):
+class Executor(base_beam_executor.BaseBeamExecutor):
   """TFX bulk inferer executor."""
 
-  def Do(self, input_dict: Dict[Text, List[types.Artifact]],
-         output_dict: Dict[Text, List[types.Artifact]],
-         exec_properties: Dict[Text, Any]) -> None:
+  def Do(self, input_dict: Dict[str, List[types.Artifact]],
+         output_dict: Dict[str, List[types.Artifact]],
+         exec_properties: Dict[str, Any]) -> None:
     """Runs batch inference on a given model with given input examples.
 
     Args:
@@ -120,8 +120,8 @@ class Executor(base_executor.BaseExecutor):
         inference_result, self._get_inference_spec(model_path, exec_properties))
 
   def _get_inference_spec(
-      self, model_path: Text,
-      exec_properties: Dict[Text, Any]) -> model_spec_pb2.InferenceSpecType:
+      self, model_path: str,
+      exec_properties: Dict[str, Any]) -> model_spec_pb2.InferenceSpecType:
     model_spec = bulk_inferrer_pb2.ModelSpec()
     proto_utils.json_to_proto(
         exec_properties[standard_component_specs.MODEL_SPEC_KEY], model_spec)
@@ -240,10 +240,9 @@ def _MakeParseFn(
 
 
 @beam.ptransform_fn
-@beam.typehints.with_input_types(beam.Pipeline)
 @beam.typehints.with_output_types(prediction_log_pb2.PredictionLog)
 def _RunInference(
-    pipeline: beam.Pipeline,
+    pipeline: beam.pvalue.PCollection,
     payload_format: int,
     inference_endpoint: model_spec_pb2.InferenceSpecType
 ) -> beam.pvalue.PCollection:
@@ -259,7 +258,7 @@ def _RunInference(
 @beam.typehints.with_output_types(beam.pvalue.PDone)
 def _WriteExamples(prediction_log: beam.pvalue.PCollection,
                    output_example_spec: bulk_inferrer_pb2.OutputExampleSpec,
-                   output_path: Text) -> beam.pvalue.PDone:
+                   output_path: str) -> beam.pvalue.PDone:
   """Converts `prediction_log` to `tf.train.Example` and materializes."""
   return (prediction_log
           | 'ConvertToExamples' >> beam.Map(

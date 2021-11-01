@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -26,7 +25,7 @@ from ml_metadata.metadata_store import metadata_store
 from ml_metadata.proto import metadata_store_pb2
 
 
-class TFXArtifactTypes(object):
+class TFXArtifactTypes:
   """Constants for different TFX artifact type names."""
   EXAMPLES = 'Examples'
   SCHEMA = 'Schema'
@@ -37,7 +36,7 @@ class TFXArtifactTypes(object):
   MODEL_EVAL = 'ModelEvaluation'
 
 
-class TFXExecutionTypes(object):
+class TFXExecutionTypes:
   """Constants for different TFX execution type names."""
   EXAMPLE_GEN = 'tfx.components.example_gen.csv_example_gen.component.CsvExampleGen'
   STATISTICS_GEN = 'tfx.components.statistics_gen.component.StatisticsGen'
