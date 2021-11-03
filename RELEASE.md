@@ -23,6 +23,7 @@
 ## Bug Fixes and Other Changes
 
 *   Added support for a custom metadata-ui-json filename in KubeflowDagRunner.
+*   Fixed missing type information marker file 'py.typed'.
 
 ## Documentation Updates
 
