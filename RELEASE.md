@@ -31,9 +31,34 @@
 *   Fixed FileBasedExampleGen driver for Kubeflow v2 (Vertex). Driver can
     update exec_properties for its executor now, which enables {SPAN} feature.
 *   example_gen.utils.dict_to_example now accepts Numpy types
-*   Added support for a custom metadata-ui-json filename in KubeflowDagRunner.
 
 ## Documentation Updates
+
+# Version 1.3.2
+
+## Major Features and Improvements
+
+*   N/A
+
+### For Pipeline Authors
+
+*   N/A
+
+### For Component Authors
+
+*   N/A
+
+## Deprecations
+
+*   N/A
+
+## Bug Fixes and Other Changes
+
+*  Fixed endless waiting for Vertex Trainer.
+
+## Documentation Updates
+
+*   N/A
 
 # Version 1.3.1
 
@@ -125,6 +150,37 @@
 *   Depends on `tensorflow-transform>=1.3.0,<1.4.0`.
 *   Depends on `tfx-bsl>=1.3.0,<1.4.0`.
 *   Depends on 'google-cloud-aiplatform>=0.5.0,<2'.
+
+## Documentation Updates
+
+*   N/A
+
+# Version 1.2.1
+
+## Major Features and Improvements
+
+*   N/A
+
+## Breaking Changes
+
+*   N/A
+
+### For Pipeline Authors
+
+*   N/A
+
+### For Component Authors
+
+*   N/A
+
+## Deprecations
+
+*   N/A
+
+## Bug Fixes and Other Changes
+
+*   Added support for a custom metadata-ui-json filename in KubeflowDagRunner.
+*   Fixed missing type information marker file 'py.typed'.
 
 ## Documentation Updates
 
