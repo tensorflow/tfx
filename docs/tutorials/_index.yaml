@@ -79,8 +79,8 @@ landing_page:
       path: /tfx/tutorials/tfx/gcp/vertex_pipelines_bq
     - classname: tfo-landing-page-card
       description: >
-        <a href="/tfx/tutorials/tfx/gcp/vertex_pipelines_vertex_training"><h3 class="no-link">Vertex AI Training</h3></a>
-        Using cloud resources for ML training with Vertex AI Training.
+        <a href="/tfx/tutorials/tfx/gcp/vertex_pipelines_vertex_training"><h3 class="no-link">Vertex AI Training and Serving</h3></a>
+        Using cloud resources for ML training and serving with Vertex AI.
       path: /tfx/tutorials/tfx/gcp/vertex_pipelines_vertex_training
     - classname: tfo-landing-page-card
       description: >
