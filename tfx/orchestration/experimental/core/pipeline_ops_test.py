@@ -189,6 +189,20 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
       node_trainer.node_info.id = 'Trainer'
       node_trainer.upstream_nodes.extend(['Transform'])
 
+      latest_pipeline_snapshot_settings = pipeline_pb2.SnapshotSettings()
+      latest_pipeline_snapshot_settings.latest_pipeline_run_strategy.SetInParent(
+      )
+
+      incorrect_partial_run_option = pipeline_pb2.PartialRun(
+          from_nodes=['InvalidaNode'],
+          to_nodes=['Trainer'],
+          snapshot_settings=latest_pipeline_snapshot_settings)
+      with self.assertRaisesRegex(
+          status_lib.StatusNotOkError,
+          'specified in from_nodes/to_nodes are not present in the pipeline.'):
+        pipeline_ops.initiate_pipeline_start(
+            m, pipeline, partial_run_option=incorrect_partial_run_option)
+
       expected_pipeline = copy.deepcopy(pipeline)
       expected_pipeline.runtime_spec.snapshot_settings.latest_pipeline_run_strategy.SetInParent(
       )
@@ -201,12 +215,48 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
       expected_pipeline.nodes[
           2].pipeline_node.execution_options.run.SetInParent()
 
-      latest_pipeline_snapshot_settings = pipeline_pb2.SnapshotSettings()
-      latest_pipeline_snapshot_settings.latest_pipeline_run_strategy.SetInParent(
-      )
       partial_run_option = pipeline_pb2.PartialRun(
           from_nodes=['Transform'],
           to_nodes=['Trainer'],
+          snapshot_settings=latest_pipeline_snapshot_settings)
+      with pipeline_ops.initiate_pipeline_start(
+          m, pipeline, partial_run_option=partial_run_option) as pipeline_state:
+        self.assertEqual(expected_pipeline, pipeline_state.pipeline)
+
+  @mock.patch.object(partial_run_utils, 'snapshot')
+  def test_initiate_pipeline_start_with_partial_run_default_to_nodes(
+      self, mock_snapshot):
+    with self._mlmd_connection as m:
+      pipeline = _test_pipeline('test_pipeline', pipeline_pb2.Pipeline.SYNC)
+      node_example_gen = pipeline.nodes.add().pipeline_node
+      node_example_gen.node_info.id = 'ExampleGen'
+      node_example_gen.downstream_nodes.extend(['Transform'])
+      node_transform = pipeline.nodes.add().pipeline_node
+      node_transform.node_info.id = 'Transform'
+      node_transform.upstream_nodes.extend(['ExampleGen'])
+      node_transform.downstream_nodes.extend(['Trainer'])
+      node_trainer = pipeline.nodes.add().pipeline_node
+      node_trainer.node_info.id = 'Trainer'
+      node_trainer.upstream_nodes.extend(['Transform'])
+
+      latest_pipeline_snapshot_settings = pipeline_pb2.SnapshotSettings()
+      latest_pipeline_snapshot_settings.latest_pipeline_run_strategy.SetInParent(
+      )
+
+      expected_pipeline = copy.deepcopy(pipeline)
+      expected_pipeline.runtime_spec.snapshot_settings.latest_pipeline_run_strategy.SetInParent(
+      )
+      expected_pipeline.nodes[
+          0].pipeline_node.execution_options.skip.reuse_artifacts = True
+      expected_pipeline.nodes[
+          1].pipeline_node.execution_options.run.perform_snapshot = True
+      expected_pipeline.nodes[
+          1].pipeline_node.execution_options.run.depends_on_snapshot = True
+      expected_pipeline.nodes[
+          2].pipeline_node.execution_options.run.SetInParent()
+
+      partial_run_option = pipeline_pb2.PartialRun(
+          from_nodes=['Transform'],
           snapshot_settings=latest_pipeline_snapshot_settings)
       with pipeline_ops.initiate_pipeline_start(
           m, pipeline, partial_run_option=partial_run_option) as pipeline_state:
