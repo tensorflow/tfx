@@ -37,15 +37,18 @@ class TestQueryBasedExampleGenComponent(component.QueryBasedExampleGen):
 
   EXECUTOR_SPEC = executor_spec.BeamExecutorSpec(TestExampleGenExecutor)
 
-  def __init__(self,
-               input_config,
-               output_config=None,
-               output_data_format=example_gen_pb2.FORMAT_TF_EXAMPLE,
-               output_file_format=example_gen_pb2.FORMAT_TFRECORDS_GZIP,
-               ):
+  def __init__(
+      self,
+      input_config,
+      output_config=None,
+      range_config=None,
+      output_data_format=example_gen_pb2.FORMAT_TF_EXAMPLE,
+      output_file_format=example_gen_pb2.FORMAT_TFRECORDS_GZIP,
+  ):
     super().__init__(
         input_config=input_config,
         output_config=output_config,
+        range_config=range_config,
         output_data_format=output_data_format,
         output_file_format=output_file_format,
     )
@@ -85,6 +88,30 @@ class ComponentTest(tf.test.TestCase):
     self.assertIsNone(
         example_gen.exec_properties.get(
             standard_component_specs.CUSTOM_CONFIG_KEY))
+
+  def testConstructSubclassQueryBasedWithRangeConfig(self):
+    # @span_yyyymmdd_utc will replaced to '19700103' to query, span `2` will be
+    # recorded in output Example artifact.
+    range_config = range_config_pb2.RangeConfig(
+        static_range=range_config_pb2.StaticRange(
+            start_span_number=2, end_span_number=2))
+    example_gen = TestQueryBasedExampleGenComponent(
+        input_config=example_gen_pb2.Input(splits=[
+            example_gen_pb2.Input.Split(
+                name='single',
+                pattern='select * from table where date=@span_yyyymmdd_utc'),
+        ]),
+        range_config=range_config)
+    self.assertEqual({}, example_gen.inputs)
+    self.assertEqual(driver.QueryBasedDriver, example_gen.driver_class)
+    self.assertEqual(
+        standard_artifacts.Examples.TYPE_NAME,
+        example_gen.outputs[standard_component_specs.EXAMPLES_KEY].type_name)
+    stored_range_config = range_config_pb2.RangeConfig()
+    proto_utils.json_to_proto(
+        example_gen.exec_properties[standard_component_specs.RANGE_CONFIG_KEY],
+        stored_range_config)
+    self.assertEqual(range_config, stored_range_config)
 
   def testConstructSubclassQueryBasedWithInvalidOutputDataFormat(self):
     self.assertRaises(

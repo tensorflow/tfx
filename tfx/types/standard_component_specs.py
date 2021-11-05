@@ -227,6 +227,8 @@ class QueryBasedExampleGenSpec(ComponentSpec):
           ExecutionParameter(type=int),  # example_gen_pb2.FileFormat enum.
       CUSTOM_CONFIG_KEY:
           ExecutionParameter(type=example_gen_pb2.CustomConfig, optional=True),
+      RANGE_CONFIG_KEY:
+          ExecutionParameter(type=range_config_pb2.RangeConfig, optional=True),
   }
   INPUTS = {}
   OUTPUTS = {

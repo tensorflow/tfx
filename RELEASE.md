@@ -8,6 +8,8 @@
 *   Added conditional for TFX running on KFPv2 (Vertex).
 *   Supported component level beam pipeline args for Vertex (KFPV2DagRunner).
 *   Support exit handler for TFX running on KFPv2 (Vertex).
+*   Added RangeConfig for QueryBasedExampleGen to select date using query
+    pattern.
 
 ## Breaking Changes
 
