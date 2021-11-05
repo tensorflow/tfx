@@ -305,7 +305,7 @@ class ExecutorTest(tft_unit.TransformTestCase):
 
     with tft_unit.mock.patch.object(
         executor.Executor,
-        '_CreatePipeline',
+        '_make_beam_pipeline',
         autospec=True,
         side_effect=_create_pipeline_wrapper):
       transform_executor = executor.Executor()
@@ -317,21 +317,23 @@ class ExecutorTest(tft_unit.TransformTestCase):
   def test_do_with_module_file(self):
     self._exec_properties[
         standard_component_specs.MODULE_FILE_KEY] = self._module_file
-    self._transform_executor.Do(self._input_dict, self._output_dict,
-                                self._exec_properties)
     self.assertIsNotNone(
         self._transform_executor._GetStatsOptionsUpdaterFn(
             self._exec_properties))
+
+    self._transform_executor.Do(self._input_dict, self._output_dict,
+                                self._exec_properties)
     self._verify_transform_outputs()
 
   def test_do_with_preprocessing_fn(self):
     self._exec_properties[
         standard_component_specs.PREPROCESSING_FN_KEY] = self._preprocessing_fn
-    self._transform_executor.Do(self._input_dict, self._output_dict,
-                                self._exec_properties)
     self.assertIsNone(
         self._transform_executor._GetStatsOptionsUpdaterFn(
             self._exec_properties))
+
+    self._transform_executor.Do(self._input_dict, self._output_dict,
+                                self._exec_properties)
     self._verify_transform_outputs()
 
   def test_do_with_preprocessing_fn_and_stats_updater_fn(self):
@@ -340,11 +342,12 @@ class ExecutorTest(tft_unit.TransformTestCase):
     self._exec_properties[
         standard_component_specs.STATS_OPTIONS_UPDATER_FN_KEY] = (
             self._stats_options_updater_fn)
-    self._transform_executor.Do(self._input_dict, self._output_dict,
-                                self._exec_properties)
     self.assertIsNotNone(
         self._transform_executor._GetStatsOptionsUpdaterFn(
             self._exec_properties))
+
+    self._transform_executor.Do(self._input_dict, self._output_dict,
+                                self._exec_properties)
     self._verify_transform_outputs()
 
   def test_do_with_materialization_disabled(self):
