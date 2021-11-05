@@ -396,8 +396,8 @@ class ExecutorTest(tf.test.TestCase):
               },
               split_pattern='SELECT context_feature_1, context_feature_2, '
               'feature_id_1, feature_id_2, feature_id_3 FROM `fake`')
-              | 'LoadElwc' >> beam.Map(DeserializeElwc)
-              )
+          | 'LoadElwc' >> beam.Map(DeserializeElwc)
+      )
 
       expected_elwc_examples = [
         _ELWC_1, _ELWC_2, _ELWC_3,
