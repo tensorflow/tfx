@@ -64,6 +64,11 @@ def is_execution_active(execution: metadata_store_pb2.Execution) -> bool:
           execution.last_known_state == metadata_store_pb2.Execution.RUNNING)
 
 
+def is_internal_key(key: str) -> bool:
+  """Returns `True` if the key is an internal-only execution property key."""
+  return key.startswith('__')
+
+
 def is_schema_key(key: str) -> bool:
   """Returns `True` if the input key corresponds to a schema stored in execution property."""
   return re.fullmatch(r'^__schema__.*__$', key) is not None

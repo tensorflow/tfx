@@ -377,6 +377,10 @@ class ExecutionLibTest(test_case_utils.TfxTest):
         metadata_store_pb2.Execution(create_time_since_epoch=1)
     ], execution_lib.sort_executions_newest_to_oldest(executions))
 
+  def test_is_internal_key(self):
+    self.assertTrue(execution_lib.is_internal_key('__internal_key__'))
+    self.assertFalse(execution_lib.is_internal_key('public_key'))
+
 
 if __name__ == '__main__':
   tf.test.main()
