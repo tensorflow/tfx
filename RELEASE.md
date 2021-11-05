@@ -29,6 +29,8 @@
 *   Depends on `pyarrow>=1,<6`.
 *   Fixed FileBasedExampleGen driver for Kubeflow v2 (Vertex). Driver can
     update exec_properties for its executor now, which enables {SPAN} feature.
+*   Fixed `ElwcBigQueryExampleGen` data serializiation error that was causing an assertion
+    failure on Beam. 
 
 ## Documentation Updates
 
