@@ -16,6 +16,7 @@
 import itertools
 from typing import Any, Dict, List, Optional, Tuple
 
+from absl import logging
 from kfp.pipeline_spec import pipeline_spec_pb2 as pipeline_pb2
 from tfx import components
 from tfx.components.evaluator import constants
@@ -32,6 +33,7 @@ from tfx.dsl.input_resolution.strategies import latest_artifact_strategy
 from tfx.dsl.input_resolution.strategies import latest_blessed_model_strategy
 from tfx.orchestration import data_types
 from tfx.orchestration.kubeflow.v2 import compiler_utils
+from tfx.orchestration.kubeflow.v2 import decorators
 from tfx.orchestration.kubeflow.v2 import parameter_utils
 from tfx.types import artifact_utils
 from tfx.types import standard_artifacts
@@ -136,7 +138,8 @@ class StepBuilder:
                enable_cache: bool = False,
                pipeline_info: Optional[data_types.PipelineInfo] = None,
                channel_redirect_map: Optional[Dict[Tuple[str, str],
-                                                   str]] = None):
+                                                   str]] = None,
+               is_exit_handler: bool = False):
     """Creates a StepBuilder object.
 
     A StepBuilder takes in a TFX node object (usually it's a component/resolver/
@@ -171,6 +174,7 @@ class StepBuilder:
         producer component id, output key). This is needed for cases where one
         DSL node is splitted into multiple tasks in pipeline API proto. For
         example, latest blessed model resolver.
+      is_exit_handler: Marking whether the task is for exit handler.
 
     Raises:
       ValueError: On the following two cases:
@@ -186,6 +190,7 @@ class StepBuilder:
     self._inputs = node.inputs
     self._outputs = node.outputs
     self._enable_cache = enable_cache
+    self._is_exit_handler = is_exit_handler
     if channel_redirect_map is None:
       self._channel_redirect_map = {}
     else:
@@ -310,6 +315,10 @@ class StepBuilder:
       # TODO(b/169573945): Add support for vertex if requested.
       if not isinstance(input_channel, Channel):
         raise TypeError('Only single Channel is supported.')
+      if self._is_exit_handler:
+        logging.error('exit handler component doesn\'t take input artifact, '
+                      'the input will be ignored.')
+        continue
       # If the redirecting map is provided (usually for latest blessed model
       # resolver, we'll need to redirect accordingly. Also, the upstream node
       # list will be updated and replaced by the new producer id.
@@ -333,6 +342,13 @@ class StepBuilder:
       if isinstance(value, data_types.RuntimeParameter):
         parameter_utils.attach_parameter(value)
         task_spec.inputs.parameters[name].component_input_parameter = value.name
+      elif isinstance(value, decorators.FinalStatusStr):
+        if not self._is_exit_handler:
+          logging.error('FinalStatusStr type is only allowed to use in exit'
+                        ' handler. The parameter is ignored.')
+        else:
+          task_spec.inputs.parameters[name].task_final_status.producer_task = (
+              compiler_utils.TFX_DAG_NAME)
       else:
         task_spec.inputs.parameters[name].CopyFrom(
             pipeline_pb2.TaskInputsSpec.InputParameterSpec(
@@ -348,6 +364,12 @@ class StepBuilder:
       task_spec.caching_options.CopyFrom(
           pipeline_pb2.PipelineTaskSpec.CachingOptions(
               enable_cache=self._enable_cache))
+
+    if self._is_exit_handler:
+      task_spec.trigger_policy.strategy = (
+          pipeline_pb2.PipelineTaskSpec.TriggerPolicy
+          .ALL_UPSTREAM_TASKS_COMPLETED)
+      task_spec.dependent_tasks.append(compiler_utils.TFX_DAG_NAME)
 
     # 4. Build the executor body for other common tasks.
     executor = pipeline_pb2.PipelineDeploymentConfig.ExecutorSpec()

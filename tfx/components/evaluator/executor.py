@@ -155,7 +155,7 @@ class Executor(base_beam_executor.BaseBeamExecutor):
       # avoid accidentally blessing models when users forget to set thresholds.
       run_validation = bool(
           tfma.metrics.metric_thresholds_from_metrics_specs(
-              eval_config.metrics_specs))
+              eval_config.metrics_specs, eval_config=eval_config))
       if len(eval_config.model_specs) > 2:
         raise ValueError(
             """Cannot support more than two models. There are %d models in this

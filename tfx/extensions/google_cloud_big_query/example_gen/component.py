@@ -21,6 +21,7 @@ from tfx.dsl.components.base import executor_spec
 from tfx.extensions.google_cloud_big_query.example_gen import executor
 from tfx.orchestration import data_types
 from tfx.proto import example_gen_pb2
+from tfx.proto import range_config_pb2
 
 
 class BigQueryExampleGen(component.QueryBasedExampleGen):
@@ -42,7 +43,9 @@ class BigQueryExampleGen(component.QueryBasedExampleGen):
       input_config: Optional[Union[example_gen_pb2.Input,
                                    data_types.RuntimeParameter]] = None,
       output_config: Optional[Union[example_gen_pb2.Output,
-                                    data_types.RuntimeParameter]] = None):
+                                    data_types.RuntimeParameter]] = None,
+      range_config: Optional[Union[range_config_pb2.RangeConfig,
+                                   data_types.RuntimeParameter]] = None):
     """Constructs a BigQueryExampleGen component.
 
     Args:
@@ -58,6 +61,8 @@ class BigQueryExampleGen(component.QueryBasedExampleGen):
         size 2:1. If any field is provided as a RuntimeParameter,
         input_config should be constructed as a dict with the same field names
         as Output proto message.
+      range_config: An optional range_config_pb2.RangeConfig instance,
+        specifying the range of span values to consider.
 
     Raises:
       RuntimeError: Only one of query and input_config should be set.
@@ -65,4 +70,7 @@ class BigQueryExampleGen(component.QueryBasedExampleGen):
     if bool(query) == bool(input_config):
       raise RuntimeError('Exactly one of query and input_config should be set.')
     input_config = input_config or utils.make_default_input_config(query)
-    super().__init__(input_config=input_config, output_config=output_config)
+    super().__init__(
+        input_config=input_config,
+        output_config=output_config,
+        range_config=range_config)

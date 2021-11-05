@@ -31,7 +31,9 @@ from tfx.proto.orchestration import pipeline_pb2
 from tfx.utils import proto_utils
 from tfx.utils import typing_utils
 
+import ml_metadata as mlmd
 from ml_metadata.proto import metadata_store_pb2
+from google.protobuf import any_pb2
 
 
 @attr.s(auto_attribs=True)
@@ -48,7 +50,7 @@ def _generate_task_from_execution(metadata_handler: metadata.Metadata,
                                   is_cancelled: bool = False) -> task_lib.Task:
   """Generates `ExecNodeTask` given execution."""
   contexts = metadata_handler.store.get_contexts_by_execution(execution.id)
-  exec_properties = _extract_properties(execution)
+  exec_properties = extract_properties(execution)
   input_artifacts = execution_lib.get_artifacts_dict(
       metadata_handler, execution.id, [metadata_store_pb2.Event.INPUT])
   outputs_resolver = outputs_utils.OutputsResolver(node, pipeline.pipeline_info,
@@ -112,7 +114,7 @@ def generate_task_from_active_execution(
       is_cancelled=is_cancelled)
 
 
-def _extract_properties(
+def extract_properties(
     execution: metadata_store_pb2.Execution
 ) -> Dict[str, types.ExecPropertyTypes]:
   """Extracts execution properties from mlmd Execution."""
@@ -203,18 +205,19 @@ def get_executions(
   Returns:
     List of executions for the given node in MLMD db.
   """
+  if not node.contexts.contexts:
+    return []
   # Get all the contexts associated with the node.
   contexts = []
-  for context_spec in node.contexts.contexts:
-    context = metadata_handler.store.get_context_by_type_and_name(
-        context_spec.type.name, data_types_utils.get_value(context_spec.name))
-    if context is None:
-      # If no context is registered, it's certain that there is no
-      # associated execution for the node.
-      return []
-    contexts.append(context)
-  return execution_lib.get_executions_associated_with_all_contexts(
-      metadata_handler, contexts)
+  for i, context_spec in enumerate(node.contexts.contexts):
+    context_type = context_spec.type.name
+    context_name = data_types_utils.get_value(context_spec.name)
+    contexts.append(
+        f"(contexts_{i}.type = '{context_type}' AND contexts_{i}.name = '{context_name}')"
+    )
+  filter_query = ' AND '.join(contexts)
+  return metadata_handler.store.get_executions(
+      list_options=mlmd.ListOptions(filter_query=filter_query))
 
 
 def is_latest_execution_successful(
@@ -251,3 +254,16 @@ def get_latest_execution(
   """Returns latest execution or `None` if iterable is empty."""
   sorted_executions = execution_lib.sort_executions_newest_to_oldest(executions)
   return sorted_executions[0] if sorted_executions else None
+
+
+# TODO(b/182944474): Raise error in _get_executor_spec if executor spec is
+# missing for a non-system node.
+def get_executor_spec(pipeline: pipeline_pb2.Pipeline,
+                      node_id: str) -> Optional[any_pb2.Any]:
+  """Returns executor spec for given node_id if it exists in pipeline IR, None otherwise."""
+  if not pipeline.deployment_config.Is(
+      pipeline_pb2.IntermediateDeploymentConfig.DESCRIPTOR):
+    return None
+  depl_config = pipeline_pb2.IntermediateDeploymentConfig()
+  pipeline.deployment_config.Unpack(depl_config)
+  return depl_config.executor_specs.get(node_id)

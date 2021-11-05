@@ -34,8 +34,6 @@ from tfx.proto.orchestration import pipeline_pb2
 from tfx.utils import status as status_lib
 from tfx.utils import topsort
 
-from google.protobuf import any_pb2
-
 
 class SyncPipelineTaskGenerator(task_gen.TaskGenerator):
   """Task generator for executing a sync pipeline.
@@ -196,6 +194,14 @@ class _Generator:
     node_id = node.node_info.id
     result = []
 
+    if node.execution_options.HasField('skip'):
+      logging.info('Node %s is skipped in this partial run.', node.node_info.id)
+      pstate.record_state_change_time()
+      result.append(
+          task_lib.UpdateNodeStateTask(
+              node_uid=node_uid, state=pstate.NodeState.COMPLETE))
+      return result
+
     node_state = self._node_states_dict[node_uid]
     if node_state.state in (pstate.NodeState.STOPPING,
                             pstate.NodeState.STOPPED):
@@ -327,7 +333,8 @@ class _Generator:
         self._mlmd_handle,
         pipeline_node=node,
         pipeline_info=self._pipeline.pipeline_info,
-        executor_spec=_get_executor_spec(self._pipeline, node.node_info.id),
+        executor_spec=task_gen_utils.get_executor_spec(self._pipeline,
+                                                       node.node_info.id),
         input_artifacts=resolved_info.input_artifacts,
         output_artifacts=output_artifacts,
         parameters=resolved_info.exec_properties)
@@ -414,19 +421,6 @@ class _Generator:
         pipeline_uid=self._pipeline_uid,
         status=status_lib.Status(
             code=status_lib.Code.ABORTED, message=error_msg))
-
-
-# TODO(b/182944474): Raise error in _get_executor_spec if executor spec is
-# missing for a non-system node.
-def _get_executor_spec(pipeline: pipeline_pb2.Pipeline,
-                       node_id: str) -> Optional[any_pb2.Any]:
-  """Returns executor spec for given node_id if it exists in pipeline IR, None otherwise."""
-  if not pipeline.deployment_config.Is(
-      pipeline_pb2.IntermediateDeploymentConfig.DESCRIPTOR):
-    return None
-  depl_config = pipeline_pb2.IntermediateDeploymentConfig()
-  pipeline.deployment_config.Unpack(depl_config)
-  return depl_config.executor_specs.get(node_id)
 
 
 def _topsorted_layers(

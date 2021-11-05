@@ -119,6 +119,12 @@ def snapshot(mlmd_handle: metadata.Metadata,
     ValueError: If pipeline_node has a snashot_settings field set, but the
       artifact_reuse_strategy field is not set in it.
   """
+  # Avoid unnecessary snapshotting step if no node needs to reuse any artifacts.
+  if not any(
+      _should_reuse_artifact(node.pipeline_node.execution_options)
+      for node in pipeline.nodes):
+    return
+
   snapshot_settings = pipeline.runtime_spec.snapshot_settings
   logging.info('snapshot_settings: %s', snapshot_settings)
   if snapshot_settings.HasField('base_pipeline_run_strategy'):
@@ -365,6 +371,12 @@ def _get_validated_new_run_id(pipeline: pipeline_pb2.Pipeline,
   return str(inferred_new_run_id or new_run_id)
 
 
+def _should_reuse_artifact(
+    execution_options: pipeline_pb2.NodeExecutionOptions):
+  return (execution_options.HasField('skip') and
+          execution_options.skip.reuse_artifacts)
+
+
 def _reuse_pipeline_run_artifacts(metadata_handler: metadata.Metadata,
                                   marked_pipeline: pipeline_pb2.Pipeline,
                                   base_run_id: Optional[str] = None,
@@ -407,8 +419,7 @@ def _reuse_pipeline_run_artifacts(metadata_handler: metadata.Metadata,
         'base_run_id not provided. '
         'Default to latest pipeline run: %s', base_run_id)
   for node in marked_pipeline.nodes:
-    if (node.pipeline_node.execution_options.HasField('skip') and
-        node.pipeline_node.execution_options.skip.reuse_artifacts):
+    if _should_reuse_artifact(node.pipeline_node.execution_options):
       node_id = node.pipeline_node.node_info.id
       artifact_recycler.reuse_node_outputs(node_id, base_run_id)
   artifact_recycler.put_parent_context(base_run_id)

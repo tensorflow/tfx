@@ -7,6 +7,9 @@
     Transform component.
 *   Added conditional for TFX running on KFPv2 (Vertex).
 *   Supported component level beam pipeline args for Vertex (KFPV2DagRunner).
+*   Support exit handler for TFX running on KFPv2 (Vertex).
+*   Added RangeConfig for QueryBasedExampleGen to select date using query
+    pattern.
 
 ## Breaking Changes
 
@@ -29,10 +32,38 @@
 *   Depends on `pyarrow>=1,<6`.
 *   Fixed FileBasedExampleGen driver for Kubeflow v2 (Vertex). Driver can
     update exec_properties for its executor now, which enables {SPAN} feature.
+*   example_gen.utils.dict_to_example now accepts Numpy types
+*   Updated pytest to include v6.x
 *   Fixed `ElwcBigQueryExampleGen` data serializiation error that was causing an assertion
     failure on Beam. 
 
 ## Documentation Updates
+
+# Version 1.3.2
+
+## Major Features and Improvements
+
+*   N/A
+
+### For Pipeline Authors
+
+*   N/A
+
+### For Component Authors
+
+*   N/A
+
+## Deprecations
+
+*   N/A
+
+## Bug Fixes and Other Changes
+
+*  Fixed endless waiting for Vertex Trainer.
+
+## Documentation Updates
+
+*   N/A
 
 # Version 1.3.1
 
@@ -124,6 +155,37 @@
 *   Depends on `tensorflow-transform>=1.3.0,<1.4.0`.
 *   Depends on `tfx-bsl>=1.3.0,<1.4.0`.
 *   Depends on 'google-cloud-aiplatform>=0.5.0,<2'.
+
+## Documentation Updates
+
+*   N/A
+
+# Version 1.2.1
+
+## Major Features and Improvements
+
+*   N/A
+
+## Breaking Changes
+
+*   N/A
+
+### For Pipeline Authors
+
+*   N/A
+
+### For Component Authors
+
+*   N/A
+
+## Deprecations
+
+*   N/A
+
+## Bug Fixes and Other Changes
+
+*   Added support for a custom metadata-ui-json filename in KubeflowDagRunner.
+*   Fixed missing type information marker file 'py.typed'.
 
 ## Documentation Updates
 

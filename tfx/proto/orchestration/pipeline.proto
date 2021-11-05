@@ -469,6 +469,15 @@ message PartialRun {
   // Sink node ids.
   // Only run nodes that are reachable upstream from to_nodes (inclusive).
   repeated string to_nodes = 2;
+  // Skip node ids.
+  // Nodes between from and to nodes that can be skipped for pipeline run. Note
+  // that if a node depends on nodes that can not be skipped, it will run for
+  // pipeline result correctness.
+  // For example, in the following case
+  //   A --> B (from_nodes)--> C --> D (to_nodes)
+  // 1) if skip_nodes = [B], then nodes C, D get run;
+  // 2) if skip_nodes = [C], then nodes B, C, D will run.
+  repeated string skip_nodes = 4;
   // Settings used for snapshot during partial run.
   SnapshotSettings snapshot_settings = 3;
 }
