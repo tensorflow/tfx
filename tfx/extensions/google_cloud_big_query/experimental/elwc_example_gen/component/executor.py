@@ -58,13 +58,14 @@ class _RowToContextFeatureAndExample(beam.DoFn):
 
 def _ConvertContextAndExamplesToElwc(
     context_feature_and_examples: Tuple[bytes, List[tf.train.Example]]
-) -> input_pb2.ExampleListWithContext:
+) -> bytes:
   """Convert context feature and examples to ELWC."""
   context_feature, examples = context_feature_and_examples
   context_feature_proto = tf.train.Example()
   context_feature_proto.ParseFromString(context_feature)
-  return input_pb2.ExampleListWithContext(
+  elwc_pb2 = input_pb2.ExampleListWithContext(
       context=context_feature_proto, examples=examples)
+  return elwc_pb2.SerializeToString()
 
 
 @beam.ptransform_fn
