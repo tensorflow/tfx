@@ -32,7 +32,8 @@ class ImportExampleGen(component.FileBasedExampleGen):  # pylint: disable=protec
   shuffle the dataset for ML best practice.
 
   Component `outputs` contains:
-   - `examples`: Channel of type `standard_artifacts.Examples` for output train
+   - `examples`: Channel of type `standard_artifacts.Examples` for output
+   train
                  and eval examples.
   """
 

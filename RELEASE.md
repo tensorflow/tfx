@@ -10,6 +10,10 @@
 *   Support exit handler for TFX running on KFPv2 (Vertex).
 *   Added RangeConfig for QueryBasedExampleGen to select date using query
     pattern.
+*   Added support for union of Channels as input to standard TFX components.
+    Users can use channel.union() to combine multiple Channels and use as input
+    to these compnents. Artfacts resolved from these channels are expected to
+    have the same type, and passed to components in no particular order.
 
 ## Breaking Changes
 

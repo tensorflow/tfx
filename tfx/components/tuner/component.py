@@ -60,10 +60,10 @@ class Tuner(base_component.BaseComponent):
   EXECUTOR_SPEC = executor_spec.ExecutorClassSpec(executor.Executor)
 
   def __init__(self,
-               examples: types.Channel,
-               schema: Optional[types.Channel] = None,
-               transform_graph: Optional[types.Channel] = None,
-               base_model: Optional[types.Channel] = None,
+               examples: types.BaseChannel,
+               schema: Optional[types.BaseChannel] = None,
+               transform_graph: Optional[types.BaseChannel] = None,
+               base_model: Optional[types.BaseChannel] = None,
                module_file: Optional[str] = None,
                tuner_fn: Optional[str] = None,
                train_args: Optional[trainer_pb2.TrainArgs] = None,
@@ -73,22 +73,22 @@ class Tuner(base_component.BaseComponent):
     """Construct a Tuner component.
 
     Args:
-      examples: A Channel of type `standard_artifacts.Examples`, serving as the
-        source of examples that are used in tuning (required).
-      schema:  An optional Channel of type `standard_artifacts.Schema`, serving
-        as the schema of training and eval data. This is used when raw examples
-        are provided.
-      transform_graph: An optional Channel of type
+      examples: A BaseChannel of type `standard_artifacts.Examples`, serving as
+        the source of examples that are used in tuning (required).
+      schema:  An optional BaseChannel of type `standard_artifacts.Schema`,
+        serving as the schema of training and eval data. This is used when raw
+        examples are provided.
+      transform_graph: An optional BaseChannel of type
         `standard_artifacts.TransformGraph`, serving as the input transform
         graph if present. This is used when transformed examples are provided.
-      base_model: A Channel of type `Model`, containing model that will be used
-        for training. This can be used for warmstart, transfer learning or
+      base_model: A BaseChannel of type `Model`, containing model that will be
+        used for training. This can be used for warmstart, transfer learning or
         model ensembling.
       module_file: A path to python module file containing UDF tuner definition.
         The module_file must implement a function named `tuner_fn` at its top
         level. The function must have the following signature.
-            def tuner_fn(fn_args: FnArgs) -> TunerFnResult:
-        Exactly one of 'module_file' or 'tuner_fn' must be supplied.
+            def tuner_fn(fn_args: FnArgs) -> TunerFnResult: Exactly one of
+              'module_file' or 'tuner_fn' must be supplied.
       tuner_fn:  A python path to UDF model definition function. See
         'module_file' for the required signature of the UDF. Exactly one of
         'module_file' or 'tuner_fn' must be supplied.

@@ -66,21 +66,22 @@ class ModelValidator(base_beam_component.BaseBeamComponent):
   @deprecation_utils.deprecated(
       None, 'ModelValidator is deprecated, use Evaluator instead.')
   def __init__(self,
-               examples: types.Channel,
-               model: types.Channel,
+               examples: types.BaseChannel,
+               model: types.BaseChannel,
                blessing: Optional[types.Channel] = None):
     """Construct a ModelValidator component.
 
     Args:
-      examples: A Channel of type `standard_artifacts.Examples`, usually
+      examples: A BaseChannel of type `standard_artifacts.Examples`, usually
         produced by an
         [ExampleGen](https://www.tensorflow.org/tfx/guide/examplegen) component.
-        _required_
-      model: A Channel of type `standard_artifacts.Model`, usually produced by
+          _required_
+      model: A BaseChannel of type `standard_artifacts.Model`, usually produced
+        by
         a [Trainer](https://www.tensorflow.org/tfx/guide/trainer) component.
-        _required_
-      blessing: Output channel of type `standard_artifacts.ModelBlessing`
-        that contains the validation result.
+          _required_
+      blessing: Output channel of type `standard_artifacts.ModelBlessing` that
+        contains the validation result.
     """
     blessing = blessing or types.Channel(type=standard_artifacts.ModelBlessing)
     spec = standard_component_specs.ModelValidatorSpec(

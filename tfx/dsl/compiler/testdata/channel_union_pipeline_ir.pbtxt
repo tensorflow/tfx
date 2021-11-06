@@ -709,7 +709,7 @@ deployment_config {
       key: "ChannelUnionComponent"
       value {
         [type.googleapis.com/tfx.orchestration.executable_spec.PythonClassExecutableSpec] {
-          class_path: "tfx.dsl.compiler.testdata.channel_union_pipeline.Executor"
+          class_path: "tfx.dsl.compiler.testdata.channel_union_pipeline.ChannelUnionComponent_Executor"
         }
       }
     }
