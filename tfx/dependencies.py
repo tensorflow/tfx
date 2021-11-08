@@ -114,6 +114,9 @@ def make_extra_packages_airflow():
   return [
       # TODO(b/188940096): update supported version.
       'apache-airflow[mysql]>=1.10.14,<3',
+      # TODO(b/205459685): Delete pinned WTForms after flask-appbuilder fix the
+      # issue. (https://github.com/dpgaspar/Flask-AppBuilder/issues/1732)
+      'WTForms<3',
       # TODO(b/182848576): Delete pinned sqlalchemy after apache-airflow 2.0.2
       # or later.(github.com/apache/airflow/issues/14811)
       'sqlalchemy>=1.3,<1.4',
