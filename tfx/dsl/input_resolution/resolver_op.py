@@ -75,7 +75,7 @@ class _ResolverOpMeta(abc.ABCMeta):
   def __init__(
       cls, name, bases, attrs,
       arg_data_types: Sequence[DataTypes] = (DataTypes.ARTIFACT_MULTIMAP,),
-      return_data_type: DataTypes = DataTypes.ARTIFACT_MULTIMAP):
+      return_data_type: DataTypes = DataTypes.ARTIFACT_MULTIMAP):  # pytype: disable=annotation-type-mismatch
     cls._props_by_name = {
         prop.name: prop
         for prop in attrs.values()
@@ -111,7 +111,7 @@ class _ResolverOpMeta(abc.ABCMeta):
         op_type=cls,
         arg=arg,
         output_data_type=cls._return_data_type,
-        kwargs=kwargs)
+        kwargs=kwargs)  # pytype: disable=wrong-arg-types
 
   def _check_arg(cls, arg: 'OpNode'):
     if not isinstance(arg, OpNode):
