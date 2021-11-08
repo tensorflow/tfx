@@ -86,7 +86,11 @@ def make_required_install_packages():
       'numpy>=1.16,<1.20',
       'pyarrow>=1,<6',
       'pyyaml>=3.12,<6',
-      'tensorflow>=1.15.2,!=2.0.*,!=2.1.*,!=2.2.*,!=2.3.*,!=2.4.*,!=2.5.*,<3',
+      # Keep the TF version same as TFT to help Pip version resolution.
+      # Pip might stuck in a TF 1.15 dependency although there is a working
+      # dependency set with TF 2.x without the sync.
+      'tensorflow' + select_constraint(
+          '>=1.15.2,!=2.0.*,!=2.1.*,!=2.2.*,!=2.3.*,!=2.4.*,!=2.5.*,<2.7'),
       'tensorflow-hub>=0.9.0,<0.13',
       'tensorflow-data-validation' + select_constraint(
           default='>=1.3.0,<1.4.0',
