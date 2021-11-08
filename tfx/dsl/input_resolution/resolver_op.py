@@ -268,7 +268,7 @@ class ResolverOp(metaclass=_ResolverOpMeta):
 _TOut = TypeVar('_TOut')
 
 
-@attr.s(kw_only=True, repr=False)
+@attr.s(kw_only=True, repr=False, eq=False)
 class OpNode(Generic[_TOut]):
   """OpNode represents a ResolverOp invocation."""
   _VALID_OP_TYPES = (ResolverOp,)
