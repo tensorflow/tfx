@@ -13,7 +13,6 @@
 # limitations under the License.
 """Executor for TensorFlow Transform."""
 
-import functools
 import hashlib
 import os
 from typing import Any, Callable, Dict, Iterable, List, Mapping, Optional, Sequence, Set, Tuple, Union
@@ -32,6 +31,7 @@ from tensorflow_transform.tf_metadata import dataset_metadata
 from tensorflow_transform.tf_metadata import metadata_io
 from tensorflow_transform.tf_metadata import schema_utils
 from tfx import types
+from tfx.components.transform import executor_utils
 from tfx.components.transform import labels
 from tfx.components.transform import stats_options_util
 from tfx.components.util import examples_utils
@@ -42,12 +42,9 @@ from tfx.dsl.components.base import base_beam_executor
 from tfx.dsl.components.base import base_executor
 from tfx.dsl.io import fileio
 from tfx.proto import example_gen_pb2
-from tfx.proto import transform_pb2
 from tfx.types import artifact_utils
 from tfx.types import standard_component_specs
 from tfx.utils import io_utils
-from tfx.utils import json_utils
-from tfx.utils import proto_utils
 import tfx_bsl
 from tfx_bsl.tfxio import tfxio as tfxio_module
 
@@ -67,9 +64,6 @@ _RAW_EXAMPLE_SCHEMA = schema_utils.schema_from_feature_spec(
 
 # TODO(b/123519698): Simplify the code by removing the key structure.
 _TRANSFORM_INTERNAL_FEATURE_FOR_KEY = '__TFT_PASS_KEY__'
-
-# Default file name prefix for transformed_examples.
-_DEFAULT_TRANSFORMED_EXAMPLES_PREFIX = 'transformed_examples'
 
 # Temporary path inside transform_output used for tft.beam
 # TODO(b/125451545): Provide a safe temp path from base executor instead.
@@ -301,17 +295,6 @@ class Executor(base_beam_executor.BaseBeamExecutor):
     super().__init__(context)
     self._pip_dependencies = []
 
-  def _MaybeBindCustomConfig(self, inputs: Mapping[str, Any],
-                             fn: Any) -> Callable[..., Any]:
-    # For compatibility, only bind custom config if it's in the signature.
-    if value_utils.FunctionHasArg(fn, labels.CUSTOM_CONFIG):
-      custom_config_json = value_utils.GetSoleValue(inputs,
-                                                    labels.CUSTOM_CONFIG)
-      custom_config = (json_utils.loads(custom_config_json)
-                       if custom_config_json else {}) or {}
-      fn = functools.partial(fn, custom_config=custom_config)
-    return fn
-
   def _GetPreprocessingFn(
       self, inputs: Mapping[str, Any],
       unused_outputs: Mapping[str, Any]) -> Callable[..., Any]:
@@ -331,18 +314,9 @@ class Executor(base_beam_executor.BaseBeamExecutor):
       ValueError: When neither or both of MODULE_FILE and PREPROCESSING_FN
         are present in inputs.
     """
-    has_module_file = bool(
-        value_utils.GetSoleValue(inputs, labels.MODULE_FILE, strict=False))
-    has_module_path = bool(
-        value_utils.GetSoleValue(inputs, labels.MODULE_PATH, strict=False))
-    has_preprocessing_fn = bool(
-        value_utils.GetSoleValue(inputs, labels.PREPROCESSING_FN, strict=False))
-
-    if (int(has_module_file) + int(has_module_path) +
-        int(has_preprocessing_fn)) != 1:
-      raise ValueError(
-          'Exactly one of MODULE_FILE, MODULE_PATH or PREPROCESSING_FN should '
-          'be supplied in inputs.')
+    executor_utils.ValidateOnlyOneSpecified(
+        inputs,
+        (labels.MODULE_FILE, labels.MODULE_PATH, labels.PREPROCESSING_FN))
 
     fn = udf_utils.get_fn(
         {
@@ -357,7 +331,7 @@ class Executor(base_beam_executor.BaseBeamExecutor):
                     inputs, labels.PREPROCESSING_FN, strict=False),
         }, standard_component_specs.PREPROCESSING_FN_KEY)
 
-    return self._MaybeBindCustomConfig(inputs, fn)
+    return executor_utils.MaybeBindCustomConfig(inputs, fn)
 
   def _GetStatsOptionsUpdaterFn(
       self, inputs: Mapping[str, Any]
@@ -374,23 +348,11 @@ class Executor(base_beam_executor.BaseBeamExecutor):
     Returns:
       User defined function, optionally bound with a custom config.
     """
-    has_module_file = bool(
-        value_utils.GetSoleValue(inputs, labels.MODULE_FILE, strict=False))
-    has_module_path = bool(
-        value_utils.GetSoleValue(inputs, labels.MODULE_PATH, strict=False))
-    has_stats_options_updater_fn = bool(
-        value_utils.GetSoleValue(
-            inputs, labels.STATS_OPTIONS_UPDATER_FN, strict=False))
-
-    num_fn_defs = (
-        int(has_module_file) + int(has_module_path) +
-        int(has_stats_options_updater_fn))
-    if num_fn_defs > 1:
-      raise ValueError(
-          'At most one of MODULE_FILE, MODULE_PATH, or STATS_OPTIONS_UPDATER_FN '
-          'should be supplied in inputs.')
-
-    if num_fn_defs == 0:
+    has_fn = executor_utils.ValidateOnlyOneSpecified(
+        inputs, (labels.MODULE_FILE, labels.MODULE_PATH,
+                 labels.STATS_OPTIONS_UPDATER_FN),
+        allow_missing=True)
+    if not has_fn:
       return None
 
     fn = udf_utils.try_get_fn(
@@ -407,7 +369,7 @@ class Executor(base_beam_executor.BaseBeamExecutor):
         }, standard_component_specs.STATS_OPTIONS_UPDATER_FN_KEY)
     if fn is None:
       return fn
-    return self._MaybeBindCustomConfig(inputs, fn)
+    return executor_utils.MaybeBindCustomConfig(inputs, fn)
 
   def Do(self, input_dict: Dict[str, List[types.Artifact]],
          output_dict: Dict[str, List[types.Artifact]],
@@ -465,41 +427,12 @@ class Executor(base_beam_executor.BaseBeamExecutor):
     """
     self._log_startup(input_dict, output_dict, exec_properties)
 
-    num_examples = len(input_dict[standard_component_specs.EXAMPLES_KEY])
-    if num_examples > 1 and len(
-        output_dict[standard_component_specs.TRANSFORMED_EXAMPLES_KEY]) == 1:
-      output_dict[
-          standard_component_specs
-          .TRANSFORMED_EXAMPLES_KEY] = artifact_utils.replicate_artifacts(
-              output_dict[standard_component_specs.TRANSFORMED_EXAMPLES_KEY][0],
-              num_examples)
+    executor_utils.MatchNumberOfTransformedExamplesArtifacts(
+        input_dict, output_dict)
 
-    splits_config = transform_pb2.SplitsConfig()
-    if exec_properties.get(standard_component_specs.SPLITS_CONFIG_KEY, None):
-      proto_utils.json_to_proto(
-          exec_properties[standard_component_specs.SPLITS_CONFIG_KEY],
-          splits_config)
-      if not splits_config.analyze:
-        raise ValueError('analyze cannot be empty when splits_config is set.')
-    else:
-      splits_config.analyze.append('train')
-
-      # All input artifacts should have the same set of split names.
-      split_names = artifact_utils.decode_split_names(
-          input_dict[standard_component_specs.EXAMPLES_KEY][0].split_names)
-      split_names_set = set(split_names)
-
-      for artifact in input_dict[standard_component_specs.EXAMPLES_KEY]:
-        artifact_split_names = artifact_utils.decode_split_names(
-            artifact.split_names)
-        if split_names_set != set(artifact_split_names):
-          raise ValueError(
-              'Not all input artifacts have the same split names: (%s, %s)' %
-              (split_names, artifact_split_names))
-
-      splits_config.transform.extend(split_names)
-      logging.info("Analyze the 'train' split and transform all splits when "
-                   'splits_config is not set.')
+    splits_config = executor_utils.ResolveSplitsConfig(
+        exec_properties.get(standard_component_specs.SPLITS_CONFIG_KEY),
+        input_dict[standard_component_specs.EXAMPLES_KEY])
 
     payload_format, data_view_uri = (
         tfxio_utils.resolve_payload_format_and_data_view_uri(
@@ -516,29 +449,8 @@ class Executor(base_beam_executor.BaseBeamExecutor):
 
     disable_statistics = bool(
         exec_properties.get(standard_component_specs.DISABLE_STATISTICS_KEY, 0))
-
-    label_component_key_list = [
-        (labels.PRE_TRANSFORM_OUTPUT_STATS_PATH_LABEL,
-         standard_component_specs.PRE_TRANSFORM_STATS_KEY),
-        (labels.PRE_TRANSFORM_OUTPUT_SCHEMA_PATH_LABEL,
-         standard_component_specs.PRE_TRANSFORM_SCHEMA_KEY),
-        (labels.POST_TRANSFORM_OUTPUT_ANOMALIES_PATH_LABEL,
-         standard_component_specs.POST_TRANSFORM_ANOMALIES_KEY),
-        (labels.POST_TRANSFORM_OUTPUT_STATS_PATH_LABEL,
-         standard_component_specs.POST_TRANSFORM_STATS_KEY),
-        (labels.POST_TRANSFORM_OUTPUT_SCHEMA_PATH_LABEL,
-         standard_component_specs.POST_TRANSFORM_SCHEMA_KEY)
-    ]
-    stats_output_paths = {}
-    if not disable_statistics:
-      for label, component_key in label_component_key_list:
-        if component_key in output_dict:
-          stats_output_paths[label] = artifact_utils.get_single_uri(
-              output_dict[component_key])
-    if stats_output_paths and len(stats_output_paths) != len(
-        label_component_key_list):
-      raise ValueError(
-          'Either all stats_output_paths should be specified or none.')
+    stats_output_paths = executor_utils.GetStatsOutputPathEntries(
+        disable_statistics, output_dict)
 
     temp_path = os.path.join(transform_output, _TEMP_DIR_IN_TRANSFORM_OUTPUT)
     logging.debug('Using temp path %s for tft.beam', temp_path)
@@ -565,29 +477,11 @@ class Executor(base_beam_executor.BaseBeamExecutor):
         transform_data_paths.append(io_utils.all_files_pattern(data_uri))
         transform_file_formats.append(file_format)
 
-    materialize_output_paths = []
-    if output_dict.get(
-        standard_component_specs.TRANSFORMED_EXAMPLES_KEY) is not None:
-      for transformed_example_artifact in output_dict[
-          standard_component_specs.TRANSFORMED_EXAMPLES_KEY]:
-        transformed_example_artifact.split_names = (
-            artifact_utils.encode_split_names(list(splits_config.transform)))
-
-      for split in splits_config.transform:
-
-        transformed_example_uris = artifact_utils.get_split_uris(
-            output_dict[standard_component_specs.TRANSFORMED_EXAMPLES_KEY],
-            split)
-        for output_uri in transformed_example_uris:
-          materialize_output_paths.append(
-              os.path.join(output_uri, _DEFAULT_TRANSFORMED_EXAMPLES_PREFIX))
-
-    def _GetCachePath(label, params_dict):
-      # Covers the cases: path wasn't provided, or was provided an empty list.
-      if not params_dict.get(label):
-        return None
-      else:
-        return artifact_utils.get_single_uri(params_dict[label])
+    transformed_examples = output_dict.get(
+        standard_component_specs.TRANSFORMED_EXAMPLES_KEY)
+    executor_utils.SetSplitNames(splits_config.transform, transformed_examples)
+    materialize_output_paths = executor_utils.GetSplitPaths(
+        transformed_examples)
 
     force_tf_compat_v1 = bool(
         exec_properties.get(standard_component_specs.FORCE_TF_COMPAT_V1_KEY, 0))
@@ -632,36 +526,46 @@ class Executor(base_beam_executor.BaseBeamExecutor):
         inputs_for_fn_resolution)
 
     label_inputs = {
-        labels.DISABLE_STATISTICS_LABEL: disable_statistics,
-        labels.SCHEMA_PATH_LABEL: schema_file,
-        labels.EXAMPLES_DATA_FORMAT_LABEL: payload_format,
-        labels.DATA_VIEW_LABEL: data_view_uri,
-        labels.ANALYZE_DATA_PATHS_LABEL: analyze_data_paths,
-        labels.ANALYZE_PATHS_FILE_FORMATS_LABEL: analyze_file_formats,
-        labels.TRANSFORM_DATA_PATHS_LABEL: transform_data_paths,
-        labels.TRANSFORM_PATHS_FILE_FORMATS_LABEL: transform_file_formats,
-        labels.PREPROCESSING_FN: preprocessing_fn,
-        labels.STATS_OPTIONS_UPDATER_FN: stats_options_updater_fn,
-        labels.MAKE_BEAM_PIPELINE_FN: self._make_beam_pipeline,
-        labels.FORCE_TF_COMPAT_V1_LABEL: force_tf_compat_v1,
+        labels.DISABLE_STATISTICS_LABEL:
+            disable_statistics,
+        labels.SCHEMA_PATH_LABEL:
+            schema_file,
+        labels.EXAMPLES_DATA_FORMAT_LABEL:
+            payload_format,
+        labels.DATA_VIEW_LABEL:
+            data_view_uri,
+        labels.ANALYZE_DATA_PATHS_LABEL:
+            analyze_data_paths,
+        labels.ANALYZE_PATHS_FILE_FORMATS_LABEL:
+            analyze_file_formats,
+        labels.TRANSFORM_DATA_PATHS_LABEL:
+            transform_data_paths,
+        labels.TRANSFORM_PATHS_FILE_FORMATS_LABEL:
+            transform_file_formats,
+        labels.PREPROCESSING_FN:
+            preprocessing_fn,
+        labels.STATS_OPTIONS_UPDATER_FN:
+            stats_options_updater_fn,
+        labels.MAKE_BEAM_PIPELINE_FN:
+            self._make_beam_pipeline,
+        labels.FORCE_TF_COMPAT_V1_LABEL:
+            force_tf_compat_v1,
+        **executor_utils.GetCachePathEntry(
+            standard_component_specs.ANALYZER_CACHE_KEY, input_dict)
     }
-    cache_input = _GetCachePath(standard_component_specs.ANALYZER_CACHE_KEY,
-                                input_dict)
-    if cache_input is not None:
-      label_inputs[labels.CACHE_INPUT_PATH_LABEL] = cache_input
 
     label_outputs = {
-        labels.TRANSFORM_METADATA_OUTPUT_PATH_LABEL: transform_output,
+        labels.TRANSFORM_METADATA_OUTPUT_PATH_LABEL:
+            transform_output,
         labels.TRANSFORM_MATERIALIZE_OUTPUT_PATHS_LABEL:
             materialize_output_paths,
-        labels.TEMP_OUTPUT_LABEL: str(temp_path),
+        labels.TEMP_OUTPUT_LABEL:
+            str(temp_path),
+        **stats_output_paths,
+        **executor_utils.GetCachePathEntry(
+            standard_component_specs.UPDATED_ANALYZER_CACHE_KEY, output_dict),
     }
 
-    label_outputs.update(stats_output_paths)
-    cache_output = _GetCachePath(
-        standard_component_specs.UPDATED_ANALYZER_CACHE_KEY, output_dict)
-    if cache_output is not None:
-      label_outputs[labels.CACHE_OUTPUT_PATH_LABEL] = cache_output
     status_file = 'status_file'  # Unused
 
     # TempPipInstallContext is needed here so that subprocesses (which
