@@ -2,6 +2,20 @@
 
 ## Major Features and Improvements
 
+### For Pipeline Authors
+
+### For Component Authors
+
+## Deprecations
+
+## Bug Fixes and Other Changes
+
+## Documentation Updates
+
+# Version 1.4.0
+
+## Major Features and Improvements
+
 *   Supported endpoint overwrite for CAIP BulkInferrer.
 *   Added support for outputting and encoding `tf.RaggedTensor`s in TFX
     Transform component.
@@ -24,7 +38,11 @@
 
 ### For Pipeline Authors
 
+*   N/A
+
 ### For Component Authors
+
+*   N/A
 
 ## Deprecations
 
@@ -39,8 +57,17 @@
     update exec_properties for its executor now, which enables {SPAN} feature.
 *   example_gen.utils.dict_to_example now accepts Numpy types
 *   Updated pytest to include v6.x
+*   Depends on `apache-beam[gcp]>=2.33,<3`.
+*   Depends on `ml-metadata>=1.4.0,<1.5.0`.
+*   Depends on `struct2tensor>=0.35.0,<0.36.0`.
+*   Depends on `tensorflow-data-validation>=1.4.0,<1.5.0`.
+*   Depends on `tensorflow-model-analysis>=0.35.0,<0.36.0`.
+*   Depends on `tensorflow-transform>=1.4.0,<1.5.0`.
+*   Depends on `tfx-bsl>=1.4.0,<1.5.0`.
 
 ## Documentation Updates
+
+*   N/A
 
 # Version 1.3.2
 
