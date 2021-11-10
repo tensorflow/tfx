@@ -18,6 +18,7 @@ package tfx.orchestration.deployment_config;
 import "ml_metadata/proto/metadata_store.proto";
 import "tfx/proto/orchestration/executable_spec.proto";
 import "tfx/proto/orchestration/platform_config.proto";
+import "tfx/proto/orchestration/metadata.proto";
 
 message ExecutableSpec {
   oneof spec {
@@ -47,11 +48,8 @@ message LocalDeploymentConfig {
   // set custom driver logic.
   map<string, ExecutableSpec> custom_driver_specs = 2;
   // Connection config for ML-metadata.
-  ml_metadata.ConnectionConfig metadata_connection_config = 3;
+  tfx.orchestration.MLMDConnectionConfig metadata_connection_config = 3;
   // A key from `node_id` to platform configs. Specifies platform settings to
   // pass to individual node operators.
   map<string, LocalPlatformConfig> node_level_platform_configs = 4;
-  // Server Connection config
-  ml_metadata.MetadataStoreClientConfig mlmd_store_client_config = 5;
-
 }

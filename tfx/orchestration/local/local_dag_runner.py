@@ -50,10 +50,10 @@ class LocalDagRunner(tfx_runner.IrBasedRunner):
         })
 
     deployment_config = runner_utils.extract_local_deployment_config(pipeline)
-    if deployment_config.HasField('metadata_connection_config'):
-      connection_config = deployment_config.metadata_connection_config
-    else:
-      connection_config = deployment_config.mlmd_store_client_config
+    connection_config = getattr(
+      deployment_config.metadata_connection_config,
+      deployment_config.metadata_connection_config.WhichOneof('connection_config')
+    )
 
     logging.info('Using deployment config:\n %s', deployment_config)
     logging.info('Using connection config:\n %s', connection_config)

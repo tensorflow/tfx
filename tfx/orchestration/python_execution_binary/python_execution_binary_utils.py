@@ -21,6 +21,7 @@ from tfx.orchestration import metadata
 from tfx.orchestration.portable import data_types
 from tfx.proto.orchestration import executable_spec_pb2
 from tfx.proto.orchestration import execution_invocation_pb2
+from tfx.proto.orchestration import metadata_pb2
 
 
 def deserialize_execution_info(
@@ -35,7 +36,7 @@ def deserialize_mlmd_connection_config(
     mlmd_connection_config_b64: str) -> metadata.ConnectionConfigType:
   """De-serializes an MLMD connection config from base64 flag."""
   mlmd_connection_config = (
-      execution_invocation_pb2.MLMDConnectionConfig.FromString(
+      metadata_pb2.MLMDConnectionConfig.FromString(
           base64.b64decode(mlmd_connection_config_b64)))
   return getattr(mlmd_connection_config,
                  mlmd_connection_config.WhichOneof('connection_config'))
@@ -57,8 +58,8 @@ def deserialize_executable_spec(
 def serialize_mlmd_connection_config(
     connection_config: metadata.ConnectionConfigType) -> str:
   """Serializes an MLMD connection config into a base64 flag of its wrapper."""
-  mlmd_wrapper = execution_invocation_pb2.MLMDConnectionConfig()
-  for name, descriptor in (execution_invocation_pb2.MLMDConnectionConfig
+  mlmd_wrapper = metadata_pb2.MLMDConnectionConfig()
+  for name, descriptor in (metadata_pb2.MLMDConnectionConfig
                            .DESCRIPTOR.fields_by_name.items()):
     if descriptor.message_type.full_name == connection_config.DESCRIPTOR.full_name:
       getattr(mlmd_wrapper, name).CopyFrom(connection_config)

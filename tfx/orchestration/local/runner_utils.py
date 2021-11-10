@@ -17,6 +17,7 @@ from typing import Optional
 from absl import logging
 from tfx.proto.orchestration import local_deployment_config_pb2
 from tfx.proto.orchestration import pipeline_pb2
+from tfx.proto.orchestration import metadata_pb2
 
 from google.protobuf import any_pb2
 from google.protobuf import message
@@ -91,17 +92,24 @@ def _to_local_deployment(
     result.node_level_platform_configs[k].CopyFrom(
         _build_local_platform_config(k, v))
 
-  if not input_config.metadata_connection_config.Unpack(
-      result.metadata_connection_config) and not input_config.metadata_connection_config.Unpack(
-        result.mlmd_store_client_config):
-    raise ValueError('metadata_connection_config is expected to be in type '
-                     'ml_metadata.ConnectionConfig or ml_metadata.MetadataStoreClientConfig, but got type {}'.format(
-                         input_config.metadata_connection_config.type_url))
-  else:
+  result.metadata_connection_config.CopyFrom(
+    extract_mlmd_connection(input_config.metadata_connection_config)
+  )
+
+  if result.metadata_connection_config.WhichOneof('connection_config') is None:
     # Some users like Kubernetes choose to use their own MLMD connection.
     # So their IR doesn't contain it.
     logging.warning('metadata_connection_config is not provided by IR.')
   return result
+
+
+def extract_mlmd_connection(connection_config: any_pb2.Any) -> metadata_pb2.MLMDConnectionConfig:
+  mlmd_wrapper = metadata_pb2.MLMDConnectionConfig()
+  for name in (metadata_pb2.MLMDConnectionConfig
+                           .DESCRIPTOR.fields_by_name):
+    if connection_config.Unpack(getattr(mlmd_wrapper, name)):
+      break
+  return mlmd_wrapper
 
 
 def extract_executor_spec(

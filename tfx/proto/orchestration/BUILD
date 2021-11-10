@@ -58,6 +58,7 @@ tfx_py_proto_library(
     deps = [
         ":executable_spec_py_pb2",
         ":platform_config_py_pb2",
+        ":metadata_py_pb2",
         "@com_github_google_ml_metadata//ml_metadata/proto:metadata_store_py_pb2",
     ],
 )
@@ -95,4 +96,13 @@ tfx_py_proto_library(
 tfx_py_proto_library(
     name = "run_state_py_pb2",
     srcs = ["run_state.proto"],
+)
+
+tfx_py_proto_library(
+    name = "metadata_py_pb2",
+    srcs = ["metadata.proto"],
+    deps = [
+        "@com_github_google_ml_metadata//ml_metadata/proto:metadata_store_py_pb2",
+        "@com_github_google_ml_metadata//ml_metadata/proto:metadata_store_service_py_pb2",
+    ],
 )
