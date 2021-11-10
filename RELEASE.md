@@ -9,6 +9,7 @@
 ## Deprecations
 
 ## Bug Fixes and Other Changes
+*   Increased docker timeout to 5 minutes for image building in CLI.
 
 ## Documentation Updates
 
