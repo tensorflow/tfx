@@ -461,6 +461,7 @@ class BaseKubeflowTest(test_case_utils.TfxTest):
 
     self.addCleanup(self._delete_test_dir, test_id)
 
+  @retry.retry(ignore_eventual_failure=True)
   def _delete_test_dir(self, test_id: str):
     """Deletes files for this test including the module file and data files.
 
@@ -470,6 +471,7 @@ class BaseKubeflowTest(test_case_utils.TfxTest):
     test_utils.delete_gcs_files(self._GCP_PROJECT_ID, self._BUCKET_NAME,
                                 'test_data/{}'.format(test_id))
 
+  @retry.retry(ignore_eventual_failure=True)
   def _delete_workflow(self, workflow_name: str):
     """Deletes the specified Argo workflow."""
     logging.info('Deleting workflow %s', workflow_name)
@@ -524,6 +526,7 @@ class BaseKubeflowTest(test_case_utils.TfxTest):
         time.sleep(self._POLLING_INTERVAL_IN_SECONDS)
         status = self._get_argo_pipeline_status(workflow_name)
 
+  @retry.retry(ignore_eventual_failure=True)
   def _delete_pipeline_output(self, pipeline_name: str):
     """Deletes output produced by the named pipeline.
 
