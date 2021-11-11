@@ -38,7 +38,6 @@ class PipelineUid:
     key: An optional key associated with the pipeline.
   """
   pipeline_id: str
-  key: str = ''
 
   @classmethod
   def from_pipeline(cls: Type['PipelineUid'],

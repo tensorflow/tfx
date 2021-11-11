@@ -304,7 +304,9 @@ class BeamDagRunnerTest(test_case_utils.TfxTest):
   def testPartialRunWithLocalDeploymentConfig(self):
     self._pipeline.deployment_config.Pack(_LOCAL_DEPLOYMENT_CONFIG)
     partial_run_utils.mark_pipeline(
-        self._pipeline, from_nodes=['my_trainer'], to_nodes=['my_trainer'])
+        self._pipeline,
+        from_nodes=(lambda node_id: 'trainer' in node_id),
+        to_nodes=(lambda node_id: 'trainer' in node_id))
     beam_dag_runner.BeamDagRunner().run_with_ir(self._pipeline)
     self.assertEqual(_executed_components, ['my_trainer'])
 
@@ -315,7 +317,9 @@ class BeamDagRunnerTest(test_case_utils.TfxTest):
   def testPartialRunWithIntermediateDeploymentConfig(self):
     self._pipeline.deployment_config.Pack(_INTERMEDIATE_DEPLOYMENT_CONFIG)
     partial_run_utils.mark_pipeline(
-        self._pipeline, from_nodes=['my_trainer'], to_nodes=['my_trainer'])
+        self._pipeline,
+        from_nodes=(lambda node_id: 'trainer' in node_id),
+        to_nodes=(lambda node_id: 'trainer' in node_id))
     beam_dag_runner.BeamDagRunner().run_with_ir(self._pipeline)
     self.assertEqual(_executed_components, ['my_trainer'])
 

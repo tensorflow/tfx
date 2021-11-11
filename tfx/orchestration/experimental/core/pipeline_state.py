@@ -39,6 +39,8 @@ from tfx.utils import status as status_lib
 from ml_metadata.proto import metadata_store_pb2
 
 _ORCHESTRATOR_RESERVED_ID = '__ORCHESTRATOR__'
+_ORCHESTRATOR_CONTEXT_NAME = 'orchestrator_context'
+_PIPELINE_CONTEXT_TYPE_NAME = 'pipeline'
 _PIPELINE_IR = 'pipeline_ir'
 _STOP_INITIATED = 'stop_initiated'
 _PIPELINE_RUN_ID = 'pipeline_run_id'
@@ -236,7 +238,7 @@ class PipelineState:
     context = context_lib.register_context_if_not_exists(
         mlmd_handle,
         context_type_name=_ORCHESTRATOR_RESERVED_ID,
-        context_name=orchestrator_context_name(pipeline_uid))
+        context_name=_ORCHESTRATOR_CONTEXT_NAME)
 
     executions = mlmd_handle.store.get_executions_by_context(context.id)
     if any(e for e in executions if execution_lib.is_execution_active(e)):
@@ -284,7 +286,7 @@ class PipelineState:
     """
     context = mlmd_handle.store.get_context_by_type_and_name(
         type_name=_ORCHESTRATOR_RESERVED_ID,
-        context_name=orchestrator_context_name(pipeline_uid))
+        context_name=_ORCHESTRATOR_CONTEXT_NAME)
     if not context:
       raise status_lib.StatusNotOkError(
           code=status_lib.Code.NOT_FOUND,
@@ -309,9 +311,8 @@ class PipelineState:
       exists for the given context in MLMD. With code=INTERNAL if more than 1
       active execution exists for given pipeline uid.
     """
-    pipeline_uid = pipeline_uid_from_orchestrator_context(context)
     active_execution = _get_active_execution(
-        pipeline_uid, mlmd_handle.store.get_executions_by_context(context.id))
+        mlmd_handle.store.get_executions_by_context(context.id))
     pipeline = _get_pipeline_from_orchestrator_execution(active_execution)
 
     return cls(
@@ -561,7 +562,7 @@ class PipelineView:
     """
     context = mlmd_handle.store.get_context_by_type_and_name(
         type_name=_ORCHESTRATOR_RESERVED_ID,
-        context_name=orchestrator_context_name(pipeline_uid))
+        context_name=_ORCHESTRATOR_CONTEXT_NAME)
     if not context:
       raise status_lib.StatusNotOkError(
           code=status_lib.Code.NOT_FOUND,
@@ -593,7 +594,7 @@ class PipelineView:
     """
     context = mlmd_handle.store.get_context_by_type_and_name(
         type_name=_ORCHESTRATOR_RESERVED_ID,
-        context_name=orchestrator_context_name(pipeline_uid))
+        context_name=_ORCHESTRATOR_CONTEXT_NAME)
     if not context:
       raise status_lib.StatusNotOkError(
           code=status_lib.Code.NOT_FOUND,
@@ -679,21 +680,10 @@ def get_orchestrator_contexts(
   return mlmd_handle.store.get_contexts_by_type(_ORCHESTRATOR_RESERVED_ID)
 
 
-def orchestrator_context_name(pipeline_uid: task_lib.PipelineUid) -> str:
-  """Returns orchestrator reserved context name."""
-  result = f'{pipeline_uid.pipeline_id}'
-  if pipeline_uid.key:
-    result = f'{result}:{pipeline_uid.key}'
-  return result
-
-
-def pipeline_uid_from_orchestrator_context(
+def pipeline_uid_from_pipeline_context(
     context: metadata_store_pb2.Context) -> task_lib.PipelineUid:
   """Returns pipeline uid from orchestrator reserved context."""
-  splits = context.name.split(':')
-  pipeline_id = splits[0]
-  key = splits[1] if len(splits) > 1 else ''
-  return task_lib.PipelineUid(pipeline_id=pipeline_id, key=key)
+  return task_lib.PipelineUid(pipeline_id=context.name)
 
 
 def get_all_pipeline_nodes(
@@ -745,7 +735,6 @@ def _get_pipeline_from_orchestrator_execution(
 
 
 def _get_active_execution(
-    pipeline_uid: task_lib.PipelineUid,
     executions: List[metadata_store_pb2.Execution]
 ) -> metadata_store_pb2.Execution:
   """gets a single active execution from the executions."""
@@ -755,13 +744,13 @@ def _get_active_execution(
   if not active_executions:
     raise status_lib.StatusNotOkError(
         code=status_lib.Code.NOT_FOUND,
-        message=f'No active pipeline with uid {pipeline_uid} to load state.')
+        message='No active pipeline to load state.')
   if len(active_executions) > 1:
     raise status_lib.StatusNotOkError(
         code=status_lib.Code.INTERNAL,
         message=(
             f'Expected 1 but found {len(active_executions)} active pipeline '
-            f'executions for pipeline uid: {pipeline_uid}'))
+            f'executions.'))
   return active_executions[0]
 
 
