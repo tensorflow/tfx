@@ -113,38 +113,19 @@ def initiate_pipeline_start(
         message='Sync pipeline IR must specify pipeline_run_id.')
 
   if partial_run_option:
-    if pipeline.execution_mode != pipeline_pb2.Pipeline.SYNC:
-      raise status_lib.StatusNotOkError(
-          code=status_lib.Code.FAILED_PRECONDITION,
-          message=(
-              f'Partial run is only supported for SYNC pipeline execution modes; '
-              f'found pipeline with execution mode: {pipeline.execution_mode}'))
-
-    from_nodes = set(partial_run_option.from_nodes)
-    to_nodes = set(partial_run_option.to_nodes)
-    pipeline_nodes = set(
-        node.node_info.id for node in pstate.get_all_pipeline_nodes(pipeline))
-    missing_nodes = (from_nodes | to_nodes) - pipeline_nodes
-    if missing_nodes:
-      raise status_lib.StatusNotOkError(
-          code=status_lib.Code.FAILED_PRECONDITION,
-          message=(
-              'Nodes %s specified in from_nodes/to_nodes are not present in the pipeline.'
-              % ','.join(missing_nodes)))
-
-    # If from_nodes is not provided, start from the beginning of the graph.
-    # If to_nodes is not provided, default to running till the end.
-    def node_fn(nodes, default_value=True):
-      return (lambda node: node in nodes) if nodes else (
-          lambda _: default_value)
-
     # Mark nodes using partial pipeline run lib.
-    pipeline = partial_run_utils.mark_pipeline(
-        pipeline,
-        from_nodes=node_fn(from_nodes),
-        to_nodes=node_fn(to_nodes),
-        skip_nodes=node_fn(partial_run_option.skip_nodes, default_value=False),
-        snapshot_settings=partial_run_option.snapshot_settings)
+    try:
+      pipeline = partial_run_utils.mark_pipeline(
+          pipeline,
+          from_nodes=partial_run_option.from_nodes,
+          to_nodes=partial_run_option.to_nodes,
+          skip_nodes=partial_run_option.skip_nodes,
+          snapshot_settings=partial_run_option.snapshot_settings)
+    except ValueError as e:
+      raise status_lib.StatusNotOkError(
+          code=status_lib.Code.INVALID_ARGUMENT,
+          message=str(e))
+
     if pipeline.runtime_spec.HasField('snapshot_settings'):
       partial_run_utils.snapshot(mlmd_handle, pipeline)
 

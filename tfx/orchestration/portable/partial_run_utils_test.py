@@ -181,7 +181,9 @@ class MarkPipelineFnTest(parameterized.TestCase, test_case_utils.TfxTest):
     input_pipeline.execution_mode = pipeline_pb2.Pipeline.ASYNC
 
     with self.assertRaisesRegex(
-        ValueError, 'Pipeline filtering is only supported for SYNC pipelines.'):
+        ValueError,
+        'Pipeline filtering is only supported for SYNC execution modes; '
+        'found pipeline with execution mode: ASYNC'):
       partial_run_utils.mark_pipeline(input_pipeline)
 
   def testSubpipeline_error(self):
@@ -198,6 +200,35 @@ class MarkPipelineFnTest(parameterized.TestCase, test_case_utils.TfxTest):
         ValueError,
         'Pipeline filtering not supported for pipelines with sub-pipelines.'):
       partial_run_utils.mark_pipeline(input_pipeline)
+
+  def testAlreadyMarked_error(self):
+    """If Pipeline was already marked, raise ValueError."""
+    input_pipeline = pipeline_pb2.Pipeline()
+    input_pipeline.pipeline_info.id = 'my_pipeline'
+    input_pipeline.execution_mode = pipeline_pb2.Pipeline.SYNC
+    node_a = input_pipeline.nodes.add()
+    node_a.pipeline_node.node_info.id = 'a'
+    node_a.pipeline_node.execution_options.run.SetInParent()
+
+    with self.assertRaisesRegex(
+        ValueError, 'Pipeline has already been marked for partial run.'):
+      partial_run_utils.mark_pipeline(input_pipeline)
+
+  def testMissingNodes_error(self):
+    """If there are from_nodes/to_nodes not in Pipeline, raise ValueError."""
+    input_pipeline = pipeline_pb2.Pipeline()
+    input_pipeline.pipeline_info.id = 'my_pipeline'
+    input_pipeline.execution_mode = pipeline_pb2.Pipeline.SYNC
+    node_a = input_pipeline.nodes.add()
+    node_a.pipeline_node.node_info.id = 'a'
+
+    with self.assertRaisesRegex(
+        ValueError,
+        r"Nodes \['x', 'y'\] specified in from_nodes/to_nodes are not present "
+        'in the pipeline.'):
+      partial_run_utils.mark_pipeline(input_pipeline,
+                                      from_nodes=['x'],
+                                      to_nodes=['y'])
 
   def testNotTopologicallySorted_upstream_error(self):
     """If Pipeline is not topologically sorted, raise ValueError."""
@@ -275,9 +306,7 @@ class MarkPipelineFnTest(parameterized.TestCase, test_case_utils.TfxTest):
         'c': []
     })
     partial_run_utils.mark_pipeline(
-        input_pipeline,
-        from_nodes=lambda node_id: (node_id == 'a'),
-        to_nodes=lambda node_id: (node_id == 'c'))
+        input_pipeline, from_nodes=['a'], to_nodes=['c'])
 
     self._checkNodeExecutionOptions(
         input_pipeline,
@@ -305,9 +334,7 @@ class MarkPipelineFnTest(parameterized.TestCase, test_case_utils.TfxTest):
         'c': []
     })
     partial_run_utils.mark_pipeline(
-        input_pipeline,
-        from_nodes=lambda node_id: (node_id == 'a'),
-        to_nodes=lambda node_id: (node_id == 'b'))
+        input_pipeline, from_nodes=['a'], to_nodes=['b'])
 
     self._checkNodeExecutionOptions(
         input_pipeline,
@@ -336,9 +363,7 @@ class MarkPipelineFnTest(parameterized.TestCase, test_case_utils.TfxTest):
         'c': []
     })
     partial_run_utils.mark_pipeline(
-        input_pipeline,
-        from_nodes=lambda node_id: (node_id == 'b'),
-        to_nodes=lambda node_id: (node_id == 'c'))
+        input_pipeline, from_nodes=['b'], to_nodes=['c'])
 
     self._checkNodeExecutionOptions(
         input_pipeline,
@@ -369,10 +394,7 @@ class MarkPipelineFnTest(parameterized.TestCase, test_case_utils.TfxTest):
         'c': []
     })
     partial_run_utils.mark_pipeline(
-        input_pipeline,
-        from_nodes=lambda node_id: (node_id == 'b'),
-        to_nodes=lambda node_id: (node_id == 'c'),
-    )
+        input_pipeline, from_nodes=['b'], to_nodes=['c'])
 
     self._checkNodeExecutionOptions(
         input_pipeline,
@@ -403,10 +425,7 @@ class MarkPipelineFnTest(parameterized.TestCase, test_case_utils.TfxTest):
         'd': []
     })
     partial_run_utils.mark_pipeline(
-        input_pipeline,
-        from_nodes=lambda node_id: (node_id == 'c'),
-        to_nodes=lambda node_id: (node_id == 'c'),
-    )
+        input_pipeline, from_nodes=['c'], to_nodes=['c'])
 
     self._checkNodeExecutionOptions(
         input_pipeline,
@@ -439,10 +458,7 @@ class MarkPipelineFnTest(parameterized.TestCase, test_case_utils.TfxTest):
         'b': ['c'],
         'c': []
     })
-    partial_run_utils.mark_pipeline(
-        input_pipeline,
-        from_nodes=lambda node_id: (node_id == 'c'),
-    )
+    partial_run_utils.mark_pipeline(input_pipeline, from_nodes=['c'])
 
     self._checkNodeExecutionOptions(
         input_pipeline,
@@ -471,10 +487,7 @@ class MarkPipelineFnTest(parameterized.TestCase, test_case_utils.TfxTest):
         'b': ['c'],
         'c': []
     })
-    partial_run_utils.mark_pipeline(
-        input_pipeline,
-        from_nodes=lambda node_id: (node_id == 'c'),
-    )
+    partial_run_utils.mark_pipeline(input_pipeline, from_nodes=['c'])
 
     self._checkNodeExecutionOptions(
         input_pipeline,
@@ -516,10 +529,7 @@ class MarkPipelineFnTest(parameterized.TestCase, test_case_utils.TfxTest):
         'c2': []
     })
     partial_run_utils.mark_pipeline(
-        input_pipeline,
-        from_nodes=lambda node_id: (node_id == 'b2'),
-        to_nodes=lambda node_id: (node_id == 'b2'),
-    )
+        input_pipeline, from_nodes=['b2'], to_nodes=['b2'])
 
     self._checkNodeExecutionOptions(
         input_pipeline,
@@ -550,10 +560,7 @@ class MarkPipelineFnTest(parameterized.TestCase, test_case_utils.TfxTest):
         'd': []
     })
     partial_run_utils.mark_pipeline(
-        input_pipeline,
-        from_nodes=lambda node_id: (node_id == 'b'),
-        to_nodes=lambda node_id: (node_id == 'd'),
-        skip_nodes=lambda node_id: (node_id == 'c'))
+        input_pipeline, from_nodes=['b'], to_nodes=['d'], skip_nodes=['c'])
     self._checkNodeExecutionOptions(
         input_pipeline,
         snapshot_node='b',
@@ -569,10 +576,7 @@ class MarkPipelineFnTest(parameterized.TestCase, test_case_utils.TfxTest):
         'd': []
     })
     partial_run_utils.mark_pipeline(
-        input_pipeline,
-        from_nodes=lambda node_id: (node_id == 'b'),
-        to_nodes=lambda node_id: (node_id == 'd'),
-        skip_nodes=lambda node_id: (node_id == 'a' or node_id == 'b'))
+        input_pipeline, from_nodes=['b'], to_nodes=['d'], skip_nodes=['a', 'b'])
     self._checkNodeExecutionOptions(
         input_pipeline,
         snapshot_node='c',
@@ -767,8 +771,7 @@ class PartialRunTest(absltest.TestCase):
     #
     ############################################################################
     partial_run_utils.mark_pipeline(
-        pipeline_pb_run_2,
-        from_nodes=lambda node_id: (node_id == add_num_v2.id))
+        pipeline_pb_run_2, from_nodes=[add_num_v2.id])
     ############################################################################
     # PART 3b: Partial run -- Run pipeline.
     #
@@ -888,8 +891,7 @@ class PartialRunTest(absltest.TestCase):
     #
     ############################################################################
     partial_run_utils.mark_pipeline(
-        pipeline_pb_run_2,
-        from_nodes=lambda node_id: (node_id == add_num_1_v2.id))
+        pipeline_pb_run_2, from_nodes=[add_num_1_v2.id])
     ############################################################################
     # PART 3b: Partial run -- Reuse pipeline run artifacts.
     #
@@ -947,8 +949,7 @@ class PartialRunTest(absltest.TestCase):
     #
     ############################################################################
     partial_run_utils.mark_pipeline(
-        pipeline_pb_run_3,
-        from_nodes=lambda node_id: (node_id == add_num_2_v2.id))
+        pipeline_pb_run_3, from_nodes=[add_num_2_v2.id])
     ############################################################################
     # PART 5b: Partial run -- Reuse pipeline run artifacts.
     #
@@ -996,7 +997,7 @@ class PartialRunTest(absltest.TestCase):
         ],
         run_id='run_4')
     partial_run_utils.mark_pipeline(
-        pipeline_pb_run_4, from_nodes=lambda node_id: ('add_num' in node_id))
+        pipeline_pb_run_4, from_nodes=['add_num_1', 'add_num_2'])
 
     ############################################################################
     # PART 6b: Partial run -- Reuse pipeline run artifacts.
@@ -1122,8 +1123,7 @@ class PartialRunTest(absltest.TestCase):
     #
     ############################################################################
     partial_run_utils.mark_pipeline(
-        pipeline_pb_run_2,
-        from_nodes=lambda node_id: (node_id == add_num_v2.id))
+        pipeline_pb_run_2, from_nodes=[add_num_v2.id])
     ############################################################################
     # PART 3b: Partial run -- Reuse pipeline run artifacts.
     #
@@ -1178,9 +1178,7 @@ class PartialRunTest(absltest.TestCase):
     #
     ############################################################################
     partial_run_utils.mark_pipeline(
-        pipeline_pb_run_3,
-        from_nodes=lambda node_id: (node_id == load_v2.id),
-        to_nodes=lambda node_id: (node_id == load_v2.id))
+        pipeline_pb_run_3, from_nodes=[load_v2.id], to_nodes=[load_v2.id])
     beam_dag_runner.BeamDagRunner().run_with_ir(pipeline_pb_run_3)
 
     ############################################################################
@@ -1197,8 +1195,7 @@ class PartialRunTest(absltest.TestCase):
         components=[load_v2, add_num_v3, subtract_nums_v3, result_v3],
         run_id='run_4')
     partial_run_utils.mark_pipeline(
-        pipeline_pb_run_4,
-        from_nodes=lambda node_id: (node_id == subtract_nums_v3.id))
+        pipeline_pb_run_4, from_nodes=[subtract_nums_v3.id])
 
     ############################################################################
     # PART 6b: Partial run -- Reuse pipeline run artifacts.
@@ -1242,7 +1239,7 @@ class PartialRunTest(absltest.TestCase):
     snapshot_settings.base_pipeline_run_strategy.base_run_id = 'run_2'
     partial_run_utils.mark_pipeline(
         pipeline_pb_run_5,
-        from_nodes=lambda node_id: (node_id == subtract_nums_v3.id),
+        from_nodes=[subtract_nums_v3.id],
         snapshot_settings=snapshot_settings)
     beam_dag_runner.BeamDagRunner().run_with_ir(pipeline_pb_run_5)
     self.assertResultEqual(pipeline_pb_run_5, 5)
@@ -1264,7 +1261,7 @@ class PartialRunTest(absltest.TestCase):
     snapshot_settings.base_pipeline_run_strategy.base_run_id = 'non_existent_id'
     partial_run_utils.mark_pipeline(
         pipeline_pb_run_2,
-        from_nodes=lambda node_id: (node_id == add_num.id),
+        from_nodes=[add_num.id],
         snapshot_settings=snapshot_settings)
     with self.assertRaisesRegex(LookupError,
                                 'pipeline_run_id .* not found in MLMD.'):
@@ -1292,7 +1289,7 @@ class PartialRunTest(absltest.TestCase):
     snapshot_settings.base_pipeline_run_strategy.base_run_id = 'non_existent_id'
     partial_run_utils.mark_pipeline(
         pipeline_pb_run_2,
-        from_nodes=lambda node_id: (node_id == add_num_v2.id),
+        from_nodes=[add_num_v2.id],
         snapshot_settings=snapshot_settings)
     with self.assertRaisesRegex(LookupError,
                                 'node context .* not found in MLMD.'):
@@ -1321,8 +1318,7 @@ class PartialRunTest(absltest.TestCase):
     pipeline_pb_run_2 = self.make_pipeline(
         components=[load_fail, add_num_v2, result_v2], run_id='run_2')
     partial_run_utils.mark_pipeline(
-        pipeline_pb_run_2,
-        from_nodes=lambda node_id: (node_id == add_num_v2.id))
+        pipeline_pb_run_2, from_nodes=[add_num_v2.id])
     with self.assertRaisesRegex(LookupError,
                                 'No previous successful executions found'):
       beam_dag_runner.BeamDagRunner().run_with_ir(pipeline_pb_run_2)
@@ -1358,8 +1354,7 @@ class PartialRunTest(absltest.TestCase):
         components=[load, add_num_v2, result_v2], run_id='run_2')
 
     partial_run_utils.mark_pipeline(
-        pipeline_pb_run_2,
-        from_nodes=lambda node_id: (node_id == add_num_v2.id))
+        pipeline_pb_run_2, from_nodes=[add_num_v2.id])
 
     # Simulate success in registering cache execution, but failure when
     # publishing -- e.g., job was pre-empted.
@@ -1420,8 +1415,7 @@ class PartialRunTest(absltest.TestCase):
         components=[load, add_num_v2, result_v2], run_id='run_2')
 
     partial_run_utils.mark_pipeline(
-        pipeline_pb_run_2,
-        from_nodes=lambda node_id: (node_id == add_num_v2.id))
+        pipeline_pb_run_2, from_nodes=[add_num_v2.id])
 
     # Simulate two successful attempts.
     for _ in [1, 2]:
@@ -1505,8 +1499,7 @@ class PartialRunTest(absltest.TestCase):
     #
     ############################################################################
     partial_run_utils.mark_pipeline(
-        pipeline_pb_run_2,
-        from_nodes=lambda node_id: (node_id == add_num_v2.id))
+        pipeline_pb_run_2, from_nodes=[add_num_v2.id])
 
     # We simulate a *user-error* here: The full_pipeline's pipeline_run_id was
     # not resolved, and the user does not provide a value for new_run_id.
@@ -1578,8 +1571,7 @@ class PartialRunTest(absltest.TestCase):
     #
     ############################################################################
     partial_run_utils.mark_pipeline(
-        pipeline_pb_run_2,
-        from_nodes=lambda node_id: (node_id == add_num_v2.id))
+        pipeline_pb_run_2, from_nodes=[add_num_v2.id])
 
     # We simulate a *user-error* here: The full_pipeline was resolved with
     # pipeline_run_id='run_2', but the user provides 'run_3'.
