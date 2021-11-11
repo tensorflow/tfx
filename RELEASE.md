@@ -10,6 +10,8 @@
 
 ## Bug Fixes and Other Changes
 *   Increased docker timeout to 5 minutes for image building in CLI.
+*   Fixed KeyError when multiple Examples artifacts were used in Transform
+    without materialization.
 
 ## Documentation Updates
 

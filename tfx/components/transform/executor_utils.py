@@ -90,8 +90,9 @@ def MatchNumberOfTransformedExamplesArtifacts(
     output_dict: output artifact dictionary of the Executor.
   """
   num_examples = len(input_dict[standard_component_specs.EXAMPLES_KEY])
-  if num_examples > 1 and len(
-      output_dict[standard_component_specs.TRANSFORMED_EXAMPLES_KEY]) == 1:
+  if (num_examples > 1 and
+      standard_component_specs.TRANSFORMED_EXAMPLES_KEY in output_dict and
+      len(output_dict[standard_component_specs.TRANSFORMED_EXAMPLES_KEY]) == 1):
     output_dict[standard_component_specs
                 .TRANSFORMED_EXAMPLES_KEY] = artifact_utils.replicate_artifacts(
                     output_dict[
