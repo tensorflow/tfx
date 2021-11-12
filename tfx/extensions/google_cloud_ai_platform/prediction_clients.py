@@ -500,21 +500,23 @@ class VertexPredictionClient(AbstractPredictionClient):
     Raises:
       RuntimeError if endpoint creation failed.
     """
-    endpoint_name = ai_platform_serving_args['endpoint_name']
-    endpoint_labels = {**ai_platform_serving_args.get('labels', {}),
-                       **labels}
     endpoint = None
+    endpoint_name = ai_platform_serving_args['endpoint_name']
     try:
-      endpoint = aiplatform.Endpoint.create(
-          display_name=endpoint_name, labels=endpoint_labels)
-    except errors.HttpError as e:
-      # If the error is to create an already existing endpoint,
-      # it's ok to ignore.
-      if e.resp.status == 409:
-        logging.warn('Endpoint %s already exists', endpoint_name)
-      else:
+      self._get_endpoint(ai_platform_serving_args)
+    except RuntimeError:
+      # Endpoint doesn't exist
+      endpoint_labels = {**ai_platform_serving_args.get('labels', {}),
+                         **labels}
+      try:
+        endpoint = aiplatform.Endpoint.create(
+            display_name=endpoint_name, labels=endpoint_labels)
+      except errors.HttpError as e:
         raise RuntimeError(
             'Creating endpoint in AI Platform failed.') from e
+    else:
+      logging.warn('Endpoint %s already exists', endpoint_name)
+
     return endpoint is not None
 
   def delete_model_from_aip_if_exists(
