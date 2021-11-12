@@ -27,8 +27,6 @@
 # You can also force TFX version by supplying optional INSTALL_TFX_VERSION
 # environment variable.
 #
-# Prerequites:
-#  - Installed TFX package.
 # Example usage;
 #  $ cat tfx/scripts/tfx_test_installed.sh | docker run --rm -i gcr.io/deeplearning-platform-release/tf2-cpu.2-4  bash -c 'source /dev/stdin'
 #  $ cat tfx/scripts/tfx_test_installed.sh | docker run --rm -e 'INSTALL_TFX_VERSION=0.28.0' -i gcr.io/deeplearning-platform-release/tf2-cpu.2-4  bash -c 'source /dev/stdin'
@@ -42,9 +40,14 @@ TFX_SUPPORTED_TF2_MAX_VERSION="4"
 set -ex
 
 PYTHON_BINARY=$(which python)
+# We need to upgrade scipy to '>1.7.1' to avoid ImportError saying "version `GLIBCXX_3.4.26' not found"
+${PYTHON_BINARY} -m pip install --upgrade "pip" "scipy>1.7.1"
 
 if [[ -n "${INSTALL_TFX_VERSION}" ]]; then
   ${PYTHON_BINARY} -m pip install "tfx==${INSTALL_TFX_VERSION}"
+fi
+if [[ -n "${INSTALL_TF_VERSION}" ]]; then
+  ${PYTHON_BINARY} -m pip install "tensorflow==${INSTALL_TF_VERSION}"
 fi
 
 TENSORFLOW_VERSION=$(${PYTHON_BINARY} -c 'import tensorflow; print(tensorflow.__version__)')
