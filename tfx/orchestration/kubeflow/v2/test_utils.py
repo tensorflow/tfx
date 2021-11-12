@@ -72,6 +72,23 @@ def two_step_pipeline() -> tfx.dsl.Pipeline:
       ])
 
 
+def simple_pipeline_components(csv_input_location: str = ''
+                               ) -> List[base_node.BaseNode]:
+  """Creates very basic components for test a pipeline execution.
+
+  Args:
+    csv_input_location: The location of the input data directory.
+
+  Returns:
+    A list of TFX components that constitutes a simple test pipeline.
+  """
+  example_gen = tfx.components.CsvExampleGen(input_base=csv_input_location)
+  statistics_gen = tfx.components.StatisticsGen(
+      examples=example_gen.outputs['examples'])
+
+  return [example_gen, statistics_gen]
+
+
 def create_pipeline_components(
     pipeline_root: str,
     transform_module: str,
