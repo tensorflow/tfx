@@ -75,12 +75,14 @@ def mark_pipeline(
     ValueError: If pipeline's execution_mode is not SYNC.
     ValueError: If pipeline contains a sub-pipeline.
     ValueError: If pipeline was already marked for partial run.
+    ValueError: If both from_nodes and to_nodes are empty.
     ValueError: If from_nodes/to_nodes contain node_ids not in the pipeline.
     ValueError: If pipeline is not topologically sorted.
   """
   _ensure_sync_pipeline(pipeline)
   _ensure_no_subpipeline_nodes(pipeline)
   _ensure_no_partial_run_marks(pipeline)
+  _ensure_not_full_run(from_nodes, to_nodes)
   _ensure_no_missing_nodes(pipeline, from_nodes, to_nodes)
   _ensure_topologically_sorted(pipeline)
 
@@ -197,6 +199,13 @@ def _ensure_no_subpipeline_nodes(pipeline: pipeline_pb2.Pipeline):
       raise ValueError(
           'Pipeline filtering not supported for pipelines with sub-pipelines. '
           f'sub-pipeline found: {pipeline_or_node}')
+
+
+def _ensure_not_full_run(from_nodes: Optional[Collection[str]] = None,
+                         to_nodes: Optional[Collection[str]] = None):
+  """Raises ValueError if both from_nodes and to_nodes are falsy."""
+  if not (from_nodes or to_nodes):
+    raise ValueError('Both from_nodes and to_nodes are empty.')
 
 
 def _ensure_no_partial_run_marks(pipeline: pipeline_pb2.Pipeline):

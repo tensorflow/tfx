@@ -195,11 +195,20 @@ class BeamDagRunner(tfx_runner.IrBasedRunner):
                                                 deployment_config: Any) -> Any:
     return deployment_config.metadata_connection_config
 
-  def run_with_ir(self, pipeline: pipeline_pb2.Pipeline) -> None:
+  def run_with_ir(
+      self,
+      pipeline: pipeline_pb2.Pipeline,
+      run_options: Optional[pipeline_pb2.RunOptions] = None,
+  ) -> None:
     """Deploys given logical pipeline on Beam.
 
     Args:
       pipeline: Logical pipeline in IR format.
+      run_options: Optional args for the run.
+
+    Raises:
+      ValueError: If run_options is provided, and partial_run_options.from_nodes
+        and partial_run_options.to_nodes are both empty.
     """
     run_id = datetime.datetime.now().strftime('%Y%m%d-%H%M%S.%f')
     # Substitute the runtime parameter to be a concrete run_id
@@ -214,6 +223,15 @@ class BeamDagRunner(tfx_runner.IrBasedRunner):
 
     logging.info('Using deployment config:\n %s', deployment_config)
     logging.info('Using connection config:\n %s', connection_config)
+
+    if run_options:
+      logging.info('Using run_options:\n %s', run_options)
+      pr_opts = run_options.partial_run
+      partial_run_utils.mark_pipeline(
+          pipeline,
+          from_nodes=pr_opts.from_nodes or None,
+          to_nodes=pr_opts.to_nodes or None,
+          snapshot_settings=pr_opts.snapshot_settings)
 
     with telemetry_utils.scoped_labels(
         {telemetry_utils.LABEL_TFX_RUNNER: 'beam'}):

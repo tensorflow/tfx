@@ -2,6 +2,11 @@
 
 ## Major Features and Improvements
 
+*   Added support for partial pipeline run. Users can now run a subset of nodes
+    in a pipeline while reusing artifacts generated in previous pipeline runs.
+    This is supported in LocalDagRunner and BeamDagRunner, and is exposed via
+    the TfxRunner API.
+
 ### For Pipeline Authors
 
 ### For Component Authors

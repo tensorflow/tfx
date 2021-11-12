@@ -21,7 +21,6 @@ recommended pipeline topology.
 """
 # pylint: disable=invalid-name,no-value-for-parameter
 
-
 import collections
 import json
 import os
@@ -153,13 +152,14 @@ class LocalDagRunnerTest(absl.testing.absltest.TestCase):
 
   def _getTestPipeline(self) -> pipeline_py.Pipeline:
     # Construct component instances.
-    dummy_load_component = LoadDummyDatasetComponent()
+    dummy_load_component = LoadDummyDatasetComponent().with_id('Load')
     dummy_train_component = DummyTrainComponent(
-        training_data=dummy_load_component.outputs['dataset'], num_iterations=5)
+        training_data=dummy_load_component.outputs['dataset'],
+        num_iterations=5).with_id('Train')
     dummy_validate_component = DummyValidateComponent(
         model=dummy_train_component.outputs['model'],
         loss=dummy_train_component.outputs['loss'],
-        accuracy=dummy_train_component.outputs['accuracy'])
+        accuracy=dummy_train_component.outputs['accuracy']).with_id('Validate')
 
     # Construct and run pipeline
     temp_path = tempfile.mkdtemp()
@@ -188,12 +188,33 @@ class LocalDagRunnerTest(absl.testing.absltest.TestCase):
 
     self.assertEqual(self.RAN_COMPONENTS, ['Load', 'Train', 'Validate'])
 
+  def testSimplePipelinePartialRun(self):
+    self.assertEqual(self.RAN_COMPONENTS, [])
+
+    local_dag_runner.LocalDagRunner().run(
+        self._getTestPipeline(),
+        run_options=pipeline_py.RunOptions(to_nodes=['Train']))
+
+    self.assertEqual(self.RAN_COMPONENTS, ['Load', 'Train'])
+
   def testSimplePipelineRunWithIR(self):
     self.assertEqual(self.RAN_COMPONENTS, [])
 
     local_dag_runner.LocalDagRunner().run_with_ir(self._getTestPipelineIR())
 
     self.assertEqual(self.RAN_COMPONENTS, ['Load', 'Train', 'Validate'])
+
+  def testSimplePipelinePartialRunWithIR(self):
+    self.assertEqual(self.RAN_COMPONENTS, [])
+
+    pr_opts = pipeline_pb2.PartialRun()
+    pr_opts.to_nodes.append('Train')
+    pr_opts.snapshot_settings.latest_pipeline_run_strategy.SetInParent()
+    local_dag_runner.LocalDagRunner().run_with_ir(
+        self._getTestPipelineIR(),
+        run_options=pipeline_pb2.RunOptions(partial_run=pr_opts))
+
+    self.assertEqual(self.RAN_COMPONENTS, ['Load', 'Train'])
 
 
 if __name__ == '__main__':

@@ -179,12 +179,15 @@ class MarkPipelineFnTest(parameterized.TestCase, test_case_utils.TfxTest):
     input_pipeline = pipeline_pb2.Pipeline()
     input_pipeline.pipeline_info.id = 'my_pipeline'
     input_pipeline.execution_mode = pipeline_pb2.Pipeline.ASYNC
+    node_a = input_pipeline.nodes.add()
+    node_a.pipeline_node.node_info.id = 'a'
+    node_a.pipeline_node.execution_options.run.SetInParent()
 
     with self.assertRaisesRegex(
         ValueError,
         'Pipeline filtering is only supported for SYNC execution modes; '
         'found pipeline with execution mode: ASYNC'):
-      partial_run_utils.mark_pipeline(input_pipeline)
+      partial_run_utils.mark_pipeline(input_pipeline, from_nodes=['a'])
 
   def testSubpipeline_error(self):
     """If Pipeline contains sub-pipeline, raise ValueError."""
@@ -199,7 +202,7 @@ class MarkPipelineFnTest(parameterized.TestCase, test_case_utils.TfxTest):
     with self.assertRaisesRegex(
         ValueError,
         'Pipeline filtering not supported for pipelines with sub-pipelines.'):
-      partial_run_utils.mark_pipeline(input_pipeline)
+      partial_run_utils.mark_pipeline(input_pipeline, from_nodes=['a'])
 
   def testAlreadyMarked_error(self):
     """If Pipeline was already marked, raise ValueError."""
@@ -212,7 +215,7 @@ class MarkPipelineFnTest(parameterized.TestCase, test_case_utils.TfxTest):
 
     with self.assertRaisesRegex(
         ValueError, 'Pipeline has already been marked for partial run.'):
-      partial_run_utils.mark_pipeline(input_pipeline)
+      partial_run_utils.mark_pipeline(input_pipeline, from_nodes=['a'])
 
   def testMissingNodes_error(self):
     """If there are from_nodes/to_nodes not in Pipeline, raise ValueError."""
@@ -230,6 +233,19 @@ class MarkPipelineFnTest(parameterized.TestCase, test_case_utils.TfxTest):
                                       from_nodes=['x'],
                                       to_nodes=['y'])
 
+  def testNoFromNodesOrToNodes_error(self):
+    """If there are from_nodes/to_nodes not in Pipeline, raise ValueError."""
+    input_pipeline = pipeline_pb2.Pipeline()
+    input_pipeline.pipeline_info.id = 'my_pipeline'
+    input_pipeline.execution_mode = pipeline_pb2.Pipeline.SYNC
+    node_a = input_pipeline.nodes.add()
+    node_a.pipeline_node.node_info.id = 'a'
+
+    with self.assertRaisesRegex(
+        ValueError,
+        'Both from_nodes and to_nodes are empty.'):
+      partial_run_utils.mark_pipeline(input_pipeline)
+
   def testNotTopologicallySorted_upstream_error(self):
     """If Pipeline is not topologically sorted, raise ValueError."""
     input_pipeline = pipeline_pb2.Pipeline()
@@ -244,7 +260,7 @@ class MarkPipelineFnTest(parameterized.TestCase, test_case_utils.TfxTest):
 
     with self.assertRaisesRegex(ValueError,
                                 'Input pipeline is not topologically sorted.'):
-      partial_run_utils.mark_pipeline(input_pipeline)
+      partial_run_utils.mark_pipeline(input_pipeline, from_nodes=['a'])
 
   def testNotTopologicallySorted_downstream_error(self):
     """If Pipeline is not topologically sorted, raise ValueError."""
@@ -259,62 +275,7 @@ class MarkPipelineFnTest(parameterized.TestCase, test_case_utils.TfxTest):
 
     with self.assertRaisesRegex(ValueError,
                                 'Input pipeline is not topologically sorted.'):
-      partial_run_utils.mark_pipeline(input_pipeline)
-
-  def testNoFilter(self):
-    """Basic case where there are no filters applied.
-
-    pipeline: node_a -> node_b -> node_c
-
-    expected snapshot_node: None
-    expected nodes_to_run: [node_a, node_b, node_c]
-    expected nodes_requiring_snapshot: []
-    expected nodes_to_skip: []
-    expected nodes_to_reuse: []
-    """
-    input_pipeline = self._createInputPipeline({
-        'a': ['b'],
-        'b': ['c'],
-        'c': []
-    })
-    partial_run_utils.mark_pipeline(input_pipeline)
-
-    self._checkNodeExecutionOptions(
-        input_pipeline,
-        snapshot_node=None,
-        nodes_to_run=set(['a', 'b', 'c']),
-        nodes_requiring_snapshot=set(),
-        nodes_to_skip=set(),
-        nodes_to_reuse=set())
-
-  def testFilterOutNothing(self):
-    """Basic case where no nodes are filtered out.
-
-    input_pipeline: node_a -> node_b -> node_c
-    from_node: node_a
-    to_node: node_c
-
-    expected snapshot_node: None
-    expected nodes_to_run: [node_a, node_b, node_c]
-    expected nodes_requiring_snapshot: []
-    expected nodes_to_skip: []
-    expected nodes_to_reuse: []
-    """
-    input_pipeline = self._createInputPipeline({
-        'a': ['b'],
-        'b': ['c'],
-        'c': []
-    })
-    partial_run_utils.mark_pipeline(
-        input_pipeline, from_nodes=['a'], to_nodes=['c'])
-
-    self._checkNodeExecutionOptions(
-        input_pipeline,
-        snapshot_node=None,
-        nodes_to_run=set(['a', 'b', 'c']),
-        nodes_requiring_snapshot=set(),
-        nodes_to_skip=set(),
-        nodes_to_reuse=set())
+      partial_run_utils.mark_pipeline(input_pipeline, from_nodes=['a'])
 
   def testFilterOutSinkNode(self):
     """Filter out a node that has upstream nodes but no downstream nodes.

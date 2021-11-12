@@ -484,7 +484,7 @@ message PartialRun {
 
 // This is passed to the DAG runner when the pipeline is run.
 // It is not part of the Pipeline IR.
-message RunnerOptions {
+message RunOptions {
   // Pipeline-level specifications for partial run.
   PartialRun partial_run = 1;
 }
