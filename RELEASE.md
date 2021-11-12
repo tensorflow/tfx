@@ -12,6 +12,7 @@
 *   Increased docker timeout to 5 minutes for image building in CLI.
 *   Fixed KeyError when multiple Examples artifacts were used in Transform
     without materialization.
+*   Fixed error where Vertex Endpoints of the same name is not deduped
 
 ## Documentation Updates
 
