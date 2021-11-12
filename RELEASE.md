@@ -1,8 +1,14 @@
-# Version 1.3.3
+<<<<<<< HEAD
+=======
+# Current Version (Still in Development)
+
+# Version 1.3.4
 
 ## Major Features and Improvements
 
 *   N/A
+
+## Breaking Changes
 
 ### For Pipeline Authors
 
@@ -17,8 +23,10 @@
 *   N/A
 
 ## Bug Fixes and Other Changes
-
-*   Depends on `tensorflow>=1.15.2,!=2.0.*,!=2.1.*,!=2.2.*,!=2.3.*,!=2.4.*,!=2.5.*,<2.7`.
+*   Increased docker timeout to 5 minutes for image building in CLI.
+*   Fixed KeyError when multiple Examples artifacts were used in Transform
+    without materialization.
+*   Fixed error where Vertex Endpoints of the same name is not deduped
 
 ## Documentation Updates
 
