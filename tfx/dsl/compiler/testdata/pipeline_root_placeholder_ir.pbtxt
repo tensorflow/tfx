@@ -61,6 +61,7 @@ nodes {
                 key: "version"
                 value: INT
               }
+              base_type: DATASET
             }
           }
         }

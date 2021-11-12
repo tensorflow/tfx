@@ -64,6 +64,7 @@ nodes {
                 key: "version"
                 value: INT
               }
+              base_type: DATASET
             }
           }
         }
@@ -179,6 +180,7 @@ nodes {
                 key: "version"
                 value: INT
               }
+              base_type: DATASET
             }
           }
         }
@@ -316,6 +318,7 @@ nodes {
             artifact_query {
               type {
                 name: "Examples"
+                base_type: DATASET
               }
             }
             output_key: "examples"
@@ -358,6 +361,7 @@ nodes {
             artifact_query {
               type {
                 name: "Examples"
+                base_type: DATASET
               }
             }
             output_key: "examples"
@@ -385,6 +389,7 @@ nodes {
                 key: "version"
                 value: INT
               }
+              base_type: DATASET
             }
           }
         }
@@ -492,6 +497,7 @@ nodes {
             artifact_query {
               type {
                 name: "Examples"
+                base_type: DATASET
               }
             }
             output_key: "examples"
@@ -534,6 +540,7 @@ nodes {
             artifact_query {
               type {
                 name: "Examples"
+                base_type: DATASET
               }
             }
             output_key: "output_data"
@@ -640,6 +647,7 @@ nodes {
             artifact_query {
               type {
                 name: "Examples"
+                base_type: DATASET
               }
             }
             output_key: "resolved_channels"
@@ -663,6 +671,7 @@ nodes {
                 key: "split_names"
                 value: STRING
               }
+              base_type: STATISTICS
             }
           }
         }

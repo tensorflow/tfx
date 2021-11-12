@@ -152,6 +152,7 @@ input_dict {
             key: "version"
             value: INT
           }
+          base_type: DATASET
         }
       }
     }
