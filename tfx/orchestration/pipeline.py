@@ -71,7 +71,7 @@ def add_beam_pipeline_args_to_component(component, beam_pipeline_args):
 
 
 class RunOptions:
-  r"""Options for Partial Run.
+  r"""Run-time options for running a pipeline (such as partial run).
 
   To run a sub-graph of the Pipeline, include this when constructing the
   Pipeline object.
@@ -121,7 +121,7 @@ class RunOptions:
           pusher_component,
       ],
       # Add RunOptions to specify a partial run.
-      run_options=pipeline.PartialRunOptions(
+      run_options=pipeline.RunOptions(
           from_nodes=[trainer_component.id],
           to_nodes=[evaluator_component.id],
       ),
