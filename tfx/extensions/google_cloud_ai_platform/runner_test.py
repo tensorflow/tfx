@@ -399,7 +399,7 @@ class RunnerTest(tf.test.TestCase):
 
     self._mock_endpoint_list = mock.Mock()
     aiplatform.Endpoint.list = self._mock_endpoint_list
-    self._mock_endpoint_list.return_value = [self._mock_endpoint]
+    self._mock_endpoint_list.return_value = []
 
     self._mock_model_upload = mock.Mock()
     aiplatform.Model.upload = self._mock_model_upload
@@ -698,6 +698,7 @@ class RunnerTest(tf.test.TestCase):
 
   def testDeployModelForVertexPrediction(self):
     self._setUpVertexPredictionMocks()
+    self._mock_endpoint_list.side_effect = [[], [self._mock_endpoint]]
 
     runner.deploy_model_for_aip_prediction(
         serving_path=self._serving_path,
@@ -729,6 +730,7 @@ class RunnerTest(tf.test.TestCase):
 
   def testDeployModelForVertexPredictionError(self):
     self._setUpVertexPredictionMocks()
+    self._mock_endpoint_list.side_effect = [[], [self._mock_endpoint]]
 
     self._mock_model_deploy.side_effect = errors.HttpError(
         httplib2.Response(info={'status': 429}), b'')
@@ -771,11 +773,9 @@ class RunnerTest(tf.test.TestCase):
             ai_platform_serving_args=self._ai_platform_serving_args_vertex,
             enable_vertex=True))
 
-  def testCreateVertexEndpointCreateError(self):
+  def testCreateVertexEndpointCreateErrorAlreadyExist(self):
     self._setUpVertexPredictionMocks()
-
-    self._mock_endpoint_create.side_effect = (
-        errors.HttpError(httplib2.Response(info={'status': 409}), b''))
+    self._mock_endpoint_list.return_value = [self._mock_endpoint]
 
     self.assertFalse(
         runner.create_model_for_aip_prediction_if_not_exist(
@@ -785,6 +785,7 @@ class RunnerTest(tf.test.TestCase):
 
   def testDeployModelForVertexPredictionWithCustomRegion(self):
     self._setUpVertexPredictionMocks()
+    self._mock_endpoint_list.side_effect = [[], [self._mock_endpoint]]
 
     self._mock_init = mock.Mock()
     aiplatform.init = self._mock_init
@@ -807,6 +808,7 @@ class RunnerTest(tf.test.TestCase):
 
   def testDeployModelForVertexPredictionWithCustomMachineType(self):
     self._setUpVertexPredictionMocks()
+    self._mock_endpoint_list.side_effect = [[], [self._mock_endpoint]]
 
     self._ai_platform_serving_args_vertex[
         'machine_type'] = 'custom_machine_type'

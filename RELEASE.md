@@ -50,6 +50,7 @@
 *   Depends on `tensorflow-model-analysis>=0.35.0,<0.36.0`.
 *   Depends on `tensorflow-transform>=1.4.0,<1.5.0`.
 *   Depends on `tfx-bsl>=1.4.0,<1.5.0`.
+*   Fixed error where Vertex Endpoints of the same name is not deduped
 
 ## Documentation Updates
 
