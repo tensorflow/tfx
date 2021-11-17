@@ -19,9 +19,9 @@ from typing import Dict, List
 import tensorflow as tf
 from tfx.dsl.placeholder import placeholder
 from tfx.proto import example_gen_pb2
+from tfx.types import artifact
+from tfx.types import channel
 from tfx.types import component_spec
-from tfx.types.artifact import Artifact
-from tfx.types.channel import Channel
 from tfx.types.component_spec import ChannelParameter
 from tfx.types.component_spec import ComponentSpec
 from tfx.types.component_spec import ExecutionParameter
@@ -32,19 +32,19 @@ from google.protobuf import json_format
 from google.protobuf import text_format
 
 
-class _InputArtifact(Artifact):
+class _InputArtifact(artifact.Artifact):
   TYPE_NAME = 'InputArtifact'
 
 
-class _OutputArtifact(Artifact):
+class _OutputArtifact(artifact.Artifact):
   TYPE_NAME = 'OutputArtifact'
 
 
-class _X(Artifact):
+class _X(artifact.Artifact):
   TYPE_NAME = 'X'
 
 
-class _Z(Artifact):
+class _Z(artifact.Artifact):
   TYPE_NAME = 'Z'
 
 
@@ -80,8 +80,8 @@ class ComponentSpecTest(tf.test.TestCase):
         example_gen_pb2.Input.Split(name='name2', pattern='pattern2'),
         example_gen_pb2.Input.Split(name='name3', pattern='pattern3'),
     ])
-    input_channel = Channel(type=_InputArtifact)
-    output_channel = Channel(type=_OutputArtifact)
+    input_channel = channel.Channel(type=_InputArtifact)
+    output_channel = channel.Channel(type=_OutputArtifact)
     spec = _BasicComponentSpec(
         folds=10, proto=proto, input=input_channel, output=output_channel)
     # Verify proto property.
@@ -110,23 +110,39 @@ class ComponentSpecTest(tf.test.TestCase):
         TypeError,
         '.*should be a Channel of .*InputArtifact.*got (.|\\s)*Examples.*'):
       spec = _BasicComponentSpec(
-          folds=10, input=Channel(type=Examples), output=output_channel)
+          folds=10, input=channel.Channel(type=Examples), output=output_channel)
 
     with self.assertRaisesRegex(
         TypeError,
         '.*should be a Channel of .*OutputArtifact.*got (.|\\s)*Examples.*'):
       spec = _BasicComponentSpec(
-          folds=10, input=input_channel, output=Channel(type=Examples))
+          folds=10, input=input_channel, output=channel.Channel(type=Examples))
 
   def testComponentSpecJsonProto(self):
     proto_str = '{"splits": [{"name": "name1", "pattern": "pattern1"}]}'
     spec = _BasicComponentSpec(
         folds=10,
         proto=proto_str,
-        input=Channel(type=_InputArtifact),
-        output=Channel(type=_OutputArtifact))
+        input=channel.Channel(type=_InputArtifact),
+        output=channel.Channel(type=_OutputArtifact))
     self.assertIsInstance(spec.exec_properties['proto'], str)
     self.assertEqual(spec.exec_properties['proto'], proto_str)
+
+  def testComponentspecWithUnionChannel(self):
+    input_channel_1 = channel.Channel(type=_InputArtifact)
+    input_channel_2 = channel.Channel(type=_InputArtifact)
+    output_channel = channel.Channel(type=_OutputArtifact)
+    spec = _BasicComponentSpec(
+        folds=10,
+        input=channel.union([input_channel_1, input_channel_2]),
+        output=output_channel)
+
+    # Verify properties.
+    self.assertEqual(10, spec.exec_properties['folds'])
+    self.assertEqual(spec.inputs['input'].type, _InputArtifact)
+    self.assertEqual(spec.inputs['input'].channels,
+                     [input_channel_1, input_channel_2])
+    self.assertIs(spec.outputs['output'], output_channel)
 
   def testInvalidComponentspecMissingProperties(self):
 
@@ -250,10 +266,10 @@ class ComponentSpecTest(tf.test.TestCase):
       _ = SimpleComponentSpec(x=10)
 
     with self.assertRaisesRegex(ValueError, 'Missing argument'):
-      _ = SimpleComponentSpec(z=Channel(type=_Z))
+      _ = SimpleComponentSpec(z=channel.Channel(type=_Z))
 
     # Okay since y is optional.
-    _ = SimpleComponentSpec(x=10, z=Channel(type=_Z))
+    _ = SimpleComponentSpec(x=10, z=channel.Channel(type=_Z))
 
   def testOptionalInputs(self):
 
@@ -264,7 +280,8 @@ class ComponentSpecTest(tf.test.TestCase):
 
     optional_not_specified = SpecWithOptionalInput()
     self.assertNotIn('x', optional_not_specified.inputs.keys())
-    optional_specified = SpecWithOptionalInput(x=Channel(type=_Z))
+    self.assertTrue(optional_not_specified.is_optional_input('x'))
+    optional_specified = SpecWithOptionalInput(x=channel.Channel(type=_Z))
     self.assertIn('x', optional_specified.inputs.keys())
 
   def testOptionalOutputs(self):
@@ -276,30 +293,31 @@ class ComponentSpecTest(tf.test.TestCase):
 
     optional_not_specified = SpecWithOptionalOutput()
     self.assertNotIn('x', optional_not_specified.outputs.keys())
-    optional_specified = SpecWithOptionalOutput(x=Channel(type=_Z))
+    self.assertTrue(optional_not_specified.is_optional_output('x'))
+    optional_specified = SpecWithOptionalOutput(x=channel.Channel(type=_Z))
     self.assertIn('x', optional_specified.outputs.keys())
 
   def testChannelParameterType(self):
     arg_name = 'foo'
 
-    class _FooArtifact(Artifact):
+    class _FooArtifact(artifact.Artifact):
       TYPE_NAME = 'FooArtifact'
 
-    class _BarArtifact(Artifact):
+    class _BarArtifact(artifact.Artifact):
       TYPE_NAME = 'BarArtifact'
 
     channel_parameter = ChannelParameter(type=_FooArtifact)
     # Following should pass.
-    channel_parameter.type_check(arg_name, Channel(type=_FooArtifact))
+    channel_parameter.type_check(arg_name, channel.Channel(type=_FooArtifact))
 
     with self.assertRaisesRegex(TypeError, arg_name):
       channel_parameter.type_check(arg_name, 42)  # Wrong value.
 
     with self.assertRaisesRegex(TypeError, arg_name):
-      channel_parameter.type_check(arg_name, Channel(type=_BarArtifact))
+      channel_parameter.type_check(arg_name, channel.Channel(type=_BarArtifact))
 
     setattr(_FooArtifact, component_spec.COMPATIBLE_TYPES_KEY, {_BarArtifact})
-    channel_parameter.type_check(arg_name, Channel(type=_BarArtifact))
+    channel_parameter.type_check(arg_name, channel.Channel(type=_BarArtifact))
 
   def testExecutionParameterTypeCheck(self):
     int_parameter = ExecutionParameter(type=int)
@@ -388,8 +406,8 @@ class ComponentSpecTest(tf.test.TestCase):
             ])
         ],
         list_boolean=[False, True],
-        input=Channel(type=_InputArtifact),
-        output=Channel(type=_OutputArtifact))
+        input=channel.Channel(type=_InputArtifact),
+        output=channel.Channel(type=_OutputArtifact))
 
     # Verify exec_properties store parsed value when use_proto set to True.
     expected_proto = text_format.Parse(

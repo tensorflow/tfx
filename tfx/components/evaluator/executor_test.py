@@ -217,10 +217,10 @@ class ExecutorTest(tf.test.TestCase, parameterized.TestCase):
                           ],
                           metrics_specs=[
                               tfma.MetricsSpec(metrics=[
-                                  tfma.config.MetricConfig(
+                                  tfma.MetricConfig(
                                       class_name='ExampleCount',
                                       # Count > 0, OK.
-                                      threshold=tfma.config.MetricThreshold(
+                                      threshold=tfma.MetricThreshold(
                                           value_threshold=tfma
                                           .GenericValueThreshold(
                                               lower_bound={'value': 0}))),
@@ -246,10 +246,10 @@ class ExecutorTest(tf.test.TestCase, parameterized.TestCase):
                           ],
                           metrics_specs=[
                               tfma.MetricsSpec(metrics=[
-                                  tfma.config.MetricConfig(
+                                  tfma.MetricConfig(
                                       class_name='ExampleCount',
                                       # Count < -1, NOT OK.
-                                      threshold=tfma.config.MetricThreshold(
+                                      threshold=tfma.MetricThreshold(
                                           value_threshold=tfma
                                           .GenericValueThreshold(
                                               upper_bound={'value': -1}))),
@@ -275,17 +275,17 @@ class ExecutorTest(tf.test.TestCase, parameterized.TestCase):
                           ],
                           metrics_specs=[
                               tfma.MetricsSpec(metrics=[
-                                  tfma.config.MetricConfig(
+                                  tfma.MetricConfig(
                                       class_name='ExampleCount',
                                       # Count > 0, OK.
-                                      threshold=tfma.config.MetricThreshold(
+                                      threshold=tfma.MetricThreshold(
                                           value_threshold=tfma
                                           .GenericValueThreshold(
                                               lower_bound={'value': 0}))),
-                                  tfma.config.MetricConfig(
+                                  tfma.MetricConfig(
                                       class_name='Accuracy',
                                       # Should be ignored due to no baseline.
-                                      threshold=tfma.config.MetricThreshold(
+                                      threshold=tfma.MetricThreshold(
                                           change_threshold=tfma
                                           .GenericChangeThreshold(
                                               relative={'value': 0},

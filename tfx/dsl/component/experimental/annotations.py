@@ -67,8 +67,8 @@ class _ArtifactGeneric(metaclass=_ArtifactGenericMeta):
 class _PrimitiveTypeGenericMeta(type):
   """Metaclass for _PrimitiveTypeGeneric, to enable primitive type indexing."""
 
-  def __getitem__(cls: Type[Union[int, float, str, bytes]],
-                  params: Type[artifact.Artifact]):
+  def __getitem__(cls: Type['_PrimitiveTypeGeneric'],
+                  params: Type[Union[int, float, str, bytes]]):
     """Metaclass method allowing indexing class (`_PrimitiveTypeGeneric[T]`)."""
     return cls._generic_getitem(params)  # pytype: disable=attribute-error
 

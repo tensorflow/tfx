@@ -628,6 +628,14 @@ tfx run create --pipeline_name=<var>pipeline-name</var> [--endpoint=<var>endpoin
       used by default.
     </p>
   </dd>
+
+  <dt>--runtime_parameter=<var>parameter-name</var>=<var>parameter-value</var></dt>
+  <dd>
+    (Optional.) Sets a runtime parameter value. Can be set multiple times to set
+    values of multiple variables. Only applicable to `airflow`, `kubeflow` and
+    `vertex` engine.
+  </dd>
+
   <dt>--iap_client_id=<var>iap-client-id</var></dt>
   <dd>
     (Optional.) Client ID for IAP protected endpoint.
@@ -650,7 +658,6 @@ tfx run create --pipeline_name=<var>pipeline-name</var> [--endpoint=<var>endpoin
     (Required for Vertex.) GCP region name like us-central1. See [Vertex documentation](https://cloud.google.com/vertex-ai/docs/general/locations) for available regions.
   </dd>
 
-  --project=some_project --region=us-central1
 </dl>
 
 #### Examples:
@@ -671,7 +678,9 @@ tfx run create --engine=local --pipeline_name=<var>pipeline-name</var>
 Vertex:
 
 <pre class="devsite-terminal">
-tfx run create --engine=vertex --pipeline_name=<var>pipeline-name</var> --project=<var>gcp-project-id</var> --region=<var>gcp-region</var>
+tfx run create --engine=vertex --pipeline_name=<var>pipeline-name</var> \
+  --runtime_parameter=<var>var_name</var>=<var>var_value</var> \
+  --project=<var>gcp-project-id</var> --region=<var>gcp-region</var>
 </pre>
 
 ### terminate

@@ -17,32 +17,32 @@ from tfx.dsl.compiler import compiler
 from tfx.dsl.component.experimental.annotations import InputArtifact
 from tfx.dsl.component.experimental.annotations import OutputArtifact
 from tfx.dsl.component.experimental.decorators import component
+from tfx.dsl.experimental.conditionals import conditional
 from tfx.orchestration import pipeline as pipeline_lib
 from tfx.proto.orchestration import pipeline_pb2
 from tfx.types import standard_artifacts
 
 
 @component
-def my_example_gen(examples: OutputArtifact[standard_artifacts.Examples]):
+def _example_gen(examples: OutputArtifact[standard_artifacts.Examples]):
   del examples
 
 
 @component
-def my_statistics_gen(
+def _statistics_gen(
     examples: InputArtifact[standard_artifacts.Examples],
     statistics: OutputArtifact[standard_artifacts.ExampleStatistics]):
   del examples, statistics
 
 
 @component
-def my_schema_gen(
-    statistics: InputArtifact[standard_artifacts.ExampleStatistics],
-    schema: OutputArtifact[standard_artifacts.Schema]):
+def _schema_gen(statistics: InputArtifact[standard_artifacts.ExampleStatistics],
+                schema: OutputArtifact[standard_artifacts.Schema]):
   del statistics, schema
 
 
 @component
-def my_example_validator(
+def _example_validator(
     statistics: InputArtifact[standard_artifacts.ExampleStatistics],
     schema: InputArtifact[standard_artifacts.Schema],
     anomalies: OutputArtifact[standard_artifacts.ExampleAnomalies]):
@@ -50,7 +50,7 @@ def my_example_validator(
 
 
 @component
-def my_transform(
+def _transform(
     examples: InputArtifact[standard_artifacts.Examples],
     schema: InputArtifact[standard_artifacts.Schema],
     transform_graph: OutputArtifact[standard_artifacts.TransformGraph]):
@@ -58,46 +58,54 @@ def my_transform(
 
 
 @component
-def my_trainer(
-    examples: InputArtifact[standard_artifacts.Examples],
-    schema: InputArtifact[standard_artifacts.Schema],
-    transform_graph: InputArtifact[standard_artifacts.TransformGraph],
-    model: OutputArtifact[standard_artifacts.Model]):
+def _trainer(examples: InputArtifact[standard_artifacts.Examples],
+             schema: InputArtifact[standard_artifacts.Schema],
+             transform_graph: InputArtifact[standard_artifacts.TransformGraph],
+             model: OutputArtifact[standard_artifacts.Model]):
   del examples, schema, transform_graph, model
 
 
 @component
-def chore_a():
-  pass
+def _evaluator(model: InputArtifact[standard_artifacts.Model],
+               evals: OutputArtifact[standard_artifacts.ModelEvaluation]):
+  del model, evals
 
 
 @component
-def chore_b():
+def _chore():
   pass
 
 
 def create_pipeline() -> pipeline_pb2.Pipeline:
   """Builds a test pipeline."""
   # pylint: disable=no-value-for-parameter
-  example_gen = my_example_gen()
-  stats_gen = my_statistics_gen(examples=example_gen.outputs['examples'])
-  schema_gen = my_schema_gen(statistics=stats_gen.outputs['statistics'])
-  example_validator = my_example_validator(
+  example_gen = _example_gen().with_id('my_example_gen')
+  stats_gen = _statistics_gen(
+      examples=example_gen.outputs['examples']).with_id('my_statistics_gen')
+  schema_gen = _schema_gen(
+      statistics=stats_gen.outputs['statistics']).with_id('my_schema_gen')
+  example_validator = _example_validator(
       statistics=stats_gen.outputs['statistics'],
-      schema=schema_gen.outputs['schema'])
-  transform = my_transform(
+      schema=schema_gen.outputs['schema']).with_id('my_example_validator')
+  transform = _transform(
       examples=example_gen.outputs['examples'],
-      schema=schema_gen.outputs['schema'])
-  trainer = my_trainer(
+      schema=schema_gen.outputs['schema']).with_id('my_transform')
+  trainer = _trainer(
       examples=example_gen.outputs['examples'],
       schema=schema_gen.outputs['schema'],
-      transform_graph=transform.outputs['transform_graph'])
+      transform_graph=transform.outputs['transform_graph']).with_id(
+          'my_trainer')
 
   # Nodes with no input or output specs for testing task only dependencies.
-  chore_a_component = chore_a()
-  chore_a_component.add_upstream_node(trainer)
-  chore_b_component = chore_b()
-  chore_b_component.add_upstream_node(chore_a_component)
+  chore_a = _chore().with_id('chore_a')
+  chore_a.add_upstream_node(trainer)
+  chore_b = _chore().with_id('chore_b')
+  chore_b.add_upstream_node(chore_a)
+
+  with conditional.Cond(
+      trainer.outputs['model'].future()[0].custom_property('evaluate') == 1):
+    evaluator = _evaluator(
+        model=trainer.outputs['model']).with_id('my_evaluator')
   # pylint: enable=no-value-for-parameter
 
   pipeline = pipeline_lib.Pipeline(
@@ -110,8 +118,9 @@ def create_pipeline() -> pipeline_pb2.Pipeline:
           example_validator,
           transform,
           trainer,
-          chore_a_component,
-          chore_b_component,
+          evaluator,
+          chore_a,
+          chore_b,
       ],
       enable_cache=True)
   dsl_compiler = compiler.Compiler()

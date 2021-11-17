@@ -271,6 +271,9 @@ class TFServingRpcRequestBuilderTest(tf.test.TestCase):
     return request_builder._parse_saved_model_signatures(
         model_path, tag_set={'serve'}, signature_names=['serving_default'])
 
+  @unittest.skipIf(
+      tf.__version__ < '2',
+      'The test uses testdata only compatible with TF2.')
   def testBuildRequests_EstimatorModel_ServingDefault(self):
     builder = request_builder._TFServingRpcRequestBuilder(
         model_name='foo',
@@ -284,6 +287,9 @@ class TFServingRpcRequestBuilderTest(tf.test.TestCase):
     self.assertEqual(result[0].model_spec.name, 'foo')
     self.assertEqual(result[0].model_spec.signature_name, 'serving_default')
 
+  @unittest.skipIf(
+      tf.__version__ < '2',
+      'The test uses testdata only compatible with TF2.')
   def testBuildRequests_EstimatorModel_Classification(self):
     builder = request_builder._TFServingRpcRequestBuilder(
         model_name='foo',
@@ -298,6 +304,9 @@ class TFServingRpcRequestBuilderTest(tf.test.TestCase):
     self.assertEqual(result[0].model_spec.name, 'foo')
     self.assertEqual(result[0].model_spec.signature_name, 'classification')
 
+  @unittest.skipIf(
+      tf.__version__ < '2',
+      'The test uses testdata only compatible with TF2.')
   def testBuildRequests_EstimatorModel_Regression(self):
     builder = request_builder._TFServingRpcRequestBuilder(
         model_name='foo',
@@ -312,6 +321,9 @@ class TFServingRpcRequestBuilderTest(tf.test.TestCase):
     self.assertEqual(result[0].model_spec.name, 'foo')
     self.assertEqual(result[0].model_spec.signature_name, 'regression')
 
+  @unittest.skipIf(
+      tf.__version__ < '2',
+      'The test uses testdata only compatible with TF2.')
   def testBuildRequests_EstimatorModel_Predict(self):
     builder = request_builder._TFServingRpcRequestBuilder(
         model_name='foo',

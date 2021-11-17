@@ -15,6 +15,7 @@
 
 import abc
 import enum
+from absl import logging
 
 from tfx.orchestration.experimental.core import pipeline_state as pstate
 
@@ -59,7 +60,7 @@ class ServiceJobManager(abc.ABC):
 
   @abc.abstractmethod
   def stop_node_services(self, pipeline_state: pstate.PipelineState,
-                         node_id: str) -> None:
+                         node_id: str) -> bool:
     """Stops service jobs (if any) associated with the node.
 
     Note that this method will only be called if either `is_pure_service_node`
@@ -68,6 +69,9 @@ class ServiceJobManager(abc.ABC):
     Args:
       pipeline_state: A `PipelineState` object for an active pipeline.
       node_id: Id of the node to stop services.
+
+    Returns:
+      `True` if the operation was successful, `False` otherwise.
     """
 
   @abc.abstractmethod
@@ -106,7 +110,7 @@ class DummyServiceJobManager(ServiceJobManager):
     raise NotImplementedError('Service jobs not supported.')
 
   def stop_node_services(self, pipeline_state: pstate.PipelineState,
-                         node_id: str) -> None:
+                         node_id: str) -> bool:
     del pipeline_state, node_id
     raise NotImplementedError('Service jobs not supported.')
 
@@ -119,3 +123,46 @@ class DummyServiceJobManager(ServiceJobManager):
                             node_id: str) -> bool:
     del pipeline_state, node_id
     return False
+
+
+class ServiceJobManagerCleanupWrapper(ServiceJobManager):
+  """Wraps a ServiceJobManager instance and does exception handling and cleanup."""
+
+  def __init__(self, service_job_manager: ServiceJobManager):
+    self._service_job_manager = service_job_manager
+
+  def ensure_node_services(self, pipeline_state: pstate.PipelineState,
+                           node_id: str) -> ServiceStatus:
+    try:
+      service_status = self._service_job_manager.ensure_node_services(
+          pipeline_state, node_id)
+    except Exception:  # pylint: disable=broad-except
+      logging.exception(
+          'Exception raised by underlying `ServiceJobManager` instance.')
+      service_status = ServiceStatus.FAILED
+    if service_status == ServiceStatus.FAILED:
+      logging.info(
+          'ensure_node_services returned status `FAILED` or raised exception; '
+          'calling stop_node_services (best effort) for node: %s', node_id)
+      self.stop_node_services(pipeline_state, node_id)
+    return service_status
+
+  def stop_node_services(self, pipeline_state: pstate.PipelineState,
+                         node_id: str) -> bool:
+    try:
+      return self._service_job_manager.stop_node_services(
+          pipeline_state, node_id)
+    except Exception:  # pylint: disable=broad-except
+      logging.exception(
+          'Exception raised by underlying `ServiceJobManager` instance.')
+      return False
+
+  def is_pure_service_node(self, pipeline_state: pstate.PipelineState,
+                           node_id: str) -> bool:
+    return self._service_job_manager.is_pure_service_node(
+        pipeline_state, node_id)
+
+  def is_mixed_service_node(self, pipeline_state: pstate.PipelineState,
+                            node_id: str) -> bool:
+    return self._service_job_manager.is_mixed_service_node(
+        pipeline_state, node_id)

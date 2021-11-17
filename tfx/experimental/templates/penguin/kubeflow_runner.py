@@ -74,6 +74,8 @@ def run():
           data_path=DATA_PATH,
           # NOTE: Use `query` instead of `data_path` to use BigQueryExampleGen.
           # query=configs.BIG_QUERY_QUERY,
+          # NOTE: Set the path of the customized schema if any.
+          # schema_path=generated_schema_path,
           preprocessing_fn=configs.PREPROCESSING_FN,
           run_fn=configs.RUN_FN,
           train_args=tfx.proto.TrainArgs(num_steps=configs.TRAIN_NUM_STEPS),

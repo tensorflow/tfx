@@ -1,6 +1,7 @@
 workspace(name = "tfx")
 
 # To update TensorFlow to a new revision.
+# TODO(b/177694034): Follow the new format for tensorflow import.
 # 1. Update the '_TENSORFLOW_GIT_COMMIT' var below to include the new git hash.
 # 2. Get the sha256 hash of the archive with a command such as...
 #    curl -L https://github.com/tensorflow/tensorflow/archive/<git hash>.tar.gz | sha256sum

@@ -18,8 +18,8 @@ from tfx.utils import deprecation_utils
 
 start_cmle_training = deprecation_utils.deprecated_alias(
     deprecated_name='cmle_runner.start_cmle_training',
-    name='runner.start_aip_training',
-    func_or_class=runner.start_aip_training)
+    name='runner.start_cloud_training',
+    func_or_class=runner.start_cloud_training)
 deploy_model_for_cmle_serving = deprecation_utils.deprecated_alias(
     deprecated_name='cmle_runner.deploy_model_for_cmle_serving',
     name='runner.deploy_model_for_aip_prediction',

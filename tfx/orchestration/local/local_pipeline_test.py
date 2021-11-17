@@ -21,7 +21,6 @@ recommended pipeline topology.
 """
 # pylint: disable=invalid-name,no-value-for-parameter
 
-
 import collections
 import json
 import os
@@ -31,15 +30,17 @@ from typing import Any, List
 import absl.testing.absltest
 
 from tfx import types
+from tfx.dsl.compiler import compiler
 from tfx.dsl.component.experimental.annotations import InputArtifact
 from tfx.dsl.component.experimental.annotations import OutputArtifact
 from tfx.dsl.component.experimental.annotations import OutputDict
 from tfx.dsl.component.experimental.annotations import Parameter
 from tfx.dsl.component.experimental.decorators import component
 from tfx.dsl.io import fileio
-from tfx.orchestration import pipeline
+from tfx.orchestration import pipeline as pipeline_py
 from tfx.orchestration.local import local_dag_runner
 from tfx.orchestration.metadata import sqlite_metadata_connection_config
+from tfx.proto.orchestration import pipeline_pb2
 
 
 class DummyDataset(types.Artifact):
@@ -149,23 +150,22 @@ class LocalDagRunnerTest(absl.testing.absltest.TestCase):
     super().setUp()
     self.__class__.RAN_COMPONENTS = []
 
-  def testSimplePipelineRun(self):
-    self.assertEqual(self.RAN_COMPONENTS, [])
-
+  def _getTestPipeline(self) -> pipeline_py.Pipeline:
     # Construct component instances.
-    dummy_load_component = LoadDummyDatasetComponent()
+    dummy_load_component = LoadDummyDatasetComponent().with_id('Load')
     dummy_train_component = DummyTrainComponent(
-        training_data=dummy_load_component.outputs['dataset'], num_iterations=5)
+        training_data=dummy_load_component.outputs['dataset'],
+        num_iterations=5).with_id('Train')
     dummy_validate_component = DummyValidateComponent(
         model=dummy_train_component.outputs['model'],
         loss=dummy_train_component.outputs['loss'],
-        accuracy=dummy_train_component.outputs['accuracy'])
+        accuracy=dummy_train_component.outputs['accuracy']).with_id('Validate')
 
     # Construct and run pipeline
     temp_path = tempfile.mkdtemp()
     pipeline_root_path = os.path.join(temp_path, 'pipeline_root')
     metadata_path = os.path.join(temp_path, 'metadata.db')
-    test_pipeline = pipeline.Pipeline(
+    return pipeline_py.Pipeline(
         pipeline_name='test_pipeline',
         pipeline_root=pipeline_root_path,
         metadata_connection_config=sqlite_metadata_connection_config(
@@ -175,9 +175,46 @@ class LocalDagRunnerTest(absl.testing.absltest.TestCase):
             dummy_train_component,
             dummy_validate_component,
         ])
-    local_dag_runner.LocalDagRunner().run(test_pipeline)
+
+  def _getTestPipelineIR(self) -> pipeline_pb2.Pipeline:
+    test_pipeline = self._getTestPipeline()
+    c = compiler.Compiler()
+    return c.compile(test_pipeline)
+
+  def testSimplePipelineRun(self):
+    self.assertEqual(self.RAN_COMPONENTS, [])
+
+    local_dag_runner.LocalDagRunner().run(self._getTestPipeline())
 
     self.assertEqual(self.RAN_COMPONENTS, ['Load', 'Train', 'Validate'])
+
+  def testSimplePipelinePartialRun(self):
+    self.assertEqual(self.RAN_COMPONENTS, [])
+
+    local_dag_runner.LocalDagRunner().run(
+        self._getTestPipeline(),
+        run_options=pipeline_py.RunOptions(to_nodes=['Train']))
+
+    self.assertEqual(self.RAN_COMPONENTS, ['Load', 'Train'])
+
+  def testSimplePipelineRunWithIR(self):
+    self.assertEqual(self.RAN_COMPONENTS, [])
+
+    local_dag_runner.LocalDagRunner().run_with_ir(self._getTestPipelineIR())
+
+    self.assertEqual(self.RAN_COMPONENTS, ['Load', 'Train', 'Validate'])
+
+  def testSimplePipelinePartialRunWithIR(self):
+    self.assertEqual(self.RAN_COMPONENTS, [])
+
+    pr_opts = pipeline_pb2.PartialRun()
+    pr_opts.to_nodes.append('Train')
+    pr_opts.snapshot_settings.latest_pipeline_run_strategy.SetInParent()
+    local_dag_runner.LocalDagRunner().run_with_ir(
+        self._getTestPipelineIR(),
+        run_options=pipeline_pb2.RunOptions(partial_run=pr_opts))
+
+    self.assertEqual(self.RAN_COMPONENTS, ['Load', 'Train'])
 
 
 if __name__ == '__main__':

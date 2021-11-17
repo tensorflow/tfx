@@ -16,6 +16,7 @@
 from tfx.dsl.compiler import compiler
 from tfx.dsl.component.experimental.annotations import InputArtifact
 from tfx.dsl.component.experimental.annotations import OutputArtifact
+from tfx.dsl.component.experimental.annotations import Parameter
 from tfx.dsl.component.experimental.decorators import component
 from tfx.orchestration import pipeline as pipeline_lib
 from tfx.proto.orchestration import pipeline_pb2
@@ -23,33 +24,40 @@ from tfx.types import standard_artifacts
 
 
 @component
-def my_example_gen(examples: OutputArtifact[standard_artifacts.Examples]):
+def _example_gen(examples: OutputArtifact[standard_artifacts.Examples]):
   del examples
 
 
+# pytype: disable=wrong-arg-types
 @component
-def my_transform(
+def _transform(
     examples: InputArtifact[standard_artifacts.Examples],
-    transform_graph: OutputArtifact[standard_artifacts.TransformGraph]):
-  del examples, transform_graph
+    transform_graph: OutputArtifact[standard_artifacts.TransformGraph],
+    a_param: Parameter[int]):
+  del examples, transform_graph, a_param
+
+
+# pytype: enable=wrong-arg-types
 
 
 @component
-def my_trainer(
-    examples: InputArtifact[standard_artifacts.Examples],
-    transform_graph: InputArtifact[standard_artifacts.TransformGraph],
-    model: OutputArtifact[standard_artifacts.Model]):
+def _trainer(examples: InputArtifact[standard_artifacts.Examples],
+             transform_graph: InputArtifact[standard_artifacts.TransformGraph],
+             model: OutputArtifact[standard_artifacts.Model]):
   del examples, transform_graph, model
 
 
 def create_pipeline() -> pipeline_pb2.Pipeline:
   """Creates an async pipeline for testing."""
   # pylint: disable=no-value-for-parameter
-  example_gen = my_example_gen()
-  transform = my_transform(examples=example_gen.outputs['examples'])
-  trainer = my_trainer(
+  example_gen = _example_gen().with_id('my_example_gen')
+  transform = _transform(
       examples=example_gen.outputs['examples'],
-      transform_graph=transform.outputs['transform_graph'])
+      a_param=10).with_id('my_transform')
+  trainer = _trainer(
+      examples=example_gen.outputs['examples'],
+      transform_graph=transform.outputs['transform_graph']).with_id(
+          'my_trainer')
   # pylint: enable=no-value-for-parameter
 
   pipeline = pipeline_lib.Pipeline(

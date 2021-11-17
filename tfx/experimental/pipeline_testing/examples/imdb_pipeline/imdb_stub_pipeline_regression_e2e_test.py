@@ -119,7 +119,7 @@ class ImdbStubPipelineRegressionEndToEndTest(tf.test.TestCase):
     pipeline_mock.replace_executor_with_stub(pipeline_ir,
                                              self._recorded_output_dir, [])
 
-    BeamDagRunner().run(pipeline_ir)
+    BeamDagRunner().run_with_ir(pipeline_ir)
 
     self.assertTrue(fileio.exists(self._metadata_path))
 

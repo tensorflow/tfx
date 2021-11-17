@@ -73,7 +73,7 @@ class BaseBeamExecutor(BaseExecutor):
         self._make_beam_pipeline_fn = context.make_beam_pipeline_fn
       else:
         raise ValueError('BaseBeamExecutor found initialized with '
-                         'BaseExecutorSpec. Please use BeamEecutorSpec for '
+                         'BaseExecutorSpec. Please use BeamExecutorSpec for '
                          'Beam Components instead.')
 
     if self._beam_pipeline_args:

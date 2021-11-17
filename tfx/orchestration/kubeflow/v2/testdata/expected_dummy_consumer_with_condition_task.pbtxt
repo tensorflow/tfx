@@ -1,0 +1,44 @@
+# proto-file: kfp/pipeline_spec/pipeline_spec.proto
+# proto-message: PipelineTaskSpec
+
+task_info {
+  name: "DummyConsumerComponent"
+}
+inputs {
+  parameters {
+    key: "param1"
+    value {
+      runtime_value {
+        constant_value {
+          int_value: 1
+        }
+      }
+    }
+  }
+  artifacts {
+    key: "input1"
+    value {
+      task_output_artifact {
+        producer_task: "producer_task_1"
+        output_artifact_key: "output1"
+      }
+    }
+  }
+  artifacts {
+    key: "_producer_task_2.output1"
+    value {
+      task_output_artifact {
+        producer_task: "producer_task_2"
+        output_artifact_key: "output1"
+      }
+    }
+  }
+}
+trigger_policy {
+  condition: "!((inputs.artifacts['input1'].artifacts[0].uri == 'uri')) && (inputs.artifacts['_producer_task_2.output1'].artifacts[0].metadata['property'] == 'value1')"
+}
+component_ref {
+  name: "DummyConsumerComponent"
+}
+dependent_tasks: "producer_task_1"
+dependent_tasks: "producer_task_2"

@@ -33,7 +33,8 @@ class Evaluator(base_beam_component.BaseBeamComponent):
   """A TFX component to evaluate models trained by a TFX Trainer component.
 
   Component `outputs` contains:
-   - `evaluation`: Channel of type `standard_artifacts.ModelEvaluation` to store
+   - `evaluation`: Channel of type `standard_artifacts.ModelEvaluation` to
+   store
                    the evaluation results.
    - `blessing`: Channel of type `standard_artifacts.ModelBlessing' that
                  contains the blessing result.
@@ -47,9 +48,9 @@ class Evaluator(base_beam_component.BaseBeamComponent):
 
   def __init__(
       self,
-      examples: types.Channel,
-      model: Optional[types.Channel] = None,
-      baseline_model: Optional[types.Channel] = None,
+      examples: types.BaseChannel,
+      model: Optional[types.BaseChannel] = None,
+      baseline_model: Optional[types.BaseChannel] = None,
       # TODO(b/148618405): deprecate feature_slicing_spec.
       feature_slicing_spec: Optional[Union[evaluator_pb2.FeatureSlicingSpec,
                                            data_types.RuntimeParameter]] = None,
@@ -57,20 +58,20 @@ class Evaluator(base_beam_component.BaseBeamComponent):
           List[float], data_types.RuntimeParameter]] = None,
       example_splits: Optional[List[str]] = None,
       eval_config: Optional[tfma.EvalConfig] = None,
-      schema: Optional[types.Channel] = None,
+      schema: Optional[types.BaseChannel] = None,
       module_file: Optional[str] = None,
       module_path: Optional[str] = None):
     """Construct an Evaluator component.
 
     Args:
-      examples: A Channel of type `standard_artifacts.Examples`, usually
+      examples: A BaseChannel of type `standard_artifacts.Examples`, usually
         produced by an ExampleGen component. _required_
-      model: A Channel of type `standard_artifacts.Model`, usually produced by
-        a Trainer component.
+      model: A BaseChannel of type `standard_artifacts.Model`, usually produced
+        by a Trainer component.
       baseline_model: An optional channel of type 'standard_artifacts.Model' as
         the baseline model for model diff and model validation purpose.
-      feature_slicing_spec:
-        Deprecated, please use eval_config instead. Only support estimator.
+      feature_slicing_spec: Deprecated, please use eval_config instead. Only
+        support estimator.
         [evaluator_pb2.FeatureSlicingSpec](https://github.com/tensorflow/tfx/blob/master/tfx/proto/evaluator.proto)
         instance that describes how Evaluator should slice the data.
       fairness_indicator_thresholds: Optional list of float (or
@@ -97,8 +98,8 @@ class Evaluator(base_beam_component.BaseBeamComponent):
           ) -> List[tfma.extractors.Extractor]:
       module_path: A python path to the custom module that contains the UDFs.
         See 'module_file' for the required signature of UDFs. This functionality
-        is experimental and this API may change at any time. Note this can
-        not be set together with module_file.
+        is experimental and this API may change at any time. Note this can not
+        be set together with module_file.
     """
     if bool(module_file) and bool(module_path):
       raise ValueError(
@@ -106,7 +107,7 @@ class Evaluator(base_beam_component.BaseBeamComponent):
 
     if eval_config is not None and feature_slicing_spec is not None:
       raise ValueError("Exactly one of 'eval_config' or 'feature_slicing_spec' "
-                       "must be supplied.")
+                       'must be supplied.')
     if eval_config is None and feature_slicing_spec is None:
       feature_slicing_spec = evaluator_pb2.FeatureSlicingSpec()
       logging.info('Neither eval_config nor feature_slicing_spec is passed, '

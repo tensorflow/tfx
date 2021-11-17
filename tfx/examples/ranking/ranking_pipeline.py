@@ -115,7 +115,7 @@ def _create_pipeline(pipeline_name: str, pipeline_root: str, data_root: str,
           tfma.ModelSpec(
               signature_name='',
               label_key='relevance',
-              padding_options=tfma.config.PaddingOptions(
+              padding_options=tfma.PaddingOptions(
                   label_float_padding=-1.0, prediction_float_padding=-1.0))
       ],
       slicing_specs=[
@@ -126,7 +126,7 @@ def _create_pipeline(pipeline_name: str, pipeline_root: str, data_root: str,
           tfma.MetricsSpec(
               per_slice_thresholds={
                   'metric/ndcg_10':
-                      tfma.config.PerSliceMetricThresholds(thresholds=[
+                      tfma.PerSliceMetricThresholds(thresholds=[
                           tfma.PerSliceMetricThreshold(
                               # The overall slice.
                               slicing_specs=[tfma.SlicingSpec()],

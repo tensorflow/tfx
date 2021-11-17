@@ -14,14 +14,15 @@
 """Definition and related classes for TFX pipeline."""
 
 import enum
-
-from typing import List, Optional, cast, Dict
+from typing import Collection, List, Optional, Union, cast
 
 from tfx.dsl.compiler import constants
 from tfx.dsl.components.base import base_node
 from tfx.dsl.components.base import executor_spec
+from tfx.dsl.placeholder import placeholder as ph
 from tfx.orchestration import data_types
 from tfx.orchestration import metadata
+from tfx.types import channel_utils
 from tfx.utils import topsort
 
 from google.protobuf import message
@@ -82,6 +83,124 @@ def add_beam_pipeline_args_from_env_to_component(component, beam_pipeline_args_f
         component.executor_spec).beam_pipeline_args_from_env = beam_pipeline_args_from_env_copy
 
 
+class RunOptions:
+  r"""Run-time options for running a pipeline (such as partial run).
+
+  To run a sub-graph of the Pipeline, include this when constructing the
+  Pipeline object.
+
+  ### Specifying the sub-graph to run
+
+  To define the sub-graph to run, specify a set of *source nodes* and a set
+  of *sink nodes*. These can be provided as collections of node_id strings, or
+  as functions that takes a node id string and returns a boolean.
+
+  Consider this pipeline graph:
+
+
+                            -- CsvExampleGen --
+                            |        |        |
+                            v        |        |
+               -- StatisticsGen      |        |
+               |           |         |        |
+               |           v         |        |
+               |       SchemaGen     |        |
+               |     /     |     \   |        |
+               v    v      |      v  v        |
+        ExampleValidator   |     Transform    |
+                           |    /             |
+                           v   v              |
+                          Trainer -----       |
+                              \        \      |
+                               \        v     v
+                                \      Evaluator
+                                 \        /
+                                  \      /
+                                   v    v
+                                   Pusher
+
+
+  Suppose the user has already done a full pipeline run, and now only wants to
+  run "Trainer" and "Evaluator". To specify this:
+
+  ```python
+  my_pipeline = pipeline.Pipeline(
+      # How you'll normally define a pipeline.
+      pipeline_name=...,
+      # Include *all* pipeline components as usual, even the ones to be skipped.
+      components=[
+          example_gen_component,
+          ...,
+          pusher_component,
+      ],
+      # Add RunOptions to specify a partial run.
+      run_options=pipeline.RunOptions(
+          from_nodes=[trainer_component.id],
+          to_nodes=[evaluator_component.id],
+      ),
+  )
+  ```
+
+  The compiler will find the nodes reachable downstream from Trainer and
+  reachable upstream from Evaluator to obtain {Trainer, Evaluator}, and mark
+  those nodes in the pipeline IR accordingly.
+
+  Alternatively, the user can specify:
+
+  ```python
+  nodes_to_include = {trainer_component.id, evaluator_component.id}
+  run_options = pipeline.RunOptions(
+      from_nodes=nodes_to_include,
+      to_nodes=nodes_to_include,
+  )
+  ```
+
+  ### Specifying the artifact reuse strategy
+
+  In the above example, the Trainer node is the first node in the partial run.
+  How would it resolve its dependencies? By default, nodes in a partial run
+  would use the output artifacts from the *previous pipeline run* (including
+  partial runs) to resolve any dependencies that cannot be provided by other
+  nodes in the same partial run.
+
+  Using the previous pipeline run is sufficient in most cases. However,
+  the user may wish to use a different pipeline run to provide missing
+  dependencies -- perhaps an even earlier pipeline run. To specify this:
+
+  ```python
+  run_options = pipeline.RunOptions(
+      from_nodes=...,
+      to_nodes=...,
+      base_pipeline_run_id=<the pipeline run id whose artifacts are to be used>,
+  )
+  ```
+  """
+
+  def __init__(self,
+               from_nodes: Optional[Collection[str]] = None,
+               to_nodes: Optional[Collection[str]] = None,
+               base_pipeline_run_id: Optional[str] = None):
+    """Constructor.
+
+    Args:
+      from_nodes: node_ids to be used as "from_nodes". Defaults to None,
+        which indicates all nodes.
+      to_nodes: node_ids to be used as "to_nodes". Defaults to None, which
+        indicates all nodes.
+      base_pipeline_run_id: If provided, will use this as the pipeline run id
+        from which missing dependencies are provided. If None, will use the
+        previous pipeline run id. Defaults to None.
+
+    Raises:
+      ValueError if both from_nodes or to_nodes are empty.
+    """
+    if not(from_nodes or to_nodes):
+      raise ValueError('from_nodes or to_nodes cannot both be empty.')
+    self.from_nodes = from_nodes
+    self.to_nodes = to_nodes
+    self.base_pipeline_run_id = base_pipeline_run_id
+
+
 class Pipeline:
   """Logical TFX pipeline object.
 
@@ -104,7 +223,7 @@ class Pipeline:
 
   def __init__(self,
                pipeline_name: str,
-               pipeline_root: str,
+               pipeline_root: Union[str, ph.Placeholder],
                metadata_connection_config: Optional[
                    metadata.ConnectionConfigType] = None,
                components: Optional[List[base_node.BaseNode]] = None,
@@ -118,7 +237,10 @@ class Pipeline:
 
     Args:
       pipeline_name: Name of the pipeline;
-      pipeline_root: Path to root directory of the pipeline;
+      pipeline_root: Path to root directory of the pipeline. This will most
+        often be just a string. Some orchestrators may have limited support for
+        constructing this from a Placeholder, e.g. a RuntimeInfoPlaceholder that
+        refers to fields from the platform config.
       metadata_connection_config: The config to connect to ML metadata.
       components: Optional list of components to construct the pipeline.
       enable_cache: Whether or not cache is enabled for this run.
@@ -142,8 +264,8 @@ class Pipeline:
     self.metadata_connection_config = metadata_connection_config
     self.execution_mode = execution_mode
 
-    self.beam_pipeline_args = beam_pipeline_args or []
-    self.beam_pipeline_args_from_env = beam_pipeline_args_from_env or {}
+    self._beam_pipeline_args = beam_pipeline_args or []
+    self._beam_pipeline_args_from_env = beam_pipeline_args_from_env or {}
 
     self.platform_config = platform_config
 
@@ -153,13 +275,15 @@ class Pipeline:
     # Calls property setter.
     self.components = components or []
 
-    if self.beam_pipeline_args:
-      for component in components:
-        add_beam_pipeline_args_to_component(component, beam_pipeline_args)
+  @property
+  def beam_pipeline_args(self):
+    """Beam pipeline args used for all components in the pipeline."""
+    return self._beam_pipeline_args
 
-    if self.beam_pipeline_args_from_env:
-      for component in components:
-        add_beam_pipeline_args_from_env_to_component(component, beam_pipeline_args_from_env)
+  @property
+  def beam_pipeline_args_from_env(self):
+    """Beam pipeline args from env used for all components in the pipeline."""
+    return self._beam_pipeline_args_from_env
 
   @property
   def components(self):
@@ -169,29 +293,44 @@ class Pipeline:
   @components.setter
   def components(self, components: List[base_node.BaseNode]):
     deduped_components = set(components)
-    producer_map = {}
-    node_ids = set()
+    node_by_id = {}
+    # TODO(b/202822834): Use better distinction for bound channels.
+    # bound_channels stores the exhaustive list of all nodes' output channels,
+    # which is implicitly *bound* to the single pipeline run, as opposed to
+    # manually constructed channels to fetch artifacts beyond the current
+    # pipeline run.
+    bound_channels = set()
 
     # Fills in producer map.
     for component in deduped_components:
       # Checks every node has an unique id.
-      if component.id in node_ids:
-        raise RuntimeError('Duplicated node_id %s for component type %s' %
-                           (component.id, component.type))
-      node_ids.add(component.id)
+      if component.id in node_by_id:
+        raise RuntimeError(
+            f'Duplicated node_id {component.id} for component type'
+            f'{component.type}.')
+      node_by_id[component.id] = component
       for key, output_channel in component.outputs.items():
-        assert not producer_map.get(
-            output_channel), '{} produced more than once'.format(output_channel)
-        producer_map[output_channel] = component
+        if (output_channel.producer_component_id is not None and
+            output_channel.producer_component_id != component.id and
+            output_channel.output_key != key):
+          raise AssertionError(
+              f'{output_channel} is produced more than once: '
+              f'{output_channel.producer_id}[{output_channel.output_key}], '
+              f'{component.id}[{key}]')
         output_channel.producer_component_id = component.id
         output_channel.output_key = key
+        bound_channels.add(output_channel)
 
     # Connects nodes based on producer map.
     for component in deduped_components:
-      for i in component.inputs.values():
-        if producer_map.get(i):
-          component.add_upstream_node(producer_map[i])
-          producer_map[i].add_downstream_node(component)
+      for input_channel in component.inputs.values():
+        for ch in channel_utils.get_individual_channels(input_channel):
+          if ch not in bound_channels:
+            continue
+          upstream_node = node_by_id.get(ch.producer_component_id)
+          if upstream_node:
+            component.add_upstream_node(upstream_node)
+            upstream_node.add_downstream_node(component)
 
     layers = topsort.topsorted_layers(
         list(deduped_components),
@@ -202,3 +341,12 @@ class Pipeline:
     for layer in layers:
       for component in layer:
         self._components.append(component)
+
+    if self.beam_pipeline_args:
+      for component in self._components:
+        add_beam_pipeline_args_to_component(component, self.beam_pipeline_args)
+
+    if self.beam_pipeline_args_from_env:
+      for component in components:
+        add_beam_pipeline_args_from_env_to_component(component, self.beam_pipeline_args_from_env)
+

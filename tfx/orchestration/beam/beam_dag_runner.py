@@ -14,19 +14,17 @@
 """Definition of Beam TFX runner."""
 
 import datetime
-from typing import Any, Iterable, List, Optional, Union
+from typing import Any, Iterable, List, Optional
 
 from absl import logging
 import apache_beam as beam
-from tfx.dsl.compiler import compiler
 from tfx.dsl.compiler import constants
-from tfx.dsl.components.base import base_component
 from tfx.orchestration import metadata
-from tfx.orchestration import pipeline as pipeline_py
 from tfx.orchestration.beam.legacy import beam_dag_runner as legacy_beam_dag_runner
 from tfx.orchestration.config import pipeline_config
 from tfx.orchestration.local import runner_utils
 from tfx.orchestration.portable import launcher
+from tfx.orchestration.portable import partial_run_utils
 from tfx.orchestration.portable import runtime_parameter_utils
 from tfx.orchestration.portable import tfx_runner
 from tfx.proto.orchestration import local_deployment_config_pb2
@@ -49,7 +47,8 @@ class PipelineNodeAsDoFn(beam.DoFn):
                pipeline_runtime_spec: pipeline_pb2.PipelineRuntimeSpec,
                executor_spec: Optional[message.Message],
                custom_driver_spec: Optional[message.Message],
-               deployment_config: Optional[message.Message]):
+               deployment_config: Optional[message.Message],
+               pipeline: Optional[pipeline_pb2.Pipeline]):
     """Initializes the PipelineNodeAsDoFn.
 
     Args:
@@ -65,6 +64,7 @@ class PipelineNodeAsDoFn(beam.DoFn):
       custom_driver_spec: Specification for custom driver. This is expected only
         for advanced use cases.
       deployment_config: Deployment Config for the pipeline.
+      pipeline: Optional for full run, required for partial run.
     """
     self._pipeline_node = pipeline_node
     self._mlmd_connection_config = mlmd_connection_config
@@ -74,6 +74,7 @@ class PipelineNodeAsDoFn(beam.DoFn):
     self._custom_driver_spec = custom_driver_spec
     self._node_id = pipeline_node.node_info.id
     self._deployment_config = deployment_config
+    self._pipeline = pipeline
 
   def process(self, element: Any, *signals: Iterable[Any]) -> None:
     """Executes node based on signals.
@@ -92,6 +93,9 @@ class PipelineNodeAsDoFn(beam.DoFn):
   def _run_node(self) -> None:
     platform_config = self._extract_platform_config(self._deployment_config,
                                                     self._node_id)
+    if self._pipeline_node.execution_options.run.perform_snapshot:
+      with metadata.Metadata(self._mlmd_connection_config) as mlmd_handle:
+        partial_run_utils.snapshot(mlmd_handle, self._pipeline)
     launcher.Launcher(
         pipeline_node=self._pipeline_node,
         mlmd_connection=metadata.Metadata(self._mlmd_connection_config),
@@ -110,7 +114,7 @@ class PipelineNodeAsDoFn(beam.DoFn):
             if platform_config else None)
 
 
-class BeamDagRunner(tfx_runner.TfxRunner):
+class BeamDagRunner(tfx_runner.IrBasedRunner):
   """Tfx runner on Beam."""
 
   _PIPELINE_NODE_DO_FN_CLS = PipelineNodeAsDoFn
@@ -184,33 +188,28 @@ class BeamDagRunner(tfx_runner.TfxRunner):
   def _extract_custom_driver_spec(
       self,
       deployment_config: local_deployment_config_pb2.LocalDeploymentConfig,
-      node_id: str
-  ) -> Optional[message.Message]:
+      node_id: str) -> Optional[message.Message]:
     return runner_utils.extract_custom_driver_spec(deployment_config, node_id)
 
   def _connection_config_from_deployment_config(self,
                                                 deployment_config: Any) -> Any:
     return deployment_config.metadata_connection_config
 
-  def run(self, pipeline: Union[pipeline_pb2.Pipeline,
-                                pipeline_py.Pipeline]) -> None:
+  def run_with_ir(
+      self,
+      pipeline: pipeline_pb2.Pipeline,
+      run_options: Optional[pipeline_pb2.RunOptions] = None,
+  ) -> None:
     """Deploys given logical pipeline on Beam.
 
     Args:
       pipeline: Logical pipeline in IR format.
+      run_options: Optional args for the run.
+
+    Raises:
+      ValueError: If run_options is provided, and partial_run_options.from_nodes
+        and partial_run_options.to_nodes are both empty.
     """
-    if isinstance(pipeline, pipeline_py.Pipeline):
-      for component in pipeline.components:
-        # TODO(b/187122662): Pass through pip dependencies as a first-class
-        # component flag.
-        if isinstance(component, base_component.BaseComponent):
-          component._resolve_pip_dependencies(  # pylint: disable=protected-access
-              pipeline.pipeline_info.pipeline_root)
-
-    if isinstance(pipeline, pipeline_py.Pipeline):
-      c = compiler.Compiler()
-      pipeline = c.compile(pipeline)
-
     run_id = datetime.datetime.now().strftime('%Y%m%d-%H%M%S.%f')
     # Substitute the runtime parameter to be a concrete run_id
     runtime_parameter_utils.substitute_runtime_parameter(
@@ -222,9 +221,17 @@ class BeamDagRunner(tfx_runner.TfxRunner):
     connection_config = self._connection_config_from_deployment_config(
         deployment_config)
 
-    logging.info('Running pipeline:\n %s', pipeline)
     logging.info('Using deployment config:\n %s', deployment_config)
     logging.info('Using connection config:\n %s', connection_config)
+
+    if run_options:
+      logging.info('Using run_options:\n %s', run_options)
+      pr_opts = run_options.partial_run
+      partial_run_utils.mark_pipeline(
+          pipeline,
+          from_nodes=pr_opts.from_nodes or None,
+          to_nodes=pr_opts.to_nodes or None,
+          snapshot_settings=pr_opts.snapshot_settings)
 
     with telemetry_utils.scoped_labels(
         {telemetry_utils.LABEL_TFX_RUNNER: 'beam'}):
@@ -232,13 +239,20 @@ class BeamDagRunner(tfx_runner.TfxRunner):
         # Uses for triggering the node DoFns.
         root = p | 'CreateRoot' >> beam.Create([None])
 
-        # Stores mapping of node to its signal.
+        # Stores mapping of node_id to its signal.
         signal_map = {}
+        snapshot_node_id = None
         # pipeline.nodes are in topological order.
         for node in pipeline.nodes:
           # TODO(b/160882349): Support subpipeline
           pipeline_node = node.pipeline_node
           node_id = pipeline_node.node_info.id
+          if pipeline_node.execution_options.HasField('skip'):
+            logging.info('Node %s is skipped in this partial run.', node_id)
+            continue
+          run_opts = pipeline_node.execution_options.run
+          if run_opts.perform_snapshot:
+            snapshot_node_id = node_id
           executor_spec = self._extract_executor_spec(deployment_config,
                                                       node_id)
           custom_driver_spec = self._extract_custom_driver_spec(
@@ -246,10 +260,19 @@ class BeamDagRunner(tfx_runner.TfxRunner):
 
           # Signals from upstream nodes.
           signals_to_wait = []
-          for upstream_node in pipeline_node.upstream_nodes:
-            assert upstream_node in signal_map, ('Nodes are not in '
-                                                 'topological order')
-            signals_to_wait.append(signal_map[upstream_node])
+          # This ensures that nodes that rely on artifacts reused from previous
+          # pipelines runs are scheduled after the snapshot node.
+          if run_opts.depends_on_snapshot and node_id != snapshot_node_id:
+            signals_to_wait.append(signal_map[snapshot_node_id])
+          for upstream_node_id in pipeline_node.upstream_nodes:
+            if upstream_node_id in signal_map:
+              signals_to_wait.append(signal_map[upstream_node_id])
+            else:
+              logging.info(
+                  'Node %s is upstream of Node %s, but will be skipped in '
+                  'this partial run. Node %s is responsible for ensuring that '
+                  'Node %s\'s dependencies can be resolved.', upstream_node_id,
+                  node_id, snapshot_node_id, node_id)
           logging.info('Node %s depends on %s.', node_id,
                        [s.producer.full_label for s in signals_to_wait])
 
@@ -265,6 +288,7 @@ class BeamDagRunner(tfx_runner.TfxRunner):
                       pipeline_runtime_spec=pipeline.runtime_spec,
                       executor_spec=executor_spec,
                       custom_driver_spec=custom_driver_spec,
-                      deployment_config=deployment_config),
-                  *[beam.pvalue.AsIter(s) for s in signals_to_wait]))
+                      deployment_config=deployment_config,
+                      pipeline=pipeline),
+                  (*[beam.pvalue.AsIter(s) for s in signals_to_wait])))
           logging.info('Node %s is scheduled.', node_id)

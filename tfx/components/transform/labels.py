@@ -26,7 +26,7 @@ MODULE_PATH = 'module_path'
 PREPROCESSING_FN = 'preprocessing_fn'
 STATS_OPTIONS_UPDATER_FN = 'stats_options_updater_fn'
 CUSTOM_CONFIG = 'custom_config'
-BEAM_PIPELINE_ARGS = 'pipeline_args'
+MAKE_BEAM_PIPELINE_FN = 'make_beam_pipeline_fn'
 DATA_VIEW_LABEL = 'data_view_uri'
 # This label is currently not used externally.
 EXAMPLES_METADATA_LABEL = 'examples_metadata'

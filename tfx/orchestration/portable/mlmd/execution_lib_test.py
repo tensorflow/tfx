@@ -13,6 +13,7 @@
 # limitations under the License.
 """Tests for tfx.orchestration.portable.mlmd.execution_lib."""
 
+import collections
 import itertools
 import random
 
@@ -281,33 +282,46 @@ class ExecutionLibTest(test_case_utils.TfxTest):
     with metadata.Metadata(connection_config=self._connection_config) as m:
       # Create and shuffle a few artifacts. The shuffled order should be
       # retained in the output of `execution_lib.get_artifacts_dict`.
-      input_examples = []
-      for i in range(10):
-        input_example = standard_artifacts.Examples()
-        input_example.uri = 'example{}'.format(i)
-        input_example.type_id = common_utils.register_type_if_not_exist(
-            m, input_example.artifact_type).id
-        input_examples.append(input_example)
-      random.shuffle(input_examples)
+      input_artifact_keys = ('input1', 'input2', 'input3')
+      input_artifacts_dict = collections.OrderedDict()
+      for input_key in input_artifact_keys:
+        input_examples = []
+        for i in range(10):
+          input_example = standard_artifacts.Examples()
+          input_example.uri = f'{input_key}/example{i}'
+          input_example.type_id = common_utils.register_type_if_not_exist(
+              m, input_example.artifact_type).id
+          input_examples.append(input_example)
+        random.shuffle(input_examples)
+        input_artifacts_dict[input_key] = input_examples
+
       output_models = []
       for i in range(8):
         output_model = standard_artifacts.Model()
-        output_model.uri = 'model{}'.format(i)
+        output_model.uri = f'model{i}'
         output_model.type_id = common_utils.register_type_if_not_exist(
             m, output_model.artifact_type).id
         output_models.append(output_model)
       random.shuffle(output_models)
-      m.store.put_artifacts([
+      output_artifacts_dict = {'model': output_models}
+
+      # Store input artifacts only. Outputs will be saved in put_execution().
+      input_mlmd_artifacts = [
           a.mlmd_artifact
-          for a in itertools.chain(input_examples, output_models)
-      ])
+          for a in itertools.chain(*input_artifacts_dict.values())
+      ]
+      artifact_ids = m.store.put_artifacts(input_mlmd_artifacts)
+      for artifact_id, mlmd_artifact in zip(artifact_ids, input_mlmd_artifacts):
+        mlmd_artifact.id = artifact_id
+
       execution = execution_lib.prepare_execution(
           m,
           metadata_store_pb2.ExecutionType(name='my_execution_type'),
           state=metadata_store_pb2.Execution.RUNNING)
       contexts = self._generate_contexts(m)
-      input_artifacts_dict = {'examples': input_examples}
-      output_artifacts_dict = {'model': output_models}
+
+      # Change the order of the OrderedDict to shuffle the order of input keys.
+      input_artifacts_dict.move_to_end('input1')
       execution = execution_lib.put_execution(
           m,
           execution,
@@ -317,13 +331,14 @@ class ExecutionLibTest(test_case_utils.TfxTest):
 
       # Verify that the same artifacts are returned in the correct order.
       artifacts_dict = execution_lib.get_artifacts_dict(
-          m, execution.id, metadata_store_pb2.Event.INPUT)
-      self.assertCountEqual(['examples'], list(artifacts_dict.keys()))
-      self.assertEqual([ex.uri for ex in input_examples],
-                       [a.uri for a in artifacts_dict['examples']])
+          m, execution.id, [metadata_store_pb2.Event.INPUT])
+      self.assertEqual(set(input_artifact_keys), set(artifacts_dict.keys()))
+      for key in artifacts_dict:
+        self.assertEqual([ex.uri for ex in input_artifacts_dict[key]],
+                         [a.uri for a in artifacts_dict[key]], f'for key={key}')
       artifacts_dict = execution_lib.get_artifacts_dict(
-          m, execution.id, metadata_store_pb2.Event.OUTPUT)
-      self.assertCountEqual(['model'], list(artifacts_dict.keys()))
+          m, execution.id, [metadata_store_pb2.Event.OUTPUT])
+      self.assertEqual({'model'}, set(artifacts_dict.keys()))
       self.assertEqual([model.uri for model in output_models],
                        [a.uri for a in artifacts_dict['model']])
 
@@ -361,6 +376,10 @@ class ExecutionLibTest(test_case_utils.TfxTest):
         metadata_store_pb2.Execution(create_time_since_epoch=2),
         metadata_store_pb2.Execution(create_time_since_epoch=1)
     ], execution_lib.sort_executions_newest_to_oldest(executions))
+
+  def test_is_internal_key(self):
+    self.assertTrue(execution_lib.is_internal_key('__internal_key__'))
+    self.assertFalse(execution_lib.is_internal_key('public_key'))
 
 
 if __name__ == '__main__':

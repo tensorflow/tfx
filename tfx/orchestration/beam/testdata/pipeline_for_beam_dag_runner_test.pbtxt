@@ -1,6 +1,7 @@
 # proto-file: tfx/proto/orchestration/pipeline.proto
 # proto-message: Pipeline
 
+execution_mode: SYNC
 nodes {
   pipeline_node {
     node_info {

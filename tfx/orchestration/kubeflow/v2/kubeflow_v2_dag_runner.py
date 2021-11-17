@@ -17,9 +17,11 @@ import datetime
 import json
 import os
 from typing import Any, Dict, List, Optional
+from absl import logging
 
 from kfp.pipeline_spec import pipeline_spec_pb2
 from tfx import version
+from tfx.dsl.components.base import base_node
 from tfx.dsl.io import fileio
 from tfx.orchestration import pipeline as tfx_pipeline
 from tfx.orchestration import tfx_runner
@@ -110,6 +112,22 @@ class KubeflowV2DagRunner(tfx_runner.TfxRunner):
     self._config = config
     self._output_dir = output_dir or os.getcwd()
     self._output_filename = output_filename or 'pipeline.json'
+    self._exit_handler = None
+
+  def set_exit_handler(self,
+                       exit_handler: base_node.BaseNode):
+    """Set exit handler components for the Kuveflow V2(Vertex AI) dag runner.
+
+    This feature is currently experimental without backward compatibility
+    gaurantee.
+
+    Args:
+      exit_handler: exit handler component.
+    """
+    if not exit_handler:
+      logging.error('Setting empty exit handler is not allowed.')
+      return
+    self._exit_handler = exit_handler
 
   def run(self,
           pipeline: tfx_pipeline.Pipeline,
@@ -139,7 +157,8 @@ class KubeflowV2DagRunner(tfx_runner.TfxRunner):
     pipeline_spec = pipeline_builder.PipelineBuilder(
         tfx_pipeline=pipeline,
         default_image=self._config.default_image,
-        default_commands=self._config.default_commands).build()
+        default_commands=self._config.default_commands,
+        exit_handler=self._exit_handler).build()
     pipeline_spec.sdk_version = 'tfx-{}'.format(version.__version__)
     pipeline_spec.schema_version = _SCHEMA_VERSION
     runtime_config = pipeline_builder.RuntimeConfigBuilder(

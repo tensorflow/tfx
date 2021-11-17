@@ -35,6 +35,7 @@ def create_pipeline(
     eval_args: tfx.proto.EvalArgs,
     eval_accuracy_threshold: float,
     serving_model_dir: str,
+    schema_path: Optional[str] = None,
     metadata_connection_config: Optional[
         metadata_store_pb2.ConnectionConfig] = None,
     beam_pipeline_args: Optional[List[str]] = None,
@@ -53,16 +54,21 @@ def create_pipeline(
       examples=example_gen.outputs['examples'])
   components.append(statistics_gen)
 
-  # Generates schema based on statistics files.
-  schema_gen = tfx.components.SchemaGen(
-      statistics=statistics_gen.outputs['statistics'], infer_feature_shape=True)
-  components.append(schema_gen)
+  if schema_path is None:
+    # Generates schema based on statistics files.
+    schema_gen = tfx.components.SchemaGen(
+        statistics=statistics_gen.outputs['statistics'])
+    components.append(schema_gen)
+  else:
+    # Import user provided schema into the pipeline.
+    schema_gen = tfx.components.ImportSchemaGen(schema_file=schema_path)
+    components.append(schema_gen)
 
-  # Performs anomaly detection based on statistics and data schema.
-  example_validator = tfx.components.ExampleValidator(  # pylint: disable=unused-variable
-      statistics=statistics_gen.outputs['statistics'],
-      schema=schema_gen.outputs['schema'])
-  components.append(example_validator)
+    # Performs anomaly detection based on statistics and data schema.
+    example_validator = tfx.components.ExampleValidator(  # pylint: disable=unused-variable
+        statistics=statistics_gen.outputs['statistics'],
+        schema=schema_gen.outputs['schema'])
+    components.append(example_validator)
 
   # Performs transformations and feature engineering in training and serving.
   transform = tfx.components.Transform(  # pylint: disable=unused-variable

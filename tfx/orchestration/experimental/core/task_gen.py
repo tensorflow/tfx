@@ -16,6 +16,7 @@
 import abc
 from typing import List
 
+from tfx.orchestration.experimental.core import pipeline_state as pstate
 from tfx.orchestration.experimental.core import task as task_lib
 
 
@@ -36,8 +37,13 @@ class TaskGenerator(abc.ABC):
   """
 
   @abc.abstractmethod
-  def generate(self) -> List[task_lib.Task]:
+  def generate(self,
+               pipeline_state: pstate.PipelineState) -> List[task_lib.Task]:
     """Generates a list of tasks to be performed.
+
+    Args:
+      pipeline_state: The `PipelineState` object associated with the pipeline
+        for which to generate tasks.
 
     Returns:
       A list of `Task`s specifying nodes in a pipeline to be executed or other

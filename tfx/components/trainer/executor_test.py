@@ -198,11 +198,11 @@ class ExecutorTest(tf.test.TestCase):
     # Update input dict.
     io_utils.copy_dir(
         os.path.join(self._source_data_dir,
-                     'transform/transformed_examples/data/Split-train'),
+                     'transform/transformed_examples/Split-train'),
         os.path.join(self._output_data_dir, 'data/Split-training'))
     io_utils.copy_dir(
         os.path.join(self._source_data_dir,
-                     'transform/transformed_examples/data/Split-eval'),
+                     'transform/transformed_examples/Split-eval'),
         os.path.join(self._output_data_dir, 'data/Split-evaluating'))
     examples = standard_artifacts.Examples()
     examples.uri = os.path.join(self._output_data_dir, 'data')

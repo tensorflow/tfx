@@ -18,7 +18,7 @@ import contextlib
 import copy
 import threading
 import typing
-from typing import Iterator, MutableMapping
+from typing import Callable, Iterator, MutableMapping, Optional
 
 import cachetools
 from tfx.orchestration import metadata
@@ -107,7 +107,9 @@ _execution_id_locks = _LocksManager()
 @contextlib.contextmanager
 def mlmd_execution_atomic_op(
     mlmd_handle: metadata.Metadata,
-    execution_id: int) -> Iterator[metadata_store_pb2.Execution]:
+    execution_id: int,
+    on_commit: Optional[Callable[[], None]] = None
+) -> Iterator[metadata_store_pb2.Execution]:
   """Context manager for accessing or mutating an execution atomically.
 
   The idea of using this context manager is to ensure that the in-memory state
@@ -122,6 +124,9 @@ def mlmd_execution_atomic_op(
   Args:
     mlmd_handle: A handle to MLMD db.
     execution_id: Id of the execution to yield.
+    on_commit: An optional callback function which is invoked post successful
+      MLMD execution commit operation. This won't be invoked if execution is not
+      mutated within the context and hence MLMD commit is not needed.
 
   Yields:
     If execution with given id exists in MLMD, the execution is yielded under
@@ -143,6 +148,8 @@ def mlmd_execution_atomic_op(
       # Make a copy before writing to cache as the yielded `execution_copy`
       # object may be modified even after exiting the contextmanager.
       _execution_cache.put_execution(mlmd_handle, copy.deepcopy(execution_copy))
+      if on_commit is not None:
+        on_commit()
 
 
 def clear_in_memory_state():

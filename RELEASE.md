@@ -2,15 +2,10 @@
 
 ## Major Features and Improvements
 
-*   TFX CLI now supports runtime parameter on Kubeflow, Vertex, and Airflow.
-    Use it with '--runtime_parameter=<parameter_name>=<parameter_value>' flag.
-    In the case of multiple runtime parameters, format is as follows:
-    '--runtime_parameter=<parameter_name>=<parameter_value> --runtime_parameter
-    =<parameter_name>=<parameter_value>'
-*   Added Manual node in the experimental orchestrator.
-*   Placeholders support index access and JSON serialization for list type execution properties.
-
-## Breaking Changes
+*   Added support for partial pipeline run. Users can now run a subset of nodes
+    in a pipeline while reusing artifacts generated in previous pipeline runs.
+    This is supported in LocalDagRunner and BeamDagRunner, and is exposed via
+    the TfxRunner API.
 
 ### For Pipeline Authors
 
@@ -18,25 +13,247 @@
 
 ## Deprecations
 
+## Bug Fixes and Other Changes
+*   Increased docker timeout to 5 minutes for image building in CLI.
+*   Fixed KeyError when multiple Examples artifacts were used in Transform
+    without materialization.
+*   Fixed error where Vertex Endpoints of the same name is not deduped
+
+## Documentation Updates
+
+# Version 1.4.0
+
+## Major Features and Improvements
+
+*   Supported endpoint overwrite for CAIP BulkInferrer.
+*   Added support for outputting and encoding `tf.RaggedTensor`s in TFX
+    Transform component.
+*   Added conditional for TFX running on KFPv2 (Vertex).
+*   Supported component level beam pipeline args for Vertex (KFPV2DagRunner).
+*   Support exit handler for TFX running on KFPv2 (Vertex).
+*   Added RangeConfig for QueryBasedExampleGen to select date using query
+    pattern.
+*   Added support for union of Channels as input to standard TFX components.
+    Users can use channel.union() to combine multiple Channels and use as input
+    to these compnents. Artfacts resolved from these channels are expected to
+    have the same type, and passed to components in no particular order.
+
+## Breaking Changes
+
+*   Calling `TfxRunner.run(pipeline)` with the Pipeline IR proto will no longer
+    be supported. Please switch to `TfxRunner.run_with_ir(pipeline)` instead.
+    If you are calling `TfxRunner.run(pipeline)` with the Pipeline object, this
+    change should not affect you.
+
+### For Pipeline Authors
+
+*   N/A
+
+### For Component Authors
+
+*   N/A
+
+## Deprecations
+
+*   Deprecated python3.6 support.
+
+## Bug Fixes and Other Changes
+
+*   Depends on `google-cloud-aiplatform>=1.5.0,<2`.
+*   Depends on `pyarrow>=1,<6`.
+*   Fixed FileBasedExampleGen driver for Kubeflow v2 (Vertex). Driver can
+    update exec_properties for its executor now, which enables {SPAN} feature.
+*   example_gen.utils.dict_to_example now accepts Numpy types
+*   Updated pytest to include v6.x
+*   Depends on `apache-beam[gcp]>=2.33,<3`.
+*   Depends on `ml-metadata>=1.4.0,<1.5.0`.
+*   Depends on `struct2tensor>=0.35.0,<0.36.0`.
+*   Depends on `tensorflow-data-validation>=1.4.0,<1.5.0`.
+*   Depends on `tensorflow-model-analysis>=0.35.0,<0.36.0`.
+*   Depends on `tensorflow-transform>=1.4.0,<1.5.0`.
+*   Depends on `tfx-bsl>=1.4.0,<1.5.0`.
+
+## Documentation Updates
+
+*   N/A
+
+# Version 1.3.3
+
+## Major Features and Improvements
+
+*   N/A
+
+### For Pipeline Authors
+
+*   N/A
+
+### For Component Authors
+
+*   N/A
+
+## Deprecations
+
+*   N/A
+
+## Bug Fixes and Other Changes
+
+*   Depends on `tensorflow>=1.15.2,!=2.0.*,!=2.1.*,!=2.2.*,!=2.3.*,!=2.4.*,!=2.5.*,<2.7`.
+
+## Documentation Updates
+
+*   N/A
+
+# Version 1.3.2
+
+## Major Features and Improvements
+
+*   N/A
+
+### For Pipeline Authors
+
+*   N/A
+
+### For Component Authors
+
+*   N/A
+
+## Deprecations
+
+*   N/A
+
+## Bug Fixes and Other Changes
+
+*  Fixed endless waiting for Vertex Trainer.
+
+## Documentation Updates
+
+*   N/A
+
+# Version 1.3.1
+
+## Major Features and Improvements
+
+*   N/A
+
+### For Pipeline Authors
+
+*   N/A
+
+### For Component Authors
+
+*   N/A
+
+## Deprecations
+
+*   N/A
+
+## Bug Fixes and Other Changes
+
+*  Fixed Vertex Pusher by passing enable_vertex flag for deploying model.
+
+## Documentation Updates
+
+*   N/A
+
+# Version 1.3.0
+
+## Major Features and Improvements
+
+*   TFX CLI now supports runtime parameter on Kubeflow, Vertex, and Airflow.
+    Use it with '--runtime_parameter=<parameter_name>=<parameter_value>' flag.
+    In the case of multiple runtime parameters, format is as follows:
+    '--runtime_parameter=<parameter_name>=<parameter_value> --runtime_parameter
+    =<parameter_name>=<parameter_value>'
+*   Added Manual node in the experimental orchestrator.
+*   Placeholders support index access and JSON serialization for list type execution properties.
+*   Added `ImportSchemaGen` which is a dedicated component to import a
+    pre-defined schema file. ImportSchemaGen will replace `Importer` with
+    simpler syntax and less constraints. You have to pass the file path to the
+    schema file instead of the parent directory unlike `Importer`.
+*   Updated GCP Vertex Client to support EncryptionSpec and Cloud Labels.
+
+## Breaking Changes
+
+### For Pipeline Authors
+
+*   N/A
+
+### For Component Authors
+
+*   N/A
+
+## Deprecations
+
 *   The import name of KerasTuner has been changed from `kerastuner`
     to `keras_tuner`. The import name of `kerastuner` is still supported.
     A warning will occur when import from `kerastuner`, but does not affect
     the usage.
+*   **Upcoming deprecation** - TFX 1.3.0 will be the last release to support
+    Python 3.6. Starting with TFX 1.4.0 Python 3.6 will no longer be supported.
 
 ## Bug Fixes and Other Changes
-
 *   The default job name for Google Cloud AI Training jobs was changed from
     'tfx_YYYYmmddHHMMSS' to 'tfx_YYYYmmddHHMMSS_xxxxxxxx', where 'xxxxxxxx' is
     a random 8 digit hexadecimal string.
+*   Fix component to raise error if its input required channel (specified from
+    ComponentSpec) has no artifacts in it.
 *   Fixed an issue where ClientOptions with regional endpoint was
     incorrectly left out in Vertex AI pusher.
 *   CLI now hides passed flags from user python files in "--pipeline-path". This
     will prevent errors when user python file tries reading and parsing flags.
+*   Fixed missing type information marker file 'py.typed'.
+*   Fixed handling of artifacts with no PROPERTIES in scripts/run_component.py
+*   Fixed passing non-string execution properties and artifact properties in
+    scripts/run_component.py*   Depends on `apache-beam[gcp]>=2.32,<3`.
 *   Depends on `google-cloud-bigquery>=1.28.0,<3`.
+*   Depends on `jinja2>=2.7.3,<4`, i.e. now supports Jinja 3.x.
 *   Depends on `keras-tuner>=1.0.4,<2`.
-*   Depends on `kfp>=1.6.1,!=1.7.2,<2` in \[kfp\] extra.
+*   Depends on `kfp>=1.6.1,!=1.7.2,<1.8.2` in \[kfp\] extra.
+*   Depends on `kfp-pipeline-spec>=>=0.1.10,<0.2`.
+*   Depends on `ml-metadata>=1.3.0,<1.4.0`.
+*   Depends on `struct2tensor>=0.34.0,<0.35.0`.
+*   Depends on `tensorflow>=1.15.2,!=2.0.*,!=2.1.*,!=2.2.*,!=2.3.*,!=2.4.*,!=2.5.*,<3`.
+*   Depends on `tensorflow-data-validation>=1.3.0,<1.4.0`.
+*   Depends on `tensorflow-model-analysis>=0.34.1,<0.35.0`.
+*   Depends on `tensorflow-serving-api>=1.15,!=2.0.*,!=2.1.*,!=2.2.*,!=2.3.*,!=2.4.*,!=2.5.*,<3`.
+*   Depends on `tensorflow-transform>=1.3.0,<1.4.0`.
+*   Depends on `tfx-bsl>=1.3.0,<1.4.0`.
+*   Depends on 'google-cloud-aiplatform>=0.5.0,<2'.
 
 ## Documentation Updates
+
+*   N/A
+
+# Version 1.2.1
+
+## Major Features and Improvements
+
+*   N/A
+
+## Breaking Changes
+
+*   N/A
+
+### For Pipeline Authors
+
+*   N/A
+
+### For Component Authors
+
+*   N/A
+
+## Deprecations
+
+*   N/A
+
+## Bug Fixes and Other Changes
+
+*   Added support for a custom metadata-ui-json filename in KubeflowDagRunner.
+*   Fixed missing type information marker file 'py.typed'.
+
+## Documentation Updates
+
+*   N/A
 
 # Version 1.2.0
 

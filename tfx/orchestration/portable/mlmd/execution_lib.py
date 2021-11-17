@@ -64,6 +64,11 @@ def is_execution_active(execution: metadata_store_pb2.Execution) -> bool:
           execution.last_known_state == metadata_store_pb2.Execution.RUNNING)
 
 
+def is_internal_key(key: str) -> bool:
+  """Returns `True` if the key is an internal-only execution property key."""
+  return key.startswith('__')
+
+
 def is_schema_key(key: str) -> bool:
   """Returns `True` if the input key corresponds to a schema stored in execution property."""
   return re.fullmatch(r'^__schema__.*__$', key) is not None
@@ -281,7 +286,7 @@ def get_artifact_ids_by_event_type_for_execution_id(
 
 def get_artifacts_dict(
     metadata_handler: metadata.Metadata, execution_id: int,
-    event_type: 'metadata_store_pb2.Event.Type'
+    event_types: 'List[metadata_store_pb2.Event.Type]'
 ) -> typing_utils.ArtifactMultiDict:
   """Returns a map from key to an ordered list of artifacts for the given execution id.
 
@@ -292,7 +297,7 @@ def get_artifacts_dict(
   Args:
     metadata_handler: A handler to access MLMD.
     execution_id: Id of the execution for which to get artifacts.
-    event_type: Event type to filter by.
+    event_types: Event types to filter by.
 
   Returns:
     A dict mapping key to an ordered list of artifacts.
@@ -307,7 +312,7 @@ def get_artifacts_dict(
   # Create a map from "key" to list of (index, artifact_id)s.
   indexed_artifact_ids_dict = collections.defaultdict(list)
   for event in events:
-    if event.type != event_type:
+    if event.type not in event_types:
       continue
     key, index = event_lib.get_artifact_path(event)
     artifact_id = event.artifact_id
@@ -340,9 +345,8 @@ def get_artifacts_dict(
 
   # Create a map from artifact id to `types.Artifact` instances.
   artifacts_by_id = {
-      aid: artifact_utils.deserialize_artifact(artifact_types_by_id[a.type_id],
-                                               a)
-      for aid, a in zip(all_artifact_ids, mlmd_artifacts)
+      a.id: artifact_utils.deserialize_artifact(artifact_types_by_id[a.type_id],
+                                                a) for a in mlmd_artifacts
   }
 
   # Create a map from "key" to ordered list of `types.Artifact` to be returned.

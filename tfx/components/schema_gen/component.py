@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""TFX ExampleValidator component definition."""
+"""TFX SchemaGen component definition."""
 
 from typing import List, Optional, Union
 
@@ -47,28 +47,27 @@ class SchemaGen(base_component.BaseComponent):
   ```
 
   Component `outputs` contains:
-   - `schema`: Channel of type `standard_artifacts.Schema` for schema result.
+   - `schema`: Channel of type `standard_artifacts.Schema` for schema
+   result.
 
   See [the SchemaGen guide](https://www.tensorflow.org/tfx/guide/schemagen)
   for more details.
   """
-  # TODO(b/123941608): Update pydoc about how to use a user provided schema
-
   SPEC_CLASS = standard_component_specs.SchemaGenSpec
   EXECUTOR_SPEC = executor_spec.ExecutorClassSpec(executor.Executor)
 
   def __init__(
       self,
-      statistics: types.Channel,
+      statistics: types.BaseChannel,
       infer_feature_shape: Optional[Union[bool,
                                           data_types.RuntimeParameter]] = True,
       exclude_splits: Optional[List[str]] = None):
     """Constructs a SchemaGen component.
 
     Args:
-      statistics: A Channel of `ExampleStatistics` type (required if spec is not
-        passed). This should contain at least a `train` split. Other splits are
-        currently ignored. _required_
+      statistics: A BaseChannel of `ExampleStatistics` type (required if spec is
+        not passed). This should contain at least a `train` split. Other splits
+        are currently ignored. _required_
       infer_feature_shape: Boolean (or RuntimeParameter) value indicating
         whether or not to infer the shape of features. If the feature shape is
         not inferred, downstream Tensorflow Transform component using the schema

@@ -132,9 +132,10 @@ class TaskSchedulerRegistry:
       scheduler_class: The class that will be instantiated for a matching task.
 
     Raises:
-      ValueError: If `url` is already in the registry.
+      ValueError: If `url` is already in the registry for a different
+        scheduler_class.
     """
-    if url in cls._task_scheduler_registry:
+    if cls._task_scheduler_registry.get(url) not in (None, scheduler_class):
       raise ValueError(f'A task scheduler already exists for the url: {url}')
     cls._task_scheduler_registry[url] = scheduler_class
 

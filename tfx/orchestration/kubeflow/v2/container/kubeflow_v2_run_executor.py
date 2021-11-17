@@ -64,6 +64,17 @@ def _run_executor(args: argparse.Namespace, beam_args: List[str]) -> None:
   outputs_dict = executor_input.outputs.artifacts
   inputs_parameter = executor_input.inputs.parameters
 
+  if fileio.exists(executor_input.outputs.output_file):
+    # It has a driver that outputs the updated exec_properties in this file.
+    with fileio.open(executor_input.outputs.output_file,
+                     'rb') as output_meta_json:
+      output_metadata = pipeline_spec_pb2.ExecutorOutput()
+      json_format.Parse(
+          output_meta_json.read(), output_metadata, ignore_unknown_fields=True)
+      # Append/Overwrite exec_propertise.
+      for k, v in output_metadata.parameters.items():
+        inputs_parameter[k].CopyFrom(v)
+
   name_from_id = {}
 
   inputs = kubeflow_v2_entrypoint_utils.parse_raw_artifact_dict(

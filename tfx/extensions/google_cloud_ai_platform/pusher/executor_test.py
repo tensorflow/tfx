@@ -20,6 +20,7 @@ from unittest import mock
 
 import tensorflow as tf
 from tfx.dsl.io import fileio
+from tfx.extensions.google_cloud_ai_platform import constants
 from tfx.extensions.google_cloud_ai_platform.pusher import executor
 from tfx.types import standard_artifacts
 from tfx.types import standard_component_specs
@@ -58,7 +59,7 @@ class ExecutorTest(tf.test.TestCase):
     # before being passed into Do function.
     self._exec_properties = {
         'custom_config': {
-            executor.SERVING_ARGS_KEY: {
+            constants.SERVING_ARGS_KEY: {
                 'model_name': 'model_name',
                 'project_id': 'project_id'
             },
@@ -70,14 +71,16 @@ class ExecutorTest(tf.test.TestCase):
     # serialized before being passed into Do function.
     self._exec_properties_vertex = {
         'custom_config': {
-            executor.SERVING_ARGS_KEY: {
+            constants.SERVING_ARGS_KEY: {
                 'endpoint_name': 'endpoint_name',
                 'project_id': 'project_id',
             },
-            executor.VERTEX_CONTAINER_IMAGE_URI_KEY:
+            constants.VERTEX_CONTAINER_IMAGE_URI_KEY:
                 self._container_image_uri_vertex,
-            executor.VERTEX_REGION_KEY: 'us-central1',
-            executor.ENABLE_VERTEX_KEY: True,
+            constants.VERTEX_REGION_KEY:
+                'us-central1',
+            constants.ENABLE_VERTEX_KEY:
+                True,
         },
         'push_destination': None,
     }
@@ -161,12 +164,12 @@ class ExecutorTest(tf.test.TestCase):
     # before being passed into Do function.
     self._exec_properties = {
         'custom_config': {
-            executor.SERVING_ARGS_KEY: {
+            constants.SERVING_ARGS_KEY: {
                 'model_name': 'model_name',
                 'project_id': 'project_id',
                 'regions': ['us-central1'],
             },
-            executor.ENDPOINT_ARGS_KEY: 'https://ml-us-west1.googleapis.com',
+            constants.ENDPOINT_ARGS_KEY: 'https://ml-us-west1.googleapis.com',
         },
         'push_destination': None,
     }
@@ -183,11 +186,11 @@ class ExecutorTest(tf.test.TestCase):
   def testDoBlessedOnRegionalEndpoint(self, mock_runner, _):
     self._exec_properties = {
         'custom_config': {
-            executor.SERVING_ARGS_KEY: {
+            constants.SERVING_ARGS_KEY: {
                 'model_name': 'model_name',
                 'project_id': 'project_id'
             },
-            executor.ENDPOINT_ARGS_KEY: 'https://ml-us-west1.googleapis.com',
+            constants.ENDPOINT_ARGS_KEY: 'https://ml-us-west1.googleapis.com',
         },
     }
     self._model_blessing.uri = os.path.join(self._source_data_dir,
@@ -237,7 +240,8 @@ class ExecutorTest(tf.test.TestCase):
         ai_platform_serving_args=mock.ANY,
         labels=job_labels,
         serving_path=self._model_push.uri,
-        endpoint_region='us-central1'
+        endpoint_region='us-central1',
+        enable_vertex=True,
     )
     self.assertPushed()
     self.assertEqual(
@@ -260,14 +264,16 @@ class ExecutorTest(tf.test.TestCase):
     mock_runner.deploy_model_for_aip_prediction.return_value = endpoint_uri
     self._exec_properties_vertex = {
         'custom_config': {
-            executor.SERVING_ARGS_KEY: {
+            constants.SERVING_ARGS_KEY: {
                 'model_name': 'model_name',
                 'project_id': 'project_id'
             },
-            executor.VERTEX_CONTAINER_IMAGE_URI_KEY:
+            constants.VERTEX_CONTAINER_IMAGE_URI_KEY:
                 self._container_image_uri_vertex,
-            executor.ENABLE_VERTEX_KEY: True,
-            executor.VERTEX_REGION_KEY: 'us-west1',
+            constants.ENABLE_VERTEX_KEY:
+                True,
+            constants.VERTEX_REGION_KEY:
+                'us-west1',
         },
     }
     self._model_blessing.uri = os.path.join(self._source_data_dir,
@@ -286,7 +292,8 @@ class ExecutorTest(tf.test.TestCase):
         ai_platform_serving_args=mock.ANY,
         labels=job_labels,
         serving_container_image_uri=self._container_image_uri_vertex,
-        endpoint_region='us-west1'
+        endpoint_region='us-west1',
+        enable_vertex=True,
     )
     self.assertPushed()
     self.assertEqual(

@@ -13,13 +13,13 @@
 # limitations under the License.
 """TFX Channel utilities."""
 
-from typing import Dict, Iterable, List
+from typing import cast, Dict, Iterable, List
 
-from tfx.types.artifact import Artifact
-from tfx.types.channel import Channel
+from tfx.types import artifact
+from tfx.types import channel
 
 
-def as_channel(artifacts: Iterable[Artifact]) -> Channel:
+def as_channel(artifacts: Iterable[artifact.Artifact]) -> channel.Channel:
   """Converts artifact collection of the same artifact type into a Channel.
 
   Args:
@@ -33,8 +33,8 @@ def as_channel(artifacts: Iterable[Artifact]) -> Channel:
   """
   try:
     first_element = next(iter(artifacts))
-    if isinstance(first_element, Artifact):
-      return Channel(type=first_element.type).set_artifacts(artifacts)
+    if isinstance(first_element, artifact.Artifact):
+      return channel.Channel(type=first_element.type).set_artifacts(artifacts)
     else:
       raise ValueError('Invalid artifact iterable: {}'.format(artifacts))
   except StopIteration:
@@ -42,7 +42,8 @@ def as_channel(artifacts: Iterable[Artifact]) -> Channel:
 
 
 def unwrap_channel_dict(
-    channel_dict: Dict[str, Channel]) -> Dict[str, List[Artifact]]:
+    channel_dict: Dict[str,
+                       channel.Channel]) -> Dict[str, List[artifact.Artifact]]:
   """Unwrap dict of channels to dict of lists of Artifact.
 
   Args:
@@ -52,3 +53,25 @@ def unwrap_channel_dict(
     a dict of Text -> List[Artifact]
   """
   return dict((k, list(v.get())) for k, v in channel_dict.items())
+
+
+def get_individual_channels(
+    input_channel: channel.BaseChannel) -> List[channel.Channel]:
+  """Converts BaseChannel into a list of Channels."""
+  if isinstance(input_channel, channel.Channel):
+    return [input_channel]
+  elif isinstance(input_channel, channel.UnionChannel):
+    return list(cast(channel.UnionChannel, input_channel).channels)
+  elif isinstance(input_channel, channel.LoopVarChannel):
+    return get_individual_channels(
+        cast(channel.LoopVarChannel, input_channel).wrapped)
+  else:
+    raise RuntimeError(f'Unexpected Channel type: {type(input_channel)}')
+
+
+def get_channel_producer_component_ids(
+    input_channel: channel.BaseChannel) -> List[str]:
+  """Returns a list of producer_component_id for input BaseChannel."""
+  return [
+      c.producer_component_id for c in get_individual_channels(input_channel)
+  ]

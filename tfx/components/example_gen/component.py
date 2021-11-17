@@ -62,9 +62,11 @@ class QueryBasedExampleGen(base_beam_component.BaseBeamComponent):
                                     data_types.RuntimeParameter]] = None,
       custom_config: Optional[Union[example_gen_pb2.CustomConfig,
                                     data_types.RuntimeParameter]] = None,
+      range_config: Optional[Union[range_config_pb2.RangeConfig,
+                                   data_types.RuntimeParameter]] = None,
       output_data_format: Optional[int] = example_gen_pb2.FORMAT_TF_EXAMPLE,
       output_file_format: Optional[int] = example_gen_pb2.FORMAT_TFRECORDS_GZIP,
-      ):
+  ):
     """Construct a QueryBasedExampleGen component.
 
     Args:
@@ -78,6 +80,8 @@ class QueryBasedExampleGen(base_beam_component.BaseBeamComponent):
       custom_config: An
         [example_gen_pb2.CustomConfig](https://github.com/tensorflow/tfx/blob/master/tfx/proto/example_gen.proto)
         instance, providing custom configuration for ExampleGen.
+      range_config: An optional range_config_pb2.RangeConfig instance,
+        specifying the range of span values to consider.
       output_data_format: Payload format of generated data in output artifact,
         one of example_gen_pb2.PayloadFormat enum.
       output_file_format: File format of generated data in output artifact,
@@ -101,6 +105,7 @@ class QueryBasedExampleGen(base_beam_component.BaseBeamComponent):
     spec = standard_component_specs.QueryBasedExampleGenSpec(
         input_config=input_config,
         output_config=output_config,
+        range_config=range_config,
         output_data_format=output_data_format,
         output_file_format=output_file_format,
         custom_config=custom_config,

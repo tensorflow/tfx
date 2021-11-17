@@ -18,7 +18,7 @@ from typing import Optional, Tuple
 from ml_metadata.proto import metadata_store_pb2
 
 
-_VALID_OUTPUT_EVENT_TYPES = frozenset([
+VALID_OUTPUT_EVENT_TYPES = frozenset([
     metadata_store_pb2.Event.OUTPUT, metadata_store_pb2.Event.INTERNAL_OUTPUT,
     metadata_store_pb2.Event.DECLARED_OUTPUT
 ])
@@ -41,10 +41,10 @@ def is_valid_output_event(event: metadata_store_pb2.Event,
   """
   if expected_output_key:
     return (len(event.path.steps) == 2 and  # Valid event should have 2 steps.
-            event.path.steps[0].key == expected_output_key and
-            event.type in _VALID_OUTPUT_EVENT_TYPES)
+            event.path.steps[0].key == expected_output_key
+            and event.type in VALID_OUTPUT_EVENT_TYPES)
   else:
-    return event.type in _VALID_OUTPUT_EVENT_TYPES
+    return event.type in VALID_OUTPUT_EVENT_TYPES
 
 
 def is_valid_input_event(event: metadata_store_pb2.Event,

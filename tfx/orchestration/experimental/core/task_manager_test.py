@@ -337,16 +337,21 @@ class TaskManagerE2ETest(test_utils.TfxTest):
     test_utils.fake_example_gen_run(self._mlmd_connection, self._example_gen, 1,
                                     1)
 
-    # Task generator should produce a task to run transform.
+    # Task generator should produce two tasks for transform. The first one is
+    # UpdateNodeStateTask and the second one is ExecNodeTask.
     with self._mlmd_connection as m:
       pipeline_state = pstate.PipelineState.new(m, self._pipeline)
       tasks = asptg.AsyncPipelineTaskGenerator(
-          m, pipeline_state, self._task_queue.contains_task_id,
-          service_jobs.DummyServiceJobManager()).generate()
-    self.assertLen(tasks, 1)
-    self._task = tasks[0]
-    self.assertEqual('my_transform', self._task.node_uid.node_id)
-    self.assertTrue(os.path.exists(self._task.stateful_working_dir))
+          m, self._task_queue.contains_task_id,
+          service_jobs.DummyServiceJobManager()).generate(pipeline_state)
+    self.assertLen(tasks, 2)
+    self.assertTrue(task_lib.is_update_node_state_task(tasks[0]))
+    self.assertEqual(pstate.NodeState.RUNNING, tasks[0].state)
+    self.assertEqual('my_transform', tasks[0].node_uid.node_id)
+    self.assertTrue(task_lib.is_exec_node_task(tasks[1]))
+    self.assertEqual('my_transform', tasks[1].node_uid.node_id)
+    self.assertTrue(os.path.exists(tasks[1].stateful_working_dir))
+    self._task = tasks[1]
     self._output_artifact_uri = self._task.output_artifacts['transform_graph'][
         0].uri
     self.assertTrue(os.path.exists(self._output_artifact_uri))

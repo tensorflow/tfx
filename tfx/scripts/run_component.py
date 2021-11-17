@@ -23,6 +23,7 @@ from typing import List, Optional
 from tfx.dsl.components.base import base_beam_executor
 from tfx.dsl.components.base import base_executor
 from tfx.types import channel_utils
+from tfx.types.artifact import PropertyType
 from tfx.utils import import_utils
 from tfx.utils import proto_utils
 
@@ -80,6 +81,10 @@ def run_component(full_component_class_name: str,
         issubclass(param_type, message.Message)):
       argument_value_obj = param_type()
       proto_utils.json_to_proto(argument_value, argument_value_obj)
+    elif param_type is int:
+      argument_value_obj = int(argument_value)
+    elif param_type is float:
+      argument_value_obj = float(argument_value)
     else:
       argument_value_obj = argument_value
     component_arguments[name] = argument_value_obj
@@ -91,10 +96,16 @@ def run_component(full_component_class_name: str,
       artifact = channel_param.type()
       artifact.uri = uri
       # Setting the artifact properties
-      for property_name in channel_param.type.PROPERTIES:
+      for property_name, property_spec in (channel_param.type.PROPERTIES or
+                                           {}).items():
         property_arg_name = input_name + '_' + property_name
         if property_arg_name in arguments:
-          setattr(artifact, property_name, arguments[property_arg_name])
+          property_value = arguments[property_arg_name]
+          if property_spec.type == PropertyType.INT:
+            property_value = int(property_value)
+          if property_spec.type == PropertyType.FLOAT:
+            property_value = float(property_value)
+          setattr(artifact, property_name, property_value)
       component_arguments[input_name] = channel_utils.as_channel([artifact])
 
   component_instance = component_class(**component_arguments)
@@ -137,7 +148,7 @@ def run_component(full_component_class_name: str,
 
   # Writing out the output artifact properties
   for output_name, channel_param in component_class.SPEC_CLASS.OUTPUTS.items():
-    for property_name in channel_param.type.PROPERTIES:
+    for property_name in channel_param.type.PROPERTIES or []:
       property_path_arg_name = output_name + '_' + property_name + '_path'
       property_path = arguments.get(property_path_arg_name)
       if property_path:

@@ -42,7 +42,7 @@ def get_predicates(
                if isinstance(c, ConditionalContext))
 
 
-class Cond(context_manager.DslContextManager):
+class Cond(context_manager.DslContextManager[None]):
   """Cond context manager that disable containing nodes if predicate is False.
 
   Cond blocks can be nested to express the nested conditions.

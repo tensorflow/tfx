@@ -18,9 +18,6 @@ from typing import Dict, List, Optional
 from tfx import types
 from tfx.components.evaluator import constants as evaluator
 from tfx.dsl.components.common import resolver
-from tfx.orchestration import data_types
-from tfx.orchestration import metadata
-from tfx.types import artifact_utils
 from tfx.types import standard_artifacts
 from tfx.utils import doc_controls
 
@@ -70,68 +67,6 @@ class LatestBlessedModelStrategy(resolver.ResolverStrategy):
         break
 
     return result
-
-  @doc_controls.do_not_generate_docs
-  def resolve(
-      self,
-      pipeline_info: data_types.PipelineInfo,
-      metadata_handler: metadata.Metadata,
-      source_channels: Dict[str, types.Channel],
-  ) -> resolver.ResolveResult:
-    # First, checks whether we have exactly Model and ModelBlessing Channels.
-    model_channel_key = None
-    model_blessing_channel_key = None
-    assert len(source_channels) == 2, 'Expecting 2 input Channels'
-    for k, c in source_channels.items():
-      if issubclass(c.type, standard_artifacts.Model):
-        model_channel_key = k
-      elif issubclass(c.type, standard_artifacts.ModelBlessing):
-        model_blessing_channel_key = k
-      else:
-        raise RuntimeError('Only expecting Model or ModelBlessing, got %s' %
-                           c.type)
-    assert model_channel_key is not None, 'Expecting Model as input'
-    assert model_blessing_channel_key is not None, ('Expecting ModelBlessing as'
-                                                    ' input')
-
-    model_channel = source_channels[model_channel_key]
-    model_blessing_channel = source_channels[model_blessing_channel_key]
-    # Gets the pipeline context as the artifact search space.
-    pipeline_context = metadata_handler.get_pipeline_context(pipeline_info)
-    if pipeline_context is None:
-      raise RuntimeError('Pipeline context absent for %s' % pipeline_context)
-
-    candidate_dict = {}
-    # Gets all models in the search space and sort in reverse order by id.
-    all_models = metadata_handler.get_qualified_artifacts(
-        contexts=[pipeline_context],
-        type_name=model_channel.type_name,
-        producer_component_id=model_channel.producer_component_id,
-        output_key=model_channel.output_key)
-    candidate_dict[model_channel_key] = [
-        artifact_utils.deserialize_artifact(a.type, a.artifact)
-        for a in all_models
-    ]
-    # Gets all ModelBlessing artifacts in the search space.
-    all_model_blessings = metadata_handler.get_qualified_artifacts(
-        contexts=[pipeline_context],
-        type_name=model_blessing_channel.type_name,
-        producer_component_id=model_blessing_channel.producer_component_id,
-        output_key=model_blessing_channel.output_key)
-    candidate_dict[model_blessing_channel_key] = [
-        artifact_utils.deserialize_artifact(a.type, a.artifact)
-        for a in all_model_blessings
-    ]
-
-    resolved_dict = self._resolve(candidate_dict, model_channel_key,
-                                  model_blessing_channel_key)
-    resolve_state_dict = {
-        k: bool(artifact_list) for k, artifact_list in resolved_dict.items()
-    }
-
-    return resolver.ResolveResult(
-        per_key_resolve_result=resolved_dict,
-        per_key_resolve_state=resolve_state_dict)
 
   @doc_controls.do_not_generate_docs
   def resolve_artifacts(

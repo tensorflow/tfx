@@ -82,9 +82,7 @@ class ArtifactValuePlaceholderIntegrationTest(base_test_case.BaseKubeflowV2Test
         pipeline_components=component_instances,
     )
 
-    self._run_pipeline(pipeline, pipeline_name)
-
-    self._check_job_status(pipeline_name)
+    self._run_pipeline(pipeline)
 
 
 if __name__ == '__main__':

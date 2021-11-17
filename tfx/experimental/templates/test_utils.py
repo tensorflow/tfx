@@ -13,8 +13,6 @@
 # limitations under the License.
 """E2E test utilities for templates."""
 
-import codecs
-import locale
 import os
 import re
 
@@ -30,12 +28,6 @@ class BaseEndToEndTest(test_case_utils.TfxTest):
 
   def setUp(self):
     super().setUp()
-
-    # Change the encoding for Click since Python 3 is configured to use ASCII as
-    # encoding for the environment.
-    # TODO(b/150100590) Delete this block after Python >=3.7
-    if codecs.lookup(locale.getpreferredencoding()).name == 'ascii':
-      os.environ['LANG'] = 'en_US.utf-8'
 
     self._pipeline_name = 'TEMPLATE_E2E_TEST'
     self._project_dir = self.tmp_dir
@@ -140,3 +132,65 @@ class BaseEndToEndTest(test_case_utils.TfxTest):
         model,
     ])
     self.assertIn('Copying {} pipeline template'.format(model), result)
+
+
+class BaseLocalEndToEndTest(BaseEndToEndTest):
+  """Common tests for local engine."""
+
+  def _getAllUnitTests(self):
+    for root, _, files in os.walk(self._project_dir):
+      base_dir = os.path.relpath(root, self._project_dir)
+      if base_dir == '.':  # project_dir == root
+        base_module = ''
+      else:
+        base_module = base_dir.replace(os.path.sep, '.') + '.'
+
+      for filename in files:
+        if filename.endswith('_test.py'):
+          yield base_module + filename[:-3]
+
+  def _create_pipeline(self):
+    result = self._runCli([
+        'pipeline',
+        'create',
+        '--engine',
+        'local',
+        '--pipeline_path',
+        'local_runner.py',
+    ])
+    self.assertIn(
+        'Pipeline "{}" created successfully.'.format(self._pipeline_name),
+        result)
+
+  def _update_pipeline(self):
+    result = self._runCli([
+        'pipeline',
+        'update',
+        '--engine',
+        'local',
+        '--pipeline_path',
+        'local_runner.py',
+    ])
+    self.assertIn(
+        'Pipeline "{}" updated successfully.'.format(self._pipeline_name),
+        result)
+
+  def _run_pipeline(self):
+    self._runCli([
+        'run',
+        'create',
+        '--engine',
+        'local',
+        '--pipeline_name',
+        self._pipeline_name,
+    ])
+
+  def _copy_schema(self):
+    self._runCli([
+        'pipeline',
+        'schema',
+        '--engine',
+        'local',
+        '--pipeline_name',
+        self._pipeline_name,
+    ])

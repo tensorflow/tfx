@@ -176,6 +176,8 @@ class BaseComponentWithPipelineParamTest(tf.test.TestCase):
         'foo',
         '--tfx_ir',
         '{}',
+        '--metadata_ui_path',
+        '/mlpipeline-ui-metadata.json',
     ]
     example_gen_expected_args = [
         '--pipeline_root',
@@ -190,6 +192,8 @@ class BaseComponentWithPipelineParamTest(tf.test.TestCase):
         'CsvExampleGen',
         '--tfx_ir',
         '{}',
+        '--metadata_ui_path',
+        '/mlpipeline-ui-metadata.json',
         '--runtime_parameter',
         'example-gen-output-config=STRING:{{pipelineparam:op=;name=example-gen-output-config}}',
     ]

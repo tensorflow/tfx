@@ -87,23 +87,23 @@ class InfraValidator(base_component.BaseComponent):
 
   def __init__(
       self,
-      model: types.Channel,
+      model: types.BaseChannel,
       serving_spec: infra_validator_pb2.ServingSpec,
-      examples: Optional[types.Channel] = None,
+      examples: Optional[types.BaseChannel] = None,
       request_spec: Optional[infra_validator_pb2.RequestSpec] = None,
       validation_spec: Optional[infra_validator_pb2.ValidationSpec] = None):
     """Construct a InfraValidator component.
 
     Args:
-      model: A `Channel` of `ModelExportPath` type, usually produced by
+      model: A `BaseChannel` of `ModelExportPath` type, usually produced by
         [Trainer](https://www.tensorflow.org/tfx/guide/trainer) component.
-        _required_
-      serving_spec: A `ServingSpec` configuration about serving binary and
-        test platform config to launch model server for validation. _required_
-      examples: A `Channel` of `ExamplesPath` type, usually produced by
+          _required_
+      serving_spec: A `ServingSpec` configuration about serving binary and test
+        platform config to launch model server for validation. _required_
+      examples: A `BaseChannel` of `ExamplesPath` type, usually produced by
         [ExampleGen](https://www.tensorflow.org/tfx/guide/examplegen) component.
-        If not specified, InfraValidator does not issue requests for validation.
-
+          If not specified, InfraValidator does not issue requests for
+          validation.
       request_spec: Optional `RequestSpec` configuration about making requests
         from `examples` input. If not specified, InfraValidator does not issue
         requests for validation.
@@ -116,6 +116,5 @@ class InfraValidator(base_component.BaseComponent):
         blessing=blessing,
         serving_spec=serving_spec,
         validation_spec=validation_spec,
-        request_spec=request_spec
-    )
+        request_spec=request_spec)
     super().__init__(spec=spec)

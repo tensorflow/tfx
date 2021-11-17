@@ -20,13 +20,18 @@ from absl.testing.absltest import mock
 import tensorflow as tf
 from tfx.orchestration import metadata
 from tfx.orchestration.experimental.core import async_pipeline_task_gen as asptg
+from tfx.orchestration.experimental.core import mlmd_state
 from tfx.orchestration.experimental.core import pipeline_state as pstate
 from tfx.orchestration.experimental.core import service_jobs
 from tfx.orchestration.experimental.core import task as task_lib
+from tfx.orchestration.experimental.core import task_gen_utils
 from tfx.orchestration.experimental.core import task_queue as tq
 from tfx.orchestration.experimental.core import test_utils
 from tfx.orchestration.experimental.core.testing import test_async_pipeline
 from tfx.utils import status as status_lib
+
+from google.protobuf import any_pb2
+from ml_metadata.proto import metadata_store_pb2
 
 
 class AsyncPipelineTaskGeneratorTest(test_utils.TfxTest,
@@ -101,7 +106,8 @@ class AsyncPipelineTaskGeneratorTest(test_utils.TfxTest,
                          num_tasks_generated,
                          num_new_executions,
                          num_active_executions,
-                         expected_exec_nodes=None):
+                         expected_exec_nodes=None,
+                         ignore_update_node_state_tasks=False):
     """Generates tasks and tests the effects."""
     return test_utils.run_generator_and_test(
         self,
@@ -115,7 +121,8 @@ class AsyncPipelineTaskGeneratorTest(test_utils.TfxTest,
         num_tasks_generated=num_tasks_generated,
         num_new_executions=num_new_executions,
         num_active_executions=num_active_executions,
-        expected_exec_nodes=expected_exec_nodes)
+        expected_exec_nodes=expected_exec_nodes,
+        ignore_update_node_state_tasks=ignore_update_node_state_tasks)
 
   @parameterized.parameters(0, 1)
   def test_no_tasks_generated_when_no_inputs(self, min_count):
@@ -128,9 +135,8 @@ class AsyncPipelineTaskGeneratorTest(test_utils.TfxTest,
       pipeline_state = test_utils.get_or_create_pipeline_state(
           m, self._pipeline)
       task_gen = asptg.AsyncPipelineTaskGenerator(
-          m, pipeline_state, lambda _: False,
-          service_jobs.DummyServiceJobManager())
-      tasks = task_gen.generate()
+          m, lambda _: False, service_jobs.DummyServiceJobManager())
+      tasks = task_gen.generate(pipeline_state)
       self.assertEmpty(tasks, 'Expected no task generation when no inputs.')
       self.assertEmpty(
           test_utils.get_non_orchestrator_executions(m),
@@ -152,13 +158,19 @@ class AsyncPipelineTaskGeneratorTest(test_utils.TfxTest,
                                     1)
 
     # Generate once.
-    [transform_task] = self._generate_and_test(
-        use_task_queue,
-        num_initial_executions=1,
-        num_tasks_generated=1,
-        num_new_executions=1,
-        num_active_executions=1,
-        expected_exec_nodes=[self._transform])
+    [update_example_gen_task, update_transform_task,
+     exec_transform_task] = self._generate_and_test(
+         use_task_queue,
+         num_initial_executions=1,
+         num_tasks_generated=3,
+         num_new_executions=1,
+         num_active_executions=1,
+         expected_exec_nodes=[self._transform])
+    self.assertTrue(task_lib.is_update_node_state_task(update_example_gen_task))
+    self.assertEqual(pstate.NodeState.RUNNING, update_example_gen_task.state)
+    self.assertTrue(task_lib.is_update_node_state_task(update_transform_task))
+    self.assertEqual(pstate.NodeState.RUNNING, update_transform_task.state)
+    self.assertTrue(task_lib.is_exec_node_task(exec_transform_task))
 
     self._mock_service_job_manager.ensure_node_services.assert_has_calls([
         mock.call(mock.ANY, self._example_gen.node_info.id),
@@ -169,35 +181,48 @@ class AsyncPipelineTaskGeneratorTest(test_utils.TfxTest,
     tasks = self._generate_and_test(
         use_task_queue,
         num_initial_executions=2,
-        num_tasks_generated=0 if use_task_queue else 1,
+        num_tasks_generated=1 if use_task_queue else 3,
         num_new_executions=0,
         num_active_executions=1,
         expected_exec_nodes=[] if use_task_queue else [self._transform])
     if not use_task_queue:
-      transform_task = tasks[0]
+      exec_transform_task = tasks[2]
 
     # Mark transform execution complete.
-    self._finish_node_execution(use_task_queue, transform_task)
+    self._finish_node_execution(use_task_queue, exec_transform_task)
 
     # Trainer execution task should be generated next.
-    [trainer_task] = self._generate_and_test(
+    [
+        update_example_gen_task, update_transform_task, update_trainer_task,
+        exec_trainer_task
+    ] = self._generate_and_test(
         use_task_queue,
         num_initial_executions=2,
-        num_tasks_generated=1,
+        num_tasks_generated=4,
         num_new_executions=1,
         num_active_executions=1,
         expected_exec_nodes=[self._trainer])
+    self.assertTrue(task_lib.is_update_node_state_task(update_example_gen_task))
+    self.assertEqual(pstate.NodeState.RUNNING, update_example_gen_task.state)
+    self.assertTrue(task_lib.is_update_node_state_task(update_transform_task))
+    self.assertEqual(pstate.NodeState.STARTED, update_transform_task.state)
+    self.assertTrue(task_lib.is_update_node_state_task(update_trainer_task))
+    self.assertEqual(pstate.NodeState.RUNNING, update_trainer_task.state)
+    self.assertTrue(task_lib.is_exec_node_task(exec_trainer_task))
 
     # Mark the trainer execution complete.
-    self._finish_node_execution(use_task_queue, trainer_task)
+    self._finish_node_execution(use_task_queue, exec_trainer_task)
 
-    # No more tasks should be generated as there are no new inputs.
-    self._generate_and_test(
+    # Only UpdateNodeStateTask are generated as there are no new inputs.
+    tasks = self._generate_and_test(
         use_task_queue,
         num_initial_executions=3,
-        num_tasks_generated=0,
+        num_tasks_generated=3,
         num_new_executions=0,
         num_active_executions=0)
+    for task in tasks:
+      self.assertTrue(task_lib.is_update_node_state_task(task))
+      self.assertEqual(pstate.NodeState.RUNNING, update_example_gen_task.state)
 
     # Fake another ExampleGen run.
     test_utils.fake_example_gen_run(self._mlmd_connection, self._example_gen, 1,
@@ -205,50 +230,90 @@ class AsyncPipelineTaskGeneratorTest(test_utils.TfxTest,
 
     # Both transform and trainer tasks should be generated as they both find
     # new inputs.
-    [transform_task, trainer_task] = self._generate_and_test(
+    [
+        update_example_gen_task, update_transform_task, exec_transform_task,
+        update_trainer_task, exec_trainer_task
+    ] = self._generate_and_test(
         use_task_queue,
         num_initial_executions=4,
-        num_tasks_generated=2,
+        num_tasks_generated=5,
         num_new_executions=2,
         num_active_executions=2,
         expected_exec_nodes=[self._transform, self._trainer])
+    self.assertTrue(task_lib.is_update_node_state_task(update_example_gen_task))
+    self.assertEqual(pstate.NodeState.RUNNING, update_example_gen_task.state)
+    self.assertTrue(task_lib.is_update_node_state_task(update_transform_task))
+    self.assertEqual(pstate.NodeState.RUNNING, update_transform_task.state)
+    self.assertTrue(task_lib.is_exec_node_task(exec_transform_task))
+    self.assertTrue(task_lib.is_update_node_state_task(update_trainer_task))
+    self.assertEqual(pstate.NodeState.RUNNING, update_trainer_task.state)
+    self.assertTrue(task_lib.is_exec_node_task(exec_trainer_task))
 
     # Re-generation will produce the same tasks when task queue disabled.
     tasks = self._generate_and_test(
         use_task_queue,
         num_initial_executions=6,
-        num_tasks_generated=0 if use_task_queue else 2,
+        num_tasks_generated=1 if use_task_queue else 5,
         num_new_executions=0,
         num_active_executions=2,
         expected_exec_nodes=[]
         if use_task_queue else [self._transform, self._trainer])
     if not use_task_queue:
-      transform_task = tasks[0]
-      trainer_task = tasks[1]
+      self.assertTrue(task_lib.is_update_node_state_task(tasks[0]))
+      self.assertEqual(pstate.NodeState.RUNNING, update_example_gen_task.state)
+      self.assertTrue(task_lib.is_update_node_state_task(tasks[1]))
+      self.assertEqual(pstate.NodeState.RUNNING, update_example_gen_task.state)
+      self.assertTrue(task_lib.is_exec_node_task(tasks[2]))
+      self.assertTrue(task_lib.is_update_node_state_task(tasks[3]))
+      self.assertEqual(pstate.NodeState.RUNNING, update_example_gen_task.state)
+      self.assertTrue(task_lib.is_exec_node_task(tasks[4]))
+      exec_transform_task = tasks[2]
+      exec_trainer_task = tasks[4]
+    else:
+      self.assertTrue(task_lib.is_update_node_state_task(tasks[0]))
+      self.assertEqual(pstate.NodeState.RUNNING, update_example_gen_task.state)
 
     # Mark transform execution complete.
-    self._finish_node_execution(use_task_queue, transform_task)
+    self._finish_node_execution(use_task_queue, exec_transform_task)
 
     # Mark the trainer execution complete.
-    self._finish_node_execution(use_task_queue, trainer_task)
+    self._finish_node_execution(use_task_queue, exec_trainer_task)
 
     # Trainer should be triggered again due to transform producing new output.
-    [trainer_task] = self._generate_and_test(
+    [
+        update_example_gen_task, update_transform_task, update_trainer_task,
+        exec_trainer_task
+    ] = self._generate_and_test(
         use_task_queue,
         num_initial_executions=6,
-        num_tasks_generated=1,
+        num_tasks_generated=4,
         num_new_executions=1,
         num_active_executions=1,
         expected_exec_nodes=[self._trainer])
+    self.assertTrue(task_lib.is_update_node_state_task(update_example_gen_task))
+    self.assertEqual(pstate.NodeState.RUNNING, update_example_gen_task.state)
+    self.assertTrue(task_lib.is_update_node_state_task(update_transform_task))
+    self.assertEqual(pstate.NodeState.STARTED, update_transform_task.state)
+    self.assertTrue(task_lib.is_update_node_state_task(update_trainer_task))
+    self.assertEqual(pstate.NodeState.RUNNING, update_trainer_task.state)
+    self.assertTrue(task_lib.is_exec_node_task(exec_trainer_task))
 
     # Finally, no new tasks once trainer completes.
-    self._finish_node_execution(use_task_queue, trainer_task)
-    self._generate_and_test(
-        use_task_queue,
-        num_initial_executions=7,
-        num_tasks_generated=0,
-        num_new_executions=0,
-        num_active_executions=0)
+    self._finish_node_execution(use_task_queue, exec_trainer_task)
+    [update_example_gen_task, update_transform_task,
+     update_trainer_task] = self._generate_and_test(
+         use_task_queue,
+         num_initial_executions=7,
+         num_tasks_generated=3,
+         num_new_executions=0,
+         num_active_executions=0)
+    self.assertTrue(task_lib.is_update_node_state_task(update_example_gen_task))
+    self.assertEqual(pstate.NodeState.RUNNING, update_example_gen_task.state)
+    self.assertTrue(task_lib.is_update_node_state_task(update_transform_task))
+    self.assertEqual(pstate.NodeState.STARTED, update_transform_task.state)
+    self.assertTrue(task_lib.is_update_node_state_task(update_trainer_task))
+    self.assertEqual(pstate.NodeState.STARTED, update_trainer_task.state)
+
     if use_task_queue:
       self.assertTrue(self._task_queue.is_empty())
 
@@ -262,7 +327,7 @@ class AsyncPipelineTaskGeneratorTest(test_utils.TfxTest,
     # Generate once.
     num_initial_executions = 1
     if stop_transform:
-      num_tasks_generated = 0
+      num_tasks_generated = 1
       num_new_executions = 0
       num_active_executions = 0
       with self._mlmd_connection as m:
@@ -275,7 +340,7 @@ class AsyncPipelineTaskGeneratorTest(test_utils.TfxTest,
             node_state.update(pstate.NodeState.STOPPING,
                               status_lib.Status(code=status_lib.Code.CANCELLED))
     else:
-      num_tasks_generated = 1
+      num_tasks_generated = 3
       num_new_executions = 1
       num_active_executions = 1
     tasks = self._generate_and_test(
@@ -286,6 +351,16 @@ class AsyncPipelineTaskGeneratorTest(test_utils.TfxTest,
         num_active_executions=num_active_executions)
     self.assertLen(tasks, num_tasks_generated)
 
+    if stop_transform:
+      self.assertTrue(task_lib.is_update_node_state_task(tasks[0]))
+      self.assertEqual(pstate.NodeState.RUNNING, tasks[0].state)
+    else:
+      self.assertTrue(task_lib.is_update_node_state_task(tasks[0]))
+      self.assertEqual(pstate.NodeState.RUNNING, tasks[0].state)
+      self.assertTrue(task_lib.is_update_node_state_task(tasks[1]))
+      self.assertEqual(pstate.NodeState.RUNNING, tasks[1].state)
+      self.assertTrue(task_lib.is_exec_node_task(tasks[2]))
+
   def test_service_job_failed(self):
     """Tests task generation when example-gen service job fails."""
 
@@ -295,14 +370,118 @@ class AsyncPipelineTaskGeneratorTest(test_utils.TfxTest,
 
     self._mock_service_job_manager.ensure_node_services.side_effect = (
         _ensure_node_services)
-    [finalize_task] = self._generate_and_test(
+    [update_task] = self._generate_and_test(
         True,
         num_initial_executions=0,
         num_tasks_generated=1,
         num_new_executions=0,
         num_active_executions=0)
-    self.assertTrue(task_lib.is_finalize_node_task(finalize_task))
-    self.assertEqual(status_lib.Code.ABORTED, finalize_task.status.code)
+    self.assertTrue(task_lib.is_update_node_state_task(update_task))
+    self.assertEqual(status_lib.Code.ABORTED, update_task.status.code)
+
+  def test_triggering_upon_exec_properties_change(self):
+    test_utils.fake_example_gen_run(self._mlmd_connection, self._example_gen, 1,
+                                    1)
+
+    [exec_transform_task] = self._generate_and_test(
+        False,
+        num_initial_executions=1,
+        num_tasks_generated=1,
+        num_new_executions=1,
+        num_active_executions=1,
+        expected_exec_nodes=[self._transform],
+        ignore_update_node_state_tasks=True)
+
+    # Fail the registered execution.
+    with self._mlmd_connection as m:
+      with mlmd_state.mlmd_execution_atomic_op(
+          m, exec_transform_task.execution_id) as execution:
+        execution.last_known_state = metadata_store_pb2.Execution.FAILED
+
+    # Try to generate with same execution properties. This should not trigger
+    # as there are no changes since last run.
+    self._generate_and_test(
+        False,
+        num_initial_executions=2,
+        num_tasks_generated=0,
+        num_new_executions=0,
+        num_active_executions=0,
+        ignore_update_node_state_tasks=True)
+
+    # Change execution properties of last run.
+    with self._mlmd_connection as m:
+      with mlmd_state.mlmd_execution_atomic_op(
+          m, exec_transform_task.execution_id) as execution:
+        execution.custom_properties['a_param'].int_value = 20
+
+    # Generating with different execution properties should trigger.
+    self._generate_and_test(
+        False,
+        num_initial_executions=2,
+        num_tasks_generated=1,
+        num_new_executions=1,
+        num_active_executions=1,
+        expected_exec_nodes=[self._transform],
+        ignore_update_node_state_tasks=True)
+
+  def test_triggering_upon_executor_spec_change(self):
+    test_utils.fake_example_gen_run(self._mlmd_connection, self._example_gen, 1,
+                                    1)
+
+    with mock.patch.object(task_gen_utils,
+                           'get_executor_spec') as mock_get_executor_spec:
+      mock_get_executor_spec.side_effect = _fake_executor_spec(1)
+      [exec_transform_task] = self._generate_and_test(
+          False,
+          num_initial_executions=1,
+          num_tasks_generated=1,
+          num_new_executions=1,
+          num_active_executions=1,
+          expected_exec_nodes=[self._transform],
+          ignore_update_node_state_tasks=True)
+
+    # Fail the registered execution.
+    with self._mlmd_connection as m:
+      with mlmd_state.mlmd_execution_atomic_op(
+          m, exec_transform_task.execution_id) as execution:
+        execution.last_known_state = metadata_store_pb2.Execution.FAILED
+
+    # Try to generate with same executor spec. This should not trigger as
+    # there are no changes since last run.
+    with mock.patch.object(task_gen_utils,
+                           'get_executor_spec') as mock_get_executor_spec:
+      mock_get_executor_spec.side_effect = _fake_executor_spec(1)
+      self._generate_and_test(
+          False,
+          num_initial_executions=2,
+          num_tasks_generated=0,
+          num_new_executions=0,
+          num_active_executions=0,
+          ignore_update_node_state_tasks=True)
+
+    # Generating with a different executor spec should trigger.
+    with mock.patch.object(task_gen_utils,
+                           'get_executor_spec') as mock_get_executor_spec:
+      mock_get_executor_spec.side_effect = _fake_executor_spec(2)
+      self._generate_and_test(
+          False,
+          num_initial_executions=2,
+          num_tasks_generated=1,
+          num_new_executions=1,
+          num_active_executions=1,
+          expected_exec_nodes=[self._transform],
+          ignore_update_node_state_tasks=True)
+
+
+def _fake_executor_spec(val):
+
+  def _get_executor_spec(*unused_args, **unused_kwargs):
+    value = metadata_store_pb2.Value(int_value=val)
+    any_proto = any_pb2.Any()
+    any_proto.Pack(value)
+    return any_proto
+
+  return _get_executor_spec
 
 
 if __name__ == '__main__':

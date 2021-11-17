@@ -39,6 +39,9 @@ deployment_spec {
                           values {
                             string_value: "--project=my-gcp-project"
                           }
+                          values {
+                            string_value: "--runner=DataflowRunner"
+                          }
                         }
                       }
                     }

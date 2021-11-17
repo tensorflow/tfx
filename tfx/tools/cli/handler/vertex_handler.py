@@ -15,12 +15,11 @@
 
 import functools
 import os
-import re
 import sys
-
 import click
 
-from kfp.v2.google import client as kfp_client
+from google.cloud import aiplatform
+from google.cloud.aiplatform import pipeline_jobs
 
 from tfx.dsl.io import fileio
 from tfx.tools.cli import labels
@@ -28,40 +27,6 @@ from tfx.tools.cli.handler import base_handler
 from tfx.tools.cli.handler import kubeflow_handler
 from tfx.tools.cli.handler import kubeflow_v2_dag_runner_patcher
 from tfx.utils import io_utils
-
-
-_PIPELINE_ARG_FILE = 'pipeline_args.json'
-_PIPELINE_SPEC_FILE = 'pipeline.json'
-
-# Regex pattern used to capture the project id and the run id.
-_FULL_JOB_NAME_PATTERN = r'projects/(\S+)/locations/(\S+)/pipelineJobs/(\S+)'
-
-# String format for the pipeline run detail page link.
-_RUN_DETAIL_FORMAT = 'https://console.cloud.google.com/vertex-ai/locations/{region}/pipelines/runs/{job_id}?project={project_id}'
-
-
-def _get_job_id(full_name: str) -> str:
-  """Extracts the job id from its full name by regex.
-
-  Args:
-    full_name: full name returned from Vertex Pipelines.
-
-  Returns:
-    Job id extracted from the full name.
-
-  Raises:
-    RuntimeError: if cannot find valid job id from the response.
-  """
-  match_result = re.match(_FULL_JOB_NAME_PATTERN, full_name)
-  if not match_result:
-    raise RuntimeError('Invalid job name is received.')
-  return match_result.group(3)
-
-
-def _get_job_link(project_id: str, region: str, job_id: str) -> str:
-  """Gets the link to the pipeline job UI according to job name and project."""
-  return _RUN_DETAIL_FORMAT.format(
-      region=region, job_id=job_id, project_id=project_id)
 
 
 class VertexHandler(base_handler.BaseHandler):
@@ -128,31 +93,38 @@ class VertexHandler(base_handler.BaseHandler):
     click.echo(f'Pipeline {context[patcher.PIPELINE_NAME]} compiled '
                'successfully.')
 
-  def _create_vertex_client(self) -> kfp_client.AIPlatformClient:
+  def _prepare_vertex(self) -> None:
     if not self.flags_dict[labels.GCP_PROJECT_ID]:
       sys.exit('Please set GCP project id with --project flag.')
     if not self.flags_dict[labels.GCP_REGION]:
       sys.exit('Please set GCP region with --region flag.')
 
-    return kfp_client.AIPlatformClient(
-        project_id=self.flags_dict[labels.GCP_PROJECT_ID],
-        region=self.flags_dict[labels.GCP_REGION])
+    aiplatform.init(
+        project=self.flags_dict[labels.GCP_PROJECT_ID],
+        location=self.flags_dict[labels.GCP_REGION],
+    )
 
   def create_run(self) -> None:
     """Runs a pipeline in Vertex Pipelines."""
-    vertex_client = self._create_vertex_client()
+    self._prepare_vertex()
     pipeline_name = self.flags_dict[labels.PIPELINE_NAME]
 
     # In Vertex AI, runtime parameter string value is parsed from the server,
     # so client directly sends Dict[str, str] value.
     unparsed_runtime_parameters = self.flags_dict[labels.RUNTIME_PARAMETER]
 
-    run = vertex_client.create_run_from_job_spec(
-        job_spec_path=self._get_pipeline_definition_path(pipeline_name),
+    job = pipeline_jobs.PipelineJob(
+        display_name=pipeline_name,
+        template_path=self._get_pipeline_definition_path(pipeline_name),
         parameter_values=unparsed_runtime_parameters)
+    # TODO(b/198114641): Delete pytype exception after upgrading source code
+    # to aiplatform>=1.3.
+
+    job.run(sync=False)  # pytype: disable=attribute-error
+    job.wait_for_resource_creation()  # pytype: disable=attribute-error
 
     click.echo('Run created for pipeline: ' + pipeline_name)
-    self._print_run(run)
+    self._print_run(job)
 
   def terminate_run(self) -> None:
     """Stops a run."""
@@ -166,9 +138,10 @@ class VertexHandler(base_handler.BaseHandler):
 
   def get_run(self) -> None:
     """Checks run status."""
-    vertex_client = self._create_vertex_client()
-    run = vertex_client.get_job(self.flags_dict[labels.RUN_ID])
-    self._print_run(run)
+    self._prepare_vertex()
+    job = pipeline_jobs.PipelineJob.get(  # pytype: disable=attribute-error
+        resource_name=self.flags_dict[labels.RUN_ID])
+    self._print_run(job)
 
   def delete_run(self) -> None:
     """Deletes a run."""
@@ -202,8 +175,8 @@ class VertexHandler(base_handler.BaseHandler):
   def _print_run(self, run):
     """Prints a run in a tabular format with headers mentioned below."""
     headers = ['run_id', 'status', 'created_at', 'link']
-    run_id = _get_job_id(run['name'])
-    job_link = _get_job_link(self.flags_dict[labels.GCP_PROJECT_ID],
-                             self.flags_dict[labels.GCP_REGION], run_id)
-    data = [[run_id, run['state'], run['createTime'], job_link]]
+    data = [[
+        run.name, run.state.name, run.create_time,
+        run._dashboard_uri()  # pylint: disable=protected-access
+    ]]
     click.echo(self._format_table(headers, data))

@@ -22,6 +22,7 @@ from tfx import types
 from tfx.dsl.io import fileio
 from tfx.orchestration import data_types
 from tfx.orchestration import metadata
+from tfx.types import channel_utils
 
 
 def _generate_output_uri(base_output_dir: str,
@@ -105,7 +106,7 @@ class BaseDriver:
 
   def resolve_input_artifacts(
       self,
-      input_dict: Dict[str, types.Channel],
+      input_dict: Dict[str, types.BaseChannel],
       exec_properties: Dict[str, Any],  # pylint: disable=unused-argument
       driver_args: data_types.DriverArgs,
       pipeline_info: data_types.PipelineInfo,
@@ -134,29 +135,35 @@ class BaseDriver:
         resolved.
     """
     result = {}
-    for name, input_channel in input_dict.items():
-      if driver_args.interactive_resolution:
-        artifacts = list(input_channel.get())
-        for artifact in artifacts:
-          # Note: when not initialized, artifact.uri is '' and artifact.id is 0.
-          if not artifact.uri or not artifact.id:
-            raise ValueError((
-                'Unresolved input channel %r for input %r was passed in '
-                'interactive mode. When running in interactive mode, upstream '
-                'components must first be run with '
-                '`interactive_context.run(component)` before their outputs can '
-                'be used in downstream components.') % (artifact, name))
-        result[name] = artifacts
-      else:
-        result[name] = self._metadata_handler.search_artifacts(
-            artifact_name=input_channel.output_key,
-            pipeline_info=pipeline_info,
-            producer_component_id=input_channel.producer_component_id)
-        # TODO(ccy): add this code path to interactive resolution.
-        for artifact in result[name]:
-          if isinstance(artifact, types.ValueArtifact):
-            # Resolve the content of file into value field for value artifacts.
-            _ = artifact.read()
+    for name, value in input_dict.items():
+      artifacts_by_id = {}  # Deduplicate by ID.
+      for input_channel in channel_utils.get_individual_channels(value):
+        if driver_args.interactive_resolution:
+          artifacts = list(input_channel.get())
+          for artifact in artifacts:
+            # Note: when not initialized, artifact.uri is '' and artifact.id is
+            # 0.
+            if not artifact.uri or not artifact.id:
+              raise ValueError((
+                  'Unresolved input channel %r for input %r was passed in '
+                  'interactive mode. When running in interactive mode, upstream '
+                  'components must first be run with '
+                  '`interactive_context.run(component)` before their outputs can '
+                  'be used in downstream components.') % (artifact, name))
+            artifacts_by_id.update({a.id: a for a in artifacts})
+        else:
+          artifacts = self._metadata_handler.search_artifacts(
+              artifact_name=input_channel.output_key,
+              pipeline_info=pipeline_info,
+              producer_component_id=input_channel.producer_component_id)
+          # TODO(ccy): add this code path to interactive resolution.
+          for artifact in artifacts:
+            if isinstance(artifact, types.ValueArtifact):
+              # Resolve the content of file into value field for value
+              # artifacts.
+              _ = artifact.read()
+          artifacts_by_id.update({a.id: a for a in artifacts})
+      result[name] = list(artifacts_by_id.values())
     return result
 
   def resolve_exec_properties(
@@ -225,7 +232,7 @@ class BaseDriver:
 
   def pre_execution(
       self,
-      input_dict: Dict[str, types.Channel],
+      input_dict: Dict[str, types.BaseChannel],
       output_dict: Dict[str, types.Channel],
       exec_properties: Dict[str, Any],
       driver_args: data_types.DriverArgs,

@@ -52,6 +52,7 @@ nodes {
                 key: "split_names"
                 value: STRING
               }
+              base_type: STATISTICS
             }
             additional_properties {
               key: "span"
@@ -157,10 +158,12 @@ nodes {
             artifact_query {
               type {
                 name: "ExampleStatistics"
+                base_type: STATISTICS
               }
             }
             output_key: "stats"
           }
+          min_count: 1
         }
       }
     }

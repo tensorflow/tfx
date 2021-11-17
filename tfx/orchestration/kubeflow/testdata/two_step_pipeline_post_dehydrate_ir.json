@@ -82,7 +82,8 @@
                               "span":"INT",
                               "split_names":"STRING",
                               "version":"INT"
-                           }
+                           },
+                           "baseType":"DATASET"
                         }
                      }
                   }

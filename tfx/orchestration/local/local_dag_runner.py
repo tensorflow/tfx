@@ -14,43 +14,44 @@
 """Definition of Beam TFX runner."""
 
 import datetime
+from typing import Optional
 
 from absl import logging
-from tfx.dsl.compiler import compiler
 from tfx.dsl.compiler import constants
-from tfx.dsl.components.base import base_component
 from tfx.orchestration import metadata
-from tfx.orchestration import pipeline as pipeline_py
 from tfx.orchestration.local import runner_utils
 from tfx.orchestration.portable import launcher
+from tfx.orchestration.portable import partial_run_utils
 from tfx.orchestration.portable import runtime_parameter_utils
 from tfx.orchestration.portable import tfx_runner
+from tfx.proto.orchestration import pipeline_pb2
+from tfx.utils import doc_controls
 from tfx.utils import telemetry_utils
 
 
-class LocalDagRunner(tfx_runner.TfxRunner):
+class LocalDagRunner(tfx_runner.IrBasedRunner):
   """Local TFX DAG runner."""
 
   def __init__(self):
     """Initializes LocalDagRunner as a TFX orchestrator."""
     pass
 
-  def run(self, pipeline: pipeline_py.Pipeline) -> None:
-    """Runs given logical pipeline locally.
+  @doc_controls.do_not_generate_docs
+  def run_with_ir(
+      self,
+      pipeline: pipeline_pb2.Pipeline,
+      run_options: Optional[pipeline_pb2.RunOptions] = None,
+  ) -> None:
+    """Runs given pipeline locally.
 
     Args:
-      pipeline: Logical pipeline containing pipeline args and components.
+      pipeline: Pipeline IR containing pipeline args and components.
+      run_options: Optional args for the run.
+
+    Raises:
+      ValueError: If run_options is provided, and partial_run_options.from_nodes
+        and partial_run_options.to_nodes are both empty.
     """
-    for component in pipeline.components:
-      # TODO(b/187122662): Pass through pip dependencies as a first-class
-      # component flag.
-      if isinstance(component, base_component.BaseComponent):
-        component._resolve_pip_dependencies(  # pylint: disable=protected-access
-            pipeline.pipeline_info.pipeline_root)
-
-    c = compiler.Compiler()
-    pipeline = c.compile(pipeline)
-
     # Substitute the runtime parameter to be a concrete run_id
     runtime_parameter_utils.substitute_runtime_parameter(
         pipeline, {
@@ -64,6 +65,15 @@ class LocalDagRunner(tfx_runner.TfxRunner):
     logging.info('Using deployment config:\n %s', deployment_config)
     logging.info('Using connection config:\n %s', connection_config)
 
+    if run_options:
+      logging.info('Using run_options:\n %s', run_options)
+      pr_opts = run_options.partial_run
+      partial_run_utils.mark_pipeline(
+          pipeline,
+          from_nodes=pr_opts.from_nodes or None,
+          to_nodes=pr_opts.to_nodes or None,
+          snapshot_settings=pr_opts.snapshot_settings)
+
     with telemetry_utils.scoped_labels(
         {telemetry_utils.LABEL_TFX_RUNNER: 'local'}):
       # Run each component. Note that the pipeline.components list is in
@@ -74,6 +84,9 @@ class LocalDagRunner(tfx_runner.TfxRunner):
       for node in pipeline.nodes:
         pipeline_node = node.pipeline_node
         node_id = pipeline_node.node_info.id
+        if pipeline_node.execution_options.HasField('skip'):
+          logging.info('Skipping component %s.', node_id)
+          continue
         executor_spec = runner_utils.extract_executor_spec(
             deployment_config, node_id)
         custom_driver_spec = runner_utils.extract_custom_driver_spec(
@@ -87,5 +100,8 @@ class LocalDagRunner(tfx_runner.TfxRunner):
             executor_spec=executor_spec,
             custom_driver_spec=custom_driver_spec)
         logging.info('Component %s is running.', node_id)
+        if pipeline_node.execution_options.run.perform_snapshot:
+          with metadata.Metadata(connection_config) as mlmd_handle:
+            partial_run_utils.snapshot(mlmd_handle, pipeline)
         component_launcher.launch()
         logging.info('Component %s is finished.', node_id)

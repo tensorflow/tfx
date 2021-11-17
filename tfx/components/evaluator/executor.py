@@ -140,14 +140,22 @@ class Executor(base_beam_executor.BaseBeamExecutor):
       proto_utils.json_to_proto(
           exec_properties[standard_component_specs.EVAL_CONFIG_KEY],
           eval_config)
-      eval_config = tfma.update_eval_config_with_defaults(
-          eval_config, has_baseline=has_baseline)
-      tfma.verify_eval_config(eval_config)
+      # rubber_stamp is always assumed true, i.e., change threshold will always
+      # be ignored when a baseline model is missing.
+      if hasattr(tfma, 'utils'):
+        eval_config = tfma.utils.update_eval_config_with_defaults(
+            eval_config, has_baseline=has_baseline, rubber_stamp=True)
+        tfma.utils.verify_eval_config(eval_config)
+      else:
+        # TODO(b/171992041): Replaced by tfma.utils.
+        eval_config = tfma.update_eval_config_with_defaults(
+            eval_config, has_baseline=has_baseline, rubber_stamp=True)
+        tfma.verify_eval_config(eval_config)
       # Do not validate model when there is no thresholds configured. This is to
       # avoid accidentally blessing models when users forget to set thresholds.
       run_validation = bool(
           tfma.metrics.metric_thresholds_from_metrics_specs(
-              eval_config.metrics_specs))
+              eval_config.metrics_specs, eval_config=eval_config))
       if len(eval_config.model_specs) > 2:
         raise ValueError(
             """Cannot support more than two models. There are %d models in this
@@ -165,7 +173,11 @@ class Executor(base_beam_executor.BaseBeamExecutor):
         else:
           model_artifact = artifact_utils.get_single_instance(
               input_dict[standard_component_specs.MODEL_KEY])
-        if tfma.get_model_type(model_spec) == tfma.TF_ESTIMATOR:
+        # TODO(b/171992041): tfma.get_model_type replaced by tfma.utils.
+        if ((hasattr(tfma, 'utils') and
+             tfma.utils.get_model_type(model_spec) == tfma.TF_ESTIMATOR) or
+            hasattr(tfma, 'get_model_type') and
+            tfma.get_model_type(model_spec) == tfma.TF_ESTIMATOR):
           model_path = path_utils.eval_model_path(
               model_artifact.uri,
               path_utils.is_old_model_artifact(model_artifact))

@@ -34,6 +34,9 @@ _input_root = 'gs://penguin_test'
 _output_root = 'gs://penguin_test'
 
 _data_root = os.path.join(_input_root, 'penguin', 'data')
+# User provided schema of the input data.
+_user_provided_schema = os.path.join(_input_root, 'penguin', 'schema',
+                                     'user_provided', 'schema.pbtxt')
 # Python module file to inject customized logic into the TFX components. The
 # Transform, Trainer and Tuner all require user-defined functions to run
 # successfully. Copy this from the current directory to a GCS bucket and update
@@ -129,6 +132,7 @@ def create_pipeline(
     ai_platform_training_args: Dict[str, str],
     ai_platform_serving_args: Dict[str, str],
     enable_tuning: bool,
+    user_provided_schema_path: str,
     beam_pipeline_args: List[str],
     use_aip_component: bool,
     serving_model_dir: Optional[str] = None) -> tfx.dsl.Pipeline:
@@ -147,6 +151,7 @@ def create_pipeline(
       for detailed description.
     enable_tuning: If True, the hyperparameter tuning through CloudTuner is
       enabled.
+    user_provided_schema_path: Path to the schema of the input data.
     beam_pipeline_args: List of beam pipeline options. Please refer to
       https://cloud.google.com/dataflow/docs/guides/specifying-exec-params#setting-other-cloud-dataflow-pipeline-options.
     use_aip_component: whether to use normal TFX components or customized AI
@@ -178,9 +183,9 @@ def create_pipeline(
   statistics_gen = tfx.components.StatisticsGen(
       examples=example_gen.outputs['examples'])
 
-  # Generates schema based on statistics files.
-  schema_gen = tfx.components.SchemaGen(
-      statistics=statistics_gen.outputs['statistics'], infer_feature_shape=True)
+  # Import user-provided schema.
+  schema_gen = tfx.components.ImportSchemaGen(
+      schema_file=user_provided_schema_path)
 
   # Performs anomaly detection based on statistics and data schema.
   example_validator = tfx.components.ExampleValidator(
@@ -400,6 +405,7 @@ def main():
           data_root=_data_root,
           module_file=_module_file,
           enable_tuning=False,
+          user_provided_schema_path=_user_provided_schema,
           ai_platform_training_args=_ai_platform_training_args,
           ai_platform_serving_args=_ai_platform_serving_args,
           beam_pipeline_args=beam_pipeline_args,

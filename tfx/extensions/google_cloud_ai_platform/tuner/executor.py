@@ -29,7 +29,6 @@ from tfx.types import standard_component_specs
 from tfx.utils import doc_controls
 from tfx.utils import json_utils
 
-
 TUNING_ARGS_KEY = doc_controls.documented(
     obj='ai_platform_tuning_args',
     doc='Keys to the items in custom_config of Tuner for passing tuning args '
@@ -126,9 +125,9 @@ class Executor(base_executor.BaseExecutor):
                                      executor_class.__name__)
 
     # Note: exec_properties['custom_config'] here is a dict.
-    return runner.start_aip_training(input_dict, output_dict, exec_properties,
-                                     executor_class_path, training_inputs,
-                                     job_id)
+    return runner.start_cloud_training(input_dict, output_dict, exec_properties,
+                                       executor_class_path, training_inputs,
+                                       job_id)
 
 
 def _need_chief_oracle(exec_properties: Dict[str, Any]) -> bool:

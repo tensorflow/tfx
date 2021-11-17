@@ -71,9 +71,7 @@ class BigqueryIntegrationTest(base_test_case.BaseKubeflowV2Test):
     pipeline = self._create_pipeline(pipeline_name, components,
                                      beam_pipeline_args)
 
-    self._run_pipeline(pipeline, pipeline_name)
-
-    self._check_job_status(pipeline_name)
+    self._run_pipeline(pipeline)
 
 
 if __name__ == '__main__':

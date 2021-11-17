@@ -18,6 +18,7 @@ import os
 
 from unittest import mock
 import tensorflow as tf
+from tfx.extensions.google_cloud_ai_platform import constants
 from tfx.extensions.google_cloud_ai_platform.bulk_inferrer import executor
 from tfx.proto import bulk_inferrer_pb2
 from tfx.types import artifact_utils
@@ -90,8 +91,12 @@ class ExecutorTest(tf.test.TestCase):
         'data_spec':
             proto_utils.proto_to_json(bulk_inferrer_pb2.DataSpec()),
         'custom_config':
-            json_utils.dumps(
-                {executor.SERVING_ARGS_KEY: ai_platform_serving_args}),
+            json_utils.dumps({
+                executor.SERVING_ARGS_KEY:
+                    ai_platform_serving_args,
+                constants.ENDPOINT_ARGS_KEY:
+                    'https://us-central1-ml.googleapis.com',
+            }),
     }
     mock_runner.get_service_name_and_api_version.return_value = ('ml', 'v1')
     mock_runner.create_model_for_aip_prediction_if_not_exist.return_value = True

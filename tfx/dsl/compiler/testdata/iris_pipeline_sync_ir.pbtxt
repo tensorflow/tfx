@@ -67,6 +67,7 @@ nodes {
                 key: "version"
                 value: INT
               }
+              base_type: DATASET
             }
           }
         }
@@ -300,6 +301,7 @@ nodes {
                 key: "version"
                 value: INT
               }
+              base_type: DATASET
             }
             additional_properties {
               key: "split_names"
@@ -438,10 +440,12 @@ nodes {
             artifact_query {
               type {
                 name: "Examples"
+                base_type: DATASET
               }
             }
             output_key: "examples"
           }
+          min_count: 1
         }
       }
     }
@@ -460,6 +464,7 @@ nodes {
                 key: "split_names"
                 value: STRING
               }
+              base_type: STATISTICS
             }
           }
         }
@@ -568,10 +573,12 @@ nodes {
             artifact_query {
               type {
                 name: "Examples"
+                base_type: DATASET
               }
             }
             output_key: "result"
           }
+          min_count: 1
         }
       }
     }
@@ -590,6 +597,7 @@ nodes {
                 key: "split_names"
                 value: STRING
               }
+              base_type: STATISTICS
             }
           }
         }
@@ -696,10 +704,12 @@ nodes {
             artifact_query {
               type {
                 name: "ExampleStatistics"
+                base_type: STATISTICS
               }
             }
             output_key: "statistics"
           }
+          min_count: 1
         }
       }
     }
@@ -830,6 +840,7 @@ nodes {
             }
             output_key: "schema"
           }
+          min_count: 1
         }
       }
       inputs {
@@ -873,10 +884,12 @@ nodes {
             artifact_query {
               type {
                 name: "ExampleStatistics"
+                base_type: STATISTICS
               }
             }
             output_key: "statistics"
           }
+          min_count: 1
         }
       }
     }
@@ -1002,10 +1015,12 @@ nodes {
             artifact_query {
               type {
                 name: "Examples"
+                base_type: DATASET
               }
             }
             output_key: "examples"
           }
+          min_count: 1
         }
       }
       inputs {
@@ -1257,10 +1272,12 @@ nodes {
             artifact_query {
               type {
                 name: "Examples"
+                base_type: DATASET
               }
             }
             output_key: "examples"
           }
+          min_count: 1
         }
       }
       inputs {

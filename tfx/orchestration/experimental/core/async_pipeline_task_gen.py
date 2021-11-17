@@ -13,11 +13,14 @@
 # limitations under the License.
 """TaskGenerator implementation for async pipelines."""
 
+import hashlib
 import itertools
-from typing import Callable, List, Optional
+from typing import Callable, Dict, List, Optional
 
 from absl import logging
+from tfx import types
 from tfx.orchestration import metadata
+from tfx.orchestration.experimental.core import constants
 from tfx.orchestration.experimental.core import pipeline_state as pstate
 from tfx.orchestration.experimental.core import service_jobs
 from tfx.orchestration.experimental.core import task as task_lib
@@ -42,18 +45,45 @@ class AsyncPipelineTaskGenerator(task_gen.TaskGenerator):
   """
 
   def __init__(self, mlmd_handle: metadata.Metadata,
-               pipeline_state: pstate.PipelineState,
                is_task_id_tracked_fn: Callable[[task_lib.TaskId], bool],
                service_job_manager: service_jobs.ServiceJobManager):
     """Constructs `AsyncPipelineTaskGenerator`.
 
     Args:
       mlmd_handle: A handle to MLMD db.
-      pipeline_state: Pipeline state.
       is_task_id_tracked_fn: A callable that returns `True` if a task_id is
         tracked by the task queue.
       service_job_manager: Used for handling service nodes in the pipeline.
     """
+    self._mlmd_handle = mlmd_handle
+    self._is_task_id_tracked_fn = is_task_id_tracked_fn
+    self._service_job_manager = service_job_manager
+
+  def generate(self,
+               pipeline_state: pstate.PipelineState) -> List[task_lib.Task]:
+    """Generates tasks for all executable nodes in the async pipeline.
+
+    The returned tasks must have `exec_task` populated. List may be empty if no
+    nodes are ready for execution.
+
+    Args:
+      pipeline_state: The `PipelineState` object associated with the pipeline
+        for which to generate tasks.
+
+    Returns:
+      A `list` of tasks to execute.
+    """
+    return _Generator(self._mlmd_handle, pipeline_state,
+                      self._is_task_id_tracked_fn, self._service_job_manager)()
+
+
+class _Generator:
+  """Generator implementation class for AsyncPipelineTaskGenerator."""
+
+  def __init__(self, mlmd_handle: metadata.Metadata,
+               pipeline_state: pstate.PipelineState,
+               is_task_id_tracked_fn: Callable[[task_lib.TaskId], bool],
+               service_job_manager: service_jobs.ServiceJobManager):
     self._mlmd_handle = mlmd_handle
     pipeline = pipeline_state.pipeline
     if pipeline.execution_mode != pipeline_pb2.Pipeline.ExecutionMode.ASYNC:
@@ -72,15 +102,7 @@ class AsyncPipelineTaskGenerator(task_gen.TaskGenerator):
     self._is_task_id_tracked_fn = is_task_id_tracked_fn
     self._service_job_manager = service_job_manager
 
-  def generate(self) -> List[task_lib.Task]:
-    """Generates tasks for all executable nodes in the async pipeline.
-
-    The returned tasks must have `exec_task` populated. List may be empty if no
-    nodes are ready for execution.
-
-    Returns:
-      A `list` of tasks to execute.
-    """
+  def __call__(self) -> List[task_lib.Task]:
     result = []
     for node in [n.pipeline_node for n in self._pipeline.nodes]:
       node_uid = task_lib.NodeUid.from_pipeline_node(self._pipeline, node)
@@ -99,7 +121,17 @@ class AsyncPipelineTaskGenerator(task_gen.TaskGenerator):
       service_status = self._ensure_node_services_if_pure(node_id)
       if service_status is not None:
         if service_status != service_jobs.ServiceStatus.RUNNING:
-          result.append(self._abort_node_task(node_uid))
+          error_msg = f'associated service job failed; node uid: {node_uid}'
+          result.append(
+              task_lib.UpdateNodeStateTask(
+                  node_uid=node_uid,
+                  state=pstate.NodeState.FAILED,
+                  status=status_lib.Status(
+                      code=status_lib.Code.ABORTED, message=error_msg)))
+        else:
+          result.append(
+              task_lib.UpdateNodeStateTask(
+                  node_uid=node_uid, state=pstate.NodeState.RUNNING))
         continue
 
       # If a task for the node is already tracked by the task queue, it need
@@ -110,16 +142,21 @@ class AsyncPipelineTaskGenerator(task_gen.TaskGenerator):
         service_status = self._ensure_node_services_if_mixed(node_id)
         if service_status is not None:
           if service_status != service_jobs.ServiceStatus.RUNNING:
-            result.append(self._abort_node_task(node_uid))
+            error_msg = f'associated service job failed; node uid: {node_uid}'
+            result.append(
+                task_lib.UpdateNodeStateTask(
+                    node_uid=node_uid,
+                    state=pstate.NodeState.FAILED,
+                    status=status_lib.Status(
+                        code=status_lib.Code.ABORTED, message=error_msg)))
         continue
-      task = self._generate_task(self._mlmd_handle, node)
-      if task:
-        result.append(task)
+
+      result.extend(self._generate_tasks_for_node(self._mlmd_handle, node))
     return result
 
-  def _generate_task(
+  def _generate_tasks_for_node(
       self, metadata_handler: metadata.Metadata,
-      node: pipeline_pb2.PipelineNode) -> Optional[task_lib.Task]:
+      node: pipeline_pb2.PipelineNode) -> List[task_lib.Task]:
     """Generates a node execution task.
 
     If a node execution is not feasible, `None` is returned.
@@ -131,28 +168,41 @@ class AsyncPipelineTaskGenerator(task_gen.TaskGenerator):
     Returns:
       Returns a `Task` or `None` if task generation is deemed infeasible.
     """
+    result = []
+    node_uid = task_lib.NodeUid.from_pipeline_node(self._pipeline, node)
+
     executions = task_gen_utils.get_executions(metadata_handler, node)
-    result = task_gen_utils.generate_task_from_active_execution(
+    exec_node_task = task_gen_utils.generate_task_from_active_execution(
         metadata_handler, self._pipeline, node, executions)
-    if result:
+    if exec_node_task:
+      result.append(
+          task_lib.UpdateNodeStateTask(
+              node_uid=node_uid, state=pstate.NodeState.RUNNING))
+      result.append(exec_node_task)
       return result
 
     resolved_info = task_gen_utils.generate_resolved_info(
         metadata_handler, node)
-    if resolved_info.input_artifacts is None or not any(
-        resolved_info.input_artifacts.values()):
+    if (resolved_info is None or resolved_info.input_artifacts is None or
+        not any(resolved_info.input_artifacts.values())):
       logging.info(
           'Task cannot be generated for node %s since no input artifacts '
           'are resolved.', node.node_info.id)
-      return None
+      return result
 
-    # If the latest successful execution had the same resolved input artifacts,
-    # the component should not be triggered, so task is not generated.
-    # TODO(b/170231077): This logic should be handled by the resolver when it's
-    # implemented. Also, currently only the artifact ids of previous execution
-    # are checked to decide if a new execution is warranted but it may also be
-    # necessary to factor in the difference of execution properties.
-    latest_exec = task_gen_utils.get_latest_successful_execution(executions)
+    executor_spec_fingerprint = hashlib.sha256()
+    executor_spec = task_gen_utils.get_executor_spec(
+        self._pipeline_state.pipeline, node.node_info.id)
+    if executor_spec is not None:
+      executor_spec_fingerprint.update(
+          executor_spec.SerializeToString(deterministic=True))
+    resolved_info.exec_properties[
+        constants
+        .EXECUTOR_SPEC_FINGERPRINT_KEY] = executor_spec_fingerprint.hexdigest()
+
+    # If the latest execution had the same resolved input artifacts, execution
+    # properties and executor specs, we should not trigger a new execution.
+    latest_exec = task_gen_utils.get_latest_execution(executions)
     if latest_exec:
       artifact_ids_by_event_type = (
           execution_lib.get_artifact_ids_by_event_type_for_execution_id(
@@ -162,10 +212,21 @@ class AsyncPipelineTaskGenerator(task_gen.TaskGenerator):
       current_exec_input_artifact_ids = set(
           a.id
           for a in itertools.chain(*resolved_info.input_artifacts.values()))
-      if latest_exec_input_artifact_ids == current_exec_input_artifact_ids:
-        return None
+      latest_exec_properties = task_gen_utils.extract_properties(latest_exec)
+      current_exec_properties = resolved_info.exec_properties
+      latest_exec_executor_spec_fp = latest_exec_properties[
+          constants.EXECUTOR_SPEC_FINGERPRINT_KEY]
+      current_exec_executor_spec_fp = resolved_info.exec_properties[
+          constants.EXECUTOR_SPEC_FINGERPRINT_KEY]
+      if (latest_exec_input_artifact_ids == current_exec_input_artifact_ids and
+          _exec_properties_match(latest_exec_properties,
+                                 current_exec_properties) and
+          latest_exec_executor_spec_fp == current_exec_executor_spec_fp):
+        result.append(
+            task_lib.UpdateNodeStateTask(
+                node_uid=node_uid, state=pstate.NodeState.STARTED))
+        return result
 
-    node_uid = task_lib.NodeUid.from_pipeline_node(self._pipeline, node)
     execution = execution_publish_utils.register_execution(
         metadata_handler=metadata_handler,
         execution_type=node.node_info.type,
@@ -181,22 +242,34 @@ class AsyncPipelineTaskGenerator(task_gen.TaskGenerator):
     service_status = self._ensure_node_services_if_mixed(node.node_info.id)
     if service_status is not None:
       if service_status != service_jobs.ServiceStatus.RUNNING:
-        return self._abort_node_task(node_uid)
+        error_msg = f'associated service job failed; node uid: {node_uid}'
+        result.append(
+            task_lib.UpdateNodeStateTask(
+                node_uid=node_uid,
+                state=pstate.NodeState.FAILED,
+                status=status_lib.Status(
+                    code=status_lib.Code.ABORTED, message=error_msg)))
+        return result
 
     output_artifacts = outputs_resolver.generate_output_artifacts(execution.id)
     outputs_utils.make_output_dirs(output_artifacts)
-    return task_lib.ExecNodeTask(
-        node_uid=node_uid,
-        execution_id=execution.id,
-        contexts=resolved_info.contexts,
-        input_artifacts=resolved_info.input_artifacts,
-        exec_properties=resolved_info.exec_properties,
-        output_artifacts=output_artifacts,
-        executor_output_uri=outputs_resolver.get_executor_output_uri(
-            execution.id),
-        stateful_working_dir=outputs_resolver.get_stateful_working_directory(
-            execution.id),
-        pipeline=self._pipeline)
+    result.append(
+        task_lib.UpdateNodeStateTask(
+            node_uid=node_uid, state=pstate.NodeState.RUNNING))
+    result.append(
+        task_lib.ExecNodeTask(
+            node_uid=node_uid,
+            execution_id=execution.id,
+            contexts=resolved_info.contexts,
+            input_artifacts=resolved_info.input_artifacts,
+            exec_properties=resolved_info.exec_properties,
+            output_artifacts=output_artifacts,
+            executor_output_uri=outputs_resolver.get_executor_output_uri(
+                execution.id),
+            stateful_working_dir=outputs_resolver
+            .get_stateful_working_directory(execution.id),
+            pipeline=self._pipeline))
+    return result
 
   def _ensure_node_services_if_pure(
       self, node_id: str) -> Optional[service_jobs.ServiceStatus]:
@@ -216,15 +289,19 @@ class AsyncPipelineTaskGenerator(task_gen.TaskGenerator):
           self._pipeline_state, node_id)
     return None
 
-  def _abort_node_task(self,
-                       node_uid: task_lib.NodeUid) -> task_lib.FinalizeNodeTask:
-    """Returns task to abort the node execution."""
-    logging.error('Required service node not running or healthy, node uid: %s',
-                  node_uid)
-    return task_lib.FinalizeNodeTask(
-        node_uid=node_uid,
-        status=status_lib.Status(
-            code=status_lib.Code.ABORTED,
-            message=(f'Aborting node execution as the associated service '
-                     f'job is not running or healthy; problematic node '
-                     f'uid: {node_uid}')))
+
+def _exec_properties_match(
+    exec_props1: Dict[str, types.ExecPropertyTypes],
+    exec_props2: Dict[str, types.ExecPropertyTypes]) -> bool:
+  """Returns True if exec properties match."""
+
+  def _filter_out_internal_keys(
+      props: Dict[str, types.ExecPropertyTypes]
+  ) -> Dict[str, types.ExecPropertyTypes]:
+    return {
+        k: v for k, v in props.items() if not execution_lib.is_internal_key(k)
+    }
+
+  exec_props1 = _filter_out_internal_keys(exec_props1)
+  exec_props2 = _filter_out_internal_keys(exec_props2)
+  return exec_props1 == exec_props2

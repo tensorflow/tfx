@@ -17,26 +17,18 @@ import os
 import sys
 from unittest import mock
 
+from google.cloud import aiplatform
+from google.cloud.aiplatform import pipeline_jobs
+
 import tensorflow as tf
 from tfx.dsl.io import fileio
 from tfx.tools.cli import labels
 from tfx.tools.cli.handler import vertex_handler
 from tfx.utils import test_case_utils
 
-_TEST_PIPELINE_NAME = 'chicago-taxi-kubeflow'
-_TEST_PIPELINE_JOB_NAME = 'chicago_taxi_vertex_20200101000000'
+_TEST_PIPELINE_NAME = 'chicago-taxi-vertex'
 _TEST_REGION = 'us-central1'
 _TEST_PROJECT_1 = 'gcp_project_1'
-_TEST_PROJECT_2 = 'gcp_project_2'  # _TEST_PROJECT_2 is assumed to have no runs.
-_TEST_TFX_IMAGE = 'gcr.io/tfx-oss-public/tfx:latest'
-_DUMMY_APIKEY = 'dummy-api-key'
-_TEST_JOB_FULL_NAME = 'projects/{}/locations/{}/pipelineJobs/{}'.format(
-    _TEST_PROJECT_1, _TEST_REGION, _TEST_PIPELINE_JOB_NAME)
-
-# Expected job detail page link associated with _TEST_JOB_FULL_NAME.
-_VALID_LINK = 'https://console.cloud.google.com/vertex-ai/locations/us-central1/pipelines/runs/chicago_taxi_vertex_20200101000000?project=gcp_project_1'
-
-_ILLEGALLY_NAMED_RUN = 'ThisIsNotAValidName'
 
 
 class VertexHandlerTest(test_case_utils.TfxTest):
@@ -69,20 +61,6 @@ class VertexHandlerTest(test_case_utils.TfxTest):
     # Setting up Mock for API client, so that this Python test is hermetic.
     # subprocess Mock will be setup per-test.
     self.addCleanup(mock.patch.stopall)
-
-  def testGetJobId(self):
-    self.assertEqual(_TEST_PIPELINE_JOB_NAME,
-                     vertex_handler._get_job_id(_TEST_JOB_FULL_NAME))
-
-  def testGetJobIdInvalidName(self):
-    with self.assertRaisesRegex(RuntimeError, 'Invalid job name is received.'):
-      vertex_handler._get_job_id(_ILLEGALLY_NAMED_RUN)
-
-  def testGetJobLink(self):
-    self.assertEqual(
-        _VALID_LINK,
-        vertex_handler._get_job_link(_TEST_PROJECT_1, _TEST_REGION,
-                                     _TEST_PIPELINE_JOB_NAME))
 
   def testCreatePipeline(self):
     flags_dict = {
@@ -214,28 +192,34 @@ class VertexHandlerTest(test_case_utils.TfxTest):
         str(err.exception), 'Pipeline "{}" does not exist.'.format(
             flags_dict[labels.PIPELINE_NAME]))
 
-  def testCreateRun(self):
+  @mock.patch.object(aiplatform, 'init', autospec=True)
+  @mock.patch.object(pipeline_jobs, 'PipelineJob', autospec=True)
+  def testCreateRun(self, mock_pipeline_job, mock_init):
     flags_dict = {
         labels.ENGINE_FLAG: self.engine,
         labels.PIPELINE_NAME: self.pipeline_name,
-        labels.RUNTIME_PARAMETER: self.runtime_parameter
+        labels.GCP_PROJECT_ID: _TEST_PROJECT_1,
+        labels.GCP_REGION: _TEST_REGION,
+        labels.RUNTIME_PARAMETER: self.runtime_parameter,
     }
+    # TODO(b/198114641): Delete following override after upgrading source code
+    # to aiplatform>=1.3.
+    mock_pipeline_job.return_value.wait_for_resource_creation = mock.MagicMock()
 
     handler = vertex_handler.VertexHandler(flags_dict)
+    handler.create_run()
 
-    with mock.patch.object(
-        handler, '_create_vertex_client') as client_factory_mock:
-      with mock.patch.object(handler, '_print_run'):
-        client_mock = client_factory_mock.return_value
-        handler.create_run()
-
-    client_mock.create_run_from_job_spec.assert_called_with(
-        job_spec_path=handler._get_pipeline_definition_path(
-            'chicago-taxi-kubeflow'),
+    mock_init.assert_called_once_with(
+        project=_TEST_PROJECT_1, location=_TEST_REGION)
+    mock_pipeline_job.assert_called_once_with(
+        display_name=_TEST_PIPELINE_NAME,
+        template_path=handler._get_pipeline_definition_path(
+            _TEST_PIPELINE_NAME),
         parameter_values={
             'a': '1',
             'b': '2'
         })
+
 
 if __name__ == '__main__':
   tf.test.main()

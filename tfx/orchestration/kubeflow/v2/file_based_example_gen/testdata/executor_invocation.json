@@ -1,7 +1,7 @@
 {
   "inputs": {
     "parameters": {
-      "input_base_uri": {
+      "input_base": {
         "stringValue": "input_base"
       },
       "input_config": {

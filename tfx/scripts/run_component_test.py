@@ -44,6 +44,8 @@ class RunComponentTest(absltest.TestCase):
         examples_uri=os.path.join(test_data_dir, 'csv_example_gen'),
         examples_split_names=artifact_utils.encode_split_names(
             ['train', 'eval']),
+        # Testing that we can set non-string artifact properties
+        examples_version='1',
         statistics_path=output_data_dir,
         statistics_split_names_path=statistics_split_names_path,
     )
@@ -60,6 +62,32 @@ class RunComponentTest(absltest.TestCase):
         pathlib.Path(statistics_split_names_path).read_text(),
         '["train", "eval"]')
 
+  def testRunSchemaGen(self):
+    # Prepare the paths
+    test_data_dir = os.path.join(
+        os.path.dirname(os.path.dirname(__file__)), 'components', 'testdata')
+    output_data_dir = os.path.join(
+        os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR', tempfile.mkdtemp()),
+        self._testMethodName)
+    fileio.makedirs(output_data_dir)
+
+    # Run SchemaGen
+    run_component.run_component(
+        full_component_class_name='tfx.components.SchemaGen',
+        # Testing that we can specify input artifact paths
+        statistics_path=os.path.join(test_data_dir, 'statistics_gen'),
+        # Testing that we can specify artifact properties
+        statistics_split_names=artifact_utils.encode_split_names(
+            ['train', 'eval']),
+        # Testing that we can pass arguments for non-string properties
+        infer_feature_shape='1',
+        # Testing that we can specify output artifact paths
+        schema_path=os.path.join(output_data_dir),
+    )
+
+    # Checking the schema_gen outputs
+    self.assertTrue(
+        fileio.exists(os.path.join(output_data_dir, 'schema.pbtxt')))
 
 if __name__ == '__main__':
   tf.test.main()

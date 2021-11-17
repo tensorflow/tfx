@@ -19,6 +19,7 @@ import absl
 from googleapiclient import discovery
 from googleapiclient import errors as googleapiclient_errors
 import tensorflow as tf
+from tfx import v1 as tfx
 from tfx.components.pusher.component import Pusher
 from tfx.components.trainer.component import Trainer
 from tfx.dsl.components.base import executor_spec
@@ -334,7 +335,8 @@ class KubeflowGCPIntegrationTest(kubeflow_test_utils.BaseKubeflowTest):
           model=model_importer.outputs['result'],
           model_blessing=model_blessing_importer.outputs['result'],
           custom_config={
-              ai_platform_pusher_executor.SERVING_ARGS_KEY: {
+              tfx.extensions.google_cloud_ai_platform.experimental
+              .PUSHER_SERVING_ARGS_KEY: {
                   'model_name': model_name,
                   'project_id': self._GCP_PROJECT_ID,
               }

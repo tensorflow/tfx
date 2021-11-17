@@ -63,17 +63,17 @@ class ExampleValidator(base_component.BaseComponent):
   EXECUTOR_SPEC = executor_spec.ExecutorClassSpec(executor.Executor)
 
   def __init__(self,
-               statistics: types.Channel,
-               schema: types.Channel,
+               statistics: types.BaseChannel,
+               schema: types.BaseChannel,
                exclude_splits: Optional[List[str]] = None):
     """Construct an ExampleValidator component.
 
     Args:
-      statistics: A Channel of type `standard_artifacts.ExampleStatistics`.
-      schema: A Channel of type `standard_artifacts.Schema`. _required_
+      statistics: A BaseChannel of type `standard_artifacts.ExampleStatistics`.
+      schema: A BaseChannel of type `standard_artifacts.Schema`. _required_
       exclude_splits: Names of splits that the example validator should not
-        validate. Default behavior (when exclude_splits is set to None)
-        is excluding no splits.
+        validate. Default behavior (when exclude_splits is set to None) is
+        excluding no splits.
     """
     if exclude_splits is None:
       exclude_splits = []

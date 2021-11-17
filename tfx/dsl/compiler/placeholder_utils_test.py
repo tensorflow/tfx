@@ -152,6 +152,7 @@ input_dict {
             key: "version"
             value: INT
           }
+          base_type: DATASET
         }
       }
     }
@@ -1532,7 +1533,7 @@ class PredicateResolutionTest(parameterized.TestCase, tf.test.TestCase):
                           }
                         }
                       }
-                      op: LESS_THAN
+                      op: GREATER_THAN
                     }
                   }
                 }
@@ -1593,7 +1594,7 @@ class PredicateResolutionTest(parameterized.TestCase, tf.test.TestCase):
             ) and
             (
               input("channel_21_key")[0].value
-              <
+              >
               input("channel_22_key")[0].value
             )
           )

@@ -20,7 +20,7 @@ import re
 import subprocess
 import tarfile
 import time
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 from absl import logging
 import kfp
@@ -203,7 +203,7 @@ class HelloWorldComponent(BaseComponent):
   EXECUTOR_SPEC = executor_specs.TemplatedExecutorContainerSpec(
       # TODO(b/143965964): move the image to private repo if the test is flaky
       # due to docker hub.
-      image='google/cloud-sdk:latest',
+      image='gcr.io/google.com/cloudsdktool/cloud-sdk:latest',
       command=['sh', '-c'],
       args=[
           'echo "hello ' +
@@ -404,21 +404,11 @@ class BaseKubeflowTest(test_case_utils.TfxTest):
   # location for each invocation, and cleaned up at the end of test.
   _TEST_DATA_ROOT = os.environ['KFP_E2E_TEST_DATA_ROOT']
 
-  # The location of the penguin test data. The input files are copied to a
-  # test-local location for each invocation, and cleaned up at the end of test.
-  _PENGUIN_TEST_DATA_ROOT = os.environ['KFP_E2E_PENGUIN_TEST_DATA_ROOT']
-
   # The location of test user module. Will be packaged and copied to under the
   # pipeline root before pipeline execution.
   _MODULE_ROOT = os.path.join(
       os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
       'components/testdata/module_file')
-
-  # The location of the user module for penguin. Will be packaged and copied to
-  # under the pipeline root before pipeline execution.
-  _PENGUIN_MODULE_ROOT = os.path.join(
-      os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
-      'examples/penguin')
 
   @classmethod
   def setUpClass(cls):
@@ -462,25 +452,16 @@ class BaseKubeflowTest(test_case_utils.TfxTest):
         stderr=subprocess.DEVNULL,
     )
 
-    subprocess.run(
-        ['gsutil', 'cp', '-r', self._PENGUIN_TEST_DATA_ROOT,
-         self._testdata_root],
-        check=True,
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
-    )
-
     self._data_root = os.path.join(self._testdata_root, 'external', 'csv')
-    self._penguin_data_root = os.path.join(self._testdata_root, 'data')
+
     self._transform_module = os.path.join(self._MODULE_ROOT,
                                           'transform_module.py')
     self._trainer_module = os.path.join(self._MODULE_ROOT, 'trainer_module.py')
     self._serving_model_dir = os.path.join(self._testdata_root, 'output')
-    self._penguin_dependency_file = os.path.join(
-        self._PENGUIN_MODULE_ROOT, 'penguin_utils_cloud_tuner.py')
 
     self.addCleanup(self._delete_test_dir, test_id)
 
+  @retry.retry(ignore_eventual_failure=True)
   def _delete_test_dir(self, test_id: str):
     """Deletes files for this test including the module file and data files.
 
@@ -490,6 +471,7 @@ class BaseKubeflowTest(test_case_utils.TfxTest):
     test_utils.delete_gcs_files(self._GCP_PROJECT_ID, self._BUCKET_NAME,
                                 'test_data/{}'.format(test_id))
 
+  @retry.retry(ignore_eventual_failure=True)
   def _delete_workflow(self, workflow_name: str):
     """Deletes the specified Argo workflow."""
     logging.info('Deleting workflow %s', workflow_name)
@@ -544,6 +526,7 @@ class BaseKubeflowTest(test_case_utils.TfxTest):
         time.sleep(self._POLLING_INTERVAL_IN_SECONDS)
         status = self._get_argo_pipeline_status(workflow_name)
 
+  @retry.retry(ignore_eventual_failure=True)
   def _delete_pipeline_output(self, pipeline_name: str):
     """Deletes output produced by the named pipeline.
 
@@ -557,13 +540,15 @@ class BaseKubeflowTest(test_case_utils.TfxTest):
     return os.path.join(self._test_output_dir, pipeline_name)
 
   def _create_pipeline(self, pipeline_name: str,
-                       components: List[BaseComponent]):
+                       components: List[BaseComponent],
+                       beam_pipeline_args: Optional[List[str]] = None):
     """Creates a pipeline given name and list of components."""
     return tfx_pipeline.Pipeline(
         pipeline_name=pipeline_name,
         pipeline_root=self._pipeline_root(pipeline_name),
         components=components,
         enable_cache=True,
+        beam_pipeline_args=beam_pipeline_args,
     )
 
   def _create_dataflow_pipeline(self,
@@ -571,8 +556,7 @@ class BaseKubeflowTest(test_case_utils.TfxTest):
                                 components: List[BaseComponent],
                                 wait_until_finish_ms: int = 1000 * 60 * 20):
     """Creates a pipeline with Beam DataflowRunner."""
-    pipeline = self._create_pipeline(pipeline_name, components)
-    pipeline.beam_pipeline_args = [
+    beam_pipeline_args = [
         '--runner=TestDataflowRunner',
         '--wait_until_finish_duration=%d' % wait_until_finish_ms,
         '--project=' + self._GCP_PROJECT_ID,
@@ -584,7 +568,8 @@ class BaseKubeflowTest(test_case_utils.TfxTest):
         # Dataflow.
         '--experiments=use_runner_v2',
     ]
-    return pipeline
+    return self._create_pipeline(
+        pipeline_name, components, beam_pipeline_args=beam_pipeline_args)
 
   def _get_kubeflow_metadata_config(
       self) -> kubeflow_pb2.KubeflowMetadataConfig:

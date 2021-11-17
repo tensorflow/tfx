@@ -71,7 +71,7 @@ class ExecutorTest(tf.test.TestCase):
     executor = ai_platform_trainer_executor.Executor()
     executor.Do(self._inputs, self._outputs,
                 self._serialize_custom_config_under_test())
-    self.mock_runner.start_aip_training.assert_called_with(
+    self.mock_runner.start_cloud_training.assert_called_with(
         self._inputs, self._outputs, self._serialize_custom_config_under_test(),
         self._executor_class_path, {
             'project': self._project_id,
@@ -85,7 +85,7 @@ class ExecutorTest(tf.test.TestCase):
         ai_platform_trainer_executor.JOB_ID_KEY] = job_id
     executor.Do(self._inputs, self._outputs,
                 self._serialize_custom_config_under_test())
-    self.mock_runner.start_aip_training.assert_called_with(
+    self.mock_runner.start_cloud_training.assert_called_with(
         self._inputs, self._outputs, self._serialize_custom_config_under_test(),
         self._executor_class_path, {
             'project': self._project_id,
@@ -96,7 +96,7 @@ class ExecutorTest(tf.test.TestCase):
     executor = ai_platform_trainer_executor.GenericExecutor()
     executor.Do(self._inputs, self._outputs,
                 self._serialize_custom_config_under_test())
-    self.mock_runner.start_aip_training.assert_called_with(
+    self.mock_runner.start_cloud_training.assert_called_with(
         self._inputs, self._outputs, self._serialize_custom_config_under_test(),
         self._generic_executor_class_path, {
             'project': self._project_id,
@@ -113,7 +113,7 @@ class ExecutorTest(tf.test.TestCase):
         ai_platform_trainer_executor.VERTEX_REGION_KEY] = vertex_region
     executor.Do(self._inputs, self._outputs,
                 self._serialize_custom_config_under_test())
-    self.mock_runner.start_aip_training.assert_called_with(
+    self.mock_runner.start_cloud_training.assert_called_with(
         self._inputs, self._outputs, self._serialize_custom_config_under_test(),
         self._executor_class_path, {
             'project': self._project_id,

@@ -115,13 +115,21 @@ def get_node(pipeline, node_id):
   raise ValueError(f'could not find {node_id}')
 
 
-def fake_execute_node(mlmd_connection, task):
+def fake_execute_node(mlmd_connection, task, artifact_custom_properties=None):
   """Simulates node execution given ExecNodeTask."""
   node = task.get_pipeline_node()
   with mlmd_connection as m:
     if node.HasField('outputs'):
       output_key, output_value = next(iter(node.outputs.outputs.items()))
       output = types.Artifact(output_value.artifact_spec.type)
+      if artifact_custom_properties:
+        for key, val in artifact_custom_properties.items():
+          if isinstance(val, int):
+            output.set_int_custom_property(key, val)
+          elif isinstance(val, str):
+            output.set_string_custom_property(key, val)
+          else:
+            raise ValueError(f'unsupported type: {type(val)}')
       output.uri = str(uuid.uuid4())
       output_artifacts = {output_key: [output]}
     else:
@@ -162,22 +170,37 @@ def create_node_uid(pipeline_id, node_id):
       node_id=node_id)
 
 
-def run_generator(mlmd_connection, generator_class, pipeline, task_queue,
-                  use_task_queue, service_job_manager):
+def run_generator(mlmd_connection,
+                  generator_class,
+                  pipeline,
+                  task_queue,
+                  use_task_queue,
+                  service_job_manager,
+                  ignore_update_node_state_tasks=False,
+                  fail_fast=None):
   """Generates tasks for testing."""
   with mlmd_connection as m:
     pipeline_state = get_or_create_pipeline_state(m, pipeline)
     generator_params = dict(
         mlmd_handle=m,
-        pipeline_state=pipeline_state,
         is_task_id_tracked_fn=task_queue.contains_task_id,
         service_job_manager=service_job_manager)
+    if fail_fast is not None:
+      generator_params['fail_fast'] = fail_fast
     task_gen = generator_class(**generator_params)
-    tasks = task_gen.generate()
+    tasks = task_gen.generate(pipeline_state)
     if use_task_queue:
       for task in tasks:
         if task_lib.is_exec_node_task(task):
           task_queue.enqueue(task)
+    for task in tasks:
+      if task_lib.is_update_node_state_task(task):
+        with pipeline_state:
+          with pipeline_state.node_state_update_context(
+              task.node_uid) as node_state:
+            node_state.update(task.state, task.status)
+  if ignore_update_node_state_tasks:
+    tasks = [t for t in tasks if not task_lib.is_update_node_state_task(t)]
   return tasks
 
 
@@ -215,7 +238,9 @@ def run_generator_and_test(test_case,
                            num_tasks_generated,
                            num_new_executions,
                            num_active_executions,
-                           expected_exec_nodes=None):
+                           expected_exec_nodes=None,
+                           ignore_update_node_state_tasks=False,
+                           fail_fast=None):
   """Runs generator.generate() and tests the effects."""
   if service_job_manager is None:
     service_job_manager = service_jobs.DummyServiceJobManager()
@@ -224,8 +249,15 @@ def run_generator_and_test(test_case,
     test_case.assertLen(
         executions, num_initial_executions,
         f'Expected {num_initial_executions} execution(s) in MLMD.')
-  tasks = run_generator(mlmd_connection, generator_class, pipeline, task_queue,
-                        use_task_queue, service_job_manager)
+  tasks = run_generator(
+      mlmd_connection,
+      generator_class,
+      pipeline,
+      task_queue,
+      use_task_queue,
+      service_job_manager,
+      ignore_update_node_state_tasks=ignore_update_node_state_tasks,
+      fail_fast=fail_fast)
   with mlmd_connection as m:
     test_case.assertLen(
         tasks, num_tasks_generated,
@@ -242,7 +274,8 @@ def run_generator_and_test(test_case,
         active_executions, num_active_executions,
         f'Expected {num_active_executions} active execution(s) in MLMD.')
     if expected_exec_nodes:
-      for i, task in enumerate(tasks):
+      for i, task in enumerate(
+          t for t in tasks if task_lib.is_exec_node_task(t)):
         _verify_exec_node_task(test_case, pipeline, expected_exec_nodes[i],
                                active_executions[i].id, task)
     return tasks

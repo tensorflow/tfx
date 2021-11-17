@@ -13,14 +13,10 @@
 # limitations under the License.
 """Test utilities for kubeflow v2 runner."""
 
-import datetime
 import os
-import time
 from typing import List
 
-from absl import logging
 from kfp.pipeline_spec import pipeline_spec_pb2 as pipeline_pb2
-from kfp.v2.google import client as kfp_client
 import tensorflow_model_analysis as tfma
 from tfx import v1 as tfx
 from tfx.components.trainer.executor import Executor
@@ -30,6 +26,7 @@ from tfx.dsl.components.base import base_component
 from tfx.dsl.components.base import base_executor
 from tfx.dsl.components.base import base_node
 from tfx.dsl.components.base import executor_spec
+from tfx.dsl.experimental.conditionals import conditional
 from tfx.types import channel_utils
 from tfx.types import component_spec
 from tfx.types.experimental import simple_artifacts
@@ -56,54 +53,13 @@ TEST_RUNTIME_CONFIG = pipeline_pb2.PipelineJob.RuntimeConfig(
     })
 
 
-_VERTEX_SUCCEEDED_STATE = 'PIPELINE_STATE_SUCCEEDED'
-
-_VERTEX_RUNNING_STATES = frozenset(
-    ('PIPELINE_STATE_QUEUED', 'PIPELINE_STATE_PENDING',
-     'PIPELINE_STATE_RUNNING'))
-
-
-def poll_job_status(vertex_client: kfp_client.AIPlatformClient, job_id: str,
-                    timeout: datetime.timedelta, polling_interval_secs: int):
-  """Checks the status of the job.
-
-  Args:
-    vertex_client: Vertex Pipelines client object.
-    job_id: The relative ID of the pipeline job.
-    timeout: Timeout duration for the job execution.
-    polling_interval_secs: Interval to check the job status.
-
-  Raises:
-    RuntimeError: On (1) unexpected response from service; or (2) on
-      unexpected job status; or (2) timed out waiting for finishing.
-  """
-  deadline = datetime.datetime.now() + timeout
-  while datetime.datetime.now() < deadline:
-    time.sleep(polling_interval_secs)
-
-    try:
-      response = vertex_client.get_job(job_id)
-    except ConnectionError as e:
-      logging.warning('Failed get job status of : %s; error: %s. Will retry.',
-                      job_id, e)
-      continue
-    if not response or not response.get('state'):
-      raise RuntimeError('Unexpected response received: %s' % response)
-    state = response.get('state')
-    if state == _VERTEX_SUCCEEDED_STATE:
-      logging.info('Job succeeded: %s', response)
-      return
-    if state not in _VERTEX_RUNNING_STATES:
-      raise RuntimeError('Job is in an unexpected state: %s' % response)
-
-  raise RuntimeError('Timed out waiting for job to finish.')
-
-
 # TODO(b/158245564): Reevaluate whether to keep this test helper function
 def two_step_pipeline() -> tfx.dsl.Pipeline:
   """Returns a simple 2-step pipeline under test."""
   example_gen = tfx.extensions.google_cloud_big_query.BigQueryExampleGen(
-      query='SELECT * FROM TABLE')
+      query='SELECT * FROM TABLE').with_beam_pipeline_args([
+          '--runner=DataflowRunner',
+      ])
   statistics_gen = tfx.components.StatisticsGen(
       examples=example_gen.outputs['examples'])
   return tfx.dsl.Pipeline(
@@ -114,6 +70,23 @@ def two_step_pipeline() -> tfx.dsl.Pipeline:
       beam_pipeline_args=[
           '--project=my-gcp-project',
       ])
+
+
+def simple_pipeline_components(csv_input_location: str = ''
+                               ) -> List[base_node.BaseNode]:
+  """Creates very basic components for test a pipeline execution.
+
+  Args:
+    csv_input_location: The location of the input data directory.
+
+  Returns:
+    A list of TFX components that constitutes a simple test pipeline.
+  """
+  example_gen = tfx.components.CsvExampleGen(input_base=csv_input_location)
+  statistics_gen = tfx.components.StatisticsGen(
+      examples=example_gen.outputs['examples'])
+
+  return [example_gen, statistics_gen]
 
 
 def create_pipeline_components(
@@ -207,12 +180,13 @@ def create_pipeline_components(
       baseline_model=model_resolver.outputs['model'],
       eval_config=eval_config)
 
-  pusher = tfx.components.Pusher(
-      model=trainer.outputs['model'],
-      model_blessing=evaluator.outputs['blessing'],
-      push_destination=tfx.proto.PushDestination(
-          filesystem=tfx.proto.PushDestination.Filesystem(
-              base_directory=os.path.join(pipeline_root, 'model_serving'))))
+  with conditional.Cond(evaluator.outputs['blessing'].future()
+                        [0].custom_property('blessed') == 1):
+    pusher = tfx.components.Pusher(
+        model=trainer.outputs['model'],
+        push_destination=tfx.proto.PushDestination(
+            filesystem=tfx.proto.PushDestination.Filesystem(
+                base_directory=os.path.join(pipeline_root, 'model_serving'))))
 
   return [
       example_gen, statistics_gen, schema_gen, example_validator, transform,
@@ -348,6 +322,26 @@ dummy_transformer_component = tfx.dsl.experimental.create_container_component(
     ],
 )
 
+
+dummy_exit_handler = tfx.dsl.experimental.create_container_component(
+    name='ExitHandlerComponent',
+    parameters={
+        'param1': str,
+    },
+    image='dummy/producer',
+    command=[
+        'producer',
+        '--param1',
+        placeholders.InputValuePlaceholder('param1'),
+        '--wrapped-param',
+        placeholders.ConcatPlaceholder([
+            'prefix-',
+            placeholders.InputValuePlaceholder('param1'),
+            '-suffix',
+        ]),
+    ],
+)
+
 dummy_producer_component = tfx.dsl.experimental.create_container_component(
     name='DummyProducerComponent',
     outputs={
@@ -369,6 +363,37 @@ dummy_producer_component = tfx.dsl.experimental.create_container_component(
             placeholders.InputValuePlaceholder('param1'),
             '-suffix',
         ]),
+    ],
+)
+
+dummy_producer_component_2 = tfx.dsl.experimental.create_container_component(
+    name='DummyProducerComponent2',
+    outputs={
+        'output1': tfx.types.standard_artifacts.Model,
+    },
+    parameters={
+        'param1': str,
+    },
+    image='dummy/producer',
+    command=[
+        'producer',
+    ],
+)
+
+dummy_consumer_component = tfx.dsl.experimental.create_container_component(
+    name='DummyConsumerComponent',
+    inputs={
+        'input1': tfx.types.standard_artifacts.Model,
+    },
+    outputs={
+        'output1': tfx.types.standard_artifacts.Model,
+    },
+    parameters={
+        'param1': int,
+    },
+    image='dummy/consumer',
+    command=[
+        'consumer',
     ],
 )
 

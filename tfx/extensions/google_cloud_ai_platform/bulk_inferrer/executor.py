@@ -18,11 +18,13 @@ import re
 from typing import Any, Dict, List
 
 from absl import logging
+from google.api_core import client_options
 from googleapiclient import discovery
 import tensorflow as tf
 from tfx import types
 from tfx.components.bulk_inferrer import executor as bulk_inferrer_executor
 from tfx.components.util import model_utils
+from tfx.extensions.google_cloud_ai_platform import constants
 from tfx.extensions.google_cloud_ai_platform import runner
 from tfx.proto import bulk_inferrer_pb2
 from tfx.types import artifact_utils
@@ -98,7 +100,7 @@ class Executor(bulk_inferrer_executor.Executor):
       output_examples = None
 
     if 'examples' not in input_dict:
-      raise ValueError('\'examples\' is missing in input dict.')
+      raise ValueError('`examples` is missing in input dict.')
     if 'model' not in input_dict:
       raise ValueError('Input models are not valid, model '
                        'need to be specified.')
@@ -123,7 +125,7 @@ class Executor(bulk_inferrer_executor.Executor):
     ai_platform_serving_args = custom_config.get(SERVING_ARGS_KEY)
     if not ai_platform_serving_args:
       raise ValueError(
-          '\'ai_platform_serving_args\' is missing in \'custom_config\'')
+          '`ai_platform_serving_args` is missing in `custom_config`')
     service_name, api_version = runner.get_service_name_and_api_version(
         ai_platform_serving_args)
     executor_class_path = '%s.%s' % (self.__class__.__module__,
@@ -146,10 +148,16 @@ class Executor(bulk_inferrer_executor.Executor):
     if exec_properties.get('output_example_spec'):
       proto_utils.json_to_proto(exec_properties['output_example_spec'],
                                 output_example_spec)
+    endpoint = custom_config.get(constants.ENDPOINT_ARGS_KEY)
+    if endpoint and 'regions' in ai_platform_serving_args:
+      raise ValueError(
+          '`endpoint` and `ai_platform_serving_args.regions` cannot be set simultaneously'
+      )
     api = discovery.build(
         service_name,
         api_version,
         requestBuilder=telemetry_utils.TFXHttpRequest,
+        client_options=client_options.ClientOptions(api_endpoint=endpoint),
     )
     new_model_endpoint_created = False
     try:
@@ -187,12 +195,10 @@ class Executor(bulk_inferrer_executor.Executor):
       ai_platform_serving_args: Dict[str, Any]
   ) -> model_spec_pb2.InferenceSpecType:
     if 'project_id' not in ai_platform_serving_args:
-      raise ValueError(
-          '\'project_id\' is missing in \'ai_platform_serving_args\'')
+      raise ValueError('`project_id` is missing in `ai_platform_serving_args`')
     project_id = ai_platform_serving_args['project_id']
     if 'model_name' not in ai_platform_serving_args:
-      raise ValueError(
-          '\'model_name\' is missing in \'ai_platform_serving_args\'')
+      raise ValueError('`model_name` is missing in `ai_platform_serving_args`')
     model_name = ai_platform_serving_args['model_name']
     ai_platform_prediction_model_spec = (
         model_spec_pb2.AIPlatformPredictionModelSpec(

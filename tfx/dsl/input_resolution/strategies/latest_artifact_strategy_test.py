@@ -14,9 +14,7 @@
 """Test for LatestArtifactStrategy."""
 
 import tensorflow as tf
-from tfx import types
 from tfx.dsl.input_resolution.strategies import latest_artifact_strategy
-from tfx.orchestration import data_types
 from tfx.orchestration import metadata
 from tfx.types import standard_artifacts
 from tfx.utils import test_case_utils
@@ -33,51 +31,8 @@ class LatestArtifactStrategyTest(test_case_utils.TfxTest):
     self._metadata = self.enter_context(
         metadata.Metadata(connection_config=self._connection_config))
     self._store = self._metadata.store
-    self._pipeline_info = data_types.PipelineInfo(
-        pipeline_name='my_pipeline', pipeline_root='/tmp', run_id='my_run_id')
-    self._component_info = data_types.ComponentInfo(
-        component_type='a.b.c',
-        component_id='my_component',
-        pipeline_info=self._pipeline_info)
 
   def testStrategy(self):
-    contexts = self._metadata.register_pipeline_contexts_if_not_exists(
-        self._pipeline_info)
-    artifact_one = standard_artifacts.Examples()
-    artifact_one.uri = 'uri_one'
-    self._metadata.publish_artifacts([artifact_one])
-    artifact_two = standard_artifacts.Examples()
-    artifact_two.uri = 'uri_two'
-    self._metadata.register_execution(
-        exec_properties={},
-        pipeline_info=self._pipeline_info,
-        component_info=self._component_info,
-        contexts=contexts)
-    self._metadata.publish_execution(
-        component_info=self._component_info,
-        output_artifacts={'key': [artifact_one, artifact_two]})
-    expected_artifact = max(artifact_one, artifact_two, key=lambda a: a.id)
-
-    strategy = latest_artifact_strategy.LatestArtifactStrategy()
-    resolve_result = strategy.resolve(
-        pipeline_info=self._pipeline_info,
-        metadata_handler=self._metadata,
-        source_channels={
-            'input':
-                types.Channel(
-                    type=artifact_one.type,
-                    producer_component_id=self._component_info.component_id,
-                    output_key='key')
-        })
-
-    self.assertTrue(resolve_result.has_complete_result)
-    self.assertEqual([
-        artifact.uri
-        for artifact in resolve_result.per_key_resolve_result['input']
-    ], [expected_artifact.uri])
-    self.assertTrue(resolve_result.per_key_resolve_state['input'])
-
-  def testStrategy_IrMode(self):
     artifact_one = standard_artifacts.Examples()
     artifact_one.uri = 'uri_one'
     artifact_one.id = 1

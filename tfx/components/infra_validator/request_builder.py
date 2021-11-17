@@ -203,7 +203,7 @@ class _BaseRequestBuilder(abc.ABC):
     else:
       it = tf.compat.v1.data.make_one_shot_iterator(dataset)
       next_el = it.get_next()
-      with tf.Session() as sess:
+      with tf.compat.v1.Session() as sess:
         while True:
           try:
             d = sess.run(next_el)

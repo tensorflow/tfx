@@ -21,7 +21,7 @@
       "stringValue": "split:s1,num_files:1,total_bytes:7,xor_checksum:1,sum_checksum:1\nsplit:s2,num_files:1,total_bytes:8,xor_checksum:3,sum_checksum:3"
     },
     "span": {
-      "stringValue": "0"
+      "intValue": "0"
     }
   }
 }

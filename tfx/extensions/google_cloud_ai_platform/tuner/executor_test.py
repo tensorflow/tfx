@@ -76,7 +76,7 @@ class ExecutorTest(tf.test.TestCase):
     executor.Do(self._inputs, self._outputs,
                 self._serialize_custom_config_under_test())
 
-    self.mock_runner.start_aip_training.assert_called_with(
+    self.mock_runner.start_cloud_training.assert_called_with(
         self._inputs, self._outputs, self._serialize_custom_config_under_test(),
         self._executor_class_path, {
             'project': self._project_id,
@@ -103,7 +103,7 @@ class ExecutorTest(tf.test.TestCase):
     executor.Do(self._inputs, self._outputs,
                 self._serialize_custom_config_under_test())
 
-    self.mock_runner.start_aip_training.assert_called_with(
+    self.mock_runner.start_cloud_training.assert_called_with(
         self._inputs,
         self._outputs,
         self._serialize_custom_config_under_test(),

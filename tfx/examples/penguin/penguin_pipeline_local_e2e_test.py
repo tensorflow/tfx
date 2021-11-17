@@ -46,7 +46,7 @@ class PenguinPipelineLocalEndToEndTest(tf.test.TestCase,
 
     self._pipeline_name = 'penguin_test'
     self._schema_path = os.path.join(
-        os.path.dirname(__file__), 'schema', 'user_provided')
+        os.path.dirname(__file__), 'schema', 'user_provided', 'schema.pbtxt')
     self._data_root = os.path.join(os.path.dirname(__file__), 'data')
 
     # Create a data root for rolling window test
@@ -91,12 +91,14 @@ class PenguinPipelineLocalEndToEndTest(tf.test.TestCase,
                                has_pusher: bool = True) -> None:
     self._assertExecutedOnce('CsvExampleGen')
     self._assertExecutedOnce('Evaluator')
-    self._assertExecutedOnce('ExampleValidator')
     self._assertExecutedOnce('StatisticsGen')
     self._assertExecutedOnce('Trainer')
     self._assertExecutedOnce('Transform')
     if has_schema_gen:
       self._assertExecutedOnce('SchemaGen')
+    else:
+      self._assertExecutedOnce('ImportSchemaGen')
+      self._assertExecutedOnce('ExampleValidator')
     if has_tuner:
       self._assertExecutedOnce('Tuner')
     if has_bulk_inferrer:
@@ -135,7 +137,7 @@ class PenguinPipelineLocalEndToEndTest(tf.test.TestCase,
 
     self.assertTrue(fileio.exists(self._serving_model_dir))
     self.assertTrue(fileio.exists(self._metadata_path))
-    expected_execution_count = 9  # 8 components + 1 resolver
+    expected_execution_count = 8  # 7 components + 1 resolver
     metadata_config = metadata.sqlite_metadata_connection_config(
         self._metadata_path)
     store = mlmd.MetadataStore(metadata_config)
@@ -187,7 +189,7 @@ class PenguinPipelineLocalEndToEndTest(tf.test.TestCase,
 
     self.assertTrue(fileio.exists(self._serving_model_dir))
     self.assertTrue(fileio.exists(self._metadata_path))
-    expected_execution_count = 10  # 9 components + 1 resolver
+    expected_execution_count = 9  # 8 components + 1 resolver
     metadata_config = metadata.sqlite_metadata_connection_config(
         self._metadata_path)
     store = mlmd.MetadataStore(metadata_config)
@@ -221,7 +223,7 @@ class PenguinPipelineLocalEndToEndTest(tf.test.TestCase,
 
     self.assertTrue(fileio.exists(self._serving_model_dir))
     self.assertTrue(fileio.exists(self._metadata_path))
-    expected_execution_count = 11  # 11 components + 1 resolver
+    expected_execution_count = 10  # 9 components + 1 resolver
     metadata_config = metadata.sqlite_metadata_connection_config(
         self._metadata_path)
     store = mlmd.MetadataStore(metadata_config)
@@ -318,7 +320,7 @@ class PenguinPipelineLocalEndToEndTest(tf.test.TestCase,
     self._assertPipelineExecution()
     transform_execution_type = 'tfx.components.transform.component.Transform'
     trainer_execution_type = 'tfx.components.trainer.component.Trainer'
-    expected_execution_count = 11  # 8 components + 3 resolvers
+    expected_execution_count = 10  # 7 components + 3 resolvers
     metadata_config = metadata.sqlite_metadata_connection_config(
         self._metadata_path)
     store = mlmd.MetadataStore(metadata_config)
@@ -415,7 +417,7 @@ class PenguinPipelineLocalEndToEndTest(tf.test.TestCase,
     LocalDagRunner().run(pipeline)
 
     self.assertTrue(fileio.exists(self._metadata_path))
-    expected_execution_count = 8  # Without pusher because evaluation fails
+    expected_execution_count = 7  # Without pusher because evaluation fails
     metadata_config = metadata.sqlite_metadata_connection_config(
         self._metadata_path)
     store = mlmd.MetadataStore(metadata_config)
