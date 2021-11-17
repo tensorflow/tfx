@@ -32,9 +32,30 @@ message BeamExecutableSpec {
   // Args for Apache Beam pipeline.
   repeated string beam_pipeline_args = 2;
   // Args for Apache Beam pipeline to be populated by
-  // environment variables at runtime.
+  // environment variables at runtime. The result will be merged with
+  // beam_pipeline_args.
   // Map consists of:
   // {beam_arg: environment_variable}
+  //
+  // Example:
+  // beam_pipeline_args = [--runner=DirectRunner]
+  // os.environ[BAR] = "bar"
+  // beam_pipeline_args_from_env = {foo: BAR}
+  // beam_pipeline_args at runtime will be:
+  // beam_pipeline_args = [--runner=DirectRunner,
+  //                       --foo=bar]
+  //
+  // Args specified in beam_pipeline_args will take precedence
+  // over args specified in beam_pipeline_args_from_env in case of
+  // a clash.
+  // Example:
+  // beam_pipeline_args = [--runner=DirectRunner,
+  //                       --foo=baz]
+  // os.environ[BAR] = "bar"
+  // beam_pipeline_args_from_env = {foo: BAR}
+  // beam_pipeline_args at runtime will be:
+  // beam_pipeline_args = [--runner=DirectRunner,
+  //                       --foo=baz]
   map<string, string> beam_pipeline_args_from_env = 3;
 }
 

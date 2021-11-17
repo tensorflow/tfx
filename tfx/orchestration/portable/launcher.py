@@ -126,33 +126,6 @@ def _register_execution(
       exec_properties=exec_properties)
 
 
-def _resolve_beam_args_from_env(beam_pipeline_args, beam_pipeline_args_from_env) -> list:
-  resolved_beam_pipeline_args_from_env = []
-
-  for beam_pipeline_arg_from_env, env_var in beam_pipeline_args_from_env.items():
-    # If an arg is already present in beam_pipeline_args, it should take precedence
-    # over env vars.
-    if any(beam_pipeline_arg_from_env in beam_pipeline_arg for beam_pipeline_arg in beam_pipeline_args):
-      logging.info('Arg %s already present in '
-        'beam_pipeline_args and will not be fetched from env.',
-         beam_pipeline_arg_from_env)
-      continue
-
-    env_var_value = os.environ.get(env_var, None)
-    if env_var_value:
-      if beam_pipeline_arg_from_env.startswith('--'):
-        resolved_beam_pipeline_args_from_env.append('{}={}'
-                  .format(beam_pipeline_arg_from_env, env_var_value))
-      else:
-        resolved_beam_pipeline_args_from_env.append('--{}={}'
-                                                      .format(beam_pipeline_arg_from_env, env_var_value))
-    else:
-      # TODO: Raise value error instead?
-      logging.warning('Env var %s not present. Skipping corresponding beam arg'
-                       ': %s.', env_var, beam_pipeline_arg_from_env)
-  return resolved_beam_pipeline_args_from_env
-
-
 class Launcher(object):
   """Launcher is the main entrance of nodes in TFleX.
 
@@ -213,14 +186,6 @@ class Launcher(object):
 
     self._executor_operator = None
     if executor_spec:
-      # Resolve beam_pipeline_args_from_env and consolidate with beam_pipeline_args
-      if isinstance(executor_spec, executable_spec_pb2.BeamExecutableSpec):
-        resolved_beam_pipeline_args_from_env = _resolve_beam_args_from_env(
-                executor_spec.beam_pipeline_args,
-                executor_spec.beam_pipeline_args_from_env)
-
-        executor_spec.beam_pipeline_args.extend(resolved_beam_pipeline_args_from_env)
-
       self._executor_operator = self._executor_operators[type(executor_spec)](
           executor_spec, platform_config)
     self._output_resolver = outputs_utils.OutputsResolver(

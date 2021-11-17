@@ -326,6 +326,27 @@ class PipelineTest(test_case_utils.TfxTest):
     self.assertEqual(expected_args,
                      p.components[0].executor_spec.beam_pipeline_args)
 
+  def testPipelineWithBeamPipelineArgsFromEnv(self):
+    first_arg = {'my_first_beam_pipeline_args': 'foo'}
+    second_arg = {'my_second_beam_pipeline_args': 'bar'}
+    second_arg_override = {'my_second_beam_pipeline_args': 'baz'}
+
+    expected_args = {**first_arg, **second_arg_override}
+
+    p = pipeline.Pipeline(
+        pipeline_name='a',
+        pipeline_root='b',
+        log_root='c',
+        components=[
+            _make_fake_component_instance(
+                'component_a', _OutputTypeA, {}, {},
+                with_beam=True).with_beam_pipeline_args_from_env({**first_arg, **second_arg_override})
+        ],
+        beam_pipeline_args_from_env=second_arg,
+        metadata_connection_config=self._metadata_connection_config)
+    self.assertEqual(expected_args,
+                     p.components[0].executor_spec.beam_pipeline_args_from_env)
+
 
 if __name__ == '__main__':
   tf.test.main()

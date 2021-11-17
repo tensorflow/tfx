@@ -14,6 +14,8 @@
 """Base class to define how to operator a Beam based executor."""
 
 from typing import Optional, cast
+from absl import logging
+import os
 
 from tfx.dsl.components.base import base_beam_executor
 from tfx.orchestration.portable import base_executor_operator
@@ -24,6 +26,33 @@ from tfx.proto.orchestration import execution_result_pb2
 from tfx.utils import import_utils
 
 from google.protobuf import message
+
+
+def _resolve_beam_args_from_env(beam_pipeline_args, beam_pipeline_args_from_env) -> list:
+  resolved_beam_pipeline_args_from_env = []
+
+  for beam_pipeline_arg_from_env, env_var in beam_pipeline_args_from_env.items():
+    # If an arg is already present in beam_pipeline_args, it should take precedence
+    # over env vars.
+    if any("--{}=".format(beam_pipeline_arg_from_env) in beam_pipeline_arg for beam_pipeline_arg in beam_pipeline_args):
+      logging.info('Arg %s already present in '
+        'beam_pipeline_args and will not be fetched from env.',
+         beam_pipeline_arg_from_env)
+      continue
+
+    env_var_value = os.getenv(env_var)
+    if env_var_value:
+      if beam_pipeline_arg_from_env.startswith('--'):
+        resolved_beam_pipeline_args_from_env.append('{}={}'
+                  .format(beam_pipeline_arg_from_env, env_var_value))
+      else:
+        resolved_beam_pipeline_args_from_env.append('--{}={}'
+                                                      .format(beam_pipeline_arg_from_env, env_var_value))
+    else:
+      # TODO: Raise value error instead?
+      logging.warning('Env var %s not present. Skipping corresponding beam arg'
+                       ': %s.', env_var, beam_pipeline_arg_from_env)
+  return resolved_beam_pipeline_args_from_env
 
 
 class BeamExecutorOperator(base_executor_operator.BaseExecutorOperator):
@@ -63,6 +92,13 @@ class BeamExecutorOperator(base_executor_operator.BaseExecutorOperator):
     self.extra_flags.extend(beam_executor_spec.python_executor_spec.extra_flags)
     self.beam_pipeline_args = []
     self.beam_pipeline_args.extend(beam_executor_spec.beam_pipeline_args)
+
+    # Resolve beam_pipeline_args_from_env and consolidate with beam_pipeline_args
+    resolved_beam_pipeline_args_from_env = _resolve_beam_args_from_env(
+        beam_executor_spec.beam_pipeline_args,
+        beam_executor_spec.beam_pipeline_args_from_env)
+
+    self.beam_pipeline_args.extend(resolved_beam_pipeline_args_from_env)
 
   def run_executor(
       self, execution_info: data_types.ExecutionInfo

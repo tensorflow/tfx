@@ -83,5 +83,34 @@ class BeamExecutorOperatorTest(test_case_utils.TfxTest):
           }""", executor_output)
 
 
+class BeamArgsTest(test_case_utils.TfxTest):
+
+  def testResolveBeamArgsFromEnv(self):
+    self.enter_context(test_case_utils.override_env_var('BAR', 'baz'))
+    self.enter_context(test_case_utils.override_env_var('S3_SECRET_ACCESS_KEY', 'minio123'))
+    self.enter_context(test_case_utils.override_env_var('S3_VERIFY', '1'))
+
+    beam_pipeline_args = ['--s3_endpoint_url=s3_endpoint_url',
+                          '--s3_access_key_id=minio',
+                          '--s3_verify=0'
+                          ]
+    beam_pipeline_args_from_env = {
+        '--foo': 'BAR',
+        's3_secret_access_key': 'S3_SECRET_ACCESS_KEY',
+        's3_verify': 'S3_VERIFY'
+    }
+
+    resolved_beam_pipeline_args_from_env = beam_executor_operator._resolve_beam_args_from_env(
+        beam_pipeline_args=beam_pipeline_args,
+        beam_pipeline_args_from_env=beam_pipeline_args_from_env)
+    self.assertEqual(set(beam_pipeline_args + resolved_beam_pipeline_args_from_env),
+                     {'--s3_endpoint_url=s3_endpoint_url',
+                      '--s3_access_key_id=minio',
+                      '--s3_secret_access_key=minio123',
+                      '--s3_verify=0',
+                      '--foo=baz'
+                      })
+
+
 if __name__ == '__main__':
   tf.test.main()
