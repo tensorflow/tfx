@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,13 +13,9 @@
 # limitations under the License.
 """TFX Tuner component definition."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
+from typing import Any, Dict, NamedTuple, Optional
 
-from typing import Any, Dict, NamedTuple, Optional, Text
-
-from kerastuner.engine import base_tuner
+from keras_tuner.engine import base_tuner
 from tfx import types
 from tfx.components.tuner import executor
 from tfx.components.util import udf_utils
@@ -37,7 +32,7 @@ from tfx.utils import json_utils
 #             model , e.g., the training and validation dataset. Required
 #             args depend on the tuner's implementation.
 TunerFnResult = NamedTuple('TunerFnResult', [('tuner', base_tuner.BaseTuner),
-                                             ('fit_kwargs', Dict[Text, Any])])
+                                             ('fit_kwargs', Dict[str, Any])])
 TunerFnResult.__doc__ = """
 Return type of tuner_fn.
 
@@ -69,12 +64,12 @@ class Tuner(base_component.BaseComponent):
                schema: Optional[types.Channel] = None,
                transform_graph: Optional[types.Channel] = None,
                base_model: Optional[types.Channel] = None,
-               module_file: Optional[Text] = None,
-               tuner_fn: Optional[Text] = None,
+               module_file: Optional[str] = None,
+               tuner_fn: Optional[str] = None,
                train_args: Optional[trainer_pb2.TrainArgs] = None,
                eval_args: Optional[trainer_pb2.EvalArgs] = None,
                tune_args: Optional[tuner_pb2.TuneArgs] = None,
-               custom_config: Optional[Dict[Text, Any]] = None):
+               custom_config: Optional[Dict[str, Any]] = None):
     """Construct a Tuner component.
 
     Args:
@@ -127,7 +122,7 @@ class Tuner(base_component.BaseComponent):
         best_hyperparameters=best_hyperparameters,
         custom_config=json_utils.dumps(custom_config),
     )
-    super(Tuner, self).__init__(spec=spec)
+    super().__init__(spec=spec)
 
     if udf_utils.should_package_user_modules():
       # In this case, the `MODULE_PATH_KEY` execution property will be injected

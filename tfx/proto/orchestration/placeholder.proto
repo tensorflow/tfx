@@ -45,6 +45,7 @@ message PlaceholderExpressionOperator {
     UnaryLogicalOperator unary_logical_op = 8;
     BinaryLogicalOperator binary_logical_op = 9;
     ArtifactPropertyOperator artifact_property_op = 10;
+    ListSerializationOperator list_serialization_op = 11;
   }
 }
 
@@ -218,6 +219,23 @@ message BinaryLogicalOperator {
 
   // Required. The boolean op.
   Operation op = 3;
+}
+
+// ListSerializationOperator encodes the output of another placeholder as json
+// string. If elements in the list are proto messages, they get json serialized
+// first. ListSerializationOperator: List[Any] -> String
+message ListSerializationOperator {
+  // Required. It must evaluate to a List type value.
+  PlaceholderExpression expression = 1;
+
+  // Supported formats to serialize a list.
+  enum SerializationFormat {
+    FORMAT_UNSPECIFIED = 0;
+    JSON = 1;
+    COMMA_SEPARATED_STR = 2;
+  }
+
+  SerializationFormat serialization_format = 2;
 }
 
 // Placeholder is an inseparable unit in a placeholder expression that

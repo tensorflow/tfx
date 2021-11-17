@@ -16,7 +16,7 @@
 import json
 import os
 import tarfile
-from typing import Text, List
+from typing import List
 
 from kfp import onprem
 import tensorflow as tf
@@ -46,7 +46,7 @@ def _two_step_pipeline() -> tfx_pipeline.Pipeline:
       }]
   })
   input_config = data_types.RuntimeParameter(
-      name='input_config', ptype=Text, default=default_input_config)
+      name='input_config', ptype=str, default=default_input_config)
   example_gen = big_query_example_gen_component.BigQueryExampleGen(
       input_config=input_config, output_config=example_gen_pb2.Output())
   statistics_gen = statistics_gen_component.StatisticsGen(

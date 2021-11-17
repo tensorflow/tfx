@@ -103,6 +103,9 @@ nodes {
         }
       }
     }
+    downstream_nodes: "Evaluator"
+    downstream_nodes: "StatisticsGen"
+    downstream_nodes: "Trainer"
     execution_options {
       caching_options {
       }
@@ -309,6 +312,9 @@ nodes {
         }
       }
     }
+    upstream_nodes: "CsvExampleGen"
+    downstream_nodes: "ExampleValidator"
+    downstream_nodes: "SchemaGen"
     execution_options {
       caching_options {
       }
@@ -413,6 +419,9 @@ nodes {
         }
       }
     }
+    upstream_nodes: "StatisticsGen"
+    downstream_nodes: "ExampleValidator"
+    downstream_nodes: "Trainer"
     execution_options {
       caching_options {
       }
@@ -553,6 +562,8 @@ nodes {
         }
       }
     }
+    upstream_nodes: "SchemaGen"
+    upstream_nodes: "StatisticsGen"
     execution_options {
       caching_options {
       }
@@ -723,6 +734,10 @@ nodes {
         }
       }
     }
+    upstream_nodes: "CsvExampleGen"
+    upstream_nodes: "SchemaGen"
+    downstream_nodes: "Evaluator"
+    downstream_nodes: "Pusher"
     execution_options {
       caching_options {
       }
@@ -946,6 +961,9 @@ nodes {
         }
       }
     }
+    upstream_nodes: "CsvExampleGen"
+    upstream_nodes: "Trainer"
+    downstream_nodes: "Pusher"
     execution_options {
       caching_options {
       }
@@ -1086,6 +1104,8 @@ nodes {
         }
       }
     }
+    upstream_nodes: "Evaluator"
+    upstream_nodes: "Trainer"
     execution_options {
       caching_options {
       }

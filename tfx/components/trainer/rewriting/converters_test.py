@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2020 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,10 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Tests for third_party.tfx.components.trainer.rewriting.converters."""
-
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
 
 import os
 import tempfile
@@ -94,7 +89,7 @@ class RewritingExporterTest(tf.test.TestCase):
       pass
 
   def setUp(self):
-    super(RewritingExporterTest, self).setUp()
+    super().setUp()
     self._estimator = 'estimator'
     self._export_path = tempfile.mkdtemp()
     self._checkpoint_path = 'checkpoint_path'

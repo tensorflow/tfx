@@ -17,6 +17,7 @@ import json
 from typing import Dict, List
 
 import tensorflow as tf
+from tfx.dsl.placeholder import placeholder
 from tfx.proto import example_gen_pb2
 from tfx.types import component_spec
 from tfx.types.artifact import Artifact
@@ -28,6 +29,7 @@ from tfx.types.standard_artifacts import Examples
 from tfx.utils import proto_utils
 
 from google.protobuf import json_format
+from google.protobuf import text_format
 
 
 class _InputArtifact(Artifact):
@@ -340,6 +342,67 @@ class ComponentSpecTest(tf.test.TestCase):
       proto_parameter.type_check('proto_parameter', 42)
     with self.assertRaises(json_format.ParseError):
       proto_parameter.type_check('proto_parameter', {'splits': 42})
+
+    placeholder_parameter = ExecutionParameter(type=str)
+    placeholder_parameter.type_check(
+        'placeholder_parameter',
+        placeholder.runtime_info('platform_config').base_dir)
+    with self.assertRaisesRegex(
+        TypeError, 'Only simple RuntimeInfoPlaceholders are supported'):
+      placeholder_parameter.type_check(
+          'placeholder_parameter',
+          placeholder.runtime_info('platform_config').base_dir +
+          placeholder.exec_property('version'))
+
+  def testExecutionParameterUseProto(self):
+
+    class SpecWithNonPrimitiveTypes(ComponentSpec):
+      PARAMETERS = {
+          'config_proto':
+              ExecutionParameter(type=example_gen_pb2.Input, use_proto=True),
+          'boolean':
+              ExecutionParameter(type=bool, use_proto=True),
+          'list_config_proto':
+              ExecutionParameter(
+                  type=List[example_gen_pb2.Input], use_proto=True),
+          'list_boolean':
+              ExecutionParameter(type=List[bool], use_proto=True),
+      }
+      INPUTS = {
+          'input': ChannelParameter(type=_InputArtifact),
+      }
+      OUTPUTS = {
+          'output': ChannelParameter(type=_OutputArtifact),
+      }
+
+    spec = SpecWithNonPrimitiveTypes(
+        config_proto='{"splits": [{"name": "name", "pattern": "pattern"}]}',
+        boolean=True,
+        list_config_proto=[
+            example_gen_pb2.Input(splits=[
+                example_gen_pb2.Input.Split(
+                    name='trainer', pattern='train.data')
+            ]),
+            example_gen_pb2.Input(splits=[
+                example_gen_pb2.Input.Split(name='eval', pattern='*eval.data')
+            ])
+        ],
+        list_boolean=[False, True],
+        input=Channel(type=_InputArtifact),
+        output=Channel(type=_OutputArtifact))
+
+    # Verify exec_properties store parsed value when use_proto set to True.
+    expected_proto = text_format.Parse(
+        """
+            splits {
+              name: "name"
+              pattern: "pattern"
+            }
+          """, example_gen_pb2.Input())
+    self.assertProtoEquals(expected_proto, spec.exec_properties['config_proto'])
+    self.assertEqual(True, spec.exec_properties['boolean'])
+    self.assertIsInstance(spec.exec_properties['list_config_proto'], list)
+    self.assertEqual(spec.exec_properties['list_boolean'], [False, True])
 
 
 if __name__ == '__main__':

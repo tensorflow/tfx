@@ -215,7 +215,7 @@ class _MockBuilder(request_builder._BaseRequestBuilder):
 class BaseRequestBuilderTest(tf.test.TestCase):
 
   def setUp(self):
-    super(BaseRequestBuilderTest, self).setUp()
+    super().setUp()
     self._examples = standard_artifacts.Examples()
     self._examples.uri = _CSV_EXAMPLE_GEN_URI
     self._examples.split_names = artifact_utils.encode_split_names(
@@ -255,7 +255,7 @@ class BaseRequestBuilderTest(tf.test.TestCase):
 class TFServingRpcRequestBuilderTest(tf.test.TestCase):
 
   def setUp(self):
-    super(TFServingRpcRequestBuilderTest, self).setUp()
+    super().setUp()
     self._examples = standard_artifacts.Examples()
     self._examples.uri = _CSV_EXAMPLE_GEN_URI
     self._examples.split_names = artifact_utils.encode_split_names(
@@ -432,7 +432,7 @@ class TFServingRpcRequestBuilderTest(tf.test.TestCase):
 class TestBuildRequests(tf.test.TestCase):
 
   def setUp(self):
-    super(TestBuildRequests, self).setUp()
+    super().setUp()
     self._model_name = 'foo'
     self._examples = standard_artifacts.Examples()
     self._examples.uri = _CSV_EXAMPLE_GEN_URI

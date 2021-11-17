@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2020 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -17,10 +16,6 @@
 TFX-internal use only and experimental, no backwards compatibilty guarantees.
 """
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import hashlib
 import os
 import re
@@ -30,7 +25,7 @@ import subprocess
 import sys
 import tempfile
 
-from typing import Any, Callable, Dict, List, Optional, Text, Tuple
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
 from absl import logging
 
@@ -48,8 +43,7 @@ _EPHEMERAL_SETUP_PY_FILE_NAME = '_tfx_generated_setup.py'
 
 
 # TODO(b/157155972): improve user code support.
-def get_fn(exec_properties: Dict[Text, Any],
-           fn_name: Text) -> Callable[..., Any]:
+def get_fn(exec_properties: Dict[str, Any], fn_name: str) -> Callable[..., Any]:
   """Loads and returns user-defined function."""
   logging.info('udf_utils.get_fn %r %r', exec_properties, fn_name)
 
@@ -77,8 +71,8 @@ def get_fn(exec_properties: Dict[Text, Any],
     )
 
 
-def try_get_fn(exec_properties: Dict[Text, Any],
-               fn_name: Text) -> Optional[Callable[..., Any]]:
+def try_get_fn(exec_properties: Dict[str, Any],
+               fn_name: str) -> Optional[Callable[..., Any]]:
   """Loads and returns user-defined function if exists."""
   try:
     return get_fn(exec_properties, fn_name)
@@ -88,8 +82,8 @@ def try_get_fn(exec_properties: Dict[Text, Any],
     return None
 
 
-def _get_ephemeral_setup_py_contents(package_name: Text, version_string: Text,
-                                     module_names: List[Text]):
+def _get_ephemeral_setup_py_contents(package_name: str, version_string: str,
+                                     module_names: List[str]):
   return f"""import setuptools
 
 setuptools.setup(
@@ -116,19 +110,19 @@ class UserModuleFilePipDependency(base_component._PipDependencyFuture):  # pylin
   """Specification of a user module dependency."""
 
   def __init__(self, component: base_component.BaseComponent,
-               module_file_key: Text, module_path_key: Text):
+               module_file_key: str, module_path_key: str):
     self.component = component
     self.module_file_key = module_file_key
     self.module_path_key = module_path_key
 
-  def resolve(self, pipeline_root: Text):
+  def resolve(self, pipeline_root: str):
     # Package the given user module file as a Python wheel.
     module_file = self.component.spec.exec_properties[self.module_file_key]
 
     # Perform validation on the given `module_file`.
     if not module_file:
       return None
-    elif not isinstance(module_file, Text):
+    elif not isinstance(module_file, str):
       # TODO(b/187753042): Deprecate and remove usage of RuntimeParameters for
       # `module_file` parameters and remove this code path.
       logging.warning(
@@ -163,15 +157,15 @@ class UserModuleFilePipDependency(base_component._PipDependencyFuture):  # pylin
 
 
 def add_user_module_dependency(component: base_component.BaseComponent,
-                               module_file_key: Text,
-                               module_path_key: Text) -> None:
+                               module_file_key: str,
+                               module_path_key: str) -> None:
   """Adds a module file dependency to the current component."""
   dependency = UserModuleFilePipDependency(component, module_file_key,
                                            module_path_key)
   component._add_pip_dependency(dependency)  # pylint: disable=protected-access
 
 
-def _get_version_hash(user_module_dir: Text, source_files: List[Text]) -> Text:
+def _get_version_hash(user_module_dir: str, source_files: List[str]) -> str:
   """Compute a version hash based on user module directory contents."""
   source_files = sorted(source_files)
   h = hashlib.sha256()
@@ -186,8 +180,8 @@ def _get_version_hash(user_module_dir: Text, source_files: List[Text]) -> Text:
   return h.hexdigest()
 
 
-def package_user_module_file(instance_name: Text, module_path: Text,
-                             pipeline_root: Text) -> Tuple[Text, Text]:
+def package_user_module_file(instance_name: str, module_path: str,
+                             pipeline_root: str) -> Tuple[str, str]:
   """Package the given user module file into a Python Wheel package.
 
   Args:
@@ -287,7 +281,7 @@ def package_user_module_file(instance_name: Text, module_path: Text,
   return dist_file_path, user_module_path
 
 
-def decode_user_module_key(user_module_key: Text) -> Tuple[Text, List[Text]]:
+def decode_user_module_key(user_module_key: str) -> Tuple[str, List[str]]:
   """Decode the given user module key into module path and pip dependencies."""
   if user_module_key and '@' in user_module_key:
     user_module_name, dist_file_path = user_module_key.split('@', maxsplit=1)
@@ -299,7 +293,7 @@ def decode_user_module_key(user_module_key: Text) -> Tuple[Text, List[Text]]:
 class TempPipInstallContext:
   """Context manager for wrapped code and subprocesses to use pip package."""
 
-  def __init__(self, pip_dependencies: List[Text]):
+  def __init__(self, pip_dependencies: List[str]):
     if not isinstance(pip_dependencies, list):
       raise ValueError('Expected list of dependencies, got %r instead.' %
                        (pip_dependencies,))
@@ -321,8 +315,8 @@ class TempPipInstallContext:
       os.environ['PYTHONPATH'] = ':'.join(sys.path)
 
 
-def install_to_temp_directory(pip_dependency: Text,
-                              temp_dir: Optional[Text] = None) -> Text:
+def install_to_temp_directory(pip_dependency: str,
+                              temp_dir: Optional[str] = None) -> str:
   """Install the given pip dependency specifier to a temporary directory.
 
   Args:

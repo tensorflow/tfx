@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2020 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,15 +13,15 @@
 # limitations under the License.
 """A module file used by Evaluator tests."""
 
-from typing import Any, Dict, List, Text
+from typing import Any, Dict, List
 
 import tensorflow_model_analysis as tfma
 from tfx_bsl.tfxio import tensor_adapter
 
 
-def custom_eval_shared_model(eval_saved_model_path: Text, model_name: Text,
+def custom_eval_shared_model(eval_saved_model_path: str, model_name: str,
                              eval_config: tfma.EvalConfig,
-                             **kwargs: Dict[Text, Any]) -> tfma.EvalSharedModel:
+                             **kwargs: Dict[str, Any]) -> tfma.EvalSharedModel:
   return tfma.default_eval_shared_model(
       eval_saved_model_path=eval_saved_model_path,
       model_name=model_name,

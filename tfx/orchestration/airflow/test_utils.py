@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2020 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,14 +13,9 @@
 # limitations under the License.
 """Common utility for testing airflow-based orchestrator."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import subprocess
 import time
 
-from typing import Text
 from absl import logging
 import docker
 
@@ -30,7 +24,7 @@ _MYSQL_POLLING_MAX_ATTEMPTS = 60
 _MYSQL_PORT = '3306/tcp'
 
 
-def create_mysql_container(container_name: Text) -> int:
+def create_mysql_container(container_name: str) -> int:
   """Create a mysql docker container and returns port to it.
 
   A created mysql will have 'airflow' database and 'tfx' user without password.
@@ -102,7 +96,7 @@ def create_mysql_container(container_name: Text) -> int:
   return port
 
 
-def delete_mysql_container(container_name: Text):
+def delete_mysql_container(container_name: str):
   """Delete a mysql docker container with name.
 
   Args:
@@ -112,4 +106,3 @@ def delete_mysql_container(container_name: Text):
   container = client.containers.get(container_name)
   container.remove(force=True)
   client.close()
-

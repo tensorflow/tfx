@@ -15,13 +15,14 @@
 import contextlib
 import copy
 import os
-
 from unittest import mock
+
 import tensorflow as tf
 from tfx import types
 from tfx import version as tfx_version
 from tfx.dsl.compiler import constants
 from tfx.dsl.io import fileio
+from tfx.orchestration import data_types_utils
 from tfx.orchestration import metadata
 from tfx.orchestration.portable import base_driver
 from tfx.orchestration.portable import base_executor_operator
@@ -38,8 +39,8 @@ from tfx.proto.orchestration import execution_result_pb2
 from tfx.proto.orchestration import pipeline_pb2
 from tfx.utils import test_case_utils
 
-from ml_metadata.proto import metadata_store_pb2
 from google.protobuf import text_format
+from ml_metadata.proto import metadata_store_pb2
 
 _PYTHON_CLASS_EXECUTABLE_SPEC = executable_spec_pb2.PythonClassExecutableSpec
 
@@ -135,7 +136,7 @@ class _FakeCleanUpExecutorOperator(base_executor_operator.BaseExecutorOperator):
 class _FakeExampleGenLikeDriver(base_driver.BaseDriver):
 
   def __init__(self, mlmd_connection: metadata.Metadata):
-    super(_FakeExampleGenLikeDriver, self).__init__(mlmd_connection)
+    super().__init__(mlmd_connection)
     self._self_output = text_format.Parse(
         """
       inputs {
@@ -209,7 +210,7 @@ class _FakeExampleGenLikeDriver(base_driver.BaseDriver):
 class LauncherTest(test_case_utils.TfxTest):
 
   def setUp(self):
-    super(LauncherTest, self).setUp()
+    super().setUp()
     pipeline_root = os.path.join(
         os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR', self.get_temp_dir()),
         self.id())
@@ -340,12 +341,21 @@ class LauncherTest(test_case_utils.TfxTest):
         pipeline_runtime_spec=self._pipeline_runtime_spec,
         executor_spec=self._trainer_executor_spec,
         custom_executor_operators=self._test_executor_operators)
-    execution_info = test_launcher.launch()
+    test_launcher.launch()
 
-    self.assertIsNone(execution_info.execution_id)
     with self._mlmd_connection as m:
-      # No execution is registered in MLMD.
-      self.assertEmpty(m.store.get_executions())
+      # One failed execution in MLMD.
+      executions = m.store.get_executions()
+      self.assertLen(executions, 1)
+      self.assertProtoPartiallyEquals(
+          """
+          id: 1
+          last_known_state: FAILED
+          """,
+          executions[0],
+          ignored_fields=['type_id', 'custom_properties',
+                          'create_time_since_epoch',
+                          'last_update_time_since_epoch'])
 
   def testLauncher_InputPartiallyReady(self):
     # No new execution is triggered and registered if all inputs are not ready.
@@ -360,14 +370,24 @@ class LauncherTest(test_case_utils.TfxTest):
         custom_executor_operators=self._test_executor_operators)
 
     with self._mlmd_connection as m:
-      existing_exeuctions = m.store.get_executions()
+      existing_execution_ids = {e.id for e in m.store.get_executions()}
 
-    execution_info = test_launcher.launch()
-    self.assertIsNone(execution_info.execution_id)
+    test_launcher.launch()
 
     with self._mlmd_connection as m:
-      # No new execution is registered in MLMD.
-      self.assertCountEqual(existing_exeuctions, m.store.get_executions())
+      # One failed execution in MLMD.
+      new_executions = [e for e in m.store.get_executions()
+                        if e.id not in existing_execution_ids]
+      self.assertLen(new_executions, 1)
+      self.assertProtoPartiallyEquals(
+          """
+          id: 2
+          last_known_state: FAILED
+          """,
+          new_executions[0],
+          ignored_fields=['type_id', 'custom_properties',
+                          'create_time_since_epoch',
+                          'last_update_time_since_epoch'])
 
   def testLauncher_EmptyOptionalInputTriggersExecution(self):
     self.reloadPipelineWithNewRunId()
@@ -683,13 +703,13 @@ class LauncherTest(test_case_utils.TfxTest):
       contexts = context_lib.prepare_contexts(
           metadata_handler=m,
           node_contexts=test_launcher._pipeline_node.contexts)
-      exec_properties = inputs_utils.resolve_parameters(
-          node_parameters=test_launcher._pipeline_node.parameters)
+      exec_properties = data_types_utils.build_parsed_value_dict(
+          inputs_utils.resolve_parameters_with_schema(
+              node_parameters=test_launcher._pipeline_node.parameters))
       input_artifacts = inputs_utils.resolve_input_artifacts(
           metadata_handler=m, node_inputs=test_launcher._pipeline_node.inputs)
       first_execution = test_launcher._register_or_reuse_execution(
           metadata_handler=m,
-          execution_type=self._trainer.node_info.type,
           contexts=contexts,
           input_artifacts=input_artifacts,
           exec_properties=exec_properties)

@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,10 +13,6 @@
 # limitations under the License.
 """Tests for tfx.orchestration.kubeflow.kubeflow_metadata_adapter."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import os
 
 import tensorflow as tf
@@ -30,7 +25,7 @@ from ml_metadata.proto import metadata_store_pb2
 class KubeflowMetadataAdapterTest(tf.test.TestCase):
 
   def setUp(self):
-    super(KubeflowMetadataAdapterTest, self).setUp()
+    super().setUp()
     self._connection_config = metadata_store_pb2.ConnectionConfig()
     self._connection_config.sqlite.SetInParent()
     self._pipeline_info = data_types.PipelineInfo(

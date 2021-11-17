@@ -13,12 +13,6 @@
 # limitations under the License.
 """Tests for tfx.extensions.google_cloud_ai_platform.prediction_clients."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
-# Standard Imports
-
 import tensorflow as tf
 from tfx.extensions.google_cloud_ai_platform import prediction_clients
 

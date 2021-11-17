@@ -114,14 +114,14 @@ nodes {
         }
       }
     }
+    downstream_nodes: "Evaluator"
+    downstream_nodes: "StatisticsGen"
+    downstream_nodes: "Trainer"
     execution_options {
       caching_options {
         enable_cache: true
       }
     }
-    downstream_nodes: "Evaluator"
-    downstream_nodes: "StatisticsGen"
-    downstream_nodes: "Trainer"
   }
 }
 nodes {
@@ -347,12 +347,12 @@ nodes {
         }
       }
     }
+    downstream_nodes: "another_statistics_gen"
     execution_options {
       caching_options {
         enable_cache: true
       }
     }
-    downstream_nodes: "another_statistics_gen"
   }
 }
 nodes {
@@ -475,14 +475,14 @@ nodes {
         }
       }
     }
+    upstream_nodes: "CsvExampleGen"
+    downstream_nodes: "ExampleValidator"
+    downstream_nodes: "SchemaGen"
     execution_options {
       caching_options {
         enable_cache: true
       }
     }
-    upstream_nodes: "CsvExampleGen"
-    downstream_nodes: "ExampleValidator"
-    downstream_nodes: "SchemaGen"
   }
 }
 nodes {
@@ -733,14 +733,14 @@ nodes {
         }
       }
     }
+    upstream_nodes: "StatisticsGen"
+    downstream_nodes: "ExampleValidator"
+    downstream_nodes: "Trainer"
     execution_options {
       caching_options {
         enable_cache: true
       }
     }
-    upstream_nodes: "StatisticsGen"
-    downstream_nodes: "ExampleValidator"
-    downstream_nodes: "Trainer"
   }
 }
 nodes {
@@ -910,13 +910,13 @@ nodes {
         }
       }
     }
+    upstream_nodes: "SchemaGen"
+    upstream_nodes: "StatisticsGen"
     execution_options {
       caching_options {
         enable_cache: true
       }
     }
-    upstream_nodes: "SchemaGen"
-    upstream_nodes: "StatisticsGen"
   }
 }
 nodes {
@@ -1116,15 +1116,15 @@ nodes {
         }
       }
     }
+    upstream_nodes: "CsvExampleGen"
+    upstream_nodes: "SchemaGen"
+    downstream_nodes: "Evaluator"
+    downstream_nodes: "Pusher"
     execution_options {
       caching_options {
         enable_cache: true
       }
     }
-    upstream_nodes: "CsvExampleGen"
-    upstream_nodes: "SchemaGen"
-    downstream_nodes: "Evaluator"
-    downstream_nodes: "Pusher"
   }
 }
 nodes {
@@ -1359,15 +1359,15 @@ nodes {
         }
       }
     }
+    upstream_nodes: "CsvExampleGen"
+    upstream_nodes: "Trainer"
+    upstream_nodes: "latest_blessed_model_resolver"
+    downstream_nodes: "Pusher"
     execution_options {
       caching_options {
         enable_cache: true
       }
     }
-    upstream_nodes: "CsvExampleGen"
-    upstream_nodes: "Trainer"
-    upstream_nodes: "latest_blessed_model_resolver"
-    downstream_nodes: "Pusher"
   }
 }
 nodes {
@@ -1537,13 +1537,13 @@ nodes {
         }
       }
     }
+    upstream_nodes: "Evaluator"
+    upstream_nodes: "Trainer"
     execution_options {
       caching_options {
         enable_cache: true
       }
     }
-    upstream_nodes: "Evaluator"
-    upstream_nodes: "Trainer"
   }
 }
 runtime_spec {
@@ -1624,6 +1624,14 @@ deployment_config {
       }
     }
     executor_specs {
+      key: "Trainer"
+      value {
+        [type.googleapis.com/tfx.orchestration.executable_spec.PythonClassExecutableSpec] {
+          class_path: "tfx.components.trainer.executor.GenericExecutor"
+        }
+      }
+    }
+    executor_specs {
       key: "another_statistics_gen"
       value {
         [type.googleapis.com/tfx.orchestration.executable_spec.BeamExecutableSpec] {
@@ -1631,14 +1639,6 @@ deployment_config {
             class_path: "tfx.components.statistics_gen.executor.Executor"
           }
           beam_pipeline_args: "--my_testing_beam_pipeline_args=foo"
-        }
-      }
-    }
-    executor_specs {
-      key: "Trainer"
-      value {
-        [type.googleapis.com/tfx.orchestration.executable_spec.PythonClassExecutableSpec] {
-          class_path: "tfx.components.trainer.executor.GenericExecutor"
         }
       }
     }

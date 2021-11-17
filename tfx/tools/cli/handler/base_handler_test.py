@@ -62,7 +62,7 @@ class FakeHandler(base_handler.BaseHandler):
 class BaseHandlerTest(tf.test.TestCase):
 
   def setUp(self):
-    super(BaseHandlerTest, self).setUp()
+    super().setUp()
     self.engine = 'airflow'
     self.chicago_taxi_pipeline_dir = os.path.join(
         os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'testdata')
@@ -72,7 +72,7 @@ class BaseHandlerTest(tf.test.TestCase):
     os.environ['HOME'] = self.create_tempdir().full_path
 
   def tearDown(self):
-    super(BaseHandlerTest, self).tearDown()
+    super().tearDown()
     os.environ['HOME'] = self._original_home
 
   def testCheckPipelineDslPathInvalid(self):

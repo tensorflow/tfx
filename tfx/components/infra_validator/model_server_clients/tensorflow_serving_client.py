@@ -13,12 +13,6 @@
 # limitations under the License.
 """Module for TensorFlowServingClient."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
-from typing import Text
-
 from absl import logging
 import grpc
 from tfx.components.infra_validator import types
@@ -41,7 +35,7 @@ class TensorFlowServingClient(base_client.BaseModelServerClient):
   It uses gRPC client to talk to TensorFlow Serving server.
   """
 
-  def __init__(self, endpoint: Text, model_name: Text):
+  def __init__(self, endpoint: str, model_name: str):
     # Note that the channel instance is automatically closed (unsubscribed) on
     # deletion, so we don't have to manually close this on __del__.
     self._channel = grpc.insecure_channel(endpoint)

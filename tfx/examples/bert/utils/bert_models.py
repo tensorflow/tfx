@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2020 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,11 +13,7 @@
 # limitations under the License.
 """Configurable fine-tuning BERT models for various tasks."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
-from typing import Text, Optional, List, Union
+from typing import Optional, List, Union
 
 import tensorflow as tf
 import tensorflow.keras as keras
@@ -28,7 +23,7 @@ def build_bert_classifier(bert_layer: tf.keras.layers.Layer,
                           max_len: int,
                           num_classes: int,
                           dropout: float = 0.1,
-                          activation: Optional[Text] = None):
+                          activation: Optional[str] = None):
   """BERT Keras model for classification.
 
   Connect configurable fully connected layers on top of the BERT
@@ -67,7 +62,7 @@ def compile_bert_classifier(
     loss: tf.keras.losses = tf.keras.losses.SparseCategoricalCrossentropy(
         from_logits=True),
     learning_rate: float = 2e-5,
-    metrics: Optional[List[Union[Text, tf.keras.metrics.Metric]]] = None):
+    metrics: Optional[List[Union[str, tf.keras.metrics.Metric]]] = None):
   """Compile the BERT classifier using suggested parameters.
 
   Args:
@@ -98,7 +93,7 @@ def build_and_compile_bert_classifier(
     max_len: int,
     num_classes: int,
     learning_rate: float = 5e-5,
-    metrics: Optional[List[Union[Text, tf.keras.metrics.Metric]]] = None):
+    metrics: Optional[List[Union[str, tf.keras.metrics.Metric]]] = None):
   """Build and compile keras BERT classification model.
 
   Apart from the necessary inputs, use default/suggested parameters in build

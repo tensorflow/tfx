@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,11 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """TFX ExampleValidator component definition."""
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
 
-from typing import List, Optional, Text
+from typing import List, Optional
 
 from absl import logging
 from tfx import types
@@ -25,7 +21,7 @@ from tfx.components.example_validator import executor
 from tfx.dsl.components.base import base_component
 from tfx.dsl.components.base import executor_spec
 from tfx.types import standard_artifacts
-from tfx.types.standard_component_specs import ExampleValidatorSpec
+from tfx.types import standard_component_specs
 from tfx.utils import json_utils
 
 
@@ -63,13 +59,13 @@ class ExampleValidator(base_component.BaseComponent):
   guide](https://www.tensorflow.org/tfx/guide/exampleval) for more details.
   """
 
-  SPEC_CLASS = ExampleValidatorSpec
+  SPEC_CLASS = standard_component_specs.ExampleValidatorSpec
   EXECUTOR_SPEC = executor_spec.ExecutorClassSpec(executor.Executor)
 
   def __init__(self,
                statistics: types.Channel,
                schema: types.Channel,
-               exclude_splits: Optional[List[Text]] = None):
+               exclude_splits: Optional[List[str]] = None):
     """Construct an ExampleValidator component.
 
     Args:
@@ -83,9 +79,9 @@ class ExampleValidator(base_component.BaseComponent):
       exclude_splits = []
       logging.info('Excluding no splits because exclude_splits is not set.')
     anomalies = types.Channel(type=standard_artifacts.ExampleAnomalies)
-    spec = ExampleValidatorSpec(
+    spec = standard_component_specs.ExampleValidatorSpec(
         statistics=statistics,
         schema=schema,
         exclude_splits=json_utils.dumps(exclude_splits),
         anomalies=anomalies)
-    super(ExampleValidator, self).__init__(spec=spec)
+    super().__init__(spec=spec)

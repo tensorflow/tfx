@@ -81,7 +81,7 @@ class _UnsupportedDevBuildWheelCommand(_BdistWheelCommand):
           'https://github.com/tensorflow/tfx/blob/master/package_build/'
           'README.md.\n\nEditable pip installation for development is still '
           'supported through `pip install -e`.')
-    super(_UnsupportedDevBuildWheelCommand, self).finalize_options()
+    super().finalize_options()
 
 
 class _BuildCommand(build.build):

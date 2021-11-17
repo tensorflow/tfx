@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2020 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,10 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """TFX BigQueryExampleGen component definition."""
-
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
 
 from typing import Optional, Union
 
@@ -70,5 +65,4 @@ class BigQueryExampleGen(component.QueryBasedExampleGen):
     if bool(query) == bool(input_config):
       raise RuntimeError('Exactly one of query and input_config should be set.')
     input_config = input_config or utils.make_default_input_config(query)
-    super(BigQueryExampleGen, self).__init__(
-        input_config=input_config, output_config=output_config)
+    super().__init__(input_config=input_config, output_config=output_config)

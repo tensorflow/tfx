@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2020 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,12 +13,6 @@
 # limitations under the License.
 """Rewriter that invokes the TFJS converter."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
-from typing import Text
-
 from tensorflowjs.converters import converter
 
 from tfx.components.trainer.rewriting import rewriter
@@ -29,7 +22,7 @@ CONVERTER_SERVING_TAG_FLAG = '--saved_model_tags=serve'
 CONVERTER_DEFAULT_SIGNATURE_FLAG = '--signature_name=serving_default'
 
 
-def _convert_tfjs_model(saved_model_path: Text, destination_path: Text):
+def _convert_tfjs_model(saved_model_path: str, destination_path: str):
   converter.convert([
       CONVERTER_SAVED_MODEL_INPUT_FLAG, CONVERTER_SERVING_TAG_FLAG,
       CONVERTER_DEFAULT_SIGNATURE_FLAG,
@@ -49,7 +42,7 @@ def _ensure_str(value):
 class TFJSRewriter(rewriter.BaseRewriter):
   """Performs TFJS conversion."""
 
-  def __init__(self, name: Text):
+  def __init__(self, name: str):
     """Create an instance of the TFJSRewriter.
 
     Args:
@@ -58,7 +51,7 @@ class TFJSRewriter(rewriter.BaseRewriter):
     self._name = name
 
   @property
-  def name(self) -> Text:
+  def name(self) -> str:
     """The user-specified name of the rewriter."""
     return self._name
 

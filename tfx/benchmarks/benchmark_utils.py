@@ -13,10 +13,6 @@
 # limitations under the License.
 """Utility functions shared across the different benchmarks."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import importlib
 from google.protobuf import text_format
 from tensorflow_metadata.proto.v0 import schema_pb2

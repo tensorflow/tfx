@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,10 +13,6 @@
 # limitations under the License.
 """Common utility for testing Kubeflow-based orchestrator."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import datetime
 import json
 import os
@@ -25,7 +20,7 @@ import re
 import subprocess
 import tarfile
 import time
-from typing import Any, Dict, List, Text
+from typing import Any, Dict, List
 
 from absl import logging
 import kfp
@@ -58,6 +53,7 @@ from tfx.types import channel_utils
 from tfx.types import component_spec
 from tfx.types import standard_artifacts
 from tfx.types.standard_artifacts import Model
+from tfx.utils import docker_utils
 from tfx.utils import kube_utils
 from tfx.utils import retry
 from tfx.utils import test_case_utils
@@ -75,9 +71,9 @@ KFP_FINAL_STATUS = frozenset(
     (KFP_SUCCESS_STATUS, KFP_FAIL_STATUS, KFP_SKIPPED_STATUS, KFP_ERROR_STATUS))
 
 
-def poll_kfp_with_retry(host: Text, run_id: Text, retry_limit: int,
+def poll_kfp_with_retry(host: str, run_id: str, retry_limit: int,
                         timeout: datetime.timedelta,
-                        polling_interval: int) -> Text:
+                        polling_interval: int) -> str:
   """Gets the pipeline execution status by polling KFP at the specified host.
 
   Args:
@@ -147,7 +143,7 @@ def poll_kfp_with_retry(host: Text, run_id: Text, retry_limit: int,
     time.sleep(polling_interval)
 
 
-def print_failure_log_for_run(host: Text, run_id: Text, namespace: Text):
+def print_failure_log_for_run(host: str, run_id: str, namespace: str):
   """Prints logs of failed components of a run.
 
   Prints execution logs for failed componentsusing `logging.info`.
@@ -220,8 +216,7 @@ class HelloWorldComponent(BaseComponent):
     if not greeting:
       artifact = standard_artifacts.String()
       greeting = channel_utils.as_channel([artifact])
-    super(HelloWorldComponent,
-          self).__init__(_HelloWorldSpec(word=word, greeting=greeting))
+    super().__init__(_HelloWorldSpec(word=word, greeting=greeting))
 
 
 class ByeWorldComponent(BaseComponent):
@@ -234,11 +229,10 @@ class ByeWorldComponent(BaseComponent):
       args=['received ' + ph.input('hearing')[0].value])
 
   def __init__(self, hearing):
-    super(ByeWorldComponent, self).__init__(_ByeWorldSpec(hearing=hearing))
+    super().__init__(_ByeWorldSpec(hearing=hearing))
 
 
-def create_primitive_type_components(
-    pipeline_name: Text) -> List[BaseComponent]:
+def create_primitive_type_components(pipeline_name: str) -> List[BaseComponent]:
   """Creates components for testing primitive type artifact passing.
 
   Args:
@@ -254,10 +248,10 @@ def create_primitive_type_components(
 
 
 def create_e2e_components(
-    pipeline_root: Text,
-    csv_input_location: Text,
-    transform_module: Text,
-    trainer_module: Text,
+    pipeline_root: str,
+    csv_input_location: str,
+    transform_module: str,
+    trainer_module: str,
 ) -> List[BaseComponent]:
   """Creates components for a simple Chicago Taxi TFX pipeline for testing.
 
@@ -448,12 +442,10 @@ class BaseKubeflowTest(test_case_utils.TfxTest):
     if cls.container_image != cls._BASE_CONTAINER_IMAGE:
       # Delete container image used in tests.
       logging.info('Deleting image %s', cls.container_image)
-      subprocess.run(
-          ['gcloud', 'container', 'images', 'delete', cls.container_image],
-          check=True)
+      docker_utils.delete_image(cls.container_image)
 
   def setUp(self):
-    super(BaseKubeflowTest, self).setUp()
+    super().setUp()
     self._test_dir = self.tmp_dir
     self.enter_context(test_case_utils.change_working_dir(self.tmp_dir))
 
@@ -489,7 +481,7 @@ class BaseKubeflowTest(test_case_utils.TfxTest):
 
     self.addCleanup(self._delete_test_dir, test_id)
 
-  def _delete_test_dir(self, test_id: Text):
+  def _delete_test_dir(self, test_id: str):
     """Deletes files for this test including the module file and data files.
 
     Args:
@@ -498,16 +490,16 @@ class BaseKubeflowTest(test_case_utils.TfxTest):
     test_utils.delete_gcs_files(self._GCP_PROJECT_ID, self._BUCKET_NAME,
                                 'test_data/{}'.format(test_id))
 
-  def _delete_workflow(self, workflow_name: Text):
+  def _delete_workflow(self, workflow_name: str):
     """Deletes the specified Argo workflow."""
     logging.info('Deleting workflow %s', workflow_name)
     subprocess.run(['argo', '--namespace', 'kubeflow', 'delete', workflow_name],
                    check=True)
 
   def _run_workflow(self,
-                    workflow_file: Text,
-                    workflow_name: Text,
-                    parameter: Dict[Text, Text] = None):
+                    workflow_file: str,
+                    workflow_name: str,
+                    parameter: Dict[str, str] = None):
     """Runs the specified workflow with Argo.
 
     Blocks until the workflow has run (successfully or not) to completion.
@@ -519,7 +511,7 @@ class BaseKubeflowTest(test_case_utils.TfxTest):
     """
 
     # TODO(ajaygopinathan): Consider using KFP cli instead.
-    def _format_parameter(parameter: Dict[Text, Any]) -> List[Text]:
+    def _format_parameter(parameter: Dict[str, Any]) -> List[str]:
       """Format the pipeline parameter section of argo workflow."""
       if parameter:
         result = []
@@ -552,7 +544,7 @@ class BaseKubeflowTest(test_case_utils.TfxTest):
         time.sleep(self._POLLING_INTERVAL_IN_SECONDS)
         status = self._get_argo_pipeline_status(workflow_name)
 
-  def _delete_pipeline_output(self, pipeline_name: Text):
+  def _delete_pipeline_output(self, pipeline_name: str):
     """Deletes output produced by the named pipeline.
 
     Args:
@@ -561,10 +553,10 @@ class BaseKubeflowTest(test_case_utils.TfxTest):
     test_utils.delete_gcs_files(self._GCP_PROJECT_ID, self._BUCKET_NAME,
                                 'test_output/{}'.format(pipeline_name))
 
-  def _pipeline_root(self, pipeline_name: Text):
+  def _pipeline_root(self, pipeline_name: str):
     return os.path.join(self._test_output_dir, pipeline_name)
 
-  def _create_pipeline(self, pipeline_name: Text,
+  def _create_pipeline(self, pipeline_name: str,
                        components: List[BaseComponent]):
     """Creates a pipeline given name and list of components."""
     return tfx_pipeline.Pipeline(
@@ -575,7 +567,7 @@ class BaseKubeflowTest(test_case_utils.TfxTest):
     )
 
   def _create_dataflow_pipeline(self,
-                                pipeline_name: Text,
+                                pipeline_name: str,
                                 components: List[BaseComponent],
                                 wait_until_finish_ms: int = 1000 * 60 * 20):
     """Creates a pipeline with Beam DataflowRunner."""
@@ -599,7 +591,7 @@ class BaseKubeflowTest(test_case_utils.TfxTest):
     config = kubeflow_dag_runner.get_default_kubeflow_metadata_config()
     return config
 
-  def _get_argo_pipeline_status(self, workflow_name: Text) -> Text:
+  def _get_argo_pipeline_status(self, workflow_name: str) -> str:
     """Get Pipeline status.
 
     Args:
@@ -619,8 +611,8 @@ class BaseKubeflowTest(test_case_utils.TfxTest):
 
   def _compile_and_run_pipeline(self,
                                 pipeline: tfx_pipeline.Pipeline,
-                                workflow_name: Text = None,
-                                parameters: Dict[Text, Any] = None):
+                                workflow_name: str = None,
+                                parameters: Dict[str, Any] = None):
     """Compiles and runs a KFP pipeline.
 
     Args:

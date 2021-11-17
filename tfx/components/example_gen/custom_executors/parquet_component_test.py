@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,9 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Tests for using parquet_executor with example_gen component."""
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
 
 import os
 
@@ -37,7 +33,7 @@ from ml_metadata.proto import metadata_store_pb2
 class ExampleGenComponentWithParquetExecutorTest(tf.test.TestCase):
 
   def setUp(self):
-    super(ExampleGenComponentWithParquetExecutorTest, self).setUp()
+    super().setUp()
     # Create input_base.
     input_data_dir = os.path.join(
         os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'testdata')

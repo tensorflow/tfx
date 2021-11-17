@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """TFX DataViewProvider component executor."""
-from typing import Any, Dict, List, Text
+from typing import Any, Dict, List
 
 from tfx import types
 from tfx.components.util import udf_utils
@@ -30,9 +30,9 @@ _DATA_VIEW_KEY = 'data_view'
 class TfGraphDataViewProviderExecutor(base_executor.BaseExecutor):
   """Executor for TfGraphDataViewProvider."""
 
-  def Do(self, input_dict: Dict[Text, List[types.Artifact]],
-         output_dict: Dict[Text, List[types.Artifact]],
-         exec_properties: Dict[Text, Any]) -> None:
+  def Do(self, input_dict: Dict[str, List[types.Artifact]],
+         output_dict: Dict[str, List[types.Artifact]],
+         exec_properties: Dict[str, Any]) -> None:
     self._log_startup(input_dict, output_dict, exec_properties)
     create_decoder_func = udf_utils.get_fn(exec_properties,
                                            _CREATE_DECODER_FUNC_KEY)

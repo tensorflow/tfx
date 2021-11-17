@@ -30,7 +30,7 @@ from tfx.utils import test_case_utils
 class CliLocalEndToEndTest(test_case_utils.TfxTest):
 
   def setUp(self):
-    super(CliLocalEndToEndTest, self).setUp()
+    super().setUp()
 
     # Change the encoding for Click since Python 3 is configured to use ASCII as
     # encoding for the environment.

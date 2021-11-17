@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,16 +13,12 @@
 # limitations under the License.
 """Tests for tfx.orchestration.experimental.interactive.interactive_context."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import builtins
 import os
 import shutil
 import tempfile
 import textwrap
-from typing import Any, Dict, List, Text
+from typing import Any, Dict, List
 from unittest import mock
 
 import jinja2
@@ -44,7 +39,7 @@ from tfx.utils import telemetry_utils
 class InteractiveContextTest(tf.test.TestCase):
 
   def setUp(self):
-    super(InteractiveContextTest, self).setUp()
+    super().setUp()
 
     builtins.__dict__['__IPYTHON__'] = True
     self._tmpdir = None
@@ -52,7 +47,7 @@ class InteractiveContextTest(tf.test.TestCase):
   def tearDown(self):
     if self._tmpdir:
       shutil.rmtree(self._tmpdir, ignore_errors=True)
-    super(InteractiveContextTest, self).tearDown()
+    super().tearDown()
 
   def _setupTestNotebook(self, notebook_name='test_notebook.ipynb'):
     notebook = nbformat.v4.new_notebook(
@@ -112,9 +107,9 @@ class InteractiveContextTest(tf.test.TestCase):
     class _FakeExecutor(base_executor.BaseExecutor):
       CALLED = False
 
-      def Do(self, input_dict: Dict[Text, List[types.Artifact]],
-             output_dict: Dict[Text, List[types.Artifact]],
-             exec_properties: Dict[Text, Any]) -> None:
+      def Do(self, input_dict: Dict[str, List[types.Artifact]],
+             output_dict: Dict[str, List[types.Artifact]],
+             exec_properties: Dict[str, Any]) -> None:
         _FakeExecutor.CALLED = True
 
     class _FakeComponent(base_component.BaseComponent):
@@ -122,7 +117,7 @@ class InteractiveContextTest(tf.test.TestCase):
       EXECUTOR_SPEC = executor_spec.ExecutorClassSpec(_FakeExecutor)
 
       def __init__(self, spec: types.ComponentSpec):
-        super(_FakeComponent, self).__init__(spec=spec)
+        super().__init__(spec=spec)
 
     c = interactive_context.InteractiveContext()
     component = _FakeComponent(_FakeComponentSpec())
@@ -148,9 +143,9 @@ class InteractiveContextTest(tf.test.TestCase):
     class _FakeExecutor(base_executor.BaseExecutor):
       CALLED = False
 
-      def Do(self, input_dict: Dict[Text, List[types.Artifact]],
-             output_dict: Dict[Text, List[types.Artifact]],
-             exec_properties: Dict[Text, Any]) -> None:
+      def Do(self, input_dict: Dict[str, List[types.Artifact]],
+             output_dict: Dict[str, List[types.Artifact]],
+             exec_properties: Dict[str, Any]) -> None:
         _FakeExecutor.CALLED = True
 
     class _FakeComponent(base_component.BaseComponent):
@@ -158,13 +153,13 @@ class InteractiveContextTest(tf.test.TestCase):
       EXECUTOR_SPEC = executor_spec.ExecutorClassSpec(_FakeExecutor)
 
       def __init__(self, spec: types.ComponentSpec):
-        super(_FakeComponent, self).__init__(spec=spec)
+        super().__init__(spec=spec)
 
     c = interactive_context.InteractiveContext()
     foo = types.Channel(type=standard_artifacts.Examples).set_artifacts(
         [standard_artifacts.Examples()])
     component = _FakeComponent(_FakeComponentSpec(input=foo))
-    with self.assertRaisesRegexp(ValueError, 'Unresolved input channel'):
+    with self.assertRaisesRegex(ValueError, 'Unresolved input channel'):
       c.run(component)
 
   @mock.patch.object(jinja2.Environment, 'get_template',
@@ -198,7 +193,7 @@ class InteractiveContextTest(tf.test.TestCase):
 
     c = interactive_context.InteractiveContext()
     export_filepath = os.path.join(self._exportdir, 'exported_pipeline.py')
-    with self.assertRaisesRegexp(ValueError, 'runner_type'):
+    with self.assertRaisesRegex(ValueError, 'runner_type'):
       c.export_to_pipeline(notebook_filepath=self._notebook_fp,
                            export_filepath=export_filepath,
                            runner_type='foobar')
@@ -220,7 +215,7 @@ class InteractiveContextTest(tf.test.TestCase):
               'InProcessComponentLauncher.create')
   def testTelemetry(self, mock_launcher_create):
 
-    class _FakeLauncher(object):
+    class _FakeLauncher:
 
       def __init__(self):
         self.recorded_labels = []
@@ -236,9 +231,9 @@ class InteractiveContextTest(tf.test.TestCase):
 
     class _FakeExecutor(base_executor.BaseExecutor):
 
-      def Do(self, input_dict: Dict[Text, List[types.Artifact]],
-             output_dict: Dict[Text, List[types.Artifact]],
-             exec_properties: Dict[Text, Any]) -> None:
+      def Do(self, input_dict: Dict[str, List[types.Artifact]],
+             output_dict: Dict[str, List[types.Artifact]],
+             exec_properties: Dict[str, Any]) -> None:
         pass
 
     class _FakeComponent(base_component.BaseComponent):
@@ -246,7 +241,7 @@ class InteractiveContextTest(tf.test.TestCase):
       EXECUTOR_SPEC = executor_spec.ExecutorClassSpec(_FakeExecutor)
 
       def __init__(self):
-        super(_FakeComponent, self).__init__(spec=_FakeComponentSpec())
+        super().__init__(spec=_FakeComponentSpec())
 
     # Set up fake on launcher.
     fake_launcher = _FakeLauncher()

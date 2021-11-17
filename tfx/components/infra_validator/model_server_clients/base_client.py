@@ -13,10 +13,6 @@
 # limitations under the License.
 """Module for shared interface of every model server clients."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import abc
 import time
 from typing import List

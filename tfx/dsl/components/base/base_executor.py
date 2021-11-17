@@ -21,6 +21,7 @@ from typing import Any, Dict, List, Optional
 from absl import logging
 from tfx import types
 from tfx.dsl.io import fileio
+from tfx.orchestration import data_types_utils
 from tfx.proto.orchestration import execution_result_pb2
 from tfx.proto.orchestration import pipeline_pb2
 from tfx.types import artifact_utils
@@ -139,8 +140,11 @@ class BaseExecutor(abc.ABC):
                   artifact_utils.jsonify_artifact_dict(inputs))
     logging.debug('Outputs for %s are: %s', self.__class__.__name__,
                   artifact_utils.jsonify_artifact_dict(outputs))
-    logging.debug('Execution properties for %s are: %s',
-                  self.__class__.__name__, json.dumps(exec_properties))
+    logging.debug(
+        'Execution properties for %s are: %s', self.__class__.__name__,
+        json.dumps(
+            data_types_utils.build_value_dict(
+                data_types_utils.build_metadata_value_dict(exec_properties))))
 
 
 class EmptyExecutor(BaseExecutor):

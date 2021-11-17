@@ -19,7 +19,7 @@ import tensorflow as tf
 from tfx.orchestration import metadata
 from tfx.orchestration.experimental.core import task_gen_utils
 from tfx.orchestration.experimental.core import test_utils as otu
-from tfx.proto.orchestration import pipeline_pb2
+from tfx.orchestration.experimental.core.testing import test_async_pipeline
 from tfx.utils import test_case_utils as tu
 
 from ml_metadata.proto import metadata_store_pb2
@@ -28,7 +28,7 @@ from ml_metadata.proto import metadata_store_pb2
 class TaskGenUtilsTest(tu.TfxTest):
 
   def setUp(self):
-    super(TaskGenUtilsTest, self).setUp()
+    super().setUp()
     pipeline_root = os.path.join(
         os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR', self.get_temp_dir()),
         self.id())
@@ -44,11 +44,7 @@ class TaskGenUtilsTest(tu.TfxTest):
         connection_config=connection_config)
 
     # Sets up the pipeline.
-    pipeline = pipeline_pb2.Pipeline()
-    self.load_proto_from_text(
-        os.path.join(
-            os.path.dirname(__file__), 'testdata', 'async_pipeline.pbtxt'),
-        pipeline)
+    pipeline = test_async_pipeline.create_pipeline()
     self._pipeline = pipeline
     self._pipeline_info = pipeline.pipeline_info
     self._pipeline_runtime_spec = pipeline.runtime_spec
@@ -158,7 +154,9 @@ class TaskGenUtilsTest(tu.TfxTest):
               m, self._pipeline, self._trainer, executions))
 
     # Next, ensure an active execution for trainer.
-    otu.fake_component_output(self._mlmd_connection, self._trainer)
+    exec_properties = {'int_arg': 24, 'list_bool_arg': [True, False]}
+    otu.fake_component_output(
+        self._mlmd_connection, self._trainer, exec_properties=exec_properties)
     with self._mlmd_connection as m:
       execution = m.store.get_executions()[0]
       execution.last_known_state = metadata_store_pb2.Execution.RUNNING
@@ -169,6 +167,7 @@ class TaskGenUtilsTest(tu.TfxTest):
       task = task_gen_utils.generate_task_from_active_execution(
           m, self._pipeline, self._trainer, executions)
       self.assertEqual(execution.id, task.execution_id)
+      self.assertEqual(exec_properties, task.exec_properties)
 
       # Mark execution complete. No tasks should be generated.
       execution = m.store.get_executions()[0]
@@ -183,7 +182,7 @@ class TaskGenUtilsTest(tu.TfxTest):
     otu.fake_example_gen_run(self._mlmd_connection, self._example_gen, 2, 1)
     with self._mlmd_connection as m:
       resolved_info = task_gen_utils.generate_resolved_info(m, self._transform)
-      self.assertCountEqual(['my_pipeline', 'my_transform'],
+      self.assertCountEqual(['my_pipeline', 'my_pipeline.my_transform'],
                             [c.name for c in resolved_info.contexts])
       self.assertLen(resolved_info.input_artifacts['examples'], 1)
       self.assertProtoPartiallyEquals(

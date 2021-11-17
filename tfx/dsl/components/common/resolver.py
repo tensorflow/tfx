@@ -14,7 +14,7 @@
 """TFX Resolver definition."""
 
 import abc
-from typing import Any, Dict, List, Optional, Text, Type, Sequence, Mapping
+from typing import Any, Dict, List, Optional, Type, Sequence, Mapping
 
 from tfx import types
 from tfx.dsl.components.base import base_driver
@@ -67,9 +67,13 @@ class ResolverStrategy(abc.ABC):
   @classmethod
   def as_resolver_op(cls, input_node: resolver_op.OpNode, **kwargs):
     """ResolverOp-like usage inside resolver_function."""
+    if input_node.output_data_type != resolver_op.DataTypes.ARTIFACT_MULTIMAP:
+      raise TypeError(f'{cls.__name__} takes ARTIFACT_MULTIMAP but got '
+                      f'{input_node.output_data_type.name} instead.')
     return resolver_op.OpNode(
         op_type=cls,
         arg=input_node,
+        output_data_type=resolver_op.DataTypes.ARTIFACT_MULTIMAP,
         kwargs=kwargs)
 
   @deprecation_utils.deprecated(
@@ -273,11 +277,11 @@ class Resolver(base_node.BaseNode):
 
   @property
   @doc_controls.do_not_generate_docs
-  def inputs(self) -> Dict[Text, Any]:
+  def inputs(self) -> Dict[str, Any]:
     return self._input_dict
 
   @property
-  def outputs(self) -> Dict[Text, Any]:
+  def outputs(self) -> Dict[str, Any]:
     """Output Channel dict that contains resolved artifacts."""
     return self._output_dict
 

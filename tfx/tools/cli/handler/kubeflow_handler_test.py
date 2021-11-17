@@ -29,7 +29,7 @@ from tfx.tools.cli.handler import kubeflow_handler
 from tfx.utils import test_case_utils
 
 
-class _MockRunResponse(object):
+class _MockRunResponse:
 
   def __init__(self, pipeline_name, run_id, status, created_at):
     self.pipeline_spec = mock.MagicMock()
@@ -42,7 +42,7 @@ class _MockRunResponse(object):
 class KubeflowHandlerTest(test_case_utils.TfxTest):
 
   def setUp(self):
-    super(KubeflowHandlerTest, self).setUp()
+    super().setUp()
 
     # Flags for handler.
     self.engine = 'kubeflow'
@@ -68,6 +68,8 @@ class KubeflowHandlerTest(test_case_utils.TfxTest):
     self.namespace = 'kubeflow'
     self.iap_client_id = 'dummyID'
 
+    self.runtime_parameter = {'a': '1', 'b': '2'}
+
     default_flags = {
         labels.ENGINE_FLAG: self.engine,
         labels.ENDPOINT: self.endpoint,
@@ -78,6 +80,12 @@ class KubeflowHandlerTest(test_case_utils.TfxTest):
     self.flags_with_name = {
         **default_flags,
         labels.PIPELINE_NAME: self.pipeline_name,
+    }
+
+    self.flags_with_runtime_param = {
+        **default_flags,
+        labels.PIPELINE_NAME: self.pipeline_name,
+        labels.RUNTIME_PARAMETER: self.runtime_parameter,
     }
 
     self.flags_with_dsl_path = {
@@ -237,13 +245,17 @@ class KubeflowHandlerTest(test_case_utils.TfxTest):
     self.mock_client.run_pipeline.return_value = _MockRunResponse(
         self.pipeline_name, '1', 'Success', datetime.datetime.now())
 
-    handler = kubeflow_handler.KubeflowHandler(self.flags_with_name)
+    handler = kubeflow_handler.KubeflowHandler(self.flags_with_runtime_param)
     with self.captureWritesToStream(sys.stdout) as captured:
       handler.create_run()
     self.assertIn('Run created for pipeline: ', captured.contents())
     self.mock_client.run_pipeline.assert_called_once_with(
         experiment_id=self.experiment_id,
         job_name=self.pipeline_name,
+        params={
+            'a': '1',
+            'b': '2'
+        },
         version_id=self.pipeline_version_id)
 
   def testCreateRunNoPipeline(self):

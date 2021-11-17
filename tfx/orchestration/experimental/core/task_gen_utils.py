@@ -16,6 +16,7 @@
 import itertools
 from typing import Dict, Iterable, List, Optional, Sequence
 
+from absl import logging
 import attr
 from tfx import types
 from tfx.orchestration import data_types_utils
@@ -23,9 +24,12 @@ from tfx.orchestration import metadata
 from tfx.orchestration.experimental.core import task as task_lib
 from tfx.orchestration.portable import inputs_utils
 from tfx.orchestration.portable import outputs_utils
+from tfx.orchestration.portable.input_resolution import exceptions
 from tfx.orchestration.portable.mlmd import context_lib
 from tfx.orchestration.portable.mlmd import execution_lib
 from tfx.proto.orchestration import pipeline_pb2
+from tfx.utils import proto_utils
+from tfx.utils import typing_utils
 
 from ml_metadata.proto import metadata_store_pb2
 
@@ -33,8 +37,8 @@ from ml_metadata.proto import metadata_store_pb2
 @attr.s(auto_attribs=True)
 class ResolvedInfo:
   contexts: List[metadata_store_pb2.Context]
-  exec_properties: Dict[str, types.Property]
-  input_artifacts: Optional[Dict[str, List[types.Artifact]]]
+  exec_properties: Dict[str, types.ExecPropertyTypes]
+  input_artifacts: Optional[typing_utils.ArtifactMultiMap]
 
 
 def _generate_task_from_execution(metadata_handler: metadata.Metadata,
@@ -109,11 +113,24 @@ def generate_task_from_active_execution(
 
 
 def _extract_properties(
-    execution: metadata_store_pb2.Execution) -> Dict[str, types.Property]:
+    execution: metadata_store_pb2.Execution
+) -> Dict[str, types.ExecPropertyTypes]:
+  """Extracts execution properties from mlmd Execution."""
   result = {}
   for key, prop in itertools.chain(execution.properties.items(),
                                    execution.custom_properties.items()):
-    value = data_types_utils.get_metadata_value(prop)
+    if execution_lib.is_schema_key(key):
+      continue
+
+    schema_key = execution_lib.get_schema_key(key)
+    schema = None
+    if schema_key in execution.custom_properties:
+      schema = proto_utils.json_to_proto(
+          data_types_utils.get_metadata_value(
+              execution.custom_properties[schema_key]),
+          pipeline_pb2.Value.Schema())
+    value = data_types_utils.get_parsed_value(prop, schema)
+
     if value is None:
       raise ValueError(f'Unexpected property with empty value; key: {key}')
     result[key] = value
@@ -130,18 +147,39 @@ def generate_resolved_info(metadata_handler: metadata.Metadata,
 
   Returns:
     A `ResolvedInfo` with input resolutions.
+
+  Raises:
+    NotImplementedError: Multiple dicts returned by inputs_utils
+      resolve_input_artifacts_v2, which is currently not supported.
   """
   # Register node contexts.
   contexts = context_lib.prepare_contexts(
       metadata_handler=metadata_handler, node_contexts=node.contexts)
 
   # Resolve execution properties.
-  exec_properties = inputs_utils.resolve_parameters(
-      node_parameters=node.parameters)
+  exec_properties = data_types_utils.build_parsed_value_dict(
+      inputs_utils.resolve_parameters_with_schema(
+          node_parameters=node.parameters))
 
   # Resolve inputs.
-  input_artifacts = inputs_utils.resolve_input_artifacts(
-      metadata_handler=metadata_handler, node_inputs=node.inputs)
+  try:
+    resolved_input_artifacts = inputs_utils.resolve_input_artifacts_v2(
+        metadata_handler=metadata_handler, pipeline_node=node)
+  except exceptions.InputResolutionError as e:
+    logging.warning('Input resolution error raised for node: %s; error: %s',
+                    node.node_info.id, e)
+    input_artifacts = None
+  else:
+    if isinstance(resolved_input_artifacts, inputs_utils.Skip):
+      input_artifacts = None
+    else:
+      assert isinstance(resolved_input_artifacts, inputs_utils.Trigger)
+      assert resolved_input_artifacts
+      # TODO(b/197741942): Support multiple dicts.
+      if len(resolved_input_artifacts) > 1:
+        raise NotImplementedError(
+            'Handling more than one input dicts not implemented.')
+      input_artifacts = resolved_input_artifacts[0]
 
   return ResolvedInfo(
       contexts=contexts,

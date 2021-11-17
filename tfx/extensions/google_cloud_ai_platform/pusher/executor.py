@@ -16,7 +16,7 @@
 import time
 from typing import Any, Dict, List
 
-from google.api_core import client_options  # pylint: disable=unused-import
+from google.api_core import client_options
 from googleapiclient import discovery
 from tfx import types
 from tfx.components.pusher import executor as tfx_pusher_executor
@@ -163,8 +163,7 @@ class Executor(tfx_pusher_executor.Executor):
           service_name,
           api_version,
           requestBuilder=telemetry_utils.TFXHttpRequest,
-          # TODO(b/163417407): remove after googleapiclient>=1.8 vendored.
-          # client_options=client_options.ClientOptions(api_endpoint=endpoint),
+          client_options=client_options.ClientOptions(api_endpoint=endpoint),
       )
       pushed_model_version_path = runner.deploy_model_for_aip_prediction(
           serving_path=model_path,

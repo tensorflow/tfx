@@ -13,8 +13,6 @@
 # limitations under the License.
 """Tool to regenerate datasets used in benchmarks."""
 
-# Standard Imports
-
 from absl import app
 from absl import flags
 from absl import logging

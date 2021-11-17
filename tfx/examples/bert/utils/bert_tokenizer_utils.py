@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2020 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,12 +13,7 @@
 # limitations under the License.
 """Prepressing using tensorflow_text BertTokenizer."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import os
-from typing import Text
 
 import tensorflow as tf
 import tensorflow_hub as hub
@@ -33,10 +27,10 @@ _PAD = '[PAD]'
 _SEP = '[SEP]'
 
 
-class BertPreprocessor(object):
+class BertPreprocessor:
   """Bert Tokenizer built ontop of tensorflow_text.BertTokenizer."""
 
-  def __init__(self, model_link: Text):
+  def __init__(self, model_link: str):
     self._model_link = model_link
     self._model = hub.KerasLayer(model_link)
     with eager_mode():

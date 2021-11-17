@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,14 +13,9 @@
 # limitations under the License.
 """Definition of Airflow TFX runner."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
-
 import os
 import typing
-from typing import Any, Dict, Optional, Text, Union
+from typing import Any, Dict, Optional, Union
 import warnings
 
 from airflow import models
@@ -40,7 +34,7 @@ class AirflowPipelineConfig(pipeline_config.PipelineConfig):
   """Pipeline config for AirflowDagRunner."""
 
   def __init__(self,
-               airflow_dag_config: Optional[Dict[Text, Any]] = None,
+               airflow_dag_config: Optional[Dict[str, Any]] = None,
                **kwargs):
     """Creates an instance of AirflowPipelineConfig.
 
@@ -51,7 +45,7 @@ class AirflowPipelineConfig(pipeline_config.PipelineConfig):
       **kwargs: keyword args for PipelineConfig.
     """
 
-    super(AirflowPipelineConfig, self).__init__(**kwargs)
+    super().__init__(**kwargs)
     self.airflow_dag_config = airflow_dag_config or {}
 
 
@@ -59,7 +53,7 @@ class AirflowDagRunner(tfx_runner.TfxRunner):
   """Tfx runner on Airflow."""
 
   def __init__(self,
-               config: Optional[Union[Dict[Text, Any],
+               config: Optional[Union[Dict[str, Any],
                                       AirflowPipelineConfig]] = None):
     """Creates an instance of AirflowDagRunner.
 
@@ -72,7 +66,7 @@ class AirflowDagRunner(tfx_runner.TfxRunner):
           'Pass config as a dict type is going to deprecated in 0.1.16. '
           'Use AirflowPipelineConfig type instead.', PendingDeprecationWarning)
       config = AirflowPipelineConfig(airflow_dag_config=config)
-    super(AirflowDagRunner, self).__init__(config)
+    super().__init__(config)
 
   def run(self, tfx_pipeline: pipeline.Pipeline):
     """Deploys given logical pipeline on Airflow.

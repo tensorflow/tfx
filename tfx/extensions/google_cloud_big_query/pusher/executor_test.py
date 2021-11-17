@@ -15,7 +15,7 @@
 
 import copy
 import os
-from typing import Any, Dict, Text
+from typing import Any, Dict
 from unittest import mock
 
 from google.cloud import bigquery
@@ -74,7 +74,7 @@ class ExecutorTest(tf.test.TestCase):
     self.mock_copy_dir = mock.patch.object(
         io_utils, 'copy_dir', autospec=True).start()
 
-  def _serialize_custom_config_under_test(self) -> Dict[Text, Any]:
+  def _serialize_custom_config_under_test(self) -> Dict[str, Any]:
     """Converts self._exec_properties['custom_config'] to string."""
     result = copy.deepcopy(self._exec_properties)
     result['custom_config'] = json_utils.dumps(result['custom_config'])

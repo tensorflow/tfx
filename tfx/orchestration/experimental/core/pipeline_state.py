@@ -14,9 +14,10 @@
 """Pipeline state management functionality."""
 
 import base64
+import contextlib
 import threading
 import time
-from typing import Dict, List, Mapping, Optional
+from typing import Dict, Iterator, List, Mapping, Optional, Tuple
 
 import attr
 from tfx import types
@@ -40,6 +41,7 @@ _PIPELINE_STATUS_CODE = 'pipeline_status_code'
 _PIPELINE_STATUS_MSG = 'pipeline_status_msg'
 _NODE_STATES = 'node_states'
 _PIPELINE_RUN_METADATA = 'pipeline_run_metadata'
+_UPDATED_PIPELINE_IR = 'updated_pipeline_ir'
 _ORCHESTRATOR_EXECUTION_TYPE = metadata_store_pb2.ExecutionType(
     name=_ORCHESTRATOR_RESERVED_ID,
     properties={_PIPELINE_IR: metadata_store_pb2.STRING})
@@ -49,17 +51,51 @@ _state_change_time_lock = threading.Lock()
 
 
 @attr.s(auto_attribs=True, kw_only=True)
-class _NodeState(json_utils.Jsonable):
+class NodeState(json_utils.Jsonable):
   """Records node state.
 
   Attributes:
-    stop_initiated: Whether node stop has been initiated.
-    status_code: Status code for a stop initiated node.
-    status_msg: Status message for a stop initiated node.
+    state: Current state of the node.
+    status: Status of the node in state STOPPING or STOPPED.
   """
-  stop_initiated: bool = False
+
+  # This state indicates that the node is pending some internal work before its
+  # state can be changed to STARTED.
+  STARTING = 'starting'
+
+  # This state indicates that the node is started and can run when triggering
+  # events occur.
+  STARTED = 'started'
+
+  # This state indicates that the node is pending some internal work before its
+  # state can be changed to STOPPED.
+  STOPPING = 'stopping'
+
+  # This state indicates that the node is stopped.
+  STOPPED = 'stopped'
+
+  state: str = attr.ib(
+      default=STARTED,
+      validator=attr.validators.in_([STARTING, STARTED, STOPPING, STOPPED]))
   status_code: Optional[int] = None
   status_msg: str = ''
+
+  @property
+  def status(self) -> Optional[status_lib.Status]:
+    if self.status_code is not None:
+      return status_lib.Status(code=self.status_code, message=self.status_msg)
+    return None
+
+  def update(self,
+             state: str,
+             status: Optional[status_lib.Status] = None) -> None:
+    self.state = state
+    if status is not None:
+      self.status_code = status.code
+      self.status_msg = status.message
+    else:
+      self.status_code = None
+      self.status_msg = ''
 
 
 def record_state_change_time() -> None:
@@ -104,7 +140,6 @@ class PipelineState:
     self.mlmd_handle = mlmd_handle
     self.pipeline = pipeline
     self.execution_id = execution_id
-    self.pipeline_uid = task_lib.PipelineUid.from_pipeline(pipeline)
 
     # Only set within the pipeline state context.
     self._mlmd_execution_atomic_op_context = None
@@ -146,8 +181,7 @@ class PipelineState:
           message=f'Pipeline with uid {pipeline_uid} already active.')
 
     exec_properties = {
-        _PIPELINE_IR:
-            base64.b64encode(pipeline.SerializeToString()).decode('utf-8')
+        _PIPELINE_IR: _base64_encode_pipeline(pipeline)
     }
     if pipeline_run_metadata:
       exec_properties[_PIPELINE_RUN_METADATA] = json_utils.dumps(
@@ -223,6 +257,17 @@ class PipelineState:
         pipeline=pipeline,
         execution_id=active_execution.id)
 
+  @property
+  def pipeline_uid(self) -> task_lib.PipelineUid:
+    return task_lib.PipelineUid.from_pipeline(self.pipeline)
+
+  @property
+  def pipeline_run_id(self) -> Optional[str]:
+    """Returns pipeline_run_id in case of sync pipeline, `None` otherwise."""
+    if self.pipeline.execution_mode == pipeline_pb2.Pipeline.SYNC:
+      return self.pipeline.runtime_spec.pipeline_run_id.field_value.string_value
+    return None
+
   def is_active(self) -> bool:
     """Returns `True` if pipeline is active."""
     self._check_context()
@@ -242,6 +287,71 @@ class PipelineState:
           status.message)
     record_state_change_time()
 
+  def initiate_update(self, updated_pipeline: pipeline_pb2.Pipeline) -> None:
+    """Initiates pipeline update process."""
+    self._check_context()
+
+    if self.pipeline.execution_mode != updated_pipeline.execution_mode:
+      raise status_lib.StatusNotOkError(
+          code=status_lib.Code.INVALID_ARGUMENT,
+          message=('Updating execution_mode of an active pipeline is not '
+                   'supported'))
+
+    if self.pipeline.execution_mode == pipeline_pb2.Pipeline.SYNC:
+      updated_pipeline_run_id = (
+          updated_pipeline.runtime_spec.pipeline_run_id.field_value.string_value
+      )
+      if self.pipeline_run_id != updated_pipeline_run_id:
+        raise status_lib.StatusNotOkError(
+            code=status_lib.Code.INVALID_ARGUMENT,
+            message=(f'For sync pipeline, pipeline_run_id should match; found '
+                     f'mismatch: {self.pipeline_run_id} (existing) vs. '
+                     f'{updated_pipeline_run_id} (updated)'))
+
+    # TODO(b/194311197): We require that structure of the updated pipeline
+    # exactly matches the original. There is scope to relax this restriction.
+
+    def _structure(
+        pipeline: pipeline_pb2.Pipeline
+    ) -> List[Tuple[str, List[str], List[str]]]:
+      return [(node.node_info.id, list(node.upstream_nodes),
+               list(node.downstream_nodes))
+              for node in get_all_pipeline_nodes(pipeline)]
+
+    if _structure(self.pipeline) != _structure(updated_pipeline):
+      raise status_lib.StatusNotOkError(
+          code=status_lib.Code.INVALID_ARGUMENT,
+          message=('Updated pipeline should have the same structure as the '
+                   'original.'))
+
+    data_types_utils.set_metadata_value(
+        self._execution.custom_properties[_UPDATED_PIPELINE_IR],
+        _base64_encode_pipeline(updated_pipeline))
+    record_state_change_time()
+
+  def is_update_initiated(self) -> bool:
+    self._check_context()
+    return self.is_active() and self._execution.custom_properties.get(
+        _UPDATED_PIPELINE_IR) is not None
+
+  def apply_pipeline_update(self) -> None:
+    """Applies pipeline update that was previously initiated."""
+    self._check_context()
+    updated_pipeline_ir = _get_metadata_value(
+        self._execution.custom_properties.get(_UPDATED_PIPELINE_IR))
+    if not updated_pipeline_ir:
+      raise status_lib.StatusNotOkError(
+          code=status_lib.Code.INVALID_ARGUMENT,
+          message='No updated pipeline IR to apply')
+    data_types_utils.set_metadata_value(
+        self._execution.properties[_PIPELINE_IR], updated_pipeline_ir)
+    del self._execution.custom_properties[_UPDATED_PIPELINE_IR]
+    self.pipeline = _base64_decode_pipeline(updated_pipeline_ir)
+
+  def is_stop_initiated(self) -> bool:
+    self._check_context()
+    return self.stop_initiated_reason() is not None
+
   def stop_initiated_reason(self) -> Optional[status_lib.Status]:
     """Returns status object if stop initiated, `None` otherwise."""
     self._check_context()
@@ -255,64 +365,31 @@ class PipelineState:
     else:
       return None
 
-  def initiate_node_start(self, node_uid: task_lib.NodeUid) -> None:
-    """Updates pipeline state to signal that a node should be started."""
+  @contextlib.contextmanager
+  def node_state_update_context(
+      self, node_uid: task_lib.NodeUid) -> Iterator[NodeState]:
+    """Context manager for updating the node state."""
     self._check_context()
-    if self.pipeline.execution_mode != pipeline_pb2.Pipeline.ASYNC:
-      raise status_lib.StatusNotOkError(
-          code=status_lib.Code.UNIMPLEMENTED,
-          message='Node can be started only for async pipelines.')
     if not _is_node_uid_in_pipeline(node_uid, self.pipeline):
       raise status_lib.StatusNotOkError(
           code=status_lib.Code.INVALID_ARGUMENT,
-          message=(f'Node given by uid {node_uid} does not belong to pipeline '
-                   f'given by uid {self.pipeline_uid}'))
+          message=(f'Node {node_uid} does not belong to the pipeline '
+                   f'{self.pipeline_uid}'))
     node_states_dict = self._get_node_states_dict()
-    node_state = node_states_dict.get(node_uid.node_id)
-    if node_state and node_state.stop_initiated:
-      node_state.status_code = None
-      node_state.status_msg = ''
-      node_state.stop_initiated = False
-      self._save_node_states_dict(node_states_dict)
-      record_state_change_time()
-
-  def initiate_node_stop(self, node_uid: task_lib.NodeUid,
-                         status: status_lib.Status) -> None:
-    """Updates pipeline state to signal that a node should be stopped."""
-    self._check_context()
-    if self.pipeline.execution_mode != pipeline_pb2.Pipeline.ASYNC:
-      raise status_lib.StatusNotOkError(
-          code=status_lib.Code.UNIMPLEMENTED,
-          message='Node can be stopped only for async pipelines.')
-    if not _is_node_uid_in_pipeline(node_uid, self.pipeline):
-      raise status_lib.StatusNotOkError(
-          code=status_lib.Code.INVALID_ARGUMENT,
-          message=(f'Node given by uid {node_uid} does not belong to pipeline '
-                   f'given by uid {self.pipeline_uid}'))
-    node_states_dict = self._get_node_states_dict()
-    node_state = node_states_dict.get(node_uid.node_id, _NodeState())
-    node_state.stop_initiated = True
-    node_state.status_code = status.code
-    node_state.status_msg = status.message
-    node_states_dict[node_uid.node_id] = node_state
+    node_state = node_states_dict.setdefault(node_uid.node_id, NodeState())
+    yield node_state
     self._save_node_states_dict(node_states_dict)
     record_state_change_time()
 
-  def node_stop_initiated_reason(
-      self, node_uid: task_lib.NodeUid) -> Optional[status_lib.Status]:
-    """Returns status object if node stop initiated, `None` otherwise."""
+  def get_node_state(self, node_uid: task_lib.NodeUid) -> NodeState:
     self._check_context()
-    if node_uid.pipeline_uid != self.pipeline_uid:
-      raise RuntimeError(
-          f'Node given by uid {node_uid} does not belong to pipeline given '
-          f'by uid {self.pipeline_uid}')
+    if not _is_node_uid_in_pipeline(node_uid, self.pipeline):
+      raise status_lib.StatusNotOkError(
+          code=status_lib.Code.INVALID_ARGUMENT,
+          message=(f'Node {node_uid} does not belong to the pipeline '
+                   f'{self.pipeline_uid}'))
     node_states_dict = self._get_node_states_dict()
-    node_state = node_states_dict.get(node_uid.node_id)
-    if node_state and node_state.stop_initiated:
-      return status_lib.Status(
-          code=node_state.status_code or status_lib.Code.UNKNOWN,
-          message=node_state.status_msg)
-    return None
+    return node_states_dict.get(node_uid.node_id, NodeState())
 
   def get_pipeline_execution_state(self) -> metadata_store_pb2.Execution.State:
     """Returns state of underlying pipeline execution."""
@@ -348,12 +425,12 @@ class PipelineState:
     if self._execution.custom_properties.get(property_key):
       del self._execution.custom_properties[property_key]
 
-  def _get_node_states_dict(self) -> Dict[str, _NodeState]:
+  def _get_node_states_dict(self) -> Dict[str, NodeState]:
     node_states_json = _get_metadata_value(
         self._execution.custom_properties.get(_NODE_STATES))
     return json_utils.loads(node_states_json) if node_states_json else {}
 
-  def _save_node_states_dict(self, node_states: Dict[str, _NodeState]) -> None:
+  def _save_node_states_dict(self, node_states: Dict[str, NodeState]) -> None:
     data_types_utils.set_metadata_value(
         self._execution.custom_properties[_NODE_STATES],
         json_utils.dumps(node_states))
@@ -550,9 +627,7 @@ def _get_pipeline_from_orchestrator_execution(
     execution: metadata_store_pb2.Execution) -> pipeline_pb2.Pipeline:
   pipeline_ir_b64 = data_types_utils.get_metadata_value(
       execution.properties[_PIPELINE_IR])
-  pipeline = pipeline_pb2.Pipeline()
-  pipeline.ParseFromString(base64.b64decode(pipeline_ir_b64))
-  return pipeline
+  return _base64_decode_pipeline(pipeline_ir_b64)
 
 
 def _get_active_execution(
@@ -585,3 +660,13 @@ def _get_latest_execution(
     return execution.create_time_since_epoch
 
   return max(executions, key=_get_creation_time)
+
+
+def _base64_encode_pipeline(pipeline: pipeline_pb2.Pipeline) -> str:
+  return base64.b64encode(pipeline.SerializeToString()).decode('utf-8')
+
+
+def _base64_decode_pipeline(pipeline_encoded: str) -> pipeline_pb2.Pipeline:
+  result = pipeline_pb2.Pipeline()
+  result.ParseFromString(base64.b64decode(pipeline_encoded))
+  return result

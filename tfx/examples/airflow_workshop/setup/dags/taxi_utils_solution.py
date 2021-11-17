@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,11 +20,7 @@ The utilities in this file are used to build a model with native Keras.
 This module file will be used in Transform and generic Trainer.
 """
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
-from typing import List, Text
+from typing import List
 
 import absl
 import tensorflow as tf
@@ -120,7 +115,7 @@ def _get_serve_tf_examples_fn(model, tf_transform_output):
   return serve_tf_examples_fn
 
 
-def _input_fn(file_pattern: List[Text], data_accessor: DataAccessor,
+def _input_fn(file_pattern: List[str], data_accessor: DataAccessor,
               tf_transform_output: tft.TFTransformOutput,
               batch_size: int) -> tf.data.Dataset:
   """Generates features and label for tuning/training.

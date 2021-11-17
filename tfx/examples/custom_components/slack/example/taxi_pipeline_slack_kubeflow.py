@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -103,7 +102,7 @@ def _create_pipeline():
       schema=schema_gen.outputs['schema'],
       preprocessing_fn=_taxi_transformer_func)
 
-  # Uses user-provided Python function that implements a model using TF-Learn.
+  # Uses user-provided Python function that implements a model.
   trainer = Trainer(
       trainer_fn=_taxi_trainer_func,
       examples=transform.outputs['transformed_examples'],

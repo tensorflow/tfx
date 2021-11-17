@@ -13,10 +13,6 @@
 # limitations under the License.
 """TFMA benchmark for Chicago Taxi dataset."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 from tfx.benchmarks import tfma_benchmark_base
 from tfx.benchmarks.datasets.chicago_taxi import dataset
 
@@ -26,8 +22,7 @@ from tensorflow.python.platform import test  # pylint: disable=g-direct-tensorfl
 class TFMABenchmarkChicagoTaxi(tfma_benchmark_base.TFMABenchmarkBase):
 
   def __init__(self, **kwargs):
-    super(TFMABenchmarkChicagoTaxi, self).__init__(
-        dataset=dataset.get_dataset(), **kwargs)
+    super().__init__(dataset=dataset.get_dataset(), **kwargs)
 
 
 if __name__ == "__main__":

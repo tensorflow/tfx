@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,12 +13,7 @@
 # limitations under the License.
 """E2E Tests for tfx.examples.chicago_taxi_pipeline.taxi_pipeline_local."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import os
-from typing import Text
 
 from absl.testing import parameterized
 import tensorflow as tf
@@ -32,7 +26,7 @@ from tfx.orchestration.local.local_dag_runner import LocalDagRunner
 class TaxiPipelineLocalEndToEndTest(tf.test.TestCase, parameterized.TestCase):
 
   def setUp(self):
-    super(TaxiPipelineLocalEndToEndTest, self).setUp()
+    super().setUp()
     self._test_dir = os.path.join(
         os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR', self.get_temp_dir()),
         self._testMethodName)
@@ -46,7 +40,7 @@ class TaxiPipelineLocalEndToEndTest(tf.test.TestCase, parameterized.TestCase):
     self._metadata_path = os.path.join(self._test_dir, 'tfx', 'metadata',
                                        self._pipeline_name, 'metadata.db')
 
-  def assertExecutedOnce(self, component: Text) -> None:
+  def assertExecutedOnce(self, component: str) -> None:
     """Check the component is executed exactly once."""
     component_path = os.path.join(self._pipeline_root, component)
     self.assertTrue(fileio.exists(component_path))

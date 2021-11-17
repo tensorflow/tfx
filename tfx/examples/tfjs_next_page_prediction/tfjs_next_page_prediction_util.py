@@ -12,12 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Python source file includes pipeline functions and necessary utils."""
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
 
 import os
-from typing import List, Text
+from typing import List
 
 import absl
 import tensorflow as tf
@@ -73,7 +70,7 @@ def preprocessing_fn(inputs):
   return outputs
 
 
-def _input_fn(file_pattern: List[Text],
+def _input_fn(file_pattern: List[str],
               data_accessor: tfx.components.DataAccessor,
               tf_transform_output: tft.TFTransformOutput,
               batch_size: int = 200) -> tf.data.Dataset:

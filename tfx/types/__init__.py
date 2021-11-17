@@ -15,6 +15,7 @@
 
 from tfx.types.artifact import Artifact
 from tfx.types.channel import Channel
+from tfx.types.channel import ExecPropertyTypes
 from tfx.types.channel import Property  # Type alias.
 from tfx.types.component_spec import ComponentSpec
 from tfx.types.value_artifact import ValueArtifact

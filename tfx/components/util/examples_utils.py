@@ -13,7 +13,6 @@
 # limitations under the License.
 """Utility functions related to Examples artifact shared by components."""
 
-
 from absl import logging
 from tfx import types
 from tfx.components.example_gen import utils as example_gen_utils

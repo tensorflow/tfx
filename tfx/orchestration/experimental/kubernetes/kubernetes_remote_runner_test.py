@@ -67,14 +67,14 @@ class _FakeComponent(base_component.BaseComponent):
   EXECUTOR_SPEC = executor_spec.ExecutorClassSpec(base_executor.BaseExecutor)
 
   def __init__(self, spec: types.ComponentSpec):
-    super(_FakeComponent, self).__init__(spec=spec)
+    super().__init__(spec=spec)
     self._id = spec.__class__.__name__.replace('_FakeComponentSpec', '').lower()
 
 
 class KubernetesRemoteRunnerTest(tf.test.TestCase):
 
   def setUp(self):
-    super(KubernetesRemoteRunnerTest, self).setUp()
+    super().setUp()
     self.component_a = _FakeComponent(
         _FakeComponentSpecA(output=types.Channel(type=_ArtifactTypeA)))
     self.component_b = _FakeComponent(

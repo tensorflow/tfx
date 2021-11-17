@@ -14,7 +14,7 @@
 """Abstract TFX executor class for Beam powered components."""
 
 import sys
-from typing import Any, List, Optional
+from typing import Any, Callable, List, Optional
 
 from absl import flags
 from absl import logging
@@ -37,16 +37,18 @@ class BaseBeamExecutor(BaseExecutor):
   class Context(BaseExecutor.Context):
     """Context class for base Beam excecutor."""
 
-    def __init__(self,
-                 beam_pipeline_args: Optional[List[str]] = None,
-                 extra_flags: Optional[List[str]] = None,
-                 tmp_dir: Optional[str] = None,
-                 unique_id: Optional[str] = None,
-                 executor_output_uri: Optional[str] = None,
-                 stateful_working_dir: Optional[str] = None,
-                 pipeline_node: Optional[pipeline_pb2.PipelineNode] = None,
-                 pipeline_info: Optional[pipeline_pb2.PipelineInfo] = None,
-                 pipeline_run_id: Optional[str] = None):
+    def __init__(
+        self,
+        beam_pipeline_args: Optional[List[str]] = None,
+        extra_flags: Optional[List[str]] = None,
+        tmp_dir: Optional[str] = None,
+        unique_id: Optional[str] = None,
+        executor_output_uri: Optional[str] = None,
+        stateful_working_dir: Optional[str] = None,
+        pipeline_node: Optional[pipeline_pb2.PipelineNode] = None,
+        pipeline_info: Optional[pipeline_pb2.PipelineInfo] = None,
+        pipeline_run_id: Optional[str] = None,
+        make_beam_pipeline_fn: Optional[Callable[[], _BeamPipeline]] = None):
       super().__init__(
           extra_flags=extra_flags,
           tmp_dir=tmp_dir,
@@ -57,15 +59,18 @@ class BaseBeamExecutor(BaseExecutor):
           pipeline_info=pipeline_info,
           pipeline_run_id=pipeline_run_id)
       self.beam_pipeline_args = beam_pipeline_args
+      self.make_beam_pipeline_fn = make_beam_pipeline_fn
 
   def __init__(self, context: Optional[Context] = None):
     """Constructs a beam based executor."""
     super().__init__(context)
 
     self._beam_pipeline_args = None
+    self._make_beam_pipeline_fn = None
     if context:
       if isinstance(context, BaseBeamExecutor.Context):
         self._beam_pipeline_args = context.beam_pipeline_args
+        self._make_beam_pipeline_fn = context.make_beam_pipeline_fn
       else:
         raise ValueError('BaseBeamExecutor found initialized with '
                          'BaseExecutorSpec. Please use BeamEecutorSpec for '
@@ -90,6 +95,8 @@ class BaseBeamExecutor(BaseExecutor):
   # into same pipeline.
   def _make_beam_pipeline(self) -> _BeamPipeline:
     """Makes beam pipeline."""
+    if self._make_beam_pipeline_fn is not None:
+      return self._make_beam_pipeline_fn()
     if not beam:
       raise Exception(
           'Apache Beam must be installed to use this functionality.')

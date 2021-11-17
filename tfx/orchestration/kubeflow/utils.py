@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,11 +13,7 @@
 # limitations under the License.
 """Common utility for Kubeflow-based orchestrator."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
 
-from typing import Text
 # utils.py should not be used in container_entrypoint.py because of its
 # dependency on KFP.
 from kfp import dsl
@@ -38,7 +33,7 @@ def replace_placeholder(component: base_node.BaseNode) -> None:
         dsl.PipelineParam(name=exec_property.name))
 
 
-def fix_brackets(placeholder: Text) -> Text:
+def fix_brackets(placeholder: str) -> str:
   """Fix the imbalanced brackets in placeholder.
 
   When ptype is not null, regex matching might grab a placeholder with }

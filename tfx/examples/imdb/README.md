@@ -3,37 +3,11 @@
 *   The data is downloaded from tensorflow_dataset.
 *   The example dataset imdb_small_with_labels.csv that comes within /data is
     the first 100 entries of the original dataset.
-*   To fetch the entire dataset, please use the snippet below
-*   And please adjust the corresponding hyperparameters to account for the
+*   See [imdb_fetch_data.py](/tfx/examples/imdb/imdb_fetch_data.py) to use the
+    entire imdb dataset. Please adjust the hyperparameters to account for the
     larger dataset.
 
-```python
-# Run this file to download and preprocess then entire imdb dataset.
-# Remove the imdb_small_with_labels.csv that comes natively in the repo/data
-# folder. Make sure imdb.csv is present in the /data folder.
-# Change the hyperparameters to better suit the bigger dataset.
-# The configurations that were found reasonable are listed below:
-# imdb_pipeline_native_keras.py:
-#    tfma.GenericValueThreshold(lower_bound={'value':0.85}
-#    trainer_pb2.TrainArgs(num_steps=7000)
-#    trainer_pb2.EvalArgs(num_steps=800)
-# imdb_utils_native_keras.py:
-#    _TRAIN_BATCH_SIZE=64
-#    _EVAL_BATCH_SIZE=64
-
-import os import pandas as pd
-import tensorflow_datasets as tfds
-
-if __name__ == '__main__':
-  ds = tfds.load('imdb_reviews', split='train+test')
-  numpy_ds = tfds.as_numpy(ds)
-  df = pd.DataFrame(numpy_ds)
-  df['text'] = df['text'].str.decode("utf-8")
-  dst_path = os.getcwd() + '/data/imdb.csv'
-  df.to_csv(dst_path, index=False)
-```
-
-# Acknowledge Data Source
+# Data Source Acknowledgement
 
 ```
 @InProceedings{maas-EtAl:2011:ACL-HLT2011,

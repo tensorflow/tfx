@@ -14,14 +14,38 @@
 """Utility for frequently used types and its typecheck."""
 
 import collections
-from typing import TypeVar, Mapping, Sequence, Any
+from typing import TypeVar, Mapping, MutableMapping, Sequence, MutableSequence, Any, Dict, List
 
 import tfx.types
 
 _KT = TypeVar('_KT')
+_VT = TypeVar('_VT')
 _VT_co = TypeVar('_VT_co', covariant=True)  # pylint: disable=invalid-name # pytype: disable=not-supported-yet
+
+# Note: Only immutable multimap can have covariant value types, because for
+# zoo: MutableMapping[str, Animal], zoo['cat'].append(Dog()) is invalid.
 MultiMap = Mapping[_KT, Sequence[_VT_co]]
+MutableMultiMap = MutableMapping[_KT, MutableSequence[_VT]]
+
+# Note: We don't use TypeVar for Artifact (e.g.
+# TypeVar('Artifact', bound=tfx.types.Artifact)) because different key contains
+# different Artifact subtypes (e.g. "examples" has Examples, "model" has Model).
+# This makes, for example, artifact_dict['examples'].append(Examples()) invalid,
+# but this is the best type effort we can make.
 ArtifactMultiMap = MultiMap[str, tfx.types.Artifact]
+ArtifactMutableMultiMap = MutableMultiMap[str, tfx.types.Artifact]
+# Commonly used legacy artifact dict concrete type. Always prefer to use
+# ArtifactMultiMap or ArtifactMutableMultiMap.
+ArtifactMultiDict = Dict[str, List[tfx.types.Artifact]]
+
+
+def is_homogeneous_artifact_list(value: Any) -> bool:
+  """Checks value is Sequence[T] where T is subclass of Artifact."""
+  return (
+      isinstance(value, collections.abc.Sequence) and
+      (not value or
+       (issubclass(type(value[0]), tfx.types.Artifact) and
+        all(isinstance(v, type(value[0])) for v in value[1:]))))
 
 
 def is_artifact_multimap(value: Any) -> bool:

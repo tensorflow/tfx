@@ -17,9 +17,10 @@ import functools
 import os
 import re
 import sys
-from typing import Text
 
 import click
+
+from kfp.v2.google import client as kfp_client
 
 from tfx.dsl.io import fileio
 from tfx.tools.cli import labels
@@ -27,12 +28,6 @@ from tfx.tools.cli.handler import base_handler
 from tfx.tools.cli.handler import kubeflow_handler
 from tfx.tools.cli.handler import kubeflow_v2_dag_runner_patcher
 from tfx.utils import io_utils
-
-# TODO(b/182792980): Move to regular import.
-try:
-  from kfp.v2.google import client as kfp_client  # pylint: disable=g-import-not-at-top # pytype: disable=import-error
-except ImportError:
-  kfp_client = None
 
 
 _PIPELINE_ARG_FILE = 'pipeline_args.json'
@@ -63,7 +58,7 @@ def _get_job_id(full_name: str) -> str:
   return match_result.group(3)
 
 
-def _get_job_link(project_id: str, region: str, job_id: str) -> Text:
+def _get_job_link(project_id: str, region: str, job_id: str) -> str:
   """Gets the link to the pipeline job UI according to job name and project."""
   return _RUN_DETAIL_FORMAT.format(
       region=region, job_id=job_id, project_id=project_id)
@@ -133,7 +128,7 @@ class VertexHandler(base_handler.BaseHandler):
     click.echo(f'Pipeline {context[patcher.PIPELINE_NAME]} compiled '
                'successfully.')
 
-  def _create_vertex_client(self):  #-> kfp_client.AIPlatformClient:
+  def _create_vertex_client(self) -> kfp_client.AIPlatformClient:
     if not self.flags_dict[labels.GCP_PROJECT_ID]:
       sys.exit('Please set GCP project id with --project flag.')
     if not self.flags_dict[labels.GCP_REGION]:
@@ -148,8 +143,13 @@ class VertexHandler(base_handler.BaseHandler):
     vertex_client = self._create_vertex_client()
     pipeline_name = self.flags_dict[labels.PIPELINE_NAME]
 
+    # In Vertex AI, runtime parameter string value is parsed from the server,
+    # so client directly sends Dict[str, str] value.
+    unparsed_runtime_parameters = self.flags_dict[labels.RUNTIME_PARAMETER]
+
     run = vertex_client.create_run_from_job_spec(
-        job_spec_path=self._get_pipeline_definition_path(pipeline_name))
+        job_spec_path=self._get_pipeline_definition_path(pipeline_name),
+        parameter_values=unparsed_runtime_parameters)
 
     click.echo('Run created for pipeline: ' + pipeline_name)
     self._print_run(run)

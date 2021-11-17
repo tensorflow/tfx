@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2020 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,15 +13,9 @@
 # limitations under the License.
 """Integration tests for TFX-on-KFP and GCP services."""
 
-# TODO(b/149535307): Remove __future__ imports
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import datetime
 import os
 import subprocess
-from typing import Text
 
 from absl import logging
 import kfp
@@ -146,7 +139,7 @@ class KubeflowGcpPerfTest(kubeflow_test_utils.BaseKubeflowTest):
     logging.info(
         subprocess.check_output(delete_cluster_command).decode('utf-8'))
 
-  def _get_workflow_name(self, pipeline_name: Text) -> Text:
+  def _get_workflow_name(self, pipeline_name: str) -> str:
     """Gets the Argo workflow name using pipeline name."""
     get_workflow_name_command = (
         'argo --namespace %s list | grep -o "%s[^ ]*"' %
@@ -156,7 +149,7 @@ class KubeflowGcpPerfTest(kubeflow_test_utils.BaseKubeflowTest):
     return subprocess.check_output(
         get_workflow_name_command, shell=True).decode('utf-8')[:-1]
 
-  def _get_workflow_log(self, pipeline_name: Text) -> Text:
+  def _get_workflow_log(self, pipeline_name: str) -> str:
     """Gets the workflow log for all the pods using pipeline name."""
     get_workflow_log_command = [
         'argo', '--namespace', self._KFP_NAMESPACE, 'logs', '-w',
@@ -166,8 +159,8 @@ class KubeflowGcpPerfTest(kubeflow_test_utils.BaseKubeflowTest):
     # Python 3.5.
     return subprocess.check_output(get_workflow_log_command).decode('utf-8')
 
-  def _assert_successful_run_completion(self, host: Text, run_id: Text,
-                                        pipeline_name: Text,
+  def _assert_successful_run_completion(self, host: str, run_id: str,
+                                        pipeline_name: str,
                                         timeout: datetime.timedelta):
     """Waits and asserts a successful KFP pipeline execution.
 

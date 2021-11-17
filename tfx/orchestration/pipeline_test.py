@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,14 +13,9 @@
 # limitations under the License.
 """Tests for tfx.orchestration.pipeline."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
-
 import itertools
 import os
-from typing import Any, Dict, Text, Type
+from typing import Any, Dict, Type
 
 import tensorflow as tf
 from tfx import types
@@ -40,29 +34,29 @@ class _OutputArtifact(types.Artifact):
   TYPE_NAME = 'OutputArtifact'
 
 
-def _make_fake_node_instance(name: Text):
+def _make_fake_node_instance(name: str):
 
   class _FakeNode(base_node.BaseNode):
 
     @property
-    def inputs(self) -> Dict[Text, Any]:
+    def inputs(self) -> Dict[str, Any]:
       return {}
 
     @property
-    def outputs(self) -> Dict[Text, Any]:
+    def outputs(self) -> Dict[str, Any]:
       return {}
 
     @property
-    def exec_properties(self) -> Dict[Text, Any]:
+    def exec_properties(self) -> Dict[str, Any]:
       return {}
 
   return _FakeNode().with_id(name)
 
 
-def _make_fake_component_instance(name: Text,
+def _make_fake_component_instance(name: str,
                                   output_type: Type[types.Artifact],
-                                  inputs: Dict[Text, types.Channel],
-                                  outputs: Dict[Text, types.Channel],
+                                  inputs: Dict[str, types.Channel],
+                                  outputs: Dict[str, types.Channel],
                                   with_beam: bool = False):
 
   class _FakeComponentSpec(types.ComponentSpec):
@@ -81,9 +75,9 @@ def _make_fake_component_instance(name: Text,
     def __init__(
         self,
         type: Type[types.Artifact],  # pylint: disable=redefined-builtin
-        spec_kwargs: Dict[Text, Any]):
+        spec_kwargs: Dict[str, Any]):
       spec = _FakeComponentSpec(output=types.Channel(type=type), **spec_kwargs)
-      super(_FakeComponent, self).__init__(spec=spec)
+      super().__init__(spec=spec)
       self._id = name
 
   class _FakeBeamComponent(base_beam_component.BaseBeamComponent):
@@ -94,9 +88,9 @@ def _make_fake_component_instance(name: Text,
     def __init__(
         self,
         type: Type[types.Artifact],  # pylint: disable=redefined-builtin
-        spec_kwargs: Dict[Text, Any]):
+        spec_kwargs: Dict[str, Any]):
       spec = _FakeComponentSpec(output=types.Channel(type=type), **spec_kwargs)
-      super(_FakeBeamComponent, self).__init__(spec=spec)
+      super().__init__(spec=spec)
       self._id = name
 
   spec_kwargs = dict(itertools.chain(inputs.items(), outputs.items()))
@@ -140,7 +134,7 @@ class _OutputTypeE(types.Artifact):
 class PipelineTest(test_case_utils.TfxTest):
 
   def setUp(self):
-    super(PipelineTest, self).setUp()
+    super().setUp()
     self._metadata_connection_config = metadata.sqlite_metadata_connection_config(
         os.path.join(self.tmp_dir, 'metadata'))
 

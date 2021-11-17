@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,11 +13,7 @@
 # limitations under the License.
 """TFX Evaluator component definition."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
-from typing import List, Optional, Text, Union
+from typing import List, Optional, Union
 
 from absl import logging
 import tensorflow_model_analysis as tfma
@@ -60,11 +55,11 @@ class Evaluator(base_beam_component.BaseBeamComponent):
                                            data_types.RuntimeParameter]] = None,
       fairness_indicator_thresholds: Optional[Union[
           List[float], data_types.RuntimeParameter]] = None,
-      example_splits: Optional[List[Text]] = None,
+      example_splits: Optional[List[str]] = None,
       eval_config: Optional[tfma.EvalConfig] = None,
       schema: Optional[types.Channel] = None,
-      module_file: Optional[Text] = None,
-      module_path: Optional[Text] = None):
+      module_file: Optional[str] = None,
+      module_path: Optional[str] = None):
     """Construct an Evaluator component.
 
     Args:
@@ -139,7 +134,7 @@ class Evaluator(base_beam_component.BaseBeamComponent):
         schema=schema,
         module_file=module_file,
         module_path=module_path)
-    super(Evaluator, self).__init__(spec=spec)
+    super().__init__(spec=spec)
 
     if udf_utils.should_package_user_modules():
       # In this case, the `MODULE_PATH_KEY` execution property will be injected

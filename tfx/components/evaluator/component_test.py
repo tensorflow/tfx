@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,11 +13,6 @@
 # limitations under the License.
 """Tests for tfx.components.evaluator.component."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
-from typing import Text
 import tensorflow as tf
 import tensorflow_model_analysis as tfma
 
@@ -87,7 +81,7 @@ class ComponentTest(tf.test.TestCase):
                      evaluator.exec_properties['fairness_indicator_thresholds'])
 
   def testConstructWithParameter(self):
-    column_name = data_types.RuntimeParameter(name='column-name', ptype=Text)
+    column_name = data_types.RuntimeParameter(name='column-name', ptype=str)
     threshold = data_types.RuntimeParameter(name='threshold', ptype=float)
     examples = standard_artifacts.Examples()
     model_exports = standard_artifacts.Model()

@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2020 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -25,7 +24,7 @@ from tfx.types import standard_artifacts
 class TunerTest(tf.test.TestCase):
 
   def setUp(self):
-    super(TunerTest, self).setUp()
+    super().setUp()
     self.examples = channel_utils.as_channel([standard_artifacts.Examples()])
     self.schema = channel_utils.as_channel([standard_artifacts.Schema()])
     self.transform_graph = channel_utils.as_channel(

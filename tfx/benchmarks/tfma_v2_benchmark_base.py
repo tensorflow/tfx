@@ -13,14 +13,9 @@
 # limitations under the License.
 """TFMA v2 benchmark."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import copy
 import time
 
-# Standard Imports
 
 import apache_beam as beam
 import tensorflow as tf
@@ -60,7 +55,7 @@ class TFMAV2BenchmarkBase(benchmark_base.BenchmarkBase):
   def __init__(self, dataset, **kwargs):
     # Benchmark runners may pass extraneous arguments we don't care about.
     del kwargs
-    super(TFMAV2BenchmarkBase, self).__init__()
+    super().__init__()
     self._dataset = dataset
 
   def _init_model(self, multi_model, validation):
@@ -124,7 +119,7 @@ class TFMAV2BenchmarkBase(benchmark_base.BenchmarkBase):
     # TFMA is slower than TFT, so use a smaller number of examples from the
     # dataset.
     limit = 100000
-    parent_max = super(TFMAV2BenchmarkBase, self)._max_num_examples()
+    parent_max = super()._max_num_examples()
     if parent_max is None:
       return limit
     return min(parent_max, limit)
@@ -143,7 +138,7 @@ class TFMAV2BenchmarkBase(benchmark_base.BenchmarkBase):
     # Stdout for use in tools which read the benchmark results from stdout.
     print(self._get_name(), kwargs["wall_time"],
           "({}x)".format(kwargs["iters"]))
-    super(TFMAV2BenchmarkBase, self).report_benchmark(**kwargs)
+    super().report_benchmark(**kwargs)
 
   def _runMiniPipeline(self, multi_model):
     """Benchmark a "mini" TFMA - predict, slice and compute metrics.
@@ -408,7 +403,7 @@ class TFMAV2BenchmarkBase(benchmark_base.BenchmarkBase):
     inputs_per_accumulator = 1000
     start = time.time()
     for _ in range(_ITERS):
-      computations, _, _ = (
+      computations, _, _, _ = (
           # pylint: disable=protected-access
           metrics_plots_and_validations_evaluator
           ._filter_and_separate_computations(

@@ -17,7 +17,7 @@
 import itertools
 import json
 import os
-from typing import Any, Dict, List, Mapping, Optional, Text, Type, Union
+from typing import Any, Dict, List, Mapping, Optional, Type, Union
 
 from kfp.pipeline_spec import pipeline_spec_pb2 as pipeline_pb2
 from tfx import types
@@ -82,7 +82,7 @@ def build_runtime_parameter_spec(
       result.type = pipeline_pb2.PrimitiveType.INT
     elif parameter.ptype == float:
       result.type = pipeline_pb2.PrimitiveType.DOUBLE
-    elif parameter.ptype == Text:
+    elif parameter.ptype == str:
       result.type = pipeline_pb2.PrimitiveType.STRING
     else:
       raise TypeError(
@@ -214,7 +214,7 @@ def value_converter(
     return None
 
   result = pipeline_pb2.ValueOrRuntimeParameter()
-  if isinstance(tfx_value, (int, float, str, Text)):
+  if isinstance(tfx_value, (int, float, str)):
     result.constant_value.CopyFrom(get_kubeflow_value(tfx_value))
   elif isinstance(tfx_value, (Dict, List)):
     result.constant_value.CopyFrom(
@@ -246,7 +246,7 @@ def value_converter(
 
 
 def get_kubeflow_value(
-    tfx_value: Union[int, float, str, Text]) -> Optional[pipeline_pb2.Value]:
+    tfx_value: Union[int, float, str]) -> Optional[pipeline_pb2.Value]:
   """Converts TFX/MLMD values into Kubeflow pipeline Value proto message."""
   if tfx_value is None:
     return None
@@ -256,7 +256,7 @@ def get_kubeflow_value(
     result.int_value = tfx_value
   elif isinstance(tfx_value, float):
     result.double_value = tfx_value
-  elif isinstance(tfx_value, (str, Text)):
+  elif isinstance(tfx_value, str):
     result.string_value = tfx_value
   else:
     raise TypeError('Got unknown type of value: {}'.format(tfx_value))
@@ -280,7 +280,7 @@ def get_mlmd_value(
   return result
 
 
-def get_artifact_schema(artifact_instance: artifact.Artifact) -> Text:
+def get_artifact_schema(artifact_instance: artifact.Artifact) -> str:
   """Gets the YAML schema string associated with the artifact type."""
   if isinstance(artifact_instance, tuple(_SUPPORTED_STANDARD_ARTIFACT_TYPES)):
     # For supported first-party artifact types, get the built-in schema yaml per
@@ -304,7 +304,7 @@ def get_artifact_schema(artifact_instance: artifact.Artifact) -> Text:
     return yaml.dump(data, sort_keys=False)
 
 
-def get_artifact_title(artifact_type: Type[artifact.Artifact]) -> Text:
+def get_artifact_title(artifact_type: Type[artifact.Artifact]) -> str:
   """Gets the schema title from the artifact python class."""
   if artifact_type in _SUPPORTED_STANDARD_ARTIFACT_TYPES:
     return 'tfx.{}'.format(artifact_type.__name__)

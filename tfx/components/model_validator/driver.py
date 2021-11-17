@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,11 +13,7 @@
 # limitations under the License.
 """Generic TFX model validator custom driver."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
-from typing import Any, Dict, Optional, Text, Tuple
+from typing import Any, Dict, Optional, Tuple
 
 import absl
 
@@ -31,9 +26,9 @@ class Driver(base_driver.BaseDriver):
 
   def _fetch_last_blessed_model(
       self,
-      pipeline_name: Text,
-      component_id: Text,
-  ) -> Tuple[Optional[Text], Optional[int]]:
+      pipeline_name: str,
+      component_id: str,
+  ) -> Tuple[Optional[str], Optional[int]]:
     """Fetch last blessed model in metadata based on span."""
     previous_blessed_models = []
     for a in self._metadata_handler.get_artifacts_by_type('ModelBlessing'):
@@ -59,9 +54,9 @@ class Driver(base_driver.BaseDriver):
 
   # pyformat: disable
   def resolve_exec_properties(
-      self, exec_properties: Dict[Text, Any],
+      self, exec_properties: Dict[str, Any],
       pipeline_info: data_types.PipelineInfo,
-      component_info: data_types.ComponentInfo) -> Dict[Text, Any]:
+      component_info: data_types.ComponentInfo) -> Dict[str, Any]:
     # pyformat: enable
     """Overrides BaseDriver.resolve_exec_properties()."""
     (exec_properties['blessed_model'],

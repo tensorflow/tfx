@@ -28,7 +28,7 @@ class PipelineBuilderTest(tf.test.TestCase):
     # Should pass the check with the legal name.
     pipeline_builder._check_name(_VALID_NAME)
     # Should fail the check with the illegal name.
-    with self.assertRaisesRegexp(ValueError, 'User provided pipeline name'):
+    with self.assertRaisesRegex(ValueError, 'User provided pipeline name'):
       pipeline_builder._check_name(_BAD_NAME)
 
   def testBuildTwoStepPipeline(self):

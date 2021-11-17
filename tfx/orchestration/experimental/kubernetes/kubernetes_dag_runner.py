@@ -15,7 +15,7 @@
 
 import datetime
 import json
-from typing import List, Optional, Text, Type
+from typing import List, Optional, Type
 
 import absl
 from tfx.dsl.component.experimental import container_component
@@ -102,7 +102,7 @@ class KubernetesDagRunnerConfig(pipeline_config.PipelineConfig):
   """Runtime configuration parameters specific to execution on Kubernetes."""
 
   def __init__(self,
-               tfx_image: Optional[Text] = None,
+               tfx_image: Optional[str] = None,
                supported_launcher_classes: Optional[List[Type[
                    base_component_launcher.BaseComponentLauncher]]] = None,
                **kwargs):
@@ -119,7 +119,7 @@ class KubernetesDagRunnerConfig(pipeline_config.PipelineConfig):
         in_process_component_launcher.InProcessComponentLauncher,
         kubernetes_component_launcher.KubernetesComponentLauncher,
     ]
-    super(KubernetesDagRunnerConfig, self).__init__(
+    super().__init__(
         supported_launcher_classes=supported_launcher_classes, **kwargs)
     self.tfx_image = tfx_image or _TFX_IMAGE
 
@@ -137,7 +137,7 @@ class KubernetesDagRunner(tfx_runner.TfxRunner):
     """
     if config is None:
       config = KubernetesDagRunnerConfig()
-    super(KubernetesDagRunner, self).__init__(config)
+    super().__init__(config)
 
   def run(self, pipeline: tfx_pipeline.Pipeline) -> None:
     """Deploys given logical pipeline on Kubernetes.

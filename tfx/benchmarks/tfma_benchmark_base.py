@@ -13,13 +13,8 @@
 # limitations under the License.
 """TFMA benchmark."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import time
 
-# Standard Imports
 
 import apache_beam as beam
 import tensorflow_model_analysis as tfma
@@ -36,14 +31,14 @@ class TFMABenchmarkBase(benchmark_base.BenchmarkBase):
   def __init__(self, dataset, **kwargs):
     # Benchmark runners may pass extraneous arguments we don't care about.
     del kwargs
-    super(TFMABenchmarkBase, self).__init__()
+    super().__init__()
     self._dataset = dataset
 
   def _max_num_examples(self):
     # TFMA is slower than TFT, so use a smaller number of examples from the
     # dataset.
     limit = 100000
-    parent_max = super(TFMABenchmarkBase, self)._max_num_examples()
+    parent_max = super()._max_num_examples()
     if parent_max is None:
       return limit
     return min(parent_max, limit)
@@ -57,7 +52,7 @@ class TFMABenchmarkBase(benchmark_base.BenchmarkBase):
                                       getattr(tfx, "__version__", None))
     kwargs["extras"]["commit_tfma"] = (getattr(tfma, "GIT_COMMIT_ID", None) or
                                        getattr(tfma, "__version__", None))
-    super(TFMABenchmarkBase, self).report_benchmark(**kwargs)
+    super().report_benchmark(**kwargs)
 
   def benchmarkMiniPipeline(self):
     """Benchmark a "mini" version of TFMA - predict, slice and compute metrics.

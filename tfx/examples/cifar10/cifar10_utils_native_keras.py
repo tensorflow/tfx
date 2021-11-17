@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,12 +17,8 @@ The utilities in this file are used to build a model with native Keras.
 This module file will be used in Transform and generic Trainer.
 """
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import os
-from typing import List, Text
+from typing import List
 import absl
 import tensorflow as tf
 import tensorflow_transform as tft
@@ -119,7 +114,7 @@ def _data_augmentation(feature_dict):
   return feature_dict
 
 
-def _input_fn(file_pattern: List[Text],
+def _input_fn(file_pattern: List[str],
               data_accessor: DataAccessor,
               tf_transform_output: tft.TFTransformOutput,
               is_train: bool = False,
@@ -251,7 +246,7 @@ def preprocessing_fn(inputs):
   return outputs
 
 
-def _write_metadata(model_path: Text, label_map_path: Text, mean: List[float],
+def _write_metadata(model_path: str, label_map_path: str, mean: List[float],
                     std: List[float]):
   """Add normalization option and label map TFLite metadata to the model.
 

@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,13 +13,9 @@
 # limitations under the License.
 """Tests for tfx.orchestration.beam.beam_dag_runner."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import os
 import tempfile
-from typing import Any, Dict, List, Text
+from typing import Any, Dict, List
 
 import absl.testing.absltest
 
@@ -96,15 +91,13 @@ class _FakeComponentSpecE(types.ComponentSpec):
   OUTPUTS = {'output': ChannelParameter(type=_ArtifactTypeE)}
 
 
-def _get_fake_executor(label: Text):
+def _get_fake_executor(label: str):
 
   class _FakeExecutor(base_executor.BaseExecutor):
 
-    def Do(
-        self, input_dict: Dict[Text, List[types.Artifact]],
-        output_dict: Dict[Text, List[types.Artifact]],
-        exec_properties: Dict[Text, Any]
-    ):
+    def Do(self, input_dict: Dict[str, List[types.Artifact]],
+           output_dict: Dict[str, List[types.Artifact]],
+           exec_properties: Dict[str, Any]):
       _executed_components.append(label)
 
   return _FakeExecutor
@@ -125,7 +118,7 @@ def _get_fake_component(spec: types.ComponentSpec):
 class LocalDagRunnerTest(absl.testing.absltest.TestCase):
 
   def setUp(self):
-    super(LocalDagRunnerTest, self).setUp()
+    super().setUp()
     _executed_components.clear()
 
   def _getTestPipeline(self):  # pylint: disable=invalid-name

@@ -13,13 +13,9 @@
 # limitations under the License.
 """Generic TFX ExampleGen custom driver."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import copy
 import os
-from typing import Any, Dict, List, Iterable, Optional, Text
+from typing import Any, Dict, List, Iterable, Optional
 
 from absl import logging
 from tfx import types
@@ -41,7 +37,7 @@ from ml_metadata.proto import metadata_store_pb2
 
 
 def update_output_artifact(
-    exec_properties: Dict[Text, Any],
+    exec_properties: Dict[str, Any],
     output_artifact: metadata_store_pb2.Artifact) -> None:
   """Updates output_artifact for FileBasedExampleGen.
 
@@ -77,16 +73,16 @@ class Driver(base_driver.BaseDriver, ir_base_driver.BaseDriver):
       self,
       splits: Iterable[example_gen_pb2.Input.Split],
       range_config: Optional[range_config_pb2.RangeConfig] = None,
-      input_base_uri: Optional[Text] = None) -> input_processor.InputProcessor:
+      input_base_uri: Optional[str] = None) -> input_processor.InputProcessor:
     """Returns the custom InputProcessor for this driver."""
     raise NotImplementedError
 
   def resolve_exec_properties(
       self,
-      exec_properties: Dict[Text, Any],
+      exec_properties: Dict[str, Any],
       pipeline_info: data_types.PipelineInfo,
       component_info: data_types.ComponentInfo,
-  ) -> Dict[Text, Any]:
+  ) -> Dict[str, Any]:
     """Overrides BaseDriver.resolve_exec_properties()."""
     del pipeline_info, component_info
 
@@ -128,13 +124,13 @@ class Driver(base_driver.BaseDriver, ir_base_driver.BaseDriver):
 
   def _prepare_output_artifacts(
       self,
-      input_artifacts: Dict[Text, List[types.Artifact]],
-      output_dict: Dict[Text, types.Channel],
-      exec_properties: Dict[Text, Any],
+      input_artifacts: Dict[str, List[types.Artifact]],
+      output_dict: Dict[str, types.Channel],
+      exec_properties: Dict[str, Any],
       execution_id: int,
       pipeline_info: data_types.PipelineInfo,
       component_info: data_types.ComponentInfo,
-  ) -> Dict[Text, List[types.Artifact]]:
+  ) -> Dict[str, List[types.Artifact]]:
     """Overrides BaseDriver._prepare_output_artifacts()."""
     del input_artifacts
 
@@ -181,7 +177,7 @@ class FileBasedDriver(Driver):
       self,
       splits: Iterable[example_gen_pb2.Input.Split],
       range_config: Optional[range_config_pb2.RangeConfig] = None,
-      input_base_uri: Optional[Text] = None) -> input_processor.InputProcessor:
+      input_base_uri: Optional[str] = None) -> input_processor.InputProcessor:
     """Returns FileBasedInputProcessor."""
     assert input_base_uri
     return input_processor.FileBasedInputProcessor(input_base_uri, splits,
@@ -195,6 +191,6 @@ class QueryBasedDriver(Driver):
       self,
       splits: Iterable[example_gen_pb2.Input.Split],
       range_config: Optional[range_config_pb2.RangeConfig] = None,
-      input_base_uri: Optional[Text] = None) -> input_processor.InputProcessor:
+      input_base_uri: Optional[str] = None) -> input_processor.InputProcessor:
     """Returns QueryBasedInputProcessor."""
     return input_processor.QueryBasedInputProcessor(splits, range_config)

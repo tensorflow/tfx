@@ -77,12 +77,9 @@ def make_required_install_packages():
       'attrs>=19.3.0,<21',
       'click>=7,<8',
       'google-cloud-aiplatform>=0.5.0,<0.8',
-      # TODO(b/193571051): remove 2.21 cap after TF 2.6 becomes available.
-      'google-cloud-bigquery>=1.28.0,<2.21',
+      'google-cloud-bigquery>=1.28.0,<3',
       'grpcio>=1.28.1,<2',
-      # TODO(b/173976603): remove pinned keras-tuner upperbound when its
-      # dependency expecatation with TensorFlow is sorted out.
-      'keras-tuner>=1,<1.0.2',
+      'keras-tuner>=1.0.4,<2',
       'kubernetes>=10.0.1,<13',
       # TODO(b/179195488): remove numpy dependency after 1.20 migration.
       # This dependency was added only to limit numpy 1.20 installation.
@@ -126,7 +123,7 @@ def make_extra_packages_airflow():
 def make_extra_packages_kfp():
   """Prepare extra packages needed for Kubeflow Pipelines orchestrator."""
   return [
-      'kfp>=1.6.1,<2',
+      'kfp>=1.6.1,!=1.7.2,<2',
       'kfp-pipeline-spec>=0.1.8,<0.2',
   ]
 
@@ -182,8 +179,8 @@ def make_extra_packages_examples():
       # Required for bert examples in tfx/examples/bert
       'tensorflow-text>=1.15.1,<3',
       # Required for tfx/examples/cifar10
-      'flatbuffers>=1.12,<2',
-      'tflite-support>=0.1.0a1,<0.1.1',
+      'flatbuffers>=1.12,<3',
+      'tflite-support>=0.1.0a1,<0.2.1',
       # Required for tfx/examples/penguin/experimental
       # LINT.IfChange
       'scikit-learn>=0.23,<0.24',

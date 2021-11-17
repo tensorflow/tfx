@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,14 +13,10 @@
 # limitations under the License.
 """Python source file include Penguin pipeline functions and necessary utils."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
-from typing import List, Text
+from typing import List
 
 import absl
-import kerastuner
+import keras_tuner
 import tensorflow as tf
 from tensorflow import keras
 from tfx.components.trainer.fn_args_utils import DataAccessor
@@ -38,7 +33,7 @@ _FEATURE_KEYS = [
 _LABEL_KEY = 'species'
 
 
-def _input_fn(file_pattern: List[Text],
+def _input_fn(file_pattern: List[str],
               data_accessor: DataAccessor,
               schema: schema_pb2.Schema,
               batch_size: int = 20) -> tf.data.Dataset:
@@ -61,7 +56,7 @@ def _input_fn(file_pattern: List[Text],
           batch_size=batch_size, label_key=_LABEL_KEY), schema).repeat()
 
 
-def _build_keras_model(hparams: kerastuner.HyperParameters) -> tf.keras.Model:
+def _build_keras_model(hparams: keras_tuner.HyperParameters) -> tf.keras.Model:
   """Creates a DNN Keras model for classifying penguin data.
 
   Args:
@@ -109,13 +104,13 @@ def tuner_fn(fn_args: FnArgs) -> TunerFnResult:
                     model , e.g., the training and validation dataset. Required
                     args depend on the above tuner's implementation.
   """
-  hp = kerastuner.HyperParameters()
+  hp = keras_tuner.HyperParameters()
   # Defines search space.
   hp.Choice('learning_rate', [1e-1, 1e-3])
   hp.Int('num_layers', 1, 5)
 
   # RandomSearch is a subclass of Keras model Tuner.
-  tuner = kerastuner.RandomSearch(
+  tuner = keras_tuner.RandomSearch(
       _build_keras_model,
       max_trials=5,
       hyperparameters=hp,

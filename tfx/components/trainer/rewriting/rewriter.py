@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2020 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,15 +13,10 @@
 # limitations under the License.
 """Base class that TFX rewriters inherit and invocation utilities."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import abc
 import collections
 import enum
 
-from typing import Text
 
 ModelDescription = collections.namedtuple('ModelDescription',
                                           ['model_type', 'path'])
@@ -40,7 +34,7 @@ class BaseRewriter(abc.ABC):
   """Base class from which all rewriters should inherit."""
 
   @abc.abstractproperty
-  def name(self) -> Text:
+  def name(self) -> str:
     """Name of the rewriter.
 
     Should not be `None` nor empty.

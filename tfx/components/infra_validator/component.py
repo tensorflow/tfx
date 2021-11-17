@@ -13,10 +13,6 @@
 # limitations under the License.
 """TFX InfraValidator component definition."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 from typing import Optional
 
 from tfx import types
@@ -122,4 +118,4 @@ class InfraValidator(base_component.BaseComponent):
         validation_spec=validation_spec,
         request_spec=request_spec
     )
-    super(InfraValidator, self).__init__(spec=spec)
+    super().__init__(spec=spec)

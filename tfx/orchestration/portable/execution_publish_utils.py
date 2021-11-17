@@ -14,13 +14,14 @@
 """Portable library for registering and publishing executions."""
 import copy
 import os
-from typing import List, Mapping, MutableMapping, Optional, Sequence, cast
+from typing import Mapping, Optional, Sequence
 from absl import logging
 
 from tfx import types
 from tfx.orchestration import metadata
 from tfx.orchestration.portable.mlmd import execution_lib
 from tfx.proto.orchestration import execution_result_pb2
+from tfx.utils import typing_utils
 
 from ml_metadata.proto import metadata_store_pb2
 
@@ -53,8 +54,7 @@ def publish_cached_execution(
     metadata_handler: metadata.Metadata,
     contexts: Sequence[metadata_store_pb2.Context],
     execution_id: int,
-    output_artifacts: Optional[MutableMapping[str,
-                                              Sequence[types.Artifact]]] = None,
+    output_artifacts: Optional[typing_utils.ArtifactMultiMap] = None,
 ) -> None:
   """Marks an existing execution as using cached outputs from a previous execution.
 
@@ -99,10 +99,9 @@ def publish_succeeded_execution(
     metadata_handler: metadata.Metadata,
     execution_id: int,
     contexts: Sequence[metadata_store_pb2.Context],
-    output_artifacts: Optional[MutableMapping[str,
-                                              Sequence[types.Artifact]]] = None,
+    output_artifacts: Optional[typing_utils.ArtifactMultiMap] = None,
     executor_output: Optional[execution_result_pb2.ExecutorOutput] = None
-) -> Optional[MutableMapping[str, List[types.Artifact]]]:
+) -> Optional[typing_utils.ArtifactMultiMap]:
   """Marks an existing execution as success.
 
   Also publishes the output artifacts produced by the execution. This method
@@ -132,9 +131,12 @@ def publish_succeeded_execution(
   Raises:
     RuntimeError: if the executor output to a output channel is partial.
   """
-  output_artifacts = copy.deepcopy(output_artifacts) or {}
-  output_artifacts = cast(MutableMapping[str, List[types.Artifact]],
-                          output_artifacts)
+  if output_artifacts is not None:
+    output_artifacts = {key: [copy.deepcopy(a) for a in artifacts]
+                        for key, artifacts in output_artifacts.items()}
+  else:
+    output_artifacts = {}
+
   if executor_output:
     if not set(executor_output.output_artifacts.keys()).issubset(
         output_artifacts.keys()):
@@ -204,8 +206,7 @@ def publish_internal_execution(
     metadata_handler: metadata.Metadata,
     contexts: Sequence[metadata_store_pb2.Context],
     execution_id: int,
-    output_artifacts: Optional[MutableMapping[str,
-                                              Sequence[types.Artifact]]] = None
+    output_artifacts: Optional[typing_utils.ArtifactMultiMap] = None
 ) -> None:
   """Marks an exeisting execution as as success and links its output to an INTERNAL_OUTPUT event.
 
@@ -231,9 +232,8 @@ def register_execution(
     metadata_handler: metadata.Metadata,
     execution_type: metadata_store_pb2.ExecutionType,
     contexts: Sequence[metadata_store_pb2.Context],
-    input_artifacts: Optional[MutableMapping[str,
-                                             Sequence[types.Artifact]]] = None,
-    exec_properties: Optional[Mapping[str, types.Property]] = None,
+    input_artifacts: Optional[typing_utils.ArtifactMultiMap] = None,
+    exec_properties: Optional[Mapping[str, types.ExecPropertyTypes]] = None,
 ) -> metadata_store_pb2.Execution:
   """Registers a new execution in MLMD.
 

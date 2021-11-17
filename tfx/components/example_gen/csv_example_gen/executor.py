@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,12 +13,8 @@
 # limitations under the License.
 """Generic TFX CSV example gen executor."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import os
-from typing import Any, Dict, Iterable, List, Text
+from typing import Any, Dict, Iterable, List
 
 from absl import logging
 import apache_beam as beam
@@ -109,7 +104,7 @@ class _CsvLineBuffer:
     del self._accumulator[:]
     self._quotes_count = 0
 
-  def _read_internal(self) -> Text:
+  def _read_internal(self) -> str:
     if not self._accumulator:
       return ''
     if len(self._accumulator) == 1:
@@ -119,28 +114,28 @@ class _CsvLineBuffer:
   def is_empty(self) -> bool:
     return not self._accumulator
 
-  def write(self, csv_line: Text):
+  def write(self, csv_line: str):
     self._accumulator.append(csv_line)
     self._quotes_count += csv_line.count('"')
 
   def is_complete_line(self) -> bool:
     return self._quotes_count % 2 == 0
 
-  def read(self) -> Text:
+  def read(self) -> str:
     result = self._read_internal()
     self._reset()
     return result
 
 
-@beam.typehints.with_input_types(Text)
-@beam.typehints.with_output_types(Text)
+@beam.typehints.with_input_types(str)
+@beam.typehints.with_output_types(str)
 class _ReadCsvRecordsFromTextFile(beam.DoFn):
   """A beam.DoFn to read a text file and yield CSV records."""
 
   def __init__(self):
     pass
 
-  def process(self, csv_filepath: Text) -> Iterable[Text]:
+  def process(self, csv_filepath: str) -> Iterable[str]:
     with beam.io.filesystems.FileSystems.open(csv_filepath) as file:
       # Skip header row.
       _ = file.readline()
@@ -164,7 +159,7 @@ class _CsvToExample(beam.PTransform):
   Note that each input split will be transformed by this function separately.
   """
 
-  def __init__(self, exec_properties: Dict[Text, Any], split_pattern: Text):
+  def __init__(self, exec_properties: Dict[str, Any], split_pattern: str):
     """Init method for _CsvToExample.
 
     Args:

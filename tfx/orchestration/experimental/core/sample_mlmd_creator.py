@@ -13,6 +13,7 @@
 # limitations under the License.
 """Creates testing MLMD with TFX data model."""
 import os
+import tempfile
 
 from typing import Optional
 from absl import app
@@ -22,6 +23,7 @@ from tfx.dsl.compiler import constants
 from tfx.orchestration import metadata
 from tfx.orchestration.experimental.core import pipeline_ops
 from tfx.orchestration.experimental.core import test_utils
+from tfx.orchestration.experimental.core.testing import test_sync_pipeline
 from tfx.orchestration.portable import runtime_parameter_utils
 from tfx.proto.orchestration import pipeline_pb2
 from tfx.utils import io_utils
@@ -83,8 +85,9 @@ def _execute_nodes(handle: metadata.Metadata, pipeline: pipeline_pb2.Pipeline,
 def _get_ir_path(external_ir_file: str):
   if external_ir_file:
     return external_ir_file
-  return os.path.join(
-      os.path.dirname(__file__), 'testdata', 'sync_pipeline.pbtxt')
+  ir_file_path = tempfile.mktemp(suffix='.pbtxt')
+  io_utils.write_pbtxt_file(ir_file_path, test_sync_pipeline.create_pipeline())
+  return ir_file_path
 
 
 def create_sample_pipeline(m: metadata.Metadata,

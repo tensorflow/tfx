@@ -28,7 +28,7 @@ from tfx_bsl.coders import tf_graph_record_decoder
 class DataViewProviderExecutorTest(tf.test.TestCase):
 
   def setUp(self):
-    super(DataViewProviderExecutorTest, self).setUp()
+    super().setUp()
     # ../../../testdata
     self._source_data_dir = os.path.join(
         os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'testdata')

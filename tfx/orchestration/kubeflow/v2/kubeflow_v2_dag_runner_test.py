@@ -16,10 +16,8 @@
 import datetime
 import json
 import os
-from typing import Text
 from unittest import mock
 
-# Standard Imports
 
 import tensorflow as tf
 from tfx import version
@@ -45,7 +43,7 @@ class KubeflowV2DagRunnerTest(test_case_utils.TfxTest):
 
   def _compare_against_testdata(
       self, runner: kubeflow_v2_dag_runner.KubeflowV2DagRunner,
-      pipeline: tfx_pipeline.Pipeline, golden_file: Text):
+      pipeline: tfx_pipeline.Pipeline, golden_file: str):
     """Compiles and compare the actual JSON output against a golden file."""
     actual_output = runner.run(pipeline=pipeline, write_out=True)
 

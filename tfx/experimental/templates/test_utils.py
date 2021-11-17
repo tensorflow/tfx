@@ -29,7 +29,7 @@ class BaseEndToEndTest(test_case_utils.TfxTest):
   """Base class for end-to-end testing of TFX templates."""
 
   def setUp(self):
-    super(BaseEndToEndTest, self).setUp()
+    super().setUp()
 
     # Change the encoding for Click since Python 3 is configured to use ASCII as
     # encoding for the environment.

@@ -14,7 +14,6 @@
 """Chicago taxi example using TFX on Beam."""
 
 import os
-from typing import Text
 
 from absl import logging
 
@@ -34,8 +33,8 @@ _metadata_path = os.path.join(_tfx_root, 'metadata', _pipeline_name,
                               'metadata.db')
 
 
-def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
-                     metadata_path: Text) -> pipeline.Pipeline:
+def _create_pipeline(pipeline_name: str, pipeline_root: str, data_root: str,
+                     metadata_path: str) -> pipeline.Pipeline:
   """Implements the chicago taxi pipeline with TFX."""
 
   # Brings data into the pipeline or otherwise joins/converts training data.

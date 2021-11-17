@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2020 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,13 +13,9 @@
 # limitations under the License.
 """Recording pipeline from MLMD metadata."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import collections
 import os
-from typing import Iterable, List, Mapping, Optional, Text, Tuple
+from typing import Iterable, List, Mapping, Optional, Tuple
 
 from absl import logging
 from tfx.dsl.compiler import constants as compiler_constants
@@ -52,7 +47,7 @@ def get_component_id_from_execution(
 
 def _get_paths(metadata_connection: metadata.Metadata,
                executions: List[metadata_store_pb2.Execution],
-               output_dir: Text) -> Iterable[Tuple[Text, Text]]:
+               output_dir: str) -> Iterable[Tuple[str, str]]:
   """Yields tuple with source and destination artifact uris.
 
   The destination artifact uris are located in the output_dir. The source
@@ -99,7 +94,7 @@ def _get_paths(metadata_connection: metadata.Metadata,
 
 def _get_execution_dict(
     metadata_connection: metadata.Metadata
-) -> Mapping[Text, List[metadata_store_pb2.Execution]]:
+) -> Mapping[str, List[metadata_store_pb2.Execution]]:
   """Returns a dictionary holding list of executions for all run_id in MLMD.
 
   Args:
@@ -117,7 +112,7 @@ def _get_execution_dict(
 
 def get_latest_executions(
     metadata_connection: metadata.Metadata,
-    pipeline_name: Text) -> List[metadata_store_pb2.Execution]:
+    pipeline_name: str) -> List[metadata_store_pb2.Execution]:
   """Fetches executions associated with the latest context.
 
   Args:
@@ -152,12 +147,12 @@ def get_latest_executions(
   raise ValueError(f'Cannot find any execution for {pipeline_name}')
 
 
-def record_pipeline(output_dir: Text,
-                    metadata_db_uri: Optional[Text] = None,
-                    host: Optional[Text] = None,
+def record_pipeline(output_dir: str,
+                    metadata_db_uri: Optional[str] = None,
+                    host: Optional[str] = None,
                     port: Optional[int] = None,
-                    pipeline_name: Optional[Text] = None,
-                    run_id: Optional[Text] = None) -> None:
+                    pipeline_name: Optional[str] = None,
+                    run_id: Optional[str] = None) -> None:
   """Record pipeline run with run_id to output_dir.
 
   For the beam pipeline, metadata_db_uri is required. For KFP pipeline,
