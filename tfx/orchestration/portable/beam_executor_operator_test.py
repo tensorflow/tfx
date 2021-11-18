@@ -111,6 +111,33 @@ class BeamArgsTest(test_case_utils.TfxTest):
                       '--foo=baz'
                       })
 
+  def testResolveBeamArgsFromEnvWithMissingEnvVar(self):
+    beam_pipeline_args = ['--foo=bar']
+    beam_pipeline_args_from_env = {
+        '--bar': 'BAR',
+    }
+
+    with self.assertRaises(ValueError):
+      beam_executor_operator._resolve_beam_args_from_env(
+        beam_pipeline_args=beam_pipeline_args,
+        beam_pipeline_args_from_env=beam_pipeline_args_from_env)
+
+def testResolveBeamArgsFromEnvWithEmptyEnvVar(self):
+    self.enter_context(test_case_utils.override_env_var('BAR', ''))
+
+    beam_pipeline_args = ['--foo=bar']
+    beam_pipeline_args_from_env = {
+        '--bar': 'BAR',
+    }
+
+    resolved_beam_pipeline_args_from_env = beam_executor_operator._resolve_beam_args_from_env(
+        beam_pipeline_args=beam_pipeline_args,
+        beam_pipeline_args_from_env=beam_pipeline_args_from_env)
+
+    self.assertEqual(set(beam_pipeline_args + resolved_beam_pipeline_args_from_env),
+                     {'--foo=bar',
+                      '--bar='})
+
 
 if __name__ == '__main__':
   tf.test.main()

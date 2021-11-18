@@ -13,7 +13,6 @@
 # limitations under the License.
 """This module defines a generic Launcher for all TFleX nodes."""
 
-import os
 import sys
 import traceback
 from typing import Any, Dict, List, Mapping, Optional, Type, TypeVar
@@ -134,7 +133,7 @@ def _register_execution(
       exec_properties=exec_properties)
 
 
-class Launcher(object):
+class Launcher:
   """Launcher is the main entrance of nodes in TFleX.
 
      It handles TFX internal details like artifact resolving, execution

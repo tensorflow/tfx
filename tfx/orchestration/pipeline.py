@@ -14,7 +14,7 @@
 """Definition and related classes for TFX pipeline."""
 
 import enum
-from typing import Collection, List, Optional, Union, cast
+from typing import Collection, List, Optional, Union, Dict, cast
 
 from tfx.dsl.compiler import constants
 from tfx.dsl.components.base import base_node

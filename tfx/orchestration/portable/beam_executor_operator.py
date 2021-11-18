@@ -39,24 +39,22 @@ def _resolve_beam_args_from_env(beam_pipeline_args, beam_pipeline_args_from_env)
   for beam_pipeline_arg_from_env, env_var in beam_pipeline_args_from_env.items():
     # If an arg is already present in beam_pipeline_args, it should take precedence
     # over env vars.
-    if any("--{}=".format(beam_pipeline_arg_from_env) in beam_pipeline_arg for beam_pipeline_arg in beam_pipeline_args):
+    if any(beam_pipeline_arg.starswith(f"--{beam_pipeline_arg_from_env}=") for beam_pipeline_arg in beam_pipeline_args):
       logging.info('Arg %s already present in '
         'beam_pipeline_args and will not be fetched from env.',
          beam_pipeline_arg_from_env)
       continue
 
     env_var_value = os.getenv(env_var)
-    if env_var_value:
+    if env_var_value is None:
+        raise ValueError(f"Env var {env_var} not present")
+    else:
       if beam_pipeline_arg_from_env.startswith('--'):
         resolved_beam_pipeline_args_from_env.append('{}={}'
                   .format(beam_pipeline_arg_from_env, env_var_value))
       else:
         resolved_beam_pipeline_args_from_env.append('--{}={}'
                                                       .format(beam_pipeline_arg_from_env, env_var_value))
-    else:
-      # TODO: Raise value error instead?
-      logging.warning('Env var %s not present. Skipping corresponding beam arg'
-                       ': %s.', env_var, beam_pipeline_arg_from_env)
   return resolved_beam_pipeline_args_from_env
 
 
