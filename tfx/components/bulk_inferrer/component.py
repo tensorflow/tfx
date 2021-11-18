@@ -57,9 +57,9 @@ class BulkInferrer(base_beam_component.BaseBeamComponent):
 
   def __init__(
       self,
-      examples: types.Channel,
-      model: Optional[types.Channel] = None,
-      model_blessing: Optional[types.Channel] = None,
+      examples: types.BaseChannel,
+      model: Optional[types.BaseChannel] = None,
+      model_blessing: Optional[types.BaseChannel] = None,
       data_spec: Optional[Union[bulk_inferrer_pb2.DataSpec,
                                 data_types.RuntimeParameter]] = None,
       model_spec: Optional[Union[bulk_inferrer_pb2.ModelSpec,
@@ -69,11 +69,11 @@ class BulkInferrer(base_beam_component.BaseBeamComponent):
     """Construct an BulkInferrer component.
 
     Args:
-      examples: A Channel of type `standard_artifacts.Examples`, usually
+      examples: A BaseChannel of type `standard_artifacts.Examples`, usually
         produced by an ExampleGen component. _required_
-      model: A Channel of type `standard_artifacts.Model`, usually produced by a
-        Trainer component.
-      model_blessing: A Channel of type `standard_artifacts.ModelBlessing`,
+      model: A BaseChannel of type `standard_artifacts.Model`, usually produced
+        by a Trainer component.
+      model_blessing: A BaseChannel of type `standard_artifacts.ModelBlessing`,
         usually produced by a ModelValidator component.
       data_spec: bulk_inferrer_pb2.DataSpec instance that describes data
         selection.

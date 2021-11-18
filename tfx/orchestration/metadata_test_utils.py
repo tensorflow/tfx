@@ -166,6 +166,7 @@ class MetadataTest(tf.test.TestCase):
           key: "split_names"
           value: STRING
         }
+        base_type: DATASET
         """, artifact_type)
 
       # Now mimic a future type updates registered by jobs of newer release
@@ -196,6 +197,7 @@ class MetadataTest(tf.test.TestCase):
           key: "new_property"
           value: DOUBLE
         }
+        base_type: DATASET
         """, stored_type)
       self.assertEqual(2, len(m.store.get_artifacts()))
 

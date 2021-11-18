@@ -125,8 +125,8 @@ class DummyServiceJobManager(ServiceJobManager):
     return False
 
 
-class ExceptionHandlingServiceJobManagerWrapper(ServiceJobManager):
-  """Wraps a ServiceJobManager instance and does some basic exception handling."""
+class ServiceJobManagerCleanupWrapper(ServiceJobManager):
+  """Wraps a ServiceJobManager instance and does exception handling and cleanup."""
 
   def __init__(self, service_job_manager: ServiceJobManager):
     self._service_job_manager = service_job_manager
@@ -134,12 +134,18 @@ class ExceptionHandlingServiceJobManagerWrapper(ServiceJobManager):
   def ensure_node_services(self, pipeline_state: pstate.PipelineState,
                            node_id: str) -> ServiceStatus:
     try:
-      return self._service_job_manager.ensure_node_services(
+      service_status = self._service_job_manager.ensure_node_services(
           pipeline_state, node_id)
     except Exception:  # pylint: disable=broad-except
       logging.exception(
           'Exception raised by underlying `ServiceJobManager` instance.')
-      return ServiceStatus.FAILED
+      service_status = ServiceStatus.FAILED
+    if service_status == ServiceStatus.FAILED:
+      logging.info(
+          'ensure_node_services returned status `FAILED` or raised exception; '
+          'calling stop_node_services (best effort) for node: %s', node_id)
+      self.stop_node_services(pipeline_state, node_id)
+    return service_status
 
   def stop_node_services(self, pipeline_state: pstate.PipelineState,
                          node_id: str) -> bool:

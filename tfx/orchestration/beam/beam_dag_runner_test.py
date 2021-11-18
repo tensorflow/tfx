@@ -22,7 +22,6 @@ from tfx.orchestration import metadata
 from tfx.orchestration.beam import beam_dag_runner
 from tfx.orchestration.beam.legacy import beam_dag_runner as legacy_beam_dag_runner
 from tfx.orchestration.config import pipeline_config
-from tfx.orchestration.portable import partial_run_utils
 from tfx.proto.orchestration import executable_spec_pb2
 from tfx.proto.orchestration import local_deployment_config_pb2
 from tfx.proto.orchestration import pipeline_pb2
@@ -303,11 +302,13 @@ class BeamDagRunnerTest(test_case_utils.TfxTest):
   )
   def testPartialRunWithLocalDeploymentConfig(self):
     self._pipeline.deployment_config.Pack(_LOCAL_DEPLOYMENT_CONFIG)
-    partial_run_utils.mark_pipeline(
+    pr_opts = pipeline_pb2.PartialRun()
+    pr_opts.from_nodes.append('my_trainer')
+    pr_opts.to_nodes.append('my_trainer')
+    pr_opts.snapshot_settings.latest_pipeline_run_strategy.SetInParent()
+    beam_dag_runner.BeamDagRunner().run_with_ir(
         self._pipeline,
-        from_nodes=(lambda node_id: 'trainer' in node_id),
-        to_nodes=(lambda node_id: 'trainer' in node_id))
-    beam_dag_runner.BeamDagRunner().run_with_ir(self._pipeline)
+        run_options=pipeline_pb2.RunOptions(partial_run=pr_opts))
     self.assertEqual(_executed_components, ['my_trainer'])
 
   @mock.patch.multiple(
@@ -316,11 +317,13 @@ class BeamDagRunnerTest(test_case_utils.TfxTest):
   )
   def testPartialRunWithIntermediateDeploymentConfig(self):
     self._pipeline.deployment_config.Pack(_INTERMEDIATE_DEPLOYMENT_CONFIG)
-    partial_run_utils.mark_pipeline(
+    pr_opts = pipeline_pb2.PartialRun()
+    pr_opts.from_nodes.append('my_trainer')
+    pr_opts.to_nodes.append('my_trainer')
+    pr_opts.snapshot_settings.latest_pipeline_run_strategy.SetInParent()
+    beam_dag_runner.BeamDagRunner().run_with_ir(
         self._pipeline,
-        from_nodes=(lambda node_id: 'trainer' in node_id),
-        to_nodes=(lambda node_id: 'trainer' in node_id))
-    beam_dag_runner.BeamDagRunner().run_with_ir(self._pipeline)
+        run_options=pipeline_pb2.RunOptions(partial_run=pr_opts))
     self.assertEqual(_executed_components, ['my_trainer'])
 
   def testLegacyBeamDagRunnerConstruction(self):

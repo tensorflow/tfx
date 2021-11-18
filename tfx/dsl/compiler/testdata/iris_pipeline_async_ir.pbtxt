@@ -56,6 +56,7 @@ nodes {
                 key: "version"
                 value: INT
               }
+              base_type: DATASET
             }
           }
         }
@@ -161,6 +162,7 @@ nodes {
                 key: "version"
                 value: INT
               }
+              base_type: DATASET
             }
             additional_properties {
               key: "split_names"
@@ -275,6 +277,7 @@ nodes {
             artifact_query {
               type {
                 name: "Examples"
+                base_type: DATASET
               }
             }
             output_key: "examples"
@@ -298,6 +301,7 @@ nodes {
                 key: "split_names"
                 value: STRING
               }
+              base_type: STATISTICS
             }
           }
         }
@@ -383,6 +387,7 @@ nodes {
             artifact_query {
               type {
                 name: "ExampleStatistics"
+                base_type: STATISTICS
               }
             }
             output_key: "statistics"
@@ -528,6 +533,7 @@ nodes {
             artifact_query {
               type {
                 name: "ExampleStatistics"
+                base_type: STATISTICS
               }
             }
             output_key: "statistics"
@@ -635,6 +641,7 @@ nodes {
             artifact_query {
               type {
                 name: "Examples"
+                base_type: DATASET
               }
             }
             output_key: "examples"
@@ -845,6 +852,7 @@ nodes {
             artifact_query {
               type {
                 name: "Examples"
+                base_type: DATASET
               }
             }
             output_key: "examples"

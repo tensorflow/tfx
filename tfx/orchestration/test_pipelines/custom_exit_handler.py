@@ -1,4 +1,4 @@
-# Copyright 2019 Google LLC. All Rights Reserved.
+# Copyright 2021 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,7 +11,16 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Contains the version string of TFX."""
+"""Custom component for exit handler."""
 
-# Note that setup.py uses this version.
-__version__ = '1.5.0.dev'
+from tfx.orchestration.kubeflow.v2 import decorators
+from tfx.utils import io_utils
+import tfx.v1 as tfx
+
+
+@decorators.exit_handler
+def test_exit_handler(final_status: tfx.dsl.components.Parameter[str],
+                      file_dir: tfx.dsl.components.Parameter[str]):
+
+  io_utils.write_string_file(file_dir, final_status)
+

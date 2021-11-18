@@ -19,7 +19,7 @@ from tfx.orchestration.experimental.core import service_jobs
 from tfx.orchestration.experimental.core import test_utils
 
 
-class ExceptionHandlingServiceJobManagerWrapperTest(test_utils.TfxTest):
+class CleanupHandlingServiceJobManagerWrapperTest(test_utils.TfxTest):
 
   def setUp(self):
     super().setUp()
@@ -30,7 +30,7 @@ class ExceptionHandlingServiceJobManagerWrapperTest(test_utils.TfxTest):
     self._mock_service_job_manager.stop_node_services.return_value = True
     self._mock_service_job_manager.is_pure_service_node.return_value = True
     self._mock_service_job_manager.is_mixed_service_node.return_value = False
-    self._wrapper = service_jobs.ExceptionHandlingServiceJobManagerWrapper(
+    self._wrapper = service_jobs.ServiceJobManagerCleanupWrapper(
         self._mock_service_job_manager)
 
   def test_calls_forwarded_to_underlying_instance(self):
@@ -48,12 +48,22 @@ class ExceptionHandlingServiceJobManagerWrapperTest(test_utils.TfxTest):
     self._mock_service_job_manager.is_mixed_service_node.assert_called_once_with(
         mock.ANY, 'node4')
 
-  def test_ensure_node_services_exception_handling(self):
+  def test_ensure_node_services_cleanup_on_exception(self):
     self._mock_service_job_manager.ensure_node_services.side_effect = RuntimeError(
         'test error')
     self.assertEqual(service_jobs.ServiceStatus.FAILED,
                      self._wrapper.ensure_node_services(mock.Mock(), 'node1'))
     self._mock_service_job_manager.ensure_node_services.assert_called_once_with(
+        mock.ANY, 'node1')
+    self._mock_service_job_manager.stop_node_services.assert_called_once_with(
+        mock.ANY, 'node1')
+
+  def test_ensure_node_services_cleanup_on_failure(self):
+    self._mock_service_job_manager.ensure_node_services.return_value = (
+        service_jobs.ServiceStatus.FAILED)
+    self.assertEqual(service_jobs.ServiceStatus.FAILED,
+                     self._wrapper.ensure_node_services(mock.Mock(), 'node1'))
+    self._mock_service_job_manager.stop_node_services.assert_called_once_with(
         mock.ANY, 'node1')
 
   def test_stop_node_services_exception_handling(self):

@@ -23,6 +23,8 @@ from docker import utils as docker_utils
 from tfx.tools.cli.container_builder import dockerfile
 from tfx.tools.cli.container_builder import labels
 
+_BUILD_TIMEOUT_SECS = 5 * 60  # Changes default 1min to 5min.
+
 
 def _get_image_repo(image: str) -> str:
   """Extracts image name before ':' which is REPO part of the image name."""
@@ -73,7 +75,8 @@ def build(target_image: str,
       base_image=base_image)
 
   # Uses Low-level API for log streaming.
-  docker_low_client = docker.APIClient(**docker_utils.kwargs_from_env())
+  docker_low_client = docker.APIClient(
+      **docker_utils.kwargs_from_env(), timeout=_BUILD_TIMEOUT_SECS)
   log_stream = docker_low_client.build(
       path=labels.BUILD_CONTEXT,
       dockerfile=dockerfile_name,
@@ -83,7 +86,7 @@ def build(target_image: str,
   )
   _print_docker_log_stream(log_stream, 'stream')
 
-  docker_client = docker.from_env()
+  docker_client = docker.from_env(timeout=_BUILD_TIMEOUT_SECS)
   log_stream = docker_client.images.push(
       repository=target_image, stream=True, decode=True)
   _print_docker_log_stream(log_stream, 'status', newline=True)

@@ -299,7 +299,7 @@ def _exec_properties_match(
       props: Dict[str, types.ExecPropertyTypes]
   ) -> Dict[str, types.ExecPropertyTypes]:
     return {
-        key: value for key, value in props.items() if not key.startswith('__')
+        k: v for k, v in props.items() if not execution_lib.is_internal_key(k)
     }
 
   exec_props1 = _filter_out_internal_keys(exec_props1)

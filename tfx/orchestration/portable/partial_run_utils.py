@@ -15,7 +15,7 @@
 
 import collections
 import enum
-from typing import Callable, Collection, List, Mapping, Optional, Set
+from typing import Collection, List, Mapping, Optional, Set
 
 from absl import logging
 from tfx.dsl.compiler import compiler_utils
@@ -35,9 +35,9 @@ _default_snapshot_settings.latest_pipeline_run_strategy.SetInParent()
 
 def mark_pipeline(
     pipeline: pipeline_pb2.Pipeline,
-    from_nodes: Callable[[str], bool] = lambda _: True,
-    to_nodes: Callable[[str], bool] = lambda _: True,
-    skip_nodes: Callable[[str], bool] = lambda _: False,
+    from_nodes: Optional[Collection[str]] = None,
+    to_nodes: Optional[Collection[str]] = None,
+    skip_nodes: Optional[Collection[str]] = None,
     snapshot_settings: pipeline_pb2
     .SnapshotSettings = _default_snapshot_settings,
 ) -> pipeline_pb2.Pipeline:
@@ -57,19 +57,14 @@ def mark_pipeline(
 
   Args:
     pipeline: A valid compiled Pipeline IR proto to be marked.
-    from_nodes: A predicate function that selects nodes by their ids. The set of
-      nodes whose node_ids return True determine where the "sweep" starts from
-      (see detailed description).
-      Defaults to lambda _: True (i.e., select all nodes).
-    to_nodes: A predicate function that selects nodes by their ids. The set of
-      nodes whose node_ids return True determine where the "sweep" ends (see
-      detailed description).
-      Defaults to lambda _: True (i.e., select all nodes).
-    skip_nodes: A predicate function that indicates which nodes between from and
-      to nodes can be skipped for pipeline run. Note that if a node depends on
-      nodes that can not be skipped, then it is still marked to run for pipeline
-      result correctness.
-      Defaults to lambda _: False.
+    from_nodes: The collection of nodes where the "sweep" starts (see detailed
+      description). If None, selects all nodes.
+    to_nodes: The collection of nodes where the "sweep" ends (see detailed
+      description). If None, selects all nodes.
+    skip_nodes: **MOST USERS DO NOT NEED THIS.** Use this to force-skip nodes
+      that would otherwise have been marked to run. Note that if a node depends
+      on nodes that cannot be skipped, then it is still marked to run for
+      pipeline result correctness. If None, does not force-skip any node.
     snapshot_settings: Settings needed to perform the snapshot step. Defaults to
       using LATEST_PIPELINE_RUN strategy.
 
@@ -79,17 +74,23 @@ def mark_pipeline(
   Raises:
     ValueError: If pipeline's execution_mode is not SYNC.
     ValueError: If pipeline contains a sub-pipeline.
+    ValueError: If pipeline was already marked for partial run.
+    ValueError: If both from_nodes and to_nodes are empty.
+    ValueError: If from_nodes/to_nodes contain node_ids not in the pipeline.
     ValueError: If pipeline is not topologically sorted.
   """
   _ensure_sync_pipeline(pipeline)
   _ensure_no_subpipeline_nodes(pipeline)
+  _ensure_no_partial_run_marks(pipeline)
+  _ensure_not_full_run(from_nodes, to_nodes)
+  _ensure_no_missing_nodes(pipeline, from_nodes, to_nodes)
   _ensure_topologically_sorted(pipeline)
 
   node_map = _make_ordered_node_map(pipeline)
 
-  from_node_ids = [node_id for node_id in node_map if from_nodes(node_id)]
-  to_node_ids = [node_id for node_id in node_map if to_nodes(node_id)]
-  skip_node_ids = [node_id for node_id in node_map if skip_nodes(node_id)]
+  from_node_ids = from_nodes or node_map.keys()
+  to_node_ids = to_nodes or node_map.keys()
+  skip_node_ids = skip_nodes or []
   nodes_to_run = _compute_nodes_to_run(node_map, from_node_ids, to_node_ids,
                                        skip_node_ids)
 
@@ -175,8 +176,10 @@ class _Direction(enum.Enum):
 def _ensure_sync_pipeline(pipeline: pipeline_pb2.Pipeline):
   """Raises ValueError if the pipeline's execution_mode is not SYNC."""
   if pipeline.execution_mode != pipeline_pb2.Pipeline.SYNC:
-    raise ValueError('Pipeline filtering is only supported for '
-                     'SYNC pipelines.')
+    raise ValueError(
+        'Pipeline filtering is only supported for SYNC execution modes; '
+        'found pipeline with execution mode: '
+        f'{pipeline_pb2.Pipeline.ExecutionMode.Name(pipeline.execution_mode)}')
 
 
 def _ensure_no_subpipeline_nodes(pipeline: pipeline_pb2.Pipeline):
@@ -196,6 +199,33 @@ def _ensure_no_subpipeline_nodes(pipeline: pipeline_pb2.Pipeline):
       raise ValueError(
           'Pipeline filtering not supported for pipelines with sub-pipelines. '
           f'sub-pipeline found: {pipeline_or_node}')
+
+
+def _ensure_not_full_run(from_nodes: Optional[Collection[str]] = None,
+                         to_nodes: Optional[Collection[str]] = None):
+  """Raises ValueError if both from_nodes and to_nodes are falsy."""
+  if not (from_nodes or to_nodes):
+    raise ValueError('Both from_nodes and to_nodes are empty.')
+
+
+def _ensure_no_partial_run_marks(pipeline: pipeline_pb2.Pipeline):
+  """Raises ValueError if the pipeline is already marked for partial run."""
+  for node in pipeline.nodes:
+    if node.pipeline_node.execution_options.HasField('partial_run_option'):
+      raise ValueError('Pipeline has already been marked for partial run.')
+
+
+def _ensure_no_missing_nodes(pipeline: pipeline_pb2.Pipeline,
+                             from_nodes: Optional[Collection[str]] = None,
+                             to_nodes: Optional[Collection[str]] = None):
+  """Raises ValueError if there are from_nodes/to_nodes not in the pipeline."""
+  all_node_ids = set(node.pipeline_node.node_info.id
+                     for node in pipeline.nodes)
+  missing_nodes = (set(from_nodes or []) | set(to_nodes or [])) - all_node_ids
+  if missing_nodes:
+    raise ValueError(
+        f'Nodes {sorted(missing_nodes)} specified in from_nodes/to_nodes '
+        'are not present in the pipeline.')
 
 
 def _ensure_topologically_sorted(pipeline: pipeline_pb2.Pipeline):

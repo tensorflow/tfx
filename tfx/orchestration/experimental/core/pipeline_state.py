@@ -681,19 +681,13 @@ def get_orchestrator_contexts(
 
 def orchestrator_context_name(pipeline_uid: task_lib.PipelineUid) -> str:
   """Returns orchestrator reserved context name."""
-  result = f'{pipeline_uid.pipeline_id}'
-  if pipeline_uid.key:
-    result = f'{result}:{pipeline_uid.key}'
-  return result
+  return pipeline_uid.pipeline_id
 
 
 def pipeline_uid_from_orchestrator_context(
     context: metadata_store_pb2.Context) -> task_lib.PipelineUid:
   """Returns pipeline uid from orchestrator reserved context."""
-  splits = context.name.split(':')
-  pipeline_id = splits[0]
-  key = splits[1] if len(splits) > 1 else ''
-  return task_lib.PipelineUid(pipeline_id=pipeline_id, key=key)
+  return task_lib.PipelineUid(context.name)
 
 
 def get_all_pipeline_nodes(

@@ -171,12 +171,31 @@ class LocalDagRunnerTest(absl.testing.absltest.TestCase):
         '_FakeComponent.d', '_FakeComponent.e'
     ])
 
+  def testPartialRun(self):
+    local_dag_runner.LocalDagRunner().run(
+        self._getTestPipeline(),
+        run_options=pipeline_py.RunOptions(to_nodes=['c']))
+    self.assertEqual(
+        _executed_components,
+        ['_FakeComponent.a', '_FakeComponent.b', '_FakeComponent.c'])
+
   def testRunWithIR(self):
     local_dag_runner.LocalDagRunner().run_with_ir(self._getTestPipelineIR())
     self.assertEqual(_executed_components, [
         '_FakeComponent.a', '_FakeComponent.b', '_FakeComponent.c',
         '_FakeComponent.d', '_FakeComponent.e'
     ])
+
+  def testPartialRunWithIR(self):
+    pr_opts = pipeline_pb2.PartialRun()
+    pr_opts.to_nodes.append('c')
+    pr_opts.snapshot_settings.latest_pipeline_run_strategy.SetInParent()
+    local_dag_runner.LocalDagRunner().run_with_ir(
+        self._getTestPipelineIR(),
+        run_options=pipeline_pb2.RunOptions(partial_run=pr_opts))
+    self.assertEqual(
+        _executed_components,
+        ['_FakeComponent.a', '_FakeComponent.b', '_FakeComponent.c'])
 
 
 if __name__ == '__main__':

@@ -64,16 +64,16 @@ class CompilerTest(tf.test.TestCase, parameterized.TestCase):
       return text_format.ParseLines(text_pb_file, pipeline_pb2.Pipeline())
 
   @parameterized.named_parameters(
-      ("additional_properties_test_pipeline_async",
+      ("_additional_properties_test_pipeline_async",
        additional_properties_test_pipeline_async,
        "additional_properties_test_pipeline_async_ir.pbtxt"),
-      ("sync_pipeline", iris_pipeline_sync, "iris_pipeline_sync_ir.pbtxt"),
-      ("async_pipeline", iris_pipeline_async, "iris_pipeline_async_ir.pbtxt"),
-      ("conditional_pipeline", conditional_pipeline,
+      ("_sync_pipeline", iris_pipeline_sync, "iris_pipeline_sync_ir.pbtxt"),
+      ("_async_pipeline", iris_pipeline_async, "iris_pipeline_async_ir.pbtxt"),
+      ("_conditional_pipeline", conditional_pipeline,
        "conditional_pipeline_ir.pbtxt"),
-      ("channel_union_pipeline", channel_union_pipeline,
+      ("_channel_union_pipeline", channel_union_pipeline,
        "channel_union_pipeline_ir.pbtxt"),
-      ("pipeline_root_placeholder", pipeline_root_placeholder,
+      ("_pipeline_root_placeholder", pipeline_root_placeholder,
        "pipeline_root_placeholder_ir.pbtxt"))
   def testCompile(self, pipeline_module, expected_result_path):
     """Tests compiling the whole pipeline."""

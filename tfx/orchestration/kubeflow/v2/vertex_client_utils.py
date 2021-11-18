@@ -18,13 +18,14 @@ import time
 
 from absl import logging
 from google.cloud.aiplatform import pipeline_jobs
-from google.cloud.aiplatform.compat.types import pipeline_state_v1beta1
+from google.cloud.aiplatform_v1.types import pipeline_state
+
 
 _PIPELINE_COMPLETE_STATES = frozenset([
-    pipeline_state_v1beta1.PipelineState.PIPELINE_STATE_SUCCEEDED,
-    pipeline_state_v1beta1.PipelineState.PIPELINE_STATE_FAILED,
-    pipeline_state_v1beta1.PipelineState.PIPELINE_STATE_CANCELLED,
-    pipeline_state_v1beta1.PipelineState.PIPELINE_STATE_PAUSED,
+    pipeline_state.PipelineState.PIPELINE_STATE_SUCCEEDED,
+    pipeline_state.PipelineState.PIPELINE_STATE_FAILED,
+    pipeline_state.PipelineState.PIPELINE_STATE_CANCELLED,
+    pipeline_state.PipelineState.PIPELINE_STATE_PAUSED,
 ])
 
 
@@ -49,7 +50,7 @@ def poll_job_status(job_id: str, timeout: datetime.timedelta,
 
     job = pipeline_jobs.PipelineJob.get(resource_name=job_id)
     if (job.state ==
-        pipeline_state_v1beta1.PipelineState.PIPELINE_STATE_SUCCEEDED):
+        pipeline_state.PipelineState.PIPELINE_STATE_SUCCEEDED):
       logging.info('Job succeeded: %s', job)
       return
     elif job.state in _PIPELINE_COMPLETE_STATES:

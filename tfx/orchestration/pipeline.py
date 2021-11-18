@@ -14,7 +14,7 @@
 """Definition and related classes for TFX pipeline."""
 
 import enum
-from typing import List, Optional, Union, cast
+from typing import Collection, List, Optional, Union, cast
 
 from tfx.dsl.compiler import constants
 from tfx.dsl.components.base import base_node
@@ -68,6 +68,124 @@ def add_beam_pipeline_args_to_component(component, beam_pipeline_args):
         component.executor_spec).beam_pipeline_args = beam_pipeline_args + cast(
             executor_spec.BeamExecutorSpec,
             component.executor_spec).beam_pipeline_args
+
+
+class RunOptions:
+  r"""Run-time options for running a pipeline (such as partial run).
+
+  To run a sub-graph of the Pipeline, include this when constructing the
+  Pipeline object.
+
+  ### Specifying the sub-graph to run
+
+  To define the sub-graph to run, specify a set of *source nodes* and a set
+  of *sink nodes*. These can be provided as collections of node_id strings, or
+  as functions that takes a node id string and returns a boolean.
+
+  Consider this pipeline graph:
+
+
+                            -- CsvExampleGen --
+                            |        |        |
+                            v        |        |
+               -- StatisticsGen      |        |
+               |           |         |        |
+               |           v         |        |
+               |       SchemaGen     |        |
+               |     /     |     \   |        |
+               v    v      |      v  v        |
+        ExampleValidator   |     Transform    |
+                           |    /             |
+                           v   v              |
+                          Trainer -----       |
+                              \        \      |
+                               \        v     v
+                                \      Evaluator
+                                 \        /
+                                  \      /
+                                   v    v
+                                   Pusher
+
+
+  Suppose the user has already done a full pipeline run, and now only wants to
+  run "Trainer" and "Evaluator". To specify this:
+
+  ```python
+  my_pipeline = pipeline.Pipeline(
+      # How you'll normally define a pipeline.
+      pipeline_name=...,
+      # Include *all* pipeline components as usual, even the ones to be skipped.
+      components=[
+          example_gen_component,
+          ...,
+          pusher_component,
+      ],
+      # Add RunOptions to specify a partial run.
+      run_options=pipeline.RunOptions(
+          from_nodes=[trainer_component.id],
+          to_nodes=[evaluator_component.id],
+      ),
+  )
+  ```
+
+  The compiler will find the nodes reachable downstream from Trainer and
+  reachable upstream from Evaluator to obtain {Trainer, Evaluator}, and mark
+  those nodes in the pipeline IR accordingly.
+
+  Alternatively, the user can specify:
+
+  ```python
+  nodes_to_include = {trainer_component.id, evaluator_component.id}
+  run_options = pipeline.RunOptions(
+      from_nodes=nodes_to_include,
+      to_nodes=nodes_to_include,
+  )
+  ```
+
+  ### Specifying the artifact reuse strategy
+
+  In the above example, the Trainer node is the first node in the partial run.
+  How would it resolve its dependencies? By default, nodes in a partial run
+  would use the output artifacts from the *previous pipeline run* (including
+  partial runs) to resolve any dependencies that cannot be provided by other
+  nodes in the same partial run.
+
+  Using the previous pipeline run is sufficient in most cases. However,
+  the user may wish to use a different pipeline run to provide missing
+  dependencies -- perhaps an even earlier pipeline run. To specify this:
+
+  ```python
+  run_options = pipeline.RunOptions(
+      from_nodes=...,
+      to_nodes=...,
+      base_pipeline_run_id=<the pipeline run id whose artifacts are to be used>,
+  )
+  ```
+  """
+
+  def __init__(self,
+               from_nodes: Optional[Collection[str]] = None,
+               to_nodes: Optional[Collection[str]] = None,
+               base_pipeline_run_id: Optional[str] = None):
+    """Constructor.
+
+    Args:
+      from_nodes: node_ids to be used as "from_nodes". Defaults to None,
+        which indicates all nodes.
+      to_nodes: node_ids to be used as "to_nodes". Defaults to None, which
+        indicates all nodes.
+      base_pipeline_run_id: If provided, will use this as the pipeline run id
+        from which missing dependencies are provided. If None, will use the
+        previous pipeline run id. Defaults to None.
+
+    Raises:
+      ValueError if both from_nodes or to_nodes are empty.
+    """
+    if not(from_nodes or to_nodes):
+      raise ValueError('from_nodes or to_nodes cannot both be empty.')
+    self.from_nodes = from_nodes
+    self.to_nodes = to_nodes
+    self.base_pipeline_run_id = base_pipeline_run_id
 
 
 class Pipeline:
@@ -184,8 +302,7 @@ class Pipeline:
     # Connects nodes based on producer map.
     for component in deduped_components:
       for input_channel in component.inputs.values():
-        for ch in (
-            channel_utils.get_individual_channels(input_channel)):
+        for ch in channel_utils.get_individual_channels(input_channel):
           if ch not in bound_channels:
             continue
           upstream_node = node_by_id.get(ch.producer_component_id)

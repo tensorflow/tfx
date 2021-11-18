@@ -68,8 +68,8 @@ class DataViewBinder(base_component.BaseComponent):
       binder_executor.DataViewBinderExecutor)
 
   def __init__(self,
-               input_examples: types.Channel,
-               data_view: types.Channel,
+               input_examples: types.BaseChannel,
+               data_view: types.BaseChannel,
                output_examples: Optional[types.Channel] = None):
     if not output_examples:
       output_examples = types.Channel(type=standard_artifacts.Examples)

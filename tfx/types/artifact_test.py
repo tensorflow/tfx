@@ -22,6 +22,7 @@ import absl
 import tensorflow as tf
 from tfx.types import artifact
 from tfx.types import value_artifact
+from tfx.types.system_artifacts import Dataset
 from tfx.utils import json_utils
 
 from google.protobuf import json_format
@@ -78,6 +79,46 @@ json_format.Parse(
         }
     }), _mlmd_artifact_type)
 _MyArtifact3 = artifact._ArtifactType(mlmd_artifact_type=_mlmd_artifact_type)  # pylint: disable=invalid-name
+
+
+class _MyArtifact4(artifact.Artifact):
+  TYPE_NAME = 'MyTypeName4'
+  TYPE_ANNOTATION = Dataset
+  PROPERTIES = {
+      'span': artifact.Property(type=artifact.PropertyType.INT),
+      'split_names': artifact.Property(type=artifact.PropertyType.STRING),
+  }
+
+
+_mlmd_artifact_type_with_base_type = metadata_store_pb2.ArtifactType()
+json_format.Parse(
+    json.dumps({
+        'name': 'MyTypeName5',
+        'properties': {
+            'span': 'INT',
+            'split_names': 'STRING',
+        },
+        'base_type': metadata_store_pb2.ArtifactType.DATASET
+    }), _mlmd_artifact_type_with_base_type)
+_MyArtifact5 = artifact._ArtifactType(
+    mlmd_artifact_type=_mlmd_artifact_type_with_base_type)  # pylint: disable=invalid-name
+
+
+_MyArtifact6 = artifact._ArtifactType(  # pylint: disable=invalid-name
+    name='MyTypeName6',
+    annotation=Dataset,
+    properties={
+        'span': artifact.Property(type=artifact.PropertyType.INT),
+        'split_names': artifact.Property(type=artifact.PropertyType.STRING),
+    })
+
+
+class _ArtifactWithInvalidAnnotation(artifact.Artifact):
+  TYPE_NAME = 'InvalidAnnotationArtifact'
+  TYPE_ANNOTATION = artifact.Artifact
+  PROPERTIES = {
+      'int1': artifact.Property(type=artifact.PropertyType.INT),
+  }
 
 
 class _MyValueArtifact(value_artifact.ValueArtifact):
@@ -902,6 +943,42 @@ class ArtifactTest(tf.test.TestCase):
     artifact2 = _MyArtifact2()
     with self.assertRaises(AssertionError):
       artifact2.copy_from(artifact1)
+
+  def testTypeAnnotationIsNone(self):
+    my_artifact_1 = _MyArtifact()
+    self.assertIsNone(my_artifact_1.TYPE_ANNOTATION)
+    self.assertEqual(my_artifact_1.artifact_type.base_type,
+                     metadata_store_pb2.ArtifactType.UNSET)
+
+    # _MyArtifact2/_MyArtifact3 classes are created from _ArtifactType method.
+    my_artifact_2 = _MyArtifact2()
+    self.assertIsNone(my_artifact_2.TYPE_ANNOTATION)
+    self.assertEqual(my_artifact_2.artifact_type.base_type,
+                     metadata_store_pb2.ArtifactType.UNSET)
+
+    my_artifact_3 = _MyArtifact3()
+    self.assertIsNone(my_artifact_3.TYPE_ANNOTATION)
+    self.assertEqual(my_artifact_3.artifact_type.base_type,
+                     metadata_store_pb2.ArtifactType.UNSET)
+
+  def testArtifactTypeWithTypeAnnotation(self):
+    my_artifact_with_annotation_1 = _MyArtifact4()
+    self.assertEqual(my_artifact_with_annotation_1.artifact_type.base_type,
+                     metadata_store_pb2.ArtifactType.DATASET)
+
+    # _MyArtifact5/_MyArtifact6 classes are created from _ArtifactType method.
+    my_artifact_with_annotation_2 = _MyArtifact5()
+    self.assertEqual(my_artifact_with_annotation_2.artifact_type.base_type,
+                     metadata_store_pb2.ArtifactType.DATASET)
+
+    my_artifact_with_annotation_3 = _MyArtifact6()
+    self.assertEqual(my_artifact_with_annotation_3.artifact_type.base_type,
+                     metadata_store_pb2.ArtifactType.DATASET)
+
+  def testInvalidTypeAnnotation(self):
+    with self.assertRaisesRegex(
+        ValueError, 'is not a subclass of SystemArtifact'):
+      _ArtifactWithInvalidAnnotation()
 
 
 if __name__ == '__main__':

@@ -24,6 +24,9 @@ import absl
 from tfx.types.artifact import Artifact
 from tfx.types.artifact import Property
 from tfx.types.artifact import PropertyType
+from tfx.types.system_artifacts import Dataset
+from tfx.types.system_artifacts import Model as SystemModel
+from tfx.types.system_artifacts import Statistics
 from tfx.types.value_artifact import ValueArtifact
 
 # Span for an artifact.
@@ -75,6 +78,7 @@ class _TfxArtifact(Artifact):
 
 class Examples(_TfxArtifact):
   TYPE_NAME = 'Examples'
+  TYPE_ANNOTATION = Dataset
   PROPERTIES = {
       'span': SPAN_PROPERTY,
       'version': VERSION_PROPERTY,
@@ -92,6 +96,7 @@ class ExampleAnomalies(_TfxArtifact):
 
 class ExampleStatistics(_TfxArtifact):
   TYPE_NAME = 'ExampleStatistics'
+  TYPE_ANNOTATION = Statistics
   PROPERTIES = {
       'span': SPAN_PROPERTY,
       'split_names': SPLIT_NAMES_PROPERTY,
@@ -113,6 +118,7 @@ class InfraBlessing(_TfxArtifact):
 
 class Model(_TfxArtifact):
   TYPE_NAME = 'Model'
+  TYPE_ANNOTATION = SystemModel
 
 
 class ModelRun(_TfxArtifact):
@@ -129,6 +135,7 @@ class ModelEvaluation(_TfxArtifact):
 
 class PushedModel(_TfxArtifact):
   TYPE_NAME = 'PushedModel'
+  TYPE_ANNOTATION = SystemModel
 
 
 class Schema(_TfxArtifact):

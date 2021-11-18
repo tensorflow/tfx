@@ -21,6 +21,7 @@ import json
 from typing import Any, Dict, List, Optional, Type, Union
 
 from absl import logging
+from tfx.types.system_artifacts import SystemArtifact
 from tfx.utils import doc_controls
 from tfx.utils import json_utils
 
@@ -146,6 +147,16 @@ class Artifact(json_utils.Jsonable):
   # TYPE_NAME = 'MyTypeName'
   TYPE_NAME = None
 
+  # The system artifact class used to annotate the artifact type. It is a
+  # subclass of SystemArtifact.
+  # These subclasses (system artifact classses) are defined in
+  # third_party/py/tfx/types/system_artifacts.py.
+  #
+  # Example usage:
+  #
+  # TYPE_ANNOTATION = system_artifacts.Dataset
+  TYPE_ANNOTATION: Type[SystemArtifact] = None
+
   # Optional dictionary of property name strings as keys and `Property`
   # objects as values, used to specify the artifact type's properties.
   # Subsequently, this artifact property may be accessed as Python attributes
@@ -237,6 +248,17 @@ class Artifact(json_utils.Jsonable):
         # Populate ML Metadata artifact properties dictionary.
         for key, value in cls.PROPERTIES.items():
           artifact_type.properties[key] = value.mlmd_type()
+
+        # Populate ML Metadata artifact type field: `base_type`.
+        type_annotation_cls = cls.TYPE_ANNOTATION
+        if type_annotation_cls:
+          if not issubclass(type_annotation_cls, SystemArtifact):
+            raise ValueError(
+                'TYPE_ANNOTATION %s is not a subclass of SystemArtifact.' %
+                type_annotation_cls)
+          if type_annotation_cls.MLMD_SYSTEM_BASE_TYPE:
+            artifact_type.base_type = type_annotation_cls.MLMD_SYSTEM_BASE_TYPE
+
       cls._MLMD_ARTIFACT_TYPE = artifact_type
     return copy.deepcopy(cls._MLMD_ARTIFACT_TYPE)
 
@@ -664,6 +686,7 @@ class Artifact(json_utils.Jsonable):
 
 def _ArtifactType(  # pylint: disable=invalid-name
     name: Optional[str] = None,
+    annotation: Optional[Type[SystemArtifact]] = None,
     properties: Optional[Dict[str, Property]] = None,
     mlmd_artifact_type: Optional[metadata_store_pb2.ArtifactType] = None
 ) -> Type[Artifact]:
@@ -679,6 +702,8 @@ def _ArtifactType(  # pylint: disable=invalid-name
   Args:
     name: Name of the artifact type in MLMD. Must be provided unless a protobuf
       message is provided in the "mlmd_artifact_type" parameter.
+    annotation: Annotation of the artifact type. It can be any of the system
+      artifact classes from third_party/py/tfx/types/system_artifacts.py.
     properties: Dictionary of properties mapping property name keys to
       `Parameter` object instances. Must be provided unless a protobuf message
       is provided in the "mlmd_artifact_type" parameter.
@@ -689,10 +714,11 @@ def _ArtifactType(  # pylint: disable=invalid-name
     An Artifact class corresponding to the specified type.
   """
   if mlmd_artifact_type:
-    if name or properties:
+    if name or annotation or properties:
       raise ValueError(
-          'The "name" and "properties" fields should not be passed when the '
-          '"mlmd_artifact_type" parameter is set, in _ArtifactType call.')
+          'The "name", "annotation" and "properties" fields should not be '
+          'passed when the "mlmd_artifact_type" parameter is set, in '
+          '_ArtifactType call.')
     if not mlmd_artifact_type.name:
       raise ValueError('Artifact type proto must have "name" field set.')
     properties = {}
@@ -705,9 +731,22 @@ def _ArtifactType(  # pylint: disable=invalid-name
         properties[name] = Property(PropertyType.STRING)
       else:
         raise ValueError('Unsupported MLMD property type: %s.' % property_type)
+    annotation = None
+    if mlmd_artifact_type.base_type != metadata_store_pb2.ArtifactType.UNSET:
+      extensions = (
+          metadata_store_pb2.ArtifactType.SystemDefinedBaseType.DESCRIPTOR.
+          values_by_number[mlmd_artifact_type.base_type].GetOptions().Extensions
+      )
+      mlmd_base_type_name = extensions[
+          metadata_store_pb2.system_type_extension].type_name
+      annotation = type(mlmd_base_type_name, (SystemArtifact,), {
+          'MLMD_SYSTEM_BASE_TYPE': mlmd_artifact_type.base_type,
+      })
+
     return type(
         str(mlmd_artifact_type.name), (Artifact,), {
             'TYPE_NAME': mlmd_artifact_type.name,
+            'TYPE_ANNOTATION': annotation,
             'PROPERTIES': properties,
         })
   else:
@@ -718,5 +757,6 @@ def _ArtifactType(  # pylint: disable=invalid-name
           '"mlmd_artifact_type" parameter.')
     return type(name, (Artifact,), {
         'TYPE_NAME': name,
+        'TYPE_ANNOTATION': annotation,
         'PROPERTIES': properties
     })
