@@ -39,7 +39,7 @@ def _resolve_beam_args_from_env(beam_pipeline_args, beam_pipeline_args_from_env)
   for beam_pipeline_arg_from_env, env_var in beam_pipeline_args_from_env.items():
     # If an arg is already present in beam_pipeline_args, it should take precedence
     # over env vars.
-    if any(beam_pipeline_arg.starswith(f"--{beam_pipeline_arg_from_env}=") for beam_pipeline_arg in beam_pipeline_args):
+    if any(beam_pipeline_arg.startswith(f"--{beam_pipeline_arg_from_env}=") for beam_pipeline_arg in beam_pipeline_args):
       logging.info('Arg %s already present in '
         'beam_pipeline_args and will not be fetched from env.',
          beam_pipeline_arg_from_env)
