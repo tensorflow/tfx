@@ -55,7 +55,7 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip wheel
-        pip install -e .[all]
+        TFX_DEPENDENCY_SELECTOR=NIGHTLY pip install -i https://pypi-nightly.tensorflow.org/simple --pre -e .[all]
 
     - name: Run unit tests
       shell: bash
