@@ -117,9 +117,6 @@ def make_extra_packages_airflow():
   """Prepare extra packages needed for Apache Airflow orchestrator."""
   return [
       'apache-airflow[mysql]>=1.10.14,<3',
-      # TODO(b/205459685): Delete pinned WTForms after flask-appbuilder fix the
-      # issue. (https://github.com/dpgaspar/Flask-AppBuilder/issues/1732)
-      'WTForms<3',
   ]
 
 
