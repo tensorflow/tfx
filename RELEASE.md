@@ -6,6 +6,8 @@
     in a pipeline while reusing artifacts generated in previous pipeline runs.
     This is supported in LocalDagRunner and BeamDagRunner, and is exposed via
     the TfxRunner API.
+*   Added support for multiple pipelines in a project. Users can add multiple
+    pipelines in one project.
 
 ### For Pipeline Authors
 
