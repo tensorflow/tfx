@@ -252,6 +252,9 @@ class ResolverOp(metaclass=_ResolverOpMeta):
   actually create the FooOp instance, use FooOp.create().
   """
 
+  def __init__(self, *unused_args, **unused_kwargs):
+    """Dummy constructor to bypass false negative pytype alarm."""
+
   @abc.abstractmethod
   def apply(
       self,
