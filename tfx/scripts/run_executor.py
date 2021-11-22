@@ -175,7 +175,7 @@ def _parse_flags(argv: List[str]) -> Tuple[argparse.Namespace, List[str]]:
   execution_group.add_argument(
       '--exec-properties-base64',
       type=str,
-      help='json serialized dict of (non artifact) execution properties.')
+      help='base64 encoded dict of (non artifact) execution properties.')
 
   parser.add_argument(
       '--write-outputs-stdout',
