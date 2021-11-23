@@ -27,8 +27,8 @@ from tfx.orchestration.experimental.core import task_queue as tq
 from tfx.orchestration.experimental.core import task_scheduler
 from tfx.orchestration.experimental.core import test_utils
 from tfx.orchestration.experimental.core.task_schedulers import importer_task_scheduler
+from tfx.orchestration.experimental.core.testing import test_pipeline_with_importer
 from tfx.orchestration.portable import runtime_parameter_utils
-from tfx.proto.orchestration import pipeline_pb2
 from tfx.utils import status as status_lib
 
 
@@ -76,11 +76,7 @@ class ImporterTaskSchedulerTest(test_utils.TfxTest):
     self._importer_task = importer_task
 
   def _make_pipeline(self, pipeline_root, pipeline_run_id):
-    pipeline = pipeline_pb2.Pipeline()
-    self.load_proto_from_text(
-        os.path.join(
-            os.path.dirname(__file__), 'testdata',
-            'pipeline_with_importer.pbtxt'), pipeline)
+    pipeline = test_pipeline_with_importer.create_pipeline()
     runtime_parameter_utils.substitute_runtime_parameter(
         pipeline, {
             constants.PIPELINE_ROOT_PARAMETER_NAME: pipeline_root,

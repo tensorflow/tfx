@@ -18,6 +18,7 @@ import uuid
 
 import tensorflow as tf
 from tfx import types
+from tfx.dsl.compiler import constants
 from tfx.orchestration import metadata
 from tfx.orchestration.experimental.core import sync_pipeline_task_gen as sptg
 from tfx.orchestration.experimental.core import task_manager as tm
@@ -25,10 +26,10 @@ from tfx.orchestration.experimental.core import task_queue as tq
 from tfx.orchestration.experimental.core import task_scheduler
 from tfx.orchestration.experimental.core import test_utils
 from tfx.orchestration.experimental.core.task_schedulers import resolver_task_scheduler
+from tfx.orchestration.experimental.core.testing import test_pipeline_with_resolver
 from tfx.orchestration.portable import execution_publish_utils
 from tfx.orchestration.portable import runtime_parameter_utils
 from tfx.orchestration.portable.mlmd import context_lib
-from tfx.proto.orchestration import pipeline_pb2
 from tfx.utils import status as status_lib
 
 
@@ -55,15 +56,11 @@ class ResolverTaskSchedulerTest(test_utils.TfxTest):
     self._consumer_node = self._pipeline.nodes[2].pipeline_node
 
   def _make_pipeline(self, pipeline_root, pipeline_run_id):
-    pipeline = pipeline_pb2.Pipeline()
-    self.load_proto_from_text(
-        os.path.join(
-            os.path.dirname(__file__), 'testdata',
-            'pipeline_with_resolver.pbtxt'), pipeline)
+    pipeline = test_pipeline_with_resolver.create_pipeline()
     runtime_parameter_utils.substitute_runtime_parameter(
         pipeline, {
-            'pipeline_root': pipeline_root,
-            'pipeline_run_id': pipeline_run_id,
+            constants.PIPELINE_ROOT_PARAMETER_NAME: pipeline_root,
+            constants.PIPELINE_RUN_ID_PARAMETER_NAME: pipeline_run_id,
         })
     return pipeline
 
@@ -111,9 +108,9 @@ class ResolverTaskSchedulerTest(test_utils.TfxTest):
           task=resolver_task).schedule()
       self.assertEqual(status_lib.Code.OK, ts_result.status.code)
       self.assertIsInstance(ts_result.output, task_scheduler.ResolverNodeOutput)
-      self.assertCountEqual(['models'],
+      self.assertCountEqual(['resolved_model'],
                             ts_result.output.resolved_input_artifacts.keys())
-      models = ts_result.output.resolved_input_artifacts['models']
+      models = ts_result.output.resolved_input_artifacts['resolved_model']
       self.assertLen(models, 1)
       self.assertEqual('my_model_uri_2', models[0].mlmd_artifact.uri)
       tm._publish_execution_results(m, resolver_task, ts_result)
@@ -133,9 +130,9 @@ class ResolverTaskSchedulerTest(test_utils.TfxTest):
         num_active_executions=1,
         expected_exec_nodes=[self._consumer_node],
         ignore_update_node_state_tasks=True)
-    self.assertCountEqual(['input_models'],
+    self.assertCountEqual(['resolved_model'],
                           consumer_task.input_artifacts.keys())
-    input_models = consumer_task.input_artifacts['input_models']
+    input_models = consumer_task.input_artifacts['resolved_model']
     self.assertLen(input_models, 1)
     self.assertEqual('my_model_uri_2', input_models[0].mlmd_artifact.uri)
 
