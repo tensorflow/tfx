@@ -21,6 +21,7 @@ from tfx.dsl.compiler import compiler
 from tfx.dsl.compiler.testdata import additional_properties_test_pipeline_async
 from tfx.dsl.compiler.testdata import channel_union_pipeline
 from tfx.dsl.compiler.testdata import conditional_pipeline
+from tfx.dsl.compiler.testdata import foreach_pipeline
 from tfx.dsl.compiler.testdata import iris_pipeline_async
 from tfx.dsl.compiler.testdata import iris_pipeline_sync
 from tfx.dsl.compiler.testdata import pipeline_root_placeholder
@@ -71,10 +72,12 @@ class CompilerTest(tf.test.TestCase, parameterized.TestCase):
       ("_async_pipeline", iris_pipeline_async, "iris_pipeline_async_ir.pbtxt"),
       ("_conditional_pipeline", conditional_pipeline,
        "conditional_pipeline_ir.pbtxt"),
+      ("_foreach", foreach_pipeline, "foreach_pipeline_ir.pbtxt"),
       ("_channel_union_pipeline", channel_union_pipeline,
        "channel_union_pipeline_ir.pbtxt"),
       ("_pipeline_root_placeholder", pipeline_root_placeholder,
-       "pipeline_root_placeholder_ir.pbtxt"))
+       "pipeline_root_placeholder_ir.pbtxt"),
+  )
   def testCompile(self, pipeline_module, expected_result_path):
     """Tests compiling the whole pipeline."""
     dsl_compiler = compiler.Compiler()

@@ -23,15 +23,19 @@ from tfx.dsl.components.base import base_component
 from tfx.dsl.components.base import base_driver
 from tfx.dsl.components.base import base_node
 from tfx.dsl.components.common import resolver
+from tfx.dsl.context_managers import context_manager
+from tfx.dsl.control_flow import for_each
 from tfx.dsl.experimental.conditionals import conditional
+from tfx.dsl.input_resolution import resolver_function
 from tfx.dsl.input_resolution import resolver_op
+from tfx.dsl.input_resolution.ops import skip_if_empty_op
+from tfx.dsl.input_resolution.ops import unnest_op
 from tfx.dsl.placeholder import placeholder
 from tfx.orchestration import data_types
 from tfx.orchestration import data_types_utils
 from tfx.orchestration import pipeline
 from tfx.proto.orchestration import executable_spec_pb2
 from tfx.proto.orchestration import pipeline_pb2
-from tfx.types import channel
 from tfx.types import channel_utils
 from tfx.utils import deprecation_utils
 from tfx.utils import json_utils
@@ -191,7 +195,7 @@ class Compiler:
     if predicates:
       implicit_keys_map = {}
       for key, chnl in tfx_node_inputs.items():
-        if not isinstance(chnl, channel.Channel):
+        if not isinstance(chnl, types.Channel):
           raise ValueError(
               "Conditional only support using channel as a predicate.")
         implicit_keys_map[compiler_utils.implicit_channel_key(chnl)] = key
@@ -212,7 +216,33 @@ class Compiler:
       resolver_step.config_json = json_utils.dumps(
           {"predicates": encoded_predicates})
 
-    # Step 3.2: Fill node inputs
+    # Step 3.2: Handle ForEach.
+    dsl_contexts = context_manager.get_contexts(tfx_node)
+    for dsl_context in dsl_contexts:
+      if isinstance(dsl_context, for_each.ForEachContext):
+        for input_key, channel in tfx_node_inputs.items():
+          if (isinstance(channel, types.LoopVarChannel) and
+              channel.wrapped is dsl_context.wrapped_channel):
+            node.inputs.resolver_config.resolver_steps.extend(
+                _compile_for_each_context(input_key))
+            break
+        else:
+          # Ideally should not reach here as the same check is performed at
+          # ForEachContext.will_add_node().
+          raise ValueError(
+              f"Unable to locate ForEach loop variable {dsl_context.channel} "
+              f"from inputs of node {tfx_node.id}.")
+
+    # Check loop variable is used outside the ForEach.
+    for input_key, channel in tfx_node_inputs.items():
+      if isinstance(channel, types.LoopVarChannel):
+        dsl_context_ids = {c.id for c in dsl_contexts}
+        if channel.context_id not in dsl_context_ids:
+          raise ValueError(
+              "Loop variable cannot be used outside the ForEach "
+              f"(node_id = {tfx_node.id}, input_key = {input_key}).")
+
+    # Step 3.3: Fill node inputs
     for key, value in itertools.chain(tfx_node_inputs.items(),
                                       implicit_input_channels.items()):
       input_spec = node.inputs.inputs[key]
@@ -284,11 +314,11 @@ class Compiler:
                 raise
 
     # TODO(b/170694459): Refactor special nodes as plugins.
-    # Step 3.3: Special treatment for Resolver node.
+    # Step 3.4: Special treatment for Resolver node.
     if compiler_utils.is_resolver(tfx_node):
       assert compile_context.is_sync_mode
       node.inputs.resolver_config.resolver_steps.extend(
-          _convert_to_resolver_steps(tfx_node))
+          _compile_resolver_node(tfx_node))
 
     # Step 4: Node outputs
     for key, value in tfx_node.outputs.items():
@@ -484,7 +514,7 @@ class Compiler:
           input_channels[parent_input_key] = chnl
       # Step 3.
       # Convert resolver node into corresponding resolver steps.
-      resolver_steps.extend(reversed(_convert_to_resolver_steps(resolver_node)))
+      resolver_steps.extend(reversed(_compile_resolver_node(resolver_node)))
 
     if resolver_steps:
       node.inputs.resolver_config.resolver_steps.extend(
@@ -572,20 +602,40 @@ def _compile_resolver_op(
   return result
 
 
-def _convert_to_resolver_steps(
-    resolver_node: base_node.BaseNode
+def _compile_resolver_function(
+    f: resolver_function.ResolverFunction,
+) -> List[pipeline_pb2.ResolverConfig.ResolverStep]:
+  """Converts ResolverFunction to corresponding ResolverSteps."""
+  result = []
+  op_node = f.trace()
+  while not op_node.is_input_node:
+    result.append(_compile_resolver_op(op_node))
+    op_node = op_node.arg
+  return list(reversed(result))
+
+
+def _compile_resolver_node(
+    resolver_node: base_node.BaseNode,
 ) -> List[pipeline_pb2.ResolverConfig.ResolverStep]:
   """Converts Resolver node to a corresponding ResolverSteps."""
   assert compiler_utils.is_resolver(resolver_node)
   resolver_node = cast(resolver.Resolver, resolver_node)
-  result = []
-  op_node = resolver_node.trace(resolver_op.OpNode.INPUT_NODE)
-  while not op_node.is_input_node:
-    result.append(_compile_resolver_op(op_node))
-    op_node = op_node.arg
+  result = _compile_resolver_function(resolver_node.resolver_function)
   for step in result:
     step.input_keys.extend(resolver_node.inputs.keys())
-  return list(reversed(result))
+  return result
+
+
+def _compile_for_each_context(
+    input_key: str) -> List[pipeline_pb2.ResolverConfig.ResolverStep]:
+  """Generates ResolverSteps corresponding to ForEach context."""
+
+  @resolver_function.resolver_function
+  def impl(input_node):
+    items = unnest_op.Unnest(input_node, key=input_key)
+    return skip_if_empty_op.SkipIfEmpty(items)
+
+  return _compile_resolver_function(impl)
 
 
 def _check_property_value_type(property_name: str,

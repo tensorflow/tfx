@@ -20,7 +20,6 @@ import typing
 import uuid
 
 import tensorflow as tf
-
 from tfx.dsl.compiler import constants
 from tfx.orchestration import metadata
 from tfx.orchestration.experimental.core import mlmd_state
@@ -30,8 +29,8 @@ from tfx.orchestration.experimental.core import task_queue as tq
 from tfx.orchestration.experimental.core import task_scheduler as ts
 from tfx.orchestration.experimental.core import test_utils
 from tfx.orchestration.experimental.core.task_schedulers import manual_task_scheduler
+from tfx.orchestration.experimental.core.testing import test_manual_node
 from tfx.orchestration.portable import runtime_parameter_utils
-from tfx.proto.orchestration import pipeline_pb2
 from tfx.utils import status as status_lib
 
 
@@ -55,11 +54,7 @@ class ManualTaskSchedulerTest(test_utils.TfxTest):
     self._manual_node = self._pipeline.nodes[0].pipeline_node
 
   def _make_pipeline(self, pipeline_root, pipeline_run_id):
-    pipeline = pipeline_pb2.Pipeline()
-    self.load_proto_from_text(
-        os.path.join(
-            os.path.dirname(__file__), 'testdata',
-            'pipeline_with_manual_node.pbtxt'), pipeline)
+    pipeline = test_manual_node.create_pipeline()
     runtime_parameter_utils.substitute_runtime_parameter(
         pipeline, {
             constants.PIPELINE_ROOT_PARAMETER_NAME: pipeline_root,
@@ -110,7 +105,7 @@ class ManualTaskSchedulerTest(test_utils.TfxTest):
     manual_task_scheduler._POLLING_INTERVAL_SECS = 1
 
     # Starts task scheduler and keeps polling for the node state.
-    # The scheuler should be blocked (ts_result has nothing)
+    # The scheduler should be blocked (ts_result has nothing)
     # because the node state stays in WAITING.
     threading.Thread(target=start_scheduler, args=(ts_result,)).start()
     self.assertEqual(len(ts_result), 0)

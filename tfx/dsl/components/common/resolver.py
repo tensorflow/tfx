@@ -257,11 +257,10 @@ class Resolver(base_node.BaseNode):
           types.Channel(type=c.type).set_artifacts([c.type()]))
     super().__init__(driver_class=_ResolverDriver)
 
+  @property
   @doc_controls.do_not_generate_docs
-  def trace(
-      self, input_node: resolver_op.OpNode) -> resolver_op.OpNode:
-    """Get ResolverFunction's output OpNode."""
-    return self._resolver_function.trace(input_node)
+  def resolver_function(self) -> resolver_function.ResolverFunction:
+    return self._resolver_function
 
   @property
   @doc_controls.do_not_generate_docs
