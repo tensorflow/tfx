@@ -63,7 +63,7 @@ def make_pipeline_sdk_required_install_packages():
       'protobuf>=3.13,<4',
       'docker>=4.1,<5',
       'google-apitools>=0.5,<1',
-      'google-api-python-client>=1.8,<2',
+      'google-api-python-client>=1.8,<3',
       # TODO(b/176812386): Deprecate usage of jinja2 for placeholders.
       'jinja2>=2.7.3,<4',
   ]
