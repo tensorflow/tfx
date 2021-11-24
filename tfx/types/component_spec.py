@@ -16,12 +16,11 @@
 import copy
 import inspect
 import itertools
-from typing import Any, Dict, List, Optional, Type, cast
+from typing import Any, Dict, List, Optional, Type, cast, Mapping
 
 from tfx.dsl.placeholder import placeholder
 from tfx.types import artifact
 from tfx.types import channel
-from tfx.utils import abc_utils
 from tfx.utils import json_utils
 from tfx.utils import proto_utils
 
@@ -120,9 +119,14 @@ class ComponentSpec(json_utils.Jsonable):
     OUTPUTS: a dict of string keys and ChannelParameter values.
   """
 
-  PARAMETERS = abc_utils.abstract_property()
-  INPUTS = abc_utils.abstract_property()
-  OUTPUTS = abc_utils.abstract_property()
+  PARAMETERS: Mapping[str, 'ExecutionParameter']
+  INPUTS: Mapping[str, 'ChannelParameter']
+  OUTPUTS: Mapping[str, 'ChannelParameter']
+
+  def __init_subclass__(cls, validate=True):
+    super().__init_subclass__()
+    if validate:  # Can be turned off on abstract subclasses or dynamic specs.
+      cls._validate()
 
   def __init__(self, **kwargs):
     """Initialize a ComponentSpec.
@@ -131,60 +135,48 @@ class ComponentSpec(json_utils.Jsonable):
       **kwargs: Any inputs, outputs and execution parameters for this instance
         of the component spec.
     """
-    self._raw_args = kwargs
-    self._validate_spec()
-    self._verify_parameter_types()
-    self._parse_parameters()
+    self._parse_parameters(kwargs)
 
   def __eq__(self, other):
     return (isinstance(other.__class__, self.__class__) and
             self.to_json_dict() == other.to_json_dict())
 
-  def _validate_spec(self):
+  @classmethod
+  def _validate(cls):
     """Check the parameters and types passed to this ComponentSpec."""
-    for param_name, param in [('PARAMETERS', self.PARAMETERS),
-                              ('INPUTS', self.INPUTS),
-                              ('OUTPUTS', self.OUTPUTS)]:
-      if not isinstance(param, dict):
+    for param_name in ('PARAMETERS', 'INPUTS', 'OUTPUTS'):
+      if not hasattr(cls, param_name):
+        raise TypeError(f'{cls} does not have {param_name}.')
+      param = getattr(cls, param_name)
+      if not isinstance(param, Mapping):
         raise TypeError(
-            ('Subclass %s of ComponentSpec must override %s with a '
-             'dict; got %s instead.') % (self.__class__, param_name, param))
+            f'{cls}.{param_name} should be a dict but got {param} instead.')
 
     # Validate that the ComponentSpec class is well-formed.
     seen_arg_names = set()
-    for arg_name, arg in itertools.chain(self.PARAMETERS.items(),
-                                         self.INPUTS.items(),
-                                         self.OUTPUTS.items()):
-      if not isinstance(arg, _ComponentParameter):
-        raise ValueError(
-            ('The ComponentSpec subclass %s expects that the values of its '
-             'PARAMETERS, INPUTS, and OUTPUTS dicts are _ComponentParameter '
-             'objects (i.e. ChannelParameter or ExecutionParameter objects); '
-             'got %s (for argument %s) instead.') %
-            (self.__class__, arg, arg_name))
+    for arg_name in itertools.chain(cls.PARAMETERS, cls.INPUTS, cls.OUTPUTS):
       if arg_name in seen_arg_names:
         raise ValueError(
             ('The ComponentSpec subclass %s has a duplicate argument with '
              'name %s. Argument names should be unique across the PARAMETERS, '
-             'INPUTS and OUTPUTS dicts.') % (self.__class__, arg_name))
+             'INPUTS and OUTPUTS dicts.') % (cls.__class__, arg_name))
       seen_arg_names.add(arg_name)
 
-  def _verify_parameter_types(self):
-    """Verify spec parameter types."""
-    for arg in self.PARAMETERS.values():
+    for arg in cls.PARAMETERS.values():
       if not isinstance(arg, ExecutionParameter):
         raise TypeError(
             ('PARAMETERS dict expects values of type ExecutionParameter, '
              'got {}.').format(arg))
-    for arg in itertools.chain(self.INPUTS.values(), self.OUTPUTS.values()):
+
+    for arg in itertools.chain(cls.INPUTS.values(), cls.OUTPUTS.values()):
       if not isinstance(arg, ChannelParameter):
         raise TypeError(
             ('INPUTS and OUTPUTS dicts expect values of type ChannelParameter, '
              ' got {}.').format(arg))
 
-  def _parse_parameters(self):
+  def _parse_parameters(self, raw_args: Mapping[str, Any]):
     """Parse arguments to ComponentSpec."""
-    unparsed_args = set(self._raw_args.keys())
+    unparsed_args = set(raw_args.keys())
     inputs = {}
     outputs = {}
     self.exec_properties = {}
@@ -202,16 +194,16 @@ class ComponentSpec(json_utils.Jsonable):
       unparsed_args.remove(arg_name)
 
       # Type check the argument.
-      value = self._raw_args[arg_name]
+      value = raw_args[arg_name]
       if arg.optional and value is None:
         continue
       arg.type_check(arg_name, value)
 
     # Populate the appropriate dictionary for each parameter type.
     for arg_name, arg in self.PARAMETERS.items():
-      if arg.optional and arg_name not in self._raw_args:
+      if arg.optional and arg_name not in raw_args:
         continue
-      value = self._raw_args[arg_name]
+      value = raw_args[arg_name]
 
       if (inspect.isclass(arg.type) and
           issubclass(arg.type, message.Message) and value and
@@ -234,28 +226,31 @@ class ComponentSpec(json_utils.Jsonable):
     for arg_dict, param_dict in (
         (self.INPUTS, inputs), (self.OUTPUTS, outputs)):
       for arg_name, arg in arg_dict.items():
-        if arg.optional and not self._raw_args.get(arg_name):
+        if arg.optional and not raw_args.get(arg_name):
           continue
-        value = self._raw_args[arg_name]
+        value = raw_args[arg_name]
         param_dict[arg_name] = value
 
     self.inputs = inputs
     self.outputs = outputs
 
-  def is_optional_input(self, key: str) -> bool:
+  @classmethod
+  def is_optional_input(cls, key: str) -> bool:
     """Whether the input channel of the key is optional."""
     try:
-      return cast(ChannelParameter, self.INPUTS[key]).optional
+      return cast(ChannelParameter, cls.INPUTS[key]).optional
     except KeyError as e:
-      raise KeyError(f'self.INPUTS = {self.INPUTS}') from e
+      raise KeyError(f'self.INPUTS = {cls.INPUTS}') from e
 
-  def is_optional_output(self, key: str) -> bool:
+  @classmethod
+  def is_optional_output(cls, key: str) -> bool:
     """Whether the output channel of the key is optional."""
-    return cast(ChannelParameter, self.OUTPUTS[key]).optional
+    return cast(ChannelParameter, cls.OUTPUTS[key]).optional
 
-  def is_optional_exec_property(self, key: str) -> bool:
+  @classmethod
+  def is_optional_exec_property(cls, key: str) -> bool:
     """Whether the exec_properties of the key is optional."""
-    return cast(ExecutionParameter, self.PARAMETERS[key]).optional
+    return cast(ExecutionParameter, cls.PARAMETERS[key]).optional
 
   def to_json_dict(self) -> Dict[str, Any]:
     """Convert from an object to a JSON serializable dictionary."""
@@ -266,16 +261,7 @@ class ComponentSpec(json_utils.Jsonable):
     }
 
 
-class _ComponentParameter:
-  """An abstract parameter that forms a part of a ComponentSpec.
-
-  Properties:
-    optional: whether the given parameter is optional.
-  """
-  pass
-
-
-class ExecutionParameter(_ComponentParameter):
+class ExecutionParameter:
   """An execution parameter in a ComponentSpec.
 
   This type of parameter should be specified in the PARAMETERS dict of a
@@ -397,7 +383,7 @@ class ExecutionParameter(_ComponentParameter):
 COMPATIBLE_TYPES_KEY = '_compatible_types'
 
 
-class ChannelParameter(_ComponentParameter):
+class ChannelParameter:
   """An channel parameter that forms part of a ComponentSpec.
 
   This type of parameter should be specified in the INPUTS and OUTPUTS dict
