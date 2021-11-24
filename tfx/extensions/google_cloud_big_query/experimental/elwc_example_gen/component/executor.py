@@ -16,7 +16,9 @@
 from typing import Any, Dict, Iterable, List, Set, Tuple
 
 import apache_beam as beam
+from apache_beam.options import value_provider
 from google.cloud import bigquery
+
 import tensorflow as tf
 from tfx.components.example_gen import base_example_gen_executor
 from tfx.extensions.google_cloud_big_query import utils
@@ -70,7 +72,7 @@ def _ConvertContextAndExamplesToElwc(
 
 @beam.ptransform_fn
 @beam.typehints.with_input_types(beam.Pipeline)
-@beam.typehints.with_output_types(input_pb2.ExampleListWithContext)
+@beam.typehints.with_output_types(bytes)
 def _BigQueryToElwc(pipeline: beam.Pipeline, exec_properties: Dict[str, Any],
                     split_pattern: str) -> beam.pvalue.PCollection:
   """Read from BigQuery and transform to ExampleListWithContext.
@@ -90,13 +92,21 @@ def _BigQueryToElwc(pipeline: beam.Pipeline, exec_properties: Dict[str, Any],
   Raises:
     RuntimeError: Context features must be included in the queried result.
   """
+  # Try to parse the GCP project ID from the beam pipeline options.
+  beam_pipeline_args = exec_properties['_beam_pipeline_args']
+  pipeline_options = beam.options.pipeline_options.PipelineOptions(
+      beam_pipeline_args)
+  project = pipeline_options.view_as(
+      beam.options.pipeline_options.GoogleCloudOptions).project
+  if isinstance(project, value_provider.ValueProvider):
+    project = project.get()
 
   custom_config = example_gen_pb2.CustomConfig()
   json_format.Parse(exec_properties['custom_config'], custom_config)
   elwc_config = elwc_config_pb2.ElwcConfig()
   custom_config.custom_config.Unpack(elwc_config)
 
-  client = bigquery.Client()
+  client = bigquery.Client(project=project)
   # Dummy query to get the type information for each field.
   query_job = client.query('SELECT * FROM ({}) LIMIT 0'.format(split_pattern))
   results = query_job.result()
