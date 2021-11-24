@@ -63,17 +63,18 @@ class _BasicComponentSpec(ComponentSpec):
 
 
 class ComponentSpecTest(tf.test.TestCase):
+  # pylint: disable=unused-variable
 
-  def testComponentspecEmpty(self):
+  def testComponentSpec_Empty(self):
 
     class EmptyComponentSpec(ComponentSpec):
       PARAMETERS = {}
       INPUTS = {}
       OUTPUTS = {}
 
-    _ = EmptyComponentSpec()
+    EmptyComponentSpec()
 
-  def testComponentspecBasic(self):
+  def testComponentSpec_Basic(self):
     proto = example_gen_pb2.Input()
     proto.splits.extend([
         example_gen_pb2.Input.Split(name='name1', pattern='pattern1'),
@@ -118,7 +119,7 @@ class ComponentSpecTest(tf.test.TestCase):
       spec = _BasicComponentSpec(
           folds=10, input=input_channel, output=channel.Channel(type=Examples))
 
-  def testComponentSpecJsonProto(self):
+  def testComponentSpec_JsonProto(self):
     proto_str = '{"splits": [{"name": "name1", "pattern": "pattern1"}]}'
     spec = _BasicComponentSpec(
         folds=10,
@@ -128,7 +129,7 @@ class ComponentSpecTest(tf.test.TestCase):
     self.assertIsInstance(spec.exec_properties['proto'], str)
     self.assertEqual(spec.exec_properties['proto'], proto_str)
 
-  def testComponentspecWithUnionChannel(self):
+  def testComponentSpec_WithUnionChannel(self):
     input_channel_1 = channel.Channel(type=_InputArtifact)
     input_channel_2 = channel.Channel(type=_InputArtifact)
     output_channel = channel.Channel(type=_OutputArtifact)
@@ -144,115 +145,96 @@ class ComponentSpecTest(tf.test.TestCase):
                      [input_channel_1, input_channel_2])
     self.assertIs(spec.outputs['output'], output_channel)
 
-  def testInvalidComponentspecMissingProperties(self):
+  def testInvalidComponentSpec_MissingProperties(self):
 
-    with self.assertRaisesRegex(TypeError, "Can't instantiate abstract class"):
+    with self.assertRaisesRegex(TypeError, 'does not have PARAMETERS'):
 
       class InvalidComponentSpecA(ComponentSpec):
         # Missing PARAMETERS.
         INPUTS = {}
         OUTPUTS = {}
 
-      InvalidComponentSpecA()
-
-    with self.assertRaisesRegex(TypeError, "Can't instantiate abstract class"):
+    with self.assertRaisesRegex(TypeError, 'does not have INPUTS'):
 
       class InvalidComponentSpecB(ComponentSpec):
         PARAMETERS = {}
         # Missing INPUTS.
         OUTPUTS = {}
 
-      InvalidComponentSpecB()
-
-    with self.assertRaisesRegex(TypeError, "Can't instantiate abstract class"):
+    with self.assertRaisesRegex(TypeError, 'does not have OUTPUTS'):
 
       class InvalidComponentSpecC(ComponentSpec):
         PARAMETERS = {}
         INPUTS = {}
         # Missing OUTPUTS.
 
-      InvalidComponentSpecC()
+  def testInvalidComponentSpec_WrongProperties(self):
 
-  def testInvalidComponentspecWrongProperties(self):
-
-    with self.assertRaisesRegex(TypeError,
-                                'must override PARAMETERS with a dict'):
+    with self.assertRaisesRegex(TypeError, 'PARAMETERS should be a dict'):
 
       class InvalidComponentSpecA(ComponentSpec):
         PARAMETERS = object()
         INPUTS = {}
         OUTPUTS = {}
 
-      InvalidComponentSpecA()
-
-    with self.assertRaisesRegex(TypeError, 'must override INPUTS with a dict'):
+    with self.assertRaisesRegex(TypeError, 'INPUTS should be a dict'):
 
       class InvalidComponentSpecB(ComponentSpec):
         PARAMETERS = {}
         INPUTS = object()
         OUTPUTS = {}
 
-      InvalidComponentSpecB()
-
-    with self.assertRaisesRegex(TypeError,
-                                'must override OUTPUTS with a dict'):
+    with self.assertRaisesRegex(TypeError, 'OUTPUTS should be a dict'):
 
       class InvalidComponentSpecC(ComponentSpec):
         PARAMETERS = {}
         INPUTS = {}
         OUTPUTS = object()
 
-      InvalidComponentSpecC()
-
-  def testInvalidComponentspecWrongType(self):
-
-    class WrongTypeComponentSpecA(ComponentSpec):
-      PARAMETERS = {'x': object()}
-      INPUTS = {}
-      OUTPUTS = {}
-
-    with self.assertRaisesRegex(ValueError,
-                                'expects .* dicts are _ComponentParameter'):
-      _ = WrongTypeComponentSpecA()
-
-    class WrongTypeComponentSpecB(ComponentSpec):
-      PARAMETERS = {'x': ChannelParameter(type=_X)}
-      INPUTS = {}
-      OUTPUTS = {}
+  def testInvalidComponentSpec_WrongType(self):
 
     with self.assertRaisesRegex(TypeError,
                                 'expects values of type ExecutionParameter'):
-      _ = WrongTypeComponentSpecB()
 
-    class WrongTypeComponentSpecC(ComponentSpec):
-      PARAMETERS = {}
-      INPUTS = {'x': ExecutionParameter(type=int)}
-      OUTPUTS = {}
+      class WrongTypeComponentSpecA(ComponentSpec):
+        PARAMETERS = {'x': object()}
+        INPUTS = {}
+        OUTPUTS = {}
+
+    with self.assertRaisesRegex(TypeError,
+                                'expects values of type ExecutionParameter'):
+
+      class WrongTypeComponentSpecB(ComponentSpec):
+        PARAMETERS = {'x': ChannelParameter(type=_X)}
+        INPUTS = {}
+        OUTPUTS = {}
 
     with self.assertRaisesRegex(TypeError,
                                 'expect values of type ChannelParameter'):
-      _ = WrongTypeComponentSpecC()
 
-    class WrongTypeComponentSpecD(ComponentSpec):
-      PARAMETERS = {}
-      INPUTS = {'x': ExecutionParameter(type=int)}
-      OUTPUTS = {}
+      class WrongTypeComponentSpecC(ComponentSpec):
+        PARAMETERS = {}
+        INPUTS = {'x': ExecutionParameter(type=int)}
+        OUTPUTS = {}
 
     with self.assertRaisesRegex(TypeError,
                                 'expect values of type ChannelParameter'):
-      _ = WrongTypeComponentSpecD()
 
-  def testInvalidComponentspecDuplicateProperty(self):
+      class WrongTypeComponentSpecD(ComponentSpec):
+        PARAMETERS = {}
+        INPUTS = {}
+        OUTPUTS = {'x': ExecutionParameter(type=int)}
 
-    class DuplicatePropertyComponentSpec(ComponentSpec):
-      PARAMETERS = {'x': ExecutionParameter(type=int)}
-      INPUTS = {'x': ChannelParameter(type=_X)}
-      OUTPUTS = {}
+  def testInvalidComponentSpec_DuplicateProperty(self):
 
     with self.assertRaisesRegex(ValueError, 'has a duplicate argument'):
-      _ = DuplicatePropertyComponentSpec()
 
-  def testComponentspecMissingArguments(self):
+      class DuplicatePropertyComponentSpec(ComponentSpec):
+        PARAMETERS = {'x': ExecutionParameter(type=int)}
+        INPUTS = {'x': ChannelParameter(type=_X)}
+        OUTPUTS = {}
+
+  def testComponentSpec_MissingArguments(self):
 
     class SimpleComponentSpec(ComponentSpec):
       PARAMETERS = {
@@ -263,13 +245,13 @@ class ComponentSpecTest(tf.test.TestCase):
       OUTPUTS = {}
 
     with self.assertRaisesRegex(ValueError, 'Missing argument'):
-      _ = SimpleComponentSpec(x=10)
+      SimpleComponentSpec(x=10)
 
     with self.assertRaisesRegex(ValueError, 'Missing argument'):
-      _ = SimpleComponentSpec(z=channel.Channel(type=_Z))
+      SimpleComponentSpec(z=channel.Channel(type=_Z))
 
     # Okay since y is optional.
-    _ = SimpleComponentSpec(x=10, z=channel.Channel(type=_Z))
+    SimpleComponentSpec(x=10, z=channel.Channel(type=_Z))
 
   def testOptionalInputs(self):
 

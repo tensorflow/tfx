@@ -117,9 +117,6 @@ def make_extra_packages_airflow():
   """Prepare extra packages needed for Apache Airflow orchestrator."""
   return [
       'apache-airflow[mysql]>=1.10.14,<3',
-      # TODO(b/205459685): Delete pinned WTForms after flask-appbuilder fix the
-      # issue. (https://github.com/dpgaspar/Flask-AppBuilder/issues/1732)
-      'WTForms<3',
   ]
 
 
@@ -165,9 +162,6 @@ def make_extra_packages_tf_ranking():
   # Packages needed for tf-ranking which is used in tfx/examples/ranking.
   return [
       'tensorflow-ranking>=0.3.3,<0.4',
-      # TODO(b/203793924): Remove temporarily pinned version of
-      # opencv-python-headless to avoid a build issue.
-      'opencv-python-headless<4.5.4; platform_system=="Darwin"',
       'struct2tensor' + select_constraint(
           default='>=0.35,<0.36',
           nightly='>=0.36.0.dev',
