@@ -78,7 +78,7 @@ accelerate community innovation and collaboration.
         * Cloud AI Platform integration with BulkInferrer
     * Multi Framework Support in TFX Components
         * Experimental
-[Scikit Learn example in TFX](https://github.com/tensorflow/tfx/blob/master/tfx/examples/iris/experimental/iris_pipeline_sklearn_local.py)
+[Scikit Learn example in TFX](https://github.com/tensorflow/tfx/blob/master/tfx/examples/penguin/experimental/penguin_utils_sklearn.py)
     * On Device
         * Support for TFJS in Evaluator component
     * Orchestration:
