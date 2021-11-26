@@ -33,13 +33,16 @@ except ModuleNotFoundError:
   _BeamPipeline = Any
 
 
-def _resolve_beam_args_from_env(beam_pipeline_args, beam_pipeline_args_from_env) -> list:
+def resolve_beam_args_from_env(beam_pipeline_args,
+                               beam_pipeline_args_from_env) -> list:
   resolved_beam_pipeline_args_from_env = []
 
-  for beam_pipeline_arg_from_env, env_var in beam_pipeline_args_from_env.items():
+  for beam_pipeline_arg_from_env, env_var \
+          in beam_pipeline_args_from_env.items():
     # If an arg is already present in beam_pipeline_args, it should take precedence
     # over env vars.
-    if any(beam_pipeline_arg.startswith(f"--{beam_pipeline_arg_from_env}=") for beam_pipeline_arg in beam_pipeline_args):
+    if any(beam_pipeline_arg.startswith(f"--{beam_pipeline_arg_from_env}=")
+           for beam_pipeline_arg in beam_pipeline_args):
       logging.info('Arg %s already present in '
         'beam_pipeline_args and will not be fetched from env.',
          beam_pipeline_arg_from_env)
@@ -47,14 +50,14 @@ def _resolve_beam_args_from_env(beam_pipeline_args, beam_pipeline_args_from_env)
 
     env_var_value = os.getenv(env_var)
     if env_var_value is None:
-        raise ValueError(f"Env var {env_var} not present")
+      raise ValueError(f"Env var {env_var} not present")
     else:
       if beam_pipeline_arg_from_env.startswith('--'):
-        resolved_beam_pipeline_args_from_env.append('{}={}'
-                  .format(beam_pipeline_arg_from_env, env_var_value))
+        resolved_beam_pipeline_args_from_env.append(
+            f'{beam_pipeline_arg_from_env}={env_var_value}')
       else:
-        resolved_beam_pipeline_args_from_env.append('--{}={}'
-                                                      .format(beam_pipeline_arg_from_env, env_var_value))
+        resolved_beam_pipeline_args_from_env\
+          .append(f'--{beam_pipeline_arg_from_env}={env_var_value}')
   return resolved_beam_pipeline_args_from_env
 
 
@@ -97,7 +100,7 @@ class BeamExecutorOperator(base_executor_operator.BaseExecutorOperator):
     self.beam_pipeline_args.extend(beam_executor_spec.beam_pipeline_args)
 
     # Resolve beam_pipeline_args_from_env and consolidate with beam_pipeline_args
-    resolved_beam_pipeline_args_from_env = _resolve_beam_args_from_env(
+    resolved_beam_pipeline_args_from_env = resolve_beam_args_from_env(
         beam_executor_spec.beam_pipeline_args,
         beam_executor_spec.beam_pipeline_args_from_env)
 

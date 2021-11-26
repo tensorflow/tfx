@@ -58,8 +58,8 @@ class BaseBeamComponent(base_component.BaseComponent):
     Returns:
       the same component itself.
     """
-    cast(executor_spec.BeamExecutorSpec,
-         self.executor_spec).add_beam_pipeline_args_from_env(beam_pipeline_args_from_env)
+    cast(executor_spec.BeamExecutorSpec, self.executor_spec)\
+        .add_beam_pipeline_args_from_env(beam_pipeline_args_from_env)
     return self
 
   @classmethod

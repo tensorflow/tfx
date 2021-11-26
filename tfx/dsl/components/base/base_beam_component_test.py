@@ -21,7 +21,8 @@ from tfx.dsl.components.base import base_executor
 from tfx.dsl.components.base import executor_spec
 
 _TestBeamPipelineArgs = ["--my_testing_beam_pipeline_args=foo"]
-_TestBeamPipelineArgsFromEnv = {"--my_testing_beam_pipeline_args_from_env": "FOO"}
+_TestBeamPipelineArgsFromEnv = {"--my_testing_beam_pipeline_args_from_env":
+                                    "FOO"}
 
 
 class _EmptyComponentSpec(types.ComponentSpec):

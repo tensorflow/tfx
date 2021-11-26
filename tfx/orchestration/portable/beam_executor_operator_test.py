@@ -87,7 +87,8 @@ class BeamArgsTest(test_case_utils.TfxTest):
 
   def testResolveBeamArgsFromEnv(self):
     self.enter_context(test_case_utils.override_env_var('BAR', 'baz'))
-    self.enter_context(test_case_utils.override_env_var('S3_SECRET_ACCESS_KEY', 'minio123'))
+    self.enter_context(test_case_utils.override_env_var('S3_SECRET_ACCESS_KEY',
+                                                        'minio123'))
     self.enter_context(test_case_utils.override_env_var('S3_VERIFY', '1'))
 
     beam_pipeline_args = ['--s3_endpoint_url=s3_endpoint_url',
@@ -100,10 +101,12 @@ class BeamArgsTest(test_case_utils.TfxTest):
         's3_verify': 'S3_VERIFY'
     }
 
-    resolved_beam_pipeline_args_from_env = beam_executor_operator._resolve_beam_args_from_env(
+    resolved_beam_pipeline_args_from_env = beam_executor_operator\
+        .resolve_beam_args_from_env(
         beam_pipeline_args=beam_pipeline_args,
         beam_pipeline_args_from_env=beam_pipeline_args_from_env)
-    self.assertEqual(set(beam_pipeline_args + resolved_beam_pipeline_args_from_env),
+    self.assertEqual(
+        set(beam_pipeline_args + resolved_beam_pipeline_args_from_env),
                      {'--s3_endpoint_url=s3_endpoint_url',
                       '--s3_access_key_id=minio',
                       '--s3_secret_access_key=minio123',
@@ -118,11 +121,11 @@ class BeamArgsTest(test_case_utils.TfxTest):
     }
 
     with self.assertRaises(ValueError):
-      beam_executor_operator._resolve_beam_args_from_env(
+      beam_executor_operator.resolve_beam_args_from_env(
         beam_pipeline_args=beam_pipeline_args,
         beam_pipeline_args_from_env=beam_pipeline_args_from_env)
 
-def testResolveBeamArgsFromEnvWithEmptyEnvVar(self):
+  def testResolveBeamArgsFromEnvWithEmptyEnvVar(self):
     self.enter_context(test_case_utils.override_env_var('BAR', ''))
 
     beam_pipeline_args = ['--foo=bar']
@@ -130,11 +133,13 @@ def testResolveBeamArgsFromEnvWithEmptyEnvVar(self):
         '--bar': 'BAR',
     }
 
-    resolved_beam_pipeline_args_from_env = beam_executor_operator._resolve_beam_args_from_env(
+    resolved_beam_pipeline_args_from_env = beam_executor_operator\
+        .resolve_beam_args_from_env(
         beam_pipeline_args=beam_pipeline_args,
         beam_pipeline_args_from_env=beam_pipeline_args_from_env)
 
-    self.assertEqual(set(beam_pipeline_args + resolved_beam_pipeline_args_from_env),
+    self.assertEqual(
+        set(beam_pipeline_args + resolved_beam_pipeline_args_from_env),
                      {'--foo=bar',
                       '--bar='})
 

@@ -70,7 +70,9 @@ def add_beam_pipeline_args_to_component(component, beam_pipeline_args):
             component.executor_spec).beam_pipeline_args
 
 
-def add_beam_pipeline_args_from_env_to_component(component, beam_pipeline_args_from_env: Dict[str, str]):
+def add_beam_pipeline_args_from_env_to_component(component,
+                                                 beam_pipeline_args_from_env:
+                                                 Dict[str, str]):
   if isinstance(component.executor_spec, executor_spec.BeamExecutorSpec):
     # Update pipeline-level beam_pipeline_args_from_env with component specific
     # ones to make component-level override pipeline-level args.
@@ -80,7 +82,8 @@ def add_beam_pipeline_args_from_env_to_component(component, beam_pipeline_args_f
             component.executor_spec).beam_pipeline_args_from_env)
     cast(
         executor_spec.BeamExecutorSpec,
-        component.executor_spec).beam_pipeline_args_from_env = beam_pipeline_args_from_env_copy
+        component.executor_spec).beam_pipeline_args_from_env \
+        = beam_pipeline_args_from_env_copy
 
 
 class RunOptions:
@@ -344,9 +347,10 @@ class Pipeline:
 
     if self.beam_pipeline_args:
       for component in self._components:
-        add_beam_pipeline_args_to_component(component, self.beam_pipeline_args)
+        add_beam_pipeline_args_to_component(
+            component, self.beam_pipeline_args)
 
     if self.beam_pipeline_args_from_env:
       for component in components:
-        add_beam_pipeline_args_from_env_to_component(component, self.beam_pipeline_args_from_env)
-
+        add_beam_pipeline_args_from_env_to_component(
+            component, self.beam_pipeline_args_from_env)
