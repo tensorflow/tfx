@@ -290,5 +290,5 @@ class BeamDagRunner(tfx_runner.IrBasedRunner):
                       custom_driver_spec=custom_driver_spec,
                       deployment_config=deployment_config,
                       pipeline=pipeline),
-                  (*[beam.pvalue.AsIter(s) for s in signals_to_wait])))
+                  *[beam.pvalue.AsIter(s) for s in signals_to_wait]))
           logging.info('Node %s is scheduled.', node_id)
