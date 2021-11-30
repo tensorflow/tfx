@@ -18,7 +18,6 @@ from typing import Any, Dict, Iterable, List, Set, Tuple
 import apache_beam as beam
 from apache_beam.options import value_provider
 from google.cloud import bigquery
-
 import tensorflow as tf
 from tfx.components.example_gen import base_example_gen_executor
 from tfx.extensions.google_cloud_big_query import utils
