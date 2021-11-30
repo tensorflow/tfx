@@ -72,24 +72,19 @@ accelerate community innovation and collaboration.
 *   Early access to new features.
 
 #### History
+
 [Towards ML Engineering: A Brief History Of TensorFlow Extended (TFX)](https://blog.tensorflow.org/2020/09/brief-history-of-tensorflow-extended-tfx.html)
-*   Q3 2020
-    * Component Launches & Enhancements
-        * Cloud AI Platform integration with BulkInferrer
-    * Multi Framework Support in TFX Components
-        * Experimental
-[Scikit Learn example in TFX](https://github.com/tensorflow/tfx/blob/master/tfx/examples/iris/experimental/iris_pipeline_sklearn_local.py)
-    * On Device
-        * Support for TFJS in Evaluator component
-    * Orchestration:
-        * [(RFC) Asynchronous / data driven pipelines](https://github.com/tensorflow/community/blob/master/rfcs/20200601-tfx-udsl-semantics.md)
-        * Intermediate Representation (IR)
-    * Object detection example -
-[CIFAR-10](https://github.com/tensorflow/tfx/tree/master/tfx/examples/cifar10)
-    * NLP Bert examples
+* Q3 2020 * Component Launches & Enhancements * Cloud AI Platform integration
+with BulkInferrer * Multi Framework Support in TFX Components * Experimental
+[Scikit Learn example in TFX](https://github.com/tensorflow/tfx/blob/master/tfx/examples/penguin/experimental/penguin_utils_sklearn.py)
+* On Device * Support for TFJS in Evaluator component * Orchestration: *
+[(RFC) Asynchronous / data driven pipelines](https://github.com/tensorflow/community/blob/master/rfcs/20200601-tfx-udsl-semantics.md)
+* Intermediate Representation (IR) * Object detection example -
+[CIFAR-10](https://github.com/tensorflow/tfx/tree/master/tfx/examples/cifar10) *
+NLP Bert examples
 [CoLA](https://github.com/tensorflow/tfx/tree/master/tfx/examples/bert/cola),
 and [MRPC](https://github.com/tensorflow/tfx/tree/master/tfx/examples/bert/mrpc)
-    * Supported custom splits for ExampleGen's downstream components.
+* Supported custom splits for ExampleGen's downstream components.
 
 *   Q2 2020
     *   Custom component authoring was made easier by supporting python function

@@ -49,8 +49,10 @@ def copy(src: PathType, dst: PathType, overwrite: bool = False) -> None:
       raise OSError(
           ('Destination file %r already exists and argument `overwrite` is '
            'false.') % dst)
-    contents = open(src, mode='rb').read()
-    open(dst, mode='wb').write(contents)
+    with open(src, mode='rb') as f_src:
+      contents = f_src.read()
+    with open(dst, mode='wb') as f_dst:
+      f_dst.write(contents)
 
 
 def exists(path: PathType) -> bool:
