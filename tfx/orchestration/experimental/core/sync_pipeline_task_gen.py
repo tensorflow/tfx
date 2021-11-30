@@ -316,42 +316,53 @@ class _Generator:
                   code=status_lib.Code.ABORTED, message=error_msg)))
       return result
 
-    execution = execution_publish_utils.register_execution(
-        metadata_handler=self._mlmd_handle,
-        execution_type=node.node_info.type,
-        contexts=resolved_info.contexts,
-        input_artifacts=resolved_info.input_artifacts,
-        exec_properties=resolved_info.exec_properties)
-    outputs_resolver = outputs_utils.OutputsResolver(
-        node, self._pipeline.pipeline_info, self._pipeline.runtime_spec,
-        self._pipeline.execution_mode)
-    output_artifacts = outputs_resolver.generate_output_artifacts(execution.id)
+    executions = []
+    output_artifacts = []
+    cached_outputs = []
+    for artifact in resolved_info.input_artifacts:
+      execution = execution_publish_utils.register_execution(
+          metadata_handler=self._mlmd_handle,
+          execution_type=node.node_info.type,
+          contexts=resolved_info.contexts,
+          input_artifacts=artifact,
+          exec_properties=resolved_info.exec_properties)
+      executions.append(execution)
 
-    # Check if we can elide node execution by reusing previously computed
-    # outputs for the node.
-    cache_context = cache_utils.get_cache_context(
-        self._mlmd_handle,
-        pipeline_node=node,
-        pipeline_info=self._pipeline.pipeline_info,
-        executor_spec=task_gen_utils.get_executor_spec(self._pipeline,
-                                                       node.node_info.id),
-        input_artifacts=resolved_info.input_artifacts,
-        output_artifacts=output_artifacts,
-        parameters=resolved_info.exec_properties)
-    contexts = resolved_info.contexts + [cache_context]
+      outputs_resolver = outputs_utils.OutputsResolver(
+          node, self._pipeline.pipeline_info, self._pipeline.runtime_spec,
+          self._pipeline.execution_mode)
+      output_artifact = outputs_resolver.generate_output_artifacts(execution.id)
+      output_artifacts.append(output_artifact)
+
+      # Check if we can elide node execution by reusing previously computed
+      # outputs for the node.
+      cache_context = cache_utils.get_cache_context(
+          self._mlmd_handle,
+          pipeline_node=node,
+          pipeline_info=self._pipeline.pipeline_info,
+          executor_spec=task_gen_utils.get_executor_spec(
+              self._pipeline, node.node_info.id),
+          input_artifacts=artifact,
+          output_artifacts=output_artifact,
+          parameters=resolved_info.exec_properties)
+      contexts = resolved_info.contexts + [cache_context]
+      if node.execution_options.caching_options.enable_cache:
+        cached_output = cache_utils.get_cached_outputs(
+            self._mlmd_handle, cache_context=cache_context)
+        if cached_output is not None:
+          cached_outputs.append(cached_output)
+          execution_publish_utils.publish_cached_execution(
+              self._mlmd_handle,
+              contexts=contexts,
+              execution_id=execution.id,
+              output_artifacts=cached_output)
+          pstate.record_state_change_time()
+
     if node.execution_options.caching_options.enable_cache:
-      cached_outputs = cache_utils.get_cached_outputs(
-          self._mlmd_handle, cache_context=cache_context)
-      if cached_outputs is not None:
+      if len(cached_outputs) == len(resolved_info.input_artifacts):
         logging.info(
             'Eliding node execution, using cached outputs; node uid: %s',
             node_uid)
-        execution_publish_utils.publish_cached_execution(
-            self._mlmd_handle,
-            contexts=contexts,
-            execution_id=execution.id,
-            output_artifacts=cached_outputs)
-        pstate.record_state_change_time()
         result.append(
             task_lib.UpdateNodeStateTask(
                 node_uid=node_uid, state=pstate.NodeState.COMPLETE))
@@ -370,23 +381,25 @@ class _Generator:
                   code=status_lib.Code.ABORTED, message=error_msg)))
       return result
 
-    outputs_utils.make_output_dirs(output_artifacts)
+    for i, artiface in enumerate(resolved_info.input_artifacts):
+      outputs_utils.make_output_dirs(output_artifacts[i])
+      result.append(
+          task_lib.ExecNodeTask(
+              node_uid=node_uid,
+              execution_id=executions[i].id,
+              contexts=contexts,
+              input_artifacts=artiface,
+              exec_properties=resolved_info.exec_properties,
+              output_artifacts=output_artifacts[i],
+              executor_output_uri=outputs_resolver.get_executor_output_uri(
+                  executions[i].id),
+              stateful_working_dir=outputs_resolver
+              .get_stateful_working_directory(executions[i].id),
+              pipeline=self._pipeline))
+
     result.append(
         task_lib.UpdateNodeStateTask(
             node_uid=node_uid, state=pstate.NodeState.RUNNING))
-    result.append(
-        task_lib.ExecNodeTask(
-            node_uid=node_uid,
-            execution_id=execution.id,
-            contexts=contexts,
-            input_artifacts=resolved_info.input_artifacts,
-            exec_properties=resolved_info.exec_properties,
-            output_artifacts=output_artifacts,
-            executor_output_uri=outputs_resolver.get_executor_output_uri(
-                execution.id),
-            stateful_working_dir=outputs_resolver
-            .get_stateful_working_directory(execution.id),
-            pipeline=self._pipeline))
     return result
 
   def _ensure_node_services_if_pure(

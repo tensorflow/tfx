@@ -40,7 +40,7 @@ from google.protobuf import any_pb2
 class ResolvedInfo:
   contexts: List[metadata_store_pb2.Context]
   exec_properties: Dict[str, types.ExecPropertyTypes]
-  input_artifacts: Optional[typing_utils.ArtifactMultiMap]
+  input_artifacts: List[Optional[typing_utils.ArtifactMultiMap]]
 
 
 def _generate_task_from_execution(metadata_handler: metadata.Metadata,
@@ -172,22 +172,17 @@ def generate_resolved_info(
   except exceptions.InputResolutionError as e:
     logging.warning('Input resolution error raised for node: %s; error: %s',
                     node.node_info.id, e)
-    input_artifacts = None
+    resolved_input_artifacts = None
   else:
     if isinstance(resolved_input_artifacts, inputs_utils.Skip):
       return None
     assert isinstance(resolved_input_artifacts, inputs_utils.Trigger)
     assert resolved_input_artifacts
-    # TODO(b/197741942): Support multiple dicts.
-    if len(resolved_input_artifacts) > 1:
-      raise NotImplementedError(
-          'Handling more than one input dicts not implemented.')
-    input_artifacts = resolved_input_artifacts[0]
 
   return ResolvedInfo(
       contexts=contexts,
       exec_properties=exec_properties,
-      input_artifacts=input_artifacts)
+      input_artifacts=resolved_input_artifacts)
 
 
 def get_executions(
