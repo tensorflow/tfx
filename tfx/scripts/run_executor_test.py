@@ -68,7 +68,7 @@ class RunExecutorTest(tf.test.TestCase):
         '--exec-properties=%s' % json.dumps(exec_properties),
     ]
     with ArgsCapture() as args_capture:
-      run_executor.main(run_executor._parse_flags(args))
+      run_executor.main(run_executor.parse_flags(args))
       # TODO(b/131417512): Add equal comparison to types.Artifact class so we
       # can use asserters.
       self.assertSetEqual(
