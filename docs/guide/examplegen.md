@@ -42,7 +42,7 @@ instead of `base_executor`. So following the Avro or Parquet example in the
 Executor source code may be advisable.
 
 In addition, these data sources and formats are available as
-[custom component](/tfx/guide/understanding_custom_components) examples:
+[custom component](https://github.com/tensorflow/tfx/blob/master/docs/guide/understanding_custom_components.md) examples:
 
 * [Presto](https://github.com/tensorflow/tfx/tree/master/tfx/examples/custom_components/presto_example_gen)
 
