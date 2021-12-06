@@ -54,9 +54,9 @@ def make_pipeline_sdk_required_install_packages():
       'absl-py>=0.9,<0.13',
       'ml-metadata' + select_constraint(
           # LINT.IfChange
-          default='>=1.4.0,<1.5.0',
+          default='>=1.5.0,<1.6.0',
           # LINT.ThenChange(tfx/workspace.bzl)
-          nightly='>=1.5.0.dev',
+          nightly='>=1.6.0.dev',
           git_master='@git+https://github.com/google/ml-metadata@master'),
       'packaging>=20,<21',
       'portpicker>=1.3.1,<2',
@@ -95,22 +95,22 @@ def make_required_install_packages():
       # pylint: enable=line-too-long
       'tensorflow-hub>=0.9.0,<0.13',
       'tensorflow-data-validation' + select_constraint(
-          default='>=1.4.0,<1.5.0',
-          nightly='>=1.5.0.dev',
+          default='>=1.5.0,<1.6.0',
+          nightly='>=1.6.0.dev',
           git_master='@git+https://github.com/tensorflow/data-validation@master'
       ),
       'tensorflow-model-analysis' + select_constraint(
-          default='>=0.35.0,<0.36',
-          nightly='>=0.36.0.dev',
+          default='>=0.36.0,<0.37',
+          nightly='>=0.37.0.dev',
           git_master='@git+https://github.com/tensorflow/model-analysis@master'),
       'tensorflow-serving-api>=1.15,!=2.0.*,!=2.1.*,!=2.2.*,!=2.3.*,!=2.4.*,!=2.5.*,!=2.6.*,<3',
       'tensorflow-transform' + select_constraint(
-          default='>=1.4.0,<1.5.0',
-          nightly='>=1.5.0.dev',
+          default='>=1.5.0,<1.6.0',
+          nightly='>=1.6.0.dev',
           git_master='@git+https://github.com/tensorflow/transform@master'),
       'tfx-bsl' + select_constraint(
-          default='>=1.4.0,<1.5.0',
-          nightly='>=1.5.0.dev',
+          default='>=1.5.0,<1.6.0',
+          nightly='>=1.6.0.dev',
           git_master='@git+https://github.com/tensorflow/tfx-bsl@master'),
   ]
 
@@ -165,8 +165,8 @@ def make_extra_packages_tf_ranking():
   return [
       'tensorflow-ranking>=0.3.3,<0.4',
       'struct2tensor' + select_constraint(
-          default='>=0.35,<0.36',
-          nightly='>=0.36.0.dev',
+          default='>=0.36,<0.37',
+          nightly='>=0.37.0.dev',
           git_master='@git+https://github.com/google/struct2tensor@master'),
   ]
 
