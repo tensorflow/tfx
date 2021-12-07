@@ -25,7 +25,6 @@ from typing import cast, Dict, List, Mapping, MutableMapping, Optional, Sequence
 from tfx import types
 from tfx.dsl.compiler import constants
 from tfx.orchestration import metadata
-from tfx.orchestration.kubeflow import kubeflow_metadata_adapter
 from tfx.orchestration.kubeflow.proto import kubeflow_pb2
 from tfx.orchestration.local import runner_utils
 from tfx.orchestration.portable import data_types
@@ -436,7 +435,7 @@ def main(argv):
 
   kubeflow_metadata_config = kubeflow_pb2.KubeflowMetadataConfig()
   json_format.Parse(args.kubeflow_metadata_config, kubeflow_metadata_config)
-  metadata_connection = kubeflow_metadata_adapter.KubeflowMetadataAdapter(
+  metadata_connection = metadata.Metadata(
       _get_metadata_connection_config(kubeflow_metadata_config))
 
   node_id = args.node_id

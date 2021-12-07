@@ -17,7 +17,7 @@ import datetime
 import json
 from typing import List, Optional, Type
 
-import absl
+from absl import logging
 from tfx.dsl.component.experimental import container_component
 from tfx.dsl.components.base import base_node
 from tfx.orchestration import data_types
@@ -28,7 +28,7 @@ from tfx.orchestration.config import base_component_config
 from tfx.orchestration.config import config_utils
 from tfx.orchestration.config import pipeline_config
 from tfx.orchestration.experimental.kubernetes import kubernetes_remote_runner
-from tfx.orchestration.kubeflow import node_wrapper
+from tfx.orchestration.experimental.kubernetes import node_wrapper
 from tfx.orchestration.launcher import base_component_launcher
 from tfx.orchestration.launcher import in_process_component_launcher
 from tfx.orchestration.launcher import kubernetes_component_launcher
@@ -93,9 +93,9 @@ def launch_container_component(
       beam_pipeline_args=pipeline.beam_pipeline_args,
       additional_pipeline_args=pipeline.additional_pipeline_args,
       component_config=component_config)
-  absl.logging.info('Component %s is running.', component.id)
+  logging.info('Component %s is running.', component.id)
   component_launcher.launch()
-  absl.logging.info('Component %s is finished.', component.id)
+  logging.info('Component %s is finished.', component.id)
 
 
 class KubernetesDagRunnerConfig(pipeline_config.PipelineConfig):

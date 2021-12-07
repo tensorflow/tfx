@@ -20,9 +20,9 @@ from unittest import mock
 import tensorflow as tf
 from tfx.dsl.io import fileio
 from tfx.orchestration import data_types
+from tfx.orchestration import metadata
 from tfx.orchestration.kubeflow import container_entrypoint
 from tfx.orchestration.kubeflow import kubeflow_dag_runner
-from tfx.orchestration.kubeflow import kubeflow_metadata_adapter
 from tfx.orchestration.kubeflow.proto import kubeflow_pb2
 from tfx.orchestration.portable import beam_executor_operator
 from tfx.orchestration.portable import execution_publish_utils
@@ -128,7 +128,7 @@ class MLMDConfigTest(test_case_utils.TfxTest):
         (python_driver_operator.PythonDriverOperator, '__init__', None),
         (python_driver_operator.PythonDriverOperator, 'run_driver',
          driver_output_pb2.DriverOutput()),
-        (kubeflow_metadata_adapter.KubeflowMetadataAdapter, '__init__', None),
+        (metadata.Metadata, '__init__', None),
         (launcher.Launcher, '_publish_successful_execution', None),
         (launcher.Launcher, '_clean_up_stateless_execution_info', None),
         (launcher.Launcher, '_clean_up_stateful_execution_info', None),
@@ -142,10 +142,8 @@ class MLMDConfigTest(test_case_utils.TfxTest):
               cls, method, autospec=True, return_value=return_value))
 
     mock_mlmd = self.enter_context(
-        mock.patch.object(
-            kubeflow_metadata_adapter.KubeflowMetadataAdapter,
-            '__enter__',
-            autospec=True)).return_value
+        mock.patch.object(metadata.Metadata, '__enter__',
+                          autospec=True)).return_value
     mock_mlmd.store.return_value.get_executions_by_id.return_value = [
         metadata_store_pb2.Execution()
     ]
