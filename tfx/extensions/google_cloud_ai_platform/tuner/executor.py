@@ -23,6 +23,7 @@ from absl import logging
 from tfx import types
 from tfx.components.tuner import executor as tuner_executor
 from tfx.dsl.components.base import base_executor
+from tfx.extensions.google_cloud_ai_platform import constants
 from tfx.extensions.google_cloud_ai_platform import runner
 from tfx.extensions.google_cloud_ai_platform.trainer import executor as ai_platform_trainer_executor
 from tfx.types import standard_component_specs
@@ -31,8 +32,14 @@ from tfx.utils import json_utils
 
 TUNING_ARGS_KEY = doc_controls.documented(
     obj='ai_platform_tuning_args',
-    doc='Keys to the items in custom_config of Tuner for passing tuning args '
-    'to AI Platform.')
+    doc='Keys to the items in custom_config of Tuner for passing '
+    'training_job to AI Platform, and the GCP project under which '
+    'the training job will be executed. In Vertex AI, this corresponds to '
+    'a CustomJob as defined in:'
+    'https://cloud.google.com/vertex-ai/docs/reference/rest/v1/projects.locations.customJobs#CustomJob.'
+    'In CAIP, this corresponds to TrainingInputs as defined in:'
+    'https://cloud.google.com/ml-engine/reference/rest/v1/projects.jobs#TrainingInput'
+)
 
 REMOTE_TRIALS_WORKING_DIR_KEY = doc_controls.documented(
     obj='remote_trials_working_dir',
@@ -97,22 +104,63 @@ class Executor(base_executor.BaseExecutor):
 
     tune_args = tuner_executor.get_tune_args(exec_properties)
 
+    enable_vertex = custom_config.get(constants.ENABLE_VERTEX_KEY, False)
+    vertex_region = custom_config.get(constants.VERTEX_REGION_KEY, None)
     num_parallel_trials = (1
                            if not tune_args else tune_args.num_parallel_trials)
     if num_parallel_trials > 1:
       # Chief node is also responsible for conducting tuning loop.
       desired_worker_count = num_parallel_trials - 1
 
-      if training_inputs.get('workerCount') != desired_worker_count:
-        logging.warning('workerCount is overridden with %s',
-                        desired_worker_count)
-        training_inputs['workerCount'] = desired_worker_count
+      if enable_vertex:
+        # worker_pool_specs follows the order detailed below. We make sure the
+        # number of workers in pool 1 is consistent with num_parallel_trials.
+        # https://cloud.google.com/vertex-ai/docs/training/distributed-training#configure_a_distributed_training_job
+        worker_pool_specs = training_inputs['job_spec'].get('worker_pool_specs')
+        if worker_pool_specs is None or len(worker_pool_specs) < 1:
+          training_inputs['job_spec']['worker_pool_specs'] = [
+              # `WorkerPoolSpec` for worker pool 0, primary replica
+              {
+                  'machine_spec': {
+                      'machine_type': 'n1-standard-8'
+                  },
+                  'replica_count': 1
+              },
+              # `WorkerPoolSpec` for worker pool 1
+              {
+                  'machine_spec': {
+                      'machine_type': 'n1-standard-8'
+                  },
+                  'replica_count': desired_worker_count
+              }
+          ]
+          logging.warning('worker_pool_specs are overridden with %s.',
+                          training_inputs['job_spec']['worker_pool_specs'])
+        elif len(worker_pool_specs) < 2:
+          # primary replica set but missing workers
+          worker_specs = {**training_inputs['job_spec']['worker_pool_specs'][0]}
+          worker_specs['replica_count'] = desired_worker_count
+          training_inputs['job_spec']['worker_pool_specs'].append(worker_specs)
+          logging.warning('worker_pool_specs[1] are overridden with %s.',
+                          training_inputs['job_spec']['worker_pool_specs'][1])
+        elif training_inputs['job_spec']['worker_pool_specs'][1].get(
+            'replica_count') != desired_worker_count:
+          training_inputs['job_spec']['worker_pool_specs'][1][
+              'replica_count'] = desired_worker_count
+          logging.warning(
+              'replica_count in worker_pool_specs[1] is overridden with %s.',
+              desired_worker_count)
+      else:
+        if training_inputs.get('workerCount') != desired_worker_count:
+          logging.warning('workerCount is overridden with %s',
+                          desired_worker_count)
+          training_inputs['workerCount'] = desired_worker_count
 
-      training_inputs['scaleTier'] = 'CUSTOM'
-      training_inputs['masterType'] = (
-          training_inputs.get('masterType') or 'standard')
-      training_inputs['workerType'] = (
-          training_inputs.get('workerType') or 'standard')
+        training_inputs['scaleTier'] = 'CUSTOM'
+        training_inputs['masterType'] = (
+            training_inputs.get('masterType') or 'standard')
+        training_inputs['workerType'] = (
+            training_inputs.get('workerType') or 'standard')
 
     # 'tfx_tuner_YYYYmmddHHMMSS' is the default job ID if not specified.
     job_id = (
@@ -127,7 +175,7 @@ class Executor(base_executor.BaseExecutor):
     # Note: exec_properties['custom_config'] here is a dict.
     return runner.start_cloud_training(input_dict, output_dict, exec_properties,
                                        executor_class_path, training_inputs,
-                                       job_id)
+                                       job_id, enable_vertex, vertex_region)
 
 
 def _need_chief_oracle(exec_properties: Dict[str, Any]) -> bool:
@@ -242,23 +290,31 @@ class _WorkerExecutor(base_executor.BaseExecutor):
     if not cluster_spec:
       return
 
-    self._master_addr, self._master_port = (
-        # We rely on Cloud AI Platform Training service's specification whereby
-        # there will be no more than one master replica.
-        # https://cloud.google.com/ai-platform/training/docs/distributed-training-containers#cluster-spec-format
-        cluster_spec['cluster']['master'][0].split(':'))
+    logging.info('Cluster spec initalized with: %s', cluster_spec)
+
+    if 'workerpool0' in cluster_spec['cluster']:
+      self._master_addr, self._master_port = (
+          # We rely on Vertex AI Training service's specification whereby
+          # there will be no more than one primary replica.
+          # https://cloud.google.com/vertex-ai/docs/training/distributed-training#cluster-spec-format
+          cluster_spec['cluster']['workerpool0'][0].split(':'))
+      self._is_chief = cluster_spec['task']['type'] == 'workerpool0'
+    else:
+      self._master_addr, self._master_port = (
+          # We rely on Cloud AI Platform Training service's specification
+          # whereby there will be no more than one master replica.
+          # https://cloud.google.com/ai-platform/training/docs/distributed-training-containers#cluster-spec-format
+          cluster_spec['cluster']['master'][0].split(':'))
+      self._is_chief = cluster_spec['task']['type'] == 'master'
 
     self._tuner_id = (
         'tfx-tuner-%s-%d' % (
-            cluster_spec['task']['type'],  # 'master' or 'worker'
+            cluster_spec['task']
+            ['type'],  # 'master', 'worker', or the type of wroker pool
             cluster_spec['task']['index']  # zero-based index
         ))
 
     logging.info('Tuner ID is: %s', self._tuner_id)
-
-    self._is_chief = cluster_spec['task']['type'] == 'master'
-
-    logging.info('Cluster spec initalized with: %s', cluster_spec)
 
   def __del__(self):
     self._close()

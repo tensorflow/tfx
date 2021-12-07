@@ -22,6 +22,9 @@
     in a pipeline while reusing artifacts generated in previous pipeline runs.
     This is supported in LocalDagRunner and BeamDagRunner, and is exposed via
     the TfxRunner API.
+*   Supported endpoint overwrite for CAIP Tuner. Users can use the `keras-tuner`
+    module or any tuner that implements the `keras_tuner.Tuner` interface for
+    (parallel) tuning on Vertex.
 
 ## Breaking Changes
 
