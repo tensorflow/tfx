@@ -161,11 +161,10 @@ def build_input_artifact_spec(
     channel_spec: channel.Channel
 ) -> pipeline_pb2.ComponentInputsSpec.ArtifactSpec:
   """Builds artifact type spec for an input channel."""
-  artifact_instance = channel_spec.type()
   result = pipeline_pb2.ComponentInputsSpec.ArtifactSpec()
   result.artifact_type.CopyFrom(
       pipeline_pb2.ArtifactTypeSchema(
-          instance_schema=get_artifact_schema(artifact_instance)))
+          instance_schema=get_artifact_schema(channel_spec.type)))
   _validate_properties_schema(
       instance_schema=result.artifact_type.instance_schema,
       properties=channel_spec.type.PROPERTIES)
@@ -178,21 +177,19 @@ def build_output_artifact_spec(
   """Builds artifact type spec for an output channel."""
   # We use the first artifact instance if available from channel, otherwise
   # create one.
-  artifacts = list(channel_spec.get())
-  artifact_instance = artifacts[0] if artifacts else channel_spec.type()
-
   result = pipeline_pb2.ComponentOutputsSpec.ArtifactSpec()
   result.artifact_type.CopyFrom(
       pipeline_pb2.ArtifactTypeSchema(
-          instance_schema=get_artifact_schema(artifact_instance)))
+          instance_schema=get_artifact_schema(channel_spec.type)))
 
   _validate_properties_schema(
       instance_schema=result.artifact_type.instance_schema,
       properties=channel_spec.type.PROPERTIES)
 
-  struct_proto = pack_artifact_properties(artifact_instance)
-  if struct_proto:
-    result.metadata.CopyFrom(struct_proto)
+  if channel_spec.additional_properties:
+    result.metadata.update(channel_spec.additional_properties)
+  if channel_spec.additional_custom_properties:
+    result.metadata.update(channel_spec.additional_custom_properties)
   return result
 
 
@@ -284,14 +281,14 @@ def get_mlmd_value(
   return result
 
 
-def get_artifact_schema(artifact_instance: artifact.Artifact) -> str:
+def get_artifact_schema(artifact_type: Type[artifact.Artifact]) -> str:
   """Gets the YAML schema string associated with the artifact type."""
-  if isinstance(artifact_instance, tuple(_SUPPORTED_STANDARD_ARTIFACT_TYPES)):
+  if artifact_type in _SUPPORTED_STANDARD_ARTIFACT_TYPES:
     # For supported first-party artifact types, get the built-in schema yaml per
     # its type name.
     schema_path = os.path.join(
         os.path.dirname(__file__), 'artifact_types',
-        '{}.yaml'.format(artifact_instance.type_name))
+        '{}.yaml'.format(artifact_type.TYPE_NAME))
     return fileio.open(schema_path, 'rb').read()
   else:
     # Otherwise, fall back to the generic `Artifact` type schema.
@@ -303,8 +300,7 @@ def get_artifact_schema(artifact_instance: artifact.Artifact) -> str:
         os.path.dirname(__file__), 'artifact_types', 'Artifact.yaml')
     data = yaml.safe_load(fileio.open(schema_path, 'rb').read())
     # Encode class import path.
-    data['title'] = '%s.%s' % (artifact_instance.__class__.__module__,
-                               artifact_instance.__class__.__name__)
+    data['title'] = f'{artifact_type.__module__}.{artifact_type.__name__}'
     return yaml.dump(data, sort_keys=False)
 
 
