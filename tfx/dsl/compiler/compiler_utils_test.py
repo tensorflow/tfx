@@ -127,19 +127,22 @@ class CompilerUtilsTest(tf.test.TestCase):
         compiler_utils.node_context_name("pipeline_context_name", "node_id"))
 
   def testImplicitChannelKey(self):
-    model = types.Channel(type=standard_artifacts.Model)
-    model.producer_component_id = "trainer"
-    model.output_key = "model"
+    model = types.Channel(
+        type=standard_artifacts.Model,
+        producer_component_id="trainer",
+        output_key="model")
     self.assertEqual("_trainer.model",
                      compiler_utils.implicit_channel_key(model))
 
   def testBuildChannelToKeyFn(self):
-    model = types.Channel(type=standard_artifacts.Model)
-    model.producer_component_id = "trainer"
-    model.output_key = "model"
-    examples = types.Channel(type=standard_artifacts.Examples)
-    examples.producer_component_id = "example_gen"
-    examples.output_key = "examples"
+    model = types.Channel(
+        type=standard_artifacts.Model,
+        producer_component_id="trainer",
+        output_key="model")
+    examples = types.Channel(
+        type=standard_artifacts.Examples,
+        producer_component_id="example_gen",
+        output_key="examples")
 
     fn = compiler_utils.build_channel_to_key_fn({"_trainer.model": "real_key"})
     self.assertEqual(fn(model), "real_key")

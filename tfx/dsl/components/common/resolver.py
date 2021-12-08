@@ -161,8 +161,7 @@ class _ResolverDriver(base_driver.BaseDriver):
 
     # TODO(b/148828122): This is a temporary workaround for interactive mode.
     for k, c in output_dict.items():
-      output_dict[k] = types.Channel(type=c.type).set_artifacts(
-          output_artifacts[k])
+      c.set_artifacts(output_artifacts[k])
     # Updates execution to reflect artifact resolution results and mark
     # as cached.
     self._metadata_handler.update_execution(
@@ -254,7 +253,7 @@ class Resolver(base_node.BaseNode):
             f'but got {c!r} instead.')
       # TODO(b/161490287): remove static artifacts.
       self._output_dict[k] = (
-          types.Channel(type=c.type).set_artifacts([c.type()]))
+          types.OutputChannel(c.type, self, k).set_artifacts([c.type()]))
     super().__init__(driver_class=_ResolverDriver)
 
   @property

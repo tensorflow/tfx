@@ -13,6 +13,8 @@
 # limitations under the License.
 """Tests for tfx.utils.channel."""
 
+from unittest import mock
+
 import tensorflow as tf
 from tfx.dsl.placeholder import placeholder
 from tfx.types import artifact
@@ -109,6 +111,29 @@ class ChannelTest(tf.test.TestCase):
   def testEmptyUnionChannel(self):
     with self.assertRaises(AssertionError):
       channel.union([])
+
+  def testAsOutputChannel(self):
+    node1 = mock.MagicMock()
+    node1.id = 'n1'
+    ch1 = channel.Channel(type=_MyType)
+    ch1.additional_properties['string_value'] = 'foo'
+    ch1.additional_custom_properties['another_string_value'] = 'bar'
+    ch2 = ch1.tfx_internal_as_output_channel(node1, 'x')
+
+    with self.subTest('Expected Attributes'):
+      self.assertEqual(ch2.type, _MyType)
+      self.assertEqual(ch2.additional_properties, {'string_value': 'foo'})
+      self.assertEqual(ch2.additional_custom_properties,
+                       {'another_string_value': 'bar'})
+      self.assertEqual(ch2.producer_component_id, 'n1')
+      self.assertEqual(ch2.output_key, 'x')
+
+    with self.subTest('AdditionalProperty Mutation'):
+      ch1.additional_properties['string_value'] = 'foo2'
+      ch1.additional_custom_properties['another_string_value'] = 'bar2'
+      self.assertEqual(ch2.additional_properties, {'string_value': 'foo2'})
+      self.assertEqual(ch2.additional_custom_properties,
+                       {'another_string_value': 'bar2'})
 
 
 if __name__ == '__main__':

@@ -269,15 +269,12 @@ class Importer(base_node.BaseNode):
     artifact = artifact_type()
     _set_artifact_properties(artifact, properties, custom_properties)
 
+    output_channel = types.OutputChannel(artifact_type, self, IMPORT_RESULT_KEY)
+    output_channel.additional_properties.update(properties or {})
+    output_channel.additional_custom_properties.update(custom_properties or {})
     # TODO(b/161490287): remove static artifacts.
-    self._output_dict = {
-        IMPORT_RESULT_KEY:
-            types.Channel(
-                type=artifact_type,
-                additional_properties=properties,
-                additional_custom_properties=custom_properties).set_artifacts(
-                    [artifact])
-    }
+    output_channel.set_artifacts([artifact])
+    self._output_dict = {IMPORT_RESULT_KEY: output_channel}
 
     super().__init__(driver_class=ImporterDriver)
 

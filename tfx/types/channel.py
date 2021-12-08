@@ -34,6 +34,10 @@ Property = Union[int, float, str]
 ExecPropertyTypes = Union[int, float, str, bool, message.Message, List[Any]]
 
 
+def _is_artifact_type(value: Any):
+  return inspect.isclass(value) and issubclass(value, Artifact)
+
+
 class BaseChannel:
   """An abstract type for Channels that connects pipeline nodes.
 
@@ -45,11 +49,23 @@ class BaseChannel:
   """
 
   def __init__(self, type: Type[Artifact]):  # pylint: disable=redefined-builtin
-    if not (inspect.isclass(type) and issubclass(type, Artifact)):  # pytype: disable=wrong-arg-types
+    if not _is_artifact_type(type):
       raise ValueError(
           'Argument "type" of BaseChannel constructor must be a subclass of '
-          'tfx.Artifact (got %r).' % (type,))
-    self.type = type
+          f'tfx.Artifact (got {type}).')
+    self._artifact_type = type
+
+  @property
+  def type(self):  # pylint: disable=redefined-builtin
+    return self._artifact_type
+
+  @doc_controls.do_not_generate_docs
+  def tfx_internal_set_artifact_type(self, value: Type[Artifact]):
+    """Mutate artifact type."""
+    if not _is_artifact_type(value):
+      raise TypeError(
+          f'artifact_type should be a subclass of tfx.Artifact (got {value}).')
+    self._artifact_type = value
 
   @property
   def type_name(self):
@@ -96,18 +112,33 @@ class Channel(json_utils.Jsonable, BaseChannel):
     """
     super().__init__(type=type)
 
-    self.additional_properties = additional_properties or {}
-    self.additional_custom_properties = additional_custom_properties or {}
+    self._additional_properties = additional_properties or {}
+    self._additional_custom_properties = additional_custom_properties or {}
 
-    # The following fields will be populated during compilation time.
-    self.producer_component_id = producer_component_id
-    self.output_key = output_key
+    self._producer_component_id = producer_component_id
+    self._output_key = output_key
 
     if artifacts:
       logging.warning(
           'Artifacts param is ignored by Channel constructor, please remove!')
     self._artifacts = []
     self._matching_channel_name = None
+
+  @property
+  def producer_component_id(self) -> str:
+    return self._producer_component_id
+
+  @property
+  def output_key(self) -> str:
+    return self._output_key
+
+  @property
+  def additional_properties(self) -> Dict[str, Property]:
+    return self._additional_properties
+
+  @property
+  def additional_custom_properties(self) -> Dict[str, Property]:
+    return self._additional_custom_properties
 
   def __repr__(self):
     artifacts_str = '\n    '.join(repr(a) for a in self._artifacts)
@@ -208,6 +239,70 @@ class Channel(json_utils.Jsonable, BaseChannel):
 
   def future(self) -> placeholder.ChannelWrappedPlaceholder:
     return placeholder.ChannelWrappedPlaceholder(self)
+
+  @doc_controls.do_not_generate_docs
+  def tfx_internal_as_output_channel(
+      self, producer_component: Any, output_key: str) -> 'OutputChannel':
+    """Internal method to derive OutputChannel from the Channel instance.
+
+    Return value (OutputChannel instance) is based on the shallow copy of self,
+    so that any attribute change in one is reflected on the others.
+
+    Args:
+      producer_component: A BaseNode instance that is producing this channel.
+      output_key: Corresponding node.outputs key for this channel.
+
+    Returns:
+      An OutputChannel instance that shares attributes with self.
+    """
+    # Disable pylint false alarm for safe access of protected attributes.
+    # pylint: disable=protected-access
+    result = OutputChannel(self.type, producer_component, output_key)
+    result._additional_properties = self.additional_properties
+    result._additional_custom_properties = self._additional_custom_properties
+    result._artifacts = self._artifacts
+    return result
+
+
+class OutputChannel(Channel):
+  """Channel subtype that is used for node.outputs."""
+
+  def __init__(
+      self,
+      artifact_type: Type[Artifact],
+      producer_component: Any,
+      output_key: str):
+    super().__init__(artifact_type, output_key=output_key)
+    self._producer_component = producer_component
+
+  def __repr__(self) -> str:
+    return (
+        f'{self.__class__.__name__}('
+        f'artifact_type={self.type_name}, '
+        f'producer_component_id={self.producer_component_id}, '
+        f'output_key={self.output_key}, '
+        f'additional_properties={self.additional_properties}, '
+        f'additional_custom_properties={self.additional_custom_properties})')
+
+  @doc_controls.do_not_generate_docs
+  def tfx_internal_set_producer_component(self, value: Any):
+    self._producer_component = value
+
+  @property
+  def producer_component_id(self) -> str:
+    return self._producer_component.id
+
+  @doc_controls.do_not_generate_docs
+  def tfx_internal_as_output_channel(
+      self, producer_component: Any, output_key: str) -> 'OutputChannel':
+    if self._producer_component != producer_component:
+      raise ValueError(
+          f'producer_component mismatch: {self._producer_component} != '
+          f'{producer_component}.')
+    if self._output_key != output_key:
+      raise ValueError(
+          f'output_key mismatch: {self._output_key} != {output_key}.')
+    return self
 
 
 @doc_controls.do_not_generate_docs

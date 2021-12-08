@@ -50,7 +50,6 @@ class _CompilerContext:
     self.pipeline_info = tfx_pipeline.pipeline_info
     self.execution_mode = compiler_utils.resolve_execution_mode(tfx_pipeline)
     self.node_pbs = {}
-    self.node_outputs = set()
     self._pipeline_nodes_by_id = {}
     self._topological_order = {}
     self._implicit_upstream_nodes = collections.defaultdict(set)
@@ -249,14 +248,16 @@ class Compiler:
       for input_channel in channel_utils.get_individual_channels(value):
         chnl = input_spec.channels.add()
 
-        # If the node input comes from another node's output, fill the context
-        # queries with the producer node's contexts.
-        if input_channel in compile_context.node_outputs:
+        # If the node is an OutputChannel, fill the context queries with the
+        # producer node's contexts.
+        if isinstance(input_channel, types.OutputChannel):
           chnl.producer_node_query.id = input_channel.producer_component_id
 
           # Here we rely on pipeline.components to be topologically sorted.
           assert input_channel.producer_component_id in compile_context.node_pbs, (
-              "producer component should have already been compiled.")
+              f"producer component {input_channel.producer_component_id} "
+              f"should have been compiled before {tfx_node.id} "
+              f"(while compiling {input_channel} in inputs['{key}']).")
           producer_pb = compile_context.node_pbs[
               input_channel.producer_component_id]
           for producer_context in producer_pb.contexts.contexts:
@@ -264,9 +265,9 @@ class Compiler:
             context_query.type.CopyFrom(producer_context.type)
             context_query.name.CopyFrom(producer_context.name)
 
-        # If the node input does not come from another node's output, fill the
-        # context queries based on Channel info. We requires every channel to
-        # have pipeline context and will fill it automatically.
+        # If the node input is not an OutputChannel, fill the context queries
+        # based on Channel info. We requires every channel to have pipeline
+        # context and will fill it automatically.
         else:
           # Add pipeline context query.
           context_query = chnl.context_queries.add()
@@ -321,9 +322,6 @@ class Compiler:
           _compile_resolver_node(tfx_node))
 
     # Step 4: Node outputs
-    for key, value in tfx_node.outputs.items():
-      # Register the output in the context.
-      compile_context.node_outputs.add(value)
     if (isinstance(tfx_node, base_component.BaseComponent) or
         compiler_utils.is_importer(tfx_node)):
       self._compile_node_outputs(tfx_node, node)

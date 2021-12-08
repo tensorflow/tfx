@@ -260,6 +260,12 @@ class ComponentSpec(json_utils.Jsonable):
         'exec_properties': self.exec_properties,
     }
 
+  def migrate_output_channels(self, producer_component: Any):
+    for key, channel_ in list(self.outputs.items()):
+      if not isinstance(channel_, channel.OutputChannel):
+        self.outputs[key] = channel_.tfx_internal_as_output_channel(
+            producer_component, key)
+
 
 class ExecutionParameter:
   """An execution parameter in a ComponentSpec.
