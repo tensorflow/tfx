@@ -16,6 +16,7 @@
 import abc
 from typing import Any, Optional
 
+from tfx.dsl.components.base import base_node
 from tfx.orchestration.config import pipeline_config
 from tfx.utils import doc_controls
 
@@ -51,3 +52,15 @@ class TfxRunner(abc.ABC):
   @doc_controls.do_not_doc_in_subclasses
   def config(self) -> pipeline_config.PipelineConfig:
     return self._config
+
+  def set_exit_handler(self,
+                       exit_handler: base_node.BaseNode):
+    """Set exit handler components for dag runner.
+
+    This feature is currently experimental without backward compatibility
+    gaurantee.
+
+    Args:
+      exit_handler: exit handler component.
+    """
+    raise NotImplementedError('Exit handler is only supported by some DagRunners')
