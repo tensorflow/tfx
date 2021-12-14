@@ -66,6 +66,17 @@ def is_valid_input_event(event: metadata_store_pb2.Event,
     return event.type in _VALID_INPUT_EVENT_TYPES
 
 
+def add_event_path(
+    event: metadata_store_pb2.Event,
+    key: str,
+    index: int) -> None:
+  """Adds event path to a given MLMD event."""
+  # The order matters, we always use the first step to store key and the second
+  # step to store index.
+  event.path.steps.add().key = key
+  event.path.steps.add().index = index
+
+
 def generate_event(
     event_type: metadata_store_pb2.Event.Type,
     key: str,
