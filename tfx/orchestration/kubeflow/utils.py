@@ -20,6 +20,7 @@ from kfp import dsl
 
 from tfx.dsl.components.base import base_node
 from tfx.orchestration import data_types
+from tfx.orchestration.kubeflow.v2.decorators import FinalStatusStr
 
 
 def replace_placeholder(component: base_node.BaseNode) -> None:
@@ -27,10 +28,11 @@ def replace_placeholder(component: base_node.BaseNode) -> None:
   keys = list(component.exec_properties.keys())
   for key in keys:
     exec_property = component.exec_properties[key]
-    if not isinstance(exec_property, data_types.RuntimeParameter):
-      continue
-    component.exec_properties[key] = str(
+    if isinstance(exec_property, data_types.RuntimeParameter):
+      component.exec_properties[key] = str(
         dsl.PipelineParam(name=exec_property.name))
+    elif isinstance(exec_property, FinalStatusStr):
+      component.exec_properties[key] = '{{workflow.status}}'
 
 
 def fix_brackets(placeholder: str) -> str:
