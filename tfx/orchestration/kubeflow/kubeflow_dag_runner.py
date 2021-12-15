@@ -410,7 +410,7 @@ class KubeflowDagRunner(tfx_runner.TfxRunner):
     if self._exit_handler:
       original_pipeline = pipeline
       pipeline = copy.copy(original_pipeline)
-      pipeline.components = [self._exit_handler] + original_pipeline.components
+      pipeline.components.append(self._exit_handler)
 
     for component in pipeline.components:
       # TODO(b/187122662): Pass through pip dependencies as a first-class
