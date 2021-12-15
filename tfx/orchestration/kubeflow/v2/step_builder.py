@@ -343,7 +343,7 @@ class StepBuilder:
         task_spec.inputs.parameters[name].component_input_parameter = value.name
       elif isinstance(value, decorators.FinalStatusStr):
         if not self._is_exit_handler:
-          logging.error(' type is only allowed to use in exit'
+          logging.error('FinalStatusStr type is only allowed to use in exit'
                         ' handler. The parameter is ignored.')
         else:
           task_spec.inputs.parameters[name].task_final_status.producer_task = (
