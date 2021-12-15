@@ -24,14 +24,11 @@ from tfx.orchestration.kubeflow.v2.decorators import FinalStatusStr
 
 
 def replace_placeholder(component: base_node.BaseNode) -> None:
-  """Replaces the RuntimeParameter placeholders with kfp.dsl.PipelineParam."""
+  """Replaces the TFX placeholders with KFP placeholders"""
   keys = list(component.exec_properties.keys())
   for key in keys:
     exec_property = component.exec_properties[key]
-    if isinstance(exec_property, data_types.RuntimeParameter):
-      component.exec_properties[key] = str(
-        dsl.PipelineParam(name=exec_property.name))
-    elif isinstance(exec_property, FinalStatusStr):
+    if isinstance(exec_property, FinalStatusStr):
       component.exec_properties[key] = '{{workflow.status}}'
 
 

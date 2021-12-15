@@ -32,6 +32,7 @@ from tfx.orchestration import pipeline as tfx_pipeline
 from tfx.orchestration import tfx_runner
 from tfx.orchestration.config import pipeline_config
 from tfx.orchestration.kubeflow import base_component
+from tfx.orchestration.kubeflow import utils
 from tfx.orchestration.kubeflow.proto import kubeflow_pb2
 from tfx.orchestration.launcher import base_component_launcher
 from tfx.orchestration.launcher import in_process_component_launcher
@@ -317,6 +318,9 @@ class KubeflowDagRunner(tfx_runner.TfxRunner):
       pipeline_root: dsl.PipelineParam representing the pipeline root.
     """
     component_to_kfp_op = {}
+    
+    for component in pipeline.components:
+      utils.replace_placeholder(component)
     tfx_ir = self._generate_tfx_ir(pipeline)
 
     # Assumption: There is a partial ordering of components in the list, i.e.,
