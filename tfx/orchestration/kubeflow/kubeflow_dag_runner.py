@@ -355,7 +355,15 @@ class KubeflowDagRunner(tfx_runner.TfxRunner):
       exit_op = component_to_kfp_op[self._exit_handler]
       with dsl.ExitHandler(exit_op) as exit_handler_group:
         exit_handler_group.name = 'tfx-exit-handler'
-        exit_handler_group.ops = [op for op in component_to_kfp_op.values() if op != exit_op]
+        # KFP get_default_pipeline should have the pipeline object when invoked while compiling
+        # This allows us to retrieve all ops from pipeline group (should be the only group in the pipeline)
+        pipeline_group = dsl.Pipeline.get_default_pipeline().groups[0]
+
+        # Transfer all ops to exit_handler_group which will now contain all ops.
+        exit_handler_group.ops = pipeline_group.ops
+        # remove all ops from pipeline_group. Otherwise compiler fails in
+        # https://github.com/kubeflow/pipelines/blob/8aee62142aa13ae42b2dd18257d7e034861b7e5e/sdk/python/kfp/compiler/compiler.py#L893
+        pipeline_group.ops = []
 
   def _del_unused_field(self, node_id: str, message_dict: MutableMapping[str,
                                                                          Any]):
