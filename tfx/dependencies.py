@@ -81,9 +81,7 @@ def make_required_install_packages():
       'grpcio>=1.28.1,<2',
       'keras-tuner>=1.0.4,<2',
       'kubernetes>=10.0.1,<13',
-      # TODO(b/179195488): remove numpy dependency after 1.20 migration.
-      # This dependency was added only to limit numpy 1.20 installation.
-      'numpy>=1.16,<1.20',
+      'numpy>=1.16,<2',
       'pyarrow>=1,<6',
       'pyyaml>=3.12,<6',
       # Keep the TF version same as TFT to help Pip version resolution.
