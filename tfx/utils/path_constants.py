@@ -16,3 +16,11 @@
 EVAL_MODEL_DIR = 'Format-TFMA'
 SERVING_MODEL_DIR = 'Format-Serving'
 STAMPED_MODEL_DIR = 'stamped_model'
+
+# Model types
+TFMA_EVAL = 'tfma_eval'
+TF_ESTIMATOR = 'tf_estimator'
+TF_KERAS = 'tf_keras'
+TF_GENERIC = 'tf_generic'
+TF_LITE = 'tf_lite'
+TF_JS = 'tf_js'
