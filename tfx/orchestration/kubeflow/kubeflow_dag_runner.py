@@ -34,6 +34,7 @@ from tfx.orchestration.config import pipeline_config
 from tfx.orchestration.kubeflow import base_component
 from tfx.orchestration.kubeflow import utils
 from tfx.orchestration.kubeflow.proto import kubeflow_pb2
+from tfx.orchestration.kubeflow.v2.compiler_utils import TFX_DAG_NAME
 from tfx.orchestration.launcher import base_component_launcher
 from tfx.orchestration.launcher import in_process_component_launcher
 from tfx.orchestration.launcher import kubernetes_component_launcher
@@ -358,7 +359,7 @@ class KubeflowDagRunner(tfx_runner.TfxRunner):
     if self._exit_handler:
       exit_op = component_to_kfp_op[self._exit_handler]
       with dsl.ExitHandler(exit_op) as exit_handler_group:
-        exit_handler_group.name = '_tfx_dag'
+        exit_handler_group.name = TFX_DAG_NAME
         # KFP get_default_pipeline should have the pipeline object when invoked while compiling
         # This allows us to retrieve all ops from pipeline group (should be the only group in the pipeline)
         pipeline_group = dsl.Pipeline.get_default_pipeline().groups[0]
