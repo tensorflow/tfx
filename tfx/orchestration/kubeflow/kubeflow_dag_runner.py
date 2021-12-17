@@ -320,7 +320,7 @@ class KubeflowDagRunner(tfx_runner.TfxRunner):
     component_to_kfp_op = {}
     
     for component in pipeline.components:
-      utils.replace_placeholder(component)
+      utils.replace_exec_properties(component)
     tfx_ir = self._generate_tfx_ir(pipeline)
 
     # Assumption: There is a partial ordering of components in the list, i.e.,
@@ -358,7 +358,7 @@ class KubeflowDagRunner(tfx_runner.TfxRunner):
     if self._exit_handler:
       exit_op = component_to_kfp_op[self._exit_handler]
       with dsl.ExitHandler(exit_op) as exit_handler_group:
-        exit_handler_group.name = 'tfx-exit-handler'
+        exit_handler_group.name = '_tfx_dag'
         # KFP get_default_pipeline should have the pipeline object when invoked while compiling
         # This allows us to retrieve all ops from pipeline group (should be the only group in the pipeline)
         pipeline_group = dsl.Pipeline.get_default_pipeline().groups[0]
@@ -448,7 +448,7 @@ class KubeflowDagRunner(tfx_runner.TfxRunner):
 
   def set_exit_handler(self,
                        exit_handler: base_node.BaseNode):
-    """Set exit handler components for the Kuveflow V2(Vertex AI) dag runner.
+    """Set exit handler components for the Kubeflow dag runner.
 
     This feature is currently experimental without backward compatibility
     gaurantee.

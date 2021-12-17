@@ -30,6 +30,7 @@ from kubernetes import client as k8s_client
 from tfx.dsl.components.base import base_node as tfx_base_node
 from tfx.orchestration import data_types
 from tfx.orchestration import pipeline as tfx_pipeline
+from tfx.orchestration.kubeflow import utils
 from tfx.orchestration.kubeflow.proto import kubeflow_pb2
 from tfx.proto.orchestration import pipeline_pb2
 
@@ -92,6 +93,8 @@ class BaseComponent:
       runtime_parameters: Runtime parameters of the pipeline.
       metadata_ui_path: File location for metadata-ui-metadata.json file.
     """
+
+    utils.replace_placeholder(component)
 
     arguments = [
         '--pipeline_root',

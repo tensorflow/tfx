@@ -24,13 +24,22 @@ from tfx.orchestration.kubeflow.v2.decorators import FinalStatusStr
 
 
 def replace_placeholder(component: base_node.BaseNode) -> None:
-  """Replaces the TFX placeholders with KFP placeholders"""
+  """Replaces the RuntimeParameter placeholders with kfp.dsl.PipelineParam."""
+  keys = list(component.exec_properties.keys())
+  for key in keys:
+    exec_property = component.exec_properties[key]
+    if not isinstance(exec_property, data_types.RuntimeParameter):
+      continue
+    component.exec_properties[key] = str(
+        dsl.PipelineParam(name=exec_property.name))
+
+def replace_exec_properties(component: base_node.BaseNode) -> None:
+  """Replaces TFX placeholders in execution properties with KFP placeholders"""
   keys = list(component.exec_properties.keys())
   for key in keys:
     exec_property = component.exec_properties[key]
     if isinstance(exec_property, FinalStatusStr):
       component.exec_properties[key] = '{{workflow.status}}'
-
 
 def fix_brackets(placeholder: str) -> str:
   """Fix the imbalanced brackets in placeholder.
