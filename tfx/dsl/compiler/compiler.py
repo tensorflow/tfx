@@ -164,8 +164,14 @@ class Compiler:
       node.node_info.type.base_type = (
           tfx_node.type_annotation.MLMD_SYSTEM_BASE_TYPE)
     node.node_info.id = tfx_node.id
+    # Step 2: Contexts
+    # Context for the project.
+    if compile_context.pipeline_info.project_name:
+      project_context_pb = node.contexts.contexts.add()
+      project_context_pb.type.name = constants.PROJECT_CONTEXT_TYPE_NAME
+      project_context_pb.name.field_value.string_value = (
+          compile_context.pipeline_info.project_name)
 
-    # Step 2: Node Context
     # Context for the pipeline, across pipeline runs.
     pipeline_context_pb = node.contexts.contexts.add()
     pipeline_context_pb.type.name = constants.PIPELINE_CONTEXT_TYPE_NAME
@@ -288,6 +294,13 @@ class Compiler:
         # based on Channel info. We requires every channel to have pipeline
         # context and will fill it automatically.
         else:
+          # Add project context query.
+          if compile_context.pipeline_info.project_name:
+            context_query = chnl.context_queries.add()
+            context_query.type.name = constants.PROJECT_CONTEXT_TYPE_NAME
+            context_query.name.field_value.string_value = (
+                compile_context.pipeline_info.project_name)
+
           # Add pipeline context query.
           context_query = chnl.context_queries.add()
           context_query.type.CopyFrom(pipeline_context_pb.type)

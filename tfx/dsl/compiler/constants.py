@@ -19,6 +19,9 @@ PIPELINE_ROOT_PARAMETER_NAME = "pipeline-root"
 # The parameter name for pipeline run id in PipelineRuntimeSpec.
 PIPELINE_RUN_ID_PARAMETER_NAME = "pipeline-run-id"
 
+# The type name for the contexts representing different projects.
+PROJECT_CONTEXT_TYPE_NAME = "project"
+
 # The type name for the contexts representing different pipelines.
 PIPELINE_CONTEXT_TYPE_NAME = "pipeline"
 
