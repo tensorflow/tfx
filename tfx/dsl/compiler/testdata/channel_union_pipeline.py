@@ -25,6 +25,7 @@ from tfx.orchestration import pipeline
 from tfx.types import channel
 from tfx.types import standard_artifacts
 
+_project_name = 'project'
 _pipeline_name = 'channel_union_pipeline'
 
 _data_root = 'channel_union'
@@ -43,8 +44,8 @@ def ChannelUnionComponent(  # pylint: disable=invalid-name
   del input_data, name, output_data
 
 
-def _create_pipeline(pipeline_name: str, pipeline_root: str, data_root_1: str,
-                     data_root_2: str) -> pipeline.Pipeline:
+def _create_pipeline(project_name: str, pipeline_name: str, pipeline_root: str,
+                     data_root_1: str, data_root_2: str) -> pipeline.Pipeline:
   """Implements a pipeline with channel.union()."""
   # Brings data into the pipeline or otherwise joins/converts training data.
   example_gen_1 = CsvExampleGen(input_base=data_root_1).with_id('example_gen_1')
@@ -69,6 +70,7 @@ def _create_pipeline(pipeline_name: str, pipeline_root: str, data_root_1: str,
   statistics_gen = StatisticsGen(
       examples=latest_artifacts_resolver.outputs['resolved_channels'])
   return pipeline.Pipeline(
+      project_name=project_name,
       pipeline_name=pipeline_name,
       pipeline_root=pipeline_root,
       components=[
@@ -79,6 +81,7 @@ def _create_pipeline(pipeline_name: str, pipeline_root: str, data_root_1: str,
 
 def create_test_pipeline():
   return _create_pipeline(
+      project_name=_project_name,
       pipeline_name=_pipeline_name,
       pipeline_root=_pipeline_root,
       data_root_1=_data_root_1,

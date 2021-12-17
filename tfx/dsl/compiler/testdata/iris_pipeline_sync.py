@@ -37,6 +37,7 @@ from tfx.types import standard_artifacts
 
 def create_test_pipeline():
   """Builds an Iris example pipeline with slight changes."""
+  project_name = "project"
   pipeline_name = "iris"
   iris_root = "iris_root"
   serving_model_dir = os.path.join(iris_root, "serving_model", pipeline_name)
@@ -119,6 +120,7 @@ def create_test_pipeline():
               base_directory=serving_model_dir)))
 
   return pipeline.Pipeline(
+      project_name=project_name,
       pipeline_name=pipeline_name,
       pipeline_root=pipeline_root,
       components=[

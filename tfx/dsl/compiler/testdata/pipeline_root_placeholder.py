@@ -21,6 +21,7 @@ from tfx.orchestration import pipeline
 
 def create_test_pipeline():
   """Builds a pipeline with Placeholder in pipeline_root."""
+  project_name = "project"
   pipeline_name = "pipeline_root_placeholder"
   tfx_root = "tfx_root"
   data_path = os.path.join(tfx_root, "data_path")
@@ -28,6 +29,7 @@ def create_test_pipeline():
 
   example_gen = CsvExampleGen(input_base=data_path)
   return pipeline.Pipeline(
+      project_name=project_name,
       pipeline_name=pipeline_name,
       pipeline_root=pipeline_root,
       components=[example_gen],

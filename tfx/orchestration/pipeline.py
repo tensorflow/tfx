@@ -211,6 +211,7 @@ class Pipeline:
   def __init__(self,
                pipeline_name: str,
                pipeline_root: Union[str, ph.Placeholder],
+               project_name: Optional[str] = '',
                metadata_connection_config: Optional[
                    metadata.ConnectionConfigType] = None,
                components: Optional[List[base_node.BaseNode]] = None,
@@ -222,11 +223,12 @@ class Pipeline:
     """Initialize pipeline.
 
     Args:
-      pipeline_name: Name of the pipeline;
+      pipeline_name: Name of the pipeline.
       pipeline_root: Path to root directory of the pipeline. This will most
         often be just a string. Some orchestrators may have limited support for
         constructing this from a Placeholder, e.g. a RuntimeInfoPlaceholder that
         refers to fields from the platform config.
+      project_name: Name of the pipeline.
       metadata_connection_config: The config to connect to ML metadata.
       components: Optional list of components to construct the pipeline.
       enable_cache: Whether or not cache is enabled for this run.
@@ -242,6 +244,7 @@ class Pipeline:
 
     # TODO(b/183621450): deprecate PipelineInfo.
     self.pipeline_info = data_types.PipelineInfo(  # pylint: disable=g-missing-from-attributes
+        project_name=project_name,
         pipeline_name=pipeline_name,
         pipeline_root=pipeline_root)
     self.enable_cache = enable_cache

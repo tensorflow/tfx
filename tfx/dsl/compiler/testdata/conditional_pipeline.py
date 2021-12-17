@@ -34,6 +34,7 @@ from tfx.proto import trainer_pb2
 
 def create_test_pipeline():
   """Builds a conditional pipeline."""
+  project_name = "project"
   pipeline_name = "cond"
   cond_root = "cond_root"
   serving_model_dir = os.path.join(cond_root, "serving_model", pipeline_name)
@@ -96,6 +97,7 @@ def create_test_pipeline():
                   base_directory=serving_model_dir)))
 
   return pipeline.Pipeline(
+      project_name=project_name,
       pipeline_name=pipeline_name,
       pipeline_root=pipeline_root,
       components=[

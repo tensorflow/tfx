@@ -25,6 +25,8 @@ PIPELINE_CONTEXT_TYPE_NAME = "pipeline"
 # The type name for the contexts representing different pipeline runs.
 PIPELINE_RUN_CONTEXT_TYPE_NAME = "pipeline_run"
 
+PROJECT_CONTEXT_TYPE_NAME = "project"
+
 # The type name for the contexts representing different nodes. Note that a
 # context of this type only covers node runs within a pipeline domain but not
 # across pipelines.

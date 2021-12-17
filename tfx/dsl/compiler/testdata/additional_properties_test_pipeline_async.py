@@ -87,6 +87,7 @@ class CustomConsumer(base_component.BaseComponent):
 
 def create_test_pipeline():
   """Builds an example asynchronous pipeline using custom components."""
+  project_name = 'project'
   pipeline_name = 'custom1'
   tfx_root = 'tfx_root'
   pipeline_root = os.path.join(tfx_root, 'pipelines', pipeline_name)
@@ -96,6 +97,7 @@ def create_test_pipeline():
   custom_consumer = CustomConsumer(data=custom_producer.outputs['stats'])
 
   return pipeline.Pipeline(
+      project_name=project_name,
       pipeline_name=pipeline_name,
       pipeline_root=pipeline_root,
       components=[

@@ -18,6 +18,16 @@ nodes {
     contexts {
       contexts {
         type {
+          name: "project"
+        }
+        name {
+          field_value {
+            string_value: "project"
+          }
+        }
+      }
+      contexts {
+        type {
           name: "pipeline"
         }
         name {
@@ -137,6 +147,16 @@ nodes {
     contexts {
       contexts {
         type {
+          name: "project"
+        }
+        name {
+          field_value {
+            string_value: "project"
+          }
+        }
+      }
+      contexts {
+        type {
           name: "pipeline"
         }
         name {
@@ -174,6 +194,16 @@ nodes {
           channels {
             producer_node_query {
               id: "CsvExampleGen"
+            }
+            context_queries {
+              type {
+                name: "project"
+              }
+              name {
+                field_value {
+                  string_value: "project"
+                }
+              }
             }
             context_queries {
               type {
@@ -269,6 +299,16 @@ nodes {
     contexts {
       contexts {
         type {
+          name: "project"
+        }
+        name {
+          field_value {
+            string_value: "project"
+          }
+        }
+      }
+      contexts {
+        type {
           name: "pipeline"
         }
         name {
@@ -306,6 +346,16 @@ nodes {
           channels {
             producer_node_query {
               id: "StatisticsGen"
+            }
+            context_queries {
+              type {
+                name: "project"
+              }
+              name {
+                field_value {
+                  string_value: "project"
+                }
+              }
             }
             context_queries {
               type {
@@ -400,6 +450,16 @@ nodes {
     contexts {
       contexts {
         type {
+          name: "project"
+        }
+        name {
+          field_value {
+            string_value: "project"
+          }
+        }
+      }
+      contexts {
+        type {
           name: "pipeline"
         }
         name {
@@ -437,6 +497,16 @@ nodes {
           channels {
             producer_node_query {
               id: "CsvExampleGen"
+            }
+            context_queries {
+              type {
+                name: "project"
+              }
+              name {
+                field_value {
+                  string_value: "project"
+                }
+              }
             }
             context_queries {
               type {
@@ -486,6 +556,16 @@ nodes {
           channels {
             producer_node_query {
               id: "SchemaGen"
+            }
+            context_queries {
+              type {
+                name: "project"
+              }
+              name {
+                field_value {
+                  string_value: "project"
+                }
+              }
             }
             context_queries {
               type {
@@ -607,6 +687,16 @@ nodes {
     contexts {
       contexts {
         type {
+          name: "project"
+        }
+        name {
+          field_value {
+            string_value: "project"
+          }
+        }
+      }
+      contexts {
+        type {
           name: "pipeline"
         }
         name {
@@ -644,6 +734,16 @@ nodes {
           channels {
             producer_node_query {
               id: "CsvExampleGen"
+            }
+            context_queries {
+              type {
+                name: "project"
+              }
+              name {
+                field_value {
+                  string_value: "project"
+                }
+              }
             }
             context_queries {
               type {
@@ -693,6 +793,16 @@ nodes {
           channels {
             producer_node_query {
               id: "Trainer"
+            }
+            context_queries {
+              type {
+                name: "project"
+              }
+              name {
+                field_value {
+                  string_value: "project"
+                }
+              }
             }
             context_queries {
               type {
@@ -805,6 +915,16 @@ nodes {
     contexts {
       contexts {
         type {
+          name: "project"
+        }
+        name {
+          field_value {
+            string_value: "project"
+          }
+        }
+      }
+      contexts {
+        type {
           name: "pipeline"
         }
         name {
@@ -842,6 +962,16 @@ nodes {
           channels {
             producer_node_query {
               id: "Evaluator"
+            }
+            context_queries {
+              type {
+                name: "project"
+              }
+              name {
+                field_value {
+                  string_value: "project"
+                }
+              }
             }
             context_queries {
               type {
@@ -892,6 +1022,16 @@ nodes {
             }
             context_queries {
               type {
+                name: "project"
+              }
+              name {
+                field_value {
+                  string_value: "project"
+                }
+              }
+            }
+            context_queries {
+              type {
                 name: "pipeline"
               }
               name {
@@ -937,6 +1077,16 @@ nodes {
           channels {
             producer_node_query {
               id: "Trainer"
+            }
+            context_queries {
+              type {
+                name: "project"
+              }
+              name {
+                field_value {
+                  string_value: "project"
+                }
+              }
             }
             context_queries {
               type {
@@ -1038,6 +1188,16 @@ nodes {
     contexts {
       contexts {
         type {
+          name: "project"
+        }
+        name {
+          field_value {
+            string_value: "project"
+          }
+        }
+      }
+      contexts {
+        type {
           name: "pipeline"
         }
         name {
@@ -1075,6 +1235,16 @@ nodes {
           channels {
             producer_node_query {
               id: "Evaluator"
+            }
+            context_queries {
+              type {
+                name: "project"
+              }
+              name {
+                field_value {
+                  string_value: "project"
+                }
+              }
             }
             context_queries {
               type {
@@ -1125,6 +1295,16 @@ nodes {
             }
             context_queries {
               type {
+                name: "project"
+              }
+              name {
+                field_value {
+                  string_value: "project"
+                }
+              }
+            }
+            context_queries {
+              type {
                 name: "pipeline"
               }
               name {
@@ -1169,6 +1349,16 @@ nodes {
           channels {
             producer_node_query {
               id: "Trainer"
+            }
+            context_queries {
+              type {
+                name: "project"
+              }
+              name {
+                field_value {
+                  string_value: "project"
+                }
+              }
             }
             context_queries {
               type {

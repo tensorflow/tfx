@@ -12,6 +12,16 @@ nodes {
     contexts {
       contexts {
         type {
+          name: "project"
+        }
+        name {
+          field_value {
+            string_value: "project"
+          }
+        }
+      }
+      contexts {
+        type {
           name: "pipeline"
         }
         name {

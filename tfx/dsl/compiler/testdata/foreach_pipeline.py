@@ -58,6 +58,7 @@ def create_test_pipeline():
     )
 
   return pipeline.Pipeline(
+      project_name='project',
       pipeline_name='foreach',
       pipeline_root='/tfx/pipelines/foreach',
       components=[

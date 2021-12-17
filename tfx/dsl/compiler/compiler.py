@@ -154,6 +154,10 @@ class Compiler:
     """
     node = pipeline_pb2.PipelineNode()
 
+    node_context_pb = node.contexts.contexts.add()
+    node_context_pb.type.name = constants.PROJECT_CONTEXT_TYPE_NAME
+    node_context_pb.name.field_value.string_value = compile_context.pipeline_info.project_context_name
+
     # Step 1: Node info
     node.node_info.type.name = tfx_node.type
     node.node_info.id = tfx_node.id
