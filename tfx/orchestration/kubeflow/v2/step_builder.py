@@ -35,7 +35,6 @@ from tfx.orchestration import data_types
 from tfx.orchestration.kubeflow.v2 import compiler_utils
 from tfx.orchestration.kubeflow.v2 import decorators
 from tfx.orchestration.kubeflow.v2 import parameter_utils
-from tfx.types import artifact_utils
 from tfx.types import standard_artifacts
 from tfx.types.channel import Channel
 from tfx.utils import deprecation_utils
@@ -488,10 +487,10 @@ class StepBuilder:
 
     # Importer's output channel contains one artifact instance with
     # additional properties.
-    artifact_instance = list(output_channel.get())[0]
-    struct_proto = compiler_utils.pack_artifact_properties(artifact_instance)
-    if struct_proto:
-      result.metadata.CopyFrom(struct_proto)
+    if output_channel.additional_properties:
+      result.metadata.update(output_channel.additional_properties)
+    if output_channel.additional_custom_properties:
+      result.metadata.update(output_channel.additional_custom_properties)
 
     result.reimport = bool(self._exec_properties[importer.REIMPORT_OPTION_KEY])
 
@@ -509,12 +508,10 @@ class StepBuilder:
           compiler_utils.value_converter(
               self._exec_properties[importer.SOURCE_URI_KEY]))
 
-    single_artifact = artifact_utils.get_single_instance(
-        list(output_channel.get()))
     result.type_schema.CopyFrom(
         pipeline_pb2.ArtifactTypeSchema(
             instance_schema=compiler_utils.get_artifact_schema(
-                single_artifact)))
+                output_channel.type)))
 
     return result
 

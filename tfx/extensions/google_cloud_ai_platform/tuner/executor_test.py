@@ -15,13 +15,15 @@
 
 import copy
 import os
-
 from typing import Any, Dict
 from unittest import mock
-import tensorflow as tf
 
+import tensorflow as tf
+from tfx.extensions.google_cloud_ai_platform import constants
+from tfx.extensions.google_cloud_ai_platform.trainer import executor as ai_platform_trainer_executor
 from tfx.extensions.google_cloud_ai_platform.tuner import executor as ai_platform_tuner_executor
 from tfx.proto import tuner_pb2
+from tfx.types import standard_component_specs
 from tfx.utils import json_utils
 from tfx.utils import proto_utils
 
@@ -36,12 +38,14 @@ class ExecutorTest(tf.test.TestCase):
         self._testMethodName)
     self._job_dir = os.path.join(self._output_data_dir, 'jobDir')
     self._project_id = '12345'
+    self._job_id = 'fake_job_id'
     self._inputs = {}
     self._outputs = {}
     # Dict format of exec_properties. custom_config needs to be serialized
     # before being passed into Do function.
     self._exec_properties = {
         'custom_config': {
+            ai_platform_trainer_executor.JOB_ID_KEY: self._job_id,
             ai_platform_tuner_executor.TUNING_ARGS_KEY: {
                 'project': self._project_id,
                 'jobDir': self._job_dir,
@@ -85,7 +89,7 @@ class ExecutorTest(tf.test.TestCase):
             'masterType': 'standard',
             'workerType': 'standard',
             'workerCount': 2,
-        }, mock.ANY)
+        }, self._job_id, False, None)
 
   def testDoWithTuneArgsAndTrainingInputOverride(self):
     executor = ai_platform_tuner_executor.Executor()
@@ -118,7 +122,7 @@ class ExecutorTest(tf.test.TestCase):
             # Confirm workerCount has been adjusted to num_parallel_trials.
             'workerCount': 5,
         },
-        mock.ANY)
+        self._job_id, False, None)
 
   def testDoWithoutCustomCaipTuneArgs(self):
     executor = ai_platform_tuner_executor.Executor()
@@ -127,6 +131,22 @@ class ExecutorTest(tf.test.TestCase):
       executor.Do(self._inputs, self._outputs,
                   self._serialize_custom_config_under_test())
 
+  def testDoWithEnableVertexOverride(self):
+    executor = ai_platform_tuner_executor.Executor()
+    enable_vertex = True
+    vertex_region = 'us-central2'
+    self._exec_properties[standard_component_specs.CUSTOM_CONFIG_KEY][
+        constants.ENABLE_VERTEX_KEY] = enable_vertex
+    self._exec_properties[standard_component_specs.CUSTOM_CONFIG_KEY][
+        constants.VERTEX_REGION_KEY] = vertex_region
+    executor.Do(self._inputs, self._outputs,
+                self._serialize_custom_config_under_test())
+    self.mock_runner.start_cloud_training.assert_called_with(
+        self._inputs, self._outputs, self._serialize_custom_config_under_test(),
+        self._executor_class_path, {
+            'project': self._project_id,
+            'jobDir': self._job_dir,
+        }, self._job_id, enable_vertex, vertex_region)
 
 if __name__ == '__main__':
   tf.test.main()

@@ -56,7 +56,7 @@ class RunDriverTest(test_case_utils.TfxTest):
         pipeline_pb2.RuntimeArtifact(
             type=pipeline_pb2.ArtifactTypeSchema(
                 instance_schema=compiler_utils.get_artifact_schema(
-                    standard_artifacts.Examples()))))
+                    standard_artifacts.Examples))))
 
     self._executor_invocation_from_file = fileio.open(
         os.path.join(

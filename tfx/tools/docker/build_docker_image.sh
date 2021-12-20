@@ -23,6 +23,11 @@ DOCKER_FILE=${DOCKER_FILE:-"Dockerfile"}
 TFX_DEPENDENCY_SELECTOR=${TFX_DEPENDENCY_SELECTOR:-""}
 echo "Env for TFX_DEPENDENCY_SELECTOR is set as ${TFX_DEPENDENCY_SELECTOR}"
 
+function _get_tf_version_of_image() {
+  local img="$1"
+  docker run --rm --entrypoint=python ${img} -c 'import tensorflow as tf; print(tf.__version__)'
+}
+
 # Base image to extend: This should be a deep learning image with a compatible
 # TensorFlow version. See
 # https://cloud.google.com/ai-platform/deep-learning-containers/docs/choosing-container
@@ -42,21 +47,35 @@ docker build --target wheel-builder\
 if [[ -n "$BASE_IMAGE" ]]; then
   echo "Using override base image $BASE_IMAGE"
 else
-  tf_version=$(docker run --rm --entrypoint=python ${wheel_builder_tag} -c 'import tensorflow as tf; print(tf.__version__)')
+  tf_version=$(_get_tf_version_of_image "${wheel_builder_tag}")
   arr_version=(${tf_version//./ })
   echo "Detected TensorFlow version as ${tf_version}"
   BASE_IMAGE=gcr.io/deeplearning-platform-release/tf2-gpu.${arr_version[0]}-${arr_version[1]}
   echo "Using compatible tf2-gpu image $BASE_IMAGE as base"
+  # TF shouldn't be re-installed so we pin TF version in Pip install.
+  installed_tf_version=$(_get_tf_version_of_image "${BASE_IMAGE}")
+  ADDITIONAL_PACKAGES="tensorflow==${installed_tf_version}"
 fi
 
 beam_version=$(docker run --rm --entrypoint=python ${wheel_builder_tag} -c 'import apache_beam as beam; print(beam.version.__version__)')
 # Run docker build command.
 docker build -t ${DOCKER_IMAGE_REPO}:${DOCKER_IMAGE_TAG} \
   -f tfx/tools/docker/${DOCKER_FILE} \
-  --build-arg TFX_DEPENDENCY_SELECTOR=${TFX_DEPENDENCY_SELECTOR} \
-  --build-arg BASE_IMAGE=${BASE_IMAGE} \
-  --build-arg BEAM_VERSION=${beam_version} \
+  --build-arg "TFX_DEPENDENCY_SELECTOR=${TFX_DEPENDENCY_SELECTOR}" \
+  --build-arg "BASE_IMAGE=${BASE_IMAGE}" \
+  --build-arg "BEAM_VERSION=${beam_version}" \
+  --build-arg "ADDITIONAL_PACKAGES=${ADDITIONAL_PACKAGES}" \
   . "$@"
+
+if [[ -n "${installed_tf_version}" ]]; then
+  # Double-check whether TF is re-installed.
+  current_tf_version=$(_get_tf_version_of_image "${DOCKER_IMAGE_REPO}:${DOCKER_IMAGE_TAG}")
+  if [[ "${installed_tf_version}" != "${current_tf_version}" ]]; then
+    echo "Error: TF version has changed from ${installed_tf_version} to ${current_tf_version}."
+    exit 1
+  fi
+fi
+
 
 # Remove the temp image.
 docker rmi ${wheel_builder_tag}

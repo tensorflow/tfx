@@ -70,7 +70,7 @@ landing_page:
     - classname: tfo-landing-page-card
       description: >
         <a href="/tfx/tutorials/tfx/gcp/vertex_pipelines_simple"><h3 class="no-link">Running on Vertex Pipelines</h3></a>
-        Running pipelines on a managed pipeline service, Cloud AI Platform Pipelines.
+        Running pipelines on a managed pipeline service, Vertex Pipelines.
       path: /tfx/tutorials/tfx/gcp/vertex_pipelines_simple
     - classname: tfo-landing-page-card
       description: >

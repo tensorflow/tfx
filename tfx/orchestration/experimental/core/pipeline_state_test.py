@@ -24,6 +24,7 @@ from tfx.orchestration.experimental.core import task as task_lib
 from tfx.orchestration.experimental.core import task_gen_utils
 from tfx.orchestration.experimental.core import test_utils
 from tfx.orchestration.portable import runtime_parameter_utils
+from tfx.orchestration.portable.mlmd import execution_lib
 from tfx.proto.orchestration import pipeline_pb2
 from tfx.proto.orchestration import run_state_pb2
 from tfx.utils import status as status_lib
@@ -144,6 +145,30 @@ class PipelineStateTest(test_utils.TfxTest):
       self.assertEqual(
           task_lib.PipelineUid.from_pipeline(pipeline),
           pipeline_state.pipeline_uid)
+
+  @mock.patch.object(pstate, 'get_all_node_executions')
+  @mock.patch.object(execution_lib, 'get_artifacts_dict')
+  def test_get_all_node_artifacts(self, mock_get_artifacts_dict,
+                                  mock_get_all_pipeline_executions):
+    artifact = metadata_store_pb2.Artifact(id=1)
+    artifact_obj = mock.Mock()
+    artifact_obj.mlmd_artifact = artifact
+    with self._mlmd_connection as m:
+      mock_get_artifacts_dict.return_value = {'key': [artifact_obj]}
+      pipeline = _test_pipeline('pipeline1')
+      mock_get_all_pipeline_executions.return_value = {
+          pipeline.nodes[0].pipeline_node.node_info.id: [
+              metadata_store_pb2.Execution(id=1)
+          ]
+      }
+      self.assertEqual(
+          {
+              pipeline.nodes[0].pipeline_node.node_info.id: {
+                  1: {
+                      'key': [artifact]
+                  }
+              }
+          }, pstate.get_all_node_artifacts(pipeline, m))
 
   @mock.patch.object(task_gen_utils, 'get_executions')
   def test_get_all_node_executions(self, mock_get_executions):

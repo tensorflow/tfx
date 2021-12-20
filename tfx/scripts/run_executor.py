@@ -113,7 +113,7 @@ def _run_executor(args, pipeline_args) -> None:
     print(artifact_utils.jsonify_artifact_dict(outputs))
 
 
-def _parse_flags(argv: List[str]) -> Tuple[argparse.Namespace, List[str]]:
+def parse_flags(argv: List[str]) -> Tuple[argparse.Namespace, List[str]]:
   """Parses command line arguments.
 
   # pylint: disable=line-too-long
@@ -194,5 +194,5 @@ def main(parsed_argv: Tuple[argparse.Namespace, List[str]]):
 
 
 if __name__ == '__main__':
-  app.run(main, flags_parser=_parse_flags)
+  app.run(main, flags_parser=parse_flags)
 
