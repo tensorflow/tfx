@@ -31,9 +31,9 @@ flags.DEFINE_enum(
     'For FlinkRunner or SparkRunner, first run setup/setup_beam_on_flink.sh '
     'or setup/setup_beam_on_spark.sh, respectively.')
 
-flags.DEFINE_enum(
-    'model_framework', 'keras', ['keras', 'flax_experimental'],
-    'The modeling framework.')
+flags.DEFINE_enum('model_framework', 'keras',
+                  ['keras', 'flax_experimental', 'tfdf_experimental'],
+                  'The modeling framework.')
 
 
 # This example assumes that penguin data is stored in ~/penguin/data and the

@@ -2,6 +2,8 @@
 
 ## Major Features and Improvements
 
+*   Added experimental support for TensorFlow Decision Forests models.
+
 ## Breaking Changes
 
 ### For Pipeline Authors
