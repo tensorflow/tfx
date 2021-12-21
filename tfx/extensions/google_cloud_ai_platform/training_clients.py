@@ -27,10 +27,8 @@ from googleapiclient import discovery
 
 from tfx import types
 from tfx.types import artifact_utils
-from tfx.types import standard_component_specs
 from tfx.utils import telemetry_utils
 from tfx.utils import version_utils
-from tfx.utils import json_utils
 
 # Default container image being used for CAIP training jobs.
 _TFX_IMAGE = 'gcr.io/tfx-oss-public/tfx:{}'.format(
@@ -229,10 +227,7 @@ class CAIPJobClient(AbstractJobClient):
     with telemetry_utils.scoped_labels(
         {telemetry_utils.LABEL_TFX_EXECUTOR: executor_class_path}):
       job_labels = telemetry_utils.make_labels_dict()
-
-    custom_config = json_utils.loads(
-        exec_properties.get(standard_component_specs.CUSTOM_CONFIG_KEY))
-    job_labels.update(custom_config.get('labels', {}))
+    job_labels.update(training_inputs.pop('labels', {}))
       
     # 'tfx_YYYYmmddHHMMSS' is the default job ID if not explicitly specified.
     job_id = job_id or 'tfx_{}'.format(
