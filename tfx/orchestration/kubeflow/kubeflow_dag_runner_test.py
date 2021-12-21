@@ -299,7 +299,9 @@ class KubeflowDagRunnerTest(test_case_utils.TfxTest):
   def testExitHandler(self):
     dag_runner = kubeflow_dag_runner.KubeflowDagRunner()
     dag_runner.set_exit_handler(_say_hi(status=FinalStatusStr()))
-    dag_runner.run(_container_component_pipeline())
+    pipeline = _container_component_pipeline()
+    pipeline.enable_cache = True
+    dag_runner.run(pipeline)
     file_path = os.path.join(self.tmp_dir,
                              'container_component_pipeline.tar.gz')
     self.assertTrue(fileio.exists(file_path))
@@ -313,8 +315,12 @@ class KubeflowDagRunnerTest(test_case_utils.TfxTest):
           c for c in pipeline['spec']['templates'] if 'container' in c
       ]
       self.assertLen(containers, 2)
-      component_args = containers[1]['container']['args']
-      self.assertIn('{{workflow.status}}', ' '.join(component_args))
+      exit_component_args = ' '.join(containers[1]['container']['args'])
+      self.assertIn('{{workflow.status}}', exit_component_args)
+      self.assertNotIn('enableCache', exit_component_args)
+      first_component_args = ' '.join(containers[0]['container']['args'])
+      self.assertNotIn('{{workflow.status}}', first_component_args)
+      self.assertIn('enableCache', first_component_args)
 
 
 if __name__ == '__main__':

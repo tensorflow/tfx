@@ -337,6 +337,10 @@ class KubeflowDagRunner(tfx_runner.TfxRunner):
       # remove the extra pipeline node information
       tfx_node_ir = self._dehydrate_tfx_ir(tfx_ir, component.id)
 
+      # Disable cache for exit_handler
+      if self._exit_handler and component.id == self._exit_handler.id:
+        tfx_node_ir.nodes[0].pipeline_node.execution_options.caching_options.enable_cache = False
+
       kfp_component = base_component.BaseComponent(
           component=component,
           depends_on=depends_on,
