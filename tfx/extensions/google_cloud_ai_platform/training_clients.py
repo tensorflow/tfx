@@ -70,7 +70,7 @@ class AbstractJobClient(abc.ABC):
 
   @abc.abstractmethod
   def create_training_job(self, input_dict, output_dict, exec_properties,
-                          executor_class_path, job_args,
+                          executor_class_path, job_args, job_labels,
                           job_id) -> Dict[str, Any]:
     """Get training args for runner._launch_aip_training.
 
@@ -84,6 +84,7 @@ class AbstractJobClient(abc.ABC):
         tfx.components.Trainer.executor.
       executor_class_path: class path for TFX core default trainer.
       job_args: Training input argument for AI Platform training job.
+      job_labels: Labels for AI Platform training job.
       job_id: Job ID for AI Platform Training job. If not supplied,
         system-determined unique ID is given.
 
@@ -185,7 +186,7 @@ class CAIPJobClient(AbstractJobClient):
                           output_dict: Dict[str, List[types.Artifact]],
                           exec_properties: Dict[str, Any],
                           executor_class_path: str, job_args: Dict[str, Any],
-                          job_id: Optional[str]) -> Dict[str, Any]:
+                          job_labels: Dict[str, Any], job_id: Optional[str]) -> Dict[str, Any]:
     """Get training args for runner._launch_aip_training.
 
     The training args contain the inputs/outputs/exec_properties to the
@@ -201,6 +202,7 @@ class CAIPJobClient(AbstractJobClient):
         'pythonModule', 'pythonVersion' and 'runtimeVersion' will be inferred.
         For the full set of parameters, refer to
         https://cloud.google.com/ml-engine/reference/rest/v1/projects.jobs#TrainingInput
+      job_labels: Labels for AI Platform training job.
       job_id: Job ID for AI Platform Training job. If not supplied,
         system-determined unique ID is given. Refer to
       https://cloud.google.com/ml-engine/reference/rest/v1/projects.jobs#resource-job
@@ -226,8 +228,7 @@ class CAIPJobClient(AbstractJobClient):
 
     with telemetry_utils.scoped_labels(
         {telemetry_utils.LABEL_TFX_EXECUTOR: executor_class_path}):
-      job_labels = telemetry_utils.make_labels_dict()
-    job_labels.update(training_inputs.pop('labels', {}))
+      job_labels.update(telemetry_utils.make_labels_dict())
       
     # 'tfx_YYYYmmddHHMMSS' is the default job ID if not explicitly specified.
     job_id = job_id or 'tfx_{}'.format(
@@ -311,7 +312,7 @@ class VertexJobClient(AbstractJobClient):
                           output_dict: Dict[str, List[types.Artifact]],
                           exec_properties: Dict[str, Any],
                           executor_class_path: str, job_args: Dict[str, Any],
-                          job_id: Optional[str]) -> Dict[str, Any]:
+                          job_labels: Dict[str, Any], job_id: Optional[str]) -> Dict[str, Any]:
     """Get training args for runner._launch_aip_training.
 
     The training args contain the inputs/outputs/exec_properties to the
@@ -328,6 +329,7 @@ class VertexJobClient(AbstractJobClient):
           for the detailed schema.
         [Deprecated]: job_args also support specifying only the CustomJobSpec
           instead of CustomJob. However, this functionality is deprecated.
+      job_labels: Labels for AI Platform training job.
       job_id: Display name for AI Platform (Unified) custom training job. If not
         supplied, system-determined unique ID is given. Refer to
         https://cloud.google.com/vertex-ai/docs/reference/rest/v1/projects.locations.customJobs#CustomJob
@@ -371,8 +373,7 @@ class VertexJobClient(AbstractJobClient):
 
     with telemetry_utils.scoped_labels(
         {telemetry_utils.LABEL_TFX_EXECUTOR: executor_class_path}):
-      job_labels = telemetry_utils.make_labels_dict()
-    job_labels.update(job_args.get('labels', {}))
+      job_labels.update(telemetry_utils.make_labels_dict())
 
     encryption_spec = job_args.get('encryption_spec', {})
 

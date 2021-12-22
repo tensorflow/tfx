@@ -104,8 +104,8 @@ class GenericExecutor(base_executor.BaseExecutor):
       absl.logging.error(err_msg)
       raise ValueError(err_msg)
 
-    job_args['labels'] = { **job_args.get('labels', {}),
-                           **custom_config.get(LABELS_KEY, {}) }
+    job_labels = { **job_args.get('labels', {}),
+                   **custom_config.get(LABELS_KEY, {}) }
 
     job_id = custom_config.get(JOB_ID_KEY)
 
@@ -119,7 +119,7 @@ class GenericExecutor(base_executor.BaseExecutor):
                                      executor_class.__name__)
     # Note: exec_properties['custom_config'] here is a dict.
     return runner.start_cloud_training(input_dict, output_dict, exec_properties,
-                                       executor_class_path, job_args,
+                                       executor_class_path, job_args, job_labels, 
                                        job_id, enable_vertex,
                                        vertex_region)
 
