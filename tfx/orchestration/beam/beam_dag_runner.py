@@ -193,7 +193,10 @@ class BeamDagRunner(tfx_runner.IrBasedRunner):
 
   def _connection_config_from_deployment_config(self,
                                                 deployment_config: Any) -> Any:
-    return deployment_config.metadata_connection_config
+    return getattr(
+        deployment_config.metadata_connection_config,
+        deployment_config.metadata_connection_config.WhichOneof(
+            'connection_config'))
 
   def run_with_ir(
       self,
