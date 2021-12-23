@@ -15,6 +15,7 @@
 
 from typing import Any, Callable, Iterable, List, Optional, Tuple
 
+from absl import logging
 from tfx.dsl.io import filesystem
 from tfx.dsl.io import filesystem_registry
 from tfx.dsl.io.filesystem import PathType
@@ -23,6 +24,11 @@ try:
   import tensorflow as tf  # pylint: disable=g-import-not-at-top
 except ModuleNotFoundError:
   tf = None
+
+try:
+  import tensorflow_io as _  # pylint: disable=g-import-not-at-top
+except ImportError as e:
+  logging.info('tensorflow_io is not available: %s', e)
 
 if tf:
 
