@@ -501,13 +501,13 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
                   pipeline_uid=task_lib.PipelineUid.from_pipeline(pipeline),
                   node_id='Transform')))
       transform_task = task_queue.dequeue()  # simulates task being processed
-      mock_gen_task_from_active.side_effect = [
+      mock_gen_task_from_active.side_effect = [[
           test_utils.create_exec_node_task(
               node_uid=task_lib.NodeUid(
                   pipeline_uid=task_lib.PipelineUid.from_pipeline(pipeline),
                   node_id='Trainer'),
-              is_cancelled=True), None, None, None, None
-      ]
+              is_cancelled=True)
+      ], [], [], [], []]
 
       pipeline_ops.orchestrate(m, task_queue, self._mock_service_job_manager)
 
@@ -738,7 +738,7 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
       # Simulate ExecNodeTask for trainer already present in the task queue.
       task_queue.enqueue(trainer_task)
       # Simulate Evaluator having an active execution in MLMD.
-      mock_gen_task_from_active.side_effect = [evaluator_task]
+      mock_gen_task_from_active.side_effect = [[evaluator_task]]
 
       pipeline_ops.orchestrate(m, task_queue, self._mock_service_job_manager)
       self.assertEqual(1, mock_task_gen.return_value.generate.call_count)

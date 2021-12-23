@@ -149,9 +149,9 @@ class TaskGenUtilsTest(tu.TfxTest):
     with self._mlmd_connection as m:
       # No tasks generated without active execution.
       executions = task_gen_utils.get_executions(m, self._trainer)
-      self.assertIsNone(
+      self.assertLen(
           task_gen_utils.generate_task_from_active_execution(
-              m, self._pipeline, self._trainer, executions))
+              m, self._pipeline, self._trainer, executions), 0)
 
     # Next, ensure an active execution for trainer.
     exec_properties = {'int_arg': 24, 'list_bool_arg': [True, False]}
@@ -164,19 +164,20 @@ class TaskGenUtilsTest(tu.TfxTest):
 
       # Check that task can be generated.
       executions = task_gen_utils.get_executions(m, self._trainer)
-      task = task_gen_utils.generate_task_from_active_execution(
+      tasks = task_gen_utils.generate_task_from_active_execution(
           m, self._pipeline, self._trainer, executions)
-      self.assertEqual(execution.id, task.execution_id)
-      self.assertEqual(exec_properties, task.exec_properties)
+      self.assertLen(tasks, 1)
+      self.assertEqual(execution.id, tasks[0].execution_id)
+      self.assertEqual(exec_properties, tasks[0].exec_properties)
 
       # Mark execution complete. No tasks should be generated.
       execution = m.store.get_executions()[0]
       execution.last_known_state = metadata_store_pb2.Execution.COMPLETE
       m.store.put_executions([execution])
       executions = task_gen_utils.get_executions(m, self._trainer)
-      self.assertIsNone(
+      self.assertLen(
           task_gen_utils.generate_task_from_active_execution(
-              m, self._pipeline, self._trainer, executions))
+              m, self._pipeline, self._trainer, executions), 0)
 
   def test_generate_resolved_info(self):
     otu.fake_example_gen_run(self._mlmd_connection, self._example_gen, 2, 1)
@@ -184,7 +185,7 @@ class TaskGenUtilsTest(tu.TfxTest):
       resolved_info = task_gen_utils.generate_resolved_info(m, self._transform)
       self.assertCountEqual(['my_pipeline', 'my_pipeline.my_transform'],
                             [c.name for c in resolved_info.contexts])
-      self.assertLen(resolved_info.input_artifacts['examples'], 1)
+      self.assertLen(resolved_info.input_artifacts[0]['examples'], 1)
       self.assertProtoPartiallyEquals(
           """
           id: 1
@@ -202,7 +203,7 @@ class TaskGenUtilsTest(tu.TfxTest):
             }
           }
           state: LIVE""",
-          resolved_info.input_artifacts['examples'][0].mlmd_artifact,
+          resolved_info.input_artifacts[0]['examples'][0].mlmd_artifact,
           ignored_fields=[
               'type_id', 'create_time_since_epoch',
               'last_update_time_since_epoch'
