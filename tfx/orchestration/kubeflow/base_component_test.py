@@ -14,8 +14,6 @@
 """Tests for tfx.orchestration.kubeflow.base_component."""
 
 import json
-import os
-
 
 from absl import logging
 from kfp import dsl
@@ -69,14 +67,6 @@ class BaseComponentTest(tf.test.TestCase):
     self.tfx_component = statistics_gen
 
   def testContainerOpArguments(self):
-    # TODO(hongyes): make the whole args list in one golden file to keep
-    # source of truth in same file.
-    source_data_dir = os.path.join(os.path.dirname(__file__), 'testdata')
-    with open(os.path.join(source_data_dir,
-                           'component.json')) as component_json_file:
-      formatted_component_json = json.dumps(
-          json.load(component_json_file), sort_keys=True)
-
     expected_args = [
         '--pipeline_root',
         '{{pipelineparam:op=;name=pipeline-root-param}}',
@@ -160,9 +150,6 @@ class BaseComponentWithPipelineParamTest(tf.test.TestCase):
     self.tfx_statistics_gen = statistics_gen
 
   def testContainerOpArguments(self):
-    # TODO(hongyes): make the whole args list in one golden file to keep
-    # source of truth in same file.
-    source_data_dir = os.path.join(os.path.dirname(__file__), 'testdata')
     statistics_gen_expected_args = [
         '--pipeline_root',
         '{{pipelineparam:op=;name=pipeline-root-param}}',

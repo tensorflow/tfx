@@ -139,5 +139,5 @@ dmypy.json
 # Bazel generated files
 bazel-*
 **/*_pb2.py
-**/*_pb2_grpc.py.py
+**/*_pb2_grpc.py
 # LINT.ThenChange(.dockerignore)

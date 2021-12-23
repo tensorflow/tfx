@@ -13,6 +13,7 @@
 # limitations under the License.
 """E2E Tests for tfx.examples.penguin.penguin_pipeline_local."""
 
+import importlib
 import os
 from typing import List
 import unittest
@@ -110,10 +111,15 @@ class PenguinPipelineLocalEndToEndTest(tf.test.TestCase,
   def _make_beam_pipeline_args(self):
     return []
 
-  @parameterized.parameters(
-      ('keras',),
-      ('flax_experimental',))
+  @parameterized.parameters(('keras',), ('flax_experimental',),
+                            ('tfdf_experimental',))
   def testPenguinPipelineLocal(self, model_framework):
+    if model_framework == 'tfdf_experimental':
+      # Skip if TFDF is not available or incompatible.
+      try:
+        importlib.import_module('tensorflow_decision_forests')
+      except (ImportError, tf.errors.NotFoundError):
+        self.skipTest('TensorflowDecisionForests is not available')
     module_file = self._module_file_name(model_framework)
     pipeline = penguin_pipeline_local._create_pipeline(
         pipeline_name=self._pipeline_name,
@@ -200,8 +206,15 @@ class PenguinPipelineLocalEndToEndTest(tf.test.TestCase,
 
     self._assertPipelineExecution(has_tuner=True)
 
-  @parameterized.parameters(('keras',), ('flax_experimental',))
+  @parameterized.parameters(('keras',), ('flax_experimental',),
+                            ('tfdf_experimental',))
   def testPenguinPipelineLocalWithBulkInferrer(self, model_framework):
+    if model_framework == 'tfdf_experimental':
+      # Skip if TFDF is not available or incompatible.
+      try:
+        importlib.import_module('tensorflow_decision_forests')
+      except (ImportError, tf.errors.NotFoundError):
+        self.skipTest('TensorflowDecisionForests is not available')
     module_file = self._module_file_name(model_framework)
     LocalDagRunner().run(
         penguin_pipeline_local._create_pipeline(

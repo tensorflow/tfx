@@ -70,7 +70,9 @@ _LOCAL_DEPLOYMENT_CONFIG = text_format.Parse(
       }
     }
     metadata_connection_config {
-      fake_database {}
+      database_connection_config {
+        fake_database {}
+      }
     }
     node_level_platform_configs {
       key: "my_trainer"

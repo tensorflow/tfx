@@ -63,11 +63,3 @@ message ExecutionInvocation {
   // The id of the pipeline run that this execution is in.
   string pipeline_run_id = 12;
 }
-
-message MLMDConnectionConfig {
-  reserved 3;
-  oneof connection_config {
-    ml_metadata.ConnectionConfig database_connection_config = 1;
-    ml_metadata.MetadataStoreClientConfig mlmd_store_client_config = 2;
-  }
-}

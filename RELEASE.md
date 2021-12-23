@@ -2,16 +2,46 @@
 
 ## Major Features and Improvements
 
-*   Added support for partial pipeline run. Users can now run a subset of nodes
-    in a pipeline while reusing artifacts generated in previous pipeline runs.
-    This is supported in LocalDagRunner and BeamDagRunner, and is exposed via
-    the TfxRunner API.
+*   Added experimental support for TensorFlow Decision Forests models.
+
+## Breaking Changes
 
 ### For Pipeline Authors
 
 ### For Component Authors
 
 ## Deprecations
+
+## Bug Fixes and Other Changes
+*   Depends on `numpy>=1.16,<2`.
+
+## Documentation Updates
+
+# Version 1.5.0
+
+## Major Features and Improvements
+
+*   Added support for partial pipeline run. Users can now run a subset of nodes
+    in a pipeline while reusing artifacts generated in previous pipeline runs.
+    This is supported in LocalDagRunner and BeamDagRunner, and is exposed via
+    the TfxRunner API.
+*   Supported endpoint overwrite for CAIP Tuner. Users can use the `keras-tuner`
+    module or any tuner that implements the `keras_tuner.Tuner` interface for
+    (parallel) tuning on Vertex.
+
+## Breaking Changes
+
+### For Pipeline Authors
+
+*   N/A
+
+### For Component Authors
+
+*   N/A
+
+## Deprecations
+
+*   N/A
 
 ## Bug Fixes and Other Changes
 *   Increased docker timeout to 5 minutes for image building in CLI.
@@ -23,9 +53,17 @@
 *   Depends on `apache-beam[gcp]>=2.34,<3`.
 *   Depends on `tensorflow>=1.15.2,!=2.0.*,!=2.1.*,!=2.2.*,!=2.3.*,!=2.4.*,!=2.5.*,!=2.6.*,<2.8`.
 *   Depends on `tensorflow-serving-api>=1.15,!=2.0.*,!=2.1.*,!=2.2.*,!=2.3.*,!=2.4.*,!=2.5.*,!=2.6.*,<3`.
+*   Depends on `ml-metadata>=1.5.0,<1.6.0`.
+*   Depends on `struct2tensor>=0.36.0,<0.37.0`.
+*   Depends on `tensorflow-data-validation>=1.5.0,<1.6.0`.
+*   Depends on `tensorflow-model-analysis>=0.36.0,<0.37.0`.
+*   Depends on `tensorflow-transform>=1.5.0,<1.6.0`.
+*   Depends on `tfx-bsl>=1.5.0,<1.6.0`.
 
 
 ## Documentation Updates
+
+*   N/A
 
 # Version 1.4.0
 
@@ -89,6 +127,8 @@
 
 *   N/A
 
+## Breaking Changes
+
 ### For Pipeline Authors
 
 *   N/A
@@ -115,6 +155,8 @@
 
 *   N/A
 
+## Breaking Changes
+
 ### For Pipeline Authors
 
 *   N/A
@@ -140,6 +182,8 @@
 ## Major Features and Improvements
 
 *   N/A
+
+## Breaking Changes
 
 ### For Pipeline Authors
 
@@ -237,8 +281,6 @@
 *   N/A
 
 ## Breaking Changes
-
-*   N/A
 
 ### For Pipeline Authors
 
@@ -807,8 +849,6 @@ the 1.1.x release for TFX library.
 
 ## Breaking changes
 
-*   N/A
-
 ### For pipeline authors
 
 *   N/A
@@ -840,8 +880,6 @@ the 1.1.x release for TFX library.
 
 ## Breaking changes
 
-*   N/A
-
 ### For pipeline authors
 
 *   N/A
@@ -872,8 +910,6 @@ the 1.1.x release for TFX library.
 *   N/A
 
 ## Breaking changes
-
-*   N/A
 
 ### For pipeline authors
 
@@ -1122,8 +1158,6 @@ the 1.1.x release for TFX library.
 
 ## Breaking changes
 
-*   N/A
-
 ### For pipeline authors
 
 *   N/A
@@ -1164,8 +1198,6 @@ the 1.1.x release for TFX library.
 
 ## Breaking changes
 
-*   N/A
-
 ### For pipeline authors
 
 *   N/A
@@ -1195,8 +1227,6 @@ the 1.1.x release for TFX library.
 *   Depends on `tensorflow-data-validation>=0.23.1,<0.24`.
 
 ## Breaking changes
-
-*   N/A
 
 ### For pipeline authors
 
@@ -1367,8 +1397,6 @@ the 1.1.x release for TFX library.
 
 ## Breaking changes
 
-*   N/A
-
 ### For pipeline authors
 
 *   N/A
@@ -1384,7 +1412,8 @@ the 1.1.x release for TFX library.
 # Version 0.22.1
 
 ## Major Features and Improvements
-* N/A
+
+*   N/A
 
 ## Bug fixes and other changes
 *   Depends on 'tensorflowjs>=2.0.1.post1,<3' for `[all]` dependency.
@@ -1397,16 +1426,20 @@ the 1.1.x release for TFX library.
 ## Breaking changes
 
 ### For pipeline authors
-* N/A
+
+*   N/A
 
 ### For component authors
-* N/A
+
+*   N/A
 
 ## Documentation updates
-* N/A
+
+*   N/A
 
 ## Deprecations
-* N/A
+
+*   N/A
 
 # Version 0.22.0
 
@@ -1509,8 +1542,6 @@ the 1.1.x release for TFX library.
 
 ## Breaking changes
 
-*   N/A
-
 ### For pipeline authors
 
 *   N/A
@@ -1527,6 +1558,8 @@ the 1.1.x release for TFX library.
 
 ## Major Features and Improvements
 
+*   N/A
+
 ## Bug fixes and other changes
 *   Fixed InfraValidator signal handling bug on BeamDagRunner.
 *   Dropped "Type" suffix from primitive type artifact names (Integer, Float,
@@ -1534,13 +1567,21 @@ the 1.1.x release for TFX library.
 
 ### Deprecations
 
+*   N/A
+
 ## Breaking changes
 
 ### For pipeline authors
 
+*   N/A
+
 ### For component authors
 
+*   N/A
+
 ## Documentation updates
+
+*   N/A
 
 # Version 0.21.3
 
@@ -1579,13 +1620,21 @@ the 1.1.x release for TFX library.
 
 ### Deprecations
 
+*   N/A
+
 ## Breaking changes
 
 ### For pipeline authors
 
+*   N/A
+
 ### For component authors
 
+*   N/A
+
 ## Documentation updates
+
+*   N/A
 
 # Version 0.21.2
 
@@ -1610,9 +1659,15 @@ the 1.1.x release for TFX library.
 
 ### For pipeline authors
 
+*   N/A
+
 ### For component authors
 
+*   N/A
+
 ## Documentation updates
+
+*   N/A
 
 # Version 0.21.1
 
@@ -1648,15 +1703,23 @@ the 1.1.x release for TFX library.
 
 ### Deprecations
 
+*   N/A
+
 ## Breaking changes
 *   Remove "NOT_BLESSED" artifact.
 *   Change constants ARTIFACT_PROPERTY_BLESSED_MODEL_* to ARTIFACT_PROPERTY_BASELINE_MODEL_*.
 
 ### For pipeline authors
 
+*   N/A
+
 ### For component authors
 
+*   N/A
+
 ## Documentation updates
+
+*   N/A
 
 # Version 0.21.0
 
@@ -1759,6 +1822,8 @@ the 1.1.x release for TFX library.
 
 ### Deprecations
 
+*   N/A
+
 ## Breaking changes
 
 ### For pipeline authors
@@ -1780,6 +1845,8 @@ the 1.1.x release for TFX library.
     `types.artifact.Artifact`.
 
 ## Documentation updates
+
+*   N/A
 
 # Version 0.15.0
 
@@ -1925,6 +1992,8 @@ the 1.1.x release for TFX library.
     [issue](https://github.com/tensorflow/tfx/issues/838).
 
 ### For component authors
+
+*   N/A
 
 ## Documentation updates
 
@@ -2102,6 +2171,14 @@ the 1.1.x release for TFX library.
 *   Examples code are moved from 'examples' to 'tfx/examples': this ensures that
     PyPi package contains only one top level python module 'tfx'.
 
+### For pipeline authors
+
+*   N/A
+
+### For component authors
+
+*   N/A
+
 ## Things to notice for upgrading
 
 *   Multiprocessing on Mac OS >= 10.13 might crash for Airflow. See
@@ -2139,3 +2216,11 @@ the 1.1.x release for TFX library.
 *   Adding instructions to refer to README when running Chicago Taxi notebooks
 
 ## Breaking changes
+
+### For pipeline authors
+
+*   N/A
+
+### For component authors
+
+*   N/A

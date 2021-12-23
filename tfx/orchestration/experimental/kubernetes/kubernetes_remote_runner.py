@@ -18,11 +18,11 @@ import json
 import time
 from typing import Dict, List
 
-import absl
+from absl import logging
 from kubernetes import client
 from tfx.dsl.components.base import base_node
 from tfx.orchestration import pipeline as tfx_pipeline
-from tfx.orchestration.kubeflow import node_wrapper
+from tfx.orchestration.experimental.kubernetes import node_wrapper
 from tfx.utils import json_utils
 from tfx.utils import kube_utils
 
@@ -105,7 +105,7 @@ def run_as_kubernetes_job(pipeline: tfx_pipeline.Pipeline,
   orchestrator_pod = orchestrator_pods.pop()
   pod_name = orchestrator_pod.metadata.name
 
-  absl.logging.info('Waiting for pod "default:%s" to start.', pod_name)
+  logging.info('Waiting for pod "default:%s" to start.', pod_name)
   kube_utils.wait_pod(
       core_api,
       pod_name,
@@ -114,7 +114,7 @@ def run_as_kubernetes_job(pipeline: tfx_pipeline.Pipeline,
       condition_description='non-pending status')
 
   # Stream logs from orchestrator pod.
-  absl.logging.info('Start log streaming for pod "default:%s".', pod_name)
+  logging.info('Start log streaming for pod "default:%s".', pod_name)
   try:
     logs = core_api.read_namespaced_pod_log(
         name=pod_name,
@@ -128,7 +128,7 @@ def run_as_kubernetes_job(pipeline: tfx_pipeline.Pipeline,
         (e.reason, e.body))
 
   for log in logs:
-    absl.logging.info(log.decode().rstrip('\n'))
+    logging.info(log.decode().rstrip('\n'))
 
   resp = kube_utils.wait_pod(
       core_api,

@@ -104,6 +104,16 @@ def serving_model_dir(output_uri: str, is_old_artifact: bool = False) -> str:
   return os.path.join(output_uri, path_constants.SERVING_MODEL_DIR)
 
 
+def get_model_dir_by_type(output_uri: str,
+                          model_type: str,
+                          is_old_artifact: bool = False) -> str:
+  """Returns directly for exported model depending on model_type."""
+  if model_type == path_constants.TFMA_EVAL:
+    return eval_model_dir(output_uri, is_old_artifact)
+  else:
+    return serving_model_dir(output_uri, is_old_artifact)
+
+
 def serving_model_path(output_uri: str, is_old_artifact: bool = False) -> str:
   """Returns path for exported serving model."""
   model_dir = serving_model_dir(output_uri, is_old_artifact)
