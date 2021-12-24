@@ -23,6 +23,7 @@ from kfp.pipeline_spec import pipeline_spec_pb2 as pipeline_pb2
 from tfx import types
 from tfx.dsl.io import fileio
 from tfx.orchestration import data_types
+from tfx.orchestration.kubeflow.utils import TFX_DAG_NAME
 from tfx.orchestration.kubeflow.v2 import parameter_utils
 from tfx.proto.orchestration import placeholder_pb2
 from tfx.types import artifact
@@ -36,9 +37,6 @@ from google.protobuf import struct_pb2
 from google.protobuf import json_format
 from google.protobuf import message
 from ml_metadata.proto import metadata_store_pb2
-
-# Key of dag for all TFX components when compiling pipeline with exit handler.
-TFX_DAG_NAME = '_tfx_dag'
 
 # Key of TFX type path and name in artifact custom properties.
 TFX_TYPE_KEY = 'tfx_type'

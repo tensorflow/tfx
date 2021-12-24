@@ -34,7 +34,7 @@ from tfx.orchestration.config import pipeline_config
 from tfx.orchestration.kubeflow import base_component
 from tfx.orchestration.kubeflow import utils
 from tfx.orchestration.kubeflow.proto import kubeflow_pb2
-from tfx.orchestration.kubeflow.v2.compiler_utils import TFX_DAG_NAME
+from tfx.orchestration.kubeflow.utils import TFX_DAG_NAME
 from tfx.orchestration.launcher import base_component_launcher
 from tfx.orchestration.launcher import in_process_component_launcher
 from tfx.orchestration.launcher import kubernetes_component_launcher

@@ -22,6 +22,8 @@ from tfx.dsl.components.base import base_node
 from tfx.orchestration import data_types
 from tfx.orchestration.kubeflow.v2.decorators import FinalStatusStr
 
+# Key of dag for all TFX components when compiling pipeline with exit handler.
+TFX_DAG_NAME = '_tfx_dag'
 
 def replace_placeholder(component: base_node.BaseNode) -> None:
   """Replaces the RuntimeParameter placeholders with kfp.dsl.PipelineParam."""
