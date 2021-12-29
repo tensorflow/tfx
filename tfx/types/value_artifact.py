@@ -20,6 +20,8 @@ from tfx.dsl.io import fileio
 from tfx.types.artifact import Artifact
 from tfx.utils import doc_controls
 
+_IS_NULL_KEY = '__is_null__'
+
 
 class ValueArtifact(Artifact):
   """Artifacts of small scalar-values that can be easily loaded into memory."""
@@ -40,14 +42,20 @@ class ValueArtifact(Artifact):
         raise RuntimeError(
             'Given path does not exist or is not a valid file: %s' % file_path)
 
-      serialized_value = fileio.open(file_path, 'rb').read()
       self._has_value = True
-      self._value = self.decode(serialized_value)
+      if not self.get_int_custom_property(_IS_NULL_KEY):
+        serialized_value = fileio.open(file_path, 'rb').read()
+        self._value = self.decode(serialized_value)
     return self._value
 
   @doc_controls.do_not_doc_inheritable
   def write(self, value):
-    serialized_value = self.encode(value)
+    if value is None:
+      self.set_int_custom_property(_IS_NULL_KEY, 1)
+      serialized_value = b''
+    else:
+      self.set_int_custom_property(_IS_NULL_KEY, 0)
+      serialized_value = self.encode(value)
     with fileio.open(self.uri, 'wb') as f:
       f.write(serialized_value)
 

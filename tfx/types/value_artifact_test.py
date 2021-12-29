@@ -21,6 +21,9 @@ from tfx.dsl.io import fileio
 from tfx.types import value_artifact
 
 
+_IS_NULL_KEY = '__is_null__'
+
+
 class _MyValueArtifact(value_artifact.ValueArtifact):
   TYPE_NAME = 'MyValueTypeName'
 
@@ -57,7 +60,14 @@ def fake_isdir(path: str) -> bool:
 def fake_open(unused_path: str, unused_mode: str = 'r') -> bool:
   """Mock behavior of fileio.open."""
   mock_open = mock.Mock()
-  mock_open.read.side_effect = lambda: _BYTE_VALUE
+  mock_open.contents = b''
+  mock_open.read.side_effect = lambda: mock_open.contents
+  def write_func(value):
+    mock_open.contents = value
+  mock_write = mock.Mock()
+  mock_write.write.side_effect = write_func
+  mock_open.__enter__ = mock_write
+  mock_open.__exit__ = mock.Mock()
   return mock_open
 
 
@@ -82,7 +92,14 @@ class ValueArtifactTest(tf.test.TestCase):
       instance.value  # pylint: disable=pointless-statement
 
     instance.read()
+    instance.value = _STRING_VALUE
     self.assertEqual(_STRING_VALUE, instance.value)
+    self.assertEqual(
+        0, instance.get_int_custom_property(_IS_NULL_KEY))
+    instance.value = None
+    self.assertIsNone(instance.value)
+    self.assertEqual(
+        1, instance.get_int_custom_property(_IS_NULL_KEY))
 
   @mock.patch.object(fileio, 'exists', fake_exist)
   @mock.patch.object(fileio, 'isdir', fake_isdir)
