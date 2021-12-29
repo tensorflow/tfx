@@ -58,7 +58,7 @@ class FunctionParserTest(tf.test.TestCase):
             'unused_e': ArgFormats.PARAMETER,
         })
     self.assertDictEqual(arg_defaults, {})
-    self.assertEqual(returned_values, set(['c']))
+    self.assertEqual(returned_values, {'c': False})
 
   def testArtifactFunctionParse(self):
 
@@ -107,8 +107,12 @@ class FunctionParserTest(tf.test.TestCase):
         })
     self.assertDictEqual(arg_defaults, {})
     self.assertEqual(
-        returned_values,
-        set(['precision', 'recall', 'message', 'serialized_value']))
+        returned_values, {
+            'precision': False,
+            'recall': False,
+            'message': False,
+            'serialized_value': False
+        })
 
   def testEmptyReturnValue(self):
     # No output typehint.
@@ -154,7 +158,7 @@ class FunctionParserTest(tf.test.TestCase):
               'e': ArgFormats.PARAMETER,
           })
       self.assertDictEqual(arg_defaults, {})
-      self.assertEqual(returned_values, set([]))
+      self.assertEqual(returned_values, {})
 
   def testOptionalArguments(self):
     # Various optional argument schemes.
@@ -215,7 +219,50 @@ class FunctionParserTest(tf.test.TestCase):
             'i': 999,
             'examples': None,
         })
-    self.assertEqual(returned_values, set([]))
+    self.assertEqual(returned_values, {})
+
+  def testOptionalReturnValues(self):
+
+    def func_a() -> OutputDict(
+        precision=float,
+        recall=float,
+        message=str,
+        serialized_value=bytes,
+        optional_label=Optional[str],
+        optional_metric=Optional[float]):
+      return {
+          'precision': 0.9,
+          'recall': 0.8,
+          'message': 'foo',
+          'serialized_value': b'bar',
+          'optional_label': None,
+          'optional_metric': 1.0,
+      }
+
+    inputs, outputs, parameters, arg_formats, arg_defaults, returned_values = (
+        parse_typehint_component_function(func_a))
+    self.assertDictEqual(inputs, {})
+    self.assertDictEqual(
+        outputs, {
+            'precision': standard_artifacts.Float,
+            'recall': standard_artifacts.Float,
+            'message': standard_artifacts.String,
+            'serialized_value': standard_artifacts.Bytes,
+            'optional_label': standard_artifacts.String,
+            'optional_metric': standard_artifacts.Float,
+        })
+    self.assertDictEqual(parameters, {})
+    self.assertDictEqual(arg_formats, {})
+    self.assertDictEqual(arg_defaults, {})
+    self.assertEqual(
+        returned_values, {
+            'precision': False,
+            'recall': False,
+            'message': False,
+            'serialized_value': False,
+            'optional_label': True,
+            'optional_metric': True,
+        })
 
   def testFunctionParseErrors(self):
     # Non-function arguments.
@@ -295,25 +342,34 @@ class FunctionParserTest(tf.test.TestCase):
 
       parse_typehint_component_function(func_g)
 
+    # Invalid output typehint.
+    with self.assertRaisesRegex(ValueError, 'Unknown type hint annotation'):
+
+      def func_h(a: int,
+                 b: int) -> OutputDict(c=Optional[standard_artifacts.Examples]):
+        return {'c': float(a + b)}
+
+      parse_typehint_component_function(func_h)
+
     # Output artifact in the wrong place.
     with self.assertRaisesRegex(
         ValueError,
         'Output artifacts .* should be declared as function parameters'):
 
-      def func_h(a: int, b: int) -> OutputDict(c=standard_artifacts.Examples):
+      def func_i(a: int, b: int) -> OutputDict(c=standard_artifacts.Examples):
         return {'c': float(a + b)}
 
-      parse_typehint_component_function(func_h)
+      parse_typehint_component_function(func_i)
     with self.assertRaisesRegex(
         ValueError,
         'Output artifacts .* should be declared as function parameters'):
 
-      def func_i(
+      def func_j(
           a: int,
           b: int) -> OutputDict(c=OutputArtifact[standard_artifacts.Examples]):
         return {'c': float(a + b)}
 
-      parse_typehint_component_function(func_i)
+      parse_typehint_component_function(func_j)
 
     # Input artifact declared optional with non-`None` default value.
     with self.assertRaisesRegex(
@@ -321,7 +377,7 @@ class FunctionParserTest(tf.test.TestCase):
         'If an input artifact is declared as an optional argument, its default '
         'value must be `None`'):
 
-      def func_j(
+      def func_k(
           a: int,
           b: int,
           examples: InputArtifact[standard_artifacts.Examples] = 123
@@ -329,14 +385,14 @@ class FunctionParserTest(tf.test.TestCase):
         del examples
         return {'c': float(a + b)}
 
-      parse_typehint_component_function(func_j)
+      parse_typehint_component_function(func_k)
 
     # Output artifact declared optional.
     with self.assertRaisesRegex(
         ValueError,
         'Output artifact of component function cannot be declared as optional'):
 
-      def func_k(
+      def func_l(
           a: int,
           b: int,
           model: OutputArtifact[standard_artifacts.Model] = None
@@ -344,7 +400,7 @@ class FunctionParserTest(tf.test.TestCase):
         del model
         return {'c': float(a + b)}
 
-      parse_typehint_component_function(func_k)
+      parse_typehint_component_function(func_l)
 
     # Optional parameter's default value does not match declared type.
     with self.assertRaisesRegex(
@@ -352,13 +408,13 @@ class FunctionParserTest(tf.test.TestCase):
         'The default value for optional input value .* on function .* must be '
         'an instance of its declared type .* or `None`'):
 
-      def func_l(a: int,
+      def func_m(a: int,
                  b: int,
                  num_iterations: int = 'abc') -> OutputDict(c=float):
         del num_iterations
         return {'c': float(a + b)}
 
-      parse_typehint_component_function(func_l)
+      parse_typehint_component_function(func_m)
 
     # Optional parameter's default value does not match declared type.
     with self.assertRaisesRegex(
@@ -366,13 +422,13 @@ class FunctionParserTest(tf.test.TestCase):
         'The default value for optional parameter .* on function .* must be an '
         'instance of its declared type .* or `None`'):
 
-      def func_m(a: int,
+      def func_n(a: int,
                  b: int,
                  num_iterations: Parameter[int] = 'abc') -> OutputDict(c=float):
         del num_iterations
         return {'c': float(a + b)}
 
-      parse_typehint_component_function(func_m)
+      parse_typehint_component_function(func_n)
 
 
 if __name__ == '__main__':

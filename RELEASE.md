@@ -3,6 +3,9 @@
 ## Major Features and Improvements
 
 *   Added experimental support for TensorFlow Decision Forests models.
+*   Function components defined with `@component` may now have optional/nullable
+    primitive type return values when `Optional[T]` is used in the return type
+    OutputDict.
 
 ## Breaking Changes
 
