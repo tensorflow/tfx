@@ -27,6 +27,12 @@ from tfx.types import standard_artifacts
 from tfx.types.component_spec import ChannelParameter
 from tfx.types.component_spec import ComponentSpec
 from tfx.types.component_spec import ExecutionParameter
+from tfx.types.system_executions import Deploy
+from tfx.types.system_executions import Evaluate
+from tfx.types.system_executions import Process
+from tfx.types.system_executions import Train
+from tfx.types.system_executions import Transform
+
 
 # Parameters keys for modules
 # Shared Keys across components
@@ -169,6 +175,7 @@ class EvaluatorSpec(ComponentSpec):
       EVALUATION_KEY: ChannelParameter(type=standard_artifacts.ModelEvaluation),
       BLESSING_KEY: ChannelParameter(type=standard_artifacts.ModelBlessing),
   }
+  TYPE_ANNOTATION = Evaluate
 
 
 class ExampleValidatorSpec(ComponentSpec):
@@ -234,6 +241,7 @@ class QueryBasedExampleGenSpec(ComponentSpec):
   OUTPUTS = {
       EXAMPLES_KEY: ChannelParameter(type=standard_artifacts.Examples),
   }
+  TYPE_ANNOTATION = Process
 
 
 class InfraValidatorSpec(ComponentSpec):
@@ -297,6 +305,7 @@ class PusherSpec(ComponentSpec):
   OUTPUTS = {
       PUSHED_MODEL_KEY: ChannelParameter(type=standard_artifacts.PushedModel),
   }
+  TYPE_ANNOTATION = Deploy
 
 
 class SchemaGenSpec(ComponentSpec):
@@ -313,6 +322,7 @@ class SchemaGenSpec(ComponentSpec):
   OUTPUTS = {
       SCHEMA_KEY: ChannelParameter(type=standard_artifacts.Schema),
   }
+  TYPE_ANNOTATION = Process
 
 
 class ImportSchemaGenSpec(ComponentSpec):
@@ -344,6 +354,7 @@ class StatisticsGenSpec(ComponentSpec):
       STATISTICS_KEY:
           ChannelParameter(type=standard_artifacts.ExampleStatistics),
   }
+  TYPE_ANNOTATION = Process
 
 
 class TrainerSpec(ComponentSpec):
@@ -376,6 +387,7 @@ class TrainerSpec(ComponentSpec):
       MODEL_KEY: ChannelParameter(type=standard_artifacts.Model),
       MODEL_RUN_KEY: ChannelParameter(type=standard_artifacts.ModelRun)
   }
+  TYPE_ANNOTATION = Train
 
 
 class TunerSpec(ComponentSpec):
@@ -458,3 +470,4 @@ class TransformSpec(ComponentSpec):
           ChannelParameter(
               type=standard_artifacts.ExampleAnomalies, optional=True)
   }
+  TYPE_ANNOTATION = Transform
