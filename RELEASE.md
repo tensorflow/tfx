@@ -18,6 +18,9 @@
 ## Bug Fixes and Other Changes
 *   Depends on `numpy>=1.16,<2`.
 
+*   Pusher now copies the `saved_model.pb` file at last to prevent loading
+    SavedModel on invalid (partially available) directory state.
+
 ## Documentation Updates
 
 # Version 1.5.0
