@@ -13,7 +13,7 @@
 # limitations under the License.
 """Utils for TFX component types. Intended for internal usage only."""
 
-from typing import Any, Callable, Dict, Optional
+from typing import Any, Callable, Dict, Optional, Type
 
 from tfx import types
 from tfx.dsl.components.base import base_component
@@ -30,7 +30,9 @@ def create_tfx_component_class(
         str, component_spec.ChannelParameter]] = None,
     execution_parameters: Optional[Dict[
         str, component_spec.ExecutionParameter]] = None,
-    default_init_args: Optional[Dict[str, Any]] = None
+    default_init_args: Optional[Dict[str, Any]] = None,
+    base_class: Type[
+        base_component.BaseComponent] = base_component.BaseComponent,
 ) -> Callable[..., base_component.BaseComponent]:
   """Creates a TFX component class dynamically."""
   tfx_component_spec_class = type(
@@ -54,16 +56,17 @@ def create_tfx_component_class(
       if output_key not in arguments:
         arguments[output_key] = types.Channel(type=output_channel_param.type)
 
-    base_component.BaseComponent.__init__(
+    base_class.__init__(
         self,
         # Generate spec by wiring up the input/output channel.
         spec=self.__class__.SPEC_CLASS(**arguments))
     # Set class name as the default id. It can be overwritten by the user.
-    base_component.BaseComponent.with_id(self, self.__class__.__name__)
+    if not self.id:
+      base_class.with_id(self, self.__class__.__name__)
 
   tfx_component_class = type(
       str(name),
-      (base_component.BaseComponent,),
+      (base_class,),
       dict(
           SPEC_CLASS=tfx_component_spec_class,
           EXECUTOR_SPEC=tfx_executor_spec,
