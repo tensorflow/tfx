@@ -107,6 +107,5 @@ field to `tf_lite`. No other configuration changes are required to analyze the
 TFLite model. Regardless of whether a TFLite model or the a SavedModel
 is analyzed, the output of the `Evaluator` will have exactly the same structure.
 
-However, please note that the Evaluator assumes that the TFLite model is saved
-in a file named `tflite` within trainer_lite.outputs['model'].
+
 

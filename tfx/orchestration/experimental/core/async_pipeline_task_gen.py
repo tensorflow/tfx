@@ -172,13 +172,13 @@ class _Generator:
     node_uid = task_lib.NodeUid.from_pipeline_node(self._pipeline, node)
 
     executions = task_gen_utils.get_executions(metadata_handler, node)
-    exec_node_task = task_gen_utils.generate_task_from_active_execution(
+    exec_node_tasks = task_gen_utils.generate_task_from_active_execution(
         metadata_handler, self._pipeline, node, executions)
-    if exec_node_task:
+    if exec_node_tasks:
       result.append(
           task_lib.UpdateNodeStateTask(
               node_uid=node_uid, state=pstate.NodeState.RUNNING))
-      result.append(exec_node_task)
+      result.extend(exec_node_tasks)
       return result
 
     resolved_info = task_gen_utils.generate_resolved_info(

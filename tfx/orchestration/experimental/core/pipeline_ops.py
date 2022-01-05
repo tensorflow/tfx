@@ -795,10 +795,11 @@ def _maybe_enqueue_cancellation_task(mlmd_handle: metadata.Metadata,
     return True
   if not pause:
     executions = task_gen_utils.get_executions(mlmd_handle, node)
-    exec_node_task = task_gen_utils.generate_task_from_active_execution(
+    exec_node_tasks = task_gen_utils.generate_task_from_active_execution(
         mlmd_handle, pipeline, node, executions, is_cancelled=True)
-    if exec_node_task:
-      task_queue.enqueue(exec_node_task)
+    if exec_node_tasks:
+      for task in exec_node_tasks:
+        task_queue.enqueue(task)
       return True
   return False
 

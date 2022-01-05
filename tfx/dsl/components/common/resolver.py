@@ -36,28 +36,16 @@ RESOLVER_STRATEGY_CLASS = 'resolver_class'
 RESOLVER_CONFIG = 'source_uri'
 
 
-# pylint: disable=line-too-long
 class ResolverStrategy(abc.ABC):
-  """Base class for ResolverStrategy.
-
-  ResolverStrategy is used with
-  [`tfx.dsl.Resolver`](/tfx/api_docs/python/tfx/v1/dsl/Resolver)
-  to express the input resolution logic. Currently TFX supports the following
-  builtin ResolverStrategy:
-
-  - [LatestArtifactStrategy](/tfx/api_docs/python/tfx/v1/dsl/experimental/LatestArtifactStrategy)
-  - [LatestBlessedModelStrategy](/tfx/api_docs/python/tfx/v1/dsl/experimental/LatestBlessedModelStrategy)
-  - [SpanRangeStrategy](/tfx/api_docs/python/tfx/v1/dsl/experimental/SpanRangeStrategy)
+  """Base resolver strategy class.
 
   A resolver strategy defines a type behavior used for input selection. A
-  resolver strategy subclass must override the `resolve_artifacts()` function
-  which takes a Dict[str, List[Artifact]] as parameters and returns the resolved
-  dict of the same type.
+  resolver strategy subclass must override the resolve_artifacts() function
+  which takes a dict of <str, List<types.Artifact>> as parameters and return
+  the resolved dict.
   """
-  # pylint: enable=line-too-long
 
   @doc_controls.do_not_generate_docs
-  @doc_controls.do_not_doc_in_subclasses
   @classmethod
   def as_resolver_op(cls, input_node: resolver_op.OpNode, **kwargs):
     """ResolverOp-like usage inside resolver_function."""
@@ -210,7 +198,7 @@ class Resolver(base_node.BaseNode):
   ```
   example_gen = ImportExampleGen(...)
   examples_resolver = Resolver(
-        strategy_class=tfx.dsl.experimental.SpanRangeStrategy,
+        strategy_class=SpanRangeStrategy,
         config={'range_config': range_config},
         examples=Channel(type=Examples, producer_component_id=example_gen.id)
         ).with_id('Resolver.span_resolver')
@@ -218,10 +206,6 @@ class Resolver(base_node.BaseNode):
       examples=examples_resolver.outputs['examples'],
       ...)
   ```
-
-  You can find experimental `ResolverStrategy` classes under
-  `tfx.v1.dsl.experimental` module, including `LatestArtifactStrategy`,
-  `LatestBlessedModelStrategy`, `SpanRangeStrategy`, etc.
   """
 
   def __init__(self,

@@ -149,7 +149,7 @@ class TaskGenUtilsTest(tu.TfxTest):
     with self._mlmd_connection as m:
       # No tasks generated without active execution.
       executions = task_gen_utils.get_executions(m, self._trainer)
-      self.assertIsNone(
+      self.assertEmpty(
           task_gen_utils.generate_task_from_active_execution(
               m, self._pipeline, self._trainer, executions))
 
@@ -164,17 +164,46 @@ class TaskGenUtilsTest(tu.TfxTest):
 
       # Check that task can be generated.
       executions = task_gen_utils.get_executions(m, self._trainer)
-      task = task_gen_utils.generate_task_from_active_execution(
+      tasks = task_gen_utils.generate_task_from_active_execution(
           m, self._pipeline, self._trainer, executions)
-      self.assertEqual(execution.id, task.execution_id)
-      self.assertEqual(exec_properties, task.exec_properties)
+      self.assertLen(tasks, 1)
+      self.assertEqual(execution.id, tasks[0].execution_id)
+      self.assertEqual(exec_properties, tasks[0].exec_properties)
 
       # Mark execution complete. No tasks should be generated.
       execution = m.store.get_executions()[0]
       execution.last_known_state = metadata_store_pb2.Execution.COMPLETE
       m.store.put_executions([execution])
       executions = task_gen_utils.get_executions(m, self._trainer)
-      self.assertIsNone(
+      self.assertEmpty(
+          task_gen_utils.generate_task_from_active_execution(
+              m, self._pipeline, self._trainer, executions))
+
+    # Next, ensure multiple tasks will be generated for multiple executions.
+    otu.fake_component_output(
+        self._mlmd_connection, self._trainer, exec_properties=exec_properties)
+    with self._mlmd_connection as m:
+      executions = m.store.get_executions()
+      self.assertLen(executions, 2)
+      executions[0].last_known_state = metadata_store_pb2.Execution.RUNNING
+      executions[1].last_known_state = metadata_store_pb2.Execution.RUNNING
+      m.store.put_executions(executions)
+
+      # Check that task can be generated.
+      executions = task_gen_utils.get_executions(m, self._trainer)
+      tasks = task_gen_utils.generate_task_from_active_execution(
+          m, self._pipeline, self._trainer, executions)
+      print(tasks)
+      self.assertLen(tasks, 2)
+      self.assertEqual(executions[0].id, tasks[0].execution_id)
+      self.assertEqual(executions[1].id, tasks[1].execution_id)
+
+      # Mark execution complete. No tasks should be generated.
+      executions[0].last_known_state = metadata_store_pb2.Execution.COMPLETE
+      executions[1].last_known_state = metadata_store_pb2.Execution.COMPLETE
+      m.store.put_executions(executions)
+      executions = task_gen_utils.get_executions(m, self._trainer)
+      self.assertEmpty(
           task_gen_utils.generate_task_from_active_execution(
               m, self._pipeline, self._trainer, executions))
 

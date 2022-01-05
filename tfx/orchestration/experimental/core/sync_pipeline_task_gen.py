@@ -279,13 +279,13 @@ class _Generator:
                   code=status_lib.Code.ABORTED, message=error_msg)))
       return result
 
-    exec_node_task = task_gen_utils.generate_task_from_active_execution(
+    exec_node_tasks = task_gen_utils.generate_task_from_active_execution(
         self._mlmd_handle, self._pipeline, node, node_executions)
-    if exec_node_task:
+    if exec_node_tasks:
       result.append(
           task_lib.UpdateNodeStateTask(
               node_uid=node_uid, state=pstate.NodeState.RUNNING))
-      result.append(exec_node_task)
+      result.extend(exec_node_tasks)
       return result
 
     # Finally, we are ready to generate tasks for the node by resolving inputs.

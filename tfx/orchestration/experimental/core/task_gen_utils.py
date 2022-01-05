@@ -79,7 +79,7 @@ def generate_task_from_active_execution(
     node: pipeline_pb2.PipelineNode,
     executions: Iterable[metadata_store_pb2.Execution],
     is_cancelled: bool = False,
-) -> Optional[task_lib.Task]:
+) -> List[task_lib.Task]:
   """Generates task from active execution (if any).
 
   Returns `None` if a task cannot be generated from active execution.
@@ -100,18 +100,16 @@ def generate_task_from_active_execution(
   active_executions = [
       e for e in executions if execution_lib.is_execution_active(e)
   ]
-  if not active_executions:
-    return None
-  if len(active_executions) > 1:
-    raise RuntimeError(
-        'Unexpected multiple active executions for the node: {}\n executions: '
-        '{}'.format(node.node_info.id, active_executions))
-  return _generate_task_from_execution(
-      metadata_handler,
-      pipeline,
-      node,
-      active_executions[0],
-      is_cancelled=is_cancelled)
+  tasks = []
+  for active_execution in active_executions:
+    tasks.append(
+        _generate_task_from_execution(
+            metadata_handler,
+            pipeline,
+            node,
+            active_execution,
+            is_cancelled=is_cancelled))
+  return tasks
 
 
 def extract_properties(
