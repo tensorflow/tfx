@@ -41,6 +41,7 @@ _PRIMITIVE_TO_ARTIFACT = {
     float: standard_artifacts.Float,
     str: standard_artifacts.String,
     bytes: standard_artifacts.Bytes,
+    bool: standard_artifacts.Boolean,
 }
 
 

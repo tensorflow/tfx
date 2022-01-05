@@ -69,13 +69,18 @@ class FunctionParserTest(tf.test.TestCase):
         statistics: OutputArtifact[standard_artifacts.ExampleStatistics],
         num_steps: Parameter[int]
     ) -> OutputDict(
-        precision=float, recall=float, message=str, serialized_value=bytes):
+        precision=float,
+        recall=float,
+        message=str,
+        serialized_value=bytes,
+        is_blessed=bool):
       del examples, model, schema, statistics, num_steps
       return {
           'precision': 0.9,
           'recall': 0.8,
           'message': 'foo',
-          'serialized_value': b'bar'
+          'serialized_value': b'bar',
+          'is_blessed': False,
       }
 
     inputs, outputs, parameters, arg_formats, arg_defaults, returned_values = (
@@ -93,6 +98,7 @@ class FunctionParserTest(tf.test.TestCase):
             'recall': standard_artifacts.Float,
             'message': standard_artifacts.String,
             'serialized_value': standard_artifacts.Bytes,
+            'is_blessed': standard_artifacts.Boolean,
         })
     self.assertDictEqual(parameters, {
         'num_steps': int,
@@ -111,7 +117,8 @@ class FunctionParserTest(tf.test.TestCase):
             'precision': False,
             'recall': False,
             'message': False,
-            'serialized_value': False
+            'serialized_value': False,
+            'is_blessed': False,
         })
 
   def testEmptyReturnValue(self):
@@ -169,10 +176,11 @@ class FunctionParserTest(tf.test.TestCase):
                e: Optional[int] = 345,
                f: str = 'abc',
                g: bytes = b'xyz',
-               h: Parameter[str] = 'default',
-               i: Parameter[int] = 999,
+               h: bool = False,
+               i: Parameter[str] = 'default',
+               j: Parameter[int] = 999,
                examples: InputArtifact[standard_artifacts.Examples] = None):
-      del a, b, c, d, e, f, g, h, i, examples
+      del a, b, c, d, e, f, g, h, i, j, examples
 
     inputs, outputs, parameters, arg_formats, arg_defaults, returned_values = (
         parse_typehint_component_function(func_a))
@@ -186,15 +194,16 @@ class FunctionParserTest(tf.test.TestCase):
             'e': standard_artifacts.Integer,
             'f': standard_artifacts.String,
             'g': standard_artifacts.Bytes,
-            # 'h' is missing here as it is a parameter.
+            'h': standard_artifacts.Boolean,
             # 'i' is missing here as it is a parameter.
+            # 'j' is missing here as it is a parameter.
             'examples': standard_artifacts.Examples,
         })
     self.assertDictEqual(outputs, {})
     self.assertDictEqual(parameters, {
         'c': str,
-        'h': str,
-        'i': int,
+        'i': str,
+        'j': int,
     })
     self.assertDictEqual(
         arg_formats, {
@@ -205,8 +214,9 @@ class FunctionParserTest(tf.test.TestCase):
             'e': ArgFormats.ARTIFACT_VALUE,
             'f': ArgFormats.ARTIFACT_VALUE,
             'g': ArgFormats.ARTIFACT_VALUE,
-            'h': ArgFormats.PARAMETER,
+            'h': ArgFormats.ARTIFACT_VALUE,
             'i': ArgFormats.PARAMETER,
+            'j': ArgFormats.PARAMETER,
             'examples': ArgFormats.INPUT_ARTIFACT,
         })
     self.assertDictEqual(
@@ -215,8 +225,9 @@ class FunctionParserTest(tf.test.TestCase):
             'e': 345,
             'f': 'abc',
             'g': b'xyz',
-            'h': 'default',
-            'i': 999,
+            'h': False,
+            'i': 'default',
+            'j': 999,
             'examples': None,
         })
     self.assertEqual(returned_values, {})
