@@ -42,13 +42,14 @@ def make_output_dirs(output_dict: Dict[str, List[types.Artifact]]) -> None:
   for _, artifact_list in output_dict.items():
     for artifact in artifact_list:
       if isinstance(artifact, ValueArtifact):
-        # If it is a ValueArtifact, create a file.
-        artifact_dir = os.path.dirname(artifact.uri)
-        fileio.makedirs(artifact_dir)
-        with fileio.open(artifact.uri, 'w') as f:
-          # Because fileio.open won't create an empty file, we write an
-          # empty string to it to force the creation.
-          f.write('')
+        # If this is a ValueArtifact, create the file if it does not exist.
+        if not fileio.exists(artifact.uri):
+          artifact_dir = os.path.dirname(artifact.uri)
+          fileio.makedirs(artifact_dir)
+          with fileio.open(artifact.uri, 'w') as f:
+            # Because fileio.open won't create an empty file, we write an
+            # empty string to it to force the creation.
+            f.write('')
       else:
         # Otherwise create a dir.
         fileio.makedirs(artifact.uri)
