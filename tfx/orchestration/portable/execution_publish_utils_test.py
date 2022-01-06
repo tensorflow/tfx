@@ -404,6 +404,52 @@ class ExecutionPublisherTest(test_case_utils.TfxTest, parameterized.TestCase):
         execution_publish_utils.publish_succeeded_execution(
             m, execution_id, contexts, output_dict, executor_output)
 
+  def testPublishSuccessExecutionUpdatesCustomProperties(self):
+    with metadata.Metadata(connection_config=self._connection_config) as m:
+      executor_output = text_format.Parse(
+          """
+          execution_properties {
+          key: "int"
+          value {
+            int_value: 1
+          }
+          }
+          execution_properties {
+            key: "string"
+            value {
+              string_value: "string_value"
+            }
+          }
+           """, execution_result_pb2.ExecutorOutput())
+      contexts = self._generate_contexts(m)
+      execution_id = execution_publish_utils.register_execution(
+          m, self._execution_type, contexts).id
+      execution_publish_utils.publish_succeeded_execution(
+          m, execution_id, contexts, {}, executor_output)
+      [execution] = m.store.get_executions_by_id([execution_id])
+      self.assertProtoPartiallyEquals(
+          """
+          id: 1
+          last_known_state: COMPLETE
+          custom_properties {
+            key: "int"
+            value {
+              int_value: 1
+            }
+          }
+          custom_properties {
+            key: "string"
+            value {
+              string_value: "string_value"
+            }
+          }
+          """,
+          execution,
+          ignored_fields=[
+              'type_id', 'create_time_since_epoch',
+              'last_update_time_since_epoch'
+          ])
+
   def testPublishSuccessExecutionRecordExecutionResult(self):
     with metadata.Metadata(connection_config=self._connection_config) as m:
       executor_output = text_format.Parse(

@@ -16,7 +16,7 @@
 import collections
 import datetime
 import os
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 from absl import logging
 from tfx import types
@@ -27,6 +27,8 @@ from tfx.proto.orchestration import execution_result_pb2
 from tfx.proto.orchestration import pipeline_pb2
 from tfx.types import artifact_utils
 from tfx.types.value_artifact import ValueArtifact
+
+from ml_metadata.proto import metadata_store_pb2
 
 _SYSTEM = '.system'
 _EXECUTOR_EXECUTION = 'executor_execution'
@@ -269,3 +271,26 @@ def populate_output_artifact(
     for artifact in artifact_list:
       artifacts.artifacts.append(artifact.mlmd_artifact)
     executor_output.output_artifacts[key].CopyFrom(artifacts)
+
+
+def populate_exec_properties(
+    executor_output: execution_result_pb2.ExecutorOutput,
+    exec_properties: Dict[str, Any]):
+  """Populate exec_properties to executor_output."""
+  for key, value in exec_properties.items():
+    v = metadata_store_pb2.Value()
+    if isinstance(value, str):
+      v.string_value = value
+    elif isinstance(value, int):
+      v.int_value = value
+    elif isinstance(value, float):
+      v.double_value = value
+    else:
+      logging.info(
+          'Value type %s of key %s in exec_properties is not '
+          'supported, going to drop it', type(value), key)
+      continue
+    executor_output.execution_properties[key].CopyFrom(v)
+
+
+

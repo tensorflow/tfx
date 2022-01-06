@@ -173,6 +173,9 @@ def publish_succeeded_execution(
 
   [execution] = metadata_handler.store.get_executions_by_id([execution_id])
   execution.last_known_state = metadata_store_pb2.Execution.COMPLETE
+  if executor_output:
+    for key, value in executor_output.execution_properties.items():
+      execution.custom_properties[key].CopyFrom(value)
   _set_execution_result_if_not_empty(executor_output, execution)
 
   execution_lib.put_execution(

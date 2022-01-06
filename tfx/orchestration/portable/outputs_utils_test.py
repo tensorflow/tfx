@@ -332,6 +332,25 @@ class OutputUtilsTest(test_case_utils.TfxTest, parameterized.TestCase):
         }
         """, executor_output)
 
+  def testPopulateExecProperties(self):
+    executor_output = execution_result_pb2.ExecutorOutput()
+    exec_properties = {'string_value': 'string', 'int_value': 1}
+    outputs_utils.populate_exec_properties(executor_output, exec_properties)
+    self.assertProtoEquals(
+        """
+        execution_properties {
+          key: "string_value"
+          value {
+            string_value: "string"
+          }
+        }
+        execution_properties {
+          key: "int_value"
+          value {
+            int_value: 1
+          }
+        }
+        """, executor_output)
 
 if __name__ == '__main__':
   tf.test.main()
