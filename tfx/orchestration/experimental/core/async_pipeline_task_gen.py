@@ -232,6 +232,7 @@ class _Generator:
     execution = execution_publish_utils.register_execution(
         metadata_handler=metadata_handler,
         execution_type=node.node_info.type,
+        execution_name='test',
         contexts=resolved_info.contexts,
         input_artifacts=input_artifact,
         exec_properties=resolved_info.exec_properties)

@@ -624,6 +624,7 @@ class _ArtifactRecycler:
     if not prev_cache_executions:
       new_execution = execution_publish_utils.register_execution(
           self._mlmd,
+          execution_name='test',
           execution_type=metadata_store_pb2.ExecutionType(
               id=existing_execution.type_id),
           contexts=cached_execution_contexts)
