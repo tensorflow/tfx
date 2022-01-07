@@ -85,7 +85,7 @@ class SyncPipelineTaskGenerator(task_gen.TaskGenerator):
 
 
 class _Generator:
-  """Generator implementation class for SyncPipelineTaskGenerator."""
+  """Generator implementation class for a SyncPipelineTaskGenerator."""
 
   def __init__(self,
                mlmd_handle: metadata.Metadata,
