@@ -104,6 +104,87 @@ class ExecutionPublisherTest(test_case_utils.TfxTest, parameterized.TestCase):
           [c.id for c in contexts],
           [c.id for c in m.store.get_contexts_by_artifact(input_example.id)])
 
+  def testRegisterExecutions(self):
+    with metadata.Metadata(connection_config=self._connection_config) as m:
+      contexts = self._generate_contexts(m)
+      input_example = standard_artifacts.Examples()
+      execution_publish_utils.register_executions(
+          m,
+          self._execution_type,
+          contexts,
+          input_artifacts=[{
+              'input_example_1': [input_example]
+          }, {
+              'input_example_2': [input_example]
+          }],
+          exec_properties={
+              'p1': 1,
+          })
+      executions = m.store.get_executions()
+      self.assertLen(executions, 2)
+      self.assertProtoPartiallyEquals(
+          """
+          id: 1
+          custom_properties {
+            key: 'p1'
+            value {int_value: 1}
+          }
+          last_known_state: RUNNING
+          """,
+          executions[0],
+          ignored_fields=[
+              'type_id', 'create_time_since_epoch',
+              'last_update_time_since_epoch'
+          ])
+      self.assertProtoPartiallyEquals(
+          """
+          id: 2
+          custom_properties {
+            key: 'p1'
+            value {int_value: 1}
+          }
+          last_known_state: RUNNING
+          """,
+          executions[1],
+          ignored_fields=[
+              'type_id', 'create_time_since_epoch',
+              'last_update_time_since_epoch'
+          ])
+      events = m.store.get_events_by_execution_ids(
+          [executions[0].id, executions[1].id])
+      self.assertProtoPartiallyEquals(
+          """
+          artifact_id: 1
+          execution_id: 1
+          path {
+            steps {
+              key: 'input_example_1'
+            }
+            steps {
+              index: 0
+            }
+          }
+          type: INPUT
+          """,
+          events[0],
+          ignored_fields=['milliseconds_since_epoch'])
+      self.assertProtoPartiallyEquals(
+          """
+          artifact_id: 1
+          execution_id: 2
+          path {
+            steps {
+              key: 'input_example_2'
+            }
+            steps {
+              index: 0
+            }
+          }
+          type: INPUT
+          """,
+          events[1],
+          ignored_fields=['milliseconds_since_epoch'])
+
   def testPublishCachedExecution(self):
     with metadata.Metadata(connection_config=self._connection_config) as m:
       contexts = self._generate_contexts(m)

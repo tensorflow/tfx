@@ -14,7 +14,7 @@
 """Portable library for registering and publishing executions."""
 import copy
 import os
-from typing import Mapping, Optional, Sequence
+from typing import Mapping, Optional, Sequence, List
 from absl import logging
 
 from tfx import types
@@ -260,3 +260,37 @@ def register_execution(
       exec_properties)
   return execution_lib.put_execution(
       metadata_handler, execution, contexts, input_artifacts=input_artifacts)
+
+
+def register_executions(
+    metadata_handler: metadata.Metadata,
+    execution_type: metadata_store_pb2.ExecutionType,
+    contexts: Sequence[metadata_store_pb2.Context],
+    input_artifacts: List[typing_utils.ArtifactMultiMap],
+    exec_properties: Optional[Mapping[str, types.ExecPropertyTypes]] = None,
+) -> List[metadata_store_pb2.Execution]:
+  """Registers multiple executions in MLMD.
+
+  Along with the execution:
+  -  the input artifacts will be linked to the execution.
+  -  the contexts will be linked to both the execution and its input artifacts.
+
+  Args:
+    metadata_handler: A handler to access MLMD.
+    execution_type: The type of the execution.
+    contexts: MLMD contexts to associated with the execution.
+    input_artifacts: A list of input artifact. One execution will be registered
+      for each of the input.
+    exec_properties: Execution properties. Will be attached to the execution.
+
+  Returns:
+    A list of MLMD executions that are registered in MLMD, with id populated.
+  """
+  executions = []
+  # TODO(b/207038460): Use the new feature of batch executions update once it is
+  # implemented (b/209883142).
+  for input_artifact in input_artifacts:
+    executions.append(
+        register_execution(metadata_handler, execution_type, contexts,
+                           input_artifact, exec_properties))
+  return executions
