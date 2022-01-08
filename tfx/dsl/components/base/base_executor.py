@@ -21,6 +21,7 @@ from typing import Any, Dict, List, Optional
 from absl import logging
 from tfx import types
 from tfx.dsl.io import fileio
+from tfx.orchestration import data_types
 from tfx.orchestration import data_types_utils
 from tfx.proto.orchestration import execution_result_pb2
 from tfx.proto.orchestration import pipeline_pb2
@@ -47,7 +48,7 @@ class BaseExecutor(abc.ABC):
                  executor_output_uri: Optional[str] = None,
                  stateful_working_dir: Optional[str] = None,
                  pipeline_node: Optional[pipeline_pb2.PipelineNode] = None,
-                 pipeline_info: Optional[pipeline_pb2.PipelineInfo] = None,
+                 pipeline_info: Optional[data_types.PipelineInfo] = None,
                  pipeline_run_id: Optional[str] = None):
       self.extra_flags = extra_flags
       # Base temp directory for the pipeline

@@ -59,6 +59,7 @@ class InProcessComponentLauncher(base_component_launcher.BaseComponentLauncher):
     else:
       executor_context = base_executor.BaseExecutor.Context(
           extra_flags=self._beam_pipeline_args,
+          pipeline_info=self._pipeline_info,
           tmp_dir=os.path.join(self._pipeline_info.pipeline_root, '.temp', ''),
           unique_id=str(execution_id))
 

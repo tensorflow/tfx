@@ -7,13 +7,14 @@
 *   Function components defined with `@component` may now have optional/nullable
     primitive type return values when `Optional[T]` is used in the return type
     OutputDict.
-*   Set exti handler cache option in Kubeflow V2 as false.
+*   Set exit handler cache option in Kubeflow V2 as false.
 
 ## Breaking Changes
 
 ### For Pipeline Authors
 
 ### For Component Authors
+*   Passing pipeline_info into Executor context
 
 ## Deprecations
 
