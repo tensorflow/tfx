@@ -708,11 +708,43 @@ def get_all_pipeline_nodes(
 def get_all_node_executions(
     pipeline: pipeline_pb2.Pipeline, mlmd_handle: metadata.Metadata
 ) -> Dict[str, List[metadata_store_pb2.Execution]]:
-  """Returns the latest execution states of all pipeline nodes if present."""
+  """Returns all executions of all pipeline nodes if present."""
   return {
       node.node_info.id: task_gen_utils.get_executions(mlmd_handle, node)
       for node in get_all_pipeline_nodes(pipeline)
   }
+
+
+def get_all_node_artifacts(
+    pipeline: pipeline_pb2.Pipeline, mlmd_handle: metadata.Metadata
+) -> Dict[str, Dict[int, Dict[str, List[metadata_store_pb2.Artifact]]]]:
+  """Returns all output artifacts of all pipeline nodes if present.
+
+  Args:
+    pipeline: Pipeline proto associated with a `PipelineState` object.
+    mlmd_handle: Handle to MLMD db.
+
+  Returns:
+    Dict of node id to Dict of execution id to Dict of key to output artifact
+    list.
+  """
+  executions_dict = get_all_node_executions(pipeline, mlmd_handle)
+  result = {}
+  for node_id, executions in executions_dict.items():
+    node_artifacts = {}
+    for execution in executions:
+      execution_artifacts = {}
+      for key, artifacts in execution_lib.get_artifacts_dict(
+          mlmd_handle, execution.id, [
+              metadata_store_pb2.Event.OUTPUT,
+              metadata_store_pb2.Event.DECLARED_OUTPUT
+          ]).items():
+        execution_artifacts[key] = [
+            artifact.mlmd_artifact for artifact in artifacts
+        ]
+      node_artifacts[execution.id] = execution_artifacts
+    result[node_id] = node_artifacts
+  return result
 
 
 def _is_node_uid_in_pipeline(node_uid: task_lib.NodeUid,

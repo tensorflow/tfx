@@ -53,9 +53,9 @@ _SUPPORTED_STANDARD_ARTIFACT_TYPES = frozenset(
      standard_artifacts.PushedModel, standard_artifacts.Schema,
      standard_artifacts.TransformGraph, standard_artifacts.TransformCache,
      standard_artifacts.Float, standard_artifacts.Integer,
-     standard_artifacts.String, simple_artifacts.Metrics,
-     simple_artifacts.Statistics, simple_artifacts.Dataset,
-     simple_artifacts.File))
+     standard_artifacts.String, standard_artifacts.Boolean,
+     simple_artifacts.Metrics, simple_artifacts.Statistics,
+     simple_artifacts.Dataset, simple_artifacts.File))
 
 
 def _get_full_class_path(klass: Type[types.Artifact]) -> str:

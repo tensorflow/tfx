@@ -11,7 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
+# Base image for the final image. Required.
 ARG BASE_IMAGE
+# Apache beam version to get Beam binaries.
 ARG BEAM_VERSION
 
 FROM gcr.io/tfx-oss-public/tfx_base:py37-20200729 as wheel-builder
@@ -20,6 +23,7 @@ ENV TFX_DIR=/tfx
 ADD . ${TFX_DIR}/src
 WORKDIR ${TFX_DIR}
 
+# Specify what version of dependent libraries will be used. See dependencies.py.
 ARG TFX_DEPENDENCY_SELECTOR
 ENV TFX_DEPENDENCY_SELECTOR=${TFX_DEPENDENCY_SELECTOR}
 
@@ -58,6 +62,10 @@ FROM apache/beam_python3.7_sdk:${BEAM_VERSION} as beam-worker
 # Build stage to extend DLVM image.
 FROM ${BASE_IMAGE} as install
 
+# Additional Python packages which will be installed.
+ARG ADDITIONAL_PACKAGES
+
+# Specify what version of dependent libraries will be used. See dependencies.py.
 ARG TFX_DEPENDENCY_SELECTOR
 ENV TFX_DEPENDENCY_SELECTOR=${TFX_DEPENDENCY_SELECTOR}
 
@@ -82,8 +90,9 @@ RUN MLSDK_WHEEL=$(find dist -name "ml_pipelines_sdk-*.whl"); \
     if [ "${TFX_DEPENDENCY_SELECTOR}" = "NIGHTLY" ]; then \
       python -m pip install \
         --extra-index-url https://pypi-nightly.tensorflow.org/simple \
-        ${MLSDK_WHEEL} ${TFX_WHEEL}[docker-image] ; \
+        ${MLSDK_WHEEL} ${TFX_WHEEL}[docker-image] ${ADDITIONAL_PACKAGES} ; \
     else \
-      python -m pip install ${MLSDK_WHEEL} ${TFX_WHEEL}[docker-image] ; \
+      python -m pip install ${MLSDK_WHEEL} ${TFX_WHEEL}[docker-image] \
+      ${ADDITIONAL_PACKAGES} ; \
     fi && \
     echo "Installed python packages:\n" && python -m pip list

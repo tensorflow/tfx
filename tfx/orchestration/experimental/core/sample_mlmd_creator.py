@@ -15,7 +15,7 @@
 import os
 import tempfile
 
-from typing import Optional
+from typing import Optional, Callable
 from absl import app
 from absl import flags
 
@@ -95,7 +95,10 @@ def create_sample_pipeline(m: metadata.Metadata,
                            run_num: int,
                            export_ir_path: str = '',
                            external_ir_file: str = '',
-                           deployment_config: Optional[message.Message] = None):
+                           deployment_config: Optional[message.Message] = None,
+                           execute_nodes_func: Callable[
+                               [metadata.Metadata, pipeline_pb2.Pipeline, int],
+                               None] = _execute_nodes):
   """Creates a list of pipeline and node execution."""
   ir_path = _get_ir_path(external_ir_file)
   for i in range(run_num):
@@ -107,14 +110,17 @@ def create_sample_pipeline(m: metadata.Metadata,
       io_utils.write_pbtxt_file(output_path, pipeline)
     pipeline_state = pipeline_ops.initiate_pipeline_start(m, pipeline)
     if not external_ir_file:
-      _execute_nodes(m, pipeline, i)
+      execute_nodes_func(m, pipeline, i)
     if i < run_num - 1:
       with pipeline_state:
         pipeline_state.set_pipeline_execution_state(
             metadata_store_pb2.Execution.COMPLETE)
 
 
-def main_factory(mlmd_connection_func):
+def main_factory(mlmd_connection_func: Callable[[str], metadata.Metadata],
+                 execute_nodes_func: Callable[
+                     [metadata.Metadata, pipeline_pb2.Pipeline, int],
+                     None] = _execute_nodes):
 
   def main(argv):
     del argv
@@ -125,7 +131,8 @@ def main_factory(mlmd_connection_func):
       depl_config.executor_specs['arg1'].Pack(executor_spec)
       depl_config.executor_specs['arg2'].Pack(executor_spec)
       create_sample_pipeline(m, FLAGS.pipeline_id, FLAGS.pipeline_run_num,
-                             FLAGS.export_ir_dir, FLAGS.ir_file, depl_config)
+                             FLAGS.export_ir_dir, FLAGS.ir_file, depl_config,
+                             execute_nodes_func)
 
   return main
 

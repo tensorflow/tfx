@@ -27,6 +27,9 @@ _TEST_BYTE_DECODED = b'hello world'
 _TEST_STRING_RAW = b'hello world'
 _TEST_STRING_DECODED = u'hello world'
 
+_TEST_BOOL_RAW = b'1'
+_TEST_BOOL_DECODED = True
+
 _TEST_INT_RAW = b'19260817'
 _TEST_INT_DECODED = 19260817
 
@@ -48,6 +51,11 @@ class StandardArtifactsTest(tf.test.TestCase):
     instance = standard_artifacts.String()
     self.assertEqual(_TEST_STRING_RAW, instance.encode(_TEST_STRING_DECODED))
     self.assertEqual(_TEST_STRING_DECODED, instance.decode(_TEST_STRING_RAW))
+
+  def testBoolType(self):
+    instance = standard_artifacts.Boolean()
+    self.assertEqual(_TEST_BOOL_RAW, instance.encode(_TEST_BOOL_DECODED))
+    self.assertEqual(_TEST_BOOL_DECODED, instance.decode(_TEST_BOOL_RAW))
 
   def testIntegerType(self):
     instance = standard_artifacts.Integer()

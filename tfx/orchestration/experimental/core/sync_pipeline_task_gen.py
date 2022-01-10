@@ -306,7 +306,8 @@ class _Generator:
           task_lib.UpdateNodeStateTask(
               node_uid=node_uid, state=pstate.NodeState.SKIPPED))
       return result
-    if resolved_info.input_artifacts is None:
+
+    if not resolved_info.input_artifacts:
       error_msg = f'failure to resolve inputs; node uid: {node_uid}'
       result.append(
           task_lib.UpdateNodeStateTask(
@@ -315,12 +316,14 @@ class _Generator:
               status=status_lib.Status(
                   code=status_lib.Code.ABORTED, message=error_msg)))
       return result
+    # TODO(b/207038460): Update sync pipeline to support ForEach.
+    input_artifacts = resolved_info.input_artifacts[0]
 
     execution = execution_publish_utils.register_execution(
         metadata_handler=self._mlmd_handle,
         execution_type=node.node_info.type,
         contexts=resolved_info.contexts,
-        input_artifacts=resolved_info.input_artifacts,
+        input_artifacts=input_artifacts,
         exec_properties=resolved_info.exec_properties)
     outputs_resolver = outputs_utils.OutputsResolver(
         node, self._pipeline.pipeline_info, self._pipeline.runtime_spec,
@@ -335,7 +338,7 @@ class _Generator:
         pipeline_info=self._pipeline.pipeline_info,
         executor_spec=task_gen_utils.get_executor_spec(self._pipeline,
                                                        node.node_info.id),
-        input_artifacts=resolved_info.input_artifacts,
+        input_artifacts=input_artifacts,
         output_artifacts=output_artifacts,
         parameters=resolved_info.exec_properties)
     contexts = resolved_info.contexts + [cache_context]
@@ -379,7 +382,7 @@ class _Generator:
             node_uid=node_uid,
             execution_id=execution.id,
             contexts=contexts,
-            input_artifacts=resolved_info.input_artifacts,
+            input_artifacts=input_artifacts,
             exec_properties=resolved_info.exec_properties,
             output_artifacts=output_artifacts,
             executor_output_uri=outputs_resolver.get_executor_output_uri(

@@ -13,6 +13,7 @@
 # limitations under the License.
 """Tests for tfx.components.evaluator.executor."""
 
+import glob
 import os
 import unittest
 
@@ -132,8 +133,8 @@ class ExecutorTest(tf.test.TestCase, parameterized.TestCase):
     # Check evaluator outputs.
     self.assertTrue(
         fileio.exists(os.path.join(eval_output.uri, 'eval_config.json')))
-    self.assertTrue(fileio.exists(os.path.join(eval_output.uri, 'metrics')))
-    self.assertTrue(fileio.exists(os.path.join(eval_output.uri, 'plots')))
+    self.assertNotEmpty(glob.glob(f'{eval_output.uri}/metrics-*.tfrecord'))
+    self.assertNotEmpty(glob.glob(f'{eval_output.uri}/plots-*.tfrecord'))
     self.assertFalse(
         fileio.exists(os.path.join(blessing_output.uri, 'BLESSED')))
 
@@ -180,7 +181,7 @@ class ExecutorTest(tf.test.TestCase, parameterized.TestCase):
       # post-export metric is registered.  This may raise an ImportError if the
       # currently-installed version of TFMA does not support fairness
       # indicators.
-      import tensorflow_model_analysis.addons.fairness.post_export_metrics.fairness_indicators  # pylint: disable=g-import-not-at-top, unused-variable
+      import tensorflow_model_analysis.addons.fairness.post_export_metrics.fairness_indicators  # pylint: disable=g-import-not-at-top, unused-import
       exec_properties[
           standard_component_specs
           .FAIRNESS_INDICATOR_THRESHOLDS_KEY] = '[0.1, 0.3, 0.5, 0.7, 0.9]'
@@ -200,8 +201,8 @@ class ExecutorTest(tf.test.TestCase, parameterized.TestCase):
     # Check evaluator outputs.
     self.assertTrue(
         fileio.exists(os.path.join(eval_output.uri, 'eval_config.json')))
-    self.assertTrue(fileio.exists(os.path.join(eval_output.uri, 'metrics')))
-    self.assertTrue(fileio.exists(os.path.join(eval_output.uri, 'plots')))
+    self.assertNotEmpty(glob.glob(f'{eval_output.uri}/metrics-*.tfrecord'))
+    self.assertNotEmpty(glob.glob(f'{eval_output.uri}/plots-*.tfrecord'))
     self.assertFalse(
         fileio.exists(os.path.join(blessing_output.uri, 'BLESSED')))
 
@@ -345,9 +346,10 @@ class ExecutorTest(tf.test.TestCase, parameterized.TestCase):
     # Check evaluator outputs.
     self.assertTrue(
         fileio.exists(os.path.join(eval_output.uri, 'eval_config.json')))
-    self.assertTrue(fileio.exists(os.path.join(eval_output.uri, 'metrics')))
-    self.assertTrue(fileio.exists(os.path.join(eval_output.uri, 'plots')))
-    self.assertTrue(fileio.exists(os.path.join(eval_output.uri, 'validations')))
+    self.assertNotEmpty(glob.glob(f'{eval_output.uri}/metrics-*.tfrecord'))
+    self.assertNotEmpty(glob.glob(f'{eval_output.uri}/plots-*.tfrecord'))
+    self.assertTrue(
+        fileio.exists(os.path.join(eval_output.uri, 'validations.tfrecord')))
     if blessed:
       self.assertTrue(
           fileio.exists(os.path.join(blessing_output.uri, 'BLESSED')))

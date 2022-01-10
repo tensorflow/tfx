@@ -41,6 +41,7 @@ class InprocessExecutor(base_executor.BaseExecutor):
       exec_properties: Dict[str, Any]) -> execution_result_pb2.ExecutorOutput:
     executor_output = execution_result_pb2.ExecutorOutput()
     outputs_utils.populate_output_artifact(executor_output, output_dict)
+    outputs_utils.populate_exec_properties(executor_output, exec_properties)
     return executor_output
 
 
@@ -52,6 +53,7 @@ class NotInprocessExecutor(base_executor.BaseExecutor):
          exec_properties: Dict[str, Any]) -> None:
     executor_output = execution_result_pb2.ExecutorOutput()
     outputs_utils.populate_output_artifact(executor_output, output_dict)
+    outputs_utils.populate_exec_properties(executor_output, exec_properties)
     with fileio.open(self._context.executor_output_uri, 'wb') as f:
       f.write(executor_output.SerializeToString())
 
@@ -99,6 +101,12 @@ class PythonExecutorOperatorTest(test_case_utils.TfxTest):
         self._get_execution_info(input_dict, output_dict, exec_properties))
     self.assertProtoPartiallyEquals(
         """
+          execution_properties {
+            key: "key"
+            value {
+              string_value: "value"
+            }
+          }
           output_artifacts {
             key: "output_key"
             value {
@@ -120,6 +128,12 @@ class PythonExecutorOperatorTest(test_case_utils.TfxTest):
         self._get_execution_info(input_dict, output_dict, exec_properties))
     self.assertProtoPartiallyEquals(
         """
+          execution_properties {
+            key: "key"
+            value {
+              string_value: "value"
+            }
+          }
           output_artifacts {
             key: "output_key"
             value {
@@ -148,6 +162,24 @@ class PythonExecutorOperatorTest(test_case_utils.TfxTest):
         self._get_execution_info(input_dict, output_dict, exec_properties))
     self.assertProtoPartiallyEquals(
         """
+          execution_properties {
+            key: "float"
+            value {
+              double_value: 0.0
+            }
+          }
+          execution_properties {
+            key: "int"
+            value {
+              int_value: 1
+            }
+          }
+          execution_properties {
+            key: "string"
+            value {
+              string_value: "value"
+            }
+          }
           output_artifacts {
             key: "output_key"
             value {

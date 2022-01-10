@@ -569,6 +569,7 @@ nodes {
     node_info {
       type {
         name: "tfx.components.statistics_gen.component.StatisticsGen"
+        base_type: PROCESS
       }
       id: "StatisticsGen"
     }

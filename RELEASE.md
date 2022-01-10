@@ -2,6 +2,13 @@
 
 ## Major Features and Improvements
 
+*   Added experimental support for TensorFlow Decision Forests models.
+*   Added Boolean type value artifacts.
+*   Function components defined with `@component` may now have optional/nullable
+    primitive type return values when `Optional[T]` is used in the return type
+    OutputDict.
+*   Set exti handler cache option in Kubeflow V2 as false.
+
 ## Breaking Changes
 
 ### For Pipeline Authors
@@ -11,6 +18,10 @@
 ## Deprecations
 
 ## Bug Fixes and Other Changes
+*   Depends on `numpy>=1.16,<2`.
+
+*   Pusher now copies the `saved_model.pb` file at last to prevent loading
+    SavedModel on invalid (partially available) directory state.
 
 ## Documentation Updates
 

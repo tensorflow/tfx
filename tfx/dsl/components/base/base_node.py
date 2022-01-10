@@ -163,6 +163,28 @@ class BaseNode(json_utils.Jsonable, abc.ABC):
       upstream_node.add_downstream_node(self)
 
   @doc_controls.do_not_doc_in_subclasses
+  def add_upstream_nodes(self, upstream_nodes):
+    """Experimental: Add components that must run before this one.
+
+    This method enables task-based dependencies by enforcing execution order for
+    synchronous pipelines on supported platforms. Currently, the supported
+    platforms are Airflow, Beam, and Kubeflow Pipelines.
+
+    Note that this API call should be considered experimental, and may not work
+    with asynchronous pipelines, sub-pipelines and pipelines with conditional
+    nodes. We also recommend relying on data for capturing dependencies where
+    possible to ensure data lineage is fully captured within MLMD.
+
+
+    Args:
+      upstream_nodes: a list of components that must run before this node.
+    """
+    self._upstream_nodes.update(upstream_nodes)
+    for upstream_node in upstream_nodes:
+      if self not in upstream_node.downstream_nodes:
+        upstream_node.add_downstream_node(self)
+
+  @doc_controls.do_not_doc_in_subclasses
   def remove_upstream_node(self, upstream_node):
     self._upstream_nodes.remove(upstream_node)
     if self in upstream_node.downstream_nodes:
@@ -194,6 +216,29 @@ class BaseNode(json_utils.Jsonable, abc.ABC):
     self._downstream_nodes.add(downstream_node)
     if self not in downstream_node.upstream_nodes:
       downstream_node.add_upstream_node(self)
+
+  @doc_controls.do_not_doc_in_subclasses
+  def add_downstream_nodes(self, downstream_nodes):
+    """Experimental: Add another component that must run after this one.
+
+    This method enables task-based dependencies by enforcing execution order for
+    synchronous pipelines on supported platforms. Currently, the supported
+    platforms are Airflow, Beam, and Kubeflow Pipelines.
+
+    Note that this API call should be considered experimental, and may not work
+    with asynchronous pipelines, sub-pipelines and pipelines with conditional
+    nodes. We also recommend relying on data for capturing dependencies where
+    possible to ensure data lineage is fully captured within MLMD.
+
+    It is symmetric with `add_upstream_nodes`.
+
+    Args:
+      downstream_nodes: a list of components that must run after this node.
+    """
+    self._downstream_nodes.update(downstream_nodes)
+    for downstream_node in downstream_nodes:
+      if self not in downstream_node.upstream_nodes:
+        downstream_node.add_upstream_node(self)
 
   @doc_controls.do_not_doc_in_subclasses
   def remove_downstream_node(self, downstream_node):

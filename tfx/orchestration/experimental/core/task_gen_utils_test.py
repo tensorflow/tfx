@@ -184,7 +184,7 @@ class TaskGenUtilsTest(tu.TfxTest):
       resolved_info = task_gen_utils.generate_resolved_info(m, self._transform)
       self.assertCountEqual(['my_pipeline', 'my_pipeline.my_transform'],
                             [c.name for c in resolved_info.contexts])
-      self.assertLen(resolved_info.input_artifacts['examples'], 1)
+      self.assertLen(resolved_info.input_artifacts[0]['examples'], 1)
       self.assertProtoPartiallyEquals(
           """
           id: 1
@@ -202,7 +202,7 @@ class TaskGenUtilsTest(tu.TfxTest):
             }
           }
           state: LIVE""",
-          resolved_info.input_artifacts['examples'][0].mlmd_artifact,
+          resolved_info.input_artifacts[0]['examples'][0].mlmd_artifact,
           ignored_fields=[
               'type_id', 'create_time_since_epoch',
               'last_update_time_since_epoch'
