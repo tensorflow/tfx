@@ -26,7 +26,6 @@ import tensorflow_transform as tft
 from tensorflow_transform import impl_helper
 import tensorflow_transform.beam as tft_beam
 from tensorflow_transform.beam import analyzer_cache
-from tensorflow_transform.beam import common as tft_beam_common
 from tensorflow_transform.tf_metadata import dataset_metadata
 from tensorflow_transform.tf_metadata import metadata_io
 from tensorflow_transform.tf_metadata import schema_utils
@@ -598,28 +597,28 @@ class TransformProcessor:
       """Increment column usage counters."""
       del unused_element
       beam.metrics.Metrics.counter(
-          tft_beam_common.METRICS_NAMESPACE,
+          tft_beam.common.METRICS_NAMESPACE,
           'total_columns_count').inc(total_columns_count)
       beam.metrics.Metrics.counter(
-          tft_beam_common.METRICS_NAMESPACE,
+          tft_beam.common.METRICS_NAMESPACE,
           'analyze_columns_count').inc(analyze_columns_count)
       beam.metrics.Metrics.counter(
-          tft_beam_common.METRICS_NAMESPACE,
+          tft_beam.common.METRICS_NAMESPACE,
           'transform_columns_count').inc(transform_columns_count)
       beam.metrics.Metrics.counter(
-          tft_beam_common.METRICS_NAMESPACE,
+          tft_beam.common.METRICS_NAMESPACE,
           'analyze_paths_count').inc(analyze_paths_count)
       beam.metrics.Metrics.counter(
-          tft_beam_common.METRICS_NAMESPACE,
+          tft_beam.common.METRICS_NAMESPACE,
           'analyzer_cache_enabled').inc(int(analyzer_cache_enabled))
       beam.metrics.Metrics.counter(
-          tft_beam_common.METRICS_NAMESPACE,
+          tft_beam.common.METRICS_NAMESPACE,
           'disable_statistics').inc(int(disable_statistics))
       beam.metrics.Metrics.counter(
-          tft_beam_common.METRICS_NAMESPACE,
+          tft_beam.common.METRICS_NAMESPACE,
           'materialize').inc(int(materialize))
       beam.metrics.Metrics.distribution(
-          tft_beam_common.METRICS_NAMESPACE,
+          tft_beam.common.METRICS_NAMESPACE,
           'estimated_stage_count_with_cache').update(
               estimated_stage_count_with_cache)
       return beam.pvalue.PDone(pipeline)
