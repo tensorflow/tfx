@@ -93,7 +93,7 @@ class ComponentSpec(json_utils.Jsonable):
     - INPUTS (as a dict of string keys and ChannelParameter values),
     - OUTPUTS (also a dict of string keys and ChannelParameter values) and
     - TYPE_ANNOTATION (as a subclass of SystemExecution from
-    third_party/py/tfx/types/system_executions.py, can be equal to None).
+    third_party/py/tfx/types/system_executions.py, can be None).
 
   Here is an example of how a ComponentSpec may be defined:
 

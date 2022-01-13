@@ -175,13 +175,11 @@ class BaseComponent(base_node.BaseNode, abc.ABC):
   @property
   @doc_controls.do_not_doc_in_subclasses
   def type_annotation(self) -> Optional[Type[SystemExecution]]:
-    type_annotation_cls = self.__class__.SPEC_CLASS.TYPE_ANNOTATION
-    if type_annotation_cls and not issubclass(type_annotation_cls,
-                                              SystemExecution):
+    result = self.__class__.SPEC_CLASS.TYPE_ANNOTATION
+    if result and not issubclass(result, SystemExecution):
       raise TypeError(
-          'TYPE_ANNOTATION %s is not a subclass of SystemExecution.' %
-          type_annotation_cls)
-    return type_annotation_cls
+          'TYPE_ANNOTATION %s is not a subclass of SystemExecution.' % result)
+    return result
 
   @property
   @doc_controls.do_not_doc_in_subclasses
