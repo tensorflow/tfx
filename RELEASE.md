@@ -36,6 +36,7 @@
 *   Supported endpoint overwrite for CAIP Tuner. Users can use the `keras-tuner`
     module or any tuner that implements the `keras_tuner.Tuner` interface for
     (parallel) tuning on Vertex.
+*   Add dependency of tensorflow-io to unblock using S3 storage.
 
 ## Breaking Changes
 
