@@ -14,7 +14,7 @@
 """Portable library for registering and publishing executions."""
 import copy
 import os
-from typing import Mapping, Optional, Sequence
+from typing import Mapping, Optional, Sequence, List
 from absl import logging
 
 from tfx import types
@@ -93,6 +93,25 @@ def _set_execution_result_if_not_empty(
       logging.exception(
           'Skipped setting execution_result as custom property of the '
           'execution due to error')
+
+
+def publish_running_execution(
+    metadata_handler: metadata.Metadata,
+    execution_id: int,
+) -> metadata_store_pb2.Execution:
+  """Marks an existing execution as RUNNING.
+
+  Args:
+    metadata_handler: A handler to access MLMD.
+    execution_id: The id of the execution.
+
+  Returns:
+    An MLMD execution that is marked as RUNNING.
+  """
+  [execution] = metadata_handler.store.get_executions_by_id([execution_id])
+  contexts = metadata_handler.store.get_contexts_by_execution(execution_id)
+  execution.last_known_state = metadata_store_pb2.Execution.RUNNING
+  return execution_lib.put_execution(metadata_handler, execution, contexts)
 
 
 def publish_succeeded_execution(
@@ -260,3 +279,43 @@ def register_execution(
       exec_properties)
   return execution_lib.put_execution(
       metadata_handler, execution, contexts, input_artifacts=input_artifacts)
+
+
+def register_executions(
+    metadata_handler: metadata.Metadata,
+    execution_type: metadata_store_pb2.ExecutionType,
+    contexts: Sequence[metadata_store_pb2.Context],
+    input_dicts: List[typing_utils.ArtifactMultiMap],
+    exec_properties: Optional[Mapping[str, types.ExecPropertyTypes]] = None,
+) -> List[metadata_store_pb2.Execution]:
+  """Registers multiple executions in MLMD.
+
+  Along with the execution:
+  -  the input artifacts will be linked to the execution.
+  -  the contexts will be linked to both the execution and its input artifacts.
+
+  Args:
+    metadata_handler: A handler to access MLMD.
+    execution_type: The type of the execution.
+    contexts: MLMD contexts to associated with the execution.
+    input_dicts: A list of dictionaries of artifacts. One execution will be
+      registered for each of the input_dict.
+    exec_properties: Execution properties. Will be attached to the execution.
+
+  Returns:
+    A list of MLMD executions that are registered in MLMD, with id populated.
+  """
+  executions = []
+  # TODO(b/207038460): Use the new feature of batch executions update once it is
+  # implemented (b/209883142).
+  for input_artifacts in input_dicts:
+    execution = execution_lib.prepare_execution(
+        metadata_handler, execution_type, metadata_store_pb2.Execution.NEW,
+        exec_properties)
+    executions.append(
+        execution_lib.put_execution(
+            metadata_handler,
+            execution,
+            contexts,
+            input_artifacts=input_artifacts))
+  return executions

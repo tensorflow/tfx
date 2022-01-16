@@ -178,10 +178,6 @@ def generate_resolved_info(
       return None
     assert isinstance(resolved_input_artifacts, inputs_utils.Trigger)
     assert resolved_input_artifacts
-    # TODO(b/197741942): Support multiple dicts.
-    if len(resolved_input_artifacts) > 1:
-      raise NotImplementedError(
-          'Handling more than one input dicts not implemented.')
 
   return ResolvedInfo(
       contexts=contexts,
@@ -253,6 +249,28 @@ def get_latest_execution(
   """Returns latest execution or `None` if iterable is empty."""
   sorted_executions = execution_lib.sort_executions_newest_to_oldest(executions)
   return sorted_executions[0] if sorted_executions else None
+
+
+def get_a_new_execution(
+    executions: Iterable[metadata_store_pb2.Execution]
+) -> Optional[metadata_store_pb2.Execution]:
+  """Returns a new execution or `None` if iterable is empty."""
+  new_executions = [
+      e for e in executions
+      if e.last_known_state == metadata_store_pb2.Execution.NEW
+  ]
+  return new_executions[0] if new_executions else None
+
+
+def get_a_running_execution(
+    executions: Iterable[metadata_store_pb2.Execution]
+) -> Optional[metadata_store_pb2.Execution]:
+  """Returns a running execution or `None` if iterable is empty."""
+  running_executions = [
+      e for e in executions
+      if e.last_known_state == metadata_store_pb2.Execution.RUNNING
+  ]
+  return running_executions[0] if running_executions else None
 
 
 # TODO(b/182944474): Raise error in _get_executor_spec if executor spec is
