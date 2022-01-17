@@ -62,7 +62,7 @@ environment. TFX provides the following:
     ML workflow on several platforms, such as: Apache Airflow, Apache Beam, and
     Kubeflow Pipelines.
 
-    [Learn more about TFX pipelines](understanding_tfx_pipelines).
+    [Learn more about TFX pipelines](https://www.tensorflow.org/tfx/guide/understanding_tfx_pipelines).
 
 *   A set of standard components that you can use as a part of a pipeline, or as
     a part of your ML training script. TFX standard components provide proven
