@@ -148,6 +148,7 @@ def make_extra_packages_docker_image():
       'python-snappy>=0.5,<0.6',
       # Required for tfx/examples/penguin/penguin_utils_cloud_tuner.py
       'tensorflow-cloud>=0.1,<0.2',
+      'tensorflow-io>=0.9.0, <=0.24.0',
   ]
 
 
@@ -166,6 +167,15 @@ def make_extra_packages_tf_ranking():
           default='>=0.36,<0.37',
           nightly='>=0.37.0.dev',
           git_master='@git+https://github.com/google/struct2tensor@master'),
+  ]
+
+
+def make_extra_packages_tfdf():
+  # Packages needed for tensorflow-decision-forests.
+  # Required for tfx/examples/penguin/penguin_utils_tfdf_experimental.py
+  return [
+      # NOTE: TFDF 0.2.1 is only compatible with TF 2.7.x.
+      'tensorflow-decision-forests==0.2.1',
   ]
 
 
@@ -206,5 +216,6 @@ def make_extra_packages_all():
       *make_extra_packages_test(),
       *make_extra_packages_tfjs(),
       *make_extra_packages_tf_ranking(),
+      *make_extra_packages_tfdf(),
       *make_extra_packages_examples(),
   ]

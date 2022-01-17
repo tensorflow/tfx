@@ -54,6 +54,7 @@ from tfx.types import component_spec
 from tfx.types import standard_artifacts
 from tfx.types.standard_artifacts import Model
 from tfx.utils import docker_utils
+from tfx.utils import io_utils
 from tfx.utils import kube_utils
 from tfx.utils import retry
 from tfx.utils import test_case_utils
@@ -445,12 +446,7 @@ class BaseKubeflowTest(test_case_utils.TfxTest):
 
     self._testdata_root = 'gs://{}/test_data/{}'.format(self._BUCKET_NAME,
                                                         test_id)
-    subprocess.run(
-        ['gsutil', 'cp', '-r', self._TEST_DATA_ROOT, self._testdata_root],
-        check=True,
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
-    )
+    io_utils.copy_dir(self._TEST_DATA_ROOT, self._testdata_root)
 
     self._data_root = os.path.join(self._testdata_root, 'external', 'csv')
 
@@ -463,13 +459,9 @@ class BaseKubeflowTest(test_case_utils.TfxTest):
 
   @retry.retry(ignore_eventual_failure=True)
   def _delete_test_dir(self, test_id: str):
-    """Deletes files for this test including the module file and data files.
-
-    Args:
-      test_id: Randomly generated id of the test.
-    """
-    test_utils.delete_gcs_files(self._GCP_PROJECT_ID, self._BUCKET_NAME,
-                                'test_data/{}'.format(test_id))
+    """Deletes files for this test including the module file and data files."""
+    logging.info('Deleting test data: %s', self._testdata_root)
+    io_utils.delete_dir(self._testdata_root)
 
   @retry.retry(ignore_eventual_failure=True)
   def _delete_workflow(self, workflow_name: str):
@@ -528,13 +520,8 @@ class BaseKubeflowTest(test_case_utils.TfxTest):
 
   @retry.retry(ignore_eventual_failure=True)
   def _delete_pipeline_output(self, pipeline_name: str):
-    """Deletes output produced by the named pipeline.
-
-    Args:
-      pipeline_name: The name of the pipeline.
-    """
-    test_utils.delete_gcs_files(self._GCP_PROJECT_ID, self._BUCKET_NAME,
-                                'test_output/{}'.format(pipeline_name))
+    """Deletes output produced by the named pipeline."""
+    io_utils.delete_dir(self._pipeline_root(pipeline_name))
 
   def _pipeline_root(self, pipeline_name: str):
     return os.path.join(self._test_output_dir, pipeline_name)

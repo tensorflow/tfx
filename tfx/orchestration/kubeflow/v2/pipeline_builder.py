@@ -160,7 +160,7 @@ class PipelineBuilder:
           image=self._default_image,
           image_cmds=self._default_commands,
           beam_pipeline_args=self._pipeline.beam_pipeline_args,
-          enable_cache=self._pipeline.enable_cache,
+          enable_cache=False,
           pipeline_info=self._pipeline_info,
           channel_redirect_map=channel_redirect_map,
           is_exit_handler=True).build()

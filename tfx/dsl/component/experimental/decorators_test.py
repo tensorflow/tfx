@@ -66,15 +66,16 @@ def _injector_1(
 
 
 @component
-def _simple_component(a: int, b: int, c: str, d: bytes) -> OutputDict(
-    e=float, f=float):
+def _simple_component(
+    a: int, b: int, c: str, d: bytes) -> OutputDict(
+        e=float, f=float, g=Optional[str], h=Optional[str]):
   del c, d
-  return {'e': float(a + b), 'f': float(a * b)}
+  return {'e': float(a + b), 'f': float(a * b), 'g': 'OK', 'h': None}
 
 
 @component
-def _verify(e: float, f: float):
-  assert (e, f) == (32.0, 220.0), (e, f)
+def _verify(e: float, f: float, g: Optional[str], h: Optional[str]):
+  assert (e, f, g, h) == (32.0, 220.0, 'OK', None), (e, f, g, h)
 
 
 @component
@@ -84,6 +85,15 @@ def _injector_2(
     a=int, b=float, c=str, d=bytes, e=str):
   fileio.makedirs(examples.uri)
   return {'a': 1, 'b': 2.0, 'c': '3', 'd': b'4', 'e': 'passed'}
+
+
+@component
+def _injector_3(
+    examples: OutputArtifact[standard_artifacts.Examples]
+) -> OutputDict(
+    a=int, b=float, c=str, d=bytes, e=str):
+  fileio.makedirs(examples.uri)
+  return {'a': 1, 'b': 2.0, 'c': '3', 'd': b'4', 'e': None}
 
 
 @component
@@ -174,7 +184,11 @@ class ComponentDecoratorTest(tf.test.TestCase):
         b=instance_1.outputs['b'],
         c=instance_1.outputs['c'],
         d=instance_1.outputs['d'])
-    instance_3 = _verify(e=instance_2.outputs['e'], f=instance_2.outputs['f'])  # pylint: disable=assignment-from-no-return
+    instance_3 = _verify(
+        e=instance_2.outputs['e'],
+        f=instance_2.outputs['f'],
+        g=instance_2.outputs['g'],
+        h=instance_2.outputs['h'])  # pylint: disable=assignment-from-no-return
 
     metadata_config = metadata.sqlite_metadata_connection_config(
         self._metadata_path)
@@ -195,7 +209,11 @@ class ComponentDecoratorTest(tf.test.TestCase):
         c=instance_1.outputs['c'],
         d=instance_1.outputs['d'])
     # Swapped 'e' and 'f'.
-    instance_3 = _verify(e=instance_2.outputs['f'], f=instance_2.outputs['e'])  # pylint: disable=assignment-from-no-return
+    instance_3 = _verify(
+        e=instance_2.outputs['f'],
+        f=instance_2.outputs['e'],
+        g=instance_2.outputs['g'],
+        h=instance_2.outputs['h'])  # pylint: disable=assignment-from-no-return
 
     metadata_config = metadata.sqlite_metadata_connection_config(
         self._metadata_path)
@@ -205,8 +223,8 @@ class ComponentDecoratorTest(tf.test.TestCase):
         metadata_connection_config=metadata_config,
         components=[instance_1, instance_2, instance_3])
 
-    with self.assertRaisesRegex(RuntimeError,
-                                r'AssertionError: \(220.0, 32.0\)'):
+    with self.assertRaisesRegex(
+        RuntimeError, r'AssertionError: \(220.0, 32.0, \'OK\', None\)'):
       beam_dag_runner.BeamDagRunner().run(test_pipeline)
 
   def testBeamExecutionOptionalInputsAndParameters(self):
@@ -235,6 +253,34 @@ class ComponentDecoratorTest(tf.test.TestCase):
         components=[instance_1, instance_2])
 
     beam_dag_runner.BeamDagRunner().run(test_pipeline)
+
+  def testBeamExecutionNonNullableReturnError(self):
+    """Test failure when None used for non-optional primitive return value."""
+    instance_1 = _injector_3()  # pylint: disable=no-value-for-parameter
+    self.assertEqual(1, len(instance_1.outputs['examples'].get()))
+    instance_2 = _optionalarg_component(  # pylint: disable=assignment-from-no-return
+        foo=9,
+        bar='secret',
+        examples=instance_1.outputs['examples'],
+        a=instance_1.outputs['a'],
+        b=instance_1.outputs['b'],
+        c=instance_1.outputs['c'],
+        d=instance_1.outputs['d'],
+        e1=instance_1.outputs['e'],
+        e2=instance_1.outputs['e'],
+        g=999.0,
+        optional_examples_1=instance_1.outputs['examples'])
+
+    metadata_config = metadata.sqlite_metadata_connection_config(
+        self._metadata_path)
+    test_pipeline = pipeline.Pipeline(
+        pipeline_name='test_pipeline_1',
+        pipeline_root=self._test_dir,
+        metadata_connection_config=metadata_config,
+        components=[instance_1, instance_2])
+    with self.assertRaisesRegex(
+        ValueError, 'Non-nullable output \'e\' received None return value'):
+      beam_dag_runner.BeamDagRunner().run(test_pipeline)
 
 
 if __name__ == '__main__':

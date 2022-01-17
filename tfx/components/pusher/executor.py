@@ -195,8 +195,14 @@ class Executor(base_executor.BaseExecutor):
             'Destination directory %s already exists, skipping current push.',
             serving_path)
       else:
-        # tf.serving won't load partial model, it will retry until fully copied.
-        io_utils.copy_dir(model_path, serving_path)
+        # For TensorFlow SavedModel, saved_model.pb file should be the last file
+        # to be copied as TF serving and other codes rely on that file as an
+        # indication that the model is available.
+        # https://github.com/tensorflow/tensorflow/blob/d5b3c79b4804134d0d17bfce9f312151f6337dba/tensorflow/python/saved_model/save.py#L1445
+        io_utils.copy_dir(
+            model_path, serving_path, deny_regex_patterns=[r'saved_model\.pb'])
+        io_utils.copy_dir(
+            model_path, serving_path, allow_regex_patterns=[r'saved_model\.pb'])
         logging.info('Model written to serving path %s.', serving_path)
     else:
       raise NotImplementedError(

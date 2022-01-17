@@ -278,6 +278,27 @@ class OutputUtilsTest(test_case_utils.TfxTest, parameterized.TestCase):
       for artifact in artifact_list:
         self.assertFalse(fileio.exists(artifact.uri))
 
+  def testMakeOutputDirsArtifactAlreadyExists(self):
+    output_artifacts = self._output_resolver().generate_output_artifacts(1)
+    outputs_utils.make_output_dirs(output_artifacts)
+    for _, artifact_list in output_artifacts.items():
+      for artifact in artifact_list:
+        if isinstance(artifact, ValueArtifact):
+          with fileio.open(artifact.uri, 'w') as f:
+            f.write('test')
+        else:
+          with fileio.open(os.path.join(artifact.uri, 'output'), 'w') as f:
+            f.write('test')
+    outputs_utils.make_output_dirs(output_artifacts)
+    for _, artifact_list in output_artifacts.items():
+      for artifact in artifact_list:
+        if isinstance(artifact, ValueArtifact):
+          with fileio.open(artifact.uri, 'r') as f:
+            self.assertEqual(f.read(), 'test')
+        else:
+          with fileio.open(os.path.join(artifact.uri, 'output'), 'r') as f:
+            self.assertEqual(f.read(), 'test')
+
   def testRemoveStatefulWorkingDirSucceeded(self):
     stateful_working_dir = (
         self._output_resolver().get_stateful_working_directory())
@@ -311,6 +332,25 @@ class OutputUtilsTest(test_case_utils.TfxTest, parameterized.TestCase):
         }
         """, executor_output)
 
+  def testPopulateExecProperties(self):
+    executor_output = execution_result_pb2.ExecutorOutput()
+    exec_properties = {'string_value': 'string', 'int_value': 1}
+    outputs_utils.populate_exec_properties(executor_output, exec_properties)
+    self.assertProtoEquals(
+        """
+        execution_properties {
+          key: "string_value"
+          value {
+            string_value: "string"
+          }
+        }
+        execution_properties {
+          key: "int_value"
+          value {
+            int_value: 1
+          }
+        }
+        """, executor_output)
 
 if __name__ == '__main__':
   tf.test.main()

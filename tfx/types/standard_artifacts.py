@@ -175,6 +175,23 @@ class String(ValueArtifact):
     return serialized_value.decode('utf-8')
 
 
+class Boolean(ValueArtifact):
+  """Artifacts representing a boolean.
+
+  Boolean value artifacts are encoded as "1" for True and "0" for False.
+  """
+  TYPE_NAME = 'Boolean'
+
+  def encode(self, value: bool):
+    if not isinstance(value, bool):
+      raise TypeError('Expecting bytes but got value %s of type %s' %
+                      (str(value), type(value)))
+    return b'1' if value else b'0'
+
+  def decode(self, serialized_value: bytes):
+    return int(serialized_value) != 0
+
+
 class Integer(ValueArtifact):
   """Integer-typed artifact."""
   TYPE_NAME = 'Integer'

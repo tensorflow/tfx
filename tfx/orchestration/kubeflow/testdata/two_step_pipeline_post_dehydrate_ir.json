@@ -69,7 +69,8 @@
             "nodeInfo":{
                "id":"BigQueryExampleGen",
                "type":{
-                  "name":"tfx.extensions.google_cloud_big_query.example_gen.component.BigQueryExampleGen"
+                  "name":"tfx.extensions.google_cloud_big_query.example_gen.component.BigQueryExampleGen",
+                  "baseType": "PROCESS"
                }
             },
             "outputs":{

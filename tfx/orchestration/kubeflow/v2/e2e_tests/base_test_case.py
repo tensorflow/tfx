@@ -28,6 +28,7 @@ from tfx.orchestration import pipeline as tfx_pipeline
 from tfx.orchestration import test_utils
 from tfx.orchestration.kubeflow.v2 import kubeflow_v2_dag_runner
 from tfx.orchestration.kubeflow.v2 import vertex_client_utils
+from tfx.utils import io_utils
 from tfx.utils import test_case_utils
 
 
@@ -103,13 +104,8 @@ class BaseKubeflowV2Test(test_case_utils.TfxTest):
     return os.path.join(self._test_output_dir, pipeline_name)
 
   def _delete_pipeline_output(self, pipeline_name: str):
-    """Deletes output produced by the named pipeline.
-
-    Args:
-      pipeline_name: The name of the pipeline.
-    """
-    test_utils.delete_gcs_files(self._GCP_PROJECT_ID, self._BUCKET_NAME,
-                                'test_output/{}'.format(pipeline_name))
+    """Deletes output produced by the named pipeline."""
+    io_utils.delete_dir(self._pipeline_root(pipeline_name))
 
   def _create_pipeline(
       self,

@@ -31,6 +31,50 @@ class IoUtilsTest(tf.test.TestCase):
     file_io.create_dir(self._base_dir)
     super().setUp()
 
+  def relpath(self, *segments):
+    return os.path.join(self._base_dir, *segments)
+
+  def createFiles(self, dir_spec, base_dir=None):
+    if base_dir is None:
+      base_dir = self._base_dir
+    for key, value in dir_spec.items():
+      full_path = os.path.join(base_dir, key)
+      if isinstance(value, str):
+        io_utils.write_string_file(full_path, value)
+      elif isinstance(value, dict):
+        fileio.makedirs(full_path)
+        self.createFiles(value, base_dir=full_path)
+      else:
+        raise TypeError(f'Invalid directory spec: {dir_spec}')
+
+  def extractDirectorySpec(self, path):
+    if fileio.isdir(path):
+      result = {}
+      for name in fileio.listdir(path):
+        result[name] = self.extractDirectorySpec(os.path.join(path, name))
+      return result
+    elif fileio.exists(path):
+      return file_io.FileIO(path, mode='r').read()
+    else:
+      raise ValueError(f'{path} does not exist.')
+
+  def assertDirectoryEqual(self, path, expected_spec) -> None:
+    self.assertEqual(self.extractDirectorySpec(path), expected_spec)
+
+  def testCreateFilesAndDirectoryEqual(self):
+    spec = {
+        'file1.txt': 'testing1',
+        'dir1': {
+            'file2.txt': 'testing2',
+            'dir2': {
+                'file3.txt': 'testing3'
+            },
+            'dir3': {}
+        }
+    }
+    self.createFiles(spec)
+    self.assertDirectoryEqual(self._base_dir, spec)
+
   def tearDown(self):
     file_io.delete_recursively(self._base_dir)
     super().tearDown()
@@ -53,74 +97,210 @@ class IoUtilsTest(tf.test.TestCase):
     mock_copy_file.assert_called_once_with(file_path, local_file_path, True)
 
   def testCopyFile(self):
-    file_path = os.path.join(self._base_dir, 'temp_file')
-    io_utils.write_string_file(file_path, 'testing')
-    copy_path = os.path.join(self._base_dir, 'copy_file')
-    io_utils.copy_file(file_path, copy_path)
-    self.assertTrue(file_io.file_exists(copy_path))
-    f = file_io.FileIO(file_path, mode='r')
-    self.assertEqual('testing', f.read())
-    self.assertEqual(7, f.tell())
+    self.createFiles({
+        'file1.txt': 'testing'
+    })
+    io_utils.copy_file(self.relpath('file1.txt'), self.relpath('file2.txt'))
+    self.assertDirectoryEqual(self._base_dir, {
+        'file1.txt': 'testing',
+        'file2.txt': 'testing'
+    })
 
   def testCopyDir(self):
-    old_path = os.path.join(self._base_dir, 'old')
-    old_path_file1 = os.path.join(old_path, 'file1')
-    old_path_file2 = os.path.join(old_path, 'dir', 'dir2', 'file2')
-    new_path = os.path.join(self._base_dir, 'new')
-    new_path_file1 = os.path.join(new_path, 'file1')
-    new_path_file2 = os.path.join(new_path, 'dir', 'dir2', 'file2')
-
-    io_utils.write_string_file(old_path_file1, 'testing')
-    io_utils.write_string_file(old_path_file2, 'testing2')
-    io_utils.copy_dir(old_path, new_path)
-
-    self.assertTrue(file_io.file_exists(new_path_file1))
-    f = file_io.FileIO(new_path_file1, mode='r')
-    self.assertEqual('testing', f.readline())
-
-    self.assertTrue(file_io.file_exists(new_path_file2))
-    f = file_io.FileIO(new_path_file2, mode='r')
-    self.assertEqual('testing2', f.readline())
+    self.createFiles({
+        'old': {
+            'file1.txt': 'testing',
+            'dir1': {
+                'dir2': {
+                    'file2.txt': 'testing2'
+                }
+            }
+        }
+    })
+    io_utils.copy_dir(self.relpath('old'), self.relpath('new'))
+    self.assertDirectoryEqual(self.relpath('new'), {
+        'file1.txt': 'testing',
+        'dir1': {
+            'dir2': {
+                'file2.txt': 'testing2'
+            }
+        }
+    })
 
   def testCopyDirWithTrailingSlashes(self):
-    old_path1 = os.path.join(self._base_dir, 'old1', '')
-    old_path_file1 = os.path.join(old_path1, 'child', 'file')
-    new_path1 = os.path.join(self._base_dir, 'new1')
-    new_path_file1 = os.path.join(new_path1, 'child', 'file')
+    self.createFiles({
+        'old': {
+            'dir': {
+                'file.txt': 'testing'
+            }
+        }
+    })
 
-    io_utils.write_string_file(old_path_file1, 'testing')
-    io_utils.copy_dir(old_path1, new_path1)
-    self.assertTrue(file_io.file_exists(new_path_file1))
+    with self.subTest('Copy old/ to new1'):
+      io_utils.copy_dir(self.relpath('old', ''), self.relpath('new1'))
+      self.assertDirectoryEqual(self.relpath('new1'), {
+          'dir': {
+              'file.txt': 'testing'
+          }
+      })
 
-    old_path2 = os.path.join(self._base_dir, 'old2')
-    old_path_file2 = os.path.join(old_path2, 'child', 'file')
-    new_path2 = os.path.join(self._base_dir, 'new2', '')
-    new_path_file2 = os.path.join(new_path2, 'child', 'file')
+    with self.subTest('Copy old to new2/'):
+      io_utils.copy_dir(self.relpath('old'), self.relpath('new2', ''))
+      self.assertDirectoryEqual(self.relpath('new2'), {
+          'dir': {
+              'file.txt': 'testing'
+          }
+      })
 
-    io_utils.write_string_file(old_path_file2, 'testing')
-    io_utils.copy_dir(old_path2, new_path2)
-    self.assertTrue(file_io.file_exists(new_path_file2))
+  def testCopyDirWithAllowlistAndDenylist(self):
+    old = os.path.join(self._base_dir, 'old')
+    self.createFiles({
+        'old': {
+            'file1.txt': 'testing1',
+            'dir1': {
+                'file2.txt': 'testing2',
+                'dir2': {
+                    'file3.txt': 'testing3'
+                },
+                'dir3': {}
+            },
+        }
+    })
+
+    with self.subTest('Allowlist filenames'):
+      new1 = os.path.join(self._base_dir, 'new1')
+      io_utils.copy_dir(old, new1, allow_regex_patterns=[r'file[2-3]\.txt'])
+      self.assertDirectoryEqual(new1, {
+          'dir1': {
+              'file2.txt': 'testing2',
+              'dir2': {
+                  'file3.txt': 'testing3'
+              }
+          }
+      })
+
+    with self.subTest('Allowlist dir1'):
+      new2 = os.path.join(self._base_dir, 'new2')
+      io_utils.copy_dir(old, new2, allow_regex_patterns=['dir1'])
+      self.assertDirectoryEqual(new2, {
+          'dir1': {
+              'file2.txt': 'testing2',
+              'dir2': {
+                  'file3.txt': 'testing3'
+              },
+              'dir3': {}
+          }
+      })
+
+    with self.subTest('Allowlist dir2'):
+      new3 = os.path.join(self._base_dir, 'new3')
+      io_utils.copy_dir(old, new3, allow_regex_patterns=['dir2'])
+      self.assertDirectoryEqual(new3, {
+          'dir1': {
+              'dir2': {
+                  'file3.txt': 'testing3'
+              }
+          }
+      })
+
+    with self.subTest('Multiple allowlist is unioned'):
+      new4 = os.path.join(self._base_dir, 'new4')
+      io_utils.copy_dir(old, new4, allow_regex_patterns=[
+          r'file1\.txt', r'file2\.txt'])
+      self.assertDirectoryEqual(new4, {
+          'file1.txt': 'testing1',
+          'dir1': {
+              'file2.txt': 'testing2'
+          }
+      })
+
+    with self.subTest('Denylist filenames'):
+      new5 = os.path.join(self._base_dir, 'new5')
+      io_utils.copy_dir(old, new5, deny_regex_patterns=[r'file[2-3]\.txt'])
+      self.assertDirectoryEqual(new5, {
+          'file1.txt': 'testing1',
+          'dir1': {
+              'dir2': {},
+              'dir3': {}
+          }
+      })
+
+    with self.subTest('Denylist dir1'):
+      new6 = os.path.join(self._base_dir, 'new6')
+      io_utils.copy_dir(old, new6, deny_regex_patterns=['dir1'])
+      self.assertDirectoryEqual(new6, {
+          'file1.txt': 'testing1'
+      })
+
+    with self.subTest('Denylist dir2'):
+      new7 = os.path.join(self._base_dir, 'new7')
+      io_utils.copy_dir(old, new7, deny_regex_patterns=['dir2'])
+      self.assertDirectoryEqual(new7, {
+          'file1.txt': 'testing1',
+          'dir1': {
+              'file2.txt': 'testing2',
+              'dir3': {}
+          }
+      })
+
+    with self.subTest('Multiple denylist is unioned'):
+      new8 = os.path.join(self._base_dir, 'new8')
+      io_utils.copy_dir(old, new8, deny_regex_patterns=[
+          r'file1\.txt', r'file2\.txt'])
+      self.assertDirectoryEqual(new8, {
+          'dir1': {
+              'dir2': {
+                  'file3.txt': 'testing3',
+              },
+              'dir3': {}
+          }
+      })
+
+    with self.subTest('Allowlist and denylist is AND clause.'):
+      new9 = os.path.join(self._base_dir, 'new9')
+      io_utils.copy_dir(
+          old, new9,
+          allow_regex_patterns=['dir1'],
+          deny_regex_patterns=[r'file2\.txt'])
+      self.assertDirectoryEqual(new9, {
+          'dir1': {
+              'dir2': {
+                  'file3.txt': 'testing3',
+              },
+              'dir3': {}
+          }
+      })
 
   def testGetOnlyFileInDir(self):
-    file_path = os.path.join(self._base_dir, 'file', 'path')
-    io_utils.write_string_file(file_path, 'testing')
-    self.assertEqual(file_path,
-                     io_utils.get_only_uri_in_dir(os.path.dirname(file_path)))
+    self.createFiles({
+        'dir': {
+            'file.txt': 'testing'
+        }
+    })
+    self.assertEqual(
+        self.relpath('dir', 'file.txt'),
+        io_utils.get_only_uri_in_dir(self.relpath('dir')))
 
   def testGetOnlyDirInDir(self):
-    top_level_dir = os.path.join(self._base_dir, 'dir_1')
-    dir_path = os.path.join(top_level_dir, 'dir_2')
-    file_path = os.path.join(dir_path, 'file')
-    io_utils.write_string_file(file_path, 'testing')
-    self.assertEqual('dir_2', os.path.basename(
-        io_utils.get_only_uri_in_dir(top_level_dir)))
+    self.createFiles({
+        'dir1': {
+            'dir2': {
+                'file.txt': 'testing'
+            }
+        }
+    })
+    self.assertEqual(
+        self.relpath('dir1', 'dir2'),
+        io_utils.get_only_uri_in_dir(self.relpath('dir1')))
 
   def testDeleteDir(self):
-    file_path = os.path.join(self._base_dir, 'file', 'path')
-    io_utils.write_string_file(file_path, 'testing')
-    self.assertTrue(fileio.exists(file_path))
-    io_utils.delete_dir(os.path.dirname(file_path))
-    self.assertFalse(fileio.exists(file_path))
+    self.createFiles({
+        'dir': {
+            'file.txt': 'testing'
+        }
+    })
+    io_utils.delete_dir(self.relpath('dir'))
+    self.assertDirectoryEqual(self._base_dir, {})
 
   def testAllFilesPattern(self):
     self.assertEqual('model/*', io_utils.all_files_pattern('model'))
@@ -132,14 +312,16 @@ class IoUtilsTest(tf.test.TestCase):
     self.assertListEqual(['a', 'b', 'c', 'd'], column_names)
 
   def testGeneratesFingerprint(self):
-    d1_path = os.path.join(self._base_dir, 'fp', 'data1')
-    io_utils.write_string_file(d1_path, 'testing')
-    os.utime(d1_path, (0, 1))
-    d2_path = os.path.join(self._base_dir, 'fp', 'data2')
-    io_utils.write_string_file(d2_path, 'testing2')
-    os.utime(d2_path, (0, 3))
+    self.createFiles({
+        'fp': {
+            'data1': 'testing',
+            'data2': 'testing2'
+        },
+    })
+    os.utime(self.relpath('fp', 'data1'), (0, 1))
+    os.utime(self.relpath('fp', 'data2'), (0, 3))
     fingerprint = io_utils.generate_fingerprint(
-        'split', os.path.join(self._base_dir, 'fp', '*'))
+        'split', os.path.join(self.relpath('fp'), '*'))
     self.assertEqual(
         'split:split,num_files:2,total_bytes:15,xor_checksum:2,sum_checksum:4',
         fingerprint)

@@ -221,7 +221,7 @@ def resolve_input_artifacts_v2(
     metadata_handler: MetadataHandler instance for MLMD access.
 
   Raises:
-    InputInputResolutionError: If input resolution went wrong.
+    InputResolutionError: If input resolution went wrong.
 
   Returns:
     Trigger: a non-empty list of input dicts. All resolved input dicts should be

@@ -70,6 +70,8 @@ def run_with_executor(
       # ExecutorOutput.
       result = execution_result_pb2.ExecutorOutput()
       outputs_utils.populate_output_artifact(result, output_dict)
+      outputs_utils.populate_exec_properties(result,
+                                             execution_info.exec_properties)
   return result
 
 

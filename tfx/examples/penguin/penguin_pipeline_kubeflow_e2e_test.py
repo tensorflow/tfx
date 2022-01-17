@@ -14,13 +14,13 @@
 """E2E tests for tfx.examples.penguin.penguin_pipeline_kubeflow."""
 
 import os
-import subprocess
 
 import tensorflow as tf
 from tfx.dsl.io import fileio
 from tfx.examples.penguin import penguin_pipeline_kubeflow
 from tfx.orchestration import test_utils
 from tfx.orchestration.kubeflow import test_utils as kubeflow_test_utils
+from tfx.utils import io_utils
 
 
 class PenguinPipelineKubeflowTest(kubeflow_test_utils.BaseKubeflowTest):
@@ -42,22 +42,11 @@ class PenguinPipelineKubeflowTest(kubeflow_test_utils.BaseKubeflowTest):
     self._penguin_dependency_file = os.path.join(
         penguin_examples_dir, 'penguin_utils_cloud_tuner.py')
 
-    # TODO(b/174289068): Create test data handling utilities.
-    subprocess.run(
-        ['gsutil', 'cp', '-r', penguin_test_data_root, self._testdata_root],
-        check=True,
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
-    )
-    subprocess.run(
-        ['gsutil', 'cp', penguin_test_schema_file, self._testdata_root],
-        check=True,
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
-    )
     self._penguin_data_root = os.path.join(self._testdata_root, 'data')
+    io_utils.copy_dir(penguin_test_data_root, self._penguin_data_root)
     self._penguin_schema_file = os.path.join(self._testdata_root,
                                              'schema.pbtxt')
+    io_utils.copy_file(penguin_test_schema_file, self._penguin_schema_file)
 
   def testEndToEndPipelineRun(self):
     """End-to-end test for pipeline with RuntimeParameter."""

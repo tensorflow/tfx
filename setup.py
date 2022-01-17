@@ -199,6 +199,7 @@ tfx_extras_requires = {
     'kfp': dependencies.make_extra_packages_kfp(),
     'tfjs': dependencies.make_extra_packages_tfjs(),
     'tf-ranking': dependencies.make_extra_packages_tf_ranking(),
+    'tfdf': dependencies.make_extra_packages_tfdf(),
     'examples': dependencies.make_extra_packages_examples(),
     'test': dependencies.make_extra_packages_test(),
     'all': dependencies.make_extra_packages_all(),

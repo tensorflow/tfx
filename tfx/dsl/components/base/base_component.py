@@ -15,12 +15,13 @@
 
 import abc
 import inspect
-from typing import Any, Dict, Optional, Union
+from typing import Any, Dict, Optional, Type, Union
 
 from tfx import types
 from tfx.dsl.components.base import base_driver
 from tfx.dsl.components.base import base_node
 from tfx.dsl.components.base import executor_spec
+from tfx.types.system_executions import SystemExecution
 from tfx.utils import abc_utils
 from tfx.utils import doc_controls
 
@@ -170,6 +171,15 @@ class BaseComponent(base_node.BaseNode, abc.ABC):
   def outputs(self) -> Dict[str, Any]:
     """Component's output channel dict."""
     return self.spec.outputs
+
+  @property
+  @doc_controls.do_not_doc_in_subclasses
+  def type_annotation(self) -> Optional[Type[SystemExecution]]:
+    result = self.__class__.SPEC_CLASS.TYPE_ANNOTATION
+    if result and not issubclass(result, SystemExecution):
+      raise TypeError(
+          'TYPE_ANNOTATION %s is not a subclass of SystemExecution.' % result)
+    return result
 
   @property
   @doc_controls.do_not_doc_in_subclasses

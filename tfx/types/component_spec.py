@@ -21,6 +21,7 @@ from typing import Any, Dict, List, Optional, Type, cast, Mapping
 from tfx.dsl.placeholder import placeholder
 from tfx.types import artifact
 from tfx.types import channel
+from tfx.types.system_executions import SystemExecution
 from tfx.utils import json_utils
 from tfx.utils import proto_utils
 
@@ -83,14 +84,16 @@ def _put_default_list(list_data: List[Any]) -> None:
 
 
 class ComponentSpec(json_utils.Jsonable):
-  """A specification of the inputs, outputs and parameters for a component.
+  """A specification of inputs, outputs, parameters, annotation for a component.
 
   Components should have a corresponding ComponentSpec inheriting from this
   class and must override:
 
     - PARAMETERS (as a dict of string keys and ExecutionParameter values),
-    - INPUTS (as a dict of string keys and ChannelParameter values) and
-    - OUTPUTS (also a dict of string keys and ChannelParameter values).
+    - INPUTS (as a dict of string keys and ChannelParameter values),
+    - OUTPUTS (also a dict of string keys and ChannelParameter values) and
+    - TYPE_ANNOTATION (as a subclass of SystemExecution from
+    third_party/py/tfx/types/system_executions.py, can be None).
 
   Here is an example of how a ComponentSpec may be defined:
 
@@ -104,6 +107,7 @@ class ComponentSpec(json_utils.Jsonable):
     OUTPUTS = {
         'output_examples': ChannelParameter(type=standard_artifacts.Examples),
     }
+    TYPE_ANNOTATION = system_executions.Train
 
   To create an instance of a subclass, call it directly with any execution
   parameters / inputs / outputs as kwargs.  For example:
@@ -117,11 +121,14 @@ class ComponentSpec(json_utils.Jsonable):
     PARAMETERS: a dict of string keys and ExecutionParameter values.
     INPUTS: a dict of string keys and ChannelParameter values.
     OUTPUTS: a dict of string keys and ChannelParameter values.
+    TYPE_ANNOTATION: a subclass of SystemExecution used to annotate the
+      component.
   """
 
   PARAMETERS: Mapping[str, 'ExecutionParameter']
   INPUTS: Mapping[str, 'ChannelParameter']
   OUTPUTS: Mapping[str, 'ChannelParameter']
+  TYPE_ANNOTATION: Type[SystemExecution] = None
 
   def __init_subclass__(cls, validate=True):
     super().__init_subclass__()
@@ -223,8 +230,8 @@ class ComponentSpec(json_utils.Jsonable):
 
       self.exec_properties[arg_name] = value
 
-    for arg_dict, param_dict in (
-        (self.INPUTS, inputs), (self.OUTPUTS, outputs)):
+    for arg_dict, param_dict in ((self.INPUTS, inputs), (self.OUTPUTS,
+                                                         outputs)):
       for arg_name, arg in arg_dict.items():
         if arg.optional and not raw_args.get(arg_name):
           continue
@@ -344,8 +351,8 @@ class ExecutionParameter:
                               (str(key_type), arg_name, type(k)))
             if val_type != Any and not isinstance(v, val_type):
               raise TypeError('Expecting value type %s for parameter %r, '
-                              'but got %s instead.' % (
-                                  str(val_type), arg_name, type(v)))
+                              'but got %s instead.' %
+                              (str(val_type), arg_name, type(v)))
         elif declared.__origin__ in [List, list]:  # pylint: disable=protected-access
           val_type = declared.__args__[0]
           if not isinstance(value, list):
@@ -356,8 +363,8 @@ class ExecutionParameter:
           for item in value:
             if not isinstance(item, val_type):
               raise TypeError('Expecting item type %s for parameter %r, '
-                              'but got %s instead.' % (
-                                  str(val_type), arg_name, type(item)))
+                              'but got %s instead.' %
+                              (str(val_type), arg_name, type(item)))
         else:
           raise TypeError('Unexpected type of parameter: %r' % arg_name)
       elif isinstance(value, dict) and issubclass(declared, message.Message):
@@ -374,8 +381,8 @@ class ExecutionParameter:
       else:
         if not isinstance(value, declared):
           raise TypeError('Expected type %s for parameter %r '
-                          'but got %s instead.' % (
-                              str(declared), arg_name, value))
+                          'but got %s instead.' %
+                          (str(declared), arg_name, value))
 
     _type_check_helper(value, self.type)
 

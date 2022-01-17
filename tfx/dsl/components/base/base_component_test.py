@@ -21,6 +21,7 @@ from tfx.dsl.components.base import base_executor
 from tfx.dsl.components.base import executor_spec
 from tfx.proto import example_gen_pb2
 from tfx.types import component_spec
+from tfx.types.system_executions import SystemExecution
 from tfx.utils import json_utils
 
 
@@ -111,6 +112,58 @@ class ComponentTest(tf.test.TestCase):
         TypeError, "expects SPEC_CLASS property to be a subclass of "
         "types.ComponentSpec"):
       InvalidSpecComponent._validate_component_class()
+
+  def testComponentSpecTypeAnnotation(self):
+
+    class MissingAnnotationComponentSpec(types.ComponentSpec):
+      PARAMETERS = {}
+      INPUTS = {}
+      OUTPUTS = {}
+
+    class MissingAnnotationComponent(base_component.BaseComponent):
+
+      SPEC_CLASS = MissingAnnotationComponentSpec
+      EXECUTOR_SPEC = executor_spec.ExecutorClassSpec(
+          base_executor.BaseExecutor)
+
+    missing_annotation_component = MissingAnnotationComponent(
+        spec=MissingAnnotationComponentSpec())
+    self.assertIsNone(missing_annotation_component.type_annotation)
+
+    class InvalidAnnotationComponentSpec(types.ComponentSpec):
+      PARAMETERS = {}
+      INPUTS = {}
+      OUTPUTS = {}
+      TYPE_ANNOTATION = types.ComponentSpec
+
+    class InvalidAnnotationComponent(base_component.BaseComponent):
+
+      SPEC_CLASS = InvalidAnnotationComponentSpec
+      EXECUTOR_SPEC = executor_spec.ExecutorClassSpec(
+          base_executor.BaseExecutor)
+
+    with self.assertRaisesRegex(TypeError, "not a subclass of SystemExecution"):
+      _ = InvalidAnnotationComponent(
+          spec=InvalidAnnotationComponentSpec()).type_annotation
+
+    class MyTrain(SystemExecution):
+      MLMD_SYSTEM_BASE_TYPE = "Train"
+
+    class MyTrainerComponentSpec(types.ComponentSpec):
+      PARAMETERS = {}
+      INPUTS = {}
+      OUTPUTS = {}
+      TYPE_ANNOTATION = MyTrain
+
+    class MyTrainerComponent(base_component.BaseComponent):
+
+      SPEC_CLASS = MyTrainerComponentSpec
+      EXECUTOR_SPEC = executor_spec.ExecutorClassSpec(
+          base_executor.BaseExecutor)
+
+    self.assertEqual(
+        MyTrainerComponent(spec=MyTrainerComponentSpec()).type_annotation
+        .MLMD_SYSTEM_BASE_TYPE, "Train")
 
   def testComponentExecutorClass(self):
 

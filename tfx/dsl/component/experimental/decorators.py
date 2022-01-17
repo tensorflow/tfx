@@ -80,9 +80,10 @@ class _FunctionExecutor(base_executor.BaseExecutor):
   # avoid being interpreted as a bound method (i.e. one taking `self` as its
   # first argument.
   _FUNCTION = staticmethod(lambda: None)
-  # Set of output names that are primitive type values returned from the user
-  # function.
-  _RETURNED_VALUES = set()
+  # Dictionary mapping output names that are primitive type values returned from
+  # the user function to whether they are optional (and thus has a nullable
+  # return value).
+  _RETURNED_VALUES = {}
 
   def Do(self, input_dict: Dict[str, List[tfx_types.Artifact]],
          output_dict: Dict[str, List[tfx_types.Artifact]],
@@ -141,10 +142,14 @@ class _FunctionExecutor(base_executor.BaseExecutor):
            'outputs (got %r instead).') % (self._FUNCTION, outputs))
 
     # Assign returned ValueArtifact values.
-    for name in self._RETURNED_VALUES:
+    for name, is_optional in self._RETURNED_VALUES.items():
       if name not in outputs:
         raise ValueError(
             'Did not receive expected output %r as return value from '
+            'component executor function %s.' % (name, self._FUNCTION))
+      if not is_optional and outputs[name] is None:
+        raise ValueError(
+            'Non-nullable output %r received None return value from '
             'component executor function %s.' % (name, self._FUNCTION))
       try:
         output_dict[name][0].value = outputs[name]
@@ -185,9 +190,10 @@ def component(func: types.FunctionType) -> Callable[..., Any]:
   The return value typehint should be either empty or `None`, in the case of a
   component function that has no return values, or an instance of
   `OutputDict(key_1=type_1, ...)`, where each key maps to a given type (each
-  type is a primitive value type, i.e. `int`, `float`, `str` or `bytes`), to
-  indicate that the return value is a dictionary with specified keys and value
-  types.
+  type is a primitive value type, i.e. `int`, `float`, `str` or `bytes`; or
+  `Optional[T]`, where T is a primitive type value, in which case `None` can be
+  returned), to indicate that the return value is a dictionary with specified
+  keys and value types.
 
   Note that output artifacts should not be included in the return value
   typehint; they should be included as `OutputArtifact` annotations in the

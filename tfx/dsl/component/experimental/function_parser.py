@@ -22,7 +22,7 @@ Internal use only. No backwards compatibility guarantees.
 import enum
 import inspect
 import types
-from typing import Any, Dict, Optional, Set, Tuple, Type, Union
+from typing import Any, Dict, Optional, Tuple, Type, Union
 
 from tfx.dsl.component.experimental import annotations
 from tfx.types import artifact
@@ -41,6 +41,7 @@ _PRIMITIVE_TO_ARTIFACT = {
     float: standard_artifacts.Float,
     str: standard_artifacts.String,
     bytes: standard_artifacts.Bytes,
+    bool: standard_artifacts.Boolean,
 }
 
 
@@ -102,7 +103,7 @@ def _parse_signature(
     Dict[str, Type[Union[int, float, str, bytes]]],
     Dict[str, Any],
     Dict[str, ArgFormats],
-    Set[str]]:
+    Dict[str, bool]]:
   """Parses signature of a typehint-annotated component executor function.
 
   Args:
@@ -125,8 +126,9 @@ def _parse_signature(
       the function (given by a value of the `ArgFormats` enum).
     arg_defaults: Dictionary mapping names of optional arguments to default
       values.
-    returned_outputs: A set of output names that are declared as ValueArtifact
-      returned outputs.
+    returned_outputs: A dictionary mapping output names that are declared as
+      ValueArtifact returned outputs to whether the output was declared
+      Optional (and thus has a nullable return value).
   """
   # Extract optional arguments as dict from name to its declared optional value.
   arg_defaults = {}
@@ -139,7 +141,7 @@ def _parse_signature(
   outputs = {}
   parameters = {}
   arg_formats = {}
-  returned_outputs = set()
+  returned_outputs = {}
   for arg in argspec.args:
     arg_typehint = typehints[arg]
     # If the typehint is `Optional[T]` for a primitive type `T`, unwrap it.
@@ -196,9 +198,13 @@ def _parse_signature(
 
   if 'return' in typehints and typehints['return'] not in (None, type(None)):
     for arg, arg_typehint in typehints['return'].kwargs.items():
-      if arg_typehint in _PRIMITIVE_TO_ARTIFACT:
+      if arg_typehint in _OPTIONAL_PRIMITIVE_MAP:
+        unwrapped_typehint = _OPTIONAL_PRIMITIVE_MAP[arg_typehint]
+        outputs[arg] = _PRIMITIVE_TO_ARTIFACT[unwrapped_typehint]
+        returned_outputs[arg] = True
+      elif arg_typehint in _PRIMITIVE_TO_ARTIFACT:
         outputs[arg] = _PRIMITIVE_TO_ARTIFACT[arg_typehint]
-        returned_outputs.add(arg)
+        returned_outputs[arg] = False
       else:
         raise ValueError(
             ('Unknown type hint annotation %r for returned output %r on '
@@ -216,7 +222,7 @@ def parse_typehint_component_function(
     Dict[str, Type[Union[int, float, str, bytes]]],
     Dict[str, Any],
     Dict[str, ArgFormats],
-    Set[str]]:
+    Dict[str, bool]]:
   """Parses the given component executor function.
 
   This method parses a typehinted-annotated Python function that is intended to
@@ -241,8 +247,9 @@ def parse_typehint_component_function(
       the function (given by a value of the `ArgFormats` enum).
     arg_defaults: Dictionary mapping names of optional arguments to default
       values.
-    returned_outputs: A set of output names that are declared as ValueArtifact
-      returned outputs.
+    returned_outputs: A dictionary mapping output names that are declared as
+      ValueArtifact returned outputs to whether the output was declared
+      Optional (and thus has a nullable return value).
   """
   # Check input argument type.
   if not isinstance(func, types.FunctionType):

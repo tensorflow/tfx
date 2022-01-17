@@ -32,30 +32,77 @@ def _run_executor(args, pipeline_args) -> None:
 
   # pylint: disable=line-too-long
   _run_executor() is used to invoke a class subclassing
-  tfx.dsl.components.base.base_executor.BaseExecutor.  This function can be used for
+  tfx.dsl.components.base.base_executor.BaseExecutor.  This function can be used
+  for
   both invoking the executor on remote environments as well as for unit testing
   of executors.
 
   How to invoke an executor as standalone:
-  # TODO(b/132958430): Create utility script to generate arguments for run_executor.py
+  # TODO(b/132958430): Create utility script to generate arguments for
+  run_executor.py
   First, the input data needs to be prepared.  An easy way to generate the test
   data is to fully run the pipeline once.  This will generate the data to be
   used for testing as well as log the artifacts to be used as input parameters.
   In each executed component, three log entries will be generated similar to the
   below:
   ```
-  [2019-05-16 08:59:27,117] {logging_mixin.py:95} INFO - [2019-05-16 08:59:27,116] {base_executor.py:72} INFO - Starting Executor execution.
-  [2019-05-16 08:59:27,117] {logging_mixin.py:95} INFO - [2019-05-16 08:59:27,117] {base_executor.py:74} INFO - Inputs for Executor is: {"input_base": [{"artifact": {"id": "1", "typeId": "1", "uri": "/usr/local/google/home/khaas/taxi/data/simple", "properties": {"split": {"stringValue": ""}, "state": {"stringValue": "published"}, "span": {"intValue": "1"}, "type_name": {"stringValue": "ExternalPath"}}}, "artifact_type": {"id": "1", "name": "ExternalPath", "properties": {"span": "INT", "name": "STRING", "type_name": "STRING", "split": "STRING", "state": "STRING"}}}]}
-  [2019-05-16 08:59:27,117] {logging_mixin.py:95} INFO - [2019-05-16 08:59:27,117] {base_executor.py:76} INFO - Outputs for Executor is: {"examples": [{"artifact": {"uri": "/usr/local/google/home/khaas/tfx/pipelines/chicago_taxi_simple/CsvExampleGen/examples/1/train/", "properties": {"type_name": {"stringValue": "ExamplesPath"}, "split": {"stringValue": "train"}, "span": {"intValue": "1"}}}, "artifact_type": {"name": "ExamplesPath", "properties": {"name": "STRING", "type_name": "STRING", "split": "STRING", "state": "STRING", "span": "INT"}}}, {"artifact": {"uri": "/usr/local/google/home/khaas/tfx/pipelines/chicago_taxi_simple/CsvExampleGen/examples/1/eval/", "properties": {"type_name": {"stringValue": "ExamplesPath"}, "split": {"stringValue": "eval"}, "span": {"intValue": "1"}}}, "artifact_type": {"name": "ExamplesPath", "properties": {"name": "STRING", "type_name": "STRING", "split": "STRING", "state": "STRING", "span": "INT"}}}]}
-  [2019-05-16 08:59:27,117] {logging_mixin.py:95} INFO - [2019-05-16 08:59:27,117] {base_executor.py:78} INFO - Execution properties for Executor is: {"output": "{  \"splitConfig\": {\"splits\": [{\"name\": \"train\", \"hashBuckets\": 2}, {\"name\": \"eval\",\"hashBuckets\": 1}]}}"}
+  [2019-05-16 08:59:27,117] {logging_mixin.py:95} INFO - [2019-05-16
+  08:59:27,116] {base_executor.py:72} INFO - Starting Executor execution.
+  [2019-05-16 08:59:27,117] {logging_mixin.py:95} INFO - [2019-05-16
+  08:59:27,117] {base_executor.py:74} INFO - Inputs for Executor is:
+  {"input_base": [{"artifact": {"id": "1", "typeId": "1", "uri":
+  "/usr/local/google/home/khaas/taxi/data/simple", "properties": {"split":
+  {"stringValue": ""}, "state": {"stringValue": "published"}, "span":
+  {"intValue": "1"}, "type_name": {"stringValue": "ExternalPath"}}},
+  "artifact_type": {"id": "1", "name": "ExternalPath", "properties": {"span":
+  "INT", "name": "STRING", "type_name": "STRING", "split": "STRING", "state":
+  "STRING"}}}]}
+  [2019-05-16 08:59:27,117] {logging_mixin.py:95} INFO - [2019-05-16
+  08:59:27,117] {base_executor.py:76} INFO - Outputs for Executor is:
+  {"examples": [{"artifact": {"uri":
+  "/usr/local/google/home/khaas/tfx/pipelines/chicago_taxi_simple/CsvExampleGen/examples/1/train/",
+  "properties": {"type_name": {"stringValue": "ExamplesPath"}, "split":
+  {"stringValue": "train"}, "span": {"intValue": "1"}}}, "artifact_type":
+  {"name": "ExamplesPath", "properties": {"name": "STRING", "type_name":
+  "STRING", "split": "STRING", "state": "STRING", "span": "INT"}}}, {"artifact":
+  {"uri":
+  "/usr/local/google/home/khaas/tfx/pipelines/chicago_taxi_simple/CsvExampleGen/examples/1/eval/",
+  "properties": {"type_name": {"stringValue": "ExamplesPath"}, "split":
+  {"stringValue": "eval"}, "span": {"intValue": "1"}}}, "artifact_type":
+  {"name": "ExamplesPath", "properties": {"name": "STRING", "type_name":
+  "STRING", "split": "STRING", "state": "STRING", "span": "INT"}}}]}
+  [2019-05-16 08:59:27,117] {logging_mixin.py:95} INFO - [2019-05-16
+  08:59:27,117] {base_executor.py:78} INFO - Execution properties for Executor
+  is: {"output": "{  \"splitConfig\": {\"splits\": [{\"name\": \"train\",
+  \"hashBuckets\": 2}, {\"name\": \"eval\",\"hashBuckets\": 1}]}}"}
   ```
   Each of these map directly to the input parameters expected by run_executor():
   ```
   python scripts/run_executor.py \
-      --executor_class_path=tfx.components.example_gen.csv_example_gen.executor.Executor \
-      --inputs={"input_base": [{"artifact": {"id": "1", "typeId": "1", "uri": "/usr/local/google/home/khaas/taxi/data/simple", "properties": {"split": {"stringValue": ""}, "state": {"stringValue": "published"}, "span": {"intValue": "1"}, "type_name": {"stringValue": "ExternalPath"}}}, "artifact_type": {"id": "1", "name": "ExternalPath", "properties": {"span": "INT", "name": "STRING", "type_name": "STRING", "split": "STRING", "state": "STRING"}}}]} \
-      --outputs={"examples": [{"artifact": {"uri": "/usr/local/google/home/khaas/tfx/pipelines/chicago_taxi_simple/CsvExampleGen/examples/1/train/", "properties": {"type_name": {"stringValue": "ExamplesPath"}, "split": {"stringValue": "train"}, "span": {"intValue": "1"}}}, "artifact_type": {"name": "ExamplesPath", "properties": {"name": "STRING", "type_name": "STRING", "split": "STRING", "state": "STRING", "span": "INT"}}}, {"artifact": {"uri": "/usr/local/google/home/khaas/tfx/pipelines/chicago_taxi_simple/CsvExampleGen/examples/1/eval/", "properties": {"type_name": {"stringValue": "ExamplesPath"}, "split": {"stringValue": "eval"}, "span": {"intValue": "1"}}}, "artifact_type": {"name": "ExamplesPath", "properties": {"name": "STRING", "type_name": "STRING", "split": "STRING", "state": "STRING", "span": "INT"}}}]} \
-      --exec-properties={"output": "{  \"splitConfig\": {\"splits\": [{\"name\": \"train\", \"hashBuckets\": 2}, {\"name\": \"eval\",\"hashBuckets\": 1}]}}"}
+      --executor_class_path=tfx.components.example_gen.csv_example_gen.executor.Executor
+      \
+      --inputs={"input_base": [{"artifact": {"id": "1", "typeId": "1", "uri":
+      "/usr/local/google/home/khaas/taxi/data/simple", "properties": {"split":
+      {"stringValue": ""}, "state": {"stringValue": "published"}, "span":
+      {"intValue": "1"}, "type_name": {"stringValue": "ExternalPath"}}},
+      "artifact_type": {"id": "1", "name": "ExternalPath", "properties":
+      {"span": "INT", "name": "STRING", "type_name": "STRING", "split":
+      "STRING", "state": "STRING"}}}]} \
+      --outputs={"examples": [{"artifact": {"uri":
+      "/usr/local/google/home/khaas/tfx/pipelines/chicago_taxi_simple/CsvExampleGen/examples/1/train/",
+      "properties": {"type_name": {"stringValue": "ExamplesPath"}, "split":
+      {"stringValue": "train"}, "span": {"intValue": "1"}}}, "artifact_type":
+      {"name": "ExamplesPath", "properties": {"name": "STRING", "type_name":
+      "STRING", "split": "STRING", "state": "STRING", "span": "INT"}}},
+      {"artifact": {"uri":
+      "/usr/local/google/home/khaas/tfx/pipelines/chicago_taxi_simple/CsvExampleGen/examples/1/eval/",
+      "properties": {"type_name": {"stringValue": "ExamplesPath"}, "split":
+      {"stringValue": "eval"}, "span": {"intValue": "1"}}}, "artifact_type":
+      {"name": "ExamplesPath", "properties": {"name": "STRING", "type_name":
+      "STRING", "split": "STRING", "state": "STRING", "span": "INT"}}}]} \
+      --exec-properties={"output": "{  \"splitConfig\": {\"splits\": [{\"name\":
+      \"train\", \"hashBuckets\": 2}, {\"name\": \"eval\",\"hashBuckets\":
+      1}]}}"}
   ```
   # pylint: disable=line-too-long
 
@@ -67,8 +114,8 @@ def _run_executor(args, pipeline_args) -> None:
       - exec_properties: The execution properties to be used by this execution,
         serialized as JSON.
     pipeline_args: Optional parameter that maps to the optional_pipeline_args
-    parameter in the pipeline, which provides additional configuration options
-    for apache-beam and tensorflow.logging.
+      parameter in the pipeline, which provides additional configuration options
+      for apache-beam and tensorflow.logging.
 
   Returns:
     None
@@ -119,15 +166,26 @@ def parse_flags(argv: List[str]) -> Tuple[argparse.Namespace, List[str]]:
   # pylint: disable=line-too-long
   Args:
     argv: Unparsed arguments for run_executor.py
-      --executor_class_path: Python class of executor in format of <module>.<class>.
+      --executor_class_path: Python class of executor in format of
+        <module>.<class>.
       --temp_directory_path: Common temp directory path for executors.
-      --inputs: JSON serialized dict of input artifacts.  If the input needs to be base64-encoded, use --inputs-base64 instead.
-      --inputs-base64: base64-encoded JSON serialized dict of input artifacts.  If the input is not base64-encoded, use --inputs instead.
-      --outputs: JSON serialized dict of output artifacts.  If the output needs to be base64-encoded, use --outputs-base64 instead.
-      --outputs-base64: base64-encoded JSON serialized dict of output artifacts.  If the output is not base64-encoded, use --outputs instead.
-      --exec_properties: JSON serialized dict of (non artifact) execution properties.  If the execution properties need to be base64-encoded, use --exec_properties-base64 instead.
-      --exec_properties-base64: base64-encoded JSON serialized dict of (non artifact) execution properties.  If the execution properties are not base64-encoded, use --exec_properties instead.
-      --write_outputs_stdout: Write outputs to last line of stdout, which will be pushed to xcom in Airflow. Please ignore by other users or orchestrators.
+      --inputs: JSON serialized dict of input artifacts.  If the input needs to
+        be base64-encoded, use --inputs-base64 instead.
+      --inputs-base64: base64-encoded JSON serialized dict of input artifacts.
+        If the input is not base64-encoded, use --inputs instead.
+      --outputs: JSON serialized dict of output artifacts.  If the output needs
+        to be base64-encoded, use --outputs-base64 instead.
+      --outputs-base64: base64-encoded JSON serialized dict of output artifacts.
+        If the output is not base64-encoded, use --outputs instead.
+      --exec_properties: JSON serialized dict of (non artifact) execution
+        properties.  If the execution properties need to be base64-encoded, use
+        --exec_properties-base64 instead.
+      --exec_properties-base64: base64-encoded JSON serialized dict of (non
+        artifact) execution properties.  If the execution properties are not
+        base64-encoded, use --exec_properties instead.
+      --write_outputs_stdout: Write outputs to last line of stdout, which will
+        be pushed to xcom in Airflow. Please ignore by other users or
+        orchestrators.
   # pylint: disable=line-too-long
 
   Returns:
@@ -175,7 +233,7 @@ def parse_flags(argv: List[str]) -> Tuple[argparse.Namespace, List[str]]:
   execution_group.add_argument(
       '--exec-properties-base64',
       type=str,
-      help='json serialized dict of (non artifact) execution properties.')
+      help='base64 encoded dict of (non artifact) execution properties.')
 
   parser.add_argument(
       '--write-outputs-stdout',
@@ -195,4 +253,3 @@ def main(parsed_argv: Tuple[argparse.Namespace, List[str]]):
 
 if __name__ == '__main__':
   app.run(main, flags_parser=parse_flags)
-

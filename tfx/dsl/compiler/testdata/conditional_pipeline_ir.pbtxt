@@ -131,6 +131,7 @@ nodes {
     node_info {
       type {
         name: "tfx.components.statistics_gen.component.StatisticsGen"
+        base_type: PROCESS
       }
       id: "StatisticsGen"
     }
@@ -263,6 +264,7 @@ nodes {
     node_info {
       type {
         name: "tfx.components.schema_gen.component.SchemaGen"
+        base_type: PROCESS
       }
       id: "SchemaGen"
     }
@@ -394,6 +396,7 @@ nodes {
     node_info {
       type {
         name: "tfx.components.trainer.component.Trainer"
+        base_type: TRAIN
       }
       id: "Trainer"
     }
@@ -601,6 +604,7 @@ nodes {
     node_info {
       type {
         name: "tfx.components.evaluator.component.Evaluator"
+        base_type: EVALUATE
       }
       id: "Evaluator"
     }
@@ -1032,6 +1036,7 @@ nodes {
     node_info {
       type {
         name: "tfx.components.pusher.component.Pusher"
+        base_type: DEPLOY
       }
       id: "Pusher"
     }

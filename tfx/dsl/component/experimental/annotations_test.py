@@ -47,17 +47,17 @@ class AnnotationsTest(tf.test.TestCase):
 
   def testPrimitiveTypeGenericAnnotation(self):
     # Error: type hint whose parameter is not a primitive type
-    with self.assertRaisesRegex(ValueError,
-                                'T to be `int`, `float`, `str` or `bytes`'):
+    with self.assertRaisesRegex(
+        ValueError, 'T to be `int`, `float`, `str`, `bytes` or `bool`'):
       _ = annotations._PrimitiveTypeGeneric[artifact.Artifact]
-    with self.assertRaisesRegex(ValueError,
-                                'T to be `int`, `float`, `str` or `bytes`'):
+    with self.assertRaisesRegex(
+        ValueError, 'T to be `int`, `float`, `str`, `bytes` or `bool`'):
       _ = annotations._PrimitiveTypeGeneric[object]
-    with self.assertRaisesRegex(ValueError,
-                                'T to be `int`, `float`, `str` or `bytes`'):
+    with self.assertRaisesRegex(
+        ValueError, 'T to be `int`, `float`, `str`, `bytes` or `bool`'):
       _ = annotations._PrimitiveTypeGeneric[123]
-    with self.assertRaisesRegex(ValueError,
-                                'T to be `int`, `float`, `str` or `bytes`'):
+    with self.assertRaisesRegex(
+        ValueError, 'T to be `int`, `float`, `str`, `bytes` or `bool`'):
       _ = annotations._PrimitiveTypeGeneric['string']
 
     # OK.
@@ -65,12 +65,14 @@ class AnnotationsTest(tf.test.TestCase):
     _ = annotations._PrimitiveTypeGeneric[float]
     _ = annotations._PrimitiveTypeGeneric[str]
     _ = annotations._PrimitiveTypeGeneric[bytes]
+    _ = annotations._PrimitiveTypeGeneric[bool]
 
   def testParameterUsage(self):
     _ = annotations.Parameter[int]
     _ = annotations.Parameter[float]
     _ = annotations.Parameter[str]
     _ = annotations.Parameter[bytes]
+    _ = annotations.Parameter[bool]
 
 
 if __name__ == '__main__':

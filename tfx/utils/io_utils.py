@@ -14,8 +14,9 @@
 """Utility class for I/O."""
 
 import os
+import re
 import tempfile
-from typing import List, TypeVar
+from typing import List, TypeVar, Iterable
 
 from tfx.dsl.io import fileio
 from google.protobuf import json_format
@@ -55,23 +56,65 @@ def copy_file(src: str, dst: str, overwrite: bool = False):
   fileio.copy(src, dst, overwrite=overwrite)
 
 
-def copy_dir(src: str, dst: str) -> None:
-  """Copies the whole directory recursively from source to destination."""
+def copy_dir(
+    src: str,
+    dst: str,
+    allow_regex_patterns: Iterable[str] = (),
+    deny_regex_patterns: Iterable[str] = (),
+) -> None:
+  """Copies the whole directory recursively from source to destination.
+
+  Args:
+    src: Source directory to copy from. <src>/a/b.txt will be copied to
+        <dst>/a/b.txt.
+    dst: Destination directoy to copy to. <src>/a/b.txt will be copied to
+        <dst>/a/b.txt.
+    allow_regex_patterns: Optional list of allowlist regular expressions to
+        filter from. Pattern is matched against the full path of the file.
+        Files and subdirectories that do not match any of the patterns will not
+        be copied.
+    deny_regex_patterns: Optional list of denylist regular expressions to
+        filter from. Pattern is matched against the full path of the file.
+        Files and subdirectories that match any of the patterns will not be
+        copied.
+  """
   src = src.rstrip('/')
   dst = dst.rstrip('/')
+
+  allow_regex_patterns = [re.compile(p) for p in allow_regex_patterns]
+  deny_regex_patterns = [re.compile(p) for p in deny_regex_patterns]
+
+  def should_copy(path):
+    if allow_regex_patterns:
+      if not any(p.search(path) for p in allow_regex_patterns):
+        return False
+    if deny_regex_patterns:
+      if any(p.search(path) for p in deny_regex_patterns):
+        return False
+    return True
 
   if fileio.exists(dst):
     fileio.rmtree(dst)
   fileio.makedirs(dst)
 
   for dir_name, sub_dirs, leaf_files in fileio.walk(src):
+    new_dir_name = dir_name.replace(src, dst, 1)
+    new_dir_exists = fileio.isdir(new_dir_name)
+
     for leaf_file in leaf_files:
       leaf_file_path = os.path.join(dir_name, leaf_file)
-      new_file_path = os.path.join(dir_name.replace(src, dst, 1), leaf_file)
-      fileio.copy(leaf_file_path, new_file_path)
+      if should_copy(leaf_file_path):
+        if not new_dir_exists:
+          # Parent directory may not have been created yet if its name is not
+          # in the allowlist, but its containing file is.
+          fileio.makedirs(new_dir_name)
+          new_dir_exists = True
+        new_file_path = os.path.join(new_dir_name, leaf_file)
+        fileio.copy(leaf_file_path, new_file_path)
 
     for sub_dir in sub_dirs:
-      fileio.makedirs(os.path.join(dir_name.replace(src, dst, 1), sub_dir))
+      if should_copy(os.path.join(dir_name, sub_dir)):
+        fileio.makedirs(os.path.join(new_dir_name, sub_dir))
 
 
 def get_only_uri_in_dir(dir_path: str) -> str:

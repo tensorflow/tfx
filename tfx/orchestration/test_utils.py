@@ -24,8 +24,6 @@ import time
 from absl import logging
 import docker
 
-from google.cloud import storage
-
 
 class Timer:
   """Helper class to time operations in pipeline e2e tests."""
@@ -133,20 +131,3 @@ def build_and_push_docker_image(container_image: str, repo_base: str):
     client.images.push(repository=container_image)
   with Timer('DeletingLocalTFXContainerImage'):
     client.images.remove(image=container_image)
-
-
-def delete_gcs_files(gcp_project_id: str, bucket_name: str, path: str):
-  """Deletes files under specified path in the test bucket.
-
-  Args:
-    gcp_project_id: GCP project ID.
-    bucket_name: GCS bucket name.
-    path: path(or prefix) of the file to delete.
-  """
-  client = storage.Client(project=gcp_project_id)
-  bucket = client.get_bucket(bucket_name)
-  logging.info('Deleting files under GCS bucket path: %s', path)
-
-  with Timer('ListingAndDeletingFilesFromGCS'):
-    blobs = list(bucket.list_blobs(prefix=path))
-    bucket.delete_blobs(blobs)
