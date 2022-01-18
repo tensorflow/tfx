@@ -227,7 +227,7 @@ service account for your training job in the pipeline code. More details see
 
 [E2E Example](https://github.com/tensorflow/tfx/blob/master/tfx/examples/penguin/penguin_pipeline_local.py)
 
-[E2E CloudTuner on GCP Example](https://github.com/tensorflow/tfx/blob/master/tfx/examples/penguin/penguin_pipeline_kubeflow_gcp.py)
+[E2E CloudTuner on GCP Example](https://github.com/tensorflow/tfx/blob/master/tfx/examples/penguin/penguin_pipeline_kubeflow.py)
 
 [KerasTuner tutorial](https://www.tensorflow.org/tutorials/keras/keras_tuner)
 
