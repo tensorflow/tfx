@@ -617,12 +617,12 @@ Trainer = Trainer(
 
 Default behavior is provide metrics computed on the 'eval' split.
 
-To compute a evaluation statistics on custom splits, set the `example_splits`
-for Evaluator component. For example:
+To compute evaluation statistics on custom splits, set the `example_splits` for
+Evaluator component. For example:
 
 ```python
 # Compute metrics on the 'eval1' split and the 'eval2' split.
-Trainer = Evaluator(
+evaluator = Evaluator(
       examples=example_gen.outputs['examples'],
       model=trainer.outputs['model'],
       example_splits=['eval1', 'eval2'])
