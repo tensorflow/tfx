@@ -37,7 +37,7 @@ class SchemaGen(base_component.BaseComponent):
     - TensorFlow Transform
     - TensorFlow Model Analysis
 
-  In a typical TFX pipeline, the SchemaGen component generates a schema which
+  In a typical TFX pipeline, the SchemaGen component generates a schema which is
   is consumed by the other pipeline components.
 
   ## Example
