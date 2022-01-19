@@ -220,7 +220,7 @@ class KubeflowDagRunnerTest(test_case_utils.TfxTest):
       self.assertEqual('/secret/gcp-credentials/user-gcp-sa.json',
                        env[0]['value'])
 
-      container_1 = containers[0]
+      container_1 = containers[1]
       env = [
           env for env in container_1['container']['env']
           if env['name'] == 'GOOGLE_APPLICATION_CREDENTIALS'
