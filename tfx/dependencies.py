@@ -51,7 +51,7 @@ def select_constraint(default, nightly=None, git_master=None):
 
 def make_pipeline_sdk_required_install_packages():
   return [
-      'absl-py>=0.9,<0.13',
+      'absl-py>=0.9,<2.0.0',
       'ml-metadata' + select_constraint(
           # LINT.IfChange
           default='>=1.5.0,<1.6.0',
@@ -89,7 +89,7 @@ def make_required_install_packages():
       # dependency set with TF 2.x without the sync.
       # pylint: disable=line-too-long
       'tensorflow' + select_constraint(
-          '>=1.15.2,!=2.0.*,!=2.1.*,!=2.2.*,!=2.3.*,!=2.4.*,!=2.5.*,!=2.6.*,<2.8'),
+          '>=1.15.5,!=2.0.*,!=2.1.*,!=2.2.*,!=2.3.*,!=2.4.*,!=2.5.*,!=2.6.*,<2.8'),
       # pylint: enable=line-too-long
       'tensorflow-hub>=0.9.0,<0.13',
       'tensorflow-data-validation' + select_constraint(
