@@ -33,7 +33,7 @@ message PushDestination {
     // `base_directory`. (e.g. base_directory/1582798459)
     Versioning versioning = 6;
 
-    reserved 2, 3, 4, 5;
+    reserved 2, 3, 4, 5, 7, 8, 9;
   }
 }
 
