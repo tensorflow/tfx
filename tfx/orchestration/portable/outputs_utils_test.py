@@ -13,7 +13,6 @@
 # limitations under the License.
 """Tests for tfx.orchestration.portable.output_utils."""
 import os
-from unittest import mock
 
 from absl.testing import parameterized
 import tensorflow as tf
@@ -298,24 +297,6 @@ class OutputUtilsTest(test_case_utils.TfxTest, parameterized.TestCase):
         else:
           with fileio.open(os.path.join(artifact.uri, 'output'), 'r') as f:
             self.assertEqual(f.read(), 'test')
-
-  def testRemoveStatefulWorkingDirSucceeded(self):
-    stateful_working_dir = (
-        self._output_resolver().get_stateful_working_directory())
-    self.assertTrue(fileio.exists(stateful_working_dir))
-
-    outputs_utils.remove_stateful_working_dir(stateful_working_dir)
-    self.assertFalse(fileio.exists(stateful_working_dir))
-
-  def testRemoveStatefulWorkingDirNotFoundError(self):
-    # removing a nonexisting path is an noop
-    outputs_utils.remove_stateful_working_dir('/a/not/exist/path')
-
-  @mock.patch.object(fileio, 'rmtree')
-  def testRemoveStatefulWorkingDirOtherError(self, rmtree_fn):
-    rmtree_fn.side_effect = ValueError('oops')
-    with self.assertRaisesRegex(ValueError, 'oops'):
-      outputs_utils.remove_stateful_working_dir('/a/fake/path')
 
   def testPopulateOutputArtifact(self):
     executor_output = execution_result_pb2.ExecutorOutput()

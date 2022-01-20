@@ -471,13 +471,6 @@ class Launcher:
           'been deleted by the executor. This is the full execution_info: %s',
           execution_info.tmp_dir, execution_info.to_proto())
 
-  def _clean_up_stateful_execution_info(
-      self, execution_info: data_types.ExecutionInfo):
-    """Post execution clean up."""
-    logging.info('Cleaning up stateful execution info.')
-    outputs_utils.remove_stateful_working_dir(
-        execution_info.stateful_working_dir)
-
   def _update_with_driver_output(
       self,
       driver_output: driver_output_pb2.DriverOutput,
@@ -556,7 +549,6 @@ class Launcher:
           executor_watcher.stop()
 
       logging.info('Execution %d succeeded.', execution_info.execution_id)
-      self._clean_up_stateful_execution_info(execution_info)
 
       # TODO(b/182316162): Unify publisher handing so that post-execution
       # artifact logic is more cleanly handled.

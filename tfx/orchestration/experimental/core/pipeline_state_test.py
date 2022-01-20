@@ -442,17 +442,12 @@ class PipelineStateTest(test_utils.TfxTest):
       }) as pipeline_state:
         pipeline_state.set_pipeline_execution_state(
             metadata_store_pb2.Execution.COMPLETE)
-        pipeline_state.initiate_stop(
-            status_lib.Status(code=status_lib.Code.CANCELLED, message='msg'))
+        pipeline_state.save_property(pstate._PIPELINE_STATUS_MSG, 'msg')
 
       views = pstate.PipelineView.load_all(
           m, task_lib.PipelineUid.from_pipeline(pipeline))
       self.assertLen(views, 1)
       self.assertEqual(views[0].pipeline_run_id, '001')
-      self.assertEqual(
-          views[0].pipeline_status_code,
-          run_state_pb2.RunState.StatusCodeValue(
-              value=status_lib.Code.CANCELLED))
       self.assertEqual(views[0].pipeline_status_message, 'msg')
       self.assertEqual({'foo': 1, 'bar': 'baz'}, views[0].pipeline_run_metadata)
       self.assertProtoEquals(pipeline, views[0].pipeline)
@@ -545,10 +540,8 @@ class PipelineStateTest(test_utils.TfxTest):
           run_states_dict['Trainer'])
       self.assertEqual(
           run_state_pb2.RunState(
-              state=run_state_pb2.RunState.FAILED,
-              status_code=run_state_pb2.RunState.StatusCodeValue(
-                  value=status_lib.Code.ABORTED),
-              status_msg='foobar error'), run_states_dict['Evaluator'])
+              state=run_state_pb2.RunState.FAILED, status_msg='foobar error'),
+          run_states_dict['Evaluator'])
       self.assertEqual(
           run_state_pb2.RunState(state=run_state_pb2.RunState.READY),
           run_states_dict['Pusher'])

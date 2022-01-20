@@ -76,23 +76,23 @@ def clear_output_dirs(output_dict: Dict[str, List[types.Artifact]]) -> None:
         fileio.mkdir(artifact.uri)
 
 
-def remove_stateful_working_dir(stateful_working_dir: str) -> None:
-  """Remove stateful_working_dir."""
-  # Clean up stateful working dir
-  # Note that:
-  # stateful_working_dir = os.path.join(
-  #    self._node_dir,
-  #    _SYSTEM,
-  #    _STATEFUL_WORKING_DIR, <-- we want to clean from this level down.
-  #    dir_suffix)
-  stateful_working_dir = os.path.abspath(
-      os.path.join(stateful_working_dir, os.pardir))
-  try:
-    fileio.rmtree(stateful_working_dir)
-  except fileio.NotFoundError:
-    logging.warning(
-        'stateful_working_dir %s is not found, not going to delete it.',
-        stateful_working_dir)
+# def remove_stateful_working_dir(stateful_working_dir: str) -> None:
+#   """Remove stateful_working_dir."""
+#   # Clean up stateful working dir
+#   # Note that:
+#   # stateful_working_dir = os.path.join(
+#   #    self._node_dir,
+#   #    _SYSTEM,
+#   #    _STATEFUL_WORKING_DIR, <-- we want to clean from this level down.
+#   #    dir_suffix)
+#   stateful_working_dir = os.path.abspath(
+#       os.path.join(stateful_working_dir, os.pardir))
+#   try:
+#     fileio.rmtree(stateful_working_dir)
+#   except fileio.NotFoundError:
+#     logging.warning(
+#         'stateful_working_dir %s is not found, not going to delete it.',
+#         stateful_working_dir)
 
 
 def _attach_artifact_properties(spec: pipeline_pb2.OutputSpec.ArtifactSpec,
@@ -291,6 +291,3 @@ def populate_exec_properties(
           'supported, going to drop it', type(value), key)
       continue
     executor_output.execution_properties[key].CopyFrom(v)
-
-
-

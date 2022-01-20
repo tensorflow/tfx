@@ -625,15 +625,6 @@ class PipelineView:
     return self.pipeline.runtime_spec.pipeline_run_id.field_value.string_value
 
   @property
-  def pipeline_status_code(
-      self) -> Optional[run_state_pb2.RunState.StatusCodeValue]:
-    if _PIPELINE_STATUS_CODE in self.execution.custom_properties:
-      return run_state_pb2.RunState.StatusCodeValue(
-          value=self.execution.custom_properties[_PIPELINE_STATUS_CODE]
-          .int_value)
-    return None
-
-  @property
   def pipeline_status_message(self) -> str:
     if _PIPELINE_STATUS_MSG in self.execution.custom_properties:
       return self.execution.custom_properties[_PIPELINE_STATUS_MSG].string_value
@@ -648,12 +639,13 @@ class PipelineView:
 
   def get_pipeline_run_state(self) -> run_state_pb2.RunState:
     """Returns current pipeline run state."""
-    state = run_state_pb2.RunState.UNKNOWN
     if self.execution.last_known_state in _EXECUTION_STATE_TO_RUN_STATE_MAP:
-      state = _EXECUTION_STATE_TO_RUN_STATE_MAP[self.execution.last_known_state]
+      return run_state_pb2.RunState(
+          state=_EXECUTION_STATE_TO_RUN_STATE_MAP[
+              self.execution.last_known_state],
+          status_msg=self.pipeline_status_message)
     return run_state_pb2.RunState(
-        state=state,
-        status_code=self.pipeline_status_code,
+        state=run_state_pb2.RunState.UNKNOWN,
         status_msg=self.pipeline_status_message)
 
   def get_node_run_states(self) -> Dict[str, run_state_pb2.RunState]:
@@ -662,13 +654,8 @@ class PipelineView:
     node_states_dict = _get_node_states_dict(self.execution)
     for node in get_all_pipeline_nodes(self.pipeline):
       node_state = node_states_dict.get(node.node_info.id, NodeState())
-      node_status_code_value = None
-      if node_state.status_code is not None:
-        node_status_code_value = run_state_pb2.RunState.StatusCodeValue(
-            value=node_state.status_code)
       result[node.node_info.id] = run_state_pb2.RunState(
           state=_NODE_STATE_TO_RUN_STATE_MAP[node_state.state],
-          status_code=node_status_code_value,
           status_msg=node_state.status_msg)
     return result
 
