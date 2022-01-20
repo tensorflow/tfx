@@ -27,6 +27,7 @@ from tfx.orchestration.portable import execution_publish_utils
 from tfx.orchestration.portable.mlmd import context_lib
 from tfx.orchestration.portable.mlmd import execution_lib
 from tfx.proto.orchestration import pipeline_pb2
+from tfx.types import standard_artifacts
 from tfx.utils import status as status_lib
 from tfx.utils import test_case_utils
 
@@ -58,6 +59,27 @@ def fake_example_gen_run(mlmd_connection, example_gen, span, version):
   """Writes fake example_gen output and successful execution to MLMD."""
   with mlmd_connection as m:
     return fake_example_gen_run_with_handle(m, example_gen, span, version)
+
+
+def fake_upstream_node_run_with_handle(mlmd_handle, upstream_node, tmp_path):
+  """Writes fake upstream_node output and successful execution to MLMD."""
+  num_output = standard_artifacts.Integer()
+  num_output.uri = tmp_path
+  num_output.value = 33
+  contexts = context_lib.prepare_contexts(mlmd_handle, upstream_node.contexts)
+  execution = execution_publish_utils.register_execution(
+      mlmd_handle, upstream_node.node_info.type, contexts)
+  execution_publish_utils.publish_succeeded_execution(
+      mlmd_handle, execution.id, contexts, {
+          'num': [num_output],
+      })
+  return execution
+
+
+def fake_upstream_node_run(mlmd_connection, upstream_node, tmp_path):
+  """Writes fake upstream node output and successful execution to MLMD."""
+  with mlmd_connection as m:
+    return fake_upstream_node_run_with_handle(m, upstream_node, tmp_path)
 
 
 def fake_component_output_with_handle(mlmd_handle,

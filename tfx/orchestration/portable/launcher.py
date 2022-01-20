@@ -311,7 +311,15 @@ class Launcher:
 
       input_artifacts = resolved_inputs[0]
 
-      # 4. Registers execution in metadata.
+      # 4. Resolve the dynamic exec properties from implicit input channels.
+      dynamic_exec_properties = data_types_utils.build_parsed_value_dict(
+          inputs_utils.resolve_parameters_with_schema(
+              node_parameters=self._pipeline_node.parameters,
+              input_dict=input_artifacts))
+
+      exec_properties.update(dynamic_exec_properties)
+
+      # 5. Registers execution in metadata.
       execution = self._register_or_reuse_execution(
           metadata_handler=m,
           contexts=contexts,
@@ -324,7 +332,7 @@ class Launcher:
             contexts=contexts,
             is_execution_needed=False)
 
-      # 5. Resolve output
+      # 6. Resolve output
       output_artifacts = self._output_resolver.generate_output_artifacts(
           execution.id)
 
@@ -343,7 +351,7 @@ class Launcher:
     # We reconnect to MLMD here because the custom driver closes MLMD connection
     # on returning.
     with self._mlmd_connection as m:
-      # 6. Check cached result
+      # 7. Check cached result
       cache_context = cache_utils.get_cache_context(
           metadata_handler=m,
           pipeline_node=self._pipeline_node,
@@ -354,7 +362,7 @@ class Launcher:
           parameters=exec_properties)
       contexts.append(cache_context)
 
-      # 7. Should cache be used?
+      # 8. Should cache be used?
       if self._pipeline_node.execution_options.caching_options.enable_cache:
         cached_outputs = cache_utils.get_cached_outputs(
             metadata_handler=m, cache_context=cache_context)
@@ -376,7 +384,7 @@ class Launcher:
               contexts=contexts,
               is_execution_needed=False)
 
-      # 8. Going to trigger executor.
+      # 9. Going to trigger executor.
       logging.info('Going to run a new execution %d', execution.id)
       return _ExecutionPreparationResult(
           execution_info=self._build_execution_info(

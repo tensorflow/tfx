@@ -16,8 +16,10 @@ from typing import Dict, Iterable, List, Optional, Mapping, Sequence, Union, cas
 
 from absl import logging
 from tfx import types
+from tfx.dsl.compiler import placeholder_utils
 from tfx.orchestration import data_types_utils
 from tfx.orchestration import metadata
+from tfx.orchestration.portable import data_types
 from tfx.orchestration.portable.input_resolution import exceptions
 from tfx.orchestration.portable.input_resolution import processor
 from tfx.orchestration.portable.mlmd import event_lib
@@ -289,12 +291,16 @@ def resolve_parameters(
 
 
 def resolve_parameters_with_schema(
-    node_parameters: pipeline_pb2.NodeParameters
+    node_parameters: pipeline_pb2.NodeParameters,
+    input_dict: Optional[typing_utils.ArtifactMultiMap] = None
 ) -> Dict[str, pipeline_pb2.Value]:
   """Resolves parameter schemas given parameter spec.
 
   Args:
     node_parameters: The spec to get parameters.
+    input_dict: Optional resolved input_dict that is used to resolve dynamic
+      parameters. If not provided, dynamic parameters will not be resolved and
+      not included in the final dict.
 
   Returns:
     A Dict of parameters with schema.
@@ -304,8 +310,63 @@ def resolve_parameters_with_schema(
   """
   result = {}
   for key, value in node_parameters.parameters.items():
+    if value.HasField('placeholder'):
+      continue
     if not value.HasField('field_value'):
       raise RuntimeError('Parameter value not ready for %s' % key)
     result[key] = value
+
+  if input_dict is not None:
+    dynamic_parameters_result = _resolve_dynamic_parameters(
+        node_parameters, input_dict)
+    result.update(dynamic_parameters_result)
+  return result
+
+
+def _resolve_dynamic_parameters(
+    node_parameters: pipeline_pb2.NodeParameters,
+    input_dict: typing_utils.ArtifactMultiMap
+) -> Dict[str, pipeline_pb2.Value]:
+  """Resolves parameter schemas given parameter spec.
+
+  Args:
+    node_parameters: The spec to get parameters.
+    input_dict: The input dict.
+
+  Returns:
+    A Dict of parameters with schema.
+
+  Raises:
+    RuntimeError: When there is no field_value available.
+  """
+  result = {}
+  converted_input_dict = {}
+  for key, val in input_dict.items():
+    converted_input_dict[key] = list(val)
+  for key, value in node_parameters.parameters.items():
+    if value.HasField('placeholder'):
+      execution_info = data_types.ExecutionInfo(
+          input_dict=converted_input_dict,
+          output_dict={},
+          exec_properties={})
+      context = placeholder_utils.ResolutionContext(
+          exec_info=execution_info)
+      resolved_val = placeholder_utils.resolve_placeholder_expression(
+          value.placeholder, context)
+      field_value = pipeline_pb2.Value()
+      val = metadata_store_pb2.Value()
+      resolved_val_type = resolved_val.__class__.__name__
+      if resolved_val_type == 'int':
+        val.int_value = resolved_val
+      elif resolved_val_type == 'float':
+        val.double_value = resolved_val
+      elif resolved_val_type == 'str':
+        val.string_value = resolved_val
+      else:
+        logging.warning('the resolved value type is not supported %s',
+                        resolved_val_type)
+
+      field_value.field_value.CopyFrom(val)
+      result[key] = field_value
 
   return result

@@ -452,6 +452,41 @@ class InputsUtilsTest(test_case_utils.TfxTest, _TestMixin):
     self.assertProtoPartiallyEquals(expected_schema,
                                     parameter_schemas['key_one'])
 
+    dynamic_parameters = pipeline_pb2.NodeParameters()
+    text_format.Parse(
+        """
+        parameters {
+          key: "input_num"
+          value {
+            placeholder {
+              operator {
+                artifact_value_op {
+                  expression {
+                    operator {
+                      index_op {
+                        expression {
+                          placeholder {
+                            key: "_test_placeholder"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }""", dynamic_parameters)
+    test_artifact = types.standard_artifacts.Integer()
+    test_artifact.uri = self.create_tempfile().full_path
+    test_artifact.value = 42
+    input_dict = {'_test_placeholder': [test_artifact]}
+    dynamic_parameters_res = inputs_utils.resolve_parameters_with_schema(
+        dynamic_parameters, input_dict)
+    self.assertEqual(len(dynamic_parameters_res), 1)
+    self.assertEqual(dynamic_parameters_res['input_num'].field_value.int_value,
+                     42)
+
 
 def unprocessed_artifacts_resolvers_available():
   try:

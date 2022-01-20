@@ -1,0 +1,18 @@
+# proto-file: tfx/proto/orchestration/placeholder.proto
+# proto-message: PlaceholderExpression
+
+operator {
+  artifact_value_op {
+    expression {
+      operator {
+        index_op {
+          expression {
+            placeholder {
+              key: "_component.num"
+            }
+          }
+        }
+      }
+    }
+  }
+}

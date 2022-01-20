@@ -329,6 +329,19 @@ class PlaceholderTest(tf.test.TestCase):
     component_spec = standard_component_specs.TransformSpec
     self.assertProtoEquals(placeholder.encode(component_spec), expected_pb)
 
+  def testProtoFutureValueOperator(self):
+    test_pb_filepath = os.path.join(
+        os.path.dirname(__file__), 'testdata',
+        'proto_placeholder_future_value_operator.pbtxt')
+    with open(test_pb_filepath) as text_pb_file:
+      expected_pb = text_format.ParseLines(
+          text_pb_file, placeholder_pb2.PlaceholderExpression())
+    output_channel = Channel(type=standard_artifacts.Integer)
+    placeholder = output_channel.future()[0].value
+    placeholder._key = '_component.num'
+    self.assertProtoEquals(
+        placeholder.encode(), expected_pb)
+
   def testComplicatedConcat(self):
     self._assert_placeholder_pb_equal_and_deepcopyable(
         'google/' + ph.output('model').uri + '/model/' + '0/' +
@@ -503,6 +516,31 @@ class ChannelWrappedPlaceholderTest(parameterized.TestCase, tf.test.TestCase):
   )
   def testConcat(self, left, right):
     self.assertIsInstance(left + right, ph.ChannelWrappedPlaceholder)
+
+  def testEncodeWithKeys(self):
+    channel = Channel(type=_MyType)
+    channel_future = channel.future()[0].value
+    actual_pb = channel_future.encode_with_keys(
+        lambda channel: channel.type_name)
+    expected_pb = text_format.Parse(
+        """
+      operator {
+        artifact_value_op {
+          expression {
+            operator {
+              index_op {
+                expression {
+                  placeholder {
+                    key: "MyTypeName"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    """, placeholder_pb2.PlaceholderExpression())
+    self.assertProtoEquals(actual_pb, expected_pb)
 
 
 class PredicateTest(parameterized.TestCase, tf.test.TestCase):

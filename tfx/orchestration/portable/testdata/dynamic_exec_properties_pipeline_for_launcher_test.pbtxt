@@ -1,0 +1,194 @@
+# proto-file: tfx/proto/orchestration/pipeline.proto
+# proto-message: Pipeline
+
+nodes {
+  pipeline_node {
+    node_info {
+      type {
+        name: "tfx.dsl.compiler.testdata.dynamic_exec_properties_pipeline.UpstreamComponent"
+      }
+      id: "UpstreamComponent"
+    }
+    contexts {
+      contexts {
+        type {
+          name: "pipeline"
+        }
+        name {
+          field_value {
+            string_value: "dynamic_exec_properties_pipeline"
+          }
+        }
+      }
+      contexts {
+        type {
+          name: "pipeline_run"
+        }
+        name {
+          runtime_parameter {
+            name: "pipeline-run-id"
+            type: STRING
+          }
+        }
+      }
+      contexts {
+        type {
+          name: "node"
+        }
+        name {
+          field_value {
+            string_value: "dynamic_exec_properties_pipeline.UpstreamComponent"
+          }
+        }
+      }
+    }
+    outputs {
+      outputs {
+        key: "num"
+        value {
+          artifact_spec {
+            type {
+              name: "Integer"
+            }
+          }
+        }
+      }
+    }
+    parameters {
+      parameters {
+        key: "start_num"
+        value {
+          field_value {
+            int_value: 1
+          }
+        }
+      }
+    }
+    downstream_nodes: "DownstreamComponent"
+    execution_options {
+      caching_options {
+      }
+    }
+  }
+}
+nodes {
+  pipeline_node {
+    node_info {
+      type {
+        name: "tfx.dsl.compiler.testdata.dynamic_exec_properties_pipeline.DownstreamComponent"
+      }
+      id: "DownstreamComponent"
+    }
+    contexts {
+      contexts {
+        type {
+          name: "pipeline"
+        }
+        name {
+          field_value {
+            string_value: "dynamic_exec_properties_pipeline"
+          }
+        }
+      }
+      contexts {
+        type {
+          name: "pipeline_run"
+        }
+        name {
+          runtime_parameter {
+            name: "pipeline-run-id"
+            type: STRING
+          }
+        }
+      }
+      contexts {
+        type {
+          name: "node"
+        }
+        name {
+          field_value {
+            string_value: "dynamic_exec_properties_pipeline.DownstreamComponent"
+          }
+        }
+      }
+    }
+    inputs {
+      inputs {
+        key: "_UpstreamComponent.num"
+        value {
+          channels {
+            producer_node_query {
+              id: "UpstreamComponent"
+            }
+            context_queries {
+              type {
+                name: "pipeline"
+              }
+              name {
+                field_value {
+                  string_value: "dynamic_exec_properties_pipeline"
+                }
+              }
+            }
+            context_queries {
+              type {
+                name: "pipeline_run"
+              }
+              name {
+                runtime_parameter {
+                  name: "pipeline-run-id"
+                  type: STRING
+                }
+              }
+            }
+            context_queries {
+              type {
+                name: "node"
+              }
+              name {
+                field_value {
+                  string_value: "dynamic_exec_properties_pipeline.UpstreamComponent"
+                }
+              }
+            }
+            artifact_query {
+              type {
+                name: "Integer"
+              }
+            }
+            output_key: "num"
+          }
+        }
+      }
+    }
+    parameters {
+      parameters {
+        key: "input_num"
+        value {
+          placeholder {
+            operator {
+              artifact_value_op {
+                expression {
+                  operator {
+                    index_op {
+                      expression {
+                        placeholder {
+                          key: "_UpstreamComponent.num"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+    upstream_nodes: "UpstreamComponent"
+    execution_options {
+      caching_options {
+      }
+    }
+  }
+}

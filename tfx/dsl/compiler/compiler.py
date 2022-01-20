@@ -13,6 +13,7 @@
 # limitations under the License.
 """Compiles a TFX pipeline into a TFX DSL IR proto."""
 import collections
+import inspect
 import itertools
 from typing import Any, Iterable, List, Type, cast
 
@@ -37,6 +38,7 @@ from tfx.orchestration import pipeline
 from tfx.proto.orchestration import executable_spec_pb2
 from tfx.proto.orchestration import pipeline_pb2
 from tfx.types import channel_utils
+from tfx.types import value_artifact
 from tfx.utils import deprecation_utils
 from tfx.utils import json_utils
 
@@ -193,7 +195,8 @@ class Compiler:
 
     # Step 3: Node inputs
 
-    # Step 3.1: Conditionals
+    # Step 3.1: Generate implicit input channels
+    # Step 3.1.1: Conditionals
     implicit_input_channels = {}
     predicates = conditional.get_predicates(tfx_node)
     if predicates:
@@ -219,6 +222,16 @@ class Compiler:
       resolver_step.class_path = constants.CONDITIONAL_RESOLVER_CLASS_PATH
       resolver_step.config_json = json_utils.dumps(
           {"predicates": encoded_predicates})
+
+    # Step 3.1.2: Add placeholder exec props to implicit_input_channels
+    for key, value in tfx_node.exec_properties.items():
+      if isinstance(value, placeholder.ChannelWrappedPlaceholder):
+        if not (inspect.isclass(value.channel.type) and
+                issubclass(value.channel.type, value_artifact.ValueArtifact)):
+          raise ValueError("output channel to dynamic exec properties is not "
+                           "ValueArtifact")
+        implicit_key = compiler_utils.implicit_channel_key(value.channel)
+        implicit_input_channels[implicit_key] = value.channel
 
     # Step 3.2: Handle ForEach.
     dsl_contexts = context_manager.get_contexts(tfx_node)
@@ -344,8 +357,15 @@ class Compiler:
           compiler_utils.set_runtime_parameter_pb(
               parameter_value.runtime_parameter, value.name, value.ptype,
               value.default)
-        elif isinstance(value, placeholder.Placeholder):
+        # RuntimeInfoPlaceholder passes Execution parameters of Facade
+        # components.
+        elif isinstance(value, placeholder.RuntimeInfoPlaceholder):
           parameter_value.placeholder.CopyFrom(value.encode())
+        # ChannelWrappedPlaceholder passes dynamic execution parameter.
+        elif isinstance(value, placeholder.ChannelWrappedPlaceholder):
+          compiler_utils.validate_dynamic_exec_ph_operator(value)
+          parameter_value.placeholder.CopyFrom(
+              value.encode_with_keys(compiler_utils.implicit_channel_key))
         else:
           try:
             data_types_utils.set_parameter_value(parameter_value, value)

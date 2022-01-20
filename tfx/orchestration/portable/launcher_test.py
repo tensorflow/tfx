@@ -243,6 +243,14 @@ class LauncherTest(test_case_utils.TfxTest):
     self._pipeline_run_id_counter = 0
     self.reloadPipelineWithNewRunId()
 
+    self._dynamic_exec_properties_pipeline = pipeline_pb2.Pipeline()
+    self.load_proto_from_text(
+        os.path.join(
+            os.path.dirname(__file__), 'testdata',
+            'dynamic_exec_properties_pipeline_for_launcher_test.pbtxt'),
+        self._dynamic_exec_properties_pipeline)
+    self.reloadDynamicExecPropertiesPipelineWithNewRunId()
+
     # Fakes an ExecutorSpec for Trainer
     self._trainer_executor_spec = _PYTHON_CLASS_EXECUTABLE_SPEC()
     # Fakes an executor operator
@@ -252,6 +260,21 @@ class LauncherTest(test_case_utils.TfxTest):
     # Fakes an custom driver spec
     self._custom_driver_spec = _PYTHON_CLASS_EXECUTABLE_SPEC()
     self._custom_driver_spec.class_path = 'tfx.orchestration.portable.launcher_test._FakeExampleGenLikeDriver'
+
+  def reloadDynamicExecPropertiesPipelineWithNewRunId(self):
+    self._pipeline_run_id_counter += 1
+    dynamic_exec_properties_pipeline = pipeline_pb2.Pipeline()
+    dynamic_exec_properties_pipeline.CopyFrom(
+        self._dynamic_exec_properties_pipeline)
+    runtime_parameter_utils.substitute_runtime_parameter(
+        dynamic_exec_properties_pipeline, {
+            constants.PIPELINE_RUN_ID_PARAMETER_NAME:
+                f'test_run_{self._pipeline_run_id_counter}',
+        })
+    self._pipeline_runtime_spec.pipeline_run_id.field_value.string_value = (
+        f'test_run_{self._pipeline_run_id_counter}')
+    self._downstream_component = dynamic_exec_properties_pipeline.nodes[
+        1].pipeline_node
 
   def reloadPipelineWithNewRunId(self):
     self._pipeline_run_id_counter += 1
@@ -1000,6 +1023,42 @@ class LauncherTest(test_case_utils.TfxTest):
         self._mlmd_connection, self._resolver, self._pipeline_info,
         self._pipeline_runtime_spec)
     self.assertEqual(execution_info, expected_execution_info)
+
+  def testLauncher_DynamicExecPropertiesExecution(self):
+    self.reloadDynamicExecPropertiesPipelineWithNewRunId()
+    self._test_executor_operators = {
+        _PYTHON_CLASS_EXECUTABLE_SPEC: _FakeEmptyExecutorOperator
+    }
+    with mock.patch.object(
+        inputs_utils, 'resolve_parameters_with_schema',
+        autospec=True) as mock_resolve_parameters_with_schema:
+      field_val = metadata_store_pb2.Value()
+      field_val.int_value = 1
+      dynamic_val = pipeline_pb2.Value()
+      dynamic_val.field_value.CopyFrom(field_val)
+      dynamic_parameters = {'input_num': dynamic_val}
+      mock_resolve_parameters_with_schema.return_val = dynamic_parameters
+
+      test_launcher = launcher.Launcher(
+          pipeline_node=self._downstream_component,
+          mlmd_connection=self._mlmd_connection,
+          pipeline_info=self._pipeline_info,
+          pipeline_runtime_spec=self._pipeline_runtime_spec,
+          executor_spec=self._trainer_executor_spec,
+          custom_executor_operators=self._test_executor_operators)
+      execution_info = test_launcher.launch()
+
+    with self._mlmd_connection as m:
+      [execution] = m.store.get_executions_by_id([execution_info.execution_id])
+      self.assertProtoPartiallyEquals(
+          """
+          last_known_state: COMPLETE
+          """,
+          execution,
+          ignored_fields=[
+              'id', 'type_id', 'create_time_since_epoch',
+              'last_update_time_since_epoch'
+          ])
 
 
 if __name__ == '__main__':

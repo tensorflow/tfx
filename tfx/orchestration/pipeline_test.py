@@ -15,7 +15,7 @@
 
 import itertools
 import os
-from typing import Any, Dict, Type
+from typing import Any, Dict, Optional, Type
 
 import tensorflow as tf
 from tfx import types
@@ -24,9 +24,11 @@ from tfx.dsl.components.base import base_component
 from tfx.dsl.components.base import base_executor
 from tfx.dsl.components.base import base_node
 from tfx.dsl.components.base import executor_spec
+from tfx.dsl.placeholder import placeholder as ph
 from tfx.orchestration import metadata
 from tfx.orchestration import pipeline
 from tfx.types.component_spec import ChannelParameter
+from tfx.types.component_spec import ExecutionParameter
 from tfx.utils import test_case_utils
 
 
@@ -53,14 +55,18 @@ def _make_fake_node_instance(name: str):
   return _FakeNode().with_id(name)
 
 
-def _make_fake_component_instance(name: str,
-                                  output_type: Type[types.Artifact],
-                                  inputs: Dict[str, types.Channel],
-                                  outputs: Dict[str, types.Channel],
-                                  with_beam: bool = False):
+def _make_fake_component_instance(
+    name: str,
+    output_type: Type[types.Artifact],
+    inputs: Dict[str, types.Channel],
+    outputs: Dict[str, types.Channel],
+    with_beam: bool = False,
+    dynamic_exec_property: Optional[ph.Placeholder] = None):
 
   class _FakeComponentSpec(types.ComponentSpec):
-    PARAMETERS = {}
+    PARAMETERS = {
+        'exec_prop': ExecutionParameter(type=int)
+    } if dynamic_exec_property is not None else {}
     INPUTS = dict([(arg, ChannelParameter(type=channel.type))
                    for arg, channel in inputs.items()])
     OUTPUTS = dict([(arg, ChannelParameter(type=channel.type))
@@ -92,8 +98,12 @@ def _make_fake_component_instance(name: str,
       spec = _FakeComponentSpec(output=types.Channel(type=type), **spec_kwargs)
       super().__init__(spec=spec)
       self._id = name
+      if dynamic_exec_property is not None:
+        self.exec_properties['exec_prop'] = dynamic_exec_property
 
   spec_kwargs = dict(itertools.chain(inputs.items(), outputs.items()))
+  if dynamic_exec_property is not None:
+    spec_kwargs['exec_prop'] = dynamic_exec_property
   return _FakeBeamComponent(output_type,
                             spec_kwargs) if with_beam else _FakeComponent(
                                 output_type, spec_kwargs)
@@ -137,6 +147,32 @@ class PipelineTest(test_case_utils.TfxTest):
     super().setUp()
     self._metadata_connection_config = metadata.sqlite_metadata_connection_config(
         os.path.join(self.tmp_dir, 'metadata'))
+
+  def testPipelineWithDynamicExecProperties(self):
+    component_a = _make_fake_component_instance('component_a', _OutputTypeA, {},
+                                                {})
+    dynamic_exec_prop = component_a.outputs['output'].future()[0].value
+    component_b = _make_fake_component_instance(
+        name='component_b',
+        output_type=_OutputTypeB,
+        inputs={},
+        outputs={},
+        with_beam=True,
+        dynamic_exec_property=dynamic_exec_prop)
+
+    my_pipeline = pipeline.Pipeline(
+        pipeline_name='a',
+        pipeline_root='b',
+        components=[component_a, component_b],
+        enable_cache=True,
+        metadata_connection_config=self._metadata_connection_config,
+        beam_pipeline_args=['--runner=PortableRunner'],
+        additional_pipeline_args={})
+
+    self.assertCountEqual(my_pipeline.components[0].downstream_nodes,
+                          [component_b])
+    self.assertCountEqual(my_pipeline.components[1].upstream_nodes,
+                          [component_a])
 
   def testPipeline(self):
     component_a = _make_fake_component_instance('component_a', _OutputTypeA, {},

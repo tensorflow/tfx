@@ -389,6 +389,9 @@ class Placeholder(json_utils.Jsonable):
       result.extend(op.placeholders_involved())
     return result
 
+  def set_key(self, key: str):
+    self._key = key
+
 
 # To ensure that ArtifactPlaceholder operations on a ChannelWrappedPlaceholder
 # still returns a ChannelWrappedPlaceholder.
@@ -565,6 +568,13 @@ class ChannelWrappedPlaceholder(ArtifactPlaceholder):
 
   def __ge__(self, other: _ValueLikeType) -> 'Predicate':
     return logical_not(self < other)
+
+  def encode_with_keys(
+      self,
+      channel_to_key_fn: Optional[Callable[['types.Channel'], str]]
+  ) -> placeholder_pb2.PlaceholderExpression:
+    self.set_key(channel_to_key_fn(self.channel))
+    return self.encode()
 
 
 def _encode_value_like(
