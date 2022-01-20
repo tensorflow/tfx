@@ -392,7 +392,7 @@ class TFMAV2BenchmarkBase(benchmark_base.BenchmarkBase):
     # Unbatch extracts
     unbatched_extracts = []
     for e in predict_result:
-      unbatched_extracts.extend(unbatch_extractor._ExtractUnbatchedInputs(e))  # pylint: disable=protected-access
+      unbatched_extracts.extend(unbatch_extractor._extract_unbatched_inputs(e))  # pylint: disable=protected-access
 
     # Add global slice key.
     for e in unbatched_extracts:
