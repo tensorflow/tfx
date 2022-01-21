@@ -116,7 +116,7 @@ class KubeflowV2DagRunner(tfx_runner.TfxRunner):
 
   def set_exit_handler(self,
                        exit_handler: base_node.BaseNode):
-    """Set exit handler components for the Kuveflow V2(Vertex AI) dag runner.
+    """Set exit handler components for the Kubeflow V2(Vertex AI) dag runner.
 
     This feature is currently experimental without backward compatibility
     gaurantee.
