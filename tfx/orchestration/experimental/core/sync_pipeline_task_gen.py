@@ -26,7 +26,6 @@ from tfx.orchestration.experimental.core import service_jobs
 from tfx.orchestration.experimental.core import task as task_lib
 from tfx.orchestration.experimental.core import task_gen
 from tfx.orchestration.experimental.core import task_gen_utils
-from tfx.orchestration.portable import cache_utils
 from tfx.orchestration.portable import execution_publish_utils
 from tfx.orchestration.portable import outputs_utils
 from tfx.orchestration.portable.mlmd import execution_lib
@@ -330,36 +329,6 @@ class _Generator:
         self._pipeline.execution_mode)
     output_artifacts = outputs_resolver.generate_output_artifacts(execution.id)
 
-    # Check if we can elide node execution by reusing previously computed
-    # outputs for the node.
-    cache_context = cache_utils.get_cache_context(
-        self._mlmd_handle,
-        pipeline_node=node,
-        pipeline_info=self._pipeline.pipeline_info,
-        executor_spec=task_gen_utils.get_executor_spec(self._pipeline,
-                                                       node.node_info.id),
-        input_artifacts=input_artifacts,
-        output_artifacts=output_artifacts,
-        parameters=resolved_info.exec_properties)
-    contexts = resolved_info.contexts + [cache_context]
-    if node.execution_options.caching_options.enable_cache:
-      cached_outputs = cache_utils.get_cached_outputs(
-          self._mlmd_handle, cache_context=cache_context)
-      if cached_outputs is not None:
-        logging.info(
-            'Eliding node execution, using cached outputs; node uid: %s',
-            node_uid)
-        execution_publish_utils.publish_cached_execution(
-            self._mlmd_handle,
-            contexts=contexts,
-            execution_id=execution.id,
-            output_artifacts=cached_outputs)
-        pstate.record_state_change_time()
-        result.append(
-            task_lib.UpdateNodeStateTask(
-                node_uid=node_uid, state=pstate.NodeState.COMPLETE))
-        return result
-
     # For mixed service nodes, we ensure node services and check service
     # status; pipeline is aborted if the service jobs have failed.
     service_status = self._ensure_node_services_if_mixed(node.node_info.id)
@@ -381,7 +350,7 @@ class _Generator:
         task_lib.ExecNodeTask(
             node_uid=node_uid,
             execution_id=execution.id,
-            contexts=contexts,
+            contexts=resolved_info.contexts,
             input_artifacts=input_artifacts,
             exec_properties=resolved_info.exec_properties,
             output_artifacts=output_artifacts,

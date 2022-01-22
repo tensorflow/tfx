@@ -29,12 +29,10 @@ from tfx.orchestration.experimental.core import pipeline_state as pstate
 from tfx.orchestration.experimental.core import service_jobs
 from tfx.orchestration.experimental.core import sync_pipeline_task_gen as sptg
 from tfx.orchestration.experimental.core import task as task_lib
-from tfx.orchestration.experimental.core import task_gen_utils
 from tfx.orchestration.experimental.core import task_queue as tq
 from tfx.orchestration.experimental.core import test_utils
 from tfx.orchestration.experimental.core.testing import test_sync_pipeline
 from tfx.orchestration.portable import runtime_parameter_utils
-from tfx.orchestration.portable.mlmd import execution_lib
 from tfx.utils import status as status_lib
 
 from ml_metadata.proto import metadata_store_pb2
@@ -551,96 +549,6 @@ class SyncPipelineTaskGeneratorTest(test_utils.TfxTest, parameterized.TestCase):
     self.assertTrue(task_lib.is_finalize_pipeline_task(finalize_task))
     self.assertEqual(status_lib.Code.ABORTED, finalize_task.status.code)
     self.assertRegexMatch(finalize_task.status.message, ['foobar error'])
-
-  def test_cached_execution(self):
-    """Tests that cached execution is used if one is available."""
-
-    # Fake ExampleGen run.
-    example_gen_exec = test_utils.fake_example_gen_run(self._mlmd_connection,
-                                                       self._example_gen, 1, 1)
-
-    # Invoking generator should produce an ExecNodeTask for StatsGen.
-    [stats_gen_task] = self._generate_and_test(
-        False,
-        num_initial_executions=1,
-        num_tasks_generated=1,
-        num_new_executions=1,
-        num_active_executions=1,
-        ignore_update_node_state_tasks=True)
-    self.assertEqual('my_statistics_gen', stats_gen_task.node_uid.node_id)
-
-    # Finish StatsGen execution.
-    test_utils.fake_execute_node(self._mlmd_connection, stats_gen_task)
-
-    # Finish pipeline execution.
-    with self._mlmd_connection as m:
-      pipeline_state = test_utils.get_or_create_pipeline_state(
-          m, self._pipeline)
-      with pipeline_state:
-        pipeline_state.set_pipeline_execution_state(
-            metadata_store_pb2.Execution.COMPLETE)
-
-    # Prepare another pipeline with a new pipeline_run_id.
-    pipeline_run_id = str(uuid.uuid4())
-    new_pipeline = self._make_pipeline(self._pipeline_root, pipeline_run_id)
-
-    with self._mlmd_connection as m:
-      contexts = m.store.get_contexts_by_execution(example_gen_exec.id)
-      # We use node context as cache context for ease of testing.
-      cache_context = [
-          c for c in contexts if c.name == 'my_pipeline.my_example_gen'
-      ][0]
-    # Fake example_gen cached execution.
-    test_utils.fake_cached_execution(
-        self._mlmd_connection, cache_context,
-        test_utils.get_node(new_pipeline, 'my_example_gen'))
-
-    stats_gen = test_utils.get_node(new_pipeline, 'my_statistics_gen')
-
-    # Invoking generator for the new pipeline should result in:
-    # 1. An UpdateNodeStateTask each for ExampleGen, StatsGen and SchemaGen
-    #    signaling execution completion.
-    # 2. StatsGen execution succeeds with state "CACHED" but no ExecNodeTask
-    #    generated.
-    # 2. An ExecNodeTask is generated for SchemaGen (component downstream of
-    #    StatsGen) with an active execution in MLMD.
-    tasks = self._generate_and_test(
-        False,
-        pipeline=new_pipeline,
-        num_initial_executions=3,
-        num_tasks_generated=4,
-        num_new_executions=2,
-        num_active_executions=1)
-    self.assertLen(tasks, 4)
-    update_node_state_tasks = [
-        t for t in tasks if task_lib.is_update_node_state_task(t)
-    ]
-    self.assertLen(update_node_state_tasks, 3)
-    update_node_state_task_by_node_id = {
-        t.node_uid.node_id: t for t in update_node_state_tasks
-    }
-    self.assertCountEqual(
-        ['my_example_gen', 'my_statistics_gen', 'my_schema_gen'],
-        list(update_node_state_task_by_node_id.keys()))
-    self.assertEqual(pstate.NodeState.COMPLETE,
-                     update_node_state_task_by_node_id['my_example_gen'].state)
-    self.assertEqual(
-        pstate.NodeState.COMPLETE,
-        update_node_state_task_by_node_id['my_statistics_gen'].state)
-    self.assertEqual(pstate.NodeState.RUNNING,
-                     update_node_state_task_by_node_id['my_schema_gen'].state)
-
-    [schema_gen_task] = [t for t in tasks if task_lib.is_exec_node_task(t)]
-    self.assertEqual('my_schema_gen', schema_gen_task.node_uid.node_id)
-
-    # Check that StatsGen execution is successful in state "CACHED".
-    with self._mlmd_connection as m:
-      executions = task_gen_utils.get_executions(m, stats_gen)
-      self.assertLen(executions, 1)
-      execution = executions[0]
-      self.assertTrue(execution_lib.is_execution_successful(execution))
-      self.assertEqual(metadata_store_pb2.Execution.CACHED,
-                       execution.last_known_state)
 
   def test_partial_run_skipped_execution(self):
     """Tests that skipped execution is marked as complete without running."""
