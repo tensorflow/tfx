@@ -7,7 +7,6 @@
 *   Function components defined with `@component` may now have optional/nullable
     primitive type return values when `Optional[T]` is used in the return type
     OutputDict.
-*   Set exti handler cache option in Kubeflow V2 as false.
 
 ## Breaking Changes
 
@@ -24,6 +23,8 @@
     `tensorflow>=1.15.5,!=2.0.*,!=2.1.*,!=2.2.*,!=2.3.*,!=2.4.*,!=2.5.*,!=2.6.*,<3`.
 *   Pusher now copies the `saved_model.pb` file at last to prevent loading
     SavedModel on invalid (partially available) directory state.
+*   Always disable caching for exit handlers in Kubeflow V2 runner to
+    reflect latest status of dependent dag.
 
 ## Documentation Updates
 
