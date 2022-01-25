@@ -54,9 +54,9 @@ def make_pipeline_sdk_required_install_packages():
       'absl-py>=0.9,<2.0.0',
       'ml-metadata' + select_constraint(
           # LINT.IfChange
-          default='>=1.5.0,<1.6.0',
+          default='>=1.6.0,<1.7.0',
           # LINT.ThenChange(tfx/workspace.bzl)
-          nightly='>=1.6.0.dev',
+          nightly='>=1.7.0.dev',
           git_master='@git+https://github.com/google/ml-metadata@master'),
       'packaging>=20,<21',
       'portpicker>=1.3.1,<2',
@@ -73,7 +73,7 @@ def make_required_install_packages():
   # Make sure to sync the versions of common dependencies (absl-py, numpy,
   # and protobuf) with TF.
   return make_pipeline_sdk_required_install_packages() + [
-      'apache-beam[gcp]>=2.34,<3',
+      'apache-beam[gcp]>=2.35,<3',
       'attrs>=19.3.0,<21',
       'click>=7,<8',
       'google-cloud-aiplatform>=1.5.0,<2',
@@ -93,22 +93,22 @@ def make_required_install_packages():
       # pylint: enable=line-too-long
       'tensorflow-hub>=0.9.0,<0.13',
       'tensorflow-data-validation' + select_constraint(
-          default='>=1.5.0,<1.6.0',
-          nightly='>=1.6.0.dev',
+          default='>=1.6.0,<1.7.0',
+          nightly='>=1.7.0.dev',
           git_master='@git+https://github.com/tensorflow/data-validation@master'
       ),
       'tensorflow-model-analysis' + select_constraint(
-          default='>=0.36.0,<0.37',
-          nightly='>=0.37.0.dev',
+          default='>=0.37.0,<0.38',
+          nightly='>=0.38.0.dev',
           git_master='@git+https://github.com/tensorflow/model-analysis@master'),
       'tensorflow-serving-api>=1.15,!=2.0.*,!=2.1.*,!=2.2.*,!=2.3.*,!=2.4.*,!=2.5.*,!=2.6.*,<3',
       'tensorflow-transform' + select_constraint(
-          default='>=1.5.0,<1.6.0',
-          nightly='>=1.6.0.dev',
+          default='>=1.6.0,<1.7.0',
+          nightly='>=1.7.0.dev',
           git_master='@git+https://github.com/tensorflow/transform@master'),
       'tfx-bsl' + select_constraint(
-          default='>=1.5.0,<1.6.0',
-          nightly='>=1.6.0.dev',
+          default='>=1.6.0,<1.7.0',
+          nightly='>=1.7.0.dev',
           git_master='@git+https://github.com/tensorflow/tfx-bsl@master'),
   ]
 
@@ -161,8 +161,8 @@ def make_extra_packages_tf_ranking():
   return [
       'tensorflow-ranking>=0.3.3,<0.4',
       'struct2tensor' + select_constraint(
-          default='>=0.36,<0.37',
-          nightly='>=0.37.0.dev',
+          default='>=0.37,<0.38',
+          nightly='>=0.38.0.dev',
           git_master='@git+https://github.com/google/struct2tensor@master'),
   ]
 
