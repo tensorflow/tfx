@@ -123,10 +123,7 @@ def make_extra_packages_airflow():
 def make_extra_packages_kfp():
   """Prepare extra packages needed for Kubeflow Pipelines orchestrator."""
   return [
-      # kfp==1.7.2 uses undefined field when updating a pipeline; b/197906254.
-      # TODO(b/200220058): Unblock upper bound after the version issue of
-      # `typing-extensions` with TF 2.6 is resolved.
-      'kfp>=1.6.1,!=1.7.2,<1.8.2',
+      'kfp>=1.8.5,<2',
       'kfp-pipeline-spec>=0.1.10,<0.2',
   ]
 

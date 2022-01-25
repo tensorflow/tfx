@@ -21,6 +21,7 @@
 *   Depends on `absl-py>=0.9,<2.0.0`.
 *   Depends on
     `tensorflow>=1.15.5,!=2.0.*,!=2.1.*,!=2.2.*,!=2.3.*,!=2.4.*,!=2.5.*,!=2.6.*,<3`.
+*   Depends on `kfp>=1.8.5,<2'`.
 *   Pusher now copies the `saved_model.pb` file at last to prevent loading
     SavedModel on invalid (partially available) directory state.
 *   Always disable caching for exit handlers in Kubeflow V2 runner to
