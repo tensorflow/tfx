@@ -14,6 +14,7 @@
 """Component specifications for the standard set of TFX Components."""
 
 import tensorflow_model_analysis as tfma
+from tfx.components.mia_evaluator import mia_config_pb2
 from tfx.proto import bulk_inferrer_pb2
 from tfx.proto import evaluator_pb2
 from tfx.proto import example_gen_pb2
@@ -52,6 +53,7 @@ STATISTICS_KEY = 'statistics'
 ANOMALIES_KEY = 'anomalies'
 # Key for evaluator
 EVAL_CONFIG_KEY = 'eval_config'
+MIA_EVAL_CONFIG_KEY = 'mia_config'
 FEATURE_SLICING_SPEC_KEY = 'feature_slicing_spec'
 FAIRNESS_INDICATOR_THRESHOLDS_KEY = 'fairness_indicator_thresholds'
 EXAMPLE_SPLITS_KEY = 'example_splits'
@@ -176,6 +178,13 @@ class EvaluatorSpec(ComponentSpec):
       BLESSING_KEY: ChannelParameter(type=standard_artifacts.ModelBlessing),
   }
   TYPE_ANNOTATION = Evaluate
+
+
+class MIAEvaluatorSpec(EvaluatorSpec):
+  """MIAEvaluator component spec."""
+  PARAMETERS = EvaluatorSpec.PARAMETERS
+  PARAMETERS[MIA_EVAL_CONFIG_KEY] = ExecutionParameter(
+      type=mia_config_pb2.MIACustomConfig, optional=True)
 
 
 class ExampleValidatorSpec(ComponentSpec):
