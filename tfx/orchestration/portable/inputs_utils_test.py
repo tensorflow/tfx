@@ -364,6 +364,19 @@ class InputsUtilsTest(test_case_utils.TfxTest, _TestMixin):
     self.assertIsInstance(result, inputs_utils.Trigger)
     self.assertArtifactMapListEqual([{'examples': self._examples}], result)
 
+  def testResolveInputArtifactsV2_MultipleDicts(self):
+    self._setup_pipeline_for_input_resolver_test()
+    self._append_resolver_step(self._my_transform, DuplicateOp)
+
+    result = inputs_utils.resolve_input_artifacts_v2(
+        pipeline_node=self._my_transform,
+        metadata_handler=self._metadata_handler)
+    self.assertIsInstance(result, inputs_utils.Trigger)
+    self.assertArtifactMapListEqual([
+        {'examples': self._examples},
+        {'examples': self._examples},
+    ], result)
+
   def testResolveInputArtifactsV2_SkipSignal(self):
     self._setup_pipeline_for_input_resolver_test()
     self._append_resolver_step(self._my_transform, SkippingOp)

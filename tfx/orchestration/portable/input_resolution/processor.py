@@ -14,7 +14,7 @@
 """In process inplementation of Resolvers."""
 
 import importlib
-from typing import Iterable
+from typing import Iterable, Union, Sequence, cast
 
 from tfx.dsl.components.common import resolver
 from tfx.dsl.input_resolution import resolver_op
@@ -24,6 +24,13 @@ from tfx.utils import json_utils
 from tfx.utils import typing_utils
 
 import ml_metadata as mlmd
+
+
+# Types that can be used as an argument & return value of an resolver op.
+_ResolverIOType = Union[
+    typing_utils.ArtifactMultiMap,
+    Sequence[typing_utils.ArtifactMultiMap],
+]
 
 
 def _run_resolver_strategy(
@@ -57,11 +64,11 @@ def _run_resolver_strategy(
 
 
 def _run_resolver_op(
-    arg: typing_utils.ArtifactMultiMap,
+    arg: _ResolverIOType,
     *,
     op: resolver_op.ResolverOp,
     context: resolver_op.Context,
-) -> typing_utils.ArtifactMultiMap:
+) -> _ResolverIOType:
   """Runs a single ResolverOp with resolver_op.Context."""
   op.set_context(context)
   return op.apply(arg)
@@ -72,7 +79,7 @@ def run_resolver_steps(
     *,
     resolver_steps: Iterable[pipeline_pb2.ResolverConfig.ResolverStep],
     store: mlmd.MetadataStore,
-) -> typing_utils.ArtifactMultiMap:
+) -> _ResolverIOType:
   """Run ResolverConfig.resolver_steps with an input_dict."""
   result = input_dict
   context = resolver_op.Context(store=store)
@@ -87,7 +94,7 @@ def run_resolver_steps(
     if issubclass(cls, resolver.ResolverStrategy):
       strategy = cls(**kwargs)
       result = _run_resolver_strategy(
-          result,
+          cast(typing_utils.ArtifactMultiMap, result),
           strategy=strategy,
           input_keys=step.input_keys,
           store=store)
