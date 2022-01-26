@@ -326,10 +326,25 @@ message NodeExecutionOptions {
     bool depends_on_snapshot = 2;
   }
   message Skip {
+    // Deprecated. Please use reuse_artifacts_mode field instead.
     // If reuse_artifacts is true, the snapshot operation will make sure that
     // output artifacts produced by this node in a previous pipeline run will
     // be made available in this partial run.
-    bool reuse_artifacts = 1;
+    bool reuse_artifacts = 1 [deprecated = true];
+    enum ReuseArtifactsMode {
+      UNSPECIFIED = 0;
+      // The snapshot operation will not reuse any output artifacts for this
+      // node.
+      NEVER = 1;
+      // The snapshot operation will make sure that output artifacts produced by
+      // this node in a previous pipeline run will be made available in this
+      // partial run.
+      REQUIRED = 2;
+      // The snapshot operation will attempt to reuse output artifacts at
+      // best effort basis.
+      OPTIONAL = 3;
+    }
+    ReuseArtifactsMode reuse_artifacts_mode = 2;
   }
   CachingOptions caching_options = 1;
   // Attached by platform-level tooling.

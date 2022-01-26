@@ -128,8 +128,12 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
     with self._mlmd_connection as m:
       pipeline = _test_pipeline('test_pipeline', pipeline_pb2.Pipeline.SYNC)
       pipeline_uid = task_lib.PipelineUid.from_pipeline(pipeline)
-      pipeline.nodes.add().pipeline_node.node_info.id = 'ExampleGen'
-      pipeline.nodes.add().pipeline_node.node_info.id = 'Trainer'
+      node_example_gen = pipeline.nodes.add().pipeline_node
+      node_example_gen.node_info.id = 'ExampleGen'
+      node_example_gen.downstream_nodes.extend(['Trainer'])
+      node_trainer = pipeline.nodes.add().pipeline_node
+      node_trainer.node_info.id = 'Trainer'
+      node_trainer.upstream_nodes.extend(['ExampleGen'])
 
       # Error if attempt to resume the pipeline when there is no previous run.
       with self.assertRaises(status_lib.StatusNotOkError) as exception_context:
@@ -167,9 +171,11 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
       expected_pipeline.runtime_spec.snapshot_settings.latest_pipeline_run_strategy.SetInParent(
       )
       expected_pipeline.nodes[
-          0].pipeline_node.execution_options.skip.reuse_artifacts = True
+          0].pipeline_node.execution_options.skip.reuse_artifacts_mode = pipeline_pb2.NodeExecutionOptions.Skip.REQUIRED
       expected_pipeline.nodes[
           1].pipeline_node.execution_options.run.perform_snapshot = True
+      expected_pipeline.nodes[
+          1].pipeline_node.execution_options.run.depends_on_snapshot = True
       with pipeline_ops.resume_pipeline(m, pipeline) as pipeline_state_run2:
         self.assertEqual(expected_pipeline, pipeline_state_run2.pipeline)
         pipeline_state_run2.is_active()
@@ -207,7 +213,7 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
       expected_pipeline.runtime_spec.snapshot_settings.latest_pipeline_run_strategy.SetInParent(
       )
       expected_pipeline.nodes[
-          0].pipeline_node.execution_options.skip.reuse_artifacts = True
+          0].pipeline_node.execution_options.skip.reuse_artifacts_mode = pipeline_pb2.NodeExecutionOptions.Skip.REQUIRED
       expected_pipeline.nodes[
           1].pipeline_node.execution_options.run.perform_snapshot = True
       expected_pipeline.nodes[
@@ -247,7 +253,7 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
       expected_pipeline.runtime_spec.snapshot_settings.latest_pipeline_run_strategy.SetInParent(
       )
       expected_pipeline.nodes[
-          0].pipeline_node.execution_options.skip.reuse_artifacts = True
+          0].pipeline_node.execution_options.skip.reuse_artifacts_mode = pipeline_pb2.NodeExecutionOptions.Skip.REQUIRED
       expected_pipeline.nodes[
           1].pipeline_node.execution_options.run.perform_snapshot = True
       expected_pipeline.nodes[
