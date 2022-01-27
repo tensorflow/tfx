@@ -12,6 +12,12 @@
 
 ## Bug Fixes and Other Changes
 
+## Dependency Updates
+
+| Package Name | Version Constraints | Previously (in `v1.6.0`) | Comments |
+| -- | -- | -- | -- |
+| | | | |
+
 ## Documentation Updates
 
 # Version 1.6.0
@@ -39,22 +45,26 @@
 *   N/A
 
 ## Bug Fixes and Other Changes
-*   Depends on `numpy>=1.16,<2`.
-*   Depends on `absl-py>=0.9,<2.0.0`.
-*   Depends on `apache-beam[gcp]>=2.35,<3`.
-*   Depends on `ml-metadata>=1.6.0,<1.7.0`.
-*   Depends on `struct2tensor>=0.37.0,<0.38.0`.
-*   Depends on `tensorflow-data-validation>=1.6.0,<1.7.0`.
-*   Depends on `tensorflow-model-analysis>=0.37.0,<0.38.0`.
-*   Depends on `tensorflow-transform>=1.6.0,<1.7.0`.
-*   Depends on `tfx-bsl>=1.6.0,<1.7.0`.
-*   Depends on
-    `tensorflow>=1.15.5,!=2.0.*,!=2.1.*,!=2.2.*,!=2.3.*,!=2.4.*,!=2.5.*,!=2.6.*,<3`.
-*   Depends on `kfp>=1.8.5,<2'`.
 *   Pusher now copies the `saved_model.pb` file at last to prevent loading
     SavedModel on invalid (partially available) directory state.
 *   Always disable caching for exit handlers in Kubeflow V2 runner to
     reflect latest status of dependent dag.
+
+## Dependency Updates
+
+| Package Name | Version Constraints | Previously (in `v1.5.0`) | Comments |
+| -- | -- | -- | -- |
+| `tensorflow` | `>=1.15.5,<2` or `~=2.7.0` | `>=1.15.2,<2` or `~=2.7.0` | |
+| `numpy` | `~=1.16` | `>=1.16,<1.20` | |
+| `apache-beam[gcp]` | `~=2.35` | `~=2.34` | |
+| `kfp` | `~=1.8.5` | `>=1.6.1,<1.8.2,!=1.7.2` | |
+| `absl-py` | `>=0.9,<2` | `>=0.9,<0.13` | |
+| `tfx-bsl` | `~=1.6.0` | `~=1.5.0` | Synced release train |
+| `tensorflow-data-validation` | `~=1.6.0` | `~=1.5.0` | Synced release train |
+| `tensorflow-transform` | `~=1.6.0` | `~=1.5.0` | Synced release train |
+| `ml-metadata` | `~=1.6.0` | `~=1.5.0` | Synced release train |
+| `tensorflow-model-analysis` | `~=0.37.0` | `~=0.36.0` | Synced release train |
+| `struct2tensor` | `~=0.37.0` | `~=0.36.0` | Synced release train |
 
 ## Documentation Updates
 
