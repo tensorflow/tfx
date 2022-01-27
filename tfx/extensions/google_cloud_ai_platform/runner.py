@@ -156,8 +156,8 @@ def start_cloud_training(input_dict: Dict[str, List[types.Artifact]],
                          exec_properties: Dict[str, Any],
                          executor_class_path: str,
                          job_args: Dict[str, Any],
-                         job_labels: Dict[str, Any],
                          job_id: Optional[str],
+                         job_labels: Optional[Dict[str, Any]] = None, # AI Platform only.
                          enable_vertex: Optional[bool] = False,
                          vertex_region: Optional[str] = None):
   """Start a trainer job on AI Platform (AIP).
@@ -177,12 +177,12 @@ def start_cloud_training(input_dict: Dict[str, List[types.Artifact]],
          For the full set of parameters supported by Google Cloud AI Platform
          (CAIP) TrainingInput, refer to
        https://cloud.google.com/ml-engine/docs/tensorflow/training-jobs#configuring_the_job
-    job_labels: Labels for AI Platform training job.
     job_id: Job ID for AI Platform Training job. If not supplied,
       system-determined unique ID is given. Refer to
       https://cloud.google.com/ml-engine/reference/rest/v1/projects.jobs#resource-job.
         In Vertex AI, the job_id corresponds to the display name, a unique ID is
         always given to the created job.
+    job_labels: Labels for AI Platform training job.
     enable_vertex: Whether to enable Vertex or not.
     vertex_region: Region for endpoint in Vertex training.
 
@@ -196,7 +196,7 @@ def start_cloud_training(input_dict: Dict[str, List[types.Artifact]],
   training_job = client.create_training_job(input_dict, output_dict,
                                             exec_properties,
                                             executor_class_path, job_args,
-                                            job_labels, job_id)
+                                            job_id, job_labels)
 
   _launch_cloud_training(
       project=project,

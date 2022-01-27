@@ -119,8 +119,8 @@ class GenericExecutor(base_executor.BaseExecutor):
                                      executor_class.__name__)
     # Note: exec_properties['custom_config'] here is a dict.
     return runner.start_cloud_training(input_dict, output_dict, exec_properties,
-                                       executor_class_path, job_args, job_labels, 
-                                       job_id, enable_vertex,
+                                       executor_class_path, job_args, 
+                                       job_id, job_labels, enable_vertex,
                                        vertex_region)
 
 
