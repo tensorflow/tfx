@@ -241,7 +241,8 @@ class PipelineStateTest(test_utils.TfxTest):
       # Initiate pipeline update.
       with pstate.PipelineState.new(m, pipeline) as pipeline_state:
         self.assertFalse(pipeline_state.is_update_initiated())
-        pipeline_state.initiate_update(updated_pipeline)
+        pipeline_state.initiate_update(updated_pipeline,
+                                       pipeline_pb2.UpdateOptions())
         self.assertTrue(pipeline_state.is_update_initiated())
 
       # Reload from MLMD and verify update initiation followed by applying the
@@ -270,7 +271,8 @@ class PipelineStateTest(test_utils.TfxTest):
           m, task_lib.PipelineUid.from_pipeline(pipeline)) as pipeline_state:
         with self.assertRaisesRegex(status_lib.StatusNotOkError,
                                     'Updating execution_mode.*not supported'):
-          pipeline_state.initiate_update(updated_pipeline)
+          pipeline_state.initiate_update(updated_pipeline,
+                                         pipeline_pb2.UpdateOptions())
 
       # Update should fail if pipeline structure changed.
       updated_pipeline = _test_pipeline(
@@ -280,7 +282,8 @@ class PipelineStateTest(test_utils.TfxTest):
           m, task_lib.PipelineUid.from_pipeline(pipeline)) as pipeline_state:
         with self.assertRaisesRegex(status_lib.StatusNotOkError,
                                     'Updating execution_mode.*not supported'):
-          pipeline_state.initiate_update(updated_pipeline)
+          pipeline_state.initiate_update(updated_pipeline,
+                                         pipeline_pb2.UpdateOptions())
 
   def test_initiate_node_start_stop(self):
     with self._mlmd_connection as m:

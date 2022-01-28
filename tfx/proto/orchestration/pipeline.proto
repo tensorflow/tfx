@@ -497,9 +497,24 @@ message PartialRun {
   SnapshotSettings snapshot_settings = 3;
 }
 
-// This is passed to the DAG runner when the pipeline is run.
+// RunOptions is passed to the DAG runner when the pipeline is run.
 // It is not part of the Pipeline IR.
 message RunOptions {
   // Pipeline-level specifications for partial run.
   PartialRun partial_run = 1;
+}
+
+// UpdateOptions is passed to the pipeline runner when the pipeline is run.
+// It is not part of the Pipeline IR.
+message UpdateOptions {
+  enum ReloadPolicy {
+    // Reload all active nodes upon pipeline update.
+    ALL = 0;
+    // Reload only the nodes selected in `reload_nodes`.
+    PARTIAL = 1;
+  }
+  ReloadPolicy reload_policy = 1;
+  // The ids of nodes to reload, which can be empty if no node is to be
+  // reloaded. Only applicable when ReloadPolicy is PARTIAL.
+  repeated string reload_nodes = 2;
 }

@@ -600,8 +600,11 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
                 task_lib.NodeUid(
                     pipeline_uid=task_lib.PipelineUid.from_pipeline(pipeline),
                     node_id=node_id)))
-
-      pipeline_state = pipeline_ops._initiate_pipeline_update(m, pipeline)
+      pipeline_state = pipeline_ops._initiate_pipeline_update(
+          m,
+          pipeline,
+          update_options=pipeline_pb2.UpdateOptions(
+              reload_policy=pipeline_pb2.UpdateOptions.ALL))
       with pipeline_state:
         self.assertTrue(pipeline_state.is_update_initiated())
 
@@ -650,6 +653,75 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
         self.assertFalse(pipeline_state.is_update_initiated())
         self.assertTrue(pipeline_state.is_active())
 
+  def test_orchestrate_update_initiated_pipelines_options(self):
+    pipeline = _test_pipeline('pipeline1', pipeline_pb2.Pipeline.SYNC)
+    with self._mlmd_connection as m:
+      pipeline.nodes.add().pipeline_node.node_info.id = 'ExampleGen'
+      pipeline.nodes.add().pipeline_node.node_info.id = 'Transform'
+      pipeline.nodes.add().pipeline_node.node_info.id = 'Trainer'
+      pipeline.nodes.add().pipeline_node.node_info.id = 'Evaluator'
+
+      pipeline_ops.initiate_pipeline_start(m, pipeline)
+
+      task_queue = tq.TaskQueue()
+
+      for node_id in ('Transform', 'Trainer', 'Evaluator'):
+        task_queue.enqueue(
+            test_utils.create_exec_node_task(
+                task_lib.NodeUid(
+                    pipeline_uid=task_lib.PipelineUid.from_pipeline(pipeline),
+                    node_id=node_id)))
+      pipeline_state = pipeline_ops._initiate_pipeline_update(
+          m,
+          pipeline,
+          update_options=pipeline_pb2.UpdateOptions(
+              reload_policy=pipeline_pb2.UpdateOptions.PARTIAL,
+              reload_nodes=['Transform', 'Trainer']))
+      with pipeline_state:
+        self.assertTrue(pipeline_state.is_update_initiated())
+
+      pipeline_ops.orchestrate(m, task_queue, self._mock_service_job_manager)
+
+      # stop_node_services should not be called for ExampleGen since it is not
+      # reloaded according to the options.
+      self._mock_service_job_manager.stop_node_services.assert_not_called()
+
+      # Simulate completion of all the exec node tasks except evaluator.
+      for node_id in ('Transform', 'Trainer', 'Evaluator'):
+        task = task_queue.dequeue()
+        task_queue.task_done(task)
+        self.assertTrue(task_lib.is_exec_node_task(task))
+        self.assertEqual(node_id, task.node_uid.node_id)
+
+      # Verify that cancellation tasks were enqueued in the last `orchestrate`
+      # call, and dequeue them.
+      for node_id in ('Transform', 'Trainer'):
+        task = task_queue.dequeue()
+        task_queue.task_done(task)
+        self.assertTrue(task_lib.is_cancel_node_task(task))
+        self.assertEqual(node_id, task.node_uid.node_id)
+        self.assertTrue(task.pause)
+
+      # Pipeline continues to be in update initiated state until all
+      # ExecNodeTasks have been dequeued (which was not the case when last
+      # `orchestrate` call was made).
+      with pipeline_state:
+        self.assertTrue(pipeline_state.is_update_initiated())
+
+      pipeline_ops.orchestrate(m, task_queue, self._mock_service_job_manager)
+
+      # stop_node_services should be called for Transform (mixed service node)
+      # too since corresponding ExecNodeTask has been processed.
+      self._mock_service_job_manager.stop_node_services.assert_has_calls(
+          [mock.call(mock.ANY, 'Transform')])
+
+      # Pipeline should no longer be in update-initiated state but be active.
+      with pipeline_state:
+        self.assertFalse(pipeline_state.is_update_initiated())
+        self.assertTrue(pipeline_state.is_active())
+
+      self.assertTrue(task_queue.is_empty())
+
   def test_update_pipeline_waits_for_update_application(self):
     with self._mlmd_connection as m:
       pipeline = _test_pipeline('pipeline1')
@@ -669,7 +741,12 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
 
       thread = threading.Thread(target=_apply_update, args=(pipeline_state,))
       thread.start()
-      pipeline_ops.update_pipeline(m, pipeline, timeout_secs=10.0)
+      pipeline_ops.update_pipeline(
+          m,
+          pipeline,
+          update_options=pipeline_pb2.UpdateOptions(
+              reload_policy=pipeline_pb2.UpdateOptions.ALL),
+          timeout_secs=10.0)
       thread.join()
 
   def test_update_pipeline_wait_for_update_timeout(self):
@@ -678,7 +755,13 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
       pipeline_ops.initiate_pipeline_start(m, pipeline)
       with self.assertRaisesRegex(status_lib.StatusNotOkError,
                                   'Timed out.*waiting for pipeline update'):
-        pipeline_ops.update_pipeline(m, pipeline, timeout_secs=3.0)
+
+        pipeline_ops.update_pipeline(
+            m,
+            pipeline,
+            update_options=pipeline_pb2.UpdateOptions(
+                reload_policy=pipeline_pb2.UpdateOptions.ALL),
+            timeout_secs=3.0)
 
   @parameterized.parameters(
       _test_pipeline('pipeline1'),
