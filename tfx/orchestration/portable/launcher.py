@@ -527,8 +527,8 @@ class Launcher:
                              execution_preparation_result.contexts,
                              execution_preparation_result.is_execution_needed)
     if is_execution_needed:
+      executor_watcher = None
       try:
-        executor_watcher = None
         if self._executor_operator:
           # Create an execution watcher and save an in memory copy of the
           # Execution object to execution to it. Launcher calls executor
