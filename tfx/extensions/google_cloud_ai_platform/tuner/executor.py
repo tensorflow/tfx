@@ -292,25 +292,33 @@ class _WorkerExecutor(base_executor.BaseExecutor):
 
     logging.info('Cluster spec initalized with: %s', cluster_spec)
 
+    # task_type can be 'master', 'worker', 'chief' or the type of wroker pool.
+    task_type = cluster_spec['task']['type']
     if 'workerpool0' in cluster_spec['cluster']:
       self._master_addr, self._master_port = (
           # We rely on Vertex AI Training service's specification whereby
           # there will be no more than one primary replica.
           # https://cloud.google.com/vertex-ai/docs/training/distributed-training#cluster-spec-format
           cluster_spec['cluster']['workerpool0'][0].split(':'))
-      self._is_chief = cluster_spec['task']['type'] == 'workerpool0'
+      self._is_chief = task_type == 'workerpool0'
+    elif task_type == 'chief':
+      self._master_addr, self._master_port = (
+          # CLUSTER_SPEC is different when only primary replica is present
+          # in Vertex AI Training.
+          cluster_spec['cluster']['chief'][0].split(':'))
+      self._is_chief = True
+      task_type = 'workerpool0'
     else:
       self._master_addr, self._master_port = (
           # We rely on Cloud AI Platform Training service's specification
           # whereby there will be no more than one master replica.
           # https://cloud.google.com/ai-platform/training/docs/distributed-training-containers#cluster-spec-format
           cluster_spec['cluster']['master'][0].split(':'))
-      self._is_chief = cluster_spec['task']['type'] == 'master'
+      self._is_chief = task_type == 'master'
 
     self._tuner_id = (
         'tfx-tuner-%s-%d' % (
-            cluster_spec['task']
-            ['type'],  # 'master', 'worker', or the type of wroker pool
+            task_type,
             cluster_spec['task']['index']  # zero-based index
         ))
 

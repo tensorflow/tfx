@@ -12,6 +12,8 @@
 
 ## Bug Fixes and Other Changes
 
+*   Fixed the cluster spec error in CAIP Tuner on Vertex when `num_parallel_trials = 1`
+
 ## Dependency Updates
 
 | Package Name | Version Constraints | Previously (in `v1.6.0`) | Comments |
@@ -29,6 +31,9 @@
 *   Function components defined with `@component` may now have optional/nullable
     primitive type return values when `Optional[T]` is used in the return type
     OutputDict.
+*   Supported endpoint overwrite for CAIP Tuner. Users can use the `keras-tuner`
+    module or any tuner that implements the `keras_tuner.Tuner` interface for
+    (parallel) tuning on Vertex.
 
 ## Breaking Changes
 
@@ -78,9 +83,6 @@
     in a pipeline while reusing artifacts generated in previous pipeline runs.
     This is supported in LocalDagRunner and BeamDagRunner, and is exposed via
     the TfxRunner API.
-*   Supported endpoint overwrite for CAIP Tuner. Users can use the `keras-tuner`
-    module or any tuner that implements the `keras_tuner.Tuner` interface for
-    (parallel) tuning on Vertex.
 *   Add dependency of tensorflow-io to unblock using S3 storage.
 
 ## Breaking Changes

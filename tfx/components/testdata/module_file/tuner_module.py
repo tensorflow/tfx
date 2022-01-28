@@ -106,13 +106,13 @@ def tuner_fn(fn_args: FnArgs) -> TunerFnResult:
   """
   hp = keras_tuner.HyperParameters()
   # Defines search space.
-  hp.Choice('learning_rate', [1e-1, 1e-3])
-  hp.Int('num_layers', 1, 5)
+  hp.Choice('learning_rate', [1e-1, 1e-2, 1e-3])
+  hp.Int('num_layers', 1, 2)
 
   # RandomSearch is a subclass of Keras model Tuner.
   tuner = keras_tuner.RandomSearch(
       _build_keras_model,
-      max_trials=5,
+      max_trials=3,
       hyperparameters=hp,
       allow_new_entries=False,
       objective='val_sparse_categorical_accuracy',
