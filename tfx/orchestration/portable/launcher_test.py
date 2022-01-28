@@ -675,16 +675,18 @@ class LauncherTest(test_case_utils.TfxTest):
     self.reloadPipelineWithNewRunId()
     LauncherTest.fakeUpstreamOutputs(self._mlmd_connection, self._example_gen,
                                      self._transform)
-    executor_operators = {
-        _PYTHON_CLASS_EXECUTABLE_SPEC: _FakeCrashingExecutorOperator
-    }
-    test_launcher = launcher.Launcher(
-        pipeline_node=self._trainer,
-        mlmd_connection=self._mlmd_connection,
-        pipeline_info=self._pipeline_info,
-        pipeline_runtime_spec=self._pipeline_runtime_spec,
-        executor_spec=self._trainer_executor_spec,
-        custom_executor_operators=executor_operators)
+
+    def create_test_launcher(executor_operators):
+      return launcher.Launcher(
+          pipeline_node=self._trainer,
+          mlmd_connection=self._mlmd_connection,
+          pipeline_info=self._pipeline_info,
+          pipeline_runtime_spec=self._pipeline_runtime_spec,
+          executor_spec=self._trainer_executor_spec,
+          custom_executor_operators=executor_operators)
+
+    test_launcher = create_test_launcher(
+        {_PYTHON_CLASS_EXECUTABLE_SPEC: _FakeCrashingExecutorOperator})
 
     # The first launch simulates the launcher being restarted by preventing the
     # publishing of any results to MLMD.
@@ -717,16 +719,8 @@ class LauncherTest(test_case_utils.TfxTest):
                        metadata_store_pb2.Execution.RUNNING)
 
     # Create a second test launcher. It should reuse the previous execution.
-    executor_operators = {
-        _PYTHON_CLASS_EXECUTABLE_SPEC: _FakeExecutorOperator
-    }
-    second_test_launcher = launcher.Launcher(
-        pipeline_node=self._trainer,
-        mlmd_connection=self._mlmd_connection,
-        pipeline_info=self._pipeline_info,
-        pipeline_runtime_spec=self._pipeline_runtime_spec,
-        executor_spec=self._trainer_executor_spec,
-        custom_executor_operators=executor_operators)
+    second_test_launcher = create_test_launcher(
+        {_PYTHON_CLASS_EXECUTABLE_SPEC: _FakeExecutorOperator})
     execution_info = second_test_launcher.launch()
 
     with self._mlmd_connection as m:
@@ -735,6 +729,12 @@ class LauncherTest(test_case_utils.TfxTest):
       self.assertLen(executions, 1)
       self.assertEqual(executions.pop().last_known_state,
                        metadata_store_pb2.Execution.COMPLETE)
+
+    # Create a third test launcher. It should not require an execution.
+    third_test_launcher = create_test_launcher(
+        {_PYTHON_CLASS_EXECUTABLE_SPEC: _FakeExecutorOperator})
+    execution_preparation_result = third_test_launcher._prepare_execution()
+    self.assertFalse(execution_preparation_result.is_execution_needed)
 
   def testLauncher_ToleratesDoubleCleanup(self):
     # Some executors or runtime environment may delete stateful_working_dir,
