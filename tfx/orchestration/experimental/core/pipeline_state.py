@@ -258,6 +258,17 @@ class PipelineState:
       data_types_utils.set_metadata_value(
           execution.custom_properties[_PIPELINE_RUN_ID],
           pipeline.runtime_spec.pipeline_run_id.field_value.string_value)
+      # Set the node state to COMPLETE for any nodes that are marked to be
+      # skipped in a partial pipeline run.
+      node_states_dict = {}
+      for node in get_all_pipeline_nodes(pipeline):
+        if node.execution_options.HasField('skip'):
+          logging.info('Node %s is skipped in this partial run.',
+                       node.node_info.id)
+          node_states_dict[node.node_info.id] = NodeState(
+              state=NodeState.COMPLETE)
+      if node_states_dict:
+        _save_node_states_dict(execution, node_states_dict)
 
     execution = execution_lib.put_execution(mlmd_handle, execution, [context])
     record_state_change_time()
@@ -442,7 +453,7 @@ class PipelineState:
     if old_state != node_state.state:
       logging.info('Changing node state: %s -> %s; node uid: %s', old_state,
                    node_state.state, node_uid)
-    self._save_node_states_dict(node_states_dict)
+    _save_node_states_dict(self._execution, node_states_dict)
 
   def get_node_state(self, node_uid: task_lib.NodeUid) -> NodeState:
     self._check_context()
@@ -506,11 +517,6 @@ class PipelineState:
       self) -> orchestration_options.OrchestrationOptions:
     self._check_context()
     return env.get_env().get_orchestration_options(self.pipeline)
-
-  def _save_node_states_dict(self, node_states: Dict[str, NodeState]) -> None:
-    data_types_utils.set_metadata_value(
-        self._execution.custom_properties[_NODE_STATES],
-        json_utils.dumps(node_states))
 
   def __enter__(self) -> 'PipelineState':
     mlmd_execution_atomic_op_context = mlmd_state.mlmd_execution_atomic_op(
@@ -830,3 +836,10 @@ def _get_node_states_dict(
   node_states_json = _get_metadata_value(
       pipeline_execution.custom_properties.get(_NODE_STATES))
   return json_utils.loads(node_states_json) if node_states_json else {}
+
+
+def _save_node_states_dict(pipeline_execution: metadata_store_pb2.Execution,
+                           node_states: Dict[str, NodeState]) -> None:
+  data_types_utils.set_metadata_value(
+      pipeline_execution.custom_properties[_NODE_STATES],
+      json_utils.dumps(node_states))

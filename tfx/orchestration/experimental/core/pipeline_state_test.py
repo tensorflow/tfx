@@ -553,6 +553,37 @@ class PipelineStateTest(test_utils.TfxTest):
           run_state_pb2.RunState(state=run_state_pb2.RunState.READY),
           run_states_dict['Pusher'])
 
+  def test_node_state_for_skipped_nodes_in_partial_pipeline_run(self):
+    """Tests that nodes marked to be skipped in a partial pipeline run have the right node state."""
+    with self._mlmd_connection as m:
+      pipeline = pipeline_pb2.Pipeline()
+      pipeline.pipeline_info.id = 'pipeline1'
+      pipeline.execution_mode = pipeline_pb2.Pipeline.SYNC
+      pipeline_uid = task_lib.PipelineUid.from_pipeline(pipeline)
+      pipeline.nodes.add().pipeline_node.node_info.id = 'ExampleGen'
+      pipeline.nodes.add().pipeline_node.node_info.id = 'Transform'
+      pipeline.nodes.add().pipeline_node.node_info.id = 'Trainer'
+
+      # Mark ExampleGen and Transform to be skipped.
+      pipeline.nodes[0].pipeline_node.execution_options.skip.SetInParent()
+      pipeline.nodes[1].pipeline_node.execution_options.skip.SetInParent()
+
+      eg_node_uid = task_lib.NodeUid(pipeline_uid, 'ExampleGen')
+      transform_node_uid = task_lib.NodeUid(pipeline_uid, 'Transform')
+      trainer_node_uid = task_lib.NodeUid(pipeline_uid, 'Trainer')
+
+      pstate.PipelineState.new(m, pipeline)
+      with pstate.PipelineState.load(m, pipeline_uid) as pipeline_state:
+        self.assertEqual(
+            {
+                eg_node_uid:
+                    pstate.NodeState(state=pstate.NodeState.COMPLETE),
+                transform_node_uid:
+                    pstate.NodeState(state=pstate.NodeState.COMPLETE),
+                trainer_node_uid:
+                    pstate.NodeState(state=pstate.NodeState.STARTED),
+            }, pipeline_state.get_node_states_dict())
+
 
 if __name__ == '__main__':
   tf.test.main()
