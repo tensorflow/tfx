@@ -88,10 +88,10 @@ def _run_executor(args: argparse.Namespace, beam_args: List[str]) -> None:
   executor_cls = import_utils.import_class_by_path(args.executor_class_path)
   if issubclass(executor_cls, base_beam_executor.BaseBeamExecutor):
     executor_context = base_beam_executor.BaseBeamExecutor.Context(
-        beam_pipeline_args=beam_args, unique_id='')
+        beam_pipeline_args=beam_args, unique_id='', tmp_dir='/tmp')
   else:
     executor_context = base_executor.BaseExecutor.Context(
-        extra_flags=beam_args, unique_id='')
+        extra_flags=beam_args, unique_id='', tmp_dir='/tmp')
   executor = executor_cls(executor_context)
   logging.info('Starting executor')
   executor.Do(inputs, outputs, exec_properties)
