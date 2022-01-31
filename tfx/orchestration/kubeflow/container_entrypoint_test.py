@@ -129,6 +129,7 @@ class MLMDConfigTest(test_case_utils.TfxTest):
         (python_driver_operator.PythonDriverOperator, 'run_driver',
          driver_output_pb2.DriverOutput()),
         (metadata.Metadata, '__init__', None),
+        (metadata.Metadata, '__exit__', None),
         (launcher.Launcher, '_publish_successful_execution', None),
         (launcher.Launcher, '_clean_up_stateless_execution_info', None),
         (launcher.Launcher, '_clean_up_stateful_execution_info', None),
