@@ -114,21 +114,20 @@ class RunnerTest(tf.test.TestCase):
 
     default_image = 'gcr.io/tfx-oss-public/tfx:{}'.format(
         version_utils.get_image_version())
-    self.assertDictContainsSubset(
-        {
-            'masterConfig': {
-                'imageUri':
-                    default_image,
-                'containerCommand':
-                    runner._CONTAINER_COMMAND + [
-                        '--executor_class_path', class_path, '--inputs', '{}',
-                        '--outputs', '{}', '--exec-properties',
-                        ('{"custom_config": '
-                         '"{\\"ai_platform_training_args\\": {\\"project\\": \\"12345\\"'
-                         '}}"}')
-                    ],
-            },
-        }, body['training_input'])
+    self.assertLessEqual({
+        'masterConfig': {
+            'imageUri':
+                default_image,
+            'containerCommand':
+                runner._CONTAINER_COMMAND + [
+                    '--executor_class_path', class_path, '--inputs', '{}',
+                    '--outputs', '{}', '--exec-properties',
+                    ('{"custom_config": '
+                     '"{\\"ai_platform_training_args\\": {\\"project\\": \\"12345\\"'
+                     '}}"}')
+                ],
+        },
+    }.items(), body['training_input'].items())
     self.assertNotIn('project', body['training_input'])
     self.assertStartsWith(body['job_id'], 'tfx_')
     self._mock_get.execute.assert_called_with()
@@ -239,28 +238,27 @@ class RunnerTest(tf.test.TestCase):
         custom_job=mock.ANY)
     kwargs = self._mock_create.call_args[1]
     body = kwargs['custom_job']
-    self.assertDictContainsSubset(
-        {
-            'worker_pool_specs': [{
-                'container_spec': {
-                    'image_uri':
-                        'my-custom-image',
-                    'command':
-                        runner._CONTAINER_COMMAND + [
-                            '--executor_class_path', class_path, '--inputs',
-                            '{}', '--outputs', '{}', '--exec-properties',
-                            ('{"custom_config": '
-                             '"{\\"ai_platform_training_args\\": '
-                             '{\\"project\\": \\"12345\\", '
-                             '\\"worker_pool_specs\\": '
-                             '[{\\"container_spec\\": '
-                             '{\\"image_uri\\": \\"my-custom-image\\"}}]}, '
-                             '\\"ai_platform_training_job_id\\": '
-                             '\\"my_jobid\\"}"}')
-                        ],
-                },
-            },],
-        }, body['job_spec'])
+    self.assertLessEqual({
+        'worker_pool_specs': [{
+            'container_spec': {
+                'image_uri':
+                    'my-custom-image',
+                'command':
+                    runner._CONTAINER_COMMAND + [
+                        '--executor_class_path', class_path, '--inputs', '{}',
+                        '--outputs', '{}', '--exec-properties',
+                        ('{"custom_config": '
+                         '"{\\"ai_platform_training_args\\": '
+                         '{\\"project\\": \\"12345\\", '
+                         '\\"worker_pool_specs\\": '
+                         '[{\\"container_spec\\": '
+                         '{\\"image_uri\\": \\"my-custom-image\\"}}]}, '
+                         '\\"ai_platform_training_job_id\\": '
+                         '\\"my_jobid\\"}"}')
+                    ],
+            },
+        },],
+    }.items(), body['job_spec'].items())
     self.assertEqual(body['display_name'], 'my_jobid')
     self._mock_get.assert_called_with(name='vertex_job_study_id')
 
@@ -329,7 +327,7 @@ class RunnerTest(tf.test.TestCase):
         }, body['job_spec'])
     self.assertEqual(body['display_name'], 'valid_name')
     self.assertDictEqual(body['encryption_spec'], expected_encryption_spec)
-    self.assertDictContainsSubset(user_provided_labels, body['labels'])
+    self.assertLessEqual(user_provided_labels.items(), body['labels'].items())
     self._mock_get.assert_called_with(name='vertex_job_study_id')
 
   def _setUpPredictionMocks(self):

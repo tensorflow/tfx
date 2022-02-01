@@ -12,7 +12,10 @@
 
 ## Bug Fixes and Other Changes
 
-*   Fixed the cluster spec error in CAIP Tuner on Vertex when `num_parallel_trials = 1`
+*   Fixed the cluster spec error in CAIP Tuner on Vertex when
+    `num_parallel_trials = 1`
+*   Replaced deprecated assertDictContainsSubset with
+    assertLessEqual(itemsA, itemsB).    
 
 ## Dependency Updates
 
