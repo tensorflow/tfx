@@ -18,7 +18,6 @@ import tensorflow as tf
 from tfx import types
 from tfx.components import CsvExampleGen
 from tfx.components import StatisticsGen
-from tfx.components.common_nodes import importer_node as legacy_importer_node
 from tfx.dsl.compiler import compiler_utils
 from tfx.dsl.components.base import base_component
 from tfx.dsl.components.base import base_executor
@@ -72,9 +71,6 @@ class CompilerUtilsTest(tf.test.TestCase):
 
   def testIsImporter(self):
     impt = importer.Importer(
-        source_uri="uri/to/schema", artifact_type=standard_artifacts.Schema)
-    self.assertTrue(compiler_utils.is_importer(impt))
-    impt = legacy_importer_node.ImporterNode(
         source_uri="uri/to/schema", artifact_type=standard_artifacts.Schema)
     self.assertTrue(compiler_utils.is_importer(impt))
 

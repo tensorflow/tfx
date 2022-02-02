@@ -268,13 +268,13 @@ def create_pipeline(
         # best_hyperparameters artifact as input and utilize it in the user
         # module code.
         #
-        # If there isn't Tuner in the pipeline, either use ImporterNode to
+        # If there isn't Tuner in the pipeline, either use Importer to
         # import a previous Tuner's output to feed to Trainer, or directly use
         # the tuned hyperparameters in user module code and set hyperparameters
         # to None here.
         #
-        # Example of ImporterNode,
-        #   hparams_importer = ImporterNode(
+        # Example of Importer,
+        #   hparams_importer = Importer(
         #     source_uri='path/to/best_hyperparameters.txt',
         #     artifact_type=HyperParameters).with_id('import_hparams')
         #   ...
