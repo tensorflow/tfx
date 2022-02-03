@@ -292,17 +292,20 @@ def resume_manual_node(mlmd_handle: metadata.Metadata,
 @_pipeline_ops_lock
 def _initiate_pipeline_update(
     mlmd_handle: metadata.Metadata,
-    pipeline: pipeline_pb2.Pipeline) -> pstate.PipelineState:
+    pipeline: pipeline_pb2.Pipeline,
+    update_options: pipeline_pb2.UpdateOptions,
+) -> pstate.PipelineState:
   """Initiates pipeline update."""
   pipeline_uid = task_lib.PipelineUid.from_pipeline(pipeline)
   with pstate.PipelineState.load(mlmd_handle, pipeline_uid) as pipeline_state:
-    pipeline_state.initiate_update(pipeline)
+    pipeline_state.initiate_update(pipeline, update_options)
   return pipeline_state
 
 
 @_to_status_not_ok_error
 def update_pipeline(mlmd_handle: metadata.Metadata,
                     pipeline: pipeline_pb2.Pipeline,
+                    update_options: pipeline_pb2.UpdateOptions,
                     timeout_secs: Optional[float] = None) -> None:
   """Updates an active pipeline with a new pipeline IR.
 
@@ -311,6 +314,7 @@ def update_pipeline(mlmd_handle: metadata.Metadata,
   Args:
     mlmd_handle: A handle to the MLMD db.
     pipeline: New pipeline IR to be applied.
+    update_options: Selection of active nodes to be reloaded upon update.
     timeout_secs: Timeout in seconds to wait for the update to finish. If
       `None`, waits indefinitely.
 
@@ -320,7 +324,8 @@ def update_pipeline(mlmd_handle: metadata.Metadata,
   pipeline_uid = task_lib.PipelineUid.from_pipeline(pipeline)
   logging.info('Received request to update pipeline; pipeline uid: %s',
                pipeline_uid)
-  pipeline_state = _initiate_pipeline_update(mlmd_handle, pipeline)
+  pipeline_state = _initiate_pipeline_update(mlmd_handle, pipeline,
+                                             update_options)
 
   def _is_update_applied() -> bool:
     with pipeline_state:
@@ -567,11 +572,18 @@ def _get_pipeline_states(
 
 def _cancel_nodes(mlmd_handle: metadata.Metadata, task_queue: tq.TaskQueue,
                   service_job_manager: service_jobs.ServiceJobManager,
-                  pipeline_state: pstate.PipelineState, pause: bool) -> bool:
+                  pipeline_state: pstate.PipelineState,
+                  pause: bool,
+                  reload_node_ids: Optional[List[str]] = None) -> bool:
   """Cancels pipeline nodes and returns `True` if any node is currently active."""
   pipeline = pipeline_state.pipeline
   is_active = False
   for node in pstate.get_all_pipeline_nodes(pipeline):
+    # TODO(b/217584342): Partial reload which excludes service nodes is not
+    # fully supported in async pipelines since we don't have a mechanism to
+    # reload them later for new executions.
+    if reload_node_ids is not None and node.node_info.id not in reload_node_ids:
+      continue
     if service_job_manager.is_pure_service_node(pipeline_state,
                                                 node.node_info.id):
       if not service_job_manager.stop_node_services(pipeline_state,
@@ -610,8 +622,16 @@ def _orchestrate_update_initiated_pipeline(
     service_job_manager: service_jobs.ServiceJobManager,
     pipeline_state: pstate.PipelineState) -> None:
   """Orchestrates an update-initiated pipeline."""
+  with pipeline_state:
+    update_options = pipeline_state.get_update_options()
   is_active = _cancel_nodes(
-      mlmd_handle, task_queue, service_job_manager, pipeline_state, pause=True)
+      mlmd_handle=mlmd_handle,
+      task_queue=task_queue,
+      service_job_manager=service_job_manager,
+      pipeline_state=pipeline_state,
+      pause=True,
+      reload_node_ids=list(update_options.reload_nodes)
+      if update_options.reload_policy == update_options.PARTIAL else None)
   if not is_active:
     with pipeline_state:
       pipeline_state.apply_pipeline_update()

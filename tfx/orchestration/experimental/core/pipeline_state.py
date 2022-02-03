@@ -36,6 +36,7 @@ from tfx.proto.orchestration import run_state_pb2
 from tfx.utils import json_utils
 from tfx.utils import status as status_lib
 
+from google.protobuf import message
 from ml_metadata.proto import metadata_store_pb2
 
 _ORCHESTRATOR_RESERVED_ID = '__ORCHESTRATOR__'
@@ -47,6 +48,7 @@ _PIPELINE_STATUS_MSG = 'pipeline_status_msg'
 _NODE_STATES = 'node_states'
 _PIPELINE_RUN_METADATA = 'pipeline_run_metadata'
 _UPDATED_PIPELINE_IR = 'updated_pipeline_ir'
+_UPDATE_OPTIONS = 'update_options'
 _ORCHESTRATOR_EXECUTION_TYPE = metadata_store_pb2.ExecutionType(
     name=_ORCHESTRATOR_RESERVED_ID,
     properties={_PIPELINE_IR: metadata_store_pb2.STRING})
@@ -244,7 +246,7 @@ class PipelineState:
           code=status_lib.Code.ALREADY_EXISTS,
           message=f'Pipeline with uid {pipeline_uid} already active.')
 
-    exec_properties = {_PIPELINE_IR: _base64_encode_pipeline(pipeline)}
+    exec_properties = {_PIPELINE_IR: _base64_encode(pipeline)}
     if pipeline_run_metadata:
       exec_properties[_PIPELINE_RUN_METADATA] = json_utils.dumps(
           pipeline_run_metadata)
@@ -359,7 +361,11 @@ class PipelineState:
           self._execution.custom_properties[_PIPELINE_STATUS_MSG],
           status.message)
 
-  def initiate_update(self, updated_pipeline: pipeline_pb2.Pipeline) -> None:
+  def initiate_update(
+      self,
+      updated_pipeline: pipeline_pb2.Pipeline,
+      update_options: pipeline_pb2.UpdateOptions,
+  ) -> None:
     """Initiates pipeline update process."""
     self._check_context()
 
@@ -398,12 +404,28 @@ class PipelineState:
 
     data_types_utils.set_metadata_value(
         self._execution.custom_properties[_UPDATED_PIPELINE_IR],
-        _base64_encode_pipeline(updated_pipeline))
+        _base64_encode(updated_pipeline))
+    data_types_utils.set_metadata_value(
+        self._execution.custom_properties[_UPDATE_OPTIONS],
+        _base64_encode(update_options))
 
   def is_update_initiated(self) -> bool:
     self._check_context()
     return self.is_active() and self._execution.custom_properties.get(
         _UPDATED_PIPELINE_IR) is not None
+
+  def get_update_options(self) -> pipeline_pb2.UpdateOptions:
+    """Gets pipeline update option that was previously configured."""
+    self._check_context()
+    update_options = self._execution.custom_properties.get(
+        _UPDATE_OPTIONS)
+    if update_options is None:
+      logging.warning('pipeline execution missing expected custom property %s, '
+                      'defaulting to UpdateOptions(reload_policy=ALL)',
+                      _UPDATE_OPTIONS)
+      return pipeline_pb2.UpdateOptions(
+          reload_policy=pipeline_pb2.UpdateOptions.ReloadPolicy.ALL)
+    return _base64_decode_update_options(_get_metadata_value(update_options))
 
   def apply_pipeline_update(self) -> None:
     """Applies pipeline update that was previously initiated."""
@@ -417,6 +439,7 @@ class PipelineState:
     data_types_utils.set_metadata_value(
         self._execution.properties[_PIPELINE_IR], updated_pipeline_ir)
     del self._execution.custom_properties[_UPDATED_PIPELINE_IR]
+    del self._execution.custom_properties[_UPDATE_OPTIONS]
     self.pipeline = _base64_decode_pipeline(updated_pipeline_ir)
 
   def is_stop_initiated(self) -> bool:
@@ -431,8 +454,8 @@ class PipelineState:
       code = _get_metadata_value(custom_properties.get(_PIPELINE_STATUS_CODE))
       if code is None:
         code = status_lib.Code.UNKNOWN
-      message = _get_metadata_value(custom_properties.get(_PIPELINE_STATUS_MSG))
-      return status_lib.Status(code=code, message=message)
+      msg = _get_metadata_value(custom_properties.get(_PIPELINE_STATUS_MSG))
+      return status_lib.Status(code=code, message=msg)
     else:
       return None
 
@@ -821,13 +844,20 @@ def _get_latest_execution(
   return max(executions, key=_get_creation_time)
 
 
-def _base64_encode_pipeline(pipeline: pipeline_pb2.Pipeline) -> str:
-  return base64.b64encode(pipeline.SerializeToString()).decode('utf-8')
+def _base64_encode(msg: message.Message) -> str:
+  return base64.b64encode(msg.SerializeToString()).decode('utf-8')
 
 
 def _base64_decode_pipeline(pipeline_encoded: str) -> pipeline_pb2.Pipeline:
   result = pipeline_pb2.Pipeline()
   result.ParseFromString(base64.b64decode(pipeline_encoded))
+  return result
+
+
+def _base64_decode_update_options(
+    update_options_encoded: str) -> pipeline_pb2.UpdateOptions:
+  result = pipeline_pb2.UpdateOptions()
+  result.ParseFromString(base64.b64decode(update_options_encoded))
   return result
 
 
