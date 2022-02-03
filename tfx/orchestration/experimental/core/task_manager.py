@@ -187,8 +187,10 @@ class TaskManager:
             'Cannot create multiple task schedulers for the same task; '
             'task_id: {}'.format(task.task_id))
       scheduler = _SchedulerWrapper(
-          ts.TaskSchedulerRegistry.create_task_scheduler(
-              self._mlmd_handle, task.pipeline, task))
+          typing.cast(
+              ts.TaskScheduler[task_lib.ExecNodeTask],
+              ts.TaskSchedulerRegistry.create_task_scheduler(
+                  self._mlmd_handle, task.pipeline, task)))
       self._scheduler_by_node_uid[node_uid] = scheduler
       self._ts_futures.add(
           self._ts_executor.submit(self._process_exec_node_task, scheduler,

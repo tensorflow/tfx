@@ -13,7 +13,6 @@
 # limitations under the License.
 """A no-op task scheduler to aid in testing."""
 
-import typing
 from absl import logging
 
 from tfx.orchestration.experimental.core import task as task_lib
@@ -22,15 +21,14 @@ from tfx.proto.orchestration import execution_result_pb2
 from tfx.utils import status as status_lib
 
 
-class NoOpTaskScheduler(ts.TaskScheduler):
+class NoOpTaskScheduler(ts.TaskScheduler[task_lib.ExecNodeTask]):
   """A no-op task scheduler to aid in testing."""
 
   def schedule(self) -> ts.TaskSchedulerResult:
-    task = typing.cast(task_lib.ExecNodeTask, self.task)
-    logging.info('Processing ExecNodeTask: %s', task)
+    logging.info('Processing ExecNodeTask: %s', self.task)
     executor_output = execution_result_pb2.ExecutorOutput()
     executor_output.execution_result.code = status_lib.Code.OK
-    for key, artifacts in task.output_artifacts.items():
+    for key, artifacts in self.task.output_artifacts.items():
       for artifact in artifacts:
         executor_output.output_artifacts[key].artifacts.add().CopyFrom(
             artifact.mlmd_artifact)

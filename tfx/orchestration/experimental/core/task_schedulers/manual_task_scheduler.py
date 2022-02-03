@@ -14,7 +14,6 @@
 """A task scheduler for Manual system node."""
 
 import threading
-import typing
 from typing import Optional
 
 import attr
@@ -68,7 +67,7 @@ class ManualNodeState(json_utils.Jsonable):
     return value
 
 
-class ManualTaskScheduler(task_scheduler.TaskScheduler):
+class ManualTaskScheduler(task_scheduler.TaskScheduler[task_lib.ExecNodeTask]):
   """A task scheduler for Manual system node."""
 
   def __init__(self, mlmd_handle: metadata.Metadata,
@@ -79,11 +78,10 @@ class ManualTaskScheduler(task_scheduler.TaskScheduler):
       self._cancel.set()
 
   def schedule(self) -> task_scheduler.TaskSchedulerResult:
-    task = typing.cast(task_lib.ExecNodeTask, self.task)
     while not self._cancel.wait(_POLLING_INTERVAL_SECS):
       with mlmd_state.mlmd_execution_atomic_op(
           mlmd_handle=self.mlmd_handle,
-          execution_id=task.execution_id) as execution:
+          execution_id=self.task.execution_id) as execution:
         node_state_mlmd_value = execution.custom_properties.get(
             NODE_STATE_PROPERTY_KEY)
         node_state = ManualNodeState.from_mlmd_value(node_state_mlmd_value)
