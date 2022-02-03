@@ -18,11 +18,12 @@ import functools
 import threading
 import time
 import typing
-from typing import Callable, List, Mapping, Optional
+from typing import Callable, Dict, List, Mapping, Optional, Tuple
 
 from absl import logging
 import attr
 from tfx import types
+from tfx.orchestration import data_types_utils
 from tfx.orchestration import metadata
 from tfx.orchestration.experimental.core import async_pipeline_task_gen
 from tfx.orchestration.experimental.core import constants
@@ -34,10 +35,16 @@ from tfx.orchestration.experimental.core import task as task_lib
 from tfx.orchestration.experimental.core import task_gen_utils
 from tfx.orchestration.experimental.core import task_queue as tq
 from tfx.orchestration.experimental.core.task_schedulers import manual_task_scheduler
+from tfx.orchestration.portable import execution_publish_utils
+from tfx.orchestration.portable import outputs_utils
 from tfx.orchestration.portable import partial_run_utils
 from tfx.orchestration.portable.mlmd import execution_lib
+from tfx.proto.orchestration import execution_invocation_pb2
+from tfx.proto.orchestration import execution_result_pb2
 from tfx.proto.orchestration import pipeline_pb2
 from tfx.utils import status as status_lib
+from tfx.utils import typing_utils
+
 
 from ml_metadata.proto import metadata_store_pb2
 
@@ -548,6 +555,130 @@ def orchestrate(mlmd_handle: metadata.Metadata, task_queue: tq.TaskQueue,
     logging.info('Orchestrating pipeline: %s', pipeline_state.pipeline_uid)
     _orchestrate_active_pipeline(mlmd_handle, task_queue, service_job_manager,
                                  pipeline_state)
+
+
+def _get_pipeline_and_node(
+    mlmd_handle: metadata.Metadata, node_uid: task_lib.NodeUid
+) -> Tuple[pipeline_pb2.Pipeline, pipeline_pb2.PipelineNode]:
+  """Gets the pipeline and node for the node_uid."""
+  with pstate.PipelineState.load(mlmd_handle,
+                                 node_uid.pipeline_uid) as pipeline_state:
+    nodes = pstate.get_all_pipeline_nodes(pipeline_state.pipeline)
+    filtered_nodes = [n for n in nodes if n.node_info.id == node_uid.node_id]
+    if len(filtered_nodes) != 1:
+      raise status_lib.StatusNotOkError(
+          code=status_lib.Code.INTERNAL,
+          message=(f'unable to find node: '
+                   f'{node_uid}'))
+    return (pipeline_state.pipeline, filtered_nodes[0])
+
+
+def _get_resolved_info(mlmd_handle: metadata.Metadata,
+                       node: pipeline_pb2.PipelineNode):
+  resolved_info = task_gen_utils.generate_resolved_info(mlmd_handle, node)
+  if resolved_info is None:
+    raise status_lib.StatusNotOkError(
+        code=status_lib.Code.INTERNAL,
+        message=(f'no resolved inputs for node: {node.node_info}'))
+  return resolved_info
+
+
+def _first_input_artifacts(
+    input_artifacts: List[Optional[typing_utils.ArtifactMultiMap]]
+) -> Optional[typing_utils.ArtifactMultiMap]:
+  if len(input_artifacts) > 1:
+    raise status_lib.StatusNotOkError(
+        code=status_lib.Code.INTERNAL,
+        message=(
+            f'input_artifacts must have zero or one elements: {input_artifacts}'
+        ))
+  return input_artifacts[0] if input_artifacts else None
+
+
+@_to_status_not_ok_error
+@_pipeline_ops_lock
+def register_external_executions(
+    mlmd_handle: metadata.Metadata, node_uid: task_lib.NodeUid,
+    exec_properties_list: List[Dict[str, types.ExecPropertyTypes]]
+) -> List[metadata_store_pb2.Execution]:
+  """Starts an ExampleGen execution in MLMD."""
+  _, node = _get_pipeline_and_node(mlmd_handle, node_uid)
+  resolved_info = _get_resolved_info(mlmd_handle, node)
+  executions = []
+  for exec_properties in exec_properties_list:
+    resolved_info.exec_properties.update(exec_properties)
+    execution = execution_publish_utils.register_execution(
+        metadata_handler=mlmd_handle,
+        execution_type=node.node_info.type,
+        contexts=resolved_info.contexts,
+        input_artifacts=_first_input_artifacts(resolved_info.input_artifacts),
+        exec_properties=resolved_info.exec_properties,
+        last_known_state=metadata_store_pb2.Execution.State.NEW)
+    execution.push_back()
+  return executions
+
+
+@_to_status_not_ok_error
+@_pipeline_ops_lock
+def get_external_executions(
+    mlmd_handle: metadata.Metadata,
+    node_uid: task_lib.NodeUid) -> List[metadata_store_pb2.Execution]:
+  """Starts an ExampleGen execution in MLMD."""
+  _, node = _get_pipeline_and_node(mlmd_handle, node_uid)
+  return task_gen_utils.get_executions(mlmd_handle, node)
+
+
+@_to_status_not_ok_error
+@_pipeline_ops_lock
+def start_external_execution(
+    mlmd_handle: metadata.Metadata,
+    execution_id: int) -> execution_invocation_pb2.ExecutionInvocation:
+  """Starts an ExampleGen execution in MLMD."""
+  [execution] = mlmd_handle.store.get_executions_by_id([execution_id])
+  if (execution.last_known_state != metadata_store_pb2.Execution.State.NEW and
+      execution.last_known_state != metadata_store_pb2.Execution.State.RUNNING):
+    raise Exception('Expected execution state to be NEW or RUNNING')
+  mlmd_handle.store.get_contexts_by_execution(execution_id)
+  # TODO(yifanmai): How to reconstruct NodeUid from contexts?
+  node_uid = task_lib.NodeUid(task_lib.PipelineUid('?'), '?')
+  pipeline, node = _get_pipeline_and_node(mlmd_handle, node_uid)
+  resolved_info = _get_resolved_info(mlmd_handle, node)
+  execution.last_known_state = metadata_store_pb2.Execution.State.RUNNING
+  execution_lib.put_execution(mlmd_handle, execution, contexts=[])
+  outputs_resolver = outputs_utils.OutputsResolver(node, pipeline.pipeline_info,
+                                                   pipeline.runtime_spec,
+                                                   pipeline.execution_mode)
+  output_artifacts = outputs_resolver.generate_output_artifacts(execution.id)
+  return execution_invocation_pb2.ExecutionInvocation(
+      output_metadata_uri=outputs_resolver.get_executor_output_uri(
+          execution.id),
+      input_dict=data_types_utils.build_artifact_struct_dict(
+          _first_input_artifacts(resolved_info.input_artifacts)),
+      output_dict=data_types_utils.build_artifact_struct_dict(output_artifacts),
+      stateful_working_dir=outputs_resolver.get_stateful_working_directory(
+          execution.id),
+      pipeline_info=pipeline.pipeline_info,
+      pipeline_node=node,
+      execution_id=execution.id,
+      pipeline_run_id=pipeline.runtime_spec.pipeline_run_id.field_value
+      .string_value)
+
+
+@_to_status_not_ok_error
+@_pipeline_ops_lock
+def finish_external_execution(
+    mlmd_handle: metadata.Metadata, execution_id: int,
+    executor_output: execution_result_pb2.ExecutorOutput) -> None:
+  """Starts an ExampleGen execution in MLMD."""
+  if executor_output.execution_result.code == status_lib.Code.OK:
+    execution_publish_utils.publish_succeeded_execution(
+        mlmd_handle, execution_id, contexts=[], executor_output=executor_output)
+  else:
+    execution_publish_utils.publish_failed_execution(
+        mlmd_handle,
+        contexts=[],
+        execution_id=execution_id,
+        executor_output=executor_output)
 
 
 def _get_pipeline_states(
