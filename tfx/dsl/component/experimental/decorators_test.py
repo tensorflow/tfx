@@ -33,6 +33,7 @@ from tfx.orchestration import pipeline
 from tfx.orchestration.beam import beam_dag_runner
 from tfx.types import component_spec
 from tfx.types import standard_artifacts
+from tfx.types.system_executions import SystemExecution
 
 
 class _InputArtifact(types.Artifact):
@@ -56,8 +57,32 @@ class _BasicComponentSpec(component_spec.ComponentSpec):
   }
 
 
+class _InjectorAnnotation(SystemExecution):
+
+  MLMD_SYSTEM_BASE_TYPE = 1
+
+
+class _SimpleComponentAnnotation(SystemExecution):
+
+  MLMD_SYSTEM_BASE_TYPE = 2
+
+
+class _VerifyAnnotation(SystemExecution):
+
+  MLMD_SYSTEM_BASE_TYPE = 3
+
+
 @component
 def _injector_1(
+    foo: Parameter[int], bar: Parameter[str]) -> OutputDict(
+        a=int, b=int, c=str, d=bytes):
+  assert foo == 9
+  assert bar == 'secret'
+  return {'a': 10, 'b': 22, 'c': 'unicode', 'd': b'bytes'}
+
+
+@component(component_annotation=_InjectorAnnotation)
+def _injector_1_with_annotation(
     foo: Parameter[int], bar: Parameter[str]) -> OutputDict(
         a=int, b=int, c=str, d=bytes):
   assert foo == 9
@@ -73,8 +98,22 @@ def _simple_component(
   return {'e': float(a + b), 'f': float(a * b), 'g': 'OK', 'h': None}
 
 
+@component(component_annotation=_SimpleComponentAnnotation)
+def _simple_component_with_annotation(
+    a: int, b: int, c: str, d: bytes) -> OutputDict(
+        e=float, f=float, g=Optional[str], h=Optional[str]):
+  del c, d
+  return {'e': float(a + b), 'f': float(a * b), 'g': 'OK', 'h': None}
+
+
 @component
 def _verify(e: float, f: float, g: Optional[str], h: Optional[str]):
+  assert (e, f, g, h) == (32.0, 220.0, 'OK', None), (e, f, g, h)
+
+
+@component(component_annotation=_VerifyAnnotation)
+def _verify_with_annotation(e: float, f: float, g: Optional[str],
+                            h: Optional[str]):
   assert (e, f, g, h) == (32.0, 220.0, 'OK', None), (e, f, g, h)
 
 
@@ -281,6 +320,44 @@ class ComponentDecoratorTest(tf.test.TestCase):
     with self.assertRaisesRegex(
         ValueError, 'Non-nullable output \'e\' received None return value'):
       beam_dag_runner.BeamDagRunner().run(test_pipeline)
+
+  def testComponentAnnotation(self):
+    """Test component annotation parsed from decorator param."""
+    instance_1 = _injector_1_with_annotation(foo=9, bar='secret')
+    instance_2 = _simple_component_with_annotation(
+        a=instance_1.outputs['a'],
+        b=instance_1.outputs['b'],
+        c=instance_1.outputs['c'],
+        d=instance_1.outputs['d'])
+    instance_3 = _verify_with_annotation(
+        e=instance_2.outputs['e'],
+        f=instance_2.outputs['f'],
+        g=instance_2.outputs['g'],
+        h=instance_2.outputs['h'])  # pylint: disable=assignment-from-no-return
+
+    metadata_config = metadata.sqlite_metadata_connection_config(
+        self._metadata_path)
+    test_pipeline = pipeline.Pipeline(
+        pipeline_name='test_pipeline_1',
+        pipeline_root=self._test_dir,
+        metadata_connection_config=metadata_config,
+        components=[instance_1, instance_2, instance_3])
+
+    beam_dag_runner.BeamDagRunner().run(test_pipeline)
+
+    # Verify base_type annotation parsed from component decorator is correct.
+    self.assertEqual(test_pipeline.components[0].type,
+                     '__main__._injector_1_with_annotation')
+    self.assertEqual(
+        test_pipeline.components[0].type_annotation.MLMD_SYSTEM_BASE_TYPE, 1)
+    self.assertEqual(test_pipeline.components[1].type,
+                     '__main__._simple_component_with_annotation')
+    self.assertEqual(
+        test_pipeline.components[1].type_annotation.MLMD_SYSTEM_BASE_TYPE, 2)
+    self.assertEqual(test_pipeline.components[2].type,
+                     '__main__._verify_with_annotation')
+    self.assertEqual(
+        test_pipeline.components[2].type_annotation.MLMD_SYSTEM_BASE_TYPE, 3)
 
 
 if __name__ == '__main__':
