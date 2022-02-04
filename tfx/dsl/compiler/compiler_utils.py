@@ -19,6 +19,7 @@ from tfx import types
 from tfx.dsl.components.base import base_node
 from tfx.dsl.components.common import importer
 from tfx.dsl.components.common import resolver
+from tfx.dsl.placeholder import placeholder as ph
 from tfx.orchestration import pipeline
 from tfx.proto.orchestration import pipeline_pb2
 from tfx.types import channel_utils
@@ -153,3 +154,16 @@ def build_channel_to_key_fn(implicit_keys_map):
     return implicit_key
 
   return channel_to_key_fn
+
+
+def validate_dynamic_exec_ph_operator(placeholder: ph.ArtifactPlaceholder):
+  # Supported format for dynamic exec prop:
+  # component.output['ouput_key'].future()[0].value
+  if len(placeholder._operators) != 2:  # pylint: disable=protected-access
+    raise ValueError("dynamic exec property should contain two placeholder "
+                     "operator, while pass %d operaters" %
+                     len(placeholder._operators))  # pylint: disable=protected-access
+  if (not isinstance(placeholder._operators[0], ph._IndexOperator) or  # pylint: disable=protected-access
+      not isinstance(placeholder._operators[1], ph._ArtifactValueOperator)):  # pylint: disable=protected-access
+    raise ValueError("dynamic exec property should be in form of "
+                     "component.output[\'ouput_key\'].future()[0].value")

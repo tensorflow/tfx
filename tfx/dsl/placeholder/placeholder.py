@@ -332,7 +332,7 @@ class Placeholder(json_utils.Jsonable):
                key: Optional[str] = None):
     self._operators = []
     self._type = placeholder_type
-    self._key = key
+    self._key = key  # TODO(b/217597892): Refactor _key as read-only property.
 
   def __add__(self, right: Union[str, 'Placeholder']):
     self._operators.append(_ConcatOperator(right=right))
@@ -565,6 +565,16 @@ class ChannelWrappedPlaceholder(ArtifactPlaceholder):
 
   def __ge__(self, other: _ValueLikeType) -> 'Predicate':
     return logical_not(self < other)
+
+  def encode_with_keys(
+      self,
+      channel_to_key_fn: Optional[Callable[['types.Channel'], str]]
+  ) -> placeholder_pb2.PlaceholderExpression:
+    original_key = self._key
+    self._key = channel_to_key_fn(self.channel)
+    result = self.encode()
+    self._key = original_key
+    return result
 
 
 def _encode_value_like(

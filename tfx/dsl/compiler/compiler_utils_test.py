@@ -28,6 +28,10 @@ from tfx.dsl.input_resolution.strategies import latest_blessed_model_strategy
 from tfx.orchestration import pipeline
 from tfx.proto.orchestration import pipeline_pb2
 from tfx.types import standard_artifacts
+from tfx.types.artifact import Artifact
+from tfx.types.artifact import Property
+from tfx.types.artifact import PropertyType
+from tfx.types.channel import Channel
 
 from ml_metadata.proto import metadata_store_pb2
 
@@ -46,6 +50,13 @@ class EmptyComponent(base_component.BaseComponent):
   def __init__(self, name):
     super().__init__(spec=EmptyComponentSpec())
     self._id = name
+
+
+class _MyType(Artifact):
+  TYPE_NAME = "MyTypeName"
+  PROPERTIES = {
+      "string_value": Property(PropertyType.STRING),
+  }
 
 
 class CompilerUtilsTest(tf.test.TestCase):
@@ -140,6 +151,21 @@ class CompilerUtilsTest(tf.test.TestCase):
     fn = compiler_utils.build_channel_to_key_fn({"_trainer.model": "real_key"})
     self.assertEqual(fn(model), "real_key")
     self.assertEqual(fn(examples), "_example_gen.examples")
+
+  def testValidateDynamicExecPhOperator(self):
+    with self.assertRaises(ValueError):
+      invalid_dynamic_exec_ph = Channel(type=_MyType).future()
+      compiler_utils.validate_dynamic_exec_ph_operator(invalid_dynamic_exec_ph)
+    with self.assertRaises(ValueError):
+      invalid_dynamic_exec_ph = Channel(type=_MyType).future()[0].uri
+      compiler_utils.validate_dynamic_exec_ph_operator(invalid_dynamic_exec_ph)
+    with self.assertRaises(ValueError):
+      invalid_dynamic_exec_ph = Channel(
+          type=_MyType).future()[0].value + Channel(
+              type=_MyType).future()[0].value
+      compiler_utils.validate_dynamic_exec_ph_operator(invalid_dynamic_exec_ph)
+    valid_dynamic_exec_ph = Channel(type=_MyType).future()[0].value
+    compiler_utils.validate_dynamic_exec_ph_operator(valid_dynamic_exec_ph)
 
 
 if __name__ == "__main__":

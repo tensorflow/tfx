@@ -317,6 +317,8 @@ class ExecutionParameter:
     def _type_check_helper(value: Any, declared: Type):  # pylint: disable=g-bare-generic
       """Helper type-checking function."""
       if isinstance(value, placeholder.Placeholder):
+        if isinstance(value, placeholder.ChannelWrappedPlaceholder):
+          return
         placeholders_involved = value.placeholders_involved()
         if (len(placeholders_involved) != 1 or not isinstance(
             placeholders_involved[0], placeholder.RuntimeInfoPlaceholder)):
