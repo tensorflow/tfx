@@ -490,10 +490,11 @@ class PipelineState:
 
   def get_node_states_dict(self) -> Dict[task_lib.NodeUid, NodeState]:
     self._check_context()
+    node_states_dict = _get_node_states_dict(self._execution)
     result = {}
     for node in get_all_pipeline_nodes(self.pipeline):
       node_uid = task_lib.NodeUid.from_pipeline_node(self.pipeline, node)
-      result[node_uid] = self.get_node_state(node_uid)
+      result[node_uid] = node_states_dict.get(node_uid.node_id, NodeState())
     return result
 
   def get_pipeline_execution_state(self) -> metadata_store_pb2.Execution.State:
