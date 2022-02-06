@@ -351,6 +351,7 @@ class TaskManagerE2ETest(test_utils.TfxTest):
     self.assertTrue(task_lib.is_exec_node_task(tasks[1]))
     self.assertEqual('my_transform', tasks[1].node_uid.node_id)
     self.assertTrue(os.path.exists(tasks[1].stateful_working_dir))
+    self.assertTrue(os.path.exists(tasks[1].tmp_dir))
     self._task = tasks[1]
     self._output_artifact_uri = self._task.output_artifacts['transform_graph'][
         0].uri
@@ -411,8 +412,9 @@ class TaskManagerE2ETest(test_utils.TfxTest):
     self.assertEqual(metadata_store_pb2.Execution.COMPLETE,
                      execution.last_known_state)
 
-    # Check that stateful working dir is removed.
+    # Check that stateful working dir and tmp_dir are removed.
     self.assertFalse(os.path.exists(self._task.stateful_working_dir))
+    self.assertFalse(os.path.exists(self._task.tmp_dir))
     # Output artifact URI remains as execution was successful.
     self.assertTrue(os.path.exists(self._output_artifact_uri))
 
@@ -434,8 +436,9 @@ class TaskManagerE2ETest(test_utils.TfxTest):
     self.assertEqual(metadata_store_pb2.Execution.COMPLETE,
                      execution.last_known_state)
 
-    # Check that stateful working dir is removed.
+    # Check that stateful working dir and tmp_dir are removed.
     self.assertFalse(os.path.exists(self._task.stateful_working_dir))
+    self.assertFalse(os.path.exists(self._task.tmp_dir))
     # Output artifact URI remains as execution was successful.
     self.assertTrue(os.path.exists(self._output_artifact_uri))
 
@@ -459,8 +462,10 @@ class TaskManagerE2ETest(test_utils.TfxTest):
         data_types_utils.get_metadata_value(
             execution.custom_properties[constants.EXECUTION_ERROR_MSG_KEY]))
 
-    # Check that stateful working dir and output artifact URI are removed.
+    # Check that stateful working dir, tmp_dir and output artifact URI are
+    # removed.
     self.assertFalse(os.path.exists(self._task.stateful_working_dir))
+    self.assertFalse(os.path.exists(self._task.tmp_dir))
     self.assertFalse(os.path.exists(self._output_artifact_uri))
 
   def test_executor_failure(self):
@@ -488,8 +493,10 @@ class TaskManagerE2ETest(test_utils.TfxTest):
         data_types_utils.get_metadata_value(
             execution.custom_properties[constants.EXECUTION_ERROR_MSG_KEY]))
 
-    # Check that stateful working dir and output artifact URI are removed.
+    # Check that stateful working dir, tmp_dir and output artifact URI are
+    # removed.
     self.assertFalse(os.path.exists(self._task.stateful_working_dir))
+    self.assertFalse(os.path.exists(self._task.tmp_dir))
     self.assertFalse(os.path.exists(self._output_artifact_uri))
 
   def test_scheduler_raises_exception(self):
@@ -505,8 +512,10 @@ class TaskManagerE2ETest(test_utils.TfxTest):
     self.assertEqual(metadata_store_pb2.Execution.FAILED,
                      execution.last_known_state)
 
-    # Check that stateful working dir and output artifact URI are removed.
+    # Check that stateful working dir, tmp_dir and output artifact URI are
+    # removed.
     self.assertFalse(os.path.exists(self._task.stateful_working_dir))
+    self.assertFalse(os.path.exists(self._task.tmp_dir))
     self.assertFalse(os.path.exists(self._output_artifact_uri))
 
 

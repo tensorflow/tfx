@@ -350,8 +350,15 @@ def _remove_output_dirs(task: task_lib.ExecNodeTask,
 
 
 def _remove_task_dirs(task: task_lib.ExecNodeTask) -> None:
+  """Removes directories created for the task."""
   if task.stateful_working_dir:
     outputs_utils.remove_stateful_working_dir(task.stateful_working_dir)
+  if task.tmp_dir:
+    try:
+      fileio.rmtree(task.tmp_dir)
+    except fileio.NotFoundError:
+      logging.warning(
+          'tmp_dir %s not found while attempting to delete, ignoring.')
   if task.executor_output_uri:
     try:
       fileio.remove(task.executor_output_uri)

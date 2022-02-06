@@ -101,6 +101,7 @@ class ExecNodeTask(Task):
     output_artifacts: Output artifacts dict.
     executor_output_uri: URI for the executor output.
     stateful_working_dir: Working directory for the node execution.
+    tmp_dir: Temporary directory for the node execution.
     pipeline: The pipeline IR proto containing the node to be executed.
     is_cancelled: Indicates whether this is a cancelled execution. The task
       scheduler is expected to gracefully exit after doing any necessary
@@ -114,6 +115,7 @@ class ExecNodeTask(Task):
   output_artifacts: Dict[str, List[types.Artifact]]
   executor_output_uri: str
   stateful_working_dir: str
+  tmp_dir: str
   pipeline: pipeline_pb2.Pipeline
   is_cancelled: bool = False
 
