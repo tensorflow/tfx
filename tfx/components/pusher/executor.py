@@ -201,8 +201,12 @@ class Executor(base_executor.BaseExecutor):
         # https://github.com/tensorflow/tensorflow/blob/d5b3c79b4804134d0d17bfce9f312151f6337dba/tensorflow/python/saved_model/save.py#L1445
         io_utils.copy_dir(
             model_path, serving_path, deny_regex_patterns=[r'saved_model\.pb'])
-        io_utils.copy_dir(
-            model_path, serving_path, allow_regex_patterns=[r'saved_model\.pb'])
+        saved_model_path = os.path.join(model_path, 'saved_model.pb')
+        if fileio.exists(saved_model_path):
+          io_utils.copy_file(
+              saved_model_path,
+              os.path.join(serving_path, 'saved_model.pb'),
+          )
         logging.info('Model written to serving path %s.', serving_path)
     else:
       raise NotImplementedError(

@@ -69,12 +69,24 @@ class ExecutorTest(tf.test.TestCase):
   def assertDirectoryEmpty(self, path):
     self.assertEqual(len(fileio.listdir(path)), 0)
 
-  def assertDirectoryNotEmpty(self, path):
-    self.assertGreater(len(fileio.listdir(path)), 0)
+  def _GetNumberOfFiles(self, path):
+    print('xxx', path)
+    print(fileio.listdir(path))
+    return len(fileio.listdir(path))
 
   def assertPushed(self):
-    self.assertDirectoryNotEmpty(self._serving_model_dir)
-    self.assertDirectoryNotEmpty(self._model_push.uri)
+    self.assertGreater(self._GetNumberOfFiles(self._serving_model_dir), 0)
+    pushed_path = os.path.join(self._serving_model_dir,
+                               fileio.listdir(self._serving_model_dir)[0])
+    self.assertGreater(self._GetNumberOfFiles(pushed_path), 0)
+    model_path = self._executor.GetModelPath(self._input_dict)
+    self.assertEqual(
+        self._GetNumberOfFiles(pushed_path),
+        self._GetNumberOfFiles(model_path))
+    self.assertEqual(
+        self._GetNumberOfFiles(self._model_push.uri),
+        self._GetNumberOfFiles(model_path))
+
     self.assertEqual(1, self._model_push.get_int_custom_property('pushed'))
 
   def assertNotPushed(self):
@@ -213,13 +225,13 @@ class ExecutorTest(tf.test.TestCase):
     # Create dummy model
     blessed_model_path = path_utils.stamped_model_path(infra_blessing.uri)
     fileio.makedirs(blessed_model_path)
-    io_utils.write_string_file(
-        os.path.join(blessed_model_path, 'my-model'), '')
+    io_utils.write_string_file(os.path.join(blessed_model_path, 'my-model'), '')
 
-    self._executor.Do(
-        {standard_component_specs.INFRA_BLESSING_KEY: [infra_blessing]},
-        self._output_dict,
-        self._exec_properties)
+    self._input_dict = {
+        standard_component_specs.INFRA_BLESSING_KEY: [infra_blessing]
+    }
+    self._executor.Do(self._input_dict, self._output_dict,
+                      self._exec_properties)
 
     self.assertPushed()
     self.assertTrue(
