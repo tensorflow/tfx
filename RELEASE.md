@@ -2,6 +2,8 @@
 
 ## Major Features and Improvements
 
+* Added support for list-type Placeholder.
+
 ## Breaking Changes
 
 ### For Pipeline Authors

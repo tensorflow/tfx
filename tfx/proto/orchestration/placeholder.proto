@@ -46,6 +46,7 @@ message PlaceholderExpressionOperator {
     BinaryLogicalOperator binary_logical_op = 9;
     ArtifactPropertyOperator artifact_property_op = 10;
     ListSerializationOperator list_serialization_op = 11;
+    ListConcatOperator list_concat_op = 12;
   }
 }
 
@@ -236,6 +237,12 @@ message ListSerializationOperator {
   }
 
   SerializationFormat serialization_format = 2;
+}
+
+// ListConcatOperator encodes a list of placeholders.
+message ListConcatOperator {
+  // Required. The list of placeholders to be encoded.
+  repeated PlaceholderExpression expressions = 1;
 }
 
 // Placeholder is an inseparable unit in a placeholder expression that

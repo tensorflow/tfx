@@ -318,6 +318,105 @@ class PlaceholderTest(tf.test.TestCase):
         }
     """)
 
+  def testListConcat(self):
+    self._assert_placeholder_pb_equal_and_deepcopyable(
+        ph.to_list([ph.input('model').uri,
+                    ph.exec_property('random_str')]) +
+        ph.to_list([ph.input('another_model').uri]), """
+        operator {
+          list_concat_op {
+            expressions {
+              operator {
+                artifact_uri_op {
+                  expression {
+                    operator {
+                      index_op {
+                        expression {
+                          placeholder {
+                            type: INPUT_ARTIFACT
+                            key: "model"
+                          }
+                        }
+                        index: 0
+                      }
+                    }
+                  }
+                }
+              }
+            }
+            expressions {
+              placeholder {
+                type: EXEC_PROPERTY
+                key: "random_str"
+              }
+            }
+            expressions {
+              operator {
+                artifact_uri_op {
+                  expression {
+                    operator {
+                      index_op {
+                        expression {
+                          placeholder {
+                            type: INPUT_ARTIFACT
+                            key: "another_model"
+                          }
+                        }
+                        index: 0
+                      }
+                    }
+                  }
+                }
+              }
+            }
+
+          }
+        }
+    """)
+
+  def testListConcatAndSerialize(self):
+    self._assert_placeholder_pb_equal_and_deepcopyable(
+        ph.to_list([ph.input('model').uri,
+                    ph.exec_property('random_str')
+                   ]).serialize_list(ph.ListSerializationFormat.JSON), """
+        operator {
+          list_serialization_op {
+            expression {
+              operator {
+                list_concat_op {
+                  expressions {
+                    operator {
+                      artifact_uri_op {
+                        expression {
+                          operator {
+                            index_op {
+                              expression {
+                                placeholder {
+                                  type: INPUT_ARTIFACT
+                                  key: "model"
+                                }
+                              }
+                              index: 0
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                  expressions {
+                    placeholder {
+                      type: EXEC_PROPERTY
+                      key: "random_str"
+                    }
+                  }
+                }
+              }
+            }
+            serialization_format: JSON
+          }
+        }
+    """)
+
   def testProtoOperatorDescriptor(self):
     test_pb_filepath = os.path.join(
         os.path.dirname(__file__), 'testdata',

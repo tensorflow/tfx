@@ -522,6 +522,91 @@ class PlaceholderUtilsTest(tf.test.TestCase):
         placeholder_utils.resolve_placeholder_expression(
             pb, self._resolution_context), expected_serialization)
 
+  def testListConcat(self):
+    placeholder_expression = """
+      operator {
+        list_concat_op {
+          expressions {
+            operator {
+              artifact_property_op {
+                expression {
+                  operator {
+                    index_op{
+                      expression {
+                        placeholder {
+                          type: INPUT_ARTIFACT
+                          key: "examples"
+                        }
+                      }
+                      index: 0
+                    }
+                  }
+                }
+                key: "version"
+              }
+            }
+          }
+          expressions {
+            value {
+              string_value: "random_str"
+            }
+          }
+        }
+      }
+    """
+    pb = text_format.Parse(placeholder_expression,
+                           placeholder_pb2.PlaceholderExpression())
+    expected_result = [42, "random_str"]
+    self.assertEqual(
+        placeholder_utils.resolve_placeholder_expression(
+            pb, self._resolution_context), expected_result)
+
+  def testListConcatAndSerialize(self):
+    placeholder_expression = """
+      operator {
+        list_serialization_op {
+          expression {
+            operator {
+              list_concat_op {
+                expressions {
+                  operator {
+                    artifact_property_op {
+                      expression {
+                        operator {
+                          index_op{
+                            expression {
+                              placeholder {
+                                type: INPUT_ARTIFACT
+                                key: "examples"
+                              }
+                            }
+                            index: 0
+                          }
+                        }
+                      }
+                      key: "version"
+                    }
+                  }
+                }
+                expressions {
+                  value {
+                    string_value: "random_str"
+                  }
+                }
+              }
+            }
+          }
+          serialization_format: JSON
+        }
+      }
+    """
+    pb = text_format.Parse(placeholder_expression,
+                           placeholder_pb2.PlaceholderExpression())
+    expected_result = '[42, "random_str"]'
+    self.assertEqual(
+        placeholder_utils.resolve_placeholder_expression(
+            pb, self._resolution_context), expected_result)
+
   def testProtoExecPropertyMessageFieldTextFormat(self):
     # Access a message type proto field
     placeholder_expression = """
