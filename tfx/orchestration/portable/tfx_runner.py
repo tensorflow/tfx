@@ -30,9 +30,12 @@ class TfxRunner(metaclass=abc.ABCMeta):
   """
 
   @abc.abstractmethod
-  def run(self, pipeline: pipeline_py.Pipeline,
-          run_options: Optional[pipeline_py.RunOptions] = None,
-          ) -> Optional[Any]:
+  def run(
+      self,
+      pipeline: pipeline_py.Pipeline,
+      run_options: Optional[pipeline_py.RunOptions] = None,
+      **kwargs: Any,
+  ) -> Optional[Any]:
     """Runs a TFX pipeline on a specific platform.
 
     Args:
@@ -40,6 +43,7 @@ class TfxRunner(metaclass=abc.ABCMeta):
       run_options: an Optional pipeline.RunOptions object. See
         the class definition pipeline.RunOptions for details. If None,
         runs the full pipeline.
+      **kwargs: extra orchestrator backend-specific keyword arguments.
 
     Returns:
       Optional platform-specific object.
@@ -90,6 +94,7 @@ class IrBasedRunner(TfxRunner, metaclass=abc.ABCMeta):
       self,
       pipeline: pipeline_pb2.Pipeline,
       run_options: Optional[pipeline_pb2.RunOptions] = None,
+      **kwargs: Any,
   ) -> Optional[Any]:
     """Runs a TFX pipeline on a specific platform.
 
@@ -97,20 +102,23 @@ class IrBasedRunner(TfxRunner, metaclass=abc.ABCMeta):
       pipeline: a pipeline_pb2.Pipeline instance representing a pipeline
         definition.
       run_options: Optional args for the run.
+      **kwargs: extra orchestrator backend-specific keyword arguments.
 
     Returns:
       Optional platform-specific object.
     """
     pass
 
-  def run(self,
-          pipeline: pipeline_py.Pipeline,
-          run_options: Optional[pipeline_py.RunOptions] = None,
-          ) -> Optional[Any]:
+  def run(
+      self,
+      pipeline: pipeline_py.Pipeline,
+      run_options: Optional[pipeline_py.RunOptions] = None,
+      **kwargs: Any,
+  ) -> Optional[Any]:
     """See TfxRunner."""
     pipeline_pb = _make_pipeline_proto(pipeline)
     if run_options:
       run_options_pb = _run_opts_to_proto(run_options)
     else:
       run_options_pb = None
-    return self.run_with_ir(pipeline_pb, run_options=run_options_pb)
+    return self.run_with_ir(pipeline_pb, run_options=run_options_pb, **kwargs)
