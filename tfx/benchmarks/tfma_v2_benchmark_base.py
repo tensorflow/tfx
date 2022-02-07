@@ -18,7 +18,6 @@ import time
 
 
 import apache_beam as beam
-import numpy as np
 import tensorflow as tf
 import tensorflow_model_analysis as tfma
 from tensorflow_model_analysis import constants
@@ -33,7 +32,6 @@ from tensorflow_model_analysis.extractors import unbatch_extractor
 from tensorflow_model_analysis.metrics import metric_specs as metric_specs_util
 from tensorflow_model_analysis.metrics import metric_types
 from tensorflow_model_analysis.utils import model_util
-from tensorflow_model_analysis.utils import util
 import tfx
 from tfx.benchmarks import benchmark_utils
 from tfx.benchmarks import benchmark_base
@@ -245,13 +243,15 @@ class TFMAV2BenchmarkBase(benchmark_base.BenchmarkBase):
     # Transform labels to [0, 1] so we can test metrics that require labels in
     # that range.
     if len(self._eval_config.model_specs) > 1:
-      updated_labels = {}
-      for s in self._eval_config.model_specs:
-        updated_labels[s.name] = np.array(
-            [1.0 / (1.0 + x) for x in labels[s.name]])
-      return updated_labels
+      updated_labels = []
+      for v in labels:
+        updated_labels.append({
+            s.name: 1.0 / (1.0 + v[s.name])
+            for s in self._eval_config.model_specs
+        })
     else:
-      return np.array([1.0 / (1.0 + x) for x in labels])
+      updated_labels = [1.0 / (1.0 + x) for x in labels]
+    return updated_labels
 
   def _extract_features_and_labels(self, batched_extract):
     """Extract features from extracts containing arrow table."""
@@ -260,12 +260,10 @@ class TFMAV2BenchmarkBase(benchmark_base.BenchmarkBase):
     # and _ExtractLabels.extract_labels in extractors/labels_extractor.py
     result = copy.copy(batched_extract)
     (record_batch, serialized_examples) = (
-        features_extractor._drop_unsupported_columns_and_fetch_raw_data_column(  # pylint: disable=protected-access
+        features_extractor._DropUnsupportedColumnsAndFetchRawDataColumn(  # pylint: disable=protected-access
             batched_extract[constants.ARROW_RECORD_BATCH_KEY]))
-    features = result[
-        constants.FEATURES_KEY] if constants.FEATURES_KEY in result else {}
-    features.update(util.record_batch_to_tensor_values(record_batch))
-    result[constants.FEATURES_KEY] = features
+    dataframe = record_batch.to_pandas()
+    result[constants.FEATURES_KEY] = dataframe.to_dict(orient="records")
     result[constants.INPUT_KEY] = serialized_examples
     labels = (
         model_util.get_feature_values_for_model_spec_field(

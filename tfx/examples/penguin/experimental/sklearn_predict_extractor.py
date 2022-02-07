@@ -19,6 +19,7 @@ import pickle
 from typing import Dict, Iterable, List
 
 import apache_beam as beam
+import numpy as np
 import tensorflow as tf
 import tensorflow_model_analysis as tfma
 from tfx_bsl.tfxio import tensor_adapter
@@ -87,14 +88,14 @@ class _TFMAPredictionDoFn(tfma.utils.DoFnWithModels):
       added, with each value corresponding to a prediction for a single sample.
     """
     # Build feature and label vectors because sklearn cannot read tf.Examples.
-    result = copy.copy(elem)
     features = []
-    for key in self._feature_keys:
-      for i, v in enumerate(result[tfma.FEATURES_KEY][key]):
-        if i >= len(features):
-          features.append([])
-        features[i].append(v)
-    result[tfma.LABELS_KEY] = result[tfma.FEATURES_KEY][self._label_key]
+    labels = []
+    result = copy.copy(elem)
+    for features_dict in result[tfma.FEATURES_KEY]:
+      features_row = [features_dict[key] for key in self._feature_keys]
+      features.append(np.concatenate(features_row))
+      labels.append(features_dict[self._label_key])
+    result[tfma.LABELS_KEY] = np.concatenate(labels)
 
     # Generate predictions for each model.
     for model_name, loaded_model in self._loaded_models.items():
