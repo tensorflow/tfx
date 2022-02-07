@@ -17,7 +17,9 @@
 *   Fixed the cluster spec error in CAIP Tuner on Vertex when
     `num_parallel_trials = 1`
 *   Replaced deprecated assertDictContainsSubset with
-    assertLessEqual(itemsA, itemsB).    
+    assertLessEqual(itemsA, itemsB).
+*   Fixed `Pusher` issue that didn't copy files other than
+    `saved_model.pb`.
 
 ## Dependency Updates
 
