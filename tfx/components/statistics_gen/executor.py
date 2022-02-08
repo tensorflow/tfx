@@ -28,7 +28,7 @@ from tfx.utils import json_utils
 
 
 # Default file name for stats generated.
-_DEFAULT_FILE_NAME = 'FeatureStats.pb'
+DEFAULT_FILE_NAME = 'FeatureStats.pb'
 
 _TELEMETRY_DESCRIPTORS = ['StatisticsGen']
 
@@ -130,7 +130,7 @@ class Executor(base_beam_executor.BaseBeamExecutor):
         logging.info('Generating statistics for split %s.', split)
         output_uri = artifact_utils.get_split_uri(
             output_dict[standard_component_specs.STATISTICS_KEY], split)
-        output_path = os.path.join(output_uri, _DEFAULT_FILE_NAME)
+        output_path = os.path.join(output_uri, DEFAULT_FILE_NAME)
         data = p | 'TFXIORead[%s]' % split >> tfxio.BeamSource()
         _ = (
             data
