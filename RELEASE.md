@@ -27,7 +27,7 @@
 
 | Package Name | Version Constraints | Previously (in `v1.6.0`) | Comments |
 | -- | -- | -- | -- |
-| | | | |
+| tensorflow | `>=1.15.5,<2` or `~=2.8.0` | `>=1.15.5,<2` or `~=2.7.0` | |
 
 ## Documentation Updates
 
