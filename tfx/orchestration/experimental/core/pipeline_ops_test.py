@@ -573,12 +573,17 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
       self.assertEqual(metadata_store_pb2.Execution.CANCELED,
                        execution.last_known_state)
 
-      # stop_node_services should be called on both ExampleGen and Transform
-      # which are service nodes.
+      # stop_node_services should be called on Transform which is a mixed
+      # service node.
       self._mock_service_job_manager.stop_node_services.assert_has_calls(
-          [mock.call(mock.ANY, 'ExampleGen'),
-           mock.call(mock.ANY, 'Transform')],
-          any_order=True)
+          [mock.call(mock.ANY, 'Transform')])
+
+      # Check that all the node states are STOPPED.
+      node_states_dict = pstate._get_node_states_dict(execution)
+      self.assertLen(node_states_dict, 4)
+      self.assertSetEqual(
+          set([pstate.NodeState.STOPPED]),
+          set(n.state for n in node_states_dict.values()))
 
   @parameterized.parameters(
       _test_pipeline('pipeline1'),
