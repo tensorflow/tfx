@@ -172,7 +172,7 @@ def _group_metric_by_slice(
   for metric in eval_result.slicing_metrics:
     slice_map[metric[0]] = {k: v['doubleValue']
                             for k, v in metric[1][''][''].items()}
-  return slice_map
+  return slice_map  # pytype: disable=bad-return-type  # strict_namedtuple_checks
 
 
 def compare_eval_results(output_uri: str, expected_uri: str, threshold: float,
