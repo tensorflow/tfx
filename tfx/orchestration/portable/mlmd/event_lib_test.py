@@ -111,6 +111,12 @@ class EventLibTest(tf.test.TestCase):
           steps {
             index: 1
           }
+          steps {
+            key: 'another_right_key'
+          }
+          steps {
+            index: 1
+          }
         }
         """, input_event)
     empty_event = metadata_store_pb2.Event()
@@ -118,6 +124,8 @@ class EventLibTest(tf.test.TestCase):
 
     self.assertTrue(
         event_lib.is_valid_input_event(input_event, 'right_key'))
+    self.assertTrue(
+        event_lib.is_valid_input_event(input_event, 'another_right_key'))
     self.assertFalse(
         event_lib.is_valid_input_event(input_event, 'wrong_key'))
     self.assertFalse(

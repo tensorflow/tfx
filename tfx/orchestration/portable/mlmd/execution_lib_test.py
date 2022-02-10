@@ -175,7 +175,8 @@ class ExecutionLibTest(test_case_utils.TfxTest):
           m,
           execution,
           contexts,
-          input_artifacts={'example': [input_example]},
+          input_artifacts={'example': [input_example],
+                           'another_example': [input_example]},
           output_artifacts={'model': [output_model]})
 
       self.assertProtoPartiallyEquals(
@@ -188,6 +189,7 @@ class ExecutionLibTest(test_case_utils.TfxTest):
       [input_event] = m.store.get_events_by_artifact_ids([input_example.id])
       self.assertEqual(input_event.execution_id, execution.id)
       self.assertEqual(input_event.type, metadata_store_pb2.Event.INPUT)
+      self.assertLen(input_event.path.steps, 4)
       [output_event] = m.store.get_events_by_artifact_ids([output_model.id])
       self.assertEqual(output_event.execution_id, execution.id)
       self.assertEqual(output_event.type, metadata_store_pb2.Event.OUTPUT)

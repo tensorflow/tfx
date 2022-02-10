@@ -227,7 +227,8 @@ class InputsUtilsTest(test_case_utils.TfxTest, _TestMixin):
       # published in the `output_examples` channel.
       transform_inputs = inputs_utils.resolve_input_artifacts(
           m, my_transform.inputs)
-      self.assertArtifactMapEqual({'examples': [output_example]},
+      self.assertArtifactMapEqual({'examples_1': [output_example],
+                                   'examples_2': [output_example]},
                                   transform_inputs)
 
       # Tries to resolve inputs for trainer. As trainer also requires min_count
@@ -239,7 +240,7 @@ class InputsUtilsTest(test_case_utils.TfxTest, _TestMixin):
       # Tries to resolve inputs for transform after adding a new context query
       # to the input spec that refers to a non-existent context. Inputs cannot
       # be resolved in this case.
-      context_query = my_transform.inputs.inputs['examples'].channels[
+      context_query = my_transform.inputs.inputs['examples_1'].channels[
           0].context_queries.add()
       context_query.type.name = 'non_existent_context'
       context_query.name.field_value.string_value = 'non_existent_context'
@@ -276,7 +277,8 @@ class InputsUtilsTest(test_case_utils.TfxTest, _TestMixin):
       # published in the `output_examples` channel.
       transform_inputs = inputs_utils.resolve_input_artifacts(
           m, my_transform.inputs)
-      self.assertArtifactMapEqual({'examples': [output_example_2]},
+      self.assertArtifactMapEqual({'examples_1': [output_example_2],
+                                   'examples_2': [output_example_2]},
                                   transform_inputs)
 
   def testResolveInputArtifactsOutputKeyUnset(self):
@@ -353,7 +355,8 @@ class InputsUtilsTest(test_case_utils.TfxTest, _TestMixin):
 
     result = inputs_utils.resolve_input_artifacts(
         self._metadata_handler, self._my_transform.inputs)
-    self.assertArtifactMapEqual({'examples': self._examples}, result)
+    self.assertArtifactMapEqual({'examples_1': self._examples,
+                                 'examples_2': self._examples}, result)
 
   def testResolveInputArtifactsV2_Normal(self):
     self._setup_pipeline_for_input_resolver_test()
@@ -362,7 +365,8 @@ class InputsUtilsTest(test_case_utils.TfxTest, _TestMixin):
         pipeline_node=self._my_transform,
         metadata_handler=self._metadata_handler)
     self.assertIsInstance(result, inputs_utils.Trigger)
-    self.assertArtifactMapListEqual([{'examples': self._examples}], result)
+    self.assertArtifactMapListEqual([{'examples_1': self._examples,
+                                      'examples_2': self._examples}], result)
 
   def testResolveInputArtifactsV2_MultipleDicts(self):
     self._setup_pipeline_for_input_resolver_test()
@@ -373,8 +377,8 @@ class InputsUtilsTest(test_case_utils.TfxTest, _TestMixin):
         metadata_handler=self._metadata_handler)
     self.assertIsInstance(result, inputs_utils.Trigger)
     self.assertArtifactMapListEqual([
-        {'examples': self._examples},
-        {'examples': self._examples},
+        {'examples_1': self._examples, 'examples_2': self._examples},
+        {'examples_1': self._examples, 'examples_2': self._examples},
     ], result)
 
   def testResolveInputArtifactsV2_SkipSignal(self):
@@ -416,7 +420,8 @@ class InputsUtilsTest(test_case_utils.TfxTest, _TestMixin):
         pipeline_node=self._my_transform,
         metadata_handler=self._metadata_handler)
     self.assertIsInstance(result, inputs_utils.Trigger)
-    self.assertArtifactMapListEqual([{'examples': self._examples}], result)
+    self.assertArtifactMapListEqual([{'examples_1': self._examples,
+                                      'examples_2': self._examples}], result)
 
   def testResolveParameterSchema(self):
     parameters = pipeline_pb2.NodeParameters()
@@ -512,7 +517,8 @@ class InputsUtilsResolverTests(test_case_utils.TfxTest, _TestMixin):
           metadata_handler=m,
           node_inputs=my_transform.inputs)
 
-    self.assertArtifactMapEqual({'examples': [ex2]}, result)
+    self.assertArtifactMapEqual({'examples_1': [ex2],
+                                 'examples_2': [ex2]}, result)
 
   @unittest.skipUnless(unprocessed_artifacts_resolvers_available(),
                        'UnprocessedArtifactsResolver not available.')
@@ -549,13 +555,15 @@ class InputsUtilsResolverTests(test_case_utils.TfxTest, _TestMixin):
           output_map={'output_examples': [ex2]})
       ex2 = output_artifacts['output_examples'][0]
       self.fake_execute(
-          m, my_transform, input_map={'examples': [ex2]}, output_map=None)
+          m, my_transform, input_map={'examples_1': [ex2],
+                                      'examples_2': [ex2]}, output_map=None)
 
       result = inputs_utils.resolve_input_artifacts(
           metadata_handler=m,
           node_inputs=my_transform.inputs)
 
-    self.assertArtifactMapEqual({'examples': [ex1]}, result)
+    self.assertArtifactMapEqual({'examples_1': [ex1],
+                                 'examples_2': [ex1]}, result)
 
   @unittest.skipUnless(unprocessed_artifacts_resolvers_available(),
                        'UnprocessedArtifactsResolver not available.')
@@ -592,10 +600,10 @@ class InputsUtilsResolverTests(test_case_utils.TfxTest, _TestMixin):
           output_map={'output_examples': [ex2]})
       ex2 = output_artifacts['output_examples'][0]
       self.fake_execute(m, my_transform,
-                        input_map={'examples': [ex1]},
+                        input_map={'examples_1': [ex1], 'examples_2': [ex1]},
                         output_map=None)
       self.fake_execute(m, my_transform,
-                        input_map={'examples': [ex2]},
+                        input_map={'examples_1': [ex2], 'examples_2': [ex2]},
                         output_map=None)
 
       result = inputs_utils.resolve_input_artifacts(
@@ -639,13 +647,13 @@ class InputsUtilsResolverTests(test_case_utils.TfxTest, _TestMixin):
       output_artifacts = self.fake_execute(
           m,
           my_transform,
-          input_map={'examples': [ex1]},
+          input_map={'examples_1': [ex1], 'examples_2': [ex1]},
           output_map={'transform_graph': [tf1]})
       tf1 = output_artifacts['transform_graph'][0]
       output_artifacts = self.fake_execute(
           m,
           my_transform,
-          input_map={'examples': [ex2]},
+          input_map={'examples_1': [ex2], 'examples_2': [ex2]},
           output_map={'transform_graph': [tf2]})
       tf2 = output_artifacts['transform_graph'][0]
       result = inputs_utils.resolve_input_artifacts(

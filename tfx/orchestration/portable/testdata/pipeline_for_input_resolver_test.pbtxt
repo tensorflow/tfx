@@ -143,7 +143,44 @@ nodes {
     }
     inputs {
       inputs {
-        key: "examples"
+        key: "examples_1"
+        value {
+          channels {
+            producer_node_query {
+              id: "my_example_gen"
+            }
+            context_queries {
+              type {
+                name: "pipeline"
+              }
+              name {
+                field_value {
+                  string_value: "my_pipeline"
+                }
+              }
+            }
+            context_queries {
+              type {
+                name: "component"
+              }
+              name {
+                field_value {
+                  string_value: "my_example_gen"
+                }
+              }
+            }
+            artifact_query {
+              type {
+                name: "Examples"
+              }
+            }
+            output_key: "output_examples"
+          }
+          min_count: 1
+        }
+      }
+      inputs {
+        key: "examples_2"
         value {
           channels {
             producer_node_query {

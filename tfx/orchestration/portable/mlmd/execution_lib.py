@@ -151,31 +151,44 @@ def _create_artifact_and_event_pairs(
 
   Args:
     metadata_handler: A handler to access MLMD store.
-    artifact_dict: The source of artifacts to work on. For each artifact in the
-      dict, creates a tuple for that. Note that all artifacts of the same key in
-      the artifact_dict are expected to share the same artifact type.
+    artifact_dict: The source of artifacts to work on. For each unique artifact
+      in the dict, creates a tuple for that. Note that all artifacts of the same
+      key in the artifact_dict are expected to share the same artifact type. If
+      the same artifact is used for multiple keys, several event paths will be
+      generated for the same event.
     event_type: The event type of the event to be attached to the artifact
 
   Returns:
     A list of [Artifact, Event] tuples
   """
   result = []
+  artifact_event_map = dict()
   for key, artifact_list in artifact_dict.items():
     artifact_type = None
     for index, artifact in enumerate(artifact_list):
-      # TODO(b/153904840): If artifact id is present, skip putting the artifact
-      # into the pair when MLMD API is ready.
-      event = event_lib.generate_event(
-          event_type=event_type, key=key, index=index)
-      # Reuses already registered type in the same list whenever possible as
-      # the artifacts in the same list share the same artifact type.
-      if artifact_type:
-        assert artifact_type.name == artifact.artifact_type.name, (
-            'Artifacts under the same key should share the same artifact type.')
-      artifact_type = common_utils.register_type_if_not_exist(
-          metadata_handler, artifact.artifact_type)
-      artifact.set_mlmd_artifact_type(artifact_type)
-      result.append((artifact.mlmd_artifact, event))
+      if (artifact.mlmd_artifact.HasField('id') and
+          artifact.id in artifact_event_map):
+        event_lib.add_event_path(
+            artifact_event_map[artifact.id][1], key=key, index=index)
+      else:
+        # TODO(b/153904840): If artifact id is present, skip putting the
+        # artifact into the pair when MLMD API is ready.
+        event = event_lib.generate_event(
+            event_type=event_type, key=key, index=index)
+        # Reuses already registered type in the same list whenever possible as
+        # the artifacts in the same list share the same artifact type.
+        if artifact_type:
+          assert artifact_type.name == artifact.artifact_type.name, (
+              'Artifacts under the same key should share the same artifact '
+              'type.')
+        artifact_type = common_utils.register_type_if_not_exist(
+            metadata_handler, artifact.artifact_type)
+        artifact.set_mlmd_artifact_type(artifact_type)
+        if artifact.mlmd_artifact.HasField('id'):
+          artifact_event_map[artifact.id] = (artifact.mlmd_artifact, event)
+        else:
+          result.append((artifact.mlmd_artifact, event))
+  result.extend(list(artifact_event_map.values()))
   return result
 
 
