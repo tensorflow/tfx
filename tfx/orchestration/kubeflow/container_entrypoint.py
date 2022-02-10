@@ -243,6 +243,10 @@ def _dump_ui_metadata(
   For general components we just render a simple Markdown file for
     exec_properties/inputs/outputs.
 
+  If the file already exists and is a valid format(have a list of
+  dictionaries in outputs key), we append the existing UI metadata items
+  to our output json file.
+
   Args:
     node: associated TFX node.
     execution_info: runtime execution info for this component, including
@@ -346,6 +350,34 @@ def _dump_ui_metadata(
       # Add Tensorboard view.
       tensorboard_output = {'type': 'tensorboard', 'source': output_model.uri}
       outputs.append(tensorboard_output)
+
+  # Add existing KFP UI Metadata if the file exists and is a valid format
+  if os.path.isfile(ui_metadata_path):
+    def _read_validated_ui_metadata(
+        ui_metadata_path: str) -> List[Dict[str, str]]:
+      """Read validated existing KFP UI Metadata file.
+
+      Args:
+        ui_metadata_path: path for ui metadata
+
+      Returns:
+        A list of UI metadata if the file is valid. An empty list otherwise.
+      """
+      result = []
+      try:
+        with open(ui_metadata_path, 'r') as f:
+          metadata_dict = json.load(f)
+
+        if ('outputs' in metadata_dict and
+            isinstance(metadata_dict['outputs'], list)):
+          for ui_metadata in metadata_dict['outputs']:
+            if isinstance(ui_metadata, dict):
+              result.append(ui_metadata)
+      except json.JSONDecodeError:
+        pass
+      return result
+
+    outputs += _read_validated_ui_metadata(ui_metadata_path)
 
   metadata_dict = {'outputs': outputs}
 

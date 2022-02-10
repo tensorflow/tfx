@@ -119,6 +119,58 @@ class MLMDConfigTest(test_case_utils.TfxTest):
       self.assertEqual('tensorboard', ui_metadata['outputs'][-1]['type'])
       self.assertEqual('model_run_uri', ui_metadata['outputs'][-1]['source'])
 
+  def testDumpUiMetadataWithPreExistingFile(self):
+    dummy_node = pipeline_pb2.PipelineNode()
+    dummy_node.node_info.type.name = 'class_path_for_dummy_node.DummyComponent'
+    exec_info = data_types.ExecutionInfo(
+        input_dict={},
+        output_dict={},
+        exec_properties={},
+        execution_id='id')
+
+    ui_metadata_path = os.path.join(
+        os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR', self.get_temp_dir()),
+        self._testMethodName, 'json')
+    fileio.makedirs(os.path.dirname(ui_metadata_path))
+
+    # Check with valid file
+    example_ui_metadata_item = {
+        'type': 'table',
+        'storage': 'gcs',
+        'format': 'csv',
+        'header': ['example-header1', 'example-header2'],
+        'source': 'gs://example-data-source/example.csv',
+    }
+    with fileio.open(ui_metadata_path, 'w') as f:
+      f.write(json.dumps({'outputs': [example_ui_metadata_item]}))
+
+    container_entrypoint._dump_ui_metadata(
+        dummy_node, exec_info, ui_metadata_path)
+
+    with open(ui_metadata_path) as f:
+      ui_metadata = json.load(f)
+      self.assertEqual(2, len(ui_metadata['outputs']))
+      self.assertTrue(any('markdown' == item['type'] for item in ui_metadata['outputs']))
+      self.assertTrue(any('table' == item['type'] for item in ui_metadata['outputs']))
+
+    # Check with invalid file
+    invalid_contents = [
+        json.dumps({'out': [1]}),  # not having a outputs key
+        json.dumps({'outputs': [1]}),  # not a dictionary item
+        "text",  # not a json
+    ]
+    for content in invalid_contents:
+      with fileio.open(ui_metadata_path, 'w') as f:
+        f.write(content)
+
+      container_entrypoint._dump_ui_metadata(
+          dummy_node, exec_info, ui_metadata_path)
+
+      with open(ui_metadata_path) as f:
+        ui_metadata = json.load(f)
+        self.assertEqual(1, len(ui_metadata['outputs']))
+        self.assertEqual('markdown', ui_metadata['outputs'][0]['type'])
+
   def testOverrideRegisterExecution(self):
     # Mock all real operations of driver / executor / MLMD accesses.
     mock_targets = (  # (cls, method, return_value)
