@@ -42,6 +42,10 @@ _TEST_FLOAT128 = 3.14159265358979323846264338327950288  # Too precise
 
 class StandardArtifactsTest(tf.test.TestCase):
 
+  def testUseTfxType(self):
+    instance = standard_artifacts.ExampleStatistics()
+    self.assertIsInstance(instance, standard_artifacts.ExampleStatistics)
+
   def testBytesType(self):
     instance = standard_artifacts.Bytes()
     self.assertEqual(_TEST_BYTE_RAW, instance.encode(_TEST_BYTE_DECODED))
