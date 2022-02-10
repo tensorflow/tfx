@@ -33,8 +33,8 @@ _TF_COMPATIBILITY_OVERRIDE = {
     # CAIP pusher. See:
     # https://cloud.google.com/ai-platform/prediction/docs/runtime-version-list
     '2.0': '1.15',
-    # TODO(b/168249383) Update this once CAIP model support TF 2.6 runtime.
-    '2.6': '2.5',
+    # TODO(b/168249383) Update this once CAIP model support TF 2.8 runtime.
+    '2.8': '2.7',
 }
 
 # Google Cloud AI Platform's ModelVersion resource path format.
