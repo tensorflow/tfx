@@ -41,10 +41,10 @@ class SpanRangeStrategy(resolver.ResolverStrategy):
   Don't construct SpanRangeStrategy directly, example usage:
   ```
     examples_resolver = Resolver(
-        instance_name='span_resolver',
         strategy_class=SpanRangeStrategy,
         config={'range_config': range_config},
-        examples=Channel(type=Examples, producer_component_id=example_gen.id))
+        examples=Channel(type=Examples, producer_component_id=example_gen.id),
+    ).with_id('span_resolver')
     examples_resolver.outputs['examples']
   ```
   """
