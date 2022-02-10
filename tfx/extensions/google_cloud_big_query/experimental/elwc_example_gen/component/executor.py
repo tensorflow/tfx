@@ -66,7 +66,7 @@ def _ConvertContextAndExamplesToElwc(
   context_feature_proto.ParseFromString(context_feature)
   elwc_pb2 = input_pb2.ExampleListWithContext(
       context=context_feature_proto, examples=examples)
-  return elwc_pb2.SerializeToString()
+  return elwc_pb2.SerializeToString(deterministic=True)
 
 
 @beam.ptransform_fn
