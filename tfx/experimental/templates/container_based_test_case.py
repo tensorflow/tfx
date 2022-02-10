@@ -132,10 +132,10 @@ class BaseKubeflowEndToEndTest(BaseContainerBasedEndToEndTest):
         test_case_utils.override_env_var(
             'KUBEFLOW_HOME', os.path.join(self._temp_dir, 'kubeflow')))
 
-  def tearDown(self):
-    super().tearDown()
-    self._delete_runs()
-    self._delete_pipeline()
+  # def tearDown(self):
+  #   super().tearDown()
+    # self._delete_runs()
+    # self._delete_pipeline()
 
   def _get_endpoint(self, namespace):
     cmd = 'kubectl describe configmap inverse-proxy-config -n {}'.format(
