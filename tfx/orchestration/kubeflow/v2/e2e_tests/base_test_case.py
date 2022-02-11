@@ -141,8 +141,7 @@ class BaseKubeflowV2Test(test_case_utils.TfxTest):
         template_path='pipeline.json',
         job_id=job_id,
         display_name=pipeline.pipeline_info.pipeline_name)
-    job.run(sync=False)
-    job.wait_for_resource_creation()
+    job.submit()
 
     vertex_client_utils.poll_job_status(job_id, _MAX_JOB_EXECUTION_TIME,
                                         _POLLING_INTERVAL_IN_SECONDS)

@@ -203,8 +203,8 @@ class VertexHandlerTest(test_case_utils.TfxTest):
         labels.RUNTIME_PARAMETER: self.runtime_parameter,
     }
     # TODO(b/198114641): Delete following override after upgrading source code
-    # to aiplatform>=1.3.
-    mock_pipeline_job.return_value.wait_for_resource_creation = mock.MagicMock()
+    # to aiplatform>=1.6.2.
+    mock_pipeline_job.return_value.submit = mock.MagicMock()
 
     handler = vertex_handler.VertexHandler(flags_dict)
     handler.create_run()
@@ -219,6 +219,7 @@ class VertexHandlerTest(test_case_utils.TfxTest):
             'a': '1',
             'b': '2'
         })
+    mock_pipeline_job.return_value.submit.assert_called_once()
 
 
 if __name__ == '__main__':

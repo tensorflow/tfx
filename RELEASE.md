@@ -25,7 +25,8 @@
 
 | Package Name | Version Constraints | Previously (in `v1.6.0`) | Comments |
 | -- | -- | -- | -- |
-| tensorflow | `>=1.15.5,<2` or `~=2.8.0` | `>=1.15.5,<2` or `~=2.7.0` | |
+| `tensorflow` | `>=1.15.5,<2` or `~=2.8.0` | `>=1.15.5,<2` or `~=2.7.0` | |
+| `google-cloud-aiplatform` | `>=1.6.2,<2` | `>=1.5.0,<2` | |
 
 ## Documentation Updates
 
