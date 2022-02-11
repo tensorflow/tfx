@@ -36,6 +36,7 @@ from tfx.proto.orchestration import run_state_pb2
 from tfx.utils import json_utils
 from tfx.utils import status as status_lib
 
+import ml_metadata as mlmd
 from google.protobuf import message
 from ml_metadata.proto import metadata_store_pb2
 
@@ -596,7 +597,10 @@ class PipelineView:
       raise status_lib.StatusNotOkError(
           code=status_lib.Code.NOT_FOUND,
           message=f'No pipeline with uid {pipeline_uid} found.')
-    executions = mlmd_handle.store.get_executions_by_context(context.id)
+    list_options = mlmd.ListOptions(
+        order_by=mlmd.OrderByField.CREATE_TIME, is_asc=True)
+    executions = mlmd_handle.store.get_executions_by_context(
+        context.id, list_options=list_options)
     return [cls(pipeline_uid, context, execution) for execution in executions]
 
   @classmethod
