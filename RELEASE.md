@@ -20,6 +20,8 @@
     `num_parallel_trials = 1`
 *   Replaced deprecated assertDictContainsSubset with
     assertLessEqual(itemsA, itemsB).
+*   Updating Keras tutorial to make better use of Keras, and better feature
+    engineering.
 
 ## Dependency Updates
 
