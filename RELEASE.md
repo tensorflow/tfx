@@ -22,6 +22,8 @@
     assertLessEqual(itemsA, itemsB).
 *   Updating Keras tutorial to make better use of Keras, and better feature
     engineering.
+*   Merges KFP UI Metadata file if it already exists. Now components can produce
+    their own UI results and it will be merged with existing visualization.
 
 ## Dependency Updates
 
