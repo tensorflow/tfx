@@ -17,10 +17,11 @@
 Internal utilities, no backwards compatibility guarantees.
 """
 
-from typing import Any, Dict
+from typing import Any, Dict, List
 
 import apache_beam as beam
 from apache_beam.io.gcp import bigquery
+from apache_beam.options import value_provider
 import tensorflow as tf
 from tfx.utils import telemetry_utils
 
@@ -89,3 +90,14 @@ def row_to_example(  # pylint: disable=invalid-name
           'BigQuery column type {} is not supported.'.format(data_type))
 
   return tf.train.Example(features=tf.train.Features(feature=feature))
+
+
+def parse_gcp_project(beam_pipeline_args: List[str]) -> str:
+  # Try to parse the GCP project ID from the beam pipeline options.
+  pipeline_options = beam.options.pipeline_options.PipelineOptions(
+      beam_pipeline_args)
+  project = pipeline_options.view_as(
+      beam.options.pipeline_options.GoogleCloudOptions).project
+  if isinstance(project, value_provider.ValueProvider):
+    project = project.get()
+  return project

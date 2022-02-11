@@ -16,7 +16,6 @@
 from typing import Any, Dict, Iterable, List, Set, Tuple
 
 import apache_beam as beam
-from apache_beam.options import value_provider
 from google.cloud import bigquery
 import tensorflow as tf
 from tfx.components.example_gen import base_example_gen_executor
@@ -91,15 +90,7 @@ def _BigQueryToElwc(pipeline: beam.Pipeline, exec_properties: Dict[str, Any],
   Raises:
     RuntimeError: Context features must be included in the queried result.
   """
-  # Try to parse the GCP project ID from the beam pipeline options.
-  beam_pipeline_args = exec_properties['_beam_pipeline_args']
-  pipeline_options = beam.options.pipeline_options.PipelineOptions(
-      beam_pipeline_args)
-  project = pipeline_options.view_as(
-      beam.options.pipeline_options.GoogleCloudOptions).project
-  if isinstance(project, value_provider.ValueProvider):
-    project = project.get()
-
+  project = utils.parse_gcp_project(exec_properties['_beam_pipeline_args'])
   custom_config = example_gen_pb2.CustomConfig()
   json_format.Parse(exec_properties['custom_config'], custom_config)
   elwc_config = elwc_config_pb2.ElwcConfig()
