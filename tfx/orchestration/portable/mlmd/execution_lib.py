@@ -356,6 +356,10 @@ def get_artifacts_dict(
       artifact_type_ids)
   artifact_types_by_id = {a.id: a for a in artifact_types}
 
+  # Set `type` field in the artifact proto which is not filled by MLMD.
+  for artifact in mlmd_artifacts:
+    artifact.type = artifact_types_by_id[artifact.type_id].name
+
   # Create a map from artifact id to `types.Artifact` instances.
   artifacts_by_id = {
       a.id: artifact_utils.deserialize_artifact(artifact_types_by_id[a.type_id],

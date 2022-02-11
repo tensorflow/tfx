@@ -343,6 +343,8 @@ class ExecutionLibTest(test_case_utils.TfxTest):
       self.assertEqual({'model'}, set(artifacts_dict.keys()))
       self.assertEqual([model.uri for model in output_models],
                        [a.uri for a in artifacts_dict['model']])
+      self.assertEqual(artifacts_dict['model'][0].mlmd_artifact.type,
+                       standard_artifacts.Model.TYPE_NAME)
 
   def test_set_and_get_execution_result(self):
     execution = metadata_store_pb2.Execution()
