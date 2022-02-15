@@ -126,7 +126,7 @@ def MyTrainerComponent(
 # Example usage in a pipeline graph definition:
 # ...
 trainer = MyTrainerComponent(
-    examples=example_gen.outputs['examples'],
+    training_data=example_gen.outputs['examples'],
     dropout_hyperparameter=other_component.outputs['dropout'],
     num_iterations=1000)
 pusher = Pusher(model=trainer.outputs['model'])
