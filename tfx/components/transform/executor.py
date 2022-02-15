@@ -742,7 +742,7 @@ class TransformProcessor:
           generated_stats
           | 'WriteStats' >> tfdv.WriteStatisticsToRecordsAndBinaryFile(
               binary_proto_path=stats_output_path,
-              tfrecords_path_prefix=sharded_stats_output_prefix))
+              records_path_prefix=sharded_stats_output_prefix))
     else:
       stats_result = (
           generated_stats
