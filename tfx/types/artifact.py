@@ -233,6 +233,8 @@ class Artifact(json_utils.Jsonable):
             (cls, type_name))
       artifact_type = metadata_store_pb2.ArtifactType()
       artifact_type.name = type_name
+
+      # Populate ML Metadata artifact properties dictionary.
       if cls.PROPERTIES:
         # Perform validation on PROPERTIES dictionary.
         if not isinstance(cls.PROPERTIES, dict):
@@ -245,19 +247,18 @@ class Artifact(json_utils.Jsonable):
                 ('Artifact subclass %s.PROPERTIES dictionary must have keys of '
                  'type string and values of type artifact.Property.') % cls)
 
-        # Populate ML Metadata artifact properties dictionary.
         for key, value in cls.PROPERTIES.items():
           artifact_type.properties[key] = value.mlmd_type()
 
-        # Populate ML Metadata artifact type field: `base_type`.
-        type_annotation_cls = cls.TYPE_ANNOTATION
-        if type_annotation_cls:
-          if not issubclass(type_annotation_cls, SystemArtifact):
-            raise ValueError(
-                'TYPE_ANNOTATION %s is not a subclass of SystemArtifact.' %
-                type_annotation_cls)
-          if type_annotation_cls.MLMD_SYSTEM_BASE_TYPE:
-            artifact_type.base_type = type_annotation_cls.MLMD_SYSTEM_BASE_TYPE
+      # Populate ML Metadata artifact type field: `base_type`.
+      type_annotation_cls = cls.TYPE_ANNOTATION
+      if type_annotation_cls:
+        if not issubclass(type_annotation_cls, SystemArtifact):
+          raise ValueError(
+              'TYPE_ANNOTATION %s is not a subclass of SystemArtifact.' %
+              type_annotation_cls)
+        if type_annotation_cls.MLMD_SYSTEM_BASE_TYPE:
+          artifact_type.base_type = type_annotation_cls.MLMD_SYSTEM_BASE_TYPE
 
       cls._MLMD_ARTIFACT_TYPE = artifact_type
     return copy.deepcopy(cls._MLMD_ARTIFACT_TYPE)

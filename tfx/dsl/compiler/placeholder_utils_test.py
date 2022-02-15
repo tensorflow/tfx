@@ -167,6 +167,7 @@ input_dict {
         }
         type {
           name: "Model"
+          base_type: MODEL
         }
       }
     }
