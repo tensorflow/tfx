@@ -244,9 +244,6 @@ class ComponentTest(tf.test.TestCase):
     self.assertEqual(recovered_component.outputs["output"].type_name,
                      "OutputArtifact")
     self.assertEqual(recovered_component.driver_class, component.driver_class)
-    # Test re-dump.
-    new_json_dict = json_utils.dumps(recovered_component)
-    self.assertEqual(new_json_dict, json_dict)
 
   def testTaskDependency(self):
     channel_1 = types.Channel(type=_InputArtifact)
@@ -258,6 +255,19 @@ class ComponentTest(tf.test.TestCase):
     component_1.add_downstream_node(component_2)
     self.assertEqual(True, component_2 in component_1.downstream_nodes)
     self.assertEqual(True, component_1 in component_2.upstream_nodes)
+
+  def testComponentInit_OutputChannelType(self):
+    component = _BasicComponent(
+        spec=_BasicComponentSpec(
+            input=types.Channel(type=_InputArtifact),
+            folds=10,
+            output=types.Channel(type=_OutputArtifact))).with_id("foo")
+
+    self.assertIsInstance(component.spec.outputs["output"], types.OutputChannel)
+    self.assertIsInstance(component.outputs["output"], types.OutputChannel)
+    output_channel = component.outputs["output"]
+    self.assertEqual(output_channel.producer_component_id, "foo")
+    self.assertEqual(output_channel.output_key, "output")
 
 
 if __name__ == "__main__":

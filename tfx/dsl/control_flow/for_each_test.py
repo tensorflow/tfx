@@ -33,8 +33,8 @@ class FakeNode(base_node.BaseNode):
   def __init__(self, **input_dict):
     self._input_dict = input_dict
     self._output_dict = {
-        'aa': types.Channel(type=AA),
-        'bb': types.Channel(type=BB),
+        'aa': types.OutputChannel(AA, self, 'aa'),
+        'bb': types.OutputChannel(BB, self, 'bb'),
     }
     self._output_dict_patched = False
     super().__init__()
@@ -45,11 +45,6 @@ class FakeNode(base_node.BaseNode):
 
   @property
   def outputs(self):
-    if not self._output_dict_patched:
-      for output_key, channel in self._output_dict.items():
-        channel.producer_component_id = self.id
-        channel.output_key = output_key
-      self._output_dict_patched = True
     return self._output_dict
 
   @property

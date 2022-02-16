@@ -11,8 +11,10 @@
 ### For Component Authors
 
 ## Deprecations
+
 *   Removed the already-deprecated components.ImporterNode, should use
     v1.dsl.Importer instead.
+*   Deprecated Channel property setters. Use constructor argument instead.
 
 ## Bug Fixes and Other Changes
 
