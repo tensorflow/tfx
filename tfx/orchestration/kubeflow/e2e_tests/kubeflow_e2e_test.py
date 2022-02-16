@@ -197,6 +197,9 @@ class KubeflowEndToEndTest(kubeflow_test_utils.BaseKubeflowTest):
   def testSimpleEnd2EndPipeline(self):
     """End-to-End test for simple pipeline."""
     pipeline_name = 'kubeflow-e2e-test-{}'.format(test_utils.random_id())
+    # Test data is copied from the repository(tfx/components/testdata/) to an
+    # ephemeral location in GCS bucket(BaseKubeflowTest._BUCKET_NAME).
+    # See kubeflow_test_utils.BaseKubeflowTest.setUp() for the detail.
     components = kubeflow_test_utils.create_e2e_components(
         self._pipeline_root(pipeline_name),
         self._data_root,
