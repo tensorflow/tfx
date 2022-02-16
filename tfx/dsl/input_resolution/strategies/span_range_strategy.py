@@ -13,10 +13,11 @@
 # limitations under the License.
 """Experimental Resolver for getting the artifacts based on Span."""
 
-from typing import Dict, List, Optional, Any
+from typing import Dict, List, Optional
 
 from tfx import types
 from tfx.dsl.components.common import resolver
+from tfx.proto import range_config_pb2
 from tfx.utils import doc_controls
 
 import ml_metadata as mlmd
@@ -54,11 +55,8 @@ class SpanRangeStrategy(resolver.ResolverStrategy):
   ```
   """
 
-  def __init__(self, range_config: Any):
-    # Import range_config locally, as SpanRangeStrategy is included in
-    # ml-pipelines-sdk package while tfx.proto is not.
-    from tfx.proto import range_config_pb2  # pylint: disable=g-import-not-at-top
-    self._range_config: range_config_pb2.RangeConfig = range_config
+  def __init__(self, range_config: range_config_pb2.RangeConfig):
+    self._range_config = range_config
 
   def _resolve(self, input_dict: Dict[str, List[types.Artifact]]):
     result = {}

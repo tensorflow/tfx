@@ -209,6 +209,7 @@ tfx_extras_requires = {
 TFX_NAMESPACE_PACKAGES = [
     'tfx', 'tfx.*', 'tfx.orchestration', 'tfx.orchestration.*'
 ]
+
 # Packages within the TFX namespace that are to be included in the base
 # "ml-pipelines-sdk" pip package (and excluded from the "tfx" pip package,
 # which takes "ml-pipelines-sdk" as a dependency).
@@ -242,6 +243,11 @@ ML_PIPELINES_SDK_PACKAGES = [
     # `tfx.dsl.*`.
     'tfx.types',
     'tfx.types.*',
+]
+# Extra individual python modules to be included in ml-pipelines-sdk, that is
+# not included in ML_PIPELINES_SDK_PACKAGES
+ML_PIPELINES_SDK_PY_MODULES = [
+    'tfx.proto.range_config_pb2'
 ]
 
 EXCLUDED_PACKAGES = [
@@ -277,6 +283,7 @@ if package_config.PACKAGE_NAME == 'tfx-dev':
   long_description = _TFX_LONG_DESCRIPTION
   packages = find_namespace_packages(
       include=TFX_NAMESPACE_PACKAGES, exclude=EXCLUDED_PACKAGES)
+  py_modules = []
   # Do not support wheel builds for "tfx-dev".
   build_wheel_command = _UnsupportedDevBuildWheelCommand  # pylint: disable=invalid-name
   # Include TFX entrypoints.
@@ -290,6 +297,7 @@ elif package_config.PACKAGE_NAME == 'ml-pipelines-sdk':
   long_description = _PIPELINES_SDK_LONG_DESCRIPTION
   packages = find_namespace_packages(
       include=ML_PIPELINES_SDK_PACKAGES, exclude=EXCLUDED_PACKAGES)
+  py_modules = ML_PIPELINES_SDK_PY_MODULES
   # Use the default pip wheel building command.
   build_wheel_command = bdist_wheel.bdist_wheel  # pylint: disable=invalid-name
   # Include ML Pipelines SDK entrypoints.
@@ -306,6 +314,7 @@ elif package_config.PACKAGE_NAME == 'tfx':
   packages = find_namespace_packages(
       include=TFX_NAMESPACE_PACKAGES,
       exclude=ML_PIPELINES_SDK_PACKAGES + EXCLUDED_PACKAGES)
+  py_modules = []
   # Use the pip wheel building command that includes proto generation.
   build_wheel_command = _BdistWheelCommand  # pylint: disable=invalid-name
   # Include TFX entrypoints.
@@ -355,6 +364,7 @@ setup(
     },
     python_requires='>=3.7,<3.9',
     packages=packages,
+    py_modules=py_modules,
     include_package_data=True,
     description=description,
     long_description=long_description,
