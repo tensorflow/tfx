@@ -171,8 +171,8 @@ def make_extra_packages_tfdf():
   # Packages needed for tensorflow-decision-forests.
   # Required for tfx/examples/penguin/penguin_utils_tfdf_experimental.py
   return [
-      # NOTE: TFDF 0.2.1 is only compatible with TF 2.7.x.
-      'tensorflow-decision-forests==0.2.1',
+      # NOTE: TFDF 0.2.4 is only compatible with TF 2.8.x.
+      'tensorflow-decision-forests==0.2.4',
   ]
 
 
