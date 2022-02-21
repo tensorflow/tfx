@@ -55,7 +55,7 @@ To compile the pipeline:
 
 <pre class="devsite-terminal devsite-click-to-copy">
 python penguin_pipeline_kubeflow.py --use_gcp=True
-<pre>
+</pre>
 
 KubeflowDagRunner supports the pipeline with normal components(usually running
 on prem) and with Cloud extended components(usually running on GCP).
