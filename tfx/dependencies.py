@@ -65,7 +65,7 @@ def make_pipeline_sdk_required_install_packages():
       'google-apitools>=0.5,<1',
       'google-api-python-client>=1.8,<2',
       # TODO(b/176812386): Deprecate usage of jinja2 for placeholders.
-      'jinja2>=2.7.3,<4',
+      'jinja2>=3.0.3,<4',
   ]
 
 
