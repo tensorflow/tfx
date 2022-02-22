@@ -13,11 +13,11 @@
 # limitations under the License.
 """In process inplementation of Resolvers."""
 
-import importlib
 from typing import Iterable, Union, Sequence, cast
 
 from tfx.dsl.components.common import resolver
 from tfx.dsl.input_resolution import resolver_op
+from tfx.dsl.input_resolution.ops import ops
 from tfx.orchestration.portable.input_resolution import exceptions
 from tfx.proto.orchestration import pipeline_pb2
 from tfx.utils import json_utils
@@ -84,9 +84,7 @@ def run_resolver_steps(
   result = input_dict
   context = resolver_op.Context(store=store)
   for step in resolver_steps:
-    module_name, class_name = step.class_path.rsplit('.', maxsplit=1)
-    module = importlib.import_module(module_name)
-    cls = getattr(module, class_name)
+    cls = ops.get_by_class_path(step.class_path)
     if step.config_json:
       kwargs = json_utils.loads(step.config_json)
     else:

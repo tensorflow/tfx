@@ -29,8 +29,7 @@ from tfx.dsl.control_flow import for_each
 from tfx.dsl.experimental.conditionals import conditional
 from tfx.dsl.input_resolution import resolver_function
 from tfx.dsl.input_resolution import resolver_op
-from tfx.dsl.input_resolution.ops import skip_if_empty_op
-from tfx.dsl.input_resolution.ops import unnest_op
+from tfx.dsl.input_resolution.ops import ops
 from tfx.dsl.placeholder import placeholder
 from tfx.orchestration import data_types
 from tfx.orchestration import data_types_utils
@@ -656,8 +655,8 @@ def _compile_for_each_context(
 
   @resolver_function.resolver_function
   def impl(input_node):
-    items = unnest_op.Unnest(input_node, key=input_key)
-    return skip_if_empty_op.SkipIfEmpty(items)
+    items = ops.Unnest(input_node, key=input_key)
+    return ops.SkipIfEmpty(items)
 
   return _compile_resolver_function(impl)
 

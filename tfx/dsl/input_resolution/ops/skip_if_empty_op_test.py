@@ -15,11 +15,9 @@
 
 import tensorflow as tf
 
-from tfx.dsl.input_resolution.ops import skip_if_empty_op
+from tfx.dsl.input_resolution.ops import ops
 from tfx.dsl.input_resolution.ops import test_utils
 from tfx.orchestration.portable.input_resolution import exceptions
-
-SkipIfEmpty = skip_if_empty_op.SkipIfEmpty
 
 
 class SkipIfEmptyOpTest(tf.test.TestCase):
@@ -32,13 +30,13 @@ class SkipIfEmptyOpTest(tf.test.TestCase):
 
   def testSkipIfEmpty_OnEmpty_RaisesSkipSignal(self):
     with self.assertRaises(exceptions.SkipSignal):
-      test_utils.run_resolver_op(SkipIfEmpty, [])
+      test_utils.run_resolver_op(ops.SkipIfEmpty, [])
 
   def testSkipIfEmpty_OnNonEmpty_ReturnsAsIs(self):
     x1, x2, x3 = self.create_artifacts(uri_prefix='x/', n=3)
     input_dicts = [{'x': [x1]}, {'x': [x2]}, {'x': [x3]}]
 
-    result = test_utils.run_resolver_op(SkipIfEmpty, input_dicts)
+    result = test_utils.run_resolver_op(ops.SkipIfEmpty, input_dicts)
     self.assertEqual(result, [{'x': [x1]}, {'x': [x2]}, {'x': [x3]}])
 
 

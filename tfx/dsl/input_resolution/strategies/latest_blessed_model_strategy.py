@@ -16,12 +16,20 @@
 from typing import Dict, List, Optional
 
 from tfx import types
-from tfx.components.evaluator import constants as evaluator
 from tfx.dsl.components.common import resolver
 from tfx.types import standard_artifacts
 from tfx.utils import doc_controls
 
 import ml_metadata as mlmd
+
+try:
+  from tfx.components.evaluator import constants as eval_consts  # pylint: disable=g-import-not-at-top
+  _CURRENT_MODEL_ID = eval_consts.ARTIFACT_PROPERTY_CURRENT_MODEL_ID_KEY
+  _BLESSED = eval_consts.ARTIFACT_PROPERTY_BLESSED_KEY
+except ImportError:
+  # ml-pipelines-sdk package doesn't have tfx.components.
+  _CURRENT_MODEL_ID = 'current_model_id'
+  _BLESSED = 'blessed'
 
 
 class LatestBlessedModelStrategy(resolver.ResolverStrategy):
@@ -48,13 +56,10 @@ class LatestBlessedModelStrategy(resolver.ResolverStrategy):
     all_model_blessings = input_dict[model_blessing_channel_key]
 
     # Makes a dict of {model_id : ModelBlessing artifact} for blessed models.
-    all_blessed_model_ids = dict(
-        (  # pylint: disable=g-complex-comprehension
-            a.get_int_custom_property(
-                evaluator.ARTIFACT_PROPERTY_CURRENT_MODEL_ID_KEY), a)
+    all_blessed_model_ids = {
+        a.get_int_custom_property(_CURRENT_MODEL_ID): a
         for a in all_model_blessings
-        if a.get_int_custom_property(
-            evaluator.ARTIFACT_PROPERTY_BLESSED_KEY) == 1)
+        if a.get_int_custom_property(_BLESSED) == 1}
 
     result = {model_channel_key: [], model_blessing_channel_key: []}
     # Iterates all models, if blessed, set as result. As the model list was
