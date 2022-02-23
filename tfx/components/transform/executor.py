@@ -271,6 +271,7 @@ def _InvokeStatsOptionsUpdaterFn(
                               tf.saved_model.ASSETS_DIRECTORY)
     vocab_paths = {k: os.path.join(asset_path, v) for k, v in asset_map.items()}
     options['vocab_paths'] = vocab_paths
+  options['experimental_use_sketch_based_topk_uniques'] = True
   return stats_options_updater_fn(stats_type, tfdv.StatsOptions(**options))
 
 
@@ -1347,8 +1348,7 @@ class TransformProcessor:
             pre_transform_stats_options = _InvokeStatsOptionsUpdaterFn(
                 stats_options_updater_fn,
                 stats_options_util.StatsType.PRE_TRANSFORM, schema_proto)
-            pre_transform_stats_options.experimental_use_sketch_based_topk_uniques = (
-                self._RunSketchBasedTopKUniques())
+
             if self._TFDVWriteShardedOutput():
               pre_transform_stats_options.experimental_result_partitions = (
                   _SHARDED_OUTPUT_PARTITIONS)
@@ -1424,8 +1424,6 @@ class TransformProcessor:
                 transformed_schema_proto, metadata.asset_map,
                 transform_output_path)
 
-            post_transform_stats_options.experimental_use_sketch_based_topk_uniques = (
-                self._RunSketchBasedTopKUniques())
             if self._TFDVWriteShardedOutput():
               post_transform_stats_options.experimental_result_partitions = (
                   _SHARDED_OUTPUT_PARTITIONS)
@@ -1675,12 +1673,6 @@ class TransformProcessor:
   def _GetTFXIOPassthroughKeys() -> Optional[Set[str]]:
     """Always returns None."""
     return None
-
-  # TODO(b/130885503): clean this up once the sketch-based generator is the
-  # default.
-  @staticmethod
-  def _RunSketchBasedTopKUniques():
-    return False
 
   # TODO(b/215448985): Remove this once sharded stats are written by default.
   @staticmethod

@@ -26,6 +26,7 @@
     engineering.
 *   Merges KFP UI Metadata file if it already exists. Now components can produce
     their own UI results and it will be merged with existing visualization.
+*   Switch Transform component to always use sketch when computing top-k stats.
 
 ## Dependency Updates
 
