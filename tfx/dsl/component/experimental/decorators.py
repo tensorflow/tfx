@@ -28,7 +28,7 @@ from tfx.dsl.components.base import base_executor
 from tfx.dsl.components.base import executor_spec
 from tfx.types import channel_utils
 from tfx.types import component_spec
-from tfx.types.system_executions import SystemExecution
+from tfx.types import system_executions
 
 
 class _SimpleComponent(base_component.BaseComponent):
@@ -163,7 +163,8 @@ class _FunctionExecutor(base_executor.BaseExecutor):
 
 def component(
     func: Optional[types.FunctionType] = None,
-    component_annotation: Optional[Type[SystemExecution]] = None,
+    component_annotation: Optional[Type[
+        system_executions.SystemExecution]] = None,
 ) -> Callable[..., Any]:
   """Decorator: creates a component from a typehint-annotated Python function.
 
@@ -222,13 +223,13 @@ def component(
       from tfx.dsl.components.base.annotations import
       Parameter
       from tfx.dsl.components.base.decorators import component
-      from tfx.types.standard_artifacts import Examples
-      from tfx.types.standard_artifacts import Model
+      from tfx.types import standard_artifacts
+      from tfx.types import system_executions
 
       @component(component_annotation=system_executions.Train)
       def MyTrainerComponent(
-          training_data: InputArtifact[Examples],
-          model: OutputArtifact[Model],
+          training_data: InputArtifact[standard_artifacts.Examples],
+          model: OutputArtifact[standard_artifacts.Model],
           dropout_hyperparameter: float,
           num_iterations: Parameter[int] = 10
           ) -> OutputDict(loss=float, accuracy=float):
@@ -257,8 +258,8 @@ def component(
 
       @component
       def MyTrainerComponent(
-          training_data: InputArtifact[Examples],
-          model: OutputArtifact[Model],
+          training_data: InputArtifact[standard_artifacts.Examples],
+          model: OutputArtifact[standard_artifacts.Model],
           dropout_hyperparameter: float,
           num_iterations: Parameter[int] = 10
           ) -> OutputDict(loss=float, accuracy=float):
