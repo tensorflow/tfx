@@ -113,6 +113,14 @@ def initiate_pipeline_start(
         message='Sync pipeline IR must specify pipeline_run_id.')
 
   if partial_run_option:
+    snapshot_settings = partial_run_option.snapshot_settings
+    which_strategy = snapshot_settings.WhichOneof('artifact_reuse_strategy')
+    if which_strategy is None:
+      logging.info(
+          'No artifact_reuse_strategy specified for the partial pipeline run, '
+          'defaulting to latest_pipeline_run_strategy.')
+      snapshot_settings.latest_pipeline_run_strategy.SetInParent()
+
     # Mark nodes using partial pipeline run lib.
     try:
       pipeline = partial_run_utils.mark_pipeline(

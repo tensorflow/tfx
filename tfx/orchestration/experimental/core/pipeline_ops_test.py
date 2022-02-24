@@ -268,6 +268,43 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
           m, pipeline, partial_run_option=partial_run_option) as pipeline_state:
         self.assertEqual(expected_pipeline, pipeline_state.pipeline)
 
+  @mock.patch.object(partial_run_utils, 'snapshot')
+  def test_partial_run_defaults_to_latest_pipeline_run_strategy(
+      self, mock_snapshot):
+    with self._mlmd_connection as m:
+      pipeline = _test_pipeline('test_pipeline', pipeline_pb2.Pipeline.SYNC)
+      node_example_gen = pipeline.nodes.add().pipeline_node
+      node_example_gen.node_info.id = 'ExampleGen'
+      node_example_gen.downstream_nodes.extend(['Transform'])
+      node_transform = pipeline.nodes.add().pipeline_node
+      node_transform.node_info.id = 'Transform'
+      node_transform.upstream_nodes.extend(['ExampleGen'])
+      node_transform.downstream_nodes.extend(['Trainer'])
+      node_trainer = pipeline.nodes.add().pipeline_node
+      node_trainer.node_info.id = 'Trainer'
+      node_trainer.upstream_nodes.extend(['Transform'])
+
+      # partial_run_option without artifact_reuse_strategy should default to
+      # latest_pipeline_run_strategy.
+      partial_run_option = pipeline_pb2.PartialRun(
+          from_nodes=['Transform'], to_nodes=['Trainer'])
+
+      expected_pipeline = copy.deepcopy(pipeline)
+      expected_pipeline.runtime_spec.snapshot_settings.latest_pipeline_run_strategy.SetInParent(
+      )
+      expected_pipeline.nodes[
+          0].pipeline_node.execution_options.skip.reuse_artifacts_mode = pipeline_pb2.NodeExecutionOptions.Skip.REQUIRED
+      expected_pipeline.nodes[
+          1].pipeline_node.execution_options.run.perform_snapshot = True
+      expected_pipeline.nodes[
+          1].pipeline_node.execution_options.run.depends_on_snapshot = True
+      expected_pipeline.nodes[
+          2].pipeline_node.execution_options.run.SetInParent()
+
+      with pipeline_ops.initiate_pipeline_start(
+          m, pipeline, partial_run_option=partial_run_option) as pipeline_state:
+        self.assertEqual(expected_pipeline, pipeline_state.pipeline)
+
   @parameterized.named_parameters(
       dict(testcase_name='async', pipeline=_test_pipeline('pipeline1')),
       dict(
