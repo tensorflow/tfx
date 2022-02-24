@@ -35,6 +35,23 @@ _REUSE_ARTIFACT_REQUIRED = pipeline_pb2.NodeExecutionOptions.Skip.REQUIRED
 _REUSE_ARTIFACT_OPTIONAL = pipeline_pb2.NodeExecutionOptions.Skip.OPTIONAL
 
 
+def latest_pipeline_snapshot_settings():
+  """Retusn snapshot settings with latest pipeline run strategy set."""
+  return _default_snapshot_settings
+
+
+def set_latest_pipeline_run_strategy(
+    snapshot_settings: pipeline_pb2.SnapshotSettings):
+  """Set latest pipeline run strategy in snapshot_settings."""
+  snapshot_settings.latest_pipeline_run_strategy.SetInParent()
+
+
+def set_base_pipeline_run_strategy(
+    snapshot_settings: pipeline_pb2.SnapshotSettings, base_run_id: str):
+  """Set base pipeline run strategy in snapshot_settings."""
+  snapshot_settings.base_pipeline_run_strategy.base_run_id = base_run_id
+
+
 def mark_pipeline(
     pipeline: pipeline_pb2.Pipeline,
     from_nodes: Optional[Collection[str]] = None,

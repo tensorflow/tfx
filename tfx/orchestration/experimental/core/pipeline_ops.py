@@ -18,7 +18,7 @@ import functools
 import threading
 import time
 import typing
-from typing import Callable, List, Mapping, Optional
+from typing import Callable, List, Mapping, Optional, Union
 
 from absl import logging
 import attr
@@ -112,6 +112,7 @@ def initiate_pipeline_start(
         code=status_lib.Code.INVALID_ARGUMENT,
         message='Sync pipeline IR must specify pipeline_run_id.')
 
+  reused_pipeline_view = None
   if partial_run_option:
     snapshot_settings = partial_run_option.snapshot_settings
     which_strategy = snapshot_settings.WhichOneof('artifact_reuse_strategy')
@@ -119,7 +120,9 @@ def initiate_pipeline_start(
       logging.info(
           'No artifact_reuse_strategy specified for the partial pipeline run, '
           'defaulting to latest_pipeline_run_strategy.')
-      snapshot_settings.latest_pipeline_run_strategy.SetInParent()
+      partial_run_utils.set_latest_pipeline_run_strategy(snapshot_settings)
+    reused_pipeline_view = _load_reused_pipeline_view(
+        mlmd_handle, pipeline, partial_run_option.snapshot_settings)
 
     # Mark nodes using partial pipeline run lib.
     try:
@@ -133,10 +136,11 @@ def initiate_pipeline_start(
       raise status_lib.StatusNotOkError(
           code=status_lib.Code.INVALID_ARGUMENT, message=str(e))
 
-    if pipeline.runtime_spec.HasField('snapshot_settings'):
-      partial_run_utils.snapshot(mlmd_handle, pipeline)
+  if pipeline.runtime_spec.HasField('snapshot_settings'):
+    partial_run_utils.snapshot(mlmd_handle, pipeline)
 
-  return pstate.PipelineState.new(mlmd_handle, pipeline, pipeline_run_metadata)
+  return pstate.PipelineState.new(mlmd_handle, pipeline, pipeline_run_metadata,
+                                  reused_pipeline_view)
 
 
 @_to_status_not_ok_error
@@ -398,6 +402,44 @@ def _wait_for_node_inactivation(pipeline_state: pstate.PipelineState,
   return _wait_for_predicate(_is_inactivated, 'node inactivation', timeout_secs)
 
 
+def _load_reused_pipeline_view(
+    mlmd_handle: metadata.Metadata, pipeline: pipeline_pb2.Pipeline,
+    snapshot_settings: pipeline_pb2.SnapshotSettings
+) -> Union['pstate.PipelineView', None]:
+  """Loads pipeline view of the pipeline reused for partial pipeline run."""
+  base_run_id = None
+  pipeline_uid = task_lib.PipelineUid.from_pipeline(pipeline)
+  if snapshot_settings.HasField('base_pipeline_run_strategy'):
+    base_run_id = snapshot_settings.base_pipeline_run_strategy.base_run_id
+  try:
+    reused_pipeline_view = pstate.PipelineView.load(mlmd_handle, pipeline_uid,
+                                                    base_run_id)
+  except status_lib.StatusNotOkError as e:
+    if e.code == status_lib.Code.NOT_FOUND:
+      # A previous pipeline run is not strictly required in some cases. Returns
+      # None to delay the error handling to caller function.
+      logging.info(e.message)
+      return None
+    else:
+      raise
+
+  if execution_lib.is_execution_active(reused_pipeline_view.execution):
+    raise status_lib.StatusNotOkError(
+        code=status_lib.Code.ALREADY_EXISTS,
+        message=(
+            f'An active pipeline is already running with uid {pipeline_uid}.'))
+
+  if reused_pipeline_view.pipeline.execution_mode != pipeline_pb2.Pipeline.SYNC:
+    raise status_lib.StatusNotOkError(
+        code=status_lib.Code.FAILED_PRECONDITION,
+        message=(
+            f'Only SYNC pipeline execution modes supported; previous pipeline '
+            f'run has execution mode: '
+            f'{reused_pipeline_view.pipeline.execution_mode}'))
+
+  return reused_pipeline_view
+
+
 @_to_status_not_ok_error
 @_pipeline_ops_lock
 def resume_pipeline(mlmd_handle: metadata.Metadata,
@@ -429,51 +471,38 @@ def resume_pipeline(mlmd_handle: metadata.Metadata,
             f'Only SYNC pipeline execution modes supported; '
             f'found pipeline with execution mode: {pipeline.execution_mode}'))
 
-  latest_pipeline_view = None
-  pipeline_uid = task_lib.PipelineUid.from_pipeline(pipeline)
-  views = pstate.PipelineView.load_all(mlmd_handle, pipeline_uid)
-  for view in views:
-    execution = view.execution
-    if execution_lib.is_execution_active(execution):
-      raise status_lib.StatusNotOkError(
-          code=status_lib.Code.ALREADY_EXISTS,
-          message=(f'Can not resume pipeline. An active pipeline is already '
-                   f'running with uid {pipeline_uid}.'))
-    if (not latest_pipeline_view or execution.create_time_since_epoch >
-        latest_pipeline_view.execution.create_time_since_epoch):
-      latest_pipeline_view = view
-
+  latest_pipeline_view = _load_reused_pipeline_view(
+      mlmd_handle, pipeline,
+      partial_run_utils.latest_pipeline_snapshot_settings())
   if not latest_pipeline_view:
     raise status_lib.StatusNotOkError(
         code=status_lib.Code.NOT_FOUND,
         message='Pipeline failed to resume. No previous pipeline run found.')
-  if latest_pipeline_view.pipeline.execution_mode != pipeline_pb2.Pipeline.SYNC:
-    raise status_lib.StatusNotOkError(
-        code=status_lib.Code.FAILED_PRECONDITION,
-        message=(
-            f'Only SYNC pipeline execution modes supported; previous pipeline '
-            f'run has execution mode: '
-            f'{latest_pipeline_view.pipeline.execution_mode}'))
 
   # Get succeeded nodes in latest pipeline run.
-  latest_pipeline_node_states = latest_pipeline_view.get_node_states_dict()
   previously_succeeded_nodes = []
-  for node, node_state in latest_pipeline_node_states.items():
+  for node, node_state in latest_pipeline_view.get_node_states_dict().items():
     if node_state.is_success():
       previously_succeeded_nodes.append(node)
   pipeline_nodes = [
       node.node_info.id for node in pstate.get_all_pipeline_nodes(pipeline)
   ]
-  latest_pipeline_snapshot_settings = pipeline_pb2.SnapshotSettings()
-  latest_pipeline_snapshot_settings.latest_pipeline_run_strategy.SetInParent()
-  partial_run_option = pipeline_pb2.PartialRun(
-      from_nodes=pipeline_nodes,
-      to_nodes=pipeline_nodes,
-      skip_nodes=previously_succeeded_nodes,
-      snapshot_settings=latest_pipeline_snapshot_settings)
 
-  return initiate_pipeline_start(
-      mlmd_handle, pipeline, partial_run_option=partial_run_option)
+  # Mark nodes using partial pipeline run lib.
+  try:
+    pipeline = partial_run_utils.mark_pipeline(
+        pipeline,
+        from_nodes=pipeline_nodes,
+        to_nodes=pipeline_nodes,
+        skip_nodes=previously_succeeded_nodes,
+        snapshot_settings=partial_run_utils.latest_pipeline_snapshot_settings())
+  except ValueError as e:
+    raise status_lib.StatusNotOkError(
+        code=status_lib.Code.INVALID_ARGUMENT, message=str(e))
+  partial_run_utils.snapshot(mlmd_handle, pipeline)
+
+  return pstate.PipelineState.new(
+      mlmd_handle, pipeline, reused_pipeline_view=latest_pipeline_view)
 
 
 _POLLING_INTERVAL_SECS = 10.0

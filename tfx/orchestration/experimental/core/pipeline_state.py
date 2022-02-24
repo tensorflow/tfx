@@ -218,6 +218,7 @@ class PipelineState:
       mlmd_handle: metadata.Metadata,
       pipeline: pipeline_pb2.Pipeline,
       pipeline_run_metadata: Optional[Mapping[str, types.Property]] = None,
+      reused_pipeline_view: Optional['PipelineView'] = None,
   ) -> 'PipelineState':
     """Creates a `PipelineState` object for a new pipeline.
 
@@ -228,6 +229,8 @@ class PipelineState:
       mlmd_handle: A handle to the MLMD db.
       pipeline: IR of the pipeline.
       pipeline_run_metadata: Pipeline run metadata.
+      reused_pipeline_view: PipelineView of the previous pipeline reused for a
+        partial run.
 
     Returns:
       A `PipelineState` object.
@@ -261,15 +264,31 @@ class PipelineState:
       data_types_utils.set_metadata_value(
           execution.custom_properties[_PIPELINE_RUN_ID],
           pipeline.runtime_spec.pipeline_run_id.field_value.string_value)
-      # Set the node state to COMPLETE for any nodes that are marked to be
+      # Set the node state to SKIPPED for any nodes that are marked to be
       # skipped in a partial pipeline run.
       node_states_dict = {}
+      reused_pipeline_node_states_dict = reused_pipeline_view.get_node_states_dict(
+      ) if reused_pipeline_view else {}
+      logging.info(pipeline)
       for node in get_all_pipeline_nodes(pipeline):
+        node_id = node.node_info.id
         if node.execution_options.HasField('skip'):
-          logging.info('Node %s is skipped in this partial run.',
-                       node.node_info.id)
-          node_states_dict[node.node_info.id] = NodeState(
-              state=NodeState.COMPLETE)
+          logging.info('Node %s is skipped in this partial run.', node_id)
+          node_states_dict[node_id] = NodeState(state=NodeState.SKIPPED)
+          if not reused_pipeline_node_states_dict or node_id not in reused_pipeline_node_states_dict:
+            continue
+          # Indicates whether a node has previously failed in any base run when
+          # skipped. If a user makes a chain of partial runs, we would like to
+          # record the latest time when the skipped node has failed.
+          if reused_pipeline_node_states_dict[
+              node_id].state == NodeState.FAILED:
+            node_states_dict[
+                node_id].status_msg = f'Node failed in previous run {reused_pipeline_view.pipeline_run_id}'
+          elif reused_pipeline_node_states_dict[
+              node_id].state == NodeState.SKIPPED:
+            node_states_dict[
+                node_id].status_msg = reused_pipeline_node_states_dict[
+                    node_id].status_msg
       if node_states_dict:
         _save_node_states_dict(execution, node_states_dict)
 
