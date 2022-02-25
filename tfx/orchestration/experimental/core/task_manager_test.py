@@ -51,7 +51,11 @@ def _test_cancel_node_task(node_id, pipeline_id, pause=False):
   node_uid = task_lib.NodeUid(
       pipeline_uid=task_lib.PipelineUid(pipeline_id=pipeline_id),
       node_id=node_id)
-  return task_lib.CancelNodeTask(node_uid=node_uid, pause=pause)
+  if pause:
+    action = task_lib.ExecNodeTask.Action.PAUSE_EXEC
+  else:
+    action = task_lib.ExecNodeTask.Action.CANCEL_EXEC
+  return test_utils.create_exec_node_task(node_uid=node_uid, action=action)
 
 
 class _Collector:
@@ -91,7 +95,9 @@ class _FakeTaskScheduler(ts.TaskScheduler):
         status=status_lib.Status(
             code=code, message='_FakeTaskScheduler result'))
 
-  def cancel(self):
+  def cancel(self,
+             action: task_lib.ExecNodeTask.Action = task_lib.ExecNodeTask.Action
+             .CANCEL_EXEC):
     logging.info('_FakeTaskScheduler: cancelling task: %s', self.task)
     self._collector.add_cancelled_task(self.task)
     self._cancel.set()
@@ -270,7 +276,9 @@ class _FakeComponentScheduler(ts.TaskScheduler):
       raise self.exception
     return self.return_result
 
-  def cancel(self):
+  def cancel(self,
+             action: task_lib.ExecNodeTask.Action = task_lib.ExecNodeTask.Action
+             .CANCEL_EXEC):
     pass
 
 

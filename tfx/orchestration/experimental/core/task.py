@@ -18,6 +18,8 @@ core task generation loop based on the state of MLMD db.
 """
 
 import abc
+import enum
+import typing
 from typing import Dict, Hashable, List, Optional, Type, TypeVar
 
 import attr
@@ -103,10 +105,18 @@ class ExecNodeTask(Task):
     stateful_working_dir: Working directory for the node execution.
     tmp_dir: Temporary directory for the node execution.
     pipeline: The pipeline IR proto containing the node to be executed.
-    is_cancelled: Indicates whether this is a cancelled execution. The task
+    action: Indicates whether this is a cancelled execution. The task
       scheduler is expected to gracefully exit after doing any necessary
       cleanup.
   """
+
+  @enum.unique
+  class Action(enum.Enum):
+    UNKNOWN = 0
+    EXEC = 1
+    CANCEL_EXEC = 2
+    PAUSE_EXEC = 3
+
   node_uid: NodeUid
   execution_id: int
   contexts: List[metadata_store_pb2.Context]
@@ -117,11 +127,12 @@ class ExecNodeTask(Task):
   stateful_working_dir: str
   tmp_dir: str
   pipeline: pipeline_pb2.Pipeline
-  is_cancelled: bool = False
+
+  action: Action = Action.EXEC
 
   @property
   def task_id(self) -> TaskId:
-    return _exec_node_task_id(self.task_type_id(), self.node_uid)
+    return _exec_node_task_id(self.task_type_id(), self.node_uid, self.action)
 
   def get_pipeline_node(self) -> pipeline_pb2.PipelineNode:
     for node in self.pipeline.nodes:
@@ -131,21 +142,21 @@ class ExecNodeTask(Task):
         f'Node not found in pipeline IR; node uid: {self.node_uid}')
 
 
-@attr.s(auto_attribs=True, frozen=True)
-class CancelNodeTask(Task):
-  """Task to instruct cancellation of an ongoing node execution.
+# @attr.s(auto_attribs=True, frozen=True)
+# class CancelNodeTask(Task):
+#   """Task to instruct cancellation of an ongoing node execution.
 
-  Attributes:
-    node_uid: Uid of the node to be cancelled.
-    pause: The node is being paused with the intention of resuming the same
-      execution after restart.
-  """
-  node_uid: NodeUid
-  pause: bool = False
+#   Attributes:
+#     node_uid: Uid of the node to be cancelled.
+#     pause: The node is being paused with the intention of resuming the same
+#       execution after restart.
+#   """
+#   node_uid: NodeUid
+#   pause: bool = False
 
-  @property
-  def task_id(self) -> TaskId:
-    return (self.task_type_id(), self.node_uid)
+#   @property
+#   def task_id(self) -> TaskId:
+#     return (self.task_type_id(), self.node_uid)
 
 
 @attr.s(auto_attribs=True, frozen=True)
@@ -178,11 +189,18 @@ class UpdateNodeStateTask(Task):
 
 
 def is_exec_node_task(task: Task) -> bool:
-  return task.task_type_id() == ExecNodeTask.task_type_id()
+  if task.task_type_id() == ExecNodeTask.task_type_id():
+    task = typing.cast(ExecNodeTask, task)
+    return task.action == ExecNodeTask.Action.EXEC
+  return False
 
 
 def is_cancel_node_task(task: Task) -> bool:
-  return task.task_type_id() == CancelNodeTask.task_type_id()
+  if task.task_type_id() == ExecNodeTask.task_type_id():
+    task = typing.cast(ExecNodeTask, task)
+    return (task.action == ExecNodeTask.Action.CANCEL_EXEC or
+            task.action == ExecNodeTask.Action.PAUSE_EXEC)
+  return False
 
 
 def is_finalize_pipeline_task(task: Task) -> bool:
@@ -197,8 +215,10 @@ def exec_node_task_id_from_pipeline_node(
     pipeline: pipeline_pb2.Pipeline, node: pipeline_pb2.PipelineNode) -> TaskId:
   """Returns task id of an `ExecNodeTask` from pipeline and node."""
   return _exec_node_task_id(ExecNodeTask.task_type_id(),
-                            NodeUid.from_pipeline_node(pipeline, node))
+                            NodeUid.from_pipeline_node(pipeline, node),
+                            ExecNodeTask.Action.EXEC)
 
 
-def _exec_node_task_id(task_type_id: str, node_uid: NodeUid) -> TaskId:
-  return (task_type_id, node_uid)
+def _exec_node_task_id(task_type_id: str, node_uid: NodeUid,
+                       action: ExecNodeTask.Action) -> TaskId:
+  return (task_type_id, node_uid, action)

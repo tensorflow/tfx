@@ -60,9 +60,14 @@ class _SchedulerWrapper:
   def schedule(self) -> ts.TaskSchedulerResult:
     return self._task_scheduler.schedule()
 
-  def cancel(self, pause: bool = False) -> None:
+  def cancel(
+      self,
+      pause: bool = False,
+      action: task_lib.ExecNodeTask.Action = task_lib.ExecNodeTask.Action
+      .CANCEL_EXEC
+  ) -> None:
     self.pause = pause
-    self._task_scheduler.cancel()
+    self._task_scheduler.cancel(action=action)
 
 
 class TaskManager:
@@ -173,7 +178,7 @@ class TaskManager:
     if task_lib.is_exec_node_task(task):
       self._handle_exec_node_task(typing.cast(task_lib.ExecNodeTask, task))
     elif task_lib.is_cancel_node_task(task):
-      self._handle_cancel_node_task(typing.cast(task_lib.CancelNodeTask, task))
+      self._handle_cancel_node_task(typing.cast(task_lib.ExecNodeTask, task))
     else:
       raise RuntimeError('Cannot dispatch bad task: {}'.format(task))
 
@@ -196,9 +201,9 @@ class TaskManager:
           self._ts_executor.submit(self._process_exec_node_task, scheduler,
                                    task))
 
-  def _handle_cancel_node_task(self, task: task_lib.CancelNodeTask) -> None:
-    """Handles `CancelNodeTask`."""
-    logging.info('Handling CancelNodeTask, task-id: %s', task.task_id)
+  def _handle_cancel_node_task(self, task: task_lib.ExecNodeTask) -> None:
+    """Handles `ExecNodeTask`."""
+    logging.info('Handling ExecNodeTask, task-id: %s', task.task_id)
     node_uid = task.node_uid
     with self._tm_lock:
       scheduler = self._scheduler_by_node_uid.get(node_uid)
@@ -206,8 +211,20 @@ class TaskManager:
         logging.info(
             'No task scheduled for node uid: %s. The task might have already '
             'completed before it could be cancelled.', task.node_uid)
+        scheduler = _SchedulerWrapper(
+            typing.cast(
+                ts.TaskScheduler[task_lib.ExecNodeTask],
+                ts.TaskSchedulerRegistry.create_task_scheduler(
+                    self._mlmd_handle, task.pipeline, task)))
+        self._scheduler_by_node_uid[node_uid] = scheduler
+        self._ts_futures.add(
+            self._ts_executor.submit(self._process_exec_node_task, scheduler,
+                                     task))
       else:
-        scheduler.cancel(task.pause)
+        # scheduler._task_scheduler.task.action = task.action
+        scheduler.cancel(
+            task.action == task_lib.ExecNodeTask.Action.PAUSE_EXEC,
+            action=task.action)
       self._task_queue.task_done(task)
 
   def _process_exec_node_task(self, scheduler: _SchedulerWrapper,
