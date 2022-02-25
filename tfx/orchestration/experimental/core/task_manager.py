@@ -50,19 +50,14 @@ class TasksProcessingError(Error):
     self.errors = errors
 
 
-class _SchedulerWrapper:
-  """Wraps a TaskScheduler to store additional details."""
+# class _SchedulerWrapper:
+#   """Wraps a TaskScheduler to store additional details."""
 
-  def __init__(self, task_scheduler: ts.TaskScheduler):
-    self._task_scheduler = task_scheduler
-    self.pause = False
+#   def __init__(self, task_scheduler: ts.TaskScheduler):
+#     self.task_scheduler = task_scheduler
 
-  def schedule(self) -> ts.TaskSchedulerResult:
-    return self._task_scheduler.schedule()
-
-  def cancel(self, pause: bool = False) -> None:
-    self.pause = pause
-    self._task_scheduler.cancel()
+#   def schedule(self) -> ts.TaskSchedulerResult:
+#     return self.task_scheduler.schedule()
 
 
 class TaskManager:
@@ -98,7 +93,8 @@ class TaskManager:
 
     self._tm_lock = threading.Lock()
     self._stop_event = threading.Event()
-    self._scheduler_by_node_uid: Dict[task_lib.NodeUid, _SchedulerWrapper] = {}
+    self._scheduler_by_node_uid: Dict[task_lib.NodeUid,
+                                      ts.TaskScheduler[task_lib.NodeTask]] = {}
 
     # Async executor for the main task management thread.
     self._main_executor = futures.ThreadPoolExecutor(max_workers=1)
@@ -171,34 +167,33 @@ class TaskManager:
   def _handle_task(self, task: task_lib.Task) -> None:
     """Dispatches task to the task specific handler."""
     if task_lib.is_exec_node_task(task):
-      self._handle_exec_node_task(typing.cast(task_lib.ExecNodeTask, task))
+      self._handle_exec_node_task(typing.cast(task_lib.NodeTask, task))
     elif task_lib.is_cancel_node_task(task):
-      self._handle_cancel_node_task(typing.cast(task_lib.CancelNodeTask, task))
+      self._handle_cancel_node_task(typing.cast(task_lib.NodeTask, task))
     else:
       raise RuntimeError('Cannot dispatch bad task: {}'.format(task))
 
-  def _handle_exec_node_task(self, task: task_lib.ExecNodeTask) -> None:
-    """Handles `ExecNodeTask`."""
-    logging.info('Handling ExecNodeTask, task-id: %s', task.task_id)
+  def _handle_exec_node_task(self, task: task_lib.NodeTask) -> None:
+    """Handles `NodeTask`."""
+    logging.info('Handling NodeTask, task-id: %s', task.task_id)
     node_uid = task.node_uid
     with self._tm_lock:
       if node_uid in self._scheduler_by_node_uid:
         raise RuntimeError(
             'Cannot create multiple task schedulers for the same task; '
             'task_id: {}'.format(task.task_id))
-      scheduler = _SchedulerWrapper(
-          typing.cast(
-              ts.TaskScheduler[task_lib.ExecNodeTask],
-              ts.TaskSchedulerRegistry.create_task_scheduler(
-                  self._mlmd_handle, task.pipeline, task)))
+      scheduler = typing.cast(
+          ts.TaskScheduler[task_lib.NodeTask],
+          ts.TaskSchedulerRegistry.create_task_scheduler(
+              self._mlmd_handle, task.pipeline, task))
       self._scheduler_by_node_uid[node_uid] = scheduler
       self._ts_futures.add(
           self._ts_executor.submit(self._process_exec_node_task, scheduler,
                                    task))
 
-  def _handle_cancel_node_task(self, task: task_lib.CancelNodeTask) -> None:
-    """Handles `CancelNodeTask`."""
-    logging.info('Handling CancelNodeTask, task-id: %s', task.task_id)
+  def _handle_cancel_node_task(self, task: task_lib.NodeTask) -> None:
+    """Handles `NodeTask`."""
+    logging.info('Handling NodeTask, task-id: %s', task.task_id)
     node_uid = task.node_uid
     with self._tm_lock:
       scheduler = self._scheduler_by_node_uid.get(node_uid)
@@ -207,12 +202,14 @@ class TaskManager:
             'No task scheduled for node uid: %s. The task might have already '
             'completed before it could be cancelled.', task.node_uid)
       else:
-        scheduler.cancel(task.pause)
+        scheduler.task = task
+        scheduler.cancel()
       self._task_queue.task_done(task)
 
-  def _process_exec_node_task(self, scheduler: _SchedulerWrapper,
-                              task: task_lib.ExecNodeTask) -> None:
-    """Processes an `ExecNodeTask` using the given task scheduler."""
+  def _process_exec_node_task(self,
+                              scheduler: ts.TaskScheduler[task_lib.NodeTask],
+                              task: task_lib.NodeTask) -> None:
+    """Processes an `NodeTask` using the given task scheduler."""
     # This is a blocking call to the scheduler which can take a long time to
     # complete for some types of task schedulers. The scheduler is expected to
     # handle any internal errors gracefully and return the result with an error
@@ -226,11 +223,11 @@ class TaskManager:
       result = ts.TaskSchedulerResult(
           status=status_lib.Status(
               code=status_lib.Code.ABORTED, message=str(e)))
-    logging.info('For ExecNodeTask id: %s, task-scheduler result status: %s',
+    logging.info('For NodeTask id: %s, task-scheduler result status: %s',
                  task.task_id, result.status)
     # If the node was paused, we do not complete the execution as it is expected
-    # that a new ExecNodeTask would be issued for resuming the execution.
-    if not (scheduler.pause and
+    # that a new NodeTask would be issued for resuming the execution.
+    if not (scheduler.task.action == task_lib.NodeTask.Action.PAUSE_EXEC and
             result.status.code == status_lib.Code.CANCELLED):
       _publish_execution_results(
           mlmd_handle=self._mlmd_handle, task=task, result=result)
@@ -270,7 +267,7 @@ def _update_execution_state_in_mlmd(
 
 
 def _publish_execution_results(mlmd_handle: metadata.Metadata,
-                               task: task_lib.ExecNodeTask,
+                               task: task_lib.NodeTask,
                                result: ts.TaskSchedulerResult) -> None:
   """Publishes execution results to MLMD."""
 
@@ -341,7 +338,7 @@ def _publish_execution_results(mlmd_handle: metadata.Metadata,
   pipeline_state.record_state_change_time()
 
 
-def _remove_output_dirs(task: task_lib.ExecNodeTask,
+def _remove_output_dirs(task: task_lib.NodeTask,
                         ts_result: ts.TaskSchedulerResult) -> None:
   outputs_utils.remove_output_dirs(task.output_artifacts)
   if isinstance(ts_result.output, ts.ImporterNodeOutput):
@@ -349,7 +346,7 @@ def _remove_output_dirs(task: task_lib.ExecNodeTask,
       outputs_utils.remove_output_dirs(ts_result.output.output_artifacts)
 
 
-def _remove_task_dirs(task: task_lib.ExecNodeTask) -> None:
+def _remove_task_dirs(task: task_lib.NodeTask) -> None:
   """Removes directories created for the task."""
   if task.stateful_working_dir:
     outputs_utils.remove_stateful_working_dir(task.stateful_working_dir)

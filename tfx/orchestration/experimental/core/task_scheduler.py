@@ -170,15 +170,15 @@ class TaskSchedulerRegistry:
       An instance of `TaskScheduler` for the given task.
 
     Raises:
-      NotImplementedError: Raised if not an `ExecNodeTask`.
+      NotImplementedError: Raised if not an `NodeTask`.
       ValueError: If a scheduler could not be found in the registry for the
         given task.
     """
 
     if not task_lib.is_exec_node_task(task):
       raise NotImplementedError(
-          'Can create a task scheduler only for an `ExecNodeTask`.')
-    task = typing.cast(task_lib.ExecNodeTask, task)
+          'Can create a task scheduler only for an `NodeTask`.')
+    task = typing.cast(task_lib.NodeTask, task)
 
     try:
       scheduler_class = cls._scheduler_class_for_node_type(task)
@@ -193,7 +193,7 @@ class TaskSchedulerRegistry:
 
   @classmethod
   def _scheduler_class_for_node_type(
-      cls: Type[T], task: task_lib.ExecNodeTask) -> Type[TaskScheduler]:
+      cls: Type[T], task: task_lib.NodeTask) -> Type[TaskScheduler]:
     """Returns scheduler class for node type or raises error if none registered."""
     node_type = task.get_pipeline_node().node_info.type.name
     scheduler_class = cls._task_scheduler_registry.get(node_type)
@@ -205,7 +205,7 @@ class TaskSchedulerRegistry:
   @classmethod
   def _scheduler_class_for_executor_spec(
       cls: Type[T], pipeline: pipeline_pb2.Pipeline,
-      task: task_lib.ExecNodeTask) -> Type[TaskScheduler]:
+      task: task_lib.NodeTask) -> Type[TaskScheduler]:
     """Returns scheduler class for executor spec url if feasible, raises error otherwise."""
     if not pipeline.deployment_config.Is(
         pipeline_pb2.IntermediateDeploymentConfig.DESCRIPTOR):

@@ -200,7 +200,7 @@ class _Generator:
                    node_state.state, node_uid)
       return result
 
-    # If this is a pure service node, there is no ExecNodeTask to generate
+    # If this is a pure service node, there is no NodeTask to generate
     # but we ensure node services and check service status.
     service_status = self._ensure_node_services_if_pure(node_id)
     if service_status is not None:
@@ -339,7 +339,7 @@ class _Generator:
         task_lib.UpdateNodeStateTask(
             node_uid=node_uid, state=pstate.NodeState.RUNNING))
     result.append(
-        task_lib.ExecNodeTask(
+        task_lib.NodeTask(
             node_uid=node_uid,
             execution_id=execution.id,
             contexts=resolved_info.contexts,

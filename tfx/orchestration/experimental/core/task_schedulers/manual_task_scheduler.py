@@ -67,14 +67,14 @@ class ManualNodeState(json_utils.Jsonable):
     return value
 
 
-class ManualTaskScheduler(task_scheduler.TaskScheduler[task_lib.ExecNodeTask]):
+class ManualTaskScheduler(task_scheduler.TaskScheduler[task_lib.NodeTask]):
   """A task scheduler for Manual system node."""
 
   def __init__(self, mlmd_handle: metadata.Metadata,
-               pipeline: pipeline_pb2.Pipeline, task: task_lib.ExecNodeTask):
+               pipeline: pipeline_pb2.Pipeline, task: task_lib.NodeTask):
     super().__init__(mlmd_handle, pipeline, task)
     self._cancel = threading.Event()
-    if task.is_cancelled:
+    if task_lib.is_cancel_node_task(task):
       self._cancel.set()
 
   def schedule(self) -> task_scheduler.TaskSchedulerResult:

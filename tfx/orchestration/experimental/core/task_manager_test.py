@@ -47,11 +47,13 @@ def _test_exec_node_task(node_id, pipeline_id, pipeline=None):
   return test_utils.create_exec_node_task(node_uid, pipeline=pipeline)
 
 
-def _test_cancel_node_task(node_id, pipeline_id, pause=False):
+def _test_cancel_node_task(node_id,
+                           pipeline_id,
+                           action=task_lib.NodeTask.Action.CANCEL_EXEC):
   node_uid = task_lib.NodeUid(
       pipeline_uid=task_lib.PipelineUid(pipeline_id=pipeline_id),
       node_id=node_id)
-  return task_lib.CancelNodeTask(node_uid=node_uid, pause=pause)
+  return test_utils.create_exec_node_task(node_uid=node_uid, action=action)
 
 
 class _Collector:
@@ -167,7 +169,10 @@ class TaskManagerTest(test_utils.TfxTest):
           'Pusher', 'test-pipeline', pipeline=self._pipeline)
       task_queue.enqueue(pusher_exec_task)
       task_queue.enqueue(
-          _test_cancel_node_task('Pusher', 'test-pipeline', pause=True))
+          _test_cancel_node_task(
+              'Pusher',
+              'test-pipeline',
+              action=task_lib.NodeTask.Action.PAUSE_EXEC))
 
     self.assertTrue(task_manager.done())
     self.assertIsNone(task_manager.exception())

@@ -21,11 +21,11 @@ from tfx.proto.orchestration import execution_result_pb2
 from tfx.utils import status as status_lib
 
 
-class NoOpTaskScheduler(ts.TaskScheduler[task_lib.ExecNodeTask]):
+class NoOpTaskScheduler(ts.TaskScheduler[task_lib.NodeTask]):
   """A no-op task scheduler to aid in testing."""
 
   def schedule(self) -> ts.TaskSchedulerResult:
-    logging.info('Processing ExecNodeTask: %s', self.task)
+    logging.info('Processing NodeTask: %s', self.task)
     executor_output = execution_result_pb2.ExecutorOutput()
     executor_output.execution_result.code = status_lib.Code.OK
     for key, artifacts in self.task.output_artifacts.items():

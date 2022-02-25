@@ -794,7 +794,7 @@ def _orchestrate_active_pipeline(
 
     for task in tasks:
       if task_lib.is_exec_node_task(task):
-        task = typing.cast(task_lib.ExecNodeTask, task)
+        task = typing.cast(task_lib.NodeTask, task)
         task_queue.enqueue(task)
       else:
         assert task_lib.is_finalize_pipeline_task(task)
@@ -830,11 +830,11 @@ def _maybe_enqueue_cancellation_task(mlmd_handle: metadata.Metadata,
                                      pause: bool = False) -> bool:
   """Enqueues a node cancellation task if not already stopped.
 
-  If the node has an ExecNodeTask in the task queue, issue a cancellation.
+  If the node has an NodeTask in the task queue, issue a cancellation.
   Otherwise, when pause=False, if the node has an active execution in MLMD but
-  no ExecNodeTask enqueued, it may be due to orchestrator restart after stopping
+  no NodeTask enqueued, it may be due to orchestrator restart after stopping
   was initiated but before the schedulers could finish. So, enqueue an
-  ExecNodeTask with is_cancelled set to give a chance for the scheduler to
+  NodeTask with is_cancelled set to give a chance for the scheduler to
   finish gracefully.
 
   Args:
@@ -850,21 +850,21 @@ def _maybe_enqueue_cancellation_task(mlmd_handle: metadata.Metadata,
     `True` if a cancellation task was enqueued. `False` if node is already
     stopped or no cancellation was required.
   """
-  exec_node_task_id = task_lib.exec_node_task_id_from_pipeline_node(
-      pipeline, node)
-  if task_queue.contains_task_id(exec_node_task_id):
-    task_queue.enqueue(
-        task_lib.CancelNodeTask(
-            node_uid=task_lib.NodeUid.from_pipeline_node(pipeline, node),
-            pause=pause))
+  # exec_node_task_id = task_lib.exec_node_task_id_from_pipeline_node(
+  #     pipeline, node)
+
+  executions = task_gen_utils.get_executions(mlmd_handle, node)
+  node_task = task_gen_utils.generate_task_from_active_execution(
+      mlmd_handle, pipeline, node, executions)
+  if node_task and pause:
+    node_task.action = task_lib.NodeTask.Action.PAUSE_EXEC
+  elif node_task:
+    node_task.action = task_lib.NodeTask.Action.CANCEL_EXEC
+
+  if node_task:
+    task_queue.enqueue(node_task)
     return True
-  if not pause:
-    executions = task_gen_utils.get_executions(mlmd_handle, node)
-    exec_node_task = task_gen_utils.generate_task_from_active_execution(
-        mlmd_handle, pipeline, node, executions, is_cancelled=True)
-    if exec_node_task:
-      task_queue.enqueue(exec_node_task)
-      return True
+
   return False
 
 

@@ -110,7 +110,6 @@ class ManualTaskSchedulerTest(test_utils.TfxTest):
     threading.Thread(target=start_scheduler, args=(ts_result,)).start()
     self.assertEqual(len(ts_result), 0)
     time.sleep(manual_task_scheduler._POLLING_INTERVAL_SECS * 10)
-    print(ts_result)
     self.assertEqual(len(ts_result), 0)
 
     # Changes node state to COMPLETED in another thread.

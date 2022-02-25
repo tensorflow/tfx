@@ -116,7 +116,7 @@ def get_node(pipeline, node_id):
 
 
 def fake_execute_node(mlmd_connection, task, artifact_custom_properties=None):
-  """Simulates node execution given ExecNodeTask."""
+  """Simulates node execution given NodeTask."""
   node = task.get_pipeline_node()
   with mlmd_connection as m:
     if node.HasField('outputs'):
@@ -139,19 +139,20 @@ def fake_execute_node(mlmd_connection, task, artifact_custom_properties=None):
                                                         output_artifacts)
 
 
-def create_exec_node_task(node_uid,
-                          execution=None,
-                          contexts=None,
-                          exec_properties=None,
-                          input_artifacts=None,
-                          output_artifacts=None,
-                          executor_output_uri=None,
-                          stateful_working_dir=None,
-                          tmp_dir=None,
-                          pipeline=None,
-                          is_cancelled=False) -> task_lib.ExecNodeTask:
-  """Creates an `ExecNodeTask` for testing."""
-  return task_lib.ExecNodeTask(
+def create_exec_node_task(
+    node_uid,
+    execution=None,
+    contexts=None,
+    exec_properties=None,
+    input_artifacts=None,
+    output_artifacts=None,
+    executor_output_uri=None,
+    stateful_working_dir=None,
+    tmp_dir=None,
+    pipeline=None,
+    action=task_lib.NodeTask.Action.EXEC) -> task_lib.NodeTask:
+  """Creates an `NodeTask` for testing."""
+  return task_lib.NodeTask(
       node_uid=node_uid,
       execution_id=execution.id if execution else 1,
       contexts=contexts or [],
@@ -162,7 +163,7 @@ def create_exec_node_task(node_uid,
       stateful_working_dir=stateful_working_dir or '',
       tmp_dir=tmp_dir or '',
       pipeline=pipeline or mock.Mock(),
-      is_cancelled=is_cancelled)
+      action=action)
 
 
 def create_node_uid(pipeline_id, node_id):

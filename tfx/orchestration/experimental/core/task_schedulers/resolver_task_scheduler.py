@@ -18,8 +18,7 @@ from tfx.orchestration.experimental.core import task_scheduler
 from tfx.utils import status as status_lib
 
 
-class ResolverTaskScheduler(task_scheduler.TaskScheduler[task_lib.ExecNodeTask]
-                           ):
+class ResolverTaskScheduler(task_scheduler.TaskScheduler[task_lib.NodeTask]):
   """A task scheduler for Resolver system node."""
 
   def schedule(self) -> task_scheduler.TaskSchedulerResult:
