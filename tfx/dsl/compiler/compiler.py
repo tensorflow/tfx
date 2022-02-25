@@ -13,6 +13,7 @@
 # limitations under the License.
 """Compiles a TFX pipeline into a TFX DSL IR proto."""
 import collections
+import inspect
 import itertools
 from typing import Any, Iterable, List, Type, cast
 
@@ -28,8 +29,7 @@ from tfx.dsl.control_flow import for_each
 from tfx.dsl.experimental.conditionals import conditional
 from tfx.dsl.input_resolution import resolver_function
 from tfx.dsl.input_resolution import resolver_op
-from tfx.dsl.input_resolution.ops import skip_if_empty_op
-from tfx.dsl.input_resolution.ops import unnest_op
+from tfx.dsl.input_resolution.ops import ops
 from tfx.dsl.placeholder import placeholder
 from tfx.orchestration import data_types
 from tfx.orchestration import data_types_utils
@@ -37,6 +37,7 @@ from tfx.orchestration import pipeline
 from tfx.proto.orchestration import executable_spec_pb2
 from tfx.proto.orchestration import pipeline_pb2
 from tfx.types import channel_utils
+from tfx.types import value_artifact
 from tfx.utils import deprecation_utils
 from tfx.utils import json_utils
 
@@ -50,7 +51,6 @@ class _CompilerContext:
     self.pipeline_info = tfx_pipeline.pipeline_info
     self.execution_mode = compiler_utils.resolve_execution_mode(tfx_pipeline)
     self.node_pbs = {}
-    self.node_outputs = set()
     self._pipeline_nodes_by_id = {}
     self._topological_order = {}
     self._implicit_upstream_nodes = collections.defaultdict(set)
@@ -117,7 +117,8 @@ class Compiler:
         except ValueError:
           raise ValueError(
               "Component {} got unsupported parameter {} with type {}.".format(
-                  tfx_node.id, property_name, type(property_value)))
+                  tfx_node.id, property_name,
+                  type(property_value))) from ValueError
 
       for property_name, property_value in (
           value.additional_custom_properties.items()):
@@ -128,7 +129,8 @@ class Compiler:
         except ValueError:
           raise ValueError(
               "Component {} got unsupported parameter {} with type {}.".format(
-                  tfx_node.id, property_name, type(property_value)))
+                  tfx_node.id, property_name,
+                  type(property_value))) from ValueError
 
   def _compile_node(
       self,
@@ -193,7 +195,8 @@ class Compiler:
 
     # Step 3: Node inputs
 
-    # Step 3.1: Conditionals
+    # Step 3.1: Generate implicit input channels
+    # Step 3.1.1: Conditionals
     implicit_input_channels = {}
     predicates = conditional.get_predicates(tfx_node)
     if predicates:
@@ -219,6 +222,16 @@ class Compiler:
       resolver_step.class_path = constants.CONDITIONAL_RESOLVER_CLASS_PATH
       resolver_step.config_json = json_utils.dumps(
           {"predicates": encoded_predicates})
+
+    # Step 3.1.2: Add placeholder exec props to implicit_input_channels
+    for key, value in tfx_node.exec_properties.items():
+      if isinstance(value, placeholder.ChannelWrappedPlaceholder):
+        if not (inspect.isclass(value.channel.type) and
+                issubclass(value.channel.type, value_artifact.ValueArtifact)):
+          raise ValueError("output channel to dynamic exec properties is not "
+                           "ValueArtifact")
+        implicit_key = compiler_utils.implicit_channel_key(value.channel)
+        implicit_input_channels[implicit_key] = value.channel
 
     # Step 3.2: Handle ForEach.
     dsl_contexts = context_manager.get_contexts(tfx_node)
@@ -253,14 +266,16 @@ class Compiler:
       for input_channel in channel_utils.get_individual_channels(value):
         chnl = input_spec.channels.add()
 
-        # If the node input comes from another node's output, fill the context
-        # queries with the producer node's contexts.
-        if input_channel in compile_context.node_outputs:
+        # If the node is an OutputChannel, fill the context queries with the
+        # producer node's contexts.
+        if isinstance(input_channel, types.OutputChannel):
           chnl.producer_node_query.id = input_channel.producer_component_id
 
           # Here we rely on pipeline.components to be topologically sorted.
           assert input_channel.producer_component_id in compile_context.node_pbs, (
-              "producer component should have already been compiled.")
+              f"producer component {input_channel.producer_component_id} "
+              f"should have been compiled before {tfx_node.id} "
+              f"(while compiling {input_channel} in inputs['{key}']).")
           producer_pb = compile_context.node_pbs[
               input_channel.producer_component_id]
           for producer_context in producer_pb.contexts.contexts:
@@ -268,9 +283,9 @@ class Compiler:
             context_query.type.CopyFrom(producer_context.type)
             context_query.name.CopyFrom(producer_context.name)
 
-        # If the node input does not come from another node's output, fill the
-        # context queries based on Channel info. We requires every channel to
-        # have pipeline context and will fill it automatically.
+        # If the node input is not an OutputChannel, fill the context queries
+        # based on Channel info. We requires every channel to have pipeline
+        # context and will fill it automatically.
         else:
           # Add pipeline context query.
           context_query = chnl.context_queries.add()
@@ -325,9 +340,6 @@ class Compiler:
           _compile_resolver_node(tfx_node))
 
     # Step 4: Node outputs
-    for key, value in tfx_node.outputs.items():
-      # Register the output in the context.
-      compile_context.node_outputs.add(value)
     if (isinstance(tfx_node, base_component.BaseComponent) or
         compiler_utils.is_importer(tfx_node)):
       self._compile_node_outputs(tfx_node, node)
@@ -344,15 +356,22 @@ class Compiler:
           compiler_utils.set_runtime_parameter_pb(
               parameter_value.runtime_parameter, value.name, value.ptype,
               value.default)
-        elif isinstance(value, placeholder.Placeholder):
+        # RuntimeInfoPlaceholder passes Execution parameters of Facade
+        # components.
+        elif isinstance(value, placeholder.RuntimeInfoPlaceholder):
           parameter_value.placeholder.CopyFrom(value.encode())
+        # ChannelWrappedPlaceholder passes dynamic execution parameter.
+        elif isinstance(value, placeholder.ChannelWrappedPlaceholder):
+          compiler_utils.validate_dynamic_exec_ph_operator(value)
+          parameter_value.placeholder.CopyFrom(
+              value.encode_with_keys(compiler_utils.implicit_channel_key))
         else:
           try:
             data_types_utils.set_parameter_value(parameter_value, value)
           except ValueError:
             raise ValueError(
                 "Component {} got unsupported parameter {} with type {}."
-                .format(tfx_node.id, key, type(value)))
+                .format(tfx_node.id, key, type(value))) from ValueError
 
     # Step 6: Executor spec and optional driver spec for components
     if isinstance(tfx_node, base_component.BaseComponent):
@@ -636,8 +655,8 @@ def _compile_for_each_context(
 
   @resolver_function.resolver_function
   def impl(input_node):
-    items = unnest_op.Unnest(input_node, key=input_key)
-    return skip_if_empty_op.SkipIfEmpty(items)
+    items = ops.Unnest(input_node, key=input_key)
+    return ops.SkipIfEmpty(items)
 
   return _compile_resolver_function(impl)
 

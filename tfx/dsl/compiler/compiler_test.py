@@ -21,12 +21,15 @@ from tfx.dsl.compiler import compiler
 from tfx.dsl.compiler.testdata import additional_properties_test_pipeline_async
 from tfx.dsl.compiler.testdata import channel_union_pipeline
 from tfx.dsl.compiler.testdata import conditional_pipeline
+from tfx.dsl.compiler.testdata import dynamic_exec_properties_pipeline
 from tfx.dsl.compiler.testdata import foreach_pipeline
 from tfx.dsl.compiler.testdata import iris_pipeline_async
 from tfx.dsl.compiler.testdata import iris_pipeline_sync
 from tfx.dsl.compiler.testdata import pipeline_root_placeholder
 from tfx.orchestration import pipeline
 from tfx.proto.orchestration import pipeline_pb2
+from tfx.types import artifact
+from tfx.types import channel
 from tfx.utils import import_utils
 
 from google.protobuf import text_format
@@ -43,6 +46,13 @@ def _maybe_persist_pipeline_proto(pipeline_proto: pipeline_pb2.Pipeline,
   if FLAGS.persist_test_protos:
     with open(to_path, mode="w+") as f:
       f.write(text_format.MessageToString(pipeline_proto))
+
+
+class _MyType(artifact.Artifact):
+  TYPE_NAME = "MyTypeName"
+  PROPERTIES = {
+      "string_value": artifact.Property(artifact.PropertyType.STRING),
+  }
 
 
 class CompilerTest(tf.test.TestCase, parameterized.TestCase):
@@ -77,6 +87,8 @@ class CompilerTest(tf.test.TestCase, parameterized.TestCase):
        "channel_union_pipeline_ir.pbtxt"),
       ("_pipeline_root_placeholder", pipeline_root_placeholder,
        "pipeline_root_placeholder_ir.pbtxt"),
+      ("_dynamic_exec_properties_pipeline", dynamic_exec_properties_pipeline,
+       "dynamic_exec_properties_pipeline_ir.pbtxt"),
   )
   def testCompile(self, pipeline_module, expected_result_path):
     """Tests compiling the whole pipeline."""
@@ -99,6 +111,22 @@ class CompilerTest(tf.test.TestCase, parameterized.TestCase):
     with self.assertRaisesRegex(TypeError, "Expected INT but given STRING"):
       dsl_compiler.compile(test_pipeline)
 
+  def testCompileDynamicExecPropTypeError(self):
+    dsl_compiler = compiler.Compiler()
+    test_pipeline = self._get_test_pipeline_definition(
+        dynamic_exec_properties_pipeline)
+    downstream_component = next(
+        c for c in test_pipeline.components
+        if isinstance(c, dynamic_exec_properties_pipeline.DownstreamComponent))
+    instance_a = _MyType()
+    instance_b = _MyType()
+    test_wrong_type_channel = channel.Channel(_MyType).set_artifacts(
+        [instance_a, instance_b]).future()
+    downstream_component.exec_properties["input_num"] = test_wrong_type_channel
+    with self.assertRaisesRegex(
+        ValueError,
+        "output channel to dynamic exec properties is not ValueArtifact"):
+      dsl_compiler.compile(test_pipeline)
 
 if __name__ == "__main__":
   tf.test.main()

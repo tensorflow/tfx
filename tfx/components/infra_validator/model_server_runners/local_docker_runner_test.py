@@ -84,16 +84,16 @@ class LocalDockerRunnerTest(tf.test.TestCase):
     # Check calls.
     self._docker_client.containers.run.assert_called()
     _, run_kwargs = self._docker_client.containers.run.call_args
-    self.assertDictContainsSubset(dict(
-        image='tensorflow/serving:1.15.0',
-        environment={
-            'MODEL_NAME': 'chicago-taxi',
-            'MODEL_BASE_PATH': '/model'
-        },
-        publish_all_ports=True,
-        auto_remove=True,
-        detach=True
-    ), run_kwargs)
+    self.assertLessEqual(
+        dict(
+            image='tensorflow/serving:1.15.0',
+            environment={
+                'MODEL_NAME': 'chicago-taxi',
+                'MODEL_BASE_PATH': '/model'
+            },
+            publish_all_ports=True,
+            auto_remove=True,
+            detach=True).items(), run_kwargs.items())
 
   def testStartMultipleTimesFail(self):
     # Prepare mocks and variables.

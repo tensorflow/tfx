@@ -31,9 +31,9 @@ class LatestArtifactStrategy(resolver.ResolverStrategy):
   Don't construct LatestArtifactStrategy directly, example usage:
   ```
     model_resolver = Resolver(
-        instance_name='latest_model_resolver',
         strategy_class=LatestArtifactStrategy,
-        model=Channel(type=Model))
+        model=Channel(type=Model),
+    ).with_id('latest_model_resolver')
     model_resolver.outputs['model']
   ```
   """

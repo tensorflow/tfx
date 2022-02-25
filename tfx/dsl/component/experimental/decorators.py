@@ -16,9 +16,10 @@
 Experimental: no backwards compatibility guarantees.
 """
 
+import functools
 import sys
 import types
-from typing import Any, Callable, Dict, List
+from typing import Any, Callable, Dict, List, Optional, Type
 
 from tfx import types as tfx_types
 from tfx.dsl.component.experimental import function_parser
@@ -27,6 +28,7 @@ from tfx.dsl.components.base import base_executor
 from tfx.dsl.components.base import executor_spec
 from tfx.types import channel_utils
 from tfx.types import component_spec
+from tfx.types import system_executions
 
 
 class _SimpleComponent(base_component.BaseComponent):
@@ -159,12 +161,20 @@ class _FunctionExecutor(base_executor.BaseExecutor):
              '%r.') % (outputs[name], name, output_dict[name][0].__class__))
 
 
-def component(func: types.FunctionType) -> Callable[..., Any]:
+def component(
+    func: Optional[types.FunctionType] = None,
+    component_annotation: Optional[Type[
+        system_executions.SystemExecution]] = None,
+) -> Callable[..., Any]:
   """Decorator: creates a component from a typehint-annotated Python function.
 
   This decorator creates a component based on typehint annotations specified for
-  the arguments and return value for a Python function. Specifically, function
-  arguments can be annotated with the following types and associated semantics:
+  the arguments and return value for a Python function. The decorator can be
+  supplied with a parameter `component_annotation` to specify the annotation for
+  this component decorator. This annotation hints which system execution type
+  this python function-based component belongs to.
+  Specifically, function arguments can be annotated with the following types and
+  associated semantics:
 
   * `Parameter[T]` where `T` is `int`, `float`, `str`, or `bytes`: indicates
     that a primitive type execution parameter, whose value is known at pipeline
@@ -213,13 +223,13 @@ def component(func: types.FunctionType) -> Callable[..., Any]:
       from tfx.dsl.components.base.annotations import
       Parameter
       from tfx.dsl.components.base.decorators import component
-      from tfx.types.standard_artifacts import Examples
-      from tfx.types.standard_artifacts import Model
+      from tfx.types import standard_artifacts
+      from tfx.types import system_executions
 
-      @component
+      @component(component_annotation=system_executions.Train)
       def MyTrainerComponent(
-          training_data: InputArtifact[Examples],
-          model: OutputArtifact[Model],
+          training_data: InputArtifact[standard_artifacts.Examples],
+          model: OutputArtifact[standard_artifacts.Model],
           dropout_hyperparameter: float,
           num_iterations: Parameter[int] = 10
           ) -> OutputDict(loss=float, accuracy=float):
@@ -243,10 +253,34 @@ def component(func: types.FunctionType) -> Callable[..., Any]:
       pusher = Pusher(model=trainer.outputs['model'])
       # ...
 
+  When the parameter `component_annotation` is not supplied, the default value
+  is None. This is another example usage with `component_annotation` = None:
+
+      @component
+      def MyTrainerComponent(
+          training_data: InputArtifact[standard_artifacts.Examples],
+          model: OutputArtifact[standard_artifacts.Model],
+          dropout_hyperparameter: float,
+          num_iterations: Parameter[int] = 10
+          ) -> OutputDict(loss=float, accuracy=float):
+        '''My simple trainer component.'''
+
+        records = read_examples(training_data.uri)
+        model_obj = train_model(records, num_iterations, dropout_hyperparameter)
+        model_obj.write_to(model.uri)
+
+        return {
+          'loss': model_obj.loss,
+          'accuracy': model_obj.accuracy
+        }
+
   Experimental: no backwards compatibility guarantees.
 
   Args:
     func: Typehint-annotated component executor function.
+    component_annotation: used to annotate the python function-based component.
+      It is a subclass of SystemExecution from
+      third_party/py/tfx/types/system_executions.py; it can be None.
 
   Returns:
     `base_component.BaseComponent` subclass for the given component executor
@@ -255,6 +289,10 @@ def component(func: types.FunctionType) -> Callable[..., Any]:
   Raises:
     EnvironmentError: if the current Python interpreter is not Python 3.
   """
+  if func is None:
+    return functools.partial(
+        component, component_annotation=component_annotation)
+
   # Defining a component within a nested class or function closure causes
   # problems because in this case, the generated component classes can't be
   # referenced via their qualified module path.
@@ -287,6 +325,7 @@ def component(func: types.FunctionType) -> Callable[..., Any]:
           'INPUTS': spec_inputs,
           'OUTPUTS': spec_outputs,
           'PARAMETERS': spec_parameters,
+          'TYPE_ANNOTATION': component_annotation,
       })
 
   executor_class = type(

@@ -287,7 +287,8 @@ class _ProtoOperator(_PlaceholderOperator):
 class _ListSerializationOperator(_PlaceholderOperator):
   """ListSerializationOperator serializes list type placeholder.
 
-  Prefer to use the .serialize_list property of ExecPropertyPlaceholder.
+  Prefer to use the .serialize_list property of ExecPropertyPlaceholder or
+  ListPlaceholder.
   """
 
   def __init__(self, serialization_format: ListSerializationFormat):
@@ -332,7 +333,7 @@ class Placeholder(json_utils.Jsonable):
                key: Optional[str] = None):
     self._operators = []
     self._type = placeholder_type
-    self._key = key
+    self._key = key  # TODO(b/217597892): Refactor _key as read-only property.
 
   def __add__(self, right: Union[str, 'Placeholder']):
     self._operators.append(_ConcatOperator(right=right))
@@ -565,6 +566,16 @@ class ChannelWrappedPlaceholder(ArtifactPlaceholder):
 
   def __ge__(self, other: _ValueLikeType) -> 'Predicate':
     return logical_not(self < other)
+
+  def encode_with_keys(
+      self,
+      channel_to_key_fn: Optional[Callable[['types.Channel'], str]]
+  ) -> placeholder_pb2.PlaceholderExpression:
+    original_key = self._key
+    self._key = channel_to_key_fn(self.channel)
+    result = self.encode()
+    self._key = original_key
+    return result
 
 
 def _encode_value_like(
@@ -802,6 +813,60 @@ class Predicate(Placeholder):
     return self.pred_dataclass.encode_with_keys(channel_to_key_fn)
 
 
+class ListPlaceholder(Placeholder):
+  """List of multiple Placeholders.
+
+  Prefer to use list() to create ListPlaceholder.
+  """
+
+  def __init__(self, input_placeholders: List['Placeholder']):
+    super().__init__(placeholder_pb2.Placeholder.Type.INPUT_ARTIFACT)
+    self._validate_type(input_placeholders)
+    self._input_placeholders = input_placeholders
+
+  def __add__(self, right: 'ListPlaceholder'):
+    self._input_placeholders.extend(right._input_placeholders)
+    return self
+
+  def __radd__(self, left: 'ListPlaceholder'):
+    self._input_placeholders = left._input_placeholders + self._input_placeholders
+    return self
+
+  def _validate_type(self, input_placeholders: List['Placeholder']):
+    for input_placeholder in input_placeholders:
+      if not isinstance(input_placeholder, Placeholder):
+        raise ValueError('Unexpected input placeholder type: %s.' %
+                         type(input_placeholder))
+
+  def serialize_list(self, serialization_format: ListSerializationFormat):
+    """Serializes list-value placeholder to JSON or comma-separated string.
+
+    Only supports primitive type list element (a.k.a bool, int, float or str) at
+    the
+    moment; throws runtime error otherwise.
+
+    Args:
+       serialization_format: The format of how the proto is serialized.
+
+    Returns:
+      A placeholder.
+    """
+    self._operators.append(_ListSerializationOperator(serialization_format))
+    return self
+
+  def encode(
+      self,
+      component_spec: Optional[Type['types.ComponentSpec']] = None
+  ) -> placeholder_pb2.PlaceholderExpression:
+    result = placeholder_pb2.PlaceholderExpression()
+    expressions = result.operator.list_concat_op.expressions
+    for input_placeholder in self._input_placeholders:
+      expressions.append(input_placeholder.encode(component_spec))
+    for op in self._operators:
+      result = op.encode(result, component_spec)
+    return result
+
+
 def logical_not(pred: Predicate) -> Predicate:
   """Applies a NOT boolean operation on a Predicate.
 
@@ -970,3 +1035,8 @@ def execution_invocation() -> ExecInvocationPlaceholder:
     proto.
   """
   return ExecInvocationPlaceholder()
+
+
+def to_list(input_placeholders: List['Placeholder']) -> ListPlaceholder:
+  """Returns a ListPlaceholder representing a list of input placeholders."""
+  return ListPlaceholder(input_placeholders)

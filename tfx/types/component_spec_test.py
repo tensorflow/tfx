@@ -89,7 +89,7 @@ class ComponentSpecTest(tf.test.TestCase):
     self.assertIsInstance(spec.exec_properties['proto'], str)
     decoded_proto = json.loads(spec.exec_properties['proto'])
     self.assertCountEqual(['splits'], decoded_proto.keys())
-    self.assertEqual(3, len(decoded_proto['splits']))
+    self.assertLen(decoded_proto['splits'], 3)
     self.assertCountEqual(['name1', 'name2', 'name3'],
                           list(s['name'] for s in decoded_proto['splits']))
     self.assertCountEqual(['pattern1', 'pattern2', 'pattern3'],
@@ -343,7 +343,12 @@ class ComponentSpecTest(tf.test.TestCase):
     with self.assertRaises(json_format.ParseError):
       proto_parameter.type_check('proto_parameter', {'splits': 42})
 
+    output_channel = channel.Channel(type=_OutputArtifact)
+
     placeholder_parameter = ExecutionParameter(type=str)
+    placeholder_parameter.type_check(
+        'wrapped_channel_placeholder_parameter',
+        output_channel.future()[0].value)
     placeholder_parameter.type_check(
         'placeholder_parameter',
         placeholder.runtime_info('platform_config').base_dir)

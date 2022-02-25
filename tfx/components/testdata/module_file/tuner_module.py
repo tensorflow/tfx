@@ -112,7 +112,7 @@ def tuner_fn(fn_args: FnArgs) -> TunerFnResult:
   # RandomSearch is a subclass of Keras model Tuner.
   tuner = keras_tuner.RandomSearch(
       _build_keras_model,
-      max_trials=5,
+      max_trials=3,
       hyperparameters=hp,
       allow_new_entries=False,
       objective='val_sparse_categorical_accuracy',

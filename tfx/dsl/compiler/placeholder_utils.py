@@ -16,7 +16,7 @@
 import base64
 import enum
 import re
-from typing import Any, Callable, Dict, Union
+from typing import Any, Callable, Dict, List, Union
 
 from absl import logging
 import attr
@@ -349,6 +349,17 @@ class _ExpressionResolver:
         "List serialization operator failed to resolve. A serialization format is needed."
     )
 
+  @_register(placeholder_pb2.ListConcatOperator)
+  def _resolve_list_concat_operator(
+      self, op: placeholder_pb2.ListConcatOperator) -> List[Any]:
+    result = []
+    for sub_expression in op.expressions:
+      value = self.resolve(sub_expression)
+      if value is None:
+        raise NullDereferenceError(sub_expression)
+      result.append(value)
+    return result
+
   @_register(placeholder_pb2.ProtoOperator)
   def _resolve_proto_operator(self, op: placeholder_pb2.ProtoOperator) -> Any:
     """Evaluates the proto operator."""
@@ -586,6 +597,10 @@ def debug_str(expression: placeholder_pb2.PlaceholderExpression) -> str:
             operator_pb.serialization_format)
         return f"{expression_str}.serialize_list({format_str})"
       return expression_str
+
+    if operator_name == "list_concat_op":
+      expression_str = ", ".join(debug_str(e) for e in operator_pb.expressions)
+      return f"to_list([{expression_str}])"
 
     return "Unknown placeholder operator"
 

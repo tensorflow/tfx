@@ -128,8 +128,12 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
     with self._mlmd_connection as m:
       pipeline = _test_pipeline('test_pipeline', pipeline_pb2.Pipeline.SYNC)
       pipeline_uid = task_lib.PipelineUid.from_pipeline(pipeline)
-      pipeline.nodes.add().pipeline_node.node_info.id = 'ExampleGen'
-      pipeline.nodes.add().pipeline_node.node_info.id = 'Trainer'
+      node_example_gen = pipeline.nodes.add().pipeline_node
+      node_example_gen.node_info.id = 'ExampleGen'
+      node_example_gen.downstream_nodes.extend(['Trainer'])
+      node_trainer = pipeline.nodes.add().pipeline_node
+      node_trainer.node_info.id = 'Trainer'
+      node_trainer.upstream_nodes.extend(['ExampleGen'])
 
       # Error if attempt to resume the pipeline when there is no previous run.
       with self.assertRaises(status_lib.StatusNotOkError) as exception_context:
@@ -167,9 +171,11 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
       expected_pipeline.runtime_spec.snapshot_settings.latest_pipeline_run_strategy.SetInParent(
       )
       expected_pipeline.nodes[
-          0].pipeline_node.execution_options.skip.reuse_artifacts = True
+          0].pipeline_node.execution_options.skip.reuse_artifacts_mode = pipeline_pb2.NodeExecutionOptions.Skip.REQUIRED
       expected_pipeline.nodes[
           1].pipeline_node.execution_options.run.perform_snapshot = True
+      expected_pipeline.nodes[
+          1].pipeline_node.execution_options.run.depends_on_snapshot = True
       with pipeline_ops.resume_pipeline(m, pipeline) as pipeline_state_run2:
         self.assertEqual(expected_pipeline, pipeline_state_run2.pipeline)
         pipeline_state_run2.is_active()
@@ -207,7 +213,7 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
       expected_pipeline.runtime_spec.snapshot_settings.latest_pipeline_run_strategy.SetInParent(
       )
       expected_pipeline.nodes[
-          0].pipeline_node.execution_options.skip.reuse_artifacts = True
+          0].pipeline_node.execution_options.skip.reuse_artifacts_mode = pipeline_pb2.NodeExecutionOptions.Skip.REQUIRED
       expected_pipeline.nodes[
           1].pipeline_node.execution_options.run.perform_snapshot = True
       expected_pipeline.nodes[
@@ -247,7 +253,7 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
       expected_pipeline.runtime_spec.snapshot_settings.latest_pipeline_run_strategy.SetInParent(
       )
       expected_pipeline.nodes[
-          0].pipeline_node.execution_options.skip.reuse_artifacts = True
+          0].pipeline_node.execution_options.skip.reuse_artifacts_mode = pipeline_pb2.NodeExecutionOptions.Skip.REQUIRED
       expected_pipeline.nodes[
           1].pipeline_node.execution_options.run.perform_snapshot = True
       expected_pipeline.nodes[
@@ -258,6 +264,43 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
       partial_run_option = pipeline_pb2.PartialRun(
           from_nodes=['Transform'],
           snapshot_settings=latest_pipeline_snapshot_settings)
+      with pipeline_ops.initiate_pipeline_start(
+          m, pipeline, partial_run_option=partial_run_option) as pipeline_state:
+        self.assertEqual(expected_pipeline, pipeline_state.pipeline)
+
+  @mock.patch.object(partial_run_utils, 'snapshot')
+  def test_partial_run_defaults_to_latest_pipeline_run_strategy(
+      self, mock_snapshot):
+    with self._mlmd_connection as m:
+      pipeline = _test_pipeline('test_pipeline', pipeline_pb2.Pipeline.SYNC)
+      node_example_gen = pipeline.nodes.add().pipeline_node
+      node_example_gen.node_info.id = 'ExampleGen'
+      node_example_gen.downstream_nodes.extend(['Transform'])
+      node_transform = pipeline.nodes.add().pipeline_node
+      node_transform.node_info.id = 'Transform'
+      node_transform.upstream_nodes.extend(['ExampleGen'])
+      node_transform.downstream_nodes.extend(['Trainer'])
+      node_trainer = pipeline.nodes.add().pipeline_node
+      node_trainer.node_info.id = 'Trainer'
+      node_trainer.upstream_nodes.extend(['Transform'])
+
+      # partial_run_option without artifact_reuse_strategy should default to
+      # latest_pipeline_run_strategy.
+      partial_run_option = pipeline_pb2.PartialRun(
+          from_nodes=['Transform'], to_nodes=['Trainer'])
+
+      expected_pipeline = copy.deepcopy(pipeline)
+      expected_pipeline.runtime_spec.snapshot_settings.latest_pipeline_run_strategy.SetInParent(
+      )
+      expected_pipeline.nodes[
+          0].pipeline_node.execution_options.skip.reuse_artifacts_mode = pipeline_pb2.NodeExecutionOptions.Skip.REQUIRED
+      expected_pipeline.nodes[
+          1].pipeline_node.execution_options.run.perform_snapshot = True
+      expected_pipeline.nodes[
+          1].pipeline_node.execution_options.run.depends_on_snapshot = True
+      expected_pipeline.nodes[
+          2].pipeline_node.execution_options.run.SetInParent()
+
       with pipeline_ops.initiate_pipeline_start(
           m, pipeline, partial_run_option=partial_run_option) as pipeline_state:
         self.assertEqual(expected_pipeline, pipeline_state.pipeline)
@@ -567,12 +610,17 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
       self.assertEqual(metadata_store_pb2.Execution.CANCELED,
                        execution.last_known_state)
 
-      # stop_node_services should be called on both ExampleGen and Transform
-      # which are service nodes.
+      # stop_node_services should be called on Transform which is a mixed
+      # service node.
       self._mock_service_job_manager.stop_node_services.assert_has_calls(
-          [mock.call(mock.ANY, 'ExampleGen'),
-           mock.call(mock.ANY, 'Transform')],
-          any_order=True)
+          [mock.call(mock.ANY, 'Transform')])
+
+      # Check that all the node states are STOPPED.
+      node_states_dict = pstate._get_node_states_dict(execution)
+      self.assertLen(node_states_dict, 4)
+      self.assertSetEqual(
+          set([pstate.NodeState.STOPPED]),
+          set(n.state for n in node_states_dict.values()))
 
   @parameterized.parameters(
       _test_pipeline('pipeline1'),
@@ -594,8 +642,11 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
                 task_lib.NodeUid(
                     pipeline_uid=task_lib.PipelineUid.from_pipeline(pipeline),
                     node_id=node_id)))
-
-      pipeline_state = pipeline_ops._initiate_pipeline_update(m, pipeline)
+      pipeline_state = pipeline_ops._initiate_pipeline_update(
+          m,
+          pipeline,
+          update_options=pipeline_pb2.UpdateOptions(
+              reload_policy=pipeline_pb2.UpdateOptions.ALL))
       with pipeline_state:
         self.assertTrue(pipeline_state.is_update_initiated())
 
@@ -644,6 +695,75 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
         self.assertFalse(pipeline_state.is_update_initiated())
         self.assertTrue(pipeline_state.is_active())
 
+  def test_orchestrate_update_initiated_pipelines_options(self):
+    pipeline = _test_pipeline('pipeline1', pipeline_pb2.Pipeline.SYNC)
+    with self._mlmd_connection as m:
+      pipeline.nodes.add().pipeline_node.node_info.id = 'ExampleGen'
+      pipeline.nodes.add().pipeline_node.node_info.id = 'Transform'
+      pipeline.nodes.add().pipeline_node.node_info.id = 'Trainer'
+      pipeline.nodes.add().pipeline_node.node_info.id = 'Evaluator'
+
+      pipeline_ops.initiate_pipeline_start(m, pipeline)
+
+      task_queue = tq.TaskQueue()
+
+      for node_id in ('Transform', 'Trainer', 'Evaluator'):
+        task_queue.enqueue(
+            test_utils.create_exec_node_task(
+                task_lib.NodeUid(
+                    pipeline_uid=task_lib.PipelineUid.from_pipeline(pipeline),
+                    node_id=node_id)))
+      pipeline_state = pipeline_ops._initiate_pipeline_update(
+          m,
+          pipeline,
+          update_options=pipeline_pb2.UpdateOptions(
+              reload_policy=pipeline_pb2.UpdateOptions.PARTIAL,
+              reload_nodes=['Transform', 'Trainer']))
+      with pipeline_state:
+        self.assertTrue(pipeline_state.is_update_initiated())
+
+      pipeline_ops.orchestrate(m, task_queue, self._mock_service_job_manager)
+
+      # stop_node_services should not be called for ExampleGen since it is not
+      # reloaded according to the options.
+      self._mock_service_job_manager.stop_node_services.assert_not_called()
+
+      # Simulate completion of all the exec node tasks except evaluator.
+      for node_id in ('Transform', 'Trainer', 'Evaluator'):
+        task = task_queue.dequeue()
+        task_queue.task_done(task)
+        self.assertTrue(task_lib.is_exec_node_task(task))
+        self.assertEqual(node_id, task.node_uid.node_id)
+
+      # Verify that cancellation tasks were enqueued in the last `orchestrate`
+      # call, and dequeue them.
+      for node_id in ('Transform', 'Trainer'):
+        task = task_queue.dequeue()
+        task_queue.task_done(task)
+        self.assertTrue(task_lib.is_cancel_node_task(task))
+        self.assertEqual(node_id, task.node_uid.node_id)
+        self.assertTrue(task.pause)
+
+      # Pipeline continues to be in update initiated state until all
+      # ExecNodeTasks have been dequeued (which was not the case when last
+      # `orchestrate` call was made).
+      with pipeline_state:
+        self.assertTrue(pipeline_state.is_update_initiated())
+
+      pipeline_ops.orchestrate(m, task_queue, self._mock_service_job_manager)
+
+      # stop_node_services should be called for Transform (mixed service node)
+      # too since corresponding ExecNodeTask has been processed.
+      self._mock_service_job_manager.stop_node_services.assert_has_calls(
+          [mock.call(mock.ANY, 'Transform')])
+
+      # Pipeline should no longer be in update-initiated state but be active.
+      with pipeline_state:
+        self.assertFalse(pipeline_state.is_update_initiated())
+        self.assertTrue(pipeline_state.is_active())
+
+      self.assertTrue(task_queue.is_empty())
+
   def test_update_pipeline_waits_for_update_application(self):
     with self._mlmd_connection as m:
       pipeline = _test_pipeline('pipeline1')
@@ -663,7 +783,12 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
 
       thread = threading.Thread(target=_apply_update, args=(pipeline_state,))
       thread.start()
-      pipeline_ops.update_pipeline(m, pipeline, timeout_secs=10.0)
+      pipeline_ops.update_pipeline(
+          m,
+          pipeline,
+          update_options=pipeline_pb2.UpdateOptions(
+              reload_policy=pipeline_pb2.UpdateOptions.ALL),
+          timeout_secs=10.0)
       thread.join()
 
   def test_update_pipeline_wait_for_update_timeout(self):
@@ -672,7 +797,13 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
       pipeline_ops.initiate_pipeline_start(m, pipeline)
       with self.assertRaisesRegex(status_lib.StatusNotOkError,
                                   'Timed out.*waiting for pipeline update'):
-        pipeline_ops.update_pipeline(m, pipeline, timeout_secs=3.0)
+
+        pipeline_ops.update_pipeline(
+            m,
+            pipeline,
+            update_options=pipeline_pb2.UpdateOptions(
+                reload_policy=pipeline_pb2.UpdateOptions.ALL),
+            timeout_secs=3.0)
 
   @parameterized.parameters(
       _test_pipeline('pipeline1'),

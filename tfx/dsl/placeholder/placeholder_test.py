@@ -318,6 +318,105 @@ class PlaceholderTest(tf.test.TestCase):
         }
     """)
 
+  def testListConcat(self):
+    self._assert_placeholder_pb_equal_and_deepcopyable(
+        ph.to_list([ph.input('model').uri,
+                    ph.exec_property('random_str')]) +
+        ph.to_list([ph.input('another_model').uri]), """
+        operator {
+          list_concat_op {
+            expressions {
+              operator {
+                artifact_uri_op {
+                  expression {
+                    operator {
+                      index_op {
+                        expression {
+                          placeholder {
+                            type: INPUT_ARTIFACT
+                            key: "model"
+                          }
+                        }
+                        index: 0
+                      }
+                    }
+                  }
+                }
+              }
+            }
+            expressions {
+              placeholder {
+                type: EXEC_PROPERTY
+                key: "random_str"
+              }
+            }
+            expressions {
+              operator {
+                artifact_uri_op {
+                  expression {
+                    operator {
+                      index_op {
+                        expression {
+                          placeholder {
+                            type: INPUT_ARTIFACT
+                            key: "another_model"
+                          }
+                        }
+                        index: 0
+                      }
+                    }
+                  }
+                }
+              }
+            }
+
+          }
+        }
+    """)
+
+  def testListConcatAndSerialize(self):
+    self._assert_placeholder_pb_equal_and_deepcopyable(
+        ph.to_list([ph.input('model').uri,
+                    ph.exec_property('random_str')
+                   ]).serialize_list(ph.ListSerializationFormat.JSON), """
+        operator {
+          list_serialization_op {
+            expression {
+              operator {
+                list_concat_op {
+                  expressions {
+                    operator {
+                      artifact_uri_op {
+                        expression {
+                          operator {
+                            index_op {
+                              expression {
+                                placeholder {
+                                  type: INPUT_ARTIFACT
+                                  key: "model"
+                                }
+                              }
+                              index: 0
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                  expressions {
+                    placeholder {
+                      type: EXEC_PROPERTY
+                      key: "random_str"
+                    }
+                  }
+                }
+              }
+            }
+            serialization_format: JSON
+          }
+        }
+    """)
+
   def testProtoOperatorDescriptor(self):
     test_pb_filepath = os.path.join(
         os.path.dirname(__file__), 'testdata',
@@ -328,6 +427,19 @@ class PlaceholderTest(tf.test.TestCase):
     placeholder = ph.exec_property('splits_config').analyze[0]
     component_spec = standard_component_specs.TransformSpec
     self.assertProtoEquals(placeholder.encode(component_spec), expected_pb)
+
+  def testProtoFutureValueOperator(self):
+    test_pb_filepath = os.path.join(
+        os.path.dirname(__file__), 'testdata',
+        'proto_placeholder_future_value_operator.pbtxt')
+    with open(test_pb_filepath) as text_pb_file:
+      expected_pb = text_format.ParseLines(
+          text_pb_file, placeholder_pb2.PlaceholderExpression())
+    output_channel = Channel(type=standard_artifacts.Integer)
+    placeholder = output_channel.future()[0].value
+    placeholder._key = '_component.num'
+    self.assertProtoEquals(
+        placeholder.encode(), expected_pb)
 
   def testComplicatedConcat(self):
     self._assert_placeholder_pb_equal_and_deepcopyable(
@@ -503,6 +615,32 @@ class ChannelWrappedPlaceholderTest(parameterized.TestCase, tf.test.TestCase):
   )
   def testConcat(self, left, right):
     self.assertIsInstance(left + right, ph.ChannelWrappedPlaceholder)
+
+  def testEncodeWithKeys(self):
+    channel = Channel(type=_MyType)
+    channel_future = channel.future()[0].value
+    actual_pb = channel_future.encode_with_keys(
+        lambda channel: channel.type_name)
+    expected_pb = text_format.Parse(
+        """
+      operator {
+        artifact_value_op {
+          expression {
+            operator {
+              index_op {
+                expression {
+                  placeholder {
+                    key: "MyTypeName"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    """, placeholder_pb2.PlaceholderExpression())
+    self.assertProtoEquals(actual_pb, expected_pb)
+    self.assertIsNone(channel_future._key)
 
 
 class PredicateTest(parameterized.TestCase, tf.test.TestCase):

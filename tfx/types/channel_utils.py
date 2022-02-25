@@ -69,9 +69,20 @@ def get_individual_channels(
     raise RuntimeError(f'Unexpected Channel type: {type(input_channel)}')
 
 
-def get_channel_producer_component_ids(
-    input_channel: channel.BaseChannel) -> List[str]:
-  """Returns a list of producer_component_id for input BaseChannel."""
-  return [
-      c.producer_component_id for c in get_individual_channels(input_channel)
-  ]
+def get_dependent_node_ids(channel_: channel.BaseChannel) -> Iterable[str]:
+  """Returns an iterable of data dependent node ids for the channel."""
+  # pytype: disable=attribute-error
+  if isinstance(channel_, channel.OutputChannel):
+    yield channel_.producer_component_id
+  elif isinstance(channel_, channel.Channel):
+    # Raw Channel is not considered as a data dependent usage. If dependency is
+    # needed, a task dependency can be set from DSL.
+    # TODO(b/219645784): Reevaluate the dependency semantics of Channel.
+    return
+  elif isinstance(channel_, channel.UnionChannel):
+    for each_channel in channel_.channels:
+      yield from get_dependent_node_ids(each_channel)
+  elif isinstance(channel_, channel.LoopVarChannel):
+    yield from get_dependent_node_ids(channel_.wrapped)
+  else:
+    raise TypeError(f'Invalid channel type {type(channel_)}')

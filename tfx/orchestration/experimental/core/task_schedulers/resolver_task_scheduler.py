@@ -13,22 +13,20 @@
 # limitations under the License.
 """A task scheduler for Resolver system node."""
 
-import typing
-
 from tfx.orchestration.experimental.core import task as task_lib
 from tfx.orchestration.experimental.core import task_scheduler
 from tfx.utils import status as status_lib
 
 
-class ResolverTaskScheduler(task_scheduler.TaskScheduler):
+class ResolverTaskScheduler(task_scheduler.TaskScheduler[task_lib.ExecNodeTask]
+                           ):
   """A task scheduler for Resolver system node."""
 
   def schedule(self) -> task_scheduler.TaskSchedulerResult:
-    task = typing.cast(task_lib.ExecNodeTask, self.task)
     return task_scheduler.TaskSchedulerResult(
         status=status_lib.Status(code=status_lib.Code.OK),
         output=task_scheduler.ResolverNodeOutput(
-            resolved_input_artifacts=task.input_artifacts))
+            resolved_input_artifacts=self.task.input_artifacts))
 
   def cancel(self) -> None:
     pass

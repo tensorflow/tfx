@@ -18,6 +18,7 @@ from tfx.types.channel import BaseChannel
 from tfx.types.channel import Channel
 from tfx.types.channel import ExecPropertyTypes
 from tfx.types.channel import LoopVarChannel
+from tfx.types.channel import OutputChannel
 from tfx.types.channel import Property  # Type alias.
 from tfx.types.component_spec import ComponentSpec
 from tfx.types.value_artifact import ValueArtifact

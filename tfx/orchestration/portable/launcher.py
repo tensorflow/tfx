@@ -230,8 +230,8 @@ class Launcher:
     elif executions:
       execution = executions.pop()
       if execution_lib.is_execution_successful(execution):
-        raise RuntimeError('This execution has already succeeded. Aborting to '
-                           'avoid overwriting output artifacts.')
+        logging.warning('This execution has already succeeded. Will exit '
+                        'gracefully to avoid overwriting output artifacts.')
       elif not execution_lib.is_execution_active(execution):
         logging.warning(
             'Expected execution to be in state NEW or RUNNING. Actual state: '
@@ -247,10 +247,6 @@ class Launcher:
 
   def _prepare_execution(self) -> _ExecutionPreparationResult:
     """Prepares inputs, outputs and execution properties for actual execution."""
-    # TODO(b/150979622): handle the edge case that the component get evicted
-    # between successful publish and stateful working dir being clean up.
-    # Otherwise following retries will keep failing because of duplicate
-    # publishes.
     with self._mlmd_connection as m:
       # 1.Prepares all contexts.
       contexts = context_lib.prepare_contexts(
@@ -270,10 +266,11 @@ class Launcher:
             metadata_handler=m,
             contexts=contexts,
             exec_properties=exec_properties)
-        self._publish_failed_execution(
-            execution_id=execution.id,
-            contexts=contexts,
-            executor_output=self._build_error_output(code=e.grpc_code_value))
+        if not execution_lib.is_execution_successful(execution):
+          self._publish_failed_execution(
+              execution_id=execution.id,
+              contexts=contexts,
+              executor_output=self._build_error_output(code=e.grpc_code_value))
         return _ExecutionPreparationResult(
             execution_info=self._build_execution_info(
                 execution_id=execution.id),
@@ -301,10 +298,11 @@ class Launcher:
             metadata_handler=m,
             contexts=contexts,
             exec_properties=exec_properties)
-        self._publish_failed_execution(
-            execution_id=execution.id,
-            contexts=contexts,
-            executor_output=executor_output)
+        if not execution_lib.is_execution_successful(execution):
+          self._publish_failed_execution(
+              execution_id=execution.id,
+              contexts=contexts,
+              executor_output=executor_output)
         return _ExecutionPreparationResult(
             execution_info=self._build_execution_info(
                 execution_id=execution.id),
@@ -319,6 +317,12 @@ class Launcher:
           contexts=contexts,
           input_artifacts=input_artifacts,
           exec_properties=exec_properties)
+      if execution_lib.is_execution_successful(execution):
+        return _ExecutionPreparationResult(
+            execution_info=self._build_execution_info(
+                execution_id=execution.id),
+            contexts=contexts,
+            is_execution_needed=False)
 
       # 5. Resolve output
       output_artifacts = self._output_resolver.generate_output_artifacts(
@@ -527,8 +531,8 @@ class Launcher:
                              execution_preparation_result.contexts,
                              execution_preparation_result.is_execution_needed)
     if is_execution_needed:
+      executor_watcher = None
       try:
-        executor_watcher = None
         if self._executor_operator:
           # Create an execution watcher and save an in memory copy of the
           # Execution object to execution to it. Launcher calls executor

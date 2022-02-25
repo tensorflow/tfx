@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Portable library for input artifacts resolution."""
-from typing import Dict, Iterable, List, Optional, Mapping, Sequence, Union
+from typing import Dict, Iterable, List, Optional, Mapping, Sequence, Union, cast
 
 from absl import logging
 from tfx import types
@@ -179,10 +179,18 @@ def resolve_input_artifacts(
     # resolution, but None is the best effort.
     return None
 
-  if not typing_utils.is_artifact_multimap(result):
+  if typing_utils.is_list_of_artifact_multimap(result):
+    result = cast(Sequence[typing_utils.ArtifactMultiMap], result)
+    if len(result) != 1:
+      raise ValueError(
+          'Invalid number of resolved inputs; expected 1 but got '
+          f'{len(result)}: {result}')
+    return result[0]
+  elif typing_utils.is_artifact_multimap(result):
+    return cast(typing_utils.ArtifactMultiMap, result)
+  else:
     raise TypeError(f'Invalid input resolution result: {result}. Should be '
                     'Mapping[str, Sequence[Artifact]].')
-  return result
 
 
 class Trigger(tuple, Sequence[typing_utils.ArtifactMultiMap]):
@@ -245,14 +253,15 @@ def resolve_input_artifacts_v2(
         f'Error occurred during input resolution: {str(e)}.') from e
 
   if typing_utils.is_artifact_multimap(resolved):
-    result = [resolved]
-  else:
+    resolved = [resolved]
+  if not typing_utils.is_list_of_artifact_multimap(resolved):
     raise exceptions.FailedPreconditionError(
-        f'Invalid input resolution result: {resolved}.')
-  result = [d for d in result if _is_sufficient(d, node_inputs)]
-  if not result:
+        'Invalid input resolution result; expected Sequence[ArtifactMultiMap] '
+        f'type but got {resolved}.')
+  resolved = [d for d in resolved if _is_sufficient(d, node_inputs)]
+  if not resolved:
     raise exceptions.FailedPreconditionError('No valid inputs.')
-  return Trigger(result)
+  return Trigger(resolved)
 
 
 def resolve_parameters(

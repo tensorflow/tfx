@@ -259,7 +259,10 @@ class ResolverOp(metaclass=_ResolverOpMeta):
   def apply(
       self,
       input_dict: typing_utils.ArtifactMultiMap,
-  ) -> typing_utils.ArtifactMultiMap:
+  ) -> Union[
+      typing_utils.ArtifactMultiMap,
+      Sequence[typing_utils.ArtifactMultiMap]
+  ]:
     """Implementation of the operator."""
 
   def set_context(self, context: Context):

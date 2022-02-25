@@ -32,6 +32,18 @@ from ml_metadata.proto import metadata_store_pb2
 # Property type for artifacts, executions and contexts.
 Property = Union[int, float, str]
 ExecPropertyTypes = Union[int, float, str, bool, message.Message, List[Any]]
+_EXEC_PROPERTY_CLASSES = (int, float, str, bool, message.Message, list)
+
+
+def _is_artifact_type(value: Any):
+  return inspect.isclass(value) and issubclass(value, Artifact)
+
+
+def _is_property_dict(value: Any):
+  return (
+      isinstance(value, dict) and
+      all(isinstance(k, str) for k in value.keys()) and
+      all(isinstance(v, _EXEC_PROPERTY_CLASSES) for v in value.values()))
 
 
 class BaseChannel:
@@ -45,11 +57,23 @@ class BaseChannel:
   """
 
   def __init__(self, type: Type[Artifact]):  # pylint: disable=redefined-builtin
-    if not (inspect.isclass(type) and issubclass(type, Artifact)):  # pytype: disable=wrong-arg-types
+    if not _is_artifact_type(type):
       raise ValueError(
           'Argument "type" of BaseChannel constructor must be a subclass of '
-          'tfx.Artifact (got %r).' % (type,))
-    self.type = type
+          f'tfx.Artifact (got {type}).')
+    self._artifact_type = type
+
+  @property
+  def type(self):  # pylint: disable=redefined-builtin
+    return self._artifact_type
+
+  @type.setter
+  def type(self, value: Type[Artifact]):  # pylint: disable=redefined-builtin
+    self._set_type(value)
+
+  @doc_controls.do_not_generate_docs
+  def _set_type(self, value: Type[Artifact]):
+    raise NotImplementedError('Cannot change artifact type.')
 
   @property
   def type_name(self):
@@ -96,11 +120,22 @@ class Channel(json_utils.Jsonable, BaseChannel):
     """
     super().__init__(type=type)
 
+    if additional_properties is not None:
+      self._validate_additional_properties(additional_properties)
     self.additional_properties = additional_properties or {}
+
+    if additional_custom_properties is not None:
+      self._validate_additional_custom_properties(additional_custom_properties)
     self.additional_custom_properties = additional_custom_properties or {}
 
-    # The following fields will be populated during compilation time.
-    self.producer_component_id = producer_component_id
+    if producer_component_id is not None:
+      self._validate_producer_component_id(producer_component_id)
+    # Use a protected attribute & getter/setter property as OutputChannel is
+    # overriding it.
+    self._producer_component_id = producer_component_id
+
+    if output_key is not None:
+      self._validate_output_key(output_key)
     self.output_key = output_key
 
     if artifacts:
@@ -108,6 +143,24 @@ class Channel(json_utils.Jsonable, BaseChannel):
           'Artifacts param is ignored by Channel constructor, please remove!')
     self._artifacts = []
     self._matching_channel_name = None
+
+  def _set_type(self, value: Type[Artifact]) -> None:
+    """Mutate artifact type."""
+    if not _is_artifact_type(value):
+      raise TypeError(
+          f'artifact_type should be a subclass of tfx.Artifact (got {value}).')
+    self._artifact_type = value
+
+  @property
+  @doc_controls.do_not_generate_docs
+  def producer_component_id(self) -> Optional[str]:
+    return self._producer_component_id
+
+  @producer_component_id.setter
+  @doc_controls.do_not_generate_docs
+  def producer_component_id(self, value: str) -> None:
+    self._validate_producer_component_id(value)
+    self._producer_component_id = value
 
   def __repr__(self):
     artifacts_str = '\n    '.join(repr(a) for a in self._artifacts)
@@ -120,8 +173,29 @@ class Channel(json_utils.Jsonable, BaseChannel):
         )""").format(self.type_name, artifacts_str, self.additional_properties,
                      self.additional_custom_properties)
 
-  def _validate_type(self) -> None:
-    for artifact in self._artifacts:
+  def _validate_additional_properties(self, value: Any) -> None:
+    if not _is_property_dict(value):
+      raise ValueError(
+          f'Invalid additional_properties {value}. '
+          f'Must be a {Dict[str, Property]} type.')
+
+  def _validate_additional_custom_properties(self, value: Any) -> None:
+    if not _is_property_dict(value):
+      raise ValueError(
+          f'Invalid additional_custom_properties {value}. '
+          f'Must be a {Dict[str, Property]} type.')
+
+  def _validate_producer_component_id(self, value: Any) -> None:
+    if not isinstance(value, str):
+      raise ValueError(
+          f'Invalid producer_component_id {value}. Must be a str type.')
+
+  def _validate_output_key(self, value: Any) -> None:
+    if not isinstance(value, str):
+      raise ValueError(f'Invalid output_key {value}. Must be a str type.')
+
+  def _validate_static_artifacts(self, artifacts: Iterable[Artifact]) -> None:
+    for artifact in artifacts:
       if artifact.type_name != self.type_name:
         raise ValueError(
             "Artifacts provided do not match Channel's artifact type {}".format(
@@ -134,8 +208,8 @@ class Channel(json_utils.Jsonable, BaseChannel):
     if self._matching_channel_name:
       raise ValueError(
           'Only one of `artifacts` and `matching_channel_name` should be set.')
+    self._validate_static_artifacts(artifacts)
     self._artifacts = artifacts
-    self._validate_type()
     return self
 
   @doc_controls.do_not_doc_inheritable
@@ -208,6 +282,79 @@ class Channel(json_utils.Jsonable, BaseChannel):
 
   def future(self) -> placeholder.ChannelWrappedPlaceholder:
     return placeholder.ChannelWrappedPlaceholder(self)
+
+  @doc_controls.do_not_generate_docs
+  def as_output_channel(
+      self, producer_component: Any, output_key: str) -> 'OutputChannel':
+    """Internal method to derive OutputChannel from the Channel instance.
+
+    Return value (OutputChannel instance) is based on the shallow copy of self,
+    so that any attribute change in one is reflected on the others.
+
+    Args:
+      producer_component: A BaseNode instance that is producing this channel.
+      output_key: Corresponding node.outputs key for this channel.
+
+    Returns:
+      An OutputChannel instance that shares attributes with self.
+    """
+    # Disable pylint false alarm for safe access of protected attributes.
+    # pylint: disable=protected-access
+    result = OutputChannel(self.type, producer_component, output_key)
+    result.additional_properties = self.additional_properties
+    result.additional_custom_properties = self.additional_custom_properties
+    result.set_artifacts(self._artifacts)
+    return result
+
+
+class OutputChannel(Channel):
+  """Channel subtype that is used for node.outputs."""
+
+  def __init__(
+      self,
+      artifact_type: Type[Artifact],
+      producer_component: Any,
+      output_key: str,
+      additional_properties: Optional[Dict[str, Property]] = None,
+      additional_custom_properties: Optional[Dict[str, Property]] = None,
+  ):
+    super().__init__(
+        type=artifact_type,
+        output_key=output_key,
+        additional_properties=additional_properties,
+        additional_custom_properties=additional_custom_properties,
+    )
+    self._producer_component = producer_component
+
+  def __repr__(self) -> str:
+    return (
+        f'{self.__class__.__name__}('
+        f'artifact_type={self.type_name}, '
+        f'producer_component_id={self.producer_component_id}, '
+        f'output_key={self.output_key}, '
+        f'additional_properties={self.additional_properties}, '
+        f'additional_custom_properties={self.additional_custom_properties})')
+
+  @doc_controls.do_not_generate_docs
+  def set_producer_component(self, value: Any):
+    self._producer_component = value
+
+  @property
+  @doc_controls.do_not_generate_docs
+  def producer_component_id(self) -> str:
+    return self._producer_component.id
+
+  @doc_controls.do_not_generate_docs
+  def as_output_channel(
+      self, producer_component: Any, output_key: str) -> 'OutputChannel':
+    if self._producer_component != producer_component:
+      raise ValueError(
+          f'producer_component mismatch: {self._producer_component} != '
+          f'{producer_component}.')
+    if self.output_key != output_key:
+      raise ValueError(
+          f'output_key mismatch: {self.output_key} != {output_key}.')
+    return self
 
 
 @doc_controls.do_not_generate_docs

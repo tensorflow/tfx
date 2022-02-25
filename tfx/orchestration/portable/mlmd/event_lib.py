@@ -59,11 +59,25 @@ def is_valid_input_event(event: metadata_store_pb2.Event,
     A bool value indicating result
   """
   if expected_input_key:
-    return (len(event.path.steps) == 2 and  # Valid event should have 2 steps.
-            event.path.steps[0].key == expected_input_key and
-            event.type in _VALID_INPUT_EVENT_TYPES)
+    # Valid event should have even number of steps.
+    if not (event.type in _VALID_INPUT_EVENT_TYPES and
+            len(event.path.steps) % 2 == 0):
+      return False
+    keys = set(s.key for s in event.path.steps if s.HasField('key'))
+    return expected_input_key in keys
   else:
     return event.type in _VALID_INPUT_EVENT_TYPES
+
+
+def add_event_path(
+    event: metadata_store_pb2.Event,
+    key: str,
+    index: int) -> None:
+  """Adds event path to a given MLMD event."""
+  # The order matters, we always use the first step to store key and the second
+  # step to store index.
+  event.path.steps.add().key = key
+  event.path.steps.add().index = index
 
 
 def generate_event(

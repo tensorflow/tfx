@@ -538,6 +538,7 @@ nodes {
           artifact_spec {
             type {
               name: "Model"
+              base_type: MODEL
             }
           }
         }
@@ -732,6 +733,7 @@ nodes {
             artifact_query {
               type {
                 name: "Model"
+                base_type: MODEL
               }
             }
             output_key: "model"
@@ -976,6 +978,7 @@ nodes {
             artifact_query {
               type {
                 name: "Model"
+                base_type: MODEL
               }
             }
             output_key: "model"
@@ -1209,6 +1212,7 @@ nodes {
             artifact_query {
               type {
                 name: "Model"
+                base_type: MODEL
               }
             }
             output_key: "model"
@@ -1229,6 +1233,7 @@ nodes {
           artifact_spec {
             type {
               name: "PushedModel"
+              base_type: MODEL
             }
           }
         }

@@ -13,7 +13,6 @@
 # limitations under the License.
 """A task scheduler for Importer system node."""
 
-import typing
 from typing import Dict
 
 from tfx import types
@@ -24,7 +23,8 @@ from tfx.orchestration.experimental.core import task_scheduler
 from tfx.utils import status as status_lib
 
 
-class ImporterTaskScheduler(task_scheduler.TaskScheduler):
+class ImporterTaskScheduler(task_scheduler.TaskScheduler[task_lib.ExecNodeTask]
+                           ):
   """A task scheduler for Importer system node."""
 
   def schedule(self) -> task_scheduler.TaskSchedulerResult:
@@ -32,8 +32,7 @@ class ImporterTaskScheduler(task_scheduler.TaskScheduler):
     def _as_dict(proto_map) -> Dict[str, types.Property]:
       return {k: data_types_utils.get_value(v) for k, v in proto_map.items()}
 
-    task = typing.cast(task_lib.ExecNodeTask, self.task)
-    pipeline_node = task.get_pipeline_node()
+    pipeline_node = self.task.get_pipeline_node()
     output_spec = pipeline_node.outputs.outputs[importer.IMPORT_RESULT_KEY]
     properties = _as_dict(output_spec.artifact_spec.additional_properties)
     custom_properties = _as_dict(
@@ -41,10 +40,10 @@ class ImporterTaskScheduler(task_scheduler.TaskScheduler):
 
     output_artifacts = importer.generate_output_dict(
         metadata_handler=self.mlmd_handle,
-        uri=str(task.exec_properties[importer.SOURCE_URI_KEY]),
+        uri=str(self.task.exec_properties[importer.SOURCE_URI_KEY]),
         properties=properties,
         custom_properties=custom_properties,
-        reimport=bool(task.exec_properties[importer.REIMPORT_OPTION_KEY]),
+        reimport=bool(self.task.exec_properties[importer.REIMPORT_OPTION_KEY]),
         output_artifact_class=types.Artifact(
             output_spec.artifact_spec.type).type,
         mlmd_artifact_type=output_spec.artifact_spec.type)

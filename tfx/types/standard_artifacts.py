@@ -56,23 +56,21 @@ class _TfxArtifact(Artifact):
     #
     # Do not allow usage of TFX-specific artifact if only the core pipeline
     # SDK package is installed.
-    can_import_setuptools = False
-    can_import_components = False
     try:
       import setuptools as _  # pytype: disable=import-error  # pylint: disable=g-import-not-at-top
-      can_import_setuptools = True
+      # Test import only when setuptools is available.
+      try:
+        # `extensions` is not included in ml_pipelines_sdk and doesn't have any
+        # transitive import.
+        import tfx.extensions as _  # type: ignore  # pylint: disable=g-import-not-at-top
+      except ModuleNotFoundError as err:
+        # The following condition detects exactly whether only the DSL package
+        # is installed, and is bypassed when tests run in Bazel.
+        raise RuntimeError('The "tfx" and all dependent packages need to be '
+                           'installed to use this functionality.') from err
     except ModuleNotFoundError:
       pass
-    try:
-      import tfx.components as _  # type: ignore  # pylint: disable=g-import-not-at-top
-      can_import_components = True
-    except ModuleNotFoundError:
-      pass
-    # The following condition detects exactly whether only the DSL package is
-    # installed, and is bypassed when tests run in Bazel.
-    if can_import_setuptools and not can_import_components:
-      raise Exception('The full "tfx" package must be installed to use this '
-                      'functionality.')
+
     super().__init__(*args, **kwargs)
 
 

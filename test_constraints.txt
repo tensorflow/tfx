@@ -1,0 +1,12 @@
+# test_constraints.txt
+# This file specifies the constraints for the test environment of tfx.
+# Unlike library dependency which aims to specify the widest version range
+# possible, it is okay to specify exact version here.
+#
+# constraints.txt file is similar to requirements.txt except it does not tell
+# to really "install" the specified target; it only specifies the version
+# constraint if it is installed either directly or transitively by the
+# dependencies.
+
+# TODO(b/220800338): Workaround for markupsafe.
+markupsafe<2.1.0

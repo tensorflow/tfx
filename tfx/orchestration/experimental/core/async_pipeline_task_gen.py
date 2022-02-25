@@ -270,6 +270,7 @@ class _Generator:
                 execution.id),
             stateful_working_dir=outputs_resolver
             .get_stateful_working_directory(execution.id),
+            tmp_dir=outputs_resolver.make_tmp_dir(execution.id),
             pipeline=self._pipeline))
     return result
 

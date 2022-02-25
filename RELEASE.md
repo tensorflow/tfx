@@ -2,12 +2,7 @@
 
 ## Major Features and Improvements
 
-*   Added experimental support for TensorFlow Decision Forests models.
-*   Added Boolean type value artifacts.
-*   Function components defined with `@component` may now have optional/nullable
-    primitive type return values when `Optional[T]` is used in the return type
-    OutputDict.
-*   Set exti handler cache option in Kubeflow V2 as false.
+* Added support for list-type Placeholder.
 
 ## Breaking Changes
 
@@ -17,13 +12,113 @@
 
 ## Deprecations
 
-## Bug Fixes and Other Changes
-*   Depends on `numpy>=1.16,<2`.
+*   Removed the already-deprecated components.ImporterNode, should use
+    v1.dsl.Importer instead.
+*   Deprecated Channel property setters. Use constructor argument instead.
 
-*   Pusher now copies the `saved_model.pb` file at last to prevent loading
-    SavedModel on invalid (partially available) directory state.
+## Bug Fixes and Other Changes
+
+*   Fixed the cluster spec error in CAIP Tuner on Vertex when
+    `num_parallel_trials = 1`
+*   Replaced deprecated assertDictContainsSubset with
+    assertLessEqual(itemsA, itemsB).
+*   Updating Keras tutorial to make better use of Keras, and better feature
+    engineering.
+*   Merges KFP UI Metadata file if it already exists. Now components can produce
+    their own UI results and it will be merged with existing visualization.
+*   Switch Transform component to always use sketch when computing top-k stats.
+
+## Dependency Updates
+
+| Package Name | Version Constraints | Previously (in `v1.6.0`) | Comments |
+| -- | -- | -- | -- |
+| `tensorflow` | `>=1.15.5,<2` or `~=2.8.0` | `>=1.15.5,<2` or `~=2.7.0` | |
+| `tensorflow-decision-forests` | `==0.2.4` | `==0.2.1` | |
+| `google-cloud-aiplatform` | `>=1.6.2,<2` | `>=1.5.0,<2` | |
 
 ## Documentation Updates
+
+# Version 1.6.1
+
+## Major Features and Improvements
+
+*   N/A
+
+## Breaking Changes
+
+### For Pipeline Authors
+
+*   N/A
+
+### For Component Authors
+
+*   N/A
+
+## Deprecations
+
+*   N/A
+
+## Bug Fixes and Other Changes
+
+*   Fixed `Pusher` issue that didn't copy files other than
+    `saved_model.pb`.
+
+## Documentation Updates
+
+*   N/A
+
+# Version 1.6.0
+
+## Major Features and Improvements
+
+*   Added experimental support for TensorFlow Decision Forests models.
+*   Added Boolean type value artifacts.
+*   Function components defined with `@component` may now have optional/nullable
+    primitive type return values when `Optional[T]` is used in the return type
+    OutputDict.
+*   Supported endpoint overwrite for CAIP Tuner. Users can use the `keras-tuner`
+    module or any tuner that implements the `keras_tuner.Tuner` interface for
+    (parallel) tuning on Vertex.
+
+## Breaking Changes
+
+### For Pipeline Authors
+
+*   N/A
+
+### For Component Authors
+
+*   N/A
+
+## Deprecations
+
+*   N/A
+
+## Bug Fixes and Other Changes
+*   Pusher now copies the `saved_model.pb` file at last to prevent loading
+    SavedModel on invalid (partially available) directory state.
+*   Always disable caching for exit handlers in Kubeflow V2 runner to
+    reflect latest status of dependent dag.
+
+## Dependency Updates
+
+| Package Name | Version Constraints | Previously (in `v1.5.0`) | Comments |
+| -- | -- | -- | -- |
+| `tensorflow` | `>=1.15.5,<2` or `~=2.7.0` | `>=1.15.2,<2` or `~=2.7.0` | |
+| `numpy` | `~=1.16` | `>=1.16,<1.20` | |
+| `apache-beam[gcp]` | `~=2.35` | `~=2.34` | |
+| `kfp` | `~=1.8.5` | `>=1.6.1,<1.8.2,!=1.7.2` | |
+| `absl-py` | `>=0.9,<2` | `>=0.9,<0.13` | |
+| `tfx-bsl` | `~=1.6.0` | `~=1.5.0` | Synced release train |
+| `tensorflow-data-validation` | `~=1.6.0` | `~=1.5.0` | Synced release train |
+| `tensorflow-transform` | `~=1.6.0` | `~=1.5.0` | Synced release train |
+| `ml-metadata` | `~=1.6.0` | `~=1.5.0` | Synced release train |
+| `tensorflow-model-analysis` | `~=0.37.0` | `~=0.36.0` | Synced release train |
+| `struct2tensor` | `~=0.37.0` | `~=0.36.0` | Synced release train |
+
+## Documentation Updates
+
+*   N/A
 
 # Version 1.5.0
 
@@ -33,9 +128,6 @@
     in a pipeline while reusing artifacts generated in previous pipeline runs.
     This is supported in LocalDagRunner and BeamDagRunner, and is exposed via
     the TfxRunner API.
-*   Supported endpoint overwrite for CAIP Tuner. Users can use the `keras-tuner`
-    module or any tuner that implements the `keras_tuner.Tuner` interface for
-    (parallel) tuning on Vertex.
 *   Add dependency of tensorflow-io to unblock using S3 storage.
 
 ## Breaking Changes

@@ -99,7 +99,7 @@ shows how to configure an Evaluator that analyzes a TFLite model.
       examples=example_gen.outputs['examples'],
       model=trainer_lite.outputs['model'],
       eval_config=eval_config_lite,
-      instance_name='mnist_lite')
+  ).with_id('mnist_lite')
 ```
 
 As shown above, the only change that we need to make is to set the `model_type`

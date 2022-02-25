@@ -241,7 +241,8 @@ class PipelineStateTest(test_utils.TfxTest):
       # Initiate pipeline update.
       with pstate.PipelineState.new(m, pipeline) as pipeline_state:
         self.assertFalse(pipeline_state.is_update_initiated())
-        pipeline_state.initiate_update(updated_pipeline)
+        pipeline_state.initiate_update(updated_pipeline,
+                                       pipeline_pb2.UpdateOptions())
         self.assertTrue(pipeline_state.is_update_initiated())
 
       # Reload from MLMD and verify update initiation followed by applying the
@@ -270,7 +271,8 @@ class PipelineStateTest(test_utils.TfxTest):
           m, task_lib.PipelineUid.from_pipeline(pipeline)) as pipeline_state:
         with self.assertRaisesRegex(status_lib.StatusNotOkError,
                                     'Updating execution_mode.*not supported'):
-          pipeline_state.initiate_update(updated_pipeline)
+          pipeline_state.initiate_update(updated_pipeline,
+                                         pipeline_pb2.UpdateOptions())
 
       # Update should fail if pipeline structure changed.
       updated_pipeline = _test_pipeline(
@@ -280,7 +282,8 @@ class PipelineStateTest(test_utils.TfxTest):
           m, task_lib.PipelineUid.from_pipeline(pipeline)) as pipeline_state:
         with self.assertRaisesRegex(status_lib.StatusNotOkError,
                                     'Updating execution_mode.*not supported'):
-          pipeline_state.initiate_update(updated_pipeline)
+          pipeline_state.initiate_update(updated_pipeline,
+                                         pipeline_pb2.UpdateOptions())
 
   def test_initiate_node_start_stop(self):
     with self._mlmd_connection as m:
@@ -442,12 +445,17 @@ class PipelineStateTest(test_utils.TfxTest):
       }) as pipeline_state:
         pipeline_state.set_pipeline_execution_state(
             metadata_store_pb2.Execution.COMPLETE)
-        pipeline_state.save_property(pstate._PIPELINE_STATUS_MSG, 'msg')
+        pipeline_state.initiate_stop(
+            status_lib.Status(code=status_lib.Code.CANCELLED, message='msg'))
 
       views = pstate.PipelineView.load_all(
           m, task_lib.PipelineUid.from_pipeline(pipeline))
       self.assertLen(views, 1)
       self.assertEqual(views[0].pipeline_run_id, '001')
+      self.assertEqual(
+          views[0].pipeline_status_code,
+          run_state_pb2.RunState.StatusCodeValue(
+              value=status_lib.Code.CANCELLED))
       self.assertEqual(views[0].pipeline_status_message, 'msg')
       self.assertEqual({'foo': 1, 'bar': 'baz'}, views[0].pipeline_run_metadata)
       self.assertProtoEquals(pipeline, views[0].pipeline)
@@ -540,11 +548,44 @@ class PipelineStateTest(test_utils.TfxTest):
           run_states_dict['Trainer'])
       self.assertEqual(
           run_state_pb2.RunState(
-              state=run_state_pb2.RunState.FAILED, status_msg='foobar error'),
-          run_states_dict['Evaluator'])
+              state=run_state_pb2.RunState.FAILED,
+              status_code=run_state_pb2.RunState.StatusCodeValue(
+                  value=status_lib.Code.ABORTED),
+              status_msg='foobar error'), run_states_dict['Evaluator'])
       self.assertEqual(
           run_state_pb2.RunState(state=run_state_pb2.RunState.READY),
           run_states_dict['Pusher'])
+
+  def test_node_state_for_skipped_nodes_in_partial_pipeline_run(self):
+    """Tests that nodes marked to be skipped in a partial pipeline run have the right node state."""
+    with self._mlmd_connection as m:
+      pipeline = pipeline_pb2.Pipeline()
+      pipeline.pipeline_info.id = 'pipeline1'
+      pipeline.execution_mode = pipeline_pb2.Pipeline.SYNC
+      pipeline_uid = task_lib.PipelineUid.from_pipeline(pipeline)
+      pipeline.nodes.add().pipeline_node.node_info.id = 'ExampleGen'
+      pipeline.nodes.add().pipeline_node.node_info.id = 'Transform'
+      pipeline.nodes.add().pipeline_node.node_info.id = 'Trainer'
+
+      # Mark ExampleGen and Transform to be skipped.
+      pipeline.nodes[0].pipeline_node.execution_options.skip.SetInParent()
+      pipeline.nodes[1].pipeline_node.execution_options.skip.SetInParent()
+
+      eg_node_uid = task_lib.NodeUid(pipeline_uid, 'ExampleGen')
+      transform_node_uid = task_lib.NodeUid(pipeline_uid, 'Transform')
+      trainer_node_uid = task_lib.NodeUid(pipeline_uid, 'Trainer')
+
+      pstate.PipelineState.new(m, pipeline)
+      with pstate.PipelineState.load(m, pipeline_uid) as pipeline_state:
+        self.assertEqual(
+            {
+                eg_node_uid:
+                    pstate.NodeState(state=pstate.NodeState.COMPLETE),
+                transform_node_uid:
+                    pstate.NodeState(state=pstate.NodeState.COMPLETE),
+                trainer_node_uid:
+                    pstate.NodeState(state=pstate.NodeState.STARTED),
+            }, pipeline_state.get_node_states_dict())
 
 
 if __name__ == '__main__':

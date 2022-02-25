@@ -27,6 +27,9 @@ from tfx.utils import proto_utils
 
 from google.protobuf import message
 
+# Use Any to avoid cyclic import.
+_BaseNode = Any
+
 
 def _is_runtime_param(data: Any) -> bool:
   return data.__class__.__name__ == 'RuntimeParameter'
@@ -267,6 +270,11 @@ class ComponentSpec(json_utils.Jsonable):
         'exec_properties': self.exec_properties,
     }
 
+  def migrate_output_channels(self, producer_component: _BaseNode):
+    for key, channel_ in list(self.outputs.items()):
+      if not isinstance(channel_, channel.OutputChannel):
+        self.outputs[key] = channel_.as_output_channel(producer_component, key)
+
 
 class ExecutionParameter:
   """An execution parameter in a ComponentSpec.
@@ -317,6 +325,8 @@ class ExecutionParameter:
     def _type_check_helper(value: Any, declared: Type):  # pylint: disable=g-bare-generic
       """Helper type-checking function."""
       if isinstance(value, placeholder.Placeholder):
+        if isinstance(value, placeholder.ChannelWrappedPlaceholder):
+          return
         placeholders_involved = value.placeholders_involved()
         if (len(placeholders_involved) != 1 or not isinstance(
             placeholders_involved[0], placeholder.RuntimeInfoPlaceholder)):

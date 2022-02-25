@@ -297,12 +297,6 @@ class Pipeline:
   def components(self, components: List[base_node.BaseNode]):
     deduped_components = set(components)
     node_by_id = {}
-    # TODO(b/202822834): Use better distinction for bound channels.
-    # bound_channels stores the exhaustive list of all nodes' output channels,
-    # which is implicitly *bound* to the single pipeline run, as opposed to
-    # manually constructed channels to fetch artifacts beyond the current
-    # pipeline run.
-    bound_channels = set()
 
     # Fills in producer map.
     for component in deduped_components:
@@ -320,17 +314,17 @@ class Pipeline:
               f'{output_channel} is produced more than once: '
               f'{output_channel.producer_id}[{output_channel.output_key}], '
               f'{component.id}[{key}]')
-        output_channel.producer_component_id = component.id
-        output_channel.output_key = key
-        bound_channels.add(output_channel)
 
     # Connects nodes based on producer map.
     for component in deduped_components:
-      for input_channel in component.inputs.values():
-        for ch in channel_utils.get_individual_channels(input_channel):
-          if ch not in bound_channels:
-            continue
-          upstream_node = node_by_id.get(ch.producer_component_id)
+      channels = list(component.inputs.values())
+      for exec_property in component.exec_properties.values():
+        if isinstance(exec_property, ph.ChannelWrappedPlaceholder):
+          channels.append(exec_property.channel)
+
+      for input_channel in channels:
+        for node_id in channel_utils.get_dependent_node_ids(input_channel):
+          upstream_node = node_by_id.get(node_id)
           if upstream_node:
             component.add_upstream_node(upstream_node)
             upstream_node.add_downstream_node(component)

@@ -187,8 +187,10 @@ class TaskManager:
             'Cannot create multiple task schedulers for the same task; '
             'task_id: {}'.format(task.task_id))
       scheduler = _SchedulerWrapper(
-          ts.TaskSchedulerRegistry.create_task_scheduler(
-              self._mlmd_handle, task.pipeline, task))
+          typing.cast(
+              ts.TaskScheduler[task_lib.ExecNodeTask],
+              ts.TaskSchedulerRegistry.create_task_scheduler(
+                  self._mlmd_handle, task.pipeline, task)))
       self._scheduler_by_node_uid[node_uid] = scheduler
       self._ts_futures.add(
           self._ts_executor.submit(self._process_exec_node_task, scheduler,
@@ -348,8 +350,15 @@ def _remove_output_dirs(task: task_lib.ExecNodeTask,
 
 
 def _remove_task_dirs(task: task_lib.ExecNodeTask) -> None:
+  """Removes directories created for the task."""
   if task.stateful_working_dir:
     outputs_utils.remove_stateful_working_dir(task.stateful_working_dir)
+  if task.tmp_dir:
+    try:
+      fileio.rmtree(task.tmp_dir)
+    except fileio.NotFoundError:
+      logging.warning(
+          'tmp_dir %s not found while attempting to delete, ignoring.')
   if task.executor_output_uri:
     try:
       fileio.remove(task.executor_output_uri)

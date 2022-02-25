@@ -96,12 +96,12 @@ can remove Tuner from your pipeline and use `ImporterNode` to import the Tuner
 artifact from a previous training run to feed to Trainer.
 
 ```python
-hparams_importer = ImporterNode(
-    instance_name='import_hparams',
+hparams_importer = Importer(
     # This can be Tuner's output file or manually edited file. The file contains
     # text format of hyperparameters (keras_tuner.HyperParameters.get_config())
     source_uri='path/to/best_hyperparameters.txt',
-    artifact_type=HyperParameters)
+    artifact_type=HyperParameters,
+).with_id('import_hparams')
 
 trainer = Trainer(
     ...
@@ -227,7 +227,7 @@ service account for your training job in the pipeline code. More details see
 
 [E2E Example](https://github.com/tensorflow/tfx/blob/master/tfx/examples/penguin/penguin_pipeline_local.py)
 
-[E2E CloudTuner on GCP Example](https://github.com/tensorflow/tfx/blob/master/tfx/examples/penguin/penguin_pipeline_kubeflow_gcp.py)
+[E2E CloudTuner on GCP Example](https://github.com/tensorflow/tfx/blob/master/tfx/examples/penguin/penguin_pipeline_kubeflow.py)
 
 [KerasTuner tutorial](https://www.tensorflow.org/tutorials/keras/keras_tuner)
 

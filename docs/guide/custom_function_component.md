@@ -71,10 +71,12 @@ return value using annotations from the
     subclass of `tfx.types.Artifact`. Component output artifacts should be
     passed as input arguments of the function, so that your component can write
     outputs to a system-managed location and set appropriate artifact metadata
-    properties. For each parameter, use the type hint annotation `Parameter[T]`.
-    Replace `T` with the type of the parameter, such as: `int`, `float`, `str`,
-    or `bytes`. This argument can be optional or this argument can be defined
+    properties. This argument can be optional or this argument can be defined
     with a default value.
+
+*   For each **parameter**, use the type hint annotation `Parameter[T]`. Replace
+    `T` with the type of the parameter. We currently only support primitive
+    python types: `bool`, `int`, `float`, `str`, or `bytes`.
 
 *   For each **simple data type input** (`int`, `float`, `str` or `bytes`) not
     known at pipeline construction time, use the type hint `T`. Note that in the

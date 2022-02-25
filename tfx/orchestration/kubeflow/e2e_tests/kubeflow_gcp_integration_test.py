@@ -240,6 +240,35 @@ class KubeflowGCPIntegrationTest(kubeflow_test_utils.BaseKubeflowTest):
                                             tuner_outputs[0])
     self.assertTrue(fileio.exists(best_hyperparameters_uri))
 
+  def testVertexSequentialTunerPipeline(self):
+    """Tuner-only pipeline for sequential Tuner flock on Vertex AI Training."""
+    pipeline_name = self._make_unique_pipeline_name(
+        'kubeflow-vertex-seq-tuner')
+    pipeline = self._create_pipeline(
+        pipeline_name,
+        [
+            self.penguin_examples_importer,
+            self.penguin_schema_importer,
+            ai_platform_tuner_component.Tuner(
+                examples=self.penguin_examples_importer.outputs['result'],
+                module_file=self._penguin_tuner_module,
+                schema=self.penguin_schema_importer.outputs['result'],
+                train_args=trainer_pb2.TrainArgs(num_steps=1),
+                eval_args=trainer_pb2.EvalArgs(num_steps=1),
+                # Single worker sequential tuning.
+                tune_args=tuner_pb2.TuneArgs(num_parallel_trials=1),
+                custom_config={
+                    ai_platform_tuner_executor.TUNING_ARGS_KEY:
+                        self._getVertexTrainingArgs(pipeline_name),
+                    constants.ENABLE_VERTEX_KEY:
+                        True,
+                    constants.VERTEX_REGION_KEY:
+                        self._GCP_REGION
+                })
+        ])
+    self._compile_and_run_pipeline(pipeline)
+    self._assertHyperparametersAreWritten(pipeline_name)
+
   def testVertexDistributedTunerPipeline(self):
     """Tuner-only pipeline for distributed Tuner flock on Vertex AI Training."""
     pipeline_name = self._make_unique_pipeline_name(

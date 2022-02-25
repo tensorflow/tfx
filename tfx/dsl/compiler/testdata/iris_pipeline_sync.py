@@ -18,13 +18,13 @@ import tensorflow_model_analysis as tfma
 from tfx.components import CsvExampleGen
 from tfx.components import Evaluator
 from tfx.components import ExampleValidator
-from tfx.components import ImporterNode
 from tfx.components import Pusher
 from tfx.components import SchemaGen
 from tfx.components import StatisticsGen
 from tfx.components import Trainer
 from tfx.components.trainer.executor import GenericExecutor
 from tfx.dsl.components.base import executor_spec
+from tfx.dsl.components.common import importer
 from tfx.dsl.components.common import resolver
 from tfx.dsl.input_resolution.strategies import latest_blessed_model_strategy
 from tfx.orchestration import data_types
@@ -48,7 +48,7 @@ def create_test_pipeline():
 
   statistics_gen = StatisticsGen(examples=example_gen.outputs["examples"])
 
-  importer = ImporterNode(
+  my_importer = importer.Importer(
       source_uri="m/y/u/r/i",
       properties={
           "split_names": "['train', 'eval']",
@@ -59,7 +59,7 @@ def create_test_pipeline():
       },
       artifact_type=standard_artifacts.Examples).with_id("my_importer")
   another_statistics_gen = StatisticsGen(
-      examples=importer.outputs["result"]).with_id("another_statistics_gen")
+      examples=my_importer.outputs["result"]).with_id("another_statistics_gen")
 
   schema_gen = SchemaGen(statistics=statistics_gen.outputs["statistics"])
 
@@ -125,7 +125,7 @@ def create_test_pipeline():
           example_gen,
           statistics_gen,
           another_statistics_gen,
-          importer,
+          my_importer,
           schema_gen,
           example_validator,
           trainer,

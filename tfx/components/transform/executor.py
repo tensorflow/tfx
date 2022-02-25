@@ -81,11 +81,17 @@ _BEAM_EXTRA_PACKAGE_PREFIX = '--extra_package='
 # Stats output filename keys.
 _ANOMALIES_FILE = 'SchemaDiff.pb'
 _STATS_FILE = 'FeatureStats.pb'
+SAMPLE_FILE_NAME = 'Sample.rio'
+# TODO(b/215448985): Move these to a shared location with StatsGen.
+_SHARDED_OUTPUT_PARTITIONS = 10
+_SHARDED_STATS_PREFIX = 'FeatureStats.rio'
+
 _SCHEMA_FILE = 'schema.pbtxt'
 
 _ANOMALIES_KEY = 'anomalies'
 _SCHEMA_KEY = 'schema'
 _STATS_KEY = 'stats'
+_SHARDED_STATS_KEY = 'sharded_stats'
 
 
 # TODO(b/122478841): Move it to a common place that is shared across components.
@@ -265,6 +271,7 @@ def _InvokeStatsOptionsUpdaterFn(
                               tf.saved_model.ASSETS_DIRECTORY)
     vocab_paths = {k: os.path.join(asset_path, v) for k, v in asset_map.items()}
     options['vocab_paths'] = vocab_paths
+  options['experimental_use_sketch_based_topk_uniques'] = True
   return stats_options_updater_fn(stats_type, tfdv.StatsOptions(**options))
 
 
@@ -715,12 +722,15 @@ class TransformProcessor:
     """
     if isinstance(stats_output_loc, dict):
       stats_output_path = stats_output_loc[_STATS_KEY]
+      sharded_stats_output_prefix = stats_output_loc[_SHARDED_STATS_KEY]
       schema_output_path = stats_output_loc[_SCHEMA_KEY]
       anomalies_output_path = stats_output_loc.get(_ANOMALIES_KEY)
     else:
       stats_output_path = stats_output_loc
       stats_output_dir = os.path.dirname(stats_output_loc)
       schema_output_path = os.path.join(stats_output_dir, _SCHEMA_FILE)
+      sharded_stats_output_prefix = os.path.join(stats_output_dir,
+                                                 _SHARDED_STATS_PREFIX)
       anomalies_output_path = os.path.join(stats_output_dir, _ANOMALIES_FILE)
 
     generated_stats = (
@@ -728,10 +738,17 @@ class TransformProcessor:
         | 'FilterInternalColumn' >> beam.Map(_FilterInternalColumn)
         | 'GenerateStatistics' >> tfdv.GenerateStatistics(stats_options))
 
-    stats_result = (
-        generated_stats
-        | 'WriteStats' >>
-        tfdv.WriteStatisticsToBinaryFile(output_path=stats_output_path))
+    if stats_options.experimental_result_partitions > 1:
+      stats_result = (
+          generated_stats
+          | 'WriteStats' >> tfdv.WriteStatisticsToRecordsAndBinaryFile(
+              binary_proto_path=stats_output_path,
+              records_path_prefix=sharded_stats_output_prefix))
+    else:
+      stats_result = (
+          generated_stats
+          | 'WriteStats' >>
+          tfdv.WriteStatisticsToBinaryFile(output_path=stats_output_path))
 
     if stats_options.schema is None:
       return (stats_result, None, None)
@@ -1331,8 +1348,15 @@ class TransformProcessor:
             pre_transform_stats_options = _InvokeStatsOptionsUpdaterFn(
                 stats_options_updater_fn,
                 stats_options_util.StatsType.PRE_TRANSFORM, schema_proto)
-            pre_transform_stats_options.experimental_use_sketch_based_topk_uniques = (
-                self._RunSketchBasedTopKUniques())
+
+            if self._TFDVWriteShardedOutput():
+              pre_transform_stats_options.experimental_result_partitions = (
+                  _SHARDED_OUTPUT_PARTITIONS)
+            else:
+              if (pre_transform_stats_options.experimental_result_partitions !=
+                  1):
+                raise ValueError('Sharded output disabled requires '
+                                 'experimental_result_partitions=1.')
 
             if stats_output_paths:
               pre_transform_feature_stats_loc = {
@@ -1341,6 +1365,11 @@ class TransformProcessor:
                           stats_output_paths[
                               labels.PRE_TRANSFORM_OUTPUT_STATS_PATH_LABEL],
                           _STATS_FILE),
+                  _SHARDED_STATS_KEY:
+                      os.path.join(
+                          stats_output_paths[
+                              labels.PRE_TRANSFORM_OUTPUT_STATS_PATH_LABEL],
+                          _SHARDED_STATS_PREFIX),
                   _SCHEMA_KEY:
                       os.path.join(
                           stats_output_paths[
@@ -1395,8 +1424,14 @@ class TransformProcessor:
                 transformed_schema_proto, metadata.asset_map,
                 transform_output_path)
 
-            post_transform_stats_options.experimental_use_sketch_based_topk_uniques = (
-                self._RunSketchBasedTopKUniques())
+            if self._TFDVWriteShardedOutput():
+              post_transform_stats_options.experimental_result_partitions = (
+                  _SHARDED_OUTPUT_PARTITIONS)
+            else:
+              if (post_transform_stats_options.experimental_result_partitions !=
+                  1):
+                raise ValueError('Sharded output disabled requires '
+                                 'experimental_result_partitions=1.')
 
             if stats_output_paths:
               post_transform_feature_stats_loc = {
@@ -1405,6 +1440,11 @@ class TransformProcessor:
                           stats_output_paths[
                               labels.POST_TRANSFORM_OUTPUT_STATS_PATH_LABEL],
                           _STATS_FILE),
+                  _SHARDED_STATS_KEY:
+                      os.path.join(
+                          stats_output_paths[
+                              labels.PRE_TRANSFORM_OUTPUT_STATS_PATH_LABEL],
+                          _SHARDED_STATS_PREFIX),
                   _SCHEMA_KEY:
                       os.path.join(
                           stats_output_paths[
@@ -1634,8 +1674,7 @@ class TransformProcessor:
     """Always returns None."""
     return None
 
-  # TODO(b/130885503): clean this up once the sketch-based generator is the
-  # default.
+  # TODO(b/215448985): Remove this once sharded stats are written by default.
   @staticmethod
-  def _RunSketchBasedTopKUniques():
+  def _TFDVWriteShardedOutput():
     return False

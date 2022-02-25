@@ -2,7 +2,7 @@
 
 ## TensorFlow Extended
 
-*   [TensorFlow Extended](https://www.tensorflow.org/tfx/api_docs/python/tfx)
+*   [TensorFlow Extended](https://www.tensorflow.org/tfx/api_docs/python/tfx/v1)
 
 ## Data Validation
 

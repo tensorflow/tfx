@@ -19,6 +19,7 @@ from tfx import types
 from tfx.dsl.components.base import base_component
 from tfx.dsl.components.base import executor_spec as base_executor_spec
 from tfx.types import component_spec
+from tfx.types.system_executions import SystemExecution
 
 
 def create_tfx_component_class(
@@ -30,6 +31,7 @@ def create_tfx_component_class(
         str, component_spec.ChannelParameter]] = None,
     execution_parameters: Optional[Dict[
         str, component_spec.ExecutionParameter]] = None,
+    type_annotation: Optional[Type[SystemExecution]] = None,
     default_init_args: Optional[Dict[str, Any]] = None,
     base_class: Type[
         base_component.BaseComponent] = base_component.BaseComponent,
@@ -42,6 +44,7 @@ def create_tfx_component_class(
           PARAMETERS=execution_parameters or {},
           INPUTS=input_channel_parameters or {},
           OUTPUTS=output_channel_parameters or {},
+          TYPE_ANNOTATION=type_annotation,
       ),
   )
 

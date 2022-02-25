@@ -47,5 +47,11 @@ message RunState {
 
   State state = 1;
 
+  message StatusCodeValue {
+    // A google.rpc.Code describing the current status.
+    int32 value = 1;
+  }
+
+  StatusCodeValue status_code = 3;
   string status_msg = 2;
 }

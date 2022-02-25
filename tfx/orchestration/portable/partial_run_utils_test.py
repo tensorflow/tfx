@@ -80,12 +80,15 @@ def _to_input_channel(
 
 class MarkPipelineFnTest(parameterized.TestCase, test_case_utils.TfxTest):
 
-  def _checkNodeExecutionOptions(self, pipeline: pipeline_pb2.Pipeline,
-                                 snapshot_node: Optional[str],
-                                 nodes_to_run: Set[str],
-                                 nodes_requiring_snapshot: Set[str],
-                                 nodes_to_skip: Set[str],
-                                 nodes_to_reuse: Set[str]):
+  def _checkNodeExecutionOptions(
+      self,
+      pipeline: pipeline_pb2.Pipeline,
+      snapshot_node: Optional[str],
+      nodes_to_run: Set[str],
+      nodes_requiring_snapshot: Set[str],
+      nodes_to_skip: Set[str],
+      nodes_required_to_reuse: Set[str],
+      nodes_optional_to_reuse: Optional[Set[str]] = None):
     for node in pipeline.nodes:
       try:
         node_id = node.pipeline_node.node_info.id
@@ -112,13 +115,19 @@ class MarkPipelineFnTest(parameterized.TestCase, test_case_utils.TfxTest):
             self.assertNotIn(node_id, nodes_requiring_snapshot)
         elif node_id in nodes_to_skip:
           self.assertEqual(run_or_skip, 'skip')
-          # assert reuse_artifacts iff node_id in nodes_to_reuse
-          if node_id in nodes_to_reuse:
-            self.assertTrue(
-                node.pipeline_node.execution_options.skip.reuse_artifacts)
+          # assert reuse_artifacts iff node_id in nodes_required_to_reuse
+          if node_id in nodes_required_to_reuse:
+            self.assertEqual(
+                node.pipeline_node.execution_options.skip.reuse_artifacts_mode,
+                pipeline_pb2.NodeExecutionOptions.Skip.REQUIRED)
+          elif nodes_optional_to_reuse and node_id in nodes_optional_to_reuse:
+            self.assertEqual(
+                node.pipeline_node.execution_options.skip.reuse_artifacts_mode,
+                pipeline_pb2.NodeExecutionOptions.Skip.OPTIONAL)
           else:
-            self.assertFalse(
-                node.pipeline_node.execution_options.skip.reuse_artifacts)
+            self.assertEqual(
+                node.pipeline_node.execution_options.skip.reuse_artifacts_mode,
+                pipeline_pb2.NodeExecutionOptions.Skip.NEVER)
         else:
           raise ValueError(f'node_id {node_id} appears in neither nodes_to_run '
                            'nor nodes_to_skip.')
@@ -287,7 +296,7 @@ class MarkPipelineFnTest(parameterized.TestCase, test_case_utils.TfxTest):
     expected nodes_to_run: [node_a, node_b]
     expected nodes_requiring_snapshot: []
     expected nodes_to_skip: [node_c]
-    expected nodes_to_reuse: []
+    expected nodes_required_to_reuse: []
     """
     input_pipeline = self._createInputPipeline({
         'a': ['b'],
@@ -303,7 +312,7 @@ class MarkPipelineFnTest(parameterized.TestCase, test_case_utils.TfxTest):
         nodes_to_run=set(['a', 'b']),
         nodes_requiring_snapshot=set(),
         nodes_to_skip=set(['c']),
-        nodes_to_reuse=set())
+        nodes_required_to_reuse=set())
 
   def testFilterOutSourceNode(self):
     """Filter out a node that has no upstream nodes but has downstream nodes.
@@ -316,7 +325,7 @@ class MarkPipelineFnTest(parameterized.TestCase, test_case_utils.TfxTest):
     expected nodes_to_run: [node_b, node_c]
     expected nodes_requiring_snapshot: [node_b]
     expected nodes_to_skip: [node_a]
-    expected nodes_to_reuse: [node_a]
+    expected nodes_required_to_reuse: [node_a]
     """
     input_pipeline = self._createInputPipeline({
         'a': ['b'],
@@ -332,7 +341,7 @@ class MarkPipelineFnTest(parameterized.TestCase, test_case_utils.TfxTest):
         nodes_to_run=set(['b', 'c']),
         nodes_requiring_snapshot=set(['b']),
         nodes_to_skip=set(['a']),
-        nodes_to_reuse=set(['a']))
+        nodes_required_to_reuse=set(['a']))
 
   def testFilterOutSourceNode_triangle(self):
     """Filter out a source node in a triangle.
@@ -347,7 +356,7 @@ class MarkPipelineFnTest(parameterized.TestCase, test_case_utils.TfxTest):
     expected nodes_to_run: [node_b, node_c]
     expected nodes_requiring_snapshot: [node_b, node_c]
     expected nodes_to_skip: [node_a]
-    expected nodes_to_reuse: [node_a]
+    expected nodes_required_to_reuse: [node_a]
     """
     input_pipeline = self._createInputPipeline({
         'a': ['b', 'c'],
@@ -363,7 +372,7 @@ class MarkPipelineFnTest(parameterized.TestCase, test_case_utils.TfxTest):
         nodes_to_run=set(['b', 'c']),
         nodes_requiring_snapshot=set(['b', 'c']),
         nodes_to_skip=set(['a']),
-        nodes_to_reuse=set(['a']))
+        nodes_required_to_reuse=set(['a']))
 
   def testRunMiddleNode(self):
     """Run only the middle node.
@@ -377,7 +386,7 @@ class MarkPipelineFnTest(parameterized.TestCase, test_case_utils.TfxTest):
     expected nodes_to_run: [node_c]
     expected nodes_requiring_snapshot: [node_c]
     expected nodes_to_skip: [node_a, node_b, node_d]
-    expected nodes_to_reuse: [node_a, node_b]
+    expected nodes_required_to_reuse: [node_a, node_b]
     """
     input_pipeline = self._createInputPipeline({
         'a': ['b'],
@@ -394,7 +403,7 @@ class MarkPipelineFnTest(parameterized.TestCase, test_case_utils.TfxTest):
         nodes_to_run=set(['c']),
         nodes_requiring_snapshot=set(['c']),
         nodes_to_skip=set(['a', 'b', 'd']),
-        nodes_to_reuse=set(['a', 'b']))
+        nodes_required_to_reuse=set(['a', 'b']))
 
   def testRunSinkNode(self):
     """Run only a sink node.
@@ -412,7 +421,7 @@ class MarkPipelineFnTest(parameterized.TestCase, test_case_utils.TfxTest):
     expected nodes_to_run: [node_c]
     expected nodes_requiring_snapshot: [node_c]
     expected nodes_to_skip: [node_a, node_b]
-    expected nodes_to_reuse: [node_a, node_b]
+    expected nodes_required_to_reuse: [node_a, node_b]
     """
     input_pipeline = self._createInputPipeline({
         'a': ['b'],
@@ -427,7 +436,7 @@ class MarkPipelineFnTest(parameterized.TestCase, test_case_utils.TfxTest):
         nodes_to_run=set(['c']),
         nodes_requiring_snapshot=set(['c']),
         nodes_to_skip=set(['a', 'b']),
-        nodes_to_reuse=set(['a', 'b']))
+        nodes_required_to_reuse=set(['a', 'b']))
 
   def testRunSinkNode_triangle(self):
     """Filter out a source node in a triangle.
@@ -441,7 +450,7 @@ class MarkPipelineFnTest(parameterized.TestCase, test_case_utils.TfxTest):
     expected nodes_to_run: [node_c]
     expected nodes_requiring_snapshot: [node_c]
     expected nodes_to_skip: [node_a, node_b]
-    expected nodes_to_reuse: [node_a, node_b]
+    expected nodes_required_to_reuse: [node_a, node_b]
     """
     input_pipeline = self._createInputPipeline({
         'a': ['b', 'c'],
@@ -456,7 +465,7 @@ class MarkPipelineFnTest(parameterized.TestCase, test_case_utils.TfxTest):
         nodes_to_run=set(['c']),
         nodes_requiring_snapshot=set(['c']),
         nodes_to_skip=set(['a', 'b']),
-        nodes_to_reuse=set(['a', 'b']))
+        nodes_required_to_reuse=set(['a', 'b']))
 
   def testRunMiddleNode_twoIndependentDAGs(self):
     """Run only a middle node in a pipeline with two independent DAGs.
@@ -479,7 +488,7 @@ class MarkPipelineFnTest(parameterized.TestCase, test_case_utils.TfxTest):
     expected nodes_to_run: [node_b2]
     expected nodes_requiring_snapshot: [node_b2]
     expected nodes_to_skip: [node_a1, node_b1, node_c1, node_a2, node_c2]
-    expected nodes_to_reuse: [node_a1, node_b1, node_c1, node_a2]
+    expected nodes_required_to_reuse: [node_a1, node_b1, node_c1, node_a2]
     """
     input_pipeline = self._createInputPipeline({
         'a1': ['b1'],
@@ -498,7 +507,8 @@ class MarkPipelineFnTest(parameterized.TestCase, test_case_utils.TfxTest):
         nodes_to_run=set(['b2']),
         nodes_requiring_snapshot=set(['b2']),
         nodes_to_skip=set(['a1', 'b1', 'c1', 'a2', 'c2']),
-        nodes_to_reuse=set(['a1', 'b1', 'c1', 'a2']))
+        nodes_required_to_reuse=set(['a2']),
+        nodes_optional_to_reuse=set(['a1', 'b1', 'c1']))
 
   def testReuseableNodes(self):
     """Node excluded will not be run.
@@ -512,7 +522,7 @@ class MarkPipelineFnTest(parameterized.TestCase, test_case_utils.TfxTest):
     expected nodes_to_run: [node_c]
     expected nodes_requiring_snapshot: [node_c]
     expected nodes_to_skip: [node_a, node_b, node_d]
-    expected nodes_to_reuse: [node_a, node_b]
+    expected nodes_required_to_reuse: [node_a, node_b]
     """
     input_pipeline = self._createInputPipeline({
         'a': ['b'],
@@ -528,7 +538,7 @@ class MarkPipelineFnTest(parameterized.TestCase, test_case_utils.TfxTest):
         nodes_to_run=set(['b', 'c', 'd']),
         nodes_requiring_snapshot=set(['b']),
         nodes_to_skip=set(['a']),
-        nodes_to_reuse=set(['a']))
+        nodes_required_to_reuse=set(['a']))
 
     input_pipeline = self._createInputPipeline({
         'a': ['b'],
@@ -544,7 +554,7 @@ class MarkPipelineFnTest(parameterized.TestCase, test_case_utils.TfxTest):
         nodes_to_run=set(['c', 'd']),
         nodes_requiring_snapshot=set(['c']),
         nodes_to_skip=set(['a', 'b']),
-        nodes_to_reuse=set(['a', 'b']))
+        nodes_required_to_reuse=set(['a', 'b']))
 
 
 # pylint: disable=invalid-name
@@ -1542,6 +1552,54 @@ class PartialRunTest(absltest.TestCase):
         partial_run_utils._reuse_pipeline_run_artifacts(
             m, pipeline_pb_run_2, base_run_id='run_1',
             new_run_id='run_3')  # <-- user error here
+
+  def testReusePipelineArtifacts_SeparateBranches(self):
+    """Tests partial run with separate branches."""
+    ############################################################################
+    #
+    # This pipeline consists of *two* separate branches.
+    #
+    #           ---------        -----------        -----------
+    #          | Load 1 | -----> | AddNum 1 | ----> | Result 1 |  # Branch 1
+    #           ---------        -----------        -----------
+    #  run:               \
+    #                      \     -----------        -----------
+    #                       \--> | AddNum 2 | ----> | Result 2 |  # Branch 2
+    #                            -----------        -----------
+    #
+    ############################################################################
+    # pylint: disable=no-value-for-parameter
+    load_1 = Load(start_num=1).with_id('load_1')
+    add_num_1 = AddNum(to_add=1, num=load_1.outputs['num']).with_id('add_num_1')
+    result_1 = Result(result=add_num_1.outputs['added_num']).with_id('result_1')
+    add_num_2 = AddNum(
+        to_add=10, num=load_1.outputs['num']).with_id('add_num_2')
+    result_2 = Result(result=add_num_2.outputs['added_num']).with_id('result_2')
+    # On first run, execute branch 1.
+    pipeline_pb_run_1 = self.make_pipeline(
+        components=[load_1, add_num_1, result_1, add_num_2, result_2],
+        run_id='run_1')
+    partial_run_utils.mark_pipeline(
+        pipeline_pb_run_1, from_nodes=[load_1.id], to_nodes=[result_1.id])
+    beam_dag_runner.BeamDagRunner().run_with_ir(pipeline_pb_run_1)
+    self.assertResultEqual(pipeline_pb_run_1, [(result_1.id, 2)])
+
+    # On second run, only execute part of branch 1. Artifact reusing would
+    # fail for nodes on branch 2, but should not raise any error.
+    # pylint: disable=no-value-for-parameter
+    add_num_1_v2 = AddNum(
+        to_add=5, num=load_1.outputs['num']).with_id('add_num_1')
+    load_1.remove_downstream_node(add_num_1)  # This line is important.
+    result_1_v2 = Result(
+        result=add_num_1_v2.outputs['added_num']).with_id('result_1')
+    # pylint: enable=no-value-for-parameter
+    pipeline_pb_run_2 = self.make_pipeline(
+        components=[load_1, add_num_1_v2, result_1_v2, add_num_2, result_2],
+        run_id='run_2')
+    partial_run_utils.mark_pipeline(
+        pipeline_pb_run_2, from_nodes=[add_num_1_v2.id])
+    beam_dag_runner.BeamDagRunner().run_with_ir(pipeline_pb_run_2)
+    self.assertResultEqual(pipeline_pb_run_2, [(result_1_v2.id, 6)])
 
 
 if __name__ == '__main__':

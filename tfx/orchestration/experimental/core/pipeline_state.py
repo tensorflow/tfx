@@ -36,6 +36,8 @@ from tfx.proto.orchestration import run_state_pb2
 from tfx.utils import json_utils
 from tfx.utils import status as status_lib
 
+import ml_metadata as mlmd
+from google.protobuf import message
 from ml_metadata.proto import metadata_store_pb2
 
 _ORCHESTRATOR_RESERVED_ID = '__ORCHESTRATOR__'
@@ -47,6 +49,7 @@ _PIPELINE_STATUS_MSG = 'pipeline_status_msg'
 _NODE_STATES = 'node_states'
 _PIPELINE_RUN_METADATA = 'pipeline_run_metadata'
 _UPDATED_PIPELINE_IR = 'updated_pipeline_ir'
+_UPDATE_OPTIONS = 'update_options'
 _ORCHESTRATOR_EXECUTION_TYPE = metadata_store_pb2.ExecutionType(
     name=_ORCHESTRATOR_RESERVED_ID,
     properties={_PIPELINE_IR: metadata_store_pb2.STRING})
@@ -244,7 +247,7 @@ class PipelineState:
           code=status_lib.Code.ALREADY_EXISTS,
           message=f'Pipeline with uid {pipeline_uid} already active.')
 
-    exec_properties = {_PIPELINE_IR: _base64_encode_pipeline(pipeline)}
+    exec_properties = {_PIPELINE_IR: _base64_encode(pipeline)}
     if pipeline_run_metadata:
       exec_properties[_PIPELINE_RUN_METADATA] = json_utils.dumps(
           pipeline_run_metadata)
@@ -258,6 +261,17 @@ class PipelineState:
       data_types_utils.set_metadata_value(
           execution.custom_properties[_PIPELINE_RUN_ID],
           pipeline.runtime_spec.pipeline_run_id.field_value.string_value)
+      # Set the node state to COMPLETE for any nodes that are marked to be
+      # skipped in a partial pipeline run.
+      node_states_dict = {}
+      for node in get_all_pipeline_nodes(pipeline):
+        if node.execution_options.HasField('skip'):
+          logging.info('Node %s is skipped in this partial run.',
+                       node.node_info.id)
+          node_states_dict[node.node_info.id] = NodeState(
+              state=NodeState.COMPLETE)
+      if node_states_dict:
+        _save_node_states_dict(execution, node_states_dict)
 
     execution = execution_lib.put_execution(mlmd_handle, execution, [context])
     record_state_change_time()
@@ -348,7 +362,11 @@ class PipelineState:
           self._execution.custom_properties[_PIPELINE_STATUS_MSG],
           status.message)
 
-  def initiate_update(self, updated_pipeline: pipeline_pb2.Pipeline) -> None:
+  def initiate_update(
+      self,
+      updated_pipeline: pipeline_pb2.Pipeline,
+      update_options: pipeline_pb2.UpdateOptions,
+  ) -> None:
     """Initiates pipeline update process."""
     self._check_context()
 
@@ -387,12 +405,28 @@ class PipelineState:
 
     data_types_utils.set_metadata_value(
         self._execution.custom_properties[_UPDATED_PIPELINE_IR],
-        _base64_encode_pipeline(updated_pipeline))
+        _base64_encode(updated_pipeline))
+    data_types_utils.set_metadata_value(
+        self._execution.custom_properties[_UPDATE_OPTIONS],
+        _base64_encode(update_options))
 
   def is_update_initiated(self) -> bool:
     self._check_context()
     return self.is_active() and self._execution.custom_properties.get(
         _UPDATED_PIPELINE_IR) is not None
+
+  def get_update_options(self) -> pipeline_pb2.UpdateOptions:
+    """Gets pipeline update option that was previously configured."""
+    self._check_context()
+    update_options = self._execution.custom_properties.get(
+        _UPDATE_OPTIONS)
+    if update_options is None:
+      logging.warning('pipeline execution missing expected custom property %s, '
+                      'defaulting to UpdateOptions(reload_policy=ALL)',
+                      _UPDATE_OPTIONS)
+      return pipeline_pb2.UpdateOptions(
+          reload_policy=pipeline_pb2.UpdateOptions.ReloadPolicy.ALL)
+    return _base64_decode_update_options(_get_metadata_value(update_options))
 
   def apply_pipeline_update(self) -> None:
     """Applies pipeline update that was previously initiated."""
@@ -406,6 +440,7 @@ class PipelineState:
     data_types_utils.set_metadata_value(
         self._execution.properties[_PIPELINE_IR], updated_pipeline_ir)
     del self._execution.custom_properties[_UPDATED_PIPELINE_IR]
+    del self._execution.custom_properties[_UPDATE_OPTIONS]
     self.pipeline = _base64_decode_pipeline(updated_pipeline_ir)
 
   def is_stop_initiated(self) -> bool:
@@ -420,8 +455,8 @@ class PipelineState:
       code = _get_metadata_value(custom_properties.get(_PIPELINE_STATUS_CODE))
       if code is None:
         code = status_lib.Code.UNKNOWN
-      message = _get_metadata_value(custom_properties.get(_PIPELINE_STATUS_MSG))
-      return status_lib.Status(code=code, message=message)
+      msg = _get_metadata_value(custom_properties.get(_PIPELINE_STATUS_MSG))
+      return status_lib.Status(code=code, message=msg)
     else:
       return None
 
@@ -442,7 +477,7 @@ class PipelineState:
     if old_state != node_state.state:
       logging.info('Changing node state: %s -> %s; node uid: %s', old_state,
                    node_state.state, node_uid)
-    self._save_node_states_dict(node_states_dict)
+    _save_node_states_dict(self._execution, node_states_dict)
 
   def get_node_state(self, node_uid: task_lib.NodeUid) -> NodeState:
     self._check_context()
@@ -456,10 +491,11 @@ class PipelineState:
 
   def get_node_states_dict(self) -> Dict[task_lib.NodeUid, NodeState]:
     self._check_context()
+    node_states_dict = _get_node_states_dict(self._execution)
     result = {}
     for node in get_all_pipeline_nodes(self.pipeline):
       node_uid = task_lib.NodeUid.from_pipeline_node(self.pipeline, node)
-      result[node_uid] = self.get_node_state(node_uid)
+      result[node_uid] = node_states_dict.get(node_uid.node_id, NodeState())
     return result
 
   def get_pipeline_execution_state(self) -> metadata_store_pb2.Execution.State:
@@ -506,11 +542,6 @@ class PipelineState:
       self) -> orchestration_options.OrchestrationOptions:
     self._check_context()
     return env.get_env().get_orchestration_options(self.pipeline)
-
-  def _save_node_states_dict(self, node_states: Dict[str, NodeState]) -> None:
-    data_types_utils.set_metadata_value(
-        self._execution.custom_properties[_NODE_STATES],
-        json_utils.dumps(node_states))
 
   def __enter__(self) -> 'PipelineState':
     mlmd_execution_atomic_op_context = mlmd_state.mlmd_execution_atomic_op(
@@ -566,7 +597,10 @@ class PipelineView:
       raise status_lib.StatusNotOkError(
           code=status_lib.Code.NOT_FOUND,
           message=f'No pipeline with uid {pipeline_uid} found.')
-    executions = mlmd_handle.store.get_executions_by_context(context.id)
+    list_options = mlmd.ListOptions(
+        order_by=mlmd.OrderByField.CREATE_TIME, is_asc=True)
+    executions = mlmd_handle.store.get_executions_by_context(
+        context.id, list_options=list_options)
     return [cls(pipeline_uid, context, execution) for execution in executions]
 
   @classmethod
@@ -625,6 +659,15 @@ class PipelineView:
     return self.pipeline.runtime_spec.pipeline_run_id.field_value.string_value
 
   @property
+  def pipeline_status_code(
+      self) -> Optional[run_state_pb2.RunState.StatusCodeValue]:
+    if _PIPELINE_STATUS_CODE in self.execution.custom_properties:
+      return run_state_pb2.RunState.StatusCodeValue(
+          value=self.execution.custom_properties[_PIPELINE_STATUS_CODE]
+          .int_value)
+    return None
+
+  @property
   def pipeline_status_message(self) -> str:
     if _PIPELINE_STATUS_MSG in self.execution.custom_properties:
       return self.execution.custom_properties[_PIPELINE_STATUS_MSG].string_value
@@ -639,13 +682,12 @@ class PipelineView:
 
   def get_pipeline_run_state(self) -> run_state_pb2.RunState:
     """Returns current pipeline run state."""
+    state = run_state_pb2.RunState.UNKNOWN
     if self.execution.last_known_state in _EXECUTION_STATE_TO_RUN_STATE_MAP:
-      return run_state_pb2.RunState(
-          state=_EXECUTION_STATE_TO_RUN_STATE_MAP[
-              self.execution.last_known_state],
-          status_msg=self.pipeline_status_message)
+      state = _EXECUTION_STATE_TO_RUN_STATE_MAP[self.execution.last_known_state]
     return run_state_pb2.RunState(
-        state=run_state_pb2.RunState.UNKNOWN,
+        state=state,
+        status_code=self.pipeline_status_code,
         status_msg=self.pipeline_status_message)
 
   def get_node_run_states(self) -> Dict[str, run_state_pb2.RunState]:
@@ -654,8 +696,13 @@ class PipelineView:
     node_states_dict = _get_node_states_dict(self.execution)
     for node in get_all_pipeline_nodes(self.pipeline):
       node_state = node_states_dict.get(node.node_info.id, NodeState())
+      node_status_code_value = None
+      if node_state.status_code is not None:
+        node_status_code_value = run_state_pb2.RunState.StatusCodeValue(
+            value=node_state.status_code)
       result[node.node_info.id] = run_state_pb2.RunState(
           state=_NODE_STATE_TO_RUN_STATE_MAP[node_state.state],
+          status_code=node_status_code_value,
           status_msg=node_state.status_msg)
     return result
 
@@ -802,8 +849,8 @@ def _get_latest_execution(
   return max(executions, key=_get_creation_time)
 
 
-def _base64_encode_pipeline(pipeline: pipeline_pb2.Pipeline) -> str:
-  return base64.b64encode(pipeline.SerializeToString()).decode('utf-8')
+def _base64_encode(msg: message.Message) -> str:
+  return base64.b64encode(msg.SerializeToString()).decode('utf-8')
 
 
 def _base64_decode_pipeline(pipeline_encoded: str) -> pipeline_pb2.Pipeline:
@@ -812,8 +859,22 @@ def _base64_decode_pipeline(pipeline_encoded: str) -> pipeline_pb2.Pipeline:
   return result
 
 
+def _base64_decode_update_options(
+    update_options_encoded: str) -> pipeline_pb2.UpdateOptions:
+  result = pipeline_pb2.UpdateOptions()
+  result.ParseFromString(base64.b64decode(update_options_encoded))
+  return result
+
+
 def _get_node_states_dict(
     pipeline_execution: metadata_store_pb2.Execution) -> Dict[str, NodeState]:
   node_states_json = _get_metadata_value(
       pipeline_execution.custom_properties.get(_NODE_STATES))
   return json_utils.loads(node_states_json) if node_states_json else {}
+
+
+def _save_node_states_dict(pipeline_execution: metadata_store_pb2.Execution,
+                           node_states: Dict[str, NodeState]) -> None:
+  data_types_utils.set_metadata_value(
+      pipeline_execution.custom_properties[_NODE_STATES],
+      json_utils.dumps(node_states))

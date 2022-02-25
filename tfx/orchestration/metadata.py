@@ -125,11 +125,15 @@ def mysql_metadata_connection_config(
 # TODO(ruoyu): Figure out the story mutable UDFs. We should not reuse previous
 # run when having different UDFs.
 class Metadata:
-  """Helper class to handle metadata I/O."""
+  """Helper class to handle metadata I/O.
+
+  Not thread-safe without external synchronisation.
+  """
 
   def __init__(self, connection_config: ConnectionConfigType) -> None:
     self._connection_config = connection_config
     self._store = None
+    self._users = 0
 
   def __enter__(self) -> 'Metadata':
     # TODO(ruoyu): Establishing a connection pool instead of newing
@@ -147,6 +151,7 @@ class Metadata:
         time.sleep(random.random())
         continue
       else:
+        self._users += 1
         return self
 
     raise RuntimeError(
@@ -156,7 +161,9 @@ class Metadata:
   def __exit__(self, exc_type: Optional[Type[Exception]],
                exc_value: Optional[Exception],
                exc_tb: Optional[types.TracebackType]) -> None:
-    self._store = None
+    self._users -= 1
+    if self._users == 0:
+      self._store = None
 
   @property
   def store(self) -> mlmd.MetadataStore:

@@ -15,7 +15,7 @@
 
 import abc
 import typing
-from typing import Dict, List, Optional, Type, TypeVar, Union
+from typing import Dict, Generic, List, Optional, Type, TypeVar, Union
 
 import attr
 from tfx import types
@@ -70,11 +70,14 @@ class TaskSchedulerResult:
                 ResolverNodeOutput] = ExecutorNodeOutput()
 
 
-class TaskScheduler(abc.ABC):
+_TaskT = TypeVar('_TaskT', bound=task_lib.Task)
+
+
+class TaskScheduler(abc.ABC, Generic[_TaskT]):
   """Interface for task schedulers."""
 
   def __init__(self, mlmd_handle: metadata.Metadata,
-               pipeline: pipeline_pb2.Pipeline, task: task_lib.Task):
+               pipeline: pipeline_pb2.Pipeline, task: _TaskT):
     """Constructor.
 
     Args:

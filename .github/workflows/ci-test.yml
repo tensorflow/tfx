@@ -55,7 +55,7 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip wheel
-        TFX_DEPENDENCY_SELECTOR=NIGHTLY pip install --index-url https://pypi-nightly.tensorflow.org/simple --pre --editable .[all]
+        TFX_DEPENDENCY_SELECTOR=NIGHTLY pip install -c ./test_constraints.txt --index-url https://pypi-nightly.tensorflow.org/simple --pre --editable .[all]
 
     - name: Run unit tests
       shell: bash
