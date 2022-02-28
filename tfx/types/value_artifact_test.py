@@ -13,17 +13,12 @@
 # limitations under the License.
 """Tests for tfx.types.artifact."""
 
-import json
 from unittest import mock
+
 
 import tensorflow as tf
 from tfx.dsl.io import fileio
-from tfx.types import standard_artifacts
-from tfx.types import system_artifacts
 from tfx.types import value_artifact
-
-from google.protobuf import json_format
-from ml_metadata.proto import metadata_store_pb2
 
 
 _IS_NULL_KEY = '__is_null__'
@@ -38,21 +33,6 @@ class _MyValueArtifact(value_artifact.ValueArtifact):
 
   def decode(self, value: bytes):
     return value.decode('utf-8')
-
-
-class MyDataset(system_artifacts.SystemArtifact):
-
-  MLMD_SYSTEM_BASE_TYPE = 1
-
-
-_mlmd_artifact_type = metadata_store_pb2.ArtifactType()
-json_format.Parse(
-    json.dumps({
-        'name': 'String_MODEL',
-        'base_type': 'MODEL',
-    }), _mlmd_artifact_type)
-_MyValueArtifact1 = value_artifact._ValueArtifactType(
-    mlmd_artifact_type=_mlmd_artifact_type, base=standard_artifacts.String)  # pylint: disable=invalid-name
 
 
 # Mock values for string artifact.
@@ -131,46 +111,6 @@ class ValueArtifactTest(tf.test.TestCase):
     with self.assertRaisesRegex(
         RuntimeError, 'Given path does not exist or is not a valid file'):
       instance.read()
-
-  def testTypeAnnotation(self):
-    annotation_class = _MyValueArtifact.annotate_as(MyDataset)
-    self.assertEqual(annotation_class.__name__, '_MyValueArtifact_MyDataset')
-    self.assertEqual(annotation_class.TYPE_NAME, 'MyValueTypeName_MyDataset')
-    self.assertEqual(annotation_class.TYPE_ANNOTATION.MLMD_SYSTEM_BASE_TYPE,
-                     MyDataset.MLMD_SYSTEM_BASE_TYPE)
-    self.assertEqual(annotation_class._get_artifact_type().base_type,
-                     MyDataset.MLMD_SYSTEM_BASE_TYPE)
-
-    # invalid annotation class
-    with self.assertRaisesRegex(ValueError,
-                                'is not a subclass of SystemArtifact'):
-      _MyValueArtifact.annotate_as(value_artifact.ValueArtifact)
-
-    # no argument
-    annotation_class = _MyValueArtifact.annotate_as()
-    self.assertEqual(annotation_class.__name__, '_MyValueArtifact')
-
-  @mock.patch.object(fileio, 'exists', fake_exist)
-  @mock.patch.object(fileio, 'isdir', fake_isdir)
-  @mock.patch.object(fileio, 'open', fake_open)
-  def testValueArtifactTypeConstructor(self):
-    instance = _MyValueArtifact1()
-    self.assertEqual(_MyValueArtifact1.__name__, 'String_MODEL')
-    self.assertEqual(_MyValueArtifact1.TYPE_NAME, 'String_MODEL')
-    self.assertEqual(_MyValueArtifact1.TYPE_ANNOTATION.MLMD_SYSTEM_BASE_TYPE,
-                     metadata_store_pb2.ArtifactType.MODEL)
-
-    self.assertIsInstance(instance, value_artifact.ValueArtifact)
-    self.assertIsInstance(instance, standard_artifacts.String)
-
-    # Test property setters.
-    instance.uri = _VALID_URI
-    self.assertEqual(_VALID_URI, instance.uri)
-
-    # Test functions are inherited from base class standard_artifacts.String.
-    instance.read()
-    instance.value = _STRING_VALUE
-    self.assertEqual(_STRING_VALUE, instance.value)
 
 
 if __name__ == '__main__':

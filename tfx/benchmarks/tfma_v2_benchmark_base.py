@@ -414,10 +414,7 @@ class TFMAV2BenchmarkBase(benchmark_base.BenchmarkBase):
 
       processed = []
       for elem in unbatched_extracts:
-        processed.append(
-            next(
-                metrics_plots_and_validations_evaluator._PreprocessorDoFn(  # pylint: disable=protected-access
-                    computations).process(elem)))
+        processed.append(metric_types.StandardMetricInputs(elem))
 
       combiner = metrics_plots_and_validations_evaluator._ComputationsCombineFn(  # pylint: disable=protected-access
           computations=computations)

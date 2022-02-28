@@ -26,7 +26,6 @@ from tfx.dsl.compiler.testdata import foreach_pipeline
 from tfx.dsl.compiler.testdata import iris_pipeline_async
 from tfx.dsl.compiler.testdata import iris_pipeline_sync
 from tfx.dsl.compiler.testdata import pipeline_root_placeholder
-from tfx.dsl.compiler.testdata import pipeline_with_annotations
 from tfx.orchestration import pipeline
 from tfx.proto.orchestration import pipeline_pb2
 from tfx.types import artifact
@@ -90,8 +89,6 @@ class CompilerTest(tf.test.TestCase, parameterized.TestCase):
        "pipeline_root_placeholder_ir.pbtxt"),
       ("_dynamic_exec_properties_pipeline", dynamic_exec_properties_pipeline,
        "dynamic_exec_properties_pipeline_ir.pbtxt"),
-      ("_pipeline_with_annotations", pipeline_with_annotations,
-       "pipeline_with_annotations_ir.pbtxt"),
   )
   def testCompile(self, pipeline_module, expected_result_path):
     """Tests compiling the whole pipeline."""

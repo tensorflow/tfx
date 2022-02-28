@@ -438,7 +438,6 @@ class ChannelParameter:
   def type_check(self, arg_name: str, value: channel.BaseChannel):
     if ((not isinstance(value, channel.BaseChannel)) or
         not (value.type is self.type or
-             value.type.__name__ == self.type.__name__ or
              value.type in getattr(self.type, COMPATIBLE_TYPES_KEY, ()))):
       raise TypeError('Argument %s should be a Channel of type %r (got %s).' %
                       (arg_name, self.type, value))

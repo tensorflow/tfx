@@ -130,17 +130,6 @@ _PIPELINE_NODE = text_format.Parse(
         }
       }
     }
-   outputs {
-      key: "output_4"
-      value {
-        artifact_spec {
-          type {
-            id: 4
-            name: "Integer_Metrics"
-          }
-        }
-      }
-    }
   }
 """, pipeline_pb2.PipelineNode())
 
@@ -171,11 +160,9 @@ class OutputUtilsTest(test_case_utils.TfxTest, parameterized.TestCase):
     self.assertIn('output_1', output_artifacts)
     self.assertIn('output_2', output_artifacts)
     self.assertIn('output_3', output_artifacts)
-    self.assertIn('output_4', output_artifacts)
     self.assertLen(output_artifacts['output_1'], 1)
     self.assertLen(output_artifacts['output_2'], 1)
     self.assertLen(output_artifacts['output_3'], 1)
-    self.assertLen(output_artifacts['output_4'], 1)
 
     artifact_1 = output_artifacts['output_1'][0]
     self.assertRegex(artifact_1.uri, '.*/test_node/output_1/1')
@@ -228,14 +215,6 @@ class OutputUtilsTest(test_case_utils.TfxTest, parameterized.TestCase):
         id: 3
         name: "String"
         """, artifact_3.artifact_type)
-
-    artifact_4 = output_artifacts['output_4'][0]
-    self.assertRegex(artifact_4.uri, '.*/test_node/output_4/1/value')
-    self.assertRegex(artifact_4.name, artifact_name_prefix + ':output_4:0')
-    self.assertProtoEquals("""
-        id: 4
-        name: "Integer_Metrics"
-        """, artifact_4.artifact_type)
 
   def testGetExecutorOutputUri(self):
     executor_output_uri = self._output_resolver().get_executor_output_uri(1)
