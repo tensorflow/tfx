@@ -224,7 +224,9 @@ class Artifact(json_utils.Jsonable):
 
   @classmethod
   def _get_artifact_type(cls):
-    if not getattr(cls, '_MLMD_ARTIFACT_TYPE', None):
+    existing_artifact_type = getattr(cls, '_MLMD_ARTIFACT_TYPE', None)
+    if (not existing_artifact_type) or (cls.TYPE_NAME !=
+                                        existing_artifact_type.name):
       type_name = cls.TYPE_NAME
       if not (type_name and isinstance(type_name, str)):
         raise ValueError(
