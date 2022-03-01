@@ -82,7 +82,7 @@ def make_required_install_packages():
       'keras-tuner>=1.0.4,<2',
       'kubernetes>=10.0.1,<13',
       'numpy>=1.16,<2',
-      'pyarrow>=1,<6',
+      'pyarrow>=1,<7',
       'pyyaml>=3.12,<6',
       # Keep the TF version same as TFT to help Pip version resolution.
       # Pip might stuck in a TF 1.15 dependency although there is a working
