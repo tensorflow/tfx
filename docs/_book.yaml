@@ -45,6 +45,8 @@ upper_tabs:
         - include: /tfx/serving/api_docs/cc/_doxygen.yaml
       - heading: ML Metadata
       - include: /tfx/ml_metadata/api_docs/python/mlmd/_toc.yaml
+      - heading: TF Metadata
+      - include: /tfx/tf_metadata/api_docs/python/tfmd/proto/_toc.yaml
       - heading: tfx_bsl
       - include: /tfx/tfx_bsl/api_docs/python/tfx_bsl/public/_toc.yaml
 
