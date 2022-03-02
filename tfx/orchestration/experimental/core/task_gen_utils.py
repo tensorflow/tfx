@@ -48,11 +48,12 @@ class ResolvedInfo:
   input_artifacts: List[Optional[typing_utils.ArtifactMultiMap]]
 
 
-def generate_task_from_execution(metadata_handler: metadata.Metadata,
-                                 pipeline: pipeline_pb2.Pipeline,
-                                 node: pipeline_pb2.PipelineNode,
-                                 execution: metadata_store_pb2.Execution,
-                                 is_cancelled: bool = False) -> task_lib.Task:
+def generate_task_from_execution(
+    metadata_handler: metadata.Metadata,
+    pipeline: pipeline_pb2.Pipeline,
+    node: pipeline_pb2.PipelineNode,
+    execution: metadata_store_pb2.Execution,
+    cancel_type: Optional[task_lib.NodeCancelType] = None) -> task_lib.Task:
   """Generates `ExecNodeTask` given execution."""
   if not execution_lib.is_execution_active(execution):
     raise RuntimeError(f'Execution is not active: {execution}.')
@@ -79,7 +80,7 @@ def generate_task_from_execution(metadata_handler: metadata.Metadata,
           execution.id),
       tmp_dir=outputs_resolver.make_tmp_dir(execution.id),
       pipeline=pipeline,
-      is_cancelled=is_cancelled)
+      cancel_type=cancel_type)
 
 
 def generate_task_from_active_execution(
@@ -87,7 +88,7 @@ def generate_task_from_active_execution(
     pipeline: pipeline_pb2.Pipeline,
     node: pipeline_pb2.PipelineNode,
     executions: Iterable[metadata_store_pb2.Execution],
-    is_cancelled: bool = False,
+    cancel_type: Optional[task_lib.NodeCancelType] = None,
 ) -> Optional[task_lib.Task]:
   """Generates task from active execution (if any).
 
@@ -98,7 +99,7 @@ def generate_task_from_active_execution(
     pipeline: The pipeline containing the node.
     node: The pipeline node for which to generate a task.
     executions: A sequence of all executions for the given node.
-    is_cancelled: Sets `is_cancelled` in ExecNodeTask.
+    cancel_type: Sets `cancel_type` in ExecNodeTask.
 
   Returns:
     A `Task` proto if active execution exists for the node. `None` otherwise.
@@ -123,7 +124,7 @@ def generate_task_from_active_execution(
       pipeline,
       node,
       active_executions[0],
-      is_cancelled=is_cancelled)
+      cancel_type=cancel_type)
 
 
 def extract_properties(

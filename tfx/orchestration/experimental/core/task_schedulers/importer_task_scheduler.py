@@ -53,5 +53,5 @@ class ImporterTaskScheduler(task_scheduler.TaskScheduler[task_lib.ExecNodeTask]
         output=task_scheduler.ImporterNodeOutput(
             output_artifacts=output_artifacts))
 
-  def cancel(self) -> None:
+  def cancel(self, cancel_task: task_lib.CancelTask) -> None:
     pass
