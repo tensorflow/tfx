@@ -16,8 +16,9 @@
 import copy
 import json
 import os
-
+import unittest
 from unittest import mock
+
 import tensorflow as tf
 from tfx.components.testdata.module_file import trainer_module
 from tfx.components.trainer import executor
@@ -31,6 +32,8 @@ from tfx.utils import path_utils
 from tfx.utils import proto_utils
 
 
+@unittest.skipIf(tf.__version__ < '2',
+                 'This test uses testdata only compatible with TF 2.x')
 class ExecutorTest(tf.test.TestCase):
 
   def setUp(self):
