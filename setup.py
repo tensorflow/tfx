@@ -197,6 +197,7 @@ tfx_extras_requires = {
     'docker-image': dependencies.make_extra_packages_docker_image(),
     'airflow': dependencies.make_extra_packages_airflow(),
     'kfp': dependencies.make_extra_packages_kfp(),
+    'tf-model-garden': dependencies.make_extra_packages_model_garden(),
     'tfjs': dependencies.make_extra_packages_tfjs(),
     'tf-ranking': dependencies.make_extra_packages_tf_ranking(),
     'tfdf': dependencies.make_extra_packages_tfdf(),

@@ -156,6 +156,13 @@ def make_extra_packages_tfjs():
   ]
 
 
+def make_extra_packages_model_garden():
+  # Packages needed for model garden which will be used in model garden example.
+  return [
+      'tf-models-nightly~=2.8.0'
+  ]
+
+
 def make_extra_packages_tf_ranking():
   # Packages needed for tf-ranking which is used in tfx/examples/ranking.
   return [
@@ -213,6 +220,7 @@ def make_extra_packages_all():
       *make_extra_packages_test(),
       *make_extra_packages_tfjs(),
       *make_extra_packages_tf_ranking(),
+      *make_extra_packages_model_garden(),
       *make_extra_packages_tfdf(),
       *make_extra_packages_examples(),
   ]
