@@ -23,6 +23,7 @@ from tfx.dsl.input_resolution.strategies import conditional_strategy
 from tfx.dsl.input_resolution.strategies import latest_artifact_strategy
 from tfx.dsl.input_resolution.strategies import latest_blessed_model_strategy
 from tfx.dsl.input_resolution.strategies import span_range_strategy
+from tfx.utils import name_utils
 
 _ResolverOpType = Type[resolver_op.ResolverOp]
 _ResolverStrategyType = Type[resolver.ResolverStrategy]
@@ -30,12 +31,8 @@ _OpTypes = Union[_ResolverOpType, _ResolverStrategyType]
 _OPS_BY_CLASSPATH: Dict[str, _OpTypes] = {}
 
 
-def _get_class_path(cls):
-  return f'{cls.__module__}.{cls.__name__}'
-
-
 def register(cls: _OpTypes) -> _OpTypes:
-  _OPS_BY_CLASSPATH[_get_class_path(cls)] = cls
+  _OPS_BY_CLASSPATH[name_utils.get_full_name(cls, strict_check=False)] = cls
   return cls
 
 SkipIfEmpty = skip_if_empty_op.SkipIfEmpty

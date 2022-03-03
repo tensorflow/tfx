@@ -31,6 +31,7 @@ from tfx.orchestration.portable.mlmd import common_utils
 from tfx.orchestration.portable.mlmd import context_lib
 from tfx.proto.orchestration import pipeline_pb2
 from tfx.utils import json_utils
+from tfx.utils import name_utils
 from tfx.utils import test_case_utils
 
 from google.protobuf import text_format
@@ -328,7 +329,7 @@ class InputsUtilsTest(test_case_utils.TfxTest, _TestMixin):
 
   def _append_resolver_step(self, node_pb, cls, config=None):
     step_pb = node_pb.inputs.resolver_config.resolver_steps.add()
-    step_pb.class_path = f'{cls.__module__}.{cls.__name__}'
+    step_pb.class_path = name_utils.get_full_name(cls)
     step_pb.config_json = json_utils.dumps(config or {})
 
   def testResolveInputArtifacts_SkippingStrategy(self):

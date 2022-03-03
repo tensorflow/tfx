@@ -28,6 +28,7 @@ from tfx.types import artifact_utils
 from tfx.types import standard_artifacts
 from tfx.types import standard_component_specs
 from tfx.utils import io_utils
+from tfx.utils import name_utils
 from tfx.utils import path_utils
 from tfx.utils import proto_utils
 
@@ -96,8 +97,7 @@ class ExecutorTest(tf.test.TestCase):
     self._module_file = os.path.join(self._source_data_dir,
                                      standard_component_specs.MODULE_FILE_KEY,
                                      'trainer_module.py')
-    self._trainer_fn = '%s.%s' % (trainer_module.trainer_fn.__module__,
-                                  trainer_module.trainer_fn.__name__)
+    self._trainer_fn = name_utils.get_full_name(trainer_module.trainer_fn)
 
     # Executors for test.
     self._trainer_executor = executor.Executor()

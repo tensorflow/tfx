@@ -19,6 +19,7 @@ import tensorflow as tf
 from tfx.components.experimental.data_view import provider_executor
 from tfx.components.testdata.module_file import data_view_module
 from tfx.types import standard_artifacts
+from tfx.utils import name_utils
 from tfx_bsl.coders import tf_graph_record_decoder
 
 
@@ -62,8 +63,7 @@ class DataViewProviderExecutorTest(tf.test.TestCase):
     exec_properties = {
         'module_file': None,
         'create_decoder_func':
-            '%s.%s' % (data_view_module.create_simple_decoder.__module__,
-                       data_view_module.create_simple_decoder.__name__),
+            name_utils.get_full_name(data_view_module.create_simple_decoder),
     }
     executor = provider_executor.TfGraphDataViewProviderExecutor()
     executor.Do(input_dict, output_dict, exec_properties)

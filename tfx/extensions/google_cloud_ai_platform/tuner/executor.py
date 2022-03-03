@@ -29,6 +29,7 @@ from tfx.extensions.google_cloud_ai_platform.trainer import executor as ai_platf
 from tfx.types import standard_component_specs
 from tfx.utils import doc_controls
 from tfx.utils import json_utils
+from tfx.utils import name_utils
 
 TUNING_ARGS_KEY = doc_controls.documented(
     obj='ai_platform_tuning_args',
@@ -169,8 +170,7 @@ class Executor(base_executor.BaseExecutor):
 
     # TODO(b/160059039): Factor out label creation to a utility function.
     executor_class = _WorkerExecutor
-    executor_class_path = '%s.%s' % (executor_class.__module__,
-                                     executor_class.__name__)
+    executor_class_path = name_utils.get_full_name(executor_class)
 
     # Note: exec_properties['custom_config'] here is a dict.
     return runner.start_cloud_training(input_dict, output_dict, exec_properties,

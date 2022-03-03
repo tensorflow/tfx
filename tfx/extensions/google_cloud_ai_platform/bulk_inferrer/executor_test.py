@@ -24,6 +24,7 @@ from tfx.proto import bulk_inferrer_pb2
 from tfx.types import artifact_utils
 from tfx.types import standard_artifacts
 from tfx.utils import json_utils
+from tfx.utils import name_utils
 from tfx.utils import path_utils
 from tfx.utils import proto_utils
 from tfx.utils import telemetry_utils
@@ -118,8 +119,7 @@ class ExecutorTest(tf.test.TestCase):
                                                      mock.ANY, mock.ANY,
                                                      mock.ANY,
                                                      inference_endpoint)
-    executor_class_path = '%s.%s' % (bulk_inferrer.__class__.__module__,
-                                     bulk_inferrer.__class__.__name__)
+    executor_class_path = name_utils.get_full_name(bulk_inferrer.__class__)
     with telemetry_utils.scoped_labels(
         {telemetry_utils.LABEL_TFX_EXECUTOR: executor_class_path}):
       job_labels = telemetry_utils.make_labels_dict()
@@ -184,8 +184,7 @@ class ExecutorTest(tf.test.TestCase):
                                                      mock.ANY, mock.ANY,
                                                      mock.ANY,
                                                      inference_endpoint)
-    executor_class_path = '%s.%s' % (bulk_inferrer.__class__.__module__,
-                                     bulk_inferrer.__class__.__name__)
+    executor_class_path = name_utils.get_full_name(bulk_inferrer.__class__)
     with telemetry_utils.scoped_labels(
         {telemetry_utils.LABEL_TFX_EXECUTOR: executor_class_path}):
       job_labels = telemetry_utils.make_labels_dict()

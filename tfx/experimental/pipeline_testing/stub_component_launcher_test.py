@@ -26,6 +26,7 @@ from tfx.orchestration import publisher
 from tfx.orchestration.launcher import test_utils
 from tfx.types import channel_utils
 from tfx.utils import io_utils
+from tfx.utils import name_utils
 
 from ml_metadata.proto import metadata_store_pb2
 
@@ -114,10 +115,7 @@ class StubComponentLauncherTest(tf.test.TestCase):
         additional_pipeline_args={})
     self.assertEqual(
         launcher._component_info.component_type,  # pylint: disable=protected-access
-        '.'.join([  # pylint: disable=protected-access
-            test_utils._FakeComponent.__module__,  # pylint: disable=protected-access
-            test_utils._FakeComponent.__name__  # pylint: disable=protected-access
-        ]))
+        name_utils.get_full_name(test_utils._FakeComponent))  # pylint: disable=protected-access)
     launcher.launch()
 
     output_path = self.component.outputs[self.output_key].get()[0].uri

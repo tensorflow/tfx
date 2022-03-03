@@ -25,6 +25,7 @@ from tfx.extensions.google_cloud_ai_platform.pusher import executor
 from tfx.types import standard_artifacts
 from tfx.types import standard_component_specs
 from tfx.utils import json_utils
+from tfx.utils import name_utils
 from tfx.utils import telemetry_utils
 
 
@@ -126,8 +127,7 @@ class ExecutorTest(tf.test.TestCase):
 
     self._executor.Do(self._input_dict, self._output_dict,
                       self._serialize_custom_config_under_test())
-    executor_class_path = '%s.%s' % (self._executor.__class__.__module__,
-                                     self._executor.__class__.__name__)
+    executor_class_path = name_utils.get_full_name(self._executor.__class__)
     with telemetry_utils.scoped_labels(
         {telemetry_utils.LABEL_TFX_EXECUTOR: executor_class_path}):
       job_labels = telemetry_utils.make_labels_dict()
@@ -203,8 +203,7 @@ class ExecutorTest(tf.test.TestCase):
 
     self._executor.Do(self._input_dict, self._output_dict,
                       self._serialize_custom_config_under_test())
-    executor_class_path = '%s.%s' % (self._executor.__class__.__module__,
-                                     self._executor.__class__.__name__)
+    executor_class_path = name_utils.get_full_name(self._executor.__class__)
     with telemetry_utils.scoped_labels(
         {telemetry_utils.LABEL_TFX_EXECUTOR: executor_class_path}):
       job_labels = telemetry_utils.make_labels_dict()
@@ -229,8 +228,7 @@ class ExecutorTest(tf.test.TestCase):
     self._model_blessing.set_int_custom_property('blessed', 1)
     self._executor.Do(self._input_dict, self._output_dict,
                       self._serialize_custom_config_under_test_vertex())
-    executor_class_path = '%s.%s' % (self._executor.__class__.__module__,
-                                     self._executor.__class__.__name__)
+    executor_class_path = name_utils.get_full_name(self._executor.__class__)
     with telemetry_utils.scoped_labels(
         {telemetry_utils.LABEL_TFX_EXECUTOR: executor_class_path}):
       job_labels = telemetry_utils.make_labels_dict()
@@ -281,8 +279,7 @@ class ExecutorTest(tf.test.TestCase):
     self._model_blessing.set_int_custom_property('blessed', 1)
     self._executor.Do(self._input_dict, self._output_dict,
                       self._serialize_custom_config_under_test_vertex())
-    executor_class_path = '%s.%s' % (self._executor.__class__.__module__,
-                                     self._executor.__class__.__name__)
+    executor_class_path = name_utils.get_full_name(self._executor.__class__)
     with telemetry_utils.scoped_labels(
         {telemetry_utils.LABEL_TFX_EXECUTOR: executor_class_path}):
       job_labels = telemetry_utils.make_labels_dict()

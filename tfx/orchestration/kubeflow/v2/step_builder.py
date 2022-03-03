@@ -38,6 +38,7 @@ from tfx.orchestration.kubeflow.v2 import parameter_utils
 from tfx.types import standard_artifacts
 from tfx.types.channel import Channel
 from tfx.utils import deprecation_utils
+from tfx.utils import name_utils
 
 from ml_metadata.proto import metadata_store_pb2
 
@@ -421,9 +422,8 @@ class StepBuilder:
     if self._image_cmds:
       for cmd in self._image_cmds:
         result.command.append(cmd)
-    executor_path = '%s.%s' % (
-        self._node.executor_spec.executor_class.__module__,
-        self._node.executor_spec.executor_class.__name__)
+    executor_path = name_utils.get_full_name(
+        self._node.executor_spec.executor_class)
     # Resolve container arguments.
     result.args.append('--executor_class_path')
     result.args.append(executor_path)
@@ -468,9 +468,8 @@ class StepBuilder:
     if self._image_cmds:
       for cmd in self._image_cmds:
         result.command.append(cmd)
-    executor_path = '%s.%s' % (
-        self._node.executor_spec.executor_class.__module__,
-        self._node.executor_spec.executor_class.__name__)
+    executor_path = name_utils.get_full_name(
+        self._node.executor_spec.executor_class)
     # Resolve container arguments.
     result.args.append('--executor_class_path')
     result.args.append(executor_path)

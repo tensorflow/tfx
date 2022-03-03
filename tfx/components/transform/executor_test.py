@@ -32,6 +32,7 @@ from tfx.types import artifact_utils
 from tfx.types import standard_artifacts
 from tfx.types import standard_component_specs
 from tfx.utils import io_utils
+from tfx.utils import name_utils
 from tfx.utils import proto_utils
 
 
@@ -180,12 +181,10 @@ class ExecutorTest(tft_unit.TransformTestCase):
     # Create exec properties skeleton.
     self._module_file = os.path.join(self._SOURCE_DATA_DIR,
                                      'module_file/transform_module.py')
-    self._preprocessing_fn = '%s.%s' % (
-        transform_module.preprocessing_fn.__module__,
-        transform_module.preprocessing_fn.__name__)
-    self._stats_options_updater_fn = '%s.%s' % (
-        transform_module.stats_options_updater_fn.__module__,
-        transform_module.stats_options_updater_fn.__name__)
+    self._preprocessing_fn = name_utils.get_full_name(
+        transform_module.preprocessing_fn)
+    self._stats_options_updater_fn = name_utils.get_full_name(
+        transform_module.stats_options_updater_fn)
     self._exec_properties[standard_component_specs.SPLITS_CONFIG_KEY] = None
     self._exec_properties[
         standard_component_specs.FORCE_TF_COMPAT_V1_KEY] = int(
@@ -385,9 +384,8 @@ class ExecutorTest(tft_unit.TransformTestCase):
 
   def test_do_with_preprocessing_fn_custom_config(self):
     self._exec_properties[
-        standard_component_specs.PREPROCESSING_FN_KEY] = '%s.%s' % (
-            transform_module.preprocessing_fn.__module__,
-            transform_module.preprocessing_fn.__name__)
+        standard_component_specs.PREPROCESSING_FN_KEY] = (
+            name_utils.get_full_name(transform_module.preprocessing_fn))
     self._exec_properties[
         standard_component_specs.CUSTOM_CONFIG_KEY] = json.dumps({
             'VOCAB_SIZE': 1000,
@@ -399,9 +397,8 @@ class ExecutorTest(tft_unit.TransformTestCase):
 
   def test_do_with_preprocessing_fn_and_none_custom_config(self):
     self._exec_properties[
-        standard_component_specs.PREPROCESSING_FN_KEY] = '%s.%s' % (
-            transform_module.preprocessing_fn.__module__,
-            transform_module.preprocessing_fn.__name__)
+        standard_component_specs.PREPROCESSING_FN_KEY] = (
+            name_utils.get_full_name(transform_module.preprocessing_fn))
     self._exec_properties['custom_config'] = json.dumps(None)
     self._transform_executor.Do(self._input_dict, self._output_dict,
                                 self._exec_properties)

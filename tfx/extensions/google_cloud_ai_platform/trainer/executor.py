@@ -25,6 +25,7 @@ from tfx.extensions.google_cloud_ai_platform.constants import VERTEX_REGION_KEY
 from tfx.types import standard_component_specs
 from tfx.utils import doc_controls
 from tfx.utils import json_utils
+from tfx.utils import name_utils
 
 TRAINING_ARGS_KEY = doc_controls.documented(
     obj='ai_platform_training_args',
@@ -105,8 +106,7 @@ class GenericExecutor(base_executor.BaseExecutor):
                                       custom_config.get(UCAIP_REGION_KEY))
 
     executor_class = self._GetExecutorClass()
-    executor_class_path = '%s.%s' % (executor_class.__module__,
-                                     executor_class.__name__)
+    executor_class_path = name_utils.get_full_name(executor_class)
     # Note: exec_properties['custom_config'] here is a dict.
     return runner.start_cloud_training(input_dict, output_dict, exec_properties,
                                        executor_class_path, job_args,

@@ -40,6 +40,7 @@ from tfx.types import channel_utils
 from tfx.types import value_artifact
 from tfx.utils import deprecation_utils
 from tfx.utils import json_utils
+from tfx.utils import name_utils
 
 from ml_metadata.proto import metadata_store_pb2
 
@@ -614,7 +615,7 @@ class Compiler:
 
 def _fully_qualified_name(cls: Type[Any]):
   cls = deprecation_utils.get_first_nondeprecated_class(cls)
-  return f"{cls.__module__}.{cls.__qualname__}"
+  return name_utils.get_full_name(cls)
 
 
 def _compile_resolver_op(

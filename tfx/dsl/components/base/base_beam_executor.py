@@ -20,6 +20,7 @@ from absl import flags
 from absl import logging
 from tfx.dsl.components.base.base_executor import BaseExecutor
 from tfx.proto.orchestration import pipeline_pb2
+from tfx.utils import name_utils
 from tfx.utils import telemetry_utils
 from tfx.utils import dependency_utils
 
@@ -79,8 +80,7 @@ class BaseBeamExecutor(BaseExecutor):
     if self._beam_pipeline_args:
       self._beam_pipeline_args = dependency_utils.make_beam_dependency_flags(
           self._beam_pipeline_args)
-      executor_class_path = '%s.%s' % (self.__class__.__module__,
-                                       self.__class__.__name__)
+      executor_class_path = name_utils.get_full_name(self.__class__)
       # TODO(zhitaoli): Rethink how we can add labels and only normalize them
       # if the job is submitted against GCP.
       with telemetry_utils.scoped_labels(

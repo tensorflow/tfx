@@ -27,6 +27,7 @@ from tfx.types import standard_component_specs
 from tfx.utils import deprecation_utils
 from tfx.utils import io_utils
 from tfx.utils import json_utils
+from tfx.utils import name_utils
 from tfx.utils import telemetry_utils
 
 # Keys for custom_config.
@@ -96,8 +97,7 @@ class Executor(tfx_pusher_executor.Executor):
     io_utils.copy_dir(src=self.GetModelPath(input_dict), dst=model_push.uri)
     model_path = model_push.uri
 
-    executor_class_path = '%s.%s' % (self.__class__.__module__,
-                                     self.__class__.__name__)
+    executor_class_path = name_utils.get_full_name(self.__class__)
     with telemetry_utils.scoped_labels(
         {telemetry_utils.LABEL_TFX_EXECUTOR: executor_class_path}):
       job_labels = telemetry_utils.make_labels_dict()

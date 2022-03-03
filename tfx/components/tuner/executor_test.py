@@ -29,6 +29,7 @@ from tfx.types import artifact_utils
 from tfx.types import standard_artifacts
 from tfx.types import standard_component_specs
 from tfx.utils import io_utils
+from tfx.utils import name_utils
 from tfx.utils import proto_utils
 
 from tensorflow.python.lib.io import file_io  # pylint: disable=g-direct-tensorflow-import
@@ -112,8 +113,8 @@ class ExecutorTest(tf.test.TestCase):
     self._verify_output()
 
   def testDoWithTunerFn(self):
-    self._exec_properties[standard_component_specs.TUNER_FN_KEY] = '%s.%s' % (
-        tuner_module.tuner_fn.__module__, tuner_module.tuner_fn.__name__)
+    self._exec_properties[standard_component_specs.TUNER_FN_KEY] = (
+        name_utils.get_full_name(tuner_module.tuner_fn))
 
     tuner = executor.Executor(self._context)
     tuner.Do(
