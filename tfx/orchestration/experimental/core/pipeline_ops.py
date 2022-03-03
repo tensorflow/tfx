@@ -581,20 +581,52 @@ def _cancel_nodes(mlmd_handle: metadata.Metadata,
                   service_job_manager: service_jobs.ServiceJobManager,
                   pipeline_state: pstate.PipelineState,
                   pause: bool,
+                  cancel_reason: status_lib.Status,
                   reload_node_ids: Optional[List[str]] = None) -> bool:
   """Cancels pipeline nodes and returns `True` if any node is currently active."""
-  pipeline = pipeline_state.pipeline
-  is_active = False
-  for node in pstate.get_all_pipeline_nodes(pipeline):
-    # TODO(b/217584342): Partial reload which excludes service nodes is not
-    # fully supported in async pipelines since we don't have a mechanism to
-    # reload them later for new executions.
-    if reload_node_ids is not None and node.node_info.id not in reload_node_ids:
-      continue
-    if _cancel_node(mlmd_handle, task_queue, service_job_manager,
-                    pipeline_state, node, pause):
-      is_active = True
-  return is_active
+  nodes_to_stop = []
+  with pipeline_state:
+    pipeline = pipeline_state.pipeline
+    for node in pstate.get_all_pipeline_nodes(pipeline):
+      # TODO(b/217584342): Partial reload which excludes service nodes is not
+      # fully supported in async pipelines since we don't have a mechanism to
+      # reload them later for new executions.
+      if reload_node_ids is not None and node.node_info.id not in reload_node_ids:
+        continue
+      node_uid = task_lib.NodeUid.from_pipeline_node(pipeline, node)
+      with pipeline_state.node_state_update_context(node_uid) as node_state:
+        if node_state.is_stoppable():
+          node_state.update(
+              pstate.NodeState.STOPPING,
+              status_lib.Status(
+                  code=cancel_reason.code, message=cancel_reason.message))
+      if node_state.state == pstate.NodeState.STOPPING:
+        nodes_to_stop.append(node)
+
+  # Issue cancellation for nodes_to_stop and gather the ones whose stopping is
+  # complete.
+  stopped_nodes = []
+  for node in nodes_to_stop:
+    if not _cancel_node(
+        mlmd_handle,
+        task_queue,
+        service_job_manager,
+        pipeline_state,
+        node,
+        pause=pause):
+      stopped_nodes.append(node)
+
+  # Change the state of stopped nodes to STOPPED.
+  with pipeline_state:
+    for node in stopped_nodes:
+      node_uid = task_lib.NodeUid.from_pipeline_node(pipeline, node)
+      with pipeline_state.node_state_update_context(node_uid) as node_state:
+        node_state.update(pstate.NodeState.STOPPED, node_state.status)
+
+  all_stopped = set(n.node_info.id for n in nodes_to_stop) == set(
+      n.node_info.id for n in stopped_nodes)
+
+  return not all_stopped
 
 
 def _cancel_node(mlmd_handle: metadata.Metadata, task_queue: tq.TaskQueue,
@@ -621,48 +653,18 @@ def _orchestrate_stop_initiated_pipeline(
     service_job_manager: service_jobs.ServiceJobManager,
     pipeline_state: pstate.PipelineState) -> None:
   """Orchestrates stop initiated pipeline."""
-  # Flip all the stoppable nodes to state STOPPING.
-  nodes_to_stop = []
   with pipeline_state:
-    pipeline = pipeline_state.pipeline
     stop_reason = pipeline_state.stop_initiated_reason()
     assert stop_reason is not None
-    for node in pstate.get_all_pipeline_nodes(pipeline):
-      node_uid = task_lib.NodeUid.from_pipeline_node(pipeline, node)
-      with pipeline_state.node_state_update_context(node_uid) as node_state:
-        if node_state.is_stoppable():
-          node_state.update(
-              pstate.NodeState.STOPPING,
-              status_lib.Status(
-                  code=stop_reason.code, message=stop_reason.message))
-      if node_state.state == pstate.NodeState.STOPPING:
-        nodes_to_stop.append(node)
-
-  # Issue cancellation for nodes_to_stop and gather the ones whose stopping is
-  # complete.
-  stopped_nodes = []
-  for node in nodes_to_stop:
-    if not _cancel_node(
-        mlmd_handle,
-        task_queue,
-        service_job_manager,
-        pipeline_state,
-        node,
-        pause=False):
-      stopped_nodes.append(node)
-
-  # Change the state of stopped nodes to STOPPED.
-  with pipeline_state:
-    for node in stopped_nodes:
-      node_uid = task_lib.NodeUid.from_pipeline_node(pipeline, node)
-      with pipeline_state.node_state_update_context(node_uid) as node_state:
-        node_state.update(pstate.NodeState.STOPPED, node_state.status)
-
-  # If all the nodes_to_stop have been stopped, we can update the pipeline
-  # execution state.
-  all_stopped = set(n.node_info.id for n in nodes_to_stop) == set(
-      n.node_info.id for n in stopped_nodes)
-  if all_stopped:
+  # Stop all stoppable nodes, and change their state to STOPPED.
+  is_active = _cancel_nodes(
+      mlmd_handle,
+      task_queue,
+      service_job_manager,
+      pipeline_state,
+      pause=False,
+      cancel_reason=stop_reason)
+  if not is_active:
     with pipeline_state:
       # Update pipeline execution state in MLMD.
       pipeline_state.set_pipeline_execution_state(
@@ -676,17 +678,34 @@ def _orchestrate_update_initiated_pipeline(
   """Orchestrates an update-initiated pipeline."""
   with pipeline_state:
     update_options = pipeline_state.get_update_options()
+    reload_node_ids = list(
+        update_options.reload_nodes
+    ) if update_options.reload_policy == update_options.PARTIAL else None
   is_active = _cancel_nodes(
       mlmd_handle=mlmd_handle,
       task_queue=task_queue,
       service_job_manager=service_job_manager,
       pipeline_state=pipeline_state,
       pause=True,
-      reload_node_ids=list(update_options.reload_nodes)
-      if update_options.reload_policy == update_options.PARTIAL else None)
-  if not is_active:
-    with pipeline_state:
-      pipeline_state.apply_pipeline_update()
+      cancel_reason=status_lib.Status(code=status_lib.Code.CANCELLED),
+      reload_node_ids=reload_node_ids)
+  if is_active:
+    return
+
+  with pipeline_state:
+    pipeline = pipeline_state.pipeline
+    for node in pstate.get_all_pipeline_nodes(pipeline):
+      # TODO(b/217584342): Partial reload which excludes service nodes is not
+      # fully supported in async pipelines since we don't have a mechanism to
+      # reload them later for new executions.
+      if reload_node_ids is not None and node.node_info.id not in reload_node_ids:
+        continue
+      node_uid = task_lib.NodeUid.from_pipeline_node(pipeline, node)
+      with pipeline_state.node_state_update_context(node_uid) as node_state:
+        if node_state.is_startable():
+          node_state.update(pstate.NodeState.STARTED)
+
+    pipeline_state.apply_pipeline_update()
 
 
 @attr.s(auto_attribs=True, kw_only=True)
