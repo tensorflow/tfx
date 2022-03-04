@@ -152,12 +152,9 @@ class OutputsResolver:
       artifact_name = f'{self._pipeline_info.id}'
       if self._execution_mode == pipeline_pb2.Pipeline.SYNC:
         artifact_name = f'{artifact_name}:{self._pipeline_run_id}'
-      # The index of this artifact, since we only has one artifact per output
-      # for now, it is always 0.
-      # TODO(b/162331170): Update the "0" to the actual index.
-      artifact_name = (
-          f'{artifact_name}:{self._pipeline_node.node_info.id}:{key}:0')
-      artifact.name = artifact_name
+      artifact.name = (
+          f'{artifact_name}:{self._pipeline_node.node_info.id}:{key}:{execution_id}'
+      )
       _attach_artifact_properties(output_spec.artifact_spec, artifact)
 
       logging.debug('Creating output artifact uri %s', artifact.uri)
@@ -189,8 +186,8 @@ class OutputsResolver:
         will be <node_dir>/.system/stateful_working_dir/<execution_id>. If
         execution_id is not provided, for backward compatibility purposes,
         <pipeline_run_id> is used instead of <execution_id> but an error is
-        raised if the execution_mode is not SYNC (since ASYNC pipelines have
-        no pipeline_run_id).
+        raised if the execution_mode is not SYNC (since ASYNC pipelines have no
+        pipeline_run_id).
 
     Returns:
       Path to stateful working directory.
@@ -291,6 +288,3 @@ def populate_exec_properties(
           'supported, going to drop it', type(value), key)
       continue
     executor_output.execution_properties[key].CopyFrom(v)
-
-
-
