@@ -28,6 +28,7 @@ from tfx.dsl.components.base import base_node
 from tfx.dsl.components.base import executor_spec
 from tfx.dsl.components.common import importer
 from tfx.dsl.components.common import resolver
+from tfx.dsl.context_managers import dsl_context_registry
 from tfx.dsl.experimental.conditionals import conditional
 from tfx.dsl.input_resolution.strategies import latest_artifact_strategy
 from tfx.dsl.input_resolution.strategies import latest_blessed_model_strategy
@@ -132,6 +133,7 @@ class StepBuilder:
                node: base_node.BaseNode,
                deployment_config: pipeline_pb2.PipelineDeploymentConfig,
                component_defs: Dict[str, pipeline_pb2.ComponentSpec],
+               dsl_context_reg: dsl_context_registry.DslContextRegistry,
                image: Optional[str] = None,
                image_cmds: Optional[List[str]] = None,
                beam_pipeline_args: Optional[List[str]] = None,
@@ -154,6 +156,8 @@ class StepBuilder:
       deployment_config: The deployment config in Kubeflow IR to be populated.
       component_defs: Dict mapping from node id to compiled ComponetSpec proto.
         Items in the dict will get updated as the pipeline is built.
+      dsl_context_reg: A DslContextRegistry instance from
+        Pipeline.dsl_context_registry.
       image: TFX image used in the underlying container spec. Required if node
         is a TFX component.
       image_cmds: Optional. If not specified the default `ENTRYPOINT` defined
@@ -187,6 +191,7 @@ class StepBuilder:
     self._node = node
     self._deployment_config = deployment_config
     self._component_defs = component_defs
+    self._dsl_context_registry = dsl_context_reg
     self._inputs = node.inputs
     self._outputs = node.outputs
     self._enable_cache = enable_cache
@@ -255,7 +260,8 @@ class StepBuilder:
     # Conditionals
     implicit_input_channels = {}
     implicit_upstream_node_ids = set()
-    predicates = conditional.get_predicates(self._node)
+    predicates = conditional.get_predicates(
+        self._node, self._dsl_context_registry)
     if predicates:
       implicit_keys_map = {
           tfx_compiler_utils.implicit_channel_key(channel): key

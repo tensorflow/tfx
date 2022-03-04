@@ -13,16 +13,20 @@
 # limitations under the License.
 """Definition and related classes for TFX pipeline."""
 
+import copy
 import enum
 from typing import Collection, List, Optional, Union, cast
+import warnings
 
 from tfx.dsl.compiler import constants
 from tfx.dsl.components.base import base_node
 from tfx.dsl.components.base import executor_spec
+from tfx.dsl.context_managers import dsl_context_registry
 from tfx.dsl.placeholder import placeholder as ph
 from tfx.orchestration import data_types
 from tfx.orchestration import metadata
 from tfx.types import channel_utils
+from tfx.utils import doc_controls
 from tfx.utils import topsort
 
 from google.protobuf import message
@@ -240,6 +244,10 @@ class Pipeline:
           f'pipeline {pipeline_name} exceeds maximum allowed length: {_MAX_PIPELINE_NAME_LENGTH}.'
       )
 
+    # Once pipeline is finalized, this instance is regarded as immutable and
+    # any detectable mutation will raise an error.
+    self._finalized = False
+
     # TODO(b/183621450): deprecate PipelineInfo.
     self.pipeline_info = data_types.PipelineInfo(  # pylint: disable=g-missing-from-attributes
         pipeline_name=pipeline_name,
@@ -252,16 +260,37 @@ class Pipeline:
 
     self.platform_config = platform_config
 
-    self.additional_pipeline_args = kwargs.get(  # pylint: disable=g-missing-from-attributes
+    self.additional_pipeline_args = kwargs.pop(  # pylint: disable=g-missing-from-attributes
         'additional_pipeline_args', {})
 
-    # Calls property setter.
-    self.components = components or []
+    reg = kwargs.pop('dsl_context_registry', None)
+    if reg:
+      if not isinstance(reg, dsl_context_registry.DslContextRegistry):
+        raise ValueError('dsl_context_registry must be DslContextRegistry type '
+                         f'but got {reg}')
+    self._dsl_context_registry = reg
+
+    # TODO(b/216581002): Use self._dsl_context_registry to obtain components.
+    self._components = []
+    if components:
+      self._set_components(components)
+
+  def _check_mutable(self):
+    if self._finalized:
+      raise RuntimeError('Cannot mutate Pipeline after finalize.')
 
   @property
   def beam_pipeline_args(self):
     """Beam pipeline args used for all components in the pipeline."""
     return self._beam_pipeline_args
+
+  @property
+  @doc_controls.do_not_generate_docs
+  def dsl_context_registry(self) -> dsl_context_registry.DslContextRegistry:  # pylint: disable=g-missing-from-attributes
+    if self._dsl_context_registry is None:
+      raise RuntimeError('DslContextRegistry is not persisted yet. Run '
+                         'pipeline.finalize() first.')
+    return self._dsl_context_registry
 
   @property
   def components(self):
@@ -270,6 +299,12 @@ class Pipeline:
 
   @components.setter
   def components(self, components: List[base_node.BaseNode]):
+    self._set_components(components)
+
+  def _set_components(self, components: List[base_node.BaseNode]) -> None:
+    """Set a full list of components of the pipeline."""
+    self._check_mutable()
+
     deduped_components = set(components)
     node_by_id = {}
 
@@ -317,3 +352,26 @@ class Pipeline:
     if self.beam_pipeline_args:
       for component in self._components:
         add_beam_pipeline_args_to_component(component, self.beam_pipeline_args)
+
+  @doc_controls.do_not_generate_docs
+  def finalize(self):
+    self._persist_dsl_context_registry()
+    self._finalized = True
+
+  def _persist_dsl_context_registry(self):
+    """Persist the DslContextRegistry to the pipeline."""
+    # If no dsl_context_registry is given from the external, copy the current
+    # global DslContextRegistry.
+    if self._dsl_context_registry is None:
+      self._dsl_context_registry = copy.copy(dsl_context_registry.get())
+    self._dsl_context_registry.finalize()
+
+    given_components = set(self._components)
+    registry_components = set(self._dsl_context_registry.all_nodes)
+    for unseen_component in given_components - registry_components:
+      warnings.warn(
+          f'Component {unseen_component.id} is not found from the registry. '
+          'This is probably due to reusing component from another pipeline '
+          'or interleaved pipeline definitions. Make sure each component '
+          'belong to exactly one pipeline, and pipeline definitions are '
+          'separated.')

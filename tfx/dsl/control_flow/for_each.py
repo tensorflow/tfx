@@ -12,51 +12,43 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Module for `ForEach` context manager."""
+from typing import Sequence
 
 import attr
 
 from tfx import types
 from tfx.dsl.components.base import base_node
-from tfx.dsl.context_managers import context_manager
+from tfx.dsl.context_managers import dsl_context
+from tfx.dsl.context_managers import dsl_context_manager
 
 
-@attr.s(auto_attribs=True, kw_only=True)
-class ForEachContext(context_manager.DslContext):
+@attr.s(auto_attribs=True, kw_only=True, hash=False, eq=False)
+class ForEachContext(dsl_context.DslContext):
   """DslContext for ForEach."""
   wrapped_channel: types.BaseChannel
 
-  def validate(self):
+  def validate(self, containing_nodes: Sequence[base_node.BaseNode]):
     for parent in self.ancestors:
       if isinstance(parent, ForEachContext):
         raise NotImplementedError('Nested ForEach block is not supported yet.')
 
-  def will_add_node(self, node: base_node.BaseNode):
-    if self.nodes:
+    if len(containing_nodes) > 1:
       raise NotImplementedError(
-          'Defining multiple nodes inside ForEach block is not supported yet. '
-          'Try placing a node in a separate ForEach block.')
+          'Cannot define more than one component within ForEach yet.')
 
-    # Check the iterating channel is directly used.
-    # Ex:
-    #     with ForEach(a.outputs['aa']) as aa:
-    #       b = B(aa=aa)
-    #
-    # Currently we're only allowing one component under ForEach block so the
-    # component must directly use the LoopVarChannel, but as we allow multiple
-    # components and nested ForEach block, we need to allow indirect usage of
-    # LoopVarChannel as well.
-    for input_channel in node.inputs.values():
-      if (isinstance(input_channel, types.LoopVarChannel) and
-          input_channel.wrapped is self.wrapped_channel):
-        break
-    else:
-      raise ValueError(
-          f'Cannot define {node.id} within the ForEach block if it does not '
-          'use the iterating channel as an input. Please define the node '
-          'outside the ForEach block.')
+    for node in containing_nodes:
+      for input_channel in node.inputs.values():
+        if (isinstance(input_channel, types.LoopVarChannel) and
+            input_channel.wrapped is self.wrapped_channel):
+          break
+      else:
+        raise ValueError(
+            f'Node {node.id} does not use ForEach sliced value and will always '
+            'see the same input. Please define the node outside the ForEach '
+            'block.')
 
 
-class ForEach(context_manager.DslContextManager[types.LoopVarChannel]):
+class ForEach(dsl_context_manager.DslContextManager[types.LoopVarChannel]):
   """ForEach context manager.
 
   ForEach context manager is a declarative version of For loop in a pipeline
@@ -81,10 +73,11 @@ class ForEach(context_manager.DslContextManager[types.LoopVarChannel]):
   """
 
   def __init__(self, channel: types.BaseChannel):
+    super().__init__()
     self._channel = channel
 
   def create_context(self) -> ForEachContext:
     return ForEachContext(wrapped_channel=self._channel)
 
   def enter(self, context: ForEachContext) -> types.LoopVarChannel:
-    return types.LoopVarChannel(self._channel, context.id)
+    return types.LoopVarChannel(self._channel, context)

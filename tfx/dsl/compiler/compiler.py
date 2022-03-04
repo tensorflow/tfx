@@ -24,7 +24,6 @@ from tfx.dsl.components.base import base_component
 from tfx.dsl.components.base import base_driver
 from tfx.dsl.components.base import base_node
 from tfx.dsl.components.common import resolver
-from tfx.dsl.context_managers import context_manager
 from tfx.dsl.control_flow import for_each
 from tfx.dsl.experimental.conditionals import conditional
 from tfx.dsl.input_resolution import resolver_function
@@ -52,6 +51,7 @@ class _CompilerContext:
     self.pipeline_info = tfx_pipeline.pipeline_info
     self.execution_mode = compiler_utils.resolve_execution_mode(tfx_pipeline)
     self.node_pbs = {}
+    self.dsl_context_registry = tfx_pipeline.dsl_context_registry
     self._pipeline_nodes_by_id = {}
     self._topological_order = {}
     self._implicit_upstream_nodes = collections.defaultdict(set)
@@ -66,8 +66,8 @@ class _CompilerContext:
     self._implicit_downstream_nodes[parent_id].add(child_id)
 
   def _collect_conditional_dependency(self, here: base_node.BaseNode) -> None:
-    predicates = conditional.get_predicates(here)
-    for predicate in predicates:
+    for predicate in conditional.get_predicates(
+        here, self.dsl_context_registry):
       for chnl in predicate.dependent_channels():
         self._add_implicit_dependency(chnl.producer_component_id, here.id)
 
@@ -199,7 +199,8 @@ class Compiler:
     # Step 3.1: Generate implicit input channels
     # Step 3.1.1: Conditionals
     implicit_input_channels = {}
-    predicates = conditional.get_predicates(tfx_node)
+    predicates = conditional.get_predicates(
+        tfx_node, compile_context.dsl_context_registry)
     if predicates:
       implicit_keys_map = {}
       for key, chnl in tfx_node_inputs.items():
@@ -235,7 +236,7 @@ class Compiler:
         implicit_input_channels[implicit_key] = value.channel
 
     # Step 3.2: Handle ForEach.
-    dsl_contexts = context_manager.get_contexts(tfx_node)
+    dsl_contexts = compile_context.dsl_context_registry.get_contexts(tfx_node)
     for dsl_context in dsl_contexts:
       if isinstance(dsl_context, for_each.ForEachContext):
         for input_key, channel in tfx_node_inputs.items():
@@ -254,8 +255,7 @@ class Compiler:
     # Check loop variable is used outside the ForEach.
     for input_key, channel in tfx_node_inputs.items():
       if isinstance(channel, types.LoopVarChannel):
-        dsl_context_ids = {c.id for c in dsl_contexts}
-        if channel.context_id not in dsl_context_ids:
+        if channel.for_each_context not in dsl_contexts:
           raise ValueError(
               "Loop variable cannot be used outside the ForEach "
               f"(node_id = {tfx_node.id}, input_key = {input_key}).")
@@ -571,6 +571,7 @@ class Compiler:
     Returns:
       A Pipeline proto that encodes all necessary information of the pipeline.
     """
+    tfx_pipeline.finalize()
     _validate_pipeline(tfx_pipeline)
     context = _CompilerContext(tfx_pipeline)
     pipeline_pb = pipeline_pb2.Pipeline()

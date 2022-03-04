@@ -17,6 +17,7 @@ from typing import Any, Dict
 
 import tensorflow as tf
 from tfx.dsl.components.base import base_node
+from tfx.dsl.context_managers import dsl_context_registry
 from tfx.dsl.experimental.conditionals import conditional
 from tfx.dsl.placeholder import placeholder
 
@@ -45,13 +46,18 @@ class _FakePredicate(placeholder.Predicate):
 
 class ConditionalTest(tf.test.TestCase):
 
+  def assertPredicatesEqual(self, node, *expected_predicates):
+    self.assertEqual(
+        conditional.get_predicates(node, dsl_context_registry.get()),
+        expected_predicates)
+
   def testSingleCondition(self):
     pred = _FakePredicate('pred')
     with conditional.Cond(pred):
       node1 = _FakeNode().with_id('node1')
       node2 = _FakeNode().with_id('node2')
-    self.assertEqual(conditional.get_predicates(node1), (pred,))
-    self.assertEqual(conditional.get_predicates(node2), (pred,))
+    self.assertPredicatesEqual(node1, pred)
+    self.assertPredicatesEqual(node2, pred)
 
   def testNestedCondition(self):
     pred1 = _FakePredicate('pred1')
@@ -60,8 +66,8 @@ class ConditionalTest(tf.test.TestCase):
       node1 = _FakeNode().with_id('node1')
       with conditional.Cond(pred2):
         node2 = _FakeNode().with_id('node2')
-    self.assertEqual(conditional.get_predicates(node1), (pred1,))
-    self.assertEqual(conditional.get_predicates(node2), (pred1, pred2))
+    self.assertPredicatesEqual(node1, pred1)
+    self.assertPredicatesEqual(node2, pred1, pred2)
 
   def testReusePredicate(self):
     pred = _FakePredicate('pred')
@@ -69,8 +75,8 @@ class ConditionalTest(tf.test.TestCase):
       node1 = _FakeNode().with_id('node1')
     with conditional.Cond(pred):
       node2 = _FakeNode().with_id('node2')
-    self.assertEqual(conditional.get_predicates(node1), (pred,))
-    self.assertEqual(conditional.get_predicates(node2), (pred,))
+    self.assertPredicatesEqual(node1, pred)
+    self.assertPredicatesEqual(node2, pred)
 
   def testNestedConditionWithDuplicatePredicates(self):
     pred = _FakePredicate('pred')

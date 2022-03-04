@@ -19,6 +19,7 @@ import textwrap
 from typing import Any, cast, Dict, Iterable, List, Optional, Type, Union
 from absl import logging
 
+from tfx.dsl.context_managers import dsl_context
 from tfx.dsl.placeholder import placeholder
 from tfx.types import artifact_utils
 from tfx.types.artifact import Artifact
@@ -408,21 +409,22 @@ class LoopVarChannel(BaseChannel):
   ForEachContext.
   """
 
-  def __init__(self, wrapped: BaseChannel, context_id: str):
+  def __init__(self, wrapped: BaseChannel,
+               for_each_context: dsl_context.DslContext):
     """LoopVarChannel constructor.
 
     Arguments:
       wrapped: A wrapped BaseChannel.
-      context_id: An ID for the corresponding ForEachContext.
+      for_each_context: An ID for the corresponding ForEachContext.
     """
     super().__init__(wrapped.type)
     self._wrapped = wrapped
-    self._context_id = context_id
+    self._for_each_context = for_each_context
 
   @property
   def wrapped(self) -> BaseChannel:
     return self._wrapped
 
   @property
-  def context_id(self) -> str:
-    return self._context_id
+  def for_each_context(self) -> dsl_context.DslContext:
+    return self._for_each_context

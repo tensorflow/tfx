@@ -19,7 +19,7 @@ from typing import Any, Dict, Optional, Type
 from tfx.dsl.components.base import base_driver
 from tfx.dsl.components.base import base_executor
 from tfx.dsl.components.base import executor_spec as executor_spec_module
-from tfx.dsl.context_managers import context_manager
+from tfx.dsl.context_managers import dsl_context_registry
 from tfx.utils import deprecation_utils
 from tfx.utils import doc_controls
 from tfx.utils import json_utils
@@ -59,7 +59,7 @@ class BaseNode(json_utils.Jsonable, abc.ABC):
     self._upstream_nodes = set()
     self._downstream_nodes = set()
     self._id = None
-    context_manager.put_node(self)
+    dsl_context_registry.get().put_node(self)
 
   @doc_controls.do_not_doc_in_subclasses
   def to_json_dict(self) -> Dict[str, Any]:

@@ -16,8 +16,9 @@
 import tensorflow as tf
 from tfx import types
 from tfx.dsl.components.base import base_node
-from tfx.dsl.context_managers import context_manager
+from tfx.dsl.context_managers import dsl_context_registry
 from tfx.dsl.control_flow import for_each
+from tfx.utils import test_case_utils
 
 
 class AA(types.Artifact):
@@ -64,22 +65,21 @@ class C(FakeNode):
   pass
 
 
-class ForEachTest(tf.test.TestCase):
+class ForEachTest(test_case_utils.TfxTest):
 
   def setUp(self):
     super().setUp()
-    self.reset_registry()
-
-  def reset_registry(self) -> None:
-    context_manager._registry = context_manager._DslContextRegistry()
+    self.enter_context(dsl_context_registry.new_registry())
 
   def testForEach_As_GivesLoopVariable(self):
+    reg = dsl_context_registry.get()
+
     a = A().with_id('Apple')
     with for_each.ForEach(a.outputs['aa']) as aa:
-      pass
+      f = reg.peek_context()
 
     self.assertIsInstance(aa, types.LoopVarChannel)
-    self.assertEqual(aa.context_id, 'ForEachContext:1')
+    self.assertEqual(aa.for_each_context, f)
     self.assertEqual(aa.type, AA)
     self.assertEqual(aa.wrapped.producer_component_id, 'Apple')
     self.assertEqual(aa.wrapped.output_key, 'aa')
@@ -120,9 +120,9 @@ class ForEachTest(tf.test.TestCase):
     with for_each.ForEach(a.outputs['aa']) as aa2:
       c2 = C(aa=aa2, bb=b.outputs['bb'])  # pylint: disable=unused-variable
 
-    context1 = context_manager.get_contexts(c1)[-1]
-    context2 = context_manager.get_contexts(c2)[-1]
-    self.assertNotEqual(context1.id, context2.id)
+    context1 = dsl_context_registry.get().get_contexts(c1)[-1]
+    context2 = dsl_context_registry.get().get_contexts(c2)[-1]
+    self.assertNotEqual(context1, context2)
 
 
 if __name__ == '__main__':
