@@ -819,9 +819,11 @@ class Metadata:
                            pipeline_info)
       return None
 
-    # Step 1: Finds historical executions related to the context in step 0.
+    # Step 1: Finds historical executions related to the context in step 0. 
+    # We only retrieve 10*MAX_EXECUTIONS_FOR_CACHE to avoid loading too many executions.
     historical_executions = dict(
-        (e.id, e) for e in self._store.get_executions_by_context(context.id))
+        (e.id, e) for e in self._store.get_executions_by_context(
+          context.id, list_options=mlmd.LimitOptions(order_by=mlmd.OrderByField.UPDATE_TIME, is_asc=False, limit=MAX_EXECUTIONS_FOR_CACHE*10)))
 
     # Step 2: Filters historical executions to find those that used all the
     # given inputs as input artifacts. The result of this step is a set of
