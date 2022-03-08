@@ -15,6 +15,7 @@
 
 import os
 import types
+import unittest
 
 import apache_beam as beam
 import tensorflow as tf
@@ -40,7 +41,9 @@ class TaxiUtilsTest(tf.test.TestCase):
 
   def setUp(self):
     super().setUp()
-    self._testdata_path = os.path.join(os.path.dirname(__file__), 'testdata')
+    self._testdata_path = os.path.join(
+        os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
+        'components/testdata')
 
   def testUtils(self):
     key = 'fare'
@@ -52,7 +55,7 @@ class TaxiUtilsTest(tf.test.TestCase):
     schema = io_utils.parse_pbtxt_file(schema_file, schema_pb2.Schema())
     feature_spec = taxi_utils_bqml._get_raw_feature_spec(schema)
     working_dir = self.get_temp_dir()
-    transform_output_path = os.path.join(working_dir, 'transform_output')
+    transform_graph_path = os.path.join(working_dir, 'transform_graph')
     transformed_examples_path = os.path.join(
         working_dir, 'transformed_examples')
 
@@ -64,7 +67,7 @@ class TaxiUtilsTest(tf.test.TestCase):
         schema_utils.schema_from_feature_spec(feature_spec))
     tfxio = tf_example_record.TFExampleRecord(
         file_pattern=os.path.join(self._testdata_path,
-                                  'csv_example_gen/train/*'),
+                                  'csv_example_gen/Split-train/*'),
         telemetry_descriptors=['Tests'],
         schema=legacy_metadata.schema)
     with beam.Pipeline() as p:
@@ -81,14 +84,14 @@ class TaxiUtilsTest(tf.test.TestCase):
         # pylint: disable=expression-not-assigned
         (transform_fn
          | 'WriteTransformFn' >> tft_beam.WriteTransformFn(
-             transform_output_path))
+             transform_graph_path))
 
         encoder = tft.coders.ExampleProtoCoder(transformed_metadata.schema)
         (transformed_examples
          | 'EncodeTrainData' >> beam.Map(encoder.encode)
          | 'WriteTrainData' >> beam.io.WriteToTFRecord(
              os.path.join(transformed_examples_path,
-                          'train/transformed_examples.gz'),
+                          'Split-train/transformed_examples.gz'),
              coder=beam.coders.BytesCoder()))
         # pylint: enable=expression-not-assigned
 
@@ -97,10 +100,10 @@ class TaxiUtilsTest(tf.test.TestCase):
     expected_transformed_schema = io_utils.parse_pbtxt_file(
         os.path.join(
             self._testdata_path,
-            'transform/transform_output/transformed_metadata/schema.pbtxt'),
+            'transform/transform_graph/transformed_metadata/schema.pbtxt'),
         schema_pb2.Schema())
     transformed_schema = io_utils.parse_pbtxt_file(
-        os.path.join(transform_output_path,
+        os.path.join(transform_graph_path,
                      'transformed_metadata/schema.pbtxt'),
         schema_pb2.Schema())
     # Clear annotations so we only have to test main schema.
@@ -109,6 +112,8 @@ class TaxiUtilsTest(tf.test.TestCase):
     transformed_schema.ClearField('annotation')
     self.assertEqual(transformed_schema, expected_transformed_schema)
 
+  @unittest.skipIf(tf.__version__ < '2',
+                   'This test uses testdata only compatible with TF 2.x')
   def testTrainerFn(self):
     temp_dir = os.path.join(
         os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR', self.get_temp_dir()),
@@ -116,18 +121,20 @@ class TaxiUtilsTest(tf.test.TestCase):
 
     schema_file = os.path.join(self._testdata_path, 'schema_gen/schema.pbtxt')
     trainer_fn_args = trainer_executor.TrainerFnArgs(
-        train_files=os.path.join(self._testdata_path,
-                                 'transform/transformed_examples/train/*.gz'),
+        train_files=os.path.join(
+            self._testdata_path,
+            'transform/transformed_examples/Split-train/*.gz'),
         transform_output=os.path.join(self._testdata_path,
-                                      'transform/transform_output/'),
+                                      'transform/transform_graph/'),
         serving_model_dir=os.path.join(temp_dir, 'serving_model_dir'),
-        eval_files=os.path.join(self._testdata_path,
-                                'transform/transformed_examples/eval/*.gz'),
+        eval_files=os.path.join(
+            self._testdata_path,
+            'transform/transformed_examples/Split-eval/*.gz'),
         schema_file=schema_file,
         train_steps=1,
         eval_steps=1,
         base_model=os.path.join(self._testdata_path,
-                                'trainer/current/serving_model_dir'),
+                                'trainer/previous/Format-Serving'),
         data_accessor=DataAccessor(
             tf_dataset_factory=tfxio_utils.get_tf_dataset_factory_from_artifact(
                 [standard_artifacts.Examples()], []),
@@ -149,6 +156,7 @@ class TaxiUtilsTest(tf.test.TestCase):
     # Train for one step, then eval for one step.
     eval_result, exports = tf.estimator.train_and_evaluate(
         estimator, train_spec, eval_spec)
+    print(eval_result, exports)
     self.assertGreater(eval_result['loss'], 0.0)
     self.assertEqual(len(exports), 1)
     self.assertGreaterEqual(len(fileio.listdir(exports[0])), 1)

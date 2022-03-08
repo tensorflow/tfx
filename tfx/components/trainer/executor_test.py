@@ -16,8 +16,9 @@
 import copy
 import json
 import os
-
+import unittest
 from unittest import mock
+
 import tensorflow as tf
 from tfx.components.testdata.module_file import trainer_module
 from tfx.components.trainer import executor
@@ -27,10 +28,13 @@ from tfx.types import artifact_utils
 from tfx.types import standard_artifacts
 from tfx.types import standard_component_specs
 from tfx.utils import io_utils
+from tfx.utils import name_utils
 from tfx.utils import path_utils
 from tfx.utils import proto_utils
 
 
+@unittest.skipIf(tf.__version__ < '2',
+                 'This test uses testdata only compatible with TF 2.x')
 class ExecutorTest(tf.test.TestCase):
 
   def setUp(self):
@@ -93,8 +97,7 @@ class ExecutorTest(tf.test.TestCase):
     self._module_file = os.path.join(self._source_data_dir,
                                      standard_component_specs.MODULE_FILE_KEY,
                                      'trainer_module.py')
-    self._trainer_fn = '%s.%s' % (trainer_module.trainer_fn.__module__,
-                                  trainer_module.trainer_fn.__name__)
+    self._trainer_fn = name_utils.get_full_name(trainer_module.trainer_fn)
 
     # Executors for test.
     self._trainer_executor = executor.Executor()

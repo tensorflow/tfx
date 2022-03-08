@@ -24,6 +24,7 @@ from tfx.orchestration import publisher
 from tfx.orchestration.launcher import in_process_component_launcher
 from tfx.orchestration.launcher import test_utils
 from tfx.types import channel_utils
+from tfx.utils import name_utils
 
 from ml_metadata.proto import metadata_store_pb2
 from tensorflow.python.lib.io import file_io  # pylint: disable=g-direct-tensorflow-import
@@ -69,10 +70,8 @@ class ComponentRunnerTest(tf.test.TestCase):
         beam_pipeline_args=[],
         additional_pipeline_args={})
     self.assertEqual(
-        launcher._component_info.component_type, '.'.join([
-            test_utils._FakeComponent.__module__,
-            test_utils._FakeComponent.__name__
-        ]))
+        launcher._component_info.component_type,
+        name_utils.get_full_name(test_utils._FakeComponent))
     launcher.launch()
 
     output_path = component.outputs['output'].get()[0].uri

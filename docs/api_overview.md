@@ -26,6 +26,10 @@
 
 *   [ML Metadata](https://www.tensorflow.org/tfx/ml_metadata/api_docs/python/mlmd)
 
+## TF Metadata
+
+*   [ML Metadata](https://www.tensorflow.org/tfx/tf_metadata/api_docs/python/tfmd/proto)
+
 ## TFX Basic Shared Libraries (`tfx_bsl`)
 
 *   [tfx_bsl](https://www.tensorflow.org/tfx/tfx_bsl/api_docs/python/tfx_bsl/public)

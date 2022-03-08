@@ -40,7 +40,7 @@ def _get_qualified_name(value: Any) -> str:
 
 
 def get_full_name(value: Any, strict_check: bool = True) -> str:
-  """Get full_name of the given class or function."""
+  """Get fully qualified name of the given class or function."""
   if not hasattr(value, '__module__') or not hasattr(value, '__name__'):
     raise ValueError(f'{value} does not have a name.')
   name = _get_qualified_name(value)

@@ -30,6 +30,7 @@ from tfx.proto import bulk_inferrer_pb2
 from tfx.types import artifact_utils
 from tfx.utils import doc_controls
 from tfx.utils import json_utils
+from tfx.utils import name_utils
 from tfx.utils import path_utils
 from tfx.utils import proto_utils
 from tfx.utils import telemetry_utils
@@ -128,8 +129,7 @@ class Executor(bulk_inferrer_executor.Executor):
           '`ai_platform_serving_args` is missing in `custom_config`')
     service_name, api_version = runner.get_service_name_and_api_version(
         ai_platform_serving_args)
-    executor_class_path = '%s.%s' % (self.__class__.__module__,
-                                     self.__class__.__name__)
+    executor_class_path = name_utils.get_full_name(self.__class__)
     with telemetry_utils.scoped_labels(
         {telemetry_utils.LABEL_TFX_EXECUTOR: executor_class_path}):
       job_labels = telemetry_utils.make_labels_dict()

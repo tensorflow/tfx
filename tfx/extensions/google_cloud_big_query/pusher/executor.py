@@ -24,6 +24,7 @@ from tfx.types import standard_component_specs
 from tfx.utils import doc_controls
 from tfx.utils import io_utils
 from tfx.utils import json_utils
+from tfx.utils import name_utils
 from tfx.utils import telemetry_utils
 
 _POLLING_INTERVAL_IN_SECONDS = 30
@@ -145,10 +146,7 @@ class Executor(tfx_pusher_executor.Executor):
     query = _BQML_CREATE_OR_REPLACE_MODEL_QUERY_TEMPLATE.format(
         model_uri=bq_model_uri, model_path=model_path)
 
-    # TODO(zhitaoli): Refactor the executor_class_path creation into a common
-    # utility function.
-    executor_class_path = '%s.%s' % (self.__class__.__module__,
-                                     self.__class__.__name__)
+    executor_class_path = name_utils.get_full_name(self.__class__)
     with telemetry_utils.scoped_labels(
         {telemetry_utils.LABEL_TFX_EXECUTOR: executor_class_path}):
       default_query_job_config = bigquery.job.QueryJobConfig(

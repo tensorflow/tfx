@@ -29,6 +29,7 @@ from tfx.orchestration.kubeflow.v2.container import kubeflow_v2_run_executor
 from tfx.types import artifact
 from tfx.types import artifact_utils
 from tfx.types import standard_component_specs
+from tfx.utils import name_utils
 from tfx.utils import test_case_utils
 
 from google.protobuf import json_format
@@ -129,7 +130,7 @@ class KubeflowV2RunExecutorTest(test_case_utils.TfxTest):
       with _ArgsCapture() as args_capture:
         args = [
             "--executor_class_path",
-            "%s.%s" % (_FakeExecutor.__module__, _FakeExecutor.__name__),
+            name_utils.get_full_name(_FakeExecutor),
             "--json_serialized_invocation_args", serialized_metadata
         ]
         kubeflow_v2_run_executor.main(
@@ -164,7 +165,7 @@ class KubeflowV2RunExecutorTest(test_case_utils.TfxTest):
     with _ArgsCapture() as args_capture:
       args = [
           "--executor_class_path",
-          "%s.%s" % (_FakeExecutor.__module__, _FakeExecutor.__name__),
+          name_utils.get_full_name(_FakeExecutor),
           "--json_serialized_invocation_args", self._serialized_metadata
       ]
       kubeflow_v2_run_executor.main(kubeflow_v2_run_executor._parse_flags(args))

@@ -115,6 +115,8 @@ class PipelineBuilder:
     pipeline_info = pipeline_pb2.PipelineInfo(
         name=self._pipeline_info.pipeline_name)
 
+    self._pipeline.finalize()
+
     tfx_tasks = {}
     component_defs = {}
     # Map from (producer component id, output key) to (new producer component
@@ -136,6 +138,7 @@ class PipelineBuilder:
             node=component,
             deployment_config=deployment_config,
             component_defs=component_defs,
+            dsl_context_reg=self._pipeline.dsl_context_registry,
             image=self._default_image,
             image_cmds=self._default_commands,
             beam_pipeline_args=self._pipeline.beam_pipeline_args,
@@ -157,6 +160,7 @@ class PipelineBuilder:
           node=self._exit_handler,
           deployment_config=deployment_config,
           component_defs=component_defs,
+          dsl_context_reg=self._pipeline.dsl_context_registry,
           image=self._default_image,
           image_cmds=self._default_commands,
           beam_pipeline_args=self._pipeline.beam_pipeline_args,

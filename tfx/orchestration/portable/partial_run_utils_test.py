@@ -615,6 +615,9 @@ def _node_inputs_by_id(pipeline: pipeline_pb2.Pipeline,
       f'node_id {node_id} not found in pipeline. Seen: {node_ids_seen}')
 
 
+# Disable all no-value-for-parameter error which produces false positive when
+# invoking functional TFX components.
+# pylint: disable=no-value-for-parameter
 class PartialRunTest(absltest.TestCase):
 
   def setUp(self):
@@ -626,9 +629,9 @@ class PartialRunTest(absltest.TestCase):
         pipeline_root_dir.create_file('mlmd.sqlite').full_path)
     self.result_node_id = Result.__name__
 
-  def make_pipeline(self,
-                    components,
-                    run_id: Optional[str] = None) -> pipeline_pb2.Pipeline:
+  def make_pipeline(
+      self, components,
+      run_id: Optional[str] = None) -> pipeline_pb2.Pipeline:
     """Make compiled pipeline from components.
 
     Args:
@@ -639,8 +642,12 @@ class PartialRunTest(absltest.TestCase):
     Returns:
       The compiled Pipeline IR.
     """
-    pipeline = pipeline_lib.Pipeline(self.pipeline_name, self.pipeline_root,
-                                     self.metadata_config, components)
+    pipeline = pipeline_lib.Pipeline(
+        pipeline_name=self.pipeline_name,
+        pipeline_root=self.pipeline_root,
+        metadata_connection_config=self.metadata_config,
+        components=components,
+    )
     result = compiler.Compiler().compile(pipeline)
     if run_id:
       runtime_parameter_utils.substitute_runtime_parameter(
@@ -681,8 +688,8 @@ class PartialRunTest(absltest.TestCase):
     #          -------        ---------        ---------
     #
     ############################################################################
-    load = Load(start_num=1)  # pylint: disable=no-value-for-parameter
-    add_num = AddNum(to_add=1, num=load.outputs['num'])  # pylint: disable=no-value-for-parameter
+    load = Load(start_num=1)
+    add_num = AddNum(to_add=1, num=load.outputs['num'])
     result = Result(result=add_num.outputs['added_num'])
     pipeline_pb_run_1 = self.make_pipeline(
         components=[load, add_num, result], run_id='run_1')
@@ -723,8 +730,8 @@ class PartialRunTest(absltest.TestCase):
     #          -------        ---------        ---------
     #
     ############################################################################
-    add_num_v2 = AddNum(to_add=5, num=load.outputs['num'])  # pylint: disable=no-value-for-parameter
-    load.remove_downstream_node(add_num)  # This line is important.
+    load = Load(start_num=1)
+    add_num_v2 = AddNum(to_add=5, num=load.outputs['num'])
     result_v2 = Result(result=add_num_v2.outputs['added_num'])
     pipeline_pb_run_2 = self.make_pipeline(
         components=[load, add_num_v2, result_v2], run_id='run_2')
@@ -789,7 +796,6 @@ class PartialRunTest(absltest.TestCase):
     #            (10)              (10)
     #
     ############################################################################
-    # pylint: disable=no-value-for-parameter
     load_1 = Load(start_num=1).with_id('load_1')
     add_num_1 = AddNum(to_add=1, num=load_1.outputs['num']).with_id('add_num_1')
     result_1 = Result(result=add_num_1.outputs['added_num']).with_id('result_1')
@@ -797,7 +803,6 @@ class PartialRunTest(absltest.TestCase):
     add_num_2 = AddNum(
         to_add=10, num=load_2.outputs['num']).with_id('add_num_2')
     result_2 = Result(result=add_num_2.outputs['added_num']).with_id('result_2')
-    # pylint: enable=no-value-for-parameter
     pipeline_pb_run_1 = self.make_pipeline(
         components=[load_1, add_num_1, result_1, load_2, add_num_2, result_2],
         run_id='run_1')
@@ -831,13 +836,15 @@ class PartialRunTest(absltest.TestCase):
     #          ---------        -----------        -----------
     #
     ############################################################################
-    # pylint: disable=no-value-for-parameter
+    load_1 = Load(start_num=1).with_id('load_1')
     add_num_1_v2 = AddNum(
         to_add=5, num=load_1.outputs['num']).with_id('add_num_1')
-    load_1.remove_downstream_node(add_num_1)  # This line is important.
     result_1_v2 = Result(
         result=add_num_1_v2.outputs['added_num']).with_id('result_1')
-    # pylint: enable=no-value-for-parameter
+    load_2 = Load(start_num=10).with_id('load_2')
+    add_num_2 = AddNum(
+        to_add=10, num=load_2.outputs['num']).with_id('add_num_2')
+    result_2 = Result(result=add_num_2.outputs['added_num']).with_id('result_2')
     pipeline_pb_run_2 = self.make_pipeline(
         components=[
             load_1,
@@ -889,13 +896,16 @@ class PartialRunTest(absltest.TestCase):
     #          ---------        -----------        -----------
     #
     ############################################################################
-    # pylint: disable=no-value-for-parameter
+    load_1 = Load(start_num=1).with_id('load_1')
+    add_num_1_v2 = AddNum(
+        to_add=5, num=load_1.outputs['num']).with_id('add_num_1')
+    result_1_v2 = Result(
+        result=add_num_1_v2.outputs['added_num']).with_id('result_1')
+    load_2 = Load(start_num=10).with_id('load_2')
     add_num_2_v2 = AddNum(
         to_add=50, num=load_2.outputs['num']).with_id('add_num_2')
-    load_2.remove_downstream_node(add_num_2)  # This line is important.
     result_2_v2 = Result(
         result=add_num_2_v2.outputs['added_num']).with_id('result_2')
-    # pylint: enable=no-value-for-parameter
     pipeline_pb_run_3 = self.make_pipeline(
         components=[
             load_1,
@@ -1031,13 +1041,11 @@ class PartialRunTest(absltest.TestCase):
     #                     \______________________/
     #
     ############################################################################
-    # pylint: disable=no-value-for-parameter
     load = Load(start_num=1)
     add_num = AddNum(to_add=1, num=load.outputs['num'])
     subtract_nums = SubtractNums(
         num_1=add_num.outputs['added_num'], num_2=load.outputs['num'])
     result = Result(result=subtract_nums.outputs['diff'])
-    # pylint: enable=no-value-for-parameter
     pipeline_pb_run_1 = self.make_pipeline(
         components=[load, add_num, subtract_nums, result], run_id='run_1')
     ############################################################################
@@ -1067,14 +1075,11 @@ class PartialRunTest(absltest.TestCase):
     #                     \______________________/
     #
     ############################################################################
-    # pylint: disable=no-value-for-parameter
+    load = Load(start_num=1)
     add_num_v2 = AddNum(to_add=5, num=load.outputs['num'])
-    load.remove_downstream_node(add_num)  # This line is important.
     subtract_nums_v2 = SubtractNums(
         num_1=add_num_v2.outputs['added_num'], num_2=load.outputs['num'])
-    load.remove_downstream_node(subtract_nums)  # This line is important.
     result_v2 = Result(result=subtract_nums_v2.outputs['diff'])
-    # pylint: enable=no-value-for-parameter
     pipeline_pb_run_2 = self.make_pipeline(
         components=[load, add_num_v2, subtract_nums_v2, result_v2],
         run_id='run_2')
@@ -1125,13 +1130,11 @@ class PartialRunTest(absltest.TestCase):
     #                     \______________________/
     #
     ############################################################################
-    # pylint: disable=no-value-for-parameter
     load_v2 = Load(start_num=5)
     add_num_v3 = AddNum(to_add=5, num=load_v2.outputs['num'])
     subtract_nums_v3 = SubtractNums(
         num_1=add_num_v3.outputs['added_num'], num_2=load_v2.outputs['num'])
     result_v3 = Result(result=subtract_nums_v3.outputs['diff'])
-    # pylint: enable=no-value-for-parameter
     pipeline_pb_run_3 = self.make_pipeline(
         components=[load_v2, add_num_v3, subtract_nums_v3, result_v3],
         run_id='run_3')
@@ -1217,17 +1220,17 @@ class PartialRunTest(absltest.TestCase):
 
   def testNonExistentBaseRunId_lookupError(self):
     """Raise error if user provides non-existent base_run_id."""
-    # pylint: disable=no-value-for-parameter
     load = Load(start_num=1)
     add_num = AddNum(to_add=1, num=load.outputs['num'])
     result = Result(result=add_num.outputs['added_num'])
-    # pylint: enable=no-value-for-parameter
     pipeline_pb_run_1 = self.make_pipeline(
-        components=[load, add_num, result], run_id='run_1')
+        components=[load, add_num, result],
+        run_id='run_1')
     beam_dag_runner.BeamDagRunner().run_with_ir(pipeline_pb_run_1)
 
     pipeline_pb_run_2 = self.make_pipeline(
-        components=[load, add_num, result], run_id='run_2')
+        components=[load, add_num, result],
+        run_id='run_2')
     snapshot_settings = pipeline_pb2.SnapshotSettings()
     snapshot_settings.base_pipeline_run_strategy.base_run_id = 'non_existent_id'
     partial_run_utils.mark_pipeline(
@@ -1240,20 +1243,16 @@ class PartialRunTest(absltest.TestCase):
 
   def testNonExistentNodeId_lookupError(self):
     """Raise error if user provides non-existent pipeline_run_id or node_id."""
-    # pylint: disable=no-value-for-parameter
     load = Load(start_num=1)
     add_num = AddNum(to_add=1, num=load.outputs['num'])
     result = Result(result=add_num.outputs['added_num'])
-    # pylint: enable=no-value-for-parameter
     pipeline_pb_run_1 = self.make_pipeline(
         components=[load, add_num, result], run_id='run_1')
     beam_dag_runner.BeamDagRunner().run_with_ir(pipeline_pb_run_1)
 
-    # pylint: disable=no-value-for-parameter
     load_v2 = Load(start_num=2).with_id('non_existent_id')
     add_num_v2 = AddNum(to_add=1, num=load_v2.outputs['num'])
     result_v2 = Result(result=add_num_v2.outputs['added_num'])
-    # pylint: enable=no-value-for-parameter
     pipeline_pb_run_2 = self.make_pipeline(
         components=[load_v2, add_num_v2, result_v2], run_id='run_2')
     snapshot_settings = pipeline_pb2.SnapshotSettings()
@@ -1268,11 +1267,9 @@ class PartialRunTest(absltest.TestCase):
 
   def testNoPreviousSuccessfulExecution_lookupError(self):
     """Raise error if user tries to reuse node w/o any successful Executions."""
-    # pylint: disable=no-value-for-parameter
     load_fail = LoadFail(start_num=1)
     add_num = AddNum(to_add=1, num=load_fail.outputs['num'])
     result = Result(result=add_num.outputs['added_num'])
-    # pylint: enable=no-value-for-parameter
     pipeline_pb_run_1 = self.make_pipeline(
         components=[load_fail, add_num, result], run_id='run_1')
     try:
@@ -1281,11 +1278,9 @@ class PartialRunTest(absltest.TestCase):
     except Exception:  # pylint: disable=broad-except
       pass
 
-    # pylint: disable=no-value-for-parameter
+    load_fail = LoadFail(start_num=1)
     add_num_v2 = AddNum(to_add=1, num=load_fail.outputs['num'])
-    load_fail.remove_downstream_node(add_num)  # this line is important
     result_v2 = Result(result=add_num_v2.outputs['added_num'])
-    # pylint: enable=no-value-for-parameter
     pipeline_pb_run_2 = self.make_pipeline(
         components=[load_fail, add_num_v2, result_v2], run_id='run_2')
     partial_run_utils.mark_pipeline(
@@ -1310,16 +1305,16 @@ class PartialRunTest(absltest.TestCase):
     Thus, we need to make sure that even if `reuse_node_outputs` was retried
     after registration succeeds, there will only be one cache execution.
     """
-    load = Load(start_num=1)  # pylint: disable=no-value-for-parameter
-    add_num = AddNum(to_add=1, num=load.outputs['num'])  # pylint: disable=no-value-for-parameter
+    load = Load(start_num=1)
+    add_num = AddNum(to_add=1, num=load.outputs['num'])
     result = Result(result=add_num.outputs['added_num'])
     pipeline_pb_run_1 = self.make_pipeline(
         components=[load, add_num, result], run_id='run_1')
     beam_dag_runner.BeamDagRunner().run_with_ir(pipeline_pb_run_1)
     self.assertResultEqual(pipeline_pb_run_1, 2)
 
-    add_num_v2 = AddNum(to_add=5, num=load.outputs['num'])  # pylint: disable=no-value-for-parameter
-    load.remove_downstream_node(add_num)  # This line is important.
+    load = Load(start_num=1)
+    add_num_v2 = AddNum(to_add=5, num=load.outputs['num'])
     result_v2 = Result(result=add_num_v2.outputs['added_num'])
     pipeline_pb_run_2 = self.make_pipeline(
         components=[load, add_num_v2, result_v2], run_id='run_2')
@@ -1367,21 +1362,17 @@ class PartialRunTest(absltest.TestCase):
     This test checks that after the first successful cache execution, following
     reuse_node_execution attempts will be no-op.
     """
-    # pylint: disable=no-value-for-parameter
     load = Load(start_num=1)
     add_num = AddNum(to_add=1, num=load.outputs['num'])
     result = Result(result=add_num.outputs['added_num'])
-    # pylint: enable=no-value-for-parameter
     pipeline_pb_run_1 = self.make_pipeline(
         components=[load, add_num, result], run_id='run_1')
     beam_dag_runner.BeamDagRunner().run_with_ir(pipeline_pb_run_1)
     self.assertResultEqual(pipeline_pb_run_1, 2)
 
-    # pylint: disable=no-value-for-parameter
+    load = Load(start_num=1)
     add_num_v2 = AddNum(to_add=5, num=load.outputs['num'])
-    load.remove_downstream_node(add_num)  # This line is important.
     result_v2 = Result(result=add_num_v2.outputs['added_num'])
-    # pylint: enable=no-value-for-parameter
     pipeline_pb_run_2 = self.make_pipeline(
         components=[load, add_num_v2, result_v2], run_id='run_2')
 
@@ -1427,11 +1418,9 @@ class PartialRunTest(absltest.TestCase):
     #          -------        ---------        ---------
     #
     ############################################################################
-    # pylint: disable=no-value-for-parameter
     load = Load(start_num=1)
     add_num = AddNum(to_add=1, num=load.outputs['num'])
     result = Result(result=add_num.outputs['added_num'])
-    # pylint: enable=no-value-for-parameter
     pipeline_pb_run_1 = self.make_pipeline(
         components=[load, add_num, result], run_id='run_1')
     beam_dag_runner.BeamDagRunner().run_with_ir(pipeline_pb_run_1)
@@ -1447,11 +1436,9 @@ class PartialRunTest(absltest.TestCase):
     #          -------        ---------        ---------
     #
     ############################################################################
-    # pylint: disable=no-value-for-parameter
+    load = Load(start_num=1)
     add_num_v2 = AddNum(to_add=5, num=load.outputs['num'])
-    load.remove_downstream_node(add_num)  # This line is important.
     result_v2 = Result(result=add_num_v2.outputs['added_num'])
-    # pylint: enable=no-value-for-parameter
     # NOTE: pipeline_pb_run_2's pipeline_run_id RuntimeParameter is still
     # unresolved.
     pipeline_pb_run_2 = self.make_pipeline(
@@ -1501,11 +1488,9 @@ class PartialRunTest(absltest.TestCase):
     #          -------        ---------        ---------
     #
     ############################################################################
-    # pylint: disable=no-value-for-parameter
     load = Load(start_num=1)
     add_num = AddNum(to_add=1, num=load.outputs['num'])
     result = Result(result=add_num.outputs['added_num'])
-    # pylint: enable=no-value-for-parameter
     pipeline_pb_run_1 = self.make_pipeline(
         components=[load, add_num, result], run_id='run_1')
     beam_dag_runner.BeamDagRunner().run_with_ir(pipeline_pb_run_1)
@@ -1521,11 +1506,9 @@ class PartialRunTest(absltest.TestCase):
     #          -------        ---------        ---------
     #
     ############################################################################
-    # pylint: disable=no-value-for-parameter
+    load = Load(start_num=1)
     add_num_v2 = AddNum(to_add=5, num=load.outputs['num'])
-    load.remove_downstream_node(add_num)  # This line is important.
     result_v2 = Result(result=add_num_v2.outputs['added_num'])
-    # pylint: enable=no-value-for-parameter
     pipeline_pb_run_2 = self.make_pipeline(
         components=[load, add_num_v2, result_v2], run_id='run_2')
 

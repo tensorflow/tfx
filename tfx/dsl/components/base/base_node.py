@@ -19,10 +19,11 @@ from typing import Any, Dict, Optional, Type
 from tfx.dsl.components.base import base_driver
 from tfx.dsl.components.base import base_executor
 from tfx.dsl.components.base import executor_spec as executor_spec_module
-from tfx.dsl.context_managers import context_manager
+from tfx.dsl.context_managers import dsl_context_registry
 from tfx.utils import deprecation_utils
 from tfx.utils import doc_controls
 from tfx.utils import json_utils
+from tfx.utils import name_utils
 
 
 def _abstract_property() -> Any:
@@ -58,7 +59,7 @@ class BaseNode(json_utils.Jsonable, abc.ABC):
     self._upstream_nodes = set()
     self._downstream_nodes = set()
     self._id = None
-    context_manager.put_node(self)
+    dsl_context_registry.get().put_node(self)
 
   @doc_controls.do_not_doc_in_subclasses
   def to_json_dict(self) -> Dict[str, Any]:
@@ -71,8 +72,8 @@ class BaseNode(json_utils.Jsonable, abc.ABC):
   @doc_controls.do_not_doc_in_subclasses
   def get_class_type(cls) -> str:
     nondeprecated_class = deprecation_utils.get_first_nondeprecated_class(cls)
-    return '.'.join(
-        [nondeprecated_class.__module__, nondeprecated_class.__name__])
+    # TODO(b/221166027): Turn strict_check=True once failing tests are fixed.
+    return name_utils.get_full_name(nondeprecated_class, strict_check=False)
 
   @property
   @doc_controls.do_not_doc_in_subclasses

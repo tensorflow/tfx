@@ -18,12 +18,12 @@ import os
 from typing import Any, Dict
 from unittest import mock
 
-
 import tensorflow as tf
 from tfx.components.trainer import executor as tfx_trainer_executor
 from tfx.extensions.google_cloud_ai_platform.trainer import executor as ai_platform_trainer_executor
 from tfx.types import standard_component_specs
 from tfx.utils import json_utils
+from tfx.utils import name_utils
 
 
 class ExecutorTest(tf.test.TestCase):
@@ -48,12 +48,10 @@ class ExecutorTest(tf.test.TestCase):
             },
         },
     }
-    self._executor_class_path = '%s.%s' % (
-        tfx_trainer_executor.Executor.__module__,
-        tfx_trainer_executor.Executor.__name__)
-    self._generic_executor_class_path = '%s.%s' % (
-        tfx_trainer_executor.GenericExecutor.__module__,
-        tfx_trainer_executor.GenericExecutor.__name__)
+    self._executor_class_path = name_utils.get_full_name(
+        tfx_trainer_executor.Executor)
+    self._generic_executor_class_path = name_utils.get_full_name(
+        tfx_trainer_executor.GenericExecutor)
 
     self.addCleanup(mock.patch.stopall)
     self.mock_runner = mock.patch(
