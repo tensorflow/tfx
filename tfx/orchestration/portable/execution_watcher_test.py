@@ -94,7 +94,8 @@ class ExecutionWatcherTest(test_case_utils.TfxTest):
       """,
         executions[0],
         ignored_fields=[
-            'type_id', 'create_time_since_epoch', 'last_update_time_since_epoch'
+            'type_id', 'create_time_since_epoch',
+            'last_update_time_since_epoch', 'name'
         ])
 
 

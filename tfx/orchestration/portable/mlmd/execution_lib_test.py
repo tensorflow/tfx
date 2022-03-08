@@ -119,6 +119,30 @@ class ExecutionLibTest(test_case_utils.TfxTest):
           }
           """, result)
 
+  def testPrepareExecutionWithName(self):
+    with metadata.Metadata(connection_config=self._connection_config) as m:
+      execution_type = metadata_store_pb2.ExecutionType()
+      text_format.Parse(
+          """
+          name: 'my_execution'
+          properties {
+            key: 'p2'
+            value: STRING
+          }
+          """, execution_type)
+      result = execution_lib.prepare_execution(
+          m,
+          execution_type=execution_type,
+          exec_properties={},
+          state=metadata_store_pb2.Execution.COMPLETE,
+          execution_name='test_name')
+      result.ClearField('type_id')
+      self.assertProtoEquals(
+          """
+          last_known_state: COMPLETE
+          name: 'test_name'
+          """, result)
+
   def testArtifactAndEventPairs(self):
     example = standard_artifacts.Examples()
     example.uri = 'example'

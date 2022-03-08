@@ -77,7 +77,7 @@ class ExecutionPublisherTest(test_case_utils.TfxTest, parameterized.TestCase):
           execution,
           ignored_fields=[
               'type_id', 'create_time_since_epoch',
-              'last_update_time_since_epoch'
+              'last_update_time_since_epoch', 'name'
           ])
       [event] = m.store.get_events_by_execution_ids([execution.id])
       self.assertProtoPartiallyEquals(
@@ -124,7 +124,7 @@ class ExecutionPublisherTest(test_case_utils.TfxTest, parameterized.TestCase):
           execution,
           ignored_fields=[
               'type_id', 'create_time_since_epoch',
-              'last_update_time_since_epoch'
+              'last_update_time_since_epoch', 'name'
           ])
       [event] = m.store.get_events_by_execution_ids([execution.id])
       self.assertProtoPartiallyEquals(
@@ -180,7 +180,7 @@ class ExecutionPublisherTest(test_case_utils.TfxTest, parameterized.TestCase):
           execution,
           ignored_fields=[
               'type_id', 'create_time_since_epoch',
-              'last_update_time_since_epoch'
+              'last_update_time_since_epoch', 'name'
           ])
       [artifact] = m.store.get_artifacts()
       self.assertProtoPartiallyEquals(
@@ -280,7 +280,7 @@ class ExecutionPublisherTest(test_case_utils.TfxTest, parameterized.TestCase):
           execution,
           ignored_fields=[
               'type_id', 'create_time_since_epoch',
-              'last_update_time_since_epoch'
+              'last_update_time_since_epoch', 'name'
           ])
       artifacts = m.store.get_artifacts()
       self.assertLen(artifacts, 2)
@@ -447,7 +447,7 @@ class ExecutionPublisherTest(test_case_utils.TfxTest, parameterized.TestCase):
           execution,
           ignored_fields=[
               'type_id', 'create_time_since_epoch',
-              'last_update_time_since_epoch'
+              'last_update_time_since_epoch', 'name'
           ])
 
   def testPublishSuccessExecutionRecordExecutionResult(self):
@@ -480,7 +480,7 @@ class ExecutionPublisherTest(test_case_utils.TfxTest, parameterized.TestCase):
           execution,
           ignored_fields=[
               'type_id', 'create_time_since_epoch',
-              'last_update_time_since_epoch'
+              'last_update_time_since_epoch', 'name'
           ])
       # No events because there is no artifact published.
       events = m.store.get_events_by_execution_ids([execution.id])
@@ -513,7 +513,7 @@ class ExecutionPublisherTest(test_case_utils.TfxTest, parameterized.TestCase):
           execution,
           ignored_fields=[
               'type_id', 'create_time_since_epoch',
-              'last_update_time_since_epoch'
+              'last_update_time_since_epoch', 'name'
           ])
 
   def testPublishFailedExecution(self):
@@ -546,7 +546,7 @@ class ExecutionPublisherTest(test_case_utils.TfxTest, parameterized.TestCase):
           execution,
           ignored_fields=[
               'type_id', 'create_time_since_epoch',
-              'last_update_time_since_epoch'
+              'last_update_time_since_epoch', 'name'
           ])
       # No events because there is no artifact published.
       events = m.store.get_events_by_execution_ids([execution.id])
@@ -576,7 +576,7 @@ class ExecutionPublisherTest(test_case_utils.TfxTest, parameterized.TestCase):
           execution,
           ignored_fields=[
               'type_id', 'create_time_since_epoch',
-              'last_update_time_since_epoch'
+              'last_update_time_since_epoch', 'name'
           ])
       [event] = m.store.get_events_by_execution_ids([execution.id])
       self.assertProtoPartiallyEquals(

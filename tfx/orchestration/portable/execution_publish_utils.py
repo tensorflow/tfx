@@ -15,6 +15,7 @@
 import copy
 import os
 from typing import Mapping, Optional, Sequence
+import uuid
 from absl import logging
 
 from tfx import types
@@ -255,8 +256,17 @@ def register_execution(
   Returns:
     An MLMD execution that is registered in MLMD, with id populated.
   """
+  # Setting exec_name is required to make sure that only one execution is
+  # registered in MLMD. If there is a RPC retry, AlreadyExistError will raise.
+  # After this fix (b/221103319), AlreadyExistError may not raise. Instead,
+  # execution may be updated again upon RPC retries.
+  exec_name = str(uuid.uuid4())
   execution = execution_lib.prepare_execution(
-      metadata_handler, execution_type, metadata_store_pb2.Execution.RUNNING,
-      exec_properties)
+      metadata_handler,
+      execution_type,
+      metadata_store_pb2.Execution.RUNNING,
+      exec_properties,
+      execution_name=exec_name)
+
   return execution_lib.put_execution(
       metadata_handler, execution, contexts, input_artifacts=input_artifacts)

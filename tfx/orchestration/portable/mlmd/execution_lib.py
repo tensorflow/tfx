@@ -99,6 +99,7 @@ def prepare_execution(
     execution_type: metadata_store_pb2.ExecutionType,
     state: metadata_store_pb2.Execution.State,
     exec_properties: Optional[Mapping[str, types.ExecPropertyTypes]] = None,
+    execution_name: str = '',
 ) -> metadata_store_pb2.Execution:
   """Creates an execution proto based on the information provided.
 
@@ -108,6 +109,7 @@ def prepare_execution(
       the execution.
     state: The state of the execution.
     exec_properties: Execution properties that need to be attached.
+    execution_name: Name of the execution.
 
   Returns:
     A metadata_store_pb2.Execution message.
@@ -116,6 +118,8 @@ def prepare_execution(
   execution.last_known_state = state
   execution.type_id = common_utils.register_type_if_not_exist(
       metadata_handler, execution_type).id
+  if execution_name:
+    execution.name = execution_name
 
   exec_properties = exec_properties or {}
   # For every execution property, put it in execution.properties if its key is

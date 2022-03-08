@@ -119,7 +119,7 @@ class ImporterNodeHandlerTest(test_case_utils.TfxTest):
           execution,
           ignored_fields=[
               'type_id', 'create_time_since_epoch',
-              'last_update_time_since_epoch'
+              'last_update_time_since_epoch', 'name'
           ])
 
     execution_info = handler.run(
@@ -178,7 +178,7 @@ class ImporterNodeHandlerTest(test_case_utils.TfxTest):
           execution,
           ignored_fields=[
               'type_id', 'create_time_since_epoch',
-              'last_update_time_since_epoch'
+              'last_update_time_since_epoch', 'name'
           ])
 
   def testLauncher_importer_mode_reimport_disabled(self):
@@ -241,7 +241,7 @@ class ImporterNodeHandlerTest(test_case_utils.TfxTest):
           execution,
           ignored_fields=[
               'type_id', 'create_time_since_epoch',
-              'last_update_time_since_epoch'
+              'last_update_time_since_epoch', 'name'
           ])
 
     # Run the 2nd execution. Since the reimport is disabled, no new schema
@@ -275,7 +275,7 @@ class ImporterNodeHandlerTest(test_case_utils.TfxTest):
           execution,
           ignored_fields=[
               'type_id', 'create_time_since_epoch',
-              'last_update_time_since_epoch'
+              'last_update_time_since_epoch', 'name'
           ])
 
 
