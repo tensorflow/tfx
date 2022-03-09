@@ -18,6 +18,7 @@ import contextlib
 import threading
 import time
 from typing import Dict, Iterator, List, Mapping, Optional, Tuple
+import uuid
 
 from absl import logging
 import attr
@@ -256,7 +257,8 @@ class PipelineState:
         mlmd_handle,
         _ORCHESTRATOR_EXECUTION_TYPE,
         metadata_store_pb2.Execution.NEW,
-        exec_properties=exec_properties)
+        exec_properties=exec_properties,
+        execution_name=str(uuid.uuid4()))
     if pipeline.execution_mode == pipeline_pb2.Pipeline.SYNC:
       data_types_utils.set_metadata_value(
           execution.custom_properties[_PIPELINE_RUN_ID],

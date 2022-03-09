@@ -8,6 +8,8 @@ toc:
   path: /tfx/guide/solutions.md
 - title: "Using Keras with TFX"
   path: /tfx/guide/keras
+- title: "Using Non-TensorFlow Frameworks in TFX"
+  path: /tfx/guide/non_tf
 - title: "Mobile & IoT: TFX for TensorFlow Lite"
   path: /tfx/tutorials/tfx/tfx_for_mobile
 

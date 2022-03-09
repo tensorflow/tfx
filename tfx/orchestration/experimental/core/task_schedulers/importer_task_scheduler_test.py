@@ -142,7 +142,7 @@ class ImporterTaskSchedulerTest(test_utils.TfxTest):
           execution,
           ignored_fields=[
               'id', 'type_id', 'create_time_since_epoch',
-              'last_update_time_since_epoch'
+              'last_update_time_since_epoch', 'name'
           ])
 
 

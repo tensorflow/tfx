@@ -166,7 +166,7 @@ class ResolverNodeHandlerTest(test_case_utils.TfxTest):
           execution,
           ignored_fields=[
               'type_id', 'create_time_since_epoch',
-              'last_update_time_since_epoch'
+              'last_update_time_since_epoch', 'name'
           ])
 
   @mock.patch.object(inputs_utils, 'resolve_input_artifacts_v2')
@@ -189,9 +189,10 @@ class ResolverNodeHandlerTest(test_case_utils.TfxTest):
           last_known_state: FAILED
           """,
           execution,
-          ignored_fields=['type_id', 'custom_properties',
-                          'create_time_since_epoch',
-                          'last_update_time_since_epoch'])
+          ignored_fields=[
+              'type_id', 'custom_properties', 'create_time_since_epoch',
+              'last_update_time_since_epoch', 'name'
+          ])
 
   @mock.patch.object(inputs_utils, 'resolve_input_artifacts_v2')
   def testRun_MultipleInputs_ExecutionFailed(self, mock_resolve):
@@ -216,9 +217,10 @@ class ResolverNodeHandlerTest(test_case_utils.TfxTest):
           last_known_state: FAILED
           """,
           execution,
-          ignored_fields=['type_id', 'custom_properties',
-                          'create_time_since_epoch',
-                          'last_update_time_since_epoch'])
+          ignored_fields=[
+              'type_id', 'custom_properties', 'create_time_since_epoch',
+              'last_update_time_since_epoch', 'name'
+          ])
 
 
 if __name__ == '__main__':
