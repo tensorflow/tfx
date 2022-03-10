@@ -54,9 +54,9 @@ def make_pipeline_sdk_required_install_packages():
       'absl-py>=0.9,<2.0.0',
       'ml-metadata' + select_constraint(
           # LINT.IfChange
-          default='>=1.6.0,<1.7.0',
+          default='>=1.7.0,<1.8.0',
           # LINT.ThenChange(tfx/workspace.bzl)
-          nightly='>=1.7.0.dev',
+          nightly='>=1.8.0.dev',
           git_master='@git+https://github.com/google/ml-metadata@master'),
       'packaging>=20,<21',
       'portpicker>=1.3.1,<2',
@@ -161,8 +161,8 @@ def make_extra_packages_tf_ranking():
   return [
       'tensorflow-ranking>=0.3.3,<0.4',
       'struct2tensor' + select_constraint(
-          default='>=0.37,<0.38',
-          nightly='>=0.38.0.dev',
+          default='>=0.38,<0.39',
+          nightly='>=0.39.0.dev',
           git_master='@git+https://github.com/google/struct2tensor@master'),
   ]
 
