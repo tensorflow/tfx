@@ -417,7 +417,7 @@ class LauncherTest(test_case_utils.TfxTest):
           custom_properties {
             key: "name"
             value {
-              string_value: ":test_run_%d:my_trainer:model:0"
+              string_value: ":test_run_%d:my_trainer:model:1"
             }
           }
           custom_properties {
@@ -469,7 +469,7 @@ class LauncherTest(test_case_utils.TfxTest):
           custom_properties {
             key: "name"
             value {
-              string_value: ":test_run_%d:my_trainer:model:0"
+              string_value: ":test_run_%d:my_trainer:model:3"
             }
           }
           custom_properties {
@@ -596,7 +596,7 @@ class LauncherTest(test_case_utils.TfxTest):
           custom_properties {
             key: "name"
             value {
-              string_value: ":test_run_%d:my_trainer:model:0"
+              string_value: ":test_run_%d:my_trainer:model:3"
             }
           }
           custom_properties {
@@ -642,7 +642,7 @@ class LauncherTest(test_case_utils.TfxTest):
           custom_properties {
             key: "name"
             value {
-              string_value: ":test_run_%d:my_trainer:model:0"
+              string_value: ":test_run_%d:my_trainer:model:4"
             }
           }
           custom_properties {
@@ -766,7 +766,7 @@ class LauncherTest(test_case_utils.TfxTest):
           custom_properties {
             key: "name"
             value {
-              string_value: ":test_run_%d:my_trainer:model:0"
+              string_value: ":test_run_%d:my_trainer:model:3"
             }
           }
           custom_properties {
@@ -875,7 +875,7 @@ class LauncherTest(test_case_utils.TfxTest):
           custom_properties {
             key: "name"
             value {
-              string_value: ":test_run_%d:my_example_gen:output_examples:0"
+              string_value: ":test_run_%d:my_example_gen:output_examples:1"
             }
           }
           custom_properties {
@@ -929,7 +929,7 @@ class LauncherTest(test_case_utils.TfxTest):
           custom_properties {
             key: "name"
             value {
-              string_value: ":test_run_%d:my_example_gen:output_examples:0"
+              string_value: ":test_run_%d:my_example_gen:output_examples:2"
             }
           }
           custom_properties {

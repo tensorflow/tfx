@@ -179,7 +179,7 @@ class OutputUtilsTest(test_case_utils.TfxTest, parameterized.TestCase):
 
     artifact_1 = output_artifacts['output_1'][0]
     self.assertRegex(artifact_1.uri, '.*/test_node/output_1/1')
-    self.assertRegex(artifact_1.name, artifact_name_prefix + ':output_1:0')
+    self.assertRegex(artifact_1.name, artifact_name_prefix + ':output_1:1')
     self.assertProtoEquals(
         """
         id: 1
@@ -211,7 +211,7 @@ class OutputUtilsTest(test_case_utils.TfxTest, parameterized.TestCase):
 
     artifact_2 = output_artifacts['output_2'][0]
     self.assertRegex(artifact_2.uri, '.*/test_node/output_2/1')
-    self.assertRegex(artifact_2.name, artifact_name_prefix + ':output_2:0')
+    self.assertRegex(artifact_2.name, artifact_name_prefix + ':output_2:1')
     self.assertProtoEquals(
         """
         id: 2
@@ -223,7 +223,7 @@ class OutputUtilsTest(test_case_utils.TfxTest, parameterized.TestCase):
 
     artifact_3 = output_artifacts['output_3'][0]
     self.assertRegex(artifact_3.uri, '.*/test_node/output_3/1/value')
-    self.assertRegex(artifact_3.name, artifact_name_prefix + ':output_3:0')
+    self.assertRegex(artifact_3.name, artifact_name_prefix + ':output_3:1')
     self.assertProtoEquals("""
         id: 3
         name: "String"
@@ -231,7 +231,7 @@ class OutputUtilsTest(test_case_utils.TfxTest, parameterized.TestCase):
 
     artifact_4 = output_artifacts['output_4'][0]
     self.assertRegex(artifact_4.uri, '.*/test_node/output_4/1/value')
-    self.assertRegex(artifact_4.name, artifact_name_prefix + ':output_4:0')
+    self.assertRegex(artifact_4.name, artifact_name_prefix + ':output_4:1')
     self.assertProtoEquals("""
         id: 4
         name: "Integer_Metrics"

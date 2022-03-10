@@ -541,10 +541,10 @@ class Artifact(json_utils.Jsonable):
     """Name of the underlying mlmd artifact."""
     return self._get_system_property('name')
 
-  @name.setter
-  def name(self, name: str):
-    """Set name of the underlying artifact."""
-    self._set_system_property('name', name)
+  # @name.setter
+  # def name(self, name: str):
+  #   """Set name of the underlying artifact."""
+  #   self._set_system_property('name', name)
 
   @property
   @doc_controls.do_not_doc_in_subclasses
