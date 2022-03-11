@@ -23,7 +23,7 @@ import tensorflow as tf
 from tfx.components.example_gen import utils
 from tfx.components.example_gen.base_example_gen_executor import BaseExampleGenExecutor
 from tfx.types import standard_component_specs
-
+from tfx.components.example_gen.csv_example_gen.executor import _CsvToExample
 
 @beam.ptransform_fn
 @beam.typehints.with_input_types(beam.Pipeline)
@@ -57,26 +57,9 @@ def _ZipToExample(  # pylint: disable=invalid-name
     # extracting zip file and deleteing zip file from directory
     utils.extract_zip_file(zip_file_path, input_base_uri)
     os.remove(zip_file_path)
+    return _CsvToExample(exec_properties=exec_properties,split_pattern=split_pattern).expand(pipeline=pipeline)
 
-    # obtain csv file path
-    csv_file_path = os.path.join(input_base_uri, os.listdir(input_base_uri)[0])
-    # comment the cdode
-    # import pandas as pd
-    # df = pd.read_csv(csv_file_path)
-    # os.remove(csv_file_path)
-    # df.iloc[:5000,:].to_csv(csv_file_path, index=None, header=True, mode="w")
 
-    # uncomment the code
-    return (pipeline
-            | 'ReadCsvFile' >> beam.io.ReadFromText(csv_file_path)
-            | 'ParseFile' >> beam.Map(utils.parse_file)
-            | "ToTFExample" >> beam.Map(utils.dict_to_example)
-            )
-
-    # utils.dict_to_example()
-    # return (pipeline
-    #         | 'ReadFromAvro' >> beam.io.ReadFromAvro(avro_pattern)
-    #         | 'ToTFExample' >> beam.Map(utils.dict_to_example))
 
 
 class Executor(BaseExampleGenExecutor):

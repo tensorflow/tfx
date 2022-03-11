@@ -28,6 +28,7 @@ from tfx.proto import example_gen_pb2
 from tfx.proto import range_config_pb2
 from tfx.utils import io_utils
 from google.protobuf import json_format
+import shutil
 
 # Key for the `payload_format` custom property of output examples artifact.
 PAYLOAD_FORMAT_PROPERTY_NAME = 'payload_format'
@@ -674,19 +675,6 @@ def extract_zip_file(zip_file_path: str, extract_dir: str, zip_file_read_mode: s
         raise e
 
 
-COLUMNS = None
-
-
-def parse_file(element):
-    """Read a line of CSV file and transform it into ordered dict"""
-    global COLUMNS  # columns will be None for the first line
-    for line in csv.reader([element], quotechar='"', delimiter=',', quoting=csv.QUOTE_ALL, skipinitialspace=True):
-        if COLUMNS is None:  # Considering first line as header
-            COLUMNS = line
-            line = ["" for data in line]  # Empty string for first row as it is header
-        return OrderedDict(zip(COLUMNS, line))
-
-
 ## code added by Avnish327030
 def download_datatset(zip_file_uri: str, download_dir: str) -> str:
     """Downloads a dataset from a given uri and saves it to a Download directory.
@@ -704,6 +692,8 @@ def download_datatset(zip_file_uri: str, download_dir: str) -> str:
     logging.info('Downloading dataset from %s', zip_file_uri)
     try:
         # Creating download_dir if not exists
+        if os.path.exists(download_dir):
+            shutil.rmtree(download_dir)
         os.makedirs(download_dir, exist_ok=True)
         # Obtaining zip file path to download zip file
         zip_file_path = os.path.join(download_dir, os.path.basename(zip_file_uri))
