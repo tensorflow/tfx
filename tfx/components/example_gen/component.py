@@ -210,8 +210,9 @@ class RemoteZipFileBasedExampleGen(base_beam_component.BaseBeamComponent):
   ```
   _taxi_root = os.path.join(os.environ['HOME'], 'taxi')
   _data_root = os.path.join(_taxi_root, 'data', 'simple')
+  _zip_uri = "https://xyz//abz.csv.zip"
   # Brings data into the pipeline or otherwise joins/converts training data.
-  example_gen = FileBasedExampleGen(input_base=_data_root)
+  example_gen = RemoteZipFileBasedExample(input_base=_data_root,zip_file_uri="")
   ```
 
   Component `outputs` contains:
@@ -219,7 +220,8 @@ class RemoteZipFileBasedExampleGen(base_beam_component.BaseBeamComponent):
                  and eval examples.
   """
 
-    SPEC_CLASS = standard_artifacts.RemoteZipFileBasedExampleGenSpec
+    SPEC_CLASS = standard_component_specs.RemoteZipFileBasedExampleGenSpec
+
     # EXECUTOR_SPEC should be overridden by subclasses.
     EXECUTOR_SPEC = executor_spec.BeamExecutorSpec(
         base_beam_executor.BaseBeamExecutor)
@@ -243,7 +245,8 @@ class RemoteZipFileBasedExampleGen(base_beam_component.BaseBeamComponent):
         """Construct a FileBasedExampleGen component.
 
     Args:
-      input_base: an external directory containing the data files.
+      input_base: an extract directory containing the CSV files after extraction of downloaded zip file.
+      zip_file_uri: Remote Zip file uri to download compressed zip csv file
       input_config: An
         [`example_gen_pb2.Input`](https://github.com/tensorflow/tfx/blob/master/tfx/proto/example_gen.proto)
           instance, providing input configuration. If unset, input files will be
@@ -268,7 +271,7 @@ class RemoteZipFileBasedExampleGen(base_beam_component.BaseBeamComponent):
         output_config = output_config or utils.make_default_output_config(
             input_config)
         example_artifacts = types.Channel(type=standard_artifacts.Examples)
-        spec = standard_artifacts.RemoteZipFileBasedExampleGenSpec(
+        spec = standard_component_specs.RemoteZipFileBasedExampleGenSpec(
             input_base=input_base,
             zip_file_uri=zip_file_uri,
             input_config=input_config,

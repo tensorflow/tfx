@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""TFX CsvExampleGen component definition."""
+"""TFX RemoteZipCsvExampleGen component definition."""
 
 from typing import Optional, Union
 
@@ -24,12 +24,12 @@ from tfx.proto import range_config_pb2
 
 
 class RemoteZipCsvExampleGen(component.RemoteZipFileBasedExampleGen):  # pylint: disable=protected-access
-  """Official TFX CsvExampleGen component.
+    """Official TFX RemoteZipCsvExampleGen component.
 
-  The csv examplegen component takes csv data, and generates train
+  The remotezipcsv examplegen component takes zip file url of zip compressed csv data, and generates train
   and eval examples for downstream components.
 
-  The csv examplegen encodes column values to tf.Example int/float/byte feature.
+  The remotezipcsv examplegen encodes column values to tf.Example int/float/byte feature.
   For the case when there's missing cells, the csv examplegen uses:
   -- tf.train.Feature(`type`_list=tf.train.`type`List(value=[])), when the
      `type` can be inferred.
@@ -59,22 +59,23 @@ class RemoteZipCsvExampleGen(component.RemoteZipFileBasedExampleGen):  # pylint:
                  and eval examples.
   """
 
-  EXECUTOR_SPEC = executor_spec.BeamExecutorSpec(executor.Executor)
+    EXECUTOR_SPEC = executor_spec.BeamExecutorSpec(executor.Executor)
 
-  def __init__(
-      self,
-      input_base: Optional[str] = None,
-      zip_file_uri: Optional[str] = None,
-      input_config: Optional[Union[example_gen_pb2.Input,
-                                   data_types.RuntimeParameter]] = None,
-      output_config: Optional[Union[example_gen_pb2.Output,
-                                    data_types.RuntimeParameter]] = None,
-      range_config: Optional[Union[range_config_pb2.RangeConfig,
-                                   data_types.RuntimeParameter]] = None):
-    """Construct a CsvExampleGen component.
+    def __init__(
+            self,
+            input_base: Optional[str] = None,
+            zip_file_uri: Optional[str] = None,
+            input_config: Optional[Union[example_gen_pb2.Input,
+                                         data_types.RuntimeParameter]] = None,
+            output_config: Optional[Union[example_gen_pb2.Output,
+                                          data_types.RuntimeParameter]] = None,
+            range_config: Optional[Union[range_config_pb2.RangeConfig,
+                                         data_types.RuntimeParameter]] = None):
+        """Construct a RemoteZipCsvExampleGen component.
 
     Args:
-      input_base: an external directory containing the CSV files.
+      input_base: an extract directory containing the CSV files after extraction of downloaded zip file.
+      zip_file_uri: Remote Zip file uri to download compressed zip csv file
       input_config: An example_gen_pb2.Input instance, providing input
         configuration. If unset, the files under input_base will be treated as a
         single split.
@@ -85,9 +86,9 @@ class RemoteZipCsvExampleGen(component.RemoteZipFileBasedExampleGen):  # pylint:
         specifying the range of span values to consider. If unset, driver will
         default to searching for latest span with no restrictions.
     """
-    super().__init__(
-        input_base=input_base,
-        zip_file_uri=zip_file_uri,
-        input_config=input_config,
-        output_config=output_config,
-        range_config=range_config)
+        super().__init__(
+            input_base=input_base,
+            zip_file_uri=zip_file_uri,
+            input_config=input_config,
+            output_config=output_config,
+            range_config=range_config)

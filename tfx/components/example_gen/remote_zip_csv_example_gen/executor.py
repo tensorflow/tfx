@@ -31,7 +31,7 @@ from tfx.types import standard_component_specs
 def _ZipToExample(  # pylint: disable=invalid-name
         pipeline: beam.Pipeline, exec_properties: Dict[str, Any],
         split_pattern: str) -> beam.pvalue.PCollection:
-    """Read Avro files and transform to TF examples.
+    """Read remote zip csv files and transform to TF examples.
 
   Note that each input split will be transformed by this function separately.
 
@@ -80,7 +80,7 @@ def _ZipToExample(  # pylint: disable=invalid-name
 
 
 class Executor(BaseExampleGenExecutor):
-    """TFX example gen executor for processing avro format.
+    """TFX example gen executor for processing remote zip csv format.
 
   Data type conversion:
     integer types will be converted to tf.train.Feature with tf.train.Int64List.
