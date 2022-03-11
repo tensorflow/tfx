@@ -12,22 +12,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Utilities for ExampleGen components."""
-
+import csv
+from collections import OrderedDict
 import datetime
 import os
 import re
 from typing import Any, Dict, Iterable, List, Optional, Tuple, Union
-
+from zipfile import ZipFile
 from absl import logging
 import numpy as np
 import tensorflow as tf
-
+from urllib import request
 from tfx.dsl.io import fileio
 from tfx.proto import example_gen_pb2
 from tfx.proto import range_config_pb2
 from tfx.utils import io_utils
 from google.protobuf import json_format
-
 
 # Key for the `payload_format` custom property of output examples artifact.
 PAYLOAD_FORMAT_PROPERTY_NAME = 'payload_format'
@@ -83,60 +83,60 @@ _DEFAULT_ENCODING = 'utf-8'
 
 
 def dict_to_example(instance: Dict[str, Any]) -> tf.train.Example:
-  """Converts dict to tf example."""
-  feature = {}
-  for key, value in instance.items():
-    # TODO(jyzhao): support more types.
-    # Convert to Python Scalars
-    if isinstance(value, np.ndarray):
-      pyval = value.tolist()
-    else:
-      try:
-        pyval = value.item()
-      except AttributeError:
-        pyval = value
+    """Converts dict to tf example."""
+    feature = {}
+    for key, value in instance.items():
+        # TODO(jyzhao): support more types.
+        # Convert to Python Scalars
+        if isinstance(value, np.ndarray):
+            pyval = value.tolist()
+        else:
+            try:
+                pyval = value.item()
+            except AttributeError:
+                pyval = value
 
-    # Convert bytes to str
-    if isinstance(pyval, bytes):
-      pyval = pyval.decode(_DEFAULT_ENCODING)
+        # Convert bytes to str
+        if isinstance(pyval, bytes):
+            pyval = pyval.decode(_DEFAULT_ENCODING)
 
-    if pyval is None:
-      feature[key] = tf.train.Feature()
-    elif isinstance(pyval, int):
-      feature[key] = tf.train.Feature(
-          int64_list=tf.train.Int64List(value=[pyval]))
-    elif isinstance(pyval, float):
-      feature[key] = tf.train.Feature(
-          float_list=tf.train.FloatList(value=[pyval]))
-    elif isinstance(pyval, str):
-      feature[key] = tf.train.Feature(
-          bytes_list=tf.train.BytesList(
-              value=[pyval.encode(_DEFAULT_ENCODING)]))
-    elif isinstance(pyval, list):
-      if not pyval:
-        feature[key] = tf.train.Feature()
-      elif isinstance(pyval[0], int):
-        feature[key] = tf.train.Feature(
-            int64_list=tf.train.Int64List(value=pyval))
-      elif isinstance(pyval[0], float):
-        feature[key] = tf.train.Feature(
-            float_list=tf.train.FloatList(value=pyval))
-      elif isinstance(pyval[0], str):
-        feature[key] = tf.train.Feature(
-            bytes_list=tf.train.BytesList(
-                value=[v.encode(_DEFAULT_ENCODING) for v in pyval]))
-      else:
-        raise RuntimeError('Column type `list of {}` is not supported.'.format(
-            type(value[0])))
-    else:
-      raise RuntimeError('Column type {} is not supported.'.format(type(value)))
-  return tf.train.Example(features=tf.train.Features(feature=feature))
+        if pyval is None:
+            feature[key] = tf.train.Feature()
+        elif isinstance(pyval, int):
+            feature[key] = tf.train.Feature(
+                int64_list=tf.train.Int64List(value=[pyval]))
+        elif isinstance(pyval, float):
+            feature[key] = tf.train.Feature(
+                float_list=tf.train.FloatList(value=[pyval]))
+        elif isinstance(pyval, str):
+            feature[key] = tf.train.Feature(
+                bytes_list=tf.train.BytesList(
+                    value=[pyval.encode(_DEFAULT_ENCODING)]))
+        elif isinstance(pyval, list):
+            if not pyval:
+                feature[key] = tf.train.Feature()
+            elif isinstance(pyval[0], int):
+                feature[key] = tf.train.Feature(
+                    int64_list=tf.train.Int64List(value=pyval))
+            elif isinstance(pyval[0], float):
+                feature[key] = tf.train.Feature(
+                    float_list=tf.train.FloatList(value=pyval))
+            elif isinstance(pyval[0], str):
+                feature[key] = tf.train.Feature(
+                    bytes_list=tf.train.BytesList(
+                        value=[v.encode(_DEFAULT_ENCODING) for v in pyval]))
+            else:
+                raise RuntimeError('Column type `list of {}` is not supported.'.format(
+                    type(value[0])))
+        else:
+            raise RuntimeError('Column type {} is not supported.'.format(type(value)))
+    return tf.train.Example(features=tf.train.Features(feature=feature))
 
 
 def generate_output_split_names(
-    input_config: Union[example_gen_pb2.Input, Dict[str, Any]],
-    output_config: Union[example_gen_pb2.Output, Dict[str, Any]]) -> List[str]:
-  """Return output split name based on input and output config.
+        input_config: Union[example_gen_pb2.Input, Dict[str, Any]],
+        output_config: Union[example_gen_pb2.Output, Dict[str, Any]]) -> List[str]:
+    """Return output split name based on input and output config.
 
   Return output split name if it's specified and input only contains one split,
   otherwise output split will be same as input.
@@ -159,309 +159,309 @@ def generate_output_split_names(
       - Output split is specified while input has more than one split.
       - Missing train and eval split.
   """
-  result = []
-  # Convert proto to dict for easy sanity check. Otherwise we need to branch the
-  # logic based on parameter types.
-  if isinstance(output_config, example_gen_pb2.Output):
-    output_config = json_format.MessageToDict(
-        output_config,
-        including_default_value_fields=True,
-        preserving_proto_field_name=True)
-  if isinstance(input_config, example_gen_pb2.Input):
-    input_config = json_format.MessageToDict(
-        input_config,
-        including_default_value_fields=True,
-        preserving_proto_field_name=True)
+    result = []
+    # Convert proto to dict for easy sanity check. Otherwise we need to branch the
+    # logic based on parameter types.
+    if isinstance(output_config, example_gen_pb2.Output):
+        output_config = json_format.MessageToDict(
+            output_config,
+            including_default_value_fields=True,
+            preserving_proto_field_name=True)
+    if isinstance(input_config, example_gen_pb2.Input):
+        input_config = json_format.MessageToDict(
+            input_config,
+            including_default_value_fields=True,
+            preserving_proto_field_name=True)
 
-  if 'split_config' in output_config and 'splits' in output_config[
-      'split_config']:
-    if 'splits' not in input_config:
-      raise RuntimeError(
-          'ExampleGen instance specified output splits but no input split '
-          'is specified.')
-    if len(input_config['splits']) != 1:
-      # If output is specified, then there should only be one input split.
-      raise RuntimeError(
-          'ExampleGen instance specified output splits but at the same time '
-          'input has more than one split.')
-    for split in output_config['split_config']['splits']:
-      if not split['name'] or (isinstance(split['hash_buckets'], int) and
-                               split['hash_buckets'] <= 0):
-        raise RuntimeError('Str-typed output split name and int-typed '
-                           'hash buckets are required.')
-      result.append(split['name'])
-  else:
-    # If output is not specified, it will have the same split as the input.
-    if 'splits' in input_config:
-      for split in input_config['splits']:
-        if not split['name'] or not split['pattern']:
-          raise RuntimeError('Str-typed input split name and pattern '
-                             'are required.')
-        result.append(split['name'])
+    if 'split_config' in output_config and 'splits' in output_config[
+        'split_config']:
+        if 'splits' not in input_config:
+            raise RuntimeError(
+                'ExampleGen instance specified output splits but no input split '
+                'is specified.')
+        if len(input_config['splits']) != 1:
+            # If output is specified, then there should only be one input split.
+            raise RuntimeError(
+                'ExampleGen instance specified output splits but at the same time '
+                'input has more than one split.')
+        for split in output_config['split_config']['splits']:
+            if not split['name'] or (isinstance(split['hash_buckets'], int) and
+                                     split['hash_buckets'] <= 0):
+                raise RuntimeError('Str-typed output split name and int-typed '
+                                   'hash buckets are required.')
+            result.append(split['name'])
+    else:
+        # If output is not specified, it will have the same split as the input.
+        if 'splits' in input_config:
+            for split in input_config['splits']:
+                if not split['name'] or not split['pattern']:
+                    raise RuntimeError('Str-typed input split name and pattern '
+                                       'are required.')
+                result.append(split['name'])
 
-  if not result:
-    raise RuntimeError('ExampleGen splits are missing.')
-  if len(result) != len(set(result)):
-    raise RuntimeError('Duplicated split name {}.'.format(result))
+    if not result:
+        raise RuntimeError('ExampleGen splits are missing.')
+    if len(result) != len(set(result)):
+        raise RuntimeError('Duplicated split name {}.'.format(result))
 
-  return result
+    return result
 
 
 def make_default_input_config(
-    split_pattern: str = '*') -> example_gen_pb2.Input:
-  """Returns default input config."""
-  # Treats input base dir as a single split.
-  return example_gen_pb2.Input(splits=[
-      example_gen_pb2.Input.Split(name='single_split', pattern=split_pattern)
-  ])
+        split_pattern: str = '*') -> example_gen_pb2.Input:
+    """Returns default input config."""
+    # Treats input base dir as a single split.
+    return example_gen_pb2.Input(splits=[
+        example_gen_pb2.Input.Split(name='single_split', pattern=split_pattern)
+    ])
 
 
 def make_default_output_config(
-    input_config: Union[example_gen_pb2.Input, Dict[str, Any]]
+        input_config: Union[example_gen_pb2.Input, Dict[str, Any]]
 ) -> example_gen_pb2.Output:
-  """Returns default output config based on input config."""
-  if isinstance(input_config, example_gen_pb2.Input):
-    input_config = json_format.MessageToDict(
-        input_config,
-        including_default_value_fields=True,
-        preserving_proto_field_name=True)
+    """Returns default output config based on input config."""
+    if isinstance(input_config, example_gen_pb2.Input):
+        input_config = json_format.MessageToDict(
+            input_config,
+            including_default_value_fields=True,
+            preserving_proto_field_name=True)
 
-  if len(input_config['splits']) > 1:
-    # Returns empty output split config as output split will be same as input.
-    return example_gen_pb2.Output()
-  else:
-    # Returns 'train' and 'eval' splits with size 2:1.
-    return example_gen_pb2.Output(
-        split_config=example_gen_pb2.SplitConfig(splits=[
-            example_gen_pb2.SplitConfig.Split(name='train', hash_buckets=2),
-            example_gen_pb2.SplitConfig.Split(name='eval', hash_buckets=1)
-        ]))
+    if len(input_config['splits']) > 1:
+        # Returns empty output split config as output split will be same as input.
+        return example_gen_pb2.Output()
+    else:
+        # Returns 'train' and 'eval' splits with size 2:1.
+        return example_gen_pb2.Output(
+            split_config=example_gen_pb2.SplitConfig(splits=[
+                example_gen_pb2.SplitConfig.Split(name='train', hash_buckets=2),
+                example_gen_pb2.SplitConfig.Split(name='eval', hash_buckets=1)
+            ]))
 
 
 def _glob_to_regex(glob_pattern: str) -> str:
-  """Changes glob pattern to regex pattern."""
-  regex_pattern = glob_pattern
-  regex_pattern = regex_pattern.replace('.', '\\.')
-  regex_pattern = regex_pattern.replace('+', '\\+')
-  regex_pattern = regex_pattern.replace('*', '[^/]*')
-  regex_pattern = regex_pattern.replace('?', '[^/]')
-  regex_pattern = regex_pattern.replace('(', '\\(')
-  regex_pattern = regex_pattern.replace(')', '\\)')
-  return regex_pattern
+    """Changes glob pattern to regex pattern."""
+    regex_pattern = glob_pattern
+    regex_pattern = regex_pattern.replace('.', '\\.')
+    regex_pattern = regex_pattern.replace('+', '\\+')
+    regex_pattern = regex_pattern.replace('*', '[^/]*')
+    regex_pattern = regex_pattern.replace('?', '[^/]')
+    regex_pattern = regex_pattern.replace('(', '\\(')
+    regex_pattern = regex_pattern.replace(')', '\\)')
+    return regex_pattern
 
 
 def date_to_span_number(year: int, month: int, day: int) -> int:
-  """Calculated span from date as number of days since unix epoch."""
-  return (datetime.datetime(year, month, day) - UNIX_EPOCH_DATE).days
+    """Calculated span from date as number of days since unix epoch."""
+    return (datetime.datetime(year, month, day) - UNIX_EPOCH_DATE).days
 
 
 def span_number_to_date(span: int) -> Tuple[int, int, int]:
-  """Given a span number, convert it to the corresponding calendar date."""
-  date = UNIX_EPOCH_DATE + datetime.timedelta(span)
-  return date.year, date.month, date.day
+    """Given a span number, convert it to the corresponding calendar date."""
+    date = UNIX_EPOCH_DATE + datetime.timedelta(span)
+    return date.year, date.month, date.day
 
 
 def _make_zero_padding_spec_value(spec_full_regex: str, pattern: str,
                                   spec_value: int) -> str:
-  """Returns spec value, applies zero padding if needed."""
-  match_result = re.search(spec_full_regex, pattern)
-  assert match_result, 'No %s found in split %s' % (spec_full_regex, pattern)
-  width_str = match_result.group('width')
-  if width_str:
-    width_int = 0
-    try:
-      width_int = int(width_str)
-    except ValueError:
-      raise ValueError('Width modifier is not a integer: %s' % pattern)
-    if width_int <= 0:
-      raise ValueError('Width modifier is not positive: %s' % pattern)
-    if width_int < len(str(spec_value)):
-      raise ValueError(
-          'Spec width is less than number of digits in spec: (%s, %s)' %
-          (width_int, spec_value))
-    return str(spec_value).zfill(width_int)
-  return str(spec_value)
+    """Returns spec value, applies zero padding if needed."""
+    match_result = re.search(spec_full_regex, pattern)
+    assert match_result, 'No %s found in split %s' % (spec_full_regex, pattern)
+    width_str = match_result.group('width')
+    if width_str:
+        width_int = 0
+        try:
+            width_int = int(width_str)
+        except ValueError:
+            raise ValueError('Width modifier is not a integer: %s' % pattern)
+        if width_int <= 0:
+            raise ValueError('Width modifier is not positive: %s' % pattern)
+        if width_int < len(str(spec_value)):
+            raise ValueError(
+                'Spec width is less than number of digits in spec: (%s, %s)' %
+                (width_int, spec_value))
+        return str(spec_value).zfill(width_int)
+    return str(spec_value)
 
 
 def verify_split_pattern_specs(
-    split: example_gen_pb2.Input.Split) -> Tuple[bool, bool, bool]:
-  """Verify and identify specs to be matched in split pattern."""
-  # Match occurences of pattern '{SPAN}|{SPAN:*}'. If it exists, capture
-  # span width modifier. Otherwise, the empty string is captured.
-  span_matches = re.findall(SPAN_FULL_REGEX, split.pattern)
-  is_match_span = bool(span_matches)
+        split: example_gen_pb2.Input.Split) -> Tuple[bool, bool, bool]:
+    """Verify and identify specs to be matched in split pattern."""
+    # Match occurences of pattern '{SPAN}|{SPAN:*}'. If it exists, capture
+    # span width modifier. Otherwise, the empty string is captured.
+    span_matches = re.findall(SPAN_FULL_REGEX, split.pattern)
+    is_match_span = bool(span_matches)
 
-  # Match occurences of pattern '{VERSION}|{VERSION:*}'. If it exists, capture
-  # version width modifier. Otherwise, the empty string is captured.
-  version_matches = re.findall(VERSION_FULL_REGEX, split.pattern)
-  is_match_version = bool(version_matches)
+    # Match occurences of pattern '{VERSION}|{VERSION:*}'. If it exists, capture
+    # version width modifier. Otherwise, the empty string is captured.
+    version_matches = re.findall(VERSION_FULL_REGEX, split.pattern)
+    is_match_version = bool(version_matches)
 
-  is_match_date = any(spec in split.pattern for spec in DATE_SPECS)
+    is_match_date = any(spec in split.pattern for spec in DATE_SPECS)
 
-  if [is_match_span, is_match_date].count(True) > 1:
-    raise ValueError(
-        'Either span spec or date specs must be specified exclusively in %s' %
-        split.pattern)
+    if [is_match_span, is_match_date].count(True) > 1:
+        raise ValueError(
+            'Either span spec or date specs must be specified exclusively in %s' %
+            split.pattern)
 
-  if is_match_span and len(span_matches) != 1:
-    raise ValueError('Only one %s is allowed in %s' %
-                     (SPAN_SPEC, split.pattern))
+    if is_match_span and len(span_matches) != 1:
+        raise ValueError('Only one %s is allowed in %s' %
+                         (SPAN_SPEC, split.pattern))
 
-  if is_match_date and not all(
-      split.pattern.count(spec) == 1 for spec in DATE_SPECS):
-    raise ValueError(
-        'Exactly one of each date spec (%s, %s, %s) is required in %s' %
-        (YEAR_SPEC, MONTH_SPEC, DAY_SPEC, split.pattern))
+    if is_match_date and not all(
+            split.pattern.count(spec) == 1 for spec in DATE_SPECS):
+        raise ValueError(
+            'Exactly one of each date spec (%s, %s, %s) is required in %s' %
+            (YEAR_SPEC, MONTH_SPEC, DAY_SPEC, split.pattern))
 
-  if is_match_version and (not is_match_span and not is_match_date):
-    raise ValueError(
-        'Version spec provided, but Span or Date spec is not present in %s' %
-        split.pattern)
+    if is_match_version and (not is_match_span and not is_match_date):
+        raise ValueError(
+            'Version spec provided, but Span or Date spec is not present in %s' %
+            split.pattern)
 
-  if is_match_version and len(version_matches) != 1:
-    raise ValueError('Only one %s is allowed in %s' %
-                     (VERSION_SPEC, split.pattern))
+    if is_match_version and len(version_matches) != 1:
+        raise ValueError('Only one %s is allowed in %s' %
+                         (VERSION_SPEC, split.pattern))
 
-  return is_match_span, is_match_date, is_match_version
+    return is_match_span, is_match_date, is_match_version
 
 
 def get_pattern_for_span_version(pattern: str, is_match_span: bool,
                                  is_match_date: bool, is_match_version: bool,
                                  span: int, version: Optional[int]) -> str:
-  """Return pattern with Span and Version spec filled."""
-  if is_match_span:
-    span_token = _make_zero_padding_spec_value(SPAN_FULL_REGEX, pattern, span)
-    pattern = re.sub(SPAN_FULL_REGEX, span_token, pattern)
-  elif is_match_date:
-    year, month, day = span_number_to_date(span)
-    date_tokens = [str(year).zfill(4), str(month).zfill(2), str(day).zfill(2)]
-    for spec, value in zip(DATE_SPECS, date_tokens):
-      pattern = pattern.replace(spec, value)
-  if is_match_version:
-    version_token = _make_zero_padding_spec_value(VERSION_FULL_REGEX, pattern,
-                                                  version)
-    pattern = re.sub(VERSION_FULL_REGEX, version_token, pattern)
+    """Return pattern with Span and Version spec filled."""
+    if is_match_span:
+        span_token = _make_zero_padding_spec_value(SPAN_FULL_REGEX, pattern, span)
+        pattern = re.sub(SPAN_FULL_REGEX, span_token, pattern)
+    elif is_match_date:
+        year, month, day = span_number_to_date(span)
+        date_tokens = [str(year).zfill(4), str(month).zfill(2), str(day).zfill(2)]
+        for spec, value in zip(DATE_SPECS, date_tokens):
+            pattern = pattern.replace(spec, value)
+    if is_match_version:
+        version_token = _make_zero_padding_spec_value(VERSION_FULL_REGEX, pattern,
+                                                      version)
+        pattern = re.sub(VERSION_FULL_REGEX, version_token, pattern)
 
-  return pattern
+    return pattern
 
 
 def get_query_for_span(pattern: str, span: int) -> str:
-  """Return query with timestamp placeholders filled."""
-  # TODO(b/179853017): make UNIX_EPOCH_DATE_UTC timezone configurable.
-  begin = UNIX_EPOCH_DATE_UTC + datetime.timedelta(days=span)
-  end = begin + datetime.timedelta(days=1)
-  pattern = pattern.replace(SPAN_BEGIN_TIMESTAMP, str(int(begin.timestamp())))
-  pattern = pattern.replace(SPAN_END_TIMESTMAP, str(int(end.timestamp())))
-  pattern = pattern.replace(
-      SPAN_YYYYMMDD_UTC,
-      begin.astimezone(datetime.timezone.utc).strftime("'%Y%m%d'"))
-  return pattern
+    """Return query with timestamp placeholders filled."""
+    # TODO(b/179853017): make UNIX_EPOCH_DATE_UTC timezone configurable.
+    begin = UNIX_EPOCH_DATE_UTC + datetime.timedelta(days=span)
+    end = begin + datetime.timedelta(days=1)
+    pattern = pattern.replace(SPAN_BEGIN_TIMESTAMP, str(int(begin.timestamp())))
+    pattern = pattern.replace(SPAN_END_TIMESTMAP, str(int(end.timestamp())))
+    pattern = pattern.replace(
+        SPAN_YYYYMMDD_UTC,
+        begin.astimezone(datetime.timezone.utc).strftime("'%Y%m%d'"))
+    return pattern
 
 
 def _find_matched_span_version_from_path(
-    file_path: str, split_regex_pattern: str, is_match_span: bool,
-    is_match_date: bool, is_match_version: bool
+        file_path: str, split_regex_pattern: str, is_match_span: bool,
+        is_match_date: bool, is_match_version: bool
 ) -> Tuple[Optional[List[str]], Optional[int], Optional[str], Optional[int]]:
-  """Finds the span tokens and number given a file path and split regex."""
+    """Finds the span tokens and number given a file path and split regex."""
 
-  result = re.search(split_regex_pattern, file_path)
-  if result is None:
-    raise ValueError('Glob pattern does not match regex pattern')
+    result = re.search(split_regex_pattern, file_path)
+    if result is None:
+        raise ValueError('Glob pattern does not match regex pattern')
 
-  matched_span_tokens = None
-  matched_span_int = None
-  matched_version = None
-  matched_version_int = None
+    matched_span_tokens = None
+    matched_span_int = None
+    matched_version = None
+    matched_version_int = None
 
-  if is_match_span:
-    matched_span_tokens = [result.group(SPAN_PROPERTY_NAME)]
-    try:
-      matched_span_int = int(matched_span_tokens[0])
-    except ValueError:
-      raise ValueError('Cannot find %s number from %s based on %s' %
-                       (SPAN_PROPERTY_NAME, file_path, split_regex_pattern))
-  elif is_match_date:
-    matched_span_tokens = [
-        result.group(name) for name in ['year', 'month', 'day']
-    ]
-    try:
-      matched_span_ints = [int(elem) for elem in matched_span_tokens]
-    except ValueError:
-      raise ValueError('Cannot find %s number using date from %s based on %s' %
-                       (SPAN_PROPERTY_NAME, file_path, split_regex_pattern))
-    try:
-      matched_span_int = date_to_span_number(*matched_span_ints)
-    except ValueError:
-      raise ValueError('Retrieved date is invalid for file: %s' % file_path)
+    if is_match_span:
+        matched_span_tokens = [result.group(SPAN_PROPERTY_NAME)]
+        try:
+            matched_span_int = int(matched_span_tokens[0])
+        except ValueError:
+            raise ValueError('Cannot find %s number from %s based on %s' %
+                             (SPAN_PROPERTY_NAME, file_path, split_regex_pattern))
+    elif is_match_date:
+        matched_span_tokens = [
+            result.group(name) for name in ['year', 'month', 'day']
+        ]
+        try:
+            matched_span_ints = [int(elem) for elem in matched_span_tokens]
+        except ValueError:
+            raise ValueError('Cannot find %s number using date from %s based on %s' %
+                             (SPAN_PROPERTY_NAME, file_path, split_regex_pattern))
+        try:
+            matched_span_int = date_to_span_number(*matched_span_ints)
+        except ValueError:
+            raise ValueError('Retrieved date is invalid for file: %s' % file_path)
 
-  if is_match_version:
-    matched_version = result.group(VERSION_PROPERTY_NAME)
-    try:
-      matched_version_int = int(matched_version)
-    except ValueError:
-      raise ValueError('Cannot find %s number from %s based on %s' %
-                       (VERSION_PROPERTY_NAME, file_path, split_regex_pattern))
+    if is_match_version:
+        matched_version = result.group(VERSION_PROPERTY_NAME)
+        try:
+            matched_version_int = int(matched_version)
+        except ValueError:
+            raise ValueError('Cannot find %s number from %s based on %s' %
+                             (VERSION_PROPERTY_NAME, file_path, split_regex_pattern))
 
-  return (matched_span_tokens, matched_span_int, matched_version,
-          matched_version_int)
+    return (matched_span_tokens, matched_span_int, matched_version,
+            matched_version_int)
 
 
 def _get_spec_width(spec_full_regex: str, spec_name: str,
                     split: example_gen_pb2.Input.Split) -> Optional[str]:
-  """Returns width modifier of a spec, if it exists."""
-  result = re.search(spec_full_regex, split.pattern)
-  assert result, 'No %s found in split %s' % (spec_name, split.pattern)
-  width_str = result.group('width')
-  if width_str:
-    try:
-      width_int = int(width_str)
-      if width_int <= 0:
-        raise ValueError('Not a positive integer.')
-    except ValueError:
-      raise ValueError(
-          'Width modifier in %s spec is not a positive integer: %s' %
-          (spec_name, split.pattern))
-  return width_str
+    """Returns width modifier of a spec, if it exists."""
+    result = re.search(spec_full_regex, split.pattern)
+    assert result, 'No %s found in split %s' % (spec_name, split.pattern)
+    width_str = result.group('width')
+    if width_str:
+        try:
+            width_int = int(width_str)
+            if width_int <= 0:
+                raise ValueError('Not a positive integer.')
+        except ValueError:
+            raise ValueError(
+                'Width modifier in %s spec is not a positive integer: %s' %
+                (spec_name, split.pattern))
+    return width_str
 
 
 def _get_span_replace_glob_and_regex(
-    range_config: range_config_pb2.RangeConfig, is_match_span: bool,
-    is_match_date: bool,
-    span_width_str: Optional[str]) -> Union[str, List[str]]:
-  """Replace span or date spec if static range RangeConfig is provided."""
-  if range_config.HasField('static_range'):
-    if is_match_span:
-      # If using RangeConfig.static_range, replace span spec in patterns
-      # with given span from static range.
-      span_str = str(range_config.static_range.start_span_number)
-      if span_width_str:
-        span_width_int = int(span_width_str)
-        if span_width_int < len(span_str):
-          raise ValueError(
-              'Span spec width is less than number of digits in span: (%s, %s)'
-              % (span_width_int, span_str))
-        span_str = span_str.zfill(span_width_int)
-      return span_str
+        range_config: range_config_pb2.RangeConfig, is_match_span: bool,
+        is_match_date: bool,
+        span_width_str: Optional[str]) -> Union[str, List[str]]:
+    """Replace span or date spec if static range RangeConfig is provided."""
+    if range_config.HasField('static_range'):
+        if is_match_span:
+            # If using RangeConfig.static_range, replace span spec in patterns
+            # with given span from static range.
+            span_str = str(range_config.static_range.start_span_number)
+            if span_width_str:
+                span_width_int = int(span_width_str)
+                if span_width_int < len(span_str):
+                    raise ValueError(
+                        'Span spec width is less than number of digits in span: (%s, %s)'
+                        % (span_width_int, span_str))
+                span_str = span_str.zfill(span_width_int)
+            return span_str
 
-    elif is_match_date:
-      # If using RangeConfig.static_range, replace date specs in patterns
-      # with calendar date derived from given span from static range.
-      span_int = range_config.static_range.start_span_number
-      year, month, day = span_number_to_date(span_int)
-      date_tokens = [str(year).zfill(4), str(month).zfill(2), str(day).zfill(2)]
-      return date_tokens
+        elif is_match_date:
+            # If using RangeConfig.static_range, replace date specs in patterns
+            # with calendar date derived from given span from static range.
+            span_int = range_config.static_range.start_span_number
+            year, month, day = span_number_to_date(span_int)
+            date_tokens = [str(year).zfill(4), str(month).zfill(2), str(day).zfill(2)]
+            return date_tokens
 
+        else:
+            raise ValueError('One of Span or Date should be specified.')
     else:
-      raise ValueError('One of Span or Date should be specified.')
-  else:
-    raise ValueError('Only static_range in RangeConfig is supported.')
+        raise ValueError('Only static_range in RangeConfig is supported.')
 
 
 def _create_matching_glob_and_regex(
-    uri: str, split: example_gen_pb2.Input.Split, is_match_span: bool,
-    is_match_date: bool, is_match_version: bool,
-    range_config: Optional[range_config_pb2.RangeConfig]) -> Tuple[str, str]:
-  """Constructs glob and regex patterns for matching span and version.
+        uri: str, split: example_gen_pb2.Input.Split, is_match_span: bool,
+        is_match_date: bool, is_match_version: bool,
+        range_config: Optional[range_config_pb2.RangeConfig]) -> Tuple[str, str]:
+    """Constructs glob and regex patterns for matching span and version.
 
   Construct a glob and regex pattern for matching files and capturing span and
   version information. By default, this method replaces the span, date, and
@@ -494,80 +494,80 @@ def _create_matching_glob_and_regex(
     groups, for span, date, and/or version (if their respective matching flags
     are set).
   """
-  split_pattern = os.path.join(uri, split.pattern)
-  split_glob_pattern = split_pattern
-  split_regex_pattern = _glob_to_regex(split_pattern)
+    split_pattern = os.path.join(uri, split.pattern)
+    split_glob_pattern = split_pattern
+    split_regex_pattern = _glob_to_regex(split_pattern)
 
-  if is_match_span:
-    # Check if span spec has any width args. Defaults to greedy matching if
-    # no width modifiers are present.
-    span_glob_replace = '*'
-    span_regex_replace = '.*'
+    if is_match_span:
+        # Check if span spec has any width args. Defaults to greedy matching if
+        # no width modifiers are present.
+        span_glob_replace = '*'
+        span_regex_replace = '.*'
 
-    span_width_str = _get_spec_width(SPAN_FULL_REGEX, SPAN_PROPERTY_NAME, split)
-    if span_width_str:
-      span_regex_replace = '.{%s}' % span_width_str
+        span_width_str = _get_spec_width(SPAN_FULL_REGEX, SPAN_PROPERTY_NAME, split)
+        if span_width_str:
+            span_regex_replace = '.{%s}' % span_width_str
 
-    if range_config and range_config.HasField('static_range'):
-      span_str = _get_span_replace_glob_and_regex(range_config, is_match_span,
-                                                  is_match_date, span_width_str)
-      span_regex_replace = span_str
-      span_glob_replace = span_str
+        if range_config and range_config.HasField('static_range'):
+            span_str = _get_span_replace_glob_and_regex(range_config, is_match_span,
+                                                        is_match_date, span_width_str)
+            span_regex_replace = span_str
+            span_glob_replace = span_str
 
-    split_glob_pattern = re.sub(SPAN_FULL_REGEX, span_glob_replace,
-                                split_glob_pattern)
-    span_capture_regex = '(?P<{}>{})'.format(SPAN_PROPERTY_NAME,
-                                             span_regex_replace)
-    split_regex_pattern = re.sub(SPAN_FULL_REGEX, span_capture_regex,
-                                 split_regex_pattern)
+        split_glob_pattern = re.sub(SPAN_FULL_REGEX, span_glob_replace,
+                                    split_glob_pattern)
+        span_capture_regex = '(?P<{}>{})'.format(SPAN_PROPERTY_NAME,
+                                                 span_regex_replace)
+        split_regex_pattern = re.sub(SPAN_FULL_REGEX, span_capture_regex,
+                                     split_regex_pattern)
 
-  elif is_match_date:
-    date_glob_replace = ['*', '*', '*']
-    # Defines a clear number of digits for certain element of date, in order of
-    # year, month, and day. This covers cases where date stamps may not have
-    # seperators between them.
-    date_regex_replace = ['.{4}', '.{2}', '.{2}']
+    elif is_match_date:
+        date_glob_replace = ['*', '*', '*']
+        # Defines a clear number of digits for certain element of date, in order of
+        # year, month, and day. This covers cases where date stamps may not have
+        # seperators between them.
+        date_regex_replace = ['.{4}', '.{2}', '.{2}']
 
-    if range_config and range_config.HasField('static_range'):
-      date_tokens = _get_span_replace_glob_and_regex(range_config,
-                                                     is_match_span,
-                                                     is_match_date, None)
-      date_glob_replace = date_tokens
-      date_regex_replace = date_tokens
+        if range_config and range_config.HasField('static_range'):
+            date_tokens = _get_span_replace_glob_and_regex(range_config,
+                                                           is_match_span,
+                                                           is_match_date, None)
+            date_glob_replace = date_tokens
+            date_regex_replace = date_tokens
 
-    for spec, replace in zip(DATE_SPECS, date_glob_replace):
-      split_glob_pattern = split_glob_pattern.replace(spec, replace)
+        for spec, replace in zip(DATE_SPECS, date_glob_replace):
+            split_glob_pattern = split_glob_pattern.replace(spec, replace)
 
-    for spec, replace, spec_name in zip(DATE_SPECS, date_regex_replace,
-                                        ['year', 'month', 'day']):
-      split_regex_pattern = split_regex_pattern.replace(
-          spec, '(?P<{}>{})'.format(spec_name, replace))
+        for spec, replace, spec_name in zip(DATE_SPECS, date_regex_replace,
+                                            ['year', 'month', 'day']):
+            split_regex_pattern = split_regex_pattern.replace(
+                spec, '(?P<{}>{})'.format(spec_name, replace))
 
-  if is_match_version:
-    # Check if version spec has any width modifier. Defaults to greedy matching
-    # if no width modifiers are present.
-    version_width_regex = '.*'
+    if is_match_version:
+        # Check if version spec has any width modifier. Defaults to greedy matching
+        # if no width modifiers are present.
+        version_width_regex = '.*'
 
-    version_width_str = _get_spec_width(VERSION_FULL_REGEX,
-                                        VERSION_PROPERTY_NAME, split)
-    if version_width_str:
-      version_width_regex = '.{%s}' % version_width_str
+        version_width_str = _get_spec_width(VERSION_FULL_REGEX,
+                                            VERSION_PROPERTY_NAME, split)
+        if version_width_str:
+            version_width_regex = '.{%s}' % version_width_str
 
-    split_glob_pattern = re.sub(VERSION_FULL_REGEX, '*', split_glob_pattern)
-    version_capture_regex = '(?P<{}>{})'.format(VERSION_PROPERTY_NAME,
-                                                version_width_regex)
-    split_regex_pattern = re.sub(VERSION_FULL_REGEX, version_capture_regex,
-                                 split_regex_pattern)
+        split_glob_pattern = re.sub(VERSION_FULL_REGEX, '*', split_glob_pattern)
+        version_capture_regex = '(?P<{}>{})'.format(VERSION_PROPERTY_NAME,
+                                                    version_width_regex)
+        split_regex_pattern = re.sub(VERSION_FULL_REGEX, version_capture_regex,
+                                     split_regex_pattern)
 
-  return split_glob_pattern, split_regex_pattern
+    return split_glob_pattern, split_regex_pattern
 
 
 def _get_target_span_version(
-    uri: str,
-    split: example_gen_pb2.Input.Split,
-    range_config: Optional[range_config_pb2.RangeConfig] = None
+        uri: str,
+        split: example_gen_pb2.Input.Split,
+        range_config: Optional[range_config_pb2.RangeConfig] = None
 ) -> Tuple[Optional[int], Optional[int]]:
-  """Retrieves a  target span and version for a given split pattern.
+    """Retrieves a  target span and version for a given split pattern.
 
   If both Span and Version spec occur in the split pattern, searches for and
   returns both the target Span and Version. If only Span exists in the split
@@ -600,71 +600,128 @@ def _get_target_span_version(
       - If Span or Version found is not an integer.
       - If a matching cannot be found for split pattern provided.
   """
-  is_match_span, is_match_date, is_match_version = verify_split_pattern_specs(
-      split)
+    is_match_span, is_match_date, is_match_version = verify_split_pattern_specs(
+        split)
 
-  if not is_match_span and not is_match_date:
-    return (None, None)
+    if not is_match_span and not is_match_date:
+        return (None, None)
 
-  split_glob_pattern, split_regex_pattern = _create_matching_glob_and_regex(
-      uri=uri,
-      split=split,
-      is_match_span=is_match_span,
-      is_match_date=is_match_date,
-      is_match_version=is_match_version,
-      range_config=range_config)
+    split_glob_pattern, split_regex_pattern = _create_matching_glob_and_regex(
+        uri=uri,
+        split=split,
+        is_match_span=is_match_span,
+        is_match_date=is_match_date,
+        is_match_version=is_match_version,
+        range_config=range_config)
 
-  logging.info('Glob pattern for split %s: %s', split.name, split_glob_pattern)
-  logging.info('Regex pattern for split %s: %s', split.name,
-               split_regex_pattern)
+    logging.info('Glob pattern for split %s: %s', split.name, split_glob_pattern)
+    logging.info('Regex pattern for split %s: %s', split.name,
+                 split_regex_pattern)
 
-  latest_span_tokens = None
-  latest_span_int = None
-  latest_version = None
-  latest_version_int = None
+    latest_span_tokens = None
+    latest_span_int = None
+    latest_version = None
+    latest_version_int = None
 
-  files = fileio.glob(split_glob_pattern)
-  for file_path in files:
-    match_span_tokens, match_span_int, match_version, match_version_int = (
-        _find_matched_span_version_from_path(file_path, split_regex_pattern,
-                                             is_match_span, is_match_date,
-                                             is_match_version))
+    files = fileio.glob(split_glob_pattern)
+    for file_path in files:
+        match_span_tokens, match_span_int, match_version, match_version_int = (
+            _find_matched_span_version_from_path(file_path, split_regex_pattern,
+                                                 is_match_span, is_match_date,
+                                                 is_match_version))
 
-    if latest_span_int is None or match_span_int > latest_span_int:
-      # Uses str instead of int because of zero padding digits.
-      latest_span_tokens = match_span_tokens
-      latest_span_int = match_span_int
-      latest_version = match_version
-      latest_version_int = match_version_int
-    elif (latest_span_int == match_span_int and
-          (latest_version is None or match_version_int >= latest_version_int)):
-      latest_version = match_version
-      latest_version_int = match_version_int
+        if latest_span_int is None or match_span_int > latest_span_int:
+            # Uses str instead of int because of zero padding digits.
+            latest_span_tokens = match_span_tokens
+            latest_span_int = match_span_int
+            latest_version = match_version
+            latest_version_int = match_version_int
+        elif (latest_span_int == match_span_int and
+              (latest_version is None or match_version_int >= latest_version_int)):
+            latest_version = match_version
+            latest_version_int = match_version_int
 
-  if latest_span_int is None or (is_match_version and latest_version is None):
-    raise ValueError('Cannot find matching for split %s based on %s' %
-                     (split.name, split.pattern))
+    if latest_span_int is None or (is_match_version and latest_version is None):
+        raise ValueError('Cannot find matching for split %s based on %s' %
+                         (split.name, split.pattern))
 
-  # Update split pattern so executor can find the files to ingest.
-  if is_match_span:
-    split.pattern = re.sub(SPAN_FULL_REGEX, latest_span_tokens[0],
-                           split.pattern)
-  elif is_match_date:
-    for spec, value in zip(DATE_SPECS, latest_span_tokens):
-      split.pattern = split.pattern.replace(spec, value)
+    # Update split pattern so executor can find the files to ingest.
+    if is_match_span:
+        split.pattern = re.sub(SPAN_FULL_REGEX, latest_span_tokens[0],
+                               split.pattern)
+    elif is_match_date:
+        for spec, value in zip(DATE_SPECS, latest_span_tokens):
+            split.pattern = split.pattern.replace(spec, value)
 
-  if is_match_version:
-    split.pattern = re.sub(VERSION_FULL_REGEX, latest_version, split.pattern)
+    if is_match_version:
+        split.pattern = re.sub(VERSION_FULL_REGEX, latest_version, split.pattern)
 
-  return latest_span_int, latest_version_int
+    return latest_span_int, latest_version_int
+
+
+def extract_zip_file(zip_file_path: str, extract_dir: str, zip_file_read_mode: str = "r") -> None:
+    """Extracts a zip file to a directory.
+
+  Args:
+  zip_file_path: The path to the zip file.
+  output_dir: The directory to extract the zip file to.
+  """
+    try:
+        os.makedirs(extract_dir, exist_ok=True)
+        with ZipFile(zip_file_path, zip_file_read_mode) as zip_file:
+            zip_file.extractall(extract_dir)
+    except Exception as e:
+        raise e
+
+
+COLUMNS = None
+
+
+def parse_file(element):
+    """Read a line of CSV file and transform it into ordered dict"""
+    global COLUMNS  # columns will be None for the first line
+    for line in csv.reader([element], quotechar='"', delimiter=',', quoting=csv.QUOTE_ALL, skipinitialspace=True):
+        if COLUMNS is None:  # Considering first line as header
+            COLUMNS = line
+            line = ["" for data in line]  # Empty string for first row as it is header
+        return OrderedDict(zip(COLUMNS, line))
+
+
+## code added by Avnish327030
+def download_datatset(zip_file_uri: str, download_dir: str) -> str:
+    """Downloads a dataset from a given uri and saves it to a Download directory.
+
+  Args:
+    zip_file_uri: The uri of the dataset to download.
+    download_dir: The directory to save the dataset to.
+
+  Returns:
+    The path to the downloaded dataset.
+
+  Raises:
+    ValueError: If the dataset cannot be downloaded.
+  """
+    logging.info('Downloading dataset from %s', zip_file_uri)
+    try:
+        # Creating download_dir if not exists
+        os.makedirs(download_dir, exist_ok=True)
+        # Obtaining zip file path to download zip file
+        zip_file_path = os.path.join(download_dir, os.path.basename(zip_file_uri))
+        request.urlretrieve(zip_file_uri, zip_file_path)
+        return zip_file_path
+    except Exception as e:
+        raise ValueError('Failed to download dataset from {}. {}'.format(zip_file_uri, e))
+
+
+## code ended by Avnish327030
 
 
 def calculate_splits_fingerprint_span_and_version(
-    input_base_uri: str,
-    splits: Iterable[example_gen_pb2.Input.Split],
-    range_config: Optional[range_config_pb2.RangeConfig] = None
+        input_base_uri: str,
+        splits: Iterable[example_gen_pb2.Input.Split],
+        range_config: Optional[range_config_pb2.RangeConfig] = None
 ) -> Tuple[str, int, Optional[int]]:
-  """Calculates the fingerprint of files in a URI matching split patterns.
+    """Calculates the fingerprint of files in a URI matching split patterns.
 
   If a pattern has the {SPAN} placeholder or the Date spec placeholders, {YYYY},
   {MM}, and {DD}, and optionally, the {VERSION} placeholder, attempts to find
@@ -689,37 +746,37 @@ def calculate_splits_fingerprint_span_and_version(
     actual Span and Version numbers.
   """
 
-  split_fingerprints = []
-  select_span = 0
-  select_version = None
-  # Calculate the fingerprint of files under input_base_uri.
-  for split in splits:
-    logging.info('select span and version = (%s, %s)', select_span,
-                 select_version)
-    # Find most recent span and version for this split.
-    target_span, target_version = _get_target_span_version(
-        input_base_uri, split, range_config=range_config)
+    split_fingerprints = []
+    select_span = 0
+    select_version = None
+    # Calculate the fingerprint of files under input_base_uri.
+    for split in splits:
+        logging.info('select span and version = (%s, %s)', select_span,
+                     select_version)
+        # Find most recent span and version for this split.
+        target_span, target_version = _get_target_span_version(
+            input_base_uri, split, range_config=range_config)
 
-    # TODO(b/162622803): add default behavior for when version spec not present.
-    target_span = target_span or 0
+        # TODO(b/162622803): add default behavior for when version spec not present.
+        target_span = target_span or 0
 
-    logging.info('latest span and version = (%s, %s)', target_span,
-                 target_version)
+        logging.info('latest span and version = (%s, %s)', target_span,
+                     target_version)
 
-    if select_span == 0 and select_version is None:
-      select_span = target_span
-      select_version = target_version
+        if select_span == 0 and select_version is None:
+            select_span = target_span
+            select_version = target_version
 
-    # Check if latest span and version are the same over all splits.
-    if select_span != target_span:
-      raise ValueError('Latest span should be the same for each split')
-    if select_version != target_version:
-      raise ValueError('Latest version should be the same for each split')
+        # Check if latest span and version are the same over all splits.
+        if select_span != target_span:
+            raise ValueError('Latest span should be the same for each split')
+        if select_version != target_version:
+            raise ValueError('Latest version should be the same for each split')
 
-    # Calculate fingerprint.
-    pattern = os.path.join(input_base_uri, split.pattern)
-    split_fingerprint = io_utils.generate_fingerprint(split.name, pattern)
-    split_fingerprints.append(split_fingerprint)
+        # Calculate fingerprint.
+        pattern = os.path.join(input_base_uri, split.pattern)
+        split_fingerprint = io_utils.generate_fingerprint(split.name, pattern)
+        split_fingerprints.append(split_fingerprint)
 
-  fingerprint = '\n'.join(split_fingerprints)
-  return fingerprint, select_span, select_version
+    fingerprint = '\n'.join(split_fingerprints)
+    return fingerprint, select_span, select_version

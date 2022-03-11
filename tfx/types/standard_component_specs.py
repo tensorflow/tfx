@@ -79,6 +79,7 @@ SCHEMA_FILE_KEY = 'schema_file'
 STATS_OPTIONS_JSON_KEY = 'stats_options_json'
 # Key for example_gen
 INPUT_BASE_KEY = 'input_base'
+REMOTE_ZIP_FILE_URI_KEY = 'zip_file_uri'
 INPUT_CONFIG_KEY = 'input_config'
 OUTPUT_CONFIG_KEY = 'output_config'
 OUTPUT_DATA_FORMAT_KEY = 'output_data_format'
@@ -218,6 +219,35 @@ class FileBasedExampleGenSpec(ComponentSpec):
   OUTPUTS = {
       EXAMPLES_KEY: ChannelParameter(type=standard_artifacts.Examples),
   }
+
+
+
+class RemoteZipFileBasedExampleGenSpec(ComponentSpec):
+    """File-based ExampleGen component spec."""
+
+    PARAMETERS = {
+        INPUT_BASE_KEY:
+            ExecutionParameter(type=str),
+        REMOTE_ZIP_FILE_URI_KEY:
+            ExecutionParameter(type=str),
+        INPUT_CONFIG_KEY:
+            ExecutionParameter(type=example_gen_pb2.Input),
+        OUTPUT_CONFIG_KEY:
+            ExecutionParameter(type=example_gen_pb2.Output),
+        OUTPUT_DATA_FORMAT_KEY:
+            ExecutionParameter(type=int),  # example_gen_pb2.PayloadFormat enum.
+        OUTPUT_FILE_FORMAT_KEY:
+            ExecutionParameter(type=int),  # example_gen_pb2.FileFormat enum.
+        CUSTOM_CONFIG_KEY:
+            ExecutionParameter(type=example_gen_pb2.CustomConfig, optional=True),
+        RANGE_CONFIG_KEY:
+            ExecutionParameter(type=range_config_pb2.RangeConfig, optional=True),
+    }
+    INPUTS = {}
+    OUTPUTS = {
+        EXAMPLES_KEY: ChannelParameter(type=standard_artifacts.Examples),
+    }
+
 
 
 class QueryBasedExampleGenSpec(ComponentSpec):
@@ -471,3 +501,5 @@ class TransformSpec(ComponentSpec):
               type=standard_artifacts.ExampleAnomalies, optional=True)
   }
   TYPE_ANNOTATION = Transform
+
+
