@@ -108,7 +108,6 @@ class Executor(BaseExampleGenExecutor):
         custom_executor_spec=executor_spec.ExecutorClassSpec(
             avro_executor.Executor))
   """
-
     def GetInputSourceToExamplePTransform(self) -> beam.PTransform:
         """Returns PTransform for avro to TF examples."""
         return _ZipToExample
