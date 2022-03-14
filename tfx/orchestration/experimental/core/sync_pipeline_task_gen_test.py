@@ -341,7 +341,7 @@ class SyncPipelineTaskGeneratorTest(test_utils.TfxTest, parameterized.TestCase):
             # the condition always evaluates to False in the current test.
             self._evaluator.node_info.id,
         },
-        sptg._terminal_node_ids(layers))
+        sptg._terminal_node_ids(layers, {}))
 
     # Start executing the pipeline:
 
@@ -397,6 +397,40 @@ class SyncPipelineTaskGeneratorTest(test_utils.TfxTest, parameterized.TestCase):
     [finalize_task] = self._generate(use_task_queue, True, fail_fast=fail_fast)
     self.assertTrue(task_lib.is_finalize_pipeline_task(finalize_task))
     self.assertEqual(status_lib.Code.OK, finalize_task.status.code)
+
+  def test_terminal_nodes_with_partial_run(self):
+    """Tests that nodes with only skipped downstream nodes are terminal nodes."""
+    # Check the expected skipped and terminal nodes.
+    self._example_gen.execution_options.skip.SetInParent()
+    self._chore_a.execution_options.skip.SetInParent()
+    self._chore_b.execution_options.skip.SetInParent()
+    self._evaluator.execution_options.skip.SetInParent()
+    expected_skipped_node_ids = {
+        'my_example_gen', 'chore_a', 'chore_b', 'my_evaluator'
+    }
+    self.assertEqual(expected_skipped_node_ids,
+                     sptg._skipped_node_ids(self._pipeline))
+
+    layers = sptg._topsorted_layers(self._pipeline)
+    # All downstream nodes of trainer are marked as skipped, so it's considered
+    # a terminal node.
+    self.assertEqual(
+        {
+            self._trainer.node_info.id,
+            self._example_validator.node_info.id,
+        }, sptg._terminal_node_ids(layers, expected_skipped_node_ids))
+
+    # Start executing the pipeline:
+    test_utils.fake_cached_example_gen_run(self._mlmd_connection,
+                                           self._example_gen)
+    self._run_next(False, expect_nodes=[self._stats_gen])
+    self._run_next(False, expect_nodes=[self._schema_gen])
+    self._run_next(
+        False, expect_nodes=[self._example_validator, self._transform])
+    self._run_next(False, expect_nodes=[self._trainer])
+    # All runnable nodes executed, finalization task should be produced.
+    [finalize_task] = self._generate(False, True)
+    self.assertTrue(task_lib.is_finalize_pipeline_task(finalize_task))
 
   def test_service_job_running(self):
     """Tests task generation when example-gen service job is still running."""
@@ -644,7 +678,7 @@ class SyncPipelineTaskGeneratorTest(test_utils.TfxTest, parameterized.TestCase):
             self._example_validator.node_info.id,
             self._chore_b.node_info.id,
             self._evaluator.node_info.id,
-        }, sptg._terminal_node_ids(layers))
+        }, sptg._terminal_node_ids(layers, {}))
 
     # Start executing the pipeline:
 

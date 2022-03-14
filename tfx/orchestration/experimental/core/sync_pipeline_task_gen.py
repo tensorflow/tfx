@@ -118,7 +118,8 @@ class _Generator:
 
   def __call__(self) -> List[task_lib.Task]:
     layers = _topsorted_layers(self._pipeline)
-    terminal_node_ids = _terminal_node_ids(layers)
+    skipped_node_ids = _skipped_node_ids(self._pipeline)
+    terminal_node_ids = _terminal_node_ids(layers, skipped_node_ids)
     exec_node_tasks = []
     update_node_state_tasks = []
     successful_node_ids = set()
@@ -388,6 +389,15 @@ class _Generator:
             code=status_lib.Code.ABORTED, message=error_msg))
 
 
+def _skipped_node_ids(pipeline: pipeline_pb2.Pipeline) -> Set[str]:
+  """Returns the set of nodes that are marked as skipped in partial run."""
+  skipped_node_ids = set()
+  for node in pstate.get_all_pipeline_nodes(pipeline):
+    if node.execution_options.HasField('skip'):
+      skipped_node_ids.add(node.node_info.id)
+  return skipped_node_ids
+
+
 def _topsorted_layers(
     pipeline: pipeline_pb2.Pipeline) -> List[List[pipeline_pb2.PipelineNode]]:
   """Returns pipeline nodes in topologically sorted layers."""
@@ -401,13 +411,18 @@ def _topsorted_layers(
           lambda node: [node_by_id[n] for n in node.downstream_nodes]))
 
 
-def _terminal_node_ids(
-    layers: List[List[pipeline_pb2.PipelineNode]]) -> Set[str]:
-  """Returns nodes across all layers that have no downstream nodes."""
+def _terminal_node_ids(layers: List[List[pipeline_pb2.PipelineNode]],
+                       skipped_node_ids: Set[str]) -> Set[str]:
+  """Returns nodes across all layers that have no downstream nodes to run."""
   terminal_node_ids: Set[str] = set()
   for layer_nodes in layers:
     for node in layer_nodes:
-      if not node.downstream_nodes:
+      # Ignore skipped nodes.
+      if node.node_info.id in skipped_node_ids:
+        continue
+      if not node.downstream_nodes or all(
+          downstream_node in skipped_node_ids
+          for downstream_node in node.downstream_nodes):
         terminal_node_ids.add(node.node_info.id)
   return terminal_node_ids
 

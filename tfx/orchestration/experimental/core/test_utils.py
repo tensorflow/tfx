@@ -29,6 +29,7 @@ from tfx.orchestration.portable.mlmd import execution_lib
 from tfx.proto.orchestration import pipeline_pb2
 from tfx.utils import status as status_lib
 from tfx.utils import test_case_utils
+from ml_metadata.proto import metadata_store_pb2
 
 
 class TfxTest(test_case_utils.TfxTest):
@@ -101,6 +102,27 @@ def fake_cached_execution(mlmd_connection, cache_context, component):
     contexts = context_lib.prepare_contexts(m, component.contexts)
     execution = execution_publish_utils.register_execution(
         m, component.node_info.type, contexts)
+    execution_publish_utils.publish_cached_execution(
+        m,
+        contexts=contexts,
+        execution_id=execution.id,
+        output_artifacts=cached_outputs)
+
+
+def fake_cached_example_gen_run(mlmd_connection, example_gen):
+  """Writes fake cached example gen execution to MLMD."""
+  with mlmd_connection as m:
+    output_example = types.Artifact(
+        example_gen.outputs.outputs['examples'].artifact_spec.type)
+    output_example.set_int_custom_property('span', 1)
+    output_example.set_int_custom_property('version', 1)
+    output_example.uri = 'my_examples_uri'
+    output_example.mlmd_artifact.state = metadata_store_pb2.Artifact.LIVE
+    cached_outputs = {'examples': [output_example]}
+
+    contexts = context_lib.prepare_contexts(m, example_gen.contexts)
+    execution = execution_publish_utils.register_execution(
+        m, example_gen.node_info.type, contexts)
     execution_publish_utils.publish_cached_execution(
         m,
         contexts=contexts,
