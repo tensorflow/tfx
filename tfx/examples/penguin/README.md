@@ -1,20 +1,43 @@
 # Penguin Classification Example
 
-The Penguin classification example introduces the TFX programming
-environment and shows you how to solve a classification problem using
-TFX.
+This directory contains a TFX pipeline configured to train, evaluate and compare
+various multi-class classification models trained with TensorFlow 2's Keras,
+Jax's Flax and Scikit Learn on the
+[Palmer's Penguins](https://allisonhorst.github.io/palmerpenguins/articles/intro.html)
+dataset.
 
-The Penguin classification example demonstrates the end-to-end workflow
-and steps of how to classify penguin species.
-The [Palmer Penguins](https://allisonhorst.github.io/palmerpenguins/articles/intro.html) dataset can be found on [Tensorflow Datasets](https://www.tensorflow.org/datasets/catalog/penguins) or [Github](https://github.com/allisonhorst/palmerpenguins).
+## Dataset
 
-The raw data contains some categorical data and has incomplete data rows.
+The
+[Palmer's Penguins](https://allisonhorst.github.io/palmerpenguins/articles/intro.html)
+is a small (344 examples) dataset well suited to demonstrate classification on
+tabular datasets. Copies of the original dataset are available in
+[Tensorflow Datasets](https://www.tensorflow.org/datasets/catalog/penguins) and
+[Github](https://github.com/allisonhorst/palmerpenguins).
 
-This example will use
-[processed Palmer Penguins dataset](https://storage.googleapis.com/download.tensorflow.org/data/palmer_penguins/penguins_processed.csv):
-* Leaves out any incomplete records
-* Drops `island` and `sex`, the two categorical columns
-* Converts the labels to `int32`.
+The dataset contains both categorical and numerical features. The numerical
+features are stored as float, and the categorical features and labels are stored
+a strings.
+
+**Three examples from the Palmer's Penguins dataset:**
+
+species | island    | bill_length_mm | bill_depth_mm | flipper_length_mm | body_mass_g | sex    | year
+------- | --------- | -------------- | ------------- | ----------------- | ----------- | ------ | ----
+Adelie  | Torgersen | 39.1           | 18.7          | 181.0             | 3750.0      | male   | 2007
+Adelie  | Torgersen | 39.5           | 17.4          | 186.0             | 3800.0      | female | 2007
+Adelie  | Torgersen | 40.3           | 18.0          | 195.0             | 3250.0      | female | 2007
+
+This TFX pipeline uses a
+[simplified version](https://storage.googleapis.com/download.tensorflow.org/data/palmer_penguins/penguins_processed.csv)
+of the dataset. The following preprocessing operations have been applied.
+
+- Remove all the categorical features (`island` and `sex`).
+- Converts the label into an integer with the mapping `0=Adelie`, `1=Gentoo`
+  and `2=Chinstrap`.
+- Remove example with missing values.
+
+Note: While TFX is able to handle natively categorical string features and
+missing values, this preprocessing simplifies the TFX pipeline.
 
 ## Instruction
 
@@ -60,18 +83,17 @@ python penguin_pipeline_kubeflow.py --use_gcp=True
 KubeflowDagRunner supports the pipeline with normal components(usually running
 on prem) and with Cloud extended components(usually running on GCP).
 
-Validate the output [pipeline-name].tar.gz under the same folder.
-Upload file to Kubeflow and run the pipeline.
-
+Validate the output [pipeline-name].tar.gz under the same folder. Upload file to
+Kubeflow and run the pipeline.
 
 ## Instructions for using Flax
 
 **The Flax support in TFX is experimental.**
 
 The above instructions will use Keras for model definition and training.
-Aditionally, you can use essentially the same TFX configuration with
-[Flax](https://github.com/google/flax) models. The bulk of the differences
-from using a Keras model are in `penguin_utils_flax_experimental.py`.
+Additionally, you can use essentially the same TFX configuration with
+[Flax](https://github.com/google/flax) models. The bulk of the differences from
+using a Keras model are in `penguin_utils_flax_experimental.py`.
 
 To execute the pipeline with a Flax model:
 <pre class="devsite-terminal devsite-click-to-copy">
@@ -92,8 +114,8 @@ bash ~/penguin/setup/setup_beam_on_flink.sh
 The Apache Flink UI can be viewed at http://localhost:8081.
 
 To run tfx e2e on Flink, follow the same instruction above with additional
-`runner` flag to execute the pipeline with Flink:
-`python ~/penguin/penguin_pipeline_local.py --runner=FlinkRunner`
+`runner` flag to execute the pipeline with Flink: `python
+~/penguin/penguin_pipeline_local.py --runner=FlinkRunner`
 
 ## Spark Example
 
@@ -110,6 +132,5 @@ The Apache Spark UI can be viewed at http://localhost:8081. Check
 http://localhost:4040 for the Spark application UI (while a job is running).
 
 To run tfx e2e on Spark, follow the same instruction above with additional
-`runner` flag to execute the pipeline with Spark:
-`python ~/penguin/penguin_pipeline_local.py --runner=SparkRunner`
-
+`runner` flag to execute the pipeline with Spark: `python
+~/penguin/penguin_pipeline_local.py --runner=SparkRunner`
