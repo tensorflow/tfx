@@ -268,7 +268,9 @@ class Pipeline:
       if not isinstance(reg, dsl_context_registry.DslContextRegistry):
         raise ValueError('dsl_context_registry must be DslContextRegistry type '
                          f'but got {reg}')
-    self._dsl_context_registry = reg
+      self._dsl_context_registry = reg
+    else:
+      self._dsl_context_registry = dsl_context_registry.get()
 
     # TODO(b/216581002): Use self._dsl_context_registry to obtain components.
     self._components = []
@@ -360,10 +362,7 @@ class Pipeline:
 
   def _persist_dsl_context_registry(self):
     """Persist the DslContextRegistry to the pipeline."""
-    # If no dsl_context_registry is given from the external, copy the current
-    # global DslContextRegistry.
-    if self._dsl_context_registry is None:
-      self._dsl_context_registry = copy.copy(dsl_context_registry.get())
+    self._dsl_context_registry = copy.copy(self._dsl_context_registry)
     self._dsl_context_registry.finalize()
 
     given_components = set(self._components)
