@@ -99,7 +99,9 @@ class Channel(json_utils.Jsonable, BaseChannel):
       # TODO(b/161490287): deprecate static artifact.
       artifacts: Optional[Iterable[Artifact]] = None,
       producer_component_id: Optional[str] = None,
-      output_key: Optional[str] = None):
+      output_key: Optional[str] = None,
+      pipeline_name: Optional[str] = None,
+      pipeline_run_id: Optional[str] = None):
     """Initialization of Channel.
 
     Args:
@@ -118,6 +120,8 @@ class Channel(json_utils.Jsonable, BaseChannel):
       output_key: (Optional) The output key when producer component produces the
         artifacts in this Channel. This argument is internal/experimental and is
         subject to change in the future.
+      pipeline_name: (Optional) The name of the pipeline.
+      pipeline_run_id: (Optional) pipeline run id.
     """
     super().__init__(type=type)
 
@@ -138,6 +142,9 @@ class Channel(json_utils.Jsonable, BaseChannel):
     if output_key is not None:
       self._validate_output_key(output_key)
     self.output_key = output_key
+
+    self._pipeline_name = pipeline_name
+    self._pipeline_run_id = pipeline_run_id
 
     if artifacts:
       logging.warning(
@@ -162,6 +169,16 @@ class Channel(json_utils.Jsonable, BaseChannel):
   def producer_component_id(self, value: str) -> None:
     self._validate_producer_component_id(value)
     self._producer_component_id = value
+
+  @property
+  @doc_controls.do_not_generate_docs
+  def pipeline_name(self) -> str:
+    return self._pipeline_name
+
+  @property
+  @doc_controls.do_not_generate_docs
+  def pipeline_run_id(self) -> str:
+    return self._pipeline_run_id
 
   def __repr__(self):
     artifacts_str = '\n    '.join(repr(a) for a in self._artifacts)

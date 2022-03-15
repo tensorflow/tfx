@@ -288,11 +288,12 @@ class Compiler:
         # based on Channel info. We requires every channel to have pipeline
         # context and will fill it automatically.
         else:
-          # Add pipeline context query.
+          source_pipeline_name = (
+              input_channel.pipeline_name if input_channel.pipeline_name else
+              compile_context.pipeline_info.pipeline_context_name)
           context_query = chnl.context_queries.add()
-          context_query.type.CopyFrom(pipeline_context_pb.type)
-          context_query.name.CopyFrom(pipeline_context_pb.name)
-
+          context_query.type.name = constants.PIPELINE_CONTEXT_TYPE_NAME
+          context_query.name.field_value.string_value = source_pipeline_name
           # Optionally add node context query.
           if input_channel.producer_component_id:
             # Add node context query if `producer_component_id` is present.
@@ -300,8 +301,15 @@ class Compiler:
             node_context_query = chnl.context_queries.add()
             node_context_query.type.name = constants.NODE_CONTEXT_TYPE_NAME
             node_context_query.name.field_value.string_value = "{}.{}".format(
-                compile_context.pipeline_info.pipeline_context_name,
+                source_pipeline_name,
                 input_channel.producer_component_id)
+          # Optionally add pipeline run context query.
+          if input_channel.pipeline_run_id:
+            node_context_query = chnl.context_queries.add()
+            node_context_query.type.name = (
+                constants.PIPELINE_RUN_CONTEXT_TYPE_NAME)
+            node_context_query.name.field_value.string_value = (
+                input_channel.pipeline_run_id)
 
         artifact_type = input_channel.type._get_artifact_type()  # pylint: disable=protected-access
         chnl.artifact_query.type.CopyFrom(artifact_type)
