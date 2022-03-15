@@ -97,9 +97,7 @@ class Channel(json_utils.Jsonable, BaseChannel):
       additional_properties: Optional[Dict[str, Property]] = None,
       additional_custom_properties: Optional[Dict[str, Property]] = None,
       # TODO(b/161490287): deprecate static artifact.
-      artifacts: Optional[Iterable[Artifact]] = None,
-      producer_component_id: Optional[str] = None,
-      output_key: Optional[str] = None):
+      artifacts: Optional[Iterable[Artifact]] = None):
     """Initialization of Channel.
 
     Args:
@@ -112,12 +110,6 @@ class Channel(json_utils.Jsonable, BaseChannel):
         of components. This is experimental and is subject to change in the
         future.
       artifacts: Deprecated and ignored, kept only for backward compatibility.
-      producer_component_id: (Optional) Producer component id of the Channel.
-        This argument is internal/experimental and is subject to change in the
-        future.
-      output_key: (Optional) The output key when producer component produces the
-        artifacts in this Channel. This argument is internal/experimental and is
-        subject to change in the future.
     """
     super().__init__(type=type)
 
@@ -128,16 +120,6 @@ class Channel(json_utils.Jsonable, BaseChannel):
     if additional_custom_properties is not None:
       self._validate_additional_custom_properties(additional_custom_properties)
     self.additional_custom_properties = additional_custom_properties or {}
-
-    if producer_component_id is not None:
-      self._validate_producer_component_id(producer_component_id)
-    # Use a protected attribute & getter/setter property as OutputChannel is
-    # overriding it.
-    self._producer_component_id = producer_component_id
-
-    if output_key is not None:
-      self._validate_output_key(output_key)
-    self.output_key = output_key
 
     if artifacts:
       logging.warning(
@@ -256,11 +238,7 @@ class Channel(json_utils.Jsonable, BaseChannel):
         'additional_properties':
             self.additional_properties,
         'additional_custom_properties':
-            self.additional_custom_properties,
-        'producer_component_id':
-            (self.producer_component_id if self.producer_component_id else None
-            ),
-        'output_key': (self.output_key if self.output_key else None),
+            self.additional_custom_properties
     }
 
   @classmethod
@@ -272,14 +250,11 @@ class Channel(json_utils.Jsonable, BaseChannel):
     artifacts = list(Artifact.from_json_dict(a) for a in dict_data['artifacts'])
     additional_properties = dict_data['additional_properties']
     additional_custom_properties = dict_data['additional_custom_properties']
-    producer_component_id = dict_data.get('producer_component_id', None)
-    output_key = dict_data.get('output_key', None)
     return Channel(
         type=type_cls,
         additional_properties=additional_properties,
-        additional_custom_properties=additional_custom_properties,
-        producer_component_id=producer_component_id,
-        output_key=output_key).set_artifacts(artifacts)
+        additional_custom_properties=additional_custom_properties
+    ).set_artifacts(artifacts)
 
   def future(self) -> placeholder.ChannelWrappedPlaceholder:
     return placeholder.ChannelWrappedPlaceholder(self)
@@ -321,18 +296,18 @@ class OutputChannel(Channel):
   ):
     super().__init__(
         type=artifact_type,
-        output_key=output_key,
         additional_properties=additional_properties,
         additional_custom_properties=additional_custom_properties,
     )
     self._producer_component = producer_component
+    self._output_key = output_key
 
   def __repr__(self) -> str:
     return (
         f'{self.__class__.__name__}('
         f'artifact_type={self.type_name}, '
         f'producer_component_id={self.producer_component_id}, '
-        f'output_key={self.output_key}, '
+        f'output_key={self._output_key}, '
         f'additional_properties={self.additional_properties}, '
         f'additional_custom_properties={self.additional_custom_properties})')
 
@@ -352,9 +327,9 @@ class OutputChannel(Channel):
       raise ValueError(
           f'producer_component mismatch: {self._producer_component} != '
           f'{producer_component}.')
-    if self.output_key != output_key:
+    if self._output_key != output_key:
       raise ValueError(
-          f'output_key mismatch: {self.output_key} != {output_key}.')
+          f'output_key mismatch: {self._output_key} != {output_key}.')
     return self
 
 

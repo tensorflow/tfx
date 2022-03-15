@@ -126,7 +126,7 @@ class ChannelTest(tf.test.TestCase):
       self.assertEqual(ch2.additional_custom_properties,
                        {'another_string_value': 'bar'})
       self.assertEqual(ch2.producer_component_id, 'n1')
-      self.assertEqual(ch2.output_key, 'x')
+      self.assertEqual(ch2._output_key, 'x')
 
     with self.subTest('AdditionalProperty Mutation'):
       ch1.additional_properties['string_value'] = 'foo2'
