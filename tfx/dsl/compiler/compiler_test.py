@@ -13,7 +13,6 @@
 # limitations under the License.
 """Tests for tfx.dsl.compiler.compiler."""
 import os
-import threading
 
 from absl import flags
 from absl.testing import parameterized
@@ -131,36 +130,6 @@ class CompilerTest(tf.test.TestCase, parameterized.TestCase):
         ValueError,
         "output channel to dynamic exec properties is not ValueArtifact"):
       dsl_compiler.compile(test_pipeline)
-
-  def test_DefineAtSub_CompileAtMain(self):
-    result_holder = []
-
-    def define_pipeline():
-      result_holder.append(conditional_pipeline.create_test_pipeline())
-
-    t = threading.Thread(target=define_pipeline)
-    t.start()
-    t.join()
-    self.assertLen(result_holder, 1)
-    p = result_holder[0]
-    compiled_pb = compiler.Compiler().compile(p)
-    expected_pb = self._get_test_pipeline_pb("conditional_pipeline_ir.pbtxt")
-    self.assertProtoEquals(expected_pb, compiled_pb)
-
-  def test_DefineAtSub_CompileAtSub(self):
-    result_holder = []
-
-    def define_and_compile_pipeline():
-      p = conditional_pipeline.create_test_pipeline()
-      result_holder.append(compiler.Compiler().compile(p))
-
-    t = threading.Thread(target=define_and_compile_pipeline)
-    t.start()
-    t.join()
-    self.assertLen(result_holder, 1)
-    expected_pb = self._get_test_pipeline_pb("conditional_pipeline_ir.pbtxt")
-    self.assertProtoEquals(expected_pb, result_holder[0])
-
 
 if __name__ == "__main__":
   tf.test.main()
