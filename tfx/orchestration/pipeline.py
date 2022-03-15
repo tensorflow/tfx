@@ -324,7 +324,7 @@ class Pipeline:
             output_channel.output_key != key):
           raise AssertionError(
               f'{output_channel} is produced more than once: '
-              f'{output_channel.producer_id}[{output_channel.output_key}], '
+              f'{output_channel.producer_component_id}[{output_channel.output_key}], '
               f'{component.id}[{key}]')
 
     # Connects nodes based on producer map.
