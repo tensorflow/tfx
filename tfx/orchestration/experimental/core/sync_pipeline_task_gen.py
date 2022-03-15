@@ -21,17 +21,18 @@ from absl import logging
 from tfx.orchestration import data_types_utils
 from tfx.orchestration import metadata
 from tfx.orchestration.experimental.core import constants
+from tfx.orchestration.experimental.core import mlmd_state
 from tfx.orchestration.experimental.core import pipeline_state as pstate
 from tfx.orchestration.experimental.core import service_jobs
 from tfx.orchestration.experimental.core import task as task_lib
 from tfx.orchestration.experimental.core import task_gen
 from tfx.orchestration.experimental.core import task_gen_utils
-from tfx.orchestration.portable import execution_publish_utils
 from tfx.orchestration.portable import outputs_utils
 from tfx.orchestration.portable.mlmd import execution_lib
 from tfx.proto.orchestration import pipeline_pb2
 from tfx.utils import status as status_lib
 from tfx.utils import topsort
+from ml_metadata.proto import metadata_store_pb2
 
 
 class SyncPipelineTaskGenerator(task_gen.TaskGenerator):
@@ -241,28 +242,36 @@ class _Generator:
       return result
 
     node_executions = task_gen_utils.get_executions(self._mlmd_handle, node)
-    latest_execution = task_gen_utils.get_latest_execution(node_executions)
+    latest_executions_set = task_gen_utils.get_latest_executions_set(
+        node_executions)
 
-    # If the latest execution is successful, we're done.
-    if latest_execution and execution_lib.is_execution_successful(
-        latest_execution):
+    # If all the executions in the set for the node are successful, we're done.
+    if latest_executions_set and all(
+        execution_lib.is_execution_successful(e)
+        for e in latest_executions_set):
       logging.info('Node successful: %s', node_uid)
       result.append(
           task_lib.UpdateNodeStateTask(
               node_uid=node_uid, state=pstate.NodeState.COMPLETE))
       return result
 
-    # If the latest execution failed or cancelled, the pipeline should be
-    # aborted if the node is not in state STARTING. For nodes that are
-    # in state STARTING, a new execution is created.
-    if (latest_execution and
-        not execution_lib.is_execution_active(latest_execution) and
-        node_state.state != pstate.NodeState.STARTING):
-      error_msg_value = latest_execution.custom_properties.get(
-          constants.EXECUTION_ERROR_MSG_KEY)
-      error_msg = data_types_utils.get_metadata_value(
-          error_msg_value) if error_msg_value else ''
-      error_msg = f'node failed; node uid: {node_uid}; error: {error_msg}'
+    # If one of the executions in the set for the node failed or cancelled, the
+    # pipeline should be aborted if the node is not in state STARTING.
+    # For nodes that are in state STARTING, new executions are created.
+    # TODO (b/223627713) a node in a ForEach is not restartable, it is better
+    # to prevent restarting for now.
+    failed_executions = [
+        e for e in latest_executions_set if execution_lib.is_execution_failed(e)
+    ]
+    if failed_executions and (len(latest_executions_set) > 1 or
+                              node_state.state != pstate.NodeState.STARTING):
+      error_msg = f'node {node_uid} failed; '
+      for e in failed_executions:
+        error_msg_value = e.custom_properties.get(
+            constants.EXECUTION_ERROR_MSG_KEY)
+        error_msg_value = data_types_utils.get_metadata_value(
+            error_msg_value) if error_msg_value else ''
+        error_msg += f'error: {error_msg_value}; '
       result.append(
           task_lib.UpdateNodeStateTask(
               node_uid=node_uid,
@@ -271,13 +280,20 @@ class _Generator:
                   code=status_lib.Code.ABORTED, message=error_msg)))
       return result
 
-    exec_node_task = task_gen_utils.generate_task_from_active_execution(
-        self._mlmd_handle, self._pipeline, node, node_executions)
-    if exec_node_task:
+    latest_active_execution = task_gen_utils.get_latest_active_execution(
+        latest_executions_set)
+    if latest_active_execution:
+      with mlmd_state.mlmd_execution_atomic_op(
+          mlmd_handle=self._mlmd_handle,
+          execution_id=latest_active_execution.id) as execution:
+        execution.last_known_state = metadata_store_pb2.Execution.RUNNING
       result.append(
           task_lib.UpdateNodeStateTask(
               node_uid=node_uid, state=pstate.NodeState.RUNNING))
-      result.append(exec_node_task)
+      result.append(
+          task_gen_utils.generate_task_from_execution(self._mlmd_handle,
+                                                      self._pipeline, node,
+                                                      execution))
       return result
 
     # Finally, we are ready to generate tasks for the node by resolving inputs.
@@ -308,15 +324,22 @@ class _Generator:
               status=status_lib.Status(
                   code=status_lib.Code.ABORTED, message=error_msg)))
       return result
-    # TODO(b/207038460): Update sync pipeline to support ForEach.
-    input_artifacts = resolved_info.input_artifacts[0]
 
-    execution = execution_publish_utils.register_execution(
+    executions = task_gen_utils.register_executions(
         metadata_handler=self._mlmd_handle,
         execution_type=node.node_info.type,
         contexts=resolved_info.contexts,
-        input_artifacts=input_artifacts,
+        input_dicts=resolved_info.input_artifacts,
         exec_properties=resolved_info.exec_properties)
+
+    # Selects the first artifacts and create a exec task.
+    input_artifacts = resolved_info.input_artifacts[0]
+    # Selects the first execution and marks it as RUNNING.
+    with mlmd_state.mlmd_execution_atomic_op(
+        mlmd_handle=self._mlmd_handle,
+        execution_id=executions[0].id) as execution:
+      execution.last_known_state = metadata_store_pb2.Execution.RUNNING
+
     outputs_resolver = outputs_utils.OutputsResolver(
         node, self._pipeline.pipeline_info, self._pipeline.runtime_spec,
         self._pipeline.execution_mode)

@@ -64,6 +64,19 @@ def is_execution_active(execution: metadata_store_pb2.Execution) -> bool:
           execution.last_known_state == metadata_store_pb2.Execution.RUNNING)
 
 
+def is_execution_failed(execution: metadata_store_pb2.Execution) -> bool:
+  """Whether or not an execution is failed.
+
+  Args:
+    execution: An execution message.
+
+  Returns:
+    A bool value indicating whether or not the execution is failed.
+  """
+  return not is_execution_successful(execution) and not is_execution_active(
+      execution)
+
+
 def is_internal_key(key: str) -> bool:
   """Returns `True` if the key is an internal-only execution property key."""
   return key.startswith('__')
