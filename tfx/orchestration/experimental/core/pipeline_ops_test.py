@@ -168,8 +168,8 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
       # Only Trainer is marked to run since ExampleGen succeeded in previous
       # run.
       expected_pipeline = copy.deepcopy(pipeline)
-      expected_pipeline.runtime_spec.snapshot_settings.latest_pipeline_run_strategy.SetInParent(
-      )
+      partial_run_utils.set_latest_pipeline_run_strategy(
+          expected_pipeline.runtime_spec.snapshot_settings)
       expected_pipeline.nodes[
           0].pipeline_node.execution_options.skip.reuse_artifacts_mode = pipeline_pb2.NodeExecutionOptions.Skip.REQUIRED
       expected_pipeline.nodes[
@@ -179,6 +179,34 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
       with pipeline_ops.resume_pipeline(m, pipeline) as pipeline_state_run2:
         self.assertEqual(expected_pipeline, pipeline_state_run2.pipeline)
         pipeline_state_run2.is_active()
+        mock_snapshot.assert_called_once()
+
+  @mock.patch.object(partial_run_utils, 'snapshot')
+  def test_initiate_pipeline_start_with_invalid_partial_run(
+      self, mock_snapshot):
+    with self._mlmd_connection as m:
+      pipeline = _test_pipeline('test_pipeline', pipeline_pb2.Pipeline.SYNC)
+      node_example_gen = pipeline.nodes.add().pipeline_node
+      node_example_gen.node_info.id = 'ExampleGen'
+      node_example_gen.downstream_nodes.extend(['Transform'])
+      node_transform = pipeline.nodes.add().pipeline_node
+      node_transform.node_info.id = 'Transform'
+      node_transform.upstream_nodes.extend(['ExampleGen'])
+      node_transform.downstream_nodes.extend(['Trainer'])
+      node_trainer = pipeline.nodes.add().pipeline_node
+      node_trainer.node_info.id = 'Trainer'
+      node_trainer.upstream_nodes.extend(['Transform'])
+
+      incorrect_partial_run_option = pipeline_pb2.PartialRun(
+          from_nodes=['InvalidaNode'],
+          to_nodes=['Trainer'],
+          snapshot_settings=partial_run_utils.latest_pipeline_snapshot_settings(
+          ))
+      with self.assertRaisesRegex(
+          status_lib.StatusNotOkError,
+          'specified in from_nodes/to_nodes are not present in the pipeline.'):
+        pipeline_ops.initiate_pipeline_start(
+            m, pipeline, partial_run_option=incorrect_partial_run_option)
 
   @mock.patch.object(partial_run_utils, 'snapshot')
   def test_initiate_pipeline_start_with_partial_run(self, mock_snapshot):
@@ -195,23 +223,9 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
       node_trainer.node_info.id = 'Trainer'
       node_trainer.upstream_nodes.extend(['Transform'])
 
-      latest_pipeline_snapshot_settings = pipeline_pb2.SnapshotSettings()
-      latest_pipeline_snapshot_settings.latest_pipeline_run_strategy.SetInParent(
-      )
-
-      incorrect_partial_run_option = pipeline_pb2.PartialRun(
-          from_nodes=['InvalidaNode'],
-          to_nodes=['Trainer'],
-          snapshot_settings=latest_pipeline_snapshot_settings)
-      with self.assertRaisesRegex(
-          status_lib.StatusNotOkError,
-          'specified in from_nodes/to_nodes are not present in the pipeline.'):
-        pipeline_ops.initiate_pipeline_start(
-            m, pipeline, partial_run_option=incorrect_partial_run_option)
-
       expected_pipeline = copy.deepcopy(pipeline)
-      expected_pipeline.runtime_spec.snapshot_settings.latest_pipeline_run_strategy.SetInParent(
-      )
+      partial_run_utils.set_latest_pipeline_run_strategy(
+          expected_pipeline.runtime_spec.snapshot_settings)
       expected_pipeline.nodes[
           0].pipeline_node.execution_options.skip.reuse_artifacts_mode = pipeline_pb2.NodeExecutionOptions.Skip.REQUIRED
       expected_pipeline.nodes[
@@ -224,10 +238,107 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
       partial_run_option = pipeline_pb2.PartialRun(
           from_nodes=['Transform'],
           to_nodes=['Trainer'],
-          snapshot_settings=latest_pipeline_snapshot_settings)
+          snapshot_settings=partial_run_utils.latest_pipeline_snapshot_settings(
+          ))
       with pipeline_ops.initiate_pipeline_start(
           m, pipeline, partial_run_option=partial_run_option) as pipeline_state:
+        mock_snapshot.assert_called_once()
         self.assertEqual(expected_pipeline, pipeline_state.pipeline)
+
+  @mock.patch.object(partial_run_utils, 'snapshot')
+  def test_partial_run_with_previously_failed_nodes(self, mock_snapshot):
+    with self._mlmd_connection as m:
+      pipeline = _test_pipeline('test_pipeline', pipeline_pb2.Pipeline.SYNC)
+      pipeline_uid = task_lib.PipelineUid.from_pipeline(pipeline)
+      node_example_gen = pipeline.nodes.add().pipeline_node
+      node_example_gen.node_info.id = 'ExampleGen'
+      node_example_gen.downstream_nodes.extend(['Transform', 'Trainer'])
+      node_transform = pipeline.nodes.add().pipeline_node
+      node_transform.node_info.id = 'Transform'
+      node_transform.upstream_nodes.extend(['ExampleGen'])
+      node_trainer = pipeline.nodes.add().pipeline_node
+      node_trainer.node_info.id = 'Trainer'
+      node_trainer.upstream_nodes.extend(['ExampleGen'])
+
+      example_gen_node_uid = task_lib.NodeUid(pipeline_uid, 'ExampleGen')
+      trainer_node_uid = task_lib.NodeUid(pipeline_uid, 'Trainer')
+      transform_node_uid = task_lib.NodeUid(pipeline_uid, 'Transform')
+
+      def _stop_pipeline(pipeline_state):
+        pipeline_state.set_pipeline_execution_state(
+            metadata_store_pb2.Execution.COMPLETE)
+        pipeline_state.initiate_stop(
+            status_lib.Status(code=status_lib.Code.ABORTED))
+
+      # In run0, trainer and transform failed.
+      with pipeline_ops.initiate_pipeline_start(
+          m, pipeline) as pipeline_state_run0:
+        with pipeline_state_run0.node_state_update_context(
+            example_gen_node_uid) as node_state:
+          node_state.update(pstate.NodeState.COMPLETE)
+        with pipeline_state_run0.node_state_update_context(
+            trainer_node_uid) as node_state:
+          node_state.update(pstate.NodeState.FAILED)
+        with pipeline_state_run0.node_state_update_context(
+            transform_node_uid) as node_state:
+          node_state.update(pstate.NodeState.FAILED)
+        _stop_pipeline(pipeline_state_run0)
+
+      # Partial run based on run0, trainer is skipped and state indicates that
+      # it failed previously. Only transform runs and it fails again.
+      partial_run_option = pipeline_pb2.PartialRun(
+          from_nodes=['Transform'], to_nodes=['Transform'])
+      pipeline.runtime_spec.pipeline_run_id.field_value.string_value = 'run1'
+      with pipeline_ops.initiate_pipeline_start(
+          m, pipeline,
+          partial_run_option=partial_run_option) as pipeline_state_run1:
+        self.assertEqual(
+            pipeline_state_run1.get_node_state(trainer_node_uid).state,
+            pstate.NodeState.SKIPPED_PARTIAL_RUN)
+        self.assertEqual(
+            pipeline_state_run1.get_node_state(
+                trainer_node_uid, pstate._PREVIOUS_NODE_STATES).state,
+            pstate.NodeState.FAILED)
+        self.assertEqual(
+            pipeline_state_run1.get_node_state(example_gen_node_uid).state,
+            pstate.NodeState.SKIPPED_PARTIAL_RUN)
+        self.assertEqual(
+            pipeline_state_run1.get_node_state(
+                example_gen_node_uid, pstate._PREVIOUS_NODE_STATES).state,
+            pstate.NodeState.COMPLETE)
+        self.assertEqual(
+            pipeline_state_run1.get_node_state(transform_node_uid).state,
+            pstate.NodeState.STARTED)
+
+        with pipeline_state_run1.node_state_update_context(
+            transform_node_uid) as node_state:
+          node_state.update(pstate.NodeState.FAILED)
+        _stop_pipeline(pipeline_state_run1)
+
+      # Partial run based on run1, trainer and transform are skipped and
+      # correctly indicate they've failed previously.
+      partial_run_option = pipeline_pb2.PartialRun(
+          from_nodes=['ExampleGen'], to_nodes=['ExampleGen'])
+      pipeline.runtime_spec.pipeline_run_id.field_value.string_value = 'run2'
+      with pipeline_ops.initiate_pipeline_start(
+          m, pipeline,
+          partial_run_option=partial_run_option) as pipeline_state_run2:
+        self.assertEqual(
+            pipeline_state_run2.get_node_state(trainer_node_uid).state,
+            pstate.NodeState.SKIPPED_PARTIAL_RUN)
+        self.assertEqual(
+            pipeline_state_run2.get_node_state(
+                trainer_node_uid, pstate._PREVIOUS_NODE_STATES).state,
+            pstate.NodeState.FAILED)
+        self.assertEqual(
+            pipeline_state_run2.get_node_state(transform_node_uid).state,
+            pstate.NodeState.SKIPPED_PARTIAL_RUN)
+        self.assertEqual(
+            pipeline_state_run2.get_node_state(
+                transform_node_uid, pstate._PREVIOUS_NODE_STATES).state,
+            pstate.NodeState.FAILED)
+        _stop_pipeline(pipeline_state_run2)
+      mock_snapshot.assert_called()
 
   @mock.patch.object(partial_run_utils, 'snapshot')
   def test_initiate_pipeline_start_with_partial_run_default_to_nodes(
@@ -245,13 +356,10 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
       node_trainer.node_info.id = 'Trainer'
       node_trainer.upstream_nodes.extend(['Transform'])
 
-      latest_pipeline_snapshot_settings = pipeline_pb2.SnapshotSettings()
-      latest_pipeline_snapshot_settings.latest_pipeline_run_strategy.SetInParent(
-      )
-
       expected_pipeline = copy.deepcopy(pipeline)
-      expected_pipeline.runtime_spec.snapshot_settings.latest_pipeline_run_strategy.SetInParent(
-      )
+      partial_run_utils.set_latest_pipeline_run_strategy(
+          expected_pipeline.runtime_spec.snapshot_settings)
+
       expected_pipeline.nodes[
           0].pipeline_node.execution_options.skip.reuse_artifacts_mode = pipeline_pb2.NodeExecutionOptions.Skip.REQUIRED
       expected_pipeline.nodes[
@@ -263,10 +371,12 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
 
       partial_run_option = pipeline_pb2.PartialRun(
           from_nodes=['Transform'],
-          snapshot_settings=latest_pipeline_snapshot_settings)
+          snapshot_settings=partial_run_utils.latest_pipeline_snapshot_settings(
+          ))
       with pipeline_ops.initiate_pipeline_start(
           m, pipeline, partial_run_option=partial_run_option) as pipeline_state:
         self.assertEqual(expected_pipeline, pipeline_state.pipeline)
+        mock_snapshot.assert_called_once()
 
   @mock.patch.object(partial_run_utils, 'snapshot')
   def test_partial_run_defaults_to_latest_pipeline_run_strategy(
@@ -290,8 +400,8 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
           from_nodes=['Transform'], to_nodes=['Trainer'])
 
       expected_pipeline = copy.deepcopy(pipeline)
-      expected_pipeline.runtime_spec.snapshot_settings.latest_pipeline_run_strategy.SetInParent(
-      )
+      partial_run_utils.set_latest_pipeline_run_strategy(
+          expected_pipeline.runtime_spec.snapshot_settings)
       expected_pipeline.nodes[
           0].pipeline_node.execution_options.skip.reuse_artifacts_mode = pipeline_pb2.NodeExecutionOptions.Skip.REQUIRED
       expected_pipeline.nodes[
@@ -304,6 +414,7 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
       with pipeline_ops.initiate_pipeline_start(
           m, pipeline, partial_run_option=partial_run_option) as pipeline_state:
         self.assertEqual(expected_pipeline, pipeline_state.pipeline)
+        mock_snapshot.assert_called_once()
 
   @parameterized.named_parameters(
       dict(testcase_name='async', pipeline=_test_pipeline('pipeline1')),

@@ -48,6 +48,9 @@ _PIPELINE_RUN_ID = 'pipeline_run_id'
 _PIPELINE_STATUS_CODE = 'pipeline_status_code'
 _PIPELINE_STATUS_MSG = 'pipeline_status_msg'
 _NODE_STATES = 'node_states'
+# Denotes node states from previous run. Only applicable if a node is skipped
+# in the partial run.
+_PREVIOUS_NODE_STATES = 'previous_node_states'
 _PIPELINE_RUN_METADATA = 'pipeline_run_metadata'
 _UPDATED_PIPELINE_IR = 'updated_pipeline_ir'
 _UPDATE_OPTIONS = 'update_options'
@@ -88,6 +91,8 @@ class NodeState(json_utils.Jsonable):
   RUNNING = 'running'  # Node is under active execution (i.e. triggered).
   COMPLETE = 'complete'  # Node execution completed successfully.
   SKIPPED = 'skipped'  # Node execution skipped due to conditional.
+  # Node execution skipped due to partial run.
+  SKIPPED_PARTIAL_RUN = 'skipped_partial_run'
   PAUSED = 'paused'  # Node was paused and may be resumed in the future.
   FAILED = 'failed'  # Node execution failed due to errors.
 
@@ -95,7 +100,7 @@ class NodeState(json_utils.Jsonable):
       default=STARTED,
       validator=attr.validators.in_([
           STARTING, STARTED, STOPPING, STOPPED, RUNNING, COMPLETE, SKIPPED,
-          PAUSED, FAILED
+          SKIPPED_PARTIAL_RUN, PAUSED, FAILED
       ]),
       on_setattr=attr.setters.validate)
   status_code: Optional[int] = None
@@ -136,7 +141,8 @@ class NodeState(json_utils.Jsonable):
 
 
 def is_node_state_success(state: str) -> bool:
-  return state in (NodeState.COMPLETE, NodeState.SKIPPED)
+  return state in (NodeState.COMPLETE, NodeState.SKIPPED,
+                   NodeState.SKIPPED_PARTIAL_RUN)
 
 
 def is_node_state_failure(state: str) -> bool:
@@ -151,6 +157,7 @@ _NODE_STATE_TO_RUN_STATE_MAP = {
     NodeState.RUNNING: run_state_pb2.RunState.RUNNING,
     NodeState.COMPLETE: run_state_pb2.RunState.COMPLETE,
     NodeState.SKIPPED: run_state_pb2.RunState.SKIPPED,
+    NodeState.SKIPPED_PARTIAL_RUN: run_state_pb2.RunState.SKIPPED_PARTIAL_RUN,
     NodeState.PAUSED: run_state_pb2.RunState.PAUSED,
     NodeState.FAILED: run_state_pb2.RunState.FAILED
 }
@@ -219,6 +226,7 @@ class PipelineState:
       mlmd_handle: metadata.Metadata,
       pipeline: pipeline_pb2.Pipeline,
       pipeline_run_metadata: Optional[Mapping[str, types.Property]] = None,
+      reused_pipeline_view: Optional['PipelineView'] = None,
   ) -> 'PipelineState':
     """Creates a `PipelineState` object for a new pipeline.
 
@@ -229,6 +237,8 @@ class PipelineState:
       mlmd_handle: A handle to the MLMD db.
       pipeline: IR of the pipeline.
       pipeline_run_metadata: Pipeline run metadata.
+      reused_pipeline_view: PipelineView of the previous pipeline reused for a
+        partial run.
 
     Returns:
       A `PipelineState` object.
@@ -263,18 +273,7 @@ class PipelineState:
       data_types_utils.set_metadata_value(
           execution.custom_properties[_PIPELINE_RUN_ID],
           pipeline.runtime_spec.pipeline_run_id.field_value.string_value)
-      # Set the node state to COMPLETE for any nodes that are marked to be
-      # skipped in a partial pipeline run.
-      node_states_dict = {}
-      for node in get_all_pipeline_nodes(pipeline):
-        if node.execution_options.HasField('skip'):
-          logging.info('Node %s is skipped in this partial run.',
-                       node.node_info.id)
-          node_states_dict[node.node_info.id] = NodeState(
-              state=NodeState.COMPLETE)
-      if node_states_dict:
-        _save_node_states_dict(execution, node_states_dict)
-
+      _save_skipped_node_states(pipeline, reused_pipeline_view, execution)
     execution = execution_lib.put_execution(mlmd_handle, execution, [context])
     record_state_change_time()
 
@@ -481,19 +480,26 @@ class PipelineState:
                    node_state.state, node_uid)
     _save_node_states_dict(self._execution, node_states_dict)
 
-  def get_node_state(self, node_uid: task_lib.NodeUid) -> NodeState:
+  def get_node_state(self,
+                     node_uid: task_lib.NodeUid,
+                     state_type: Optional[str] = _NODE_STATES) -> NodeState:
+    """Gets node state of a specified node."""
     self._check_context()
     if not _is_node_uid_in_pipeline(node_uid, self.pipeline):
       raise status_lib.StatusNotOkError(
           code=status_lib.Code.INVALID_ARGUMENT,
           message=(f'Node {node_uid} does not belong to the pipeline '
                    f'{self.pipeline_uid}'))
-    node_states_dict = _get_node_states_dict(self._execution)
+    node_states_dict = _get_node_states_dict(self._execution, state_type)
     return node_states_dict.get(node_uid.node_id, NodeState())
 
-  def get_node_states_dict(self) -> Dict[task_lib.NodeUid, NodeState]:
+  def get_node_states_dict(
+      self,
+      state_type: Optional[str] = _NODE_STATES
+  ) -> Dict[task_lib.NodeUid, NodeState]:
+    """Gets all node states of the pipeline with specified type."""
     self._check_context()
-    node_states_dict = _get_node_states_dict(self._execution)
+    node_states_dict = _get_node_states_dict(self._execution, state_type)
     result = {}
     for node in get_all_pipeline_nodes(self.pipeline):
       node_uid = task_lib.NodeUid.from_pipeline_node(self.pipeline, node)
@@ -713,10 +719,12 @@ class PipelineView:
     return _get_metadata_value(
         self.execution.custom_properties.get(property_key))
 
-  def get_node_states_dict(self) -> Dict[str, NodeState]:
+  def get_node_states_dict(self,
+                           state_type: Optional[str] = _NODE_STATES
+                          ) -> Dict[str, NodeState]:
     """Returns a dict mapping node id to node state."""
     result = {}
-    node_states_dict = _get_node_states_dict(self.execution)
+    node_states_dict = _get_node_states_dict(self.execution, state_type)
     for node in get_all_pipeline_nodes(self.pipeline):
       result[node.node_info.id] = node_states_dict.get(node.node_info.id,
                                                        NodeState())
@@ -869,14 +877,53 @@ def _base64_decode_update_options(
 
 
 def _get_node_states_dict(
-    pipeline_execution: metadata_store_pb2.Execution) -> Dict[str, NodeState]:
+    pipeline_execution: metadata_store_pb2.Execution,
+    state_type: Optional[str] = _NODE_STATES) -> Dict[str, NodeState]:
+  """Gets node states dict from pipeline execution with specified type."""
   node_states_json = _get_metadata_value(
-      pipeline_execution.custom_properties.get(_NODE_STATES))
+      pipeline_execution.custom_properties.get(state_type))
   return json_utils.loads(node_states_json) if node_states_json else {}
 
 
 def _save_node_states_dict(pipeline_execution: metadata_store_pb2.Execution,
-                           node_states: Dict[str, NodeState]) -> None:
+                           node_states: Dict[str, NodeState],
+                           state_type: Optional[str] = _NODE_STATES) -> None:
+  """Saves node states dict to pipeline execution with specified type."""
   data_types_utils.set_metadata_value(
-      pipeline_execution.custom_properties[_NODE_STATES],
+      pipeline_execution.custom_properties[state_type],
       json_utils.dumps(node_states))
+
+
+def _save_skipped_node_states(pipeline: pipeline_pb2.Pipeline,
+                              reused_pipeline_view: PipelineView,
+                              execution: metadata_store_pb2.Execution) -> None:
+  """Records (previous) node states for nodes that are skipped in partial run."""
+  # Set the node state to SKIPPED_PARTIAL_RUN for any nodes that are marked
+  # to be skipped in a partial pipeline run.
+  node_states_dict = {}
+  previous_node_states_dict = {}
+  reused_pipeline_node_states_dict = reused_pipeline_view.get_node_states_dict(
+      _NODE_STATES) if reused_pipeline_view else {}
+  reused_pipeline_previous_node_states_dict = reused_pipeline_view.get_node_states_dict(
+      _PREVIOUS_NODE_STATES) if reused_pipeline_view else {}
+  for node in get_all_pipeline_nodes(pipeline):
+    node_id = node.node_info.id
+    if node.execution_options.HasField('skip'):
+      logging.info('Node %s is skipped in this partial run.', node_id)
+      node_states_dict[node_id] = NodeState(state=NodeState.SKIPPED_PARTIAL_RUN)
+      if node_id in reused_pipeline_node_states_dict:
+        # Indicates a node's in any base run when skipped. If a user makes
+        # a chain of partial runs, we record the latest time when the
+        # skipped node has a different state.
+        reused_node_state = reused_pipeline_node_states_dict[node_id]
+        if reused_node_state.state == NodeState.SKIPPED_PARTIAL_RUN:
+          previous_node_states_dict[
+              node_id] = reused_pipeline_previous_node_states_dict.get(
+                  node_id, NodeState())
+        else:
+          previous_node_states_dict[node_id] = reused_node_state
+  if node_states_dict:
+    _save_node_states_dict(execution, node_states_dict, _NODE_STATES)
+  if previous_node_states_dict:
+    _save_node_states_dict(execution, previous_node_states_dict,
+                           _PREVIOUS_NODE_STATES)

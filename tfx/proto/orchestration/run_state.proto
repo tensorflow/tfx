@@ -18,6 +18,7 @@ package tfx.orchestration;
 
 // Indicates the run state of a TFleX pipeline or a node.
 message RunState {
+  // Next Id: 9
   enum State {
     UNKNOWN = 0;
 
@@ -33,6 +34,10 @@ message RunState {
     // Only applicable to nodes. Indicates that the node run was skipped
     // (e.g. due to condition not satisfied when pipeline has conditionals).
     SKIPPED = 4;
+
+    // Only applicable to nodes. Indicates that the node run was skipped due to
+    // partial run.
+    SKIPPED_PARTIAL_RUN = 8;
 
     // Indicates that any active run is temporarily paused and may be resumed.
     PAUSED = 5;
