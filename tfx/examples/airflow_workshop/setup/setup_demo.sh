@@ -44,8 +44,8 @@ printf "${GREEN}Installing required Jupyter version${NORMAL}\n"
 pip install ipykernel
 ipython kernel install --user --name=tfx
 pip install --upgrade notebook
-jupyter nbextension install --py --symlink --sys-prefix tensorflow_model_analysis
-jupyter nbextension enable --py --sys-prefix tensorflow_model_analysis
+jupyter labextension install tensorflow_model_analysis
+jupyter labextension install @jupyter-widgets/jupyterlab-manager
 
 printf "${GREEN}Installing packages used by the notebooks${NORMAL}\n"
 pip install matplotlib
