@@ -12,6 +12,9 @@
 
 ## Bug Fixes and Other Changes
 
+* `LatestBlessedModelStrategy` gracefully handles the case where there are no
+  blessed model at all (e.g. first run).
+
 ## Dependency Updates
 
 ## Documentation Updates
