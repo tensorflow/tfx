@@ -26,15 +26,16 @@ printf "${GREEN}Refreshing setuptools to avoid _NamespacePath issues${NORMAL}\n"
 pip uninstall setuptools -y && pip install setuptools
 
 printf "${GREEN}Installing httplib2 for Beam compatibility${NORMAL}\n"
-pip install httplib2==0.12.0
+pip install httplib2
 
 printf "${GREEN}Installing pendulum to avoid problem with tzlocal${NORMAL}\n"
-pip install pendulum==1.4.4
+pip install pendulum
 
 printf "${GREEN}Installing TFX${NORMAL}\n"
-pip install pyarrow==0.15.0
-pip install apache_beam==2.17.0
-pip install tfx==0.21.1
+pip install pyarrow==5.0.0
+pip install apache_beam==2.35.0
+pip install tfx==1.6.1
+pip install google-api-core==1.26.3
 
 printf "${GREEN}Installing Google API Client${NORMAL}\n"
 pip install google-api-python-client
@@ -42,7 +43,7 @@ pip install google-api-python-client
 printf "${GREEN}Installing required Jupyter version${NORMAL}\n"
 pip install ipykernel
 ipython kernel install --user --name=tfx
-pip install --upgrade notebook==5.7.8
+pip install --upgrade notebook
 jupyter nbextension install --py --symlink --sys-prefix tensorflow_model_analysis
 jupyter nbextension enable --py --sys-prefix tensorflow_model_analysis
 
@@ -52,7 +53,7 @@ pip install papermill
 pip install pandas
 pip install networkx
 
-# # Docker images
+# Docker images
 printf "${GREEN}Installing docker${NORMAL}\n"
 pip install docker
 
@@ -61,9 +62,9 @@ pip install docker
 printf "${GREEN}Preparing environment for Airflow${NORMAL}\n"
 export SLUGIFY_USES_TEXT_UNIDECODE=yes
 printf "${GREEN}Installing Airflow${NORMAL}\n"
-pip install -q apache-airflow==1.10.9 Flask==1.1.1 Werkzeug==0.15
+pip install -q apache-airflow Flask Werkzeug
 printf "${GREEN}Initializing Airflow database${NORMAL}\n"
-airflow initdb
+airflow db init
 
 # Adjust configuration
 printf "${GREEN}Adjusting Airflow config${NORMAL}\n"
@@ -75,8 +76,8 @@ sed -i'.orig' 's/load_examples = True/load_examples = False/g' ~/airflow/airflow
 sed -i'.orig' 's/max_threads = 2/max_threads = 1/g' ~/airflow/airflow.cfg
 
 printf "${GREEN}Refreshing Airflow to pick up new config${NORMAL}\n"
-airflow resetdb --yes
-airflow initdb
+airflow db reset --yes
+airflow db init
 
 # Copy Dags to ~/airflow/dags
 mkdir -p ~/airflow/dags

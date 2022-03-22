@@ -11,6 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+# pylint: disable=line-too-long
+# pylint: disable=unused-import
+# pylint: disable=unused-argument
 """Chicago taxi example using TFX."""
 
 import datetime
@@ -91,70 +94,95 @@ def _create_pipeline(pipeline_name: str, pipeline_root: str, data_root: str,
 
   # Generates schema based on statistics files.
   infer_schema = SchemaGen(
-      statistics=statistics_gen.outputs['statistics'],
-      infer_feature_shape=False)
+       statistics=statistics_gen.outputs['statistics'],
+       infer_feature_shape=False)
 
   # Performs anomaly detection based on statistics and data schema.
   validate_stats = ExampleValidator(
-      statistics=statistics_gen.outputs['statistics'],
-      schema=infer_schema.outputs['schema'])
+       statistics=statistics_gen.outputs['statistics'],
+       schema=infer_schema.outputs['schema'])
 
   # Performs transformations and feature engineering in training and serving.
   transform = Transform(
-      examples=example_gen.outputs['examples'],
-      schema=infer_schema.outputs['schema'],
-      module_file=module_file)
+       examples=example_gen.outputs['examples'],
+       schema=infer_schema.outputs['schema'],
+       module_file=module_file)
 
   # Uses user-provided Python function that implements a model.
   trainer = Trainer(
-      module_file=module_file,
-      custom_executor_spec=executor_spec.ExecutorClassSpec(GenericExecutor),
-      examples=transform.outputs['transformed_examples'],
-      transform_graph=transform.outputs['transform_graph'],
-      schema=infer_schema.outputs['schema'],
-      train_args=trainer_pb2.TrainArgs(num_steps=10000),
-      eval_args=trainer_pb2.EvalArgs(num_steps=5000))
+       module_file=module_file,
+       custom_executor_spec=executor_spec.ExecutorClassSpec(GenericExecutor),
+       examples=transform.outputs['transformed_examples'],
+       transform_graph=transform.outputs['transform_graph'],
+       schema=infer_schema.outputs['schema'],
+       train_args=trainer_pb2.TrainArgs(num_steps=10000),
+       eval_args=trainer_pb2.EvalArgs(num_steps=5000))
 
-  # Get the latest blessed model for model validation.
   model_resolver = resolver.Resolver(
-      strategy_class=latest_blessed_model_resolver.LatestBlessedModelResolver,
-      model=Channel(type=Model),
-      model_blessing=Channel(
-          type=ModelBlessing)).with_id('latest_blessed_model_resolver')
+       strategy_class=latest_blessed_model_resolver.LatestBlessedModelResolver,
+       model=Channel(type=Model),
+       model_blessing=Channel(type=ModelBlessing)).with_id(
+           'latest_blessed_model_resolver')
 
   # Uses TFMA to compute a evaluation statistics over features of a model and
   # perform quality validation of a candidate model (compared to a baseline).
   eval_config = tfma.EvalConfig(
-      model_specs=[tfma.ModelSpec(label_key='tips')],
-      slicing_specs=[tfma.SlicingSpec()],
-      metrics_specs=[
-          tfma.MetricsSpec(metrics=[
-              tfma.MetricConfig(
-                  class_name='BinaryAccuracy',
+       model_specs=[
+        # This assumes a serving model with signature 'serving_default'. If
+        # using estimator based EvalSavedModel, add signature_name: 'eval' and
+        # remove the label_key.
+        tfma.ModelSpec(
+            signature_name='serving_default',
+            label_key='tips',
+            preprocessing_function_names=['transform_features'],
+            )
+        ],
+    metrics_specs=[
+        tfma.MetricsSpec(
+            # The metrics added here are in addition to those saved with the
+            # model (assuming either a keras model or EvalSavedModel is used).
+            # Any metrics added into the saved model (for example using
+            # model.compile(..., metrics=[...]), etc) will be computed
+            # automatically.
+            # To add validation thresholds for metrics saved with the model,
+            # add them keyed by metric name to the thresholds map.
+            metrics=[
+                tfma.MetricConfig(class_name='ExampleCount'),
+                tfma.MetricConfig(class_name='BinaryAccuracy',
                   threshold=tfma.MetricThreshold(
                       value_threshold=tfma.GenericValueThreshold(
-                          lower_bound={'value': 0.6}),
+                          lower_bound={'value': 0.5}),
+                      # Change threshold will be ignored if there is no
+                      # baseline model resolved from MLMD (first run).
                       change_threshold=tfma.GenericChangeThreshold(
                           direction=tfma.MetricDirection.HIGHER_IS_BETTER,
                           absolute={'value': -1e-10})))
-          ])
-      ])
+            ]
+        )
+    ],
+    slicing_specs=[
+        # An empty slice spec means the overall slice, i.e. the whole dataset.
+        tfma.SlicingSpec(),
+        # Data can be sliced along a feature column. In this case, data is
+        # sliced along feature column trip_start_hour.
+        tfma.SlicingSpec(
+            feature_keys=['trip_start_hour'])
+    ])
 
   model_analyzer = Evaluator(
-      examples=example_gen.outputs['examples'],
-      model=trainer.outputs['model'],
-      baseline_model=model_resolver.outputs['model'],
-      # Change threshold will be ignored if there is no baseline (first run).
-      eval_config=eval_config)
+       examples=example_gen.outputs['examples'],
+       model=trainer.outputs['model'],
+       baseline_model=model_resolver.outputs['model'],
+       eval_config=eval_config)
 
   # Checks whether the model passed the validation steps and pushes the model
   # to a file destination if check passed.
   pusher = Pusher(
-      model=trainer.outputs['model'],
-      model_blessing=model_analyzer.outputs['blessing'],
-      push_destination=pusher_pb2.PushDestination(
-          filesystem=pusher_pb2.PushDestination.Filesystem(
-              base_directory=serving_model_dir)))
+       model=trainer.outputs['model'],
+       model_blessing=model_analyzer.outputs['blessing'],
+       push_destination=pusher_pb2.PushDestination(
+           filesystem=pusher_pb2.PushDestination.Filesystem(
+               base_directory=serving_model_dir)))
 
   return pipeline.Pipeline(
       pipeline_name=pipeline_name,

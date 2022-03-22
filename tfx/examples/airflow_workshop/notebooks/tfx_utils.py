@@ -118,8 +118,8 @@ class TFXReadonlyMetadataStore(utils.ReadonlyMetadataStore):
         examples_id, TFXArtifactTypes.EXAMPLE_STATS)
     if stats_artifact:
       tfdv.visualize_statistics(
-          tfdv.load_statistics(
-              os.path.join(stats_artifact.uri, split, 'stats_tfrecord')))
+          tfdv.load_stats_binary(
+              os.path.join(stats_artifact.uri, split, 'FeatureStats.pb')))
 
   def compare_stats_for_examples(self,
                                  examples_id,

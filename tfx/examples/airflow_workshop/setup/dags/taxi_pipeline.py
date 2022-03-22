@@ -58,7 +58,7 @@ _taxi_root = os.path.join(os.environ['HOME'], 'airflow')
 _data_root = os.path.join(_taxi_root, 'data', 'taxi_data')
 # Python module file to inject customized logic into the TFX components. The
 # Transform and Trainer both require user-defined functions to run successfully.
-_module_file = os.path.join(_taxi_root, 'dags', 'taxi_utils_solution.py')
+_module_file = os.path.join(_taxi_root, 'dags', 'taxi_utils.py')
 # Path which can be listened to by the model server.  Pusher will output the
 # trained model here.
 _serving_model_dir = os.path.join(_taxi_root, 'serving_model', _pipeline_name)
@@ -96,75 +96,101 @@ def _create_pipeline(pipeline_name: str, pipeline_root: str, data_root: str,
   # Brings data into the pipeline or otherwise joins/converts training data.
   example_gen = CsvExampleGen(input_base=data_root)
 
-  # Computes statistics over data for visualization and example validation.
+  # # Computes statistics over data for visualization and example validation.
   # statistics_gen = StatisticsGen(examples=example_gen.outputs['examples']) # Step 3
 
-  # Generates schema based on statistics files.
+  # # Generates schema based on statistics files.
   # infer_schema = SchemaGen( # Step 3
-  #     statistics=statistics_gen.outputs['statistics'], # Step 3
-  #     infer_feature_shape=False) # Step 3
+  #      statistics=statistics_gen.outputs['statistics'], # Step 3
+  #      infer_feature_shape=False) # Step 3
 
-  # Performs anomaly detection based on statistics and data schema.
+  # # Performs anomaly detection based on statistics and data schema.
   # validate_stats = ExampleValidator( # Step 3
-  #     statistics=statistics_gen.outputs['statistics'], # Step 3
-  #     schema=infer_schema.outputs['schema']) # Step 3
+  #      statistics=statistics_gen.outputs['statistics'], # Step 3
+  #      schema=infer_schema.outputs['schema']) # Step 3
 
-  # Performs transformations and feature engineering in training and serving.
+  # # Performs transformations and feature engineering in training and serving.
   # transform = Transform( # Step 4
-  #     examples=example_gen.outputs['examples'], # Step 4
-  #     schema=infer_schema.outputs['schema'], # Step 4
-  #     module_file=module_file) # Step 4
+  #      examples=example_gen.outputs['examples'], # Step 4
+  #      schema=infer_schema.outputs['schema'], # Step 4
+  #      module_file=module_file) # Step 4
 
-  # Uses user-provided Python function that implements a model.
+  # # Uses user-provided Python function that implements a model.
   # trainer = Trainer( # Step 5
-  #     module_file=module_file, # Step 5
-  #     custom_executor_spec=executor_spec.ExecutorClassSpec(GenericExecutor), # Step 5
-  #     examples=transform.outputs['transformed_examples'], # Step 5
-  #     transform_graph=transform.outputs['transform_graph'], # Step 5
-  #     schema=infer_schema.outputs['schema'], # Step 5
-  #     train_args=trainer_pb2.TrainArgs(num_steps=10000), # Step 5
-  #     eval_args=trainer_pb2.EvalArgs(num_steps=5000)) # Step 5
+  #      module_file=module_file, # Step 5
+  #      custom_executor_spec=executor_spec.ExecutorClassSpec(GenericExecutor), # Step 5
+  #      examples=transform.outputs['transformed_examples'], # Step 5
+  #      transform_graph=transform.outputs['transform_graph'], # Step 5
+  #      schema=infer_schema.outputs['schema'], # Step 5
+  #      train_args=trainer_pb2.TrainArgs(num_steps=10000), # Step 5
+  #      eval_args=trainer_pb2.EvalArgs(num_steps=5000)) # Step 5
 
-  # Get the latest blessed model for model validation.
-  # model_resolver = resolver.Resolver(  # Step 6
-  #     strategy_class=latest_blessed_model_resolver.LatestBlessedModelResolver,  # Step 6
-  #     model=Channel(type=Model),  # Step 6
-  #     model_blessing=Channel(type=ModelBlessing)).with_id(  # Step 6
-  #         'latest_blessed_model_resolver')  # Step 6
+  # # Get the latest blessed model for model validation.
+  # model_resolver = resolver.Resolver(# Step 6
+  #      strategy_class=latest_blessed_model_resolver.LatestBlessedModelResolver, # Step 6
+  #      model=Channel(type=Model), # Step 6
+  #      model_blessing=Channel(type=ModelBlessing)).with_id( # Step 6
+  #          'latest_blessed_model_resolver') # Step 6
 
-  # Uses TFMA to compute a evaluation statistics over features of a model and
-  # perform quality validation of a candidate model (compared to a baseline).
+  # # Uses TFMA to compute a evaluation statistics over features of a model and
+  # # perform quality validation of a candidate model (compared to a baseline).
   # eval_config = tfma.EvalConfig( # Step 6
-  #     model_specs=[tfma.ModelSpec(label_key='tips')], # Step 6
-  #     slicing_specs=[tfma.SlicingSpec()], # Step 6
-  #     metrics_specs=[ # Step 6
-  #         tfma.MetricsSpec(metrics=[ # Step 6
-  #             tfma.MetricConfig( # Step 6
-  #                 class_name='BinaryAccuracy', # Step 6
+  #      model_specs=[ # Step 6
+  #       # This assumes a serving model with signature 'serving_default'. If
+  #       # using estimator based EvalSavedModel, add signature_name: 'eval' and
+  #       # remove the label_key.
+  #       tfma.ModelSpec( # Step 6
+  #           signature_name='serving_default', # Step 6
+  #           label_key='tips', # Step 6
+  #           preprocessing_function_names=['transform_features'], # Step 6
+  #           ) # Step 6
+  #       ], # Step 6
+  #   metrics_specs=[ # Step 6
+  #       tfma.MetricsSpec( # Step 6
+  #           # The metrics added here are in addition to those saved with the
+  #           # model (assuming either a keras model or EvalSavedModel is used).
+  #           # Any metrics added into the saved model (for example using
+  #           # model.compile(..., metrics=[...]), etc) will be computed
+  #           # automatically.
+  #           # To add validation thresholds for metrics saved with the model,
+  #           # add them keyed by metric name to the thresholds map.
+  #           metrics=[ # Step 6
+  #               tfma.MetricConfig(class_name='ExampleCount'), # Step 6
+  #               tfma.MetricConfig(class_name='BinaryAccuracy', # Step 6
   #                 threshold=tfma.MetricThreshold( # Step 6
   #                     value_threshold=tfma.GenericValueThreshold( # Step 6
-  #                         lower_bound={'value': 0.6}), # Step 6
+  #                         lower_bound={'value': 0.5}), # Step 6
+  #                     # Change threshold will be ignored if there is no
+  #                     # baseline model resolved from MLMD (first run).
   #                     change_threshold=tfma.GenericChangeThreshold( # Step 6
   #                         direction=tfma.MetricDirection.HIGHER_IS_BETTER, # Step 6
   #                         absolute={'value': -1e-10}))) # Step 6
-  #         ]) # Step 6
-  #     ]) # Step 6
+  #           ] # Step 6
+  #       ) # Step 6
+  #   ], # Step 6
+  #   slicing_specs=[ # Step 6
+  #       # An empty slice spec means the overall slice, i.e. the whole dataset.
+  #       tfma.SlicingSpec(), # Step 6
+  #       # Data can be sliced along a feature column. In this case, data is
+  #       # sliced along feature column trip_start_hour.
+  #       tfma.SlicingSpec( # Step 6
+  #           feature_keys=['trip_start_hour']) # Step 6
+  #   ]) # Step 6
 
   # model_analyzer = Evaluator( # Step 6
-  #     examples=example_gen.outputs['examples'], # Step 6
-  #     model=trainer.outputs['model'], # Step 6
-  #     baseline_model=model_resolver.outputs['model'], # Step 6
-  #     # Change threshold will be ignored if there is no baseline (first run). # Step 6
-  #     eval_config=eval_config) # Step 6
+  #      examples=example_gen.outputs['examples'], # Step 6
+  #      model=trainer.outputs['model'], # Step 6
+  #      baseline_model=model_resolver.outputs['model'], # Step 6
+  #      eval_config=eval_config) # Step 6
 
-  # Checks whether the model passed the validation steps and pushes the model
-  # to a file destination if check passed.
+  # # Checks whether the model passed the validation steps and pushes the model
+  # # to a file destination if check passed.
   # pusher = Pusher( # Step 7
-  #     model=trainer.outputs['model'], # Step 7
-  #     model_blessing=model_analyzer.outputs['blessing'], # Step 7
-  #     push_destination=pusher_pb2.PushDestination( # Step 7
-  #         filesystem=pusher_pb2.PushDestination.Filesystem( # Step 7
-  #             base_directory=serving_model_dir))) # Step 7
+  #      model=trainer.outputs['model'], # Step 7
+  #      model_blessing=model_analyzer.outputs['blessing'], # Step 7
+  #      push_destination=pusher_pb2.PushDestination( # Step 7
+  #          filesystem=pusher_pb2.PushDestination.Filesystem( # Step 7
+  #              base_directory=serving_model_dir))) # Step 7
 
   return pipeline.Pipeline(
       pipeline_name=pipeline_name,
