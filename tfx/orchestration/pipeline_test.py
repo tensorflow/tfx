@@ -238,6 +238,30 @@ class PipelineTest(test_case_utils.TfxTest):
         metadata_connection_config=self._metadata_connection_config)
     self.assertEqual(1, len(my_pipeline.components))
 
+  def testPipelineWarnMissingNode(self):
+    channel_one = types.Channel(type=_ArtifactTypeOne)
+    channel_two = types.Channel(type=_ArtifactTypeTwo)
+    component_a = _make_fake_component_instance('component_a', _OutputTypeA,
+                                                {'a': channel_one}, {})
+    component_b = _make_fake_component_instance(
+        name='component_b',
+        output_type=_OutputTypeB,
+        inputs={'a': component_a.outputs['output']},
+        outputs={'b': channel_two})
+
+    warn_text = (
+        'Node component_b depends on the output of node component_a, '
+        'but component_a is not included in the components of pipeline. '
+        'Did you forget to add it?')
+    with self.assertWarnsRegex(UserWarning, warn_text):
+      pipeline.Pipeline(
+          pipeline_name='name',
+          pipeline_root='root',
+          components=[
+              component_b,
+          ],
+          metadata_connection_config=self._metadata_connection_config)
+
   def testPipelineWithLoop(self):
     channel_one = types.Channel(type=_ArtifactTypeOne)
     channel_two = types.Channel(type=_ArtifactTypeTwo)

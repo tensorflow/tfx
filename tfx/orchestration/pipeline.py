@@ -340,6 +340,11 @@ class Pipeline:
           if upstream_node:
             component.add_upstream_node(upstream_node)
             upstream_node.add_downstream_node(component)
+          else:
+            warnings.warn(
+                f'Node {component.id} depends on the output of node {node_id}'
+                f', but {node_id} is not included in the components of '
+                'pipeline. Did you forget to add it?')
 
     layers = topsort.topsorted_layers(
         list(deduped_components),
