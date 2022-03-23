@@ -20,6 +20,7 @@ from absl.testing.absltest import mock
 
 import tensorflow as tf
 
+from tensorflow import estimator as tf_estimator
 from tfx.components.trainer.rewriting import converters
 from tfx.components.trainer.rewriting import rewriter
 from tfx.dsl.io import fileio
@@ -95,10 +96,10 @@ class RewritingExporterTest(tf.test.TestCase):
     self._checkpoint_path = 'checkpoint_path'
     self._eval_result = 'eval_result'
     self._is_the_final_export = True
-    self._base_exporter = tf.estimator.FinalExporter(
+    self._base_exporter = tf_estimator.FinalExporter(
         name='base_exporter', serving_input_receiver_fn=lambda: None)
 
-  @mock.patch.object(tf.estimator.FinalExporter, 'export')
+  @mock.patch.object(tf_estimator.FinalExporter, 'export')
   def testRewritingExporterSucceeds(self, base_exporter_mock):
 
     base_exporter_mock.side_effect = _export_fn
@@ -123,7 +124,7 @@ class RewritingExporterTest(tf.test.TestCase):
                                                self._eval_result,
                                                self._is_the_final_export)
 
-  @mock.patch.object(tf.estimator.FinalExporter, 'export')
+  @mock.patch.object(tf_estimator.FinalExporter, 'export')
   def testRewritingHandlesNoBaseExport(self, base_exporter_mock):
 
     base_exporter_mock.return_value = None
@@ -142,7 +143,7 @@ class RewritingExporterTest(tf.test.TestCase):
                                                self._eval_result,
                                                self._is_the_final_export)
 
-  @mock.patch.object(tf.estimator.FinalExporter, 'export')
+  @mock.patch.object(tf_estimator.FinalExporter, 'export')
   def testRewritingExporterHandlesError(self, base_exporter_mock):
 
     base_exporter_mock.side_effect = _export_fn

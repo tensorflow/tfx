@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import tensorflow as tf
+from tensorflow import estimator as tf_estimator
 from tfx.components.trainer import executor as trainer_executor
 from tfx.experimental.templates.taxi.models.estimator_model import model
 
@@ -33,9 +34,9 @@ class ModelTest(tf.test.TestCase):
     )
     schema = schema_pb2.Schema()
     result = model._create_train_and_eval_spec(trainer_fn_args, schema)   # pylint: disable=protected-access
-    self.assertIsInstance(result['estimator'], tf.estimator.Estimator)
-    self.assertIsInstance(result['train_spec'], tf.estimator.TrainSpec)
-    self.assertIsInstance(result['eval_spec'], tf.estimator.EvalSpec)
+    self.assertIsInstance(result['estimator'], tf_estimator.Estimator)
+    self.assertIsInstance(result['train_spec'], tf_estimator.TrainSpec)
+    self.assertIsInstance(result['eval_spec'], tf_estimator.EvalSpec)
     self.assertTrue(callable(result['eval_input_receiver_fn']))
 
 

@@ -19,6 +19,7 @@ import unittest
 
 import apache_beam as beam
 import tensorflow as tf
+from tensorflow import estimator as tf_estimator
 import tensorflow_model_analysis as tfma
 import tensorflow_transform as tft
 from tensorflow_transform import beam as tft_beam
@@ -148,16 +149,16 @@ class TaxiUtilsTest(tf.test.TestCase):
     eval_input_receiver_fn = training_spec['eval_input_receiver_fn']
 
     self.assertIsInstance(estimator,
-                          tf.estimator.DNNLinearCombinedClassifier)
-    self.assertIsInstance(train_spec, tf.estimator.TrainSpec)
-    self.assertIsInstance(eval_spec, tf.estimator.EvalSpec)
+                          tf_estimator.DNNLinearCombinedClassifier)
+    self.assertIsInstance(train_spec, tf_estimator.TrainSpec)
+    self.assertIsInstance(eval_spec, tf_estimator.EvalSpec)
     self.assertIsInstance(eval_input_receiver_fn, types.FunctionType)
 
     # Test keep_max_checkpoint in RunConfig
     self.assertGreater(estimator._config.keep_checkpoint_max, 1)
 
     # Train for one step, then eval for one step.
-    eval_result, exports = tf.estimator.train_and_evaluate(
+    eval_result, exports = tf_estimator.train_and_evaluate(
         estimator, train_spec, eval_spec)
     self.assertGreater(eval_result['loss'], 0.0)
     self.assertEqual(len(exports), 1)
