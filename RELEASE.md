@@ -4,6 +4,7 @@
 
 *   Added experimental exit_handler support for KubeflowDagRunner.
 *   Enabled custom labels to be submitted to CAIP training jobs.
+*   Enabled artifact sharing between pipelines.
 
 ## Breaking Changes
 

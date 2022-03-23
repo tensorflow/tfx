@@ -271,18 +271,27 @@ class Compiler:
         # producer node's contexts.
         if isinstance(input_channel, types.OutputChannel):
           chnl.producer_node_query.id = input_channel.producer_component_id
-
-          # Here we rely on pipeline.components to be topologically sorted.
-          assert input_channel.producer_component_id in compile_context.node_pbs, (
-              f"producer component {input_channel.producer_component_id} "
-              f"should have been compiled before {tfx_node.id} "
-              f"(while compiling {input_channel} in inputs['{key}']).")
-          producer_pb = compile_context.node_pbs[
-              input_channel.producer_component_id]
-          for producer_context in producer_pb.contexts.contexts:
+          producer_pb = compile_context.node_pbs.get(
+              input_channel.producer_component_id)
+          # Input for the node is from the same pipeline.
+          if producer_pb:
+            for producer_context in producer_pb.contexts.contexts:
+              context_query = chnl.context_queries.add()
+              context_query.type.CopyFrom(producer_context.type)
+              context_query.name.CopyFrom(producer_context.name)
+          # Input for the node is from another pipeline.
+          else:
+            # Add pipeline context query
             context_query = chnl.context_queries.add()
-            context_query.type.CopyFrom(producer_context.type)
-            context_query.name.CopyFrom(producer_context.name)
+            context_query.type.name = constants.PIPELINE_CONTEXT_TYPE_NAME
+            context_query.name.field_value.string_value = (
+                input_channel.pipeline_name)
+            # Add node context query
+            node_context_query = chnl.context_queries.add()
+            node_context_query.type.name = constants.NODE_CONTEXT_TYPE_NAME
+            node_context_query.name.field_value.string_value = "{}.{}".format(
+                input_channel.pipeline_name,
+                input_channel.producer_component_id)
 
         # If the node input is not an OutputChannel, fill the context queries
         # based on Channel info. We requires every channel to have pipeline

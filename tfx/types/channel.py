@@ -318,6 +318,7 @@ class OutputChannel(Channel):
       output_key: str,
       additional_properties: Optional[Dict[str, Property]] = None,
       additional_custom_properties: Optional[Dict[str, Property]] = None,
+      pipeline_name: str = '',
   ):
     super().__init__(
         type=artifact_type,
@@ -326,6 +327,7 @@ class OutputChannel(Channel):
         additional_custom_properties=additional_custom_properties,
     )
     self._producer_component = producer_component
+    self.pipeline_name = pipeline_name
 
   def __repr__(self) -> str:
     return (
@@ -334,7 +336,8 @@ class OutputChannel(Channel):
         f'producer_component_id={self.producer_component_id}, '
         f'output_key={self.output_key}, '
         f'additional_properties={self.additional_properties}, '
-        f'additional_custom_properties={self.additional_custom_properties})')
+        f'additional_custom_properties={self.additional_custom_properties}, '
+        f'pipeline_name={self.pipeline_name}')
 
   @doc_controls.do_not_generate_docs
   def set_producer_component(self, value: Any):
