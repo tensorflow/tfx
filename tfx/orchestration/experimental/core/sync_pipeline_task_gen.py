@@ -196,8 +196,8 @@ class _Generator:
     result = []
 
     node_state = self._node_states_dict[node_uid]
-    if node_state.state in (pstate.NodeState.STOPPING,
-                            pstate.NodeState.STOPPED):
+    if node_state.state in (pstate.NodeState.STOPPING, pstate.NodeState.STOPPED,
+                            pstate.NodeState.PAUSING, pstate.NodeState.PAUSED):
       logging.info('Ignoring node in state \'%s\' for task generation: %s',
                    node_state.state, node_uid)
       return result

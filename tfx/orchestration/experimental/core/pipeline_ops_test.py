@@ -798,8 +798,15 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
       # stop_node_services should be called for Transform (mixed service node)
       # too since corresponding ExecNodeTask has been processed.
       self._mock_service_job_manager.stop_node_services.assert_has_calls(
-          [mock.call(mock.ANY, 'ExampleGen'),
-           mock.call(mock.ANY, 'Transform')])
+          [mock.call(mock.ANY, 'Transform')])
+
+      # Check that the node states are STARTED.
+      [execution] = m.store.get_executions_by_id([pipeline_state.execution_id])
+      node_states_dict = pstate._get_node_states_dict(execution)
+      self.assertLen(node_states_dict, 4)
+      self.assertSetEqual(
+          set([pstate.NodeState.STARTED]),
+          set(n.state for n in node_states_dict.values()))
 
       # Pipeline should no longer be in update-initiated state but be active.
       with pipeline_state:

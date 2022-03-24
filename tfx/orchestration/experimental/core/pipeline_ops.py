@@ -606,27 +606,6 @@ def _get_pipeline_states(
   return result
 
 
-def _cancel_nodes(mlmd_handle: metadata.Metadata,
-                  task_queue: tq.TaskQueue,
-                  service_job_manager: service_jobs.ServiceJobManager,
-                  pipeline_state: pstate.PipelineState,
-                  pause: bool,
-                  reload_node_ids: Optional[List[str]] = None) -> bool:
-  """Cancels pipeline nodes and returns `True` if any node is currently active."""
-  pipeline = pipeline_state.pipeline
-  is_active = False
-  for node in pstate.get_all_pipeline_nodes(pipeline):
-    # TODO(b/217584342): Partial reload which excludes service nodes is not
-    # fully supported in async pipelines since we don't have a mechanism to
-    # reload them later for new executions.
-    if reload_node_ids is not None and node.node_info.id not in reload_node_ids:
-      continue
-    if _cancel_node(mlmd_handle, task_queue, service_job_manager,
-                    pipeline_state, node, pause):
-      is_active = True
-  return is_active
-
-
 def _cancel_node(mlmd_handle: metadata.Metadata, task_queue: tq.TaskQueue,
                  service_job_manager: service_jobs.ServiceJobManager,
                  pipeline_state: pstate.PipelineState,
@@ -704,18 +683,67 @@ def _orchestrate_update_initiated_pipeline(
     service_job_manager: service_jobs.ServiceJobManager,
     pipeline_state: pstate.PipelineState) -> None:
   """Orchestrates an update-initiated pipeline."""
+  nodes_to_pause = []
   with pipeline_state:
     update_options = pipeline_state.get_update_options()
-  is_active = _cancel_nodes(
-      mlmd_handle=mlmd_handle,
-      task_queue=task_queue,
-      service_job_manager=service_job_manager,
-      pipeline_state=pipeline_state,
-      pause=True,
-      reload_node_ids=list(update_options.reload_nodes)
-      if update_options.reload_policy == update_options.PARTIAL else None)
-  if not is_active:
+    reload_node_ids = list(
+        update_options.reload_nodes
+    ) if update_options.reload_policy == update_options.PARTIAL else None
+    pipeline = pipeline_state.pipeline
+    for node in pstate.get_all_pipeline_nodes(pipeline):
+      # TODO(b/217584342): Partial reload which excludes service nodes is not
+      # fully supported in async pipelines since we don't have a mechanism to
+      # reload them later for new executions.
+      if (reload_node_ids is not None and
+          node.node_info.id not in reload_node_ids):
+        continue
+      node_uid = task_lib.NodeUid.from_pipeline_node(pipeline, node)
+      with pipeline_state.node_state_update_context(node_uid) as node_state:
+        if node_state.is_pausable():
+          node_state.update(pstate.NodeState.PAUSING,
+                            status_lib.Status(code=status_lib.Code.CANCELLED))
+      if node_state.state == pstate.NodeState.PAUSING:
+        nodes_to_pause.append(node)
+
+  # Issue cancellation for nodes_to_pause and gather the ones whose pausing is
+  # complete.
+  paused_nodes = []
+  for node in nodes_to_pause:
+    if not _cancel_node(
+        mlmd_handle,
+        task_queue,
+        service_job_manager,
+        pipeline_state,
+        node,
+        pause=True):
+      paused_nodes.append(node)
+
+  # Change the state of paused nodes to PAUSED.
+  with pipeline_state:
+    for node in paused_nodes:
+      node_uid = task_lib.NodeUid.from_pipeline_node(pipeline, node)
+      with pipeline_state.node_state_update_context(node_uid) as node_state:
+        node_state.update(pstate.NodeState.PAUSED, node_state.status)
+
+  # If all the pausable nodes have been paused, we can update the node state to
+  # STARTED.
+  all_paused = set(n.node_info.id for n in nodes_to_pause) == set(
+      n.node_info.id for n in paused_nodes)
+  if all_paused:
     with pipeline_state:
+      pipeline = pipeline_state.pipeline
+      for node in pstate.get_all_pipeline_nodes(pipeline):
+        # TODO(b/217584342): Partial reload which excludes service nodes is not
+        # fully supported in async pipelines since we don't have a mechanism to
+        # reload them later for new executions.
+        if (reload_node_ids is not None and
+            node.node_info.id not in reload_node_ids):
+          continue
+        node_uid = task_lib.NodeUid.from_pipeline_node(pipeline, node)
+        with pipeline_state.node_state_update_context(node_uid) as node_state:
+          if node_state.is_startable():
+            node_state.update(pstate.NodeState.STARTED)
+
       pipeline_state.apply_pipeline_update()
 
 
