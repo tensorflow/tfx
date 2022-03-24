@@ -111,7 +111,10 @@ enum PayloadFormat {
   // Serialized any protocol buffer.
   FORMAT_PROTO = 11;
 
-  reserved 1 to 5, 8 to 10, 12 to max;
+  // Serialized parquet messages.
+  FORMAT_PARQUET = 12;
+
+  reserved 1 to 5, 8 to 10, 13 to max;
 }
 
 // Enum to indicate file format that ExampleGen produces.

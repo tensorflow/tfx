@@ -23,6 +23,7 @@ from tfx.proto import example_gen_pb2
 from tfx.types import artifact
 from tfx.types import standard_artifacts
 from tfx_bsl.tfxio import dataset_options
+from tfx_bsl.tfxio import parquet_tfxio
 from tfx_bsl.tfxio import raw_tf_record
 from tfx_bsl.tfxio import record_to_tensor_tfxio
 from tfx_bsl.tfxio import tf_example_record
@@ -30,6 +31,8 @@ from tfx_bsl.tfxio import tf_sequence_example_record
 from tfx_bsl.tfxio import tfxio
 from tensorflow_metadata.proto.v0 import schema_pb2
 
+
+_SUPPORTED_PAYLOAD_FORMATS = ['parquet', 'tfrecords_gzip']
 # TODO(b/162532479): switch to support List[str] exclusively, once tfx-bsl
 # post-0.22 is released.
 OneOrMorePatterns = Union[str, List[str]]
@@ -272,7 +275,7 @@ def make_tfxio(
       option, and an error will be raised in that case. Required if
       read_as_raw_records == True.
     file_format: file format string for each file_pattern. Only 'tfrecords_gzip'
-      is supported for now.
+      and 'parquet' are supported for now.
 
   Returns:
     a TFXIO instance.
@@ -291,10 +294,10 @@ def make_tfxio(
             f'The length of file_pattern and file_formats should be the same.'
             f'Given: file_pattern={file_pattern}, file_format={file_format}')
       else:
-        if any(item != 'tfrecords_gzip' for item in file_format):
+        if any(item in _SUPPORTED_PAYLOAD_FORMATS for item in file_format):
           raise NotImplementedError(f'{file_format} is not supported yet.')
     else:  # file_format is str type.
-      if file_format != 'tfrecords_gzip':
+      if file_format in _SUPPORTED_PAYLOAD_FORMATS:
         raise NotImplementedError(f'{file_format} is not supported yet.')
 
   if read_as_raw_records:
@@ -329,6 +332,12 @@ def make_tfxio(
         saved_decoder_path=data_view_uri,
         telemetry_descriptors=telemetry_descriptors,
         raw_record_column_name=raw_record_column_name)
+
+  if payload_format == example_gen_pb2.PayloadFormat.FORMAT_PARQUET:
+    return parquet_tfxio.ParquetTFXIO(
+      file_pattern=file_pattern,
+      schema=schema,
+      telemetry_descriptors=telemetry_descriptors)
 
   raise NotImplementedError(
       'Unsupport payload format: {}'.format(payload_format))
