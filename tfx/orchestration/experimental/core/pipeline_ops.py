@@ -610,19 +610,19 @@ def _cancel_node(mlmd_handle: metadata.Metadata, task_queue: tq.TaskQueue,
                  service_job_manager: service_jobs.ServiceJobManager,
                  pipeline_state: pstate.PipelineState,
                  node: pipeline_pb2.PipelineNode, pause: bool) -> bool:
-  """Cancels pipeline node and returns `True` if node is still active."""
+  """Returns `True` if node cancelled successfully or no cancellation needed."""
   if service_job_manager.is_pure_service_node(pipeline_state,
                                               node.node_info.id):
-    return not service_job_manager.stop_node_services(pipeline_state,
-                                                      node.node_info.id)
+    return service_job_manager.stop_node_services(pipeline_state,
+                                                  node.node_info.id)
   elif _maybe_enqueue_cancellation_task(
       mlmd_handle, pipeline_state.pipeline, node, task_queue, pause=pause):
-    return True
+    return False
   elif service_job_manager.is_mixed_service_node(pipeline_state,
                                                  node.node_info.id):
-    return not service_job_manager.stop_node_services(pipeline_state,
-                                                      node.node_info.id)
-  return False
+    return service_job_manager.stop_node_services(pipeline_state,
+                                                  node.node_info.id)
+  return True
 
 
 def _orchestrate_stop_initiated_pipeline(
@@ -651,7 +651,7 @@ def _orchestrate_stop_initiated_pipeline(
   # complete.
   stopped_nodes = []
   for node in nodes_to_stop:
-    if not _cancel_node(
+    if _cancel_node(
         mlmd_handle,
         task_queue,
         service_job_manager,
@@ -709,7 +709,7 @@ def _orchestrate_update_initiated_pipeline(
   # complete.
   paused_nodes = []
   for node in nodes_to_pause:
-    if not _cancel_node(
+    if _cancel_node(
         mlmd_handle,
         task_queue,
         service_job_manager,
@@ -795,7 +795,7 @@ def _orchestrate_active_pipeline(
 
   # Create cancellation tasks for nodes in state STOPPING.
   for node_info in stopping_node_infos:
-    if not _cancel_node(
+    if _cancel_node(
         mlmd_handle,
         task_queue,
         service_job_manager,
