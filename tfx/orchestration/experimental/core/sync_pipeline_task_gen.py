@@ -207,6 +207,9 @@ class _Generator:
     service_status = self._ensure_node_services_if_pure(node_id)
     if service_status is not None:
       if service_status == service_jobs.ServiceStatus.FAILED:
+        # TODO(b/205642811): Mark all pending executions as either failed (if
+        # active) or canceled (if new), and delete the the executions temporary
+        # and output directories.
         error_msg = f'service job failed; node uid: {node_uid}'
         result.append(
             task_lib.UpdateNodeStateTask(

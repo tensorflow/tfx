@@ -238,6 +238,8 @@ def register_execution(
     contexts: Sequence[metadata_store_pb2.Context],
     input_artifacts: Optional[typing_utils.ArtifactMultiMap] = None,
     exec_properties: Optional[Mapping[str, types.ExecPropertyTypes]] = None,
+    last_known_state: metadata_store_pb2.Execution.State = metadata_store_pb2
+    .Execution.RUNNING
 ) -> metadata_store_pb2.Execution:
   """Registers a new execution in MLMD.
 
@@ -252,6 +254,7 @@ def register_execution(
     input_artifacts: Input artifacts of the execution. Each artifact will be
       linked with the execution through an event.
     exec_properties: Execution properties. Will be attached to the execution.
+    last_known_state: The last known state of the execution.
 
   Returns:
     An MLMD execution that is registered in MLMD, with id populated.
@@ -264,7 +267,7 @@ def register_execution(
   execution = execution_lib.prepare_execution(
       metadata_handler,
       execution_type,
-      metadata_store_pb2.Execution.RUNNING,
+      last_known_state,
       exec_properties,
       execution_name=exec_name)
 
