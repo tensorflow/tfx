@@ -33,7 +33,7 @@ pip install pendulum
 
 printf "${GREEN}Installing TFX${NORMAL}\n"
 pip install pyarrow==5.0.0
-pip install apache_beam==2.36.0
+pip install apache_beam==2.37.0
 pip install tfx==1.7.0
 pip install google-api-core==1.26.3
 
