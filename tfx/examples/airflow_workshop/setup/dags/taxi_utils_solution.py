@@ -411,6 +411,7 @@ def run_fn(fn_args: TrainerFnArgs):
             for i in range(num_dnn_layers)
         ])
 
+  # Creating a custom callback using LambdaCallback to add batch data
   def batch_output(batch, logs):
       tf.summary.scalar('batch_loss', data=logs['loss'], step=batch)
       tf.summary.scalar('batch_accuracy', data=logs['binary_accuracy'], step=batch)
