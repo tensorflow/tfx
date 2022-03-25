@@ -245,20 +245,23 @@ class ExecutorTest(tft_unit.TransformTestCase):
     if disable_statistics:
       self.assertFalse(
           fileio.exists(
-              os.path.join(self._pre_transform_schema.uri, 'schema.pbtxt')))
+              os.path.join(self._pre_transform_schema.uri,
+                           executor._SCHEMA_FILE)))
       self.assertFalse(
           fileio.exists(
-              os.path.join(self._post_transform_schema.uri, 'schema.pbtxt')))
+              os.path.join(self._post_transform_schema.uri,
+                           executor._SCHEMA_FILE)))
       self.assertFalse(
           fileio.exists(
-              os.path.join(self._pre_transform_stats.uri, 'FeatureStats.pb')))
+              os.path.join(self._pre_transform_stats.uri, executor.STATS_FILE)))
       self.assertFalse(
           fileio.exists(
-              os.path.join(self._post_transform_stats.uri, 'FeatureStats.pb')))
+              os.path.join(self._post_transform_stats.uri,
+                           executor.STATS_FILE)))
       self.assertFalse(
           fileio.exists(
               os.path.join(self._post_transform_anomalies.uri,
-                           'SchemaDiff.pb')))
+                           executor._ANOMALIES_FILE)))
 
     else:
       expected_outputs.extend([
@@ -268,20 +271,23 @@ class ExecutorTest(tft_unit.TransformTestCase):
       ])
       self.assertTrue(
           fileio.exists(
-              os.path.join(self._pre_transform_schema.uri, 'schema.pbtxt')))
+              os.path.join(self._pre_transform_schema.uri,
+                           executor._SCHEMA_FILE)))
       self.assertTrue(
           fileio.exists(
-              os.path.join(self._post_transform_schema.uri, 'schema.pbtxt')))
+              os.path.join(self._post_transform_schema.uri,
+                           executor._SCHEMA_FILE)))
       self.assertTrue(
           fileio.exists(
-              os.path.join(self._pre_transform_stats.uri, 'FeatureStats.pb')))
+              os.path.join(self._pre_transform_stats.uri, executor.STATS_FILE)))
       self.assertTrue(
           fileio.exists(
-              os.path.join(self._post_transform_stats.uri, 'FeatureStats.pb')))
+              os.path.join(self._post_transform_stats.uri,
+                           executor.STATS_FILE)))
       self.assertTrue(
           fileio.exists(
               os.path.join(self._post_transform_anomalies.uri,
-                           'SchemaDiff.pb')))
+                           executor._ANOMALIES_FILE)))
 
     # Depending on `materialize` and `store_cache`, check that
     # expected outputs are exactly correct. If either flag is False, its

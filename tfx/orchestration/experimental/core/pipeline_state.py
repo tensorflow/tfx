@@ -93,6 +93,7 @@ class NodeState(json_utils.Jsonable):
   SKIPPED = 'skipped'  # Node execution skipped due to conditional.
   # Node execution skipped due to partial run.
   SKIPPED_PARTIAL_RUN = 'skipped_partial_run'
+  PAUSING = 'pausing'  # Pending work before state can change to PAUSED.
   PAUSED = 'paused'  # Node was paused and may be resumed in the future.
   FAILED = 'failed'  # Node execution failed due to errors.
 
@@ -100,7 +101,7 @@ class NodeState(json_utils.Jsonable):
       default=STARTED,
       validator=attr.validators.in_([
           STARTING, STARTED, STOPPING, STOPPED, RUNNING, COMPLETE, SKIPPED,
-          SKIPPED_PARTIAL_RUN, PAUSED, FAILED
+          SKIPPED_PARTIAL_RUN, PAUSING, PAUSED, FAILED
       ]),
       on_setattr=attr.setters.validate)
   status_code: Optional[int] = None
@@ -131,7 +132,11 @@ class NodeState(json_utils.Jsonable):
   def is_stoppable(self) -> bool:
     """Returns True if the node can be stopped."""
     return self.state in set(
-        [self.STARTING, self.STARTED, self.RUNNING, self.PAUSED])
+        [self.STARTING, self.STARTED, self.RUNNING, self.PAUSING, self.PAUSED])
+
+  def is_pausable(self) -> bool:
+    """Returns True if the node can be stopped."""
+    return self.state in set([self.STARTING, self.STARTED, self.RUNNING])
 
   def is_success(self) -> bool:
     return is_node_state_success(self.state)
@@ -158,6 +163,7 @@ _NODE_STATE_TO_RUN_STATE_MAP = {
     NodeState.COMPLETE: run_state_pb2.RunState.COMPLETE,
     NodeState.SKIPPED: run_state_pb2.RunState.SKIPPED,
     NodeState.SKIPPED_PARTIAL_RUN: run_state_pb2.RunState.SKIPPED_PARTIAL_RUN,
+    NodeState.PAUSING: run_state_pb2.RunState.UNKNOWN,
     NodeState.PAUSED: run_state_pb2.RunState.PAUSED,
     NodeState.FAILED: run_state_pb2.RunState.FAILED
 }

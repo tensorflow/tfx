@@ -19,6 +19,7 @@ Experimental. No backwards compatibility guarantees.
 import inspect
 from typing import Type, Union
 
+import apache_beam as beam
 from tfx.types import artifact
 
 
@@ -73,6 +74,15 @@ class _PrimitiveTypeGenericMeta(type):
     return cls._generic_getitem(params)  # pytype: disable=attribute-error
 
 
+class _PipelineTypeGenericMeta(type):
+  """Metaclass for _PipelineTypeGeneric."""
+
+  def __getitem__(cls: Type['_PipelineTypeGeneric'],
+                  params: Type[beam.Pipeline]):
+    """Metaclass method allowing indexing class (`_PipelineTypeGeneric[T]`)."""
+    return cls._generic_getitem(params)  # pytype: disable=attribute-error
+
+
 class _PrimitiveTypeGeneric(metaclass=_PrimitiveTypeGenericMeta):
   """A generic that takes a primitive type as its single argument."""
 
@@ -104,6 +114,39 @@ class _PrimitiveTypeGeneric(metaclass=_PrimitiveTypeGenericMeta):
   def __repr__(self):
     return '%s[%s]' % (self.__class__.__name__, self.type)
 
+
+class _PipelineTypeGeneric(
+    metaclass=_PipelineTypeGenericMeta):
+  """A generic that takes a beam.Pipeline as its single argument."""
+
+  def __init__(  # pylint: disable=invalid-name
+      self,
+      artifact_type: Type[beam.Pipeline],
+      _init_via_getitem=False):
+    if not _init_via_getitem:
+      class_name = self.__class__.__name__
+      raise ValueError(
+          ('%s should be instantiated via the syntax `%s[T]`, where T is '
+           '`beam.Pipeline`.') %
+          (class_name, class_name))
+    self.type = artifact_type
+
+  @classmethod
+  def _generic_getitem(cls, params):
+    """Return the result of `_PrimitiveTypeGeneric[T]` for a given type T."""
+    # Check that the given parameter is a primitive type.
+    if inspect.isclass(params) and params in (beam.Pipeline,):
+      return cls(params, _init_via_getitem=True)
+    else:
+      class_name = cls.__name__
+      raise ValueError(
+          ('Generic type `%s[T]` expects the single parameter T to be '
+           '`beam.Pipeline`, got %r instead.') %
+          (class_name, params))
+
+  def __repr__(self):
+    return '%s[%s]' % (self.__class__.__name__, self.type)
+
 # Typehint annotations for component authoring.
 
 
@@ -118,6 +161,11 @@ class OutputArtifact(_ArtifactGeneric):
 
 
 class Parameter(_PrimitiveTypeGeneric):
+  """Component parameter type annotation."""
+  pass
+
+
+class BeamComponentParameter(_PipelineTypeGeneric):
   """Component parameter type annotation."""
   pass
 

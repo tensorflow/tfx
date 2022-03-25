@@ -23,6 +23,7 @@ from kfp.pipeline_spec import pipeline_spec_pb2 as pipeline_pb2
 from tfx.dsl.components.base import base_node
 from tfx.orchestration import data_types
 from tfx.orchestration import pipeline
+from tfx.orchestration.kubeflow import utils
 from tfx.orchestration.kubeflow.v2 import compiler_utils
 from tfx.orchestration.kubeflow.v2 import parameter_utils
 from tfx.orchestration.kubeflow.v2 import step_builder
@@ -124,7 +125,7 @@ class PipelineBuilder:
     channel_redirect_map = {}
     with parameter_utils.ParameterContext() as pc:
       for component in self._pipeline.components:
-        if self._exit_handler and component.id == compiler_utils.TFX_DAG_NAME:
+        if self._exit_handler and component.id == utils.TFX_DAG_NAME:
           component.with_id(component.id + _generate_component_name_suffix())
           logging.warning(
               '_tfx_dag is system reserved name for pipeline with'
@@ -153,7 +154,7 @@ class PipelineBuilder:
     # exit handler is a separate component triggered by tfx_dag.
     if self._exit_handler:
       for name, task_spec in tfx_tasks.items():
-        result.components[compiler_utils.TFX_DAG_NAME].dag.tasks[name].CopyFrom(
+        result.components[utils.TFX_DAG_NAME].dag.tasks[name].CopyFrom(
             task_spec)
       # construct root with exit handler
       exit_handler_task = step_builder.StepBuilder(
@@ -169,11 +170,9 @@ class PipelineBuilder:
           channel_redirect_map=channel_redirect_map,
           is_exit_handler=True).build()
       result.root.dag.tasks[
-          compiler_utils
-          .TFX_DAG_NAME].component_ref.name = compiler_utils.TFX_DAG_NAME
+          utils.TFX_DAG_NAME].component_ref.name = utils.TFX_DAG_NAME
       result.root.dag.tasks[
-          compiler_utils
-          .TFX_DAG_NAME].task_info.name = compiler_utils.TFX_DAG_NAME
+          utils.TFX_DAG_NAME].task_info.name = utils.TFX_DAG_NAME
       result.root.dag.tasks[self._exit_handler.id].CopyFrom(
           exit_handler_task[self._exit_handler.id])
     else:

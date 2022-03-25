@@ -13,7 +13,7 @@
 # limitations under the License.
 """Custom component for exit handler."""
 
-from tfx.orchestration.kubeflow.v2 import decorators
+from tfx.orchestration.kubeflow import decorators
 from tfx.utils import io_utils
 import tfx.v1 as tfx
 
@@ -23,4 +23,3 @@ def test_exit_handler(final_status: tfx.dsl.components.Parameter[str],
                       file_dir: tfx.dsl.components.Parameter[str]):
 
   io_utils.write_string_file(file_dir, final_status)
-

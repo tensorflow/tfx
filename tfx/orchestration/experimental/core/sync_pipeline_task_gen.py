@@ -196,8 +196,8 @@ class _Generator:
     result = []
 
     node_state = self._node_states_dict[node_uid]
-    if node_state.state in (pstate.NodeState.STOPPING,
-                            pstate.NodeState.STOPPED):
+    if node_state.state in (pstate.NodeState.STOPPING, pstate.NodeState.STOPPED,
+                            pstate.NodeState.PAUSING, pstate.NodeState.PAUSED):
       logging.info('Ignoring node in state \'%s\' for task generation: %s',
                    node_state.state, node_uid)
       return result
@@ -207,6 +207,9 @@ class _Generator:
     service_status = self._ensure_node_services_if_pure(node_id)
     if service_status is not None:
       if service_status == service_jobs.ServiceStatus.FAILED:
+        # TODO(b/205642811): Mark all pending executions as either failed (if
+        # active) or canceled (if new), and delete the the executions temporary
+        # and output directories.
         error_msg = f'service job failed; node uid: {node_uid}'
         result.append(
             task_lib.UpdateNodeStateTask(

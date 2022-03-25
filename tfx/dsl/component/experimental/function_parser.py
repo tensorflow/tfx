@@ -23,6 +23,7 @@ import enum
 import inspect
 import types
 from typing import Any, Dict, Optional, Tuple, Type, Union
+import apache_beam as beam
 
 from tfx.dsl.component.experimental import annotations
 from tfx.types import artifact
@@ -34,6 +35,7 @@ class ArgFormats(enum.Enum):
   OUTPUT_ARTIFACT = 2
   ARTIFACT_VALUE = 3
   PARAMETER = 4
+  BEAM_PARAMETER = 5
 
 
 _PRIMITIVE_TO_ARTIFACT = {
@@ -100,7 +102,7 @@ def _parse_signature(
 ) -> Tuple[
     Dict[str, Type[artifact.Artifact]],
     Dict[str, Type[artifact.Artifact]],
-    Dict[str, Type[Union[int, float, str, bytes]]],
+    Dict[str, Type[Union[int, float, str, bytes, beam.Pipeline]]],
     Dict[str, Any],
     Dict[str, ArgFormats],
     Dict[str, bool]]:
@@ -119,7 +121,7 @@ def _parse_signature(
     outputs: A dictionary mapping each output name to its artifact type (as a
       subclass of `tfx.types.Artifact`).
     parameters: A dictionary mapping each parameter name to its primitive type
-      (one of `int`, `float`, `Text` and `bytes`).
+      (one of `int`, `float`, `Text`, `bytes` and `beam.Pipeline`).
     arg_formats: Dictionary representing the input arguments of the given
       component executor function. Each entry's key is the argument's string
       name; each entry's value is the format of the argument to be passed into
@@ -163,16 +165,18 @@ def _parse_signature(
              'optional (error for argument %r of %r).') % (arg, func))
       arg_formats[arg] = ArgFormats.OUTPUT_ARTIFACT
       outputs[arg] = arg_typehint.type
-    elif isinstance(arg_typehint, annotations.Parameter):
+    elif (isinstance(arg_typehint, annotations.Parameter) or
+          isinstance(arg_typehint, annotations.BeamComponentParameter)):
       if arg in arg_defaults:
         if not (arg_defaults[arg] is None or
-                isinstance(arg_defaults[arg], arg_typehint.type)):
+                isinstance(arg_defaults[arg], arg_typehint.type)):  # pytype: disable=attribute-error
           raise ValueError((
               'The default value for optional parameter %r on function %r must '
               'be an instance of its declared type %r or `None` (got %r '
-              'instead)') % (arg, func, arg_typehint.type, arg_defaults[arg]))
-      arg_formats[arg] = ArgFormats.PARAMETER
-      parameters[arg] = arg_typehint.type
+              'instead)') % (arg, func, arg_typehint.type, arg_defaults[arg]))  # pytype: disable=attribute-error
+      arg_formats[arg] = ArgFormats.PARAMETER if isinstance(
+          arg_typehint, annotations.Parameter) else ArgFormats.BEAM_PARAMETER
+      parameters[arg] = arg_typehint.type  # pytype: disable=attribute-error
     elif arg_typehint in _PRIMITIVE_TO_ARTIFACT:
       if arg in arg_defaults:
         if not (arg_defaults[arg] is None or
@@ -240,7 +244,7 @@ def parse_typehint_component_function(
     outputs: A dictionary mapping each output name to its artifact type (as a
       subclass of `tfx.types.Artifact`).
     parameters: A dictionary mapping each parameter name to its primitive type
-      (one of `int`, `float`, `Text` and `bytes`).
+      (one of `int`, `float`, `Text`, `bytes` and `beam.Pipeline`).
     arg_formats: Dictionary representing the input arguments of the given
       component executor function. Each entry's key is the argument's string
       name; each entry's value is the format of the argument to be passed into

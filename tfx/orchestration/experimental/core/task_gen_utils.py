@@ -151,6 +151,14 @@ def extract_properties(
   return result
 
 
+def resolve_exec_properties(
+    node: pipeline_pb2.PipelineNode) -> Dict[str, types.ExecPropertyTypes]:
+  """Resolves execution properties for executing the node."""
+  return data_types_utils.build_parsed_value_dict(
+      inputs_utils.resolve_parameters_with_schema(
+          node_parameters=node.parameters))
+
+
 def generate_resolved_info(
     metadata_handler: metadata.Metadata,
     node: pipeline_pb2.PipelineNode) -> Optional[ResolvedInfo]:
@@ -173,9 +181,7 @@ def generate_resolved_info(
       metadata_handler=metadata_handler, node_contexts=node.contexts)
 
   # Resolve execution properties.
-  exec_properties = data_types_utils.build_parsed_value_dict(
-      inputs_utils.resolve_parameters_with_schema(
-          node_parameters=node.parameters))
+  exec_properties = resolve_exec_properties(node)
 
   # Resolve inputs.
   try:
