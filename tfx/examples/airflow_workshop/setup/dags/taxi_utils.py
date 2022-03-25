@@ -24,7 +24,8 @@ from typing import List
 
 import absl
 import tensorflow as tf
-import tensorflow_transform as tft # Step 4
+#import tensorflow_transform as tft # Step 4
+from keras.callbacks import LambdaCallback
 
 from tfx.components.trainer.executor import TrainerFnArgs
 from tfx.components.trainer.fn_args_utils import DataAccessor
@@ -418,6 +419,13 @@ _LABEL_KEY = 'tips'
 #             for i in range(num_dnn_layers)
 #         ])
 
+#   def batch_output(batch, logs):
+#       tf.summary.scalar('batch_loss', data=logs['loss'], step=batch)
+#       tf.summary.scalar('batch_accuracy', data=logs['binary_accuracy'], step=batch)
+#       return batch
+
+#   batch_log_callback = LambdaCallback(on_batch_end=batch_output)
+
 #   # Write logs to path
 #   tensorboard_callback = tf.keras.callbacks.TensorBoard(
 #       log_dir=fn_args.model_run_dir, update_freq='batch')
@@ -427,7 +435,7 @@ _LABEL_KEY = 'tips'
 #       steps_per_epoch=fn_args.train_steps,
 #       validation_data=eval_dataset,
 #       validation_steps=fn_args.eval_steps,
-#       callbacks=[tensorboard_callback])
+#       callbacks=[tensorboard_callback, batch_log_callback])
 
 #   # Export the model.
 #   export_serving_model(tf_transform_output, model, fn_args.serving_model_dir)
