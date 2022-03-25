@@ -33,8 +33,8 @@ pip install pendulum
 
 printf "${GREEN}Installing TFX${NORMAL}\n"
 pip install pyarrow==5.0.0
-pip install apache_beam==2.35.0
-pip install tfx==1.6.1
+pip install apache_beam==2.36.0
+pip install tfx==1.7.0
 pip install google-api-core==1.26.3
 
 printf "${GREEN}Installing Google API Client${NORMAL}\n"
@@ -45,10 +45,8 @@ pip install ipykernel
 ipython kernel install --user --name=tfx
 pip install --upgrade notebook
 
-jupyter labextension install tensorflow_model_analysis@0.37.0
-jupyter labextension install @jupyter-widgets/jupyterlab-manager
-jupyter lab build --dev-build=False --minimize=False
-
+jupyter labextension install tensorflow_model_analysis
+#jupyter labextension install @jupyter-widgets/jupyterlab-manager
 
 printf "${GREEN}Installing packages used by the notebooks${NORMAL}\n"
 pip install matplotlib
