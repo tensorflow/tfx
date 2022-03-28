@@ -27,7 +27,6 @@ from tensorflow_transform.tf_metadata import dataset_metadata
 from tensorflow_transform.tf_metadata import schema_utils
 from tfx.components.trainer import executor as trainer_executor
 from tfx.components.trainer.fn_args_utils import DataAccessor
-from tfx.components.util import tfxio_utils
 from tfx.dsl.io import fileio
 from tfx.examples.chicago_taxi_pipeline import taxi_utils
 from tfx.types import standard_artifacts
@@ -36,6 +35,8 @@ from tfx.utils import path_utils
 from tfx_bsl.tfxio import tf_example_record
 
 from tensorflow_metadata.proto.v0 import schema_pb2
+
+from tfx.components.util import tfxio_utils  # pylint: disable=g-import-not-at-top
 
 
 class TaxiUtilsTest(tf.test.TestCase):

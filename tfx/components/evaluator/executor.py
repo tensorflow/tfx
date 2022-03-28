@@ -26,7 +26,6 @@ import tensorflow_model_analysis.addons.fairness.post_export_metrics.fairness_in
 from tfx import types
 from tfx.components.evaluator import constants
 from tfx.components.util import udf_utils
-from tfx.components.util import tfxio_utils
 from tfx.dsl.components.base import base_beam_executor
 from tfx.proto import evaluator_pb2
 from tfx.types import artifact_utils
@@ -36,6 +35,8 @@ from tfx.utils import json_utils
 from tfx.utils import path_utils
 from tfx.utils import proto_utils
 from tfx_bsl.tfxio import tensor_adapter
+
+from tfx.components.util import tfxio_utils  # pylint: disable=g-import-not-at-top
 
 _TELEMETRY_DESCRIPTORS = ['Evaluator']
 

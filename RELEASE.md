@@ -17,8 +17,6 @@
 
 * `LatestBlessedModelStrategy` gracefully handles the case where there are no
   blessed model at all (e.g. first run).
-* Fix that the resolver with custom `ResolverStrategy` (assume correctly
-  packaged) fails.
 
 ## Dependency Updates
 

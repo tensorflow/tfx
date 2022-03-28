@@ -22,7 +22,6 @@ import tensorflow as tf
 from tfx import types
 from tfx.components.infra_validator import types as iv_types
 from tfx.components.util import examples_utils
-from tfx.components.util import tfxio_utils
 from tfx.dsl.io import fileio
 from tfx.proto import example_gen_pb2
 from tfx.proto import infra_validator_pb2
@@ -34,6 +33,8 @@ from tensorflow.python.saved_model import loader_impl  # pylint: disable=g-direc
 from tensorflow_serving.apis import classification_pb2
 from tensorflow_serving.apis import predict_pb2
 from tensorflow_serving.apis import regression_pb2
+
+from tfx.components.util import tfxio_utils  # pylint: disable=g-import-not-at-top
 
 # TODO(b/140306674): Stop using the internal TF API
 

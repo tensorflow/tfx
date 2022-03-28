@@ -19,12 +19,13 @@ from absl import logging
 from tensorflow_data_validation.api import stats_api
 from tensorflow_data_validation.statistics import stats_options as options
 from tfx import types
-from tfx.components.util import tfxio_utils
 from tfx.dsl.components.base import base_beam_executor
 from tfx.types import artifact_utils
 from tfx.types import standard_component_specs
 from tfx.utils import io_utils
 from tfx.utils import json_utils
+
+from tfx.components.util import tfxio_utils  # pylint: disable=g-import-not-at-top
 
 
 # Default file name for stats generated.

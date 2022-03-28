@@ -22,7 +22,6 @@ import tensorflow as tf
 from tfx import types
 from tfx.components.bulk_inferrer import prediction_to_example_utils
 from tfx.components.util import model_utils
-from tfx.components.util import tfxio_utils
 from tfx.dsl.components.base import base_beam_executor
 from tfx.proto import bulk_inferrer_pb2
 from tfx.proto import example_gen_pb2
@@ -36,6 +35,8 @@ from tfx_bsl.public.proto import model_spec_pb2
 from tfx_bsl.tfxio import record_based_tfxio
 
 from tensorflow_serving.apis import prediction_log_pb2
+
+from tfx.components.util import tfxio_utils  # pylint: disable=g-import-not-at-top
 
 try:
   import tensorflow_text as _  # pylint: disable=g-import-not-at-top

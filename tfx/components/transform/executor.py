@@ -36,7 +36,6 @@ from tfx.components.transform import stats_options_util
 from tfx.components.util import examples_utils
 from tfx.components.util import udf_utils
 from tfx.components.util import value_utils
-from tfx.components.util import tfxio_utils
 from tfx.dsl.components.base import base_beam_executor
 from tfx.dsl.components.base import base_executor
 from tfx.dsl.io import fileio
@@ -50,6 +49,8 @@ from tfx_bsl.tfxio import tfxio as tfxio_module
 from google.protobuf import text_format
 from tensorflow_metadata.proto.v0 import anomalies_pb2
 from tensorflow_metadata.proto.v0 import schema_pb2
+
+from tfx.components.util import tfxio_utils  # pylint: disable=g-import-not-at-top
 
 
 # Key for temp path, for internal use only.

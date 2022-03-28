@@ -20,7 +20,6 @@ import attr
 import pyarrow as pa
 import tensorflow as tf
 from tfx import types
-from tfx.components.util import tfxio_utils
 from tfx.proto import trainer_pb2
 from tfx.types import artifact_utils
 from tfx.types import standard_component_specs
@@ -31,6 +30,8 @@ from tfx.utils import proto_utils
 from tfx_bsl.tfxio import dataset_options
 
 from tensorflow_metadata.proto.v0 import schema_pb2
+
+from tfx.components.util import tfxio_utils  # pylint: disable=g-import-not-at-top
 
 
 _TELEMETRY_DESCRIPTORS = ['Trainer']
