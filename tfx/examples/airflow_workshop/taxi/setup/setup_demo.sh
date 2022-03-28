@@ -46,7 +46,7 @@ ipython kernel install --user --name=tfx
 pip install --upgrade notebook
 
 jupyter labextension install tensorflow_model_analysis
-#jupyter labextension install @jupyter-widgets/jupyterlab-manager
+jupyter lab build --dev-build=False --minimize=False
 
 printf "${GREEN}Installing packages used by the notebooks${NORMAL}\n"
 pip install matplotlib

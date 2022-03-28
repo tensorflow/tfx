@@ -24,7 +24,7 @@ from typing import List
 
 import absl
 import tensorflow as tf
-#import tensorflow_transform as tft # Step 4
+import tensorflow_transform as tft # Step 4
 from keras.callbacks import LambdaCallback
 
 from tfx.components.trainer.executor import TrainerFnArgs
