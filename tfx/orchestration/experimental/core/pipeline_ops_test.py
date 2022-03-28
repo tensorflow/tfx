@@ -616,22 +616,22 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
       # Verify that tasks are enqueued in the expected order.
       task = task_queue.dequeue()
       task_queue.task_done(task)
-      self.assertTrue(task_lib.is_exec_node_task(task))
+      self.assertIsInstance(task, task_lib.ExecNodeTask)
       self.assertEqual(
           test_utils.create_node_uid('pipeline1', 'Transform'), task.node_uid)
       task = task_queue.dequeue()
       task_queue.task_done(task)
-      self.assertTrue(task_lib.is_exec_node_task(task))
+      self.assertIsInstance(task, task_lib.ExecNodeTask)
       self.assertEqual(
           test_utils.create_node_uid('pipeline2', 'Trainer'), task.node_uid)
       task = task_queue.dequeue()
       task_queue.task_done(task)
-      self.assertTrue(task_lib.is_exec_node_task(task))
+      self.assertIsInstance(task, task_lib.ExecNodeTask)
       self.assertEqual(
           test_utils.create_node_uid('pipeline3', 'Trainer'), task.node_uid)
       task = task_queue.dequeue()
       task_queue.task_done(task)
-      self.assertTrue(task_lib.is_exec_node_task(task))
+      self.assertIsInstance(task, task_lib.ExecNodeTask)
       self.assertEqual(
           test_utils.create_node_uid('pipeline4', 'Validator'), task.node_uid)
       self.assertTrue(task_queue.is_empty())
@@ -695,13 +695,13 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
       # CancelNodeTask for the "Transform" ExecNodeTask should be next.
       task = task_queue.dequeue()
       task_queue.task_done(task)
-      self.assertTrue(task_lib.is_cancel_node_task(task))
+      self.assertIsInstance(task, task_lib.CancelNodeTask)
       self.assertEqual('Transform', task.node_uid.node_id)
 
       # ExecNodeTask (with is_cancelled=True) for "Trainer" is next.
       task = task_queue.dequeue()
       task_queue.task_done(task)
-      self.assertTrue(task_lib.is_exec_node_task(task))
+      self.assertIsInstance(task, task_lib.ExecNodeTask)
       self.assertEqual('Trainer', task.node_uid.node_id)
       self.assertTrue(task.is_cancelled)
 
@@ -788,7 +788,7 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
       for node_id in ('Transform', 'Trainer', 'Evaluator'):
         task = task_queue.dequeue()
         task_queue.task_done(task)
-        self.assertTrue(task_lib.is_exec_node_task(task))
+        self.assertIsInstance(task, task_lib.ExecNodeTask)
         self.assertEqual(node_id, task.node_uid.node_id)
 
       # Verify that cancellation tasks were enqueued in the last `orchestrate`
@@ -796,7 +796,7 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
       for node_id in ('Transform', 'Trainer', 'Evaluator'):
         task = task_queue.dequeue()
         task_queue.task_done(task)
-        self.assertTrue(task_lib.is_cancel_node_task(task))
+        self.assertIsInstance(task, task_lib.CancelNodeTask)
         self.assertEqual(node_id, task.node_uid.node_id)
         self.assertTrue(task.pause)
 
@@ -865,7 +865,7 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
       for node_id in ('Transform', 'Trainer', 'Evaluator'):
         task = task_queue.dequeue()
         task_queue.task_done(task)
-        self.assertTrue(task_lib.is_exec_node_task(task))
+        self.assertIsInstance(task, task_lib.ExecNodeTask)
         self.assertEqual(node_id, task.node_uid.node_id)
 
       # Verify that cancellation tasks were enqueued in the last `orchestrate`
@@ -873,7 +873,7 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
       for node_id in ('Transform', 'Trainer'):
         task = task_queue.dequeue()
         task_queue.task_done(task)
-        self.assertTrue(task_lib.is_cancel_node_task(task))
+        self.assertIsInstance(task, task_lib.CancelNodeTask)
         self.assertEqual(node_id, task.node_uid.node_id)
         self.assertTrue(task.pause)
 
@@ -1022,7 +1022,7 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
       # CancelNodeTask for trainer.
       task = task_queue.dequeue()
       task_queue.task_done(task)
-      self.assertTrue(task_lib.is_cancel_node_task(task))
+      self.assertIsInstance(task, task_lib.CancelNodeTask)
       self.assertEqual(trainer_node_uid, task.node_uid)
 
       # ExecNodeTask with is_cancelled=True for evaluator.
@@ -1090,7 +1090,7 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
       task_gen.return_value.generate.assert_called_once()
       task = task_queue.dequeue()
       task_queue.task_done(task)
-      self.assertTrue(task_lib.is_exec_node_task(task))
+      self.assertIsInstance(task, task_lib.ExecNodeTask)
       self.assertEqual(transform_node_uid, task.node_uid)
 
       # Load pipeline state and verify trainer node state.
@@ -1158,7 +1158,7 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
       # Dequeue CancelNodeTask for trainer.
       task = task_queue.dequeue()
       task_queue.task_done(task)
-      self.assertTrue(task_lib.is_cancel_node_task(task))
+      self.assertIsInstance(task, task_lib.CancelNodeTask)
       self.assertEqual(trainer_node_uid, task.node_uid)
 
       self.assertTrue(task_queue.is_empty())
@@ -1271,7 +1271,7 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
       # Dequeue CancelNodeTask for transform.
       task = task_queue.dequeue()
       task_queue.task_done(task)
-      self.assertTrue(task_lib.is_cancel_node_task(task))
+      self.assertIsInstance(task, task_lib.CancelNodeTask)
       self.assertEqual(transform_node_uid, task.node_uid)
 
       with pstate.PipelineState.load(m, pipeline_uid) as pipeline_state:

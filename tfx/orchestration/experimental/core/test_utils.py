@@ -215,16 +215,18 @@ def run_generator(mlmd_connection,
     tasks = task_gen.generate(pipeline_state)
     if use_task_queue:
       for task in tasks:
-        if task_lib.is_exec_node_task(task):
+        if isinstance(task, task_lib.ExecNodeTask):
           task_queue.enqueue(task)
     for task in tasks:
-      if task_lib.is_update_node_state_task(task):
+      if isinstance(task, task_lib.UpdateNodeStateTask):
         with pipeline_state:
           with pipeline_state.node_state_update_context(
               task.node_uid) as node_state:
             node_state.update(task.state, task.status)
   if ignore_update_node_state_tasks:
-    tasks = [t for t in tasks if not task_lib.is_update_node_state_task(t)]
+    tasks = [
+        t for t in tasks if not isinstance(t, task_lib.UpdateNodeStateTask)
+    ]
   return tasks
 
 
@@ -299,7 +301,7 @@ def run_generator_and_test(test_case,
         f'Expected {num_active_executions} active execution(s) in MLMD.')
     if expected_exec_nodes:
       for i, task in enumerate(
-          t for t in tasks if task_lib.is_exec_node_task(t)):
+          t for t in tasks if isinstance(t, task_lib.ExecNodeTask)):
         _verify_exec_node_task(test_case, pipeline, expected_exec_nodes[i],
                                active_executions[i].id, task)
     return tasks

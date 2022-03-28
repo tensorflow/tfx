@@ -18,7 +18,6 @@ import functools
 import operator
 import threading
 import time
-import typing
 from typing import Callable, Dict, List, Mapping, Optional, Tuple
 
 from absl import logging
@@ -841,13 +840,14 @@ def _orchestrate_active_pipeline(
   with pipeline_state:
     # Handle all the UpdateNodeStateTasks by updating node states.
     for task in tasks:
-      if task_lib.is_update_node_state_task(task):
-        task = typing.cast(task_lib.UpdateNodeStateTask, task)
+      if isinstance(task, task_lib.UpdateNodeStateTask):
         with pipeline_state.node_state_update_context(
             task.node_uid) as node_state:
           node_state.update(task.state, task.status)
 
-    tasks = [t for t in tasks if not task_lib.is_update_node_state_task(t)]
+    tasks = [
+        t for t in tasks if not isinstance(t, task_lib.UpdateNodeStateTask)
+    ]
 
     # If there are still nodes in state STARTING, change them to STARTED.
     for node in pstate.get_all_pipeline_nodes(pipeline_state.pipeline):
@@ -858,14 +858,12 @@ def _orchestrate_active_pipeline(
           node_state.update(pstate.NodeState.STARTED)
 
     for task in tasks:
-      if task_lib.is_exec_node_task(task):
-        task = typing.cast(task_lib.ExecNodeTask, task)
+      if isinstance(task, task_lib.ExecNodeTask):
         task_queue.enqueue(task)
       else:
-        assert task_lib.is_finalize_pipeline_task(task)
+        assert isinstance(task, task_lib.FinalizePipelineTask)
         assert pipeline.execution_mode == pipeline_pb2.Pipeline.SYNC
         assert len(tasks) == 1
-        task = typing.cast(task_lib.FinalizePipelineTask, task)
         if task.status.code == status_lib.Code.OK:
           logging.info('Pipeline run successful; pipeline uid: %s',
                        pipeline_state.pipeline_uid)

@@ -14,7 +14,6 @@
 """TaskGenerator implementation for sync pipelines."""
 
 import collections
-import typing
 from typing import Callable, Dict, List, Mapping, Optional, Set
 
 from absl import logging
@@ -141,8 +140,7 @@ class _Generator:
           continue
         tasks = self._generate_tasks_for_node(node)
         for task in tasks:
-          if task_lib.is_update_node_state_task(task):
-            task = typing.cast(task_lib.UpdateNodeStateTask, task)
+          if isinstance(task, task_lib.UpdateNodeStateTask):
             if pstate.is_node_state_success(task.state):
               successful_node_ids.add(node_id)
             elif pstate.is_node_state_failure(task.state):
@@ -150,7 +148,7 @@ class _Generator:
               if self._fail_fast:
                 finalize_pipeline_task = self._abort_task(task.status.message)
             update_node_state_tasks.append(task)
-          elif task_lib.is_exec_node_task(task):
+          elif isinstance(task, task_lib.ExecNodeTask):
             exec_node_tasks.append(task)
 
         if finalize_pipeline_task:
