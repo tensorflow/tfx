@@ -3,6 +3,7 @@
 ## Major Features and Improvements
 
 *   Added experimental exit_handler support for KubeflowDagRunner.
+*   Enabled custom labels to be submitted to CAIP training jobs.
 
 ## Breaking Changes
 
