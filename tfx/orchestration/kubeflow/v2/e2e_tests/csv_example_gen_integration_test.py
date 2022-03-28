@@ -14,8 +14,10 @@
 """Tests for tfx.orchestration.kubeflow.v2.e2e_tests.csv_example_gen_integration."""
 
 import os
+from unittest import mock
 
 import tensorflow as tf
+from tfx.dsl.components.base import base_component
 from tfx.orchestration import test_utils
 from tfx.orchestration.kubeflow.v2 import test_utils as kubeflow_v2_test_utils
 from tfx.orchestration.kubeflow.v2.e2e_tests import base_test_case
@@ -28,8 +30,10 @@ _TEST_DATA_ROOT = '/opt/conda/lib/python3.7/site-packages/tfx/examples/chicago_t
 
 class CsvExampleGenIntegrationTest(base_test_case.BaseKubeflowV2Test):
 
-  def testSimpleEnd2EndPipeline(self):
+  @mock.patch.object(base_component.BaseComponent, '_resolve_pip_dependencies')
+  def testSimpleEnd2EndPipeline(self, moke_resolve_dependencies):
     """End-to-End test for a simple pipeline."""
+    moke_resolve_dependencies.return_value = None
     pipeline_name = 'kubeflow-v2-fbeg-test-{}'.format(test_utils.random_id())
 
     components = kubeflow_v2_test_utils.create_pipeline_components(
@@ -48,6 +52,7 @@ class CsvExampleGenIntegrationTest(base_test_case.BaseKubeflowV2Test):
                                      beam_pipeline_args)
 
     self._run_pipeline(pipeline)
+    moke_resolve_dependencies.assert_called()
 
 
 if __name__ == '__main__':
