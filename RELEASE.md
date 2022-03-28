@@ -2,6 +2,8 @@
 
 ## Major Features and Improvements
 
+*   Added experimental exit_handler support for KubeflowDagRunner.
+
 ## Breaking Changes
 
 ### For Pipeline Authors

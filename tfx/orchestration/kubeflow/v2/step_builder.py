@@ -33,8 +33,9 @@ from tfx.dsl.experimental.conditionals import conditional
 from tfx.dsl.input_resolution.strategies import latest_artifact_strategy
 from tfx.dsl.input_resolution.strategies import latest_blessed_model_strategy
 from tfx.orchestration import data_types
+from tfx.orchestration.kubeflow import decorators
+from tfx.orchestration.kubeflow import utils
 from tfx.orchestration.kubeflow.v2 import compiler_utils
-from tfx.orchestration.kubeflow.v2 import decorators
 from tfx.orchestration.kubeflow.v2 import parameter_utils
 from tfx.types import standard_artifacts
 from tfx.types.channel import Channel
@@ -354,7 +355,7 @@ class StepBuilder:
                         ' handler. The parameter is ignored.')
         else:
           task_spec.inputs.parameters[name].task_final_status.producer_task = (
-              compiler_utils.TFX_DAG_NAME)
+              utils.TFX_DAG_NAME)
       else:
         task_spec.inputs.parameters[name].CopyFrom(
             pipeline_pb2.TaskInputsSpec.InputParameterSpec(
@@ -375,7 +376,7 @@ class StepBuilder:
       task_spec.trigger_policy.strategy = (
           pipeline_pb2.PipelineTaskSpec.TriggerPolicy
           .ALL_UPSTREAM_TASKS_COMPLETED)
-      task_spec.dependent_tasks.append(compiler_utils.TFX_DAG_NAME)
+      task_spec.dependent_tasks.append(utils.TFX_DAG_NAME)
 
     # 4. Build the executor body for other common tasks.
     executor = pipeline_pb2.PipelineDeploymentConfig.ExecutorSpec()

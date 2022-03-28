@@ -15,7 +15,7 @@
 
 from kfp.pipeline_spec import pipeline_spec_pb2 as pipeline_pb2
 import tensorflow as tf
-from tfx.orchestration.kubeflow.v2 import decorators
+from tfx.orchestration.kubeflow import decorators
 from tfx.orchestration.kubeflow.v2 import pipeline_builder
 from tfx.orchestration.kubeflow.v2 import test_utils
 

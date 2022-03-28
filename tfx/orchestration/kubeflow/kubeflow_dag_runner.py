@@ -17,6 +17,7 @@ import collections
 import copy
 import os
 from typing import Any, Callable, Dict, List, Optional, Type, cast, MutableMapping
+from absl import logging
 
 from kfp import compiler
 from kfp import dsl
@@ -25,11 +26,13 @@ from kubernetes import client as k8s_client
 from tfx import version
 from tfx.dsl.compiler import compiler as tfx_compiler
 from tfx.dsl.components.base import base_component as tfx_base_component
+from tfx.dsl.components.base import base_node
 from tfx.orchestration import data_types
 from tfx.orchestration import pipeline as tfx_pipeline
 from tfx.orchestration import tfx_runner
 from tfx.orchestration.config import pipeline_config
 from tfx.orchestration.kubeflow import base_component
+from tfx.orchestration.kubeflow import utils
 from tfx.orchestration.kubeflow.proto import kubeflow_pb2
 from tfx.orchestration.launcher import base_component_launcher
 from tfx.orchestration.launcher import in_process_component_launcher
@@ -259,6 +262,7 @@ class KubeflowDagRunner(tfx_runner.TfxRunner):
     self._params = []  # List of dsl.PipelineParam used in this pipeline.
     self._params_by_component_id = collections.defaultdict(list)
     self._deduped_parameter_names = set()  # Set of unique param names used.
+    self._exit_handler = None
     if pod_labels_to_attach is None:
       self._pod_labels_to_attach = get_default_pod_labels()
     else:
@@ -314,6 +318,9 @@ class KubeflowDagRunner(tfx_runner.TfxRunner):
       pipeline_root: dsl.PipelineParam representing the pipeline root.
     """
     component_to_kfp_op = {}
+
+    for component in pipeline.components:
+      utils.replace_exec_properties(component)
     tfx_ir = self._generate_tfx_ir(pipeline)
 
     # Assumption: There is a partial ordering of components in the list, i.e.,
@@ -328,6 +335,11 @@ class KubeflowDagRunner(tfx_runner.TfxRunner):
 
       # remove the extra pipeline node information
       tfx_node_ir = self._dehydrate_tfx_ir(tfx_ir, component.id)
+
+      # Disable cache for exit_handler
+      if self._exit_handler and component.id == self._exit_handler.id:
+        tfx_node_ir.nodes[
+            0].pipeline_node.execution_options.caching_options.enable_cache = False
 
       kfp_component = base_component.BaseComponent(
           component=component,
@@ -346,6 +358,22 @@ class KubeflowDagRunner(tfx_runner.TfxRunner):
         kfp_component.container_op.apply(operator)
 
       component_to_kfp_op[component] = kfp_component.container_op
+
+    # If exit handler defined create an exit handler and add all ops to it.
+    if self._exit_handler:
+      exit_op = component_to_kfp_op[self._exit_handler]
+      with dsl.ExitHandler(exit_op) as exit_handler_group:
+        exit_handler_group.name = utils.TFX_DAG_NAME
+        # KFP get_default_pipeline should have the pipeline object when invoked
+        # while compiling. This allows us to retrieve all ops from pipeline
+        # group (should be the only group in the pipeline).
+        pipeline_group = dsl.Pipeline.get_default_pipeline().groups[0]
+
+        # Transfer all ops to exit_handler_group which will now contain all ops.
+        exit_handler_group.ops = pipeline_group.ops
+        # remove all ops from pipeline_group. Otherwise compiler fails in
+        # https://github.com/kubeflow/pipelines/blob/8aee62142aa13ae42b2dd18257d7e034861b7e5e/sdk/python/kfp/compiler/compiler.py#L893
+        pipeline_group.ops = []
 
   def _del_unused_field(self, node_id: str, message_dict: MutableMapping[str,
                                                                          Any]):
@@ -384,6 +412,12 @@ class KubeflowDagRunner(tfx_runner.TfxRunner):
       pipeline: The logical TFX pipeline to use when building the Kubeflow
         pipeline.
     """
+    # If exit handler is defined, append to existing pipeline components.
+    if self._exit_handler:
+      original_pipeline = pipeline
+      pipeline = copy.copy(original_pipeline)
+      pipeline.components.append(self._exit_handler)
+
     for component in pipeline.components:
       # TODO(b/187122662): Pass through pip dependencies as a first-class
       # component flag.
@@ -417,3 +451,21 @@ class KubeflowDagRunner(tfx_runner.TfxRunner):
         pipeline_name=pipeline.pipeline_info.pipeline_name,
         params_list=self._params,
         package_path=os.path.join(self._output_dir, file_name))
+
+  def set_exit_handler(self, exit_handler: base_node.BaseNode):
+    """Set exit handler components for the Kubeflow dag runner.
+
+    This feature is currently experimental without backward compatibility
+    gaurantee.
+
+    Args:
+      exit_handler: exit handler component.
+    """
+    if not exit_handler:
+      logging.error('Setting empty exit handler is not allowed.')
+      return
+    assert not exit_handler.downstream_nodes, ('Exit handler should not depend '
+                                               'on any other node.')
+    assert not exit_handler.upstream_nodes, ('Exit handler should not depend on'
+                                             ' any other node.')
+    self._exit_handler = exit_handler

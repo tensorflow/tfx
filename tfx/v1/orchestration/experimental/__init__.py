@@ -13,9 +13,9 @@
 # limitations under the License.
 """TFX orchestration.experimental module."""
 from tfx.orchestration.kubeflow import kubeflow_dag_runner
+from tfx.orchestration.kubeflow.decorators import exit_handler
+from tfx.orchestration.kubeflow.decorators import FinalStatusStr
 from tfx.orchestration.kubeflow.v2 import kubeflow_v2_dag_runner
-from tfx.orchestration.kubeflow.v2.decorators import exit_handler
-from tfx.orchestration.kubeflow.v2.decorators import FinalStatusStr
 from tfx.utils import telemetry_utils
 
 KubeflowV2DagRunner = kubeflow_v2_dag_runner.KubeflowV2DagRunner

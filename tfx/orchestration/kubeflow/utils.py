@@ -20,6 +20,10 @@ from kfp import dsl
 
 from tfx.dsl.components.base import base_node
 from tfx.orchestration import data_types
+from tfx.orchestration.kubeflow.decorators import FinalStatusStr
+
+# Key of dag for all TFX components when compiling pipeline with exit handler.
+TFX_DAG_NAME = '_tfx_dag'
 
 
 def replace_placeholder(component: base_node.BaseNode) -> None:
@@ -31,6 +35,15 @@ def replace_placeholder(component: base_node.BaseNode) -> None:
       continue
     component.exec_properties[key] = str(
         dsl.PipelineParam(name=exec_property.name))
+
+
+def replace_exec_properties(component: base_node.BaseNode) -> None:
+  """Replaces TFX placeholders in execution properties with KFP placeholders."""
+  keys = list(component.exec_properties.keys())
+  for key in keys:
+    exec_property = component.exec_properties[key]
+    if isinstance(exec_property, FinalStatusStr):
+      component.exec_properties[key] = '{{workflow.status}}'
 
 
 def fix_brackets(placeholder: str) -> str:
