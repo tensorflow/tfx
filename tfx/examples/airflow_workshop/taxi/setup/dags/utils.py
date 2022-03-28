@@ -24,7 +24,7 @@ from typing import List
 
 import absl
 import tensorflow as tf
-import tensorflow_transform as tft
+#import tensorflow_transform as tft # Step 4
 from keras.callbacks import LambdaCallback
 
 from tfx.components.trainer.executor import TrainerFnArgs
@@ -99,7 +99,7 @@ _VOCAB_FEATURE_KEYS = [
 # Keys
 _LABEL_KEY = 'tips'
 
-
+# Transform
 
 def t_name(key):
   """
@@ -191,6 +191,10 @@ def preprocessing_fn(inputs):
           tf.greater(tips, tf.multiply(taxi_fare, tf.constant(0.2))), tf.int64))
 
   return outputs
+
+
+
+#  Training
 
 
 def _transformed_name(key):

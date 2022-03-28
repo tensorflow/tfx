@@ -82,10 +82,8 @@ airflow db init
 
 # Copy Dags to ~/airflow/dags
 mkdir -p ~/airflow/dags
-cp dags/taxi_pipeline.py ~/airflow/dags/
-cp dags/taxi_utils.py ~/airflow/dags/
-cp dags/taxi_pipeline_solution.py ~/airflow/dags/
-cp dags/taxi_utils_solution.py ~/airflow/dags/
+cp dags/pipeline.py ~/airflow/dags/
+cp dags/utils.py ~/airflow/dags/
 
 # Copy data to ~/airflow/data
 cp -R data ~/airflow
