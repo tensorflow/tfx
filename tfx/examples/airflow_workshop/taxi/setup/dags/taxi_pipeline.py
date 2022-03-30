@@ -58,7 +58,7 @@ _taxi_root = os.path.join(os.environ['HOME'], 'airflow')
 _data_root = os.path.join(_taxi_root, 'data')
 # Python module file to inject customized logic into the TFX components. The
 # Transform and Trainer both require user-defined functions to run successfully.
-_module_file = os.path.join(_taxi_root, 'dags', 'utils.py')
+_module_file = os.path.join(_taxi_root, 'dags', 'taxi_utils.py')
 # Path which can be listened to by the model server.  Pusher will output the
 # trained model here.
 _serving_model_dir = os.path.join(_taxi_root, 'serving_model', _pipeline_name)
