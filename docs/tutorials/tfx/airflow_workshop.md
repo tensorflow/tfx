@@ -2,28 +2,28 @@
 
 ## Overview
 
-In this lab you’re learning how to create an ML pipeline using TFX
+This tutorial is designed to help you learn to create your own machine learning pipelines using TensorFlow Extended (TFX) and and Apache Airflow as the orchestrator. It runs on on Vertex AI Workbench, and shows integration with TFX and TensorBoard as well as interaction with TFX in Jupyter Lab environment.
 
+### What you'll be doing?
+You’ll learn how to create an ML pipeline using TFX
+
+* A TFX pipeline is a Directed Acyclic Graph, or "DAG". We will often refer to pipelines as DAGs.
 * TFX pipelines are appropriate when you will be deploying a production ML application
 * TFX pipelines are appropriate when datasets are large
 * TFX pipelines are appropriate when training/serving consistency is important
 * TFX pipelines are appropriate when version management for inference is important
 * Google uses TFX pipelines for production ML
 
-You’re following a typical ML development process
+Please see the [TFX User Guide](https://www.tensorflow.org/tfx/guide) to learn more.
+
+You'll follow a typical ML development process:
 
 * Ingesting, understanding, and cleaning our data
 * Feature engineering
 * Training
 * Analyze model performance
 * Lather, rinse, repeat
-* Ready for production
-
-## **TFX with airflow**
- A TFX pipeline is a Directed Acyclic Graph, or "DAG". We will often refer to pipelines as DAGs.
-You'll follow a typical ML development process, from examining the dataset, to creating a complete working pipeline. Along the way you'll explore ways to debug and update your pipeline, and measure performance.
-
-Please see the [TFX User Guide](https://www.tensorflow.org/tfx/guide) to learn more.
+* Ready for production 
 
 ## **Chicago Taxi Dataset**
 
@@ -38,7 +38,7 @@ Note: This tutorial builds an application using data that has been modified for 
 ### Model Goal - Binary classification
 Will the customer tip more or less than 20%?
 
-## Setup and Requirements
+## Setup the Google Cloud Project
 
 **Before you click the Start Lab button**
 Read these instructions. Labs are timed and you cannot pause them. The timer, which starts when you click **Start Lab**, shows how long Google Cloud resources will be made available to you.
