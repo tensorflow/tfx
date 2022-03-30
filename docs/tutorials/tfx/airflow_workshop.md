@@ -215,20 +215,19 @@ You can see your pipeline on homepage
 
 ![dag-home.png](images/airflow_workshop/dag-home-full.png)
 
+#### Trigger the taxi pipeline
 
 On the homepage you can see the buttons that can be used to interact with the DAG
 
 ![dag-buttons.png](images/airflow_workshop/dag-buttons.png)
 
-* The button on the left will enable the DAG
-* The button on the right will trigger the DAG
-
-#### Trigger the taxi pipeline
 
 Under actions header, click on the trigger button and start the process
 
 * If you click on taxi, it will go to the graph view of the DAG
 * In the taxi DAG page use the button on the right to refresh the DAG when you make changes
+
+![dag-button-refresh.png](images/airflow_workshop/dag-button-refresh.png)
 
 You can also use the [Airflow CLI](https://airflow.apache.org/cli.html) in terminal to enable and trigger your DAGs:
 
