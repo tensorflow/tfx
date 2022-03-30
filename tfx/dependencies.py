@@ -89,7 +89,7 @@ def make_required_install_packages():
       # dependency set with TF 2.x without the sync.
       # pylint: disable=line-too-long
       'tensorflow' + select_constraint(
-          '>=1.15.5,!=2.0.*,!=2.1.*,!=2.2.*,!=2.3.*,!=2.4.*,!=2.5.*,!=2.6.*,<2.8'),
+          '>=1.15.5,!=2.0.*,!=2.1.*,!=2.2.*,!=2.3.*,!=2.4.*,!=2.5.*,!=2.6.*,<2.9'),
       # pylint: enable=line-too-long
       'tensorflow-hub>=0.9.0,<0.13',
       'tensorflow-data-validation' + select_constraint(

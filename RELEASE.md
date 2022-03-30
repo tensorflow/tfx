@@ -1,4 +1,4 @@
-# Version 1.6.1
+# Version 1.6.2
 
 ## Major Features and Improvements
 
@@ -20,10 +20,13 @@
 
 ## Bug Fixes and Other Changes
 
-*   Fixed `Pusher` issue that didn't copy files other than
-    `saved_model.pb`.
-    
+*   N/A
+## Dependency Updates
+
+| Package Name | Version Constraints | Previously (in `v1.6.0`) | Comments |
+| -- | -- | -- | -- |
+| `tensorflow` | `>=1.15.5,<2` or `~=2.7.0` or `~=2.8.0` | `>=1.15.5,<2` or `~=2.7.0` | |
+
 ## Documentation Updates
 
 *   N/A
-
