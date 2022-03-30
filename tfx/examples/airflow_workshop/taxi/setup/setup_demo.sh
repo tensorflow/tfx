@@ -25,9 +25,6 @@ printf "${GREEN}Installing TFX workshop${NORMAL}\n\n"
 printf "${GREEN}Refreshing setuptools to avoid _NamespacePath issues${NORMAL}\n"
 pip uninstall setuptools -y && pip install setuptools
 
-printf "${GREEN}Installing httplib2 for Beam compatibility${NORMAL}\n"
-pip install httplib2
-
 printf "${GREEN}Installing pendulum to avoid problem with tzlocal${NORMAL}\n"
 pip install pendulum
 
@@ -37,26 +34,10 @@ pip install apache_beam==2.37.0
 pip install tfx==1.7.0
 pip install google-api-core==1.26.3
 
-printf "${GREEN}Installing Google API Client${NORMAL}\n"
-pip install google-api-python-client
-
-printf "${GREEN}Installing required Jupyter version${NORMAL}\n"
-pip install ipykernel
 ipython kernel install --user --name=tfx
-pip install --upgrade notebook
 
 jupyter labextension install tensorflow_model_analysis
 jupyter lab build --dev-build=False --minimize=False
-
-printf "${GREEN}Installing packages used by the notebooks${NORMAL}\n"
-pip install matplotlib
-pip install papermill
-pip install pandas
-pip install networkx
-
-# Docker images
-printf "${GREEN}Installing docker${NORMAL}\n"
-pip install docker
 
 # Airflow
 # Set this to avoid the GPL version; no functionality difference either way

@@ -210,17 +210,23 @@ Open a browser and go to http://<external_ip>:7000
 
 * Enter username and password mentioned in `airflow users  create` command
 
-![dag-home.png](images/airflow_workshop/dag-home.png)
+You can see your pipeline on homepage
 
-#### DAG view buttons 
+
+![dag-home.png](images/airflow_workshop/dag-home-full.png)
+
+#### DAG buttons 
 
 ![dag-buttons.png](images/airflow_workshop/dag-buttons.png)
+
+On the homepage you can see the buttons that can be used to interact with the DAG
 
 * The button on the left will enable the DAG
 * The button on the right will trigger the DAG
 
 #### Trigger the taxi pipeline
-Click on trigger button and start the process
+
+Under actions header, click on the trigger button and start the process
 
 * If you click on taxi, it will go to the graph view of the DAG
 * In the taxi DAG page use the button on the right to refresh the DAG when you make changes
