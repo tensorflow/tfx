@@ -155,7 +155,7 @@ Click _Check my progress_ to verify the objective.
       Create a Vertex AI Notebook
   </ql-activity-tracking>
 
-## Set up the environment
+## Setup the environment
 
 ### Clone the lab repository
 Next you'll clone the `tfx` repository in your JupyterLab instance.
@@ -167,7 +167,7 @@ Next you'll clone the `tfx` repository in your JupyterLab instance.
 git clone https://github.com/tensorflow/tfx.git
 ```
 
-3. To confirm that you have cloned the repository, double-click the `training-data-analyst` directory and confirm that you can see its contents.
+3. To confirm that you have cloned the repository, double-click the `tfx` directory and confirm that you can see its contents.
 
 ![repo-directory.png](images/airflow_workshop/repo-directory.png)
   
@@ -245,19 +245,8 @@ After you've triggered your pipeline in the DAGs view, you can watch as your pip
 
 ![dag-step7.png](images/airflow_workshop/dag-step7.png)
 
-Click _Check my progress_ to verify the objective.
-  <ql-activity-tracking step=3>
-      Clone the lab repository
-  </ql-activity-tracking>
-
-
 ## Understanding the components
-Here we will look at the components of pipeline in detail and individually look at the outputs produced by each step in the pipeline
+Now we will look at the components of pipeline in detail and individually look at the outputs produced by each step in the pipeline.
 
 * Go to `~/tfx/tfx/examples/airflow_workshop/taxi/setup/` and open `notebook.ipynb`
-* Follow the notebook
-
-Click _Check my progress_ to verify the objective.
-  <ql-activity-tracking step=4>
-      Clone the lab repository
-  </ql-activity-tracking>
+* Follow the notebook for the remaining instructions
