@@ -1,13 +1,9 @@
 <!-- TODO(b/130379898) Add unit testing -->
 # TFX Developer Tutorial
 
-These are the supporting files for the [TFX Developer Tutorial](
-https://www.tensorflow.org/tfx/tutorials/tfx/workshop).  See that discussion
-for more details on the tutorial and these files.
-
 ## notebooks/
 
-This directory contains Jupyter notebooks that are used in the tutorial to
+This directory contains Jupyter notebook that is used in the tutorial to
 illustrate accessing metadata and using visualization tools.
 
 ## setup/
