@@ -191,10 +191,12 @@ The above code will
 
 * Install the required packages.
 * Create an `airflow` folder in the home folder.
-* Copy the entire `dags` folder from `tfx/tfx/examples/airflow_workshop/taxi/setup/` folder to this home folder.
+* Copy the entire `dags` folder from `tfx/tfx/examples/airflow_workshop/taxi/setup/` folder to `~/airflow/` folder.
 * Copy the csv file from `tfx/tfx/examples/airflow_workshop/taxi/setup/data` to `~/airflow/data`.
 
 ![airflow-home.png](images/airflow_workshop/airflow-home.png)
+
+## Configuring Airflow server
 
 ### Create firewall rule to access to airflow server in browser
 1. Go to `https://console.cloud.google.com/networking/firewalls/list` and make sure the project name is selected appropriately
@@ -217,6 +219,8 @@ nohup airflow webserver -p 7000 &> webserver.out &
 nohup airflow scheduler &> scheduler.out &
 ```
 
+## Running a DAG/pipeline
+
 ### In a browser
 Open a browser and go to http://<external_ip>:7000
 
@@ -224,8 +228,9 @@ Open a browser and go to http://<external_ip>:7000
 
 ![airflow-login.png](images/airflow_workshop/airflow-login.png)
 
-* Airflow will check python files inside `~/airflow/dags/` folder for 'DAG' arguement.
-* If found it will list it as pipeline in airflow homepage (here `pipeline.py`)
+Airflow will check all the python files inside `~/airflow/dags/` folder for 'DAG' arguement.
+
+If found it will list it as pipeline in airflow homepage (here `~/airflow/dags/pipeline.py`)
 
 ![dag-home-full.png](images/airflow_workshop/dag-home-full.png)
 
@@ -233,7 +238,7 @@ If you click on taxi, it will go to the graph view of the DAG
 
 ![airflow-dag-graph.png](images/airflow_workshop/airflow-dag-graph.png)
 
-#### Trigger the taxi pipeline
+### Trigger the taxi pipeline
 
 On the homepage you can see the buttons that can be used to interact with the DAG
 
