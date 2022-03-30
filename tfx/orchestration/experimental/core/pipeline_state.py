@@ -499,17 +499,27 @@ class PipelineState:
     node_states_dict = _get_node_states_dict(self._execution, state_type)
     return node_states_dict.get(node_uid.node_id, NodeState())
 
-  def get_node_states_dict(
-      self,
-      state_type: Optional[str] = _NODE_STATES
-  ) -> Dict[task_lib.NodeUid, NodeState]:
-    """Gets all node states of the pipeline with specified type."""
+  def get_node_states_dict(self) -> Dict[task_lib.NodeUid, NodeState]:
+    """Gets all node states of the pipeline."""
     self._check_context()
-    node_states_dict = _get_node_states_dict(self._execution, state_type)
+    node_states_dict = _get_node_states_dict(self._execution, _NODE_STATES)
     result = {}
     for node in get_all_pipeline_nodes(self.pipeline):
       node_uid = task_lib.NodeUid.from_pipeline_node(self.pipeline, node)
       result[node_uid] = node_states_dict.get(node_uid.node_id, NodeState())
+    return result
+
+  def get_previous_node_states_dict(self) -> Dict[task_lib.NodeUid, NodeState]:
+    """Gets all node states of the pipeline from previous run."""
+    self._check_context()
+    node_states_dict = _get_node_states_dict(self._execution,
+                                             _PREVIOUS_NODE_STATES)
+    result = {}
+    for node in get_all_pipeline_nodes(self.pipeline):
+      node_uid = task_lib.NodeUid.from_pipeline_node(self.pipeline, node)
+      if node_uid.node_id not in node_states_dict:
+        continue
+      result[node_uid] = node_states_dict[node_uid.node_id]
     return result
 
   def get_pipeline_execution_state(self) -> metadata_store_pb2.Execution.State:
@@ -704,20 +714,37 @@ class PipelineView:
         status_code=self.pipeline_status_code,
         status_msg=self.pipeline_status_message)
 
+  def _convert_node_state_to_run_state(self, node_state: NodeState):
+    node_status_code_value = None
+    if node_state.status_code is not None:
+      node_status_code_value = run_state_pb2.RunState.StatusCodeValue(
+          value=node_state.status_code)
+    return run_state_pb2.RunState(
+        state=_NODE_STATE_TO_RUN_STATE_MAP[node_state.state],
+        status_code=node_status_code_value,
+        status_msg=node_state.status_msg)
+
   def get_node_run_states(self) -> Dict[str, run_state_pb2.RunState]:
     """Returns a dict mapping node id to current run state."""
     result = {}
-    node_states_dict = _get_node_states_dict(self.execution)
+    node_states_dict = _get_node_states_dict(self.execution, _NODE_STATES)
     for node in get_all_pipeline_nodes(self.pipeline):
       node_state = node_states_dict.get(node.node_info.id, NodeState())
-      node_status_code_value = None
-      if node_state.status_code is not None:
-        node_status_code_value = run_state_pb2.RunState.StatusCodeValue(
-            value=node_state.status_code)
-      result[node.node_info.id] = run_state_pb2.RunState(
-          state=_NODE_STATE_TO_RUN_STATE_MAP[node_state.state],
-          status_code=node_status_code_value,
-          status_msg=node_state.status_msg)
+      result[node.node_info.id] = self._convert_node_state_to_run_state(
+          node_state)
+    return result
+
+  def get_previous_node_run_states(self) -> Dict[str, run_state_pb2.RunState]:
+    """Returns a dict mapping node id to previous run state."""
+    result = {}
+    node_states_dict = _get_node_states_dict(self.execution,
+                                             _PREVIOUS_NODE_STATES)
+    for node in get_all_pipeline_nodes(self.pipeline):
+      if node.node_info.id not in node_states_dict:
+        continue
+      node_state = node_states_dict[node.node_info.id]
+      result[node.node_info.id] = self._convert_node_state_to_run_state(
+          node_state)
     return result
 
   def get_property(self, property_key: str) -> Optional[types.Property]:
@@ -725,15 +752,24 @@ class PipelineView:
     return _get_metadata_value(
         self.execution.custom_properties.get(property_key))
 
-  def get_node_states_dict(self,
-                           state_type: Optional[str] = _NODE_STATES
-                          ) -> Dict[str, NodeState]:
+  def get_node_states_dict(self) -> Dict[str, NodeState]:
     """Returns a dict mapping node id to node state."""
     result = {}
-    node_states_dict = _get_node_states_dict(self.execution, state_type)
+    node_states_dict = _get_node_states_dict(self.execution, _NODE_STATES)
     for node in get_all_pipeline_nodes(self.pipeline):
       result[node.node_info.id] = node_states_dict.get(node.node_info.id,
                                                        NodeState())
+    return result
+
+  def get_previous_node_states_dict(self) -> Dict[str, NodeState]:
+    """Returns a dict mapping node id to node state in previous run."""
+    result = {}
+    node_states_dict = _get_node_states_dict(self.execution,
+                                             _PREVIOUS_NODE_STATES)
+    for node in get_all_pipeline_nodes(self.pipeline):
+      if node.node_info.id not in node_states_dict:
+        continue
+      result[node.node_info.id] = node_states_dict[node.node_info.id]
     return result
 
 
@@ -886,6 +922,11 @@ def _get_node_states_dict(
     pipeline_execution: metadata_store_pb2.Execution,
     state_type: Optional[str] = _NODE_STATES) -> Dict[str, NodeState]:
   """Gets node states dict from pipeline execution with specified type."""
+  if state_type not in [_NODE_STATES, _PREVIOUS_NODE_STATES]:
+    raise status_lib.StatusNotOkError(
+        code=status_lib.Code.INVALID_ARGUMENT,
+        message=f'Expected state_type is {_NODE_STATES} or {_PREVIOUS_NODE_STATES}, got {state_type}.'
+    )
   node_states_json = _get_metadata_value(
       pipeline_execution.custom_properties.get(state_type))
   return json_utils.loads(node_states_json) if node_states_json else {}
@@ -909,9 +950,9 @@ def _save_skipped_node_states(pipeline: pipeline_pb2.Pipeline,
   node_states_dict = {}
   previous_node_states_dict = {}
   reused_pipeline_node_states_dict = reused_pipeline_view.get_node_states_dict(
-      _NODE_STATES) if reused_pipeline_view else {}
-  reused_pipeline_previous_node_states_dict = reused_pipeline_view.get_node_states_dict(
-      _PREVIOUS_NODE_STATES) if reused_pipeline_view else {}
+  ) if reused_pipeline_view else {}
+  reused_pipeline_previous_node_states_dict = reused_pipeline_view.get_previous_node_states_dict(
+  ) if reused_pipeline_view else {}
   for node in get_all_pipeline_nodes(pipeline):
     node_id = node.node_info.id
     if node.execution_options.HasField('skip'):

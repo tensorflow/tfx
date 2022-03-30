@@ -559,37 +559,7 @@ class PipelineStateTest(test_utils.TfxTest):
           run_states_dict['Pusher'])
 
   def test_node_state_for_skipped_nodes_in_partial_pipeline_run(self):
-    """Tests that nodes marked to be skipped in a partial pipeline run have the right node state."""
-    with self._mlmd_connection as m:
-      pipeline = _test_pipeline(
-          'pipeline1',
-          execution_mode=pipeline_pb2.Pipeline.SYNC,
-          pipeline_nodes=['ExampleGen', 'Transform', 'Trainer'])
-      pipeline_uid = task_lib.PipelineUid.from_pipeline(pipeline)
-      # Mark ExampleGen and Transform to be skipped.
-      pipeline.nodes[0].pipeline_node.execution_options.skip.SetInParent()
-      pipeline.nodes[1].pipeline_node.execution_options.skip.SetInParent()
-
-      eg_node_uid = task_lib.NodeUid(pipeline_uid, 'ExampleGen')
-      transform_node_uid = task_lib.NodeUid(pipeline_uid, 'Transform')
-      trainer_node_uid = task_lib.NodeUid(pipeline_uid, 'Trainer')
-
-      pstate.PipelineState.new(m, pipeline)
-      with pstate.PipelineState.load(m, pipeline_uid) as pipeline_state:
-        self.assertEqual(
-            {
-                eg_node_uid:
-                    pstate.NodeState(state=pstate.NodeState.SKIPPED_PARTIAL_RUN
-                                    ),
-                transform_node_uid:
-                    pstate.NodeState(state=pstate.NodeState.SKIPPED_PARTIAL_RUN
-                                    ),
-                trainer_node_uid:
-                    pstate.NodeState(state=pstate.NodeState.STARTED),
-            }, pipeline_state.get_node_states_dict())
-
-  def test_node_state_for_skipped_failed_nodes_in_partial_pipeline_run(self):
-    """Tests that nodes previously failed and marked to be skipped have the right node state and error msg."""
+    """Tests that nodes marked to be skipped have the right node state and previous node state."""
     with self._mlmd_connection as m:
       pipeline = _test_pipeline(
           'pipeline1',
@@ -632,13 +602,57 @@ class PipelineStateTest(test_utils.TfxTest):
                                     ),
                 trainer_node_uid:
                     pstate.NodeState(state=pstate.NodeState.STARTED),
-            }, pipeline_state.get_node_states_dict(pstate._NODE_STATES))
-        previous_node_states = pipeline_state.get_node_states_dict(
-            pstate._PREVIOUS_NODE_STATES)
-        self.assertEqual(previous_node_states[eg_node_uid],
-                         pstate.NodeState(state=pstate.NodeState.COMPLETE))
-        self.assertEqual(previous_node_states[transform_node_uid],
-                         pstate.NodeState(state=pstate.NodeState.FAILED))
+            }, pipeline_state.get_node_states_dict())
+        self.assertEqual(
+            {
+                eg_node_uid:
+                    pstate.NodeState(state=pstate.NodeState.COMPLETE),
+                transform_node_uid:
+                    pstate.NodeState(state=pstate.NodeState.FAILED),
+            }, pipeline_state.get_previous_node_states_dict())
+
+  def test_get_previous_node_run_states_for_skipped_nodes(self):
+    """Tests that nodes marked to be skipped have the right previous run state."""
+    with self._mlmd_connection as m:
+      pipeline = _test_pipeline(
+          'pipeline1',
+          execution_mode=pipeline_pb2.Pipeline.SYNC,
+          pipeline_nodes=['ExampleGen', 'Transform', 'Trainer', 'Pusher'])
+      pipeline_uid = task_lib.PipelineUid.from_pipeline(pipeline)
+      eg_node_uid = task_lib.NodeUid(pipeline_uid, 'ExampleGen')
+      transform_node_uid = task_lib.NodeUid(pipeline_uid, 'Transform')
+      trainer_node_uid = task_lib.NodeUid(pipeline_uid, 'Trainer')
+      with pstate.PipelineState.new(m, pipeline) as pipeline_state:
+        with pipeline_state.node_state_update_context(
+            eg_node_uid) as node_state:
+          node_state.update(pstate.NodeState.FAILED)
+        with pipeline_state.node_state_update_context(
+            transform_node_uid) as node_state:
+          node_state.update(pstate.NodeState.RUNNING)
+        with pipeline_state.node_state_update_context(
+            trainer_node_uid) as node_state:
+          node_state.update(pstate.NodeState.STARTED)
+        pipeline_state.set_pipeline_execution_state(
+            metadata_store_pb2.Execution.COMPLETE)
+
+      view_run_0 = pstate.PipelineView.load(
+          m, task_lib.PipelineUid.from_pipeline(pipeline), 'run0')
+      self.assertEmpty(view_run_0.get_previous_node_run_states())
+
+      # Mark ExampleGen and Transform to be skipped.
+      pipeline.runtime_spec.pipeline_run_id.field_value.string_value = 'run1'
+      pipeline.nodes[0].pipeline_node.execution_options.skip.SetInParent()
+      pipeline.nodes[1].pipeline_node.execution_options.skip.SetInParent()
+      pstate.PipelineState.new(m, pipeline, reused_pipeline_view=view_run_0)
+      view_run_1 = pstate.PipelineView.load(
+          m, task_lib.PipelineUid.from_pipeline(pipeline), 'run1')
+      self.assertEqual(
+          {
+              'ExampleGen':
+                  run_state_pb2.RunState(state=run_state_pb2.RunState.FAILED),
+              'Transform':
+                  run_state_pb2.RunState(state=run_state_pb2.RunState.RUNNING)
+          }, view_run_1.get_previous_node_run_states())
 
 if __name__ == '__main__':
   tf.test.main()
