@@ -4,11 +4,11 @@
 In this lab you will learn how to:
 * Create machine learning pipelines and its integration with tfx and tensorboard
 * Show the interaction of tfx with jupyter notebooks
-* Using airflow to execute tasks on gcp
+* Use airflow to execute tasks on gcp
 
 ## **TFX with airflow**
  A TFX pipeline is a Directed Acyclic Graph, or "DAG". We will often refer to pipelines as DAGs.
-You'll follow a typical ML development process, starting by examining the dataset, and end up with a complete working pipeline. Along the way you'll explore ways to debug and update your pipeline, and measure performance.
+You'll follow a typical ML development process, from examining the dataset, to creating a complete working pipeline. Along the way you'll explore ways to debug and update your pipeline, and measure performance.
 
 Please see the [TFX User Guide](https://www.tensorflow.org/tfx/guide) to learn more.
 
@@ -18,7 +18,9 @@ Please see the [TFX User Guide](https://www.tensorflow.org/tfx/guide) to learn m
 
 ![chicago.png](images/airflow_workshop/chicago.png)
 
-You're using the [Taxi Trips dataset](https://data.cityofchicago.org/Transportation/Taxi-Trips/wrvz-psew) released by the City of Chicago.
+You'll be using the [Taxi Trips dataset](https://data.cityofchicago.org/Transportation/Taxi-Trips/wrvz-psew) released by the City of Chicago.
+
+Note: This tutorial builds an application using data that has been modified for use from its original source, www.cityofchicago.org, the official website of the City of Chicago. The City of Chicago makes no claims as to the content, accuracy, timeliness, or completeness of any of the data provided at in this tutorial. The data provided at this site is subject to change at any time. It is understood that the data provided in this tutorial is being used at one’s own risk.
 
 ### Model Goal - Binary classification
 Will the customer tip more or less than 20%?
