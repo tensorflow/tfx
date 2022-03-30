@@ -13,7 +13,9 @@ You'll follow a typical ML development process, starting by examining the datase
 Please see the [TFX User Guide](https://www.tensorflow.org/tfx/guide) to learn more.
 
 ## **Chicago Taxi Dataset**
+
 ![taxi.jpg](images/airflow_workshop/taxi.jpg)
+
 ![chicago.png](images/airflow_workshop/chicago.png)
 
 You're using the [Taxi Trips dataset](https://data.cityofchicago.org/Transportation/Taxi-Trips/wrvz-psew) released by the City of Chicago.
@@ -40,11 +42,17 @@ To complete this lab, you need:
 
 **How to start your lab and sign in to the Google Cloud Console**
 1. Click the **Start Lab** button. If you need to pay for the lab, a pop-up opens for you to select your payment method. On the left is a panel populated with the temporary credentials that you must use for this lab.
+
 ![qwiksetup1.png](images/airflow_workshop/qwiksetup1.png)
+
 2. Copy the username, and then click **Open Google Console**. The lab spins up resources, and then opens another tab that shows the **Sign in** page.
+
 ![qwiksetup2.png](images/airflow_workshop/qwiksetup2.png)
+
 _**Tip:**_ Open the tabs in separate windows, side-by-side.
+
 ![qwiksetup3.png](images/airflow_workshop/qwiksetup3.png)
+
 3. In the **Sign in** page, paste the username that you copied from the left panel. Then copy and paste the password.
 
 _**Important:**_- You must use the credentials from the left panel. Do not use your Google Cloud Training credentials. If you have your own Google Cloud account, do not use it for this lab (avoids incurring charges).
@@ -59,6 +67,7 @@ _**Important:**_- You must use the credentials from the left panel. Do not use y
 After a few moments, the Cloud Console opens in this tab.
 
 **Note:** You can view the menu with a list of Google Cloud Products and Services by clicking the **Navigation menu** at the top-left.
+
 ![qwiksetup4.png](images/airflow_workshop/qwiksetup4.png)
 
 ### Activate Cloud Shell
@@ -67,10 +76,15 @@ Cloud Shell is a virtual machine that is loaded with development tools. It offer
 In the Cloud Console, in the top right toolbar, click the **Activate Cloud Shell** button.
 
 ![qwiksetup5.png](images/airflow_workshop/qwiksetup5.png)
+
 Click **Continue**.
+
 ![qwiksetup6.png](images/airflow_workshop/qwiksetup6.png)
+
 It takes a few moments to provision and connect to the environment. When you are connected, you are already authenticated, and the project is set to your _PROJECT_ID_. For example:
+
 ![qwiksetup7.png](images/airflow_workshop/qwiksetup7.png)
+
 
 `gcloud` is the command-line tool for Google Cloud. It comes pre-installed on Cloud Shell and supports tab-completion.
 
@@ -120,7 +134,9 @@ gcloud services enable \
 ## Deploy Vertex Notebook instance
 1. Click on the __Navigation Menu__.
 2. Navigate to __Vertex AI__, then to __Workbench__
+
 ![vertex-ai-workbench.png](images/airflow_workshop/vertex-ai-workbench.png)
+
 3. On the Notebook instances page, navigate to the __User-Managed Notebooks__ tab and click **New Notebook**.
 4. In the Customize instance menu, select **TensorFlow Enterprise** and choose the version of **TensorFlow Enterprise 2.3 (with LTS)** > **Without GPUs**.
 
@@ -186,6 +202,7 @@ nohup airflow scheduler &> scheduler.out &
 ![create-firewall-dialog.png](images/airflow_workshop/create-firewall-dialog.png)
 
 #### DAG view buttons 
+
 ![dag-buttons.png](images/airflow_workshop/dag-buttons.png)
 
 * Use the button on the left to enable the DAG
