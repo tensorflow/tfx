@@ -230,7 +230,7 @@ Open a browser and go to http://<external_ip>:7000
 
 Airflow will check all the python files inside `~/airflow/dags/` folder for '**DAG**' arguement.
 
-If found it will list it as pipeline in airflow homepage (here `~/airflow/dags/pipeline.py`)
+If found it will list it as pipeline in airflow homepage (here `~/airflow/dags/taxi_pipeline.py`)
 
 ![dag-home-full.png](images/airflow_workshop/dag-home-full.png)
 
