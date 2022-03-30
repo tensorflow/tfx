@@ -184,15 +184,6 @@ Click _Check my progress_ to verify the objective.
       Clone the lab repository
   </ql-activity-tracking>
 
-### Run airflow server from your shell
-
-1. Run the `airflow users  create` command to create an admin user for airflow. Then run the `airflow webserver` and `airflow scheduler` command to run the server
-
-```bash
-airflow users  create --role Admin --username admin --email admin --firstname admin --lastname admin --password admin
-nohup airflow webserver -p 7000 &> webserver.out &
-nohup airflow scheduler &> scheduler.out &
-```
 ### Create firewall rule to access to airflow server in browser
 1. Go to `https://console.cloud.google.com/networking/firewalls/list` and make sure the project name is selected appropriately
 2. Click on `CREATE FIREWALL RULE` option on top
@@ -203,16 +194,37 @@ nohup airflow scheduler &> scheduler.out &
 
 ![create-firewall-dialog.png](images/airflow_workshop/create-firewall-dialog.png)
 
+### Run airflow server from your shell
+
+1. Run the `airflow users  create` command to create an admin user for airflow. Then run the `airflow webserver` and `airflow scheduler` command to run the server
+2. Choose port `7000` since it is allowed through firewall.
+
+```bash
+airflow users  create --role Admin --username admin --email admin --firstname admin --lastname admin --password admin
+nohup airflow webserver -p 7000 &> webserver.out &
+nohup airflow scheduler &> scheduler.out &
+```
+
+### In a browser
+Open a browser and go to http://<external_ip>:7000
+
+* Enter username and password mentioned in `airflow users  create` command
+
+![dag-home.png](images/airflow_workshop/dag-home.png)
+
 #### DAG view buttons 
 
 ![dag-buttons.png](images/airflow_workshop/dag-buttons.png)
 
-* Use the button on the left to enable the DAG
-* Use the button on the right to trigger the DAG
-* Click on taxi to go to the graph view of the DAG
+* The button on the left will enable the DAG
+* The button on the right will trigger the DAG
+
+#### Trigger the taxi pipeline
+Click on trigger button and start the process
+
+* If you click on taxi, it will go to the graph view of the DAG
 * In the taxi DAG page use the button on the right to refresh the DAG when you make changes
 
-#### Airflow CLI
 You can also use the [Airflow CLI](https://airflow.apache.org/cli.html) in terminal to enable and trigger your DAGs:
 
 ```bash
@@ -223,12 +235,6 @@ airflow unpause <your DAG name>
 # trigger
 airflow trigger_dag <your DAG name>
 ```
-
-### In a browser
-Open a browser and go to http://<external_ip>:7000
-
-* Enter username and password mentioned in `airflow users  create` command
-* Trigger taxi
 
 #### Waiting for the pipeline to complete
 After you've triggered your pipeline in the DAGs view, you can watch as your pipeline completes processing. As each component runs the outline color of the component in the DAG graph will change to show its state. When a component has finished processing the outline will turn dark green to show that it's done.
