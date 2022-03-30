@@ -215,11 +215,10 @@ You can see your pipeline on homepage
 
 ![dag-home.png](images/airflow_workshop/dag-home-full.png)
 
-#### DAG buttons 
-
-![dag-buttons.png](images/airflow_workshop/dag-buttons.png)
 
 On the homepage you can see the buttons that can be used to interact with the DAG
+
+![dag-buttons.png](images/airflow_workshop/dag-buttons.png)
 
 * The button on the left will enable the DAG
 * The button on the right will trigger the DAG
