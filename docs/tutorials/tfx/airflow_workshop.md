@@ -1,10 +1,23 @@
 # **TFX Airflow Tutorial**
 
 ## Overview
-In this lab you will learn how to:
-* Create machine learning pipelines and its integration with tfx and tensorboard
-* Show the interaction of tfx with jupyter notebooks
-* Use airflow to execute tasks on gcp
+
+In this lab you’re learning how to create an ML pipeline using TFX
+
+* TFX pipelines are appropriate when you will be deploying a production ML application
+* TFX pipelines are appropriate when datasets are large
+* TFX pipelines are appropriate when training/serving consistency is important
+* TFX pipelines are appropriate when version management for inference is important
+* Google uses TFX pipelines for production ML
+
+You’re following a typical ML development process
+
+* Ingesting, understanding, and cleaning our data
+* Feature engineering
+* Training
+* Analyze model performance
+* Lather, rinse, repeat
+* Ready for production
 
 ## **TFX with airflow**
  A TFX pipeline is a Directed Acyclic Graph, or "DAG". We will often refer to pipelines as DAGs.
@@ -150,11 +163,6 @@ After a few minutes, the Vertex AI console will display your instance name, foll
 
 6. Click **Open JupyterLab**. Your notebook is now set up.
 
-Click _Check my progress_ to verify the objective.
-  <ql-activity-tracking step=1>
-      Create a Vertex AI Notebook
-  </ql-activity-tracking>
-
 ## Setup the environment
 
 ### Clone the lab repository
@@ -179,10 +187,14 @@ cd ~/tfx/tfx/examples/airflow_workshop/taxi/setup/
 ./setup_demo.sh
 ```
 
-Click _Check my progress_ to verify the objective.
-  <ql-activity-tracking step=2>
-      Clone the lab repository
-  </ql-activity-tracking>
+The above code will
+
+* Install the required packages.
+* Create an `airflow` folder in the home folder.
+* Copy the entire `dags` folder from `tfx/tfx/examples/airflow_workshop/taxi/setup/` folder to this home folder.
+* Copy the csv file from `tfx/tfx/examples/airflow_workshop/taxi/setup/data` to `~/airflow/data`.
+
+![airflow-home.png](images/airflow_workshop/airflow-home.png)
 
 ### Create firewall rule to access to airflow server in browser
 1. Go to `https://console.cloud.google.com/networking/firewalls/list` and make sure the project name is selected appropriately
@@ -208,12 +220,18 @@ nohup airflow scheduler &> scheduler.out &
 ### In a browser
 Open a browser and go to http://<external_ip>:7000
 
-* Enter username and password mentioned in `airflow users  create` command
+* Enter username and password mentioned in `airflow users  create` command in the login page.
 
-You can see your pipeline on homepage
+![airflow-login.png](images/airflow_workshop/airflow-login.png)
 
+* Airflow will check python files inside `~/airflow/dags/` folder for 'DAG' arguement.
+* If found it will list it as pipeline in airflow homepage (here `pipeline.py`)
 
-![dag-home.png](images/airflow_workshop/dag-home-full.png)
+![dag-home-full.png](images/airflow_workshop/dag-home-full.png)
+
+If you click on taxi, it will go to the graph view of the DAG
+
+![airflow-dag-graph.png](images/airflow_workshop/airflow-dag-graph.png)
 
 #### Trigger the taxi pipeline
 
@@ -224,8 +242,7 @@ On the homepage you can see the buttons that can be used to interact with the DA
 
 Under actions header, click on the trigger button and start the process
 
-* If you click on taxi, it will go to the graph view of the DAG
-* In the taxi DAG page use the button on the right to refresh the DAG when you make changes
+In the taxi DAG page use the button on the right to refresh the DAG when you make changes
 
 ![dag-button-refresh.png](images/airflow_workshop/dag-button-refresh.png)
 
