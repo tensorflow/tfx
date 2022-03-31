@@ -27,7 +27,9 @@ from tfx.orchestration import data_types_utils
 from tfx.orchestration import metadata
 from tfx.orchestration.experimental.core import async_pipeline_task_gen
 from tfx.orchestration.experimental.core import constants
+from tfx.orchestration.experimental.core import event_observer
 from tfx.orchestration.experimental.core import mlmd_state
+from tfx.orchestration.experimental.core import node_state as nstate
 from tfx.orchestration.experimental.core import pipeline_state as pstate
 from tfx.orchestration.experimental.core import service_jobs
 from tfx.orchestration.experimental.core import sync_pipeline_task_gen
@@ -203,7 +205,7 @@ def initiate_node_start(mlmd_handle: metadata.Metadata,
                                  node_uid.pipeline_uid) as pipeline_state:
     with pipeline_state.node_state_update_context(node_uid) as node_state:
       if node_state.is_startable():
-        node_state.update(pstate.NodeState.STARTING)
+        node_state.update(nstate.NodeState.STARTING)
   return pipeline_state
 
 
@@ -240,7 +242,7 @@ def stop_node(mlmd_handle: metadata.Metadata,
       with pipeline_state.node_state_update_context(node_uid) as node_state:
         if node_state.is_stoppable():
           node_state.update(
-              pstate.NodeState.STOPPING,
+              nstate.NodeState.STOPPING,
               status_lib.Status(
                   code=status_lib.Code.CANCELLED,
                   message='Cancellation requested by client.'))
@@ -399,10 +401,10 @@ def _wait_for_node_inactivation(pipeline_state: pstate.PipelineState,
   def _is_inactivated() -> bool:
     with pipeline_state:
       node_state = pipeline_state.get_node_state(node_uid)
-      return node_state.state in (pstate.NodeState.COMPLETE,
-                                  pstate.NodeState.FAILED,
-                                  pstate.NodeState.SKIPPED,
-                                  pstate.NodeState.STOPPED)
+      return node_state.state in (nstate.NodeState.COMPLETE,
+                                  nstate.NodeState.FAILED,
+                                  nstate.NodeState.SKIPPED,
+                                  nstate.NodeState.STOPPED)
 
   return _wait_for_predicate(_is_inactivated, 'node inactivation', timeout_secs)
 
@@ -647,10 +649,10 @@ def _orchestrate_stop_initiated_pipeline(
       with pipeline_state.node_state_update_context(node_uid) as node_state:
         if node_state.is_stoppable():
           node_state.update(
-              pstate.NodeState.STOPPING,
+              nstate.NodeState.STOPPING,
               status_lib.Status(
                   code=stop_reason.code, message=stop_reason.message))
-      if node_state.state == pstate.NodeState.STOPPING:
+      if node_state.state == nstate.NodeState.STOPPING:
         nodes_to_stop.append(node)
 
   # Issue cancellation for nodes_to_stop and gather the ones whose stopping is
@@ -671,7 +673,7 @@ def _orchestrate_stop_initiated_pipeline(
     for node in stopped_nodes:
       node_uid = task_lib.NodeUid.from_pipeline_node(pipeline, node)
       with pipeline_state.node_state_update_context(node_uid) as node_state:
-        node_state.update(pstate.NodeState.STOPPED, node_state.status)
+        node_state.update(nstate.NodeState.STOPPED, node_state.status)
 
   # If all the nodes_to_stop have been stopped, we can update the pipeline
   # execution state.
@@ -682,6 +684,11 @@ def _orchestrate_stop_initiated_pipeline(
       # Update pipeline execution state in MLMD.
       pipeline_state.set_pipeline_execution_state(
           _mlmd_execution_code(stop_reason))
+      event_observer.notify(
+          event_observer.PipelineFinished(
+              execution=pipeline_state._execution,  # pylint: disable=protected-access
+              pipeline_id=pipeline_state.pipeline_uid.pipeline_id,
+              status=stop_reason))
 
 
 def _orchestrate_update_initiated_pipeline(
@@ -706,9 +713,9 @@ def _orchestrate_update_initiated_pipeline(
       node_uid = task_lib.NodeUid.from_pipeline_node(pipeline, node)
       with pipeline_state.node_state_update_context(node_uid) as node_state:
         if node_state.is_pausable():
-          node_state.update(pstate.NodeState.PAUSING,
+          node_state.update(nstate.NodeState.PAUSING,
                             status_lib.Status(code=status_lib.Code.CANCELLED))
-      if node_state.state == pstate.NodeState.PAUSING:
+      if node_state.state == nstate.NodeState.PAUSING:
         nodes_to_pause.append(node)
 
   # Issue cancellation for nodes_to_pause and gather the ones whose pausing is
@@ -729,7 +736,7 @@ def _orchestrate_update_initiated_pipeline(
     for node in paused_nodes:
       node_uid = task_lib.NodeUid.from_pipeline_node(pipeline, node)
       with pipeline_state.node_state_update_context(node_uid) as node_state:
-        node_state.update(pstate.NodeState.PAUSED, node_state.status)
+        node_state.update(nstate.NodeState.PAUSED, node_state.status)
 
   # If all the pausable nodes have been paused, we can update the node state to
   # STARTED.
@@ -748,7 +755,7 @@ def _orchestrate_update_initiated_pipeline(
         node_uid = task_lib.NodeUid.from_pipeline_node(pipeline, node)
         with pipeline_state.node_state_update_context(node_uid) as node_state:
           if node_state.is_startable():
-            node_state.update(pstate.NodeState.STARTED)
+            node_state.update(nstate.NodeState.STARTED)
 
       pipeline_state.apply_pipeline_update()
 
@@ -757,7 +764,7 @@ def _orchestrate_update_initiated_pipeline(
 class _NodeInfo:
   """A convenience container of pipeline node and its state."""
   node: pipeline_pb2.PipelineNode
-  state: pstate.NodeState
+  state: nstate.NodeState
 
 
 def _orchestrate_active_pipeline(
@@ -794,7 +801,7 @@ def _orchestrate_active_pipeline(
     return [n for n in node_infos if n.state.state == state_str]
 
   node_infos = _get_node_infos(pipeline_state)
-  stopping_node_infos = _filter_by_state(node_infos, pstate.NodeState.STOPPING)
+  stopping_node_infos = _filter_by_state(node_infos, nstate.NodeState.STOPPING)
 
   # Tracks nodes stopped in the current iteration.
   stopped_node_infos: List[_NodeInfo] = []
@@ -816,7 +823,7 @@ def _orchestrate_active_pipeline(
       for node_info in stopped_node_infos:
         node_uid = task_lib.NodeUid.from_pipeline_node(pipeline, node_info.node)
         with pipeline_state.node_state_update_context(node_uid) as node_state:
-          node_state.update(pstate.NodeState.STOPPED, node_state.status)
+          node_state.update(nstate.NodeState.STOPPED, node_state.status)
 
   # Initialize task generator for the pipeline.
   if pipeline.execution_mode == pipeline_pb2.Pipeline.SYNC:
@@ -854,8 +861,8 @@ def _orchestrate_active_pipeline(
       node_uid = task_lib.NodeUid.from_pipeline_node(pipeline_state.pipeline,
                                                      node)
       with pipeline_state.node_state_update_context(node_uid) as node_state:
-        if node_state.state == pstate.NodeState.STARTING:
-          node_state.update(pstate.NodeState.STARTED)
+        if node_state.state == nstate.NodeState.STARTING:
+          node_state.update(nstate.NodeState.STARTED)
 
     for task in tasks:
       if isinstance(task, task_lib.ExecNodeTask):

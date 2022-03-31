@@ -13,12 +13,15 @@
 # limitations under the License.
 """Tests for tfx.orchestration.experimental.core.pipeline_state."""
 
+import dataclasses
 import os
 from typing import List
 from unittest import mock
 
 import tensorflow as tf
 from tfx.orchestration import metadata
+from tfx.orchestration.experimental.core import event_observer
+from tfx.orchestration.experimental.core import node_state as nstate
 from tfx.orchestration.experimental.core import pipeline_state as pstate
 from tfx.orchestration.experimental.core import task as task_lib
 from tfx.orchestration.experimental.core import task_gen_utils
@@ -47,23 +50,6 @@ def _test_pipeline(pipeline_id,
   if execution_mode == pipeline_pb2.Pipeline.SYNC:
     pipeline.runtime_spec.pipeline_run_id.field_value.string_value = pipeline_run_id
   return pipeline
-
-
-class NodeStateTest(test_utils.TfxTest):
-
-  def test_node_state_update(self):
-    node_state = pstate.NodeState()
-    self.assertEqual(pstate.NodeState.STARTED, node_state.state)
-    self.assertIsNone(node_state.status)
-
-    status = status_lib.Status(code=status_lib.Code.CANCELLED, message='foobar')
-    node_state.update(pstate.NodeState.STOPPING, status)
-    self.assertEqual(pstate.NodeState.STOPPING, node_state.state)
-    self.assertEqual(status, node_state.status)
-
-    node_state.update(pstate.NodeState.STARTING)
-    self.assertEqual(pstate.NodeState.STARTING, node_state.state)
-    self.assertIsNone(node_state.status)
 
 
 class PipelineStateTest(test_utils.TfxTest):
@@ -295,50 +281,95 @@ class PipelineStateTest(test_utils.TfxTest):
                                          pipeline_pb2.UpdateOptions())
 
   def test_initiate_node_start_stop(self):
-    with self._mlmd_connection as m:
+
+    events = []
+
+    def recorder(event):
+      events.append(event)
+
+    with event_observer.init(), self._mlmd_connection as m:
+      event_observer.register_observer(recorder)
+
       pipeline = _test_pipeline('pipeline1', pipeline_nodes=['Trainer'])
       node_uid = task_lib.NodeUid(
           node_id='Trainer',
           pipeline_uid=task_lib.PipelineUid.from_pipeline(pipeline))
       with pstate.PipelineState.new(m, pipeline) as pipeline_state:
         with pipeline_state.node_state_update_context(node_uid) as node_state:
-          node_state.update(pstate.NodeState.STARTING)
+          node_state.update(nstate.NodeState.STARTING)
         node_state = pipeline_state.get_node_state(node_uid)
-        self.assertEqual(pstate.NodeState.STARTING, node_state.state)
+        self.assertEqual(nstate.NodeState.STARTING, node_state.state)
 
       # Reload from MLMD and verify node is started.
       with pstate.PipelineState.load(
           m, task_lib.PipelineUid.from_pipeline(pipeline)) as pipeline_state:
         node_state = pipeline_state.get_node_state(node_uid)
-        self.assertEqual(pstate.NodeState.STARTING, node_state.state)
+        self.assertEqual(nstate.NodeState.STARTING, node_state.state)
 
         # Set node state to STOPPING.
         status = status_lib.Status(
             code=status_lib.Code.ABORTED, message='foo bar')
         with pipeline_state.node_state_update_context(node_uid) as node_state:
-          node_state.update(pstate.NodeState.STOPPING, status)
+          node_state.update(nstate.NodeState.STOPPING, status)
         node_state = pipeline_state.get_node_state(node_uid)
-        self.assertEqual(pstate.NodeState.STOPPING, node_state.state)
+        self.assertEqual(nstate.NodeState.STOPPING, node_state.state)
         self.assertEqual(status, node_state.status)
 
       # Reload from MLMD and verify node is stopped.
       with pstate.PipelineState.load(
           m, task_lib.PipelineUid.from_pipeline(pipeline)) as pipeline_state:
         node_state = pipeline_state.get_node_state(node_uid)
-        self.assertEqual(pstate.NodeState.STOPPING, node_state.state)
+        self.assertEqual(nstate.NodeState.STOPPING, node_state.state)
         self.assertEqual(status, node_state.status)
 
         # Set node state to STARTED.
         with pipeline_state.node_state_update_context(node_uid) as node_state:
-          node_state.update(pstate.NodeState.STARTED)
+          node_state.update(nstate.NodeState.STARTED)
         node_state = pipeline_state.get_node_state(node_uid)
-        self.assertEqual(pstate.NodeState.STARTED, node_state.state)
+        self.assertEqual(nstate.NodeState.STARTED, node_state.state)
 
       # Reload from MLMD and verify node is started.
       with pstate.PipelineState.load(
           m, task_lib.PipelineUid.from_pipeline(pipeline)) as pipeline_state:
         node_state = pipeline_state.get_node_state(node_uid)
-        self.assertEqual(pstate.NodeState.STARTED, node_state.state)
+        self.assertEqual(nstate.NodeState.STARTED, node_state.state)
+
+      event_observer.testonly_wait()
+
+      want = [
+          event_observer.PipelineStarted(
+              execution=None, pipeline_id='pipeline1'),
+          event_observer.NodeStateChange(
+              execution=None,
+              pipeline_id='pipeline1',
+              pipeline_run=None,
+              node_id='Trainer',
+              old_state=nstate.NodeState(state='started'),
+              new_state=nstate.NodeState(state='starting')),
+          event_observer.NodeStateChange(
+              execution=None,
+              pipeline_id='pipeline1',
+              pipeline_run=None,
+              node_id='Trainer',
+              old_state=nstate.NodeState(state='starting'),
+              new_state=nstate.NodeState(
+                  state='stopping',
+                  status_code=status_lib.Code.ABORTED,
+                  status_msg='foo bar')),
+          event_observer.NodeStateChange(
+              execution=None,
+              pipeline_id='pipeline1',
+              pipeline_run=None,
+              node_id='Trainer',
+              old_state=nstate.NodeState(
+                  state='stopping',
+                  status_code=status_lib.Code.ABORTED,
+                  status_msg='foo bar'),
+              new_state=nstate.NodeState(state='started')),
+      ]
+      # Set execution to None, so we don't compare that field
+      got = [dataclasses.replace(x, execution=None) for x in events]
+      self.assertListEqual(want, got)
 
   def test_get_node_states_dict(self):
     with self._mlmd_connection as m:
@@ -354,24 +385,24 @@ class PipelineStateTest(test_utils.TfxTest):
       with pstate.PipelineState.new(m, pipeline) as pipeline_state:
         with pipeline_state.node_state_update_context(
             eg_node_uid) as node_state:
-          node_state.update(pstate.NodeState.COMPLETE)
+          node_state.update(nstate.NodeState.COMPLETE)
         with pipeline_state.node_state_update_context(
             transform_node_uid) as node_state:
-          node_state.update(pstate.NodeState.RUNNING)
+          node_state.update(nstate.NodeState.RUNNING)
         with pipeline_state.node_state_update_context(
             trainer_node_uid) as node_state:
-          node_state.update(pstate.NodeState.STARTING)
+          node_state.update(nstate.NodeState.STARTING)
       with pstate.PipelineState.load(m, pipeline_uid) as pipeline_state:
         self.assertEqual(
             {
                 eg_node_uid:
-                    pstate.NodeState(state=pstate.NodeState.COMPLETE),
+                    nstate.NodeState(state=nstate.NodeState.COMPLETE),
                 transform_node_uid:
-                    pstate.NodeState(state=pstate.NodeState.RUNNING),
+                    nstate.NodeState(state=nstate.NodeState.RUNNING),
                 trainer_node_uid:
-                    pstate.NodeState(state=pstate.NodeState.STARTING),
+                    nstate.NodeState(state=nstate.NodeState.STARTING),
                 evaluator_node_uid:
-                    pstate.NodeState(state=pstate.NodeState.STARTED),
+                    nstate.NodeState(state=nstate.NodeState.STARTED),
             }, pipeline_state.get_node_states_dict())
 
   def test_save_and_remove_property(self):
@@ -522,17 +553,17 @@ class PipelineStateTest(test_utils.TfxTest):
       with pstate.PipelineState.new(m, pipeline) as pipeline_state:
         with pipeline_state.node_state_update_context(
             eg_node_uid) as node_state:
-          node_state.update(pstate.NodeState.RUNNING)
+          node_state.update(nstate.NodeState.RUNNING)
         with pipeline_state.node_state_update_context(
             transform_node_uid) as node_state:
-          node_state.update(pstate.NodeState.STARTING)
+          node_state.update(nstate.NodeState.STARTING)
         with pipeline_state.node_state_update_context(
             trainer_node_uid) as node_state:
-          node_state.update(pstate.NodeState.STARTED)
+          node_state.update(nstate.NodeState.STARTED)
         with pipeline_state.node_state_update_context(
             evaluator_node_uid) as node_state:
           node_state.update(
-              pstate.NodeState.FAILED,
+              nstate.NodeState.FAILED,
               status_lib.Status(
                   code=status_lib.Code.ABORTED, message='foobar error'))
 
@@ -573,13 +604,13 @@ class PipelineStateTest(test_utils.TfxTest):
       with pstate.PipelineState.new(m, pipeline) as pipeline_state:
         with pipeline_state.node_state_update_context(
             eg_node_uid) as node_state:
-          node_state.update(pstate.NodeState.COMPLETE)
+          node_state.update(nstate.NodeState.COMPLETE)
         with pipeline_state.node_state_update_context(
             trainer_node_uid) as node_state:
-          node_state.update(pstate.NodeState.FAILED)
+          node_state.update(nstate.NodeState.FAILED)
         with pipeline_state.node_state_update_context(
             transform_node_uid) as node_state:
-          node_state.update(pstate.NodeState.FAILED)
+          node_state.update(nstate.NodeState.FAILED)
         pipeline_state.set_pipeline_execution_state(
             metadata_store_pb2.Execution.COMPLETE)
 
@@ -595,20 +626,20 @@ class PipelineStateTest(test_utils.TfxTest):
         self.assertEqual(
             {
                 eg_node_uid:
-                    pstate.NodeState(state=pstate.NodeState.SKIPPED_PARTIAL_RUN
+                    nstate.NodeState(state=nstate.NodeState.SKIPPED_PARTIAL_RUN
                                     ),
                 transform_node_uid:
-                    pstate.NodeState(state=pstate.NodeState.SKIPPED_PARTIAL_RUN
+                    nstate.NodeState(state=nstate.NodeState.SKIPPED_PARTIAL_RUN
                                     ),
                 trainer_node_uid:
-                    pstate.NodeState(state=pstate.NodeState.STARTED),
+                    nstate.NodeState(state=nstate.NodeState.STARTED),
             }, pipeline_state.get_node_states_dict())
         self.assertEqual(
             {
                 eg_node_uid:
-                    pstate.NodeState(state=pstate.NodeState.COMPLETE),
+                    nstate.NodeState(state=nstate.NodeState.COMPLETE),
                 transform_node_uid:
-                    pstate.NodeState(state=pstate.NodeState.FAILED),
+                    nstate.NodeState(state=nstate.NodeState.FAILED),
             }, pipeline_state.get_previous_node_states_dict())
 
   def test_get_previous_node_run_states_for_skipped_nodes(self):
@@ -625,13 +656,13 @@ class PipelineStateTest(test_utils.TfxTest):
       with pstate.PipelineState.new(m, pipeline) as pipeline_state:
         with pipeline_state.node_state_update_context(
             eg_node_uid) as node_state:
-          node_state.update(pstate.NodeState.FAILED)
+          node_state.update(nstate.NodeState.FAILED)
         with pipeline_state.node_state_update_context(
             transform_node_uid) as node_state:
-          node_state.update(pstate.NodeState.RUNNING)
+          node_state.update(nstate.NodeState.RUNNING)
         with pipeline_state.node_state_update_context(
             trainer_node_uid) as node_state:
-          node_state.update(pstate.NodeState.STARTED)
+          node_state.update(nstate.NodeState.STARTED)
         pipeline_state.set_pipeline_execution_state(
             metadata_store_pb2.Execution.COMPLETE)
 
