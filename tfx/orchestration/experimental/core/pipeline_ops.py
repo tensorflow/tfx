@@ -144,7 +144,14 @@ def initiate_pipeline_start(
       raise status_lib.StatusNotOkError(
           code=status_lib.Code.INVALID_ARGUMENT, message=str(e))
   if pipeline.runtime_spec.HasField('snapshot_settings'):
-    partial_run_utils.snapshot(mlmd_handle, pipeline)
+    try:
+      partial_run_utils.snapshot(mlmd_handle, pipeline)
+    except ValueError as e:
+      raise status_lib.StatusNotOkError(
+          code=status_lib.Code.INVALID_ARGUMENT, message=str(e))
+    except LookupError as e:
+      raise status_lib.StatusNotOkError(
+          code=status_lib.Code.FAILED_PRECONDITION, message=str(e))
 
   return pstate.PipelineState.new(mlmd_handle, pipeline, pipeline_run_metadata,
                                   reused_pipeline_view)
@@ -508,7 +515,14 @@ def resume_pipeline(mlmd_handle: metadata.Metadata,
     raise status_lib.StatusNotOkError(
         code=status_lib.Code.INVALID_ARGUMENT, message=str(e))
   if pipeline.runtime_spec.HasField('snapshot_settings'):
-    partial_run_utils.snapshot(mlmd_handle, pipeline)
+    try:
+      partial_run_utils.snapshot(mlmd_handle, pipeline)
+    except ValueError as e:
+      raise status_lib.StatusNotOkError(
+          code=status_lib.Code.INVALID_ARGUMENT, message=str(e))
+    except LookupError as e:
+      raise status_lib.StatusNotOkError(
+          code=status_lib.Code.FAILED_PRECONDITION, message=str(e))
 
   return pstate.PipelineState.new(
       mlmd_handle, pipeline, reused_pipeline_view=latest_pipeline_view)
