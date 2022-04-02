@@ -29,6 +29,7 @@
 ## Major Features and Improvements
 
 * Added support for list-type Placeholder.
+* Added support for function-based custom component with beam pipeline.
 
 ## Breaking Changes
 

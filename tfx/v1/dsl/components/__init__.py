@@ -14,6 +14,7 @@
 """TFX DSL components module."""
 
 # TODO(b/187259923): Remove "experimental" from internal paths.
+from tfx.dsl.component.experimental.annotations import BeamComponentParameter
 from tfx.dsl.component.experimental.annotations import InputArtifact
 from tfx.dsl.component.experimental.annotations import OutputArtifact
 from tfx.dsl.component.experimental.annotations import OutputDict

@@ -15,8 +15,9 @@
 
 from typing import Dict, Optional
 
+import apache_beam as beam
 import tensorflow as tf
-
+from tfx.dsl.component.experimental.annotations import BeamComponentParameter
 from tfx.dsl.component.experimental.annotations import InputArtifact
 from tfx.dsl.component.experimental.annotations import OutputArtifact
 from tfx.dsl.component.experimental.annotations import OutputDict
@@ -30,8 +31,14 @@ class FunctionParserTest(tf.test.TestCase):
 
   def testSimpleFunctionParse(self):
 
-    def func_a(a: int, b: int, unused_c: str, unused_d: bytes,
-               unused_e: Parameter[float]) -> OutputDict(c=float):
+    def func_a(
+        a: int,
+        b: int,
+        unused_c: str,
+        unused_d: bytes,
+        unused_e: Parameter[float],
+        unused_f: BeamComponentParameter[beam.Pipeline] = None
+    ) -> OutputDict(c=float):
       return {'c': float(a + b)}
 
     inputs, outputs, parameters, arg_formats, arg_defaults, returned_values = (
@@ -48,6 +55,7 @@ class FunctionParserTest(tf.test.TestCase):
     })
     self.assertDictEqual(parameters, {
         'unused_e': float,
+        'unused_f': beam.Pipeline,
     })
     self.assertDictEqual(
         arg_formats, {
@@ -56,8 +64,9 @@ class FunctionParserTest(tf.test.TestCase):
             'unused_c': ArgFormats.ARTIFACT_VALUE,
             'unused_d': ArgFormats.ARTIFACT_VALUE,
             'unused_e': ArgFormats.PARAMETER,
+            'unused_f': ArgFormats.BEAM_PARAMETER,
         })
-    self.assertDictEqual(arg_defaults, {})
+    self.assertDictEqual(arg_defaults, {'unused_f': None})
     self.assertEqual(returned_values, {'c': False})
 
   def testArtifactFunctionParse(self):
@@ -67,14 +76,15 @@ class FunctionParserTest(tf.test.TestCase):
         model: OutputArtifact[standard_artifacts.Model],
         schema: InputArtifact[standard_artifacts.Schema],
         statistics: OutputArtifact[standard_artifacts.ExampleStatistics],
-        num_steps: Parameter[int]
+        num_steps: Parameter[int],
+        unused_beam_pipeline: BeamComponentParameter[beam.Pipeline],
     ) -> OutputDict(
         precision=float,
         recall=float,
         message=str,
         serialized_value=bytes,
         is_blessed=bool):
-      del examples, model, schema, statistics, num_steps
+      del examples, model, schema, statistics, num_steps, unused_beam_pipeline
       return {
           'precision': 0.9,
           'recall': 0.8,
@@ -102,6 +112,7 @@ class FunctionParserTest(tf.test.TestCase):
         })
     self.assertDictEqual(parameters, {
         'num_steps': int,
+        'unused_beam_pipeline': beam.Pipeline,
     })
     self.assertDictEqual(
         arg_formats, {
@@ -110,6 +121,7 @@ class FunctionParserTest(tf.test.TestCase):
             'schema': ArgFormats.INPUT_ARTIFACT,
             'statistics': ArgFormats.OUTPUT_ARTIFACT,
             'num_steps': ArgFormats.PARAMETER,
+            'unused_beam_pipeline': ArgFormats.BEAM_PARAMETER,
         })
     self.assertDictEqual(arg_defaults, {})
     self.assertEqual(
@@ -126,15 +138,16 @@ class FunctionParserTest(tf.test.TestCase):
     def func_a(examples: InputArtifact[standard_artifacts.Examples],
                model: OutputArtifact[standard_artifacts.Model], a: int,
                b: float, c: Parameter[int], d: Parameter[str],
-               e: Parameter[bytes]):
-      del examples, model, a, b, c, d, e
+               e: Parameter[bytes], f: BeamComponentParameter[beam.Pipeline]):
+      del examples, model, a, b, c, d, e, f
 
     # `None` output typehint.
     def func_b(examples: InputArtifact[standard_artifacts.Examples],
                model: OutputArtifact[standard_artifacts.Model], a: int,
                b: float, c: Parameter[int], d: Parameter[str],
-               e: Parameter[bytes]) -> None:
-      del examples, model, a, b, c, d, e
+               e: Parameter[bytes],
+               f: BeamComponentParameter[beam.Pipeline]) -> None:
+      del examples, model, a, b, c, d, e, f
 
     # Both functions should be parsed in the same way.
     for func in [func_a, func_b]:
@@ -153,6 +166,7 @@ class FunctionParserTest(tf.test.TestCase):
           'c': int,
           'd': str,
           'e': bytes,
+          'f': beam.Pipeline,
       })
       self.assertDictEqual(
           arg_formats, {
@@ -163,6 +177,7 @@ class FunctionParserTest(tf.test.TestCase):
               'c': ArgFormats.PARAMETER,
               'd': ArgFormats.PARAMETER,
               'e': ArgFormats.PARAMETER,
+              'f': ArgFormats.BEAM_PARAMETER,
           })
       self.assertDictEqual(arg_defaults, {})
       self.assertEqual(returned_values, {})
@@ -179,8 +194,9 @@ class FunctionParserTest(tf.test.TestCase):
                h: bool = False,
                i: Parameter[str] = 'default',
                j: Parameter[int] = 999,
+               k: BeamComponentParameter[beam.Pipeline] = None,
                examples: InputArtifact[standard_artifacts.Examples] = None):
-      del a, b, c, d, e, f, g, h, i, j, examples
+      del a, b, c, d, e, f, g, h, i, j, k, examples
 
     inputs, outputs, parameters, arg_formats, arg_defaults, returned_values = (
         parse_typehint_component_function(func_a))
@@ -204,6 +220,7 @@ class FunctionParserTest(tf.test.TestCase):
         'c': str,
         'i': str,
         'j': int,
+        'k': beam.Pipeline,
     })
     self.assertDictEqual(
         arg_formats, {
@@ -217,6 +234,7 @@ class FunctionParserTest(tf.test.TestCase):
             'h': ArgFormats.ARTIFACT_VALUE,
             'i': ArgFormats.PARAMETER,
             'j': ArgFormats.PARAMETER,
+            'k': ArgFormats.BEAM_PARAMETER,
             'examples': ArgFormats.INPUT_ARTIFACT,
         })
     self.assertDictEqual(
@@ -228,6 +246,7 @@ class FunctionParserTest(tf.test.TestCase):
             'h': False,
             'i': 'default',
             'j': 999,
+            'k': None,
             'examples': None,
         })
     self.assertEqual(returned_values, {})

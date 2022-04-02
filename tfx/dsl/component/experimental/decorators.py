@@ -23,12 +23,111 @@ from typing import Any, Callable, Dict, List, Optional, Type
 
 from tfx import types as tfx_types
 from tfx.dsl.component.experimental import function_parser
+from tfx.dsl.components.base import base_beam_component
+from tfx.dsl.components.base import base_beam_executor
 from tfx.dsl.components.base import base_component
 from tfx.dsl.components.base import base_executor
 from tfx.dsl.components.base import executor_spec
 from tfx.types import channel_utils
 from tfx.types import component_spec
 from tfx.types import system_executions
+
+try:
+  import apache_beam as beam  # pylint: disable=g-import-not-at-top
+  _BeamPipeline = beam.Pipeline
+except ModuleNotFoundError:
+  beam = None
+  _BeamPipeline = Any
+
+
+def _extract_func_args(
+    obj: str,
+    arg_formats: Dict[str, int],
+    arg_defaults: Dict[str, Any],
+    input_dict: Dict[str, List[tfx_types.Artifact]],
+    output_dict: Dict[str, List[tfx_types.Artifact]],
+    exec_properties: Dict[str, Any],
+    beam_pipeline: Optional[_BeamPipeline] = None,
+    ) -> Dict[str, Any]:
+  """Extracts function arguments for the decorated function."""
+  function_args = {}
+  for name, arg_format in arg_formats.items():
+    if arg_format == function_parser.ArgFormats.INPUT_ARTIFACT:
+      input_list = input_dict.get(name, [])
+      if len(input_list) == 1:
+        function_args[name] = input_list[0]
+      elif not input_list and name in arg_defaults:
+        # Do not pass the missing optional input.
+        pass
+      else:
+        raise ValueError((
+            'Expected input %r to %s to be a singleton ValueArtifact channel '
+            '(got %s instead).') % (name, obj, input_list))
+    elif arg_format == function_parser.ArgFormats.OUTPUT_ARTIFACT:
+      output_list = output_dict.get(name, [])
+      if len(output_list) == 1:
+        function_args[name] = output_list[0]
+      else:
+        raise ValueError((
+            'Expected output %r to %s to be a singleton ValueArtifact channel '
+            '(got %s instead).') % (name, obj, output_list))
+    elif arg_format == function_parser.ArgFormats.ARTIFACT_VALUE:
+      input_list = input_dict.get(name, [])
+      if len(input_list) == 1:
+        function_args[name] = input_list[0].value
+      elif not input_list and name in arg_defaults:
+        # Do not pass the missing optional input.
+        pass
+      else:
+        raise ValueError((
+            'Expected input %r to %s to be a singleton ValueArtifact channel '
+            '(got %s instead).') % (name, obj, input_list))
+    elif arg_format == function_parser.ArgFormats.PARAMETER:
+      if name in exec_properties:
+        function_args[name] = exec_properties[name]
+      elif name in arg_defaults:
+        # Do not pass the missing optional input.
+        pass
+      else:
+        raise ValueError((
+            'Expected non-optional parameter %r of %s to be provided, but no '
+            'value was passed.') % (name, obj))
+    elif arg_format == function_parser.ArgFormats.BEAM_PARAMETER:
+      function_args[name] = beam_pipeline
+      if name in arg_defaults and arg_defaults[name] is not None:
+        raise ValueError('beam Pipeline parameter does not allow default ',
+                         'value other than None.')
+    else:
+      raise ValueError('Unknown argument format: %r' % (arg_format,))
+  return function_args
+
+
+def _assign_returned_values(function, outputs: Dict[str, Any],
+                            returned_values: Dict[str, Any],
+                            output_dict: Dict[str, List[tfx_types.Artifact]]):
+  """Validates and assigns the outputs to the output_dict."""
+  if not isinstance(outputs, dict):
+    raise ValueError(
+        ('Expected component executor function %s to return a dict of '
+         'outputs (got %r instead).') % (function, outputs))
+
+  # Assign returned ValueArtifact values.
+  for name, is_optional in returned_values.items():
+    if name not in outputs:
+      raise ValueError(
+          'Did not receive expected output %r as return value from '
+          'component executor function %s.' % (name, function))
+    if not is_optional and outputs[name] is None:
+      raise ValueError(
+          'Non-nullable output %r received None return value from '
+          'component executor function %s.' % (name, function))
+    try:
+      output_dict[name][0].value = outputs[name]
+    except TypeError as e:
+      raise TypeError(
+          ('Return value %r for output %r is incompatible with output type '
+           '%r.') %
+          (outputs[name], name, output_dict[name][0].__class__)) from e
 
 
 class _SimpleComponent(base_component.BaseComponent):
@@ -67,6 +166,12 @@ class _SimpleComponent(base_component.BaseComponent):
     self._id = self.__class__.__name__
 
 
+class _SimpleBeamComponent(_SimpleComponent,
+                           base_beam_component.BaseBeamComponent):
+  """Component whose constructor generates spec instance from arguments."""
+  pass
+
+
 class _FunctionExecutor(base_executor.BaseExecutor):
   """Base class for function-based executors."""
 
@@ -90,81 +195,53 @@ class _FunctionExecutor(base_executor.BaseExecutor):
   def Do(self, input_dict: Dict[str, List[tfx_types.Artifact]],
          output_dict: Dict[str, List[tfx_types.Artifact]],
          exec_properties: Dict[str, Any]) -> None:
-    function_args = {}
-    for name, arg_format in self._ARG_FORMATS.items():
-      if arg_format == function_parser.ArgFormats.INPUT_ARTIFACT:
-        input_list = input_dict.get(name, [])
-        if len(input_list) == 1:
-          function_args[name] = input_list[0]
-        elif not input_list and name in self._ARG_DEFAULTS:
-          # Do not pass the missing optional input.
-          pass
-        else:
-          raise ValueError((
-              'Expected input %r to %s to be a singleton ValueArtifact channel '
-              '(got %s instead).') % (name, self, input_list))
-      elif arg_format == function_parser.ArgFormats.OUTPUT_ARTIFACT:
-        output_list = output_dict.get(name, [])
-        if len(output_list) == 1:
-          function_args[name] = output_list[0]
-        else:
-          raise ValueError((
-              'Expected output %r to %s to be a singleton ValueArtifact channel '
-              '(got %s instead).') % (name, self, output_list))
-      elif arg_format == function_parser.ArgFormats.ARTIFACT_VALUE:
-        input_list = input_dict.get(name, [])
-        if len(input_list) == 1:
-          function_args[name] = input_list[0].value
-        elif not input_list and name in self._ARG_DEFAULTS:
-          # Do not pass the missing optional input.
-          pass
-        else:
-          raise ValueError((
-              'Expected input %r to %s to be a singleton ValueArtifact channel '
-              '(got %s instead).') % (name, self, input_list))
-      elif arg_format == function_parser.ArgFormats.PARAMETER:
-        if name in exec_properties:
-          function_args[name] = exec_properties[name]
-        elif name in self._ARG_DEFAULTS:
-          # Do not pass the missing optional input.
-          pass
-        else:
-          raise ValueError((
-              'Expected non-optional parameter %r of %s to be provided, but no '
-              'value was passed.') % (name, self))
-      else:
-        raise ValueError('Unknown argument format: %r' % (arg_format,))
+    function_args = _extract_func_args(obj=str(self),
+                                       arg_formats=self._ARG_FORMATS,
+                                       arg_defaults=self._ARG_DEFAULTS,
+                                       input_dict=input_dict,
+                                       output_dict=output_dict,
+                                       exec_properties=exec_properties)
 
     # Call function and check returned values.
     outputs = self._FUNCTION(**function_args)
     outputs = outputs or {}
-    if not isinstance(outputs, dict):
-      raise ValueError(
-          ('Expected component executor function %s to return a dict of '
-           'outputs (got %r instead).') % (self._FUNCTION, outputs))
+    _assign_returned_values(
+        function=self._FUNCTION,
+        outputs=outputs,
+        returned_values=self._RETURNED_VALUES,
+        output_dict=output_dict)
 
-    # Assign returned ValueArtifact values.
-    for name, is_optional in self._RETURNED_VALUES.items():
-      if name not in outputs:
-        raise ValueError(
-            'Did not receive expected output %r as return value from '
-            'component executor function %s.' % (name, self._FUNCTION))
-      if not is_optional and outputs[name] is None:
-        raise ValueError(
-            'Non-nullable output %r received None return value from '
-            'component executor function %s.' % (name, self._FUNCTION))
-      try:
-        output_dict[name][0].value = outputs[name]
-      except TypeError:
-        raise TypeError(
-            ('Return value %r for output %r is incompatible with output type '
-             '%r.') % (outputs[name], name, output_dict[name][0].__class__))
+
+class _FunctionBeamExecutor(base_beam_executor.BaseBeamExecutor,
+                            _FunctionExecutor):
+  """Base class for function-based executors."""
+
+  def Do(self, input_dict: Dict[str, List[tfx_types.Artifact]],
+         output_dict: Dict[str, List[tfx_types.Artifact]],
+         exec_properties: Dict[str, Any]) -> None:
+    function_args = _extract_func_args(obj=str(self),
+                                       arg_formats=self._ARG_FORMATS,
+                                       arg_defaults=self._ARG_DEFAULTS,
+                                       input_dict=input_dict,
+                                       output_dict=output_dict,
+                                       exec_properties=exec_properties,
+                                       beam_pipeline=self._make_beam_pipeline())
+
+    # Call function and check returned values.
+    outputs = self._FUNCTION(**function_args)
+    outputs = outputs or {}
+    _assign_returned_values(
+        function=self._FUNCTION,
+        outputs=outputs,
+        returned_values=self._RETURNED_VALUES,
+        output_dict=output_dict)
 
 
 def component(
     func: Optional[types.FunctionType] = None,
     component_annotation: Optional[Type[
         system_executions.SystemExecution]] = None,
+    use_beam: bool = False,
 ) -> Callable[..., Any]:
   """Decorator: creates a component from a typehint-annotated Python function.
 
@@ -274,6 +351,24 @@ def component(
           'accuracy': model_obj.accuracy
         }
 
+  When the parameter `use_beam` is True, one of the parameters of the decorated
+  function type-annotated by BeamComponentParameter[beam.Pipeline] and the
+  default value can only be None. It will be replaced by a beam Pipeline made
+  with the tfx pipeline's beam_pipeline_args that's shared with other beam-based
+  components:
+
+      @component(use_beam=True)
+      def DataProcessingComponent(
+          input_examples: InputArtifact[standard_artifacts.Examples],
+          output_examples: OutputArtifact[standard_artifacts.Examples],
+          beam_pipeline: BeamComponentParameter[beam.Pipeline] = None,
+          ) -> None:
+        '''My simple trainer component.'''
+
+        records = read_examples(training_data.uri)
+        with beam_pipeline as p:
+          ...
+
   Experimental: no backwards compatibility guarantees.
 
   Args:
@@ -281,17 +376,20 @@ def component(
     component_annotation: used to annotate the python function-based component.
       It is a subclass of SystemExecution from
       third_party/py/tfx/types/system_executions.py; it can be None.
+    use_beam: Whether to create a component that is a subclass of
+      BaseBeamComponent. This allows a beam.Pipeline to be made with
+      tfx-pipeline-wise beam_pipeline_args.
 
   Returns:
-    `base_component.BaseComponent` subclass for the given component executor
-    function.
+    `base_component.BaseComponent` or `base_component.BaseBeamComponent`
+      subclass for the given component executor function.
 
   Raises:
     EnvironmentError: if the current Python interpreter is not Python 3.
   """
   if func is None:
     return functools.partial(
-        component, component_annotation=component_annotation)
+        component, component_annotation=component_annotation, use_beam=use_beam)
 
   # Defining a component within a nested class or function closure causes
   # problems because in this case, the generated component classes can't be
@@ -307,6 +405,11 @@ def component(
 
   inputs, outputs, parameters, arg_formats, arg_defaults, returned_values = (
       function_parser.parse_typehint_component_function(func))
+  if use_beam and list(parameters.values()).count(_BeamPipeline) != 1:
+    raise ValueError('The decorated function must have one and only one '
+                     'optional parameter of type '
+                     'BeamComponentParameter[beam.Pipeline] with '
+                     'default value None when use_beam=True.')
 
   spec_inputs = {}
   spec_outputs = {}
@@ -330,7 +433,7 @@ def component(
 
   executor_class = type(
       '%s_Executor' % func.__name__,
-      (_FunctionExecutor,),
+      (_FunctionBeamExecutor if use_beam else _FunctionExecutor,),
       {
           '_ARG_FORMATS': arg_formats,
           '_ARG_DEFAULTS': arg_defaults,
@@ -349,11 +452,14 @@ def component(
   module = sys.modules[func.__module__]
   setattr(module, '%s_Executor' % func.__name__, executor_class)
 
-  executor_spec_instance = executor_spec.ExecutorClassSpec(
+  executor_spec_class = (executor_spec.BeamExecutorSpec if use_beam else
+                         executor_spec.ExecutorClassSpec)
+  executor_spec_instance = executor_spec_class(
       executor_class=executor_class)
 
   return type(
-      func.__name__, (_SimpleComponent,), {
+      func.__name__, (_SimpleBeamComponent if use_beam else _SimpleComponent,),
+      {
           'SPEC_CLASS': component_spec_class,
           'EXECUTOR_SPEC': executor_spec_instance,
           '__module__': func.__module__,
