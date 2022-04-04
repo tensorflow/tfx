@@ -47,6 +47,12 @@ class NoneStrategy(resolver.ResolverStrategy):
     return None
 
 
+class UnregisteredStrategy(resolver.ResolverStrategy):
+
+  def resolve_artifacts(self, store, input_dict):
+    return input_dict
+
+
 @ops.register
 class RepeatOp(resolver_op.ResolverOp):
   num = resolver_op.ResolverOpProperty(type=int)
@@ -211,6 +217,20 @@ class ProcessorTest(test_case_utils.TfxTest):
 
     self.assertLen(result['examples'], 4)
     self.assertLen(result['model'], 4)
+
+  def testRunResolverSteps_UnregisteredResolverStrategy(self):
+    config = pipeline_pb2.ResolverConfig()
+    text_format.Parse(r"""
+    resolver_steps {
+      class_path: "__main__.UnregisteredStrategy"
+    }
+    """, config)
+    result = processor.run_resolver_steps(
+        self._input_dict,
+        resolver_steps=config.resolver_steps,
+        store=self._store)
+
+    self.assertEqual(result, self._input_dict)
 
 
 if __name__ == '__main__':
