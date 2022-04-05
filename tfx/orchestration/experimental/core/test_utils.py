@@ -35,7 +35,6 @@ from ml_metadata.proto import metadata_store_pb2
 class TfxTest(test_case_utils.TfxTest):
 
   def setUp(self):
-    super().setUp()
     mlmd_state.clear_in_memory_state()
 
 

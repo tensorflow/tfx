@@ -25,7 +25,7 @@ from tfx.orchestration import data_types_utils
 from tfx.orchestration import metadata
 from tfx.orchestration.experimental.core import constants
 from tfx.orchestration.experimental.core import mlmd_state
-from tfx.orchestration.experimental.core import node_state as nstate
+from tfx.orchestration.experimental.core import pipeline_state as pstate
 from tfx.orchestration.experimental.core import service_jobs
 from tfx.orchestration.experimental.core import sync_pipeline_task_gen as sptg
 from tfx.orchestration.experimental.core import task as task_lib
@@ -449,7 +449,7 @@ class SyncPipelineTaskGeneratorTest(test_utils.TfxTest, parameterized.TestCase):
         num_active_executions=0)
     self.assertIsInstance(task, task_lib.UpdateNodeStateTask)
     self.assertEqual('my_example_gen', task.node_uid.node_id)
-    self.assertEqual(nstate.NodeState.RUNNING, task.state)
+    self.assertEqual(pstate.NodeState.RUNNING, task.state)
 
   def test_service_job_success(self):
     """Tests task generation when example-gen service job succeeds."""
@@ -468,12 +468,12 @@ class SyncPipelineTaskGeneratorTest(test_utils.TfxTest, parameterized.TestCase):
                           task_lib.UpdateNodeStateTask)
     self.assertEqual('my_example_gen',
                      eg_update_node_state_task.node_uid.node_id)
-    self.assertEqual(nstate.NodeState.COMPLETE, eg_update_node_state_task.state)
+    self.assertEqual(pstate.NodeState.COMPLETE, eg_update_node_state_task.state)
     self.assertIsInstance(sg_update_node_state_task,
                           task_lib.UpdateNodeStateTask)
     self.assertEqual('my_statistics_gen',
                      sg_update_node_state_task.node_uid.node_id)
-    self.assertEqual(nstate.NodeState.RUNNING, sg_update_node_state_task.state)
+    self.assertEqual(pstate.NodeState.RUNNING, sg_update_node_state_task.state)
     self.assertIsInstance(sg_exec_node_task, task_lib.ExecNodeTask)
 
   @parameterized.parameters(False, True)
@@ -495,7 +495,7 @@ class SyncPipelineTaskGeneratorTest(test_utils.TfxTest, parameterized.TestCase):
         fail_fast=fail_fast)
     self.assertIsInstance(update_node_state_task, task_lib.UpdateNodeStateTask)
     self.assertEqual('my_example_gen', update_node_state_task.node_uid.node_id)
-    self.assertEqual(nstate.NodeState.FAILED, update_node_state_task.state)
+    self.assertEqual(pstate.NodeState.FAILED, update_node_state_task.state)
     self.assertIsInstance(finalize_task, task_lib.FinalizePipelineTask)
     self.assertEqual(status_lib.Code.ABORTED, finalize_task.status.code)
     self.assertRegexMatch(finalize_task.status.message, ['service job failed'])
@@ -530,13 +530,13 @@ class SyncPipelineTaskGeneratorTest(test_utils.TfxTest, parameterized.TestCase):
                           task_lib.UpdateNodeStateTask)
     self.assertEqual('my_statistics_gen',
                      stats_gen_update_node_state_task.node_uid.node_id)
-    self.assertEqual(nstate.NodeState.COMPLETE,
+    self.assertEqual(pstate.NodeState.COMPLETE,
                      stats_gen_update_node_state_task.state)
     self.assertIsInstance(schema_gen_update_node_state_task,
                           task_lib.UpdateNodeStateTask)
     self.assertEqual('my_schema_gen',
                      schema_gen_update_node_state_task.node_uid.node_id)
-    self.assertEqual(nstate.NodeState.RUNNING,
+    self.assertEqual(pstate.NodeState.RUNNING,
                      schema_gen_update_node_state_task.state)
     self.assertIsInstance(schema_gen_exec_node_task, task_lib.ExecNodeTask)
 
@@ -577,7 +577,7 @@ class SyncPipelineTaskGeneratorTest(test_utils.TfxTest, parameterized.TestCase):
     self.assertIsInstance(update_node_state_task, task_lib.UpdateNodeStateTask)
     self.assertEqual('my_statistics_gen',
                      update_node_state_task.node_uid.node_id)
-    self.assertEqual(nstate.NodeState.FAILED, update_node_state_task.state)
+    self.assertEqual(pstate.NodeState.FAILED, update_node_state_task.state)
     self.assertRegexMatch(update_node_state_task.status.message,
                           ['foobar error'])
     self.assertIsInstance(finalize_task, task_lib.FinalizePipelineTask)
@@ -602,7 +602,7 @@ class SyncPipelineTaskGeneratorTest(test_utils.TfxTest, parameterized.TestCase):
           with pipeline_state.node_state_update_context(
               task_lib.NodeUid.from_pipeline_node(
                   self._pipeline, self._stats_gen)) as node_state:
-            node_state.update(nstate.NodeState.STOPPING,
+            node_state.update(pstate.NodeState.STOPPING,
                               status_lib.Status(code=status_lib.Code.CANCELLED))
     else:
       num_tasks_generated = 1
@@ -649,7 +649,7 @@ class SyncPipelineTaskGeneratorTest(test_utils.TfxTest, parameterized.TestCase):
           m, self._pipeline)
       with pipeline_state:
         with pipeline_state.node_state_update_context(node_uid) as node_state:
-          node_state.update(nstate.NodeState.STARTING)
+          node_state.update(pstate.NodeState.STARTING)
 
     # New execution should be created for any previously canceled node when the
     # node state is STARTING.
@@ -661,7 +661,7 @@ class SyncPipelineTaskGeneratorTest(test_utils.TfxTest, parameterized.TestCase):
         num_active_executions=1)
     self.assertIsInstance(update_node_state_task, task_lib.UpdateNodeStateTask)
     self.assertEqual(node_uid, update_node_state_task.node_uid)
-    self.assertEqual(nstate.NodeState.RUNNING, update_node_state_task.state)
+    self.assertEqual(pstate.NodeState.RUNNING, update_node_state_task.state)
     self.assertEqual(node_uid, stats_gen_task.node_uid)
 
   @parameterized.parameters(False, True)
@@ -703,7 +703,7 @@ class SyncPipelineTaskGeneratorTest(test_utils.TfxTest, parameterized.TestCase):
         t.node_uid.node_id == 'my_evaluator'
     ]
     self.assertEqual(
-        nstate.NodeState.RUNNING if evaluate else nstate.NodeState.SKIPPED,
+        pstate.NodeState.RUNNING if evaluate else pstate.NodeState.SKIPPED,
         evaluator_update_node_state_task.state)
 
     exec_node_tasks = [t for t in tasks if isinstance(t, task_lib.ExecNodeTask)]

@@ -25,7 +25,6 @@ from tfx.orchestration import data_types_utils
 from tfx.orchestration import metadata
 from tfx.orchestration.experimental.core import async_pipeline_task_gen as asptg
 from tfx.orchestration.experimental.core import constants
-from tfx.orchestration.experimental.core import node_state as nstate
 from tfx.orchestration.experimental.core import pipeline_state as pstate
 from tfx.orchestration.experimental.core import service_jobs
 from tfx.orchestration.experimental.core import task as task_lib
@@ -347,7 +346,7 @@ class TaskManagerE2ETest(test_utils.TfxTest):
           service_jobs.DummyServiceJobManager()).generate(pipeline_state)
     self.assertLen(tasks, 2)
     self.assertIsInstance(tasks[0], task_lib.UpdateNodeStateTask)
-    self.assertEqual(nstate.NodeState.RUNNING, tasks[0].state)
+    self.assertEqual(pstate.NodeState.RUNNING, tasks[0].state)
     self.assertEqual('my_transform', tasks[0].node_uid.node_id)
     self.assertIsInstance(tasks[1], task_lib.ExecNodeTask)
     self.assertEqual('my_transform', tasks[1].node_uid.node_id)

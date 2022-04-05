@@ -21,7 +21,7 @@ import tensorflow as tf
 from tfx.orchestration import metadata
 from tfx.orchestration.experimental.core import async_pipeline_task_gen as asptg
 from tfx.orchestration.experimental.core import mlmd_state
-from tfx.orchestration.experimental.core import node_state as nstate
+from tfx.orchestration.experimental.core import pipeline_state as pstate
 from tfx.orchestration.experimental.core import service_jobs
 from tfx.orchestration.experimental.core import task as task_lib
 from tfx.orchestration.experimental.core import task_gen_utils
@@ -167,9 +167,9 @@ class AsyncPipelineTaskGeneratorTest(test_utils.TfxTest,
          num_active_executions=1,
          expected_exec_nodes=[self._transform])
     self.assertIsInstance(update_example_gen_task, task_lib.UpdateNodeStateTask)
-    self.assertEqual(nstate.NodeState.RUNNING, update_example_gen_task.state)
+    self.assertEqual(pstate.NodeState.RUNNING, update_example_gen_task.state)
     self.assertIsInstance(update_transform_task, task_lib.UpdateNodeStateTask)
-    self.assertEqual(nstate.NodeState.RUNNING, update_transform_task.state)
+    self.assertEqual(pstate.NodeState.RUNNING, update_transform_task.state)
     self.assertIsInstance(exec_transform_task, task_lib.ExecNodeTask)
 
     self._mock_service_job_manager.ensure_node_services.assert_has_calls([
@@ -203,11 +203,11 @@ class AsyncPipelineTaskGeneratorTest(test_utils.TfxTest,
         num_active_executions=1,
         expected_exec_nodes=[self._trainer])
     self.assertIsInstance(update_example_gen_task, task_lib.UpdateNodeStateTask)
-    self.assertEqual(nstate.NodeState.RUNNING, update_example_gen_task.state)
+    self.assertEqual(pstate.NodeState.RUNNING, update_example_gen_task.state)
     self.assertIsInstance(update_transform_task, task_lib.UpdateNodeStateTask)
-    self.assertEqual(nstate.NodeState.STARTED, update_transform_task.state)
+    self.assertEqual(pstate.NodeState.STARTED, update_transform_task.state)
     self.assertIsInstance(update_trainer_task, task_lib.UpdateNodeStateTask)
-    self.assertEqual(nstate.NodeState.RUNNING, update_trainer_task.state)
+    self.assertEqual(pstate.NodeState.RUNNING, update_trainer_task.state)
     self.assertIsInstance(exec_trainer_task, task_lib.ExecNodeTask)
 
     # Mark the trainer execution complete.
@@ -222,7 +222,7 @@ class AsyncPipelineTaskGeneratorTest(test_utils.TfxTest,
         num_active_executions=0)
     for task in tasks:
       self.assertIsInstance(task, task_lib.UpdateNodeStateTask)
-      self.assertEqual(nstate.NodeState.RUNNING, update_example_gen_task.state)
+      self.assertEqual(pstate.NodeState.RUNNING, update_example_gen_task.state)
 
     # Fake another ExampleGen run.
     test_utils.fake_example_gen_run(self._mlmd_connection, self._example_gen, 1,
@@ -241,12 +241,12 @@ class AsyncPipelineTaskGeneratorTest(test_utils.TfxTest,
         num_active_executions=2,
         expected_exec_nodes=[self._transform, self._trainer])
     self.assertIsInstance(update_example_gen_task, task_lib.UpdateNodeStateTask)
-    self.assertEqual(nstate.NodeState.RUNNING, update_example_gen_task.state)
+    self.assertEqual(pstate.NodeState.RUNNING, update_example_gen_task.state)
     self.assertIsInstance(update_transform_task, task_lib.UpdateNodeStateTask)
-    self.assertEqual(nstate.NodeState.RUNNING, update_transform_task.state)
+    self.assertEqual(pstate.NodeState.RUNNING, update_transform_task.state)
     self.assertIsInstance(exec_transform_task, task_lib.ExecNodeTask)
     self.assertIsInstance(update_trainer_task, task_lib.UpdateNodeStateTask)
-    self.assertEqual(nstate.NodeState.RUNNING, update_trainer_task.state)
+    self.assertEqual(pstate.NodeState.RUNNING, update_trainer_task.state)
     self.assertIsInstance(exec_trainer_task, task_lib.ExecNodeTask)
 
     # Re-generation will produce the same tasks when task queue disabled.
@@ -260,18 +260,18 @@ class AsyncPipelineTaskGeneratorTest(test_utils.TfxTest,
         if use_task_queue else [self._transform, self._trainer])
     if not use_task_queue:
       self.assertIsInstance(tasks[0], task_lib.UpdateNodeStateTask)
-      self.assertEqual(nstate.NodeState.RUNNING, update_example_gen_task.state)
+      self.assertEqual(pstate.NodeState.RUNNING, update_example_gen_task.state)
       self.assertIsInstance(tasks[1], task_lib.UpdateNodeStateTask)
-      self.assertEqual(nstate.NodeState.RUNNING, update_example_gen_task.state)
+      self.assertEqual(pstate.NodeState.RUNNING, update_example_gen_task.state)
       self.assertIsInstance(tasks[2], task_lib.ExecNodeTask)
       self.assertIsInstance(tasks[3], task_lib.UpdateNodeStateTask)
-      self.assertEqual(nstate.NodeState.RUNNING, update_example_gen_task.state)
+      self.assertEqual(pstate.NodeState.RUNNING, update_example_gen_task.state)
       self.assertIsInstance(tasks[4], task_lib.ExecNodeTask)
       exec_transform_task = tasks[2]
       exec_trainer_task = tasks[4]
     else:
       self.assertIsInstance(tasks[0], task_lib.UpdateNodeStateTask)
-      self.assertEqual(nstate.NodeState.RUNNING, update_example_gen_task.state)
+      self.assertEqual(pstate.NodeState.RUNNING, update_example_gen_task.state)
 
     # Mark transform execution complete.
     self._finish_node_execution(use_task_queue, exec_transform_task)
@@ -291,11 +291,11 @@ class AsyncPipelineTaskGeneratorTest(test_utils.TfxTest,
         num_active_executions=1,
         expected_exec_nodes=[self._trainer])
     self.assertIsInstance(update_example_gen_task, task_lib.UpdateNodeStateTask)
-    self.assertEqual(nstate.NodeState.RUNNING, update_example_gen_task.state)
+    self.assertEqual(pstate.NodeState.RUNNING, update_example_gen_task.state)
     self.assertIsInstance(update_transform_task, task_lib.UpdateNodeStateTask)
-    self.assertEqual(nstate.NodeState.STARTED, update_transform_task.state)
+    self.assertEqual(pstate.NodeState.STARTED, update_transform_task.state)
     self.assertIsInstance(update_trainer_task, task_lib.UpdateNodeStateTask)
-    self.assertEqual(nstate.NodeState.RUNNING, update_trainer_task.state)
+    self.assertEqual(pstate.NodeState.RUNNING, update_trainer_task.state)
     self.assertIsInstance(exec_trainer_task, task_lib.ExecNodeTask)
 
     # Finally, no new tasks once trainer completes.
@@ -308,11 +308,11 @@ class AsyncPipelineTaskGeneratorTest(test_utils.TfxTest,
          num_new_executions=0,
          num_active_executions=0)
     self.assertIsInstance(update_example_gen_task, task_lib.UpdateNodeStateTask)
-    self.assertEqual(nstate.NodeState.RUNNING, update_example_gen_task.state)
+    self.assertEqual(pstate.NodeState.RUNNING, update_example_gen_task.state)
     self.assertIsInstance(update_transform_task, task_lib.UpdateNodeStateTask)
-    self.assertEqual(nstate.NodeState.STARTED, update_transform_task.state)
+    self.assertEqual(pstate.NodeState.STARTED, update_transform_task.state)
     self.assertIsInstance(update_trainer_task, task_lib.UpdateNodeStateTask)
-    self.assertEqual(nstate.NodeState.STARTED, update_trainer_task.state)
+    self.assertEqual(pstate.NodeState.STARTED, update_trainer_task.state)
 
     if use_task_queue:
       self.assertTrue(self._task_queue.is_empty())
@@ -337,7 +337,7 @@ class AsyncPipelineTaskGeneratorTest(test_utils.TfxTest,
           with pipeline_state.node_state_update_context(
               task_lib.NodeUid.from_pipeline_node(
                   self._pipeline, self._transform)) as node_state:
-            node_state.update(nstate.NodeState.STOPPING,
+            node_state.update(pstate.NodeState.STOPPING,
                               status_lib.Status(code=status_lib.Code.CANCELLED))
     else:
       num_tasks_generated = 3
@@ -353,12 +353,12 @@ class AsyncPipelineTaskGeneratorTest(test_utils.TfxTest,
 
     if stop_transform:
       self.assertIsInstance(tasks[0], task_lib.UpdateNodeStateTask)
-      self.assertEqual(nstate.NodeState.RUNNING, tasks[0].state)
+      self.assertEqual(pstate.NodeState.RUNNING, tasks[0].state)
     else:
       self.assertIsInstance(tasks[0], task_lib.UpdateNodeStateTask)
-      self.assertEqual(nstate.NodeState.RUNNING, tasks[0].state)
+      self.assertEqual(pstate.NodeState.RUNNING, tasks[0].state)
       self.assertIsInstance(tasks[1], task_lib.UpdateNodeStateTask)
-      self.assertEqual(nstate.NodeState.RUNNING, tasks[1].state)
+      self.assertEqual(pstate.NodeState.RUNNING, tasks[1].state)
       self.assertIsInstance(tasks[2], task_lib.ExecNodeTask)
 
   def test_service_job_failed(self):

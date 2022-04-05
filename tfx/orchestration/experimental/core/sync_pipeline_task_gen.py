@@ -21,7 +21,6 @@ from tfx.orchestration import data_types_utils
 from tfx.orchestration import metadata
 from tfx.orchestration.experimental.core import constants
 from tfx.orchestration.experimental.core import mlmd_state
-from tfx.orchestration.experimental.core import node_state as nstate
 from tfx.orchestration.experimental.core import pipeline_state as pstate
 from tfx.orchestration.experimental.core import service_jobs
 from tfx.orchestration.experimental.core import task as task_lib
@@ -142,9 +141,9 @@ class _Generator:
         tasks = self._generate_tasks_for_node(node)
         for task in tasks:
           if isinstance(task, task_lib.UpdateNodeStateTask):
-            if nstate.is_node_state_success(task.state):
+            if pstate.is_node_state_success(task.state):
               successful_node_ids.add(node_id)
-            elif nstate.is_node_state_failure(task.state):
+            elif pstate.is_node_state_failure(task.state):
               failed_nodes_dict[node_id] = task.status
               if self._fail_fast:
                 finalize_pipeline_task = self._abort_task(task.status.message)
@@ -195,8 +194,8 @@ class _Generator:
     result = []
 
     node_state = self._node_states_dict[node_uid]
-    if node_state.state in (nstate.NodeState.STOPPING, nstate.NodeState.STOPPED,
-                            nstate.NodeState.PAUSING, nstate.NodeState.PAUSED):
+    if node_state.state in (pstate.NodeState.STOPPING, pstate.NodeState.STOPPED,
+                            pstate.NodeState.PAUSING, pstate.NodeState.PAUSED):
       logging.info('Ignoring node in state \'%s\' for task generation: %s',
                    node_state.state, node_uid)
       return result
@@ -213,18 +212,18 @@ class _Generator:
         result.append(
             task_lib.UpdateNodeStateTask(
                 node_uid=node_uid,
-                state=nstate.NodeState.FAILED,
+                state=pstate.NodeState.FAILED,
                 status=status_lib.Status(
                     code=status_lib.Code.ABORTED, message=error_msg)))
       elif service_status == service_jobs.ServiceStatus.SUCCESS:
         logging.info('Service node successful: %s', node_uid)
         result.append(
             task_lib.UpdateNodeStateTask(
-                node_uid=node_uid, state=nstate.NodeState.COMPLETE))
+                node_uid=node_uid, state=pstate.NodeState.COMPLETE))
       elif service_status == service_jobs.ServiceStatus.RUNNING:
         result.append(
             task_lib.UpdateNodeStateTask(
-                node_uid=node_uid, state=nstate.NodeState.RUNNING))
+                node_uid=node_uid, state=pstate.NodeState.RUNNING))
       return result
 
     # If a task for the node is already tracked by the task queue, it need
@@ -238,7 +237,7 @@ class _Generator:
         result.append(
             task_lib.UpdateNodeStateTask(
                 node_uid=node_uid,
-                state=nstate.NodeState.FAILED,
+                state=pstate.NodeState.FAILED,
                 status=status_lib.Status(
                     code=status_lib.Code.ABORTED, message=error_msg)))
       return result
@@ -254,7 +253,7 @@ class _Generator:
       logging.info('Node successful: %s', node_uid)
       result.append(
           task_lib.UpdateNodeStateTask(
-              node_uid=node_uid, state=nstate.NodeState.COMPLETE))
+              node_uid=node_uid, state=pstate.NodeState.COMPLETE))
       return result
 
     # If one of the executions in the set for the node failed or cancelled, the
@@ -266,7 +265,7 @@ class _Generator:
         e for e in latest_executions_set if execution_lib.is_execution_failed(e)
     ]
     if failed_executions and (len(latest_executions_set) > 1 or
-                              node_state.state != nstate.NodeState.STARTING):
+                              node_state.state != pstate.NodeState.STARTING):
       error_msg = f'node {node_uid} failed; '
       for e in failed_executions:
         error_msg_value = e.custom_properties.get(
@@ -277,7 +276,7 @@ class _Generator:
       result.append(
           task_lib.UpdateNodeStateTask(
               node_uid=node_uid,
-              state=nstate.NodeState.FAILED,
+              state=pstate.NodeState.FAILED,
               status=status_lib.Status(
                   code=status_lib.Code.ABORTED, message=error_msg)))
       return result
@@ -291,7 +290,7 @@ class _Generator:
         execution.last_known_state = metadata_store_pb2.Execution.RUNNING
       result.append(
           task_lib.UpdateNodeStateTask(
-              node_uid=node_uid, state=nstate.NodeState.RUNNING))
+              node_uid=node_uid, state=pstate.NodeState.RUNNING))
       result.append(
           task_gen_utils.generate_task_from_execution(self._mlmd_handle,
                                                       self._pipeline, node,
@@ -314,7 +313,7 @@ class _Generator:
     if resolved_info is None:
       result.append(
           task_lib.UpdateNodeStateTask(
-              node_uid=node_uid, state=nstate.NodeState.SKIPPED))
+              node_uid=node_uid, state=pstate.NodeState.SKIPPED))
       return result
 
     if not resolved_info.input_artifacts:
@@ -322,7 +321,7 @@ class _Generator:
       result.append(
           task_lib.UpdateNodeStateTask(
               node_uid=node_uid,
-              state=nstate.NodeState.FAILED,
+              state=pstate.NodeState.FAILED,
               status=status_lib.Status(
                   code=status_lib.Code.ABORTED, message=error_msg)))
       return result
@@ -355,7 +354,7 @@ class _Generator:
       result.append(
           task_lib.UpdateNodeStateTask(
               node_uid=node_uid,
-              state=nstate.NodeState.FAILED,
+              state=pstate.NodeState.FAILED,
               status=status_lib.Status(
                   code=status_lib.Code.ABORTED, message=error_msg)))
       return result
@@ -363,7 +362,7 @@ class _Generator:
     outputs_utils.make_output_dirs(output_artifacts)
     result.append(
         task_lib.UpdateNodeStateTask(
-            node_uid=node_uid, state=nstate.NodeState.RUNNING))
+            node_uid=node_uid, state=pstate.NodeState.RUNNING))
     result.append(
         task_lib.ExecNodeTask(
             node_uid=node_uid,

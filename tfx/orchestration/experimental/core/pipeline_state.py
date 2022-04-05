@@ -15,20 +15,18 @@
 
 import base64
 import contextlib
-import copy
 import threading
 import time
 from typing import Dict, Iterator, List, Mapping, Optional, Tuple
 import uuid
 
 from absl import logging
+import attr
 from tfx import types
 from tfx.orchestration import data_types_utils
 from tfx.orchestration import metadata
 from tfx.orchestration.experimental.core import env
-from tfx.orchestration.experimental.core import event_observer
 from tfx.orchestration.experimental.core import mlmd_state
-from tfx.orchestration.experimental.core import node_state as nstate
 from tfx.orchestration.experimental.core import orchestration_options
 from tfx.orchestration.experimental.core import task as task_lib
 from tfx.orchestration.experimental.core import task_gen_utils
@@ -74,6 +72,100 @@ _EXECUTION_STATE_TO_RUN_STATE_MAP = {
         run_state_pb2.RunState.COMPLETE,
     metadata_store_pb2.Execution.State.CANCELED:
         run_state_pb2.RunState.STOPPED,
+}
+
+
+@attr.s(auto_attribs=True, kw_only=True)
+class NodeState(json_utils.Jsonable):
+  """Records node state.
+
+  Attributes:
+    state: Current state of the node.
+    status: Status of the node in state STOPPING or STOPPED.
+  """
+
+  STARTING = 'starting'  # Pending work before state can change to STARTED.
+  STARTED = 'started'  # Node is ready for execution.
+  STOPPING = 'stopping'  # Pending work before state can change to STOPPED.
+  STOPPED = 'stopped'  # Node execution is stopped.
+  RUNNING = 'running'  # Node is under active execution (i.e. triggered).
+  COMPLETE = 'complete'  # Node execution completed successfully.
+  SKIPPED = 'skipped'  # Node execution skipped due to conditional.
+  # Node execution skipped due to partial run.
+  SKIPPED_PARTIAL_RUN = 'skipped_partial_run'
+  PAUSING = 'pausing'  # Pending work before state can change to PAUSED.
+  PAUSED = 'paused'  # Node was paused and may be resumed in the future.
+  FAILED = 'failed'  # Node execution failed due to errors.
+
+  state: str = attr.ib(
+      default=STARTED,
+      validator=attr.validators.in_([
+          STARTING, STARTED, STOPPING, STOPPED, RUNNING, COMPLETE, SKIPPED,
+          SKIPPED_PARTIAL_RUN, PAUSING, PAUSED, FAILED
+      ]),
+      on_setattr=attr.setters.validate)
+  status_code: Optional[int] = None
+  status_msg: str = ''
+
+  @property
+  def status(self) -> Optional[status_lib.Status]:
+    if self.status_code is not None:
+      return status_lib.Status(code=self.status_code, message=self.status_msg)
+    return None
+
+  def update(self,
+             state: str,
+             status: Optional[status_lib.Status] = None) -> None:
+    self.state = state
+    if status is not None:
+      self.status_code = status.code
+      self.status_msg = status.message
+    else:
+      self.status_code = None
+      self.status_msg = ''
+
+  def is_startable(self) -> bool:
+    """Returns True if the node can be started."""
+    return self.state in set(
+        [self.PAUSED, self.STOPPING, self.STOPPED, self.FAILED])
+
+  def is_stoppable(self) -> bool:
+    """Returns True if the node can be stopped."""
+    return self.state in set(
+        [self.STARTING, self.STARTED, self.RUNNING, self.PAUSING, self.PAUSED])
+
+  def is_pausable(self) -> bool:
+    """Returns True if the node can be stopped."""
+    return self.state in set([self.STARTING, self.STARTED, self.RUNNING])
+
+  def is_success(self) -> bool:
+    return is_node_state_success(self.state)
+
+  def is_failure(self) -> bool:
+    return is_node_state_failure(self.state)
+
+
+def is_node_state_success(state: str) -> bool:
+  return state in (NodeState.COMPLETE, NodeState.SKIPPED,
+                   NodeState.SKIPPED_PARTIAL_RUN)
+
+
+def is_node_state_failure(state: str) -> bool:
+  return state == NodeState.FAILED
+
+
+_NODE_STATE_TO_RUN_STATE_MAP = {
+    NodeState.STARTING: run_state_pb2.RunState.UNKNOWN,
+    NodeState.STARTED: run_state_pb2.RunState.READY,
+    NodeState.STOPPING: run_state_pb2.RunState.UNKNOWN,
+    NodeState.STOPPED: run_state_pb2.RunState.STOPPED,
+    NodeState.RUNNING: run_state_pb2.RunState.RUNNING,
+    NodeState.COMPLETE: run_state_pb2.RunState.COMPLETE,
+    NodeState.SKIPPED: run_state_pb2.RunState.SKIPPED,
+    NodeState.SKIPPED_PARTIAL_RUN: run_state_pb2.RunState.SKIPPED_PARTIAL_RUN,
+    NodeState.PAUSING: run_state_pb2.RunState.UNKNOWN,
+    NodeState.PAUSED: run_state_pb2.RunState.PAUSED,
+    NodeState.FAILED: run_state_pb2.RunState.FAILED
 }
 
 
@@ -189,9 +281,6 @@ class PipelineState:
           pipeline.runtime_spec.pipeline_run_id.field_value.string_value)
       _save_skipped_node_states(pipeline, reused_pipeline_view, execution)
     execution = execution_lib.put_execution(mlmd_handle, execution, [context])
-    event_observer.notify(
-        event_observer.PipelineStarted(
-            execution=execution, pipeline_id=pipeline_uid.pipeline_id))
     record_state_change_time()
 
     return cls(
@@ -380,7 +469,7 @@ class PipelineState:
 
   @contextlib.contextmanager
   def node_state_update_context(
-      self, node_uid: task_lib.NodeUid) -> Iterator[nstate.NodeState]:
+      self, node_uid: task_lib.NodeUid) -> Iterator[NodeState]:
     """Context manager for updating the node state."""
     self._check_context()
     if not _is_node_uid_in_pipeline(node_uid, self.pipeline):
@@ -389,27 +478,17 @@ class PipelineState:
           message=(f'Node {node_uid} does not belong to the pipeline '
                    f'{self.pipeline_uid}'))
     node_states_dict = _get_node_states_dict(self._execution)
-    node_state = node_states_dict.setdefault(node_uid.node_id,
-                                             nstate.NodeState())
-    old_state = copy.deepcopy(node_state)
+    node_state = node_states_dict.setdefault(node_uid.node_id, NodeState())
+    old_state = node_state.state
     yield node_state
-    if old_state.state != node_state.state:
-      logging.info('Changing node state: %s -> %s; node uid: %s',
-                   old_state.state, node_state.state, node_uid)
-      event_observer.notify(
-          event_observer.NodeStateChange(
-              execution=self._execution,
-              pipeline_id=node_uid.pipeline_uid.pipeline_id,
-              pipeline_run=self.pipeline_run_id,
-              node_id=node_uid.node_id,
-              old_state=old_state,
-              new_state=node_state))
+    if old_state != node_state.state:
+      logging.info('Changing node state: %s -> %s; node uid: %s', old_state,
+                   node_state.state, node_uid)
     _save_node_states_dict(self._execution, node_states_dict)
 
-  def get_node_state(
-      self,
-      node_uid: task_lib.NodeUid,
-      state_type: Optional[str] = _NODE_STATES) -> nstate.NodeState:
+  def get_node_state(self,
+                     node_uid: task_lib.NodeUid,
+                     state_type: Optional[str] = _NODE_STATES) -> NodeState:
     """Gets node state of a specified node."""
     self._check_context()
     if not _is_node_uid_in_pipeline(node_uid, self.pipeline):
@@ -418,21 +497,19 @@ class PipelineState:
           message=(f'Node {node_uid} does not belong to the pipeline '
                    f'{self.pipeline_uid}'))
     node_states_dict = _get_node_states_dict(self._execution, state_type)
-    return node_states_dict.get(node_uid.node_id, nstate.NodeState())
+    return node_states_dict.get(node_uid.node_id, NodeState())
 
-  def get_node_states_dict(self) -> Dict[task_lib.NodeUid, nstate.NodeState]:
+  def get_node_states_dict(self) -> Dict[task_lib.NodeUid, NodeState]:
     """Gets all node states of the pipeline."""
     self._check_context()
     node_states_dict = _get_node_states_dict(self._execution, _NODE_STATES)
     result = {}
     for node in get_all_pipeline_nodes(self.pipeline):
       node_uid = task_lib.NodeUid.from_pipeline_node(self.pipeline, node)
-      result[node_uid] = node_states_dict.get(node_uid.node_id,
-                                              nstate.NodeState())
+      result[node_uid] = node_states_dict.get(node_uid.node_id, NodeState())
     return result
 
-  def get_previous_node_states_dict(
-      self) -> Dict[task_lib.NodeUid, nstate.NodeState]:
+  def get_previous_node_states_dict(self) -> Dict[task_lib.NodeUid, NodeState]:
     """Gets all node states of the pipeline from previous run."""
     self._check_context()
     node_states_dict = _get_node_states_dict(self._execution,
@@ -637,13 +714,24 @@ class PipelineView:
         status_code=self.pipeline_status_code,
         status_msg=self.pipeline_status_message)
 
+  def _convert_node_state_to_run_state(self, node_state: NodeState):
+    node_status_code_value = None
+    if node_state.status_code is not None:
+      node_status_code_value = run_state_pb2.RunState.StatusCodeValue(
+          value=node_state.status_code)
+    return run_state_pb2.RunState(
+        state=_NODE_STATE_TO_RUN_STATE_MAP[node_state.state],
+        status_code=node_status_code_value,
+        status_msg=node_state.status_msg)
+
   def get_node_run_states(self) -> Dict[str, run_state_pb2.RunState]:
     """Returns a dict mapping node id to current run state."""
     result = {}
     node_states_dict = _get_node_states_dict(self.execution, _NODE_STATES)
     for node in get_all_pipeline_nodes(self.pipeline):
-      node_state = node_states_dict.get(node.node_info.id, nstate.NodeState())
-      result[node.node_info.id] = node_state.to_run_state()
+      node_state = node_states_dict.get(node.node_info.id, NodeState())
+      result[node.node_info.id] = self._convert_node_state_to_run_state(
+          node_state)
     return result
 
   def get_previous_node_run_states(self) -> Dict[str, run_state_pb2.RunState]:
@@ -655,7 +743,8 @@ class PipelineView:
       if node.node_info.id not in node_states_dict:
         continue
       node_state = node_states_dict[node.node_info.id]
-      result[node.node_info.id] = node_state.to_run_state()
+      result[node.node_info.id] = self._convert_node_state_to_run_state(
+          node_state)
     return result
 
   def get_property(self, property_key: str) -> Optional[types.Property]:
@@ -663,16 +752,16 @@ class PipelineView:
     return _get_metadata_value(
         self.execution.custom_properties.get(property_key))
 
-  def get_node_states_dict(self) -> Dict[str, nstate.NodeState]:
+  def get_node_states_dict(self) -> Dict[str, NodeState]:
     """Returns a dict mapping node id to node state."""
     result = {}
     node_states_dict = _get_node_states_dict(self.execution, _NODE_STATES)
     for node in get_all_pipeline_nodes(self.pipeline):
       result[node.node_info.id] = node_states_dict.get(node.node_info.id,
-                                                       nstate.NodeState())
+                                                       NodeState())
     return result
 
-  def get_previous_node_states_dict(self) -> Dict[str, nstate.NodeState]:
+  def get_previous_node_states_dict(self) -> Dict[str, NodeState]:
     """Returns a dict mapping node id to node state in previous run."""
     result = {}
     node_states_dict = _get_node_states_dict(self.execution,
@@ -831,7 +920,7 @@ def _base64_decode_update_options(
 
 def _get_node_states_dict(
     pipeline_execution: metadata_store_pb2.Execution,
-    state_type: Optional[str] = _NODE_STATES) -> Dict[str, nstate.NodeState]:
+    state_type: Optional[str] = _NODE_STATES) -> Dict[str, NodeState]:
   """Gets node states dict from pipeline execution with specified type."""
   if state_type not in [_NODE_STATES, _PREVIOUS_NODE_STATES]:
     raise status_lib.StatusNotOkError(
@@ -844,7 +933,7 @@ def _get_node_states_dict(
 
 
 def _save_node_states_dict(pipeline_execution: metadata_store_pb2.Execution,
-                           node_states: Dict[str, nstate.NodeState],
+                           node_states: Dict[str, NodeState],
                            state_type: Optional[str] = _NODE_STATES) -> None:
   """Saves node states dict to pipeline execution with specified type."""
   data_types_utils.set_metadata_value(
@@ -868,17 +957,16 @@ def _save_skipped_node_states(pipeline: pipeline_pb2.Pipeline,
     node_id = node.node_info.id
     if node.execution_options.HasField('skip'):
       logging.info('Node %s is skipped in this partial run.', node_id)
-      node_states_dict[node_id] = nstate.NodeState(
-          state=nstate.NodeState.SKIPPED_PARTIAL_RUN)
+      node_states_dict[node_id] = NodeState(state=NodeState.SKIPPED_PARTIAL_RUN)
       if node_id in reused_pipeline_node_states_dict:
         # Indicates a node's in any base run when skipped. If a user makes
         # a chain of partial runs, we record the latest time when the
         # skipped node has a different state.
         reused_node_state = reused_pipeline_node_states_dict[node_id]
-        if reused_node_state.state == nstate.NodeState.SKIPPED_PARTIAL_RUN:
+        if reused_node_state.state == NodeState.SKIPPED_PARTIAL_RUN:
           previous_node_states_dict[
               node_id] = reused_pipeline_previous_node_states_dict.get(
-                  node_id, nstate.NodeState())
+                  node_id, NodeState())
         else:
           previous_node_states_dict[node_id] = reused_node_state
   if node_states_dict:

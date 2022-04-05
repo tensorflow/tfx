@@ -21,7 +21,6 @@ from absl import logging
 from tfx import types
 from tfx.orchestration import metadata
 from tfx.orchestration.experimental.core import constants
-from tfx.orchestration.experimental.core import node_state as nstate
 from tfx.orchestration.experimental.core import pipeline_state as pstate
 from tfx.orchestration.experimental.core import service_jobs
 from tfx.orchestration.experimental.core import task as task_lib
@@ -111,10 +110,10 @@ class _Generator:
 
       with self._pipeline_state:
         node_state = self._pipeline_state.get_node_state(node_uid)
-        if node_state.state in (nstate.NodeState.STOPPING,
-                                nstate.NodeState.STOPPED,
-                                nstate.NodeState.PAUSING,
-                                nstate.NodeState.PAUSED):
+        if node_state.state in (pstate.NodeState.STOPPING,
+                                pstate.NodeState.STOPPED,
+                                pstate.NodeState.PAUSING,
+                                pstate.NodeState.PAUSED):
           logging.info('Ignoring node in state \'%s\' for task generation: %s',
                        node_state.state, node_uid)
           continue
@@ -128,13 +127,13 @@ class _Generator:
           result.append(
               task_lib.UpdateNodeStateTask(
                   node_uid=node_uid,
-                  state=nstate.NodeState.FAILED,
+                  state=pstate.NodeState.FAILED,
                   status=status_lib.Status(
                       code=status_lib.Code.ABORTED, message=error_msg)))
         else:
           result.append(
               task_lib.UpdateNodeStateTask(
-                  node_uid=node_uid, state=nstate.NodeState.RUNNING))
+                  node_uid=node_uid, state=pstate.NodeState.RUNNING))
         continue
 
       # If a task for the node is already tracked by the task queue, it need
@@ -149,7 +148,7 @@ class _Generator:
             result.append(
                 task_lib.UpdateNodeStateTask(
                     node_uid=node_uid,
-                    state=nstate.NodeState.FAILED,
+                    state=pstate.NodeState.FAILED,
                     status=status_lib.Status(
                         code=status_lib.Code.ABORTED, message=error_msg)))
         continue
@@ -180,7 +179,7 @@ class _Generator:
     if exec_node_task:
       result.append(
           task_lib.UpdateNodeStateTask(
-              node_uid=node_uid, state=nstate.NodeState.RUNNING))
+              node_uid=node_uid, state=pstate.NodeState.RUNNING))
       result.append(exec_node_task)
       return result
 
@@ -229,7 +228,7 @@ class _Generator:
           latest_exec_executor_spec_fp == current_exec_executor_spec_fp):
         result.append(
             task_lib.UpdateNodeStateTask(
-                node_uid=node_uid, state=nstate.NodeState.STARTED))
+                node_uid=node_uid, state=pstate.NodeState.STARTED))
         return result
 
     execution = execution_publish_utils.register_execution(
@@ -251,7 +250,7 @@ class _Generator:
         result.append(
             task_lib.UpdateNodeStateTask(
                 node_uid=node_uid,
-                state=nstate.NodeState.FAILED,
+                state=pstate.NodeState.FAILED,
                 status=status_lib.Status(
                     code=status_lib.Code.ABORTED, message=error_msg)))
         return result
@@ -260,7 +259,7 @@ class _Generator:
     outputs_utils.make_output_dirs(output_artifacts)
     result.append(
         task_lib.UpdateNodeStateTask(
-            node_uid=node_uid, state=nstate.NodeState.RUNNING))
+            node_uid=node_uid, state=pstate.NodeState.RUNNING))
     result.append(
         task_lib.ExecNodeTask(
             node_uid=node_uid,
