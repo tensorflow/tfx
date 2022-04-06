@@ -27,6 +27,7 @@ from tfx.orchestration import data_types_utils
 from tfx.orchestration import metadata
 from tfx.orchestration.experimental.core import async_pipeline_task_gen
 from tfx.orchestration.experimental.core import constants
+from tfx.orchestration.experimental.core import event_observer
 from tfx.orchestration.experimental.core import mlmd_state
 from tfx.orchestration.experimental.core import pipeline_state as pstate
 from tfx.orchestration.experimental.core import service_jobs
@@ -696,6 +697,11 @@ def _orchestrate_stop_initiated_pipeline(
       # Update pipeline execution state in MLMD.
       pipeline_state.set_pipeline_execution_state(
           _mlmd_execution_code(stop_reason))
+      event_observer.notify(
+          event_observer.PipelineFinished(
+              execution=pipeline_state._execution,  # pylint: disable=protected-access
+              pipeline_id=pipeline_state.pipeline_uid.pipeline_id,
+              status=stop_reason))
 
 
 def _orchestrate_update_initiated_pipeline(

@@ -26,6 +26,7 @@ from tfx.dsl.compiler import constants
 from tfx.orchestration import metadata
 from tfx.orchestration.experimental.core import async_pipeline_task_gen
 from tfx.orchestration.experimental.core import env
+from tfx.orchestration.experimental.core import event_observer
 from tfx.orchestration.experimental.core import mlmd_state
 from tfx.orchestration.experimental.core import orchestration_options
 from tfx.orchestration.experimental.core import pipeline_ops
@@ -646,7 +647,16 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
                                                 mock_gen_task_from_active,
                                                 mock_async_task_gen,
                                                 mock_sync_task_gen):
-    with self._mlmd_connection as m:
+    events = []
+
+    def recorder(event):
+      if not isinstance(event, event_observer.PipelineFinished):
+        return
+      events.append(event)
+
+    with event_observer.init(), self._mlmd_connection as m:
+      event_observer.register_observer(recorder)
+
       pipeline.nodes.add().pipeline_node.node_info.id = 'ExampleGen'
       pipeline.nodes.add().pipeline_node.node_info.id = 'Transform'
       pipeline.nodes.add().pipeline_node.node_info.id = 'Trainer'
@@ -679,6 +689,11 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
       ]
 
       pipeline_ops.orchestrate(m, task_queue, self._mock_service_job_manager)
+
+      # PipelineFinished event should not trigger since not all the nodes are
+      # stopped.
+      event_observer.testonly_wait()
+      self.assertEqual([], events)
 
       # There are no active pipelines so these shouldn't be called.
       mock_async_task_gen.assert_not_called()
@@ -747,6 +762,14 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
       self.assertSetEqual(
           set([pstate.NodeState.STOPPED]),
           set(n.state for n in node_states_dict.values()))
+
+      # Check for the PipelineFinished event
+      event_observer.testonly_wait()
+      self.assertLen(events, 1)
+      event = events[0]
+      self.assertEqual('pipeline1', event.pipeline_id)
+      self.assertEqual(
+          status_lib.Status(code=status_lib.Code.CANCELLED), event.status)
 
   @parameterized.parameters(
       _test_pipeline('pipeline1'),

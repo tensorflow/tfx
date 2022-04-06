@@ -15,6 +15,7 @@
 
 import base64
 import contextlib
+import copy
 import threading
 import time
 from typing import Dict, Iterator, List, Mapping, Optional, Tuple
@@ -26,6 +27,7 @@ from tfx import types
 from tfx.orchestration import data_types_utils
 from tfx.orchestration import metadata
 from tfx.orchestration.experimental.core import env
+from tfx.orchestration.experimental.core import event_observer
 from tfx.orchestration.experimental.core import mlmd_state
 from tfx.orchestration.experimental.core import orchestration_options
 from tfx.orchestration.experimental.core import task as task_lib
@@ -37,8 +39,8 @@ from tfx.proto.orchestration import run_state_pb2
 from tfx.utils import json_utils
 from tfx.utils import status as status_lib
 
-import ml_metadata as mlmd
 from google.protobuf import message
+import ml_metadata as mlmd
 from ml_metadata.proto import metadata_store_pb2
 
 _ORCHESTRATOR_RESERVED_ID = '__ORCHESTRATOR__'
@@ -75,6 +77,8 @@ _EXECUTION_STATE_TO_RUN_STATE_MAP = {
 }
 
 
+# TODO(b/228198652): Stop using json_util.Jsonable. Before we do,
+# this class MUST NOT be moved out of this module.
 @attr.s(auto_attribs=True, kw_only=True)
 class NodeState(json_utils.Jsonable):
   """Records node state.
@@ -132,7 +136,7 @@ class NodeState(json_utils.Jsonable):
   def is_stoppable(self) -> bool:
     """Returns True if the node can be stopped."""
     return self.state in set(
-        [self.STARTING, self.STARTED, self.RUNNING, self.PAUSING, self.PAUSED])
+        [self.STARTING, self.STARTED, self.RUNNING, self.PAUSED])
 
   def is_pausable(self) -> bool:
     """Returns True if the node can be stopped."""
@@ -143,6 +147,17 @@ class NodeState(json_utils.Jsonable):
 
   def is_failure(self) -> bool:
     return is_node_state_failure(self.state)
+
+  def to_run_state(self) -> run_state_pb2.RunState:
+    """Returns this NodeState converted to a RunState."""
+    status_code_value = None
+    if self.status_code is not None:
+      status_code_value = run_state_pb2.RunState.StatusCodeValue(
+          value=self.status_code)
+    return run_state_pb2.RunState(
+        state=_NODE_STATE_TO_RUN_STATE_MAP[self.state],
+        status_code=status_code_value,
+        status_msg=self.status_msg)
 
 
 def is_node_state_success(state: str) -> bool:
@@ -281,6 +296,9 @@ class PipelineState:
           pipeline.runtime_spec.pipeline_run_id.field_value.string_value)
       _save_skipped_node_states(pipeline, reused_pipeline_view, execution)
     execution = execution_lib.put_execution(mlmd_handle, execution, [context])
+    event_observer.notify(
+        event_observer.PipelineStarted(
+            execution=execution, pipeline_id=pipeline_uid.pipeline_id))
     record_state_change_time()
 
     return cls(
@@ -479,11 +497,19 @@ class PipelineState:
                    f'{self.pipeline_uid}'))
     node_states_dict = _get_node_states_dict(self._execution)
     node_state = node_states_dict.setdefault(node_uid.node_id, NodeState())
-    old_state = node_state.state
+    old_state = copy.deepcopy(node_state)
     yield node_state
-    if old_state != node_state.state:
-      logging.info('Changing node state: %s -> %s; node uid: %s', old_state,
-                   node_state.state, node_uid)
+    if old_state.state != node_state.state:
+      logging.info('Changing node state: %s -> %s; node uid: %s',
+                   old_state.state, node_state.state, node_uid)
+      event_observer.notify(
+          event_observer.NodeStateChange(
+              execution=self._execution,
+              pipeline_id=node_uid.pipeline_uid.pipeline_id,
+              pipeline_run=self.pipeline_run_id,
+              node_id=node_uid.node_id,
+              old_state=old_state,
+              new_state=node_state))
     _save_node_states_dict(self._execution, node_states_dict)
 
   def get_node_state(self,
@@ -714,24 +740,13 @@ class PipelineView:
         status_code=self.pipeline_status_code,
         status_msg=self.pipeline_status_message)
 
-  def _convert_node_state_to_run_state(self, node_state: NodeState):
-    node_status_code_value = None
-    if node_state.status_code is not None:
-      node_status_code_value = run_state_pb2.RunState.StatusCodeValue(
-          value=node_state.status_code)
-    return run_state_pb2.RunState(
-        state=_NODE_STATE_TO_RUN_STATE_MAP[node_state.state],
-        status_code=node_status_code_value,
-        status_msg=node_state.status_msg)
-
   def get_node_run_states(self) -> Dict[str, run_state_pb2.RunState]:
     """Returns a dict mapping node id to current run state."""
     result = {}
     node_states_dict = _get_node_states_dict(self.execution, _NODE_STATES)
     for node in get_all_pipeline_nodes(self.pipeline):
       node_state = node_states_dict.get(node.node_info.id, NodeState())
-      result[node.node_info.id] = self._convert_node_state_to_run_state(
-          node_state)
+      result[node.node_info.id] = node_state.to_run_state()
     return result
 
   def get_previous_node_run_states(self) -> Dict[str, run_state_pb2.RunState]:
@@ -743,8 +758,7 @@ class PipelineView:
       if node.node_info.id not in node_states_dict:
         continue
       node_state = node_states_dict[node.node_info.id]
-      result[node.node_info.id] = self._convert_node_state_to_run_state(
-          node_state)
+      result[node.node_info.id] = node_state.to_run_state()
     return result
 
   def get_property(self, property_key: str) -> Optional[types.Property]:
