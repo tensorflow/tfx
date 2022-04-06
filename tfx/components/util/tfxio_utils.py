@@ -17,7 +17,7 @@ from typing import Any, Callable, Dict, List, Iterator, Optional, Tuple, Union
 
 import pyarrow as pa
 import tensorflow as tf
-from tfx.components.experimental.data_view import constants
+from tfx.components.experimental.data_view import binder_utils
 from tfx.components.util import examples_utils
 from tfx.proto import example_gen_pb2
 from tfx.types import artifact
@@ -350,15 +350,6 @@ def _get_data_view_info(
       'examples must be of type standard_artifacts.Examples')
   payload_format = examples_utils.get_payload_format(examples)
   if payload_format == example_gen_pb2.PayloadFormat.FORMAT_PROTO:
-    data_view_uri = examples.get_string_custom_property(
-        constants.DATA_VIEW_URI_PROPERTY_KEY)
-    if data_view_uri:
-      assert examples.has_custom_property(constants.DATA_VIEW_CREATE_TIME_KEY)
-      # The creation time could be an int or str. Legacy artifacts will contain
-      # an int custom property.
-      data_view_create_time = examples.get_custom_property(
-          constants.DATA_VIEW_CREATE_TIME_KEY)
-      data_view_create_time = int(data_view_create_time)
-      return data_view_uri, data_view_create_time
+    return binder_utils.get_data_view_info(examples)
 
   return None
