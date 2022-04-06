@@ -1,8 +1,5 @@
 # Custom Python function components
 
-Note: As of TFX 0.22, experimental support for a new Python function-based
-component definition style is available.
-
 Python function-based component definition makes it easier for you to create TFX
 custom components, by saving you the effort of defining a component
 specification class, executor class, and component interface class. In this
