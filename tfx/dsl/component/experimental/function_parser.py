@@ -171,18 +171,22 @@ def _parse_signature(
              'optional (error for argument %r of %r).') % (arg, func))
       arg_formats[arg] = ArgFormats.OUTPUT_ARTIFACT
       outputs[arg] = arg_typehint.type
-    elif (isinstance(arg_typehint, annotations.Parameter) or
-          isinstance(arg_typehint, annotations.BeamComponentParameter)):
+    elif isinstance(arg_typehint, annotations.Parameter):
       if arg in arg_defaults:
         if not (arg_defaults[arg] is None or
-                isinstance(arg_defaults[arg], arg_typehint.type)):  # pytype: disable=attribute-error
+                isinstance(arg_defaults[arg], arg_typehint.type)):
           raise ValueError((
               'The default value for optional parameter %r on function %r must '
               'be an instance of its declared type %r or `None` (got %r '
-              'instead)') % (arg, func, arg_typehint.type, arg_defaults[arg]))  # pytype: disable=attribute-error
-      arg_formats[arg] = ArgFormats.PARAMETER if isinstance(
-          arg_typehint, annotations.Parameter) else ArgFormats.BEAM_PARAMETER
-      parameters[arg] = arg_typehint.type  # pytype: disable=attribute-error
+              'instead)') % (arg, func, arg_typehint.type, arg_defaults[arg]))
+      arg_formats[arg] = ArgFormats.PARAMETER
+      parameters[arg] = arg_typehint.type
+    elif isinstance(arg_typehint, annotations.BeamComponentParameter):
+      if arg in arg_defaults and arg_defaults[arg] is not None:
+        raise ValueError('The default value for BeamComponentParameter must '
+                         'be None.')
+      arg_formats[arg] = ArgFormats.BEAM_PARAMETER
+      parameters[arg] = arg_typehint.type
     elif arg_typehint in _PRIMITIVE_TO_ARTIFACT:
       if arg in arg_defaults:
         if not (arg_defaults[arg] is None or

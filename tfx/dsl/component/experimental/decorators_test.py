@@ -125,6 +125,14 @@ def _verify_beam_pipeline_arg(a: int) -> OutputDict(b=float):
   return {'b': float(a)}
 
 
+def _verify_beam_pipeline_arg_non_none_default_value(
+    a: int,
+    beam_pipeline: BeamComponentParameter[beam.Pipeline] = beam.Pipeline()
+) -> OutputDict(b=float):
+  del beam_pipeline
+  return {'b': float(a)}
+
+
 @component
 def _verify(e: float, f: float, g: Optional[str], h: Optional[str]):
   assert (e, f, g, h) == (32.0, 220.0, 'OK', None), (e, f, g, h)
@@ -290,13 +298,21 @@ class ComponentDecoratorTest(tf.test.TestCase):
         'expects arguments to be passed as keyword arguments'):
       _injector_1(9, 'secret')
 
-  def testNoBeamPipelineFails(self):
+  def testNoBeamPipelineWhenUseBeamIsTrueFails(self):
     with self.assertRaisesWithLiteralMatch(
         ValueError,
         'The decorated function must have one and only one optional parameter '
         'of type BeamComponentParameter[beam.Pipeline] with '
         'default value None when use_beam=True.'):
       component(_verify_beam_pipeline_arg, use_beam=True)(a=1)
+
+  def testBeamPipelineDefaultIsNotNoneFails(self):
+    with self.assertRaisesWithLiteralMatch(
+        ValueError,
+        'The default value for BeamComponentParameter must be None.'):
+      component(
+          _verify_beam_pipeline_arg_non_none_default_value, use_beam=True)(
+              a=1)
 
   def testBeamExecutionSuccess(self):
     """Test execution with return values; success case."""

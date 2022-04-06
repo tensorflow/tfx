@@ -16,6 +16,7 @@
 Experimental: no backwards compatibility guarantees.
 """
 
+import copy
 import functools
 import sys
 import types
@@ -48,64 +49,66 @@ def _extract_func_args(
     output_dict: Dict[str, List[tfx_types.Artifact]],
     exec_properties: Dict[str, Any],
     beam_pipeline: Optional[_BeamPipeline] = None,
-    ) -> Dict[str, Any]:
+) -> Dict[str, Any]:
   """Extracts function arguments for the decorated function."""
-  function_args = {}
+  result = {}
   for name, arg_format in arg_formats.items():
     if arg_format == function_parser.ArgFormats.INPUT_ARTIFACT:
       input_list = input_dict.get(name, [])
       if len(input_list) == 1:
-        function_args[name] = input_list[0]
+        result[name] = input_list[0]
       elif not input_list and name in arg_defaults:
         # Do not pass the missing optional input.
         pass
       else:
-        raise ValueError((
-            'Expected input %r to %s to be a singleton ValueArtifact channel '
-            '(got %s instead).') % (name, obj, input_list))
+        raise ValueError(
+            ('Expected input %r to %s to be a singleton ValueArtifact channel '
+             '(got %s instead).') % (name, obj, input_list))
     elif arg_format == function_parser.ArgFormats.OUTPUT_ARTIFACT:
       output_list = output_dict.get(name, [])
       if len(output_list) == 1:
-        function_args[name] = output_list[0]
+        result[name] = output_list[0]
       else:
-        raise ValueError((
-            'Expected output %r to %s to be a singleton ValueArtifact channel '
-            '(got %s instead).') % (name, obj, output_list))
+        raise ValueError(
+            ('Expected output %r to %s to be a singleton ValueArtifact channel '
+             '(got %s instead).') % (name, obj, output_list))
     elif arg_format == function_parser.ArgFormats.ARTIFACT_VALUE:
       input_list = input_dict.get(name, [])
       if len(input_list) == 1:
-        function_args[name] = input_list[0].value
+        result[name] = input_list[0].value
       elif not input_list and name in arg_defaults:
         # Do not pass the missing optional input.
         pass
       else:
-        raise ValueError((
-            'Expected input %r to %s to be a singleton ValueArtifact channel '
-            '(got %s instead).') % (name, obj, input_list))
+        raise ValueError(
+            ('Expected input %r to %s to be a singleton ValueArtifact channel '
+             '(got %s instead).') % (name, obj, input_list))
     elif arg_format == function_parser.ArgFormats.PARAMETER:
       if name in exec_properties:
-        function_args[name] = exec_properties[name]
+        result[name] = exec_properties[name]
       elif name in arg_defaults:
         # Do not pass the missing optional input.
         pass
       else:
-        raise ValueError((
-            'Expected non-optional parameter %r of %s to be provided, but no '
-            'value was passed.') % (name, obj))
+        raise ValueError(
+            ('Expected non-optional parameter %r of %s to be provided, but no '
+             'value was passed.') % (name, obj))
     elif arg_format == function_parser.ArgFormats.BEAM_PARAMETER:
-      function_args[name] = beam_pipeline
+      result[name] = beam_pipeline
       if name in arg_defaults and arg_defaults[name] is not None:
         raise ValueError('beam Pipeline parameter does not allow default ',
                          'value other than None.')
     else:
       raise ValueError('Unknown argument format: %r' % (arg_format,))
-  return function_args
+  return result
 
 
-def _assign_returned_values(function, outputs: Dict[str, Any],
-                            returned_values: Dict[str, Any],
-                            output_dict: Dict[str, List[tfx_types.Artifact]]):
+def _assign_returned_values(
+    function, outputs: Dict[str, Any], returned_values: Dict[str, Any],
+    output_dict: Dict[str, List[tfx_types.Artifact]]
+) -> Dict[str, List[tfx_types.Artifact]]:
   """Validates and assigns the outputs to the output_dict."""
+  result = copy.deepcopy(output_dict)
   if not isinstance(outputs, dict):
     raise ValueError(
         ('Expected component executor function %s to return a dict of '
@@ -118,16 +121,16 @@ def _assign_returned_values(function, outputs: Dict[str, Any],
           'Did not receive expected output %r as return value from '
           'component executor function %s.' % (name, function))
     if not is_optional and outputs[name] is None:
-      raise ValueError(
-          'Non-nullable output %r received None return value from '
-          'component executor function %s.' % (name, function))
+      raise ValueError('Non-nullable output %r received None return value from '
+                       'component executor function %s.' % (name, function))
     try:
-      output_dict[name][0].value = outputs[name]
+      result[name][0].value = outputs[name]
     except TypeError as e:
       raise TypeError(
           ('Return value %r for output %r is incompatible with output type '
            '%r.') %
-          (outputs[name], name, output_dict[name][0].__class__)) from e
+          (outputs[name], name, result[name][0].__class__)) from e
+  return result
 
 
 class _SimpleComponent(base_component.BaseComponent):
@@ -195,21 +198,24 @@ class _FunctionExecutor(base_executor.BaseExecutor):
   def Do(self, input_dict: Dict[str, List[tfx_types.Artifact]],
          output_dict: Dict[str, List[tfx_types.Artifact]],
          exec_properties: Dict[str, Any]) -> None:
-    function_args = _extract_func_args(obj=str(self),
-                                       arg_formats=self._ARG_FORMATS,
-                                       arg_defaults=self._ARG_DEFAULTS,
-                                       input_dict=input_dict,
-                                       output_dict=output_dict,
-                                       exec_properties=exec_properties)
+    function_args = _extract_func_args(
+        obj=str(self),
+        arg_formats=self._ARG_FORMATS,
+        arg_defaults=self._ARG_DEFAULTS,
+        input_dict=input_dict,
+        output_dict=output_dict,
+        exec_properties=exec_properties)
 
     # Call function and check returned values.
     outputs = self._FUNCTION(**function_args)
     outputs = outputs or {}
-    _assign_returned_values(
-        function=self._FUNCTION,
-        outputs=outputs,
-        returned_values=self._RETURNED_VALUES,
-        output_dict=output_dict)
+    output_dict.update(
+        _assign_returned_values(
+            function=self._FUNCTION,
+            outputs=outputs,
+            returned_values=self._RETURNED_VALUES,
+            output_dict=output_dict,
+        ))
 
 
 class _FunctionBeamExecutor(base_beam_executor.BaseBeamExecutor,
@@ -219,22 +225,25 @@ class _FunctionBeamExecutor(base_beam_executor.BaseBeamExecutor,
   def Do(self, input_dict: Dict[str, List[tfx_types.Artifact]],
          output_dict: Dict[str, List[tfx_types.Artifact]],
          exec_properties: Dict[str, Any]) -> None:
-    function_args = _extract_func_args(obj=str(self),
-                                       arg_formats=self._ARG_FORMATS,
-                                       arg_defaults=self._ARG_DEFAULTS,
-                                       input_dict=input_dict,
-                                       output_dict=output_dict,
-                                       exec_properties=exec_properties,
-                                       beam_pipeline=self._make_beam_pipeline())
+    function_args = _extract_func_args(
+        obj=str(self),
+        arg_formats=self._ARG_FORMATS,
+        arg_defaults=self._ARG_DEFAULTS,
+        input_dict=input_dict,
+        output_dict=output_dict,
+        exec_properties=exec_properties,
+        beam_pipeline=self._make_beam_pipeline())
 
     # Call function and check returned values.
     outputs = self._FUNCTION(**function_args)
     outputs = outputs or {}
-    _assign_returned_values(
-        function=self._FUNCTION,
-        outputs=outputs,
-        returned_values=self._RETURNED_VALUES,
-        output_dict=output_dict)
+    output_dict.update(
+        _assign_returned_values(
+            function=self._FUNCTION,
+            outputs=outputs,
+            returned_values=self._RETURNED_VALUES,
+            output_dict=output_dict,
+        ))
 
 
 def component(
@@ -452,10 +461,10 @@ def component(
   module = sys.modules[func.__module__]
   setattr(module, '%s_Executor' % func.__name__, executor_class)
 
-  executor_spec_class = (executor_spec.BeamExecutorSpec if use_beam else
-                         executor_spec.ExecutorClassSpec)
-  executor_spec_instance = executor_spec_class(
-      executor_class=executor_class)
+  executor_spec_class = (
+      executor_spec.BeamExecutorSpec
+      if use_beam else executor_spec.ExecutorClassSpec)
+  executor_spec_instance = executor_spec_class(executor_class=executor_class)
 
   return type(
       func.__name__, (_SimpleBeamComponent if use_beam else _SimpleComponent,),

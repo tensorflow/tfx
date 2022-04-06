@@ -92,7 +92,7 @@ class _PrimitiveTypeGeneric(metaclass=_PrimitiveTypeGenericMeta):
           ('%s should be instantiated via the syntax `%s[T]`, where T is '
            '`int`, `float`, `str`, `bytes` or `bool`.') %
           (class_name, class_name))
-    self.type = artifact_type
+    self._type = artifact_type
 
   @classmethod
   def _generic_getitem(cls, params):
@@ -108,7 +108,11 @@ class _PrimitiveTypeGeneric(metaclass=_PrimitiveTypeGenericMeta):
           (class_name, params))
 
   def __repr__(self):
-    return '%s[%s]' % (self.__class__.__name__, self.type)
+    return '%s[%s]' % (self.__class__.__name__, self._type)
+
+  @property
+  def type(self):
+    return self._type
 
 
 class _PipelineTypeGenericMeta(type):
@@ -134,7 +138,7 @@ class _PipelineTypeGeneric(
           ('%s should be instantiated via the syntax `%s[T]`, where T is '
            '`beam.Pipeline`.') %
           (class_name, class_name))
-    self.type = artifact_type
+    self._type = artifact_type
 
   @classmethod
   def _generic_getitem(cls, params):
@@ -150,7 +154,11 @@ class _PipelineTypeGeneric(
           (class_name, params))
 
   def __repr__(self):
-    return '%s[%s]' % (self.__class__.__name__, self.type)
+    return '%s[%s]' % (self.__class__.__name__, self._type)
+
+  @property
+  def type(self):
+    return self._type
 
 # Typehint annotations for component authoring.
 
