@@ -1042,6 +1042,7 @@ def start_external_execution(
                                                      pipeline.runtime_spec,
                                                      pipeline.execution_mode)
     output_artifacts = outputs_resolver.generate_output_artifacts(execution.id)
+    outputs_utils.make_output_dirs(output_artifacts)
     return execution_invocation_pb2.ExecutionInvocation(
         output_metadata_uri=outputs_resolver.get_executor_output_uri(
             execution.id),

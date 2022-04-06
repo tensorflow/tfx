@@ -1490,7 +1490,11 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
               status.message)
 
   @mock.patch.object(outputs_utils, 'OutputsResolver')
-  def test_external_executions_end_to_end(self, outputs_resolver):
+  @mock.patch(
+      'tfx.orchestration.portable.outputs_utils.make_output_dirs',
+      return_value=None)
+  def test_external_executions_end_to_end(self, unused_make_output_dirs,
+                                          outputs_resolver):
     with self._mlmd_connection as m:
       pipeline = _test_pipeline_with_example_gen('test_pipeline')
       node_uid = task_lib.NodeUid.from_pipeline_node(
