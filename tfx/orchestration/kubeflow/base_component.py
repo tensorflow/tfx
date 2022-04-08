@@ -30,7 +30,6 @@ from kubernetes import client as k8s_client
 from tfx.dsl.components.base import base_node as tfx_base_node
 from tfx.orchestration import data_types
 from tfx.orchestration import pipeline as tfx_pipeline
-from tfx.orchestration.kubeflow import utils
 from tfx.orchestration.kubeflow.proto import kubeflow_pb2
 from tfx.proto.orchestration import pipeline_pb2
 
@@ -52,6 +51,17 @@ def _encode_runtime_parameter(param: data_types.RuntimeParameter) -> str:
     type_enum = pipeline_pb2.RuntimeParameter.STRING
   type_str = pipeline_pb2.RuntimeParameter.Type.Name(type_enum)
   return f'{param.name}={type_str}:{str(dsl.PipelineParam(name=param.name))}'
+
+
+def _replace_placeholder(component: tfx_base_node.BaseNode) -> None:
+  """Replaces the RuntimeParameter placeholders with kfp.dsl.PipelineParam."""
+  keys = list(component.exec_properties.keys())
+  for key in keys:
+    exec_property = component.exec_properties[key]
+    if not isinstance(exec_property, data_types.RuntimeParameter):
+      continue
+    component.exec_properties[key] = str(
+        dsl.PipelineParam(name=exec_property.name))
 
 
 # TODO(hongyes): renaming the name to KubeflowComponent.
@@ -94,7 +104,7 @@ class BaseComponent:
       metadata_ui_path: File location for metadata-ui-metadata.json file.
     """
 
-    utils.replace_placeholder(component)
+    _replace_placeholder(component)
 
     arguments = [
         '--pipeline_root',
