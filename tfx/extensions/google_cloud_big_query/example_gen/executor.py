@@ -17,7 +17,6 @@ from typing import Any, Dict, Optional
 
 import apache_beam as beam
 
-from apache_beam.options import value_provider
 from google.cloud import bigquery
 import tensorflow as tf
 
@@ -64,15 +63,7 @@ def _BigQueryToExample(pipeline: beam.Pipeline, exec_properties: Dict[str, Any],
   Returns:
     PCollection of TF examples.
   """
-
-  beam_pipeline_args = exec_properties['_beam_pipeline_args']
-  pipeline_options = beam.options.pipeline_options.PipelineOptions(
-      beam_pipeline_args)
-  # Try to parse the GCP project ID from the beam pipeline options.
-  project = pipeline_options.view_as(
-      beam.options.pipeline_options.GoogleCloudOptions).project
-  if isinstance(project, value_provider.ValueProvider):
-    project = project.get()
+  project = utils.parse_gcp_project(exec_properties['_beam_pipeline_args'])
   converter = _BigQueryConverter(split_pattern, project)
 
   return (pipeline

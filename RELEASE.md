@@ -19,6 +19,8 @@
   blessed model at all (e.g. first run).
 * Fix that the resolver with custom `ResolverStrategy` (assume correctly
   packaged) fails.
+* Fixed `ElwcBigQueryExampleGen` data serializiation error that was causing an
+  assertion failure on Beam.
 
 ## Dependency Updates
 
