@@ -20,6 +20,7 @@ from absl import logging
 import tensorflow_data_validation as tfdv
 from tfx import types
 from tfx.components.example_validator import labels
+from tfx.components.statistics_gen import stats_artifact_utils
 from tfx.components.util import value_utils
 from tfx.dsl.components.base import base_executor
 from tfx.types import artifact_utils
@@ -93,13 +94,8 @@ class Executor(base_executor.BaseExecutor):
       logging.info(
           'Validating schema against the computed statistics for '
           'split %s.', split)
-      stats_uri = io_utils.get_only_uri_in_dir(
-          artifact_utils.get_split_uri([stats_artifact], split))
-      if artifact_utils.is_artifact_version_older_than(
-          stats_artifact, artifact_utils._ARTIFACT_VERSION_FOR_STATS_UPDATE):  # pylint: disable=protected-access
-        stats = tfdv.load_statistics(stats_uri)
-      else:
-        stats = tfdv.load_stats_binary(stats_uri)
+      stats = stats_artifact_utils.load_statistics(stats_artifact,
+                                                   split).proto()
       label_inputs = {
           standard_component_specs.STATISTICS_KEY: stats,
           standard_component_specs.SCHEMA_KEY: schema
