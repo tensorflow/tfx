@@ -2,6 +2,9 @@
 
 ## Major Features and Improvements
 
+*   Added experimental exit_handler support for KubeflowDagRunner.
+*   Enabled custom labels to be submitted to CAIP training jobs.
+
 ## Breaking Changes
 
 ### For Pipeline Authors
@@ -12,6 +15,13 @@
 
 ## Bug Fixes and Other Changes
 
+* `LatestBlessedModelStrategy` gracefully handles the case where there are no
+  blessed model at all (e.g. first run).
+* Fix that the resolver with custom `ResolverStrategy` (assume correctly
+  packaged) fails.
+* Fixed `ElwcBigQueryExampleGen` data serializiation error that was causing an
+  assertion failure on Beam.
+
 ## Dependency Updates
 
 ## Documentation Updates
@@ -21,6 +31,7 @@
 ## Major Features and Improvements
 
 * Added support for list-type Placeholder.
+* Added support for function-based custom component with beam pipeline.
 
 ## Breaking Changes
 
@@ -65,6 +76,39 @@
 | `tensorflow-serving-api` | `>=1.15,<3` or `~=2.8.0` | `>=1.15,<3` or `~=2.7.0` | |
 | `tensorflow-transform` | `~=1.7.0` | `~=1.6.0` | Synced release train |
 | `tfx-bsl` | `~=1.7.0` | `~=1.6.0` | Synced release train |
+
+## Documentation Updates
+
+*   N/A
+
+# Version 1.6.2
+
+## Major Features and Improvements
+
+*   N/A
+
+## Breaking Changes
+
+### For Pipeline Authors
+
+*   N/A
+
+### For Component Authors
+
+*   N/A
+
+## Deprecations
+
+*   N/A
+
+## Bug Fixes and Other Changes
+
+*   N/A
+## Dependency Updates
+
+| Package Name | Version Constraints | Previously (in `v1.6.0`) | Comments |
+| -- | -- | -- | -- |
+| `tensorflow` | `>=1.15.5,<2` or `~=2.7.0` or `~=2.8.0` | `>=1.15.5,<2` or `~=2.7.0` | |
 
 ## Documentation Updates
 

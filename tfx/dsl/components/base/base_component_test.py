@@ -80,6 +80,15 @@ class ComponentTest(tf.test.TestCase):
     self.assertEqual(component.outputs["output"].type, _OutputArtifact)
     self.assertEqual(component.outputs["output"].type_name, "OutputArtifact")
 
+  def testBaseNodeNewOverride(self):
+    # Test behavior of `BaseNode.__new__` override.
+    input_channel = types.Channel(type=_InputArtifact)
+    component = _BasicComponent(folds=10, input=input_channel)
+    self.assertIs(component._CONSTRUCT_CLS, _BasicComponent)
+    self.assertEqual(component._CONSTRUCT_ARGS, ())
+    self.assertEqual(component._CONSTRUCT_KWARGS,
+                     {"folds": 10, "input": input_channel})
+
   def testComponentSpecType(self):
 
     with self.assertRaisesRegex(

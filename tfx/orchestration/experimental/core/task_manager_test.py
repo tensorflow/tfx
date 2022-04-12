@@ -214,7 +214,7 @@ class TaskManagerTest(test_utils.TfxTest):
 
     def _publish(**kwargs):
       task = kwargs['task']
-      assert task_lib.is_exec_node_task(task)
+      assert isinstance(task, task_lib.ExecNodeTask)
       if task.node_uid.node_id == 'Transform':
         raise ValueError('test error')
       return mock.DEFAULT
@@ -275,7 +275,7 @@ class _FakeComponentScheduler(ts.TaskScheduler):
 
 
 def _make_executor_output(task, code=status_lib.Code.OK, msg=''):
-  assert task_lib.is_exec_node_task(task)
+  assert isinstance(task, task_lib.ExecNodeTask)
   executor_output = execution_result_pb2.ExecutorOutput()
   for key, artifacts in task.output_artifacts.items():
     for artifact in artifacts:
@@ -345,10 +345,10 @@ class TaskManagerE2ETest(test_utils.TfxTest):
           m, self._task_queue.contains_task_id,
           service_jobs.DummyServiceJobManager()).generate(pipeline_state)
     self.assertLen(tasks, 2)
-    self.assertTrue(task_lib.is_update_node_state_task(tasks[0]))
+    self.assertIsInstance(tasks[0], task_lib.UpdateNodeStateTask)
     self.assertEqual(pstate.NodeState.RUNNING, tasks[0].state)
     self.assertEqual('my_transform', tasks[0].node_uid.node_id)
-    self.assertTrue(task_lib.is_exec_node_task(tasks[1]))
+    self.assertIsInstance(tasks[1], task_lib.ExecNodeTask)
     self.assertEqual('my_transform', tasks[1].node_uid.node_id)
     self.assertTrue(os.path.exists(tasks[1].stateful_working_dir))
     self.assertTrue(os.path.exists(tasks[1].tmp_dir))

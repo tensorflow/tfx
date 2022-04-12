@@ -85,8 +85,8 @@ class LatestBlessedModelStrategy(resolver.ResolverStrategy):
       input_dict: The input_dict to resolve from.
 
     Returns:
-      If `min_count` for every input is met, returns a
-      Dict[str, List[Artifact]]. Otherwise, return None.
+      The latest blessed Model and its corresponding ModelBlessing, respectively
+      in the same input channel they were contained to.
 
     Raises:
       RuntimeError: if input_dict contains unsupported artifact types.
@@ -97,8 +97,8 @@ class LatestBlessedModelStrategy(resolver.ResolverStrategy):
     for k, artifact_list in input_dict.items():
       if not artifact_list:
         # If model or model blessing channel has no artifacts, the min_count
-        # can not be met, short cut to return None here.
-        return None
+        # can not be met, short cut to return empty dict here.
+        return {key: [] for key in input_dict}
       artifact = artifact_list[0]
       if issubclass(type(artifact), standard_artifacts.Model):
         model_channel_key = k
@@ -111,8 +111,6 @@ class LatestBlessedModelStrategy(resolver.ResolverStrategy):
     assert model_blessing_channel_key is not None, ('Expecting ModelBlessing as'
                                                     ' input')
 
-    resolved_dict = self._resolve(input_dict, model_channel_key,
-                                  model_blessing_channel_key)
-    all_min_count_met = all(
-        bool(artifact_list) for artifact_list in resolved_dict.values())
-    return resolved_dict if all_min_count_met else None
+    result = self._resolve(input_dict, model_channel_key,
+                           model_blessing_channel_key)
+    return result

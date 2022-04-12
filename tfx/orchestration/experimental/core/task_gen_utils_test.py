@@ -20,6 +20,7 @@ from tfx.orchestration import metadata
 from tfx.orchestration.experimental.core import task_gen_utils
 from tfx.orchestration.experimental.core import test_utils as otu
 from tfx.orchestration.experimental.core.testing import test_async_pipeline
+from tfx.types import standard_artifacts
 from tfx.utils import test_case_utils as tu
 
 from ml_metadata.proto import metadata_store_pb2
@@ -220,6 +221,47 @@ class TaskGenUtilsTest(tu.TfxTest):
           task_gen_utils.get_executions(m, self._transform), key=lambda e: e.id)
       self.assertEqual(execs[1],
                        task_gen_utils.get_latest_successful_execution(execs))
+
+  def test_get_latest_activate_execution_set(self):
+    with self._mlmd_connection as m:
+      # Registers two sets of executions.
+      task_gen_utils.register_executions(
+          m,
+          metadata_store_pb2.ExecutionType(name='my_ex_type'), {},
+          input_dicts=[{
+              'input_example': [standard_artifacts.Examples()]
+          }, {
+              'input_example': [standard_artifacts.Examples()]
+          }])
+      newer_execution_set = task_gen_utils.register_executions(
+          m,
+          metadata_store_pb2.ExecutionType(name='my_ex_type'), {},
+          input_dicts=[{
+              'input_example': [standard_artifacts.Examples()]
+          }, {
+              'input_example': [standard_artifacts.Examples()]
+          }])
+
+      executions = m.store.get_executions()
+      self.assertLen(executions, 4)
+
+      latest_execution_set = task_gen_utils.get_latest_executions_set(
+          executions)
+      self.assertLen(latest_execution_set, 2)
+      self.assertProtoPartiallyEquals(
+          newer_execution_set[0],
+          latest_execution_set[0],
+          ignored_fields=[
+              'type_id', 'create_time_since_epoch',
+              'last_update_time_since_epoch'
+          ])
+      self.assertProtoPartiallyEquals(
+          newer_execution_set[1],
+          latest_execution_set[1],
+          ignored_fields=[
+              'type_id', 'create_time_since_epoch',
+              'last_update_time_since_epoch'
+          ])
 
 
 if __name__ == '__main__':

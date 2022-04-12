@@ -80,7 +80,7 @@ _BEAM_EXTRA_PACKAGE_PREFIX = '--extra_package='
 
 # Stats output filename keys.
 _ANOMALIES_FILE = 'SchemaDiff.pb'
-_STATS_FILE = 'FeatureStats.pb'
+STATS_FILE = 'FeatureStats.pb'
 SAMPLE_FILE_NAME = 'Sample.rio'
 # TODO(b/215448985): Move these to a shared location with StatsGen.
 _SHARDED_OUTPUT_PARTITIONS = 10
@@ -1364,7 +1364,7 @@ class TransformProcessor:
                       os.path.join(
                           stats_output_paths[
                               labels.PRE_TRANSFORM_OUTPUT_STATS_PATH_LABEL],
-                          _STATS_FILE),
+                          STATS_FILE),
                   _SHARDED_STATS_KEY:
                       os.path.join(
                           stats_output_paths[
@@ -1439,7 +1439,7 @@ class TransformProcessor:
                       os.path.join(
                           stats_output_paths[
                               labels.POST_TRANSFORM_OUTPUT_STATS_PATH_LABEL],
-                          _STATS_FILE),
+                          STATS_FILE),
                   _SHARDED_STATS_KEY:
                       os.path.join(
                           stats_output_paths[

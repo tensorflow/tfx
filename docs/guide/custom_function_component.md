@@ -1,8 +1,5 @@
 # Custom Python function components
 
-Note: As of TFX 0.22, experimental support for a new Python function-based
-component definition style is available.
-
 Python function-based component definition makes it easier for you to create TFX
 custom components, by saving you the effort of defining a component
 specification class, executor class, and component interface class. In this
@@ -29,6 +26,38 @@ def MyValidationComponent(
   return {
     'accuracy': accuracy
   }
+```
+
+Under the hood, this defines a custom component that is a subclass of
+[`BaseComponent`](https://github.com/tensorflow/tfx/blob/master/tfx/dsl/components/base/base_component.py){: .external }
+and its Spec and Executor classes.
+
+Note: the feature (BaseBeamComponent based component by annotating a function
+with `@component(use_beam=True)`) described below is experimental and there is
+no public backwards compatibility guarantees.
+
+If you want to define a subclass of
+[`BaseBeamComponent`](https://github.com/tensorflow/tfx/blob/master/tfx/dsl/components/base/base_beam_component.py){: .external }
+such that you could use a beam pipeline with TFX-pipeline-wise shared
+configuration, i.e., `beam_pipeline_args` when compiling the pipeline
+([Chicago Taxi Pipeline Example](https://github.com/tensorflow/tfx/blob/master/tfx/examples/chicago_taxi_pipeline/taxi_pipeline_simple.py#L192){: .external })
+you could set `use_beam=True` in the decorator and add another
+`BeamComponentParameter` with default value `None` in your function as the
+following example:
+
+```python
+@component(use_beam=True)
+def MyDataProcessor(
+    examples: InputArtifact[Example],
+    processed_examples: OutputArtifact[Example],
+    beam_pipeline: BeamComponentParameter[beam.Pipeline] = None,
+    ) -> None:
+  '''My simple custom model validation component.'''
+
+  with beam_pipeline as p:
+    # data pipeline definition with beam_pipeline begins
+    ...
+    # data pipeline definition with beam_pipeline ends
 ```
 
 If you are new to TFX pipelines,
@@ -77,6 +106,12 @@ return value using annotations from the
 *   For each **parameter**, use the type hint annotation `Parameter[T]`. Replace
     `T` with the type of the parameter. We currently only support primitive
     python types: `bool`, `int`, `float`, `str`, or `bytes`.
+
+*   For **beam pipeline**, use the type hint annotation
+    `BeamComponentParameter[beam.Pipeline]`. Set the default value to be `None`.
+    The value `None` will be replaced by an instantiated beam pipeline created
+    by `_make_beam_pipeline()` of
+    [`BaseBeamExecutor`](https://github.com/tensorflow/tfx/blob/master/tfx/dsl/components/base/base_beam_executor.py){: .external }
 
 *   For each **simple data type input** (`int`, `float`, `str` or `bytes`) not
     known at pipeline construction time, use the type hint `T`. Note that in the

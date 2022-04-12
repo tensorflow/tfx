@@ -16,15 +16,18 @@
 import os
 from typing import Optional
 
-
+import apache_beam as beam
 import tensorflow as tf
 from tfx import types
+from tfx.dsl.component.experimental.annotations import BeamComponentParameter
 from tfx.dsl.component.experimental.annotations import InputArtifact
 from tfx.dsl.component.experimental.annotations import OutputArtifact
 from tfx.dsl.component.experimental.annotations import OutputDict
 from tfx.dsl.component.experimental.annotations import Parameter
+from tfx.dsl.component.experimental.decorators import _SimpleBeamComponent
 from tfx.dsl.component.experimental.decorators import _SimpleComponent
 from tfx.dsl.component.experimental.decorators import component
+from tfx.dsl.components.base import base_beam_executor
 from tfx.dsl.components.base import base_executor
 from tfx.dsl.components.base import executor_spec
 from tfx.dsl.io import fileio
@@ -34,6 +37,8 @@ from tfx.orchestration.beam import beam_dag_runner
 from tfx.types import component_spec
 from tfx.types import standard_artifacts
 from tfx.types.system_executions import SystemExecution
+
+_TestBeamPipelineArgs = ['--my_testing_beam_pipeline_args=foo']
 
 
 class _InputArtifact(types.Artifact):
@@ -106,6 +111,28 @@ def _simple_component_with_annotation(
   return {'e': float(a + b), 'f': float(a * b), 'g': 'OK', 'h': None}
 
 
+@component(use_beam=True)
+def _simple_beam_component(
+    a: int, b: int, c: str, d: bytes,
+    beam_pipeline: BeamComponentParameter[beam.Pipeline] = None,
+) -> OutputDict(
+    e=float, f=float, g=Optional[str], h=Optional[str]):
+  del c, d, beam_pipeline
+  return {'e': float(a + b), 'f': float(a * b), 'g': 'OK', 'h': None}
+
+
+def _verify_beam_pipeline_arg(a: int) -> OutputDict(b=float):
+  return {'b': float(a)}
+
+
+def _verify_beam_pipeline_arg_non_none_default_value(
+    a: int,
+    beam_pipeline: BeamComponentParameter[beam.Pipeline] = beam.Pipeline()
+) -> OutputDict(b=float):
+  del beam_pipeline
+  return {'b': float(a)}
+
+
 @component
 def _verify(e: float, f: float, g: Optional[str], h: Optional[str]):
   assert (e, f, g, h) == (32.0, 220.0, 'OK', None), (e, f, g, h)
@@ -176,6 +203,44 @@ def _optionalarg_component(
   assert optional_examples_2 is None
 
 
+@component(use_beam=True)
+def _beam_component_with_artifact_inputs(
+    foo: Parameter[int],
+    a: int,
+    b: float,
+    c: str,
+    d: bytes,
+    examples: InputArtifact[standard_artifacts.Examples],
+    processed_examples: OutputArtifact[standard_artifacts.Examples],
+    e1: str = 'default',
+    e2: Optional[str] = 'default',
+    f: bytes = b'default',
+    g: Parameter[float] = 1000.0,
+    h: Parameter[str] = '2000',
+    beam_pipeline: BeamComponentParameter[beam.Pipeline] = None,
+    ):
+  # Test non-optional parameters.
+  assert foo == 9
+  assert isinstance(examples, standard_artifacts.Examples)
+  # Test non-optional `int`, `float`, `Text` and `bytes` input values.
+  assert a == 1
+  assert b == 2.0
+  assert c == '3'
+  assert d == b'4'
+  # Test passed optional arguments (with and without the `Optional` typehint
+  # specifier).
+  assert e1 == 'passed'
+  assert e2 == 'passed'
+  # Test that non-passed optional argument becomes the argument default.
+  assert f == b'default'
+  # Test passed optional parameter.
+  assert g == 999.0
+  # Test non-passed optional parameter.
+  assert h == '2000'
+  del beam_pipeline
+  fileio.makedirs(processed_examples.uri)
+
+
 class ComponentDecoratorTest(tf.test.TestCase):
 
   def setUp(self):
@@ -199,6 +264,24 @@ class ComponentDecoratorTest(tf.test.TestCase):
     self.assertEqual(instance.outputs['output'].type, _OutputArtifact)
     self.assertEqual(instance.id, 'my_instance')
 
+  def testSimpleBeamComponent(self):
+
+    class _MySimpleBeamComponent(_SimpleBeamComponent):
+      SPEC_CLASS = _BasicComponentSpec
+      EXECUTOR_SPEC = executor_spec.BeamExecutorSpec(
+          base_beam_executor.BaseBeamExecutor)
+
+    input_channel = types.Channel(type=_InputArtifact)
+    instance = _MySimpleBeamComponent(
+        input=input_channel, folds=10).with_id(
+            'my_instance').with_beam_pipeline_args(_TestBeamPipelineArgs)
+
+    self.assertEqual(instance.executor_spec.beam_pipeline_args,
+                     _TestBeamPipelineArgs)
+    self.assertIs(instance.inputs['input'], input_channel)
+    self.assertEqual(instance.outputs['output'].type, _OutputArtifact)
+    self.assertEqual(instance.id, 'my_instance')
+
   def testDefinitionInClosureFails(self):
     with self.assertRaisesRegex(
         ValueError,
@@ -215,10 +298,50 @@ class ComponentDecoratorTest(tf.test.TestCase):
         'expects arguments to be passed as keyword arguments'):
       _injector_1(9, 'secret')
 
+  def testNoBeamPipelineWhenUseBeamIsTrueFails(self):
+    with self.assertRaisesWithLiteralMatch(
+        ValueError,
+        'The decorated function must have one and only one optional parameter '
+        'of type BeamComponentParameter[beam.Pipeline] with '
+        'default value None when use_beam=True.'):
+      component(_verify_beam_pipeline_arg, use_beam=True)(a=1)
+
+  def testBeamPipelineDefaultIsNotNoneFails(self):
+    with self.assertRaisesWithLiteralMatch(
+        ValueError,
+        'The default value for BeamComponentParameter must be None.'):
+      component(
+          _verify_beam_pipeline_arg_non_none_default_value, use_beam=True)(
+              a=1)
+
   def testBeamExecutionSuccess(self):
     """Test execution with return values; success case."""
     instance_1 = _injector_1(foo=9, bar='secret')
     instance_2 = _simple_component(
+        a=instance_1.outputs['a'],
+        b=instance_1.outputs['b'],
+        c=instance_1.outputs['c'],
+        d=instance_1.outputs['d'])
+    instance_3 = _verify(
+        e=instance_2.outputs['e'],
+        f=instance_2.outputs['f'],
+        g=instance_2.outputs['g'],
+        h=instance_2.outputs['h'])  # pylint: disable=assignment-from-no-return
+
+    metadata_config = metadata.sqlite_metadata_connection_config(
+        self._metadata_path)
+    test_pipeline = pipeline.Pipeline(
+        pipeline_name='test_pipeline_1',
+        pipeline_root=self._test_dir,
+        metadata_connection_config=metadata_config,
+        components=[instance_1, instance_2, instance_3])
+
+    beam_dag_runner.BeamDagRunner().run(test_pipeline)
+
+  def testBeamComponentBeamExecutionSuccess(self):
+    """Test execution with return values; success case."""
+    instance_1 = _injector_1(foo=9, bar='secret')
+    instance_2 = _simple_beam_component(
         a=instance_1.outputs['a'],
         b=instance_1.outputs['b'],
         c=instance_1.outputs['c'],
@@ -269,7 +392,7 @@ class ComponentDecoratorTest(tf.test.TestCase):
   def testBeamExecutionOptionalInputsAndParameters(self):
     """Test execution with optional inputs and parameters."""
     instance_1 = _injector_2()  # pylint: disable=no-value-for-parameter
-    self.assertEqual(1, len(instance_1.outputs['examples'].get()))
+    self.assertLen(instance_1.outputs['examples'].get(), 1)
     instance_2 = _optionalarg_component(  # pylint: disable=assignment-from-no-return
         foo=9,
         bar='secret',
@@ -293,10 +416,35 @@ class ComponentDecoratorTest(tf.test.TestCase):
 
     beam_dag_runner.BeamDagRunner().run(test_pipeline)
 
+  def testBeamExecutionBeamComponentWithInputArtifactAndParameters(self):
+    """Test execution of a beam component with InputArtifact and parameters."""
+    instance_1 = _injector_2()  # pylint: disable=no-value-for-parameter
+    self.assertLen(instance_1.outputs['examples'].get(), 1)
+    instance_2 = _beam_component_with_artifact_inputs(  # pylint: disable=assignment-from-no-return, no-value-for-parameter
+        foo=9,
+        examples=instance_1.outputs['examples'],
+        a=instance_1.outputs['a'],
+        b=instance_1.outputs['b'],
+        c=instance_1.outputs['c'],
+        d=instance_1.outputs['d'],
+        e1=instance_1.outputs['e'],
+        e2=instance_1.outputs['e'],
+        g=999.0)
+
+    metadata_config = metadata.sqlite_metadata_connection_config(
+        self._metadata_path)
+    test_pipeline = pipeline.Pipeline(
+        pipeline_name='test_pipeline_1',
+        pipeline_root=self._test_dir,
+        metadata_connection_config=metadata_config,
+        components=[instance_1, instance_2])
+
+    beam_dag_runner.BeamDagRunner().run(test_pipeline)
+
   def testBeamExecutionNonNullableReturnError(self):
     """Test failure when None used for non-optional primitive return value."""
     instance_1 = _injector_3()  # pylint: disable=no-value-for-parameter
-    self.assertEqual(1, len(instance_1.outputs['examples'].get()))
+    self.assertLen(instance_1.outputs['examples'].get(), 1)
     instance_2 = _optionalarg_component(  # pylint: disable=assignment-from-no-return
         foo=9,
         bar='secret',

@@ -150,11 +150,12 @@ class DslContextRegistry:
 
 
 _registry_holder = threading.local()
-_registry_holder.current = DslContextRegistry()
 
 
 def get() -> DslContextRegistry:
   """Gets the current active registry that observes DSL definitions."""
+  if not getattr(_registry_holder, 'current', None):
+    _registry_holder.current = DslContextRegistry()
   return _registry_holder.current
 
 

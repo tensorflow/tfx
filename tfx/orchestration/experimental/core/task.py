@@ -177,22 +177,6 @@ class UpdateNodeStateTask(Task):
     return (self.task_type_id(), self.node_uid)
 
 
-def is_exec_node_task(task: Task) -> bool:
-  return task.task_type_id() == ExecNodeTask.task_type_id()
-
-
-def is_cancel_node_task(task: Task) -> bool:
-  return task.task_type_id() == CancelNodeTask.task_type_id()
-
-
-def is_finalize_pipeline_task(task: Task) -> bool:
-  return task.task_type_id() == FinalizePipelineTask.task_type_id()
-
-
-def is_update_node_state_task(task: Task) -> bool:
-  return task.task_type_id() == UpdateNodeStateTask.task_type_id()
-
-
 def exec_node_task_id_from_pipeline_node(
     pipeline: pipeline_pb2.Pipeline, node: pipeline_pb2.PipelineNode) -> TaskId:
   """Returns task id of an `ExecNodeTask` from pipeline and node."""

@@ -15,7 +15,6 @@
 
 import datetime
 import json
-import multiprocessing
 import os
 from typing import Any, Dict, List
 
@@ -30,6 +29,8 @@ from tfx.types import standard_component_specs
 from tfx.utils import doc_controls
 from tfx.utils import json_utils
 from tfx.utils import name_utils
+
+import multiprocessing
 
 TUNING_ARGS_KEY = doc_controls.documented(
     obj='ai_platform_tuning_args',
@@ -175,7 +176,8 @@ class Executor(base_executor.BaseExecutor):
     # Note: exec_properties['custom_config'] here is a dict.
     return runner.start_cloud_training(input_dict, output_dict, exec_properties,
                                        executor_class_path, training_inputs,
-                                       job_id, enable_vertex, vertex_region)
+                                       job_id, None, enable_vertex,
+                                       vertex_region)
 
 
 def _need_chief_oracle(exec_properties: Dict[str, Any]) -> bool:
@@ -191,36 +193,41 @@ def _need_chief_oracle(exec_properties: Dict[str, Any]) -> bool:
 class _WorkerExecutor(base_executor.BaseExecutor):
   """TFX Tuner executor impl as a worker in a Google Cloud AI Platform job."""
 
+  def _run_chief_oracle(
+      self, input_dict: Dict[str, List[types.Artifact]],
+      exec_properties: Dict[str, List[types.Artifact]]) -> None:
+    """Invoke chief oracle, and listen to the open port."""
+    logging.info('chief_oracle() starting...')
+
+    # Per KerasTuner's specification, configuration of chief oracle is set
+    # by environment variables. This only affects the current sub-process
+    # which is single-threaded, but not the main process. As such, mutation
+    # of this otherwise global state is safe.
+    os.environ['KERASTUNER_ORACLE_IP'] = '0.0.0.0'
+    os.environ['KERASTUNER_ORACLE_PORT'] = self._master_port
+    os.environ['KERASTUNER_TUNER_ID'] = 'chief'
+
+    logging.info('Binding chief oracle server at: %s:%s',
+                 os.environ['KERASTUNER_ORACLE_IP'],
+                 os.environ['KERASTUNER_ORACLE_PORT'])
+
+    # By design of KerasTuner, chief oracle blocks forever. Ref.
+    # https://github.com/keras-team/keras-tuner/blob/e8b0ad3ecae471c73e17cb41f37e6f99202ac0dd/kerastuner/engine/base_tuner.py#L74-L76
+    tuner_executor.search(input_dict, exec_properties, _WORKING_DIRECTORY)
+
   def _start_chief_oracle_in_subprocess(
       self, input_dict: Dict[str, List[types.Artifact]],
       exec_properties: Dict[str, List[types.Artifact]]):
     """Starts a chief oracle in a subprocess."""
-
-    def _run_chief_oracle() -> None:
-      """Invoke chief oracle, and listen to the open port."""
-      logging.info('chief_oracle() starting...')
-
-      # Per KerasTuner's specification, configuration of chief oracle is set
-      # by environment variables. This only affects the current sub-process
-      # which is single-threaded, but not the main process. As such, mutation
-      # of this otherwise global state is safe.
-      os.environ['KERASTUNER_ORACLE_IP'] = '0.0.0.0'
-      os.environ['KERASTUNER_ORACLE_PORT'] = self._master_port
-      os.environ['KERASTUNER_TUNER_ID'] = 'chief'
-
-      logging.info('Binding chief oracle server at: %s:%s',
-                   os.environ['KERASTUNER_ORACLE_IP'],
-                   os.environ['KERASTUNER_ORACLE_PORT'])
-
-      # By design of KerasTuner, chief oracle blocks forever. Ref.
-      # https://github.com/keras-team/keras-tuner/blob/e8b0ad3ecae471c73e17cb41f37e6f99202ac0dd/kerastuner/engine/base_tuner.py#L74-L76
-      tuner_executor.search(input_dict, exec_properties, _WORKING_DIRECTORY)
-
     # Because of KerasTuner's interface whereby behavior is controlled
     # by environment variables, starting the chief oracle in a sub-process,
     # as opposed to another thread in the main process, in order not to leak
     # the environment variables.
-    result = multiprocessing.Process(target=_run_chief_oracle)
+    result = multiprocessing.Process(
+        target=self._run_chief_oracle, args=(
+            input_dict,
+            exec_properties,
+        ))
     result.start()
 
     logging.info('Chief oracle started at PID: %s', result.pid)

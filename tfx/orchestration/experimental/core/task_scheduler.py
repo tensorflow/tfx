@@ -14,7 +14,6 @@
 """Task scheduler interface and registry."""
 
 import abc
-import typing
 from typing import Dict, Generic, List, Optional, Type, TypeVar, Union
 
 import attr
@@ -175,10 +174,9 @@ class TaskSchedulerRegistry:
         given task.
     """
 
-    if not task_lib.is_exec_node_task(task):
+    if not isinstance(task, task_lib.ExecNodeTask):
       raise NotImplementedError(
           'Can create a task scheduler only for an `ExecNodeTask`.')
-    task = typing.cast(task_lib.ExecNodeTask, task)
 
     try:
       scheduler_class = cls._scheduler_class_for_node_type(task)

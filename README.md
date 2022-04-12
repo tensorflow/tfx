@@ -2,7 +2,7 @@
 
 # TFX
 
-[![Python](https://img.shields.io/pypi/pyversions/tfx.svg?style=plastic)](https://github.com/tensorflow/tfx)
+[![Python](https://img.shields.io/badge/python%20-3.7%7C3.8%7C3.9-blue)](https://github.com/tensorflow/tfx)
 [![PyPI](https://badge.fury.io/py/tfx.svg)](https://badge.fury.io/py/tfx)
 [![TensorFlow](https://img.shields.io/badge/TensorFow-page-orange)](https://www.tensorflow.org/tfx)
 
@@ -64,6 +64,7 @@ tfx                                                                       | apac
 ------------------------------------------------------------------------- | ---------------- | ----------- | ------- | ----------------- | -------------------------- | ------------------- | ------------------------- | ---------------------- | -------------------- | -------
 [GitHub master](https://github.com/tensorflow/tfx/blob/master/RELEASE.md) | 2.36.0           | 1.7.0       | 5.0.0   | nightly (1.x/2.x) | 1.7.0                      | 1.7.0               | 0.38.0                    | 2.8.0                  | 1.7.0                | 1.7.0
 [1.7.0](https://github.com/tensorflow/tfx/blob/v1.7.0/RELEASE.md)         | 2.36.0           | 1.7.0       | 5.0.0   | 1.15.5 / 2.8.0    | 1.7.0                      | 1.7.0               | 0.38.0                    | 2.8.0                  | 1.7.0                | 1.7.0
+[1.6.2](https://github.com/tensorflow/tfx/blob/v1.6.2/RELEASE.md)         | 2.35.0           | 1.6.0       | 5.0.0   | 1.15.5 / 2.8.0    | 1.6.0                      | 1.6.0               | 0.37.0                    | 2.7.0                  | 1.6.0                | 1.6.0
 [1.6.0](https://github.com/tensorflow/tfx/blob/v1.6.0/RELEASE.md)         | 2.35.0           | 1.6.0       | 5.0.0   | 1.15.5 / 2.7.0    | 1.6.0                      | 1.6.0               | 0.37.0                    | 2.7.0                  | 1.6.0                | 1.6.0
 [1.5.0](https://github.com/tensorflow/tfx/blob/v1.5.0/RELEASE.md)         | 2.34.0           | 1.5.0       | 5.0.0   | 1.15.2 / 2.7.0    | 1.5.0                      | 1.5.0               | 0.36.0                    | 2.7.0                  | 1.5.0                | 1.5.0
 [1.4.0](https://github.com/tensorflow/tfx/blob/v1.4.0/RELEASE.md)         | 2.33.0           | 1.4.0       | 5.0.0   | 1.15.0 / 2.6.0    | 1.4.0                      | 1.4.0               | 0.35.0                    | 2.6.0                  | 1.4.0                | 1.4.0

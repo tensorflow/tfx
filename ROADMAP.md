@@ -1,7 +1,6 @@
 ### TFX OSS roadmap
-This highlights the main OSS efforts for the TFX team in Q4 2020 and Q1 2021,
-along with the history from 2019 onwards. If you're interested in contributing
-in one of these areas,
+This highlights the main OSS efforts for the TFX team, along with the history.
+If you're interested in contributing in one of these areas,
 [contributions](https://github.com/tensorflow/tfx/blob/master/CONTRIBUTING.md)
 are always welcome, especially in areas that extend TFX into infrastructure
 currently not widely in use at Google.
@@ -35,57 +34,39 @@ in production.
 [Kubeflow](https://www.kubeflow.org/), and
 [TensorFlow 2.0](https://www.tensorflow.org/versions/r2.0/api_docs/).
 *   Make TFX more ML framework neutral to enable wider usage.
-*   Encourage the discovery and reuse of external contributions.
-*   Extend portability across additional cluster computing frameworks (e.g.
-[Kubernetes](https://kubernetes.io/), [Apache Flink](https://flink.apache.org/)
-and data formats (e.g. [Apache Avro](https://avro.apache.org/),
-[Apache Parquet](https://parquet.apache.org/)).
+*   Encourage the discovery and reuse of external contributions, TFX-Addons.
+*   Extend portability across additional cluster computing frameworks.
 
 ##### Usability
-*   Support more distributed strategies in TensorFlow 2.x.
 *   Improving the testing capabilities for OSS developers.
-*   Reach feature parity and make it easy to move ML focused pipelines from
-    Kubeflow pipelines (KFP) to TFX DSL. Also share the same pipeline
-    intermediate representation for both platforms to guarantee semantics and
-    data model consistency.
-*   Support loading KFP components (defined in YAML) in TFX pipelines.
-*   Support for training on continuously arriving data and more advanced
-    orchestration semantics.
+*   Support for more advanced orchestration semantics.
 *   Create examples and templates for more ML verticals.
 
 ##### Performance
-*   Better distributed training support
-([DistributionStrategy](https://www.tensorflow.org/guide/distribute_strategy)).
+*   Better TPU support on Cloud.
 *   Support for more performant file storage formats than TFRecords.
 *   Better telemetry for users to understand the behavior of components in a
-TFX pipeline.
-
-##### Education
-*   Work with [ML Metadata](https://www.tensorflow.org/tfx/guide/mlmd) to
-    publish standard ontology types and showcase them through TFX.
+    TFX pipeline.
 
 ##### Innovation and collaboration
-*   Further enhance integration with [tf.Lite](https://www.tensorflow.org/lite/)
-to better support mobile, IoT, and edge devices.
 *   Formalize Special Interest Groups (SIGs) for specific aspects of TFX to
-accelerate community innovation and collaboration.
+    accelerate community innovation and collaboration.
 *   Early access to new features.
 
 #### History
 
 [Towards ML Engineering: A Brief History Of TensorFlow Extended (TFX)](https://blog.tensorflow.org/2020/09/brief-history-of-tensorflow-extended-tfx.html)
-* Q3 2020 * Component Launches & Enhancements * Cloud AI Platform integration
-with BulkInferrer * Multi Framework Support in TFX Components * Experimental
-[Scikit Learn example in TFX](https://github.com/tensorflow/tfx/blob/master/tfx/examples/penguin/experimental/penguin_utils_sklearn.py)
-* On Device * Support for TFJS in Evaluator component * Orchestration: *
-[(RFC) Asynchronous / data driven pipelines](https://github.com/tensorflow/community/blob/master/rfcs/20200601-tfx-udsl-semantics.md)
-* Intermediate Representation (IR) * Object detection example -
-[CIFAR-10](https://github.com/tensorflow/tfx/tree/master/tfx/examples/cifar10) *
-NLP Bert examples
-[CoLA](https://github.com/tensorflow/tfx/tree/master/tfx/examples/bert/cola),
-and [MRPC](https://github.com/tensorflow/tfx/tree/master/tfx/examples/bert/mrpc)
-* Supported custom splits for ExampleGen's downstream components.
 
+*   Q2 2022
+    *   Dynamic Exec Properties support for Vertex.
+    *   Vertex Machine type configuration.
+    *   Investige other splitable file storage formats than just TFRecord.
+*   Q3 2020
+    *   Component Launches & Enhancements.
+    *   Cloud AI Platform integration with BulkInferrer.
+    *   Multi Framework Support in TFX Components.
+    *   On Device Support for TFJS in Evaluator component.
+    *   Intermediate Representation (IR).
 *   Q2 2020
     *   Custom component authoring was made easier by supporting python function
         and custom container.

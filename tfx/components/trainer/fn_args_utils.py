@@ -99,7 +99,7 @@ class FnArgs:
   eval_model_dir = attr.ib(type=str, default=None)
   model_run_dir = attr.ib(type=str, default=None)
   base_model = attr.ib(type=str, default=None)
-  hyperparameters = attr.ib(type=str, default=None)
+  hyperparameters = attr.ib(type=Dict[str, Any], default=None)
   custom_config = attr.ib(type=Dict[str, Any], default=None)
 
 

@@ -18,7 +18,7 @@ import os
 from typing import Any, Dict, List
 
 import absl
-import tensorflow as tf
+from tensorflow import estimator as tf_estimator
 import tensorflow_model_analysis as tfma
 from tfx import types
 from tfx.components.trainer import constants
@@ -267,7 +267,7 @@ class Executor(GenericExecutor):
 
     # Train the model
     absl.logging.info('Training model.')
-    tf.estimator.train_and_evaluate(training_spec['estimator'],
+    tf_estimator.train_and_evaluate(training_spec['estimator'],
                                     training_spec['train_spec'],
                                     training_spec['eval_spec'])
 

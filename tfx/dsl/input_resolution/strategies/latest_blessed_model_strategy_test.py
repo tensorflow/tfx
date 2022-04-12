@@ -67,9 +67,40 @@ class LatestBlessedModelStrategyTest(test_case_utils.TfxTest):
             'model': [model_one, model_two, model_three],
             'model_blessing': [model_blessing_one, model_blessing_two]
         })
-    self.assertIsNotNone(result)
     self.assertEqual([a.uri for a in result['model']], ['model_two'])
 
+  def testResolve_EmptyInitialChannel(self):
+    strategy = latest_blessed_model_strategy.LatestBlessedModelStrategy()
+
+    result = strategy.resolve_artifacts(
+        self._store, {
+            'model': [],
+            'model_blessing': [],
+        })
+
+    self.assertEqual(result, {
+        'model': [],
+        'model_blessing': [],
+    })
+
+  def testResolve_NoBlessedModel(self):
+    model = standard_artifacts.Model()
+    model.uri = 'm1'
+    model.id = 1
+    model_blessing = standard_artifacts.ModelBlessing()
+    self._set_model_blessing_bit(model_blessing, model.id, 0)
+    strategy = latest_blessed_model_strategy.LatestBlessedModelStrategy()
+
+    result = strategy.resolve_artifacts(
+        self._store, {
+            'model': [model],
+            'model_blessing': [model_blessing],
+        })
+
+    self.assertEqual(result, {
+        'model': [],
+        'model_blessing': [],
+    })
 
 if __name__ == '__main__':
   tf.test.main()

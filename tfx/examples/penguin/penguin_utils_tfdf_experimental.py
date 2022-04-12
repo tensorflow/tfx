@@ -13,7 +13,20 @@
 # limitations under the License.
 """Supplement for penguin_utils_base.py for TF Decision Forests models.
 
-**The TFDF support in TFX is currently experimental.**
+**TensorFlow Decision Forests (TF-DF) support in TFX is currently
+experimental.**
+
+TensorFlow Decision Forests (https://www.tensorflow.org/decision_forests) is a
+collection collection of state-of-the-art Decision Forests learning algorithms
+available in the TensorFlow 2 Keras API. For instructions about TF-DF, check the
+Beginner colab:
+https://www.tensorflow.org/decision_forests/tutorials/beginner_colab
+
+TF-DF uses custom ops for training and serving. See this discussion
+(https://discuss.tensorflow.org/t/tensorflow-decision-forests-with-tfx-model-serving-and-evaluation/2137)
+for common configuration issues with TF-DF in TFX. See this guide
+(https://www.tensorflow.org/decision_forests/tensorflow_serving) on how to
+serve TF-DF models with TensorFlow Serving.
 
 This module file will be used in the Transform, Tuner and generic Trainer
 components.
@@ -37,39 +50,120 @@ from tfx_bsl.public import tfxio
 # https://github.com/tensorflow/decision-forests/blob/main/documentation/migration.md#do-not-preprocess-the-features.
 preprocessing_fn = base.preprocessing_fn
 
+_KEY_MODEL_TYPE = 'model_type'
+_KEY_RANDOM_FOREST = 'RANDOM_FOREST'
+_KEY_GRADIENT_BOOSTED_TREES = 'GRADIENT_BOOSTED_TREES'
+
 
 def _get_hyperparameters() -> kt.HyperParameters:
-  """Returns hyperparameters for building a TFDF model."""
+  """Creates a small hyperparameter search space for TF-DF.
+
+  TF-DF offers multiple learning algorithms, and each one has its own
+  hyperparameters. In this example, we consider the Random Forest and Gradient
+  Boosted Trees models.
+
+  Their hyperparameters are described at:
+
+  https://www.tensorflow.org/decision_forests/api_docs/python/tfdf/keras/GradientBoostedTreesModel
+  https://www.tensorflow.org/decision_forests/api_docs/python/tfdf/keras/RandomForestModel
+  https://github.com/google/yggdrasil-decision-forests/blob/main/documentation/learners.md
+
+  See the user manual to get an idea of which hyperparameters are best suited
+  for tuning:
+  https://github.com/google/yggdrasil-decision-forests/blob/main/documentation/user_manual.md#manual-tuning-of-hyper-parameters
+
+  Returns:
+    Valid range and default value of few of the GBT hyperparameters.
+  """
   hp = kt.HyperParameters()
-  # Defines search space.
-  # For a complete list of configuration parameters of learners, please refer to
-  # https://github.com/google/yggdrasil-decision-forests/blob/main/documentation/learners.md
-  hp.Int('max_depth', 3, 8, default=6)
-  hp.Float('shrinkage', 0.01, 0.1, default=0.1)
-  hp.Boolean('use_hessian_gain', default=False)
+
+  # Select the decision forest learning algorithm.
+  hp.Choice(
+      _KEY_MODEL_TYPE, [
+          _KEY_RANDOM_FOREST,
+          _KEY_GRADIENT_BOOSTED_TREES,
+      ],
+      default=_KEY_GRADIENT_BOOSTED_TREES)
+
+  # Hyperparameter for the Random Forest
+  hp.Int(
+      'max_depth',
+      10,
+      24,
+      default=16,
+      parent_name=_KEY_MODEL_TYPE,
+      parent_values=[_KEY_RANDOM_FOREST])
+  hp.Int(
+      'min_examples',
+      2,
+      20,
+      default=6,
+      parent_name=_KEY_MODEL_TYPE,
+      parent_values=[_KEY_RANDOM_FOREST])
+
+  # Hyperparameters for the Gradient Boosted Trees
+  hp.Float(
+      'num_candidate_attributes_ratio',
+      0.5,
+      1.0,
+      default=1.0,
+      parent_name=_KEY_MODEL_TYPE,
+      parent_values=[_KEY_GRADIENT_BOOSTED_TREES])
+  hp.Boolean(
+      'use_hessian_gain',
+      default=False,
+      parent_name=_KEY_MODEL_TYPE,
+      parent_values=[_KEY_GRADIENT_BOOSTED_TREES])
+  hp.Choice(
+      'growing_strategy', ['LOCAL', 'BEST_FIRST_GLOBAL'],
+      default='LOCAL',
+      parent_name=_KEY_MODEL_TYPE,
+      parent_values=[_KEY_GRADIENT_BOOSTED_TREES])
+
   return hp
 
 
 def _make_keras_model(hparams: kt.HyperParameters) -> tf.keras.Model:
-  """Creates a TFDF Keras model for classifying penguin data.
+  """Creates a TF-DF Keras model.
 
   Args:
-    hparams: Holds HyperParameters for tuning.
+    hparams: Hyperparameters of the model.
 
   Returns:
     A Keras Model.
   """
-  return tfdf.keras.GradientBoostedTreesModel(
-      max_depth=hparams.get('max_depth'),
-      shrinkage=hparams.get('shrinkage'),
-      use_hessian_gain=hparams.get('use_hessian_gain'))
+
+  # Note: The input features are not specified. Therefore, all the columns
+  # specified in the Transform are used as input features, and their semantic
+  # (e.g. numerical, categorical) is inferred automatically.
+  common_args = {
+      'verbose': 2,
+      'task': tfdf.keras.Task.CLASSIFICATION,
+  }
+
+  if hparams.get(_KEY_MODEL_TYPE) == _KEY_RANDOM_FOREST:
+    return tfdf.keras.RandomForestModel(
+        max_depth=hparams.get('max_depth'),
+        min_examples=hparams.get('min_examples'),
+        **common_args)
+
+  elif hparams.get(_KEY_MODEL_TYPE) == _KEY_GRADIENT_BOOSTED_TREES:
+    return tfdf.keras.GradientBoostedTreesModel(
+        num_candidate_attributes_ratio=hparams.get(
+            'num_candidate_attributes_ratio'),
+        use_hessian_gain=hparams.get('use_hessian_gain'),
+        growing_strategy=hparams.get('growing_strategy'),
+        **common_args)
+
+  else:
+    raise ValueError('Unknown model type')
 
 
 def input_fn(file_pattern: List[str],
              data_accessor: tfx.components.DataAccessor,
              tf_transform_output: tft.TFTransformOutput,
              batch_size: int) -> tf.data.Dataset:
-  """Generates features and label for tuning/training for a single epoch.
+  """Creates a tf.Dataset for training or evaluation.
 
   Args:
     file_pattern: List of paths or patterns of input tfrecord files.
@@ -85,14 +179,20 @@ def input_fn(file_pattern: List[str],
   return data_accessor.tf_dataset_factory(
       file_pattern,
       tfxio.TensorFlowDatasetOptions(
-          batch_size=batch_size, num_epochs=1,
+          # The batch size has not impact on the model quality. However, small
+          # batch size might be slower.
+          batch_size=batch_size,
+          # TF-DF models should be trained on exactly one epoch.
+          num_epochs=1,
+          # Datasets should not be shuffled.
+          shuffle=False,
           label_key=base.transformed_name(base._LABEL_KEY)),  # pylint: disable=protected-access
       tf_transform_output.transformed_metadata.schema)
 
 
 # TFX Tuner will call this function.
 def tuner_fn(fn_args: tfx.components.FnArgs) -> tfx.components.TunerFnResult:
-  """Build the tuner using the KerasTuner API.
+  """Builds a Keras Tuner for the model.
 
   Args:
     fn_args: Holds args as name/value pairs.
@@ -118,6 +218,7 @@ def tuner_fn(fn_args: tfx.components.FnArgs) -> tfx.components.TunerFnResult:
       max_trials=6,
       hyperparameters=_get_hyperparameters(),
       allow_new_entries=False,
+      # The model is tuned on the loss computed on the TFX validation dataset.
       objective=kt.Objective('val_loss', 'min'),
       directory=fn_args.working_dir,
       project_name='penguin_tuning')
@@ -162,15 +263,16 @@ def run_fn(fn_args: tfx.components.FnArgs):
     hparams = _get_hyperparameters()
 
   model = _make_keras_model(hparams)
+  model.fit(train_dataset, validation_data=eval_dataset)
 
-  # Write logs to path
-  tensorboard_callback = tf.keras.callbacks.TensorBoard(
-      log_dir=fn_args.model_run_dir, update_freq='batch')
+  print('Trained model:')
+  model.summary()
 
-  model.fit(
-      train_dataset,
-      validation_data=eval_dataset,
-      callbacks=[tensorboard_callback])
+  # Note: Callbacks are not (yet) operational. Instead, we export TensorBoard
+  # logs manually.
+
+  # Export the tensorboard logs.
+  model.make_inspector().export_to_tensorboard(fn_args.model_run_dir)
 
   signatures = base.make_serving_signatures(model, tf_transform_output)
   model.save(fn_args.serving_model_dir, save_format='tf', signatures=signatures)

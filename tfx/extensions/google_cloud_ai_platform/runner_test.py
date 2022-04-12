@@ -182,8 +182,8 @@ class RunnerTest(tf.test.TestCase):
 
     runner.start_cloud_training(self._inputs, self._outputs,
                                 self._serialize_custom_config_under_test(),
-                                class_path, self._training_inputs, None, True,
-                                region)
+                                class_path, self._training_inputs, None, {},
+                                True, region)
 
     self._mock_create.assert_called_with(
         parent='projects/{}/locations/{}'.format(self._project_id, region),
@@ -231,7 +231,7 @@ class RunnerTest(tf.test.TestCase):
     runner.start_cloud_training(self._inputs, self._outputs,
                                 self._serialize_custom_config_under_test(),
                                 class_path, self._training_inputs, self._job_id,
-                                True, region)
+                                {}, True, region)
 
     self._mock_create.assert_called_with(
         parent='projects/{}/locations/{}'.format(self._project_id, region),
@@ -291,7 +291,7 @@ class RunnerTest(tf.test.TestCase):
     runner.start_cloud_training(self._inputs, self._outputs,
                                 self._serialize_custom_config_under_test(),
                                 class_path, self._training_inputs, self._job_id,
-                                True, region)
+                                {}, True, region)
 
     self._mock_create.assert_called_with(
         parent='projects/{}/locations/{}'.format(self._project_id, region),

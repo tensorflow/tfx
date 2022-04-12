@@ -14,7 +14,9 @@
 """Utilities for task generation."""
 
 import itertools
-from typing import Dict, Iterable, List, Optional, Sequence
+import time
+from typing import Dict, Iterable, List, Mapping, Optional, Sequence
+import uuid
 
 from absl import logging
 import attr
@@ -35,6 +37,9 @@ import ml_metadata as mlmd
 from ml_metadata.proto import metadata_store_pb2
 from google.protobuf import any_pb2
 
+_EXECUTION_SET_SIZE = '__execution_set_size__'
+_EXECUTION_TIMESTAMP = '__execution_timestamp__'
+
 
 @attr.s(auto_attribs=True)
 class ResolvedInfo:
@@ -43,12 +48,15 @@ class ResolvedInfo:
   input_artifacts: List[Optional[typing_utils.ArtifactMultiMap]]
 
 
-def _generate_task_from_execution(metadata_handler: metadata.Metadata,
-                                  pipeline: pipeline_pb2.Pipeline,
-                                  node: pipeline_pb2.PipelineNode,
-                                  execution: metadata_store_pb2.Execution,
-                                  is_cancelled: bool = False) -> task_lib.Task:
+def generate_task_from_execution(metadata_handler: metadata.Metadata,
+                                 pipeline: pipeline_pb2.Pipeline,
+                                 node: pipeline_pb2.PipelineNode,
+                                 execution: metadata_store_pb2.Execution,
+                                 is_cancelled: bool = False) -> task_lib.Task:
   """Generates `ExecNodeTask` given execution."""
+  if not execution_lib.is_execution_active(execution):
+    raise RuntimeError(f'Execution is not active: {execution}.')
+
   contexts = metadata_handler.store.get_contexts_by_execution(execution.id)
   exec_properties = extract_properties(execution)
   input_artifacts = execution_lib.get_artifacts_dict(
@@ -104,10 +112,13 @@ def generate_task_from_active_execution(
   if not active_executions:
     return None
   if len(active_executions) > 1:
+    # TODO (b/223627713) a node in a ForEach is not restartable, it is better
+    # to prevent restarting for now.
     raise RuntimeError(
         'Unexpected multiple active executions for the node: {}\n executions: '
-        '{}'.format(node.node_info.id, active_executions))
-  return _generate_task_from_execution(
+        '{}. Updating/restarting a foreach node is not supported yet'.format(
+            node.node_info.id, active_executions))
+  return generate_task_from_execution(
       metadata_handler,
       pipeline,
       node,
@@ -140,6 +151,14 @@ def extract_properties(
   return result
 
 
+def resolve_exec_properties(
+    node: pipeline_pb2.PipelineNode) -> Dict[str, types.ExecPropertyTypes]:
+  """Resolves execution properties for executing the node."""
+  return data_types_utils.build_parsed_value_dict(
+      inputs_utils.resolve_parameters_with_schema(
+          node_parameters=node.parameters))
+
+
 def generate_resolved_info(
     metadata_handler: metadata.Metadata,
     node: pipeline_pb2.PipelineNode) -> Optional[ResolvedInfo]:
@@ -162,9 +181,7 @@ def generate_resolved_info(
       metadata_handler=metadata_handler, node_contexts=node.contexts)
 
   # Resolve execution properties.
-  exec_properties = data_types_utils.build_parsed_value_dict(
-      inputs_utils.resolve_parameters_with_schema(
-          node_parameters=node.parameters))
+  exec_properties = resolve_exec_properties(node)
 
   # Resolve inputs.
   try:
@@ -179,10 +196,6 @@ def generate_resolved_info(
       return None
     assert isinstance(resolved_input_artifacts, inputs_utils.Trigger)
     assert resolved_input_artifacts
-    # TODO(b/197741942): Support multiple dicts.
-    if len(resolved_input_artifacts) > 1:
-      raise NotImplementedError(
-          'Handling more than one input dicts not implemented.')
 
   return ResolvedInfo(
       contexts=contexts,
@@ -238,6 +251,16 @@ def is_latest_execution_successful(
       execution) if execution else False
 
 
+def get_latest_active_execution(
+    executions: Iterable[metadata_store_pb2.Execution]
+) -> Optional[metadata_store_pb2.Execution]:
+  """Returns the latest active execution or `None` if no active executions exist."""
+  active_executions = [
+      e for e in executions if execution_lib.is_execution_active(e)
+  ]
+  return get_latest_execution(active_executions)
+
+
 def get_latest_successful_execution(
     executions: Iterable[metadata_store_pb2.Execution]
 ) -> Optional[metadata_store_pb2.Execution]:
@@ -252,8 +275,37 @@ def get_latest_execution(
     executions: Iterable[metadata_store_pb2.Execution]
 ) -> Optional[metadata_store_pb2.Execution]:
   """Returns latest execution or `None` if iterable is empty."""
+  # TODO(guoweihe) After b/207038460, multiple executions can have the same
+  # creation time. We may need another custom property to determine their order.
   sorted_executions = execution_lib.sort_executions_newest_to_oldest(executions)
   return sorted_executions[0] if sorted_executions else None
+
+
+def get_latest_executions_set(
+    executions: Iterable[metadata_store_pb2.Execution]
+) -> List[metadata_store_pb2.Execution]:
+  """Returns latest set of executions."""
+  sorted_executions = execution_lib.sort_executions_newest_to_oldest(executions)
+  if not sorted_executions:
+    return []
+
+  size = sorted_executions[0].custom_properties.get(_EXECUTION_SET_SIZE)
+  if not size:
+    return [sorted_executions[0]]
+
+  # TODO(b/217390865): After we can register several executions in one
+  # transaction, the following code can be simplified.
+  # But before the feature is implemented, we can abandon those partially
+  # registered executions. For example, if orchestrator fail after publishing
+  # 1/3 and 2/3 but before 3/3, this function return empty array.
+  timestamp = sorted_executions[0].custom_properties.get(
+      _EXECUTION_TIMESTAMP).int_value
+  latest_execution_set = [
+      e for e in sorted_executions[:size.int_value]
+      if e.custom_properties.get(_EXECUTION_TIMESTAMP).int_value == timestamp
+  ]
+  return [] if len(latest_execution_set) != size.int_value else list(
+      reversed(latest_execution_set))
 
 
 # TODO(b/182944474): Raise error in _get_executor_spec if executor spec is
@@ -267,3 +319,51 @@ def get_executor_spec(pipeline: pipeline_pb2.Pipeline,
   depl_config = pipeline_pb2.IntermediateDeploymentConfig()
   pipeline.deployment_config.Unpack(depl_config)
   return depl_config.executor_specs.get(node_id)
+
+
+def register_executions(
+    metadata_handler: metadata.Metadata,
+    execution_type: metadata_store_pb2.ExecutionType,
+    contexts: Sequence[metadata_store_pb2.Context],
+    input_dicts: List[typing_utils.ArtifactMultiMap],
+    exec_properties: Optional[Mapping[str, types.ExecPropertyTypes]] = None,
+) -> List[metadata_store_pb2.Execution]:
+  """Registers multiple executions in MLMD.
+
+  Along with the execution:
+  -  the input artifacts will be linked to the executions.
+  -  the contexts will be linked to both the executions and its input artifacts.
+
+  Args:
+    metadata_handler: A handler to access MLMD.
+    execution_type: The type of the execution.
+    contexts: MLMD contexts to associated with the executions.
+    input_dicts: A list of dictionaries of artifacts. One execution will be
+      registered for each of the input_dict.
+    exec_properties: Execution properties. Will be attached to the executions.
+
+  Returns:
+    A list of MLMD executions that are registered in MLMD, with id populated.
+      All regiested executions have state of NEW.
+  """
+  executions = []
+  # TODO(b/207038460): Use the new feature of batch executions update once it is
+  # implemented (b/209883142).
+  timestamp = int(time.time() * 1e6)
+  for input_artifacts in input_dicts:
+    execution = execution_lib.prepare_execution(
+        metadata_handler,
+        execution_type,
+        metadata_store_pb2.Execution.NEW,
+        exec_properties,
+        execution_name=str(uuid.uuid4()))
+    execution.custom_properties[_EXECUTION_SET_SIZE].int_value = len(
+        input_dicts)
+    execution.custom_properties[_EXECUTION_TIMESTAMP].int_value = timestamp
+    executions.append(
+        execution_lib.put_execution(
+            metadata_handler,
+            execution,
+            contexts,
+            input_artifacts=input_artifacts))
+  return executions

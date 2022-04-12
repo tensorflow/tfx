@@ -74,7 +74,7 @@ class ExecutorTest(tf.test.TestCase):
         self._executor_class_path, {
             'project': self._project_id,
             'jobDir': self._job_dir,
-        }, None, False, None)
+        }, None, {}, False, None)
 
   def testDoWithJobIdOverride(self):
     executor = ai_platform_trainer_executor.Executor()
@@ -88,7 +88,7 @@ class ExecutorTest(tf.test.TestCase):
         self._executor_class_path, {
             'project': self._project_id,
             'jobDir': self._job_dir,
-        }, job_id, False, None)
+        }, job_id, {}, False, None)
 
   def testDoWithGenericExecutorClass(self):
     executor = ai_platform_trainer_executor.GenericExecutor()
@@ -99,7 +99,7 @@ class ExecutorTest(tf.test.TestCase):
         self._generic_executor_class_path, {
             'project': self._project_id,
             'jobDir': self._job_dir,
-        }, None, False, None)
+        }, None, {}, False, None)
 
   def testDoWithEnableVertexOverride(self):
     executor = ai_platform_trainer_executor.Executor()
@@ -116,7 +116,7 @@ class ExecutorTest(tf.test.TestCase):
         self._executor_class_path, {
             'project': self._project_id,
             'jobDir': self._job_dir,
-        }, None, enable_vertex, vertex_region)
+        }, None, {}, enable_vertex, vertex_region)
 
 
 if __name__ == '__main__':

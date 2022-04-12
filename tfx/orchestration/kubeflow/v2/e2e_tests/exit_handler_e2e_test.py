@@ -70,7 +70,8 @@ class ExitHandlerE2ETest(base_test_case.BaseKubeflowV2Test):
     expected_successful_final_status_str = """
       {
         "state":"SUCCEEDED",
-        "error":{}
+        "error":{},
+        "pipeline_task_name":"_tfx_dag"
       }
     """
 

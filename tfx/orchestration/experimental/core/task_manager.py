@@ -170,10 +170,10 @@ class TaskManager:
 
   def _handle_task(self, task: task_lib.Task) -> None:
     """Dispatches task to the task specific handler."""
-    if task_lib.is_exec_node_task(task):
-      self._handle_exec_node_task(typing.cast(task_lib.ExecNodeTask, task))
-    elif task_lib.is_cancel_node_task(task):
-      self._handle_cancel_node_task(typing.cast(task_lib.CancelNodeTask, task))
+    if isinstance(task, task_lib.ExecNodeTask):
+      self._handle_exec_node_task(task)
+    elif isinstance(task, task_lib.CancelNodeTask):
+      self._handle_cancel_node_task(task)
     else:
       raise RuntimeError('Cannot dispatch bad task: {}'.format(task))
 
