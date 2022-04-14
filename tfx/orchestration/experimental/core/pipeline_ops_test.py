@@ -21,7 +21,6 @@ import time
 from absl.testing import parameterized
 from absl.testing.absltest import mock
 import tensorflow as tf
-from tfx import types
 from tfx.dsl.compiler import constants
 from tfx.orchestration import metadata
 from tfx.orchestration.experimental.core import async_pipeline_task_gen
@@ -41,17 +40,14 @@ from tfx.orchestration.experimental.core.task_schedulers import manual_task_sche
 from tfx.orchestration.experimental.core.testing import test_async_pipeline
 from tfx.orchestration.experimental.core.testing import test_manual_node
 from tfx.orchestration.portable import execution_publish_utils
-from tfx.orchestration.portable import outputs_utils
 from tfx.orchestration.portable import partial_run_utils
 from tfx.orchestration.portable import runtime_parameter_utils
 from tfx.orchestration.portable.mlmd import context_lib
 from tfx.orchestration.portable.mlmd import execution_lib
-from tfx.proto.orchestration import execution_result_pb2
 from tfx.proto.orchestration import pipeline_pb2
 from tfx.utils import status as status_lib
 
 from ml_metadata.proto import metadata_store_pb2
-from ml_metadata.proto import metadata_store_service_pb2
 
 
 def _test_pipeline(pipeline_id: str,
@@ -62,17 +58,6 @@ def _test_pipeline(pipeline_id: str,
   pipeline.execution_mode = execution_mode
   if execution_mode == pipeline_pb2.Pipeline.SYNC:
     pipeline.runtime_spec.pipeline_run_id.field_value.string_value = 'run0'
-  return pipeline
-
-
-def _test_pipeline_with_example_gen(pipeline_id: str):
-  pipeline = _test_pipeline(pipeline_id, pipeline_pb2.Pipeline.SYNC)
-  node_example_gen = pipeline.nodes.add().pipeline_node
-  node_example_gen.node_info.id = 'example-gen-0'
-  node_example_gen.node_info.type.name = 'ExampleGen'
-  context_spec = node_example_gen.contexts.contexts.add()
-  context_spec.name.field_value.string_value = 'example-gen-0'
-  context_spec.type.name = 'node'
   return pipeline
 
 
@@ -1511,255 +1496,6 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
           self.assertEqual(
               'Pipeline aborted due to exceeding deadline (1 secs)',
               status.message)
-
-  @mock.patch.object(outputs_utils, 'OutputsResolver')
-  @mock.patch(
-      'tfx.orchestration.portable.outputs_utils.make_output_dirs',
-      return_value=None)
-  def test_external_executions_end_to_end(self, unused_make_output_dirs,
-                                          outputs_resolver):
-    with self._mlmd_connection as m:
-      pipeline = _test_pipeline_with_example_gen('test_pipeline')
-      node_uid = task_lib.NodeUid.from_pipeline_node(
-          pipeline, pipeline.nodes[0].pipeline_node)
-      pipeline_state = pipeline_ops.initiate_pipeline_start(m, pipeline)
-      pipeline_run_id = pipeline_state.pipeline_run_id
-
-      # No executions are registered yet, so get_external_executions returns
-      # an empty result.
-      empty_get_result = pipeline_ops.get_external_executions(
-          m, node_uid, pipeline_run_id)
-      self.assertEmpty(empty_get_result)
-
-      # Register two executions; register_external_executions should return the
-      # two executions
-      register_result = pipeline_ops.register_external_executions(
-          m, node_uid, pipeline_state.pipeline_run_id, [{
-              'test_property': 'test_value_0'
-          }, {
-              'test_property': 'test_value_1'
-          }])
-      self.assertLen(register_result, 2)
-      self.assertSameElements(
-          {
-              'test_property':
-                  metadata_store_pb2.Value(string_value='test_value_0')
-          }, register_result[0].custom_properties)
-      self.assertSameElements(
-          {
-              'test_property':
-                  metadata_store_pb2.Value(string_value='test_value_1')
-          }, register_result[1].custom_properties)
-      self.assertEqual(metadata_store_pb2.Execution.State.NEW,
-                       register_result[0].last_known_state)
-      self.assertEqual(metadata_store_pb2.Execution.State.NEW,
-                       register_result[1].last_known_state)
-
-      # get_external_executions should return the two registered executions.
-      get_result = pipeline_ops.get_external_executions(m, node_uid,
-                                                        pipeline_run_id)
-      self.assertLen(get_result, 2)
-      ignored_fields = [
-          'create_time_since_epoch', 'last_update_time_since_epoch'
-      ]
-      self.assertProtoPartiallyEquals(get_result[0], register_result[0],
-                                      ignored_fields)
-      self.assertProtoPartiallyEquals(get_result[1], register_result[1],
-                                      ignored_fields)
-
-      execution_id = get_result[0].id
-      uri = '/test/0/out'
-      stateful_working_dir = '/test/0/stateful_working_dir'
-      tmp_dir = '/test/0/tmp'
-      outputs_resolver.return_value.get_executor_output_uri.return_value = ''
-      outputs_resolver.return_value.get_stateful_working_directory.return_value = stateful_working_dir
-      outputs_resolver.return_value.make_tmp_dir.return_value = tmp_dir
-      output_artifact = types.Artifact(
-          metadata_store_pb2.ArtifactType(name='ExamplesPath'))
-      output_artifact.uri = uri
-      outputs_resolver.return_value.generate_output_artifacts.return_value = {
-          'examples': [output_artifact]
-      }
-
-      # Start the first execution.
-      execution_invocation = pipeline_ops.start_external_execution(
-          m, node_uid, pipeline_run_id, execution_id)
-      self.assertEqual(tmp_dir, execution_invocation.tmp_dir)
-      self.assertEqual(stateful_working_dir,
-                       execution_invocation.stateful_working_dir)
-      self.assertEqual(
-          metadata_store_service_pb2.ArtifactStructList(elements=[
-              metadata_store_service_pb2.ArtifactStruct(
-                  artifact=(metadata_store_service_pb2.ArtifactAndType(
-                      artifact=metadata_store_pb2.Artifact(uri=uri),
-                      type=metadata_store_pb2.ArtifactType(
-                          name='ExamplesPath'))))
-          ]), execution_invocation.output_dict['examples'])
-
-      # get_external_executions should return the two registered executions.
-      # Only the first execution should be running.
-      get_after_start_result = pipeline_ops.get_external_executions(
-          m, node_uid, pipeline_run_id)
-      ignored_fields_with_state = [
-          'create_time_since_epoch', 'last_update_time_since_epoch',
-          'last_known_state'
-      ]
-      self.assertProtoPartiallyEquals(get_after_start_result[0],
-                                      register_result[0],
-                                      ignored_fields_with_state)
-      self.assertProtoPartiallyEquals(get_after_start_result[1],
-                                      register_result[1],
-                                      ignored_fields_with_state)
-      self.assertEqual(metadata_store_pb2.Execution.State.RUNNING,
-                       get_after_start_result[0].last_known_state)
-      self.assertEqual(metadata_store_pb2.Execution.State.NEW,
-                       get_after_start_result[1].last_known_state)
-
-      # Finish the first execution.
-      pipeline_ops.finish_external_execution(
-          m, node_uid, pipeline_run_id, execution_id,
-          execution_result_pb2.ExecutorOutput(
-              output_artifacts={
-                  'examples':
-                      execution_result_pb2.ExecutorOutput.ArtifactList(
-                          artifacts=[
-                              metadata_store_pb2.Artifact(
-                                  type='ExamplesPath', uri=uri)
-                          ])
-              }))
-
-      # get_external_executions should return the two registered executions.
-      # Only the first execution should be completed.
-      get_after_finish_result = pipeline_ops.get_external_executions(
-          m, node_uid, pipeline_run_id)
-      self.assertProtoPartiallyEquals(get_after_finish_result[0],
-                                      register_result[0],
-                                      ignored_fields_with_state)
-      self.assertProtoPartiallyEquals(get_after_finish_result[1],
-                                      register_result[1],
-                                      ignored_fields_with_state)
-      self.assertEqual(metadata_store_pb2.Execution.State.COMPLETE,
-                       get_after_finish_result[0].last_known_state)
-      self.assertEqual(metadata_store_pb2.Execution.State.NEW,
-                       get_after_finish_result[1].last_known_state)
-
-      # Assert that we can retrieve the output artifact registered by
-      # finish_external_execution.
-      events = m.store.get_events_by_execution_ids([execution_id])
-      self.assertLen(events, 1)
-      self.assertEqual(metadata_store_pb2.Event.Type.OUTPUT, events[0].type)
-      artifacts = m.store.get_artifacts_by_id([events[0].artifact_id])
-      self.assertLen(artifacts, 1)
-      self.assertEqual(uri, artifacts[0].uri)
-      self.assertEqual(metadata_store_pb2.Artifact.State.LIVE,
-                       artifacts[0].state)
-
-  @mock.patch.object(outputs_utils, 'OutputsResolver')
-  def test_external_execution_state_transitions(self, outputs_resolver):
-    with self._mlmd_connection as m:
-      pipeline = _test_pipeline_with_example_gen('test_pipeline')
-      node_uid = task_lib.NodeUid.from_pipeline_node(
-          pipeline, pipeline.nodes[0].pipeline_node)
-      pipeline_state = pipeline_ops.initiate_pipeline_start(m, pipeline)
-      pipeline_run_id = pipeline_state.pipeline_run_id
-      pipeline_ops.get_external_executions(m, node_uid, pipeline_run_id)
-      register_result = pipeline_ops.register_external_executions(
-          m, node_uid, pipeline_state.pipeline_run_id, [{}])
-      execution_id = register_result[0].id
-      outputs_resolver.return_value.get_executor_output_uri.return_value = ''
-      outputs_resolver.return_value.get_stateful_working_directory.return_value = ''
-      outputs_resolver.return_value.make_tmp_dir.return_value = ''
-      # Cannot finish the execution before it starts.
-      with self.assertRaises(
-          status_lib.StatusNotOkError,
-          msg='Expected execution state to be RUNNING'):
-        pipeline_ops.finish_external_execution(
-            m, node_uid, pipeline_run_id, execution_id,
-            execution_result_pb2.ExecutorOutput())
-      execution_invocation = pipeline_ops.start_external_execution(
-          m, node_uid, pipeline_run_id, execution_id)
-      # Can start an execution that is already started.
-      second_execution_invocation = pipeline_ops.start_external_execution(
-          m, node_uid, pipeline_run_id, execution_id)
-      self.assertEqual(execution_invocation, second_execution_invocation)
-      pipeline_ops.finish_external_execution(
-          m, node_uid, pipeline_run_id, execution_id,
-          execution_result_pb2.ExecutorOutput())
-      mlmd_state.clear_in_memory_state()
-      # Cannot start the execution after it finishes.
-      with self.assertRaises(
-          status_lib.StatusNotOkError,
-          msg='Expected execution state to be NEW or RUNNING'):
-        pipeline_ops.start_external_execution(m, node_uid, pipeline_run_id,
-                                              execution_id)
-
-  @mock.patch.object(outputs_utils, 'OutputsResolver')
-  def test_finish_external_execution_with_error(self, outputs_resolver):
-    with self._mlmd_connection as m:
-      pipeline = _test_pipeline_with_example_gen('test_pipeline')
-      node_uid = task_lib.NodeUid.from_pipeline_node(
-          pipeline, pipeline.nodes[0].pipeline_node)
-      pipeline_state = pipeline_ops.initiate_pipeline_start(m, pipeline)
-      pipeline_run_id = pipeline_state.pipeline_run_id
-      register_result = pipeline_ops.register_external_executions(
-          m, node_uid, pipeline_state.pipeline_run_id, [{}])
-      execution_id = register_result[0].id
-      outputs_resolver.return_value.get_executor_output_uri.return_value = ''
-      outputs_resolver.return_value.get_stateful_working_directory.return_value = ''
-      outputs_resolver.return_value.make_tmp_dir.return_value = ''
-      pipeline_ops.start_external_execution(m, node_uid, pipeline_run_id,
-                                            execution_id)
-      # Calling finish_external_execution with an error status should register
-      # a failed execution with that error status.
-      pipeline_ops.finish_external_execution(
-          m, node_uid, pipeline_run_id, execution_id,
-          execution_result_pb2.ExecutorOutput(
-              execution_result=execution_result_pb2.ExecutionResult(
-                  code=status_lib.Code.FAILED_PRECONDITION,
-                  result_message='test error message')))
-      get_result = pipeline_ops.get_external_executions(m, node_uid,
-                                                        pipeline_run_id)
-      self.assertLen(get_result, 1)
-      self.assertEqual(metadata_store_pb2.Execution.FAILED,
-                       get_result[0].last_known_state)
-      self.assertIn(
-          'test error message',
-          get_result[0].custom_properties['__execution_result__'].string_value)
-
-  def test_external_executions_after_restarting_pipeline(self):
-    with self._mlmd_connection as m:
-      pipeline = _test_pipeline_with_example_gen('test_pipeline')
-      node_uid = task_lib.NodeUid.from_pipeline_node(
-          pipeline, pipeline.nodes[0].pipeline_node)
-      pipeline_state = pipeline_ops.initiate_pipeline_start(m, pipeline)
-      pipeline_run_id = pipeline_state.pipeline_run_id
-      pipeline_ops.get_external_executions(m, node_uid, pipeline_run_id)
-      register_result = pipeline_ops.register_external_executions(
-          m, node_uid, pipeline_state.pipeline_run_id, [{}])
-      execution_id = register_result[0].id
-      # Restart the pipeline.
-      with pipeline_ops._PIPELINE_OPS_LOCK:
-        with pipeline_state:
-          pipeline_state.set_pipeline_execution_state(
-              metadata_store_pb2.Execution.CANCELED)
-      pipeline.runtime_spec.pipeline_run_id.field_value.string_value = 'run1'
-      pipeline_ops.initiate_pipeline_start(m, pipeline)
-      # Attempting to operate on an executions from the previous pipeline run
-      # should result in an error.
-      error_message = ('unable to find an active pipeline run for '
-                       'pipeline_run_id: run0')
-      with self.assertRaises(status_lib.StatusNotOkError, msg=error_message):
-        pipeline_ops.register_external_executions(
-            m, node_uid, pipeline_state.pipeline_run_id, [{}])
-      with self.assertRaises(status_lib.StatusNotOkError, msg=error_message):
-        pipeline_ops.get_external_executions(m, node_uid, pipeline_run_id)
-      with self.assertRaises(status_lib.StatusNotOkError, msg=error_message):
-        pipeline_ops.start_external_execution(m, node_uid, pipeline_run_id,
-                                              execution_id)
-      with self.assertRaises(status_lib.StatusNotOkError, msg=error_message):
-        pipeline_ops.finish_external_execution(
-            m, node_uid, pipeline_run_id, execution_id,
-            execution_result_pb2.ExecutorOutput())
 
 
 if __name__ == '__main__':
