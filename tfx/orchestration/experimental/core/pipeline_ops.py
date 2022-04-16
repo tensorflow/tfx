@@ -850,6 +850,24 @@ def _orchestrate_active_pipeline(
 
   tasks = generator.generate(pipeline_state)
 
+  # Call stop_node_services for pure / mixed service nodes which reached a
+  # terminal state.
+  for task in tasks:
+    if not isinstance(task, task_lib.UpdateNodeStateTask):
+      continue
+    node_id = task.node_uid.node_id
+    if not (service_job_manager.is_pure_service_node(pipeline_state, node_id) or
+            service_job_manager.is_mixed_service_node(pipeline_state, node_id)):
+      continue
+    if not (pstate.is_node_state_success(task.state) or
+            pstate.is_node_state_failure(task.state)):
+      continue
+    logging.info('Stopping services for node: %s', task.node_uid)
+    if not service_job_manager.stop_node_services(pipeline_state, node_id):
+      logging.warning(
+          'Ignoring failure to stop services for node %s which is in state %s',
+          task.node_uid, task.state)
+
   with pipeline_state:
     # Handle all the UpdateNodeStateTasks by updating node states.
     for task in tasks:

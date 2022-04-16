@@ -1473,6 +1473,34 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
         node_state = pipeline_state.get_node_state(transform_node_uid)
         self.assertEqual(pstate.NodeState.STOPPING, node_state.state)
 
+  @mock.patch.object(sync_pipeline_task_gen, 'SyncPipelineTaskGenerator')
+  def test_stop_node_services_called_for_mixed_service_node_in_terminal_state(
+      self, task_gen):
+    with self._mlmd_connection as m:
+      pipeline = _test_pipeline(
+          'pipeline1', execution_mode=pipeline_pb2.Pipeline.SYNC)
+      pipeline.nodes.add().pipeline_node.node_info.id = 'Transform'
+      pipeline_ops.initiate_pipeline_start(m, pipeline)
+      pipeline_uid = task_lib.PipelineUid.from_pipeline(pipeline)
+      transform_node_uid = task_lib.NodeUid(
+          pipeline_uid=pipeline_uid, node_id='Transform')
+      task_gen.return_value.generate.side_effect = [
+          [
+              task_lib.UpdateNodeStateTask(
+                  node_uid=transform_node_uid, state=pstate.NodeState.FAILED),
+          ],
+      ]
+      task_queue = tq.TaskQueue()
+      pipeline_ops.orchestrate(m, task_queue, self._mock_service_job_manager)
+      task_gen.return_value.generate.assert_called_once()
+      self._mock_service_job_manager.stop_node_services.assert_called_once_with(
+          mock.ANY, 'Transform')
+
+      # Load pipeline state and verify Transform node state.
+      with pstate.PipelineState.load(m, pipeline_uid) as pipeline_state:
+        node_state = pipeline_state.get_node_state(transform_node_uid)
+        self.assertEqual(pstate.NodeState.FAILED, node_state.state)
+
   def test_pipeline_run_deadline_exceeded(self):
 
     class _TestEnv(env.Env):
