@@ -94,7 +94,9 @@ class NodeState(json_utils.Jsonable):
   STOPPED = 'stopped'  # Node execution is stopped.
   RUNNING = 'running'  # Node is under active execution (i.e. triggered).
   COMPLETE = 'complete'  # Node execution completed successfully.
-  SKIPPED = 'skipped'  # Node execution skipped due to conditional.
+  # Node execution skipped due to condition not satisfied when pipeline has
+  # conditionals.
+  SKIPPED = 'skipped'
   # Node execution skipped due to partial run.
   SKIPPED_PARTIAL_RUN = 'skipped_partial_run'
   PAUSING = 'pausing'  # Pending work before state can change to PAUSED.

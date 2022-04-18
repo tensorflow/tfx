@@ -556,6 +556,48 @@ class MarkPipelineFnTest(parameterized.TestCase, test_case_utils.TfxTest):
         nodes_to_skip=set(['a', 'b']),
         nodes_required_to_reuse=set(['a', 'b']))
 
+  def testSkipSnapshotNodes(self):
+    """Node in skip_snapshot_nodes will be optionally reused."""
+    input_pipeline = self._createInputPipeline({
+        'a': ['b'],
+        'b': ['c'],
+        'c': ['d'],
+        'd': []
+    })
+    partial_run_utils.mark_pipeline(
+        input_pipeline,
+        from_nodes=['c'],
+        to_nodes=['d'],
+        skip_snapshot_nodes=['b'])
+    self._checkNodeExecutionOptions(
+        input_pipeline,
+        snapshot_node='c',
+        nodes_to_run=set(['c', 'd']),
+        nodes_requiring_snapshot=set(['c']),
+        nodes_to_skip=set(['a', 'b']),
+        nodes_required_to_reuse=set(['a']),
+        nodes_optional_to_reuse=set(['b']))
+
+    input_pipeline = self._createInputPipeline({
+        'a': ['b'],
+        'b': ['c'],
+        'c': ['d'],
+        'd': []
+    })
+    partial_run_utils.mark_pipeline(
+        input_pipeline,
+        from_nodes=['b'],
+        to_nodes=['d'],
+        skip_snapshot_nodes=['a', 'b'])
+    self._checkNodeExecutionOptions(
+        input_pipeline,
+        snapshot_node='b',
+        nodes_to_run=set(['b', 'c', 'd']),
+        nodes_requiring_snapshot=set(['b']),
+        nodes_to_skip=set(['a']),
+        nodes_required_to_reuse=set([]),
+        nodes_optional_to_reuse=set(['a']))
+
 
 # pylint: disable=invalid-name
 @component

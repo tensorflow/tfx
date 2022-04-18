@@ -57,6 +57,7 @@ def mark_pipeline(
     from_nodes: Optional[Collection[str]] = None,
     to_nodes: Optional[Collection[str]] = None,
     skip_nodes: Optional[Collection[str]] = None,
+    skip_snapshot_nodes: Optional[Collection[str]] = None,
     snapshot_settings: pipeline_pb2
     .SnapshotSettings = _default_snapshot_settings,
 ) -> pipeline_pb2.Pipeline:
@@ -84,6 +85,10 @@ def mark_pipeline(
       that would otherwise have been marked to run. Note that if a node depends
       on nodes that cannot be skipped, then it is still marked to run for
       pipeline result correctness. If None, does not force-skip any node.
+    skip_snapshot_nodes: **MOST USERS DO NOT NEED THIS.** Use this to force
+      marking snapshot as OPTIONAL for a skipped node. Setting this field can
+      be dangerous -- it can cause following partial runs to behave incorrectly
+      with missing cached executions.
     snapshot_settings: Settings needed to perform the snapshot step. Defaults to
       using LATEST_PIPELINE_RUN strategy.
 
@@ -110,11 +115,12 @@ def mark_pipeline(
   from_node_ids = from_nodes or node_map.keys()
   to_node_ids = to_nodes or node_map.keys()
   skip_node_ids = skip_nodes or []
+  skip_snapshot_node_ids = set(skip_snapshot_nodes or [])
   nodes_to_run = _compute_nodes_to_run(node_map, from_node_ids, to_node_ids,
                                        skip_node_ids)
 
   nodes_required_to_reuse, nodes_to_reuse = _compute_nodes_to_reuse(
-      node_map, nodes_to_run)
+      node_map, nodes_to_run, skip_snapshot_node_ids)
   nodes_requiring_snapshot = _compute_nodes_requiring_snapshot(
       node_map, nodes_to_run, nodes_to_reuse)
   snapshot_node = _pick_snapshot_node(node_map, nodes_to_run, nodes_to_reuse)
@@ -356,8 +362,8 @@ def _compute_nodes_to_run(
 
 
 def _compute_nodes_to_reuse(
-    node_map: Mapping[str, pipeline_pb2.PipelineNode],
-    nodes_to_run: Set[str]) -> Tuple[Set[str], Set[str]]:
+    node_map: Mapping[str, pipeline_pb2.PipelineNode], nodes_to_run: Set[str],
+    skip_snapshot_node_ids: Set[str]) -> Tuple[Set[str], Set[str]]:
   """Returns the set of node ids whose output artifacts are to be reused.
 
     Only upstream nodes of nodes_to_run are required to be reused to reflect
@@ -366,6 +372,8 @@ def _compute_nodes_to_reuse(
   Args:
     node_map: Mapping of node_id to nodes.
     nodes_to_run: The set of nodes to run.
+    skip_snapshot_node_ids: The set of nodes that can be skipped for
+      snapshotting.
 
   Returns:
     Set of node ids required to be reused.
@@ -373,7 +381,8 @@ def _compute_nodes_to_reuse(
   exclusion_set = _traverse(
       node_map, _Direction.DOWNSTREAM, start_nodes=nodes_to_run)
   nodes_required_to_reuse = _traverse(
-      node_map, _Direction.UPSTREAM, start_nodes=nodes_to_run) - exclusion_set
+      node_map, _Direction.UPSTREAM,
+      start_nodes=nodes_to_run) - exclusion_set - skip_snapshot_node_ids
   nodes_to_reuse = set(node_map.keys()) - exclusion_set
   return nodes_required_to_reuse, nodes_to_reuse
 

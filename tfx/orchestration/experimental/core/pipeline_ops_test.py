@@ -417,6 +417,78 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
         self.assertEqual(expected_pipeline, pipeline_state.pipeline)
         mock_snapshot.assert_called_once()
 
+  @mock.patch.object(partial_run_utils, 'snapshot')
+  def test_partial_run_with_previously_skipped_nodes(self, mock_snapshot):
+    with self._mlmd_connection as m:
+      pipeline = _test_pipeline('test_pipeline', pipeline_pb2.Pipeline.SYNC)
+      pipeline_uid = task_lib.PipelineUid.from_pipeline(pipeline)
+      node_example_gen = pipeline.nodes.add().pipeline_node
+      node_example_gen.node_info.id = 'ExampleGen'
+      node_example_gen.downstream_nodes.extend(['Transform'])
+      node_transform = pipeline.nodes.add().pipeline_node
+      node_transform.node_info.id = 'Transform'
+      node_transform.upstream_nodes.extend(['ExampleGen'])
+      node_example_gen.downstream_nodes.extend(['Trainer'])
+      node_trainer = pipeline.nodes.add().pipeline_node
+      node_trainer.node_info.id = 'Trainer'
+      node_trainer.upstream_nodes.extend(['Transform'])
+
+      example_gen_node_uid = task_lib.NodeUid(pipeline_uid, 'ExampleGen')
+      transform_node_uid = task_lib.NodeUid(pipeline_uid, 'Transform')
+      trainer_node_uid = task_lib.NodeUid(pipeline_uid, 'Trainer')
+
+      def _stop_pipeline(pipeline_state):
+        pipeline_state.set_pipeline_execution_state(
+            metadata_store_pb2.Execution.COMPLETE)
+        pipeline_state.initiate_stop(
+            status_lib.Status(code=status_lib.Code.ABORTED))
+
+      with pipeline_ops.initiate_pipeline_start(
+          m, pipeline) as pipeline_state_run0:
+        with pipeline_state_run0.node_state_update_context(
+            example_gen_node_uid) as node_state:
+          node_state.update(pstate.NodeState.COMPLETE)
+        with pipeline_state_run0.node_state_update_context(
+            transform_node_uid) as node_state:
+          node_state.update(pstate.NodeState.SKIPPED)
+        with pipeline_state_run0.node_state_update_context(
+            trainer_node_uid) as node_state:
+          node_state.update(pstate.NodeState.STOPPED)
+        _stop_pipeline(pipeline_state_run0)
+
+      partial_run_option = pipeline_pb2.PartialRun(
+          from_nodes=['Trainer'], to_nodes=['Trainer'])
+      expected_pipeline = copy.deepcopy(pipeline)
+      partial_run_utils.set_latest_pipeline_run_strategy(
+          expected_pipeline.runtime_spec.snapshot_settings)
+      expected_pipeline.nodes[
+          0].pipeline_node.execution_options.skip.reuse_artifacts_mode = pipeline_pb2.NodeExecutionOptions.Skip.REQUIRED
+      expected_pipeline.nodes[
+          1].pipeline_node.execution_options.skip.reuse_artifacts_mode = pipeline_pb2.NodeExecutionOptions.Skip.OPTIONAL
+      expected_pipeline.nodes[
+          2].pipeline_node.execution_options.run.depends_on_snapshot = True
+      expected_pipeline.nodes[
+          2].pipeline_node.execution_options.run.perform_snapshot = True
+      # Check that SKIPPED node will be marked as OPTIONAL for snapshotting.
+      with pipeline_ops.initiate_pipeline_start(
+          m, pipeline,
+          partial_run_option=partial_run_option) as pipeline_state_run1:
+        self.assertEqual(expected_pipeline, pipeline_state_run1.pipeline)
+        self.assertEqual(
+            pipeline_state_run1.get_node_state(transform_node_uid).state,
+            pstate.NodeState.SKIPPED_PARTIAL_RUN)
+        self.assertEqual(
+            pipeline_state_run1.get_node_state(
+                transform_node_uid, pstate._PREVIOUS_NODE_STATES).state,
+            pstate.NodeState.SKIPPED)
+        _stop_pipeline(pipeline_state_run1)
+
+      with pipeline_ops.initiate_pipeline_start(
+          m, pipeline,
+          partial_run_option=partial_run_option) as pipeline_state_run2:
+        self.assertEqual(expected_pipeline, pipeline_state_run2.pipeline)
+      mock_snapshot.assert_called()
+
   @parameterized.named_parameters(
       dict(testcase_name='async', pipeline=_test_pipeline('pipeline1')),
       dict(
