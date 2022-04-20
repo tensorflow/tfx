@@ -20,12 +20,16 @@ from tfx.types import artifact
 from tfx.types import artifact_utils
 
 
+BINARY_PB_BASENAME = 'FeatureStats.pb'
+TFRECORD_BASENAME = 'stats_tfrecord'
+
+
 def load_statistics(stats_artifact: artifact.Artifact,
                     split: str) -> tfdv.DatasetListView:
   stats_dir = artifact_utils.get_split_uri([stats_artifact], split)
   if artifact_utils.is_artifact_version_older_than(
       stats_artifact, artifact_utils._ARTIFACT_VERSION_FOR_STATS_UPDATE):  # pylint: disable=protected-access
-    stats = tfdv.load_statistics(os.path.join(stats_dir, 'stats_tfrecord'))
+    stats = tfdv.load_statistics(os.path.join(stats_dir, TFRECORD_BASENAME))
   else:
-    stats = tfdv.load_stats_binary(os.path.join(stats_dir, 'FeatureStats.pb'))
+    stats = tfdv.load_stats_binary(os.path.join(stats_dir, BINARY_PB_BASENAME))
   return tfdv.DatasetListView(stats)
