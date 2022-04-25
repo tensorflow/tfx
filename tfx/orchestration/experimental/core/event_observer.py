@@ -41,15 +41,19 @@ from ml_metadata.proto import metadata_store_pb2
 @dataclasses.dataclass(frozen=True)
 class PipelineStarted:
   """PipelineStarted event."""
-  execution: metadata_store_pb2.Execution
   pipeline_id: str
+  # Should be pipeline_state.PipelineState, but importing pipeline_state
+  # would introduce a circular dependency
+  pipeline_state: Any
 
 
 @dataclasses.dataclass(frozen=True)
 class PipelineFinished:
   """PipelineFinished event."""
-  execution: metadata_store_pb2.Execution
   pipeline_id: str
+  # Should be pipeline_state.PipelineState, but importing pipeline_state
+  # would introduce a circular dependency
+  pipeline_state: Any
   status: status_lib.Status
 
 

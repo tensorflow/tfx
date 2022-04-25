@@ -354,7 +354,7 @@ class PipelineStateTest(test_utils.TfxTest):
 
       want = [
           event_observer.PipelineStarted(
-              execution=None, pipeline_id='pipeline1'),
+              pipeline_state=None, pipeline_id='pipeline1'),
           event_observer.NodeStateChange(
               execution=None,
               pipeline_id='pipeline1',
@@ -383,8 +383,16 @@ class PipelineStateTest(test_utils.TfxTest):
                   status_msg='foo bar'),
               new_state=pstate.NodeState(state='started')),
       ]
-      # Set execution to None, so we don't compare that field
-      got = [dataclasses.replace(x, execution=None) for x in events]
+      # Set execution / pipeline_state to None, so we don't compare those fields
+      got = []
+      for x in events:
+        r = x
+        if hasattr(x, 'execution'):
+          r = dataclasses.replace(r, execution=None)
+        if hasattr(x, 'pipeline_state'):
+          r = dataclasses.replace(r, pipeline_state=None)
+        got.append(r)
+
       self.assertListEqual(want, got)
 
   def test_get_node_states_dict(self):

@@ -226,6 +226,7 @@ class PipelineState:
     pipeline: The pipeline proto associated with this `PipelineState` object.
       TODO(b/201294315): Fix self.pipeline going out of sync with the actual
         pipeline proto stored in the underlying MLMD execution in some cases.
+    execution: The underlying execution in MLMD.
     execution_id: Id of the underlying execution in MLMD.
     pipeline_uid: Unique id of the pipeline.
   """
@@ -298,13 +299,14 @@ class PipelineState:
           pipeline.runtime_spec.pipeline_run_id.field_value.string_value)
       _save_skipped_node_states(pipeline, reused_pipeline_view, execution)
     execution = execution_lib.put_execution(mlmd_handle, execution, [context])
+    pipeline_state = cls(
+        mlmd_handle=mlmd_handle, pipeline=pipeline, execution_id=execution.id)
     event_observer.notify(
         event_observer.PipelineStarted(
-            execution=execution, pipeline_id=pipeline_uid.pipeline_id))
+            pipeline_id=pipeline_uid.pipeline_id,
+            pipeline_state=pipeline_state))
     record_state_change_time()
-
-    return cls(
-        mlmd_handle=mlmd_handle, pipeline=pipeline, execution_id=execution.id)
+    return pipeline_state
 
   @classmethod
   def load(cls, mlmd_handle: metadata.Metadata,
@@ -370,6 +372,11 @@ class PipelineState:
     if self.pipeline.execution_mode == pipeline_pb2.Pipeline.SYNC:
       return self.pipeline.runtime_spec.pipeline_run_id.field_value.string_value
     return None
+
+  @property
+  def execution(self) -> metadata_store_pb2.Execution:
+    self._check_context()
+    return self._execution
 
   def is_active(self) -> bool:
     """Returns `True` if pipeline is active."""

@@ -715,8 +715,8 @@ def _orchestrate_stop_initiated_pipeline(
           _mlmd_execution_code(stop_reason))
       event_observer.notify(
           event_observer.PipelineFinished(
-              execution=pipeline_state._execution,  # pylint: disable=protected-access
               pipeline_id=pipeline_state.pipeline_uid.pipeline_id,
+              pipeline_state=pipeline_state,
               status=stop_reason))
 
 
