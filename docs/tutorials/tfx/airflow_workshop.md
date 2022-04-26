@@ -2,14 +2,14 @@
 
 ## Overview
 
-This tutorial is designed to help you learn to create your own machine learning pipelines using TensorFlow Extended (TFX) and and Apache Airflow as the orchestrator. It runs on on Vertex AI Workbench, and shows integration with TFX and TensorBoard as well as interaction with TFX in Jupyter Lab environment.
+This tutorial is designed to help you learn to create your own machine learning pipelines using TensorFlow Extended (TFX) and Apache Airflow as the orchestrator. It runs on on Vertex AI Workbench, and shows integration with TFX and TensorBoard as well as interaction with TFX in a Jupyter Lab environment.
 
 ### What you'll be doing?
 You’ll learn how to create an ML pipeline using TFX
 
 * A TFX pipeline is a Directed Acyclic Graph, or "DAG". We will often refer to pipelines as DAGs.
 * TFX pipelines are appropriate when you will be deploying a production ML application
-* TFX pipelines are appropriate when datasets are large
+* TFX pipelines are appropriate when datasets are large, or may grow to be large
 * TFX pipelines are appropriate when training/serving consistency is important
 * TFX pipelines are appropriate when version management for inference is important
 * Google uses TFX pipelines for production ML
@@ -183,7 +183,7 @@ git clone https://github.com/tensorflow/tfx.git
 1. Run the following to go to the `tfx/tfx/examples/airflow_workshop/taxi/setup/` folder, then run `./setup_demo.sh` to install lab dependencies:
 
 ```bash
-cd ~/tfx/tfx/examples/airflow_workshop/taxi/setup/
+cd ~/tfx/tfx/examples/airflow_workshop/setup/
 ./setup_demo.sh
 ```
 
@@ -204,13 +204,13 @@ The above code will
 
 ![firewall-rule.png](images/airflow_workshop/firewall-rule.png)
 
-3. In the **Create a firewall dialog**, for **Priority**, select `1`, for **Targets**, select `All instances in the network`,for **Source IPv4 ranges**, select `0.0.0.0/0`, for **Protocols and ports**, click on `tcp` and enter `7000` in the box next to `tcp`
+3. In the **Create a firewall dialog**, for **Priority**, select `1`, for **Targets**, select `All instances in the network`,for **Source IPv4 ranges**, select `0.0.0.0/0`, for **Protocols and ports**, click on `tcp` and enter `7000` in the box next to `tcp` and click `Create`.
 
 ![create-firewall-dialog.png](images/airflow_workshop/create-firewall-dialog.png)
 
 ### Run airflow server from your shell
 
-1. Run the `airflow users  create` command to create an admin user for airflow. Then run the `airflow webserver` and `airflow scheduler` command to run the server
+1. In the Jupyter Lab Terminal window, run the `airflow users  create` command to create an admin user for airflow. Then run the `airflow webserver` and `airflow scheduler` command to run the server
 2. Choose port `7000` since it is allowed through firewall.
 
 ```bash
