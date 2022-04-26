@@ -19,6 +19,7 @@ from typing import Any, Dict, List
 from absl import logging
 import tensorflow_data_validation as tfdv
 from tfx import types
+from tfx.components.statistics_gen import stats_artifact_utils
 from tfx.dsl.components.base import base_executor
 from tfx.types import artifact_utils
 from tfx.types import standard_component_specs
@@ -74,15 +75,9 @@ class Executor(base_executor.BaseExecutor):
     for split in artifact_utils.decode_split_names(stats_artifact.split_names):
       if split in exclude_splits:
         continue
-
       logging.info('Processing schema from statistics for split %s.', split)
-      stats_uri = io_utils.get_only_uri_in_dir(
-          artifact_utils.get_split_uri([stats_artifact], split))
-      if artifact_utils.is_artifact_version_older_than(
-          stats_artifact, artifact_utils._ARTIFACT_VERSION_FOR_STATS_UPDATE):  # pylint: disable=protected-access
-        stats = tfdv.load_statistics(stats_uri)
-      else:
-        stats = tfdv.load_stats_binary(stats_uri)
+      stats = stats_artifact_utils.load_statistics(stats_artifact,
+                                                   split).proto()
       if not schema:
         schema = tfdv.infer_schema(stats, infer_feature_shape)
       else:

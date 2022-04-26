@@ -20,6 +20,7 @@ import tensorflow_data_validation as tfdv
 import tensorflow_model_analysis as tfma
 
 from tfx import types
+from tfx.components.statistics_gen import stats_artifact_utils
 from tfx.orchestration.experimental.interactive import visualizations
 from tfx.types import artifact_utils
 from tfx.types import standard_artifacts
@@ -59,13 +60,7 @@ class ExampleStatisticsVisualization(visualizations.ArtifactVisualization):
     from IPython.core.display import HTML  # pylint: disable=g-import-not-at-top
     for split in artifact_utils.decode_split_names(artifact.split_names):
       display(HTML('<div><b>%r split:</b></div><br/>' % split))
-      stats_path = io_utils.get_only_uri_in_dir(
-          artifact_utils.get_split_uri([artifact], split))
-      if artifact_utils.is_artifact_version_older_than(
-          artifact, artifact_utils._ARTIFACT_VERSION_FOR_STATS_UPDATE):  # pylint: disable=protected-access
-        stats = tfdv.load_statistics(stats_path)
-      else:
-        stats = tfdv.load_stats_binary(stats_path)
+      stats = stats_artifact_utils.load_statistics(artifact, split).proto()
       tfdv.visualize_statistics(stats)
 
 
