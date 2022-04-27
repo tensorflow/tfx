@@ -172,7 +172,12 @@ Next you'll clone the `tfx` repository in your JupyterLab instance.
 2. To clone the `tfx` Github repository, type in the following command, and press __Enter__.
 
 ```bash
-git clone https://github.com/tensorflow/tfx.git
+git clone https://github.com/priankakariatyml/tfx.git
+```
+
+3. Checkout to the recent branch
+```bash
+git checkout upgrading-pipeline-codes-and-utils
 ```
 
 3. To confirm that you have cloned the repository, double-click the `tfx` directory and confirm that you can see its contents.
