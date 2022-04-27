@@ -180,7 +180,7 @@ git clone https://github.com/priankakariatyml/tfx.git
 git checkout upgrading-pipeline-codes-and-utils
 ```
 
-3. To confirm that you have cloned the repository, double-click the `tfx` directory and confirm that you can see its contents.
+4. To confirm that you have cloned the repository, double-click the `tfx` directory and confirm that you can see its contents.
 
 ![repo-directory.png](images/airflow_workshop/repo-directory.png)
   
