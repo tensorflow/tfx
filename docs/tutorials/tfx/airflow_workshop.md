@@ -153,7 +153,7 @@ gcloud services enable \
 ![vertex-ai-workbench.png](images/airflow_workshop/vertex-ai-workbench.png)
 
 3. On the Notebook instances page, navigate to the __User-Managed Notebooks__ tab and click **New Notebook**.
-4. In the Customize instance menu, select **TensorFlow Enterprise** and choose the version of **TensorFlow Enterprise 2.3 (with LTS)** > **Without GPUs**.
+4. In the Customize instance menu, select **TensorFlow Enterprise** and choose the version of **TensorFlow Enterprise 2.8 (with LTS)** > **Without GPUs**.
 
 ![vertex-notebook-create-2.png](images/airflow_workshop/vertex-notebook-create-2.png)
 
