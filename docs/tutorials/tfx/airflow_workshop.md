@@ -188,7 +188,7 @@ git checkout upgrading-pipeline-codes-and-utils
 1. Run the following to go to the `tfx/tfx/examples/airflow_workshop/taxi/setup/` folder, then run `./setup_demo.sh` to install lab dependencies:
 
 ```bash
-cd ~/tfx/tfx/examples/airflow_workshop/setup/
+cd ~/tfx/tfx/examples/airflow_workshop/taxi/setup/
 ./setup_demo.sh
 ```
 
