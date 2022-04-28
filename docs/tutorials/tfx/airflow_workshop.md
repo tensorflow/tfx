@@ -226,15 +226,15 @@ nohup airflow scheduler &> scheduler.out &
 
 ### Get your external ip
 
-1. Go to the `https://console.cloud.google.com/vertex-ai/workbench` page. Make sure you are on the right project. Click on the instance name to get more options.
+1. Go to the `https://console.cloud.google.com/vertex-ai/workbench` page. Make sure you are on the right project. Click on the instance name to open the `Notebook details` page.
 
 ![airflow-instance-1.png](images/airflow_workshop/airflow-instance-1.png)
 
-2. Click on `VIEW VM DETAILS` option.
+2. Click on `VIEW VM DETAILS` to open the `instancesDetail` page.
 
 ![airflow-instance-2.png](images/airflow_workshop/airflow-instance-2.png)
 
-3. Scroll down and go to `Network interfaces` section. You can get your external ip from the `External IP address` section. 
+3. Scroll down on the `instancesDetail` page and go to `Network interfaces` section. You can get your external ip from the `External IP address` section. 
 
 ![airflow-instance-3.png](images/airflow_workshop/airflow-instance-3.png)
 
