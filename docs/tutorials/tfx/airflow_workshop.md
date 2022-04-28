@@ -296,5 +296,5 @@ After you've triggered your pipeline in the DAGs view, you can watch as your pip
 ## Understanding the components
 Now we will look at the components of this pipeline in detail, and individually look at the outputs produced by each step in the pipeline.
 
-* In JupyterLab go to `~/tfx/tfx/examples/airflow_workshop/taxi/setup/` and open `notebook.ipynb`
+* In JupyterLab go to `~/tfx/tfx/examples/airflow_workshop/taxi/notebooks/` and open `notebook.ipynb`
 * Follow the notebook for the remaining instructions
