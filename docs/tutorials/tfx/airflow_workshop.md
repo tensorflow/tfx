@@ -289,12 +289,12 @@ airflow trigger_dag <your DAG name>
 ```
 
 #### Waiting for the pipeline to complete
-After you've triggered your pipeline in the DAGs view, you can watch as your pipeline completes processing. As each component runs the outline color of the component in the DAG graph will change to show its state. When a component has finished processing the outline will turn dark green to show that it's done.
+After you've triggered your pipeline in the DAGs view, you can watch as your pipeline completes processing. As each component runs, the outline color of the component in the DAG graph will change to show its state. When a component has finished processing the outline will turn dark green to show that it's done.
 
 ![dag-step7.png](images/airflow_workshop/dag-step7.png)
 
 ## Understanding the components
-Now we will look at the components of pipeline in detail and individually look at the outputs produced by each step in the pipeline.
+Now we will look at the components of this pipeline in detail, and individually look at the outputs produced by each step in the pipeline.
 
-* Go to `~/tfx/tfx/examples/airflow_workshop/taxi/setup/` and open `notebook.ipynb`
+* In JupyterLab go to `~/tfx/tfx/examples/airflow_workshop/taxi/setup/` and open `notebook.ipynb`
 * Follow the notebook for the remaining instructions
