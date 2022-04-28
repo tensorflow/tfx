@@ -224,6 +224,21 @@ nohup airflow webserver -p 7000 &> webserver.out &
 nohup airflow scheduler &> scheduler.out &
 ```
 
+### Get your external ip
+
+1. Go to the `https://console.cloud.google.com/vertex-ai/workbench` page. Make sure you are on the right project. Click on the instance name to get more options.
+
+![airflow-instance-1.png](images/airflow_workshop/airflow-instance-1.png)
+
+2. Click on `VIEW VM DETAILS` option.
+
+![airflow-instance-2.png](images/airflow_workshop/airflow-instance-2.png)
+
+3. Scroll down and go to `Network interfaces` section. You can get your external ip from the `External IP address` section. 
+
+![airflow-instance-3.png](images/airflow_workshop/airflow-instance-3.png)
+
+
 ## Running a DAG/Pipeline
 
 ### In a browser
