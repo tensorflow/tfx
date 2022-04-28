@@ -216,12 +216,16 @@ The above code will
 
 ### Run airflow server from your shell
 
-1. In the Jupyter Lab Terminal window, change to home directory, run the `airflow users  create` command to create an admin user for airflow. Then run the `airflow webserver` and `airflow scheduler` command to run the server
-2. Choose port `7000` since it is allowed through firewall.
+In the Jupyter Lab Terminal window, change to home directory, run the `airflow users  create` command to create an admin user for Airflow:
 
 ```bash
 cd
 airflow users  create --role Admin --username admin --email admin --firstname admin --lastname admin --password admin
+```
+
+Then run the `airflow webserver` and `airflow scheduler` command to run the server.  Choose port `7000` since it is allowed through firewall.
+
+```bash
 nohup airflow webserver -p 7000 &> webserver.out &
 nohup airflow scheduler &> scheduler.out &
 ```
