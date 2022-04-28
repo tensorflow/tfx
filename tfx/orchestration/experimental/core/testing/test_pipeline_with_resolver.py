@@ -44,7 +44,9 @@ def create_pipeline() -> pipeline_pb2.Pipeline:
           'desired_num_of_artifacts': 1
       },
       resolved_model=types.Channel(
-          type=standard_artifacts.Model)).with_id('my_resolver')
+          type=standard_artifacts.Model,
+          producer_component_id=trainer.id,
+          output_key='model')).with_id('my_resolver')
   rnode.add_upstream_node(trainer)
   consumer = _consumer(
       resolved_model=rnode.outputs['resolved_model']).with_id('my_consumer')
