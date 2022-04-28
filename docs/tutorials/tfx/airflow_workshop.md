@@ -177,6 +177,7 @@ git clone https://github.com/priankakariatyml/tfx.git
 
 3. Checkout to the recent branch
 ```bash
+cd tfx/
 git checkout upgrading-pipeline-codes-and-utils
 ```
 
