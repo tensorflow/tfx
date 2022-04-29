@@ -82,11 +82,12 @@ def _execute_nodes(handle: metadata.Metadata, pipeline: pipeline_pb2.Pipeline,
   test_utils.fake_component_output_with_handle(handle, trainer, active=False)
 
 
-def _get_ir_path(external_ir_file: str):
+def _get_ir_path(external_ir_file: str, pipeline_id: str):
   if external_ir_file:
     return external_ir_file
   ir_file_path = tempfile.mktemp(suffix='.pbtxt')
-  io_utils.write_pbtxt_file(ir_file_path, test_sync_pipeline.create_pipeline())
+  io_utils.write_pbtxt_file(ir_file_path,
+                            test_sync_pipeline.create_pipeline(pipeline_id))
   return ir_file_path
 
 
@@ -100,7 +101,7 @@ def create_sample_pipeline(m: metadata.Metadata,
                                [metadata.Metadata, pipeline_pb2.Pipeline, int],
                                None] = _execute_nodes):
   """Creates a list of pipeline and node execution."""
-  ir_path = _get_ir_path(external_ir_file)
+  ir_path = _get_ir_path(external_ir_file, pipeline_id)
   for i in range(run_num):
     run_id = 'run%02d' % i
     pipeline = _test_pipeline(ir_path, pipeline_id, run_id, deployment_config)

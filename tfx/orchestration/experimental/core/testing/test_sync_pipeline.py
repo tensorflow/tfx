@@ -76,7 +76,8 @@ def _chore():
   pass
 
 
-def create_pipeline() -> pipeline_pb2.Pipeline:
+def create_pipeline(
+    pipeline_name: str = 'my_pipeline') -> pipeline_pb2.Pipeline:
   """Builds a test pipeline."""
   # pylint: disable=no-value-for-parameter
   example_gen = _example_gen().with_id('my_example_gen')
@@ -109,7 +110,7 @@ def create_pipeline() -> pipeline_pb2.Pipeline:
   # pylint: enable=no-value-for-parameter
 
   pipeline = pipeline_lib.Pipeline(
-      pipeline_name='my_pipeline',
+      pipeline_name=pipeline_name,
       pipeline_root='/path/to/root',
       components=[
           example_gen,
