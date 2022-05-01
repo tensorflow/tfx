@@ -47,7 +47,7 @@ jupyter lab build --dev-build=False --minimize=False
 printf "${GREEN}Preparing environment for Airflow${NORMAL}\n"
 export SLUGIFY_USES_TEXT_UNIDECODE=yes
 printf "${GREEN}Installing Airflow${NORMAL}\n"
-pip install -q apache-airflow Flask Werkzeug
+pip install -q apache-airflow==2.2.5 Flask Werkzeug
 printf "${GREEN}Initializing Airflow database${NORMAL}\n"
 airflow db init
 
