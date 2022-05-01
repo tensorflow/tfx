@@ -34,6 +34,9 @@ pip install apache_beam==2.37.0
 pip install tfx==1.7.0
 pip install google-api-core==1.26.3
 
+printf "${GREEN}Installing required packages for tft${NORMAL}\n"
+pip install tensorflow_text tensorflow_decision_forests struct2tensor
+
 ipython kernel install --user --name=tfx
 
 jupyter labextension install tensorflow_model_analysis
