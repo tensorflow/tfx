@@ -21,6 +21,8 @@
   packaged) fails.
 * Fixed `ElwcBigQueryExampleGen` data serializiation error that was causing an
   assertion failure on Beam.
+* Temporarily capped `apache-airflow` version to 2.2.x to avoid dependency
+  conflict. We will rollback this change once `kfp` releases a new version.
 
 ## Dependency Updates
 
