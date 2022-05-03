@@ -12,7 +12,8 @@
 
 ## Bug Fixes and Other Changes
 
-*   Uses apache-beam==2.38 in the tfx container image.
+* Temporarily capped `apache-airflow` version to 2.2.x to avoid dependency
+  conflict. We will rollback this change once `kfp` releases a new version.
 
 ## Dependency Updates
 
