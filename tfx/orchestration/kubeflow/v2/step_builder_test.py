@@ -46,6 +46,37 @@ class StepBuilderTest(tf.test.TestCase):
     self.assertLen(d, 1)
     return list(d.values())[0]
 
+  def testBuildTaskWithResourceSpec(self):
+    query = 'SELECT * FROM TABLE'
+    bq_example_gen = big_query_example_gen_component.BigQueryExampleGen(
+        query=query).with_platform_config(
+            pipeline_pb2.PipelineDeploymentConfig.PipelineContainerSpec
+            .ResourceSpec(cpu_limit=5.0, memory_limit=10.0))
+    deployment_config = pipeline_pb2.PipelineDeploymentConfig()
+    component_defs = {}
+    my_builder = step_builder.StepBuilder(
+        node=bq_example_gen,
+        image='gcr.io/tensorflow/tfx:latest',
+        deployment_config=deployment_config,
+        component_defs=component_defs,
+        dsl_context_reg=dsl_context_registry.get(),
+        enable_cache=True)
+    actual_step_spec = self._sole(my_builder.build())
+    actual_component_def = self._sole(component_defs)
+
+    self.assertProtoEquals(
+        test_utils.get_proto_from_test_data(
+            'expected_bq_example_gen_component.pbtxt',
+            pipeline_pb2.ComponentSpec()), actual_component_def)
+    self.assertProtoEquals(
+        test_utils.get_proto_from_test_data(
+            'expected_bq_example_gen_task.pbtxt',
+            pipeline_pb2.PipelineTaskSpec()), actual_step_spec)
+    self.assertProtoEquals(
+        test_utils.get_proto_from_test_data(
+            'expected_bq_example_gen_executor_with_resource_spec.pbtxt',
+            pipeline_pb2.PipelineDeploymentConfig()), deployment_config)
+
   def testBuildTask(self):
     query = 'SELECT * FROM TABLE'
     bq_example_gen = big_query_example_gen_component.BigQueryExampleGen(
@@ -399,8 +430,7 @@ class StepBuilderTest(tf.test.TestCase):
 
   def testBuildExitHandler(self):
     task = test_utils.dummy_producer_component(
-        param1=decorators.FinalStatusStr('value1'),
-    )
+        param1=decorators.FinalStatusStr('value1'),)
     deployment_config = pipeline_pb2.PipelineDeploymentConfig()
     component_defs = {}
     my_builder = step_builder.StepBuilder(
@@ -425,6 +455,7 @@ class StepBuilderTest(tf.test.TestCase):
         test_utils.get_proto_from_test_data(
             'expected_dummy_exit_handler_executor.pbtxt',
             pipeline_pb2.PipelineDeploymentConfig()), deployment_config)
+
 
 if __name__ == '__main__':
   tf.test.main()

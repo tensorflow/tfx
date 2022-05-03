@@ -261,8 +261,8 @@ class StepBuilder:
     # Conditionals
     implicit_input_channels = {}
     implicit_upstream_node_ids = set()
-    predicates = conditional.get_predicates(
-        self._node, self._dsl_context_registry)
+    predicates = conditional.get_predicates(self._node,
+                                            self._dsl_context_registry)
     if predicates:
       implicit_keys_map = {
           tfx_compiler_utils.implicit_channel_key(channel): key
@@ -381,13 +381,16 @@ class StepBuilder:
     # 4. Build the executor body for other common tasks.
     executor = pipeline_pb2.PipelineDeploymentConfig.ExecutorSpec()
     if isinstance(self._node, importer.Importer):
+      print('Aha!')
       executor.importer.CopyFrom(self._build_importer_spec())
     elif isinstance(self._node, components.FileBasedExampleGen):
+      print('Yahooey')
       executor.container.CopyFrom(self._build_file_based_example_gen_spec())
     elif isinstance(self._node, (components.InfraValidator)):
       raise NotImplementedError(
           'The componet type "{}" is not supported'.format(type(self._node)))
     else:
+      print('Weehoo')
       executor.container.CopyFrom(self._build_container_spec())
     self._deployment_config.executors[executor_label].CopyFrom(executor)
 
@@ -404,17 +407,29 @@ class StepBuilder:
       NotImplementedError: When the executor class is neither ExecutorClassSpec
       nor TemplatedExecutorContainerSpec.
     """
+
     assert isinstance(self._node, base_component.BaseComponent)
+
+    if self._node.platform_config:
+      assert isinstance(
+          self._node.platform_config, pipeline_pb2.PipelineDeploymentConfig
+          .PipelineContainerSpec.ResourceSpec)
+      assert self._node.platform_config.cpu_limit > 0
+      assert self._node.platform_config.memory_limit > 0
+
     if isinstance(self._node.executor_spec,
                   executor_specs.TemplatedExecutorContainerSpec):
+
       container_spec = self._node.executor_spec
       result = ContainerSpec(
           image=container_spec.image,
           command=_resolve_command_line(
               container_spec=container_spec,
               exec_properties=self._node.exec_properties,
-          ),
-      )
+          ))
+
+      if self._node.platform_config:
+        result.resources.CopyFrom(self._node.platform_config)
       return result
 
     # The container entrypoint format below assumes ExecutorClassSpec.
@@ -437,6 +452,9 @@ class StepBuilder:
     result.args.append('--json_serialized_invocation_args')
     result.args.append('{{$}}')
     result.args.extend(self._beam_pipeline_args)
+
+    if self._node.platform_config:
+      result.resources.CopyFrom(self._node.platform_config)
 
     return result
 

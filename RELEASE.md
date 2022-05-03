@@ -4,6 +4,7 @@
 
 *   Added experimental exit_handler support for KubeflowDagRunner.
 *   Enabled custom labels to be submitted to CAIP training jobs.
+*   Enabled custom resource-setting (vCPU and RAM) for containers orchestrating on Vertex AI
 
 ## Breaking Changes
 

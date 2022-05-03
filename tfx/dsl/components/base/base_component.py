@@ -154,6 +154,7 @@ class BaseComponent(base_node.BaseNode, abc.ABC):
     Returns:
       the same component itself.
     """
+    print('Platform config is set here!')
     self.platform_config = config
     return self
 
