@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Portable library for input artifacts resolution."""
-from typing import Dict, Iterable, List, Optional, Mapping, Sequence, Union, cast
+from typing import Dict, Iterable, List, Optional, Mapping, Sequence, Union
 
 from absl import logging
 from tfx import types
@@ -24,7 +24,6 @@ from tfx.orchestration.portable.mlmd import event_lib
 from tfx.orchestration.portable.mlmd import execution_lib
 from tfx.proto.orchestration import pipeline_pb2
 from tfx.types import artifact_utils
-from tfx.utils import deprecation_utils
 from tfx.utils import typing_utils
 
 import ml_metadata as mlmd
@@ -139,58 +138,6 @@ def _is_sufficient(artifact_multimap: Mapping[str, Sequence[types.Artifact]],
       len(artifacts) >= node_inputs.inputs[key].min_count
       for key, artifacts in artifact_multimap.items()
       if key in node_inputs.inputs)
-
-
-@deprecation_utils.deprecated(
-    '2021-06-01', 'Use resolve_input_artifacts_v2() instead.')
-def resolve_input_artifacts(
-    metadata_handler: metadata.Metadata, node_inputs: pipeline_pb2.NodeInputs
-) -> Optional[typing_utils.ArtifactMultiMap]:
-  """Resolves input artifacts of a pipeline node.
-
-  Args:
-    metadata_handler: A metadata handler to access MLMD store.
-    node_inputs: A pipeline_pb2.NodeInputs message that instructs artifact
-      resolution for a pipeline node.
-
-  Returns:
-    If `min_count` for every input is met, returns a Dict[str, List[Artifact]].
-    Otherwise, return None.
-  """
-  initial_dict = _resolve_initial_dict(metadata_handler, node_inputs)
-  if not _is_sufficient(initial_dict, node_inputs):
-    min_counts = {key: input_spec.min_count
-                  for key, input_spec in node_inputs.inputs.items()}
-    logging.warning('Resolved inputs should have %r artifacts, but got %r.',
-                    min_counts, initial_dict)
-    return None
-
-  try:
-    result = processor.run_resolver_steps(
-        initial_dict,
-        resolver_steps=node_inputs.resolver_config.resolver_steps,
-        store=metadata_handler.store)
-  except exceptions.InputResolutionError:
-    # If ResolverStrategy has returned None in the middle, InputResolutionError
-    # is raised. Legacy input resolution has returned None in this case.
-    return None
-  except exceptions.SkipSignal:
-    # SkipSignal is not fully representable return value in legacy input
-    # resolution, but None is the best effort.
-    return None
-
-  if typing_utils.is_list_of_artifact_multimap(result):
-    result = cast(Sequence[typing_utils.ArtifactMultiMap], result)
-    if len(result) != 1:
-      raise ValueError(
-          'Invalid number of resolved inputs; expected 1 but got '
-          f'{len(result)}: {result}')
-    return result[0]
-  elif typing_utils.is_artifact_multimap(result):
-    return cast(typing_utils.ArtifactMultiMap, result)
-  else:
-    raise TypeError(f'Invalid input resolution result: {result}. Should be '
-                    'Mapping[str, Sequence[Artifact]].')
 
 
 class Trigger(tuple, Sequence[typing_utils.ArtifactMultiMap]):

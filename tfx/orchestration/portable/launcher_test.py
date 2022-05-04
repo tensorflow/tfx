@@ -137,7 +137,7 @@ class _FakeExampleGenLikeDriver(base_driver.BaseDriver):
 
   def __init__(self, mlmd_connection: metadata.Metadata):
     super().__init__(mlmd_connection)
-    self._self_output = text_format.Parse(
+    node_inputs = text_format.Parse(
         """
       inputs {
         key: "examples"
@@ -173,17 +173,18 @@ class _FakeExampleGenLikeDriver(base_driver.BaseDriver):
             }
             output_key: "output_examples"
           }
-          min_count: 1
+          min_count: 0
         }
       }""", pipeline_pb2.NodeInputs())
+    self._pipeline_node = pipeline_pb2.PipelineNode(inputs=node_inputs)
 
   def run(self, execution_info) -> driver_output_pb2.DriverOutput:
     # Fake a constant span number, which, on prod, is usually calculated based
     # on date.
     span = 2
     with self._mlmd_connection as m:
-      previous_output = inputs_utils.resolve_input_artifacts(
-          m, self._self_output)
+      previous_output = inputs_utils.resolve_input_artifacts_v2(
+          metadata_handler=m, pipeline_node=self._pipeline_node)[0]
 
       # Version should be the max of existing version + 1 if span exists,
       # otherwise 0.
@@ -710,8 +711,8 @@ class LauncherTest(test_case_utils.TfxTest):
       exec_properties = data_types_utils.build_parsed_value_dict(
           inputs_utils.resolve_parameters_with_schema(
               node_parameters=test_launcher._pipeline_node.parameters))
-      input_artifacts = inputs_utils.resolve_input_artifacts(
-          metadata_handler=m, node_inputs=test_launcher._pipeline_node.inputs)
+      input_artifacts = inputs_utils.resolve_input_artifacts_v2(
+          metadata_handler=m, pipeline_node=test_launcher._pipeline_node)[0]
       first_execution = test_launcher._register_or_reuse_execution(
           metadata_handler=m,
           contexts=contexts,

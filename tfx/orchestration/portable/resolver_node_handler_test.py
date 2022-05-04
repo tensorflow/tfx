@@ -142,8 +142,8 @@ class ResolverNodeHandlerTest(test_case_utils.TfxTest):
         }
         upstream_nodes: "my_resolver"
         """, pipeline_pb2.PipelineNode())
-      downstream_input_artifacts = inputs_utils.resolve_input_artifacts(
-          metadata_handler=m, node_inputs=down_stream_node.inputs)
+      downstream_input_artifacts = inputs_utils.resolve_input_artifacts_v2(
+          metadata_handler=m, pipeline_node=down_stream_node)[0]
       downstream_input_model = downstream_input_artifacts['input_models']
       self.assertLen(downstream_input_model, 1)
       self.assertProtoPartiallyEquals(
