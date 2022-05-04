@@ -34,6 +34,9 @@ STATIC_HTML_CONTENTS = u"""<style>
   border: 1px solid #bbbbbb;
   box-shadow: 4px 4px 2px rgba(0,0,0,0.05);
 }
+html[theme=dark] .tfx-object.expanded {
+  background: black;
+}
 .tfx-object, .tfx-object * {
   font-size: 11pt;
 }
@@ -64,6 +67,9 @@ STATIC_HTML_CONTENTS = u"""<style>
 .tfx-object table.attr-table {
   border: 2px solid white;
   margin-top: 5px;
+}
+html[theme=dark] .tfx-object table.attr-table {
+  border: 2px solid black;
 }
 .tfx-object table.attr-table td.attr-name {
   vertical-align: top;
