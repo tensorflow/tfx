@@ -43,7 +43,7 @@ TFX also hosts nightly packages at https://pypi-nightly.tensorflow.org on Google
 Cloud. To install the latest nightly package, please use the following command:
 
 ```
-pip install -i https://pypi-nightly.tensorflow.org/simple --pre tfx
+pip install --extra-index-url https://pypi-nightly.tensorflow.org/simple --pre tfx
 ```
 
 This will install the nightly packages for the major dependencies of TFX such as

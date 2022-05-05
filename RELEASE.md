@@ -1211,7 +1211,7 @@ the 1.1.x release for TFX library.
     following command:
 
     ```
-    pip install -i https://pypi-nightly.tensorflow.org/simple tfx
+    pip install --extra-index-url https://pypi-nightly.tensorflow.org/simple tfx
     ```
     Note: These nightly packages are unstable and breakages are likely to happen.
     The fix could often take a week or more depending on the complexity
