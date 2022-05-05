@@ -14,6 +14,7 @@
 """Test utilities."""
 
 import os
+from typing import Optional
 import uuid
 
 from absl.testing.absltest import mock
@@ -29,6 +30,7 @@ from tfx.orchestration.portable.mlmd import execution_lib
 from tfx.proto.orchestration import pipeline_pb2
 from tfx.utils import status as status_lib
 from tfx.utils import test_case_utils
+from tfx.utils import typing_utils
 from ml_metadata.proto import metadata_store_pb2
 
 
@@ -160,6 +162,30 @@ def fake_execute_node(mlmd_connection, task, artifact_custom_properties=None):
     execution_publish_utils.publish_succeeded_execution(m, task.execution_id,
                                                         task.contexts,
                                                         output_artifacts)
+
+
+def fake_start_node_with_handle(
+    mlmd_handle, node, input_artifacts) -> metadata_store_pb2.Execution:
+  """Simulates starting an execution of the given node."""
+  contexts = context_lib.prepare_contexts(mlmd_handle, node.contexts)
+  execution = execution_publish_utils.register_execution(
+      mlmd_handle, node.node_info.type, contexts, input_artifacts)
+  return execution
+
+
+def fake_finish_node_with_handle(
+    mlmd_handle, node, execution_id) -> Optional[typing_utils.ArtifactMultiMap]:
+  """Simulates finishing an execution of the given node."""
+  if node.HasField('outputs'):
+    output_key, output_value = next(iter(node.outputs.outputs.items()))
+    output = types.Artifact(output_value.artifact_spec.type)
+    output.uri = str(uuid.uuid4())
+    output_artifacts = {output_key: [output]}
+  else:
+    output_artifacts = None
+  contexts = context_lib.prepare_contexts(mlmd_handle, node.contexts)
+  return execution_publish_utils.publish_succeeded_execution(
+      mlmd_handle, execution_id, contexts, output_artifacts)
 
 
 def create_exec_node_task(node_uid,
