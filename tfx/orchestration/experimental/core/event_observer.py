@@ -30,7 +30,7 @@ import contextlib
 import dataclasses
 import queue
 import threading
-from typing import Any, Callable, List, Union
+from typing import Any, Callable, List, Optional, Union
 
 from absl import logging
 from tfx.utils import status as status_lib
@@ -110,6 +110,25 @@ def notify(event: Event) -> None:
   with _event_observer_lock:
     if _event_observer:
       _event_observer.notify(event)
+
+
+def check_active() -> None:
+  """Checks that the main _EventObserver observer thread is active.
+
+  Silently does nothing if not in an init() context.
+  """
+  global _event_observer
+  global _event_observer_lock
+  with _event_observer_lock:
+    if _event_observer:
+      if _event_observer.done():
+        ex = _event_observer.exception()
+        if ex:
+          raise ValueError("_EventObserver observer thread unexpectedly "
+                           "terminated with exception") from ex
+        else:
+          raise ValueError("_EventObserver observer thread unexpectedly "
+                           "terminated, but with no exception")
 
 
 def testonly_wait() -> None:
@@ -197,6 +216,32 @@ class _EventObserver:
     if self._shutdown_event.is_set():
       raise RuntimeError("_EventObserver already shut down")
     self._main_future = self._main_executor.submit(self._main)
+
+  def done(self) -> bool:
+    """Returns `True` if the main observation thread has exited.
+
+    Raises:
+      RuntimeError: If `done` is called while this _EventObserver isn't in an
+        active state.
+    """
+    if self._main_future is None:
+      raise RuntimeError("_EventObserver not in an active state")
+    return self._main_future.done()
+
+  def exception(self) -> Optional[BaseException]:
+    """Returns exception raised by the main observation thread (if any).
+
+    Raises:
+      RuntimeError: If `exception` called while this _EventObserver isn't in an
+        active state, or if the main thread is not done (`done` returns
+        `False`).
+    """
+    if self._main_future is None:
+      raise RuntimeError("_EventObserver not in an active state")
+    if not self._main_future.done():
+      raise RuntimeError("Main observation thread not done; call should be "
+                         "conditioned on `done` returning `True`.")
+    return self._main_future.exception()
 
   def shutdown(self):
     # Not thread-safe. Should only be called from a single thread.
