@@ -258,7 +258,7 @@ class Launcher:
               node_parameters=self._pipeline_node.parameters))
 
       try:
-        resolved_inputs = inputs_utils.resolve_input_artifacts_v2(
+        resolved_inputs = inputs_utils.resolve_input_artifacts(
             pipeline_node=self._pipeline_node,
             metadata_handler=m)
       except exceptions.InputResolutionError as e:

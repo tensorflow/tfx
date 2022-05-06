@@ -174,7 +174,7 @@ def generate_resolved_info(
 
   Raises:
     NotImplementedError: Multiple dicts returned by inputs_utils
-      resolve_input_artifacts_v2, which is currently not supported.
+      resolve_input_artifacts, which is currently not supported.
   """
   # Register node contexts.
   contexts = context_lib.prepare_contexts(
@@ -185,7 +185,7 @@ def generate_resolved_info(
 
   # Resolve inputs.
   try:
-    resolved_input_artifacts = inputs_utils.resolve_input_artifacts_v2(
+    resolved_input_artifacts = inputs_utils.resolve_input_artifacts(
         metadata_handler=metadata_handler, pipeline_node=node)
   except exceptions.InputResolutionError as e:
     logging.warning('Input resolution error raised for node: %s; error: %s',

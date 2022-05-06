@@ -707,7 +707,7 @@ class PartialRunTest(absltest.TestCase):
     with metadata.Metadata(self.metadata_config) as m:
       for node_id, exp_result in node_id_exp_result_tups:
         result_node_inputs = _node_inputs_by_id(pipeline_pb, node_id=node_id)
-        input_resolution_result = inputs_utils.resolve_input_artifacts_v2(
+        input_resolution_result = inputs_utils.resolve_input_artifacts(
             metadata_handler=m, pipeline_node=result_node_inputs)
         self.assertIsInstance(input_resolution_result, inputs_utils.Trigger)
         result_artifact = input_resolution_result[0]['result'][0]

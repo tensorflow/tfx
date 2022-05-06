@@ -183,7 +183,7 @@ class _FakeExampleGenLikeDriver(base_driver.BaseDriver):
     # on date.
     span = 2
     with self._mlmd_connection as m:
-      previous_output = inputs_utils.resolve_input_artifacts_v2(
+      previous_output = inputs_utils.resolve_input_artifacts(
           metadata_handler=m, pipeline_node=self._pipeline_node)[0]
 
       # Version should be the max of existing version + 1 if span exists,
@@ -711,7 +711,7 @@ class LauncherTest(test_case_utils.TfxTest):
       exec_properties = data_types_utils.build_parsed_value_dict(
           inputs_utils.resolve_parameters_with_schema(
               node_parameters=test_launcher._pipeline_node.parameters))
-      input_artifacts = inputs_utils.resolve_input_artifacts_v2(
+      input_artifacts = inputs_utils.resolve_input_artifacts(
           metadata_handler=m, pipeline_node=test_launcher._pipeline_node)[0]
       first_execution = test_launcher._register_or_reuse_execution(
           metadata_handler=m,

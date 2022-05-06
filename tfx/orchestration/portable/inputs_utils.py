@@ -155,7 +155,7 @@ class Skip(tuple, Sequence[typing_utils.ArtifactMultiMap]):
     return super().__new__(cls)
 
 
-def resolve_input_artifacts_v2(
+def resolve_input_artifacts(
     *,
     pipeline_node: pipeline_pb2.PipelineNode,
     metadata_handler: metadata.Metadata,

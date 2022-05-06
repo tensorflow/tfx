@@ -71,7 +71,7 @@ class ResolverNodeHandler(system_node_handler.SystemNodeHandler):
           inputs_utils.resolve_parameters_with_schema(
               node_parameters=pipeline_node.parameters))
       try:
-        resolved_inputs = inputs_utils.resolve_input_artifacts_v2(
+        resolved_inputs = inputs_utils.resolve_input_artifacts(
             pipeline_node=pipeline_node,
             metadata_handler=m)
       except exceptions.InputResolutionError as e:
