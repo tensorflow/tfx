@@ -1,4 +1,4 @@
-# Version 1.7.1
+# Version 1.7.2
 
 ## Major Features and Improvements
 
@@ -12,9 +12,10 @@
 
 ## Bug Fixes and Other Changes
 
-* Fix that the resolver with custom `ResolverStrategy` (assume correctly
-  packaged) fails.
-
 ## Dependency Updates
+
+| Package Name | Version Constraints | Previously (in `v1.7.1`) | Comments |
+| -- | -- | -- | -- |
+| `apache-beam[gcp]` | `~=2.38` | `~=2.37` | |
 
 ## Documentation Updates
