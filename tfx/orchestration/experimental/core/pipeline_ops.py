@@ -46,6 +46,11 @@ from ml_metadata.proto import metadata_store_pb2
 # since there isn't a suitable MLMD transaction API.
 _PIPELINE_OPS_LOCK = threading.RLock()
 
+# Default polling interval to be used with `_wait_for_predicate` function when
+# the predicate_fn is expected to perform in-memory operations (discounting
+# cache misses).
+_IN_MEMORY_PREDICATE_FN_DEFAULT_POLLING_INTERVAL_SECS = 1.0
+
 
 def _pipeline_ops_lock(fn):
   """Decorator to run `fn` within `_PIPELINE_OPS_LOCK` context."""
@@ -181,8 +186,7 @@ def stop_pipeline(mlmd_handle: metadata.Metadata,
               message='Cancellation requested by client.'))
   logging.info('Waiting for pipeline to be stopped; pipeline uid: %s',
                pipeline_uid)
-  _wait_for_inactivation(
-      mlmd_handle, pipeline_state.execution_id, timeout_secs=timeout_secs)
+  _wait_for_pipeline_inactivation(pipeline_state, timeout_secs=timeout_secs)
   logging.info('Done waiting for pipeline to be stopped; pipeline uid: %s',
                pipeline_uid)
 
@@ -356,33 +360,35 @@ def update_pipeline(mlmd_handle: metadata.Metadata,
       return True
 
   logging.info('Waiting for pipeline update; pipeline uid: %s', pipeline_uid)
-  _wait_for_predicate(_is_update_applied, 'pipeline update', timeout_secs)
+  _wait_for_predicate(_is_update_applied, 'pipeline update',
+                      _IN_MEMORY_PREDICATE_FN_DEFAULT_POLLING_INTERVAL_SECS,
+                      timeout_secs)
   logging.info('Done waiting for pipeline update; pipeline uid: %s',
                pipeline_uid)
 
 
-def _wait_for_inactivation(mlmd_handle: metadata.Metadata,
-                           execution_id: metadata_store_pb2.Execution,
-                           timeout_secs: Optional[float]) -> None:
-  """Waits for the given execution to become inactive.
+def _wait_for_pipeline_inactivation(pipeline_state: pstate.PipelineState,
+                                    timeout_secs: Optional[float]) -> None:
+  """Waits for the pipeline to become inactive.
 
   Args:
-    mlmd_handle: A handle to the MLMD db.
-    execution_id: Id of the execution whose inactivation is awaited.
+    pipeline_state: Pipeline state of the pipeline whose inactivation is
+      awaited.
     timeout_secs: Amount of time in seconds to wait. If `None`, waits
       indefinitely.
 
   Raises:
-    StatusNotOkError: With error code `DEADLINE_EXCEEDED` if execution is not
+    StatusNotOkError: With error code `DEADLINE_EXCEEDED` if pipeline is not
       inactive after waiting approx. `timeout_secs`.
   """
 
   def _is_inactivated() -> bool:
-    [execution] = mlmd_handle.store.get_executions_by_id([execution_id])
-    return not execution_lib.is_execution_active(execution)
+    with pipeline_state:
+      return not pipeline_state.is_active()
 
-  return _wait_for_predicate(_is_inactivated, 'execution inactivation',
-                             timeout_secs)
+  return _wait_for_predicate(
+      _is_inactivated, 'pipeline inactivation',
+      _IN_MEMORY_PREDICATE_FN_DEFAULT_POLLING_INTERVAL_SECS, timeout_secs)
 
 
 def _wait_for_node_inactivation(pipeline_state: pstate.PipelineState,
@@ -409,7 +415,9 @@ def _wait_for_node_inactivation(pipeline_state: pstate.PipelineState,
                                   pstate.NodeState.SKIPPED,
                                   pstate.NodeState.STOPPED)
 
-  return _wait_for_predicate(_is_inactivated, 'node inactivation', timeout_secs)
+  return _wait_for_predicate(
+      _is_inactivated, 'node inactivation',
+      _IN_MEMORY_PREDICATE_FN_DEFAULT_POLLING_INTERVAL_SECS, timeout_secs)
 
 
 def _get_previously_skipped_nodes(
@@ -543,22 +551,25 @@ def resume_pipeline(mlmd_handle: metadata.Metadata,
       mlmd_handle, pipeline, reused_pipeline_view=latest_pipeline_view)
 
 
-_POLLING_INTERVAL_SECS = 10.0
-
-
 def _wait_for_predicate(predicate_fn: Callable[[], bool], waiting_for_desc: str,
+                        polling_interval_secs: float,
                         timeout_secs: Optional[float]) -> None:
   """Waits for `predicate_fn` to return `True` or until timeout seconds elapse."""
   if timeout_secs is None:
     while not predicate_fn():
-      time.sleep(_POLLING_INTERVAL_SECS)
+      logging.info('Sleeping %f sec(s) waiting for predicate: %s',
+                   polling_interval_secs, waiting_for_desc)
+      time.sleep(polling_interval_secs)
     return
-  polling_interval_secs = min(_POLLING_INTERVAL_SECS, timeout_secs / 4)
+  polling_interval_secs = min(polling_interval_secs, timeout_secs / 4)
   end_time = time.time() + timeout_secs
   while end_time - time.time() > 0:
     if predicate_fn():
       return
-    time.sleep(max(0, min(polling_interval_secs, end_time - time.time())))
+    sleep_secs = max(0, min(polling_interval_secs, end_time - time.time()))
+    logging.info('Sleeping %f sec(s) waiting for predicate: %s', sleep_secs,
+                 waiting_for_desc)
+    time.sleep(sleep_secs)
   raise status_lib.StatusNotOkError(
       code=status_lib.Code.DEADLINE_EXCEEDED,
       message=(

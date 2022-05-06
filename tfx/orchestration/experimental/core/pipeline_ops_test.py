@@ -552,7 +552,7 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
 
       with self.assertRaisesRegex(
           status_lib.StatusNotOkError,
-          'Timed out.*waiting for execution inactivation.'
+          'Timed out.*waiting for pipeline inactivation.'
       ) as exception_context:
         pipeline_ops.stop_pipeline(
             m, task_lib.PipelineUid.from_pipeline(pipeline), timeout_secs=1.0)
@@ -1382,7 +1382,7 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
   def test_wait_for_predicate_timeout_secs_None(self, mock_sleep):
     predicate_fn = mock.Mock()
     predicate_fn.side_effect = [False, False, False, True]
-    pipeline_ops._wait_for_predicate(predicate_fn, 'testing', None)
+    pipeline_ops._wait_for_predicate(predicate_fn, 'testing', 1.0, None)
     self.assertEqual(predicate_fn.call_count, 4)
     self.assertEqual(mock_sleep.call_count, 3)
     predicate_fn.reset_mock()
@@ -1390,7 +1390,7 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
 
     predicate_fn.side_effect = [False, False, ValueError('test error')]
     with self.assertRaisesRegex(ValueError, 'test error'):
-      pipeline_ops._wait_for_predicate(predicate_fn, 'testing', None)
+      pipeline_ops._wait_for_predicate(predicate_fn, 'testing', 1.0, None)
     self.assertEqual(predicate_fn.call_count, 3)
     self.assertEqual(mock_sleep.call_count, 2)
 
