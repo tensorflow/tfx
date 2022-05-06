@@ -12,10 +12,8 @@
 
 ## Bug Fixes and Other Changes
 
-## Dependency Updates
+*   Uses apache-beam==2.38 in the tfx container image.
 
-| Package Name | Version Constraints | Previously (in `v1.7.1`) | Comments |
-| -- | -- | -- | -- |
-| `apache-beam[gcp]` | `~=2.38` | `~=2.37` | |
+## Dependency Updates
 
 ## Documentation Updates
