@@ -347,9 +347,16 @@ class ExecutionParameter:
       value = _make_default(value)
       if declared == Any:
         return
-      if declared.__class__.__name__ in ('_GenericAlias', 'GenericMeta'):
-        # Should be dict or list
-        if declared.__origin__ in [Dict, dict]:  # pylint: disable=protected-access
+      # pylint: disable=line-too-long
+      #            | Dict[X,Y]            | dict[X,Y]          | List[X]              | list[X]            |
+      # ====================================================================================================
+      # type()     | typing._GenericAlias | types.GenericAlias | typing._GenericAlias | types.GenericAlias |
+      # __origin__ | dict                 | dict               | list                 | list               |
+      # pylint: enable=line-too-long
+      # * types.GenericAlias was added in Python 3.9, and we use string
+      # comparisons as a walkaround for Python<3.9.
+      if type(declared).__name__ in ('_GenericAlias', 'GenericAlias'):  # pylint: disable=protected-access
+        if declared.__origin__ is dict:  # pylint: disable=protected-access
           key_type, val_type = declared.__args__[0], declared.__args__[1]
           if not isinstance(value, dict):
             raise TypeError('Expecting a dict for parameter %r, but got %s '
@@ -363,7 +370,7 @@ class ExecutionParameter:
               raise TypeError('Expecting value type %s for parameter %r, '
                               'but got %s instead.' %
                               (str(val_type), arg_name, type(v)))
-        elif declared.__origin__ in [List, list]:  # pylint: disable=protected-access
+        elif declared.__origin__ is list:  # pylint: disable=protected-access
           val_type = declared.__args__[0]
           if not isinstance(value, list):
             raise TypeError('Expecting a list for parameter %r, '

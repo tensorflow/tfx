@@ -24,6 +24,8 @@
 * Temporarily capped `apache-airflow` version to 2.2.x to avoid dependency
   conflict. We will rollback this change once `kfp` releases a new version.
 * Added dark mode styling support for InteractiveContext notebook formatters.
+* (Python 3.9+) Supports `list` and `dict` in type definition of execution
+  properties.
 
 ## Dependency Updates
 

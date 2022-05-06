@@ -14,7 +14,9 @@
 """Tests for tfx.types.artifact_utils."""
 
 import json
+import sys
 from typing import Dict, List
+import unittest
 
 import tensorflow as tf
 from tfx.dsl.placeholder import placeholder
@@ -358,6 +360,26 @@ class ComponentSpecTest(tf.test.TestCase):
           'placeholder_parameter',
           placeholder.runtime_info('platform_config').base_dir +
           placeholder.exec_property('version'))
+
+  @unittest.skipIf(sys.version_info.major == 3 and sys.version_info.minor < 9,
+                   'Only works for Python 3.9+')
+  def testExecutionParameterTypeCheckForPython39Type(self):
+    list_parameter = ExecutionParameter(type=list[int])
+    list_parameter.type_check('list_parameter', [])
+    list_parameter.type_check('list_parameter', [42])
+    with self.assertRaisesRegex(TypeError, 'Expecting a list for parameter'):
+      list_parameter.type_check('list_parameter', 42)
+
+    with self.assertRaisesRegex(
+        TypeError, 'Expecting item type <(class|type) '
+        "'int'> for parameter u?'list_parameter'"):
+      list_parameter.type_check('list_parameter', [42, 'wrong item'])
+
+    dict_parameter = ExecutionParameter(type=dict[str, int])
+    dict_parameter.type_check('dict_parameter', {})
+    dict_parameter.type_check('dict_parameter', {'key1': 1, 'key2': 2})
+    with self.assertRaisesRegex(TypeError, 'Expecting a dict for parameter'):
+      dict_parameter.type_check('dict_parameter', 'simple string')
 
   def testExecutionParameterUseProto(self):
 
