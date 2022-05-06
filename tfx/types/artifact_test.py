@@ -164,6 +164,9 @@ class ArtifactTest(tf.test.TestCase):
       instance.split_names  # pylint: disable=pointless-statement
 
     # Test property setters.
+    instance.name = 'test_artifact'
+    self.assertEqual('test_artifact', instance.name)
+
     instance.uri = '/tmp/uri2'
     self.assertEqual('/tmp/uri2', instance.uri)
 
@@ -215,6 +218,12 @@ class ArtifactTest(tf.test.TestCase):
           }
         }
         custom_properties {
+          key: "name"
+          value {
+            string_value: "test_artifact"
+          }
+        }
+        custom_properties {
           key: "state"
           value {
             string_value: "deleted"
@@ -226,6 +235,7 @@ class ArtifactTest(tf.test.TestCase):
             string_value: "string_value"
           }
         }
+        name: "test_artifact"
         , artifact_type: name: "MyTypeName"
         properties {
           key: "float1"

@@ -190,6 +190,7 @@ class PythonExecutorOperatorTest(test_case_utils.TfxTest):
                     string_value: "MyPipeline.MyPythonNode.my_model"
                   }
                 }
+                name: "MyPipeline.MyPythonNode.my_model"
               }
             }
           }""", executor_output)

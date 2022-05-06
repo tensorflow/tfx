@@ -545,6 +545,7 @@ class Artifact(json_utils.Jsonable):
   def name(self, name: str):
     """Set name of the underlying artifact."""
     self._set_system_property('name', name)
+    self._artifact.name = name
 
   @property
   @doc_controls.do_not_doc_in_subclasses

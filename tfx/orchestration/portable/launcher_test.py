@@ -427,7 +427,9 @@ class LauncherTest(test_case_utils.TfxTest):
               string_value: "0.123.4.dev"
             }
           }
-          state: LIVE""" % self._pipeline_run_id_counter,
+          name: ":test_run_%d:my_trainer:model:0"
+          state: LIVE""" %
+          (self._pipeline_run_id_counter, self._pipeline_run_id_counter),
           artifact,
           ignored_fields=[
               'type_id', 'uri', 'create_time_since_epoch',
@@ -479,7 +481,9 @@ class LauncherTest(test_case_utils.TfxTest):
               string_value: "0.123.4.dev"
             }
           }
-          state: LIVE""" % self._pipeline_run_id_counter,
+          name: ":test_run_%d:my_trainer:model:0"
+          state: LIVE""" %
+          (self._pipeline_run_id_counter, self._pipeline_run_id_counter),
           artifact,
           ignored_fields=[
               'type_id', 'uri', 'create_time_since_epoch',
@@ -606,7 +610,9 @@ class LauncherTest(test_case_utils.TfxTest):
               string_value: "0.123.4.dev"
             }
           }
-          state: LIVE""" % self._pipeline_run_id_counter,
+          name: ":test_run_%d:my_trainer:model:0"
+          state: LIVE""" %
+          (self._pipeline_run_id_counter, self._pipeline_run_id_counter),
           artifact,
           ignored_fields=[
               'type_id', 'uri', 'create_time_since_epoch',
@@ -652,7 +658,9 @@ class LauncherTest(test_case_utils.TfxTest):
               string_value: "0.123.4.dev"
             }
           }
-          state: LIVE""" % self._pipeline_run_id_counter,
+          name: ":test_run_%d:my_trainer:model:0"
+          state: LIVE""" %
+          (self._pipeline_run_id_counter, self._pipeline_run_id_counter),
           artifacts[1],
           ignored_fields=[
               'type_id', 'uri', 'create_time_since_epoch',
@@ -776,7 +784,9 @@ class LauncherTest(test_case_utils.TfxTest):
               string_value: "0.123.4.dev"
             }
           }
-          state: LIVE""" % self._pipeline_run_id_counter,
+          name: ":test_run_%d:my_trainer:model:0"
+          state: LIVE""" %
+          (self._pipeline_run_id_counter, self._pipeline_run_id_counter),
           artifact,
           ignored_fields=[
               'type_id', 'uri', 'create_time_since_epoch',
@@ -897,7 +907,9 @@ class LauncherTest(test_case_utils.TfxTest):
               string_value: "0.123.4.dev"
             }
           }
-          state: LIVE""" % self._pipeline_run_id_counter,
+          name: ":test_run_%d:my_example_gen:output_examples:0"
+          state: LIVE""" %
+          (self._pipeline_run_id_counter, self._pipeline_run_id_counter),
           artifact,
           ignored_fields=[
               'type_id', 'uri', 'create_time_since_epoch',
@@ -951,7 +963,9 @@ class LauncherTest(test_case_utils.TfxTest):
               string_value: "0.123.4.dev"
             }
           }
-          state: LIVE""" % self._pipeline_run_id_counter,
+          name: ":test_run_%d:my_example_gen:output_examples:0"
+          state: LIVE""" %
+          (self._pipeline_run_id_counter, self._pipeline_run_id_counter),
           artifact,
           ignored_fields=[
               'type_id', 'uri', 'create_time_since_epoch',

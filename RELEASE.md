@@ -26,6 +26,8 @@
 * Added dark mode styling support for InteractiveContext notebook formatters.
 * (Python 3.9+) Supports `list` and `dict` in type definition of execution
   properties.
+* Populate Artifact proto `name` field when name is set on the Artifact python
+  object.
 
 ## Dependency Updates
 
