@@ -37,14 +37,16 @@ class ImporterTest(tf.test.TestCase):
             'str_custom_property': 'abc',
             'int_custom_property': 123,
         },
-        artifact_type=standard_artifacts.Examples).with_id('my_importer')
+        artifact_type=standard_artifacts.Examples,
+        output_key='examples').with_id('my_importer')
     self.assertDictEqual(
         impt.exec_properties, {
             importer.SOURCE_URI_KEY: 'm/y/u/r/i',
             importer.REIMPORT_OPTION_KEY: 0,
+            importer.OUTPUT_KEY_KEY: 'examples',
         })
     self.assertEmpty(impt.inputs)
-    output_channel = impt.outputs[importer.IMPORT_RESULT_KEY]
+    output_channel = impt.outputs[impt.exec_properties[importer.OUTPUT_KEY_KEY]]
     self.assertEqual(output_channel.type, standard_artifacts.Examples)
     # Tests properties in channel.
     self.assertEqual(output_channel.additional_properties, {
@@ -127,6 +129,7 @@ class ImporterDriverTest(tf.test.TestCase):
           exec_properties={
               importer.SOURCE_URI_KEY: self.source_uri,
               importer.REIMPORT_OPTION_KEY: int(reimport),
+              importer.OUTPUT_KEY_KEY: importer.IMPORT_RESULT_KEY,
           })
       self.assertFalse(execution_result.use_cached_results)
       self.assertEmpty(execution_result.input_dict)

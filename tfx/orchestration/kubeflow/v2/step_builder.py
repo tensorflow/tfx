@@ -488,7 +488,8 @@ class StepBuilder:
   def _build_importer_spec(self) -> ImporterSpec:
     """Builds ImporterSpec."""
     assert isinstance(self._node, importer.Importer)
-    output_channel = self._node.outputs[importer.IMPORT_RESULT_KEY]
+    output_key = str(self._exec_properties[importer.OUTPUT_KEY_KEY])
+    output_channel = self._node.outputs[output_key]
     result = ImporterSpec()
 
     # Importer's output channel contains one artifact instance with

@@ -140,6 +140,12 @@ class ImporterTaskSchedulerTest(test_utils.TfxTest):
             }
           }
           custom_properties {
+            key: "output_key"
+            value {
+              string_value: "result"
+            }
+          }
+          custom_properties {
             key: "reimport"
             value {
               int_value: 1

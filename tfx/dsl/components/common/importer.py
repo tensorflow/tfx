@@ -26,17 +26,20 @@ from tfx.utils import doc_controls
 
 from ml_metadata.proto import metadata_store_pb2
 
-# Constant to access importer importing result from importer output dict.
+# Constant to access Importer importing result from Importer output dict.
 IMPORT_RESULT_KEY = 'result'
-# Constant to access artifact uri from importer exec_properties dict.
+# Constant to access output key  from Importer exec_properties dict.
+OUTPUT_KEY_KEY = 'output_key'
+# Constant to access artifact uri from Importer exec_properties dict.
 SOURCE_URI_KEY = 'artifact_uri'
-# Constant to access re-import option from importer exec_properties dict.
+# Constant to access re-import option from Importer exec_properties dict.
 REIMPORT_OPTION_KEY = 'reimport'
 
 
-def _set_artifact_properties(artifact: types.Artifact,
-                             properties: Optional[Dict[str, Any]],
-                             custom_properties: Optional[Dict[str, Any]]):
+def _set_artifact_properties(
+  artifact: types.Artifact,
+  properties: Optional[Dict[str, Any]],
+  custom_properties: Optional[Dict[str, Any]]):
   """Sets properties and custom_properties to the given artifact."""
   if properties is not None:
     for key, value in properties.items():
@@ -49,16 +52,16 @@ def _set_artifact_properties(artifact: types.Artifact,
         artifact.set_string_custom_property(key, value)
       else:
         raise NotImplementedError(
-            f'Unexpected custom_property value type:{type(value)}')
+          f'Unexpected custom_property value type:{type(value)}')
 
 
 def _prepare_artifact(
-    metadata_handler: metadata.Metadata,
-    uri: str,
-    properties: Dict[str, Any],
-    custom_properties: Dict[str, Any],
-    reimport: bool, output_artifact_class: Type[types.Artifact],
-    mlmd_artifact_type: Optional[metadata_store_pb2.ArtifactType]
+  metadata_handler: metadata.Metadata,
+  uri: str,
+  properties: Dict[str, Any],
+  custom_properties: Dict[str, Any],
+  reimport: bool, output_artifact_class: Type[types.Artifact],
+  mlmd_artifact_type: Optional[metadata_store_pb2.ArtifactType]
 ) -> types.Artifact:
   """Prepares the Importer's output artifact.
 
@@ -91,7 +94,7 @@ def _prepare_artifact(
     if not isinstance(value, (int, str, bytes)):
       raise ValueError(
           ('Custom property value for key %r must be a string or integer '
-           '(got %r instead)') % (key, value))
+            '(got %r instead)') % (key, value))
 
   unfiltered_previous_artifacts = metadata_handler.get_artifacts_by_uri(
       uri)
@@ -132,15 +135,16 @@ def _prepare_artifact(
 
 
 def generate_output_dict(
-    metadata_handler: metadata.Metadata,
-    uri: str,
-    properties: Dict[str, Any],
-    custom_properties: Dict[str, Any],
-    reimport: bool,
-    output_artifact_class: Type[types.Artifact],
-    mlmd_artifact_type: Optional[metadata_store_pb2.ArtifactType] = None
+  metadata_handler: metadata.Metadata,
+  uri: str,
+  properties: Dict[str, Any],
+  custom_properties: Dict[str, Any],
+  reimport: bool,
+  output_artifact_class: Type[types.Artifact],
+  mlmd_artifact_type: Optional[metadata_store_pb2.ArtifactType] = None,
+  output_key: Optional[str] = None,
 ) -> Dict[str, List[types.Artifact]]:
-  """Generates importer's output dict.
+  """Generates Importer's output dict.
 
   If there is already an artifact in MLMD with the same URI and properties /
   custom properties, that artifact will be reused unless the `reimport`
@@ -158,21 +162,24 @@ def generate_output_dict(
       exists in the database.
     output_artifact_class: The class of the output artifact.
     mlmd_artifact_type: The MLMD artifact type of the Artifact to be created.
+    output_key: The key to use for the imported artifact in the Importer's
+      output dictionary. Defaults to 'result'.
 
   Returns:
-    a dictionary with the only key `result` whose value is the Artifact.
+    A dictionary with the only key `output_key` whose value is the Artifact.
   """
+  output_key = output_key or IMPORT_RESULT_KEY
   return {
-      IMPORT_RESULT_KEY: [
-          _prepare_artifact(
-              metadata_handler,
-              uri=uri,
-              properties=properties,
-              custom_properties=custom_properties,
-              output_artifact_class=output_artifact_class,
-              mlmd_artifact_type=mlmd_artifact_type,
-              reimport=reimport)
-      ]
+    output_key: [
+      _prepare_artifact(
+        metadata_handler,
+        uri=uri,
+        properties=properties,
+        custom_properties=custom_properties,
+        output_artifact_class=output_artifact_class,
+        mlmd_artifact_type=mlmd_artifact_type,
+        reimport=reimport)
+    ]
   }
 
 
@@ -180,49 +187,51 @@ class ImporterDriver(base_driver.BaseDriver):
   """Driver for Importer."""
 
   def pre_execution(
-      self,
-      input_dict: Dict[str, types.BaseChannel],
-      output_dict: Dict[str, types.Channel],
-      exec_properties: Dict[str, Any],
-      driver_args: data_types.DriverArgs,
-      pipeline_info: data_types.PipelineInfo,
-      component_info: data_types.ComponentInfo,
+    self,
+    input_dict: Dict[str, types.BaseChannel],
+    output_dict: Dict[str, types.Channel],
+    exec_properties: Dict[str, Any],
+    driver_args: data_types.DriverArgs,
+    pipeline_info: data_types.PipelineInfo,
+    component_info: data_types.ComponentInfo,
   ) -> data_types.ExecutionDecision:
     # Registers contexts and execution.
     contexts = self._metadata_handler.register_pipeline_contexts_if_not_exists(
-        pipeline_info)
+      pipeline_info)
     execution = self._metadata_handler.register_execution(
-        exec_properties=exec_properties,
-        pipeline_info=pipeline_info,
-        component_info=component_info,
-        contexts=contexts)
+      exec_properties=exec_properties,
+      pipeline_info=pipeline_info,
+      component_info=component_info,
+      contexts=contexts)
     # Create imported artifacts.
-    output_channel = output_dict[IMPORT_RESULT_KEY]
+    output_key = exec_properties[OUTPUT_KEY_KEY]
+    output_channel = output_dict[output_key]
     output_artifacts = generate_output_dict(
-        self._metadata_handler,
-        uri=exec_properties[SOURCE_URI_KEY],
-        properties=output_channel.additional_properties,
-        custom_properties=output_channel.additional_custom_properties,
-        reimport=exec_properties[REIMPORT_OPTION_KEY],
-        output_artifact_class=output_channel.type)
+      self._metadata_handler,
+      uri=exec_properties[SOURCE_URI_KEY],
+      properties=output_channel.additional_properties,
+      custom_properties=output_channel.additional_custom_properties,
+      reimport=exec_properties[REIMPORT_OPTION_KEY],
+      output_artifact_class=output_channel.type,
+      output_key=output_key)
 
     # Update execution with imported artifacts.
     self._metadata_handler.update_execution(
-        execution=execution,
-        component_info=component_info,
-        output_artifacts=output_artifacts,
-        execution_state=metadata.EXECUTION_STATE_CACHED,
-        contexts=contexts)
+      execution=execution,
+      component_info=component_info,
+      output_artifacts=output_artifacts,
+      execution_state=metadata.EXECUTION_STATE_CACHED,
+      contexts=contexts)
 
-    output_dict[IMPORT_RESULT_KEY] = channel_utils.as_channel(
-        output_artifacts[IMPORT_RESULT_KEY])
+    output_dict[output_key] = channel_utils.as_channel(
+      output_artifacts[output_key])
 
     return data_types.ExecutionDecision(
-        input_dict={},
-        output_dict=output_artifacts,
-        exec_properties=exec_properties,
-        execution_id=execution.id,
-        use_cached_results=False)
+      input_dict={},
+      output_dict=output_artifacts,
+      exec_properties=exec_properties,
+      execution_id=execution.id,
+      use_cached_results=False)
 
 
 class Importer(base_node.BaseNode):
@@ -244,12 +253,14 @@ class Importer(base_node.BaseNode):
   ```
   """
 
-  def __init__(self,
-               source_uri: str,
-               artifact_type: Type[types.Artifact],
-               reimport: Optional[bool] = False,
-               properties: Optional[Dict[str, Union[str, int]]] = None,
-               custom_properties: Optional[Dict[str, Union[str, int]]] = None):
+  def __init__(
+    self,
+    source_uri: str,
+    artifact_type: Type[types.Artifact],
+    reimport: Optional[bool] = False,
+    properties: Optional[Dict[str, Union[str, int]]] = None,
+    custom_properties: Optional[Dict[str, Union[str, int]]] = None,
+    output_key: Optional[str] = None):
     """Init function for the Importer.
 
     Args:
@@ -262,23 +273,26 @@ class Importer(base_node.BaseNode):
         PROPERTIES attribute of the definition of the type for details).
       custom_properties: Dictionary of custom properties for the imported
         Artifact. These properties should be of type Text or int.
+      output_key: The key to use for the imported artifact in the Importer's
+        output dictionary. Defaults to 'result'.
     """
     self._source_uri = source_uri
     self._reimport = reimport
+    self._output_key = output_key or IMPORT_RESULT_KEY
 
     artifact = artifact_type()
     _set_artifact_properties(artifact, properties, custom_properties)
 
     output_channel = types.OutputChannel(
-        artifact_type,
-        producer_component=self,
-        output_key=IMPORT_RESULT_KEY,
-        additional_properties=properties,
-        additional_custom_properties=custom_properties)
+      artifact_type,
+      producer_component=self,
+      output_key=self._output_key,
+      additional_properties=properties,
+      additional_custom_properties=custom_properties)
 
     # TODO(b/161490287): remove static artifacts.
     output_channel.set_artifacts([artifact])
-    self._output_dict = {IMPORT_RESULT_KEY: output_channel}
+    self._output_dict = {self._output_key: output_channel}
 
     super().__init__(driver_class=ImporterDriver)
 
@@ -298,4 +312,5 @@ class Importer(base_node.BaseNode):
     return {
         SOURCE_URI_KEY: self._source_uri,
         REIMPORT_OPTION_KEY: int(self._reimport),
+        OUTPUT_KEY_KEY: self._output_key,
     }

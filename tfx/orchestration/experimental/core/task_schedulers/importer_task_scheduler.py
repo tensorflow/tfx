@@ -33,7 +33,8 @@ class ImporterTaskScheduler(task_scheduler.TaskScheduler[task_lib.ExecNodeTask]
       return {k: data_types_utils.get_value(v) for k, v in proto_map.items()}
 
     pipeline_node = self.task.get_pipeline_node()
-    output_spec = pipeline_node.outputs.outputs[importer.IMPORT_RESULT_KEY]
+    output_key = str(self.task.exec_properties[importer.OUTPUT_KEY_KEY])
+    output_spec = pipeline_node.outputs.outputs[output_key]
     properties = _as_dict(output_spec.artifact_spec.additional_properties)
     custom_properties = _as_dict(
         output_spec.artifact_spec.additional_custom_properties)
@@ -46,7 +47,8 @@ class ImporterTaskScheduler(task_scheduler.TaskScheduler[task_lib.ExecNodeTask]
         reimport=bool(self.task.exec_properties[importer.REIMPORT_OPTION_KEY]),
         output_artifact_class=types.Artifact(
             output_spec.artifact_spec.type).type,
-        mlmd_artifact_type=output_spec.artifact_spec.type)
+        mlmd_artifact_type=output_spec.artifact_spec.type,
+        output_key=output_key)
 
     return task_scheduler.TaskSchedulerResult(
         status=status_lib.Status(code=status_lib.Code.OK),

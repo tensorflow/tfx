@@ -30,11 +30,12 @@ from tfx.proto.orchestration import pipeline_pb2
 
 
 def _is_artifact_reimported(
-    output_artifacts: Dict[str, List[types.Artifact]]) -> bool:
+    output_artifacts: Dict[str, List[types.Artifact]],
+    output_key: str) -> bool:
   # The artifacts are reimported only when there are artifacts in the output
   # dict and ids has been assign to them.
-  return (bool(output_artifacts[importer.IMPORT_RESULT_KEY]) and all(
-      (bool(a.id) for a in output_artifacts[importer.IMPORT_RESULT_KEY])))
+  return (bool(output_artifacts[output_key]) and all(
+      (bool(a.id) for a in output_artifacts[output_key])))
 
 
 class ImporterNodeHandler(system_node_handler.SystemNodeHandler):
@@ -86,7 +87,8 @@ class ImporterNodeHandler(system_node_handler.SystemNodeHandler):
           exec_properties=exec_properties)
 
       # 4. Generate output artifacts to represent the imported artifacts.
-      output_spec = pipeline_node.outputs.outputs[importer.IMPORT_RESULT_KEY]
+      output_key = str(exec_properties[importer.OUTPUT_KEY_KEY])
+      output_spec = pipeline_node.outputs.outputs[output_key]
       properties = self._extract_proto_map(
           output_spec.artifact_spec.additional_properties)
       custom_properties = self._extract_proto_map(
@@ -100,7 +102,8 @@ class ImporterNodeHandler(system_node_handler.SystemNodeHandler):
           custom_properties=custom_properties,
           reimport=bool(exec_properties[importer.REIMPORT_OPTION_KEY]),
           output_artifact_class=output_artifact_class,
-          mlmd_artifact_type=output_spec.artifact_spec.type)
+          mlmd_artifact_type=output_spec.artifact_spec.type,
+          output_key=output_key)
 
       result = data_types.ExecutionInfo(
           execution_id=execution.id,
@@ -117,7 +120,7 @@ class ImporterNodeHandler(system_node_handler.SystemNodeHandler):
 
       # 5. Publish the output artifacts. If artifacts are reimported, the
       # execution is published as CACHED. Otherwise it is published as COMPLETE.
-      if _is_artifact_reimported(output_artifacts):
+      if _is_artifact_reimported(output_artifacts, output_key):
         execution_publish_utils.publish_cached_execution(
             metadata_handler=m,
             contexts=contexts,

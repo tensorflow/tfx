@@ -9,6 +9,12 @@ input_definitions {
     }
   }
   parameters {
+    key: "output_key"
+    value {
+      type: STRING
+    }
+  }
+  parameters {
     key: "reimport"
     value {
       type: INT

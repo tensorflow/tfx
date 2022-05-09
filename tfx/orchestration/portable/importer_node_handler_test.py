@@ -110,6 +110,12 @@ class ImporterNodeHandlerTest(test_case_utils.TfxTest):
             }
           }
           custom_properties {
+            key: "output_key"
+            value {
+              string_value: "result"
+            }
+          }
+          custom_properties {
             key: "reimport"
             value {
               int_value: 1
@@ -166,6 +172,12 @@ class ImporterNodeHandlerTest(test_case_utils.TfxTest):
             key: "artifact_uri"
             value {
               string_value: "my_url"
+            }
+          }
+          custom_properties {
+            key: "output_key"
+            value {
+              string_value: "result"
             }
           }
           custom_properties {
@@ -232,6 +244,12 @@ class ImporterNodeHandlerTest(test_case_utils.TfxTest):
             }
           }
           custom_properties {
+            key: "output_key"
+            value {
+              string_value: "result"
+            }
+          }
+          custom_properties {
             key: "reimport"
             value {
               int_value: 0
@@ -263,6 +281,12 @@ class ImporterNodeHandlerTest(test_case_utils.TfxTest):
             key: "artifact_uri"
             value {
               string_value: "my_url"
+            }
+          }
+          custom_properties {
+            key: "output_key"
+            value {
+              string_value: "result"
             }
           }
           custom_properties {
