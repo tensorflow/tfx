@@ -1,4 +1,4 @@
-# Version 1.7.1
+# Version 1.7.2
 
 ## Major Features and Improvements
 
@@ -12,8 +12,7 @@
 
 ## Bug Fixes and Other Changes
 
-* Fix that the resolver with custom `ResolverStrategy` (assume correctly
-  packaged) fails.
+*   Uses apache-beam==2.38 in the tfx container image.
 
 ## Dependency Updates
 
