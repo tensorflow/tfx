@@ -318,14 +318,6 @@ class Pipeline:
             f'Duplicated node_id {component.id} for component type'
             f'{component.type}.')
       node_by_id[component.id] = component
-      for key, output_channel in component.outputs.items():
-        if (output_channel.producer_component_id is not None and
-            output_channel.producer_component_id != component.id and
-            output_channel.output_key != key):
-          raise AssertionError(
-              f'{output_channel} is produced more than once: '
-              f'{output_channel.producer_id}[{output_channel.output_key}], '
-              f'{component.id}[{key}]')
 
     # Connects nodes based on producer map.
     for component in deduped_components:
