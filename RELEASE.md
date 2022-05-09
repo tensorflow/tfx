@@ -21,13 +21,15 @@
   packaged) fails.
 * Fixed `ElwcBigQueryExampleGen` data serializiation error that was causing an
   assertion failure on Beam.
-* Temporarily capped `apache-airflow` version to 2.2.x to avoid dependency
-  conflict. We will rollback this change once `kfp` releases a new version.
 * Added dark mode styling support for InteractiveContext notebook formatters.
 * (Python 3.9+) Supports `list` and `dict` in type definition of execution
   properties.
 * Populate Artifact proto `name` field when name is set on the Artifact python
   object.
+* Temporarily capped `apache-airflow` version to 2.2.x to avoid dependency
+  conflict. We will rollback this change once `kfp` releases a new version.
+* Fixed a compatibility issue with apache-airflow 2.3.0 that is failing with
+  "unexpected keyword argument 'default_args'".
 
 ## Dependency Updates
 

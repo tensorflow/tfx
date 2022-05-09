@@ -282,9 +282,11 @@ class CliAirflowEndToEndTest(test_case_utils.TfxTest):
 
     self._reload_airflow_dags()
 
-    result = self.runner.invoke(cli_group, [
-        'run', 'create', '--engine', 'airflow', '--pipeline_name', pipeline_name
-    ])
+    with airflow_test_utils.AirflowScheduler():
+      result = self.runner.invoke(cli_group, [
+          'run', 'create', '--engine', 'airflow', '--pipeline_name',
+          pipeline_name
+      ])
 
     self.assertIn('Creating a run for pipeline: {}'.format(pipeline_name),
                   result.output)

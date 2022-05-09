@@ -89,7 +89,8 @@ class AirflowComponent(python_operator.PythonOperator):
                metadata_connection_config: metadata_store_pb2.ConnectionConfig,
                beam_pipeline_args: List[str],
                additional_pipeline_args: Dict[str, Any],
-               component_config: base_component_config.BaseComponentConfig):
+               component_config: base_component_config.BaseComponentConfig,
+               **kwargs):
     """Constructs an Airflow implementation of TFX component.
 
     Args:
@@ -105,6 +106,7 @@ class AirflowComponent(python_operator.PythonOperator):
       beam_pipeline_args: Pipeline arguments for Beam powered Components.
       additional_pipeline_args: Additional pipeline args.
       component_config: Component config to launch the component.
+      **kwargs: Addtional params passed to the base class, PythonOperator.
     """
     # Prepare parameters to create TFX worker.
     driver_args = data_types.DriverArgs(enable_cache=enable_cache)
@@ -129,4 +131,5 @@ class AirflowComponent(python_operator.PythonOperator):
         # op_kwargs is a templated field for PythonOperator, which means Airflow
         # will inspect the dictionary and resolve any templated fields.
         op_kwargs={'exec_properties': exec_properties},
-        dag=parent_dag)
+        dag=parent_dag,
+        **kwargs)

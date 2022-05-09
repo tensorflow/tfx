@@ -110,14 +110,16 @@ class AirflowComponentTest(tf.test.TestCase):
         metadata_connection_config=self._metadata_connection_config,
         beam_pipeline_args=[],
         additional_pipeline_args={},
-        component_config=None)
+        component_config=None,
+        default_args={})
 
     mock_python_operator_init.assert_called_once_with(
         task_id=self._component.id,
         provide_context=True,
         python_callable=mock.ANY,
         dag=self._parent_dag,
-        op_kwargs={'exec_properties': {}})
+        op_kwargs={'exec_properties': {}},
+        default_args={})
 
     python_callable = mock_python_operator_init.call_args_list[0][1][
         'python_callable']
