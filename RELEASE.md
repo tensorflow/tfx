@@ -30,6 +30,8 @@
   conflict. We will rollback this change once `kfp` releases a new version.
 * Fixed a compatibility issue with apache-airflow 2.3.0 that is failing with
   "unexpected keyword argument 'default_args'".
+* StatisticsGen will raise an error if unsupported StatsOptions (i.e.,
+  generators or experimental_slice_functions) are passed.
 
 ## Dependency Updates
 

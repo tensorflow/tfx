@@ -67,8 +67,8 @@ class StatisticsGen(base_beam_component.BaseBeamComponent):
       stats_options: The StatsOptions instance to configure optional TFDV
         behavior. When stats_options.schema is set, it will be used instead of
         the `schema` channel input. Due to the requirement that stats_options be
-        serialized, the slicer functions and custom stats generators are dropped
-        and are therefore not usable.
+        serialized, the slicer functions and custom stats generators are not
+        usable, and an error will be raised if either is specified.
       exclude_splits: Names of splits where statistics and sample should not be
         generated. Default behavior (when exclude_splits is set to None) is
         excluding no splits.
