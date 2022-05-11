@@ -80,23 +80,6 @@ class InteractiveContextTest(tf.test.TestCase):
     self._notebook_fp = os.path.join(self._tmpdir, notebook_name)
     nbformat.write(notebook, self._notebook_fp)
 
-  def testRequiresIPythonExecutes(self):
-    self.foo_called = False
-    def foo():
-      self.foo_called = True
-
-    interactive_context.requires_ipython(foo)()
-    self.assertTrue(self.foo_called)
-
-  def testRequiresIPythonNoOp(self):
-    del builtins.__dict__['__IPYTHON__']
-
-    self.foo_called = False
-    def foo():
-      self.foo_called = True
-    interactive_context.requires_ipython(foo)()
-    self.assertFalse(self.foo_called)
-
   def testBasicRun(self):
 
     class _FakeComponentSpec(types.ComponentSpec):
