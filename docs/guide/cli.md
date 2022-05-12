@@ -89,7 +89,7 @@ tfx pipeline create --pipeline_path=<var>pipeline-path</var> [--endpoint=<var>en
       If the <code>--endpoint</code> is not specified, the in-cluster service
       DNS name is used as the default value. This name works only if the
       CLI command executes in a pod on the Kubeflow Pipelines cluster, such as a
-      <a href="https://www.kubeflow.org/docs/notebooks/why-use-jupyter-notebook/"
+      <a href="https://www.kubeflow.org/docs/components/notebooks/jupyter-tensorflow-examples/"
            class="external">Kubeflow Jupyter notebooks</a> instance.
     </p>
   </dd>
@@ -217,7 +217,7 @@ tfx pipeline update --pipeline_path=<var>pipeline-path</var> [--endpoint=<var>en
       If the <code>--endpoint</code> is not specified, the in-cluster service
       DNS name is used as the default value. This name works only if the
       CLI command executes in a pod on the Kubeflow Pipelines cluster, such as a
-      <a href="https://www.kubeflow.org/docs/notebooks/why-use-jupyter-notebook/"
+      <a href="https://www.kubeflow.org/docs/components/notebooks/jupyter-tensorflow-examples/"
            class="external">Kubeflow Jupyter notebooks</a> instance.
     </p>
   </dd>
@@ -397,7 +397,7 @@ tfx pipeline delete --pipeline_path=<var>pipeline-path</var> [--endpoint=<var>en
       If the <code>--endpoint</code> is not specified, the in-cluster service
       DNS name is used as the default value. This name works only if the
       CLI command executes in a pod on the Kubeflow Pipelines cluster, such as a
-      <a href="https://www.kubeflow.org/docs/notebooks/why-use-jupyter-notebook/"
+      <a href="https://www.kubeflow.org/docs/components/notebooks/jupyter-tensorflow-examples/"
            class="external">Kubeflow Jupyter notebooks</a> instance.
     </p>
   </dd>
@@ -491,7 +491,7 @@ tfx pipeline list [--endpoint=<var>endpoint</var> --engine=<var>engine</var> \
       If the <code>--endpoint</code> is not specified, the in-cluster service
       DNS name is used as the default value. This name works only if the
       CLI command executes in a pod on the Kubeflow Pipelines cluster, such as a
-      <a href="https://www.kubeflow.org/docs/notebooks/why-use-jupyter-notebook/"
+      <a href="https://www.kubeflow.org/docs/components/notebooks/jupyter-tensorflow-examples/"
            class="external">Kubeflow Jupyter notebooks</a> instance.
     </p>
   </dd>
@@ -599,7 +599,7 @@ tfx run create --pipeline_name=<var>pipeline-name</var> [--endpoint=<var>endpoin
       If the <code>--endpoint</code> is not specified, the in-cluster service
       DNS name is used as the default value. This name works only if the
       CLI command executes in a pod on the Kubeflow Pipelines cluster, such as a
-      <a href="https://www.kubeflow.org/docs/notebooks/why-use-jupyter-notebook/"
+      <a href="https://www.kubeflow.org/docs/components/notebooks/jupyter-tensorflow-examples/"
            class="external">Kubeflow Jupyter notebooks</a> instance.
     </p>
   </dd>
@@ -718,7 +718,7 @@ tfx run terminate --run_id=<var>run-id</var> [--endpoint=<var>endpoint</var> --e
       If the <code>--endpoint</code> is not specified, the in-cluster service
       DNS name is used as the default value. This name works only if the
       CLI command executes in a pod on the Kubeflow Pipelines cluster, such as a
-      <a href="https://www.kubeflow.org/docs/notebooks/why-use-jupyter-notebook/"
+      <a href="https://www.kubeflow.org/docs/components/notebooks/jupyter-tensorflow-examples/"
            class="external">Kubeflow Jupyter notebooks</a> instance.
     </p>
   </dd>
@@ -800,7 +800,7 @@ tfx run list --pipeline_name=<var>pipeline-name</var> [--endpoint=<var>endpoint<
       If the <code>--endpoint</code> is not specified, the in-cluster service
       DNS name is used as the default value. This name works only if the
       CLI command executes in a pod on the Kubeflow Pipelines cluster, such as a
-      <a href="https://www.kubeflow.org/docs/notebooks/why-use-jupyter-notebook/"
+      <a href="https://www.kubeflow.org/docs/components/notebooks/jupyter-tensorflow-examples/"
            class="external">Kubeflow Jupyter notebooks</a> instance.
     </p>
   </dd>
@@ -885,7 +885,7 @@ tfx run status --pipeline_name=<var>pipeline-name</var> --run_id=<var>run-id</va
       If the <code>--endpoint</code> is not specified, the in-cluster service
       DNS name is used as the default value. This name works only if the
       CLI command executes in a pod on the Kubeflow Pipelines cluster, such as a
-      <a href="https://www.kubeflow.org/docs/notebooks/why-use-jupyter-notebook/"
+      <a href="https://www.kubeflow.org/docs/components/notebooks/jupyter-tensorflow-examples/"
            class="external">Kubeflow Jupyter notebooks</a> instance.
     </p>
   </dd>
@@ -968,7 +968,7 @@ tfx run delete --run_id=<var>run-id</var> [--engine=<var>engine</var> --iap_clie
       If the <code>--endpoint</code> is not specified, the in-cluster service
       DNS name is used as the default value. This name works only if the
       CLI command executes in a pod on the Kubeflow Pipelines cluster, such as a
-      <a href="https://www.kubeflow.org/docs/notebooks/why-use-jupyter-notebook/"
+      <a href="https://www.kubeflow.org/docs/components/notebooks/jupyter-tensorflow-examples/"
            class="external">Kubeflow Jupyter notebooks</a> instance.
     </p>
   </dd>
@@ -1121,7 +1121,7 @@ tfx template copy --model=<var>model</var> --pipeline_name=<var>pipeline-name</v
       If the <code>--endpoint</code> is not specified, the in-cluster service
       DNS name is used as the default value. This name works only if the
       CLI command executes in a pod on the Kubeflow Pipelines cluster, such as a
-      <a href="https://www.kubeflow.org/docs/notebooks/why-use-jupyter-notebook/"
+      <a href="https://www.kubeflow.org/docs/components/notebooks/jupyter-tensorflow-examples/"
            class="external">Kubeflow Jupyter notebooks</a> instance.
     </p>
   </dd>
