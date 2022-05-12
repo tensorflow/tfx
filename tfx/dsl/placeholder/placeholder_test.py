@@ -573,6 +573,15 @@ class PlaceholderTest(tf.test.TestCase):
         }
     """)
 
+  def testEnvironmentVariable(self):
+    self._assert_placeholder_pb_equal_and_deepcopyable(
+        ph.environment_variable('FOO'), """
+          placeholder {
+            type: ENVIRONMENT_VARIABLE
+            key: "FOO"
+          }
+    """)
+
   def testBase64EncodeOperator(self):
     self._assert_placeholder_pb_equal_and_deepcopyable(
         ph.exec_property('str_value').b64encode(), """

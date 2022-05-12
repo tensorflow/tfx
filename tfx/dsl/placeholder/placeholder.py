@@ -528,6 +528,17 @@ class ExecInvocationPlaceholder(_ProtoAccessiblePlaceholder):
     super().__init__(placeholder_pb2.Placeholder.Type.EXEC_INVOCATION)
 
 
+class EnvironmentVariablePlaceholder(_ProtoAccessiblePlaceholder):
+  """Environment Variable Placeholder helps access EnvironmentVariable proto.
+
+  Prefer to use environment_variable(...) to create Execution Invocation
+  placeholder.
+  """
+
+  def __init__(self, key):
+    super().__init__(placeholder_pb2.Placeholder.Type.ENVIRONMENT_VARIABLE, key)
+
+
 class _CompareOp(enum.Enum):
   """An alias for placeholder_pb2.ComparisonOperator.Operation."""
 
@@ -1035,6 +1046,22 @@ def execution_invocation() -> ExecInvocationPlaceholder:
     proto.
   """
   return ExecInvocationPlaceholder()
+
+
+def environment_variable(key: str) -> EnvironmentVariablePlaceholder:
+  """Returns a Placeholder representing EnvironmentVariable proto.
+
+  Args:
+    key: The key of the environment variable.
+
+  Returns:
+    A Placeholder that supports
+      1. Rendering the value of an execution property at a given key.
+         Example: exec_property('version')
+      2. Concatenating with other placeholders or strings.
+         Example: 'foo=' + environment_variable('FOO')
+  """
+  return EnvironmentVariablePlaceholder(key)
 
 
 def to_list(input_placeholders: List['Placeholder']) -> ListPlaceholder:

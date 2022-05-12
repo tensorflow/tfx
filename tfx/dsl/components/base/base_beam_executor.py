@@ -14,15 +14,17 @@
 """Abstract TFX executor class for Beam powered components."""
 
 import sys
-from typing import Any, Callable, List, Optional
+from typing import Any, Callable, List, Optional, Union
 
 from absl import flags
 from absl import logging
+
 from tfx.dsl.components.base.base_executor import BaseExecutor
+from tfx.dsl.placeholder.placeholder import Placeholder
 from tfx.proto.orchestration import pipeline_pb2
+from tfx.utils import dependency_utils
 from tfx.utils import name_utils
 from tfx.utils import telemetry_utils
-from tfx.utils import dependency_utils
 
 try:
   import apache_beam as beam  # pylint: disable=g-import-not-at-top
@@ -40,7 +42,7 @@ class BaseBeamExecutor(BaseExecutor):
 
     def __init__(
         self,
-        beam_pipeline_args: Optional[List[str]] = None,
+        beam_pipeline_args: Optional[List[Union[str, Placeholder]]] = None,
         extra_flags: Optional[List[str]] = None,
         tmp_dir: Optional[str] = None,
         unique_id: Optional[str] = None,

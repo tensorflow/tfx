@@ -14,10 +14,11 @@
 """Executor specifications for defining what to to execute."""
 
 import copy
-from typing import cast, Iterable, List, Optional, Type
+from typing import cast, Iterable, List, Optional, Type, Union
 
 from tfx import types
 from tfx.dsl.components.base import base_executor
+from tfx.dsl.placeholder.placeholder import Placeholder
 from tfx.proto.orchestration import executable_spec_pb2
 from tfx.utils import import_utils
 from tfx.utils import json_utils
@@ -158,7 +159,7 @@ class BeamExecutorSpec(ExecutorClassSpec):
     result.beam_pipeline_args.extend(self.beam_pipeline_args)
     return result
 
-  def add_beam_pipeline_args(self, beam_pipeline_args: Iterable[str]) -> None:
+  def add_beam_pipeline_args(self, beam_pipeline_args: Iterable[Union[str, Placeholder]]) -> None:
     self.beam_pipeline_args.extend(beam_pipeline_args)
 
   def copy(self) -> 'BeamExecutorSpec':
