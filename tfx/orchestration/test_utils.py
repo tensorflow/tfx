@@ -53,7 +53,7 @@ def random_id() -> str:
   Returns:
     A random string valid for Kubernetes DNS name.
   """
-  random.seed(datetime.datetime.now())
+  random.seed(str(datetime.datetime.now()))
 
   choices = string.ascii_lowercase + string.digits
   return '{}-{}'.format(datetime.datetime.now().strftime('%s'),
