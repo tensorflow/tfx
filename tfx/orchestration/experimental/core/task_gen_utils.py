@@ -112,7 +112,7 @@ def generate_task_from_active_execution(
   if not active_executions:
     return None
   if len(active_executions) > 1:
-    # TODO (b/223627713) a node in a ForEach is not restartable, it is better
+    # TODO(b/223627713): a node in a ForEach is not restartable, it is better
     # to prevent restarting for now.
     raise RuntimeError(
         'Unexpected multiple active executions for the node: {}\n executions: '
@@ -275,8 +275,9 @@ def get_latest_execution(
     executions: Iterable[metadata_store_pb2.Execution]
 ) -> Optional[metadata_store_pb2.Execution]:
   """Returns latest execution or `None` if iterable is empty."""
-  # TODO(guoweihe) After b/207038460, multiple executions can have the same
-  # creation time. We may need another custom property to determine their order.
+  # TODO(guoweihe): After b/207038460, multiple executions can have the same
+  # creation time. The '__external_execution_index__' custom_property should be
+  # used to order the executions, instead of creation time.
   sorted_executions = execution_lib.sort_executions_newest_to_oldest(executions)
   return sorted_executions[0] if sorted_executions else None
 
