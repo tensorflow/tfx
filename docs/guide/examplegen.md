@@ -509,7 +509,7 @@ extending QueryBasedExampleGen.
 
 This may or may not require additional connection configurations. For example,
 the
-[BigQuery executor](https://github.com/tensorflow/tfx/blob/master/tfx/components/example_gen/big_query_example_gen/executor.py)
+[BigQuery executor](https://github.com/tensorflow/tfx/blob/master/tfx/extensions/google_cloud_big_query/example_gen/executor.py)
 reads using a default beam.io connector, which abstracts the connection
 configuration details. The
 [Presto executor](https://github.com/tensorflow/tfx/blob/master/tfx/examples/custom_components/presto_example_gen/presto_component/executor.py),
