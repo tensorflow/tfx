@@ -99,8 +99,8 @@ export TFX_DEPENDENCY_SELECTOR=NIGHTLY
 # dependencies including airflow and kfp. If you want to test a specific
 # orchestrator only, use [airflow] or [kfp]. (Beam and Local orchestators can
 # be run without any extra dependency.) For example,
-# $ pip install -e .[kfp] -i https://pypi-nightly.tensorflow.org/simple
-pip install -e . -i https://pypi-nightly.tensorflow.org/simple
+# $ pip install -e .[kfp] --extra-index-url https://pypi-nightly.tensorflow.org/simple
+pip install -e . --extra-index-url https://pypi-nightly.tensorflow.org/simple
 ```
 
 Alternatively, you can also build all TFX family libraries from github source
