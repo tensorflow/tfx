@@ -222,6 +222,7 @@ class Pipeline:
                beam_pipeline_args: Optional[List[str]] = None,
                platform_config: Optional[message.Message] = None,
                execution_mode: Optional[ExecutionMode] = ExecutionMode.SYNC,
+               project_name: str = '',
                **kwargs):
     """Initialize pipeline.
 
@@ -237,6 +238,7 @@ class Pipeline:
       beam_pipeline_args: Pipeline arguments for Beam powered Components.
       platform_config: Pipeline level platform config, in proto form.
       execution_mode: The execution mode of the pipeline, can be SYNC or ASYNC.
+      project_name: The name of the project this pipeline belongs to
       **kwargs: Additional kwargs forwarded as pipeline args.
     """
     if len(pipeline_name) > _MAX_PIPELINE_NAME_LENGTH:
@@ -250,6 +252,7 @@ class Pipeline:
 
     # TODO(b/183621450): deprecate PipelineInfo.
     self.pipeline_info = data_types.PipelineInfo(  # pylint: disable=g-missing-from-attributes
+        project_name=project_name,
         pipeline_name=pipeline_name,
         pipeline_root=pipeline_root)
     self.enable_cache = enable_cache

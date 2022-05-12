@@ -96,6 +96,7 @@ class PipelineInfo:
   """Pipeline info from orchestration system.
 
   Attributes:
+    project_name: name of the project this pipeline belongs to.
     pipeline_name: name of the pipeline. We expect this to be unique for
       different pipelines.
     pipeline_root: root directory of the pipeline. We expect this to be unique
@@ -106,7 +107,9 @@ class PipelineInfo:
   def __init__(self,
                pipeline_name: str,
                pipeline_root: Union[str, ph.Placeholder],
-               run_id: Optional[str] = None):
+               run_id: Optional[str] = None,
+               project_name: str = ''):
+    self.project_name = project_name
     self.pipeline_name = pipeline_name
     self.pipeline_root = pipeline_root
     self.run_id = run_id
@@ -121,11 +124,16 @@ class PipelineInfo:
   @property
   def pipeline_run_context_name(self) -> str:
     """Context name for the current pipeline run."""
+    if self.project_name:
+      return '{}.{}.{}'.format(self.project_name, self.pipeline_name,
+                               self.run_id)
     return '{}.{}'.format(self.pipeline_name, self.run_id)
 
   @property
   def pipeline_context_name(self) -> str:
     """Context name for the pipeline."""
+    if self.project_name:
+      return '{}.{}'.format(self.project_name, self.pipeline_name)
     return self.pipeline_name
 
 
