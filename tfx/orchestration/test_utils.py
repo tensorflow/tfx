@@ -14,7 +14,6 @@
 """Common utilities for testing various runners."""
 
 import contextlib
-import datetime
 import os
 import random
 import string
@@ -53,11 +52,10 @@ def random_id() -> str:
   Returns:
     A random string valid for Kubernetes DNS name.
   """
-  random.seed(datetime.datetime.now())
-
-  choices = string.ascii_lowercase + string.digits
-  return '{}-{}'.format(datetime.datetime.now().strftime('%s'),
-                        ''.join([random.choice(choices) for _ in range(10)]))
+  now = time.time()
+  random.seed(now)
+  alpha = ''.join(random.choices(string.ascii_lowercase + string.digits, k=10))
+  return f'{int(now)}-{alpha}'
 
 
 # Set longer timeout when pushing an image. Default timeout is 60 seconds.

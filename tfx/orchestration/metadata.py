@@ -158,9 +158,10 @@ class Metadata:
         'Failed to establish connection to Metadata storage with error: %s' %
         connection_error)
 
-  def __exit__(self, exc_type: Optional[Type[Exception]],
-               exc_value: Optional[Exception],
-               exc_tb: Optional[types.TracebackType]) -> None:
+  def __exit__(self,
+               exc_type: Optional[Type[Exception]] = None,
+               exc_value: Optional[Exception] = None,
+               exc_tb: Optional[types.TracebackType] = None) -> None:
     self._users -= 1
     if self._users == 0:
       self._store = None

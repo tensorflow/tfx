@@ -37,6 +37,10 @@
 
 ## Documentation Updates
 
+| Package Name | Version Constraints | Previously (in `v1.7.0`) | Comments |
+| -- | -- | -- | -- |
+| `apache-beam[gcp]` | `>=2.38,<3` | `>=2.36,<3` | Synced release train |
+
 # Version 1.7.0
 
 ## Major Features and Improvements
