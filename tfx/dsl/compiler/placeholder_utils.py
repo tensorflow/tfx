@@ -15,6 +15,7 @@
 
 import base64
 import enum
+import os
 import re
 from typing import Any, Callable, Dict, List, Union
 
@@ -189,6 +190,8 @@ class _ExpressionResolver:
         },
         placeholder_pb2.Placeholder.Type.EXEC_INVOCATION:
             context.exec_info.to_proto(),
+      placeholder_pb2.Placeholder.Type.ENVIRONMENT_VARIABLE:
+        os.environ,
     }
 
   def resolve(self, expression: placeholder_pb2.PlaceholderExpression) -> Any:
@@ -507,7 +510,8 @@ def debug_str(expression: placeholder_pb2.PlaceholderExpression) -> str:
         placeholder_pb2.Placeholder.OUTPUT_ARTIFACT: "output",
         placeholder_pb2.Placeholder.EXEC_PROPERTY: "exec_property",
         placeholder_pb2.Placeholder.RUNTIME_INFO: "runtime_info",
-        placeholder_pb2.Placeholder.EXEC_INVOCATION: "execution_invocation"
+        placeholder_pb2.Placeholder.EXEC_INVOCATION: "execution_invocation",
+        placeholder_pb2.Placeholder.ENVIRONMENT_VARIABLE: "environment_variable"
     }
     ph_name = ph_names_map[placeholder_pb.type]
     if placeholder_pb.key:
