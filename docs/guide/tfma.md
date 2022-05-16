@@ -31,8 +31,9 @@ details on the supported
 [metrics and plots](../model_analysis/metrics) and associated notebook
 [visualizations](../model_analysis/visualizations).
 
-See the [install](../model_analysis/install) and
-[get_started](../model_analysis/get_started) guides for information and examples
-on how to get [setup](../model_analysis/setup) in a standlone pipeline. Recall
-that TFMA is also used within the [Evaluator](evaluator.md) component in TFX so
-these resources will be useful for getting started in TFX as well.
+See the [installation](../model_analysis/install) and
+[getting started](../model_analysis/get_started) guides for information and
+examples on how to get [set up](../model_analysis/setup) in a standalone
+pipeline. Recall that TFMA is also used within the [Evaluator](evaluator.md)
+component in TFX, so these resources will be useful for getting started in TFX
+as well.
