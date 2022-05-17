@@ -279,9 +279,9 @@ SavedModel is the recommended serialization format for serving a TensorFlow
 model in production, or exporting a trained model for a native mobile or
 JavaScript application. For example, to turn a model into a REST service for
 making predictions, you can serialize the model as a SavedModel and serve it
-using TensorFlow Serving. See [Serving a TensorFlow
-Model](https://www.tensorflow.org/serving/tutorials/Serving_REST_simple) for
-more information.
+using TensorFlow Serving. See
+[Serving a TensorFlow Model](https://www.tensorflow.org/tfx/serving/serving_basic)
+for more information.
 
 ### Schema
 
