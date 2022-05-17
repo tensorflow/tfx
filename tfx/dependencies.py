@@ -93,22 +93,22 @@ def make_required_install_packages():
       # pylint: enable=line-too-long
       'tensorflow-hub>=0.9.0,<0.13',
       'tensorflow-data-validation' + select_constraint(
-          default='>=1.7.0,<1.8.0',
-          nightly='>=1.8.0.dev',
+          default='>=1.8.0,<1.9.0',
+          nightly='>=1.9.0.dev',
           git_master='@git+https://github.com/tensorflow/data-validation@master'
       ),
       'tensorflow-model-analysis' + select_constraint(
-          default='>=0.38.0,<0.39',
-          nightly='>=0.39.0.dev',
+          default='>=0.39.0,<0.40',
+          nightly='>=0.40.0.dev',
           git_master='@git+https://github.com/tensorflow/model-analysis@master'),
       'tensorflow-serving-api>=1.15,!=2.0.*,!=2.1.*,!=2.2.*,!=2.3.*,!=2.4.*,!=2.5.*,!=2.6.*,!=2.7.*,<3',
       'tensorflow-transform' + select_constraint(
-          default='>=1.7.0,<1.8.0',
-          nightly='>=1.8.0.dev',
+          default='>=1.8.0,<1.9.0',
+          nightly='>=1.9.0.dev',
           git_master='@git+https://github.com/tensorflow/transform@master'),
       'tfx-bsl' + select_constraint(
-          default='>=1.7.0,<1.8.0',
-          nightly='>=1.8.0.dev',
+          default='>=1.8.0,<1.9.0',
+          nightly='>=1.9.0.dev',
           git_master='@git+https://github.com/tensorflow/tfx-bsl@master'),
   ]
 
@@ -163,8 +163,8 @@ def make_extra_packages_tf_ranking():
   return [
       'tensorflow-ranking>=0.3.3,<0.4',
       'struct2tensor' + select_constraint(
-          default='>=0.38,<0.39',
-          nightly='>=0.39.0.dev',
+          default='>=0.39,<0.40',
+          nightly='>=0.40.0.dev',
           git_master='@git+https://github.com/google/struct2tensor@master'),
   ]
 

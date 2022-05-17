@@ -2,9 +2,6 @@
 
 ## Major Features and Improvements
 
-*   Added experimental exit_handler support for KubeflowDagRunner.
-*   Enabled custom labels to be submitted to CAIP training jobs.
-
 ## Breaking Changes
 
 ### For Pipeline Authors
@@ -12,6 +9,36 @@
 ### For Component Authors
 
 ## Deprecations
+
+## Bug Fixes and Other Changes
+
+## Dependency Updates
+
+## Documentation Updates
+
+# Version 1.8.0
+
+## Major Features and Improvements
+
+*   Added experimental exit_handler support for KubeflowDagRunner.
+*   Enabled custom labels to be submitted to CAIP training jobs.
+*   Enabled custom Python function-based components to share pipeline Beam
+    configuration by [inheriting from BaseBeamComponent]
+(https://www.tensorflow.org/tfx/guide/custom_function_component)
+
+## Breaking Changes
+
+### For Pipeline Authors
+
+*   N/A
+
+### For Component Authors
+
+*   N/A
+
+## Deprecations
+
+*   N/A
 
 ## Bug Fixes and Other Changes
 
@@ -35,11 +62,13 @@
 
 ## Dependency Updates
 
-## Documentation Updates
-
 | Package Name | Version Constraints | Previously (in `v1.7.0`) | Comments |
 | -- | -- | -- | -- |
 | `apache-beam[gcp]` | `>=2.38,<3` | `>=2.36,<3` | Synced release train |
+
+## Documentation Updates
+
+*   N/A
 
 # Version 1.7.0
 
