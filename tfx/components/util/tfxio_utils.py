@@ -32,7 +32,7 @@ from tfx_bsl.tfxio import tfxio
 from tensorflow_metadata.proto.v0 import schema_pb2
 
 
-_SUPPORTED_FILE_FORMATS = {example_gen_pb2.FileFormat.FORMAT_PARQUET, example_gen_pb2.FileFormat.FORMAT_TFRECORDS_GZIP}
+_SUPPORTED_FILE_FORMATS = (example_gen_pb2.FileFormat.FORMAT_PARQUET, example_gen_pb2.FileFormat.FORMAT_TFRECORDS_GZIP)
 # TODO(b/162532479): switch to support List[str] exclusively, once tfx-bsl
 # post-0.22 is released.
 OneOrMorePatterns = Union[str, List[str]]
@@ -294,10 +294,10 @@ def make_tfxio(
             f'The length of file_pattern and file_formats should be the same.'
             f'Given: file_pattern={file_pattern}, file_format={file_format}')
       else:
-        if any(item in _SUPPORTED_FILE_FORMATS for item in file_format):
+        if any(item not in _SUPPORTED_FILE_FORMATS for item in file_format):
           raise NotImplementedError(f'{file_format} is not supported yet.')
     else:  # file_format is str type.
-      if file_format in _SUPPORTED_FILE_FORMATS:
+      if file_format not in _SUPPORTED_FILE_FORMATS:
         raise NotImplementedError(f'{file_format} is not supported yet.')
 
   if read_as_raw_records:
