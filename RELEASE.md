@@ -25,6 +25,7 @@
 *   Enabled custom Python function-based components to share pipeline Beam
     configuration by [inheriting from BaseBeamComponent]
 (https://www.tensorflow.org/tfx/guide/custom_function_component)
+*   Support dynamic exec properties in TFX pipeline. Downstream component parameter could take the upstream output using Placeholder.
 
 ## Breaking Changes
 

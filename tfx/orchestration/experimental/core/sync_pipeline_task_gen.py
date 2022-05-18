@@ -316,7 +316,7 @@ class _Generator:
               node_uid=node_uid, state=pstate.NodeState.SKIPPED))
       return result
 
-    if not resolved_info.input_artifacts:
+    if not resolved_info.input_and_params:
       error_msg = f'failure to resolve inputs; node uid: {node_uid}'
       result.append(
           task_lib.UpdateNodeStateTask(
@@ -330,11 +330,10 @@ class _Generator:
         metadata_handler=self._mlmd_handle,
         execution_type=node.node_info.type,
         contexts=resolved_info.contexts,
-        input_dicts=resolved_info.input_artifacts,
-        exec_properties=resolved_info.exec_properties)
+        input_and_params=resolved_info.input_and_params)
 
     # Selects the first artifacts and create a exec task.
-    input_artifacts = resolved_info.input_artifacts[0]
+    input_artifacts = resolved_info.input_and_params[0].input_artifacts
     # Selects the first execution and marks it as RUNNING.
     with mlmd_state.mlmd_execution_atomic_op(
         mlmd_handle=self._mlmd_handle,
@@ -369,7 +368,7 @@ class _Generator:
             execution_id=execution.id,
             contexts=resolved_info.contexts,
             input_artifacts=input_artifacts,
-            exec_properties=resolved_info.exec_properties,
+            exec_properties=resolved_info.input_and_params[0].exec_properties,
             output_artifacts=output_artifacts,
             executor_output_uri=outputs_resolver.get_executor_output_uri(
                 execution.id),

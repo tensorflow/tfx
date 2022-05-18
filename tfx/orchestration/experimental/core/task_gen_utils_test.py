@@ -20,6 +20,7 @@ from tfx.orchestration import metadata
 from tfx.orchestration.experimental.core import task_gen_utils
 from tfx.orchestration.experimental.core import test_utils as otu
 from tfx.orchestration.experimental.core.testing import test_async_pipeline
+from tfx.orchestration.experimental.core.testing import test_dynamic_exec_properties_pipeline
 from tfx.types import standard_artifacts
 from tfx.utils import test_case_utils as tu
 
@@ -33,6 +34,7 @@ class TaskGenUtilsTest(tu.TfxTest):
     pipeline_root = os.path.join(
         os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR', self.get_temp_dir()),
         self.id())
+    self._pipeline_root = pipeline_root
 
     # Makes sure multiple connections within a test always connect to the same
     # MLMD instance.
@@ -59,10 +61,10 @@ class TaskGenUtilsTest(tu.TfxTest):
     self._transform = pipeline.nodes[1].pipeline_node
     self._trainer = pipeline.nodes[2].pipeline_node
 
-  def _set_pipeline_context(self, name):
-    for node in [n.pipeline_node for n in self._pipeline.nodes]:
+  def _set_pipeline_context(self, pipeline, key, name):
+    for node in [n.pipeline_node for n in pipeline.nodes]:
       for c in node.contexts.contexts:
-        if c.type.name == 'pipeline':
+        if c.type.name == key:
           c.name.field_value.string_value = name
           break
 
@@ -72,11 +74,11 @@ class TaskGenUtilsTest(tu.TfxTest):
         self.assertEmpty(task_gen_utils.get_executions(m, node))
 
     # Create executions for the same nodes under different pipeline contexts.
-    self._set_pipeline_context('my_pipeline1')
+    self._set_pipeline_context(self._pipeline, 'pipeline', 'my_pipeline1')
     otu.fake_example_gen_run(self._mlmd_connection, self._example_gen, 1, 1)
     otu.fake_example_gen_run(self._mlmd_connection, self._example_gen, 2, 1)
     otu.fake_component_output(self._mlmd_connection, self._transform)
-    self._set_pipeline_context('my_pipeline2')
+    self._set_pipeline_context(self._pipeline, 'pipeline', 'my_pipeline2')
     otu.fake_example_gen_run(self._mlmd_connection, self._example_gen, 1, 1)
     otu.fake_example_gen_run(self._mlmd_connection, self._example_gen, 2, 1)
     otu.fake_component_output(self._mlmd_connection, self._transform)
@@ -91,14 +93,14 @@ class TaskGenUtilsTest(tu.TfxTest):
           key=lambda e: e.id)
 
     # Check that correct executions are returned for each node in each pipeline.
-    self._set_pipeline_context('my_pipeline1')
+    self._set_pipeline_context(self._pipeline, 'pipeline', 'my_pipeline1')
     with self._mlmd_connection as m:
       self.assertCountEqual(all_eg_execs[0:2],
                             task_gen_utils.get_executions(m, self._example_gen))
       self.assertCountEqual(all_transform_execs[0:1],
                             task_gen_utils.get_executions(m, self._transform))
       self.assertEmpty(task_gen_utils.get_executions(m, self._trainer))
-    self._set_pipeline_context('my_pipeline2')
+    self._set_pipeline_context(self._pipeline, 'pipeline', 'my_pipeline2')
     with self._mlmd_connection as m:
       self.assertCountEqual(all_eg_execs[2:],
                             task_gen_utils.get_executions(m, self._example_gen))
@@ -185,7 +187,8 @@ class TaskGenUtilsTest(tu.TfxTest):
       resolved_info = task_gen_utils.generate_resolved_info(m, self._transform)
       self.assertCountEqual(['my_pipeline', 'my_pipeline.my_transform'],
                             [c.name for c in resolved_info.contexts])
-      self.assertLen(resolved_info.input_artifacts[0]['examples'], 1)
+      self.assertLen(
+          resolved_info.input_and_params[0].input_artifacts['examples'], 1)
       self.assertProtoPartiallyEquals(
           """
           id: 1
@@ -203,11 +206,52 @@ class TaskGenUtilsTest(tu.TfxTest):
             }
           }
           state: LIVE""",
-          resolved_info.input_artifacts[0]['examples'][0].mlmd_artifact,
+          resolved_info.input_and_params[0].input_artifacts['examples']
+          [0].mlmd_artifact,
           ignored_fields=[
               'type_id', 'create_time_since_epoch',
               'last_update_time_since_epoch'
           ])
+
+  def test_generate_resolved_info_with_dynamic_exec_prop(self):
+    dynamic_exec_properties_pipeline = (
+        test_dynamic_exec_properties_pipeline.create_pipeline())
+    self._dynamic_exec_properties_pipeline = dynamic_exec_properties_pipeline
+    self._pipeline_runtime_spec = dynamic_exec_properties_pipeline.runtime_spec
+    self._pipeline_runtime_spec.pipeline_root.field_value.string_value = (
+        self._pipeline_root)
+    self._pipeline_runtime_spec.pipeline_run_id.field_value.string_value = (
+        'test_run_dynamic_prop')
+
+    self._upstream_node = (
+        dynamic_exec_properties_pipeline.nodes[0].pipeline_node)
+    self._dynamic_exec_properties_node = (
+        dynamic_exec_properties_pipeline.nodes[1].pipeline_node)
+
+    self._set_pipeline_context(self._dynamic_exec_properties_pipeline,
+                               'pipeline_run', 'test_run_dynamic_prop')
+    for input_spec in self._dynamic_exec_properties_node.inputs.inputs.values():
+      for channel in input_spec.channels:
+        for context_query in channel.context_queries:
+          if context_query.type.name == 'pipeline_run':
+            context_query.name.field_value.string_value = 'test_run_dynamic_prop'
+
+    otu.fake_upstream_node_run(self._mlmd_connection, self._upstream_node,
+                               self.create_tempfile().full_path)
+    with self._mlmd_connection as m:
+      resolved_info = task_gen_utils.generate_resolved_info(
+          m, self._dynamic_exec_properties_node)
+
+      self.assertCountEqual([
+          'my_pipeline', 'test_run_dynamic_prop',
+          'my_pipeline.DownstreamComponent'
+      ], [c.name for c in resolved_info.contexts])
+      self.assertLen(
+          resolved_info.input_and_params[0]
+          .input_artifacts['_UpstreamComponent.num'], 1)
+      self.assertEqual(
+          otu.OUTPUT_NUM,
+          resolved_info.input_and_params[0].exec_properties['input_num'])
 
   def test_get_latest_successful_execution(self):
     otu.fake_component_output(self._mlmd_connection, self._transform)
@@ -228,19 +272,25 @@ class TaskGenUtilsTest(tu.TfxTest):
       task_gen_utils.register_executions(
           m,
           metadata_store_pb2.ExecutionType(name='my_ex_type'), {},
-          input_dicts=[{
-              'input_example': [standard_artifacts.Examples()]
-          }, {
-              'input_example': [standard_artifacts.Examples()]
-          }])
+          input_and_params=[
+              task_gen_utils.InputAndParam(input_artifacts={
+                  'input_example': [standard_artifacts.Examples()]
+              }),
+              task_gen_utils.InputAndParam(input_artifacts={
+                  'input_example': [standard_artifacts.Examples()]
+              })
+          ])
       newer_execution_set = task_gen_utils.register_executions(
           m,
           metadata_store_pb2.ExecutionType(name='my_ex_type'), {},
-          input_dicts=[{
-              'input_example': [standard_artifacts.Examples()]
-          }, {
-              'input_example': [standard_artifacts.Examples()]
-          }])
+          input_and_params=[
+              task_gen_utils.InputAndParam(input_artifacts={
+                  'input_example': [standard_artifacts.Examples()]
+              }),
+              task_gen_utils.InputAndParam(input_artifacts={
+                  'input_example': [standard_artifacts.Examples()]
+              })
+          ])
 
       executions = m.store.get_executions()
       self.assertLen(executions, 4)

@@ -244,6 +244,14 @@ class LauncherTest(test_case_utils.TfxTest):
     self._pipeline_run_id_counter = 0
     self.reloadPipelineWithNewRunId()
 
+    self._dynamic_exec_properties_pipeline = pipeline_pb2.Pipeline()
+    self.load_proto_from_text(
+        os.path.join(
+            os.path.dirname(__file__), 'testdata',
+            'dynamic_exec_properties_pipeline_for_launcher_test.pbtxt'),
+        self._dynamic_exec_properties_pipeline)
+    self.reloadDynamicExecPropertiesPipelineWithNewRunId()
+
     # Fakes an ExecutorSpec for Trainer
     self._trainer_executor_spec = _PYTHON_CLASS_EXECUTABLE_SPEC()
     # Fakes an executor operator
@@ -253,6 +261,21 @@ class LauncherTest(test_case_utils.TfxTest):
     # Fakes an custom driver spec
     self._custom_driver_spec = _PYTHON_CLASS_EXECUTABLE_SPEC()
     self._custom_driver_spec.class_path = 'tfx.orchestration.portable.launcher_test._FakeExampleGenLikeDriver'
+
+  def reloadDynamicExecPropertiesPipelineWithNewRunId(self):
+    self._pipeline_run_id_counter += 1
+    pipeline = pipeline_pb2.Pipeline()
+    pipeline.CopyFrom(
+        self._dynamic_exec_properties_pipeline)
+    runtime_parameter_utils.substitute_runtime_parameter(
+        pipeline, {
+            constants.PIPELINE_RUN_ID_PARAMETER_NAME:
+                f'test_run_{self._pipeline_run_id_counter}',
+        })
+    self._pipeline_runtime_spec.pipeline_run_id.field_value.string_value = (
+        f'test_run_{self._pipeline_run_id_counter}')
+    self._downstream_component = pipeline.nodes[
+        1].pipeline_node
 
   def reloadPipelineWithNewRunId(self):
     self._pipeline_run_id_counter += 1
@@ -1017,6 +1040,72 @@ class LauncherTest(test_case_utils.TfxTest):
         self._mlmd_connection, self._resolver, self._pipeline_info,
         self._pipeline_runtime_spec)
     self.assertEqual(execution_info, expected_execution_info)
+
+  def testLauncher_DynamicExecPropertiesExecution_Success(self):
+    self.reloadDynamicExecPropertiesPipelineWithNewRunId()
+    self._test_executor_operators = {
+        _PYTHON_CLASS_EXECUTABLE_SPEC: _FakeEmptyExecutorOperator
+    }
+    mock_param = {
+        'input_num': pipeline_pb2.Value(
+            field_value=metadata_store_pb2.Value(int_value=1)),
+    }
+    with mock.patch.object(
+        inputs_utils,
+        'resolve_dynamic_parameters',
+        return_value=mock_param) as mock_resolve_dynamic_parameters:
+
+      test_launcher = launcher.Launcher(
+          pipeline_node=self._downstream_component,
+          mlmd_connection=self._mlmd_connection,
+          pipeline_info=self._pipeline_info,
+          pipeline_runtime_spec=self._pipeline_runtime_spec,
+          executor_spec=self._trainer_executor_spec,
+          custom_executor_operators=self._test_executor_operators)
+      execution_info = test_launcher.launch()
+      mock_resolve_dynamic_parameters.assert_called_once()
+
+    with self._mlmd_connection as m:
+      [execution] = m.store.get_executions_by_id([execution_info.execution_id])
+      self.assertEqual(test_launcher._executor_operator._exec_properties,
+                       {'input_num': 1})
+      self.assertProtoPartiallyEquals(
+          """
+          last_known_state: COMPLETE
+          custom_properties {
+            key: "input_num"
+              value {
+                int_value: 1
+              }
+          }
+          """,
+          execution,
+          ignored_fields=[
+              'id', 'type_id', 'name', 'create_time_since_epoch',
+              'last_update_time_since_epoch'
+          ])
+
+  def testLauncher_DynamicExecPropertiesExecution_Fail(self):
+    self.reloadDynamicExecPropertiesPipelineWithNewRunId()
+    self._test_executor_operators = {
+        _PYTHON_CLASS_EXECUTABLE_SPEC: _FakeEmptyExecutorOperator
+    }
+    with mock.patch.object(
+        inputs_utils, 'resolve_dynamic_parameters',
+        autospec=True) as mock_resolve_dynamic_parameters:
+      mock_resolve_dynamic_parameters.side_effect = ValueError(
+          'resolving prop error')
+
+      test_launcher = launcher.Launcher(
+          pipeline_node=self._downstream_component,
+          mlmd_connection=self._mlmd_connection,
+          pipeline_info=self._pipeline_info,
+          pipeline_runtime_spec=self._pipeline_runtime_spec,
+          executor_spec=self._trainer_executor_spec,
+          custom_executor_operators=self._test_executor_operators)
+      with self.assertRaisesRegex(
+          ValueError, 'resolving prop error'):
+        test_launcher.launch()
 
 
 if __name__ == '__main__':
