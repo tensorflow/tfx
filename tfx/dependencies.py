@@ -54,9 +54,9 @@ def make_pipeline_sdk_required_install_packages():
       'absl-py>=0.9,<2.0.0',
       'ml-metadata' + select_constraint(
           # LINT.IfChange
-          default='>=1.7.0,<1.8.0',
+          default='>=1.8.0,<1.9.0',
           # LINT.ThenChange(tfx/workspace.bzl)
-          nightly='>=1.8.0.dev',
+          nightly='>=1.9.0.dev',
           git_master='@git+https://github.com/google/ml-metadata@master'),
       'packaging>=20,<21',
       'portpicker>=1.3.1,<2',
