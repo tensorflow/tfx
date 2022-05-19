@@ -264,7 +264,7 @@ class KubeflowEndToEndTest(kubeflow_test_utils.BaseKubeflowTest):
       self.assertGreater(len(artifact_value), 100)
 
   def testDynamicPropertiesEnd2EndPipeline(self):
-    pipeline_name = 'kubeflow-dynamic_exec-e2e-test-{}'.format(
+    pipeline_name = 'kubeflow-dynamic-exec-e2e-test-{}'.format(
         test_utils.random_id())
     pipeline = test_dynamic_exec_properties_pipeline.create_python_pipeline()
     self._compile_and_run_pipeline(
