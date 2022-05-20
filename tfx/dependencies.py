@@ -89,7 +89,7 @@ def make_required_install_packages():
       # dependency set with TF 2.x without the sync.
       # pylint: disable=line-too-long
       'tensorflow' + select_constraint(
-          '>=1.15.5,!=2.0.*,!=2.1.*,!=2.2.*,!=2.3.*,!=2.4.*,!=2.5.*,!=2.6.*,!=2.7.*,<2.9'),
+          '>=1.15.5,!=2.0.*,!=2.1.*,!=2.2.*,!=2.3.*,!=2.4.*,!=2.5.*,!=2.6.*,!=2.7.*,!=2.8.*,<2.10'),
       # pylint: enable=line-too-long
       'tensorflow-hub>=0.9.0,<0.13',
       'tensorflow-data-validation' + select_constraint(
@@ -173,8 +173,8 @@ def make_extra_packages_tfdf():
   # Packages needed for tensorflow-decision-forests.
   # Required for tfx/examples/penguin/penguin_utils_tfdf_experimental.py
   return [
-      # NOTE: TFDF 0.2.4 is only compatible with TF 2.8.x.
-      'tensorflow-decision-forests==0.2.4',
+      # NOTE: TFDF 0.2.5 is only compatible with TF 2.9.x.
+      'tensorflow-decision-forests==0.2.5',
   ]
 
 
