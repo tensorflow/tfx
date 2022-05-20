@@ -354,7 +354,28 @@ message NodeExecutionOptions {
     // If set, this node will be skipped in the partial run.
     Skip skip = 3;
   }
+
+  // An enum defines the trigger strategy of when the node will be ready to be
+  // triggered. Only supported in the experimental orchestrator under SYNC mode
+  // and ignored when configured for other platforms.
+  // Note that for all trigger strategies outlined below, all
+  // upstream nodes with either task or data dependency needs to be in a final
+  // state.
+  // TODO(b/211890056): consider mapping this to kfp in step builder.
+  enum TriggerStrategy {
+    // Unspecified.  Behave the same as ALL_UPSTREAM_NODES_SUCCEEDED.
+    TRIGGER_STRATEGY_UNSPECIFIED = 0;
+    // Specifies that all upstream nodes are in succeeded state.
+    ALL_UPSTREAM_NODES_SUCCEEDED = 1;
+    // Specifies that all upstream nodes are in any final state.
+    ALL_UPSTREAM_NODES_COMPLETED = 2;
+  }
+  // The trigger strategy of this node.
+  // Unset or set to default value of TRIGGER_STATEGY_UNDEFINED behaves the
+  // same as ALL_UPSTREAM_NODES_SUCCEEDED.
+  TriggerStrategy strategy = 4;
 }
+
 // Pipeline node definition.
 message PipelineNode {
   // Basic info of a pipeline node.
