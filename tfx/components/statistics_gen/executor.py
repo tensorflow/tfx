@@ -19,6 +19,7 @@ from absl import logging
 from tensorflow_data_validation.api import stats_api
 from tensorflow_data_validation.statistics import stats_options as options
 from tfx import types
+from tfx.components.statistics_gen import stats_artifact_utils
 from tfx.components.util import tfxio_utils
 from tfx.dsl.components.base import base_beam_executor
 from tfx.types import artifact_utils
@@ -130,13 +131,17 @@ class Executor(base_beam_executor.BaseBeamExecutor):
         logging.info('Generating statistics for split %s.', split)
         output_uri = artifact_utils.get_split_uri(
             output_dict[standard_component_specs.STATISTICS_KEY], split)
-        output_path = os.path.join(output_uri, DEFAULT_FILE_NAME)
+        binary_stats_output_path = os.path.join(output_uri, DEFAULT_FILE_NAME)
+        sharded_stats_output_prefix = os.path.join(
+            output_uri, stats_artifact_utils.SHARDED_STATS_PREFIX)
         data = p | 'TFXIORead[%s]' % split >> tfxio.BeamSource()
         _ = (
             data
             | 'GenerateStatistics[%s]' % split >>
             stats_api.GenerateStatistics(stats_options)
             | 'WriteStatsOutput[%s]' % split >>
-            stats_api.WriteStatisticsToBinaryFile(output_path))
+            stats_api.WriteStatisticsToRecordsAndBinaryFile(
+                binary_proto_path=binary_stats_output_path,
+                records_path_prefix=sharded_stats_output_prefix))
         logging.info('Statistics for split %s written to %s.', split,
                      output_uri)

@@ -34,15 +34,22 @@ class ExecutorTest(absltest.TestCase):
   def get_temp_dir(self):
     return tempfile.mkdtemp()
 
-  def _validate_stats_output(self, stats_path):
-    self.assertTrue(fileio.exists(stats_path))
-    stats = tfdv.load_stats_binary(stats_path)
+  def _validate_stats(self, stats):
     self.assertLen(stats.datasets, 1)
     data_set = stats.datasets[0]
     self.assertGreater(data_set.num_examples, 0)
     self.assertNotEmpty(data_set.features)
     # TODO(b/126245422): verify content of generated stats after we have stable
     # test data set.
+
+  def _validate_stats_output(self, stats_path):
+    self.assertTrue(fileio.exists(stats_path))
+    stats = tfdv.load_stats_binary(stats_path)
+    self._validate_stats(stats)
+
+  def _validate_sharded_stats_output(self, stats_prefix):
+    stats = tfdv.load_sharded_statistics(stats_prefix).proto()
+    self._validate_stats(stats)
 
   def testDo(self):
     source_data_dir = os.path.join(
@@ -87,6 +94,10 @@ class ExecutorTest(absltest.TestCase):
         os.path.join(stats.uri, 'Split-train', 'FeatureStats.pb'))
     self._validate_stats_output(
         os.path.join(stats.uri, 'Split-eval', 'FeatureStats.pb'))
+    self._validate_sharded_stats_output(
+        os.path.join(stats.uri, 'Split-train', 'FeatureStats.rio'))
+    self._validate_sharded_stats_output(
+        os.path.join(stats.uri, 'Split-eval', 'FeatureStats.rio'))
 
     # Assert 'test' split is excluded.
     self.assertFalse(

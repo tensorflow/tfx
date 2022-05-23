@@ -65,6 +65,8 @@
   "unexpected keyword argument 'default_args'".
 * StatisticsGen will raise an error if unsupported StatsOptions (i.e.,
   generators or experimental_slice_functions) are passed.
+* StatisticsGen writes sharded outputs to TFRecords files in the same
+  directory as binary proto outputs.
 
 ## Dependency Updates
 
