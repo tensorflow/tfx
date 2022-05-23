@@ -189,9 +189,55 @@ message PropertyPredicate {
   }
 }
 
+// InputGraph expresses a declarative input resolution logic with a graph of
+// ResolverOps and a result node. An entire InputGraph is basically a function
+// without argument that returns one of DataType value. Its result is referenced
+// from `InputSpec.InputGraphRef`.
+message InputGraph {
+  // Data type of the OpNode output. Corresponds to the
+  // tfx.dsl.resolver_op.DataTypes.
+  enum DataType {
+    DATA_TYPE_UNSPECIFIED = 0;
+    ARTIFACT_LIST = 1;
+    ARTIFACT_MULTIMAP = 2;
+    ARTIFACT_MULTIMAP_LIST = 3;
+  }
+
+  // ResolverOp instance as a input graph's node. Corresponds to the
+  // tfx.dsl.resolver_op.OpNode.
+  message OpNode {
+    // ResolverOp type (e.g. "tfx.Unnest").
+    string op_type = 1;
+    // The DataType of the output of the node.
+    DataType output_data_type = 2;
+    // Generic argument type that can express either another OpNode's outputs
+    // or a static value.
+    message Arg {
+      oneof arg_kind {
+        // ID of another OpNode instance, referring to its output.
+        string node_id = 1;
+        // Static value.
+        Value value = 2;
+      }
+    }
+    // Optional positional arguments.
+    repeated Arg args = 3;
+    // Optional named (keyword) arguments.
+    map<string, Arg> kwargs = 4;
+  }
+
+  // OpNodes of this input graph. Key is the node ID.
+  map<string, OpNode> nodes = 1;
+  // The ID of the output node of the input graph. The output data type of the
+  // input graph is the output data type of the reuslt node.
+  string result_node = 2;
+}
+
 // A proto message wrapping all information needed to query one set of artifacts
 // from MLMD.
 message InputSpec {
+  // Channel consists of a multiple MLMD filters whose result is always a
+  // homogeneous list of artifacts.
   message Channel {
     // Information to query the producer node of the artifacts.
     message ProducerNodeQuery {
@@ -229,7 +275,59 @@ message InputSpec {
     // uses as one of its input.
     string output_key = 4;
   }
+
+  // Reference to the InputGraph result.
+  // When the InputGraph result is a ARTIFACT_MULTIMAP_LIST type, InputGraphRef
+  // is NOT simple referring a list of artifacts; instead we should consider the
+  // entire NodeInputs to know the final resolved inputs.
+  // For example, assume input graph `g1` is evaluated as:
+  //
+  //     [{"x": [x1], "y": [y1]}, {"x": [x2], "y": [y2]}]
+  //
+  // (x1, x2, y1, y2 are artifacts), and the NodeInputs is:
+  //
+  //     inputs["xx"] {
+  //       input_graph_ref {
+  //         graph_id: "g1"
+  //         key: "x"
+  //       }
+  //     }
+  //
+  // then the final resolved inputs is `[{"xx": [x1]}, {"xx": [x2]}]`, not
+  // `{"xx": [x1, x2]}`. If there is another NodeInputs "yy":
+  //
+  //     inputs["yy"] {
+  //       input_graph_ref {
+  //         graph_id: "g1"
+  //         key: "y"
+  //       }
+  //     }
+  //
+  // then the result is *zipped* as they're from the same input graph source:
+  //
+  //     [{"xx": [x1], "yy": [y1]}, {"xx": [x2], "yy": [y2]}]
+  //
+  // but otherwise the result is a *cartesian product* of them. For example if
+  // another input graph `g2` is evaluated as `[{"z": [z1]}, {"z": [z2]}]` and
+  // there is another NodeInputs "zz" referring to it, then the resolved inputs
+  // is a list of 4 dicts:
+  //
+  //     [{"xx": [x1], "zz": [z1]}, {"xx": [x1], "zz": [z2]},
+  //      {"xx": [x2], "zz": [z1]}, {"xx": [x2], "zz": [z2]}]
+  message InputGraphRef {
+    // ID of the InputGraph in NodeInputs.input_graphs.
+    string graph_id = 1;
+    // Optional dict key if the result node type is ARTIFACT_MULTIMAP or
+    // ARTIFACT_MULTIMAP_LIST.
+    string key = 2;
+  }
+
+  // Exactly one of `channels` or `input_graph_ref` field should be set.
+  // Union of Channels.
   repeated Channel channels = 1;
+  // A reference to the InputGraph.
+  InputGraphRef input_graph_ref = 3;
+
   // The minimum number of artifacts desired. If minimum requirement is not met,
   // the execution should not be triggered. If min_count is less than or equal
   // to 0, it means this input is optional.
@@ -241,9 +339,18 @@ message InputSpec {
 message NodeInputs {
   // A map between the input tag and specs for the inputs of that tag.
   map<string, InputSpec> inputs = 1;
-  // Optional resolver configs. This will apply on top of the results of all
-  // inputs.
-  ResolverConfig resolver_config = 2;
+  // Deprecated. Use input_graphs and inputs.input_graph_ref instead.
+  // If resolver_config is set, then InputSpec.inputs should only contains
+  // `channels` field (not `input_graph_ref`), and both `input_graphs` and
+  // `conditionals` fields are ignored.
+  ResolverConfig resolver_config = 2 [deprecated = true];
+  // Optional InputGraphs mapping where key is an ID. Graph is referenced from
+  // InputSpec.input_graph_ref.
+  map<string, InputGraph> input_graphs = 3;
+  // Optional conditionals to filter the valid inputs that satisfy the
+  // predicate. Conditional evaluation and filtering would happen after
+  // resolving all inputs from NodeInputs.inputs and NodeInputs.input_graphs.
+  repeated PlaceholderExpression conditionals = 4;
 }
 
 // A proto message wrapping all information needed to query one set of artifacts
