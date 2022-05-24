@@ -17,7 +17,7 @@
 | Package Name | Version Constraints | Previously (in `v1.8.0`) | Comments |
 | -- | -- | -- | -- |
 | `tensorflow` | `>=1.15.5,<2` or `~=2.9.0` | `>=1.15.5,<2` or `~=2.8.0` | |
-
+| `tensorflow-ranking` | `~=0.5.0` | `~=0.3.0` | Required for TF 2.9 |
 
 ## Documentation Updates
 

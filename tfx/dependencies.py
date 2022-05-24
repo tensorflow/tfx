@@ -161,7 +161,7 @@ def make_extra_packages_tfjs():
 def make_extra_packages_tf_ranking():
   # Packages needed for tf-ranking which is used in tfx/examples/ranking.
   return [
-      'tensorflow-ranking>=0.3.3,<0.4',
+      'tensorflow-ranking>=0.5,<0.6',
       'struct2tensor' + select_constraint(
           default='>=0.39,<0.40',
           nightly='>=0.40.0.dev',
