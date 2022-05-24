@@ -112,9 +112,9 @@ enum PayloadFormat {
   FORMAT_PROTO = 11;
 
   // Serialized parquet messages.
-  FORMAT_PARQUET = 12;
+  FORMAT_PARQUET = 15;
 
-  reserved 1 to 5, 8 to 10, 13 to max;
+  reserved 1 to 5, 8 to 10, 12 to 14, 16 to max;
 }
 
 // Enum to indicate file format that ExampleGen produces.
@@ -127,9 +127,9 @@ enum FileFormat {
 
   // Indicates parquet format files in any of the supported compressions.
   // https://arrow.apache.org/docs/python/parquet.html#compression-encoding-and-file-compatibility
-  FORMAT_PARQUET = 6;
+  FORMAT_PARQUET = 16;
 
-  reserved 1 to 4, 7 to max;
+  reserved 1 to 4, 7 to 15, 17 to max;
 }
 
 // Specification of the output of the example gen.
