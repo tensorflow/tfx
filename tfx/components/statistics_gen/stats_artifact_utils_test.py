@@ -33,12 +33,12 @@ class StatsArtifactUtilsTest(tf.test.TestCase):
         ['train', 'eval', 'test'])
 
     self.assertGreater(
-        stats_artifact_utils.load_statistics(
-            stats_artifact, 'train').proto().datasets[0].num_examples, 0)
+        stats_artifact_utils.load_statistics_proto(
+            stats_artifact, 'train').datasets[0].num_examples, 0)
     with self.assertRaisesRegex(
         ValueError,
         'Split does not exist over all example artifacts: not_a_split'):
-      stats_artifact_utils.load_statistics(stats_artifact, 'not_a_split')
+      stats_artifact_utils.load_statistics_proto(stats_artifact, 'not_a_split')
 
 
 if __name__ == '__main__':

@@ -94,8 +94,7 @@ class Executor(base_executor.BaseExecutor):
       logging.info(
           'Validating schema against the computed statistics for '
           'split %s.', split)
-      stats = stats_artifact_utils.load_statistics(stats_artifact,
-                                                   split).proto()
+      stats = stats_artifact_utils.load_statistics_proto(stats_artifact, split)
       label_inputs = {
           standard_component_specs.STATISTICS_KEY: stats,
           standard_component_specs.SCHEMA_KEY: schema

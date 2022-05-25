@@ -76,8 +76,7 @@ class Executor(base_executor.BaseExecutor):
       if split in exclude_splits:
         continue
       logging.info('Processing schema from statistics for split %s.', split)
-      stats = stats_artifact_utils.load_statistics(stats_artifact,
-                                                   split).proto()
+      stats = stats_artifact_utils.load_statistics_proto(stats_artifact, split)
       if not schema:
         schema = tfdv.infer_schema(stats, infer_feature_shape)
       else:

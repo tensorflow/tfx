@@ -60,7 +60,7 @@ class ExampleStatisticsVisualization(visualizations.ArtifactVisualization):
     from IPython.core.display import HTML  # pylint: disable=g-import-not-at-top
     for split in artifact_utils.decode_split_names(artifact.split_names):
       display(HTML('<div><b>%r split:</b></div><br/>' % split))
-      stats = stats_artifact_utils.load_statistics(artifact, split).proto()
+      stats = stats_artifact_utils.load_statistics_proto(artifact, split)
       tfdv.visualize_statistics(stats)
 
 
