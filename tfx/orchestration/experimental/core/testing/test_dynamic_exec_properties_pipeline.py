@@ -75,17 +75,17 @@ class DownstreamComponent(base_component.BaseComponent):
     super().__init__(spec=spec)
 
 
-def create_python_pipeline() -> pipeline_lib.Pipeline:
+def create_components() -> List[base_component.BaseComponent]:
   upstream_component = UpstreamComponent(start_num=1)  # pylint: disable=no-value-for-parameter
   downstream_component = DownstreamComponent(
       input_num=upstream_component.outputs['num'].future()[0].value)
-  return  pipeline_lib.Pipeline(
-      pipeline_name='my_pipeline',
-      pipeline_root='/path/to/root',
-      components=[upstream_component, downstream_component])
+  return [upstream_component, downstream_component]
 
 
 def create_pipeline() -> pipeline_pb2.Pipeline:  # pylint: disable=invalid-name
-  pipeline = create_python_pipeline()
+  pipeline = pipeline_lib.Pipeline(
+      pipeline_name='my_pipeline',
+      pipeline_root='/path/to/root',
+      components=create_components())
   dsl_compiler = compiler.Compiler()
   return dsl_compiler.compile(pipeline)

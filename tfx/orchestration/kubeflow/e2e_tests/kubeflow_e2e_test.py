@@ -266,7 +266,8 @@ class KubeflowEndToEndTest(kubeflow_test_utils.BaseKubeflowTest):
   def testDynamicPropertiesEnd2EndPipeline(self):
     pipeline_name = 'kubeflow-dynamic-exec-e2e-test-{}'.format(
         test_utils.random_id())
-    pipeline = test_dynamic_exec_properties_pipeline.create_python_pipeline()
+    components = test_dynamic_exec_properties_pipeline.create_components()
+    pipeline = self._create_pipeline(pipeline_name, components)
     self._compile_and_run_pipeline(
         pipeline=pipeline, workflow_name=pipeline_name)
     artifacts = self._get_artifacts_with_type_and_pipeline(

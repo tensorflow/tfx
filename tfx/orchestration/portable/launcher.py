@@ -313,10 +313,9 @@ class Launcher:
 
       # 4. Resolve the dynamic exec properties from implicit input channels.
       try:
-        dynamic_exec_properties = data_types_utils.build_parsed_value_dict(
-            inputs_utils.resolve_dynamic_parameters(
-                node_parameters=self._pipeline_node.parameters,
-                input_artifacts=input_artifacts))
+        dynamic_exec_properties = inputs_utils.resolve_dynamic_parameters(
+            node_parameters=self._pipeline_node.parameters,
+            input_artifacts=input_artifacts)
         exec_properties.update(dynamic_exec_properties)
       except exceptions.InputResolutionError as e:
         execution = self._register_or_reuse_execution(

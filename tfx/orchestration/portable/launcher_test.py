@@ -1047,8 +1047,7 @@ class LauncherTest(test_case_utils.TfxTest):
         _PYTHON_CLASS_EXECUTABLE_SPEC: _FakeEmptyExecutorOperator
     }
     mock_param = {
-        'input_num': pipeline_pb2.Value(
-            field_value=metadata_store_pb2.Value(int_value=1)),
+        'input_num': 1
     }
     with mock.patch.object(
         inputs_utils,
