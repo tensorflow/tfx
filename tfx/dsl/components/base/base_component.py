@@ -107,6 +107,8 @@ class BaseComponent(base_node.BaseNode, abc.ABC):
     self._validate_component_class()
     self.platform_config = None
     self._pip_dependencies = []
+    # Internal use only. Can be mapped to KFP TriggerStrategy.
+    self._trigger_strategy = None
 
   @classmethod
   def _validate_component_class(cls):
