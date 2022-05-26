@@ -103,7 +103,7 @@ class TaskScheduler(abc.ABC, Generic[_TaskT]):
     """
 
   @abc.abstractmethod
-  def cancel(self) -> None:
+  def cancel(self, cancel_task: task_lib.CancelTask) -> None:
     """Cancels task scheduler.
 
     This method will be invoked from a different thread than the thread that's
@@ -112,6 +112,9 @@ class TaskScheduler(abc.ABC, Generic[_TaskT]):
     clean up and return as soon as possible. It's technically possible for
     `cancel` to be invoked before `schedule`; scheduler implementations should
     handle this case by returning from `schedule` immediately.
+
+    Args:
+      cancel_task: The task of this cancellation.
     """
 
 

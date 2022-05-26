@@ -60,9 +60,9 @@ class _SchedulerWrapper:
   def schedule(self) -> ts.TaskSchedulerResult:
     return self._task_scheduler.schedule()
 
-  def cancel(self, pause: bool = False) -> None:
-    self.pause = pause
-    self._task_scheduler.cancel()
+  def cancel(self, cancel_task: task_lib.CancelNodeTask) -> None:
+    self.pause = cancel_task.cancel_type == task_lib.NodeCancelType.PAUSE_EXEC
+    self._task_scheduler.cancel(cancel_task=cancel_task)
 
 
 class TaskManager:
@@ -207,7 +207,7 @@ class TaskManager:
             'No task scheduled for node uid: %s. The task might have already '
             'completed before it could be cancelled.', task.node_uid)
       else:
-        scheduler.cancel(task.pause)
+        scheduler.cancel(cancel_task=task)
       self._task_queue.task_done(task)
 
   def _process_exec_node_task(self, scheduler: _SchedulerWrapper,
