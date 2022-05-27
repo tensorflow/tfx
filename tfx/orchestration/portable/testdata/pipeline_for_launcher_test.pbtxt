@@ -371,6 +371,14 @@ nodes {
         }
       }
       parameters {
+        key: "output_key"
+        value {
+          field_value {
+            string_value: "result"
+          }
+        }
+      }
+      parameters {
         key: "reimport"
         value {
           field_value {
