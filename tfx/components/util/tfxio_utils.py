@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """TFXIO (standardized TFX inputs) related utilities."""
+from __future__ import annotations
 
 from typing import Any, Callable, Dict, List, Iterator, Optional, Tuple, Union
 

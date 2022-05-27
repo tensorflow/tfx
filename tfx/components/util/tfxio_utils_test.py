@@ -307,7 +307,7 @@ class TfxioUtilsTest(tf.test.TestCase, parameterized.TestCase):
     dataset_factory = tfxio_utils.get_tf_dataset_factory_from_artifact(
         [examples], _TELEMETRY_DESCRIPTORS)
     self.assertIsInstance(dataset_factory, Callable)
-    self.assertEqual(tf.data.Dataset,
+    self.assertEqual('tf.data.Dataset',
                      inspect.signature(dataset_factory).return_annotation)
 
   def test_get_record_batch_factory_from_artifact(self):
@@ -318,7 +318,7 @@ class TfxioUtilsTest(tf.test.TestCase, parameterized.TestCase):
     record_batch_factory = tfxio_utils.get_record_batch_factory_from_artifact(
         [examples], _TELEMETRY_DESCRIPTORS)
     self.assertIsInstance(record_batch_factory, Callable)
-    self.assertEqual(Iterator[pa.RecordBatch],
+    self.assertEqual('Iterator[pa.RecordBatch]',
                      inspect.signature(record_batch_factory).return_annotation)
 
   def test_raise_if_data_view_uri_not_available(self):
