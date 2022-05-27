@@ -13,10 +13,12 @@
 # limitations under the License.
 """Tests for tfx.dsl.components.common.importer."""
 
+from absl.testing import parameterized
 import tensorflow as tf
 from tfx import types
 from tfx.dsl.components.common import importer
 from tfx.orchestration import data_types
+from tfx.orchestration import data_types_utils
 from tfx.orchestration import metadata
 from tfx.types import artifact_utils
 from tfx.types import standard_artifacts
@@ -37,14 +39,16 @@ class ImporterTest(tf.test.TestCase):
             'str_custom_property': 'abc',
             'int_custom_property': 123,
         },
-        artifact_type=standard_artifacts.Examples).with_id('my_importer')
+        artifact_type=standard_artifacts.Examples,
+        output_key='examples').with_id('my_importer')
     self.assertDictEqual(
         impt.exec_properties, {
             importer.SOURCE_URI_KEY: 'm/y/u/r/i',
             importer.REIMPORT_OPTION_KEY: 0,
+            importer.OUTPUT_KEY_KEY: 'examples',
         })
     self.assertEmpty(impt.inputs)
-    output_channel = impt.outputs[importer.IMPORT_RESULT_KEY]
+    output_channel = impt.outputs[impt.exec_properties[importer.OUTPUT_KEY_KEY]]
     self.assertEqual(output_channel.type, standard_artifacts.Examples)
     # Tests properties in channel.
     self.assertEqual(output_channel.additional_properties, {
@@ -78,7 +82,7 @@ class ImporterTest(tf.test.TestCase):
     self.assertEqual(actual_obj._source_uri, source_uris)
 
 
-class ImporterDriverTest(tf.test.TestCase):
+class ImporterDriverTest(tf.test.TestCase, parameterized.TestCase):
 
   def setUp(self):
     super().setUp()
@@ -114,7 +118,10 @@ class ImporterDriverTest(tf.test.TestCase):
         pipeline_info=self.pipeline_info)
     self.driver_args = data_types.DriverArgs(enable_cache=True)
 
-  def _callImporterDriver(self, reimport: bool):
+  @parameterized.named_parameters(
+      ('with_reimport', True),
+      ('without_reimport', False))
+  def testImporterDriver(self, reimport: bool):
     with metadata.Metadata(connection_config=self.connection_config) as m:
       m.publish_artifacts(self.existing_artifacts)
       driver = importer.ImporterDriver(metadata_handler=m)
@@ -127,36 +134,22 @@ class ImporterDriverTest(tf.test.TestCase):
           exec_properties={
               importer.SOURCE_URI_KEY: self.source_uri,
               importer.REIMPORT_OPTION_KEY: int(reimport),
+              importer.OUTPUT_KEY_KEY: importer.IMPORT_RESULT_KEY,
           })
       self.assertFalse(execution_result.use_cached_results)
       self.assertEmpty(execution_result.input_dict)
+      result_artifacts = execution_result.output_dict[
+          execution_result.exec_properties[importer.OUTPUT_KEY_KEY]]
+      self.assertLen(result_artifacts, 1)
+      result = result_artifacts[0]
+      self.assertEqual(result.uri, self.source_uri)
       self.assertEqual(
-          1, len(execution_result.output_dict[importer.IMPORT_RESULT_KEY]))
+          self.properties,
+          data_types_utils.build_value_dict(result.mlmd_artifact.properties))
       self.assertEqual(
-          execution_result.output_dict[importer.IMPORT_RESULT_KEY][0].uri,
-          self.source_uri)
-
-      self.assertNotEmpty(self.output_dict[importer.IMPORT_RESULT_KEY].get())
-
-      results = self.output_dict[importer.IMPORT_RESULT_KEY].get()
-      self.assertEqual(1, len(results))
-      result = results[0]
-      self.assertEqual(result.uri, result.uri)
-      for key, value in self.properties.items():
-        self.assertEqual(value, getattr(result, key))
-      for key, value in self.custom_properties.items():
-        if isinstance(value, int):
-          self.assertEqual(value, result.get_int_custom_property(key))
-        elif isinstance(value, (str, bytes)):
-          self.assertEqual(value, result.get_string_custom_property(key))
-        else:
-          raise ValueError('Invalid custom property value: %r.' % value)
-
-  def testImportArtifact(self):
-    self._callImporterDriver(reimport=True)
-
-  def testReuseArtifact(self):
-    self._callImporterDriver(reimport=False)
+          self.custom_properties,
+          data_types_utils.build_value_dict(
+              result.mlmd_artifact.custom_properties))
 
 
 if __name__ == '__main__':

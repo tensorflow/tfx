@@ -12,6 +12,16 @@ inputs {
     }
   }
   parameters {
+    key: "output_key"
+    value {
+      runtime_value {
+        constant_value {
+          string_value: "result"
+        }
+      }
+    }
+  }
+  parameters {
     key: "reimport"
     value {
       runtime_value {

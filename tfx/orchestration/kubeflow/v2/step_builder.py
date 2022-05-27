@@ -14,7 +14,7 @@
 """Builder for Kubeflow pipelines StepSpec proto."""
 
 import itertools
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, cast
 
 from absl import logging
 from kfp.pipeline_spec import pipeline_spec_pb2 as pipeline_pb2
@@ -488,7 +488,8 @@ class StepBuilder:
   def _build_importer_spec(self) -> ImporterSpec:
     """Builds ImporterSpec."""
     assert isinstance(self._node, importer.Importer)
-    output_channel = self._node.outputs[importer.IMPORT_RESULT_KEY]
+    output_key = cast(str, self._exec_properties[importer.OUTPUT_KEY_KEY])
+    output_channel = self._node.outputs[output_key]
     result = ImporterSpec()
 
     # Importer's output channel contains one artifact instance with

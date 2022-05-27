@@ -14,11 +14,10 @@
 """Tests for tfx.orchestration.experimental.core.task_schedulers.importer_task_scheduler."""
 
 import os
+from unittest import mock
 import uuid
 
-from absl.testing.absltest import mock
 import tensorflow as tf
-from tfx import version as tfx_version
 from tfx.dsl.compiler import constants
 from tfx.orchestration import metadata
 from tfx.orchestration.experimental.core import sync_pipeline_task_gen as sptg
@@ -37,11 +36,9 @@ class ImporterTaskSchedulerTest(test_utils.TfxTest):
   def setUp(self):
     super().setUp()
 
+    self.addCleanup(mock.patch.stopall)
     # Set a constant version for artifact version tag.
-    patcher = mock.patch('tfx.version.__version__')
-    patcher.start()
-    tfx_version.__version__ = '0.123.4.dev'
-    self.addCleanup(patcher.stop)
+    mock.patch('tfx.version.__version__', '0.123.4.dev').start()
 
     pipeline_root = os.path.join(
         os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR', self.get_temp_dir()),
@@ -137,6 +134,12 @@ class ImporterTaskSchedulerTest(test_utils.TfxTest):
             key: "artifact_uri"
             value {
               string_value: "my_url"
+            }
+          }
+          custom_properties {
+            key: "output_key"
+            value {
+              string_value: "result"
             }
           }
           custom_properties {
