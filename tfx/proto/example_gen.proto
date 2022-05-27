@@ -127,7 +127,7 @@ enum FileFormat {
 
   // Indicates parquet format files in any of the supported compressions.
   // https://arrow.apache.org/docs/python/parquet.html#compression-encoding-and-file-compatibility
-  FORMAT_PARQUET = 16;
+  FILE_FORMAT_PARQUET = 16;
 
   reserved 1 to 4, 7 to 15, 17 to max;
 }

@@ -32,7 +32,10 @@ from tfx_bsl.tfxio import tfxio
 from tensorflow_metadata.proto.v0 import schema_pb2
 
 
-_SUPPORTED_FILE_FORMATS = (example_gen_pb2.FileFormat.FORMAT_PARQUET, example_gen_pb2.FileFormat.FORMAT_TFRECORDS_GZIP)
+_SUPPORTED_FILE_FORMATS = (
+    example_gen_pb2.FileFormat.FILE_FORMAT_PARQUET,
+    example_gen_pb2.FileFormat.FORMAT_TFRECORDS_GZIP
+)
 # TODO(b/162532479): switch to support List[str] exclusively, once tfx-bsl
 # post-0.22 is released.
 OneOrMorePatterns = Union[str, List[str]]
