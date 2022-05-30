@@ -126,6 +126,7 @@ enum FileFormat {
   FORMAT_TFRECORDS_GZIP = 5;
 
   // Indicates parquet format files in any of the supported compressions.
+  // protolint:disable MAX_LINE_LENGTH
   // https://arrow.apache.org/docs/python/parquet.html#compression-encoding-and-file-compatibility
   FILE_FORMAT_PARQUET = 16;
 
