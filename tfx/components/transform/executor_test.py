@@ -17,8 +17,9 @@ import copy
 import json
 import os
 import tempfile
-from absl.testing import parameterized
+from unittest import mock
 
+from absl.testing import parameterized
 import apache_beam as beam
 import tensorflow as tf
 import tensorflow_transform as tft
@@ -197,7 +198,8 @@ class ExecutorTest(tft_unit.TransformTestCase):
                                 materialize=True,
                                 store_cache=True,
                                 multiple_example_inputs=False,
-                                disable_statistics=False):
+                                disable_statistics=False,
+                                verify_sharded_statistics=False):
     expected_outputs = ['transformed_graph']
 
     if store_cache:
@@ -288,6 +290,16 @@ class ExecutorTest(tft_unit.TransformTestCase):
           fileio.exists(
               os.path.join(self._post_transform_anomalies.uri,
                            executor._ANOMALIES_FILE)))
+    if verify_sharded_statistics:
+      pre_transform_paths = fileio.glob(
+          os.path.join(self._pre_transform_stats.uri,
+                       executor._SHARDED_STATS_PREFIX + '*'))
+      post_transform_paths = fileio.glob(
+          os.path.join(self._post_transform_stats.uri,
+                       executor._SHARDED_STATS_PREFIX + '*'))
+
+      self.assertNotEmpty(pre_transform_paths)
+      self.assertNotEmpty(post_transform_paths)
 
     # Depending on `materialize` and `store_cache`, check that
     # expected outputs are exactly correct. If either flag is False, its
@@ -387,6 +399,16 @@ class ExecutorTest(tft_unit.TransformTestCase):
     self._transform_executor.Do(self._input_dict, self._output_dict,
                                 self._exec_properties)
     self._verify_transform_outputs(disable_statistics=True)
+
+  def test_do_with_sharded_stats(self):
+    self._exec_properties[
+        standard_component_specs.MODULE_FILE_KEY] = self._module_file
+    with mock.patch.object(
+        executor.TransformProcessor, '_TFDVWriteShardedOutput') as mock_fn:
+      mock_fn.return_value = True
+      self._transform_executor.Do(self._input_dict, self._output_dict,
+                                  self._exec_properties)
+    self._verify_transform_outputs(verify_sharded_statistics=True)
 
   def test_do_with_preprocessing_fn_custom_config(self):
     self._exec_properties[
