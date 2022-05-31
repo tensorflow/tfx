@@ -275,7 +275,7 @@ def create_estimator(pipeline_inputs, hparams):
 As mentioned above, the Transform component invokes TFDV to compute both
 pre-transform and post-transform statistics. TFDV takes as input an optional
 [StatsOptions](https://github.com/tensorflow/data-validation/blob/master/tensorflow_data_validation/statistics/stats_options.py)
-object. Users may wish to configure this object to enable certain additonal
+object. Users may wish to configure this object to enable certain additional
 statistics (e.g. NLP statistics) or to set thresholds that are validated (e.g.
 min / max token frequency). To do so, define a `stats_options_updater_fn` in the
 module file.
