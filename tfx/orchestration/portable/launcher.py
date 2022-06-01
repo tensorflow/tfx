@@ -387,7 +387,7 @@ class Launcher:
               contexts=contexts,
               execution_id=execution.id,
               output_artifacts=cached_outputs)
-          logging.info('An cached execusion %d is used.', execution.id)
+          logging.info('A cached execution %d is used.', execution.id)
           return _ExecutionPreparationResult(
               execution_info=self._build_execution_info(
                   execution_id=execution.id,
