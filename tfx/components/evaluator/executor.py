@@ -175,9 +175,9 @@ class Executor(base_beam_executor.BaseBeamExecutor):
               input_dict[standard_component_specs.MODEL_KEY])
         # TODO(b/171992041): tfma.get_model_type replaced by tfma.utils.
         if ((hasattr(tfma, 'utils') and
-             tfma.utils.get_model_type(model_spec) == tfma.TF_ESTIMATOR) or
+             tfma.utils.get_model_type(model_spec) == tfma.TFMA_EVAL) or
             hasattr(tfma, 'get_model_type') and
-            tfma.get_model_type(model_spec) == tfma.TF_ESTIMATOR):
+            tfma.get_model_type(model_spec) == tfma.TFMA_EVAL):
           model_path = path_utils.eval_model_path(
               model_artifact.uri,
               path_utils.is_old_model_artifact(model_artifact))
