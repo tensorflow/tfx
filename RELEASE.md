@@ -7,6 +7,8 @@
 ### For Pipeline Authors
 
 ### For Component Authors
+* Replace "tf_estimator" with "tfma_eval" as the identifier for tfma
+  EvalSavedModel.
 
 ## Deprecations
 
