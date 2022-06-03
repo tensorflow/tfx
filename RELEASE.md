@@ -102,6 +102,8 @@
 *   N/A
 
 ### For Component Authors
+* Replace "tf_estimator" with "tfma_eval" as the identifier for tfma
+  EvalSavedModel.
 
 *   N/A
 
@@ -416,7 +418,7 @@
     pattern.
 *   Added support for union of Channels as input to standard TFX components.
     Users can use channel.union() to combine multiple Channels and use as input
-    to these compnents. Artfacts resolved from these channels are expected to
+    to these components. Artfacts resolved from these channels are expected to
     have the same type, and passed to components in no particular order.
 
 ## Breaking Changes
@@ -722,7 +724,7 @@ the 1.1.x release for TFX library.
 
 ## Breaking Changes
 
-*  Removed unneccessary default values for required component input Channels.
+*  Removed unnecessary default values for required component input Channels.
 *  The `_PropertyDictWrapper` internal wrapper for `component.inputs` and
    `component.outputs` was removed: `component.inputs` and `component.outputs`
    are now unwrapped dictionaries, and the attribute accessor syntax (e.g.
@@ -1034,7 +1036,7 @@ the 1.1.x release for TFX library.
 
 ## Major Features and Improvements
 
-*   Publically released TFX docker image in [tensorflow/tfx](
+*   Publiclly released TFX docker image in [tensorflow/tfx](
     https://hub.docker.com/r/tensorflow/tfx) will use GPU
     compatible based TensorFlow images from [Deep Learning Containers](
     https://cloud.google.com/ai-platform/deep-learning-containers). This allow
@@ -1278,7 +1280,7 @@ the 1.1.x release for TFX library.
     implementation of `tft.quantiles` analyzer.
 *   Added native TF 2 implementation of Transform. The default
     behavior will continue to use Tensorflow's compat.v1 APIs. This can be
-    overriden by passing `force_tf_compat_v1=False` and enabling TF 2 behaviors.
+    overridden by passing `force_tf_compat_v1=False` and enabling TF 2 behaviors.
     The default behavior for TF 2 will be switched to the new native
     implementation in a future release.
 *   Added support for passing a callable to set pre/post transform statistic
