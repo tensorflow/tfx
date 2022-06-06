@@ -21,7 +21,7 @@ You'll follow a typical ML development process:
 * Ingesting, understanding, and cleaning our data
 * Feature engineering
 * Training
-* Analyze model performance
+* Analyzing model performance
 * Lather, rinse, repeat
 * Ready for production 
 
@@ -197,14 +197,14 @@ The above code will
 
 * Install the required packages.
 * Create an `airflow` folder in the home folder.
-* Copy the entire `dags` folder from `tfx/tfx/examples/airflow_workshop/taxi/setup/` folder to `~/airflow/` folder.
+* Copy the `dags` folder from `tfx/tfx/examples/airflow_workshop/taxi/setup/` folder to `~/airflow/` folder.
 * Copy the csv file from `tfx/tfx/examples/airflow_workshop/taxi/setup/data` to `~/airflow/data`.
 
 ![airflow-home.png](images/airflow_workshop/airflow-home.png)
 
 ## Configuring Airflow server
 
-### Create firewall rule to access to airflow server in browser
+### Create firewall rule to access to airflow server in the browser
 1. Go to `https://console.cloud.google.com/networking/firewalls/list` and make sure the project name is selected appropriately
 2. Click on `CREATE FIREWALL RULE` option on top
 
@@ -216,7 +216,7 @@ The above code will
 
 ### Run airflow server from your shell
 
-In the Jupyter Lab Terminal window, change to home directory, run the `airflow users  create` command to create an admin user for Airflow:
+In the Jupyter Lab Terminal window, change to home directory, run the `airflow users create` command to create an admin user for Airflow:
 
 ```bash
 cd
@@ -250,34 +250,38 @@ nohup airflow scheduler &> scheduler.out &
 ### In a browser
 Open a browser and go to http://<external_ip>:7000
 
-* Enter username and password mentioned in `airflow users  create` command in the login page.
+* In the login page, enter the username and password you chose when running the `airflow users create` command.
 
 ![airflow-login.png](images/airflow_workshop/airflow-login.png)
 
-Airflow will check all the python files inside `~/airflow/dags/` folder for the '**DAG**' argument.
+Airflow loads DAGs from Python source files. It takes each file and executes it. Then it loads any DAG objects from that file.
+All `.py` files which define DAG objects will be listed as pipelines in the airflow homepage.
+ 
+In this tutorial, Airflow scans the `~/airflow/dags/` folder for DAG objects. 
 
-If found it will list it as pipeline in airflow homepage (here `~/airflow/dags/taxi_pipeline.py`)
+If you open `~/airflow/dags/taxi_pipeline.py` and scroll to the bottom, you can see that it creates and stores a DAG object in a variable named `DAG`. Hence it will be listed as a pipeline in the airflow homepage as shown below:
 
 ![dag-home-full.png](images/airflow_workshop/dag-home-full.png)
 
-If you click on taxi, it will go to the graph view of the DAG
+If you click on taxi, it will go to the graph view of the DAG.
 
 ![airflow-dag-graph.png](images/airflow_workshop/airflow-dag-graph.png)
 
 ### Trigger the taxi pipeline
 
-On the homepage you can see the buttons that can be used to interact with the DAG
+On the homepage you can see the buttons that can be used to interact with the DAG.
 
 ![dag-buttons.png](images/airflow_workshop/dag-buttons.png)
 
 
-Under actions header, click on the trigger button and start the process
+Under the **actions** header, click on the **trigger** button to trigger the pipeline.
 
-In the taxi DAG page use the button on the right to refresh the DAG when you make changes
+In the taxi **DAG** page, use the button on the right to refresh the state of the graph view of the DAG as the pipeline runs.
+Additionally, you can enable **Auto Refresh** to instruct Airflow to automatically refresh the graph view as and when the state changes.
 
 ![dag-button-refresh.png](images/airflow_workshop/dag-button-refresh.png)
 
-You can also use the [Airflow CLI](https://airflow.apache.org/cli.html) in terminal to enable and trigger your DAGs:
+You can also use the [Airflow CLI](https://airflow.apache.org/cli.html) in the terminal to enable and trigger your DAGs:
 
 ```bash
 # enable/disable
@@ -289,7 +293,7 @@ airflow trigger_dag <your DAG name>
 ```
 
 #### Waiting for the pipeline to complete
-After you've triggered your pipeline in the DAGs view, you can watch as your pipeline completes processing. As each component runs, the outline color of the component in the DAG graph will change to show its state. When a component has finished processing the outline will turn dark green to show that it's done.
+After you've triggered your pipeline, in the DAGs view, you can watch the progress of your pipeline while it is running. As each component runs, the outline color of the component in the DAG graph will change to show its state. When a component has finished processing the outline will turn dark green to show that it's done.
 
 ![dag-step7.png](images/airflow_workshop/dag-step7.png)
 
@@ -297,4 +301,4 @@ After you've triggered your pipeline in the DAGs view, you can watch as your pip
 Now we will look at the components of this pipeline in detail, and individually look at the outputs produced by each step in the pipeline.
 
 * In JupyterLab go to `~/tfx/tfx/examples/airflow_workshop/taxi/notebooks/` and open `notebook.ipynb`
-* Follow the notebook for the remaining instructions
+* Follow the notebook for the remaining instructions.
