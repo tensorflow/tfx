@@ -76,6 +76,9 @@ _EXECUTION_STATE_TO_RUN_STATE_MAP = {
         run_state_pb2.RunState.STOPPED,
 }
 
+_PROJECT_OWNER = ''
+_PROJECT_NAME = ''
+
 
 # TODO(b/228198652): Stop using json_util.Jsonable. Before we do,
 # this class MUST NOT be moved out of this module.
@@ -783,6 +786,9 @@ def get_pipeline_states(mlmd_handle: metadata.Metadata) -> List[PipelineState]:
   contexts = get_orchestrator_contexts(mlmd_handle)
   result = []
   for context in contexts:
+    project_name = project_name_from_orchestrator_context(context)
+    if project_name and project_name != _PROJECT_NAME:
+      continue
     try:
       pipeline_state = PipelineState.load_from_orchestrator_context(
           mlmd_handle, context)
@@ -799,19 +805,30 @@ def get_pipeline_states(mlmd_handle: metadata.Metadata) -> List[PipelineState]:
 
 def get_orchestrator_contexts(
     mlmd_handle: metadata.Metadata) -> List[metadata_store_pb2.Context]:
-  """Returns all of the orchestrator contexts."""
   return mlmd_handle.store.get_contexts_by_type(_ORCHESTRATOR_RESERVED_ID)
 
 
 def orchestrator_context_name(pipeline_uid: task_lib.PipelineUid) -> str:
   """Returns orchestrator reserved context name."""
-  return pipeline_uid.pipeline_id
+  return '.'.join([_PROJECT_OWNER, _PROJECT_NAME, pipeline_uid.pipeline_id])
 
 
 def pipeline_uid_from_orchestrator_context(
     context: metadata_store_pb2.Context) -> task_lib.PipelineUid:
   """Returns pipeline uid from orchestrator reserved context."""
-  return task_lib.PipelineUid(context.name)
+  context_name_split = context.name.split('.')
+  if len(context_name_split) >= 3:
+    return task_lib.PipelineUid(context_name_split[2])
+  return task_lib.PipelineUid(context_name_split[0])
+
+
+def project_name_from_orchestrator_context(
+    context: metadata_store_pb2.Context) -> str:
+  """Returns pipeline uid from orchestrator reserved context."""
+  context_name_split = context.name.split('.')
+  if len(context_name_split) >= 3:
+    return context_name_split[1]
+  return ''
 
 
 def get_all_pipeline_nodes(
@@ -869,6 +886,16 @@ def get_all_node_artifacts(
       node_artifacts[execution.id] = execution_artifacts
     result[node_id] = node_artifacts
   return result
+
+
+def set_project_owner(project_owner: str):
+  global _PROJECT_OWNER
+  _PROJECT_OWNER = project_owner
+
+
+def set_project_name(project_name: str):
+  global _PROJECT_NAME
+  _PROJECT_NAME = project_name
 
 
 def _is_node_uid_in_pipeline(node_uid: task_lib.NodeUid,
