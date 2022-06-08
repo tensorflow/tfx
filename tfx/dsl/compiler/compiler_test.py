@@ -26,6 +26,7 @@ from tfx.dsl.compiler.testdata import dynamic_exec_properties_pipeline
 from tfx.dsl.compiler.testdata import foreach_pipeline
 from tfx.dsl.compiler.testdata import iris_pipeline_async
 from tfx.dsl.compiler.testdata import iris_pipeline_sync
+from tfx.dsl.compiler.testdata import non_existent_component_pipeline
 from tfx.dsl.compiler.testdata import pipeline_root_placeholder
 from tfx.dsl.compiler.testdata import pipeline_with_annotations
 from tfx.orchestration import pipeline
@@ -130,6 +131,16 @@ class CompilerTest(tf.test.TestCase, parameterized.TestCase):
     with self.assertRaisesRegex(
         ValueError,
         "output channel to dynamic exec properties is not ValueArtifact"):
+      dsl_compiler.compile(test_pipeline)
+
+  def testCompileNoneExistentNodeError(self):
+    dsl_compiler = compiler.Compiler()
+    test_pipeline = self._get_test_pipeline_definition(
+        non_existent_component_pipeline)
+    with self.assertRaisesRegex(
+        ValueError,
+        "Node .* references downstream node .* which is not present in the "
+        "pipeline"):
       dsl_compiler.compile(test_pipeline)
 
   def test_DefineAtSub_CompileAtMain(self):

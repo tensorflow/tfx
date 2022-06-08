@@ -15,7 +15,7 @@
 import collections
 import inspect
 import itertools
-from typing import Any, Iterable, List, Type, cast
+from typing import Any, Iterable, List, Set, Type, cast
 
 from tfx import types
 from tfx.dsl.compiler import compiler_utils
@@ -81,6 +81,10 @@ class _CompilerContext:
   @property
   def is_async_mode(self):
     return self.execution_mode == pipeline_pb2.Pipeline.ASYNC
+
+  @property
+  def pipeline_node_ids(self) -> Set[str]:
+    return set(self._pipeline_nodes_by_id.keys())
 
   def implicit_upstream_nodes(
       self, here: base_node.BaseNode) -> List[base_node.BaseNode]:
@@ -416,6 +420,11 @@ class Compiler:
         result.update(self._find_runtime_upstream_node_ids(context, up))
       else:
         result.add(up.id)
+    # Validate that upstream nodes are present in the pipeline.
+    for up_id in result:
+      if up_id not in context.pipeline_node_ids:
+        raise ValueError(f"Node {here.id} references upstream node {up_id} "
+                         "which is not present in the pipeline.")
     # Sort result so that compiler generates consistent results.
     return sorted(result)
 
@@ -429,6 +438,11 @@ class Compiler:
         result.update(self._find_runtime_downstream_node_ids(context, down))
       else:
         result.add(down.id)
+    # Validate that downstream nodes are present in the pipeline.
+    for down_id in result:
+      if down_id not in context.pipeline_node_ids:
+        raise ValueError(f"Node {here.id} references downstream node {down_id} "
+                         "which is not present in the pipeline.")
     # Sort result so that compiler generates consistent results.
     return sorted(result)
 
