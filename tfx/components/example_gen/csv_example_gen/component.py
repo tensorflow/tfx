@@ -18,6 +18,7 @@ from typing import Optional, Union
 from tfx.components.example_gen import component
 from tfx.components.example_gen.csv_example_gen import executor
 from tfx.dsl.components.base import executor_spec
+from tfx.dsl.placeholder import placeholder
 from tfx.orchestration import data_types
 from tfx.proto import example_gen_pb2
 from tfx.proto import range_config_pb2
@@ -68,7 +69,8 @@ class CsvExampleGen(component.FileBasedExampleGen):  # pylint: disable=protected
                                    data_types.RuntimeParameter]] = None,
       output_config: Optional[Union[example_gen_pb2.Output,
                                     data_types.RuntimeParameter]] = None,
-      range_config: Optional[Union[range_config_pb2.RangeConfig,
+      range_config: Optional[Union[placeholder.Placeholder,
+                                   range_config_pb2.RangeConfig,
                                    data_types.RuntimeParameter]] = None):
     """Construct a CsvExampleGen component.
 
