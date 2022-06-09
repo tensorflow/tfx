@@ -23,7 +23,6 @@ from tfx.dsl.input_resolution import resolver_function
 from tfx.dsl.input_resolution import resolver_op
 from tfx.orchestration import data_types
 from tfx.orchestration import metadata
-from tfx.types import artifact_utils
 from tfx.types import channel_utils
 from tfx.utils import doc_controls
 from tfx.utils import json_utils
@@ -123,15 +122,11 @@ class _ResolverDriver(base_driver.BaseDriver):
     for key, c in input_channels.items():
       artifacts_by_id = {}  # Deduplicate by ID.
       for channel in channel_utils.get_individual_channels(c):
-        artifact_and_types = self._metadata_handler.get_qualified_artifacts(
+        artifacts = self._metadata_handler.get_qualified_artifacts(
             contexts=[pipeline_context],
             type_name=channel.type_name,
             producer_component_id=channel.producer_component_id,
             output_key=channel.output_key)
-        artifacts = [
-            artifact_utils.deserialize_artifact(a.type, a.artifact)
-            for a in artifact_and_types
-        ]
         artifacts_by_id.update({a.id: a for a in artifacts})
       result[key] = list(artifacts_by_id.values())
     return result
