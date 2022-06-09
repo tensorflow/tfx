@@ -171,7 +171,8 @@ class _Generator:
       # If there are no runnable nodes, we can abort the pipeline.
       if not runnable_node_ids:
         finalize_pipeline_task = self._abort_task(
-            f'Cannot make progress due to node failures: {failed_nodes_dict}')
+            'Cannot make progress due to node failures: \n' +
+            _status_dict_to_error_message(failed_nodes_dict))
 
     result = update_node_state_tasks
     if finalize_pipeline_task:
@@ -470,3 +471,13 @@ def _descendants(node_by_id: Mapping[str, pipeline_pb2.PipelineNode],
       queue.extend(node_by_id[q_node_id].downstream_nodes)
       result.add(q_node_id)
   return result
+
+
+def _status_dict_to_error_message(failed_nodes_dict: Dict[str,
+                                                          status_lib.Status]):
+  lines = []
+  for node_id, status in failed_nodes_dict.items():
+    lines.append(
+        f"Node '{node_id}' has status code {status.code} with message:")
+    lines.append('  ' + status.message)
+  return '\n'.join(lines)
