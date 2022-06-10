@@ -368,7 +368,7 @@ class InputsUtilsTest(test_case_utils.TfxTest, _TestMixin):
 
   def testResolveInputArtifacts_FilterOutInsufficient(self):
     self._setup_pipeline_for_input_resolver_test()
-    self._my_transform.inputs.inputs['examples'].min_count = 2
+    self._my_transform.inputs.inputs['examples_1'].min_count = 2
 
     with self.assertRaisesRegex(exceptions.InputResolutionError,
                                 'No valid inputs'):

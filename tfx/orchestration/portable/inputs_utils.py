@@ -12,124 +12,28 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Portable library for input artifacts resolution."""
-from typing import Dict, Iterable, List, Optional, Mapping, Sequence, Union
+from typing import Dict, Mapping, Sequence, Union
 
-from absl import logging
 from tfx import types
 from tfx.dsl.compiler import placeholder_utils
-from tfx.orchestration import data_types_utils
 from tfx.orchestration import metadata
 from tfx.orchestration.portable import data_types
+from tfx.orchestration.portable.input_resolution import channel_resolver
 from tfx.orchestration.portable.input_resolution import exceptions
 from tfx.orchestration.portable.input_resolution import processor
-from tfx.orchestration.portable.mlmd import event_lib
-from tfx.orchestration.portable.mlmd import execution_lib
 from tfx.proto.orchestration import pipeline_pb2
-from tfx.types import artifact_utils
 from tfx.utils import typing_utils
 
-import ml_metadata as mlmd
-from ml_metadata.proto import metadata_store_pb2
 
-
-def get_qualified_artifacts(
-    metadata_handler: metadata.Metadata,
-    contexts: Iterable[metadata_store_pb2.Context],
-    artifact_type: metadata_store_pb2.ArtifactType,
-    output_key: Optional[str] = None,
-) -> List[types.Artifact]:
-  """Gets qualified artifacts that have the right producer info.
-
-  Args:
-    metadata_handler: A metadata handler to access MLMD store.
-    contexts: Context constraints to filter artifacts
-    artifact_type: Type constraint to filter artifacts
-    output_key: Output key constraint to filter artifacts
-
-  Returns:
-    A list of qualified TFX Artifacts.
-  """
-  # We expect to have at least one context for input resolution. Otherwise,
-  # return empty list.
-  if not contexts:
-    return []
-
-  try:
-    artifact_type_name = artifact_type.name
-    artifact_type = metadata_handler.store.get_artifact_type(artifact_type_name)
-  except mlmd.errors.NotFoundError:
-    logging.warning('Artifact type %s is not found in MLMD.',
-                    artifact_type.name)
-    artifact_type = None
-
-  if not artifact_type:
-    return []
-
-  executions_within_context = (
-      execution_lib.get_executions_associated_with_all_contexts(
-          metadata_handler, contexts))
-
-  # Filters out non-success executions.
-  qualified_producer_executions = [
-      e.id
-      for e in executions_within_context
-      if execution_lib.is_execution_successful(e)
-  ]
-  # Gets the output events that have the matched output key.
-  qualified_output_events = [
-      ev for ev in metadata_handler.store.get_events_by_execution_ids(
-          qualified_producer_executions)
-      if event_lib.is_valid_output_event(ev, output_key)
-  ]
-
-  # Gets the candidate artifacts from output events.
-  candidate_artifacts = metadata_handler.store.get_artifacts_by_id(
-      list(set(ev.artifact_id for ev in qualified_output_events)))
-  # Filters the artifacts that have the right artifact type and state.
-  qualified_artifacts = [
-      a for a in candidate_artifacts if a.type_id == artifact_type.id and
-      a.state == metadata_store_pb2.Artifact.LIVE
-  ]
-  return [
-      artifact_utils.deserialize_artifact(artifact_type, a)
-      for a in qualified_artifacts
-  ]
-
-
-def _resolve_single_channel(
-    metadata_handler: metadata.Metadata,
-    channel: pipeline_pb2.InputSpec.Channel) -> List[types.Artifact]:
-  """Resolves input artifacts from a single channel."""
-
-  artifact_type = channel.artifact_query.type
-  output_key = channel.output_key or None
-
-  contexts = []
-  for context_query in channel.context_queries:
-    context = metadata_handler.store.get_context_by_type_and_name(
-        context_query.type.name, data_types_utils.get_value(context_query.name))
-    if context:
-      contexts.append(context)
-    else:
-      return []
-  return get_qualified_artifacts(
-      metadata_handler=metadata_handler,
-      contexts=contexts,
-      artifact_type=artifact_type,
-      output_key=output_key)
-
-
-def _resolve_initial_dict(
+def _resolve_channels_dict(
     metadata_handler: metadata.Metadata,
     node_inputs: pipeline_pb2.NodeInputs) -> typing_utils.ArtifactMultiMap:
   """Resolves initial input dict from input channel definition."""
   result = {}
   for key, input_spec in node_inputs.inputs.items():
-    artifacts_by_id = {}  # Deduplicate by ID.
-    for channel in input_spec.channels:
-      artifacts = _resolve_single_channel(metadata_handler, channel)
-      artifacts_by_id.update({a.id: a for a in artifacts})
-    result[key] = list(artifacts_by_id.values())
+    if input_spec.channels:
+      result[key] = channel_resolver.resolve_union_channels(
+          metadata_handler.store, input_spec.channels)
   return result
 
 
@@ -187,7 +91,7 @@ def resolve_input_artifacts(
         execution.
   """
   node_inputs = pipeline_node.inputs
-  initial_dict = _resolve_initial_dict(metadata_handler, node_inputs)
+  initial_dict = _resolve_channels_dict(metadata_handler, node_inputs)
   try:
     resolved = processor.run_resolver_steps(
         initial_dict,
