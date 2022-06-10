@@ -1,6 +1,7 @@
 # Current Version (Still in Development)
 
 ## Major Features and Improvements
+*   Added Json value artifact.
 
 ## Breaking Changes
 

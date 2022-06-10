@@ -361,7 +361,7 @@ class PlaceholderUtilsTest(tf.test.TestCase):
             pipeline_info=pipeline_pb2.PipelineInfo(id="test_pipeline_id")))
     pb = text_format.Parse(
         """
-      operator {
+        operator {
           artifact_value_op {
             expression {
               operator {
@@ -382,6 +382,56 @@ class PlaceholderUtilsTest(tf.test.TestCase):
     resolved_value = placeholder_utils.resolve_placeholder_expression(
         pb, self._resolution_context)
     self.assertEqual(resolved_value, 42)
+
+  def testJsonValueArtifactWithIndexOperator(self):
+    test_artifact = standard_artifacts.JsonValue()
+    test_artifact.uri = self.create_tempfile().full_path
+    test_artifact.value = {"test_key": [42, 42.0]}
+    self._resolution_context = placeholder_utils.ResolutionContext(
+        exec_info=data_types.ExecutionInfo(
+            input_dict={
+                "channel_1": [test_artifact],
+            },
+            pipeline_node=pipeline_pb2.PipelineNode(
+                node_info=pipeline_pb2.NodeInfo()),
+            pipeline_info=pipeline_pb2.PipelineInfo(id="test_pipeline_id")))
+    pb = text_format.Parse(
+        """
+        operator {
+          index_op {
+            expression {
+              operator {
+                index_op {
+                  expression {
+                    operator {
+                      artifact_value_op {
+                        expression {
+                          operator {
+                            index_op {
+                              expression {
+                                placeholder {
+                                  type: INPUT_ARTIFACT
+                                  key: "channel_1"
+                                }
+                              }
+                              index: 0
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                  key: "test_key"
+                }
+              }
+            }
+            index: 1
+          }
+        }
+    """, placeholder_pb2.PlaceholderExpression())
+    resolved_value = placeholder_utils.resolve_placeholder_expression(
+        pb, self._resolution_context)
+    self.assertEqual(resolved_value, 42.0)
 
   def testProtoExecPropertyPrimitiveField(self):
     # Access a non-message type proto field

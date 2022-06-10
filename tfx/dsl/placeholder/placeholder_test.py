@@ -188,6 +188,47 @@ class PlaceholderTest(tf.test.TestCase):
         }
     """)
 
+  def testPrimitiveArtifactValueWithIndexAccess(self):
+    # If the value represented by a primitive artifact is intended to be a
+    # JSON value, users can use index operator [] to access fields in the
+    # deserialized JSON value.
+    # In this example, the placeholder expression represents accessing the
+    # following JSON value: { 'key': [...] }
+    self._assert_placeholder_pb_equal_and_deepcopyable(
+        ph.input('primitive').value['key'][0], """
+        operator {
+          index_op {
+            expression {        
+              operator {
+                index_op {
+                  expression {
+                    operator {
+                      artifact_value_op {
+                        expression {
+                          operator {
+                            index_op {
+                              expression {
+                                placeholder {
+                                  type: INPUT_ARTIFACT
+                                  key: "primitive"
+                                }
+                              }
+                              index: 0
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                  key: 'key'
+                }
+              }
+            }
+            index: 0
+          }
+        }
+    """)
+
   def testConcatUriWithString(self):
     self._assert_placeholder_pb_equal_and_deepcopyable(
         ph.output('model').uri + '/model', """

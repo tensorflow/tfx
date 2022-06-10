@@ -102,7 +102,7 @@ class _IndexOperator(_PlaceholderOperator):
   Prefer to use [index] operator overloading of Placeholder.
   """
 
-  def __init__(self, index: int):
+  def __init__(self, index: Union[int, str]):
     super().__init__()
     self._index = index
 
@@ -115,7 +115,10 @@ class _IndexOperator(_PlaceholderOperator):
 
     result = placeholder_pb2.PlaceholderExpression()
     result.operator.index_op.expression.CopyFrom(sub_expression_pb)
-    result.operator.index_op.index = self._index
+    if isinstance(self._index, int):
+      result.operator.index_op.index = self._index
+    if isinstance(self._index, str):
+      result.operator.index_op.key = self._index
     return result
 
 
@@ -419,7 +422,7 @@ class ArtifactPlaceholder(Placeholder):
     self._operators.append(_ArtifactValueOperator())
     return self
 
-  def __getitem__(self: _T, key: int) -> _T:
+  def __getitem__(self: _T, key: Union[int, str]) -> _T:
     self._operators.append(_IndexOperator(key))
     return self
 
