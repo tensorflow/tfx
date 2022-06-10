@@ -41,49 +41,49 @@ from ml_metadata.proto import metadata_store_pb2
 _TESTDATA_DIR = os.path.join(os.path.dirname(__file__), 'testdata')
 
 
-@ops.register
+@ops.testonly_register
 class IdentityOp(resolver_op.ResolverOp):
 
   def apply(self, input_dict):
     return input_dict
 
 
-@ops.register
+@ops.testonly_register
 class SkippingOp(resolver_op.ResolverOp):
 
   def apply(self, input_dict):
     raise exceptions.SkipSignal()
 
 
-@ops.register
+@ops.testonly_register
 class BadOutputOp(resolver_op.ResolverOp):
 
   def apply(self, input_dict):
     return 'This is not a dict'
 
 
-@ops.register
+@ops.testonly_register
 class DuplicateOp(resolver_op.ResolverOp):
 
   def apply(self, input_dict):
     return [input_dict, input_dict]
 
 
-@ops.register
+@ops.testonly_register
 class IdentityStrategy(resolver.ResolverStrategy):
 
   def resolve_artifacts(self, store, input_dict):
     return input_dict
 
 
-@ops.register
+@ops.testonly_register
 class SkippingStrategy(resolver.ResolverStrategy):
 
   def resolve_artifacts(self, store, input_dict):
     return None
 
 
-@ops.register
+@ops.testonly_register
 class BadOutputStrategy(resolver.ResolverStrategy):
 
   def resolve_artifacts(self, store, input_dict):
