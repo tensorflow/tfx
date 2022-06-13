@@ -81,7 +81,7 @@ _EXECUTION_STATE_TO_RUN_STATE_MAP = {
 # this class MUST NOT be moved out of this module.
 @attr.s(auto_attribs=True, kw_only=True)
 class NodeState(json_utils.Jsonable):
-  """Records node state.
+  """Records node.
 
   Attributes:
     state: Current state of the node.

@@ -53,7 +53,7 @@ _IN_MEMORY_PREDICATE_FN_DEFAULT_POLLING_INTERVAL_SECS = 1.0
 
 
 def _pipeline_ops_lock(fn):
-  """Decorator to run `fn` within `_PIPELINE_OPS_LOCK` context."""
+  """Decorator to run `fn` `_PIPELINE_OPS_LOCK` context."""
 
   @functools.wraps(fn)
   def _wrapper(*args, **kwargs):
