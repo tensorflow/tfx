@@ -41,49 +41,49 @@ from ml_metadata.proto import metadata_store_pb2
 _TESTDATA_DIR = os.path.join(os.path.dirname(__file__), 'testdata')
 
 
-@ops.register
+@ops.testonly_register
 class IdentityOp(resolver_op.ResolverOp):
 
   def apply(self, input_dict):
     return input_dict
 
 
-@ops.register
+@ops.testonly_register
 class SkippingOp(resolver_op.ResolverOp):
 
   def apply(self, input_dict):
     raise exceptions.SkipSignal()
 
 
-@ops.register
+@ops.testonly_register
 class BadOutputOp(resolver_op.ResolverOp):
 
   def apply(self, input_dict):
     return 'This is not a dict'
 
 
-@ops.register
+@ops.testonly_register
 class DuplicateOp(resolver_op.ResolverOp):
 
   def apply(self, input_dict):
     return [input_dict, input_dict]
 
 
-@ops.register
+@ops.testonly_register
 class IdentityStrategy(resolver.ResolverStrategy):
 
   def resolve_artifacts(self, store, input_dict):
     return input_dict
 
 
-@ops.register
+@ops.testonly_register
 class SkippingStrategy(resolver.ResolverStrategy):
 
   def resolve_artifacts(self, store, input_dict):
     return None
 
 
-@ops.register
+@ops.testonly_register
 class BadOutputStrategy(resolver.ResolverStrategy):
 
   def resolve_artifacts(self, store, input_dict):
@@ -368,7 +368,7 @@ class InputsUtilsTest(test_case_utils.TfxTest, _TestMixin):
 
   def testResolveInputArtifacts_FilterOutInsufficient(self):
     self._setup_pipeline_for_input_resolver_test()
-    self._my_transform.inputs.inputs['examples'].min_count = 2
+    self._my_transform.inputs.inputs['examples_1'].min_count = 2
 
     with self.assertRaisesRegex(exceptions.InputResolutionError,
                                 'No valid inputs'):
@@ -431,6 +431,47 @@ class InputsUtilsTest(test_case_utils.TfxTest, _TestMixin):
     self.assertEqual(len(parameter_schemas), 2)
     self.assertProtoPartiallyEquals(expected_schema,
                                     parameter_schemas['key_one'])
+
+  def test_resolve_dynamic_parameters(self):
+    dynamic_parameters = pipeline_pb2.NodeParameters()
+    text_format.Parse(
+        """
+        parameters {
+          key: "input_num"
+          value {
+            placeholder {
+              operator {
+                artifact_value_op {
+                  expression {
+                    operator {
+                      index_op {
+                        expression {
+                          placeholder {
+                            key: "_test_placeholder"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }""", dynamic_parameters)
+    test_artifact = types.standard_artifacts.Integer()
+    test_artifact.uri = self.create_tempfile().full_path
+    test_artifact.value = 42
+    input_dict = {'_test_placeholder': [test_artifact]}
+    dynamic_parameters_res = inputs_utils.resolve_dynamic_parameters(
+        dynamic_parameters, input_dict)
+    self.assertLen(dynamic_parameters_res, 1)
+    self.assertEqual(dynamic_parameters_res['input_num'], 42)
+
+    with self.assertRaisesRegex(
+        exceptions.InputResolutionError,
+        'Failed to resolve dynamic exec properties: input_num'):
+      dynamic_parameters_res = inputs_utils.resolve_dynamic_parameters(
+          dynamic_parameters, {})
 
 
 def unprocessed_artifacts_resolvers_available():

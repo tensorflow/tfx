@@ -20,7 +20,6 @@ import decimal
 import math
 
 import absl
-
 from tfx.types.artifact import Artifact
 from tfx.types.artifact import Property
 from tfx.types.artifact import PropertyType
@@ -28,6 +27,7 @@ from tfx.types.system_artifacts import Dataset
 from tfx.types.system_artifacts import Model as SystemModel
 from tfx.types.system_artifacts import Statistics
 from tfx.types.value_artifact import ValueArtifact
+from tfx.utils import json_utils
 
 # Span for an artifact.
 SPAN_PROPERTY = Property(type=PropertyType.INT)
@@ -142,6 +142,17 @@ class Schema(_TfxArtifact):
 
 class TransformCache(_TfxArtifact):
   TYPE_NAME = 'TransformCache'
+
+
+class JsonValue(ValueArtifact):
+  """Artifacts representing a Jsonable value."""
+  TYPE_NAME = 'JsonValue'
+
+  def encode(self, value: json_utils.JsonableType) -> str:
+    return json_utils.dumps(value)
+
+  def decode(self, serialized_value: str) -> json_utils.JsonableType:
+    return json_utils.loads(serialized_value)
 
 
 class Bytes(ValueArtifact):

@@ -1,9 +1,7 @@
 # Current Version (Still in Development)
 
 ## Major Features and Improvements
-
-*   Added experimental exit_handler support for KubeflowDagRunner.
-*   Enabled custom labels to be submitted to CAIP training jobs.
+*   Added Json value artifact.
 
 ## Breaking Changes
 
@@ -12,6 +10,42 @@
 ### For Component Authors
 
 ## Deprecations
+
+## Bug Fixes and Other Changes
+
+## Dependency Updates
+
+| Package Name | Version Constraints | Previously (in `v1.8.0`) | Comments |
+| -- | -- | -- | -- |
+| `tensorflow` | `>=1.15.5,<2` or `~=2.9.0` | `>=1.15.5,<2` or `~=2.8.0` | |
+| `tensorflow-ranking` | `~=0.5.0` | `~=0.3.0` | Required for TF 2.9 |
+
+## Documentation Updates
+
+# Version 1.8.0
+
+## Major Features and Improvements
+
+*   Added experimental exit_handler support for KubeflowDagRunner.
+*   Enabled custom labels to be submitted to CAIP training jobs.
+*   Enabled custom Python function-based components to share pipeline Beam
+    configuration by [inheriting from BaseBeamComponent]
+(https://www.tensorflow.org/tfx/guide/custom_function_component)
+*   Support dynamic exec properties in TFX pipeline. Downstream component parameter could take the upstream output using Placeholder.
+
+## Breaking Changes
+
+### For Pipeline Authors
+
+*   N/A
+
+### For Component Authors
+
+*   N/A
+
+## Deprecations
+
+*   N/A
 
 ## Bug Fixes and Other Changes
 
@@ -35,11 +69,13 @@
 
 ## Dependency Updates
 
-## Documentation Updates
-
 | Package Name | Version Constraints | Previously (in `v1.7.0`) | Comments |
 | -- | -- | -- | -- |
 | `apache-beam[gcp]` | `>=2.38,<3` | `>=2.36,<3` | Synced release train |
+
+## Documentation Updates
+
+*   N/A
 
 # Version 1.7.0
 

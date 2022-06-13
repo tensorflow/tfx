@@ -171,7 +171,8 @@ class _Generator:
       # If there are no runnable nodes, we can abort the pipeline.
       if not runnable_node_ids:
         finalize_pipeline_task = self._abort_task(
-            f'Cannot make progress due to node failures: {failed_nodes_dict}')
+            'Cannot make progress due to node failures: \n' +
+            _status_dict_to_error_message(failed_nodes_dict))
 
     result = update_node_state_tasks
     if finalize_pipeline_task:
@@ -316,7 +317,7 @@ class _Generator:
               node_uid=node_uid, state=pstate.NodeState.SKIPPED))
       return result
 
-    if not resolved_info.input_artifacts:
+    if not resolved_info.input_and_params:
       error_msg = f'failure to resolve inputs; node uid: {node_uid}'
       result.append(
           task_lib.UpdateNodeStateTask(
@@ -330,11 +331,10 @@ class _Generator:
         metadata_handler=self._mlmd_handle,
         execution_type=node.node_info.type,
         contexts=resolved_info.contexts,
-        input_dicts=resolved_info.input_artifacts,
-        exec_properties=resolved_info.exec_properties)
+        input_and_params=resolved_info.input_and_params)
 
     # Selects the first artifacts and create a exec task.
-    input_artifacts = resolved_info.input_artifacts[0]
+    input_artifacts = resolved_info.input_and_params[0].input_artifacts
     # Selects the first execution and marks it as RUNNING.
     with mlmd_state.mlmd_execution_atomic_op(
         mlmd_handle=self._mlmd_handle,
@@ -369,7 +369,7 @@ class _Generator:
             execution_id=execution.id,
             contexts=resolved_info.contexts,
             input_artifacts=input_artifacts,
-            exec_properties=resolved_info.exec_properties,
+            exec_properties=resolved_info.input_and_params[0].exec_properties,
             output_artifacts=output_artifacts,
             executor_output_uri=outputs_resolver.get_executor_output_uri(
                 execution.id),
@@ -471,3 +471,13 @@ def _descendants(node_by_id: Mapping[str, pipeline_pb2.PipelineNode],
       queue.extend(node_by_id[q_node_id].downstream_nodes)
       result.add(q_node_id)
   return result
+
+
+def _status_dict_to_error_message(failed_nodes_dict: Dict[str,
+                                                          status_lib.Status]):
+  lines = []
+  for node_id, status in failed_nodes_dict.items():
+    lines.append(
+        f"Node '{node_id}' has status code {status.code} with message:")
+    lines.append('  ' + status.message)
+  return '\n'.join(lines)

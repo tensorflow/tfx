@@ -28,5 +28,5 @@ class ResolverTaskScheduler(task_scheduler.TaskScheduler[task_lib.ExecNodeTask]
         output=task_scheduler.ResolverNodeOutput(
             resolved_input_artifacts=self.task.input_artifacts))
 
-  def cancel(self) -> None:
+  def cancel(self, cancel_task: task_lib.CancelTask) -> None:
     pass

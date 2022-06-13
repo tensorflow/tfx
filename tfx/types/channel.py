@@ -32,8 +32,9 @@ from ml_metadata.proto import metadata_store_pb2
 
 # Property type for artifacts, executions and contexts.
 Property = Union[int, float, str]
-ExecPropertyTypes = Union[int, float, str, bool, message.Message, List[Any]]
-_EXEC_PROPERTY_CLASSES = (int, float, str, bool, message.Message, list)
+ExecPropertyTypes = Union[int, float, str, bool, message.Message, List[Any],
+                          Dict[Any, Any]]
+_EXEC_PROPERTY_CLASSES = (int, float, str, bool, message.Message, list, dict)
 
 
 def _is_artifact_type(value: Any):

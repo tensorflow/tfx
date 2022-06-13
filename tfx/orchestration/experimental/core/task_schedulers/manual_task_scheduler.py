@@ -74,7 +74,7 @@ class ManualTaskScheduler(task_scheduler.TaskScheduler[task_lib.ExecNodeTask]):
                pipeline: pipeline_pb2.Pipeline, task: task_lib.ExecNodeTask):
     super().__init__(mlmd_handle, pipeline, task)
     self._cancel = threading.Event()
-    if task.is_cancelled:
+    if task.cancel_type:
       self._cancel.set()
 
   def schedule(self) -> task_scheduler.TaskSchedulerResult:
@@ -94,5 +94,5 @@ class ManualTaskScheduler(task_scheduler.TaskScheduler[task_lib.ExecNodeTask]):
         status=status_lib.Status(code=status_lib.Code.CANCELLED),
         output=task_scheduler.ExecutorNodeOutput())
 
-  def cancel(self) -> None:
+  def cancel(self, cancel_task: task_lib.CancelTask) -> None:
     self._cancel.set()

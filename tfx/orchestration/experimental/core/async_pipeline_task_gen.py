@@ -186,14 +186,16 @@ class _Generator:
     resolved_info = task_gen_utils.generate_resolved_info(
         metadata_handler, node)
     # TODO(b/207038460): Update async pipeline to support ForEach.
-    if (resolved_info is None or not resolved_info.input_artifacts or
-        resolved_info.input_artifacts[0] is None or
-        not any(resolved_info.input_artifacts[0].values())):
+    if (resolved_info is None or not resolved_info.input_and_params or
+        resolved_info.input_and_params[0] is None or
+        resolved_info.input_and_params[0].input_artifacts is None or
+        not any(resolved_info.input_and_params[0].input_artifacts.values())):
       logging.info(
           'Task cannot be generated for node %s since no input artifacts '
           'are resolved.', node.node_info.id)
       return result
-    input_artifact = resolved_info.input_artifacts[0]
+    input_artifacts = resolved_info.input_and_params[0].input_artifacts
+    exec_properties = resolved_info.input_and_params[0].exec_properties
 
     executor_spec_fingerprint = hashlib.sha256()
     executor_spec = task_gen_utils.get_executor_spec(
@@ -201,7 +203,7 @@ class _Generator:
     if executor_spec is not None:
       executor_spec_fingerprint.update(
           executor_spec.SerializeToString(deterministic=True))
-    resolved_info.exec_properties[
+    exec_properties[
         constants
         .EXECUTOR_SPEC_FINGERPRINT_KEY] = executor_spec_fingerprint.hexdigest()
 
@@ -215,12 +217,12 @@ class _Generator:
       latest_exec_input_artifact_ids = artifact_ids_by_event_type.get(
           metadata_store_pb2.Event.INPUT, set())
       current_exec_input_artifact_ids = set(
-          a.id for a in itertools.chain(*input_artifact.values()))
+          a.id for a in itertools.chain(*input_artifacts.values()))
       latest_exec_properties = task_gen_utils.extract_properties(latest_exec)
-      current_exec_properties = resolved_info.exec_properties
+      current_exec_properties = exec_properties
       latest_exec_executor_spec_fp = latest_exec_properties[
           constants.EXECUTOR_SPEC_FINGERPRINT_KEY]
-      current_exec_executor_spec_fp = resolved_info.exec_properties[
+      current_exec_executor_spec_fp = current_exec_properties[
           constants.EXECUTOR_SPEC_FINGERPRINT_KEY]
       if (latest_exec_input_artifact_ids == current_exec_input_artifact_ids and
           _exec_properties_match(latest_exec_properties,
@@ -235,8 +237,8 @@ class _Generator:
         metadata_handler=metadata_handler,
         execution_type=node.node_info.type,
         contexts=resolved_info.contexts,
-        input_artifacts=input_artifact,
-        exec_properties=resolved_info.exec_properties)
+        input_artifacts=input_artifacts,
+        exec_properties=exec_properties)
     outputs_resolver = outputs_utils.OutputsResolver(
         node, self._pipeline.pipeline_info, self._pipeline.runtime_spec,
         self._pipeline.execution_mode)
@@ -265,8 +267,8 @@ class _Generator:
             node_uid=node_uid,
             execution_id=execution.id,
             contexts=resolved_info.contexts,
-            input_artifacts=input_artifact,
-            exec_properties=resolved_info.exec_properties,
+            input_artifacts=input_artifacts,
+            exec_properties=exec_properties,
             output_artifacts=output_artifacts,
             executor_output_uri=outputs_resolver.get_executor_output_uri(
                 execution.id),

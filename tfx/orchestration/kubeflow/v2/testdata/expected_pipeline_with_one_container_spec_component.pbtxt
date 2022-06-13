@@ -151,6 +151,12 @@ components {
         }
       }
       parameters {
+        key: "output_key"
+        value {
+          type: STRING
+        }
+      }
+      parameters {
         key: "reimport"
         value {
           type: INT
@@ -218,6 +224,16 @@ root {
               runtime_value {
                 constant_value {
                   string_value: "some-uri"
+                }
+              }
+            }
+          }
+          parameters {
+            key: "output_key"
+            value {
+              runtime_value {
+                constant_value {
+                  string_value: "result"
                 }
               }
             }

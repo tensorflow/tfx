@@ -14,10 +14,12 @@
 """Test utilities."""
 
 import os
+from typing import Optional
 import uuid
 
 from absl.testing.absltest import mock
 from tfx import types
+from tfx.orchestration import metadata
 from tfx.orchestration.experimental.core import mlmd_state
 from tfx.orchestration.experimental.core import pipeline_state as pstate
 from tfx.orchestration.experimental.core import service_jobs
@@ -27,9 +29,13 @@ from tfx.orchestration.portable import execution_publish_utils
 from tfx.orchestration.portable.mlmd import context_lib
 from tfx.orchestration.portable.mlmd import execution_lib
 from tfx.proto.orchestration import pipeline_pb2
+from tfx.types import standard_artifacts
 from tfx.utils import status as status_lib
 from tfx.utils import test_case_utils
+
 from ml_metadata.proto import metadata_store_pb2
+
+OUTPUT_NUM = 33
 
 
 class TfxTest(test_case_utils.TfxTest):
@@ -60,6 +66,25 @@ def fake_example_gen_run(mlmd_connection, example_gen, span, version):
   """Writes fake example_gen output and successful execution to MLMD."""
   with mlmd_connection as m:
     return fake_example_gen_run_with_handle(m, example_gen, span, version)
+
+
+def fake_upstream_node_run(mlmd_connection: metadata.Metadata,
+                           upstream_node: pipeline_pb2.PipelineNode,
+                           tmp_path: str) -> metadata_store_pb2.Execution:
+  """Writes fake upstream node output and successful execution to MLMD."""
+  with mlmd_connection as mlmd_handle:
+    num_output = standard_artifacts.Integer()
+    num_output.uri = tmp_path
+    num_output.value = OUTPUT_NUM
+    contexts = context_lib.prepare_contexts(mlmd_handle, upstream_node.contexts)
+    execution = execution_publish_utils.register_execution(
+        mlmd_handle, upstream_node.node_info.type, contexts)
+    execution_publish_utils.publish_succeeded_execution(mlmd_handle,
+                                                        execution.id, contexts,
+                                                        {
+                                                            'num': [num_output],
+                                                        })
+    return execution
 
 
 def fake_component_output_with_handle(mlmd_handle,
@@ -110,7 +135,8 @@ def fake_cached_execution(mlmd_connection, cache_context, component):
         output_artifacts=cached_outputs)
 
 
-def fake_cached_example_gen_run(mlmd_connection, example_gen):
+def fake_cached_example_gen_run(mlmd_connection: metadata.Metadata,
+                                example_gen: pipeline_pb2.PipelineNode):
   """Writes fake cached example gen execution to MLMD."""
   with mlmd_connection as m:
     output_example = types.Artifact(
@@ -162,17 +188,19 @@ def fake_execute_node(mlmd_connection, task, artifact_custom_properties=None):
                                                         output_artifacts)
 
 
-def create_exec_node_task(node_uid,
-                          execution=None,
-                          contexts=None,
-                          exec_properties=None,
-                          input_artifacts=None,
-                          output_artifacts=None,
-                          executor_output_uri=None,
-                          stateful_working_dir=None,
-                          tmp_dir=None,
-                          pipeline=None,
-                          is_cancelled=False) -> task_lib.ExecNodeTask:
+def create_exec_node_task(
+    node_uid,
+    execution=None,
+    contexts=None,
+    exec_properties=None,
+    input_artifacts=None,
+    output_artifacts=None,
+    executor_output_uri=None,
+    stateful_working_dir=None,
+    tmp_dir=None,
+    pipeline=None,
+    cancel_type: Optional[task_lib.NodeCancelType] = None
+) -> task_lib.ExecNodeTask:
   """Creates an `ExecNodeTask` for testing."""
   return task_lib.ExecNodeTask(
       node_uid=node_uid,
@@ -185,7 +213,7 @@ def create_exec_node_task(node_uid,
       stateful_working_dir=stateful_working_dir or '',
       tmp_dir=tmp_dir or '',
       pipeline=pipeline or mock.Mock(),
-      is_cancelled=is_cancelled)
+      cancel_type=cancel_type)
 
 
 def create_node_uid(pipeline_id, node_id):

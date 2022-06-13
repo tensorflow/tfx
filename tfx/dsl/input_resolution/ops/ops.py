@@ -13,7 +13,7 @@
 # limitations under the License.
 """Module for pre-importing all known ResolverOp for dependency tracking."""
 
-from typing import Type, Union, Dict
+from typing import Type, Union, Dict, Optional
 
 from tfx.dsl.components.common import resolver
 from tfx.dsl.input_resolution import resolver_op
@@ -29,24 +29,53 @@ _ResolverOpType = Type[resolver_op.ResolverOp]
 _ResolverStrategyType = Type[resolver.ResolverStrategy]
 _OpTypes = Union[_ResolverOpType, _ResolverStrategyType]
 _OPS_BY_CLASSPATH: Dict[str, _OpTypes] = {}
+_OPS_BY_NAME: Dict[str, _ResolverOpType] = {}
 
 
-def register(cls: _OpTypes) -> _OpTypes:
-  _OPS_BY_CLASSPATH[name_utils.get_full_name(cls, strict_check=False)] = cls
-  return cls
+def _register_op(cls: _ResolverOpType, name: Optional[str] = None) -> None:
+  class_path = name_utils.get_full_name(cls, strict_check=False)
+  _OPS_BY_CLASSPATH[class_path] = cls
+  if name is None:
+    name = class_path
+  if name in _OPS_BY_NAME:
+    raise ValueError(f'Duplicated name {name} while registering.')
+  _OPS_BY_NAME[name] = cls
 
+# go/keep-sorted start
 SkipIfEmpty = skip_if_empty_op.SkipIfEmpty
-register(SkipIfEmpty)
 Unnest = unnest_op.Unnest
-register(Unnest)
+# go/keep-sorted end
+# go/keep-sorted start
+_register_op(SkipIfEmpty, name='tfx.internal.SkipIfEmpty')
+_register_op(Unnest, name='tfx.internal.Unnest')
+# go/keep-sorted end
+
+
+def _register_strategy(cls: _ResolverStrategyType) -> None:
+  _OPS_BY_CLASSPATH[name_utils.get_full_name(cls, strict_check=False)] = cls
 
 # For ResolverStrategy, register them but do not expose their public name.
-register(conditional_strategy.ConditionalStrategy)
-register(latest_artifact_strategy.LatestArtifactStrategy)
-register(latest_blessed_model_strategy.LatestBlessedModelStrategy)
-register(span_range_strategy.SpanRangeStrategy)
+# go/keep-sorted start
+_register_strategy(conditional_strategy.ConditionalStrategy)
+_register_strategy(latest_artifact_strategy.LatestArtifactStrategy)
+_register_strategy(latest_blessed_model_strategy.LatestBlessedModelStrategy)
+_register_strategy(span_range_strategy.SpanRangeStrategy)
+# go/keep-sorted end
+
+
+def testonly_register(cls: _OpTypes) -> _OpTypes:
+  if issubclass(cls, resolver_op.ResolverOp):
+    _register_op(cls)
+  else:
+    _register_strategy(cls)
+  return cls
 
 
 def get_by_class_path(class_path: str) -> _OpTypes:
   """Get ResolverOp class from class path string."""
   return _OPS_BY_CLASSPATH[class_path]
+
+
+def get_by_name(name: str) -> _ResolverOpType:
+  """Get ResolverOp class from registered name."""
+  return _OPS_BY_NAME[name]

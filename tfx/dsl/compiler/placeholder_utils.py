@@ -65,7 +65,7 @@ class ResolutionContext:
 # Note: Pytype's int includes long from Python3
 # We does not support bytes, which may result from proto field access. Must use
 # base64 encode operator to explicitly convert it into str.
-_PlaceholderResolvedTypes = (int, float, str, bool, type(None), list)
+_PlaceholderResolvedTypes = (int, float, str, bool, type(None), list, dict)
 _PlaceholderResolvedTypeHints = Union[_PlaceholderResolvedTypes]
 
 
@@ -291,11 +291,13 @@ class _ExpressionResolver:
     value = self.resolve(op.expression)
     if value is None or not value:
       raise NullDereferenceError(op.expression)
+    index_or_key = op.key if op.key else op.index
     try:
-      return value[op.index]
+      return value[index_or_key]
     except (TypeError, IndexError) as e:
       raise ValueError(
-          f"IndexOperator failed to access the given index {op.index}.") from e
+          f"IndexOperator failed to access the given index {index_or_key}."
+      ) from e
 
   @_register(placeholder_pb2.ArtifactPropertyOperator)
   def _resolve_property_operator(

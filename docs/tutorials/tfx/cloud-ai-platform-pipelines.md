@@ -551,7 +551,7 @@ your pipeline.
 
 The example presented here is really only meant to get you started. For a more
 advanced example see the
-[TensorBoard Tutorial](https://www.tensorflow.org/tensorboard/r1/summaries).
+[TensorBoard Tutorial](https://www.tensorflow.org/tensorboard/get_started).
 
 ## 11. Analyzing model performance
 

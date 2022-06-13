@@ -15,7 +15,7 @@
 
 import itertools
 import time
-from typing import Dict, Iterable, List, Mapping, Optional, Sequence
+from typing import Dict, Iterable, List, Optional, Sequence, MutableMapping
 import uuid
 
 from absl import logging
@@ -33,26 +33,32 @@ from tfx.proto.orchestration import pipeline_pb2
 from tfx.utils import proto_utils
 from tfx.utils import typing_utils
 
+from google.protobuf import any_pb2
 import ml_metadata as mlmd
 from ml_metadata.proto import metadata_store_pb2
-from google.protobuf import any_pb2
 
 _EXECUTION_SET_SIZE = '__execution_set_size__'
 _EXECUTION_TIMESTAMP = '__execution_timestamp__'
 
 
 @attr.s(auto_attribs=True)
+class InputAndParam:
+  input_artifacts: Optional[typing_utils.ArtifactMultiMap] = None
+  exec_properties: Optional[MutableMapping[str, types.ExecPropertyTypes]] = None
+
+
+@attr.s(auto_attribs=True)
 class ResolvedInfo:
   contexts: List[metadata_store_pb2.Context]
-  exec_properties: Dict[str, types.ExecPropertyTypes]
-  input_artifacts: List[Optional[typing_utils.ArtifactMultiMap]]
+  input_and_params: List[InputAndParam]
 
 
-def generate_task_from_execution(metadata_handler: metadata.Metadata,
-                                 pipeline: pipeline_pb2.Pipeline,
-                                 node: pipeline_pb2.PipelineNode,
-                                 execution: metadata_store_pb2.Execution,
-                                 is_cancelled: bool = False) -> task_lib.Task:
+def generate_task_from_execution(
+    metadata_handler: metadata.Metadata,
+    pipeline: pipeline_pb2.Pipeline,
+    node: pipeline_pb2.PipelineNode,
+    execution: metadata_store_pb2.Execution,
+    cancel_type: Optional[task_lib.NodeCancelType] = None) -> task_lib.Task:
   """Generates `ExecNodeTask` given execution."""
   if not execution_lib.is_execution_active(execution):
     raise RuntimeError(f'Execution is not active: {execution}.')
@@ -79,7 +85,7 @@ def generate_task_from_execution(metadata_handler: metadata.Metadata,
           execution.id),
       tmp_dir=outputs_resolver.make_tmp_dir(execution.id),
       pipeline=pipeline,
-      is_cancelled=is_cancelled)
+      cancel_type=cancel_type)
 
 
 def generate_task_from_active_execution(
@@ -87,7 +93,7 @@ def generate_task_from_active_execution(
     pipeline: pipeline_pb2.Pipeline,
     node: pipeline_pb2.PipelineNode,
     executions: Iterable[metadata_store_pb2.Execution],
-    is_cancelled: bool = False,
+    cancel_type: Optional[task_lib.NodeCancelType] = None,
 ) -> Optional[task_lib.Task]:
   """Generates task from active execution (if any).
 
@@ -98,7 +104,7 @@ def generate_task_from_active_execution(
     pipeline: The pipeline containing the node.
     node: The pipeline node for which to generate a task.
     executions: A sequence of all executions for the given node.
-    is_cancelled: Sets `is_cancelled` in ExecNodeTask.
+    cancel_type: Sets `cancel_type` in ExecNodeTask.
 
   Returns:
     A `Task` proto if active execution exists for the node. `None` otherwise.
@@ -123,7 +129,7 @@ def generate_task_from_active_execution(
       pipeline,
       node,
       active_executions[0],
-      is_cancelled=is_cancelled)
+      cancel_type=cancel_type)
 
 
 def extract_properties(
@@ -183,6 +189,9 @@ def generate_resolved_info(
   # Resolve execution properties.
   exec_properties = resolve_exec_properties(node)
 
+  # Define Input and Param.
+  input_and_params = []
+
   # Resolve inputs.
   try:
     resolved_input_artifacts = inputs_utils.resolve_input_artifacts(
@@ -197,10 +206,20 @@ def generate_resolved_info(
     assert isinstance(resolved_input_artifacts, inputs_utils.Trigger)
     assert resolved_input_artifacts
 
-  return ResolvedInfo(
-      contexts=contexts,
-      exec_properties=exec_properties,
-      input_artifacts=resolved_input_artifacts)
+  if resolved_input_artifacts:
+    for input_artifacts in resolved_input_artifacts:
+      dynamic_exec_properties = inputs_utils.resolve_dynamic_parameters(
+          node_parameters=node.parameters, input_artifacts=input_artifacts)
+      if not dynamic_exec_properties:
+        cur_exec_properties = exec_properties
+      else:
+        cur_exec_properties = {**exec_properties, **dynamic_exec_properties}
+
+      input_and_params.append(
+          InputAndParam(
+              input_artifacts=input_artifacts,
+              exec_properties=cur_exec_properties))
+  return ResolvedInfo(contexts=contexts, input_and_params=input_and_params)
 
 
 def get_executions(
@@ -326,8 +345,7 @@ def register_executions(
     metadata_handler: metadata.Metadata,
     execution_type: metadata_store_pb2.ExecutionType,
     contexts: Sequence[metadata_store_pb2.Context],
-    input_dicts: List[typing_utils.ArtifactMultiMap],
-    exec_properties: Optional[Mapping[str, types.ExecPropertyTypes]] = None,
+    input_and_params: List[InputAndParam]
 ) -> List[metadata_store_pb2.Execution]:
   """Registers multiple executions in MLMD.
 
@@ -339,9 +357,9 @@ def register_executions(
     metadata_handler: A handler to access MLMD.
     execution_type: The type of the execution.
     contexts: MLMD contexts to associated with the executions.
-    input_dicts: A list of dictionaries of artifacts. One execution will be
-      registered for each of the input_dict.
-    exec_properties: Execution properties. Will be attached to the executions.
+    input_and_params: A list of InputAndParams, which includes input_dicts
+    (dictionaries of artifacts. One execution will be registered for each of the
+    input_dict) and corresponding exec_properties.
 
   Returns:
     A list of MLMD executions that are registered in MLMD, with id populated.
@@ -351,20 +369,20 @@ def register_executions(
   # TODO(b/207038460): Use the new feature of batch executions update once it is
   # implemented (b/209883142).
   timestamp = int(time.time() * 1e6)
-  for input_artifacts in input_dicts:
+  for input_and_param in input_and_params:
     execution = execution_lib.prepare_execution(
         metadata_handler,
         execution_type,
         metadata_store_pb2.Execution.NEW,
-        exec_properties,
+        input_and_param.exec_properties,
         execution_name=str(uuid.uuid4()))
     execution.custom_properties[_EXECUTION_SET_SIZE].int_value = len(
-        input_dicts)
+        input_and_params)
     execution.custom_properties[_EXECUTION_TIMESTAMP].int_value = timestamp
     executions.append(
         execution_lib.put_execution(
             metadata_handler,
             execution,
             contexts,
-            input_artifacts=input_artifacts))
+            input_artifacts=input_and_param.input_artifacts))
   return executions

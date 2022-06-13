@@ -1348,7 +1348,6 @@ class TransformProcessor:
             pre_transform_stats_options = _InvokeStatsOptionsUpdaterFn(
                 stats_options_updater_fn,
                 stats_options_util.StatsType.PRE_TRANSFORM, schema_proto)
-
             if self._TFDVWriteShardedOutput():
               pre_transform_stats_options.experimental_result_partitions = (
                   _SHARDED_OUTPUT_PARTITIONS)
@@ -1443,7 +1442,7 @@ class TransformProcessor:
                   _SHARDED_STATS_KEY:
                       os.path.join(
                           stats_output_paths[
-                              labels.PRE_TRANSFORM_OUTPUT_STATS_PATH_LABEL],
+                              labels.POST_TRANSFORM_OUTPUT_STATS_PATH_LABEL],
                           _SHARDED_STATS_PREFIX),
                   _SCHEMA_KEY:
                       os.path.join(

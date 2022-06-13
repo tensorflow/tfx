@@ -241,12 +241,13 @@ def make_default_output_config(
 def _glob_to_regex(glob_pattern: str) -> str:
   """Changes glob pattern to regex pattern."""
   regex_pattern = glob_pattern
-  regex_pattern = regex_pattern.replace('.', '\\.')
-  regex_pattern = regex_pattern.replace('+', '\\+')
-  regex_pattern = regex_pattern.replace('*', '[^/]*')
-  regex_pattern = regex_pattern.replace('?', '[^/]')
-  regex_pattern = regex_pattern.replace('(', '\\(')
-  regex_pattern = regex_pattern.replace(')', '\\)')
+  regex_pattern = regex_pattern.replace('\\', '\\\\')
+  regex_pattern = regex_pattern.replace('.', r'\.')
+  regex_pattern = regex_pattern.replace('+', r'\+')
+  regex_pattern = regex_pattern.replace('*', r'[^\\/]*')
+  regex_pattern = regex_pattern.replace('?', r'[^\\/]')
+  regex_pattern = regex_pattern.replace('(', r'\(')
+  regex_pattern = regex_pattern.replace(')', r'\)')
   return regex_pattern
 
 

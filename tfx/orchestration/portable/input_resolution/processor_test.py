@@ -27,7 +27,7 @@ from tfx.utils import test_case_utils
 from google.protobuf import text_format
 
 
-@ops.register
+@ops.testonly_register
 class RepeatStrategy(resolver.ResolverStrategy):
 
   def __init__(self, num: int):
@@ -40,7 +40,7 @@ class RepeatStrategy(resolver.ResolverStrategy):
     return {key: value * self.num for key, value in input_dict.items()}
 
 
-@ops.register
+@ops.testonly_register
 class NoneStrategy(resolver.ResolverStrategy):
 
   def resolve_artifacts(self, store, input_dict):
@@ -53,7 +53,7 @@ class UnregisteredStrategy(resolver.ResolverStrategy):
     return input_dict
 
 
-@ops.register
+@ops.testonly_register
 class RepeatOp(resolver_op.ResolverOp):
   num = resolver_op.ResolverOpProperty(type=int)
 
