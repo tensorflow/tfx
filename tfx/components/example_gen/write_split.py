@@ -14,16 +14,19 @@
 """PTransform for write split."""
 import json
 import os
-from typing import Union, Dict
+from typing import Union, Dict, Any
 
 import apache_beam as beam
-import pyarrow
+import pyarrow as pa
 import tensorflow as tf
 from tfx.proto import example_gen_pb2
 from tfx_bsl.telemetry import util
 
 # Default file name for TFRecord output file prefix.
-DEFAULT_FILE_NAME = 'data_tfrecord'
+from tfx.types import standard_component_specs
+
+DEFAULT_PARQUET_FILE_NAME = 'data'
+DEFAULT_TF_RECORD_FILE_NAME = 'data_tfrecord'
 
 # Metrics namespace for ExampleGen.
 METRICS_NAMESPACE = util.MakeTfxNamespace(['ExampleGen'])
@@ -40,12 +43,10 @@ class MaybeSerialize(beam.DoFn):
                                                        'num_instances')
 
   def process(self, e: Union[tf.train.Example, tf.train.SequenceExample,
-                             bytes, Dict[str, object]]):
+                             bytes]):
     self._num_instances.inc(1)
     if isinstance(e, (tf.train.Example, tf.train.SequenceExample)):
       yield e.SerializeToString()  # pytype: disable=attribute-error
-    elif isinstance(e, dict):
-      yield json.dumps(e).encode('utf-8')
     else:
       yield e
 
@@ -57,10 +58,13 @@ def WriteSplit(
     example_split: beam.pvalue.PCollection,
     output_split_path: str,
     output_format: str,
-    output_payload_format: int,
+    exec_properties: Dict[str, Any]
 ) -> beam.pvalue.PDone:
-  """Shuffles and writes output split as serialized records in TFRecord."""
+  """Shuffles and writes output split as serialized records in TFRecord or Parquet."""
   del output_format
+
+  output_payload_format = exec_properties.get(
+    standard_component_specs.OUTPUT_DATA_FORMAT_KEY)
 
   shuffled = (example_split
           | 'MaybeSerialize' >> beam.ParDo(MaybeSerialize())
@@ -69,15 +73,17 @@ def WriteSplit(
 
   if output_payload_format == example_gen_pb2.PayloadFormat.FORMAT_PARQUET:
     # TODO: propagate schema.
-    schema = pyarrow.schema(list())
+    schema = exec_properties.get("pyarrow_schema")
     return (shuffled
+            | "Deserialize Table" >> beam.Map(
+              lambda bs: pa.deserialize(pa.BufferReader(bs).read_buffer()))
             | "Write Parquet" >> beam.io.WriteToParquet(
-              os.path.join(output_split_path, DEFAULT_FILE_NAME),
-              schema))
+              os.path.join(output_split_path, DEFAULT_PARQUET_FILE_NAME),
+              schema, file_name_suffix=".parquet", codec='snappy'))
 
   return (shuffled
           | 'Write' >> beam.io.WriteToTFRecord(
-              os.path.join(output_split_path, DEFAULT_FILE_NAME),
+              os.path.join(output_split_path, DEFAULT_TF_RECORD_FILE_NAME),
               file_name_suffix='.gz'))
 
 

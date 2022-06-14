@@ -56,8 +56,7 @@ class ExecutorTest(tf.test.TestCase):
               exec_properties={
                   standard_component_specs.INPUT_BASE_KEY: self._input_data_dir
               },
-              split_pattern='tfrecord/*',
-              output_payload_format=example_gen_pb2.PayloadFormat.FORMAT_TF_EXAMPLE)
+              split_pattern='tfrecord/*')
           | 'ToTFExample' >> beam.Map(tf.train.Example.FromString))
 
       def check_result(got):
@@ -94,10 +93,17 @@ class ExecutorTest(tf.test.TestCase):
         self.examples.split_names)
 
     # Check import_example_gen outputs.
-    train_output_file = os.path.join(self.examples.uri, 'Split-train',
-                                     'data_tfrecord-00000-of-00001.gz')
-    eval_output_file = os.path.join(self.examples.uri, 'Split-eval',
-                                    'data_tfrecord-00000-of-00001.gz')
+    if payload_format == example_gen_pb2.PayloadFormat.FORMAT_PARQUET:
+      train_output_file = os.path.join(self.examples.uri, 'Split-train',
+                                       'data-00000-of-00001.parquet')
+      eval_output_file = os.path.join(self.examples.uri, 'Split-eval',
+                                      'data-00000-of-00001.parquet')
+    else:
+      train_output_file = os.path.join(self.examples.uri, 'Split-train',
+                                       'data_tfrecord-00000-of-00001.gz')
+      eval_output_file = os.path.join(self.examples.uri, 'Split-eval',
+                                      'data_tfrecord-00000-of-00001.gz')
+
     self.assertTrue(fileio.exists(train_output_file))
     self.assertTrue(fileio.exists(eval_output_file))
     self.assertGreater(

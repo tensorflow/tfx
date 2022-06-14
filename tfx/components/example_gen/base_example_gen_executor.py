@@ -42,16 +42,12 @@ def _GeneratePartitionKey(record: Union[tf.train.Example,
   if not split_config.HasField('partition_feature_name'):
     if isinstance(record, bytes):
       return record
-    if isinstance(record, dict):
-      return json.dumps(record).encode('utf-8')
     return record.SerializeToString(deterministic=True)
 
   if isinstance(record, tf.train.Example):
     features = record.features.feature  # pytype: disable=attribute-error
   elif isinstance(record, tf.train.SequenceExample):
     features = record.context.feature  # pytype: disable=attribute-error
-  elif isinstance(record, dict):
-    return bytes(record[split_config.partition_feature_name])
   else:
     raise RuntimeError('Split by `partition_feature_name` is only supported '
                        'for FORMAT_TF_EXAMPLE and FORMAT_TF_SEQUENCE_EXAMPLE '
@@ -288,7 +284,7 @@ class BaseExampleGenExecutor(base_beam_executor.BaseBeamExecutor, abc.ABC):
          | 'WriteSplit[{}]'.format(split_name) >> write_split.WriteSplit(
              artifact_utils.get_split_uri(
                  output_dict[standard_component_specs.EXAMPLES_KEY],
-                 split_name), output_file_format, output_payload_format))
+                 split_name), output_file_format, exec_properties))
       # pylint: enable=expression-not-assigned, no-value-for-parameter
 
     output_payload_format = exec_properties.get(

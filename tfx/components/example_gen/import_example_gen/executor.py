@@ -19,6 +19,9 @@ from typing import Any, Dict, Union
 from absl import logging
 import apache_beam as beam
 import tensorflow as tf
+import pyarrow as pa
+import pyarrow.parquet as pq
+from apache_beam.io.filesystems import FileSystems
 
 from tfx.components.example_gen import base_example_gen_executor
 from tfx.proto import example_gen_pb2
@@ -30,8 +33,7 @@ from tfx.types import standard_component_specs
 @beam.typehints.with_output_types(bytes)
 def _ImportSerializedRecord(  # pylint: disable=invalid-name
     pipeline: beam.Pipeline, exec_properties: Dict[str, Any],
-    split_pattern: str,
-    output_payload_format: int) -> beam.pvalue.PCollection:
+    split_pattern: str) -> beam.pvalue.PCollection:
   """Read TFRecord files to PCollection of records.
 
   Note that each input split will be transformed by this function separately.
@@ -49,8 +51,18 @@ def _ImportSerializedRecord(  # pylint: disable=invalid-name
   input_base_uri = exec_properties[standard_component_specs.INPUT_BASE_KEY]
   input_split_pattern = os.path.join(input_base_uri, split_pattern)
   logging.info('Reading input TFRecord data %s.', input_split_pattern)
+  output_payload_format = exec_properties.get(
+    standard_component_specs.OUTPUT_DATA_FORMAT_KEY)
+
+  def _InferArrowSchema(file_pattern):
+    match_result = FileSystems.match([file_pattern])[0]
+    files_metadata = match_result.metadata_list[0]
+    with FileSystems.open(files_metadata.path) as f:
+      return pq.read_schema(f)
 
   if output_payload_format == example_gen_pb2.PayloadFormat.FORMAT_PARQUET:
+    schema = _InferArrowSchema(input_split_pattern)
+    exec_properties["pyarrow_schema"] = schema
     return (pipeline
             | "ReadParquet" >>
             beam.io.ReadFromParquet(file_pattern=input_split_pattern))
@@ -95,11 +107,12 @@ class Executor(base_example_gen_executor.BaseExampleGenExecutor):
       serialized_records = (
           pipeline
           # pylint: disable=no-value-for-parameter
-          | _ImportSerializedRecord(exec_properties, split_pattern, output_payload_format))
+          | _ImportSerializedRecord(exec_properties, split_pattern))
       if output_payload_format == example_gen_pb2.PayloadFormat.FORMAT_PROTO:
         return serialized_records
       elif output_payload_format == example_gen_pb2.PayloadFormat.FORMAT_PARQUET:
-        return serialized_records
+        return (serialized_records
+                | "TableToBytes" >> beam.Map(lambda table: pa.serialize(table).to_buffer().to_pybytes()))
       elif (output_payload_format ==
             example_gen_pb2.PayloadFormat.FORMAT_TF_EXAMPLE):
         return (serialized_records
