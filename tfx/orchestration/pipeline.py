@@ -219,7 +219,7 @@ class Pipeline:
                    metadata.ConnectionConfigType] = None,
                components: Optional[List[base_node.BaseNode]] = None,
                enable_cache: Optional[bool] = False,
-               beam_pipeline_args: Optional[List[str]] = None,
+               beam_pipeline_args: Optional[List[Union[str, ph.Placeholder]]] = None,
                platform_config: Optional[message.Message] = None,
                execution_mode: Optional[ExecutionMode] = ExecutionMode.SYNC,
                **kwargs):

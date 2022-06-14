@@ -213,7 +213,7 @@ class LocalDagRunnerTest(absl.testing.absltest.TestCase):
         components=[dummy_beam_component],
         beam_pipeline_args=['--runner=DirectRunner',
                             '--direct_running_mode=multi_processing',
-                            '--direct_num_workers' + EnvironmentVariablePlaceholder(num_workers_env_var_name)],
+                            EnvironmentVariablePlaceholder(num_workers_env_var_name)],
     )
 
   def testSimplePipelineRun(self):
@@ -254,7 +254,7 @@ class LocalDagRunnerTest(absl.testing.absltest.TestCase):
   def testBeamComponentWithPlaceHolderArgs(self):
     # Set env vars for the placeholder
     num_workers_env_var_name = 'NUM_WORKERS'
-    num_workers_env_var_value = '2'
+    num_workers_env_var_value = '--direct_num_workers=2'
     os.environ[num_workers_env_var_name] = num_workers_env_var_value
 
     local_dag_runner.LocalDagRunner().run(self._getTestBeamComponentPipeline(num_workers_env_var_name))
