@@ -19,6 +19,7 @@
 | -- | -- | -- | -- |
 | `tensorflow` | `>=1.15.5,<2` or `~=2.9.0` | `>=1.15.5,<2` or `~=2.8.0` | |
 | `tensorflow-ranking` | `~=0.5.0` | `~=0.3.0` | Required for TF 2.9 |
+| `tflite-support` | `~=0.4.0` | `~=0.2.0` | For \[examples\] |
 
 ## Documentation Updates
 
