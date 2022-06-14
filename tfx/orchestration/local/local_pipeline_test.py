@@ -26,8 +26,10 @@ import json
 import os
 import tempfile
 from typing import Any, List
+import apache_beam as beam
 
 import absl.testing.absltest
+from apache_beam.options.pipeline_options import DirectOptions
 
 from tfx import types
 from tfx.dsl.compiler import compiler
@@ -35,8 +37,10 @@ from tfx.dsl.component.experimental.annotations import InputArtifact
 from tfx.dsl.component.experimental.annotations import OutputArtifact
 from tfx.dsl.component.experimental.annotations import OutputDict
 from tfx.dsl.component.experimental.annotations import Parameter
+from tfx.dsl.component.experimental.annotations import BeamComponentParameter
 from tfx.dsl.component.experimental.decorators import component
 from tfx.dsl.io import fileio
+from tfx.dsl.placeholder.placeholder import EnvironmentVariablePlaceholder
 from tfx.orchestration import pipeline as pipeline_py
 from tfx.orchestration.local import local_dag_runner
 from tfx.orchestration.metadata import sqlite_metadata_connection_config
@@ -69,6 +73,15 @@ class DummyModel(types.Artifact):
 def LoadDummyDatasetComponent(dataset: OutputArtifact[DummyDataset]):
   dataset.write(['A', 'B', 'C', 'C', 'C'])
   LocalDagRunnerTest.RAN_COMPONENTS.append('Load')
+
+
+@component(use_beam=True)
+def SimpleBeamPoweredComponent(beam_pipeline: BeamComponentParameter[beam.Pipeline] = None):
+  with beam_pipeline as p:
+    print(p.options)
+    print(p.options.view_as(DirectOptions))
+    direct_num_workers = p.options.view_as(DirectOptions).direct_num_workers
+    LocalDagRunnerTest.BEAM_DIRECT_NUM_WORKERS = direct_num_workers
 
 
 class SimpleModel:
@@ -145,10 +158,13 @@ class LocalDagRunnerTest(absl.testing.absltest.TestCase):
   # Global list of components names that have run, used to confirm
   # execution side-effects in local test.
   RAN_COMPONENTS = []
+  # List of beam env vars from placeholders
+  BEAM_DIRECT_NUM_WORKERS = None
 
   def setUp(self):
     super().setUp()
     self.__class__.RAN_COMPONENTS = []
+    self.__class__.BEAM_DIRECT_NUM_WORKERS = None
 
   def _getTestPipeline(self) -> pipeline_py.Pipeline:
     # Construct component instances.
@@ -180,6 +196,25 @@ class LocalDagRunnerTest(absl.testing.absltest.TestCase):
     test_pipeline = self._getTestPipeline()
     c = compiler.Compiler()
     return c.compile(test_pipeline)
+
+  def _getTestBeamComponentPipeline(self, num_workers_env_var_name) -> pipeline_py.Pipeline:
+    # Construct component instances.
+    dummy_beam_component = SimpleBeamPoweredComponent().with_id('Beam')
+
+    # Construct and run pipeline
+    temp_path = tempfile.mkdtemp()
+    pipeline_root_path = os.path.join(temp_path, 'pipeline_root')
+    metadata_path = os.path.join(temp_path, 'metadata.db')
+    return pipeline_py.Pipeline(
+        pipeline_name='test_pipeline',
+        pipeline_root=pipeline_root_path,
+        metadata_connection_config=sqlite_metadata_connection_config(
+            metadata_path),
+        components=[dummy_beam_component],
+        beam_pipeline_args=['--runner=DirectRunner',
+                            '--direct_running_mode=multi_processing',
+                            '--direct_num_workers' + EnvironmentVariablePlaceholder(num_workers_env_var_name)],
+    )
 
   def testSimplePipelineRun(self):
     self.assertEqual(self.RAN_COMPONENTS, [])
@@ -215,6 +250,16 @@ class LocalDagRunnerTest(absl.testing.absltest.TestCase):
         run_options=pipeline_pb2.RunOptions(partial_run=pr_opts))
 
     self.assertEqual(self.RAN_COMPONENTS, ['Load', 'Train'])
+
+  def testBeamComponentWithPlaceHolderArgs(self):
+    # Set env vars for the placeholder
+    num_workers_env_var_name = 'NUM_WORKERS'
+    num_workers_env_var_value = '2'
+    os.environ[num_workers_env_var_name] = num_workers_env_var_value
+
+    local_dag_runner.LocalDagRunner().run(self._getTestBeamComponentPipeline(num_workers_env_var_name))
+
+    self.assertEqual(self.BEAM_DIRECT_NUM_WORKERS, num_workers_env_var_value)
 
 
 if __name__ == '__main__':
