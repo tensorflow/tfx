@@ -32,7 +32,6 @@ def _get_filesystem(path) -> Type[filesystem.Filesystem]:
   return (filesystem_registry.DEFAULT_FILESYSTEM_REGISTRY
           .get_filesystem_for_path(path))
 
-
 def open(path: PathType, mode: str = 'r'):  # pylint: disable=redefined-builtin
   """Open a file at the given path."""
   return _get_filesystem(path).open(path, mode=mode)

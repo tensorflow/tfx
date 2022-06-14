@@ -35,14 +35,13 @@ from tfx.utils import proto_utils
 
 def _GeneratePartitionKey(record: Union[tf.train.Example,
                                         tf.train.SequenceExample, bytes,
-                                        pa.Table],
+                                        Dict[str, Any]],
                           split_config: example_gen_pb2.SplitConfig) -> bytes:
   """Generates key for partition."""
 
   if not split_config.HasField('partition_feature_name'):
     if isinstance(record, bytes):
       return record
-    # pyarrow tables are passed as dict to this funtion.
     if isinstance(record, dict):
       return pa.serialize(record).to_buffer().to_pybytes()
     return record.SerializeToString(deterministic=True)
@@ -71,7 +70,7 @@ def _GeneratePartitionKey(record: Union[tf.train.Example,
 
 
 def _PartitionFn(
-    record: Union[tf.train.Example, tf.train.SequenceExample, bytes, pa.Table],
+    record: Union[tf.train.Example, tf.train.SequenceExample, bytes, Dict[str, Any]],
     num_partitions: int,
     buckets: List[int],
     split_config: example_gen_pb2.SplitConfig,

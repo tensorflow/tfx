@@ -19,18 +19,17 @@ from typing import Any, Dict, Union
 from absl import logging
 import apache_beam as beam
 import tensorflow as tf
-import pyarrow as pa
 import pyarrow.parquet as pq
-from apache_beam.io.filesystems import FileSystems
 
 from tfx.components.example_gen import base_example_gen_executor
+from tfx.dsl.io import fileio
 from tfx.proto import example_gen_pb2
 from tfx.types import standard_component_specs
 
 
 @beam.ptransform_fn
 @beam.typehints.with_input_types(beam.Pipeline)
-@beam.typehints.with_output_types(bytes)
+@beam.typehints.with_output_types(Union[bytes, Dict[str, Any]])
 def _ImportSerializedRecord(  # pylint: disable=invalid-name
     pipeline: beam.Pipeline, exec_properties: Dict[str, Any],
     split_pattern: str) -> beam.pvalue.PCollection:
@@ -55,10 +54,8 @@ def _ImportSerializedRecord(  # pylint: disable=invalid-name
     standard_component_specs.OUTPUT_DATA_FORMAT_KEY)
 
   def _InferArrowSchema(file_pattern):
-    match_result = FileSystems.match([file_pattern])[0]
-    files_metadata = match_result.metadata_list[0]
-    with FileSystems.open(files_metadata.path) as f:
-      return pq.read_schema(f)
+    any_file = fileio.glob(file_pattern)[0]
+    return pq.read_schema(any_file)
 
   if output_payload_format == example_gen_pb2.PayloadFormat.FORMAT_PARQUET:
     schema = _InferArrowSchema(input_split_pattern)
@@ -84,7 +81,7 @@ class Executor(base_example_gen_executor.BaseExampleGenExecutor):
     @beam.typehints.with_input_types(beam.Pipeline)
     @beam.typehints.with_output_types(Union[tf.train.Example,
                                             tf.train.SequenceExample, bytes,
-                                            pa.Table])
+                                            Dict[str, Any]])
     def ImportRecord(pipeline: beam.Pipeline, exec_properties: Dict[str, Any],
                      split_pattern: str) -> beam.pvalue.PCollection:
       """PTransform to import records.

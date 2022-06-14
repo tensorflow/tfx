@@ -95,9 +95,9 @@ class ExecutorTest(tf.test.TestCase):
     # Check import_example_gen outputs.
     if payload_format == example_gen_pb2.PayloadFormat.FORMAT_PARQUET:
       train_output_file = os.path.join(self.examples.uri, 'Split-train',
-                                       'data-00000-of-00001.parquet')
+                                       'data_parquet-00000-of-00001.parquet')
       eval_output_file = os.path.join(self.examples.uri, 'Split-eval',
-                                      'data-00000-of-00001.parquet')
+                                      'data_parquet-00000-of-00001.parquet')
     else:
       train_output_file = os.path.join(self.examples.uri, 'Split-train',
                                        'data_tfrecord-00000-of-00001.gz')

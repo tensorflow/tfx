@@ -24,7 +24,7 @@ from tfx_bsl.telemetry import util
 # Default file name for TFRecord output file prefix.
 from tfx.types import standard_component_specs
 
-DEFAULT_PARQUET_FILE_NAME = 'data'
+DEFAULT_PARQUET_FILE_NAME = 'data_parquet'
 DEFAULT_TF_RECORD_FILE_NAME = 'data_tfrecord'
 
 # Metrics namespace for ExampleGen.
@@ -52,14 +52,16 @@ class MaybeSerialize(beam.DoFn):
 
 @beam.ptransform_fn
 @beam.typehints.with_input_types(
-    Union[tf.train.Example, tf.train.SequenceExample, bytes])
+    Union[tf.train.Example, tf.train.SequenceExample, bytes, Dict[str, Any]])
 def WriteSplit(
     example_split: beam.pvalue.PCollection,
     output_split_path: str,
     output_format: str,
     exec_properties: Dict[str, Any]
 ) -> beam.pvalue.PDone:
-  """Shuffles and writes output split as serialized records in TFRecord or Parquet."""
+  """
+  Shuffles and writes output split as serialized records in TFRecord or Parquet
+  """
   del output_format
 
   output_payload_format = exec_properties.get(
