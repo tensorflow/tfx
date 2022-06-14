@@ -16,7 +16,6 @@
 import abc
 import bisect
 import hashlib
-import json
 from typing import Any, Dict, List, Union
 
 from absl import logging
@@ -34,8 +33,7 @@ from tfx.utils import proto_utils
 
 
 def _GeneratePartitionKey(record: Union[tf.train.Example,
-                                        tf.train.SequenceExample, bytes,
-                                        Dict[str, Any]],
+                                        tf.train.SequenceExample, bytes],
                           split_config: example_gen_pb2.SplitConfig) -> bytes:
   """Generates key for partition."""
 
@@ -68,7 +66,7 @@ def _GeneratePartitionKey(record: Union[tf.train.Example,
 
 
 def _PartitionFn(
-    record: Union[tf.train.Example, tf.train.SequenceExample, bytes, Dict[str, any]],
+    record: Union[tf.train.Example, tf.train.SequenceExample, bytes],
     num_partitions: int,
     buckets: List[int],
     split_config: example_gen_pb2.SplitConfig,
