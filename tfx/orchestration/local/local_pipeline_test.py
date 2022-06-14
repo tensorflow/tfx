@@ -211,8 +211,8 @@ class LocalDagRunnerTest(absl.testing.absltest.TestCase):
         metadata_connection_config=sqlite_metadata_connection_config(
             metadata_path),
         components=[dummy_beam_component],
-        beam_pipeline_args=['--runner=DirectRunner',
-                            '--direct_running_mode=multi_processing',
+        beam_pipeline_args=[#'--runner=DirectRunner',
+                            #'--direct_running_mode=multi_processing',
                             EnvironmentVariablePlaceholder(num_workers_env_var_name)],
     )
 
