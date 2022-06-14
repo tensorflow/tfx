@@ -21,6 +21,7 @@ from typing import Any, Dict, List, Union
 from absl import logging
 import apache_beam as beam
 import tensorflow as tf
+import pyarrow as pa
 from tfx import types
 from tfx.components.example_gen import utils
 from tfx.components.example_gen import write_split
@@ -33,13 +34,17 @@ from tfx.utils import proto_utils
 
 
 def _GeneratePartitionKey(record: Union[tf.train.Example,
-                                        tf.train.SequenceExample, bytes],
+                                        tf.train.SequenceExample, bytes,
+                                        pa.Table],
                           split_config: example_gen_pb2.SplitConfig) -> bytes:
   """Generates key for partition."""
 
   if not split_config.HasField('partition_feature_name'):
     if isinstance(record, bytes):
       return record
+    # pyarrow tables are passed as dict to this funtion.
+    if isinstance(record, dict):
+      return pa.serialize(record).to_buffer().to_pybytes()
     return record.SerializeToString(deterministic=True)
 
   if isinstance(record, tf.train.Example):
@@ -66,7 +71,7 @@ def _GeneratePartitionKey(record: Union[tf.train.Example,
 
 
 def _PartitionFn(
-    record: Union[tf.train.Example, tf.train.SequenceExample, bytes],
+    record: Union[tf.train.Example, tf.train.SequenceExample, bytes, pa.Table],
     num_partitions: int,
     buckets: List[int],
     split_config: example_gen_pb2.SplitConfig,

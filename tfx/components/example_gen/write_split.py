@@ -32,7 +32,7 @@ METRICS_NAMESPACE = util.MakeTfxNamespace(['ExampleGen'])
 
 
 @beam.typehints.with_input_types(
-    Union[tf.train.Example, tf.train.SequenceExample, bytes])
+    Union[tf.train.Example, tf.train.SequenceExample, bytes, pa.Table])
 @beam.typehints.with_output_types(bytes)
 class MaybeSerialize(beam.DoFn):
   """Serializes the proto if needed."""
@@ -65,22 +65,20 @@ def WriteSplit(
   output_payload_format = exec_properties.get(
     standard_component_specs.OUTPUT_DATA_FORMAT_KEY)
 
-  shuffled = (example_split
-          | 'MaybeSerialize' >> beam.ParDo(MaybeSerialize())
-          # TODO(jyzhao): make shuffle optional.
-          | 'Shuffle' >> beam.transforms.Reshuffle())
-
   if output_payload_format == example_gen_pb2.PayloadFormat.FORMAT_PARQUET:
     # TODO: propagate schema.
     schema = exec_properties.get("pyarrow_schema")
-    return (shuffled
-            | "Deserialize Table" >> beam.Map(
-              lambda bs: pa.deserialize(pa.BufferReader(bs).read_buffer()))
+    return (example_split
+            # TODO(jyzhao): make shuffle optional.
+            | 'Shuffle' >> beam.transforms.Reshuffle()
             | "Write Parquet" >> beam.io.WriteToParquet(
               os.path.join(output_split_path, DEFAULT_PARQUET_FILE_NAME),
               schema, file_name_suffix=".parquet", codec='snappy'))
 
-  return (shuffled
+  return (example_split
+          | 'MaybeSerialize' >> beam.ParDo(MaybeSerialize())
+          # TODO(jyzhao): make shuffle optional.
+          | 'Shuffle' >> beam.transforms.Reshuffle()
           | 'Write' >> beam.io.WriteToTFRecord(
               os.path.join(output_split_path, DEFAULT_TF_RECORD_FILE_NAME),
               file_name_suffix='.gz'))

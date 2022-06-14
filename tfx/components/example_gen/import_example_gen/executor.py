@@ -83,7 +83,8 @@ class Executor(base_example_gen_executor.BaseExampleGenExecutor):
     @beam.ptransform_fn
     @beam.typehints.with_input_types(beam.Pipeline)
     @beam.typehints.with_output_types(Union[tf.train.Example,
-                                            tf.train.SequenceExample, bytes])
+                                            tf.train.SequenceExample, bytes,
+                                            pa.Table])
     def ImportRecord(pipeline: beam.Pipeline, exec_properties: Dict[str, Any],
                      split_pattern: str) -> beam.pvalue.PCollection:
       """PTransform to import records.
@@ -111,8 +112,7 @@ class Executor(base_example_gen_executor.BaseExampleGenExecutor):
       if output_payload_format == example_gen_pb2.PayloadFormat.FORMAT_PROTO:
         return serialized_records
       elif output_payload_format == example_gen_pb2.PayloadFormat.FORMAT_PARQUET:
-        return (serialized_records
-                | "TableToBytes" >> beam.Map(lambda table: pa.serialize(table).to_buffer().to_pybytes()))
+        return serialized_records
       elif (output_payload_format ==
             example_gen_pb2.PayloadFormat.FORMAT_TF_EXAMPLE):
         return (serialized_records
