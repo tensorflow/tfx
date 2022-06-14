@@ -30,7 +30,8 @@ from tfx.types import standard_component_specs
 @beam.typehints.with_output_types(bytes)
 def _ImportSerializedRecord(  # pylint: disable=invalid-name
     pipeline: beam.Pipeline, exec_properties: Dict[str, Any],
-    split_pattern: str) -> beam.pvalue.PCollection:
+    split_pattern: str,
+    output_payload_format: int) -> beam.pvalue.PCollection:
   """Read TFRecord files to PCollection of records.
 
   Note that each input split will be transformed by this function separately.
@@ -43,11 +44,16 @@ def _ImportSerializedRecord(  # pylint: disable=invalid-name
       that maps to input files with root directory given by input_base.
 
   Returns:
-    PCollection of records (tf.Example, tf.SequenceExample, or bytes).
+    PCollection of records (tf.Example, tf.SequenceExample, bytes or dictionaries).
   """
   input_base_uri = exec_properties[standard_component_specs.INPUT_BASE_KEY]
   input_split_pattern = os.path.join(input_base_uri, split_pattern)
   logging.info('Reading input TFRecord data %s.', input_split_pattern)
+
+  if output_payload_format == example_gen_pb2.PayloadFormat.FORMAT_PARQUET:
+    return (pipeline
+            | "ReadParquet" >>
+            beam.io.ReadFromParquet(file_pattern=input_split_pattern))
 
   # TODO(jyzhao): profile input examples.
   return (pipeline
@@ -89,8 +95,10 @@ class Executor(base_example_gen_executor.BaseExampleGenExecutor):
       serialized_records = (
           pipeline
           # pylint: disable=no-value-for-parameter
-          | _ImportSerializedRecord(exec_properties, split_pattern))
+          | _ImportSerializedRecord(exec_properties, split_pattern, output_payload_format))
       if output_payload_format == example_gen_pb2.PayloadFormat.FORMAT_PROTO:
+        return serialized_records
+      elif output_payload_format == example_gen_pb2.PayloadFormat.FORMAT_PARQUET:
         return serialized_records
       elif (output_payload_format ==
             example_gen_pb2.PayloadFormat.FORMAT_TF_EXAMPLE):
@@ -103,6 +111,6 @@ class Executor(base_example_gen_executor.BaseExampleGenExecutor):
                     tf.train.SequenceExample.FromString))
 
       raise ValueError('output_payload_format must be one of FORMAT_TF_EXAMPLE,'
-                       ' FORMAT_TF_SEQUENCE_EXAMPLE or FORMAT_PROTO')
+                       ' FORMAT_TF_SEQUENCE_EXAMPLE, FORMAT_PROTO or FORMAT_PARQUET')
 
     return ImportRecord
