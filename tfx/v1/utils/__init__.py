@@ -13,5 +13,7 @@
 # limitations under the License.
 """TFX utils module."""
 
+from tfx.components.utils import examples_utils
+from tfx.types import artifact_utils
 from tfx.utils.io_utils import parse_pbtxt_file
 from tfx.utils.json_utils import JsonableType

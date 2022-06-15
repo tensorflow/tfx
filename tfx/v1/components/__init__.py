@@ -13,6 +13,9 @@
 # limitations under the License.
 """TFX components module."""
 
+# pylint: disable=g-bad-import-order
+# pylint: disable=g-import-not-at-top
+
 # Components.
 from tfx.components.bulk_inferrer.component import BulkInferrer
 from tfx.components.evaluator.component import Evaluator
@@ -29,8 +32,22 @@ from tfx.components.transform.component import Transform
 from tfx.components.tuner.component import Tuner
 
 # For UDF needs.
-# pylint: disable=g-bad-import-order
 from tfx.components.trainer.fn_args_utils import DataAccessor
 from tfx.components.trainer.fn_args_utils import FnArgs
 from tfx.components.tuner.component import TunerFnResult
-# pylint: enable=g-bad-import-order
+
+
+# For users writing custom components
+# Expose BaseComponent only for use as a type annotation.
+def _conditional_import():
+  import typing
+  if typing.TYPE_CHECKING:
+    from tfx.dsl.components.base import base_component
+    globals()["BaseComponent"] = base_component.BaseComponent
+
+
+_conditional_import()
+del _conditional_import
+
+from tfx.types import artifact_utils
+from tfx.components.util import examples_utils
