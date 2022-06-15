@@ -20,7 +20,7 @@ from tfx.orchestration import metadata
 from tfx.orchestration.portable import data_types
 from tfx.orchestration.portable.input_resolution import channel_resolver
 from tfx.orchestration.portable.input_resolution import exceptions
-from tfx.orchestration.portable.input_resolution import processor
+from tfx.orchestration.portable.input_resolution import resolver_config_resolver
 from tfx.proto.orchestration import pipeline_pb2
 from tfx.utils import typing_utils
 
@@ -93,10 +93,10 @@ def resolve_input_artifacts(
   node_inputs = pipeline_node.inputs
   initial_dict = _resolve_channels_dict(metadata_handler, node_inputs)
   try:
-    resolved = processor.run_resolver_steps(
+    resolved = resolver_config_resolver.resolve(
+        metadata_handler.store,
         initial_dict,
-        resolver_steps=node_inputs.resolver_config.resolver_steps,
-        store=metadata_handler.store)
+        node_inputs.resolver_config)
   except exceptions.SkipSignal:
     return Skip()
   except exceptions.InputResolutionError:

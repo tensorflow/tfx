@@ -11,7 +11,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""In process inplementation of Resolvers."""
+"""Module for NodeInputs.resolver_config based input resolution.
+
+Note that ResolverConfig is deprecated; newly compiled pipeline should contain
+InputGraph and InputSpec.InputGraphRef instead.
+"""
 
 import inspect
 from typing import Iterable, Union, Sequence, cast, Type
@@ -95,16 +99,15 @@ def _run_resolver_op(
   return op.apply(arg)
 
 
-def run_resolver_steps(
-    input_dict: typing_utils.ArtifactMultiMap,
-    *,
-    resolver_steps: Iterable[pipeline_pb2.ResolverConfig.ResolverStep],
+def resolve(
     store: mlmd.MetadataStore,
+    input_dict: typing_utils.ArtifactMultiMap,
+    resolver_config: pipeline_pb2.ResolverConfig,
 ) -> _ResolverIOType:
   """Run ResolverConfig.resolver_steps with an input_dict."""
   result = input_dict
   context = resolver_op.Context(store=store)
-  for step in resolver_steps:
+  for step in resolver_config.resolver_steps:
     cls = _resolve_class_path(step.class_path)
     if step.config_json:
       kwargs = json_utils.loads(step.config_json)
