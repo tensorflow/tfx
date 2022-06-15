@@ -404,7 +404,9 @@ class PenguinPipelineLocalEndToEndTest(tf.test.TestCase,
         pipeline_name=self._pipeline_name,
         data_root=self._data_root,
         module_file=module_file,
-        accuracy_threshold=1.0,  # Model evaluation will fail with 1.0 threshold
+        # TODO(b/236075398): Change threshold back to 1 after fixing Evaluator.
+        accuracy_threshold=0.9999,  # Model evaluation will fail with 1.0
+                                    # threshold
         serving_model_dir=self._serving_model_dir,
         pipeline_root=self._pipeline_root,
         metadata_path=self._metadata_path,
