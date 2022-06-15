@@ -594,7 +594,7 @@ def orchestrate(mlmd_handle: metadata.Metadata, task_queue: tq.TaskQueue,
   Raises:
     status_lib.StatusNotOkError: If error generating tasks.
   """
-  pipeline_states = _get_pipelines_states(mlmd_handle)
+  pipeline_states = pstate.get_pipeline_states(mlmd_handle)
   if not pipeline_states:
     logging.info('No active pipelines to run.')
     return
@@ -632,26 +632,6 @@ def orchestrate(mlmd_handle: metadata.Metadata, task_queue: tq.TaskQueue,
     logging.info('Orchestrating pipeline: %s', pipeline_state.pipeline_uid)
     _orchestrate_active_pipeline(mlmd_handle, task_queue, service_job_manager,
                                  pipeline_state)
-
-
-def _get_pipelines_states(
-    mlmd_handle: metadata.Metadata) -> List[pstate.PipelineState]:
-  """Scans MLMD and returns pipeline states."""
-  contexts = pstate.get_orchestrator_contexts(mlmd_handle)
-  result = []
-  for context in contexts:
-    try:
-      pipeline_state = pstate.PipelineState.load_from_orchestrator_context(
-          mlmd_handle, context)
-    except status_lib.StatusNotOkError as e:
-      if e.code == status_lib.Code.NOT_FOUND:
-        # Ignore any old contexts with no associated active pipelines.
-        logging.info(e.message)
-        continue
-      else:
-        raise
-    result.append(pipeline_state)
-  return result
 
 
 def _cancel_node(mlmd_handle: metadata.Metadata, task_queue: tq.TaskQueue,
