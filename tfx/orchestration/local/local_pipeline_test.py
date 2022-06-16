@@ -40,11 +40,11 @@ from tfx.dsl.component.experimental.annotations import Parameter
 from tfx.dsl.component.experimental.annotations import BeamComponentParameter
 from tfx.dsl.component.experimental.decorators import component
 from tfx.dsl.io import fileio
-from tfx.dsl.placeholder.placeholder import EnvironmentVariablePlaceholder
+from tfx.dsl.placeholder import placeholder as ph
 from tfx.orchestration import pipeline as pipeline_py
 from tfx.orchestration.local import local_dag_runner
 from tfx.orchestration.metadata import sqlite_metadata_connection_config
-from tfx.proto.orchestration import pipeline_pb2
+from tfx.proto.orchestration import pipeline_pb2, placeholder_pb2
 
 
 class DummyDataset(types.Artifact):
@@ -211,9 +211,12 @@ class LocalDagRunnerTest(absl.testing.absltest.TestCase):
         metadata_connection_config=sqlite_metadata_connection_config(
             metadata_path),
         components=[dummy_beam_component],
-        beam_pipeline_args=[#'--runner=DirectRunner',
-                            #'--direct_running_mode=multi_processing',
-                            EnvironmentVariablePlaceholder(num_workers_env_var_name)],
+        beam_pipeline_args=['--runner=DirectRunner',
+                            '--direct_running_mode=multi_processing',
+                            ph.Placeholder(placeholder_type=placeholder_pb2.Placeholder.ENVIRONMENT_VARIABLE,
+                                           key=num_workers_env_var_name)
+                                .encode()
+                            ],
     )
 
   def testSimplePipelineRun(self):
