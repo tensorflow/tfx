@@ -370,8 +370,9 @@ class InputsUtilsTest(test_case_utils.TfxTest, _TestMixin):
     self._setup_pipeline_for_input_resolver_test()
     self._my_transform.inputs.inputs['examples_1'].min_count = 2
 
-    with self.assertRaisesRegex(exceptions.InputResolutionError,
-                                'No valid inputs'):
+    with self.assertRaisesRegex(
+        exceptions.InputResolutionError,
+        r'inputs\[examples_1\] has min_count = 2 but only got 1'):
       inputs_utils.resolve_input_artifacts(
           pipeline_node=self._my_transform,
           metadata_handler=self._metadata_handler)
