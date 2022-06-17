@@ -86,7 +86,7 @@ class ResolverOpTest(tf.test.TestCase):
   def testOpCreate_CannotTakeMultipleArgs(self):
     foo1 = Foo(resolver_op.OpNode.INPUT_NODE, foo=1)
     foo2 = Foo(resolver_op.OpNode.INPUT_NODE, foo=2)
-    with self.assertRaises(TypeError):
+    with self.assertRaises(ValueError):
       Bar(foo1, foo2)
 
   def testOpCreate_InvalidArg(self):
@@ -155,9 +155,9 @@ class OpNodeTest(tf.test.TestCase):
   def testOpNode_Repr(self):
     input_node = resolver_op.OpNode.INPUT_NODE
     foo = resolver_op.OpNode(
-        op_type=Foo, arg=input_node, kwargs={'foo': 42})
+        op_type=Foo, args=[input_node], kwargs={'foo': 42})
     bar = resolver_op.OpNode(
-        op_type=Bar, arg=foo, kwargs={'bar': 'z'})
+        op_type=Bar, args=[foo], kwargs={'bar': 'z'})
 
     self.assertEqual(repr(bar), "Bar(Foo(INPUT_NODE, foo=42), bar='z')")
 

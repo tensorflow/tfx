@@ -65,7 +65,7 @@ class ResolverStrategy(abc.ABC):
                       f'{input_node.output_data_type.name} instead.')
     return resolver_op.OpNode(
         op_type=cls,
-        arg=input_node,
+        args=[input_node],
         output_data_type=resolver_op.DataTypes.ARTIFACT_MULTIMAP,
         kwargs=kwargs)
 

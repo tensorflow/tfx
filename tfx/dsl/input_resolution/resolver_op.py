@@ -13,6 +13,7 @@
 # limitations under the License.
 """Module for ResolverOp and its related definitions."""
 import abc
+import collections.abc
 import enum
 from typing import Any, ClassVar, Generic, Mapping, Type, TypeVar, Union, Sequence
 
@@ -81,13 +82,11 @@ class _ResolverOpMeta(abc.ABCMeta):
         for prop in attrs.values()
         if isinstance(prop, ResolverOpProperty)
     }
-    if len(arg_data_types) != 1:
-      raise NotImplementedError('len(arg_data_types) should be 1.')
-    cls._arg_data_type = arg_data_types[0]
+    cls._arg_data_types = arg_data_types
     cls._return_data_type = return_data_type
     super().__init__(name, bases, attrs)
 
-  def __call__(cls, arg: 'OpNode', **kwargs: Any):
+  def __call__(cls, *args: 'OpNode', **kwargs: Any):
     """Fake instantiation of the ResolverOp class.
 
     Original implementation of metaclass.__call__ method is to instantiate
@@ -99,27 +98,31 @@ class _ResolverOpMeta(abc.ABCMeta):
     classmethod instead.
 
     Args:
-      arg: Input argument for the operator.
+      *args: Input arguments for the operator.
       **kwargs: Property values for the ResolverOp.
 
     Returns:
       An OpNode instance that represents the operator call.
     """
-    cls._check_arg(arg)
+    cls._check_args(args)
     cls._check_kwargs(kwargs)
     return OpNode(
         op_type=cls,
-        arg=arg,
+        args=args,
         output_data_type=cls._return_data_type,
         kwargs=kwargs)
 
-  def _check_arg(cls, arg: 'OpNode'):
-    if not isinstance(arg, OpNode):
-      raise ValueError('Cannot directly call ResolverOp with real values. Use '
-                       'output of another operator as an argument.')
-    if arg.output_data_type != cls._arg_data_type:
-      raise TypeError(f'{cls.__name__} takes {cls._arg_data_type.name} type '
-                      f'but got {arg.output_data_type.name} instead.')
+  def _check_args(cls, args: Sequence['OpNode']):
+    if len(args) != len(cls._arg_data_types):
+      raise ValueError(f'{cls.__name__} expects {len(cls._arg_data_types)} '
+                       f'arguments but got {len(args)}.')
+    for arg, arg_data_type in zip(args, cls._arg_data_types):
+      if not isinstance(arg, OpNode):
+        raise ValueError('Cannot directly call ResolverOp with real values. '
+                         'Use output of another operator as an argument.')
+      if arg.output_data_type != arg_data_type:
+        raise TypeError(f'{cls.__name__} takes {arg_data_type.name} type '
+                        f'but got {arg.output_data_type.name} instead.')
 
   def _check_kwargs(cls, kwargs: Mapping[str, Any]):
     for name, prop in cls._props_by_name.items():
@@ -240,10 +243,6 @@ class ResolverOpProperty(Generic[_T]):
 class ResolverOp(metaclass=_ResolverOpMeta):
   """ResolverOp is the building block of input resolution logic.
 
-  Currently ResolverOp signature is limited to:
-      (Dict[str, List[Artifact]]) -> Dict[str, List[Artifact]]
-  but the constraints may be relaxed in the future.
-
   Usage:
     output_dict = FooOp(input_dict, foo=123)
 
@@ -286,8 +285,8 @@ class OpNode(Generic[_TOut]):
   # Output data type of ResolverOp.
   output_data_type = attr.ib(default=DataTypes.ARTIFACT_MULTIMAP,
                              validator=attr.validators.instance_of(DataTypes))
-  # A single argument to the ResolverOp.
-  arg = attr.ib()
+  # Arguments of the ResolverOp.
+  args = attr.ib(default=())
   # ResolverOpProperty for the ResolverOp, given as keyword arguments.
   kwargs = attr.ib(factory=dict)
 
@@ -298,20 +297,25 @@ class OpNode(Generic[_TOut]):
 
   @op_type.validator
   def validate_op_type(self, attribute, value):
+    del attribute  # Unused.
     if not issubclass(value, self._VALID_OP_TYPES):
       raise TypeError(f'op_type should be subclass of {self._VALID_OP_TYPES} '
                       f'but got {value!r}.')
 
-  @arg.validator
-  def validate_arg(self, attribute, value):
-    if not isinstance(value, OpNode):
-      raise TypeError(f'Invalid arg: {value!r}.')
+  @args.validator
+  def validate_args(self, attribute, value):
+    del attribute  # Unused.
+    if not isinstance(value, collections.abc.Sequence):
+      raise TypeError(f'`args` should be a Sequence but got {value}')
+    for v in value:
+      if not isinstance(v, OpNode):
+        raise TypeError(f'`args` should be a Sequence[OpNode] but got {v!r}.')
 
   def __repr__(self):
     if self.is_input_node:
       return 'INPUT_NODE'
     else:
-      all_args = [repr(self.arg)]
+      all_args = [repr(arg) for arg in self.args]
       all_args.extend(f'{k}={repr(v)}' for k, v in self.kwargs.items())
       return f'{self.op_type.__qualname__}({", ".join(all_args)})'
 
@@ -322,6 +326,5 @@ class OpNode(Generic[_TOut]):
 attr.set_run_validators(False)
 OpNode.INPUT_NODE = OpNode(
     op_type=None,
-    output_data_type=DataTypes.ARTIFACT_MULTIMAP,
-    arg=None)
+    output_data_type=DataTypes.ARTIFACT_MULTIMAP)
 attr.set_run_validators(True)

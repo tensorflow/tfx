@@ -649,7 +649,10 @@ def _compile_resolver_function(
   op_node = f.trace()
   while not op_node.is_input_node:
     result.append(_compile_resolver_op(op_node))
-    op_node = op_node.arg
+    if len(op_node.args) != 1:
+      raise NotImplementedError(
+          f"ResolverOp {op_node!r} has {len(op_node.args)} args, expected 1.")
+    op_node = op_node.args[0]
   return list(reversed(result))
 
 
