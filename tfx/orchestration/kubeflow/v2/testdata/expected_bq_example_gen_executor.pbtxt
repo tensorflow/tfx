@@ -10,6 +10,10 @@ executors {
       args: "tfx.extensions.google_cloud_big_query.example_gen.executor.Executor"
       args: "--json_serialized_invocation_args"
       args: "{{$}}"
+      resources {
+        cpu_limit: 5.0
+        memory_limit: 10.0
+      }
     }
   }
 }

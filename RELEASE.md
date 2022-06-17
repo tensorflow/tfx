@@ -28,10 +28,8 @@
 
 *   Added experimental exit_handler support for KubeflowDagRunner.
 *   Enabled custom labels to be submitted to CAIP training jobs.
-*   Enabled custom Python function-based components to share pipeline Beam
-    configuration by [inheriting from BaseBeamComponent]
-(https://www.tensorflow.org/tfx/guide/custom_function_component)
-*   Support dynamic exec properties in TFX pipeline. Downstream component parameter could take the upstream output using Placeholder.
+*   Enabled custom resource-setting (vCPU and RAM) for containers orchestrating 
+    on Vertex AI.
 
 ## Breaking Changes
 
