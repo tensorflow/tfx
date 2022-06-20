@@ -293,10 +293,10 @@ class ExecutorTest(tft_unit.TransformTestCase):
     if verify_sharded_statistics:
       pre_transform_paths = fileio.glob(
           os.path.join(self._pre_transform_stats.uri,
-                       executor._SHARDED_STATS_PREFIX + '*'))
+                       executor.SHARDED_STATS_PREFIX + '*'))
       post_transform_paths = fileio.glob(
           os.path.join(self._post_transform_stats.uri,
-                       executor._SHARDED_STATS_PREFIX + '*'))
+                       executor.SHARDED_STATS_PREFIX + '*'))
 
       self.assertNotEmpty(pre_transform_paths)
       self.assertNotEmpty(post_transform_paths)

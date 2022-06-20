@@ -84,7 +84,7 @@ STATS_FILE = 'FeatureStats.pb'
 SAMPLE_FILE_NAME = 'Sample.rio'
 # TODO(b/215448985): Move these to a shared location with StatsGen.
 _SHARDED_OUTPUT_PARTITIONS = 10
-_SHARDED_STATS_PREFIX = 'FeatureStats.rio'
+SHARDED_STATS_PREFIX = 'FeatureStats.rio'
 
 _SCHEMA_FILE = 'schema.pbtxt'
 
@@ -730,7 +730,7 @@ class TransformProcessor:
       stats_output_dir = os.path.dirname(stats_output_loc)
       schema_output_path = os.path.join(stats_output_dir, _SCHEMA_FILE)
       sharded_stats_output_prefix = os.path.join(stats_output_dir,
-                                                 _SHARDED_STATS_PREFIX)
+                                                 SHARDED_STATS_PREFIX)
       anomalies_output_path = os.path.join(stats_output_dir, _ANOMALIES_FILE)
 
     generated_stats = (
@@ -1368,7 +1368,7 @@ class TransformProcessor:
                       os.path.join(
                           stats_output_paths[
                               labels.PRE_TRANSFORM_OUTPUT_STATS_PATH_LABEL],
-                          _SHARDED_STATS_PREFIX),
+                          SHARDED_STATS_PREFIX),
                   _SCHEMA_KEY:
                       os.path.join(
                           stats_output_paths[
@@ -1443,7 +1443,7 @@ class TransformProcessor:
                       os.path.join(
                           stats_output_paths[
                               labels.POST_TRANSFORM_OUTPUT_STATS_PATH_LABEL],
-                          _SHARDED_STATS_PREFIX),
+                          SHARDED_STATS_PREFIX),
                   _SCHEMA_KEY:
                       os.path.join(
                           stats_output_paths[
