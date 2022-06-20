@@ -463,8 +463,8 @@ Return to the Jupyter tab in your browser.
 ### More advanced example
 
 The example presented here is really only meant to get you started. For a more
-advanced example see the [TensorBoard Tutorial](
-https://www.tensorflow.org/tensorboard/r1/summaries).
+advanced example see the
+[TensorBoard Tutorial](https://www.tensorflow.org/tensorboard/get_started).
 
 ## Step 6: Analyzing model performance
 
