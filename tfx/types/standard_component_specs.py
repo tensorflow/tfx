@@ -77,6 +77,7 @@ INFER_FEATURE_SHAPE_KEY = 'infer_feature_shape'
 SCHEMA_FILE_KEY = 'schema_file'
 # Key for statistics_gen
 STATS_OPTIONS_JSON_KEY = 'stats_options_json'
+SHARDED_STATS_OUTPUT_KEY = 'sharded_stats_output'
 # Key for example_gen
 INPUT_BASE_KEY = 'input_base'
 INPUT_CONFIG_KEY = 'input_config'
@@ -343,6 +344,7 @@ class StatisticsGenSpec(ComponentSpec):
   PARAMETERS = {
       STATS_OPTIONS_JSON_KEY: ExecutionParameter(type=str, optional=True),
       EXCLUDE_SPLITS_KEY: ExecutionParameter(type=str, optional=True),
+      SHARDED_STATS_OUTPUT_KEY: ExecutionParameter(type=bool, optional=True)
   }
   INPUTS = {
       EXAMPLES_KEY:

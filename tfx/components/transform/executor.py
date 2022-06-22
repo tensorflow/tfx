@@ -738,7 +738,8 @@ class TransformProcessor:
         | 'FilterInternalColumn' >> beam.Map(_FilterInternalColumn)
         | 'GenerateStatistics' >> tfdv.GenerateStatistics(stats_options))
 
-    if stats_options.experimental_result_partitions > 1:
+    if (stats_options.experimental_result_partitions > 1 and
+        tfdv.default_sharded_output_supported()):
       stats_result = (
           generated_stats
           | 'WriteStats' >> tfdv.WriteStatisticsToRecordsAndBinaryFile(

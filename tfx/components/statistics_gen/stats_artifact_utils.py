@@ -22,6 +22,7 @@ from tfx.types import artifact_utils
 
 BINARY_PB_BASENAME = 'FeatureStats.pb'
 TFRECORD_BASENAME = 'stats_tfrecord'
+SHARDED_STATS_PREFIX = 'FeatureStats'
 
 
 def load_statistics(stats_artifact: artifact.Artifact,

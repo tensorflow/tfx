@@ -22,6 +22,7 @@ from unittest import mock
 from absl.testing import parameterized
 import apache_beam as beam
 import tensorflow as tf
+import tensorflow_data_validation as tfdv
 import tensorflow_transform as tft
 from tensorflow_transform.beam import tft_unit
 from tfx import types
@@ -408,7 +409,8 @@ class ExecutorTest(tft_unit.TransformTestCase):
       mock_fn.return_value = True
       self._transform_executor.Do(self._input_dict, self._output_dict,
                                   self._exec_properties)
-    self._verify_transform_outputs(verify_sharded_statistics=True)
+    self._verify_transform_outputs(
+        verify_sharded_statistics=tfdv.default_sharded_output_supported())
 
   def test_do_with_preprocessing_fn_custom_config(self):
     self._exec_properties[
