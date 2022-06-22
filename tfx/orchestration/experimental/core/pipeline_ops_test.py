@@ -746,7 +746,9 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
           None, None
       ]
 
-      pipeline_ops.orchestrate(m, task_queue, self._mock_service_job_manager)
+      self.assertTrue(
+          pipeline_ops.orchestrate(m, task_queue,
+                                   self._mock_service_job_manager))
 
       # PipelineFinished event should not trigger since not all the nodes are
       # stopped.
@@ -803,7 +805,9 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
 
       # Call `orchestrate` again; this time there are no more active node
       # executions so the pipeline should be marked as cancelled.
-      pipeline_ops.orchestrate(m, task_queue, self._mock_service_job_manager)
+      self.assertTrue(
+          pipeline_ops.orchestrate(m, task_queue,
+                                   self._mock_service_job_manager))
       self.assertTrue(task_queue.is_empty())
       [execution] = m.store.get_executions_by_id([pipeline_execution_id])
       self.assertEqual(metadata_store_pb2.Execution.CANCELED,
@@ -828,6 +832,12 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
       self.assertEqual('pipeline1', event.pipeline_id)
       self.assertEqual(
           status_lib.Status(code=status_lib.Code.CANCELLED), event.status)
+
+      # Call `orchestrate` again; expecting False as the pipeline is no longer
+      # active.
+      self.assertFalse(
+          pipeline_ops.orchestrate(m, task_queue,
+                                   self._mock_service_job_manager))
 
   @parameterized.parameters(
       _test_pipeline('pipeline1'),
