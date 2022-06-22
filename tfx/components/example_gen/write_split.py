@@ -32,7 +32,7 @@ METRICS_NAMESPACE = util.MakeTfxNamespace(['ExampleGen'])
 
 
 @beam.typehints.with_input_types(
-    Union[tf.train.Example, tf.train.SequenceExample, bytes, pa.Table])
+    Union[tf.train.Example, tf.train.SequenceExample, bytes])
 @beam.typehints.with_output_types(bytes)
 class MaybeSerialize(beam.DoFn):
   """Serializes the proto if needed."""
@@ -73,7 +73,7 @@ def WriteSplit(
     return (example_split
             # TODO(jyzhao): make shuffle optional.
             | 'Shuffle' >> beam.transforms.Reshuffle()
-            | "Write Parquet" >> beam.io.WriteToParquet(
+            | 'WriteParquet' >> beam.io.WriteToParquet(
               os.path.join(output_split_path, DEFAULT_PARQUET_FILE_NAME),
               schema, file_name_suffix=".parquet", codec='snappy'))
 
