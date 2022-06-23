@@ -70,7 +70,10 @@ def _GeneratePartitionKey(record: Union[tf.train.Example,
 
 
 def _PartitionFn(
-    record: Union[tf.train.Example, tf.train.SequenceExample, bytes, Dict[str, Any]],
+    record: Union[tf.train.Example,
+                  tf.train.SequenceExample,
+                  bytes,
+                  Dict[str, Any]],
     num_partitions: int,
     buckets: List[int],
     split_config: example_gen_pb2.SplitConfig,
