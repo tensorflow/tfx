@@ -629,12 +629,14 @@ class PipelineView:
 
   @classmethod
   def load_all(cls, mlmd_handle: metadata.Metadata,
-               pipeline_uid: task_lib.PipelineUid) -> List['PipelineView']:
+               pipeline_uid: task_lib.PipelineUid,
+               **kwargs) -> List['PipelineView']:
     """Loads all pipeline views from MLMD.
 
     Args:
       mlmd_handle: A handle to the MLMD db.
       pipeline_uid: Uid of the pipeline state to load.
+      **kwargs: Extra option to pass into mlmd store functions.
 
     Returns:
       A list of `PipelineView` objects.
@@ -647,20 +649,23 @@ class PipelineView:
     list_options = mlmd.ListOptions(
         order_by=mlmd.OrderByField.CREATE_TIME, is_asc=True)
     executions = mlmd_handle.store.get_executions_by_context(
-        context.id, list_options=list_options)
+        context.id, list_options=list_options, **kwargs)
     return [cls(pipeline_uid, context, execution) for execution in executions]
 
   @classmethod
-  def load(cls,
-           mlmd_handle: metadata.Metadata,
-           pipeline_uid: task_lib.PipelineUid,
-           pipeline_run_id: Optional[str] = None) -> 'PipelineView':
+  def load(
+      cls,
+      mlmd_handle: metadata.Metadata,
+      pipeline_uid: task_lib.PipelineUid,
+      pipeline_run_id: Optional[str] = None,
+      **kwargs) -> 'PipelineView':
     """Loads pipeline view from MLMD.
 
     Args:
       mlmd_handle: A handle to the MLMD db.
       pipeline_uid: Uid of the pipeline state to load.
       pipeline_run_id: Run id of the pipeline for the synchronous pipeline.
+      **kwargs: Extra option to pass into mlmd store functions.
 
     Returns:
       A `PipelineView` object.
@@ -673,7 +678,8 @@ class PipelineView:
 
     """
     context = _get_orchestrator_context(mlmd_handle, pipeline_uid)
-    executions = mlmd_handle.store.get_executions_by_context(context.id)
+    executions = mlmd_handle.store.get_executions_by_context(
+        context.id, **kwargs)
 
     if pipeline_run_id is None and executions:
       execution = _get_latest_execution(executions)
@@ -797,10 +803,11 @@ def get_pipeline_states(mlmd_handle: metadata.Metadata) -> List[PipelineState]:
   return result
 
 
-def get_orchestrator_contexts(
-    mlmd_handle: metadata.Metadata) -> List[metadata_store_pb2.Context]:
+def get_orchestrator_contexts(mlmd_handle: metadata.Metadata,
+                              **kwargs) -> List[metadata_store_pb2.Context]:
   """Returns all of the orchestrator contexts."""
-  return mlmd_handle.store.get_contexts_by_type(_ORCHESTRATOR_RESERVED_ID)
+  return mlmd_handle.store.get_contexts_by_type(_ORCHESTRATOR_RESERVED_ID,
+                                                **kwargs)
 
 
 def orchestrator_context_name(pipeline_uid: task_lib.PipelineUid) -> str:
