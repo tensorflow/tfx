@@ -29,7 +29,7 @@ from tfx.types import standard_component_specs
 
 @beam.ptransform_fn
 @beam.typehints.with_input_types(beam.Pipeline)
-@beam.typehints.with_output_types(Union[bytes, Dict[str, Any]])
+@beam.typehints.with_output_types(bytes)
 def _ImportSerializedRecord(  # pylint: disable=invalid-name
     pipeline: beam.Pipeline, exec_properties: Dict[str, Any],
     split_pattern: str) -> beam.pvalue.PCollection:
@@ -50,25 +50,47 @@ def _ImportSerializedRecord(  # pylint: disable=invalid-name
   input_base_uri = exec_properties[standard_component_specs.INPUT_BASE_KEY]
   input_split_pattern = os.path.join(input_base_uri, split_pattern)
   logging.info('Reading input TFRecord data %s.', input_split_pattern)
-  output_payload_format = exec_properties.get(
-    standard_component_specs.OUTPUT_DATA_FORMAT_KEY)
-
-  def _InferArrowSchema(file_pattern):
-    any_file = fileio.glob(file_pattern)[0]
-    return pq.read_schema(any_file)
-
-  if output_payload_format == example_gen_pb2.PayloadFormat.FORMAT_PARQUET:
-    schema = _InferArrowSchema(input_split_pattern)
-    exec_properties["pyarrow_schema"] = schema
-    return (pipeline
-            | "ReadParquet" >>
-            beam.io.ReadFromParquet(file_pattern=input_split_pattern))
 
   # TODO(jyzhao): profile input examples.
   return (pipeline
           # TODO(jyzhao): support multiple input container format.
           | 'ReadFromTFRecord' >>
           beam.io.ReadFromTFRecord(file_pattern=input_split_pattern))
+
+
+@beam.ptransform_fn
+@beam.typehints.with_input_types(beam.Pipeline)
+@beam.typehints.with_output_types(Dict[str, Any])
+def _ImportParquetRecord(  # pylint: disable=invalid-name
+    pipeline: beam.Pipeline, exec_properties: Dict[str, Any],
+    split_pattern: str) -> beam.pvalue.PCollection:
+  """Read parquet files to PCollection of records represented by dicts.
+
+  Note that each input split will be transformed by this function separately.
+
+  Args:
+    pipeline: Beam pipeline.
+    exec_properties: A dict of execution properties.
+      - input_base: input dir that contains input data.
+    split_pattern: Split.pattern in Input config, glob relative file pattern
+      that maps to input files with root directory given by input_base.
+
+  Returns:
+    PCollection of parquet records represented by dictionaries.
+  """
+  input_base_uri = exec_properties[standard_component_specs.INPUT_BASE_KEY]
+  input_split_pattern = os.path.join(input_base_uri, split_pattern)
+  logging.info('Reading input TFRecord data %s.', input_split_pattern)
+
+  def _InferArrowSchema(file_pattern):
+    any_file = fileio.glob(file_pattern)[0]
+    return pq.read_schema(any_file)
+
+  schema = _InferArrowSchema(input_split_pattern)
+  exec_properties["pyarrow_schema"] = schema
+  return (pipeline
+          | "ReadParquet" >>
+          beam.io.ReadFromParquet(file_pattern=input_split_pattern))
 
 
 class Executor(base_example_gen_executor.BaseExampleGenExecutor):
@@ -102,13 +124,14 @@ class Executor(base_example_gen_executor.BaseExampleGenExecutor):
       output_payload_format = exec_properties.get(
           standard_component_specs.OUTPUT_DATA_FORMAT_KEY)
 
+      if output_payload_format == example_gen_pb2.PayloadFormat.FORMAT_PARQUET:
+        return (pipeline | _ImportParquetRecord(exec_properties, split_pattern))
+
       serialized_records = (
           pipeline
           # pylint: disable=no-value-for-parameter
           | _ImportSerializedRecord(exec_properties, split_pattern))
       if output_payload_format == example_gen_pb2.PayloadFormat.FORMAT_PROTO:
-        return serialized_records
-      elif output_payload_format == example_gen_pb2.PayloadFormat.FORMAT_PARQUET:
         return serialized_records
       elif (output_payload_format ==
             example_gen_pb2.PayloadFormat.FORMAT_TF_EXAMPLE):
