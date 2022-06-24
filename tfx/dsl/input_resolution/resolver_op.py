@@ -152,10 +152,6 @@ class _ResolverOpMeta(abc.ABCMeta):
       setattr(real_instance, name, value)
     return real_instance
 
-  def create_from_json(cls, config_json: str) -> 'ResolverOp':
-    """Actually create a ResolverOp instance with JSON properties."""
-    return cls.create(**json_utils.loads(config_json))
-
 
 class _Empty:
   """Sentinel class for empty value (!= None)."""
