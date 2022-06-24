@@ -36,7 +36,7 @@ class Context:
   # run, and current running node information.
 
 
-class DataTypes(enum.Enum):
+class DataType(enum.Enum):
   """Supported data types for ResolverOps input/outputs."""
   ARTIFACT_LIST = Sequence[tfx.types.Artifact]
   ARTIFACT_MULTIMAP = typing_utils.ArtifactMultiMap
@@ -75,8 +75,8 @@ class _ResolverOpMeta(abc.ABCMeta):
 
   def __init__(
       cls, name, bases, attrs,
-      arg_data_types: Sequence[DataTypes] = (DataTypes.ARTIFACT_MULTIMAP,),
-      return_data_type: DataTypes = DataTypes.ARTIFACT_MULTIMAP):
+      arg_data_types: Sequence[DataType] = (DataType.ARTIFACT_MULTIMAP,),
+      return_data_type: DataType = DataType.ARTIFACT_MULTIMAP):
     cls._props_by_name = {
         prop.name: prop
         for prop in attrs.values()
@@ -283,8 +283,8 @@ class OpNode(Generic[_TOut]):
   # ResolverOp class that is used for the Node.
   op_type = attr.ib()
   # Output data type of ResolverOp.
-  output_data_type = attr.ib(default=DataTypes.ARTIFACT_MULTIMAP,
-                             validator=attr.validators.instance_of(DataTypes))
+  output_data_type = attr.ib(default=DataType.ARTIFACT_MULTIMAP,
+                             validator=attr.validators.instance_of(DataType))
   # Arguments of the ResolverOp.
   args = attr.ib(default=())
   # Property for the ResolverOp, given as keyword arguments.
@@ -326,5 +326,5 @@ class OpNode(Generic[_TOut]):
 attr.set_run_validators(False)
 OpNode.INPUT_NODE = OpNode(
     op_type=None,
-    output_data_type=DataTypes.ARTIFACT_MULTIMAP)
+    output_data_type=DataType.ARTIFACT_MULTIMAP)
 attr.set_run_validators(True)

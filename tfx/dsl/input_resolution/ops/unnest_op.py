@@ -20,8 +20,8 @@ from tfx.utils import typing_utils
 
 class Unnest(
     resolver_op.ResolverOp,
-    arg_data_types=(resolver_op.DataTypes.ARTIFACT_MULTIMAP,),
-    return_data_type=resolver_op.DataTypes.ARTIFACT_MULTIMAP_LIST,
+    arg_data_types=(resolver_op.DataType.ARTIFACT_MULTIMAP,),
+    return_data_type=resolver_op.DataType.ARTIFACT_MULTIMAP_LIST,
 ):
   """Unnest operator.
 

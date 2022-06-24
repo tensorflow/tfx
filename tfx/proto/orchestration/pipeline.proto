@@ -195,7 +195,7 @@ message PropertyPredicate {
 // from `InputSpec.InputGraphRef`.
 message InputGraph {
   // Data type of the OpNode output. Corresponds to the
-  // tfx.dsl.resolver_op.DataTypes.
+  // tfx.dsl.resolver_op.DataType.
   enum DataType {
     DATA_TYPE_UNSPECIFIED = 0;
     ARTIFACT_LIST = 1;

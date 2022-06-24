@@ -36,7 +36,7 @@ class Bar(resolver_op.ResolverOp):
 
 class Repeat(
     resolver_op.ResolverOp,
-    return_data_type=resolver_op.DataTypes.ARTIFACT_MULTIMAP_LIST):
+    return_data_type=resolver_op.DataType.ARTIFACT_MULTIMAP_LIST):
   n = resolver_op.Property(type=int)
 
   def apply(self, input_dict):
@@ -45,7 +45,7 @@ class Repeat(
 
 class TakeLast(
     resolver_op.ResolverOp,
-    arg_data_types=(resolver_op.DataTypes.ARTIFACT_MULTIMAP_LIST,)):
+    arg_data_types=(resolver_op.DataType.ARTIFACT_MULTIMAP_LIST,)):
 
   def apply(self, input_dicts):
     return input_dicts[-1]
