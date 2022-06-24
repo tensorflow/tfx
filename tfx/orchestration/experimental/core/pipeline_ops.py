@@ -626,8 +626,6 @@ def orchestrate(mlmd_handle: metadata.Metadata, task_queue: tq.TaskQueue,
                                          service_job_manager, pipeline_state)
 
   for pipeline_state in update_initiated_pipeline_states:
-    logging.info('Orchestrating update-initiated pipeline: %s',
-                 pipeline_state.pipeline_uid)
     _orchestrate_update_initiated_pipeline(mlmd_handle, task_queue,
                                            service_job_manager, pipeline_state)
 
@@ -763,7 +761,7 @@ def _orchestrate_update_initiated_pipeline(
         node_state.update(pstate.NodeState.PAUSED, node_state.status)
 
   # If all the pausable nodes have been paused, we can update the node state to
-  # STARTED.
+  # STARTING.
   all_paused = set(n.node_info.id for n in nodes_to_pause) == set(
       n.node_info.id for n in paused_nodes)
   if all_paused:
@@ -779,7 +777,7 @@ def _orchestrate_update_initiated_pipeline(
         node_uid = task_lib.NodeUid.from_pipeline_node(pipeline, node)
         with pipeline_state.node_state_update_context(node_uid) as node_state:
           if node_state.is_startable():
-            node_state.update(pstate.NodeState.STARTED)
+            node_state.update(pstate.NodeState.STARTING)
 
       pipeline_state.apply_pipeline_update()
 
