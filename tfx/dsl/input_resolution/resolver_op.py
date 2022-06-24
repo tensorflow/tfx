@@ -162,7 +162,7 @@ class _Empty:
   pass
 
 _EMPTY = _Empty()
-_T = TypeVar('_T', bound=json_utils.JsonableValue)
+_T = TypeVar('_T', bound=json_utils.JsonableType)
 
 
 class Property(Generic[_T]):
