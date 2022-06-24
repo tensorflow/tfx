@@ -55,7 +55,7 @@ class UnregisteredStrategy(resolver.ResolverStrategy):
 
 @ops.testonly_register
 class RepeatOp(resolver_op.ResolverOp):
-  num = resolver_op.ResolverOpProperty(type=int)
+  num = resolver_op.Property(type=int)
 
   def __init__(self):
     RepeatOp.last_created = self

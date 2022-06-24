@@ -117,7 +117,7 @@ class DummyResolverStrategy(resolver.ResolverStrategy):
 
 class Foo(resolver_op.ResolverOp):
   """Dummy ResolverOperator Foo."""
-  foo = resolver_op.ResolverOpProperty(type=int)
+  foo = resolver_op.Property(type=int)
 
   def apply(self, input_dict):
     return input_dict
@@ -125,7 +125,7 @@ class Foo(resolver_op.ResolverOp):
 
 class Bar(resolver_op.ResolverOp):
   """Dummy ResolverOperator Bar."""
-  bar = resolver_op.ResolverOpProperty(type=str)
+  bar = resolver_op.Property(type=str)
 
   def apply(self, input_dict):
     return input_dict

@@ -36,7 +36,7 @@ class Unnest(
       Unnest({x: [x1, x2, x3], y: [y1]}, key=x)
         = [{x: [x1], y: [y1]}, {x: [x2], y: [y1]}, {x: [x3], y: [y1]}]
   """
-  key = resolver_op.ResolverOpProperty(type=str)
+  key = resolver_op.Property(type=str)
 
   def apply(self, input_dict: typing_utils.ArtifactMultiMap):
     if self.key not in input_dict:

@@ -20,14 +20,14 @@ from tfx.dsl.input_resolution import resolver_op
 
 
 class Foo(resolver_op.ResolverOp):
-  foo = resolver_op.ResolverOpProperty(type=int)
+  foo = resolver_op.Property(type=int)
 
   def apply(self, input_dict):
     return input_dict
 
 
 class Bar(resolver_op.ResolverOp):
-  bar = resolver_op.ResolverOpProperty(type=str, default='bar')
+  bar = resolver_op.Property(type=str, default='bar')
 
   def apply(self, input_dict):
     return input_dict

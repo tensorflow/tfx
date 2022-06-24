@@ -60,7 +60,7 @@ class _ResolverOpMeta(abc.ABCMeta):
   1. ResolverOp cannot be instantiated directly. Calling ResolverOp() returns
      OpNode instance which is used for function tracing. Instead _ResolverOpMeta
      exposes create() classmethod to actually create a ResolverOp isntance.
-  2. _ResolverOpMeta is aware of ResolverOpProperty, and keyword argument values
+  2. _ResolverOpMeta is aware of Property, and keyword argument values
      given from the ResolverOp invocation is validated without creating a
      ResolverOp instance.
   3. It inherits ABCMeta, so @abstractmethod works.
@@ -80,7 +80,7 @@ class _ResolverOpMeta(abc.ABCMeta):
     cls._props_by_name = {
         prop.name: prop
         for prop in attrs.values()
-        if isinstance(prop, ResolverOpProperty)
+        if isinstance(prop, Property)
     }
     cls._arg_data_types = arg_data_types
     cls._return_data_type = return_data_type
@@ -165,12 +165,12 @@ _EMPTY = _Empty()
 _T = TypeVar('_T', bound=json_utils.JsonableValue)
 
 
-class ResolverOpProperty(Generic[_T]):
+class Property(Generic[_T]):
   """Property descriptor for ResolverOp.
 
   Usage:
     class FooOp(ResolverOp):
-      foo = ResolverOpProperty(type=int, default=42)
+      foo = Property(type=int, default=42)
 
       def apply(self, input_dict):
         whatever(self.foo, input_dict)  # Can be accessed from self.
@@ -287,7 +287,7 @@ class OpNode(Generic[_TOut]):
                              validator=attr.validators.instance_of(DataTypes))
   # Arguments of the ResolverOp.
   args = attr.ib(default=())
-  # ResolverOpProperty for the ResolverOp, given as keyword arguments.
+  # Property for the ResolverOp, given as keyword arguments.
   kwargs = attr.ib(factory=dict)
 
   @classmethod
