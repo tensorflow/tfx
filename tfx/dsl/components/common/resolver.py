@@ -58,7 +58,7 @@ class ResolverStrategy(abc.ABC):
   @doc_controls.do_not_generate_docs
   @doc_controls.do_not_doc_in_subclasses
   @classmethod
-  def as_resolver_op(cls, input_node: resolver_op.OpNode, **kwargs):
+  def as_resolver_op(cls, input_node: resolver_op.Node, **kwargs):
     """ResolverOp-like usage inside resolver_function."""
     if input_node.output_data_type != resolver_op.DataType.ARTIFACT_MULTIMAP:
       raise TypeError(f'{cls.__name__} takes ARTIFACT_MULTIMAP but got '
@@ -95,9 +95,6 @@ class ResolverStrategy(abc.ABC):
       If all entries has enough data after the resolving, returns the resolved
       input_dict. Otherise, return None.
     """
-
-# Lazily register valid op_type for OpNode to avoid circular import.
-resolver_op.OpNode.register_valid_op_type(ResolverStrategy)
 
 
 class _ResolverDriver(base_driver.BaseDriver):

@@ -51,6 +51,15 @@ class TakeLast(
     return input_dicts[-1]
 
 
+class ManyArtifacts(
+    resolver_op.ResolverOp,
+    arg_data_types=(),
+    return_data_type=resolver_op.DataType.ARTIFACT_LIST):
+
+  def apply(self):
+    return []
+
+
 class ResolverOpTest(tf.test.TestCase):
 
   def testDefineOp_PropertyDefaultViolatesType(self):
@@ -91,7 +100,7 @@ class ResolverOpTest(tf.test.TestCase):
 
   def testOpCreate_InvalidArg(self):
     with self.assertRaisesRegex(
-        ValueError, 'Cannot directly call ResolverOp with real values.'):
+        ValueError, r'Expected dict\[str, Node\]'):
       Bar({'foo': []})
 
   def testOpCreate_MissingRequiredProperty(self):
@@ -120,6 +129,10 @@ class ResolverOpTest(tf.test.TestCase):
 
     with self.subTest('No Error'):
       TakeLast(Repeat(input_node, n=2))
+
+  def testOpCreate_DictArg_ConvertedToDictNode(self):
+    result = Bar({'foo': ManyArtifacts()})
+    self.assertEqual(repr(result), 'Bar(Dict(foo=ManyArtifacts()))')
 
   def testOpProperty_DefaultValue(self):
     result = Bar.create()
@@ -160,16 +173,6 @@ class OpNodeTest(tf.test.TestCase):
         op_type=Bar, args=[foo], kwargs={'bar': 'z'})
 
     self.assertEqual(repr(bar), "Bar(Foo(INPUT_NODE, foo=42), bar='z')")
-
-  def testOpNode_OpTypeMustBeResolverOpSubclass(self):
-    class NotResolverOp:
-      pass
-
-    with self.assertRaises(TypeError):
-      resolver_op.OpNode(op_type=NotResolverOp)
-
-    with self.assertRaises(TypeError):
-      resolver_op.OpNode(op_type=Foo.create(foo=42))  # Not an instance!
 
   def testOpNode_ArgsMustBeOpNodeSequence(self):
     node = resolver_op.OpNode.INPUT_NODE
