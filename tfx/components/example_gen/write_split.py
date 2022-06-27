@@ -49,7 +49,6 @@ class MaybeSerialize(beam.DoFn):
 @beam.ptransform_fn
 @beam.typehints.with_input_types(
     Union[tf.train.Example, tf.train.SequenceExample, bytes])
-@beam.typehints.with_output_types(beam.pvalue.PDone)
 def WriteSplit(
     example_split: beam.pvalue.PCollection,
     output_split_path: str,

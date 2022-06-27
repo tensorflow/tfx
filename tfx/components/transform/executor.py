@@ -591,7 +591,6 @@ class TransformProcessor:
   @staticmethod
   @beam.ptransform_fn
   @beam.typehints.with_input_types(beam.Pipeline)
-  @beam.typehints.with_output_types(beam.pvalue.PDone)
   def _IncrementPipelineMetrics(
       pipeline: beam.Pipeline, total_columns_count: int,
       analyze_columns_count: int, transform_columns_count: int,
@@ -638,7 +637,6 @@ class TransformProcessor:
   @staticmethod
   @beam.ptransform_fn
   @beam.typehints.with_input_types(Tuple[Optional[bytes], bytes])
-  @beam.typehints.with_output_types(beam.pvalue.PDone)
   def _WriteExamples(pcoll: beam.pvalue.PCollection, file_format: str,
                      transformed_example_path: str) -> beam.pvalue.PDone:
     """Writes transformed examples compressed in gzip format.
