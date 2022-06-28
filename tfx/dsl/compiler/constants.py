@@ -32,3 +32,9 @@ NODE_CONTEXT_TYPE_NAME = "node"
 
 # Class path to the conditional resolver.
 CONDITIONAL_RESOLVER_CLASS_PATH = "tfx.dsl.input_resolution.strategies.conditional_strategy.ConditionalStrategy"
+
+# The suffix for a PipelineBegin node's type name and id
+PIPELINE_BEGIN_NODE_SUFFIX = "_begin"
+
+# The suffix for a PipelineEnd node's type name and id
+PIPELINE_END_NODE_SUFFIX = "_end"

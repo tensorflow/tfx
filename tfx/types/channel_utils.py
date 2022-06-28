@@ -74,6 +74,8 @@ def get_dependent_node_ids(channel_: channel.BaseChannel) -> Iterable[str]:
   # pytype: disable=attribute-error
   if isinstance(channel_, channel.OutputChannel):
     yield channel_.producer_component_id
+  if isinstance(channel_, channel.PipelineInputChannel):
+    yield channel_.pipeline.id
   elif isinstance(channel_, channel.Channel):
     # Raw Channel is not considered as a data dependent usage. If dependency is
     # needed, a task dependency can be set from DSL.

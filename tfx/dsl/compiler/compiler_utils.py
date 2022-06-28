@@ -13,15 +13,17 @@
 # limitations under the License.
 """Utility functions for DSL Compiler."""
 
-from typing import List, Optional, Type
+from typing import cast, List, Optional, Sequence, Tuple, Type, Union
 
 from tfx import types
+from tfx.dsl.compiler import constants
 from tfx.dsl.components.base import base_node
 from tfx.dsl.components.common import importer
 from tfx.dsl.components.common import resolver
 from tfx.dsl.placeholder import placeholder as ph
 from tfx.orchestration import pipeline
 from tfx.proto.orchestration import pipeline_pb2
+from tfx.types import channel as tfx_channel
 from tfx.types import channel_utils
 
 
@@ -57,6 +59,33 @@ def set_runtime_parameter_pb(
       pb.default_value.string_value = default_value
   else:
     raise ValueError("Got unsupported runtime parameter type: {}".format(ptype))
+  return pb
+
+
+def set_structural_runtime_parameter_pb(
+    pb: pipeline_pb2.StructuralRuntimeParameter,
+    str_or_params: Sequence[Union[str, Tuple[str, Type[types.Property]],
+                                  Tuple[str, Type[types.Property],
+                                        types.Property]]]
+) -> pipeline_pb2.StructuralRuntimeParameter:
+  """Helper function to fill a StructuralRuntimeParameter proto.
+
+  Args:
+    pb: A StructuralRuntimeParameter proto to be filled in.
+    str_or_params: A list of either a constant string, or args (name, type,
+      default value) to construct a normal runtime parameter. The args will be
+      unpacked and passed to set_runtime_parameter_pb. The parts in a structural
+      runtime parameter will have the same order as the elements in this list.
+
+  Returns:
+    A StructuralRuntimeParameter proto filled with provided values.
+  """
+  for str_or_param in str_or_params:
+    str_or_param_pb = pb.parts.add()
+    if isinstance(str_or_param, str):
+      str_or_param_pb.constant_value = str_or_param
+    else:
+      set_runtime_parameter_pb(str_or_param_pb.runtime_parameter, *str_or_param)
   return pb
 
 
@@ -134,14 +163,40 @@ def has_task_dependency(tfx_pipeline: pipeline.Pipeline):
   return False
 
 
+def pipeline_begin_node_type_name(p: pipeline.Pipeline) -> str:
+  """Builds the type name of a Pipeline Begin node."""
+  return f"{p.type}{constants.PIPELINE_BEGIN_NODE_SUFFIX}"
+
+
+def pipeline_end_node_type_name(p: pipeline.Pipeline) -> str:
+  """Builds the type name of a Pipeline End node."""
+  return f"{p.type}{constants.PIPELINE_END_NODE_SUFFIX}"
+
+
+def pipeline_begin_node_id(p: pipeline.Pipeline) -> str:
+  """Builds the node id of a Pipeline Begin node."""
+  return f"{p.id}{constants.PIPELINE_BEGIN_NODE_SUFFIX}"
+
+
+def pipeline_end_node_id(p: pipeline.Pipeline) -> str:
+  """Builds the node id of a Pipeline End node."""
+  return f"{p.id}{constants.PIPELINE_END_NODE_SUFFIX}"
+
+
 def node_context_name(pipeline_context_name: str, node_id: str):
   """Defines the name used to reference a node context in MLMD."""
   return f"{pipeline_context_name}.{node_id}"
 
 
-def implicit_channel_key(channel: types.Channel):
+def implicit_channel_key(channel: types.BaseChannel):
   """Key of a channel to the node that consumes the channel as input."""
-  return f"_{channel.producer_component_id}.{channel.output_key}"
+  if isinstance(channel, tfx_channel.PipelineInputChannel):
+    channel = cast(tfx_channel.PipelineInputChannel, channel)
+    return f"_{channel.pipeline.id}.{channel.output_key}"
+  elif isinstance(channel, types.Channel):
+    return f"_{channel.producer_component_id}.{channel.output_key}"
+  else:
+    raise ValueError("Unsupported channel type for implicit channel key.")
 
 
 def build_channel_to_key_fn(implicit_keys_map):

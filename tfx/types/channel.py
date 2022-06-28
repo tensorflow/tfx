@@ -82,6 +82,9 @@ class BaseChannel:
     """Name of the artifact type class that Channel takes."""
     return self.type.TYPE_NAME
 
+  def future(self) -> placeholder.ChannelWrappedPlaceholder:
+    return placeholder.ChannelWrappedPlaceholder(self)
+
 
 class Channel(json_utils.Jsonable, BaseChannel):
   """Tfx Channel.
@@ -282,9 +285,6 @@ class Channel(json_utils.Jsonable, BaseChannel):
         producer_component_id=producer_component_id,
         output_key=output_key).set_artifacts(artifacts)
 
-  def future(self) -> placeholder.ChannelWrappedPlaceholder:
-    return placeholder.ChannelWrappedPlaceholder(self)
-
   @doc_controls.do_not_generate_docs
   def as_output_channel(
       self, producer_component: Any, output_key: str) -> 'OutputChannel':
@@ -429,3 +429,75 @@ class LoopVarChannel(BaseChannel):
   @property
   def for_each_context(self) -> dsl_context.DslContext:
     return self._for_each_context
+
+
+@doc_controls.do_not_generate_docs
+class PipelineOutputChannel(OutputChannel):
+  """PipelineOutputChannel wraps a channnel to be used in the outer pipeline.
+
+  It wraps a channel produced from within an inner composable pipeline, to be
+  used in the outer composable pipeline.
+  """
+
+  def __init__(self,
+               wrapped: BaseChannel,
+               pipeline: Optional[Any] = None,
+               output_key: str = ''):
+    self._wrapped = wrapped
+    self._pipeline = pipeline
+    if isinstance(wrapped, Channel):
+      additional_properties = wrapped.additional_properties
+      additional_custom_properties = wrapped.additional_custom_properties
+    else:
+      additional_properties = {}
+      additional_custom_properties = {}
+    super().__init__(
+        artifact_type=wrapped.type,
+        producer_component=pipeline,
+        output_key=output_key or '',
+        additional_properties=additional_properties,
+        additional_custom_properties=additional_custom_properties)
+
+  @property
+  def wrapped(self) -> BaseChannel:
+    return self._wrapped
+
+  @property
+  def pipeline(self) -> Any:
+    return self._pipeline
+
+  @pipeline.setter
+  def pipeline(self, pipeline: Any):
+    self._pipeline = pipeline
+    self._producer_component = pipeline
+
+
+@doc_controls.do_not_generate_docs
+class PipelineInputChannel(BaseChannel):
+  """PipelineInputChannel wraps a channnel to be used in an inner pipeline.
+
+  It wraps a channel produced from a outer/parent composable pipeline, to be
+  used in the inner composable pipeline.
+  """
+
+  def __init__(self, wrapped: BaseChannel, output_key: str):
+    super().__init__(type=wrapped.type)
+    self._wrapped = wrapped
+    self._output_key = output_key
+    self._pipeline = None
+
+  @property
+  def wrapped(self) -> BaseChannel:
+    return self._wrapped
+
+  @property
+  def output_key(self) -> str:
+    return self._output_key
+
+  @property
+  def pipeline(self) -> Any:
+    return self._pipeline
+
+  @pipeline.setter
+  def pipeline(self, pipeline: Any):
+    self._pipeline = pipeline
