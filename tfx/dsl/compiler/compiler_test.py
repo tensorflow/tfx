@@ -14,6 +14,7 @@
 """Tests for tfx.dsl.compiler.compiler."""
 import os
 import threading
+import unittest
 
 from absl import flags
 from absl.testing import parameterized
@@ -78,6 +79,8 @@ class CompilerTest(tf.test.TestCase, parameterized.TestCase):
     with open(test_pb_filepath) as text_pb_file:
       return text_format.ParseLines(text_pb_file, pipeline_pb2.Pipeline())
 
+  @unittest.skipIf(tf.__version__ < "2",
+                   "Large proto comparison has a bug not fixed with TF < 2.")
   @parameterized.named_parameters(
       ("_additional_properties_test_pipeline_async",
        additional_properties_test_pipeline_async,
