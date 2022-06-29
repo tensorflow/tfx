@@ -79,7 +79,7 @@ pushd <your_source_dir>
 TFX has many dependent family libraries like TensorFlow Data Validation and
 TensorFlow Model Analysis. Sometimes, TFX uses their most recent API changes
 before published. So it is safer to use nightly versions of those libraries when
-you develop TFX. You have to set property depdendency using
+you develop TFX. You have to set property dependency using
 `TFX_DEPENDENCY_SELECTOR` environment variable, and supply our nightly package
 index URL when installing TFX.
 
@@ -91,15 +91,20 @@ You can install TFX source code in a virtual environment in editable (`-e`)
 mode, which will pick up your local changes immediately without re-installing
 every time.
 
-```shell
-export TFX_DEPENDENCY_SELECTOR=NIGHTLY
+> NOTE: If you are making changes to TFX that also require changes in a
+> TFX dependency, such as TFX-BSL, please issue separate PRs for each repo in
+> an order which avoids breaking tests.
 
+```shell
 # You might need to install additional packages to run all end-to-end tests.
 # To run all tests, use [test] extra requirements which includes all
 # dependencies including airflow and kfp. If you want to test a specific
-# orchestrator only, use [airflow] or [kfp]. (Beam and Local orchestators can
+# orchestrator only, use [airflow] or [kfp]. (Beam and Local orchestrators can
 # be run without any extra dependency.) For example,
 # $ pip install -e .[kfp] --extra-index-url https://pypi-nightly.tensorflow.org/simple
+
+cd tfx  # the top level of your cloned working copy
+export TFX_DEPENDENCY_SELECTOR=NIGHTLY
 pip install -e . --extra-index-url https://pypi-nightly.tensorflow.org/simple
 ```
 
